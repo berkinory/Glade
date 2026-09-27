@@ -6,7 +6,7 @@ on:
   pull_request:
   push:
     branches:
-      - glade
+      - main
 
 permissions:
   contents: read
@@ -14,7 +14,7 @@ permissions:
 # Stale runs cancelled by a newer push show the gate red, not grey. The default branch never cancels.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/glade' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 # Single heap ceiling for every Node lane (typecheck OOM fix): set once here
 # instead of per job so a future bump cannot miss a lane.

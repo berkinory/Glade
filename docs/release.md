@@ -50,7 +50,13 @@ platforms in parallel; a failed check skips every platform build and publication
 requires running on that exact tag. Existing releases are never overwritten. The Cua native cache
 refreshes weekly and when its build inputs change, with only the macOS universal and Linux x64
 release variants. Native macOS and Linux Cua checks run on relevant pull requests and direct pushes
-to `glade`.
+to `main`.
+
+After a published release is assembled, the dependent `sync-homebrew` job dispatches the
+`update-glade-cask.yml` workflow in `berkinory/homebrew-brew`. Set `HOMEBREW_TAP_TOKEN` in Glade's
+Actions secrets to a fine-grained token with Actions write access to that tap. The tap workflow
+reads the published universal DMG's SHA-256 digest and commits the versioned cask. The cask declares
+`auto_updates true` because the installed app uses Glade's own update feed.
 
 Set these repository Actions secrets before publishing. The macOS signing identity and App Store Connect key must belong to team `8M2GQK3TUP`:
 
@@ -66,7 +72,7 @@ The local keychain does not transfer to GitHub runners. Missing Apple secrets st
 1. Align package versions with `node scripts/update-release-package-versions.ts X.Y.Z`, then refresh `bun.lock` with `bun install --lockfile-only --ignore-scripts`.
 2. Update `CHANGELOG.md` and `apps/web/src/whatsNew/entries.ts`. Mark a version released only when it really ships.
 3. Run `bun run check`, `bun run test`, `bun scripts/check-windows-runtime-boundary.ts`, and `bun scripts/check-migration-lineage.ts`. Check the packaged app with an isolated profile on each supported platform.
-4. Commit the reviewed source on `glade`, tag that exact commit `vX.Y.Z`, and push the branch and that tag to `origin`. Do not push inherited upstream tags.
+4. Commit the reviewed source on `main`, tag that exact commit `vX.Y.Z`, and push the branch and that tag to `origin`. Do not push inherited upstream tags.
 5. Verify the GitHub Release has all three installers, macOS update ZIP, platform update manifests, provenance JSON files, and `SHA256SUMS.txt`.
 
 ## Development and production

@@ -37,7 +37,7 @@ export const PROVIDER_DESCRIPTORS = defineProviderDescriptors([
     kind: "codex",
     displayName: PROVIDER_DISPLAY_NAMES.codex,
     available: true,
-    setupDocsHref: "https://github.com/berkinory/Glade/blob/glade/docs/providers.md",
+    setupDocsHref: "https://github.com/berkinory/Glade/blob/main/docs/providers.md",
     supportsNativeTurnSteering: true,
     usage: {
       signInCommand: "codex login",
@@ -48,7 +48,7 @@ export const PROVIDER_DESCRIPTORS = defineProviderDescriptors([
     kind: "claudeAgent",
     displayName: PROVIDER_DISPLAY_NAMES.claudeAgent,
     available: true,
-    setupDocsHref: "https://github.com/berkinory/Glade/blob/glade/docs/providers.md",
+    setupDocsHref: "https://github.com/berkinory/Glade/blob/main/docs/providers.md",
     supportsNativeTurnSteering: true,
     usage: {
       signInCommand: "claude",
@@ -59,7 +59,7 @@ export const PROVIDER_DESCRIPTORS = defineProviderDescriptors([
     kind: "cursor",
     displayName: PROVIDER_DISPLAY_NAMES.cursor,
     available: true,
-    setupDocsHref: "https://github.com/berkinory/Glade/blob/glade/docs/providers.md",
+    setupDocsHref: "https://github.com/berkinory/Glade/blob/main/docs/providers.md",
     supportsNativeTurnSteering: false,
     usage: {
       signInCommand: "cursor-agent login",
@@ -70,7 +70,7 @@ export const PROVIDER_DESCRIPTORS = defineProviderDescriptors([
     kind: "grok",
     displayName: PROVIDER_DISPLAY_NAMES.grok,
     available: true,
-    setupDocsHref: "https://github.com/berkinory/Glade/blob/glade/docs/providers.md",
+    setupDocsHref: "https://github.com/berkinory/Glade/blob/main/docs/providers.md",
     supportsNativeTurnSteering: false,
     usage: {
       signInCommand: "grok login",
@@ -81,7 +81,7 @@ export const PROVIDER_DESCRIPTORS = defineProviderDescriptors([
     kind: "opencode",
     displayName: PROVIDER_DISPLAY_NAMES.opencode,
     available: true,
-    setupDocsHref: "https://github.com/berkinory/Glade/blob/glade/docs/providers.md",
+    setupDocsHref: "https://github.com/berkinory/Glade/blob/main/docs/providers.md",
     supportsNativeTurnSteering: false,
     usage: {
       signInCommand: "opencode auth login",

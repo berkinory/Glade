@@ -38,7 +38,7 @@ short recording for motion or interaction changes.
 
 ## Open a pull request
 
-Target the `glade` branch. Explain the problem, the change, and how you verified
+Target the `main` branch. Explain the problem, the change, and how you verified
 it. Link a related issue if there is one. Maintainers review contributions on
 their merits and may ask for a smaller scope or a different approach.
 

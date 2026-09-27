@@ -14,7 +14,7 @@ import {
   TerminalIcon,
 } from "~/lib/icons";
 
-export const GLADE_DOCS_URL = "https://github.com/berkinory/Glade/blob/glade/docs";
+export const GLADE_DOCS_URL = "https://github.com/berkinory/Glade/blob/main/docs";
 
 export interface TourCard {
   readonly id: string;

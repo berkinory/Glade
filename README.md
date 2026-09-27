@@ -2,10 +2,22 @@
 
 Glade is a local-first coding workspace forked from [Synara](https://github.com/Emanuele-web04/synara).
 
-## Download
+## Install
 
-Installers will be available on [GitHub Releases](https://github.com/berkinory/Glade/releases)
-after the first Glade release. To use Glade now, run it from source below.
+Download the latest version from [GitHub Releases](https://github.com/berkinory/Glade/releases/latest):
+
+- **macOS (Apple Silicon and Intel):** download the universal `.dmg`, open it, and drag `Glade.app` to Applications.
+- **Linux (x64):** download the `.AppImage`, make it executable with `chmod +x Glade-*.AppImage`, then run it.
+- **Windows (x64):** download and run the `.exe` installer. The installer is unsigned, so Windows SmartScreen may show a warning.
+
+On macOS, you can also install Glade from the [Homebrew tap](https://github.com/berkinory/homebrew-brew):
+
+```sh
+brew install --cask berkinory/brew/glade
+```
+
+Install and authenticate at least one [supported provider](docs/providers.md) before starting a task.
+Glade checks GitHub Releases for app updates.
 
 ## Development
 
@@ -18,8 +30,7 @@ bun install --frozen-lockfile
 bun run dev
 ```
 
-Codex and Claude Code must be installed and authenticated separately. See the
-[quickstart](docs/quickstart.md) for other development commands.
+See the [quickstart](docs/quickstart.md) for other development commands.
 
 ## Releases
 

@@ -5,7 +5,7 @@
 Glade is an independently maintained application. Complete product behavior and a
 coherent codebase take priority over making upstream rebases easy.
 
-- Work directly on the current `glade` checkout. Preserve unrelated work. Do not
+- Work directly on the current `main` checkout. Preserve unrelated work. Do not
   create a worktree, commit, push, or publish without corresponding authorization.
 - `origin` belongs to Glade; `upstream` is only the source repository reference.
   Never publish downstream changes to upstream. Preserve copyright and licenses.

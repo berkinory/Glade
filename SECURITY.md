@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Security fixes are prioritized for the current `glade` branch and the latest
+Security fixes are prioritized for the current `main` branch and the latest
 publicly released version when one is available. Older versions may not receive
 fixes.
 

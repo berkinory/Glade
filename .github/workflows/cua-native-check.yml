@@ -9,7 +9,7 @@ on:
       - "packages/shared/src/cuaDriver*"
       - "packages/shared/src/cuaActionDiagnostics*"
   push:
-    branches: [glade]
+    branches: [main]
     paths:
       - ".github/workflows/cua-native-check.yml"
       - "apps/desktop/patches/cua-driver/**"

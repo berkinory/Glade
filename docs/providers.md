@@ -220,7 +220,7 @@ link in its reply.
 
 ## Switching providers
 
-A [provider handoff](https://github.com/berkinory/Glade/blob/glade/docs/core-concepts.md) allows another provider to
+A [provider handoff](https://github.com/berkinory/Glade/blob/main/docs/core-concepts.md) allows another provider to
 continue the task and work in the same environment with the context Glade passes to it.
 
 Use handoffs deliberately. Review the working tree before and after changing providers so ownership
@@ -238,7 +238,7 @@ Check these in order:
 6. Does restarting Glade refresh the provider status?
 7. Does the provider itself report a service or account error?
 
-Continue with the [troubleshooting hub](https://github.com/berkinory/Glade/blob/glade/docs/diagnostics.md) when the
+Continue with the [troubleshooting hub](https://github.com/berkinory/Glade/blob/main/docs/diagnostics.md) when the
 runtime works independently but remains unavailable in Glade.
 
 Use the official provider documentation linked in Glade's provider settings for exact installation,
