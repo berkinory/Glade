@@ -9,14 +9,14 @@
  *
  * @module providerModelCatalogCache
  */
-import { ProviderListModelsResult } from "@synara/contracts";
+import { ProviderListModelsResult } from "@glade/contracts";
 import { Cause, Effect, FileSystem, Schema } from "effect";
 import * as path from "node:path";
 
 import { writeFileStringAtomically } from "../atomicWrite";
 
 export interface PersistedModelCatalogEntry {
-  /** Serialized ProviderModelDiscoveryCacheKey (provider + binaryPath + apiEndpoint + agentDir + cwd). */
+  /** Serialized ProviderModelDiscoveryCacheKey (provider + binaryPath + apiEndpoint + cwd). */
   readonly key: string;
   readonly result: ProviderListModelsResult;
   readonly storedAt: number;

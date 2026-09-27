@@ -5,8 +5,8 @@
  * API constrained to store actions/selectors.
  */
 
-import { type TerminalActivityState, type TerminalCliKind } from "@synara/shared/terminalThreads";
-import type { ThreadId } from "@synara/contracts";
+import { type TerminalActivityState, type TerminalCliKind } from "@glade/shared/terminalThreads";
+import type { ThreadId } from "@glade/contracts";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { createDeferredPersistStorage, flushStorageBeforePageHide } from "./lib/storage";
@@ -50,7 +50,7 @@ export interface ThreadTerminalState {
   activeTerminalGroupId: string;
 }
 
-const TERMINAL_STATE_STORAGE_KEY = "synara:terminal-state:v1";
+const TERMINAL_STATE_STORAGE_KEY = "glade:terminal-state:v1";
 
 function normalizeTerminalIds(terminalIds: string[]): string[] {
   const ids = [...new Set(terminalIds.map((id) => id.trim()).filter((id) => id.length > 0))];
@@ -105,8 +105,7 @@ function normalizeTerminalCliKinds(
     .map(([terminalId, cliKind]) => [terminalId.trim(), cliKind] as const)
     .filter(
       ([terminalId, cliKind]) =>
-        terminalId.length > 0 &&
-        (cliKind === "codex" || cliKind === "claude" || cliKind === "antigravity"),
+        terminalId.length > 0 && (cliKind === "codex" || cliKind === "claude"),
     )
     .filter(([terminalId]) => validTerminalIdSet.has(terminalId))
     .toSorted(([leftId], [rightId]) => leftId.localeCompare(rightId));
@@ -144,7 +143,6 @@ function clearTerminalReviewState(
 function generatedTerminalTitleBase(cliKind: TerminalCliKind | null): string {
   if (cliKind === "codex") return "Codex";
   if (cliKind === "claude") return "Claude";
-  if (cliKind === "antigravity") return "Antigravity";
   return "Terminal";
 }
 

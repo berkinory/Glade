@@ -1,26 +1,23 @@
 import {
-  synaraDesktopIdentity,
-  type SynaraPackagedDesktopFlavor,
-} from "@synara/shared/desktopIdentity";
+  gladeDesktopIdentity,
+  type GladePackagedDesktopFlavor,
+} from "@glade/shared/desktopIdentity";
 
 export function createDesktopArtifactIdentity(input: {
   readonly platform: "mac" | "linux" | "win";
-  readonly flavor: SynaraPackagedDesktopFlavor;
+  readonly flavor: GladePackagedDesktopFlavor;
 }) {
-  // Stable's NSIS GUID deliberately survives public bundle ID changes. An
-  // experimental installer must not register itself as that same product; beta
-  // ships its own WINDOWS_BETA_INSTALLER_GUID, so it is exempt.
-  if (input.platform === "win" && input.flavor !== "production" && input.flavor !== "beta") {
-    throw new Error("Isolated desktop flavors are currently supported on macOS and Linux only.");
+  if (input.flavor !== "production") {
+    throw new Error("Glade packages only production. Use bun run dev for development.");
   }
-  const identity = synaraDesktopIdentity(input.flavor);
+  const identity = gladeDesktopIdentity(input.flavor);
   const suffix = input.flavor === "production" ? "" : `-${input.flavor}`;
   return {
     identity,
     packageMetadata: {
-      name: `synara-desktop${suffix}`,
+      name: `glade-desktop${suffix}`,
       productName: identity.displayName,
-      synaraDesktopFlavor: input.flavor,
+      gladeDesktopFlavor: input.flavor,
     },
     buildConfig: {
       appId: identity.bundleId,

@@ -51,7 +51,6 @@ describe("browser vault IPC", () => {
       BROWSER_IPC_CHANNELS.vault.setupMaster,
       BROWSER_IPC_CHANNELS.vault.unlock,
       BROWSER_IPC_CHANNELS.vault.reveal,
-      BROWSER_IPC_CHANNELS.vault.importCookies,
     ]) {
       await expect(
         handlers.get(channel)!({ ...trusted, senderFrame: {} } as IpcMainInvokeEvent, {

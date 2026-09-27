@@ -5,11 +5,7 @@
 
 import { fileURLToPath } from "node:url";
 
-import {
-  SYNARA_BETA_WINDOWS_INSTALLER_GUID,
-  SYNARA_STABLE_WINDOWS_INSTALLER_GUID,
-} from "@synara/shared/betaChannel";
-import type { SynaraPackagedDesktopFlavor } from "@synara/shared/desktopIdentity";
+import type { GladePackagedDesktopFlavor } from "@glade/shared/desktopIdentity";
 
 import {
   createDesktopBundleFilePatterns,
@@ -17,25 +13,24 @@ import {
 } from "./desktop-bundle-files.ts";
 
 export const MICROPHONE_USAGE_DESCRIPTION =
-  "Synara needs microphone access so you can record voice notes and transcribe them into the chat composer.";
+  "Glade needs microphone access so you can record voice notes and transcribe them into the chat composer.";
 export const MAC_ENTITLEMENTS_PATH = "apps/desktop/resources/entitlements.mac.plist";
 export const MAC_INHERITED_ENTITLEMENTS_PATH =
   "apps/desktop/resources/entitlements.mac.inherit.plist";
-export const MAC_APPSNAP_HELPER_STAGE_PATH =
-  "apps/desktop/native/appsnap/build/synara-appsnap-helper";
-export const MAC_APPSNAP_HELPER_ASAR_EXCLUSION = "!apps/desktop/native/appsnap/build/**";
-export const MAC_APPSNAP_HELPER_BUNDLE_PATH = "Contents/Helpers/synara-appsnap-helper";
+export const MAC_COMPUTER_HELPER_STAGE_PATH =
+  "apps/desktop/native/computer/build/glade-computer-helper";
+export const MAC_COMPUTER_HELPER_ASAR_EXCLUSION = "!apps/desktop/native/computer/build/**";
+export const MAC_COMPUTER_HELPER_BUNDLE_PATH = "Contents/Helpers/glade-computer-helper";
 export const MAC_DEVICE_HELPER_STAGE_PATH = "apps/server/dist/device-helper";
 export const MAC_DEVICE_HELPER_RESOURCE_PATH = "Resources/device-helper";
-export const WINDOWS_INSTALLER_GUID = SYNARA_STABLE_WINDOWS_INSTALLER_GUID;
+export const WINDOWS_INSTALLER_GUID = "5ae5e85a-0788-48c2-ab48-b8fd29cfc1e1";
 // Asset catalog name of the compiled Icon Composer icon. macOS 26 reads
 // CFBundleIconName out of Assets.car and renders that layered icon with the
 // Liquid Glass material; older releases ignore it and keep using the ICNS.
-export const MAC_ICON_ASSET_NAME = "Synara";
+export const MAC_ICON_ASSET_NAME = "Glade";
 export const MAC_ICON_COMPOSER_DEPLOYMENT_TARGET = "26.0";
 export const MAC_ICON_ASSETS_CAR_STAGE_PATH = "apps/desktop/resources/Assets.car";
 export const MAC_ICON_ASSETS_CAR_BUNDLE_PATH = "Resources/Assets.car";
-export { SYNARA_BETA_WINDOWS_INSTALLER_GUID };
 const MAC_DMG_ICON_PATH = "icon.icns";
 const NODE_PTY_ASAR_UNPACK_GLOBS = ["node_modules/node-pty/**"] as const;
 
@@ -60,7 +55,7 @@ export interface CreateDesktopPlatformBuildConfigInput {
   /** Seal isolated local bundles without selecting a release certificate. */
   readonly adHocSign?: boolean;
   readonly windowsAzureSignOptions?: Record<string, string>;
-  readonly flavor?: SynaraPackagedDesktopFlavor | undefined;
+  readonly flavor?: GladePackagedDesktopFlavor | undefined;
 }
 
 export interface DesktopNativeBuildHostInput {
@@ -73,7 +68,7 @@ export interface DesktopNativeBuildHostInput {
 export function validateDesktopNativeBuildHost(input: DesktopNativeBuildHostInput): string | null {
   if (input.platform === "mac" && input.hostPlatform !== "darwin") {
     return [
-      "macOS desktop artifacts include the native Swift AppSnap helper.",
+      "macOS desktop artifacts include the native Swift ComputerPermission helper.",
       `Build mac/${input.arch} on macOS so the helper can be compiled and signed.`,
       `Current host is ${input.hostPlatform}/${input.hostArch}.`,
     ].join(" ");
@@ -121,18 +116,19 @@ export function createDesktopPlatformBuildConfig(
         : {}),
       entitlements: MAC_ENTITLEMENTS_PATH,
       entitlementsInherit: MAC_INHERITED_ENTITLEMENTS_PATH,
-      binaries: [MAC_APPSNAP_HELPER_BUNDLE_PATH, "Contents/Resources/cua-driver/cua-driver"],
-      // The universal build stages the same pre-lipo'd helper in both app trees.
-      // @electron/universal needs this pattern to preserve that existing fat binary.
-      x64ArchFiles: "Contents/{Helpers/synara-appsnap-helper,Resources/cua-driver/cua-driver}",
+      binaries: [MAC_COMPUTER_HELPER_BUNDLE_PATH, "Contents/Resources/cua-driver/cua-driver"],
+      // Both app trees contain the pre-lipo'd helpers and architecture-labelled
+      // vendor prebuilds. Those binaries are selected by path at runtime.
+      x64ArchFiles:
+        "Contents/{Helpers/glade-computer-helper,Resources/cua-driver/cua-driver,Resources/app.asar.unpacked/node_modules/**/darwin-*/**,Resources/app.asar.unpacked/node_modules/**/*-darwin-*/**}",
       extendInfo: {
         NSMicrophoneUsageDescription: MICROPHONE_USAGE_DESCRIPTION,
         NSScreenCaptureUsageDescription:
-          "Synara captures the windows you authorize for Computer use.",
+          "Glade captures the windows you authorize for Computer use.",
         NSAccessibilityUsageDescription:
-          "Synara controls the windows you authorize for Computer use.",
+          "Glade controls the windows you authorize for Computer use.",
         NSLocalNetworkUsageDescription:
-          "Synara connects to the browsers it drives on this Mac so agents can browse in the background.",
+          "Glade connects to the browsers it drives on this Mac so agents can browse in the background.",
         CFBundleIconName: MAC_ICON_ASSET_NAME,
       },
     } satisfies Record<string, unknown>;
@@ -160,12 +156,16 @@ export function createDesktopPlatformBuildConfig(
         // macOS auto-updates use the separately finalized ZIP artifact.
         writeUpdateInfo: false,
       },
-      files: [...files, MAC_APPSNAP_HELPER_ASAR_EXCLUSION, "!apps/desktop/resources/cua-driver/**"],
+      files: [
+        ...files,
+        MAC_COMPUTER_HELPER_ASAR_EXCLUSION,
+        "!apps/desktop/resources/cua-driver/**",
+      ],
       extraFiles: [
         { from: "apps/desktop/resources/cua-driver", to: "Resources/cua-driver" },
         {
-          from: MAC_APPSNAP_HELPER_STAGE_PATH,
-          to: "Helpers/synara-appsnap-helper",
+          from: MAC_COMPUTER_HELPER_STAGE_PATH,
+          to: "Helpers/glade-computer-helper",
         },
         {
           from: MAC_DEVICE_HELPER_STAGE_PATH,
@@ -196,12 +196,12 @@ export function createDesktopPlatformBuildConfig(
       extraResources: [{ from: "apps/desktop/resources/cua-driver", to: "cua-driver" }],
       linux: {
         target: [input.target],
-        executableName: "synara",
+        executableName: "glade",
         icon: "icon.png",
         category: "Development",
         desktop: {
           entry: {
-            StartupWMClass: "synara",
+            StartupWMClass: "glade",
           },
         },
       },
@@ -213,7 +213,7 @@ export function createDesktopPlatformBuildConfig(
     // Keep the Windows product registration stable while the public app ID changes.
     // This lets NSIS updates replace the existing installation and own its uninstaller.
     nsis: {
-      guid: input.flavor === "beta" ? SYNARA_BETA_WINDOWS_INSTALLER_GUID : WINDOWS_INSTALLER_GUID,
+      guid: WINDOWS_INSTALLER_GUID,
     },
     win: {
       target: [input.target],

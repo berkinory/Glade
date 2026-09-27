@@ -1,4 +1,4 @@
-import type { OrchestrationEvent } from "@synara/contracts";
+import type { OrchestrationEvent } from "@glade/contracts";
 
 export type ProviderIntentEvent = Extract<
   OrchestrationEvent,

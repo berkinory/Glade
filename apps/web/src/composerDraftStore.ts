@@ -2,7 +2,7 @@
 // Purpose: Public Zustand facade for composer drafts, model choices, attachments, and persistence.
 // Exports: Stable composer draft API, hooks, and promotion helpers.
 
-import { type ModelSelection, type ProviderKind, type ThreadId } from "@synara/contracts";
+import { type ModelSelection, type ProviderKind, type ThreadId } from "@glade/contracts";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
@@ -26,10 +26,9 @@ import {
   type PersistedComposerDraftStoreState,
 } from "./composerDraftPersistence";
 import {
+  appStorage,
   createDeferredPersistStorage,
-  createMemoryStorage,
   flushStorageBeforePageHide,
-  type StateStorage,
 } from "./lib/storage";
 
 export {
@@ -66,13 +65,11 @@ export type { EffectiveComposerModelState } from "./composerDraftModels";
 export { partializeComposerDraftStoreState } from "./composerDraftPersistence";
 
 const COMPOSER_PERSIST_DEBOUNCE_MS = 300;
-const composerBaseStorage: StateStorage =
-  typeof localStorage !== "undefined" ? localStorage : createMemoryStorage();
 const composerPersistStorage = createDeferredPersistStorage<
   ComposerDraftStoreState,
   PersistedComposerDraftStoreState
 >({
-  getStorage: () => composerBaseStorage,
+  getStorage: () => appStorage,
   partialize: partializeComposerDraftStoreState,
   debounceMs: COMPOSER_PERSIST_DEBOUNCE_MS,
 });
@@ -122,7 +119,6 @@ export function useEffectiveComposerModelState(input: {
   selectedProvider: ProviderKind;
   threadModelSelection: ModelSelection | null | undefined;
   projectModelSelection: ModelSelection | null | undefined;
-  customModelsByProvider: Record<ProviderKind, readonly string[]>;
   availableModelOptionsByProvider?: Partial<
     Record<ProviderKind, ReadonlyArray<{ slug: string; name: string }>>
   >;
@@ -133,7 +129,6 @@ export function useEffectiveComposerModelState(input: {
     selectedProvider: input.selectedProvider,
     threadModelSelection: input.threadModelSelection,
     projectModelSelection: input.projectModelSelection,
-    customModelsByProvider: input.customModelsByProvider,
     ...(input.availableModelOptionsByProvider !== undefined
       ? { availableModelOptionsByProvider: input.availableModelOptionsByProvider }
       : {}),

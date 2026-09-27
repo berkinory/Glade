@@ -1,5 +1,5 @@
-import type { ClaudeCacheObservation } from "@synara/contracts";
-import { assessClaudeCache } from "@synara/shared/claudeCache";
+import type { ClaudeCacheObservation } from "@glade/contracts";
+import { assessClaudeCache } from "@glade/shared/claudeCache";
 import { formatContextWindowTokens } from "~/lib/contextWindow";
 
 export function ClaudeCacheDetails({

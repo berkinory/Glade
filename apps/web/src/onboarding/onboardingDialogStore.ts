@@ -11,14 +11,9 @@ interface OnboardingDialogStore {
   isOpen: boolean;
   /**
    * True once the first-run gate has produced a non-pending answer at least once. Other
-   * startup dialogs (AppSnap's announcement) wait for this so two modals never stack.
+   * startup dialogs wait for this so two modals never stack.
    */
   startupGateSettled: boolean;
-  /**
-   * True while the beta welcome sheet is still probing or on screen. The
-   * first-run gate waits for it so the welcome always opens before the tour.
-   */
-  betaWelcomePending: boolean;
   /** Why the dialog is open; null when closed. */
   openReason: OnboardingOpenReason | null;
   /**
@@ -34,13 +29,11 @@ interface OnboardingDialogStore {
   close: () => void;
   markEngaged: () => void;
   markStartupGateSettled: () => void;
-  setBetaWelcomePending: (pending: boolean) => void;
 }
 
 export const useOnboardingDialogStore = create<OnboardingDialogStore>((set) => ({
   isOpen: false,
   startupGateSettled: false,
-  betaWelcomePending: false,
   openReason: null,
   engaged: false,
   open: (reason) => set({ isOpen: true, openReason: reason, engaged: false }),
@@ -48,5 +41,4 @@ export const useOnboardingDialogStore = create<OnboardingDialogStore>((set) => (
   close: () => set({ isOpen: false, openReason: null, engaged: false }),
   markEngaged: () => set({ engaged: true }),
   markStartupGateSettled: () => set({ startupGateSettled: true }),
-  setBetaWelcomePending: (pending) => set({ betaWelcomePending: pending }),
 }));

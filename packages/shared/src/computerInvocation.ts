@@ -1,4 +1,4 @@
-import type { ComputerControlMode } from "@synara/contracts";
+import type { ComputerControlMode } from "@glade/contracts";
 
 export const COMPUTER_USE_SLASH_COMMAND = "computer-use";
 

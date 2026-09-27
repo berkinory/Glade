@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import type { ThreadId } from "@synara/contracts";
+import type { ThreadId } from "@glade/contracts";
 import type { ComposerComputerControlMode } from "~/computerControlMode";
 import { readNativeApi } from "~/nativeApi";
 import { toastManager } from "~/components/ui/toast";
@@ -8,7 +8,7 @@ import {
   readLocalComputerPermissionBridge,
 } from "~/lib/computerProvisioning";
 
-/** Explicit activation also enters the same native permission guide as AppSnap. */
+/** Explicit activation opens the native permission guide when grants are missing. */
 export function useComputerControlModeChange({
   threadId,
   setMode,
@@ -52,12 +52,12 @@ export function useComputerControlModeChange({
             type: "error",
           });
         }
-        const appSnap = readLocalComputerPermissionBridge();
-        if (result.enabled && appSnap) {
+        const computerPermission = readLocalComputerPermissionBridge();
+        if (result.enabled && computerPermission) {
           settingUp = true;
           const ready = await prepareComputerPermissionGuide({
-            getPermissionState: (kinds) => appSnap.getState(kinds),
-            startPermissionSetup: (kinds) => appSnap.startPermissionSetup(kinds),
+            getPermissionState: (kinds) => computerPermission.getState(kinds),
+            startPermissionSetup: (kinds) => computerPermission.startPermissionSetup(kinds),
             isCurrent: current,
           });
           if (!ready) return; // Keep Settings/its floating guide in front.

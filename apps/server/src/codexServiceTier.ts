@@ -1,4 +1,4 @@
-import type { ModelSelection } from "@synara/contracts";
+import type { ModelSelection } from "@glade/contracts";
 
 export function resolveCodexServiceTier(
   modelSelection: ModelSelection | undefined,

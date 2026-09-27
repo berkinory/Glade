@@ -6,7 +6,7 @@ inputs:
     description: Install the Electron runtime binary.
     default: "false"
   scope:
-    description: "Install scope: full, static (root and scripts), or runtime (all except marketing)."
+    description: "Install scope: full or static (root and scripts)."
     default: "full"
   turbo:
     description: Persist Turbo build artifacts for jobs that use Turbo.
@@ -22,11 +22,11 @@ runs:
         ELECTRON: ${{ inputs.electron }}
       run: |
         case "$WORKSPACE_SCOPE" in
-          full|static|runtime) ;;
+          full|static) ;;
           *) echo "::error::Unknown workspace scope: $WORKSPACE_SCOPE"; exit 1 ;;
         esac
         if [ "$ELECTRON" = "true" ] && [ "$WORKSPACE_SCOPE" = "static" ]; then
-          echo "::error::Electron requires a full or runtime install."
+          echo "::error::Electron requires a full install."
           exit 1
         fi
 
@@ -100,8 +100,7 @@ runs:
         fi
         case "$WORKSPACE_SCOPE" in
           full) bun install --frozen-lockfile ;;
-          static) bun install --frozen-lockfile --filter './' --filter '@synara/scripts' ;;
-          runtime) bun install --frozen-lockfile --filter '!@synara/marketing' ;;
+          static) bun install --frozen-lockfile --filter './' --filter '@glade/scripts' ;;
         esac
 
     - name: Install Electron test runtime

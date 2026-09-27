@@ -7,8 +7,8 @@ import {
   type OrchestrationEvent,
   type OrchestrationProject,
   type OrchestrationReadModel,
-} from "@synara/contracts";
-import { workspaceRootsEqual } from "@synara/shared/threadWorkspace";
+} from "@glade/contracts";
+import { workspaceRootsEqual } from "@glade/shared/threadWorkspace";
 import { Effect } from "effect";
 
 import { OrchestrationCommandInvariantError } from "./Errors.ts";

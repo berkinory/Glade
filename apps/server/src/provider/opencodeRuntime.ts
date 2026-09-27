@@ -12,7 +12,7 @@ import type {
   ProviderApprovalDecision,
   ProviderInteractionMode,
   RuntimeMode,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import {
   type ConsoleState,
   createOpencodeClient,
@@ -44,8 +44,8 @@ import * as Semaphore from "effect/Semaphore";
 import { ChildProcessSpawner } from "effect/unstable/process";
 import { makeEffectProcessCommand } from "../platform/effectProcessRuntime.ts";
 
-import { NetService, type NetServiceShape } from "@synara/shared/Net";
-import { expandHomePath } from "@synara/shared/synaraHome";
+import { NetService, type NetServiceShape } from "@glade/shared/Net";
+import { expandHomePath } from "@glade/shared/gladeHome";
 import { buildOpenCodeServerProcessEnv } from "./providerBinaryResolution.ts";
 import { readOpenCodeAuthFileUtf8 } from "./openCodeAuthPaths.ts";
 import {
@@ -1086,7 +1086,7 @@ const makeOpenCodeRuntime = (options?: OpenCodeRuntimeLiveOptions) =>
           });
         }
 
-        // Synara needs the legacy endpoint family, so probe `provider.list`.
+        // Glade needs the legacy endpoint family, so probe `provider.list`.
         // A missing route (404/405) establishes incompatibility, not the CLI
         // version. Retry other statuses and connection failures separately.
         const probeUrl = `${readyOption.value.replace(/\/$/, "")}/provider`;
@@ -1113,7 +1113,7 @@ const makeOpenCodeRuntime = (options?: OpenCodeRuntimeLiveOptions) =>
           if (response !== null && (response.status === 404 || response.status === 405)) {
             return yield* new OpenCodeRuntimeError({
               operation: "startOpenCodeServerProcess",
-              detail: `${cliSpec.displayName} server does not serve the legacy surface Synara requires (GET /provider → HTTP ${response.status}). Install a compatible CLI release (https://opencode.ai) or set an explicit binary path in provider settings.`,
+              detail: `${cliSpec.displayName} server does not serve the legacy surface Glade requires (GET /provider → HTTP ${response.status}). Install a compatible CLI release (https://opencode.ai) or set an explicit binary path in provider settings.`,
             });
           }
           probeStatus = response === null ? null : response.status;
@@ -1545,7 +1545,7 @@ const makeOpenCodeRuntime = (options?: OpenCodeRuntimeLiveOptions) =>
   });
 
 export class OpenCodeRuntime extends ServiceMap.Service<OpenCodeRuntime, OpenCodeRuntimeShape>()(
-  "synara/provider/opencodeRuntime",
+  "glade/provider/opencodeRuntime",
 ) {}
 
 export const makeOpenCodeRuntimeLive = (options?: OpenCodeRuntimeLiveOptions) =>

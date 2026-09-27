@@ -3,13 +3,13 @@
 // Layer: Web local-storage helpers used by the composer model picker and model cycle shortcuts.
 // Depends on: legacy per-provider favorite slugs (modelFavorites) for the one-time seed.
 
-import type { ProviderKind } from "@synara/contracts";
+import type { ProviderKind } from "@glade/contracts";
 import { Schema } from "effect";
 
 import { isProviderKind } from "../providerOrdering";
 import { FAVORITE_MODEL_STORAGE_KEYS, readFavoriteModelSlugs } from "./modelFavorites";
 
-export const STARRED_MODELS_STORAGE_KEY = "synara:starred-models:v1";
+export const STARRED_MODELS_STORAGE_KEY = "glade:starred-models:v1";
 
 // A starred preset pins the traits the user composed once so one click restores them.
 // `null` traits mean "leave whatever the provider currently uses" (legacy favorites,

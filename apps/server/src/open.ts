@@ -6,14 +6,14 @@
  *
  * @module Open
  */
-import { createBatchExecutableResolver, resolveExecutable } from "@synara/shared/executable";
-import { spawnProcess } from "@synara/shared/processRuntime";
+import { createBatchExecutableResolver, resolveExecutable } from "@glade/shared/executable";
+import { spawnProcess } from "@glade/shared/processRuntime";
 import { statSync } from "node:fs";
 import { dirname, extname } from "node:path";
 import pathWin32 from "node:path/win32";
 
-import { EDITORS, type EditorId } from "@synara/contracts";
-import { resolveWindowsSystemRoot } from "@synara/shared/platformEnvironment";
+import { EDITORS, type EditorId } from "@glade/contracts";
+import { resolveWindowsSystemRoot } from "@glade/shared/platformEnvironment";
 import { ServiceMap, Schema, Effect, Layer } from "effect";
 import {
   getEditorMacApplications,
@@ -347,7 +347,7 @@ export interface OpenShape {
 /**
  * Open - Service tag for browser/editor launch operations.
  */
-export class Open extends ServiceMap.Service<Open, OpenShape>()("synara/open") {}
+export class Open extends ServiceMap.Service<Open, OpenShape>()("glade/open") {}
 
 // ==============================
 // Implementations

@@ -2,8 +2,8 @@
 // Purpose: Stable Zustand selectors for entity lookups and lightweight sidebar projections.
 // Exports: Selector factories used by routes and sidebar-heavy components.
 
-import type { ProjectId, ThreadEnvironmentMode, ThreadId } from "@synara/contracts";
-import { isAutomationRunThread } from "@synara/shared/automationMode";
+import type { ProjectId, ThreadEnvironmentMode, ThreadId } from "@glade/contracts";
+import { isAutomationRunThread } from "@glade/shared/automationMode";
 
 import type { AppState } from "./storeState";
 import { ACCOUNT_RATE_LIMIT_ACTIVITY_KINDS } from "./lib/rateLimits";

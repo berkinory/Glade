@@ -3,8 +3,8 @@
 // Layer: Web Sidebar controller hook
 // Exports: useSidebarThreadActions
 
-import { type ProjectId, ThreadId } from "@synara/contracts";
-import { pluralize } from "@synara/shared/text";
+import { type ProjectId, ThreadId } from "@glade/contracts";
+import { pluralize } from "@glade/shared/text";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";

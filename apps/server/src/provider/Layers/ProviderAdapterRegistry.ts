@@ -22,13 +22,8 @@ import {
 import { ClaudeAdapter } from "../Services/ClaudeAdapter.ts";
 import { CodexAdapter } from "../Services/CodexAdapter.ts";
 import { CursorAdapter } from "../Services/CursorAdapter.ts";
-import { DevinAdapter } from "../Services/DevinAdapter.ts";
-import { DroidAdapter } from "../Services/DroidAdapter.ts";
 import { GrokAdapter } from "../Services/GrokAdapter.ts";
 import { OpenCodeAdapter } from "../Services/OpenCodeAdapter.ts";
-import { PiAdapter } from "../Services/PiAdapter.ts";
-import { OmpAdapter } from "../Services/OmpAdapter.ts";
-import { AntigravityAdapter } from "../Services/AntigravityAdapter.ts";
 
 export interface ProviderAdapterRegistryLiveOptions {
   readonly adapters?: ReadonlyArray<ProviderAdapterShape<ProviderAdapterError>>;
@@ -43,13 +38,8 @@ const makeProviderAdapterRegistry = (options?: ProviderAdapterRegistryLiveOption
             yield* CodexAdapter,
             yield* ClaudeAdapter,
             yield* CursorAdapter,
-            yield* DevinAdapter,
-            yield* AntigravityAdapter,
             yield* GrokAdapter,
-            yield* DroidAdapter,
             yield* OpenCodeAdapter,
-            yield* OmpAdapter,
-            yield* PiAdapter,
           ];
 
     for (const adapter of adapters) {

@@ -1,4 +1,4 @@
-import type { OrchestrationThread } from "@synara/contracts";
+import type { OrchestrationThread } from "@glade/contracts";
 
 export const SIDECHAT_EXPIRED_EXECUTION_MESSAGE =
   "This side chat expired after 1 hour of inactivity. Start a new side chat.";

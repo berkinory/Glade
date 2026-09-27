@@ -17,53 +17,11 @@ export const CLAUDE_CODE_EFFORT_OPTIONS = [
   ...CLAUDE_CODE_MODE_OPTIONS,
 ] as const;
 export type ClaudeCodeEffort = (typeof CLAUDE_CODE_EFFORT_OPTIONS)[number];
-export const PI_THINKING_LEVEL_OPTIONS = [
-  "off",
-  "minimal",
-  "low",
-  "medium",
-  "high",
-  "xhigh",
-  "max",
-] as const;
-export type PiThinkingLevel = (typeof PI_THINKING_LEVEL_OPTIONS)[number];
-// `auto` is an OMP thinking sentinel (not an effort level): it maps to the
-// `thinking` config option's Auto choice, which no model catalog emits as an
-// effort but role selectors (`model:auto`) may pin.
-export const OMP_THINKING_LEVEL_OPTIONS = [
-  "off",
-  "auto",
-  "minimal",
-  "low",
-  "medium",
-  "high",
-  "xhigh",
-  "max",
-] as const;
-export type OmpThinkingLevel = (typeof OMP_THINKING_LEVEL_OPTIONS)[number];
 // Union of every Grok CLI ladder. Per-model capabilities pick a subset:
 // grok-build keeps none/low/medium/high, Grok 4.5 drops none, Grok 4.6 adds xhigh.
 export const GROK_REASONING_EFFORT_OPTIONS = ["none", "low", "medium", "high", "xhigh"] as const;
 export type GrokReasoningEffort = (typeof GROK_REASONING_EFFORT_OPTIONS)[number];
-export const DROID_REASONING_EFFORT_OPTIONS = [
-  "off",
-  "none",
-  "minimal",
-  "low",
-  "medium",
-  "high",
-  "xhigh",
-  "max",
-] as const;
-// Droid exposes effort values dynamically over ACP; keep the static list only
-// as an offline fallback so newly added values survive transport and drafts.
-export type DroidReasoningEffort = string;
-export type ProviderReasoningEffort =
-  | CodexReasoningEffort
-  | ClaudeCodeEffort
-  | PiThinkingLevel
-  | GrokReasoningEffort
-  | DroidReasoningEffort;
+export type ProviderReasoningEffort = CodexReasoningEffort | ClaudeCodeEffort | GrokReasoningEffort;
 
 export const ProviderOptionChoice = Schema.Struct({
   id: TrimmedNonEmptyString,
@@ -127,25 +85,11 @@ export const ClaudeModelOptions = Schema.Struct({
 });
 export type ClaudeModelOptions = typeof ClaudeModelOptions.Type;
 
-export const AntigravityModelOptions = Schema.Struct({
-  reasoningEffort: Schema.optional(TrimmedNonEmptyString),
-});
-export type AntigravityModelOptions = typeof AntigravityModelOptions.Type;
-
 export const OpenCodeModelOptions = Schema.Struct({
   variant: Schema.optional(TrimmedNonEmptyString),
   agent: Schema.optional(TrimmedNonEmptyString),
 });
 export type OpenCodeModelOptions = typeof OpenCodeModelOptions.Type;
-
-export const PiModelOptions = Schema.Struct({
-  thinkingLevel: Schema.optional(Schema.Literals(PI_THINKING_LEVEL_OPTIONS)),
-});
-export type PiModelOptions = typeof PiModelOptions.Type;
-export const OmpModelOptions = Schema.Struct({
-  thinkingLevel: Schema.optional(Schema.Literals(OMP_THINKING_LEVEL_OPTIONS)),
-});
-export type OmpModelOptions = typeof OmpModelOptions.Type;
 
 export const CursorModelOptions = Schema.Struct({
   reasoningEffort: Schema.optional(TrimmedNonEmptyString),
@@ -160,34 +104,12 @@ export const GrokModelOptions = Schema.Struct({
 });
 export type GrokModelOptions = typeof GrokModelOptions.Type;
 
-export const DroidModelOptions = Schema.Struct({
-  reasoningEffort: Schema.optional(TrimmedNonEmptyString),
-});
-export type DroidModelOptions = typeof DroidModelOptions.Type;
-
-export const DevinModelOptions = Schema.Struct({
-  reasoningEffort: Schema.optional(TrimmedNonEmptyString),
-  fastMode: Schema.optional(Schema.Boolean),
-  thinking: Schema.optional(Schema.Boolean),
-  contextWindow: Schema.optional(TrimmedNonEmptyString),
-  // Devin's ACP command accepts a concrete model UID at process start. This
-  // is populated from runtime discovery when an abstract effort/context
-  // selection needs to resolve to a specific variant.
-  modelVariant: Schema.optional(TrimmedNonEmptyString),
-});
-export type DevinModelOptions = typeof DevinModelOptions.Type;
-
 export const ProviderModelOptions = Schema.Struct({
   codex: Schema.optional(CodexModelOptions),
   claudeAgent: Schema.optional(ClaudeModelOptions),
   cursor: Schema.optional(CursorModelOptions),
-  devin: Schema.optional(DevinModelOptions),
-  antigravity: Schema.optional(AntigravityModelOptions),
   grok: Schema.optional(GrokModelOptions),
-  droid: Schema.optional(DroidModelOptions),
   opencode: Schema.optional(OpenCodeModelOptions),
-  pi: Schema.optional(PiModelOptions),
-  omp: Schema.optional(OmpModelOptions),
 });
 export type ProviderModelOptions = typeof ProviderModelOptions.Type;
 
@@ -381,111 +303,6 @@ const CURSOR_GPT_5_6_CAPABILITIES = cursorCapabilities({
   fast: true,
 });
 
-function droidCapabilities(reasoningEffortLevels: readonly EffortOption[]): ModelCapabilities {
-  return {
-    reasoningEffortLevels,
-    supportsFastMode: false,
-    supportsThinkingToggle: false,
-    promptInjectedEffortLevels: [],
-    contextWindowOptions: [],
-  };
-}
-
-const DROID_CLAUDE_XHIGH_CAPABILITIES = droidCapabilities([
-  { value: "off", label: "Off" },
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High", isDefault: true },
-  { value: "xhigh", label: "Extra High" },
-  { value: "max", label: "Max" },
-]);
-
-const DROID_CLAUDE_MAX_CAPABILITIES = droidCapabilities([
-  { value: "off", label: "Off" },
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High", isDefault: true },
-  { value: "max", label: "Max" },
-]);
-
-const DROID_CLAUDE_BASIC_CAPABILITIES = droidCapabilities([
-  { value: "off", label: "Off", isDefault: true },
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High" },
-]);
-
-const DROID_GPT_MEDIUM_CAPABILITIES = droidCapabilities([
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium", isDefault: true },
-  { value: "high", label: "High" },
-  { value: "xhigh", label: "Extra High" },
-]);
-
-const DROID_GPT_5_6_CAPABILITIES = droidCapabilities([
-  { value: "none", label: "None" },
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium", isDefault: true },
-  { value: "high", label: "High" },
-  { value: "xhigh", label: "Extra High" },
-  { value: "max", label: "Maximum" },
-]);
-
-const DROID_GPT_PRO_CAPABILITIES = droidCapabilities([
-  { value: "medium", label: "Medium", isDefault: true },
-  { value: "high", label: "High" },
-  { value: "xhigh", label: "Extra High" },
-]);
-
-const DROID_GPT_HIGH_CAPABILITIES = droidCapabilities([
-  { value: "none", label: "None" },
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High", isDefault: true },
-  { value: "xhigh", label: "Extra High" },
-]);
-
-const DROID_GPT_5_2_CAPABILITIES = droidCapabilities([
-  { value: "off", label: "Off" },
-  { value: "low", label: "Low", isDefault: true },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High" },
-  { value: "xhigh", label: "Extra High" },
-]);
-
-const DROID_GEMINI_HIGH_CAPABILITIES = droidCapabilities([
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High", isDefault: true },
-]);
-
-const DROID_GEMINI_MINIMAL_CAPABILITIES = droidCapabilities([
-  { value: "minimal", label: "Minimal" },
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High", isDefault: true },
-]);
-
-const DROID_CORE_HIGH_CAPABILITIES = droidCapabilities([
-  { value: "off", label: "Off" },
-  { value: "high", label: "High", isDefault: true },
-]);
-
-const DROID_CORE_DEEPSEEK_CAPABILITIES = droidCapabilities([
-  { value: "off", label: "Off" },
-  { value: "low", label: "Low" },
-  { value: "high", label: "High", isDefault: true },
-  { value: "max", label: "Max" },
-]);
-
-const DROID_CORE_HIGH_ONLY_CAPABILITIES: ModelCapabilities = {
-  reasoningEffortLevels: [{ value: "high", label: "High", isDefault: true }],
-  supportsFastMode: false,
-  supportsThinkingToggle: false,
-  promptInjectedEffortLevels: [],
-  contextWindowOptions: [],
-};
-
 // Shared Claude building blocks. Capability shapes repeat across Claude
 // generations, so declare them once and let each model entry override only the
 // fields that genuinely differ (mirrors the CODEX_GPT_5_* pattern above).
@@ -600,7 +417,6 @@ const EMPTY_MODEL_CAPABILITIES: ModelCapabilities = {
  * TODO: This should not be a static array, each provider
  * should return its own model list over the WS API.
  */
-export const DEFAULT_DROID_GIT_TEXT_GENERATION_MODEL = "deepseek-v4-flash-0731" as const;
 
 export const MODEL_OPTIONS_BY_PROVIDER = {
   codex: [
@@ -730,203 +546,11 @@ export const MODEL_OPTIONS_BY_PROVIDER = {
       },
     },
   ],
-  // Antigravity owns its model catalog. The web app populates this provider from
-  // `agy models` so CLI updates appear without a Synara release.
-  antigravity: [],
   grok: [
     {
       slug: "grok-4.6",
       name: "Grok 4.6",
       capabilities: GROK_4_6_CAPABILITIES,
-    },
-  ],
-  droid: [
-    {
-      // Factory routes to a model automatically at its lowest (1x) token rate.
-      // Reasoning effort follows the routed model's default, so no picker.
-      slug: "auto",
-      name: "Auto Model",
-      capabilities: droidCapabilities([]),
-    },
-    {
-      slug: "claude-fable-5",
-      name: "Claude Fable 5",
-      capabilities: DROID_CLAUDE_XHIGH_CAPABILITIES,
-    },
-    {
-      slug: "claude-opus-4-8",
-      name: "Claude Opus 4.8",
-      capabilities: DROID_CLAUDE_XHIGH_CAPABILITIES,
-    },
-    {
-      slug: "claude-opus-4-8-fast",
-      name: "Claude Opus 4.8 Fast",
-      capabilities: DROID_CLAUDE_XHIGH_CAPABILITIES,
-    },
-    {
-      slug: "claude-opus-4-7",
-      name: "Claude Opus 4.7",
-      capabilities: DROID_CLAUDE_MAX_CAPABILITIES,
-    },
-    {
-      slug: "claude-opus-4-7-fast",
-      name: "Claude Opus 4.7 Fast",
-      capabilities: DROID_CLAUDE_MAX_CAPABILITIES,
-    },
-    {
-      slug: "claude-opus-4-6",
-      name: "Claude Opus 4.6",
-      capabilities: DROID_CLAUDE_MAX_CAPABILITIES,
-    },
-    {
-      slug: "claude-sonnet-5",
-      name: "Claude Sonnet 5",
-      capabilities: DROID_CLAUDE_XHIGH_CAPABILITIES,
-    },
-    {
-      slug: "claude-sonnet-4-6",
-      name: "Claude Sonnet 4.6",
-      capabilities: DROID_CLAUDE_MAX_CAPABILITIES,
-    },
-    {
-      slug: "claude-opus-4-5-20251101",
-      name: "Claude Opus 4.5",
-      capabilities: DROID_CLAUDE_BASIC_CAPABILITIES,
-    },
-    {
-      slug: "claude-sonnet-4-5-20250929",
-      name: "Claude Sonnet 4.5",
-      capabilities: DROID_CLAUDE_BASIC_CAPABILITIES,
-    },
-    {
-      slug: "claude-haiku-4-5-20251001",
-      name: "Claude Haiku 4.5",
-      capabilities: DROID_CLAUDE_BASIC_CAPABILITIES,
-    },
-    {
-      slug: "gpt-5.6-sol",
-      name: "GPT-5.6 Sol",
-      capabilities: DROID_GPT_5_6_CAPABILITIES,
-    },
-    {
-      slug: "gpt-5.6-terra",
-      name: "GPT-5.6 Terra",
-      capabilities: DROID_GPT_5_6_CAPABILITIES,
-    },
-    {
-      slug: "gpt-5.6-luna",
-      name: "GPT-5.6 Luna",
-      capabilities: DROID_GPT_5_6_CAPABILITIES,
-    },
-    {
-      slug: "gpt-5.5",
-      name: "GPT-5.5",
-      capabilities: DROID_GPT_MEDIUM_CAPABILITIES,
-    },
-    {
-      slug: "gpt-5.5-fast",
-      name: "GPT-5.5 Fast",
-      capabilities: DROID_GPT_MEDIUM_CAPABILITIES,
-    },
-    {
-      slug: "gpt-5.5-pro",
-      name: "GPT-5.5 Pro",
-      capabilities: DROID_GPT_PRO_CAPABILITIES,
-    },
-    {
-      slug: "gpt-5.4",
-      name: "GPT-5.4",
-      capabilities: DROID_GPT_MEDIUM_CAPABILITIES,
-    },
-    {
-      slug: "gpt-5.4-fast",
-      name: "GPT-5.4 Fast",
-      capabilities: DROID_GPT_MEDIUM_CAPABILITIES,
-    },
-    {
-      slug: "gpt-5.4-mini",
-      name: "GPT-5.4 Mini",
-      capabilities: DROID_GPT_HIGH_CAPABILITIES,
-    },
-    {
-      slug: "gpt-5.3-codex",
-      name: "GPT-5.3 Codex",
-      capabilities: DROID_GPT_MEDIUM_CAPABILITIES,
-    },
-    {
-      slug: "gpt-5.3-codex-fast",
-      name: "GPT-5.3 Codex Fast",
-      capabilities: DROID_GPT_MEDIUM_CAPABILITIES,
-    },
-    {
-      slug: "gpt-5.2",
-      name: "GPT-5.2",
-      capabilities: DROID_GPT_5_2_CAPABILITIES,
-    },
-    {
-      slug: "gemini-3.1-pro-preview",
-      name: "Gemini 3.1 Pro",
-      capabilities: DROID_GEMINI_HIGH_CAPABILITIES,
-    },
-    {
-      slug: "gemini-3.5-flash",
-      name: "Gemini 3.5 Flash",
-      capabilities: DROID_GEMINI_MINIMAL_CAPABILITIES,
-    },
-    {
-      slug: "gemini-3-flash-preview",
-      name: "Gemini 3 Flash",
-      capabilities: DROID_GEMINI_MINIMAL_CAPABILITIES,
-    },
-    {
-      slug: "glm-5.2",
-      name: "GLM 5.2",
-      capabilities: DROID_CORE_HIGH_CAPABILITIES,
-    },
-    {
-      slug: "glm-5.2-fast",
-      name: "GLM 5.2 Fast",
-      capabilities: DROID_CORE_HIGH_CAPABILITIES,
-    },
-    {
-      slug: "glm-5.1",
-      name: "GLM 5.1",
-      capabilities: DROID_CORE_HIGH_CAPABILITIES,
-    },
-    {
-      slug: "nemotron-3-ultra",
-      name: "Nemotron 3 Ultra",
-      capabilities: DROID_CORE_HIGH_CAPABILITIES,
-    },
-    {
-      slug: "kimi-k2.7-code",
-      name: "Kimi K2.7 Code",
-      capabilities: DROID_CORE_HIGH_CAPABILITIES,
-    },
-    {
-      slug: "kimi-k2.6",
-      name: "Kimi K2.6",
-      capabilities: DROID_CORE_HIGH_CAPABILITIES,
-    },
-    {
-      slug: "deepseek-v4-pro",
-      name: "DeepSeek V4 Pro",
-      capabilities: DROID_CORE_DEEPSEEK_CAPABILITIES,
-    },
-    {
-      slug: DEFAULT_DROID_GIT_TEXT_GENERATION_MODEL,
-      name: "DeepSeek V4 Flash 0731",
-      capabilities: DROID_CORE_DEEPSEEK_CAPABILITIES,
-    },
-    {
-      slug: "minimax-m3",
-      name: "MiniMax M3",
-      capabilities: DROID_CORE_HIGH_ONLY_CAPABILITIES,
-    },
-    {
-      slug: "minimax-m2.7",
-      name: "MiniMax M2.7",
-      capabilities: DROID_CORE_HIGH_ONLY_CAPABILITIES,
     },
   ],
   opencode: [
@@ -936,8 +560,6 @@ export const MODEL_OPTIONS_BY_PROVIDER = {
       capabilities: EMPTY_MODEL_CAPABILITIES,
     },
   ],
-  // Pi discovery owns the live catalog, including auth-gated Anthropic models.
-  pi: [],
   cursor: [
     {
       // Cursor exposes auto as the `default` model id over ACP; the adapter maps it.
@@ -1136,55 +758,19 @@ export const MODEL_OPTIONS_BY_PROVIDER = {
       capabilities: cursorCapabilities({ efforts: ["high", "max"] }),
     },
   ],
-  // Devin selects its model at process start via `devin acp --model`; the ACP
-  // session does not expose a live model list. This list is a static fallback
-  // for when the CLI is unreachable.
-  devin: [
-    {
-      slug: "adaptive",
-      name: "Adaptive",
-      capabilities: EMPTY_MODEL_CAPABILITIES,
-    },
-    {
-      slug: "swe-1-6",
-      name: "SWE 1.6",
-      capabilities: {
-        reasoningEffortLevels: [],
-        supportsFastMode: true,
-        supportsThinkingToggle: false,
-        promptInjectedEffortLevels: [],
-        contextWindowOptions: [],
-      },
-    },
-    {
-      slug: "swe-1-7",
-      name: "SWE 1.7",
-      capabilities: {
-        reasoningEffortLevels: [],
-        supportsFastMode: true,
-        supportsThinkingToggle: false,
-        promptInjectedEffortLevels: [],
-        contextWindowOptions: [],
-      },
-    },
-  ],
-  omp: [],
 } as const satisfies Record<ProviderKind, readonly ModelDefinition[]>;
 export type ModelOptionsByProvider = typeof MODEL_OPTIONS_BY_PROVIDER;
 
 type BuiltInModelSlug = (typeof MODEL_OPTIONS_BY_PROVIDER)[ProviderKind][number]["slug"];
 export type ModelSlug = BuiltInModelSlug | (string & {});
 
-export type ProviderWithDefaultModel = Exclude<ProviderKind, "pi" | "omp">;
+export type ProviderWithDefaultModel = ProviderKind;
 
 export const DEFAULT_MODEL_BY_PROVIDER: Record<ProviderWithDefaultModel, ModelSlug> = {
   codex: "gpt-6-astra",
   claudeAgent: "claude-sonnet-5",
   cursor: "auto",
-  devin: "adaptive",
-  antigravity: "Gemini 3.5 Flash",
   grok: "grok-4.6",
-  droid: "claude-opus-4-8",
   opencode: "openai/gpt-5",
 };
 
@@ -1195,8 +781,7 @@ export const DEFAULT_GIT_TEXT_GENERATION_REASONING_EFFORT = "high" as const;
 
 /**
  * Providers with a dedicated Git text-generation backend. Keep the Settings
- * picker in sync with this list — do not add chat-only agents (Claude, Grok,
- * Antigravity, Pi, Devin). Those CLIs have no one-shot git-writing path, and
+ * picker in sync with this list. Chat-only agents have no one-shot git-writing path, and
  * driving them as coding agents for commit/PR text can run with write access
  * or violate provider terms.
  */
@@ -1204,7 +789,6 @@ export const GIT_TEXT_GENERATION_PROVIDERS = [
   "codex",
   "cursor",
   "opencode",
-  "droid",
 ] as const satisfies readonly ProviderKind[];
 export type GitTextGenerationProvider = (typeof GIT_TEXT_GENERATION_PROVIDERS)[number];
 
@@ -1293,45 +877,6 @@ export const MODEL_SLUG_ALIASES_BY_PROVIDER: Record<ProviderKind, Record<string,
     glm: "glm-5.2",
     kimi: "kimi-k2.7-code",
   },
-  antigravity: {},
-  droid: {
-    droid: "claude-opus-4-8",
-    factory: "claude-opus-4-8",
-    opus: "claude-opus-4-8",
-    "opus-4.8": "claude-opus-4-8",
-    "opus-fast": "claude-opus-4-8-fast",
-    "opus-4.8-fast": "claude-opus-4-8-fast",
-    "opus-4.7": "claude-opus-4-7",
-    "opus-4.7-fast": "claude-opus-4-7-fast",
-    "opus-4.6": "claude-opus-4-6",
-    sonnet: "claude-sonnet-5",
-    "sonnet-5": "claude-sonnet-5",
-    "sonnet-4.6": "claude-sonnet-4-6",
-    "sonnet-4.5": "claude-sonnet-4-5-20250929",
-    fable: "claude-fable-5",
-    haiku: "claude-haiku-4-5-20251001",
-    "5.5": "gpt-5.5",
-    "5.5-fast": "gpt-5.5-fast",
-    "5.5-pro": "gpt-5.5-pro",
-    "5.4": "gpt-5.4",
-    "5.4-fast": "gpt-5.4-fast",
-    "5.4-mini": "gpt-5.4-mini",
-    "5.3": "gpt-5.3-codex",
-    "5.3-fast": "gpt-5.3-codex-fast",
-    "gpt-5.3": "gpt-5.3-codex",
-    "gemini-3-pro": "gemini-3.1-pro-preview",
-    "gemini-3.1-pro": "gemini-3.1-pro-preview",
-    "gemini-3.5-flash": "gemini-3.5-flash",
-    "gemini-3-flash": "gemini-3-flash-preview",
-    glm: "glm-5.2",
-    "glm-5.2": "glm-5.2",
-    "glm-5.1": "glm-5.1",
-    nemotron: "nemotron-3-ultra",
-    kimi: "kimi-k2.7-code",
-    "kimi-code": "kimi-k2.7-code",
-    deepseek: "deepseek-v4-pro",
-    minimax: "minimax-m3",
-  },
   grok: {
     grok: "grok-build-0.1",
     build: "grok-build-0.1",
@@ -1351,22 +896,6 @@ export const MODEL_SLUG_ALIASES_BY_PROVIDER: Record<ProviderKind, Record<string,
     "grok-4.6": "grok-4.6",
   },
   opencode: {},
-  pi: {},
-  devin: {
-    adaptive: "adaptive",
-    auto: "adaptive",
-    fast: "swe-1-6",
-    "swe-1.6-fast": "swe-1-6",
-    "swe-1.6": "swe-1-6",
-    "swe-1.7": "swe-1-7",
-    swe: "swe-1-6",
-    "swe-1-6": "swe-1-6",
-    "swe-1-7": "swe-1-7",
-    opus: "claude-opus-4-8",
-    sonnet: "claude-sonnet-5",
-    fable: "claude-fable-5",
-  },
-  omp: {},
 };
 
 // ── Agent mention aliases ─────────────────────────────────────────────
@@ -1403,11 +932,6 @@ export const PROVIDER_DISPLAY_NAMES: Record<ProviderKind, string> = {
   codex: "Codex",
   claudeAgent: "Claude",
   cursor: "Cursor",
-  devin: "Devin",
-  antigravity: "Antigravity",
   grok: "Grok",
-  droid: "Droid",
   opencode: "OpenCode",
-  pi: "Pi",
-  omp: "Oh My Pi",
 };

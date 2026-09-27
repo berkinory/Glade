@@ -1,7 +1,7 @@
 /**
  * AcpTurnIdleWatchdog - idle-progress backstop for ACP provider turns.
  *
- * ACP providers (Grok, Cursor, Devin) drive a turn by issuing a single
+ * ACP providers (Grok, Cursor) drive a turn by issuing a single
  * `session/prompt` JSON-RPC request to the child agent. That request only
  * settles when the agent finishes the turn. If the child stays alive but goes
  * silent — wedged on an internal retry loop, a stalled upstream API call, or a

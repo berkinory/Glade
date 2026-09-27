@@ -5,8 +5,8 @@
 //          link for missing ones.
 // Layer: Web UI component
 
-import type { ProviderKind, ServerProviderStatus } from "@synara/contracts";
-import { VISIBLE_PROVIDER_DESCRIPTORS } from "../../betaFeatures";
+import type { ProviderKind, ServerProviderStatus } from "@glade/contracts";
+import { VISIBLE_PROVIDER_DESCRIPTORS } from "../../providerCatalog";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 

@@ -15,48 +15,48 @@
 import type {
   ComputerPermission,
   ComputerProvisionResult,
-  DesktopAppSnapPermissionKind,
-  DesktopAppSnapState,
+  DesktopComputerPermissionKind,
+  DesktopComputerState,
   DesktopBridge,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import {
   COMPUTER_PERMISSION_KINDS,
   listComputerPermissions,
-  missingComputerAppSnapPermissions,
-} from "@synara/shared/computerGrants";
+  missingComputerPermissions,
+} from "@glade/shared/computerGrants";
 
 import { computerStatusNeedsSetup } from "~/components/ComputerPanel.logic";
 import { isLoopbackHostname } from "~/components/Sidebar.logic";
 
 /** The desktop bridge identifies its live server; remote servers own their own grants. */
-export function readLocalComputerPermissionBridge(): DesktopBridge["appSnap"] | null {
+export function readLocalComputerPermissionBridge(): DesktopBridge["computerPermissions"] | null {
   // An injected NativeApi can target a different host than the desktop bridge.
   if (globalThis.window?.nativeApi) return null;
   const bridge = globalThis.window?.desktopBridge;
-  if (!bridge?.appSnap) return null;
+  if (!bridge?.computerPermissions) return null;
   try {
     const endpoint = bridge.getWsUrl?.();
     if (!endpoint) return null;
     const url = new URL(endpoint);
     return (url.protocol === "ws:" || url.protocol === "wss:") && isLoopbackHostname(url.hostname)
-      ? bridge.appSnap
+      ? bridge.computerPermissions
       : null;
   } catch {
     return null;
   }
 }
 
-export function computerPermissionSetupSupported(state: DesktopAppSnapState | null): boolean {
+export function computerPermissionSetupSupported(state: DesktopComputerState | null): boolean {
   return state?.supported === true && state.platform === "macos";
 }
 
 /** One fresh, explicit activation check; ordinary sends do not call this. */
 export async function prepareComputerPermissionGuide(input: {
   readonly getPermissionState?: (
-    permissions: readonly DesktopAppSnapPermissionKind[],
-  ) => Promise<DesktopAppSnapState>;
+    permissions: readonly DesktopComputerPermissionKind[],
+  ) => Promise<DesktopComputerState>;
   readonly startPermissionSetup?: (
-    permissions: readonly DesktopAppSnapPermissionKind[],
+    permissions: readonly DesktopComputerPermissionKind[],
   ) => Promise<unknown>;
   readonly isCurrent: () => boolean;
 }): Promise<boolean> {
@@ -65,7 +65,7 @@ export async function prepareComputerPermissionGuide(input: {
   const state = await input.getPermissionState(COMPUTER_PERMISSION_KINDS);
   if (!input.isCurrent()) return false;
   if (!computerPermissionSetupSupported(state)) return true;
-  if (missingComputerAppSnapPermissions(state).length === 0) return true;
+  if (missingComputerPermissions(state).length === 0) return true;
   await input.startPermissionSetup(COMPUTER_PERMISSION_KINDS);
   return false; // Preserve the draft; granting access never auto-sends the task.
 }
@@ -91,7 +91,7 @@ export interface ComputerProvisionToast {
 
 /**
  * Raised as the call starts, because the call's visible effect is a macOS
- * dialog appearing over Synara and the user needs to know Synara asked for it.
+ * dialog appearing over Glade and the user needs to know Glade asked for it.
  *
  * The grants are named through `listComputerPermissions` rather than written
  * out, so this cannot drift out of the one fixed ordering every other surface
@@ -108,8 +108,8 @@ export function computerProvisionStartToast(
     title: "Setting up computer control",
     description:
       labels.length > 0
-        ? `macOS may ask to allow ${labels} for Synara.`
-        : "Setting up the desktop may require installing a helper or allowing the permissions Synara needs.",
+        ? `macOS may ask to allow ${labels} for Glade.`
+        : "Setting up the desktop may require installing a helper or allowing the permissions Glade needs.",
   };
 }
 
@@ -152,7 +152,7 @@ export function computerProvisionNote(state: {
 }): string | undefined {
   if (state.isPending) {
     if (state.missing?.length) {
-      return `Checking ${listComputerPermissions(state.missing)}. Allow access in the macOS prompt or System Settings, then return to Synara.`;
+      return `Checking ${listComputerPermissions(state.missing)}. Allow access in the macOS prompt or System Settings, then return to Glade.`;
     }
     return (
       "Setting up the agent's desktop. This installs or builds whatever this machine still needs, " +

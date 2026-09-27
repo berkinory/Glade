@@ -4,9 +4,9 @@ import { LinuxEscapeKillSwitchMonitor, linuxEscapeSession } from "./linuxEscapeK
 import { ComputerFrameTap } from "./computerFrameTap";
 import { ComputerShield } from "./computerShield";
 import { registerComputerDesktopLifecycle } from "./computerDesktopLifecycle";
-import { COMPUTER_PERMISSION_KINDS } from "@synara/shared/computerGrants";
-import { CUA_HOST_SOCKET_ENV } from "@synara/shared/cuaDriverProtocol";
-import { MODEL_SCREEN_IMAGE_MAX_DIMENSION } from "@synara/shared/modelImageBudget";
+import { COMPUTER_PERMISSION_KINDS } from "@glade/shared/computerGrants";
+import { CUA_HOST_SOCKET_ENV } from "@glade/shared/cuaDriverProtocol";
+import { MODEL_SCREEN_IMAGE_MAX_DIMENSION } from "@glade/shared/modelImageBudget";
 // FILE: main.ts
 // Purpose: Starts the Electron shell, backend process, native menus, IPC bridges, and updater.
 // Layer: Desktop main process
@@ -25,7 +25,6 @@ import {
   app,
   BrowserWindow,
   clipboard,
-  crashReporter,
   dialog,
   globalShortcut,
   ipcMain,
@@ -54,7 +53,7 @@ import type {
   DesktopTheme,
   DesktopUpdateActionResult,
   DesktopUpdateState,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import {
   autoUpdater,
   BaseUpdater,
@@ -62,29 +61,29 @@ import {
   type UpdateDownloadedEvent,
 } from "electron-updater";
 
-import type { DesktopContextMenuItem } from "@synara/contracts";
-import { isKeyboardShortcutsHelpChord } from "@synara/shared/browserShortcuts";
-import { getMacTrafficLightPosition } from "@synara/shared/desktopChrome";
-import { DEVICE_HELPER_SOURCE_DIR_ENV } from "@synara/shared/deviceHelperCache";
+import type { DesktopContextMenuItem } from "@glade/contracts";
+import { isKeyboardShortcutsHelpChord } from "@glade/shared/browserShortcuts";
+import { getMacTrafficLightPosition } from "@glade/shared/desktopChrome";
+import { DEVICE_HELPER_SOURCE_DIR_ENV } from "@glade/shared/deviceHelperCache";
 import {
   desktopUpdateChannel,
-  SYNARA_DESKTOP_SMOKE_USER_DATA_ENV,
-  SYNARA_DESKTOP_BUNDLE_ID_ENV,
-  SYNARA_SOURCE_DESKTOP_BUILD_MARKER,
+  GLADE_DESKTOP_SMOKE_USER_DATA_ENV,
+  GLADE_DESKTOP_BUNDLE_ID_ENV,
+  GLADE_SOURCE_DESKTOP_BUILD_MARKER,
   canOverrideDesktopSmokeUserData,
-  resolveSynaraDesktopRuntimeFlavor,
-  synaraDesktopIdentity,
-} from "@synara/shared/desktopIdentity";
-import { NetService } from "@synara/shared/Net";
-import { applyShellEnvironmentHydrationMarker } from "@synara/shared/shell";
-import { RotatingFileSink } from "@synara/shared/logging";
+  resolveGladeDesktopRuntimeFlavor,
+  gladeDesktopIdentity,
+} from "@glade/shared/desktopIdentity";
+import { NetService } from "@glade/shared/Net";
+import { applyShellEnvironmentHydrationMarker } from "@glade/shared/shell";
+import { RotatingFileSink } from "@glade/shared/logging";
 import {
   MIGRATION_DIVERGENCE_CONSENT_ENV,
   MIGRATION_RUNTIME_SOURCE_DIGEST_ENV,
   type MigrationRuntimeIdentityMismatch,
   type MigrationSchemaTooNewStartupBlock,
-} from "@synara/shared/migrationRecovery";
-import { ensureStaticSnapshot, findAsarArchivePath } from "@synara/shared/staticSnapshot";
+} from "@glade/shared/migrationRecovery";
+import { ensureStaticSnapshot, findAsarArchivePath } from "@glade/shared/staticSnapshot";
 import { isBackendReadinessAborted, waitForHttpReady } from "./backendReadiness";
 import { resolveBackendNodeArgs } from "./backendNodeOptions";
 import {
@@ -103,14 +102,6 @@ import {
   type BundleSignature,
 } from "./bundleSwapDetection";
 import { waitForBackendStartupReady } from "./backendStartupReadiness";
-import { DesktopBetaChannel, readBetaImportResult, resolveBetaHomeDir } from "./betaChannel";
-import type { ExpectedTeamId } from "./betaInstaller";
-import {
-  BetaDiagnostics,
-  readLogTail,
-  resolveBetaDiagnosticsEndpoint,
-  type BetaDiagnosticsEventName,
-} from "./betaDiagnostics";
 import { showDesktopConfirmDialog } from "./confirmDialog";
 import {
   desktopAppIconResourceName,
@@ -262,8 +253,6 @@ import { createCookieSessionBackend } from "./browserAutomation/electronCookieSe
 import { BrowserVault } from "./browserAutomation/browserVault";
 import { BrowserVaultCapture } from "./browserAutomation/browserVaultCapture";
 import { registerBrowserVaultIpc } from "./browserVaultIpc";
-import { registerSafariAccessIpc } from "./safariAccessIpc";
-import { BrowserCookieImport } from "./browserAutomation/browserCookieImport";
 import { shutdownBrowserServices } from "./browserAutomation/browserShutdown";
 import {
   registerBrowserIpcHandlers,
@@ -273,7 +262,7 @@ import {
 } from "./browserIpc";
 import {
   BrowserHostPipeServer,
-  SYNARA_BROWSER_HOST_PIPE_PATH,
+  GLADE_BROWSER_HOST_PIPE_PATH,
   resolveBrowserHostPipeBackendEnv,
 } from "./browserUsePipeServer";
 import { normalizeDesktopWsUrl, resolveDesktopWsUrlFromEnv } from "./desktopWsBridge";
@@ -301,31 +290,29 @@ import {
   writeDesktopWindowState,
 } from "./windowState";
 import {
-  acknowledgeSynaraStorageSnapshot,
-  readSynaraStorageSnapshot,
-  resolveSynaraStorageSnapshotPath,
+  acknowledgeGladeStorageSnapshot,
+  readGladeStorageSnapshot,
+  resolveGladeStorageSnapshotPath,
 } from "./desktopStorageMigration";
 import { DESKTOP_IPC_CHANNELS } from "./ipcChannels";
-import { DesktopAppSnapManager } from "./appSnapManager";
+import { DesktopComputerManager } from "./computerPermissions";
 import { notifyBackendComputerEmergencyStop } from "./computerEmergencyStopNotice";
 import { EscapeKillSwitchMonitor } from "./escapeKillSwitchMonitor";
 import { hardenBrowserAnnotationWebviewPreferences } from "./browserAnnotations/webviewSecurity";
 import { LOCAL_HTML_PREVIEW_SCHEME } from "./localHtmlPreviewProtocol";
 import {
-  APP_SNAP_SETTINGS_PANE_URLS,
-  registerAppSnapIpcHandlers,
-  sendAppSnapCaptured,
-  sendAppSnapError,
-  sendAppSnapPermissionGuideState,
-  sendAppSnapState,
-} from "./appSnapIpc";
+  COMPUTER_SETTINGS_PANE_URLS,
+  registerComputerIpcHandlers,
+  sendComputerPermissionGuideState,
+  sendComputerState,
+} from "./computerPermissionsIpc";
 
-const requestedSourceBuildMarker = process.env.SYNARA_SOURCE_DESKTOP_BUILD_MARKER;
+const requestedSourceBuildMarker = process.env.GLADE_SOURCE_DESKTOP_BUILD_MARKER;
 if (
   requestedSourceBuildMarker !== undefined &&
-  requestedSourceBuildMarker !== SYNARA_SOURCE_DESKTOP_BUILD_MARKER
+  requestedSourceBuildMarker !== GLADE_SOURCE_DESKTOP_BUILD_MARKER
 ) {
-  throw new Error("The source desktop launcher and built main are incompatible. Rebuild Synara.");
+  throw new Error("The source desktop launcher and built main are incompatible. Rebuild Glade.");
 }
 
 // Capture the real archive identity before any explicit app.asar lookup. Static
@@ -339,7 +326,7 @@ const startupBundleIdentity = captureStartupBundleIdentity();
 // The reads a few lines below decide where this install's data lives, and two of them
 // depend on what this probe brings in: `resolveUserDataPath()` takes the Electron profile
 // directory from XDG_CONFIG_HOME on Linux, which the login-shell probe captures, and
-// `BASE_DIR` prefers SYNARA_HOME, which the Windows registry read hydrates whenever the
+// `BASE_DIR` prefers GLADE_HOME, which the Windows registry read hydrates whenever the
 // user set it persistently. Resolving either against an unhydrated environment would
 // silently relocate an existing user's profile and data directory.
 // (The probe also carries PATH, SSH_AUTH_SOCK and HOMEBREW_* for later provider spawns.
@@ -351,29 +338,25 @@ const MAX_CLIPBOARD_IMAGE_DATA_URL_LENGTH = 16 * 1024 * 1024;
 const packagedDesktopFlavor = app.isPackaged
   ? (
       JSON.parse(FS.readFileSync(Path.join(app.getAppPath(), "package.json"), "utf8")) as {
-        synaraDesktopFlavor?: unknown;
+        gladeDesktopFlavor?: unknown;
       }
-    ).synaraDesktopFlavor
+    ).gladeDesktopFlavor
   : undefined;
 const isSourceDesktopBuild =
-  requestedSourceBuildMarker === SYNARA_SOURCE_DESKTOP_BUILD_MARKER &&
+  requestedSourceBuildMarker === GLADE_SOURCE_DESKTOP_BUILD_MARKER &&
   packagedDesktopFlavor === undefined;
 const isDevelopment =
   (!app.isPackaged || isSourceDesktopBuild) && Boolean(process.env.VITE_DEV_SERVER_URL);
-const desktopFlavor = resolveSynaraDesktopRuntimeFlavor({
+const desktopFlavor = resolveGladeDesktopRuntimeFlavor({
   isPackaged: app.isPackaged,
   isDevelopment,
   packagedFlavor: packagedDesktopFlavor,
-  requestedFlavor: process.env.SYNARA_DESKTOP_FLAVOR,
+  requestedFlavor: process.env.GLADE_DESKTOP_FLAVOR,
   allowDevelopmentOverride: isSourceDesktopBuild,
 });
-const desktopIdentity = synaraDesktopIdentity(desktopFlavor);
-// Beta never honors SYNARA_HOME: a globally exported stable home would make
-// beta open (and migrate) stable's database.
+const desktopIdentity = gladeDesktopIdentity(desktopFlavor);
 const BASE_DIR =
-  (desktopFlavor === "beta"
-    ? process.env.SYNARA_BETA_HOME?.trim()
-    : process.env.SYNARA_HOME?.trim()) ||
+  process.env.GLADE_HOME?.trim() ||
   Path.join(OS.homedir(), desktopIdentity.defaultHomeDirectoryName);
 const STATE_DIR = Path.join(BASE_DIR, "userdata");
 const DESKTOP_WINDOW_STATE_PATH = Path.join(STATE_DIR, "desktop-window-state.json");
@@ -398,53 +381,15 @@ const DESKTOP_BACKEND_SHUTDOWN_TOKEN = Crypto.randomBytes(32).toString("hex");
 const DESKTOP_BROWSER_HOST_CAPABILITY = Crypto.randomBytes(32).toString("base64url");
 const DESKTOP_BROWSER_HOST_CAPABILITY_FD = 3;
 // Electron's single-instance lock is scoped through userData on Windows/Linux.
-// Set the flavor-specific profile first so Stable, Dev, and Canary never contend
+// Set the flavor-specific profile first so Prod and Dev never contend
 // for the same lock even when they use the same Electron executable.
 const userDataPath = resolveUserDataPath();
 app.setPath("userData", userDataPath);
 
-// Beta-only diagnostics: constructed solely when the baked build flavor is
-// "beta", so production binaries never run a collection path. The payload
-// schema is an allowlist; error text may still contain fragments of user data,
-// and Electron crash dumps are raw process memory.
-const betaDiagnostics =
-  desktopFlavor === "beta"
-    ? new BetaDiagnostics({
-        homeDir: BASE_DIR,
-        appVersion: app.getVersion(),
-        platform: process.platform,
-        arch: process.arch,
-      })
-    : null;
-
-if (betaDiagnostics) {
-  crashReporter.start({
-    productName: APP_DISPLAY_NAME,
-    companyName: "Synara",
-    submitURL: `${resolveBetaDiagnosticsEndpoint(process.env)}/v1/crash`,
-    uploadToServer: true,
-    compress: true,
-    globalExtra: {
-      installId: betaDiagnostics.installId,
-      flavor: "beta",
-      appVersion: app.getVersion(),
-    },
-  });
-}
-
-const trackBetaDiagnostics = (
-  event: BetaDiagnosticsEventName,
-  payload: Parameters<BetaDiagnostics["track"]>[1],
-): void => {
-  betaDiagnostics?.track(event, payload);
-};
-
 // Monitor-only: observes uncaught exceptions for diagnostics without changing
 // Node's exit behavior — the POSIX EPIPE filter and the default crash path
 // stay exactly as before.
-process.on("uncaughtExceptionMonitor", (error: unknown) => {
-  betaDiagnostics?.trackError("main", error);
-});
+process.on("uncaughtExceptionMonitor", (error: unknown) => {});
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 const AUTO_UPDATE_STARTUP_DELAY_MS = 15_000;
@@ -477,14 +422,14 @@ const BACKEND_SHUTDOWN_TIMEOUT_MS = 10_000;
 const POSIX_BACKEND_TERMINATE_DELAY_MS = 15_000;
 const POSIX_BACKEND_FORCE_KILL_DELAY_MS = 18_000;
 const POSIX_BACKEND_SHUTDOWN_TIMEOUT_MS = 20_000;
-const BACKEND_MAX_OLD_SPACE_ENV_KEYS = ["SYNARA_BACKEND_MAX_OLD_SPACE_MB"] as const;
-const DESKTOP_UPDATE_ALLOW_PRERELEASE = desktopFlavor === "beta";
+const BACKEND_MAX_OLD_SPACE_ENV_KEYS = ["GLADE_BACKEND_MAX_OLD_SPACE_MB"] as const;
+const DESKTOP_UPDATE_ALLOW_PRERELEASE = false;
 const BROWSER_PERF_SAMPLE_INTERVAL_MS = 5_000;
 const DESKTOP_MENU_ZOOM_FACTOR_STEP = 1.1;
 const DESKTOP_MENU_MIN_ZOOM_FACTOR = 0.25;
 const DESKTOP_MENU_MAX_ZOOM_FACTOR = 5;
-const SYNARA_BROWSER_LABEL = "Synara browser";
-const browserPerfLoggingEnabled = process.env.SYNARA_BROWSER_PERF === "1";
+const GLADE_BROWSER_LABEL = "Glade browser";
+const browserPerfLoggingEnabled = process.env.GLADE_BROWSER_PERF === "1";
 
 type DesktopUpdateErrorContext = DesktopUpdateState["errorContext"];
 
@@ -579,7 +524,7 @@ const browserManager = new DesktopBrowserManager({
   },
 });
 let browserHostPipeServer: BrowserHostPipeServer | null = null;
-let appSnapManager: DesktopAppSnapManager | null = null;
+let computerManager: DesktopComputerManager | null = null;
 let configuredUpdaterCacheDirName: string | null = null;
 
 browserManager.subscribe((state) => {
@@ -613,7 +558,7 @@ function startBrowserPerformanceLogging(): void {
         name: metric.name,
       }));
 
-    console.info(`[${SYNARA_BROWSER_LABEL} perf]`, {
+    console.info(`[${GLADE_BROWSER_LABEL} perf]`, {
       ...snapshot.counters,
       trackedProcessIds: snapshot.trackedProcessIds,
       processes: processMetrics,
@@ -623,7 +568,7 @@ function startBrowserPerformanceLogging(): void {
 }
 
 async function ensureBrowserHostPipeServer(): Promise<void> {
-  if (browserHostPipeServer || !SYNARA_BROWSER_HOST_PIPE_PATH) {
+  if (browserHostPipeServer || !GLADE_BROWSER_HOST_PIPE_PATH) {
     return;
   }
   const server = new BrowserHostPipeServer(browserManager, {
@@ -801,7 +746,7 @@ async function reserveBackendEndpoint(reason: string): Promise<void> {
   );
   backendHttpUrl = `http://127.0.0.1:${backendPort}`;
   backendWsUrl = `ws://127.0.0.1:${backendPort}/?token=${encodeURIComponent(backendAuthToken)}`;
-  process.env.SYNARA_DESKTOP_WS_URL = backendWsUrl;
+  process.env.GLADE_DESKTOP_WS_URL = backendWsUrl;
   writeDesktopLogHeader(`${reason} resolved backend endpoint port=${backendPort}`);
 }
 
@@ -1252,21 +1197,21 @@ function resolveEmbeddedCommitHash(): string | null {
 
   try {
     const raw = FS.readFileSync(packageJsonPath, "utf8");
-    const parsed = JSON.parse(raw) as { synaraCommitHash?: unknown };
-    return normalizeCommitHash(parsed.synaraCommitHash);
+    const parsed = JSON.parse(raw) as { gladeCommitHash?: unknown };
+    return normalizeCommitHash(parsed.gladeCommitHash);
   } catch {
     return null;
   }
 }
 
-declare const __SYNARA_WINDOWS_UPDATER_PUBLISHER__: string;
+declare const __GLADE_WINDOWS_UPDATER_PUBLISHER__: string;
 
 function resolveEmbeddedWindowsPublisherSubjects(): string[] {
   if (!app.isPackaged || process.platform !== "win32") {
     return [];
   }
 
-  const subject = __SYNARA_WINDOWS_UPDATER_PUBLISHER__.trim();
+  const subject = __GLADE_WINDOWS_UPDATER_PUBLISHER__.trim();
   return subject ? [subject] : [];
 }
 
@@ -1275,7 +1220,7 @@ function resolveAboutCommitHash(): string | null {
     return aboutCommitHashCache;
   }
 
-  const envCommitHash = normalizeCommitHash(process.env.SYNARA_COMMIT_HASH);
+  const envCommitHash = normalizeCommitHash(process.env.GLADE_COMMIT_HASH);
   if (envCommitHash) {
     aboutCommitHashCache = envCommitHash;
     return aboutCommitHashCache;
@@ -1321,9 +1266,9 @@ async function rejectUnverifiableDesktopMigrationBundle(error: unknown): Promise
   writeDesktopLogHeader(`migration bundle source check failed message=${message}`);
   await dialog.showMessageBox({
     type: "error",
-    title: "Synara could not verify its server build",
+    title: "Glade could not verify its server build",
     message: "The migration source could not be checked safely.",
-    detail: `${message}\n\nRebuild with bun run build:desktop before starting Synara. The database was not opened.`,
+    detail: `${message}\n\nRebuild with bun run build:desktop before starting Glade. The database was not opened.`,
     buttons: ["Quit"],
     defaultId: 0,
     noLink: true,
@@ -1340,11 +1285,11 @@ async function rejectDesktopMigrationBundleMismatch(
   );
   await dialog.showMessageBox({
     type: "error",
-    title: "Synara's server build is stale",
+    title: "Glade's server build is stale",
     message: "The built migration code does not match this checkout.",
     detail:
       `Expected ${mismatch.expectedDigest}, but the desktop bundle contains ` +
-      `${mismatch.actualDigest}.\n\nRebuild with bun run build:desktop before starting Synara. The database was not opened.`,
+      `${mismatch.actualDigest}.\n\nRebuild with bun run build:desktop before starting Glade. The database was not opened.`,
     buttons: ["Quit"],
     defaultId: 0,
     noLink: true,
@@ -1391,7 +1336,7 @@ async function handleDesktopMigrationRecovery(): Promise<DesktopMigrationRecover
     requiresRecovery: () => requiresDesktopMigrationRecovery(paths),
     markerRemains: () => hasPendingDesktopMigrationRecovery(paths),
     choose: async ({ previousFailure }) => {
-      // The user is here because Synara cannot open its database, so the
+      // The user is here because Glade cannot open its database, so the
       // in-app update button is unreachable by definition. A newer build is
       // often the actual fix, and this dialog is the only surface left to
       // offer it from: installing it in place when the updater can reach the
@@ -1418,15 +1363,15 @@ async function handleDesktopMigrationRecovery(): Promise<DesktopMigrationRecover
       ];
       if (canInstallUpdate) {
         choices.push({
-          label: "Update Synara and restart",
-          detail: "install the newest Synara release, which may already contain the fix",
+          label: "Update Glade and restart",
+          detail: "install the newest Glade release, which may already contain the fix",
           decision: "install-update",
         });
       }
       if (releaseUrl !== null) {
         choices.push({
           label: "Download latest release",
-          detail: `${canInstallUpdate ? "download that release" : "download the latest Synara release"} in a browser`,
+          detail: `${canInstallUpdate ? "download that release" : "download the latest Glade release"} in a browser`,
           decision: "open-release-page",
         });
       }
@@ -1441,16 +1386,16 @@ async function handleDesktopMigrationRecovery(): Promise<DesktopMigrationRecover
         type: previousFailure === null ? "warning" : "error",
         title:
           previousFailure === null
-            ? "Synara needs to recover its database"
+            ? "Glade needs to recover its database"
             : restoreFailed
               ? "Migration recovery failed"
-              : "Synara could not update itself",
+              : "Glade could not update itself",
         message:
           previousFailure === null
-            ? "Synara stopped a database migration before it could finish safely."
+            ? "Glade stopped a database migration before it could finish safely."
             : restoreFailed
               ? "The saved database backup could not be restored."
-              : "The newest Synara release could not be installed.",
+              : "The newest Glade release could not be installed.",
         detail: `${previousFailure === null ? "" : `${previousFailure.message}\n\n`}You can ${options}. No provider or chat process will start until recovery succeeds.`,
         buttons: choices.map((choice) => choice.label),
         defaultId: 0,
@@ -1534,7 +1479,7 @@ let servedStaticRootCache: ServedStaticRoot | null | undefined;
 // being replaced beneath the running app (Electron caches the header per process,
 // so every later read returns bytes from the wrong offsets). Extract the client
 // to a per-archive snapshot on real disk and serve that instead — both for the
-// synara:// protocol here and, via SYNARA_STATIC_DIR, for the backend's HTTP static
+// glade:// protocol here and, via GLADE_STATIC_DIR, for the backend's HTTP static
 // route. Memoized so one app run serves one coherent asset generation.
 function resolveServedStaticRoot(): ServedStaticRoot | null {
   if (servedStaticRootCache === undefined) {
@@ -1625,7 +1570,7 @@ function handleFatalStartupError(stage: string, error: unknown): void {
   console.error(`[desktop] fatal startup error (${stage})`, error);
   if (!isQuitting) {
     isQuitting = true;
-    dialog.showErrorBox("Synara failed to start", `Stage: ${stage}\n${message}${detail}`);
+    dialog.showErrorBox("Glade failed to start", `Stage: ${stage}\n${message}${detail}`);
   }
   requestGracefulAppQuit(`fatal startup (${stage})`);
 }
@@ -1766,7 +1711,7 @@ function adjustWindowZoomFromMenu(multiplier: number): void {
 // A configured app-update.yml (or the mock-updates flag) is the prerequisite for any
 // auto-update activity; centralized so the menu and the enable check stay in lockstep.
 function hasConfiguredUpdateFeed(): boolean {
-  return readAppUpdateYml() !== null || Boolean(process.env.SYNARA_DESKTOP_MOCK_UPDATES);
+  return readAppUpdateYml() !== null || Boolean(process.env.GLADE_DESKTOP_MOCK_UPDATES);
 }
 
 function resolveAutoUpdateDisabledReason(): string | null {
@@ -1776,7 +1721,7 @@ function resolveAutoUpdateDisabledReason(): string | null {
     platform: process.platform,
     appImage: process.env.APPIMAGE,
     disabledByEnv:
-      desktopIdentity.usesScriptedUpdates || process.env.SYNARA_DISABLE_AUTO_UPDATE === "1",
+      desktopIdentity.usesScriptedUpdates || process.env.GLADE_DISABLE_AUTO_UPDATE === "1",
     hasUpdateFeedConfig: hasConfiguredUpdateFeed(),
   });
 }
@@ -1808,14 +1753,14 @@ async function checkForUpdatesFromMenu(): Promise<void> {
     void dialog.showMessageBox({
       type: "info",
       title: "You're up to date!",
-      message: `Synara ${updateState.currentVersion} is currently the newest version available.`,
+      message: `Glade ${updateState.currentVersion} is currently the newest version available.`,
       buttons: ["OK"],
     });
   } else if (updateState.status === "downloading" || updateState.status === "available") {
     void dialog.showMessageBox({
       type: "info",
       title: "Update found",
-      message: "Synara is preparing the update in the background.",
+      message: "Glade is preparing the update in the background.",
       buttons: ["OK"],
     });
   } else if (updateState.status === "downloaded") {
@@ -1985,21 +1930,21 @@ function resolveNotificationIconPath(): string | null {
     return null;
   }
   if (process.platform === "win32") {
-    return resolveResourcePath("synara.png") ?? resolveIconPath("ico");
+    return resolveResourcePath("glade.png") ?? resolveIconPath("ico");
   }
-  return resolveResourcePath("synara.png") ?? resolveIconPath("png");
+  return resolveResourcePath("glade.png") ?? resolveIconPath("png");
 }
 
-function resolveAppSnapHelperPath(): string {
+function resolveComputerHelperPath(): string {
   if (app.isPackaged) {
-    return Path.resolve(process.resourcesPath, "..", "Helpers", "synara-appsnap-helper");
+    return Path.resolve(process.resourcesPath, "..", "Helpers", "glade-computer-helper");
   }
-  return Path.resolve(__dirname, "..", ".electron-runtime", "appsnap", "synara-appsnap-helper");
+  return Path.resolve(__dirname, "..", ".electron-runtime", "computer", "glade-computer-helper");
 }
 
 /// The .app bundle that owns this process; the permission guide drags this
 /// bundle into the System Settings privacy lists.
-function resolveAppSnapAppBundlePath(): string {
+function resolveComputerAppBundlePath(): string {
   let directory = Path.dirname(app.getPath("exe"));
   while (directory !== Path.dirname(directory)) {
     if (directory.endsWith(".app")) return directory;
@@ -2008,19 +1953,7 @@ function resolveAppSnapAppBundlePath(): string {
   return app.getPath("exe");
 }
 
-function ensureMainWindowForAppSnap(): BrowserWindow | null {
-  if (mainWindow?.isDestroyed()) {
-    mainWindow = null;
-  }
-  if (!mainWindow && backendPort > 0 && !isQuitting) {
-    mainWindow = createWindow();
-  }
-  if (!mainWindow || mainWindow.isDestroyed()) return null;
-  focusMainWindow({ stealAppFocus: true });
-  return mainWindow;
-}
-
-function canSendAppSnapEvent(window: BrowserWindow | null): window is BrowserWindow {
+function canSendComputerEvent(window: BrowserWindow | null): window is BrowserWindow {
   return Boolean(
     window &&
     !window.isDestroyed() &&
@@ -2029,27 +1962,24 @@ function canSendAppSnapEvent(window: BrowserWindow | null): window is BrowserWin
   );
 }
 
-function sendAppSnapEvent(
+function sendComputerEvent(
   window: BrowserWindow | null,
   send: (webContents: BrowserWindow["webContents"]) => void,
 ): boolean {
-  if (!canSendAppSnapEvent(window)) return false;
+  if (!canSendComputerEvent(window)) return false;
   send(window.webContents);
   return true;
 }
 
-function initializeDesktopAppSnap(): void {
-  if (appSnapManager) return;
-  appSnapManager = new DesktopAppSnapManager({
+function initializeDesktopComputer(): void {
+  if (computerManager) return;
+  computerManager = new DesktopComputerManager({
     platform: process.platform,
-    helperPath: resolveAppSnapHelperPath(),
-    captureDirectory: Path.join(app.getPath("userData"), "appsnap", "tmp"),
-    excludedBundleId: APP_USER_MODEL_ID,
+    helperPath: resolveComputerHelperPath(),
     appDisplayName: APP_DISPLAY_NAME,
-    appBundlePath: resolveAppSnapAppBundlePath(),
-    shortcutRegistry: globalShortcut,
+    appBundlePath: resolveComputerAppBundlePath(),
     openSettingsPane: (pane) => {
-      const paneUrl = APP_SNAP_SETTINGS_PANE_URLS[pane];
+      const paneUrl = COMPUTER_SETTINGS_PANE_URLS[pane];
       if (paneUrl) void shell.openExternal(paneUrl).catch(() => undefined);
     },
     // Best effort: quit System Settings after a permission setup session lands
@@ -2068,35 +1998,12 @@ function initializeDesktopAppSnap(): void {
       }
     },
     onState: (state) => {
-      sendAppSnapEvent(mainWindow, (webContents) => sendAppSnapState(webContents, state));
+      sendComputerEvent(mainWindow, (webContents) => sendComputerState(webContents, state));
     },
     onPermissionGuideState: (state) => {
-      sendAppSnapEvent(mainWindow, (webContents) =>
-        sendAppSnapPermissionGuideState(webContents, state),
+      sendComputerEvent(mainWindow, (webContents) =>
+        sendComputerPermissionGuideState(webContents, state),
       );
-    },
-    onCaptured: (capture) => {
-      const window = ensureMainWindowForAppSnap();
-      if (sendAppSnapEvent(window, (webContents) => sendAppSnapCaptured(webContents, capture))) {
-        return;
-      }
-      // The renderer is still loading: replay the event once the main frame is
-      // ready. The renderer dedupes by capture id, and the capture also stays
-      // in the pending queue as a fallback for the next mount.
-      if (window && !window.isDestroyed() && !window.webContents.isDestroyed()) {
-        window.webContents.once("did-finish-load", () => {
-          sendAppSnapEvent(window, (webContents) => sendAppSnapCaptured(webContents, capture));
-        });
-      }
-    },
-    onError: (error, focusApp) => {
-      const window = focusApp ? ensureMainWindowForAppSnap() : mainWindow;
-      if (!sendAppSnapEvent(window, (webContents) => sendAppSnapError(webContents, error))) {
-        showDesktopNotification({
-          title: error.code === "pending-capture-overflow" ? "AppSnap discarded" : "AppSnap failed",
-          body: error.message,
-        });
-      }
     },
   });
 }
@@ -2142,7 +2049,7 @@ function focusMainWindow(options: { stealAppFocus?: boolean } = {}): void {
   }
   if (process.platform === "darwin" && options.stealAppFocus === true) {
     // BrowserWindow.focus() alone does not activate an app while another macOS
-    // application owns focus. Only AppSnap is an explicit global user gesture;
+    // application owns focus. Only Computer is an explicit global user gesture;
     // notification clicks and ordinary activation keep their existing focus policy.
     app.show();
     app.focus({ steal: true });
@@ -2198,7 +2105,7 @@ function showDesktopNotification(input: {
  * Resolve the Electron userData directory path.
  *
  * Electron derives the default userData path from `productName` in
- * package.json. We override it to a clean lowercase Synara name.
+ * package.json. We override it to a clean lowercase Glade name.
  */
 function resolveUserDataPath(): string {
   const appDataBase = resolveDesktopAppDataBase();
@@ -2209,7 +2116,7 @@ function resolveUserDataPath(): string {
       packagedFlavor: packagedDesktopFlavor,
       sourceBuildMarker: requestedSourceBuildMarker,
     })
-      ? process.env[SYNARA_DESKTOP_SMOKE_USER_DATA_ENV]
+      ? process.env[GLADE_DESKTOP_SMOKE_USER_DATA_ENV]
       : undefined,
   });
 }
@@ -2217,13 +2124,13 @@ function resolveUserDataPath(): string {
 function repairBrowserProfileBeforeElectronReady(userDataPath: string): void {
   const browserProfileRepair = repairBrowserProfileFromBridgeManifest(userDataPath);
   if (browserProfileRepair.status === "repaired") {
-    console.info("[desktop] Completed Synara browser profile bridge repair", {
+    console.info("[desktop] Completed Glade browser profile bridge repair", {
       sourcePath: browserProfileRepair.sourcePath,
       targetPath: browserProfileRepair.targetPath,
       copiedEntries: browserProfileRepair.copiedEntries,
     });
   } else if (browserProfileRepair.status === "repair-failed") {
-    console.warn("[desktop] Failed to complete Synara browser profile bridge repair", {
+    console.warn("[desktop] Failed to complete Glade browser profile bridge repair", {
       sourcePath: browserProfileRepair.sourcePath,
       targetPath: browserProfileRepair.targetPath,
       error: browserProfileRepair.error,
@@ -2524,7 +2431,18 @@ async function applyDesktopAppIconUnlocked(
     platform: process.platform,
     isDarkAppearance: process.platform === "darwin" && nativeTheme.shouldUseDarkColors,
   });
-  const iconPath = resolveResourcePath(resourceName);
+  const iconPath =
+    desktopFlavor === "development"
+      ? Path.resolve(
+          import.meta.dirname,
+          "../../../assets/dev",
+          process.platform === "win32"
+            ? "blueprint-windows.ico"
+            : process.platform === "darwin"
+              ? "blueprint-macos-1024.png"
+              : "blueprint-universal-1024.png",
+        )
+      : resolveResourcePath(resourceName);
   if (!iconPath) return;
 
   const image = nativeImage.createFromPath(iconPath);
@@ -2736,11 +2654,11 @@ function restartAfterStartupBundleSwap(error: BundleChangedDuringStartupError): 
   void dialog
     .showMessageBox({
       type: "warning",
-      title: "Synara needs to restart",
-      message: "Synara changed while it was opening.",
+      title: "Glade needs to restart",
+      message: "Glade changed while it was opening.",
       detail:
-        "The current process cannot safely read the replaced application bundle. Restart Synara to finish opening with one consistent version.",
-      buttons: ["Restart Synara"],
+        "The current process cannot safely read the replaced application bundle. Restart Glade to finish opening with one consistent version.",
+      buttons: ["Restart Glade"],
       defaultId: 0,
     })
     .catch(() => undefined)
@@ -2752,7 +2670,7 @@ function restartAfterStartupBundleSwap(error: BundleChangedDuringStartupError): 
 
 // Electron caches the asar header per process, so once app.asar changes on disk
 // (updater retry racing a relaunch, a reinstall, a build copied over the bundle)
-// every archive read in this process — the synara:// protocol, the backend's static
+// every archive read in this process — the glade:// protocol, the backend's static
 // files, lazily-loaded renderer chunks — resolves to stale offsets and silently
 // returns the wrong bytes. Detect the swap and offer a restart; continuing is
 // never safe.
@@ -2792,8 +2710,8 @@ function startBundleSwapWatcher(): void {
     void dialog
       .showMessageBox({
         type: "warning",
-        title: "Synara was replaced on disk",
-        message: "The installed Synara app changed while it was running.",
+        title: "Glade was replaced on disk",
+        message: "The installed Glade app changed while it was running.",
         detail:
           "The interface keeps running from a safeguarded copy, but parts of the app loaded later can still read the replaced file. Restart now to pick up the new version safely.",
         buttons: ["Restart Now", "Later"],
@@ -2855,30 +2773,6 @@ function setUpdateState(patch: Partial<DesktopUpdateState>): void {
   const previousStatus = updateState.status;
   updateState = { ...updateState, ...patch };
   emitUpdateState();
-  if (betaDiagnostics && updateState.status !== previousStatus) {
-    const status = updateState.status;
-    if (status === "checking") {
-      trackBetaDiagnostics("update.check", { kind: "update", outcome: "ok" });
-    } else if (status === "available") {
-      trackBetaDiagnostics("update.available", {
-        kind: "update",
-        outcome: "ok",
-        ...(updateState.availableVersion ? { targetVersion: updateState.availableVersion } : {}),
-      });
-    } else if (status === "downloaded") {
-      trackBetaDiagnostics("update.downloaded", {
-        kind: "update",
-        outcome: "ok",
-        ...(updateState.downloadedVersion ? { targetVersion: updateState.downloadedVersion } : {}),
-      });
-    } else if (status === "error") {
-      trackBetaDiagnostics("update.error", {
-        kind: "update",
-        outcome: "error",
-        ...(updateState.errorContext ? { errorContext: updateState.errorContext } : {}),
-      });
-    }
-  }
 }
 
 function shouldEnableAutoUpdates(): boolean {
@@ -2998,7 +2892,7 @@ function processInstallMarkerOnStartup(): void {
   }
 
   automaticUpdateActivitySuppressed = true;
-  const message = `Synara restarted, but update ${marker.toVersion} was not installed. Try again.`;
+  const message = `Glade restarted, but update ${marker.toVersion} was not installed. Try again.`;
   setUpdateState(
     reduceDesktopUpdateStateOnInstallRestartFailure(
       updateState,
@@ -3430,7 +3324,7 @@ async function installLatestUpdateForMigrationRecovery(): Promise<string | null>
   }
 
   if (updateState.status === "up-to-date") {
-    return `Synara ${app.getVersion()} is already the newest release, so updating cannot repair this database.`;
+    return `Glade ${app.getVersion()} is already the newest release, so updating cannot repair this database.`;
   }
   if (updateState.status !== "downloaded") {
     return updateState.message ?? "The update could not be downloaded.";
@@ -3657,7 +3551,7 @@ function configureAutoUpdater(): void {
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = false;
   // The dedicated channel keeps the permanent compatibility release on the
-  // default feed while Synara versions advance independently.
+  // default feed while Glade versions advance independently.
   autoUpdater.channel = desktopUpdateChannel(desktopFlavor);
   autoUpdater.allowPrerelease = DESKTOP_UPDATE_ALLOW_PRERELEASE;
   autoUpdater.allowDowngrade = false;
@@ -3806,7 +3700,7 @@ function configureAutoUpdater(): void {
 
   scheduleUpdatePoll();
 }
-// Builds process-local Node args so provider/tool children do not inherit Synara's heap guard.
+// Builds process-local Node args so provider/tool children do not inherit Glade's heap guard.
 function backendNodeArgs(): string[] {
   const configuredMaxOldSpaceMb =
     BACKEND_MAX_OLD_SPACE_ENV_KEYS.map((key) => process.env[key]).find(
@@ -3891,11 +3785,11 @@ async function startCuaHost(): Promise<void> {
     // sends no style call at all.
     cursorStyle: () => readAgentCursorPreference(AGENT_CURSOR_PREFERENCE_PATH),
     checkPermissions: async (options) => {
-      // The AppSnap manager owns the shared native permission helper; lazily
-      // starting it here keeps the CUA host working even when AppSnap itself is
+      // The Computer manager owns the shared native permission helper; lazily
+      // starting it here keeps the CUA host working even when Computer itself is
       // still disabled.
-      initializeDesktopAppSnap();
-      const state = await appSnapManager!.refreshState(COMPUTER_PERMISSION_KINDS, {
+      initializeDesktopComputer();
+      const state = await computerManager!.refreshState(COMPUTER_PERMISSION_KINDS, {
         force: options?.force === true,
       });
       if (
@@ -3920,18 +3814,18 @@ async function startCuaHost(): Promise<void> {
       };
     },
     setup: async () => {
-      initializeDesktopAppSnap();
-      await appSnapManager!.startPermissionSetup(COMPUTER_PERMISSION_KINDS);
+      initializeDesktopComputer();
+      await computerManager!.startPermissionSetup(COMPUTER_PERMISSION_KINDS);
     },
     releaseHeldInput: async () => {
-      // Same lazily-started shared helper as the permission checks: the AppSnap
-      // binary posts the releases, and it exists whether or not AppSnap itself
+      // Same lazily-started shared helper as the permission checks: the Computer
+      // binary posts the releases, and it exists whether or not Computer itself
       // is enabled.
-      initializeDesktopAppSnap();
-      await appSnapManager!.releaseHeldInput();
+      initializeDesktopComputer();
+      await computerManager!.releaseHeldInput();
     },
     frameTap: new ComputerFrameTap({
-      helperPath: resolveAppSnapHelperPath(),
+      helperPath: resolveComputerHelperPath(),
       send: (channel, frame) => {
         if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) {
           mainWindow.webContents.send(channel, frame);
@@ -3939,13 +3833,13 @@ async function startCuaHost(): Promise<void> {
       },
       onError: (error) => safeConsoleError("[desktop] computer frame tap failed", error),
     }),
-    // The masked-activation shield host: same AppSnap helper binary, its own
+    // The masked-activation shield host: same Computer helper binary, its own
     // long-lived process, lazily spawned on the first engage. Always wired —
     // the server decides per call whether the armed flag + per-app opt-in
     // name a masked activation, and a missing surface must fail closed there
     // rather than degrade to an unmasked raise.
     shield: new ComputerShield({
-      helperPath: resolveAppSnapHelperPath(),
+      helperPath: resolveComputerHelperPath(),
       onError: (error) => safeConsoleError("[desktop] computer shield failed", error),
     }),
     normalizeOverview: (result) => {
@@ -3971,7 +3865,7 @@ async function startCuaHost(): Promise<void> {
   // gates input until Input Monitoring and the listener are both healthy.
   if (!escapeKillSwitchMonitor) {
     escapeKillSwitchMonitor = new EscapeKillSwitchMonitor({
-      helperPath: resolveAppSnapHelperPath(),
+      helperPath: resolveComputerHelperPath(),
       onPhysicalInput: (event) => {
         cuaDriverHost?.physicalInput(event);
       },
@@ -3989,12 +3883,12 @@ function backendEnv(): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {
     ...resolveBrowserHostPipeBackendEnv(
       process.env,
-      browserHostPipeServer ? SYNARA_BROWSER_HOST_PIPE_PATH : null,
+      browserHostPipeServer ? GLADE_BROWSER_HOST_PIPE_PATH : null,
       browserHostPipeServer ? DESKTOP_BROWSER_HOST_CAPABILITY_FD : null,
     ),
     // Point the backend's HTTP static route at the same swap-immune snapshot the
-    // synara:// protocol serves, so both surfaces survive app.asar being replaced.
-    ...(servedStaticRoot?.snapshotted ? { SYNARA_STATIC_DIR: servedStaticRoot.dir } : {}),
+    // glade:// protocol serves, so both surfaces survive app.asar being replaced.
+    ...(servedStaticRoot?.snapshotted ? { GLADE_STATIC_DIR: servedStaticRoot.dir } : {}),
     ...(app.isPackaged
       ? { [DEVICE_HELPER_SOURCE_DIR_ENV]: Path.join(process.resourcesPath, "device-helper") }
       : {}),
@@ -4005,13 +3899,13 @@ function backendEnv(): NodeJS.ProcessEnv {
       ? { [MIGRATION_DIVERGENCE_CONSENT_ENV]: migrationDivergenceConsent }
       : {}),
     ...(cuaHostEndpoint ? { [CUA_HOST_SOCKET_ENV]: cuaHostEndpoint } : {}),
-    [SYNARA_DESKTOP_BUNDLE_ID_ENV]: desktopIdentity.bundleId,
-    SYNARA_MODE: "desktop",
-    SYNARA_NO_BROWSER: "1",
-    SYNARA_PORT: String(backendPort),
-    SYNARA_HOME: BASE_DIR,
-    SYNARA_AUTH_TOKEN: backendAuthToken,
-    SYNARA_DESKTOP_SHUTDOWN_TOKEN: DESKTOP_BACKEND_SHUTDOWN_TOKEN,
+    [GLADE_DESKTOP_BUNDLE_ID_ENV]: desktopIdentity.bundleId,
+    GLADE_MODE: "desktop",
+    GLADE_NO_BROWSER: "1",
+    GLADE_PORT: String(backendPort),
+    GLADE_HOME: BASE_DIR,
+    GLADE_AUTH_TOKEN: backendAuthToken,
+    GLADE_DESKTOP_SHUTDOWN_TOKEN: DESKTOP_BACKEND_SHUTDOWN_TOKEN,
   };
   // The backend runs the same login-shell probe at startup and does not begin listening
   // until it returns, so an unmarked child serializes a second ~1s hydration behind ours.
@@ -4079,7 +3973,7 @@ function backendFailureDialogDetail(reason: string): string {
   const cause = summary.length > 0 ? summary : reason;
   return [
     cause,
-    "Synara paused automatic restarts so a failing backend can't keep respawning in the background.",
+    "Glade paused automatic restarts so a failing backend can't keep respawning in the background.",
     `Log file:\n${Path.join(LOG_DIR, BACKEND_LOG_FILE_NAME)}`,
   ].join("\n\n");
 }
@@ -4108,8 +4002,8 @@ function presentBackendStartupGiveUp(reason: string): void {
     for (;;) {
       const result = await dialog.showMessageBox({
         type: "error",
-        title: "Synara's backend didn't start",
-        message: `Synara's backend failed to start ${BACKEND_MAX_CONSECUTIVE_START_FAILURES} times in a row.`,
+        title: "Glade's backend didn't start",
+        message: `Glade's backend failed to start ${BACKEND_MAX_CONSECUTIVE_START_FAILURES} times in a row.`,
         detail,
         buttons: ["Try again", "Open logs", "Quit"],
         defaultId: 0,
@@ -4146,25 +4040,25 @@ function schemaTooNewRestoreDetail(
 ): string {
   if (restoreCandidate) {
     return (
-      `Synara verified the exact pre-migration backup at:\n${restoreCandidate.backupPath}\n\n` +
+      `Glade verified the exact pre-migration backup at:\n${restoreCandidate.backupPath}\n\n` +
       `Its tracker ends at migration ${restoreCandidate.backupMigrationId}; its shared lineage is compatible ` +
       "with this build, and it passed SQLite integrity checking."
     );
   }
 
   if (block.recovery.kind === "restore-available") {
-    return "The recorded backup does not match this desktop database exactly, so Synara will not restore it.";
+    return "The recorded backup does not match this desktop database exactly, so Glade will not restore it.";
   }
 
   switch (block.recovery.reason) {
     case "missing-provenance":
-      return "No completed migration backup record exists for this database, so Synara cannot choose a backup safely.";
+      return "No completed migration backup record exists for this database, so Glade cannot choose a backup safely.";
     case "invalid-provenance":
       return "The completed migration backup record does not describe this exact database state.";
     case "invalid-backup":
       return "The exact recorded backup is missing, unreadable, or failed SQLite integrity checking.";
     case "incompatible-backup":
-      return "The exact recorded backup has a schema or migration lineage this Synara build cannot open safely.";
+      return "The exact recorded backup has a schema or migration lineage this Glade build cannot open safely.";
   }
 }
 
@@ -4196,7 +4090,7 @@ async function handleDesktopSchemaTooNewRecovery(
         });
       }
       if (canInstallUpdate) {
-        choices.push({ label: "Update Synara and restart", decision: "install-update" });
+        choices.push({ label: "Update Glade and restart", decision: "install-update" });
       }
       if (releaseUrl !== null) {
         choices.push({ label: "Download latest release", decision: "open-release-page" });
@@ -4210,16 +4104,16 @@ async function handleDesktopSchemaTooNewRecovery(
         type: previousFailure === null ? "warning" : "error",
         title:
           previousFailure === null
-            ? "This database is newer than Synara"
+            ? "This database is newer than Glade"
             : restoreFailed
               ? "Database restore failed"
-              : "Synara could not update itself",
+              : "Glade could not update itself",
         message:
           previousFailure === null
             ? `Database migration ${block.databaseMigrationId} is newer than this build supports (${block.latestSupportedMigrationId}).`
             : restoreFailed
               ? "The verified database backup could not be restored."
-              : "The newest Synara release could not be installed.",
+              : "The newest Glade release could not be installed.",
         detail:
           `${previousFailure === null ? "" : `${previousFailure.message}\n\n`}` +
           `${schemaTooNewRestoreDetail(block, restoreCandidate)}\n\n` +
@@ -4285,15 +4179,15 @@ function handleBackendStartupBlock(block: BackendStartupBlock): void {
             type: "error",
             title:
               previousFailure === null
-                ? "Synara could not verify migration recovery"
-                : "Synara could not update itself",
+                ? "Glade could not verify migration recovery"
+                : "Glade could not update itself",
             message:
               previousFailure === null
                 ? "The backend stopped for database safety, but its recovery details were invalid."
-                : "The newest Synara release could not be installed.",
+                : "The newest Glade release could not be installed.",
             detail:
               `${previousFailure === null ? "" : `${previousFailure.message}\n\n`}` +
-              "Synara will keep the backend and provider processes stopped. The recovery record is not trusted, so restoring from it is disabled; choose one of the safe actions below.",
+              "Glade will keep the backend and provider processes stopped. The recovery record is not trusted, so restoring from it is disabled; choose one of the safe actions below.",
             buttons: choices.map((choice) => choice.label),
             defaultId: 0,
             cancelId: choices.length - 1,
@@ -4322,12 +4216,12 @@ function handleBackendStartupBlock(block: BackendStartupBlock): void {
       const challenge = block.challenge;
       const result = await dialog.showMessageBox({
         type: "warning",
-        title: "Synara found a different database migration history",
+        title: "Glade found a different database migration history",
         message: `Migration ${challenge.firstDivergedId} does not match this build.`,
         detail:
           `The database records "${challenge.recordedName}", while this build expects ` +
           `"${challenge.expectedName}". Continuing will first save an exact backup in:\n` +
-          `${challenge.backupDirectory}\n\nSynara will then rewrite tracker rows from migration ` +
+          `${challenge.backupDirectory}\n\nGlade will then rewrite tracker rows from migration ` +
           `${challenge.firstDivergedId} and replay through ${challenge.targetVersion}. ` +
           "Older builds may no longer be able to open the upgraded database. No provider or chat process will start until you choose.",
         buttons: ["Back up and continue", "Quit"],
@@ -4348,11 +4242,11 @@ function handleBackendStartupBlock(block: BackendStartupBlock): void {
     if (block.kind === "migration-runtime-identity-mismatch") {
       await dialog.showMessageBox({
         type: "error",
-        title: "Synara's server build does not match",
+        title: "Glade's server build does not match",
         message: "The desktop and server migration code came from different builds.",
         detail: app.isPackaged
-          ? "Update or reinstall Synara before starting it again. The database was not opened."
-          : "Rebuild with bun run build:desktop before starting Synara again. The database was not opened.",
+          ? "Update or reinstall Glade before starting it again. The database was not opened."
+          : "Rebuild with bun run build:desktop before starting Glade again. The database was not opened.",
         buttons: ["Quit"],
         defaultId: 0,
         noLink: true,
@@ -4364,10 +4258,10 @@ function handleBackendStartupBlock(block: BackendStartupBlock): void {
     if (block.kind === "migration-recovery-required") {
       const result = await dialog.showMessageBox({
         type: "warning",
-        title: "Synara needs to recover its database",
+        title: "Glade needs to recover its database",
         message: "A database migration did not finish safely.",
         detail:
-          "Restart Synara to open the verified backup recovery flow. Provider and chat processes will remain stopped until recovery completes.",
+          "Restart Glade to open the verified backup recovery flow. Provider and chat processes will remain stopped until recovery completes.",
         buttons: ["Restart and recover", "Quit"],
         defaultId: 0,
         cancelId: 1,
@@ -4384,13 +4278,13 @@ function handleBackendStartupBlock(block: BackendStartupBlock): void {
 
     const processDetail =
       block.ownerPid === null
-        ? "Another Synara server is already using this database."
-        : `Another Synara server (process ${block.ownerPid}) is already using this database.`;
+        ? "Another Glade server is already using this database."
+        : `Another Glade server (process ${block.ownerPid}) is already using this database.`;
     const result = await dialog.showMessageBox({
       type: "warning",
-      title: "Synara is already running elsewhere",
-      message: "Your local Synara data is in use by another process.",
-      detail: `${processDetail}\n\nStop the other Synara app or development server, then try again. Your data has not been changed.`,
+      title: "Glade is already running elsewhere",
+      message: "Your local Glade data is in use by another process.",
+      detail: `${processDetail}\n\nStop the other Glade app or development server, then try again. Your data has not been changed.`,
       buttons: ["Try again", "Quit"],
       defaultId: 0,
       cancelId: 1,
@@ -4451,27 +4345,6 @@ async function restartBackendAfterCrash(
  */
 type BackendStartTrigger = "lifecycle" | "crash-restart";
 
-/**
- * Emits beta.installed once, on the first backend readiness while the
- * install-pending marker exists. The marker is written when the install id is
- * created, so a first launch whose backend never came up reports on the next
- * launch instead. The server consumes any pending import marker before it
- * listens, so import-result.json is final at this point.
- */
-let betaInstalledEventEmitted = false;
-function maybeTrackBetaInstalled(): void {
-  if (!betaDiagnostics || betaInstalledEventEmitted || !betaDiagnostics.hasInstallPending()) {
-    return;
-  }
-  betaInstalledEventEmitted = true;
-  const result = readBetaImportResult(BASE_DIR);
-  trackBetaDiagnostics("beta.installed", {
-    kind: "beta",
-    outcome: result === null ? "fresh" : result.ok ? "imported" : "import-failed",
-  });
-  betaDiagnostics.clearInstallPending();
-}
-
 function startBackend(trigger: BackendStartTrigger = "lifecycle"): void {
   if (isQuitting || backendProcess) return;
   // Recovery owns the database until it clears the marker. Callers that restart
@@ -4499,8 +4372,8 @@ function startBackend(trigger: BackendStartTrigger = "lifecycle"): void {
     env: {
       ...backendEnv(),
       ELECTRON_RUN_AS_NODE: "1",
-      SYNARA_SERVER_ENTRY: backendEntry,
-      SYNARA_DESKTOP_PARENT_STDIN: "1",
+      GLADE_SERVER_ENTRY: backendEntry,
+      GLADE_DESKTOP_PARENT_STDIN: "1",
     },
     // Keep output piped in every environment so startup blockers and readiness
     // are observable even when packaged log setup is unavailable. The fourth
@@ -4558,7 +4431,6 @@ function startBackend(trigger: BackendStartTrigger = "lifecycle"): void {
     () => {
       if (backendListeningDetector === listeningDetector) {
         backendSupervision.recordReadiness();
-        maybeTrackBetaInstalled();
       }
     },
     () => undefined,
@@ -4601,16 +4473,6 @@ function startBackend(trigger: BackendStartTrigger = "lifecycle"): void {
       }
       const reason = `code=${code ?? "null"} signal=${signal ?? "null"}`;
       lastBackendFailureDetail = outputTailDetector.read();
-      trackBetaDiagnostics("app.child-process-crash", {
-        kind: "crash",
-        processType: "backend",
-        reason,
-        // Guarded explicitly: on stable builds betaDiagnostics is null and the
-        // log file must not be touched at all.
-        logTail: betaDiagnostics
-          ? readLogTail(Path.join(LOG_DIR, BACKEND_LOG_FILE_NAME))
-          : undefined,
-      });
       scheduleBackendRestart(reason);
     });
   });
@@ -4722,8 +4584,8 @@ async function shutdownDesktopRuntime(reason: string): Promise<void> {
       clearUpdateCheckTimeoutTimer();
       clearUpdatePollTimer();
       cancelBackendReadinessWait();
-      appSnapManager?.dispose();
-      appSnapManager = null;
+      computerManager?.dispose();
+      computerManager = null;
       await shutdownBrowserServices({
         revokeHost: () => disposeBrowserHostPipeServerForShutdown(reason),
         closePages: () => browserManager.dispose(),
@@ -4732,10 +4594,6 @@ async function shutdownDesktopRuntime(reason: string): Promise<void> {
       });
       await browserSessionRestore?.shutdown();
       restoreStdIoCapture?.();
-      if (betaDiagnostics) {
-        trackBetaDiagnostics("app.exit", { kind: "lifecycle" });
-        await betaDiagnostics.dispose().catch(() => undefined);
-      }
       desktopShutdownComplete = true;
       writeDesktopLogHeader(`${reason} shutdown complete`);
     },
@@ -4798,48 +4656,6 @@ async function confirmRunningChatsThenQuit(reason: string): Promise<void> {
   requestGracefulAppQuit(reason);
 }
 
-function ownMacAppBundlePath(): string {
-  return Path.resolve(process.execPath, "..", "..", "..");
-}
-
-/**
- * Team id of the running app's signature, used to verify a downloaded beta
- * bundle before it is installed. Unsigned builds (dev, local, demo) yield
- * "not set" or a "not signed" exit — the install then skips the check. Any
- * other lookup failure on a packaged app resolves to "unavailable" so the
- * installer fails closed instead of silently skipping verification; a lookup
- * failure must never break startup.
- */
-function ownAppTeamId(): ExpectedTeamId {
-  if (process.platform !== "darwin" || !app.isPackaged) return null;
-  try {
-    const result = ChildProcess.spawnSync(
-      "codesign",
-      ["-dv", "--verbose=4", ownMacAppBundlePath()],
-      { encoding: "utf8" },
-    );
-    if (result.status !== 0) {
-      const output = `${result.stderr ?? ""}\n${result.stdout ?? ""}`;
-      return /not signed|unsigned/i.test(output) ? null : "unavailable";
-    }
-    const teamId = /^TeamIdentifier=(\S+)$/m.exec(result.stderr ?? "")?.[1];
-    if (teamId === undefined) return "unavailable";
-    return teamId === "not set" ? null : teamId;
-  } catch {
-    return "unavailable";
-  }
-}
-
-/** Only ever trash the packaged beta bundle this process runs from. */
-function isTrashableBetaBundle(): boolean {
-  return (
-    desktopFlavor === "beta" &&
-    process.platform === "darwin" &&
-    app.isPackaged &&
-    Path.basename(ownMacAppBundlePath()) === `${APP_DISPLAY_NAME}.app`
-  );
-}
-
 function requestGracefulAppQuit(reason: string): void {
   if (isUpdaterInstallPreparing) {
     deferDesktopQuitUntilUpdaterSettles(reason);
@@ -4857,7 +4673,7 @@ function requestGracefulAppQuit(reason: string): void {
 }
 
 function registerIpcHandlers(): void {
-  const storageSnapshotPath = resolveSynaraStorageSnapshotPath(app.getPath("userData"));
+  const storageSnapshotPath = resolveGladeStorageSnapshotPath(app.getPath("userData"));
 
   ipcMain.removeAllListeners(IPC.browser.webMcpCompatibilityPolicy);
   ipcMain.on(IPC.browser.webMcpCompatibilityPolicy, (event: IpcMainEvent) => {
@@ -4866,12 +4682,12 @@ function registerIpcHandlers(): void {
 
   ipcMain.removeAllListeners(IPC.storageMigration.read);
   ipcMain.on(IPC.storageMigration.read, (event: IpcMainEvent) => {
-    event.returnValue = readSynaraStorageSnapshot(storageSnapshotPath);
+    event.returnValue = readGladeStorageSnapshot(storageSnapshotPath);
   });
 
   ipcMain.removeHandler(IPC.storageMigration.acknowledge);
   ipcMain.handle(IPC.storageMigration.acknowledge, async () => {
-    await acknowledgeSynaraStorageSnapshot(storageSnapshotPath);
+    await acknowledgeGladeStorageSnapshot(storageSnapshotPath);
   });
 
   ipcMain.removeAllListeners(IPC.wsUrl);
@@ -5035,16 +4851,6 @@ function registerIpcHandlers(): void {
     },
   );
 
-  registerSafariAccessIpc(ipcMain, {
-    platform: process.platform,
-    systemVersion: process.getSystemVersion(),
-    execPath: process.execPath,
-    appName: app.getName(),
-    isTrustedRenderer: (id) => browserManager.isTrustedRenderer(id),
-    openExternal: (url) => shell.openExternal(url),
-    showItemInFolder: (path) => shell.showItemInFolder(path),
-  });
-
   ipcMain.removeHandler(IPC.openExternal);
   ipcMain.handle(IPC.openExternal, async (_event, rawUrl: unknown) => {
     const externalUrl = getSafeExternalUrl(rawUrl);
@@ -5178,67 +4984,7 @@ function registerIpcHandlers(): void {
     }
   });
 
-  const betaChannel = new DesktopBetaChannel({
-    platform: process.platform,
-    homeDir: OS.homedir(),
-    betaHomeDir: resolveBetaHomeDir(),
-    flavor:
-      desktopFlavor === "beta"
-        ? "beta"
-        : desktopFlavor === "canary"
-          ? "canary"
-          : desktopFlavor === "cua"
-            ? "cua"
-            : "production",
-    feedUrlOverride: process.env.SYNARA_BETA_FEED_URL,
-    installDirOverride: process.env.SYNARA_BETA_INSTALL_DIR,
-    expectedTeamId: ownAppTeamId(),
-    betaUserDataDir: process.env.SYNARA_BETA_USER_DATA,
-    stableExecutablePath: desktopFlavor === "production" ? process.execPath : undefined,
-    stableHomeDir: desktopFlavor === "production" ? BASE_DIR : undefined,
-    canTrashOwnBundle: isTrashableBetaBundle(),
-  });
-
-  ipcMain.removeHandler(IPC.beta.getState);
-  ipcMain.handle(IPC.beta.getState, async () => betaChannel.getState());
-
-  ipcMain.removeHandler(IPC.beta.install);
-  ipcMain.handle(IPC.beta.install, async () => betaChannel.install());
-
-  ipcMain.removeHandler(IPC.beta.launch);
-  ipcMain.handle(IPC.beta.launch, async () => betaChannel.launch());
-
-  ipcMain.removeHandler(IPC.beta.importAndLaunch);
-  ipcMain.handle(IPC.beta.importAndLaunch, async () => betaChannel.importAndLaunch(BASE_DIR));
-
-  ipcMain.removeHandler(IPC.beta.leave);
-  ipcMain.handle(IPC.beta.leave, async (_event, rawInput: unknown) => {
-    const result = await betaChannel.leave();
-    if (!result.ok) return result;
-    const moveToTrash =
-      typeof rawInput === "object" &&
-      rawInput !== null &&
-      (rawInput as { moveToTrash?: unknown }).moveToTrash === true;
-    if (moveToTrash && isTrashableBetaBundle()) {
-      try {
-        await shell.trashItem(ownMacAppBundlePath());
-      } catch (error) {
-        return {
-          ok: false,
-          error: "internal" as const,
-          message: `Synara is open, but Synara Beta could not be moved to the Trash: ${formatErrorMessage(error)}`,
-        };
-      }
-    }
-    trackBetaDiagnostics("beta.left", {
-      kind: "beta",
-      outcome: moveToTrash && isTrashableBetaBundle() ? "trash" : "keep",
-    });
-    // The quit path flushes queued events via dispose() with the bounded
-    // timeout; the event above is already queued by then.
-    setImmediate(() => requestGracefulAppQuit("beta-leave"));
-    return result;
-  });
+  // Alternate-channel IPC is deliberately not registered in Glade.
 
   ipcMain.removeHandler(IPC.updateGetState);
   ipcMain.handle(IPC.updateGetState, async () => updateState);
@@ -5303,10 +5049,10 @@ function registerIpcHandlers(): void {
         ...(typeof input?.threadId === "string" ? { threadId: input.threadId } : {}),
       }),
   );
-  if (appSnapManager) {
-    registerAppSnapIpcHandlers(ipcMain, appSnapManager, {
+  if (computerManager) {
+    registerComputerIpcHandlers(ipcMain, computerManager, {
       openPermissionSettingsPane: (pane) => {
-        const paneUrl = APP_SNAP_SETTINGS_PANE_URLS[pane];
+        const paneUrl = COMPUTER_SETTINGS_PANE_URLS[pane];
         if (!paneUrl) return Promise.resolve(false);
         return shell
           .openExternal(paneUrl)
@@ -5315,48 +5061,16 @@ function registerIpcHandlers(): void {
       },
       restartApp: () => {
         app.relaunch();
-        requestGracefulAppQuit("appsnap-permission-relaunch");
+        requestGracefulAppQuit("computer-permission-relaunch");
       },
     });
   }
   registerDesktopVoiceTranscriptionHandler();
   startBrowserPerformanceLogging();
   registerBrowserIpcHandlers(ipcMain, browserManager);
-  registerBrowserVaultIpc(
-    ipcMain,
-    browserManager,
-    browserVault,
-    () => {
-      mainWindow?.webContents.send(IPC.browser.vault.changed);
-    },
-    new BrowserCookieImport(
-      Path.join(BASE_DIR, "browser-engine"),
-      browserManager,
-      async () => {
-        await browserHostPipeServer?.waitForIdle();
-      },
-      async (domains) => {
-        if (!browserSessionRestore) throw new Error("Browser session restoration is unavailable.");
-        try {
-          await browserSessionRestore.rememberImport(domains);
-        } catch (error) {
-          const allowed = [
-            "Secure browser session storage is unavailable.",
-            "Browser session metadata could not be read.",
-            "Browser session metadata is unsupported.",
-            "Secure browser session persistence failed.",
-          ];
-          console.warn(
-            "[Synara browser]",
-            error instanceof Error && allowed.includes(error.message)
-              ? error.message
-              : "Browser session checkpoint failed.",
-          );
-          throw new Error("Browser session checkpoint failed.");
-        }
-      },
-    ),
-  );
+  registerBrowserVaultIpc(ipcMain, browserManager, browserVault, () => {
+    mainWindow?.webContents.send(IPC.browser.vault.changed);
+  });
 }
 
 function getIconOption(): { icon: string } | Record<string, never> {
@@ -5368,7 +5082,14 @@ function getIconOption(): { icon: string } | Record<string, never> {
     platform: process.platform,
     isDarkAppearance: false,
   });
-  const iconPath = resolveResourcePath(resourceName);
+  const iconPath =
+    desktopFlavor === "development"
+      ? Path.resolve(
+          import.meta.dirname,
+          "../../../assets/dev",
+          process.platform === "win32" ? "blueprint-windows.ico" : "blueprint-universal-1024.png",
+        )
+      : resolveResourcePath(resourceName);
   if (!iconPath) return {};
   if (process.platform !== "win32") return { icon: iconPath };
   try {
@@ -5409,7 +5130,7 @@ function getTitleBarOptions(): BrowserWindowConstructorOptions {
   if (process.platform === "darwin") {
     return {
       titleBarStyle: "hiddenInset",
-      // Derived from the shared chat-surface header geometry (@synara/shared/desktopChrome)
+      // Derived from the shared chat-surface header geometry (@glade/shared/desktopChrome)
       // so the native lights and the renderer's leading toggle/arrow controls always share
       // the same vertical center. Tune the height/radius there, never the raw px here.
       trafficLightPosition: getMacTrafficLightPosition(),
@@ -5473,15 +5194,6 @@ function createWindow(): BrowserWindow {
   attachDesktopZoomFactorSync(window);
   attachRendererCrashRecovery(window);
   attachDesktopPhysicalZoomShortcuts(window);
-  if (betaDiagnostics) {
-    // Renderer console errors become app.error events (throttled inside
-    // trackError); messages are redacted before they touch the queue.
-    window.webContents.on("console-message", (details) => {
-      if (details.level === "error" && typeof details.message === "string") {
-        betaDiagnostics.trackError("renderer", details.message);
-      }
-    });
-  }
 
   window.webContents.on("will-attach-webview", (event, webPreferences, params) => {
     const partition = params.partition;
@@ -5649,14 +5361,6 @@ function attachRendererCrashRecovery(window: BrowserWindow): void {
     // the pending ask and count it as quitting for the crash policy.
     const quitAskPending = runningChatsQuitGuard.hasPendingAsk();
     runningChatsQuitGuard.allowPending();
-    trackBetaDiagnostics("app.renderer-crash", {
-      kind: "crash",
-      processType: "renderer",
-      reason: details.reason,
-      // Guarded explicitly: on stable builds betaDiagnostics is null and the
-      // log file must not be touched at all.
-      logTail: betaDiagnostics ? readLogTail(Path.join(LOG_DIR, DESKTOP_LOG_FILE_NAME)) : undefined,
-    });
     const description = `reason=${details.reason} exitCode=${details.exitCode}`;
     writeDesktopLogHeader(`renderer process gone ${description}`);
     safeConsoleError(`[desktop] renderer process gone (${description})`);
@@ -5720,13 +5424,13 @@ function presentRendererCrashRecovery(
 
   const message =
     response.cause === "reload-budget-exhausted"
-      ? `Synara's window crashed ${response.crashes} times in a row.`
-      : "Synara's window stopped unexpectedly.";
+      ? `Glade's window crashed ${response.crashes} times in a row.`
+      : "Glade's window stopped unexpectedly.";
   const detail = [
     `The window's renderer process exited (${reason}).`,
     response.cause === "reload-budget-exhausted"
-      ? "Synara paused automatic reloads so a repeating crash can't keep reloading in the background."
-      : "This exit reason repeats on reload, so Synara did not retry automatically.",
+      ? "Glade paused automatic reloads so a repeating crash can't keep reloading in the background."
+      : "This exit reason repeats on reload, so Glade did not retry automatically.",
     `Log file:\n${Path.join(LOG_DIR, DESKTOP_LOG_FILE_NAME)}`,
   ].join("\n\n");
 
@@ -5734,7 +5438,7 @@ function presentRendererCrashRecovery(
     for (;;) {
       const result = await dialog.showMessageBox({
         type: "error",
-        title: "Synara's window stopped",
+        title: "Glade's window stopped",
         message,
         detail,
         buttons: ["Reload", "Open logs", "Quit"],
@@ -5780,7 +5484,7 @@ function configureMediaPermissions(): void {
     },
     {
       // Browser pages are untrusted web origins. They must never inherit the
-      // microphone grant used by Synara's own voice-composer renderer.
+      // microphone grant used by Glade's own voice-composer renderer.
       targetSession: session.fromPartition(BROWSER_SESSION_PARTITION),
       trustedRequester: () => null,
     },
@@ -5901,7 +5605,7 @@ async function bootstrap(): Promise<void> {
     }
   } catch {
     console.warn(
-      "[Synara browser] Secure session restoration is unavailable; no saved session cookies were restored.",
+      "[Glade browser] Secure session restoration is unavailable; no saved session cookies were restored.",
     );
   }
 
@@ -5910,7 +5614,7 @@ async function bootstrap(): Promise<void> {
   try {
     await ensureBrowserHostPipeServer();
   } catch (error) {
-    console.warn("[Synara browser] Failed to start browser host pipe", error);
+    console.warn("[Glade browser] Failed to start browser host pipe", error);
   }
   await startCuaHost();
   startBackend();
@@ -6006,23 +5710,6 @@ if (hasSingleInstanceLock) {
     .whenReady()
     .then(() => {
       writeDesktopLogHeader("app ready");
-      if (betaDiagnostics) {
-        betaDiagnostics.start();
-        const previousLaunchVersion = parseLastLaunchVersion(readLaunchVersionRecordContents());
-        trackBetaDiagnostics("app.start", {
-          kind: "lifecycle",
-          osVersion: process.getSystemVersion(),
-          locale: app.getLocale(),
-        });
-        if (previousLaunchVersion !== null && previousLaunchVersion !== app.getVersion()) {
-          // A version change across launches means an update install landed.
-          trackBetaDiagnostics("update.installed", {
-            kind: "update",
-            outcome: "ok",
-            targetVersion: app.getVersion(),
-          });
-        }
-      }
       configureAppIdentity();
       if (process.platform === "win32") {
         try {
@@ -6037,7 +5724,7 @@ if (hasSingleInstanceLock) {
       registerMacAppearanceIconSync();
       refreshMacIconCacheOnVersionChange();
       configureMediaPermissions();
-      initializeDesktopAppSnap();
+      initializeDesktopComputer();
       configureApplicationMenu();
       try {
         registerDesktopProtocol();
@@ -6056,18 +5743,6 @@ if (hasSingleInstanceLock) {
       app.on("browser-window-blur", () => {
         markDesktopAppBackgrounded();
       });
-
-      if (betaDiagnostics) {
-        app.on("child-process-gone", (_event, details) => {
-          // GPU/utility process crashes; details.reason is a fixed Electron enum.
-          trackBetaDiagnostics("app.child-process-crash", {
-            kind: "crash",
-            processType: details.type,
-            reason: details.reason,
-            logTail: readLogTail(Path.join(LOG_DIR, DESKTOP_LOG_FILE_NAME)),
-          });
-        });
-      }
 
       app.on("browser-window-focus", () => {
         handleDesktopAppForegrounded();

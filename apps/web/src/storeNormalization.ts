@@ -12,11 +12,11 @@ import {
   type ProviderKind,
   ThreadId,
   type TurnId,
-} from "@synara/contracts";
-import { resolveThreadBranchRegressionGuard } from "@synara/shared/git";
-import { mergeAsyncUserInput } from "@synara/shared/asyncUserInput";
-import { normalizeModelSlug } from "@synara/shared/model";
-import { deriveThreadSummaryMetadata } from "@synara/shared/threadSummary";
+} from "@glade/contracts";
+import { resolveThreadBranchRegressionGuard } from "@glade/shared/git";
+import { mergeAsyncUserInput } from "@glade/shared/asyncUserInput";
+import { normalizeModelSlug } from "@glade/shared/model";
+import { deriveThreadSummaryMetadata } from "@glade/shared/threadSummary";
 
 import { isStalePendingRequestFailureDetail } from "./lib/pendingInteraction";
 import { toAttachmentPreviewUrl } from "./lib/wsHttpUrl";
@@ -2032,13 +2032,8 @@ export function toLegacyProvider(providerName: string | null): ProviderKind {
     providerName === "codex" ||
     providerName === "claudeAgent" ||
     providerName === "cursor" ||
-    providerName === "antigravity" ||
     providerName === "grok" ||
-    providerName === "droid" ||
-    providerName === "opencode" ||
-    providerName === "pi" ||
-    providerName === "devin" ||
-    providerName === "omp"
+    providerName === "opencode"
   ) {
     return providerName;
   }

@@ -2,17 +2,14 @@ import {
   CLAUDE_CODE_EFFORT_OPTIONS,
   CODEX_REASONING_EFFORT_OPTIONS,
   DEFAULT_MODEL_BY_PROVIDER,
-  DROID_REASONING_EFFORT_OPTIONS,
   GROK_REASONING_EFFORT_OPTIONS,
-  OMP_THINKING_LEVEL_OPTIONS,
-  PI_THINKING_LEVEL_OPTIONS,
   type ModelSelection,
   type ProviderKind,
   type ProviderListModelsResult,
   type ProviderModelDescriptor,
   type ServerProviderAuthStatus,
-} from "@synara/contracts";
-import { getClaudeContextWindowSuffix, stripClaudeContextWindowSuffix } from "@synara/shared/model";
+} from "@glade/contracts";
+import { getClaudeContextWindowSuffix, stripClaudeContextWindowSuffix } from "@glade/shared/model";
 import { Effect } from "effect";
 
 import type { ProviderDiscoveryServiceShape } from "../provider/Services/ProviderDiscoveryService.ts";
@@ -182,12 +179,6 @@ const PROVIDER_TARGET_OPTION_RULES = {
       reasoningEffort: providerOptionRule("string", GROK_REASONING_EFFORT_OPTIONS),
     },
   }),
-  droid: defineProviderOptionConfig<"droid">({
-    primaryOptionKey: "reasoningEffort",
-    options: {
-      reasoningEffort: providerOptionRule("string", DROID_REASONING_EFFORT_OPTIONS),
-    },
-  }),
   claudeAgent: defineProviderOptionConfig<"claudeAgent">({
     primaryOptionKey: "effort",
     options: {
@@ -210,45 +201,11 @@ const PROVIDER_TARGET_OPTION_RULES = {
       }),
     },
   }),
-  pi: defineProviderOptionConfig<"pi">({
-    primaryOptionKey: "thinkingLevel",
-    options: { thinkingLevel: providerOptionRule("string", PI_THINKING_LEVEL_OPTIONS) },
-  }),
-  omp: defineProviderOptionConfig<"omp">({
-    primaryOptionKey: "thinkingLevel",
-    options: { thinkingLevel: providerOptionRule("string", OMP_THINKING_LEVEL_OPTIONS) },
-  }),
-  antigravity: defineProviderOptionConfig<"antigravity">({
-    primaryOptionKey: "reasoningEffort",
-    options: { reasoningEffort: providerOptionRule("string", [], "model-discovery") },
-  }),
   opencode: defineProviderOptionConfig<"opencode">({
     primaryOptionKey: "variant",
     options: {
       variant: providerOptionRule("string", [], "model-discovery"),
       agent: providerOptionRule("string", [], "model-discovery", {
-        validation: { kind: "non-empty-string" },
-        allowsCustomValue: true,
-      }),
-    },
-  }),
-  devin: defineProviderOptionConfig<"devin">({
-    primaryOptionKey: "modelVariant",
-    options: {
-      fastMode: providerOptionRule("boolean", [], "model-discovery", {
-        advertised: false,
-        validation: { kind: "boolean-capability", capability: "supportsFastMode" },
-      }),
-      thinking: providerOptionRule("boolean", [], "model-discovery", {
-        advertised: false,
-        validation: { kind: "boolean-capability", capability: "supportsThinkingToggle" },
-      }),
-      contextWindow: providerOptionRule("string", [], "model-discovery", {
-        advertised: false,
-        validation: { kind: "context-window" },
-      }),
-      reasoningEffort: providerOptionRule("string", [], "model-discovery"),
-      modelVariant: providerOptionRule("string", [], "model-discovery", {
         validation: { kind: "non-empty-string" },
         allowsCustomValue: true,
       }),
@@ -263,7 +220,7 @@ function providerTargetOptionConfig(provider: ProviderKind): ProviderTargetOptio
 }
 
 function providerDefaultModel(provider: ProviderKind): string | null {
-  return provider === "pi" || provider === "omp" ? null : DEFAULT_MODEL_BY_PROVIDER[provider];
+  return DEFAULT_MODEL_BY_PROVIDER[provider];
 }
 
 export function loadAgentGatewayProviderCatalog(input: {
@@ -276,7 +233,7 @@ export function loadAgentGatewayProviderCatalog(input: {
   const availability = input.availability ?? { enabled: true };
   const unavailableReason =
     availability.enabled === false
-      ? `Provider "${input.provider}" is disabled in Synara settings.`
+      ? `Provider "${input.provider}" is disabled in Glade settings.`
       : availability.available === false
         ? (availability.message ?? `Provider "${input.provider}" is not available.`)
         : availability.authStatus === "unauthenticated"
@@ -382,7 +339,7 @@ function modelTargetOptionRules(
 
   const discoveredEfforts = model.supportedReasoningEfforts?.map((entry) => entry.value) ?? [];
   const primaryOptionKey = providerPrimaryOptionKey(provider);
-  // A custom-value primary option (e.g. Devin modelVariant) accepts arbitrary
+  // A custom-value primary option accepts arbitrary
   // values, so the discovered reasoning-effort list must not constrain it.
   if (rules.find((rule) => rule.key === primaryOptionKey)?.allowsCustomValue !== true) {
     replaceAllowedValues(primaryOptionKey, discoveredEfforts);
@@ -714,7 +671,7 @@ export function resolveAgentGatewayTarget(input: {
       return yield* Effect.fail(
         new AgentGatewayTargetError(
           "model_unavailable",
-          `Model "${input.target.model}" is not available for ${input.target.provider}. Use an exact slug from synara_capabilities.`,
+          `Model "${input.target.model}" is not available for ${input.target.provider}. Use an exact slug from glade_capabilities.`,
           {
             provider: input.target.provider,
             requestedModel: input.target.model,

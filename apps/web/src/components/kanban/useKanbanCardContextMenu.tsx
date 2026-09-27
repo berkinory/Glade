@@ -6,8 +6,8 @@
 // Layer: Kanban UI hook
 // Exports: useKanbanCardContextMenu
 
-import type { ThreadId } from "@synara/contracts";
-import { resolveThreadWorkspaceCwd } from "@synara/shared/threadEnvironment";
+import type { ThreadId } from "@glade/contracts";
+import { resolveThreadWorkspaceCwd } from "@glade/shared/threadEnvironment";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { type MouseEvent, useState } from "react";
 

@@ -5,7 +5,7 @@
 // Depends on: shared trait resolution + effort-change planning, the trait commit hook,
 //   and the shared Slider primitive.
 
-import type { ProviderKind, ProviderModelDescriptor, ThreadId } from "@synara/contracts";
+import type { ProviderKind, ProviderModelDescriptor, ThreadId } from "@glade/contracts";
 
 import { ResetIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";

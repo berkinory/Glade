@@ -40,7 +40,7 @@ export const SIDEBAR_PROJECT_NAME_CLASS_NAME = [
   SIDEBAR_ROW_LABEL_TEXT_CLASS_NAME,
 ].join(" ");
 
-/** Section label ("Threads"/"Pinned" and settings "App"/"Synara"). */
+/** Section label ("Threads"/"Pinned" and settings "App"/"Glade"). */
 export const SIDEBAR_SECTION_LABEL_CLASS_NAME = "text-ui font-normal text-muted-foreground/58";
 
 /** Project/chat/settings header rows and settings sidebar nav items. */

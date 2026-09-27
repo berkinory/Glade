@@ -8,14 +8,14 @@ import type {
   ModelCapabilities,
   ProviderKind,
   ProviderModelDescriptor,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import {
   getClaudeContextWindowSuffix,
   getDefaultEffort,
   getModelCapabilities,
   normalizeModelSlug,
   trimOrNull,
-} from "@synara/shared/model";
+} from "@glade/shared/model";
 import { normalizeCursorModelVariantBaseId } from "../../cursorModelVariants";
 import { normalizeClaudeModelOptionSlug } from "../../providerModelOptions";
 
@@ -94,8 +94,7 @@ export function getRuntimeAwareModelCapabilities(input: {
   const staticCapabilities = getModelCapabilities(input.provider, input.model);
   // Runtime discovery is authoritative when available; the static table is only a startup fallback.
   const supportsFastMode =
-    (input.provider === "codex" || input.provider === "cursor" || input.provider === "devin") &&
-    input.runtimeModel
+    (input.provider === "codex" || input.provider === "cursor") && input.runtimeModel
       ? input.runtimeModel.supportsFastMode === true
       : staticCapabilities.supportsFastMode;
   const supportsThinkingToggle =
@@ -109,17 +108,12 @@ export function getRuntimeAwareModelCapabilities(input: {
   const optionDescriptors =
     input.runtimeModel?.optionDescriptors ?? staticCapabilities.optionDescriptors;
   const runtimeEfforts = input.runtimeModel?.supportedReasoningEfforts;
-  // Providers with dynamic catalogs, including Droid, expose model-specific effort ladders here.
+  // Providers with dynamic catalogs expose model-specific effort ladders here.
   if (
     (input.provider !== "codex" &&
       input.provider !== "cursor" &&
-      input.provider !== "antigravity" &&
       input.provider !== "grok" &&
-      input.provider !== "droid" &&
-      input.provider !== "opencode" &&
-      input.provider !== "pi" &&
-      input.provider !== "devin" &&
-      input.provider !== "omp") ||
+      input.provider !== "opencode") ||
     !runtimeEfforts ||
     runtimeEfforts.length === 0
   ) {

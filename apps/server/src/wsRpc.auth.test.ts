@@ -3,16 +3,7 @@ import { Effect } from "effect";
 import { vi } from "vitest";
 
 import { AuthError } from "./auth/Services/ServerAuth";
-import {
-  authenticateRpcWebSocketUpgrade,
-  authorizeDeviceFrameWebSocketUpgrade,
-  canManageExternalMcp,
-} from "./wsRpc";
-
-it("reserves external MCP management for owner sessions", () => {
-  assert.isTrue(canManageExternalMcp("owner"));
-  assert.isFalse(canManageExternalMcp("client"));
-});
+import { authenticateRpcWebSocketUpgrade, authorizeDeviceFrameWebSocketUpgrade } from "./wsRpc";
 
 it.effect("rejects an unauthorized websocket upgrade on a non-loopback bind", () =>
   Effect.gen(function* () {
@@ -83,7 +74,7 @@ it.effect("accepts an authenticated session on a non-loopback bind", () =>
       legacyToken: "remote-secret",
       request: {
         headers: {},
-        cookies: { "synara-session": "paired-session-credential" },
+        cookies: { "glade-session": "paired-session-credential" },
         url: new URL("http://192.168.1.50:3773/ws?token=remote-secret"),
       },
       serverAuth: { authenticateWebSocketUpgrade },
@@ -176,12 +167,12 @@ it.effect(
         config: {
           host: "127.0.0.1",
           authToken: "proxy-secret",
-          publicUrl: new URL("https://synara.example.test/"),
+          publicUrl: new URL("https://glade.example.test/"),
         },
         legacyToken: "proxy-secret",
         request: {
           headers: {},
-          cookies: { "synara-session": "paired-session-credential" },
+          cookies: { "glade-session": "paired-session-credential" },
           url: new URL("http://127.0.0.1:3773/ws?token=proxy-secret"),
         },
         serverAuth: { authenticateWebSocketUpgrade },

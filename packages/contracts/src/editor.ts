@@ -95,13 +95,6 @@ export const EDITORS = [
     launchStyle: "direct-path",
   },
   {
-    id: "antigravity",
-    label: "Antigravity",
-    commands: ["agy"],
-    macApplications: ["Antigravity"],
-    launchStyle: "goto",
-  },
-  {
     id: "ghostty",
     label: "Ghostty",
     commands: ["ghostty"],

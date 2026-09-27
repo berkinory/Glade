@@ -6,8 +6,8 @@ import {
   type ProviderKind,
   type ServerCodexResetCredits,
   type ServerGetProviderUsageSnapshotResult,
-} from "@synara/contracts";
-import { providerUsageNeedsAuthDetail } from "@synara/shared/providerUsage";
+} from "@glade/contracts";
+import { providerUsageNeedsAuthDetail } from "@glade/shared/providerUsage";
 import { type ReactNode } from "react";
 
 import { useAppSettings } from "~/appSettings";

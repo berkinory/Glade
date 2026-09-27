@@ -7,7 +7,7 @@ import {
   type ProviderSkillDescriptor,
   type ProviderStartOptions,
   ThreadId,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
@@ -47,8 +47,6 @@ interface ComposerDiscoveryInput {
   providerModelDiscoveryCwd: string | null;
   providerOptionsForDispatch: ProviderStartOptions | undefined;
   gitCwd: string | null;
-  piAgentDir: string;
-  ompAgentDir: string;
   discoverNativeCompaction?: boolean;
 }
 
@@ -60,8 +58,6 @@ export function useComposerDiscovery({
   providerModelDiscoveryCwd,
   providerOptionsForDispatch,
   gitCwd,
-  piAgentDir,
-  ompAgentDir,
   discoverNativeCompaction,
 }: ComposerDiscoveryInput) {
   const composerTriggerKind = composerTrigger?.kind ?? null;
@@ -89,11 +85,9 @@ export function useComposerDiscovery({
       cwd: composerSkillCwd,
       threadId,
       binaryPath:
-        (selectedProvider === "opencode"
-          ? providerOptionsForDispatch?.opencode?.binaryPath
-          : selectedProvider === "devin"
-            ? providerOptionsForDispatch?.devin?.binaryPath
-            : null) ?? null,
+        selectedProvider === "opencode"
+          ? (providerOptionsForDispatch?.opencode?.binaryPath ?? null)
+          : null,
       serverUrl:
         (selectedProvider === "opencode"
           ? providerOptionsForDispatch?.opencode?.serverUrl
@@ -102,12 +96,6 @@ export function useComposerDiscovery({
         selectedProvider === "opencode"
           ? providerOptionsForDispatch?.opencode?.experimentalWebSockets
           : undefined,
-      agentDir:
-        selectedProvider === "pi"
-          ? piAgentDir || null
-          : selectedProvider === "omp"
-            ? ompAgentDir || null
-            : null,
       enabled:
         (composerTriggerKind === "slash-command" ||
           composerTriggerKind === "slash-model" ||
@@ -116,26 +104,14 @@ export function useComposerDiscovery({
         composerSkillCwd !== null,
     }),
   );
-  const canDiscoverProviderSkills =
-    selectedProvider === "pi" ||
-    selectedProvider === "omp" ||
-    supportsSkillDiscovery(providerComposerCapabilitiesQuery.data);
+  const canDiscoverProviderSkills = supportsSkillDiscovery(providerComposerCapabilitiesQuery.data);
   const providerSkillsQuery = useQuery(
     providerSkillsQueryOptions({
       provider: selectedProvider,
       cwd: composerSkillCwd,
       threadId,
-      agentDir:
-        selectedProvider === "pi"
-          ? piAgentDir || null
-          : selectedProvider === "omp"
-            ? ompAgentDir || null
-            : null,
       enabled:
-        (isSkillTrigger ||
-          composerTriggerKind === "slash-command" ||
-          selectedProvider === "pi" ||
-          selectedProvider === "omp") &&
+        (isSkillTrigger || composerTriggerKind === "slash-command") &&
         canDiscoverProviderSkills &&
         composerSkillCwd !== null,
     }),

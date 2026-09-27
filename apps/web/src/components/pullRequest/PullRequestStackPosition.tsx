@@ -3,7 +3,7 @@
 // Layer: Pull request presentation
 // Exports: PullRequestStackPosition
 
-import type { PullRequestStackSummary } from "@synara/contracts";
+import type { PullRequestStackSummary } from "@glade/contracts";
 
 import { Badge } from "~/components/ui/badge";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";

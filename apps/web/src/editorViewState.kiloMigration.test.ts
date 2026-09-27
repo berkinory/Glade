@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { readEditorRailChatTabs } from "./editorViewState";
 
-const STORAGE_KEY = "synara.editor.railChatTabsByProjectId";
+const STORAGE_KEY = "glade.editor.railChatTabsByProjectId";
 
 function makeMemoryStorage(): Storage {
   const values = new Map<string, string>();

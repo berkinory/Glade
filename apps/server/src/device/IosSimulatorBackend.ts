@@ -38,7 +38,7 @@ import type {
   DeviceStopRecordingResult,
   DeviceUiNode,
   DeviceUiPoint,
-} from "@synara/contracts";
+} from "@glade/contracts";
 
 import {
   DEVICE_HELPER_BINARY_NAME,
@@ -46,7 +46,7 @@ import {
   DEVICE_HELPER_SOURCE_DIR_ENV,
   deviceHelperCacheKey,
   readDeviceHelperSourceRevision,
-} from "@synara/shared/deviceHelperCache";
+} from "@glade/shared/deviceHelperCache";
 
 import { runProcess, type ProcessRunResult } from "../processRunner.ts";
 import {
@@ -401,7 +401,7 @@ export class IosSimulatorBackend implements DeviceBackend {
     const helperBuilt = runtimeInstalled ? await this.cachedHelperPath().then(Boolean) : false;
     steps.push({
       id: "build-device-helper",
-      label: "Build the Synara device helper",
+      label: "Build the Glade device helper",
       done: helperBuilt,
       detail: helperBuilt ? undefined : "Built automatically the first time you attach a device.",
     });
@@ -536,7 +536,7 @@ export class IosSimulatorBackend implements DeviceBackend {
     // Captured to a temp file either way, because `simctl io screenshot` only
     // writes to a path. When the caller wants it kept, it is moved next to the
     // recordings afterwards rather than captured somewhere different.
-    const directory = await mkdtemp(path.join(tmpdir(), "synara-device-"));
+    const directory = await mkdtemp(path.join(tmpdir(), "glade-device-"));
     const file = path.join(directory, "screenshot.png");
     try {
       const result = await this.simctl(["io", udid, "screenshot", file]);
@@ -674,7 +674,7 @@ export class IosSimulatorBackend implements DeviceBackend {
    *
    * The helper's HID client is bound to one boot of one simulator. When it goes
    * stale (the app under test relaunched, the device was rebooted outside
-   * Synara, SimulatorKit dropped the connection) the injection silently
+   * Glade, SimulatorKit dropped the connection) the injection silently
    * vanishes. The helper now reports that instead of acking it, and a forced
    * re-attach rebuilds the client, so the retry lands on a live one.
    */
@@ -740,7 +740,7 @@ export class IosSimulatorBackend implements DeviceBackend {
       // no HID usage for it and no simctl equivalent. Simulator.app posts a
       // Purple event through a category it compiles into its own executable,
       // and that port is not wired on a headless boot — calling it there is a
-      // silent no-op (docs/archive/device-pane-spec.md has the full probe). Refused
+      // silent no-op. Refused
       // explicitly rather than pretending to work; the pane ships no rotate
       // control for the same reason, and this keeps the agent tool honest.
       throw new DeviceBackendError(
@@ -1218,7 +1218,7 @@ export class IosSimulatorBackend implements DeviceBackend {
       await helper.attach(udid, options);
       remember();
     } catch (error) {
-      // A device can also be rebooted outside Synara (Simulator.app, or simctl
+      // A device can also be rebooted outside Glade (Simulator.app, or simctl
       // in the agent's own shell), which no invalidation hook here can observe.
       // A dead-descriptor failure is therefore retried once with a forced
       // re-attach, which rebinds against the current boot.

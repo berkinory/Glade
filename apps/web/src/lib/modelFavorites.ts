@@ -2,16 +2,15 @@
 // Purpose: Shared storage keys + readers for per-provider favorite model slugs.
 // Layer: Web local-storage helpers used by the model picker and model cycle shortcuts.
 
-import type { ProviderKind } from "@synara/contracts";
+import type { ProviderKind } from "@glade/contracts";
 import { Schema } from "effect";
 
 export const FAVORITE_MODEL_STORAGE_KEYS = {
-  cursor: "synara:cursor-favourite-models:v1",
-  opencode: "synara:opencode-favourite-models:v1",
-  pi: "synara:pi-favourite-models:v1",
+  cursor: "glade:cursor-favourite-models:v1",
+  opencode: "glade:opencode-favourite-models:v1",
 } as const;
 
-const LEGACY_KILO_FAVORITE_MODEL_STORAGE_KEY = "synara:kilo-favourite-models:v1";
+const LEGACY_KILO_FAVORITE_MODEL_STORAGE_KEY = "glade:kilo-favourite-models:v1";
 
 export type FavoriteModelProvider = keyof typeof FAVORITE_MODEL_STORAGE_KEYS;
 
@@ -57,7 +56,7 @@ export function migrateLegacyKiloFavoriteModelSlugs(
 }
 
 export function supportsModelFavorites(provider: ProviderKind): provider is FavoriteModelProvider {
-  return provider === "cursor" || provider === "opencode" || provider === "pi";
+  return provider === "cursor" || provider === "opencode";
 }
 
 // Read favorite slugs for cycle order. Failures (SSR, parse errors) return [].

@@ -1,10 +1,10 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { createInterface, type Interface } from "node:readline";
-import { cuaComputerTaskKey, type CuaComputerTask } from "@synara/shared/cuaDriverProtocol";
+import { cuaComputerTaskKey, type CuaComputerTask } from "@glade/shared/cuaDriverProtocol";
 import { stopNativeHelper } from "./stopNativeHelper";
 
 /**
- * Masked activation shield host: owns the AppSnap `--shield` helper process
+ * Masked activation shield host: owns the ComputerPermission `--shield` helper process
  * the way {@link ComputerFrameTap} owns its frame helper — lazily spawned on
  * the first engage, terminated on stop/dispose, and every live shield is
  * tracked so a task end or host teardown can drop it.

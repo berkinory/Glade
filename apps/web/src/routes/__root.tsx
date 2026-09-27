@@ -10,10 +10,10 @@ import {
   type ServerProviderStatus,
   type ServerSettingsView,
   type WsCompatibilityError,
-} from "@synara/contracts";
-import { defaultTerminalTitleForCliKind } from "@synara/shared/terminalThreads";
+} from "@glade/contracts";
+import { defaultTerminalTitleForCliKind } from "@glade/shared/terminalThreads";
 import { BrowserVaultDialog } from "~/components/BrowserVault";
-import { isThreadDetailEventFor } from "@synara/shared/threadDetailEvents";
+import { isThreadDetailEventFor } from "@glade/shared/threadDetailEvents";
 import {
   Outlet,
   createRootRouteWithContext,
@@ -36,16 +36,11 @@ import { QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Throttler } from "@tanstack/react-pacer";
 
 import { APP_DISPLAY_NAME, APP_VERSION } from "../branding";
-import { isBetaFeatureOn } from "../betaFeatures";
 import { DesktopWindowControls } from "../components/DesktopWindowControls";
 import { RunningChatsQuitCoordinator } from "../components/RunningChatsQuitCoordinator";
-import { AppSnapCoordinator } from "../components/AppSnapCoordinator";
-import { AppSnapWelcomeDialog } from "../components/AppSnapWelcomeDialog";
-import { BetaWelcomeDialog } from "../components/BetaWelcomeDialog";
 import { useOnboarding } from "../onboarding/useOnboarding";
 import { ProjectImportAnnouncementDialog } from "../projectImport/ProjectImportAnnouncementDialog";
 import { useProjectImportDialogStore } from "../projectImport/projectImportDialogStore";
-import { SafariAccessOnboarding } from "../components/SafariAccessOnboarding";
 import { QueuedComposerDrainCoordinator } from "../components/QueuedComposerDrainCoordinator";
 import { FeedbackDialog } from "../components/FeedbackDialog";
 import { SETTINGS_TARGETS } from "../settingsNavigation";
@@ -155,10 +150,7 @@ import { useRightDockStore } from "../rightDockStore";
 import { resolveVisibleDockSidechatThreadIds } from "../rightDockStore.logic";
 import { arraysShallowEqual } from "../storeNormalization";
 import { providerModelDiscoveryInvalidationFingerprint } from "../lib/providerDiscoveryInvalidation";
-import {
-  providerDiscoveryQueryKeys,
-  providerModelsQueryOptions,
-} from "../lib/providerDiscoveryReactQuery";
+import { providerDiscoveryQueryKeys } from "../lib/providerDiscoveryReactQuery";
 import {
   didProviderCommandDiscoverySettingsChange,
   didProviderEnablementChange,
@@ -331,21 +323,17 @@ function RootRouteView() {
           <EventRouter />
           <EditorDirtyRouteGuard />
           <ProviderStatusRefreshCoordinator />
-          <ProviderModelDiscoveryWarmer />
           <GlobalShortcutsDialog />
           <BrowserVaultDialog />
           <GlobalFeedbackDialog />
           <GlobalWhatsNewSurface />
           <TaskCompletionNotifications />
           <QueuedComposerDrainCoordinator />
-          <SafariAccessOnboarding>
-            <AppSnapWelcomeDialog />
-            <BetaWelcomeDialog />
-          </SafariAccessOnboarding>
+
           <GlobalOnboardingDialog />
           <ProjectImportAnnouncementDialog />
           <GlobalProjectImportDialog />
-          <AppSnapCoordinator />
+
           <DesktopProjectBootstrap />
           <Outlet />
         </AnchoredToastProvider>
@@ -358,16 +346,16 @@ function RootRouteView() {
 function TransportCompatibilityView({ issue }: { issue: WsCompatibilityError }) {
   const title =
     issue.action === "update-client"
-      ? "This Synara client needs an update."
+      ? "This Glade client needs an update."
       : issue.action === "update-server"
-        ? "The Synara server needs an update."
-        : "Synara needs to reconnect with a matching build.";
+        ? "The Glade server needs an update."
+        : "Glade needs to reconnect with a matching build.";
   const guidance =
     issue.action === "update-client"
       ? "Update or reload this client, then reconnect."
       : issue.action === "update-server"
         ? "Update or restart the server, then reload this client."
-        : "Reload the app. If this repeats, restart Synara so the client and server use matching builds.";
+        : "Reload the app. If this repeats, restart Glade so the client and server use matching builds.";
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-4 py-10 text-foreground sm:px-6">
@@ -459,37 +447,6 @@ function ProviderStatusRefreshCoordinator() {
       liveVersionCheckCompleted={providerUpdateRefreshEnabled && liveVersionCheckCompleted}
     />
   );
-}
-
-function ProviderModelDiscoveryWarmer() {
-  // OMP is the only provider with no static model fallback whose catalog also
-  // takes ~3s to fetch (`omp models --json` cold-start), so it is the lone
-  // provider that doesn't render instantly when the model picker opens. Warm it
-  // at app startup — ahead of the picker opening — so the catalog is ready by
-  // the time the user browses to OMP. The server caches that catalog globally
-  // (keyed by binary path + agent dir), so any warm primes it for every later
-  // query; `modelRoles` merge a per-cwd project layer, so the picker's own
-  // cwd-scoped query key then only pays for the config reads on top.
-  const { settings } = useAppSettings();
-  const queryClient = useQueryClient();
-  const ompHidden = !isBetaFeatureOn("omp") || settings.hiddenProviders.includes("omp");
-  const ompBinaryPath = settings.ompBinaryPath;
-  const ompAgentDir = settings.ompAgentDir;
-  useEffect(() => {
-    if (ompHidden) return;
-    // Build options from the two primitive fields the omp query reads:
-    // `settings` is rebuilt every render, so depending on it would re-fire the
-    // query (and its retry chain against a failing binary) on every render.
-    void queryClient.prefetchQuery(
-      providerModelsQueryOptions({
-        provider: "omp",
-        binaryPath: ompBinaryPath || null,
-        agentDir: ompAgentDir || null,
-        priority: "background",
-      }),
-    );
-  }, [queryClient, ompHidden, ompBinaryPath, ompAgentDir]);
-  return null;
 }
 
 // Extracted to module scope so its run-always cleanup can stay a try/finally: the

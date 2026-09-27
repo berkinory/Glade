@@ -1,7 +1,7 @@
 import { BetterWright, NetworkPolicy, type CredentialVault } from "betterwright";
-import { BrowserAutomationErrorMessages } from "@synara/contracts";
+import { BrowserAutomationErrorMessages } from "@glade/contracts";
 import type { WebContents } from "electron";
-import { synaraHostTarget } from "./betterwrightHostTarget";
+import { gladeHostTarget } from "./betterwrightHostTarget";
 import type { BrowserAutomationVisibleRuntime } from "../browserManager";
 import { BrowserAutomationHostError } from "./hostErrors";
 
@@ -32,7 +32,7 @@ export interface BetterwrightRunOptions {
   readonly expectAgentInput?: BrowserAutomationVisibleRuntime["expectAgentInput"];
 }
 
-/** The caller must hold Synara's tab, human-control and download-denial leases. */
+/** The caller must hold Glade's tab, human-control and download-denial leases. */
 export async function runBetterwright<T>(options: BetterwrightRunOptions): Promise<T> {
   options.signal.throwIfAborted();
   const throttled = options.contents.getBackgroundThrottling();
@@ -50,7 +50,7 @@ export async function runBetterwright<T>(options: BetterwrightRunOptions): Promi
 }
 
 async function runConnectedBetterwright<T>(options: BetterwrightRunOptions): Promise<T> {
-  const hostTarget = synaraHostTarget(options.contents, {
+  const hostTarget = gladeHostTarget(options.contents, {
     uploadFiles: options.uploadFiles,
     expectAgentInput: options.expectAgentInput,
     signal: options.signal,

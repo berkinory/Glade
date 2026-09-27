@@ -17,15 +17,15 @@ describe("remote access policy", () => {
         ...remoteBase,
         host: "127.0.0.1",
         authToken: undefined,
-        publicUrl: new URL("https://synara.example.test/"),
+        publicUrl: new URL("https://glade.example.test/"),
       }),
-    ).toContain("without SYNARA_AUTH_TOKEN");
+    ).toContain("without GLADE_AUTH_TOKEN");
   });
 
   it("rejects invalid public URLs in the shared embedded-server policy", () => {
     for (const publicUrl of [
-      new URL("http://synara.example.test/"),
-      new URL("https://synara.example.test/app"),
+      new URL("http://glade.example.test/"),
+      new URL("https://glade.example.test/app"),
     ]) {
       expect(
         remoteAccessPolicyError({
@@ -38,15 +38,15 @@ describe("remote access policy", () => {
   });
 
   it("accepts only credential-free HTTPS root origins", () => {
-    expect(normalizeHttpsPublicOrigin(new URL("https://synara.example.test/"))?.origin).toBe(
-      "https://synara.example.test",
+    expect(normalizeHttpsPublicOrigin(new URL("https://glade.example.test/"))?.origin).toBe(
+      "https://glade.example.test",
     );
     for (const value of [
-      "http://synara.example.test/",
-      "https://user:pass@synara.example.test/",
-      "https://synara.example.test/app",
-      "https://synara.example.test/?query=1",
-      "https://synara.example.test/#fragment",
+      "http://glade.example.test/",
+      "https://user:pass@glade.example.test/",
+      "https://glade.example.test/app",
+      "https://glade.example.test/?query=1",
+      "https://glade.example.test/#fragment",
     ]) {
       expect(normalizeHttpsPublicOrigin(new URL(value))).toBeNull();
     }

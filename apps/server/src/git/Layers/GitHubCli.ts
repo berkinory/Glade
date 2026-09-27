@@ -14,12 +14,12 @@ import {
   type PullRequestMergeCapabilities,
   type PullRequestStack,
   type PullRequestStackSummary,
-} from "@synara/contracts";
-import { githubAvatarUrlForLogin } from "@synara/shared/githubAvatar";
+} from "@glade/contracts";
+import { githubAvatarUrlForLogin } from "@glade/shared/githubAvatar";
 import {
   isValidGitHubRepositoryNameWithOwner,
   parseGitHubRepositoryNameWithOwnerFromRemoteUrl,
-} from "@synara/shared/githubRepository";
+} from "@glade/shared/githubRepository";
 
 import { runProcess } from "../../processRunner";
 import { makeKeyedSingleFlightCache } from "../../pullRequests/KeyedSingleFlightCache";

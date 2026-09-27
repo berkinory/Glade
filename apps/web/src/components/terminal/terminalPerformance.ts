@@ -14,14 +14,14 @@ interface TerminalWriteSample {
 
 declare global {
   interface Window {
-    __synaraTerminalPerf?: {
+    __gladeTerminalPerf?: {
       samples: TerminalWriteSample[];
       reset: () => void;
     };
   }
 }
 
-const TERMINAL_PERF_STORAGE_KEY = "synara:terminal-perf";
+const TERMINAL_PERF_STORAGE_KEY = "glade:terminal-perf";
 const MAX_TERMINAL_PERF_SAMPLES = 200;
 
 function terminalPerfEnabled(): boolean {
@@ -33,13 +33,13 @@ function terminalPerfEnabled(): boolean {
 }
 
 function getTerminalPerfStore() {
-  window.__synaraTerminalPerf ??= {
+  window.__gladeTerminalPerf ??= {
     samples: [],
     reset() {
       this.samples.length = 0;
     },
   };
-  return window.__synaraTerminalPerf;
+  return window.__gladeTerminalPerf;
 }
 
 // Records a write only after xterm reports that its parser consumed the data.

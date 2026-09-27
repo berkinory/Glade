@@ -24,14 +24,14 @@ describe("claudeCredentialKeepalive", () => {
     assert.equal(
       isClaudeCredentialKeepaliveEnabled({
         platform: "darwin",
-        env: { SYNARA_CLAUDE_KEEPALIVE: "1" },
+        env: { GLADE_CLAUDE_KEEPALIVE: "1" },
       }),
       true,
     );
     assert.equal(
       isClaudeCredentialKeepaliveEnabled({
         platform: "linux",
-        env: { SYNARA_CLAUDE_KEEPALIVE: "1" },
+        env: { GLADE_CLAUDE_KEEPALIVE: "1" },
       }),
       false,
     );
@@ -53,13 +53,13 @@ describe("claudeCredentialKeepalive", () => {
   it("clamps keepalive intervals to Node's maximum timer delay", () => {
     assert.equal(
       resolveClaudeCredentialKeepaliveIntervalMs({
-        SYNARA_CLAUDE_KEEPALIVE_MINUTES: "60",
+        GLADE_CLAUDE_KEEPALIVE_MINUTES: "60",
       }),
       60 * 60 * 1000,
     );
     assert.equal(
       resolveClaudeCredentialKeepaliveIntervalMs({
-        SYNARA_CLAUDE_KEEPALIVE_MINUTES: "999999999",
+        GLADE_CLAUDE_KEEPALIVE_MINUTES: "999999999",
       }),
       CLAUDE_CREDENTIAL_KEEPALIVE_MAX_INTERVAL_MS,
     );
@@ -68,7 +68,7 @@ describe("claudeCredentialKeepalive", () => {
   it("falls back to the default interval for invalid tuning values", () => {
     assert.equal(
       resolveClaudeCredentialKeepaliveIntervalMs({
-        SYNARA_CLAUDE_KEEPALIVE_MINUTES: "0",
+        GLADE_CLAUDE_KEEPALIVE_MINUTES: "0",
       }),
       30 * 60 * 1000,
     );
@@ -109,7 +109,7 @@ describe("claudeCredentialKeepalive", () => {
     let settled = false;
     const handle = startClaudeCredentialKeepalive({
       platform: "darwin",
-      env: { SYNARA_CLAUDE_KEEPALIVE: "1" },
+      env: { GLADE_CLAUDE_KEEPALIVE: "1" },
       runAuthStatus: ({ signal }) =>
         new Promise<void>((resolve) => {
           markStarted();

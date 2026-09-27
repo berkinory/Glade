@@ -27,7 +27,7 @@ function trimNonEmpty(value: string | null | undefined): string | undefined {
  * it spawns the backend, and the backend inherits the result — so without this marker
  * the same probe is serialized a second time before the server ever starts listening.
  */
-export const SHELL_ENVIRONMENT_HYDRATED_ENV_NAME = "SYNARA_PATH_HYDRATED";
+export const SHELL_ENVIRONMENT_HYDRATED_ENV_NAME = "GLADE_PATH_HYDRATED";
 export const SHELL_ENVIRONMENT_HYDRATED_ENV_VALUE = "1";
 
 /**
@@ -155,11 +155,11 @@ export function mergePathEntries(
 }
 
 function envCaptureStart(name: string): string {
-  return `__SYNARA_ENV_${name}_START__`;
+  return `__GLADE_ENV_${name}_START__`;
 }
 
 function envCaptureEnd(name: string): string {
-  return `__SYNARA_ENV_${name}_END__`;
+  return `__GLADE_ENV_${name}_END__`;
 }
 
 function buildEnvironmentCaptureCommand(names: ReadonlyArray<string>): string {

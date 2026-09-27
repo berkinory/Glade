@@ -5,19 +5,14 @@
 
 import { Schema } from "effect";
 import { TrimmedNonEmptyString } from "./baseSchemas";
-import { OMP_THINKING_LEVEL_OPTIONS, ProviderOptionDescriptor } from "./model";
+import { ProviderOptionDescriptor } from "./model";
 
 const ProviderDiscoveryKind = Schema.Literals([
   "codex",
   "claudeAgent",
   "cursor",
-  "antigravity",
   "grok",
-  "droid",
   "opencode",
-  "pi",
-  "devin",
-  "omp",
 ]);
 
 export const ProviderSkillInterface = Schema.Struct({
@@ -71,7 +66,6 @@ export const ProviderListSkillsInput = Schema.Struct({
   provider: ProviderDiscoveryKind,
   cwd: TrimmedNonEmptyString,
   threadId: Schema.optional(TrimmedNonEmptyString),
-  agentDir: Schema.optional(TrimmedNonEmptyString),
   forceReload: Schema.optional(Schema.Boolean),
 });
 export type ProviderListSkillsInput = typeof ProviderListSkillsInput.Type;
@@ -83,8 +77,8 @@ export const ProviderListSkillsResult = Schema.Struct({
 });
 export type ProviderListSkillsResult = typeof ProviderListSkillsResult.Type;
 
-// Unified cross-provider skills catalog (Synara portable skills). Descriptors use
-// `scope` to carry the origin label ("synara", "codex", "claude", "cursor", ...).
+// Unified cross-provider skills catalog (Glade portable skills). Descriptors use
+// `scope` to carry the origin label ("glade", "codex", "claude", "cursor", ...).
 export const ProviderSkillsCatalogInput = Schema.Struct({
   cwd: Schema.optional(TrimmedNonEmptyString),
 });
@@ -92,7 +86,7 @@ export type ProviderSkillsCatalogInput = typeof ProviderSkillsCatalogInput.Type;
 
 export const ProviderSkillsCatalogResult = Schema.Struct({
   skills: Schema.Array(ProviderSkillDescriptor),
-  synaraSkillsDir: Schema.optional(TrimmedNonEmptyString),
+  gladeSkillsDir: Schema.optional(TrimmedNonEmptyString),
 });
 export type ProviderSkillsCatalogResult = typeof ProviderSkillsCatalogResult.Type;
 
@@ -110,7 +104,6 @@ export const ProviderListCommandsInput = Schema.Struct({
   serverUrl: Schema.optional(TrimmedNonEmptyString),
   experimentalWebSockets: Schema.optional(Schema.Boolean),
   enableArtifacts: Schema.optional(Schema.Boolean),
-  agentDir: Schema.optional(TrimmedNonEmptyString),
   forceReload: Schema.optional(Schema.Boolean),
 });
 export type ProviderListCommandsInput = typeof ProviderListCommandsInput.Type;
@@ -254,7 +247,6 @@ export const ProviderListModelsInput = Schema.Struct({
   provider: ProviderDiscoveryKind,
   binaryPath: Schema.optional(TrimmedNonEmptyString),
   apiEndpoint: Schema.optional(TrimmedNonEmptyString),
-  agentDir: Schema.optional(TrimmedNonEmptyString),
   cwd: Schema.optional(TrimmedNonEmptyString),
 });
 export type ProviderListModelsInput = typeof ProviderListModelsInput.Type;
@@ -306,16 +298,8 @@ export const ProviderModelDescriptor = Schema.Struct({
 });
 export type ProviderModelDescriptor = typeof ProviderModelDescriptor.Type;
 
-export const OmpRoleDescriptor = Schema.Struct({
-  name: TrimmedNonEmptyString,
-  model: TrimmedNonEmptyString,
-  thinkingLevel: Schema.optional(Schema.Literals(OMP_THINKING_LEVEL_OPTIONS)),
-});
-export type OmpRoleDescriptor = typeof OmpRoleDescriptor.Type;
-
 export const ProviderListModelsResult = Schema.Struct({
   models: Schema.Array(ProviderModelDescriptor),
-  roles: Schema.optional(Schema.Array(OmpRoleDescriptor)),
   source: Schema.optional(TrimmedNonEmptyString),
   cached: Schema.optional(Schema.Boolean),
   // A concise, redacted explanation when live discovery failed and the result

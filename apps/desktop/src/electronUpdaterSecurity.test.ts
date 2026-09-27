@@ -31,9 +31,9 @@ describe("electronUpdaterSecurity", () => {
   });
 
   it("parses distinguished names the same way as builder-util-runtime", () => {
-    const parsed = parseDistinguishedName('CN=Synara, O="Acme, Inc.", OU=Tools\\2C Desktop');
+    const parsed = parseDistinguishedName('CN=Glade, O="Acme, Inc.", OU=Tools\\2C Desktop');
 
-    expect(parsed.get("CN")).toBe("Synara");
+    expect(parsed.get("CN")).toBe("Glade");
     expect(parsed.get("O")).toBe("Acme, Inc.");
     expect(parsed.get("OU")).toBe("Tools, Desktop");
   });
@@ -42,9 +42,9 @@ describe("electronUpdaterSecurity", () => {
     expect(
       resolveWindowsUpdatePublisherNames(
         ["CN=Feed Controlled, O=Unexpected"],
-        [" CN=Synara, O=Acme Tools ", "CN=Only", ""],
+        [" CN=Glade, O=Acme Tools ", "CN=Only", ""],
       ),
-    ).toEqual(["CN=Synara, O=Acme Tools"]);
+    ).toEqual(["CN=Glade, O=Acme Tools"]);
     expect(resolveWindowsUpdatePublisherNames(["CN=Feed Controlled, O=Unexpected"], null)).toEqual([
       "CN=Feed Controlled, O=Unexpected",
     ]);
@@ -56,9 +56,9 @@ describe("electronUpdaterSecurity", () => {
         null,
         JSON.stringify({
           Status: 0,
-          Path: "C:\\Users\\test\\AppData\\Local\\Temp\\SynaraSetup.exe",
+          Path: "C:\\Users\\test\\AppData\\Local\\Temp\\GladeSetup.exe",
           SignerCertificate: {
-            Subject: "CN=Synara, O=Acme Tools",
+            Subject: "CN=Glade, O=Acme Tools",
           },
         }),
         "",
@@ -66,8 +66,8 @@ describe("electronUpdaterSecurity", () => {
     });
 
     const result = await verifyWindowsUpdateCodeSignature(
-      ["CN=Synara, O=Acme Tools"],
-      "C:\\Users\\test\\AppData\\Local\\Temp\\SynaraSetup.exe",
+      ["CN=Glade, O=Acme Tools"],
+      "C:\\Users\\test\\AppData\\Local\\Temp\\GladeSetup.exe",
       { info: vi.fn(), warn: vi.fn() },
       {
         env: { SystemRoot: "C:\\Windows" },
@@ -91,8 +91,8 @@ describe("electronUpdaterSecurity", () => {
   it("rejects a CN-only publisher allowlist", async () => {
     const logger = { info: vi.fn(), warn: vi.fn() };
     const result = await verifyWindowsUpdateCodeSignature(
-      ["CN=Synara"],
-      "C:\\Temp\\SynaraSetup.exe",
+      ["CN=Glade"],
+      "C:\\Temp\\GladeSetup.exe",
       logger,
       {
         env: { SystemRoot: "C:\\Windows" },
@@ -101,8 +101,8 @@ describe("electronUpdaterSecurity", () => {
             null,
             JSON.stringify({
               Status: 0,
-              Path: "C:\\Temp\\SynaraSetup.exe",
-              SignerCertificate: { Subject: "CN=Synara, O=Acme Tools" },
+              Path: "C:\\Temp\\GladeSetup.exe",
+              SignerCertificate: { Subject: "CN=Glade, O=Acme Tools" },
             }),
             "",
           );
@@ -110,7 +110,7 @@ describe("electronUpdaterSecurity", () => {
       },
     );
 
-    expect(result).toContain("publisherNames: CN=Synara");
+    expect(result).toContain("publisherNames: CN=Glade");
     expect(logger.warn).toHaveBeenCalledWith(
       expect.stringContaining("signed with incorrect certificate"),
     );
@@ -118,8 +118,8 @@ describe("electronUpdaterSecurity", () => {
 
   it("fails closed when PowerShell cannot verify the signature", async () => {
     const result = await verifyWindowsUpdateCodeSignature(
-      ["CN=Synara, O=Acme Tools"],
-      "C:\\Temp\\SynaraSetup.exe",
+      ["CN=Glade, O=Acme Tools"],
+      "C:\\Temp\\GladeSetup.exe",
       { info: vi.fn(), warn: vi.fn() },
       {
         env: { SystemRoot: "C:\\Windows" },
@@ -135,8 +135,8 @@ describe("electronUpdaterSecurity", () => {
 
   it("fails closed when signature output is malformed", async () => {
     const result = await verifyWindowsUpdateCodeSignature(
-      ["CN=Synara, O=Acme Tools"],
-      "C:\\Temp\\SynaraSetup.exe",
+      ["CN=Glade, O=Acme Tools"],
+      "C:\\Temp\\GladeSetup.exe",
       { info: vi.fn(), warn: vi.fn() },
       {
         env: { SystemRoot: "C:\\Windows" },
@@ -151,8 +151,8 @@ describe("electronUpdaterSecurity", () => {
 
   it("fails closed when signature output omits the signed file path", async () => {
     const result = await verifyWindowsUpdateCodeSignature(
-      ["CN=Synara, O=Acme Tools"],
-      "C:\\Temp\\SynaraSetup.exe",
+      ["CN=Glade, O=Acme Tools"],
+      "C:\\Temp\\GladeSetup.exe",
       { info: vi.fn(), warn: vi.fn() },
       {
         env: { SystemRoot: "C:\\Windows" },
@@ -161,7 +161,7 @@ describe("electronUpdaterSecurity", () => {
             null,
             JSON.stringify({
               Status: 0,
-              SignerCertificate: { Subject: "CN=Synara, O=Acme Tools" },
+              SignerCertificate: { Subject: "CN=Glade, O=Acme Tools" },
             }),
             "",
           );
@@ -175,8 +175,8 @@ describe("electronUpdaterSecurity", () => {
 
   it("returns a mismatch summary for an unexpected publisher", async () => {
     const result = await verifyWindowsUpdateCodeSignature(
-      ["CN=Synara, O=Acme Tools"],
-      "C:\\Temp\\SynaraSetup.exe",
+      ["CN=Glade, O=Acme Tools"],
+      "C:\\Temp\\GladeSetup.exe",
       { info: vi.fn(), warn: vi.fn() },
       {
         env: { SystemRoot: "C:\\Windows" },
@@ -185,7 +185,7 @@ describe("electronUpdaterSecurity", () => {
             null,
             JSON.stringify({
               Status: 0,
-              Path: "C:\\Temp\\SynaraSetup.exe",
+              Path: "C:\\Temp\\GladeSetup.exe",
               SignerCertificate: { Subject: "CN=Someone Else, O=Acme Tools" },
             }),
             "",
@@ -194,7 +194,7 @@ describe("electronUpdaterSecurity", () => {
       },
     );
 
-    expect(result).toContain("publisherNames: CN=Synara, O=Acme Tools");
+    expect(result).toContain("publisherNames: CN=Glade, O=Acme Tools");
     expect(result).toContain("Someone Else");
   });
 
@@ -203,7 +203,7 @@ describe("electronUpdaterSecurity", () => {
     const updaterModule = { BaseUpdater: FakeBaseUpdater };
     const prototype = FakeBaseUpdater.prototype as {
       spawnSyncLog?: (cmd: string, args?: string[]) => string;
-      __synaraSpawnSyncLogPatched?: boolean;
+      __gladeSpawnSyncLogPatched?: boolean;
     };
 
     hardenElectronUpdater(updaterModule, {}, "darwin");
@@ -216,7 +216,7 @@ describe("electronUpdaterSecurity", () => {
     const output = prototype.spawnSyncLog?.call(instance, process.execPath, ["--version"]);
 
     expect(output).toMatch(/^v\d+\.\d+\.\d+/);
-    expect(prototype.__synaraSpawnSyncLogPatched).toBe(true);
+    expect(prototype.__gladeSpawnSyncLogPatched).toBe(true);
   });
 
   it("replaces the NSIS signature verifier on Windows", async () => {
@@ -242,7 +242,7 @@ describe("electronUpdaterSecurity", () => {
 
     const result = await updater.verifyUpdateCodeSignature(
       ["CN=Feed Publisher, O=Acme Tools"],
-      "C:\\Temp\\SynaraSetup.exe",
+      "C:\\Temp\\GladeSetup.exe",
     );
     expect(result).not.toContain("no valid embedded publisher subject DN");
     expect(result).toContain("signature verification could not be completed");
@@ -260,7 +260,7 @@ describe("electronUpdaterSecurity", () => {
     await expect(
       updater.verifyUpdateCodeSignature(
         ["CN=Feed Controlled, O=Unexpected"],
-        "C:\\Temp\\SynaraSetup.exe",
+        "C:\\Temp\\GladeSetup.exe",
       ),
     ).resolves.toContain("no valid embedded publisher subject DN");
   });

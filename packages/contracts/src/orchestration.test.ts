@@ -161,23 +161,6 @@ it.effect("preserves thread activity payloads through the RPC JSON codec", () =>
   }),
 );
 
-it.effect("preserves Pi model selections through the JSON codec", () =>
-  Effect.gen(function* () {
-    const codec = Schema.fromJsonString(ModelSelection);
-    const parsed = yield* Schema.decodeUnknownEffect(codec)(
-      JSON.stringify({
-        provider: "pi",
-        model: "openai/gpt-5.5",
-      }),
-    );
-
-    assert.deepStrictEqual(parsed, {
-      provider: "pi",
-      model: "openai/gpt-5.5",
-    });
-  }),
-);
-
 it.effect("drops legacy provider passwords from decoded provider options", () =>
   Effect.gen(function* () {
     const parsed = yield* decodeProviderStartOptions({
@@ -463,7 +446,7 @@ it.effect("strips client-sent dispatchOrigin from thread.turn.start commands", (
 
 it.effect("strips client-sent agent dispatchOrigin from thread.turn.start commands", () =>
   Effect.gen(function* () {
-    // The "agent" origin is reserved for turns dispatched through the Synara
+    // The "agent" origin is reserved for turns dispatched through the Glade
     // agent gateway; WS clients must not be able to spoof it either.
     const command = yield* decodeClientOrchestrationCommand({
       type: "thread.turn.start",
@@ -664,13 +647,13 @@ it.effect("ThreadHandoff decodes legacy provider names instead of failing the ro
     });
     assert.equal(handoff.sourceProvider, "opencode");
 
-    const renamed = yield* decodeThreadHandoff({
+    const retired = yield* decodeThreadHandoff({
       sourceThreadId: "thread-src",
-      sourceProvider: "gemini",
+      sourceProvider: "pi",
       importedAt: "2026-01-01T00:00:00Z",
       bootstrapStatus: "completed",
     });
-    assert.equal(renamed.sourceProvider, "antigravity");
+    assert.equal(retired.sourceProvider, "pi");
 
     const current = yield* decodeThreadHandoff({
       sourceThreadId: "thread-src",

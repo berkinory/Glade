@@ -12,7 +12,7 @@ import type {
   ProviderSkillReference,
   ProviderStartOptions,
   ThreadId,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import {
   useEffect,
   useState,
@@ -48,7 +48,7 @@ interface UseKanbanTaskComposerMenuInput {
   readonly selectedProvider: ProviderKind;
   readonly modelOptionsByProvider: Record<
     ProviderKind,
-    ReadonlyArray<ProviderModelOption & { isCustom?: boolean }>
+    ReadonlyArray<ProviderModelOption & { isSelectedHint?: boolean }>
   >;
   readonly selectedRuntimeAgents: readonly ProviderAgentDescriptor[];
   readonly selectedProjectCwd: string | null;
@@ -57,8 +57,6 @@ interface UseKanbanTaskComposerMenuInput {
   readonly providerOptionsForDispatch: ProviderStartOptions | undefined;
   readonly hiddenProviders: readonly ProviderKind[];
   readonly providerOrder: readonly ProviderKind[];
-  readonly piAgentDir: string | null;
-  readonly ompAgentDir: string | null;
   readonly handleProviderModelChange: (provider: ProviderKind, model: ModelSlug) => void;
   readonly setInteractionMode: Dispatch<SetStateAction<ProviderInteractionMode>>;
   readonly onCreate: () => void;
@@ -84,8 +82,6 @@ export function useKanbanTaskComposerMenu(input: UseKanbanTaskComposerMenuInput)
     providerOptionsForDispatch,
     hiddenProviders,
     providerOrder,
-    piAgentDir,
-    ompAgentDir,
     handleProviderModelChange,
     setInteractionMode,
     onCreate,
@@ -122,8 +118,6 @@ export function useKanbanTaskComposerMenu(input: UseKanbanTaskComposerMenuInput)
     providerOptionsForDispatch,
     hiddenProviders,
     providerOrder,
-    piAgentDir,
-    ompAgentDir,
   });
   const activeComposerMenuItem =
     composerMenuItems.find((item) => item.id === composerHighlightedItemId) ??

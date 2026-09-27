@@ -13,7 +13,7 @@ import type {
   ProviderInteractionMode,
   ProviderKind,
   RuntimeMode,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -324,14 +324,12 @@ export function KanbanNewTaskDialog({
     providerOptionsForDispatch,
     hiddenProviders: settings.hiddenProviders,
     providerOrder: settings.providerOrder,
-    piAgentDir: settings.piAgentDir || null,
-    ompAgentDir: settings.ompAgentDir || null,
     handleProviderModelChange,
     setInteractionMode,
     onCreate: handleCreateRequest,
   });
 
-  // Providers without a static default (e.g. Pi) resolve their model once
+  // Resolve the provider model once
   // discovery delivers the catalog.
   useEffect(() => {
     if (selectedModel !== null) {
@@ -607,9 +605,6 @@ export function KanbanNewTaskDialog({
                     hiddenProviders={settings.hiddenProviders}
                     providerOrder={settings.providerOrder}
                     onProviderModelChange={handleProviderModelChange}
-                    onProviderModelRoleSelect={(model, options) =>
-                      handleProviderModelChange("omp", model, options)
-                    }
                     open={isModelPickerOpen}
                     onOpenChange={setIsModelPickerOpen}
                   />

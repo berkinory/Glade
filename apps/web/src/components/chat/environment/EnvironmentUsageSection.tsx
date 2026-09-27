@@ -1,8 +1,8 @@
 // FILE: EnvironmentUsageSection.tsx
 // Purpose: "Usage" section of the Environment panel — compact menu for the active provider.
 
-import type { ProviderKind } from "@synara/contracts";
-import { providerUsageDisplayName } from "@synara/shared/providerUsage";
+import type { ProviderKind } from "@glade/contracts";
+import { providerUsageDisplayName } from "@glade/shared/providerUsage";
 import { useQuery } from "@tanstack/react-query";
 
 import {

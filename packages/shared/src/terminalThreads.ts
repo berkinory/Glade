@@ -14,14 +14,14 @@ export function terminalScopeIdsForThread(hostThreadId: string): readonly string
   return [hostThreadId, dockTerminalScopeId(hostThreadId)];
 }
 
-export type TerminalCliKind = "codex" | "claude" | "antigravity";
-export type TerminalIconKey = "terminal" | "openai" | "claude" | "antigravity";
+export type TerminalCliKind = "codex" | "claude";
+export type TerminalIconKey = "terminal" | "openai" | "claude";
 export type TerminalActivityState = "running" | "attention" | "review";
 export type TerminalVisualState = "idle" | TerminalActivityState;
 export type TerminalAgentHookEventType = "Start" | "Stop" | "PermissionRequest";
-export const SYNARA_TERMINAL_CLI_KIND_ENV_KEY = "SYNARA_TERMINAL_CLI_KIND";
-export const SYNARA_TERMINAL_HOOK_OSC_PREFIX = "633;SYNARA_AGENT_EVENT=";
-export type ManagedTerminalCliKind = Exclude<TerminalCliKind, "antigravity">;
+export const GLADE_TERMINAL_CLI_KIND_ENV_KEY = "GLADE_TERMINAL_CLI_KIND";
+export const GLADE_TERMINAL_HOOK_OSC_PREFIX = "633;GLADE_AGENT_EVENT=";
+export type ManagedTerminalCliKind = TerminalCliKind;
 export const MANAGED_TERMINAL_COMMAND_NAME_BY_CLI_KIND: Record<ManagedTerminalCliKind, string> = {
   codex: "codex",
   claude: "claude",
@@ -47,13 +47,10 @@ const MAX_TERMINAL_TITLE_LENGTH = 48;
 const WRAPPER_COMMANDS = new Set(["builtin", "command", "env", "noglob", "nocorrect", "sudo"]);
 const CODEX_COMMAND_NAMES = new Set(["codex", "codex-cli"]);
 const CLAUDE_COMMAND_NAMES = new Set(["claude", "claude-code", "claude_code"]);
-const ANTIGRAVITY_COMMAND_NAMES = new Set(["agy", "antigravity", "antigravity-cli"]);
 const TITLE_CODEX_TEXT_PATTERNS = [/\bopenai codex\b/i, /\bcodex cli\b/i];
 const TITLE_CLAUDE_TEXT_PATTERNS = [/\bclaude code\b/i];
-const TITLE_ANTIGRAVITY_TEXT_PATTERNS = [/\bantigravity(?: cli)?\b/i, /^agy(?: cli)?$/i];
 const PROCESS_CODEX_TEXT_PATTERNS = [/@openai\/codex/i];
 const PROCESS_CLAUDE_TEXT_PATTERNS = [/@anthropic-ai\/claude-code/i, /anthropic\/claude-code/i];
-const PROCESS_ANTIGRAVITY_TEXT_PATTERNS = [/google-antigravity\/antigravity-cli/i];
 const IGNORED_TERMINAL_TITLE_COMMANDS = new Set([
   ".",
   "alias",
@@ -109,9 +106,6 @@ function deriveCliKindFromNormalizedToken(token: string): TerminalCliKind | null
   ) {
     return "claude";
   }
-  if (ANTIGRAVITY_COMMAND_NAMES.has(normalizedToken)) {
-    return "antigravity";
-  }
   return null;
 }
 
@@ -145,8 +139,7 @@ function deriveCliKindFromProcessText(text: string | null | undefined): Terminal
   }
   return (
     textMatchesCliPatterns(normalizedText, PROCESS_CODEX_TEXT_PATTERNS, "codex") ??
-    textMatchesCliPatterns(normalizedText, PROCESS_CLAUDE_TEXT_PATTERNS, "claude") ??
-    textMatchesCliPatterns(normalizedText, PROCESS_ANTIGRAVITY_TEXT_PATTERNS, "antigravity")
+    textMatchesCliPatterns(normalizedText, PROCESS_CLAUDE_TEXT_PATTERNS, "claude")
   );
 }
 
@@ -255,24 +248,13 @@ function createTerminalCommandIdentity(
 ): TerminalCommandIdentity {
   return {
     cliKind,
-    iconKey:
-      cliKind === "codex"
-        ? "openai"
-        : cliKind === "claude"
-          ? "claude"
-          : cliKind === "antigravity"
-            ? "antigravity"
-            : "terminal",
+    iconKey: cliKind === "codex" ? "openai" : cliKind === "claude" ? "claude" : "terminal",
     title,
   };
 }
 
 export function defaultTerminalTitleForCliKind(cliKind: TerminalCliKind): string {
-  return cliKind === "codex"
-    ? "Codex CLI"
-    : cliKind === "claude"
-      ? "Claude Code"
-      : "Antigravity CLI";
+  return cliKind === "codex" ? "Codex CLI" : "Claude Code";
 }
 
 export function managedTerminalCommandNameForCliKind(cliKind: ManagedTerminalCliKind): string {
@@ -281,11 +263,7 @@ export function managedTerminalCommandNameForCliKind(cliKind: ManagedTerminalCli
 
 export function terminalCliKindFromValue(value: string | null | undefined): TerminalCliKind | null {
   const normalizedValue = value?.trim().toLowerCase();
-  return normalizedValue === "codex" ||
-    normalizedValue === "claude" ||
-    normalizedValue === "antigravity"
-    ? normalizedValue
-    : null;
+  return normalizedValue === "codex" || normalizedValue === "claude" ? normalizedValue : null;
 }
 
 // Prefer the actual spawned process name over shell aliases when attributing terminal providers.
@@ -305,12 +283,6 @@ export function deriveTerminalProcessIdentity(
   if (tokenCliKind === "claude") {
     return createTerminalCommandIdentity(defaultTerminalTitleForCliKind("claude"), "claude");
   }
-  if (tokenCliKind === "antigravity") {
-    return createTerminalCommandIdentity(
-      defaultTerminalTitleForCliKind("antigravity"),
-      "antigravity",
-    );
-  }
   return null;
 }
 
@@ -325,13 +297,9 @@ function inferCliKindFromTitle(title: string | null | undefined): TerminalCliKin
   if (/^claude(?: code)?(?: \d+)?$/.test(normalizedTitle) || normalizedTitle === "claude-code") {
     return "claude";
   }
-  if (/^(?:antigravity(?: cli)?|agy(?: cli)?)(?: \d+)?$/.test(normalizedTitle)) {
-    return "antigravity";
-  }
   return (
     textMatchesCliPatterns(normalizedTitle, TITLE_CODEX_TEXT_PATTERNS, "codex") ??
-    textMatchesCliPatterns(normalizedTitle, TITLE_CLAUDE_TEXT_PATTERNS, "claude") ??
-    textMatchesCliPatterns(normalizedTitle, TITLE_ANTIGRAVITY_TEXT_PATTERNS, "antigravity")
+    textMatchesCliPatterns(normalizedTitle, TITLE_CLAUDE_TEXT_PATTERNS, "claude")
   );
 }
 
@@ -361,9 +329,6 @@ export function deriveTerminalCommandIdentity(command: string): TerminalCommandI
   }
   if (detectedCliKind === "claude" || (first === "claude" && second === "code")) {
     return createTerminalCommandIdentity("Claude Code", "claude");
-  }
-  if (detectedCliKind === "antigravity") {
-    return createTerminalCommandIdentity("Antigravity CLI", "antigravity");
   }
   if (first === "git") {
     return createTerminalCommandIdentity(
@@ -457,14 +422,7 @@ export function resolveTerminalVisualIdentity(input: {
   const state = input.state ?? (input.isRunning ? "running" : "idle");
   return {
     cliKind,
-    iconKey:
-      cliKind === "codex"
-        ? "openai"
-        : cliKind === "claude"
-          ? "claude"
-          : cliKind === "antigravity"
-            ? "antigravity"
-            : "terminal",
+    iconKey: cliKind === "codex" ? "openai" : cliKind === "claude" ? "claude" : "terminal",
     state,
     title,
   };

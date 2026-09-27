@@ -44,7 +44,7 @@ function makeMonitor(
     return helper;
   }) as unknown as typeof ChildProcess.spawn;
   const monitor = new EscapeKillSwitchMonitor({
-    helperPath: "/fixture/appsnap",
+    helperPath: "/fixture/computer-helper",
     onEscape: overrides?.onEscape ?? (() => undefined),
     ...(overrides?.onError ? { onError: overrides.onError } : {}),
     ...(overrides?.onPhysicalInput ? { onPhysicalInput: overrides.onPhysicalInput } : {}),

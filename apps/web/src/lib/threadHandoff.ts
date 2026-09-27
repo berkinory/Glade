@@ -8,13 +8,14 @@ import {
   MessageId,
   type OrchestrationThreadActivity,
   PROVIDER_DISPLAY_NAMES,
+  ProviderKind,
   type ModelSelection,
-  type ProviderKind,
   type ServerProviderStatus,
   type ServerSettingsView,
   type ThreadHandoffImportedMessage,
-} from "@synara/contracts";
-import { getDefaultModel } from "@synara/shared/model";
+} from "@glade/contracts";
+import { getDefaultModel } from "@glade/shared/model";
+import { Schema } from "effect";
 import { type Thread } from "../types";
 import { DEFAULT_PROVIDER_ORDER } from "../providerOrdering";
 import { stripEmbeddedAssistantSelections } from "./assistantSelections";
@@ -77,7 +78,9 @@ export function resolveThreadHandoffBadgeLabel(thread: Pick<Thread, "handoff">):
   if (!thread.handoff) {
     return null;
   }
-  return `Handoff from ${PROVIDER_DISPLAY_NAMES[thread.handoff.sourceProvider]}`;
+  return Schema.is(ProviderKind)(thread.handoff.sourceProvider)
+    ? `Handoff from ${PROVIDER_DISPLAY_NAMES[thread.handoff.sourceProvider]}`
+    : "Handoff from a retired provider";
 }
 
 // Preserve the visible source thread name when creating the destination thread.
@@ -225,9 +228,6 @@ export function resolveThreadHandoffModelSelection(input: {
     return input.projectDefaultModelSelection;
   }
   const defaultModel = getDefaultModel(input.targetProvider);
-  if (!defaultModel) {
-    throw new Error("Select a Pi model before handing off to Pi.");
-  }
   return {
     provider: input.targetProvider,
     model: defaultModel,

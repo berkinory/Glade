@@ -1,17 +1,16 @@
-import { ThreadId } from "@synara/contracts";
+import { ThreadId } from "@glade/contracts";
 import { useEffect } from "react";
 import {
   type ComposerImageAttachment,
   type PersistedComposerImageAttachment,
   useComposerDraftStore,
 } from "../../composerDraftStore";
-import { composerImageBlobKey, persistComposerImageBlob } from "../../lib/composerImageBlobStore";
+
 import { readFileAsDataUrl } from "../../lib/composerSend";
 
 // Shared by the live-composer and prompt-history attachment sync effects:
-// AppSnap images persist their bytes as IndexedDB blobs (reusing an existing
-// blob key when valid), everything else inlines a data URL. Falls back to the
-// already-persisted attachments for images whose serialization fails.
+// Images are persisted as data URLs. Serialization failures retain the previous
+// attachment record so an unreadable file does not erase a saved attachment.
 async function stagePersistedComposerImageAttachments(input: {
   threadId: ThreadId;
   images: ReadonlyArray<ComposerImageAttachment>;
@@ -25,27 +24,6 @@ async function stagePersistedComposerImageAttachments(input: {
     await Promise.all(
       input.images.map(async (image) => {
         try {
-          if (image.source?.kind === "appsnap") {
-            const existingPersisted = existingPersistedById.get(image.id);
-            const expectedBlobKey = composerImageBlobKey(input.threadId, image.id);
-            const blobKey =
-              existingPersisted?.blobKey === expectedBlobKey
-                ? expectedBlobKey
-                : await persistComposerImageBlob({
-                    threadId: input.threadId,
-                    imageId: image.id,
-                    file: image.file,
-                  });
-            stagedAttachmentById.set(image.id, {
-              id: image.id,
-              name: image.name,
-              mimeType: image.mimeType,
-              sizeBytes: image.sizeBytes,
-              blobKey,
-              source: image.source,
-            });
-            return;
-          }
           const dataUrl = await readFileAsDataUrl(image.file);
           stagedAttachmentById.set(image.id, {
             id: image.id,

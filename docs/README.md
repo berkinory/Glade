@@ -1,14 +1,23 @@
-# Synara documentation
+# Glade documentation
 
-The full product documentation lives at [trysynara.com/docs](https://www.trysynara.com/docs). This
-folder keeps a small set of focused guides that stay in sync with the repository:
+This folder contains the Glade documentation and repository guides.
+
+## Using Glade
 
 - [Quickstart](./quickstart.md) — from installation to your first reviewed change in about five minutes.
 - [Core concepts](./core-concepts.md) — projects, tasks, environments, provider sessions, and Git ownership.
-- [Providers](./providers.md) — what Synara manages and what stays provider-owned.
-- [External MCP integrations](./external-mcp.md) — pair another local app with a scoped Synara task surface.
-- [Release process](./release.md) — release and signing setup checklist.
-- [Beta channel](../BETA.md) — the packaged Synara Beta flavor, its isolated update feed, and how beta releases are cut.
-- [Canary workflow](./canary.md) — install, update, operate, and roll back an isolated Canary build.
+- [Providers](./providers.md) — what Glade manages and what stays provider-owned.
+- [Keybindings](./KEYBINDINGS.md) — default shortcuts and custom keymaps.
+- [Remote access](./REMOTE.md) — server options and access from another device.
+- [Computer Use](./computer-use-cua/README.md) — supported platforms, permissions, and native driver ownership.
 
-Other material lives in [docs/archive](./archive/) for historical reference.
+## Developing Glade
+
+- [Architecture](./architecture.md) — application boundaries and package responsibilities.
+- [Workspace layout](./workspace-layout.md) — repository structure and ownership.
+- [Provider architecture](./provider-architecture.md) — provider integration boundaries.
+- [Runtime modes](./runtime-modes.md) — development and production runtime behavior.
+- [Transport](./transport.md) — communication between application processes.
+- [Encyclopedia](./encyclopedia.md) — detailed reference for the codebase.
+- [Release process](./release.md) — release and signing setup checklist.
+- [Windows runtime](./windows-runtime.md) — platform-specific process and packaging boundaries.

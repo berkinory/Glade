@@ -8,7 +8,7 @@
 // Why: Shared by both the pinned and the nested thread-row tooltips so the two
 //      surfaces cannot drift apart.
 
-import type { OrchestrationThreadPullRequest } from "@synara/contracts";
+import type { OrchestrationThreadPullRequest } from "@glade/contracts";
 import type { MouseEvent, ReactNode } from "react";
 
 import { FastModeIcon, GitBranchIcon, WorktreeIcon } from "~/lib/icons";

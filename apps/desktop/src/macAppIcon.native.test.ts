@@ -2,15 +2,15 @@ import * as FS from "node:fs/promises";
 import * as OS from "node:os";
 import * as Path from "node:path";
 
-import { spawnProcessSync } from "@synara/shared/processRuntime";
+import { spawnProcessSync } from "@glade/shared/processRuntime";
 import { describe, expect, it } from "vitest";
 
 import { persistMacAppIcon } from "./macAppIcon";
 
 describe.skipIf(process.platform !== "darwin")("native macOS custom icon persistence", () => {
   it("keeps a custom icon after the writer exits and removes it for Default", async () => {
-    const root = await FS.mkdtemp(Path.join(OS.tmpdir(), "synara-native-icon-"));
-    const bundlePath = Path.join(root, "Synara's Icon Probe.app");
+    const root = await FS.mkdtemp(Path.join(OS.tmpdir(), "glade-native-icon-"));
+    const bundlePath = Path.join(root, "Glade's Icon Probe.app");
     const cacheDirectory = Path.join(root, "cache");
     try {
       await FS.mkdir(bundlePath);

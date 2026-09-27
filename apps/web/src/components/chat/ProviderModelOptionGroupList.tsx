@@ -9,12 +9,11 @@ import { cn } from "~/lib/utils";
 import {
   resolveModelGroupDefaultOpen,
   shouldUseCollapsibleModelGroups,
-  providerModelCostMultiplierLabel,
   providerModelOptionProvenanceLabel,
   type ProviderModelOption,
   type ProviderModelOptionGroup,
 } from "../../providerModelOptions";
-import type { ProviderKind } from "@synara/contracts";
+import type { ProviderKind } from "@glade/contracts";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "../ui/collapsible";
 import { DisclosureChevron } from "../ui/DisclosureChevron";
 import { MenuGroup, MenuGroupLabel, MenuRadioItem } from "../ui/menu";
@@ -24,7 +23,7 @@ import {
 } from "./composerPickerStyles";
 import { ModelStarButton } from "./ModelStarButton";
 
-type FavoriteModelProvider = "cursor" | "opencode" | "pi";
+type FavoriteModelProvider = "cursor" | "opencode";
 
 type ProviderModelOptionGroupListProps = {
   groupedOptions: ReadonlyArray<ProviderModelOptionGroup>;
@@ -58,8 +57,7 @@ function ProviderModelRadioItem(
     onAfterSelection,
   } = props;
   const supportsFavorites = favoriteProvider !== null;
-  const costMultiplierLabel =
-    provider === "droid" ? providerModelCostMultiplierLabel(modelOption.description) : null;
+  const costMultiplierLabel = null;
   const preserveChildLayout = supportsFavorites || costMultiplierLabel !== null;
   const provenanceLabel = showProvenance
     ? providerModelOptionProvenanceLabel({ provider, option: modelOption })

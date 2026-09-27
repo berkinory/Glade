@@ -1,5 +1,5 @@
-import type { DesktopUpdateState } from "@synara/contracts";
-import type { SynaraDesktopFlavor } from "@synara/shared/desktopIdentity";
+import type { DesktopUpdateState } from "@glade/contracts";
+import type { GladeDesktopFlavor } from "@glade/shared/desktopIdentity";
 
 export type DownloadProgressSample = {
   readonly percent?: number | null;
@@ -133,33 +133,13 @@ export function isUpdateVersionNewer(currentVersion: string, candidateVersion: s
   return current.prerelease !== null && candidate.prerelease === null;
 }
 
-/**
- * Whether a release is on this flavor's lane. Electron-updater's GitHub
- * provider falls back to `latest-mac.yml` when the channel manifest is absent,
- * so without this gate a beta install offers the newest *stable* build — and
- * installing it would silently swap the app to a different flavor and home
- * directory. Flavors are install identities, not in-place channels: a beta
- * only updates to `*-beta.*` releases and a production build only takes stable
- * ones; upgrading lanes always happens by installing the other app.
- */
+/** Production accepts stable versions; Dev does not use the packaged updater. */
 export function isUpdateVersionAllowedForFlavor(
   candidateVersion: string,
-  flavor: SynaraDesktopFlavor,
+  flavor: GladeDesktopFlavor,
 ): boolean {
   const candidate = parseUpdateVersion(candidateVersion);
-  if (!candidate) {
-    // Beta and production fail closed: an unparseable version can never be
-    // proven to be on the right lane, so it is not offered. Canary/cua keep
-    // the pre-existing "differs means newer" behavior.
-    return flavor !== "beta" && flavor !== "production";
-  }
-  if (flavor === "beta") {
-    return candidate.prerelease === "beta" || (candidate.prerelease?.startsWith("beta.") ?? false);
-  }
-  if (flavor === "production") {
-    return candidate.prerelease === null;
-  }
-  return true;
+  return flavor === "production" && candidate !== null && candidate.prerelease === null;
 }
 
 export function nextStatusAfterDownloadFailure(
@@ -217,7 +197,7 @@ export function getAutoUpdateDisabledReason(args: {
     return "Automatic updates are only available in packaged production builds.";
   }
   if (args.disabledByEnv) {
-    return "Automatic updates are disabled by the SYNARA_DISABLE_AUTO_UPDATE setting.";
+    return "Automatic updates are disabled by the GLADE_DISABLE_AUTO_UPDATE setting.";
   }
   if (args.platform === "linux" && !args.appImage) {
     return "Automatic updates on Linux require running the AppImage build.";

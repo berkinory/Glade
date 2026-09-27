@@ -3,8 +3,8 @@ import {
   type ModelSelection,
   type ProviderKind,
   type ServerProviderStatus,
-} from "@synara/contracts";
-import { normalizeModelSlug } from "@synara/shared/model";
+} from "@glade/contracts";
+import { normalizeModelSlug } from "@glade/shared/model";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useProviderStatusesForLocalConfig } from "~/hooks/useProviderStatusesForLocalConfig";
@@ -110,13 +110,8 @@ export function useChatProviderModels({
       codex: resolveHint("codex"),
       claudeAgent: resolveHint("claudeAgent"),
       cursor: resolveHint("cursor"),
-      antigravity: resolveHint("antigravity"),
       grok: resolveHint("grok"),
-      droid: resolveHint("droid"),
       opencode: resolveHint("opencode"),
-      pi: resolveHint("pi"),
-      devin: resolveHint("devin"),
-      omp: resolveHint("omp"),
     };
   }, [
     activeProject?.defaultModelSelection,
@@ -129,7 +124,6 @@ export function useChatProviderModels({
     serverCwd: serverConfigQuery.data?.cwd ?? null,
   });
   const {
-    customModelsByProvider,
     modelOptionsByProvider,
     loadingModelProviders,
     discoveryErrorsByProvider,
@@ -149,7 +143,6 @@ export function useChatProviderModels({
     selectedProvider,
     threadModelSelection: activeThread?.modelSelection,
     projectModelSelection: activeProject?.defaultModelSelection,
-    customModelsByProvider,
     availableModelOptionsByProvider: modelOptionsByProvider,
   });
   const draftModelSelectionForSelectedProvider =
@@ -196,16 +189,6 @@ export function useChatProviderModels({
   const selectedPromptEffort = composerProviderState.promptEffort;
   const selectedModelOptionsForDispatch = composerProviderState.modelOptionsForDispatch;
   const selectedModelSelection = useMemo<ModelSelection>(() => {
-    if (
-      (selectedProvider === "pi" || selectedProvider === "omp") &&
-      draftModelSelectionForSelectedProvider?.provider === selectedProvider
-    ) {
-      return buildModelSelection(
-        selectedProvider,
-        draftModelSelectionForSelectedProvider.model,
-        selectedModelOptionsForDispatch ?? draftModelSelectionForSelectedProvider.options,
-      );
-    }
     return buildModelSelection(
       selectedProvider,
       selectedModel,
@@ -242,13 +225,7 @@ export function useChatProviderModels({
           : null;
   const providerModelsLoading = selectedProviderModelsLoading;
   const selectedProviderRequiresRuntimeModels =
-    selectedProvider === "cursor" ||
-    selectedProvider === "antigravity" ||
-    selectedProvider === "droid" ||
-    selectedProvider === "opencode" ||
-    selectedProvider === "pi" ||
-    selectedProvider === "devin" ||
-    selectedProvider === "omp";
+    selectedProvider === "cursor" || selectedProvider === "opencode";
   const showComposerModelBootstrapSkeleton = shouldShowComposerModelBootstrapSkeleton({
     selectedProvider,
     selectedModel,
@@ -281,7 +258,6 @@ export function useChatProviderModels({
     serverConfigQuery,
     selectedProvider,
     providerModelDiscoveryCwd,
-    customModelsByProvider,
     modelOptionsByProvider,
     loadingModelProviders,
     discoveryErrorsByProvider,

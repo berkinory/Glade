@@ -1,12 +1,12 @@
 // FILE: ProjectImportGlyph.tsx
-// Purpose: Claude Code + Codex → Synara tile illustration shared by the project import promos.
+// Purpose: Claude Code + Codex → Glade tile illustration shared by the project import promos.
 // Layer: Web project-import UI
 // Exports: ProjectImportGlyph
 
 import type { ReactNode } from "react";
 
 import { ProviderIcon } from "~/components/ProviderIcon";
-import { SynaraLogo } from "~/components/SynaraLogo";
+import { GladeLogo } from "~/components/GladeLogo";
 import { cn } from "~/lib/utils";
 
 type GlyphSize = "md" | "lg";
@@ -105,7 +105,7 @@ export function ProjectImportGlyph(props: { size?: GlyphSize; className?: string
         <span className={cn("rounded-full bg-[#d97757]", classes.dot)} />
       </span>
       <IconTile size={size} glow="left" glowColor={NEUTRAL_GLOW} className="rotate-6">
-        <SynaraLogo className={classes.icon} />
+        <GladeLogo className={classes.icon} />
       </IconTile>
     </span>
   );

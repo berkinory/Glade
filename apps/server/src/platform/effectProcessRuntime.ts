@@ -2,7 +2,7 @@
 // Purpose: Builds Effect child-process commands from the shared platform planner.
 // Layer: Server platform runtime
 
-import { prepareProcess, type ProcessLaunchInput } from "@synara/shared/platformProcess";
+import { prepareProcess, type ProcessLaunchInput } from "@glade/shared/platformProcess";
 import { ChildProcess } from "effect/unstable/process";
 
 type ProcessPlanningOptions = Pick<ProcessLaunchInput, "platform">;

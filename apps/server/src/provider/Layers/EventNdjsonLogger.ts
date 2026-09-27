@@ -7,8 +7,8 @@
  */
 import path from "node:path";
 
-import type { ThreadId } from "@synara/contracts";
-import { RotatingFileSink } from "@synara/shared/logging";
+import type { ThreadId } from "@glade/contracts";
+import { RotatingFileSink } from "@glade/shared/logging";
 import { Effect, Exit, Logger, Scope } from "effect";
 
 import { stripDiagnosticImages } from "../stripDiagnosticImages.ts";

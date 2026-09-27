@@ -1,10 +1,10 @@
 /**
- * AgentGatewayLive - Synara app-control MCP tool surface.
+ * AgentGatewayLive - Glade app-control MCP tool surface.
  *
- * Implements the `synara_*` tools served over `POST /mcp` (streamable HTTP,
+ * Implements the `glade_*` tools served over `POST /mcp` (streamable HTTP,
  * stateless JSON responses). Every provider session gets this endpoint plus a
  * thread-bound bearer token injected at session start, so any agent running in
- * a Synara thread can list/read/create/steer threads and manage heartbeat
+ * a Glade thread can list/read/create/steer threads and manage heartbeat
  * automations - the same host-tool pattern the Codex desktop app uses.
  *
  * All tools delegate to existing services (OrchestrationEngine dispatch,
@@ -21,7 +21,7 @@ import {
   COMPUTER_CONTROL_DENIED_ACTIVITY_KIND,
   CommandId,
   EventId,
-  SYNARA_GATEWAY_MAX_THREADS_PER_OPERATION,
+  GLADE_GATEWAY_MAX_THREADS_PER_OPERATION,
   MessageId,
   THREAD_GOAL_MAX_CHARS,
   ThreadId,
@@ -36,8 +36,8 @@ import {
   type RuntimeMode,
   type ServerProviderStatus,
   type TurnDispatchMode,
-} from "@synara/contracts";
-import { runtimeModeEscalatesPrivilege } from "@synara/shared/runtimeMode";
+} from "@glade/contracts";
+import { runtimeModeEscalatesPrivilege } from "@glade/shared/runtimeMode";
 import { Effect, Layer, Option } from "effect";
 
 import { GitCore } from "../../git/Services/GitCore.ts";
@@ -93,7 +93,7 @@ import {
   makeAgentGatewayComputerTools,
   type AgentGatewayComputerToolsOptions,
 } from "../computerTools.ts";
-import { isSynaraComputerToolFamilyName } from "../computerToolPermission.ts";
+import { isGladeComputerToolFamilyName } from "../computerToolPermission.ts";
 import { ComputerService } from "../../computer/Services/ComputerService.ts";
 import { computerApprovalGate } from "../../computer/ComputerApprovalGate.ts";
 import { makeComputerForegroundConsent } from "../computerForegroundConsent.ts";
@@ -109,7 +109,7 @@ import { resolveThreadWorkspaceCwd } from "../../checkpointing/Utils.ts";
 // tool definition, so repeating the full policy here adds tens of thousands of
 // context characters per round without adding authority or safety.
 const AGENT_GATEWAY_INSTRUCTIONS =
-  "Synara tools are thread-scoped. Use browser_* only for Synara's shared in-app browser runtime; follow the provider-delivered <synara_host_context> for full policy.";
+  "Glade tools are thread-scoped. Use browser_* only for Glade's shared in-app browser runtime; follow the provider-delivered <glade_host_context> for full policy.";
 
 function readThreadGoalArg(args: Record<string, unknown>): string {
   if (!("goal" in args)) {
@@ -310,9 +310,9 @@ export const makeAgentGateway = Effect.gen(function* () {
     requiredCapability: "thread:write",
     requiresActiveTurn: true,
     definition: {
-      name: "synara_create_threads",
+      name: "glade_create_threads",
       description:
-        "Create an exact batch of 1–20 standalone Synara threads. Worktree threads start on a Synara-managed temporary branch pinned at baseRef (or the selected checkout's HEAD) and copy local checkout changes plus .worktreeinclude files when the ref is that checkout's HEAD; on the first turn Synara may rename the branch after the prompt and publish it. Validation/preflight failures create nothing and may be corrected with the same requestId; durable retries replay the exact operation.",
+        "Create an exact batch of 1–20 standalone Glade threads. Worktree threads start on a Glade-managed temporary branch pinned at baseRef (or the selected checkout's HEAD) and copy local checkout changes plus .worktreeinclude files when the ref is that checkout's HEAD; on the first turn Glade may rename the branch after the prompt and publish it. Validation/preflight failures create nothing and may be corrected with the same requestId; durable retries replay the exact operation.",
       inputSchema: {
         type: "object",
         properties: {
@@ -324,7 +324,7 @@ export const makeAgentGateway = Effect.gen(function* () {
           threads: {
             type: "array",
             minItems: 1,
-            maxItems: SYNARA_GATEWAY_MAX_THREADS_PER_OPERATION,
+            maxItems: GLADE_GATEWAY_MAX_THREADS_PER_OPERATION,
             items: {
               type: "object",
               properties: {
@@ -359,7 +359,7 @@ export const makeAgentGateway = Effect.gen(function* () {
         additionalProperties: false,
       },
       annotations: {
-        title: "Create Synara threads",
+        title: "Create Glade threads",
         readOnlyHint: false,
         destructiveHint: true,
         idempotentHint: true,
@@ -379,9 +379,9 @@ export const makeAgentGateway = Effect.gen(function* () {
     requiredCapability: "thread:write",
     requiresActiveTurn: true,
     definition: {
-      name: "synara_create_thread",
+      name: "glade_create_thread",
       description:
-        "Create exactly one standalone Synara thread. Worktree threads start on a Synara-managed temporary branch pinned at baseRef; on the first turn Synara may rename the branch after the prompt and publish it. For two or more threads use one synara_create_threads call instead.",
+        "Create exactly one standalone Glade thread. Worktree threads start on a Glade-managed temporary branch pinned at baseRef; on the first turn Glade may rename the branch after the prompt and publish it. For two or more threads use one glade_create_threads call instead.",
       inputSchema: {
         type: "object",
         properties: {
@@ -418,7 +418,7 @@ export const makeAgentGateway = Effect.gen(function* () {
         additionalProperties: false,
       },
       annotations: {
-        title: "Create a Synara thread",
+        title: "Create a Glade thread",
         readOnlyHint: false,
         destructiveHint: true,
         idempotentHint: true,
@@ -488,9 +488,9 @@ export const makeAgentGateway = Effect.gen(function* () {
     requiredCapability: "thread:write",
     requiresActiveTurn: true,
     definition: {
-      name: "synara_send_message",
+      name: "glade_send_message",
       description:
-        'Send a Synara follow-up message to an existing thread. mode "queue" (default) waits for the current turn; "steer" redirects a running turn where the provider supports it (otherwise it is queued).',
+        'Send a Glade follow-up message to an existing thread. mode "queue" (default) waits for the current turn; "steer" redirects a running turn where the provider supports it (otherwise it is queued).',
       inputSchema: {
         type: "object",
         properties: {
@@ -501,7 +501,7 @@ export const makeAgentGateway = Effect.gen(function* () {
         required: ["threadId", "message"],
         additionalProperties: false,
       },
-      annotations: { title: "Send a Synara message", ...WRITE_TOOL_ANNOTATIONS },
+      annotations: { title: "Send a Glade message", ...WRITE_TOOL_ANNOTATIONS },
     },
     handler: (args, context) =>
       Effect.gen(function* () {
@@ -545,8 +545,8 @@ export const makeAgentGateway = Effect.gen(function* () {
     requiredCapability: "thread:write",
     requiresActiveTurn: true,
     definition: {
-      name: "synara_interrupt_thread",
-      description: "Interrupt the running turn of a Synara thread.",
+      name: "glade_interrupt_thread",
+      description: "Interrupt the running turn of a Glade thread.",
       inputSchema: {
         type: "object",
         properties: {
@@ -555,7 +555,7 @@ export const makeAgentGateway = Effect.gen(function* () {
         required: ["threadId"],
         additionalProperties: false,
       },
-      annotations: { title: "Interrupt a Synara thread", ...WRITE_TOOL_ANNOTATIONS },
+      annotations: { title: "Interrupt a Glade thread", ...WRITE_TOOL_ANNOTATIONS },
     },
     handler: (args, context) =>
       Effect.gen(function* () {
@@ -591,8 +591,8 @@ export const makeAgentGateway = Effect.gen(function* () {
     requiredCapability: "thread:write",
     requiresActiveTurn: true,
     definition: {
-      name: "synara_set_thread_title",
-      description: "Rename a Synara thread.",
+      name: "glade_set_thread_title",
+      description: "Rename a Glade thread.",
       inputSchema: {
         type: "object",
         properties: {
@@ -602,7 +602,7 @@ export const makeAgentGateway = Effect.gen(function* () {
         required: ["threadId", "title"],
         additionalProperties: false,
       },
-      annotations: { title: "Rename a Synara thread", ...WRITE_TOOL_ANNOTATIONS },
+      annotations: { title: "Rename a Glade thread", ...WRITE_TOOL_ANNOTATIONS },
     },
     handler: (args, context) =>
       Effect.gen(function* () {
@@ -627,9 +627,9 @@ export const makeAgentGateway = Effect.gen(function* () {
     requiredCapability: "thread:write",
     requiresActiveTurn: true,
     definition: {
-      name: "synara_set_thread_pull_request",
+      name: "glade_set_thread_pull_request",
       description:
-        "Associate a pull request with a Synara thread. Use this after successfully creating the pull request that represents that thread's own deliverable. Do not associate pull requests that the thread only reviews, references, or discusses. Defaults to your own thread when threadId is omitted.",
+        "Associate a pull request with a Glade thread. Use this after successfully creating the pull request that represents that thread's own deliverable. Do not associate pull requests that the thread only reviews, references, or discusses. Defaults to your own thread when threadId is omitted.",
       inputSchema: {
         type: "object",
         properties: {
@@ -691,9 +691,9 @@ export const makeAgentGateway = Effect.gen(function* () {
     requiredCapability: "thread:write",
     requiresActiveTurn: true,
     definition: {
-      name: "synara_set_thread_archived",
+      name: "glade_set_thread_archived",
       description:
-        "Archive or unarchive a Synara thread. Defaults to your own thread when threadId is omitted.",
+        "Archive or unarchive a Glade thread. Defaults to your own thread when threadId is omitted.",
       inputSchema: {
         type: "object",
         properties: {
@@ -703,7 +703,7 @@ export const makeAgentGateway = Effect.gen(function* () {
         required: ["archived"],
         additionalProperties: false,
       },
-      annotations: { title: "Update a Synara thread", ...WRITE_TOOL_ANNOTATIONS },
+      annotations: { title: "Update a Glade thread", ...WRITE_TOOL_ANNOTATIONS },
     },
     handler: (args, context) =>
       Effect.gen(function* () {
@@ -746,9 +746,9 @@ export const makeAgentGateway = Effect.gen(function* () {
     requiredCapability: "thread:write",
     requiresActiveTurn: true,
     definition: {
-      name: "synara_set_thread_goal",
+      name: "glade_set_thread_goal",
       description:
-        "Set a persistent goal for a thread. Only set a goal when the user has explicitly asked for one (for example, 'keep working until X' or 'the goal of this thread is Y') or when dispatching a thread explicitly created to pursue a stated objective. Do NOT infer or invent goals from ordinary tasks or set one as a side effect of normal work. Clearing requires the same explicit user intent. When the active goal's objective has been accomplished, pass achieved: true instead of clearing: Synara records the achievement (with the time it took) and clears the goal. If the same external blocker prevents meaningful progress for three consecutive goal turns, pass blocked: true to pause the goal. Do not mark a goal blocked merely because the work is difficult, incomplete, or would benefit from clarification.",
+        "Set a persistent goal for a thread. Only set a goal when the user has explicitly asked for one (for example, 'keep working until X' or 'the goal of this thread is Y') or when dispatching a thread explicitly created to pursue a stated objective. Do NOT infer or invent goals from ordinary tasks or set one as a side effect of normal work. Clearing requires the same explicit user intent. When the active goal's objective has been accomplished, pass achieved: true instead of clearing: Glade records the achievement (with the time it took) and clears the goal. If the same external blocker prevents meaningful progress for three consecutive goal turns, pass blocked: true to pause the goal. Do not mark a goal blocked merely because the work is difficult, incomplete, or would benefit from clarification.",
       inputSchema: {
         type: "object",
         properties: {
@@ -776,7 +776,7 @@ export const makeAgentGateway = Effect.gen(function* () {
         required: [],
         additionalProperties: false,
       },
-      annotations: { title: "Set a Synara thread goal", ...WRITE_TOOL_ANNOTATIONS },
+      annotations: { title: "Set a Glade thread goal", ...WRITE_TOOL_ANNOTATIONS },
     },
     handler: (args, context) =>
       Effect.gen(function* () {
@@ -1028,7 +1028,7 @@ export const makeAgentGateway = Effect.gen(function* () {
           kind: COMPUTER_SETUP_REQUIRED_ACTIVITY_KIND,
           summary: "Computer control needs setup",
           // The grant names ride along so the card can say which permission is
-          // missing rather than "a permission Synara needs"; an empty list is a
+          // missing rather than "a permission Glade needs"; an empty list is a
           // backend that refused without naming one, and the card falls back.
           // The build signature rides with them because on a locally built copy
           // the switch in System Settings can already be on — its grant pinned
@@ -1251,12 +1251,12 @@ export const makeAgentGateway = Effect.gen(function* () {
       tools,
       onCapabilityDenied: surfaceCapabilityDenial,
       // Namespace-insensitive: a session that never saw the catalog reaches
-      // for prefixed spellings (synara_computer_click,
-      // mcp__synara__computer_click). Those must deny with the card, never die
+      // for prefixed spellings (glade_computer_click,
+      // mcp__glade__computer_click). Those must deny with the card, never die
       // as Unknown-tool. The exact set stays as a backstop for any catalog
       // computer name outside the static family list.
       isComputerToolName: (toolName) =>
-        computerToolNames.has(toolName) || isSynaraComputerToolFamilyName(toolName),
+        computerToolNames.has(toolName) || isGladeComputerToolFamilyName(toolName),
       computerControlCapability: COMPUTER_CONTROL_CAPABILITY,
       instructions: AGENT_GATEWAY_INSTRUCTIONS,
       requireThreadShell,

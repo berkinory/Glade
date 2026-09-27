@@ -7,10 +7,10 @@ import {
   type ProjectId,
   type PullRequestReviewRequestCountResult,
   type ThreadId,
-} from "@synara/contracts";
-import { pluralize } from "@synara/shared/text";
-import { resolveThreadEnvironmentMode } from "@synara/shared/threadEnvironment";
-import { isWorkspaceRootWithin, workspaceRootsEqual } from "@synara/shared/threadWorkspace";
+} from "@glade/contracts";
+import { pluralize } from "@glade/shared/text";
+import { resolveThreadEnvironmentMode } from "@glade/shared/threadEnvironment";
+import { isWorkspaceRootWithin, workspaceRootsEqual } from "@glade/shared/threadWorkspace";
 import type { SidebarProjectSortOrder, SidebarThreadSortOrder } from "../appSettings";
 import { resolveRestorableThreadRoute, type LastThreadRoute } from "../chatRouteRestore";
 import type { ChatMessage, Project, SidebarThreadSummary, Thread } from "../types";
@@ -44,7 +44,7 @@ export {
 
 export const THREAD_SELECTION_SAFE_SELECTOR = "[data-thread-item], [data-thread-selection-safe]";
 export const SIDEBAR_THREAD_PREWARM_LIMIT = 10;
-export const DEBUG_FEATURE_FLAGS_MENU_STORAGE_KEY = "synara:show-debug-feature-flags-menu";
+export const DEBUG_FEATURE_FLAGS_MENU_STORAGE_KEY = "glade:show-debug-feature-flags-menu";
 export type SidebarNewThreadEnvMode = "local" | "worktree";
 export type SidebarView = "threads" | "studio";
 export type SidebarActionBadge = {
@@ -104,7 +104,7 @@ export function pullRequestRepositoryConfigFingerprint(
 /**
  * Shared project roots can serve several threads, so their live Git status is environment state,
  * not thread ownership. Only a materialized worktree is thread-scoped: coding agents may checkout
- * or create a new branch there without going through Synara's branch picker, so its checked-out
+ * or create a new branch there without going through Glade's branch picker, so its checked-out
  * branch is authoritative even when the persisted branch metadata is stale.
  */
 export function shouldUseLivePullRequestForSidebarThread(input: {
@@ -214,7 +214,7 @@ export function resolveThreadProjectLabel(
   project: Pick<Project, "kind" | "name" | "folderName"> | null | undefined,
 ): string {
   if (!project || project.kind !== "project") {
-    return "Synara";
+    return "Glade";
   }
   return nonEmptyDisplayValue(project.name) ?? project.folderName;
 }

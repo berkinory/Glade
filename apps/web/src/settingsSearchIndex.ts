@@ -25,7 +25,7 @@ export interface SettingsSearchEntry {
    * Whether this row exists on the machine the user is actually looking at.
    * Omitted means "always". A search result for a row the panel does not render
    * is a dead end: it scrolls to an anchor that is not there, and it tells the
-   * user Synara has a setting it does not.
+   * user Glade has a setting it does not.
    */
   applies?: (context: SettingsSearchContext) => boolean;
 }
@@ -181,13 +181,13 @@ export const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     id: "appearance:theme",
     section: "appearance",
     title: "Theme",
-    keywords: "Choose how Synara looks across the app. dark light system color",
+    keywords: "Choose how Glade looks across the app. dark light system color",
   },
   {
     id: "appearance:app-icon",
     section: "appearance",
     title: "App icon",
-    keywords: "Choose the icon Synara uses in the dock or taskbar desktop application logo.",
+    keywords: "Choose the icon Glade uses in the dock or taskbar desktop application logo.",
     target: null,
   },
   {
@@ -202,7 +202,7 @@ export const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     id: "appearance:system-ui-font",
     section: "appearance",
     title: "Use system UI font",
-    keywords: "Use the operating system interface font throughout Synara.",
+    keywords: "Use the operating system interface font throughout Glade.",
   },
   {
     id: "appearance:ui-density",
@@ -269,50 +269,13 @@ export const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
       "Show an OS notification when a chat or managed terminal agent finishes or needs input while the app is in the background. alerts toast",
   },
 
-  // ── AppSnap ───────────────────────────────────────────────────────────────────
-  {
-    id: "appsnap:enable",
-    section: "appsnap",
-    title: "Enable AppSnap",
-    keywords:
-      "Capture the frontmost macOS app window with a configurable two-key shortcut and add it to a recent task. appshot screenshot snap window capture hotkey",
-  },
-  {
-    id: "appsnap:shortcut",
-    section: "appsnap",
-    title: "Shortcut",
-    keywords: "Press the left and right Option keys at the same time. hotkey chord alt keys",
-  },
-  {
-    id: "appsnap:destination",
-    section: "appsnap",
-    title: "Destination",
-    keywords:
-      "Snaps join the task you interacted with in the last minute, otherwise a fresh task opens. automatic target composer",
-  },
-  {
-    id: "appsnap:capture-sound",
-    section: "appsnap",
-    title: "Capture sound",
-    keywords: "Play a short shutter cue when a window is captured. sound effect audio mute",
-  },
-  {
-    id: "appsnap:permissions",
-    section: "appsnap",
-    title: "Permission status",
-    keywords:
-      "Input Monitoring and Screen Recording permissions for AppSnap in macOS System Settings. privacy security recheck grant",
-    // Renders only in the macOS desktop app, so no stable anchor on other platforms.
-    target: null,
-  },
-
   // ── Computer use ──────────────────────────────────────────────────────────────
   {
     id: "computer:status",
     section: "computer",
     title: "Computer status",
     keywords:
-      "Whether agents can see and control this computer's desktop right now. desktop backend beta availability health kwin hyprland nested wayland linux mac macos screen recording accessibility computer use control status set up install plugin repair",
+      "Whether agents can see and control this computer's desktop right now. desktop backend availability health kwin hyprland nested wayland linux mac macos screen recording accessibility computer use control status set up install plugin repair",
     // The status row is conditional and its title is dynamic (Ready /
     // Reconnecting / Unavailable), so link to the section rather than an
     // anchored row.
@@ -408,7 +371,7 @@ export const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     section: "shortcuts",
     title: "Keybindings",
     keywords:
-      "Every keyboard shortcut available in Synara, grouped by context. keybindings hotkeys key combo cmd ctrl reference",
+      "Every keyboard shortcut available in Glade, grouped by context. keybindings hotkeys key combo cmd ctrl reference",
     target: null,
   },
 
@@ -417,7 +380,7 @@ export const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     id: "worktrees:managed-worktrees",
     section: "worktrees",
     title: "Managed worktrees",
-    keywords: "Review and clean up the worktrees created by Synara. git branch remove",
+    keywords: "Review and clean up the worktrees created by Glade. git branch remove",
     target: null,
   },
 
@@ -436,12 +399,6 @@ export const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     section: "models",
     title: "Git writing model",
     keywords: "Used for generated commit messages, PR titles, and branch names.",
-  },
-  {
-    id: "models:saved-model-slugs",
-    section: "models",
-    title: "Saved model slugs",
-    keywords: "Add custom model slugs for supported providers. custom model",
   },
 
   // ── Providers ─────────────────────────────────────────────────────────────────
@@ -463,7 +420,7 @@ export const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     id: "providers:provider-updates",
     section: "providers",
     title: "Provider updates",
-    keywords: "Update installed provider tools that Synara can safely update. upgrade cli",
+    keywords: "Update installed provider tools that Glade can safely update. upgrade cli",
   },
   {
     id: "providers:installed-clis",
@@ -504,13 +461,6 @@ export const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     title: "Recovery tools",
     keywords:
       "Rebuild local project indexes without clearing existing chats when the local state gets out of sync.",
-  },
-  {
-    id: "integrations:external-mcp",
-    section: "integrations",
-    title: "External MCP integrations",
-    keywords:
-      "Pair Codex Claude and other local MCP clients with scoped project access. revoke credential task create wait read worktree approval",
   },
   {
     id: "advanced:version",

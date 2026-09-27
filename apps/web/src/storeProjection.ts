@@ -10,8 +10,8 @@ import {
   type OrchestrationSpaceShell,
   type ThreadId,
   type TurnId,
-} from "@synara/contracts";
-import { deriveThreadSummaryMetadata } from "@synara/shared/threadSummary";
+} from "@glade/contracts";
+import { deriveThreadSummaryMetadata } from "@glade/shared/threadSummary";
 
 import {
   clearThreadDetailResumeCursor,

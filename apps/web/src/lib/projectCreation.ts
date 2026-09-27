@@ -9,8 +9,8 @@ import {
   type ProjectId,
   type ProviderKind,
   type SpaceId,
-} from "@synara/contracts";
-import { getDefaultModel } from "@synara/shared/model";
+} from "@glade/contracts";
+import { getDefaultModel } from "@glade/shared/model";
 
 import { readActiveSpaceId } from "../spacesUiStore";
 import {
@@ -26,7 +26,7 @@ const DEFAULT_PROJECT_CREATE_RECOVERY_DELAY_MS = 50;
 export const PROJECT_CREATE_EXISTING_SYNC_ERROR =
   "This folder is already linked, but the existing project has not synced into the sidebar yet. Try again in a moment.";
 export const PROJECT_CREATE_SYNC_ERROR =
-  "The project was created, but it has not synced into Synara yet. Try again in a moment.";
+  "The project was created, but it has not synced into Glade yet. Try again in a moment.";
 
 function buildProjectTitleFromWorkspaceRoot(workspaceRoot: string): string {
   return workspaceRoot.split(/[/\\]/).findLast((segment) => segment.length > 0) ?? workspaceRoot;
@@ -41,7 +41,7 @@ export async function createOrRecoverProjectFromPath(input: {
   /** Overrides the active-space default; `null` files the project in Void. */
   spaceId?: SpaceId | null;
   /** Persisted default provider (settings.defaultProvider) that seeds the new
-   * project's default model selection. Defaults to codex when omitted, and pi
+   * project's default model selection. Defaults to codex when omitted.
    * falls back to codex because it has no default model slug. */
   defaultProvider?: ProviderKind;
   loadSnapshot: () => Promise<OrchestrationShellSnapshot | null>;
@@ -63,10 +63,7 @@ export async function createOrRecoverProjectFromPath(input: {
   const projectId = newProjectId();
   const createdAt = new Date().toISOString();
   const title = buildProjectTitleFromWorkspaceRoot(workspaceRoot);
-  const seedProvider =
-    input.defaultProvider === "pi" || input.defaultProvider === "omp"
-      ? "codex"
-      : (input.defaultProvider ?? "codex");
+  const seedProvider = input.defaultProvider ?? "codex";
 
   try {
     await input.api.orchestration.dispatchCommand({

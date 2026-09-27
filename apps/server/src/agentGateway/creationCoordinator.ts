@@ -12,13 +12,13 @@ import {
   type OrchestrationThreadShell,
   type ProviderInteractionMode,
   type ProviderKind,
-  type SynaraCreateThreadsInput,
-  type SynaraCreateThreadsResult,
-} from "@synara/contracts";
-import { buildPromptThreadTitleFallback } from "@synara/shared/chatThreads";
-import { WORKTREE_BRANCH_PREFIX } from "@synara/shared/git";
-import { parseGitHubRepositoryNameWithOwnerFromPullRequestUrl } from "@synara/shared/githubRepository";
-import { runtimeModeEscalatesPrivilege } from "@synara/shared/runtimeMode";
+  type GladeCreateThreadsInput,
+  type GladeCreateThreadsResult,
+} from "@glade/contracts";
+import { buildPromptThreadTitleFallback } from "@glade/shared/chatThreads";
+import { WORKTREE_BRANCH_PREFIX } from "@glade/shared/git";
+import { parseGitHubRepositoryNameWithOwnerFromPullRequestUrl } from "@glade/shared/githubRepository";
+import { runtimeModeEscalatesPrivilege } from "@glade/shared/runtimeMode";
 import { Cause, Effect, Option, Semaphore } from "effect";
 
 import type { ServerConfigShape } from "../config.ts";
@@ -31,11 +31,6 @@ import type {
   AgentGatewayOperationRecord,
   AgentGatewayOperationRepositoryShape,
 } from "./Services/AgentGatewayOperationRepository.ts";
-import type {
-  ExternalMcpRepositoryShape,
-  ExternalMcpOperationRecord,
-} from "../externalMcp/Services/ExternalMcpRepository.ts";
-import { resolveExternalMcpRuntimePolicy } from "../externalMcp/runtimePolicy.ts";
 import {
   canonicalJson,
   gatewayIsoNow,
@@ -91,7 +86,6 @@ interface CreationCoordinatorDependencies {
   readonly git: GitCoreShape;
   readonly providerDiscovery: ProviderDiscoveryServiceShape;
   readonly operationRepository: AgentGatewayOperationRepositoryShape;
-  readonly externalMcpRepository?: ExternalMcpRepositoryShape;
   readonly serverConfig: ServerConfigShape;
   readonly loadProviderAvailabilities: Effect.Effect<
     ReadonlyMap<ProviderKind, AgentGatewayProviderAvailability>,
@@ -102,22 +96,14 @@ interface CreationCoordinatorDependencies {
   ) => Effect.Effect<OrchestrationThreadShell, ToolInputError>;
 }
 
-export type GatewayCreationContext =
-  | {
-      readonly kind: "provider-session";
-      readonly callerThreadId: string;
-      readonly callerTurnId: string | null;
-      readonly assertAuthority: () => Effect.Effect<void, GatewayToolError>;
-    }
-  | {
-      readonly kind: "external-client";
-      readonly integrationId: string;
-      readonly allowedProjectIds: ReadonlySet<string>;
-      readonly capabilities: ReadonlySet<string>;
-      readonly assertAuthority: () => Effect.Effect<void, GatewayToolError>;
-    };
+export type GatewayCreationContext = {
+  readonly kind: "provider-session";
+  readonly callerThreadId: string;
+  readonly callerTurnId: string | null;
+  readonly assertAuthority: () => Effect.Effect<void, GatewayToolError>;
+};
 
-type CreationOperationRecord = AgentGatewayOperationRecord | ExternalMcpOperationRecord;
+type CreationOperationRecord = AgentGatewayOperationRecord;
 
 interface CreationOperationStore {
   readonly getExisting: () => Effect.Effect<CreationOperationRecord | null, Error>;
@@ -130,15 +116,10 @@ interface CreationOperationStore {
     readonly planJson: string;
     readonly now: string;
   }) => Effect.Effect<
-    | {
-        readonly kind: "reserved" | "replay" | "idempotency_conflict" | "creation_plan_locked";
-        readonly operation: CreationOperationRecord;
-      }
-    | {
-        readonly kind: "concurrency_limited";
-        readonly activeCount: number;
-        readonly limit: number;
-      },
+    {
+      readonly kind: "reserved" | "replay" | "idempotency_conflict" | "creation_plan_locked";
+      readonly operation: CreationOperationRecord;
+    },
     Error
   >;
   readonly markDispatching: AgentGatewayOperationRepositoryShape["markDispatching"];
@@ -147,17 +128,6 @@ interface CreationOperationStore {
   readonly recordCompensationFailure: AgentGatewayOperationRepositoryShape["recordCompensationFailure"];
   readonly complete: AgentGatewayOperationRepositoryShape["complete"];
   readonly fail: AgentGatewayOperationRepositoryShape["fail"];
-  readonly registerTask: (input: {
-    readonly operationId: string;
-    readonly requestId: string;
-    readonly threadId: string;
-    readonly projectId: string;
-    readonly now: string;
-  }) => Effect.Effect<void, Error>;
-  readonly markTaskStatus: (
-    operationId: string,
-    status: "created" | "failed",
-  ) => Effect.Effect<void, Error>;
 }
 
 /**
@@ -176,7 +146,6 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
     git,
     providerDiscovery,
     operationRepository,
-    externalMcpRepository,
     serverConfig,
     loadProviderAvailabilities,
     requireThreadShell,
@@ -249,7 +218,7 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
       return yield* Effect.fail(
         new GatewayToolError(
           "operation_failed",
-          "The original thread-creation operation is still in progress. Retry only with the same request id; Synara will not create replacement threads.",
+          "The original thread-creation operation is still in progress. Retry only with the same request id; Glade will not create replacement threads.",
           { operationId, status: operation?.status ?? "missing" },
         ),
       );
@@ -258,7 +227,7 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
   const appendThreadCreationRecap = (input: {
     readonly callerThreadId: string;
     readonly callerTurnId: string;
-    readonly result: SynaraCreateThreadsResult;
+    readonly result: GladeCreateThreadsResult;
   }) => {
     const marker = stableGatewayDigest({
       operationId: input.result.operationId,
@@ -274,10 +243,10 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
         activity: {
           id: EventId.makeUnsafe(`gateway:${marker}:threads-created-recap`),
           tone: "info",
-          kind: "synara.threads.created",
-          summary: `Created ${input.result.createdCount} Synara ${threadLabel}`,
+          kind: "glade.threads.created",
+          summary: `Created ${input.result.createdCount} Glade ${threadLabel}`,
           payload: {
-            source: "synara_mcp",
+            source: "glade_mcp",
             operationId: input.result.operationId,
             requestId: input.result.requestId,
             requestedCount: input.result.requestedCount,
@@ -300,9 +269,9 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
       );
   };
 
-  const run = (input: typeof SynaraCreateThreadsInput.Type, context: GatewayCreationContext) => {
+  const run = (input: typeof GladeCreateThreadsInput.Type, context: GatewayCreationContext) => {
     return Effect.gen(function* () {
-      if (context.kind === "provider-session" && context.callerTurnId === null) {
+      if (context.callerTurnId === null) {
         return yield* Effect.fail(
           new GatewayToolError(
             "caller_turn_inactive",
@@ -310,14 +279,7 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
           ),
         );
       }
-      if (context.kind === "external-client" && input.threads.length !== 1) {
-        return yield* Effect.fail(
-          new GatewayToolError(
-            "creation_limit_exceeded",
-            "External MCP integrations may create exactly one task per request.",
-          ),
-        );
-      }
+
       if (
         context.kind !== "provider-session" &&
         input.threads.some((spec) => spec.notifyCreatorOnComplete)
@@ -329,96 +291,44 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
           ),
         );
       }
-      const callerTurnId = context.kind === "provider-session" ? context.callerTurnId! : null;
-      const caller =
-        context.kind === "provider-session"
-          ? yield* requireThreadShell(context.callerThreadId)
-          : null;
+      const callerTurnId = context.callerTurnId!;
+      const caller = yield* requireThreadShell(context.callerThreadId);
       const operationId = `gateway:create:${stableGatewayDigest({
         principalKind: context.kind,
-        principalId:
-          context.kind === "provider-session" ? context.callerThreadId : context.integrationId,
+        principalId: context.callerThreadId,
         ...(callerTurnId ? { callerTurnId } : {}),
         requestId: input.requestId,
       })}`;
       const fingerprint = stableGatewayDigest(input, 64);
-      const externalOperationRepository =
-        context.kind === "external-client" ? externalMcpRepository : undefined;
-      if (context.kind === "external-client" && externalOperationRepository === undefined) {
-        return yield* Effect.fail(
-          new GatewayToolError(
-            "external_mcp_unavailable",
-            "External MCP persistence is unavailable.",
-          ),
-        );
-      }
-      const operationStore: CreationOperationStore =
-        context.kind === "provider-session"
-          ? {
-              getExisting: () =>
-                operationRepository.getByScope({
-                  callerThreadId: context.callerThreadId,
-                  callerTurnId: context.callerTurnId!,
-                  operationKind: "create_threads",
-                }),
-              getById: operationRepository.getById,
-              reserve: (reservation) =>
-                operationRepository.reserve({
-                  ...reservation,
-                  callerThreadId: context.callerThreadId,
-                  callerTurnId: context.callerTurnId!,
-                  operationKind: "create_threads",
-                }),
-              markDispatching: operationRepository.markDispatching,
-              recordWorktreeCreated: operationRepository.recordWorktreeCreated,
-              markCompensating: operationRepository.markCompensating,
-              recordCompensationFailure: operationRepository.recordCompensationFailure,
-              complete: operationRepository.complete,
-              fail: operationRepository.fail,
-              registerTask: () => Effect.void,
-              markTaskStatus: () => Effect.void,
-            }
-          : {
-              getExisting: () =>
-                externalOperationRepository!.getOperationByRequest({
-                  integrationId: context.integrationId,
-                  requestId: input.requestId,
-                }),
-              getById: externalOperationRepository!.getOperationById,
-              reserve: (reservation) =>
-                externalOperationRepository!.reserveOperation({
-                  ...reservation,
-                  integrationId: context.integrationId,
-                  requestedCount: 1,
-                }),
-              markDispatching: externalOperationRepository!.markOperationDispatching,
-              recordWorktreeCreated: externalOperationRepository!.recordOperationWorktreeCreated,
-              markCompensating: externalOperationRepository!.markOperationCompensating,
-              recordCompensationFailure:
-                externalOperationRepository!.recordOperationCompensationFailure,
-              complete: externalOperationRepository!.completeOperation,
-              fail: externalOperationRepository!.failOperation,
-              registerTask: (task) =>
-                externalOperationRepository!.registerTask({
-                  ...task,
-                  integrationId: context.integrationId,
-                }),
-              markTaskStatus: (operationId, status) =>
-                externalOperationRepository!.markTaskStatus({
-                  operationId,
-                  status,
-                  now: gatewayIsoNow(),
-                }),
-            };
+
+      const operationStore: CreationOperationStore = {
+        getExisting: () =>
+          operationRepository.getByScope({
+            callerThreadId: context.callerThreadId,
+            callerTurnId: context.callerTurnId!,
+            operationKind: "create_threads",
+          }),
+        getById: operationRepository.getById,
+        reserve: (reservation) =>
+          operationRepository.reserve({
+            ...reservation,
+            callerThreadId: context.callerThreadId,
+            callerTurnId: context.callerTurnId!,
+            operationKind: "create_threads",
+          }),
+        markDispatching: operationRepository.markDispatching,
+        recordWorktreeCreated: operationRepository.recordWorktreeCreated,
+        markCompensating: operationRepository.markCompensating,
+        recordCompensationFailure: operationRepository.recordCompensationFailure,
+        complete: operationRepository.complete,
+        fail: operationRepository.fail,
+      };
       const existingOperation = yield* operationStore
         .getExisting()
         .pipe(Effect.mapError((error) => new ToolInputError(errorText(error))));
       if (existingOperation !== null) {
         yield* context.assertAuthority();
-        if (
-          context.kind === "provider-session" &&
-          existingOperation.requestId !== input.requestId
-        ) {
+        if (existingOperation.requestId !== input.requestId) {
           return yield* Effect.fail(
             new GatewayToolError(
               "creation_plan_locked",
@@ -466,7 +376,7 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
       if (deprecatedBranchName) {
         return yield* Effect.fail(
           new ToolInputError(
-            '"branchName" is no longer supported for managed worktrees. Synara creates a managed temporary branch and renames it after the first prompt; create additional branches inside the new thread if needed.',
+            '"branchName" is no longer supported for managed worktrees. Glade creates a managed temporary branch and renames it after the first prompt; create additional branches inside the new thread if needed.',
           ),
         );
       }
@@ -475,20 +385,8 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
 
       const prepared = yield* Effect.forEach(input.threads, (spec, index) =>
         Effect.gen(function* () {
-          if (context.kind === "external-client" && spec.projectId === undefined) {
-            return yield* Effect.fail(
-              new ToolInputError("External MCP task creation requires an explicit projectId."),
-            );
-          }
           const projectId = ProjectId.makeUnsafe(spec.projectId ?? caller!.projectId);
-          if (context.kind === "external-client" && !context.allowedProjectIds.has(projectId)) {
-            return yield* Effect.fail(
-              new GatewayToolError(
-                "capability_denied",
-                `This integration is not authorized for project "${projectId}".`,
-              ),
-            );
-          }
+
           const project = yield* snapshotQuery.getProjectShellById(projectId).pipe(
             Effect.mapError((error) => new ToolInputError(errorText(error))),
             Effect.flatMap(
@@ -506,18 +404,7 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
             ...(providerAvailability !== undefined ? { availability: providerAvailability } : {}),
             cwd: project.workspaceRoot,
           });
-          const externalPolicy =
-            context.kind === "external-client"
-              ? resolveExternalMcpRuntimePolicy({
-                  ...(spec.environment ? { requestedEnvironment: spec.environment } : {}),
-                  ...(spec.runtimeMode ? { requestedRuntimeMode: spec.runtimeMode } : {}),
-                  capabilities: context.capabilities,
-                })
-              : null;
-          const environment =
-            externalPolicy?.environment ??
-            spec.environment ??
-            (callerIsolatedInWorktree ? "worktree" : "local");
+          const environment = spec.environment ?? (callerIsolatedInWorktree ? "worktree" : "local");
           if (environment === "local" && callerIsolatedInWorktree) {
             return yield* Effect.fail(
               new ToolInputError(
@@ -526,15 +413,9 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
             );
           }
           const runtimeMode =
-            externalPolicy?.runtimeMode ??
             spec.runtimeMode ??
-            (context.kind === "external-client" || caller!.runtimeMode === "auto"
-              ? "approval-required"
-              : caller!.runtimeMode);
-          if (
-            context.kind === "provider-session" &&
-            runtimeModeEscalatesPrivilege(caller!.runtimeMode, runtimeMode)
-          ) {
+            (caller!.runtimeMode === "auto" ? "approval-required" : caller!.runtimeMode);
+          if (runtimeModeEscalatesPrivilege(caller!.runtimeMode, runtimeMode)) {
             return yield* Effect.fail(
               new ToolInputError(
                 `Your thread runs in "${caller!.runtimeMode}" mode, so created threads cannot use higher-privileged "${runtimeMode}".`,
@@ -542,18 +423,10 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
             );
           }
           if (spec.enableComputerControl === true) {
-            if (context.kind === "provider-session") {
+            {
               return yield* Effect.fail(
                 new ToolInputError(
                   "Threads cannot delegate computer control to tasks they create.",
-                ),
-              );
-            }
-            if (!context.capabilities.has("computer:control")) {
-              return yield* Effect.fail(
-                new GatewayToolError(
-                  "capability_denied",
-                  'Computer control requires the explicit "computer:control" scope.',
                 ),
               );
             }
@@ -637,7 +510,7 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
             if (existsSync(plannedWorktreePath)) {
               return yield* Effect.fail(
                 new ToolInputError(
-                  `Worktree path "${plannedWorktreePath}" already exists. Synara will not reuse or remove a pre-existing path.`,
+                  `Worktree path "${plannedWorktreePath}" already exists. Glade will not reuse or remove a pre-existing path.`,
                 ),
               );
             }
@@ -656,7 +529,7 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
             copyChangesFrom,
             // Deterministic like the planned path: an exact-plan retry must
             // resolve to the same branch, and recovery reclaims it by name.
-            // The 8-hex-digit token keeps it a temporary synara/* branch.
+            // The 8-hex-digit token keeps it a temporary glade/* branch.
             newBranch:
               environment === "worktree"
                 ? `${WORKTREE_BRANCH_PREFIX}/${stableGatewayDigest({ operationId, index, resource: "worktree-branch" }, 8)}`
@@ -758,7 +631,7 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
                             worktree.branch === null
                               ? Effect.void
                               : // The branch is this operation's own deterministic
-                                // synara/* name and its worktree was just force-removed.
+                                // glade/* name and its worktree was just force-removed.
                                 // A non-forced delete would fail whenever the pinned
                                 // ref is not merged into the root HEAD (e.g. PR heads),
                                 // stranding the name and blocking exact-plan retries.
@@ -816,18 +689,6 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
                 ),
             { discard: true },
           );
-          // Do not make a task terminal before cleanup has been attempted. The
-          // durable capacity view treats planned/created tasks and non-terminal
-          // failed compensation as active, so projector lag and restart cannot
-          // briefly admit a replacement while this task may still be running.
-          yield* operationStore.markTaskStatus(operationId, "failed").pipe(
-            Effect.catch((error) =>
-              Effect.logWarning("agent gateway could not mark external task failed", {
-                operationId,
-                error: errorText(error),
-              }),
-            ),
-          );
           const failure = {
             code: interrupted ? "request_interrupted" : "dispatch_failed",
             message: failureMessage,
@@ -857,7 +718,7 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
             });
             return new GatewayToolError(
               "operation_failed",
-              "Synara could not dispatch the exact creation plan and cleanup is still pending. The durable operation remains compensating and will never create replacements.",
+              "Glade could not dispatch the exact creation plan and cleanup is still pending. The durable operation remains compensating and will never create replacements.",
               { operationId, ...failure, compensationPending: true },
             );
           }
@@ -893,13 +754,13 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
               );
             return new GatewayToolError(
               "operation_failed",
-              "Synara compensated the created resources but could not persist a terminal operation status. The operation remains compensating and will never create replacements.",
+              "Glade compensated the created resources but could not persist a terminal operation status. The operation remains compensating and will never create replacements.",
               { operationId, ...failure, compensationPending: true },
             );
           }
           return new GatewayToolError(
             "operation_failed",
-            "Synara could not dispatch the exact creation plan. Created operation-owned resources were compensated; no replacements were created.",
+            "Glade could not dispatch the exact creation plan. Created operation-owned resources were compensated; no replacements were created.",
             { operationId, ...failure },
           );
         });
@@ -941,14 +802,6 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
                 "idempotency_conflict",
                 `Request id "${input.requestId}" was already used with a different creation plan.`,
                 { operationId: reservation.operation.operationId },
-              ),
-            );
-          }
-          if (reservation.kind === "concurrency_limited") {
-            return yield* Effect.fail(
-              new GatewayToolError(
-                "concurrency_limited",
-                `This integration already has ${reservation.activeCount} active externally created tasks/operations (limit ${reservation.limit}).`,
               ),
             );
           }
@@ -1007,19 +860,6 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
             };
           }
           claimedByThisFiber = true;
-
-          yield* Effect.forEach(
-            prepared,
-            (entry) =>
-              operationStore.registerTask({
-                operationId,
-                requestId: input.requestId,
-                threadId: entry.ids.threadId,
-                projectId: entry.projectId,
-                now: gatewayIsoNow(),
-              }),
-            { discard: true },
-          );
 
           const results = yield* restore(
             Effect.forEach(
@@ -1110,14 +950,11 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
                       envMode: entry.environment,
                       branch,
                       worktreePath,
-                      creationSource:
-                        context.kind === "external-client" ? "external_mcp" : "synara_mcp",
-                      ...(context.kind === "provider-session"
-                        ? {
-                            sourceThreadId: ThreadId.makeUnsafe(context.callerThreadId),
-                            sourceTurnId: TurnId.makeUnsafe(callerTurnId!),
-                          }
-                        : {}),
+                      creationSource: "glade_mcp",
+                      ...{
+                        sourceThreadId: ThreadId.makeUnsafe(context.callerThreadId),
+                        sourceTurnId: TurnId.makeUnsafe(callerTurnId!),
+                      },
                       gatewayOperationId: operationId,
                       gatewayOperationIndex: entry.index,
                       ...(worktreePath !== null
@@ -1163,8 +1000,6 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
                   // the same durable operation instead of being left detached.
                   yield* context.assertAuthority();
 
-                  yield* operationStore.markTaskStatus(operationId, "created");
-
                   return {
                     index: entry.index,
                     threadId: entry.ids.threadId,
@@ -1190,7 +1025,7 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
             createdCount: results.length,
             threadIds: results.map((entry) => entry.threadId),
             threads: results,
-          } satisfies SynaraCreateThreadsResult;
+          } satisfies GladeCreateThreadsResult;
           // Once every deterministic dispatch succeeded, durable completion is
           // the commit point. A late client cancellation must not roll back a
           // fully-created operation or strand it between dispatching/completed.
@@ -1217,7 +1052,7 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
 
       if (outcome.kind === "replay") return outcome.result;
       const result = outcome.result;
-      if (context.kind === "provider-session") {
+      {
         yield* appendThreadCreationRecap({
           callerThreadId: context.callerThreadId,
           callerTurnId: callerTurnId!,
@@ -1228,9 +1063,7 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
     }).pipe(
       (effect) =>
         withCreationPlanLock(
-          context.kind === "provider-session"
-            ? `${context.callerThreadId}\u0000${context.callerTurnId ?? "inactive"}`
-            : `${context.integrationId}\u0000${input.requestId}`,
+          `${context.callerThreadId}\u0000${context.callerTurnId ?? "inactive"}`,
           effect,
         ),
       Effect.catch((error) =>

@@ -6,7 +6,7 @@
 
 import nodePath from "node:path";
 
-import type { ServerProviderUsageLine, ServerProviderUsageLimit } from "@synara/contracts";
+import type { ServerProviderUsageLine, ServerProviderUsageLimit } from "@glade/contracts";
 
 import { getGrokApiKeyEnv } from "../../provider/acp/GrokAcpSupport";
 import {

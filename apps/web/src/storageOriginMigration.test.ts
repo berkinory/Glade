@@ -28,54 +28,54 @@ describe("storageOriginMigration", () => {
   });
 
   it("imports missing keys without overwriting current-origin state", async () => {
-    globalThis.localStorage.setItem("synara:theme", "current");
-    const { importSynaraStorageSnapshot } = await import("./storageOriginMigration");
+    globalThis.localStorage.setItem("glade:theme", "current");
+    const { importGladeStorageSnapshot } = await import("./storageOriginMigration");
 
     expect(
-      importSynaraStorageSnapshot({
+      importGladeStorageSnapshot({
         version: 1,
         exportedAt: "2026-07-09T00:00:00.000Z",
         entries: {
-          "synara:theme": "snapshot",
-          "synara:composer-drafts:v1": "draft",
+          "glade:theme": "snapshot",
+          "glade:composer-drafts:v1": "draft",
         },
       }),
     ).toBe(true);
-    expect(globalThis.localStorage.getItem("synara:theme")).toBe("current");
-    expect(globalThis.localStorage.getItem("synara:composer-drafts:v1")).toBe("draft");
+    expect(globalThis.localStorage.getItem("glade:theme")).toBe("current");
+    expect(globalThis.localStorage.getItem("glade:composer-drafts:v1")).toBe("draft");
   });
 
   it("rejects an invalid snapshot before writing any entry", async () => {
-    const { importSynaraStorageSnapshot } = await import("./storageOriginMigration");
+    const { importGladeStorageSnapshot } = await import("./storageOriginMigration");
     expect(
-      importSynaraStorageSnapshot({
+      importGladeStorageSnapshot({
         version: 1,
         exportedAt: "2026-07-09T00:00:00.000Z",
         entries: {
-          "synara:theme": "dark",
+          "glade:theme": "dark",
           "foreign:theme": "light",
         },
       }),
     ).toBe(false);
-    expect(globalThis.localStorage.getItem("synara:theme")).toBeNull();
+    expect(globalThis.localStorage.getItem("glade:theme")).toBeNull();
   });
 
   it("imports snapshots containing large composer drafts", async () => {
-    const { importSynaraStorageSnapshot } = await import("./storageOriginMigration");
+    const { importGladeStorageSnapshot } = await import("./storageOriginMigration");
     const largeDraft = "x".repeat(2 * 1024 * 1024);
 
     expect(
-      importSynaraStorageSnapshot({
+      importGladeStorageSnapshot({
         version: 1,
         exportedAt: "2026-07-09T00:00:00.000Z",
-        entries: { "synara:composer-drafts:v1": largeDraft },
+        entries: { "glade:composer-drafts:v1": largeDraft },
       }),
     ).toBe(true);
-    expect(globalThis.localStorage.getItem("synara:composer-drafts:v1")).toBe(largeDraft);
+    expect(globalThis.localStorage.getItem("glade:composer-drafts:v1")).toBe(largeDraft);
   });
 
   it("keeps the snapshot retryable after a partial storage failure", async () => {
-    const { importSynaraStorageSnapshot } = await import("./storageOriginMigration");
+    const { importGladeStorageSnapshot } = await import("./storageOriginMigration");
     let writes = 0;
     const storage = createMemoryStorage();
     const setItem = storage.setItem.bind(storage);
@@ -87,13 +87,13 @@ describe("storageOriginMigration", () => {
     const snapshot = {
       version: 1 as const,
       exportedAt: "2026-07-09T00:00:00.000Z",
-      entries: { "synara:theme": "dark", "synara:composer-drafts:v1": "draft" },
+      entries: { "glade:theme": "dark", "glade:composer-drafts:v1": "draft" },
     };
 
-    expect(importSynaraStorageSnapshot(snapshot, storage)).toBe(false);
+    expect(importGladeStorageSnapshot(snapshot, storage)).toBe(false);
     storage.setItem = setItem;
-    expect(importSynaraStorageSnapshot(snapshot, storage)).toBe(true);
-    expect(storage.getItem("synara:composer-drafts:v1")).toBe("draft");
+    expect(importGladeStorageSnapshot(snapshot, storage)).toBe(true);
+    expect(storage.getItem("glade:composer-drafts:v1")).toBe("draft");
   });
 
   it("acknowledges the desktop snapshot only after a complete bootstrap import", async () => {
@@ -104,7 +104,7 @@ describe("storageOriginMigration", () => {
           readSnapshot: () => ({
             version: 1,
             exportedAt: "2026-07-09T00:00:00.000Z",
-            entries: { "synara:theme": "dark" },
+            entries: { "glade:theme": "dark" },
           }),
           acknowledgeSnapshot,
         },
@@ -113,7 +113,7 @@ describe("storageOriginMigration", () => {
 
     await import("./storageOriginMigration");
     await vi.waitFor(() => expect(acknowledgeSnapshot).toHaveBeenCalledOnce());
-    expect(globalThis.localStorage.getItem("synara:theme")).toBe("dark");
+    expect(globalThis.localStorage.getItem("glade:theme")).toBe("dark");
   });
 
   it("does not acknowledge when renderer storage rejects a write", async () => {
@@ -130,7 +130,7 @@ describe("storageOriginMigration", () => {
           readSnapshot: () => ({
             version: 1,
             exportedAt: "2026-07-09T00:00:00.000Z",
-            entries: { "synara:theme": "dark" },
+            entries: { "glade:theme": "dark" },
           }),
           acknowledgeSnapshot,
         },

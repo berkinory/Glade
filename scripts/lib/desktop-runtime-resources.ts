@@ -8,7 +8,7 @@ import { Effect, FileSystem, Path } from "effect";
 // compiled Icon Composer catalog and its ICNS, which macOS loads from
 // Contents/Resources. Copying them into the runtime tree would ship megabytes
 // of artwork the app never resolves.
-const BUNDLE_ONLY_RESOURCE_ENTRIES = new Set(["dmgly", "Assets.car", "Synara.icns"]);
+const BUNDLE_ONLY_RESOURCE_ENTRIES = new Set(["dmgly", "Assets.car", "Glade.icns"]);
 
 export const stageDesktopRuntimeResources = Effect.fn("stageDesktopRuntimeResources")(function* (
   buildResourcesDir: string,

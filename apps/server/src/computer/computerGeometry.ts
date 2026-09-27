@@ -1,5 +1,5 @@
 /** Window geometry shared by action routing, observation and fake captures. */
-import type { ComputerPoint, ComputerRect, ComputerWindow } from "@synara/contracts";
+import type { ComputerPoint, ComputerRect, ComputerWindow } from "@glade/contracts";
 
 import { ComputerBackendError } from "./ComputerBackend.ts";
 

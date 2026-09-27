@@ -3,8 +3,6 @@ import {
   MODEL_CAPABILITIES_INDEX,
   MODEL_OPTIONS_BY_PROVIDER,
   MODEL_SLUG_ALIASES_BY_PROVIDER,
-  OMP_THINKING_LEVEL_OPTIONS,
-  type AntigravityModelOptions,
   type ClaudeApiEffort,
   type ClaudeModelOptions,
   type ClaudeCodeEffort,
@@ -15,30 +13,17 @@ import {
   type ModelSelection,
   type ModelSlug,
   type OpenCodeModelOptions,
-  type ProviderModelDescriptor,
-  type ProviderModelVariantDescriptor,
   type ProviderOptionDescriptor,
   type ProviderOptionSelection,
-  type PiModelOptions,
-  type PiThinkingLevel,
-  type OmpModelOptions,
-  type OmpThinkingLevel,
   type ProviderKind,
-  type ProviderWithDefaultModel,
-} from "@synara/contracts";
+} from "@glade/contracts";
 
 const MODEL_SLUG_SET_BY_PROVIDER: Record<ProviderKind, ReadonlySet<ModelSlug>> = {
   claudeAgent: new Set(MODEL_OPTIONS_BY_PROVIDER.claudeAgent.map((option) => option.slug)),
   codex: new Set(MODEL_OPTIONS_BY_PROVIDER.codex.map((option) => option.slug)),
   cursor: new Set(MODEL_OPTIONS_BY_PROVIDER.cursor.map((option) => option.slug)),
-  antigravity: new Set<ModelSlug>(),
   grok: new Set(MODEL_OPTIONS_BY_PROVIDER.grok.map((option) => option.slug)),
-  droid: new Set(MODEL_OPTIONS_BY_PROVIDER.droid.map((option) => option.slug)),
   opencode: new Set(MODEL_OPTIONS_BY_PROVIDER.opencode.map((option) => option.slug)),
-  pi: new Set<ModelSlug>(),
-  // Devin's built-in list is intentionally empty; its CLI supplies the live catalog.
-  devin: new Set<ModelSlug>(),
-  omp: new Set<ModelSlug>(),
 };
 
 export interface SelectableModelOption {
@@ -46,16 +31,6 @@ export interface SelectableModelOption {
   name: string;
 }
 
-const PI_THINKING_LEVEL_SET = new Set<PiThinkingLevel>([
-  "off",
-  "minimal",
-  "low",
-  "medium",
-  "high",
-  "xhigh",
-  "max",
-]);
-const OMP_THINKING_LEVEL_SET = new Set<OmpThinkingLevel>(OMP_THINKING_LEVEL_OPTIONS);
 export const EMPTY_MODEL_CAPABILITIES: ModelCapabilities = {
   reasoningEffortLevels: [],
   supportsFastMode: false,
@@ -67,15 +42,8 @@ export function getModelOptions(provider: ProviderKind = "codex") {
   return MODEL_OPTIONS_BY_PROVIDER[provider];
 }
 
-function hasDefaultModel(provider: ProviderKind): provider is ProviderWithDefaultModel {
-  return provider !== "pi" && provider !== "omp";
-}
-
-export function getDefaultModel(provider: "pi"): null;
-export function getDefaultModel(provider?: ProviderWithDefaultModel): ModelSlug;
-export function getDefaultModel(provider: ProviderKind): ModelSlug | null;
-export function getDefaultModel(provider: ProviderKind = "codex"): ModelSlug | null {
-  return hasDefaultModel(provider) ? DEFAULT_MODEL_BY_PROVIDER[provider] : null;
+export function getDefaultModel(provider: ProviderKind = "codex"): ModelSlug {
+  return DEFAULT_MODEL_BY_PROVIDER[provider];
 }
 
 const MODEL_NAME_BY_SLUG = new Map(
@@ -108,7 +76,6 @@ const MODEL_FAMILY_TOKENS: ReadonlySet<string> = new Set([
   "codex",
   "composer",
   "cursor",
-  "devin",
   "gemini",
   "grok",
   "inkling",
@@ -167,7 +134,7 @@ export function humanizeModelSlug(slug: string): string {
 }
 
 /**
- * Normalizes a provider-supplied display name to Synara's canonical casing:
+ * Normalizes a provider-supplied display name to Glade's canonical casing:
  * known brand tokens are re-cased ("Swe" → "SWE", "Deepseek" → "DeepSeek"),
  * slug separators become spaces ("GLM-5.3-Flash" → "GLM 5.3 Flash"), digit
  * fragments rejoin as versions, and GPT versions keep their hyphen. Gated on a
@@ -249,98 +216,6 @@ export function hasContextWindowOption(caps: ModelCapabilities, value: string): 
 
 export function getDefaultContextWindow(caps: ModelCapabilities): string | null {
   return caps.contextWindowOptions.find((option) => option.isDefault)?.value ?? null;
-}
-
-const DEVIN_STATIC_MODEL_VARIANTS: Readonly<
-  Record<string, ReadonlyArray<ProviderModelVariantDescriptor>>
-> = {
-  "swe-1-6": [
-    { model: "swe-1-6", fastMode: false },
-    { model: "swe-1-6-fast", fastMode: true },
-  ],
-  "swe-1-7": [
-    { model: "swe-1-7", fastMode: false },
-    { model: "swe-1-7-lightning", fastMode: true },
-  ],
-};
-
-export function getDevinStaticModelVariants(
-  model: string | null | undefined,
-): ReadonlyArray<ProviderModelVariantDescriptor> | undefined {
-  const normalizedModel = normalizeModelSlug(model, "devin");
-  return normalizedModel ? DEVIN_STATIC_MODEL_VARIANTS[normalizedModel] : undefined;
-}
-
-export function resolveDevinModelVariant(input: {
-  readonly model?: string | null | undefined;
-  readonly runtimeModel?: ProviderModelDescriptor | undefined;
-  readonly modelVariant?: string | null | undefined;
-  readonly reasoningEffort?: string | null | undefined;
-  readonly fastMode?: boolean | undefined;
-  readonly thinking?: boolean | null | undefined;
-  readonly contextWindow?: string | null | undefined;
-}): string | undefined {
-  const variants = input.runtimeModel?.modelVariants ?? getDevinStaticModelVariants(input.model);
-  const explicitVariant = trimOrNull(input.modelVariant) ?? undefined;
-  if (!variants?.length) {
-    return explicitVariant;
-  }
-
-  const reasoningEffort = trimOrNull(input.reasoningEffort);
-  const contextWindow = trimOrNull(input.contextWindow);
-  const mapsReasoningEffort =
-    reasoningEffort !== null && variants.some((variant) => variant.reasoningEffort !== undefined);
-  const mapsFastMode =
-    input.fastMode !== undefined && variants.some((variant) => variant.fastMode !== undefined);
-  const mapsThinking =
-    input.thinking !== null &&
-    input.thinking !== undefined &&
-    variants.some((variant) => variant.thinking !== undefined);
-  const mapsContextWindow =
-    contextWindow !== null && variants.some((variant) => variant.contextWindow !== undefined);
-  if (!mapsReasoningEffort && !mapsFastMode && !mapsThinking && !mapsContextWindow) {
-    return explicitVariant;
-  }
-
-  const effectiveReasoningEffort =
-    reasoningEffort ?? trimOrNull(input.runtimeModel?.defaultReasoningEffort);
-  const effectiveContextWindow =
-    contextWindow ?? trimOrNull(input.runtimeModel?.defaultContextWindow);
-  // Thinking is on by default for Devin families that expose a thinking
-  // toggle. Keep the persisted option sparse, but use the effective
-  // default when resolving a non-default context window to its concrete
-  // process-start variant.
-  const effectiveThinking =
-    input.thinking ?? (input.runtimeModel?.supportsThinkingToggle === true ? true : undefined);
-  const matches = (variant: ProviderModelVariantDescriptor): boolean => {
-    if (effectiveReasoningEffort && variant.reasoningEffort !== effectiveReasoningEffort) {
-      return false;
-    }
-    if (effectiveContextWindow && variant.contextWindow !== effectiveContextWindow) {
-      return false;
-    }
-    if (input.fastMode === true && variant.fastMode !== true) {
-      return false;
-    }
-    if (input.fastMode !== true && variant.fastMode === true) {
-      return false;
-    }
-    if (
-      effectiveThinking !== null &&
-      effectiveThinking !== undefined &&
-      variant.thinking !== undefined
-    ) {
-      return variant.thinking === effectiveThinking;
-    }
-    return true;
-  };
-
-  const preferred = variants.filter(matches);
-  const withDefaultContext =
-    !contextWindow && effectiveContextWindow
-      ? preferred.filter((variant) => variant.contextWindow === effectiveContextWindow)
-      : preferred;
-  return (withDefaultContext[0] ?? preferred[0])?.model;
 }
 
 export function hasAutoCompactWindowOption(caps: ModelCapabilities, value: string): boolean {
@@ -481,9 +356,6 @@ function reasoningDescriptorId(provider: ProviderKind): string {
   if (provider === "opencode") {
     return "variant";
   }
-  if (provider === "pi" || provider === "omp") {
-    return "thinkingLevel";
-  }
   return "reasoningEffort";
 }
 
@@ -607,7 +479,7 @@ export function getModelCapabilities(
   return EMPTY_MODEL_CAPABILITIES;
 }
 
-// Claude Code ships new models before Synara's catalog lists them. Catalog
+// Claude Code ships new models before Glade's catalog lists them. Catalog
 // entries always win; only an id that is newer than every catalog model of its
 // family borrows that family's newest capabilities. Older or unrecognized ids
 // keep the empty fallback so custom and legacy selections do not gain options.
@@ -729,11 +601,7 @@ export function normalizeModelSlug(
   }
 
   const providerScopedModel =
-    provider === "claudeAgent"
-      ? stripClaudeContextWindowSuffix(trimmed)
-      : provider === "devin" && trimmed === trimmed.toLowerCase() && trimmed.endsWith("-medium")
-        ? trimmed.slice(0, -"-medium".length)
-        : trimmed;
+    provider === "claudeAgent" ? stripClaudeContextWindowSuffix(trimmed) : trimmed;
   const aliases = MODEL_SLUG_ALIASES_BY_PROVIDER[provider] as Record<string, ModelSlug>;
   const aliasKey = providerScopedModel.toLowerCase();
   const aliased = Object.prototype.hasOwnProperty.call(aliases, aliasKey)
@@ -781,14 +649,11 @@ export function resolveSelectableModel(
     return resolved.slug;
   }
 
-  // Scoped providers (omp/pi/opencode) surface catalog slugs as
+  // OpenCode surfaces catalog slugs as
   // `<upstream-provider>/<model>`, while saved selections and custom entries
   // can hold the bare model id. Resolve a bare slug to a uniquely matching
   // scoped option; ambiguity across upstream providers resolves to nothing.
-  if (
-    (provider === "omp" || provider === "pi" || provider === "opencode") &&
-    !normalized.includes("/")
-  ) {
+  if (provider === "opencode" && !normalized.includes("/")) {
     const scoped = options.filter((option) => option.slug.endsWith(`/${normalized}`));
     if (scoped.length === 1) {
       return scoped[0]!.slug;
@@ -807,9 +672,6 @@ export function resolveModelSlug(
     provider === "claudeAgent" && normalizedModel
       ? (stripClaudeContextWindowSuffix(normalizedModel) as ModelSlug)
       : normalizedModel;
-  if (provider === "devin" || provider === "pi" || provider === "omp") {
-    return normalized;
-  }
   if (!normalized) {
     return DEFAULT_MODEL_BY_PROVIDER[provider];
   }
@@ -993,38 +855,6 @@ export function normalizeGrokModelOptions(
     return undefined;
   }
   return { reasoningEffort: reasoningEffort as GrokReasoningEffort };
-}
-
-export function normalizeAntigravityModelOptions(
-  model: string | null | undefined,
-  modelOptions: AntigravityModelOptions | null | undefined,
-  capabilities: ModelCapabilities = getModelCapabilities("antigravity", model),
-): AntigravityModelOptions | undefined {
-  const reasoningEffort = trimOrNull(modelOptions?.reasoningEffort);
-  if (!reasoningEffort || !hasEffortLevel(capabilities, reasoningEffort)) {
-    return undefined;
-  }
-  if (reasoningEffort === getDefaultEffort(capabilities)) {
-    return undefined;
-  }
-  return { reasoningEffort };
-}
-
-export function normalizePiModelOptions(
-  modelOptions: PiModelOptions | null | undefined,
-): PiModelOptions | undefined {
-  const thinkingLevel = trimOrNull(modelOptions?.thinkingLevel);
-  return thinkingLevel && PI_THINKING_LEVEL_SET.has(thinkingLevel as PiThinkingLevel)
-    ? { thinkingLevel: thinkingLevel as PiThinkingLevel }
-    : undefined;
-}
-export function normalizeOmpModelOptions(
-  modelOptions: OmpModelOptions | null | undefined,
-): OmpModelOptions | undefined {
-  const thinkingLevel = trimOrNull(modelOptions?.thinkingLevel);
-  return thinkingLevel && OMP_THINKING_LEVEL_SET.has(thinkingLevel as OmpThinkingLevel)
-    ? { thinkingLevel: thinkingLevel as OmpThinkingLevel }
-    : undefined;
 }
 
 export function normalizeOpenCodeModelOptions(

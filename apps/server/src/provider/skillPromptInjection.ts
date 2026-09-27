@@ -1,14 +1,14 @@
 // FILE: skillPromptInjection.ts
 // Purpose: Inlines portable skill instructions into the outgoing prompt for providers
 //          that cannot natively load the referenced skill files. This is the fallback
-//          that makes Synara catalog skills usable on every provider.
+//          that makes Glade catalog skills usable on every provider.
 // Layer: Server provider helper
 // Exports: shouldInlineSkillForProvider, buildInlineSkillInstructions
 
 import * as fs from "node:fs/promises";
 import * as nodePath from "node:path";
 
-import type { ProviderKind, ProviderSkillReference } from "@synara/contracts";
+import type { ProviderKind, ProviderSkillReference } from "@glade/contracts";
 
 // Per-skill cap keeps a single oversized SKILL.md from eating the turn budget.
 const MAX_INLINE_SKILL_CONTENT_CHARS = 24_000;
@@ -17,14 +17,6 @@ const INLINE_SKILLS_HEADER =
   "The user invoked the following agent skill(s) for this request. Follow each " +
   "skill's instructions. File paths referenced inside a skill are relative to its " +
   '"dir" attribute.';
-
-const CROSS_PROVIDER_SKILL_DIR_NAMES = [
-  ".synara",
-  ".codex",
-  ".cursor",
-  ".claude",
-  ".agents",
-] as const;
 
 function pathSegments(path: string): Set<string> {
   return new Set(
@@ -38,34 +30,20 @@ function pathSegments(path: string): Set<string> {
 export function shouldInlineSkillForProvider(provider: ProviderKind, skillPath: string): boolean {
   const segments = pathSegments(skillPath);
   switch (provider) {
-    case "antigravity":
-      return true;
     case "codex":
-      // Codex loads .codex and .agents skills natively, plus ~/.synara/skills
+      // Codex loads .codex and .agents skills natively, plus ~/.glade/skills
       // registered via skills/extraRoots/set. Only foreign provider roots
       // need inline instructions alongside their structured skill reference.
       return [".claude", ".cursor"].some((dir) => segments.has(dir));
     case "cursor":
       // cursor-agent natively scans .cursor/.agents/.claude/.codex skill roots;
-      // only Synara-owned paths need inlining.
-      return segments.has(".synara");
+      // only Glade-owned paths need inlining.
+      return segments.has(".glade");
     case "claudeAgent":
       // Claude Code only loads skills from .claude/skills folders.
       return !segments.has(".claude");
-    case "devin":
-      return !(
-        [".agents", ".claude", ".codeium", ".cognition", ".devin", ".windsurf"].some((dir) =>
-          segments.has(dir),
-        ) ||
-        ((segments.has(".config") || (segments.has("appdata") && segments.has("roaming"))) &&
-          (segments.has("devin") || segments.has("cognition")))
-      );
-    case "pi":
-      // Pi loads its own skill set; anything resolved from a cross-provider
-      // folder is portable and must be inlined.
-      return CROSS_PROVIDER_SKILL_DIR_NAMES.some((dir) => segments.has(dir));
     default:
-      // Antigravity/Grok/Droid/OpenCode have no native skill support.
+      // Grok/OpenCode have no native skill support.
       return true;
   }
 }

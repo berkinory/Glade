@@ -19,7 +19,7 @@ import {
   changedThreadComputerStates,
   removedThreadComputerStateIds,
 } from "~/components/chat/ComputerPreviewPopover.logic";
-import { type DesktopBridge, ThreadId } from "@synara/contracts";
+import { type DesktopBridge, ThreadId } from "@glade/contracts";
 import { readLocalComputerPermissionBridge } from "~/lib/computerProvisioning";
 import { serverQueryKeys } from "~/lib/serverReactQuery";
 import { ensureNativeApi } from "~/nativeApi";
@@ -29,12 +29,15 @@ import { useComputerStateStore } from "../computerStateStore";
 /** A native grant can land while System Settings owns focus and query polling is paused. */
 export function subscribeComputerPermissionStatus(
   queryClient: QueryClient,
-  bridge: Pick<DesktopBridge["appSnap"], "onState"> | null = readLocalComputerPermissionBridge(),
+  bridge: Pick<
+    DesktopBridge["computerPermissions"],
+    "onState"
+  > | null = readLocalComputerPermissionBridge(),
 ): () => void {
   if (!bridge) return () => undefined;
   let previous: string | undefined;
   return bridge.onState((state) => {
-    // AppSnap-only snapshots do not establish Accessibility and must not turn
+    // ComputerPermission-only snapshots do not establish Accessibility and must not turn
     // an unused Computer feature on. Only refresh an already requested status.
     if (
       !state.supported ||

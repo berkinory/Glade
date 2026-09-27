@@ -3,8 +3,8 @@
 // Layer: Web chat presentation component
 // Exports: TimelineWorkEntryRow, EditedFileRowContent, prefersCompactWorkEntryRow
 
-import type { TurnId } from "@synara/contracts";
-import { PROVIDER_DESCRIPTORS } from "@synara/shared/providerMetadata";
+import type { TurnId } from "@glade/contracts";
+import { PROVIDER_DESCRIPTORS } from "@glade/shared/providerMetadata";
 import {
   createElement,
   memo,
@@ -63,7 +63,7 @@ import { DiffStatLabel } from "./DiffStatLabel";
 import { type ExpandedImagePreview } from "./ExpandedImagePreview";
 import { LinkChipIcon } from "../LinkChipIcon";
 import { normalizeCompactToolLabel } from "./MessagesTimeline.logic";
-import { SynaraLogo } from "../SynaraLogo";
+import { GladeLogo } from "../GladeLogo";
 import { ToolCallDetailsContent } from "./ToolCallDetailsDialog";
 import { DisclosureChevron } from "../ui/DisclosureChevron";
 import { DisclosureRegion } from "../ui/DisclosureRegion";
@@ -75,14 +75,14 @@ import {
 } from "../../lib/toolArgumentSummary";
 import {
   deriveFriendlyCommandTarget,
-  deriveSynaraMcpToolTitle,
+  deriveGladeMcpToolTitle,
   extractWebFetchUrl,
   isGenericToolTitle,
-  isSynaraBrowserToolCall,
+  isGladeBrowserToolCall,
   normalizeToolTextForComparison,
   resolveCommandVisualKind,
-  sanitizeSynaraMcpToolPreview,
-  type SynaraMcpToolStatus,
+  sanitizeGladeMcpToolPreview,
+  type GladeMcpToolStatus,
 } from "../../lib/toolCallLabel";
 import { formatLiveActivityMeta, useLiveActivityNow } from "../../lib/liveActivityPresentation";
 import { openWorkspaceFileReference, useWorkspaceFileOpener } from "../../lib/workspaceFileOpener";
@@ -104,8 +104,8 @@ type TimelineWorkEntry = WorkLogEntry;
 
 const AgentTaskIcon: LucideIcon = (props) => <BotIcon {...props} />;
 
-const SynaraToolIcon: LucideIcon = ({ className, ...props }) => (
-  <SynaraLogo {...props} className={cn("text-current", className)} />
+const GladeToolIcon: LucideIcon = ({ className, ...props }) => (
+  <GladeLogo {...props} className={cn("text-current", className)} />
 );
 
 function workToneIcon(tone: TimelineWorkEntry["tone"]): {
@@ -294,8 +294,8 @@ export function renderWorkEntryIcon(Icon: LucideIcon, className: string): ReactE
 export function workEntryLeftIcon(workEntry: TimelineWorkEntry): LucideIcon {
   if (isComputerWorkEntry(workEntry)) return ComputerUseIcon;
   if (isGitHubMcpToolCall(workEntry)) return GitHubIcon;
-  if (isSynaraBrowserWorkEntry(workEntry)) return GlobeIcon;
-  if (isSynaraToolCall(workEntry)) return SynaraToolIcon;
+  if (isGladeBrowserWorkEntry(workEntry)) return GlobeIcon;
+  if (isGladeToolCall(workEntry)) return GladeToolIcon;
   if (workEntry.itemType === "mcp_tool_call") return McpIcon;
   return workEntryIcon(workEntry);
 }
@@ -312,20 +312,20 @@ function isGitHubMcpToolCall(workEntry: TimelineWorkEntry): boolean {
   return Boolean(toolName?.startsWith("mcp__codex_apps__github"));
 }
 
-// Synara's own agent-gateway tools (synara_list_threads, synara_create_thread,
-// ...) get the Synara mark instead of the generic MCP glyph. Providers report
-// the call differently: Claude prefixes the MCP server (mcp__synara__*), ACP
-// agents surface the bare tool name (synara_*), and Codex reports server/tool
-// pairs that the label humanizer renders as "Synara: ...".
-function toolWorkEntryStatus(workEntry: TimelineWorkEntry): SynaraMcpToolStatus {
+// Glade's own agent-gateway tools (glade_list_threads, glade_create_thread,
+// ...) get the Glade mark instead of the generic MCP glyph. Providers report
+// the call differently: Claude prefixes the MCP server (mcp__glade__*), ACP
+// agents surface the bare tool name (glade_*), and Codex reports server/tool
+// pairs that the label humanizer renders as "Glade: ...".
+function toolWorkEntryStatus(workEntry: TimelineWorkEntry): GladeMcpToolStatus {
   if (workEntry.toolStatus) return workEntry.toolStatus;
   return workEntry.activityKind !== undefined && workEntry.activityKind !== "tool.completed"
     ? "running"
     : "completed";
 }
 
-function isSynaraBrowserWorkEntry(workEntry: TimelineWorkEntry): boolean {
-  return isSynaraBrowserToolCall({
+function isGladeBrowserWorkEntry(workEntry: TimelineWorkEntry): boolean {
+  return isGladeBrowserToolCall({
     toolName: workEntry.toolName,
     title: workEntry.toolTitle,
     fallbackLabel: workEntry.label,
@@ -333,9 +333,9 @@ function isSynaraBrowserWorkEntry(workEntry: TimelineWorkEntry): boolean {
   });
 }
 
-function isSynaraToolCall(workEntry: TimelineWorkEntry): boolean {
+function isGladeToolCall(workEntry: TimelineWorkEntry): boolean {
   return (
-    deriveSynaraMcpToolTitle({
+    deriveGladeMcpToolTitle({
       toolName: workEntry.toolName,
       title: workEntry.toolTitle,
       fallbackLabel: workEntry.label,
@@ -380,7 +380,7 @@ function capitalizePhrase(value: string): string {
 function toolWorkEntryHeading(workEntry: TimelineWorkEntry): string {
   if (computerToolName(workEntry.toolName)) {
     // Work-log projection already resolves the action and target. The generic
-    // MCP presentation would replace that with "Synara clicked the desktop".
+    // MCP presentation would replace that with "Glade clicked the desktop".
     const title = normalizeCompactToolLabel(workEntry.toolTitle ?? "");
     if (title && !isGenericToolTitle(title) && !computerToolName(title))
       return capitalizePhrase(title);
@@ -392,14 +392,14 @@ function toolWorkEntryHeading(workEntry: TimelineWorkEntry): string {
   if (workEntry.activityKind === "turn.tasks.updated") {
     return capitalizePhrase(workEntry.label);
   }
-  const synaraTitle = deriveSynaraMcpToolTitle({
+  const gladeTitle = deriveGladeMcpToolTitle({
     toolName: workEntry.toolName,
     title: workEntry.toolTitle,
     fallbackLabel: workEntry.label,
     status: toolWorkEntryStatus(workEntry),
   });
-  if (synaraTitle) {
-    return synaraTitle;
+  if (gladeTitle) {
+    return gladeTitle;
   }
   if (!workEntry.toolTitle) {
     return capitalizePhrase(normalizeCompactToolLabel(workEntry.label));
@@ -430,8 +430,8 @@ function workEntryDisplayParts(workEntry: TimelineWorkEntry): {
   const rawPreview = workEntryPreview(workEntry);
   const preview =
     !isGitHubMcpToolCall(workEntry) &&
-    (isSynaraBrowserWorkEntry(workEntry) || isSynaraToolCall(workEntry))
-      ? sanitizeSynaraMcpToolPreview({
+    (isGladeBrowserWorkEntry(workEntry) || isGladeToolCall(workEntry))
+      ? sanitizeGladeMcpToolPreview({
           preview: rawPreview,
           heading,
           status: toolWorkEntryStatus(workEntry),
@@ -553,14 +553,13 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
   // deliberately skip it and reuse only the shared tool-label typography.
   const isGitHubToolRow = isGitHubMcpToolCall(workEntry);
   const isComputerToolRow = isComputerWorkEntry(workEntry);
-  const isSynaraBrowserToolRow = !isGitHubToolRow && isSynaraBrowserWorkEntry(workEntry);
-  const isSynaraToolRow =
-    !isGitHubToolRow && !isSynaraBrowserToolRow && isSynaraToolCall(workEntry);
+  const isGladeBrowserToolRow = !isGitHubToolRow && isGladeBrowserWorkEntry(workEntry);
+  const isGladeToolRow = !isGitHubToolRow && !isGladeBrowserToolRow && isGladeToolCall(workEntry);
   const isMcpToolRow =
     workEntry.itemType === "mcp_tool_call" &&
     !isGitHubToolRow &&
-    !isSynaraBrowserToolRow &&
-    !isSynaraToolRow;
+    !isGladeBrowserToolRow &&
+    !isGladeToolRow;
   const LeftIcon = workEntryLeftIcon(workEntry);
   const leftIconKind = webFetchUrl
     ? "web-fetch"
@@ -568,10 +567,10 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
       ? "computer"
       : isGitHubToolRow || EntryIcon === GitHubIcon
         ? "github"
-        : isSynaraBrowserToolRow
+        : isGladeBrowserToolRow
           ? "browser"
-          : isSynaraToolRow
-            ? "synara"
+          : isGladeToolRow
+            ? "glade"
             : isMcpToolRow
               ? "mcp"
               : undefined;

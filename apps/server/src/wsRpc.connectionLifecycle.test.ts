@@ -12,7 +12,7 @@ import {
   type AuthSessionId,
   type ComputerEvent,
   type WsBootstrapNegotiateResult,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { Duration, Effect, Exit, Layer, Schema, Scope } from "effect";
 import { HttpRouter, HttpServerRequest } from "effect/unstable/http";
@@ -186,7 +186,7 @@ function ping(socket: WebSocket, timeoutMs = 2_000): Promise<void> {
 
 async function startTestServer(): Promise<RunningTestServer> {
   const baseConfigLayer = ServerConfig.layerTest(process.cwd(), {
-    prefix: "synara-ws-lifecycle-test-",
+    prefix: "glade-ws-lifecycle-test-",
   }).pipe(Layer.provide(NodeServices.layer));
   const configLayer = Layer.effect(
     ServerConfig,
@@ -511,17 +511,17 @@ describe("websocket RPC payload admission", () => {
 
       // A lookalike of the desktop scheme is not the desktop scheme.
       const lookalike = await fetch(negotiateHttpUrl(server), {
-        headers: { origin: "synara://app.evil.com" },
+        headers: { origin: "glade://app.evil.com" },
       });
       expect(lookalike.status).toBe(403);
       expect(lookalike.headers.get("access-control-allow-origin")).toBeNull();
 
       // The desktop origin is reflected, and only that origin.
       const desktop = await fetch(negotiateHttpUrl(server), {
-        headers: { origin: "synara://app" },
+        headers: { origin: "glade://app" },
       });
       expect(desktop.status).toBe(200);
-      expect(desktop.headers.get("access-control-allow-origin")).toBe("synara://app");
+      expect(desktop.headers.get("access-control-allow-origin")).toBe("glade://app");
       expect(desktop.headers.get("vary")).toBe("Origin");
 
       // No Origin at all (CLI clients) passes without reflection, matching

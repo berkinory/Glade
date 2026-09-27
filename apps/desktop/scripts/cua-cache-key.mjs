@@ -56,6 +56,7 @@ export function collectCuaCacheInputs(root, env = process.env) {
   return {
     platform: process.platform,
     arch: process.arch,
+    targetArch: env.GLADE_CUA_TARGET_ARCH || process.arch,
     os:
       process.platform === "darwin"
         ? output("sw_vers", ["-productVersion"])

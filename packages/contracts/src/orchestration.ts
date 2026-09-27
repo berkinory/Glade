@@ -6,16 +6,11 @@ import {
   ListProjectImportsResult,
 } from "./projectImport";
 import {
-  AntigravityModelOptions,
   ClaudeModelOptions,
   CodexModelOptions,
   CursorModelOptions,
-  DevinModelOptions,
-  DroidModelOptions,
   GrokModelOptions,
   OpenCodeModelOptions,
-  OmpModelOptions,
-  PiModelOptions,
 } from "./model";
 import { ProviderMentionReference, ProviderSkillReference } from "./providerDiscovery";
 import { AsyncUserInput, AsyncUserInputQuestions, AsyncUserInputResponse } from "./asyncUserInput";
@@ -66,30 +61,26 @@ export const ORCHESTRATION_WS_CHANNELS = {
   threadEvent: "orchestration.threadEvent",
 } as const;
 
-export const ProviderKind = Schema.Literals([
-  "codex",
-  "claudeAgent",
-  "cursor",
-  "antigravity",
-  "grok",
-  "droid",
-  "opencode",
-  "pi",
-  "devin",
-  "omp",
-]);
+export const ProviderKind = Schema.Literals(["codex", "claudeAgent", "cursor", "grok", "opencode"]);
 export type ProviderKind = typeof ProviderKind.Type;
 
 /**
- * Providers that no longer exist as `ProviderKind` members but may survive in
- * persisted data. Renamed providers map to their successor; removed providers
- * map to the runtime that hosted their sessions. Add an entry here whenever a
- * provider is renamed or removed so persisted payloads keep decoding.
+ * Renamed provider IDs in durable payloads. Retired handoff sources retain
+ * their original IDs below; they are provenance, never runnable providers.
  */
 export const LEGACY_PROVIDER_MIGRATIONS: Readonly<Record<string, ProviderKind>> = {
-  gemini: "antigravity",
   kilo: "opencode",
 };
+
+const RetiredProviderKind = Schema.Literals([
+  "antigravity",
+  "devin",
+  "droid",
+  "omp",
+  "pi",
+  "gemini",
+]);
+const HandoffSourceProviderKind = Schema.Union([ProviderKind, RetiredProviderKind]);
 
 /**
  * Decodes a persisted provider value, mapping legacy provider names through
@@ -98,11 +89,12 @@ export const LEGACY_PROVIDER_MIGRATIONS: Readonly<Record<string, ProviderKind>> 
  */
 export const PersistedProviderKind = Schema.String.pipe(
   Schema.decodeTo(
-    ProviderKind,
+    HandoffSourceProviderKind,
     SchemaTransformation.transform({
-      // ProviderKind still validates the result, so unknown strings fail decode.
-      decode: (provider) => (LEGACY_PROVIDER_MIGRATIONS[provider] ?? provider) as ProviderKind,
-      encode: (provider: ProviderKind) => provider as string,
+      // The target schema validates both active and historical source IDs.
+      decode: (provider) =>
+        (LEGACY_PROVIDER_MIGRATIONS[provider] ?? provider) as typeof HandoffSourceProviderKind.Type,
+      encode: (provider) => provider as string,
     }),
   ),
 );
@@ -142,26 +134,12 @@ export const CursorModelSelection = Schema.Struct({
 });
 export type CursorModelSelection = typeof CursorModelSelection.Type;
 
-export const AntigravityModelSelection = Schema.Struct({
-  provider: Schema.Literal("antigravity"),
-  model: TrimmedNonEmptyString,
-  options: Schema.optional(AntigravityModelOptions),
-});
-export type AntigravityModelSelection = typeof AntigravityModelSelection.Type;
-
 export const GrokModelSelection = Schema.Struct({
   provider: Schema.Literal("grok"),
   model: TrimmedNonEmptyString,
   options: Schema.optional(GrokModelOptions),
 });
 export type GrokModelSelection = typeof GrokModelSelection.Type;
-
-export const DroidModelSelection = Schema.Struct({
-  provider: Schema.Literal("droid"),
-  model: TrimmedNonEmptyString,
-  options: Schema.optional(DroidModelOptions),
-});
-export type DroidModelSelection = typeof DroidModelSelection.Type;
 
 export const OpenCodeModelSelection = Schema.Struct({
   provider: Schema.Literal("opencode"),
@@ -170,37 +148,12 @@ export const OpenCodeModelSelection = Schema.Struct({
 });
 export type OpenCodeModelSelection = typeof OpenCodeModelSelection.Type;
 
-export const PiModelSelection = Schema.Struct({
-  provider: Schema.Literal("pi"),
-  model: TrimmedNonEmptyString,
-  options: Schema.optional(PiModelOptions),
-});
-export type PiModelSelection = typeof PiModelSelection.Type;
-export const OmpModelSelection = Schema.Struct({
-  provider: Schema.Literal("omp"),
-  model: TrimmedNonEmptyString,
-  options: Schema.optional(OmpModelOptions),
-});
-export type OmpModelSelection = typeof OmpModelSelection.Type;
-
-export const DevinModelSelection = Schema.Struct({
-  provider: Schema.Literal("devin"),
-  model: TrimmedNonEmptyString,
-  options: Schema.optional(DevinModelOptions),
-});
-export type DevinModelSelection = typeof DevinModelSelection.Type;
-
 export const ModelSelection = Schema.Union([
   CodexModelSelection,
   ClaudeModelSelection,
   CursorModelSelection,
-  DevinModelSelection,
-  AntigravityModelSelection,
   GrokModelSelection,
-  DroidModelSelection,
   OpenCodeModelSelection,
-  PiModelSelection,
-  OmpModelSelection,
 ]);
 export type ModelSelection = typeof ModelSelection.Type;
 
@@ -216,10 +169,6 @@ export const ClaudeProviderStartOptions = Schema.Struct({
   enableArtifacts: Schema.optional(Schema.Boolean),
 });
 
-export const AntigravityProviderStartOptions = Schema.Struct({
-  binaryPath: Schema.optional(TrimmedNonEmptyString),
-});
-
 export const CursorProviderStartOptions = Schema.Struct({
   binaryPath: Schema.optional(TrimmedNonEmptyString),
   apiEndpoint: Schema.optional(TrimmedNonEmptyString),
@@ -229,40 +178,18 @@ export const GrokProviderStartOptions = Schema.Struct({
   binaryPath: Schema.optional(TrimmedNonEmptyString),
 });
 
-export const DroidProviderStartOptions = Schema.Struct({
-  binaryPath: Schema.optional(TrimmedNonEmptyString),
-});
-
 export const OpenCodeProviderStartOptions = Schema.Struct({
   binaryPath: Schema.optional(TrimmedNonEmptyString),
   serverUrl: Schema.optional(TrimmedNonEmptyString),
   experimentalWebSockets: Schema.optional(Schema.Boolean),
 });
 
-export const PiProviderStartOptions = Schema.Struct({
-  binaryPath: Schema.optional(TrimmedNonEmptyString),
-  agentDir: Schema.optional(TrimmedNonEmptyString),
-});
-export const OmpProviderStartOptions = Schema.Struct({
-  binaryPath: Schema.optional(TrimmedNonEmptyString),
-  agentDir: Schema.optional(TrimmedNonEmptyString),
-});
-
-export const DevinProviderStartOptions = Schema.Struct({
-  binaryPath: Schema.optional(TrimmedNonEmptyString),
-});
-
 export const ProviderStartOptions = Schema.Struct({
   codex: Schema.optional(CodexProviderStartOptions),
   claudeAgent: Schema.optional(ClaudeProviderStartOptions),
   cursor: Schema.optional(CursorProviderStartOptions),
-  devin: Schema.optional(DevinProviderStartOptions),
-  antigravity: Schema.optional(AntigravityProviderStartOptions),
   grok: Schema.optional(GrokProviderStartOptions),
-  droid: Schema.optional(DroidProviderStartOptions),
   opencode: Schema.optional(OpenCodeProviderStartOptions),
-  pi: Schema.optional(PiProviderStartOptions),
-  omp: Schema.optional(OmpProviderStartOptions),
 });
 export type ProviderStartOptions = typeof ProviderStartOptions.Type;
 
@@ -293,7 +220,7 @@ export const TurnDispatchMode = Schema.Literals(["queue", "steer"]);
 export type TurnDispatchMode = typeof TurnDispatchMode.Type;
 export const DEFAULT_TURN_DISPATCH_MODE: TurnDispatchMode = "queue";
 // Marks who dispatched a user turn: a person typing, an automation run, or
-// another agent through the Synara agent gateway (MCP tools).
+// another agent through the Glade agent gateway (MCP tools).
 // Absent is treated as "user"; only server-dispatched turns carry the flag.
 export const MessageDispatchOrigin = Schema.Literals(["user", "automation", "agent"]);
 export type MessageDispatchOrigin = typeof MessageDispatchOrigin.Type;
@@ -301,7 +228,7 @@ export type MessageDispatchOrigin = typeof MessageDispatchOrigin.Type;
 // create. Dedicated automations' own threads stay unmarked: they are persistent
 // conversations the user keeps, not run artifacts.
 export const ThreadCreationSource = Schema.Literals([
-  "synara_mcp",
+  "glade_mcp",
   "external_mcp",
   "provider_native",
   "automation_run",

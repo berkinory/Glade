@@ -6,20 +6,20 @@ import {
   type OrchestrationEvent,
   type OrchestrationPendingInteraction,
   type ThreadId,
-} from "@synara/contracts";
-import { resolveThreadBranchRegressionGuard } from "@synara/shared/git";
+} from "@glade/contracts";
+import { resolveThreadBranchRegressionGuard } from "@glade/shared/git";
 import {
   clearRemovedAsyncUserInputResponses,
   mergeAsyncUserInput,
-} from "@synara/shared/asyncUserInput";
+} from "@glade/shared/asyncUserInput";
 import {
   addPinnedMessage,
   removePinnedMessage,
   setPinnedMessageDone,
   setPinnedMessageLabel,
-} from "@synara/shared/pinnedMessages";
-import { deriveThreadSummaryMetadata, resolveHumanMessageAt } from "@synara/shared/threadSummary";
-import { isPendingInteractionResponseClaimable } from "@synara/shared/pendingInteractions";
+} from "@glade/shared/pinnedMessages";
+import { deriveThreadSummaryMetadata, resolveHumanMessageAt } from "@glade/shared/threadSummary";
+import { isPendingInteractionResponseClaimable } from "@glade/shared/pendingInteractions";
 
 import { isSessionRunningTurn } from "./session-logic";
 import {
@@ -68,7 +68,7 @@ export type ApplyOrchestrationEventOptions = {
   updateSidebarSummary?: boolean;
 };
 
-type ReadModelThread = import("@synara/contracts").OrchestrationReadModel["threads"][number];
+type ReadModelThread = import("@glade/contracts").OrchestrationReadModel["threads"][number];
 
 const THREAD_SUMMARY_ACTIVITY_KINDS = new Set([
   "approval.requested",

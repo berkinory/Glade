@@ -4,14 +4,10 @@ import { DEFAULT_GIT_TEXT_GENERATION_MODEL } from "./model";
 import { ModelSelection, ProviderKind, ThreadEnvironmentMode } from "./orchestration";
 
 const StringSetting = TrimmedString.check(Schema.isMaxLength(4096));
-const CustomModels = Schema.Array(Schema.String.check(Schema.isMaxLength(256))).pipe(
-  Schema.withDecodingDefault(() => []),
-);
 
 const ProviderSettingsBase = {
   enabled: Schema.Boolean.pipe(Schema.withDecodingDefault(() => true)),
   binaryPath: StringSetting.pipe(Schema.withDecodingDefault(() => "")),
-  customModels: CustomModels,
 };
 
 export const CodexServerProviderSettings = Schema.Struct({
@@ -33,23 +29,11 @@ export const ClaudeServerProviderSettings = Schema.Struct({
 });
 export type ClaudeServerProviderSettings = typeof ClaudeServerProviderSettings.Type;
 
-export const AntigravityServerProviderSettings = Schema.Struct({
-  ...ProviderSettingsBase,
-  binaryPath: StringSetting.pipe(Schema.withDecodingDefault(() => "agy")),
-});
-export type AntigravityServerProviderSettings = typeof AntigravityServerProviderSettings.Type;
-
 export const GrokServerProviderSettings = Schema.Struct({
   ...ProviderSettingsBase,
   binaryPath: StringSetting.pipe(Schema.withDecodingDefault(() => "grok")),
 });
 export type GrokServerProviderSettings = typeof GrokServerProviderSettings.Type;
-
-export const DroidServerProviderSettings = Schema.Struct({
-  ...ProviderSettingsBase,
-  binaryPath: StringSetting.pipe(Schema.withDecodingDefault(() => "droid")),
-});
-export type DroidServerProviderSettings = typeof DroidServerProviderSettings.Type;
 
 export const CursorServerProviderSettings = Schema.Struct({
   ...ProviderSettingsBase,
@@ -66,25 +50,6 @@ export const OpenCodeServerProviderSettings = Schema.Struct({
   experimentalWebSockets: Schema.Boolean.pipe(Schema.withDecodingDefault(() => false)),
 });
 export type OpenCodeServerProviderSettings = typeof OpenCodeServerProviderSettings.Type;
-
-export const PiServerProviderSettings = Schema.Struct({
-  ...ProviderSettingsBase,
-  binaryPath: StringSetting.pipe(Schema.withDecodingDefault(() => "pi")),
-  agentDir: StringSetting.pipe(Schema.withDecodingDefault(() => "")),
-});
-export type PiServerProviderSettings = typeof PiServerProviderSettings.Type;
-export const OmpServerProviderSettings = Schema.Struct({
-  ...ProviderSettingsBase,
-  binaryPath: StringSetting.pipe(Schema.withDecodingDefault(() => "omp")),
-  agentDir: StringSetting.pipe(Schema.withDecodingDefault(() => "")),
-});
-export type OmpServerProviderSettings = typeof OmpServerProviderSettings.Type;
-
-export const DevinServerProviderSettings = Schema.Struct({
-  ...ProviderSettingsBase,
-  binaryPath: StringSetting.pipe(Schema.withDecodingDefault(() => "devin")),
-});
-export type DevinServerProviderSettings = typeof DevinServerProviderSettings.Type;
 
 const DisabledSkillNames = Schema.Array(Schema.String.check(Schema.isMaxLength(256))).pipe(
   Schema.withDecodingDefault(() => []),
@@ -112,13 +77,8 @@ export const ServerSettings = Schema.Struct({
     codex: CodexServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
     claudeAgent: ClaudeServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
     cursor: CursorServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
-    devin: DevinServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
-    antigravity: AntigravityServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
     grok: GrokServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
-    droid: DroidServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
     opencode: OpenCodeServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
-    pi: PiServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
-    omp: OmpServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
   }).pipe(Schema.withDecodingDefault(() => ({}))),
   skills: SkillsServerSettings.pipe(Schema.withDecodingDefault(() => ({}))),
   // When the first-run welcome tour was completed or skipped. Server-backed so a
@@ -147,7 +107,6 @@ const ModelSelectionPatch = Schema.Struct({
 const ProviderSettingsBasePatch = {
   enabled: Schema.optionalKey(Schema.Boolean),
   binaryPath: Schema.optionalKey(StringSetting),
-  customModels: Schema.optionalKey(CustomModels),
 };
 
 export const ServerSettingsPatch = Schema.Struct({
@@ -177,30 +136,13 @@ export const ServerSettingsPatch = Schema.Struct({
           apiEndpoint: Schema.optionalKey(StringSetting),
         }),
       ),
-      antigravity: Schema.optionalKey(Schema.Struct(ProviderSettingsBasePatch)),
       grok: Schema.optionalKey(Schema.Struct(ProviderSettingsBasePatch)),
-      droid: Schema.optionalKey(Schema.Struct(ProviderSettingsBasePatch)),
       opencode: Schema.optionalKey(
         Schema.Struct({
           ...ProviderSettingsBasePatch,
           serverUrl: Schema.optionalKey(StringSetting),
           serverPassword: Schema.optionalKey(StringSetting),
           experimentalWebSockets: Schema.optionalKey(Schema.Boolean),
-        }),
-      ),
-      pi: Schema.optionalKey(
-        Schema.Struct({
-          ...ProviderSettingsBasePatch,
-          binaryPath: Schema.optionalKey(StringSetting),
-          agentDir: Schema.optionalKey(StringSetting),
-        }),
-      ),
-      devin: Schema.optionalKey(Schema.Struct(ProviderSettingsBasePatch)),
-      omp: Schema.optionalKey(
-        Schema.Struct({
-          ...ProviderSettingsBasePatch,
-          binaryPath: Schema.optionalKey(StringSetting),
-          agentDir: Schema.optionalKey(StringSetting),
         }),
       ),
     }),

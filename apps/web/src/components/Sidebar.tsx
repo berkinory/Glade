@@ -94,12 +94,12 @@ import {
   ThreadId,
   type ResolvedKeybindingsConfig,
   WS_GITHUB_PROJECT_PROVISIONING_CAPABILITY,
-} from "@synara/contracts";
-import { isGenericChatThreadTitle } from "@synara/shared/chatThreads";
-import { parseGitHubRepositoryNameWithOwnerFromPullRequestUrl } from "@synara/shared/githubRepository";
-import { getDefaultModel } from "@synara/shared/model";
-import { pluralize } from "@synara/shared/text";
-import { resolveThreadWorkspaceCwd } from "@synara/shared/threadEnvironment";
+} from "@glade/contracts";
+import { isGenericChatThreadTitle } from "@glade/shared/chatThreads";
+import { parseGitHubRepositoryNameWithOwnerFromPullRequestUrl } from "@glade/shared/githubRepository";
+import { getDefaultModel } from "@glade/shared/model";
+import { pluralize } from "@glade/shared/text";
+import { resolveThreadWorkspaceCwd } from "@glade/shared/threadEnvironment";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import {
@@ -162,7 +162,6 @@ import { derivePendingApprovals, derivePendingUserInputs } from "../session-logi
 import { useThreadPullRequests } from "../hooks/useThreadPullRequests";
 import {
   providerComposerCapabilitiesQueryOptions,
-  providerModelsQueryOptions,
   supportsThreadImport,
 } from "../lib/providerDiscoveryReactQuery";
 import {
@@ -244,7 +243,7 @@ import { SIDEBAR_PANEL_TITLE_CLASS_NAME, SidebarPanelTitle } from "./SidebarPane
 import { SidebarMetaChipStack } from "./SidebarMetaChip";
 import { SidebarRowHoverActions } from "./SidebarRowHoverActions";
 import { SidebarSectionToolbar } from "./SidebarSectionToolbar";
-import { SidebarGlyph, sidebarGlyphClass, SIDEBAR_TRAILING_ICON_CLASS } from "./sidebarGlyphs";
+import { SidebarGlyph, sidebarGlyphClass } from "./sidebarGlyphs";
 import { SidebarStatusTrailingGlyph } from "./SidebarStatusTrailingGlyph";
 import { ThreadArchiveActionButton } from "./ThreadArchiveActionButton";
 import { ThreadPinToggleButton } from "./ThreadPinToggleButton";
@@ -256,7 +255,6 @@ import { EditProjectDialog, type EditProjectValue } from "./EditProjectDialog";
 import { RelocateProjectDialog } from "./RelocateProjectDialog";
 import { RenameThreadDialog } from "./RenameThreadDialog";
 import ReleaseHistoryDialog from "./ReleaseHistoryDialog";
-import { isBetaFeatureOn } from "../betaFeatures";
 import { WHATS_NEW_ENTRIES } from "../whatsNew/entries";
 import { sortEntriesByVersionDesc } from "../whatsNew/logic";
 import {
@@ -372,7 +370,6 @@ import {
   resolveThreadRowTrailingReserveClass,
   resolveThreadStatusPill,
   resolveThreadStatusTrailingIndicator,
-  type ThreadStatusPill,
   type SidebarDerivedProjectData,
   type SidebarActionBadge,
   type SidebarView,
@@ -553,8 +550,8 @@ function ProjectContextMenuIcon({ icon }: { icon: LucideIcon }) {
 }
 
 type DebugFeatureFlagsWindow = Window & {
-  synaraShowFeatureFlags?: () => void;
-  synaraHideFeatureFlags?: () => void;
+  gladeShowFeatureFlags?: () => void;
+  gladeHideFeatureFlags?: () => void;
 };
 
 function readDebugFeatureFlagsMenuVisibility(): boolean {
@@ -840,7 +837,7 @@ function ProjectSortMenu({
   );
 }
 
-const SYNARA_DOCS_URL = "https://trysynara.com/docs";
+const GLADE_DOCS_URL = "https://github.com/berkinory/Glade/tree/glade/docs";
 
 // Latest curated releases surfaced directly in the help menu. Static data, so
 // computed once at module scope rather than per render.
@@ -943,7 +940,7 @@ function SidebarHelpMenu({
             </MenuItem>
             <MenuItem
               className={SIDEBAR_CONTEXT_MENU_ITEM_CLASS_NAME}
-              onClick={() => openExternalLink(SYNARA_DOCS_URL)}
+              onClick={() => openExternalLink(GLADE_DOCS_URL)}
             >
               <SidebarContextMenuIcon icon={BookIcon} />
               <span>Docs</span>
@@ -1141,7 +1138,7 @@ function SortableProjectItem({
  * Header Activity toggle: a bell that lights up in the accent tone while the
  * Activity view is on, with an unread dot when completions are waiting.
  */
-const ACTIVITY_ONBOARDING_STORAGE_KEY = "synara:activity-onboarding:v1";
+const ACTIVITY_ONBOARDING_STORAGE_KEY = "glade:activity-onboarding:v1";
 const ACTIVITY_ONBOARDING_DURATION_MS = 8_000;
 
 function shouldShowActivityOnboarding(): boolean {
@@ -1249,7 +1246,7 @@ function SidebarActivityBellButton({
 }
 
 const SIDEBAR_SURFACE_PICKER_COPY: Record<SidebarView, { title: string; description: string }> = {
-  threads: { title: "Synara", description: "Build, debug, and ship" },
+  threads: { title: "Glade", description: "Build, debug, and ship" },
   studio: { title: "Studio", description: "Open-ended agent work" },
 };
 
@@ -1527,18 +1524,18 @@ export default function Sidebar() {
       updateVisibility();
     };
 
-    debugWindow.synaraShowFeatureFlags = showFeatureFlags;
-    debugWindow.synaraHideFeatureFlags = hideFeatureFlags;
+    debugWindow.gladeShowFeatureFlags = showFeatureFlags;
+    debugWindow.gladeHideFeatureFlags = hideFeatureFlags;
     window.addEventListener("storage", updateVisibility);
     updateVisibility();
 
     return () => {
       window.removeEventListener("storage", updateVisibility);
-      if (debugWindow.synaraShowFeatureFlags === showFeatureFlags) {
-        delete debugWindow.synaraShowFeatureFlags;
+      if (debugWindow.gladeShowFeatureFlags === showFeatureFlags) {
+        delete debugWindow.gladeShowFeatureFlags;
       }
-      if (debugWindow.synaraHideFeatureFlags === hideFeatureFlags) {
-        delete debugWindow.synaraHideFeatureFlags;
+      if (debugWindow.gladeHideFeatureFlags === hideFeatureFlags) {
+        delete debugWindow.gladeHideFeatureFlags;
       }
     };
   }, []);
@@ -2661,7 +2658,7 @@ export default function Sidebar() {
   // Warm model discovery before ChatView mounts so new-thread composers skip
   // the "Loading models" skeleton when React Query already has a fresh cache hit.
   const prefetchModelsForProjectNewThread = useCallback(
-    (projectId: ProjectId, options?: { includeDroid?: boolean }) => {
+    (projectId: ProjectId) => {
       const project = projects.find((candidate) => candidate.id === projectId);
       if (!project) {
         return;
@@ -2691,7 +2688,6 @@ export default function Sidebar() {
         providerStatuses,
         statusesReconciled: hasReconciledServerProviderStatuses(queryClient),
         providerOrder: appSettings.providerOrder,
-        includeDroid: options?.includeDroid === true,
       });
     },
     [appSettings, projects, providerStatuses, queryClient, serverCwd, serverSettings],
@@ -2701,8 +2697,6 @@ export default function Sidebar() {
     if (!primaryNewThreadTarget) {
       return;
     }
-    // Idle hover/focus must not spin Droid's expensive per-model ACP discovery;
-    // only explicit new-thread intent (the click path below) warms Droid.
     prefetchModelsForProjectNewThread(primaryNewThreadTarget.projectId);
   }, [prefetchModelsForProjectNewThread, primaryNewThreadTarget]);
 
@@ -2715,7 +2709,7 @@ export default function Sidebar() {
 
   const handlePrimaryNewThread = useCallback(() => {
     if (primaryNewThreadTarget) {
-      prefetchModelsForProjectNewThread(primaryNewThreadTarget.projectId, { includeDroid: true });
+      prefetchModelsForProjectNewThread(primaryNewThreadTarget.projectId);
       void handleNewThread(primaryNewThreadTarget.projectId);
       return;
     }
@@ -2762,32 +2756,8 @@ export default function Sidebar() {
                 model: providerDefaultModel,
               }
             : null;
-      if (!modelSelection && provider === "omp") {
-        // OMP has no static default model; the imported session's own last-used
-        // model wins server-side during import. The thread record still needs a
-        // catalog-valid placeholder selection.
-        const catalog = await queryClient
-          .fetchQuery(
-            providerModelsQueryOptions({
-              provider: "omp",
-              cwd: activeProject.cwd,
-            }),
-          )
-          .catch(() => null);
-        const fallbackModel = catalog?.models[0]?.slug;
-        modelSelection = fallbackModel
-          ? {
-              provider: "omp",
-              model: fallbackModel,
-            }
-          : null;
-      }
       if (!modelSelection) {
-        throw new Error(
-          provider === "omp"
-            ? "No Oh My Pi models are discovered yet; configure an OMP provider before importing."
-            : "Select a Pi model before importing a Pi thread.",
-        );
+        throw new Error("Select a model before importing a thread.");
       }
       const threadId = newThreadId();
       const createdAt = new Date().toISOString();
@@ -2800,9 +2770,7 @@ export default function Sidebar() {
             ? `Imported Cursor session${suffix ? ` ${suffix}` : ""}`
             : provider === "opencode"
               ? `Imported OpenCode session${suffix ? ` ${suffix}` : ""}`
-              : provider === "omp"
-                ? `Imported Oh My Pi session${suffix ? ` ${suffix}` : ""}`
-                : `Imported Codex thread${suffix ? ` ${suffix}` : ""}`;
+              : `Imported Codex thread${suffix ? ` ${suffix}` : ""}`;
       let createdThread = false;
 
       try {
@@ -3787,7 +3755,7 @@ export default function Sidebar() {
     () => new Set(normalizeHiddenSidebarNavItems(appSettings.hiddenSidebarNavItems)),
     [appSettings.hiddenSidebarNavItems],
   );
-  const [isCustomizingNav, setIsCustomizingNav] = useState(false);
+  const [isSelectedHintizingNav, setIsCustomizingNav] = useState(false);
   const [navCustomizeMenuPosition, setNavCustomizeMenuPosition] = useState<{
     x: number;
     y: number;
@@ -3897,13 +3865,13 @@ export default function Sidebar() {
     setNavCustomizeMenuPosition({ x: event.clientX, y: event.clientY });
   }, []);
   useEffect(() => {
-    if (!isCustomizingNav) return;
+    if (!isSelectedHintizingNav) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") setIsCustomizingNav(false);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isCustomizingNav]);
+  }, [isSelectedHintizingNav]);
 
   // Trees need child (subagent) threads too; the flat display list stays
   // root-only for pinned rows and other non-tree consumers.
@@ -4462,7 +4430,7 @@ export default function Sidebar() {
   }, [activeSidebarThreadId, visibleSidebarThreadIds]);
 
   // Pinned rows share the thread-container label rule (project name, or
-  // "Synara" for project-less chats) with the hover cards and Activity rows.
+  // "Glade" for project-less chats) with the hover cards and Activity rows.
   function resolvePinnedThreadProjectLabel(projectId: ProjectId): string {
     return resolveThreadProjectLabel(projectById.get(projectId));
   }
@@ -5054,7 +5022,7 @@ export default function Sidebar() {
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
-            prefetchModelsForProjectNewThread(project.id, { includeDroid: true });
+            prefetchModelsForProjectNewThread(project.id);
             void handleNewThread(project.id);
           }}
         />
@@ -5123,8 +5091,8 @@ export default function Sidebar() {
     );
   }
 
-  // A project reads as "running" when Synara tracks a run for it or when a local server
-  // (possibly started outside Synara) is attributed by cwd. Shared by the tree's project
+  // A project reads as "running" when Glade tracks a run for it or when a local server
+  // (possibly started outside Glade) is attributed by cwd. Shared by the tree's project
   // header and the rail layout's Spaces rows.
   function isSidebarProjectRunning(projectId: ProjectId): boolean {
     return (
@@ -5778,7 +5746,6 @@ export default function Sidebar() {
   }, [desktopUpdateState?.status, desktopUpdateState?.errorContext]);
 
   const showDesktopUpdateButton = isElectron && shouldShowDesktopUpdateButton(desktopUpdateState);
-  const isBetaDesktopFlavor = desktopUpdateState?.flavor === "beta";
 
   const desktopUpdateTooltip = desktopUpdateState
     ? getDesktopUpdateButtonTooltip(desktopUpdateState, {
@@ -5808,7 +5775,7 @@ export default function Sidebar() {
   const desktopUpdateDownloadPercent = getDesktopUpdateDownloadPercent(desktopUpdateState);
   const desktopUpdateRowButtonClasses = cn(
     "inline-flex h-6 shrink-0 items-center justify-center gap-1.5 rounded-full px-2.5 font-system-ui text-ui-xs font-medium leading-none text-white transition-colors",
-    isBetaDesktopFlavor ? "bg-[image:var(--beta-gradient)]" : "bg-[var(--info)]",
+    "bg-[var(--info)]",
     desktopUpdateButtonHasSecondaryLabel && "min-h-6 py-0.5",
     desktopUpdateButtonInteractivityClasses,
   );
@@ -5862,7 +5829,7 @@ export default function Sidebar() {
       {
         id: "import-projects",
         label: "Import projects from…",
-        description: "Bring Codex and Claude Code projects and conversations into Synara.",
+        description: "Bring Codex and Claude Code projects and conversations into Glade.",
         keywords: ["import", "projects", "codex", "claude", "conversations", "folders"],
       },
       {
@@ -5883,9 +5850,9 @@ export default function Sidebar() {
       },
       {
         id: "feedback",
-        label: "Feedback Synara",
-        description: "Send feedback or report an issue to the Synara team.",
-        keywords: ["feedback", "bug", "issue", "problem", "report", "support", "synara"],
+        label: "Feedback Glade",
+        description: "Send feedback or report an issue to the Glade team.",
+        keywords: ["feedback", "bug", "issue", "problem", "report", "support", "glade"],
       },
       {
         id: "settings",
@@ -5972,7 +5939,7 @@ export default function Sidebar() {
             toastManager.add({
               type: "info",
               title: "Preparing update",
-              description: `Synara is preparing version ${nextState.availableVersion ?? "available"} in the background.`,
+              description: `Glade is preparing version ${nextState.availableVersion ?? "available"} in the background.`,
             });
             return;
           }
@@ -5981,7 +5948,7 @@ export default function Sidebar() {
             toastManager.add({
               type: "info",
               title: "Preparing update",
-              description: "Synara is downloading the update in the background.",
+              description: "Glade is downloading the update in the background.",
             });
             return;
           }
@@ -5999,7 +5966,7 @@ export default function Sidebar() {
             toastManager.add({
               type: "info",
               title: "You're up to date",
-              description: `Synara ${nextState.currentVersion} is already the newest version.`,
+              description: `Glade ${nextState.currentVersion} is already the newest version.`,
             });
             return;
           }
@@ -6162,15 +6129,6 @@ export default function Sidebar() {
   const titlebarControls = <SidebarLeadingControls className="hidden md:flex" />;
 
   const headerControls = <SidebarLeadingControls className="ml-auto hidden md:flex" />;
-
-  const betaBadge = isBetaDesktopFlavor ? (
-    <span
-      aria-label="Synara Beta"
-      className="inline-flex shrink-0 items-center rounded-full bg-[var(--beta-pill)] px-1.5 py-0.5 text-ui-xs font-semibold uppercase leading-none tracking-wide text-[var(--beta-pill-ink)]"
-    >
-      Beta
-    </span>
-  ) : null;
 
   const wordmark = (
     <div className="flex w-full items-center gap-1.5">
@@ -6430,9 +6388,7 @@ export default function Sidebar() {
           <SidebarGroup className="p-0">
             {isRailLayout ? (
               // The rail is the way back, so the panel opens on its title like every section.
-              <SidebarPanelTitle title="Settings">{betaBadge}</SidebarPanelTitle>
-            ) : isBetaDesktopFlavor ? (
-              <div className="flex items-center justify-end pb-1 pr-2.5">{betaBadge}</div>
+              <SidebarPanelTitle title="Settings"></SidebarPanelTitle>
             ) : null}
             <SettingsSidebarNav
               activeSection={activeSettingsSection}
@@ -6488,14 +6444,13 @@ export default function Sidebar() {
                     onClick={() => setActivityViewEnabledSmoothly(!activityViewEnabled)}
                   />
                 ) : null}
-                {betaBadge}
               </div>
             </div>
             {/* The keyed content remounts with a short enter animation while the picker
                 stays mounted so its thumb can glide between Projects and Studio. */}
             <div key={sidebarSurfaceKey} className="sidebar-surface-enter">
               {/* Primary sidebar actions stay limited to features we currently ship. */}
-              {!isOnStudio && isCustomizingNav ? (
+              {!isOnStudio && isSelectedHintizingNav ? (
                 <SidebarGroup className="px-1.5 pt-1 pb-1.5">
                   {/* Customize mode: the nav block lifts into a raised card (same chrome as
                       the Environment panel/composer) with per-item visibility + reorder. */}
@@ -7466,19 +7421,15 @@ function SidebarSearchPaletteController(props: {
   // structurally nested side chats stay out of standalone thread results.
   const selectSidebarDisplayThreads = useMemo(() => createSidebarDisplayThreadsSelector(), []);
   const importProviderCapabilityQueries = useQueries({
-    queries: (["codex", "claudeAgent", "cursor", "opencode", "omp"] as const).map((provider) =>
+    queries: (["codex", "claudeAgent", "cursor", "opencode"] as const).map((provider) =>
       providerComposerCapabilitiesQueryOptions(provider),
     ),
   });
   const threads = useStore(selectAllThreads);
   const sidebarDisplayThreads = useStore(selectSidebarDisplayThreads);
   const importProviders: ReadonlyArray<ImportProviderKind> = (
-    ["codex", "claudeAgent", "cursor", "opencode", "omp"] as const
-  ).filter(
-    (provider, index) =>
-      isBetaFeatureOn(provider) &&
-      supportsThreadImport(importProviderCapabilityQueries[index]?.data),
-  );
+    ["codex", "claudeAgent", "cursor", "opencode"] as const
+  ).filter((provider, index) => supportsThreadImport(importProviderCapabilityQueries[index]?.data));
   // `threads` is rebuilt on every streamed store flush, so this projection is
   // cheap by construction (message text is cached per thread-messages array
   // below) and its result keeps the previous identity while nothing the

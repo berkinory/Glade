@@ -1,5 +1,5 @@
-import type { ComputerId } from "@synara/contracts";
-import type { ComputerFrame } from "@synara/shared/computerFrame";
+import type { ComputerId } from "@glade/contracts";
+import type { ComputerFrame } from "@glade/shared/computerFrame";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -181,7 +181,7 @@ export function useComputerImageStream(input: {
         kind: "error",
         message:
           reason === "decode-failed"
-            ? "The computer stream sent a frame Synara could not read."
+            ? "The computer stream sent a frame Glade could not read."
             : "The computer stream disconnected.",
       });
     };

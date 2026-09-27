@@ -10,14 +10,14 @@ import {
   type RuntimeMode,
   type ThreadId,
   type ToolLifecycleItemType,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import { Schema } from "effect";
 import * as AcpErrors from "./AcpErrors.ts";
 
 import { ProviderAdapterRequestError, type ProviderAdapterError } from "../Errors.ts";
-import { shouldAllowSynaraComputerProviderTool } from "../../agentGateway/computerToolPermission.ts";
+import { shouldAllowGladeComputerProviderTool } from "../../agentGateway/computerToolPermission.ts";
 
-// Synara-internal ACP tool kind for provider-native subagent runs. ACP's ToolKind has
+// Glade-internal ACP tool kind for provider-native subagent runs. ACP's ToolKind has
 // no subagent variant (Cursor sends `kind: "other"` + `rawInput._toolName: "task"`), so
 // the runtime model tags detected subagent calls with this kind to reach the shared
 // collab_agent_tool_call presentation (agent icon, prompt preview, subagent live meta).
@@ -138,7 +138,7 @@ export function resolveAcpFullAccessPermissionOutcome(
 }
 
 /**
- * Applies Synara's turn-scoped permission precedence to ACP reverse requests.
+ * Applies Glade's turn-scoped permission precedence to ACP reverse requests.
  *
  * `interactionMode: undefined` means that no turn owns the request. Those
  * requests are cancelled so replay or late provider activity cannot inherit a
@@ -166,7 +166,7 @@ export function resolveAcpPermissionPolicy(input: {
   }
 
   if (
-    shouldAllowSynaraComputerProviderTool({
+    shouldAllowGladeComputerProviderTool({
       computerControlEnabled: input.computerControlEnabled === true,
       activeTurn: input.activeTurn === true,
       interactionMode: input.interactionMode,

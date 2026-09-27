@@ -5,11 +5,11 @@ import type {
   OrchestrationThread,
   ProjectKind,
   ThreadGoalAchievement,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import {
   ASYNC_USER_INPUT_ALREADY_ANSWERED,
   formatAsyncUserInputResponse,
-} from "@synara/shared/asyncUserInput";
+} from "@glade/shared/asyncUserInput";
 import {
   EventId,
   MAX_PINNED_PROJECTS,
@@ -19,19 +19,19 @@ import {
   SPACES_MAX_COUNT,
   THREAD_GOAL_ACHIEVEMENTS_MAX_COUNT,
   TurnId,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import {
   deriveAssociatedWorktreeMetadata,
   deriveAssociatedWorktreeMetadataPatch,
   workspaceRootsEqual,
-} from "@synara/shared/threadWorkspace";
-import { collectSubagentDescendants } from "@synara/shared/threadHierarchy";
-import { autoRuntimeModeSelectionIssue } from "@synara/shared/runtimeMode";
-import { providerSupportsNativeTurnSteering } from "@synara/shared/providerMetadata";
+} from "@glade/shared/threadWorkspace";
+import { collectSubagentDescendants } from "@glade/shared/threadHierarchy";
+import { autoRuntimeModeSelectionIssue } from "@glade/shared/runtimeMode";
+import { providerSupportsNativeTurnSteering } from "@glade/shared/providerMetadata";
 import {
   collectTailTurnIds,
   resolveTailUserMessageEditTarget,
-} from "@synara/shared/conversationEdit";
+} from "@glade/shared/conversationEdit";
 import { Effect } from "effect";
 
 import { computerActivationMetadata } from "../computer/computerActivation.ts";
@@ -1045,7 +1045,7 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
         threadId: command.threadId,
       });
       // Provider-native threads mirror subagents the provider already runs;
-      // Synara never starts a session for them, so the Auto-mode capability
+      // Glade never starts a session for them, so the Auto-mode capability
       // check can only reject the projection (and durably poison the runtime
       // journal replaying it), never prevent an unverified Auto session.
       if (command.creationSource !== "provider_native") {

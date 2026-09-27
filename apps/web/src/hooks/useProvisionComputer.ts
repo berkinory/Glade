@@ -13,7 +13,7 @@
 // while the card's Set up was still running started a second provision against
 // the same helper.
 
-import type { ComputerPermission, ComputerProvisionResult } from "@synara/contracts";
+import type { ComputerPermission, ComputerProvisionResult } from "@glade/contracts";
 import { useIsMutating, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { toastManager } from "~/components/ui/toast";
@@ -60,7 +60,7 @@ export function useProvisionComputer(options?: {
     mutationFn: provisionComputer,
     onSuccess: (result) => {
       // Legacy setup returns its final status; the native guide also pushes later grants.
-      if (globalThis.window?.desktopBridge?.appSnap) {
+      if (globalThis.window?.desktopBridge?.computerPermissions) {
         // Native setup can advance while the initiating RPC is returning.
         // Do not overwrite a newer grant push with its earlier status snapshot.
         void queryClient.invalidateQueries({ queryKey: serverQueryKeys.computerStatus() });
@@ -69,7 +69,8 @@ export function useProvisionComputer(options?: {
       }
       if (
         notify &&
-        (!globalThis.window?.desktopBridge?.appSnap || computerProvisionOutcome(result) === "ready")
+        (!globalThis.window?.desktopBridge?.computerPermissions ||
+          computerProvisionOutcome(result) === "ready")
       )
         toastManager.add(computerProvisionResultToast(result));
       if (computerProvisionOutcome(result) === "ready") onReady?.(result);
@@ -97,7 +98,7 @@ export function useProvisionComputer(options?: {
       isPending,
       ...(missing ? { missing } : {}),
       error: mutation.error,
-      result: globalThis.window?.desktopBridge?.appSnap ? undefined : mutation.data,
+      result: globalThis.window?.desktopBridge?.computerPermissions ? undefined : mutation.data,
     }),
   };
 }

@@ -9,7 +9,7 @@
 import { ServiceMap } from "effect";
 import type { Effect, Scope } from "effect";
 
-import type { OrchestrationRegenerateThreadTitleResult, ThreadId } from "@synara/contracts";
+import type { OrchestrationRegenerateThreadTitleResult, ThreadId } from "@glade/contracts";
 import type {
   ProviderBlockingDeliveryEvidence,
   ProviderDeliveryReconciliationOutcome,
@@ -69,4 +69,4 @@ export interface ProviderCommandReactorShape {
 export class ProviderCommandReactor extends ServiceMap.Service<
   ProviderCommandReactor,
   ProviderCommandReactorShape
->()("synara/orchestration/Services/ProviderCommandReactor") {}
+>()("glade/orchestration/Services/ProviderCommandReactor") {}

@@ -9,7 +9,6 @@ export const SETTINGS_SECTION_IDS = [
   "appearance",
   "notifications",
   "behavior",
-  "appsnap",
   "computer",
   "shortcuts",
   "worktrees",
@@ -18,12 +17,11 @@ export const SETTINGS_SECTION_IDS = [
   "providers",
   "skills",
   "usage",
-  "integrations",
   "advanced",
 ] as const;
 
 export type SettingsSectionId = (typeof SETTINGS_SECTION_IDS)[number];
-export type SettingsNavGroupId = "personal" | "integrations" | "coding" | "system" | "archived";
+export type SettingsNavGroupId = "personal" | "computer" | "coding" | "system" | "archived";
 
 /**
  * Deep-link scroll targets inside settings panels. Each id is shared by its DOM owner and callers
@@ -46,7 +44,7 @@ export type SettingsNavItem = {
   /**
    * Maturity label shown beside the section name, in the sidebar and on the
    * panel's own heading. Absent for a settled feature; one source so the two
-   * places can never disagree about what is still in beta.
+   * places can never disagree about what is still experimental.
    */
   badge?: string;
 };
@@ -56,7 +54,7 @@ export const SETTINGS_NAV_GROUPS: ReadonlyArray<{
   label: string;
 }> = [
   { id: "personal", label: "Personal" },
-  { id: "integrations", label: "Integrations" },
+  { id: "computer", label: "Computer" },
   { id: "coding", label: "Coding" },
   { id: "system", label: "System" },
   { id: "archived", label: "Archived" },
@@ -91,7 +89,7 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
     id: "notifications",
     group: "personal",
     label: "Notifications",
-    description: "Choose how Synara tells you when work finishes or needs attention.",
+    description: "Choose how Glade tells you when work finishes or needs attention.",
     icon: "bell",
     eyebrow: "Alerts",
   },
@@ -107,7 +105,7 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
     id: "shortcuts",
     group: "personal",
     label: "Keybindings",
-    description: "Capture, customize, and add shortcuts for every Synara command.",
+    description: "Capture, customize, and add shortcuts for every Glade command.",
     icon: "shortcut",
     eyebrow: "Key bindings",
   },
@@ -120,29 +118,12 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
     eyebrow: "Provider limits",
   },
   {
-    id: "appsnap",
-    group: "integrations",
-    label: "AppSnap",
-    description: "Capture another app's frontmost window directly into a task.",
-    icon: "screen-capture",
-    eyebrow: "Screen capture",
-  },
-  {
     id: "computer",
-    group: "integrations",
+    group: "computer",
     label: "Computer use",
     description: "Let agents see and control this computer's desktop, and check backend status.",
     icon: "computer-use",
     eyebrow: "Desktop control",
-    badge: "Beta",
-  },
-  {
-    id: "integrations",
-    group: "integrations",
-    label: "MCP connections",
-    description: "Give Codex, Claude, and other local agents scoped access to Synara tasks.",
-    icon: "plugin-1",
-    eyebrow: "External agents",
   },
   {
     id: "providers",
@@ -156,7 +137,7 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
     id: "models",
     group: "coding",
     label: "Models & writing",
-    description: "Choose the model used for Git writing and add custom model slugs.",
+    description: "Choose the model used for Git writing.",
     icon: "brain",
     eyebrow: "Model configuration",
   },
@@ -172,7 +153,7 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
     id: "worktrees",
     group: "coding",
     label: "Managed worktrees",
-    description: "Review and clean up isolated workspaces created by Synara.",
+    description: "Review and clean up isolated workspaces created by Glade.",
     icon: "branch-simple",
     eyebrow: "Workspace management",
   },
@@ -192,7 +173,7 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
     icon: "archive",
     eyebrow: "Thread management",
   },
-] as const;
+];
 
 /**
  * Stable DOM id for a settings row, derived from its (string) title. Shared by the row that

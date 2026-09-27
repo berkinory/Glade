@@ -117,7 +117,7 @@ jobs:
 
       - name: Install dependencies
         if: steps.toolchain.outputs.present == 'true'
-        run: bun install --frozen-lockfile --ignore-scripts --filter '@synara/scripts'
+        run: bun install --frozen-lockfile --ignore-scripts --filter '@glade/scripts'
 
       # The blocking check: compile against this toolchain and ask the helper
       # which capabilities resolved. A moved symbol fails here, needs no
@@ -127,7 +127,7 @@ jobs:
         env:
           DEVELOPER_DIR: ${{ steps.toolchain.outputs.developer_dir }}
           DEVICE_HELPER_PROBE_JSON: ${{ runner.temp }}/device-helper-probe.json
-        run: bun run test:device:probe
+        run: bun scripts/device-helper-smoke.ts --probe-only
 
       # Runner images do not all ship an iOS runtime, and a missing runtime says
       # nothing about whether our symbols still resolve. Detected here so the
@@ -162,7 +162,7 @@ jobs:
         timeout-minutes: 15
         env:
           DEVELOPER_DIR: ${{ steps.toolchain.outputs.developer_dir }}
-        run: bun run test:device
+        run: bun scripts/device-helper-smoke.ts
 
       # Uploaded even when the probe failed: that JSON names the capability and
       # the missing symbol, which is the entire diagnostic for a broken Xcode.

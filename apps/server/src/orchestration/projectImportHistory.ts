@@ -3,7 +3,7 @@ import type {
   ProviderStartOptions,
   ThreadHandoffImportedMessage,
   ThreadId,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import { Data, Effect } from "effect";
 import { loadClaudeAgentSdk } from "../provider/claudeAgentSdk";
 import { readClaudeImportMessageDates } from "../provider/claudeProjectImport";

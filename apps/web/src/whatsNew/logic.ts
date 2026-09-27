@@ -19,6 +19,8 @@ export interface WhatsNewFeature {
   readonly id: string;
   readonly title: string;
   readonly description: string;
+  /** Full commit SHA, omitted until this change is committed. */
+  readonly commit?: string;
   readonly image?: string;
   readonly imageAlt?: string;
   readonly details?: string;

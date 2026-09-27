@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest";
-import { ProjectId, ThreadId, TurnId, type OrchestrationThreadShell } from "@synara/contracts";
+import { ProjectId, ThreadId, TurnId, type OrchestrationThreadShell } from "@glade/contracts";
 import { Deferred, Effect, Fiber, Option } from "effect";
 
 import type { ProjectionSnapshotQueryShape } from "../orchestration/Services/ProjectionSnapshotQuery.ts";
@@ -512,7 +512,7 @@ describe("makeAgentGatewayMcpTransport tools/list schema sanitization", () => {
     Effect.gen(function* () {
       const recursiveTool: ToolEntry = {
         definition: {
-          name: "synara_recursive",
+          name: "glade_recursive",
           description: "tool with a cyclic schema",
           inputSchema: {
             type: "object",
@@ -546,7 +546,7 @@ describe("makeAgentGatewayMcpTransport tools/list schema sanitization", () => {
       if (!Array.isArray(response.body.result.tools)) {
         throw new Error("Expected tools/list to answer with a tools array.");
       }
-      const listed = findToolOrThrow(response.body.result.tools, "synara_recursive");
+      const listed = findToolOrThrow(response.body.result.tools, "glade_recursive");
       assert.deepEqual(listed.inputSchema, {
         type: "object",
         properties: {
@@ -571,7 +571,7 @@ describe("makeAgentGatewayMcpTransport tools/list", () => {
   const catalog: ReadonlyArray<ToolEntry> = [
     {
       definition: {
-        name: "synara_read_thread",
+        name: "glade_read_thread",
         description: "Read a thread",
         inputSchema: { type: "object" },
       },
@@ -601,7 +601,7 @@ describe("makeAgentGatewayMcpTransport tools/list", () => {
       assert.equal(response.status, 200);
       assert.deepEqual(
         listedTools(response.body).map((tool) => tool.name),
-        ["synara_read_thread"],
+        ["glade_read_thread"],
       );
     }),
   );
@@ -618,7 +618,7 @@ describe("makeAgentGatewayMcpTransport tools/list", () => {
       const tools = listedTools(response.body);
       assert.deepEqual(
         tools.map((tool) => tool.name),
-        ["synara_read_thread", "computer_click"],
+        ["glade_read_thread", "computer_click"],
       );
       assert.deepEqual(tools[1], {
         name: "computer_click",
@@ -660,7 +660,7 @@ describe("makeAgentGatewayMcpTransport tools/list", () => {
       assert.equal(listResponse.status, 200);
       assert.deepEqual(
         listedTools(listResponse.body).map((tool) => tool.name),
-        ["synara_read_thread", "computer_click"],
+        ["glade_read_thread", "computer_click"],
       );
       const callResponse = yield* post(transport, "token-1", toolCallBody("computer_drag"));
       assert.equal(callResponse.status, 200);

@@ -67,7 +67,7 @@ export function parsePackagedDesktopStartupArgs(
   if (!Number.isInteger(timeoutMs) || timeoutMs < 5_000 || timeoutMs > 180_000) {
     throw new Error("--timeout-ms must be an integer between 5000 and 180000.");
   }
-  const executableName = values.get("--executable-name")?.trim() || "synara";
+  const executableName = values.get("--executable-name")?.trim() || "glade";
   if (!/^[A-Za-z0-9._-]+$/.test(executableName) || executableName.includes("..")) {
     throw new Error(`Invalid packaged startup executable name: ${executableName}.`);
   }
@@ -205,11 +205,11 @@ function prepareWindowsLaunch(assetsDirectory: string, extractionRoot: string): 
   }
   runCommand("7z", ["x", "-y", `-o${applicationRoot}`, applicationArchives[0]!]);
   const executables = findFiles(applicationRoot, (candidate) =>
-    /[/\\]Synara[^/\\]*\.exe$/i.test(candidate),
+    /[/\\]Glade[^/\\]*\.exe$/i.test(candidate),
   );
   if (executables.length !== 1) {
     throw new Error(
-      `Expected one extracted Synara application executable, found ${executables.length}.`,
+      `Expected one extracted Glade application executable, found ${executables.length}.`,
     );
   }
   return {
@@ -282,12 +282,11 @@ export function createPackagedDesktopSmokeEnvironment(
     XDG_CONFIG_HOME: join(root, "xdg-config"),
     XDG_CACHE_HOME: join(root, "xdg-cache"),
     XDG_DATA_HOME: join(root, "xdg-data"),
-    SYNARA_HOME: join(root, "synara-home"),
-    SYNARA_BETA_HOME: join(root, "synara-beta-home"),
-    SYNARA_DISABLE_AUTO_UPDATE: "1",
+    GLADE_HOME: join(root, "glade-home"),
+    GLADE_DISABLE_AUTO_UPDATE: "1",
     ELECTRON_ENABLE_LOGGING: "1",
   };
-  delete env.SYNARA_AUTH_TOKEN;
+  delete env.GLADE_AUTH_TOKEN;
   delete env.ELECTRON_RUN_AS_NODE;
   for (const path of [
     env.HOME,
@@ -296,18 +295,12 @@ export function createPackagedDesktopSmokeEnvironment(
     env.XDG_CONFIG_HOME,
     env.XDG_CACHE_HOME,
     env.XDG_DATA_HOME,
-    env.SYNARA_HOME,
-    env.SYNARA_BETA_HOME,
+    env.GLADE_HOME,
   ]) {
     if (path) mkdirSync(path, { recursive: true });
   }
   if (options.platform === "mac") {
-    const userDataPath = join(
-      env.HOME!,
-      "Library",
-      "Application Support",
-      options.executableName === "synara-beta" ? "synara-beta" : "synara",
-    );
+    const userDataPath = join(env.HOME!, "Library", "Application Support", "glade");
     mkdirSync(userDataPath, { recursive: true });
     // Prevent the packaged app's update-only icon repair from registering this
     // temporary bundle in the runner's normal Launch Services database.
@@ -400,7 +393,7 @@ export async function verifyPackagedDesktopStartup(
       `Packaged ${options.platform} startup smoke must run on its native host, not ${process.platform}.`,
     );
   }
-  const temporaryRoot = mkdtempSync(join(tmpdir(), `synara-packaged-smoke-${options.platform}-`));
+  const temporaryRoot = mkdtempSync(join(tmpdir(), `glade-packaged-smoke-${options.platform}-`));
   const extractionRoot = join(temporaryRoot, "payload");
   mkdirSync(extractionRoot, { recursive: true });
 
@@ -411,9 +404,7 @@ export async function verifyPackagedDesktopStartup(
     const launch = prepareLaunch(options, extractionRoot);
     const env = createPackagedDesktopSmokeEnvironment(join(temporaryRoot, "state"), options);
     verifyPackagedRuntimeDependencies(launch.runtime, env, options.timeoutMs);
-    // Beta deliberately ignores SYNARA_HOME to avoid opening Stable's data.
-    const appHome =
-      options.executableName === "synara-beta" ? env.SYNARA_BETA_HOME! : env.SYNARA_HOME!;
+    const appHome = env.GLADE_HOME!;
     logDirectory = join(appHome, "userdata", "logs");
     const logPath = join(logDirectory, "desktop-main.log");
     child = spawn(launch.command, [...launch.args], {

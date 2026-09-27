@@ -3,7 +3,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
-import { migrationRuntimeSourceDigest } from "@synara/shared/migrationRecovery";
+import { migrationRuntimeSourceDigest } from "@glade/shared/migrationRecovery";
 
 import {
   MigrationRuntimeIdentityMismatchError,
@@ -19,11 +19,11 @@ afterEach(() => {
 });
 
 function sourceCheckout(source: string): string {
-  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "synara-migration-bundle-"));
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "glade-migration-bundle-"));
   tempDirectories.push(cwd);
   const sourcePath = path.join(cwd, "apps/server/src/persistence/Migrations.ts");
   fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
-  fs.writeFileSync(path.join(cwd, "package.json"), '{"name":"@synara/monorepo"}\n');
+  fs.writeFileSync(path.join(cwd, "package.json"), '{"name":"@glade/monorepo"}\n');
   fs.writeFileSync(sourcePath, source);
   return cwd;
 }
@@ -70,7 +70,7 @@ describe("verifyMigrationRuntimeIdentity", () => {
   it("checks the source checkout when launched from a nested package", () => {
     const checkout = sourceCheckout("current source");
     const nestedCwd = path.join(checkout, "apps/server");
-    fs.writeFileSync(path.join(nestedCwd, "package.json"), '{"name":"@synara/cli"}\n');
+    fs.writeFileSync(path.join(nestedCwd, "package.json"), '{"name":"@glade/cli"}\n');
 
     expect(() =>
       verifyMigrationRuntimeIdentity({

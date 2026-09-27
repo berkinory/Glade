@@ -9,11 +9,8 @@
  * pane forwarded that the server did not know is a key the user pressed and
  * nothing happened to.
  *
- * The two TypeScript readers now share this module outright. The Swift table
- * cannot import it, so it is held in step by a test that reads the Swift source
- * and checks the coverage of this list (`macKeyMapCoverage.test.ts` in the
- * server's computer module) rather than by a comment asking someone to
- * remember.
+ * The two TypeScript readers share this module. The Swift table cannot import
+ * it, so changes here also require checking the native key map.
  *
  * These are *names*, deliberately not key codes: a code is per-platform and
  * belongs beside the injector that emits it.

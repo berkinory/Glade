@@ -1,4 +1,4 @@
-import { AutomationId, type AutomationProposalState } from "@synara/contracts";
+import { AutomationId, type AutomationProposalState } from "@glade/contracts";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "~/components/ui/button";

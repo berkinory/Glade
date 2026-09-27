@@ -1,23 +1,6 @@
 import * as Schema from "effect/Schema";
-import * as Record from "effect/Record";
 import { useCallback, useEffect, useRef, useState } from "react";
-
-const isomorphicLocalStorage: Storage =
-  typeof window !== "undefined"
-    ? window.localStorage
-    : (function () {
-        const store = new Map<string, string>();
-        return {
-          clear: () => store.clear(),
-          getItem: (_) => store.get(_) ?? null,
-          key: (_) => Record.keys(store).at(_) ?? null,
-          get length() {
-            return store.size;
-          },
-          removeItem: (_) => store.delete(_),
-          setItem: (_, value) => store.set(_, value),
-        };
-      })();
+import { appStorage } from "../lib/storage";
 
 // Reuse the JSON schema (and Effect's compiled parser) across subscribers.
 // Cache only schema machinery: every read still fetches and validates the current value.
@@ -40,20 +23,20 @@ const encode = <T, E>(schema: Schema.Codec<T, E>, value: T) =>
   Schema.encodeSync(getJsonSchema(schema))(value);
 
 export const getLocalStorageItem = <T, E>(key: string, schema: Schema.Codec<T, E>): T | null => {
-  const item = isomorphicLocalStorage.getItem(key);
+  const item = appStorage.getItem(key);
   return item ? decode(schema, item) : null;
 };
 
 export const setLocalStorageItem = <T, E>(key: string, value: T, schema: Schema.Codec<T, E>) => {
   const valueToSet = encode(schema, value);
-  isomorphicLocalStorage.setItem(key, valueToSet);
+  appStorage.setItem(key, valueToSet);
 };
 
 export const removeLocalStorageItem = (key: string) => {
-  isomorphicLocalStorage.removeItem(key);
+  appStorage.removeItem(key);
 };
 
-const LOCAL_STORAGE_CHANGE_EVENT = "synara:local_storage_change";
+const LOCAL_STORAGE_CHANGE_EVENT = "glade:local_storage_change";
 
 interface LocalStorageChangeDetail {
   key: string;
@@ -154,8 +137,7 @@ export function useLocalStorage<T, E>(
     };
 
     const handleStorageChange = (event: StorageEvent) => {
-      const affectsLocalStorage =
-        event.storageArea === null || event.storageArea === isomorphicLocalStorage;
+      const affectsLocalStorage = event.storageArea === null || event.storageArea === appStorage;
       // Browsers report localStorage.clear() with key === null; every subscribed key must reset.
       if (affectsLocalStorage && (event.key === null || event.key === key)) {
         syncFromStorage();

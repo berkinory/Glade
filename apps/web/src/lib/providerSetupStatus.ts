@@ -1,4 +1,4 @@
-import type { ServerProviderStatus } from "@synara/contracts";
+import type { ServerProviderStatus } from "@glade/contracts";
 
 /** Installation/auth health is independent of permission to run background work. */
 export function providerSetupStatusLabel(input: {

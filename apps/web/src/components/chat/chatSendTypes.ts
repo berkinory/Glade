@@ -1,4 +1,4 @@
-import type { MessageId, ProviderKind, ThreadId } from "@synara/contracts";
+import type { MessageId, ProviderKind, ThreadId } from "@glade/contracts";
 import type { QueryClient, UseMutationResult } from "@tanstack/react-query";
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import type { useRefreshProviderStatusesNow } from "~/hooks/useProviderStatusRefresh";

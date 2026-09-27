@@ -2,7 +2,7 @@ import {
   type ProviderKind,
   type ProviderStartOptions,
   type ServerProviderStatus,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   normalizeCustomBinaryPath,
@@ -44,22 +44,12 @@ function getProviderStartOptionsCustomBinaryPath(
       return normalizeCustomBinaryPath(providerOptions?.codex?.binaryPath);
     case "claudeAgent":
       return normalizeCustomBinaryPath(providerOptions?.claudeAgent?.binaryPath);
-    case "antigravity":
-      return normalizeCustomBinaryPath(providerOptions?.antigravity?.binaryPath);
     case "grok":
       return normalizeCustomBinaryPath(providerOptions?.grok?.binaryPath);
-    case "droid":
-      return normalizeCustomBinaryPath(providerOptions?.droid?.binaryPath);
     case "opencode":
       return normalizeCustomBinaryPath(providerOptions?.opencode?.binaryPath);
     case "cursor":
       return normalizeCustomBinaryPath(providerOptions?.cursor?.binaryPath);
-    case "devin":
-      return normalizeCustomBinaryPath(providerOptions?.devin?.binaryPath);
-    case "pi":
-      return normalizeCustomBinaryPath(providerOptions?.pi?.binaryPath);
-    case "omp":
-      return normalizeCustomBinaryPath(providerOptions?.omp?.binaryPath);
   }
 }
 interface ChatProviderStatusInput {

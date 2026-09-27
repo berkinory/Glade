@@ -1,6 +1,6 @@
 // Purpose: Route selected transcript text through the normal Side and new-chat flows.
 
-import type { ProjectId, ThreadEnvironmentMode, ThreadId } from "@synara/contracts";
+import type { ProjectId, ThreadEnvironmentMode, ThreadId } from "@glade/contracts";
 
 import { useComposerDraftStore, type QueuedComposerChatTurn } from "../composerDraftStore";
 import { requestComposerFocus } from "../composerFocusRequestStore";

@@ -3,7 +3,7 @@
 // Layer: Chat composer UI
 // Exports: ActiveTaskListCard
 
-import { pluralize } from "@synara/shared/text";
+import { pluralize } from "@glade/shared/text";
 import {
   PiArrowsInSimple,
   PiArrowsOutSimple,

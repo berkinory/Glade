@@ -7,4 +7,4 @@ export interface ProviderSessionReaperShape {
 export class ProviderSessionReaper extends ServiceMap.Service<
   ProviderSessionReaper,
   ProviderSessionReaperShape
->()("synara/provider/Services/ProviderSessionReaper") {}
+>()("glade/provider/Services/ProviderSessionReaper") {}

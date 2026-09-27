@@ -2,8 +2,8 @@ import type {
   GitRunStackedActionResult,
   GitStackedAction,
   GitStatusResult,
-} from "@synara/contracts";
-import { isTemporaryWorktreeBranch, resolveUniqueSynaraBranchName } from "@synara/shared/git";
+} from "@glade/contracts";
+import { isTemporaryWorktreeBranch, resolveUniqueGladeBranchName } from "@glade/shared/git";
 
 export type GitActionIconName = "commit" | "push" | "pr";
 
@@ -72,7 +72,7 @@ export function resolveDefaultCreateBranchName(
   existingBranchNames: readonly string[],
   preferredBranch?: string,
 ): string {
-  return resolveUniqueSynaraBranchName(existingBranchNames, preferredBranch);
+  return resolveUniqueGladeBranchName(existingBranchNames, preferredBranch);
 }
 
 export function buildGitActionProgressStages(input: {
@@ -971,4 +971,4 @@ export function resolveLiveThreadBranchUpdate(input: {
 }
 
 // Re-export from shared for backwards compatibility in this module's exports
-export { resolveAutoFeatureBranchName } from "@synara/shared/git";
+export { resolveAutoFeatureBranchName } from "@glade/shared/git";

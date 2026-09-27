@@ -3,10 +3,10 @@
 // Layer: Provider prompt compatibility
 // Exports: appendProviderReferencesPromptBlock.
 
-import type { ProviderMentionReference } from "@synara/contracts";
+import type { ProviderMentionReference } from "@glade/contracts";
 
 function referenceLine(reference: ProviderMentionReference): string {
-  const kind = reference.path.startsWith("plugin://") ? "Factory plugin" : "local path";
+  const kind = reference.path.startsWith("plugin://") ? "provider plugin" : "local path";
   return `- ${kind}: ${JSON.stringify({ name: reference.name, path: reference.path })}`;
 }
 
@@ -20,7 +20,7 @@ export function appendProviderReferencesPromptBlock(input: {
   }
   const block = [
     "<selected_provider_references>",
-    "The user explicitly selected these references. Droid manages enabled Factory plugin components natively; prefer the selected plugin's skills, commands, agents, or tools when they are available and relevant. Read local paths with your filesystem tools as needed.",
+    "The user explicitly selected these references. Read local paths with your filesystem tools as needed.",
     ...input.mentions.map(referenceLine),
     "</selected_provider_references>",
   ].join("\n");

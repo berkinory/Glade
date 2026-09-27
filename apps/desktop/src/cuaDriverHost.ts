@@ -22,7 +22,7 @@ import {
   parseCuaComputerTask,
   parseCuaShieldArgs,
   cuaComputerTaskKey,
-} from "@synara/shared/cuaDriverProtocol";
+} from "@glade/shared/cuaDriverProtocol";
 import type { ComputerFrameTapHost } from "./computerFrameTap";
 import { linuxBrowserCallIsReadOnly, linuxCuaAdmissionRefusal } from "./linuxCuaAdmission";
 import {
@@ -35,7 +35,7 @@ import type { ComputerInputMonitorState, PhysicalComputerInput } from "./escapeK
 import {
   cuaActionDiagnosticMessage,
   parseCuaActionDiagnostics,
-} from "@synara/shared/cuaActionDiagnostics";
+} from "@glade/shared/cuaActionDiagnostics";
 
 interface TaskCursor {
   task: CuaComputerTask;
@@ -53,7 +53,7 @@ interface TaskRequest {
 export const CUA_CURSOR_IDLE_HIDE_MS = 60_000;
 /** A raw ENOENT names a path, not a remedy; source builds stage the driver themselves. */
 const CUA_DRIVER_MISSING_MESSAGE =
-  "Cua Driver is not bundled. Run the provisioning script (`node apps/desktop/scripts/provision-cua-driver.mjs`, needs the pinned Rust toolchain) in this checkout, then relaunch Synara.";
+  "Cua Driver is not bundled. Run the provisioning script (`node apps/desktop/scripts/provision-cua-driver.mjs`, needs the pinned Rust toolchain) in this checkout, then relaunch Glade.";
 
 interface ControlledTarget {
   pid: number;
@@ -147,7 +147,7 @@ interface Generation {
  * so reuse after deletion cannot alias a different conversation's browser.
  */
 function browserSessionLabel(threadId: string): string {
-  return `synara-browser-${threadId}`;
+  return `glade-browser-${threadId}`;
 }
 
 /**
@@ -161,7 +161,7 @@ function browserSessionLabel(threadId: string): string {
  * session, so each concurrent agent gets a distinguishable cursor and two
  * threads that share a display label still get distinct cursors and tints.
  * The `agent·` prefix is compact because badge space is scarce, and it keeps
- * task-derived labels out of the `synara-browser-*` lifecycle namespace, the
+ * task-derived labels out of the `glade-browser-*` lifecycle namespace, the
  * anonymous `default` cursor, and the `__cua_runtime_` runtime-key space —
  * none of which can be spelled with the prefix in place.
  */
@@ -415,7 +415,7 @@ export class CuaDriverHost {
    */
   private desktopInterruptionCount = 0;
   /**
-   * The `synara_native_revision` the live driver reported at handshake —
+   * The `glade_native_revision` the live driver reported at handshake —
    * `undefined` until the first spawn answers, `0` when the driver is an
    * unpatched upstream build. Rides every reply so the backend can shape
    * advertised capabilities to the driver actually running.
@@ -464,10 +464,10 @@ export class CuaDriverHost {
        */
       shield?: ComputerShieldHost;
       /**
-       * The `synara_native_revision` the spawned driver must report at
+       * The `glade_native_revision` the spawned driver must report at
        * handshake. Defaults to {@link CUA_NATIVE_REVISION} — the patched
        * build the macOS desktop provisions. `null` expects a provisioned
-       * upstream driver: its metadata carries no Synara revision, so the
+       * upstream driver: its metadata carries no Glade revision, so the
        * revision check and the patch-only spawn flags are skipped, and the
        * driver runs with the safety set upstream ships.
        */
@@ -500,7 +500,7 @@ export class CuaDriverHost {
   }
 
   async listen(): Promise<string> {
-    this.directory = await mkdtemp(join(tmpdir(), "synara-cua-"));
+    this.directory = await mkdtemp(join(tmpdir(), "glade-cua-"));
     await chmod(this.directory, 0o700);
     await markCuaRuntimeDirectory(this.directory);
     // Named pipes are already private to the creating user on Windows; the
@@ -508,7 +508,7 @@ export class CuaDriverHost {
     const endpoint =
       this.options.hostEndpoint ??
       (process.platform === "win32"
-        ? `\\\\.\\pipe\\synara-cua-host-${randomUUID().slice(0, 8)}`
+        ? `\\\\.\\pipe\\glade-cua-host-${randomUUID().slice(0, 8)}`
         : join(this.directory, "host.sock"));
     const server = createServer((socket) => this.accept(socket));
     this.server = server;
@@ -932,7 +932,7 @@ export class CuaDriverHost {
         return this.taskStoppedReply();
       }
       if (name === "check_permissions" && this.options.checkPermissions) {
-        // AppSnap's short-lived helper avoids the embedded daemon's TCC cache.
+        // ComputerPermission's short-lived helper avoids the embedded daemon's TCC cache.
         // This remains an authenticated, read-only host operation: prompt args
         // from tools never reach the permission request path.
         const check = this.options.checkPermissions;
@@ -1003,7 +1003,7 @@ export class CuaDriverHost {
               source: {
                 attribution: "host",
                 host_bundle_id: this.options.bundleId,
-                probe: "appsnap-permission-helper",
+                probe: "computer-helper-permission-helper",
               },
             },
           },
@@ -1167,7 +1167,7 @@ export class CuaDriverHost {
   ): Promise<HostPermissions | undefined> {
     // Stop and disconnected status readers must release native admission even
     // while a different feature owns a macOS prompt in the shared helper queue.
-    // Abandon only this wait; do not cancel AppSnap's permission request.
+    // Abandon only this wait; do not cancel ComputerPermission's permission request.
     return new Promise((resolve, reject) => {
       const cleanup = () => {
         this.pendingPermissionChecks.delete(cancel);
@@ -1698,7 +1698,7 @@ export class CuaDriverHost {
   }
 
   /**
-   * `SYNARA_CUA_WARM_ON_FIRST_TOUCH=1` asks the host to run the spawn plus
+   * `GLADE_CUA_WARM_ON_FIRST_TOUCH=1` asks the host to run the spawn plus
    * validated handshake on first touch, after known grants on a host with a
    * permission bridge. The initial check answers without the driver, so its
    * cold start can overlap subsequent work without caching pre-grant TCC. Warming
@@ -1710,7 +1710,7 @@ export class CuaDriverHost {
 
   private warm(): void {
     if (this.warmAttempted || this.closed || this.suspended) return;
-    const raw = process.env.SYNARA_CUA_WARM_ON_FIRST_TOUCH?.trim().toLowerCase();
+    const raw = process.env.GLADE_CUA_WARM_ON_FIRST_TOUCH?.trim().toLowerCase();
     if (raw !== "1" && raw !== "true" && raw !== "on" && raw !== "yes") return;
     this.warmAttempted = true;
     void this.ensureSpawned().catch((error: unknown) => {
@@ -1801,7 +1801,7 @@ export class CuaDriverHost {
       }
       const endpoint =
         process.platform === "win32"
-          ? `\\\\.\\pipe\\synara-cua-driver-${randomUUID().slice(0, 8)}`
+          ? `\\\\.\\pipe\\glade-cua-driver-${randomUUID().slice(0, 8)}`
           : join(this.directory, `driver-${randomUUID().slice(0, 8)}.sock`);
       // Park the compact cursor between actions until end_task removes it,
       // with a one-minute native expiry if cleanup cannot be acknowledged.
@@ -1833,13 +1833,13 @@ export class CuaDriverHost {
             CUA_DRIVER_RS_UPDATE_CHECK: "0",
             // Owned by the GUI host, not supplied through public tool arguments.
             // The native driver applies this only after foreground input cleanup.
-            SYNARA_CUA_FOREGROUND_OBSERVATION_MS: "100",
+            GLADE_CUA_FOREGROUND_OBSERVATION_MS: "100",
             // The detector watches for windows/foreground changes the action
             // spawned — typically within ~200ms — not for the target's own
             // content. 350ms keeps the wildcard focus-steal suppressor armed
             // past the typical case while saving ~650ms per background action
             // over the default one-second window.
-            SYNARA_CUA_BACKGROUND_OBSERVATION_MS: "350",
+            GLADE_CUA_BACKGROUND_OBSERVATION_MS: "350",
             CUA_DRIVER_PARENT_LIVENESS_STDIN: "1",
             CUA_DRIVER_EMBEDDED_HOST_PID: String(process.pid),
             CUA_DRIVER_RS_HOME: join(this.directory, "state"),
@@ -1859,10 +1859,10 @@ export class CuaDriverHost {
           // These native literals carry no app content. Other stderr remains
           // private to the bounded shutdown tail; never stream arbitrary text.
           const overlay = line.match(
-            /^synara_cua_overlay_init code=(overlay_display_unavailable|overlay_window_unavailable)$/,
+            /^glade_cua_overlay_init code=(overlay_display_unavailable|overlay_window_unavailable)$/,
           );
           const restore = line.match(
-            /^synara_cua_focus_restore status=(not-needed|restored|failed|unobservable|user-changed)$/,
+            /^glade_cua_focus_restore status=(not-needed|restored|failed|unobservable|user-changed)$/,
           );
           if (overlay || restore)
             log(
@@ -1888,7 +1888,7 @@ export class CuaDriverHost {
         browserInputControl: false,
         child,
         socket: endpoint,
-        session: `synara-${randomUUID()}`,
+        session: `glade-${randomUUID()}`,
         exited,
         didExit: false,
         retired: false,
@@ -1897,7 +1897,7 @@ export class CuaDriverHost {
         inputTask: undefined,
         browserInputInFlight: false,
         inputEverDispatched: false,
-        controlSession: `synara-transport-${randomUUID()}`,
+        controlSession: `glade-transport-${randomUUID()}`,
         controlSocket: undefined,
         endedBrowserSessions: new Set<string>(),
         liveBrowserSessions: new Set<string>(),
@@ -1928,14 +1928,14 @@ export class CuaDriverHost {
           }
         }
         // `nativeRevision: null` expects an unpatched upstream driver — its
-        // metadata carries no Synara revision and the field must not be
+        // metadata carries no Glade revision and the field must not be
         // required. A patched build is still accepted there: a superset of
         // the expected identity is never a downgrade.
         const expectedNativeRevision =
           this.options.nativeRevision === undefined
             ? CUA_NATIVE_REVISION
             : this.options.nativeRevision;
-        const reportedRevision = metadata?.result?.synara_native_revision;
+        const reportedRevision = metadata?.result?.glade_native_revision;
         if (
           !metadata?.ok ||
           metadata.result?.driver_version !== CUA_DRIVER_VERSION ||
@@ -1951,7 +1951,7 @@ export class CuaDriverHost {
         generation.browserInputControl =
           process.platform === "linux" &&
           reportedRevision === CUA_NATIVE_REVISION &&
-          metadata.result?.synara_browser_input_control === 1;
+          metadata.result?.glade_browser_input_control === 1;
         if (generation.retired || generation.didExit)
           throw new Error("Cua Driver stopped during startup.");
         generation.cancellationReady =

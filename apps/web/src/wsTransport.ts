@@ -1,5 +1,5 @@
 // FILE: wsTransport.ts
-// Purpose: Browser-side Effect RPC transport over the Synara WebSocket endpoint.
+// Purpose: Browser-side Effect RPC transport over the Glade WebSocket endpoint.
 // Layer: Web transport
 // Exports: WsTransport plus stream-selection helpers used by tests.
 
@@ -53,7 +53,7 @@ import {
   type WsPushChannel,
   type WsPushMessage,
   ThreadId,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import {
   Cause,
   Data,

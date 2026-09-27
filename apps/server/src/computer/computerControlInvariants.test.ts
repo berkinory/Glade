@@ -122,17 +122,7 @@ describe("Provider authority invariants", () => {
     const tools = makeAgentGatewayComputerTools({ manager, authorizeAction });
     const type = tools.find((tool) => tool.definition.name === "computer_type_text")!;
     try {
-      for (const provider of [
-        "codex",
-        "claudeAgent",
-        "cursor",
-        "grok",
-        "droid",
-        "devin",
-        "opencode",
-        "pi",
-        "antigravity",
-      ] as const) {
+      for (const provider of ["codex", "claudeAgent", "cursor", "grok", "opencode"] as const) {
         // A distinct text per provider keeps every call's repeat-guard key
         // distinct — the guard would refuse a third identical unverified
         // send before the approval gate this test measures.
@@ -148,39 +138,11 @@ describe("Provider authority invariants", () => {
         );
         expect(authorizeAction.mock.calls.at(-1)?.[0]).toBe("computer_type_text");
       }
-      expect(authorizeAction).toHaveBeenCalledTimes(9);
+      expect(authorizeAction).toHaveBeenCalledTimes(5);
     } finally {
       await manager.dispose();
     }
   });
-  it.each(["pi"] as const)("lets Synara approve or deny %s actions", async (provider) => {
-    const backend = new FakeComputerBackend();
-    const manager = new ComputerManager({ backend, actionSettleMs: 0 });
-    let allowed = false;
-    const authorizeAction = vi.fn(async () => allowed);
-    const tool = makeAgentGatewayComputerTools({ manager, authorizeAction }).find(
-      (tool) => tool.definition.name === "computer_type_text",
-    )!;
-    const caller = {
-      ...context(),
-      callerProvider: provider,
-      principal: { ...context().principal, provider },
-    };
-    const denied = await Effect.runPromise(
-      tool.handler({ text: "denied", include_screenshot: false }, caller),
-    );
-    expect(denied.isError).toBe(true);
-    expect(backend.calls.filter((call) => call.method === "typeText")).toHaveLength(0);
-    allowed = true;
-    const accepted = await Effect.runPromise(
-      tool.handler({ text: "approved", include_screenshot: false }, caller),
-    );
-    expect(accepted.isError).not.toBe(true);
-    expect(backend.calls.filter((call) => call.method === "typeText")).toHaveLength(1);
-    expect(authorizeAction).toHaveBeenCalledTimes(2);
-    await manager.dispose();
-  });
-
   it("rechecks original turn authority after waiting for the desktop", async () => {
     const backend = new FakeComputerBackend();
     const { manager, tools } = setup(backend);

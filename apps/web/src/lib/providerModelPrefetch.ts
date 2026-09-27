@@ -6,7 +6,7 @@
 // Layer: Web lib
 // Exports: resolve + prefetch helpers that mirror ChatView's listModels query keys.
 
-import type { ProviderKind, ServerProviderStatus, ServerSettings } from "@synara/contracts";
+import type { ProviderKind, ServerProviderStatus, ServerSettings } from "@glade/contracts";
 import type { QueryClient } from "@tanstack/react-query";
 
 import type { AppSettings } from "../appSettings";
@@ -28,35 +28,22 @@ export type ProviderModelPrefetchSettings = Pick<
   | "claudeBinaryPath"
   | "cursorBinaryPath"
   | "cursorApiEndpoint"
-  | "devinBinaryPath"
-  | "antigravityBinaryPath"
   | "grokBinaryPath"
-  | "droidBinaryPath"
   | "openCodeBinaryPath"
-  | "piBinaryPath"
-  | "piAgentDir"
-  | "ompBinaryPath"
-  | "ompAgentDir"
 >;
 
 /**
  * Providers whose model catalogs are runtime-discovered (not static) and thus
  * need warming before the picker can show anything beyond the static fallback.
- * Droid is excluded: its discovery spins a disposable ACP session per model,
- * so it warms only on explicit new-thread intent.
  */
-export const NEW_THREAD_MODEL_PREFETCH_PROVIDERS: ReadonlyArray<Exclude<ProviderKind, "droid">> = [
+export const NEW_THREAD_MODEL_PREFETCH_PROVIDERS: ReadonlyArray<ProviderKind> = [
   "codex",
   "claudeAgent",
   "cursor",
-  "antigravity",
   "grok",
   "opencode",
-  "pi",
-  "devin",
-  // One global `omp models` spawn, not per-model sessions like Droid — safe to
+  // Catalog discovery is cached and safe to
   // keep warm across hover/mount prefetches.
-  "omp",
 ];
 
 /** Warm results stay fresh for 30 minutes; the interactive staleTime is 15min. */
@@ -146,31 +133,10 @@ export function providerModelsPrefetchQueryOptions(input: {
         apiEndpoint: settings.cursorApiEndpoint || null,
         priority,
       });
-    case "devin":
-      return providerModelsQueryOptions({
-        provider: "devin",
-        binaryPath: settings.devinBinaryPath || null,
-        cwd,
-        priority,
-      });
-    case "antigravity":
-      return providerModelsQueryOptions({
-        provider: "antigravity",
-        binaryPath: settings.antigravityBinaryPath || null,
-        cwd,
-        priority,
-      });
     case "grok":
       return providerModelsQueryOptions({
         provider: "grok",
         binaryPath: settings.grokBinaryPath || null,
-        priority,
-      });
-    case "droid":
-      return providerModelsQueryOptions({
-        provider: "droid",
-        binaryPath: settings.droidBinaryPath || null,
-        cwd,
         priority,
       });
     case "opencode":
@@ -178,21 +144,6 @@ export function providerModelsPrefetchQueryOptions(input: {
         provider: "opencode",
         binaryPath: settings.openCodeBinaryPath || null,
         cwd,
-        priority,
-      });
-    case "pi":
-      return providerModelsQueryOptions({
-        provider: "pi",
-        binaryPath: settings.piBinaryPath || null,
-        agentDir: settings.piAgentDir || null,
-        cwd,
-        priority,
-      });
-    case "omp":
-      return providerModelsQueryOptions({
-        provider: "omp",
-        binaryPath: settings.ompBinaryPath || null,
-        agentDir: settings.ompAgentDir || null,
         priority,
       });
   }
@@ -232,9 +183,7 @@ export function prefetchProviderModelsForNewThread(
   },
 ): void {
   const cwd = input.cwd ?? null;
-  const providers = (input.providers ?? NEW_THREAD_MODEL_PREFETCH_PROVIDERS).filter(
-    (provider) => provider !== "droid",
-  );
+  const providers = input.providers ?? NEW_THREAD_MODEL_PREFETCH_PROVIDERS;
 
   for (const provider of providers) {
     const modelsOptions = providerModelsPrefetchQueryOptions({
@@ -249,10 +198,7 @@ export function prefetchProviderModelsForNewThread(
         provider === "codex" || provider === "claudeAgent"
           ? 0
           : providerModelDiscoveryRetry(provider),
-      staleTime:
-        provider === "devin"
-          ? (query) => (query.state.data?.error ? 0 : NEW_THREAD_MODEL_PREFETCH_STALE_TIME_MS)
-          : NEW_THREAD_MODEL_PREFETCH_STALE_TIME_MS,
+      staleTime: NEW_THREAD_MODEL_PREFETCH_STALE_TIME_MS,
       gcTime: NEW_THREAD_MODEL_PREFETCH_GC_TIME_MS,
     });
 
@@ -284,38 +230,8 @@ export function prefetchProviderModelsForNewThread(
 }
 
 /**
- * Warm Droid's model catalog on explicit new-thread intent only. Droid
- * discovery spins a disposable ACP session per model (expensive), so it must
- * never run from idle project focus.
- */
-export function prefetchDroidModelsForNewThread(
-  queryClient: QueryClient,
-  input: {
-    settings: ProviderModelPrefetchSettings;
-    cwd?: string | null;
-  },
-): void {
-  const cwd = input.cwd ?? null;
-  void queryClient.prefetchQuery({
-    ...providerModelsPrefetchQueryOptions({
-      provider: "droid",
-      settings: input.settings,
-      cwd,
-      priority: "prefetch",
-    }),
-    staleTime: NEW_THREAD_MODEL_PREFETCH_STALE_TIME_MS,
-    gcTime: NEW_THREAD_MODEL_PREFETCH_GC_TIME_MS,
-  });
-  void queryClient.prefetchQuery({
-    ...providerComposerCapabilitiesQueryOptions("droid"),
-    retry: 0,
-    gcTime: NEW_THREAD_MODEL_PREFETCH_GC_TIME_MS,
-  });
-}
-
-/**
  * Warm every visible provider for the next new thread: the selected provider
- * first, hidden/disabled/confirmed-uninstalled providers skipped, Droid only on
+ * first, hidden/disabled/confirmed-uninstalled providers skipped, only on
  * explicit intent. Provider availability mirrors the model picker on main
  * (#652): the picker lists only `status.available` providers, so warming a
  * provider that is confirmed absent would only produce failing spawns.
@@ -342,7 +258,6 @@ export function prefetchModelsForNewThread(
     hasExplicitWorktreePath?: boolean;
     fresh?: boolean;
     envMode?: DraftThreadEnvMode | null;
-    includeDroid?: boolean;
   },
 ): void {
   const resolvedProvider = resolveNewThreadModelPrefetchProvider({
@@ -405,12 +320,9 @@ export function prefetchModelsForNewThread(
     return true;
   };
   const providers = NEW_THREAD_MODEL_PREFETCH_PROVIDERS.filter(isProviderWarmable);
-  const orderedProviders =
-    selectedProvider === "droid" || !isProviderWarmable(selectedProvider)
-      ? providers
-      : [selectedProvider, ...providers.filter((provider) => provider !== selectedProvider)];
-  const shouldWarmSelectedDroid =
-    input.includeDroid === true && selectedProvider === "droid" && isProviderWarmable("droid");
+  const orderedProviders = !isProviderWarmable(selectedProvider)
+    ? providers
+    : [selectedProvider, ...providers.filter((provider) => provider !== selectedProvider)];
   const desiredModelQueryKeys = orderedProviders.map(
     (provider) =>
       providerModelsPrefetchQueryOptions({
@@ -419,15 +331,6 @@ export function prefetchModelsForNewThread(
         cwd,
       }).queryKey,
   );
-  if (shouldWarmSelectedDroid) {
-    desiredModelQueryKeys.push(
-      providerModelsPrefetchQueryOptions({
-        provider: "droid",
-        settings: input.settings,
-        cwd,
-      }).queryKey,
-    );
-  }
   const selectedModelQueryKey = desiredModelQueryKeys.find(
     (queryKey) => queryKey[2] === selectedProvider,
   );
@@ -450,9 +353,6 @@ export function prefetchModelsForNewThread(
       ),
   });
 
-  if (shouldWarmSelectedDroid) {
-    prefetchDroidModelsForNewThread(queryClient, { settings: input.settings, cwd });
-  }
   prefetchProviderModelsForNewThread(queryClient, {
     settings: input.settings,
     cwd,

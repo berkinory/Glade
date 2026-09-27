@@ -9,6 +9,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 export interface MacDmgNotaryCredentials {
+  readonly keychainProfile?: string | undefined;
   readonly appleApiKey: string | undefined;
   readonly appleApiKeyId: string | undefined;
   readonly appleApiIssuer: string | undefined;
@@ -83,9 +84,16 @@ export function buildMacDmgFinalizationCommands(
   dmgPath: string,
   credentials: MacDmgNotaryCredentials,
 ): ReadonlyArray<MacDmgCommand> {
-  const appleApiKey = requireCredential(credentials.appleApiKey, "APPLE_API_KEY");
-  const appleApiKeyId = requireCredential(credentials.appleApiKeyId, "APPLE_API_KEY_ID");
-  const appleApiIssuer = requireCredential(credentials.appleApiIssuer, "APPLE_API_ISSUER");
+  const auth = credentials.keychainProfile?.trim()
+    ? ["--keychain-profile", credentials.keychainProfile.trim()]
+    : [
+        "--key",
+        requireCredential(credentials.appleApiKey, "APPLE_API_KEY"),
+        "--key-id",
+        requireCredential(credentials.appleApiKeyId, "APPLE_API_KEY_ID"),
+        "--issuer",
+        requireCredential(credentials.appleApiIssuer, "APPLE_API_ISSUER"),
+      ];
 
   return [
     {
@@ -94,17 +102,7 @@ export function buildMacDmgFinalizationCommands(
     },
     {
       command: "xcrun",
-      args: [
-        "notarytool",
-        "submit",
-        dmgPath,
-        "--key",
-        appleApiKey,
-        "--key-id",
-        appleApiKeyId,
-        "--issuer",
-        appleApiIssuer,
-      ],
+      args: ["notarytool", "submit", dmgPath, ...auth],
     },
     {
       command: "xcrun",
@@ -166,7 +164,7 @@ export function rebuildUnsignedMacDmg(
     throw new Error(`Could not find packaged .app bundle inside ${options.stageDistDir}.`);
   }
 
-  const imageRoot = mkdtempSync(join(tmpdir(), "synara-mac-dmg-"));
+  const imageRoot = mkdtempSync(join(tmpdir(), "glade-mac-dmg-"));
   try {
     const [copyAppCommand, createDmgCommand] = buildUnsignedMacDmgCommands(
       appBundlePath,

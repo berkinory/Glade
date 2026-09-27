@@ -36,7 +36,7 @@ import {
   type ServerConfigStreamEvent,
   type ServerDiagnosticsResult,
   type ServerLifecycleStreamEvent,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import { clamp } from "effect/Number";
 import { Effect, FileSystem, Layer, Option, Path, Queue, Schema, Scope, Stream } from "effect";
 import { Headers, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http";
@@ -56,12 +56,12 @@ import { CheckpointDiffQuery } from "./checkpointing/Services/CheckpointDiffQuer
 import { resolveThreadWorkspaceCwd } from "./checkpointing/Utils";
 import { ServerConfig, type ServerConfigShape } from "./config";
 import { realpathNearestExisting } from "./realpathNearestExisting";
-import { workspaceRootsEqual } from "@synara/shared/threadWorkspace";
-import { WORKSPACE_FILE_WRITE_CONFLICT_CODE } from "@synara/shared/workspaceFileWrite";
+import { workspaceRootsEqual } from "@glade/shared/threadWorkspace";
+import { WORKSPACE_FILE_WRITE_CONFLICT_CODE } from "@glade/shared/workspaceFileWrite";
 import {
   isThreadDetailEventFor,
   THREAD_DETAIL_EVENT_TYPES,
-} from "@synara/shared/threadDetailEvents";
+} from "@glade/shared/threadDetailEvents";
 import { listStudioThreadOutputs } from "./studioOutputs";
 import {
   ensureStudioWorkspaceInstructionsFiles,
@@ -122,7 +122,7 @@ import { ProjectionStateIncompleteError } from "./persistence/Errors";
 import { ProjectionSnapshotQuery } from "./orchestration/Services/ProjectionSnapshotQuery";
 import { shouldPublishThreadShellForEvent } from "./orchestration/threadShellEvents";
 import { ProviderDiscoveryService } from "./provider/Services/ProviderDiscoveryService";
-import { discoverSkillsCatalog, synaraSkillsDir } from "./provider/skillsCatalog";
+import { discoverSkillsCatalog, gladeSkillsDir } from "./provider/skillsCatalog";
 import { recoverUnregisteredGitHubCheckout } from "./project/githubProjectRegistration";
 import { ProviderAdapterRegistry } from "./provider/Services/ProviderAdapterRegistry";
 import { getEnabledProviderAdapter } from "./provider/enabledProviderAdapter";
@@ -133,7 +133,6 @@ import { getProviderUsageSnapshot } from "./providerUsageSnapshot";
 import { ProfileStatsQuery } from "./profileStats";
 import { redactSensitiveProcessArgs } from "./processArgumentRedaction";
 import { ServerEnvironment } from "./environment/Services/ServerEnvironment";
-import { ExternalMcpService } from "./externalMcp/Services/ExternalMcpService";
 import { ServerLifecycleEvents } from "./serverLifecycleEvents";
 import { ServerRuntimeStartup } from "./serverRuntimeStartup";
 import { ServerSettingsService } from "./serverSettings";
@@ -190,10 +189,6 @@ import {
   makeGitHubProjectProvisioner,
 } from "./project/githubProjectProvisioning";
 
-export function canManageExternalMcp(role: "owner" | "client"): boolean {
-  return role === "owner";
-}
-
 const MAX_DIAGNOSTIC_CHILD_PROCESSES = 80;
 const MAX_DIAGNOSTIC_ARGS_CHARS = 500;
 
@@ -205,7 +200,7 @@ const THREAD_DETAIL_SNAPSHOT_BOOTSTRAP_TIMEOUT_MS = 5_000;
 const THREAD_DETAIL_SNAPSHOT_BOOTSTRAP_POLL_MS = 100;
 
 class WsRequestAdmissionMiddleware extends RpcMiddleware.Service<WsRequestAdmissionMiddleware>()(
-  "synara/WsRequestAdmissionMiddleware",
+  "glade/WsRequestAdmissionMiddleware",
   { error: WsRpcError, requiredForClient: false },
 ) {}
 
@@ -382,7 +377,6 @@ const makeWsRpcHandlersLayer = () =>
       const config = yield* ServerConfig;
       const devServerManager = yield* DevServerManager;
       const fileSystem = yield* FileSystem.FileSystem;
-      const externalMcp = yield* ExternalMcpService;
       const git = yield* GitCore;
       const github = yield* GitHubCli;
       const gitManager = yield* GitManager;
@@ -993,17 +987,6 @@ const makeWsRpcHandlersLayer = () =>
             ),
           );
 
-      const requireOwner = Effect.gen(function* () {
-        yield* requireWsOwnerSession;
-        if (!isLoopbackHost(config.host) || config.publicUrl !== undefined) {
-          return yield* Effect.fail(
-            new WsRpcError({
-              message: "External MCP management is available only on a loopback-only instance.",
-            }),
-          );
-        }
-      });
-
       return AdmittedWsFeatureRpcGroup.of({
         [ORCHESTRATION_WS_METHODS.dispatchCommand]: (command) =>
           rpcEffect(
@@ -1412,7 +1395,7 @@ const makeWsRpcHandlersLayer = () =>
                     operationId: input.operationId,
                     kind: "phase",
                     phase: "registering",
-                    message: "Adding project to Synara",
+                    message: "Adding project to Glade",
                   });
 
                   const { command: normalizedCommand, prepareWorkspaceRoot } =
@@ -1874,29 +1857,6 @@ const makeWsRpcHandlersLayer = () =>
             "Failed to refresh providers",
           ),
         [WS_METHODS.serverUpdateProvider]: (input) => providerHealth.updateProvider(input),
-        [WS_METHODS.serverListExternalMcpIntegrations]: () =>
-          rpcEffect(
-            requireOwner.pipe(Effect.andThen(externalMcp.listIntegrations())),
-            "Failed to list external MCP integrations",
-          ),
-        [WS_METHODS.serverCreateExternalMcpIntegration]: (input) =>
-          rpcEffect(
-            requireOwner.pipe(Effect.andThen(externalMcp.createIntegration(input))),
-            "Failed to create external MCP integration",
-          ),
-        [WS_METHODS.serverRevokeExternalMcpIntegration]: (input) =>
-          rpcEffect(
-            requireOwner.pipe(
-              Effect.andThen(externalMcp.revokeIntegration(input.integrationId)),
-              Effect.map((revoked) => ({ revoked })),
-            ),
-            "Failed to revoke external MCP integration",
-          ),
-        [WS_METHODS.serverRefreshExternalMcpPairing]: (input) =>
-          rpcEffect(
-            requireOwner.pipe(Effect.andThen(externalMcp.refreshPairing(input))),
-            "Failed to refresh external MCP pairing",
-          ),
         [WS_METHODS.serverListWorktrees]: () =>
           rpcEffect(
             pruneManagedWorktrees.pipe(Effect.map((worktrees) => ({ worktrees }))),
@@ -2169,13 +2129,13 @@ const makeWsRpcHandlersLayer = () =>
               discoverSkillsCatalog({
                 cwd: input.cwd ?? null,
                 homeDir: config.homeDir,
-                synaraBaseDir: config.baseDir,
+                gladeBaseDir: config.baseDir,
                 includeDuplicateOrigins: true,
               }),
             ).pipe(
               Effect.map((skills) => ({
                 skills,
-                synaraSkillsDir: synaraSkillsDir(config.baseDir),
+                gladeSkillsDir: gladeSkillsDir(config.baseDir),
               })),
             ),
             "Failed to list the skills catalog",
@@ -2520,7 +2480,7 @@ function makeWsNegotiateHttpRouteLayer() {
               headers: { "Cache-Control": "no-store", Vary: "Origin" },
             });
           }
-          // The desktop app fetches cross-origin (synara://app); reflect only
+          // The desktop app fetches cross-origin (glade://app); reflect only
           // origins the WS upgrade itself would trust.
           const origin = normalizeCorsOrigin(request.headers.origin);
           const corsHeaders =

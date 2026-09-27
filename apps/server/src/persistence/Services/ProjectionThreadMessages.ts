@@ -20,7 +20,7 @@ import {
   TurnId,
   IsoDateTime,
   NonNegativeInt,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import { Schema, ServiceMap } from "effect";
 import type { Effect, Option } from "effect";
 
@@ -139,4 +139,4 @@ export interface ProjectionThreadMessageRepositoryShape {
 export class ProjectionThreadMessageRepository extends ServiceMap.Service<
   ProjectionThreadMessageRepository,
   ProjectionThreadMessageRepositoryShape
->()("synara/persistence/Services/ProjectionThreadMessages/ProjectionThreadMessageRepository") {}
+>()("glade/persistence/Services/ProjectionThreadMessages/ProjectionThreadMessageRepository") {}

@@ -12,10 +12,10 @@ describe("attachmentPaths", () => {
     assert.equal(normalizeAttachmentRelativePath("..assets/image.png"), "..assets/image.png");
     assert.equal(
       resolveAttachmentRelativePath({
-        attachmentsDir: "/tmp/synara-attachments",
+        attachmentsDir: "/tmp/glade-attachments",
         relativePath: "..assets/image.png",
       }),
-      path.resolve("/tmp/synara-attachments", "..assets/image.png"),
+      path.resolve("/tmp/glade-attachments", "..assets/image.png"),
     );
   });
 

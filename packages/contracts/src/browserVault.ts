@@ -1,5 +1,4 @@
 import { Schema } from "effect";
-import { ThreadId } from "./baseSchemas";
 
 export const BrowserVaultSettings = Schema.Struct({
   // Retain the persisted key; consent now covers account metadata only.
@@ -41,46 +40,6 @@ export const BrowserVaultSnapshot = Schema.Struct({
 });
 export type BrowserVaultSnapshot = typeof BrowserVaultSnapshot.Type;
 
-const CookieImportDestination = {
-  threadId: ThreadId,
-  tabId: Schema.String,
-  browser: Schema.Literals(["chrome", "safari", "edge"]),
-  profile: Schema.String.check(Schema.isMaxLength(4096)),
-};
-export const BrowserCookieImportInput = Schema.Union([
-  Schema.Struct({
-    ...CookieImportDestination,
-    scope: Schema.Literal("site"),
-    origin: Schema.String.check(Schema.isMaxLength(2048)),
-  }),
-  Schema.Struct({
-    ...CookieImportDestination,
-    scope: Schema.Literal("profile"),
-    confirmed: Schema.Literal(true),
-  }),
-]);
-export type BrowserCookieImportInput = typeof BrowserCookieImportInput.Type;
-export type BrowserCookieImportResult =
-  | {
-      ok: true;
-      imported: number;
-      skipped: number;
-      warnings: Array<{ code: string; count: number }>;
-    }
-  | {
-      ok: false;
-      code:
-        | "permission_denied"
-        | "reader_failed"
-        | "reader_unavailable"
-        | "timed_out"
-        | "source_missing"
-        | "transfer_failed"
-        | "persistence_failed";
-      platform: "macos" | "windows" | "linux";
-      stage?: "acquisition" | "parse" | "decrypt" | "decode" | "query" | "discovery";
-    };
-
 export interface BrowserVaultMethods {
   snapshot(): Promise<BrowserVaultSnapshot>;
   configure(settings: BrowserVaultSettings): Promise<BrowserVaultSnapshot>;
@@ -90,8 +49,5 @@ export interface BrowserVaultMethods {
   unlock(password: string): Promise<void>;
   lock(): Promise<void>;
   reveal(input: { id: string; password: string }): Promise<{ password: string; expiresAt: number }>;
-  cookieSources(): Promise<Array<{ id: string; name: string }>>;
-  cookieProfiles(browser: string): Promise<Array<{ id: string; name: string }>>;
-  importCookies(input: BrowserCookieImportInput): Promise<BrowserCookieImportResult>;
   onChanged(listener: () => void): () => void;
 }

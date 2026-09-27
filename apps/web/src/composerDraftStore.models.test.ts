@@ -1,4 +1,4 @@
-import { ThreadId, type ModelSelection } from "@synara/contracts";
+import { ThreadId, type ModelSelection } from "@glade/contracts";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   deriveEffectiveComposerModelState,
@@ -102,34 +102,6 @@ describe("composerDraftStore modelSelection", () => {
     expect(
       useComposerDraftStore.getState().draftsByThreadId[threadId]?.modelSelectionByProvider.codex,
     ).toEqual(modelSelection("codex", "gpt-5.6-sol", { fastMode: true }));
-  });
-
-  it("preserves Devin model options in the draft", () => {
-    const store = useComposerDraftStore.getState();
-
-    store.setProviderModelOptions(threadId, "devin", { fastMode: true }, { model: "adaptive" });
-
-    expect(
-      useComposerDraftStore.getState().draftsByThreadId[threadId]?.modelSelectionByProvider.devin,
-    ).toEqual(modelSelection("devin", "adaptive", { fastMode: true }));
-  });
-
-  it("stores Antigravity base models and effort options separately", () => {
-    const store = useComposerDraftStore.getState();
-    const selection = modelSelection("antigravity", "Gemini 3.5 Flash", {
-      reasoningEffort: "high",
-    });
-
-    store.setModelSelection(threadId, selection);
-    store.setStickyModelSelection(selection);
-
-    const state = useComposerDraftStore.getState();
-    expect(state.draftsByThreadId[threadId]?.modelSelectionByProvider.antigravity).toEqual(
-      selection,
-    );
-    expect(state.draftsByThreadId[threadId]?.activeProvider).toBe("antigravity");
-    expect(state.stickyModelSelectionByProvider.antigravity).toEqual(selection);
-    expect(state.stickyActiveProvider).toBe("antigravity");
   });
 
   it("replaces only the targeted provider options on the current model selection", () => {
@@ -320,18 +292,6 @@ describe("composerDraftStore modelSelection", () => {
       selectedProvider: "opencode",
       threadModelSelection: modelSelection("opencode", "opencode/gpt-5-nano"),
       projectModelSelection: null,
-      customModelsByProvider: {
-        codex: [],
-        claudeAgent: [],
-        cursor: [],
-        antigravity: [],
-        grok: [],
-        droid: [],
-        opencode: [],
-        pi: [],
-        devin: [],
-        omp: [],
-      },
       availableModelOptionsByProvider: {
         opencode: [{ slug: "opencode/gpt-5-nano", name: "GPT-5 Nano" }],
       },
@@ -349,18 +309,6 @@ describe("composerDraftStore modelSelection", () => {
       selectedProvider: "opencode",
       threadModelSelection: modelSelection("opencode", "openai/gpt-5.4"),
       projectModelSelection: null,
-      customModelsByProvider: {
-        codex: [],
-        claudeAgent: [],
-        cursor: [],
-        antigravity: [],
-        grok: [],
-        droid: [],
-        opencode: [],
-        pi: [],
-        devin: [],
-        omp: [],
-      },
       availableModelOptionsByProvider: {
         opencode: [
           { slug: "openai/gpt-5-codex", name: "GPT-5-Codex" },
@@ -383,18 +331,6 @@ describe("composerDraftStore modelSelection", () => {
       selectedProvider: "opencode",
       threadModelSelection: null,
       projectModelSelection: null,
-      customModelsByProvider: {
-        codex: [],
-        claudeAgent: [],
-        cursor: [],
-        antigravity: [],
-        grok: [],
-        droid: [],
-        opencode: [],
-        pi: [],
-        devin: [],
-        omp: [],
-      },
       availableModelOptionsByProvider: {
         opencode: [
           { slug: "opencode/gpt-5-nano", name: "GPT-5 Nano" },
@@ -405,40 +341,6 @@ describe("composerDraftStore modelSelection", () => {
 
     expect(state.selectedModel).toBe("opencode/gpt-5-nano");
   });
-
-  it("preserves a selected Pi custom model when discovery omits it", () => {
-    const state = deriveEffectiveComposerModelState({
-      draft: {
-        modelSelectionByProvider: {
-          pi: modelSelection("pi", "openai/gpt-5.5"),
-        },
-        activeProvider: "pi",
-      },
-      selectedProvider: "pi",
-      threadModelSelection: null,
-      projectModelSelection: null,
-      customModelsByProvider: {
-        codex: [],
-        claudeAgent: [],
-        cursor: [],
-        antigravity: [],
-        grok: [],
-        droid: [],
-        opencode: [],
-        pi: [],
-        devin: [],
-        omp: [],
-      },
-      availableModelOptionsByProvider: {
-        pi: [
-          { slug: "openai/gpt-5.1", name: "GPT-5.1" },
-          { slug: "anthropic/claude-sonnet-4-5", name: "Claude Sonnet 4.5" },
-        ],
-      },
-    });
-
-    expect(state.selectedModel).toBe("openai/gpt-5.5");
-  });
 });
 
 describe("composerDraftStore setModelSelection", () => {
@@ -446,17 +348,6 @@ describe("composerDraftStore setModelSelection", () => {
 
   beforeEach(() => {
     resetComposerDraftStore();
-  });
-
-  it("preserves newly discovered Droid effort strings in composer state", () => {
-    const store = useComposerDraftStore.getState();
-    store.setModelSelection(threadId, modelSelection("droid", "future-droid-model"));
-
-    store.setProviderModelOptions(threadId, "droid", { reasoningEffort: "ultra" });
-
-    expect(
-      useComposerDraftStore.getState().draftsByThreadId[threadId]?.modelSelectionByProvider.droid,
-    ).toEqual(modelSelection("droid", "future-droid-model", { reasoningEffort: "ultra" }));
   });
 
   it("drops a runtime Codex effort when switching models before terminal promotion", () => {
@@ -716,21 +607,6 @@ describe("composerDraftStore sticky composer settings", () => {
       activeProvider: "claudeAgent",
     });
   });
-  it("overrides a sticky activeProvider with the saved default provider on a fresh draft", () => {
-    const store = useComposerDraftStore.getState();
-    const threadId = ThreadId.makeUnsafe("thread-sticky-saved-default");
-    store.setStickyModelSelection(modelSelection("pi", "pi-auto"));
-    store.applyStickyState(threadId);
-    store.setModelSelection(threadId, modelSelection("devin", "adaptive"));
-    expect(useComposerDraftStore.getState().draftsByThreadId[threadId]).toMatchObject({
-      modelSelectionByProvider: {
-        pi: modelSelection("pi", "pi-auto"),
-        devin: modelSelection("devin", "adaptive"),
-      },
-      activeProvider: "devin",
-    });
-  });
-
   it("does not overwrite existing model-scoped options with another sticky model", () => {
     const store = useComposerDraftStore.getState();
     const threadId = ThreadId.makeUnsafe("thread-sticky-model-scope");

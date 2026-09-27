@@ -1,5 +1,5 @@
 // FILE: vite.config.ts
-// Purpose: Builds the Synara web client and controls diagnostic source maps.
+// Purpose: Builds the Glade web client and controls diagnostic source maps.
 // Layer: Web build config
 // Depends on: Vite, Tailwind, React compiler, TanStack Router.
 
@@ -16,7 +16,7 @@ import pkg from "./package.json" with { type: "json" };
 import { listFiles, pruneProductionIcons } from "./scripts/production-assets";
 
 const port = Number(process.env.PORT ?? 5733);
-const sourcemapEnv = process.env.SYNARA_WEB_SOURCEMAP?.trim().toLowerCase();
+const sourcemapEnv = process.env.GLADE_WEB_SOURCEMAP?.trim().toLowerCase();
 
 const buildSourcemap =
   sourcemapEnv === "1" || sourcemapEnv === "true"
@@ -31,7 +31,7 @@ function centralIconPrunePlugin(): Plugin {
   let resolvedRoot = process.cwd();
   let resolvedOutDir = "dist";
   return {
-    name: "synara-central-icon-prune",
+    name: "glade-central-icon-prune",
     apply: "build",
     configResolved(config) {
       resolvedRoot = config.root;
@@ -43,15 +43,10 @@ function centralIconPrunePlugin(): Plugin {
       async handler() {
         await pruneProductionIcons(path.join(resolvedRoot, "public"), resolvedOutDir, [
           path.join(resolvedRoot, "src"),
+          path.resolve(resolvedRoot, "../../apps/server/src"),
           path.resolve(resolvedRoot, "../../packages/contracts/src"),
           path.resolve(resolvedRoot, "../../packages/shared/src"),
         ]);
-        // MSW is used by the dev-served browser tests, never the production app.
-        await Promise.all(
-          ["", ".gz", ".br"].map((suffix) =>
-            fs.rm(path.join(resolvedOutDir, `mockServiceWorker.js${suffix}`), { force: true }),
-          ),
-        );
       },
     },
   };
@@ -71,7 +66,7 @@ const PRECOMPRESS_MIN_BYTES = 1024;
 function precompressPlugin(): Plugin {
   let resolvedOutDir = "dist";
   return {
-    name: "synara-precompress",
+    name: "glade-precompress",
     apply: "build",
     // Run after central-icon pruning so removed files don't get sidecars.
     enforce: "post",
@@ -155,13 +150,13 @@ export default defineConfig({
       ...plugin,
       // Large chat modules make the compiler expensive on cold loads and every
       // edit. Oxc still provides JSX/TypeScript transforms and Fast Refresh.
-      // Keep production builds and browser tests compiled, with an opt-in for
+      // Keep production builds and unit tests compiled, with an opt-in for
       // debugging compiler-specific behavior in the development app.
       apply: ((_config, { command, mode }) =>
         command === "build" ||
         mode === "test" ||
         /^(1|true)$/i.test(
-          process.env.SYNARA_DEV_REACT_COMPILER?.trim() ?? "",
+          process.env.GLADE_DEV_REACT_COMPILER?.trim() ?? "",
         )) satisfies Plugin["apply"],
     })),
     tailwindcss(),

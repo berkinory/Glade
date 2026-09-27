@@ -13,8 +13,8 @@ import {
   TriangleAlertIcon,
   type LucideIcon,
 } from "~/lib/icons";
-import type { ProviderMentionReference } from "@synara/contracts";
-import { isLocalAbsolutePath } from "@synara/shared/path";
+import type { ProviderMentionReference } from "@glade/contracts";
+import { isLocalAbsolutePath } from "@glade/shared/path";
 import "katex/dist/katex.min.css";
 import { matchWikiLinkAt, remarkWikiLinks } from "../lib/remarkWikiLinks";
 import { remarkGithubAlerts, type GithubAlertKind } from "../lib/remarkGithubAlerts";

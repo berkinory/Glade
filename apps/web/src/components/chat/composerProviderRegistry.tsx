@@ -8,23 +8,17 @@ import {
   type ProviderKind,
   type ProviderModelDescriptor,
   type ProviderModelOptions,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import {
-  getDefaultContextWindow,
   getDefaultEffort,
-  hasContextWindowOption,
   hasEffortLevel,
   isClaudeUltrathinkPrompt,
-  normalizeAntigravityModelOptions,
   normalizeClaudeModelOptions,
   normalizeCursorModelOptions,
-  normalizeOmpModelOptions,
   normalizeOpenCodeModelOptions,
-  normalizePiModelOptions,
-  resolveDevinModelVariant,
   resolveLabeledOptionValue,
   trimOrNull,
-} from "@synara/shared/model";
+} from "@glade/shared/model";
 import { classifyCodexReasoningEffortSupport } from "../../lib/codexReasoningEffort";
 import { getRuntimeAwareModelCapabilities } from "./runtimeModelCapabilities";
 
@@ -90,12 +84,6 @@ export function getComposerProviderState(input: ComposerProviderStateInput): Com
       normalizedOptions = normalizeCursorModelOptions(model, providerOptions, caps);
       break;
     }
-    case "antigravity": {
-      const providerOptions = modelOptions?.antigravity;
-      rawEffort = trimOrNull(providerOptions?.reasoningEffort);
-      normalizedOptions = normalizeAntigravityModelOptions(model, providerOptions, caps);
-      break;
-    }
     case "grok": {
       const providerOptions = modelOptions?.grok;
       rawEffort = trimOrNull(providerOptions?.reasoningEffort);
@@ -104,16 +92,6 @@ export function getComposerProviderState(input: ComposerProviderStateInput): Com
         rawEffort && hasEffortLevel(caps, rawEffort) && rawEffort !== defaultReasoningEffort
           ? providerOptions?.reasoningEffort
           : undefined;
-      normalizedOptions = reasoningEffort ? { reasoningEffort } : undefined;
-      break;
-    }
-    case "droid": {
-      const providerOptions = modelOptions?.droid;
-      rawEffort = trimOrNull(providerOptions?.reasoningEffort);
-      // Droid's advertised "default" is the mutable current CLI preference.
-      // Once the user selects an effort, always dispatch it explicitly.
-      const reasoningEffort =
-        rawEffort && hasEffortLevel(caps, rawEffort) ? providerOptions?.reasoningEffort : undefined;
       normalizedOptions = reasoningEffort ? { reasoningEffort } : undefined;
       break;
     }
@@ -135,68 +113,6 @@ export function getComposerProviderState(input: ComposerProviderStateInput): Com
         break;
       }
       normalizedOptions = normalizeOpenCodeModelOptions(providerOptions);
-      break;
-    }
-    case "pi": {
-      const providerOptions = modelOptions?.pi;
-      rawEffort = trimOrNull(providerOptions?.thinkingLevel);
-      normalizedOptions = normalizePiModelOptions(providerOptions);
-      break;
-    }
-    case "devin": {
-      const providerOptions = modelOptions?.devin;
-      rawEffort = trimOrNull(providerOptions?.reasoningEffort);
-      const defaultReasoningEffort = getDefaultEffort(caps);
-      const reasoningEffort =
-        rawEffort && hasEffortLevel(caps, rawEffort) && rawEffort !== defaultReasoningEffort
-          ? rawEffort
-          : undefined;
-      const rawContextWindow = trimOrNull(providerOptions?.contextWindow);
-      const defaultContextWindow = getDefaultContextWindow(caps);
-      const contextWindow =
-        rawContextWindow &&
-        hasContextWindowOption(caps, rawContextWindow) &&
-        rawContextWindow !== defaultContextWindow
-          ? rawContextWindow
-          : undefined;
-      const fastModeEnabled = caps.supportsFastMode && providerOptions?.fastMode === true;
-      const requestedThinking =
-        caps.supportsThinkingToggle && providerOptions?.thinking !== undefined
-          ? providerOptions.thinking
-          : undefined;
-      const modelVariant = resolveDevinModelVariant({
-        model,
-        runtimeModel,
-        modelVariant: providerOptions?.modelVariant,
-        reasoningEffort: rawEffort && hasEffortLevel(caps, rawEffort) ? rawEffort : undefined,
-        fastMode: caps.supportsFastMode ? providerOptions?.fastMode : undefined,
-        thinking: requestedThinking,
-        contextWindow:
-          rawContextWindow && hasContextWindowOption(caps, rawContextWindow)
-            ? rawContextWindow
-            : undefined,
-      });
-      const nextOptions = {
-        ...(reasoningEffort ? { reasoningEffort } : {}),
-        ...(fastModeEnabled ? { fastMode: true } : {}),
-        ...(requestedThinking !== undefined ? { thinking: requestedThinking } : {}),
-        ...(contextWindow ? { contextWindow } : {}),
-        ...(modelVariant &&
-        (Boolean(reasoningEffort) ||
-          fastModeEnabled ||
-          requestedThinking !== undefined ||
-          Boolean(contextWindow) ||
-          Boolean(providerOptions?.modelVariant))
-          ? { modelVariant }
-          : {}),
-      };
-      normalizedOptions = Object.keys(nextOptions).length > 0 ? nextOptions : undefined;
-      break;
-    }
-    case "omp": {
-      const providerOptions = modelOptions?.omp;
-      rawEffort = trimOrNull(providerOptions?.thinkingLevel);
-      normalizedOptions = normalizeOmpModelOptions(providerOptions);
       break;
     }
   }

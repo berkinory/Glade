@@ -1,5 +1,5 @@
 // FILE: FeedbackDialog.tsx
-// Purpose: Collects categorized Synara feedback with privacy-safe diagnostics.
+// Purpose: Collects categorized Glade feedback with privacy-safe diagnostics.
 // Layer: Shared UI component
 // Depends on: Feedback delivery logic and the shared dialog primitives.
 
@@ -34,14 +34,14 @@ export function FeedbackDialog({ open, context, onOpenChange }: FeedbackDialogPr
       onOpenChange(false);
       toastManager.add({
         type: "success",
-        title: "Feedback sent",
-        description: "Thanks for helping make Synara better.",
+        title: "Review feedback on GitHub",
+        description: "Your draft is ready. Review and submit it on GitHub.",
       });
     } catch (error) {
       setIsSending(false);
       toastManager.add({
         type: "error",
-        title: "Could not send feedback",
+        title: "Could not open feedback",
         description:
           error instanceof Error ? error.message : "An unexpected delivery error occurred.",
       });
@@ -137,18 +137,18 @@ function FeedbackDialogForm({
       />
 
       <p className="text-ui leading-relaxed text-muted-foreground">
-        Diagnostics include app version, OS, provider/model, modes, and session state — never
-        prompts, messages, paths, or logs.
+        Opens a GitHub issue draft for your review. It includes app version, OS, provider/model,
+        modes, and session state. You decide whether to publish it.
       </p>
 
       <Button type="submit" className="w-full" disabled={!canSubmit}>
         {isSending ? (
           <>
             <Spinner />
-            Sending…
+            Opening…
           </>
         ) : (
-          "Submit"
+          "Review on GitHub"
         )}
       </Button>
     </form>

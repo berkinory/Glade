@@ -7,12 +7,14 @@ export interface StateStorage<R = unknown> {
   removeItem: (name: string) => R;
 }
 
+type SynchronousStateStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
+
 export interface DeferredPersistStorage<S> extends PersistStorage<S> {
   /** Serialize the latest captured state and write it through synchronously. */
   flush: () => void;
 }
 
-export function createMemoryStorage(): StateStorage {
+export function createMemoryStorage(): SynchronousStateStorage {
   const store = new Map<string, string>();
   return {
     getItem: (name) => store.get(name) ?? null,
@@ -24,6 +26,17 @@ export function createMemoryStorage(): StateStorage {
     },
   };
 }
+
+// Use one backing store for both draft persistence and direct storage reads.
+// Some non-browser runtimes expose a partial global localStorage object.
+const memoryAppStorage = createMemoryStorage();
+export const appStorage: SynchronousStateStorage =
+  typeof window !== "undefined" &&
+  typeof window.localStorage?.getItem === "function" &&
+  typeof window.localStorage?.setItem === "function" &&
+  typeof window.localStorage?.removeItem === "function"
+    ? window.localStorage
+    : memoryAppStorage;
 
 /**
  * A zustand-persist-compatible storage that defers BOTH `partialize` and

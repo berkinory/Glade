@@ -3,11 +3,11 @@
 // Layer: Web composer helper
 // Exports: mention token formatters plus regex helpers used by composer parsing and prompt sync.
 
-import type { ProviderMentionReference, ProviderSkillReference } from "@synara/contracts";
-import { isThreadMentionPath, threadIdFromThreadMentionPath } from "@synara/shared/threadMentions";
+import type { ProviderMentionReference, ProviderSkillReference } from "@glade/contracts";
+import { isThreadMentionPath, threadIdFromThreadMentionPath } from "@glade/shared/threadMentions";
 
 export function skillMentionPrefix(provider: string): string {
-  return provider === "pi" ? "/skill:" : "/";
+  return "/";
 }
 
 // The alternation must be unambiguous — a backslash may only match the escape
@@ -79,8 +79,7 @@ export function promptIncludesSkillMention(
   provider: string,
 ): boolean {
   const escapedSkillName = escapeRegExp(skillName);
-  const prefixes =
-    provider === "pi" ? [skillMentionPrefix(provider)] : [skillMentionPrefix(provider), "$"];
+  const prefixes = [skillMentionPrefix(provider), "$"];
   return prefixes.some((prefix) => {
     const pattern = new RegExp(`(^|\\s)${escapeRegExp(prefix)}${escapedSkillName}(?=\\s|$)`, "i");
     return pattern.test(prompt);

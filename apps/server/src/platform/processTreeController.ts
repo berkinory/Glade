@@ -2,7 +2,7 @@
 // Purpose: Captures, inspects, and signals owned process trees across platforms.
 // Layer: Server platform runtime
 
-import { spawnProcessSync } from "@synara/shared/processRuntime";
+import { spawnProcessSync } from "@glade/shared/processRuntime";
 import treeKill from "tree-kill";
 
 import { captureWindowsProcessChildrenMap } from "./windowsProcessSnapshot";

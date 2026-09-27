@@ -7,7 +7,7 @@ import { useLocalStorage } from "~/hooks/useLocalStorage";
 import { Schema } from "effect";
 import { normalizeHandle } from "./profileFormatting";
 
-const PROFILE_HANDLE_STORAGE_KEY = "synara:profile:handle:v1";
+const PROFILE_HANDLE_STORAGE_KEY = "glade:profile:handle:v1";
 
 // Empty string means "use the server default".
 const StoredHandleSchema = Schema.String;
@@ -25,5 +25,5 @@ export function useProfileHandle(defaultHandle: string) {
 
   const resetHandle = () => setStored("");
 
-  return { handle, setHandle, resetHandle, isCustom: stored.trim().length > 0 } as const;
+  return { handle, setHandle, resetHandle, isSelectedHint: stored.trim().length > 0 } as const;
 }

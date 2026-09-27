@@ -7,8 +7,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import type { ThreadId } from "@synara/contracts";
-import { isNormalizedWindowsAbsolutePath } from "@synara/shared/path";
+import type { ThreadId } from "@glade/contracts";
+import { isNormalizedWindowsAbsolutePath } from "@glade/shared/path";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { directoryChain, useExplorerRevealRequestStore } from "~/explorerRevealRequestStore";

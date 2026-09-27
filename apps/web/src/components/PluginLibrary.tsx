@@ -8,7 +8,7 @@ import {
   type ProviderKind,
   type ProviderPluginDescriptor,
   type ProviderSkillDescriptor,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import { useQuery } from "@tanstack/react-query";
 import React, { useMemo, type ReactNode, useDeferredValue, useState } from "react";
 import type { IconType } from "react-icons";
@@ -387,15 +387,8 @@ export function PluginLibrary() {
   const codexCapabilitiesQuery = useQuery(providerComposerCapabilitiesQueryOptions("codex"));
   const claudeCapabilitiesQuery = useQuery(providerComposerCapabilitiesQueryOptions("claudeAgent"));
   const cursorCapabilitiesQuery = useQuery(providerComposerCapabilitiesQueryOptions("cursor"));
-  const antigravityCapabilitiesQuery = useQuery(
-    providerComposerCapabilitiesQueryOptions("antigravity"),
-  );
   const grokCapabilitiesQuery = useQuery(providerComposerCapabilitiesQueryOptions("grok"));
-  const droidCapabilitiesQuery = useQuery(providerComposerCapabilitiesQueryOptions("droid"));
   const openCodeCapabilitiesQuery = useQuery(providerComposerCapabilitiesQueryOptions("opencode"));
-  const piCapabilitiesQuery = useQuery(providerComposerCapabilitiesQueryOptions("pi"));
-  const devinCapabilitiesQuery = useQuery(providerComposerCapabilitiesQueryOptions("devin"));
-  const ompCapabilitiesQuery = useQuery(providerComposerCapabilitiesQueryOptions("omp"));
 
   const providerCapabilities: Record<ProviderKind, ProviderCapabilities> = {
     codex: {
@@ -410,33 +403,13 @@ export function PluginLibrary() {
       plugins: supportsPluginDiscovery(cursorCapabilitiesQuery.data),
       skills: supportsSkillDiscovery(cursorCapabilitiesQuery.data),
     },
-    devin: {
-      plugins: supportsPluginDiscovery(devinCapabilitiesQuery.data),
-      skills: supportsSkillDiscovery(devinCapabilitiesQuery.data),
-    },
-    antigravity: {
-      plugins: supportsPluginDiscovery(antigravityCapabilitiesQuery.data),
-      skills: supportsSkillDiscovery(antigravityCapabilitiesQuery.data),
-    },
     grok: {
       plugins: supportsPluginDiscovery(grokCapabilitiesQuery.data),
       skills: supportsSkillDiscovery(grokCapabilitiesQuery.data),
     },
-    droid: {
-      plugins: supportsPluginDiscovery(droidCapabilitiesQuery.data),
-      skills: supportsSkillDiscovery(droidCapabilitiesQuery.data),
-    },
     opencode: {
       plugins: supportsPluginDiscovery(openCodeCapabilitiesQuery.data),
       skills: supportsSkillDiscovery(openCodeCapabilitiesQuery.data),
-    },
-    pi: {
-      plugins: supportsPluginDiscovery(piCapabilitiesQuery.data),
-      skills: supportsSkillDiscovery(piCapabilitiesQuery.data),
-    },
-    omp: {
-      plugins: supportsPluginDiscovery(ompCapabilitiesQuery.data),
-      skills: supportsSkillDiscovery(ompCapabilitiesQuery.data),
     },
   };
 

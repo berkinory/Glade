@@ -3,7 +3,7 @@
 // Layer: Root web coordinator
 // Depends on: Desktop bridge quit IPC, the orchestration store, and the quit-resume RPC.
 
-import { ThreadId } from "@synara/contracts";
+import { ThreadId } from "@glade/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { APP_DISPLAY_NAME } from "~/branding";

@@ -1,46 +1,46 @@
 import { describe, expect, it } from "vitest";
 import {
-  canonicalSynaraComputerToolName,
+  canonicalGladeComputerToolName,
   computerToolNameFromProviderPermission,
-  isSynaraComputerToolFamilyName,
-  qualifiedSynaraComputerToolName,
-  shouldAllowSynaraComputerProviderTool,
+  isGladeComputerToolFamilyName,
+  qualifiedGladeComputerToolName,
+  shouldAllowGladeComputerProviderTool,
 } from "./computerToolPermission.ts";
 
-describe("Synara Computer provider permission", () => {
+describe("Glade Computer provider permission", () => {
   it.each([
     ["computer_click", "computer_click"],
-    ["synara_computer_type_text", "computer_type_text"],
-    ["mcp__synara__computer_read_clipboard", "computer_read_clipboard"],
-    ["mcp__synara__computer_inspect", "computer_inspect"],
+    ["glade_computer_type_text", "computer_type_text"],
+    ["mcp__glade__computer_read_clipboard", "computer_read_clipboard"],
+    ["mcp__glade__computer_inspect", "computer_inspect"],
   ] as const)("recognizes the exact owned tool %s", (providerName, canonicalName) => {
-    expect(canonicalSynaraComputerToolName(providerName)).toBe(canonicalName);
+    expect(canonicalGladeComputerToolName(providerName)).toBe(canonicalName);
   });
 
   it.each([
     "computer_future_tool",
     "mcp__other__computer_click",
     "other_computer_click",
-    "mcp__synara__synara_send_message",
+    "mcp__glade__glade_send_message",
   ])("does not trust another or unknown tool: %s", (providerName) => {
-    expect(canonicalSynaraComputerToolName(providerName)).toBeUndefined();
+    expect(canonicalGladeComputerToolName(providerName)).toBeUndefined();
   });
 
   it("requires a provider namespace when server provenance was not proved separately", () => {
-    expect(qualifiedSynaraComputerToolName("computer_click")).toBeUndefined();
-    expect(qualifiedSynaraComputerToolName("mcp__synara__computer_click")).toBe("computer_click");
-    expect(qualifiedSynaraComputerToolName("synara_computer_click")).toBe("computer_click");
+    expect(qualifiedGladeComputerToolName("computer_click")).toBeUndefined();
+    expect(qualifiedGladeComputerToolName("mcp__glade__computer_click")).toBe("computer_click");
+    expect(qualifiedGladeComputerToolName("glade_computer_click")).toBe("computer_click");
   });
 
   it("reads only explicit provider tool-name fields", () => {
     expect(
       computerToolNameFromProviderPermission({
-        rawInput: { _toolName: "mcp__synara__computer_scroll" },
+        rawInput: { _toolName: "mcp__glade__computer_scroll" },
       }),
     ).toBe("computer_scroll");
     expect(
       computerToolNameFromProviderPermission({
-        metadata: { toolName: "synara_computer_get_state" },
+        metadata: { toolName: "glade_computer_get_state" },
       }),
     ).toBe("computer_get_state");
     expect(
@@ -54,14 +54,14 @@ describe("Synara Computer provider permission", () => {
     expect(
       computerToolNameFromProviderPermission({
         name: "mcp__other__computer_click",
-        rawInput: { _toolName: "mcp__synara__computer_click" },
+        rawInput: { _toolName: "mcp__glade__computer_click" },
       }),
     ).toBeUndefined();
     expect(
       computerToolNameFromProviderPermission({
         rawInput: { _toolName: "mcp__other__computer_click" },
-        metadata: { toolName: "mcp__synara__computer_click" },
-        title: "mcp__synara__computer_click",
+        metadata: { toolName: "mcp__glade__computer_click" },
+        title: "mcp__glade__computer_click",
       }),
     ).toBeUndefined();
   });
@@ -88,9 +88,9 @@ describe("Synara Computer provider permission", () => {
         metadata: { toolName: "Please approve computer_click" },
       }),
     ).toBeUndefined();
-    expect(isSynaraComputerToolFamilyName("Please approve computer_click")).toBe(false);
+    expect(isGladeComputerToolFamilyName("Please approve computer_click")).toBe(false);
     expect(
-      shouldAllowSynaraComputerProviderTool({
+      shouldAllowGladeComputerProviderTool({
         computerControlEnabled: true,
         activeTurn: true,
         interactionMode: "default",
@@ -103,24 +103,24 @@ describe("Synara Computer provider permission", () => {
   it("matches the Computer family in any namespace spelling for the denial hook", () => {
     // The silent-loss fallback: a no-control session that calls a Computer
     // tool by a prefixed spelling must still deny with the card path, not
-    // die as an Unknown tool. See isSynaraComputerToolFamilyName.
-    expect(isSynaraComputerToolFamilyName("computer_click")).toBe(true);
-    expect(isSynaraComputerToolFamilyName("synara_computer_get_state")).toBe(true);
-    expect(isSynaraComputerToolFamilyName("mcp__synara__computer_screenshot")).toBe(true);
-    expect(isSynaraComputerToolFamilyName("  MCP__SYNARA__COMPUTER_WAIT  ")).toBe(true);
+    // die as an Unknown tool. See isGladeComputerToolFamilyName.
+    expect(isGladeComputerToolFamilyName("computer_click")).toBe(true);
+    expect(isGladeComputerToolFamilyName("glade_computer_get_state")).toBe(true);
+    expect(isGladeComputerToolFamilyName("mcp__glade__computer_screenshot")).toBe(true);
+    expect(isGladeComputerToolFamilyName("  MCP__GLADE__COMPUTER_WAIT  ")).toBe(true);
   });
 
   it("keeps unknown and foreign names out of the Computer family", () => {
-    expect(isSynaraComputerToolFamilyName("computer_future_tool")).toBe(false);
-    expect(isSynaraComputerToolFamilyName("mcp__other__computer_click")).toBe(false);
-    expect(isSynaraComputerToolFamilyName("other_computer_click")).toBe(false);
-    expect(isSynaraComputerToolFamilyName("synara_frobnicate")).toBe(false);
-    expect(isSynaraComputerToolFamilyName(undefined)).toBe(false);
-    expect(isSynaraComputerToolFamilyName(42)).toBe(false);
+    expect(isGladeComputerToolFamilyName("computer_future_tool")).toBe(false);
+    expect(isGladeComputerToolFamilyName("mcp__other__computer_click")).toBe(false);
+    expect(isGladeComputerToolFamilyName("other_computer_click")).toBe(false);
+    expect(isGladeComputerToolFamilyName("glade_frobnicate")).toBe(false);
+    expect(isGladeComputerToolFamilyName(undefined)).toBe(false);
+    expect(isGladeComputerToolFamilyName(42)).toBe(false);
   });
 
   it("requires current capability, active turn and non-Plan interaction", () => {
-    const permission = { name: "mcp__synara__computer_click" };
+    const permission = { name: "mcp__glade__computer_click" };
     const allowed = {
       computerControlEnabled: true,
       activeTurn: true,
@@ -128,14 +128,14 @@ describe("Synara Computer provider permission", () => {
       runtimeMode: "approval-required" as const,
       permission,
     };
-    expect(shouldAllowSynaraComputerProviderTool(allowed)).toBe(true);
+    expect(shouldAllowGladeComputerProviderTool(allowed)).toBe(true);
     expect(
-      shouldAllowSynaraComputerProviderTool({ ...allowed, computerControlEnabled: false }),
+      shouldAllowGladeComputerProviderTool({ ...allowed, computerControlEnabled: false }),
     ).toBe(false);
-    expect(shouldAllowSynaraComputerProviderTool({ ...allowed, activeTurn: false })).toBe(false);
-    expect(shouldAllowSynaraComputerProviderTool({ ...allowed, interactionMode: "plan" })).toBe(
+    expect(shouldAllowGladeComputerProviderTool({ ...allowed, activeTurn: false })).toBe(false);
+    expect(shouldAllowGladeComputerProviderTool({ ...allowed, interactionMode: "plan" })).toBe(
       false,
     );
-    expect(shouldAllowSynaraComputerProviderTool({ ...allowed, runtimeMode: "auto" })).toBe(false);
+    expect(shouldAllowGladeComputerProviderTool({ ...allowed, runtimeMode: "auto" })).toBe(false);
   });
 });

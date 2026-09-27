@@ -1,5 +1,5 @@
 /**
- * Public contracts for the Synara agent-control gateway.
+ * Public contracts for the Glade agent-control gateway.
  *
  * New gateway tools decode these schemas before doing any work. Keeping the
  * limits here ensures the MCP surface, server implementation, and tests share
@@ -12,11 +12,11 @@ import { ModelSelection, ProviderKind } from "./orchestration";
 import { ProviderModelDescriptor } from "./providerDiscovery";
 import { ServerProviderAuthStatus } from "./server";
 
-export const SYNARA_GATEWAY_MAX_THREADS_PER_OPERATION = 20;
-export const SYNARA_GATEWAY_MAX_REQUEST_ID_LENGTH = 256;
-export const SYNARA_GATEWAY_MAX_WAIT_MS = 60_000;
+export const GLADE_GATEWAY_MAX_THREADS_PER_OPERATION = 20;
+export const GLADE_GATEWAY_MAX_REQUEST_ID_LENGTH = 256;
+export const GLADE_GATEWAY_MAX_WAIT_MS = 60_000;
 
-export const SynaraGatewayErrorCode = Schema.Literals([
+export const GladeGatewayErrorCode = Schema.Literals([
   "caller_session_inactive",
   "caller_turn_inactive",
   "capability_denied",
@@ -30,23 +30,23 @@ export const SynaraGatewayErrorCode = Schema.Literals([
   "wait_timed_out",
   "operation_failed",
 ]);
-export type SynaraGatewayErrorCode = typeof SynaraGatewayErrorCode.Type;
+export type GladeGatewayErrorCode = typeof GladeGatewayErrorCode.Type;
 
-export const SynaraGatewayError = Schema.Struct({
-  code: SynaraGatewayErrorCode,
+export const GladeGatewayError = Schema.Struct({
+  code: GladeGatewayErrorCode,
   message: Schema.String,
   details: Schema.optional(Schema.Unknown),
 });
-export type SynaraGatewayError = typeof SynaraGatewayError.Type;
+export type GladeGatewayError = typeof GladeGatewayError.Type;
 
-export const SynaraGatewayErrorResult = Schema.Struct({
-  error: SynaraGatewayError,
+export const GladeGatewayErrorResult = Schema.Struct({
+  error: GladeGatewayError,
 });
-export type SynaraGatewayErrorResult = typeof SynaraGatewayErrorResult.Type;
+export type GladeGatewayErrorResult = typeof GladeGatewayErrorResult.Type;
 
-export const SynaraContextResult = Schema.Struct({
+export const GladeContextResult = Schema.Struct({
   harness: Schema.Struct({
-    name: Schema.Literal("Synara"),
+    name: Schema.Literal("Glade"),
     policyVersion: Schema.String,
   }),
   caller: Schema.Struct({
@@ -62,9 +62,9 @@ export const SynaraContextResult = Schema.Struct({
     automations: Schema.Boolean,
   }),
 });
-export type SynaraContextResult = typeof SynaraContextResult.Type;
+export type GladeContextResult = typeof GladeContextResult.Type;
 
-export const SynaraCreateThreadSpec = Schema.Struct({
+export const GladeCreateThreadSpec = Schema.Struct({
   prompt: Schema.String.check(Schema.isNonEmpty()),
   notifyCreatorOnComplete: Schema.optional(Schema.Boolean),
   title: Schema.optional(Schema.String.check(Schema.isNonEmpty())),
@@ -81,21 +81,21 @@ export const SynaraCreateThreadSpec = Schema.Struct({
   // cannot delegate computer control to created threads.
   enableComputerControl: Schema.optional(Schema.Boolean),
 });
-export type SynaraCreateThreadSpec = typeof SynaraCreateThreadSpec.Type;
+export type GladeCreateThreadSpec = typeof GladeCreateThreadSpec.Type;
 
-const SynaraGatewayRequestId = Schema.String.check(Schema.isNonEmpty()).check(
-  Schema.isMaxLength(SYNARA_GATEWAY_MAX_REQUEST_ID_LENGTH),
+const GladeGatewayRequestId = Schema.String.check(Schema.isNonEmpty()).check(
+  Schema.isMaxLength(GLADE_GATEWAY_MAX_REQUEST_ID_LENGTH),
 );
 
-export const SynaraCreateThreadsInput = Schema.Struct({
-  requestId: SynaraGatewayRequestId,
-  threads: Schema.Array(SynaraCreateThreadSpec)
+export const GladeCreateThreadsInput = Schema.Struct({
+  requestId: GladeGatewayRequestId,
+  threads: Schema.Array(GladeCreateThreadSpec)
     .check(Schema.isMinLength(1))
-    .check(Schema.isMaxLength(SYNARA_GATEWAY_MAX_THREADS_PER_OPERATION)),
+    .check(Schema.isMaxLength(GLADE_GATEWAY_MAX_THREADS_PER_OPERATION)),
 }).annotate({ parseOptions: { onExcessProperty: "error" } });
-export type SynaraCreateThreadsInput = typeof SynaraCreateThreadsInput.Type;
+export type GladeCreateThreadsInput = typeof GladeCreateThreadsInput.Type;
 
-export const SynaraProviderCatalog = Schema.Struct({
+export const GladeProviderCatalog = Schema.Struct({
   provider: ProviderKind,
   defaultModel: Schema.NullOr(Schema.String),
   models: Schema.Array(ProviderModelDescriptor),
@@ -105,46 +105,46 @@ export const SynaraProviderCatalog = Schema.Struct({
   source: Schema.optional(Schema.String),
   error: Schema.optional(Schema.String),
 });
-export type SynaraProviderCatalog = typeof SynaraProviderCatalog.Type;
+export type GladeProviderCatalog = typeof GladeProviderCatalog.Type;
 
-export const SynaraGatewayTargetOptionValue = Schema.Union([
+export const GladeGatewayTargetOptionValue = Schema.Union([
   Schema.String,
   Schema.Number,
   Schema.Boolean,
 ]);
-export type SynaraGatewayTargetOptionValue = typeof SynaraGatewayTargetOptionValue.Type;
+export type GladeGatewayTargetOptionValue = typeof GladeGatewayTargetOptionValue.Type;
 
-export const SynaraGatewayTargetOptionRule = Schema.Struct({
+export const GladeGatewayTargetOptionRule = Schema.Struct({
   key: Schema.String,
   valueType: Schema.Literals(["string", "number", "boolean"]),
-  allowedValues: Schema.Array(SynaraGatewayTargetOptionValue),
+  allowedValues: Schema.Array(GladeGatewayTargetOptionValue),
   allowedValuesSource: Schema.Literals(["provider-contract", "model-discovery"]),
 });
-export type SynaraGatewayTargetOptionRule = typeof SynaraGatewayTargetOptionRule.Type;
+export type GladeGatewayTargetOptionRule = typeof GladeGatewayTargetOptionRule.Type;
 
-export const SynaraGatewayTargetConstruction = Schema.Struct({
+export const GladeGatewayTargetConstruction = Schema.Struct({
   modelValueSource: Schema.Literal("providers[].models[].slug"),
   primaryOptionKey: Schema.String,
   alternativeOptionKeys: Schema.Array(Schema.String),
   optionSelectionRule: Schema.String,
-  providerOptions: Schema.Array(SynaraGatewayTargetOptionRule),
-  optionsByModel: Schema.Record(Schema.String, Schema.Array(SynaraGatewayTargetOptionRule)),
+  providerOptions: Schema.Array(GladeGatewayTargetOptionRule),
+  optionsByModel: Schema.Record(Schema.String, Schema.Array(GladeGatewayTargetOptionRule)),
   exampleTarget: Schema.NullOr(ModelSelection),
 });
-export type SynaraGatewayTargetConstruction = typeof SynaraGatewayTargetConstruction.Type;
+export type GladeGatewayTargetConstruction = typeof GladeGatewayTargetConstruction.Type;
 
-export const SynaraCapabilitiesResult = Schema.Struct({
-  targetConstruction: Schema.Record(Schema.String, SynaraGatewayTargetConstruction),
-  providers: Schema.Array(SynaraProviderCatalog),
+export const GladeCapabilitiesResult = Schema.Struct({
+  targetConstruction: Schema.Record(Schema.String, GladeGatewayTargetConstruction),
+  providers: Schema.Array(GladeProviderCatalog),
   limits: Schema.Struct({
     maxThreadsPerOperation: Schema.Int,
     maxWaitMs: Schema.Int,
     oneCreationPlanPerActiveTurn: Schema.Boolean,
   }),
 });
-export type SynaraCapabilitiesResult = typeof SynaraCapabilitiesResult.Type;
+export type GladeCapabilitiesResult = typeof GladeCapabilitiesResult.Type;
 
-export const SynaraCreatedThreadResult = Schema.Struct({
+export const GladeCreatedThreadResult = Schema.Struct({
   index: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
   threadId: ThreadId,
   projectId: ProjectId,
@@ -158,36 +158,36 @@ export const SynaraCreatedThreadResult = Schema.Struct({
   worktreePath: Schema.NullOr(Schema.String),
   status: Schema.Literal("task_dispatched"),
 });
-export type SynaraCreatedThreadResult = typeof SynaraCreatedThreadResult.Type;
+export type GladeCreatedThreadResult = typeof GladeCreatedThreadResult.Type;
 
-export const SynaraCreateThreadsResult = Schema.Struct({
+export const GladeCreateThreadsResult = Schema.Struct({
   operationId: Schema.String,
-  requestId: SynaraGatewayRequestId,
+  requestId: GladeGatewayRequestId,
   requestedCount: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
   createdCount: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
   threadIds: Schema.Array(ThreadId),
-  threads: Schema.Array(SynaraCreatedThreadResult),
+  threads: Schema.Array(GladeCreatedThreadResult),
 });
-export type SynaraCreateThreadsResult = typeof SynaraCreateThreadsResult.Type;
+export type GladeCreateThreadsResult = typeof GladeCreateThreadsResult.Type;
 
-export const SynaraWaitForThreadsInput = Schema.Struct({
+export const GladeWaitForThreadsInput = Schema.Struct({
   threadIds: Schema.Array(ThreadId)
     .check(Schema.isMinLength(1))
-    .check(Schema.isMaxLength(SYNARA_GATEWAY_MAX_THREADS_PER_OPERATION)),
+    .check(Schema.isMaxLength(GLADE_GATEWAY_MAX_THREADS_PER_OPERATION)),
   runIds: Schema.optional(
     Schema.Array(Schema.NullOr(TurnId)).check(
-      Schema.isMaxLength(SYNARA_GATEWAY_MAX_THREADS_PER_OPERATION),
+      Schema.isMaxLength(GLADE_GATEWAY_MAX_THREADS_PER_OPERATION),
     ),
   ),
   timeoutMs: Schema.optional(
     Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)).check(
-      Schema.isLessThanOrEqualTo(SYNARA_GATEWAY_MAX_WAIT_MS),
+      Schema.isLessThanOrEqualTo(GLADE_GATEWAY_MAX_WAIT_MS),
     ),
   ),
 }).annotate({ parseOptions: { onExcessProperty: "error" } });
-export type SynaraWaitForThreadsInput = typeof SynaraWaitForThreadsInput.Type;
+export type GladeWaitForThreadsInput = typeof GladeWaitForThreadsInput.Type;
 
-export const SynaraWaitedThreadResult = Schema.Struct({
+export const GladeWaitedThreadResult = Schema.Struct({
   threadId: ThreadId,
   runId: Schema.NullOr(TurnId),
   state: Schema.Literals(["idle", "pending", "running", "completed", "error", "interrupted"]),
@@ -197,17 +197,17 @@ export const SynaraWaitedThreadResult = Schema.Struct({
   summaryTruncated: Schema.Boolean,
   error: Schema.NullOr(Schema.String),
   readThread: Schema.Struct({
-    tool: Schema.Literal("synara_read_thread"),
+    tool: Schema.Literal("glade_read_thread"),
     arguments: Schema.Struct({ threadId: ThreadId }),
   }),
 });
-export type SynaraWaitedThreadResult = typeof SynaraWaitedThreadResult.Type;
+export type GladeWaitedThreadResult = typeof GladeWaitedThreadResult.Type;
 
-export const SynaraWaitForThreadsResult = Schema.Struct({
+export const GladeWaitForThreadsResult = Schema.Struct({
   callerThreadId: ThreadId,
   runIds: Schema.Array(Schema.NullOr(TurnId)),
   allTerminal: Schema.Boolean,
   timedOut: Schema.Boolean,
-  threads: Schema.Array(SynaraWaitedThreadResult),
+  threads: Schema.Array(GladeWaitedThreadResult),
 });
-export type SynaraWaitForThreadsResult = typeof SynaraWaitForThreadsResult.Type;
+export type GladeWaitForThreadsResult = typeof GladeWaitForThreadsResult.Type;

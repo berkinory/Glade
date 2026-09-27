@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 
-import { ThreadId } from "@synara/contracts";
+import { ThreadId } from "@glade/contracts";
 import type { BrowserWindow, WebContents } from "electron";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -19,7 +19,7 @@ const { browserSession, rendererWebContentsById, rendererWebContentsFromId } = v
 
 vi.mock("electron", () => ({
   app: {
-    getName: () => "Synara",
+    getName: () => "Glade",
     getPreferredSystemLanguages: () => ["en-US"],
     userAgentFallback:
       "Mozilla/5.0 AppleWebKit/537.36 Chrome/140.0.0.0 Electron/40.0.0 Safari/537.36",
@@ -304,7 +304,7 @@ describe("DesktopBrowserManager repeated workflow characterization", () => {
       const beforeSchemeDenial = afterTabOpen.tabs.length;
       expect(
         handler({
-          url: "synara://unsafe",
+          url: "glade://unsafe",
           frameName: "",
           features: "",
           disposition: "foreground-tab",
@@ -370,9 +370,9 @@ describe("DesktopBrowserManager repeated workflow characterization", () => {
       contents.emit("will-redirect", blockedRedirect);
       expect(blockedRedirect.preventDefault).toHaveBeenCalledOnce();
 
-      contents.currentUrl = "synara-local-preview://preview-token/index.html";
+      contents.currentUrl = "glade-local-preview://preview-token/index.html";
       const allowedLocalNavigation = {
-        url: "synara-local-preview://preview-token/about.html",
+        url: "glade-local-preview://preview-token/about.html",
         isMainFrame: true,
         preventDefault: vi.fn(),
       };
@@ -381,7 +381,7 @@ describe("DesktopBrowserManager repeated workflow characterization", () => {
 
       contents.currentUrl = "https://example.test/";
       const blockedLocalNavigation = {
-        url: "synara-local-preview://preview-token/about.html",
+        url: "glade-local-preview://preview-token/about.html",
         isMainFrame: true,
         preventDefault: vi.fn(),
       };
@@ -401,22 +401,22 @@ describe("DesktopBrowserManager repeated workflow characterization", () => {
     const state = manager.navigate({
       threadId: THREAD_ID,
       tabId,
-      url: "file:///tmp/synara-preview/index.html",
+      url: "file:///tmp/glade-preview/index.html",
     });
 
     expect(state.tabs.find((tab) => tab.id === tabId)?.url).toBe(
-      "file:///tmp/synara-preview/index.html",
+      "file:///tmp/glade-preview/index.html",
     );
     await vi.waitFor(() => {
       expect(guest.loadURL).toHaveBeenCalledWith(
-        expect.stringMatching(/^synara-local-preview:\/\/[a-f0-9]+\/index\.html$/u),
+        expect.stringMatching(/^glade-local-preview:\/\/[a-f0-9]+\/index\.html$/u),
       );
     });
   });
 
   it("preserves an initial file URL while the blank guest starts its preview load", async () => {
     const manager = new DesktopBrowserManager();
-    const sourceUrl = "file:///tmp/synara-preview/index.html";
+    const sourceUrl = "file:///tmp/glade-preview/index.html";
     const initial = manager.open({ threadId: THREAD_ID, initialUrl: sourceUrl });
     const tabId = initial.activeTabId!;
     const guest = new FakeRendererWebContents(84);
@@ -466,7 +466,7 @@ describe("DesktopBrowserManager repeated workflow characterization", () => {
 
   it("keeps the load error when an initial local file is not HTML", async () => {
     const manager = new DesktopBrowserManager();
-    const sourceUrl = "file:///tmp/synara-preview/notes.txt";
+    const sourceUrl = "file:///tmp/glade-preview/notes.txt";
     const initial = manager.open({ threadId: THREAD_ID, initialUrl: sourceUrl });
     const tabId = initial.activeTabId!;
     const guest = new FakeRendererWebContents(85);

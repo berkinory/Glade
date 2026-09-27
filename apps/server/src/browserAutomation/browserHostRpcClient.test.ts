@@ -9,7 +9,6 @@ import {
   BrowserHostRpcError,
   callBrowserHostTool,
   resolveBrowserHostCapability,
-  resolveBrowserHostPipePath,
 } from "./browserHostRpcClient.ts";
 
 const HEADER_BYTES = 4;
@@ -294,27 +293,15 @@ describe("browser host RPC client", () => {
     expect(performance.now() - startedAt).toBeLessThan(275);
   });
 
-  it("prefers the canonical host path and accepts the legacy alias during upgrade", () => {
-    expect(
-      resolveBrowserHostPipePath({
-        SYNARA_BROWSER_HOST_PIPE_PATH: "/tmp/canonical.sock",
-        SYNARA_BROWSER_USE_PIPE_PATH: "/tmp/legacy.sock",
-      }),
-    ).toBe("/tmp/canonical.sock");
-    expect(resolveBrowserHostPipePath({ SYNARA_BROWSER_USE_PIPE_PATH: "/tmp/legacy.sock" })).toBe(
-      "/tmp/legacy.sock",
-    );
-  });
-
   it("accepts only a bounded private desktop capability from direct test environments", () => {
     expect(
       resolveBrowserHostCapability({
-        SYNARA_BROWSER_HOST_CAPABILITY: TEST_CAPABILITY,
+        GLADE_BROWSER_HOST_CAPABILITY: TEST_CAPABILITY,
       }),
     ).toBe(TEST_CAPABILITY);
     expect(
       resolveBrowserHostCapability({
-        SYNARA_BROWSER_HOST_CAPABILITY: "too-short",
+        GLADE_BROWSER_HOST_CAPABILITY: "too-short",
       }),
     ).toBeNull();
   });

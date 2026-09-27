@@ -24,7 +24,7 @@ import {
 import { useOnboardingDialogStore } from "./onboardingDialogStore";
 
 // v2: the marker carries the installation it was recorded against.
-const ONBOARDING_STORAGE_KEY = "synara:onboarding:v2";
+const ONBOARDING_STORAGE_KEY = "glade:onboarding:v2";
 
 const OnboardingStorageSchema = Schema.Struct({
   completedAt: Schema.NullOr(Schema.String),
@@ -90,8 +90,6 @@ export function useOnboarding(): UseOnboardingResult {
   const openStore = useOnboardingDialogStore((store) => store.open);
   const closeStore = useOnboardingDialogStore((store) => store.close);
   const markStartupGateSettled = useOnboardingDialogStore((store) => store.markStartupGateSettled);
-  // The beta welcome sheet owns first-run on beta builds; the tour waits for it.
-  const betaWelcomePending = useOnboardingDialogStore((store) => store.betaWelcomePending);
 
   const settingsSettled = settingsQuery.isSuccess || settingsQuery.isError;
   const settingsAvailable = settingsQuery.isSuccess;
@@ -112,7 +110,7 @@ export function useOnboarding(): UseOnboardingResult {
   // startup snapshot, and an errored settings query can recover with a server marker), but
   // only while the user is still reading the intro/tour and has made no setup choices.
   useEffect(() => {
-    if (gate === "pending" || betaWelcomePending) return;
+    if (gate === "pending") return;
     markStartupGateSettled();
     if (gate === "show" && !isOpen) {
       openStore("first-run");
@@ -121,16 +119,7 @@ export function useOnboarding(): UseOnboardingResult {
     if (gate === "hidden" && isOpen && openReason === "first-run" && !engaged) {
       closeStore();
     }
-  }, [
-    betaWelcomePending,
-    closeStore,
-    engaged,
-    gate,
-    isOpen,
-    markStartupGateSettled,
-    openReason,
-    openStore,
-  ]);
+  }, [closeStore, engaged, gate, isOpen, markStartupGateSettled, openReason, openStore]);
 
   // Reconcile the server marker once per session: a completion whose write failed, or an
   // installation that predates the tour. Failures leave the local marker in place so the

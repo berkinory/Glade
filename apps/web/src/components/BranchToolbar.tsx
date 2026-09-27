@@ -1,4 +1,3 @@
-import { requestCurrentAppSnap } from "../appSnap.logic";
 // FILE: BranchToolbar.tsx
 // Purpose: Renders the chat thread's compact workspace controls, including the
 // local usage popover, inline workspace handoff actions, and runtime access toggle.
@@ -8,7 +7,7 @@ import type {
   ServerProviderStatus,
   ThreadId,
   RuntimeMode,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import { ChevronDownIcon, WorktreeIcon } from "~/lib/icons";
 import { HiOutlineHandRaised } from "react-icons/hi2";
 import { CentralIcon } from "~/lib/central-icons";
@@ -241,12 +240,6 @@ export function RuntimeUsageControls({
                 icon={<CentralIcon name="shield-access" className="size-4 shrink-0" />}
               />
             </MenuRadioGroup>
-            {typeof window !== "undefined" && window.desktopBridge?.appSnap?.captureCurrentApp ? (
-              <>
-                <MenuSeparator />
-                <MenuItem onClick={requestCurrentAppSnap}>Share current app</MenuItem>
-              </>
-            ) : null}
           </ComposerPickerMenuPopup>
         </Menu>
       ) : null}

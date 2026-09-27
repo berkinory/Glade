@@ -1,4 +1,4 @@
-import type { PendingClaudeCacheReview } from "@synara/contracts";
+import type { PendingClaudeCacheReview } from "@glade/contracts";
 import { useRef, useState } from "react";
 import { formatContextWindowTokens } from "~/lib/contextWindow";
 import { cn } from "~/lib/utils";

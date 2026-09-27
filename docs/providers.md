@@ -1,29 +1,24 @@
 # Providers
 
-Synara does not host models or sell a separate model subscription. It operates supported
+Glade does not host models or sell a separate model subscription. It operates supported
 coding-agent runtimes installed and authenticated on your machine, then presents them through one
 consistent workspace.
 
 ## Supported providers
 
-| Provider                                                                | What Synara connects to                                      |
-| ----------------------------------------------------------------------- | ------------------------------------------------------------ |
-| [Claude Code](https://www.trysynara.com/docs/providers/claude-code)     | Your installed Claude Code runtime and authenticated account |
-| [Codex](https://www.trysynara.com/docs/providers/codex)                 | Your installed and authenticated Codex CLI                   |
-| [OpenCode](https://www.trysynara.com/docs/providers/opencode)           | Your local OpenCode runtime and configured model providers   |
-| [Cursor](https://www.trysynara.com/docs/providers/cursor)               | Your local Cursor agent runtime and account                  |
-| [Devin](https://docs.devin.ai)                                          | Your installed and authenticated Devin CLI                   |
-| [Antigravity](https://www.trysynara.com/docs/providers/antigravity)     | Your installed and authenticated Antigravity CLI             |
-| [Grok Build](https://www.trysynara.com/docs/providers/grok)             | Your configured Grok Build runtime and access                |
-| [Pi](https://www.trysynara.com/docs/providers/pi)                       | Pi and the model providers configured through it             |
-| [Factory Droid](https://www.trysynara.com/docs/providers/factory-droid) | Your installed and authenticated Droid runtime               |
+| Provider    | What Glade connects to                                       |
+| ----------- | ------------------------------------------------------------ |
+| Claude Code | Your installed Claude Code runtime and authenticated account |
+| Codex       | Your installed and authenticated Codex CLI                   |
+| OpenCode    | Your local OpenCode runtime and configured model providers   |
+| Cursor      | Your local Cursor agent runtime and account                  |
+| Grok Build  | Your configured Grok Build runtime and access                |
 
-Provider availability can differ between the current stable release and development builds. Use the
-provider settings in your installed Synara version as the authoritative list for that build.
+Use provider settings to check installation and authentication status.
 
-## What Synara manages
+## What Glade manages
 
-Synara provides the shared operating surface around each provider:
+Glade provides the shared operating surface around each provider:
 
 - Project and task ownership
 - Provider and model selection
@@ -49,17 +44,17 @@ The provider still controls:
 - Provider-specific session features
 
 A provider working in its own terminal is an important prerequisite, but not a guarantee that every
-provider feature is supported through Synara.
+provider feature is supported through Glade.
 
 ## Connect a provider
 
 1. **Install the official runtime.** Use the provider's official installation instructions.
-2. **Authenticate outside Synara.** Complete the provider's normal sign-in or credential setup.
+2. **Authenticate outside Glade.** Complete the provider's normal sign-in or credential setup.
    Verify the runtime from a fresh terminal.
-3. **Open Synara provider settings.** Confirm that the provider is detected and enabled. When
+3. **Open Glade provider settings.** Confirm that the provider is detected and enabled. When
    necessary, configure a custom path to the provider executable.
 4. **Check model discovery.** Open the model picker and confirm that the expected models and options
-   appear. Synara discovers many provider capabilities at runtime; the result can depend on the
+   appear. Glade discovers many provider capabilities at runtime; the result can depend on the
    installed CLI version, account, subscription, and provider configuration.
 5. **Start a small test task.** Use a harmless objective in a test repository before relying on a
    newly configured provider for important work.
@@ -70,21 +65,20 @@ Providers expose different selection models:
 
 - A fixed catalog
 - A catalog discovered from the installed runtime
-- User-configured custom models
 - Reasoning, effort, mode, or variant options
 - Account-dependent availability
 
-Synara normalizes these choices into the composer where possible without pretending that every
+Glade normalizes these choices into the composer where possible without pretending that every
 provider has identical capabilities.
 
 Claude Code may discover a model under an alias while reporting its concrete model ID separately.
-For a release newer than Synara's catalog, the picker shows the concrete ID. Agent Gateway accepts
+For a release newer than Glade's catalog, the picker shows the concrete ID. Agent Gateway accepts
 that ID when it resolves to one discovered non-default model; ambiguous IDs require an exact
 advertised alias.
 
 For Codex, successful model discovery determines the built-in choices, including when the returned
-catalog is empty. Models absent from that catalog are not added back from Synara's static list.
-Custom models remain available. Until discovery succeeds, Synara uses a static fallback; a failed
+catalog is empty. Models absent from that catalog are not added back from Glade's static list.
+Until discovery succeeds, Glade uses a static fallback; a failed
 refresh keeps the last successful catalog. The shared discovery cache refreshes catalogs in the
 background after its ten-minute fresh window.
 
@@ -95,14 +89,14 @@ that provider's tab and starred entries are offered. Supported provider executab
 at custom binary locations.
 
 Starred models absent from the current catalog remain saved and can be removed, but cannot be
-selected. They become selectable again when discovery or custom model settings add them to the
+selected. They become selectable again when provider discovery adds them to the
 catalog.
 
 ## Provider sessions
 
 Use [Import projects](project-import.md) to bring local Codex and Claude Code projects and
-conversations into Synara. The flow links existing folders, merges matching project destinations,
-and creates independent conversation copies without replacing your existing Synara work.
+conversations into Glade. The flow links existing folders, merges matching project destinations,
+and creates independent conversation copies without replacing your existing Glade work.
 
 Each task owns a provider session.
 
@@ -128,7 +122,7 @@ process once it is idle. Model-only changes, non-max effort, thinking and fast m
 existing live controls; max effort also requires a restart.
 
 On Claude CLI 2.1.259 and 2.1.274, the SDK's live `applyFlagSettings` accepts an auto-compact
-window without updating the window used by the runtime. Synara therefore never announces that
+window without updating the window used by the runtime. Glade therefore never announces that
 live setting as applied. A replacement is refused while a turn, background task, workflow,
 subagent, approval, question or send preparation is active. The existing session and event
 ownership remain intact. Finish that work and retry; the desired selection remains saved.
@@ -136,7 +130,7 @@ Persistent TODO entries survive resume and do not by themselves block replacemen
 
 The meter uses fresh runtime reporting for its denominator and percentage. The applied target
 comes from the configuration event, including an explicit Auto state; when that history is
-unavailable, Synara does not infer a target from a threshold. Output reserves, environment
+unavailable, Glade does not infer a target from a threshold. Output reserves, environment
 settings and model caps can make the effective threshold differ from the target (for example,
 967k for 1M or 167k for 200k). Old usage is invalidated after a new configuration or compaction.
 The composer model button shows the observed budget after the model and effort, for example
@@ -148,21 +142,21 @@ No budget is inferred from the model catalog. Compact layouts retain the suffix 
 title and accessible text alongside the hidden effort. Other providers are unchanged.
 See [Claude context configuration](https://code.claude.com/docs/en/model-config#context-window-and-auto-compaction).
 
-Restart/resume preserves the conversation and Synara's cache observations and counters, but
+Restart/resume preserves the conversation and Glade's cache observations and counters, but
 cannot guarantee a cache hit. The existing large cold-context preflight still applies after
 resume. This behavior does not change SDK `snapshot` configuration: enabling prompt recording
 with appended system instructions can change instruction freshness on resume and needs separate
-validation. See the [implementation plan and evidence](claude-context-switch-plan.md).
+validation.
 
 ### Claude prompt caching and resumed sessions
 
-Synara uses the installed Claude Code runtime through the Agent SDK. Claude owns prompt caching,
+Glade uses the installed Claude Code runtime through the Agent SDK. Claude owns prompt caching,
 session restoration, and automatic compaction. Resuming a saved conversation restores its history;
 it does not restore an expired server-side cache. An unchanged prefix can still be reused after a
 process restart while its cache remains valid. Leaving a process open does not refresh that cache.
 
 The main-conversation cache policy applies to both CLI and SDK turns. The effective lifetime depends
-on the account and Claude settings; Synara does not force a lifetime or change the selected model,
+on the account and Claude settings; Glade does not force a lifetime or change the selected model,
 effort, or compaction threshold to reduce usage. See Anthropic's
 [prompt caching documentation](https://code.claude.com/docs/en/prompt-caching).
 
@@ -172,11 +166,11 @@ an estimate, since changes to the model, tools, or conversation can invalidate a
 prefix. Missing information remains unknown. The adapter preserves the last observation alongside
 the native resume cursor and incorporates native resume metadata when the runtime provides it.
 
-Compare equivalent CLI, SDK, and Synara runs before attributing a cache miss to the wrapper;
+Compare equivalent CLI, SDK, and Glade runs before attributing a cache miss to the wrapper;
 transcript file size and base64 image size are not model token counts.
 
 When Claude has more than 100,000 context tokens and available evidence indicates an expired cache,
-Synara holds the next message before delivering it to the runtime. The composer lets you continue
+Glade holds the next message before delivering it to the runtime. The composer lets you continue
 with the full history, compact first when supported, or cancel that send. The held message and attachments survive reconnects and
 server restarts; cancelling keeps the message in the conversation. An unresolved request blocks
 automatic queue promotion for that task, while other tasks can continue.
@@ -196,16 +190,14 @@ reduce the history sent after a long pause; it also processes the existing histo
 it after the cache expires can itself consume substantial usage. Automatic compaction and the
 selected context threshold remain under the existing Claude settings.
 
-**Compact, then send** keeps the held message separate from `/compact`. Synara releases it only
+**Compact, then send** keeps the held message separate from `/compact`. Glade releases it only
 after a matching native compaction boundary and successful completion. Failure or interruption
-keeps the message on hold. If delivery is uncertain, Synara does not automatically repeat the send.
-See [cache recovery behavior and verification](claude-cache-recovery.md) for the implementation
-boundaries and remaining live validation.
+keeps the message on hold. If delivery is uncertain, Glade does not automatically repeat the send.
 
 ### OpenCode
 
-Synara uses OpenCode's legacy endpoint family, including `/session` and MCP
-for the Synara tools attached to managed sessions. Startup checks `GET /provider`
+Glade uses OpenCode's legacy endpoint family, including `/session` and MCP
+for the Glade tools attached to managed sessions. Startup checks `GET /provider`
 and rejects a server that reports that route as unavailable; this does not identify
 the CLI's version. The SDK is pinned exactly (`1.18.31`) — bump it deliberately,
 never by range.
@@ -219,7 +211,7 @@ provider settings only when the install lives somewhere else entirely.
 
 Claude Code keeps [Artifacts](https://code.claude.com/docs/en/artifacts) off by default for Agent
 SDK sessions, so `/design` and `/slides` cannot publish until the host opts in. Turn on **Settings →
-Providers → Claude → Artifacts, /design and /slides** and start a new session; Synara then launches
+Providers → Claude → Artifacts, /design and /slides** and start a new session; Glade then launches
 Claude with `CLAUDE_CODE_ARTIFACT=1`. Claude's own requirements still apply: a claude.ai login on a
 Pro, Max, Team, or Enterprise plan, Claude Code 2.1.234 or later, and an organization policy that
 allows Artifacts. While Artifacts are off or unavailable, the composer marks both commands with a
@@ -228,8 +220,8 @@ link in its reply.
 
 ## Switching providers
 
-A [provider handoff](https://www.trysynara.com/docs/workflows/handoffs) allows another provider to
-continue the task and work in the same environment with the context Synara passes to it.
+A [provider handoff](https://github.com/berkinory/Glade/blob/glade/docs/core-concepts.md) allows another provider to
+continue the task and work in the same environment with the context Glade passes to it.
 
 Use handoffs deliberately. Review the working tree before and after changing providers so ownership
 remains clear.
@@ -243,15 +235,14 @@ Check these in order:
 3. Is the expected executable on `PATH`?
 4. Is a custom binary path configured incorrectly?
 5. Does the installed runtime version support the required integration?
-6. Does restarting Synara refresh the provider status?
+6. Does restarting Glade refresh the provider status?
 7. Does the provider itself report a service or account error?
 
-Continue with the [troubleshooting hub](https://www.trysynara.com/docs/troubleshooting) when the
-runtime works independently but remains unavailable in Synara.
+Continue with the [troubleshooting hub](https://github.com/berkinory/Glade/blob/glade/docs/diagnostics.md) when the
+runtime works independently but remains unavailable in Glade.
 
-Use the dedicated [provider guides](https://www.trysynara.com/docs/providers) for exact
-installation, authentication, verification, capabilities, update paths, and provider-specific
-failure checks.
+Use the official provider documentation linked in Glade's provider settings for exact installation,
+authentication, update paths, and provider-specific failure checks.
 
 ## Cancel a blocking question
 
@@ -264,7 +255,7 @@ the task's OpenCode working directory.
 
 ## Codex asynchronous questions
 
-On Codex versions and models that expose `request_user_input_async`, Synara shows
+On Codex versions and models that expose `request_user_input_async`, Glade shows
 a question-mark capsule labeled with the number of questions. Opening it reuses
 the same question form as blocking prompts: numbered choices, previous/next
 navigation, and a separate text answer. Closing the capsule preserves the current
@@ -277,7 +268,7 @@ opened form, so separate questions and the main composer cannot consume each
 other's input.
 
 Questions and submitted answers are stored with the assistant message. Refreshing
-or restarting Synara restores that state. Concurrent submissions are admitted once
+or restarting Glade restores that state. Concurrent submissions are admitted once
 by the server; a second client refreshes the accepted answer. Normal turn-delivery
 errors remain visible on the conversation, as for any other user message.
 
@@ -296,14 +287,14 @@ and an isolated native app-server session:
   `delivery: "async"` and `questions: [{ title, options }]`, and immediately
   returns to the agent. `options` may be null for a free-text-only question.
 - The answer is an ordinary user message containing the questions and answers.
-  Synara uses its existing turn dispatch: `turn/steer` with `expectedTurnId` while
+  Glade uses its existing turn dispatch: `turn/steer` with `expectedTurnId` while
   a turn is active, and `turn/start` once the turn has finished. The existing
   dispatch path also handles the turn finishing while the answer is being sent.
 - This differs from `item/tool/requestUserInput`, which carries a JSON-RPC request
   ID and uses a response with an answer map. Its `isBlocking` field and deprecated
   `autoResolutionMs` do not define the native asynchronous tool's answer path.
-  The inline asynchronous cards never enter Synara's pending approval/input queues.
-- Synara does not force a model or enable experimental model features. Older
+  The inline asynchronous cards never enter Glade's pending approval/input queues.
+- Glade does not force a model or enable experimental model features. Older
   app-server versions retain their existing text and blocking-question behavior;
   malformed structured questions fall back to the provider's message text.
 
@@ -316,14 +307,14 @@ Sources: [OpenAI app-server documentation](https://developers.openai.com/codex/a
 ## Passive results from delegated tasks
 
 An authenticated agent can pass `notifyCreatorOnComplete: true` to
-`synara_create_thread`, or on individual entries in `synara_create_threads`.
+`glade_create_thread`, or on individual entries in `glade_create_threads`.
 The default is off. The destination is always the authenticated creating task;
 there is no destination-ID parameter, and the new task remains standalone.
 
-Synara persists one result for the initial message/run when it completes, fails,
+Glade persists one result for the initial message/run when it completes, fails,
 or is interrupted. The creator sees an attributed activity with the child and
 run IDs, up to 2,000 characters of final response (with truncation indicated),
-and a `synara_read_thread` reference for the full result. Delivery does not start,
+and a `glade_read_thread` reference for the full result. Delivery does not start,
 queue, steer, or interrupt a creator turn, and does not update human-message
 recency. The result is supplied as untrusted reference context on a subsequent
 human-started turn; rejected sends retain it, retries keep their assignment, and
@@ -334,9 +325,9 @@ consume completion context.
 
 This option covers only the initial delegated run. Approval/question waits and
 provider idle alone are not completion. Goals are unsupported: if a goal was
-set during the initial run, Synara reports that limitation rather than claiming
+set during the initial run, Glade reports that limitation rather than claiming
 the goal finished at an intermediate turn. Later conversational turns do not
-produce further notifications. External MCP integrations cannot opt in because
+produce further notifications. External integrations cannot opt in because
 they have no authenticated creating task.
 
 Delivery survives restart and duplicate events. An archived or deleted creator

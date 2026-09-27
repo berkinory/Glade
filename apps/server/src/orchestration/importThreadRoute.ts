@@ -1,23 +1,19 @@
 // FILE: importThreadRoute.ts
-// Purpose: Imports provider-native sessions and binds them to Synara thread projections.
+// Purpose: Imports provider-native sessions and binds them to Glade thread projections.
 // Layer: Orchestration command handler
 // Exports: makeImportThreadHandler.
 
 import {
   CommandId,
-  OMP_THINKING_LEVEL_OPTIONS,
-  type ModelSelection,
-  type ModelSlug,
-  type OmpThinkingLevel,
   type OrchestrationImportThreadInput,
   type ProviderKind,
   type ThreadHandoffImportedMessage,
   type ThreadId,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import {
   deriveAssociatedWorktreeMetadata,
   workspaceRootsEqual,
-} from "@synara/shared/threadWorkspace";
+} from "@glade/shared/threadWorkspace";
 import type { FileSystem, Path } from "effect";
 import { Data, Effect, Option } from "effect";
 
@@ -34,8 +30,6 @@ import { parseManagedWorktreeWorkspaceRoot } from "../workspace/managedWorktree"
 import {
   mapClaudeSessionMessages,
   mapCodexSnapshotMessages,
-  mapFactorySnapshotMessages,
-  mapOmpSnapshotMessages,
   mapOpenCodeSnapshotMessages,
 } from "./importedThreadMessages";
 
@@ -53,9 +47,6 @@ function providerResumeCursorForImport(provider: ProviderKind, externalId: strin
   switch (provider) {
     case "claudeAgent":
       return { resume: externalId };
-    case "droid":
-    case "omp":
-      return { schemaVersion: 1, sessionId: externalId };
     case "opencode":
       return { openCodeSessionId: externalId };
     default:
@@ -145,7 +136,7 @@ export function makeImportThreadHandler(options: ImportThreadHandlerOptions) {
   });
 
   const resolveImportedProviderThreadContext = Effect.fn(function* (input: {
-    readonly provider: "codex" | "droid" | "opencode" | "omp";
+    readonly provider: "codex" | "opencode";
     readonly externalId: string;
     readonly projectWorkspaceRoot: string;
     readonly fallbackCwd?: string;
@@ -320,53 +311,6 @@ export function makeImportThreadHandler(options: ImportThreadHandlerOptions) {
     });
   });
 
-  const importDroidThreadHistory = Effect.fn(function* (input: {
-    readonly externalId: string;
-    readonly importedAt: string;
-    readonly threadId: ThreadId;
-  }) {
-    const adapter = yield* options.providerAdapterRegistry.getByProvider("droid");
-    if (!adapter.readExternalThread) {
-      return yield* Effect.fail(importMessagesError("Droid session import is unavailable."));
-    }
-    const snapshot = yield* adapter
-      .readExternalThread({ externalThreadId: input.externalId })
-      .pipe(
-        Effect.mapError((cause) =>
-          importMessagesError(
-            cause instanceof Error && cause.message.length > 0
-              ? cause.message
-              : "Failed to read Droid session history.",
-          ),
-        ),
-      );
-    yield* dispatchImportedMessages({
-      threadId: input.threadId,
-      messages: mapFactorySnapshotMessages({
-        threadId: input.threadId,
-        turns: snapshot.turns,
-        importedAt: input.importedAt,
-      }),
-      createdAt: input.importedAt,
-    });
-  });
-
-  const importOmpThreadHistory = Effect.fn(function* (input: {
-    readonly snapshot: ProviderThreadSnapshot;
-    readonly importedAt: string;
-    readonly threadId: ThreadId;
-  }) {
-    yield* dispatchImportedMessages({
-      threadId: input.threadId,
-      messages: mapOmpSnapshotMessages({
-        threadId: input.threadId,
-        turns: input.snapshot.turns,
-        importedAt: input.importedAt,
-      }),
-      createdAt: input.importedAt,
-    });
-  });
-
   return Effect.fnUntraced(function* (body: ImportThreadRequest) {
     const threadOption = yield* options.projectionSnapshotQuery.getThreadDetailById(body.threadId);
     if (Option.isNone(threadOption)) {
@@ -400,65 +344,17 @@ export function makeImportThreadHandler(options: ImportThreadHandlerOptions) {
     });
     const externalId = body.externalId.trim();
 
-    // OMP sessions are file-backed JSONL transcripts. Read the session file
-    // once up front: it supplies the transcript, the stored cwd for env
-    // detection, and the last-used model so the imported thread keeps running
-    // the model the source session used (omp has no static default model).
-    const ompImportSnapshot =
-      thread.modelSelection.provider === "omp"
-        ? yield* Effect.gen(function* () {
-            const adapter = yield* options.providerAdapterRegistry.getByProvider("omp");
-            if (!adapter.readExternalThread) {
-              return yield* Effect.fail(
-                importMessagesError("Oh My Pi session import is unavailable."),
-              );
-            }
-            return yield* adapter
-              .readExternalThread({
-                externalThreadId: externalId,
-                ...(cwd ? { cwd } : {}),
-              })
-              .pipe(
-                Effect.mapError((cause) =>
-                  importMessagesError(
-                    cause instanceof Error && cause.message.length > 0
-                      ? cause.message
-                      : `Oh My Pi session '${externalId}' was not found on this machine.`,
-                  ),
-                ),
-              );
-          })
-        : null;
-
-    const ompLastUsedModel = ompImportSnapshot?.lastUsedModel;
-    const ompThinkingLevel =
-      ompLastUsedModel?.thinkingLevel &&
-      (OMP_THINKING_LEVEL_OPTIONS as readonly string[]).includes(ompLastUsedModel.thinkingLevel)
-        ? (ompLastUsedModel.thinkingLevel as OmpThinkingLevel)
-        : undefined;
-    const effectiveModelSelection: ModelSelection =
-      ompLastUsedModel !== undefined
-        ? {
-            provider: "omp",
-            model: ompLastUsedModel.model as ModelSlug,
-            ...(ompThinkingLevel ? { options: { thinkingLevel: ompThinkingLevel } } : {}),
-          }
-        : thread.modelSelection;
+    const effectiveModelSelection = thread.modelSelection;
 
     const importedProviderContext =
       (thread.modelSelection.provider === "codex" ||
-        thread.modelSelection.provider === "droid" ||
-        thread.modelSelection.provider === "opencode" ||
-        thread.modelSelection.provider === "omp") &&
+        thread.modelSelection.provider === "opencode") &&
       project
         ? yield* resolveImportedProviderThreadContext({
             provider: thread.modelSelection.provider,
             externalId,
             projectWorkspaceRoot: project.workspaceRoot,
             ...(cwd ? { fallbackCwd: cwd } : {}),
-            ...(thread.modelSelection.provider === "omp"
-              ? { prefetchedSnapshot: ompImportSnapshot }
-              : {}),
           })
         : null;
 
@@ -468,15 +364,6 @@ export function makeImportThreadHandler(options: ImportThreadHandlerOptions) {
         commandId: CommandId.makeUnsafe(crypto.randomUUID()),
         threadId: thread.id,
         ...importedProviderContext.patch,
-      });
-    }
-
-    if (effectiveModelSelection !== thread.modelSelection) {
-      yield* options.orchestrationEngine.dispatch({
-        type: "thread.meta.update",
-        commandId: CommandId.makeUnsafe(crypto.randomUUID()),
-        threadId: thread.id,
-        modelSelection: effectiveModelSelection,
       });
     }
 
@@ -517,25 +404,10 @@ export function makeImportThreadHandler(options: ImportThreadHandlerOptions) {
           cwd,
           importedAt: session.updatedAt,
         });
-      } else if (thread.modelSelection.provider === "droid") {
-        yield* importDroidThreadHistory({
-          threadId: thread.id,
-          externalId,
-          importedAt: session.updatedAt,
-        });
       } else if (thread.modelSelection.provider === "opencode") {
         yield* importOpenCodeCompatibleThreadHistory({
           provider: thread.modelSelection.provider,
           threadId: thread.id,
-          importedAt: session.updatedAt,
-        });
-      } else if (thread.modelSelection.provider === "omp") {
-        if (!ompImportSnapshot) {
-          return yield* Effect.fail(importMessagesError("Oh My Pi session import is unavailable."));
-        }
-        yield* importOmpThreadHistory({
-          threadId: thread.id,
-          snapshot: ompImportSnapshot,
           importedAt: session.updatedAt,
         });
       }

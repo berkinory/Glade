@@ -1,6 +1,6 @@
 {
-  "name": "@synara/desktop",
-  "version": "0.9.2",
+  "name": "@glade/desktop",
+  "version": "0.0.1",
   "private": true,
   "main": "dist-electron/main.js",
   "scripts": {
@@ -9,14 +9,10 @@
     "dev:electron": "bun run scripts/dev-electron.mjs",
     "build": "tsdown",
     "start": "bun run scripts/start-electron.mjs",
-    "typecheck": "node ../../node_modules/@typescript/native/bin/tsc --noEmit --tsBuildInfoFile node_modules/.cache/typescript-native.tsbuildinfo && bun run typecheck:fixtures",
-    "typecheck:fixtures": "node ../../node_modules/@typescript/native/bin/tsc --project tsconfig.fixtures.json",
-    "typecheck:native": "bun run typecheck",
-    "typecheck:legacy": "tsc --noEmit && tsc --project tsconfig.fixtures.json",
+    "typecheck": "bun ../../node_modules/@typescript/native/bin/tsc --noEmit --tsBuildInfoFile node_modules/.cache/typescript-native.tsbuildinfo",
     "test": "vitest run --passWithNoTests",
-    "smoke-test": "node scripts/smoke-test.mjs",
-    "smoke:browser-lifecycle": "bun build scripts/browser-lifecycle-smoke.ts --target=node --external=electron --external=betterwright --external=betterwright/* --external=ws --external=effect --outfile=.smoke/browser-lifecycle.mjs && electron .smoke/browser-lifecycle.mjs",
-    "smoke:browser-viewport": "bun build scripts/browser-viewport-smoke.ts --target=node --external=electron --external=betterwright --outfile=.smoke/browser-viewport.mjs && electron .smoke/browser-viewport.mjs"
+    "smoke-test": "bun scripts/smoke-test.mjs",
+    "smoke:browser-lifecycle": "bun build scripts/browser-lifecycle-smoke.ts --target=node --external=electron --external=betterwright --external=betterwright/* --external=ws --external=effect --outfile=.smoke/browser-lifecycle.mjs && electron .smoke/browser-lifecycle.mjs"
   },
   "dependencies": {
     "betterwright": "2.7.3",
@@ -26,8 +22,8 @@
     "ws": "^8.21.0"
   },
   "devDependencies": {
-    "@synara/contracts": "workspace:*",
-    "@synara/shared": "workspace:*",
+    "@glade/contracts": "workspace:*",
+    "@glade/shared": "workspace:*",
     "@types/node": "catalog:",
     "@types/ws": "^8.5.13",
     "tsdown": "catalog:",
@@ -35,5 +31,5 @@
     "vitest": "catalog:",
     "wait-on": "^8.0.2"
   },
-  "productName": "Synara"
+  "productName": "Glade"
 }

@@ -1,4 +1,4 @@
-import type { ThreadId } from "@synara/contracts";
+import type { ThreadId } from "@glade/contracts";
 import { useComposerDraftStore } from "../../composerDraftStore";
 import {
   restoreUserInputDraft,

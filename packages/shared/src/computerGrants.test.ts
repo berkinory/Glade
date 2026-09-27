@@ -6,26 +6,26 @@ import {
   computerStaleGrantAdvice,
   listComputerPermissions,
   sortComputerPermissions,
-  missingComputerAppSnapPermissions,
+  missingComputerPermissions,
 } from "./computerGrants";
 
 describe("computer permission copy", () => {
-  it("requires positive AppSnap grant evidence for every Computer permission", () => {
+  it("requires positive ComputerPermission grant evidence for every Computer permission", () => {
     expect(
-      missingComputerAppSnapPermissions({
+      missingComputerPermissions({
         screenRecordingPermission: "denied",
         inputMonitoringPermission: "unknown",
       }),
     ).toEqual(["accessibility", "screenRecording", "inputMonitoring"]);
     expect(
-      missingComputerAppSnapPermissions({
+      missingComputerPermissions({
         accessibilityPermission: "granted",
         screenRecordingPermission: "granted",
         inputMonitoringPermission: "denied",
       }),
     ).toEqual(["inputMonitoring"]);
     expect(
-      missingComputerAppSnapPermissions({
+      missingComputerPermissions({
         accessibilityPermission: "granted",
         screenRecordingPermission: "granted",
         inputMonitoringPermission: "granted",
@@ -54,31 +54,27 @@ describe("computer permission copy", () => {
     const advice = computerStaleGrantAdvice(
       ["accessibility", "screenRecording"],
       "adhoc",
-      "com.emanueledipietro.synara.dev",
+      "com.agent.glade.dev",
     );
     expect(advice).toContain("add the current build again");
-    expect(advice).not.toContain("Synara has cleared");
-    expect(advice).toContain("tccutil reset Accessibility com.emanueledipietro.synara.dev");
+    expect(advice).not.toContain("Glade has cleared");
+    expect(advice).toContain("tccutil reset Accessibility com.agent.glade.dev");
     // `ScreenCapture`, not "Screen Recording": the label is not the service name,
     // and a user who types the label gets an error instead of a reset.
-    expect(advice).toContain("tccutil reset ScreenCapture com.emanueledipietro.synara.dev");
+    expect(advice).toContain("tccutil reset ScreenCapture com.agent.glade.dev");
   });
 
   it("names the responsible app rather than assuming the released one", () => {
     // A `.dev` flavor resetting the production identifier would revoke a
-    // separately installed Synara's grants and fix nothing here.
-    const advice = computerStaleGrantAdvice(
-      ["accessibility"],
-      "adhoc",
-      "com.example.synara.canary",
-    );
-    expect(advice).toContain("tccutil reset Accessibility com.example.synara.canary");
-    expect(advice).not.toContain("com.emanueledipietro.synara");
+    // separately installed Glade's grants and fix nothing here.
+    const advice = computerStaleGrantAdvice(["accessibility"], "adhoc", "com.example.glade.canary");
+    expect(advice).toContain("tccutil reset Accessibility com.example.glade.canary");
+    expect(advice).not.toContain("com.agent.glade");
   });
 
   it("withholds the tccutil sentence when no responsible bundle id is known", () => {
     // Better to say nothing than to hand the user a command that resets some
-    // other Synara. The System Settings advice still stands on its own.
+    // other Glade. The System Settings advice still stands on its own.
     for (const bundleId of [undefined, "", "   "]) {
       const advice = computerStaleGrantAdvice(["accessibility"], "adhoc", bundleId);
       expect(advice).toContain("add the current build again");
@@ -97,13 +93,9 @@ describe("computer permission copy", () => {
   });
 
   it("puts the stale-grant explanation into the ad-hoc setup message", () => {
-    const message = computerPermissionSetupMessage(
-      ["accessibility"],
-      "adhoc",
-      "com.emanueledipietro.synara",
-    );
+    const message = computerPermissionSetupMessage(["accessibility"], "adhoc", "com.agent.glade");
     expect(message).toContain("System Settings");
-    expect(message).toContain("tccutil reset Accessibility com.emanueledipietro.synara");
+    expect(message).toContain("tccutil reset Accessibility com.agent.glade");
   });
 });
 

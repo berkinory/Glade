@@ -4,7 +4,7 @@
 // Layer: Chat composer presentation
 // Depends on: provider icons/availability helpers and tooltip primitives.
 
-import { type ProviderKind, type ServerProviderStatus } from "@synara/contracts";
+import { type ProviderKind, type ServerProviderStatus } from "@glade/contracts";
 import { type ReactNode } from "react";
 
 import { PlusIcon, StarFilledIcon } from "~/lib/icons";

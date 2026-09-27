@@ -1,5 +1,5 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { CommandId, DEFAULT_SERVER_SETTINGS, MessageId } from "@synara/contracts";
+import { CommandId, DEFAULT_SERVER_SETTINGS, MessageId } from "@glade/contracts";
 import { Effect, Layer, ManagedRuntime } from "effect";
 import { expect, it, vi } from "vitest";
 import { ServerConfig } from "../config";
@@ -27,7 +27,7 @@ it.each(["pending", "completed"] as const)(
         Layer.provide(OrchestrationCommandReceiptRepositoryLive),
         Layer.provideMerge(SqlitePersistenceMemory),
         Layer.provideMerge(
-          ServerConfig.layerTest(process.cwd(), { prefix: "synara-project-import-recovery-" }),
+          ServerConfig.layerTest(process.cwd(), { prefix: "glade-project-import-recovery-" }),
         ),
         Layer.provideMerge(NodeServices.layer),
       ),

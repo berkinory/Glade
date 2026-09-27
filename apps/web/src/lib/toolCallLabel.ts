@@ -2,10 +2,10 @@
 // Purpose: Normalizes generic tool-call titles and humanizes command executions for timeline rows.
 // Layer: UI utility
 // Exports: deriveReadableToolTitle, deriveReadableCommandDisplay, deriveFriendlyCommandTarget, command icon classifiers, deriveInlineCommandCall, normalizeCompactToolLabel, isGenericToolTitle, extractWebFetchUrl
-// Depends on: @synara/contracts tool lifecycle item types
+// Depends on: @glade/contracts tool lifecycle item types
 
-import type { ToolLifecycleItemType } from "@synara/contracts";
-import { BROWSER_TOOL_TITLES } from "@synara/shared/browserAutomationPresentation";
+import type { ToolLifecycleItemType } from "@glade/contracts";
+import { BROWSER_TOOL_TITLES } from "@glade/shared/browserAutomationPresentation";
 import {
   COMPUTER_TOOL_TITLES,
   computerToolName,
@@ -121,7 +121,7 @@ export interface ReadableToolTitleInput {
   readonly isRunning?: boolean;
 }
 
-interface SynaraMcpToolPresentation {
+interface GladeMcpToolPresentation {
   readonly running: string;
   readonly completed: string;
   readonly failed: string;
@@ -144,369 +144,364 @@ const BROWSER_HISTORY_TITLES = {
   browser_evaluate: "Evaluate browser expression",
 } as const;
 type BrowserHistoryToolName = keyof typeof BROWSER_HISTORY_TITLES;
-type SynaraBrowserToolName = `synara_${BrowserHistoryToolName}`;
+type GladeBrowserToolName = `glade_${BrowserHistoryToolName}`;
 const BROWSER_HISTORY_TOOL_NAMES = Object.keys(BROWSER_HISTORY_TITLES) as BrowserHistoryToolName[];
 const BROWSER_TOOL_NAME_SET = new Set<string>(BROWSER_HISTORY_TOOL_NAMES);
 
-const SYNARA_BROWSER_TOOL_PRESENTATIONS = Object.fromEntries(
+const GLADE_BROWSER_TOOL_PRESENTATIONS = Object.fromEntries(
   BROWSER_HISTORY_TOOL_NAMES.map((toolName) => {
     const title = BROWSER_HISTORY_TITLES[toolName];
-    return [`synara_${toolName}`, { running: title, completed: title, failed: title }];
+    return [`glade_${toolName}`, { running: title, completed: title, failed: title }];
   }),
-) as Record<SynaraBrowserToolName, SynaraMcpToolPresentation>;
+) as Record<GladeBrowserToolName, GladeMcpToolPresentation>;
 
 /**
  * The desktop tools, spoken. Every browser tool had a curated presentation and
  * every computer tool had none, so the most consequential rows in the
  * transcript — an agent moving a pointer on the user's own machine — fell
- * through to the invented "Synara is handling computer click" fallback.
+ * through to the invented "Glade is handling computer click" fallback.
  *
  * The wording deliberately keeps the machine in the sentence ("this computer's
  * desktop") rather than saying "the desktop", because on the backends that
  * matter it is the user's own.
  */
-const SYNARA_COMPUTER_TOOL_PRESENTATIONS = {
-  synara_computer_screenshot: presentComputerTool("taking a screenshot", "took a screenshot"),
-  synara_computer_get_state: presentComputerTool("reading the screen", "read the screen"),
-  synara_computer_get_screen_size: presentComputerTool(
+const GLADE_COMPUTER_TOOL_PRESENTATIONS = {
+  glade_computer_screenshot: presentComputerTool("taking a screenshot", "took a screenshot"),
+  glade_computer_get_state: presentComputerTool("reading the screen", "read the screen"),
+  glade_computer_get_screen_size: presentComputerTool(
     "measuring the screen",
     "measured the screen",
   ),
-  synara_computer_list_windows: presentComputerTool("listing windows", "listed the windows"),
-  synara_computer_list_apps: presentComputerTool("listing apps", "listed the apps"),
-  synara_computer_verify_state: presentComputerTool(
+  glade_computer_list_windows: presentComputerTool("listing windows", "listed the windows"),
+  glade_computer_list_apps: presentComputerTool("listing apps", "listed the apps"),
+  glade_computer_verify_state: presentComputerTool(
     "checking desktop state",
     "checked desktop state",
   ),
-  synara_computer_zoom: presentComputerTool("zooming into a window", "zoomed into a window"),
-  synara_computer_get_accessibility_tree: presentComputerTool(
+  glade_computer_zoom: presentComputerTool("zooming into a window", "zoomed into a window"),
+  glade_computer_get_accessibility_tree: presentComputerTool(
     "listing apps and windows",
     "listed apps and windows",
   ),
-  synara_computer_get_cursor_position: presentComputerTool(
+  glade_computer_get_cursor_position: presentComputerTool(
     "reading the cursor position",
     "read the cursor position",
   ),
-  synara_computer_help: presentComputerTool(
+  glade_computer_help: presentComputerTool(
     "reading the Computer playbook",
     "read the Computer playbook",
   ),
-  synara_computer_click: presentComputerTool("clicking the desktop", "clicked the desktop"),
-  synara_computer_move_cursor: presentComputerTool("moving the cursor", "moved the cursor"),
-  synara_computer_drag: presentComputerTool("dragging on the desktop", "dragged on the desktop"),
-  synara_computer_scroll: presentComputerTool("scrolling the desktop", "scrolled the desktop"),
-  synara_computer_type_text: presentComputerTool("typing on the desktop", "typed on the desktop"),
-  synara_computer_press_key: presentComputerTool("pressing a key", "pressed a key"),
-  synara_computer_set_value: presentComputerTool("setting a field", "set a field"),
-  synara_computer_select_text: presentComputerTool("selecting text", "selected text"),
-  synara_computer_perform_action: presentComputerTool(
-    "activating a control",
-    "activated a control",
-  ),
-  synara_computer_launch_app: presentComputerTool("opening an app", "opened an app"),
-  synara_computer_activate_window: presentComputerTool("activating a window", "activated a window"),
-  synara_computer_set_window_frame: presentComputerTool(
+  glade_computer_click: presentComputerTool("clicking the desktop", "clicked the desktop"),
+  glade_computer_move_cursor: presentComputerTool("moving the cursor", "moved the cursor"),
+  glade_computer_drag: presentComputerTool("dragging on the desktop", "dragged on the desktop"),
+  glade_computer_scroll: presentComputerTool("scrolling the desktop", "scrolled the desktop"),
+  glade_computer_type_text: presentComputerTool("typing on the desktop", "typed on the desktop"),
+  glade_computer_press_key: presentComputerTool("pressing a key", "pressed a key"),
+  glade_computer_set_value: presentComputerTool("setting a field", "set a field"),
+  glade_computer_select_text: presentComputerTool("selecting text", "selected text"),
+  glade_computer_perform_action: presentComputerTool("activating a control", "activated a control"),
+  glade_computer_launch_app: presentComputerTool("opening an app", "opened an app"),
+  glade_computer_activate_window: presentComputerTool("activating a window", "activated a window"),
+  glade_computer_set_window_frame: presentComputerTool(
     "moving or resizing a window",
     "moved or resized a window",
   ),
-  synara_computer_invoke_menu: presentComputerTool("invoking a menu item", "invoked a menu item"),
-  synara_computer_kill_app: presentComputerTool("force-quitting an app", "force-quit an app"),
-  synara_computer_set_window_minimized: presentComputerTool(
+  glade_computer_invoke_menu: presentComputerTool("invoking a menu item", "invoked a menu item"),
+  glade_computer_kill_app: presentComputerTool("force-quitting an app", "force-quit an app"),
+  glade_computer_set_window_minimized: presentComputerTool(
     "changing a window's visibility",
     "changed a window's visibility",
   ),
-  synara_computer_set_app_visibility: presentComputerTool(
+  glade_computer_set_app_visibility: presentComputerTool(
     "changing an app's visibility",
     "changed an app's visibility",
   ),
-  synara_computer_wait: presentComputerTool("waiting for the desktop", "waited for the desktop"),
-  synara_computer_read_clipboard: presentComputerTool(
-    "reading the clipboard",
-    "read the clipboard",
-  ),
-  synara_computer_write_clipboard: presentComputerTool(
+  glade_computer_wait: presentComputerTool("waiting for the desktop", "waited for the desktop"),
+  glade_computer_read_clipboard: presentComputerTool("reading the clipboard", "read the clipboard"),
+  glade_computer_write_clipboard: presentComputerTool(
     "writing to the clipboard",
     "wrote to the clipboard",
   ),
-  synara_computer_paste: presentComputerTool("pasting text", "pasted text"),
-  synara_computer_run: presentComputerTool("running a desktop sequence", "ran a desktop sequence"),
-  synara_computer_inspect: presentComputerTool("inspecting the computer", "inspected the computer"),
-  synara_computer_spaces: presentComputerTool(
+  glade_computer_paste: presentComputerTool("pasting text", "pasted text"),
+  glade_computer_run: presentComputerTool("running a desktop sequence", "ran a desktop sequence"),
+  glade_computer_inspect: presentComputerTool("inspecting the computer", "inspected the computer"),
+  glade_computer_spaces: presentComputerTool(
     "inspecting desktop Spaces",
     "inspected desktop Spaces",
   ),
-  synara_computer_browser_state: presentComputerTool(
+  glade_computer_browser_state: presentComputerTool(
     "reading the browser page",
     "read the browser page",
   ),
-  synara_computer_browser_prepare: presentComputerTool("preparing a browser", "prepared a browser"),
-  synara_computer_browser_navigate: presentComputerTool(
+  glade_computer_browser_prepare: presentComputerTool("preparing a browser", "prepared a browser"),
+  glade_computer_browser_navigate: presentComputerTool(
     "opening a browser page",
     "opened a browser page",
   ),
-  synara_computer_browser_click: presentComputerTool(
+  glade_computer_browser_click: presentComputerTool(
     "clicking in the browser",
     "clicked in the browser",
   ),
-  synara_computer_browser_type: presentComputerTool(
+  glade_computer_browser_type: presentComputerTool(
     "typing in a browser field",
     "typed in a browser field",
   ),
-  synara_computer_browser_dialog: presentComputerTool(
+  glade_computer_browser_dialog: presentComputerTool(
     "handling a browser dialog",
     "handled a browser dialog",
   ),
-  synara_computer_browser_upload: presentComputerTool(
+  glade_computer_browser_upload: presentComputerTool(
     "attaching files in the browser",
     "attached files in the browser",
   ),
-  synara_computer_browser_download: presentComputerTool("downloading a file", "downloaded a file"),
-  synara_computer_browser_pointer: presentComputerTool(
+  glade_computer_browser_download: presentComputerTool("downloading a file", "downloaded a file"),
+  glade_computer_browser_pointer: presentComputerTool(
     "using the pointer in the browser",
     "used the pointer in the browser",
   ),
-  synara_computer_browser_press: presentComputerTool(
+  glade_computer_browser_press: presentComputerTool(
     "pressing Enter in the browser",
     "pressed Enter in the browser",
   ),
-} as const satisfies Record<`synara_${ComputerToolName}`, SynaraMcpToolPresentation>;
+} as const satisfies Record<`glade_${ComputerToolName}`, GladeMcpToolPresentation>;
 
-function presentComputerTool(present: string, past: string): SynaraMcpToolPresentation {
+function presentComputerTool(present: string, past: string): GladeMcpToolPresentation {
   return {
-    running: `Synara is ${present}`,
-    completed: `Synara ${past}`,
-    failed: `Synara couldn't finish ${present}`,
+    running: `Glade is ${present}`,
+    completed: `Glade ${past}`,
+    failed: `Glade couldn't finish ${present}`,
   };
 }
 
-const SYNARA_MCP_TOOL_PRESENTATIONS = {
-  synara_context: {
-    running: "Synara is checking its context",
-    completed: "Synara checked its context",
-    failed: "Synara couldn't check its context",
+const GLADE_MCP_TOOL_PRESENTATIONS = {
+  glade_context: {
+    running: "Glade is checking its context",
+    completed: "Glade checked its context",
+    failed: "Glade couldn't check its context",
   },
-  synara_capabilities: {
-    running: "Synara is checking available agents",
-    completed: "Synara checked available agents",
-    failed: "Synara couldn't check available agents",
+  glade_capabilities: {
+    running: "Glade is checking available agents",
+    completed: "Glade checked available agents",
+    failed: "Glade couldn't check available agents",
   },
-  synara_overview: {
-    running: "Synara is gathering an overview",
-    completed: "Synara gathered an overview",
-    failed: "Synara couldn't gather an overview",
+  glade_overview: {
+    running: "Glade is gathering an overview",
+    completed: "Glade gathered an overview",
+    failed: "Glade couldn't gather an overview",
   },
-  synara_list_allowed_projects: {
-    running: "Synara is listing allowed projects",
-    completed: "Synara listed allowed projects",
-    failed: "Synara couldn't list allowed projects",
+  glade_list_allowed_projects: {
+    running: "Glade is listing allowed projects",
+    completed: "Glade listed allowed projects",
+    failed: "Glade couldn't list allowed projects",
   },
-  synara_create_task: {
-    running: "Synara is creating a task",
-    completed: "Synara created a task",
-    failed: "Synara couldn't create a task",
+  glade_create_task: {
+    running: "Glade is creating a task",
+    completed: "Glade created a task",
+    failed: "Glade couldn't create a task",
   },
-  synara_wait_for_task: {
-    running: "Synara is waiting for a task",
-    completed: "Synara finished waiting for a task",
-    failed: "Synara couldn't wait for a task",
+  glade_wait_for_task: {
+    running: "Glade is waiting for a task",
+    completed: "Glade finished waiting for a task",
+    failed: "Glade couldn't wait for a task",
   },
-  synara_read_task: {
-    running: "Synara is reading a task",
-    completed: "Synara read a task",
-    failed: "Synara couldn't read a task",
+  glade_read_task: {
+    running: "Glade is reading a task",
+    completed: "Glade read a task",
+    failed: "Glade couldn't read a task",
   },
-  synara_list_projects: {
-    running: "Synara is listing projects",
-    completed: "Synara listed projects",
-    failed: "Synara couldn't list projects",
+  glade_list_projects: {
+    running: "Glade is listing projects",
+    completed: "Glade listed projects",
+    failed: "Glade couldn't list projects",
   },
-  synara_list_threads: {
-    running: "Synara is listing threads",
-    completed: "Synara listed threads",
-    failed: "Synara couldn't list threads",
+  glade_list_threads: {
+    running: "Glade is listing threads",
+    completed: "Glade listed threads",
+    failed: "Glade couldn't list threads",
   },
-  synara_read_thread: {
-    running: "Synara is reading a thread",
-    completed: "Synara read a thread",
-    failed: "Synara couldn't read a thread",
+  glade_read_thread: {
+    running: "Glade is reading a thread",
+    completed: "Glade read a thread",
+    failed: "Glade couldn't read a thread",
   },
-  synara_read_thread_activity: {
-    running: "Synara is reading thread activity",
-    completed: "Synara read thread activity",
-    failed: "Synara couldn't read thread activity",
+  glade_read_thread_activity: {
+    running: "Glade is reading thread activity",
+    completed: "Glade read thread activity",
+    failed: "Glade couldn't read thread activity",
   },
-  synara_read_thread_events: {
-    running: "Synara is reading thread events",
-    completed: "Synara read thread events",
-    failed: "Synara couldn't read thread events",
+  glade_read_thread_events: {
+    running: "Glade is reading thread events",
+    completed: "Glade read thread events",
+    failed: "Glade couldn't read thread events",
   },
-  synara_read_thread_runtime_events: {
-    running: "Synara is reading thread runtime events",
-    completed: "Synara read thread runtime events",
-    failed: "Synara couldn't read thread runtime events",
+  glade_read_thread_runtime_events: {
+    running: "Glade is reading thread runtime events",
+    completed: "Glade read thread runtime events",
+    failed: "Glade couldn't read thread runtime events",
   },
-  synara_diagnose_thread: {
-    running: "Synara is diagnosing a thread",
-    completed: "Synara diagnosed a thread",
-    failed: "Synara couldn't diagnose a thread",
+  glade_diagnose_thread: {
+    running: "Glade is diagnosing a thread",
+    completed: "Glade diagnosed a thread",
+    failed: "Glade couldn't diagnose a thread",
   },
-  synara_create_thread: {
-    running: "Synara is creating a thread",
-    completed: "Synara created a thread",
-    failed: "Synara couldn't create a thread",
+  glade_create_thread: {
+    running: "Glade is creating a thread",
+    completed: "Glade created a thread",
+    failed: "Glade couldn't create a thread",
   },
-  synara_create_threads: {
-    running: "Synara is creating threads",
-    completed: "Synara created threads",
-    failed: "Synara couldn't create threads",
+  glade_create_threads: {
+    running: "Glade is creating threads",
+    completed: "Glade created threads",
+    failed: "Glade couldn't create threads",
   },
-  synara_wait_for_threads: {
-    running: "Synara is waiting for threads",
-    completed: "Synara finished waiting for threads",
-    failed: "Synara couldn't wait for threads",
+  glade_wait_for_threads: {
+    running: "Glade is waiting for threads",
+    completed: "Glade finished waiting for threads",
+    failed: "Glade couldn't wait for threads",
   },
-  synara_send_message: {
-    running: "Synara is sending a message",
-    completed: "Synara sent a message",
-    failed: "Synara couldn't send a message",
+  glade_send_message: {
+    running: "Glade is sending a message",
+    completed: "Glade sent a message",
+    failed: "Glade couldn't send a message",
   },
-  synara_interrupt_thread: {
-    running: "Synara is interrupting a thread",
-    completed: "Synara interrupted a thread",
-    failed: "Synara couldn't interrupt a thread",
+  glade_interrupt_thread: {
+    running: "Glade is interrupting a thread",
+    completed: "Glade interrupted a thread",
+    failed: "Glade couldn't interrupt a thread",
   },
-  synara_set_thread_title: {
-    running: "Synara is renaming a thread",
-    completed: "Synara renamed a thread",
-    failed: "Synara couldn't rename a thread",
+  glade_set_thread_title: {
+    running: "Glade is renaming a thread",
+    completed: "Glade renamed a thread",
+    failed: "Glade couldn't rename a thread",
   },
-  synara_set_thread_archived: {
-    running: "Synara is updating a thread",
-    completed: "Synara updated a thread",
-    failed: "Synara couldn't update a thread",
+  glade_set_thread_archived: {
+    running: "Glade is updating a thread",
+    completed: "Glade updated a thread",
+    failed: "Glade couldn't update a thread",
   },
-  synara_create_automation: {
-    running: "Synara is creating an automation",
-    completed: "Synara created an automation",
-    failed: "Synara couldn't create an automation",
+  glade_create_automation: {
+    running: "Glade is creating an automation",
+    completed: "Glade created an automation",
+    failed: "Glade couldn't create an automation",
   },
-  synara_list_automations: {
-    running: "Synara is listing automations",
-    completed: "Synara listed automations",
-    failed: "Synara couldn't list automations",
+  glade_list_automations: {
+    running: "Glade is listing automations",
+    completed: "Glade listed automations",
+    failed: "Glade couldn't list automations",
   },
-  synara_view_automation: {
-    running: "Synara is viewing an automation",
-    completed: "Synara viewed an automation",
-    failed: "Synara couldn't view an automation",
+  glade_view_automation: {
+    running: "Glade is viewing an automation",
+    completed: "Glade viewed an automation",
+    failed: "Glade couldn't view an automation",
   },
-  synara_update_automation: {
-    running: "Synara is updating an automation",
-    completed: "Synara updated an automation",
-    failed: "Synara couldn't update an automation",
+  glade_update_automation: {
+    running: "Glade is updating an automation",
+    completed: "Glade updated an automation",
+    failed: "Glade couldn't update an automation",
   },
-  synara_update_automation_memory: {
-    running: "Synara is updating automation memory",
-    completed: "Synara updated automation memory",
-    failed: "Synara couldn't update automation memory",
+  glade_update_automation_memory: {
+    running: "Glade is updating automation memory",
+    completed: "Glade updated automation memory",
+    failed: "Glade couldn't update automation memory",
   },
-  synara_report_automation_result: {
-    running: "Synara is reporting an automation result",
-    completed: "Synara reported an automation result",
-    failed: "Synara couldn't report an automation result",
+  glade_report_automation_result: {
+    running: "Glade is reporting an automation result",
+    completed: "Glade reported an automation result",
+    failed: "Glade couldn't report an automation result",
   },
-  synara_cancel_automation: {
-    running: "Synara is stopping an automation",
-    completed: "Synara stopped an automation",
-    failed: "Synara couldn't stop an automation",
+  glade_cancel_automation: {
+    running: "Glade is stopping an automation",
+    completed: "Glade stopped an automation",
+    failed: "Glade couldn't stop an automation",
   },
-  ...SYNARA_BROWSER_TOOL_PRESENTATIONS,
-  ...SYNARA_COMPUTER_TOOL_PRESENTATIONS,
-} as const satisfies Record<string, SynaraMcpToolPresentation>;
+  ...GLADE_BROWSER_TOOL_PRESENTATIONS,
+  ...GLADE_COMPUTER_TOOL_PRESENTATIONS,
+} as const satisfies Record<string, GladeMcpToolPresentation>;
 
-function normalizeSynaraMcpIdentifier(value: string): string {
+function normalizeGladeMcpIdentifier(value: string): string {
   return value
+    .replace(/\bglade\b/gi, "glade")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
 }
 
-const SYNARA_BROWSER_TOOL_NAME_BY_PRESENTATION = new Map<string, SynaraBrowserToolName>(
+const GLADE_BROWSER_TOOL_NAME_BY_PRESENTATION = new Map<string, GladeBrowserToolName>(
   BROWSER_HISTORY_TOOL_NAMES.map((toolName) => [
-    normalizeSynaraMcpIdentifier(BROWSER_HISTORY_TITLES[toolName]),
-    `synara_${toolName}`,
+    normalizeGladeMcpIdentifier(BROWSER_HISTORY_TITLES[toolName]),
+    `glade_${toolName}`,
   ]),
 );
 
-const SYNARA_MCP_TOOL_PRESENTATION_ENTRIES = Object.entries(SYNARA_MCP_TOOL_PRESENTATIONS).map(
+const GLADE_MCP_TOOL_PRESENTATION_ENTRIES = Object.entries(GLADE_MCP_TOOL_PRESENTATIONS).map(
   ([toolName, presentation]) => ({
     toolName,
     presentation,
-    normalizedRunning: normalizeSynaraMcpIdentifier(presentation.running),
-    normalizedCompleted: normalizeSynaraMcpIdentifier(presentation.completed),
-    normalizedFailed: normalizeSynaraMcpIdentifier(presentation.failed),
+    normalizedRunning: normalizeGladeMcpIdentifier(presentation.running),
+    normalizedCompleted: normalizeGladeMcpIdentifier(presentation.completed),
+    normalizedFailed: normalizeGladeMcpIdentifier(presentation.failed),
   }),
 );
 
-function extractSynaraMcpToolName(normalizedCandidate: string): string | null {
+function extractGladeMcpToolName(normalizedCandidate: string): string | null {
   if (BROWSER_TOOL_NAME_SET.has(normalizedCandidate)) {
-    return `synara_${normalizedCandidate}`;
+    return `glade_${normalizedCandidate}`;
   }
-  if (normalizedCandidate.startsWith("mcp_synara_synara_")) {
-    return normalizedCandidate.slice("mcp_synara_".length);
+  if (normalizedCandidate.startsWith("mcp_glade_glade_")) {
+    return normalizedCandidate.slice("mcp_glade_".length);
   }
-  if (normalizedCandidate.startsWith("mcp_synara_")) {
-    return `synara_${normalizedCandidate.slice("mcp_synara_".length)}`;
+  if (normalizedCandidate.startsWith("mcp_glade_")) {
+    return `glade_${normalizedCandidate.slice("mcp_glade_".length)}`;
   }
-  if (normalizedCandidate.startsWith("synara_synara_")) {
-    return normalizedCandidate.slice("synara_".length);
+  if (normalizedCandidate.startsWith("glade_glade_")) {
+    return normalizedCandidate.slice("glade_".length);
   }
-  if (normalizedCandidate.startsWith("synara_")) {
+  if (normalizedCandidate.startsWith("glade_")) {
     return normalizedCandidate;
   }
   return null;
 }
 
-function resolveSynaraBrowserToolName(
+function resolveGladeBrowserToolName(
   candidates: ReadonlyArray<string | null | undefined>,
-): SynaraBrowserToolName | null {
+): GladeBrowserToolName | null {
   for (const candidate of candidates) {
     if (!candidate) continue;
-    const normalizedCandidate = normalizeSynaraMcpIdentifier(candidate);
-    const extractedToolName = extractSynaraMcpToolName(normalizedCandidate);
+    const normalizedCandidate = normalizeGladeMcpIdentifier(candidate);
+    const extractedToolName = extractGladeMcpToolName(normalizedCandidate);
     const candidateToolName =
       extractedToolName ??
-      SYNARA_BROWSER_TOOL_NAME_BY_PRESENTATION.get(normalizedCandidate) ??
+      GLADE_BROWSER_TOOL_NAME_BY_PRESENTATION.get(normalizedCandidate) ??
       normalizedCandidate;
-    if (candidateToolName in SYNARA_BROWSER_TOOL_PRESENTATIONS) {
-      return candidateToolName as SynaraBrowserToolName;
+    if (candidateToolName in GLADE_BROWSER_TOOL_PRESENTATIONS) {
+      return candidateToolName as GladeBrowserToolName;
     }
   }
   return null;
 }
 
-function fallbackSynaraMcpToolPresentation(toolName: string): SynaraMcpToolPresentation {
+function fallbackGladeMcpToolPresentation(toolName: string): GladeMcpToolPresentation {
   const action =
     toolName
-      .replace(/^synara_/, "")
+      .replace(/^glade_/, "")
       .replace(/_+/g, " ")
       .trim() || "an action";
   return {
-    running: `Synara is handling ${action}`,
-    completed: `Synara handled ${action}`,
-    failed: `Synara couldn't handle ${action}`,
+    running: `Glade is handling ${action}`,
+    completed: `Glade handled ${action}`,
+    failed: `Glade couldn't handle ${action}`,
   };
 }
 
-function resolveSynaraMcpToolPresentation(
+function resolveGladeMcpToolPresentation(
   candidates: ReadonlyArray<string | null | undefined>,
-): SynaraMcpToolPresentation | null {
+): GladeMcpToolPresentation | null {
   for (const candidate of candidates) {
     if (!candidate) {
       continue;
     }
-    const normalizedCandidate = normalizeSynaraMcpIdentifier(candidate);
-    for (const entry of SYNARA_MCP_TOOL_PRESENTATION_ENTRIES) {
+    const normalizedCandidate = normalizeGladeMcpIdentifier(candidate);
+    for (const entry of GLADE_MCP_TOOL_PRESENTATION_ENTRIES) {
       if (
         normalizedCandidate === entry.normalizedRunning ||
         normalizedCandidate === entry.normalizedCompleted ||
@@ -515,62 +510,62 @@ function resolveSynaraMcpToolPresentation(
         return entry.presentation;
       }
     }
-    const toolName = extractSynaraMcpToolName(normalizedCandidate);
+    const toolName = extractGladeMcpToolName(normalizedCandidate);
     const knownPresentation = toolName
-      ? (SYNARA_MCP_TOOL_PRESENTATIONS[toolName as keyof typeof SYNARA_MCP_TOOL_PRESENTATIONS] as
-          | SynaraMcpToolPresentation
+      ? (GLADE_MCP_TOOL_PRESENTATIONS[toolName as keyof typeof GLADE_MCP_TOOL_PRESENTATIONS] as
+          | GladeMcpToolPresentation
           | undefined)
       : undefined;
     if (knownPresentation) {
       return knownPresentation;
     }
     // Free-text summaries (e.g. reconciler activity lines) can begin with the
-    // word "Synara" and normalize into a fake tool identifier; only
+    // word "Glade" and normalize into a fake tool identifier; only
     // identifier-shaped candidates may take an invented fallback presentation.
     if (/\s/.test(candidate.trim())) {
       continue;
     }
-    if (normalizedCandidate.startsWith("synara_is_handling_")) {
-      return fallbackSynaraMcpToolPresentation(
-        `synara_${normalizedCandidate.slice("synara_is_handling_".length)}`,
+    if (normalizedCandidate.startsWith("glade_is_handling_")) {
+      return fallbackGladeMcpToolPresentation(
+        `glade_${normalizedCandidate.slice("glade_is_handling_".length)}`,
       );
     }
-    if (normalizedCandidate.startsWith("synara_handled_")) {
-      return fallbackSynaraMcpToolPresentation(
-        `synara_${normalizedCandidate.slice("synara_handled_".length)}`,
+    if (normalizedCandidate.startsWith("glade_handled_")) {
+      return fallbackGladeMcpToolPresentation(
+        `glade_${normalizedCandidate.slice("glade_handled_".length)}`,
       );
     }
-    if (normalizedCandidate.startsWith("synara_couldn_t_handle_")) {
-      return fallbackSynaraMcpToolPresentation(
-        `synara_${normalizedCandidate.slice("synara_couldn_t_handle_".length)}`,
+    if (normalizedCandidate.startsWith("glade_couldn_t_handle_")) {
+      return fallbackGladeMcpToolPresentation(
+        `glade_${normalizedCandidate.slice("glade_couldn_t_handle_".length)}`,
       );
     }
     if (!toolName) {
       continue;
     }
-    return fallbackSynaraMcpToolPresentation(toolName);
+    return fallbackGladeMcpToolPresentation(toolName);
   }
   return null;
 }
 
-export type SynaraMcpToolStatus = "running" | "completed" | "failed" | "cancelled";
+export type GladeMcpToolStatus = "running" | "completed" | "failed" | "cancelled";
 
-export interface SynaraMcpToolTitleInput {
+export interface GladeMcpToolTitleInput {
   readonly toolName?: string | null | undefined;
   readonly title?: string | null | undefined;
   readonly fallbackLabel?: string | null | undefined;
-  readonly status?: SynaraMcpToolStatus | undefined;
+  readonly status?: GladeMcpToolStatus | undefined;
 }
 
-export function isSynaraBrowserToolCall(input: SynaraMcpToolTitleInput): boolean {
-  return resolveSynaraBrowserToolName([input.toolName, input.title, input.fallbackLabel]) !== null;
+export function isGladeBrowserToolCall(input: GladeMcpToolTitleInput): boolean {
+  return resolveGladeBrowserToolName([input.toolName, input.title, input.fallbackLabel]) !== null;
 }
 
-// Every provider exposes Synara's MCP tools differently: MCP, dynamic, and even
+// Every provider exposes Glade's MCP tools differently: MCP, dynamic, and even
 // file-change rows can all represent the same gateway action. Normalize by tool
 // identity instead of provider item type so transport details never reach the UI.
-export function deriveSynaraMcpToolTitle(input: SynaraMcpToolTitleInput): string | null {
-  const presentation = resolveSynaraMcpToolPresentation([
+export function deriveGladeMcpToolTitle(input: GladeMcpToolTitleInput): string | null {
+  const presentation = resolveGladeMcpToolPresentation([
     input.toolName,
     input.title,
     input.fallbackLabel,
@@ -586,23 +581,23 @@ export function deriveSynaraMcpToolTitle(input: SynaraMcpToolTitleInput): string
     case "failed":
       return presentation.failed;
     case "cancelled":
-      return presentation.running.startsWith("Synara is ")
-        ? `Synara stopped ${presentation.running.slice("Synara is ".length)}`
+      return presentation.running.startsWith("Glade is ")
+        ? `Glade stopped ${presentation.running.slice("Glade is ".length)}`
         : `Cancelled ${presentation.running}`;
   }
 }
 
-export function sanitizeSynaraMcpToolPreview(input: {
+export function sanitizeGladeMcpToolPreview(input: {
   readonly preview?: string | null | undefined;
   readonly heading: string;
-  readonly status?: SynaraMcpToolStatus | undefined;
+  readonly status?: GladeMcpToolStatus | undefined;
 }): string | null {
   const preview = input.preview?.trim();
   if (!preview) return null;
-  const previewTitle = deriveSynaraMcpToolTitle({ title: preview, status: input.status });
+  const previewTitle = deriveGladeMcpToolTitle({ title: preview, status: input.status });
   if (
     previewTitle &&
-    normalizeSynaraMcpIdentifier(previewTitle) === normalizeSynaraMcpIdentifier(input.heading)
+    normalizeGladeMcpIdentifier(previewTitle) === normalizeGladeMcpIdentifier(input.heading)
   ) {
     return null;
   }

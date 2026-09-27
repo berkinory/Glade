@@ -1,4 +1,4 @@
-import type { ClaudeCacheObservation } from "@synara/contracts";
+import type { ClaudeCacheObservation } from "@glade/contracts";
 
 export const CLAUDE_LARGE_CONTEXT_TOKENS = 100_000;
 

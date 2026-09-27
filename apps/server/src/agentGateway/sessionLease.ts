@@ -1,4 +1,4 @@
-import type { ProviderKind, ThreadId } from "@synara/contracts";
+import type { ProviderKind, ThreadId } from "@glade/contracts";
 import { Effect, Exit } from "effect";
 
 import type {
@@ -47,8 +47,7 @@ export function agentGatewaySessionLeaseOptionsFor(
 /**
  * Narrow a start input to the fields a later re-lease needs.
  *
- * Adapters that re-lease from a stored session context (Antigravity mints its
- * credential per turn; Pi rotates the credential when a turn completes) no
+ * Adapters that re-lease from a stored session context no
  * longer hold the start input by then. They keep this projection instead of a
  * hand-picked flag, so the set of capability facts stays defined in one place.
  */
@@ -70,7 +69,7 @@ type AgentGatewaySessionLeaseCredentials = Pick<
   >;
 
 export const AGENT_GATEWAY_CREDENTIAL_ROTATION_REQUIRED = "agentGatewayCredentialRotationRequired";
-export const AGENT_GATEWAY_TURN_AUTHORITY_RETIRED = "synaraGatewayTurnAuthorityRetired";
+export const AGENT_GATEWAY_TURN_AUTHORITY_RETIRED = "gladeGatewayTurnAuthorityRetired";
 
 /**
  * One provider runtime's ownership of one gateway credential.

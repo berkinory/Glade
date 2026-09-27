@@ -9,7 +9,7 @@
 // Exports: makeProviderModelDiscoveryCache, ProviderModelDiscoveryCache,
 //          providerModelDiscoveryCacheKey, PROVIDER_MODEL_DISCOVERY_* defaults
 
-import type { ProviderListModelsInput, ProviderListModelsResult } from "@synara/contracts";
+import type { ProviderListModelsInput, ProviderListModelsResult } from "@glade/contracts";
 import { Deferred, Effect, Exit, Option } from "effect";
 
 import { ProviderAdapterRequestError } from "./Errors.ts";
@@ -29,7 +29,7 @@ export const PROVIDER_MODEL_DISCOVERY_STALE_TTL_MS = 24 * 60 * 60_000;
  */
 export const PROVIDER_MODEL_DISCOVERY_FAILURE_TTL_MS = 30_000;
 /**
- * Hard ceiling on a single discovery run. Some adapters (Pi, OpenCode CLI) have
+ * Hard ceiling on a single discovery run. Some adapters (OpenCode CLI) have
  * no internal timeout; this keeps every provider under the 60s WebSocket RPC
  * timeout so the client sees a real error instead of a transport timeout.
  */
@@ -40,7 +40,6 @@ export interface ProviderModelDiscoveryCacheKey {
   readonly provider: ProviderListModelsInput["provider"];
   readonly binaryPath: string | null;
   readonly apiEndpoint: string | null;
-  readonly agentDir: string | null;
   readonly cwd: string | null;
 }
 
@@ -79,7 +78,6 @@ export function providerModelDiscoveryCacheKey(
     provider: input.provider,
     binaryPath: input.binaryPath ?? null,
     apiEndpoint: input.apiEndpoint ?? null,
-    agentDir: input.agentDir ?? null,
     cwd: input.cwd ?? null,
   };
 }
@@ -91,11 +89,11 @@ export function providerModelDiscoveryCacheKey(
  */
 export const serializeProviderModelDiscoveryCacheKey = (
   key: ProviderModelDiscoveryCacheKey,
-): string => JSON.stringify([key.provider, key.binaryPath, key.apiEndpoint, key.agentDir, key.cwd]);
+): string => JSON.stringify([key.provider, key.binaryPath, key.apiEndpoint, key.cwd]);
 
 /**
  * Only a non-empty, error-free catalog is worth remembering as "good". Static
- * fallbacks that carry `error` (e.g. `devin.static`) and empty lists are
+ * fallbacks that carry `error` (e.g. a degraded static catalog) and empty lists are
  * replayed briefly as failures so the next real attempt is not delayed by the
  * fresh window.
  */

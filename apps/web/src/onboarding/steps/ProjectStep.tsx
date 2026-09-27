@@ -5,7 +5,7 @@
 //          before continuing.
 // Layer: Web UI component
 
-import type { ProjectId } from "@synara/contracts";
+import type { ProjectId } from "@glade/contracts";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { ProjectImportPanel } from "~/projectImport/ProjectImportPanel";

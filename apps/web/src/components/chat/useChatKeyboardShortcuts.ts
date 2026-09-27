@@ -3,7 +3,7 @@ import {
   type ModelSlug,
   type ProviderKind,
   type ResolvedKeybindingsConfig,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import { useEffect } from "react";
 import { readStarredModelSlugs } from "~/lib/starredModels";

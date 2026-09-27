@@ -13,12 +13,12 @@ import {
   COMPUTER_RELEASE_HOTKEY_BACKENDS,
   type ComputerCapabilities,
   type ComputerPermission,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import {
   COMPUTER_PERMISSION_KINDS,
   computerPermissionSetupMessage,
-  missingComputerAppSnapPermissions,
-} from "@synara/shared/computerGrants";
+  missingComputerPermissions,
+} from "@glade/shared/computerGrants";
 import {
   computerPermissionSetupSupported,
   readLocalComputerPermissionBridge,
@@ -33,7 +33,7 @@ import {
   type AppSettingsBinding,
   type ComputerPreviewSize,
 } from "~/appSettings";
-import type { DesktopAppSnapSettingsPane, DesktopAppSnapState } from "@synara/contracts";
+import type { DesktopComputerSettingsPane, DesktopComputerState } from "@glade/contracts";
 import {
   computerReconnectsNote,
   computerStatusNeedsSetup,
@@ -47,10 +47,10 @@ import { Switch } from "~/components/ui/switch";
 import { useProvisionComputer } from "~/hooks/useProvisionComputer";
 import { useRefreshOnWindowReturn } from "~/hooks/useRefreshOnWindowReturn";
 import {
-  AppSnapPermissionSection,
+  ComputerPermissionSection,
   COMPUTER_PERMISSION_PANES,
-  useAppSnapPermissionGuideBridge,
-} from "./AppSnapPermissionSection";
+  useComputerPermissionGuideBridge,
+} from "./ComputerPermissionSection";
 import {
   COMPUTER_STATUS_VISIBLE_REFETCH_INTERVAL_MS,
   computerStatusQueryOptions,
@@ -176,19 +176,19 @@ export function ComputerSettingsPanel({
   });
 
   const status = statusQuery.data;
-  const [appSnapState, setAppSnapState] = useState<DesktopAppSnapState | null>(null);
-  const [guidePane, setGuidePane] = useState<DesktopAppSnapSettingsPane | null>(null);
+  const [computerPermissionState, setComputerPermissionState] =
+    useState<DesktopComputerState | null>(null);
+  const [guidePane, setGuidePane] = useState<DesktopComputerSettingsPane | null>(null);
   // Advanced is details, not a default: the surface opens calm and stays that
   // way until the user asks for permissions, grants, and abilities.
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  // The native permission surface is the AppSnap helper: the same coach that
-  // AppSnap's own settings drive, asked about the computer-use grant set.
+  // The desktop permission bridge owns fresh native grant checks and coaching.
   const localPermissionBridge = readLocalComputerPermissionBridge();
   const hasNativePermissionSetup =
-    localPermissionBridge !== null && computerPermissionSetupSupported(appSnapState);
+    localPermissionBridge !== null && computerPermissionSetupSupported(computerPermissionState);
   const nativePermissionSetupError =
-    hasNativePermissionSetup && appSnapState?.permissionSetupErrorCode
-      ? appSnapState.message
+    hasNativePermissionSetup && computerPermissionState?.permissionSetupErrorCode
+      ? computerPermissionState.message
       : null;
   // Returning from System Settings must re-pull both the server status and the
   // native grant snapshot — the toggle the user just flipped lives in the
@@ -198,7 +198,7 @@ export function ComputerSettingsPanel({
     if (!bridge) return;
     void bridge
       .getState(COMPUTER_PERMISSION_KINDS)
-      .then((next) => setAppSnapState(next))
+      .then((next) => setComputerPermissionState(next))
       .catch(() => undefined);
   }, []);
   useRefreshOnWindowReturn(() => {
@@ -214,9 +214,9 @@ export function ComputerSettingsPanel({
   // Panel-level on purpose: hooks above the `!active` return stay mounted while
   // the surface is hidden, so a dismissed coach still clears the remembered
   // pane instead of resurrecting the guide on return.
-  useAppSnapPermissionGuideBridge({
+  useComputerPermissionGuideBridge({
     permissionKinds: COMPUTER_PERMISSION_KINDS,
-    onStateChange: setAppSnapState,
+    onStateChange: setComputerPermissionState,
     onGuidePaneChange: setGuidePane,
   });
 
@@ -225,12 +225,12 @@ export function ComputerSettingsPanel({
     if (!bridge || !active) return;
     let disposed = false;
     const unsubscribe = bridge.onState((state) => {
-      if (!disposed) setAppSnapState(state);
+      if (!disposed) setComputerPermissionState(state);
     });
     void bridge
       .getState(COMPUTER_PERMISSION_KINDS)
       .then((next) => {
-        if (!disposed) setAppSnapState(next);
+        if (!disposed) setComputerPermissionState(next);
       })
       .catch(() => undefined);
     return () => {
@@ -244,8 +244,8 @@ export function ComputerSettingsPanel({
    * checklist in Advanced is the per-grant walkthrough.
    */
   const nativeMissingPermissions =
-    hasNativePermissionSetup && appSnapState
-      ? missingComputerAppSnapPermissions(appSnapState)
+    hasNativePermissionSetup && computerPermissionState
+      ? missingComputerPermissions(computerPermissionState)
       : EMPTY_PERMISSIONS;
   const missingPermissions =
     nativeMissingPermissions.length > 0
@@ -257,7 +257,7 @@ export function ComputerSettingsPanel({
   // backend, which has checked nothing since launch, still show as ready.
   const grantsConfirmed =
     hasNativePermissionSetup &&
-    appSnapState !== null &&
+    computerPermissionState !== null &&
     nativePermissionSetupError === null &&
     nativeMissingPermissions.length === 0;
   // Idle status is intentionally side-effect-free. Fresh local grant evidence
@@ -323,7 +323,9 @@ export function ComputerSettingsPanel({
   const captureUnavailable = health?.captureAvailable === false;
   const captureBlocked = captureUnavailable && health?.status === "connected";
   const localPlatformUnsupported =
-    localPermissionBridge !== null && appSnapState !== null && appSnapState.platform !== "macos";
+    localPermissionBridge !== null &&
+    computerPermissionState !== null &&
+    computerPermissionState.platform !== "macos";
   // Shared with the chat's setup card, which asks the same question of the same
   // status after pressing the same server-side Set up.
   const needsSetup =
@@ -356,7 +358,7 @@ export function ComputerSettingsPanel({
     nativePermissionSetupError ??
     (captureBlocked
       ? backend === COMPUTER_MAC_BACKEND
-        ? "The agent can act on the desktop but cannot see it, so screenshots fail. Turn Synara on in System Settings › Privacy & Security › Screen Recording, then press Set up to reconnect."
+        ? "The agent can act on the desktop but cannot see it, so screenshots fail. Turn Glade on in System Settings › Privacy & Security › Screen Recording, then press Set up to reconnect."
         : "The agent can act on the desktop but cannot see it, so screenshots fail. Press Set up to reconnect."
       : availabilityView.description);
   const attentionTone = cn(
@@ -540,7 +542,7 @@ export function ComputerSettingsPanel({
         </SettingsCard>
       </SettingsSectionShell>
 
-      <ComputerGettingStarted appSnapAvailable={hasNativePermissionSetup} />
+      <ComputerGettingStarted />
       <ComputerAuditHistorySection />
 
       {/* Details stay out of the way until asked for: the per-grant checklist
@@ -561,18 +563,18 @@ export function ComputerSettingsPanel({
       >
         <DisclosureRegion open={advancedOpen}>
           <div className="flex flex-col gap-4">
-            {hasNativePermissionSetup && appSnapState ? (
+            {hasNativePermissionSetup && computerPermissionState ? (
               // One permission section serves every surface; only the pane set
               // differs. The coach and settings deep links live in the shared
               // section, so Computer never grows a second guide stack. The
               // Recheck footer is off here: the attention row's Set up is this
               // panel's one check action.
-              <AppSnapPermissionSection
+              <ComputerPermissionSection
                 panes={COMPUTER_PERMISSION_PANES}
                 permissionKinds={COMPUTER_PERMISSION_KINDS}
                 feature="Computer control"
-                state={appSnapState}
-                onStateChange={setAppSnapState}
+                state={computerPermissionState}
+                onStateChange={setComputerPermissionState}
                 guidePane={guidePane}
                 onGuidePaneChange={setGuidePane}
                 showRecheck={false}

@@ -3,8 +3,8 @@ import { constants as NodeFsConstants, type BigIntStats } from "node:fs";
 import * as NodeFs from "node:fs/promises";
 import * as NodePath from "node:path";
 
-import { isLocalAbsolutePath } from "@synara/shared/path";
-import { normalizeLineEndings } from "@synara/shared/text";
+import { isLocalAbsolutePath } from "@glade/shared/path";
+import { normalizeLineEndings } from "@glade/shared/text";
 import { Effect, Layer, Path } from "effect";
 
 import { resolveLocalPreviewGrantRealPath } from "../../localImageFiles";
@@ -328,7 +328,7 @@ export const makeWorkspaceFileSystem = Effect.gen(function* () {
         );
 
         // References often carry only a file's basename or a partial tail (e.g.
-        // `chatReferences.test.ts` for `apps/web/src/lib/chatReferences.test.ts`),
+        // `chatReferences.ts` for `apps/web/src/lib/chatReferences.ts`),
         // which resolves to a non-existent path under the root. Fall back to a
         // unique match in the tracked workspace index so the in-app viewer can
         // still open it; ambiguous names stay unresolved and surface the error.

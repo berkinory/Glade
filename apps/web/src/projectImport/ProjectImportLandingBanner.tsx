@@ -11,7 +11,7 @@ import { cn } from "~/lib/utils";
 import { ProjectImportGlyph } from "./ProjectImportGlyph";
 import { useProjectImportDialogStore } from "./projectImportDialogStore";
 
-const DISMISSED_STORAGE_KEY = "synara:project-import-landing-banner:dismissed:v1";
+const DISMISSED_STORAGE_KEY = "glade:project-import-landing-banner:dismissed:v1";
 
 export function ProjectImportLandingBanner(props: { className?: string }) {
   const [dismissed, setDismissed] = useLocalStorage(DISMISSED_STORAGE_KEY, false, Schema.Boolean);
@@ -30,7 +30,7 @@ export function ProjectImportLandingBanner(props: { className?: string }) {
             Import your Claude Code and Codex projects
           </span>
           <span className="truncate text-ui text-muted-foreground">
-            Bring your chats and continue them in Synara
+            Bring your chats and continue them in Glade
           </span>
         </span>
       </button>

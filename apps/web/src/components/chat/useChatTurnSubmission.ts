@@ -1,5 +1,5 @@
 import { flushWorkspaceEditors } from "~/lib/workspaceEditorSession";
-import { resolveComputerInvocationMode } from "@synara/shared/computerInvocation";
+import { resolveComputerInvocationMode } from "@glade/shared/computerInvocation";
 import {
   prepareComputerPermissionGuide,
   readLocalComputerPermissionBridge,
@@ -350,8 +350,8 @@ export function useChatTurnSubmission({
         queuedChatTurn?.images ??
         useComposerDraftStore.getState().draftsByThreadId[activeThread.id]?.images ??
         composerImages;
-      // AppSnap captures persist as IndexedDB blobs and hydrate into `images`
-      // asynchronously (see AppSnapCoordinator). Right after a reload the user can
+      // Existing image attachments can persist as IndexedDB blobs and hydrate into `images`
+      // asynchronously through the attachment loader. Right after a reload the user can
       // hit send before that hydration finishes; without this, the not-yet-hydrated
       // capture would be silently dropped from the message and then have its blob
       // deleted when the composer clears after send. Live sends only: a queued turn
@@ -556,15 +556,15 @@ export function useChatTurnSubmission({
       }
       if (hasPendingCacheReview()) return false;
       if (dispatchSettings.computerControlMode === "request") {
-        const appSnap = readLocalComputerPermissionBridge();
+        const computerPermission = readLocalComputerPermissionBridge();
         const activeThreadBeforeCheck = activeThreadIdRef.current;
         const draftBeforeCheck = promptRef.current;
         sendPreflightInFlightRef.current = true;
         const ready = await prepareComputerPermissionGuide({
-          ...(appSnap
+          ...(computerPermission
             ? {
-                getPermissionState: appSnap.getState,
-                startPermissionSetup: appSnap.startPermissionSetup,
+                getPermissionState: computerPermission.getState,
+                startPermissionSetup: computerPermission.startPermissionSetup,
               }
             : {}),
           isCurrent: () =>

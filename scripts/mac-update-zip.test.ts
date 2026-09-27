@@ -37,29 +37,29 @@ describe("mac-update-zip", () => {
   });
 
   it("builds Electron framework symlink paths for the top-level app bundle", () => {
-    assert.deepStrictEqual(buildMacUpdateZipSymlinkEntries("Synara.app"), [
-      "Synara.app/Contents/Frameworks/Electron Framework.framework/Electron Framework",
-      "Synara.app/Contents/Frameworks/Electron Framework.framework/Helpers",
-      "Synara.app/Contents/Frameworks/Electron Framework.framework/Libraries",
-      "Synara.app/Contents/Frameworks/Electron Framework.framework/Resources",
-      "Synara.app/Contents/Frameworks/Electron Framework.framework/Versions/Current",
+    assert.deepStrictEqual(buildMacUpdateZipSymlinkEntries("Glade.app"), [
+      "Glade.app/Contents/Frameworks/Electron Framework.framework/Electron Framework",
+      "Glade.app/Contents/Frameworks/Electron Framework.framework/Helpers",
+      "Glade.app/Contents/Frameworks/Electron Framework.framework/Libraries",
+      "Glade.app/Contents/Frameworks/Electron Framework.framework/Resources",
+      "Glade.app/Contents/Frameworks/Electron Framework.framework/Versions/Current",
     ]);
   });
 
   it("resolves exactly one top-level .app from update zip entries", () => {
     assert.equal(
       resolveSingleTopLevelMacAppBundle([
-        "__MACOSX/Synara.app/Contents/Info.plist",
-        "Synara.app/Contents/Info.plist",
-        "Synara.app/Contents/MacOS/Synara",
+        "__MACOSX/Glade.app/Contents/Info.plist",
+        "Glade.app/Contents/Info.plist",
+        "Glade.app/Contents/MacOS/Glade",
       ]),
-      "Synara.app",
+      "Glade.app",
     );
 
     assert.throws(
       () =>
         resolveSingleTopLevelMacAppBundle([
-          "Synara.app/Contents/Info.plist",
+          "Glade.app/Contents/Info.plist",
           "Other.app/Contents/Info.plist",
         ]),
       /Expected one top-level \.app bundle/,
@@ -69,15 +69,15 @@ describe("mac-update-zip", () => {
   it("resolves exactly one macOS update zip artifact", () => {
     assert.equal(
       resolveSingleMacUpdateZipFileName([
-        "Synara-0.1.5-arm64.dmg",
-        "Synara-0.1.5-arm64.zip",
+        "Glade-0.1.5-arm64.dmg",
+        "Glade-0.1.5-arm64.zip",
         "latest-mac.yml",
       ]),
-      "Synara-0.1.5-arm64.zip",
+      "Glade-0.1.5-arm64.zip",
     );
 
     assert.throws(
-      () => resolveSingleMacUpdateZipFileName(["Synara-0.1.5-arm64.zip", "Synara-0.1.5-x64.zip"]),
+      () => resolveSingleMacUpdateZipFileName(["Glade-0.1.5-arm64.zip", "Glade-0.1.5-x64.zip"]),
       /Expected one macOS update zip artifact/,
     );
   });
@@ -85,21 +85,21 @@ describe("mac-update-zip", () => {
   it("requires at least one macOS update manifest", () => {
     assert.deepStrictEqual(
       resolveMacUpdateManifestFileNames([
-        "Synara-0.1.5-arm64.dmg",
-        "Synara-0.1.5-arm64.zip",
+        "Glade-0.1.5-arm64.dmg",
+        "Glade-0.1.5-arm64.zip",
         "latest-mac.yml",
       ]),
       ["latest-mac.yml"],
     );
 
     assert.throws(
-      () => resolveMacUpdateManifestFileNames(["Synara-0.1.5-arm64.dmg"]),
+      () => resolveMacUpdateManifestFileNames(["Glade-0.1.5-arm64.dmg"]),
       /Expected at least one macOS update manifest/,
     );
   });
 
   it("allows a missing manifest only for an explicitly scripted-update artifact", () => {
-    const artifacts = ["Synara-Cua-0.8.4-arm64.zip"];
+    const artifacts = ["Glade-Cua-0.8.4-arm64.zip"];
     assert.deepStrictEqual(resolveMacUpdateManifestFileNames(artifacts, { required: false }), []);
     assert.throws(() => resolveMacUpdateManifestFileNames(artifacts, { required: true }));
     assert.throws(() => resolveMacUpdateManifestFileNames(artifacts));
@@ -107,7 +107,7 @@ describe("mac-update-zip", () => {
 
   it("still returns present manifests for validation when a feed is optional", () => {
     assert.deepStrictEqual(
-      resolveMacUpdateManifestFileNames(["Synara-Cua-0.8.4-arm64.zip", "latest-mac.yml"], {
+      resolveMacUpdateManifestFileNames(["Glade-Cua-0.8.4-arm64.zip", "latest-mac.yml"], {
         required: false,
       }),
       ["latest-mac.yml"],
@@ -117,18 +117,18 @@ describe("mac-update-zip", () => {
   it("updates the macOS zip file entry and matching top-level sha", () => {
     const manifest = `version: 0.1.4
 files:
-  - url: Synara-0.1.4-arm64.zip
+  - url: Glade-0.1.4-arm64.zip
     sha512: oldzip
     size: 100
-  - url: Synara-0.1.4-arm64.dmg
+  - url: Glade-0.1.4-arm64.dmg
     sha512: olddmg
     size: 200
-path: 'Synara-0.1.4-arm64.zip'
+path: 'Glade-0.1.4-arm64.zip'
 sha512: oldzip
 releaseDate: '2026-06-07T12:00:00.000Z'
 `;
 
-    const updated = updateMacUpdateManifestZipEntry(manifest, "Synara-0.1.4-arm64.zip", {
+    const updated = updateMacUpdateManifestZipEntry(manifest, "Glade-0.1.4-arm64.zip", {
       sha512: "newzip",
       size: 12345,
     });
@@ -137,13 +137,13 @@ releaseDate: '2026-06-07T12:00:00.000Z'
       updated,
       `version: 0.1.4
 files:
-  - url: Synara-0.1.4-arm64.zip
+  - url: Glade-0.1.4-arm64.zip
     sha512: newzip
     size: 12345
-  - url: Synara-0.1.4-arm64.dmg
+  - url: Glade-0.1.4-arm64.dmg
     sha512: olddmg
     size: 200
-path: 'Synara-0.1.4-arm64.zip'
+path: 'Glade-0.1.4-arm64.zip'
 sha512: newzip
 releaseDate: '2026-06-07T12:00:00.000Z'
 `,
@@ -153,20 +153,20 @@ releaseDate: '2026-06-07T12:00:00.000Z'
   it("drops the stale blockMapSize from the repacked zip entry but keeps the dmg blockMapSize", () => {
     const manifest = `version: 0.1.4
 files:
-  - url: Synara-0.1.4-arm64.zip
+  - url: Glade-0.1.4-arm64.zip
     sha512: oldzip
     size: 100
     blockMapSize: 50
-  - url: Synara-0.1.4-arm64.dmg
+  - url: Glade-0.1.4-arm64.dmg
     sha512: olddmg
     size: 200
     blockMapSize: 75
-path: 'Synara-0.1.4-arm64.zip'
+path: 'Glade-0.1.4-arm64.zip'
 sha512: oldzip
 releaseDate: '2026-06-07T12:00:00.000Z'
 `;
 
-    const updated = updateMacUpdateManifestZipEntry(manifest, "Synara-0.1.4-arm64.zip", {
+    const updated = updateMacUpdateManifestZipEntry(manifest, "Glade-0.1.4-arm64.zip", {
       sha512: "newzip",
       size: 12345,
     });
@@ -175,14 +175,14 @@ releaseDate: '2026-06-07T12:00:00.000Z'
       updated,
       `version: 0.1.4
 files:
-  - url: Synara-0.1.4-arm64.zip
+  - url: Glade-0.1.4-arm64.zip
     sha512: newzip
     size: 12345
-  - url: Synara-0.1.4-arm64.dmg
+  - url: Glade-0.1.4-arm64.dmg
     sha512: olddmg
     size: 200
     blockMapSize: 75
-path: 'Synara-0.1.4-arm64.zip'
+path: 'Glade-0.1.4-arm64.zip'
 sha512: newzip
 releaseDate: '2026-06-07T12:00:00.000Z'
 `,
@@ -195,35 +195,35 @@ releaseDate: '2026-06-07T12:00:00.000Z'
         updateMacUpdateManifestZipEntry(
           `version: 0.1.4
 files:
-  - url: Synara-0.1.4-arm64.dmg
+  - url: Glade-0.1.4-arm64.dmg
     sha512: olddmg
     size: 200
 releaseDate: '2026-06-07T12:00:00.000Z'
 `,
-          "Synara-0.1.4-arm64.zip",
+          "Glade-0.1.4-arm64.zip",
           {
             sha512: "newzip",
             size: 12345,
           },
         ),
-      /Could not update Synara-0.1.4-arm64.zip entry/,
+      /Could not update Glade-0.1.4-arm64.zip entry/,
     );
   });
 
   it("validates manifest metadata after zip repack", () => {
     const manifest = `version: 0.1.5
 files:
-  - url: Synara-0.1.5-arm64.zip
+  - url: Glade-0.1.5-arm64.zip
     sha512: newzip
     size: 12345
-path: Synara-0.1.5-arm64.zip
+path: Glade-0.1.5-arm64.zip
 sha512: newzip
 releaseDate: '2026-06-07T12:00:00.000Z'
 `;
     const metadata = { sha512: "newzip", size: 12345 };
 
     assert.deepStrictEqual(
-      validateMacUpdateManifestZipMetadata(manifest, "Synara-0.1.5-arm64.zip", metadata),
+      validateMacUpdateManifestZipMetadata(manifest, "Glade-0.1.5-arm64.zip", metadata),
       {
         manifestHasZipPath: true,
         manifestHasZipSha: true,
@@ -231,7 +231,7 @@ releaseDate: '2026-06-07T12:00:00.000Z'
       },
     );
     assert.deepStrictEqual(
-      assertMacUpdateManifestZipMetadata(manifest, "Synara-0.1.5-arm64.zip", metadata),
+      assertMacUpdateManifestZipMetadata(manifest, "Glade-0.1.5-arm64.zip", metadata),
       {
         manifestHasZipPath: true,
         manifestHasZipSha: true,

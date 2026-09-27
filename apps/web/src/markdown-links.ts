@@ -3,7 +3,7 @@ import {
   isWorkspaceRelativePathSafe,
   localPathsEqual,
   workspaceRelativePathOf,
-} from "@synara/shared/path";
+} from "@glade/shared/path";
 
 import { resolvePathLinkTarget } from "./terminal-links";
 

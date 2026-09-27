@@ -6,8 +6,8 @@ import {
   type ProviderRuntimeEvent,
   ThreadId,
   TurnId,
-} from "@synara/contracts";
-import { nonEmptyTrimmed } from "@synara/shared/text";
+} from "@glade/contracts";
+import { nonEmptyTrimmed } from "@glade/shared/text";
 
 import {
   isSensitiveKey,
@@ -23,7 +23,7 @@ const MAX_ACTIVITY_DATA_JSON_CHARS = 16_000;
 const MAX_ACTIVITY_DATA_STRING_CHARS = 2_000;
 const MAX_ACTIVITY_DATA_ARRAY_ITEMS = 24;
 const MAX_ACTIVITY_DATA_OBJECT_KEYS = 64;
-const ACTIVITY_DATA_TRUNCATION_MARKER = "__synaraTruncated";
+const ACTIVITY_DATA_TRUNCATION_MARKER = "__gladeTruncated";
 
 type ActivityPayload = OrchestrationThreadActivity["payload"];
 
@@ -656,12 +656,12 @@ export function projectProviderRuntimeActivities(
     typeof sessionSequence === "number" && Number.isInteger(sessionSequence) && sessionSequence >= 0
       ? { sequence: sessionSequence }
       : {};
-  // Codex and Antigravity only render completed reasoning items with a readable summary.
+  // Codex only renders completed reasoning items with a readable summary.
   // Empty starts/completions are private/encrypted reasoning boundaries, not
   // transcript rows. Waiting for the authoritative completion also avoids
   // per-token activity writes and transcript height churn.
   if (
-    (event.provider === "codex" || event.provider === "antigravity") &&
+    event.provider === "codex" &&
     event.type === "item.completed" &&
     event.payload.itemType === "reasoning" &&
     event.itemId !== undefined &&
@@ -799,10 +799,6 @@ export function projectProviderRuntimeActivities(
       // line ("Moved to background: <work>"), not as a runtime warning.
       const detailSubtype = asString(asObject(event.payload.detail)?.subtype);
       const isBackgroundMove = detailSubtype === "background_tasks_changed";
-      const isPiInfoNotification =
-        event.provider === "pi" &&
-        raw?.method === "extension/ui/notify" &&
-        asObject(event.payload.detail)?.type === "info";
       const message = truncateDetail(event.payload.message);
       return [
         {
@@ -810,14 +806,12 @@ export function projectProviderRuntimeActivities(
           createdAt: event.createdAt,
           tone: "info",
           kind: "runtime.warning",
-          summary: isPiInfoNotification
-            ? "Pi extension"
-            : isBackgroundMove
-              ? "Moved to background"
-              : event.provider === "opencode" &&
-                  (nativeType === "session.next.retried" || nativeType === "session.status")
-                ? "OpenCode retrying"
-                : "Runtime warning",
+          summary: isBackgroundMove
+            ? "Moved to background"
+            : event.provider === "opencode" &&
+                (nativeType === "session.next.retried" || nativeType === "session.status")
+              ? "OpenCode retrying"
+              : "Runtime warning",
           // Keep the user-visible message even when raw detail is structured.
           payload: toActivityPayload({
             message,

@@ -7,7 +7,7 @@ import {
   BrowserVaultSettings,
   type BrowserVaultSavePrompt,
   type BrowserVaultSnapshot,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import {
   createLocalCredentialVault,
   type CredentialVault,

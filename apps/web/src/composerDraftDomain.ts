@@ -17,13 +17,12 @@ import {
   type ProviderStartOptions,
   type RuntimeMode,
   type ThreadId,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import * as Equal from "effect/Equal";
 import * as Schema from "effect/Schema";
 
 import { normalizeAssistantSelectionAttachment } from "./lib/assistantSelections";
 import { type BrowserAnnotationDraft, normalizeBrowserAnnotations } from "./lib/browserAnnotations";
-import type { ComposerImageSource } from "./lib/composerImageSource";
 import {
   type PastedTextDraft,
   countPastedTextLines,
@@ -49,30 +48,10 @@ import {
   type ThreadPrimarySurface,
 } from "./types";
 
-export const COMPOSER_DRAFT_STORAGE_KEY = "synara:composer-drafts:v1";
+export const COMPOSER_DRAFT_STORAGE_KEY = "glade:composer-drafts:v1";
 export const COMPOSER_DRAFT_STORAGE_VERSION = 6;
 export type DraftThreadEnvMode = "local" | "worktree";
 const TERMINAL_DRAFT_THREAD_MAPPING_SUFFIX = "::terminal";
-
-const PersistedComposerAppSnapSource = Schema.Struct({
-  kind: Schema.Literal("appsnap"),
-  captureId: Schema.String,
-  capturedAt: Schema.String,
-  appName: Schema.NullOr(Schema.String),
-  bundleIdentifier: Schema.optionalKey(Schema.NullOr(Schema.String)),
-  appIconDataUrl: Schema.optionalKey(Schema.NullOr(Schema.String)),
-  windowTitle: Schema.NullOr(Schema.String),
-});
-
-const LegacyPersistedComposerAppSnapSource = Schema.Struct({
-  kind: Schema.Literal("appshot"),
-  captureId: Schema.String,
-  capturedAt: Schema.String,
-  appName: Schema.NullOr(Schema.String),
-  bundleIdentifier: Schema.optionalKey(Schema.NullOr(Schema.String)),
-  appIconDataUrl: Schema.optionalKey(Schema.NullOr(Schema.String)),
-  windowTitle: Schema.NullOr(Schema.String),
-});
 
 export const PersistedComposerImageAttachment = Schema.Struct({
   id: Schema.String,
@@ -81,9 +60,6 @@ export const PersistedComposerImageAttachment = Schema.Struct({
   sizeBytes: Schema.Number,
   dataUrl: Schema.optionalKey(Schema.String),
   blobKey: Schema.optionalKey(Schema.String),
-  source: Schema.optionalKey(
-    Schema.Union([PersistedComposerAppSnapSource, LegacyPersistedComposerAppSnapSource]),
-  ),
 });
 
 export type PersistedComposerImageAttachment = typeof PersistedComposerImageAttachment.Type;
@@ -93,7 +69,6 @@ export type ComposerAttachmentPersistenceResult = "persisted" | "rejected" | "un
 export interface ComposerImageAttachment extends Omit<ChatImageAttachment, "previewUrl"> {
   previewUrl: string;
   file: File;
-  source?: ComposerImageSource | undefined;
 }
 
 export interface ComposerFileAttachment extends ChatFileAttachment {
@@ -362,7 +337,6 @@ export interface ComposerDraftStoreState {
   addImage: (threadId: ThreadId, image: ComposerImageAttachment) => boolean;
   addImages: (threadId: ThreadId, images: ComposerImageAttachment[]) => number;
   removeImage: (threadId: ThreadId, imageId: string) => void;
-  removeAppSnapCapture: (captureId: string) => void;
   addFiles: (threadId: ThreadId, files: ComposerFileAttachment[]) => number;
   removeFile: (threadId: ThreadId, fileId: string) => void;
   addAssistantSelection: (

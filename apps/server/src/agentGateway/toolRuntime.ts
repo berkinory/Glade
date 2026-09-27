@@ -1,4 +1,4 @@
-import type { ProviderKind } from "@synara/contracts";
+import type { ProviderKind } from "@glade/contracts";
 import type { Effect } from "effect";
 
 import type { AgentGatewayTargetError } from "./targetResolver.ts";
@@ -32,13 +32,7 @@ export interface ProviderSessionPrincipal {
   readonly turnId: string | null;
 }
 
-export interface ExternalClientPrincipal {
-  readonly kind: "external-client";
-  readonly integrationId: string;
-  readonly name: string;
-}
-
-export type AgentGatewayPrincipal = ProviderSessionPrincipal | ExternalClientPrincipal;
+export type AgentGatewayPrincipal = ProviderSessionPrincipal;
 
 export interface ToolContext {
   readonly principal: ProviderSessionPrincipal;
@@ -89,7 +83,7 @@ export interface McpToolEntry<Context, Capability extends string> {
 /**
  * Narrow a tool catalog to what one caller may actually invoke.
  *
- * Both MCP surfaces build their catalog once and gate per call, so without
+ * The gateway builds its catalog once and gates per call, so without
  * this a `tools/list` advertises tools whose every invocation is denied — the
  * caller pays prompt tokens for them and learns they are unusable only by
  * failing. Capabilities are fixed when a credential is issued (granting or

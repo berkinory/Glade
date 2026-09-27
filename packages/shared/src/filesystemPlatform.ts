@@ -33,7 +33,7 @@ export async function syncDirectoryEntry(
 }
 
 /**
- * Flushes a regular file created by Synara. Windows FlushFileBuffers requires
+ * Flushes a regular file created by Glade. Windows FlushFileBuffers requires
  * write access; POSIX additionally retains no-follow protection.
  */
 export async function syncRegularFile(

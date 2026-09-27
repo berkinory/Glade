@@ -8,9 +8,9 @@ import type {
   OrchestrationShellSnapshot,
   RuntimeMode,
   ThreadId,
-} from "@synara/contracts";
-import { buildPromptThreadTitleFallback } from "@synara/shared/chatThreads";
-import { autoRuntimeModeSelectionIssue } from "@synara/shared/runtimeMode";
+} from "@glade/contracts";
+import { buildPromptThreadTitleFallback } from "@glade/shared/chatThreads";
+import { autoRuntimeModeSelectionIssue } from "@glade/shared/runtimeMode";
 
 import { newCommandId, newMessageId, newThreadId } from "./utils";
 import { buildThreadHandoffImportedMessages } from "./threadHandoff";

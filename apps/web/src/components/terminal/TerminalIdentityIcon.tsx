@@ -3,12 +3,12 @@
 // Layer: Terminal presentation primitive
 // Depends on: shared terminal icon keys plus local provider/icon components.
 
-import type { TerminalIconKey } from "@synara/shared/terminalThreads";
+import type { TerminalIconKey } from "@glade/shared/terminalThreads";
 
 import { TerminalSquare } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 
-import { AntigravityIcon, ClaudeAI, OpenAI } from "../Icons";
+import { ClaudeAI, OpenAI } from "../Icons";
 
 interface TerminalIdentityIconProps {
   iconKey: TerminalIconKey;
@@ -18,13 +18,7 @@ interface TerminalIdentityIconProps {
 // Keep provider branding reusable across every terminal surface.
 export default function TerminalIdentityIcon({ iconKey, className }: TerminalIdentityIconProps) {
   const IconComponent =
-    iconKey === "openai"
-      ? OpenAI
-      : iconKey === "claude"
-        ? ClaudeAI
-        : iconKey === "antigravity"
-          ? AntigravityIcon
-          : TerminalSquare;
+    iconKey === "openai" ? OpenAI : iconKey === "claude" ? ClaudeAI : TerminalSquare;
 
   return (
     <span className={cn("inline-flex shrink-0 items-center justify-center", className)}>

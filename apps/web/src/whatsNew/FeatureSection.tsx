@@ -33,6 +33,17 @@ export function FeatureSection({ feature, className }: FeatureSectionProps) {
       <div className="flex flex-col gap-1">
         <h3 className="font-heading text-base font-semibold leading-snug text-foreground">
           {feature.title}
+          {feature.commit && (
+            <a
+              href={`https://github.com/berkinory/Glade/commit/${feature.commit}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-2 text-ui-sm font-normal text-muted-foreground underline"
+              aria-label={`View commit ${feature.commit.slice(0, 7)}`}
+            >
+              {feature.commit.slice(0, 7)}
+            </a>
+          )}
         </h3>
         <p className="text-ui leading-relaxed text-muted-foreground">{feature.description}</p>
       </div>

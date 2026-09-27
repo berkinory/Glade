@@ -5,7 +5,7 @@ import type {
   DesktopAgentCursorStyle,
   DesktopBridge,
   DesktopComputerPreviewFrame,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import { normalizeDesktopWsUrl, resolveDesktopWsUrlFromEnv } from "./desktopWsBridge";
 import { DESKTOP_IPC_CHANNELS } from "./ipcChannels";
 import {
@@ -114,11 +114,6 @@ contextBridge.exposeInMainWorld("desktopBridge", {
   setAppIcon: (icon) => ipcRenderer.invoke(IPC.setAppIcon, icon),
   showContextMenu: (items, position) => ipcRenderer.invoke(IPC.contextMenu, items, position),
   openExternal: (url: string) => ipcRenderer.invoke(IPC.openExternal, url),
-  safariAccess: {
-    getInfo: () => ipcRenderer.invoke(IPC.safariAccess.getInfo),
-    openSettings: () => ipcRenderer.invoke(IPC.safariAccess.openSettings),
-    revealApp: () => ipcRenderer.invoke(IPC.safariAccess.revealApp),
-  },
   showInFolder: (path: string) => ipcRenderer.invoke(IPC.showInFolder, path),
   shell: {
     showInFolder: (path: string) => ipcRenderer.invoke(IPC.showInFolder, path),
@@ -209,13 +204,6 @@ contextBridge.exposeInMainWorld("desktopBridge", {
       ipcRenderer.removeListener(IPC.zoomFactorChanged, wrappedListener);
     };
   },
-  beta: {
-    getState: () => ipcRenderer.invoke(IPC.beta.getState),
-    install: () => ipcRenderer.invoke(IPC.beta.install),
-    launch: () => ipcRenderer.invoke(IPC.beta.launch),
-    importAndLaunch: () => ipcRenderer.invoke(IPC.beta.importAndLaunch),
-    leave: (input: { readonly moveToTrash: boolean }) => ipcRenderer.invoke(IPC.beta.leave, input),
-  },
   getUpdateState: () => ipcRenderer.invoke(IPC.updateGetState),
   checkForUpdates: () => ipcRenderer.invoke(IPC.updateCheck),
   downloadUpdate: () => ipcRenderer.invoke(IPC.updateDownload),
@@ -235,57 +223,34 @@ contextBridge.exposeInMainWorld("desktopBridge", {
     isSupported: () => ipcRenderer.invoke(IPC.notificationsIsSupported),
     show: (input) => ipcRenderer.invoke(IPC.notificationsShow, input),
   },
-  appSnap: {
-    captureCurrentApp: (requestId) => ipcRenderer.invoke(IPC.appSnap.captureCurrentApp, requestId),
-    cancelCapture: (requestId) => ipcRenderer.invoke(IPC.appSnap.cancelCapture, requestId),
-    getState: (permissions) => ipcRenderer.invoke(IPC.appSnap.getState, permissions),
-    setEnabled: (enabled) => ipcRenderer.invoke(IPC.appSnap.setEnabled, enabled),
-    checkShortcut: (shortcut) => ipcRenderer.invoke(IPC.appSnap.checkShortcut, shortcut),
-    setShortcut: (shortcut) => ipcRenderer.invoke(IPC.appSnap.setShortcut, shortcut),
+  computerPermissions: {
+    getState: (permissions) => ipcRenderer.invoke(IPC.computerPermissions.getState, permissions),
     requestPermissions: (permissions) =>
-      ipcRenderer.invoke(IPC.appSnap.requestPermissions, permissions),
+      ipcRenderer.invoke(IPC.computerPermissions.requestPermissions, permissions),
     startPermissionSetup: (permissions) =>
-      ipcRenderer.invoke(IPC.appSnap.startPermissionSetup, permissions),
-    listPendingCaptures: () => ipcRenderer.invoke(IPC.appSnap.listPendingCaptures),
-    acknowledgeCapture: (captureId) =>
-      ipcRenderer.invoke(IPC.appSnap.acknowledgeCapture, captureId),
-    listWindows: () => ipcRenderer.invoke(IPC.appSnap.listWindows),
-    captureWindow: (input) => ipcRenderer.invoke(IPC.appSnap.captureWindow, input),
-    openPermissionSettings: (pane) => ipcRenderer.invoke(IPC.appSnap.openPermissionSettings, pane),
-    restartApp: () => ipcRenderer.invoke(IPC.appSnap.restartApp),
-    showPermissionGuide: (pane) => ipcRenderer.invoke(IPC.appSnap.showPermissionGuide, pane),
-    hidePermissionGuide: () => ipcRenderer.invoke(IPC.appSnap.hidePermissionGuide),
+      ipcRenderer.invoke(IPC.computerPermissions.startPermissionSetup, permissions),
+    openPermissionSettings: (pane) =>
+      ipcRenderer.invoke(IPC.computerPermissions.openPermissionSettings, pane),
+    restartApp: () => ipcRenderer.invoke(IPC.computerPermissions.restartApp),
+    showPermissionGuide: (pane) =>
+      ipcRenderer.invoke(IPC.computerPermissions.showPermissionGuide, pane),
+    hidePermissionGuide: () => ipcRenderer.invoke(IPC.computerPermissions.hidePermissionGuide),
     onPermissionGuideState: (listener) => {
       const wrappedListener = (_event: Electron.IpcRendererEvent, state: unknown) => {
         if (typeof state !== "string") return;
         listener(state as Parameters<typeof listener>[0]);
       };
-      ipcRenderer.on(IPC.appSnap.permissionGuideState, wrappedListener);
-      return () => ipcRenderer.removeListener(IPC.appSnap.permissionGuideState, wrappedListener);
-    },
-    onCaptured: (listener) => {
-      const wrappedListener = (_event: Electron.IpcRendererEvent, capture: unknown) => {
-        if (typeof capture !== "object" || capture === null) return;
-        listener(capture as Parameters<typeof listener>[0]);
-      };
-      ipcRenderer.on(IPC.appSnap.captured, wrappedListener);
-      return () => ipcRenderer.removeListener(IPC.appSnap.captured, wrappedListener);
-    },
-    onError: (listener) => {
-      const wrappedListener = (_event: Electron.IpcRendererEvent, error: unknown) => {
-        if (typeof error !== "object" || error === null) return;
-        listener(error as Parameters<typeof listener>[0]);
-      };
-      ipcRenderer.on(IPC.appSnap.error, wrappedListener);
-      return () => ipcRenderer.removeListener(IPC.appSnap.error, wrappedListener);
+      ipcRenderer.on(IPC.computerPermissions.permissionGuideState, wrappedListener);
+      return () =>
+        ipcRenderer.removeListener(IPC.computerPermissions.permissionGuideState, wrappedListener);
     },
     onState: (listener) => {
       const wrappedListener = (_event: Electron.IpcRendererEvent, state: unknown) => {
         if (typeof state !== "object" || state === null) return;
         listener(state as Parameters<typeof listener>[0]);
       };
-      ipcRenderer.on(IPC.appSnap.state, wrappedListener);
-      return () => ipcRenderer.removeListener(IPC.appSnap.state, wrappedListener);
+      ipcRenderer.on(IPC.computerPermissions.state, wrappedListener);
+      return () => ipcRenderer.removeListener(IPC.computerPermissions.state, wrappedListener);
     },
   },
   storageMigration: {
@@ -305,9 +270,6 @@ contextBridge.exposeInMainWorld("desktopBridge", {
       unlock: (password) => ipcRenderer.invoke(IPC.browser.vault.unlock, password),
       lock: () => ipcRenderer.invoke(IPC.browser.vault.lock),
       reveal: (input) => ipcRenderer.invoke(IPC.browser.vault.reveal, input),
-      cookieSources: () => ipcRenderer.invoke(IPC.browser.vault.cookieSources),
-      cookieProfiles: (browser) => ipcRenderer.invoke(IPC.browser.vault.cookieProfiles, browser),
-      importCookies: (input) => ipcRenderer.invoke(IPC.browser.vault.importCookies, input),
       onChanged: (listener) => {
         const wrapped = () => listener();
         ipcRenderer.on(IPC.browser.vault.changed, wrapped);

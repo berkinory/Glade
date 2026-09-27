@@ -3,10 +3,10 @@ import type {
   RuntimeContentStreamKind,
   ThreadTokenUsageSnapshot,
   ToolLifecycleItemType,
-} from "@synara/contracts";
-import { summarizeToolRawOutput } from "@synara/shared/toolOutputSummary";
+} from "@glade/contracts";
+import { summarizeToolRawOutput } from "@glade/shared/toolOutputSummary";
 
-import { canonicalSynaraComputerToolName } from "../../agentGateway/computerToolPermission.ts";
+import { canonicalGladeComputerToolName } from "../../agentGateway/computerToolPermission.ts";
 import { computeUsagePercent, nonNegativeInteger, positiveInteger } from "../tokenUsage.ts";
 import { ACP_SUBAGENT_TOOL_KIND, canonicalItemTypeFromAcpToolKind } from "./AcpAdapterSupport.ts";
 
@@ -201,7 +201,7 @@ function normalizeToolCallStatus(
   }
 }
 
-// Converts ACP's unstable usage updates into Synara's context-window snapshot shape.
+// Converts ACP's unstable usage updates into Glade's context-window snapshot shape.
 function tokenUsageSnapshotFromAcpUsageUpdate(input: {
   readonly size: unknown;
   readonly used: unknown;
@@ -473,7 +473,7 @@ function makeToolCallState(
   // Native name fields identify the tool; provider titles are presentation only.
   // Keep arguments intact in rawInput, never promote their values into a title.
   const computerToolName = isRecord(input.rawInput)
-    ? canonicalSynaraComputerToolName(
+    ? canonicalGladeComputerToolName(
         input.rawInput._toolName ?? input.rawInput.toolName ?? input.rawInput.tool_name,
       )
     : undefined;

@@ -2,7 +2,7 @@ import { type LegendListRef } from "@legendapp/list/react";
 import {
   parseComputerInvocation,
   resolveComputerInvocationMode,
-} from "@synara/shared/computerInvocation";
+} from "@glade/shared/computerInvocation";
 import {
   MessageId,
   OrchestrationThreadActivity,
@@ -16,23 +16,24 @@ import {
   type PinnedMessage,
   type PendingClaudeCacheReview,
   type ProjectScript,
-  type ProviderKind,
+  ProviderKind,
   type ResolvedKeybindingsConfig,
   type ServerProviderStatus,
   type ThreadGoalAchievement,
   type TurnId,
-} from "@synara/contracts";
-import { resolveLatestTailUserMessageEditTarget } from "@synara/shared/conversationEdit";
-import { getModelCapabilities } from "@synara/shared/model";
+} from "@glade/contracts";
+import { resolveLatestTailUserMessageEditTarget } from "@glade/shared/conversationEdit";
+import { getModelCapabilities } from "@glade/shared/model";
 import {
   resolveThreadWorkspaceCwd as resolveSharedThreadWorkspaceCwd,
   resolveThreadBranchSourceCwd,
   resolveThreadWorkspaceState,
-} from "@synara/shared/threadEnvironment";
-import { threadExportBlockedReason } from "@synara/shared/threadExport";
-import { pendingRequestInstanceKey } from "@synara/shared/threadSummary";
-import { deriveAssociatedWorktreeMetadata } from "@synara/shared/threadWorkspace";
+} from "@glade/shared/threadEnvironment";
+import { threadExportBlockedReason } from "@glade/shared/threadExport";
+import { pendingRequestInstanceKey } from "@glade/shared/threadSummary";
+import { deriveAssociatedWorktreeMetadata } from "@glade/shared/threadWorkspace";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Schema } from "effect";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Suspense,
@@ -248,7 +249,7 @@ import PlanSidebar from "./PlanSidebar";
 import { PullRequestThreadDialog } from "./PullRequestThreadDialog";
 import { RenameThreadDialog } from "./RenameThreadDialog";
 import { SidebarHeaderNavigationControls } from "./SidebarHeaderNavigationControls";
-import { SynaraLogo } from "./SynaraLogo";
+import { GladeLogo } from "./GladeLogo";
 import { ProjectImportLandingBanner } from "~/projectImport/ProjectImportLandingBanner";
 import TerminalWorkspaceTabs from "./TerminalWorkspaceTabs";
 import { ThreadWorktreeHandoffDialog } from "./ThreadWorktreeHandoffDialog";
@@ -518,7 +519,7 @@ interface ChatViewProps {
 
 // Builds an ephemeral transcript bubble for the conversational automation-setup
 // exchange. These never reach a provider and are not persisted; they render the
-// back-and-forth (user request, Synara's clarifying questions) inline like Codex.
+// back-and-forth (user request, Glade's clarifying questions) inline like Codex.
 
 export default function ChatView({
   threadId,
@@ -1267,7 +1268,6 @@ export default function ChatView({
     serverConfigQuery,
     selectedProvider,
     providerModelDiscoveryCwd,
-    customModelsByProvider,
     modelOptionsByProvider,
     loadingModelProviders,
     discoveryErrorsByProvider,
@@ -1925,8 +1925,6 @@ export default function ChatView({
     providerModelDiscoveryCwd,
     providerOptionsForDispatch,
     gitCwd,
-    piAgentDir: settings.piAgentDir,
-    ompAgentDir: settings.ompAgentDir,
     discoverNativeCompaction:
       selectedProvider === "claudeAgent" &&
       (isContextWindowMeterOpen || activeThread?.claudeCacheReview != null),
@@ -2194,7 +2192,11 @@ export default function ChatView({
     () => (activeThread ? resolveThreadHandoffBadgeLabel(activeThread) : null),
     [activeThread],
   );
-  const handoffBadgeSourceProvider = activeThread?.handoff?.sourceProvider ?? null;
+  const handoffSourceProvider = activeThread?.handoff?.sourceProvider;
+  const handoffBadgeSourceProvider =
+    handoffSourceProvider && Schema.is(ProviderKind)(handoffSourceProvider)
+      ? handoffSourceProvider
+      : null;
   const handoffBadgeTargetProvider = activeThread?.handoff
     ? activeThread.modelSelection.provider
     : null;
@@ -2486,7 +2488,7 @@ export default function ChatView({
     // Secondary chrome is deferred during thread switches; replay focus once it
     // mounts. A disabled editor (dispatch connecting, pending approval) cannot
     // take focus either. Never ask the renderer to focus while another app owns
-    // the desktop; on macOS that can activate Synara and switch Spaces.
+    // the desktop; on macOS that can activate Glade and switch Spaces.
     const editor = composerEditorRef.current;
     if (
       !editor ||
@@ -2819,7 +2821,7 @@ export default function ChatView({
     onTerminalMetadataChange: (
       terminalId: string,
       metadata: {
-        cliKind: "codex" | "claude" | "antigravity" | null;
+        cliKind: "codex" | "claude" | null;
         label: string;
       },
     ) => {
@@ -3470,7 +3472,7 @@ export default function ChatView({
       const resolvedModel = resolveCommittedProviderModel({
         selectedModel: model,
         availableOptions: modelOptionsByProvider[provider],
-        fallback: () => resolveAppModelSelection(provider, customModelsByProvider, model),
+        fallback: () => resolveAppModelSelection(provider, model),
       });
       const runtimeModel = resolveRuntimeModelDescriptor({
         provider,
@@ -3514,7 +3516,6 @@ export default function ChatView({
     },
     [
       activeThread,
-      customModelsByProvider,
       lockedProvider,
       modelOptionsByProvider,
       persistRuntimeModeChange,
@@ -5867,7 +5868,7 @@ export default function ChatView({
                       CHAT_COLUMN_FRAME_CLASS_NAME,
                     )}
                   >
-                    <SynaraLogo aria-label="Synara logo" className="size-10" />
+                    <GladeLogo aria-label="Glade logo" className="size-10" />
                     <h2
                       data-testid="empty-landing-heading"
                       className="text-[26px] font-normal leading-[1.15] tracking-[-0.015em] text-foreground/95 sm:text-[30px]"

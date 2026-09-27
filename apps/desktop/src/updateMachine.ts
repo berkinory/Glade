@@ -1,11 +1,11 @@
-import type { DesktopRuntimeInfo, DesktopUpdateState } from "@synara/contracts";
+import type { DesktopRuntimeInfo, DesktopUpdateState } from "@glade/contracts";
 
 import { getCanRetryAfterDownloadFailure, nextStatusAfterDownloadFailure } from "./updateState";
 
 export function createInitialDesktopUpdateState(
   currentVersion: string,
   runtimeInfo: DesktopRuntimeInfo,
-  flavor: "production" | "beta" | "canary" | "cua" = "production",
+  flavor: "production" | "development" = "production",
 ): DesktopUpdateState {
   return {
     enabled: false,

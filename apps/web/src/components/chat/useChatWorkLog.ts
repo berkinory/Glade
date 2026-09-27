@@ -1,4 +1,4 @@
-import { OrchestrationThreadActivity, ThreadId, type TurnId } from "@synara/contracts";
+import { OrchestrationThreadActivity, ThreadId, type TurnId } from "@glade/contracts";
 import { useEffect, useMemo } from "react";
 import {
   deriveWorkLogEntries,

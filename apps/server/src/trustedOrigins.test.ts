@@ -37,32 +37,32 @@ describe("trustedOrigins", () => {
     ).toBe(true);
     expect(
       isTrustedAppOrigin({
-        origin: "synara://app",
+        origin: "glade://app",
         requestOrigin: "http://127.0.0.1:58090",
         config,
       }),
     ).toBe(true);
     expect(
       isTrustedAppOrigin({
-        origin: "synara-canary://app",
+        origin: "glade-dev://app",
         requestOrigin: "http://127.0.0.1:58090",
         config,
       }),
-    ).toBe(true);
+    ).toBe(false);
     expect(
       isTrustedAppOrigin({
-        origin: "synara-cua://app",
+        origin: "glade-cua://app",
         requestOrigin: "http://127.0.0.1:58090",
         config,
       }),
-    ).toBe(true);
+    ).toBe(false);
     expect(
       isTrustedAppOrigin({
-        origin: "synara-beta://app",
+        origin: "glade-beta://app",
         requestOrigin: "http://127.0.0.1:58090",
         config,
       }),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("rejects unrelated browser origins but allows non-browser requests without Origin", () => {
@@ -110,12 +110,12 @@ describe("trustedOrigins", () => {
     const remoteConfig = {
       ...config,
       host: "0.0.0.0",
-      publicUrl: new URL("https://synara.example.test/"),
+      publicUrl: new URL("https://glade.example.test/"),
     };
     expect(
       isTrustedAppOrigin({
-        origin: "https://synara.example.test",
-        requestOrigin: "http://synara.example.test",
+        origin: "https://glade.example.test",
+        requestOrigin: "http://glade.example.test",
         config: remoteConfig,
       }),
     ).toBe(true);
@@ -129,19 +129,14 @@ describe("trustedOrigins", () => {
   });
 
   it("normalizes desktop origins with trailing slashes", () => {
-    expect(normalizeCorsOrigin("synara://app/")).toBe("synara://app");
-    expect(normalizeCorsOrigin("synara-canary://app/")).toBe("synara-canary://app");
-    expect(normalizeCorsOrigin("synara-cua://app/")).toBe("synara-cua://app");
-    expect(normalizeCorsOrigin("synara-beta://app/")).toBe("synara-beta://app");
+    expect(normalizeCorsOrigin("glade://app/")).toBe("glade://app");
+    expect(normalizeCorsOrigin("glade-dev://app/")).toBeNull();
+    expect(normalizeCorsOrigin("glade-cua://app/")).toBeNull();
+    expect(normalizeCorsOrigin("glade-beta://app/")).toBeNull();
   });
 
-  it("trusts every packaged desktop flavor at the request gate and rejects lookalikes", () => {
-    for (const rawOrigin of [
-      "synara://app",
-      "synara-beta://app",
-      "synara-canary://app",
-      "synara-cua://app",
-    ]) {
+  it("trusts the desktop origin at the request gate and rejects lookalikes", () => {
+    for (const rawOrigin of ["glade://app"]) {
       expect(
         shouldRejectUntrustedRequestOrigin({
           rawOrigin,
@@ -151,12 +146,12 @@ describe("trustedOrigins", () => {
       ).toBe(false);
     }
     for (const rawOrigin of [
-      "synara://evil.test",
-      "synara-beta://evil.test",
-      "synara-beta://app.evil.test",
-      "synara-betas://app",
-      "synara-canary://evil.test",
-      "synara-cua://evil.test",
+      "glade://evil.test",
+      "glade-beta://evil.test",
+      "glade-beta://app.evil.test",
+      "glade-betas://app",
+      "glade-dev://evil.test",
+      "glade-cua://evil.test",
     ]) {
       expect(
         shouldRejectUntrustedRequestOrigin({
@@ -245,7 +240,7 @@ describe("trustedOrigins", () => {
       requiresWebSocketAuthentication({
         host: "127.0.0.1",
         authToken: undefined,
-        publicUrl: new URL("https://synara.example.test/"),
+        publicUrl: new URL("https://glade.example.test/"),
       }),
     ).toBe(true);
   });

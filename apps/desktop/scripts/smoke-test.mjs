@@ -3,25 +3,28 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import electronPath from "electron";
+import { configureMacLauncher, resolveElectronPath } from "./electron-launcher.mjs";
 
-import { SYNARA_DESKTOP_SMOKE_USER_DATA_ENV } from "@synara/shared/desktopIdentity";
+import { GLADE_DESKTOP_SMOKE_USER_DATA_ENV } from "@glade/shared/desktopIdentity";
 import { spawnSourceDesktop } from "./source-desktop-launch.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const desktopDir = resolve(__dirname, "..");
-const smokeHome = mkdtempSync(join(tmpdir(), "synara-desktop-smoke-"));
+const smokeHome = mkdtempSync(join(tmpdir(), "glade-desktop-smoke-"));
 const environment = {
   ...process.env,
   ELECTRON_ENABLE_LOGGING: "1",
-  SYNARA_HOME: smokeHome,
-  [SYNARA_DESKTOP_SMOKE_USER_DATA_ENV]: join(smokeHome, "electron-user-data"),
+  GLADE_HOME: smokeHome,
+  [GLADE_DESKTOP_SMOKE_USER_DATA_ENV]: join(smokeHome, "electron-user-data"),
 };
 // Config.url rejects an empty string; the built UI needs this variable absent.
 delete environment.VITE_DEV_SERVER_URL;
-delete environment.SYNARA_AUTH_TOKEN;
+delete environment.GLADE_AUTH_TOKEN;
 
 console.log("\nLaunching Electron smoke test...");
+
+const electronPath = resolveElectronPath();
+if (process.platform === "darwin") configureMacLauncher(electronPath, environment);
 
 const child = spawnSourceDesktop({
   desktopDirectory: desktopDir,
@@ -73,7 +76,7 @@ child.on("exit", (code, signal) => {
     "StartupError:",
   ];
   const failures = fatalPatterns.filter((pattern) => output.includes(pattern));
-  if (!output.includes("Synara running")) failures.push("Backend did not report readiness");
+  if (!output.includes("Glade running")) failures.push("Backend did not report readiness");
   if (code !== 0 && signal !== "SIGTERM")
     failures.push(`Unexpected exit: code=${code} signal=${signal}`);
 

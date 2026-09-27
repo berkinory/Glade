@@ -1,5 +1,5 @@
 // FILE: tsdown.config.ts
-// Purpose: Builds the Synara server CLI and controls diagnostic source maps.
+// Purpose: Builds the Glade server CLI and controls diagnostic source maps.
 // Layer: Server build config
 // Depends on: tsdown.
 
@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 
 import { defineConfig } from "tsdown";
 
-const sourcemapEnv = process.env.SYNARA_SERVER_SOURCEMAP?.trim().toLowerCase();
+const sourcemapEnv = process.env.GLADE_SERVER_SOURCEMAP?.trim().toLowerCase();
 const buildSourcemap = sourcemapEnv === "1" || sourcemapEnv === "true";
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const migrationRuntimeSource = fs.readFileSync(
@@ -30,10 +30,10 @@ export default defineConfig({
   external: [/^bun:/u],
   sourcemap: buildSourcemap,
   define: {
-    __SYNARA_MIGRATION_RUNTIME_SOURCE_DIGEST__: JSON.stringify(migrationRuntimeSourceDigest),
+    __GLADE_MIGRATION_RUNTIME_SOURCE_DIGEST__: JSON.stringify(migrationRuntimeSourceDigest),
   },
   clean: true,
-  noExternal: (id) => id.startsWith("@synara/"),
+  noExternal: (id) => id.startsWith("@glade/"),
   inlineOnly: false,
   banner: {
     js: "#!/usr/bin/env node\n",

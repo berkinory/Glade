@@ -3,12 +3,12 @@ import {
   COMPUTER_FRAME_RESYNC_MESSAGE,
   COMPUTER_FRAME_WS_COMPUTER_ID_PARAM,
   COMPUTER_FRAME_WS_PATH,
-} from "@synara/shared/computerFrame";
+} from "@glade/shared/computerFrame";
 import {
   decodeFrameResyncRequest,
   makeFrameSink,
   type FrameSink,
-} from "@synara/shared/frameTransport";
+} from "@glade/shared/frameTransport";
 import { Effect, Layer } from "effect";
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http";
 

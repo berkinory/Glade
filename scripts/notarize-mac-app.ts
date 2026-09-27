@@ -61,6 +61,7 @@ if (existsSync(inputPath)) {
 await notarizeMacPayload(
   archive,
   {
+    keychainProfile: process.env.GLADE_NOTARY_PROFILE,
     appleApiKey: process.env.APPLE_API_KEY,
     appleApiKeyId: process.env.APPLE_API_KEY_ID,
     appleApiIssuer: process.env.APPLE_API_ISSUER,

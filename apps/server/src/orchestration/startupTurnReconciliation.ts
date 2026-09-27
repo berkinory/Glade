@@ -40,13 +40,13 @@ import type {
   OrchestrationSession,
   RuntimeMode,
   ThreadId,
-} from "@synara/contracts";
-import { CommandId, EventId } from "@synara/contracts";
-import { createStalePendingInteractionMatcher } from "@synara/shared/pendingInteractions";
+} from "@glade/contracts";
+import { CommandId, EventId } from "@glade/contracts";
+import { createStalePendingInteractionMatcher } from "@glade/shared/pendingInteractions";
 import {
   derivePendingThreadRequestIds,
   type PendingThreadRequestKind,
-} from "@synara/shared/threadSummary";
+} from "@glade/shared/threadSummary";
 import { Array as Arr, Effect, Option } from "effect";
 import type { ProjectionPendingInteraction } from "../persistence/Services/ProjectionPendingInteractions.ts";
 import { ProjectionPendingInteractionRepository } from "../persistence/Services/ProjectionPendingInteractions.ts";

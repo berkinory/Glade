@@ -8,21 +8,21 @@ import {
   type OrchestrationShellSnapshot,
   type ProjectId,
   SpaceId,
-} from "@synara/contracts";
-import { getDefaultModel } from "@synara/shared/model";
+} from "@glade/contracts";
+import { getDefaultModel } from "@glade/shared/model";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { useSpacesUiStore } from "../spacesUiStore";
 import { createOrRecoverProjectFromPath } from "./projectCreation";
 
 const NOW_ISO = "2026-06-26T20:00:00.000Z";
-const WORKSPACE_ROOT = "/Users/tester/Developer/synara";
+const WORKSPACE_ROOT = "/Users/tester/Developer/glade";
 
 function makeProject(id: string, workspaceRoot = WORKSPACE_ROOT) {
   return {
     id: id as ProjectId,
     kind: "project" as const,
-    title: "synara",
+    title: "glade",
     workspaceRoot,
     defaultModelSelection: {
       provider: "codex" as const,
@@ -79,7 +79,7 @@ describe("createOrRecoverProjectFromPath", () => {
       expect.objectContaining({
         type: "project.create",
         kind: "project",
-        title: "synara",
+        title: "glade",
         workspaceRoot: WORKSPACE_ROOT,
         createWorkspaceRootIfMissing: false,
       }),
@@ -96,7 +96,7 @@ describe("createOrRecoverProjectFromPath", () => {
     const existingProject = makeProject("project-existing");
     const dispatchCommand = vi.fn(async () => {
       throw new Error(
-        "Orchestration command invariant failed (project.create): Project 'project-existing' already uses workspace root '/Users/tester/Developer/synara'.",
+        "Orchestration command invariant failed (project.create): Project 'project-existing' already uses workspace root '/Users/tester/Developer/glade'.",
       );
     });
     const loadSnapshot = vi.fn(async () => makeSnapshot([existingProject]));
@@ -112,58 +112,6 @@ describe("createOrRecoverProjectFromPath", () => {
       project: existingProject,
       created: false,
     });
-  });
-
-  it("seeds the new project's default model selection from the persisted default provider (Devin)", async () => {
-    let createdProjectId: ProjectId | null = null;
-    const dispatchCommand = vi.fn(async (command: { projectId?: ProjectId }) => {
-      createdProjectId = command.projectId ?? null;
-      return { sequence: 2 };
-    });
-
-    await createOrRecoverProjectFromPath({
-      api: makeApi(dispatchCommand),
-      workspaceRoot: WORKSPACE_ROOT,
-      defaultProvider: "devin",
-      loadSnapshot: async () =>
-        makeSnapshot(createdProjectId ? [makeProject(createdProjectId)] : []),
-    });
-
-    expect(dispatchCommand).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: "project.create",
-        defaultModelSelection: {
-          provider: "devin",
-          model: "adaptive",
-        },
-      }),
-    );
-  });
-
-  it("falls back to the Codex default model when the persisted default provider is OMP", async () => {
-    let createdProjectId: ProjectId | null = null;
-    const dispatchCommand = vi.fn(async (command: { projectId?: ProjectId }) => {
-      createdProjectId = command.projectId ?? null;
-      return { sequence: 2 };
-    });
-
-    await createOrRecoverProjectFromPath({
-      api: makeApi(dispatchCommand),
-      workspaceRoot: WORKSPACE_ROOT,
-      defaultProvider: "omp",
-      loadSnapshot: async () =>
-        makeSnapshot(createdProjectId ? [makeProject(createdProjectId)] : []),
-    });
-
-    expect(dispatchCommand).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: "project.create",
-        defaultModelSelection: {
-          provider: "codex",
-          model: getDefaultModel("codex"),
-        },
-      }),
-    );
   });
 
   it("preserves an optimistically selected space before the shell snapshot catches up", async () => {

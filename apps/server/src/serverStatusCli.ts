@@ -3,7 +3,7 @@ const DEFAULT_SERVER_STATUS_TIMEOUT_MS = 3_000;
 
 type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
-export interface SynaraServerHealthSnapshot {
+export interface GladeServerHealthSnapshot {
   readonly status: string;
   readonly startupReady: boolean;
   readonly pushBusReady?: boolean;
@@ -21,12 +21,12 @@ export interface SynaraServerHealthSnapshot {
   };
 }
 
-export type SynaraServerStatusResult =
+export type GladeServerStatusResult =
   | {
       readonly reachable: true;
       readonly ready: boolean;
       readonly url: string;
-      readonly health: SynaraServerHealthSnapshot;
+      readonly health: GladeServerHealthSnapshot;
     }
   | {
       readonly reachable: false;
@@ -35,7 +35,7 @@ export type SynaraServerStatusResult =
       readonly error: string;
     };
 
-export interface FetchSynaraServerStatusOptions {
+export interface FetchGladeServerStatusOptions {
   readonly url?: string;
   readonly timeoutMs?: number;
   readonly fetch?: FetchLike;
@@ -68,7 +68,7 @@ function healthUrlFromBaseUrl(rawUrl: string): {
   return { displayUrl, url: url.toString() };
 }
 
-function decodeHealthSnapshot(value: unknown): SynaraServerHealthSnapshot | null {
+function decodeHealthSnapshot(value: unknown): GladeServerHealthSnapshot | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null;
   }
@@ -76,12 +76,12 @@ function decodeHealthSnapshot(value: unknown): SynaraServerHealthSnapshot | null
   if (typeof snapshot.status !== "string" || typeof snapshot.startupReady !== "boolean") {
     return null;
   }
-  return snapshot as unknown as SynaraServerHealthSnapshot;
+  return snapshot as unknown as GladeServerHealthSnapshot;
 }
 
-export async function fetchSynaraServerStatus(
-  options: FetchSynaraServerStatusOptions = {},
-): Promise<SynaraServerStatusResult> {
+export async function fetchGladeServerStatus(
+  options: FetchGladeServerStatusOptions = {},
+): Promise<GladeServerStatusResult> {
   const rawUrl = options.url ?? DEFAULT_SERVER_STATUS_URL;
   let healthUrl: { readonly displayUrl: string; readonly url: string };
   try {
@@ -117,7 +117,7 @@ export async function fetchSynaraServerStatus(
         reachable: false,
         ready: false,
         url: healthUrl.displayUrl,
-        error: "Health response did not match the Synara health shape.",
+        error: "Health response did not match the Glade health shape.",
       };
     }
 
@@ -138,15 +138,15 @@ export async function fetchSynaraServerStatus(
   }
 }
 
-export function formatSynaraServerStatus(result: SynaraServerStatusResult): string {
+export function formatGladeServerStatus(result: GladeServerStatusResult): string {
   if (!result.reachable) {
-    return `Synara server: unreachable\nURL: ${result.url}\nError: ${result.error}`;
+    return `Glade server: unreachable\nURL: ${result.url}\nError: ${result.error}`;
   }
 
   const projectionState = result.health.projection?.state;
   const status = result.ready ? "ready" : result.health.startupReady ? "not ready" : "starting";
   return [
-    `Synara server: ${status}`,
+    `Glade server: ${status}`,
     `URL: ${result.url}`,
     ...(projectionState ? [`Projection: ${projectionState}`] : []),
   ].join("\n");

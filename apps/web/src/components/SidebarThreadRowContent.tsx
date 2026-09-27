@@ -3,9 +3,11 @@
 // Exports: SidebarThreadRowContent and its terminal-status presentation type.
 
 import { useMemo, type ReactNode } from "react";
+import { ProviderKind } from "@glade/contracts";
+import { Schema } from "effect";
 
-import { isGenericChatThreadTitle } from "@synara/shared/chatThreads";
-import { pluralize } from "@synara/shared/text";
+import { isGenericChatThreadTitle } from "@glade/shared/chatThreads";
+import { pluralize } from "@glade/shared/text";
 
 import { createThreadSelector } from "../storeSelectors";
 import { useStore } from "../store";
@@ -52,7 +54,11 @@ function ProviderAvatarWithTerminal({
   const avatarNode = hasHandoff ? (
     <span className={containerClass}>
       <span className="sidebar-icon-chip absolute left-0 top-1/2 inline-flex size-3 -translate-y-1/2 items-center justify-center rounded-full">
-        <ProviderIcon provider={handoffSourceProvider!} className="size-2" />
+        <ProviderIcon
+          provider={Schema.is(ProviderKind)(handoffSourceProvider) ? handoffSourceProvider : null}
+          fallback={<span className="text-[9px]">?</span>}
+          className="size-2"
+        />
       </span>
       <span className="sidebar-icon-chip absolute right-0 top-1/2 z-10 inline-flex size-3 -translate-y-1/2 items-center justify-center rounded-full">
         <ProviderIcon provider={provider} className="size-2" />

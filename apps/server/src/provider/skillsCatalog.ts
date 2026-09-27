@@ -1,17 +1,17 @@
 // FILE: skillsCatalog.ts
 // Purpose: Generic Agent Skill discovery primitives (frontmatter parsing, SKILL.md
-//          walking) plus the unified cross-provider skills catalog backing Synara
-//          portable skills. Aggregates `~/.synara/skills` with every provider-native
+//          walking) plus the unified cross-provider skills catalog backing Glade
+//          portable skills. Aggregates `~/.glade/skills` with every provider-native
 //          skills folder, deduping by name with provider-native copies winning for
 //          the active provider.
 // Layer: Server provider discovery helper
 // Exports: parseSkillFrontmatter, collectSkillsFromRoots, discoverSkillsCatalog,
-//          mergeSkillsIntoCatalog, filterDisabledSkills, ensureSynaraSkillsDir
+//          mergeSkillsIntoCatalog, filterDisabledSkills, ensureGladeSkillsDir
 
 import * as fs from "node:fs/promises";
 import * as nodePath from "node:path";
 
-import type { ProviderKind, ProviderSkillDescriptor } from "@synara/contracts";
+import type { ProviderKind, ProviderSkillDescriptor } from "@glade/contracts";
 import { discoverClaudePluginSkillRoots } from "./claudePluginSkills.ts";
 
 type FrontmatterValue = string | boolean;
@@ -334,34 +334,28 @@ export interface SkillsCatalogDiscoveryInput {
   /** Optional workspace cwd; when present, project-level skill folders are included. */
   readonly cwd?: string | null;
   readonly homeDir: string;
-  /** Synara base dir (usually `~/.synara`); skills live in `{base}/skills`. */
-  readonly synaraBaseDir: string;
+  /** Glade base dir (usually `~/.glade`); skills live in `{base}/skills`. */
+  readonly gladeBaseDir: string;
   /** Provider whose native copies should win when the same skill exists in several roots. */
   readonly provider?: ProviderKind | null;
   /** Settings needs every origin; composer/provider pickers keep one winner by name. */
   readonly includeDuplicateOrigins?: boolean;
   /** Bypass the short-lived discovery cache. */
   readonly forceReload?: boolean;
-  /** Provider-configured agent dir (pi/omp) — overrides the default profile root. */
-  readonly agentDir?: string | null;
 }
 
 export interface SkillsCatalogRootInput extends SkillsCatalogDiscoveryInput {
-  /** Native provider scans can opt out; the catalog itself always includes Synara. */
-  readonly includeSynaraRoot?: boolean;
+  /** Native provider scans can opt out; the catalog itself always includes Glade. */
+  readonly includeGladeRoot?: boolean;
 }
 
 const HOME_ORIGIN_ORDER = [
-  "synara",
+  "glade",
   "codex",
   "claude",
   "cursor",
   "grok",
-  "factory",
   "opencode",
-  "pi",
-  "devin",
-  "omp",
   "agents",
 ] as const;
 export type SkillsCatalogOrigin = (typeof HOME_ORIGIN_ORDER)[number] | "project";
@@ -378,27 +372,27 @@ interface SkillsCatalogCacheEntry {
 
 const skillsCatalogCache = new Map<string, SkillsCatalogCacheEntry>();
 const skillsCatalogInflight = new Map<string, Promise<ReadonlyArray<ProviderSkillDescriptor>>>();
-const ensuredSynaraSkillsDirs = new Set<string>();
+const ensuredGladeSkillsDirs = new Set<string>();
 
 export function clearSkillsCatalogCacheForTests(): void {
   skillsCatalogCache.clear();
   skillsCatalogInflight.clear();
-  ensuredSynaraSkillsDirs.clear();
+  ensuredGladeSkillsDirs.clear();
 }
 
-export function synaraSkillsDir(synaraBaseDir: string): string {
-  return nodePath.join(synaraBaseDir, "skills");
+export function gladeSkillsDir(gladeBaseDir: string): string {
+  return nodePath.join(gladeBaseDir, "skills");
 }
 
 // Creates the portable skills folder on first use so users have a drop-in target.
-export async function ensureSynaraSkillsDir(synaraBaseDir: string): Promise<string> {
-  const dir = synaraSkillsDir(synaraBaseDir);
-  if (ensuredSynaraSkillsDirs.has(dir)) {
+export async function ensureGladeSkillsDir(gladeBaseDir: string): Promise<string> {
+  const dir = gladeSkillsDir(gladeBaseDir);
+  if (ensuredGladeSkillsDirs.has(dir)) {
     return dir;
   }
   try {
     await fs.mkdir(dir, { recursive: true });
-    ensuredSynaraSkillsDirs.add(dir);
+    ensuredGladeSkillsDirs.add(dir);
   } catch {
     // Discovery still works without the folder; reads simply return nothing.
   }
@@ -413,12 +407,12 @@ interface SkillOriginRootSpec {
 }
 
 const SKILL_ORIGIN_ROOTS = {
-  synara: {
-    homeRoots: (input) => [synaraSkillsDir(input.synaraBaseDir)],
-    projectRootNames: [".synara"],
+  glade: {
+    homeRoots: (input) => [gladeSkillsDir(input.gladeBaseDir)],
+    projectRootNames: [".glade"],
   },
   codex: {
-    // Keep Synara's existing Codex-local root. Official Codex discovery uses
+    // Keep Glade's existing Codex-local root. Official Codex discovery uses
     // `.agents/skills`, which is represented separately by the shared origin.
     homeRoots: (input) => [nodePath.join(input.homeDir, ".codex", "skills")],
     projectRootNames: [".codex"],
@@ -438,43 +432,9 @@ const SKILL_ORIGIN_ROOTS = {
     homeRoots: (input) => [nodePath.join(input.homeDir, ".grok", "skills")],
     projectRootNames: [".grok"],
   },
-  factory: {
-    homeRoots: (input) => [nodePath.join(input.homeDir, ".factory", "skills")],
-    projectRootNames: [".factory"],
-  },
   opencode: {
     homeRoots: (input) => [nodePath.join(input.homeDir, ".config", "opencode", "skills")],
     projectRootNames: [".opencode"],
-  },
-  pi: {
-    homeRoots: (input) => [
-      nodePath.join(input.agentDir ?? nodePath.join(input.homeDir, ".pi", "agent"), "skills"),
-    ],
-    projectRootNames: [".pi"],
-  },
-  devin: {
-    homeRoots: (input) => [
-      ...(process.platform === "win32"
-        ? [
-            nodePath.join(input.homeDir, "AppData", "Roaming", "devin", "skills"),
-            nodePath.join(input.homeDir, "AppData", "Roaming", "cognition", "skills"),
-          ]
-        : []),
-      nodePath.join(input.homeDir, ".config", "devin", "skills"),
-      nodePath.join(input.homeDir, ".config", "cognition", "skills"),
-      nodePath.join(input.homeDir, ".codeium", "windsurf", "skills"),
-      nodePath.join(input.homeDir, ".codeium", "windsurf-next", "skills"),
-      nodePath.join(input.homeDir, ".codeium", "windsurf-insiders", "skills"),
-      // Keep the original path as a compatibility fallback for early Devin CLI builds.
-      nodePath.join(input.homeDir, ".devin", "skills"),
-    ],
-    projectRootNames: [".devin", ".cognition", ".windsurf"],
-  },
-  omp: {
-    homeRoots: (input) => [
-      nodePath.join(input.agentDir ?? nodePath.join(input.homeDir, ".omp", "agent"), "skills"),
-    ],
-    projectRootNames: [".omp"],
   },
   agents: {
     homeRoots: (input) => [nodePath.join(input.homeDir, ".agents", "skills")],
@@ -486,13 +446,8 @@ const PROVIDER_SKILL_ORIGIN_PREFERENCES = {
   codex: ["codex", "agents"],
   claudeAgent: ["claude"],
   cursor: ["cursor", "agents", "claude", "codex"],
-  antigravity: ["agents"],
   grok: ["grok", "claude", "agents"],
-  droid: ["factory", "agents", "claude", "codex"],
   opencode: ["opencode", "claude", "agents"],
-  pi: ["pi", "agents"],
-  devin: ["devin", "claude", "agents"],
-  omp: ["omp", "agents"],
 } as const satisfies Partial<Record<ProviderKind, readonly SkillsHomeOrigin[]>>;
 
 function homeRootsForOrigin(
@@ -506,7 +461,7 @@ function projectRootNamesForOrigin(origin: SkillsHomeOrigin): readonly string[] 
   return SKILL_ORIGIN_ROOTS[origin].projectRootNames;
 }
 
-// Native copies first so an agent keeps using its own skill, then Synara as the
+// Native copies first so an agent keeps using its own skill, then Glade as the
 // portable fallback, then the remaining provider homes for cross-provider reuse.
 function preferredOriginsForProvider(
   provider: ProviderKind | null | undefined,
@@ -516,19 +471,19 @@ function preferredOriginsForProvider(
 
 function orderedOriginsForProvider(
   provider: ProviderKind | null | undefined,
-  includeSynaraRoot = true,
+  includeGladeRoot = true,
   includeRemainingOrigins = true,
 ): SkillsHomeOrigin[] {
   const preferred = preferredOriginsForProvider(provider);
   const ordered = [...preferred];
-  if (includeSynaraRoot && !ordered.includes("synara")) {
-    ordered.push("synara");
+  if (includeGladeRoot && !ordered.includes("glade")) {
+    ordered.push("glade");
   }
   if (!includeRemainingOrigins) {
-    return ordered.filter((origin) => includeSynaraRoot || origin !== "synara");
+    return ordered.filter((origin) => includeGladeRoot || origin !== "glade");
   }
   for (const origin of HOME_ORIGIN_ORDER) {
-    if (!includeSynaraRoot && origin === "synara") {
+    if (!includeGladeRoot && origin === "glade") {
       continue;
     }
     if (!ordered.includes(origin)) {
@@ -543,11 +498,7 @@ function rootsForOrderedOrigins(
   orderedOrigins: ReadonlyArray<SkillsHomeOrigin>,
 ): SkillRoot[] {
   const homeRoots = orderedOrigins.flatMap((origin) =>
-    homeRootsForOrigin(origin, input).map((path) =>
-      origin === "pi" || origin === "omp"
-        ? { path, scope: origin, includeMarkdownFiles: true }
-        : { path, scope: origin },
-    ),
+    homeRootsForOrigin(origin, input).map((path) => ({ path, scope: origin })),
   );
   const homeRootPaths = new Set(homeRoots.map((root) => nodePath.resolve(root.path)));
 
@@ -570,11 +521,7 @@ function rootsForOrderedOrigins(
           if (homeRootPaths.has(nodePath.resolve(rootPath))) {
             continue;
           }
-          projectRoots.push(
-            origin === "pi" || origin === "omp"
-              ? { path: rootPath, scope: "project", includeMarkdownFiles: true }
-              : { path: rootPath, scope: "project" },
-          );
+          projectRoots.push({ path: rootPath, scope: "project" });
         }
       }
     }
@@ -586,7 +533,7 @@ function rootsForOrderedOrigins(
 export function skillsCatalogRoots(input: SkillsCatalogRootInput): SkillRoot[] {
   return rootsForOrderedOrigins(
     input,
-    orderedOriginsForProvider(input.provider, input.includeSynaraRoot !== false),
+    orderedOriginsForProvider(input.provider, input.includeGladeRoot !== false),
   );
 }
 
@@ -601,8 +548,7 @@ export async function discoverSkillsCatalog(
     input.cwd?.trim() ?? "",
     input.provider ?? "",
     input.homeDir,
-    input.synaraBaseDir,
-    input.agentDir?.trim() ?? "",
+    input.gladeBaseDir,
     input.includeDuplicateOrigins ? "all-origins" : "deduped",
   ].join("\u0000");
 
@@ -619,7 +565,7 @@ export async function discoverSkillsCatalog(
   }
 
   const scan = (async () => {
-    await ensureSynaraSkillsDir(input.synaraBaseDir);
+    await ensureGladeSkillsDir(input.gladeBaseDir);
     const roots = [
       ...skillsCatalogRoots(input),
       ...(await discoverClaudePluginSkillRoots({

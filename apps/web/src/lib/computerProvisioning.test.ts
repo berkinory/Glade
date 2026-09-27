@@ -6,10 +6,10 @@
 import type {
   ComputerProvisionResult,
   ComputerStatusResult,
-  DesktopAppSnapState,
-} from "@synara/contracts";
+  DesktopComputerState,
+} from "@glade/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { COMPUTER_PERMISSION_KINDS } from "@synara/shared/computerGrants";
+import { COMPUTER_PERMISSION_KINDS } from "@glade/shared/computerGrants";
 
 import {
   computerProvisionErrorToast,
@@ -22,18 +22,18 @@ import {
   computerPermissionSetupSupported,
 } from "./computerProvisioning";
 
-function grantState(overrides: Partial<DesktopAppSnapState> = {}): DesktopAppSnapState {
+function grantState(overrides: Partial<DesktopComputerState> = {}): DesktopComputerState {
   return {
     platform: "macos",
     supported: true,
-    enabled: false,
+
     status: "disabled",
-    shortcut: null,
+
     accessibilityPermission: "granted",
     inputMonitoringPermission: "granted",
     screenRecordingPermission: "granted",
     message: null,
-    appDisplayName: "Synara",
+    appDisplayName: "Glade",
     ...overrides,
   };
 }
@@ -133,22 +133,26 @@ describe("local Computer permission ownership", () => {
   it("does not infer locality for an injected API from an unrelated desktop endpoint", () => {
     vi.stubGlobal("window", {
       nativeApi: {},
-      desktopBridge: { getWsUrl: () => "ws://127.0.0.1:4111", appSnap: {} },
+      desktopBridge: { getWsUrl: () => "ws://127.0.0.1:4111", computerPermissions: {} },
     });
     expect(readLocalComputerPermissionBridge()).toBeNull();
   });
   it.each(["ws://127.0.0.1:4312", "ws://[::1]:4312", "wss://localhost:4312"])(
     "uses the desktop-owned loopback endpoint %s",
     (endpoint) => {
-      const appSnap = {};
-      vi.stubGlobal("window", { desktopBridge: { getWsUrl: () => endpoint, appSnap } });
-      expect(readLocalComputerPermissionBridge()).toBe(appSnap);
+      const computerPermission = {};
+      vi.stubGlobal("window", {
+        desktopBridge: { getWsUrl: () => endpoint, computerPermissions: computerPermission },
+      });
+      expect(readLocalComputerPermissionBridge()).toBe(computerPermission);
     },
   );
   it.each(["ws://192.168.1.42:4312", "http://localhost:4312", "invalid", null])(
     "does not require local client grants for remote or unknown endpoint %s",
     (endpoint) => {
-      vi.stubGlobal("window", { desktopBridge: { getWsUrl: () => endpoint, appSnap: {} } });
+      vi.stubGlobal("window", {
+        desktopBridge: { getWsUrl: () => endpoint, computerPermissions: {} },
+      });
       expect(readLocalComputerPermissionBridge()).toBeNull();
     },
   );

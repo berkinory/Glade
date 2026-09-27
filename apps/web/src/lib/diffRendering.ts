@@ -209,11 +209,11 @@ export function buildPatchCacheKey(patch: string, scope = "diff-panel"): string 
 }
 
 export const PARTIAL_DIFF_COPY_NOTICE =
-  "[Synara: partial diff. Output was truncated at the size limit; some files or changes may be missing.]";
+  "[Glade: partial diff. Output was truncated at the size limit; some files or changes may be missing.]";
 
 // Returns copyable source text for diff surfaces without depending on virtualized DOM rows.
 // A truncation notice travels with partial clipboard content so it cannot be mistaken for a
-// complete patch after it leaves Synara.
+// complete patch after it leaves Glade.
 export function resolveDiffCopyText(patch: string | undefined, truncated = false): string | null {
   if (typeof patch !== "string") {
     return null;

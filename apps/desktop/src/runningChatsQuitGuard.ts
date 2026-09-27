@@ -8,7 +8,7 @@ import type {
   DesktopQuitConfirmationPresentation,
   DesktopQuitConfirmationRequest,
   DesktopQuitConfirmationResponse,
-} from "@synara/contracts";
+} from "@glade/contracts";
 
 const DEFAULT_READY_TIMEOUT_MS = 3000;
 

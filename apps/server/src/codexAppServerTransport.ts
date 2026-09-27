@@ -5,7 +5,7 @@ import {
   JsonRpcStdioTransportError,
   JsonRpcStdioWriter,
   type JsonRpcStdioTransportErrorReason,
-} from "@synara/shared/jsonrpc-stdio";
+} from "@glade/shared/jsonrpc-stdio";
 
 export const CODEX_APP_SERVER_MAX_FRAME_BYTES = JSONRPC_STDIO_MAX_FRAME_BYTES;
 export const CODEX_APP_SERVER_MAX_QUEUED_STDIN_BYTES = JSONRPC_STDIO_MAX_QUEUED_STDIN_BYTES;

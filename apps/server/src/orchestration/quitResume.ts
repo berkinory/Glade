@@ -41,7 +41,7 @@ import type {
   OrchestrationPrepareQuitResumeResult,
   OrchestrationProject,
   OrchestrationThread,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import {
   CommandId,
   IsoDateTime,
@@ -51,7 +51,7 @@ import {
   ThreadId,
   TrimmedNonEmptyString,
   TurnId,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import { Duration, Effect, FileSystem, Schema } from "effect";
 import { randomUUID } from "node:crypto";
 

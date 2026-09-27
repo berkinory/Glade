@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { BrowserVaultSettings, BrowserVaultSnapshot } from "@synara/contracts";
+import type { BrowserVaultSettings, BrowserVaultSnapshot } from "@glade/contracts";
 import { CentralIcon } from "~/lib/central-icons";
 import { readNativeApi } from "~/nativeApi";
 import { Button } from "./ui/button";
@@ -7,15 +7,10 @@ import { Dialog, DialogHeader, DialogPanel, DialogPopup, DialogTitle } from "./u
 import { DisclosureRegion } from "./ui/DisclosureRegion";
 import { Switch } from "./ui/switch";
 import { BrowserVaultMaster } from "./BrowserVaultMaster";
-import { BrowserCookieImport, type BrowserCookieDestination } from "./BrowserCookieImport";
 
-const OPEN_EVENT = "synara:open-browser-vault";
+const OPEN_EVENT = "glade:open-browser-vault";
 
-export function BrowserVaultButton({
-  destination,
-}: {
-  destination?: BrowserCookieDestination | undefined;
-}) {
+export function BrowserVaultButton() {
   if (!readNativeApi()?.browser.vault) return null;
   return (
     <Button
@@ -25,11 +20,7 @@ export function BrowserVaultButton({
       className="size-7"
       aria-label="Saved logins"
       title="Saved logins"
-      onClick={() =>
-        window.dispatchEvent(
-          new CustomEvent(OPEN_EVENT, destination ? { detail: destination } : {}),
-        )
-      }
+      onClick={() => window.dispatchEvent(new Event(OPEN_EVENT))}
     >
       <CentralIcon name="key-1" className="size-3.5" />
     </Button>
@@ -46,7 +37,6 @@ export function BrowserVaultDialog() {
   const [master, setMaster] = useState<
     { kind: "setup" | "unlock" } | { kind: "reveal"; id: string } | null
   >(null);
-  const [destination, setDestination] = useState<BrowserCookieDestination>();
   const revision = useRef(0);
   const mounted = useRef(false);
   const lastPrompt = useRef<string | undefined>(undefined);
@@ -69,8 +59,7 @@ export function BrowserVaultDialog() {
 
   useEffect(() => {
     mounted.current = true;
-    const show = (event: Event) => {
-      setDestination((event as CustomEvent<BrowserCookieDestination | undefined>).detail);
+    const show = () => {
       setOpen(true);
       void reload();
     };
@@ -373,13 +362,6 @@ export function BrowserVaultDialog() {
                   />
                 </label>
               </section>
-              {open && destination ? (
-                <BrowserCookieImport
-                  key={`${destination.threadId}:${destination.tabId}:${destination.origin}`}
-                  api={api}
-                  destination={destination}
-                />
-              ) : null}
             </>
           )}
         </DialogPanel>

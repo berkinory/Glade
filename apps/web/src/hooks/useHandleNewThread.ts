@@ -1,5 +1,5 @@
-import { type ProjectId, ThreadId } from "@synara/contracts";
-import { getDefaultModel } from "@synara/shared/model";
+import { type ProjectId, ThreadId } from "@glade/contracts";
+import { getDefaultModel } from "@glade/shared/model";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { startTransition } from "react";
@@ -113,7 +113,6 @@ export function useHandleNewThread() {
         providerStatuses,
         statusesReconciled: providerStatusesReconciled,
         providerOrder: settings.providerOrder,
-        includeDroid: true,
       });
     }
     const wantsTemporaryThread = options?.temporary === true;

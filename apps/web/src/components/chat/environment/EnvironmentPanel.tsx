@@ -17,7 +17,7 @@ import type {
   ProviderKind,
   ResolvedKeybindingsConfig,
   ThreadId,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import type { ReactNode } from "react";

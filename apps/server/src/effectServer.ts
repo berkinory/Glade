@@ -1,7 +1,8 @@
+import { serverRuntimeRouteLayer } from "./serverRuntimeRoute";
 import { ProjectionPendingInteractionRepositoryLive } from "./persistence/Layers/ProjectionPendingInteractions";
 import http from "node:http";
 
-import type { ServerSettingsError } from "@synara/contracts";
+import type { ServerSettingsError } from "@glade/contracts";
 import { Effect, Exit, FileSystem, Layer, Path, Schema, Scope, ServiceMap } from "effect";
 import { HttpRouter } from "effect/unstable/http";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
@@ -52,9 +53,6 @@ import { makeServerShutdownController, type ServerShutdownController } from "./s
 import { makeBoundedNodeHttpServer } from "./nodeHttpServer";
 import { websocketRpcRouteLayer } from "./wsRpc";
 import { recoverGitHandoffOperations } from "./gitHandoffOperations";
-import { externalMcpRouteLayer } from "./externalMcp/httpRoute";
-import { ExternalMcpGateway } from "./externalMcp/Services/ExternalMcpGateway";
-import { ExternalMcpService } from "./externalMcp/Services/ExternalMcpService";
 
 export interface ServerShape {
   readonly start: Effect.Effect<
@@ -63,8 +61,6 @@ export interface ServerShape {
     | Scope.Scope
     | ServerConfig
     | AgentGatewayCredentials
-    | ExternalMcpGateway
-    | ExternalMcpService
     | FileSystem.FileSystem
     | Path.Path
     | Keybindings
@@ -89,7 +85,7 @@ export interface ServerShape {
 }
 
 export class Server extends ServiceMap.Service<Server, ServerShape>()(
-  "synara/effectServer/Server",
+  "glade/effectServer/Server",
 ) {}
 
 export class ServerLifecycleError extends Schema.TaggedErrorClass<ServerLifecycleError>()(
@@ -212,7 +208,7 @@ export const createEffectServer = Effect.fn(function* (
     makeEffectHttpRouteLayer(readiness, shutdownController),
     websocketRpcRouteLayer,
     agentGatewayRouteLayer,
-    externalMcpRouteLayer,
+    serverRuntimeRouteLayer,
   );
   const httpApp = yield* HttpRouter.toHttpEffect(routesLayer);
   yield* httpServer

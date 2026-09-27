@@ -24,8 +24,8 @@ import {
   type FilesystemBrowseResult,
   type ProjectImportProvider,
   type ProviderKind,
-} from "@synara/contracts";
-import { isGenericChatThreadTitle } from "@synara/shared/chatThreads";
+} from "@glade/contracts";
+import { isGenericChatThreadTitle } from "@glade/shared/chatThreads";
 import { Autocomplete as AutocompletePrimitive } from "@base-ui/react/autocomplete";
 import { LuArrowLeft, LuCornerLeftUp } from "react-icons/lu";
 import { type ComponentType, useEffect, useMemo, useState, type KeyboardEvent } from "react";
@@ -132,7 +132,7 @@ const IMPORT_PROJECTS_SOURCES: readonly {
 
 export type ImportProviderKind = Extract<
   ProviderKind,
-  "codex" | "claudeAgent" | "cursor" | "opencode" | "omp"
+  "codex" | "claudeAgent" | "cursor" | "opencode"
 >;
 
 function actionHandler(
@@ -725,9 +725,7 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
                           ? "Cursor"
                           : provider === "opencode"
                             ? "OpenCode"
-                            : provider === "omp"
-                              ? "Oh My Pi"
-                              : "Codex"}
+                            : "Codex"}
                     </Button>
                   ))}
                 </div>
@@ -762,9 +760,7 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
                       ? "Cursor resumes a persisted session by session id."
                       : importProvider === "opencode"
                         ? "OpenCode resumes a persisted session by session id."
-                        : importProvider === "omp"
-                          ? "Oh My Pi resumes a persisted session by session id."
-                          : "Codex resumes a persisted thread by thread id."}
+                        : "Codex resumes a persisted thread by thread id."}
                 </p>
               </div>
               {importError ? (

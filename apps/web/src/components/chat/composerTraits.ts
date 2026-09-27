@@ -7,14 +7,14 @@ import {
   type ProviderOptionDescriptor,
   type ProviderKind,
   type ProviderModelDescriptor,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import {
   applyClaudePromptEffortPrefix,
   getProviderOptionCurrentValue,
   getProviderOptionDescriptors,
   isClaudeUltrathinkPrompt,
   trimOrNull,
-} from "@synara/shared/model";
+} from "@glade/shared/model";
 
 import { buildProviderOptionPatch, type ProviderOptions } from "../../providerModelOptions";
 import { getRuntimeAwareModelCapabilities } from "./runtimeModelCapabilities";
@@ -249,7 +249,6 @@ export function hasVisibleComposerTraitControls(
 // Persisted option key for the primary effort ladder when the descriptor is missing.
 function fallbackEffortOptionId(provider: ProviderKind): string {
   if (provider === "opencode") return "variant";
-  if (provider === "pi" || provider === "omp") return "thinkingLevel";
   if (provider === "claudeAgent") return "effort";
   return "reasoningEffort";
 }

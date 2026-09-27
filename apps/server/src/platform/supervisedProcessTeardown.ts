@@ -3,7 +3,7 @@
 // Layer: Server platform runtime
 
 import { Effect } from "effect";
-import { didProcessFailToSpawn } from "@synara/shared/processRuntime";
+import { didProcessFailToSpawn } from "@glade/shared/processRuntime";
 
 import {
   captureProcessTree,

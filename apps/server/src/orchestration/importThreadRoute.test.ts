@@ -6,7 +6,7 @@ import {
   ProjectId,
   type ProviderSession,
   ThreadId,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { it, vi } from "@effect/vitest";
 import { Effect, FileSystem, Option, Path } from "effect";

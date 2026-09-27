@@ -1,7 +1,7 @@
-import type { ProviderInteractionMode, RuntimeMode } from "@synara/contracts";
+import type { ProviderInteractionMode, RuntimeMode } from "@glade/contracts";
 
-/** Exact tool names owned by Synara's capability-gated Computer gateway. */
-export const SYNARA_COMPUTER_TOOL_NAMES = [
+/** Exact tool names owned by Glade's capability-gated Computer gateway. */
+export const GLADE_COMPUTER_TOOL_NAMES = [
   "computer_activate_window",
   "computer_click",
   "computer_drag",
@@ -52,9 +52,9 @@ export const SYNARA_COMPUTER_TOOL_NAMES = [
   "computer_browser_press",
 ] as const;
 
-export type SynaraComputerToolName = (typeof SYNARA_COMPUTER_TOOL_NAMES)[number];
+export type GladeComputerToolName = (typeof GLADE_COMPUTER_TOOL_NAMES)[number];
 
-const SYNARA_COMPUTER_TOOL_NAME_SET = new Set<string>(SYNARA_COMPUTER_TOOL_NAMES);
+const GLADE_COMPUTER_TOOL_NAME_SET = new Set<string>(GLADE_COMPUTER_TOOL_NAMES);
 
 function recordString(value: unknown, key: string): string | undefined {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return undefined;
@@ -64,38 +64,34 @@ function recordString(value: unknown, key: string): string | undefined {
 
 /**
  * Accept only the canonical gateway name or the exact provider qualifications
- * used for Synara's reserved MCP server. A similarly named tool from another
+ * used for Glade's reserved MCP server. A similarly named tool from another
  * MCP server must continue through the provider's ordinary permission policy.
  */
-export function canonicalSynaraComputerToolName(
-  value: unknown,
-): SynaraComputerToolName | undefined {
+export function canonicalGladeComputerToolName(value: unknown): GladeComputerToolName | undefined {
   if (typeof value !== "string") return undefined;
   const normalized = value.trim().toLowerCase();
-  const canonical = normalized.startsWith("mcp__synara__")
-    ? normalized.slice("mcp__synara__".length)
-    : normalized.startsWith("synara_")
-      ? normalized.slice("synara_".length)
+  const canonical = normalized.startsWith("mcp__glade__")
+    ? normalized.slice("mcp__glade__".length)
+    : normalized.startsWith("glade_")
+      ? normalized.slice("glade_".length)
       : normalized;
-  return SYNARA_COMPUTER_TOOL_NAME_SET.has(canonical)
-    ? (canonical as SynaraComputerToolName)
+  return GLADE_COMPUTER_TOOL_NAME_SET.has(canonical)
+    ? (canonical as GladeComputerToolName)
     : undefined;
 }
 
 /**
- * Provider callbacks must carry Synara's namespace themselves. Bare canonical
+ * Provider callbacks must carry Glade's namespace themselves. Bare canonical
  * names are safe only after a separate protocol field has proved the server
  * identity (for example Codex's `serverName`).
  */
-export function qualifiedSynaraComputerToolName(
-  value: unknown,
-): SynaraComputerToolName | undefined {
+export function qualifiedGladeComputerToolName(value: unknown): GladeComputerToolName | undefined {
   if (typeof value !== "string") return undefined;
   const normalized = value.trim().toLowerCase();
-  if (!normalized.startsWith("mcp__synara__") && !normalized.startsWith("synara_")) {
+  if (!normalized.startsWith("mcp__glade__") && !normalized.startsWith("glade_")) {
     return undefined;
   }
-  return canonicalSynaraComputerToolName(normalized);
+  return canonicalGladeComputerToolName(normalized);
 }
 
 /**
@@ -112,10 +108,10 @@ export function qualifiedSynaraComputerToolName(
  * `apps/server/src/agentGateway/Layers/AgentGateway.ts` as the catalog
  * membership test OR this family matcher, so a prefixed spelling from a
  * session that never saw the catalog —
- * `synara_computer_click`, `mcp__synara__computer_click` — still reaches
+ * `glade_computer_click`, `mcp__glade__computer_click` — still reaches
  * the denial hook and the card.
  *
- * Pi's native projection adds specialist forwarders only when its leased
+ * The native projection adds specialist forwarders only when its leased
  * catalog advertises Computer control. Disabled sessions carry no Computer
  * fallback schemas; stale calls reaching this boundary still receive the same
  * capability denial as other MCP clients.
@@ -126,8 +122,8 @@ export function qualifiedSynaraComputerToolName(
  * permission policy — so this matcher accepts only exact owned names in any
  * of the three spellings, never prose around them.
  */
-export function isSynaraComputerToolFamilyName(value: unknown): boolean {
-  return canonicalSynaraComputerToolName(value) !== undefined;
+export function isGladeComputerToolFamilyName(value: unknown): boolean {
+  return canonicalGladeComputerToolName(value) !== undefined;
 }
 
 function firstRecordString(value: unknown, keys: ReadonlyArray<string>): string | undefined {
@@ -143,29 +139,29 @@ export function computerToolNameFromProviderPermission(input: {
   readonly title?: unknown;
   readonly rawInput?: unknown;
   readonly metadata?: unknown;
-}): SynaraComputerToolName | undefined {
+}): GladeComputerToolName | undefined {
   const explicitName = typeof input.name === "string" ? input.name : undefined;
-  if (explicitName !== undefined) return qualifiedSynaraComputerToolName(explicitName);
+  if (explicitName !== undefined) return qualifiedGladeComputerToolName(explicitName);
 
   const rawToolName = firstRecordString(input.rawInput, ["_toolName", "toolName", "tool_name"]);
-  if (rawToolName !== undefined) return qualifiedSynaraComputerToolName(rawToolName);
+  if (rawToolName !== undefined) return qualifiedGladeComputerToolName(rawToolName);
 
   const metadataToolName = firstRecordString(input.metadata, [
     "_toolName",
     "toolName",
     "tool_name",
   ]);
-  if (metadataToolName !== undefined) return qualifiedSynaraComputerToolName(metadataToolName);
+  if (metadataToolName !== undefined) return qualifiedGladeComputerToolName(metadataToolName);
 
-  return qualifiedSynaraComputerToolName(input.title);
+  return qualifiedGladeComputerToolName(input.title);
 }
 
 /**
- * Provider permission prompts are redundant for an active Synara Computer
+ * Provider permission prompts are redundant for an active Glade Computer
  * capability: the gateway performs the authoritative task-scoped approval.
  * Plan mode and requests outside an active turn remain fail-closed.
  */
-export function shouldAllowSynaraComputerProviderTool(input: {
+export function shouldAllowGladeComputerProviderTool(input: {
   readonly computerControlEnabled: boolean;
   readonly activeTurn: boolean;
   readonly interactionMode: ProviderInteractionMode | undefined;

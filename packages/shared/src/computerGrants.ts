@@ -13,9 +13,9 @@
 import type {
   ComputerBuildSignature,
   ComputerPermission,
-  DesktopAppSnapPermissionKind,
-  DesktopAppSnapState,
-} from "@synara/contracts";
+  DesktopComputerPermissionKind,
+  DesktopComputerState,
+} from "@glade/contracts";
 
 /**
  * Fixed setup order, shared with the native permission guide.
@@ -26,23 +26,14 @@ export const COMPUTER_PERMISSIONS: readonly ComputerPermission[] = [
   "inputMonitoring",
 ];
 
-/**
- * The same grant set in the AppSnap helper's vocabulary. One definition keeps
- * the desktop host, the composer's setup entry, and the settings panel asking
- * for exactly these grants. Computer uses Input Monitoring for physical Escape
- * and human takeover; it does not enable AppSnap's picker chord.
- *
- * Kept as an alias, not a second list: the desktop shell and the web settings
- * import this AppSnap vocabulary directly and live outside this slice, so the
- * alias stays until those callers move to COMPUTER_PERMISSIONS.
- */
-export const COMPUTER_PERMISSION_KINDS: readonly DesktopAppSnapPermissionKind[] =
+/** Shared grant names for the desktop Computer helper and permission UI. */
+export const COMPUTER_PERMISSION_KINDS: readonly DesktopComputerPermissionKind[] =
   COMPUTER_PERMISSIONS;
 
 /** A grant snapshot is evidence; an idle backend's connectivity is not. */
-export function missingComputerAppSnapPermissions(
+export function missingComputerPermissions(
   state: Pick<
-    DesktopAppSnapState,
+    DesktopComputerState,
     "accessibilityPermission" | "screenRecordingPermission" | "inputMonitoringPermission"
   >,
 ): readonly ComputerPermission[] {
@@ -117,7 +108,7 @@ export function listComputerPermissions(permissions: readonly ComputerPermission
 }
 
 /**
- * What to tell a user whose System Settings already shows Synara switched on
+ * What to tell a user whose System Settings already shows Glade switched on
  * while the helper still reports the grant missing — or null when that cannot be
  * what happened.
  *
@@ -132,14 +123,14 @@ export function listComputerPermissions(permissions: readonly ComputerPermission
  * and re-add this specific build in System Settings, or reset its own bundle
  * explicitly when the responsible identity is known.
  *
- * `bundleId` is the *responsible* app's identifier — the Synara the grant is
+ * `bundleId` is the *responsible* app's identifier — the Glade the grant is
  * actually filed against, which `.dev` and `.canary` builds do not share with a
  * released one. It is optional because nothing can derive it: a server started
  * outside the desktop shell has no app behind it, and the desktop tells the
  * backend which flavor it is through
- * `SYNARA_DESKTOP_BUNDLE_ID_ENV`. When it is unknown the whole `tccutil`
+ * `GLADE_DESKTOP_BUNDLE_ID_ENV`. When it is unknown the whole `tccutil`
  * sentence is withheld rather than printed with a guess, because the guess a
- * user would paste into Terminal resets a *different* Synara's grants — the one
+ * user would paste into Terminal resets a *different* Glade's grants — the one
  * they have installed — and leaves this one exactly as broken as before.
  */
 export function computerStaleGrantAdvice(
@@ -151,7 +142,7 @@ export function computerStaleGrantAdvice(
   const sorted = sortComputerPermissions(permissions);
   if (sorted.length === 0) return null;
   const base =
-    "This is a locally built copy of Synara, so macOS may already list it with the switch on from " +
+    "This is a locally built copy of Glade, so macOS may already list it with the switch on from " +
     "an earlier build. Remove this app from the permission list, add the current build again, " +
     "then fully quit and reopen it.";
   const responsibleBundleId = bundleId?.trim();
@@ -174,8 +165,8 @@ export function computerPermissionSetupMessage(
   const labels = listComputerPermissions(permissions);
   const base =
     labels.length > 0
-      ? `Synara needs ${labels} to control this Mac. Turn Synara on in System Settings › Privacy & Security › ${labels}, then try again.`
-      : "Synara needs a macOS privacy permission to control this Mac. Grant it in System Settings › Privacy & Security, then try again.";
+      ? `Glade needs ${labels} to control this Mac. Turn Glade on in System Settings › Privacy & Security › ${labels}, then try again.`
+      : "Glade needs a macOS privacy permission to control this Mac. Grant it in System Settings › Privacy & Security, then try again.";
   const advice = computerStaleGrantAdvice(permissions, buildSignature, bundleId);
   return advice ? `${base} ${advice}` : base;
 }

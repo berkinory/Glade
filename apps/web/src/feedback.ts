@@ -1,9 +1,10 @@
 // FILE: feedback.ts
 // Purpose: Owns feedback categories, privacy-safe diagnostics, and delivery.
 // Layer: Web feature logic
-// Depends on: The public trysynara feedback endpoint.
+// Depends on: Glade GitHub issue drafts and the native browser opener.
 
 import { APP_VERSION } from "./branding";
+import { ensureNativeApi } from "./nativeApi";
 
 /**
  * `lead` opens the reported summary in the reporter's voice, so the category is
@@ -13,7 +14,7 @@ export const FEEDBACK_CATEGORIES = [
   { value: "bug", label: "Bug", lead: "I ran into a bug" },
   { value: "session", label: "Session", lead: "I hit a session problem" },
   { value: "ui", label: "UI", lead: "Something looked wrong" },
-  { value: "performance", label: "Performance", lead: "Synara felt slow" },
+  { value: "performance", label: "Performance", lead: "Glade felt slow" },
   { value: "idea", label: "Idea", lead: "I have an idea" },
   { value: "other", label: "Other", lead: "I have some feedback" },
 ] as const;
@@ -54,9 +55,6 @@ export interface FeedbackSubmission {
   summary: string;
   diagnostics: FeedbackDiagnostics;
 }
-
-const DEFAULT_FEEDBACK_ENDPOINT = "https://www.trysynara.com/api/feedback";
-const FEEDBACK_REQUEST_TIMEOUT_MS = 20_000;
 
 function formatStateFlags(diagnostics: FeedbackThreadContext): string {
   const flags: string[] = [];
@@ -109,7 +107,7 @@ export function formatFeedbackSummary(input: {
     .filter((row): row is [string, string] => row[1] !== null && row[1] !== "")
     .map(([label, value]) => `${label}: ${value}`);
 
-  return [`${lead} in Synara ${diagnostics.appVersion}${usageContext}.`, "", ...detailLines].join(
+  return [`${lead} in Glade ${diagnostics.appVersion}${usageContext}.`, "", ...detailLines].join(
     "\n",
   );
 }
@@ -146,37 +144,10 @@ export function buildFeedbackSubmission(input: {
   };
 }
 
-function feedbackEndpoint(): string {
-  return import.meta.env.VITE_FEEDBACK_ENDPOINT?.trim() || DEFAULT_FEEDBACK_ENDPOINT;
-}
-
-export async function submitFeedback(
-  submission: FeedbackSubmission,
-  fetchImplementation: typeof fetch = fetch,
-): Promise<void> {
-  const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), FEEDBACK_REQUEST_TIMEOUT_MS);
-  try {
-    const response = await fetchImplementation(feedbackEndpoint(), {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-synara-feedback": "1",
-      },
-      body: JSON.stringify(submission),
-      signal: controller.signal,
-    });
-    if (response.ok) return;
-
-    const payload = (await response.json().catch(() => null)) as { error?: unknown } | null;
-    const message = typeof payload?.error === "string" ? payload.error.trim() : "";
-    throw new Error(message || `Feedback could not be sent (${response.status}).`);
-  } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") {
-      throw new Error("Feedback delivery timed out. Please try again.");
-    }
-    throw error;
-  } finally {
-    window.clearTimeout(timeout);
-  }
+/** Open a reviewable draft; only the user can publish the GitHub issue. */
+export async function submitFeedback(submission: FeedbackSubmission): Promise<void> {
+  const url = new URL("https://github.com/berkinory/Glade/issues/new");
+  url.searchParams.set("title", `[${submission.category ?? "feedback"}] Glade ${APP_VERSION}`);
+  url.searchParams.set("body", `${submission.details}\n\n${submission.summary}`);
+  await ensureNativeApi().shell.openExternal(url.toString());
 }

@@ -1,7 +1,5 @@
-import { appendAppSnapPromptContext } from "../../provider/appSnapPromptContext.ts";
-import { isServerBetaFeatureEnabled } from "../../betaFeatureGate";
 import { computerActivationMetadata } from "../../computer/computerActivation.ts";
-import { parseComputerInvocation } from "@synara/shared/computerInvocation";
+import { parseComputerInvocation } from "@glade/shared/computerInvocation";
 import { AgentGatewaySessionRegistry } from "../../agentGateway/Services/AgentGatewaySessionRegistry";
 import { ComputerService } from "../../computer/Services/ComputerService";
 import { providerWorkspaceChanged } from "../projectRelocationPaths.ts";
@@ -36,7 +34,7 @@ import {
   type ProviderSession,
   type RuntimeMode,
   TurnId,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import {
   Cache,
   Cause,
@@ -59,22 +57,22 @@ import {
   buildThreadTitleConversationContext,
   isGenericChatThreadTitle,
   isUsableGeneratedThreadTitle,
-} from "@synara/shared/chatThreads";
+} from "@glade/shared/chatThreads";
 import {
   collectTailTurnIds,
   resolveTailUserMessageEditTarget,
-} from "@synara/shared/conversationEdit";
-import { isTemporaryWorktreeBranch, WORKTREE_BRANCH_PREFIX } from "@synara/shared/git";
-import { claudeSelectionRequiresRestart, resolveApiModelId } from "@synara/shared/model";
-import { assessClaudeCache } from "@synara/shared/claudeCache";
+} from "@glade/shared/conversationEdit";
+import { isTemporaryWorktreeBranch, WORKTREE_BRANCH_PREFIX } from "@glade/shared/git";
+import { claudeSelectionRequiresRestart, resolveApiModelId } from "@glade/shared/model";
+import { assessClaudeCache } from "@glade/shared/claudeCache";
 import { claudeCacheForModel } from "../../provider/claudeCacheObservation.ts";
-import { providerSupportsNativeTurnSteering } from "@synara/shared/providerMetadata";
+import { providerSupportsNativeTurnSteering } from "@glade/shared/providerMetadata";
 import {
   formatProviderDeliveryBlockDetail,
   PROVIDER_DELIVERY_BLOCK_SUMMARY,
-} from "@synara/shared/providerDeliveryBlock";
-import { buildStalePendingRequestFailureDetail } from "@synara/shared/threadSummary";
-import { resolveThreadWorkspaceState } from "@synara/shared/threadEnvironment";
+} from "@glade/shared/providerDeliveryBlock";
+import { buildStalePendingRequestFailureDetail } from "@glade/shared/threadSummary";
+import { resolveThreadWorkspaceState } from "@glade/shared/threadEnvironment";
 
 import {
   checkpointRefForThreadMessageStart,
@@ -135,7 +133,7 @@ import { QueuedTurnPromotionRepository } from "../../persistence/Services/Queued
 import { ManagedAttachmentRepository } from "../../persistence/Services/ManagedAttachments.ts";
 import { ServerConfig } from "../../config.ts";
 import { ServerSettingsService } from "../../serverSettings.ts";
-import { providerStartOptionsFromServerSettings } from "@synara/shared/serverSettings";
+import { providerStartOptionsFromServerSettings } from "@glade/shared/serverSettings";
 import { clearWorkspaceIndexCache } from "../../workspaceEntries.ts";
 import {
   buildPriorTranscriptBootstrapText,
@@ -573,7 +571,7 @@ function withProviderThreadStatePrompts(input: {
 function providerPromptOverflowIssue(goalPromptOverheadChars: number): string {
   return goalPromptOverheadChars > 0
     ? "The latest message is too long to include the persistent thread goal. Shorten the message and retry."
-    : "The latest message is too long to include Synara Debug mode instructions. Shorten the message and retry.";
+    : "The latest message is too long to include Glade Debug mode instructions. Shorten the message and retry.";
 }
 
 function isUnavailableInteractionRuntime(cause: Cause.Cause<ProviderServiceError>): boolean {
@@ -711,7 +709,7 @@ function buildGeneratedWorktreeBranchName(raw: string): string {
     .replace(/^refs\/heads\//, "")
     .replace(/['"`]/g, "");
 
-  const withoutPrefix = normalized.replace(/^synara\//, "");
+  const withoutPrefix = normalized.replace(/^glade\//, "");
 
   const branchFragment = withoutPrefix
     .replace(/[^a-z0-9/_-]+/g, "-")
@@ -736,7 +734,7 @@ interface ProviderCommandReactorConfigShape {
 class ProviderCommandReactorConfig extends ServiceMap.Service<
   ProviderCommandReactorConfig,
   ProviderCommandReactorConfigShape
->()("synara/orchestration/Layers/ProviderCommandReactorConfig") {}
+>()("glade/orchestration/Layers/ProviderCommandReactorConfig") {}
 
 const make = Effect.gen(function* () {
   const { commandEventTimeout } = yield* ProviderCommandReactorConfig;
@@ -887,7 +885,7 @@ const make = Effect.gen(function* () {
   const queuedTurnPromotionOwner = `provider-queued-turn:${crypto.randomUUID()}`;
   const sidechatContextBootstrapThreadIds = new Set<string>();
   // Fresh sessions that cannot inherit native conversation state need one
-  // transcript bootstrap (fork fallbacks and non-resumable Droid model changes).
+  // transcript bootstrap for fork fallbacks.
   const freshSessionContextBootstrapThreadIds = new Set<string>();
   // Providers without native rewind restart after rollback and receive the
   // retained projection transcript once on their next prompt.
@@ -1154,7 +1152,7 @@ const make = Effect.gen(function* () {
     attempt: PendingContextBootstrapAttempt,
     event: ProviderQueueDrainEvent,
   ) {
-    // Keep bootstrap flags after cancellation or failure even though Droid may
+    // Keep bootstrap flags after cancellation or failure even though the provider may
     // already have received the prompt. A bounded duplicate on retry is safer
     // than dropping the only model-visible copy of the retained transcript.
     if (event.type !== "turn.completed" || event.payload.state !== "completed") {
@@ -1736,11 +1734,7 @@ const make = Effect.gen(function* () {
       return yield* new ProviderAdapterValidationError({
         provider: preferredProvider,
         operation: "thread.turn.start",
-        // A Beta-only provider can never be re-enabled on this build, so the
-        // re-enable hint only makes sense for an ordinary settings disable.
-        issue: isServerBetaFeatureEnabled(preferredProvider)
-          ? `${providerDisabledSettingsMessage(preferredProvider)} Re-enable it to continue this thread.`
-          : providerDisabledSettingsMessage(preferredProvider),
+        issue: `${providerDisabledSettingsMessage(preferredProvider)} Re-enable it to continue this thread.`,
       });
     }
     const resolvedProviderOptions = providerStartOptionsFromServerSettings(settings);
@@ -1860,9 +1854,7 @@ const make = Effect.gen(function* () {
               previousModelSelection ?? thread.modelSelection,
               desiredModelSelection,
             )
-          : (currentProvider === "droid" ||
-              currentProvider === "grok" ||
-              currentProvider === "devin") &&
+          : currentProvider === "grok" &&
             requestedModelSelection !== undefined &&
             !Equal.equals(previousModelSelection, requestedModelSelection);
       const requestedComputerControl = options?.enableComputerControl;
@@ -1969,14 +1961,6 @@ const make = Effect.gen(function* () {
         workspaceChanged && shouldRegisterContextBootstrap,
       );
       const restartedSession = restartedOutcome.session;
-      if (
-        shouldRegisterContextBootstrap &&
-        currentProvider === "droid" &&
-        !providerChanged &&
-        resumeCursor === undefined
-      ) {
-        freshSessionContextBootstrapThreadIds.add(threadId);
-      }
       threadSessionModelSelections.set(threadId, desiredModelSelection);
       if (options?.enableComputerControl !== undefined) {
         threadSessionComputerControl.set(threadId, options.enableComputerControl);
@@ -2027,15 +2011,6 @@ const make = Effect.gen(function* () {
         enableComputerControl: forkComputerControl,
       });
       if (forked) {
-        if (
-          shouldRegisterContextBootstrap &&
-          preferredProvider === "droid" &&
-          thread.sidechatSourceThreadId
-        ) {
-          // Droid's ACP fork preserves the native session but does not guarantee
-          // that the imported sidechat transcript is model-visible on its first prompt.
-          sidechatContextBootstrapThreadIds.add(threadId);
-        }
         threadSessionModelSelections.set(threadId, desiredModelSelection);
         threadSessionComputerControl.set(threadId, forkComputerControl);
         const forkedSession =
@@ -2120,7 +2095,7 @@ const make = Effect.gen(function* () {
       if (shouldRegisterContextBootstrap) {
         freshSessionContextBootstrapThreadIds.add(threadId);
       } else if (
-        (preferredProvider === "opencode" || preferredProvider === "devin") &&
+        preferredProvider === "opencode" &&
         providerService.completePriorTranscriptBootstrap
       ) {
         // An explicit stop intentionally discards pending synthetic context.
@@ -2238,10 +2213,10 @@ const make = Effect.gen(function* () {
       input.dispatchOrigin === undefined || input.dispatchOrigin === "user"
         ? parseComputerInvocation(input.messageText)
         : null;
-    // Synara owns this command. Keep it in durable user text for provenance,
+    // Glade owns this command. Keep it in durable user text for provenance,
     // but do not ask the provider to interpret a native slash command.
     const authoredMessageText = computerInvocation
-      ? computerInvocation.prompt || "Use Synara Computer for this task."
+      ? computerInvocation.prompt || "Use Glade Computer for this task."
       : input.messageText;
     const threadMentionProjection = yield* resolveThreadMentionPromptProjection({
       mentions: input.mentions,
@@ -2304,11 +2279,7 @@ const make = Effect.gen(function* () {
         goal: activeThreadGoal(thread),
         text: normalizeSkillMentionTextForProvider({
           provider: steerProvider,
-          messageText: appendAppSnapPromptContext(
-            steerMessageWithSkills,
-            input.attachments,
-            PROVIDER_SEND_TURN_MAX_INPUT_CHARS - providerPromptOverheadChars,
-          ),
+          messageText: steerMessageWithSkills,
           ...(input.skills !== undefined ? { skills: input.skills } : {}),
         }),
       });
@@ -2742,11 +2713,7 @@ const make = Effect.gen(function* () {
           goal: activeThreadGoal(thread),
           text: normalizeSkillMentionTextForProvider({
             provider: selectedProvider as ProviderKind,
-            messageText: appendAppSnapPromptContext(
-              withSkills,
-              input.attachments,
-              PROVIDER_SEND_TURN_MAX_INPUT_CHARS - providerPromptOverheadChars,
-            ),
+            messageText: withSkills,
             ...(input.skills !== undefined ? { skills: input.skills } : {}),
           }),
         }),
@@ -2876,11 +2843,8 @@ const make = Effect.gen(function* () {
       });
     } else {
       yield* capturePreTurnBaselines;
-      const tracksDroidContextAcceptance =
-        activeSession?.provider === "droid" &&
-        (sidechatBootstrapText !== null || priorTranscriptBootstrapText !== null);
       const tracksDurableContextAcceptance =
-        (selectedProvider === "opencode" || selectedProvider === "devin") &&
+        selectedProvider === "opencode" &&
         ((hasPendingFreshSessionTranscriptBootstrap &&
           (priorTranscriptBootstrapRetiresOnAcceptedTurn ||
             specializedBootstrapCompletesFreshSessionContext)) ||
@@ -2891,7 +2855,7 @@ const make = Effect.gen(function* () {
       const tracksEscalationAcceptance =
         interruptEscalation !== undefined && selectedProvider !== "codex";
       pendingContextBootstrapAttempt =
-        tracksDroidContextAcceptance || tracksDurableContextAcceptance || tracksEscalationAcceptance
+        tracksDurableContextAcceptance || tracksEscalationAcceptance
           ? {
               clearSidechat:
                 sidechatBootstrapText !== null || priorTranscriptBootstrapText !== null,
@@ -2923,7 +2887,7 @@ const make = Effect.gen(function* () {
       ) =>
         Effect.gen(function* () {
           // Claude cannot continue from a missing native session; clear the
-          // dead cursor and replay once with Synara transcript context.
+          // dead cursor and replay once with Glade transcript context.
           yield* clearStaleProviderResumeState({
             threadId: input.threadId,
             cause,
@@ -3111,7 +3075,7 @@ const make = Effect.gen(function* () {
       let durableCompletionSucceeded = true;
       if (
         hasPendingFreshSessionTranscriptBootstrap &&
-        (selectedProvider === "opencode" || selectedProvider === "devin") &&
+        selectedProvider === "opencode" &&
         providerService.completePriorTranscriptBootstrap
       ) {
         durableCompletionSucceeded = yield* persistPriorTranscriptBootstrapCompletion(
@@ -5420,10 +5384,7 @@ const make = Effect.gen(function* () {
     const stoppedProvider = Schema.is(ProviderKind)(thread.session?.providerName)
       ? thread.session.providerName
       : thread.modelSelection.provider;
-    if (
-      (stoppedProvider === "opencode" || stoppedProvider === "devin") &&
-      providerService.completePriorTranscriptBootstrap
-    ) {
+    if (stoppedProvider === "opencode" && providerService.completePriorTranscriptBootstrap) {
       yield* providerService.completePriorTranscriptBootstrap({ threadId: thread.id }).pipe(
         Effect.catchCause((cause) =>
           Effect.logWarning(
@@ -6690,7 +6651,7 @@ const make = Effect.gen(function* () {
                 threadId: blocker.threadId,
                 kind: "provider.turn.start.failed",
                 summary: "Previous messages were not sent",
-                detail: `Synara recovered an earlier provider failure, but ${skippedPromptCount} ${noun} skipped while the thread was blocked. Resend ${skippedPromptCount === 1 ? "it" : "them"} to continue.`,
+                detail: `Glade recovered an earlier provider failure, but ${skippedPromptCount} ${noun} skipped while the thread was blocked. Resend ${skippedPromptCount === 1 ? "it" : "them"} to continue.`,
                 turnId: null,
                 createdAt,
               });

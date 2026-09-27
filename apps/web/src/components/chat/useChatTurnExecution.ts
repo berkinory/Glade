@@ -3,7 +3,7 @@ import type {
   ProjectScript,
   ProviderMentionReference,
   ProviderSkillReference,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import {
   DEFAULT_MODEL_BY_PROVIDER,
   MessageId,
@@ -12,10 +12,10 @@ import {
   ThreadId,
   type ModelSelection,
   type ProviderStartOptions,
-} from "@synara/contracts";
-import { buildTemporaryWorktreeBranchName } from "@synara/shared/git";
-import { getDefaultModel } from "@synara/shared/model";
-import { providerSupportsNativeTurnSteering } from "@synara/shared/providerMetadata";
+} from "@glade/contracts";
+import { buildTemporaryWorktreeBranchName } from "@glade/shared/git";
+import { getDefaultModel } from "@glade/shared/model";
+import { providerSupportsNativeTurnSteering } from "@glade/shared/providerMetadata";
 import { useCallback } from "react";
 import { promoteThreadCreate } from "~/lib/threadCreatePromotion";
 import { newCommandId, randomUUID } from "~/lib/utils";
@@ -27,11 +27,7 @@ import {
 } from "~/projectInstructionsStore";
 import { dispatchThreadGoal } from "~/threadGoal";
 import { collapseExpandedComposerCursor, detectComposerTrigger } from "../../composer-logic";
-import {
-  useComposerDraftStore,
-  type DraftThreadEnvMode,
-  type QueuedComposerChatTurn,
-} from "../../composerDraftStore";
+import { type DraftThreadEnvMode, type QueuedComposerChatTurn } from "../../composerDraftStore";
 import {
   cloneComposerImageAttachment,
   stageUploadComposerAttachments,

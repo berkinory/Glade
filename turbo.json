@@ -6,26 +6,26 @@
     "VITE_WS_URL",
     "VITE_DEV_SERVER_URL",
     "ELECTRON_RENDERER_PORT",
-    "SYNARA_HOME",
-    "SYNARA_DESKTOP_WS_URL",
-    "SYNARA_BROWSER_HOST_PIPE_PATH",
-    "SYNARA_BROWSER_USE_PIPE_PATH",
-    "SYNARA_BROWSER_PERF",
-    "SYNARA_PROVIDER_RUNTIME_IDLE_STOP_MS",
-    "SYNARA_GROK_ACP_DEBUG",
-    "SYNARA_WEB_SOURCEMAP",
-    "SYNARA_DEV_REACT_COMPILER",
-    "SYNARA_SERVER_SOURCEMAP",
-    "SYNARA_DESKTOP_SOURCEMAP",
-    "SYNARA_MODE",
-    "SYNARA_PORT",
-    "SYNARA_NO_BROWSER",
-    "SYNARA_AUTH_TOKEN",
-    "SYNARA_PUBLIC_URL",
-    "SYNARA_ALLOW_INSECURE_REMOTE",
-    "SYNARA_LOG_WS_EVENTS",
-    "SYNARA_HOST",
-    "SYNARA_AUTO_BOOTSTRAP_PROJECT_FROM_CWD"
+    "GLADE_HOME",
+    "GLADE_DESKTOP_WS_URL",
+    "GLADE_BROWSER_HOST_PIPE_PATH",
+    "GLADE_BROWSER_USE_PIPE_PATH",
+    "GLADE_BROWSER_PERF",
+    "GLADE_PROVIDER_RUNTIME_IDLE_STOP_MS",
+    "GLADE_GROK_ACP_DEBUG",
+    "GLADE_WEB_SOURCEMAP",
+    "GLADE_DEV_REACT_COMPILER",
+    "GLADE_SERVER_SOURCEMAP",
+    "GLADE_DESKTOP_SOURCEMAP",
+    "GLADE_MODE",
+    "GLADE_PORT",
+    "GLADE_NO_BROWSER",
+    "GLADE_AUTH_TOKEN",
+    "GLADE_PUBLIC_URL",
+    "GLADE_ALLOW_INSECURE_REMOTE",
+    "GLADE_LOG_WS_EVENTS",
+    "GLADE_HOST",
+    "GLADE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD"
   ],
   "tasks": {
     "build": {
@@ -38,16 +38,6 @@
     },
     "typecheck": {
       "dependsOn": ["^typecheck"],
-      "outputs": [],
-      "cache": false
-    },
-    "typecheck:native": {
-      "dependsOn": ["^typecheck:native"],
-      "outputs": [],
-      "cache": false
-    },
-    "typecheck:legacy": {
-      "dependsOn": ["^typecheck:legacy"],
       "outputs": [],
       "cache": false
     },

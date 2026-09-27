@@ -1,37 +1,7 @@
-// FILE: modelSelectionCompatibility.ts
-// Purpose: Normalizes persisted model-selection JSON from older/newer app builds.
-// Layer: Persistence compatibility helper
-// Exports: normalizeLegacyModelSelection, normalizePersistedModelSelection
+// Normalize older persisted selections at read time. Event JSON remains untouched.
+import { DEFAULT_MODEL_BY_PROVIDER, ProviderKind, type ModelSelection } from "@glade/contracts";
 
-import { MODEL_OPTIONS_BY_PROVIDER } from "@synara/contracts";
-
-type ModelProviderKind =
-  | "codex"
-  | "claudeAgent"
-  | "cursor"
-  | "antigravity"
-  | "grok"
-  | "droid"
-  | "opencode"
-  | "pi"
-  | "devin"
-  | "omp";
-
-const NON_DROID_MODEL_SLUGS = new Set(
-  Object.entries(MODEL_OPTIONS_BY_PROVIDER).flatMap(([provider, models]) =>
-    provider === "droid" ? [] : models.map((model) => model.slug.toLowerCase()),
-  ),
-);
-const DROID_ONLY_MODEL_SLUGS = new Set(
-  MODEL_OPTIONS_BY_PROVIDER.droid
-    .map((model) => model.slug.toLowerCase())
-    .filter((slug) => !NON_DROID_MODEL_SLUGS.has(slug)),
-);
-
-const LEGACY_GEMINI_MODEL_LABELS: Readonly<Record<string, string>> = {
-  "gemini-3.1-pro-preview": "Gemini 3.1 Pro",
-  "gemini-3-flash-preview": "Gemini 3.5 Flash",
-};
+const retiredProviderIds = new Set(["antigravity", "devin", "droid", "omp", "pi", "gemini"]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -39,173 +9,51 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function readTrimmedString(record: Record<string, unknown>, key: string): string | undefined {
   const value = record[key];
-  if (typeof value !== "string") {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
-// Imported instance ids may be runtime names rather than Synara provider literals.
-function inferProviderFromLabel(label: string): ModelProviderKind | undefined {
-  const lowerLabel = label.toLowerCase();
-  // OMP must win over the `pi` token check: "Oh My Pi" and "OMP" labels would
-  // otherwise attribute to Pi.
-  if (
-    /(^|[^a-z0-9])omp([^a-z0-9]|$)/u.test(lowerLabel) ||
-    lowerLabel.includes("oh-my-pi") ||
-    lowerLabel.includes("oh my pi")
-  ) {
-    return "omp";
-  }
-  if (/(^|[^a-z0-9])pi([^a-z0-9]|$)/u.test(lowerLabel)) {
-    return "pi";
-  }
-  if (lowerLabel.includes("devin")) {
-    return "devin";
-  }
-  if (lowerLabel.includes("opencode")) {
-    return "opencode";
-  }
-  if (lowerLabel.includes("kilo")) {
-    return "opencode";
-  }
-  if (lowerLabel.includes("cursor")) {
-    return "cursor";
-  }
-  if (lowerLabel.includes("antigravity")) {
-    return "antigravity";
-  }
-  if (lowerLabel.includes("claude") || lowerLabel.includes("anthropic")) {
-    return "claudeAgent";
-  }
-  if (lowerLabel.includes("gemini") || lowerLabel.includes("google")) {
-    return "antigravity";
-  }
-  if (lowerLabel.includes("grok") || lowerLabel.includes("xai") || lowerLabel.includes("x.ai")) {
-    return "grok";
-  }
-  // Windsurf shares Devin credentials, so its labels attribute to the Devin provider.
-  if (lowerLabel.includes("windsurf")) {
-    return "devin";
-  }
-  if (lowerLabel.includes("droid") || lowerLabel.includes("factory")) {
-    return "droid";
-  }
-  // Word-boundary match only: a bare substring would also catch unrelated
-  // labels like "speech recognition".
-  if (/(^|[^a-z0-9])cognition([^a-z0-9]|$)/u.test(lowerLabel)) {
-    return "devin";
-  }
-  if (lowerLabel.includes("codex")) {
-    return "codex";
-  }
-  return undefined;
-}
-
-function inferLegacyModelProvider(provider: unknown, model: string): ModelProviderKind {
-  if (
-    provider === "codex" ||
-    provider === "claudeAgent" ||
-    provider === "cursor" ||
-    provider === "antigravity" ||
-    provider === "grok" ||
-    provider === "droid" ||
-    provider === "opencode" ||
-    provider === "pi" ||
-    provider === "devin" ||
-    provider === "omp"
-  ) {
-    return provider;
-  }
-  if (provider === "gemini") {
-    return "antigravity";
-  }
-  if (provider === "kilo") {
-    return "opencode";
-  }
-  if (typeof provider === "string") {
-    const providerFromLabel = inferProviderFromLabel(provider);
-    if (providerFromLabel !== undefined) {
-      return providerFromLabel;
+function normalizeOptions(
+  value: unknown,
+  provider: ProviderKind,
+  originalProvider: unknown,
+): unknown {
+  if (Array.isArray(value)) {
+    const entries: Array<readonly [string, unknown]> = [];
+    for (const item of value) {
+      if (!isRecord(item)) return value;
+      const id = readTrimmedString(item, "id");
+      if (!id) return value;
+      entries.push([id, item.value]);
     }
+    return Object.fromEntries(entries);
+  }
+  if (!isRecord(value)) return value;
+  const scoped =
+    value[provider] ?? (typeof originalProvider === "string" ? value[originalProvider] : undefined);
+  return scoped === undefined ? value : normalizeOptions(scoped, provider, originalProvider);
+}
+
+function inferProvider(raw: unknown, model: string): ProviderKind | null {
+  if (typeof raw === "string") {
+    if (retiredProviderIds.has(raw.toLowerCase())) return null;
+    if (raw === "kilo") return "opencode";
+    if (ProviderKind.literals.includes(raw as ProviderKind)) return raw as ProviderKind;
+    const label = raw.toLowerCase();
+    if (
+      /\b(oh my pi|omp|pi|devin|windsurf|cognition|droid|factory|antigravity|gemini)\b/u.test(label)
+    )
+      return null;
+    if (label.includes("opencode") || label.includes("kilo")) return "opencode";
+    if (label.includes("claude") || label.includes("anthropic")) return "claudeAgent";
+    if (label.includes("cursor")) return "cursor";
+    if (label.includes("grok") || label.includes("xai")) return "grok";
+    if (label.includes("codex")) return "codex";
   }
   const lowerModel = model.toLowerCase();
-  // Shared Claude/Gemini/OpenAI slugs remain ambiguous without an instance label;
-  // only Factory-exclusive built-ins are safe to attribute to Droid.
-  if (DROID_ONLY_MODEL_SLUGS.has(lowerModel)) {
-    return "droid";
-  }
-  if (lowerModel.includes("claude")) {
-    return "claudeAgent";
-  }
-  if (lowerModel.includes("gemini")) {
-    return "antigravity";
-  }
-  if (lowerModel.includes("grok")) {
-    return "grok";
-  }
-  if (lowerModel.includes("devin")) {
-    return "devin";
-  }
+  if (lowerModel.includes("gemini") || lowerModel.includes("devin")) return null;
+  if (lowerModel.includes("claude")) return "claudeAgent";
+  if (lowerModel.includes("grok")) return "grok";
   return "codex";
-}
-
-function readLegacyProviderOptions(
-  options: unknown,
-  provider: ModelProviderKind,
-  legacyProvider?: string,
-): unknown {
-  if (!isRecord(options)) {
-    return options;
-  }
-  // Selections migrated from a renamed provider (e.g. kilo → opencode) keep
-  // their options scoped under the original provider key.
-  const providerScopedOptions =
-    options[provider] ?? (legacyProvider === undefined ? undefined : options[legacyProvider]);
-  return providerScopedOptions === undefined ? options : providerScopedOptions;
-}
-
-function normalizeModelOptions(input: unknown): unknown {
-  if (!Array.isArray(input)) {
-    return input;
-  }
-
-  const entries: Array<readonly [string, unknown]> = [];
-  for (const option of input) {
-    if (!isRecord(option)) {
-      return input;
-    }
-    const id = readTrimmedString(option, "id");
-    if (id === undefined) {
-      return input;
-    }
-    entries.push([id, option.value]);
-  }
-  return Object.fromEntries(entries);
-}
-
-function splitLegacyAntigravityModelLabel(model: string): {
-  model: string;
-  reasoningEffort?: string;
-} {
-  const match = model.trim().match(/^(.*?)\s+\(([^()]+)\)$/u);
-  if (!match?.[1] || !match[2]) {
-    return { model };
-  }
-  const reasoningEffort = match[2].trim().toLowerCase();
-  if (!new Set(["low", "medium", "high", "thinking"]).has(reasoningEffort)) {
-    return { model };
-  }
-  return {
-    model: match[1].trim(),
-    reasoningEffort,
-  };
-}
-
-function migrateLegacyGeminiModel(model: string): string {
-  const trimmed = model.trim();
-  return LEGACY_GEMINI_MODEL_LABELS[trimmed.toLowerCase()] ?? trimmed;
 }
 
 export function normalizeLegacyModelSelection(input: {
@@ -213,50 +61,24 @@ export function normalizeLegacyModelSelection(input: {
   readonly model: string;
   readonly options: unknown;
 }): Record<string, unknown> {
-  const provider = inferLegacyModelProvider(input.provider, input.model);
-  const migratedGeminiSelection = input.provider === "gemini";
-  const normalizedOptions = migratedGeminiSelection
-    ? undefined
-    : normalizeModelOptions(
-        readLegacyProviderOptions(
-          input.options,
-          provider,
-          typeof input.provider === "string" ? input.provider : undefined,
-        ),
-      );
-  const antigravityModel =
-    provider === "antigravity"
-      ? splitLegacyAntigravityModelLabel(
-          migratedGeminiSelection ? migrateLegacyGeminiModel(input.model) : input.model,
-        )
-      : null;
-  const options =
-    antigravityModel?.reasoningEffort &&
-    (normalizedOptions === undefined || isRecord(normalizedOptions))
-      ? {
-          ...(isRecord(normalizedOptions) ? normalizedOptions : {}),
-          reasoningEffort: antigravityModel.reasoningEffort,
-        }
-      : normalizedOptions;
+  const provider = inferProvider(input.provider, input.model);
+  // Retired selections cannot be resumed safely. Project/thread projections use a
+  // valid default while the original provider/model remain in the event journal.
+  if (provider === null) {
+    return { provider: "codex", model: DEFAULT_MODEL_BY_PROVIDER.codex } satisfies ModelSelection;
+  }
+  const options = normalizeOptions(input.options, provider, input.provider);
   return {
     provider,
-    model: antigravityModel?.model ?? input.model,
+    model: input.model,
     ...(options === undefined ? {} : { options }),
   };
 }
 
 export function normalizePersistedModelSelection(input: unknown): unknown {
-  if (!isRecord(input)) {
-    return input;
-  }
-
+  if (!isRecord(input)) return input;
   const model = readTrimmedString(input, "model");
-  if (model === undefined) {
-    return input;
-  }
-
-  // Newer Synara writes provider-less selections as { instanceId, model } and
-  // option rows as [{ id, value }]; Synara stores canonical provider/options objects.
+  if (!model) return input;
   return normalizeLegacyModelSelection({
     provider: input.provider ?? input.instanceId,
     model,

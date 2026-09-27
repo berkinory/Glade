@@ -3,7 +3,7 @@
 //          file search, file/diff preview, and chat.
 // Layer: Chat route presentation
 
-import type { ProjectId } from "@synara/contracts";
+import type { ProjectId } from "@glade/contracts";
 import type { FileDiffMetadata } from "@pierre/diffs/react";
 import {
   type CSSProperties,
@@ -75,9 +75,9 @@ import { flushWorkspaceEditors } from "~/lib/workspaceEditorSession";
 import { WorkspaceFileEditorPane } from "./chat/WorkspaceFileEditorPane";
 import { WorkspaceFilePreview } from "./WorkspaceFilePreview";
 
-const EDITOR_CHAT_PANE_STORAGE_KEY = "synara.editor.chatPaneWidth";
-const EDITOR_SIDEBAR_VISIBLE_STORAGE_KEY = "synara.editor.sidebarVisible";
-const EDITOR_CHAT_PANE_VISIBLE_STORAGE_KEY = "synara.editor.chatPaneVisible";
+const EDITOR_CHAT_PANE_STORAGE_KEY = "glade.editor.chatPaneWidth";
+const EDITOR_SIDEBAR_VISIBLE_STORAGE_KEY = "glade.editor.sidebarVisible";
+const EDITOR_CHAT_PANE_VISIBLE_STORAGE_KEY = "glade.editor.chatPaneVisible";
 const EDITOR_CHAT_PANE_DEFAULT_WIDTH = 384;
 const EDITOR_CHAT_PANE_MIN_WIDTH = 320;
 const EDITOR_CHAT_PANE_MAX_WIDTH = 600;

@@ -11,7 +11,6 @@ import { loadClaudeAgentSdk } from "./provider/claudeAgentSdk.ts";
 // from app.asar exposes missing peers that the development install can hide.
 await loadAcpSdk();
 await loadClaudeAgentSdk();
-await import("@earendil-works/pi-coding-agent");
 await import("open");
 await import("node-pty");
 await import("@xterm/headless");

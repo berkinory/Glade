@@ -42,7 +42,7 @@ import type {
   ThreadId,
   ProviderTurnStartResult,
   TurnId,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import type { Effect } from "effect";
 import type { Stream } from "effect";
 
@@ -98,13 +98,6 @@ export interface ProviderThreadSnapshot {
   readonly threadId: ThreadId;
   readonly turns: ReadonlyArray<ProviderThreadTurnSnapshot>;
   readonly cwd?: string | null;
-  /**
-   * The model and thinking level the provider session last ran with, when the
-   * persisted session store records them (OMP JSONL `model_change` /
-   * `thinking_level_change` rows). Lets an imported thread keep running the
-   * model the source session actually used.
-   */
-  readonly lastUsedModel?: { readonly model: string; readonly thinkingLevel?: string };
 }
 
 export interface ProviderAdapterShape<TError> {

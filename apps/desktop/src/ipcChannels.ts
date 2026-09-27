@@ -11,11 +11,6 @@ export const DESKTOP_IPC_CHANNELS = {
   setAppIcon: "desktop:set-app-icon",
   contextMenu: "desktop:context-menu",
   openExternal: "desktop:open-external",
-  safariAccess: {
-    getInfo: "desktop:safari-access-info",
-    openSettings: "desktop:safari-access-settings",
-    revealApp: "desktop:safari-access-reveal-app",
-  },
   showInFolder: "desktop:show-in-folder",
   clipboardWriteImage: "desktop:clipboard-write-image",
   windowMinimize: "desktop:window-minimize",
@@ -29,13 +24,6 @@ export const DESKTOP_IPC_CHANNELS = {
   menuAction: "desktop:menu-action",
   quitConfirmationRequest: "desktop:quit-confirmation-request",
   quitConfirmationResponse: "desktop:quit-confirmation-response",
-  beta: {
-    getState: "desktop:beta-get-state",
-    launch: "desktop:beta-launch",
-    install: "desktop:beta-install",
-    importAndLaunch: "desktop:beta-import-and-launch",
-    leave: "desktop:beta-leave",
-  },
   updateState: "desktop:update-state",
   updateGetState: "desktop:update-get-state",
   updateCheck: "desktop:update-check",
@@ -53,27 +41,16 @@ export const DESKTOP_IPC_CHANNELS = {
     read: "desktop:storage-migration-read",
     acknowledge: "desktop:storage-migration-acknowledge",
   },
-  appSnap: {
-    captureCurrentApp: "desktop:appsnap-capture-current-app",
-    cancelCapture: "desktop:appsnap-cancel-capture",
-    getState: "desktop:appsnap-get-state",
-    setEnabled: "desktop:appsnap-set-enabled",
-    checkShortcut: "desktop:appsnap-check-shortcut",
-    setShortcut: "desktop:appsnap-set-shortcut",
-    requestPermissions: "desktop:appsnap-request-permissions",
-    startPermissionSetup: "desktop:appsnap-start-permission-setup",
-    listPendingCaptures: "desktop:appsnap-list-pending-captures",
-    acknowledgeCapture: "desktop:appsnap-acknowledge-capture",
-    listWindows: "desktop:appsnap-list-windows",
-    captureWindow: "desktop:appsnap-capture-window",
-    openPermissionSettings: "desktop:appsnap-open-permission-settings",
-    restartApp: "desktop:appsnap-restart-app",
-    showPermissionGuide: "desktop:appsnap-show-permission-guide",
-    hidePermissionGuide: "desktop:appsnap-hide-permission-guide",
-    permissionGuideState: "desktop:appsnap-permission-guide-state",
-    captured: "desktop:appsnap-captured",
-    error: "desktop:appsnap-error",
-    state: "desktop:appsnap-state",
+  computerPermissions: {
+    getState: "desktop:computer-permissions-get-state",
+    requestPermissions: "desktop:computer-permissions-request-permissions",
+    startPermissionSetup: "desktop:computer-permissions-start-permission-setup",
+    openPermissionSettings: "desktop:computer-permissions-open-permission-settings",
+    restartApp: "desktop:computer-permissions-restart-app",
+    showPermissionGuide: "desktop:computer-permissions-show-permission-guide",
+    hidePermissionGuide: "desktop:computer-permissions-hide-permission-guide",
+    permissionGuideState: "desktop:computer-permissions-permission-guide-state",
+    state: "desktop:computer-permissions-state",
   },
   browser: {
     vault: {
@@ -85,9 +62,6 @@ export const DESKTOP_IPC_CHANNELS = {
       unlock: "desktop:browser-vault-unlock",
       lock: "desktop:browser-vault-lock",
       reveal: "desktop:browser-vault-reveal",
-      cookieSources: "desktop:browser-cookie-sources",
-      cookieProfiles: "desktop:browser-cookie-profiles",
-      importCookies: "desktop:browser-cookie-import",
       changed: "desktop:browser-vault-changed",
     },
     webMcpCompatibilityPolicy: "desktop:browser-webmcp-compatibility-policy",
@@ -125,7 +99,6 @@ export const DESKTOP_IPC_CHANNELS = {
 
 export const BROWSER_IPC_CHANNELS = DESKTOP_IPC_CHANNELS.browser;
 export const BROWSER_ANNOTATION_GUEST_COMMAND_CHANNEL = "desktop:browser-annotations-guest-command";
-export const APPSNAP_IPC_CHANNELS = DESKTOP_IPC_CHANNELS.appSnap;
-export const BETA_IPC_CHANNELS = DESKTOP_IPC_CHANNELS.beta;
+export const COMPUTER_PERMISSIONS_IPC_CHANNELS = DESKTOP_IPC_CHANNELS.computerPermissions;
 export const DESKTOP_WS_URL_CHANNEL = DESKTOP_IPC_CHANNELS.wsUrl;
 export const SERVER_TRANSCRIBE_VOICE_CHANNEL = DESKTOP_IPC_CHANNELS.transcribeVoice;

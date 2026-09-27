@@ -13,13 +13,13 @@ import {
   type ClaudeCodeEffort,
   type ProviderKind,
   type UploadChatAttachment,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import {
   ATTACHMENT_CANCEL_ROUTE_PATH,
   ATTACHMENT_UPLOAD_ROUTE_PATH,
-} from "@synara/shared/binaryTransfer";
-import { applyClaudePromptEffortPrefix, getModelCapabilities } from "@synara/shared/model";
-import { parseComputerInvocation } from "@synara/shared/computerInvocation";
+} from "@glade/shared/binaryTransfer";
+import { applyClaudePromptEffortPrefix, getModelCapabilities } from "@glade/shared/model";
+import { parseComputerInvocation } from "@glade/shared/computerInvocation";
 
 import {
   cloneComposerImageAttachment,
@@ -32,9 +32,7 @@ import { readComposerImageBlob } from "./composerImageBlobStore";
 import {
   ComposerImagePreparationError,
   prepareComposerImageFile,
-  prepareModelScreenImage,
 } from "./composerImagePreparation";
-import { appSnapUploadName, normalizeComposerImageSource } from "./composerImageSource";
 import { randomUUID } from "./utils";
 import { resolveWsHttpUrl } from "./wsHttpUrl";
 
@@ -131,7 +129,7 @@ export async function prepareComposerImageAttachmentsFromFiles(input: {
       error =
         cause instanceof ComposerImagePreparationError
           ? cause.message
-          : `Synara could not prepare '${file.name || "image"}'.`;
+          : `Glade could not prepare '${file.name || "image"}'.`;
     }
   }
 
@@ -221,8 +219,6 @@ export function resolvePromptEffortFromModelSelection(
   modelSelection: ModelSelection,
 ): string | null {
   switch (modelSelection.provider) {
-    case "antigravity":
-      return null;
     case "codex":
       return modelSelection.options?.reasoningEffort ?? null;
     case "claudeAgent":
@@ -230,16 +226,7 @@ export function resolvePromptEffortFromModelSelection(
     case "cursor":
       return modelSelection.options?.reasoningEffort ?? null;
     case "grok":
-    case "droid":
       return modelSelection.options?.reasoningEffort ?? null;
-    case "pi":
-    case "omp":
-      return modelSelection.options?.thinkingLevel ?? null;
-    case "devin":
-      return (
-        modelSelection.options?.reasoningEffort ??
-        (modelSelection.options?.fastMode === true ? "fast" : null)
-      );
     case "opencode":
       return null;
   }
@@ -313,16 +300,12 @@ export async function stageUploadComposerAttachments(input: {
   const managedAttachmentIds: string[] = [];
   try {
     for (const attachment of [...input.images, ...(input.files ?? [])]) {
-      const appSnapSource =
-        attachment.type === "image" ? normalizeComposerImageSource(attachment.source) : null;
-      const uploadFile = appSnapSource
-        ? await prepareModelScreenImage(attachment.file)
-        : attachment.file;
+      const uploadFile = attachment.file;
       const params = new URLSearchParams({
         threadId: input.threadId,
         type: attachment.type,
-        name: appSnapSource ? appSnapUploadName(appSnapSource, uploadFile.name) : attachment.name,
-        mimeType: appSnapSource ? uploadFile.type : attachment.mimeType,
+        name: attachment.name,
+        mimeType: attachment.mimeType,
       });
       const response = await fetch(
         resolveWsHttpUrl(`${ATTACHMENT_UPLOAD_ROUTE_PATH}?${params.toString()}`),
@@ -378,9 +361,9 @@ export async function stageUploadComposerAttachments(input: {
 }
 
 /**
- * Persisted image attachments that still back a blob (AppSnap captures) but
+ * Persisted image attachments that still back a blob but
  * have not yet hydrated into the live `images` array. Right after a reload,
- * `AppSnapCoordinator` hydrates these asynchronously from IndexedDB; sending
+ * the attachment loader hydrates these asynchronously from IndexedDB; sending
  * before that finishes must not silently drop them.
  */
 export function findPendingBlobComposerAttachments(input: {
@@ -409,7 +392,6 @@ export async function hydratePendingBlobComposerAttachments(
       try {
         const file = await readComposerImageBlob(attachment.blobKey);
         if (!file) return null;
-        const source = normalizeComposerImageSource(attachment.source);
         return {
           type: "image",
           id: attachment.id,
@@ -418,7 +400,6 @@ export async function hydratePendingBlobComposerAttachments(
           sizeBytes: attachment.sizeBytes,
           previewUrl: URL.createObjectURL(file),
           file,
-          ...(source ? { source } : {}),
         };
       } catch (error) {
         console.warn("[composer-send] Could not hydrate a pending attachment before send", error);

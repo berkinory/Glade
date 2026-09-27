@@ -6,7 +6,7 @@
  *
  * @module providerStatusCache
  */
-import { ServerProviderStatus } from "@synara/contracts";
+import { ServerProviderStatus } from "@glade/contracts";
 import { Cause, Effect, FileSystem, Schema } from "effect";
 import { writeFileStringAtomically } from "../atomicWrite";
 
@@ -14,13 +14,8 @@ const PROVIDER_STATUS_CACHE_IDS = [
   "codex",
   "claudeAgent",
   "cursor",
-  "antigravity",
   "grok",
-  "droid",
-  "devin",
   "opencode",
-  "pi",
-  "omp",
 ] as const satisfies ReadonlyArray<ServerProviderStatus["provider"]>;
 
 const decodeProviderStatusCache = Schema.decodeUnknownEffect(

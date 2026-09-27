@@ -7,7 +7,7 @@ import type {
   ProviderListPluginsResult,
   ProviderListSkillsResult,
   ProviderSkillsCatalogResult,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import { queryOptions } from "@tanstack/react-query";
 import { ensureNativeApi } from "~/nativeApi";
 
@@ -222,26 +222,15 @@ function serializeProviderModelDiscovery<T>(
 function requireDiscoveredModels(
   provider: ProviderKind,
   result: ProviderListModelsResult,
-  previous: ProviderListModelsResult | undefined,
+  _previous: ProviderListModelsResult | undefined,
 ): ProviderListModelsResult {
   // Initial degraded discovery can still expose an adapter's usable static
   // fallback. During a background refresh, however, keep a previously good
   // dynamic catalog and let React Query retry the transient failure.
-  if (
-    provider === "devin" &&
-    result.error &&
-    previous &&
-    !previous.error &&
-    previous.models.length > 0
-  ) {
-    throw new Error(result.error);
-  }
   const isAuthoritativeEmptyCatalog =
     result.source === "disabled" ||
     result.source === "unsupported" ||
-    (provider === "opencode" &&
-      (result.source === "opencode" || result.source === "opencode-cli")) ||
-    (provider === "pi" && result.source?.startsWith("pi.sdk") === true);
+    (provider === "opencode" && (result.source === "opencode" || result.source === "opencode-cli"));
   if (
     provider !== "codex" &&
     provider !== "claudeAgent" &&
@@ -258,16 +247,12 @@ export const providerDiscoveryQueryKeys = {
   modelsAll: ["provider-discovery", "models"] as const,
   composerCapabilities: (provider: ProviderKind) =>
     ["provider-discovery", "composer-capabilities", provider] as const,
-  commands: (
-    provider: ProviderKind,
-    cwd: string | null,
-    agentDir: string | null,
-    connectionKey: string | null,
-  ) => ["provider-discovery", "commands", provider, cwd, agentDir, connectionKey] as const,
+  commands: (provider: ProviderKind, cwd: string | null, connectionKey: string | null) =>
+    ["provider-discovery", "commands", provider, cwd, connectionKey] as const,
   // The skill list is query-independent (filtering is client-side), so the key
   // deliberately excludes the typed filter to avoid a refetch per keystroke.
-  skills: (provider: ProviderKind, cwd: string | null, agentDir: string | null) =>
-    ["provider-discovery", "skills", provider, cwd, agentDir] as const,
+  skills: (provider: ProviderKind, cwd: string | null) =>
+    ["provider-discovery", "skills", provider, cwd] as const,
   skillsCatalog: (cwd: string | null) => ["provider-discovery", "skills-catalog", cwd] as const,
   plugins: (provider: ProviderKind, cwd: string | null, threadId: string | null) =>
     ["provider-discovery", "plugins", provider, cwd, threadId] as const,
@@ -283,9 +268,8 @@ export const providerDiscoveryQueryKeys = {
     provider: ProviderKind,
     binaryPath: string | null,
     apiEndpoint: string | null,
-    agentDir: string | null,
     cwd: string | null,
-  ) => ["provider-discovery", "models", provider, binaryPath, apiEndpoint, agentDir, cwd] as const,
+  ) => ["provider-discovery", "models", provider, binaryPath, apiEndpoint, cwd] as const,
   agentsForProvider: (provider: ProviderKind) =>
     ["provider-discovery", "agents", provider] as const,
   agents: (provider: ProviderKind, binaryPath: string | null, cwd: string | null) =>
@@ -293,7 +277,7 @@ export const providerDiscoveryQueryKeys = {
 };
 
 export function providerModelDiscoveryRetry(provider: ProviderKind): number {
-  return provider === "cursor" ? 0 : provider === "droid" ? 2 : 3;
+  return provider === "cursor" ? 0 : 3;
 }
 
 export function providerComposerCapabilitiesQueryOptions(provider: ProviderKind) {
@@ -311,11 +295,10 @@ export function providerSkillsQueryOptions(input: {
   provider: ProviderKind;
   cwd: string | null;
   threadId?: string | null;
-  agentDir?: string | null;
   enabled?: boolean;
 }) {
   return queryOptions({
-    queryKey: providerDiscoveryQueryKeys.skills(input.provider, input.cwd, input.agentDir ?? null),
+    queryKey: providerDiscoveryQueryKeys.skills(input.provider, input.cwd),
     queryFn: async () => {
       const api = ensureNativeApi();
       if (!input.cwd) {
@@ -325,7 +308,6 @@ export function providerSkillsQueryOptions(input: {
         provider: input.provider,
         cwd: input.cwd,
         ...(input.threadId ? { threadId: input.threadId } : {}),
-        ...(input.agentDir ? { agentDir: input.agentDir } : {}),
       });
     },
     enabled: (input.enabled ?? true) && input.cwd !== null,
@@ -359,7 +341,6 @@ export function providerCommandsQueryOptions(input: {
   serverUrl?: string | null;
   // Undefined means "not applicable" (non-OpenCode providers); the body normalizes it.
   experimentalWebSockets?: boolean | undefined;
-  agentDir?: string | null;
   enabled?: boolean;
 }) {
   const connectionKey = JSON.stringify({
@@ -371,12 +352,7 @@ export function providerCommandsQueryOptions(input: {
     threadId: input.provider === "claudeAgent" ? (input.threadId ?? null) : null,
   });
   return queryOptions({
-    queryKey: providerDiscoveryQueryKeys.commands(
-      input.provider,
-      input.cwd,
-      input.agentDir ?? null,
-      connectionKey,
-    ),
+    queryKey: providerDiscoveryQueryKeys.commands(input.provider, input.cwd, connectionKey),
     queryFn: async () => {
       const api = ensureNativeApi();
       if (!input.cwd) {
@@ -391,7 +367,6 @@ export function providerCommandsQueryOptions(input: {
         ...(input.experimentalWebSockets !== undefined
           ? { experimentalWebSockets: input.experimentalWebSockets }
           : {}),
-        ...(input.agentDir ? { agentDir: input.agentDir } : {}),
       });
     },
     enabled: (input.enabled ?? true) && input.cwd !== null,
@@ -425,22 +400,15 @@ export function providerModelsQueryOptions(input: {
   provider: ProviderKind;
   binaryPath?: string | null;
   apiEndpoint?: string | null;
-  agentDir?: string | null;
   cwd?: string | null;
   enabled?: boolean;
   priority?: ProviderModelDiscoveryPriority | undefined;
 }) {
-  // The OMP catalog is global (`omp models --json` is not project-scoped), but
-  // `modelRoles` merge a project layer (`<cwd>/.omp/config.yml`), so cwd stays
-  // in the query key for roles to reflect the active project. The server still
-  // shares one catalog cache across cwds, so a per-cwd entry only pays for the
-  // role config reads.
   const cwd = input.cwd ?? null;
   const queryKey = providerDiscoveryQueryKeys.models(
     input.provider,
     input.binaryPath ?? null,
     input.apiEndpoint ?? null,
-    input.agentDir ?? null,
     cwd,
   );
   return queryOptions<ProviderListModelsResult, Error, ProviderListModelsResult, typeof queryKey>({
@@ -456,7 +424,6 @@ export function providerModelsQueryOptions(input: {
             provider: input.provider,
             ...(input.binaryPath ? { binaryPath: input.binaryPath } : {}),
             ...(input.apiEndpoint ? { apiEndpoint: input.apiEndpoint } : {}),
-            ...(input.agentDir ? { agentDir: input.agentDir } : {}),
             ...(cwd ? { cwd } : {}),
           });
           const previous = client.getQueryData<ProviderListModelsResult>(queryKey);
@@ -464,58 +431,19 @@ export function providerModelsQueryOptions(input: {
         },
       ),
     enabled: input.enabled ?? true,
-    // Cached catalogs paint immediately while stale entries revalidate in the
-    // background. Droid discovery starts a disposable ACP session, so retain its
-    // longer cache and never repeat that work merely because the window regained focus.
+    // Cached catalogs paint immediately while stale entries revalidate in the background.
     retry: providerModelDiscoveryRetry(input.provider),
     // The server caches catalogs (30min fresh, then stale-while-revalidate,
     // persisted across restarts), so a refetch is a cheap RPC — but there is no
     // value in asking more often than the cache can change. Changes to paths,
     // endpoints, or cwd select a new key; CLI/account changes at the same paths
     // become visible on revalidation.
-    // OMP bypasses the server cache entirely: file-backed modelRoles are
-    // re-resolved per request, so role/config edits must reach the adapter on
-    // the ordinary focus/mount refetch cadence.
-    staleTime:
-      input.provider === "devin"
-        ? (query) => (query.state.data?.error ? 0 : 15 * 60_000)
-        : input.provider === "droid"
-          ? 30 * 60_000
-          : input.provider === "omp"
-            ? 30_000
-            : 15 * 60_000,
-    // Devin deliberately returns a usable static catalog when CLI discovery
-    // fails. Keep it visible, but retry while observed instead of treating the
-    // degraded result as fresh — a failed refresh retains healthy data, so the
-    // query error must also keep recovery polling alive.
-    ...(input.provider === "devin"
-      ? {
-          refetchInterval: (query) =>
-            query.state.data?.error || query.state.error ? 30_000 : false,
-        }
-      : {}),
-    // Droid discovery starts a disposable ACP session, so it must not refetch
-    // on focus. OMP discovery is a cheap `omp models` subprocess (server-cached
-    // 5min; modelRoles are re-read per request), so it refetches on focus and,
-    // where the renderer's timers allow, on an interval while observed —
-    // otherwise config/role edits only appear after an app restart.
-    ...(input.provider === "droid" ? { refetchOnWindowFocus: false } : {}),
-    ...(input.provider === "omp"
-      ? { refetchOnWindowFocus: true, refetchInterval: 60_000, refetchIntervalInBackground: true }
-      : {}),
+    staleTime: 15 * 60_000,
     // Retain catalogs a full day — the server serves them stale-while-revalidate
     // for the same window, so an idle reopen paints instantly instead of
     // skeletoning while the (cache-answered) refetch lands.
     gcTime: 24 * 60 * 60_000,
-    // OMP has no static model fallback, so masking its first `omp models` fetch
-    // with an empty placeholder would surface a false "No matches" during the
-    // ~3s discovery. Omit placeholderData for OMP so React Query reports a
-    // genuine `isLoading` pending state and the catalog renders the loading
-    // skeleton instead. Other providers keep the placeholder to suppress
-    // refetch flicker against their static catalogs.
-    ...(input.provider !== "omp"
-      ? { placeholderData: (previous) => previous ?? EMPTY_MODELS_RESULT }
-      : {}),
+    placeholderData: (previous) => previous ?? EMPTY_MODELS_RESULT,
   });
 }
 

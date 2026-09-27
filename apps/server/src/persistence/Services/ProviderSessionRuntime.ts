@@ -5,12 +5,7 @@
  *
  * @module ProviderSessionRuntimeRepository
  */
-import {
-  IsoDateTime,
-  ProviderSessionRuntimeStatus,
-  RuntimeMode,
-  ThreadId,
-} from "@synara/contracts";
+import { IsoDateTime, ProviderSessionRuntimeStatus, RuntimeMode, ThreadId } from "@glade/contracts";
 import { Option, Schema, ServiceMap } from "effect";
 import type { Effect } from "effect";
 
@@ -79,4 +74,4 @@ export interface ProviderSessionRuntimeRepositoryShape {
 export class ProviderSessionRuntimeRepository extends ServiceMap.Service<
   ProviderSessionRuntimeRepository,
   ProviderSessionRuntimeRepositoryShape
->()("synara/persistence/Services/ProviderSessionRuntime/ProviderSessionRuntimeRepository") {}
+>()("glade/persistence/Services/ProviderSessionRuntime/ProviderSessionRuntimeRepository") {}

@@ -1,11 +1,11 @@
 // FILE: CrossTaskOriginLabel.tsx
-// Purpose: Identify the source thread for conversations created by another Synara agent.
+// Purpose: Identify the source thread for conversations created by another Glade agent.
 // Layer: Chat transcript UI
 
-import { type ProviderKind, type ThreadId } from "@synara/contracts";
+import { type ProviderKind, type ThreadId } from "@glade/contracts";
 import { memo, type ReactNode } from "react";
 
-import { SynaraLogo } from "../SynaraLogo";
+import { GladeLogo } from "../GladeLogo";
 import { cn } from "~/lib/utils";
 
 export interface CrossTaskOrigin {
@@ -14,15 +14,15 @@ export interface CrossTaskOrigin {
 }
 
 // A single, app-level attribution: the message reached this thread from another
-// Synara thread, so it always reads as "Sent by Synara" with the Synara mark
+// Glade thread, so it always reads as "Sent by Glade" with the Glade mark
 // (the origin provider is not surfaced here to keep one consistent label).
 function OriginContent(): ReactNode {
   return (
     <>
       <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground/70">
-        <SynaraLogo className="h-4 w-auto" aria-label="Synara" />
+        <GladeLogo className="h-4 w-auto" aria-label="Glade" />
       </span>
-      <span className="truncate">Sent by Synara from another thread</span>
+      <span className="truncate">Sent by Glade from another thread</span>
     </>
   );
 }

@@ -1,4 +1,4 @@
-import { ThreadId } from "@synara/contracts";
+import { ThreadId } from "@glade/contracts";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { markPendingTurnDispatch } from "../../pendingTurnDispatch";
 import { derivePhase } from "../../session-logic";

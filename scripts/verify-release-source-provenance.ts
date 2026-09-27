@@ -19,8 +19,17 @@ if (!version || !tag || !publishRelease || !expectedCommit) {
     "Usage: node scripts/verify-release-source-provenance.ts <version> <tag> <publish:true|false> <expected-commit> [ref-type] [ref-name]",
   );
 }
+if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)) {
+  throw new Error(`Invalid stable release version: ${version}.`);
+}
+if (tag !== `v${version}`) {
+  throw new Error(`Release tag ${tag} does not match version ${version}.`);
+}
 if (publishRelease !== "true" && publishRelease !== "false") {
   throw new Error(`Invalid publication mode: ${publishRelease}`);
+}
+if (publishRelease === "true" && process.env.GITHUB_REPOSITORY !== "berkinory/Glade") {
+  throw new Error("Glade releases may only publish to berkinory/Glade.");
 }
 if (!/^[0-9a-f]{40}$/i.test(expectedCommit)) {
   throw new Error(`Expected a full 40-character source commit, got ${expectedCommit}.`);
@@ -87,6 +96,7 @@ const lockfileSha256 = createHash("sha256")
   .digest("hex");
 
 const output = {
+  version,
   source_commit: sourceCommit,
   source_tag: sourceTag,
   lockfile_sha256: lockfileSha256,

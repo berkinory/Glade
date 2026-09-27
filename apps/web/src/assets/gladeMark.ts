@@ -1,0 +1,5 @@
+// One quadrant defines the mark; quarter turns keep every surface symmetrical.
+export const GLADE_MARK_VIEWBOX = "0 0 1024 1024";
+export const GLADE_MARK_QUADRANT =
+  "M486 22C486 8 474 4 464 14L14 464C4 474 8 486 22 486H166C343 486 486 343 486 166Z";
+export const GLADE_MARK_ROTATIONS = [0, 90, 180, 270] as const;

@@ -34,11 +34,11 @@ import {
   type ProviderRuntimeEvent,
   type ProviderKind,
   type ProviderSession,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import {
   providerSupportsAutoRuntimeMode,
   unsupportedAutoRuntimeModeMessage,
-} from "@synara/shared/runtimeMode";
+} from "@glade/shared/runtimeMode";
 import { createHash, randomUUID } from "node:crypto";
 import {
   Cause,
@@ -54,14 +54,10 @@ import {
   Scope,
   Stream,
 } from "effect";
-import { nonEmptyTrimmed } from "@synara/shared/text";
+import { nonEmptyTrimmed } from "@glade/shared/text";
 import { computerApprovalGate } from "../../computer/ComputerApprovalGate.ts";
 
-import {
-  type ProviderAdapterError,
-  ProviderAdapterProcessError,
-  ProviderValidationError,
-} from "../Errors.ts";
+import { type ProviderAdapterError, ProviderValidationError } from "../Errors.ts";
 import type { ProviderAdapterShape } from "../Services/ProviderAdapter.ts";
 import { ProviderAdapterRegistry } from "../Services/ProviderAdapterRegistry.ts";
 import { ProviderService, type ProviderServiceShape } from "../Services/ProviderService.ts";
@@ -98,14 +94,6 @@ import {
   AGENT_GATEWAY_TURN_AUTHORITY_RETIRED,
 } from "../../agentGateway/sessionLease.ts";
 
-const isStaleDevinSessionLoadError = (
-  provider: ProviderKind,
-  error: ProviderAdapterError,
-): error is ProviderAdapterProcessError =>
-  provider === "devin" &&
-  error instanceof ProviderAdapterProcessError &&
-  error.reason === "resume-state-unavailable";
-
 export interface ProviderServiceLiveOptions {
   readonly canonicalEventLogPath?: string;
   readonly canonicalEventLogger?: EventNdjsonLogger;
@@ -133,7 +121,7 @@ export interface ProviderServiceLiveOptions {
 const DEFAULT_PROVIDER_RUNTIME_IDLE_STOP_MS = 10 * 60 * 1000;
 export const PROVIDER_RUNTIME_EVENT_BUFFER_CAPACITY = 2_048;
 export const PROVIDER_RUNTIME_QUARANTINE_CAUSE_MAX_BYTES = 16 * 1024;
-const configuredProviderRuntimeIdleStopMs = process.env.SYNARA_PROVIDER_RUNTIME_IDLE_STOP_MS;
+const configuredProviderRuntimeIdleStopMs = process.env.GLADE_PROVIDER_RUNTIME_IDLE_STOP_MS;
 const PROVIDER_RUNTIME_IDLE_STOP_MS = Number.isFinite(Number(configuredProviderRuntimeIdleStopMs))
   ? Math.max(0, Number(configuredProviderRuntimeIdleStopMs))
   : DEFAULT_PROVIDER_RUNTIME_IDLE_STOP_MS;
@@ -455,34 +443,6 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
 
     const registry = yield* ProviderAdapterRegistry;
     const directory = yield* ProviderSessionDirectory;
-    type ResolvedProviderSessionStartInput = ProviderSessionStartInput & {
-      readonly provider: ProviderKind;
-    };
-    const startAdapterWithStaleDevinFallback = (
-      adapter: ProviderAdapterShape<ProviderAdapterError>,
-      startInput: ResolvedProviderSessionStartInput,
-      startSession = adapter.startSession,
-    ) =>
-      startSession(startInput).pipe(
-        Effect.map((session) => ({ session, staleDevinFallbackOccurred: false })),
-        Effect.catchIf(
-          (error) =>
-            hasResumeCursor(startInput.resumeCursor) &&
-            isStaleDevinSessionLoadError(startInput.provider, error),
-          (error) =>
-            adapter.hasSession(startInput.threadId).pipe(
-              Effect.flatMap((hasLiveSession) => {
-                if (hasLiveSession) {
-                  return Effect.fail(error);
-                }
-                const { resumeCursor: _staleResumeCursor, ...freshStartInput } = startInput;
-                return adapter
-                  .startSession(freshStartInput)
-                  .pipe(Effect.map((session) => ({ session, staleDevinFallbackOccurred: true })));
-              }),
-            ),
-        ),
-      );
     const ensureProviderEnabled = (provider: ProviderKind, operation: string) =>
       options?.providerIsEnabled
         ? options.providerIsEnabled(provider).pipe(
@@ -1940,11 +1900,7 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
                 // The lifecycle is updated inside observeProviderStartup; these taps
                 // only log the already-recorded outcome.
                 const started = yield* observeProviderStartup(
-                  startAdapterWithStaleDevinFallback(
-                    adapter,
-                    resolvedAdapterStartInput,
-                    preparedStart,
-                  ),
+                  (preparedStart ?? adapter.startSession)(resolvedAdapterStartInput),
                   { lifecycle: startupLifecycle, timeout: PROVIDER_START_SESSION_TIMEOUT },
                 ).pipe(
                   Effect.tapError((cause) =>
@@ -1987,17 +1943,15 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
                     )}ms for thread '${threadId}'.`,
                   );
                 }
-                const { session, staleDevinFallbackOccurred } = started.value;
+                const session = started.value;
                 startupLifecycle.transition("ready");
                 replacementStarted = true;
                 const nativeResumeAttempted = hasResumeCursor(effectiveResumeCursor);
-                const nativeResumeSucceeded =
-                  nativeResumeAttempted && !staleDevinFallbackOccurred
-                    ? (adapter.didResumeSession?.(resolvedAdapterStartInput, session) ?? true)
-                    : false;
+                const nativeResumeSucceeded = nativeResumeAttempted
+                  ? (adapter.didResumeSession?.(resolvedAdapterStartInput, session) ?? true)
+                  : false;
                 const priorTranscriptBootstrapPending =
                   persistedPriorTranscriptBootstrapPending ||
-                  staleDevinFallbackOccurred ||
                   (outcomeOptions?.registerPriorTranscriptBootstrapOnFreshStart === true &&
                     !nativeResumeSucceeded);
 

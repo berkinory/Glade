@@ -1,5 +1,5 @@
-import { ThreadId, type DesktopAppSnapState } from "@synara/contracts";
-import { COMPUTER_PERMISSION_KINDS } from "@synara/shared/computerGrants";
+import { ThreadId, type DesktopComputerState } from "@glade/contracts";
+import { COMPUTER_PERMISSION_KINDS } from "@glade/shared/computerGrants";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useComputerControlModeChange } from "./useComputerControlModeChange";
@@ -13,18 +13,18 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function grantState(overrides: Partial<DesktopAppSnapState> = {}): DesktopAppSnapState {
+function grantState(overrides: Partial<DesktopComputerState> = {}): DesktopComputerState {
   return {
     platform: "macos",
     supported: true,
-    enabled: false,
+
     status: "disabled",
-    shortcut: null,
+
     accessibilityPermission: "granted",
     inputMonitoringPermission: "granted",
     screenRecordingPermission: "granted",
     message: null,
-    appDisplayName: "Synara",
+    appDisplayName: "Glade",
     ...overrides,
   };
 }
@@ -35,7 +35,7 @@ function fixture() {
     startPermissionSetup: vi.fn(async () => {}),
   };
   vi.stubGlobal("window", {
-    desktopBridge: { getWsUrl: () => "ws://127.0.0.1:4111", appSnap: permissions },
+    desktopBridge: { getWsUrl: () => "ws://127.0.0.1:4111", computerPermissions: permissions },
   });
   const setMode = vi.fn();
   const focusComposer = vi.fn();
@@ -61,7 +61,7 @@ function fixture() {
 
 describe("Computer activation permission guide", () => {
   it.each(["request"] as const)(
-    "opens AppSnap's shared guide when %s access needs permissions",
+    "opens the native permission guide when %s access needs permissions",
     async (mode) => {
       const f = fixture();
       f.change(mode);
@@ -86,7 +86,7 @@ describe("Computer activation permission guide", () => {
 
   it("does not reopen setup after Off overtakes a permission check", async () => {
     const f = fixture();
-    let resolve!: (state: DesktopAppSnapState) => void;
+    let resolve!: (state: DesktopComputerState) => void;
     f.permissions.getState.mockImplementationOnce(
       () =>
         new Promise((done) => {

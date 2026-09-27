@@ -2,7 +2,7 @@
 // Purpose: Pure display formatters shared by the Profile page and the shareable card.
 // Layer: web profile feature (no I/O, safe to use during html-to-image render).
 
-import type { ProviderKind } from "@synara/contracts";
+import type { ProviderKind } from "@glade/contracts";
 
 // Compact token/count formatting matching the reference card ("17bn", "538m", "1.2k").
 export function formatCompact(value: number | null | undefined): string {
@@ -46,7 +46,7 @@ export function toDisplayName(basename: string): string {
     .trim()
     .replace(/\s+/g, " ");
   if (!cleaned) {
-    return "Synara";
+    return "Glade";
   }
   return cleaned
     .split(" ")
@@ -61,7 +61,7 @@ export function normalizeHandle(value: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9_]/g, "")
     .slice(0, 30);
-  return `@${slug || "synara"}`;
+  return `@${slug || "glade"}`;
 }
 
 // Pretty short date for "peak day" tooltips ("Apr 3").
@@ -84,20 +84,10 @@ export function formatProviderLabel(provider: ProviderKind): string {
       return "Claude";
     case "cursor":
       return "Cursor";
-    case "devin":
-      return "Devin";
-    case "antigravity":
-      return "Antigravity";
     case "grok":
       return "Grok";
-    case "droid":
-      return "Droid";
     case "opencode":
       return "OpenCode";
-    case "pi":
-      return "Pi";
-    case "omp":
-      return "Oh My Pi";
   }
 }
 

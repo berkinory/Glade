@@ -21,12 +21,12 @@ import {
   DEVICE_FRAME_RESYNC_MESSAGE,
   DEVICE_FRAME_WS_PATH,
   DEVICE_FRAME_WS_UDID_PARAM,
-} from "@synara/shared/deviceFrame";
+} from "@glade/shared/deviceFrame";
 import {
   decodeFrameResyncRequest,
   makeFrameSink,
   type FrameSink,
-} from "@synara/shared/frameTransport";
+} from "@glade/shared/frameTransport";
 import { Effect, Layer } from "effect";
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http";
 

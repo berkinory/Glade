@@ -16,11 +16,6 @@ import {
   type AuthRevokePairingLinkInput,
   type AuthSessionState,
   type AuthWebSocketTokenResult,
-  type ExternalMcpCreateIntegrationInput,
-  type ExternalMcpCreateIntegrationResult,
-  type ExternalMcpIntegration,
-  type ExternalMcpRefreshPairingInput,
-  type ExternalMcpRevokeIntegrationInput,
   type ThreadId,
   type ThreadBrowserState,
   type GitActionProgressEvent,
@@ -51,8 +46,8 @@ import {
   COMPUTER_WS_CHANNELS,
   COMPUTER_WS_METHODS,
   type ComputerEvent,
-} from "@synara/contracts";
-import { VOICE_TRANSCRIPTION_UPLOAD_ROUTE_PATH } from "@synara/shared/binaryTransfer";
+} from "@glade/contracts";
+import { VOICE_TRANSCRIPTION_UPLOAD_ROUTE_PATH } from "@glade/shared/binaryTransfer";
 
 import { showConfirmDialogFallback } from "./confirmDialogFallback";
 import { showContextMenuFallback } from "./contextMenuFallback";
@@ -704,14 +699,6 @@ export function createWsNativeApi(): NativeApi {
         await transport.dispose();
         return result;
       },
-      listExternalMcpIntegrations: () =>
-        transport.request(WS_METHODS.serverListExternalMcpIntegrations),
-      createExternalMcpIntegration: (input: ExternalMcpCreateIntegrationInput) =>
-        transport.request(WS_METHODS.serverCreateExternalMcpIntegration, input),
-      revokeExternalMcpIntegration: (input: ExternalMcpRevokeIntegrationInput) =>
-        transport.request(WS_METHODS.serverRevokeExternalMcpIntegration, input),
-      refreshExternalMcpPairing: (input: ExternalMcpRefreshPairingInput) =>
-        transport.request(WS_METHODS.serverRefreshExternalMcpPairing, input),
       // Claude runs sequential CLI and auth probes, so a refresh can exceed the
       // generic 60-second RPC deadline. Keep this bounded while allowing slow
       // probes to finish; onboarding shows an error if this deadline expires.

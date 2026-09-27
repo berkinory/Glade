@@ -1,4 +1,4 @@
-import type { ComputerBrowserToolName } from "@synara/contracts";
+import type { ComputerBrowserToolName } from "@glade/contracts";
 
 import type { ComputerBrowserCallResult } from "../computer/ComputerBackend.ts";
 import type { ComputerAuditEffect } from "../computer/computerAuditLog.ts";

@@ -2,7 +2,7 @@
 // Purpose: Owns composer attachment identity, blob lifetime, persistence verification, and hydration.
 // Exports: Attachment transitions used by persistence and action construction.
 
-import { type ThreadId } from "@synara/contracts";
+import { type ThreadId } from "@glade/contracts";
 import * as Schema from "effect/Schema";
 
 import {
@@ -20,10 +20,6 @@ import {
 } from "./composerDraftDomain";
 import { getLocalStorageItem } from "./hooks/useLocalStorage";
 import { deleteComposerImageBlob } from "./lib/composerImageBlobStore";
-import {
-  normalizeComposerImageSource,
-  toPersistedComposerImageSource,
-} from "./lib/composerImageSource";
 
 const composerAttachmentPersistenceQueueByThreadId = new Map<string, Promise<void>>();
 // Tracks the newest in-flight sync per (slot, thread) so a superseded verification knows not to
@@ -236,7 +232,6 @@ export function normalizePersistedAttachment(
   const sizeBytes = candidate.sizeBytes;
   const dataUrl = candidate.dataUrl;
   const blobKey = candidate.blobKey;
-  const source = normalizeComposerImageSource(candidate.source);
   if (
     typeof id !== "string" ||
     typeof name !== "string" ||
@@ -258,18 +253,20 @@ export function normalizePersistedAttachment(
     sizeBytes,
     ...(typeof dataUrl === "string" && dataUrl.length > 0 ? { dataUrl } : {}),
     ...(typeof blobKey === "string" && blobKey.length > 0 ? { blobKey } : {}),
-    ...(source ? { source } : {}),
   };
 }
 
 export function toStorageSafePersistedAttachment(
   attachment: PersistedComposerImageAttachment,
 ): PersistedComposerImageAttachment {
-  const { source: _source, ...attachmentWithoutSource } = attachment;
-  const source = toPersistedComposerImageSource(attachment.source);
+  const { id, name, mimeType, sizeBytes, dataUrl, blobKey } = attachment;
   return {
-    ...attachmentWithoutSource,
-    ...(source ? { source } : {}),
+    id,
+    name,
+    mimeType,
+    sizeBytes,
+    ...(dataUrl !== undefined ? { dataUrl } : {}),
+    ...(blobKey !== undefined ? { blobKey } : {}),
   };
 }
 
@@ -597,7 +594,6 @@ export function hydrateImagesFromPersisted(
     if (!previewUrl) return [];
     const file = hydreatePersistedComposerImageAttachment(attachment);
     if (!file) return [];
-    const source = normalizeComposerImageSource(attachment.source);
 
     return [
       {
@@ -608,7 +604,6 @@ export function hydrateImagesFromPersisted(
         sizeBytes: attachment.sizeBytes,
         previewUrl,
         file,
-        ...(source ? { source } : {}),
       } satisfies ComposerImageAttachment,
     ];
   });

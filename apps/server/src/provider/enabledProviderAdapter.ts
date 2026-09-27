@@ -5,10 +5,9 @@
  * prevent either the WebSocket fallback or the primary HTTP upload path from
  * bypassing provider disablement.
  */
-import { PROVIDER_DISPLAY_NAMES, type ProviderKind } from "@synara/contracts";
+import { PROVIDER_DISPLAY_NAMES, type ProviderKind } from "@glade/contracts";
 import { Effect } from "effect";
 
-import { isServerBetaFeatureEnabled } from "../betaFeatureGate";
 import type { ServerSettingsShape } from "../serverSettings";
 import type { ProviderAdapterRegistryShape } from "./Services/ProviderAdapterRegistry";
 
@@ -16,13 +15,8 @@ export class ProviderDisabledError extends Error {
   readonly status = 409;
 }
 
-export function providerDisabledSettingsMessage(
-  provider: ProviderKind,
-  isEnabled: (feature: string) => boolean = isServerBetaFeatureEnabled,
-): string {
-  return isEnabled(provider)
-    ? `${PROVIDER_DISPLAY_NAMES[provider]} is disabled in Settings > Providers.`
-    : `${PROVIDER_DISPLAY_NAMES[provider]} is available in Synara Beta.`;
+export function providerDisabledSettingsMessage(provider: ProviderKind): string {
+  return `${PROVIDER_DISPLAY_NAMES[provider]} is disabled in Settings > Providers.`;
 }
 
 export function ensureProviderEnabled(provider: ProviderKind, serverSettings: ServerSettingsShape) {

@@ -1,4 +1,4 @@
-import type { ProjectFileEncoding, ProjectFileLineEnding } from "@synara/contracts";
+import type { ProjectFileEncoding, ProjectFileLineEnding } from "@glade/contracts";
 
 /** On-disk format of a loaded buffer; every save re-encodes with it. */
 export interface WorkspaceFileEditorFormat {

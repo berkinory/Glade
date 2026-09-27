@@ -8,25 +8,20 @@ import {
   type ClaudeCodeEffort,
   type CodexReasoningEffort,
   type CursorModelOptions,
-  type DevinModelOptions,
-  type DroidReasoningEffort,
   type GrokReasoningEffort,
   type ModelSelection,
   type ModelSlug,
-  type OmpModelOptions,
-  type PiThinkingLevel,
   type ProviderModelOptions,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import * as Schema from "effect/Schema";
 
 import {
   getDefaultModel,
   normalizeGrokModelOptions,
   normalizeModelSlug,
-  normalizeOmpModelOptions,
   resolveModelSlugForProvider,
   resolveSelectableModel,
-} from "@synara/shared/model";
+} from "@glade/shared/model";
 import { resolveAppModelSelection } from "./appSettings";
 import type { ComposerThreadDraftState } from "./composerDraftDomain";
 import { classifyProviderReasoningEffortSupport } from "./lib/codexReasoningEffort";
@@ -35,13 +30,8 @@ export const COMPOSER_PROVIDER_KINDS = [
   "codex",
   "claudeAgent",
   "cursor",
-  "devin",
-  "antigravity",
   "grok",
-  "droid",
   "opencode",
-  "pi",
-  "omp",
 ] as const satisfies readonly ProviderKind[];
 
 const isProviderKind = Schema.is(ProviderKind);
@@ -55,8 +45,6 @@ export const LegacyCodexFields = Schema.Struct({
 });
 
 export type LegacyCodexFields = typeof LegacyCodexFields.Type;
-
-const ANTIGRAVITY_REASONING_EFFORT_SET = new Set(["low", "medium", "high", "thinking"]);
 
 export interface EffectiveComposerModelState {
   selectedModel: ModelSlug;
@@ -112,9 +100,6 @@ function deriveEffectiveComposerModelOptions(input: {
 }
 
 export function normalizeProviderKind(value: unknown): ProviderKind | null {
-  if (value === "gemini") {
-    return "antigravity";
-  }
   if (value === "kilo") {
     return "opencode";
   }
@@ -144,16 +129,6 @@ export function makeModelSelection(
   supportsAutoMode?: boolean,
 ): ModelSelection {
   switch (provider) {
-    case "antigravity":
-      return {
-        provider,
-        model,
-        ...(options
-          ? {
-              options: options as Extract<ModelSelection, { provider: "antigravity" }>["options"],
-            }
-          : {}),
-      };
     case "codex":
       return {
         provider,
@@ -181,14 +156,6 @@ export function makeModelSelection(
           ? { options: options as Extract<ModelSelection, { provider: "cursor" }>["options"] }
           : {}),
       };
-    case "devin":
-      return {
-        provider,
-        model,
-        ...(options
-          ? { options: options as Extract<ModelSelection, { provider: "devin" }>["options"] }
-          : {}),
-      };
     case "grok":
       return {
         provider,
@@ -197,36 +164,12 @@ export function makeModelSelection(
           ? { options: options as Extract<ModelSelection, { provider: "grok" }>["options"] }
           : {}),
       };
-    case "droid":
-      return {
-        provider,
-        model,
-        ...(options
-          ? { options: options as Extract<ModelSelection, { provider: "droid" }>["options"] }
-          : {}),
-      };
     case "opencode":
       return {
         provider,
         model,
         ...(options
           ? { options: options as Extract<ModelSelection, { provider: "opencode" }>["options"] }
-          : {}),
-      };
-    case "pi":
-      return {
-        provider,
-        model,
-        ...(options
-          ? { options: options as Extract<ModelSelection, { provider: "pi" }>["options"] }
-          : {}),
-      };
-    case "omp":
-      return {
-        provider,
-        model,
-        ...(options
-          ? { options: options as Extract<ModelSelection, { provider: "omp" }>["options"] }
           : {}),
       };
   }
@@ -250,35 +193,14 @@ export function normalizeProviderModelOptions(
     candidate?.cursor && typeof candidate.cursor === "object"
       ? (candidate.cursor as Record<string, unknown>)
       : null;
-  const devinCandidate =
-    candidate?.devin && typeof candidate.devin === "object"
-      ? (candidate.devin as Record<string, unknown>)
-      : null;
-  const antigravityCandidate =
-    candidate?.antigravity && typeof candidate.antigravity === "object"
-      ? (candidate.antigravity as Record<string, unknown>)
-      : null;
   const grokCandidate =
     candidate?.grok && typeof candidate.grok === "object"
       ? (candidate.grok as Record<string, unknown>)
-      : null;
-  const droidCandidate =
-    candidate?.droid && typeof candidate.droid === "object"
-      ? (candidate.droid as Record<string, unknown>)
       : null;
   const openCodeCandidate =
     candidate?.opencode && typeof candidate.opencode === "object"
       ? (candidate.opencode as Record<string, unknown>)
       : null;
-  const piCandidate =
-    candidate?.pi && typeof candidate.pi === "object"
-      ? (candidate.pi as Record<string, unknown>)
-      : null;
-  const ompCandidate =
-    candidate?.omp && typeof candidate.omp === "object"
-      ? (candidate.omp as Record<string, unknown>)
-      : null;
-
   const codexReasoningEffort: CodexReasoningEffort | undefined =
     trimStringOrUndefined(codexCandidate?.reasoningEffort) ??
     (provider === "codex" ? trimStringOrUndefined(legacy?.effort) : undefined);
@@ -348,11 +270,6 @@ export function normalizeProviderModelOptions(
         }
       : undefined;
 
-  const antigravityReasoningEffort = trimStringOrUndefined(antigravityCandidate?.reasoningEffort);
-  const antigravity =
-    antigravityReasoningEffort !== undefined
-      ? { reasoningEffort: antigravityReasoningEffort }
-      : undefined;
   const grokReasoningEffort: GrokReasoningEffort | undefined = isGrokReasoningEffort(
     grokCandidate?.reasoningEffort,
   )
@@ -360,11 +277,6 @@ export function normalizeProviderModelOptions(
     : undefined;
   const grok =
     grokReasoningEffort !== undefined ? { reasoningEffort: grokReasoningEffort } : undefined;
-  const droidReasoningEffort: DroidReasoningEffort | undefined = trimStringOrUndefined(
-    droidCandidate?.reasoningEffort,
-  );
-  const droid =
-    droidReasoningEffort !== undefined ? { reasoningEffort: droidReasoningEffort } : undefined;
   const openCodeVariant = trimStringOrUndefined(openCodeCandidate?.variant);
   const openCodeAgent = trimStringOrUndefined(openCodeCandidate?.agent);
   const opencode =
@@ -374,62 +286,15 @@ export function normalizeProviderModelOptions(
           ...(openCodeAgent !== undefined ? { agent: openCodeAgent } : {}),
         }
       : undefined;
-  const piThinkingLevel: PiThinkingLevel | undefined =
-    piCandidate?.thinkingLevel === "off" ||
-    piCandidate?.thinkingLevel === "minimal" ||
-    piCandidate?.thinkingLevel === "low" ||
-    piCandidate?.thinkingLevel === "medium" ||
-    piCandidate?.thinkingLevel === "high" ||
-    piCandidate?.thinkingLevel === "xhigh" ||
-    piCandidate?.thinkingLevel === "max"
-      ? piCandidate.thinkingLevel
-      : undefined;
-  const pi = piThinkingLevel !== undefined ? { thinkingLevel: piThinkingLevel } : undefined;
-  const devinFastMode = booleanOrUndefined(devinCandidate?.fastMode);
-  const devinReasoningEffort = trimStringOrUndefined(devinCandidate?.reasoningEffort);
-  const devinThinking = booleanOrUndefined(devinCandidate?.thinking);
-  const devinContextWindow = trimStringOrUndefined(devinCandidate?.contextWindow);
-  const devinModelVariant = trimStringOrUndefined(devinCandidate?.modelVariant);
-  const devin: DevinModelOptions | undefined =
-    devinReasoningEffort !== undefined ||
-    devinFastMode !== undefined ||
-    devinThinking !== undefined ||
-    devinContextWindow !== undefined ||
-    devinModelVariant !== undefined
-      ? {
-          ...(devinReasoningEffort !== undefined ? { reasoningEffort: devinReasoningEffort } : {}),
-          ...(devinFastMode !== undefined ? { fastMode: devinFastMode } : {}),
-          ...(devinThinking !== undefined ? { thinking: devinThinking } : {}),
-          ...(devinContextWindow !== undefined ? { contextWindow: devinContextWindow } : {}),
-          ...(devinModelVariant !== undefined ? { modelVariant: devinModelVariant } : {}),
-        }
-      : undefined;
-  const omp = normalizeOmpModelOptions(ompCandidate as OmpModelOptions | null | undefined);
-  if (
-    !codex &&
-    !claude &&
-    !cursor &&
-    !devin &&
-    !antigravity &&
-    !grok &&
-    !droid &&
-    !opencode &&
-    !pi &&
-    !omp
-  ) {
+  if (!codex && !claude && !cursor && !grok && !opencode) {
     return null;
   }
   return {
     ...(codex ? { codex } : {}),
     ...(claude ? { claudeAgent: claude } : {}),
     ...(cursor ? { cursor } : {}),
-    ...(devin ? { devin } : {}),
-    ...(antigravity ? { antigravity } : {}),
     ...(grok ? { grok } : {}),
-    ...(droid ? { droid } : {}),
     ...(opencode ? { opencode } : {}),
-    ...(pi ? { pi } : {}),
-    ...(omp ? { omp } : {}),
   };
 }
 
@@ -444,7 +309,6 @@ export function normalizeModelSelection(
 ): ModelSelection | null {
   const candidate = value && typeof value === "object" ? (value as Record<string, unknown>) : null;
   const rawProvider = candidate?.provider ?? legacy?.provider;
-  const migratedGeminiSelection = rawProvider === "gemini";
   const provider = normalizeProviderKind(rawProvider);
   if (provider === null) {
     return null;
@@ -453,61 +317,29 @@ export function normalizeModelSelection(
   if (typeof rawModel !== "string") {
     return null;
   }
-  const antigravityLegacyMatch =
-    provider === "antigravity" ? rawModel.trim().match(/^(.*?)\s+\(([^()]+)\)$/u) : null;
-  const antigravityLegacyEffort = antigravityLegacyMatch?.[2]?.trim().toLowerCase();
-  const hasLegacyAntigravityEffort =
-    antigravityLegacyMatch?.[1] !== undefined &&
-    antigravityLegacyEffort !== undefined &&
-    ANTIGRAVITY_REASONING_EFFORT_SET.has(antigravityLegacyEffort);
-  const normalizedRawModel = migratedGeminiSelection
-    ? getDefaultModel("antigravity")
-    : hasLegacyAntigravityEffort
-      ? antigravityLegacyMatch[1]!.trim()
-      : rawModel;
-  const model = normalizeModelSlug(normalizedRawModel, provider);
+  const model = normalizeModelSlug(rawModel, provider);
   if (!model) {
     return null;
   }
-  const modelOptions = migratedGeminiSelection
-    ? null
-    : normalizeProviderModelOptions(
-        candidate?.options ? { [provider]: candidate.options } : legacy?.modelOptions,
-        provider,
-        provider === "codex" ? legacy?.legacyCodex : undefined,
-      );
+  const modelOptions = normalizeProviderModelOptions(
+    candidate?.options ? { [provider]: candidate.options } : legacy?.modelOptions,
+    provider,
+    provider === "codex" ? legacy?.legacyCodex : undefined,
+  );
   const options =
     provider === "codex"
       ? modelOptions?.codex
       : provider === "claudeAgent"
         ? modelOptions?.claudeAgent
-        : provider === "antigravity"
-          ? modelOptions?.antigravity
-          : provider === "grok"
-            ? normalizeGrokModelOptions(model, modelOptions?.grok)
-            : provider === "droid"
-              ? modelOptions?.droid
-              : provider === "cursor"
-                ? modelOptions?.cursor
-                : provider === "opencode"
-                  ? modelOptions?.opencode
-                  : provider === "pi"
-                    ? modelOptions?.pi
-                    : provider === "devin"
-                      ? modelOptions?.devin
-                      : provider === "omp"
-                        ? modelOptions?.omp
-                        : undefined;
-  const normalizedOptions =
-    provider === "antigravity" && hasLegacyAntigravityEffort
-      ? {
-          reasoningEffort: modelOptions?.antigravity?.reasoningEffort ?? antigravityLegacyEffort,
-        }
-      : options;
+        : provider === "grok"
+          ? normalizeGrokModelOptions(model, modelOptions?.grok)
+          : provider === "cursor"
+            ? modelOptions?.cursor
+            : modelOptions?.opencode;
   return makeModelSelection(
     provider,
     model,
-    normalizedOptions,
+    options,
     provider === "claudeAgent" && typeof candidate?.supportsAutoMode === "boolean"
       ? candidate.supportsAutoMode
       : undefined,
@@ -692,7 +524,6 @@ export function deriveEffectiveComposerModelState(input: {
   selectedProvider: ProviderKind;
   threadModelSelection: ModelSelection | null | undefined;
   projectModelSelection: ModelSelection | null | undefined;
-  customModelsByProvider: Record<ProviderKind, readonly string[]>;
   availableModelOptionsByProvider?: Partial<
     Record<ProviderKind, ReadonlyArray<{ slug: string; name: string }>>
   >;
@@ -726,16 +557,8 @@ export function deriveEffectiveComposerModelState(input: {
       : null;
   const activeSelection = input.draft?.modelSelectionByProvider?.[input.selectedProvider];
   const selectedDraftModel = activeSelection?.model
-    ? resolveAppModelSelection(
-        input.selectedProvider,
-        input.customModelsByProvider,
-        activeSelection.model,
-      )
+    ? resolveAppModelSelection(input.selectedProvider, activeSelection.model)
     : null;
-  // pi and omp serve fully dynamic catalogs, so a draft model can be absent
-  // from the option list; keep it ahead of the first-catalog-entry fallback.
-  const unlistedDraftModel =
-    input.selectedProvider === "pi" || input.selectedProvider === "omp" ? selectedDraftModel : null;
   const selectedModel =
     resolveAvailableModel(activeSelection?.model) ??
     resolveAvailableModel(
@@ -751,7 +574,6 @@ export function deriveEffectiveComposerModelState(input: {
     resolveAvailableModel(selectedDraftModel) ??
     persistedThreadModel ??
     persistedProjectModel ??
-    unlistedDraftModel ??
     input.availableModelOptionsByProvider?.[input.selectedProvider]?.[0]?.slug ??
     selectedDraftModel ??
     baseModel ??
@@ -800,12 +622,6 @@ export function resolvePreferredComposerModelSelection(input: {
 
   return (
     draftSelection ??
-    persistedSelection ?? {
-      provider:
-        preferredProvider === "pi" || preferredProvider === "omp" ? "codex" : preferredProvider,
-      model: getDefaultModel(
-        preferredProvider === "pi" || preferredProvider === "omp" ? "codex" : preferredProvider,
-      ),
-    }
+    persistedSelection ?? { provider: preferredProvider, model: getDefaultModel(preferredProvider) }
   );
 }

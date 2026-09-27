@@ -6,19 +6,17 @@
  * and process-authoritative on the server.
  */
 import {
-  DEFAULT_DROID_GIT_TEXT_GENERATION_MODEL,
   DEFAULT_GIT_TEXT_GENERATION_MODEL,
   DEFAULT_MODEL_BY_PROVIDER,
   DEFAULT_SERVER_SETTINGS,
   type ModelSelection,
   ServerSettings,
   ServerSettingsError,
-  type ProviderKind,
   type ServerSettingsPatch,
   type ServerSettingsView,
-} from "@synara/contracts";
-import { deepMerge, type DeepPartial } from "@synara/shared/Struct";
-import { applyServerSettingsPatch } from "@synara/shared/serverSettings";
+} from "@glade/contracts";
+import { deepMerge, type DeepPartial } from "@glade/shared/Struct";
+import { applyServerSettingsPatch } from "@glade/shared/serverSettings";
 import {
   Cause,
   Deferred,
@@ -35,7 +33,6 @@ import {
 } from "effect";
 import * as Semaphore from "effect/Semaphore";
 import { writeFileStringAtomically } from "./atomicWrite";
-import { isServerBetaFeatureEnabled } from "./betaFeatureGate";
 import { ServerConfig } from "./config";
 import {
   GIT_TEXT_GENERATION_PROVIDER_ORDER,
@@ -101,7 +98,7 @@ export function toServerSettingsView(settings: ServerSettings): ServerSettingsVi
 export class ServerSettingsService extends ServiceMap.Service<
   ServerSettingsService,
   ServerSettingsShape
->()("synara/serverSettings/ServerSettingsService") {
+>()("glade/serverSettings/ServerSettingsService") {
   static readonly layerTest = (overrides: DeepPartial<ServerSettings> = {}) =>
     Layer.effect(
       ServerSettingsService,
@@ -114,7 +111,7 @@ export class ServerSettingsService extends ServiceMap.Service<
         const emitChange = (settings: ServerSettings) =>
           PubSub.publish(changesPubSub, settings).pipe(Effect.asVoid);
         const projectSettings = (settings: ServerSettings) =>
-          resolveTextGenerationProvider(gateBetaOnlyProviders(settings));
+          resolveTextGenerationProvider(settings);
         const getSettings = Ref.get(currentSettingsRef).pipe(Effect.map(projectSettings));
         const updateSettings = (patch: ServerSettingsPatch) =>
           Ref.get(currentSettingsRef).pipe(
@@ -159,31 +156,6 @@ export class ServerSettingsService extends ServiceMap.Service<
     );
 }
 
-/**
- * Beta-only providers read as disabled on Stable, projected at the read
- * boundary only — the persisted file and `settingsRef` keep the user's own
- * value so a Beta -> Stable round trip never loses it.
- */
-export function gateBetaOnlyProviders(
-  settings: ServerSettings,
-  isEnabled: (feature: string) => boolean = isServerBetaFeatureEnabled,
-): ServerSettings {
-  let changed = false;
-  // A Record view for the write: the fixed Struct keys each keep their own
-  // settings shape at runtime, which index assignment cannot express.
-  const providers = { ...settings.providers } as Record<
-    ProviderKind,
-    ServerSettings["providers"][ProviderKind]
-  >;
-  for (const provider of Object.keys(providers) as ProviderKind[]) {
-    const current = providers[provider];
-    if (!current.enabled || isEnabled(provider)) continue;
-    providers[provider] = { ...current, enabled: false };
-    changed = true;
-  }
-  return changed ? { ...settings, providers: providers as ServerSettings["providers"] } : settings;
-}
-
 export function resolveTextGenerationProvider(settings: ServerSettings): ServerSettings {
   const selection = settings.textGenerationModelSelection;
   if (
@@ -204,10 +176,7 @@ export function resolveTextGenerationProvider(settings: ServerSettings): ServerS
     ...settings,
     textGenerationModelSelection: {
       provider: fallback,
-      model:
-        fallback === "droid"
-          ? DEFAULT_DROID_GIT_TEXT_GENERATION_MODEL
-          : DEFAULT_MODEL_BY_PROVIDER[fallback],
+      model: DEFAULT_MODEL_BY_PROVIDER[fallback],
     } as ModelSelection,
   };
 }
@@ -305,12 +274,6 @@ function migrateRemovedKiloSettings(settings: unknown): unknown {
         !Array.isArray(providerRecord.opencode)
           ? (providerRecord.opencode as Record<string, unknown>)
           : {};
-      const portableCustomModels = [
-        ...(Array.isArray(existingOpenCode.customModels) ? existingOpenCode.customModels : []),
-        ...(Array.isArray(kiloRecord.customModels) ? kiloRecord.customModels : []),
-      ].filter(
-        (value, index, values) => typeof value === "string" && values.indexOf(value) === index,
-      );
       const { kilo: _removedKilo, ...remainingProviders } = providerRecord;
       migrated = {
         ...migrated,
@@ -319,7 +282,6 @@ function migrateRemovedKiloSettings(settings: unknown): unknown {
           opencode: {
             ...existingOpenCode,
             ...(kiloRecord.enabled === true ? { enabled: true } : {}),
-            ...(portableCustomModels.length > 0 ? { customModels: portableCustomModels } : {}),
           },
         },
       };
@@ -531,8 +493,7 @@ const makeServerSettings = Effect.gen(function* () {
     yield* Deferred.succeed(startedDeferred, undefined).pipe(Effect.orDie);
   });
 
-  const projectSettings = (settings: ServerSettings) =>
-    resolveTextGenerationProvider(gateBetaOnlyProviders(settings));
+  const projectSettings = (settings: ServerSettings) => resolveTextGenerationProvider(settings);
   const getSettings = Ref.get(settingsRef).pipe(Effect.map(projectSettings));
   const updateSettings = (patch: ServerSettingsPatch) =>
     writeSemaphore.withPermits(1)(

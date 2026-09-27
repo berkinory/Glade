@@ -3,8 +3,8 @@
 // Layer: Settings UI logic
 // Exports: origin metadata, canonical skill grouping, and section ordering helpers.
 
-import type { ProviderKind, ProviderSkillDescriptor } from "@synara/contracts";
-import { PROVIDER_DISPLAY_NAMES } from "@synara/contracts";
+import type { ProviderKind, ProviderSkillDescriptor } from "@glade/contracts";
+import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts";
 import { DEFAULT_PROVIDER_ORDER } from "~/providerOrdering";
 
 export interface SkillOriginInfo {
@@ -37,44 +37,29 @@ export interface SettingsSkillSection {
 const SHARED_SKILLS_SECTION = "shared";
 const PERSONAL_ORIGIN = "personal";
 export const ORIGIN_SECTION_ORDER = [
-  "synara",
+  "glade",
   "codex",
   "claude",
   "cursor",
-  "antigravity",
   "grok",
-  "droid",
   "opencode",
-  "pi",
-  "devin",
-  "omp",
   "agents",
   "project",
 ] as const;
 export function skillOriginInfo(scope: string | undefined): SkillOriginInfo {
   switch (scope) {
-    case "synara":
-      return { label: "Synara", provider: null };
+    case "glade":
+      return { label: "Glade", provider: null };
     case "codex":
       return { label: PROVIDER_DISPLAY_NAMES.codex, provider: "codex" };
     case "claude":
       return { label: PROVIDER_DISPLAY_NAMES.claudeAgent, provider: "claudeAgent" };
     case "cursor":
       return { label: PROVIDER_DISPLAY_NAMES.cursor, provider: "cursor" };
-    case "devin":
-      return { label: PROVIDER_DISPLAY_NAMES.devin, provider: "devin" };
-    case "antigravity":
-      return { label: PROVIDER_DISPLAY_NAMES.antigravity, provider: "antigravity" };
     case "grok":
       return { label: PROVIDER_DISPLAY_NAMES.grok, provider: "grok" };
-    case "droid":
-      return { label: PROVIDER_DISPLAY_NAMES.droid, provider: "droid" };
     case "opencode":
       return { label: PROVIDER_DISPLAY_NAMES.opencode, provider: "opencode" };
-    case "pi":
-      return { label: PROVIDER_DISPLAY_NAMES.pi, provider: "pi" };
-    case "omp":
-      return { label: PROVIDER_DISPLAY_NAMES.omp, provider: "omp" };
     case "agents":
       return { label: "Shared (.agents)", provider: null };
     case "project":

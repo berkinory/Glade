@@ -1,9 +1,4 @@
-import type {
-  ModelSelection,
-  OrchestrationSession,
-  RuntimeMode,
-  ThreadId,
-} from "@synara/contracts";
+import type { ModelSelection, OrchestrationSession, RuntimeMode, ThreadId } from "@glade/contracts";
 
 export function deriveTurnStartModelSelection(input: {
   readonly currentModelSelection: ModelSelection;

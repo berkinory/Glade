@@ -2,16 +2,16 @@ import {
   makeMessageTextChunks,
   encodeMessageTextFallback,
 } from "../../persistence/messageTextChunks.ts";
-import { ApprovalRequestId, CommandId, type OrchestrationEvent } from "@synara/contracts";
-import { resolveHumanMessageAt } from "@synara/shared/threadSummary";
-import { clearRemovedAsyncUserInputResponses } from "@synara/shared/asyncUserInput";
+import { ApprovalRequestId, CommandId, type OrchestrationEvent } from "@glade/contracts";
+import { resolveHumanMessageAt } from "@glade/shared/threadSummary";
+import { clearRemovedAsyncUserInputResponses } from "@glade/shared/asyncUserInput";
 import {
   addPinnedMessage,
   removePinnedMessage,
   setPinnedMessageDone,
   setPinnedMessageLabel,
-} from "@synara/shared/pinnedMessages";
-import { createStalePendingInteractionMatcher } from "@synara/shared/pendingInteractions";
+} from "@glade/shared/pinnedMessages";
+import { createStalePendingInteractionMatcher } from "@glade/shared/pendingInteractions";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { Effect, FileSystem, Layer, Option, Path, Stream } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";

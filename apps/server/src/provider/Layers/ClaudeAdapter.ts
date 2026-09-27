@@ -8,7 +8,7 @@ import { restoreClaudeImportedCopyDates } from "../claudeImportedCopyDates.ts";
  *
  * @module ClaudeAdapterLive
  */
-import { execProcessFile, spawnProcess } from "@synara/shared/processRuntime";
+import { execProcessFile, spawnProcess } from "@glade/shared/processRuntime";
 import type {
   AgentInfo,
   CanUseTool,
@@ -65,7 +65,7 @@ import {
   type ProviderListAgentsResult,
   type ProviderListModelsResult,
   getAgentMentionAliases,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import {
   applyClaudePromptEffortPrefix,
   getClaudeContextWindowSuffix,
@@ -78,11 +78,11 @@ import {
   resolveApiModelId,
   stripClaudeContextWindowSuffix,
   trimOrNull,
-} from "@synara/shared/model";
-import { buildClaudeSubagentPrompt } from "@synara/shared/agentMentions";
-import { assessClaudeCache } from "@synara/shared/claudeCache";
-import { approvalSessionGrantWidensSessionPolicy } from "@synara/shared/approvalSessionGrant";
-import { approvalRequestKindFromRequestType } from "@synara/shared/threadSummary";
+} from "@glade/shared/model";
+import { buildClaudeSubagentPrompt } from "@glade/shared/agentMentions";
+import { assessClaudeCache } from "@glade/shared/claudeCache";
+import { approvalSessionGrantWidensSessionPolicy } from "@glade/shared/approvalSessionGrant";
+import { approvalRequestKindFromRequestType } from "@glade/shared/threadSummary";
 import {
   claudeCacheContextTokens,
   claudeCacheFromRequest,
@@ -111,8 +111,8 @@ import {
 } from "effect";
 
 import { buildClaudeMcpServers } from "../../agentGateway/mcpInjection.ts";
-import { renderSynaraHarnessPolicy } from "../../agentGateway/harnessPolicy.ts";
-import { shouldAllowSynaraComputerProviderTool } from "../../agentGateway/computerToolPermission.ts";
+import { renderGladeHarnessPolicy } from "../../agentGateway/harnessPolicy.ts";
+import { shouldAllowGladeComputerProviderTool } from "../../agentGateway/computerToolPermission.ts";
 import { AgentGatewayCredentials } from "../../agentGateway/Services/AgentGatewayCredentials.ts";
 import { PROVIDER_ADAPTER_RUNTIME_EVENT_BUFFER_CAPACITY } from "../Services/ProviderAdapter.ts";
 import {
@@ -1218,7 +1218,7 @@ function isClientSurfacedClaudeTool(toolName: string): boolean {
 
 // Stable per-call identity stamped on every tool lifecycle event's data so the client
 // can collapse started/updated/completed (and dedupe parallel calls) by tool-call id
-// instead of relying on row adjacency. Mirrors the shape other adapters emit (Pi/Grok).
+// instead of relying on row adjacency. Mirrors the shape other adapters emit (Grok).
 function toolLifecycleEventData(
   tool: Pick<ToolInFlight, "itemId" | "toolName" | "input">,
   extra?: Record<string, unknown>,
@@ -1235,7 +1235,7 @@ function toolLifecycleEventData(
 
 // Receiver identity for the shared subagent-thread machinery: ingestion spawns a
 // child thread per receiverThreadId on collab_agent_tool_call items and titles it
-// from these hints (see extractSubagentIdentityHints in @synara/shared/subagents).
+// from these hints (see extractSubagentIdentityHints in @glade/shared/subagents).
 function subagentReceiverData(
   tool: Pick<ToolInFlight, "itemId" | "input">,
 ): Record<string, unknown> {
@@ -1302,13 +1302,13 @@ export const buildEmbeddedClaudeSystemPromptAppend = (
   enableComputerControl = false,
 ) =>
   [
-    "You are running inside Synara, a coding app that embeds the Claude Agent SDK.",
+    "You are running inside Glade, a coding app that embeds the Claude Agent SDK.",
     "Do not present the host app as Claude Code unless the user is explicitly asking about Claude Code.",
     "Treat the current working directory as the active workspace for the task.",
     "When the user asks about the current project, codebase, or repository, proactively inspect files in the current working directory before asking the user where to look.",
     "When spawning subagents, set the Agent tool's `model` parameter and pick reasoning effort by choosing a worker-<tier> subagent type (worker-low, worker-medium, worker-high, worker-xhigh).",
     "Honor explicit user instructions about a subagent's model or effort verbatim; otherwise match task complexity: mechanical work → haiku or worker-low, standard work → sonnet or worker-medium, hard reasoning → opus or fable with worker-high and above.",
-    renderSynaraHarnessPolicy({
+    renderGladeHarnessPolicy({
       gatewayControlAvailable,
       enableComputerControl,
       automationAuthoring: "tool-descriptions",
@@ -1997,7 +1997,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
     const fileSystem = yield* FileSystem.FileSystem;
     const serverConfig = yield* ServerConfig;
     // Optional so adapter tests can run without the gateway layer; when
-    // present, every session gets the synara_* MCP tools.
+    // present, every session gets the glade_* MCP tools.
     const agentGatewayCredentials = Option.getOrUndefined(
       yield* Effect.serviceOption(AgentGatewayCredentials),
     );
@@ -5060,7 +5060,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
               // native conversation only after the prompt is queued. Drop the
               // dead native ids before completing the turn so ProviderService
               // persists a cursor without `resume`; the next dispatch then
-              // starts a fresh Claude session and bootstraps Synara's retained
+              // starts a fresh Claude session and bootstraps Glade's retained
               // transcript instead of replaying the same broken id forever.
               context.resumeSessionId = undefined;
               context.lastAssistantUuid = undefined;
@@ -5626,7 +5626,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
                 context.turnState?.turnId ??
                 (callbackOptions.agentID !== undefined ? context.lastTurnId : undefined);
               if (
-                shouldAllowSynaraComputerProviderTool({
+                shouldAllowGladeComputerProviderTool({
                   computerControlEnabled:
                     input.enableComputerControl === true &&
                     context.gatewaySessionLease !== undefined,
@@ -6843,7 +6843,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
             provider: PROVIDER,
             operation: "forkThread",
             issue:
-              "The source Claude session has a turn in flight; Synara will rebuild the fork from its retained transcript.",
+              "The source Claude session has a turn in flight; Glade will rebuild the fork from its retained transcript.",
           });
         }
         const sourceState = readClaudeResumeState(input.sourceResumeCursor);

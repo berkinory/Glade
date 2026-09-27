@@ -5,11 +5,11 @@
 // Layer: Web UI state utilities
 // Exports: load/save helpers for the confirmed-path record.
 
-import type { ProviderKind } from "@synara/contracts";
-import { PROVIDER_DESCRIPTORS } from "@synara/shared/providerMetadata";
+import type { ProviderKind } from "@glade/contracts";
+import { PROVIDER_DESCRIPTORS } from "@glade/shared/providerMetadata";
 import { isPlainObject } from "./persistedRecord";
 
-const STORAGE_KEY = "synara:confirmed-custom-binary-paths:v1";
+const STORAGE_KEY = "glade:confirmed-custom-binary-paths:v1";
 
 const PROVIDER_KINDS: ReadonlySet<ProviderKind> = new Set(
   PROVIDER_DESCRIPTORS.map((descriptor) => descriptor.kind),

@@ -8,11 +8,11 @@ dismissible introduction card in the sidebar.
 
 1. Select Codex, Claude Code, or both, then choose **Find projects**.
 2. Select projects or expand a project to choose individual conversations. Enable **Include
-   archived** to include archived Codex conversations; they remain archived in Synara.
+   archived** to include archived Codex conversations; they remain archived in Glade.
 3. Review the destination folders and choose **Import selected**. The result lists failures
    individually. **Retry failed** retries those items; **Stop after current** preserves completed work.
 
-Discovery reads local archives on the machine running the Synara server. A browser connected to a
+Discovery reads local archives on the machine running the Glade server. A browser connected to a
 remote server sees that server's archives. Codex's configured home and `CODEX_SQLITE_HOME`, and
 Claude Code's `CLAUDE_CONFIG_DIR`, are respected. Cloud-only conversations are outside this flow.
 
@@ -20,7 +20,7 @@ Claude Code's `CLAUDE_CONFIG_DIR`, are respected. Cloud-only conversations are o
 
 Importing links the original project folder. It does not clone a repository, copy project files, or
 create a new working tree. Codex and Claude conversations associated with the same canonical folder
-are grouped into one Synara project. Existing Synara projects retain their names, settings, and
+are grouped into one Glade project. Existing Glade projects retain their names, settings, and
 conversations. Equal names or Git remotes alone do not establish that folders are the same project.
 
 Existing Git worktrees retain their task working directories. Codex projects with multiple roots
@@ -30,18 +30,18 @@ work whose original directory is missing.
 
 ## Conversations become independent copies
 
-Synara creates a provider-native copy during import. Continuing it does not append messages to the
+Glade creates a provider-native copy during import. Continuing it does not append messages to the
 original conversation. The code files still belong to the original linked folder or its existing
 worktree. Import does not submit a model turn, and a copied Codex goal is not automatically resumed.
 
-The importer checks native IDs already owned by Synara and saves durable import provenance. Repeating
+The importer checks native IDs already owned by Glade and saves durable import provenance. Repeating
 an import skips completed copies that still exist, including archived conversations. Deleting an
 imported conversation or its destination project makes the source available to import again; the
 next import creates a new independent copy. An interrupted import can reuse its copy and continue materializing
 history in the destination chosen for the first attempt. Pending imports cannot accept new messages
 until they finish successfully.
 
-Native copies preserve provider conversation context. Synara's imported history currently displays
+Native copies preserve provider conversation context. Glade's imported history currently displays
 supported user and assistant text, with original timestamps where available and stable ordering.
 Historical tool activity, reasoning, plans, and attachments are not reconstructed as interactive UI
 items. Subagent transcripts are not listed as separate ordinary conversations. Active Codex turns

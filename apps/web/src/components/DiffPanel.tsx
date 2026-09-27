@@ -4,14 +4,13 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { ThreadId, type ResolvedKeybindingsConfig, type TurnId } from "@synara/contracts";
+import { ThreadId, type ResolvedKeybindingsConfig, type TurnId } from "@glade/contracts";
 import type { FileDiffMetadata } from "@pierre/diffs/react";
 import * as Schema from "effect/Schema";
 import { Columns2Icon, CopyIcon, EllipsisIcon, FolderIcon, Rows3Icon, XIcon } from "~/lib/icons";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   gitBranchesQueryOptions,
-  gitQueryKeys,
   refreshGitAfterFileWrite,
   gitStatusQueryOptions,
   gitWorkingTreeDiffQueryOptions,
@@ -458,7 +457,7 @@ export default function DiffPanel({
   const { resolvedTheme } = useTheme();
   const { settings } = useAppSettings();
   const [diffRenderMode, setDiffRenderMode] = useLocalStorage(
-    "synara:diff-render-mode:v1",
+    "glade:diff-render-mode:v1",
     "split",
     DiffRenderModeSchema,
   );

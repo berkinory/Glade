@@ -5,7 +5,7 @@
 // Layer: Web chat presentation component
 // Exports: WorkspaceFilePreview, isMarkdownPreviewablePath
 
-import type { ProjectFileChangeEvent, ProjectReadFileResult } from "@synara/contracts";
+import type { ProjectFileChangeEvent, ProjectReadFileResult } from "@glade/contracts";
 import type { FileContents as PierreFileContents } from "@pierre/diffs";
 import {
   Editor as PierreEditor,
@@ -16,13 +16,13 @@ import {
   isSupportedLocalImagePath,
   isSupportedLocalPdfPath,
   lowerCaseExtensionOf,
-} from "@synara/shared/localPreviewFiles";
+} from "@glade/shared/localPreviewFiles";
 import {
   isLocalAbsolutePath,
   isWorkspaceRelativePathSafe,
   joinWorkspaceRelativePath,
-} from "@synara/shared/path";
-import { isScratchWorkspacePath } from "@synara/shared/threadWorkspace";
+} from "@glade/shared/path";
+import { isScratchWorkspacePath } from "@glade/shared/threadWorkspace";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Component,

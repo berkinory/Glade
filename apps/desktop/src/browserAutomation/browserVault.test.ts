@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { BrowserAutomationErrorMessages } from "@synara/contracts";
+import { BrowserAutomationErrorMessages } from "@glade/contracts";
 import { createLocalCredentialVault } from "betterwright";
 import { BrowserVault } from "./browserVault";
 import { VaultKeyProtection } from "./vaultKeyProtection";
@@ -13,7 +13,7 @@ afterEach(async () => {
   for (const home of homes.splice(0)) await rm(home, { recursive: true, force: true });
 });
 async function fixture() {
-  const home = await mkdtemp(join(tmpdir(), "synara-vault-"));
+  const home = await mkdtemp(join(tmpdir(), "glade-vault-"));
   homes.push(home);
   const vault = new BrowserVault(home);
   await vault.setupMaster(master);
@@ -26,7 +26,7 @@ const page = (url = origin) => ({ getURL: () => url, isDestroyed: () => false })
 // Allow for CPU contention when release preflight runs all workspace suites together.
 describe("browser vault", { timeout: 15_000 }, () => {
   it("defers OS key access for an empty vault until password saving is enabled", async () => {
-    const home = await mkdtemp(join(tmpdir(), "synara-empty-vault-"));
+    const home = await mkdtemp(join(tmpdir(), "glade-empty-vault-"));
     homes.push(home);
     const store = {
       available: vi.fn(async () => true),
@@ -59,7 +59,7 @@ describe("browser vault", { timeout: 15_000 }, () => {
   });
 
   it("does not initialize an unused vault during or after disposal", async () => {
-    const home = await mkdtemp(join(tmpdir(), "synara-disposed-vault-"));
+    const home = await mkdtemp(join(tmpdir(), "glade-disposed-vault-"));
     homes.push(home);
     const available = vi.fn(async () => true);
     const vault = new BrowserVault(home, {

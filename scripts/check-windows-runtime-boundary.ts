@@ -54,7 +54,7 @@ const report = (file: string, rule: string) => violations.push(`${file}: ${rule}
 for (const file of files) {
   const source = fs.readFileSync(path.join(repoRoot, file), "utf8");
 
-  if (/from\s+["']@synara\/shared\/windowsProcess["']/.test(source)) {
+  if (/from\s+["']@glade\/shared\/windowsProcess["']/.test(source)) {
     report(file, "import the platform-neutral process runtime instead of windowsProcess");
   }
   if (/\bprepareWindowsSafeProcess\b/.test(source)) {

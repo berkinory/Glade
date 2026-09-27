@@ -1,5 +1,5 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { CommandId, MessageId, ProjectId, ThreadId } from "@synara/contracts";
+import { CommandId, MessageId, ProjectId, ThreadId } from "@glade/contracts";
 import { Effect, Layer, ManagedRuntime } from "effect";
 import { expect, it } from "vitest";
 import { ServerConfig } from "../config";
@@ -21,7 +21,7 @@ it("preserves an empty existing project and refuses turns until the native impor
       Layer.provide(OrchestrationCommandReceiptRepositoryLive),
       Layer.provideMerge(SqlitePersistenceMemory),
       Layer.provideMerge(
-        ServerConfig.layerTest(process.cwd(), { prefix: "synara-project-import-guard-" }),
+        ServerConfig.layerTest(process.cwd(), { prefix: "glade-project-import-guard-" }),
       ),
       Layer.provideMerge(NodeServices.layer),
     ),

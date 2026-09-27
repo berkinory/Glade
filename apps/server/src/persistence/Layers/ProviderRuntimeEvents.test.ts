@@ -5,7 +5,7 @@ import {
   ThreadId,
   TurnId,
   type ProviderRuntimeEvent,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import { assert, it } from "@effect/vitest";
 import { Effect, Layer } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
@@ -86,7 +86,7 @@ it.effect("journals image metadata and replays it without the model image body",
         {
           type: "image",
           mimeType: "image/png",
-          synaraImageOmitted: true,
+          gladeImageOmitted: true,
           encodedLength: data.length,
           byteLength: 512 * 1024,
         },
@@ -376,83 +376,85 @@ layer("ProviderRuntimeEventRepository", (it) => {
       assert.deepStrictEqual(persisted.event.payload, oversized.payload);
       const compactedRaw = rows[0]?.event.raw?.payload as
         | {
-            readonly synaraTruncated?: unknown;
+            readonly gladeTruncated?: unknown;
             readonly reason?: unknown;
             readonly originalBytes?: unknown;
           }
         | undefined;
       assert.deepInclude(compactedRaw, {
-        synaraTruncated: true,
+        gladeTruncated: true,
         reason: "provider runtime event exceeded the durable journal size limit",
       });
       assert.isNumber(compactedRaw?.originalBytes);
     }),
   );
 
-  it.effect("journals an oversized Pi item.completed by truncating payload string leaves", () =>
-    Effect.gen(function* () {
-      const repository = yield* ProviderRuntimeEventRepository;
-      const oversizedResult = "x".repeat(PROVIDER_RUNTIME_EVENT_MAX_BYTES * 2);
-      const oversizedEvent = {
-        type: "item.completed",
-        eventId: EventId.makeUnsafe("runtime-event-oversized-pi"),
-        provider: "pi",
-        createdAt: "2026-07-14T00:03:00.000Z",
-        threadId: ThreadId.makeUnsafe("thread-runtime-journal"),
-        turnId: TurnId.makeUnsafe("turn-runtime-journal"),
-        itemId: RuntimeItemId.makeUnsafe("item-oversized-pi"),
-        payload: {
-          itemType: "command_execution",
-          status: "completed",
-          title: "Run bash",
-          detail: oversizedResult,
-          data: { toolCallId: "call-1", toolName: "bash", result: oversizedResult },
-        },
-        raw: {
-          source: "pi.sdk.event",
-          messageType: "tool_result",
-          payload: { result: oversizedResult },
-        },
-      } satisfies ProviderRuntimeEvent;
+  it.effect(
+    "journals an oversized OpenCode item.completed by truncating payload string leaves",
+    () =>
+      Effect.gen(function* () {
+        const repository = yield* ProviderRuntimeEventRepository;
+        const oversizedResult = "x".repeat(PROVIDER_RUNTIME_EVENT_MAX_BYTES * 2);
+        const oversizedEvent = {
+          type: "item.completed",
+          eventId: EventId.makeUnsafe("runtime-event-oversized-opencode"),
+          provider: "opencode",
+          createdAt: "2026-07-14T00:03:00.000Z",
+          threadId: ThreadId.makeUnsafe("thread-runtime-journal"),
+          turnId: TurnId.makeUnsafe("turn-runtime-journal"),
+          itemId: RuntimeItemId.makeUnsafe("item-oversized-opencode"),
+          payload: {
+            itemType: "command_execution",
+            status: "completed",
+            title: "Run bash",
+            detail: oversizedResult,
+            data: { toolCallId: "call-1", toolName: "bash", result: oversizedResult },
+          },
+          raw: {
+            source: "opencode.sdk.event",
+            messageType: "tool_result",
+            payload: { result: oversizedResult },
+          },
+        } satisfies ProviderRuntimeEvent;
 
-      const persisted = yield* repository.append(oversizedEvent);
-      assert.strictEqual(persisted.event.eventId, oversizedEvent.eventId);
-      if (persisted.event.type === "item.completed") {
-        const detail = persisted.event.payload.detail;
-        assert.isString(detail);
-        if (typeof detail === "string") {
-          assert.isBelow(detail.length, oversizedResult.length);
-        }
-        const data = persisted.event.payload.data as { readonly result?: string } | undefined;
-        const dataResult = data?.result;
-        assert.isString(dataResult);
-        if (typeof dataResult === "string") {
-          assert.isBelow(dataResult.length, oversizedResult.length);
-        }
-      }
-      const rawPayload = persisted.event.raw?.payload as
-        | {
-            readonly synaraTruncated?: unknown;
-            readonly originalBytes?: unknown;
+        const persisted = yield* repository.append(oversizedEvent);
+        assert.strictEqual(persisted.event.eventId, oversizedEvent.eventId);
+        if (persisted.event.type === "item.completed") {
+          const detail = persisted.event.payload.detail;
+          assert.isString(detail);
+          if (typeof detail === "string") {
+            assert.isBelow(detail.length, oversizedResult.length);
           }
-        | undefined;
-      assert.deepInclude(rawPayload, { synaraTruncated: true });
-      const originalBytes = rawPayload?.originalBytes;
-      assert.isNumber(originalBytes);
-      if (typeof originalBytes === "number") {
-        assert.isAbove(originalBytes, PROVIDER_RUNTIME_EVENT_MAX_BYTES);
-      }
+          const data = persisted.event.payload.data as { readonly result?: string } | undefined;
+          const dataResult = data?.result;
+          assert.isString(dataResult);
+          if (typeof dataResult === "string") {
+            assert.isBelow(dataResult.length, oversizedResult.length);
+          }
+        }
+        const rawPayload = persisted.event.raw?.payload as
+          | {
+              readonly gladeTruncated?: unknown;
+              readonly originalBytes?: unknown;
+            }
+          | undefined;
+        assert.deepInclude(rawPayload, { gladeTruncated: true });
+        const originalBytes = rawPayload?.originalBytes;
+        assert.isNumber(originalBytes);
+        if (typeof originalBytes === "number") {
+          assert.isAbove(originalBytes, PROVIDER_RUNTIME_EVENT_MAX_BYTES);
+        }
 
-      const rows = yield* repository.readAfter({
-        sequenceExclusive: persisted.sequence - 1,
-        throughSequenceInclusive: persisted.sequence,
-        limit: 1,
-      });
-      assert.strictEqual(rows[0]?.event.eventId, "runtime-event-oversized-pi");
+        const rows = yield* repository.readAfter({
+          sequenceExclusive: persisted.sequence - 1,
+          throughSequenceInclusive: persisted.sequence,
+          limit: 1,
+        });
+        assert.strictEqual(rows[0]?.event.eventId, "runtime-event-oversized-opencode");
 
-      const duplicate = yield* repository.append(oversizedEvent);
-      assert.strictEqual(duplicate.sequence, persisted.sequence);
-    }),
+        const duplicate = yield* repository.append(oversizedEvent);
+        assert.strictEqual(duplicate.sequence, persisted.sequence);
+      }),
   );
 
   it.effect("journals an oversized raw-less event by truncating its payload leaves", () =>
@@ -476,7 +478,7 @@ layer("ProviderRuntimeEventRepository", (it) => {
       const oversizedEvent = {
         type: "item.completed",
         eventId: EventId.makeUnsafe("runtime-event-oversized-numbers"),
-        provider: "pi",
+        provider: "opencode",
         createdAt: "2026-07-14T00:04:00.000Z",
         threadId: ThreadId.makeUnsafe("thread-runtime-journal"),
         turnId: TurnId.makeUnsafe("turn-runtime-journal"),

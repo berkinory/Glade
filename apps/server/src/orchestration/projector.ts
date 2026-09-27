@@ -1,4 +1,4 @@
-import type { OrchestrationEvent, OrchestrationReadModel, ThreadId } from "@synara/contracts";
+import type { OrchestrationEvent, OrchestrationReadModel, ThreadId } from "@glade/contracts";
 import {
   OrchestrationCheckpointSummary,
   OrchestrationMessage,
@@ -7,14 +7,14 @@ import {
   ThreadAsyncUserInputAnsweredPayload,
   ThreadClaudeCacheSetPayload,
   type OrchestrationMessageTextSegment,
-} from "@synara/contracts";
-import { clearRemovedAsyncUserInputResponses } from "@synara/shared/asyncUserInput";
+} from "@glade/contracts";
+import { clearRemovedAsyncUserInputResponses } from "@glade/shared/asyncUserInput";
 import {
   addPinnedMessage,
   removePinnedMessage,
   setPinnedMessageDone,
   setPinnedMessageLabel,
-} from "@synara/shared/pinnedMessages";
+} from "@glade/shared/pinnedMessages";
 import { Effect, Schema } from "effect";
 
 import { toProjectorDecodeError, type OrchestrationProjectorDecodeError } from "./Errors.ts";

@@ -5,13 +5,13 @@ import {
   MIGRATION_RUNTIME_SOURCE_RELATIVE_PATH,
   findMigrationRuntimeIdentityMismatch,
   type MigrationRuntimeIdentityMismatch,
-} from "@synara/shared/migrationRecovery";
+} from "@glade/shared/migrationRecovery";
 
-declare const __SYNARA_MIGRATION_RUNTIME_SOURCE_DIGEST__: string;
+declare const __GLADE_MIGRATION_RUNTIME_SOURCE_DIGEST__: string;
 
 export function embeddedDesktopMigrationRuntimeSourceDigest(): string | null {
-  return typeof __SYNARA_MIGRATION_RUNTIME_SOURCE_DIGEST__ === "string"
-    ? __SYNARA_MIGRATION_RUNTIME_SOURCE_DIGEST__
+  return typeof __GLADE_MIGRATION_RUNTIME_SOURCE_DIGEST__ === "string"
+    ? __GLADE_MIGRATION_RUNTIME_SOURCE_DIGEST__
     : null;
 }
 

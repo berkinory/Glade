@@ -1,10 +1,10 @@
 /**
- * Provider-neutral ACP session-config interpretation, shared by the Droid and
- * OMP ACP support modules.
+ * Provider-neutral ACP session-config interpretation, shared by ACP providers and
+ * ACP support modules.
  *
  * @module AcpConfigOptions
  */
-import { type ProviderModelDescriptor } from "@synara/contracts";
+import { type ProviderModelDescriptor } from "@glade/contracts";
 import type * as Acp from "@agentclientprotocol/sdk";
 
 export function availableAuthMethodIds(

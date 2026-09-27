@@ -2,7 +2,7 @@ import {
   PROVIDER_DISPLAY_NAMES,
   type ProviderKind,
   type ServerProviderStatus,
-} from "@synara/contracts";
+} from "@glade/contracts";
 
 export interface ProviderSendAvailability {
   readonly provider: ProviderKind;
@@ -41,7 +41,7 @@ export function normalizeProviderStatusForLocalConfig(input: {
       available: false,
       authStatus: "unknown",
       checkedAt: status.checkedAt,
-      message: "Provider is disabled in Synara settings.",
+      message: "Provider is disabled in Glade settings.",
     };
   }
 

@@ -1,4 +1,4 @@
-import type { ContextMenuItem } from "@synara/contracts";
+import type { ContextMenuItem } from "@glade/contracts";
 import { createCentralIconElement } from "./lib/central-icons";
 import { isInlineSvgMenuIcon } from "./lib/nativeMenuIcons";
 

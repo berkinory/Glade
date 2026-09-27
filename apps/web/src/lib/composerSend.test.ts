@@ -1,7 +1,7 @@
 import {
   PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
   PROVIDER_SEND_TURN_MAX_IMAGE_BYTES,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type {
@@ -21,7 +21,7 @@ import {
 } from "./composerSend";
 
 describe("Computer command with provider prompt formatting", () => {
-  it("keeps the Synara command first when Claude uses a prompt-injected effort", () => {
+  it("keeps the Glade command first when Claude uses a prompt-injected effort", () => {
     expect(
       formatOutgoingComposerPrompt({
         provider: "claudeAgent",
@@ -441,11 +441,11 @@ function persistedImageAttachment(
   overrides: Partial<PersistedComposerImageAttachment> = {},
 ): PersistedComposerImageAttachment {
   return {
-    id: "appsnap-1",
+    id: "computer-helper-1",
     name: "capture.png",
     mimeType: "image/png",
     sizeBytes: 4,
-    blobKey: "thread-1:appsnap-1",
+    blobKey: "thread-1:computer-helper-1",
     ...overrides,
   };
 }
@@ -456,7 +456,7 @@ function composerImageAttachment(
   const file = new File(["png"], "capture.png", { type: "image/png" });
   return {
     type: "image",
-    id: "appsnap-1",
+    id: "computer-helper-1",
     name: "capture.png",
     mimeType: "image/png",
     sizeBytes: 4,
@@ -513,25 +513,14 @@ describe("hydratePendingBlobComposerAttachments", () => {
     const blobFile = new File(["png"], "capture.png", { type: "image/png" });
     vi.spyOn(composerImageBlobStore, "readComposerImageBlob").mockResolvedValue(blobFile);
 
-    const result = await hydratePendingBlobComposerAttachments([
-      persistedImageAttachment({
-        source: {
-          kind: "appsnap",
-          captureId: "capture-1",
-          capturedAt: "2026-07-14T00:00:00.000Z",
-          appName: "Notes",
-          windowTitle: null,
-        },
-      }),
-    ]);
+    const result = await hydratePendingBlobComposerAttachments([persistedImageAttachment({})]);
 
     expect(result).toEqual([
       expect.objectContaining({
         type: "image",
-        id: "appsnap-1",
+        id: "computer-helper-1",
         previewUrl: "blob:capture.png",
         file: blobFile,
-        source: expect.objectContaining({ kind: "appsnap", captureId: "capture-1" }),
       }),
     ]);
   });
@@ -558,23 +547,4 @@ describe("hydratePendingBlobComposerAttachments", () => {
   });
 });
 
-describe("resolvePromptEffortFromModelSelection", () => {
-  it("maps Devin reasoning effort and falls back to fast for pinned fast mode", async () => {
-    const { resolvePromptEffortFromModelSelection } = await import("./composerSend");
-    const { makeModelSelection } = await import("../composerDraftModels");
-
-    expect(
-      resolvePromptEffortFromModelSelection(
-        makeModelSelection("devin", "swe-1-7", { reasoningEffort: "high" }),
-      ),
-    ).toBe("high");
-    expect(
-      resolvePromptEffortFromModelSelection(
-        makeModelSelection("devin", "swe-1-7-lightning", { fastMode: true }),
-      ),
-    ).toBe("fast");
-    expect(
-      resolvePromptEffortFromModelSelection(makeModelSelection("devin", "adaptive")),
-    ).toBeNull();
-  });
-});
+describe("resolvePromptEffortFromModelSelection", () => {});

@@ -21,13 +21,6 @@ import type {
   AuthWebSocketTokenResult,
 } from "./auth";
 import type {
-  ExternalMcpCreateIntegrationInput,
-  ExternalMcpCreateIntegrationResult,
-  ExternalMcpIntegration,
-  ExternalMcpRefreshPairingInput,
-  ExternalMcpRevokeIntegrationInput,
-} from "./externalMcp";
-import type {
   AutomationCancelRunInput,
   AutomationCancelRunResult,
   AutomationArchiveRunInput,
@@ -190,8 +183,6 @@ import type {
   ComputerInputClickInput,
   ComputerInputKeyInput,
   ComputerInputScrollInput,
-  ComputerListWindowsInput,
-  ComputerListWindowsResult,
   ComputerProvisionInput,
   ComputerProvisionResult,
   ComputerSetControlEnabledInput,
@@ -351,9 +342,8 @@ export interface DesktopUpdateState {
   errorContext: "check" | "download" | "install" | null;
   canRetry: boolean;
   installFailureCount: number;
-  // Build flavor of the running desktop app ("production" | "beta" | "canary" | "cua").
-  // The web UI uses it for beta-only branding; production builds never see it.
-  flavor: "production" | "beta" | "canary" | "cua";
+  // Build flavor of the running desktop app ("production" | "development").
+  flavor: "production" | "development";
   // Public URL where the user can manually download the release when the
   // in-app updater cannot apply it (silent installer failure, unsigned build,
   // read-only install location, unsupported platform). Null when no GitHub
@@ -365,55 +355,6 @@ export interface DesktopUpdateActionResult {
   accepted: boolean;
   completed: boolean;
   state: DesktopUpdateState;
-}
-
-/** In-flight or failed beta download/install reported by the stable side. */
-export interface DesktopBetaInstallProgress {
-  readonly phase: "downloading" | "verifying" | "installing" | "opening" | "error";
-  /** 0-100 while the download reports a content length; null when indeterminate. */
-  readonly percent: number | null;
-  readonly message?: string;
-}
-
-/** Result of a stable-side probe for a parallel Synara Beta install. */
-export interface DesktopBetaChannelState {
-  /** False on web builds and unsupported probing environments. */
-  readonly supported: boolean;
-  /** Flavor of the running desktop app; the card only acts on "production". */
-  readonly flavor: "production" | "beta" | "canary" | "cua";
-  readonly installed: boolean;
-  readonly version: string | null;
-  /** True when this platform can install beta in place (macOS today). */
-  readonly canInstall: boolean;
-  /** Beta's server pid is alive (its launch marker/runtime file says so). */
-  readonly running: boolean;
-  /** Timestamp of the last completed data import reported by the beta app. */
-  readonly lastImportAt: string | null;
-  readonly lastImportError: string | null;
-  /** Public download page handed to the user when beta is not installed. */
-  readonly downloadUrl: string;
-  /** Live download/install progress; an `error` phase stays until the next attempt. */
-  readonly install: DesktopBetaInstallProgress | null;
-  /** Beta only: a stable Synara app was found to switch back to. */
-  readonly stableInstalled: boolean;
-  /** Beta only: leaving can also move the beta app to the Trash (macOS). */
-  readonly canMoveBetaToTrash: boolean;
-  /** Stable download page offered from beta when stable is not installed. */
-  readonly stableDownloadUrl: string;
-}
-
-export type DesktopBetaActionError =
-  | "not-supported"
-  | "not-installed"
-  | "beta-running"
-  | "install-failed"
-  | "launch-failed"
-  | "internal";
-
-export interface DesktopBetaActionResult {
-  readonly ok: boolean;
-  readonly error?: DesktopBetaActionError;
-  readonly message?: string;
 }
 
 export interface BrowserTabState {
@@ -506,14 +447,14 @@ export interface BrowserCaptureScreenshotResult {
   bytes: Uint8Array;
 }
 
-export type DesktopAppSnapPlatform = "macos" | "windows" | "linux" | "other";
-export type DesktopAppSnapPermission =
+export type DesktopComputerPlatform = "macos" | "windows" | "linux" | "other";
+export type DesktopComputerPermission =
   | "granted"
   | "denied"
   | "not-determined"
   | "restricted"
   | "unknown";
-export type DesktopAppSnapStatus =
+export type DesktopComputerStatus =
   | "unsupported"
   | "disabled"
   | "permission-required"
@@ -521,82 +462,32 @@ export type DesktopAppSnapStatus =
   | "ready"
   | "error";
 
-export type DesktopAppSnapShortcutModifier = "command" | "control" | "option" | "shift";
+export type DesktopComputerSettingsPane = "accessibility" | "input-monitoring" | "screen-recording";
 
-export interface DesktopAppSnapKeyChord {
-  kind: "key-chord";
-  modifier: DesktopAppSnapShortcutModifier;
-  /** A physical DOM KeyboardEvent.code, such as `KeyS` or `Space`. */
-  key: string;
-}
+/** A macOS privacy grant the Computer helper can check or request. */
+export type DesktopComputerPermissionKind = "accessibility" | "inputMonitoring" | "screenRecording";
 
-export type DesktopAppSnapShortcut = { kind: "both-option-keys" } | DesktopAppSnapKeyChord;
+export type DesktopComputerPermissionGuideState = "closed" | "granted";
 
-export interface DesktopAppSnapShortcutAvailability {
-  available: boolean;
-  reason: string | null;
-}
-
-export interface DesktopAppSnapShortcutUpdateResult {
-  state: DesktopAppSnapState;
-  availability: DesktopAppSnapShortcutAvailability;
-}
-
-export type DesktopAppSnapSettingsPane = "accessibility" | "input-monitoring" | "screen-recording";
-
-/** A macOS privacy grant the AppSnap helper can check or request. */
-export type DesktopAppSnapPermissionKind = "accessibility" | "inputMonitoring" | "screenRecording";
-
-export type DesktopAppSnapPermissionGuideState = "closed" | "granted";
-
-export interface DesktopAppSnapState {
-  platform: DesktopAppSnapPlatform;
+export interface DesktopComputerState {
+  platform: DesktopComputerPlatform;
   supported: boolean;
-  enabled: boolean;
-  status: DesktopAppSnapStatus;
-  shortcut: DesktopAppSnapShortcut | null;
+  status: DesktopComputerStatus;
   /**
    * Only present once a caller asked about Accessibility; the helper reports
    * just the grants it was queried for, so an absent field means "not asked".
    */
-  accessibilityPermission?: DesktopAppSnapPermission;
-  inputMonitoringPermission: DesktopAppSnapPermission;
-  screenRecordingPermission: DesktopAppSnapPermission;
+  accessibilityPermission?: DesktopComputerPermission;
+  inputMonitoringPermission: DesktopComputerPermission;
+  screenRecordingPermission: DesktopComputerPermission;
   message: string | null;
-  /** Explicit setup failure; unrelated AppSnap capture errors do not set this. */
+  /** Explicit setup failures survive passive grant refreshes until setup is retried. */
   permissionSetupErrorCode?:
     | "permission_setup_bundle_unavailable"
     | "permission_setup_registration_unresolved"
     | "permission_setup_identity_mismatch";
   /** Name macOS shows for this build in System Settings permission lists. */
   appDisplayName: string;
-}
-
-export interface DesktopAppSnapCapture {
-  id: string;
-  capturedAt: string;
-  name: string;
-  mimeType: "image/png";
-  sizeBytes: number;
-  bytes: Uint8Array;
-  sourceAppName: string | null;
-  sourceBundleIdentifier: string | null;
-  sourceAppIconDataUrl: string | null;
-  sourceWindowTitle: string | null;
-}
-
-export interface DesktopAppSnapErrorEvent {
-  code: string;
-  message: string;
-  capturedAt: string;
-}
-
-export interface DesktopAppSnapWindowEntry {
-  windowId: number;
-  appName: string | null;
-  bundleIdentifier: string | null;
-  windowTitle: string | null;
-  appIconDataUrl: string | null;
 }
 
 // Pushed from the desktop main process when the in-app browser copy-link chord fires
@@ -691,15 +582,11 @@ export interface DesktopCustomTitleBarState {
 export const DesktopAppIcon = Schema.Literals(["default", "icon", "dark"]);
 export type DesktopAppIcon = typeof DesktopAppIcon.Type;
 
-export interface SynaraStorageSnapshot {
+export interface GladeStorageSnapshot {
   readonly version: 1;
   readonly exportedAt: string;
   readonly entries: Readonly<Record<string, string>>;
 }
-
-export type DesktopSafariAccessInfo =
-  | { supported: false }
-  | { supported: true; appName: string; appPath: string | null };
 
 /**
  * One frame of the desktop app's native computer preview tap: a complete JPEG
@@ -725,11 +612,6 @@ export interface DesktopAgentCursorStyle {
 }
 
 export interface DesktopBridge {
-  safariAccess?: {
-    getInfo: () => Promise<DesktopSafariAccessInfo>;
-    openSettings: () => Promise<boolean>;
-    revealApp: () => Promise<boolean>;
-  };
   getWsUrl: () => string | null;
   /**
    * Absolute filesystem path for a File from drag/drop or file inputs.
@@ -805,41 +687,17 @@ export interface DesktopBridge {
   downloadUpdate: () => Promise<DesktopUpdateActionResult>;
   installUpdate: () => Promise<DesktopUpdateActionResult>;
   onUpdateState: (listener: (state: DesktopUpdateState) => void) => () => void;
-  /** Stable→Beta opt-in surface. Absent on builds that do not ship it. */
-  beta?: {
-    getState: () => Promise<DesktopBetaChannelState>;
-    /** Downloads and installs Synara Beta when missing (macOS), then opens it. */
-    install: () => Promise<DesktopBetaActionResult>;
-    /**
-     * Installs Synara Beta when missing (macOS), writes the import marker, and
-     * launches it to consume the import.
-     */
-    importAndLaunch: () => Promise<DesktopBetaActionResult>;
-    launch: () => Promise<DesktopBetaActionResult>;
-    /**
-     * Beta only: opens stable Synara, optionally moves the beta app to the
-     * Trash (macOS), then quits beta. Beta data stays in the beta home.
-     */
-    leave: (input: { readonly moveToTrash: boolean }) => Promise<DesktopBetaActionResult>;
-  };
   notifications: {
     isSupported: () => Promise<boolean>;
     show: (input: DesktopNotificationInput) => Promise<boolean>;
   };
-  appSnap: {
-    captureCurrentApp: (requestId: string) => Promise<DesktopAppSnapCapture>;
-    cancelCapture: (requestId: string) => Promise<void>;
+  computerPermissions: {
     getState: (
-      permissions?: readonly DesktopAppSnapPermissionKind[],
-    ) => Promise<DesktopAppSnapState>;
-    setEnabled: (enabled: boolean) => Promise<DesktopAppSnapState>;
-    checkShortcut: (
-      shortcut: DesktopAppSnapShortcut,
-    ) => Promise<DesktopAppSnapShortcutAvailability>;
-    setShortcut: (shortcut: DesktopAppSnapShortcut) => Promise<DesktopAppSnapShortcutUpdateResult>;
+      permissions?: readonly DesktopComputerPermissionKind[],
+    ) => Promise<DesktopComputerState>;
     requestPermissions: (
-      permissions?: readonly DesktopAppSnapPermissionKind[],
-    ) => Promise<DesktopAppSnapState>;
+      permissions?: readonly DesktopComputerPermissionKind[],
+    ) => Promise<DesktopComputerState>;
     /**
      * Reads current grants without prompting, then walks the floating permission
      * coach through each pane still missing a grant — opening its System
@@ -847,25 +705,19 @@ export interface DesktopBridge {
      * never shows several permission dialogs at once.
      */
     startPermissionSetup: (
-      permissions: readonly DesktopAppSnapPermissionKind[],
-    ) => Promise<DesktopAppSnapState>;
-    listPendingCaptures: () => Promise<DesktopAppSnapCapture[]>;
-    acknowledgeCapture: (captureId: string) => Promise<void>;
-    listWindows: () => Promise<DesktopAppSnapWindowEntry[]>;
-    captureWindow: (input: { windowId: number }) => Promise<DesktopAppSnapCapture>;
-    openPermissionSettings: (pane: DesktopAppSnapSettingsPane) => Promise<boolean>;
+      permissions: readonly DesktopComputerPermissionKind[],
+    ) => Promise<DesktopComputerState>;
+    openPermissionSettings: (pane: DesktopComputerSettingsPane) => Promise<boolean>;
     restartApp: () => Promise<void>;
-    showPermissionGuide: (pane: DesktopAppSnapSettingsPane) => Promise<void>;
+    showPermissionGuide: (pane: DesktopComputerSettingsPane) => Promise<void>;
     hidePermissionGuide: () => Promise<void>;
     onPermissionGuideState: (
-      listener: (state: DesktopAppSnapPermissionGuideState) => void,
+      listener: (state: DesktopComputerPermissionGuideState) => void,
     ) => () => void;
-    onCaptured: (listener: (capture: DesktopAppSnapCapture) => void) => () => void;
-    onError: (listener: (error: DesktopAppSnapErrorEvent) => void) => () => void;
-    onState: (listener: (state: DesktopAppSnapState) => void) => () => void;
+    onState: (listener: (state: DesktopComputerState) => void) => () => void;
   };
   storageMigration: {
-    readSnapshot: () => SynaraStorageSnapshot | null;
+    readSnapshot: () => GladeStorageSnapshot | null;
     acknowledgeSnapshot: () => Promise<void>;
   };
   server?: {
@@ -1036,16 +888,6 @@ export interface NativeApi {
     revokeAuthClient: (input: AuthRevokeClientSessionInput) => Promise<{ revoked: boolean }>;
     revokeOtherAuthClients: () => Promise<{ revokedCount: number }>;
     logoutAuthSession: () => Promise<AuthLogoutResult>;
-    listExternalMcpIntegrations: () => Promise<ReadonlyArray<ExternalMcpIntegration>>;
-    createExternalMcpIntegration: (
-      input: ExternalMcpCreateIntegrationInput,
-    ) => Promise<ExternalMcpCreateIntegrationResult>;
-    revokeExternalMcpIntegration: (
-      input: ExternalMcpRevokeIntegrationInput,
-    ) => Promise<{ revoked: boolean }>;
-    refreshExternalMcpPairing: (
-      input: ExternalMcpRefreshPairingInput,
-    ) => Promise<ExternalMcpCreateIntegrationResult>;
     refreshProviders: () => Promise<ServerRefreshProvidersResult>;
     updateProvider: (input: ServerProviderUpdateInput) => Promise<ServerProviderUpdateResult>;
     listWorktrees: () => Promise<ServerListWorktreesResult>;

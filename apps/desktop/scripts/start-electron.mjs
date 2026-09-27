@@ -1,11 +1,11 @@
 import { spawn } from "node:child_process";
 
-import { buildAppSnapHelper } from "./build-appsnap-helper.mjs";
+import { buildComputerHelper } from "./build-computer-helper.mjs";
 import { configureMacLauncher, desktopDir, resolveElectronPath } from "./electron-launcher.mjs";
 import { spawnSourceDesktop } from "./source-desktop-launch.mjs";
 
 if (process.platform === "darwin") {
-  buildAppSnapHelper({ arch: process.arch });
+  buildComputerHelper({ arch: process.arch });
 }
 
 const electronPath = resolveElectronPath();

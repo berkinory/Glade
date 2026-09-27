@@ -6,7 +6,7 @@ import {
   ThreadId,
   type OrchestrationReadModel,
   type OrchestrationShellSnapshot,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import { describe, expect, it } from "vitest";
 
 import {

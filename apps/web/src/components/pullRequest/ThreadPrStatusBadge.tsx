@@ -3,7 +3,7 @@
 // Layer: Pull request presentation
 // Exports: ThreadPrStatusBadge
 
-import type { OrchestrationThreadPullRequest } from "@synara/contracts";
+import type { OrchestrationThreadPullRequest } from "@glade/contracts";
 import type { MouseEvent } from "react";
 
 import { cn } from "~/lib/utils";

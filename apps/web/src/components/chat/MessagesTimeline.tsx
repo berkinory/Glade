@@ -11,9 +11,9 @@ import {
   ThreadId,
   type ThreadGoalAchievement,
   type TurnId,
-} from "@synara/contracts";
-import { isLocalAbsolutePath } from "@synara/shared/path";
-import { pluralize } from "@synara/shared/text";
+} from "@glade/contracts";
+import { isLocalAbsolutePath } from "@glade/shared/path";
+import { pluralize } from "@glade/shared/text";
 import { LegendList, type LegendListRef } from "@legendapp/list/react";
 import {
   memo,
@@ -71,7 +71,7 @@ import { Button } from "../ui/button";
 import { composerOverlayScrollMaskImage } from "./composerOverlay";
 import { CrossTaskOriginLabel, type CrossTaskOrigin } from "./CrossTaskOriginLabel";
 import { ForkSourceDivider, type ForkSourceReference } from "./ForkSourceDivider";
-import { SynaraThreadCreationCard } from "./SynaraThreadCreationCard";
+import { GladeThreadCreationCard } from "./GladeThreadCreationCard";
 import { buildExpandedImagePreview, ExpandedImagePreview } from "./ExpandedImagePreview";
 import { ProposedPlanCard } from "./ProposedPlanCard";
 import { DiffStatLabel } from "./DiffStatLabel";
@@ -438,7 +438,7 @@ interface MessagesTimelineProps {
    * the anchored slide settles; ChatView's auto-follow re-snaps pause while set.
    */
   tailAnchorScrollInFlightRef?: RefObject<boolean> | undefined;
-  /** Provenance for a conversation created from another Synara task. */
+  /** Provenance for a conversation created from another Glade task. */
   crossTaskOrigin?: CrossTaskOrigin | null;
   /** Immediate source chat for a forked transcript. */
   forkSource?: ForkSourceReference | null;
@@ -1375,9 +1375,9 @@ export const MessagesTimeline = memo(function MessagesTimeline({
         (() => {
           const groupId = row.id;
           // Creation milestones are reserved for the end-of-turn recap card.
-          // The provider's actual Synara MCP tool rows remain visible here.
+          // The provider's actual Glade MCP tool rows remain visible here.
           const groupedEntries = row.groupedEntries.filter(
-            (workEntry) => !workEntry.synaraThreadCreation,
+            (workEntry) => !workEntry.gladeThreadCreation,
           );
           if (groupedEntries.length === 0) {
             return null;
@@ -1599,7 +1599,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                   )}
                 >
                   {/* Keep user-message chrome outside the bubble so the message reads as one simple block. */}
-                  {/* The cross-task origin label already attributes this turn to another Synara thread,
+                  {/* The cross-task origin label already attributes this turn to another Glade thread,
                       so suppress the dispatch chip here to avoid a duplicate "Sent by …" marker. */}
                   {showCrossTaskOrigin ? null : (
                     <UserDispatchModeChip
@@ -1785,7 +1785,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
         (() => {
           const messageText = resolveAssistantMessageDisplayText(row);
           const buildWorkDisplay = (workEntries: WorkLogEntry[], workGroupId: string | null) => {
-            const displayEntries = workEntries.filter((entry) => !entry.synaraThreadCreation);
+            const displayEntries = workEntries.filter((entry) => !entry.gladeThreadCreation);
             const toolEntries = displayEntries.filter((entry) => entry.tone === "tool");
             const statusEntries = displayEntries.filter((entry) => entry.tone !== "tool");
             const toolGroupId = toolEntries.length > 0 ? workGroupId : null;
@@ -1889,11 +1889,11 @@ export const MessagesTimeline = memo(function MessagesTimeline({
           ];
           const knownAbsoluteFilePaths =
             collectAbsoluteFilePathsFromWorkEntries(allTurnWorkEntries);
-          const synaraThreadCreationRecaps = [
+          const gladeThreadCreationRecaps = [
             ...new Map(
               allTurnWorkEntries.flatMap((entry) =>
-                entry.synaraThreadCreation
-                  ? [[entry.synaraThreadCreation.operationId, entry.synaraThreadCreation] as const]
+                entry.gladeThreadCreation
+                  ? [[entry.gladeThreadCreation.operationId, entry.gladeThreadCreation] as const]
                   : [],
               ),
             ).values(),
@@ -1915,7 +1915,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
             (item) =>
               item.kind !== "work" ||
               !(
-                item.entry.synaraThreadCreation ||
+                item.entry.gladeThreadCreation ||
                 item.entry.computerSetupRequired ||
                 item.entry.computerControlDenied
               ),
@@ -2280,9 +2280,9 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                   </div>
                 ))}
                 {!row.assistantTurnInProgress && row.showAssistantCopyButton
-                  ? synaraThreadCreationRecaps.map((creation) => (
+                  ? gladeThreadCreationRecaps.map((creation) => (
                       <div key={creation.operationId} className="mt-2 mb-4">
-                        <SynaraThreadCreationCard
+                        <GladeThreadCreationCard
                           creation={creation}
                           {...(onOpenThread
                             ? {

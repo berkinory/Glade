@@ -5,8 +5,8 @@
 import { type ChildProcessWithoutNullStreams } from "node:child_process";
 import path from "node:path";
 
-import { spawnProcess } from "@synara/shared/processRuntime";
-import { resolveWindowsSystemRoot } from "@synara/shared/windowsProcess";
+import { spawnProcess } from "@glade/shared/processRuntime";
+import { resolveWindowsSystemRoot } from "@glade/shared/windowsProcess";
 
 import type { ProcessChildrenMap } from "./processTreeController";
 

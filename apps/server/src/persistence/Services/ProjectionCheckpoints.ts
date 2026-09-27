@@ -15,7 +15,7 @@ import {
   OrchestrationCheckpointStatus,
   ThreadId,
   TurnId,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import { Option, ServiceMap, Schema } from "effect";
 import type { Effect } from "effect";
 
@@ -71,4 +71,4 @@ export interface ProjectionCheckpointRepositoryShape {
 export class ProjectionCheckpointRepository extends ServiceMap.Service<
   ProjectionCheckpointRepository,
   ProjectionCheckpointRepositoryShape
->()("synara/persistence/Services/ProjectionCheckpoints/ProjectionCheckpointRepository") {}
+>()("glade/persistence/Services/ProjectionCheckpoints/ProjectionCheckpointRepository") {}

@@ -3,8 +3,8 @@ import {
   type ProviderKind,
   type OrchestrationThreadActivity,
   type ThreadTokenUsageSnapshot,
-} from "@synara/contracts";
-import { normalizeModelSlug, stripClaudeContextWindowSuffix } from "@synara/shared/model";
+} from "@glade/contracts";
+import { normalizeModelSlug, stripClaudeContextWindowSuffix } from "@glade/shared/model";
 import { Schema } from "effect";
 
 const decodeClaudeCacheObservation = Schema.decodeUnknownOption(ClaudeCacheObservation);

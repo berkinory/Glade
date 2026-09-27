@@ -4,24 +4,12 @@
  * Centralizes provider-to-icon mapping so new providers do not need repeated
  * branching across every UI surface.
  */
-import { type ProviderKind } from "@synara/contracts";
+import { type ProviderKind } from "@glade/contracts";
 import type { ReactNode, SVGProps } from "react";
 
 import { CentralIcon } from "~/lib/central-icons";
 import { cn } from "~/lib/utils";
-import {
-  AntigravityIcon,
-  ClaudeAI,
-  CursorIcon,
-  DevinIcon,
-  DroidIcon,
-  GrokIcon,
-  type Icon,
-  OmpIcon,
-  OpenAI,
-  OpenCodeIcon,
-  PiIcon,
-} from "./Icons";
+import { ClaudeAI, CursorIcon, GrokIcon, type Icon, OpenAI, OpenCodeIcon } from "./Icons";
 
 export type ProviderIconTone = "default" | "header";
 
@@ -68,13 +56,8 @@ export const PROVIDER_ICON_COMPONENT_BY_PROVIDER: Record<ProviderKind, Icon> = {
   codex: OpenAI,
   claudeAgent: ClaudeAI,
   cursor: CursorIcon,
-  devin: DevinIcon,
-  antigravity: AntigravityIcon,
   grok: GrokIcon,
-  droid: DroidIcon,
   opencode: OpenCodeProviderIcon,
-  pi: PiIcon,
-  omp: OmpIcon,
 };
 
 export function providerIconToneClassName(

@@ -1,4 +1,4 @@
-import type { ProjectImportProject } from "@synara/contracts";
+import type { ProjectImportProject } from "@glade/contracts";
 import { useState } from "react";
 
 import { ProviderIcon } from "~/components/ProviderIcon";

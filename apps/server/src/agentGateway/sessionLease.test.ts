@@ -1,4 +1,4 @@
-import { ThreadId } from "@synara/contracts";
+import { ThreadId } from "@glade/contracts";
 import { Deferred, Effect, Fiber } from "effect";
 import { describe, expect, it, vi } from "vitest";
 
@@ -351,7 +351,7 @@ describe("AgentGatewaySessionLease", () => {
       acquireAgentGatewaySessionLease(
         undefined,
         ThreadId.makeUnsafe("thread-1"),
-        "droid",
+        "codex",
         AGENT_GATEWAY_NO_CAPABILITIES,
       ),
     ).toBeUndefined();
@@ -435,7 +435,7 @@ describe("AgentGatewaySessionLease", () => {
         revokeSessionToken,
       },
       ThreadId.makeUnsafe("thread-1"),
-      "pi",
+      "codex",
       AGENT_GATEWAY_NO_CAPABILITIES,
     );
 

@@ -1,13 +1,9 @@
 {
-  "name": "@synara/shared",
+  "name": "@glade/shared",
   "version": "0.0.0-alpha.1",
   "private": true,
   "type": "module",
   "exports": {
-    "./betaFeatures": {
-      "types": "./src/betaFeatures.ts",
-      "import": "./src/betaFeatures.ts"
-    },
     "./cuaActionDiagnostics": {
       "types": "./src/cuaActionDiagnostics.ts",
       "import": "./src/cuaActionDiagnostics.ts"
@@ -64,9 +60,9 @@
       "types": "./src/loginShellEnvironment.ts",
       "import": "./src/loginShellEnvironment.ts"
     },
-    "./synaraHome": {
-      "types": "./src/synaraHome.ts",
-      "import": "./src/synaraHome.ts"
+    "./gladeHome": {
+      "types": "./src/gladeHome.ts",
+      "import": "./src/gladeHome.ts"
     },
     "./staticSnapshot": {
       "types": "./src/staticSnapshot.ts",
@@ -120,14 +116,6 @@
       "types": "./src/desktopIdentity.ts",
       "import": "./src/desktopIdentity.ts"
     },
-    "./betaChannel": {
-      "types": "./src/betaChannel.ts",
-      "import": "./src/betaChannel.ts"
-    },
-    "./diagnosticsRedaction": {
-      "types": "./src/diagnosticsRedaction.ts",
-      "import": "./src/diagnosticsRedaction.ts"
-    },
     "./Net": {
       "types": "./src/Net.ts",
       "import": "./src/Net.ts"
@@ -147,10 +135,6 @@
     "./browserShortcuts": {
       "types": "./src/browserShortcuts.ts",
       "import": "./src/browserShortcuts.ts"
-    },
-    "./appSnapShortcut": {
-      "types": "./src/appSnapShortcut.ts",
-      "import": "./src/appSnapShortcut.ts"
     },
     "./browserSession": {
       "types": "./src/browserSession.ts",
@@ -387,13 +371,11 @@
   },
   "scripts": {
     "prepare": "effect-language-service patch",
-    "typecheck": "node ../../node_modules/@typescript/native/bin/tsc --noEmit",
-    "typecheck:native": "bun run typecheck",
-    "typecheck:legacy": "tsc --noEmit",
+    "typecheck": "bun ../../node_modules/@typescript/native/bin/tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
-    "@synara/contracts": "workspace:*",
+    "@glade/contracts": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

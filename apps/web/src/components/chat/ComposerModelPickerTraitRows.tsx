@@ -9,7 +9,7 @@ import {
   type ProviderKind,
   type ProviderModelDescriptor,
   type ThreadId,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import { useState, type ReactNode } from "react";
 
 import { cn } from "~/lib/utils";

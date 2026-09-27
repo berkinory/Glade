@@ -3,8 +3,8 @@
 // Layer: Chat composer state helpers
 // Depends on: composer trait resolution and the starred model storage shape.
 
-import type { ModelSlug, ProviderKind } from "@synara/contracts";
-import { resolveSelectableModel } from "@synara/shared/model";
+import type { ModelSlug, ProviderKind } from "@glade/contracts";
+import { resolveSelectableModel } from "@glade/shared/model";
 
 import { type StarredModel, starredModelKey } from "~/lib/starredModels";
 import {
@@ -132,8 +132,6 @@ export type ComposerModelPickerRow = {
   groupLabel: string | null;
   /** Present on starred rows: the preset to restore and to un-star. */
   preset: StarredModel | null;
-  /** Present on OMP role rows: the model + options the role resolves to. */
-  role?: ProviderModelOption["role"];
 };
 
 export function buildProviderTabRows(input: {
@@ -164,7 +162,6 @@ export function buildProviderTabRows(input: {
       selected: option.slug === input.selectedModel,
       groupLabel: group.label,
       preset: null,
-      role: option.role,
     })),
   );
 }

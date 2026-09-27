@@ -22,7 +22,7 @@ import {
   type ProviderKind,
   type ProviderRuntimeEvent,
   type RuntimeMode,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import {
   Cache,
   Cause,
@@ -36,14 +36,14 @@ import {
   Stream,
 } from "effect";
 import * as Semaphore from "effect/Semaphore";
-import { makeDrainableWorker, startDrainableWorkerProducers } from "@synara/shared/DrainableWorker";
-import { providerSupportsNativeTurnSteering } from "@synara/shared/providerMetadata";
+import { makeDrainableWorker, startDrainableWorkerProducers } from "@glade/shared/DrainableWorker";
+import { providerSupportsNativeTurnSteering } from "@glade/shared/providerMetadata";
 import {
   buildSubagentIdentityDirectory,
   collectSubagentProviderThreadIds,
   extractSubagentIdentityHints,
   resolveSubagentIdentityFromDirectory,
-} from "@synara/shared/subagents";
+} from "@glade/shared/subagents";
 
 import {
   generatedImageMarkdown,
@@ -157,7 +157,7 @@ const MAX_BUFFERED_TOOL_OUTPUT_CHARS = 24_000;
 const MAX_BUFFERED_REASONING_SUMMARY_CHARS = 8_000;
 const MAX_BUFFERED_REASONING_SUMMARY_PARTS = 24;
 const BUFFERED_TEXT_TRUNCATION_MARKER = "... [truncated]";
-const STRICT_PROVIDER_LIFECYCLE_GUARD = process.env.SYNARA_STRICT_PROVIDER_LIFECYCLE_GUARD !== "0";
+const STRICT_PROVIDER_LIFECYCLE_GUARD = process.env.GLADE_STRICT_PROVIDER_LIFECYCLE_GUARD !== "0";
 
 /**
  * Back off the durable-journal safety poll while the live persisted-event
@@ -370,14 +370,10 @@ function reasoningSummaryBufferKey(
   event: ProviderRuntimeEvent,
   threadId = event.threadId,
 ): string | null {
-  if ((event.provider !== "codex" && event.provider !== "antigravity") || !event.itemId) {
+  if (event.provider !== "codex" || !event.itemId) {
     return null;
   }
-  if (
-    event.type === "content.delta" &&
-    (event.payload.streamKind === "reasoning_summary_text" ||
-      (event.provider === "antigravity" && event.payload.streamKind === "reasoning_text"))
-  ) {
+  if (event.type === "content.delta" && event.payload.streamKind === "reasoning_summary_text") {
     return [threadId, event.turnId ?? "no-turn", event.itemId].join(":");
   }
   if (
@@ -410,7 +406,7 @@ function withBufferedReasoningSummary(
 ): ProviderRuntimeEvent {
   if (
     event.type !== "item.completed" ||
-    (event.provider !== "codex" && event.provider !== "antigravity") ||
+    event.provider !== "codex" ||
     event.payload.itemType !== "reasoning" ||
     readableReasoningDetail(event.payload.detail)
   ) {
@@ -1451,7 +1447,7 @@ const make = Effect.gen(function* () {
     commandTag: string;
     finalDeltaCommandTag: string;
     fallbackText?: string;
-    asyncQuestions?: import("@synara/contracts").AsyncUserInputQuestions;
+    asyncQuestions?: import("@glade/contracts").AsyncUserInputQuestions;
   }) =>
     Effect.gen(function* () {
       const bufferedText = yield* getBufferedAssistantText(input.messageId);
@@ -2004,7 +2000,7 @@ const make = Effect.gen(function* () {
                   id: overflowId,
                   tone: "error",
                   kind: "subagent.materialization.capped",
-                  summary: `Synara limited this provider turn to ${MAX_NATIVE_CHILDREN_PER_PARENT_TURN} visible native subagents.`,
+                  summary: `Glade limited this provider turn to ${MAX_NATIVE_CHILDREN_PER_PARENT_TURN} visible native subagents.`,
                   payload: {
                     source: "provider_native",
                     cap: MAX_NATIVE_CHILDREN_PER_PARENT_TURN,
@@ -2350,14 +2346,7 @@ const make = Effect.gen(function* () {
             createdAt: now,
           });
 
-          // Recovery still settles the old turn and drains queued work, but
-          // its technical cancellation must not pause an autonomous goal.
-          const isDevinWedgeRecoveryCancellation =
-            event.provider === "devin" &&
-            event.type === "turn.completed" &&
-            event.payload.state === "cancelled" &&
-            event.payload.stopReason === "synara.devin.wedge-recovery";
-          if (isTerminalTurnEvent && !isDevinWedgeRecoveryCancellation) {
+          if (isTerminalTurnEvent) {
             // The command read model advances synchronously with goal tools.
             // Reading it here prevents a fast terminal provider event from
             // overtaking the projection of achieved/blocked/pause metadata.
@@ -2490,8 +2479,7 @@ const make = Effect.gen(function* () {
       if (
         reasoningSummaryKey &&
         event.type === "content.delta" &&
-        (event.payload.streamKind === "reasoning_summary_text" ||
-          (event.provider === "antigravity" && event.payload.streamKind === "reasoning_text")) &&
+        event.payload.streamKind === "reasoning_summary_text" &&
         event.payload.delta.length > 0
       ) {
         yield* appendBufferedReasoningSummary(reasoningSummaryKey, event);
@@ -2827,30 +2815,6 @@ const make = Effect.gen(function* () {
             },
             createdAt: now,
           });
-          // The old turn was technically cancelled, so only the failed
-          // recovery can now pause its goal. Never pause a different turn.
-          if (
-            event.provider === "devin" &&
-            asObject(event.payload.detail)?.reason === "synara.devin.wedge-recovery" &&
-            eventTurnId !== undefined &&
-            thread.latestTurn?.turnId === eventTurnId
-          ) {
-            const failedThread = (yield* orchestrationEngine.getReadModel()).threads.find(
-              (candidate) => candidate.id === thread.id,
-            );
-            if (
-              failedThread &&
-              activeThreadGoal(failedThread)?.trim() &&
-              failedThread.goalPausedAt == null
-            ) {
-              yield* orchestrationEngine.dispatch({
-                type: "thread.meta.update",
-                commandId: providerCommandId(event, "goal-recovery-failed-pause", thread.id),
-                threadId: thread.id,
-                goalPaused: true,
-              });
-            }
-          }
         }
       }
 

@@ -1,4 +1,4 @@
-import type { ClientOrchestrationCommand, CommandId, ThreadId } from "@synara/contracts";
+import type { ClientOrchestrationCommand, CommandId, ThreadId } from "@glade/contracts";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
@@ -26,7 +26,7 @@ export const useClaudeCompactionRequests = create<{
         }),
     }),
     {
-      name: "synara:claude-compaction-requests",
+      name: "glade:claude-compaction-requests",
       storage: createJSONStorage(() => sessionStorage),
       partialize: (state) => ({ requests: state.requests }),
     },

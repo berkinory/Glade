@@ -10,14 +10,14 @@ import {
   PROVIDER_SEND_TURN_MAX_IMAGE_BYTES,
   SERVER_VOICE_TRANSCRIPTION_MAX_AUDIO_BYTES,
   ThreadId,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import {
   ATTACHMENT_CANCEL_ROUTE_PATH,
   ATTACHMENT_UPLOAD_ROUTE_PATH,
   VOICE_TRANSCRIPTION_UPLOAD_ROUTE_PATH,
-} from "@synara/shared/binaryTransfer";
-import { EDITOR_ICON_ROUTE_PATH } from "@synara/shared/editorIcons";
-import { threadExportBlockedReason } from "@synara/shared/threadExport";
+} from "@glade/shared/binaryTransfer";
+import { EDITOR_ICON_ROUTE_PATH } from "@glade/shared/editorIcons";
+import { threadExportBlockedReason } from "@glade/shared/threadExport";
 import { Cause, DateTime, Effect, FileSystem, Layer, Option, Path, Schema, Stream } from "effect";
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http";
 
@@ -232,7 +232,7 @@ export function makeDesktopShutdownEffectRouteLayer(shutdownController: ServerSh
           {
             status: authorization.status,
             ...(authorization.status === 401
-              ? { headers: { "WWW-Authenticate": 'Bearer realm="synara-desktop-shutdown"' } }
+              ? { headers: { "WWW-Authenticate": 'Bearer realm="glade-desktop-shutdown"' } }
               : {}),
           },
         );
@@ -269,7 +269,7 @@ export function makeDesktopComputerEmergencyStopRouteLayer() {
           {
             status: authorization.status,
             ...(authorization.status === 401
-              ? { headers: { "WWW-Authenticate": 'Bearer realm="synara-desktop-emergency-stop"' } }
+              ? { headers: { "WWW-Authenticate": 'Bearer realm="glade-desktop-emergency-stop"' } }
               : {}),
           },
         );
@@ -759,7 +759,7 @@ const threadExportEffectRouteLayer = HttpRouter.add(
     }
 
     // Error responses need the trusted-origin CORS headers too: the desktop
-    // app fetches cross-origin (synara://app), and without them the browser masks
+    // app fetches cross-origin (glade://app), and without them the browser masks
     // a 400/404/409 body as an opaque network failure.
     const corsHeaders = localPreviewCorsHeaders({ config, request, url });
 

@@ -1,28 +1,28 @@
-import type { DesktopAppSnapState } from "@synara/contracts";
+import type { DesktopComputerState } from "@glade/contracts";
 import { QueryClient, QueryObserver, focusManager } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { serverQueryKeys } from "~/lib/serverReactQuery";
 import { subscribeComputerPermissionStatus } from "./useComputerEventBridge";
 
-function grantState(overrides: Partial<DesktopAppSnapState> = {}): DesktopAppSnapState {
+function grantState(overrides: Partial<DesktopComputerState> = {}): DesktopComputerState {
   return {
     platform: "macos",
     supported: true,
-    enabled: false,
+
     status: "disabled",
-    shortcut: null,
+
     accessibilityPermission: "granted",
     inputMonitoringPermission: "granted",
     screenRecordingPermission: "granted",
     message: null,
-    appDisplayName: "Synara",
+    appDisplayName: "Glade",
     ...overrides,
   };
 }
 
 function bridgeFixture(queryClient: QueryClient) {
-  let onState!: (state: DesktopAppSnapState) => void;
+  let onState!: (state: DesktopComputerState) => void;
   const unsubscribe = vi.fn();
   const stop = subscribeComputerPermissionStatus(queryClient, {
     onState: (listener) => {
@@ -56,7 +56,7 @@ describe("native Computer permission status bridge", () => {
       await vi.waitFor(() =>
         expect(queryClient.getQueryData(serverQueryKeys.computerStatus())).toBe("ready"),
       );
-      bridge.onState(grantState({ status: "ready", enabled: true }));
+      bridge.onState(grantState({ status: "ready" }));
       expect(queryFn).toHaveBeenCalledTimes(1);
       bridge.onState(grantState({ accessibilityPermission: "denied" }));
       await vi.waitFor(() => expect(queryFn).toHaveBeenCalledTimes(2));
@@ -68,7 +68,7 @@ describe("native Computer permission status bridge", () => {
     }
   });
 
-  it("does not create a Computer query or request native permission reads for ordinary AppSnap events", () => {
+  it("does not create a Computer query or request native permission reads for partial grant snapshots", () => {
     const queryClient = new QueryClient();
     const invalidate = vi.spyOn(queryClient, "invalidateQueries");
     const bridge = bridgeFixture(queryClient);
@@ -77,10 +77,10 @@ describe("native Computer permission status bridge", () => {
       expect(invalidate).not.toHaveBeenCalled();
       expect(queryClient.getQueryCache().getAll()).toEqual([]);
       queryClient.setQueryData(serverQueryKeys.computerStatus(), "available");
-      const { accessibilityPermission: _accessibility, ...appSnapOnly } = grantState({
+      const { accessibilityPermission: _accessibility, ...partialGrantState } = grantState({
         screenRecordingPermission: "denied",
       });
-      bridge.onState(appSnapOnly);
+      bridge.onState(partialGrantState);
       expect(invalidate).not.toHaveBeenCalled();
     } finally {
       bridge.stop();
@@ -91,7 +91,10 @@ describe("native Computer permission status bridge", () => {
   it("does not apply local grant pushes to a remote Computer host", () => {
     const onState = vi.fn();
     vi.stubGlobal("window", {
-      desktopBridge: { getWsUrl: () => "wss://remote.synara.test", appSnap: { onState } },
+      desktopBridge: {
+        getWsUrl: () => "wss://remote.glade.test",
+        computerPermissions: { onState },
+      },
     });
     const queryClient = new QueryClient();
     subscribeComputerPermissionStatus(queryClient)();

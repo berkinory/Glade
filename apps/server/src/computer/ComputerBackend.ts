@@ -1,4 +1,4 @@
-import { MODEL_SCREEN_IMAGE_MAX_DIMENSION } from "@synara/shared/modelImageBudget";
+import { MODEL_SCREEN_IMAGE_MAX_DIMENSION } from "@glade/shared/modelImageBudget";
 import {
   COMPUTER_DELIVERY_PATH_MAX_LENGTH,
   COMPUTER_MESSAGE_MAX_LENGTH,
@@ -28,7 +28,7 @@ import {
   type ComputerVerifyStateResult,
   type ComputerWindow,
   type ComputerZoomResult,
-} from "@synara/contracts";
+} from "@glade/contracts";
 
 /**
  * The longest side, in pixels, of any screenshot handed to a model.
@@ -39,7 +39,7 @@ import {
  * at the old 2048 budget every pixel the model pointed at was mapped against an
  * image 1.33x larger than the one it looked at, so every click landed short and
  * consistently up-and-left. Nothing in this pipeline may depend on API-side
- * resizing — Synara does the downscale itself, records the resulting frame, and
+ * resizing — Glade does the downscale itself, records the resulting frame, and
  * maps the model's pixels through the frame it actually delivered.
  *
  * 1536 rather than something smaller because image tokens scale with area and
@@ -295,7 +295,7 @@ export class ComputerBackendError extends Error {
    */
   readonly rejectedOperation: string | undefined;
   /**
-   * The desktop refused because the OS has not granted Synara a privacy
+   * The desktop refused because the OS has not granted Glade a privacy
    * permission it needs — macOS Screen Recording or Accessibility today. Only
    * the backend can tell this apart from an ordinary action failure, so it is
    * marked here rather than guessed from message text further up: the agent
@@ -763,10 +763,10 @@ export interface ComputerBackend {
   detachStream(): Promise<void>;
   requestKeyframe?(): Promise<void>;
   /**
-   * The masked-activation shield: a Synara-owned overlay that veils the
+   * The masked-activation shield: a Glade-owned overlay that veils the
    * target window's frame for the length of one approval-gated foreground
    * excursion. Present only on backends that own a shield surface (the macOS
-   * CUA path through the AppSnap helper).
+   * CUA path through the ComputerPermission helper).
    *
    * `engage` resolves once the shield is confirmed on screen and returns its
    * id. It must fail rather than degrade: a caller that armed masked

@@ -20,7 +20,7 @@ import {
   WS_METHODS,
   type WsPush,
   type ServerProviderStatus,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const requestMock = vi.fn<(...args: Array<unknown>) => Promise<unknown>>();
@@ -174,7 +174,7 @@ describe("wsNativeApi", () => {
     const listener = vi.fn();
     onServerWelcome(listener);
 
-    const payload = { cwd: "/tmp/workspace", homeDir: "/Users/tester", projectName: "synara-code" };
+    const payload = { cwd: "/tmp/workspace", homeDir: "/Users/tester", projectName: "glade-code" };
     emitPush(WS_CHANNELS.serverWelcome, payload);
 
     expect(listener).toHaveBeenCalledTimes(1);
@@ -202,7 +202,7 @@ describe("wsNativeApi", () => {
     emitPush(WS_CHANNELS.serverWelcome, {
       cwd: "/tmp/workspace",
       homeDir: "/Users/tester",
-      projectName: "synara-code",
+      projectName: "glade-code",
     });
 
     expect(listener).toHaveBeenCalledTimes(2);
@@ -210,7 +210,7 @@ describe("wsNativeApi", () => {
       expect.objectContaining({
         cwd: "/tmp/workspace",
         homeDir: "/Users/tester",
-        projectName: "synara-code",
+        projectName: "glade-code",
       }),
     );
   });
@@ -279,29 +279,22 @@ describe("wsNativeApi", () => {
         addProjectBaseDirectory: "",
         textGenerationModelSelection: { provider: "codex", model: "gpt-5.4-mini" },
         providers: {
-          codex: { enabled: true, binaryPath: "codex", homePath: "", customModels: [] },
+          codex: { enabled: true, binaryPath: "codex", homePath: "" },
           claudeAgent: {
             enabled: true,
             binaryPath: "claude",
             launchArgs: "",
             enableArtifacts: false,
-            customModels: [],
           },
-          cursor: { enabled: false, binaryPath: "agent", apiEndpoint: "", customModels: [] },
-          devin: { enabled: true, binaryPath: "devin", customModels: [] },
-          antigravity: { enabled: true, binaryPath: "agy", customModels: [] },
-          grok: { enabled: true, binaryPath: "grok", customModels: [] },
-          droid: { enabled: true, binaryPath: "droid", customModels: [] },
+          cursor: { enabled: false, binaryPath: "agent", apiEndpoint: "" },
+          grok: { enabled: true, binaryPath: "grok" },
           opencode: {
             enabled: true,
             binaryPath: "opencode",
             serverUrl: "",
             serverPasswordConfigured: false,
             experimentalWebSockets: false,
-            customModels: [],
           },
-          pi: { enabled: true, binaryPath: "pi", agentDir: "", customModels: [] },
-          omp: { enabled: true, binaryPath: "omp", agentDir: "", customModels: [] },
         },
         skills: { disabled: [] },
       },
@@ -503,42 +496,6 @@ describe("wsNativeApi", () => {
     );
   });
 
-  it("uses websocket RPC for external MCP management in packaged and browser builds", async () => {
-    requestMock
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce({ integration: { integrationId: "integration-1" } })
-      .mockResolvedValueOnce({ revoked: true })
-      .mockResolvedValueOnce({ integration: { integrationId: "integration-1" } });
-    const fetchMock = vi.fn();
-    vi.stubGlobal("fetch", fetchMock);
-    const { createWsNativeApi } = await import("./wsNativeApi");
-    const api = createWsNativeApi();
-    const createInput = {
-      name: "Desktop MCP",
-      capabilities: ["projects:read", "tasks:create", "tasks:read"] as const,
-      projectIds: [ProjectId.makeUnsafe("project-1")],
-    };
-
-    await api.server.listExternalMcpIntegrations();
-    await api.server.createExternalMcpIntegration(createInput);
-    await api.server.revokeExternalMcpIntegration({ integrationId: "integration-1" });
-    await api.server.refreshExternalMcpPairing({ integrationId: "integration-1" });
-
-    expect(requestMock).toHaveBeenNthCalledWith(1, WS_METHODS.serverListExternalMcpIntegrations);
-    expect(requestMock).toHaveBeenNthCalledWith(
-      2,
-      WS_METHODS.serverCreateExternalMcpIntegration,
-      createInput,
-    );
-    expect(requestMock).toHaveBeenNthCalledWith(3, WS_METHODS.serverRevokeExternalMcpIntegration, {
-      integrationId: "integration-1",
-    });
-    expect(requestMock).toHaveBeenNthCalledWith(4, WS_METHODS.serverRefreshExternalMcpPairing, {
-      integrationId: "integration-1",
-    });
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
   it("fetches auth session state over HTTP", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
@@ -548,7 +505,7 @@ describe("wsNativeApi", () => {
             policy: "loopback-browser",
             bootstrapMethods: ["one-time-token"],
             sessionMethods: ["browser-session-cookie", "bearer-session-token"],
-            sessionCookieName: "synara_session",
+            sessionCookieName: "glade_session",
           },
         }),
         { status: 200, headers: { "Content-Type": "application/json" } },

@@ -4,7 +4,7 @@ import {
   type ProviderStartOptions,
   type ServerSettings,
   type ServerSettingsPatch,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import { deepMerge, type DeepPartial } from "./Struct";
 
 function shouldReplaceTextGenerationModelSelection(
@@ -27,8 +27,6 @@ export function applyServerSettingsPatch(
   const model =
     selectionPatch.model ??
     (selectionPatch.provider &&
-    selectionPatch.provider !== "pi" &&
-    selectionPatch.provider !== "omp" &&
     selectionPatch.provider !== current.textGenerationModelSelection.provider
       ? DEFAULT_MODEL_BY_PROVIDER[selectionPatch.provider]
       : current.textGenerationModelSelection.model);
@@ -67,30 +65,13 @@ export function providerStartOptionsFromServerSettings(
       ...(providers.cursor.binaryPath ? { binaryPath: providers.cursor.binaryPath } : {}),
       ...(providers.cursor.apiEndpoint ? { apiEndpoint: providers.cursor.apiEndpoint } : {}),
     },
-    antigravity: {
-      ...(providers.antigravity.binaryPath ? { binaryPath: providers.antigravity.binaryPath } : {}),
-    },
     grok: {
       ...(providers.grok.binaryPath ? { binaryPath: providers.grok.binaryPath } : {}),
-    },
-    droid: {
-      ...(providers.droid.binaryPath ? { binaryPath: providers.droid.binaryPath } : {}),
     },
     opencode: {
       ...(providers.opencode.binaryPath ? { binaryPath: providers.opencode.binaryPath } : {}),
       ...(providers.opencode.serverUrl ? { serverUrl: providers.opencode.serverUrl } : {}),
       experimentalWebSockets: providers.opencode.experimentalWebSockets,
-    },
-    pi: {
-      ...(providers.pi.binaryPath ? { binaryPath: providers.pi.binaryPath } : {}),
-      ...(providers.pi.agentDir ? { agentDir: providers.pi.agentDir } : {}),
-    },
-    devin: {
-      ...(providers.devin.binaryPath ? { binaryPath: providers.devin.binaryPath } : {}),
-    },
-    omp: {
-      ...(providers.omp.binaryPath ? { binaryPath: providers.omp.binaryPath } : {}),
-      ...(providers.omp.agentDir ? { agentDir: providers.omp.agentDir } : {}),
     },
   };
 }

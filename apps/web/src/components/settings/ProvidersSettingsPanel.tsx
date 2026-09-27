@@ -7,9 +7,9 @@ import {
   type ProviderKind,
   type ServerProviderStatus,
   type ServerSettings,
-} from "@synara/contracts";
-import { isBetaFeatureOn, VISIBLE_PROVIDER_DESCRIPTORS } from "../../betaFeatures";
-import { pluralize } from "@synara/shared/text";
+} from "@glade/contracts";
+import { VISIBLE_PROVIDER_DESCRIPTORS } from "../../providerCatalog";
+import { pluralize } from "@glade/shared/text";
 import {
   closestCenter,
   DndContext,
@@ -78,16 +78,9 @@ type ProviderInstallTextKey =
   | "codexHomePath"
   | "cursorBinaryPath"
   | "cursorApiEndpoint"
-  | "devinBinaryPath"
-  | "antigravityBinaryPath"
   | "grokBinaryPath"
-  | "droidBinaryPath"
   | "openCodeBinaryPath"
-  | "openCodeServerUrl"
-  | "piBinaryPath"
-  | "piAgentDir"
-  | "ompBinaryPath"
-  | "ompAgentDir";
+  | "openCodeServerUrl";
 type ProviderInstallPasswordKey = "openCodeServerPassword";
 type ProviderInstallPasswordConfiguredKey = "openCodeServerPasswordConfigured";
 type ProviderInstallBooleanKey = "claudeEnableArtifacts" | "openCodeExperimentalWebSockets";
@@ -221,27 +214,6 @@ const PROVIDER_INSTALL_SETTINGS: readonly ProviderInstallSettings[] = [
     ],
   },
   {
-    provider: "antigravity",
-    docs: [
-      { label: "Install", href: "https://antigravity.google/docs/cli-using" },
-      { label: "Reference", href: "https://antigravity.google/docs/cli-reference" },
-      { label: "Hooks", href: "https://antigravity.google/docs/hooks" },
-    ],
-    fields: [
-      {
-        kind: "text",
-        settingsKey: "antigravityBinaryPath",
-        label: "Antigravity binary path",
-        placeholder: "Antigravity CLI binary path",
-        description: (
-          <>
-            Leave blank to use <code>agy</code> from your PATH.
-          </>
-        ),
-      },
-    ],
-  },
-  {
     provider: "grok",
     docs: [
       { label: "Install", href: "https://docs.x.ai/build/overview" },
@@ -257,50 +229,6 @@ const PROVIDER_INSTALL_SETTINGS: readonly ProviderInstallSettings[] = [
         description: (
           <>
             Leave blank to use <code>grok</code> from your PATH.
-          </>
-        ),
-      },
-    ],
-  },
-  {
-    provider: "droid",
-    docs: [
-      {
-        label: "Quickstart",
-        href: "https://docs.factory.ai/cli/getting-started/quickstart.md",
-      },
-    ],
-    fields: [
-      {
-        kind: "text",
-        settingsKey: "droidBinaryPath",
-        label: "Droid binary path",
-        placeholder: "droid",
-        description: (
-          <>
-            Leave blank to use <code>droid</code> from your PATH.
-          </>
-        ),
-      },
-    ],
-  },
-  {
-    provider: "devin",
-    docs: [
-      { label: "Install", href: "https://docs.devin.ai/cli" },
-      { label: "Commands", href: "https://docs.devin.ai/cli/reference/commands" },
-      { label: "Config", href: "https://docs.devin.ai/cli/reference/configuration/config-file" },
-    ],
-    fields: [
-      {
-        kind: "text",
-        settingsKey: "devinBinaryPath",
-        label: "Devin binary path",
-        placeholder: "devin",
-        description: (
-          <>
-            Leave blank to use <code>devin</code> from your PATH. Authenticate with{" "}
-            <code>devin auth login</code> or set WINDSURF_API_KEY.
           </>
         ),
       },
@@ -349,70 +277,9 @@ const PROVIDER_INSTALL_SETTINGS: readonly ProviderInstallSettings[] = [
       },
     ],
   },
-  {
-    provider: "pi",
-    docs: [
-      { label: "Install", href: "https://pi.dev/docs/latest" },
-      { label: "Update", href: "https://pi.dev/docs/latest/settings" },
-      { label: "Config", href: "https://pi.dev/docs/latest/settings" },
-    ],
-    fields: [
-      {
-        kind: "text",
-        settingsKey: "piBinaryPath",
-        label: "Pi binary path",
-        placeholder: "Pi binary path",
-        description: (
-          <>
-            Leave blank to use <code>pi</code> from your PATH.
-          </>
-        ),
-      },
-      {
-        kind: "text",
-        settingsKey: "piAgentDir",
-        label: "Pi agent directory",
-        placeholder: "Pi agent directory",
-        description: "Optional custom Pi agent directory for auth, models, skills, and commands.",
-      },
-    ],
-  },
-  {
-    provider: "omp",
-    docs: [
-      { label: "Docs", href: "https://omp.sh/docs" },
-      { label: "Install", href: "https://omp.sh/docs/quickstart" },
-      { label: "Source", href: "https://github.com/can1357/oh-my-pi" },
-    ],
-    fields: [
-      {
-        kind: "text",
-        settingsKey: "ompBinaryPath",
-        label: "Oh My Pi binary path",
-        placeholder: "Oh My Pi binary path",
-        description: (
-          <>
-            Leave blank to use <code>omp</code> from your PATH.
-          </>
-        ),
-      },
-      {
-        kind: "text",
-        settingsKey: "ompAgentDir",
-        label: "Oh My Pi agent directory",
-        placeholder: "Oh My Pi agent directory",
-        description:
-          "Optional custom Oh My Pi agent directory for auth, models, skills, and commands.",
-      },
-    ],
-  },
 ];
 
-// Beta-only providers (OMP on Stable) keep their stored install fields but
-// their install row is hidden.
-const VISIBLE_PROVIDER_INSTALL_SETTINGS = PROVIDER_INSTALL_SETTINGS.filter((config) =>
-  isBetaFeatureOn(config.provider),
-);
+const VISIBLE_PROVIDER_INSTALL_SETTINGS = PROVIDER_INSTALL_SETTINGS;
 
 function isProviderInstallFieldDirty(
   field: ProviderInstallField,
@@ -808,14 +675,14 @@ function ProviderToolRow(props: {
                       <code className="font-mono">{updateAdvisory.updateCommand}</code>
                     </>
                   ) : (
-                    "A newer version is available, but Synara could not identify a safe one-click update command for this installation."
+                    "A newer version is available, but Glade could not identify a safe one-click update command for this installation."
                   )}
                 </div>
               ) : null}
               {showSelfManagedUpdate && props.providerStatus ? (
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0 text-ui leading-snug text-muted-foreground">
-                    {title} manages its own releases, so Synara cannot tell whether a newer version
+                    {title} manages its own releases, so Glade cannot tell whether a newer version
                     exists. Run the update to be sure.
                   </div>
                   <ProviderUpdateAction
@@ -1229,7 +1096,7 @@ export function ProvidersSettingsPanel({
 
           <SettingsRow
             title="Provider updates"
-            description="Review installed provider tools that Synara can safely update."
+            description="Review installed provider tools that Glade can safely update."
             status={
               !settings.enableProviderUpdateChecks
                 ? "Automatic checks off"

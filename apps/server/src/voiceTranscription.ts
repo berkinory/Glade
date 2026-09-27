@@ -9,10 +9,10 @@ import { Buffer } from "node:buffer";
 import type {
   ServerVoiceTranscriptionInput,
   ServerVoiceTranscriptionResult,
-} from "@synara/contracts";
-import { SERVER_VOICE_TRANSCRIPTION_MAX_AUDIO_BYTES } from "@synara/contracts";
-import { requestChatGptVoiceTranscription } from "@synara/shared/chatGptVoiceTranscription";
-import { decodeOutboundJson, type OutboundHttpResponse } from "@synara/shared/outboundHttp";
+} from "@glade/contracts";
+import { SERVER_VOICE_TRANSCRIPTION_MAX_AUDIO_BYTES } from "@glade/contracts";
+import { requestChatGptVoiceTranscription } from "@glade/shared/chatGptVoiceTranscription";
+import { decodeOutboundJson, type OutboundHttpResponse } from "@glade/shared/outboundHttp";
 
 const MAX_DURATION_MS = 120_000;
 

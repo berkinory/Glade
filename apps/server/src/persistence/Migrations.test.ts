@@ -24,19 +24,19 @@ const projectionThreadsColumnNames = (sql: SqlClient.SqlClient) =>
 
 layer("reconcileMigrationLineage", (it) => {
   // An imported database whose tracker high-water
-  // mark is at or beyond Synara's latest migration ID. The migrator's max-ID
-  // gate then skips every Synara migration — including the #032 self-heal —
+  // mark is at or beyond Glade's latest migration ID. The migrator's max-ID
+  // gate then skips every Glade migration — including the #032 self-heal —
   // and startup crashes on the missing env_mode column.
-  it.effect("re-runs skipped migrations when an imported tracker outruns Synara's latest ID", () =>
+  it.effect("re-runs skipped migrations when an imported tracker outruns Glade's latest ID", () =>
     Effect.gen(function* () {
       const sql = yield* SqlClient.SqlClient;
 
       // Bring the schema to the last shared migration.
       yield* runMigrations({ toMigrationInclusive: 16 });
 
-      // Record a foreign lineage from 17 through past Synara's latest ID.
-      const latestSynaraId = Math.max(...migrationEntries.map(([id]) => id));
-      for (let id = 17; id <= latestSynaraId + 3; id++) {
+      // Record a foreign lineage from 17 through past Glade's latest ID.
+      const latestGladeId = Math.max(...migrationEntries.map(([id]) => id));
+      for (let id = 17; id <= latestGladeId + 3; id++) {
         yield* sql`
           INSERT INTO effect_sql_migrations (migration_id, name)
           VALUES (${id}, ${`ForeignMigration${id}`})
@@ -60,7 +60,7 @@ layer("reconcileMigrationLineage", (it) => {
       assert.include(afterColumns, "env_mode");
       assert.include(afterColumns, "archived_at");
 
-      // The tracker now mirrors the Synara lineage exactly; foreign rows are gone.
+      // The tracker now mirrors the Glade lineage exactly; foreign rows are gone.
       const rows = yield* trackerRows(sql);
       assert.deepStrictEqual(
         rows.map((row) => [row.migration_id, row.name]),
@@ -106,7 +106,7 @@ layer("reconcileMigrationLineage", (it) => {
     }),
   );
 
-  it.effect("refuses writable migration startup for a newer Synara schema", () =>
+  it.effect("refuses writable migration startup for a newer Glade schema", () =>
     Effect.gen(function* () {
       const sql = yield* SqlClient.SqlClient;
 
@@ -114,7 +114,7 @@ layer("reconcileMigrationLineage", (it) => {
       const futureId = Math.max(...migrationEntries.map(([id]) => id)) + 1;
       yield* sql`
         INSERT INTO effect_sql_migrations (migration_id, name)
-        VALUES (${futureId}, 'FutureSynaraMigration')
+        VALUES (${futureId}, 'FutureGladeMigration')
       `;
 
       const rowsBefore = yield* trackerRows(sql);
@@ -266,6 +266,8 @@ managedAttachmentsLegacyLayer("managed attachment migration after private migrat
         [106, "ProjectImportOrigins"],
         [107, "ProjectionThreadsHumanMessage"],
         [108, "GatewayCompletions"],
+        [109, "RetireExternalConnections"],
+        [110, "RetireProviders"],
       ]);
 
       const tracker = yield* trackerRows(sql);
@@ -326,6 +328,8 @@ managedAttachmentsLegacyLayer("managed attachment migration after private migrat
           { migration_id: 106, name: "ProjectImportOrigins" },
           { migration_id: 107, name: "ProjectionThreadsHumanMessage" },
           { migration_id: 108, name: "GatewayCompletions" },
+          { migration_id: 109, name: "RetireExternalConnections" },
+          { migration_id: 110, name: "RetireProviders" },
         ],
       );
       const preserved = yield* sql<{ readonly count: number }>`
@@ -427,6 +431,8 @@ agentGatewayRetentionLegacyLayer(
           [106, "ProjectImportOrigins"],
           [107, "ProjectionThreadsHumanMessage"],
           [108, "GatewayCompletions"],
+          [109, "RetireExternalConnections"],
+          [110, "RetireProviders"],
         ]);
 
         const columns = yield* sql<{ readonly name: string }>`
@@ -530,6 +536,8 @@ spacesMigrationCollisionLayer("Spaces migration after the private migration 70 c
         [106, "ProjectImportOrigins"],
         [107, "ProjectionThreadsHumanMessage"],
         [108, "GatewayCompletions"],
+        [109, "RetireExternalConnections"],
+        [110, "RetireProviders"],
       ]);
 
       const tracker = yield* trackerRows(sql);
@@ -574,6 +582,8 @@ spacesMigrationCollisionLayer("Spaces migration after the private migration 70 c
           [106, "ProjectImportOrigins"],
           [107, "ProjectionThreadsHumanMessage"],
           [108, "GatewayCompletions"],
+          [109, "RetireExternalConnections"],
+          [110, "RetireProviders"],
         ],
       );
 
@@ -672,6 +682,8 @@ spacesMigrationCollisionLayer("Spaces migration after the private migration 70 c
         [106, "ProjectImportOrigins"],
         [107, "ProjectionThreadsHumanMessage"],
         [108, "GatewayCompletions"],
+        [109, "RetireExternalConnections"],
+        [110, "RetireProviders"],
       ]);
 
       const tracker = yield* trackerRows(sql);
@@ -712,6 +724,8 @@ spacesMigrationCollisionLayer("Spaces migration after the private migration 70 c
           [106, "ProjectImportOrigins"],
           [107, "ProjectionThreadsHumanMessage"],
           [108, "GatewayCompletions"],
+          [109, "RetireExternalConnections"],
+          [110, "RetireProviders"],
         ],
       );
       const preservedSpaces = yield* sql<{ readonly spaceId: string }>`

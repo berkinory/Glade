@@ -1,6 +1,6 @@
 import { Effect } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
-import type { ProjectId, ProjectImportProvider, ThreadId } from "@synara/contracts";
+import type { ProjectId, ProjectImportProvider, ThreadId } from "@glade/contracts";
 
 export interface ProjectImportOrigin {
   readonly sourceKey: string;

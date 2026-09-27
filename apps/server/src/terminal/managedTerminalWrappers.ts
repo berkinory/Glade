@@ -8,11 +8,11 @@ import path from "node:path";
 import {
   defaultTerminalTitleForCliKind,
   managedTerminalCommandNameForCliKind,
-  SYNARA_TERMINAL_HOOK_OSC_PREFIX,
-  SYNARA_TERMINAL_CLI_KIND_ENV_KEY,
+  GLADE_TERMINAL_HOOK_OSC_PREFIX,
+  GLADE_TERMINAL_CLI_KIND_ENV_KEY,
   type TerminalAgentHookEventType,
   type ManagedTerminalCliKind,
-} from "@synara/shared/terminalThreads";
+} from "@glade/shared/terminalThreads";
 
 import { envPathKeyFor, resolveExecutable } from "../executableLookup.ts";
 import {
@@ -35,56 +35,56 @@ function shellQuote(value: string): string {
 }
 
 function buildHookOscSequence(eventType: TerminalAgentHookEventType): string {
-  return `\\033]${SYNARA_TERMINAL_HOOK_OSC_PREFIX}${eventType}\\007`;
+  return `\\033]${GLADE_TERMINAL_HOOK_OSC_PREFIX}${eventType}\\007`;
 }
 
 function buildNotifyHookScript(): string {
   return `#!/bin/sh
 set -eu
 if [ "$#" -gt 0 ]; then
-  _synara_hook_input="$1"
+  _glade_hook_input="$1"
 else
-  _synara_hook_input="$(cat)"
+  _glade_hook_input="$(cat)"
 fi
 
-_synara_extract_event() {
-  printf '%s' "$_synara_hook_input" | sed -n "s/.*\\\"$1\\\"[[:space:]]*:[[:space:]]*\\\"\\([^\\\"]*\\)\\\".*/\\1/p" | head -n 1
+_glade_extract_event() {
+  printf '%s' "$_glade_hook_input" | sed -n "s/.*\\\"$1\\\"[[:space:]]*:[[:space:]]*\\\"\\([^\\\"]*\\)\\\".*/\\1/p" | head -n 1
 }
 
-_synara_event="$(_synara_extract_event hook_event_name)"
-if [ -z "$_synara_event" ]; then
-  _synara_type="$(_synara_extract_event type)"
-  case "$_synara_type" in
+_glade_event="$(_glade_extract_event hook_event_name)"
+if [ -z "$_glade_event" ]; then
+  _glade_type="$(_glade_extract_event type)"
+  case "$_glade_type" in
     task_started|userPromptSubmitted|user_prompt_submit)
-      _synara_event="Start"
+      _glade_event="Start"
       ;;
     task_complete|agent-turn-complete|stop|session_end|sessionEnd)
-      _synara_event="Stop"
+      _glade_event="Stop"
       ;;
     exec_approval_request|apply_patch_approval_request|request_user_input)
-      _synara_event="PermissionRequest"
+      _glade_event="PermissionRequest"
       ;;
   esac
 fi
 
-_synara_emit_osc() {
-  _synara_sequence="$1"
+_glade_emit_osc() {
+  _glade_sequence="$1"
   if [ -w /dev/tty ]; then
-    printf '%b' "$_synara_sequence" > /dev/tty 2>/dev/null || printf '%b' "$_synara_sequence"
+    printf '%b' "$_glade_sequence" > /dev/tty 2>/dev/null || printf '%b' "$_glade_sequence"
     return
   fi
-  printf '%b' "$_synara_sequence"
+  printf '%b' "$_glade_sequence"
 }
 
-case "$_synara_event" in
+case "$_glade_event" in
   UserPromptSubmit|PostToolUse|PostToolUseFailure|Start)
-    _synara_emit_osc '${buildHookOscSequence("Start")}'
+    _glade_emit_osc '${buildHookOscSequence("Start")}'
     ;;
   Stop)
-    _synara_emit_osc '${buildHookOscSequence("Stop")}'
+    _glade_emit_osc '${buildHookOscSequence("Stop")}'
     ;;
   PermissionRequest|PreToolUse|Notification)
-    _synara_emit_osc '${buildHookOscSequence("PermissionRequest")}'
+    _glade_emit_osc '${buildHookOscSequence("PermissionRequest")}'
     ;;
 esac
 `;
@@ -133,78 +133,78 @@ function buildCodexWrapperScript(input: {
     `if [ -f ${shellQuote(notifyHookPath)} ]; then`,
     "  export CODEX_TUI_RECORD_SESSION=1",
     '  if [ -z "${CODEX_TUI_SESSION_LOG_PATH:-}" ]; then',
-    '    _synara_codex_ts="$(date +%s 2>/dev/null || echo "$$")"',
-    '    export CODEX_TUI_SESSION_LOG_PATH="${TMPDIR:-/tmp}/synara-codex-session-$$_${_synara_codex_ts}.jsonl"',
+    '    _glade_codex_ts="$(date +%s 2>/dev/null || echo "$$")"',
+    '    export CODEX_TUI_SESSION_LOG_PATH="${TMPDIR:-/tmp}/glade-codex-session-$$_${_glade_codex_ts}.jsonl"',
     "  fi",
     "  (",
-    '    _synara_log="$CODEX_TUI_SESSION_LOG_PATH"',
-    `    _synara_notify=${shellQuote(notifyHookPath)}`,
-    '    _synara_last_turn_id=""',
-    '    _synara_last_approval_id=""',
-    '    _synara_last_exec_call_id=""',
-    "    _synara_approval_fallback_seq=0",
+    '    _glade_log="$CODEX_TUI_SESSION_LOG_PATH"',
+    `    _glade_notify=${shellQuote(notifyHookPath)}`,
+    '    _glade_last_turn_id=""',
+    '    _glade_last_approval_id=""',
+    '    _glade_last_exec_call_id=""',
+    "    _glade_approval_fallback_seq=0",
     "",
-    "    _synara_emit_event() {",
-    '      _synara_event="$1"',
-    `      _synara_payload=$(printf '{"hook_event_name":"%s"}' "$_synara_event")`,
-    '      "$_synara_notify" "$_synara_payload" >/dev/null 2>&1 || true',
+    "    _glade_emit_event() {",
+    '      _glade_event="$1"',
+    `      _glade_payload=$(printf '{"hook_event_name":"%s"}' "$_glade_event")`,
+    '      "$_glade_notify" "$_glade_payload" >/dev/null 2>&1 || true',
     "    }",
     "",
-    "    _synara_i=0",
-    '    while [ ! -f "$_synara_log" ] && [ "$_synara_i" -lt 200 ]; do',
-    "      _synara_i=$((_synara_i + 1))",
+    "    _glade_i=0",
+    '    while [ ! -f "$_glade_log" ] && [ "$_glade_i" -lt 200 ]; do',
+    "      _glade_i=$((_glade_i + 1))",
     "      sleep 0.05",
     "    done",
-    '    if [ ! -f "$_synara_log" ]; then',
+    '    if [ ! -f "$_glade_log" ]; then',
     "      exit 0",
     "    fi",
     "",
-    '    tail -n 0 -F "$_synara_log" 2>/dev/null | while IFS= read -r _synara_line; do',
-    '      case "$_synara_line" in',
+    '    tail -n 0 -F "$_glade_log" 2>/dev/null | while IFS= read -r _glade_line; do',
+    '      case "$_glade_line" in',
     `        *'"dir":"to_tui"'*'"kind":"codex_event"'*'"msg":{"type":"task_started"'*)`,
-    `          _synara_turn_id=$(printf '%s\n' "$_synara_line" | awk -F'"turn_id":"' 'NF > 1 { sub(/".*/, "", $2); print $2; exit }')`,
-    '          [ -n "$_synara_turn_id" ] || _synara_turn_id="task_started"',
-    '          if [ "$_synara_turn_id" != "$_synara_last_turn_id" ]; then',
-    '            _synara_last_turn_id="$_synara_turn_id"',
-    '            _synara_emit_event "Start"',
+    `          _glade_turn_id=$(printf '%s\n' "$_glade_line" | awk -F'"turn_id":"' 'NF > 1 { sub(/".*/, "", $2); print $2; exit }')`,
+    '          [ -n "$_glade_turn_id" ] || _glade_turn_id="task_started"',
+    '          if [ "$_glade_turn_id" != "$_glade_last_turn_id" ]; then',
+    '            _glade_last_turn_id="$_glade_turn_id"',
+    '            _glade_emit_event "Start"',
     "          fi",
     "          ;;",
     `        *'"dir":"to_tui"'*'"kind":"codex_event"'*'"msg":{"type":"'*'_approval_request"'*)`,
-    `          _synara_approval_id=$(printf '%s\n' "$_synara_line" | awk -F'"id":"' 'NF > 1 { sub(/".*/, "", $2); print $2; exit }')`,
-    `          [ -n "$_synara_approval_id" ] || _synara_approval_id=$(printf '%s\n' "$_synara_line" | awk -F'"approval_id":"' 'NF > 1 { sub(/".*/, "", $2); print $2; exit }')`,
-    `          [ -n "$_synara_approval_id" ] || _synara_approval_id=$(printf '%s\n' "$_synara_line" | awk -F'"call_id":"' 'NF > 1 { sub(/".*/, "", $2); print $2; exit }')`,
-    '          if [ -z "$_synara_approval_id" ]; then',
-    "            _synara_approval_fallback_seq=$((_synara_approval_fallback_seq + 1))",
-    '            _synara_approval_id="approval_request_${_synara_approval_fallback_seq}"',
+    `          _glade_approval_id=$(printf '%s\n' "$_glade_line" | awk -F'"id":"' 'NF > 1 { sub(/".*/, "", $2); print $2; exit }')`,
+    `          [ -n "$_glade_approval_id" ] || _glade_approval_id=$(printf '%s\n' "$_glade_line" | awk -F'"approval_id":"' 'NF > 1 { sub(/".*/, "", $2); print $2; exit }')`,
+    `          [ -n "$_glade_approval_id" ] || _glade_approval_id=$(printf '%s\n' "$_glade_line" | awk -F'"call_id":"' 'NF > 1 { sub(/".*/, "", $2); print $2; exit }')`,
+    '          if [ -z "$_glade_approval_id" ]; then',
+    "            _glade_approval_fallback_seq=$((_glade_approval_fallback_seq + 1))",
+    '            _glade_approval_id="approval_request_${_glade_approval_fallback_seq}"',
     "          fi",
-    '          if [ "$_synara_approval_id" != "$_synara_last_approval_id" ]; then',
-    '            _synara_last_approval_id="$_synara_approval_id"',
-    '            _synara_emit_event "PermissionRequest"',
+    '          if [ "$_glade_approval_id" != "$_glade_last_approval_id" ]; then',
+    '            _glade_last_approval_id="$_glade_approval_id"',
+    '            _glade_emit_event "PermissionRequest"',
     "          fi",
     "          ;;",
     `        *'"dir":"to_tui"'*'"kind":"codex_event"'*'"msg":{"type":"exec_command_begin"'*)`,
-    `          _synara_exec_call_id=$(printf '%s\n' "$_synara_line" | awk -F'"call_id":"' 'NF > 1 { sub(/".*/, "", $2); print $2; exit }')`,
-    '          if [ -n "$_synara_exec_call_id" ]; then',
-    '            if [ "$_synara_exec_call_id" != "$_synara_last_exec_call_id" ]; then',
-    '              _synara_last_exec_call_id="$_synara_exec_call_id"',
-    '              _synara_emit_event "Start"',
+    `          _glade_exec_call_id=$(printf '%s\n' "$_glade_line" | awk -F'"call_id":"' 'NF > 1 { sub(/".*/, "", $2); print $2; exit }')`,
+    '          if [ -n "$_glade_exec_call_id" ]; then',
+    '            if [ "$_glade_exec_call_id" != "$_glade_last_exec_call_id" ]; then',
+    '              _glade_last_exec_call_id="$_glade_exec_call_id"',
+    '              _glade_emit_event "Start"',
     "            fi",
     "          else",
-    '            _synara_emit_event "Start"',
+    '            _glade_emit_event "Start"',
     "          fi",
     "          ;;",
     "      esac",
     "    done",
     "  ) &",
-    "  SYNARA_CODEX_START_WATCHER_PID=$!",
+    "  GLADE_CODEX_START_WATCHER_PID=$!",
     "fi",
     `${shellQuote(targetPath)} --enable codex_hooks -c ${shellQuote(`notify=["bash",${JSON.stringify(notifyHookPath)}]`)} "$@"`,
-    "_synara_status=$?",
-    'if [ -n "${SYNARA_CODEX_START_WATCHER_PID:-}" ]; then',
-    '  kill "$SYNARA_CODEX_START_WATCHER_PID" >/dev/null 2>&1 || true',
-    '  wait "$SYNARA_CODEX_START_WATCHER_PID" 2>/dev/null || true',
+    "_glade_status=$?",
+    'if [ -n "${GLADE_CODEX_START_WATCHER_PID:-}" ]; then',
+    '  kill "$GLADE_CODEX_START_WATCHER_PID" >/dev/null 2>&1 || true',
+    '  wait "$GLADE_CODEX_START_WATCHER_PID" 2>/dev/null || true',
     "fi",
-    'exit "$_synara_status"',
+    'exit "$_glade_status"',
   ].join("\n");
 }
 
@@ -224,9 +224,9 @@ function buildWrapperScript(input: {
       : buildCodexWrapperScript({ codexHomeDir, notifyHookPath, targetPath });
   return [
     "#!/bin/sh",
-    `# Managed ${commandName} wrapper injected by synara terminal sessions.`,
+    `# Managed ${commandName} wrapper injected by glade terminal sessions.`,
     `printf '\\033]0;%s\\007' ${shellQuote(title)}`,
-    `export ${SYNARA_TERMINAL_CLI_KIND_ENV_KEY}=${shellQuote(cliKind)}`,
+    `export ${GLADE_TERMINAL_CLI_KIND_ENV_KEY}=${shellQuote(cliKind)}`,
     commandBody,
     "",
   ].join("\n");
@@ -245,41 +245,41 @@ function writeFileIfChanged(filePath: string, content: string, mode: number): vo
 }
 
 function buildManagedZshRc(quotedZshDir: string): string {
-  return `# Synara zsh rc wrapper
-_synara_home="\${SYNARA_ORIGINAL_ZDOTDIR:-$HOME}"
-export ZDOTDIR="$_synara_home"
-[[ -f "$_synara_home/.zshrc" ]] && source "$_synara_home/.zshrc"
+  return `# Glade zsh rc wrapper
+_glade_home="\${GLADE_ORIGINAL_ZDOTDIR:-$HOME}"
+export ZDOTDIR="$_glade_home"
+[[ -f "$_glade_home/.zshrc" ]] && source "$_glade_home/.zshrc"
 export ZDOTDIR=${quotedZshDir}
-if [ -n "\${SYNARA_MANAGED_BIN_DIR:-}" ] && [ -d "\${SYNARA_MANAGED_BIN_DIR}" ]; then
+if [ -n "\${GLADE_MANAGED_BIN_DIR:-}" ] && [ -d "\${GLADE_MANAGED_BIN_DIR}" ]; then
   case ":$PATH:" in
-    *:\${SYNARA_MANAGED_BIN_DIR}:*) ;;
-    *) export PATH="\${SYNARA_MANAGED_BIN_DIR}:$PATH" ;;
+    *:\${GLADE_MANAGED_BIN_DIR}:*) ;;
+    *) export PATH="\${GLADE_MANAGED_BIN_DIR}:$PATH" ;;
   esac
   unalias claude 2>/dev/null || true
   claude() {
-    if [ -x "\${SYNARA_MANAGED_BIN_DIR}/claude" ] && [ ! -d "\${SYNARA_MANAGED_BIN_DIR}/claude" ]; then
-      "\${SYNARA_MANAGED_BIN_DIR}/claude" "$@"
+    if [ -x "\${GLADE_MANAGED_BIN_DIR}/claude" ] && [ ! -d "\${GLADE_MANAGED_BIN_DIR}/claude" ]; then
+      "\${GLADE_MANAGED_BIN_DIR}/claude" "$@"
     else
       command claude "$@"
     fi
   }
   unalias codex 2>/dev/null || true
   codex() {
-    if [ -x "\${SYNARA_MANAGED_BIN_DIR}/codex" ] && [ ! -d "\${SYNARA_MANAGED_BIN_DIR}/codex" ]; then
-      "\${SYNARA_MANAGED_BIN_DIR}/codex" "$@"
+    if [ -x "\${GLADE_MANAGED_BIN_DIR}/codex" ] && [ ! -d "\${GLADE_MANAGED_BIN_DIR}/codex" ]; then
+      "\${GLADE_MANAGED_BIN_DIR}/codex" "$@"
     else
       command codex "$@"
     fi
   }
   typeset -ga precmd_functions 2>/dev/null || true
-  _synara_ensure_managed_bin() {
+  _glade_ensure_managed_bin() {
     case ":$PATH:" in
-      *:\${SYNARA_MANAGED_BIN_DIR}:*) ;;
-      *) PATH="\${SYNARA_MANAGED_BIN_DIR}:$PATH" ;;
+      *:\${GLADE_MANAGED_BIN_DIR}:*) ;;
+      *) PATH="\${GLADE_MANAGED_BIN_DIR}:$PATH" ;;
     esac
   }
   {
-    precmd_functions=(\${precmd_functions:#_synara_ensure_managed_bin} _synara_ensure_managed_bin)
+    precmd_functions=(\${precmd_functions:#_glade_ensure_managed_bin} _glade_ensure_managed_bin)
   } 2>/dev/null || true
 fi
 `;
@@ -290,20 +290,20 @@ function ensureManagedZshWrappers(zshDir: string): void {
   const quotedZshDir = shellQuote(zshDir);
   writeFileIfChanged(
     path.join(zshDir, ".zshenv"),
-    `# Synara zsh env wrapper
-_synara_home="\${SYNARA_ORIGINAL_ZDOTDIR:-$HOME}"
-export ZDOTDIR="$_synara_home"
-[[ -f "$_synara_home/.zshenv" ]] && source "$_synara_home/.zshenv"
+    `# Glade zsh env wrapper
+_glade_home="\${GLADE_ORIGINAL_ZDOTDIR:-$HOME}"
+export ZDOTDIR="$_glade_home"
+[[ -f "$_glade_home/.zshenv" ]] && source "$_glade_home/.zshenv"
 export ZDOTDIR=${quotedZshDir}
 `,
     PRIVATE_FILE_MODE,
   );
   writeFileIfChanged(
     path.join(zshDir, ".zprofile"),
-    `# Synara zsh profile wrapper
-_synara_home="\${SYNARA_ORIGINAL_ZDOTDIR:-$HOME}"
-export ZDOTDIR="$_synara_home"
-[[ -f "$_synara_home/.zprofile" ]] && source "$_synara_home/.zprofile"
+    `# Glade zsh profile wrapper
+_glade_home="\${GLADE_ORIGINAL_ZDOTDIR:-$HOME}"
+export ZDOTDIR="$_glade_home"
+[[ -f "$_glade_home/.zprofile" ]] && source "$_glade_home/.zprofile"
 export ZDOTDIR=${quotedZshDir}
 `,
     PRIVATE_FILE_MODE,
@@ -420,8 +420,8 @@ function applyManagedTerminalWrapperEnvState(
 
   return {
     ...env,
-    SYNARA_MANAGED_BIN_DIR: wrapperState.binDir,
-    SYNARA_ORIGINAL_ZDOTDIR: env.ZDOTDIR ?? env.HOME ?? "",
+    GLADE_MANAGED_BIN_DIR: wrapperState.binDir,
+    GLADE_ORIGINAL_ZDOTDIR: env.ZDOTDIR ?? env.HOME ?? "",
     ...(wrapperState.zshDir ? { ZDOTDIR: wrapperState.zshDir } : {}),
     [envPathKey]: currentEntries.join(path.delimiter),
   };

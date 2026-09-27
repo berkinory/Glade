@@ -9,7 +9,7 @@
 import { existsSync, realpathSync } from "node:fs";
 import * as path from "node:path";
 
-import { executableCandidates, executableNameCandidates } from "@synara/shared/executable";
+import { executableCandidates, executableNameCandidates } from "@glade/shared/executable";
 import { buildProviderChildEnvironment } from "../../providerChildEnvironment.ts";
 import {
   commandExistsOnPath,
@@ -235,7 +235,7 @@ function wrapPowerShellCommand(command: string, args: ReadonlyArray<string>): Cu
   };
 }
 
-// Resolves persisted/default Cursor binary settings into the executable Synara should spawn.
+// Resolves persisted/default Cursor binary settings into the executable Glade should spawn.
 export function resolveCursorAgentBinaryPath(
   binaryPath: string | null | undefined,
   options: ProviderBinaryResolutionOptions = {},

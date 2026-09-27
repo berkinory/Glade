@@ -19,12 +19,12 @@ import {
   type RuntimeMode,
   type ServerProviderAuthStatus,
   type ThreadId as ThreadIdType,
-} from "@synara/contracts";
-import { getDefaultModel, normalizeModelSlug } from "@synara/shared/model";
-import { approvalSessionGrantWidensSessionPolicy } from "@synara/shared/approvalSessionGrant";
-import { buildSynaraBranchName } from "@synara/shared/git";
-import { isGenericChatThreadTitle } from "@synara/shared/chatThreads";
-import { isGenericTerminalThreadTitle } from "@synara/shared/terminalThreads";
+} from "@glade/contracts";
+import { getDefaultModel, normalizeModelSlug } from "@glade/shared/model";
+import { approvalSessionGrantWidensSessionPolicy } from "@glade/shared/approvalSessionGrant";
+import { buildGladeBranchName } from "@glade/shared/git";
+import { isGenericChatThreadTitle } from "@glade/shared/chatThreads";
+import { isGenericTerminalThreadTitle } from "@glade/shared/terminalThreads";
 import {
   type ChatMessage,
   type SessionPhase,
@@ -66,8 +66,8 @@ import {
 import { localSubagentThreadId } from "./ChatView.selectors";
 import { buildModelSelection, type ProviderModelOption } from "../providerModelOptions";
 
-export const LAST_INVOKED_SCRIPT_BY_PROJECT_KEY = "synara:last-invoked-script-by-project";
-export const DISMISSED_PROVIDER_HEALTH_BANNERS_KEY = "synara:dismissed-provider-health-banners";
+export const LAST_INVOKED_SCRIPT_BY_PROJECT_KEY = "glade:last-invoked-script-by-project";
+export const DISMISSED_PROVIDER_HEALTH_BANNERS_KEY = "glade:dismissed-provider-health-banners";
 export const PROMPT_HISTORY_MAX_ENTRIES = 100;
 
 export const LastInvokedScriptByProjectSchema = Schema.Record(ProjectId, Schema.String);
@@ -768,7 +768,7 @@ export function resolveThreadDetailHydration(input: {
 /**
  * Fallback model selection for a draft thread before the first server turn exists.
  * An explicit project default wins; otherwise the user's default provider is used
- * (pi and omp have no default model, so they are skipped), then codex. The model
+ * then codex. The model
  * comes from the project default only when it matches the chosen provider,
  * otherwise the provider's own default.
  */
@@ -776,11 +776,7 @@ export function resolveDraftFallbackModelSelection(input: {
   projectDefault: ModelSelection | null | undefined;
   settingsDefaultProvider: ProviderKind;
 }): ModelSelection {
-  const settingsProvider =
-    input.settingsDefaultProvider === "pi" || input.settingsDefaultProvider === "omp"
-      ? null
-      : input.settingsDefaultProvider;
-  const provider = input.projectDefault?.provider ?? settingsProvider ?? "codex";
+  const provider = input.projectDefault?.provider ?? input.settingsDefaultProvider;
   const model =
     (provider === input.projectDefault?.provider ? input.projectDefault.model : null) ??
     getDefaultModel(provider) ??
@@ -945,7 +941,7 @@ export function describeVoiceRecordingStartError(error: unknown): string {
   const errorName = typeof error.name === "string" ? error.name : "";
 
   if (errorName === "NotAllowedError" || errorName === "PermissionDeniedError") {
-    return "Microphone access was denied. Enable it in macOS Privacy & Security > Microphone for Synara, then try again.";
+    return "Microphone access was denied. Enable it in macOS Privacy & Security > Microphone for Glade, then try again.";
   }
   if (errorName === "NotFoundError" || errorName === "DevicesNotFoundError") {
     return "No microphone was found. Connect one and try again.";
@@ -1634,7 +1630,7 @@ export function buildSuggestedWorktreeName(input: {
   associatedWorktreeBranch?: string | null;
   title?: string | null;
 }): string {
-  return buildSynaraBranchName(input.associatedWorktreeBranch ?? input.title);
+  return buildGladeBranchName(input.associatedWorktreeBranch ?? input.title);
 }
 
 export function deriveComposerSendState(options: {

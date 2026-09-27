@@ -1,44 +1,27 @@
 // FILE: desktopIdentity.ts
 // Purpose: Defines the canonical desktop application identity across packaging and runtime.
 
-export const SYNARA_DESKTOP_SCHEME = "synara";
-export const SYNARA_DESKTOP_ORIGIN = `${SYNARA_DESKTOP_SCHEME}://app`;
-export const SYNARA_DESKTOP_ENTRY_URL = `${SYNARA_DESKTOP_ORIGIN}/index.html`;
-export const SYNARA_DESKTOP_UPDATE_CHANNEL = "synara";
-export const SYNARA_PRODUCTION_BUNDLE_ID = "com.emanueledipietro.synara";
-export const SYNARA_DEVELOPMENT_BUNDLE_ID = `${SYNARA_PRODUCTION_BUNDLE_ID}.dev`;
-export const SYNARA_CANARY_BUNDLE_ID = `${SYNARA_PRODUCTION_BUNDLE_ID}.canary`;
+export const GLADE_DESKTOP_SCHEME = "glade";
+export const GLADE_DESKTOP_ORIGIN = `${GLADE_DESKTOP_SCHEME}://app`;
+export const GLADE_DESKTOP_ENTRY_URL = `${GLADE_DESKTOP_ORIGIN}/index.html`;
+export const GLADE_DESKTOP_UPDATE_CHANNEL = "glade";
+export const GLADE_PRODUCTION_BUNDLE_ID = "com.agent.glade";
+export const GLADE_DEVELOPMENT_BUNDLE_ID = `${GLADE_PRODUCTION_BUNDLE_ID}.dev`;
 /** Display/setup identity of the GUI host; this value does not confer native authority. */
-export const SYNARA_DESKTOP_BUNDLE_ID_ENV = "SYNARA_DESKTOP_BUNDLE_ID";
-export const SYNARA_CANARY_DESKTOP_SCHEME = "synara-canary";
-export const SYNARA_CANARY_DESKTOP_ORIGIN = `${SYNARA_CANARY_DESKTOP_SCHEME}://app`;
-export const SYNARA_CANARY_DESKTOP_ENTRY_URL = `${SYNARA_CANARY_DESKTOP_ORIGIN}/index.html`;
-export const SYNARA_CUA_BUNDLE_ID = `${SYNARA_PRODUCTION_BUNDLE_ID}.cua`;
-export const SYNARA_CUA_DESKTOP_SCHEME = "synara-cua";
-export const SYNARA_CUA_DESKTOP_ORIGIN = `${SYNARA_CUA_DESKTOP_SCHEME}://app`;
-export const SYNARA_CUA_DESKTOP_ENTRY_URL = `${SYNARA_CUA_DESKTOP_ORIGIN}/index.html`;
-export const SYNARA_BETA_BUNDLE_ID = `${SYNARA_PRODUCTION_BUNDLE_ID}.beta`;
-export const SYNARA_BETA_DESKTOP_SCHEME = "synara-beta";
-export const SYNARA_BETA_DESKTOP_ORIGIN = `${SYNARA_BETA_DESKTOP_SCHEME}://app`;
-export const SYNARA_BETA_DESKTOP_ENTRY_URL = `${SYNARA_BETA_DESKTOP_ORIGIN}/index.html`;
-export const SYNARA_SOURCE_DESKTOP_BUILD_MARKER = "synara-source-desktop-build-v2";
-export const SYNARA_DESKTOP_SMOKE_USER_DATA_ENV = "SYNARA_DESKTOP_SMOKE_USER_DATA";
+export const GLADE_DESKTOP_BUNDLE_ID_ENV = "GLADE_DESKTOP_BUNDLE_ID";
+export const GLADE_SOURCE_DESKTOP_BUILD_MARKER = "glade-source-desktop-build-v2";
+export const GLADE_DESKTOP_SMOKE_USER_DATA_ENV = "GLADE_DESKTOP_SMOKE_USER_DATA";
 
-export type SynaraDesktopFlavor = "production" | "development" | "canary" | "cua" | "beta";
-export const SYNARA_PACKAGED_DESKTOP_FLAVORS = ["production", "canary", "cua", "beta"] as const;
-export type SynaraPackagedDesktopFlavor = (typeof SYNARA_PACKAGED_DESKTOP_FLAVORS)[number];
+export type GladeDesktopFlavor = "production" | "development";
+export const GLADE_PACKAGED_DESKTOP_FLAVORS = ["production"] as const;
+export type GladePackagedDesktopFlavor = (typeof GLADE_PACKAGED_DESKTOP_FLAVORS)[number];
 
-/**
- * electron-updater matches the update channel against the release tag's
- * prerelease identifier, so the beta flavor must use the `beta` channel to see
- * `vX.Y.Z-beta.N` releases. Every other flavor keeps the `synara` channel.
- */
-export function desktopUpdateChannel(flavor: SynaraDesktopFlavor): string {
-  return flavor === "beta" ? "beta" : SYNARA_DESKTOP_UPDATE_CHANNEL;
+export function desktopUpdateChannel(_flavor: GladeDesktopFlavor): string {
+  return GLADE_DESKTOP_UPDATE_CHANNEL;
 }
 
-export interface SynaraDesktopIdentity {
-  readonly flavor: SynaraDesktopFlavor;
+export interface GladeDesktopIdentity {
+  readonly flavor: GladeDesktopFlavor;
   readonly displayName: string;
   readonly bundleId: string;
   readonly scheme: string;
@@ -49,20 +32,14 @@ export interface SynaraDesktopIdentity {
   readonly usesScriptedUpdates: boolean;
 }
 
-export function resolveSynaraDesktopFlavor(input: {
+export function resolveGladeDesktopFlavor(input: {
   readonly isDevelopment: boolean;
   readonly requestedFlavor?: string | undefined;
   readonly allowDevelopmentOverride?: boolean | undefined;
-}): SynaraDesktopFlavor {
+}): GladeDesktopFlavor {
   const requestedFlavor = input.requestedFlavor?.trim().toLowerCase();
-  if (requestedFlavor === "cua") {
-    return "cua";
-  }
-  if (requestedFlavor === "canary") {
-    return "canary";
-  }
-  if (requestedFlavor === "beta") {
-    return "beta";
+  if (requestedFlavor && !["production", "development"].includes(requestedFlavor)) {
+    throw new Error(`Unsupported Glade flavor: ${requestedFlavor}. Use production or development.`);
   }
   if (
     requestedFlavor === "development" &&
@@ -74,19 +51,19 @@ export function resolveSynaraDesktopFlavor(input: {
 }
 
 /** Packaged identity is fixed when the artifact is staged, before it is signed. */
-export function resolveSynaraDesktopRuntimeFlavor(input: {
+export function resolveGladeDesktopRuntimeFlavor(input: {
   readonly isPackaged: boolean;
   readonly isDevelopment: boolean;
   readonly packagedFlavor?: unknown;
   readonly requestedFlavor?: string | undefined;
   readonly allowDevelopmentOverride?: boolean | undefined;
-}): SynaraDesktopFlavor {
+}): GladeDesktopFlavor {
   if (input.isPackaged && input.packagedFlavor !== undefined) {
     const flavor = input.packagedFlavor;
-    if (flavor === "production" || flavor === "canary" || flavor === "cua" || flavor === "beta") {
+    if (flavor === "production") {
       return flavor;
     }
-    throw new Error("The packaged Synara desktop flavor is invalid. Rebuild the application.");
+    throw new Error("The packaged Glade desktop flavor is invalid. Rebuild the application.");
   }
   // Source launchers also use an app bundle on macOS. Their build marker keeps
   // the existing environment-based routing, while legacy packaged apps remain
@@ -94,7 +71,7 @@ export function resolveSynaraDesktopRuntimeFlavor(input: {
   if (input.isPackaged && input.allowDevelopmentOverride !== true) {
     return "production";
   }
-  return resolveSynaraDesktopFlavor(input);
+  return resolveGladeDesktopFlavor(input);
 }
 
 export function canOverrideDesktopSmokeUserData(input: {
@@ -102,75 +79,34 @@ export function canOverrideDesktopSmokeUserData(input: {
   readonly sourceBuildMarker?: string | undefined;
 }): boolean {
   return (
-    input.packagedFlavor === "cua" ||
-    input.packagedFlavor === "beta" ||
-    (input.packagedFlavor === undefined &&
-      input.sourceBuildMarker === SYNARA_SOURCE_DESKTOP_BUILD_MARKER)
+    input.packagedFlavor === undefined &&
+    input.sourceBuildMarker === GLADE_SOURCE_DESKTOP_BUILD_MARKER
   );
 }
 
-export function synaraDesktopIdentity(flavor: SynaraDesktopFlavor): SynaraDesktopIdentity {
-  if (flavor === "cua") {
-    return {
-      flavor,
-      displayName: "Synara Cua",
-      bundleId: SYNARA_CUA_BUNDLE_ID,
-      scheme: SYNARA_CUA_DESKTOP_SCHEME,
-      origin: SYNARA_CUA_DESKTOP_ORIGIN,
-      entryUrl: SYNARA_CUA_DESKTOP_ENTRY_URL,
-      userDataDirectoryName: "synara-cua",
-      defaultHomeDirectoryName: ".synara-cua",
-      usesScriptedUpdates: true,
-    };
-  }
-  if (flavor === "canary") {
-    return {
-      flavor,
-      displayName: "Synara Canary",
-      bundleId: SYNARA_CANARY_BUNDLE_ID,
-      scheme: SYNARA_CANARY_DESKTOP_SCHEME,
-      origin: SYNARA_CANARY_DESKTOP_ORIGIN,
-      entryUrl: SYNARA_CANARY_DESKTOP_ENTRY_URL,
-      userDataDirectoryName: "synara-canary",
-      defaultHomeDirectoryName: ".synara-canary",
-      usesScriptedUpdates: true,
-    };
-  }
-  if (flavor === "beta") {
-    return {
-      flavor,
-      displayName: "Synara Beta",
-      bundleId: SYNARA_BETA_BUNDLE_ID,
-      scheme: SYNARA_BETA_DESKTOP_SCHEME,
-      origin: SYNARA_BETA_DESKTOP_ORIGIN,
-      entryUrl: SYNARA_BETA_DESKTOP_ENTRY_URL,
-      userDataDirectoryName: "synara-beta",
-      defaultHomeDirectoryName: ".synara-beta",
-      usesScriptedUpdates: false,
-    };
-  }
+export function gladeDesktopIdentity(flavor: GladeDesktopFlavor): GladeDesktopIdentity {
   if (flavor === "development") {
     return {
       flavor,
-      displayName: "Synara (Dev)",
-      bundleId: SYNARA_DEVELOPMENT_BUNDLE_ID,
-      scheme: SYNARA_DESKTOP_SCHEME,
-      origin: SYNARA_DESKTOP_ORIGIN,
-      entryUrl: SYNARA_DESKTOP_ENTRY_URL,
-      userDataDirectoryName: "synara-dev",
-      defaultHomeDirectoryName: ".synara-dev",
+      displayName: "Glade (Dev)",
+      bundleId: GLADE_DEVELOPMENT_BUNDLE_ID,
+      scheme: GLADE_DESKTOP_SCHEME,
+      origin: GLADE_DESKTOP_ORIGIN,
+      entryUrl: GLADE_DESKTOP_ENTRY_URL,
+      userDataDirectoryName: "glade-dev",
+      defaultHomeDirectoryName: ".glade-dev",
       usesScriptedUpdates: false,
     };
   }
   return {
     flavor,
-    displayName: "Synara",
-    bundleId: SYNARA_PRODUCTION_BUNDLE_ID,
-    scheme: SYNARA_DESKTOP_SCHEME,
-    origin: SYNARA_DESKTOP_ORIGIN,
-    entryUrl: SYNARA_DESKTOP_ENTRY_URL,
-    userDataDirectoryName: "synara",
-    defaultHomeDirectoryName: ".synara",
+    displayName: "Glade",
+    bundleId: GLADE_PRODUCTION_BUNDLE_ID,
+    scheme: GLADE_DESKTOP_SCHEME,
+    origin: GLADE_DESKTOP_ORIGIN,
+    entryUrl: GLADE_DESKTOP_ENTRY_URL,
+    userDataDirectoryName: "glade",
+    defaultHomeDirectoryName: ".glade",
     usesScriptedUpdates: false,
   };
 }

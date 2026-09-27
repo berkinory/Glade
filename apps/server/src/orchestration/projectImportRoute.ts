@@ -11,9 +11,9 @@ import {
   type ListProjectImportsResult,
   type ProjectImportProvider,
   type ProviderStartOptions,
-} from "@synara/contracts";
-import { isWorkspaceRootWithin, workspaceRootsEqual } from "@synara/shared/threadWorkspace";
-import { providerStartOptionsFromServerSettings } from "@synara/shared/serverSettings";
+} from "@glade/contracts";
+import { isWorkspaceRootWithin, workspaceRootsEqual } from "@glade/shared/threadWorkspace";
+import { providerStartOptionsFromServerSettings } from "@glade/shared/serverSettings";
 import { Effect } from "effect";
 import type {
   ProjectImportRepository,

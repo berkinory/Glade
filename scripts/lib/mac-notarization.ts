@@ -25,6 +25,8 @@ export function reusableSubmission(state: NotarySubmission, digest: string): boo
 }
 
 function credentialsArgs(credentials: MacDmgNotaryCredentials): string[] {
+  if (credentials.keychainProfile?.trim())
+    return ["--keychain-profile", credentials.keychainProfile.trim()];
   const entries = [
     ["--key", credentials.appleApiKey],
     ["--key-id", credentials.appleApiKeyId],

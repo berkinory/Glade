@@ -1,13 +1,14 @@
+import { parseComputerHelperMessage } from "./computerHelperProtocol";
 import * as ChildProcess from "node:child_process";
 import * as Readline from "node:readline";
 
-import { parseAppSnapHelperMessage, type AppSnapHelperMessage } from "./appSnapManager";
+import { type ComputerHelperMessage } from "./computerHelperProtocol";
 
 const RESPAWN_BASE_DELAY_MS = 1_000;
 const RESPAWN_MAX_DELAY_MS = 30_000;
 const MAX_HELPER_STDERR_CHARS = 4_000;
 
-export type PhysicalComputerInput = Extract<AppSnapHelperMessage, { type: "physical-input" }>;
+export type PhysicalComputerInput = Extract<ComputerHelperMessage, { type: "physical-input" }>;
 export interface ComputerInputMonitorState {
   readonly ready: boolean;
   readonly error?: string;
@@ -148,7 +149,7 @@ export class EscapeKillSwitchMonitor {
     const lines = Readline.createInterface({ input: child.stdout, crlfDelay: Infinity });
     lines.on("line", (line) => {
       if (this.#child !== child || this.#disposed) return;
-      const message = parseAppSnapHelperMessage(line);
+      const message = parseComputerHelperMessage(line);
       if (message) this.#handleMessage(message);
     });
 
@@ -182,7 +183,7 @@ export class EscapeKillSwitchMonitor {
     if (this.#armed) this.#writeCommand("arm");
   }
 
-  #handleMessage(message: AppSnapHelperMessage): void {
+  #handleMessage(message: ComputerHelperMessage): void {
     switch (message.type) {
       case "ready":
         if (!this.#armed) return;

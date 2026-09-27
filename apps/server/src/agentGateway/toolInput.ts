@@ -1,10 +1,10 @@
 import {
   DEFAULT_MODEL_BY_PROVIDER,
-  SynaraCreateThreadsInput,
-  SynaraWaitForThreadsInput,
+  GladeCreateThreadsInput,
+  GladeWaitForThreadsInput,
   type ModelSelection,
   type ProviderKind,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import { Schema } from "effect";
 
 import { AGENT_GATEWAY_TARGET_OPTIONS_DESCRIPTION } from "./targetResolver.ts";
@@ -13,13 +13,8 @@ export const PROVIDER_KINDS: ReadonlyArray<ProviderKind> = [
   "codex",
   "claudeAgent",
   "cursor",
-  "antigravity",
   "grok",
-  "droid",
   "opencode",
-  "pi",
-  "devin",
-  "omp",
 ];
 
 export const MODEL_SELECTION_INPUT_SCHEMA = {
@@ -29,7 +24,7 @@ export const MODEL_SELECTION_INPUT_SCHEMA = {
     provider: { type: "string", enum: [...PROVIDER_KINDS] },
     model: {
       type: "string",
-      description: "Exact model slug from synara_capabilities providers[].models[].slug.",
+      description: "Exact model slug from glade_capabilities providers[].models[].slug.",
     },
     options: {
       type: "object",
@@ -173,9 +168,7 @@ export function buildModelSelection(
   provider: ProviderKind,
   model: string | undefined,
 ): ModelSelection {
-  const effectiveModel =
-    model ??
-    (provider === "pi" || provider === "omp" ? undefined : DEFAULT_MODEL_BY_PROVIDER[provider]);
+  const effectiveModel = model ?? DEFAULT_MODEL_BY_PROVIDER[provider];
   if (!effectiveModel) {
     throw new ToolInputError(
       `Provider "${provider}" has no default model; pass an explicit "model" argument.`,
@@ -186,16 +179,16 @@ export function buildModelSelection(
 
 export function decodeCreateThreadsInput(value: unknown) {
   try {
-    return Schema.decodeUnknownSync(SynaraCreateThreadsInput)(value);
+    return Schema.decodeUnknownSync(GladeCreateThreadsInput)(value);
   } catch (error) {
-    throw new ToolInputError(`Invalid Synara creation plan: ${errorText(error)}`);
+    throw new ToolInputError(`Invalid Glade creation plan: ${errorText(error)}`);
   }
 }
 
 export function decodeWaitForThreadsInput(value: unknown) {
   try {
-    return Schema.decodeUnknownSync(SynaraWaitForThreadsInput)(value);
+    return Schema.decodeUnknownSync(GladeWaitForThreadsInput)(value);
   } catch (error) {
-    throw new ToolInputError(`Invalid Synara wait request: ${errorText(error)}`);
+    throw new ToolInputError(`Invalid Glade wait request: ${errorText(error)}`);
   }
 }

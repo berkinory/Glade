@@ -1,9 +1,4 @@
-import {
-  PROVIDER_DISPLAY_NAMES,
-  type DroidModelSelection,
-  type ModelSelection,
-  type ProviderKind,
-} from "@synara/contracts";
+import { PROVIDER_DISPLAY_NAMES, type ModelSelection, type ProviderKind } from "@glade/contracts";
 import { Effect, Layer } from "effect";
 
 import { parseOpenCodeModelSlug } from "../../provider/opencodeRuntime.ts";
@@ -13,15 +8,9 @@ import { TextGenerationError } from "../Errors.ts";
 import * as TextGen from "../Services/TextGeneration.ts";
 import * as Selection from "../textGenerationSelection.ts";
 
-const parseDroidModelSlug = (model: string | undefined): { readonly model: string } | null => {
-  const match = model && /^droid[:/](.+)$/.exec(model);
-  return match && match[1] ? { model: match[1] } : null;
-};
-
 const makeProviderTextGeneration = Effect.gen(function* () {
   const codexTextGeneration = yield* TextGen.CodexTextGeneration;
   const cursorTextGeneration = yield* TextGen.CursorTextGeneration;
-  const droidTextGeneration = yield* TextGen.DroidTextGeneration;
   const openCodeTextGeneration = yield* TextGen.OpenCodeTextGeneration;
   const serverSettings = yield* ServerSettingsService;
 
@@ -30,16 +19,11 @@ const makeProviderTextGeneration = Effect.gen(function* () {
     readonly modelSelection?: ModelSelection;
   }): ProviderKind =>
     input.modelSelection?.provider ??
-    (parseDroidModelSlug(input.model) !== null
-      ? "droid"
-      : parseOpenCodeModelSlug(input.model) !== null
-        ? "opencode"
-        : "codex");
+    (parseOpenCodeModelSlug(input.model) !== null ? "opencode" : "codex");
 
   const implementations = {
     codex: codexTextGeneration,
     cursor: cursorTextGeneration,
-    droid: droidTextGeneration,
     opencode: openCodeTextGeneration,
   } satisfies Record<Selection.GitTextGenerationProvider, TextGen.TextGenerationShape>;
 
@@ -82,13 +66,6 @@ const makeProviderTextGeneration = Effect.gen(function* () {
       return {
         implementation: implementations[provider],
         fallbackModelSelection,
-        modelSelectionOverride:
-          provider === "droid" && input.modelSelection === undefined
-            ? ({
-                model: parseDroidModelSlug(input.model)?.model ?? provider,
-                provider,
-              } satisfies DroidModelSelection)
-            : undefined,
       };
     });
 
@@ -104,7 +81,7 @@ const makeProviderTextGeneration = Effect.gen(function* () {
     ) => Effect.Effect<Output, TextGenerationError>,
   ) =>
     resolveImplementation(operation, input).pipe(
-      Effect.flatMap(({ implementation, fallbackModelSelection, modelSelectionOverride }) =>
+      Effect.flatMap(({ implementation, fallbackModelSelection }) =>
         run(
           implementation,
           fallbackModelSelection
@@ -113,13 +90,7 @@ const makeProviderTextGeneration = Effect.gen(function* () {
                 model: fallbackModelSelection.model,
                 modelSelection: fallbackModelSelection,
               } as Input)
-            : modelSelectionOverride
-              ? ({
-                  ...input,
-                  model: modelSelectionOverride.model,
-                  modelSelection: modelSelectionOverride,
-                } as Input)
-              : input,
+            : input,
         ),
       ),
     );

@@ -12,12 +12,11 @@ import {
   type ProviderListSkillsResult,
   ProviderReadPluginInput,
   type ProviderSkillDescriptor,
-} from "@synara/contracts";
+} from "@glade/contracts";
 import { Effect, Exit, Layer, Option, Queue, Schema, SchemaIssue } from "effect";
 
-import { isServerBetaFeatureEnabled } from "../../betaFeatureGate.ts";
 import { ServerConfig } from "../../config.ts";
-import { gateBetaOnlyProviders, ServerSettingsService } from "../../serverSettings.ts";
+import { ServerSettingsService } from "../../serverSettings.ts";
 import { ProviderValidationError } from "../Errors.ts";
 import type { ProviderDiscoveryError } from "../Services/ProviderDiscoveryService.ts";
 import { ProviderAdapterRegistry } from "../Services/ProviderAdapterRegistry.ts";
@@ -169,7 +168,7 @@ const make = Effect.gen(function* () {
   ) {
     return yield* serverSettings.getSettings.pipe(
       Effect.map((settings) => settings.providers[provider].enabled),
-      Effect.orElseSucceed(() => isServerBetaFeatureEnabled(provider)),
+      Effect.orElseSucceed(() => true),
     );
   });
 
@@ -189,7 +188,7 @@ const make = Effect.gen(function* () {
       const capabilities = adapter.getComposerCapabilities
         ? yield* adapter.getComposerCapabilities()
         : disabledCapabilitiesForProvider(parsed.provider);
-      // The unified Synara skills catalog backs skill discovery for every
+      // The unified Glade skills catalog backs skill discovery for every
       // provider, including ones without native skill support.
       return {
         ...capabilities,
@@ -219,7 +218,7 @@ const make = Effect.gen(function* () {
             .pipe(
               Effect.catch((error) =>
                 Effect.logWarning(
-                  "provider-native skill discovery failed; serving the Synara skills catalog only",
+                  "provider-native skill discovery failed; serving the Glade skills catalog only",
                   { provider: parsed.provider, error },
                 ).pipe(Effect.as(null)),
               ),
@@ -229,14 +228,13 @@ const make = Effect.gen(function* () {
         discoverSkillsCatalog({
           cwd: parsed.cwd,
           homeDir: serverConfig.homeDir,
-          synaraBaseDir: serverConfig.baseDir,
+          gladeBaseDir: serverConfig.baseDir,
           provider: parsed.provider,
           ...(parsed.forceReload !== undefined ? { forceReload: parsed.forceReload } : {}),
-          ...(parsed.agentDir !== undefined ? { agentDir: parsed.agentDir } : undefined),
         }),
       ).pipe(
         Effect.catchCause((cause) =>
-          Effect.logWarning("synara skills catalog discovery failed", {
+          Effect.logWarning("glade skills catalog discovery failed", {
             provider: parsed.provider,
             cause,
           }).pipe(Effect.as([] as ProviderSkillDescriptor[])),
@@ -247,11 +245,11 @@ const make = Effect.gen(function* () {
         catalog: catalogSkills,
       });
       const settings = yield* serverSettings.getSettings.pipe(
-        Effect.orElseSucceed(() => gateBetaOnlyProviders(DEFAULT_SERVER_SETTINGS)),
+        Effect.orElseSucceed(() => DEFAULT_SERVER_SETTINGS),
       );
       return {
         skills: filterDisabledSkills(merged, settings.skills.disabled),
-        source: nativeResult?.source ? `${nativeResult.source}+synara.catalog` : "synara.catalog",
+        source: nativeResult?.source ? `${nativeResult.source}+glade.catalog` : "glade.catalog",
         cached: nativeResult?.cached ?? false,
       } satisfies ProviderListSkillsResult;
     });
@@ -284,7 +282,7 @@ const make = Effect.gen(function* () {
       // Server-owned like the session start options, so discovery lists the
       // same commands a new Claude session will actually have.
       const settings = yield* serverSettings.getSettings.pipe(
-        Effect.orElseSucceed(() => gateBetaOnlyProviders(DEFAULT_SERVER_SETTINGS)),
+        Effect.orElseSucceed(() => DEFAULT_SERVER_SETTINGS),
       );
       return yield* adapter.listCommands({
         ...parsed,
@@ -333,7 +331,7 @@ const make = Effect.gen(function* () {
       if (!(yield* providerIsEnabled(parsed.provider))) {
         return yield* new ProviderValidationError({
           operation: "ProviderDiscoveryService.readPlugin",
-          issue: `Provider '${parsed.provider}' is disabled in Synara settings.`,
+          issue: `Provider '${parsed.provider}' is disabled in Glade settings.`,
         });
       }
       const adapter = yield* registry.getByProvider(parsed.provider);
@@ -374,13 +372,6 @@ const make = Effect.gen(function* () {
           isolateMalformedModelDescriptors({ provider: parsed.provider, result }),
         ),
       );
-      // OMP re-resolves file-backed modelRoles per request, so a shared fresh
-      // window would freeze role/config edits for up to 30 minutes and persist
-      // them across restarts. `omp models` is a cheap subprocess — bypass the
-      // shared cache so every picker read reflects the live catalog.
-      if (parsed.provider === "omp") {
-        return yield* discover;
-      }
       return yield* modelDiscoveryCache.lookup(providerModelDiscoveryCacheKey(parsed), discover);
     });
 

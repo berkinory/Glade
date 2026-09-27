@@ -1,15 +1,15 @@
 # Quickstart
 
-This guide takes you through Synara's basic loop: open a repository, give one coding agent a
+This guide takes you through Glade's basic loop: open a repository, give one coding agent a
 concrete task, supervise the work, and review the resulting diff. You should be up and running in
 about five minutes.
 
-> **Before you begin:** install Synara and authenticate at least one supported provider. In
+> **Before you begin:** install Glade and authenticate at least one supported provider. In
 > shortcuts, `mod` means Command on macOS and Ctrl on Windows or Linux.
 
 ## 1. Add a Git project
 
-Open Synara and add a local repository.
+Open Glade and add a local repository.
 
 Start with a repository whose current changes are already committed or intentionally preserved. A
 clean starting state makes the agent's work much easier to review.
@@ -19,15 +19,15 @@ clean starting state makes the agent's work much easier to review.
 Press `mod+n` or use the new-task control.
 
 For this first task, use the local checkout and run only one agent against the repository. Use a
-[Git worktree](https://www.trysynara.com/docs/workflows/worktrees) when you begin running multiple
+[Git worktree](./core-concepts.md) when you begin running multiple
 tasks or want stronger isolation.
 
 ## 3. Choose a provider and model
 
 Select an available provider, model, and effort or reasoning option.
 
-Synara uses the provider runtime and account configured on your machine. It does not add a separate
-Synara model plan.
+Glade uses the provider runtime and account configured on your machine. It does not add a separate
+Glade model plan.
 
 ## 4. Give the agent a verifiable objective
 
@@ -45,7 +45,7 @@ Add an empty state to the pull-request list.
 
 Reuse the existing shared panel components.
 Do not redesign the surrounding page.
-Run the focused browser test and report the result.
+Run the relevant existing checks and report the result.
 ```
 
 A bounded objective is easier to execute, review, and undo than "improve the pull-request page."
@@ -83,16 +83,36 @@ Commit the reviewed changes when they are ready.
 
 For GitHub repositories, push the branch, inspect the final change set, and open a PR.
 
-That is Synara's core workflow:
+That is Glade's core workflow:
 
 > Give one task a concrete objective, supervise the work, verify the result, and commit only what
 > you intend to keep.
 
 ## Continue learning
 
-- [Core concepts](https://www.trysynara.com/docs/getting-started/core-concepts) — projects, tasks,
+- [Core concepts](./core-concepts.md) — projects, tasks,
   environments, provider sessions, and Git ownership.
-- [Your first task](https://www.trysynara.com/docs/getting-started/first-task) — the same workflow
-  in more detail, including recovery and review.
-- [Best practices](https://www.trysynara.com/docs/workflows/best-practices) — patterns Synara
-  maintainers rely on for real development work.
+- [Provider setup](./providers.md) — installation,
+  authentication, capabilities, and troubleshooting.
+- [Contributing](../CONTRIBUTING.md) — how to propose
+  changes and verify them.
+
+## Run from source
+
+Use the Bun version in [`.mise.toml`](../.mise.toml) for development. The pinned Node version is for builds and releases. From the repository root:
+
+```bash
+bun install --frozen-lockfile
+bun run dev
+```
+
+`bun run dev` starts the desktop app with hot reload. To run an isolated desktop instance, use
+`GLADE_DEV_INSTANCE=feature-xyz bun run dev`. For the browser and server development stack without
+the desktop shell, use `bun scripts/dev-runner.ts dev`.
+
+For a production-style local server run, use `bun run build` followed by `bun run start`. The
+platform packaging commands are `bun run package:mac` (universal macOS DMG and update ZIP),
+`bun run package:linux` (AppImage), and `bun run package:win` (NSIS installer).
+Glade does not publish an npm CLI; `@glade/cli` is an internal package.
+
+For signing, release packaging, and updates, see the [release guide](./release.md).

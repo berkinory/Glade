@@ -18,10 +18,10 @@
 // process mishandling refresh-token rotation). This keeps the Keychain token perpetually
 // fresh, so the SDK session always reads a valid token.
 //
-// Opt in:   SYNARA_CLAUDE_KEEPALIVE=1
-// Tune:     SYNARA_CLAUDE_KEEPALIVE_MINUTES=<n>   (default 30)
+// Opt in:   GLADE_CLAUDE_KEEPALIVE=1
+// Tune:     GLADE_CLAUDE_KEEPALIVE_MINUTES=<n>   (default 30)
 
-import { execProcessFile } from "@synara/shared/processRuntime";
+import { execProcessFile } from "@glade/shared/processRuntime";
 import { promisify } from "node:util";
 
 import { acquireClaudeAuthStatusLock } from "./claudeAuthStatusLock";
@@ -47,7 +47,7 @@ export function isClaudeCredentialKeepaliveEnabled(
 ): boolean {
   const platform = input.platform ?? process.platform;
   const env = input.env ?? process.env;
-  return platform === "darwin" && envFlagEnabled(env.SYNARA_CLAUDE_KEEPALIVE);
+  return platform === "darwin" && envFlagEnabled(env.GLADE_CLAUDE_KEEPALIVE);
 }
 
 // Mirrors the Claude Agent adapter default while honoring persisted custom CLI paths.
@@ -57,7 +57,7 @@ export function resolveClaudeCredentialKeepaliveBinaryPath(binaryPath: string | 
 
 // Caps the tuning knob before setInterval can overflow into Node's 1ms clamp behavior.
 export function resolveClaudeCredentialKeepaliveIntervalMs(env: NodeJS.ProcessEnv): number {
-  const raw = env.SYNARA_CLAUDE_KEEPALIVE_MINUTES?.trim();
+  const raw = env.GLADE_CLAUDE_KEEPALIVE_MINUTES?.trim();
   const parsed = raw ? Number.parseInt(raw, 10) : Number.NaN;
   const minutes = Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_INTERVAL_MINUTES;
   return Math.min(minutes * 60 * 1000, CLAUDE_CREDENTIAL_KEEPALIVE_MAX_INTERVAL_MS);
@@ -157,7 +157,7 @@ export function startClaudeCredentialKeepalive(input?: {
     ((input) => nudgeClaudeTokenRefresh(input.binaryPath, input.homeDir, input.signal));
 
   // Only run when explicitly enabled. The check touches Claude Code auth data, so
-  // Synara should not do it as background work merely because the app opened.
+  // Glade should not do it as background work merely because the app opened.
   if (!isClaudeCredentialKeepaliveEnabled({ platform, env })) {
     return { stop: async () => {} };
   }

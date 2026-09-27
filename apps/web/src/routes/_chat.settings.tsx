@@ -3,10 +3,8 @@
 // Layer: Route screen
 // Exports: Settings route component for `/settings`
 
-import { PROVIDER_DISPLAY_NAMES, type ProviderKind } from "@synara/contracts";
-import { isBetaFeatureOn, VISIBLE_PROVIDER_DESCRIPTORS } from "../betaFeatures";
-import { sameAppSnapShortcut } from "@synara/shared/appSnapShortcut";
-import { SafariAccessSetupButton } from "../components/SafariAccessOnboarding";
+import { PROVIDER_DISPLAY_NAMES, type ProviderKind } from "@glade/contracts";
+import { VISIBLE_PROVIDER_DESCRIPTORS } from "../providerCatalog";
 import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
@@ -35,11 +33,7 @@ import {
   ArchivedSettingsPanel,
   WorktreesSettingsPanel,
 } from "~/components/settings/ConversationStorageSettingsPanels";
-import {
-  AppSnapSettingsPanel,
-  BetaChannelSettingsPanel,
-  NotificationsSettingsPanel,
-} from "~/components/settings/DesktopSettingsPanels";
+import { NotificationsSettingsPanel } from "~/components/settings/DesktopSettingsPanels";
 import { ComputerSettingsPanel } from "~/components/settings/ComputerSettingsPanel";
 import { ModelsSettingsPanel } from "~/components/settings/ModelsSettingsPanel";
 import {
@@ -51,7 +45,6 @@ import ReleaseHistoryDialog from "../components/ReleaseHistoryDialog";
 import { KeyboardShortcutsSettingsPanel } from "../components/settings/KeyboardShortcutsSettingsPanel";
 import { ProfileSettingsPanel } from "../components/settings/ProfileSettingsPanel";
 import { ProviderUsageSettingsPanel } from "../components/settings/ProviderUsageSettingsPanel";
-import { ExternalMcpSettingsPanel } from "../components/settings/ExternalMcpSettingsPanel";
 import {
   SettingResetButton,
   SettingsSegmentedControl,
@@ -243,9 +236,9 @@ function SettingsRouteView() {
     toastManager.add({
       type: "warning",
       title: "Restart to apply title bar",
-      description: "The window frame updates the next time Synara launches.",
+      description: "The window frame updates the next time Glade launches.",
       actionProps: {
-        "aria-label": "Restart Synara",
+        "aria-label": "Restart Glade",
         children: "Restart",
         onClick: () => {
           void window.desktopBridge?.customTitleBar?.relaunch();
@@ -323,9 +316,7 @@ function SettingsRouteView() {
     ...(settings.archiveDeletesOrphanedWorktree !== defaults.archiveDeletesOrphanedWorktree
       ? ["Delete worktree on archive"]
       : []),
-    ...(isBetaFeatureOn("sidebarV2") && settings.sidebarLayout !== defaults.sidebarLayout
-      ? ["Sidebar layout"]
-      : []),
+    ...["Sidebar layout"],
     ...(settings.sidebarProjectSortOrder !== defaults.sidebarProjectSortOrder
       ? ["Project sort order"]
       : []),
@@ -364,11 +355,6 @@ function SettingsRouteView() {
     ...(settings.autoOpenDevicePane !== defaults.autoOpenDevicePane
       ? ["Automatically open simulator"]
       : []),
-    ...(settings.enableAppSnap !== defaults.enableAppSnap ? ["AppSnap"] : []),
-    ...(!sameAppSnapShortcut(settings.appSnapShortcut, defaults.appSnapShortcut)
-      ? ["AppSnap shortcut"]
-      : []),
-    ...(settings.appSnapPlaySound !== defaults.appSnapPlaySound ? ["AppSnap capture sound"] : []),
     ...(settings.computerControlEnabled !== defaults.computerControlEnabled
       ? ["Computer control"]
       : []),
@@ -395,16 +381,6 @@ function SettingsRouteView() {
       ? ["Terminal close confirmation"]
       : []),
     ...(isGitTextGenerationModelDirty ? ["Git writing model"] : []),
-    ...(settings.customCodexModels.length > 0 ||
-    settings.customClaudeModels.length > 0 ||
-    settings.customCursorModels.length > 0 ||
-    settings.customAntigravityModels.length > 0 ||
-    settings.customGrokModels.length > 0 ||
-    settings.customDroidModels.length > 0 ||
-    settings.customOpenCodeModels.length > 0 ||
-    settings.customPiModels.length > 0
-      ? ["Custom models"]
-      : []),
     ...(isInstallSettingsDirty ? ["Provider installs"] : []),
     ...(isProviderActivityDirty ? ["Provider activity"] : []),
     ...(hiddenProviderCount > 0 ? ["Provider visibility"] : []),
@@ -476,8 +452,6 @@ function SettingsRouteView() {
 
   const renderGeneralPanel = () => (
     <div className="space-y-6">
-      <SafariAccessSetupButton />
-      <BetaChannelSettingsPanel active={true} />
       <SettingsSection title="Core defaults">
         <SettingsRow
           title="Default provider"
@@ -578,7 +552,7 @@ function SettingsRouteView() {
       </SettingsSection>
 
       <SettingsSection title="Sidebar organization">
-        {isBetaFeatureOn("sidebarV2") ? (
+        {
           <SettingsRow
             title="Sidebar layout"
             description="Classic keeps the single sidebar. Rail adds fixed icon tabs on the left, with projects and threads in a panel beside them."
@@ -599,7 +573,7 @@ function SettingsRouteView() {
               />
             }
           />
-        ) : null}
+        }
 
         <SettingsRow
           title="Project order"
@@ -830,7 +804,7 @@ function SettingsRouteView() {
         <SettingsSection title="App">
           <SettingsRow
             title="App icon"
-            description="Choose the icon Synara uses in the dock or taskbar."
+            description="Choose the icon Glade uses in the dock or taskbar."
             resetAction={
               settings.desktopAppIcon !== defaults.desktopAppIcon ? (
                 <SettingResetButton
@@ -857,8 +831,8 @@ function SettingsRouteView() {
               title="Use custom title bar"
               description={
                 customTitleBarRestartRequired
-                  ? "Restart Synara to apply. Some Linux window managers work better with the system title bar."
-                  : "Replace the system title bar with Synara's frameless chrome and window controls. Restart required to apply."
+                  ? "Restart Glade to apply. Some Linux window managers work better with the system title bar."
+                  : "Replace the system title bar with Glade's frameless chrome and window controls. Restart required to apply."
               }
               status={customTitleBarRestartRequired ? "Restart required" : undefined}
               resetAction={
@@ -1384,12 +1358,7 @@ function SettingsRouteView() {
                   defaults={defaults}
                   updateSettings={updateSettings}
                 />
-                <AppSnapSettingsPanel
-                  active={activeSection === "appsnap"}
-                  settings={settings}
-                  defaults={defaults}
-                  updateSettings={updateSettings}
-                />
+
                 <ComputerSettingsPanel
                   active={activeSection === "computer"}
                   settings={settings}
@@ -1413,7 +1382,7 @@ function SettingsRouteView() {
                   updateSettingsAndWait={updateSettingsAndWait}
                   resetEpoch={resetEpoch}
                 />
-                <ExternalMcpSettingsPanel active={activeSection === "integrations"} />
+
                 <AdvancedSettingsPanel
                   active={activeSection === "advanced"}
                   onOpenReleaseHistory={() => setReleaseHistoryOpen(true)}

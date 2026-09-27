@@ -11,14 +11,12 @@ import {
 
 /**
  * The macOS cua-driver tool inventory at the pinned release (driver 0.28.2,
- * Synara native patch, embedded serve). `platform-macos` `tools::register_all`
+ * Glade native patch, embedded serve). `platform-macos` `tools::register_all`
  * registers the platform and core tools; the cua-driver binary adds
  * `check_for_update` and — only under the upstream preview admission the
  * embedded host never grants — `history_status`/`history_query`.
  *
- * The classification of every row lives in
- * `docs/computer-use-cua/v2-parity-matrix.md`. The allowlists below are the
- * whole server→host boundary: a name absent from both is refused by the
+ * The allowlists below are the whole server→host boundary: a name absent from both is refused by the
  * desktop host before a daemon even starts, so a new driver tool is
  * unreachable by default and adding one here is the audited act.
  */
@@ -278,7 +276,7 @@ describe("parseCuaShieldArgs", () => {
     frame: { x: 1050.5, y: 120, width: 420, height: 620 },
     window_id: 4242,
     pid: 777,
-    label: "Synara activating Calculator",
+    label: "Glade activating Calculator",
   };
 
   it("parses an engage with its full target shape", () => {
@@ -288,7 +286,7 @@ describe("parseCuaShieldArgs", () => {
       frame: { x: 1050.5, y: 120, width: 420, height: 620 },
       windowId: 4242,
       pid: 777,
-      label: "Synara activating Calculator",
+      label: "Glade activating Calculator",
     });
   });
 
