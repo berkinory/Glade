@@ -22,13 +22,21 @@ export function preserveDependencyDiagnostics(env: NodeJS.ProcessEnv): boolean {
 
 export function createDesktopBundleFilePatterns(
   platform: "mac" | "linux" | "win",
-  options: { readonly diagnostics?: boolean; readonly linuxGlibc?: boolean } = {},
+  options: { readonly diagnostics?: boolean } = {},
 ): string[] {
   const files = ["**/*"];
   if (!options.diagnostics) files.push(...DIAGNOSTIC_FILES);
 
+  // Glade passes a system Claude executable to the SDK, so its optional native
+  // CLI packages are never invoked from the packaged app.
+  files.push(
+    "!node_modules/@anthropic-ai/claude-agent-sdk-darwin-*/**",
+    "!node_modules/@anthropic-ai/claude-agent-sdk-linux-*/**",
+    "!node_modules/@anthropic-ai/claude-agent-sdk-win32-*/**",
+  );
+
   // node-pty is rebuilt before packaging. Its platform prebuilds are not
-  // interchangeable; retain both same-platform architectures for universal Mac.
+  // interchangeable.
   if (platform !== "mac") files.push("!node_modules/node-pty/prebuilds/darwin-*/**");
   if (platform !== "win") files.push("!node_modules/node-pty/prebuilds/win32-*/**");
   files.push("!node_modules/node-pty/lib/*.test.js");
@@ -53,11 +61,5 @@ export function createDesktopBundleFilePatterns(
   if (platform !== "linux") files.push(`${resources}app-icon-linux.png`);
   if (platform !== "win") files.push(`${resources}app-icon-windows.ico`, `${resources}icon.ico`);
 
-  // The SDK selects the glibc executable first on a glibc host. The musl
-  // executable needs a different loader and cannot be its working fallback.
-  // Unknown/non-glibc build hosts retain both variants instead of guessing.
-  if (platform === "linux" && options.linuxGlibc) {
-    files.push("!node_modules/@anthropic-ai/claude-agent-sdk-linux-*-musl/**");
-  }
   return files;
 }

@@ -804,29 +804,6 @@ const installFrozenStageDependencies = Effect.fn("installFrozenStageDependencies
         shell: process.platform === "win32",
       })`bun install --omit=dev --ignore-scripts --linker hoisted`,
     );
-  } else if (platform === "mac" && arch === "universal") {
-    // The SDK's optional CLI packages are keyed to the current CPU. One
-    // universal app must carry both, regardless of the runner's architecture.
-    yield* runCommand(
-      ChildProcess.make({
-        cwd: stageAppDir,
-        ...commandOutputOptions(verbose),
-      })`bun install --frozen-lockfile --ignore-scripts --linker hoisted --cpu=* --os=darwin`,
-    );
-    for (const sdkArch of ["arm64", "x64"]) {
-      const sdkCli = path.join(
-        stageAppDir,
-        "node_modules",
-        "@anthropic-ai",
-        `claude-agent-sdk-darwin-${sdkArch}`,
-        "claude",
-      );
-      if (!(yield* fs.exists(sdkCli))) {
-        return yield* new BuildScriptError({
-          message: `Universal macOS build is missing the Claude ${sdkArch} executable at ${sdkCli}.`,
-        });
-      }
-    }
   } else {
     yield* runCommand(
       ChildProcess.make({

@@ -32,7 +32,8 @@
     "check": "oxfmt --check && oxlint --report-unused-disable-directives && effect-tsgo patch --typescript --typescript-package @typescript/native && turbo run typecheck",
     "check:fix": "oxfmt && oxlint --fix --report-unused-disable-directives && bun run check",
     "test": "turbo run test",
-    "package:mac": "node scripts/build-desktop-artifact.ts --platform mac --target dmg --arch universal",
+    "package:mac:arm64": "node scripts/build-desktop-artifact.ts --platform mac --target dmg --arch arm64",
+    "package:mac:x64": "node scripts/build-desktop-artifact.ts --platform mac --target dmg --arch x64",
     "package:linux": "node scripts/build-desktop-artifact.ts --platform linux --target AppImage --arch x64",
     "package:win": "node scripts/build-desktop-artifact.ts --platform win --target nsis --arch x64"
   },

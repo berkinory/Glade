@@ -66,12 +66,21 @@ if (publish && process.env.GITHUB_REPOSITORY !== "berkinory/Glade") {
 const lockfileSha256 = createHash("sha256").update(readFileSync("bun.lock")).digest("hex");
 const platforms = [
   {
-    id: "mac-universal",
+    id: "mac-arm64",
     platform: "mac",
-    arch: "universal",
-    files: [`Glade-${version}-universal.dmg`, `Glade-${version}-universal.zip`, "latest-mac.yml"],
-    manifest: "latest-mac.yml",
-    download: `Glade-${version}-universal.zip`,
+    arch: "arm64",
+    files: [`Glade-${version}-arm64.dmg`, `Glade-${version}-arm64.zip`, "latest-mac-arm64.yml"],
+    manifest: "latest-mac-arm64.yml",
+    download: `Glade-${version}-arm64.zip`,
+    signing: publish ? "verified" : "unsigned-build-only",
+  },
+  {
+    id: "mac-x64",
+    platform: "mac",
+    arch: "x64",
+    files: [`Glade-${version}-x64.dmg`, `Glade-${version}-x64.zip`, "latest-mac-x64.yml"],
+    manifest: "latest-mac-x64.yml",
+    download: `Glade-${version}-x64.zip`,
     signing: publish ? "verified" : "unsigned-build-only",
   },
   {
@@ -111,7 +120,8 @@ function releaseNotes(checksums: readonly string[]): string {
   const notes = lines.slice(start, end).join("\n").trim();
   if (!notes) throw new Error("Release notes are empty.");
   const downloads = [
-    ["macOS (Apple Silicon and Intel)", `Glade-${version}-universal.dmg`],
+    ["macOS (Apple Silicon)", `Glade-${version}-arm64.dmg`],
+    ["macOS (Intel)", `Glade-${version}-x64.dmg`],
     ["Linux (x64)", `Glade-${version}-x86_64.AppImage`],
     ["Windows (x64)", `Glade-${version}-x64.exe`],
   ] as const;

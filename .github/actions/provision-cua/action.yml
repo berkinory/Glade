@@ -2,7 +2,7 @@ name: Provision verified Cua
 description: Restore an exact trusted native build or build the pinned source on a cache miss
 inputs:
   arch:
-    description: Target architecture; use universal for the macOS release bundle
+    description: Target architecture for the platform artifact
     default: ""
   save-cache:
     description: Only the trusted default-branch producer may save

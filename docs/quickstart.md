@@ -111,7 +111,7 @@ bun run dev
 the desktop shell, use `bun scripts/dev-runner.ts dev`.
 
 For a production-style local server run, use `bun run build` followed by `bun run start`. The
-platform packaging commands are `bun run package:mac` (universal macOS DMG and update ZIP),
+platform packaging commands are `bun run package:mac:arm64` and `bun run package:mac:x64` (architecture-specific macOS DMGs and update ZIPs),
 `bun run package:linux` (AppImage), and `bun run package:win` (NSIS installer).
 Glade does not publish an npm CLI; `@glade/cli` is an internal package.
 

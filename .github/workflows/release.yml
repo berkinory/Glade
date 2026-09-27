@@ -25,21 +25,44 @@ jobs:
   checks:
     name: Verify source
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      actions: read
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/setup-workspace
-        with:
-          electron: "true"
       - name: Verify release source
         shell: bash
         run: |
           set -euo pipefail
           version=$(node -p 'require("./apps/desktop/package.json").version')
           node scripts/verify-release-source-provenance.ts "$version" "v$version" "$PUBLISH_RELEASE" "$GITHUB_SHA" "$GITHUB_REF_TYPE" "$GITHUB_REF_NAME"
-      - name: Run release checks once
+      - name: Require green main CI for this exact commit
+        if: env.PUBLISH_RELEASE == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for ((attempt=0; attempt<180; attempt++)); do
+            run="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA&branch=main&event=push&per_page=20" \
+              --jq '.workflow_runs | sort_by(.run_attempt) | reverse | .[0] | [.status, .conclusion] | @tsv')"
+            case "$run" in
+              $'completed\tsuccess') echo "Exact-commit main CI passed."; exit 0 ;;
+              $'completed\t'*) echo "::error::Exact-commit main CI failed: $run"; exit 1 ;;
+            esac
+            sleep 10
+          done
+          echo "::error::No successful main CI run for release commit $GITHUB_SHA."
+          exit 1
+      - uses: ./.github/actions/setup-workspace
+        if: env.PUBLISH_RELEASE != 'true'
+        with:
+          electron: "true"
+      - name: Run checks for unpublished manual builds
+        if: env.PUBLISH_RELEASE != 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -55,10 +78,15 @@ jobs:
       fail-fast: true
       matrix:
         include:
-          - id: mac-universal
+          - id: mac-arm64
             runner: macos-15
             platform: mac
-            arch: universal
+            arch: arm64
+            target: dmg
+          - id: mac-x64
+            runner: macos-15-intel
+            platform: mac
+            arch: x64
             target: dmg
           - id: linux-x64
             runner: ubuntu-24.04
@@ -125,6 +153,7 @@ jobs:
           SOURCE_TAG: ${{ steps.source.outputs.source_tag }}
           LOCKFILE_SHA256: ${{ steps.source.outputs.lockfile_sha256 }}
           BUILD_PLATFORM: ${{ matrix.platform }}
+          BUILD_ARCH: ${{ matrix.arch }}
         run: |
           set -euo pipefail
           args=(--output-dir release --verbose --build-version "$RELEASE_VERSION" --source-commit "$GITHUB_SHA" --lockfile-sha256 "$LOCKFILE_SHA256")
@@ -138,7 +167,7 @@ jobs:
                 export APPLE_API_KEY="$key_path" CSC_IDENTITY_AUTO_DISCOVERY=true
                 args+=(--signed)
               fi
-              bun run package:mac -- "${args[@]}"
+              bun run "package:mac:$BUILD_ARCH" -- "${args[@]}"
               ;;
             linux) bun run package:linux -- "${args[@]}" ;;
             win) bun run package:win -- "${args[@]}" ;;
@@ -165,7 +194,14 @@ jobs:
           set -euo pipefail
           mkdir -p release-publish
           case "$BUILD_PLATFORM" in
-            mac) cp release/*.dmg release/*.zip release/latest-mac.yml release-publish/ ;;
+            mac)
+              cp release/*.dmg release/*.zip release-publish/
+              if [[ "$BUILD_ARCH" == x64 ]]; then
+                cp release/latest-mac-x64.yml release-publish/latest-mac-x64.yml
+              else
+                cp release/latest-mac.yml release-publish/latest-mac-arm64.yml
+              fi
+              ;;
             linux) cp release/*.AppImage release/latest-linux.yml release-publish/ ;;
             win) cp release/*.exe release/latest.yml release-publish/ ;;
             *) exit 1 ;;

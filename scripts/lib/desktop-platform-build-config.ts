@@ -89,13 +89,8 @@ export function validateDesktopNativeBuildHost(input: DesktopNativeBuildHostInpu
 export function createDesktopPlatformBuildConfig(
   input: CreateDesktopPlatformBuildConfigInput,
 ): DesktopPlatformBuildConfig {
-  const report =
-    process.platform === "linux"
-      ? (process.report.getReport() as { header?: { glibcVersionRuntime?: string } })
-      : undefined;
   const files = createDesktopBundleFilePatterns(input.platform, {
     diagnostics: preserveDependencyDiagnostics(process.env),
-    linuxGlibc: typeof report?.header?.glibcVersionRuntime === "string",
   });
   const nativePackaging = { asarUnpack: [...NODE_PTY_ASAR_UNPACK_GLOBS], files };
 
@@ -160,6 +155,7 @@ export function createDesktopPlatformBuildConfig(
         ...files,
         MAC_COMPUTER_HELPER_ASAR_EXCLUSION,
         "!apps/desktop/resources/cua-driver/**",
+        "!apps/desktop/prod-resources/cua-driver/**",
       ],
       extraFiles: [
         { from: "apps/desktop/resources/cua-driver", to: "Resources/cua-driver" },

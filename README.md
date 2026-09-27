@@ -6,7 +6,8 @@ Glade is a local-first coding workspace forked from [Synara](https://github.com/
 
 Download the latest version from [GitHub Releases](https://github.com/berkinory/Glade/releases/latest):
 
-- **macOS (Apple Silicon and Intel):** download the universal `.dmg`, open it, and drag `Glade.app` to Applications.
+- **macOS (Apple Silicon):** download the `arm64.dmg`, open it, and drag `Glade.app` to Applications.
+- **macOS (Intel):** download the `x64.dmg`, open it, and drag `Glade.app` to Applications.
 - **Linux (x64):** download the `.AppImage`, make it executable with `chmod +x Glade-*.AppImage`, then run it.
 - **Windows (x64):** download and run the `.exe` installer. The installer is unsigned, so Windows SmartScreen may show a warning.
 
