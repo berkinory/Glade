@@ -229,34 +229,8 @@ jobs:
     name: Update Homebrew cask
     needs: publish
     if: github.event_name == 'push' || inputs.publish_release
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
-      - name: Dispatch published version to Homebrew tap
-        env:
-          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [[ -z "$GH_TOKEN" ]]; then
-            echo "::error::Set HOMEBREW_TAP_TOKEN with Actions write access to berkinory/homebrew-brew."
-            exit 1
-          fi
-          version="${GITHUB_REF_NAME#v}"
-          expected_digest="$(gh api "repos/berkinory/Glade/releases/tags/${GITHUB_REF_NAME}" \
-            --jq ".assets[] | select(.name == \"Glade-${version}-universal.dmg\") | .digest")"
-          [[ "$expected_digest" =~ ^sha256:[0-9a-f]{64}$ ]]
-          gh workflow run update-glade-cask.yml \
-            --repo berkinory/homebrew-brew \
-            -f version="$version"
-          for attempt in {1..36}; do
-            cask="$(gh api repos/berkinory/homebrew-brew/contents/Casks/glade.rb \
-              --jq .content 2>/dev/null | base64 -d || true)"
-            if grep -Fq "version \"$version\"" <<< "$cask" && \
-               grep -Fq "sha256 \"${expected_digest#sha256:}\"" <<< "$cask"; then
-              echo "Homebrew cask now matches Glade ${version}."
-              exit 0
-            fi
-            sleep 10
-          done
-          echo "::error::Homebrew cask did not update to Glade ${version}."
-          exit 1
+    uses: ./.github/workflows/sync-homebrew.yml
+    with:
+      version: ${{ github.ref_name }}
+    secrets:
+      HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
