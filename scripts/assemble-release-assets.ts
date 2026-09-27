@@ -10,6 +10,7 @@ import {
   readFileSync,
   readdirSync,
   statSync,
+  unlinkSync,
   writeFileSync,
 } from "node:fs";
 import { dirname, resolve, join } from "node:path";
@@ -99,7 +100,7 @@ async function sha256(path: string): Promise<string> {
   return hash.digest("hex");
 }
 
-function releaseNotes(): string {
+function releaseNotes(checksums: readonly string[]): string {
   const lines = readFileSync("CHANGELOG.md", "utf8").split(/\r?\n/);
   const start = lines.findIndex(
     (line) => line === `## ${version}` || line.startsWith(`## ${version} `),
@@ -109,7 +110,16 @@ function releaseNotes(): string {
   if (end < 0) end = lines.length;
   const notes = lines.slice(start, end).join("\n").trim();
   if (!notes) throw new Error("Release notes are empty.");
-  return `${notes}\n`;
+  const downloads = [
+    ["macOS (Apple Silicon and Intel)", `Glade-${version}-universal.dmg`],
+    ["Linux (x64)", `Glade-${version}-x86_64.AppImage`],
+    ["Windows (x64)", `Glade-${version}-x64.exe`],
+  ] as const;
+  const links = downloads.map(
+    ([label, file]) =>
+      `- [${label}](https://github.com/berkinory/Glade/releases/download/v${version}/${file})`,
+  );
+  return `## Downloads\n\n${links.join("\n")}\n\n${notes}\n\n## SHA-256\n\n\`\`\`text\n${checksums.join("\n")}\n\`\`\`\n`;
 }
 
 const rawEntries = readdirSync(raw).toSorted();
@@ -179,15 +189,21 @@ if (rawEntries.length !== expectedRaw.size || rawEntries.some((name) => !expecte
 
 mkdirSync(destination, { recursive: true });
 if (readdirSync(destination).length !== 0) throw new Error("Release destination must be empty.");
-for (const name of rawEntries)
+for (const name of rawEntries) {
+  if (name.endsWith(".provenance.json")) continue;
   copyFileSync(join(raw, name), join(destination, name), constants.COPYFILE_EXCL);
-prepareReleaseUpdateManifests(destination);
+}
+const manifests = prepareReleaseUpdateManifests(destination);
+for (const name of manifests.filter((name) => name.startsWith("latest"))) {
+  unlinkSync(join(destination, name));
+}
 
 const binaryHashes = await Promise.all(
   binaries.toSorted().map(async (name) => `${await sha256(join(destination, name))}  ${name}`),
 );
-writeFileSync(join(destination, "SHA256SUMS.txt"), `${binaryHashes.join("\n")}\n`, { flag: "wx" });
-writeFileSync(join(dirname(destination), "release-notes.md"), releaseNotes(), { flag: "wx" });
+writeFileSync(join(dirname(destination), "release-notes.md"), releaseNotes(binaryHashes), {
+  flag: "wx",
+});
 console.log(
   `Verified ${platforms.length} platforms and assembled ${readdirSync(destination).length} release assets.`,
 );

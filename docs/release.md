@@ -10,7 +10,7 @@ Glade's version history starts at **0.0.1**. One stable GitHub Release contains 
 - The macOS ZIP is for automatic updates; the DMG is for manual installation. The Linux AppImage and Windows NSIS installer serve both purposes.
 - Windows is intentionally unsigned. The installer runs, but Windows SmartScreen may display an unrecognized-app warning until signing and reputation are established.
 
-The release workflow hashes and checks all platform artifacts against their source commit and `bun.lock`, verifies the signed macOS app, then assembles one `SHA256SUMS.txt`. Release metadata and the ZIP describe the final signed, notarized app. Do not edit a packaged app after signing.
+The release workflow hashes and checks all platform artifacts against their source commit and `bun.lock`, verifies the signed macOS app, then puts installer links and SHA-256 checksums in the release notes. The three platform provenance records and `latest-*` manifests are verified in CI but are not published as release assets. Release metadata and the ZIP describe the final signed, notarized app. Do not edit a packaged app after signing.
 
 ## Local builds
 
@@ -73,7 +73,7 @@ The local keychain does not transfer to GitHub runners. Missing Apple secrets st
 2. Update `CHANGELOG.md` and `apps/web/src/whatsNew/entries.ts`. Mark a version released only when it really ships.
 3. Run `bun run check`, `bun run test`, `bun scripts/check-windows-runtime-boundary.ts`, and `bun scripts/check-migration-lineage.ts`. Check the packaged app with an isolated profile on each supported platform.
 4. Commit the reviewed source on `main`, tag that exact commit `vX.Y.Z`, and push the branch and that tag to `origin`. Do not push inherited upstream tags.
-5. Verify the GitHub Release has all three installers, macOS update ZIP, platform update manifests, provenance JSON files, and `SHA256SUMS.txt`.
+5. Verify the GitHub Release notes link all three installers and list their SHA-256 checksums. The eight assets are the three installers, macOS update ZIP, three platform update manifests, and Windows blockmap.
 
 ## Development and production
 
