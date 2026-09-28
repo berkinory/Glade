@@ -26,7 +26,6 @@ See the full schema for more details: [`packages/contracts/src/keybindings.ts`](
   { "key": "mod+n", "command": "chat.new", "when": "!terminalFocus" },
   { "key": "mod+shift+o", "command": "chat.new", "when": "!terminalFocus" },
   { "key": "mod+shift+n", "command": "chat.newLocal", "when": "!terminalFocus" },
-  { "key": "mod+shift+t", "command": "chat.newTerminal", "when": "!terminalFocus" },
   { "key": "cmd+l", "command": "composer.focus.toggle", "when": "!terminalFocus" },
   { "key": "alt+arrowdown", "command": "diff.change.next", "when": "!terminalFocus" },
   { "key": "alt+arrowup", "command": "diff.change.previous", "when": "!terminalFocus" },
@@ -57,7 +56,6 @@ Invalid rules are ignored. Invalid config files are ignored. Warnings are logged
 - `terminal.close`: close/kill the focused terminal (in focused terminal context by default)
 - `chat.new`: create a new chat thread preserving the active thread's branch/worktree state
 - `chat.newLocal`: create a new chat thread for the active project in a new environment (local/worktree determined by app settings (default `local`))
-- `chat.newTerminal`: create a new terminal-first thread preserving the active thread's branch/worktree state
 - `diff.change.next`: scroll the diff panel to the next changed file (only while the diff panel is open)
 - `diff.change.previous`: scroll the diff panel to the previous changed file (only while the diff panel is open)
 - `composer.focus.toggle`: focus or blur the chat prompt composer

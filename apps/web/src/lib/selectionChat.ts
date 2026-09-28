@@ -45,7 +45,6 @@ export async function startSelectionChat(
   }
   const threadId = await input.createThread(input.projectId, {
     fresh: true,
-    entryPoint: "chat",
     envMode: input.envMode,
     branch,
     worktreePath: null,

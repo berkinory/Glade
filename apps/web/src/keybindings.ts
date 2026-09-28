@@ -122,11 +122,6 @@ export const DEFAULT_SHORTCUT_FALLBACKS: ResolvedKeybindingsConfig = [
     whenAst: whenModChordAllowed,
   },
   {
-    command: "chat.newTerminal",
-    shortcut: commandShortcut("t", { shiftKey: true }),
-    whenAst: whenModChordAllowed,
-  },
-  {
     command: "chat.newCodex",
     shortcut: commandShortcut("x", { altKey: true }),
     whenAst: whenModChordAllowed,

@@ -175,7 +175,7 @@ export function useSpacesController(input: {
       routeThreadId &&
       currentRouteSpaceProject &&
       isHomeChatContainerProject(currentRouteSpaceProject, workspacePaths) &&
-      useComposerDraftStore.getState().getDraftThread(routeThreadId)?.entryPoint === "chat"
+      useComposerDraftStore.getState().getDraftThread(routeThreadId)
     ) {
       rememberSpaceDraftThread(useSpacesUiStore.getState().activeSpaceId, routeThreadId);
       return;
@@ -280,7 +280,7 @@ export function useSpacesController(input: {
         : null;
       if (
         rememberedDraftId &&
-        rememberedDraft?.entryPoint === "chat" &&
+        rememberedDraft &&
         !rememberedDraft.promotedTo &&
         isHomeChatContainerProject(rememberedDraftProject, workspacePaths)
       ) {

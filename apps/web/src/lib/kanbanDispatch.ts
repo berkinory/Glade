@@ -51,7 +51,7 @@ import {
   filterTerminalContextsWithText,
   IMAGE_ONLY_BOOTSTRAP_PROMPT,
 } from "./terminalContext";
-import { resolveTerminalThreadCreationState } from "./threadBootstrap";
+import { resolveThreadCreationState } from "./threadBootstrap";
 import { promoteThreadCreate } from "./threadCreatePromotion";
 import { newCommandId, newMessageId } from "./utils";
 
@@ -251,9 +251,8 @@ async function dispatchKanbanDraftThreadOnce(
 
   try {
     if (thread === null) {
-      // Local-only draft thread: create the durable thread first, reusing the same
-      // workspace resolution the terminal-first promotion path uses.
-      const creationState = resolveTerminalThreadCreationState({
+      // Local-only draft thread: create the durable thread first.
+      const creationState = resolveThreadCreationState({
         activeDraftThread: null,
         activeThread: null,
         defaultProvider: input.defaultProvider,

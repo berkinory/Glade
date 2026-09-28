@@ -22,9 +22,7 @@ export function useHandleNewStudioChat() {
       ensureProjectId: () =>
         ensureStudioProject({ homeDir, chatWorkspaceRoot, studioWorkspaceRoot }),
       handleNewThread: (projectId, threadOptions) => {
-        const storedDraft = useComposerDraftStore
-          .getState()
-          .getDraftThreadByProjectId(projectId, "chat");
+        const storedDraft = useComposerDraftStore.getState().getDraftThreadByProjectId(projectId);
         return handleNewThread(projectId, {
           ...threadOptions,
           // Migrate a pre-fix local draft in place: its ordinary reference folder was

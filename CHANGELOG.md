@@ -4,6 +4,7 @@
 
 ### Removed
 
+- Terminal threads; project terminals remain available in the sidebar.
 - Temporary chats and their automatic deletion when leaving a chat.
 - Side chats and the `/side` command. ([41365fa0f](https://github.com/berkinory/Glade/commit/41365fa0fd2157a8572ab89b186d1401d45dc35d))
 

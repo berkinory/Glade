@@ -134,8 +134,6 @@ export interface KanbanCard {
   column: KanbanColumnKey;
   title: string;
   provider: ProviderKind | null;
-  /** Terminal-first thread — renders the terminal glyph instead of a provider icon. */
-  isTerminal: boolean;
   branch: string | null;
   /** Environment intent for the local/worktree badge; mirrored from the thread or draft. */
   envMode: ThreadEnvironmentMode | null;
@@ -184,8 +182,6 @@ export interface BuildKanbanBoardInput {
    * cards keep their true projectId so dispatch still targets the real project.
    */
   projectIdAliases?: Readonly<Record<string, ProjectId | undefined>>;
-  /** Threads whose terminal entryPoint is "terminal" (terminal-first, not provider chats). */
-  terminalEntryThreadIds?: ReadonlySet<string>;
   /** Dispatched drops still waiting for their first runtime signal (kanban UI store). */
   optimisticDispatchByThreadId?: Readonly<
     Record<string, KanbanOptimisticDispatchSnapshot | undefined>
@@ -278,14 +274,11 @@ function resolveComposerDraft(
 function buildThreadCard(
   thread: SidebarThreadSummary,
   composerDraftByThreadId: BuildKanbanBoardInput["composerDraftByThreadId"],
-  isTerminal: boolean,
 ): KanbanCard {
   const column = deriveKanbanColumn(thread);
   const composerDraft = resolveComposerDraft(composerDraftByThreadId, thread.id);
   const timestamp = resolveThreadCardTimestamp(thread, column);
-  const threadProvider = isTerminal
-    ? null
-    : (thread.session?.provider ?? thread.modelSelection.provider);
+  const threadProvider = thread.session?.provider ?? thread.modelSelection.provider;
   const activeWorkStartedAt =
     column === "inProgress"
       ? deriveActiveWorkStartedAt(thread.latestTurn, thread.session, timestamp)
@@ -298,7 +291,6 @@ function buildThreadCard(
     title: thread.title,
     provider:
       column === "draft" && composerDraft.provider ? composerDraft.provider : threadProvider,
-    isTerminal,
     branch: thread.branch,
     envMode: thread.envMode ?? null,
     worktreePath: thread.worktreePath,
@@ -320,16 +312,13 @@ function buildThreadCard(
 function buildUnsentPromptCard(
   thread: SidebarThreadSummary,
   composerDraftByThreadId: BuildKanbanBoardInput["composerDraftByThreadId"],
-  isTerminal: boolean,
 ): KanbanCard | null {
   const composerDraft = resolveComposerDraft(composerDraftByThreadId, thread.id);
   if (composerDraft.prompt.length === 0 && !composerDraft.hasAttachments) {
     return null;
   }
   const titleSeed = composerDraft.prompt.length > 0 ? composerDraft.prompt : "Attached references";
-  const threadProvider = isTerminal
-    ? null
-    : (thread.session?.provider ?? thread.modelSelection.provider);
+  const threadProvider = thread.session?.provider ?? thread.modelSelection.provider;
   return {
     cardId: kanbanDraftCardId(thread.id),
     threadId: thread.id,
@@ -337,7 +326,6 @@ function buildUnsentPromptCard(
     column: "draft",
     title: buildPromptThreadTitleFallback(titleSeed),
     provider: composerDraft.provider ?? threadProvider,
-    isTerminal,
     branch: thread.branch,
     envMode: thread.envMode ?? null,
     worktreePath: thread.worktreePath,
@@ -370,7 +358,6 @@ function buildLocalDraftCard(
           ? "Attached references"
           : KANBAN_FALLBACK_DRAFT_TITLE,
     provider: composerDraft.provider,
-    isTerminal: false,
     branch: draftThread.branch,
     envMode: draftThread.envMode ?? null,
     worktreePath: draftThread.worktreePath ?? null,
@@ -425,7 +412,6 @@ function buildSyntheticOptimisticCard(
     column: "inProgress",
     title: entry.title,
     provider: entry.provider,
-    isTerminal: false,
     branch: null,
     envMode: null,
     worktreePath: null,
@@ -568,8 +554,7 @@ export function buildKanbanBoard(input: BuildKanbanBoardInput): KanbanBoard {
     }
     threadIds.add(thread.id);
     const bucket = bucketFor(boardProjectId);
-    const isTerminal = input.terminalEntryThreadIds?.has(thread.id) ?? false;
-    const card = buildThreadCard(thread, input.composerDraftByThreadId, isTerminal);
+    const card = buildThreadCard(thread, input.composerDraftByThreadId);
     const optimisticEntry = optimisticDispatchByThreadId[thread.id];
     if (optimisticEntry) {
       handledOptimisticThreadIds.add(thread.id);
@@ -583,11 +568,7 @@ export function buildKanbanBoard(input: BuildKanbanBoardInput): KanbanBoard {
     }
     bucket[card.column].push(card);
     if (card.column === "done") {
-      const unsentPromptCard = buildUnsentPromptCard(
-        thread,
-        input.composerDraftByThreadId,
-        isTerminal,
-      );
+      const unsentPromptCard = buildUnsentPromptCard(thread, input.composerDraftByThreadId);
       if (unsentPromptCard) {
         bucket.draft.push(unsentPromptCard);
       }

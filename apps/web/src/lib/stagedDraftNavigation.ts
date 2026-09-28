@@ -5,11 +5,11 @@
 
 const inFlightDraftNavigationBySlot = new Map<string, Promise<unknown>>();
 
-export function draftNavigationSlotKey(projectId: string, entryPoint: string): string {
-  return `${projectId}\u0000${entryPoint}`;
+export function draftNavigationSlotKey(projectId: string): string {
+  return projectId;
 }
 
-/** Coalesces repeated clicks/shortcuts that target the same project + entry-point slot. */
+/** Coalesces repeated clicks/shortcuts that target the same project draft. */
 export function runDraftNavigationOnce<T>(slotKey: string, run: () => Promise<T>): Promise<T> {
   const existing = inFlightDraftNavigationBySlot.get(slotKey) as Promise<T> | undefined;
   if (existing) {

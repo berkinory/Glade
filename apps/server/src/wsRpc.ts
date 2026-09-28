@@ -2,9 +2,7 @@ import { AgentGatewaySessionRegistry } from "./agentGateway/Services/AgentGatewa
 import { execFile } from "node:child_process";
 
 import {
-  CommandId,
   COMPUTER_WS_METHODS,
-  DEFAULT_TERMINAL_ID,
   DEVICE_WS_METHODS,
   ORCHESTRATION_WS_METHODS,
   ThreadId,
@@ -137,7 +135,6 @@ import { ServerRuntimeStartup } from "./serverRuntimeStartup";
 import { ServerSettingsService } from "./serverSettings";
 import { isLoopbackHost } from "./startupAccess";
 import { TerminalManager } from "./terminal/Services/Manager";
-import { TerminalThreadTitleTracker } from "./terminal/terminalThreadTitleTracker";
 import { resolveOutOfRootFileReference } from "./workspace/outOfRootFileReference";
 import { watchWorkspaceFile } from "./workspaceFileChanges";
 import { WorkspaceEntries } from "./workspace/Services/WorkspaceEntries";
@@ -679,40 +676,6 @@ const makeWsRpcHandlersLayer = () =>
             orchestrationEngine.dispatch(command, { attachmentPrincipal }),
           );
         });
-
-      // Terminal-first threads are created with the generic "New terminal" placeholder.
-      // The tracker buffers per-terminal input and, once a meaningful command is submitted,
-      // surfaces a safe title used to auto-rename the thread on its first command.
-      const terminalTitleTracker = new TerminalThreadTitleTracker();
-      const resetTerminalTitleBuffer = (threadId: string, terminalId: string | null) =>
-        Effect.sync(() => terminalTitleTracker.reset(threadId, terminalId));
-      // Terminal auto-titles are best-effort metadata and must never block or fail terminal writes.
-      const maybeAutoRenameTerminalThread = Effect.fnUntraced(function* (input: {
-        threadId: string;
-        terminalId: string;
-        data: string;
-      }) {
-        const readModel = yield* orchestrationEngine.getReadModel();
-        const thread = readModel.threads.find((entry) => entry.id === input.threadId);
-        if (!thread) {
-          return;
-        }
-        const nextTitle = terminalTitleTracker.consumeWrite({
-          currentTitle: thread.title,
-          data: input.data,
-          terminalId: input.terminalId,
-          threadId: input.threadId,
-        });
-        if (!nextTitle) {
-          return;
-        }
-        yield* orchestrationEngine.dispatch({
-          type: "thread.meta.update",
-          commandId: CommandId.makeUnsafe(`server:terminal-title-rename:${crypto.randomUUID()}`),
-          threadId: ThreadId.makeUnsafe(input.threadId),
-          title: nextTitle,
-        });
-      });
 
       const stopLocalServerAndTrackedProjectRun = Effect.fnUntraced(function* (input: {
         pid: number;
@@ -1777,25 +1740,9 @@ const makeWsRpcHandlersLayer = () =>
           ),
 
         [WS_METHODS.terminalOpen]: (input) =>
-          rpcEffect(
-            resetTerminalTitleBuffer(input.threadId, input.terminalId ?? DEFAULT_TERMINAL_ID).pipe(
-              Effect.andThen(terminalManager.open(input)),
-            ),
-            "Failed to open terminal",
-          ),
+          rpcEffect(terminalManager.open(input), "Failed to open terminal"),
         [WS_METHODS.terminalWrite]: (input) =>
-          rpcEffect(
-            terminalManager.write(input).pipe(
-              Effect.tap(() =>
-                maybeAutoRenameTerminalThread({
-                  threadId: input.threadId,
-                  terminalId: input.terminalId ?? DEFAULT_TERMINAL_ID,
-                  data: input.data,
-                }).pipe(Effect.catch(() => Effect.void)),
-              ),
-            ),
-            "Failed to write terminal",
-          ),
+          rpcEffect(terminalManager.write(input), "Failed to write terminal"),
         [WS_METHODS.terminalAckOutput]: (input) =>
           rpcEffect(terminalManager.ackOutput(input), "Failed to acknowledge terminal output"),
         [WS_METHODS.terminalResize]: (input) =>
@@ -1803,19 +1750,9 @@ const makeWsRpcHandlersLayer = () =>
         [WS_METHODS.terminalClear]: (input) =>
           rpcEffect(terminalManager.clear(input), "Failed to clear terminal"),
         [WS_METHODS.terminalRestart]: (input) =>
-          rpcEffect(
-            resetTerminalTitleBuffer(input.threadId, input.terminalId ?? DEFAULT_TERMINAL_ID).pipe(
-              Effect.andThen(terminalManager.restart(input)),
-            ),
-            "Failed to restart terminal",
-          ),
+          rpcEffect(terminalManager.restart(input), "Failed to restart terminal"),
         [WS_METHODS.terminalClose]: (input) =>
-          rpcEffect(
-            resetTerminalTitleBuffer(input.threadId, input.terminalId ?? null).pipe(
-              Effect.andThen(terminalManager.close(input)),
-            ),
-            "Failed to close terminal",
-          ),
+          rpcEffect(terminalManager.close(input), "Failed to close terminal"),
         [WS_METHODS.subscribeTerminalEvents]: (_, { clientId }) =>
           // Terminal output is an ordered byte stream with renderer ACK accounting.
           // Keep this lossless: dropping chunks would create holes until reattach.

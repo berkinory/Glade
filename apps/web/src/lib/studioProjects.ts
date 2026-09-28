@@ -103,7 +103,6 @@ export function findStudioDraftThreadId(input: {
     if (
       draftThread &&
       draftThread.projectId === projectId &&
-      draftThread.entryPoint === "chat" &&
       draftThread.promotedTo === undefined
     ) {
       return draftThreadId;

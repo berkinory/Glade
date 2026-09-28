@@ -52,7 +52,6 @@ export const STATIC_KEYBINDING_COMMANDS = [
   "chat.newLatestProject",
   "chat.newChat",
   "chat.newLocal",
-  "chat.newTerminal",
   "chat.newClaude",
   "chat.newCodex",
   "chat.newCursor",

@@ -45,13 +45,11 @@ import {
   type ChatImageAttachment,
   DEFAULT_INTERACTION_MODE,
   DEFAULT_RUNTIME_MODE,
-  type ThreadPrimarySurface,
 } from "./types";
 
 export const COMPOSER_DRAFT_STORAGE_KEY = "glade:composer-drafts:v1";
 export const COMPOSER_DRAFT_STORAGE_VERSION = 6;
 export type DraftThreadEnvMode = "local" | "worktree";
-const TERMINAL_DRAFT_THREAD_MAPPING_SUFFIX = "::terminal";
 
 export const PersistedComposerImageAttachment = Schema.Struct({
   id: Schema.String,
@@ -185,7 +183,6 @@ export interface DraftThreadState {
   createdAt: string;
   runtimeMode: RuntimeMode;
   interactionMode: ProviderInteractionMode;
-  entryPoint: ThreadPrimarySurface;
   branch: string | null;
   worktreePath: string | null;
   workingDirectory?: string | null;
@@ -209,7 +206,6 @@ export interface DraftThreadMutationOptions {
   envMode?: DraftThreadEnvMode | undefined;
   runtimeMode?: RuntimeMode;
   interactionMode?: ProviderInteractionMode;
-  entryPoint?: ThreadPrimarySurface;
   // Empty string clears the staged goal; undefined leaves it unchanged.
   goal?: string;
 }
@@ -230,10 +226,7 @@ export interface ComposerDraftStoreState {
   projectDraftThreadIdByProjectId: Record<string, ThreadId>;
   stickyModelSelectionByProvider: Partial<Record<ProviderKind, ModelSelection>>;
   stickyActiveProvider: ProviderKind | null;
-  getDraftThreadByProjectId: (
-    projectId: ProjectId,
-    entryPoint?: ThreadPrimarySurface,
-  ) => ProjectDraftThread | null;
+  getDraftThreadByProjectId: (projectId: ProjectId) => ProjectDraftThread | null;
   getDraftThread: (threadId: ThreadId) => DraftThreadState | null;
   setProjectDraftThreadId: (
     projectId: ProjectId,
@@ -258,7 +251,6 @@ export interface ComposerDraftStoreState {
       envMode?: DraftThreadEnvMode;
       runtimeMode?: RuntimeMode;
       interactionMode?: ProviderInteractionMode;
-      entryPoint?: ThreadPrimarySurface;
     },
   ) => void;
   setDraftThreadContext: (
@@ -274,7 +266,7 @@ export interface ComposerDraftStoreState {
     projectId: ProjectId,
     options?: DraftThreadMutationOptions,
   ) => void;
-  clearProjectDraftThreadId: (projectId: ProjectId, entryPoint?: ThreadPrimarySurface) => void;
+  clearProjectDraftThreadId: (projectId: ProjectId) => void;
   clearProjectDraftThreads: (projectId: ProjectId) => void;
   clearProjectDraftThreadById: (projectId: ProjectId, threadId: ThreadId) => void;
   markDraftThreadPromoting: (threadId: ThreadId, promotedTo?: ThreadId) => void;
@@ -387,27 +379,6 @@ export interface ComposerDraftStoreState {
   ) => void;
 }
 
-export function projectDraftThreadMappingKey(
-  projectId: ProjectId,
-  entryPoint: ThreadPrimarySurface = "chat",
-): string {
-  return entryPoint === "terminal"
-    ? `${projectId}${TERMINAL_DRAFT_THREAD_MAPPING_SUFFIX}`
-    : projectId;
-}
-
-export function projectDraftThreadEntryPointFromKey(key: string): ThreadPrimarySurface {
-  return key.endsWith(TERMINAL_DRAFT_THREAD_MAPPING_SUFFIX) ? "terminal" : "chat";
-}
-
-export function projectIdFromDraftThreadMappingKey(key: string): ProjectId {
-  return (
-    key.endsWith(TERMINAL_DRAFT_THREAD_MAPPING_SUFFIX)
-      ? key.slice(0, -TERMINAL_DRAFT_THREAD_MAPPING_SUFFIX.length)
-      : key
-  ) as ProjectId;
-}
-
 function resolveDraftThreadCreatedAt(input: {
   createdAt: string | undefined;
   existingThread: DraftThreadState | undefined;
@@ -433,10 +404,6 @@ export function buildDraftThreadState(input: {
     options?.worktreePath === undefined
       ? (existingThread?.worktreePath ?? null)
       : (options.worktreePath ?? null);
-  const nextEntryPoint = normalizeDraftThreadEntryPoint(
-    options?.entryPoint,
-    existingThread?.entryPoint ?? "chat",
-  );
   const nextPromotedTo = existingThread?.promotedTo;
   const nextGoal =
     options?.goal === undefined ? existingThread?.goal : options.goal.trim() || undefined;
@@ -451,7 +418,6 @@ export function buildDraftThreadState(input: {
     runtimeMode: options?.runtimeMode ?? existingThread?.runtimeMode ?? DEFAULT_RUNTIME_MODE,
     interactionMode:
       options?.interactionMode ?? existingThread?.interactionMode ?? DEFAULT_INTERACTION_MODE,
-    entryPoint: nextEntryPoint,
     branch:
       options?.branch === undefined ? (existingThread?.branch ?? null) : (options.branch ?? null),
     worktreePath: nextWorktreePath,
@@ -483,7 +449,6 @@ export function draftThreadStatesEqual(
     left.createdAt === right.createdAt &&
     left.runtimeMode === right.runtimeMode &&
     left.interactionMode === right.interactionMode &&
-    left.entryPoint === right.entryPoint &&
     left.branch === right.branch &&
     left.worktreePath === right.worktreePath &&
     (left.workingDirectory ?? null) === (right.workingDirectory ?? null) &&
@@ -851,13 +816,6 @@ export function shouldRemoveDraft(draft: ComposerThreadDraftState): boolean {
     draft.enableComputerControl === undefined &&
     draft.computerControlMode === undefined
   );
-}
-
-export function normalizeDraftThreadEntryPoint(
-  value: unknown,
-  fallback: ThreadPrimarySurface = "chat",
-) {
-  return value === "terminal" || value === "chat" ? value : fallback;
 }
 
 const EMPTY_IMAGES: ComposerImageAttachment[] = [];

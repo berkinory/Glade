@@ -15,14 +15,7 @@ import { PrStateChip } from "../pullRequest/PrStateChip";
 import { resolveThreadStatusPill } from "../Sidebar.logic";
 import { ThreadStatusPillChip } from "../ThreadStatusPillChip";
 import { ProviderIcon } from "../ProviderIcon";
-import {
-  GitBranchIcon,
-  LoaderIcon,
-  PaperclipIcon,
-  PinFilledIcon,
-  TerminalIcon,
-  WorktreeIcon,
-} from "~/lib/icons";
+import { GitBranchIcon, LoaderIcon, PaperclipIcon, PinFilledIcon, WorktreeIcon } from "~/lib/icons";
 import { resolveThreadEnvironmentPresentation } from "~/lib/threadEnvironment";
 import { formatRelativeTime } from "~/lib/relativeTime";
 import { cn } from "~/lib/utils";
@@ -48,19 +41,7 @@ export interface KanbanCardViewProps {
   nowMs?: number;
 }
 
-/**
- * At-a-glance status tag. Terminal-first threads get a dedicated "Terminal" tag —
- * an idle terminal is not a draft, so column status would be misleading.
- */
 function KanbanCardColumnLabel({ card }: { card: KanbanCard }) {
-  if (card.isTerminal) {
-    return (
-      <span className="flex shrink-0 items-center gap-1 text-ui-sm leading-snug text-muted-foreground/80">
-        <TerminalIcon className="size-3 shrink-0" aria-hidden />
-        Terminal
-      </span>
-    );
-  }
   return (
     <span className="flex shrink-0 items-center gap-1 text-ui-sm leading-snug text-muted-foreground/80">
       <KanbanStatusIcon column={card.column} className="size-3" />
@@ -163,15 +144,13 @@ function KanbanCardViewComponent({
         </span>
       ) : null}
       <span className="flex min-w-0 items-center gap-2 pt-0.5">
-        {card.isTerminal ? null : (
-          <ProviderIcon
-            provider={card.provider}
-            className="size-3.5 shrink-0 opacity-80"
-            fallback={
-              <span className="size-3.5 shrink-0 rounded-full border border-dashed border-muted-foreground/40" />
-            }
-          />
-        )}
+        <ProviderIcon
+          provider={card.provider}
+          className="size-3.5 shrink-0 opacity-80"
+          fallback={
+            <span className="size-3.5 shrink-0 rounded-full border border-dashed border-muted-foreground/40" />
+          }
+        />
         {card.branch ? (
           <span className="flex min-w-0 items-center gap-1 text-ui-sm leading-snug text-muted-foreground/70">
             <GitBranchIcon className="size-3 shrink-0" aria-hidden />

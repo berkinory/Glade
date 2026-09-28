@@ -28,7 +28,6 @@ import {
   resolveLatestProjectTargetIdWithFallback,
   resolveNewThreadTarget,
 } from "../lib/projectShortcutTargets";
-import { resolveInheritedThreadContext } from "../lib/threadBootstrap";
 import { isTerminalFocused } from "../lib/terminalFocus";
 import { serverConfigQueryOptions } from "../lib/serverReactQuery";
 import { startFreshChatForActiveSurface } from "../lib/startContainerChat";
@@ -412,20 +411,6 @@ function ChatRouteGlobalShortcuts() {
         event.preventDefault();
         event.stopPropagation();
         void handleNewThread(latestUsableProjectId);
-        return;
-      }
-
-      if (command === "chat.newTerminal") {
-        const target = resolveNewThreadTarget({ currentProjectId, latestUsableProjectId });
-        if (!target) return;
-        event.preventDefault();
-        event.stopPropagation();
-        void handleNewThread(target.projectId, {
-          ...(target.inheritContext
-            ? resolveInheritedThreadContext({ activeThread, activeDraftThread })
-            : {}),
-          entryPoint: "terminal",
-        });
         return;
       }
 

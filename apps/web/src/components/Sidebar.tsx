@@ -27,7 +27,6 @@ import {
   SearchIcon,
   SettingsIcon,
   StopFilledIcon,
-  TerminalIcon,
   Trash2,
   TriangleAlertIcon,
   WorktreeIcon,
@@ -1563,7 +1562,6 @@ export default function Sidebar() {
   const newChatShortcutLabel =
     shortcutLabelForCommand(keybindings, "chat.newChat") ??
     shortcutLabelForCommand(keybindings, "chat.newLocal");
-  const newTerminalThreadShortcutLabel = shortcutLabelForCommand(keybindings, "chat.newTerminal");
   const searchShortcutLabel =
     shortcutLabelForCommand(keybindings, "sidebar.search") ??
     (isMacNavigatorPlatform() ? "⌘K" : "Ctrl+K");
@@ -2687,7 +2685,7 @@ export default function Sidebar() {
       }
 
       const draftStore = useComposerDraftStore.getState();
-      const draftThread = draftStore.getDraftThreadByProjectId(projectId, "chat");
+      const draftThread = draftStore.getDraftThreadByProjectId(projectId);
       const draftComposer = draftThread
         ? (draftStore.draftsByThreadId[draftThread.threadId] ?? null)
         : null;
@@ -4878,7 +4876,6 @@ export default function Sidebar() {
             render={
               <SidebarMenuSubButton
                 render={<div role="button" tabIndex={0} />}
-                data-thread-entry-point={threadEntryPoint}
                 size="sm"
                 isActive={isActive}
                 className={cn(
@@ -4973,7 +4970,7 @@ export default function Sidebar() {
     );
   }
 
-  // Pull requests / new terminal thread / new thread for one project. Shared by the tree's
+  // Pull requests / new thread for one project. Shared by the tree's
   // hover toolbar and the rail layout's Spaces drill-in header.
   function renderProjectThreadActions(project: (typeof sortedProjects)[number]) {
     return (
@@ -4992,21 +4989,6 @@ export default function Sidebar() {
               to: "/pull-requests",
               search: { involvement: "all", state: "open", projectId: project.id },
             });
-          }}
-        />
-        <SidebarIconButton
-          icon={TerminalIcon}
-          label={`Create new terminal thread in ${project.name}`}
-          tooltip={
-            newTerminalThreadShortcutLabel
-              ? `New terminal thread (${newTerminalThreadShortcutLabel})`
-              : "New terminal thread"
-          }
-          tooltipSide="top"
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            void handleNewThread(project.id, { entryPoint: "terminal" });
           }}
         />
         <SidebarIconButton

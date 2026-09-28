@@ -103,7 +103,6 @@ describe("composerDraftStore project draft thread mapping", () => {
     expect(useComposerDraftStore.getState().getDraftThreadByProjectId(projectId)).toEqual({
       threadId,
       projectId,
-      entryPoint: "chat",
       branch: "feature/test",
       worktreePath: "/tmp/worktree-test",
       workingDirectory: null,
@@ -115,7 +114,6 @@ describe("composerDraftStore project draft thread mapping", () => {
     });
     expect(useComposerDraftStore.getState().getDraftThread(threadId)).toEqual({
       projectId,
-      entryPoint: "chat",
       branch: "feature/test",
       worktreePath: "/tmp/worktree-test",
       workingDirectory: null,
@@ -158,50 +156,33 @@ describe("composerDraftStore project draft thread mapping", () => {
     expect(useComposerDraftStore.getState().getDraftThread(threadId)?.goal).toBeUndefined();
   });
 
-  it("registers a mapping-less terminal draft for staged navigation", () => {
+  it("registers a standalone draft for staged navigation", () => {
     const store = useComposerDraftStore.getState();
 
     store.registerDraftThread(threadId, {
       projectId,
-      entryPoint: "terminal",
       envMode: "local",
       createdAt: "2026-01-01T00:00:00.000Z",
     });
 
     expect(useComposerDraftStore.getState().getDraftThread(threadId)).toMatchObject({
       projectId,
-      entryPoint: "terminal",
       envMode: "local",
       createdAt: "2026-01-01T00:00:00.000Z",
     });
-    expect(useComposerDraftStore.getState().getDraftThreadByProjectId(projectId, "terminal")).toBe(
-      null,
-    );
+    expect(useComposerDraftStore.getState().getDraftThreadByProjectId(projectId)).toBeNull();
   });
 
-  it("tracks chat and terminal draft threads independently for the same project", () => {
+  it("keeps one mapped draft per project", () => {
     const store = useComposerDraftStore.getState();
-    store.setProjectDraftThreadId(projectId, threadId, { entryPoint: "chat" });
-    store.setProjectDraftThreadId(projectId, otherThreadId, { entryPoint: "terminal" });
+    store.setProjectDraftThreadId(projectId, threadId);
+    store.setProjectDraftThreadId(projectId, otherThreadId);
 
-    expect(
-      useComposerDraftStore.getState().getDraftThreadByProjectId(projectId, "chat"),
-    ).toMatchObject({
-      threadId,
-      projectId,
-      entryPoint: "chat",
-    });
-    expect(
-      useComposerDraftStore.getState().getDraftThreadByProjectId(projectId, "terminal"),
-    ).toMatchObject({
+    expect(useComposerDraftStore.getState().getDraftThreadByProjectId(projectId)).toMatchObject({
       threadId: otherThreadId,
       projectId,
-      entryPoint: "terminal",
     });
-    expect(useComposerDraftStore.getState().getDraftThread(threadId)?.entryPoint).toBe("chat");
-    expect(useComposerDraftStore.getState().getDraftThread(otherThreadId)?.entryPoint).toBe(
-      "terminal",
-    );
+    expect(useComposerDraftStore.getState().getDraftThread(threadId)).toBeNull();
   });
 
   it("clears only matching project draft mapping entries", () => {

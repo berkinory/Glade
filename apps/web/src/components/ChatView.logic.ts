@@ -24,7 +24,6 @@ import { getDefaultModel, normalizeModelSlug } from "@glade/shared/model";
 import { approvalSessionGrantWidensSessionPolicy } from "@glade/shared/approvalSessionGrant";
 import { buildGladeBranchName } from "@glade/shared/git";
 import { isGenericChatThreadTitle } from "@glade/shared/chatThreads";
-import { isGenericTerminalThreadTitle } from "@glade/shared/terminalThreads";
 import {
   type ChatMessage,
   type SessionPhase,
@@ -798,7 +797,7 @@ export function buildLocalDraftThread(
     id: threadId,
     codexThreadId: null,
     projectId: draftThread.projectId,
-    title: draftThread.entryPoint === "terminal" ? "New terminal" : "New thread",
+    title: "New thread",
     modelSelection: fallbackModelSelection,
     runtimeMode: draftThread.runtimeMode,
     interactionMode: draftThread.interactionMode,
@@ -1868,34 +1867,6 @@ export function resolveProjectScriptTerminalTarget(options: {
     shouldCreateNewTerminal,
     terminalId: shouldCreateNewTerminal ? options.createTerminalId() : options.baseTerminalId,
   };
-}
-
-export function shouldAutoDeleteTerminalThreadOnLastClose(options: {
-  isLastTerminal: boolean;
-  isServerThread: boolean;
-  terminalEntryPoint: ThreadPrimarySurface;
-  thread:
-    | Pick<Thread, "activities" | "latestTurn" | "messages" | "proposedPlans" | "session" | "title">
-    | null
-    | undefined;
-}): boolean {
-  const { thread } = options;
-  if (
-    !options.isLastTerminal ||
-    !options.isServerThread ||
-    options.terminalEntryPoint !== "terminal" ||
-    !thread
-  ) {
-    return false;
-  }
-  return (
-    isGenericTerminalThreadTitle(thread.title) &&
-    thread.messages.length === 0 &&
-    thread.latestTurn === null &&
-    thread.session === null &&
-    thread.activities.length === 0 &&
-    thread.proposedPlans.length === 0
-  );
 }
 
 export interface ThreadBreadcrumb {

@@ -61,12 +61,11 @@ function ChatIndexRouteView() {
   // /studio surface, and restoring one from "/" would silently switch the user into the Studio
   // segment. A Studio lastThreadRoute falls through to a fresh home-chat draft instead.
   const studioProjectIds = collectStudioProjectIds(projects, workspacePaths);
-  // Only plain, still-unsent chat drafts qualify as restore targets: a non-"chat" entry point
-  // isn't a home-chat draft, and `promotedTo` means the draft already became a real thread, so
+  // Only still-unsent drafts qualify as restore targets: `promotedTo` means the draft already became a real thread, so
   // its stale id is no longer valid (matches the filtering findStudioDraftThreadId applies).
   const draftProjectIdByThreadId = new Map<string, ProjectId>();
   for (const [threadId, draft] of Object.entries(draftThreadsByThreadId)) {
-    if (draft.entryPoint === "chat" && draft.promotedTo === undefined) {
+    if (draft.promotedTo === undefined) {
       draftProjectIdByThreadId.set(threadId, draft.projectId);
     }
   }
@@ -91,7 +90,7 @@ function ChatIndexRouteView() {
       : null;
     const lastThreadRoute = landingSpace
       ? rememberedDraftId &&
-        rememberedDraft?.entryPoint === "chat" &&
+        rememberedDraft &&
         !rememberedDraft.promotedTo &&
         rememberedDraftProject &&
         isHomeChatContainerProject(rememberedDraftProject, workspacePaths)

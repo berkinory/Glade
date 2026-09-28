@@ -3,7 +3,6 @@
 // Layer: Shared terminal metadata utilities
 // Exports: command parsing plus resolved terminal presentation metadata for web/server consumers.
 
-export const GENERIC_TERMINAL_THREAD_TITLE = "New terminal";
 export const DOCK_TERMINAL_SCOPE_PREFIX = "dock-terminal:";
 
 export function dockTerminalScopeId(hostThreadId: string): string {
@@ -35,10 +34,6 @@ export interface TerminalCommandIdentity {
 
 export interface ResolvedTerminalVisualIdentity extends TerminalCommandIdentity {
   state: TerminalVisualState;
-}
-
-export function isGenericTerminalThreadTitle(title: string | null | undefined): boolean {
-  return (title ?? "").trim() === GENERIC_TERMINAL_THREAD_TITLE;
 }
 
 const MAX_TERMINAL_INPUT_BUFFER_LENGTH = 512;
@@ -348,11 +343,6 @@ export function deriveTerminalCommandIdentity(command: string): TerminalCommandI
     : null;
 }
 
-// Keep the legacy string-only helper for thread-title renames and narrow call sites.
-export function deriveTerminalTitleFromCommand(command: string): string | null {
-  return deriveTerminalCommandIdentity(command)?.title ?? null;
-}
-
 // Consume terminal input incrementally and emit terminal identity only when Enter submits a command.
 export function consumeTerminalIdentityInput(
   buffer: string,
@@ -390,18 +380,6 @@ export function consumeTerminalIdentityInput(
   return {
     buffer: nextBuffer.slice(-MAX_TERMINAL_INPUT_BUFFER_LENGTH),
     identity: nextIdentity,
-  };
-}
-
-// Preserve the older title-only input API for server thread-title tracking.
-export function consumeTerminalTitleInput(
-  buffer: string,
-  data: string,
-): { buffer: string; title: string | null } {
-  const nextIdentityState = consumeTerminalIdentityInput(buffer, data);
-  return {
-    buffer: nextIdentityState.buffer,
-    title: nextIdentityState.identity?.title ?? null,
   };
 }
 

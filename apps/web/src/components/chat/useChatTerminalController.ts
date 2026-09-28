@@ -4,42 +4,30 @@ import { useCallback, useEffect, useState } from "react";
 import { resolveTerminalNewAction } from "../../lib/terminalNewAction";
 import { selectThreadTerminalState, useTerminalStateStore } from "../../terminalStateStore";
 import { collectTerminalIdsFromLayout } from "../../terminalPaneLayout";
-import { MAX_TERMINALS_PER_GROUP, type Thread } from "../../types";
+import { MAX_TERMINALS_PER_GROUP } from "../../types";
 import {
   confirmTerminalTabClose,
   resolveTerminalCloseTitle,
   shouldPromptForTerminalClose,
 } from "../../lib/terminalCloseConfirmation";
 import { readNativeApi } from "../../nativeApi";
-import { shouldAutoDeleteTerminalThreadOnLastClose } from "../ChatView.logic";
 import { randomTerminalId } from "../terminal/terminalIds";
 import { disposeAndCloseTerminalSession } from "../terminal/terminalSession";
-
-type AutoDeleteCandidateThread = Pick<
-  Thread,
-  "activities" | "latestTurn" | "messages" | "proposedPlans" | "session" | "title"
->;
 
 interface UseChatTerminalControllerInput {
   readonly threadId: ThreadId;
   readonly activeThreadId: ThreadId | null;
-  readonly activeThread: AutoDeleteCandidateThread | null | undefined;
   readonly activeProjectPresent: boolean;
   readonly isFocusedPane: boolean;
-  readonly isServerThread: boolean;
   readonly confirmTerminalClose: boolean;
-  readonly onDeletePlaceholderThread: (threadId: ThreadId) => Promise<void> | void;
 }
 
 export function useChatTerminalController({
   threadId,
   activeThreadId,
-  activeThread,
   activeProjectPresent,
   isFocusedPane,
-  isServerThread,
   confirmTerminalClose,
-  onDeletePlaceholderThread,
 }: UseChatTerminalControllerInput) {
   const terminalState = useTerminalStateStore((state) =>
     selectThreadTerminalState(state.terminalStateByThreadId, threadId),
@@ -247,12 +235,6 @@ export function useChatTerminalController({
       const api = readNativeApi();
       if (!activeThreadId || !api) return;
       const isFinalTerminal = terminalState.terminalIds.length <= 1;
-      const shouldDeletePlaceholderThread = shouldAutoDeleteTerminalThreadOnLastClose({
-        isLastTerminal: isFinalTerminal,
-        isServerThread,
-        terminalEntryPoint: terminalState.entryPoint,
-        thread: activeThread,
-      });
       const confirmed = await confirmTerminalTabClose({
         api,
         enabled: shouldPromptForTerminalClose({
@@ -266,7 +248,6 @@ export function useChatTerminalController({
           terminalLabelsById: terminalState.terminalLabelsById,
           terminalTitleOverridesById: terminalState.terminalTitleOverridesById,
         }),
-        willDeleteThread: shouldDeletePlaceholderThread,
       });
       if (!confirmed) return;
       disposeAndCloseTerminalSession({
@@ -277,19 +258,12 @@ export function useChatTerminalController({
       });
       closeTerminalInStore(activeThreadId, terminalId);
       requestTerminalFocus();
-      if (shouldDeletePlaceholderThread) {
-        void onDeletePlaceholderThread(activeThreadId);
-      }
     },
     [
-      activeThread,
       activeThreadId,
       closeTerminalInStore,
       confirmTerminalClose,
-      isServerThread,
-      onDeletePlaceholderThread,
       requestTerminalFocus,
-      terminalState.entryPoint,
       terminalState.runningTerminalIds,
       terminalState.terminalAttentionStatesById,
       terminalState.terminalIds.length,

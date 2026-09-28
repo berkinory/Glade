@@ -15,7 +15,6 @@ import { isHomeChatContainerProject } from "../../lib/chatProjects";
 import { isStudioContainerProject } from "../../lib/studioProjects";
 import { useStore } from "../../store";
 import { createSidebarDisplayThreadsSelector } from "../../storeSelectors";
-import { useTerminalStateStore } from "../../terminalStateStore";
 import { useWorkspacePathsStore } from "../../workspacePathsStore";
 import { sortProjectsForSidebar } from "../Sidebar.logic";
 import {
@@ -91,19 +90,6 @@ export function useKanbanBoard(): KanbanBoard {
   const optimisticDispatchByThreadId = useKanbanUiStore(
     (state) => state.optimisticDispatchByThreadId,
   );
-  const terminalStateByThreadId = useTerminalStateStore((state) => state.terminalStateByThreadId);
-
-  // Terminal-first threads are terminals, not provider chats — same rule as the
-  // sidebar, which swaps the provider avatar for the terminal glyph.
-  const terminalEntryThreadIds = useMemo(() => {
-    const ids = new Set<string>();
-    for (const [threadId, terminalState] of Object.entries(terminalStateByThreadId)) {
-      if (terminalState.entryPoint === "terminal") {
-        ids.add(threadId);
-      }
-    }
-    return ids;
-  }, [terminalStateByThreadId]);
 
   // Drop persisted manual draft orders for projects that no longer exist, so the
   // localStorage payload doesn't grow forever as projects come and go.
@@ -208,9 +194,8 @@ export function useKanbanBoard(): KanbanBoard {
   const draftThreads = useMemo(() => {
     const snapshots: KanbanDraftThreadSnapshot[] = [];
     for (const [threadId, draftThread] of Object.entries(draftThreadsByThreadId)) {
-      // Promoted drafts already surface through their durable thread; terminal-first
-      // drafts have no chat prompt to track on the board.
-      if (draftThread.promotedTo || draftThread.entryPoint !== "chat") {
+      // Promoted drafts already surface through their durable thread.
+      if (draftThread.promotedTo) {
         continue;
       }
       snapshots.push({
@@ -236,7 +221,6 @@ export function useKanbanBoard(): KanbanBoard {
         composerDraftByThreadId,
         draftOrderByProjectId,
         projectIdAliases,
-        terminalEntryThreadIds,
         optimisticDispatchByThreadId,
       }),
     [
@@ -246,7 +230,6 @@ export function useKanbanBoard(): KanbanBoard {
       optimisticDispatchByThreadId,
       projectIdAliases,
       projects,
-      terminalEntryThreadIds,
       threads,
     ],
   );

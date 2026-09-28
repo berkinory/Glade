@@ -30,11 +30,8 @@ import {
 import {
   hydratePastedTextsFromPersisted,
   normalizeAssistantSelections,
-  normalizeDraftThreadEntryPoint,
   normalizeFileComments,
   normalizeTerminalContextsForThread,
-  projectDraftThreadEntryPointFromKey,
-  projectIdFromDraftThreadMappingKey,
   PersistedComposerImageAttachment,
   type ComposerDraftStoreState,
   type ComposerPromptHistorySavedDraft,
@@ -69,7 +66,7 @@ import {
 import { DEFAULT_INTERACTION_MODE, DEFAULT_RUNTIME_MODE } from "./types";
 
 const DraftThreadEnvModeSchema = Schema.Literals(["local", "worktree"]);
-const DraftThreadEntryPointSchema = Schema.Literals(["chat", "terminal"]);
+const LEGACY_TERMINAL_DRAFT_MAPPING_SUFFIX = "::terminal";
 
 function normalizePersistedModelSelectionMap(
   value: unknown,
@@ -347,7 +344,6 @@ const PersistedDraftThreadState = Schema.Struct({
   createdAt: Schema.String,
   runtimeMode: RuntimeMode,
   interactionMode: ProviderInteractionMode,
-  entryPoint: DraftThreadEntryPointSchema.pipe(Schema.withDecodingDefault(() => "chat")),
   branch: Schema.NullOr(Schema.String),
   worktreePath: Schema.NullOr(Schema.String),
   workingDirectory: Schema.optionalKey(Schema.NullOr(Schema.String)),
@@ -886,7 +882,6 @@ function normalizePersistedDraftThreads(
         interactionMode: Schema.is(ProviderInteractionMode)(candidateDraftThread.interactionMode)
           ? candidateDraftThread.interactionMode
           : DEFAULT_INTERACTION_MODE,
-        entryPoint: normalizeDraftThreadEntryPoint(candidateDraftThread.entryPoint),
         branch: typeof branch === "string" ? branch : null,
         worktreePath: normalizedWorktreePath,
         workingDirectory: typeof workingDirectory === "string" ? workingDirectory : null,
@@ -903,25 +898,34 @@ function normalizePersistedDraftThreads(
     rawProjectDraftThreadIdByProjectId &&
     typeof rawProjectDraftThreadIdByProjectId === "object"
   ) {
-    for (const [mappingKey, threadId] of Object.entries(
-      rawProjectDraftThreadIdByProjectId as Record<string, unknown>,
-    )) {
-      const projectId = projectIdFromDraftThreadMappingKey(mappingKey);
-      const entryPoint = projectDraftThreadEntryPointFromKey(mappingKey);
+    const mappings = Object.entries(rawProjectDraftThreadIdByProjectId as Record<string, unknown>);
+    // Prefer the existing chat draft when both old draft slots exist. Keep the old
+    // terminal draft as a standalone draft so its composer content is not lost.
+    mappings.sort(
+      ([left], [right]) =>
+        Number(left.endsWith(LEGACY_TERMINAL_DRAFT_MAPPING_SUFFIX)) -
+        Number(right.endsWith(LEGACY_TERMINAL_DRAFT_MAPPING_SUFFIX)),
+    );
+    for (const [mappingKey, threadId] of mappings) {
+      const isLegacyTerminalMapping = mappingKey.endsWith(LEGACY_TERMINAL_DRAFT_MAPPING_SUFFIX);
+      const projectId = isLegacyTerminalMapping
+        ? mappingKey.slice(0, -LEGACY_TERMINAL_DRAFT_MAPPING_SUFFIX.length)
+        : mappingKey;
       if (
         typeof projectId === "string" &&
         projectId.length > 0 &&
         typeof threadId === "string" &&
         threadId.length > 0
       ) {
-        projectDraftThreadIdByProjectId[mappingKey] = threadId as ThreadId;
+        if (!projectDraftThreadIdByProjectId[projectId]) {
+          projectDraftThreadIdByProjectId[projectId] = threadId as ThreadId;
+        }
         if (!draftThreadsByThreadId[threadId as ThreadId]) {
           draftThreadsByThreadId[threadId as ThreadId] = {
             projectId: projectId as ProjectId,
             createdAt: new Date().toISOString(),
             runtimeMode: DEFAULT_RUNTIME_MODE,
             interactionMode: DEFAULT_INTERACTION_MODE,
-            entryPoint,
             branch: null,
             worktreePath: null,
             workingDirectory: null,
@@ -931,11 +935,6 @@ function normalizePersistedDraftThreads(
           draftThreadsByThreadId[threadId as ThreadId] = {
             ...draftThreadsByThreadId[threadId as ThreadId]!,
             projectId: projectId as ProjectId,
-          };
-        } else if (draftThreadsByThreadId[threadId as ThreadId]?.entryPoint !== entryPoint) {
-          draftThreadsByThreadId[threadId as ThreadId] = {
-            ...draftThreadsByThreadId[threadId as ThreadId]!,
-            entryPoint,
           };
         }
       }

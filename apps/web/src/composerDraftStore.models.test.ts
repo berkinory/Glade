@@ -47,7 +47,7 @@ describe("resolvePreferredComposerModelSelection", () => {
     );
   });
 
-  it("uses only the active provider selection for terminal-first promotion", () => {
+  it("uses only the active provider selection for draft promotion", () => {
     const cursorSelection = modelSelection("cursor", "cursor-auto", {
       reasoningEffort: "high",
     });

@@ -25,9 +25,7 @@ export function useHandleNewChat() {
     const result = await startContainerChat({
       ensureProjectId: () => ensureHomeChatProject({ homeDir, chatWorkspaceRoot }),
       handleNewThread: (projectId, threadOptions) => {
-        const storedDraft = useComposerDraftStore
-          .getState()
-          .getDraftThreadByProjectId(projectId, "chat");
+        const storedDraft = useComposerDraftStore.getState().getDraftThreadByProjectId(projectId);
         const draftBelongsToAnotherSpace =
           storedDraft !== null &&
           useSpacesUiStore.getState().getChatThreadSpaceId(storedDraft.threadId) !== spaceId;

@@ -23,16 +23,8 @@ export function resolveTerminalCloseTitle(options: {
   );
 }
 
-function buildTerminalCloseConfirmationMessage(options: {
-  terminalTitle: string | null | undefined;
-  willDeleteThread: boolean;
-}): string {
-  return [
-    `Close ${formatTerminalCloseSubject(options.terminalTitle)}?`,
-    options.willDeleteThread
-      ? "This permanently clears the terminal history for this tab and deletes the empty terminal thread."
-      : "This permanently clears the terminal history for this tab.",
-  ].join("\n");
+function buildTerminalCloseConfirmationMessage(terminalTitle: string | null | undefined): string {
+  return `Close ${formatTerminalCloseSubject(terminalTitle)}?\nThis permanently clears the terminal history for this tab.`;
 }
 
 export function shouldPromptForTerminalClose(options: {
@@ -54,16 +46,10 @@ export async function confirmTerminalTabClose(options: {
   api: Pick<NativeApi, "dialogs"> | null | undefined;
   enabled: boolean;
   terminalTitle: string | null | undefined;
-  willDeleteThread?: boolean;
 }): Promise<boolean> {
   if (!options.enabled || !options.api) {
     return true;
   }
 
-  return options.api.dialogs.confirm(
-    buildTerminalCloseConfirmationMessage({
-      terminalTitle: options.terminalTitle,
-      willDeleteThread: options.willDeleteThread ?? false,
-    }),
-  );
+  return options.api.dialogs.confirm(buildTerminalCloseConfirmationMessage(options.terminalTitle));
 }

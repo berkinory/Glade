@@ -112,11 +112,6 @@ const AVAILABLE_NOW_DEFINITIONS: readonly ShortcutDefinition[] = [
     description: "Open the empty chat landing view.",
   },
   {
-    command: "chat.newTerminal",
-    label: "New terminal thread",
-    description: "Create a thread that opens directly into terminal mode.",
-  },
-  {
     command: "chat.newClaude",
     label: "New Claude thread",
     description: "Start a fresh thread with Claude selected.",

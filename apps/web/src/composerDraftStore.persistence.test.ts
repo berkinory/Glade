@@ -164,12 +164,11 @@ describe("composerDraftStore persisted-state hydration", () => {
       projectDraftThreadIdByProjectId: { [mappingKey]: threadId },
     });
 
-    expect(hydrated.projectDraftThreadIdByProjectId).toEqual({ [mappingKey]: threadId });
+    expect(hydrated.projectDraftThreadIdByProjectId).toEqual({ [projectId]: threadId });
     expect(hydrated.draftThreadsByThreadId[threadId]).toMatchObject({
       projectId,
       runtimeMode: "full-access",
       interactionMode: "default",
-      entryPoint: "terminal",
     });
     expect(hydrated.draftsByThreadId[threadId]?.assistantSelections).toEqual([
       {
@@ -187,6 +186,27 @@ describe("composerDraftStore persisted-state hydration", () => {
         text: "selected file text",
       },
     ]);
+  });
+
+  it("keeps both drafts when migrating a project with chat and terminal slots", () => {
+    const projectId = ProjectId.makeUnsafe("project-two-legacy-slots");
+    const chatThreadId = ThreadId.makeUnsafe("thread-chat-draft");
+    const terminalThreadId = ThreadId.makeUnsafe("thread-terminal-draft");
+    const hydrated = normalizeCurrentPersistedComposerDraftStoreState({
+      draftsByThreadId: {
+        [chatThreadId]: { prompt: "chat draft" },
+        [terminalThreadId]: { prompt: "terminal draft" },
+      },
+      draftThreadsByThreadId: {},
+      projectDraftThreadIdByProjectId: {
+        [projectId]: chatThreadId,
+        [`${projectId}::terminal`]: terminalThreadId,
+      },
+    });
+
+    expect(hydrated.projectDraftThreadIdByProjectId).toEqual({ [projectId]: chatThreadId });
+    expect(hydrated.draftThreadsByThreadId[terminalThreadId]?.projectId).toBe(projectId);
+    expect(hydrated.draftsByThreadId[terminalThreadId]?.prompt).toBe("terminal draft");
   });
 
   it("preserves AI-reviewed auto mode during hydration", () => {
@@ -207,7 +227,6 @@ describe("composerDraftStore persisted-state hydration", () => {
           createdAt: "2026-07-25T00:00:00.000Z",
           runtimeMode: "auto",
           interactionMode: "default",
-          entryPoint: "chat",
           branch: null,
           worktreePath: null,
           workingDirectory: null,
@@ -268,7 +287,6 @@ describe("composerDraftStore persisted-state hydration", () => {
           createdAt: "2026-08-13T00:00:00.000Z",
           runtimeMode: "full-access",
           interactionMode: "default",
-          entryPoint: "chat",
           branch: null,
           worktreePath: null,
           workingDirectory: null,
@@ -280,7 +298,6 @@ describe("composerDraftStore persisted-state hydration", () => {
           createdAt: "2026-08-13T00:00:00.000Z",
           runtimeMode: "full-access",
           interactionMode: "default",
-          entryPoint: "chat",
           branch: null,
           worktreePath: null,
           workingDirectory: null,
@@ -310,7 +327,6 @@ describe("composerDraftStore persisted-state hydration", () => {
           createdAt: "2026-08-13T00:00:00.000Z",
           runtimeMode: "full-access",
           interactionMode: "default",
-          entryPoint: "chat",
           branch: null,
           worktreePath: null,
           workingDirectory: null,

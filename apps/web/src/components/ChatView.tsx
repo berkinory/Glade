@@ -113,7 +113,6 @@ import { useComposerImageIntake } from "../hooks/useComposerImageIntake";
 import { useComposerSlashCommands } from "../hooks/useComposerSlashCommands";
 import { useClaudeContextCompaction } from "../hooks/useClaudeContextCompaction";
 import { useDiffRouteSearch } from "../hooks/useDiffRouteSearch";
-import { useHandleNewChat } from "../hooks/useHandleNewChat";
 import { useHandleNewThread } from "../hooks/useHandleNewThread";
 import { useTheme } from "../hooks/useTheme";
 import { useThreadHandoff } from "../hooks/useThreadHandoff";
@@ -141,7 +140,6 @@ import {
   deriveCumulativeCostUsd,
   deriveLatestContextWindowState,
 } from "../lib/contextWindow";
-import { reconcileDeletedThreadFromClient } from "../lib/deletedThreadClientReconciliation";
 import {
   normalizeRuntimeModeForProvider,
   providerModelSupportsAutoRuntimeMode,
@@ -182,19 +180,13 @@ import {
   isLatestTurnSettled,
   type ActiveTaskListState,
 } from "../session-logic";
-import {
-  resolveSplitViewFocusedThreadId,
-  selectSplitView,
-  useSplitViewStore,
-  type SplitViewPanePanelState,
-} from "../splitViewStore";
+import { type SplitViewPanePanelState } from "../splitViewStore";
 import { useStore } from "../store";
 import {
   createComposerThreadMentionSourcesSelector,
   createProjectSelector,
   createThreadSelector,
 } from "../storeSelectors";
-import { useTerminalStateStore } from "../terminalStateStore";
 import { getThreadFromState } from "../threadDerivation";
 import { buildThreadSubscribeInput } from "../threadDetailResumeCursors";
 import {
@@ -565,13 +557,8 @@ export default function ChatView({
   const composerTranscriptInsetPx = composerTranscriptBottomInsetPx(composerOverlayHeightPx);
   const navigate = useNavigate();
   const { handleNewThread } = useHandleNewThread();
-  const { handleNewChat } = useHandleNewChat();
   const { createThreadHandoff } = useThreadHandoff();
   const rawSearch = useDiffRouteSearch();
-  const activeSplitView = useSplitViewStore(
-    useMemo(() => selectSplitView(rawSearch.splitViewId ?? null), [rawSearch.splitViewId]),
-  );
-  const removeThreadFromSplitViews = useSplitViewStore((store) => store.removeThreadFromSplitViews);
   const { resolvedTheme } = useTheme();
   const queryClient = useQueryClient();
   const createWorktreeMutation = useMutation(
@@ -956,56 +943,6 @@ export default function ChatView({
   const activeProject = useStore(
     useMemo(() => createProjectSelector(activeProjectId), [activeProjectId]),
   );
-  const deletePlaceholderTerminalThread = useCallback(
-    async (terminalThreadId: ThreadId) => {
-      const api = readNativeApi();
-      if (!api) return;
-      // Body kept in a nested function: React Compiler's BuildHIR cannot lower a value block
-      // (`?.`, `??`, ternary) that sits directly inside a `try`, and one of them makes the
-      // whole component bail out of compilation. The catch below still sees every rejection.
-      const deleteEmptyTerminalThread = async () => {
-        await api.orchestration.dispatchCommand({
-          type: "thread.delete",
-          commandId: newCommandId(),
-          threadId: terminalThreadId,
-        });
-        void reconcileDeletedThreadFromClient({
-          threadId: terminalThreadId,
-          removeDeletedThreadFromClientState:
-            useStore.getState().removeDeletedThreadFromClientState,
-        });
-        useComposerDraftStore.getState().clearDraftThread(terminalThreadId);
-        useTerminalStateStore.getState().clearTerminalState(terminalThreadId);
-        removeThreadFromSplitViews(terminalThreadId);
-        if (activeSplitView) {
-          const nextSplitView = useSplitViewStore.getState().splitViewsById[activeSplitView.id];
-          const nextThreadId = nextSplitView
-            ? resolveSplitViewFocusedThreadId(nextSplitView)
-            : null;
-          if (nextSplitView && nextThreadId) {
-            await navigate({
-              to: "/$threadId",
-              params: { threadId: nextThreadId },
-              replace: true,
-              search: () => ({ splitViewId: nextSplitView.id }),
-            });
-            return;
-          }
-        }
-        await handleNewChat();
-      };
-
-      try {
-        await deleteEmptyTerminalThread();
-      } catch (error) {
-        console.error("Failed to delete empty terminal thread after closing its last terminal", {
-          threadId: terminalThreadId,
-          error,
-        });
-      }
-    },
-    [activeSplitView, handleNewChat, navigate, removeThreadFromSplitViews],
-  );
   const {
     terminalState,
     terminalFocusRequestId,
@@ -1043,12 +980,9 @@ export default function ChatView({
   } = useChatTerminalController({
     threadId,
     activeThreadId,
-    activeThread,
     activeProjectPresent: activeProject !== undefined,
     isFocusedPane,
-    isServerThread,
     confirmTerminalClose: settings.confirmTerminalTabClose,
-    onDeletePlaceholderThread: deletePlaceholderTerminalThread,
   });
   const projectInstructions = useProjectInstructionsStore((state) =>
     activeProjectId ? (state.instructionsByProjectId[activeProjectId] ?? "") : "",
@@ -1173,11 +1107,7 @@ export default function ChatView({
       }
 
       const activeDraftThread = getDraftThread(threadId);
-      if (
-        !isServerThread &&
-        activeDraftThread?.projectId === activeProject.id &&
-        activeDraftThread.entryPoint === "chat"
-      ) {
+      if (!isServerThread && activeDraftThread?.projectId === activeProject.id) {
         setDraftThreadContext(threadId, draftThreadContext);
         setProjectDraftThreadId(activeProject.id, threadId, draftThreadContext);
         return;
@@ -4388,7 +4318,7 @@ export default function ChatView({
         });
         return;
       }
-      await handleNewThread(activeProject.id, { entryPoint: "chat" });
+      await handleNewThread(activeProject.id);
     },
     handleInteractionModeChange,
     openForkTargetPicker: () => {
