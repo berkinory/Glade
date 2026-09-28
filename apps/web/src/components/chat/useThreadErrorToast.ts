@@ -17,6 +17,16 @@ export function threadErrorToastId(threadId: ThreadId): string {
   return `thread-error:${threadId}`;
 }
 
+function threadErrorToastTitle(error: string): string {
+  const firstLine = error.split(/\r?\n/u, 1)[0]?.trim() ?? "";
+  return (
+    firstLine
+      .replace(/^Error:\s*/u, "")
+      .replace(/^Provider adapter process error \([^)]+\) for thread [^:]+:\s*/u, "") ||
+    "This task failed."
+  );
+}
+
 export function buildThreadErrorToastOptions(input: {
   error: string;
   onClose: () => void;
@@ -28,7 +38,7 @@ export function buildThreadErrorToastOptions(input: {
   return {
     id: threadErrorToastId(input.threadId),
     type: "error",
-    title: input.error,
+    title: threadErrorToastTitle(input.error),
     timeout: 0,
     priority: "high",
     onClose: input.onClose,

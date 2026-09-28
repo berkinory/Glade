@@ -83,7 +83,7 @@ import { CheckpointStore } from "../../checkpointing/Services/CheckpointStore.ts
 import { AgentGatewayOperationRepository } from "../../agentGateway/Services/AgentGatewayOperationRepository.ts";
 import { GitCore } from "../../git/Services/GitCore.ts";
 import {
-  type ProviderAdapterProcessError,
+  ProviderAdapterProcessError,
   ProviderAdapterRequestError,
   ProviderAdapterValidationError,
   ProviderServiceError,
@@ -215,6 +215,17 @@ export function classifyProviderAttemptOutcome(
     default:
       return { _tag: "uncertain", detail };
   }
+}
+
+function providerFailureMessage(cause: Cause.Cause<unknown>): string {
+  const failure = Option.getOrUndefined(Cause.findErrorOption(cause));
+  const message =
+    failure instanceof ProviderAdapterProcessError && failure.detail.trim()
+      ? failure.detail
+      : failure instanceof Error && failure.message.trim()
+        ? failure.message
+        : Cause.pretty(cause);
+  return message.split(/\r?\n/u, 1)[0]?.trim() || "Provider request failed.";
 }
 
 type BoundedProviderCallResult<E> =
@@ -3581,7 +3592,7 @@ const make = Effect.gen(function* () {
                 yield* setThreadSessionError({
                   threadId: event.payload.threadId,
                   runtimeMode: event.payload.runtimeMode,
-                  detail,
+                  detail: providerFailureMessage(cause),
                   createdAt: event.payload.createdAt,
                 });
                 // A direct start has no provider turn and therefore cannot emit a
@@ -4024,7 +4035,7 @@ const make = Effect.gen(function* () {
                   {
                     ...compactingReview,
                     status: rejected ? "failed" : "uncertain",
-                    error: `Compaction could not be confirmed. ${Cause.pretty(cause)}`,
+                    error: `Compaction could not be confirmed. ${providerFailureMessage(cause)}`,
                   },
                   review.reviewId,
                 );
@@ -4045,8 +4056,8 @@ const make = Effect.gen(function* () {
                   ...review,
                   status: rejected ? "failed" : "uncertain",
                   error: rejected
-                    ? Cause.pretty(cause)
-                    : `The send could not be confirmed and was not retried. ${Cause.pretty(cause)}`,
+                    ? providerFailureMessage(cause)
+                    : `The send could not be confirmed and was not retried. ${providerFailureMessage(cause)}`,
                 },
                 review.reviewId,
               );
@@ -4081,7 +4092,7 @@ const make = Effect.gen(function* () {
                 {
                   ...review,
                   status: rejected ? "failed" : "uncertain",
-                  error: Cause.pretty(cause),
+                  error: providerFailureMessage(cause),
                 },
                 review.reviewId,
               );
@@ -4460,7 +4471,7 @@ const make = Effect.gen(function* () {
                   yield* setThreadSessionError({
                     threadId: thread.id,
                     runtimeMode: thread.runtimeMode,
-                    detail,
+                    detail: providerFailureMessage(cause),
                     createdAt,
                   });
                   yield* pauseActiveThreadGoal({
@@ -5696,7 +5707,7 @@ const make = Effect.gen(function* () {
               setThreadSessionError({
                 threadId: event.payload.threadId,
                 runtimeMode: event.payload.runtimeMode,
-                detail: Cause.pretty(cause),
+                detail: providerFailureMessage(cause),
                 createdAt: event.payload.createdAt,
               }).pipe(Effect.andThen(Effect.failCause(cause))),
             ),

@@ -16,6 +16,7 @@
 
 ### Fixed
 
+- Provider and validation errors show concise messages instead of stack traces in toasts, panels, tool results, and production crash screens.
 - Empty Spaces restore their own unsent chat instead of carrying the chat from another Space.
 - Chats and pinned chats appear only in their assigned Space; older chats remain in Home.
 - Replies that ran no tools no longer claim shared-workspace edits or offer Undo for them.

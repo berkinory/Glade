@@ -495,13 +495,25 @@ export function makeAgentGatewayMcpTransport(input: {
           if (slot.kind === "none") return Effect.succeed(null);
           if (slot.kind === "immediate") return Effect.succeed(slot.response);
           return Fiber.await(slot.fiber).pipe(
-            Effect.map((exit) =>
+            Effect.flatMap((exit) =>
               Exit.match(exit, {
                 onFailure: (cause) =>
                   Cause.hasInterruptsOnly(cause)
-                    ? null
-                    : jsonRpcResult(null, mcpToolResultError(Cause.pretty(cause))),
-                onSuccess: (response) => response,
+                    ? Effect.succeed(null)
+                    : Effect.logWarning("agent gateway MCP request failed", {
+                        cause: Cause.pretty(cause),
+                      }).pipe(
+                        Effect.as(
+                          jsonRpcResult(
+                            null,
+                            mcpToolResultError(
+                              errorText(Cause.squash(cause)).split(/\r?\n/u, 1)[0] ||
+                                "Agent gateway request failed.",
+                            ),
+                          ),
+                        ),
+                      ),
+                onSuccess: Effect.succeed,
               }),
             ),
           );

@@ -1057,7 +1057,15 @@ const makeKeybindings = Effect.gen(function* () {
       const decodedRule = Schema.decodeUnknownExit(KeybindingRule)(normalized.entry);
       if (decodedRule._tag === "Failure") {
         const detail = Cause.pretty(decodedRule.cause);
-        issues.push(invalidEntryIssue(index, detail));
+        const schemaError = Option.getOrUndefined(Cause.findErrorOption(decodedRule.cause));
+        issues.push(
+          invalidEntryIssue(
+            index,
+            schemaError
+              ? SchemaIssue.makeFormatterDefault()(schemaError.issue)
+              : "Invalid shortcut rule.",
+          ),
+        );
         yield* Effect.logWarning("ignoring invalid keybinding entry", {
           path: keybindingsConfigPath,
           index,
@@ -1070,7 +1078,15 @@ const makeKeybindings = Effect.gen(function* () {
       const resolvedRule = Schema.decodeExit(ResolvedKeybindingFromConfig)(decodedRule.value);
       if (resolvedRule._tag === "Failure") {
         const detail = Cause.pretty(resolvedRule.cause);
-        issues.push(invalidEntryIssue(index, detail));
+        const schemaError = Option.getOrUndefined(Cause.findErrorOption(resolvedRule.cause));
+        issues.push(
+          invalidEntryIssue(
+            index,
+            schemaError
+              ? SchemaIssue.makeFormatterDefault()(schemaError.issue)
+              : "Invalid shortcut rule.",
+          ),
+        );
         yield* Effect.logWarning("ignoring invalid keybinding entry", {
           path: keybindingsConfigPath,
           index,

@@ -2883,7 +2883,9 @@ describe("ProviderCommandReactor", () => {
     const thread = await readHarnessThread(harness);
     expect(thread?.session?.status).toBe("error");
     expect(thread?.session?.activeTurnId).toBeNull();
-    expect(thread?.session?.lastError).toContain("turn start failed");
+    expect(thread?.session?.lastError).toBe(
+      "Provider adapter request failed (codex) for turn/start: turn start failed",
+    );
     expect(
       thread?.activities.some((activity) => activity.kind === "provider.turn.start.failed"),
     ).toBe(true);

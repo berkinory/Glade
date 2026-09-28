@@ -888,8 +888,9 @@ function GlobalWhatsNewSurface() {
 }
 
 function RootRouteErrorView({ error, reset }: ErrorComponentProps) {
-  const message = errorMessage(error);
-  const details = errorDetails(error);
+  const message = import.meta.env.DEV
+    ? errorMessage(error)
+    : "Glade could not display this screen. Try again or reload the app.";
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-4 py-10 text-foreground sm:px-6">
@@ -917,15 +918,17 @@ function RootRouteErrorView({ error, reset }: ErrorComponentProps) {
           </Button>
         </div>
 
-        <details className="group mt-5 overflow-hidden rounded-lg border border-border/70 bg-background/55">
-          <summary className="cursor-pointer list-none px-3 py-2 text-ui leading-snug font-medium text-muted-foreground">
-            <span className="group-open:hidden">Show error details</span>
-            <span className="hidden group-open:inline">Hide error details</span>
-          </summary>
-          <pre className="max-h-56 overflow-auto border-t border-border/70 bg-background/80 px-3 py-2 text-xs text-foreground/85">
-            {details}
-          </pre>
-        </details>
+        {import.meta.env.DEV ? (
+          <details className="group mt-5 overflow-hidden rounded-lg border border-border/70 bg-background/55">
+            <summary className="cursor-pointer list-none px-3 py-2 text-ui leading-snug font-medium text-muted-foreground">
+              <span className="group-open:hidden">Show error details</span>
+              <span className="hidden group-open:inline">Hide error details</span>
+            </summary>
+            <pre className="max-h-56 overflow-auto border-t border-border/70 bg-background/80 px-3 py-2 text-ui-xs text-foreground/85">
+              {errorDetails(error)}
+            </pre>
+          </details>
+        ) : null}
       </section>
     </div>
   );
