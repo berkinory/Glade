@@ -354,7 +354,6 @@ const PersistedDraftThreadState = Schema.Struct({
   lastKnownPr: Schema.optionalKey(Schema.NullOr(OrchestrationThreadPullRequest)),
   envMode: DraftThreadEnvModeSchema,
   goal: Schema.optionalKey(Schema.String),
-  isTemporary: Schema.optionalKey(Schema.Boolean),
   promotedTo: Schema.optionalKey(ThreadId),
 });
 
@@ -867,7 +866,6 @@ function normalizePersistedDraftThreads(
         typeof candidateDraftThread.goal === "string" && candidateDraftThread.goal.trim().length > 0
           ? candidateDraftThread.goal
           : undefined;
-      const isTemporary = candidateDraftThread.isTemporary === true ? true : undefined;
       const promotedTo =
         typeof candidateDraftThread.promotedTo === "string" &&
         candidateDraftThread.promotedTo.length > 0
@@ -895,7 +893,6 @@ function normalizePersistedDraftThreads(
         ...(lastKnownPr ? { lastKnownPr } : {}),
         envMode: normalizeDraftThreadEnvMode(candidateDraftThread.envMode, normalizedWorktreePath),
         ...(goal ? { goal } : {}),
-        ...(isTemporary ? { isTemporary: true } : {}),
         ...(promotedTo ? { promotedTo } : {}),
       };
     }

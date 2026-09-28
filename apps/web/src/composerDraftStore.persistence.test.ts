@@ -296,6 +296,36 @@ describe("composerDraftStore persisted-state hydration", () => {
     );
     expect(hydrated.draftThreadsByThreadId[blankGoalThreadId]?.goal).toBeUndefined();
   });
+
+  it("keeps legacy temporary chat drafts as ordinary drafts", () => {
+    const projectId = ProjectId.makeUnsafe("project-legacy-temporary");
+    const threadId = ThreadId.makeUnsafe("thread-legacy-temporary");
+    const hydrated = normalizeCurrentPersistedComposerDraftStoreState({
+      draftsByThreadId: {
+        [threadId]: { prompt: "Keep this unsent message" },
+      },
+      draftThreadsByThreadId: {
+        [threadId]: {
+          projectId,
+          createdAt: "2026-08-13T00:00:00.000Z",
+          runtimeMode: "full-access",
+          interactionMode: "default",
+          entryPoint: "chat",
+          branch: null,
+          worktreePath: null,
+          workingDirectory: null,
+          envMode: "local",
+          isTemporary: true,
+        },
+      },
+      projectDraftThreadIdByProjectId: { [projectId]: threadId },
+    });
+
+    expect(hydrated.projectDraftThreadIdByProjectId[projectId]).toBe(threadId);
+    expect(hydrated.draftThreadsByThreadId[threadId]?.projectId).toBe(projectId);
+    expect(hydrated.draftsByThreadId[threadId]?.prompt).toBe("Keep this unsent message");
+    expect(hydrated.draftThreadsByThreadId[threadId]).not.toHaveProperty("isTemporary");
+  });
 });
 
 describe("composerDraftStore restored source proposed plan", () => {

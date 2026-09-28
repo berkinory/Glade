@@ -29,7 +29,6 @@ export interface NewThreadOptions {
   workingDirectory?: string | null;
   envMode?: DraftThreadEnvMode;
   entryPoint?: ThreadPrimarySurface;
-  temporary?: boolean;
   provider?: ProviderKind;
   fresh?: boolean;
   /** Keep a draft outside the project's single reusable draft slot. */
@@ -172,7 +171,6 @@ export function createActiveDraftThreadSnapshot(
     workingDirectory: activeDraftThread.workingDirectory ?? null,
     lastKnownPr: activeDraftThread.lastKnownPr ?? null,
     envMode: activeDraftThread.envMode,
-    ...(activeDraftThread.isTemporary ? { isTemporary: true } : {}),
   };
 }
 
@@ -225,7 +223,6 @@ export function createFreshDraftThreadSeed(input: {
       (input.options?.worktreePath ? "worktree" : (input.defaultEnvMode ?? "local")),
     runtimeMode: DEFAULT_RUNTIME_MODE,
     entryPoint: input.entryPoint,
-    ...(input.options?.temporary ? { isTemporary: true } : {}),
   };
 }
 

@@ -19,6 +19,8 @@ production artwork. Production updates come only from the Glade release reposito
   profile import or automatic remote diagnostics.
 - Side chats: no right dock pane, creation command, expiry worker, or retained side chat
   conversation history. Regular forks and split views remain available.
+- Temporary chats: no composer toggle, sidebar badge, or delete-on-leave lifecycle.
+  Existing conversations and unsent drafts remain available as regular chats.
 
 These are physical removals, not dormant implementations behind feature flags.
 

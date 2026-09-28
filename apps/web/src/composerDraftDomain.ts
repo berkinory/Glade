@@ -194,7 +194,6 @@ export interface DraftThreadState {
   // Goal staged before the thread exists server-side; persisted via
   // `thread.meta.update` when the first send promotes the draft.
   goal?: string;
-  isTemporary?: boolean;
   promotedTo?: ThreadId;
 }
 
@@ -211,7 +210,6 @@ export interface DraftThreadMutationOptions {
   runtimeMode?: RuntimeMode;
   interactionMode?: ProviderInteractionMode;
   entryPoint?: ThreadPrimarySurface;
-  isTemporary?: boolean;
   // Empty string clears the staged goal; undefined leaves it unchanged.
   goal?: string;
 }
@@ -261,7 +259,6 @@ export interface ComposerDraftStoreState {
       runtimeMode?: RuntimeMode;
       interactionMode?: ProviderInteractionMode;
       entryPoint?: ThreadPrimarySurface;
-      isTemporary?: boolean;
     },
   ) => void;
   setDraftThreadContext: (
@@ -440,12 +437,6 @@ export function buildDraftThreadState(input: {
     options?.entryPoint,
     existingThread?.entryPoint ?? "chat",
   );
-  const nextIsTemporary =
-    options?.isTemporary === true
-      ? true
-      : options?.isTemporary === false
-        ? false
-        : existingThread?.isTemporary === true;
   const nextPromotedTo = existingThread?.promotedTo;
   const nextGoal =
     options?.goal === undefined ? existingThread?.goal : options.goal.trim() || undefined;
@@ -475,7 +466,6 @@ export function buildDraftThreadState(input: {
     envMode:
       options?.envMode ?? (nextWorktreePath ? "worktree" : (existingThread?.envMode ?? "local")),
     ...(nextGoal ? { goal: nextGoal } : {}),
-    ...(nextIsTemporary ? { isTemporary: true } : {}),
     ...(nextPromotedTo ? { promotedTo: nextPromotedTo } : {}),
   };
 }
@@ -500,7 +490,6 @@ export function draftThreadStatesEqual(
     Equal.equals(left.lastKnownPr ?? null, right.lastKnownPr ?? null) &&
     left.envMode === right.envMode &&
     (left.goal ?? "") === (right.goal ?? "") &&
-    (left.isTemporary === true) === (right.isTemporary === true) &&
     left.promotedTo === right.promotedTo
   );
 }

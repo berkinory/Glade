@@ -227,7 +227,6 @@ export const createComposerDraftStoreState =
           workingDirectory: options.workingDirectory ?? null,
           lastKnownPr: null,
           envMode: options.envMode ?? (worktreePath ? "worktree" : "local"),
-          ...(options.isTemporary ? { isTemporary: true } : {}),
         };
         return {
           draftThreadsByThreadId: {

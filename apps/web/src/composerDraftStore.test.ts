@@ -138,20 +138,6 @@ describe("composerDraftStore project draft thread mapping", () => {
     expect(useComposerDraftStore.getState().draftsByThreadId[threadId]).toBe(threadADraft);
   });
 
-  it("tracks temporary draft metadata and lets context updates clear it", () => {
-    const store = useComposerDraftStore.getState();
-    store.setProjectDraftThreadId(projectId, threadId, { isTemporary: true });
-    expect(useComposerDraftStore.getState().getDraftThread(threadId)?.isTemporary).toBe(true);
-
-    store.setProjectDraftThreadId(projectId, threadId, {
-      branch: "feature/preserve-temp",
-    });
-    expect(useComposerDraftStore.getState().getDraftThread(threadId)?.isTemporary).toBe(true);
-
-    store.setDraftThreadContext(threadId, { isTemporary: false });
-    expect(useComposerDraftStore.getState().getDraftThread(threadId)?.isTemporary).toBeUndefined();
-  });
-
   it("stages, trims, and clears a draft goal via context updates", () => {
     const store = useComposerDraftStore.getState();
     store.setProjectDraftThreadId(projectId, threadId, {});
@@ -172,13 +158,12 @@ describe("composerDraftStore project draft thread mapping", () => {
     expect(useComposerDraftStore.getState().getDraftThread(threadId)?.goal).toBeUndefined();
   });
 
-  it("registers a mapping-less temporary terminal draft for staged navigation", () => {
+  it("registers a mapping-less terminal draft for staged navigation", () => {
     const store = useComposerDraftStore.getState();
 
     store.registerDraftThread(threadId, {
       projectId,
       entryPoint: "terminal",
-      isTemporary: true,
       envMode: "local",
       createdAt: "2026-01-01T00:00:00.000Z",
     });
@@ -186,7 +171,6 @@ describe("composerDraftStore project draft thread mapping", () => {
     expect(useComposerDraftStore.getState().getDraftThread(threadId)).toMatchObject({
       projectId,
       entryPoint: "terminal",
-      isTemporary: true,
       envMode: "local",
       createdAt: "2026-01-01T00:00:00.000Z",
     });

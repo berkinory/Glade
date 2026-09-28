@@ -208,9 +208,9 @@ export function useKanbanBoard(): KanbanBoard {
   const draftThreads = useMemo(() => {
     const snapshots: KanbanDraftThreadSnapshot[] = [];
     for (const [threadId, draftThread] of Object.entries(draftThreadsByThreadId)) {
-      // Promoted drafts already surface through their durable thread; temporary and
-      // terminal-first drafts have no chat prompt to track on the board.
-      if (draftThread.promotedTo || draftThread.isTemporary || draftThread.entryPoint !== "chat") {
+      // Promoted drafts already surface through their durable thread; terminal-first
+      // drafts have no chat prompt to track on the board.
+      if (draftThread.promotedTo || draftThread.entryPoint !== "chat") {
         continue;
       }
       snapshots.push({
