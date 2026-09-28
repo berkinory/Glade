@@ -522,6 +522,11 @@ function PullRequestsRouteView() {
                   {activeListData.errors.length} project{" "}
                   {activeListData.errors.length === 1 ? "repository was" : "repositories were"}{" "}
                   unavailable. Healthy repositories are still shown.
+                  {activeListData.errors.map((error) => (
+                    <span key={`${error.projectId}:${error.message}`} className="block mt-1">
+                      {error.projectTitle}: {error.message}
+                    </span>
+                  ))}
                 </PullRequestWarningNote>
               ) : null}
               {backgroundListError ? (

@@ -41,6 +41,7 @@ function readCurrentBranch(git: GitCoreShape, cwd: string) {
     .pipe(
       Effect.flatMap((result) => {
         if (result.code !== 0) {
+          if (/not a git repository/i.test(result.stderr)) return Effect.succeed(undefined);
           return Effect.fail(
             new Error(result.stderr.trim() || `${operation} failed with exit code ${result.code}.`),
           );
@@ -171,12 +172,14 @@ function resolveGitHubRemote(
   );
 }
 
-/** Resolve every unique GitHub repository configured by a workspace, in remote preference order. */
+/** Resolve the repository owned by this workspace, preferring its origin remote. */
 export function resolveGitHubRepositories(git: GitCoreShape, cwd: string) {
   return Effect.gen(function* () {
-    // A branch query succeeds with empty output in detached/unborn repositories and fails when
-    // `cwd` is not a repository, so it also preserves the old authoritative repo boundary.
+    // A regular folder has no pull requests. Other Git failures remain visible to callers.
     const branch = yield* readCurrentBranch(git, cwd);
+    if (branch === undefined) {
+      return { repositories: [], authoritative: true } satisfies GitHubRepositoryInventory;
+    }
     // This is the authoritative boundary. A failed local-config inventory must remain an error
     // rather than becoming an empty list, because consumers may remove state for repositories
     // not returned. Reading the relevant keys together avoids one process per config/remote.
@@ -189,36 +192,29 @@ export function resolveGitHubRepositories(git: GitCoreShape, cwd: string) {
     const remoteNames = [...remoteUrls.keys()].toSorted((left, right) => left.localeCompare(right));
     const configuredRemoteNames = new Set(remoteNames);
     const candidates = uniqueRemoteCandidates([
-      branchRemote,
-      pushDefaultRemote,
       "origin",
+      pushDefaultRemote,
+      branchRemote,
       ...remoteNames,
     ]).flatMap((remoteName) => {
       if (!configuredRemoteNames.has(remoteName)) return [];
       const configuredUrl = remoteUrls.get(remoteName);
       return configuredUrl ? [{ remoteName, configuredUrl }] : [];
     });
-    const resolved = yield* Effect.forEach(
-      candidates,
-      ({ remoteName, configuredUrl }) => resolveGitHubRemote(git, cwd, remoteName, configuredUrl),
-      { concurrency: 6 },
-    );
-
-    const repositories: GitHubRepositoryLink[] = [];
-    const seen = new Set<string>();
-    for (const repository of resolved) {
-      if (!repository) continue;
-      const key = repository.nameWithOwner.toLowerCase();
-      if (!seen.has(key)) {
-        seen.add(key);
-        repositories.push(repository);
+    for (const { remoteName, configuredUrl } of candidates) {
+      const repository = yield* resolveGitHubRemote(git, cwd, remoteName, configuredUrl);
+      if (repository) {
+        return {
+          repositories: [repository],
+          authoritative: true,
+        } satisfies GitHubRepositoryInventory;
       }
     }
-    return { repositories, authoritative: true } satisfies GitHubRepositoryInventory;
+    return { repositories: [], authoritative: true } satisfies GitHubRepositoryInventory;
   });
 }
 
-/** Resolve the preferred link while retaining all configured repositories for callers that list. */
+/** Resolve the workspace's repository link. */
 export function resolveGitHubRepository(git: GitCoreShape, cwd: string) {
   return resolveGitHubRepositories(git, cwd).pipe(
     Effect.map(({ repositories }) => ({ repository: repositories[0] ?? null, repositories })),

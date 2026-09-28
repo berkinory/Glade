@@ -16,6 +16,8 @@
 
 ### Fixed
 
+- Pull requests for a project now come from its primary GitHub repository instead of also showing upstream remotes.
+- Regular folders no longer trigger a repository-unavailable warning in Pull requests.
 - Existing Studio folders are preserved as normal projects so the app starts after Studio mode is removed.
 - Removed terminal-thread shortcuts are cleaned from saved keybindings without changing other shortcuts.
 
