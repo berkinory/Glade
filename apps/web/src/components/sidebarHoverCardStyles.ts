@@ -13,6 +13,7 @@
 //      what keeps the two reading as one component instead of two look-alikes.
 
 import { APP_TOOLTIP_SURFACE_CLASS_NAME } from "./chat/composerPickerStyles";
+import { TOOLTIP_OPEN_DELAY_MS } from "./ui/tooltip";
 
 /** Outer inset on the hover-card content container (sits inside the popup surface). */
 export const SIDEBAR_HOVER_CARD_CONTAINER_PADDING_CLASS_NAME = "p-0.5";
@@ -38,17 +39,9 @@ export const SIDEBAR_HOVER_CARD_ROW_CLASS_NAME = `flex w-full min-w-0 items-cent
  */
 export const SIDEBAR_HOVER_CARD_SURFACE_CLASS_NAME = `${APP_TOOLTIP_SURFACE_CLASS_NAME} w-[16rem]`;
 
-/**
- * Open/close timing spread onto BOTH cards' triggers. In Base UI v1.5 `delay`/
- * `closeDelay` live on the trigger (Tooltip.Trigger and PreviewCard.Trigger), NOT
- * the root — passing them to the root is silently ignored. `delay: 0` surfaces the
- * card the instant the pointer lands; `closeDelay: 0` dismisses it the instant the
- * pointer leaves, matching the tooltip's natural snappy close. The project card's
- * controls stay reachable while dismissing via PreviewCard's hoverable safe area
- * (the trigger/popup overlap from the negative side offset leaves no gap to cross).
- */
+/** Both sidebar cards use the same hover delay as plain tooltips. */
 export const SIDEBAR_HOVER_CARD_TRIGGER_PROPS = {
-  delay: 0,
+  delay: TOOLTIP_OPEN_DELAY_MS,
   closeDelay: 0,
 } as const;
 

@@ -7,6 +7,8 @@ import {
   COMPOSER_PICKER_TOOLTIP_SURFACE_CLASS_NAME,
 } from "../chat/composerPickerStyles";
 
+export const TOOLTIP_OPEN_DELAY_MS = 300;
+
 const TooltipCreateHandle = TooltipPrimitive.createHandle;
 
 const TooltipProvider = TooltipPrimitive.Provider;
@@ -32,7 +34,13 @@ const TOOLTIP_SURFACE_BY_VARIANT: Record<TooltipVariant, string> = {
 };
 
 function TooltipTrigger(props: TooltipPrimitive.Trigger.Props) {
-  return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />;
+  return (
+    <TooltipPrimitive.Trigger
+      data-slot="tooltip-trigger"
+      delay={TOOLTIP_OPEN_DELAY_MS}
+      {...props}
+    />
+  );
 }
 
 function TooltipPopup({

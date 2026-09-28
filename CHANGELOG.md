@@ -10,6 +10,7 @@
 
 ### Improved
 
+- Tooltips open after a consistent 300 ms hover delay.
 - Chat message action icons sit closer together without shrinking their click targets.
 - The model picker lists connected providers with a shortcut to add more, and confirms a cross-provider selection before creating a handoff task with the chosen model. The new chat shows the provider transition in its transcript; the sidebar shows only its current provider.
 - Interface animations now feel quicker and more consistent.
