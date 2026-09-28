@@ -2026,7 +2026,7 @@ describe("ProviderCommandReactor", () => {
   // quarantines a thread on purpose: it escalates to a full session stop, so
   // the stop button can never leave a thread blocked (see the exemption below).
 
-  // Recovery contract behind the web "Unblock thread" action: abandoning the
+  // Recovery contract when the client resumes a blocked thread: abandoning the
   // blocker never replays the ambiguous command itself, but the turn starts the
   // quarantine skipped afterwards were provably never sent, so they are replayed.
 

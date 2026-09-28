@@ -26,6 +26,7 @@ import {
 } from "../../lib/composerSend";
 import { appendFileCommentsToPrompt } from "../../lib/fileComments";
 import { appendPullRequestContextsToPrompt } from "../../lib/pullRequestContext";
+import { unblockThreadFromClient } from "../../lib/threadUnblock";
 import {
   IMAGE_ONLY_BOOTSTRAP_PROMPT,
   appendTerminalContextsToPrompt,
@@ -658,6 +659,25 @@ export function useChatTurnSubmission({
           envMode: envModeForSend,
         });
         return true;
+      }
+      if (isServerThread) {
+        sendPreflightInFlightRef.current = true;
+        try {
+          await unblockThreadFromClient(api.orchestration, activeThread.id);
+        } catch (error) {
+          toastManager.add({
+            type: "error",
+            title: "Could not resume thread",
+            description:
+              error instanceof Error
+                ? error.message
+                : "An unexpected error occurred while clearing the provider failure.",
+          });
+          return false;
+        } finally {
+          sendPreflightInFlightRef.current = false;
+        }
+        if (activeThreadIdRef.current !== activeThread.id || hasPendingCacheReview()) return false;
       }
       const workspace = await prepareChatSendWorkspace({
         activeThread,

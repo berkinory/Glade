@@ -4,7 +4,6 @@
 // Exports: useThreadErrorToast, buildThreadErrorToastOptions, threadErrorToastId
 
 import type { ThreadId } from "@glade/contracts";
-import { isProviderDeliveryBlockDetail } from "@glade/shared/providerDeliveryBlock";
 import { useEffect, useRef, type RefObject } from "react";
 
 import { toastManager } from "../ui/toast";
@@ -30,11 +29,8 @@ function threadErrorToastTitle(error: string): string {
 export function buildThreadErrorToastOptions(input: {
   error: string;
   onClose: () => void;
-  onUnblock: () => void;
   threadId: ThreadId;
-  unblocking: boolean;
 }): ThreadErrorToastOptions {
-  const canUnblock = isProviderDeliveryBlockDetail(input.error);
   return {
     id: threadErrorToastId(input.threadId),
     type: "error",
@@ -43,15 +39,6 @@ export function buildThreadErrorToastOptions(input: {
     priority: "high",
     onClose: input.onClose,
     data: { copyText: input.error, threadId: input.threadId },
-    ...(canUnblock
-      ? {
-          actionProps: {
-            children: input.unblocking ? "Unblocking…" : "Unblock thread",
-            disabled: input.unblocking,
-            onClick: input.onUnblock,
-          },
-        }
-      : {}),
   };
 }
 
@@ -71,17 +58,15 @@ function closeSilently(threadId: ThreadId, silentRef: RefObject<boolean>): void 
 export function useThreadErrorToast(input: {
   error: string | null;
   onDismiss: () => void;
-  onUnblock: () => void;
   threadId: ThreadId | null;
-  unblocking: boolean;
 }): void {
-  const { error, onDismiss, onUnblock, threadId, unblocking } = input;
-  const callbacksRef = useRef({ onDismiss, onUnblock });
+  const { error, onDismiss, threadId } = input;
+  const callbacksRef = useRef({ onDismiss });
   const closingSilentlyRef = useRef(false);
 
   useEffect(() => {
-    callbacksRef.current = { onDismiss, onUnblock };
-  }, [onDismiss, onUnblock]);
+    callbacksRef.current = { onDismiss };
+  }, [onDismiss]);
 
   useEffect(() => {
     if (!threadId) return;
@@ -93,17 +78,13 @@ export function useThreadErrorToast(input: {
       buildThreadErrorToastOptions({
         error,
         threadId,
-        unblocking,
         onClose: () => {
           if (closingSilentlyRef.current) return;
           callbacksRef.current.onDismiss();
         },
-        onUnblock: () => {
-          callbacksRef.current.onUnblock();
-        },
       }),
     );
-  }, [error, threadId, unblocking]);
+  }, [error, threadId]);
 
   // Kept separate from the content effect so an error update refreshes the card in
   // place instead of tearing it down and replaying the entrance animation.

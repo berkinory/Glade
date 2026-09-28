@@ -1,7 +1,7 @@
 // FILE: threadUnblock.ts
 // Purpose: Abandons the provider delivery blockers that quarantine a thread.
 // Layer: Web orchestration helper
-// Exports: unblockThreadFromClient, describeThreadUnblockResult, isProviderDeliveryReconciliationConflict, type ThreadUnblockResult
+// Exports: unblockThreadFromClient, isProviderDeliveryReconciliationConflict
 
 import type { NativeApi, ThreadId } from "@glade/contracts";
 
@@ -9,20 +9,12 @@ import type { NativeApi, ThreadId } from "@glade/contracts";
 export const PROVIDER_DELIVERY_RECONCILIATION_CONFLICT_CODE =
   "PROVIDER_DELIVERY_RECONCILIATION_CONFLICT";
 
-const UNBLOCK_NOTE = "Abandoned from the thread error banner; the command was never confirmed.";
+const UNBLOCK_NOTE = "Abandoned while resuming the thread; the command was never confirmed.";
 
 type ThreadUnblockApi = Pick<
   NativeApi["orchestration"],
   "listProviderDeliveryBlockers" | "reconcileProviderDelivery"
 >;
-
-export type ThreadUnblockResult =
-  /** At least one blocker was abandoned, so the thread accepts commands again. */
-  | { readonly kind: "unblocked"; readonly reconciledCount: number }
-  /** Nothing was blocking the thread anymore. */
-  | { readonly kind: "already-clear" }
-  /** Every blocker changed state concurrently (another client or a restart settled it). */
-  | { readonly kind: "resolved-elsewhere" };
 
 /**
  * The reconciliation conflict is expected, not exceptional: two clients (or a
@@ -49,13 +41,10 @@ export function isProviderDeliveryReconciliationConflict(error: unknown): boolea
 export async function unblockThreadFromClient(
   api: ThreadUnblockApi,
   threadId: ThreadId,
-): Promise<ThreadUnblockResult> {
+): Promise<void> {
   const blockers = await api.listProviderDeliveryBlockers({ threadId });
-  if (blockers.length === 0) return { kind: "already-clear" };
-
+  if (blockers.length === 0) return;
   const ordered = blockers.toSorted((left, right) => left.eventSequence - right.eventSequence);
-  let reconciledCount = 0;
-  let conflictCount = 0;
   for (const blocker of ordered) {
     try {
       await api.reconcileProviderDelivery({
@@ -65,46 +54,12 @@ export async function unblockThreadFromClient(
         outcome: "abandon",
         note: UNBLOCK_NOTE,
       });
-      reconciledCount += 1;
     } catch (error) {
       if (!isProviderDeliveryReconciliationConflict(error)) throw error;
-      conflictCount += 1;
     }
   }
-
-  if (reconciledCount > 0) return { kind: "unblocked", reconciledCount };
-  return conflictCount > 0 ? { kind: "resolved-elsewhere" } : { kind: "already-clear" };
-}
-
-export type ThreadUnblockNotice = {
-  readonly type: "success" | "info";
-  readonly title: string;
-  readonly description: string;
-};
-
-/** Copy for each outcome. Every branch tells the user what to do next, because
- *  the command that failed is deliberately never re-sent on their behalf. */
-export function describeThreadUnblockResult(result: ThreadUnblockResult): ThreadUnblockNotice {
-  switch (result.kind) {
-    case "unblocked":
-      return {
-        type: "success",
-        title: "Thread unblocked",
-        description:
-          "Messages skipped while it was blocked were retried. Resend your last message if the thread stays idle.",
-      };
-    case "resolved-elsewhere":
-      return {
-        type: "info",
-        title: "Blocker already cleared",
-        description: "Another session settled the failure. Resend your last message to continue.",
-      };
-    case "already-clear":
-      return {
-        type: "info",
-        title: "Thread is already unblocked",
-        description:
-          "No provider failure is holding it back. Resend your last message to continue.",
-      };
+  const remaining = await api.listProviderDeliveryBlockers({ threadId, limit: 1 });
+  if (remaining.length > 0) {
+    throw new Error("The thread is still blocked by a provider failure. Try sending again.");
   }
 }

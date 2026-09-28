@@ -10,6 +10,7 @@ import { readNativeApi } from "~/nativeApi";
 import { useComposerDraftStore, type QueuedComposerPlanFollowUp } from "../../composerDraftStore";
 import { formatOutgoingComposerPrompt } from "../../lib/composerSend";
 import { reconcileDeletedThreadFromClient } from "../../lib/deletedThreadClientReconciliation";
+import { unblockThreadFromClient } from "../../lib/threadUnblock";
 import { armQueuedComposerSteerGate } from "../../lib/queuedComposerDrain";
 import { appendOriginalComposerPromptBlocks } from "../../lib/terminalContext";
 import { clearPendingTurnDispatch, markPendingTurnDispatch } from "../../pendingTurnDispatch";
@@ -169,6 +170,21 @@ export function useChatTurnFollowUps({
     }
 
     const threadIdForSend = activeThread.id;
+    sendInFlightRef.current = true;
+    try {
+      await unblockThreadFromClient(api.orchestration, threadIdForSend);
+    } catch (error) {
+      sendInFlightRef.current = false;
+      toastManager.add({
+        type: "error",
+        title: "Could not resume thread",
+        description:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred while clearing the provider failure.",
+      });
+      return false;
+    }
     const messageIdForSend = newMessageId();
     const messageCreatedAt = new Date().toISOString();
     const outgoingMessageText = formatOutgoingComposerPrompt({
@@ -178,7 +194,6 @@ export function useChatTurnFollowUps({
       text: trimmed,
     });
 
-    sendInFlightRef.current = true;
     beginLocalDispatch({ expectedUserMessageId: messageIdForSend });
     setThreadError(threadIdForSend, null);
     setOptimisticUserMessages((existing) => [

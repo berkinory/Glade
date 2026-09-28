@@ -115,7 +115,6 @@ import { useDiffRouteSearch } from "../hooks/useDiffRouteSearch";
 import { useHandleNewThread } from "../hooks/useHandleNewThread";
 import { useTheme } from "../hooks/useTheme";
 import { useThreadHandoff } from "../hooks/useThreadHandoff";
-import { useThreadUnblock } from "../hooks/useThreadUnblock";
 import { useThreadWorkspaceHandoff } from "../hooks/useThreadWorkspaceHandoff";
 import { useTurnDiffSummaries } from "../hooks/useTurnDiffSummaries";
 import { useComputerControlModeChange } from "~/hooks/useComputerControlModeChange";
@@ -4540,23 +4539,10 @@ export default function ChatView({
     if (!activeThread) return;
     setThreadError(activeThread.id, null);
   }, [activeThread, setThreadError]);
-  const clearThreadErrorAfterUnblock = useCallback(
-    (unblockedThreadId: ThreadId) => {
-      setThreadError(unblockedThreadId, null);
-    },
-    [setThreadError],
-  );
-  const { unblockThread: unblockActiveThread, unblocking: unblockingActiveThread } =
-    useThreadUnblock({
-      threadId: activeThread?.id ?? null,
-      onUnblocked: clearThreadErrorAfterUnblock,
-    });
   useThreadErrorToast({
     threadId: activeThread?.id ?? null,
     error: activeThread?.error ?? null,
     onDismiss: dismissActiveThreadError,
-    onUnblock: unblockActiveThread,
-    unblocking: unblockingActiveThread,
   });
   const dismissActiveProviderHealthBanner = useCallback(() => {
     if (!activeProviderHealthBannerDismissalKey) return;

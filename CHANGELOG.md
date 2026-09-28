@@ -25,6 +25,7 @@
 
 - Sidebar chat jump shortcuts use the same compact keycap as model picker shortcuts.
 - Sidebar chat shortcut hints temporarily hide trailing badges so titles remain readable.
+- Sending a new message resumes a thread blocked by an earlier provider failure without an unblock notification.
 - The macOS Check for Updates menu items now show a refresh icon.
 - Project lists now animate consistently when expanding and collapsing in the sidebar.
 - Pull requests for a project now come from its primary GitHub repository instead of also showing upstream remotes.
