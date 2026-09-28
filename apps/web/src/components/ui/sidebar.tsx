@@ -4,6 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 import { PanelLeftIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
+import { UI_MOTION_PANEL_CLASS } from "~/lib/uiMotion";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { ScrollArea } from "~/components/ui/scroll-area";
@@ -30,13 +31,12 @@ const SIDEBAR_RESIZE_DEFAULT_MIN_WIDTH = 16 * 16;
 
 /**
  * Soft "drawer" easing for the offcanvas open/close slide, overriding the shell's
- * default `duration-200 ease-linear` (which reads as stepped on wide surfaces). It
+ * default linear easing (which reads as stepped on wide surfaces). It
  * front-loads the motion and settles softly. Apply to BOTH the sliding container
  * (Sidebar `className`) and the layout `gapClassName` so they animate in lockstep.
  * Shared by the thread sidebar (left) and the right dock so the two slides match.
  */
-const SIDEBAR_OFFCANVAS_MOTION_CLASS =
-  "will-change-[transform] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]";
+const SIDEBAR_OFFCANVAS_MOTION_CLASS = `will-change-[transform] ${UI_MOTION_PANEL_CLASS}`;
 
 /**
  * Suppresses the slide entirely — for first mount or a reposition/remount where
@@ -335,7 +335,7 @@ function Sidebar({
         {/* This is what handles the sidebar gap on desktop */}
         <div
           className={cn(
-            "relative w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear",
+            "relative w-(--sidebar-width) bg-transparent transition-[width] duration-180 ease-out motion-reduce:transition-none",
             "group-data-[collapsible=offcanvas]:w-0",
             "group-data-[side=right]:rotate-180",
             variant === "floating" || variant === "inset"
@@ -351,7 +351,7 @@ function Sidebar({
             // (layout): a fixed panel relayouts its whole subtree per frame otherwise,
             // which read as a janky close on heavy sidebar content. The gap still
             // animates width — reserving layout is its job — but its subtree is empty.
-            "fixed inset-y-0 z-0 hidden h-svh w-(--sidebar-width) transition-[left,right,width,transform] duration-200 ease-linear md:flex",
+            "fixed inset-y-0 z-0 hidden h-svh w-(--sidebar-width) transition-[left,right,width,transform] duration-180 ease-out motion-reduce:transition-none md:flex",
             side === "left"
               ? "left-0 group-data-[collapsible=offcanvas]:-translate-x-full"
               : "right-0 group-data-[collapsible=offcanvas]:translate-x-full",
@@ -827,7 +827,7 @@ function SidebarGroup({ className, ...props }: React.ComponentProps<"div">) {
 function SidebarGroupLabel({ className, render, ...props }: useRender.ComponentProps<"div">) {
   const defaultProps = {
     className: cn(
-      "flex h-8 shrink-0 items-center rounded-lg px-2 font-medium text-sidebar-foreground text-ui leading-snug outline-hidden ring-ring/60 transition-[margin,opacity] duration-200 ease-linear focus-visible:ring-1 [&>svg]:size-4 [&>svg]:shrink-0",
+      "flex h-8 shrink-0 items-center rounded-lg px-2 font-medium text-sidebar-foreground text-ui leading-snug outline-hidden ring-ring/60 transition-[margin,opacity] duration-120 ease-out motion-reduce:transition-none focus-visible:ring-1 [&>svg]:size-4 [&>svg]:shrink-0",
       "group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0",
       className,
     ),

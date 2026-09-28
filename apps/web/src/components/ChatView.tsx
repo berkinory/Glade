@@ -4800,7 +4800,7 @@ export default function ChatView({
       // both themes (chips float over the page), rounded on top only and flush against
       // the input shell below. No overlap/underlay tricks — in dark mode a slice tucked
       // behind the composer's translucent corners reads as a visible cut along the seam.
-      className="chat-composer-shell mx-auto flex min-h-8 w-full min-w-0 flex-nowrap items-center gap-x-1.5 overflow-hidden !rounded-b-none !rounded-t-[var(--composer-radius)] px-1.5 py-1 transition-colors duration-150 ease-out motion-reduce:transition-none sm:min-h-7"
+      className="chat-composer-shell mx-auto flex min-h-8 w-full min-w-0 flex-nowrap items-center gap-x-1.5 overflow-hidden !rounded-b-none !rounded-t-[var(--composer-radius)] px-1.5 py-1 transition-colors duration-120 ease-out motion-reduce:transition-none sm:min-h-7"
     >
       {showContainerChatWorkspacePicker ? (
         <ProjectPicker
@@ -4852,7 +4852,7 @@ export default function ChatView({
       <div
         aria-hidden={showEmptyLandingBranchToolbar ? undefined : true}
         className={cn(
-          "flex min-w-0 flex-1 items-center transition-[opacity,transform] duration-150 ease-out motion-reduce:transition-none",
+          "flex min-w-0 flex-1 items-center transition-[opacity,transform] duration-120 ease-out motion-reduce:transition-none",
           showEmptyLandingBranchToolbar
             ? "translate-y-0 opacity-100"
             : "pointer-events-none opacity-0",
@@ -5464,7 +5464,7 @@ export default function ChatView({
       <div
         aria-hidden
         className={cn(
-          "pointer-events-none absolute inset-0 z-50 transition-opacity duration-150",
+          "pointer-events-none absolute inset-0 z-50 transition-opacity duration-120",
           "bg-info/8 ring-1 ring-inset ring-info/30",
           isDragOverComposer ? "opacity-100" : "opacity-0",
         )}
@@ -5695,7 +5695,7 @@ export default function ChatView({
                                 <button
                                   type="button"
                                   data-testid="empty-landing-heading-project-trigger"
-                                  className="cursor-pointer rounded-sm text-inherit underline decoration-dotted decoration-[1.5px] underline-offset-[6px] transition-colors duration-150 ease-out hover:text-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 motion-reduce:transition-none"
+                                  className="cursor-pointer rounded-sm text-inherit underline decoration-dotted decoration-[1.5px] underline-offset-[6px] transition-colors duration-120 ease-out hover:text-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 motion-reduce:transition-none"
                                 >
                                   {activeProjectDisplayName ?? "this folder"}
                                 </button>
@@ -5877,7 +5877,7 @@ export default function ChatView({
             <div
               aria-hidden={!terminalWorkspaceTerminalTabActive}
               className={cn(
-                "absolute inset-0 min-h-0 min-w-0 transition-all duration-200 ease-out",
+                "absolute inset-0 min-h-0 min-w-0 transition-[opacity,transform] duration-160 ease-out motion-reduce:transition-none",
                 terminalWorkspaceTerminalTabActive
                   ? "translate-y-0 opacity-100"
                   : "pointer-events-none translate-y-1 opacity-0",

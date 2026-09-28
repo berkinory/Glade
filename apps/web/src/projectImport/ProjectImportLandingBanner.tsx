@@ -21,7 +21,7 @@ export function ProjectImportLandingBanner(props: { className?: string }) {
       <button
         type="button"
         data-testid="project-import-landing-banner"
-        className="flex w-full cursor-pointer items-center gap-4 rounded-2xl px-4 py-3 text-left transition-colors duration-150 ease-out hover:bg-foreground/[0.04] focus-visible:bg-foreground/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 motion-reduce:transition-none"
+        className="flex w-full cursor-pointer items-center gap-4 rounded-2xl px-4 py-3 text-left transition-colors duration-120 ease-out hover:bg-foreground/[0.04] focus-visible:bg-foreground/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 motion-reduce:transition-none"
         onClick={() => useProjectImportDialogStore.getState().openDialog()}
       >
         <ProjectImportGlyph />
@@ -37,7 +37,7 @@ export function ProjectImportLandingBanner(props: { className?: string }) {
       <button
         type="button"
         aria-label="Dismiss project import banner"
-        className="absolute -right-1.5 -top-1.5 flex size-[22px] items-center justify-center rounded-full border border-border/70 bg-background text-muted-foreground opacity-0 shadow-xs transition-opacity duration-150 ease-out hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 group-hover/import-banner:opacity-100 motion-reduce:transition-none"
+        className="absolute -right-1.5 -top-1.5 flex size-[22px] items-center justify-center rounded-full border border-border/70 bg-background text-muted-foreground opacity-0 shadow-xs transition-opacity duration-120 ease-out hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 group-hover/import-banner:opacity-100 motion-reduce:transition-none"
         onClick={() => setDismissed(true)}
       >
         <XIcon className="size-3" />

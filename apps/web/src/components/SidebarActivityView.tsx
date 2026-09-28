@@ -193,7 +193,7 @@ function ActivityThreadRow({
         >
           <span
             className={cn(
-              "flex min-w-0 items-center gap-1.5 overflow-hidden pr-5 transition-[padding] duration-150 ease-out",
+              "flex min-w-0 items-center gap-1.5 overflow-hidden pr-5 transition-[padding] duration-120 ease-out",
               // Yield the title row to the hover action cluster (pin + archive + done).
               "group-hover/activity-row:pr-[4.25rem] group-focus-within/activity-row:pr-[4.25rem]",
             )}

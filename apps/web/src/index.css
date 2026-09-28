@@ -3,6 +3,9 @@
 @custom-variant dark (&:is(.dark, .dark *));
 
 @theme inline {
+  /* Default hover/focus feedback. Larger movements use the shared motion tiers. */
+  --default-transition-duration: 120ms;
+  --default-transition-timing-function: ease-out;
   --animate-skeleton: skeleton 2s -1s infinite linear;
   /* Status spinners and shimmer labels share 50ms steps (20 fps), aligned by
      animationTimelineSync. Matching both cadence and phase lets their redraws
@@ -176,7 +179,7 @@
     border-radius: 0;
     /* Fade the seam divider with the slide (collapsed rule sets opacity:0) — `display`
        can't transition, so opacity is what keeps this in step with the animation. */
-    transition: opacity 300ms cubic-bezier(0.32, 0.72, 0, 1);
+    transition: opacity 180ms ease-out;
   }
 
   /* A single inset stroke produces the straight content edge without adding
@@ -333,7 +336,7 @@
 }
 
 .composer-trigger-label-enter {
-  animation: composer-trigger-label-enter 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  animation: composer-trigger-label-enter 120ms ease-out;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -384,7 +387,7 @@
 }
 
 .chat-message-send-enter {
-  animation: chat-message-send-enter 180ms ease-out both;
+  animation: chat-message-send-enter 160ms ease-out both;
   will-change: opacity, transform;
 }
 
@@ -401,6 +404,17 @@
 .no-transitions *::after {
   transition-duration: 0s !important;
   animation-duration: 0s !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Theme settings contrast slider thumb (range input) */
@@ -2802,7 +2816,7 @@ diffs-container {
   height: 1.25rem;
   pointer-events: none;
   background: var(--color-border);
-  transition: opacity 300ms cubic-bezier(0.32, 0.72, 0, 1);
+  transition: opacity 180ms ease-out;
 }
 
 [data-sidebar-layout="rail"]:has([data-slot="sidebar"][data-side="left"][data-state="collapsed"])

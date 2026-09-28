@@ -63,7 +63,7 @@ export function ComposerChoiceRow({
       aria-pressed={selectedProp === undefined ? undefined : selected}
       onClick={onSelect}
       className={cn(
-        "group flex w-full items-start gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors duration-150",
+        "group flex w-full items-start gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors duration-120",
         selected ? "bg-[var(--color-background-button-secondary)]" : ROW_TONE_CLASS_NAME[tone],
         disabled && "cursor-not-allowed opacity-50",
       )}
@@ -71,7 +71,7 @@ export function ComposerChoiceRow({
       {shortcut !== null ? (
         <span
           className={cn(
-            "flex size-[18px] shrink-0 items-center justify-center rounded-full text-ui-sm font-medium tabular-nums transition-colors duration-150",
+            "flex size-[18px] shrink-0 items-center justify-center rounded-full text-ui-sm font-medium tabular-nums transition-colors duration-120",
             selected
               ? "bg-[var(--color-text-foreground)] text-[var(--color-background-surface)]"
               : CHIP_TONE_CLASS_NAME[tone],

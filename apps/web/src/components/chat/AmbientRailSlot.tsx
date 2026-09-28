@@ -7,7 +7,7 @@
 // The env card closes by sliding away while keeping its flex height, which
 // would strand anything below it under a phantom gap. This slot measures the
 // previous sibling (the env card) and pulls up by exactly its height while
-// the env is closed, on the same 220ms clock — content glides into the
+// the env is closed, on the same 180ms clock — content glides into the
 // vacated place. Must stay position: static: the preview card measures its
 // offset parent for vertical space, and that must remain the full-height rail
 // wrapper rather than this slot.
@@ -35,7 +35,7 @@ export function AmbientRailSlot(props: {
   return (
     <div
       ref={slotRef}
-      className="transition-[margin] duration-220 ease-out motion-reduce:transition-none"
+      className="transition-[margin] duration-180 ease-out motion-reduce:transition-none"
       style={{ marginTop: props.envOpen ? 0 : -envHeight }}
     >
       {props.children}

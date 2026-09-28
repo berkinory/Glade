@@ -963,7 +963,7 @@ export default function DiffPanel({
   );
   // Timeout-0 keeps these two sync writes asynchronous (no wasted pre-paint
   // render), which also keeps this component eligible for React Compiler; the
-  // panel opens behind a 300ms slide, so one tick is invisible.
+  // panel opens behind a short slide, so one tick is invisible.
   useEffect(() => {
     const wasOpen = previousDiffOpenRef.current;
     previousDiffOpenRef.current = diffOpen;

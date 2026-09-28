@@ -498,7 +498,7 @@ export const DeviceScreen = memo(function DeviceScreen({
                       onClick={() => onPressButton?.(press)}
                       className={cn(
                         "absolute cursor-pointer rounded-full outline-none",
-                        "transition-transform duration-220 motion-reduce:transition-none",
+                        "transition-transform duration-160 motion-reduce:transition-none",
                         NUB_PRESS_IN[side],
                         "focus-visible:ring-2 focus-visible:ring-ring/80",
                         "disabled:pointer-events-none",

@@ -325,7 +325,7 @@ export function ChatTranscriptPane({
             className={cn(
               "pointer-events-none absolute inset-x-0 bottom-6 z-30 flex justify-center py-1",
               // Reuse the shared disclosure motion so the arrow fades + drifts in/out with
-              // the same 220ms ease-out curve (and motion-reduce fallback) as every other
+              // the same short ease-out curve (and motion-reduce fallback) as other
               // show/hide in the app. The wrapper stays pointer-events-none; only the
               // button re-enables pointer events while visible.
               DISCLOSURE_CONTENT_MOTION_CLASS,

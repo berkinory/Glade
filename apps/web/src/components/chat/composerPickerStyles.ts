@@ -140,7 +140,7 @@ export const COMPOSER_STACKED_HEADER_FRAME_CLASS_NAME = "mx-auto -mb-px w-14/15 
  *  `relative z-[1]` keeps the full input outline above the inset stacked rail
  *  (`-mb-px`), so the top border is never covered by live-changes / task / queue chrome. */
 export const COMPOSER_INPUT_SHELL_CLASS_NAME =
-  "group relative z-[1] chat-composer-shell transition-colors duration-200";
+  "group relative z-[1] chat-composer-shell transition-colors duration-120";
 
 /** The one border for raised chrome floating over the transcript: composer shell and
  *  its attached banners, the Environment panel, kanban cards. Light and dark values
@@ -159,7 +159,7 @@ export const RAISED_SURFACE_CHROME_CLASS_NAME = `border ${RAISED_SURFACE_BORDER_
 
 /** Composer input shell. Like RAISED_SURFACE_CHROME but keeps a visible border in
  *  dark mode (via `--surface-border`) instead of dropping to shadow-only separation. */
-export const COMPOSER_INPUT_SURFACE_CLASS_NAME = `chat-composer-surface border ${RAISED_SURFACE_BORDER_CLASS_NAME} ${COMPOSER_SURFACE_SHADOW_CLASS_NAME} transition-colors duration-200`;
+export const COMPOSER_INPUT_SURFACE_CLASS_NAME = `chat-composer-surface border ${RAISED_SURFACE_BORDER_CLASS_NAME} ${COMPOSER_SURFACE_SHADOW_CLASS_NAME} transition-colors duration-120`;
 
 /** Shadcn default-translucent shell for floating menus, pickers, and popovers. */
 export const APP_TRANSLUCENT_POPUP_SURFACE_BASE_CLASS_NAME =
@@ -218,11 +218,11 @@ export const ENVIRONMENT_PANEL_SURFACE_CLASS_NAME = `relative overflow-hidden ro
 
 /** Slide + inset timing matched to `SIDEBAR_OFFCANVAS_MOTION_CLASS` (right dock / thread sidebar). */
 export const ENVIRONMENT_PANEL_MOTION_CLASS =
-  "transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none";
+  "transition-[transform,opacity] duration-180 ease-out motion-reduce:transition-none";
 
 /** Transcript/composer right inset when the docked Environment card opens. */
 export const ENVIRONMENT_CONTENT_INSET_MOTION_CLASS =
-  "transition-[padding-right] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none";
+  "transition-[padding-right] duration-180 ease-out motion-reduce:transition-none";
 
 /** Anchors the command menu above the composer editor without shifting layout. */
 export const COMPOSER_COMMAND_MENU_FLOATING_WRAPPER_CLASS_NAME =

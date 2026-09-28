@@ -41,7 +41,10 @@ export function UsageProgressTrack({
       aria-label={label}
     >
       <div
-        className={cn("h-full rounded-full transition-[width] duration-500", fillClassName)}
+        className={cn(
+          "h-full rounded-full transition-[width] duration-180 ease-out motion-reduce:transition-none",
+          fillClassName,
+        )}
         style={{ width: `${clamped}%` }}
       />
       {showMarker ? (

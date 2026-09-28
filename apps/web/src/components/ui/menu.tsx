@@ -5,6 +5,7 @@ import { ChevronRightIcon } from "~/lib/icons";
 import * as React from "react";
 
 import { cn } from "~/lib/utils";
+import { UI_MOTION_POPUP_CLASS } from "~/lib/uiMotion";
 import { observeNativeSurfaceOverlay } from "~/lib/nativeSurfaceOcclusion";
 import {
   APP_TRANSLUCENT_POPUP_SURFACE_CLASS_NAME,
@@ -110,6 +111,7 @@ function MenuPopupBase({
         <MenuPrimitive.Popup
           className={cn(
             "relative flex origin-(--transform-origin) text-[var(--color-text-foreground)] outline-none focus:outline-none",
+            UI_MOTION_POPUP_CLASS,
             isComposerSurface ? "min-w-0 max-w-[92vw]" : "w-full min-w-full",
             popupSurfaceClassName,
             // Last so a caller's className can override surface tokens (e.g. a rounder radius).

@@ -286,7 +286,7 @@ function PullRequestsRouteView() {
   useEffect(() => {
     if (!selectedInput) return;
     // Timeout-0 keeps the state write asynchronous (compiler-eligible); the
-    // detail panel animates in over 300ms, so one macrotask is invisible.
+    // detail panel animates in briefly, so one macrotask is invisible.
     const timeout = window.setTimeout(() => setRenderedInput(selectedInput), 0);
     return () => window.clearTimeout(timeout);
     // selectedInput is a fresh object literal every render; depend on its primitive

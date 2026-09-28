@@ -74,7 +74,7 @@ export function ContextWindowMeter(props: {
                   strokeLinecap="round"
                   strokeDasharray={circumference}
                   strokeDashoffset={dashOffset}
-                  className="text-primary transition-[stroke-dashoffset] duration-500 ease-out motion-reduce:transition-none dark:text-[var(--color-text-foreground)]"
+                  className="text-primary transition-[stroke-dashoffset] duration-180 ease-out motion-reduce:transition-none dark:text-[var(--color-text-foreground)]"
                 />
               </svg>
             </span>

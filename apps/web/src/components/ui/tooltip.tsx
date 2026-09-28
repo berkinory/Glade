@@ -1,6 +1,7 @@
 import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
 
 import { cn } from "~/lib/utils";
+import { UI_MOTION_RESIZING_POPUP_CLASS } from "~/lib/uiMotion";
 import {
   APP_TOOLTIP_SURFACE_CLASS_NAME,
   COMPOSER_PICKER_TOOLTIP_SURFACE_CLASS_NAME,
@@ -82,7 +83,8 @@ function TooltipPopup({
             // Structure + type are shared by every tooltip; the variant supplies the
             // surface chrome (frosted card, picker, …) and `className` adds per-tooltip
             // tweaks like max-width or wrapping.
-            "flex h-(--popup-height,auto) w-(--popup-width,auto) origin-(--transform-origin) text-balance text-ui-sm transition-[width,height,scale,opacity] data-ending-style:scale-98 data-starting-style:scale-98 data-ending-style:opacity-0 data-starting-style:opacity-0 data-instant:duration-0",
+            "flex h-(--popup-height,auto) w-(--popup-width,auto) origin-(--transform-origin) text-balance text-ui-sm data-instant:duration-0",
+            UI_MOTION_RESIZING_POPUP_CLASS,
             TOOLTIP_SURFACE_BY_VARIANT[variant],
             className,
           )}

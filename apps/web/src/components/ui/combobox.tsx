@@ -5,6 +5,7 @@ import { CheckIcon, ChevronsUpDownIcon, XIcon } from "~/lib/icons";
 import * as React from "react";
 
 import { cn } from "~/lib/utils";
+import { UI_MOTION_POPUP_CLASS } from "~/lib/uiMotion";
 import { Input } from "~/components/ui/input";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import {
@@ -182,14 +183,17 @@ function ComboboxPopup({
       >
         <span
           className={cn(
-            APP_TRANSLUCENT_POPUP_SURFACE_BASE_CLASS_NAME,
-            "relative flex max-h-full min-w-(--anchor-width) max-w-(--available-width) origin-(--transform-origin) not-dark:bg-clip-padding shadow-lg/5 transition-[scale,opacity]",
-            COMPOSER_PICKER_RADIUS_CLASS_NAME,
+            "relative flex max-h-full min-w-(--anchor-width) max-w-(--available-width)",
             className,
           )}
         >
           <ComboboxPrimitive.Popup
-            className="flex max-h-[min(var(--available-height),23rem)] flex-1 flex-col text-foreground"
+            className={cn(
+              APP_TRANSLUCENT_POPUP_SURFACE_BASE_CLASS_NAME,
+              COMPOSER_PICKER_RADIUS_CLASS_NAME,
+              "flex max-h-[min(var(--available-height),23rem)] flex-1 origin-(--transform-origin) flex-col not-dark:bg-clip-padding text-foreground shadow-lg/5",
+              UI_MOTION_POPUP_CLASS,
+            )}
             data-slot="combobox-popup"
             {...props}
           >

@@ -20,7 +20,7 @@ export const ComposerAutomationSetupBanner = function ComposerAutomationSetupBan
         type="button"
         aria-label="Cancel automation setup"
         onClick={onCancel}
-        className="rounded-full border border-[color:var(--color-border-light)] px-3 py-1.5 text-ui leading-snug font-medium text-[var(--color-text-foreground-secondary)] transition-colors duration-150 hover:bg-[var(--color-background-button-secondary-hover)] hover:text-[var(--color-text-foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-border)]"
+        className="rounded-full border border-[color:var(--color-border-light)] px-3 py-1.5 text-ui leading-snug font-medium text-[var(--color-text-foreground-secondary)] transition-colors duration-120 hover:bg-[var(--color-background-button-secondary-hover)] hover:text-[var(--color-text-foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-border)]"
       >
         Cancel
       </button>

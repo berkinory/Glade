@@ -46,6 +46,7 @@ import {
 import { describeLinkChip } from "~/lib/linkChips";
 import { computerToolName, describeComputerToolCall } from "~/lib/computerToolPresentation";
 import { cn } from "~/lib/utils";
+import { DISCLOSURE_CLEANUP_BUFFER_MS, DISCLOSURE_TRANSITION_MS } from "~/lib/disclosureMotion";
 
 import { isFileChangeWorkLogEntry, type WorkLogEntry } from "../../session-logic";
 import {
@@ -88,8 +89,6 @@ import { formatLiveActivityMeta, useLiveActivityNow } from "../../lib/liveActivi
 import { openWorkspaceFileReference, useWorkspaceFileOpener } from "../../lib/workspaceFileOpener";
 import { MUTED_LABEL_TEXT_CLASS_NAME, MUTED_LABEL_TEXT_COLOR } from "~/surfaceStyles";
 
-const TRANSCRIPT_DISCLOSURE_TRANSITION_MS = 220;
-const TRANSCRIPT_DISCLOSURE_CLEANUP_BUFFER_MS = 40;
 // Rest tone is the shared quiet-label gray (same one the composer pickers use for
 // their effort/thinking labels) so a tool row and the picker below it read as one
 // muted tone; hover still lifts the whole row to full foreground.
@@ -700,7 +699,7 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
             const canOpenEditedDiff = Boolean(turnId && onOpenTurnDiff);
             const canOpenEditedRow = canOpenToolDetails || canOpenEditedDiff;
             const editedRowClassName = cn(
-              "group/file-row flex w-full max-w-full items-center text-left transition-colors duration-150",
+              "group/file-row flex w-full max-w-full items-center text-left transition-colors duration-120",
               compact ? "gap-1.5" : "gap-2",
               canOpenEditedRow ? "cursor-pointer focus-visible:outline-none" : "cursor-default",
             );
@@ -934,7 +933,7 @@ function AgentActivityOpenSurface(props: {
   dataToolDetailTrigger?: boolean | undefined;
 }) {
   const className = cn(
-    "group/tool-row flex w-full items-center text-left transition-[opacity,translate] duration-200",
+    "group/tool-row flex w-full items-center text-left transition-[opacity,translate] duration-160",
     props.compact ? "gap-1.5" : "gap-2",
     props.canOpen ? "cursor-pointer focus-visible:outline-none" : "cursor-default",
   );
@@ -1039,7 +1038,7 @@ function ToolDetailsDisclosure(props: {
   const summaryClassName =
     props.summaryClassName ??
     cn(
-      "group/tool-row flex w-full items-center text-left transition-[opacity,translate] duration-200",
+      "group/tool-row flex w-full items-center text-left transition-[opacity,translate] duration-160",
       props.compact ? "gap-1.5" : "gap-2",
       "cursor-pointer focus-visible:outline-none",
     );
@@ -1079,7 +1078,7 @@ function ToolDetailsDisclosure(props: {
       cleanupTimeoutRef.current = window.setTimeout(() => {
         cleanupTimeoutRef.current = null;
         setRenderDetails(false);
-      }, TRANSCRIPT_DISCLOSURE_TRANSITION_MS + TRANSCRIPT_DISCLOSURE_CLEANUP_BUFFER_MS);
+      }, DISCLOSURE_TRANSITION_MS + DISCLOSURE_CLEANUP_BUFFER_MS);
     },
     [clearMotionTimers],
   );

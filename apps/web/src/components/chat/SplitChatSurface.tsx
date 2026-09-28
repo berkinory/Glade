@@ -585,7 +585,7 @@ function SplitPaneSurface(props: {
           aria-hidden="true"
           // The accent border alone marks the focused pane; unfocused panes stay
           // undimmed so they never read as disabled.
-          className="pointer-events-none absolute inset-[0.9px] z-20 border border-[color-mix(in_srgb,var(--info)_45%,transparent)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--info)_12%,transparent)] transition-opacity duration-150"
+          className="pointer-events-none absolute inset-[0.9px] z-20 border border-[color-mix(in_srgb,var(--info)_45%,transparent)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--info)_12%,transparent)] transition-opacity duration-120"
         />
       ) : null}
     </div>

@@ -64,7 +64,7 @@ export function DeviceSetupScreen(props: {
                 <span
                   aria-hidden
                   className={cn(
-                    "mt-px flex size-[15px] shrink-0 items-center justify-center rounded-full border transition-colors duration-220 motion-reduce:transition-none",
+                    "mt-px flex size-[15px] shrink-0 items-center justify-center rounded-full border transition-colors duration-120 motion-reduce:transition-none",
                     step.done
                       ? "border-transparent bg-white text-black"
                       : blocked
@@ -120,7 +120,7 @@ export function DeviceSetupScreen(props: {
           <button
             type="button"
             onClick={props.action.onClick}
-            className="w-full rounded-full bg-white px-3 py-2 text-ui-sm font-medium text-black outline-none transition-opacity duration-220 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-white/70 motion-reduce:transition-none"
+            className="w-full rounded-full bg-white px-3 py-2 text-ui-sm font-medium text-black outline-none transition-opacity duration-120 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-white/70 motion-reduce:transition-none"
           >
             {props.action.label}
           </button>

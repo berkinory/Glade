@@ -3,6 +3,7 @@
 import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
 
 import { cn } from "~/lib/utils";
+import { UI_MOTION_RESIZING_POPUP_CLASS } from "~/lib/uiMotion";
 import { APP_TRANSLUCENT_POPUP_SURFACE_CLASS_NAME } from "../chat/composerPickerStyles";
 
 const PopoverCreateHandle = PopoverPrimitive.createHandle;
@@ -54,7 +55,8 @@ function PopoverPopup({
         <PopoverPrimitive.Popup
           className={cn(
             APP_TRANSLUCENT_POPUP_SURFACE_CLASS_NAME,
-            "relative flex h-(--popup-height,auto) w-(--popup-width,auto) origin-(--transform-origin) outline-none transition-[width,height,scale,opacity] has-data-[slot=calendar]:rounded-xl data-starting-style:scale-98 data-starting-style:opacity-0",
+            "relative flex h-(--popup-height,auto) w-(--popup-width,auto) origin-(--transform-origin) outline-none has-data-[slot=calendar]:rounded-xl",
+            UI_MOTION_RESIZING_POPUP_CLASS,
             tooltipStyle &&
               "w-fit text-balance rounded-md text-ui leading-snug shadow-md/5 before:rounded-[calc(var(--radius-md)-1px)]",
             className,

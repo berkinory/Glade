@@ -7,7 +7,7 @@
 //
 // Structure: the exported component is a thin dialog shell; all query state
 // lives in the inner content component mounted INSIDE the popup, so Base UI
-// unmounting it after the 200ms exit transition resets state for free (no
+// unmounting it after the exit transition resets state for free (no
 // reset-on-close effect, no row teardown while the popup is fading out).
 // Result rows are memoized and receive only stable props, so a keystroke
 // re-render bails out at the row boundary.

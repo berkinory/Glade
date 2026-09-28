@@ -4778,7 +4778,7 @@ export default function Sidebar() {
                   // touching the worktree chip. It costs no space when the row is idle.
                   <span
                     className={cn(
-                      "max-w-[40%] shrink-0 truncate text-right text-ui-meta text-muted-foreground/38 transition-[margin] duration-150 ease-out",
+                      "max-w-[40%] shrink-0 truncate text-right text-ui-meta text-muted-foreground/38 transition-[margin] duration-120 ease-out",
                       hasTrailingStatusGlyph && "mr-2",
                     )}
                   >
@@ -5172,7 +5172,7 @@ export default function Sidebar() {
               </SidebarLeadingIcon>
               <div
                 className={cn(
-                  "flex min-w-0 flex-1 items-center gap-2 overflow-hidden transition-[padding] duration-150 ease-out",
+                  "flex min-w-0 flex-1 items-center gap-2 overflow-hidden transition-[padding] duration-120 ease-out",
                   projectToolbarReserveClassName,
                 )}
               >

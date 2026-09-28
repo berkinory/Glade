@@ -118,7 +118,7 @@ const PlanSidebar = function PlanSidebar({
                 <div
                   key={`${task.status}:${task.task}`}
                   className={cn(
-                    "flex items-start gap-2.5 rounded-lg px-2.5 py-2 transition-colors duration-200",
+                    "flex items-start gap-2.5 rounded-lg px-2.5 py-2 transition-colors duration-120",
                     task.status === "inProgress" &&
                       "bg-[color-mix(in_srgb,var(--color-accent-blue)_5%,transparent)]",
                     task.status === "completed" &&

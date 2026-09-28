@@ -4,6 +4,7 @@ import { Autocomplete as AutocompletePrimitive } from "@base-ui/react/autocomple
 import { ChevronsUpDownIcon, XIcon } from "~/lib/icons";
 
 import { cn } from "~/lib/utils";
+import { UI_MOTION_POPUP_CLASS } from "~/lib/uiMotion";
 import { Input } from "~/components/ui/input";
 import { ScrollArea } from "~/components/ui/scroll-area";
 
@@ -112,12 +113,15 @@ function AutocompletePopup({
       >
         <span
           className={cn(
-            "relative flex max-h-full min-w-(--anchor-width) max-w-(--available-width) origin-(--transform-origin) rounded-lg border border-[color:var(--color-border-light)] bg-[var(--color-background-surface-under)] shadow-lg/5 transition-[scale,opacity] before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] before:shadow-[0_1px_--theme(--color-black/4%)] dark:before:shadow-[0_-1px_--theme(--color-white/6%)]",
+            "relative flex max-h-full min-w-(--anchor-width) max-w-(--available-width)",
             className,
           )}
         >
           <AutocompletePrimitive.Popup
-            className="flex max-h-[min(var(--available-height),23rem)] flex-1 flex-col text-foreground"
+            className={cn(
+              "relative flex max-h-[min(var(--available-height),23rem)] flex-1 origin-(--transform-origin) flex-col rounded-lg border border-[color:var(--color-border-light)] bg-[var(--color-background-surface-under)] text-foreground shadow-lg/5 before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] before:shadow-[0_1px_--theme(--color-black/4%)] dark:before:shadow-[0_-1px_--theme(--color-white/6%)]",
+              UI_MOTION_POPUP_CLASS,
+            )}
             data-slot="autocomplete-popup"
             {...props}
           >

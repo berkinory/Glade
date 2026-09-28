@@ -36,7 +36,7 @@ type SliderProps = {
 // stop. Base UI positions the thumb via `inset-inline-start` and sizes the fill via
 // `width`, so those are the transitioned properties.
 const MAGNETIC_MOTION_CLASS =
-  "transition-[inset-inline-start,width] duration-180 ease-[cubic-bezier(0.22,1.1,0.36,1)] motion-reduce:transition-none";
+  "transition-[inset-inline-start,width] duration-120 ease-out motion-reduce:transition-none";
 
 function stepMarkPercents(min: number, max: number, step: number): number[] {
   if (!(max > min) || !(step > 0)) return [];
@@ -154,7 +154,7 @@ function Slider({
                 <span
                   key={percent}
                   className={cn(
-                    "absolute top-1/2 size-[var(--slider-mark-size)] -translate-x-1/2 -translate-y-1/2 rounded-full transition-colors duration-180 motion-reduce:transition-none",
+                    "absolute top-1/2 size-[var(--slider-mark-size)] -translate-x-1/2 -translate-y-1/2 rounded-full transition-colors duration-120 motion-reduce:transition-none",
                     percent <= valuePercent + Number.EPSILON
                       ? "bg-white/55"
                       : "bg-[color-mix(in_srgb,var(--color-text-foreground)_28%,transparent)]",
@@ -180,7 +180,7 @@ function Slider({
                 the track edge and expose the fill behind it. */}
             <span
               aria-hidden="true"
-              className="block size-full rounded-full bg-white shadow-[0_1px_2px_rgba(0,0,0,0.12),0_0_0_0.5px_rgba(0,0,0,0.05)] transition-[scale,box-shadow] duration-150 ease-out group-data-pressed/slider:scale-105 group-data-pressed/slider:shadow-[0_2px_5px_rgba(0,0,0,0.14),0_0_0_0.5px_rgba(0,0,0,0.05)] motion-reduce:transition-none"
+              className="block size-full rounded-full bg-white shadow-[0_1px_2px_rgba(0,0,0,0.12),0_0_0_0.5px_rgba(0,0,0,0.05)] transition-[scale,box-shadow] duration-120 ease-out group-data-pressed/slider:scale-105 group-data-pressed/slider:shadow-[0_2px_5px_rgba(0,0,0,0.14),0_0_0_0.5px_rgba(0,0,0,0.05)] motion-reduce:transition-none"
             />
           </SliderPrimitive.Thumb>
         </SliderPrimitive.Track>

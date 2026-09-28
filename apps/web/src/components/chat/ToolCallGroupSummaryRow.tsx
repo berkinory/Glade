@@ -61,7 +61,7 @@ export function ToolCallGroupSummaryRow(props: {
         type="button"
         aria-expanded={open}
         className={cn(
-          "inline-flex max-w-full items-center gap-1.5 py-0.5 text-left transition-colors duration-200 hover:text-foreground",
+          "inline-flex max-w-full items-center gap-1.5 py-0.5 text-left transition-colors duration-120 hover:text-foreground",
           MUTED_LABEL_TEXT_CLASS_NAME,
         )}
         style={{ fontSize: `${fontSizePx}px` }}

@@ -4,7 +4,7 @@
 //          but on web the model→DOM write goes through a default-priority React
 //          update that flushes in a macrotask — after the frame in which a row
 //          changed height has already painted. Every frame where a row grows
-//          (streaming text, tool calls landing, the 220ms disclosure animation)
+//          (streaming text, tool calls landing, the disclosure animation)
 //          therefore paints with the rows below still at stale offsets, drawn
 //          on top of the grown row. This hook closes that window: a
 //          ResizeObserver fires in the same frame as the height change but

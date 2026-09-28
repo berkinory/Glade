@@ -821,7 +821,7 @@ export default function DevicePanel(props: {
       <p
         role="status"
         className={cn(
-          "line-clamp-2 flex shrink-0 items-center px-3 text-destructive text-ui leading-snug transition-opacity duration-220 motion-reduce:transition-none",
+          "line-clamp-2 flex shrink-0 items-center px-3 text-destructive text-ui leading-snug transition-opacity duration-120 motion-reduce:transition-none",
           threadState?.lastError
             ? "border-border border-t opacity-100"
             : "border-transparent border-t opacity-0",

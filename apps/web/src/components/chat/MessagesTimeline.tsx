@@ -1337,7 +1337,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
       ref={observeTimelineRow}
       className={cn(
         CHAT_COLUMN_FRAME_CLASS_NAME,
-        "px-1 transition-colors duration-500",
+        "px-1 transition-colors duration-120",
         row.kind === "working" ||
           (row.kind === "message" &&
             row.message.role === "assistant" &&
@@ -1439,7 +1439,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                     <button
                       type="button"
                       className={cn(
-                        "font-system-ui transition-colors duration-150 hover:text-foreground",
+                        "font-system-ui transition-colors duration-120 hover:text-foreground",
                         MUTED_LABEL_TEXT_CLASS_NAME,
                       )}
                       style={{ fontSize: `${appTypographyScale.uiSmPx}px` }}
@@ -1468,7 +1468,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                   <button
                     type="button"
                     className={cn(
-                      "font-system-ui transition-colors duration-150 hover:text-foreground",
+                      "font-system-ui transition-colors duration-120 hover:text-foreground",
                       MUTED_LABEL_TEXT_CLASS_NAME,
                     )}
                     style={{ fontSize: `${appTypographyScale.uiSmPx}px` }}
@@ -2006,7 +2006,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                           <button
                             type="button"
                             className={cn(
-                              "transition-colors duration-150 hover:text-foreground",
+                              "transition-colors duration-120 hover:text-foreground",
                               MUTED_LABEL_TEXT_CLASS_NAME,
                             )}
                             style={{ fontSize: `${normalizedChatFontSizePx}px` }}
@@ -2033,7 +2033,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                             <button
                               type="button"
                               className={cn(
-                                "transition-colors duration-150 hover:text-foreground",
+                                "transition-colors duration-120 hover:text-foreground",
                                 MUTED_LABEL_TEXT_CLASS_NAME,
                               )}
                               style={{ fontSize: `${normalizedChatFontSizePx}px` }}
@@ -2180,7 +2180,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                       // text below: the box is already flush, but the W glyph
                       // carries a left side-bearing that reads as an inset.
                       className={cn(
-                        "-ml-0.5 inline-flex items-center gap-1 pb-2 text-left transition-colors duration-200 hover:text-foreground",
+                        "-ml-0.5 inline-flex items-center gap-1 pb-2 text-left transition-colors duration-120 hover:text-foreground",
                         MUTED_LABEL_TEXT_CLASS_NAME,
                       )}
                       style={{ fontSize: chatTypographyStyle.fontSize }}
@@ -2243,7 +2243,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                       <button
                         key={`inline-summary-edit:${row.message.id}:${file.path}`}
                         type="button"
-                        className="group/file-row flex w-full max-w-full items-center gap-2 px-0 py-1.5 text-left transition-colors duration-150 focus-visible:outline-none"
+                        className="group/file-row flex w-full max-w-full items-center gap-2 px-0 py-1.5 text-left transition-colors duration-120 focus-visible:outline-none"
                         title={file.path}
                         onClick={() => onOpenTurnDiff(turnSummary!.turnId, file.path)}
                       >
@@ -3451,7 +3451,7 @@ const UserMessageCollapsibleText = memo(function UserMessageCollapsibleText(prop
         <button
           type="button"
           data-scroll-anchor-ignore
-          className="mt-1 block text-muted-foreground/55 transition-colors duration-150 hover:text-foreground/72"
+          className="mt-1 block text-muted-foreground/55 transition-colors duration-120 hover:text-foreground/72"
           style={{ fontSize: `${props.chatFontSizePx}px` }}
           aria-expanded={props.expanded}
           aria-controls={contentId}
