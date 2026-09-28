@@ -38,6 +38,7 @@ import {
 } from "./providerOrdering";
 import { ensureNativeApi } from "./nativeApi";
 import { providerDiscoveryQueryKeys } from "./lib/providerDiscoveryReactQuery";
+import { SIDEBAR_NAV_ITEM_IDS } from "./sidebarNavOrdering";
 import {
   invalidateProviderUsageQueries,
   reconcileServerProviderStatuses,
@@ -230,10 +231,8 @@ export const AppSettingsSchema = Schema.Struct({
   showPullRequestDiffColors: Schema.Boolean.pipe(withDefaults(() => true)),
   // Local-only UI preferences for hiding sidebar surfaces a user doesn't want.
   // `showChatsSection` controls the standalone "Chats" list in the sidebar footer
-  // (rootless chats not tied to a project). `showStudioSection` controls the
-  // optional Studio tab in the section switcher.
+  // (rootless chats not tied to a project).
   showChatsSection: Schema.Boolean.pipe(withDefaults(() => true)),
-  showStudioSection: Schema.Boolean.pipe(withDefaults(() => true)),
   // Local-only shell layout, available in Prod and Dev. useSidebarLayout keeps
   // mobile on classic even when the stored preference is "rail".
   sidebarLayout: SidebarLayout.pipe(withDefaults(() => DEFAULT_SIDEBAR_LAYOUT)),

@@ -61,13 +61,6 @@ export interface ProjectionThreadCheckpointContext {
   readonly worktreePath: string | null;
   readonly workingDirectory: string | null;
   readonly checkpoints: ReadonlyArray<OrchestrationCheckpointSummary>;
-  /** Completed file-change payloads, newest first, when explicitly requested by the caller. */
-  readonly fileChangeActivityPayloads?: ReadonlyArray<unknown>;
-}
-
-export interface ProjectionThreadCheckpointContextOptions {
-  /** Include the narrow activity payload set used to attribute files in non-Git workspaces. */
-  readonly includeFileChangeActivityPayloads?: boolean;
 }
 
 export interface ProjectionGeneratedImageActivityRecord {
@@ -199,7 +192,6 @@ export interface ProjectionSnapshotQueryShape {
    */
   readonly getThreadCheckpointContext: (
     threadId: ThreadId,
-    options?: ProjectionThreadCheckpointContextOptions,
   ) => Effect.Effect<Option.Option<ProjectionThreadCheckpointContext>, ProjectionRepositoryError>;
 
   /**

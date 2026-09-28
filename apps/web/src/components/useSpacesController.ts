@@ -106,10 +106,9 @@ export function useSpacesController(input: {
   const resetVoidSpace = useVoidSpaceStore((store) => store.resetVoidSpace);
   const homeDir = useWorkspacePathsStore((store) => store.homeDir);
   const chatWorkspaceRoot = useWorkspacePathsStore((store) => store.chatWorkspaceRoot);
-  const studioWorkspaceRoot = useWorkspacePathsStore((store) => store.studioWorkspaceRoot);
   const workspacePaths = useMemo(
-    () => ({ homeDir, chatWorkspaceRoot, studioWorkspaceRoot }),
-    [chatWorkspaceRoot, homeDir, studioWorkspaceRoot],
+    () => ({ homeDir, chatWorkspaceRoot }),
+    [chatWorkspaceRoot, homeDir],
   );
 
   const routeSpaceProject =

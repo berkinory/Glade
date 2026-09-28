@@ -72,7 +72,6 @@ const RAIL_ITEM_GLYPH_NAMES: Record<RailItemId, string> = {
   kanban: "columns-3-wide",
   pullRequests: "pull-request",
   automations: "clock",
-  studio: "images-1",
   settings: "settings-gear-4",
 };
 

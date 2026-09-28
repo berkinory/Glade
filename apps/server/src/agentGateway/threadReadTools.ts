@@ -178,7 +178,7 @@ export function makeThreadReadTools(input: ThreadReadToolsInput): ReadonlyArray<
     definition: {
       name: "glade_list_projects",
       description:
-        "List Glade projects (id, title, workspace root). System-managed containers (the Chats and Studio surfaces) are not projects and are excluded. Use before creating a thread in another project.",
+        "List Glade projects (id, title, workspace root). The system-managed Chats container is not a project and is excluded. Use before creating a thread in another project.",
       inputSchema: { type: "object", properties: {}, additionalProperties: false },
       annotations: { title: "List Glade projects", ...READ_ONLY_TOOL_ANNOTATIONS },
     },

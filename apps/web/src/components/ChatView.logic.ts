@@ -329,17 +329,13 @@ export function buildTranscriptTailKey(
 }
 
 export function resolveThreadArtifactWorkspaceRoot(input: {
-  readonly isStudioContainer: boolean;
   readonly projectCwd: string | null;
   readonly threadWorkspaceCwd: string | null;
 }): string | null {
   if (input.threadWorkspaceCwd) {
     return input.threadWorkspaceCwd;
   }
-  // A normal thread can expose project files while a requested worktree is
-  // still being materialized. Studio has no equivalent project-root fallback:
-  // its selected working directory is the artifact boundary.
-  return input.isStudioContainer ? null : input.projectCwd;
+  return input.projectCwd;
 }
 
 export interface PromptHistoryNavigationState {
@@ -635,13 +631,8 @@ export function resolveEnvironmentPanelVisible(input: {
   return input.environmentEnabled && input.environmentPanelOpen;
 }
 
-// Normal project toolbars stay stable while repository discovery is pending. Studio folders are
-// casual context, however, so they must opt into Git UI only after a positive repository result.
-export function resolveGitRepoUiState(input: {
-  isStudioContainer: boolean;
-  queriedIsRepo: boolean | undefined;
-}): boolean {
-  return input.queriedIsRepo ?? !input.isStudioContainer;
+export function resolveGitRepoUiState(input: { queriedIsRepo: boolean | undefined }): boolean {
+  return input.queriedIsRepo ?? true;
 }
 
 export interface SettledThreadBranchMismatch {

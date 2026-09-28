@@ -24,7 +24,6 @@ import {
   ProjectId,
   ProjectKind,
   SpaceId,
-  STUDIO_OUTPUTS_ACTIVITY_KIND,
   ThreadId,
   ThreadEnvironmentMode,
   TurnId,
@@ -97,7 +96,6 @@ const MAX_SNAPSHOT_THREAD_ACTIVITIES = 500;
 // A single opened thread keeps a much deeper window: providers emit hundreds of
 // activity rows per turn, so a 500-row tail dropped the previous turns' work log.
 const MAX_THREAD_DETAIL_ACTIVITIES = 2_000;
-const MAX_THREAD_FILE_CHANGE_ACTIVITIES = 2_000;
 const MAX_TURN_GENERATED_IMAGE_ACTIVITY_RECORDS = 64;
 const ProjectionProjectDbRowSchema = ProjectionProject.mapFields(
   Struct.assign({
@@ -167,9 +165,6 @@ const ProjectionCheckpointDbRowSchema = ProjectionCheckpoint.mapFields(
     files: Schema.fromJsonString(Schema.Array(OrchestrationCheckpointFile)),
   }),
 );
-const ProjectionFileChangeActivityPayloadDbRowSchema = Schema.Struct({
-  payload: Schema.fromJsonString(Schema.Unknown),
-});
 const ProjectionGeneratedImageActivityDbRowSchema = Schema.Struct({
   kind: Schema.String,
   payload: Schema.fromJsonString(Schema.Unknown),
@@ -2162,26 +2157,6 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
       `,
   });
 
-  // File-change tool payloads and captured per-turn Studio outputs remain available in
-  // non-Git workspaces, where checkpoint capture intentionally does not run. Studio output
-  // attribution requests this narrow slice.
-  const listFileChangeActivityPayloadsByThread = SqlSchema.findAll({
-    Request: ThreadIdLookupInput,
-    Result: ProjectionFileChangeActivityPayloadDbRowSchema,
-    execute: ({ threadId }) =>
-      sql`
-        SELECT payload_json AS "payload"
-        FROM projection_thread_activities
-        WHERE thread_id = ${threadId}
-          AND (
-            (kind = 'tool.completed' AND json_extract(payload_json, '$.itemType') = 'file_change')
-            OR kind = ${STUDIO_OUTPUTS_ACTIVITY_KIND}
-          )
-        ORDER BY created_at DESC, activity_id DESC
-        LIMIT ${MAX_THREAD_FILE_CHANGE_ACTIVITIES}
-      `,
-  });
-
   // Generated-image references are recovered at turn settlement. Keep this query
   // independent of the 500-row thread-detail activity window: a long-running turn
   // can emit far more tool activities before its terminal event arrives.
@@ -2194,13 +2169,8 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
         FROM projection_thread_activities
         WHERE thread_id = ${threadId}
           AND turn_id = ${turnId}
-          AND (
-            (kind = 'tool.completed' AND json_extract(payload_json, '$.itemType') = 'image_generation')
-            OR (
-              kind = ${STUDIO_OUTPUTS_ACTIVITY_KIND}
-              AND json_type(payload_json, '$.data.generatedImage') = 'object'
-            )
-          )
+          AND kind = 'tool.completed'
+          AND json_extract(payload_json, '$.itemType') = 'image_generation'
         -- Provider replay can project the same completion more than once. Collapse
         -- exact payload duplicates before applying the two-records-per-image cap.
         GROUP BY kind, payload_json
@@ -2852,7 +2822,6 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
 
   const getThreadCheckpointContext: ProjectionSnapshotQueryShape["getThreadCheckpointContext"] = (
     threadId,
-    options,
   ) =>
     Effect.gen(function* () {
       const threadRow = yield* getThreadCheckpointContextThreadRow({ threadId }).pipe(
@@ -2875,18 +2844,6 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
           ),
         ),
       );
-      const fileChangeActivityPayloads = options?.includeFileChangeActivityPayloads
-        ? yield* listFileChangeActivityPayloadsByThread({ threadId }).pipe(
-            Effect.mapError(
-              toPersistenceSqlOrDecodeError(
-                "ProjectionSnapshotQuery.getThreadCheckpointContext:listFileChangeActivities:query",
-                "ProjectionSnapshotQuery.getThreadCheckpointContext:listFileChangeActivities:decodeRows",
-              ),
-            ),
-            Effect.map((rows) => rows.map((row) => row.payload)),
-          )
-        : undefined;
-
       return Option.some({
         threadId: threadRow.value.threadId,
         projectId: threadRow.value.projectId,
@@ -2906,7 +2863,6 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
             completedAt: row.completedAt,
           }),
         ),
-        ...(fileChangeActivityPayloads ? { fileChangeActivityPayloads } : {}),
       });
     });
 

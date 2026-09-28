@@ -78,11 +78,7 @@ interface RailShellState extends PersistedRailShellState {
   openSpacesProject: (projectId: ProjectId) => void;
   closeSpacesProject: () => void;
   /** `projectIds: null` means the project list is not hydrated yet, so the drill-in is kept. */
-  reconcile: (input: {
-    pathname: string;
-    onStudioSurface: boolean;
-    projectIds: ReadonlySet<ProjectId> | null;
-  }) => void;
+  reconcile: (input: { pathname: string; projectIds: ReadonlySet<ProjectId> | null }) => void;
 }
 
 export const useRailShellStore = create<RailShellState>((set, get) => ({
@@ -104,18 +100,17 @@ export const useRailShellStore = create<RailShellState>((set, get) => ({
     set({ spacesProjectId: null });
     persist(get());
   },
-  reconcile: ({ pathname, onStudioSurface, projectIds }) => {
+  reconcile: ({ pathname, projectIds }) => {
     const current = get();
     // A clicked panel item stays active on a route item's route (Spaces while on Pull
     // requests); only a navigation re-syncs it.
-    const routeKey = onStudioSurface ? `studio:${pathname}` : pathname;
+    const routeKey = pathname;
     const activeItem =
       routeKey === current.reconciledRouteKey
         ? current.activeItem
         : reconcileActiveRailItem({
             current: current.activeItem,
             pathname,
-            onStudioSurface,
             panelView: current.panelView,
           });
     const spacesProjectId =

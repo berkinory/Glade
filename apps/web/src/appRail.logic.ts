@@ -26,13 +26,13 @@ export const RAIL_PANEL_ITEM_LABELS: Record<RailPanelItemId, string> = {
   spaces: "Spaces",
 };
 /** Rail items that navigate to a route. "New thread" stays in the panel, never the rail. */
-export type RailRouteItemId = Exclude<SidebarNavItemId, "newThread"> | "studio" | "settings";
+export type RailRouteItemId = Exclude<SidebarNavItemId, "newThread"> | "settings";
 export type RailItemId = RailPanelItemId | RailRouteItemId;
 
 /**
  * Route items for the top of the rail, in the user's persisted nav order. Hidden items
- * drop out unless their route is active (the same rule the classic nav rows use). Studio
- * lives in the rail's "…" menu and Settings is a bottom item, so neither is listed here.
+ * drop out unless their route is active (the same rule the classic nav rows use).
+ * Settings is a bottom item, so it is not listed here.
  */
 /** A Space or a single project the user added to the rail from its "…" menu. */
 export type RailShortcut =
@@ -115,7 +115,7 @@ export function resolveActiveRailShortcutKey(input: {
 
 /**
  * Whether the panel column shows next to the rail for the active item. Every section either
- * owns a panel (Home/Spaces: projects and threads; Automations, Studio, Settings: their own
+ * owns a panel (Home/Spaces: projects and threads; Automations and Settings: their own
  * lists) or takes the full width: Kanban is one board, Pull requests has its own list and
  * detail panes.
  */
@@ -132,26 +132,21 @@ export function railItemForPathname(pathname: string): RailRouteItemId | null {
   if (matchesRoute(pathname, "/kanban")) return "kanban";
   if (matchesRoute(pathname, "/pull-requests")) return "pullRequests";
   if (matchesRoute(pathname, "/automations")) return "automations";
-  if (matchesRoute(pathname, "/studio")) return "studio";
   if (matchesRoute(pathname, "/settings")) return "settings";
   return null;
 }
 
 /**
  * Re-syncs the active item after navigation: a route item wins when the pathname is its
- * route (shortcut, deep link, command palette); a Studio thread lives at a plain thread
- * path, so the sidebar's Studio detection counts as the Studio route; anywhere else the
- * current panel item is active, so exactly one rail item is active at a time.
+ * route (shortcut, deep link, command palette); otherwise the current panel item
+ * is active, so exactly one rail item is active at a time.
  */
 export function reconcileActiveRailItem(input: {
   current: RailItemId;
   pathname: string;
-  onStudioSurface: boolean;
   panelView: RailPanelItemId;
 }): RailItemId {
-  return (
-    railItemForPathname(input.pathname) ?? (input.onStudioSurface ? "studio" : input.panelView)
-  );
+  return railItemForPathname(input.pathname) ?? input.panelView;
 }
 
 export interface RailSpacesSection<T> {

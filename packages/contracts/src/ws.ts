@@ -94,7 +94,6 @@ import {
   ProjectStopDevServerInput,
   ProjectWriteFileInput,
 } from "./project";
-import { StudioListThreadOutputsInput } from "./studio";
 import { FilesystemBrowseInput } from "./filesystem";
 import {
   DEVICE_WS_CHANNELS,
@@ -184,9 +183,6 @@ export const WS_METHODS = {
   projectsListDevServers: "projects.listDevServers",
   subscribeProjectDevServerEvents: "projects.subscribeDevServerEvents",
   projectsProvisionFromGitHub: "projects.provisionFromGitHub",
-
-  // Studio methods
-  studioListThreadOutputs: "studio.listThreadOutputs",
 
   // Filesystem browse methods
   filesystemBrowse: "filesystem.browse",
@@ -381,9 +377,6 @@ const WebSocketRequestBody = Schema.Union([
   tagRequestBody(WS_METHODS.projectsProvisionFromGitHub, GitHubProjectProvisionInput),
 
   // Filesystem browse
-  // Studio
-  tagRequestBody(WS_METHODS.studioListThreadOutputs, StudioListThreadOutputsInput),
-
   tagRequestBody(WS_METHODS.filesystemBrowse, FilesystemBrowseInput),
 
   // Device pane (macOS only; the server refuses these off darwin)
@@ -529,7 +522,6 @@ export const WsWelcomePayload = Schema.Struct({
   cwd: TrimmedNonEmptyString,
   homeDir: Schema.optional(TrimmedNonEmptyString),
   chatWorkspaceRoot: Schema.optional(TrimmedNonEmptyString),
-  studioWorkspaceRoot: Schema.optional(TrimmedNonEmptyString),
   projectName: TrimmedNonEmptyString,
   bootstrapProjectId: Schema.optional(ProjectId),
   bootstrapThreadId: Schema.optional(ThreadId),

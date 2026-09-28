@@ -25,7 +25,7 @@ const PROJECT_SOURCES: ReadonlyArray<{
 ];
 
 /**
- * The compact raised-thumb picker previously used for the Glade/Studio switch,
+ * A compact raised-thumb picker,
  * adapted to choose how a project is added.
  */
 export function ProjectSourceSegmentedPicker(props: {

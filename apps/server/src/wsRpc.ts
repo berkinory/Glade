@@ -60,11 +60,6 @@ import {
   isThreadDetailEventFor,
   THREAD_DETAIL_EVENT_TYPES,
 } from "@glade/shared/threadDetailEvents";
-import { listStudioThreadOutputs } from "./studioOutputs";
-import {
-  ensureStudioWorkspaceInstructionsFiles,
-  STUDIO_WORKSPACE_SUBDIRECTORIES,
-} from "./studioWorkspaceScaffold";
 import { DevServerManager, findProjectDevServerForLocalServer } from "./devServerManager";
 import { DeviceService } from "./device/Services/DeviceService";
 import { makeWsDeviceHandlers } from "./device/wsDeviceHandlers";
@@ -227,7 +222,6 @@ const wsRequestAdmissionMiddlewareLayer = Layer.effect(
 );
 
 // Relative subdirectories scaffolded under a freshly created chat container workspace root.
-// The Studio layout lives in studioWorkspaceScaffold.ts alongside its instruction files.
 const CHAT_WORKSPACE_SUBDIRECTORIES = ["work", "outputs"] as const;
 
 interface ProcessTableRow {
@@ -599,10 +593,7 @@ const makeWsRpcHandlersLayer = () =>
           Effect.provideService(Path.Path, path),
         );
       });
-      // One mkdir loop shared by every container kind; the relative directory set is the
-      // only thing that varies (general chats scaffold work/outputs, Studio mirrors the
-      // Claude Outbox layout). Keeping a single implementation keeps error handling and
-      // idempotency identical across kinds.
+      // Scaffold the managed chat workspace after its project is accepted.
       const prepareWorkspaceSubdirectories = Effect.fnUntraced(function* (
         workspaceRoot: string,
         relativeDirnames: readonly string[],
@@ -624,31 +615,13 @@ const makeWsRpcHandlersLayer = () =>
         prepareWorkspaceSubdirectories(workspaceRoot, CHAT_WORKSPACE_SUBDIRECTORIES);
       // Instruction files are best-effort: they steer agents toward the Outbox layout but
       // must never fail (or retry-loop) the container create that scaffolds the folders.
-      const prepareStudioWorkspaceRoot = (workspaceRoot: string) =>
-        prepareWorkspaceSubdirectories(workspaceRoot, STUDIO_WORKSPACE_SUBDIRECTORIES).pipe(
-          Effect.andThen(
-            ensureStudioWorkspaceInstructionsFiles(workspaceRoot).pipe(
-              Effect.catch((cause) =>
-                Effect.logWarning("failed to write studio workspace instructions", {
-                  workspaceRoot,
-                  cause,
-                }),
-              ),
-              Effect.provideService(FileSystem.FileSystem, fileSystem),
-              Effect.provideService(Path.Path, path),
-            ),
-          ),
-        );
-
       const normalizeDispatchCommand = makeDispatchCommandNormalizer<WsRpcError>({
         attachmentsDir: config.attachmentsDir,
         chatWorkspaceRoot: config.chatWorkspaceRoot,
-        studioWorkspaceRoot: config.studioWorkspaceRoot,
         fileSystem,
         path,
         canonicalizeProjectWorkspaceRoot,
         prepareChatWorkspaceRoot,
-        prepareStudioWorkspaceRoot,
       });
 
       const importThread = makeImportThreadHandler({
@@ -708,7 +681,6 @@ const makeWsRpcHandlersLayer = () =>
           cwd: config.cwd,
           homeDir: config.homeDir,
           chatWorkspaceRoot: config.chatWorkspaceRoot,
-          studioWorkspaceRoot: config.studioWorkspaceRoot,
           worktreesDir: config.worktreesDir,
           keybindingsConfigPath: config.keybindingsConfigPath,
           keybindings: keybindingsConfig.keybindings,
@@ -1434,54 +1406,6 @@ const makeWsRpcHandlersLayer = () =>
               ),
             ),
             { label: "projects.github-provision" },
-          ),
-        [WS_METHODS.studioListThreadOutputs]: (input) =>
-          rpcEffect(
-            Effect.gen(function* () {
-              // Self-heal the Studio folder tree: an accepted create whose deferred scaffold
-              // failed (crash, transient FS error) must not leave Studio without its Outbox
-              // forever. mkdir -p is idempotent and cheap, and this endpoint only fires while
-              // a Studio chat's environment panel is actually open. Failures degrade to the
-              // empty-list behavior.
-              yield* prepareStudioWorkspaceRoot(config.studioWorkspaceRoot).pipe(
-                Effect.catch(() => Effect.void),
-              );
-              // Checkpoints cover Git workspaces; file-change activities preserve the same
-              // attribution in the default non-Git Studio root. Unknown/non-Studio ids stay empty.
-              const context = yield* projectionReadModelQuery.getThreadCheckpointContext(
-                input.threadId,
-                { includeFileChangeActivityPayloads: true },
-              );
-              if (Option.isNone(context) || context.value.projectKind !== "studio") {
-                return { entries: [] };
-              }
-              const workspaceCwd = resolveThreadWorkspaceCwd({
-                thread: {
-                  projectId: context.value.projectId,
-                  envMode: context.value.envMode,
-                  worktreePath: context.value.worktreePath,
-                  workingDirectory: context.value.workingDirectory,
-                },
-                projects: [
-                  {
-                    id: context.value.projectId,
-                    kind: context.value.projectKind,
-                    workspaceRoot: context.value.workspaceRoot,
-                  },
-                ],
-              });
-              if (!workspaceCwd) {
-                return { entries: [] };
-              }
-              return yield* listStudioThreadOutputs({
-                workspaceRoot: workspaceCwd,
-                checkpoints: context.value.checkpoints,
-                ...(context.value.fileChangeActivityPayloads
-                  ? { fileChangeActivityPayloads: context.value.fileChangeActivityPayloads }
-                  : {}),
-              });
-            }),
-            "Failed to list studio thread outputs",
           ),
         [WS_METHODS.filesystemBrowse]: (input) =>
           rpcEffect(workspaceEntries.browse(input), "Failed to browse filesystem"),

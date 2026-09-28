@@ -192,7 +192,6 @@ import type {
   ThreadComputerState,
 } from "./computer";
 import type { ComputerGetAuditHistoryInput, ComputerGetAuditHistoryResult } from "./computerAudit";
-import type { StudioListThreadOutputsInput, StudioListThreadOutputsResult } from "./studio";
 import type {
   ServerConfig,
   ServerDiagnosticsResult,
@@ -795,11 +794,6 @@ export interface NativeApi {
   };
   filesystem: {
     browse: (input: FilesystemBrowseInput) => Promise<FilesystemBrowseResult>;
-  };
-  studio: {
-    listThreadOutputs: (
-      input: StudioListThreadOutputsInput,
-    ) => Promise<StudioListThreadOutputsResult>;
   };
   shell: {
     openInEditor: (cwd: string, editor: EditorId) => Promise<void>;

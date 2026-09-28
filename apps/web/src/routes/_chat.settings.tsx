@@ -560,14 +560,6 @@ function SettingsRouteView() {
         })}
 
         {renderBooleanSettingRow({
-          settingKey: "showStudioSection",
-          title: "Studio",
-          description: "Show the Studio tab in the sidebar switcher.",
-          resetLabel: "studio section",
-          ariaLabel: "Show the Studio section in the sidebar",
-        })}
-
-        {renderBooleanSettingRow({
           settingKey: "showAutomationRunThreads",
           title: "Automation runs",
           description:

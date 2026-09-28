@@ -16,7 +16,6 @@ import { useComposerDraftStore } from "../composerDraftStore";
 import { useHandleNewChat } from "../hooks/useHandleNewChat";
 import { isHomeChatContainerProject } from "../lib/chatProjects";
 import { VOID_SPACE_KEY } from "../lib/spaceGrouping";
-import { collectStudioProjectIds } from "../lib/studioProjects";
 import { resolveSplitViewThreadIds, useSplitViewStore } from "../splitViewStore";
 import { EMPTY_THREAD_IDS, useStore } from "../store";
 import { useSpacesUiStore } from "../spacesUiStore";
@@ -42,7 +41,6 @@ function ChatIndexRouteView() {
   const draftThreadsByThreadId = useComposerDraftStore((state) => state.draftThreadsByThreadId);
   const homeDir = useWorkspacePathsStore((state) => state.homeDir);
   const chatWorkspaceRoot = useWorkspacePathsStore((state) => state.chatWorkspaceRoot);
-  const studioWorkspaceRoot = useWorkspacePathsStore((state) => state.studioWorkspaceRoot);
   const createFreshChat = async () => {
     const result = await handleNewChat({ fresh: true, standalone: landingSpaceKey !== undefined });
     if (landingSpaceKey !== undefined && result.ok && result.threadId) {
@@ -56,13 +54,8 @@ function ChatIndexRouteView() {
     return result;
   };
 
-  const workspacePaths = { homeDir, chatWorkspaceRoot, studioWorkspaceRoot };
-  // Home chats restore the last visited route, except Studio threads — those belong to the
-  // /studio surface, and restoring one from "/" would silently switch the user into the Studio
-  // segment. A Studio lastThreadRoute falls through to a fresh home-chat draft instead.
-  const studioProjectIds = collectStudioProjectIds(projects, workspacePaths);
-  // Only still-unsent drafts qualify as restore targets: `promotedTo` means the draft already became a real thread, so
-  // its stale id is no longer valid (matches the filtering findStudioDraftThreadId applies).
+  const workspacePaths = { homeDir, chatWorkspaceRoot };
+  // Only still-unsent drafts qualify as restore targets.
   const draftProjectIdByThreadId = new Map<string, ProjectId>();
   for (const [threadId, draft] of Object.entries(draftThreadsByThreadId)) {
     if (draft.promotedTo === undefined) {
@@ -105,7 +98,6 @@ function ChatIndexRouteView() {
       availableSplitViewIds,
       threadIds,
       sidebarThreadSummaryById,
-      studioProjectIds,
       draftProjectIdByThreadId,
       rememberedSplitViewThreadIds: rememberedSplitView
         ? resolveSplitViewThreadIds(rememberedSplitView)

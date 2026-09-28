@@ -39,7 +39,6 @@ const EXPENSIVE_READ_METHODS = new Set<string>([
   WS_METHODS.projectsSearchContent,
   WS_METHODS.projectsReadFile,
   WS_METHODS.projectsResolveWorkspaceFileReferences,
-  WS_METHODS.studioListThreadOutputs,
   WS_METHODS.filesystemBrowse,
   WS_METHODS.gitStatus,
   WS_METHODS.gitReadWorkingTreeDiff,

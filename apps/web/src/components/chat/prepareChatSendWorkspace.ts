@@ -55,11 +55,9 @@ interface Input {
   activeProject: Project;
   chatWorkspaceRoot: string | null;
   isHomeChatContainer: boolean;
-  isStudioContainer: boolean;
   resolvedThreadWorktreePath: string | null;
   runtimeModeForSend: RuntimeMode;
   envModeForSend: DraftThreadEnvMode;
-  resolvedThreadWorkingDirectory: string | null;
   currentActiveGitBranch: string | null;
   isContainerLandingProject: boolean;
   api: NonNullable<ReturnType<typeof readNativeApi>>;
@@ -91,11 +89,9 @@ export async function prepareChatSendWorkspace({
   activeProject,
   chatWorkspaceRoot,
   isHomeChatContainer,
-  isStudioContainer,
   resolvedThreadWorktreePath,
   runtimeModeForSend,
   envModeForSend,
-  resolvedThreadWorkingDirectory,
   currentActiveGitBranch,
   isContainerLandingProject,
   api,
@@ -156,10 +152,7 @@ export async function prepareChatSendWorkspace({
     defaultModelSelection: firstSendDefaultModelSelection,
     isFirstMessage,
     isHomeChatContainer,
-    isStudioContainer,
     projects: currentStoreState.projects,
-    // Studio reference folders change the thread cwd without moving the chat out of
-    // the managed Studio project. Home-chat folder selection keeps its project routing.
     selectedWorkspaceRoot: isHomeChatContainer ? (resolvedThreadWorktreePath ?? null) : null,
     title,
     titleSeed,
@@ -181,20 +174,12 @@ export async function prepareChatSendWorkspace({
     : firstSendTarget.target;
   let nextRuntimeModeForSend = runtimeModeForSend;
   let nextThreadEnvMode = envModeForSend;
-  let nextThreadBranch = isStudioContainer ? null : activeThread.branch;
-  let nextThreadWorktreePath = isStudioContainer ? null : activeThread.worktreePath;
-  let nextThreadWorkingDirectory = isStudioContainer
-    ? resolvedThreadWorkingDirectory
-    : (activeThread.workingDirectory ?? null);
-  let nextAssociatedWorktreePath = isStudioContainer
-    ? null
-    : (activeThread.associatedWorktreePath ?? null);
-  let nextAssociatedWorktreeBranch = isStudioContainer
-    ? null
-    : (activeThread.associatedWorktreeBranch ?? null);
-  let nextAssociatedWorktreeRef = isStudioContainer
-    ? null
-    : (activeThread.associatedWorktreeRef ?? null);
+  let nextThreadBranch = activeThread.branch;
+  let nextThreadWorktreePath = activeThread.worktreePath;
+  let nextThreadWorkingDirectory = activeThread.workingDirectory ?? null;
+  let nextAssociatedWorktreePath = activeThread.associatedWorktreePath ?? null;
+  let nextAssociatedWorktreeBranch = activeThread.associatedWorktreeBranch ?? null;
+  let nextAssociatedWorktreeRef = activeThread.associatedWorktreeRef ?? null;
   const shouldResumeSettledLocalThread =
     isServerThread &&
     activeThread.settledAt != null &&

@@ -74,7 +74,7 @@ interface ProjectPickerProps {
    * project name in the new-chat heading). The element receives the combobox trigger props.
    */
   renderTrigger?: ReactElement<Record<string, unknown>>;
-  /** Copy overrides for folder-tagging contexts (e.g. Studio) where picking never creates a project. */
+  /** Optional copy for project and folder selection contexts. */
   emptyTriggerLabel?: string;
   addActionLabel?: string;
   resetActionLabel?: string;

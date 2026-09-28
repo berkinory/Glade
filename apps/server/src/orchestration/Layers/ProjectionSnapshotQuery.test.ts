@@ -2233,28 +2233,6 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
             2
           ),
           (
-            'activity-studio-outputs',
-            'thread-context',
-            'turn-2',
-            'info',
-            'studio.outputs.captured',
-            'Studio outputs captured',
-            '{"itemType":"studio_outputs","data":{"files":[{"path":"output/pdf/report.pdf"}]}}',
-            '2026-03-02T00:00:05.300Z',
-            3
-          ),
-          (
-            'activity-generated-image-copy',
-            'thread-context',
-            'turn-2',
-            'info',
-            'studio.outputs.captured',
-            'Studio outputs captured',
-            '{"itemType":"studio_outputs","data":{"files":[{"path":"Outbox/Images/generated.png"}],"generatedImage":{"sourcePath":"/codex/generated.png","fullPath":"/tmp/context-workspace/Outbox/Images/generated.png"}}}',
-            '2026-03-02T00:00:05.400Z',
-            4
-          ),
-          (
             'activity-generated-image-tool',
             'thread-context',
             'turn-2',
@@ -2263,7 +2241,7 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
             'Generated image',
             '{"itemType":"image_generation","status":"completed","data":{"kind":"codex.generated_image","path":"/codex/generated.png"}}',
             '2026-03-02T00:00:05.500Z',
-            5
+            3
           )
       `;
 
@@ -2303,53 +2281,11 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
         });
       }
 
-      const outputContext = yield* snapshotQuery.getThreadCheckpointContext(
-        ThreadId.makeUnsafe("thread-context"),
-        { includeFileChangeActivityPayloads: true },
-      );
-      assert.equal(outputContext._tag, "Some");
-      if (outputContext._tag === "Some") {
-        assert.deepEqual(outputContext.value.fileChangeActivityPayloads, [
-          {
-            itemType: "studio_outputs",
-            data: {
-              files: [{ path: "Outbox/Images/generated.png" }],
-              generatedImage: {
-                sourcePath: "/codex/generated.png",
-                fullPath: "/tmp/context-workspace/Outbox/Images/generated.png",
-              },
-            },
-          },
-          {
-            itemType: "studio_outputs",
-            data: { files: [{ path: "output/pdf/report.pdf" }] },
-          },
-          {
-            itemType: "file_change",
-            status: "completed",
-            data: { path: "Outbox/Content/post.md" },
-          },
-        ]);
-      }
-
       const generatedImageActivities = yield* snapshotQuery.listGeneratedImageActivitiesByTurn(
         ThreadId.makeUnsafe("thread-context"),
         TurnId.makeUnsafe("turn-2"),
       );
       assert.deepEqual(generatedImageActivities, [
-        {
-          kind: "studio.outputs.captured",
-          payload: {
-            itemType: "studio_outputs",
-            data: {
-              files: [{ path: "Outbox/Images/generated.png" }],
-              generatedImage: {
-                sourcePath: "/codex/generated.png",
-                fullPath: "/tmp/context-workspace/Outbox/Images/generated.png",
-              },
-            },
-          },
-        },
         {
           kind: "tool.completed",
           payload: {

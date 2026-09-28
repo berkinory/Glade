@@ -5,6 +5,7 @@
 ### Removed
 
 - Removed the auto-generated Environment recap and its background model requests.
+- Removed Studio mode, its dedicated workspace and output capture, and its UI, server API, settings, and tests.
 
 ### Improved
 

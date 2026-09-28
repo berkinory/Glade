@@ -345,7 +345,7 @@
   }
 }
 
-/* One-shot entry for the sidebar's segment surface swap (Studio <-> Projects).
+/* One-shot entry for sidebar surface changes.
    Keyed remounts play this on the incoming surface so the switch reads
    as a movement instead of a hard cut. Enter-only by design: no exit or height
    animation, so it cannot feed back into list animation or scroll behavior. */
@@ -3200,15 +3200,6 @@ diffs-container {
   --picker-option-min-h: 2.75rem;
   --picker-option-px: 0.625rem;
   --picker-option-py: 0.3125rem;
-}
-
-/* Sidebar Glade/Studio surface switcher: tight shell inset, airy option rows.
-   Composer picker tokens otherwise pin option py to ~1px and win over Tailwind. */
-.sidebar-surface-picker-menu {
-  --picker-menu-body-p: 0.25rem;
-  --picker-option-min-h: 0;
-  --picker-option-px: 0.75rem;
-  --picker-option-py: 0.5625rem;
 }
 
 .runtime-mode-menu-item {

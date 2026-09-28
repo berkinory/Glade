@@ -268,16 +268,16 @@ $$
     // one run-on paragraph of pipes. The repair pass pads the delimiter row.
     const markup = await renderMarkdown(
       [
-        "Studio vs. normal mode:",
+        "Advanced vs. normal mode:",
         "",
-        "| | Normal mode | Studio |",
+        "| | Normal mode | Advanced |",
         "|---|---|",
         "| Purpose | Focused, interactive work | Long-running, agent-led work |",
       ].join("\n"),
     );
 
     expect(markup).toContain("<table>");
-    expect(markup).toContain("<th>Studio</th>");
+    expect(markup).toContain("<th>Advanced</th>");
     expect(markup).toContain("<td>Purpose</td>");
     expect(markup).not.toContain("|---|");
   });

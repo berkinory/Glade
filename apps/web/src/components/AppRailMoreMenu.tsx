@@ -1,5 +1,5 @@
 // FILE: AppRailMoreMenu.tsx
-// Purpose: The rail's "…" menu (as in Codex): open Studio, and choose which Spaces and single
+// Purpose: The rail's "…" menu (as in Codex): choose which Spaces and single
 //          projects sit in the rail as their own shortcuts.
 // Layer: App shell component (rendered by ThreadSidebar into the rail)
 
@@ -11,7 +11,6 @@ import {
   MenuCheckboxItem,
   MenuGroup,
   MenuGroupLabel,
-  MenuItem,
   MenuSeparator,
   MenuTrigger,
 } from "./ui/menu";
@@ -27,16 +26,12 @@ export function AppRailMoreMenu({
   projects,
   pinnedKeys,
   onToggleShortcut,
-  onOpenStudio,
   active,
 }: {
   readonly spaces: ReadonlyArray<AppRailMoreMenuEntry>;
   readonly projects: ReadonlyArray<AppRailMoreMenuEntry>;
   readonly pinnedKeys: ReadonlySet<string>;
   readonly onToggleShortcut: (key: string) => void;
-  /** Null when the Studio section is hidden in Settings. */
-  readonly onOpenStudio: (() => void) | null;
-  /** Studio has no rail button of its own, so "…" stands for it while it is open. */
   readonly active: boolean;
 }) {
   return (
@@ -56,14 +51,6 @@ export function AppRailMoreMenu({
         side="right"
         className="max-h-[min(36rem,80vh)] w-64 min-w-64 overflow-y-auto"
       >
-        {onOpenStudio ? (
-          <>
-            <MenuGroup>
-              <MenuItem onClick={onOpenStudio}>Studio</MenuItem>
-            </MenuGroup>
-            <MenuSeparator />
-          </>
-        ) : null}
         <MenuGroup>
           <MenuGroupLabel>Spaces in the rail</MenuGroupLabel>
           {spaces.map((entry) => (

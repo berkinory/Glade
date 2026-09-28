@@ -13,7 +13,6 @@ import {
   type OrchestrationProjectShell,
   type OrchestrationProposedPlanId,
   CheckpointRef,
-  STUDIO_OUTPUTS_ACTIVITY_KIND,
   ThreadId,
   TurnId,
   type OrchestrationThreadActivity,
@@ -50,7 +49,6 @@ import {
   generatedImagePathFromRuntimeEvent,
   isCodexGeneratedImageArtifact,
 } from "../../codexGeneratedImages.ts";
-import { copyAndAttributeStudioGeneratedImage } from "../../studioGeneratedImages.ts";
 import { parseCheckpointFilesFromUnifiedDiff } from "../../checkpointing/Diffs.ts";
 import { ProviderService } from "../../provider/Services/ProviderService.ts";
 import { ComputerService } from "../../computer/Services/ComputerService.ts";
@@ -509,33 +507,12 @@ function asObject(value: unknown): Record<string, unknown> | undefined {
   return isJsonObject(value) ? value : undefined;
 }
 
-/**
- * Resolves persisted image tool records to their durable display paths. Studio
- * copies add a source -> workspace-path marker; non-Studio images keep the
- * provider artifact path. The query supplying these records is turn-scoped and
- * independent of the bounded thread-detail activity window.
- */
+/** Resolves persisted image tool records independently of the bounded thread-detail window. */
 export function collectPersistedGeneratedImagePaths(
   records: ReadonlyArray<ProjectionGeneratedImageActivityRecord>,
 ): string[] {
-  const studioDisplayPathBySourcePath = new Map<string, string>();
-  for (const record of records) {
-    if (record.kind !== STUDIO_OUTPUTS_ACTIVITY_KIND) {
-      continue;
-    }
-    const payload = asObject(record.payload);
-    const data = asObject(payload?.data);
-    const generatedImage = asObject(data?.generatedImage);
-    const sourcePath = asString(generatedImage?.sourcePath)?.trim();
-    const fullPath = asString(generatedImage?.fullPath)?.trim();
-    if (sourcePath && fullPath) {
-      studioDisplayPathBySourcePath.set(sourcePath, fullPath);
-    }
-  }
-
   const paths: string[] = [];
   const seenPaths = new Set<string>();
-  const representedSourcePaths = new Set<string>();
   const addPath = (path: string) => {
     if (!seenPaths.has(path)) {
       seenPaths.add(path);
@@ -555,16 +532,7 @@ export function collectPersistedGeneratedImagePaths(
     if (!artifact) {
       continue;
     }
-    representedSourcePaths.add(artifact.path);
-    addPath(studioDisplayPathBySourcePath.get(artifact.path) ?? artifact.path);
-  }
-
-  // A Studio marker can survive even if a provider's corresponding tool row was
-  // pruned or malformed. It is image-specific, so retaining the copied path is safe.
-  for (const [sourcePath, fullPath] of studioDisplayPathBySourcePath) {
-    if (!representedSourcePaths.has(sourcePath)) {
-      addPath(fullPath);
-    }
+    addPath(artifact.path);
   }
 
   return paths;
@@ -1629,53 +1597,6 @@ const make = Effect.gen(function* () {
       });
     });
 
-  /**
-   * For Studio threads, copies a completed generated image into the thread's Studio
-   * workspace (Outbox/Images) and appends direct output attribution. Returns null —
-   * and must stay non-fatal — for non-Studio threads and on any copy failure, so the
-   * transcript path falls back to the original Codex-home file.
-   */
-  const materializeStudioGeneratedImage = (input: {
-    event: ProviderRuntimeEvent;
-    thread: OrchestrationThread;
-    imagePath: string;
-    turnId: TurnId | undefined;
-    createdAt: string;
-  }) =>
-    Effect.gen(function* () {
-      const project = yield* getProjectShell(input.thread);
-      if (!project || project.kind !== "studio") {
-        return null;
-      }
-      const workspaceRoot = resolveThreadWorkspaceCwd({
-        thread: input.thread,
-        projects: [project],
-      });
-      if (!workspaceRoot) {
-        return null;
-      }
-      return yield* copyAndAttributeStudioGeneratedImage({
-        orchestrationEngine,
-        sourcePath: input.imagePath,
-        workspaceRoot,
-        threadId: input.thread.id,
-        turnId: input.turnId,
-        eventId: input.event.eventId,
-        createdAt: input.createdAt,
-      });
-    }).pipe(
-      Effect.catchCause((cause) => {
-        if (Cause.hasInterruptsOnly(cause)) {
-          return Effect.failCause(cause);
-        }
-        return Effect.logWarning("failed to copy generated image into Studio workspace", {
-          threadId: input.thread.id,
-          imagePath: input.imagePath,
-          cause: Cause.pretty(cause),
-        }).pipe(Effect.as(null));
-      }),
-    );
-
   const upsertProposedPlan = (input: {
     event: ProviderRuntimeEvent;
     threadId: ThreadId;
@@ -2663,21 +2584,10 @@ const make = Effect.gen(function* () {
       const generatedImagePath = generatedImagePathFromRuntimeEvent(event);
       if (generatedImagePath) {
         const generatedImageTurnId = toTurnId(event.turnId) ?? activeTurnId ?? undefined;
-        // Studio threads get a durable in-workspace copy (plus direct Output panel
-        // attribution); the transcript then references that copy so the image outlives
-        // any Codex-home cleanup. Non-Studio threads keep the original path.
-        const copied = yield* materializeStudioGeneratedImage({
-          event,
-          thread,
-          imagePath: generatedImagePath,
-          turnId: generatedImageTurnId,
-          createdAt: now,
-        });
-        const displayPath = copied?.fullPath ?? generatedImagePath;
         if (generatedImageTurnId) {
           // Defer the transcript reference to turn settle (see the flush helper); the
           // "Generated image" work row already surfaces progress mid-turn.
-          yield* rememberPendingGeneratedImage(thread.id, generatedImageTurnId, displayPath);
+          yield* rememberPendingGeneratedImage(thread.id, generatedImageTurnId, generatedImagePath);
         } else {
           // No turn to correlate with: attach immediately to the same provider item
           // (replay) or an existing reference, else a standalone image-only message.
@@ -2685,12 +2595,12 @@ const make = Effect.gen(function* () {
           const sameItemMessageId = event.itemId
             ? MessageId.makeUnsafe(`assistant:${event.itemId}`)
             : undefined;
-          const markdown = generatedImageMarkdown(displayPath);
+          const markdown = generatedImageMarkdown(generatedImagePath);
           const targetMessage = messages.find(
             (message) =>
               message.role === "assistant" &&
               (message.id === sameItemMessageId ||
-                message.text.includes(displayPath) ||
+                message.text.includes(generatedImagePath) ||
                 message.text.includes(markdown)),
           );
           yield* appendGeneratedImagesToAssistantMessage({
@@ -2698,7 +2608,7 @@ const make = Effect.gen(function* () {
             threadId: thread.id,
             targetMessage,
             newMessageId: MessageId.makeUnsafe(`assistant:image:${event.itemId ?? event.eventId}`),
-            imagePaths: [displayPath],
+            imagePaths: [generatedImagePath],
             createdAt: now,
           });
         }
