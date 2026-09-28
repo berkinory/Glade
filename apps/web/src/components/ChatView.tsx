@@ -65,7 +65,7 @@ import {
   gitGithubRepositoryQueryOptions,
   gitStatusQueryOptions,
 } from "~/lib/gitReactQuery";
-import { LoaderCircleIcon, RefreshCwIcon, TemporaryThreadIcon } from "~/lib/icons";
+import { LoaderCircleIcon, RefreshCwIcon } from "~/lib/icons";
 import { getLocalFolderBrowseRootPath } from "~/lib/localFolderMentions";
 import { findProviderStatus } from "~/lib/providerAvailability";
 import { serverSettingsQueryOptions } from "~/lib/serverReactQuery";
@@ -194,7 +194,6 @@ import {
   createProjectSelector,
   createThreadSelector,
 } from "../storeSelectors";
-import { useTemporaryThreadStore } from "../temporaryThreadStore";
 import { useTerminalStateStore } from "../terminalStateStore";
 import { getThreadFromState } from "../threadDerivation";
 import { buildThreadSubscribeInput } from "../threadDetailResumeCursors";
@@ -330,7 +329,6 @@ import {
   COMPOSER_FOLDER_PICKER_CAPSULE_HOVER_CLASS_NAME,
   COMPOSER_INPUT_SHELL_CLASS_NAME,
   COMPOSER_INPUT_SURFACE_CLASS_NAME,
-  COMPOSER_TOOLBAR_CAPSULE_HOVER_CLASS_NAME,
   COMPOSER_TOOLBAR_TRIGGER_TEXT_CLASS_NAME,
   ENVIRONMENT_CONTENT_INSET_MOTION_CLASS,
 } from "./chat/composerPickerStyles";
@@ -662,11 +660,6 @@ export default function ChatView({
   const draftThread = useComposerDraftStore(
     (store) => store.draftThreadsByThreadId[threadId] ?? null,
   );
-  const hasTemporaryThreadMarker = useTemporaryThreadStore((store) =>
-    threadId ? store.temporaryThreadIds[threadId] === true : false,
-  );
-  const markTemporaryThread = useTemporaryThreadStore((store) => store.markTemporaryThread);
-  const clearTemporaryThread = useTemporaryThreadStore((store) => store.clearTemporaryThread);
   const markWorkflowRunPaused = useWorkflowRunUiStore((store) => store.markPaused);
   const markWorkflowRunDismissed = useWorkflowRunUiStore((store) => store.markDismissed);
   const serverThread = useStore(useMemo(() => createThreadSelector(threadId), [threadId]));
@@ -2681,9 +2674,6 @@ export default function ChatView({
   // or hides the side panel only when this thread already has a pane to show.
   const rightDockOpen = useRightDockStore((store) => selectRightDockState(threadId)(store).open);
   const isMobileViewport = useIsMobile();
-  // Temporary threads are visually identical to regular chats — they use the same
-  // Environment panel + header controls. "Temporary" is purely a sidebar badge +
-  // auto-delete-on-leave concern, never a stripped-down chat UI.
   const environmentEnabled = !isEditorRail && !hideHeader;
   const environmentUsesFloatingOverlay =
     isTerminalEnvironmentContext || isMobileViewport || rightDockOpen || surfaceMode === "split";
@@ -4848,18 +4838,6 @@ export default function ChatView({
   };
   const showEmptyLandingBranchToolbar =
     isCenteredEmptyLanding && activeProject?.kind === "project" && !isHomeChatContainer;
-  // Temporary is chosen while starting a chat. Draft metadata covers local reloads;
-  // the in-memory marker keeps the badge + auto-delete alive through promotion.
-  const isThreadTemporary = draftThread?.isTemporary === true || hasTemporaryThreadMarker;
-  const toggleDraftTemporary = () => {
-    const next = !isThreadTemporary;
-    setDraftThreadContext(threadId, { isTemporary: next });
-    if (next) {
-      markTemporaryThread(threadId);
-    } else {
-      clearTemporaryThread(threadId);
-    }
-  };
   const showEmptyLandingProjectPicker =
     isCenteredEmptyLanding && isLocalDraftThread && activeProject?.kind === "project";
   const showContainerChatWorkspacePicker =
@@ -4958,30 +4936,6 @@ export default function ChatView({
           />
         ) : null}
       </div>
-      {showEmptyLandingBranchToolbar ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          aria-pressed={isThreadTemporary}
-          onClick={toggleDraftTemporary}
-          title={
-            isThreadTemporary
-              ? "Temporary chat — deleted when you leave. Click to keep it."
-              : "Make this a temporary chat (deleted when you leave)"
-          }
-          aria-label="Temporary chat"
-          className={cn(
-            "ml-auto shrink-0 gap-1.5 whitespace-nowrap px-2 sm:px-2.5",
-            COMPOSER_TOOLBAR_CAPSULE_HOVER_CLASS_NAME,
-            COMPOSER_TOOLBAR_TRIGGER_TEXT_CLASS_NAME,
-            isThreadTemporary && "!text-[var(--color-text-accent)]",
-          )}
-        >
-          <TemporaryThreadIcon className="size-3.5" />
-          <span className="sr-only sm:not-sr-only">Temporary</span>
-        </Button>
-      ) : null}
     </div>
   ) : null;
 
@@ -5880,7 +5834,6 @@ export default function ChatView({
                     tailAnchorScrollInFlightRef={tailAnchorScrollInFlightRef}
                     crossTaskOrigin={crossTaskOrigin}
                     forkSource={forkSource}
-                    isTemporaryThread={isThreadTemporary}
                     timelineEntries={timelineEntries}
                     messageChangeSignal={timelineMessages}
                     turnDiffSummaryByAssistantMessageId={turnDiffSummaryByAssistantMessageId}

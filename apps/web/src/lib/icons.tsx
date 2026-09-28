@@ -3,7 +3,6 @@ import { PiSquareSplitHorizontal, PiSquareSplitVertical } from "react-icons/pi";
 import { RiApps2Line } from "react-icons/ri";
 import { SiGithub } from "react-icons/si";
 import { VscMcp } from "react-icons/vsc";
-import { cn } from "./utils";
 import { CentralIcon, type CentralIconVariant } from "./central-icons";
 import {
   IconAlertCircle,
@@ -307,12 +306,6 @@ export const SquareSplitHorizontal: LucideIcon = (props) => (
 );
 export const SquareSplitVertical: LucideIcon = (props) => (
   <PiSquareSplitVertical className={props.className} style={props.style} />
-);
-const TemporaryThreadGlyph = centralIconWrapper("bubble-annotation-5");
-// Dotted "annotation" chat bubble — the temporary thread marker shown on the
-// composer toggle and beside temporary threads in the sidebar.
-export const TemporaryThreadIcon: LucideIcon = ({ className, ...props }) => (
-  <TemporaryThreadGlyph className={cn("size-3.5 shrink-0", className)} {...props} />
 );
 export const TERMINAL_ICON_NAME = "console";
 export const TerminalIcon = centralIconWrapper(TERMINAL_ICON_NAME);

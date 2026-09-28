@@ -20,7 +20,6 @@ import {
   type LucideIcon,
   MessageCircleIcon,
   Minimize2,
-  TemporaryThreadIcon,
 } from "./icons";
 
 // Reuse the app's existing icon components for each concept so slash commands
@@ -36,7 +35,6 @@ export const SLASH_COMMAND_ICONS: Record<string, LucideIcon> = {
   default: MessageCircleIcon,
   review: BugIcon,
   fork: GitForkIcon,
-  side: TemporaryThreadIcon,
   status: InfoIcon,
   subagents: BotIcon,
   feedback: BugIcon,

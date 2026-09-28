@@ -1,5 +1,5 @@
 // FILE: SidebarMetaChip.tsx
-// Purpose: Tooltip-backed meta badges shown on thread rows (handoff, fork, temporary, etc.).
+// Purpose: Tooltip-backed meta badges shown on thread rows (handoff, fork, etc.).
 // Layer: Sidebar UI primitive
 // Exports: SidebarMetaChip, SidebarMetaChipStack, SidebarMetaChipPlaceholder
 

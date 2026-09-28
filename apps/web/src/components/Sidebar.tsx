@@ -27,7 +27,6 @@ import {
   SearchIcon,
   SettingsIcon,
   StopFilledIcon,
-  TemporaryThreadIcon,
   TerminalIcon,
   Trash2,
   TriangleAlertIcon,
@@ -420,7 +419,6 @@ import {
 import { ENVIRONMENT_PANEL_SURFACE_CLASS_NAME } from "./chat/composerPickerStyles";
 import { selectSplitView, useSplitViewStore } from "../splitViewStore";
 import { useRightDockStore } from "../rightDockStore";
-import { useTemporaryThreadStore } from "../temporaryThreadStore";
 import { useThreadActivationController } from "../hooks/useThreadActivationController";
 import {
   firstLocalServerUrl,
@@ -1378,7 +1376,6 @@ export default function Sidebar() {
   const openTerminalThreadPage = useTerminalStateStore((state) => state.openTerminalThreadPage);
   const clearProjectDraftThreads = useComposerDraftStore((store) => store.clearProjectDraftThreads);
   const draftThreadsByThreadId = useComposerDraftStore((store) => store.draftThreadsByThreadId);
-  const temporaryThreadIds = useTemporaryThreadStore((store) => store.temporaryThreadIds);
   const persistedPinnedProjectIds = usePinnedProjectsStore((store) => store.pinnedProjectIds);
   const pinProjectLocally = usePinnedProjectsStore((store) => store.pinProject);
   const unpinProject = usePinnedProjectsStore((store) => store.unpinProject);
@@ -4837,15 +4834,12 @@ export default function Sidebar() {
       terminalAttentionStatesById: threadTerminalState.terminalAttentionStatesById,
     });
     const terminalCount = threadTerminalState.terminalIds.length;
-    const isTemporaryThread =
-      temporaryThreadIds[thread.id] === true ||
-      draftThreadsByThreadId[thread.id]?.isTemporary === true;
     const secondaryMetaClass = isHighlighted
       ? "text-foreground/54 dark:text-foreground/64"
       : "text-muted-foreground/34";
     const rightMetaChips = resolveThreadRowMetaChips({
       thread,
-      includeHandoffBadge: !isTemporaryThread,
+      includeHandoffBadge: true,
       handoffShownInAvatar:
         threadEntryPoint !== "terminal" &&
         !isGenericChatThreadTitle(thread.title) &&
@@ -4856,7 +4850,6 @@ export default function Sidebar() {
     const leadingPr = isSubagentThread || thread.forkSourceThreadId ? null : pr;
     const subagentIndentPx = Math.max(0, Math.min(depth - 1, 3) * 10);
     const showCompactMeta = !isSubagentThread;
-    const showTemporaryThreadIcon = showCompactMeta && isTemporaryThread;
     const threadJumpLabel = visibleThreadJumpLabelByThreadId.get(thread.id) ?? null;
     const threadJumpLabelParts =
       visibleThreadJumpLabelPartsByThreadId.get(thread.id) ?? EMPTY_SHORTCUT_PARTS;
@@ -4951,22 +4944,6 @@ export default function Sidebar() {
               subagentIndentPx={subagentIndentPx}
               pendingStatusColorClass={
                 threadStatus?.label === "Pending Approval" ? threadStatus.colorClass : null
-              }
-              suffix={
-                showTemporaryThreadIcon ? (
-                  <div className="ml-auto flex shrink-0 items-center gap-1.5 pr-1">
-                    <Tooltip>
-                      <TooltipTrigger
-                        render={
-                          <span className="inline-flex shrink-0 items-center text-muted-foreground/55">
-                            <TemporaryThreadIcon />
-                          </span>
-                        }
-                      />
-                      <TooltipPopup side="top">Temporary chat</TooltipPopup>
-                    </Tooltip>
-                  </div>
-                ) : undefined
               }
             />
             <div className={cn("absolute top-1/2 flex -translate-y-1/2 items-center", "right-1.5")}>

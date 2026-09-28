@@ -51,7 +51,6 @@ interface ChatTranscriptPaneProps {
   expandedWorkGroups?: Record<string, boolean>;
   hasMessages: boolean;
   isRevertingCheckpoint: boolean;
-  isTemporaryThread?: boolean;
   isWorking: boolean;
   workingLabel?: ComponentProps<typeof MessagesTimeline>["workingLabel"];
   followLiveOutput: boolean;
@@ -131,7 +130,6 @@ export function ChatTranscriptPane({
   expandedWorkGroups,
   hasMessages,
   isRevertingCheckpoint,
-  isTemporaryThread,
   isWorking,
   workingLabel,
   followLiveOutput,
@@ -268,7 +266,6 @@ export function ChatTranscriptPane({
             {...(tailAnchorScrollInFlightRef ? { tailAnchorScrollInFlightRef } : {})}
             {...(crossTaskOrigin ? { crossTaskOrigin } : {})}
             {...(forkSource ? { forkSource } : {})}
-            isTemporaryThread={isTemporaryThread ?? false}
             timelineEntries={timelineEntries}
             messageChangeSignal={messageChangeSignal}
             turnDiffSummaryByAssistantMessageId={turnDiffSummaryByAssistantMessageId}
