@@ -1570,18 +1570,19 @@ export default function GitActionsControl({
           }
         }}
       >
-        <DialogPopup className="max-w-xl">
+        <DialogPopup className="max-w-md">
           <DialogHeader>
             <DialogTitle>
               {pendingDefaultBranchActionCopy?.title ?? "Run action on default branch?"}
             </DialogTitle>
             <DialogDescription>{pendingDefaultBranchActionCopy?.description}</DialogDescription>
           </DialogHeader>
-          <DialogFooter>
+          <DialogFooter className="sm:flex-col-reverse">
             <Button
               variant="outline"
               size="sm"
               shape="capsule"
+              className="w-full"
               onClick={() => setPendingDefaultBranchAction(null)}
             >
               Abort
@@ -1590,6 +1591,7 @@ export default function GitActionsControl({
               variant="outline"
               size="sm"
               shape="capsule"
+              className="w-full"
               onClick={continuePendingDefaultBranchAction}
             >
               {pendingDefaultBranchAction &&
@@ -1602,6 +1604,7 @@ export default function GitActionsControl({
               <Button
                 size="sm"
                 shape="capsule"
+                className="w-full"
                 onClick={checkoutFeatureBranchAndContinuePendingAction}
               >
                 Checkout feature branch & continue

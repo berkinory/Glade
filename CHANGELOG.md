@@ -10,6 +10,7 @@
 ### Improved
 
 - The built-in unfiled Space is now Home.
+- Default branch confirmations use a compact dialog with vertically stacked actions.
 - Desktop windows now have a 1024×700 minimum size. ([3dcfe2a39](https://github.com/berkinory/Glade/commit/3dcfe2a394ad0d31edc008bcf08cab6149f21bcc))
 - Editor picker icons appear immediately. ([08b815d53](https://github.com/berkinory/Glade/commit/08b815d5336e7e63c5241bc1bc69d0e858c4f55f))
 
