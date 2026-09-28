@@ -459,7 +459,7 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
           <div
             role="tabpanel"
             className={cn(
-              "max-h-[min(12.5rem,40vh)] min-h-20 overflow-y-auto overscroll-contain p-1",
+              "h-[min(12.5rem,40vh)] overflow-y-auto overscroll-contain p-1",
               COMPOSER_PICKER_MODEL_LIST_SCROLL_CLASS_NAME,
             )}
           >
