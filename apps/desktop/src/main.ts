@@ -5153,6 +5153,9 @@ function getDesktopCustomTitleBarState() {
   });
 }
 
+const MIN_DESKTOP_WINDOW_WIDTH = 1024;
+const MIN_DESKTOP_WINDOW_HEIGHT = 700;
+
 function createWindow(): BrowserWindow {
   const savedWindowState = readDesktopWindowState(DESKTOP_WINDOW_STATE_PATH);
   const primaryDisplay = screen.getPrimaryDisplay();
@@ -5166,14 +5169,14 @@ function createWindow(): BrowserWindow {
             .filter((display) => display.id !== primaryDisplay.id)
             .map((display) => display.workArea),
         ],
-        minimumWidth: 840,
-        minimumHeight: 620,
+        minimumWidth: MIN_DESKTOP_WINDOW_WIDTH,
+        minimumHeight: MIN_DESKTOP_WINDOW_HEIGHT,
       })
     : { width: 1100, height: 780 };
   const window = new BrowserWindow({
     ...restoredBounds,
-    minWidth: 840,
-    minHeight: 620,
+    minWidth: MIN_DESKTOP_WINDOW_WIDTH,
+    minHeight: MIN_DESKTOP_WINDOW_HEIGHT,
     show: false,
     autoHideMenuBar: true,
     ...getIconOption(),
