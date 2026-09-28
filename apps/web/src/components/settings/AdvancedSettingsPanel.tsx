@@ -21,6 +21,7 @@ import { useStore } from "~/store";
 import { createAllThreadsMessagelessSelector, createThreadShellsSelector } from "~/storeSelectors";
 import { useSettingsRestoreSignal } from "./SettingControls";
 import { SettingsRow, SettingsSection } from "./SettingsPanelPrimitives";
+import { DesktopUpdateSettingsRow } from "./DesktopUpdateSettingsRow";
 
 export function AdvancedSettingsPanel(props: {
   active: boolean;
@@ -237,6 +238,7 @@ export function AdvancedSettingsPanel(props: {
       </SettingsSection>
 
       <SettingsSection title="About">
+        <DesktopUpdateSettingsRow />
         <SettingsRow
           title="Version"
           description="Current application version."
