@@ -3,40 +3,68 @@ import type { WhatsNewEntry } from "./logic";
 export const WHATS_NEW_ENTRIES: readonly WhatsNewEntry[] = [
   {
     version: "0.0.4",
-    date: "Unreleased",
+    date: "2026-09-28",
     features: [
       {
-        id: "picker-menu-consistency",
-        title: "Improved",
-        description:
-          "Branch and project pickers use compact menus; branch changes show only diff totals.",
+        id: "studio-retired",
+        title: "Removed",
+        description: "Studio mode and its dedicated workspace flows are gone.",
+        commit: "648d50fb1194ffe60e273cf07407231eb6e5d910",
       },
       {
-        id: "faster-interface-motion",
-        title: "Improved",
-        description: "Menus, disclosures, and panels respond with quicker motion.",
+        id: "handoff-controls-retired",
+        title: "Removed",
+        description: "Separate provider and new-worktree handoff controls are gone.",
+        commit: "177bf808538d03182e0368fc02151debdfd559ed",
       },
       {
-        id: "panel-resizing",
+        id: "provider-switching",
         title: "Improved",
         description:
-          "The sidebar has a sensible maximum width, and panel resizing follows the pointer smoothly.",
+          "Switch providers from the model picker with confirmation and a visible transition in the new chat.",
+        commit: "177bf808538d03182e0368fc02151debdfd559ed",
       },
       {
-        id: "release-notes-layout",
+        id: "desktop-updates",
         title: "Improved",
-        description:
-          "What's new groups changes by type, with subtle color and a simpler preview card.",
+        description: "Check, download, and install desktop updates from Settings.",
+        commit: "14381fb8cb07f16cdd725fe7177760d674ef268d",
+      },
+      {
+        id: "picker-menus",
+        title: "Improved",
+        description: "Branch and project pickers use compact menus.",
+        commit: "341bd13f8b43d4a2ad3546d11338cdaa412a9cbf",
+      },
+      {
+        id: "sidebar-shortcuts",
+        title: "Improved",
+        description: "Sidebar shortcut hints use compact keycaps and stay clear of badges.",
+        commit: "3df97a78d11c7dd75c4b86856cefa7a3711cf5fd",
+      },
+      {
+        id: "thread-resume",
+        title: "Fixed",
+        description: "A new message resumes chats blocked by an earlier provider failure.",
+        commit: "f4d3d63fee922c3433bfb65863c97d2fb45eac73",
+      },
+      {
+        id: "project-pull-requests",
+        title: "Fixed",
+        description: "Pull requests come from the project's primary GitHub repository.",
+        commit: "8c2149b6270ea2ad3b8f34857f90669d40f8ebc0",
+      },
+      {
+        id: "studio-projects-preserved",
+        title: "Fixed",
+        description: "Existing Studio folders remain available as normal projects.",
+        commit: "fdcc171f51d6d5cae3b8c0db400cd591eba59daf",
       },
       {
         id: "retired-terminal-shortcuts",
         title: "Fixed",
         description: "Saved shortcuts for removed terminal threads are cleaned up automatically.",
-      },
-      {
-        id: "project-disclosure-motion",
-        title: "Fixed",
-        description: "Project lists expand and collapse with consistent motion in the sidebar.",
+        commit: "254650b8de5e63dcd6be79b8cc3cc9e6d8d7dc1d",
       },
     ],
   },

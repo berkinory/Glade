@@ -1,37 +1,31 @@
 # Glade Changelog
 
-## 0.0.4 - Unreleased
+## 0.0.4 - 2026-09-28
 
 ### Removed
 
-- Removed the new-worktree handoff flow and separate provider handoff controls.
-- Removed the auto-generated Environment recap and its background model requests.
-- Removed Studio mode, its dedicated workspace and output capture, and its UI, server API, settings, and tests.
+- Studio mode and its dedicated workspace flows were removed. ([648d50fb1](https://github.com/berkinory/Glade/commit/648d50fb1194ffe60e273cf07407231eb6e5d910))
+- Environment recaps and their background model requests were removed. ([971784b30](https://github.com/berkinory/Glade/commit/971784b305809ea4d0e02392853874d9b119727d))
+- New-worktree handoff and separate provider handoff controls were removed. ([177bf8085](https://github.com/berkinory/Glade/commit/177bf808538d03182e0368fc02151debdfd559ed))
+- Sidebar customization and the Docs link were removed; feedback now opens the issue form. ([419ef9b1c](https://github.com/berkinory/Glade/commit/419ef9b1c541a9c82612f1322acf865f14af6373))
 
 ### Improved
 
-- Branch and project pickers now use compact, consistent menus; the branch menu shows only diff totals and opens in line with the other Environment menus.
-- Sidebar actions and Kanban shortcuts share the same keycap rendering.
-- Tooltips open after a consistent 300 ms hover delay.
-- Chat message action icons sit closer together without shrinking their click targets.
-- The model picker lists connected providers with a shortcut to add more, and confirms a cross-provider selection before creating a handoff task with the chosen model. The new chat shows the provider transition in its transcript; the sidebar shows only its current provider.
-- Interface animations now feel quicker and more consistent.
-- The sidebar title shows the Glade mark in the current theme color.
-- Settings now shows desktop update status and lets you check for, download, and install updates.
-- The chat sidebar stops at 1.5× its default width; manual panel resizing responds directly to dragging.
-- What's new groups release notes by change type and gives each section a subtle color; its preview card shows a general release message.
+- The model picker shows connected providers, keeps a steady height, and confirms cross-provider handoff with the chosen model. The new chat shows the transition. ([177bf8085](https://github.com/berkinory/Glade/commit/177bf808538d03182e0368fc02151debdfd559ed), [01f2e8624](https://github.com/berkinory/Glade/commit/01f2e862442ce63cbda03983f3a9d1c4584200c8))
+- Settings can check, download, and install desktop updates. ([14381fb8c](https://github.com/berkinory/Glade/commit/14381fb8cb07f16cdd725fe7177760d674ef268d))
+- Branch and project pickers use compact menus; branch actions show diff totals without duplicate usage. ([341bd13f8](https://github.com/berkinory/Glade/commit/341bd13f8b43d4a2ad3546d11338cdaa412a9cbf), [953df655e](https://github.com/berkinory/Glade/commit/953df655e527cbf5aa015b987d006f6c63868e81))
+- The sidebar has a width limit, smoother resizing, and compact shortcut hints that do not overlap badges. ([f254913a5](https://github.com/berkinory/Glade/commit/f254913a581ab68a112e2a6022938145e70565ba), [13d85c71f](https://github.com/berkinory/Glade/commit/13d85c71fe7c45b089e51fbf7c0c6f828290bfd6), [3df97a78d](https://github.com/berkinory/Glade/commit/3df97a78d11c7dd75c4b86856cefa7a3711cf5fd))
+- Tooltips open after 300 ms; message action icons sit closer together. ([1760eee7f](https://github.com/berkinory/Glade/commit/1760eee7fa5ddfb6ab6578c17d0dd2a15760a9eb), [4beac45f9](https://github.com/berkinory/Glade/commit/4beac45f9344f508c3a4abc691a78e17f556bc04))
+- Menus, panels, and project lists animate more consistently. ([fb63366e7](https://github.com/berkinory/Glade/commit/fb63366e7051ddc191305f5766cb766dbd067db7))
+- What's new groups release notes by change type and shows a simpler preview. ([60cd9847f](https://github.com/berkinory/Glade/commit/60cd9847fdaea45ad448b6922fb1c43d1906f54b))
 
 ### Fixed
 
-- Sidebar chat jump shortcuts use the same compact keycap as model picker shortcuts.
-- Sidebar chat shortcut hints temporarily hide trailing badges so titles remain readable.
-- Sending a new message resumes a thread blocked by an earlier provider failure without an unblock notification.
-- The macOS Check for Updates menu items now show a refresh icon.
-- Project lists now animate consistently when expanding and collapsing in the sidebar.
-- Pull requests for a project now come from its primary GitHub repository instead of also showing upstream remotes.
-- Regular folders no longer trigger a repository-unavailable warning in Pull requests.
-- Existing Studio folders are preserved as normal projects so the app starts after Studio mode is removed.
-- Removed terminal-thread shortcuts are cleaned from saved keybindings without changing other shortcuts.
+- Sending a message resumes a chat blocked by an earlier provider failure. ([f4d3d63fe](https://github.com/berkinory/Glade/commit/f4d3d63fee922c3433bfb65863c97d2fb45eac73))
+- Pull requests use the project's primary GitHub repository; ordinary folders no longer show a repository warning. ([8c2149b62](https://github.com/berkinory/Glade/commit/8c2149b6270ea2ad3b8f34857f90669d40f8ebc0))
+- Existing Studio folders remain available as normal projects after upgrading. ([fdcc171f5](https://github.com/berkinory/Glade/commit/fdcc171f51d6d5cae3b8c0db400cd591eba59daf))
+- Saved shortcuts for retired terminal threads are cleaned up. ([254650b8d](https://github.com/berkinory/Glade/commit/254650b8de5e63dcd6be79b8cc3cc9e6d8d7dc1d))
+- The macOS Check for Updates menu item has an icon. ([0785150a1](https://github.com/berkinory/Glade/commit/0785150a1fab59f17f7c708fe847246822b24e5d))
 
 ## 0.0.3 - 2026-09-28
 
