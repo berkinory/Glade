@@ -21,6 +21,7 @@
 
 ### Fixed
 
+- Sidebar chat jump shortcuts use the same compact keycap as model picker shortcuts.
 - Sidebar chat shortcut hints temporarily hide trailing badges so titles remain readable.
 - The macOS Check for Updates menu items now show a refresh icon.
 - Project lists now animate consistently when expanding and collapsing in the sidebar.

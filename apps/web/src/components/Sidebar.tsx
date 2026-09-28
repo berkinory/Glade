@@ -123,7 +123,6 @@ import { getThreadFromState } from "../threadDerivation";
 import {
   resolveShortcutCommand,
   shortcutLabelForCommand,
-  splitShortcutLabel,
   shouldShowThreadJumpHints,
   spaceJumpCommandForIndex,
   spaceJumpIndexFromCommand,
@@ -279,7 +278,7 @@ import {
   DialogPopup,
   DialogTitle,
 } from "./ui/dialog";
-import { Kbd, KbdGroup } from "./ui/kbd";
+import { ShortcutKbd } from "./ui/shortcut-kbd";
 import {
   Menu,
   MenuGroup,
@@ -464,7 +463,6 @@ const SIDEBAR_THREAD_SORT_LABELS: Record<SidebarThreadSortOrder, string> = {
   created_at: "Created at",
 };
 const EMPTY_THREAD_JUMP_LABELS = new Map<ThreadId, string>();
-const EMPTY_SHORTCUT_PARTS: readonly string[] = [];
 const ADD_PROJECT_SNAPSHOT_CATCH_UP_MAX_ATTEMPTS = 6;
 const ADD_PROJECT_SNAPSHOT_CATCH_UP_DELAY_MS = 50;
 const GITHUB_CANCEL_RECOVERY_MAX_ATTEMPTS = 40;
@@ -3787,14 +3785,6 @@ export default function Sidebar() {
   const visibleThreadJumpLabelByThreadId = showThreadJumpHints
     ? threadJumpLabelByThreadId
     : EMPTY_THREAD_JUMP_LABELS;
-  const visibleThreadJumpLabelPartsByThreadId = useMemo(() => {
-    const partsByThreadId = new Map<ThreadId, readonly string[]>();
-    for (const [threadId, label] of visibleThreadJumpLabelByThreadId) {
-      partsByThreadId.set(threadId, splitShortcutLabel(label));
-    }
-    return partsByThreadId;
-  }, [visibleThreadJumpLabelByThreadId]);
-
   useEffect(() => {
     const threadIdsToPrewarm = getSidebarThreadIdsToPrewarm({
       visibleThreadIds: visibleSidebarThreadIds,
@@ -3874,7 +3864,6 @@ export default function Sidebar() {
   function renderThreadRowTrailingCluster(input: {
     isSubagentThread: boolean;
     threadJumpLabel: string | null;
-    threadJumpLabelParts: readonly string[];
     rightMetaChips: ThreadMetaChip[];
     threadStatus: ReturnType<typeof resolveThreadStatusForSidebar>;
     timestampToneClassName?: string;
@@ -3894,11 +3883,11 @@ export default function Sidebar() {
           </div>
         ) : null}
         {input.threadJumpLabel ? (
-          <KbdGroup className={THREAD_ROW_META_CHIP_HOVER_FADE_CLASS_NAME}>
-            {input.threadJumpLabelParts.map((part) => (
-              <Kbd key={part}>{part}</Kbd>
-            ))}
-          </KbdGroup>
+          <ShortcutKbd
+            shortcutLabel={input.threadJumpLabel}
+            compact
+            className={THREAD_ROW_META_CHIP_HOVER_FADE_CLASS_NAME}
+          />
         ) : null}
         {trailingStatus ? (
           // The relative time now lives in the row hover card, so the trailing
@@ -4046,8 +4035,6 @@ export default function Sidebar() {
     const pr = prByThreadId.get(thread.id) ?? null;
     const leadingPr = isSubagentThread || thread.forkSourceThreadId ? null : pr;
     const threadJumpLabel = visibleThreadJumpLabelByThreadId.get(thread.id) ?? null;
-    const threadJumpLabelParts =
-      visibleThreadJumpLabelPartsByThreadId.get(thread.id) ?? EMPTY_SHORTCUT_PARTS;
     // The trailing cluster (meta chips + status glyph) is absolutely positioned; it
     // only grows past the reserve when a live glyph (spinner/check/dot or jump label)
     // occupies the status slot. In that state the right-aligned project label needs a
@@ -4151,7 +4138,6 @@ export default function Sidebar() {
               {renderThreadRowTrailingCluster({
                 isSubagentThread,
                 threadJumpLabel,
-                threadJumpLabelParts,
                 rightMetaChips,
                 threadStatus,
                 timestampToneClassName: "text-muted-foreground/38",
@@ -4204,8 +4190,6 @@ export default function Sidebar() {
     const subagentIndentPx = Math.max(0, Math.min(depth - 1, 3) * 10);
     const showCompactMeta = !isSubagentThread;
     const threadJumpLabel = visibleThreadJumpLabelByThreadId.get(thread.id) ?? null;
-    const threadJumpLabelParts =
-      visibleThreadJumpLabelPartsByThreadId.get(thread.id) ?? EMPTY_SHORTCUT_PARTS;
     const hoverAnchorId = createSidebarThreadHoverAnchorId({
       scope: topLevel ? "chat" : "project",
       threadId: thread.id,
@@ -4303,7 +4287,6 @@ export default function Sidebar() {
               {renderThreadRowTrailingCluster({
                 isSubagentThread,
                 threadJumpLabel,
-                threadJumpLabelParts,
                 rightMetaChips: showCompactMeta ? rightMetaChips : [],
                 threadStatus,
                 timestampToneClassName: isSubagentThread

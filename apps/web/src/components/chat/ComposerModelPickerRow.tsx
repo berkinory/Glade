@@ -10,7 +10,7 @@ import { type StarredModel, starredModelSlotKey } from "~/lib/starredModels";
 import { cn } from "~/lib/utils";
 import { type ProviderOptions } from "../../providerModelOptions";
 import { PROVIDER_ICON_COMPONENT_BY_PROVIDER } from "../ProviderIcon";
-import { Kbd } from "../ui/kbd";
+import { ShortcutKbd } from "../ui/shortcut-kbd";
 import {
   MenuGroup,
   MenuGroupLabel,
@@ -108,9 +108,11 @@ export function ComposerModelPickerRow(props: {
         {row.detail}
       </span>
       {props.shortcutHint ? (
-        <Kbd className="h-4 min-w-4 shrink-0 px-1 text-ui-2xs text-muted-foreground">
-          {props.shortcutHint}
-        </Kbd>
+        <ShortcutKbd
+          shortcutLabel={props.shortcutHint}
+          compact
+          className="shrink-0 text-muted-foreground"
+        />
       ) : null}
       {row.selectableModel !== null ? starButton : null}
     </>
