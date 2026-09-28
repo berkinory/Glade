@@ -1,2 +1,4 @@
 [install]
 linker = "isolated"
+# Workspace prepare scripts patch the same TypeScript install; run them serially.
+concurrentScripts = 1
