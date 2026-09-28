@@ -21,6 +21,7 @@ export const DEFAULT_CURSOR_AGENT_BINARY = "cursor-agent";
 export const LEGACY_CURSOR_AGENT_BINARY = "agent";
 export const CURSOR_EDITOR_BINARY = "cursor";
 export const CURSOR_AGENT_BROWSERLESS_ENV = {
+  NO_OPEN_BROWSER: "1",
   NO_BROWSER: "true",
   BROWSER: "www-browser",
 } as const satisfies Readonly<Record<string, string>>;

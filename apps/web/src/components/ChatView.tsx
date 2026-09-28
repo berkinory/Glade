@@ -2397,10 +2397,11 @@ export default function ChatView({
   const isTerminalPrimarySurface = terminalState.entryPoint === "terminal";
   const isTerminalEnvironmentContext =
     isTerminalPrimarySurface || terminalWorkspaceTerminalTabActive;
-  const shouldShowProviderHealthBanner = shouldRenderProviderHealthBanner({
-    threadEntryPoint: terminalState.entryPoint,
-    terminalWorkspaceTerminalTabActive,
-  });
+  const shouldShowProviderHealthBanner =
+    shouldRenderProviderHealthBanner({
+      threadEntryPoint: terminalState.entryPoint,
+      terminalWorkspaceTerminalTabActive,
+    }) && hasNativeUserMessages;
   // Terminal-only threads should not pay to mount the hidden chat/composer pane.
   const shouldRenderChatPaneContent = !(
     terminalWorkspaceTerminalTabActive && terminalState.workspaceLayout === "terminal-only"
