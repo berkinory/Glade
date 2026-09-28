@@ -108,9 +108,9 @@ export function ProviderUsageResetCredits({
   } else if (credits === undefined && availableCount > 0) rows.push(undefined);
   const busy = consumeMutation.isPending || confirming;
   const compact = surface === "popover";
-  const rowClass = `flex items-center justify-between gap-2 ${compact ? "text-chat-meta leading-tight" : "text-ui leading-snug"}`;
+  const rowClass = `flex items-center justify-between gap-2 ${compact ? "text-ui-sm leading-tight" : "text-ui leading-snug"}`;
   const subtitleClass = compact
-    ? "text-chat-meta leading-tight text-muted-foreground/80"
+    ? "text-ui-xs leading-tight text-muted-foreground/80"
     : "text-ui-sm text-muted-foreground/80";
   return (
     <div
@@ -122,11 +122,11 @@ export function ProviderUsageResetCredits({
           {availableCount} available
         </span>
       </div>
-      <p className={subtitleClass}>
-        {pendingAttempt
-          ? "A previous reset is unconfirmed. Retry checks the same attempt."
-          : "Use when your 5-hour or weekly limit has 10% or less remaining."}
-      </p>
+      {pendingAttempt ? (
+        <p className={subtitleClass}>
+          A previous reset is unconfirmed. Retry checks the same attempt.
+        </p>
+      ) : null}
       {rows.length > 0 ? (
         <div className="mt-1.5 space-y-1.5">
           {rows.map((credit, index) => {
