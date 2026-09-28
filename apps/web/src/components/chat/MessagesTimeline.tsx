@@ -1737,7 +1737,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                       <p className={cn("tabular-nums", MESSAGE_HOVER_REVEAL_CLASS_NAME)}>
                         {formatDayAwareTimestamp(row.message.createdAt, timestampFormat)}
                       </p>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center">
                         {displayedUserMessage.copyText && (
                           <MessageCopyButton
                             text={displayedUserMessage.copyText}
@@ -2485,7 +2485,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                   // its own icon inset — (2em button − 1.125em glyph) / 2 — so the first
                   // glyph, not the invisible hit area, aligns with the message text.
                   <div
-                    className="mt-0.5 flex items-center gap-2 font-system-ui font-normal text-muted-foreground [&>button:first-child]:-ml-[0.4375em]"
+                    className="mt-0.5 flex items-center gap-2 font-system-ui font-normal text-muted-foreground [&>button+button]:-ml-2 [&>button:first-child]:-ml-[0.4375em]"
                     style={chatMessageFooterStyle}
                   >
                     {assistantCopyState.visible ? (
