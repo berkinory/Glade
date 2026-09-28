@@ -10,6 +10,7 @@
 
 ### Improved
 
+- Branch and project pickers now use compact, consistent menus; the branch menu shows only diff totals and opens in line with the other Environment menus.
 - Sidebar actions and Kanban shortcuts share the same keycap rendering.
 - Tooltips open after a consistent 300 ms hover delay.
 - Chat message action icons sit closer together without shrinking their click targets.

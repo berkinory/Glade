@@ -7,7 +7,8 @@ import type { GitBranch, GitStashInfoResult, GitStatusResult, NativeApi } from "
 import { pluralize } from "@glade/shared/text";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { ChevronDownIcon, PlusIcon } from "~/lib/icons";
+import { ChevronDownIcon, PlusIcon, SearchIcon } from "~/lib/icons";
+import { cn } from "~/lib/utils";
 import { CentralIcon } from "~/lib/central-icons";
 import {
   type CSSProperties,
@@ -66,7 +67,15 @@ import {
   EnvironmentRowChevron,
 } from "./chat/environment/EnvironmentRow";
 import { COMPOSER_TOOLBAR_PICKER_TRIGGER_CLASS_NAME } from "./chat/composerPickerStyles";
-import { ELEVATED_HOVER_SURFACE_CLASS_NAME } from "../surfaceStyles";
+import {
+  PICKER_PANEL_ACTION_ROW_CLASS_NAME,
+  PICKER_PANEL_PLAIN_SEARCH_HEADER_CLASS_NAME,
+  PICKER_PANEL_PLAIN_SEARCH_ICON_CLASS_NAME,
+  PICKER_PANEL_PLAIN_SEARCH_INPUT_CLASS_NAME,
+  PICKER_PANEL_ROW_GEOMETRY_CLASS_NAME,
+  PICKER_PANEL_ROW_ICON_CLASS_NAME,
+  PICKER_PANEL_ROW_SELECTED_CLASS_NAME,
+} from "./chat/pickerPanelStyles";
 import type { ThreadWorkspacePatch } from "../types";
 
 /**
@@ -347,25 +356,18 @@ function getBranchTriggerLabel(input: {
 }
 
 function getCreateBranchActionLabel(trimmedBranchQuery: string): string {
-  return trimmedBranchQuery.length > 0
-    ? `Create and checkout "${trimmedBranchQuery}"`
-    : "Create and checkout new branch...";
+  return trimmedBranchQuery.length > 0 ? `Create "${trimmedBranchQuery}"` : "Create branch...";
 }
 
 function getCurrentBranchChangeSummary(
   branch: GitBranch,
   branchStatus: GitStatusResult | null | undefined,
 ): {
-  fileCount: number;
   insertions: number;
   deletions: number;
 } | null {
-  if (!branch.current || !branchStatus?.hasWorkingTreeChanges) {
-    return null;
-  }
-
+  if (!branch.current || !branchStatus?.hasWorkingTreeChanges) return null;
   return {
-    fileCount: branchStatus.workingTree.files.length,
     insertions: branchStatus.workingTree.insertions,
     deletions: branchStatus.workingTree.deletions,
   };
@@ -734,11 +736,11 @@ export function BranchToolbarBranchSelector({
     (element: HTMLDivElement | null) => {
       branchListScrollElementRef.current =
         (element?.parentElement as HTMLDivElement | null) ?? null;
-      if (element) {
+      if (element && shouldVirtualizeBranchList) {
         branchListVirtualizer.measure();
       }
     },
-    [branchListVirtualizer],
+    [branchListVirtualizer, shouldVirtualizeBranchList],
   );
 
   useEffect(() => {
@@ -768,6 +770,7 @@ export function BranchToolbarBranchSelector({
           key={itemValue}
           index={index}
           value={itemValue}
+          className={PICKER_PANEL_ROW_GEOMETRY_CLASS_NAME}
           style={style}
           onClick={() => {
             if (!prReference || !onCheckoutPullRequestRequest) {
@@ -812,15 +815,14 @@ export function BranchToolbarBranchSelector({
         key={itemValue}
         index={index}
         value={itemValue}
-        className={
-          itemValue === resolvedActiveBranch
-            ? "bg-[var(--color-background-elevated-secondary)] text-[var(--color-text-foreground)]"
-            : undefined
-        }
+        className={cn(
+          PICKER_PANEL_ROW_GEOMETRY_CLASS_NAME,
+          itemValue === resolvedActiveBranch && PICKER_PANEL_ROW_SELECTED_CLASS_NAME,
+        )}
         style={style}
         onClick={() => selectBranch(branch)}
       >
-        <div className="flex w-full items-start justify-between gap-3">
+        <div className="flex w-full min-w-0 items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2">
               <span className="truncate">{itemValue}</span>
@@ -829,11 +831,7 @@ export function BranchToolbarBranchSelector({
               )}
             </div>
             {currentBranchChangeSummary ? (
-              <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-ui-sm leading-4">
-                <span className="text-muted-foreground">
-                  Uncommitted: {currentBranchChangeSummary.fileCount.toLocaleString()}{" "}
-                  {pluralize(currentBranchChangeSummary.fileCount, "file")}
-                </span>
+              <div className="mt-0.5 text-ui-sm leading-4">
                 <DiffStat
                   className="font-mono"
                   insertions={currentBranchChangeSummary.insertions}
@@ -854,7 +852,7 @@ export function BranchToolbarBranchSelector({
       autoHighlight
       virtualized={shouldVirtualizeBranchList}
       onItemHighlighted={(_value, eventDetails) => {
-        if (!isBranchMenuOpen || eventDetails.index < 0) return;
+        if (!isBranchMenuOpen || !shouldVirtualizeBranchList || eventDetails.index < 0) return;
         branchListVirtualizer.scrollToIndex(eventDetails.index, { align: "auto" });
       }}
       onOpenChange={handleOpenChange}
@@ -883,14 +881,21 @@ export function BranchToolbarBranchSelector({
           </>
         )}
       </ComboboxTrigger>
-      <ComboboxPopup align="end" side={isPanel ? "bottom" : "top"} className="w-80">
-        <div className="border-b p-1">
+      <ComboboxPopup
+        align="start"
+        side={isPanel ? "bottom" : "top"}
+        sideOffset={6}
+        surface="composer"
+        className="w-64 min-w-0"
+      >
+        <div className={PICKER_PANEL_PLAIN_SEARCH_HEADER_CLASS_NAME}>
+          <SearchIcon aria-hidden="true" className={PICKER_PANEL_PLAIN_SEARCH_ICON_CLASS_NAME} />
           <ComboboxInput
-            className="rounded-xl border-[color:var(--color-border)] bg-[var(--color-background-control-opaque)] shadow-none before:hidden has-focus-visible:border-[color:var(--color-border-focus)] has-focus-visible:ring-0 [&_input]:font-sans"
-            inputClassName="ring-0"
+            inputClassName={PICKER_PANEL_PLAIN_SEARCH_INPUT_CLASS_NAME}
             placeholder="Search branches..."
             showTrigger={false}
             size="sm"
+            unstyled
             value={branchQuery}
             onChange={(event) => setBranchQuery(event.target.value)}
           />
@@ -925,11 +930,11 @@ export function BranchToolbarBranchSelector({
           <div className="border-t border-[color:var(--color-border-light)] p-1">
             <button
               type="button"
-              className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-ui text-[var(--color-text-foreground)] disabled:cursor-not-allowed disabled:opacity-50 ${ELEVATED_HOVER_SURFACE_CLASS_NAME}`}
+              className={`${PICKER_PANEL_ACTION_ROW_CLASS_NAME} disabled:cursor-not-allowed disabled:opacity-50`}
               disabled={isBranchActionPending}
               onClick={openCreateBranchDialog}
             >
-              <PlusIcon className="size-3.5 shrink-0" />
+              <PlusIcon className={PICKER_PANEL_ROW_ICON_CLASS_NAME} />
               <span className="truncate">{getCreateBranchActionLabel(trimmedBranchQuery)}</span>
             </button>
           </div>

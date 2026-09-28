@@ -10,6 +10,7 @@ import { Input } from "~/components/ui/input";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import {
   APP_TRANSLUCENT_POPUP_SURFACE_BASE_CLASS_NAME,
+  COMPOSER_PICKER_MENU_SURFACE_CLASS_NAME,
   COMPOSER_PICKER_OPTION_RADIUS_CLASS_NAME,
   COMPOSER_PICKER_RADIUS_CLASS_NAME,
 } from "../chat/composerPickerStyles";
@@ -156,6 +157,7 @@ function ComboboxPopup({
   alignOffset,
   align: alignProp,
   anchor: anchorProp,
+  surface: surfaceProp,
   ...props
 }: ComboboxPrimitive.Popup.Props & {
   align?: ComboboxPrimitive.Positioner.Props["align"];
@@ -163,12 +165,14 @@ function ComboboxPopup({
   alignOffset?: ComboboxPrimitive.Positioner.Props["alignOffset"];
   side?: ComboboxPrimitive.Positioner.Props["side"];
   anchor?: ComboboxPrimitive.Positioner.Props["anchor"];
+  surface?: "default" | "composer";
 }) {
   const side = sideProp ?? "bottom";
   const sideOffset = sideOffsetProp ?? 4;
   const align = alignProp ?? "start";
   const { chipsRef } = React.useContext(ComboboxContext);
   const anchor = anchorProp ?? chipsRef;
+  const surface = surfaceProp ?? "default";
 
   return (
     <ComboboxPrimitive.Portal>
@@ -189,9 +193,12 @@ function ComboboxPopup({
         >
           <ComboboxPrimitive.Popup
             className={cn(
-              APP_TRANSLUCENT_POPUP_SURFACE_BASE_CLASS_NAME,
-              COMPOSER_PICKER_RADIUS_CLASS_NAME,
-              "flex max-h-[min(var(--available-height),23rem)] flex-1 origin-(--transform-origin) flex-col not-dark:bg-clip-padding text-foreground shadow-lg/5",
+              surface === "composer"
+                ? COMPOSER_PICKER_MENU_SURFACE_CLASS_NAME
+                : APP_TRANSLUCENT_POPUP_SURFACE_BASE_CLASS_NAME,
+              surface === "default" && COMPOSER_PICKER_RADIUS_CLASS_NAME,
+              "flex max-h-[min(var(--available-height),23rem)] flex-1 origin-(--transform-origin) flex-col not-dark:bg-clip-padding text-foreground",
+              surface === "default" && "shadow-lg/5",
               UI_MOTION_POPUP_CLASS,
             )}
             data-slot="combobox-popup"

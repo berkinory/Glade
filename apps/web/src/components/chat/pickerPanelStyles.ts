@@ -9,10 +9,7 @@
 // any picker panel can opt into the same density without pulling in composer chrome.
 
 import { ELEVATED_HOVER_SURFACE_CLASS_NAME } from "~/surfaceStyles";
-import {
-  COMPOSER_PICKER_MODEL_LIST_SCROLL_CLASS_NAME,
-  COMPOSER_PICKER_OPTION_RADIUS_CLASS_NAME,
-} from "./composerPickerStyles";
+import { COMPOSER_PICKER_MODEL_LIST_SCROLL_CLASS_NAME } from "./composerPickerStyles";
 
 /**
  * Search row of a plain picker panel: no field chrome at all — a leading magnifier, the
@@ -34,7 +31,8 @@ export const PICKER_PANEL_PLAIN_SEARCH_INPUT_CLASS_NAME =
   "flex min-h-8 w-full items-center bg-transparent shadow-none [&>[data-slot=input]]:px-0 [&>[data-slot=input]]:placeholder:text-muted-foreground/55";
 
 /** Row height, padding, gap, and radius shared by plain option rows and footer action rows. */
-export const PICKER_PANEL_ROW_GEOMETRY_CLASS_NAME = `min-h-7 gap-2 px-1.5 py-0.5 sm:min-h-7 ${COMPOSER_PICKER_OPTION_RADIUS_CLASS_NAME}`;
+export const PICKER_PANEL_ROW_GEOMETRY_CLASS_NAME =
+  "min-h-7 gap-2 rounded-md px-1.5 py-0.5 sm:min-h-7";
 
 /** Leading icon (folder, plus, dismiss) inside a plain picker row. */
 export const PICKER_PANEL_ROW_ICON_CLASS_NAME = "size-3.5 shrink-0 text-muted-foreground/70";

@@ -6,6 +6,12 @@ export const WHATS_NEW_ENTRIES: readonly WhatsNewEntry[] = [
     date: "Unreleased",
     features: [
       {
+        id: "picker-menu-consistency",
+        title: "Improved",
+        description:
+          "Branch and project pickers use compact menus; branch changes show only diff totals.",
+      },
+      {
         id: "faster-interface-motion",
         title: "Improved",
         description: "Menus, disclosures, and panels respond with quicker motion.",
