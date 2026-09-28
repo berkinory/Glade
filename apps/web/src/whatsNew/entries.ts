@@ -6,6 +6,12 @@ export const WHATS_NEW_ENTRIES: readonly WhatsNewEntry[] = [
     date: "Unreleased",
     features: [
       {
+        id: "release-notes-layout",
+        title: "Improved",
+        description:
+          "What's new groups changes by type, with subtle color and a simpler preview card.",
+      },
+      {
         id: "retired-terminal-shortcuts",
         title: "Fixed",
         description: "Saved shortcuts for removed terminal threads are cleaned up automatically.",
@@ -16,6 +22,24 @@ export const WHATS_NEW_ENTRIES: readonly WhatsNewEntry[] = [
     version: "0.0.3",
     date: "2026-09-28",
     features: [
+      {
+        id: "terminal-threads",
+        title: "Removed",
+        description: "Terminal threads are gone; sidebar terminals remain.",
+        commit: "369d22a3af988562a18f2e61f939f22fba74b91d",
+      },
+      {
+        id: "temporary-chats",
+        title: "Removed",
+        description: "Temporary chats and their delete-on-leave behavior are gone.",
+        commit: "85f9a3bb56a6b14ba6addc35307b49da9f34f59c",
+      },
+      {
+        id: "side-chats",
+        title: "Removed",
+        description: "Side chats and the /side command are gone.",
+        commit: "41365fa0fd2157a8572ab89b186d1401d45dc35d",
+      },
       {
         id: "source-control-review",
         title: "Improved",
@@ -33,24 +57,6 @@ export const WHATS_NEW_ENTRIES: readonly WhatsNewEntry[] = [
         title: "Improved",
         description: "Menus, dialogs, panels, and disclosures use consistent motion.",
         commit: "718ba5c2a2e77f633403a17a7b8b4b87a6786591",
-      },
-      {
-        id: "temporary-chats",
-        title: "Removed",
-        description: "Temporary chats and their delete-on-leave behavior are gone.",
-        commit: "85f9a3bb56a6b14ba6addc35307b49da9f34f59c",
-      },
-      {
-        id: "side-chats",
-        title: "Removed",
-        description: "Side chats and the /side command are gone.",
-        commit: "41365fa0fd2157a8572ab89b186d1401d45dc35d",
-      },
-      {
-        id: "terminal-threads",
-        title: "Removed",
-        description: "Terminal threads are gone; sidebar terminals remain.",
-        commit: "369d22a3af988562a18f2e61f939f22fba74b91d",
       },
       {
         id: "stable-layouts",

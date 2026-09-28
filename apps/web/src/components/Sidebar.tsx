@@ -900,9 +900,7 @@ function SidebarHelpMenu({
                 className={SIDEBAR_CONTEXT_MENU_ITEM_CLASS_NAME}
                 onClick={() => openReleaseHistory(entry.version)}
               >
-                <span className="min-w-0 flex-1 truncate">
-                  {entry.features[0]?.title ?? `Version ${entry.version}`}
-                </span>
+                <span className="min-w-0 flex-1 truncate">Version {entry.version}</span>
                 <span className="shrink-0 text-[var(--color-text-foreground-secondary)] tabular-nums">
                   {entry.date}
                 </span>

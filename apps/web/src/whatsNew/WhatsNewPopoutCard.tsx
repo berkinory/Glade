@@ -76,9 +76,6 @@ export function WhatsNewPopoutCard({
 }: WhatsNewPopoutCardProps) {
   const cardWidth = useSidebarFittedWidth();
   const heroAlt = entry.heroImageAlt ?? `What's new in v${currentVersion}`;
-  const primaryFeature = entry.features[0];
-  const primaryFeatureTitle = primaryFeature?.title;
-  const primaryFeatureDescription = primaryFeature?.description;
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -167,14 +164,12 @@ export function WhatsNewPopoutCard({
 
         <div className="flex flex-col px-4 pb-4 pt-2.5">
           <p className="text-ui leading-snug font-medium text-primary">New · v{currentVersion}</p>
-          <p className="mt-1 line-clamp-2 text-ui-lg font-semibold leading-snug text-foreground">
-            {primaryFeatureTitle ?? `What's new in v${currentVersion}`}
+          <p className="mt-1 text-ui-lg font-semibold leading-snug text-foreground">
+            Glade {currentVersion} is here
           </p>
-          {primaryFeatureDescription !== undefined && (
-            <p className="mt-1.5 line-clamp-2 text-ui leading-relaxed text-muted-foreground/90">
-              {primaryFeatureDescription}
-            </p>
-          )}
+          <p className="mt-1.5 text-ui leading-relaxed text-muted-foreground/90">
+            See what changed in this release.
+          </p>
           <p className="mt-2.5 text-ui leading-snug font-medium text-muted-foreground transition-colors group-hover:text-foreground">
             Find out what&rsquo;s new <span aria-hidden="true">→</span>
           </p>

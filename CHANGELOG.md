@@ -2,6 +2,10 @@
 
 ## 0.0.4 - Unreleased
 
+### Improved
+
+- What's new groups release notes by change type and gives each section a subtle color; its preview card shows a general release message.
+
 ### Fixed
 
 - Removed terminal-thread shortcuts are cleaned from saved keybindings without changing other shortcuts.

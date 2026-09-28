@@ -1,8 +1,5 @@
 // FILE: whatsNew/FeatureSection.tsx
-// Purpose: Render a single "What's new" feature card — title, description,
-// optional screenshot, and an optional longer technical blurb. Matches the
-// IndieDevs card layout so the post-update dialog and the Settings release
-// history share one visual vocabulary.
+// Purpose: Render one release-note row inside a category section.
 // Layer: presentational — no state, no data fetching, no storage.
 
 import { cn } from "~/lib/utils";
@@ -14,57 +11,49 @@ export interface FeatureSectionProps {
   readonly className?: string;
 }
 
-/**
- * A single feature card inside a release. Rendered inside the dialog's
- * primary view and the changelog accordion's expanded panels.
- *
- * Layout rules:
- *   - Title + description at the top, always visible.
- *   - Image below when provided; we frame it in a rounded border and let the
- *     natural aspect ratio dictate height (no cropping).
- *   - Details text sits tight under the image as a compact
- *     muted blurb — think "release note footnote", not body copy.
- */
 export function FeatureSection({ feature, className }: FeatureSectionProps) {
   const hasMedia = feature.image !== undefined || feature.details !== undefined;
 
   return (
-    <div className={cn("flex flex-col gap-2", className)}>
-      <div className="flex flex-col gap-1">
-        <h3 className="font-heading text-base font-semibold leading-snug text-foreground">
-          {feature.title}
-          {feature.commit && (
+    <li className={cn("flex gap-3 py-2.5", className)}>
+      <span
+        aria-hidden="true"
+        className="mt-2 size-1 shrink-0 rounded-full bg-muted-foreground/60"
+      />
+      <div className="min-w-0 flex-1">
+        <p className="text-ui leading-relaxed text-foreground/90">
+          {feature.description}
+          {feature.commit ? (
             <a
               href={`https://github.com/berkinory/Glade/commit/${feature.commit}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="ml-2 text-ui-sm font-normal text-muted-foreground underline"
+              className="ml-2 whitespace-nowrap text-ui-xs text-muted-foreground underline decoration-muted-foreground/40 underline-offset-2 hover:text-foreground"
               aria-label={`View commit ${feature.commit.slice(0, 7)}`}
             >
               {feature.commit.slice(0, 7)}
             </a>
-          )}
-        </h3>
-        <p className="text-ui leading-relaxed text-muted-foreground">{feature.description}</p>
+          ) : null}
+        </p>
+        {hasMedia && (
+          <div className="mt-2 flex flex-col gap-1.5">
+            {feature.image !== undefined && (
+              <div className="overflow-hidden rounded-lg border border-border/60 bg-muted/40">
+                <img
+                  src={feature.image}
+                  alt={feature.imageAlt ?? ""}
+                  className="h-auto w-full"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </div>
+            )}
+            {feature.details !== undefined && (
+              <p className="text-ui leading-relaxed text-muted-foreground/85">{feature.details}</p>
+            )}
+          </div>
+        )}
       </div>
-      {hasMedia && (
-        <div className="flex flex-col gap-1.5">
-          {feature.image !== undefined && (
-            <div className="overflow-hidden rounded-lg border border-border/60 bg-muted/40">
-              <img
-                src={feature.image}
-                alt={feature.imageAlt ?? ""}
-                className="h-auto w-full"
-                loading="lazy"
-                decoding="async"
-              />
-            </div>
-          )}
-          {feature.details !== undefined && (
-            <p className="text-ui leading-relaxed text-muted-foreground/85">{feature.details}</p>
-          )}
-        </div>
-      )}
-    </div>
+    </li>
   );
 }

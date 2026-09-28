@@ -1,7 +1,7 @@
 // FILE: WhatsNewDialog.tsx
 // Purpose: Render the one-time "What's new" release-notes dialog shown after
-// an update. Two views: a default "What's new?" card stack anchored on the
-// installed release, and a secondary "Complete changelog" accordion spanning
+// an update. Two views: release notes for the installed version and a
+// secondary "Complete changelog" accordion spanning
 // every curated release. Open/close state and the underlying data are owned
 // by `useWhatsNew`; this component is pure presentation.
 // Layer: Chat shell overlay (mounted once from the root route).
@@ -12,7 +12,7 @@ import { ArrowLeftIcon, ArrowRightIcon } from "~/lib/icons";
 import { GladeLogo } from "~/components/GladeLogo";
 
 import { ChangelogAccordion } from "../whatsNew/ChangelogAccordion";
-import { FeatureSection } from "../whatsNew/FeatureSection";
+import { ReleaseNotesSections } from "../whatsNew/ReleaseNotesSections";
 import type { WhatsNewEntry } from "../whatsNew/logic";
 import { Button } from "./ui/button";
 import {
@@ -102,10 +102,8 @@ function WhatsNewDialogContent({
 
       <DialogPanel className="max-h-[min(62vh,520px)] px-4 py-3">
         {view === "current" ? (
-          <div className="flex flex-col gap-8 py-1">
-            {currentEntry.features.map((feature) => (
-              <FeatureSection key={feature.id} feature={feature} />
-            ))}
+          <div className="py-1">
+            <ReleaseNotesSections features={currentEntry.features} />
           </div>
         ) : (
           <ChangelogAccordion entries={allEntries} defaultExpandedVersion={currentEntry.version} />

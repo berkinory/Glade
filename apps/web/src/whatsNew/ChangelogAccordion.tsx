@@ -2,7 +2,7 @@
 // Purpose: Collapsible release-history accordion used by both the Settings
 // "Release history" surface and the `WhatsNewDialog` "Complete changelog"
 // secondary view. Each row summarises a release; expanding reveals the
-// FeatureSection cards for that version.
+// grouped release notes for that version.
 // Layer: presentational — it assumes the caller has already sorted entries
 // newest-first (see `sortEntriesByVersionDesc`).
 
@@ -13,7 +13,7 @@ import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "~/components/
 import { DisclosureChevron } from "~/components/ui/DisclosureChevron";
 import { cn } from "~/lib/utils";
 
-import { FeatureSection } from "./FeatureSection";
+import { ReleaseNotesSections } from "./ReleaseNotesSections";
 import type { WhatsNewEntry } from "./logic";
 
 export interface ChangelogAccordionProps {
@@ -84,10 +84,8 @@ function ChangelogAccordionRow({
           </span>
         </CollapsibleTrigger>
         <CollapsiblePanel>
-          <div className="flex flex-col gap-6 pb-4 pl-6 pr-1">
-            {entry.features.map((feature) => (
-              <FeatureSection key={feature.id} feature={feature} />
-            ))}
+          <div className="pb-5 pl-6 pr-1">
+            <ReleaseNotesSections features={entry.features} />
           </div>
         </CollapsiblePanel>
       </Collapsible>
