@@ -188,6 +188,7 @@ import { shouldRenderTerminalWorkspace } from "./ChatView.logic";
 import { CHAT_SURFACE_HEADER_HEIGHT_CLASS } from "./chat/chatHeaderControls";
 import { isModelPickerShortcutScopeActive } from "./chat/ComposerModelPicker.logic";
 import { SidebarLeadingControls } from "./SidebarHeaderNavigationControls";
+import { GladeLogo } from "./GladeLogo";
 import {
   APP_RAIL_GLYPH_CLASS_NAME,
   AppRailPortal,
@@ -5845,8 +5846,9 @@ export default function Sidebar() {
                 isRailLayout && "pt-1.5",
               )}
             >
-              <h2 className="flex h-8 min-w-0 items-center px-2.5">
+              <h2 className="flex h-8 min-w-0 items-center gap-1.5 px-2.5">
                 <span className={SIDEBAR_PANEL_TITLE_CLASS_NAME}>Glade</span>
+                <GladeLogo aria-hidden className="size-4 text-foreground" />
               </h2>
               <div className="ml-auto flex items-center gap-1.5">
                 <SidebarIconButton

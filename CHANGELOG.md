@@ -9,6 +9,7 @@
 
 ### Improved
 
+- The sidebar title shows the Glade mark in the current theme color.
 - Settings now shows desktop update status and lets you check for, download, and install updates.
 
 - The chat sidebar stops at 1.5× its default width; manual panel resizing responds directly to dragging.
