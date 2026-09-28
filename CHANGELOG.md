@@ -4,6 +4,7 @@
 
 ### Improved
 
+- The chat sidebar stops at 1.5× its default width; manual panel resizing responds directly to dragging.
 - What's new groups release notes by change type and gives each section a subtle color; its preview card shows a general release message.
 
 ### Fixed

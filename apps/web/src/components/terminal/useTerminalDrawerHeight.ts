@@ -3,7 +3,13 @@
 // Layer: Terminal interaction hook
 // Depends on: thread terminal sizing defaults and React pointer lifecycle hooks.
 
-import { type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from "react";
+import {
+  type PointerEvent as ReactPointerEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { DEFAULT_THREAD_TERMINAL_HEIGHT } from "../../types";
 
@@ -50,6 +56,7 @@ export function useTerminalDrawerHeight(options: {
       height,
     });
   const drawerHeightRef = useRef(drawerHeight);
+  const drawerRef = useRef<HTMLElement | null>(null);
   const lastSyncedHeightRef = useRef(clampTerminalDrawerHeight(options.height));
   const onHeightChangeRef = useRef(options.onHeightChange);
   const resizeStateRef = useRef<{
@@ -67,12 +74,12 @@ export function useTerminalDrawerHeight(options: {
     drawerHeightRef.current = drawerHeight;
   }, [drawerHeight]);
 
-  const syncHeight = (nextHeight: number) => {
+  const syncHeight = useCallback((nextHeight: number) => {
     const clampedHeight = clampTerminalDrawerHeight(nextHeight);
     if (lastSyncedHeightRef.current === clampedHeight) return;
     lastSyncedHeightRef.current = clampedHeight;
     onHeightChangeRef.current(clampedHeight);
-  };
+  }, []);
 
   // Ref-only mirror of an external height/reset change (ref writes in effects
   // are compiler-safe); the rendered height itself is derived above.
@@ -107,7 +114,7 @@ export function useTerminalDrawerHeight(options: {
     }
     didResizeDuringDragRef.current = true;
     drawerHeightRef.current = clampedHeight;
-    setDrawerHeight(clampedHeight);
+    if (drawerRef.current) drawerRef.current.style.height = `${clampedHeight}px`;
   };
 
   const handleResizePointerEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -120,6 +127,7 @@ export function useTerminalDrawerHeight(options: {
     if (!didResizeDuringDragRef.current) {
       return;
     }
+    setDrawerHeight(drawerHeightRef.current);
     syncHeight(drawerHeightRef.current);
   };
 
@@ -130,6 +138,7 @@ export function useTerminalDrawerHeight(options: {
       if (changed) {
         setDrawerHeight(clampedHeight);
         drawerHeightRef.current = clampedHeight;
+        if (drawerRef.current) drawerRef.current.style.height = `${clampedHeight}px`;
       }
       if (!resizeStateRef.current) {
         syncHeight(clampedHeight);
@@ -148,6 +157,7 @@ export function useTerminalDrawerHeight(options: {
   }, [syncHeight]);
 
   return {
+    drawerRef,
     drawerHeight,
     handleResizePointerDown,
     handleResizePointerMove,

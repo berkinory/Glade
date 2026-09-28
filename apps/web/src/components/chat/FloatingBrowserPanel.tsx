@@ -176,10 +176,27 @@ export function FloatingBrowserPanel(props: FloatingBrowserPanelProps) {
     let finished = false;
     interactingRef.current = true;
     let detachPointerSession = () => {};
+    let pendingDeltaX = 0;
+    let pendingDeltaY = 0;
+    let frameId = 0;
+
+    const applyPendingRect = () => {
+      frameId = 0;
+      applyPanelRect(
+        resizeFloatingBrowserPanelRect(
+          startRect,
+          { edge: resizeEdge, deltaX: pendingDeltaX, deltaY: pendingDeltaY },
+          hostSize(host),
+        ),
+        host,
+      );
+    };
 
     const finish = () => {
       if (finished) return;
       finished = true;
+      if (frameId !== 0) window.cancelAnimationFrame(frameId);
+      applyPendingRect();
       interactingRef.current = false;
       detachPointerSession();
       removePanelResizeOverlay(resizeOverlay);
@@ -192,18 +209,9 @@ export function FloatingBrowserPanel(props: FloatingBrowserPanelProps) {
     };
 
     const onPointerMove = (moveEvent: PointerEvent) => {
-      applyPanelRect(
-        resizeFloatingBrowserPanelRect(
-          startRect,
-          {
-            edge: resizeEdge,
-            deltaX: moveEvent.clientX - startClientX,
-            deltaY: moveEvent.clientY - startClientY,
-          },
-          hostSize(host),
-        ),
-        host,
-      );
+      pendingDeltaX = moveEvent.clientX - startClientX;
+      pendingDeltaY = moveEvent.clientY - startClientY;
+      if (frameId === 0) frameId = window.requestAnimationFrame(applyPendingRect);
     };
 
     document.body.style.cursor = cursor;

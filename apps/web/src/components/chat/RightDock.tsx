@@ -70,7 +70,11 @@ interface RightDockProps {
   state: RightDockThreadState;
   minWidth: number;
   defaultWidth: string;
-  shouldAcceptWidth: (context: { nextWidth: number; wrapper: HTMLElement }) => boolean;
+  shouldAcceptWidth: (context: {
+    currentWidth: number;
+    nextWidth: number;
+    wrapper: HTMLElement;
+  }) => boolean;
   paneLabelOverrides?: Record<string, string | undefined>;
   // Per-pane tab glyph overrides (same shape as label overrides) — e.g. a pull request pane
   // swapping the generic kind icon for its live state glyph.

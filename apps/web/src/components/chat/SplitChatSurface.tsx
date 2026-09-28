@@ -135,22 +135,8 @@ function SplitPaneEmbeddedPanel(props: {
       ? panelWidthState.value
       : (getLocalStorageItem(storageKey, Schema.Finite) ?? defaultPanelWidth);
 
-  const shouldAcceptEmbeddedWidth = (nextWidth: number) => {
-    const wrapper = wrapperRef.current;
-    if (!wrapper) return true;
-    return canComposerHandlePanelWidth({
-      nextWidth,
-      paneScopeId: props.paneScopeId,
-      applyWidth: (width) => {
-        wrapper.style.width = `${width}px`;
-      },
-      resetWidth: () => {
-        wrapper.style.width = `${panelWidth}px`;
-      },
-    });
-  };
-
   const startResize = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
     const wrapper = wrapperRef.current;
     const parent = wrapper?.parentElement;
     if (!wrapper || !parent) return;
@@ -162,22 +148,53 @@ function SplitPaneEmbeddedPanel(props: {
     const maxWidth = Math.max(minPanelWidth, parent.clientWidth - SPLIT_PANE_CHAT_MIN_WIDTH);
     const resizeOverlay = createPanelResizeOverlay();
     let detachPointerSession = () => {};
+    let pendingWidth = startWidth;
+    let currentWidth = startWidth;
+    let frameId = 0;
+    let finished = false;
+
+    const applyPendingWidth = () => {
+      frameId = 0;
+      if (pendingWidth === currentWidth) return;
+      if (pendingWidth < currentWidth) {
+        currentWidth = pendingWidth;
+        wrapper.style.width = `${currentWidth}px`;
+        return;
+      }
+      const accepted = canComposerHandlePanelWidth({
+        nextWidth: pendingWidth,
+        paneScopeId: props.paneScopeId,
+        applyWidth: (width) => {
+          wrapper.style.width = `${width}px`;
+        },
+        resetWidth: () => {
+          wrapper.style.width = `${currentWidth}px`;
+        },
+      });
+      if (!accepted) return;
+      currentWidth = pendingWidth;
+      wrapper.style.width = `${currentWidth}px`;
+    };
 
     const onPointerMove = (moveEvent: PointerEvent) => {
       const delta = startX - moveEvent.clientX;
-      const nextWidth = Math.max(minPanelWidth, Math.min(maxWidth, startWidth + delta));
-      if (!shouldAcceptEmbeddedWidth(nextWidth)) {
-        return;
-      }
-      setPanelWidthState({ key: storageKey, value: nextWidth });
-      setLocalStorageItem(storageKey, nextWidth, Schema.Finite);
+      pendingWidth = Math.max(minPanelWidth, Math.min(maxWidth, startWidth + delta));
+      if (frameId === 0) frameId = window.requestAnimationFrame(applyPendingWidth);
     };
 
     const finish = () => {
+      if (finished) return;
+      finished = true;
+      if (frameId !== 0) window.cancelAnimationFrame(frameId);
+      applyPendingWidth();
       detachPointerSession();
       removePanelResizeOverlay(resizeOverlay);
       document.body.style.removeProperty("cursor");
       document.body.style.removeProperty("user-select");
+      if (currentWidth !== startWidth) {
+        setPanelWidthState({ key: storageKey, value: currentWidth });
+        setLocalStorageItem(storageKey, currentWidth, Schema.Finite);
+      }
     };
 
     document.body.style.cursor = "col-resize";

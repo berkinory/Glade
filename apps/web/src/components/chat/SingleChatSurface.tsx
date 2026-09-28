@@ -141,12 +141,16 @@ const SINGLE_PANEL_MIN_WIDTH = 26 * 16;
 const allowAnySplitDirection = (_direction: SplitDirection) => true;
 
 function shouldAcceptDockWidth({
+  currentWidth,
   nextWidth,
   wrapper,
 }: {
+  currentWidth: number;
   nextWidth: number;
   wrapper: HTMLElement;
 }) {
+  // Closing the dock gives the composer more room, so only expansion needs a layout probe.
+  if (nextWidth <= currentWidth) return true;
   const previousSidebarWidth = wrapper.style.getPropertyValue("--sidebar-width");
   return canComposerHandlePanelWidth({
     nextWidth,

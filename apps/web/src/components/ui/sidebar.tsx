@@ -24,7 +24,8 @@ import { Schema } from "effect";
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
-const SIDEBAR_WIDTH = "16rem";
+export const SIDEBAR_DEFAULT_WIDTH_PX = 16 * 16;
+const SIDEBAR_WIDTH = `${SIDEBAR_DEFAULT_WIDTH_PX / 16}rem`;
 const SIDEBAR_WIDTH_MOBILE = "calc(100vw - var(--spacing(3)))";
 const SIDEBAR_WIDTH_ICON = "3rem";
 const SIDEBAR_RESIZE_DEFAULT_MIN_WIDTH = 16 * 16;
@@ -472,6 +473,26 @@ function SidebarRail({
   const railLabel = canResize ? "Resize Sidebar" : "Toggle Sidebar";
   const railTitle = canResize ? "Drag to resize sidebar" : "Toggle Sidebar";
 
+  const applyPendingWidth = React.useCallback(
+    (resizeState: NonNullable<typeof resizeStateRef.current>) => {
+      if (!resolvedResizable || resizeState.pendingWidth === resizeState.width) return;
+      const nextWidth = resizeState.pendingWidth;
+      const accepted =
+        resolvedResizable.shouldAcceptWidth?.({
+          currentWidth: resizeState.width,
+          nextWidth,
+          rail: resizeState.rail,
+          side: resizeState.side,
+          sidebarRoot: resizeState.sidebarRoot,
+          wrapper: resizeState.wrapper,
+        }) ?? true;
+      if (!accepted) return;
+      resizeState.wrapper.style.setProperty("--sidebar-width", `${nextWidth}px`);
+      resizeState.width = nextWidth;
+    },
+    [resolvedResizable],
+  );
+
   const stopResize = React.useCallback(
     (pointerId: number) => {
       const resizeState = resizeStateRef.current;
@@ -481,6 +502,7 @@ function SidebarRail({
       if (resizeState.rafId !== null) {
         window.cancelAnimationFrame(resizeState.rafId);
       }
+      applyPendingWidth(resizeState);
       resizeState.transitionTargets.forEach((element) => {
         element.style.removeProperty("transition-duration");
       });
@@ -495,7 +517,7 @@ function SidebarRail({
       document.body.style.removeProperty("cursor");
       document.body.style.removeProperty("user-select");
     },
-    [resolvedResizable],
+    [applyPendingWidth, resolvedResizable],
   );
 
   const handlePointerDown = React.useCallback(
@@ -579,28 +601,12 @@ function SidebarRail({
 
       resizeState.rafId = window.requestAnimationFrame(() => {
         const activeResizeState = resizeStateRef.current;
-        if (!activeResizeState || !resolvedResizable) return;
-
+        if (!activeResizeState) return;
         activeResizeState.rafId = null;
-        const nextWidth = activeResizeState.pendingWidth;
-        const accepted =
-          resolvedResizable.shouldAcceptWidth?.({
-            currentWidth: activeResizeState.width,
-            nextWidth,
-            rail: activeResizeState.rail,
-            side: activeResizeState.side,
-            sidebarRoot: activeResizeState.sidebarRoot,
-            wrapper: activeResizeState.wrapper,
-          }) ?? true;
-        if (!accepted) {
-          return;
-        }
-
-        activeResizeState.wrapper.style.setProperty("--sidebar-width", `${nextWidth}px`);
-        activeResizeState.width = nextWidth;
+        applyPendingWidth(activeResizeState);
       });
     },
-    [onPointerMove, resolvedResizable],
+    [applyPendingWidth, onPointerMove, resolvedResizable],
   );
 
   const endResizeInteraction = React.useCallback(

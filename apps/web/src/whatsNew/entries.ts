@@ -6,6 +6,12 @@ export const WHATS_NEW_ENTRIES: readonly WhatsNewEntry[] = [
     date: "Unreleased",
     features: [
       {
+        id: "panel-resizing",
+        title: "Improved",
+        description:
+          "The sidebar has a sensible maximum width, and panel resizing follows the pointer smoothly.",
+      },
+      {
         id: "release-notes-layout",
         title: "Improved",
         description:

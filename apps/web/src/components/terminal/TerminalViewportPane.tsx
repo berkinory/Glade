@@ -283,6 +283,9 @@ export default function TerminalViewportPane({
       event.stopPropagation();
       const container = event.currentTarget.parentElement;
       if (!container) return;
+      const currentPane = event.currentTarget.previousElementSibling?.firstElementChild;
+      const nextPane = event.currentTarget.nextElementSibling?.firstElementChild;
+      if (!(currentPane instanceof HTMLElement) || !(nextPane instanceof HTMLElement)) return;
       const rect = container.getBoundingClientRect();
       const totalSize = splitNode.direction === "horizontal" ? rect.width : rect.height;
       if (totalSize <= 0) return;
@@ -293,18 +296,23 @@ export default function TerminalViewportPane({
       const nextWeight = startWeights[handleIndex + 1] ?? 1;
       const pairWeight = currentWeight + nextWeight;
       const minWeight = Math.max((pairWeight * MIN_TERMINAL_PANE_SIZE_PX) / totalSize, 0.1);
+      const pointerId = event.pointerId;
+      const previousUserSelect = document.body.style.userSelect;
+      const previousCursor = document.body.style.cursor;
+      const previousCurrentGrow = currentPane.style.flexGrow;
+      const previousNextGrow = nextPane.style.flexGrow;
       let resizeFrame = 0;
-      let pendingWeights: number[] | null = null;
+      let latestWeights = startWeights;
+      let didResize = false;
 
       const flushResize = () => {
         resizeFrame = 0;
-        if (!pendingWeights) return;
-        const nextWeights = pendingWeights;
-        pendingWeights = null;
-        onResizeSplit(groupId, splitNode.id, nextWeights);
+        currentPane.style.flexGrow = String(latestWeights[handleIndex] ?? currentWeight);
+        nextPane.style.flexGrow = String(latestWeights[handleIndex + 1] ?? nextWeight);
       };
 
       const onPointerMove = (moveEvent: PointerEvent) => {
+        if (moveEvent.pointerId !== pointerId) return;
         const currentCoordinate =
           splitNode.direction === "horizontal" ? moveEvent.clientX : moveEvent.clientY;
         const delta = currentCoordinate - startCoordinate;
@@ -317,27 +325,47 @@ export default function TerminalViewportPane({
         const nextWeights = [...startWeights];
         nextWeights[handleIndex] = resizedCurrent;
         nextWeights[handleIndex + 1] = resizedNext;
-        pendingWeights = nextWeights;
+        latestWeights = nextWeights;
+        didResize = true;
         if (resizeFrame === 0) {
           resizeFrame = window.requestAnimationFrame(flushResize);
         }
       };
 
-      const onPointerUp = () => {
+      const finish = (commit: boolean) => {
         if (resizeFrame !== 0) {
           window.cancelAnimationFrame(resizeFrame);
-          resizeFrame = 0;
         }
-        if (pendingWeights) {
-          onResizeSplit(groupId, splitNode.id, pendingWeights);
-          pendingWeights = null;
+        if (commit && didResize) {
+          flushResize();
+          onResizeSplit(groupId, splitNode.id, latestWeights);
+        } else {
+          currentPane.style.flexGrow = previousCurrentGrow;
+          nextPane.style.flexGrow = previousNextGrow;
         }
+        document.body.style.userSelect = previousUserSelect;
+        document.body.style.cursor = previousCursor;
         window.removeEventListener("pointermove", onPointerMove);
         window.removeEventListener("pointerup", onPointerUp);
+        window.removeEventListener("pointercancel", onPointerCancel);
+        window.removeEventListener("blur", onBlur);
       };
 
+      const onPointerUp = (upEvent: PointerEvent) => {
+        if (upEvent.pointerId === pointerId) finish(true);
+      };
+      const onPointerCancel = (cancelEvent: PointerEvent) => {
+        if (cancelEvent.pointerId === pointerId) finish(false);
+      };
+      const onBlur = () => finish(false);
+
+      document.body.style.userSelect = "none";
+      document.body.style.cursor =
+        splitNode.direction === "horizontal" ? "col-resize" : "row-resize";
       window.addEventListener("pointermove", onPointerMove);
-      window.addEventListener("pointerup", onPointerUp, { once: true });
+      window.addEventListener("pointerup", onPointerUp);
+      window.addEventListener("pointercancel", onPointerCancel);
+      window.addEventListener("blur", onBlur);
     };
 
     return (

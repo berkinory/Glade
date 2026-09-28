@@ -392,6 +392,7 @@ export function EditorWorkspaceView(props: EditorWorkspaceViewProps) {
   const trafficLightGutterClassName = useDesktopTopBarTrafficLightGutterClassName();
   const { resolvedTheme: editorResolvedTheme } = useTheme();
   const [chatPaneWidth, setChatPaneWidth] = useState(readStoredEditorChatPaneWidth);
+  const chatPaneRef = useRef<HTMLElement | null>(null);
   const chatPaneResizeStateRef = useRef<EditorChatPaneResizeState | null>(null);
   // Both side surfaces can be hidden so the main content takes the full width:
   // re-clicking the active activity-bar item collapses the sidebar (VS Code
@@ -465,7 +466,7 @@ export function EditorWorkspaceView(props: EditorWorkspaceViewProps) {
     });
   };
 
-  const stopChatPaneResize = () => {
+  const stopChatPaneResize = useCallback(() => {
     const resizeState = chatPaneResizeStateRef.current;
     if (!resizeState || typeof window === "undefined") {
       return;
@@ -481,10 +482,14 @@ export function EditorWorkspaceView(props: EditorWorkspaceViewProps) {
     window.removeEventListener("pointercancel", resizeState.onPointerEnd);
     document.body.style.cursor = resizeState.restoreBodyCursor;
     document.body.style.userSelect = resizeState.restoreBodyUserSelect;
+    chatPaneRef.current?.style.setProperty(
+      "--editor-chat-pane-width",
+      `${resizeState.pendingWidth}px`,
+    );
     setChatPaneWidth(resizeState.pendingWidth);
     storeEditorChatPaneWidth(resizeState.pendingWidth);
     chatPaneResizeStateRef.current = null;
-  };
+  }, []);
 
   useEffect(() => stopChatPaneResize, [stopChatPaneResize]);
 
@@ -524,7 +529,10 @@ export function EditorWorkspaceView(props: EditorWorkspaceViewProps) {
 
       resizeState.rafId = window.requestAnimationFrame(() => {
         resizeState.rafId = null;
-        setChatPaneWidth(resizeState.pendingWidth);
+        chatPaneRef.current?.style.setProperty(
+          "--editor-chat-pane-width",
+          `${resizeState.pendingWidth}px`,
+        );
       });
     };
 
@@ -756,6 +764,7 @@ export function EditorWorkspaceView(props: EditorWorkspaceViewProps) {
           {/* Hidden (not unmounted) so the chat runtime and composer focus
               state survive toggling the pane. */}
           <aside
+            ref={chatPaneRef}
             className={cn(
               "min-h-[18rem] w-full shrink-0 bg-[var(--color-background-surface)] lg:h-full lg:w-[var(--editor-chat-pane-width)]",
               chatPaneVisible ? "flex" : "hidden",

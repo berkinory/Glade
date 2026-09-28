@@ -48,6 +48,7 @@ import { resolveProviderSendAvailabilityWithRefresh } from "~/lib/providerAvaila
 import { toastManager } from "~/components/ui/toast";
 import {
   Sidebar,
+  SIDEBAR_DEFAULT_WIDTH_PX,
   SIDEBAR_OFFCANVAS_MOTION_CLASS,
   SidebarInstanceProvider,
   SidebarProvider,
@@ -67,6 +68,7 @@ const THREAD_MAIN_CONTENT_MIN_WIDTH = 40 * 16;
 // drag handle keeps working even though the rail lives outside <Sidebar> (above the card).
 const THREAD_SIDEBAR_RESIZABLE: SidebarResizableOptions = {
   minWidth: THREAD_SIDEBAR_MIN_WIDTH,
+  maxWidth: SIDEBAR_DEFAULT_WIDTH_PX * 1.5,
   shouldAcceptWidth: ({ nextWidth, wrapper }) =>
     wrapper.clientWidth - nextWidth >= THREAD_MAIN_CONTENT_MIN_WIDTH,
   storageKey: THREAD_SIDEBAR_WIDTH_STORAGE_KEY,

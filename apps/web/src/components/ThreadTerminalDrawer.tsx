@@ -549,12 +549,17 @@ export default function ThreadTerminalDrawer({
   const isVisible = isVisibleProp ?? true;
   const isWorkspaceMode = presentationMode === "workspace";
   const previousRuntimeKeysRef = useRef<Set<string>>(new Set());
-  const { drawerHeight, handleResizePointerDown, handleResizePointerMove, handleResizePointerEnd } =
-    useTerminalDrawerHeight({
-      height,
-      onHeightChange,
-      resetKey: threadId,
-    });
+  const {
+    drawerRef,
+    drawerHeight,
+    handleResizePointerDown,
+    handleResizePointerMove,
+    handleResizePointerEnd,
+  } = useTerminalDrawerHeight({
+    height,
+    onHeightChange,
+    resetKey: threadId,
+  });
 
   const {
     normalizedTerminalIds,
@@ -665,6 +670,7 @@ export default function ThreadTerminalDrawer({
 
   return (
     <aside
+      ref={drawerRef}
       className={cn(
         "thread-terminal-drawer relative flex w-full min-w-0 flex-col overflow-hidden bg-[var(--color-background-surface)]",
         isWorkspaceMode ? "h-full min-h-0" : "shrink-0 border-t border-border/70",
