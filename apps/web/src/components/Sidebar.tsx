@@ -6,13 +6,10 @@ import { useProjectImportDialogStore } from "~/projectImport/projectImportDialog
 import {
   AddPlusIcon,
   ArchiveIcon,
-  BookIcon,
   ChatBubbleIcon,
   CircleQuestionIcon,
   ClockIcon,
   CopyIcon,
-  CustomizeIcon,
-  DragHandleIcon,
   ExternalLinkIcon,
   FolderOpenIcon,
   GiftIcon,
@@ -63,19 +60,13 @@ import {
   type CollisionDetection,
   PointerSensor,
   type DragStartEvent,
-  closestCenter,
   closestCorners,
   pointerWithin,
   useSensor,
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
+import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { restrictToFirstScrollableAncestor, restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { CSS } from "@dnd-kit/utilities";
 import {
@@ -105,13 +96,8 @@ import {
   type SidebarThreadSortOrder,
   useAppSettings,
 } from "../appSettings";
+import { SIDEBAR_NAV_ITEM_IDS, type SidebarNavItemId } from "../sidebarNavOrdering";
 import {
-  normalizeHiddenSidebarNavItems,
-  normalizeSidebarNavOrder,
-  type SidebarNavItemId,
-} from "../sidebarNavOrdering";
-import {
-  buildRailRouteItemOrder,
   buildRailSpacesSections,
   RAIL_PANEL_ITEM_IDS,
   RAIL_PANEL_ITEM_LABELS,
@@ -266,7 +252,6 @@ import { useHandleNewThread } from "../hooks/useHandleNewThread";
 import { useProviderStatusesForLocalConfig } from "../hooks/useProviderStatusesForLocalConfig";
 import { useThreadHandoff } from "../hooks/useThreadHandoff";
 import { useFeedbackDialogStore } from "../feedbackDialogStore";
-import { openExternalLink } from "~/lib/linkChips";
 import { selectThreadTerminalState, useTerminalStateStore } from "../terminalStateStore";
 import { toastManager } from "./ui/toast";
 import {
@@ -293,7 +278,6 @@ import {
 } from "./desktopUpdate.logic";
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "./ui/alert";
 import { Button } from "./ui/button";
-import { Checkbox } from "./ui/checkbox";
 import { DisclosureChevron } from "./ui/DisclosureChevron";
 import { Input } from "./ui/input";
 import {
@@ -415,7 +399,6 @@ import {
   ComposerPickerMenuPopup,
   ComposerPickerMenuSubPopup,
 } from "./chat/ComposerPickerMenuPopup";
-import { ENVIRONMENT_PANEL_SURFACE_CLASS_NAME } from "./chat/composerPickerStyles";
 import { selectSplitView, useSplitViewStore } from "../splitViewStore";
 import { useRightDockStore } from "../rightDockStore";
 import { useThreadActivationController } from "../hooks/useThreadActivationController";
@@ -834,8 +817,6 @@ function ProjectSortMenu({
   );
 }
 
-const GLADE_DOCS_URL = "https://github.com/berkinory/Glade/tree/glade/docs";
-
 // Latest curated releases surfaced directly in the help menu. Static data, so
 // computed once at module scope rather than per render.
 const HELP_MENU_RELEASE_ENTRIES = sortEntriesByVersionDesc(WHATS_NEW_ENTRIES).slice(0, 3);
@@ -845,13 +826,10 @@ const HELP_MENU_RELEASE_ENTRIES = sortEntriesByVersionDesc(WHATS_NEW_ENTRIES).sl
 function SidebarHelpMenu({
   onOpenShortcuts,
   onOpenFeedback,
-  onCustomizeSidebar,
   inRail: inRailProp,
 }: {
   onOpenShortcuts: () => void;
   onOpenFeedback: () => void;
-  /** Null hides the entry (e.g. on surfaces without the primary nav block). */
-  onCustomizeSidebar: (() => void) | null;
   /** Rail layout: the trigger takes the rail button look and the menu opens to the side. */
   inRail?: boolean;
 }) {
@@ -916,15 +894,6 @@ function SidebarHelpMenu({
           </MenuGroup>
           <MenuSeparator />
           <MenuGroup>
-            {onCustomizeSidebar ? (
-              <MenuItem
-                className={SIDEBAR_CONTEXT_MENU_ITEM_CLASS_NAME}
-                onClick={onCustomizeSidebar}
-              >
-                <SidebarContextMenuIcon icon={CustomizeIcon} />
-                <span>Customize sidebar</span>
-              </MenuItem>
-            ) : null}
             <MenuItem className={SIDEBAR_CONTEXT_MENU_ITEM_CLASS_NAME} onClick={onOpenShortcuts}>
               <SidebarContextMenuIcon icon={KeyboardIcon} />
               <span>Keybindings</span>
@@ -932,13 +901,6 @@ function SidebarHelpMenu({
             <MenuItem className={SIDEBAR_CONTEXT_MENU_ITEM_CLASS_NAME} onClick={onOpenFeedback}>
               <SidebarContextMenuIcon icon={ChatBubbleIcon} />
               <span>Send feedback</span>
-            </MenuItem>
-            <MenuItem
-              className={SIDEBAR_CONTEXT_MENU_ITEM_CLASS_NAME}
-              onClick={() => openExternalLink(GLADE_DOCS_URL)}
-            >
-              <SidebarContextMenuIcon icon={BookIcon} />
-              <span>Docs</span>
             </MenuItem>
           </MenuGroup>
         </ComposerPickerMenuPopup>
@@ -1023,72 +985,6 @@ type SidebarNavItemDescriptor = {
   readonly onMouseEnter?: () => void;
   readonly onFocus?: () => void;
 };
-
-/** One row of the nav customize card: visibility checkbox + label + drag handle. */
-function SidebarNavCustomizeRow({
-  id,
-  icon: Icon,
-  iconClassName,
-  label,
-  visible,
-  onVisibleChange,
-}: {
-  id: SidebarNavItemId;
-  icon: ComponentType<{ className?: string }>;
-  iconClassName?: string;
-  label: string;
-  visible: boolean;
-  onVisibleChange: (visible: boolean) => void;
-}) {
-  const {
-    attributes,
-    listeners,
-    setActivatorNodeRef,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id });
-  return (
-    <li
-      ref={setNodeRef}
-      style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={cn("relative list-none", isDragging && "z-20 opacity-80")}
-    >
-      <div
-        className={cn(
-          SIDEBAR_HEADER_ROW_CLASS_NAME,
-          SIDEBAR_ROW_LABEL_TEXT_CLASS_NAME,
-          "cursor-default",
-        )}
-      >
-        <Checkbox
-          checked={visible}
-          onCheckedChange={(checked) => onVisibleChange(Boolean(checked))}
-          aria-label={visible ? `Hide ${label} from the sidebar` : `Show ${label} in the sidebar`}
-        />
-        <SidebarLeadingIcon size="sm" tone="text-inherit">
-          <SidebarGlyph
-            icon={Icon}
-            variant="leading"
-            {...(iconClassName ? { className: iconClassName } : {})}
-          />
-        </SidebarLeadingIcon>
-        <span className="truncate">{label}</span>
-        <button
-          type="button"
-          ref={setActivatorNodeRef}
-          className="ml-auto inline-flex size-6 shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground active:cursor-grabbing"
-          aria-label={`Reorder ${label}`}
-          {...attributes}
-          {...listeners}
-        >
-          <DragHandleIcon className="size-3.5" />
-        </button>
-      </div>
-    </li>
-  );
-}
 
 function SortableProjectItem({
   projectId,
@@ -3759,24 +3655,6 @@ export default function Sidebar() {
     animatedProjectListsRef.current.add(node);
   }, []);
 
-  // --- Primary nav customization: persisted order + visibility, edited in a card. ---
-  const sidebarNavOrder = useMemo(
-    () => normalizeSidebarNavOrder(appSettings.sidebarNavOrder),
-    [appSettings.sidebarNavOrder],
-  );
-  const hiddenSidebarNavItems = useMemo(
-    () => new Set(normalizeHiddenSidebarNavItems(appSettings.hiddenSidebarNavItems)),
-    [appSettings.hiddenSidebarNavItems],
-  );
-  const [isSelectedHintizingNav, setIsCustomizingNav] = useState(false);
-  const [navCustomizeMenuPosition, setNavCustomizeMenuPosition] = useState<{
-    x: number;
-    y: number;
-  } | null>(null);
-  const navCustomizeMenuAnchor = useMemo(
-    () => (navCustomizeMenuPosition ? createClientPointMenuAnchor(navCustomizeMenuPosition) : null),
-    [navCustomizeMenuPosition],
-  );
   const sidebarNavDescriptors = useMemo<Record<SidebarNavItemId, SidebarNavItemDescriptor>>(
     () => ({
       newThread: {
@@ -3831,60 +3709,7 @@ export default function Sidebar() {
       pullRequestsReviewBadge,
     ],
   );
-  // A hidden item whose route is currently active stays visible so the current
-  // surface never loses its sidebar row (mirrors the hidden-provider rule).
-  const visibleSidebarNavIds = useMemo(
-    () =>
-      sidebarNavOrder.filter(
-        (id) => !hiddenSidebarNavItems.has(id) || sidebarNavDescriptors[id].active,
-      ),
-    [hiddenSidebarNavItems, sidebarNavDescriptors, sidebarNavOrder],
-  );
-  // Rail layout: the same persisted order and hidden set drive the rail's route items, so
-  // the Customize card applies to both layouts. "New thread" stays in the panel.
-  const railRouteItemIds = useMemo(
-    () =>
-      buildRailRouteItemOrder({
-        navOrder: sidebarNavOrder,
-        hidden: hiddenSidebarNavItems,
-        activeNavId: sidebarNavOrder.find((id) => sidebarNavDescriptors[id].active) ?? null,
-      }),
-    [hiddenSidebarNavItems, sidebarNavDescriptors, sidebarNavOrder],
-  );
-  const handleNavOrderDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      const { active, over } = event;
-      if (!over || active.id === over.id) return;
-      const order = normalizeSidebarNavOrder(appSettings.sidebarNavOrder);
-      const fromIndex = order.indexOf(active.id as SidebarNavItemId);
-      const toIndex = order.indexOf(over.id as SidebarNavItemId);
-      if (fromIndex < 0 || toIndex < 0) return;
-      updateSettings({ sidebarNavOrder: arrayMove(order, fromIndex, toIndex) });
-    },
-    [appSettings.sidebarNavOrder, updateSettings],
-  );
-  const handleNavItemVisibleChange = useCallback(
-    (id: SidebarNavItemId, visible: boolean) => {
-      const hidden = normalizeHiddenSidebarNavItems(appSettings.hiddenSidebarNavItems).filter(
-        (entry) => entry !== id,
-      );
-      updateSettings({ hiddenSidebarNavItems: visible ? hidden : [...hidden, id] });
-    },
-    [appSettings.hiddenSidebarNavItems, updateSettings],
-  );
-  const handleNavContextMenu = useCallback((event: MouseEvent) => {
-    if (!readNativeApi()) return;
-    event.preventDefault();
-    setNavCustomizeMenuPosition({ x: event.clientX, y: event.clientY });
-  }, []);
-  useEffect(() => {
-    if (!isSelectedHintizingNav) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setIsCustomizingNav(false);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isSelectedHintizingNav]);
+  const railRouteItemIds = SIDEBAR_NAV_ITEM_IDS.filter((id) => id !== "newThread");
 
   // Trees need child (subagent) threads too; the flat display list stays
   // root-only for pinned rows and other non-tree consumers.
@@ -6127,12 +5952,6 @@ export default function Sidebar() {
   const sidebarHelpMenuProps = {
     onOpenShortcuts: () => void navigate({ to: "/settings", search: { section: "shortcuts" } }),
     onOpenFeedback: openFeedbackDialog,
-    onCustomizeSidebar:
-      isOnStudio || isOnSettings
-        ? null
-        : () => {
-            setIsCustomizingNav(true);
-          },
   };
   // A pinned Space or project stands for what the panel shows, so Home/Spaces step back.
   const activeRailShortcutKey = resolveActiveRailShortcutKey({
@@ -6254,9 +6073,7 @@ export default function Sidebar() {
     },
   ];
   // The rail owns the route destinations, so the panel keeps only "New thread".
-  const panelSidebarNavIds = isRailLayout
-    ? visibleSidebarNavIds.filter((id) => id === "newThread")
-    : visibleSidebarNavIds;
+  const panelSidebarNavIds = isRailLayout ? SIDEBAR_NAV_ITEM_IDS.slice(0, 1) : SIDEBAR_NAV_ITEM_IDS;
   // Rail layout: Automations owns its panel (its list), like Settings and Studio do.
   const showRailAutomationsPanel = isRailLayout && isOnAutomations;
   const showRailSpacesPanel =
@@ -6433,90 +6250,35 @@ export default function Sidebar() {
                 stays mounted so its thumb can glide between Projects and Studio. */}
             <div key={sidebarSurfaceKey} className="sidebar-surface-enter">
               {/* Primary sidebar actions stay limited to features we currently ship. */}
-              {!isOnStudio && isSelectedHintizingNav ? (
-                <SidebarGroup className="px-1.5 pt-1 pb-1.5">
-                  {/* Customize mode: the nav block lifts into a raised card (same chrome as
-                      the Environment panel/composer) with per-item visibility + reorder. */}
-                  <div className={cn(ENVIRONMENT_PANEL_SURFACE_CLASS_NAME, "p-1.5")}>
-                    <div className="flex items-center justify-between ps-2 pe-1 pt-0.5 pb-1">
-                      <span className={SIDEBAR_SECTION_LABEL_CLASS_NAME}>Customize</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 px-2 text-ui text-primary hover:text-primary"
-                        onClick={() => setIsCustomizingNav(false)}
-                      >
-                        Done
-                      </Button>
-                    </div>
-                    <DndContext
-                      sensors={projectDnDSensors}
-                      collisionDetection={closestCenter}
-                      modifiers={[restrictToVerticalAxis, restrictToFirstScrollableAncestor]}
-                      onDragEnd={handleNavOrderDragEnd}
-                    >
-                      <SortableContext
-                        items={sidebarNavOrder}
-                        strategy={verticalListSortingStrategy}
-                      >
-                        <ul className="flex w-full min-w-0 flex-col gap-0.5">
-                          {sidebarNavOrder.map((id) => {
-                            const item = sidebarNavDescriptors[id];
-                            return (
-                              <SidebarNavCustomizeRow
-                                key={id}
-                                id={id}
-                                icon={item.icon}
-                                {...(item.iconClassName
-                                  ? { iconClassName: item.iconClassName }
-                                  : {})}
-                                label={item.label}
-                                visible={!hiddenSidebarNavItems.has(id)}
-                                onVisibleChange={(visible) =>
-                                  handleNavItemVisibleChange(id, visible)
-                                }
-                              />
-                            );
-                          })}
-                        </ul>
-                      </SortableContext>
-                    </DndContext>
-                  </div>
-                </SidebarGroup>
-              ) : (
-                <SidebarGroup
-                  className="px-1.5 pt-1 pb-1.5"
-                  onContextMenu={isOnStudio ? undefined : handleNavContextMenu}
-                >
-                  <SidebarMenu className="gap-0.5">
-                    {isOnStudio ? (
-                      <SidebarPrimaryAction
-                        icon={NewThreadIcon}
-                        iconClassName="size-3.5"
-                        label="New studio chat"
-                        onClick={handleCreateStudioChat}
-                      />
-                    ) : (
-                      panelSidebarNavIds.map((id) => {
-                        const item = sidebarNavDescriptors[id];
-                        return (
-                          <SidebarPrimaryAction
-                            key={id}
-                            icon={item.icon}
-                            {...(item.iconClassName ? { iconClassName: item.iconClassName } : {})}
-                            label={item.label}
-                            active={item.active}
-                            badge={item.badge}
-                            onClick={item.onClick}
-                            {...(item.onMouseEnter ? { onMouseEnter: item.onMouseEnter } : {})}
-                            {...(item.onFocus ? { onFocus: item.onFocus } : {})}
-                          />
-                        );
-                      })
-                    )}
-                  </SidebarMenu>
-                </SidebarGroup>
-              )}
+              <SidebarGroup className="px-1.5 pt-1 pb-1.5">
+                <SidebarMenu className="gap-0.5">
+                  {isOnStudio ? (
+                    <SidebarPrimaryAction
+                      icon={NewThreadIcon}
+                      iconClassName="size-3.5"
+                      label="New studio chat"
+                      onClick={handleCreateStudioChat}
+                    />
+                  ) : (
+                    panelSidebarNavIds.map((id) => {
+                      const item = sidebarNavDescriptors[id];
+                      return (
+                        <SidebarPrimaryAction
+                          key={id}
+                          icon={item.icon}
+                          {...(item.iconClassName ? { iconClassName: item.iconClassName } : {})}
+                          label={item.label}
+                          active={item.active}
+                          badge={item.badge}
+                          onClick={item.onClick}
+                          {...(item.onMouseEnter ? { onMouseEnter: item.onMouseEnter } : {})}
+                          {...(item.onFocus ? { onFocus: item.onFocus } : {})}
+                        />
+                      );
+                    })
+                  )}
+                </SidebarMenu>
+              </SidebarGroup>
 
               {isOnStudio ? (
                 // Studio is "just chats": a labeled Studio block holding a flat list of threads
@@ -7172,38 +6934,6 @@ export default function Sidebar() {
               >
                 <ProjectContextMenuIcon icon={XIcon} />
                 <span>Remove</span>
-              </MenuItem>
-            </MenuGroup>
-          </ComposerPickerMenuPopup>
-        </Menu>
-      ) : null}
-
-      {navCustomizeMenuPosition && navCustomizeMenuAnchor ? (
-        <Menu
-          open
-          onOpenChange={(open) => {
-            if (!open) {
-              setNavCustomizeMenuPosition(null);
-            }
-          }}
-        >
-          <ComposerPickerMenuPopup
-            anchor={navCustomizeMenuAnchor}
-            align="start"
-            side="bottom"
-            sideOffset={0}
-            className={SIDEBAR_CONTEXT_MENU_PANEL_CLASS_NAME}
-          >
-            <MenuGroup>
-              <MenuItem
-                className={SIDEBAR_CONTEXT_MENU_ITEM_CLASS_NAME}
-                onClick={() => {
-                  setNavCustomizeMenuPosition(null);
-                  setIsCustomizingNav(true);
-                }}
-              >
-                <SidebarContextMenuIcon icon={CustomizeIcon} />
-                <span>Customize</span>
               </MenuItem>
             </MenuGroup>
           </ComposerPickerMenuPopup>

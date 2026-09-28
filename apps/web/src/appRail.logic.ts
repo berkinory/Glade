@@ -2,7 +2,7 @@
 // Purpose: Pure rules for the rail layout's tab strip: item ids, route item order, and
 //          which item is active for a pathname, plus the Spaces panel's section list.
 // Layer: Web shell logic
-// Exports: rail item ids/types, buildRailRouteItemOrder, railItemForPathname,
+// Exports: rail item ids/types, railItemForPathname,
 //          reconcileActiveRailItem, buildRailSpacesSections
 
 import type { ProjectId, SpaceId } from "@glade/contracts";
@@ -34,20 +34,6 @@ export type RailItemId = RailPanelItemId | RailRouteItemId;
  * drop out unless their route is active (the same rule the classic nav rows use). Studio
  * lives in the rail's "…" menu and Settings is a bottom item, so neither is listed here.
  */
-export function buildRailRouteItemOrder(input: {
-  navOrder: readonly SidebarNavItemId[];
-  hidden: ReadonlySet<SidebarNavItemId>;
-  activeNavId: SidebarNavItemId | null;
-}): Exclude<RailRouteItemId, "settings" | "studio">[] {
-  const items: Exclude<RailRouteItemId, "settings" | "studio">[] = [];
-  for (const id of input.navOrder) {
-    if (id === "newThread") continue;
-    if (input.hidden.has(id) && id !== input.activeNavId) continue;
-    items.push(id);
-  }
-  return items;
-}
-
 /** A Space or a single project the user added to the rail from its "…" menu. */
 export type RailShortcut =
   | { readonly kind: "space"; readonly key: string; readonly spaceId: SpaceId | null }

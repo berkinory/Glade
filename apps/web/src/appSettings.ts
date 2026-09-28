@@ -36,12 +36,6 @@ import {
   normalizeHiddenProviders,
   normalizeProviderOrder,
 } from "./providerOrdering";
-import {
-  DEFAULT_SIDEBAR_NAV_ORDER,
-  normalizeHiddenSidebarNavItems,
-  normalizeSidebarNavOrder,
-  SIDEBAR_NAV_ITEM_IDS,
-} from "./sidebarNavOrdering";
 import { ensureNativeApi } from "./nativeApi";
 import { providerDiscoveryQueryKeys } from "./lib/providerDiscoveryReactQuery";
 import {
@@ -104,7 +98,6 @@ export const AgentCursorColorMode = Schema.Literals(["stock", "custom"]);
 export type AgentCursorColorMode = typeof AgentCursorColorMode.Type;
 export const DEFAULT_AGENT_CURSOR_COLOR_MODE: AgentCursorColorMode = "stock";
 
-const SidebarNavItemId = Schema.Literals([...SIDEBAR_NAV_ITEM_IDS]);
 /** Classic: one sidebar column. Rail: fixed icon tabs plus a panel (see useSidebarLayout). */
 export const SidebarLayout = Schema.Literals(["classic", "rail"]);
 export type SidebarLayout = typeof SidebarLayout.Type;
@@ -241,14 +234,6 @@ export const AppSettingsSchema = Schema.Struct({
   // optional Studio tab in the section switcher.
   showChatsSection: Schema.Boolean.pipe(withDefaults(() => true)),
   showStudioSection: Schema.Boolean.pipe(withDefaults(() => true)),
-  // Local-only UI preferences for the primary sidebar nav block (New thread, Kanban,
-  // Pull requests, Automations): drag-to-reorder order plus explicitly hidden items.
-  // An item whose route is currently active stays visible regardless (mirrors
-  // `hiddenProviders`), so hiding a surface never strands the user mid-route.
-  sidebarNavOrder: Schema.Array(SidebarNavItemId).pipe(
-    withDefaults(() => [...DEFAULT_SIDEBAR_NAV_ORDER]),
-  ),
-  hiddenSidebarNavItems: Schema.Array(SidebarNavItemId).pipe(withDefaults(() => [])),
   // Local-only shell layout, available in Prod and Dev. useSidebarLayout keeps
   // mobile on classic even when the stored preference is "rail".
   sidebarLayout: SidebarLayout.pipe(withDefaults(() => DEFAULT_SIDEBAR_LAYOUT)),
@@ -489,8 +474,6 @@ function normalizeAppSettings(settings: AppSettings): AppSettings {
     hiddenProviders: normalizeHiddenProviders(settings.hiddenProviders),
     disabledProviders: normalizeHiddenProviders(settings.disabledProviders),
     providerOrder: normalizeProviderOrder(settings.providerOrder),
-    sidebarNavOrder: normalizeSidebarNavOrder(settings.sidebarNavOrder),
-    hiddenSidebarNavItems: normalizeHiddenSidebarNavItems(settings.hiddenSidebarNavItems),
     hiddenModels: [],
   };
 }

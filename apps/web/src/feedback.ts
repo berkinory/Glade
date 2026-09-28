@@ -144,10 +144,21 @@ export function buildFeedbackSubmission(input: {
   };
 }
 
-/** Open a reviewable draft; only the user can publish the GitHub issue. */
+/** Open the repository's issue form with the report details filled in. */
 export async function submitFeedback(submission: FeedbackSubmission): Promise<void> {
   const url = new URL("https://github.com/berkinory/Glade/issues/new");
-  url.searchParams.set("title", `[${submission.category ?? "feedback"}] Glade ${APP_VERSION}`);
-  url.searchParams.set("body", `${submission.details}\n\n${submission.summary}`);
+  const { category, diagnostics, details, summary } = submission;
+  if (category === "idea") {
+    url.searchParams.set("template", "feature_request.yml");
+    url.searchParams.set("problem", details);
+    url.searchParams.set("proposal", "");
+  } else {
+    url.searchParams.set("template", "bug_report.yml");
+    url.searchParams.set("description", details);
+    url.searchParams.set("steps", summary);
+    url.searchParams.set("version", diagnostics.appVersion);
+    url.searchParams.set("os", diagnostics.platform);
+    if (diagnostics.provider) url.searchParams.set("provider", diagnostics.provider);
+  }
   await ensureNativeApi().shell.openExternal(url.toString());
 }

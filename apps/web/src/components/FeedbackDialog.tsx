@@ -35,7 +35,7 @@ export function FeedbackDialog({ open, context, onOpenChange }: FeedbackDialogPr
       toastManager.add({
         type: "success",
         title: "Review feedback on GitHub",
-        description: "Your draft is ready. Review and submit it on GitHub.",
+        description: "Complete the issue form and submit it on GitHub.",
       });
     } catch (error) {
       setIsSending(false);
@@ -137,8 +137,8 @@ function FeedbackDialogForm({
       />
 
       <p className="text-ui leading-relaxed text-muted-foreground">
-        Opens a GitHub issue draft for your review. It includes app version, OS, provider/model,
-        modes, and session state. You decide whether to publish it.
+        Opens the Glade issue form on GitHub with your details and relevant app context. Review the
+        form and fill in the remaining fields before submitting.
       </p>
 
       <Button type="submit" className="w-full" disabled={!canSubmit}>
