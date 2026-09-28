@@ -7,6 +7,7 @@
  * @module Keybindings
  */
 import {
+  KeybindingCommand,
   KeybindingRule,
   KeybindingsConfig,
   KeybindingShortcut,
@@ -650,7 +651,7 @@ const LEGACY_KEYBINDING_COMMAND_ALIASES = {
 
 // Commands removed without a direct replacement are dropped during startup so
 // persisted configs from older releases do not produce validation warnings.
-const RETIRED_LEGACY_KEYBINDING_COMMANDS = new Set(["chat.newGemini"]);
+const RETIRED_LEGACY_KEYBINDING_COMMANDS = new Set(["chat.newGemini", "chat.newTerminal"]);
 const RETIRED_LEGACY_KEYBINDING_COMMAND_PATTERN = /^(?:composer\.)?modelPicker\.jump\.[1-9]$/;
 const OUTDATED_RECENT_VIEW_TERMINAL_GUARD = "!terminalFocus";
 const OUTDATED_SIDEBAR_SEARCH_SHORTCUT = "mod+k";
@@ -1056,12 +1057,15 @@ const makeKeybindings = Effect.gen(function* () {
       if (decodedRule._tag === "Failure") {
         const detail = Cause.pretty(decodedRule.cause);
         const schemaError = Option.getOrUndefined(Cause.findErrorOption(decodedRule.cause));
+        const normalizedCommand = readKeybindingEntryCommand(normalized.entry);
         issues.push(
           invalidEntryIssue(
             index,
-            schemaError
-              ? SchemaIssue.makeFormatterDefault()(schemaError.issue)
-              : "Invalid shortcut rule.",
+            normalizedCommand !== null && !Schema.is(KeybindingCommand)(normalizedCommand)
+              ? `Unknown shortcut command ${JSON.stringify(normalizedCommand.slice(0, 64))}.`
+              : schemaError
+                ? SchemaIssue.makeFormatterDefault()(schemaError.issue)
+                : "Invalid shortcut rule.",
           ),
         );
         yield* Effect.logWarning("ignoring invalid keybinding entry", {

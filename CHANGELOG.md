@@ -1,5 +1,11 @@
 # Glade Changelog
 
+## 0.0.4 - Unreleased
+
+### Fixed
+
+- Removed terminal-thread shortcuts are cleaned from saved keybindings without changing other shortcuts.
+
 ## 0.0.3 - 2026-09-28
 
 ### Removed

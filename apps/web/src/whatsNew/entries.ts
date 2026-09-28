@@ -2,6 +2,17 @@ import type { WhatsNewEntry } from "./logic";
 
 export const WHATS_NEW_ENTRIES: readonly WhatsNewEntry[] = [
   {
+    version: "0.0.4",
+    date: "Unreleased",
+    features: [
+      {
+        id: "retired-terminal-shortcuts",
+        title: "Fixed",
+        description: "Saved shortcuts for removed terminal threads are cleaned up automatically.",
+      },
+    ],
+  },
+  {
     version: "0.0.3",
     date: "2026-09-28",
     features: [
