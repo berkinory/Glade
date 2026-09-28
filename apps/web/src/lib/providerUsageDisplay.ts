@@ -31,11 +31,6 @@ export interface ProviderUsageProgressTrackProps {
   markerClassName: string;
 }
 
-export interface ProviderUsagePaceDetails {
-  amountText: string | null;
-  etaText: string | null;
-}
-
 export const PROVIDER_USAGE_TONE_CLASS_NAME: Record<ProviderUsageTone, string> = {
   healthy: "bg-emerald-500",
   warning: "bg-amber-500",
@@ -92,18 +87,6 @@ export function providerUsageProgressTrackProps(
     markerPercent: row.markerPercent,
     fillClassName: providerUsageToneClassName(row.remainingTone),
     markerClassName: providerUsageToneClassName(row.paceTone),
-  };
-}
-
-export function providerUsagePaceDetails(
-  row: ProviderUsageDisplayRow,
-): ProviderUsagePaceDetails | null {
-  if (!row.pace?.amountText && !row.pace?.etaText) {
-    return null;
-  }
-  return {
-    amountText: row.pace.amountText,
-    etaText: row.pace.etaText,
   };
 }
 

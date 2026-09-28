@@ -3,7 +3,6 @@
 // popovers. Keeps labels, progress tracks, pace details, and tones consistent.
 
 import {
-  providerUsagePaceDetails,
   providerUsageProgressTrackProps,
   type ProviderUsageDisplayRow,
 } from "~/lib/providerUsageDisplay";
@@ -20,32 +19,16 @@ function ProviderUsagePaceLine({
   row: ProviderUsageDisplayRow;
   surface: ProviderUsageLimitRowsSurface;
 }) {
-  const paceDetails = providerUsagePaceDetails(row);
-  if (!paceDetails) return null;
+  const etaText = row.pace?.etaText;
+  if (!etaText) return null;
 
   if (surface === "popover") {
     return (
-      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-3 text-muted-foreground">
-        {paceDetails.amountText ? (
-          <div className="min-w-0 truncate tabular-nums">{paceDetails.amountText}</div>
-        ) : (
-          <div />
-        )}
-        {paceDetails.etaText ? (
-          <div className="min-w-0 truncate text-right tabular-nums text-muted-foreground/80">
-            {paceDetails.etaText}
-          </div>
-        ) : null}
-      </div>
+      <div className="truncate text-right tabular-nums text-muted-foreground/80">{etaText}</div>
     );
   }
 
-  return (
-    <div className="flex items-center justify-between text-ui-sm tabular-nums text-muted-foreground">
-      {paceDetails.amountText ? <span>{paceDetails.amountText}</span> : <span />}
-      {paceDetails.etaText ? <span>{paceDetails.etaText}</span> : null}
-    </div>
-  );
+  return <div className="text-right text-ui-sm tabular-nums text-muted-foreground">{etaText}</div>;
 }
 
 function ProviderUsageTrack({

@@ -1,13 +1,12 @@
 // FILE: usagePace.ts
 // Purpose: Derive OpenUsage-style quota pace indicators from percent-used windows.
-// Used by Settings usage meters to show reserve/deficit and projected run-out timing.
+// Used by Settings usage meters to show projected run-out timing.
 
 export type UsagePaceStatus = "ahead" | "on-track" | "behind";
 
 export interface UsagePaceSummary {
   status: UsagePaceStatus;
   expectedRemainingPercent: number;
-  amountText: string | null;
   etaText: string | null;
 }
 
@@ -50,14 +49,6 @@ function paceStatus(usedPercent: number, projectedUsedPercent: number): UsagePac
   return "behind";
 }
 
-function reserveOrDeficitText(deltaPercent: number): string | null {
-  const rounded = Math.round(Math.abs(deltaPercent));
-  if (rounded <= 0) {
-    return null;
-  }
-  return deltaPercent > 0 ? `${rounded}% in deficit` : `${rounded}% in reserve`;
-}
-
 export function deriveUsagePace(input: {
   nowMs?: number | undefined;
   remainingPercent: number;
@@ -87,8 +78,6 @@ export function deriveUsagePace(input: {
   const expectedRemainingPercent = clampPercent(100 - expectedUsedPercent);
   const projectedUsedPercent = usedPercent === 0 ? 0 : usedPercent / elapsedFraction;
   const status = paceStatus(usedPercent, projectedUsedPercent);
-  const deltaPercent = usedPercent - expectedUsedPercent;
-  const amountText = reserveOrDeficitText(deltaPercent);
 
   let etaText = status === "behind" ? null : "Lasts until reset";
   if (status === "behind") {
@@ -103,7 +92,6 @@ export function deriveUsagePace(input: {
   return {
     status,
     expectedRemainingPercent,
-    amountText,
     etaText,
   };
 }

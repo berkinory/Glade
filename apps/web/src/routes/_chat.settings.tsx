@@ -200,14 +200,8 @@ function SettingsRouteView() {
   const settingsTarget = typeof routeSearch.target === "string" ? routeSearch.target : null;
   const activeSectionItem = SETTINGS_NAV_ITEMS.find((item) => item.id === activeSection)!;
 
-  const {
-    resetAllThemes,
-    resolvedTheme,
-    theme,
-    setTheme,
-    systemUiFont,
-    setSystemUiFont,
-  } = useTheme();
+  const { resetAllThemes, resolvedTheme, theme, setTheme, systemUiFont, setSystemUiFont } =
+    useTheme();
   const { settings, defaults, updateSettings, updateSettingsAndWait, resetSettings } =
     useAppSettings();
   const desktopTopBarTrafficLightGutterClassName = useDesktopTopBarTrafficLightGutterClassName();
