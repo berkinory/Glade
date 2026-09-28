@@ -108,11 +108,6 @@ export function ContextWindowMeter(props: {
               {display.tokenUsageLabel} tokens used so far
             </div>
           )}
-          {usage.maxTokens !== null ? (
-            <div className="text-ui leading-snug text-muted-foreground">
-              Active context limit: {formatContextWindowTokens(usage.maxTokens)} tokens
-            </div>
-          ) : null}
           {props.showClaudeCache && activeWindowLabel ? (
             <div className="max-w-72 space-y-1 text-ui leading-snug text-muted-foreground">
               <div>Auto-compact target: {activeWindowLabel}</div>
@@ -131,11 +126,6 @@ export function ContextWindowMeter(props: {
             <div className="text-ui leading-snug text-muted-foreground">
               {usage.tokenAccountingVersion === 1 ? "Estimated total processed" : "Total processed"}
               : {formatContextWindowTokens(usage.totalProcessedTokens ?? null)} tokens
-            </div>
-          ) : null}
-          {usage.compactsAutomatically ? (
-            <div className="text-ui leading-snug text-muted-foreground">
-              Automatically compacts its context when needed.
             </div>
           ) : null}
           {cumulativeCostUsd !== null && cumulativeCostUsd !== undefined ? (
