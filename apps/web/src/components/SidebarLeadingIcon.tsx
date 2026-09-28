@@ -35,7 +35,7 @@ export const SidebarLeadingIcon = forwardRef<HTMLSpanElement, SidebarLeadingIcon
         {...props}
         ref={ref}
         className={cn(
-          "relative inline-flex shrink-0 items-center justify-center",
+          "relative inline-flex shrink-0 translate-y-px items-center justify-center",
           SLOT_SIZE[size],
           tone,
           className,

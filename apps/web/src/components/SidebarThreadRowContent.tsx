@@ -44,7 +44,7 @@ function ProviderAvatarWithTerminal({
   const avatarNode = <ProviderIcon provider={provider} className="size-3" />;
 
   return (
-    <span className="relative inline-flex shrink-0 items-center">
+    <span className="relative inline-flex shrink-0 translate-y-px items-center">
       {avatarNode}
       {showBadge ? (
         <Tooltip>

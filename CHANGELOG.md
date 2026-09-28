@@ -4,6 +4,7 @@
 
 ### Improved
 
+- Sidebar icons align more closely with their labels in project, chat, and Activity rows.
 - The composer model button shows reasoning in smaller text and leaves context limits in the model details.
 - Shortcut hints use the same compact keycap throughout tooltips, menus, and the sidebar.
 

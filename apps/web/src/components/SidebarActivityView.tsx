@@ -200,7 +200,7 @@ function ActivityThreadRow({
           >
             <ProviderIcon
               provider={provider}
-              className="size-3 shrink-0"
+              className="size-3 shrink-0 translate-y-px"
               fallback={
                 <span className="size-3 shrink-0 rounded-full border border-dashed border-muted-foreground/40" />
               }
@@ -216,7 +216,7 @@ function ActivityThreadRow({
           </span>
           <span className="flex min-w-0 items-center gap-1.5">
             <ProjectGlyph
-              className={sidebarGlyphClass("meta", "text-muted-foreground/70")}
+              className={sidebarGlyphClass("meta", "translate-y-px text-muted-foreground/70")}
               aria-hidden
             />
             <span className="min-w-0 truncate text-ui-sm text-muted-foreground/80">
@@ -232,7 +232,10 @@ function ActivityThreadRow({
               ) : null}
               {branch ? (
                 <span className="flex min-w-0 items-center gap-1 text-ui-sm text-muted-foreground/70">
-                  <GitBranchIcon className={sidebarGlyphClass("meta")} aria-hidden />
+                  <GitBranchIcon
+                    className={sidebarGlyphClass("meta", "translate-y-px")}
+                    aria-hidden
+                  />
                   <span className="max-w-36 truncate">{branch}</span>
                 </span>
               ) : null}
