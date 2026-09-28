@@ -633,10 +633,9 @@ export const MessagesTimeline = memo(function MessagesTimeline({
   // as they pass behind the composer's glass so nothing remains visible behind its
   // footer controls (see composerOverlayScrollMaskImage).
   const listScrollStyle = useMemo(() => {
-    if (!contentInsetRightPx && !contentInsetBottomPx) {
-      return undefined;
-    }
-    const style: CSSProperties = {};
+    // LegendList can seed its cross-axis size while the pane is narrow. Keep the
+    // scroll viewport tied to the pane so rows recenter when the window grows.
+    const style: CSSProperties = { width: "100%" };
     if (contentInsetRightPx) {
       style.paddingRight = contentInsetRightPx;
     }

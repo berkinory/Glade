@@ -427,7 +427,7 @@ function PullRequestsRouteView() {
               </Button>
             </div>
           </header>
-          <main className="min-h-0 flex-1 overflow-y-auto">
+          <main className="min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]">
             <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-5 pb-12 pt-4 sm:px-7">
               {/* Scope first, then search within it: the pills read as the view you are in and
                   the field filters it, which is also the reference layout. */}

@@ -11,7 +11,6 @@ import {
   GitPullRequestIcon,
   GlobeIcon,
   KeyboardIcon,
-  TerminalIcon,
 } from "~/lib/icons";
 
 export const GLADE_DOCS_URL = "https://github.com/berkinory/Glade/blob/main/docs";
@@ -89,16 +88,6 @@ export const TOUR_CARDS: ReadonlyArray<TourCard> = [
     ],
     docsHref: `${GLADE_DOCS_URL}/core-concepts.md`,
     icon: ClockIcon,
-  },
-  {
-    id: "gateway",
-    label: "Agent Gateway",
-    title: "Let agents operate Glade itself",
-    description:
-      "The built-in agent gateway lets a provider session working in Glade create tasks, wait on them, read transcripts, and steer other tasks. Provider MCP tools are available within those sessions.",
-    highlights: ["Parallel task batches", "Agent coordination", "Approval boundaries"],
-    docsHref: `${GLADE_DOCS_URL}/core-concepts.md`,
-    icon: TerminalIcon,
   },
   {
     id: "shortcuts",

@@ -14,6 +14,8 @@
 ### Fixed
 
 - Switching empty Spaces preserves an unsent chat; the empty project message stays visible while adding a project. ([780c94437](https://github.com/berkinory/Glade/commit/780c944373c99210e99a840e6f1d1fc6d2d55797))
+- Pull request filters no longer shift the page between empty and populated lists.
+- Chat transcripts now resize with the window.
 - Terminal tabs recover from temporary connection failures. ([abb659c60](https://github.com/berkinory/Glade/commit/abb659c601732013ee93653c42f4decdd9c54a1a))
 - The right panel closes with its last terminal or browser tab. ([2cf366410](https://github.com/berkinory/Glade/commit/2cf366410e964cf4a8827f4780c5e5848ad763a8))
 - Cursor checks no longer open a login browser, and provider warnings wait until the provider is used. ([fb410b293](https://github.com/berkinory/Glade/commit/fb410b2937d5ef77c8835ab7a45728a37d8149e6))
