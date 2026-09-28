@@ -220,8 +220,9 @@ link in its reply.
 
 ## Switching providers
 
-A [provider handoff](https://github.com/berkinory/Glade/blob/main/docs/core-concepts.md) allows another provider to
-continue the task and work in the same environment with the context Glade passes to it.
+To switch providers in an existing task, select a model from another provider in the model picker
+and confirm the [handoff](https://github.com/berkinory/Glade/blob/main/docs/core-concepts.md).
+Glade creates a new task with the same working environment and imported conversation context.
 
 Use handoffs deliberately. Review the working tree before and after changing providers so ownership
 remains clear.

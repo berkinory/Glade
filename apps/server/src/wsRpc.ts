@@ -1628,6 +1628,11 @@ const makeWsRpcHandlersLayer = () =>
         [WS_METHODS.gitHandoffThread]: (input) =>
           rpcEffect(
             Effect.gen(function* () {
+              if (input.targetMode === "worktree") {
+                return yield* new WsRpcError({
+                  message: "Creating a worktree through handoff is no longer supported.",
+                });
+              }
               const { commandId, threadId, ...gitInput } = input;
               const operation = yield* beginGitHandoff(input);
               if (operation.phase === "pending" || operation.phase === "uncertain") {

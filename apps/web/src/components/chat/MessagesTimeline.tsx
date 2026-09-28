@@ -442,6 +442,7 @@ interface MessagesTimelineProps {
   crossTaskOrigin?: CrossTaskOrigin | null;
   /** Immediate source chat for a forked transcript. */
   forkSource?: ForkSourceReference | null;
+  handoffSource?: ForkSourceReference | null;
   timelineEntries: ReturnType<typeof deriveTimelineEntries>;
   /** Stable source messages, before plans/tools reshape the presentation rows. */
   messageChangeSignal?: unknown;
@@ -536,6 +537,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
   tailAnchorScrollInFlightRef,
   crossTaskOrigin: crossTaskOriginProp,
   forkSource: forkSourceProp,
+  handoffSource: handoffSourceProp,
   timelineEntries,
   messageChangeSignal: messageChangeSignalProp,
   turnDiffSummaryByAssistantMessageId,
@@ -594,6 +596,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
   const enteringUserMessageIds = enteringUserMessageIdsProp ?? EMPTY_MESSAGE_ID_SET;
   const tailAnchorMessageId = tailAnchorMessageIdProp ?? null;
   const forkSource = forkSourceProp ?? null;
+  const handoffSource = handoffSourceProp ?? null;
   const findHighlight = findHighlightProp ?? null;
   const editorKeybindings = keybindings ?? EMPTY_EDITOR_KEYBINDINGS;
   const installedEditors = availableEditors ?? EMPTY_AVAILABLE_EDITORS;
@@ -777,13 +780,14 @@ export const MessagesTimeline = memo(function MessagesTimeline({
     ],
   );
   const rows = useStableRows(rawRows);
-  const canRenderForkSourceDivider = forkSource !== null && onOpenThread !== undefined;
+  const originSource = handoffSource ?? forkSource;
+  const canRenderForkSourceDivider = originSource !== null && onOpenThread !== undefined;
   const forkSourceDivider = useMemo(
     () =>
-      forkSource && onOpenThread ? (
-        <ForkSourceDivider source={forkSource} onOpenSourceThread={onOpenThread} />
+      originSource && onOpenThread ? (
+        <ForkSourceDivider source={originSource} onOpenSourceThread={onOpenThread} />
       ) : null,
-    [forkSource, onOpenThread],
+    [originSource, onOpenThread],
   );
   const forkDividerBeforeRowId = useMemo(() => {
     if (!canRenderForkSourceDivider) {
@@ -792,7 +796,10 @@ export const MessagesTimeline = memo(function MessagesTimeline({
     let lastImportedMessageIndex = -1;
     for (let index = 0; index < rows.length; index += 1) {
       const row = rows[index]!;
-      if (row.kind === "message" && row.message.source === "fork-import") {
+      if (
+        row.kind === "message" &&
+        (row.message.source === "fork-import" || row.message.source === "handoff-import")
+      ) {
         lastImportedMessageIndex = index;
       }
     }

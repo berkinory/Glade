@@ -5,7 +5,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { type ProviderKind } from "@glade/contracts";
+import { type ModelSelection, type ProviderKind } from "@glade/contracts";
 import { useComposerDraftStore } from "../composerDraftStore";
 import { useProviderStatusesForLocalConfig } from "./useProviderStatusesForLocalConfig";
 import { useRefreshProviderStatusesNow } from "./useProviderStatusRefresh";
@@ -35,6 +35,8 @@ export function useThreadHandoff() {
   const createThreadHandoff = async (
     thread: Thread,
     targetProvider: ProviderKind,
+    selectedModel?: ModelSelection,
+    selectedRuntimeMode?: Thread["runtimeMode"],
   ): Promise<Thread["id"]> => {
     const api = readNativeApi();
     if (!api) {
@@ -83,13 +85,15 @@ export function useThreadHandoff() {
       sourceThreadId: thread.id,
       projectId: thread.projectId,
       title: resolveThreadHandoffTitle(thread),
-      modelSelection: resolveThreadHandoffModelSelection({
-        sourceThread: thread,
-        targetProvider,
-        projectDefaultModelSelection: project.defaultModelSelection,
-        stickyModelSelectionByProvider,
-      }),
-      runtimeMode: thread.runtimeMode,
+      modelSelection:
+        selectedModel ??
+        resolveThreadHandoffModelSelection({
+          sourceThread: thread,
+          targetProvider,
+          projectDefaultModelSelection: project.defaultModelSelection,
+          stickyModelSelectionByProvider,
+        }),
+      runtimeMode: selectedRuntimeMode ?? thread.runtimeMode,
       interactionMode: thread.interactionMode,
       envMode: thread.envMode ?? (thread.worktreePath ? "worktree" : "local"),
       branch: thread.branch,

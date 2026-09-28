@@ -98,7 +98,6 @@ export interface BranchToolbarProps {
   onEnvModeChange: (mode: EnvMode) => void;
   envLocked: boolean;
   threadDetailReady: boolean;
-  onHandoffToWorktree?: () => void;
   onHandoffToLocal?: () => void;
   handoffBusy?: boolean;
   onCheckoutPullRequestRequest?: (reference: string) => void;
@@ -233,7 +232,6 @@ export default function BranchToolbar({
   onEnvModeChange,
   envLocked,
   threadDetailReady,
-  onHandoffToWorktree,
   onHandoffToLocal,
   handoffBusy: handoffBusyProp,
   onCheckoutPullRequestRequest,
@@ -363,9 +361,6 @@ export default function BranchToolbar({
     ],
   );
 
-  const canHandoffToWorktree = Boolean(
-    hasServerThread && envLocked && !activeWorktreePath && effectiveEnvMode === "local",
-  );
   const canHandoffToLocal = Boolean(hasServerThread && activeWorktreePath);
   const canSwitchToWorktree = Boolean(
     !envLocked && !activeWorktreePath && effectiveEnvMode === "local",
@@ -391,9 +386,7 @@ export default function BranchToolbar({
             onEnvModeChange={onEnvModeChange}
             canSwitchToWorktree={canSwitchToWorktree}
             canHandoffToLocal={canHandoffToLocal}
-            canHandoffToWorktree={canHandoffToWorktree}
             onHandoffToLocal={onHandoffToLocal}
-            onHandoffToWorktree={onHandoffToWorktree}
             handoffBusy={handoffBusy}
             isPanel={isPanel}
           />

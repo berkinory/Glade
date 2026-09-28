@@ -78,7 +78,7 @@ A new first-class provider normally needs changes across several boundaries:
 3. registry/runtime-layer wiring;
 4. health/auth and, when applicable, update/discovery support;
 5. persistence/model-selection compatibility;
-6. web settings, provider/model picker metadata, icons, and handoff surfaces;
+6. web settings, provider/model picker metadata, icons, and model-picker handoff confirmation;
 7. focused adapter tests plus regression coverage for lifecycle, interruption, resume, approvals, and event normalization.
 
 Prefer capability-driven behavior and existing shared protocol helpers. Do not add provider-specific branches to orchestration when the difference can stay inside the adapter.

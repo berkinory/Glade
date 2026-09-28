@@ -22,7 +22,6 @@ import {
 } from "@glade/contracts";
 import { getDefaultModel, normalizeModelSlug } from "@glade/shared/model";
 import { approvalSessionGrantWidensSessionPolicy } from "@glade/shared/approvalSessionGrant";
-import { buildGladeBranchName } from "@glade/shared/git";
 import { isGenericChatThreadTitle } from "@glade/shared/chatThreads";
 import {
   type ChatMessage,
@@ -1593,13 +1592,6 @@ export function shouldStartActiveTurnLayoutGrace(options: {
     !options.currentTurnLayoutLive &&
     options.latestTurnStartedAt !== null
   );
-}
-
-export function buildSuggestedWorktreeName(input: {
-  associatedWorktreeBranch?: string | null;
-  title?: string | null;
-}): string {
-  return buildGladeBranchName(input.associatedWorktreeBranch ?? input.title);
 }
 
 export function deriveComposerSendState(options: {

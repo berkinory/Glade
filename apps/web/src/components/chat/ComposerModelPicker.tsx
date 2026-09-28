@@ -73,7 +73,11 @@ import {
   PICKER_PANEL_PLAIN_SEARCH_ICON_CLASS_NAME,
   PICKER_PANEL_PLAIN_SEARCH_INPUT_CLASS_NAME,
 } from "./pickerPanelStyles";
-import { resolveProviderModelLabel, resolveVisibleProviderOptions } from "./ProviderModelPicker";
+import {
+  resolveLiveProviderAvailability,
+  resolveProviderModelLabel,
+  resolveVisibleProviderOptions,
+} from "./ProviderModelPicker";
 import { resolveRuntimeModelDescriptor } from "./runtimeModelCapabilities";
 
 export type ComposerModelSelectionOptions = {
@@ -84,7 +88,6 @@ export type ComposerModelSelectionOptions = {
 type ComposerModelPickerProps = {
   provider: ProviderKind;
   model: ModelSlug;
-  lockedProvider: ProviderKind | null;
   providers?: ReadonlyArray<ServerProviderStatus>;
   modelOptionsByProvider: Record<ProviderKind, ReadonlyArray<ProviderModelOption>>;
   loadingModelProviders?: Partial<Record<ProviderKind, boolean>>;
@@ -150,19 +153,22 @@ function groupRowElements(
 }
 
 export function ComposerModelPicker(props: ComposerModelPickerProps) {
-  const { onOpenChange, open, lockedProvider, threadId } = props;
+  const { onOpenChange, open, threadId } = props;
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const isMenuOpen = open ?? uncontrolledOpen;
-  const activeProvider = lockedProvider ?? props.provider;
+  const activeProvider = props.provider;
   const effortControl = props.effortControl ?? "menu";
   const usesEffortSlider = effortControl === "slider";
 
   const { starredModels, toggleStarredModel, unstarModel } = useStarredModels();
-  // A locked thread can only ever run its own provider's presets.
-  const usableStarredModels =
-    lockedProvider === null
-      ? starredModels
-      : starredModels.filter((entry) => entry.provider === lockedProvider);
+  const connectedProviders = new Set(
+    props.providers
+      ?.filter((provider) => !resolveLiveProviderAvailability(provider).disabled)
+      .map((provider) => provider.provider),
+  );
+  const usableStarredModels = starredModels.filter((entry) =>
+    connectedProviders.has(entry.provider),
+  );
 
   const [tab, setTab] = useState<ComposerModelPickerTab>(activeProvider);
   const [query, setQuery] = useState("");
@@ -228,7 +234,7 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
 
   const modelLabel = resolveProviderModelLabel({
     provider: props.provider,
-    lockedProvider,
+    lockedProvider: null,
     model: props.model,
     modelOptionsByProvider: props.modelOptionsByProvider,
   });
@@ -243,11 +249,11 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
   const providerTabs = resolveComposerModelPickerProviderTabs(
     resolveVisibleProviderOptions({
       provider: props.provider,
-      lockedProvider,
+      lockedProvider: null,
       providers: props.providers,
       hiddenProviders: props.hiddenProviders,
       providerOrder: props.providerOrder,
-    }).filter((option) => lockedProvider === null || option.value === lockedProvider),
+    }).filter((option) => connectedProviders.has(option.value)),
     props.providers,
   );
 
@@ -310,7 +316,11 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
     // footer slider can set its effort. Presets already carry their effort, and picking
     // the current model again is the "done" gesture, so both close.
     const keepOpen =
-      usesEffortSlider && row.preset === null && !row.selected && selection.effortLevels.length > 0;
+      usesEffortSlider &&
+      row.provider === props.provider &&
+      row.preset === null &&
+      !row.selected &&
+      selection.effortLevels.length > 0;
     commitRow(
       row,
       model,
@@ -413,14 +423,10 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
             tab={tab}
             providerTabs={providerTabs}
             onTabChange={setTab}
-            onAddProviders={
-              lockedProvider === null
-                ? () => {
-                    setMenuOpen(false);
-                    appHistory.push("/settings?section=providers");
-                  }
-                : undefined
-            }
+            onAddProviders={() => {
+              setMenuOpen(false);
+              appHistory.push("/settings?section=providers");
+            }}
           />
           <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 *:min-w-0">
             <SearchIcon aria-hidden="true" className={PICKER_PANEL_PLAIN_SEARCH_ICON_CLASS_NAME} />

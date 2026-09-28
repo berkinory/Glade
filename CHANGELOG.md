@@ -4,11 +4,13 @@
 
 ### Removed
 
+- Removed the new-worktree handoff flow and separate provider handoff controls.
 - Removed the auto-generated Environment recap and its background model requests.
 - Removed Studio mode, its dedicated workspace and output capture, and its UI, server API, settings, and tests.
 
 ### Improved
 
+- The model picker lists connected providers with a shortcut to add more, and confirms a cross-provider selection before creating a handoff task with the chosen model. The new chat shows the provider transition in its transcript; the sidebar shows only its current provider.
 - Interface animations now feel quicker and more consistent.
 - The sidebar title shows the Glade mark in the current theme color.
 - Settings now shows desktop update status and lets you check for, download, and install updates.

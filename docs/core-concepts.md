@@ -77,8 +77,8 @@ remain in control.
 
 Use a thread fork when a new task should inherit
 the conversation or split from one exact turn. Use a
-handoff when another provider should continue
-the same task and ownership boundary.
+handoff through the model picker when another provider should continue
+the work in a new task.
 
 ## Environments
 
@@ -133,8 +133,10 @@ capabilities from the installed runtime and account.
 
 ## Handoffs
 
-A provider handoff lets another supported
-provider continue the same task and working environment using the context Glade passes to it.
+On an existing task, the model picker lists connected providers and offers a shortcut to add more. Choosing a model from another provider
+opens a confirmation dialog. Confirming creates a new task with the selected provider and model,
+imports the conversation, and keeps the working environment. The original task remains available.
+The new provider receives the imported context with your first message. The new task shows the provider transition in the transcript and its current provider in the sidebar.
 
 Use a handoff when:
 

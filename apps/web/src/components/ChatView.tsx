@@ -157,7 +157,6 @@ import {
 import {
   canCreateThreadHandoff,
   resolveAvailableHandoffTargetProviders,
-  resolveThreadHandoffBadgeLabel,
 } from "../lib/threadHandoff";
 import { buildDraftThreadRenameCreateInput, dispatchThreadRename } from "../lib/threadRename";
 import { useProjectEnvironmentStore } from "../projectEnvironmentStore";
@@ -237,7 +236,7 @@ import { SidebarHeaderNavigationControls } from "./SidebarHeaderNavigationContro
 import { GladeLogo } from "./GladeLogo";
 import { ProjectImportLandingBanner } from "~/projectImport/ProjectImportLandingBanner";
 import TerminalWorkspaceTabs from "./TerminalWorkspaceTabs";
-import { ThreadWorktreeHandoffDialog } from "./ThreadWorktreeHandoffDialog";
+import { ProviderHandoffDialog } from "./chat/ProviderHandoffDialog";
 import { ChatComposerFooter } from "./chat/ChatComposerFooter";
 import { ChatHeader } from "./chat/ChatHeader";
 import { ChatSurfaceHeader } from "./chat/ChatSurfaceHeader";
@@ -372,7 +371,6 @@ import {
   resolveNextComposerFooterTier,
   shouldUseCompactComposerFooter,
 } from "./composerFooterLayout";
-import { Button } from "./ui/button";
 import { SidebarHeaderTrigger } from "./ui/sidebar";
 import { Skeleton } from "./ui/skeleton";
 import { toastManager } from "./ui/toast";
@@ -685,6 +683,31 @@ export default function ChatView({
           }
         : null,
     [forkSourceThread?.title, forkSourceThreadId],
+  );
+  const handoffSourceThreadId = serverThread?.handoff?.sourceThreadId ?? null;
+  const handoffSourceThread = useStore(
+    useMemo(() => createThreadSelector(handoffSourceThreadId), [handoffSourceThreadId]),
+  );
+  const handoffSource = useMemo(
+    () =>
+      handoffSourceThreadId && serverThread?.handoff
+        ? {
+            sourceThreadId: handoffSourceThreadId,
+            sourceTitle: handoffSourceThread?.title ?? "chat",
+            handoff: {
+              sourceProvider: Schema.is(ProviderKind)(serverThread.handoff.sourceProvider)
+                ? serverThread.handoff.sourceProvider
+                : null,
+              targetProvider: serverThread.modelSelection.provider,
+            },
+          }
+        : null,
+    [
+      handoffSourceThread?.title,
+      handoffSourceThreadId,
+      serverThread?.handoff,
+      serverThread?.modelSelection.provider,
+    ],
   );
   const fallbackDraftProjectId = draftThread?.projectId ?? null;
   const fallbackDraftProject = useStore(
@@ -1160,7 +1183,6 @@ export default function ChatView({
   ]);
 
   const {
-    hasThreadStarted,
     lockedProvider,
     serverConfigQuery,
     selectedProvider,
@@ -2061,18 +2083,6 @@ export default function ChatView({
     settings,
     configuredProviderStatuses: serverConfigQuery.data?.providers,
   });
-  const handoffBadgeLabel = useMemo(
-    () => (activeThread ? resolveThreadHandoffBadgeLabel(activeThread) : null),
-    [activeThread],
-  );
-  const handoffSourceProvider = activeThread?.handoff?.sourceProvider;
-  const handoffBadgeSourceProvider =
-    handoffSourceProvider && Schema.is(ProviderKind)(handoffSourceProvider)
-      ? handoffSourceProvider
-      : null;
-  const handoffBadgeTargetProvider = activeThread?.handoff
-    ? activeThread.modelSelection.provider
-    : null;
   const handoffTargetProviders = useMemo(
     () =>
       activeThread
@@ -2084,7 +2094,6 @@ export default function ChatView({
         : [],
     [activeThread, providerStatuses, serverSettingsQuery.data?.providers],
   );
-  const handoffActionLabel = activeThread ? "Hand off thread" : "Create handoff thread";
   const activeProviderStatus = useMemo(
     () => findProviderStatus(providerStatuses, selectedProvider),
     [selectedProvider, providerStatuses],
@@ -2731,23 +2740,13 @@ export default function ChatView({
       createdAt: new Date().toISOString(),
     });
   }, [activeThread, isServerThread]);
-  const {
-    handoffBusy,
-    worktreeHandoffDialogOpen,
-    setWorktreeHandoffDialogOpen,
-    worktreeHandoffName,
-    setWorktreeHandoffName,
-    onHandoffToWorktree,
-    onHandoffToLocal,
-    confirmWorktreeHandoff,
-  } = useThreadWorkspaceHandoff({
+  const { handoffBusy, onHandoffToLocal } = useThreadWorkspaceHandoff({
     activeProject,
     activeThread,
     activeRootBranch,
     activeThreadAssociatedWorktree,
     isServerThread,
     stopActiveThreadSession,
-    runProjectScript,
   });
 
   const {
@@ -3310,6 +3309,12 @@ export default function ChatView({
     markWorkflowRunDismissed(activeThreadId, workflowTaskId);
   }, [activeThreadId, markWorkflowRunDismissed, workflowRunState]);
 
+  const [pendingProviderHandoff, setPendingProviderHandoff] = useState<{
+    modelSelection: ModelSelection;
+    runtimeMode: Thread["runtimeMode"];
+  } | null>(null);
+  const [providerHandoffBusy, setProviderHandoffBusy] = useState(false);
+
   const onProviderModelSelect = useCallback(
     async (
       provider: ProviderKind,
@@ -3317,10 +3322,6 @@ export default function ChatView({
       selectionOptions?: ComposerModelSelectionOptions,
     ) => {
       if (!activeThread) return;
-      if (lockedProvider !== null && provider !== lockedProvider) {
-        scheduleComposerFocus();
-        return;
-      }
       const resolvedModel = resolveCommittedProviderModel({
         selectedModel: model,
         availableOptions: modelOptionsByProvider[provider],
@@ -3344,6 +3345,22 @@ export default function ChatView({
         !providerModelSupportsAutoRuntimeMode(provider, runtimeModel, providerStatus)
           ? "approval-required"
           : normalizeRuntimeModeForProvider(runtimeMode, provider);
+      if (lockedProvider !== null && provider !== lockedProvider) {
+        if (handoffDisabled || !handoffTargetProviders.includes(provider)) {
+          toastManager.add({
+            type: "warning",
+            title: "Provider handoff unavailable",
+            description:
+              "Wait for the current task to finish and check that the provider is enabled.",
+          });
+        } else {
+          setPendingProviderHandoff({
+            modelSelection: nextModelSelection,
+            runtimeMode: nextRuntimeMode,
+          });
+        }
+        return;
+      }
       // Commit the canonical downgrade before storing an incompatible model.
       // On failure the Auto draft remains visible so compatibility checks can retry.
       const didCommitSelection = await commitAfterRuntimeModePersistence({
@@ -3369,6 +3386,8 @@ export default function ChatView({
     [
       activeThread,
       lockedProvider,
+      handoffDisabled,
+      handoffTargetProviders,
       modelOptionsByProvider,
       persistRuntimeModeChange,
       providerStatuses,
@@ -3691,27 +3710,33 @@ export default function ChatView({
     ],
   );
 
-  const onCreateHandoffThread = useCallback(
-    async (targetProvider: ProviderKind) => {
-      if (!activeThread || handoffDisabled) {
-        return;
-      }
-
-      try {
-        await createThreadHandoff(activeThread, targetProvider);
-      } catch (error) {
-        toastManager.add({
-          type: "error",
-          title: "Could not create handoff thread",
-          description:
-            error instanceof Error
-              ? error.message
-              : "An error occurred while creating the handoff thread.",
-        });
-      }
-    },
-    [activeThread, createThreadHandoff, handoffDisabled],
-  );
+  const confirmProviderHandoff = useCallback(async () => {
+    if (!activeThread || !pendingProviderHandoff || providerHandoffBusy || handoffDisabled) return;
+    setProviderHandoffBusy(true);
+    try {
+      await createThreadHandoff(
+        activeThread,
+        pendingProviderHandoff.modelSelection.provider,
+        pendingProviderHandoff.modelSelection,
+        pendingProviderHandoff.runtimeMode,
+      );
+      setPendingProviderHandoff(null);
+    } catch (error) {
+      toastManager.add({
+        type: "error",
+        title: "Could not switch provider",
+        description: error instanceof Error ? error.message : "The handoff failed.",
+      });
+    } finally {
+      setProviderHandoffBusy(false);
+    }
+  }, [
+    activeThread,
+    createThreadHandoff,
+    handoffDisabled,
+    pendingProviderHandoff,
+    providerHandoffBusy,
+  ]);
 
   const clearComposerInput = useCallback(
     (threadId: ThreadId) => {
@@ -4111,7 +4136,6 @@ export default function ChatView({
       effortControl={settings.composerEffortSlider ? "slider" : "menu"}
       provider={selectedProvider}
       model={selectedModelForPickerWithCustomFallback}
-      lockedProvider={lockedProvider}
       providers={providerStatuses}
       modelOptionsByProvider={modelOptionsByProvider}
       loadingModelProviders={loadingModelProviders}
@@ -4719,7 +4743,6 @@ export default function ChatView({
     onEnvModeChange,
     envLocked,
     threadDetailReady: threadDetailHydration === "ready",
-    onHandoffToWorktree,
     onHandoffToLocal,
     handoffBusy,
     onComposerFocusRequest: scheduleComposerFocus,
@@ -5456,12 +5479,6 @@ export default function ChatView({
           keybindings={keybindings}
           availableEditors={availableEditors}
           diffToggleShortcutLabel={diffPanelShortcutLabel}
-          handoffBadgeLabel={handoffBadgeLabel}
-          handoffActionLabel={handoffActionLabel}
-          handoffDisabled={handoffDisabled}
-          handoffActionTargetProviders={handoffTargetProviders}
-          handoffBadgeSourceProvider={handoffBadgeSourceProvider}
-          handoffBadgeTargetProvider={handoffBadgeTargetProvider}
           gitCwd={threadWorkspaceCwd}
           diffTotals={repoDiffTotals}
           showGitActions={showGitActions && !isEditorRail}
@@ -5518,7 +5535,6 @@ export default function ChatView({
           onDeleteProjectScript={deleteProjectScript}
           onToggleDiff={onToggleDiff}
           onRegisterCommitAndPushTrigger={onRegisterCommitAndPushTrigger}
-          onCreateHandoff={onCreateHandoffThread}
           onNavigateToThread={onNavigateToThread}
           onRenameThread={() => setRenameDialogOpen(true)}
         />
@@ -5713,6 +5729,7 @@ export default function ChatView({
                     tailAnchorScrollInFlightRef={tailAnchorScrollInFlightRef}
                     crossTaskOrigin={crossTaskOrigin}
                     forkSource={forkSource}
+                    handoffSource={handoffSource}
                     timelineEntries={timelineEntries}
                     messageChangeSignal={timelineMessages}
                     turnDiffSummaryByAssistantMessageId={turnDiffSummaryByAssistantMessageId}
@@ -5922,13 +5939,14 @@ export default function ChatView({
         activeContextWindowLabel={contextWindowSelectionStatus.activeLabel}
         pendingContextWindowLabel={contextWindowSelectionStatus.pendingSelectedLabel}
       />
-      <ThreadWorktreeHandoffDialog
-        open={worktreeHandoffDialogOpen}
-        worktreeName={worktreeHandoffName}
-        busy={handoffBusy}
-        onWorktreeNameChange={setWorktreeHandoffName}
-        onOpenChange={setWorktreeHandoffDialogOpen}
-        onConfirm={confirmWorktreeHandoff}
+      <ProviderHandoffDialog
+        provider={pendingProviderHandoff?.modelSelection.provider ?? null}
+        model={pendingProviderHandoff?.modelSelection.model ?? null}
+        busy={providerHandoffBusy}
+        onOpenChange={(open) => {
+          if (!open && !providerHandoffBusy) setPendingProviderHandoff(null);
+        }}
+        onConfirm={() => void confirmProviderHandoff()}
       />
       {!isInactiveSplitPane && activeProject ? (
         <TranscriptSelectionActionLayer

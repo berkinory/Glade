@@ -34,7 +34,6 @@ import { ThreadPrStatusBadge } from "~/components/pullRequest/ThreadPrStatusBadg
 import { PinStatusIcon, pinActionLabel } from "~/lib/pin";
 import { THREAD_CONTEXT_MENU_ICONS } from "~/lib/contextMenuIcons";
 import { ensureNativeApi } from "~/nativeApi";
-import { FiGitBranch } from "react-icons/fi";
 import { IoIosGitCompare } from "react-icons/io";
 import { GoRepoForked } from "react-icons/go";
 import {
@@ -75,10 +74,8 @@ import {
   type DesktopUpdateState,
   type OrchestrationShellSnapshot,
   type OrchestrationThreadPullRequest,
-  PROVIDER_DISPLAY_NAMES,
   ProjectId,
   SpaceId,
-  type ProviderKind,
   ThreadId,
   type ResolvedKeybindingsConfig,
   WS_GITHUB_PROJECT_PROVISIONING_CAPABILITY,
@@ -160,7 +157,6 @@ import { prefetchModelsForNewThread } from "../lib/providerModelPrefetch";
 import {
   hasReconciledServerProviderStatuses,
   serverConfigQueryOptions,
-  serverSettingsQueryOptions,
 } from "../lib/serverReactQuery";
 import {
   onNativeApiServerCapabilitiesChange,
@@ -244,7 +240,6 @@ import {
 import { useHandleNewChat } from "../hooks/useHandleNewChat";
 import { useHandleNewThread } from "../hooks/useHandleNewThread";
 import { useProviderStatusesForLocalConfig } from "../hooks/useProviderStatusesForLocalConfig";
-import { useThreadHandoff } from "../hooks/useThreadHandoff";
 import { useFeedbackDialogStore } from "../feedbackDialogStore";
 import { selectThreadTerminalState, useTerminalStateStore } from "../terminalStateStore";
 import { toastManager } from "./ui/toast";
@@ -365,11 +360,6 @@ import {
 } from "~/lib/disclosureMotion";
 import { createClientPointMenuAnchor } from "~/lib/clientPointMenuAnchor";
 import { resolveThreadModelSummary } from "~/lib/threadModelSummary";
-import {
-  canCreateThreadHandoff,
-  resolveAvailableHandoffTargetProviders,
-  resolveThreadHandoffBadgeLabel,
-} from "../lib/threadHandoff";
 import { isTerminalFocused } from "../lib/terminalFocus";
 import { beginThreadDrag, endThreadDrag } from "../lib/threadDrag";
 import { useDiffRouteSearch } from "../hooks/useDiffRouteSearch";
@@ -634,23 +624,13 @@ function resolveWorktreeBadgeLabel(
 }
 
 type ThreadMetaChip = {
-  id: "automation" | "handoff" | "fork" | "worktree";
+  id: "automation" | "fork" | "worktree";
   tooltip: string;
   icon: ReactNode;
 };
 
-/**
- * Back-to-front order: first = behind, last = in front.
- * Priority lowest -> highest: handoff -> fork -> worktree.
- */
 function resolveThreadRowMetaChips(input: {
-  thread: Pick<Thread, "forkSourceThreadId" | "envMode" | "worktreePath" | "handoff">;
-  includeHandoffBadge: boolean;
-  /**
-   * When the leading provider avatar already renders the source → target handoff
-   * pair, the trailing handoff chip is a redundant double icon and is dropped.
-   */
-  handoffShownInAvatar?: boolean;
+  thread: Pick<Thread, "forkSourceThreadId" | "envMode" | "worktreePath">;
   /** Heartbeat automations targeting this thread; surfaced as an at-a-glance clock chip. */
   threadAutomations?: readonly AutomationDefinition[] | undefined;
 }): ThreadMetaChip[] {
@@ -675,15 +655,6 @@ function resolveThreadRowMetaChips(input: {
           className={anyEnabled ? "text-muted-foreground/55" : "text-muted-foreground/40"}
         />
       ),
-    });
-  }
-
-  const handoffBadgeLabel = resolveThreadHandoffBadgeLabel(input.thread);
-  if (input.includeHandoffBadge && !input.handoffShownInAvatar && handoffBadgeLabel) {
-    chips.push({
-      id: "handoff",
-      tooltip: handoffBadgeLabel,
-      icon: <SidebarGlyph icon={FiGitBranch} variant="meta" className="text-muted-foreground/55" />,
     });
   }
 
@@ -1240,7 +1211,6 @@ export default function Sidebar() {
   const chatsSectionVisible = appSettings.showChatsSection;
   const { handleNewThread } = useHandleNewThread();
   const { handleNewChat } = useHandleNewChat();
-  const { createThreadHandoff } = useThreadHandoff();
   const routeThreadId = useParams({
     strict: false,
     select: (params) => (params.threadId ? ThreadId.makeUnsafe(params.threadId) : null),
@@ -1344,7 +1314,6 @@ export default function Sidebar() {
   });
   const serverCwd = serverCwdQuery.data ?? null;
   const providerStatuses = useProviderStatusesForLocalConfig();
-  const serverSettingsQuery = useQuery(serverSettingsQueryOptions());
   // Declared next to `keybindings` (rather than further down) because the project-row render
   // helpers above read these labels. A const declared after the closure that captures it
   // widens its inferred mutable range and makes React Compiler drop the memoization of every
@@ -2551,24 +2520,6 @@ export default function Sidebar() {
 
   const copyThreadIdToClipboard = useCopyThreadIdToClipboard();
   const copyPathToClipboard = useCopyPathToClipboard();
-  const handoffThread = useCallback(
-    async (thread: Thread, targetProvider: ProviderKind) => {
-      try {
-        await createThreadHandoff(thread, targetProvider);
-      } catch (error) {
-        toastManager.add({
-          type: "error",
-          title: "Could not create handoff thread",
-          description:
-            error instanceof Error
-              ? error.message
-              : "An error occurred while creating the handoff thread.",
-        });
-      }
-    },
-    [createThreadHandoff],
-  );
-
   const handleThreadContextMenu = useCallback(
     async (
       threadId: ThreadId,
@@ -2587,37 +2538,7 @@ export default function Sidebar() {
       if (!thread) return;
       const threadSummary = sidebarThreadSummaryById[threadId];
       const isPinned = pinnedThreadIdSet.has(threadId);
-      const hasPendingApprovals =
-        threadSummary?.hasPendingApprovals ??
-        derivePendingApprovals(thread.activities, thread.pendingInteractions, {
-          authoritativeHasPending: thread.hasPendingApprovals,
-          latestTurnId: thread.latestTurn?.turnId,
-        }).length > 0;
-      const hasPendingUserInput =
-        threadSummary?.hasPendingUserInput ??
-        derivePendingUserInputs(thread.activities, thread.pendingInteractions, {
-          authoritativeHasPending: thread.hasPendingUserInput,
-          latestTurnId: thread.latestTurn?.turnId,
-        }).length > 0;
-      const canHandoff = canCreateThreadHandoff({
-        thread,
-        hasPendingApprovals,
-        hasPendingUserInput,
-      });
       const threadStatus = threadSummary ? resolveThreadStatusForSidebar(threadSummary) : null;
-      const handoffTargets = canHandoff
-        ? resolveAvailableHandoffTargetProviders({
-            sourceProvider: thread.modelSelection.provider,
-            providerSettings: serverSettingsQuery.data?.providers,
-            providerStatuses,
-          })
-        : [];
-      const handoffItems = handoffTargets.map((provider, index) => ({
-        id: `handoff:${provider}`,
-        label: `Handoff to ${PROVIDER_DISPLAY_NAMES[provider]}`,
-        icon: THREAD_CONTEXT_MENU_ICONS.handoff,
-        separatorBefore: index === 0,
-      }));
       const threadWorkspacePath = resolveThreadWorkspaceCwd({
         projectCwd: projectCwdById.get(thread.projectId) ?? null,
         envMode: thread.envMode,
@@ -2641,7 +2562,6 @@ export default function Sidebar() {
               ]
             : []),
           { id: "mark-unread", label: "Mark unread", icon: THREAD_CONTEXT_MENU_ICONS.markUnread },
-          ...handoffItems,
           {
             id: "copy-path",
             label: "Copy Path",
@@ -2699,13 +2619,6 @@ export default function Sidebar() {
       }
       if (clicked === "clear-notification") {
         clearThreadNotification(threadId);
-        return;
-      }
-      if (typeof clicked === "string" && clicked.startsWith("handoff:")) {
-        const targetProvider = clicked.slice("handoff:".length);
-        if (handoffTargets.includes(targetProvider as ProviderKind)) {
-          await handoffThread(thread, targetProvider as ProviderKind);
-        }
         return;
       }
       if (clicked === "copy-path") {
@@ -2827,15 +2740,12 @@ export default function Sidebar() {
       copyThreadIdToClipboard,
       clearDismissedThreadStatus,
       clearThreadNotification,
-      handoffThread,
       markThreadUnread,
       navigate,
       openRenameThreadDialog,
       pinnedThreadIdSet,
       projectCwdById,
-      providerStatuses,
       resolveThreadStatusForSidebar,
-      serverSettingsQuery.data?.providers,
       sidebarThreadSummaryById,
       toggleThreadPinned,
     ],
@@ -4129,11 +4039,6 @@ export default function Sidebar() {
     const projectLabel = resolvePinnedThreadProjectLabel(thread.projectId);
     const rightMetaChips = resolveThreadRowMetaChips({
       thread,
-      includeHandoffBadge: true,
-      handoffShownInAvatar:
-        threadEntryPoint !== "terminal" &&
-        !isGenericChatThreadTitle(thread.title) &&
-        Boolean(thread.handoff?.sourceProvider),
       threadAutomations: automationsByThreadId.get(thread.id),
     });
     const threadStatus = resolveThreadStatusForSidebar(thread);
@@ -4292,11 +4197,6 @@ export default function Sidebar() {
       : "text-muted-foreground/34";
     const rightMetaChips = resolveThreadRowMetaChips({
       thread,
-      includeHandoffBadge: true,
-      handoffShownInAvatar:
-        threadEntryPoint !== "terminal" &&
-        !isGenericChatThreadTitle(thread.title) &&
-        Boolean(thread.handoff?.sourceProvider),
       threadAutomations: automationsByThreadId.get(thread.id),
     });
     const isSubagentThread = Boolean(thread.parentThreadId);

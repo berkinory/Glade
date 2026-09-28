@@ -15,7 +15,6 @@ import {
   sanitizeFeatureBranchName,
 } from "@glade/shared/git";
 import { parseGitHubRepositoryNameWithOwnerFromRemoteUrl } from "@glade/shared/githubRepository";
-import { resolveWorktreeHandoffIntent } from "@glade/shared/worktreeHandoff";
 
 import { GitManagerError } from "../Errors.ts";
 import {
@@ -93,16 +92,6 @@ interface FailedLocalHandoffRecovery {
 
 interface FailedLocalTransferRecovery extends FailedLocalHandoffRecovery {
   localCheckoutRestored: boolean;
-}
-
-interface FailedWorktreeHandoffRecovery {
-  checkoutRestored: boolean;
-  stashRestored: boolean;
-  recoveryNotes: ReadonlyArray<string>;
-}
-
-interface FailedWorktreeTransferRecovery extends FailedWorktreeHandoffRecovery {
-  worktreeRemoved: boolean;
 }
 
 // Host + owner/repo extraction from a PR web URL. Used to query the repository that owns
@@ -463,39 +452,6 @@ function buildFailedLocalTransferDetail(
     recovery.localChangesRestored
       ? "Previous local changes were restored."
       : "Previous local changes remain in the Git stash.",
-    ...recovery.recoveryNotes,
-  ].join(" ")}`.trim();
-}
-
-function buildFailedWorktreeHandoffRecoveryDetail(
-  baseMessage: string,
-  recovery: FailedWorktreeHandoffRecovery,
-): string {
-  return `${baseMessage} ${[
-    recovery.checkoutRestored
-      ? "Local checkout was restored."
-      : "Local checkout could not be fully restored automatically.",
-    recovery.stashRestored
-      ? "Previous local changes were restored."
-      : "Previous local changes remain in the Git stash.",
-    ...recovery.recoveryNotes,
-  ].join(" ")}`.trim();
-}
-
-function buildFailedWorktreeTransferDetail(
-  baseMessage: string,
-  recovery: FailedWorktreeTransferRecovery,
-): string {
-  return `${baseMessage} ${[
-    recovery.worktreeRemoved
-      ? "The new worktree was removed."
-      : "The new worktree could not be removed automatically.",
-    recovery.checkoutRestored
-      ? "Local checkout was restored."
-      : "Local checkout could not be fully restored automatically.",
-    recovery.stashRestored
-      ? "Previous local changes were restored."
-      : "Previous local changes remain in the Git stash. Run `git stash list` in Local to recover them.",
     ...recovery.recoveryNotes,
   ].join(" ")}`.trim();
 }
@@ -1781,22 +1737,6 @@ export const makeGitManager = Effect.gen(function* () {
       return worktree;
     });
 
-  const createNamedWorktree = (input: {
-    cwd: string;
-    baseBranch: string;
-    name: string;
-    path: string | null;
-  }) =>
-    Effect.gen(function* () {
-      const resolvedPath = input.path ?? buildNamedWorktreePath(input.cwd, input.name);
-      return yield* gitCore.createWorktree({
-        cwd: input.cwd,
-        branch: input.baseBranch,
-        newBranch: input.name,
-        path: resolvedPath,
-      });
-    });
-
   const stashWorkingTree = (cwd: string, label: string) =>
     Effect.gen(function* () {
       if (!(yield* gitCore.statusDetails(cwd)).hasWorkingTreeChanges) {
@@ -1903,19 +1843,6 @@ export const makeGitManager = Effect.gen(function* () {
       concurrency: 1,
       discard: true,
     });
-
-  const resolveForegroundFallbackBranch = (cwd: string, excludedBranch: string) =>
-    gitCore.listBranches({ cwd }).pipe(
-      Effect.map((result) => {
-        const localBranches = result.branches.filter(
-          (branch) =>
-            !branch.isRemote && branch.name !== excludedBranch && branch.worktreePath === null,
-        );
-        const defaultBranch = localBranches.find((branch) => branch.isDefault)?.name ?? null;
-        if (defaultBranch) return defaultBranch;
-        return localBranches[0]?.name ?? null;
-      }),
-    );
 
   const restoreLocalHandoffSource = (input: {
     cwd: string;
@@ -2083,434 +2010,172 @@ The local stash entry was kept for recovery.`,
       };
     });
 
-  const rollbackFailedWorktreeTransfer = (input: {
-    cwd: string;
-    worktreePath: string;
-    originalBranch: string | null;
-    originalHeadRef: string | null;
-    currentBranch: string | null;
-    stashRef: string | null;
-  }) =>
-    Effect.gen(function* () {
-      const recoveryNotes: string[] = [];
-      const worktreeRemoved = yield* gitCore
-        .removeWorktree({
-          cwd: input.cwd,
-          path: input.worktreePath,
-          force: true,
-        })
-        .pipe(
-          Effect.as(true),
-          Effect.catch((error) => {
-            recoveryNotes.push(
-              `The newly created worktree could not be removed automatically: ${
-                error instanceof Error ? error.message : String(error)
-              }`,
-            );
-            return Effect.succeed(false);
-          }),
-        );
-
-      const localRecovery = yield* restoreLocalHandoffSource({
-        cwd: input.cwd,
-        originalBranch: input.originalBranch,
-        originalHeadRef: input.originalHeadRef,
-        currentBranch: input.currentBranch,
-        stashRef: input.stashRef,
-      });
-
-      return {
-        worktreeRemoved,
-        checkoutRestored: localRecovery.checkoutRestored,
-        stashRestored: localRecovery.stashRestored,
-        recoveryNotes: [...recoveryNotes, ...localRecovery.recoveryNotes],
-      };
-    });
-
   const handoffThread: GitManagerShape["handoffThread"] = Effect.fnUntraced(function* (input) {
+    if (input.targetMode !== "local") {
+      return yield* gitManagerError(
+        "handoffThread",
+        "Creating a worktree through handoff is no longer supported.",
+      );
+    }
     const currentLocalStatus = yield* gitCore.statusDetails(input.cwd);
 
-    if (input.targetMode === "local") {
-      if (!input.worktreePath) {
-        return yield* gitManagerError(
-          "handoffThread",
-          "Cannot hand off to Local because this thread does not have a materialized worktree.",
-        );
-      }
-
-      const worktreeHeadRef = yield* readHeadRef(input.worktreePath);
-      const targetLocalBranch =
-        input.currentBranch ?? input.associatedWorktreeBranch ?? input.preferredLocalBranch ?? null;
-      if (!(targetLocalBranch ?? worktreeHeadRef)) {
-        return yield* gitManagerError(
-          "handoffThread",
-          "Cannot hand off to Local because the worktree thread does not have a recoverable HEAD reference.",
-        );
-      }
-
-      const associatedWorktreePath = input.associatedWorktreePath ?? input.worktreePath;
-      const associatedWorktreeBranch =
-        input.associatedWorktreeBranch ?? input.currentBranch ?? null;
-      const associatedWorktreeRef =
-        input.associatedWorktreeRef ?? worktreeHeadRef ?? associatedWorktreeBranch;
-      const originalLocalBranch = currentLocalStatus.branch ?? null;
-      const originalLocalHeadRef = yield* readHeadRef(input.cwd);
-      let currentLocalBranchAfterPreparation = originalLocalBranch;
-
-      const preservedLocalStash = yield* stashWorkingTree(
-        input.cwd,
-        `glade preserve local handoff ${randomUUID()}`,
-      );
-      const sourceStash = yield* stashWorkingTree(
-        input.worktreePath,
-        `glade handoff to local ${randomUUID()}`,
-      );
-
-      yield* gitCore
-        .removeWorktree({
-          cwd: input.cwd,
-          path: input.worktreePath,
-        })
-        .pipe(
-          Effect.catch((error) =>
-            restoreStashes([
-              { cwd: input.worktreePath!, stashRef: sourceStash.stashRef },
-              { cwd: input.cwd, stashRef: preservedLocalStash.stashRef },
-            ]).pipe(Effect.flatMap(() => Effect.fail(error))),
-          ),
-        );
-
-      if (targetLocalBranch && currentLocalStatus.branch !== targetLocalBranch) {
-        yield* Effect.scoped(
-          gitCore.checkoutBranch({
-            cwd: input.cwd,
-            branch: targetLocalBranch,
-          }),
-        ).pipe(
-          Effect.catch((error) =>
-            restoreRemovedWorktreeAfterFailedLocalCheckout({
-              cwd: input.cwd,
-              worktreePath: associatedWorktreePath,
-              branch: associatedWorktreeBranch,
-              ref: associatedWorktreeRef,
-              worktreeStashRef: sourceStash.stashRef,
-              localStashRef: preservedLocalStash.stashRef,
-            }).pipe(
-              Effect.flatMap((recovery) =>
-                Effect.fail(
-                  new GitManagerError({
-                    operation: "GitManager.handoffThread",
-                    detail: buildFailedLocalHandoffRecoveryDetail(error.message, recovery),
-                    cause: error,
-                  }),
-                ),
-              ),
-            ),
-          ),
-        );
-        currentLocalBranchAfterPreparation = targetLocalBranch;
-      } else if (!targetLocalBranch && worktreeHeadRef) {
-        yield* checkoutDetached(input.cwd, worktreeHeadRef).pipe(
-          Effect.catch((error) =>
-            restoreRemovedWorktreeAfterFailedLocalCheckout({
-              cwd: input.cwd,
-              worktreePath: associatedWorktreePath,
-              branch: associatedWorktreeBranch,
-              ref: associatedWorktreeRef,
-              worktreeStashRef: sourceStash.stashRef,
-              localStashRef: preservedLocalStash.stashRef,
-            }).pipe(
-              Effect.flatMap((recovery) =>
-                Effect.fail(
-                  new GitManagerError({
-                    operation: "GitManager.handoffThread",
-                    detail: buildFailedLocalHandoffRecoveryDetail(error.message, recovery),
-                    cause: error,
-                  }),
-                ),
-              ),
-            ),
-          ),
-        );
-        currentLocalBranchAfterPreparation = null;
-      }
-
-      const threadTransfer = yield* popStash(input.cwd, sourceStash.stashRef);
-      if (threadTransfer.conflictsDetected) {
-        const recovery = yield* rollbackFailedLocalTransfer({
-          cwd: input.cwd,
-          originalBranch: originalLocalBranch,
-          originalHeadRef: originalLocalHeadRef,
-          currentBranch: currentLocalBranchAfterPreparation,
-          worktreePath: associatedWorktreePath,
-          worktreeBranch: associatedWorktreeBranch,
-          worktreeRef: associatedWorktreeRef,
-          worktreeStashRef: sourceStash.stashRef,
-          localStashRef: preservedLocalStash.stashRef,
-        });
-        return yield* new GitManagerError({
-          operation: "GitManager.handoffThread",
-          detail: buildFailedLocalTransferDetail(
-            `${
-              threadTransfer.message ??
-              "Git reported conflicts while applying the handed off changes."
-            } The handoff was rolled back so the thread stays in its worktree.`,
-            recovery,
-          ),
-        });
-      }
-
-      const localTransfer = yield* popStash(input.cwd, preservedLocalStash.stashRef);
-      const changesTransferred = sourceStash.hadChanges || preservedLocalStash.hadChanges;
-      const movedThreadChanges = sourceStash.hadChanges;
-      const restoredLocalChanges = preservedLocalStash.hadChanges;
-      const localTargetLabel = targetLocalBranch
-        ? `main local checkout on '${targetLocalBranch}'`
-        : "local checkout in detached HEAD";
-      const message = localTransfer.conflictsDetected
-        ? `${
-            localTransfer.message ??
-            "Git reported conflicts while restoring your previous local changes."
-          }\nYour previous local stash entry was kept for recovery.`
-        : movedThreadChanges && restoredLocalChanges
-          ? `Moved the thread back to the ${localTargetLabel}, carried its uncommitted work over, and restored your previous local changes.`
-          : movedThreadChanges
-            ? `Moved the thread back to the ${localTargetLabel} and carried its uncommitted work over.`
-            : restoredLocalChanges
-              ? `Moved the thread back to the ${localTargetLabel} and restored your previous local changes.`
-              : `Moved the thread back to the ${localTargetLabel}.`;
-
-      return {
-        targetMode: "local",
-        branch: targetLocalBranch,
-        worktreePath: null,
-        associatedWorktreePath,
-        associatedWorktreeBranch,
-        associatedWorktreeRef,
-        changesTransferred,
-        conflictsDetected: localTransfer.conflictsDetected,
-        message,
-      };
-    }
-
-    const worktreeIntent = resolveWorktreeHandoffIntent({
-      preferredNewWorktreeName: input.preferredNewWorktreeName,
-      associatedWorktreePath: input.associatedWorktreePath,
-      associatedWorktreeBranch: input.associatedWorktreeBranch,
-      associatedWorktreeRef: input.associatedWorktreeRef,
-      preferredWorktreeBaseBranch:
-        input.preferredWorktreeBaseBranch ?? currentLocalStatus.branch ?? null,
-      currentBranch: input.currentBranch,
-    });
-    if (!worktreeIntent) {
+    if (!input.worktreePath) {
       return yield* gitManagerError(
         "handoffThread",
-        "Cannot hand off to a worktree because no worktree target is available.",
-      );
-    }
-    const targetWorktreeName =
-      worktreeIntent.kind === "create-new" ? worktreeIntent.worktreeName : null;
-    const targetAssociatedWorktreePath =
-      worktreeIntent.kind === "reuse-associated" ? worktreeIntent.associatedWorktreePath : null;
-    const targetAssociatedWorktreeBranch =
-      worktreeIntent.kind === "reuse-associated" ? worktreeIntent.associatedWorktreeBranch : null;
-    const targetAssociatedWorktreeRef =
-      worktreeIntent.kind === "reuse-associated" ? worktreeIntent.associatedWorktreeRef : null;
-    const targetBaseBranch = worktreeIntent.baseBranch;
-    if (!targetBaseBranch && !targetAssociatedWorktreeBranch && !targetAssociatedWorktreeRef) {
-      return yield* gitManagerError(
-        "handoffThread",
-        "Select a base branch before handing off this thread to a worktree.",
+        "Cannot hand off to Local because this thread does not have a materialized worktree.",
       );
     }
 
-    const sourceStash = yield* stashWorkingTree(
+    const worktreeHeadRef = yield* readHeadRef(input.worktreePath);
+    const targetLocalBranch =
+      input.currentBranch ?? input.associatedWorktreeBranch ?? input.preferredLocalBranch ?? null;
+    if (!(targetLocalBranch ?? worktreeHeadRef)) {
+      return yield* gitManagerError(
+        "handoffThread",
+        "Cannot hand off to Local because the worktree thread does not have a recoverable HEAD reference.",
+      );
+    }
+
+    const associatedWorktreePath = input.associatedWorktreePath ?? input.worktreePath;
+    const associatedWorktreeBranch = input.associatedWorktreeBranch ?? input.currentBranch ?? null;
+    const associatedWorktreeRef =
+      input.associatedWorktreeRef ?? worktreeHeadRef ?? associatedWorktreeBranch;
+    const originalLocalBranch = currentLocalStatus.branch ?? null;
+    const originalLocalHeadRef = yield* readHeadRef(input.cwd);
+    let currentLocalBranchAfterPreparation = originalLocalBranch;
+
+    const preservedLocalStash = yield* stashWorkingTree(
       input.cwd,
-      `glade handoff to worktree ${randomUUID()}`,
+      `glade preserve local handoff ${randomUUID()}`,
     );
-    const sourceBranch = currentLocalStatus.branch ?? input.currentBranch ?? null;
-    const sourceHeadRef = yield* readHeadRef(input.cwd);
-    let foregroundBranchAfterHandoff = currentLocalStatus.branch;
+    const sourceStash = yield* stashWorkingTree(
+      input.worktreePath,
+      `glade handoff to local ${randomUUID()}`,
+    );
 
-    if (sourceBranch && sourceBranch === targetAssociatedWorktreeBranch) {
-      const fallbackLocalBranch = yield* resolveForegroundFallbackBranch(
-        input.cwd,
-        targetAssociatedWorktreeBranch,
-      );
-      if (!fallbackLocalBranch) {
-        if (!sourceHeadRef) {
-          yield* restoreSourceStash(input.cwd, sourceStash.stashRef);
-          return yield* gitManagerError(
-            "handoffThread",
-            `Cannot hand off '${targetAssociatedWorktreeBranch}' to a worktree because there is no recoverable local HEAD reference available.`,
-          );
-        }
-        yield* checkoutDetached(input.cwd, sourceHeadRef).pipe(
-          Effect.catch((error) =>
-            restoreSourceStash(input.cwd, sourceStash.stashRef).pipe(
-              Effect.flatMap(() => Effect.fail(error)),
-            ),
-          ),
-        );
-        foregroundBranchAfterHandoff = null;
-      } else {
-        yield* Effect.scoped(
-          gitCore.checkoutBranch({
-            cwd: input.cwd,
-            branch: fallbackLocalBranch,
-          }),
-        ).pipe(
-          Effect.catch((error) =>
-            restoreSourceStash(input.cwd, sourceStash.stashRef).pipe(
-              Effect.flatMap(() => Effect.fail(error)),
-            ),
-          ),
-        );
-        foregroundBranchAfterHandoff = fallbackLocalBranch;
-      }
-    }
-
-    const worktree = yield* Effect.gen(function* () {
-      if (targetAssociatedWorktreeRef && !targetAssociatedWorktreeBranch) {
-        return yield* createDetachedWorktree({
-          cwd: input.cwd,
-          ref: targetAssociatedWorktreeRef,
-          path: targetAssociatedWorktreePath,
-        });
-      }
-      if (targetWorktreeName) {
-        if (!targetBaseBranch) {
-          return yield* gitManagerError(
-            "handoffThread",
-            "Select a base branch before creating a new worktree.",
-          );
-        }
-        return yield* createNamedWorktree({
-          cwd: input.cwd,
-          baseBranch: targetBaseBranch,
-          name: targetWorktreeName,
-          path: null,
-        });
-      }
-      if (targetAssociatedWorktreeBranch) {
-        if (
-          (yield* gitCore.listLocalBranchNames(input.cwd)).includes(targetAssociatedWorktreeBranch)
-        ) {
-          return yield* gitCore.createWorktree({
-            cwd: input.cwd,
-            branch: targetAssociatedWorktreeBranch,
-            path: targetAssociatedWorktreePath,
-          });
-        }
-        if (!targetBaseBranch) {
-          return yield* createDetachedWorktree({
-            cwd: input.cwd,
-            ref: targetAssociatedWorktreeBranch,
-            path: targetAssociatedWorktreePath,
-          });
-        }
-        return yield* gitCore.createWorktree({
-          cwd: input.cwd,
-          branch: targetBaseBranch ?? targetAssociatedWorktreeBranch,
-          newBranch: targetAssociatedWorktreeBranch,
-          path: targetAssociatedWorktreePath,
-        });
-      }
-      if (!targetBaseBranch) {
-        return yield* createDetachedWorktree({
-          cwd: input.cwd,
-          ref: targetAssociatedWorktreeRef!,
-          path: targetAssociatedWorktreePath,
-        });
-      }
-      return yield* createDetachedWorktree({
+    yield* gitCore
+      .removeWorktree({
         cwd: input.cwd,
-        ref: targetBaseBranch,
-        path: targetAssociatedWorktreePath,
-        ...(targetWorktreeName ? { name: targetWorktreeName } : {}),
-      });
-    }).pipe(
-      Effect.catch((error) =>
-        restoreLocalHandoffSource({
+        path: input.worktreePath,
+      })
+      .pipe(
+        Effect.catch((error) =>
+          restoreStashes([
+            { cwd: input.worktreePath!, stashRef: sourceStash.stashRef },
+            { cwd: input.cwd, stashRef: preservedLocalStash.stashRef },
+          ]).pipe(Effect.flatMap(() => Effect.fail(error))),
+        ),
+      );
+
+    if (targetLocalBranch && currentLocalStatus.branch !== targetLocalBranch) {
+      yield* Effect.scoped(
+        gitCore.checkoutBranch({
           cwd: input.cwd,
-          originalBranch: sourceBranch,
-          originalHeadRef: sourceHeadRef,
-          currentBranch: foregroundBranchAfterHandoff,
-          stashRef: sourceStash.stashRef,
-        }).pipe(
-          Effect.flatMap((recovery) =>
-            Effect.fail(
-              new GitManagerError({
-                operation: "GitManager.handoffThread",
-                detail: buildFailedWorktreeHandoffRecoveryDetail(error.message, recovery),
-                cause: error,
-              }),
+          branch: targetLocalBranch,
+        }),
+      ).pipe(
+        Effect.catch((error) =>
+          restoreRemovedWorktreeAfterFailedLocalCheckout({
+            cwd: input.cwd,
+            worktreePath: associatedWorktreePath,
+            branch: associatedWorktreeBranch,
+            ref: associatedWorktreeRef,
+            worktreeStashRef: sourceStash.stashRef,
+            localStashRef: preservedLocalStash.stashRef,
+          }).pipe(
+            Effect.flatMap((recovery) =>
+              Effect.fail(
+                new GitManagerError({
+                  operation: "GitManager.handoffThread",
+                  detail: buildFailedLocalHandoffRecoveryDetail(error.message, recovery),
+                  cause: error,
+                }),
+              ),
             ),
           ),
         ),
-      ),
-    );
+      );
+      currentLocalBranchAfterPreparation = targetLocalBranch;
+    } else if (!targetLocalBranch && worktreeHeadRef) {
+      yield* checkoutDetached(input.cwd, worktreeHeadRef).pipe(
+        Effect.catch((error) =>
+          restoreRemovedWorktreeAfterFailedLocalCheckout({
+            cwd: input.cwd,
+            worktreePath: associatedWorktreePath,
+            branch: associatedWorktreeBranch,
+            ref: associatedWorktreeRef,
+            worktreeStashRef: sourceStash.stashRef,
+            localStashRef: preservedLocalStash.stashRef,
+          }).pipe(
+            Effect.flatMap((recovery) =>
+              Effect.fail(
+                new GitManagerError({
+                  operation: "GitManager.handoffThread",
+                  detail: buildFailedLocalHandoffRecoveryDetail(error.message, recovery),
+                  cause: error,
+                }),
+              ),
+            ),
+          ),
+        ),
+      );
+      currentLocalBranchAfterPreparation = null;
+    }
 
-    const transfer = yield* popStash(worktree.worktree.path, sourceStash.stashRef);
-    if (transfer.conflictsDetected) {
-      const recovery = yield* rollbackFailedWorktreeTransfer({
+    const threadTransfer = yield* popStash(input.cwd, sourceStash.stashRef);
+    if (threadTransfer.conflictsDetected) {
+      const recovery = yield* rollbackFailedLocalTransfer({
         cwd: input.cwd,
-        worktreePath: worktree.worktree.path,
-        originalBranch: sourceBranch,
-        originalHeadRef: sourceHeadRef,
-        currentBranch: foregroundBranchAfterHandoff,
-        stashRef: sourceStash.stashRef,
+        originalBranch: originalLocalBranch,
+        originalHeadRef: originalLocalHeadRef,
+        currentBranch: currentLocalBranchAfterPreparation,
+        worktreePath: associatedWorktreePath,
+        worktreeBranch: associatedWorktreeBranch,
+        worktreeRef: associatedWorktreeRef,
+        worktreeStashRef: sourceStash.stashRef,
+        localStashRef: preservedLocalStash.stashRef,
       });
       return yield* new GitManagerError({
         operation: "GitManager.handoffThread",
-        detail: buildFailedWorktreeTransferDetail(
+        detail: buildFailedLocalTransferDetail(
           `${
-            transfer.message ?? "Git reported conflicts while applying the handed off changes."
-          } The stash entry was kept for recovery.`,
+            threadTransfer.message ??
+            "Git reported conflicts while applying the handed off changes."
+          } The handoff was rolled back so the thread stays in its worktree.`,
           recovery,
         ),
       });
     }
 
-    const materializedWorktreeStatus = yield* gitCore.statusDetails(worktree.worktree.path);
-    const materializedWorktreeRef =
-      (yield* readHeadRef(worktree.worktree.path)) ??
-      ("ref" in worktree.worktree ? worktree.worktree.ref : worktree.worktree.branch);
-    const materializedWorktreeBranch = materializedWorktreeStatus.branch ?? null;
-    if (materializedWorktreeBranch) {
-      // Publishing is best-effort: handoff should still succeed for local-only repositories.
-      yield* gitCore
-        .publishBranch({ cwd: worktree.worktree.path, branch: materializedWorktreeBranch })
-        .pipe(
-          Effect.catch((error) =>
-            Effect.logWarning("GitManager.handoffThread could not publish worktree branch", {
-              cwd: worktree.worktree.path,
-              branch: materializedWorktreeBranch,
-              reason: error.message,
-            }),
-          ),
-        );
-    }
-    const changesTransferred = sourceStash.hadChanges;
-    const handoffSummary =
-      foregroundBranchAfterHandoff && foregroundBranchAfterHandoff !== sourceBranch
-        ? `The thread moved into its worktree and Local returned to '${foregroundBranchAfterHandoff}'.`
-        : foregroundBranchAfterHandoff === null && sourceBranch === targetAssociatedWorktreeBranch
-          ? "The thread moved into its worktree and Local returned to a detached HEAD."
-          : "The thread moved into its worktree.";
-    const message = changesTransferred
-      ? `${handoffSummary} Uncommitted local changes were carried over.`
-      : handoffSummary;
+    const localTransfer = yield* popStash(input.cwd, preservedLocalStash.stashRef);
+    const changesTransferred = sourceStash.hadChanges || preservedLocalStash.hadChanges;
+    const movedThreadChanges = sourceStash.hadChanges;
+    const restoredLocalChanges = preservedLocalStash.hadChanges;
+    const localTargetLabel = targetLocalBranch
+      ? `main local checkout on '${targetLocalBranch}'`
+      : "local checkout in detached HEAD";
+    const message = localTransfer.conflictsDetected
+      ? `${
+          localTransfer.message ??
+          "Git reported conflicts while restoring your previous local changes."
+        }\nYour previous local stash entry was kept for recovery.`
+      : movedThreadChanges && restoredLocalChanges
+        ? `Moved the thread back to the ${localTargetLabel}, carried its uncommitted work over, and restored your previous local changes.`
+        : movedThreadChanges
+          ? `Moved the thread back to the ${localTargetLabel} and carried its uncommitted work over.`
+          : restoredLocalChanges
+            ? `Moved the thread back to the ${localTargetLabel} and restored your previous local changes.`
+            : `Moved the thread back to the ${localTargetLabel}.`;
 
     return {
-      targetMode: "worktree",
-      branch: materializedWorktreeBranch,
-      worktreePath: worktree.worktree.path,
-      associatedWorktreePath: worktree.worktree.path,
-      associatedWorktreeBranch: materializedWorktreeBranch,
-      associatedWorktreeRef: materializedWorktreeRef,
+      targetMode: "local",
+      branch: targetLocalBranch,
+      worktreePath: null,
+      associatedWorktreePath,
+      associatedWorktreeBranch,
+      associatedWorktreeRef,
       changesTransferred,
-      conflictsDetected: false,
+      conflictsDetected: localTransfer.conflictsDetected,
       message,
     };
   });

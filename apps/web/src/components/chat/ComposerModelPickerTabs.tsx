@@ -77,7 +77,6 @@ export function ComposerModelPickerTabs(props: {
   tab: ComposerModelPickerTab;
   providerTabs: ReadonlyArray<ComposerModelPickerProviderTab>;
   onTabChange: (tab: ComposerModelPickerTab) => void;
-  /** Omitted while the thread is locked to its provider. */
   onAddProviders?: (() => void) | undefined;
 }) {
   return (

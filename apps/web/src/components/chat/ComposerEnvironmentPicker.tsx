@@ -19,8 +19,7 @@ const ENV_MENU_ICON_CLASS_NAME = "size-3.5 text-muted-foreground";
 
 /**
  * One row of the "Work in" menu: `[glyph] [label …grows] [✓ when selected]`.
- * Centralizes the icon/label/check treatment so the local, worktree, and handoff
- * entries stay on one grid instead of repeating the same class strings per row.
+ * Centralizes the icon/label/check treatment for environment menu rows.
  */
 function WorkInMenuItem({
   icon,
@@ -53,9 +52,7 @@ interface ComposerEnvironmentPickerProps {
   onEnvModeChange: (mode: ThreadEnvironmentMode) => void;
   canSwitchToWorktree: boolean;
   canHandoffToLocal?: boolean;
-  canHandoffToWorktree?: boolean;
   onHandoffToLocal?: (() => void) | undefined;
-  onHandoffToWorktree?: (() => void) | undefined;
   handoffBusy?: boolean | undefined;
   isPanel?: boolean;
   disabled?: boolean;
@@ -67,9 +64,7 @@ export function ComposerEnvironmentPicker({
   onEnvModeChange,
   canSwitchToWorktree,
   canHandoffToLocal = false,
-  canHandoffToWorktree = false,
   onHandoffToLocal,
-  onHandoffToWorktree,
   handoffBusy = false,
   isPanel = false,
   disabled = false,
@@ -142,14 +137,6 @@ export function ComposerEnvironmentPicker({
               icon={<WorktreeIcon className={ENV_MENU_ICON_CLASS_NAME} />}
               label={environmentPresentation.worktreeOptionLabel}
               selected
-            />
-          ) : null}
-          {canHandoffToWorktree && onHandoffToWorktree ? (
-            <WorkInMenuItem
-              icon={<WorktreeIcon className={ENV_MENU_ICON_CLASS_NAME} />}
-              label="Hand off to new worktree"
-              disabled={handoffBusy}
-              onSelect={() => onHandoffToWorktree()}
             />
           ) : null}
           {canHandoffToLocal && onHandoffToLocal ? (

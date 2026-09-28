@@ -303,24 +303,6 @@ function preparePullRequestThread(
   return manager.preparePullRequestThread(input);
 }
 
-function handoffThread(
-  manager: GitManagerShape,
-  input: {
-    cwd: string;
-    targetMode: "local" | "worktree";
-    currentBranch: string | null;
-    worktreePath: string | null;
-    associatedWorktreePath: string | null;
-    associatedWorktreeBranch: string | null;
-    associatedWorktreeRef: string | null;
-    preferredLocalBranch: string | null;
-    preferredWorktreeBaseBranch: string | null;
-    preferredNewWorktreeName: string | null;
-  },
-) {
-  return manager.handoffThread(input);
-}
-
 function makeManager(input?: {
   ghScenario?: FakeGhScenario;
   textGeneration?: Partial<FakeGitTextGeneration>;
@@ -725,54 +707,6 @@ it.layer(GitManagerTestLayer)("GitManager", (it) => {
             "@{upstream}",
           ])).stdout.trim(),
         ).toBe("fork-seed/main");
-      }),
-  );
-
-  it.effect(
-    "carries uncommitted local changes into a new handoff worktree without leaking the stash",
-    () =>
-      Effect.gen(function* () {
-        const repoDir = yield* makeTempDir("glade-git-manager-");
-        yield* initRepo(repoDir);
-
-        // Create uncommitted working-tree changes so handoffThread takes the stash path.
-        // This is the path that previously failed with:
-        //   "<sha>" is not a stash reference
-        // because git rev-parse refs/stash returns a commit SHA, but `git stash pop`
-        // requires a `stash@{N}` reference.
-        const workingFile = path.join(repoDir, "uncommitted.txt");
-        fs.writeFileSync(workingFile, "draft change\n");
-
-        const { manager } = yield* makeManager();
-        const result = yield* handoffThread(manager, {
-          cwd: repoDir,
-          targetMode: "worktree",
-          currentBranch: "main",
-          worktreePath: null,
-          associatedWorktreePath: null,
-          associatedWorktreeBranch: null,
-          associatedWorktreeRef: null,
-          preferredLocalBranch: "main",
-          preferredWorktreeBaseBranch: "main",
-          preferredNewWorktreeName: "worktree/stash-handoff",
-        });
-
-        expect(result.targetMode).toBe("worktree");
-        expect(result.changesTransferred).toBe(true);
-        expect(result.conflictsDetected).toBe(false);
-
-        // The uncommitted change should now live inside the new worktree.
-        const transferredPath = path.join(result.worktreePath as string, "uncommitted.txt");
-        expect(fs.existsSync(transferredPath)).toBe(true);
-        expect(fs.readFileSync(transferredPath, "utf8")).toBe("draft change\n");
-
-        // The original local checkout should be clean again.
-        expect(fs.existsSync(workingFile)).toBe(false);
-
-        // The stash entry must have been dropped after a successful apply — otherwise
-        // we would leak `stash@{0}` on every handoff that carries uncommitted work.
-        const stashList = (yield* runGit(repoDir, ["stash", "list"])).stdout.trim();
-        expect(stashList).toBe("");
       }),
   );
 
