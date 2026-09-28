@@ -418,14 +418,11 @@ function ActivityScopeMenu({
               );
             }}
           >
-            <MenuRadioItem value="all" className="min-h-7 py-1 sm:text-ui leading-snug">
-              All activity
-            </MenuRadioItem>
+            <MenuRadioItem value="all">All activity</MenuRadioItem>
             {options.map((option) => (
               <MenuRadioItem
                 key={option.kind === "project" ? option.projectId : "chats"}
                 value={option.kind === "project" ? option.projectId : "chats"}
-                className="min-h-7 py-1 sm:text-ui leading-snug"
               >
                 <span className="min-w-0 flex-1 truncate">
                   {option.kind === "project"
@@ -477,20 +474,12 @@ function ActivityFilterMenu({
             value={groupMode}
             onValueChange={(value) => onChangeGroupMode(value as ActivityGroupMode)}
           >
-            <MenuRadioItem value="time" className="min-h-7 py-1 sm:text-ui leading-snug">
-              Time
-            </MenuRadioItem>
-            <MenuRadioItem value="project" className="min-h-7 py-1 sm:text-ui leading-snug">
-              Project
-            </MenuRadioItem>
+            <MenuRadioItem value="time">Time</MenuRadioItem>
+            <MenuRadioItem value="project">Project</MenuRadioItem>
           </MenuRadioGroup>
         </MenuGroup>
         <MenuSeparator />
-        <MenuItem
-          className="min-h-7 py-1 sm:text-ui leading-snug"
-          disabled={markAllReadDisabled}
-          onClick={onMarkAllRead}
-        >
+        <MenuItem disabled={markAllReadDisabled} onClick={onMarkAllRead}>
           Mark all as read
         </MenuItem>
       </ComposerPickerMenuPopup>

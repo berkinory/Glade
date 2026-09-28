@@ -32,7 +32,7 @@ export const PICKER_PANEL_PLAIN_SEARCH_INPUT_CLASS_NAME =
 
 /** Row height, padding, gap, and radius shared by plain option rows and footer action rows. */
 export const PICKER_PANEL_ROW_GEOMETRY_CLASS_NAME =
-  "min-h-7 gap-2 rounded-md px-1.5 py-0.5 sm:min-h-7";
+  "min-h-[1.625rem] gap-2 rounded-md px-1.5 py-px sm:min-h-[1.625rem]";
 
 /** Leading icon (folder, plus, dismiss) inside a plain picker row. */
 export const PICKER_PANEL_ROW_ICON_CLASS_NAME = "size-3.5 shrink-0 text-muted-foreground/70";

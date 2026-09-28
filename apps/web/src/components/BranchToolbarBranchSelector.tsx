@@ -718,10 +718,10 @@ export function BranchToolbarBranchSelector({
     count: filteredBranchPickerItems.length,
     estimateSize: (index) => {
       const itemValue = filteredBranchPickerItems[index];
-      if (!itemValue) return 28;
+      if (!itemValue) return 26;
       if (itemValue === checkoutPullRequestItemValue) return 44;
       const branch = branchByName.get(itemValue);
-      return branch && getCurrentBranchChangeSummary(branch, branchStatusQuery.data) ? 48 : 28;
+      return branch && getCurrentBranchChangeSummary(branch, branchStatusQuery.data) ? 44 : 26;
     },
     getScrollElement: () => branchListScrollElementRef.current,
     overscan: 12,
