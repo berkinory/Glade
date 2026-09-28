@@ -163,7 +163,7 @@ export function WhatsNewPopoutCard({
         </div>
 
         <div className="flex flex-col px-4 pb-4 pt-2.5">
-          <p className="text-ui leading-snug font-medium text-primary">New · v{currentVersion}</p>
+          <p className="text-ui leading-snug font-medium text-primary">New release</p>
           <p className="mt-1 text-ui-lg font-semibold leading-snug text-foreground">
             Glade {currentVersion} is here
           </p>
