@@ -3888,7 +3888,7 @@ export default function Sidebar() {
     });
     return (
       <div className="relative flex shrink-0 items-center justify-end gap-[3px]">
-        {input.rightMetaChips.length > 0 ? (
+        {!input.threadJumpLabel && input.rightMetaChips.length > 0 ? (
           <div className={THREAD_ROW_META_CHIP_HOVER_FADE_CLASS_NAME}>
             <SidebarMetaChipStack chips={input.rightMetaChips} />
           </div>
@@ -4088,7 +4088,7 @@ export default function Sidebar() {
               "relative gap-1.5 transition-colors",
               leadingPr && "pl-8",
               resolveThreadRowTrailingReserveClass({
-                metaChipCount: rightMetaChips.length,
+                metaChipCount: threadJumpLabel ? 0 : rightMetaChips.length,
                 hasTrailingGlyph: hasTrailingStatusGlyph,
               }),
               isActive
@@ -4242,7 +4242,8 @@ export default function Sidebar() {
                   isSubagentThread
                     ? "pr-7.5"
                     : resolveThreadRowTrailingReserveClass({
-                        metaChipCount: showCompactMeta ? rightMetaChips.length : 0,
+                        metaChipCount:
+                          showCompactMeta && !threadJumpLabel ? rightMetaChips.length : 0,
                         hasTrailingGlyph: Boolean(threadStatus) || Boolean(threadJumpLabel),
                       }),
                 )}
