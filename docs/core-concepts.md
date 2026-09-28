@@ -66,6 +66,10 @@ A turn is one cycle inside that task:
 A long task can contain many turns. Keep follow-ups connected to the same objective; create another
 task when the work needs a different owner, branch, or review boundary.
 
+Provider sessions running inside Glade can use the built-in agent gateway to create tasks, wait for
+them, read transcripts, and coordinate their work. The gateway is available through provider MCP
+tools within those sessions; it does not require external agent pairing.
+
 For work that should continue across several turns, set a deliberate
 thread goal. A goal can continue after a
 clean turn, but queued user work, approvals, questions, interruptions, failures, and pause rules
@@ -75,10 +79,6 @@ Use a thread fork when a new task should inherit
 the conversation or split from one exact turn. Use a
 handoff when another provider should continue
 the same task and ownership boundary.
-
-Sidechats inherit the source chat's selected permissions, including Full access. Approve for me
-is preserved when the selected provider and model support it; otherwise the sidechat uses Ask for
-approval. You can change a sidechat's permissions independently after creating it.
 
 ## Environments
 

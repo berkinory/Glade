@@ -48,7 +48,7 @@ export const TOUR_CARDS: ReadonlyArray<TourCard> = [
     title: "One task, one isolated environment",
     description:
       "Each task owns one body of work: its conversation, provider session, working environment, tool activity, and Git changes. Run tasks in parallel on managed Git worktrees so two agents never edit the same checkout.",
-    highlights: ["Managed worktrees", "Forks from any message", "Subagents and side chats"],
+    highlights: ["Managed worktrees", "Forks from any message", "Subagents and split views"],
     docsHref: `${GLADE_DOCS_URL}/core-concepts.md`,
     icon: GitForkIcon,
   },
@@ -95,7 +95,7 @@ export const TOUR_CARDS: ReadonlyArray<TourCard> = [
     label: "Agent Gateway",
     title: "Let agents operate Glade itself",
     description:
-      "A built-in MCP surface lets a supported provider session create tasks, wait on them, read transcripts, and steer other threads. Pair Codex, Claude Code, or Claude Desktop from outside with scoped, revocable credentials.",
+      "The built-in agent gateway lets a provider session working in Glade create tasks, wait on them, read transcripts, and steer other tasks. Provider MCP tools are available within those sessions.",
     highlights: ["Parallel task batches", "Agent coordination", "Approval boundaries"],
     docsHref: `${GLADE_DOCS_URL}/core-concepts.md`,
     icon: TerminalIcon,
