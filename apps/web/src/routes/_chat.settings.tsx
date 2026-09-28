@@ -22,7 +22,6 @@ import {
   normalizeChatFontSizePx,
   normalizeTerminalFontFamily,
   normalizeTerminalFontSizePx,
-  isGitTextGenerationSettingsDirty,
   TERMINAL_FONT_FAMILY_SUGGESTIONS,
   useAppSettings,
 } from "../appSettings";
@@ -36,10 +35,7 @@ import {
 import { NotificationsSettingsPanel } from "~/components/settings/DesktopSettingsPanels";
 import { ComputerSettingsPanel } from "~/components/settings/ComputerSettingsPanel";
 import { ModelsSettingsPanel } from "~/components/settings/ModelsSettingsPanel";
-import {
-  isProviderInstallSettingsDirty,
-  ProvidersSettingsPanel,
-} from "~/components/settings/ProvidersSettingsPanel";
+import { ProvidersSettingsPanel } from "~/components/settings/ProvidersSettingsPanel";
 import { ProviderOptionLabel } from "../components/ProviderIcon";
 import ReleaseHistoryDialog from "../components/ReleaseHistoryDialog";
 import { KeyboardShortcutsSettingsPanel } from "../components/settings/KeyboardShortcutsSettingsPanel";
@@ -99,7 +95,6 @@ import {
   isWindowsPlatform,
 } from "../lib/utils";
 import { ensureNativeApi, readNativeApi } from "../nativeApi";
-import { sameProviderOrder } from "../providerOrdering";
 import {
   normalizeSettingsSection,
   SETTINGS_NAV_ITEMS,
@@ -206,7 +201,6 @@ function SettingsRouteView() {
   const activeSectionItem = SETTINGS_NAV_ITEMS.find((item) => item.id === activeSection)!;
 
   const {
-    isDefaultActiveTheme,
     resetAllThemes,
     resolvedTheme,
     theme,
@@ -287,16 +281,6 @@ function SettingsRouteView() {
     );
   }, [settings.terminalFontFamily]);
 
-  const isGitTextGenerationModelDirty = isGitTextGenerationSettingsDirty(settings, defaults);
-  const isInstallSettingsDirty = isProviderInstallSettingsDirty(settings, defaults);
-  const hiddenProviderCount = new Set(settings.hiddenProviders).size;
-  const isProviderOrderDirty = !sameProviderOrder(settings.providerOrder, defaults.providerOrder);
-  const isProviderActivityDirty =
-    settings.disabledProviders.length !== defaults.disabledProviders.length ||
-    settings.disabledProviders.some(
-      (provider, index) => provider !== defaults.disabledProviders[index],
-    );
-
   // Deep links and sidebar search targets all resolve to stable DOM ids in the active panel.
   useEffect(() => {
     if (!settingsTarget) return;
@@ -308,93 +292,10 @@ function SettingsRouteView() {
     return () => window.cancelAnimationFrame(frame);
   }, [activeSection, settingsTarget]);
 
-  const changedSettingLabels = [
-    ...(theme !== "system" ? ["Theme"] : []),
-    ...(!isDefaultActiveTheme ? [`${resolvedTheme === "dark" ? "Dark" : "Light"} theme pack`] : []),
-    ...(settings.defaultProvider !== defaults.defaultProvider ? ["Default provider"] : []),
-    ...(settings.defaultThreadEnvMode !== defaults.defaultThreadEnvMode ? ["New thread mode"] : []),
-    ...(settings.archiveDeletesOrphanedWorktree !== defaults.archiveDeletesOrphanedWorktree
-      ? ["Delete worktree on archive"]
-      : []),
-    ...["Sidebar layout"],
-    ...(settings.sidebarProjectSortOrder !== defaults.sidebarProjectSortOrder
-      ? ["Project sort order"]
-      : []),
-    ...(settings.sidebarThreadSortOrder !== defaults.sidebarThreadSortOrder
-      ? ["Thread sort order"]
-      : []),
-    ...(settings.showChatsSection !== defaults.showChatsSection ? ["Chats section"] : []),
-    ...(settings.showStudioSection !== defaults.showStudioSection ? ["Studio section"] : []),
-    ...(settings.showAutomationRunThreads !== defaults.showAutomationRunThreads
-      ? ["Automation runs"]
-      : []),
-    ...(settings.uiDensity !== defaults.uiDensity ? ["UI density"] : []),
-    ...(settings.chatWidth !== defaults.chatWidth ? ["Chat width"] : []),
-    ...(settings.desktopAppIcon !== defaults.desktopAppIcon ? ["App icon"] : []),
-    ...(customTitleBarPreferenceDirty ? ["Custom title bar"] : []),
-    ...(settings.chatFontSizePx !== defaults.chatFontSizePx ? ["Base font size"] : []),
-    ...(settings.terminalFontSizePx !== defaults.terminalFontSizePx ? ["Terminal font size"] : []),
-    ...(settings.terminalFontFamily !== defaults.terminalFontFamily ? ["Terminal font"] : []),
-    ...(shouldShowFontSmoothing &&
-    settings.enableNativeFontSmoothing !== defaults.enableNativeFontSmoothing
-      ? ["Font smoothing"]
-      : []),
-    ...(settings.timestampFormat !== defaults.timestampFormat ? ["Time format"] : []),
-    ...(settings.enableTaskCompletionToasts !== defaults.enableTaskCompletionToasts
-      ? ["Activity toasts"]
-      : []),
-    ...(settings.enableSystemTaskCompletionNotifications !==
-    defaults.enableSystemTaskCompletionNotifications
-      ? ["Desktop notifications"]
-      : []),
-    ...(settings.enableAssistantStreaming !== defaults.enableAssistantStreaming
-      ? ["Assistant output"]
-      : []),
-    ...(settings.composerEffortSlider !== defaults.composerEffortSlider ? ["Effort slider"] : []),
-    ...(settings.followUpBehavior !== defaults.followUpBehavior ? ["Follow-up behavior"] : []),
-    ...(settings.autoOpenDevicePane !== defaults.autoOpenDevicePane
-      ? ["Automatically open simulator"]
-      : []),
-    ...(settings.computerControlEnabled !== defaults.computerControlEnabled
-      ? ["Computer control"]
-      : []),
-    ...(settings.autoOpenComputerPane !== defaults.autoOpenComputerPane
-      ? ["Computer preview auto-open"]
-      : []),
-    ...(settings.agentCursorColorMode !== defaults.agentCursorColorMode
-      ? ["Agent cursor colors"]
-      : []),
-    ...(settings.enableProviderUpdateChecks !== defaults.enableProviderUpdateChecks
-      ? ["Provider update checks"]
-      : []),
-    ...(settings.diffWordWrap !== defaults.diffWordWrap ? ["Diff line wrapping"] : []),
-    ...(settings.showPullRequestDiffColors !== defaults.showPullRequestDiffColors
-      ? ["Pull request diff colors"]
-      : []),
-    ...(settings.confirmThreadDelete !== defaults.confirmThreadDelete
-      ? ["Delete confirmation"]
-      : []),
-    ...(settings.confirmThreadArchive !== defaults.confirmThreadArchive
-      ? ["Archive confirmation"]
-      : []),
-    ...(settings.confirmTerminalTabClose !== defaults.confirmTerminalTabClose
-      ? ["Terminal close confirmation"]
-      : []),
-    ...(isGitTextGenerationModelDirty ? ["Git writing model"] : []),
-    ...(isInstallSettingsDirty ? ["Provider installs"] : []),
-    ...(isProviderActivityDirty ? ["Provider activity"] : []),
-    ...(hiddenProviderCount > 0 ? ["Provider visibility"] : []),
-    ...(isProviderOrderDirty ? ["Provider order"] : []),
-  ];
-
   async function restoreDefaults() {
-    if (changedSettingLabels.length === 0) return;
-
     const api = readNativeApi();
     const confirmed = await (api ?? ensureNativeApi()).dialogs.confirm(
-      ["Restore default settings?", `This will reset: ${changedSettingLabels.join(", ")}.`].join(
-        "\n",
-      ),
+      "Restore default settings?\nThis resets Glade preferences, theme customizations, and provider preferences.",
     );
     if (!confirmed) return;
 
@@ -406,6 +307,7 @@ function SettingsRouteView() {
 
     setTheme("system");
     resetAllThemes();
+    setSystemUiFont(true);
     await resetSettings();
     setResetEpoch((current) => current + 1);
   }
@@ -764,6 +666,19 @@ function SettingsRouteView() {
           })}
         </SettingsSection>
       </div>
+
+      <SettingsSection title="Reset settings">
+        <SettingsRow
+          title="Restore defaults"
+          description="Reset Glade preferences, theme customizations, and provider preferences."
+          control={
+            <Button size="sm" variant="outline" onClick={() => void restoreDefaults()}>
+              <ResetIcon className="size-3.5" />
+              Restore defaults
+            </Button>
+          }
+        />
+      </SettingsSection>
     </div>
   );
 
@@ -1318,7 +1233,7 @@ function SettingsRouteView() {
               )}
             >
               {activeSection !== "profile" ? (
-                <div className="mb-8 flex items-start justify-between gap-4">
+                <div className="mb-8">
                   <div className="min-w-0">
                     <h1 className="flex items-center gap-2 text-xl font-medium tracking-tight text-foreground">
                       {activeSectionItem.label}
@@ -1335,16 +1250,6 @@ function SettingsRouteView() {
                       {activeSectionItem.description}
                     </p>
                   </div>
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    className="shrink-0"
-                    disabled={changedSettingLabels.length === 0}
-                    onClick={() => void restoreDefaults()}
-                  >
-                    <ResetIcon className="size-3.5" />
-                    Restore defaults
-                  </Button>
                 </div>
               ) : null}
 
