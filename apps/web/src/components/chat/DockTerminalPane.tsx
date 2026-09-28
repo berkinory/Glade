@@ -56,7 +56,7 @@ export function DockTerminalPane(props: {
 
   const terminal = useTerminalSurfaceController(scopeId);
   const { terminalState, openTerminalThreadPage, bumpFocusRequest, newTerminalGroup } = terminal;
-  const closedBySessionExitRef = useRef(false);
+  const closingFinalTerminalRef = useRef(false);
   const subscribeToComposerTarget = useCallback(
     (listener: () => void) =>
       subscribeTerminalContextComposerTarget(SINGLE_CHAT_PANE_SCOPE_ID, listener),
@@ -75,14 +75,14 @@ export function DockTerminalPane(props: {
   // A dock terminal pane normally shows a live terminal. An `exit` is final,
   // though: do not recreate a replacement terminal just as the panel closes.
   useEffect(() => {
-    if (terminalState.terminalOpen || closedBySessionExitRef.current) {
+    if (terminalState.terminalOpen || closingFinalTerminalRef.current) {
       return;
     }
     openTerminalThreadPage(scopeId, { terminalOnly: true });
   }, [openTerminalThreadPage, scopeId, terminalState.terminalOpen]);
 
   const createTerminal = () => {
-    closedBySessionExitRef.current = false;
+    closingFinalTerminalRef.current = false;
     if (!terminalState.terminalOpen) {
       openTerminalThreadPage(scopeId, { terminalOnly: true });
       bumpFocusRequest();
@@ -94,10 +94,16 @@ export function DockTerminalPane(props: {
   const onSessionExited = (terminalId: string) => {
     const disposition = terminal.handleDockTerminalSessionExited(terminalId);
     if (disposition === "final") {
-      closedBySessionExitRef.current = true;
+      closingFinalTerminalRef.current = true;
       props.onClosePanel();
     }
   };
+
+  const onCloseTerminal = (terminalId: string) =>
+    terminal.closeTerminal(terminalId, () => {
+      closingFinalTerminalRef.current = true;
+      props.onClosePanel();
+    });
 
   return (
     <ThreadTerminalDrawer
@@ -124,7 +130,7 @@ export function DockTerminalPane(props: {
       onNewTerminalTab={terminal.createTerminalTab}
       onMoveTerminalToGroup={terminal.moveTerminalToNewGroup}
       onActiveTerminalChange={terminal.activateTerminal}
-      onCloseTerminal={terminal.closeTerminal}
+      onCloseTerminal={onCloseTerminal}
       onTerminalSessionExited={onSessionExited}
       onCloseTerminalGroup={terminal.closeTerminalGroup}
       onHeightChange={terminal.setTerminalHeight}

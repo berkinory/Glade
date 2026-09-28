@@ -42,6 +42,7 @@ export function useTerminalSurfaceController(threadId: ThreadId) {
   const closeTerminalAndEnsureReplacementStore = useTerminalStateStore(
     (s) => s.closeTerminalAndEnsureReplacement,
   );
+  const closeTerminalStore = useTerminalStateStore((s) => s.closeTerminal);
   const closeExitedTerminalStore = useTerminalStateStore((s) => s.closeExitedTerminal);
   const closeTerminalGroupStore = useTerminalStateStore((s) => s.closeTerminalGroup);
   const setTerminalHeightStore = useTerminalStateStore((s) => s.setTerminalHeight);
@@ -82,7 +83,7 @@ export function useTerminalSurfaceController(threadId: ThreadId) {
     bumpFocusRequest();
   };
 
-  const closeTerminal = async (terminalId: string) => {
+  const closeTerminal = async (terminalId: string, onLastClosed?: () => void) => {
     const api = readNativeApi();
     const confirmed = await confirmTerminalTabClose({
       api,
@@ -102,7 +103,12 @@ export function useTerminalSurfaceController(threadId: ThreadId) {
       return;
     }
     disposeAndCloseTerminalSession({ api, threadId, terminalId });
-    closeTerminalAndEnsureReplacementStore(threadId, terminalId, randomTerminalId());
+    if (onLastClosed && terminalState.terminalIds.length === 1) {
+      closeTerminalStore(threadId, terminalId);
+      onLastClosed();
+    } else {
+      closeTerminalAndEnsureReplacementStore(threadId, terminalId, randomTerminalId());
+    }
     bumpFocusRequest();
   };
 

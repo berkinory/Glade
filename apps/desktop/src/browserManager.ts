@@ -2069,17 +2069,7 @@ export class DesktopBrowserManager {
     nextTabs = state.tabs;
 
     if (nextTabs.length === 0) {
-      // Closing the last tab keeps the browser open on a fresh blank tab (the same state
-      // as a brand-new browser session) so the user can type a new URL in the search box,
-      // instead of tearing the whole panel down.
-      const replacementTab = createBrowserTab();
-      state.tabs = [replacementTab];
-      state.activeTabId = replacementTab.id;
-      state.lastError = null;
-
-      this.markThreadStateChanged(input.threadId);
-      this.emitState(input.threadId);
-      return this.snapshotThreadState(input.threadId, state);
+      return this.close({ threadId: input.threadId });
     }
 
     if (!state.activeTabId || state.activeTabId === input.tabId) {
