@@ -51,15 +51,15 @@ interface ShortcutDefinition {
   description: string;
 }
 
-// Space jumps address the switcher's visual tab order, so slot 1 is always Void.
+// Space jumps address the switcher's visual tab order, so slot 1 is the built-in Home group.
 const SPACE_JUMP_DEFINITIONS: readonly ShortcutDefinition[] = Array.from(
   { length: 9 },
   (_, index) => ({
     command: `space.jump.${index + 1}` as KeybindingCommand,
-    label: index === 0 ? "Jump to Void" : `Jump to space ${index + 1}`,
+    label: index === 0 ? "Jump to first space" : `Jump to space ${index + 1}`,
     description:
       index === 0
-        ? "Switch straight to the Void tab of the space switcher."
+        ? "Switch straight to the first tab of the space switcher."
         : "Switch straight to this tab of the space switcher.",
   }),
 );

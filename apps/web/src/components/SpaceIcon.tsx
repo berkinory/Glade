@@ -4,7 +4,7 @@
 import { SPACE_ICON_NAMES, type SpaceIconName } from "@glade/contracts";
 
 import { CentralIcon } from "~/lib/central-icons";
-import { DEFAULT_VOID_SPACE_ICON, type VoidSpaceIconName } from "~/lib/spaceGrouping";
+import { UNFILED_SPACE_SPECIAL_ICON, type VoidSpaceIconName } from "~/lib/spaceGrouping";
 import { cn } from "~/lib/utils";
 
 export type SpaceIconValue = VoidSpaceIconName;
@@ -49,11 +49,10 @@ export const SPACE_ICON_OPTIONS: ReadonlyArray<SpaceIconOption> = SPACE_ICON_NAM
 }));
 
 /**
- * Void's own glyph, offered only when editing Void: it is the one icon that means "nothing
- * is filed here", so a stored Space wearing it would be lying about itself.
+ * The black hole remains a custom icon choice for the unfiled group.
  */
 export const VOID_SPACE_ICON_OPTIONS: ReadonlyArray<SpaceIconOption> = [
-  { name: DEFAULT_VOID_SPACE_ICON, label: "Black hole" },
+  { name: UNFILED_SPACE_SPECIAL_ICON, label: "Black hole" },
   ...SPACE_ICON_OPTIONS,
 ];
 

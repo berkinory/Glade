@@ -15,18 +15,17 @@ import {
 import type { Space } from "~/types";
 
 /**
- * Void is not a stored Space, so its name and icon are defaults here rather than a row.
- * "Void" is Glade's word, not the user's — the presentation is overridable per install
- * (see `voidSpaceStore`), and every list renders whatever the user settled on instead of
- * these constants.
+ * The unfiled group is not a stored Space, so its name and icon are defaults here rather
+ * than a row. The presentation is overridable per install (see `voidSpaceStore`).
  */
-export const DEFAULT_VOID_SPACE_NAME = "Void";
-export const DEFAULT_VOID_SPACE_ICON = "black-hole";
+export const DEFAULT_VOID_SPACE_NAME = "Home";
+export const DEFAULT_VOID_SPACE_ICON: SpaceIconName = "home";
+export const UNFILED_SPACE_SPECIAL_ICON = "black-hole";
 /** Fallback for a Space whose icon is unknown, and what the editor opens on. */
 export const DEFAULT_SPACE_ICON: SpaceIconName = "bag";
 
-/** Void may also wear its own black hole, which is not part of the curated Space set. */
-export type VoidSpaceIconName = SpaceIconName | typeof DEFAULT_VOID_SPACE_ICON;
+/** The unfiled group may still use the black hole icon as a custom choice. */
+export type VoidSpaceIconName = SpaceIconName | typeof UNFILED_SPACE_SPECIAL_ICON;
 
 export interface VoidSpacePresentation {
   readonly name: string;
@@ -40,7 +39,8 @@ export const DEFAULT_VOID_SPACE: VoidSpacePresentation = {
 
 export function isVoidSpaceIconName(value: string): value is VoidSpaceIconName {
   return (
-    value === DEFAULT_VOID_SPACE_ICON || (SPACE_ICON_NAMES as ReadonlyArray<string>).includes(value)
+    value === UNFILED_SPACE_SPECIAL_ICON ||
+    (SPACE_ICON_NAMES as ReadonlyArray<string>).includes(value)
   );
 }
 
@@ -49,7 +49,7 @@ export function isVoidSpaceIconName(value: string): value is VoidSpaceIconName {
  * caller hands a Void icon to a Space; the Space editor never offers the black hole.
  */
 export function toSpaceIconName(icon: VoidSpaceIconName): SpaceIconName {
-  return icon === DEFAULT_VOID_SPACE_ICON ? DEFAULT_SPACE_ICON : icon;
+  return icon === UNFILED_SPACE_SPECIAL_ICON ? DEFAULT_SPACE_ICON : icon;
 }
 /**
  * Void's stand-in wherever a `SpaceId | null` has to survive as a plain string — React
@@ -132,7 +132,7 @@ export function groupItemsBySpace<T>(input: {
   spaces: ReadonlyArray<Space>;
   activeSpaceId: SpaceId | null;
   spaceIdOf: (item: T) => SpaceId | null;
-  /** How the unfiled group presents itself; defaults to the built-in "Void". */
+  /** How the unfiled group presents itself; defaults to the built-in "Home". */
   voidSpace?: VoidSpacePresentation;
 }): ReadonlyArray<SpaceGroup<T>> {
   const { activeSpaceId, items, spaceIdOf, spaces } = input;

@@ -9,6 +9,7 @@ import type { ProjectId, SpaceId, ThreadId } from "@glade/contracts";
 import { resolveRestorableThreadRoute, type LastThreadRoute } from "../chatRouteRestore";
 import type { ServerWorkspacePaths } from "../lib/serverWorkspacePaths";
 import { isThreadReachableFromSpace } from "../lib/spaceNavigation";
+import { isHomeChatContainerProject } from "../lib/chatProjects";
 import type { Project } from "../types";
 
 /**
@@ -20,6 +21,7 @@ import type { Project } from "../types";
  */
 export interface ChatIndexLandingSpace {
   readonly spaceId: SpaceId | null;
+  readonly chatSpaceByThreadId: Readonly<Record<string, SpaceId>>;
   readonly projectById: ReadonlyMap<ProjectId, Project>;
   readonly workspacePaths: ServerWorkspacePaths;
 }
@@ -65,6 +67,16 @@ export function resolveChatIndexRestoreRoute(input: {
     // Studio threads belong to the /studio surface; restoring one from "/" would silently
     // switch the user into that segment.
     if (studioProjectIds.has(projectId)) continue;
+    if (
+      landingSpace &&
+      isHomeChatContainerProject(
+        landingSpace.projectById.get(projectId),
+        landingSpace.workspacePaths,
+      ) &&
+      (landingSpace.chatSpaceByThreadId[threadId] ?? null) !== landingSpace.spaceId
+    ) {
+      continue;
+    }
     if (
       landingSpace &&
       !isThreadReachableFromSpace({

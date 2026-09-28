@@ -1816,7 +1816,7 @@ describe("MessagesTimeline", () => {
     expect(markup).not.toContain(">File Change<");
   });
 
-  it("renders a collapsible changed files header with ui-font filenames", async () => {
+  it("does not attribute shared workspace edits to a reply that ran no tools", async () => {
     const { MessagesTimeline } = await import("./MessagesTimeline");
     const assistantMessageId = MessageId.makeUnsafe("message-assistant-diff");
     const markup = renderToStaticMarkup(
@@ -1875,15 +1875,10 @@ describe("MessagesTimeline", () => {
       />,
     );
 
-    expect(markup).toContain("Edited 1 file");
-    expect(markup).toContain("Undo");
-    expect(markup).toContain("Review");
-    expect(markup).toContain('aria-expanded="true"');
-    expect(markup).toContain('data-edited-file-row="true"');
-    expect(markup).toContain('aria-label="Open apps/web/src/components/Sidebar.tsx options"');
-    expect(markup).toContain("apps/web/src/components/Sidebar.tsx");
-    expect(markup.indexOf('aria-label="Copy message"')).toBeGreaterThan(
-      markup.indexOf("Edited 1 file"),
-    );
+    expect(markup).toContain("done");
+    expect(markup).not.toContain("Edited 1 file");
+    expect(markup).not.toContain(">Undo<");
+    expect(markup).not.toContain(">Review<");
+    expect(markup).not.toContain("apps/web/src/components/Sidebar.tsx");
   });
 });

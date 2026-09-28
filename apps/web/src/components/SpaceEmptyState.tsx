@@ -12,6 +12,7 @@ import { Button } from "./ui/button";
 export function SpaceEmptyState(props: {
   /** `null` renders the Void state. */
   space: Space | null;
+  unfiledSpaceName: string;
   /** Whether any project exists outside this Space — i.e. whether there is anything to file. */
   hasProjectsElsewhere: boolean;
   onMoveProjects: () => void;
@@ -26,7 +27,7 @@ export function SpaceEmptyState(props: {
     );
   }
 
-  const title = props.space ? `${props.space.name} is empty` : "Void is empty";
+  const title = `${props.space?.name ?? props.unfiledSpaceName} is empty`;
 
   return (
     <div className="px-2 pt-4 pb-1 text-center">

@@ -7,6 +7,7 @@ import type { ClientOrchestrationCommand, NativeApi, ThreadId } from "@glade/con
 import { markPromotedDraftThreads } from "../composerDraftStore";
 import { readNativeApi } from "../nativeApi";
 import { useStore } from "../store";
+import { useSpacesUiStore } from "../spacesUiStore";
 import { getThreadFromState } from "../threadDerivation";
 
 type ThreadCreateCommand = Extract<ClientOrchestrationCommand, { type: "thread.create" }>;
@@ -80,6 +81,16 @@ export async function promoteThreadCreate(
 ): Promise<PromoteThreadCreateResult> {
   if (!api) {
     return "unavailable";
+  }
+  if (
+    !(command.threadId in useSpacesUiStore.getState().chatSpaceByThreadId) &&
+    useStore
+      .getState()
+      .projects.some((project) => project.id === command.projectId && project.kind === "chat")
+  ) {
+    useSpacesUiStore
+      .getState()
+      .assignChatThread(command.threadId, useSpacesUiStore.getState().activeSpaceId);
   }
   const existing = inFlightThreadCreateById.get(command.threadId);
   if (existing) {

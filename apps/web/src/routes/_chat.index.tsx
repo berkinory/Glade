@@ -14,10 +14,12 @@ import {
 import { readSidebarUiState } from "../components/Sidebar.uiState";
 import { useComposerDraftStore } from "../composerDraftStore";
 import { useHandleNewChat } from "../hooks/useHandleNewChat";
+import { isHomeChatContainerProject } from "../lib/chatProjects";
 import { VOID_SPACE_KEY } from "../lib/spaceGrouping";
 import { collectStudioProjectIds } from "../lib/studioProjects";
 import { resolveSplitViewThreadIds, useSplitViewStore } from "../splitViewStore";
 import { EMPTY_THREAD_IDS, useStore } from "../store";
+import { useSpacesUiStore } from "../spacesUiStore";
 import { useWorkspacePathsStore } from "../workspacePathsStore";
 import { resolveChatIndexRestoreRoute, type ChatIndexLandingSpace } from "./-chatIndexRoute.logic";
 
@@ -41,11 +43,18 @@ function ChatIndexRouteView() {
   const homeDir = useWorkspacePathsStore((state) => state.homeDir);
   const chatWorkspaceRoot = useWorkspacePathsStore((state) => state.chatWorkspaceRoot);
   const studioWorkspaceRoot = useWorkspacePathsStore((state) => state.studioWorkspaceRoot);
-  // A Space landing reuses the stored home-chat draft instead of minting one (same reasoning as
-  // the /studio landing): a fresh draft per visit would litter the Chats container every time
-  // someone clicked through their empty Spaces.
-  const createFreshChat = () =>
-    landingSpaceKey === undefined ? handleNewChat({ fresh: true }) : handleNewChat();
+  const createFreshChat = async () => {
+    const result = await handleNewChat({ fresh: true, standalone: landingSpaceKey !== undefined });
+    if (landingSpaceKey !== undefined && result.ok && result.threadId) {
+      useSpacesUiStore
+        .getState()
+        .rememberDraftThread(
+          landingSpaceKey === VOID_SPACE_KEY ? null : SpaceId.makeUnsafe(landingSpaceKey),
+          result.threadId,
+        );
+    }
+    return result;
+  };
 
   const workspacePaths = { homeDir, chatWorkspaceRoot, studioWorkspaceRoot };
   // Home chats restore the last visited route, except Studio threads — those belong to the
@@ -67,12 +76,28 @@ function ChatIndexRouteView() {
       ? null
       : {
           spaceId: landingSpaceKey === VOID_SPACE_KEY ? null : SpaceId.makeUnsafe(landingSpaceKey),
+          chatSpaceByThreadId: useSpacesUiStore.getState().chatSpaceByThreadId,
           projectById: new Map(projects.map((project) => [project.id, project])),
           workspacePaths,
         };
 
   const resolveRestoreRoute: RestoreRouteResolver = ({ availableSplitViewIds }) => {
-    const lastThreadRoute = readSidebarUiState().lastThreadRoute;
+    const rememberedDraftId = landingSpace
+      ? useSpacesUiStore.getState().getLastDraftThreadId(landingSpace.spaceId)
+      : null;
+    const rememberedDraft = rememberedDraftId ? draftThreadsByThreadId[rememberedDraftId] : null;
+    const rememberedDraftProject = rememberedDraft
+      ? projects.find((project) => project.id === rememberedDraft.projectId)
+      : null;
+    const lastThreadRoute = landingSpace
+      ? rememberedDraftId &&
+        rememberedDraft?.entryPoint === "chat" &&
+        !rememberedDraft.promotedTo &&
+        rememberedDraftProject &&
+        isHomeChatContainerProject(rememberedDraftProject, workspacePaths)
+        ? { threadId: rememberedDraftId }
+        : null
+      : readSidebarUiState().lastThreadRoute;
     const rememberedSplitView = lastThreadRoute?.splitViewId
       ? useSplitViewStore.getState().splitViewsById[lastThreadRoute.splitViewId]
       : undefined;

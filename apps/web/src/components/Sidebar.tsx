@@ -1341,6 +1341,7 @@ export default function Sidebar() {
   const spaces = useStore((store) => store.spaces);
   // Selection state only; the handlers and sync effects live in useSpacesController.
   const storedActiveSpaceId = useSpacesUiStore((store) => store.activeSpaceId);
+  const chatSpaceByThreadId = useSpacesUiStore((store) => store.chatSpaceByThreadId);
   const pendingActiveSpaceId = useSpacesUiStore(
     (store) => store.pendingActiveSpace?.spaceId ?? null,
   );
@@ -1700,14 +1701,31 @@ export default function Sidebar() {
       () => partitionSidebarThreadsByProjectIds(sidebarTreeThreads, studioProjectIdSet),
       [sidebarTreeThreads, studioProjectIdSet],
     );
+  const projectById = useMemo(
+    () => new Map(projects.map((project) => [project.id, project] as const)),
+    [projects],
+  );
   // Activity view + unread bell read the same visibility-filtered list, so the
   // bell can never point at a row the Activity list is hiding.
   const visibleNonStudioSidebarThreads = useMemo(
     () =>
-      nonStudioSidebarThreads.filter((thread) =>
-        isSidebarThreadVisible(thread, { hideAutomationRunThreads }),
-      ),
-    [hideAutomationRunThreads, nonStudioSidebarThreads],
+      nonStudioSidebarThreads.filter((thread) => {
+        if (!isSidebarThreadVisible(thread, { hideAutomationRunThreads })) return false;
+        const project = projectById.get(thread.projectId);
+        return (
+          !isHomeChatContainerProject(project, { homeDir, chatWorkspaceRoot }) ||
+          (chatSpaceByThreadId[thread.id] ?? null) === activeSpaceId
+        );
+      }),
+    [
+      activeSpaceId,
+      chatSpaceByThreadId,
+      chatWorkspaceRoot,
+      hideAutomationRunThreads,
+      homeDir,
+      nonStudioSidebarThreads,
+      projectById,
+    ],
   );
   // Drives the unread dot on the header Activity bell.
   const hasUnreadActivity = useMemo(
@@ -1810,10 +1828,6 @@ export default function Sidebar() {
     presentationMode: routeTerminalState?.presentationMode ?? "drawer",
     terminalOpen,
   });
-  const projectById = useMemo(
-    () => new Map(projects.map((project) => [project.id, project] as const)),
-    [projects],
-  );
   const {
     pinnedThreadIds,
     pinnedThreadIdSet,
@@ -1904,17 +1918,18 @@ export default function Sidebar() {
     () =>
       nonStudioSidebarTreeThreads.filter((thread) => {
         const project = projectById.get(thread.projectId);
-        return (
-          !isOrdinarySpaceProject(project, {
-            homeDir,
-            chatWorkspaceRoot,
-            studioWorkspaceRoot,
-          }) || (project.spaceId ?? null) === activeSpaceId
-        );
+        return isHomeChatContainerProject(project, { homeDir, chatWorkspaceRoot })
+          ? (chatSpaceByThreadId[thread.id] ?? null) === activeSpaceId
+          : !isOrdinarySpaceProject(project, {
+              homeDir,
+              chatWorkspaceRoot,
+              studioWorkspaceRoot,
+            }) || (project.spaceId ?? null) === activeSpaceId;
       }),
     [
       activeSpaceId,
       chatWorkspaceRoot,
+      chatSpaceByThreadId,
       homeDir,
       nonStudioSidebarTreeThreads,
       projectById,
@@ -2343,12 +2358,25 @@ export default function Sidebar() {
   const nonStudioDraftThreadIds = useMemo(() => {
     const draftThreadIds = new Set<string>();
     for (const [threadId, draft] of Object.entries(draftThreadsByThreadId)) {
-      if (!studioProjectIdSet.has(draft.projectId)) {
+      const project = projectById.get(draft.projectId);
+      if (
+        !studioProjectIdSet.has(draft.projectId) &&
+        (!isHomeChatContainerProject(project, { homeDir, chatWorkspaceRoot }) ||
+          (chatSpaceByThreadId[threadId] ?? null) === activeSpaceId)
+      ) {
         draftThreadIds.add(threadId);
       }
     }
     return draftThreadIds;
-  }, [draftThreadsByThreadId, studioProjectIdSet]);
+  }, [
+    activeSpaceId,
+    chatSpaceByThreadId,
+    chatWorkspaceRoot,
+    draftThreadsByThreadId,
+    homeDir,
+    projectById,
+    studioProjectIdSet,
+  ]);
 
   // Where the Studio segment lands, resolved directly (remembered Studio route, else the latest
   // Studio chat) instead of bouncing through the "/studio" splash route — that extra hop +
@@ -3922,16 +3950,22 @@ export default function Sidebar() {
     }
     return buildProjectThreadTree({
       threads: sortThreadsForSidebar(
-        chatProjects.flatMap((project) => sortedSidebarThreadsByProjectId.get(project.id) ?? []),
+        chatProjects.flatMap((project) =>
+          (sortedSidebarThreadsByProjectId.get(project.id) ?? []).filter(
+            (thread) => (chatSpaceByThreadId[thread.id] ?? null) === activeSpaceId,
+          ),
+        ),
         appSettings.sidebarThreadSortOrder,
       ),
       forceVisibleThreadId: activeSidebarThreadId ?? undefined,
     });
   }, [
     activeSidebarThreadId,
+    activeSpaceId,
     appSettings.sidebarThreadSortOrder,
     chatSectionExpanded,
     chatProjects,
+    chatSpaceByThreadId,
     sortedSidebarThreadsByProjectId,
   ]);
   const visibleChatThreadIds = useMemo(
@@ -5364,6 +5398,7 @@ export default function Sidebar() {
                 ) : (
                   <SpaceEmptyState
                     space={spaces.find((space) => space.id === section.spaceId) ?? null}
+                    unfiledSpaceName={voidSpace.name}
                     hasProjectsElsewhere={allStandardProjectsBase.length > 0}
                     onMoveProjects={() => {
                       if (section.spaceId !== null) openSpaceProjectPicker(section.spaceId);
@@ -6717,6 +6752,7 @@ export default function Sidebar() {
                   {projectEmptyState === "empty" && (
                     <SpaceEmptyState
                       space={activeSpace}
+                      unfiledSpaceName={voidSpace.name}
                       hasProjectsElsewhere={allStandardProjectsBase.length > 0}
                       onMoveProjects={() => {
                         if (activeSpace) openSpaceProjectPicker(activeSpace.id);

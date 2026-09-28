@@ -2298,7 +2298,15 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                   // turn settles. While the turn is live the composer's own
                   // live-changes strip owns this surface; showing the card too
                   // would duplicate it and pre-empt the strip mid-turn.
-                  if (!turnSummary || row.assistantTurnInProgress) return null;
+                  // Checkpoints capture the shared workspace. If this turn ran no tools,
+                  // changes made by another chat during it cannot belong to this reply.
+                  if (
+                    !turnSummary ||
+                    row.assistantTurnInProgress ||
+                    !allTurnWorkEntries.some((entry) => entry.tone === "tool")
+                  ) {
+                    return null;
+                  }
                   const checkpointFiles = turnSummary.files;
                   if (checkpointFiles.length === 0) return null;
                   const fileChangesExpanded =

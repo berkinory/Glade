@@ -91,11 +91,14 @@ export function useSpacesController(input: {
   const threadsHydrated = useStore((store) => store.threadsHydrated);
   const shellSnapshotSequence = useStore((store) => store.shellSnapshotSequence ?? 0);
   const activeSpaceId = useSpacesUiStore((store) => store.activeSpaceId);
+  const chatSpaceByThreadId = useSpacesUiStore((store) => store.chatSpaceByThreadId);
   const setActiveSpaceId = useSpacesUiStore((store) => store.setActiveSpaceId);
   const setOptimisticActiveSpaceId = useSpacesUiStore((store) => store.setOptimisticActiveSpaceId);
   const rememberSpaceThread = useSpacesUiStore((store) => store.rememberThread);
+  const rememberSpaceDraftThread = useSpacesUiStore((store) => store.rememberDraftThread);
   const rememberSpaceProject = useSpacesUiStore((store) => store.rememberProject);
   const getLastSpaceThreadId = useSpacesUiStore((store) => store.getLastThreadId);
+  const getLastSpaceDraftThreadId = useSpacesUiStore((store) => store.getLastDraftThreadId);
   const getLastSpaceProjectId = useSpacesUiStore((store) => store.getLastProjectId);
   const reconcileSpacesUi = useSpacesUiStore((store) => store.reconcile);
   const voidSpace = useVoidSpaceStore((store) => store.voidSpace);
@@ -111,9 +114,14 @@ export function useSpacesController(input: {
 
   const routeSpaceProject =
     isOnKanban && routeProjectId ? (projectById.get(routeProjectId) ?? null) : activeRouteProject;
-  const routeSpaceContext = isOrdinarySpaceProject(routeSpaceProject, workspacePaths)
-    ? { projectId: routeSpaceProject.id, spaceId: routeSpaceProject.spaceId ?? null }
-    : null;
+  const routeSpaceContext =
+    routeThreadId &&
+    routeSpaceProject &&
+    isHomeChatContainerProject(routeSpaceProject, workspacePaths)
+      ? { projectId: routeSpaceProject.id, spaceId: chatSpaceByThreadId[routeThreadId] ?? null }
+      : isOrdinarySpaceProject(routeSpaceProject, workspacePaths)
+        ? { projectId: routeSpaceProject.id, spaceId: routeSpaceProject.spaceId ?? null }
+        : null;
   const routeSpaceProjectId = routeSpaceContext?.projectId ?? null;
   const routeSpaceId = routeSpaceContext ? routeSpaceContext.spaceId : undefined;
 
@@ -163,8 +171,25 @@ export function useSpacesController(input: {
   const rememberDepartingSpaceContext = useCallback(() => {
     const currentRouteSpaceProject =
       isOnKanban && routeProjectId ? (projectById.get(routeProjectId) ?? null) : activeRouteProject;
+    if (
+      routeThreadId &&
+      currentRouteSpaceProject &&
+      isHomeChatContainerProject(currentRouteSpaceProject, workspacePaths) &&
+      useComposerDraftStore.getState().getDraftThread(routeThreadId)?.entryPoint === "chat"
+    ) {
+      rememberSpaceDraftThread(useSpacesUiStore.getState().activeSpaceId, routeThreadId);
+      return;
+    }
     if (routeThreadId && isOrdinarySpaceProject(currentRouteSpaceProject, workspacePaths)) {
       rememberSpaceThread(currentRouteSpaceProject.spaceId ?? null, routeThreadId);
+    } else if (
+      routeThreadId &&
+      isHomeChatContainerProject(currentRouteSpaceProject, workspacePaths)
+    ) {
+      rememberSpaceThread(
+        useSpacesUiStore.getState().getChatThreadSpaceId(routeThreadId),
+        routeThreadId,
+      );
     } else if (isOnKanban && isOrdinarySpaceProject(currentRouteSpaceProject, workspacePaths)) {
       rememberSpaceProject(currentRouteSpaceProject.spaceId ?? null, currentRouteSpaceProject.id);
     }
@@ -173,6 +198,7 @@ export function useSpacesController(input: {
     isOnKanban,
     projectById,
     rememberSpaceProject,
+    rememberSpaceDraftThread,
     rememberSpaceThread,
     routeProjectId,
     routeThreadId,
@@ -203,6 +229,22 @@ export function useSpacesController(input: {
 
       selectSpaceForNavigation(spaceId);
 
+      const rememberedChatThreadId = getLastSpaceThreadId(spaceId);
+      const rememberedChatThread = sidebarThreads.find(
+        (thread) => thread.id === rememberedChatThreadId,
+      );
+      if (
+        rememberedChatThread &&
+        isHomeChatContainerProject(
+          projectById.get(rememberedChatThread.projectId),
+          workspacePaths,
+        ) &&
+        useSpacesUiStore.getState().getChatThreadSpaceId(rememberedChatThread.id) === spaceId
+      ) {
+        activateThreadFromSidebarIntent(rememberedChatThread.id);
+        return;
+      }
+
       const target = resolveSpaceSelectionTarget({
         spaceId,
         projects: ordinarySpaceProjects,
@@ -229,15 +271,22 @@ export function useSpacesController(input: {
         return;
       }
 
-      // An unsent Home draft is shared by empty Spaces. Keep its mounted chat surface
-      // when only the sidebar selection changes; routing through "/" would tear it
-      // down and run the draft restoration flow for no change in chat context.
+      const rememberedDraftId = getLastSpaceDraftThreadId(spaceId);
+      const rememberedDraft = rememberedDraftId
+        ? useComposerDraftStore.getState().getDraftThread(rememberedDraftId)
+        : null;
+      const rememberedDraftProject = rememberedDraft
+        ? projectById.get(rememberedDraft.projectId)
+        : null;
       if (
-        routeThreadId &&
-        useComposerDraftStore.getState().getDraftThread(routeThreadId)?.entryPoint === "chat" &&
-        activeRouteProject &&
-        isHomeChatContainerProject(activeRouteProject, workspacePaths)
+        rememberedDraftId &&
+        rememberedDraft?.entryPoint === "chat" &&
+        !rememberedDraft.promotedTo &&
+        isHomeChatContainerProject(rememberedDraftProject, workspacePaths)
       ) {
+        startTransition(() => {
+          void navigate({ to: "/$threadId", params: { threadId: rememberedDraftId } });
+        });
         return;
       }
 
@@ -252,15 +301,14 @@ export function useSpacesController(input: {
     },
     [
       activateThreadFromSidebarIntent,
-      activeRouteProject,
       activeSpaceId,
+      getLastSpaceDraftThreadId,
       getLastSpaceProjectId,
       getLastSpaceThreadId,
       navigate,
       ordinarySpaceProjects,
       projectById,
       rememberDepartingSpaceContext,
-      routeThreadId,
       selectSpaceForNavigation,
       sidebarThreadSortOrder,
       sidebarThreads,
@@ -349,7 +397,7 @@ export function useSpacesController(input: {
       ).length;
       const confirmed = await api.dialogs.confirm(
         projectCount > 0
-          ? `Delete “${space.name}”?\n\n${projectCount} project${projectCount === 1 ? "" : "s"} will move to Void.`
+          ? `Delete “${space.name}”?\n\n${projectCount} project${projectCount === 1 ? "" : "s"} will move to ${voidSpace.name}.`
           : `Delete “${space.name}”?`,
       );
       if (!confirmed) return;
@@ -387,6 +435,7 @@ export function useSpacesController(input: {
       routeProjectId,
       selectSpaceForNavigation,
       spaces,
+      voidSpace.name,
       workspacePaths,
     ],
   );

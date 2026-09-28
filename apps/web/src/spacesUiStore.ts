@@ -7,16 +7,38 @@ import { create } from "zustand";
 import { spaceKey } from "~/lib/spaceGrouping";
 
 const STORAGE_KEY = "glade:spaces-ui:v1";
+const CHAT_SPACE_STORAGE_KEY = "glade:chat-spaces:v1";
+
+function readChatSpaceAssignments(): Record<string, SpaceId> {
+  if (typeof window === "undefined") return {};
+  try {
+    const value: unknown = JSON.parse(window.localStorage.getItem(CHAT_SPACE_STORAGE_KEY) ?? "{}");
+    if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+    return Object.fromEntries(
+      Object.entries(value).filter(
+        (entry): entry is [string, SpaceId] => typeof entry[1] === "string",
+      ),
+    );
+  } catch {
+    return {};
+  }
+}
 
 interface PersistedSpacesUiState {
   activeSpaceId: SpaceId | null;
   lastThreadIdBySpace: Record<string, ThreadId>;
+  lastDraftThreadIdBySpace: Record<string, ThreadId>;
   lastProjectIdBySpace: Record<string, ProjectId>;
 }
 
 function readPersisted(): PersistedSpacesUiState {
   if (typeof window === "undefined") {
-    return { activeSpaceId: null, lastThreadIdBySpace: {}, lastProjectIdBySpace: {} };
+    return {
+      activeSpaceId: null,
+      lastThreadIdBySpace: {},
+      lastDraftThreadIdBySpace: {},
+      lastProjectIdBySpace: {},
+    };
   }
   try {
     const parsed = JSON.parse(
@@ -29,18 +51,30 @@ function readPersisted(): PersistedSpacesUiState {
         parsed?.lastThreadIdBySpace && typeof parsed.lastThreadIdBySpace === "object"
           ? parsed.lastThreadIdBySpace
           : {},
+      lastDraftThreadIdBySpace:
+        parsed?.lastDraftThreadIdBySpace && typeof parsed.lastDraftThreadIdBySpace === "object"
+          ? parsed.lastDraftThreadIdBySpace
+          : {},
       lastProjectIdBySpace:
         parsed?.lastProjectIdBySpace && typeof parsed.lastProjectIdBySpace === "object"
           ? parsed.lastProjectIdBySpace
           : {},
     };
   } catch {
-    return { activeSpaceId: null, lastThreadIdBySpace: {}, lastProjectIdBySpace: {} };
+    return {
+      activeSpaceId: null,
+      lastThreadIdBySpace: {},
+      lastDraftThreadIdBySpace: {},
+      lastProjectIdBySpace: {},
+    };
   }
 }
 
 function persist(
-  state: Pick<SpacesUiState, "activeSpaceId" | "lastThreadIdBySpace" | "lastProjectIdBySpace">,
+  state: Pick<
+    SpacesUiState,
+    "activeSpaceId" | "lastThreadIdBySpace" | "lastDraftThreadIdBySpace" | "lastProjectIdBySpace"
+  >,
 ): void {
   if (typeof window === "undefined") return;
   try {
@@ -49,6 +83,7 @@ function persist(
       JSON.stringify({
         activeSpaceId: state.activeSpaceId,
         lastThreadIdBySpace: state.lastThreadIdBySpace,
+        lastDraftThreadIdBySpace: state.lastDraftThreadIdBySpace,
         lastProjectIdBySpace: state.lastProjectIdBySpace,
       }),
     );
@@ -69,12 +104,17 @@ function recordsEqual<T extends string>(
 }
 
 interface SpacesUiState extends PersistedSpacesUiState {
+  chatSpaceByThreadId: Record<string, SpaceId>;
+  assignChatThread: (threadId: ThreadId, spaceId: SpaceId | null) => void;
+  getChatThreadSpaceId: (threadId: ThreadId) => SpaceId | null;
   pendingActiveSpace: { spaceId: SpaceId; minSequence: number } | null;
   setActiveSpaceId: (spaceId: SpaceId | null) => void;
   setOptimisticActiveSpaceId: (spaceId: SpaceId, minSequence: number) => void;
   rememberThread: (spaceId: SpaceId | null, threadId: ThreadId) => void;
+  rememberDraftThread: (spaceId: SpaceId | null, threadId: ThreadId) => void;
   rememberProject: (spaceId: SpaceId | null, projectId: ProjectId) => void;
   getLastThreadId: (spaceId: SpaceId | null) => ThreadId | null;
+  getLastDraftThreadId: (spaceId: SpaceId | null) => ThreadId | null;
   getLastProjectId: (spaceId: SpaceId | null) => ProjectId | null;
   reconcile: (input: {
     activeSpaceIds: ReadonlySet<SpaceId>;
@@ -88,6 +128,23 @@ const persisted = readPersisted();
 
 export const useSpacesUiStore = create<SpacesUiState>((set, get) => ({
   ...persisted,
+  chatSpaceByThreadId: readChatSpaceAssignments(),
+  assignChatThread: (threadId, spaceId) => {
+    const previous = get().chatSpaceByThreadId[threadId] ?? null;
+    if (previous === spaceId) return;
+    const next = { ...get().chatSpaceByThreadId };
+    if (spaceId === null) delete next[threadId];
+    else next[threadId] = spaceId;
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem(CHAT_SPACE_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // Keep the active window usable if browser storage is unavailable.
+      }
+    }
+    set({ chatSpaceByThreadId: next });
+  },
+  getChatThreadSpaceId: (threadId) => get().chatSpaceByThreadId[threadId] ?? null,
   pendingActiveSpace: null,
   setActiveSpaceId: (activeSpaceId) => {
     set({ activeSpaceId, pendingActiveSpace: null });
@@ -108,6 +165,14 @@ export const useSpacesUiStore = create<SpacesUiState>((set, get) => ({
     }));
     persist(get());
   },
+  rememberDraftThread: (spaceId, threadId) => {
+    const key = spaceKey(spaceId);
+    if (get().lastDraftThreadIdBySpace[key] === threadId) return;
+    set((state) => ({
+      lastDraftThreadIdBySpace: { ...state.lastDraftThreadIdBySpace, [key]: threadId },
+    }));
+    persist(get());
+  },
   rememberProject: (spaceId, projectId) => {
     const key = spaceKey(spaceId);
     if (get().lastProjectIdBySpace[key] === projectId && !(key in get().lastThreadIdBySpace))
@@ -121,9 +186,22 @@ export const useSpacesUiStore = create<SpacesUiState>((set, get) => ({
     persist(get());
   },
   getLastThreadId: (spaceId) => get().lastThreadIdBySpace[spaceKey(spaceId)] ?? null,
+  getLastDraftThreadId: (spaceId) => get().lastDraftThreadIdBySpace[spaceKey(spaceId)] ?? null,
   getLastProjectId: (spaceId) => get().lastProjectIdBySpace[spaceKey(spaceId)] ?? null,
   reconcile: ({ activeSpaceIds, snapshotSequence, projectSpaceById, threadProjectById }) => {
     const current = get();
+    const chatSpaceByThreadId = Object.fromEntries(
+      Object.entries(current.chatSpaceByThreadId).filter(([, spaceId]) =>
+        activeSpaceIds.has(spaceId),
+      ),
+    ) as Record<string, SpaceId>;
+    if (!recordsEqual(chatSpaceByThreadId, current.chatSpaceByThreadId)) {
+      try {
+        window.localStorage.setItem(CHAT_SPACE_STORAGE_KEY, JSON.stringify(chatSpaceByThreadId));
+      } catch {
+        // A blocked storage API must not make Space switching unusable.
+      }
+    }
     const pendingActiveSpace =
       current.pendingActiveSpace !== null &&
       (activeSpaceIds.has(current.pendingActiveSpace.spaceId) ||
@@ -141,9 +219,12 @@ export const useSpacesUiStore = create<SpacesUiState>((set, get) => ({
         : current.activeSpaceId;
     const lastThreadIdBySpace: Record<string, ThreadId> = {};
     for (const [key, threadId] of Object.entries(current.lastThreadIdBySpace)) {
+      if (key !== spaceKey(null) && !activeSpaceIds.has(key as SpaceId)) continue;
       const projectId = threadProjectById.get(threadId);
       if (!projectId) continue;
-      const assignedSpaceId = projectSpaceById.get(projectId) ?? null;
+      const assignedSpaceId = projectSpaceById.has(projectId)
+        ? (projectSpaceById.get(projectId) ?? null)
+        : (chatSpaceByThreadId[threadId] ?? null);
       if (spaceKey(assignedSpaceId) === key) {
         lastThreadIdBySpace[key] = threadId;
       }
@@ -159,11 +240,18 @@ export const useSpacesUiStore = create<SpacesUiState>((set, get) => ({
       activeSpaceId === current.activeSpaceId &&
       pendingActiveSpace === current.pendingActiveSpace &&
       recordsEqual(lastThreadIdBySpace, current.lastThreadIdBySpace) &&
+      recordsEqual(chatSpaceByThreadId, current.chatSpaceByThreadId) &&
       recordsEqual(lastProjectIdBySpace, current.lastProjectIdBySpace)
     ) {
       return;
     }
-    set({ activeSpaceId, pendingActiveSpace, lastThreadIdBySpace, lastProjectIdBySpace });
+    set({
+      activeSpaceId,
+      pendingActiveSpace,
+      lastThreadIdBySpace,
+      lastProjectIdBySpace,
+      chatSpaceByThreadId,
+    });
     persist(get());
   },
 }));

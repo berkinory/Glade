@@ -679,7 +679,8 @@ export function resolveActiveTurnLiveDiffState(input: {
   latestTurnId: TurnDiffSummary["turnId"] | null | undefined;
   turnDiffSummaries: ReadonlyArray<TurnDiffSummary>;
   workLogEntries?: ReadonlyArray<
-    Pick<WorkLogEntry, "changedFiles" | "itemType" | "requestKind" | "turnId">
+    Pick<WorkLogEntry, "changedFiles" | "itemType" | "requestKind" | "turnId"> &
+      Partial<Pick<WorkLogEntry, "tone">>
   >;
 }): {
   turnId: TurnDiffSummary["turnId"] | null;
@@ -692,7 +693,10 @@ export function resolveActiveTurnLiveDiffState(input: {
     ? (input.turnDiffSummaries.find((entry) => entry.turnId === input.latestTurnId) ?? null)
     : null;
   const files = summary?.files ?? [];
-  if (summary && files.length > 0) {
+  const hasToolWork = input.workLogEntries?.some(
+    (entry) => entry.turnId === input.latestTurnId && entry.tone === "tool",
+  );
+  if (summary && files.length > 0 && hasToolWork) {
     return {
       turnId: summary.turnId,
       fileCount: files.length,

@@ -40,6 +40,7 @@ import { newCommandId, newThreadId } from "../lib/utils";
 import { readNativeApi } from "../nativeApi";
 import { useFocusedChatContext } from "../focusedChatContext";
 import { useStore } from "../store";
+import { useSpacesUiStore } from "../spacesUiStore";
 import { useProjectEnvironmentStore } from "../projectEnvironmentStore";
 import { useTemporaryThreadStore } from "../temporaryThreadStore";
 import { useTerminalStateStore } from "../terminalStateStore";
@@ -366,6 +367,16 @@ export function useHandleNewThread() {
 
     return runDraftNavigationOnce(draftNavigationSlotKey(projectId, entryPoint), async () => {
       const threadId = newThreadId();
+      if (
+        entryPoint === "chat" &&
+        useStore
+          .getState()
+          .projects.some((project) => project.id === projectId && project.kind === "chat")
+      ) {
+        useSpacesUiStore
+          .getState()
+          .assignChatThread(threadId, useSpacesUiStore.getState().activeSpaceId);
+      }
       if (wantsTemporaryThread) {
         markTemporaryThread(threadId);
       }
@@ -403,7 +414,9 @@ export function useHandleNewThread() {
         // TanStack resolves an older navigate() promise when a newer navigation supersedes it.
         // Verify the committed route before deleting the previous project draft.
         isDestinationActive: () => router.state.location.pathname === `/${threadId}`,
-        finalize: () => setProjectDraftThreadId(projectId, threadId, draftSeed),
+        finalize: () => {
+          if (!options?.standalone) setProjectDraftThreadId(projectId, threadId, draftSeed);
+        },
         rollback: () => {
           clearDraftThread(threadId);
           clearTerminalState(threadId);

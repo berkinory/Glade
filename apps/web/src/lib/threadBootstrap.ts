@@ -32,6 +32,8 @@ export interface NewThreadOptions {
   temporary?: boolean;
   provider?: ProviderKind;
   fresh?: boolean;
+  /** Keep a draft outside the project's single reusable draft slot. */
+  standalone?: boolean;
 }
 
 export interface InheritedThreadContext {

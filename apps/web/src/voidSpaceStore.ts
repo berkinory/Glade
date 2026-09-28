@@ -1,10 +1,8 @@
 // FILE: voidSpaceStore.ts
 // Purpose: Persists what the user calls the group of projects that are in no Space.
 // Layer: Web UI state
-// Why: "Void" is Glade's word for "not filed yet", and it is the one Space label a user
-//      cannot rename through the orchestration commands — there is no row behind it. Most
-//      installs leave every project there, so the sidebar's loudest label is also its least
-//      meaningful one (and untranslatable). This keeps a per-install name and icon for it.
+// Why: The built-in unfiled group has no orchestration row, so its name and icon live here
+//      as per-install presentation settings.
 //
 //      Local storage rather than a server setting: this is presentation only, it must resolve
 //      synchronously on first paint (the sidebar header renders the name before any query
@@ -51,7 +49,7 @@ function readPersisted(): VoidSpacePresentation {
 function persist(voidSpace: VoidSpacePresentation): void {
   if (typeof window === "undefined") return;
   try {
-    // The default is stored as an absent key, so an install that never renamed Void keeps
+    // The default is stored as an absent key, so an install that never renamed Home keeps
     // following the product default if it ever changes.
     if (voidSpace.name === DEFAULT_VOID_SPACE.name && voidSpace.icon === DEFAULT_VOID_SPACE.icon) {
       window.localStorage.removeItem(STORAGE_KEY);

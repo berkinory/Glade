@@ -22,10 +22,9 @@ export function isProjectInSpace(
 }
 
 /**
- * Whether a Space may land on a thread in this project. The Chats and Studio containers belong
- * to no Space and are reachable from every one of them; any other thread belongs to exactly its
- * project's Space. Fails closed on a project we cannot resolve — a thread we cannot classify is
- * not a safe landing, and a fresh chat beats silently reverting the user's Space selection.
+ * Project-level reachability for Space landings. Container projects have no Space themselves;
+ * callers must check a Home chat's thread assignment separately. Ordinary threads belong to
+ * their project's Space. Fails closed when the project cannot be resolved.
  */
 export function isThreadReachableFromSpace(input: {
   project: Project | null | undefined;

@@ -48,6 +48,7 @@ export async function startContainerChat(input: {
     options?: NewThreadOptions,
   ) => Promise<ThreadId | null>;
   readonly fresh?: boolean | undefined;
+  readonly standalone?: boolean | undefined;
   readonly forceLocalWorkspace?: boolean | undefined;
   readonly errorLabel: string;
 }): Promise<StartContainerChatResult> {
@@ -57,9 +58,10 @@ export async function startContainerChat(input: {
       return { ok: false, error: input.errorLabel };
     }
     const threadOptions: NewThreadOptions | undefined =
-      input.fresh === true || input.forceLocalWorkspace === true
+      input.fresh === true || input.forceLocalWorkspace === true || input.standalone === true
         ? {
             ...(input.fresh === true ? { fresh: true } : {}),
+            ...(input.standalone === true ? { standalone: true } : {}),
             envMode: "local",
             branch: null,
             worktreePath: null,
