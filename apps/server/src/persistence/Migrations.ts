@@ -119,6 +119,7 @@ import ProjectImportOriginsMigration from "./Migrations/106_ProjectImportOrigins
 import Migration0109 from "./Migrations/109_RetireExternalConnections.ts";
 import Migration0110 from "./Migrations/110_RetireProviders.ts";
 import Migration0111 from "./Migrations/111_RetireSidechats.ts";
+import Migration0112 from "./Migrations/112_ConvertStudioProjects.ts";
 import Migration0108 from "./Migrations/108_GatewayCompletions.ts";
 import Migration0107 from "./Migrations/107_ProjectionThreadsHumanMessage.ts";
 
@@ -250,6 +251,7 @@ export const migrationEntries = [
   [109, "RetireExternalConnections", Migration0109],
   [110, "RetireProviders", Migration0110],
   [111, "RetireSidechats", Migration0111],
+  [112, "ConvertStudioProjects", Migration0112],
 ] as const;
 
 export const makeMigrationLoader = (throughId?: number) =>

@@ -16,6 +16,7 @@
 
 ### Fixed
 
+- Existing Studio folders are preserved as normal projects so the app starts after Studio mode is removed.
 - Removed terminal-thread shortcuts are cleaned from saved keybindings without changing other shortcuts.
 
 ## 0.0.3 - 2026-09-28
