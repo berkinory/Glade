@@ -6,6 +6,11 @@ export const WHATS_NEW_ENTRIES: readonly WhatsNewEntry[] = [
     date: "Unreleased",
     features: [
       {
+        id: "faster-interface-motion",
+        title: "Improved",
+        description: "Menus, disclosures, and panels respond with quicker motion.",
+      },
+      {
         id: "panel-resizing",
         title: "Improved",
         description:
@@ -21,6 +26,11 @@ export const WHATS_NEW_ENTRIES: readonly WhatsNewEntry[] = [
         id: "retired-terminal-shortcuts",
         title: "Fixed",
         description: "Saved shortcuts for removed terminal threads are cleaned up automatically.",
+      },
+      {
+        id: "project-disclosure-motion",
+        title: "Fixed",
+        description: "Project lists expand and collapse with consistent motion in the sidebar.",
       },
     ],
   },

@@ -34,7 +34,6 @@ import { ThreadPrStatusBadge } from "~/components/pullRequest/ThreadPrStatusBadg
 import { PinStatusIcon, pinActionLabel } from "~/lib/pin";
 import { THREAD_CONTEXT_MENU_ICONS } from "~/lib/contextMenuIcons";
 import { ensureNativeApi } from "~/nativeApi";
-import { autoAnimate } from "@formkit/auto-animate";
 import { FiGitBranch } from "react-icons/fi";
 import { IoIosGitCompare } from "react-icons/io";
 import { GoRepoForked } from "react-icons/go";
@@ -274,6 +273,7 @@ import {
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "./ui/alert";
 import { Button } from "./ui/button";
 import { DisclosureChevron } from "./ui/DisclosureChevron";
+import { DisclosureRegion } from "./ui/DisclosureRegion";
 import { Input } from "./ui/input";
 import {
   Dialog,
@@ -473,10 +473,6 @@ const SIDEBAR_THREAD_SORT_LABELS: Record<SidebarThreadSortOrder, string> = {
   updated_at: "Last user message",
   created_at: "Created at",
 };
-const SIDEBAR_LIST_ANIMATION_OPTIONS = {
-  duration: 180,
-  easing: "ease-out",
-} as const;
 const EMPTY_THREAD_JUMP_LABELS = new Map<ThreadId, string>();
 const EMPTY_SHORTCUT_PARTS: readonly string[] = [];
 const ADD_PROJECT_SNAPSHOT_CATCH_UP_MAX_ATTEMPTS = 6;
@@ -3375,15 +3371,6 @@ export default function Sidebar() {
     dragInProgressRef.current = false;
   }, []);
 
-  const animatedProjectListsRef = useRef(new WeakSet<HTMLElement>());
-  const attachProjectListAutoAnimateRef = useCallback((node: HTMLElement | null) => {
-    if (!node || animatedProjectListsRef.current.has(node)) {
-      return;
-    }
-    autoAnimate(node, SIDEBAR_LIST_ANIMATION_OPTIONS);
-    animatedProjectListsRef.current.add(node);
-  }, []);
-
   const sidebarNavDescriptors = useMemo<Record<SidebarNavItemId, SidebarNavItemDescriptor>>(
     () => ({
       newThread: {
@@ -4699,24 +4686,19 @@ export default function Sidebar() {
           {renderProjectHoverCardPopup(project, allProjectThreadCount)}
         </PreviewCard>
 
-        <div
-          className={cn(
-            disclosureShellClassName(project.expanded),
-            SIDEBAR_NESTED_LIST_OFFSET_CLASS_NAME,
-          )}
+        <DisclosureRegion
+          open={project.expanded}
+          contentClassName={SIDEBAR_NESTED_LIST_OFFSET_CLASS_NAME}
         >
-          <div className={DISCLOSURE_INNER_CLASS}>
-            <SidebarMenuSub
-              className={cn(
-                "mx-0 my-0 w-full translate-x-0 border-l-0 px-0 py-0",
-                SIDEBAR_NESTED_LIST_GAP_CLASS_NAME,
-                disclosureContentClassName(project.expanded),
-              )}
-            >
-              {renderProjectThreadList(project, projectSidebarData)}
-            </SidebarMenuSub>
-          </div>
-        </div>
+          <SidebarMenuSub
+            className={cn(
+              "mx-0 my-0 w-full translate-x-0 border-l-0 px-0 py-0",
+              SIDEBAR_NESTED_LIST_GAP_CLASS_NAME,
+            )}
+          >
+            {renderProjectThreadList(project, projectSidebarData)}
+          </SidebarMenuSub>
+        </DisclosureRegion>
       </div>
     );
   }
@@ -6021,7 +6003,7 @@ export default function Sidebar() {
                       </SidebarMenu>
                     </DndContext>
                   ) : (
-                    <SidebarMenu ref={attachProjectListAutoAnimateRef} className="gap-3">
+                    <SidebarMenu className="gap-3">
                       {standardProjects.map((project) => (
                         <SidebarMenuItem key={project.id} className="rounded-md">
                           {renderProjectItem(project, null)}

@@ -9,14 +9,15 @@
 
 ### Improved
 
+- Interface animations now feel quicker and more consistent.
 - The sidebar title shows the Glade mark in the current theme color.
 - Settings now shows desktop update status and lets you check for, download, and install updates.
-
 - The chat sidebar stops at 1.5× its default width; manual panel resizing responds directly to dragging.
 - What's new groups release notes by change type and gives each section a subtle color; its preview card shows a general release message.
 
 ### Fixed
 
+- Project lists now animate consistently when expanding and collapsing in the sidebar.
 - Pull requests for a project now come from its primary GitHub repository instead of also showing upstream remotes.
 - Regular folders no longer trigger a repository-unavailable warning in Pull requests.
 - Existing Studio folders are preserved as normal projects so the app starts after Studio mode is removed.
