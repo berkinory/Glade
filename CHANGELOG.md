@@ -2,6 +2,10 @@
 
 ## 0.0.4 - Unreleased
 
+### Removed
+
+- Removed the auto-generated Environment recap and its background model requests.
+
 ### Improved
 
 - The chat sidebar stops at 1.5× its default width; manual panel resizing responds directly to dragging.

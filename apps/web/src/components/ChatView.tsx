@@ -55,7 +55,6 @@ import { useLocalStorage } from "~/hooks/useLocalStorage";
 import { useIsMobile } from "~/hooks/useMediaQuery";
 import { useRefreshProviderStatusesNow } from "~/hooks/useProviderStatusRefresh";
 import { useRepoDiffTotals } from "~/hooks/useRepoDiffTotals";
-import { useThreadRecap } from "~/hooks/useThreadRecap";
 import { SINGLE_CHAT_PANE_SCOPE_ID } from "~/lib/chatPaneScope";
 import { formatComposerMentionToken } from "~/lib/composerMentions";
 import {
@@ -2652,14 +2651,6 @@ export default function ChatView({
   const githubRepositoryQuery = useQuery(
     gitGithubRepositoryQueryOptions(gitBranchSourceCwd, environmentPanelVisible),
   );
-  const threadRecap = useThreadRecap({
-    thread: activeThread,
-    cwd: threadWorkspaceCwd,
-    enabled: environmentPanelVisible,
-    latestTurnSettled,
-    codexHomePath: settings.codexHomePath || null,
-    providerOptions: providerOptionsForDispatch ?? null,
-  });
   const hasRightDockPanes = useRightDockStore(
     (store) => selectRightDockState(threadId)(store).panes.length > 0,
   );
@@ -4894,7 +4885,6 @@ export default function ChatView({
     diffDisabledReason,
     diffTotals: repoDiffTotals,
     branchToolbar: branchToolbarProps,
-    recap: threadRecap,
     pinnedMessages,
     pinnedMessageTextById,
     notes: threadNotes,

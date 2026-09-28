@@ -1883,25 +1883,6 @@ const makeWsRpcHandlersLayer = () =>
             ),
             "Voice transcription failed",
           ),
-        [WS_METHODS.serverGenerateThreadRecap]: (input) =>
-          rpcEffect(
-            Effect.gen(function* () {
-              const settings = yield* serverSettings.getSettings;
-              const modelSelection =
-                input.textGenerationModelSelection ?? settings.textGenerationModelSelection;
-              return yield* textGeneration.generateThreadRecap({
-                cwd: input.cwd,
-                newMaterial: input.newMaterial,
-                ...(input.previousRecap ? { previousRecap: input.previousRecap } : {}),
-                ...(input.currentState ? { currentState: input.currentState } : {}),
-                ...(input.codexHomePath ? { codexHomePath: input.codexHomePath } : {}),
-                model: input.textGenerationModel ?? modelSelection.model,
-                modelSelection,
-                ...(input.providerOptions ? { providerOptions: input.providerOptions } : {}),
-              });
-            }),
-            "Failed to generate thread recap",
-          ),
         [WS_METHODS.serverGenerateAutomationIntent]: (input) =>
           rpcEffect(
             Effect.gen(function* () {

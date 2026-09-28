@@ -28,7 +28,6 @@ import {
   ENVIRONMENT_PANEL_SURFACE_CLASS_NAME,
 } from "~/components/chat/composerPickerStyles";
 import BranchToolbar, { type BranchToolbarProps } from "~/components/BranchToolbar";
-import ChatMarkdown from "~/components/ChatMarkdown";
 import { FolderClosed } from "~/components/FolderClosed";
 import GitActionsControl from "~/components/GitActionsControl";
 import { DiffStat } from "~/components/ui/diff-stat";
@@ -53,7 +52,6 @@ import { EnvironmentStudioOutputsSection } from "./EnvironmentStudioOutputsSecti
 import { EnvironmentNotesSection } from "./EnvironmentNotesSection";
 import { EnvironmentPinnedSection } from "./EnvironmentPinnedSection";
 import { EnvironmentProjectInstructionsSection } from "./EnvironmentProjectInstructionsSection";
-import { ENVIRONMENT_PANEL_RECAP_MARKDOWN_CLASS_NAME } from "./environmentPanelStyles";
 import { shouldShowStudioFolderRow } from "./EnvironmentPanel.logic";
 import {
   ENVIRONMENT_ROW_ICON_CLASS_NAME,
@@ -115,12 +113,6 @@ export interface EnvironmentPanelProps {
   diffTotals: RepoDiffTotals;
   /** Env/branch picker config — `variant` is supplied by the panel. */
   branchToolbar: Omit<BranchToolbarProps, "variant">;
-  /** Compact idle-generated chat memory for the top of the panel. */
-  recap?: {
-    readonly text: string | null;
-    readonly status: "idle" | "pending" | "error";
-    readonly updatedAt: string | null;
-  } | null;
   /**
    * Rail content rendered below the env card inside the overlay wrapper
    * (the ambient computer preview). The wrapper is a flex column, so this
@@ -167,36 +159,6 @@ export interface EnvironmentPanelProps {
   onRegisterCommitAndPushTrigger?: (trigger: (() => void) | null) => void;
 }
 
-function EnvironmentRecapSection({
-  recap,
-  markdownCwd,
-}: {
-  recap: NonNullable<EnvironmentPanelProps["recap"]>;
-  markdownCwd: string | undefined;
-}) {
-  return (
-    <EnvironmentCollapsibleSection label="Recap">
-      <div className="flex flex-col gap-1.5 pb-1.5">
-        {recap.text ? (
-          <div className="px-2">
-            <ChatMarkdown
-              text={recap.text}
-              cwd={markdownCwd}
-              isStreaming={false}
-              className={ENVIRONMENT_PANEL_RECAP_MARKDOWN_CLASS_NAME}
-            />
-          </div>
-        ) : (
-          <div className="flex flex-col gap-1.5 px-2" aria-hidden>
-            <div className="h-2.5 w-full rounded bg-[var(--color-background-button-secondary-hover)]/45 motion-safe:animate-pulse" />
-            <div className="h-2.5 w-4/5 rounded bg-[var(--color-background-button-secondary-hover)]/35 motion-safe:animate-pulse" />
-          </div>
-        )}
-      </div>
-    </EnvironmentCollapsibleSection>
-  );
-}
-
 export function EnvironmentPanel({
   open,
   variant,
@@ -217,7 +179,6 @@ export function EnvironmentPanel({
   diffDisabledReason: diffDisabledReasonProp,
   diffTotals,
   branchToolbar,
-  recap: recapProp,
   pinnedMessages,
   pinnedMessageTextById,
   notes,
@@ -243,7 +204,6 @@ export function EnvironmentPanel({
   const githubRepositories = githubRepositoriesProp ?? [];
   const studioFolderPath = studioFolderPathProp ?? null;
   const diffDisabledReason = diffDisabledReasonProp ?? null;
-  const recap = recapProp ?? null;
   const onOpenEditorView = onOpenEditorViewProp ?? null;
   const navigate = useNavigate();
   const { settings } = useAppSettings();
@@ -252,8 +212,6 @@ export function EnvironmentPanel({
   // Disable the Changes row only when the diff cannot be opened *and* is not already open
   // (so an open diff stays toggleable closed even when there are no pending changes).
   const changesDisabled = diffDisabledReason !== null && !diffOpen;
-  const showRecap = Boolean(recap?.text) || recap?.status === "pending";
-  const markdownCwd = openInTarget ?? gitCwd ?? undefined;
   const showStudioFolderRow = shouldShowStudioFolderRow({
     isStudioChat,
     studioFolderPath,
@@ -409,13 +367,6 @@ export function EnvironmentPanel({
               }
             : {})}
         />
-      ) : null}
-
-      {settings.showEnvironmentRecap && showRecap && recap ? (
-        <>
-          <EnvironmentSectionDivider />
-          <EnvironmentRecapSection recap={recap} markdownCwd={markdownCwd} />
-        </>
       ) : null}
 
       {settings.showEnvironmentPinned && pinnedMessages.length > 0 ? (

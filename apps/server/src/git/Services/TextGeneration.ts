@@ -114,24 +114,6 @@ export interface ThreadTitleGenerationResult {
   title: string;
 }
 
-export interface ThreadRecapGenerationInput {
-  cwd: string;
-  previousRecap?: string | undefined;
-  newMaterial: string;
-  currentState?: string | undefined;
-  codexHomePath?: string;
-  /** Model to use for generation. Uses the Git writing default if not specified. */
-  model?: string;
-  /** Optional provider-aware selection for providers that need more than a raw model slug. */
-  modelSelection?: ModelSelection;
-  /** Optional provider startup overrides, such as custom binary paths or server URLs. */
-  providerOptions?: ProviderStartOptions;
-}
-
-export interface ThreadRecapGenerationResult {
-  recap: string;
-}
-
 export interface AutomationIntentGenerationInput {
   cwd: string;
   message: string;
@@ -177,7 +159,6 @@ export type TextGenerationOperation =
   | "generateDiffSummary"
   | "generateBranchName"
   | "generateThreadTitle"
-  | "generateThreadRecap"
   | "generateAutomationIntent"
   | "evaluateAutomationCompletion";
 
@@ -219,13 +200,6 @@ export interface TextGenerationShape {
   readonly generateThreadTitle: (
     input: ThreadTitleGenerationInput,
   ) => Effect.Effect<ThreadTitleGenerationResult, TextGenerationError>;
-
-  /**
-   * Generate a compact chat recap for the UI side panel.
-   */
-  readonly generateThreadRecap: (
-    input: ThreadRecapGenerationInput,
-  ) => Effect.Effect<ThreadRecapGenerationResult, TextGenerationError>;
 
   /**
    * Convert a composer automation invocation into a structured creation intent.

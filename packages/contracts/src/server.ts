@@ -386,25 +386,6 @@ export const ServerVoiceTranscriptionResult = Schema.Struct({
 });
 export type ServerVoiceTranscriptionResult = typeof ServerVoiceTranscriptionResult.Type;
 
-// Compact, stateless recap generation. The caller owns debounce/cache policy so
-// this endpoint never participates in the hot transcript projection path.
-export const ServerGenerateThreadRecapInput = Schema.Struct({
-  cwd: TrimmedNonEmptyString,
-  previousRecap: Schema.optional(Schema.String.check(Schema.isMaxLength(1_000))),
-  newMaterial: Schema.String.check(Schema.isMaxLength(16_000)),
-  currentState: Schema.optional(Schema.String.check(Schema.isMaxLength(4_000))),
-  codexHomePath: Schema.optional(TrimmedNonEmptyString),
-  providerOptions: Schema.optional(ProviderStartOptions),
-  textGenerationModel: Schema.optional(TrimmedNonEmptyString),
-  textGenerationModelSelection: Schema.optional(ModelSelection),
-});
-export type ServerGenerateThreadRecapInput = typeof ServerGenerateThreadRecapInput.Type;
-
-export const ServerGenerateThreadRecapResult = Schema.Struct({
-  recap: TrimmedNonEmptyString,
-});
-export type ServerGenerateThreadRecapResult = typeof ServerGenerateThreadRecapResult.Type;
-
 // Schema-validated automation intent extraction for composer-triggered creation.
 // The UI still owns confirmation/error copy; this result only describes what the model understood.
 export const ServerAutomationIntentMissingField = Schema.Literals([

@@ -23,11 +23,9 @@ import {
   buildCommitMessagePrompt,
   buildDiffSummaryPrompt,
   buildPrContentPrompt,
-  buildThreadRecapPrompt,
   buildThreadTitlePrompt,
   sanitizeCommitSubject,
   sanitizeDiffSummary,
-  sanitizeThreadRecap,
   sanitizePrTitle,
 } from "../textGenerationShared.ts";
 import {
@@ -279,38 +277,6 @@ const makeCursorTextGeneration = Effect.gen(function* () {
     };
   });
 
-  const generateThreadRecap: TextGenerationShape["generateThreadRecap"] = Effect.fn(
-    "CursorTextGeneration.generateThreadRecap",
-  )(function* (input) {
-    const modelSelection = resolveCursorModelSelection(input);
-    if (!modelSelection) {
-      return yield* new TextGenerationError({
-        operation: "generateThreadRecap",
-        detail: "Invalid Cursor model selection.",
-      });
-    }
-
-    const { prompt, outputSchemaJson, rawTextFallback } = buildThreadRecapPrompt({
-      ...(input.previousRecap ? { previousRecap: input.previousRecap } : {}),
-      newMaterial: input.newMaterial,
-      ...(input.currentState ? { currentState: input.currentState } : {}),
-    });
-    const generated = yield* runAcpTextGeneration(cursorAcpConfig, {
-      childProcessSpawner,
-      operation: "generateThreadRecap",
-      cwd: input.cwd,
-      prompt,
-      outputSchemaJson,
-      rawTextFallback,
-      modelSelection,
-      providerOptions: input.providerOptions,
-    });
-
-    return {
-      recap: sanitizeThreadRecap(generated.recap, input.previousRecap),
-    };
-  });
-
   const generateAutomationIntent: TextGenerationShape["generateAutomationIntent"] = Effect.fn(
     "CursorTextGeneration.generateAutomationIntent",
   )(function* (input) {
@@ -366,7 +332,6 @@ const makeCursorTextGeneration = Effect.gen(function* () {
     generateDiffSummary,
     generateBranchName,
     generateThreadTitle,
-    generateThreadRecap,
     generateAutomationIntent,
     evaluateAutomationCompletion,
   } satisfies TextGenerationShape;

@@ -719,10 +719,6 @@ export function createWsNativeApi(): NativeApi {
       getDiagnostics: () => transport.request(WS_METHODS.serverGetDiagnostics),
       readThreadDiagnostics: (input) =>
         transport.request(WS_METHODS.serverReadThreadDiagnostics, input),
-      generateThreadRecap: (input) =>
-        transport.request(WS_METHODS.serverGenerateThreadRecap, input, {
-          timeoutMs: null,
-        }),
       generateAutomationIntent: (input) =>
         transport.request(WS_METHODS.serverGenerateAutomationIntent, input, {
           timeoutMs: null,

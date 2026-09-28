@@ -106,8 +106,6 @@ const makeProviderTextGeneration = Effect.gen(function* () {
       call("generateBranchName", input, (impl, value) => impl.generateBranchName(value)),
     generateThreadTitle: (input: TextGen.ThreadTitleGenerationInput) =>
       call("generateThreadTitle", input, (impl, value) => impl.generateThreadTitle(value)),
-    generateThreadRecap: (input: TextGen.ThreadRecapGenerationInput) =>
-      call("generateThreadRecap", input, (impl, value) => impl.generateThreadRecap(value)),
     generateAutomationIntent: (input: TextGen.AutomationIntentGenerationInput) =>
       call("generateAutomationIntent", input, (impl, value) =>
         impl.generateAutomationIntent(value),

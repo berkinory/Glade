@@ -1,5 +1,5 @@
 // FILE: OpenCodeTextGeneration.ts
-// Purpose: Runs OpenCode-compatible one-shot text generation for titles, branches, recaps, and release text.
+// Purpose: Runs OpenCode-compatible one-shot text generation for titles, branches, and release text.
 // Layer: Server git/text-generation adapter
 // Depends on: OpenCode SDK runtime, prompt builders, attachment projection, and server config.
 
@@ -42,13 +42,11 @@ import {
   buildCommitMessagePrompt,
   buildDiffSummaryPrompt,
   buildPrContentPrompt,
-  buildThreadRecapPrompt,
   buildThreadTitlePrompt,
   decodeStructuredTextGenerationOutput,
   type RawTextFallback,
   sanitizeCommitSubject,
   sanitizeDiffSummary,
-  sanitizeThreadRecap,
   sanitizePrTitle,
 } from "../textGenerationShared.ts";
 
@@ -631,37 +629,6 @@ const makeOpenCodeCompatibleTextGeneration = (config: OpenCodeCompatibleTextGene
       };
     });
 
-    const generateThreadRecap: TextGenerationShape["generateThreadRecap"] = Effect.fn(
-      `${config.serviceName}.generateThreadRecap`,
-    )(function* (input) {
-      const modelSelection = resolveOpenCodeCompatibleModelSelection(config, input);
-      if (!modelSelection) {
-        return yield* new TextGenerationError({
-          operation: "generateThreadRecap",
-          detail: `Invalid ${config.displayName} model selection.`,
-        });
-      }
-
-      const { prompt, outputSchemaJson, rawTextFallback } = buildThreadRecapPrompt({
-        ...(input.previousRecap ? { previousRecap: input.previousRecap } : {}),
-        newMaterial: input.newMaterial,
-        ...(input.currentState ? { currentState: input.currentState } : {}),
-      });
-      const generated = yield* runOpenCodeJson({
-        operation: "generateThreadRecap",
-        cwd: input.cwd,
-        prompt,
-        outputSchemaJson,
-        rawTextFallback,
-        modelSelection,
-        ...(input.providerOptions ? { providerOptions: input.providerOptions } : {}),
-      });
-
-      return {
-        recap: sanitizeThreadRecap(generated.recap, input.previousRecap),
-      };
-    });
-
     const generateAutomationIntent: TextGenerationShape["generateAutomationIntent"] = Effect.fn(
       `${config.serviceName}.generateAutomationIntent`,
     )(function* (input) {
@@ -715,7 +682,6 @@ const makeOpenCodeCompatibleTextGeneration = (config: OpenCodeCompatibleTextGene
       generateDiffSummary,
       generateBranchName,
       generateThreadTitle,
-      generateThreadRecap,
       generateAutomationIntent,
       evaluateAutomationCompletion,
     } satisfies TextGenerationShape;

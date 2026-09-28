@@ -53,7 +53,6 @@ const EXPENSIVE_READ_METHODS = new Set<string>([
   WS_METHODS.serverListProviderUsage,
   WS_METHODS.serverGetDiagnostics,
   WS_METHODS.serverPrewarmVoice,
-  WS_METHODS.serverGenerateThreadRecap,
   WS_METHODS.serverGenerateAutomationIntent,
   WS_METHODS.serverTranscribeVoice,
   WS_METHODS.statsGetProfileStats,

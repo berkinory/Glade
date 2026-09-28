@@ -628,14 +628,6 @@ function SettingsRouteView() {
 
         <SettingsSection title="Context and notes">
           {renderBooleanSettingRow({
-            settingKey: "showEnvironmentRecap",
-            title: "Recap",
-            description: "Show the auto-generated chat recap in the Environment panel.",
-            resetLabel: "recap section",
-            ariaLabel: "Show the Recap section in the Environment panel",
-          })}
-
-          {renderBooleanSettingRow({
             settingKey: "showEnvironmentPinned",
             title: "Pinned messages",
             description: "Show the pinned-messages checklist in the Environment panel.",

@@ -25,7 +25,6 @@ import {
   type DiffSummaryGenerationResult,
   type PrContentGenerationResult,
   type ThreadTitleGenerationResult,
-  type ThreadRecapGenerationResult,
   type TextGenerationOperation,
   type TextGenerationShape,
   TextGeneration,
@@ -37,11 +36,9 @@ import {
   buildCommitMessagePrompt,
   buildDiffSummaryPrompt,
   buildPrContentPrompt,
-  buildThreadRecapPrompt,
   buildThreadTitlePrompt,
   sanitizeCommitSubject,
   sanitizeDiffSummary,
-  sanitizeThreadRecap,
   sanitizePrTitle,
   toJsonSchemaObject,
 } from "../textGenerationShared.ts";
@@ -597,32 +594,6 @@ const makeCodexTextGeneration = Effect.gen(function* () {
     });
   };
 
-  const generateThreadRecap: TextGenerationShape["generateThreadRecap"] = (input) => {
-    const { prompt, outputSchemaJson } = buildThreadRecapPrompt({
-      ...(input.previousRecap ? { previousRecap: input.previousRecap } : {}),
-      newMaterial: input.newMaterial,
-      ...(input.currentState ? { currentState: input.currentState } : {}),
-    });
-
-    return runCodexJson({
-      operation: "generateThreadRecap",
-      cwd: input.cwd,
-      prompt,
-      outputSchemaJson,
-      ...(input.codexHomePath ? { codexHomePath: input.codexHomePath } : {}),
-      ...(input.model ? { model: input.model } : {}),
-      ...(input.modelSelection ? { modelSelection: input.modelSelection } : {}),
-      ...(input.providerOptions ? { providerOptions: input.providerOptions } : {}),
-    }).pipe(
-      Effect.map(
-        (generated) =>
-          ({
-            recap: sanitizeThreadRecap(generated.recap, input.previousRecap),
-          }) satisfies ThreadRecapGenerationResult,
-      ),
-    );
-  };
-
   const generateAutomationIntent: TextGenerationShape["generateAutomationIntent"] = (input) => {
     const { prompt, outputSchemaJson } = buildAutomationIntentPrompt({
       message: input.message,
@@ -665,7 +636,6 @@ const makeCodexTextGeneration = Effect.gen(function* () {
     generateDiffSummary,
     generateBranchName,
     generateThreadTitle,
-    generateThreadRecap,
     generateAutomationIntent,
     evaluateAutomationCompletion,
   } satisfies TextGenerationShape;

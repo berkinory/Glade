@@ -152,12 +152,6 @@ export const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
       "Show the Editor section in-app editor view and Open in editor picker in the chat Environment panel.",
   },
   {
-    id: "general:environment-recap",
-    section: "general",
-    title: "Recap",
-    keywords: "Show the auto-generated chat recap in the Environment panel.",
-  },
-  {
     id: "general:environment-pinned",
     section: "general",
     title: "Pinned messages",

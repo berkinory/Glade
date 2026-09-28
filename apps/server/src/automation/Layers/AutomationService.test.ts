@@ -487,7 +487,6 @@ const textGeneration = {
   generateDiffSummary: () => Effect.die("unused"),
   generateBranchName: () => Effect.die("unused"),
   generateThreadTitle: () => Effect.die("unused"),
-  generateThreadRecap: () => Effect.die("unused"),
   generateAutomationIntent: () => Effect.die("unused"),
   evaluateAutomationCompletion: (input: CompletionEvaluationInputForTest) => {
     completionEvaluationInputs.push(input);

@@ -18,7 +18,6 @@ import {
   type AutomationCompletionEvaluationResult,
   type TextGenerationShape,
   TextGeneration,
-  type ThreadRecapGenerationInput,
 } from "../Services/TextGeneration.ts";
 import { GitCoreLive } from "./GitCore.ts";
 import { GitCore } from "../Services/GitCore.ts";
@@ -76,9 +75,6 @@ interface FakeGitTextGeneration {
     model?: string;
     modelSelection?: ModelSelection;
   }) => Effect.Effect<{ title: string }, TextGenerationError>;
-  generateThreadRecap: (
-    input: ThreadRecapGenerationInput,
-  ) => Effect.Effect<{ recap: string }, TextGenerationError>;
   generateAutomationIntent: (
     input: AutomationIntentGenerationInput,
   ) => Effect.Effect<AutomationIntentGenerationResult, TextGenerationError>;
@@ -171,10 +167,6 @@ function createTextGeneration(overrides: Partial<FakeGitTextGeneration> = {}): T
       Effect.succeed({
         title: "Update workflow",
       }),
-    generateThreadRecap: () =>
-      Effect.succeed({
-        recap: "Update workflow recap",
-      }),
     generateAutomationIntent: () =>
       Effect.succeed({
         isAutomation: true,
@@ -249,17 +241,6 @@ function createTextGeneration(overrides: Partial<FakeGitTextGeneration> = {}): T
           (cause) =>
             new TextGenerationError({
               operation: "generateThreadTitle",
-              detail: "fake text generation failed",
-              ...(cause !== undefined ? { cause } : {}),
-            }),
-        ),
-      ),
-    generateThreadRecap: (input) =>
-      implementation.generateThreadRecap(input).pipe(
-        Effect.mapError(
-          (cause) =>
-            new TextGenerationError({
-              operation: "generateThreadRecap",
               detail: "fake text generation failed",
               ...(cause !== undefined ? { cause } : {}),
             }),
