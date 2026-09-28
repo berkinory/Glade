@@ -26,7 +26,6 @@ export function ComposerModelMenuTrigger(props: {
   provider: ProviderKind;
   modelLabel: string;
   statusLabel: string | null;
-  contextWindowLabel?: string | null | undefined;
   showsFastBadge: boolean;
   hideModelLabel?: boolean | undefined;
   hideStatusLabel?: boolean | undefined;
@@ -47,7 +46,6 @@ export function ComposerModelMenuTrigger(props: {
   const liveLabel = {
     modelLabel: props.modelLabel,
     statusLabel: props.statusLabel,
-    contextWindowLabel: props.contextWindowLabel,
     showsFastBadge: props.showsFastBadge,
   };
   const [frozenLabel, setFrozenLabel] = useState<typeof liveLabel | null>(null);
@@ -61,7 +59,6 @@ export function ComposerModelMenuTrigger(props: {
   const hiddenTriggerTitle = [
     props.hideModelLabel ? props.modelLabel : null,
     props.hideStatusLabel ? props.statusLabel : null,
-    props.hideStatusLabel ? props.contextWindowLabel : null,
   ]
     .filter((part): part is string => typeof part === "string" && part.length > 0)
     .join(" · ");
@@ -75,7 +72,11 @@ export function ComposerModelMenuTrigger(props: {
         "min-w-0 shrink-0 justify-start gap-1.5 whitespace-nowrap px-2 sm:px-2.5 [&_svg]:mx-0",
         COMPOSER_PICKER_TRIGGER_TEXT_CLASS_NAME,
       )}
-      aria-label="Change model and reasoning"
+      aria-label={
+        props.statusLabel
+          ? `Change model and reasoning, currently ${props.statusLabel}`
+          : "Change model and reasoning"
+      }
       {...(hiddenTriggerTitle.length > 0 ? { title: hiddenTriggerTitle } : {})}
     />
   );
@@ -120,21 +121,10 @@ export function ComposerModelMenuTrigger(props: {
                 <span className="sr-only">{label.statusLabel}</span>
               </>
             ) : (
-              <span className={cn("shrink-0", COMPOSER_MUTED_ACCENT_TEXT_CLASS_NAME)}>
+              <span className={cn("shrink-0 text-ui-xs", COMPOSER_MUTED_ACCENT_TEXT_CLASS_NAME)}>
                 {label.statusLabel}
               </span>
             )
-          ) : null}
-          {label.contextWindowLabel ? (
-            <span
-              className={
-                props.hideStatusLabel
-                  ? "sr-only"
-                  : cn("shrink-0", COMPOSER_MUTED_ACCENT_TEXT_CLASS_NAME)
-              }
-            >
-              {label.contextWindowLabel}
-            </span>
           ) : null}
         </span>
         {showsPlaceholder ? (
@@ -163,11 +153,8 @@ export function ComposerModelMenuTrigger(props: {
       {!props.isMenuOpen ? (
         <TooltipPopup side="top" sideOffset={6} variant="picker">
           <span className="inline-flex items-center gap-2 px-1 py-0.5">
-            <span>Change model</span>
-            <ShortcutKbd
-              shortcutLabel={props.shortcutLabel}
-              className="h-4 min-w-4 px-1 text-ui-2xs text-muted-foreground"
-            />
+            <span>Model selector</span>
+            <ShortcutKbd shortcutLabel={props.shortcutLabel} />
           </span>
         </TooltipPopup>
       ) : null}

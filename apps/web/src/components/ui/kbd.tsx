@@ -2,6 +2,8 @@ import type * as React from "react";
 
 import { cn, isMacNavigatorPlatform } from "~/lib/utils";
 
+export const SHORTCUT_KBD_CLASS_NAME = "h-4 min-w-4 shrink-0 px-1 text-ui-2xs";
+
 function Kbd({ className, ...props }: React.ComponentProps<"kbd">) {
   return (
     <kbd
@@ -27,7 +29,11 @@ function KbdGroup({ className, ...props }: React.ComponentProps<"kbd">) {
 
 /** The "submit this dialog" chord, spelled for the host platform. */
 function SubmitShortcutKbd({ className }: { className?: string }) {
-  return <Kbd className={className}>{isMacNavigatorPlatform() ? "⌘↵" : "Ctrl ↵"}</Kbd>;
+  return (
+    <Kbd className={cn(SHORTCUT_KBD_CLASS_NAME, className)}>
+      {isMacNavigatorPlatform() ? "⌘↵" : "Ctrl ↵"}
+    </Kbd>
+  );
 }
 
 export { Kbd, KbdGroup, SubmitShortcutKbd };

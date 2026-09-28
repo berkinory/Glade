@@ -43,6 +43,7 @@ import {
   SidebarContextMenuIcon,
 } from "./sidebarContextMenuStyles";
 import { Menu, MenuGroup, MenuItem } from "./ui/menu";
+import { ShortcutKbd } from "./ui/shortcut-kbd";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 
 export type SpaceActivityTone = "attention" | "running" | "completed";
@@ -222,7 +223,7 @@ function SpaceTab(props: {
         {props.name}
         {detail ? <span className="text-muted-foreground/70"> · {detail}</span> : null}
         {props.shortcutLabel ? (
-          <span className="text-muted-foreground/70"> · {props.shortcutLabel}</span>
+          <ShortcutKbd shortcutLabel={props.shortcutLabel} className="ms-1" />
         ) : null}
         {/* Renaming and reordering are pointer gestures with no visible affordance of their
             own, so the tooltip is the only place they can be discovered. It is a deliberate

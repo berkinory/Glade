@@ -275,7 +275,7 @@ export function KeyboardShortcutsSettingsPanel() {
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
-                      <ShortcutKbd shortcutLabel={entry.shortcutLabel} groupClassName="shrink-0" />
+                      <ShortcutKbd shortcutLabel={entry.shortcutLabel} />
                       {command ? (
                         <Button size="xs" variant="outline" onClick={() => beginEditing(entry)}>
                           Edit

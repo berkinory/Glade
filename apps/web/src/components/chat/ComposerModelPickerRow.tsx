@@ -110,7 +110,6 @@ export function ComposerModelPickerRow(props: {
       {props.shortcutHint ? (
         <ShortcutKbd
           shortcutLabel={props.shortcutHint}
-          compact
           className="shrink-0 text-muted-foreground"
         />
       ) : null}

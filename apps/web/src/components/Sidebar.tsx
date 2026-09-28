@@ -3881,7 +3881,6 @@ export default function Sidebar() {
         {input.threadJumpLabel ? (
           <ShortcutKbd
             shortcutLabel={input.threadJumpLabel}
-            compact
             className={THREAD_ROW_META_CHIP_HOVER_FADE_CLASS_NAME}
           />
         ) : null}

@@ -558,11 +558,8 @@ export const ProviderModelPicker = function ProviderModelPicker(props: ProviderM
           {!isMenuOpen ? (
             <TooltipPopup side="top" sideOffset={6} variant="picker">
               <span className="inline-flex items-center gap-2 px-1 py-0.5">
-                <span>Change model</span>
-                <ShortcutKbd
-                  shortcutLabel={props.shortcutLabel}
-                  className="h-4 min-w-4 px-1 text-ui-2xs text-muted-foreground"
-                />
+                <span>Model selector</span>
+                <ShortcutKbd shortcutLabel={props.shortcutLabel} />
               </span>
             </TooltipPopup>
           ) : null}

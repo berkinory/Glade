@@ -155,7 +155,7 @@ function ShortcutSection({
             <span className="min-w-0 truncate text-ui leading-snug text-foreground">
               {entry.label}
             </span>
-            <ShortcutKbd shortcutLabel={entry.shortcutLabel} groupClassName="shrink-0" />
+            <ShortcutKbd shortcutLabel={entry.shortcutLabel} />
           </li>
         ))}
       </ul>

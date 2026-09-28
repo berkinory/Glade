@@ -17,7 +17,7 @@ import { cn } from "../lib/utils";
 import type { RecentViewDisplayEntry } from "../recentViews.logic";
 import { ProviderIcon } from "./ProviderIcon";
 import TerminalIdentityIcon from "./terminal/TerminalIdentityIcon";
-import { Kbd } from "./ui/kbd";
+import { ShortcutKbd } from "./ui/shortcut-kbd";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 
 // Keycap hints rendered in the switcher footer. These mirror the real bindings:
@@ -159,9 +159,7 @@ export function RecentViewSwitcher(props: {
                 <TooltipTrigger
                   render={
                     <span className="pointer-events-auto inline-flex cursor-default">
-                      <Kbd className="h-[17px] rounded-md px-1.5 text-ui-xs text-muted-foreground/80">
-                        {footerKeyLabel(shortcut)}
-                      </Kbd>
+                      <ShortcutKbd shortcutLabel={footerKeyLabel(shortcut)} />
                     </span>
                   }
                 />

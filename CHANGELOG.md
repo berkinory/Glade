@@ -1,5 +1,12 @@
 # Glade Changelog
 
+## Unreleased
+
+### Improved
+
+- The composer model button shows reasoning in smaller text and leaves context limits in the model details.
+- Shortcut hints use the same compact keycap throughout tooltips, menus, and the sidebar.
+
 ## 0.0.4 - 2026-09-28
 
 ### Removed
