@@ -40,12 +40,15 @@ export type RestoreRouteResolver = (input: RestoreRouteResolverInput) => LastThr
 export function RestoreOrCreateChatRoute({
   resolveRestoreRoute,
   createFreshChat,
+  recoverRememberedRoute = true,
 }: {
   // Surface-specific policy for picking the thread route to restore (e.g. the last-visited route
   // for home chats, the latest Studio thread or draft for Studio). The remembered-route recovery
   // below still keys off the total thread count, which is shared across surfaces.
   readonly resolveRestoreRoute: RestoreRouteResolver;
   readonly createFreshChat: () => Promise<StartContainerChatResult>;
+  /** Only cold-start restoration needs to wait for a missing remembered thread. */
+  readonly recoverRememberedRoute?: boolean;
 }) {
   const navigate = useNavigate();
   const threadsHydrated = useStore((store) => store.threadsHydrated);
@@ -101,6 +104,7 @@ export function RestoreOrCreateChatRoute({
       setErrorMessage(null);
       const lastThreadRoute = readSidebarUiState().lastThreadRoute;
       if (
+        recoverRememberedRoute &&
         shouldStartRememberedRouteRecovery({
           lastThreadRoute,
           availableThreadCount: threadIds.length,
@@ -120,6 +124,7 @@ export function RestoreOrCreateChatRoute({
       }
 
       if (
+        recoverRememberedRoute &&
         shouldHoldRememberedRouteFallback({
           lastThreadRoute,
           availableThreadCount: threadIds.length,
@@ -170,6 +175,7 @@ export function RestoreOrCreateChatRoute({
     createFreshChat,
     emptyRestoreRecoveryState,
     navigate,
+    recoverRememberedRoute,
     resolveRestoreRoute,
     splitViewIds,
     splitViewsHydrated,

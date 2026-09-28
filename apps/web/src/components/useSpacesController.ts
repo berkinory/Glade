@@ -11,6 +11,8 @@ import { useNavigate } from "@tanstack/react-router";
 import { startTransition, useCallback, useEffect, useMemo, useState } from "react";
 
 import type { SidebarThreadSortOrder } from "../appSettings";
+import { useComposerDraftStore } from "../composerDraftStore";
+import { isHomeChatContainerProject } from "../lib/chatProjects";
 import { spaceKey, toSpaceIconName } from "../lib/spaceGrouping";
 import { resolveSpaceSelectionTarget } from "../lib/spaceNavigation";
 import {
@@ -227,6 +229,18 @@ export function useSpacesController(input: {
         return;
       }
 
+      // An unsent Home draft is shared by empty Spaces. Keep its mounted chat surface
+      // when only the sidebar selection changes; routing through "/" would tear it
+      // down and run the draft restoration flow for no change in chat context.
+      if (
+        routeThreadId &&
+        useComposerDraftStore.getState().getDraftThread(routeThreadId)?.entryPoint === "chat" &&
+        activeRouteProject &&
+        isHomeChatContainerProject(activeRouteProject, workspacePaths)
+      ) {
+        return;
+      }
+
       // An empty Space still has to be entered. The landing has to say *which* Space it is
       // entering: a bare "/" restores the last remembered thread route, which belongs to the
       // Space being left, and useRouteSpaceSync would then adopt that thread's Space and undo
@@ -238,6 +252,7 @@ export function useSpacesController(input: {
     },
     [
       activateThreadFromSidebarIntent,
+      activeRouteProject,
       activeSpaceId,
       getLastSpaceProjectId,
       getLastSpaceThreadId,
@@ -245,6 +260,7 @@ export function useSpacesController(input: {
       ordinarySpaceProjects,
       projectById,
       rememberDepartingSpaceContext,
+      routeThreadId,
       selectSpaceForNavigation,
       sidebarThreadSortOrder,
       sidebarThreads,

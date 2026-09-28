@@ -94,6 +94,7 @@ function ChatIndexRouteView() {
     <RestoreOrCreateChatRoute
       resolveRestoreRoute={resolveRestoreRoute}
       createFreshChat={createFreshChat}
+      recoverRememberedRoute={landingSpaceKey === undefined}
     />
   );
 }
