@@ -10,7 +10,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { SidebarHeaderNavigationControls } from "~/components/SidebarHeaderNavigationControls";
 import { Button } from "~/components/ui/button";
-import { Kbd, KbdGroup } from "~/components/ui/kbd";
+import { ShortcutKbd } from "~/components/ui/shortcut-kbd";
 import { RouteInsetSurface } from "../RouteInsetSurface";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import {
@@ -19,7 +19,6 @@ import {
 } from "~/hooks/useDesktopTopBarGutter";
 import { useNowMs } from "~/hooks/useNowMs";
 import { useThreadPullRequests } from "~/hooks/useThreadPullRequests";
-import { splitShortcutLabel } from "~/keybindings";
 import { ArrowLeftIcon, PlusIcon } from "~/lib/icons";
 import { cn, isMacNavigatorPlatform } from "~/lib/utils";
 
@@ -28,7 +27,6 @@ import { cn, isMacNavigatorPlatform } from "~/lib/utils";
 // "create new X" family. Matched on event.code so it survives Alt remapping the
 // produced character on some layouts.
 const NEW_TASK_SHORTCUT_LABEL = isMacNavigatorPlatform() ? "⌥⌘T" : "Ctrl+Alt+T";
-const NEW_TASK_SHORTCUT_PARTS = splitShortcutLabel(NEW_TASK_SHORTCUT_LABEL);
 
 function isNewTaskShortcut(event: KeyboardEvent): boolean {
   if (event.code !== "KeyT" || event.repeat || event.shiftKey || !event.altKey) {
@@ -218,11 +216,7 @@ export default function KanbanView({ projectId }: { projectId: string | null }) 
                 <TooltipPopup side="bottom">
                   <span className="flex items-center gap-2">
                     New task
-                    <KbdGroup>
-                      {NEW_TASK_SHORTCUT_PARTS.map((part) => (
-                        <Kbd key={part}>{part}</Kbd>
-                      ))}
-                    </KbdGroup>
+                    <ShortcutKbd shortcutLabel={NEW_TASK_SHORTCUT_LABEL} />
                   </span>
                 </TooltipPopup>
               </Tooltip>
