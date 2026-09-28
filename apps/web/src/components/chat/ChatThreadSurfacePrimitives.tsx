@@ -36,6 +36,7 @@ function DiffLoadingFallback(props: { mode: DiffPanelMode; hideHeader?: boolean 
 
 export function LazyDiffPanel(props: {
   mode: DiffPanelMode;
+  initialViewKind?: "repo" | "turn";
   threadId?: ThreadId | null;
   panelState?: Pick<SplitViewPanePanelState, "panel" | "diffTurnId" | "diffFilePath">;
   onUpdatePanelState?: (
@@ -62,6 +63,7 @@ export function LazyDiffPanel(props: {
       >
         <DiffPanel
           mode={props.mode}
+          {...(props.initialViewKind ? { initialViewKind: props.initialViewKind } : {})}
           {...(props.threadId !== undefined ? { threadId: props.threadId } : {})}
           {...(props.panelState ? { panelState: props.panelState } : {})}
           {...(props.onUpdatePanelState ? { onUpdatePanelState: props.onUpdatePanelState } : {})}

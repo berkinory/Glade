@@ -56,8 +56,8 @@ Invalid rules are ignored. Invalid config files are ignored. Warnings are logged
 - `terminal.close`: close/kill the focused terminal (in focused terminal context by default)
 - `chat.new`: create a new chat thread preserving the active thread's branch/worktree state
 - `chat.newLocal`: create a new chat thread for the active project in a new environment (local/worktree determined by app settings (default `local`))
-- `diff.change.next`: scroll the diff panel to the next changed file (only while the diff panel is open)
-- `diff.change.previous`: scroll the diff panel to the previous changed file (only while the diff panel is open)
+- `diff.change.next`: scroll Source control's Review view to the next changed file
+- `diff.change.previous`: scroll Source control's Review view to the previous changed file
 - `composer.focus.toggle`: focus or blur the chat prompt composer
 - `thread.copyId`: copy the active thread's ID to the clipboard
 - `editor.openFavorite`: open current project/worktree in the last-used editor

@@ -43,6 +43,7 @@ interface RightDockStore {
     patch: Partial<
       Pick<
         RightDockPane,
+        | "sourceControlView"
         | "diffTurnId"
         | "diffFilePath"
         | "filePath"

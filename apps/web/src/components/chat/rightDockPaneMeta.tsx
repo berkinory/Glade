@@ -9,7 +9,6 @@ import { basenameOfPath } from "~/file-icons";
 import type { LucideIcon } from "~/lib/icons";
 import {
   DeviceMobileIcon,
-  DiffIcon,
   FileIcon,
   FoldersIcon,
   GitCommitIcon,
@@ -38,11 +37,10 @@ export const RIGHT_DOCK_PANE_META: Record<RightDockPaneKind, RightDockPaneMeta> 
   // in later, but the only backend today is the iOS Simulator, so that is what
   // the label says.
   device: { label: "iOS Simulator", Icon: DeviceMobileIcon },
-  diff: { label: "Diff", Icon: DiffIcon },
   explorer: { label: "Explorer", Icon: FoldersIcon },
   file: { label: "File", Icon: FileIcon },
   terminal: { label: "Terminal", Icon: TerminalIcon },
-  git: { label: "Git", Icon: GitCommitIcon },
+  git: { label: "Source control", Icon: GitCommitIcon },
   pullRequest: { label: "Pull request", Icon: GitPullRequestIcon },
 };
 
@@ -60,21 +58,18 @@ export function getRightDockPaneMeta(kind: RightDockPaneKind): RightDockPaneMeta
   return RIGHT_DOCK_PANE_META[kind] ?? FALLBACK_RIGHT_DOCK_PANE_META;
 }
 
-// Empty-dock launchers prioritize the everyday workspace tools. Review only
-// appears when the selected diff scope contains changes, Git is gated by
+// Empty-dock launchers prioritize the everyday workspace tools. Source control is gated by
 // repository discovery, and Explorer needs a concrete workspace. Context-only
 // file and pull-request panes continue to open from their owning surfaces.
 const RIGHT_DOCK_LAUNCHER_ORDER: readonly RightDockPaneKind[] = [
-  "diff",
+  "git",
   "terminal",
   "browser",
   "explorer",
   "device",
-  "git",
 ];
 
 const RIGHT_DOCK_LAUNCHER_LABELS: Partial<Record<RightDockPaneKind, string>> = {
-  diff: "Review",
   explorer: "Files",
   git: "Source control",
 };
@@ -82,7 +77,6 @@ const RIGHT_DOCK_LAUNCHER_LABELS: Partial<Record<RightDockPaneKind, string>> = {
 export function resolveRightDockLauncherItems(input: {
   hasWorkspace: boolean;
   hasGitRepository: boolean;
-  hasReview: boolean;
   /**
    * Simulators need a macOS server with Xcode. Off macOS the entry is hidden
    * outright rather than shown disabled: there is nothing the user could do
@@ -91,9 +85,6 @@ export function resolveRightDockLauncherItems(input: {
   hasDeviceSupport?: boolean;
 }): readonly RightDockLauncherItem[] {
   return RIGHT_DOCK_LAUNCHER_ORDER.flatMap((kind) => {
-    if (kind === "diff" && !input.hasReview) {
-      return [];
-    }
     if (kind === "git" && !input.hasGitRepository) {
       return [];
     }

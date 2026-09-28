@@ -12,7 +12,6 @@ import { isPlainObject, sanitizeStringKeyedRecord } from "./persistedRecord";
 const RIGHT_DOCK_PANE_KINDS = [
   "browser",
   "device",
-  "diff",
   "explorer",
   "file",
   "terminal",
@@ -22,13 +21,15 @@ const RIGHT_DOCK_PANE_KINDS = [
 
 export type RightDockPaneKind = (typeof RIGHT_DOCK_PANE_KINDS)[number];
 export type PullRequestInitialTab = "summary" | "timeline" | "code";
+export type SourceControlView = "changes" | "review";
 
 const RIGHT_DOCK_PANE_KIND_SET: ReadonlySet<string> = new Set(RIGHT_DOCK_PANE_KINDS);
 
 export interface RightDockPane {
   id: string;
   kind: RightDockPaneKind;
-  // diff panes remember which turn/file they were opened on.
+  sourceControlView: SourceControlView;
+  // Review remembers which turn/file it was opened on.
   diffTurnId: TurnId | null;
   diffFilePath: string | null;
   // file panes preview one workspace-relative file.
@@ -79,12 +80,17 @@ function sanitizePersistedPane(value: unknown): RightDockPane | null {
     return null;
   }
   const candidate = value;
-  if (typeof candidate.id !== "string" || !isRightDockPaneKind(candidate.kind)) {
+  if (
+    typeof candidate.id !== "string" ||
+    (candidate.kind !== "diff" && !isRightDockPaneKind(candidate.kind))
+  ) {
     return null;
   }
   return {
     id: candidate.id,
-    kind: candidate.kind,
+    kind: candidate.kind === "diff" ? "git" : candidate.kind,
+    sourceControlView:
+      candidate.kind === "diff" || candidate.sourceControlView === "review" ? "review" : "changes",
     diffTurnId: typeof candidate.diffTurnId === "string" ? (candidate.diffTurnId as TurnId) : null,
     diffFilePath: typeof candidate.diffFilePath === "string" ? candidate.diffFilePath : null,
     filePath: typeof candidate.filePath === "string" ? candidate.filePath : null,
@@ -156,6 +162,7 @@ export function sanitizeRightDockStateByThreadId(
 export interface OpenPaneInput {
   paneId: string;
   kind: RightDockPaneKind;
+  sourceControlView?: SourceControlView;
   diffTurnId?: TurnId | null;
   diffFilePath?: string | null;
   filePath?: string | null;
@@ -169,6 +176,7 @@ function createPane(input: OpenPaneInput): RightDockPane {
   return {
     id: input.paneId,
     kind: input.kind,
+    sourceControlView: input.sourceControlView ?? "changes",
     diffTurnId: input.diffTurnId ?? null,
     diffFilePath: input.diffFilePath ?? null,
     filePath: input.filePath ?? null,
@@ -183,11 +191,12 @@ function createPane(input: OpenPaneInput): RightDockPane {
 // overwrite content metadata when the caller explicitly targets new content,
 // so a bare re-open/toggle keeps the pane focused on what it currently shows.
 function singletonPaneReopenPatch(input: OpenPaneInput): Partial<RightDockPane> | null {
-  if (
-    input.kind === "diff" &&
-    (input.diffTurnId !== undefined || input.diffFilePath !== undefined)
-  ) {
-    return { diffTurnId: input.diffTurnId ?? null, diffFilePath: input.diffFilePath ?? null };
+  if (input.kind === "git" && input.sourceControlView !== undefined) {
+    return {
+      sourceControlView: input.sourceControlView,
+      ...(input.diffTurnId !== undefined ? { diffTurnId: input.diffTurnId } : {}),
+      ...(input.diffFilePath !== undefined ? { diffFilePath: input.diffFilePath } : {}),
+    };
   }
   if (
     input.kind === "pullRequest" &&
@@ -321,6 +330,7 @@ export function updatePaneInState(
   patch: Partial<
     Pick<
       RightDockPane,
+      | "sourceControlView"
       | "diffTurnId"
       | "diffFilePath"
       | "filePath"
@@ -338,6 +348,7 @@ export function updatePaneInState(
     }
     const nextPane = { ...pane, ...patch };
     if (
+      nextPane.sourceControlView !== pane.sourceControlView ||
       nextPane.diffTurnId !== pane.diffTurnId ||
       nextPane.diffFilePath !== pane.diffFilePath ||
       nextPane.filePath !== pane.filePath ||

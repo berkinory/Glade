@@ -27,7 +27,6 @@ import { useDockPaneRuntimeActivation } from "../../hooks/useDockPaneRuntimeActi
 import { useHandleNewThread } from "../../hooks/useHandleNewThread";
 import { useDevicePaneOpenRequests } from "../../hooks/useDeviceEventBridge";
 import { useDeviceSupport } from "../../hooks/useDeviceSupport";
-import { useRepoDiffTotals } from "../../hooks/useRepoDiffTotals";
 import {
   addChatFileComment,
   appendChatFileReference,
@@ -120,7 +119,11 @@ const EditorWorkspaceView = lazy(() =>
   })),
 );
 const DockTerminalPane = lazy(() => import("./DockTerminalPane"));
-const GitPanel = lazy(() => import("./GitPanel"));
+const SourceControlDockPane = lazy(() =>
+  import("./SourceControlDockPane").then((module) => ({
+    default: module.SourceControlDockPane,
+  })),
+);
 const DockExplorerPane = lazy(() =>
   import("./DockExplorerPane").then((module) => ({
     default: module.DockExplorerPane,
@@ -209,15 +212,10 @@ export function SingleChatSurface(props: {
   });
   const dockGitRepositoryQuery = useQuery(gitBranchesQueryOptions(workspaceRoot));
   const hasGitRepository = dockGitRepositoryQuery.data?.isRepo === true;
-  const dockDiffTotals = useRepoDiffTotals({
-    gitCwd: workspaceRoot,
-    isGitRepo: hasGitRepository,
-  });
   const hasDeviceSupport = useDeviceSupport();
   const dockLauncherItems = resolveRightDockLauncherItems({
     hasWorkspace: workspaceRoot !== null,
     hasGitRepository,
-    hasReview: dockDiffTotals.fileCount > 0,
     hasDeviceSupport,
   });
   const availableDockPaneKinds = dockLauncherItems.map(({ kind }) => kind);
@@ -305,22 +303,28 @@ export function SingleChatSurface(props: {
     activePane,
   });
 
-  // Bridge the dock's active browser/diff pane back into the panelState shape the
+  // Bridge the dock's active browser/review pane back into the panelState shape the
   // chat shell still consumes (diff badge, toggle pressed state, transcript gating).
   const chatPanelState: SplitViewPanePanelState = {
     panel:
-      activePane && (activePane.kind === "browser" || activePane.kind === "diff")
-        ? activePane.kind
-        : null,
-    diffTurnId: activePane?.kind === "diff" ? activePane.diffTurnId : null,
-    diffFilePath: activePane?.kind === "diff" ? activePane.diffFilePath : null,
+      activePane?.kind === "browser"
+        ? "browser"
+        : activePane?.kind === "git" && activePane.sourceControlView === "review"
+          ? "diff"
+          : null,
+    diffTurnId: activePane?.kind === "git" ? activePane.diffTurnId : null,
+    diffFilePath: activePane?.kind === "git" ? activePane.diffFilePath : null,
     hasOpenedPanel: dockState.panes.length > 0,
     lastOpenPanel: "browser",
   };
 
   const handleToggleDiff = () => {
-    requestImmediateDockHydration("diff");
-    toggleSingletonPane(props.threadId, { kind: "diff" });
+    requestImmediateDockHydration("git");
+    if (activePane?.kind === "git" && activePane.sourceControlView === "review") {
+      setDockOpen(props.threadId, false);
+    } else {
+      openPane(props.threadId, { kind: "git", sourceControlView: "review" });
+    }
   };
   const handleToggleBrowser = () => {
     requestImmediateDockHydration("browser");
@@ -338,9 +342,10 @@ export function SingleChatSurface(props: {
     openPane(props.threadId, { kind: "browser" });
   };
   const handleOpenTurnDiff = (turnId: TurnId, filePath?: string) => {
-    requestImmediateDockHydration("diff");
+    requestImmediateDockHydration("git");
     openPane(props.threadId, {
-      kind: "diff",
+      kind: "git",
+      sourceControlView: "review",
       diffTurnId: turnId,
       diffFilePath: filePath ?? null,
     });
@@ -661,9 +666,10 @@ export function SingleChatSurface(props: {
       requestImmediateDockHydration("browser");
       openPane(props.threadId, { kind: "browser" });
     } else if (panelPatch.panel === "diff") {
-      requestImmediateDockHydration("diff");
+      requestImmediateDockHydration("git");
       openPane(props.threadId, {
-        kind: "diff",
+        kind: "git",
+        sourceControlView: "review",
         diffTurnId: panelPatch.diffTurnId ?? null,
         diffFilePath: panelPatch.diffFilePath ?? null,
       });
@@ -772,7 +778,10 @@ export function SingleChatSurface(props: {
 
   const handleAddDockPane = (kind: RightDockPaneKind) => {
     requestImmediateDockHydration(kind);
-    openPane(props.threadId, { kind });
+    openPane(props.threadId, {
+      kind,
+      ...(kind === "git" ? { sourceControlView: "changes" as const } : {}),
+    });
   };
 
   const renderDockPane = (
@@ -821,28 +830,6 @@ export function SingleChatSurface(props: {
             />
           </Suspense>
         );
-      case "diff":
-        return (
-          <LazyDiffPanel
-            mode="sidebar"
-            threadId={props.threadId}
-            panelState={{
-              panel: "diff",
-              diffTurnId: pane.diffTurnId,
-              diffFilePath: pane.diffFilePath,
-            }}
-            onUpdatePanelState={(patch) =>
-              updatePane(props.threadId, pane.id, {
-                diffTurnId: patch.diffTurnId ?? null,
-                diffFilePath: patch.diffFilePath ?? null,
-              })
-            }
-            onClosePanel={() => closePane(props.threadId, pane.id)}
-            onEditFile={handleEditDiffFileFromDock}
-            liveRefreshEnabled={context.isActive && dockState.open}
-            queriesEnabled={context.isActive && dockState.open}
-          />
-        );
       case "terminal":
         if (context.runtimeMode === "preview") {
           return <PanelStateMessage>Terminal is sleeping. Restoring shortly.</PanelStateMessage>;
@@ -864,10 +851,24 @@ export function SingleChatSurface(props: {
         );
       case "git":
         return (
-          <Suspense fallback={<PanelStateMessage>Loading Git...</PanelStateMessage>}>
-            <GitPanel
-              hostThreadId={props.threadId}
+          <Suspense fallback={<PanelStateMessage>Loading source control...</PanelStateMessage>}>
+            <SourceControlDockPane
+              threadId={props.threadId}
               projectId={props.projectId}
+              view={pane.sourceControlView}
+              diffTurnId={pane.diffTurnId}
+              diffFilePath={pane.diffFilePath}
+              active={context.isActive && dockState.open}
+              onViewChange={(sourceControlView) =>
+                updatePane(props.threadId, pane.id, { sourceControlView })
+              }
+              onReviewSelectionChange={(patch) =>
+                updatePane(props.threadId, pane.id, {
+                  diffTurnId: patch.diffTurnId ?? null,
+                  diffFilePath: patch.diffFilePath ?? null,
+                })
+              }
+              onEditFile={handleEditDiffFileFromDock}
               onClose={() => closePane(props.threadId, pane.id)}
             />
           </Suspense>

@@ -416,6 +416,7 @@ function EditorDiffControls(props: {
 
 interface DiffPanelProps {
   mode?: DiffPanelMode;
+  initialViewKind?: DiffViewKind;
   threadId?: ThreadId | null;
   panelState?: Pick<SplitViewPanePanelState, "panel" | "diffTurnId" | "diffFilePath">;
   onUpdatePanelState?: (
@@ -436,6 +437,7 @@ export { DiffWorkerPoolProvider } from "./DiffWorkerPoolProvider";
 
 export default function DiffPanel({
   mode: modeProp,
+  initialViewKind,
   threadId: controlledThreadId,
   panelState,
   onUpdatePanelState,
@@ -573,8 +575,8 @@ export default function DiffPanel({
   const selectedTurnId = panelState
     ? (panelState.diffTurnId ?? null)
     : (diffSearch.diffTurnId ?? null);
-  const [diffViewKind, setDiffViewKind] = useState<DiffViewKind>(() =>
-    resolveInitialDiffViewKind(selectedTurnId),
+  const [diffViewKind, setDiffViewKind] = useState<DiffViewKind>(
+    () => initialViewKind ?? resolveInitialDiffViewKind(selectedTurnId),
   );
   const [turnScopeIntent, setTurnScopeIntent] = useState<DiffPanelTurnScopeIntent>(() =>
     selectedTurnId === null ? "all" : "last",
@@ -967,15 +969,15 @@ export default function DiffPanel({
   useEffect(() => {
     const wasOpen = previousDiffOpenRef.current;
     previousDiffOpenRef.current = diffOpen;
-    if (!diffOpen || wasOpen) {
+    if (!diffOpen || wasOpen || initialViewKind) {
       return;
     }
     const timeoutId = window.setTimeout(() => {
       setDiffWordWrap(settings.diffWordWrap);
-      setDiffViewKind(resolveInitialDiffViewKind(selectedTurnId));
+      setDiffViewKind(initialViewKind ?? resolveInitialDiffViewKind(selectedTurnId));
     }, 0);
     return () => window.clearTimeout(timeoutId);
-  }, [diffOpen, selectedTurnId, settings.diffWordWrap]);
+  }, [diffOpen, initialViewKind, selectedTurnId, settings.diffWordWrap]);
 
   useEffect(() => {
     if (selectedTurnId === null) {
