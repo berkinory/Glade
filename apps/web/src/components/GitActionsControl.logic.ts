@@ -903,19 +903,17 @@ export function resolveDefaultBranchActionDialogCopy(input: {
   includesCommit: boolean;
 }): DefaultBranchActionDialogCopy {
   const branchLabel = input.branchName;
-  const suffix = ` on "${branchLabel}". You can continue on this branch or create a feature branch and run the same action there.`;
-
   if (input.action === "push" || input.action === "commit_push") {
     if (input.includesCommit) {
       return {
         title: "Commit & push to default branch?",
-        description: `This action will commit and push changes${suffix}`,
+        description: `This will commit and push changes directly to "${branchLabel}".`,
         continueLabel: `Commit & push to ${branchLabel}`,
       };
     }
     return {
       title: "Push to default branch?",
-      description: `This action will push local commits${suffix}`,
+      description: `This will push local commits directly to "${branchLabel}".`,
       continueLabel: `Push to ${branchLabel}`,
     };
   }

@@ -1067,22 +1067,6 @@ export default function GitActionsControl({
     });
   }, [pendingDefaultBranchAction, runGitActionWithToast]);
 
-  const checkoutFeatureBranchAndContinuePendingAction = useCallback(() => {
-    if (!pendingDefaultBranchAction) return;
-    const { action, commitMessage, forcePushOnlyProgress, onConfirmed, filePaths } =
-      pendingDefaultBranchAction;
-    setPendingDefaultBranchAction(null);
-    void runGitActionWithToast({
-      action,
-      ...(commitMessage ? { commitMessage } : {}),
-      forcePushOnlyProgress,
-      ...(onConfirmed ? { onConfirmed } : {}),
-      ...(filePaths ? { filePaths } : {}),
-      featureBranch: true,
-      skipDefaultBranchPrompt: true,
-    });
-  }, [pendingDefaultBranchAction, runGitActionWithToast]);
-
   const handleCommitDialogSubmit = useCallback(
     (submission: GitCommitDialogSubmission) => {
       setIsCommitDialogOpen(false);
@@ -1577,39 +1561,13 @@ export default function GitActionsControl({
             </DialogTitle>
             <DialogDescription>{pendingDefaultBranchActionCopy?.description}</DialogDescription>
           </DialogHeader>
-          <DialogFooter className="sm:flex-col-reverse">
-            <Button
-              variant="outline"
-              size="sm"
-              shape="capsule"
-              className="w-full"
-              onClick={() => setPendingDefaultBranchAction(null)}
-            >
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setPendingDefaultBranchAction(null)}>
               Abort
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              shape="capsule"
-              className="w-full"
-              onClick={continuePendingDefaultBranchAction}
-            >
-              {pendingDefaultBranchAction &&
-              requiresFeatureBranchForDefaultBranchAction(pendingDefaultBranchAction.action)
-                ? "Create feature branch & continue"
-                : (pendingDefaultBranchActionCopy?.continueLabel ?? "Continue")}
+            <Button size="sm" onClick={continuePendingDefaultBranchAction}>
+              {pendingDefaultBranchActionCopy?.continueLabel ?? "Continue"}
             </Button>
-            {pendingDefaultBranchAction &&
-            !requiresFeatureBranchForDefaultBranchAction(pendingDefaultBranchAction.action) ? (
-              <Button
-                size="sm"
-                shape="capsule"
-                className="w-full"
-                onClick={checkoutFeatureBranchAndContinuePendingAction}
-              >
-                Checkout feature branch & continue
-              </Button>
-            ) : null}
           </DialogFooter>
         </DialogPopup>
       </Dialog>
