@@ -6,16 +6,19 @@ import {
   SiDatagrip,
   SiGoland,
   SiIntellijidea,
+  SiIterm2,
   SiOpenai,
   SiPhpstorm,
   SiPycharm,
   SiRider,
   SiRubymine,
   SiSublimetext,
+  SiVscodium,
   SiWarp,
   SiWebstorm,
   SiWindsurf,
   SiXcode,
+  SiZedindustries,
 } from "react-icons/si";
 
 export type Icon = React.FC<SVGProps<SVGSVGElement>>;
@@ -140,29 +143,6 @@ export const VisualStudioCode: Icon = (props) => {
   );
 };
 
-export const Zed: Icon = (props) => {
-  const id = useId();
-  const clipPathId = `${id}-zed-logo-a`;
-
-  return (
-    <svg {...props} fill="none" viewBox="0 0 96 96">
-      <g clipPath={`url(#${clipPathId})`}>
-        <path
-          fill="currentColor"
-          fillRule="evenodd"
-          d="M9 6a3 3 0 0 0-3 3v66H0V9a9 9 0 0 1 9-9h80.38c4.01 0 6.02 4.85 3.18 7.68L43.05 57.19H57V51h6v7.69a4.5 4.5 0 0 1-4.5 4.5H37.05L26.74 73.5H73.5V36h6v37.5a6 6 0 0 1-6 6H20.74L10.24 90H87a3 3 0 0 0 3-3V21h6v66a9 9 0 0 1-9 9H6.62c-4.01 0-6.02-4.85-3.18-7.68L52.76 39H39v6h-6v-7.5a4.5 4.5 0 0 1 4.5-4.5h21.26l10.5-10.5H22.5V60h-6V22.5a6 6 0 0 1 6-6h52.76L85.76 6H9Z"
-          clipRule="evenodd"
-        />
-      </g>
-      <defs>
-        <clipPath id={clipPathId}>
-          <path fill="#fff" d="M0 0h96v96H0z" />
-        </clipPath>
-      </defs>
-    </svg>
-  );
-};
-
 export const OpenAI: Icon = ({ color, ...props }) => {
   const iconProps = props as Omit<SVGProps<SVGElement>, "color">;
 
@@ -221,6 +201,9 @@ export const TerminalAppIcon: Icon = (props) => (
 );
 
 export const WarpIcon = adaptSimpleIcon(SiWarp);
+export const Iterm2Icon = adaptSimpleIcon(SiIterm2);
+export const VscodiumIcon = adaptSimpleIcon(SiVscodium);
+export const ZedIndustriesIcon = adaptSimpleIcon(SiZedindustries);
 export const AndroidStudioIcon = adaptSimpleIcon(SiAndroidstudio);
 export const CLionIcon = adaptSimpleIcon(SiClion);
 export const DataGripIcon = adaptSimpleIcon(SiDatagrip);

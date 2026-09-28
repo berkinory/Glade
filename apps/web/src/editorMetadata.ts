@@ -5,7 +5,7 @@
 
 import { EDITORS, type EditorId } from "@glade/contracts";
 import { EDITOR_ICON_ROUTE_PATH } from "@glade/shared/editorIcons";
-import { createElement, useState } from "react";
+import { createElement, useEffect, useState } from "react";
 import type { Icon } from "./components/Icons";
 import {
   AndroidStudioIcon,
@@ -15,8 +15,7 @@ import {
   GhosttyIcon,
   GoLandIcon,
   IntelliJIdeaIcon,
-  JetBrainsIcon,
-  OpenCodeIcon,
+  Iterm2Icon,
   PhpStormIcon,
   PyCharmIcon,
   RiderIcon,
@@ -24,11 +23,12 @@ import {
   SublimeTextIcon,
   TerminalAppIcon,
   VisualStudioCode,
+  VscodiumIcon,
   WarpIcon,
   WebStormIcon,
   WindsurfIcon,
   XcodeIcon,
-  Zed,
+  ZedIndustriesIcon,
 } from "./components/Icons";
 import { FolderClosed } from "./components/FolderClosed";
 import { AppsIcon } from "./lib/icons";
@@ -43,17 +43,15 @@ export interface EditorOption {
 
 const EDITOR_ICONS: Partial<Record<EditorId, Icon>> = {
   cursor: CursorIcon,
-  trae: OpenCodeIcon,
   vscode: VisualStudioCode,
   "vscode-insiders": VisualStudioCode,
-  vscodium: VisualStudioCode,
-  zed: Zed,
+  vscodium: VscodiumIcon,
+  zed: ZedIndustriesIcon,
   windsurf: WindsurfIcon,
   sublime: SublimeTextIcon,
   ghostty: GhosttyIcon,
-  muxy: TerminalAppIcon,
   terminal: TerminalAppIcon,
-  iterm: TerminalAppIcon,
+  iterm: Iterm2Icon,
   warp: WarpIcon,
   xcode: XcodeIcon,
   idea: IntelliJIdeaIcon,
@@ -65,7 +63,6 @@ const EDITOR_ICONS: Partial<Record<EditorId, Icon>> = {
   rider: RiderIcon,
   rubymine: RubyMineIcon,
   datagrip: DataGripIcon,
-  rustrover: JetBrainsIcon,
   "android-studio": AndroidStudioIcon,
   // Reuse the sidebar's closed-project folder glyph so "Open in folder" matches.
   "file-manager": FolderClosed,
@@ -73,6 +70,7 @@ const EDITOR_ICONS: Partial<Record<EditorId, Icon>> = {
 };
 
 const NATIVE_EDITOR_ICON_COMPONENTS = new Map<EditorId, Icon>();
+const loadedNativeIcons = new Set<EditorId>();
 
 export function resolveEditorNativeIconUrl(editorId: EditorId): string {
   const params = new URLSearchParams({ id: editorId });
@@ -85,8 +83,22 @@ function resolveNativeEditorIcon(editorId: EditorId): Icon {
 
   const FallbackIcon = resolveEditorIcon(editorId);
   const EditorNativeIcon: Icon = ({ className, style, ...props }) => {
-    const [failed, setFailed] = useState(false);
-    if (failed) {
+    const [available, setAvailable] = useState(() => loadedNativeIcons.has(editorId));
+    useEffect(() => {
+      if (loadedNativeIcons.has(editorId)) return;
+      const icon = new Image();
+      let mounted = true;
+      icon.onload = () => {
+        loadedNativeIcons.add(editorId);
+        if (mounted) setAvailable(true);
+      };
+      // A missing app or startup HTTP failure can recover later. Retry on remount.
+      icon.src = resolveEditorNativeIconUrl(editorId);
+      return () => {
+        mounted = false;
+      };
+    }, []);
+    if (!available) {
       return createElement(FallbackIcon, { className, style, ...props });
     }
 
@@ -105,7 +117,6 @@ function resolveNativeEditorIcon(editorId: EditorId): Icon {
         href: resolveEditorNativeIconUrl(editorId),
         preserveAspectRatio: "xMidYMid meet",
         width: 1,
-        onError: () => setFailed(true),
       }),
     );
   };
@@ -132,7 +143,13 @@ export function resolveEditorLabel(editorId: EditorId, platform: string): string
 
 // Keep the header/picker resilient even when a brand-specific icon does not exist yet.
 function resolveEditorIcon(editorId: EditorId): Icon {
-  return EDITOR_ICONS[editorId] ?? OpenCodeIcon;
+  return EDITOR_ICONS[editorId] ?? AppsIcon;
+}
+
+function resolveEditorDisplayIcon(editorId: EditorId): Icon {
+  // Bundled vector marks stay sharp at menu size and render on the first frame.
+  // Only editors without a matching mark need an installed app icon lookup.
+  return EDITOR_ICONS[editorId] ?? resolveNativeEditorIcon(editorId);
 }
 
 // Build a single option for an editor id that may not appear in the platform's
@@ -142,7 +159,7 @@ export function resolveEditorOption(editorId: EditorId, platform: string): Edito
   return {
     value: editorId,
     label: resolveEditorLabel(editorId, platform),
-    Icon: resolveNativeEditorIcon(editorId),
+    Icon: resolveEditorDisplayIcon(editorId),
   };
 }
 
@@ -154,6 +171,6 @@ export function resolveAvailableEditorOptions(
   return EDITORS.filter((editor) => availableEditorIds.has(editor.id)).map((editor) => ({
     value: editor.id,
     label: resolveEditorLabel(editor.id, platform),
-    Icon: resolveNativeEditorIcon(editor.id),
+    Icon: resolveEditorDisplayIcon(editor.id),
   }));
 }
