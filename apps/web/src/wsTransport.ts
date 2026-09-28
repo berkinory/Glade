@@ -1153,10 +1153,10 @@ export class WsTransport {
   }
 
   /**
-   * A cached-negotiation session skips the negotiation round trip, so nothing
-   * has yet proven the server is alive on the cached generation. Probe with a
-   * no-op RPC: a restarted server refuses the stale `/ws` upgrade (426) and
-   * the probe fails, clearing the cache so the next attempt renegotiates.
+   * Creating the RPC client does not prove its socket has opened. Probe with a
+   * no-op RPC before publishing "open", including on the first connection.
+   * A restarted server also refuses a cached stale `/ws` upgrade (426), so a
+   * failed probe clears negotiation for the next attempt.
    */
   private async probeFeatureConnection(
     client: RpcClientInstance,
@@ -1196,9 +1196,7 @@ export class WsTransport {
       this.clientScope = featureScope;
       const client = await featureRuntime.runPromise(Scope.provide(featureScope)(makeRpcClient));
       this.runtimeByClient.set(client, featureRuntime);
-      if (cachedCompatibility) {
-        await this.probeFeatureConnection(client, featureRuntime);
-      }
+      await this.probeFeatureConnection(client, featureRuntime);
       if (!this.disposed && this.sessionVersion === sessionVersion) {
         this.adoptNegotiation(compatibility);
         this.setState("open");

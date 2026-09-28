@@ -61,6 +61,7 @@ const WRITE_BATCH_SIZE_LIMIT = 262_144;
 const WRITE_BATCH_MAX_LATENCY_MS = 50;
 const LINK_MATCH_CACHE_LIMIT = 512;
 const OPEN_SNAPSHOT_RECONCILE_DELAY_MS = 250;
+const OPEN_RETRY_DELAY_MS = 2_000;
 const TERMINAL_TEXT_ENCODER = new TextEncoder();
 const TERMINAL_PARKING_CONTAINER_ID = "glade-terminal-parking";
 
@@ -808,6 +809,7 @@ export function createRuntimeEntry(config: TerminalRuntimeConfig): TerminalRunti
     hasHandledExit: false,
     runtimeStatus: "connecting",
     opened: false,
+    openRetryTimer: null,
     disposed: false,
     resizeObserver: null,
     resizeDispatchTimer: null,
@@ -865,12 +867,16 @@ export function createRuntimeEntry(config: TerminalRuntimeConfig): TerminalRunti
   });
 
   const unsubscribeTransportState = addWsTransportStateListener((state) => {
-    if (entry.disposed || !entry.opened || entry.hasHandledExit) return;
+    if (entry.disposed || entry.hasHandledExit) return;
     if (state === "open") {
-      reconcileTerminalSnapshot(entry);
+      if (entry.opened) {
+        reconcileTerminalSnapshot(entry);
+      } else if (entry.container && entry.runtimeStatus === "connecting") {
+        openTerminal(entry);
+      }
       return;
     }
-    if (state === "connecting" || state === "closed") {
+    if (entry.opened && (state === "connecting" || state === "closed")) {
       setRuntimeStatus(entry, "connecting");
     }
   });
@@ -1090,7 +1096,12 @@ export function createRuntimeEntry(config: TerminalRuntimeConfig): TerminalRunti
 
 function openTerminal(entry: TerminalRuntimeEntry): void {
   const api = readNativeApi();
-  if (!api || entry.opened) return;
+  if (!api || entry.opened || entry.disposed || !entry.container) return;
+
+  if (entry.openRetryTimer !== null) {
+    window.clearTimeout(entry.openRetryTimer);
+    entry.openRetryTimer = null;
+  }
 
   fitTerminal(entry);
   entry.lastSentResize = null;
@@ -1144,6 +1155,17 @@ function openTerminal(entry: TerminalRuntimeEntry): void {
     .catch((error) => {
       if (entry.disposed) return;
       entry.opened = false;
+      if (
+        /SocketOpenError.*timeout waiting for ["']open["']/i.test(describeErrorMessage(error, ""))
+      ) {
+        // The transport may already have reopened by the time this RPC times out.
+        setRuntimeStatus(entry, "connecting");
+        entry.openRetryTimer = window.setTimeout(() => {
+          entry.openRetryTimer = null;
+          openTerminal(entry);
+        }, OPEN_RETRY_DELAY_MS);
+        return;
+      }
       setRuntimeStatus(entry, "error");
       writeSystemMessage(entry.terminal, describeErrorMessage(error, "Failed to open terminal"));
     });
@@ -1196,6 +1218,10 @@ export function updateRuntimeViewState(
 }
 
 export function detachRuntimeFromContainer(entry: TerminalRuntimeEntry): void {
+  if (entry.openRetryTimer !== null) {
+    window.clearTimeout(entry.openRetryTimer);
+    entry.openRetryTimer = null;
+  }
   cancelScheduledVisualResize(entry);
   stopVisibilityRecovery(entry);
   disposeWebglAddon(entry);

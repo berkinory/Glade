@@ -1686,8 +1686,11 @@ describe("WsTransport", () => {
       createSession(): { clientPromise: Promise<unknown> };
       probeFeatureConnection: (...args: unknown[]) => Promise<void>;
       compatibility: WsBootstrapNegotiateResult | null;
+      clientPromise: Promise<unknown>;
     };
     await waitForSockets(1);
+    sockets[0]!.serveVoidRpc();
+    await internals.clientPromise;
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(internals.compatibility).toEqual(NEGOTIATION_RESULT);
 
@@ -1719,8 +1722,11 @@ describe("WsTransport", () => {
       compatibility: WsBootstrapNegotiateResult | null;
       latestPushByChannel: Map<string, unknown>;
       sequence: number;
+      clientPromise: Promise<unknown>;
     };
     await waitForSockets(1);
+    sockets[0]!.serveVoidRpc();
+    await internals.clientPromise;
     internals.latestPushByChannel.set("server.welcome", { stale: true });
     internals.sequence = 7;
 
@@ -1729,7 +1735,10 @@ describe("WsTransport", () => {
     internals.compatibility = null;
     const restarted = { ...NEGOTIATION_RESULT, serverInstanceId: "server-instance-2" };
     fetchMock.mockImplementation(() => Promise.resolve(jsonResponse(200, restarted)));
-    await internals.createSession().clientPromise;
+    const reconnected = internals.createSession().clientPromise;
+    await waitForSockets(2);
+    sockets[1]!.serveVoidRpc();
+    await reconnected;
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(internals.compatibility).toEqual(restarted);

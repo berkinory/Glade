@@ -69,6 +69,7 @@ export interface TerminalRuntimeEntry {
   hasHandledExit: boolean;
   runtimeStatus: TerminalRuntimeStatus;
   opened: boolean;
+  openRetryTimer: number | null;
   disposed: boolean;
   resizeObserver: ResizeObserver | null;
   resizeDispatchTimer: number | null;
