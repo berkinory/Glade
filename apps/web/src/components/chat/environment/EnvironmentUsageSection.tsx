@@ -28,18 +28,17 @@ import {
 export function EnvironmentUsageSection({ provider }: { provider: ProviderKind }) {
   const usageQuery = useQuery(serverAllProviderUsageQueryOptions());
   const settingsQuery = useQuery(serverSettingsQueryOptions());
-  // The batch snapshot is an enrichment, not a gate: when the provider's live fetch fails or is
-  // missing from the batch, the menu model still blends local archives and thread rate limits, so
-  // the row must render regardless. Only an explicitly disabled provider hides the section.
+  // The batch snapshot is an enrichment, not a gate: thread and provider rate limits can still
+  // supply a row when the live fetch fails or is missing from the batch.
   const snapshot = (usageQuery.data ?? []).find((entry) => entry.provider === provider);
   const model = useProviderUsageMenuModel(provider, { providerSnapshot: snapshot });
 
   if (settingsQuery.data?.providers[provider].enabled === false) {
     return null;
   }
-  // Nothing displayable yet (first fetch still running, sign-in required, or the provider
-  // exposes no usage): hide the section entirely — it appears once any source yields data.
-  if (model.rows.length === 0 && model.usageLines.length === 0) {
+  // Local token totals are not useful in this compact panel. Only show providers with
+  // a rate-limit row to display.
+  if (model.rows.length === 0) {
     return null;
   }
 
@@ -47,13 +46,11 @@ export function EnvironmentUsageSection({ provider }: { provider: ProviderKind }
   const summary = resolveEnvironmentProviderUsageSummary({
     providerName,
     rows: model.rows,
-    snapshot,
-    hasUsageLines: model.usageLines.length > 0,
   });
 
   return (
     <EnvironmentLabeledSection label="Usage">
-      <ProviderUsageMenuPopup provider={provider} model={model} align="start" showUsageLines={true}>
+      <ProviderUsageMenuPopup provider={provider} model={model} align="start">
         <MenuTrigger
           render={
             <button
@@ -74,24 +71,18 @@ export function EnvironmentUsageSection({ provider }: { provider: ProviderKind }
             label={providerName}
             trailing={
               <span className="flex items-center gap-1.5">
-                {summary.rows.length > 0 ? (
-                  <span className="flex flex-col items-end gap-0.5 text-chat-meta leading-none">
-                    {summary.rows.map((row) => (
-                      <span key={row.id} className="flex items-baseline gap-1.5">
-                        <span className="text-[var(--color-text-foreground-secondary)]">
-                          {row.label}
-                        </span>
-                        <span className="min-w-7 text-right text-[var(--color-text-foreground)]">
-                          {row.remainingLabel}
-                        </span>
+                <span className="flex flex-col items-end gap-0.5 text-chat-meta leading-none">
+                  {summary.rows.map((row) => (
+                    <span key={row.id} className="flex items-baseline gap-1.5">
+                      <span className="text-[var(--color-text-foreground-secondary)]">
+                        {row.label}
                       </span>
-                    ))}
-                  </span>
-                ) : (
-                  <span className="text-chat-meta text-[var(--color-text-foreground-secondary)]">
-                    {summary.statusLabel}
-                  </span>
-                )}
+                      <span className="min-w-7 text-right text-[var(--color-text-foreground)]">
+                        {row.remainingLabel}
+                      </span>
+                    </span>
+                  ))}
+                </span>
                 <EnvironmentRowChevron />
               </span>
             }
