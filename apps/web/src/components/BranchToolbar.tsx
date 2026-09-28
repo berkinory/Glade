@@ -1,6 +1,6 @@
 // FILE: BranchToolbar.tsx
 // Purpose: Renders the chat thread's compact workspace controls, including the
-// local usage popover, inline workspace handoff actions, and runtime access toggle.
+// inline workspace handoff actions and runtime access toggle.
 import type {
   ProviderKind,
   ProviderModelDescriptor,
@@ -11,24 +11,18 @@ import type {
 import { ChevronDownIcon, WorktreeIcon } from "~/lib/icons";
 import { HiOutlineHandRaised } from "react-icons/hi2";
 import { CentralIcon } from "~/lib/central-icons";
-import { useCallback, useMemo, useState, type ReactNode } from "react";
-import { useAppSettings } from "~/appSettings";
+import { useCallback, useMemo, type ReactNode } from "react";
 
 import { newCommandId, cn } from "../lib/utils";
 import { readNativeApi } from "../nativeApi";
 import { useComposerDraftStore } from "../composerDraftStore";
-import { useProviderUsageSummary } from "../hooks/useProviderUsageSummary";
 import { resolveThreadEnvironmentPresentation } from "../lib/threadEnvironment";
 import {
   RUNTIME_MODE_PRESENTATION,
   providerModelSupportsAutoRuntimeMode,
 } from "../lib/runtimeMode";
 import { useStore } from "../store";
-import {
-  createAccountRateLimitThreadsSelector,
-  createProjectSelector,
-  createThreadSelector,
-} from "../storeSelectors";
+import { createProjectSelector, createThreadSelector } from "../storeSelectors";
 import {
   EnvMode,
   resolveAssociatedWorktreeMetadataAfterWorkspacePatch,
@@ -50,20 +44,10 @@ import {
   EnvironmentRowBody,
 } from "./chat/environment/EnvironmentRow";
 import type { ContextWindowSnapshot } from "../lib/contextWindow";
-import { ProviderUsagePanelContent } from "./ProviderUsagePanelContent";
 import { ComposerPickerMenuPopup } from "./chat/ComposerPickerMenuPopup";
 import { ComposerEnvironmentPicker } from "./chat/ComposerEnvironmentPicker";
 import { Button } from "./ui/button";
-import { Collapsible, CollapsiblePanel } from "./ui/collapsible";
-import { DisclosureChevron } from "./ui/DisclosureChevron";
-import {
-  Menu,
-  MenuItem,
-  MenuRadioGroup,
-  MenuRadioItem,
-  MenuSeparator,
-  MenuTrigger,
-} from "./ui/menu";
+import { Menu, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "./ui/menu";
 import type { ThreadWorkspacePatch } from "../types";
 
 function WorktreeGlyph({ className }: { className?: string }) {
@@ -264,10 +248,6 @@ export default function BranchToolbar({
   const setThreadWorkspaceAction = useStore((store) => store.setThreadWorkspace);
   const draftThread = useComposerDraftStore((store) => store.getDraftThread(threadId));
   const setDraftThreadContext = useComposerDraftStore((store) => store.setDraftThreadContext);
-  const [rateLimitThreadsSelector] = useState(() => createAccountRateLimitThreadsSelector());
-  const threads = useStore(rateLimitThreadsSelector);
-  const { settings } = useAppSettings();
-
   const serverThread = useStore(useMemo(() => createThreadSelector(threadId), [threadId]));
   const activeProjectId = serverThread?.projectId ?? draftThread?.projectId ?? null;
   const activeProject = useStore(
@@ -284,8 +264,6 @@ export default function BranchToolbar({
   const activeWorkingDirectory = hasServerThread
     ? (serverThread.workingDirectory ?? null)
     : (draftThread?.workingDirectory ?? null);
-  const activeProvider =
-    serverThread?.session?.provider ?? serverThread?.modelSelection.provider ?? null;
   const branchCwd = activeWorktreePath ?? activeWorkingDirectory ?? activeProject?.cwd ?? null;
   const branchProjectCwd = activeProject?.cwd ?? null;
   const effectiveEnvMode = resolveEffectiveEnvMode({
@@ -395,14 +373,6 @@ export default function BranchToolbar({
   const canSwitchToLocal = Boolean(!envLocked && effectiveEnvMode === "worktree");
   const showEnvPicker = effectiveEnvMode === "local" || canSwitchToLocal;
 
-  const usageSummary = useProviderUsageSummary({
-    provider: activeProvider,
-    threads,
-    codexHomePath: settings.codexHomePath || null,
-    fetchOpenUsageData: false,
-  });
-  const [rateLimitsOpen, setRateLimitsOpen] = useState(true);
-
   if (!activeThreadId || !activeProject) return null;
 
   return (
@@ -426,40 +396,7 @@ export default function BranchToolbar({
             onHandoffToWorktree={onHandoffToWorktree}
             handoffBusy={handoffBusy}
             isPanel={isPanel}
-          >
-            {/* Rate limits are noise while drafting a new chat — no session has run yet. */}
-            {hasServerThread ? (
-              <>
-                <MenuSeparator />
-
-                <Collapsible open={rateLimitsOpen} onOpenChange={setRateLimitsOpen}>
-                  <MenuItem closeOnClick={false} onClick={() => setRateLimitsOpen((open) => !open)}>
-                    <CentralIcon name="clock" className="size-3.5 text-muted-foreground" />
-                    <span className="min-w-0 flex-1 truncate">Rate limits remaining</span>
-                    <DisclosureChevron
-                      open={rateLimitsOpen}
-                      className="text-[var(--color-text-foreground-secondary)]"
-                    />
-                  </MenuItem>
-                  <CollapsiblePanel>
-                    <ProviderUsagePanelContent
-                      provider={activeProvider}
-                      rateLimits={usageSummary.rateLimits}
-                      usageLines={usageSummary.usageLines}
-                      notice={usageSummary.usageNotice}
-                      isLoading={usageSummary.isLoading}
-                      resetCredits={usageSummary.resetCredits}
-                      resetCreditsSurface="popover"
-                      learnMoreHref={usageSummary.learnMoreHref}
-                      showTitle={false}
-                      showLearnMore={true}
-                      className="px-2 pb-1 pt-1"
-                    />
-                  </CollapsiblePanel>
-                </Collapsible>
-              </>
-            ) : null}
-          </ComposerEnvironmentPicker>
+          />
         ) : isPanel ? (
           <div className={cn(ENVIRONMENT_ROW_CLASS_NAME, "cursor-default hover:bg-transparent")}>
             <EnvironmentRowBody

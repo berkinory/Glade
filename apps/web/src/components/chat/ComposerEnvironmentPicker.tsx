@@ -60,7 +60,6 @@ interface ComposerEnvironmentPickerProps {
   isPanel?: boolean;
   disabled?: boolean;
   onOpenChange?: ((open: boolean) => void) | undefined;
-  children?: ReactNode;
 }
 
 export function ComposerEnvironmentPicker({
@@ -75,7 +74,6 @@ export function ComposerEnvironmentPicker({
   isPanel = false,
   disabled = false,
   onOpenChange,
-  children,
 }: ComposerEnvironmentPickerProps) {
   const envGlyph = (className: string) =>
     environmentPresentation.mode === "local" ? (
@@ -163,8 +161,6 @@ export function ComposerEnvironmentPicker({
             />
           ) : null}
         </MenuGroup>
-
-        {children}
       </ComposerPickerMenuPopup>
     </Menu>
   );
