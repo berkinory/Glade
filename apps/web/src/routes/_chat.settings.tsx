@@ -1310,7 +1310,7 @@ function SettingsRouteView() {
           </div>
         </div>
         <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
             <div
               className={cn(
                 "mx-auto w-full px-6 py-8",

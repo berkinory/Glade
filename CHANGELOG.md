@@ -21,7 +21,7 @@
 - Chats and pinned chats appear only in their assigned Space; older chats remain in Home.
 - Replies that ran no tools no longer claim shared-workspace edits or offer Undo for them.
 - The empty project message stays visible while adding a project. ([780c94437](https://github.com/berkinory/Glade/commit/780c944373c99210e99a840e6f1d1fc6d2d55797))
-- Pull request filters no longer shift the page between empty and populated lists.
+- Pull request filters and Settings sections no longer shift when their content changes.
 - Chat transcripts now resize with the window.
 - Terminal tabs recover from temporary connection failures. ([abb659c60](https://github.com/berkinory/Glade/commit/abb659c601732013ee93653c42f4decdd9c54a1a))
 - The right panel closes with its last terminal or browser tab. ([2cf366410](https://github.com/berkinory/Glade/commit/2cf366410e964cf4a8827f4780c5e5848ad763a8))
