@@ -17,6 +17,7 @@
 
 ### Fixed
 
+- The macOS Check for Updates menu items now show a refresh icon.
 - Project lists now animate consistently when expanding and collapsing in the sidebar.
 - Pull requests for a project now come from its primary GitHub repository instead of also showing upstream remotes.
 - Regular folders no longer trigger a repository-unavailable warning in Pull requests.

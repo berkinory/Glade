@@ -1784,6 +1784,10 @@ async function checkForUpdatesFromMenu(): Promise<void> {
 function configureApplicationMenu(): void {
   const template: MenuItemConstructorOptions[] = [];
   const keyboardShortcutsAccelerator = resolveKeyboardShortcutsMenuAccelerator(process.platform);
+  const updateMenuIcon =
+    process.platform === "darwin"
+      ? nativeImage.createMenuSymbol("arrow.triangle.2.circlepath")
+      : undefined;
   const acceleratorProps = (
     accelerator: MenuItemConstructorOptions["accelerator"],
   ): Pick<MenuItemConstructorOptions, "accelerator"> => {
@@ -1816,6 +1820,7 @@ function configureApplicationMenu(): void {
         { role: "about" },
         {
           label: "Check for Updates...",
+          ...(updateMenuIcon ? { icon: updateMenuIcon } : {}),
           click: () => handleCheckForUpdatesMenuClick(),
         },
         { type: "separator" },
@@ -1895,6 +1900,7 @@ function configureApplicationMenu(): void {
         { type: "separator" },
         {
           label: "Check for Updates...",
+          ...(updateMenuIcon ? { icon: updateMenuIcon } : {}),
           click: () => handleCheckForUpdatesMenuClick(),
         },
       ],
