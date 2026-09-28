@@ -111,7 +111,6 @@ it.effect("preserves thread activity payloads through the RPC JSON codec", () =>
           subagentNickname: null,
           subagentRole: null,
           forkSourceThreadId: null,
-          sidechatSourceThreadId: null,
           lastKnownPr: null,
           handoff: null,
           latestTurn: null,

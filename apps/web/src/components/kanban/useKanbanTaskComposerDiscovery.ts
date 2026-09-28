@@ -206,7 +206,6 @@ export function useKanbanTaskComposerDiscovery(input: UseKanbanTaskComposerDisco
     canOfferCompactCommand: false,
     canOfferReviewCommand: false,
     canOfferForkCommand: false,
-    canOfferSideCommand: false,
     canOfferExportCommand: false,
     surfaceAppSlashCommands: KANBAN_SUPPORTED_APP_SLASH_COMMANDS,
     providerArtifacts: providerCommandsQuery.data?.artifacts,

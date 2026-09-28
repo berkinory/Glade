@@ -38,7 +38,6 @@ interface ChatComposerFooterProps {
     phase: SessionPhase;
     busy: boolean;
     connecting: boolean;
-    expired: boolean;
     hasPendingCacheReview?: boolean;
     preparingImages: boolean;
     preparingWorktree: boolean;
@@ -136,7 +135,7 @@ export function ChatComposerFooter({
         {!voice.recording && !voice.transcribing ? composerPickerControls : null}
         {voice.enabled && (voice.recording || voice.transcribing) ? (
           <ComposerVoiceRecorderBar
-            disabled={submission.connecting || submission.busy || submission.expired}
+            disabled={submission.connecting || submission.busy}
             isRecording={voice.recording}
             isTranscribing={voice.transcribing}
             durationLabel={voice.durationLabel}
@@ -185,10 +184,7 @@ export function ChatComposerFooter({
                 size="sm"
                 className="h-9 rounded-full px-4 sm:h-8"
                 disabled={
-                  submission.busy ||
-                  submission.connecting ||
-                  submission.expired ||
-                  submission.hasPendingCacheReview
+                  submission.busy || submission.connecting || submission.hasPendingCacheReview
                 }
               >
                 {submission.connecting || submission.busy ? "Sending..." : "Refine"}
@@ -200,10 +196,7 @@ export function ChatComposerFooter({
                   size="sm"
                   className="h-9 rounded-l-full rounded-r-none px-4 sm:h-8"
                   disabled={
-                    submission.busy ||
-                    submission.connecting ||
-                    submission.expired ||
-                    submission.hasPendingCacheReview
+                    submission.busy || submission.connecting || submission.hasPendingCacheReview
                   }
                 >
                   {submission.connecting || submission.busy ? "Sending..." : "Implement"}
@@ -219,7 +212,6 @@ export function ChatComposerFooter({
                         disabled={
                           submission.busy ||
                           submission.connecting ||
-                          submission.expired ||
                           submission.hasPendingCacheReview
                         }
                       />
@@ -230,10 +222,7 @@ export function ChatComposerFooter({
                   <ComposerPickerMenuPopup align="end" side="top">
                     <MenuItem
                       disabled={
-                        submission.busy ||
-                        submission.connecting ||
-                        submission.expired ||
-                        submission.hasPendingCacheReview
+                        submission.busy || submission.connecting || submission.hasPendingCacheReview
                       }
                       onClick={() => void submission.onImplementInNewThread()}
                     >
@@ -247,7 +236,7 @@ export function ChatComposerFooter({
             <>
               {voice.enabled ? (
                 <ComposerVoiceButton
-                  disabled={submission.connecting || submission.busy || submission.expired}
+                  disabled={submission.connecting || submission.busy}
                   isRecording={voice.recording}
                   isTranscribing={voice.transcribing}
                   durationLabel={voice.durationLabel}
@@ -262,7 +251,6 @@ export function ChatComposerFooter({
                 disabled={
                   submission.busy ||
                   submission.connecting ||
-                  submission.expired ||
                   submission.hasPendingCacheReview ||
                   voice.transcribing ||
                   submission.preparingImages ||

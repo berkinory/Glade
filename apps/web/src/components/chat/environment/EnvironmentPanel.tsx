@@ -18,7 +18,6 @@ import type {
   ResolvedKeybindingsConfig,
   ThreadId,
 } from "@glade/contracts";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
@@ -41,16 +40,6 @@ import type { RepoDiffTotals } from "~/hooks/useRepoDiffTotals";
 import { ArrowUpRightIcon, ChangesIcon, GitHubIcon, SettingsIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
-import { deleteActiveThreadFromClient } from "~/lib/activeThreadDelete";
-import { gitRemoveWorktreeMutationOptions } from "~/lib/gitReactQuery";
-import { waitForSidechatCreator } from "~/lib/sidechatCreatorRegistry";
-import { useComposerDraftStore } from "~/composerDraftStore";
-import { showConfirmDialogFallback } from "~/confirmDialogFallback";
-import { usePinnedThreadsStore } from "~/pinnedThreadsStore";
-import { useSplitViewStore } from "~/splitViewStore";
-import { useTerminalStateStore } from "~/terminalStateStore";
-import { useTemporaryThreadStore } from "~/temporaryThreadStore";
-import { useRightDockStore } from "~/rightDockStore";
 
 import { EnvironmentEditorSection } from "./EnvironmentEditorSection";
 import {
@@ -61,10 +50,6 @@ import { EnvironmentUsageSection } from "./EnvironmentUsageSection";
 import { EnvironmentLocalServersSection } from "./EnvironmentLocalServersSection";
 import { EnvironmentPullRequestSection } from "./EnvironmentPullRequestSection";
 import { EnvironmentStudioOutputsSection } from "./EnvironmentStudioOutputsSection";
-import {
-  EnvironmentSidechatsSection,
-  type EnvironmentSidechatPanelItem,
-} from "./EnvironmentSidechatsSection";
 import { EnvironmentNotesSection } from "./EnvironmentNotesSection";
 import { EnvironmentPinnedSection } from "./EnvironmentPinnedSection";
 import { EnvironmentProjectInstructionsSection } from "./EnvironmentProjectInstructionsSection";
@@ -124,8 +109,6 @@ export interface EnvironmentPanelProps {
   diffOpen: boolean;
   /** Heartbeat automations whose target is the active thread. */
   threadAutomations: readonly EnvironmentAutomationPanelItem[];
-  /** Child side chats for a host thread. Null suppresses the section in embedded side chats. */
-  sidechats: readonly EnvironmentSidechatPanelItem[] | null;
   /** Non-null when the diff panel cannot be opened (e.g. no repo / no changes yet). */
   diffDisabledReason?: string | null;
   /** Shared diff totals from ChatView so the mounted panel does not duplicate patch parsing. */
@@ -231,7 +214,6 @@ export function EnvironmentPanel({
   showGitActions,
   diffOpen,
   threadAutomations,
-  sidechats,
   diffDisabledReason: diffDisabledReasonProp,
   diffTotals,
   branchToolbar,
@@ -264,10 +246,7 @@ export function EnvironmentPanel({
   const recap = recapProp ?? null;
   const onOpenEditorView = onOpenEditorViewProp ?? null;
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const removeWorktreeMutation = useMutation(gitRemoveWorktreeMutationOptions({ queryClient }));
   const { settings } = useAppSettings();
-  const openRightDockPane = useRightDockStore((store) => store.openPane);
   const { additions, deletions, hasChanges } = diffTotals;
 
   // Disable the Changes row only when the diff cannot be opened *and* is not already open
@@ -377,84 +356,6 @@ export function EnvironmentPanel({
       ) : null}
 
       <EnvironmentLocalServersSection enabled={open} />
-
-      {sidechats && activeThreadId ? (
-        <EnvironmentSidechatsSection
-          sidechats={sidechats}
-          onCreate={() => {
-            void waitForSidechatCreator(activeThreadId)
-              .then((createSidechat) => {
-                if (!createSidechat) {
-                  toastManager.add({
-                    type: "warning",
-                    title: "Side chat is unavailable",
-                    description: "Open a server-backed main thread before starting a side chat.",
-                  });
-                  return;
-                }
-                return createSidechat();
-              })
-              .catch((error) => {
-                toastManager.add({
-                  type: "error",
-                  title: "Could not start side chat",
-                  description:
-                    error instanceof Error
-                      ? error.message
-                      : "An error occurred while creating the side chat.",
-                });
-              });
-          }}
-          onOpen={(sidechatThreadId) => {
-            openRightDockPane(activeThreadId, {
-              kind: "sidechat",
-              threadId: sidechatThreadId,
-            });
-            onClose();
-          }}
-          onDelete={(sidechat) => {
-            void (async () => {
-              if (settings.confirmThreadDelete) {
-                const confirmationMessage = [
-                  `Delete side chat "${sidechat.title}"?`,
-                  "This permanently clears conversation history for this side chat and its subagents.",
-                ].join("\n");
-                const api = readNativeApi();
-                const confirmed = api
-                  ? await api.dialogs.confirm(confirmationMessage)
-                  : await showConfirmDialogFallback(confirmationMessage);
-                if (!confirmed) return;
-              }
-              // The host can change workspace after the side chat is created. The shared delete
-              // helper prompts only if this side chat is now the last owner of its worktree.
-              // An open dock pane is pruned once the thread disappears.
-              await deleteActiveThreadFromClient({
-                threadId: sidechat.id,
-                includeSubagentDescendants: true,
-                onDeleted: ({ thread }) => {
-                  usePinnedThreadsStore.getState().unpinThread(thread.id);
-                  const drafts = useComposerDraftStore.getState();
-                  drafts.clearDraftThread(thread.id);
-                  drafts.clearProjectDraftThreadById(thread.projectId, thread.id);
-                  useTerminalStateStore.getState().clearTerminalState(thread.id);
-                  useSplitViewStore.getState().removeThreadFromSplitViews(thread.id);
-                  useTemporaryThreadStore.getState().clearTemporaryThread(thread.id);
-                },
-                removeWorktree: (worktree) => removeWorktreeMutation.mutateAsync(worktree),
-              });
-            })().catch((error) => {
-              toastManager.add({
-                type: "error",
-                title: "Could not delete side chat",
-                description:
-                  error instanceof Error
-                    ? error.message
-                    : "An error occurred while deleting the side chat.",
-              });
-            });
-          }}
-        />
-      ) : null}
 
       {/*
         Optional sections below the git block. Each renders its own leading divider only when it

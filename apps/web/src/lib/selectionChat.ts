@@ -1,4 +1,4 @@
-// Purpose: Route selected transcript text through the normal Side and new-chat flows.
+// Purpose: Route selected transcript text through the new-chat flow.
 
 import type { ProjectId, ThreadEnvironmentMode, ThreadId } from "@glade/contracts";
 
@@ -6,10 +6,7 @@ import { useComposerDraftStore, type QueuedComposerChatTurn } from "../composerD
 import { requestComposerFocus } from "../composerFocusRequestStore";
 import { ensureNativeApi } from "../nativeApi";
 import { useProjectEnvironmentStore } from "../projectEnvironmentStore";
-import { useRightDockStore } from "../rightDockStore";
-import { useStore } from "../store";
 import { createAssistantSelectionAttachment } from "./assistantSelections";
-import { createSidechatThread } from "./sidechatCreation";
 import type { NewThreadOptions } from "./threadBootstrap";
 import { randomUUID } from "./utils";
 import type { TranscriptAssistantSelection } from "../components/chat/chatSelectionActions";
@@ -18,32 +15,6 @@ function requireSelection(selection: TranscriptAssistantSelection) {
   const attachment = createAssistantSelectionAttachment(selection);
   if (!attachment) throw new Error("Select between 1 and 4,000 characters.");
   return attachment;
-}
-
-export async function addSelectionToSide(
-  input: Pick<
-    Parameters<typeof createSidechatThread>[0],
-    "project" | "sourceThread" | "selectedModelSelection" | "runtimeMode"
-  > & { selection: TranscriptAssistantSelection },
-): Promise<void> {
-  const attachment = requireSelection(input.selection);
-  if (input.sourceThread.sidechatSourceThreadId || input.sourceThread.sidechatExpiredAt) {
-    throw new Error("Open a main chat before starting Side.");
-  }
-  await createSidechatThread({
-    api: ensureNativeApi(),
-    project: input.project,
-    sourceThread: input.sourceThread,
-    selectedModelSelection: input.selectedModelSelection,
-    ...(input.runtimeMode !== undefined ? { runtimeMode: input.runtimeMode } : {}),
-    openSidechat: (threadId) => {
-      // Seed the reference before mounting the Side composer, including during a slow sync.
-      useComposerDraftStore.getState().addAssistantSelection(threadId, attachment);
-      useRightDockStore.getState().openPane(input.sourceThread.id, { kind: "sidechat", threadId });
-      requestComposerFocus(threadId);
-    },
-    syncServerShellSnapshot: (snapshot) => useStore.getState().syncServerShellSnapshot(snapshot),
-  });
 }
 
 type SelectionChatSettings = Pick<

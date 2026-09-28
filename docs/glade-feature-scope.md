@@ -17,6 +17,8 @@ production artwork. Production updates come only from the Glade release reposito
   agent gateway remain available to authenticated provider sessions.
 - Alternate application channels: no extra installers, flavors, badges, update feeds,
   profile import or automatic remote diagnostics.
+- Side chats: no right dock pane, creation command, expiry worker, or retained side chat
+  conversation history. Regular forks and split views remain available.
 
 These are physical removals, not dormant implementations behind feature flags.
 
@@ -35,6 +37,9 @@ so existing databases can still validate their lineage. Migration 109 removes th
 retired integration tables and credentials, preserving projects and conversation
 history. Historical conversation creation-source metadata may still decode the
 retired source value; it grants no capability and cannot create a connection.
+
+Migration 111 deletes side chat threads and their descendants, including their runtime and
+event records, then removes side chat columns. Regular conversations are preserved.
 
 Old OS profiles and manual browser sessions are not deleted. Persisted image bytes
 remain readable even when removed capture-specific display metadata is discarded.

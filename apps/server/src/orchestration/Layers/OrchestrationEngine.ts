@@ -587,7 +587,6 @@ const makeOrchestrationEngine = Effect.gen(function* () {
       case "thread.message.edit-and-resend":
       case "thread.approval.respond":
       case "thread.user-input.respond":
-      case "thread.sidechat.expire":
         return loadThreadDetailForDecider(command, commandReadModel, command.threadId);
       case "thread.message.assistant.complete":
         // Read the exact message, including a resumed message older than the
@@ -881,7 +880,6 @@ const makeOrchestrationEngine = Effect.gen(function* () {
               "thread.session-stop-requested",
               "thread.archived",
               "thread.deleted",
-              "thread.sidechat-expired",
               "thread.conversation-rolled-back",
             ],
           ),

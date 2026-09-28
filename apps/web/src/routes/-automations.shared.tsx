@@ -116,12 +116,11 @@ const AUTOMATION_DEFINITION_UPDATE_SCOPE = {
   id: "automation-definition-updates",
 } as const;
 
-export function automationTargetThreads<
-  TThread extends Pick<Thread, "projectId" | "sidechatSourceThreadId">,
->(threads: readonly TThread[], projectId: string): readonly TThread[] {
-  return threads.filter(
-    (thread) => thread.projectId === projectId && !thread.sidechatSourceThreadId,
-  );
+export function automationTargetThreads<TThread extends Pick<Thread, "projectId">>(
+  threads: readonly TThread[],
+  projectId: string,
+): readonly TThread[] {
+  return threads.filter((thread) => thread.projectId === projectId);
 }
 
 export function automationDefinitionUpdateMutationOptions(
@@ -963,9 +962,7 @@ export function AutomationDialog({
   readonly open: boolean;
   readonly form: AutomationFormState;
   readonly projects: ReturnType<typeof useStore.getState>["projects"];
-  readonly threads: ReadonlyArray<
-    Pick<Thread, "id" | "projectId" | "title" | "sidechatSourceThreadId">
-  >;
+  readonly threads: ReadonlyArray<Pick<Thread, "id" | "projectId" | "title">>;
   readonly warnings?: readonly AutomationDraftWarning[];
   readonly acknowledgedWarningIds?: ReadonlySet<AutomationDraftWarningId>;
   readonly onOpenChange: (open: boolean) => void;

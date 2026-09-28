@@ -25,8 +25,6 @@ export const THREAD_PROJECTION_EVENT_TYPES = new Set<OrchestrationEvent["type"]>
   "thread.deleted",
   "thread.archived",
   "thread.unarchived",
-  "thread.sidechat-activity-recorded",
-  "thread.sidechat-expired",
 ]);
 
 const OTHER_THREAD_SHELL_EVENT_TYPES = new Set<OrchestrationEvent["type"]>([

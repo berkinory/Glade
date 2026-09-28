@@ -1112,10 +1112,9 @@ export type ProjectEmptyState = "loading" | "empty" | null;
 // Keep the initial shell bootstrap visually distinct from a genuinely empty project list.
 export function resolveProjectEmptyState(input: {
   readonly projectCount: number;
-  readonly shouldShowProjectPathEntry: boolean;
   readonly threadsHydrated: boolean;
 }): ProjectEmptyState {
-  if (input.projectCount > 0 || input.shouldShowProjectPathEntry) {
+  if (input.projectCount > 0) {
     return null;
   }
 

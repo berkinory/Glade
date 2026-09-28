@@ -104,9 +104,6 @@ function toThreadShell(thread: Thread): ThreadShell {
     subagentNickname: thread.subagentNickname ?? null,
     subagentRole: thread.subagentRole ?? null,
     forkSourceThreadId: thread.forkSourceThreadId ?? null,
-    sidechatSourceThreadId: thread.sidechatSourceThreadId ?? null,
-    sidechatLastActivityAt: thread.sidechatLastActivityAt ?? null,
-    sidechatExpiredAt: thread.sidechatExpiredAt ?? null,
     lastKnownPr: thread.lastKnownPr ?? null,
     handoff: thread.handoff ?? null,
     claudeCacheReview: thread.claudeCacheReview ?? null,
@@ -362,9 +359,6 @@ function sidebarThreadSummariesEqual(
     left.hasActionableProposedPlan === right.hasActionableProposedPlan &&
     left.hasLiveTailWork === right.hasLiveTailWork &&
     (left.forkSourceThreadId ?? null) === (right.forkSourceThreadId ?? null) &&
-    (left.sidechatSourceThreadId ?? null) === (right.sidechatSourceThreadId ?? null) &&
-    (left.sidechatLastActivityAt ?? null) === (right.sidechatLastActivityAt ?? null) &&
-    (left.sidechatExpiredAt ?? null) === (right.sidechatExpiredAt ?? null) &&
     deepEqualJson(left.lastKnownPr ?? null, right.lastKnownPr ?? null) &&
     (left.handoff ?? null) === (right.handoff ?? null)
   );
@@ -408,9 +402,6 @@ function buildSidebarThreadSummary(
     hasActionableProposedPlan: metadata.hasActionableProposedPlan,
     hasLiveTailWork: metadata.hasLiveTailWork,
     forkSourceThreadId: thread.forkSourceThreadId ?? null,
-    sidechatSourceThreadId: thread.sidechatSourceThreadId ?? null,
-    sidechatLastActivityAt: thread.sidechatLastActivityAt ?? null,
-    sidechatExpiredAt: thread.sidechatExpiredAt ?? null,
     lastKnownPr: thread.lastKnownPr ?? null,
     handoff: thread.handoff ?? null,
   };

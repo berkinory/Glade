@@ -127,7 +127,6 @@ export function DeferredChatView(props: {
     onClick: () => void;
   } | null;
   onChangeThread?: () => void;
-  onCloseThreadPane?: () => void;
   onMounted?: () => void;
 }) {
   const onMounted = props.onMounted ?? noopChatSurfaceAction;
@@ -180,7 +179,6 @@ export function DeferredChatView(props: {
       {...(props.onMaximize ? { onMaximizeSurface: props.onMaximize } : {})}
       {...(props.viewModeAction !== undefined ? { viewModeAction: props.viewModeAction } : {})}
       {...(props.onChangeThread ? { onChangeThreadInSplitPane: props.onChangeThread } : {})}
-      {...(props.onCloseThreadPane ? { onCloseThreadPane: props.onCloseThreadPane } : {})}
     />
   );
 }

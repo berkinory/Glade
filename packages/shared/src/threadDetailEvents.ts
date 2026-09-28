@@ -16,8 +16,6 @@ export const THREAD_DETAIL_EVENT_TYPES = [
   "thread.pinned-message-label-set",
   "thread.archived",
   "thread.unarchived",
-  "thread.sidechat-activity-recorded",
-  "thread.sidechat-expired",
 ] as const satisfies ReadonlyArray<OrchestrationEvent["type"]>;
 
 const THREAD_DETAIL_EVENT_TYPE_SET = new Set<OrchestrationEvent["type"]>(THREAD_DETAIL_EVENT_TYPES);

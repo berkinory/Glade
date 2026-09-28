@@ -19,15 +19,6 @@ export function resolveVisibleToastThreadIds(input: {
       ? new Set([input.activeThreadId])
       : new Set<ThreadId>();
 
-  if (!input.splitView && input.rightDockRendered && input.rightDockState?.open) {
-    const activePane = input.rightDockState.panes.find(
-      (pane) => pane.id === input.rightDockState?.activePaneId,
-    );
-    if (activePane?.kind === "sidechat" && activePane.threadId) {
-      visibleThreadIds.add(activePane.threadId);
-    }
-  }
-
   return visibleThreadIds;
 }
 

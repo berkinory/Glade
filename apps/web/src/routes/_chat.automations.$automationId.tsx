@@ -110,7 +110,7 @@ export const Route = createFileRoute("/_chat/automations/$automationId")({
 });
 
 // Sidebar summaries carry every field these surfaces read (id, projectId, title,
-// sidechatSourceThreadId) and do not rebuild on streamed message/activity deltas
+// modelSelection) and do not rebuild on streamed message/activity deltas
 // the way the fully derived thread list does.
 const selectAllThreads = createSidebarThreadSummariesSelector();
 

@@ -14,7 +14,6 @@ import {
   useMemo,
   useRef,
   useState,
-  useSyncExternalStore,
 } from "react";
 import type { EditorLeaveGuard } from "../EditorWorkspaceView";
 
@@ -36,11 +35,7 @@ import {
   buildWhyLinesPrompt,
   type ChatFileReference,
 } from "../../lib/chatReferences";
-import {
-  dockSidechatPaneScopeId,
-  EDITOR_CHAT_PANE_SCOPE_ID,
-  SINGLE_CHAT_PANE_SCOPE_ID,
-} from "../../lib/chatPaneScope";
+import { EDITOR_CHAT_PANE_SCOPE_ID, SINGLE_CHAT_PANE_SCOPE_ID } from "../../lib/chatPaneScope";
 import type { DockPaneRuntimeMode } from "../../lib/dockPaneActivation";
 import type { FileCommentSelection } from "../../lib/fileComments";
 import type { DiffEditBaseRev, DiffFileEditRequest } from "../../lib/diffEditBaseRev";
@@ -48,13 +43,6 @@ import { editorCenterModeFamily, type EditorCenterMode } from "../../lib/editorC
 import { gitBranchesQueryOptions } from "../../lib/gitReactQuery";
 import { canComposerHandlePanelWidth } from "../../lib/panelResize";
 import { projectListDirectoriesQueryOptions } from "../../lib/projectReactQuery";
-import { waitForSidechatCreator } from "../../lib/sidechatCreatorRegistry";
-import {
-  clearSidechatPaneRetention,
-  getSidechatPaneRetentionVersion,
-  sidechatPaneRetentionRemainingMs,
-  subscribeSidechatPaneRetention,
-} from "../../lib/sidechatCreation";
 import {
   prefetchWorkspaceFile,
   resolveDockFileOpenTarget,
@@ -67,7 +55,6 @@ import { requestExplorerReveal } from "../../explorerRevealRequestStore";
 import { selectRightDockState, useRightDockStore } from "../../rightDockStore";
 import {
   resolveActivePane,
-  findMissingSidechatPaneIds,
   type RightDockPane,
   type RightDockPaneKind,
 } from "../../rightDockStore.logic";
@@ -160,9 +147,7 @@ function shouldAcceptDockWidth({
   const previousSidebarWidth = wrapper.style.getPropertyValue("--sidebar-width");
   return canComposerHandlePanelWidth({
     nextWidth,
-    // The dock coexists only with the single-pane chat, but dock sidechat
-    // panes mount their own composer forms — scope the probe so it always
-    // measures the main composer instead of "first form in the document".
+    // Scope the width probe to the main composer.
     paneScopeId: SINGLE_CHAT_PANE_SCOPE_ID,
     applyWidth: (width) => {
       wrapper.style.setProperty("--sidebar-width", `${width}px`);
@@ -181,16 +166,6 @@ function RightDockPanePlaceholder(props: { kind: RightDockPaneKind }) {
   const { label } = getRightDockPaneMeta(props.kind);
   return <PanelStateMessage>{label} panel is coming soon.</PanelStateMessage>;
 }
-
-// Embedded dock chats (side chats) manage their own panels through the dock, so the
-// nested ChatView always renders with a closed, inert panel state.
-const DOCK_EMBEDDED_PANEL_STATE: SplitViewPanePanelState = {
-  panel: null,
-  diffTurnId: null,
-  diffFilePath: null,
-  hasOpenedPanel: false,
-  lastOpenPanel: "browser",
-};
 
 export function SingleChatSurface(props: {
   threadId: ThreadId;
@@ -247,7 +222,6 @@ export function SingleChatSurface(props: {
   });
   const availableDockPaneKinds = dockLauncherItems.map(({ kind }) => kind);
   const projects = useStore((store) => store.projects);
-  const threadsHydrated = useStore((store) => store.threadsHydrated);
   const { settings: appSettings } = useAppSettings();
   const { handleNewThread } = useHandleNewThread();
   const queryClient = useQueryClient();
@@ -741,67 +715,7 @@ export function SingleChatSurface(props: {
   });
   const excludedThreadIds = new Set<ThreadId>([props.threadId]);
 
-  // Sidechat tab labels only need thread titles, so subscribe to the coarse
-  // sidebar-summary selector (turn-level changes) instead of the full thread
-  // selector, which re-emits on every streaming token of any thread and would
-  // otherwise re-render the entire chat surface + right dock + active pane.
   const threadSummaries = useStore(useMemo(() => createSidebarThreadSummariesSelector(), []));
-  const sidechatPaneRetentionVersion = useSyncExternalStore(
-    subscribeSidechatPaneRetention,
-    getSidechatPaneRetentionVersion,
-    getSidechatPaneRetentionVersion,
-  );
-  useEffect(() => {
-    if (!threadsHydrated) {
-      return;
-    }
-    const existingThreadIds = new Set(threadSummaries.map((thread) => thread.id));
-    for (const pane of dockState.panes) {
-      if (pane.kind === "sidechat" && pane.threadId && existingThreadIds.has(pane.threadId)) {
-        clearSidechatPaneRetention(pane.threadId);
-      }
-    }
-    const missingPaneIds = findMissingSidechatPaneIds(dockState, existingThreadIds);
-    if (missingPaneIds.length === 0) {
-      return;
-    }
-
-    const timerIds: number[] = [];
-    for (const paneId of missingPaneIds) {
-      const pane = dockState.panes.find((candidate) => candidate.id === paneId);
-      const remainingGraceMs = pane?.threadId ? sidechatPaneRetentionRemainingMs(pane.threadId) : 0;
-      if (remainingGraceMs === null) {
-        continue;
-      }
-      if (remainingGraceMs <= 0) {
-        if (pane?.threadId) {
-          clearSidechatPaneRetention(pane.threadId);
-        }
-        closePane(props.threadId, paneId);
-        continue;
-      }
-      timerIds.push(
-        window.setTimeout(() => {
-          if (pane?.threadId) {
-            clearSidechatPaneRetention(pane.threadId);
-          }
-          closePane(props.threadId, paneId);
-        }, remainingGraceMs),
-      );
-    }
-    return () => {
-      for (const timerId of timerIds) {
-        window.clearTimeout(timerId);
-      }
-    };
-  }, [
-    closePane,
-    dockState,
-    props.threadId,
-    sidechatPaneRetentionVersion,
-    threadSummaries,
-    threadsHydrated,
-  ]);
   const editorProjectOptions = projects.flatMap((project) =>
     project.kind === "project" ? [{ id: project.id, name: project.name }] : [],
   );
@@ -840,8 +754,8 @@ export function SingleChatSurface(props: {
     });
   };
   const paneLabelOverrides = useMemo(
-    () => buildRightDockPaneLabelOverrides(dockState.panes, threadSummaries),
-    [dockState.panes, threadSummaries],
+    () => buildRightDockPaneLabelOverrides(dockState.panes),
+    [dockState.panes],
   );
 
   // The pull request pane is a singleton, so at most one tab needs the live state glyph.
@@ -858,33 +772,6 @@ export function SingleChatSurface(props: {
 
   const handleAddDockPane = (kind: RightDockPaneKind) => {
     requestImmediateDockHydration(kind);
-    if (kind === "sidechat") {
-      // Sidechat spawns a thread; reuse the composer's /side flow (correct model
-      // selection) published via the registry instead of opening an empty pane.
-      void waitForSidechatCreator(props.threadId)
-        .then((createSidechat) => {
-          if (!createSidechat) {
-            toastManager.add({
-              type: "warning",
-              title: "Side chat is unavailable",
-              description: "Open a server-backed main thread before starting a Side chat.",
-            });
-            return;
-          }
-          return createSidechat();
-        })
-        .catch((error) => {
-          toastManager.add({
-            type: "error",
-            title: "Could not start Side chat",
-            description:
-              error instanceof Error
-                ? error.message
-                : "An error occurred while creating Side chat.",
-          });
-        });
-      return;
-    }
     openPane(props.threadId, { kind });
   };
 
@@ -1010,31 +897,6 @@ export function SingleChatSurface(props: {
               onCommentInChat={handleCommentInChat}
             />
           </Suspense>
-        );
-      case "sidechat":
-        if (!pane.threadId) {
-          return <RightDockPanePlaceholder kind="sidechat" />;
-        }
-        if (!threadSummaries.some((thread) => thread.id === pane.threadId)) {
-          return <PanelStateMessage>Loading side chat...</PanelStateMessage>;
-        }
-        if (context.runtimeMode === "preview") {
-          return null;
-        }
-        return (
-          <DeferredChatView
-            threadId={pane.threadId}
-            hideHeader
-            paneScopeId={dockSidechatPaneScopeId(pane.id)}
-            deferMount={false}
-            surfaceMode="split"
-            isFocusedPane={false}
-            panelState={DOCK_EMBEDDED_PANEL_STATE}
-            onToggleDiff={noopChatSurfaceAction}
-            onToggleBrowser={noopChatSurfaceAction}
-            onOpenBrowserUrl={noopChatSurfaceAction}
-            onOpenTurnDiff={noopChatSurfaceAction}
-          />
         );
       default:
         return <RightDockPanePlaceholder kind={pane.kind} />;

@@ -11,9 +11,7 @@ interface TranscriptSelectionActionProps {
   top: number;
   placement: "top" | "bottom";
   onAddToChat: () => void;
-  onAddToSide?: (() => void) | undefined;
   onAddToNewChat?: (() => void) | undefined;
-  sideDisabled?: boolean | undefined;
   disabled?: boolean | undefined;
 }
 
@@ -68,13 +66,6 @@ export function TranscriptSelectionAction(props: TranscriptSelectionActionProps)
           onClick={props.onAddToChat}
           disabled={props.disabled}
         />
-        {props.onAddToSide ? (
-          <TranscriptSelectionToolbarButton
-            label="Add to Side"
-            onClick={props.onAddToSide}
-            disabled={props.disabled || props.sideDisabled}
-          />
-        ) : null}
         {props.onAddToNewChat ? (
           <TranscriptSelectionToolbarButton
             label="Add to new Chat"

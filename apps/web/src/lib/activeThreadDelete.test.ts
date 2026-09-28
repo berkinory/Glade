@@ -182,7 +182,7 @@ describe("deleteActiveThreadFromClient", () => {
     expect(removeWorktree).not.toHaveBeenCalled();
   });
 
-  it("deletes a side chat's descendants first and cleans each accepted thread before its worktree", async () => {
+  it("deletes a thread's descendants first and cleans each accepted thread before its worktree", async () => {
     const child = { ...THREAD, id: ThreadId.makeUnsafe("child"), parentThreadId: THREAD_ID };
     const grandchild = {
       ...THREAD,

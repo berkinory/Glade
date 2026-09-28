@@ -1218,10 +1218,7 @@ function applyOrchestrationEvent(
           if (
             session === thread.session &&
             error === thread.error &&
-            latestTurn === thread.latestTurn &&
-            (!thread.sidechatSourceThreadId ||
-              thread.sidechatExpiredAt ||
-              thread.sidechatLastActivityAt === event.payload.session.updatedAt)
+            latestTurn === thread.latestTurn
           ) {
             return thread;
           }
@@ -1230,9 +1227,6 @@ function applyOrchestrationEvent(
             session,
             error,
             latestTurn,
-            ...(thread.sidechatSourceThreadId && !thread.sidechatExpiredAt
-              ? { sidechatLastActivityAt: event.payload.session.updatedAt }
-              : {}),
             updatedAt:
               (thread.updatedAt ?? thread.createdAt) > event.occurredAt
                 ? thread.updatedAt
@@ -1243,48 +1237,6 @@ function applyOrchestrationEvent(
           ...options,
           updateSidebarSummary: true,
         },
-      );
-
-    case "thread.sidechat-activity-recorded":
-      return applyThreadUpdate(
-        state,
-        event.payload.threadId,
-        (thread) => {
-          const updatedAt = resolveEventUpdatedAt(thread, event.payload.lastActivityAt);
-          if (
-            thread.sidechatLastActivityAt === event.payload.lastActivityAt &&
-            thread.updatedAt === updatedAt
-          ) {
-            return thread;
-          }
-          return {
-            ...thread,
-            sidechatLastActivityAt: event.payload.lastActivityAt,
-            updatedAt,
-          };
-        },
-        { ...options, updateSidebarSummary: true },
-      );
-
-    case "thread.sidechat-expired":
-      return applyThreadUpdate(
-        state,
-        event.payload.threadId,
-        (thread) => {
-          const updatedAt = resolveEventUpdatedAt(thread, event.payload.expiredAt);
-          if (
-            thread.sidechatExpiredAt === event.payload.expiredAt &&
-            thread.updatedAt === updatedAt
-          ) {
-            return thread;
-          }
-          return {
-            ...thread,
-            sidechatExpiredAt: event.payload.expiredAt,
-            updatedAt,
-          };
-        },
-        { ...options, updateSidebarSummary: true },
       );
 
     case "thread.turn-interrupt-requested": {
@@ -1359,8 +1311,6 @@ function applyOrchestrationEvent(
             thread.runtimeMode === runtimeMode &&
             thread.interactionMode === interactionMode &&
             thread.pendingSourceProposedPlan === event.payload.sourceProposedPlan &&
-            (!thread.sidechatSourceThreadId ||
-              thread.sidechatLastActivityAt === event.payload.createdAt) &&
             (thread.updatedAt ?? thread.createdAt) >= event.payload.createdAt
           ) {
             return thread;
@@ -1371,9 +1321,6 @@ function applyOrchestrationEvent(
             runtimeMode,
             interactionMode,
             pendingSourceProposedPlan: event.payload.sourceProposedPlan,
-            ...(thread.sidechatSourceThreadId
-              ? { sidechatLastActivityAt: event.payload.createdAt }
-              : {}),
             updatedAt:
               (thread.updatedAt ?? thread.createdAt) > event.payload.createdAt
                 ? thread.updatedAt

@@ -16,7 +16,6 @@ const RIGHT_DOCK_PANE_KINDS = [
   "explorer",
   "file",
   "terminal",
-  "sidechat",
   "git",
   "pullRequest",
 ] as const;
@@ -29,8 +28,6 @@ const RIGHT_DOCK_PANE_KIND_SET: ReadonlySet<string> = new Set(RIGHT_DOCK_PANE_KI
 export interface RightDockPane {
   id: string;
   kind: RightDockPaneKind;
-  // sidechat panes point at the embedded thread.
-  threadId: ThreadId | null;
   // diff panes remember which turn/file they were opened on.
   diffTurnId: TurnId | null;
   diffFilePath: string | null;
@@ -48,8 +45,7 @@ export interface RightDockThreadState {
   activePaneId: string | null;
 }
 
-// File previews are the only multi-instance dock kind. Side chats share one
-// destination and switch the embedded thread inside it.
+// File previews are the only multi-instance dock kind.
 const MULTI_INSTANCE_PANE_KINDS: ReadonlySet<RightDockPaneKind> = new Set(["file"]);
 
 // Kinds that can only ever have one instance per host thread, derived as
@@ -89,7 +85,6 @@ function sanitizePersistedPane(value: unknown): RightDockPane | null {
   return {
     id: candidate.id,
     kind: candidate.kind,
-    threadId: typeof candidate.threadId === "string" ? (candidate.threadId as ThreadId) : null,
     diffTurnId: typeof candidate.diffTurnId === "string" ? (candidate.diffTurnId as TurnId) : null,
     diffFilePath: typeof candidate.diffFilePath === "string" ? candidate.diffFilePath : null,
     filePath: typeof candidate.filePath === "string" ? candidate.filePath : null,
@@ -161,7 +156,6 @@ export function sanitizeRightDockStateByThreadId(
 export interface OpenPaneInput {
   paneId: string;
   kind: RightDockPaneKind;
-  threadId?: ThreadId | null;
   diffTurnId?: TurnId | null;
   diffFilePath?: string | null;
   filePath?: string | null;
@@ -175,7 +169,6 @@ function createPane(input: OpenPaneInput): RightDockPane {
   return {
     id: input.paneId,
     kind: input.kind,
-    threadId: input.threadId ?? null,
     diffTurnId: input.diffTurnId ?? null,
     diffFilePath: input.diffFilePath ?? null,
     filePath: input.filePath ?? null,
@@ -190,9 +183,6 @@ function createPane(input: OpenPaneInput): RightDockPane {
 // overwrite content metadata when the caller explicitly targets new content,
 // so a bare re-open/toggle keeps the pane focused on what it currently shows.
 function singletonPaneReopenPatch(input: OpenPaneInput): Partial<RightDockPane> | null {
-  if (input.kind === "sidechat" && input.threadId !== undefined) {
-    return { threadId: input.threadId ?? null };
-  }
   if (
     input.kind === "diff" &&
     (input.diffTurnId !== undefined || input.diffFilePath !== undefined)
@@ -334,7 +324,6 @@ export function updatePaneInState(
       | "diffTurnId"
       | "diffFilePath"
       | "filePath"
-      | "threadId"
       | "pullRequestProjectId"
       | "pullRequestRepository"
       | "pullRequestNumber"
@@ -352,7 +341,6 @@ export function updatePaneInState(
       nextPane.diffTurnId !== pane.diffTurnId ||
       nextPane.diffFilePath !== pane.diffFilePath ||
       nextPane.filePath !== pane.filePath ||
-      nextPane.threadId !== pane.threadId ||
       nextPane.pullRequestProjectId !== pane.pullRequestProjectId ||
       nextPane.pullRequestRepository !== pane.pullRequestRepository ||
       nextPane.pullRequestNumber !== pane.pullRequestNumber ||
@@ -385,47 +373,4 @@ export function resolveActivePane(state: RightDockThreadState): RightDockPane | 
     return null;
   }
   return state.panes.find((pane) => pane.id === state.activePaneId) ?? null;
-}
-
-export function findMissingSidechatPaneIds(
-  state: RightDockThreadState,
-  existingThreadIds: ReadonlySet<ThreadId>,
-): readonly string[] {
-  return state.panes.flatMap((pane) =>
-    pane.kind === "sidechat" && pane.threadId && !existingThreadIds.has(pane.threadId)
-      ? [pane.id]
-      : [],
-  );
-}
-
-// An active sidechat embeds a full chat, so it needs a detail lease just like a
-// split-view pane. Persisted inactive or currently unrendered docks stay out of
-// the scarce live-stream budget.
-export function resolveVisibleDockSidechatThreadIds(input: {
-  dockRendered: boolean;
-  dockStateByThreadId: Record<string, RightDockThreadState | undefined>;
-  hostThreadIds: readonly ThreadId[];
-}): ThreadId[] {
-  if (!input.dockRendered) {
-    return [];
-  }
-
-  const sidechatThreadIds: ThreadId[] = [];
-  const seenThreadIds = new Set<ThreadId>(input.hostThreadIds);
-  for (const hostThreadId of input.hostThreadIds) {
-    const dockState = input.dockStateByThreadId[hostThreadId];
-    if (!dockState) {
-      continue;
-    }
-    const activePane = resolveActivePane(dockState);
-    if (
-      activePane?.kind === "sidechat" &&
-      activePane.threadId &&
-      !seenThreadIds.has(activePane.threadId)
-    ) {
-      seenThreadIds.add(activePane.threadId);
-      sidechatThreadIds.push(activePane.threadId);
-    }
-  }
-  return sidechatThreadIds;
 }

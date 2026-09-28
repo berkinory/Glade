@@ -33,7 +33,6 @@ export function resolveChatIndexRestoreRoute(input: {
       string,
       | {
           readonly projectId: ProjectId;
-          readonly sidechatSourceThreadId?: ThreadId | null;
         }
       | undefined
     >
@@ -61,7 +60,6 @@ export function resolveChatIndexRestoreRoute(input: {
     // from the same snapshot as threadIds, so this only ever excludes a thread if that invariant
     // breaks — and then a fresh draft beats restoring into the wrong segment.
     const threadSummary = sidebarThreadSummaryById[threadId];
-    if (threadSummary?.sidechatSourceThreadId) continue;
     const projectId = threadSummary?.projectId ?? draftProjectIdByThreadId.get(threadId);
     if (projectId === undefined) continue;
     // Studio threads belong to the /studio surface; restoring one from "/" would silently

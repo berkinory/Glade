@@ -137,10 +137,8 @@ import { providerStartOptionsFromServerSettings } from "@glade/shared/serverSett
 import { clearWorkspaceIndexCache } from "../../workspaceEntries.ts";
 import {
   buildPriorTranscriptBootstrapText,
-  buildForkBootstrapText,
   buildHandoffBootstrapText,
   hasNativeAssistantMessagesBefore,
-  listImportedForkMessages,
   listPriorTranscriptMessages,
 } from "../handoff.ts";
 import { OrchestrationCommandInvariantError, type OrchestrationDispatchError } from "../Errors.ts";
@@ -162,7 +160,6 @@ import {
 import { deriveTurnStartSession } from "../turnStartSession.ts";
 import { TurnCheckpointCoordinator } from "../Services/TurnCheckpointCoordinator.ts";
 import { resolveProviderSessionThread as resolveProviderSessionThreadFromProjection } from "../providerSessionThread.ts";
-import { isExpiredSidechat } from "../sidechatLifecycle.ts";
 
 type ProviderQueueDrainEvent = Extract<
   ProviderRuntimeEvent,
@@ -500,10 +497,7 @@ const GATEWAY_OPERATION_COMPLETION_WAIT_TIMEOUT = Duration.seconds(120);
 const PROVIDER_INPUT_SAFETY_MARGIN_CHARS = 1_000;
 const THREAD_MENTION_CONTEXT_SUFFIX_PREFIX_CHARS = 2;
 const DEFAULT_RUNTIME_MODE: RuntimeMode = "full-access";
-const SIDECHAT_BOUNDARY_INSTRUCTION =
-  "You are in a sidechat. Treat all prior conversation as reference-only context. Do not continue any prior task automatically. Do not mutate files, git, or the workspace and do not run workspace-changing commands unless the latest user message explicitly asks you to do so after this boundary. Use this sidechat for focused explanation, safety checks, summaries, and alternatives.";
-
-type ProviderContextTag = "handoff_context" | "sidechat_context" | "thread_context";
+type ProviderContextTag = "handoff_context" | "thread_context";
 
 interface BootstrapContextSelection {
   readonly tag: ProviderContextTag;
@@ -883,7 +877,6 @@ const make = Effect.gen(function* () {
   };
   const pendingQueuedDispatchBySessionThread = new Map<string, PendingQueuedDispatch>();
   const queuedTurnPromotionOwner = `provider-queued-turn:${crypto.randomUUID()}`;
-  const sidechatContextBootstrapThreadIds = new Set<string>();
   // Fresh sessions that cannot inherit native conversation state need one
   // transcript bootstrap for fork fallbacks.
   const freshSessionContextBootstrapThreadIds = new Set<string>();
@@ -1083,7 +1076,6 @@ const make = Effect.gen(function* () {
   type PendingContextBootstrapAttempt = {
     turnId?: TurnId;
     terminalEvent?: ProviderQueueDrainEvent;
-    readonly clearSidechat: boolean;
     readonly clearFreshSessionTranscript: boolean;
     readonly clearRollbackTranscript: boolean;
     readonly completeDurablePriorTranscript: boolean;
@@ -1096,7 +1088,6 @@ const make = Effect.gen(function* () {
   // begin clean even if fork metadata would normally register a bootstrap.
   const suppressContextBootstrapOnNextStartThreadIds = new Set<string>();
   const clearPendingContextBootstraps = (threadId: string) => {
-    sidechatContextBootstrapThreadIds.delete(threadId);
     freshSessionContextBootstrapThreadIds.delete(threadId);
     rollbackContextBootstrapThreadIds.delete(threadId);
     pendingContextBootstrapAttempts.delete(threadId);
@@ -1106,9 +1097,6 @@ const make = Effect.gen(function* () {
     threadId: string,
     attempt: PendingContextBootstrapAttempt,
   ) => {
-    if (attempt.clearSidechat) {
-      sidechatContextBootstrapThreadIds.delete(threadId);
-    }
     if (attempt.clearFreshSessionTranscript) {
       freshSessionContextBootstrapThreadIds.delete(threadId);
     }
@@ -2040,16 +2028,7 @@ const make = Effect.gen(function* () {
       }
       // An existing fork also returns null: wait for its native resume result
       // before treating the conversation as missing provider history.
-      bootstrapTranscriptIfResumeFails =
-        shouldRegisterContextBootstrap && !thread.sidechatSourceThreadId;
-    }
-
-    if (
-      shouldRegisterContextBootstrap &&
-      thread.sidechatSourceThreadId &&
-      thread.forkSourceThreadId
-    ) {
-      sidechatContextBootstrapThreadIds.add(threadId);
+      bootstrapTranscriptIfResumeFails = shouldRegisterContextBootstrap;
     }
 
     const registerPriorTranscriptBootstrapOnFreshStart =
@@ -2164,7 +2143,6 @@ const make = Effect.gen(function* () {
           !!thread &&
           thread.deletedAt == null &&
           thread.archivedAt == null &&
-          !isExpiredSidechat(thread) &&
           thread.claudeCacheReview?.reviewId === reviewId &&
           thread.claudeCacheReview.status === status &&
           thread.messages.some(
@@ -2498,9 +2476,7 @@ const make = Effect.gen(function* () {
     // instead so it never reads as part of the user's own words. The budget
     // text below still counts the suffix, keeping the total under the provider
     // input limit regardless of where the suffix sits.
-    const boundaryMessageText = thread.sidechatSourceThreadId
-      ? `<sidechat_boundary>\n${SIDECHAT_BOUNDARY_INSTRUCTION}\n</sidechat_boundary>\n\n<latest_user_message>\n${authoredMessageText}\n</latest_user_message>`
-      : authoredMessageText;
+    const boundaryMessageText = authoredMessageText;
     const bootstrapBudgetMessageText = `${boundaryMessageText}${mentionContextSuffix}`;
     const shouldBootstrapHandoff =
       thread.handoff?.bootstrapStatus === "pending" &&
@@ -2541,44 +2517,12 @@ const make = Effect.gen(function* () {
       hasPendingFreshSessionTranscriptBootstrap ||
       hasPendingRollbackTranscriptBootstrap ||
       (input.dispatchMode !== "steer" && priorEscalationEvidence?.recapText != null);
-    const shouldBootstrapSidechatContext =
-      thread.sidechatSourceThreadId !== null &&
-      sidechatContextBootstrapThreadIds.has(input.threadId) &&
-      !hasNativeAssistantMessagesBefore(thread, transcriptBoundaryMessageId) &&
-      !shouldBootstrapHandoff &&
-      !hasPendingRollbackTranscriptBootstrap &&
-      (!hasPendingFreshSessionTranscriptBootstrap || selectedProvider === "opencode");
-    const sidechatBootstrapAvailableChars = availableProviderContextChars({
-      tag: "sidechat_context",
-      messageText: bootstrapBudgetMessageText,
-      wrapLatestUserMessage: false,
-      reservedChars: providerPromptOverheadChars,
-    });
-    const sidechatBootstrapText =
-      shouldBootstrapSidechatContext && sidechatBootstrapAvailableChars > 0
-        ? buildForkBootstrapText(thread, sidechatBootstrapAvailableChars)
-        : null;
-    const hasSidechatBootstrapContent =
-      shouldBootstrapSidechatContext && listImportedForkMessages(thread).length > 0;
-    if (
-      input.reviewTarget === undefined &&
-      hasSidechatBootstrapContent &&
-      sidechatBootstrapAvailableChars === 0
-    ) {
-      return yield* new ProviderAdapterValidationError({
-        provider: selectedProvider as ProviderKind,
-        operation: "thread.turn.start",
-        issue:
-          "The latest message is too long to include the sidechat context required by this provider session. Shorten the message and retry.",
-      });
-    }
     const shouldBootstrapPriorTranscriptContext =
       ((selectedProvider === "opencode" &&
         activeSessionBeforeEnsure === undefined &&
         !nativeResumeSucceeded) ||
         hasPendingPriorTranscriptBootstrap) &&
-      !shouldBootstrapHandoff &&
-      !shouldBootstrapSidechatContext;
+      !shouldBootstrapHandoff;
     const priorTranscriptMessages = listPriorTranscriptMessages(
       thread,
       transcriptBoundaryMessageId,
@@ -2626,7 +2570,6 @@ const make = Effect.gen(function* () {
       input.reviewTarget === undefined &&
       input.dispatchMode !== "steer" &&
       !shouldBootstrapHandoff &&
-      !shouldBootstrapSidechatContext &&
       priorTranscriptMessages.length > 0 &&
       (priorTranscriptBootstrapText !== null ||
         (nativeSessionRestarted && !nativeResumeSucceeded) ||
@@ -2644,24 +2587,18 @@ const make = Effect.gen(function* () {
     if (interruptEscalation && providerContextLifecycleEvidence !== null) {
       interruptEscalation.evidence = providerContextLifecycleEvidence;
     }
-    // The guards above make the three bootstrap flavors mutually exclusive, so
+    // The guards above make the bootstrap flavors mutually exclusive, so
     // a turn carries at most one context block.
     const selectedBootstrapContext: BootstrapContextSelection | null =
       handoffBootstrapText !== null
         ? { tag: "handoff_context", contextText: handoffBootstrapText, wrapLatestUserMessage: true }
-        : sidechatBootstrapText !== null
+        : priorTranscriptBootstrapText !== null
           ? {
-              tag: "sidechat_context",
-              contextText: sidechatBootstrapText,
-              wrapLatestUserMessage: false,
+              tag: "thread_context",
+              contextText: priorTranscriptBootstrapText,
+              wrapLatestUserMessage: true,
             }
-          : priorTranscriptBootstrapText !== null
-            ? {
-                tag: "thread_context",
-                contextText: priorTranscriptBootstrapText,
-                wrapLatestUserMessage: true,
-              }
-            : null;
+          : null;
     const composeProviderInput = (bootstrap: BootstrapContextSelection | null): string =>
       bootstrap
         ? wrapProviderContext({ ...bootstrap, messageText: boundaryMessageText })
@@ -2823,8 +2760,7 @@ const make = Effect.gen(function* () {
     const priorTranscriptBootstrapRetiresOnAcceptedTurn =
       shouldBootstrapPriorTranscriptContext &&
       (priorTranscriptBootstrapText !== null || !hasPriorTranscriptBootstrapContent);
-    const specializedBootstrapCompletesFreshSessionContext =
-      handoffBootstrapText !== null || sidechatBootstrapText !== null;
+    const specializedBootstrapCompletesFreshSessionContext = handoffBootstrapText !== null;
     let pendingContextBootstrapAttempt: PendingContextBootstrapAttempt | undefined;
     let startedTurn: ProviderTurnStartResult | undefined;
 
@@ -2857,8 +2793,6 @@ const make = Effect.gen(function* () {
       pendingContextBootstrapAttempt =
         tracksDurableContextAcceptance || tracksEscalationAcceptance
           ? {
-              clearSidechat:
-                sidechatBootstrapText !== null || priorTranscriptBootstrapText !== null,
               clearFreshSessionTranscript:
                 priorTranscriptBootstrapText !== null ||
                 (tracksDurableContextAcceptance && hasPendingFreshSessionTranscriptBootstrap),
@@ -3055,14 +2989,6 @@ const make = Effect.gen(function* () {
         },
       });
     }
-    if (
-      shouldBootstrapSidechatContext &&
-      input.reviewTarget === undefined &&
-      pendingContextBootstrapAttempt === undefined &&
-      (sidechatBootstrapText !== null || !hasSidechatBootstrapContent)
-    ) {
-      sidechatContextBootstrapThreadIds.delete(input.threadId);
-    }
     const retiresPriorTranscriptBootstrap =
       priorTranscriptBootstrapRetiresOnAcceptedTurn &&
       input.reviewTarget === undefined &&
@@ -3088,7 +3014,6 @@ const make = Effect.gen(function* () {
         if (retiresPriorTranscriptBootstrap) {
           rollbackContextBootstrapThreadIds.delete(input.threadId);
         }
-        sidechatContextBootstrapThreadIds.delete(input.threadId);
       }
     }
     return startedTurn;
@@ -3408,7 +3333,7 @@ const make = Effect.gen(function* () {
       }
 
       const thread = yield* resolveThread(event.payload.threadId);
-      if (!thread || isExpiredSidechat(thread)) {
+      if (!thread) {
         return;
       }
       if (
@@ -3970,7 +3895,7 @@ const make = Effect.gen(function* () {
           thread.claudeCacheReview.status !== "responding"
         )
           return;
-        if (thread.archivedAt != null || isExpiredSidechat(thread)) {
+        if (thread.archivedAt != null) {
           yield* setClaudeCacheReview(
             threadId,
             {
@@ -4334,7 +4259,6 @@ const make = Effect.gen(function* () {
       !thread ||
       thread.deletedAt != null ||
       thread.archivedAt != null ||
-      isExpiredSidechat(thread) ||
       thread.parentThreadId != null ||
       thread.interactionMode === "plan" ||
       !activeThreadGoal(thread)?.trim() ||
@@ -4459,7 +4383,6 @@ const make = Effect.gen(function* () {
           !thread ||
           thread.deletedAt != null ||
           thread.archivedAt != null ||
-          isExpiredSidechat(thread) ||
           thread.parentThreadId != null ||
           thread.interactionMode === "plan" ||
           !activeThreadGoal(thread)?.trim() ||
@@ -5654,12 +5577,7 @@ const make = Effect.gen(function* () {
           const thread = yield* resolveThread(event.payload.threadId);
           const startsOrResumesGoal =
             event.payload.goalPausedAt == null && event.payload.goalStartedAt != null;
-          if (
-            thread &&
-            !isExpiredSidechat(thread) &&
-            event.payload.goalStartBehavior !== "defer" &&
-            startsOrResumesGoal
-          ) {
+          if (thread && event.payload.goalStartBehavior !== "defer" && startsOrResumesGoal) {
             yield* orchestrationEngine.dispatch({
               type: "thread.goal.continue",
               commandId: CommandId.makeUnsafe(`server:goal-continue:${event.eventId}`),
@@ -5727,7 +5645,6 @@ const make = Effect.gen(function* () {
           const thread = yield* resolveThread(event.payload.threadId);
           if (
             thread &&
-            !isExpiredSidechat(thread) &&
             thread.parentThreadId == null &&
             activeThreadGoal(thread)?.trim() &&
             thread.goalPausedAt == null
@@ -6798,7 +6715,6 @@ const make = Effect.gen(function* () {
         (thread) =>
           thread.deletedAt == null &&
           thread.archivedAt == null &&
-          !isExpiredSidechat(thread) &&
           thread.parentThreadId == null &&
           Boolean(activeThreadGoal(thread)?.trim()) &&
           thread.goalPausedAt == null,

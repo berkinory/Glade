@@ -230,7 +230,7 @@ export function buildForkBootstrapText(
   return buildImportedMessagesBootstrapText({
     thread,
     importedMessages,
-    intro: "This sidechat was cloned from an earlier conversation.",
+    intro: "This conversation was forked from an earlier conversation.",
     maxChars,
   });
 }

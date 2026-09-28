@@ -16,7 +16,7 @@ import {
   MoonIcon,
   NewThreadIcon,
   SettingsIcon,
-  SidechatIcon,
+  NewChatIcon,
   SunIcon,
   UsageGaugeIcon,
 } from "~/lib/icons";
@@ -161,7 +161,7 @@ function actionHandler(
 type IconComponent = ComponentType<{ className?: string }>;
 
 const ACTION_ICONS: Record<string, IconComponent> = {
-  "new-chat": SidechatIcon,
+  "new-chat": NewChatIcon,
   "new-thread": NewThreadIcon,
   "add-project": FolderAddIcon,
   "import-thread": ImportThreadIcon,

@@ -16,7 +16,6 @@ import {
   GitPullRequestIcon,
   GlobeIcon,
   InfoIcon,
-  SidechatIcon,
   TerminalIcon,
 } from "~/lib/icons";
 import { type RightDockPane, type RightDockPaneKind } from "~/rightDockStore.logic";
@@ -43,7 +42,6 @@ export const RIGHT_DOCK_PANE_META: Record<RightDockPaneKind, RightDockPaneMeta> 
   explorer: { label: "Explorer", Icon: FoldersIcon },
   file: { label: "File", Icon: FileIcon },
   terminal: { label: "Terminal", Icon: TerminalIcon },
-  sidechat: { label: "Side chats", Icon: SidechatIcon },
   git: { label: "Git", Icon: GitCommitIcon },
   pullRequest: { label: "Pull request", Icon: GitPullRequestIcon },
 };
@@ -71,7 +69,6 @@ const RIGHT_DOCK_LAUNCHER_ORDER: readonly RightDockPaneKind[] = [
   "terminal",
   "browser",
   "explorer",
-  "sidechat",
   "device",
   "git",
 ];
@@ -79,7 +76,6 @@ const RIGHT_DOCK_LAUNCHER_ORDER: readonly RightDockPaneKind[] = [
 const RIGHT_DOCK_LAUNCHER_LABELS: Partial<Record<RightDockPaneKind, string>> = {
   diff: "Review",
   explorer: "Files",
-  sidechat: "Side chats",
   git: "Source control",
 };
 
@@ -119,7 +115,7 @@ export function resolveRightDockLauncherItems(input: {
 }
 
 // Resolves a tab label, preferring caller-provided per-pane overrides (e.g. the
-// embedded sidechat thread title) before falling back to the kind label.
+// a caller-specific title) before falling back to the kind label.
 export function resolveRightDockPaneLabel(
   pane: RightDockPane,
   overrides?: Record<string, string | undefined>,
@@ -129,11 +125,7 @@ export function resolveRightDockPaneLabel(
 
 export function buildRightDockPaneLabelOverrides(
   panes: readonly RightDockPane[],
-  threadSummaries: readonly { id: string; title: string }[],
 ): Record<string, string | undefined> | undefined {
-  const sidechatTitleByThreadId = new Map(
-    threadSummaries.map((thread) => [thread.id, thread.title] as const),
-  );
   const overrides: Record<string, string | undefined> = {};
 
   for (const pane of panes) {
@@ -141,11 +133,6 @@ export function buildRightDockPaneLabelOverrides(
       overrides[pane.id] = basenameOfPath(pane.filePath);
     } else if (pane.kind === "pullRequest" && pane.pullRequestNumber !== null) {
       overrides[pane.id] = pullRequestPaneTabLabel(pane.pullRequestNumber);
-    } else if (pane.kind === "sidechat" && pane.threadId) {
-      const title = sidechatTitleByThreadId.get(pane.threadId)?.trim();
-      if (title) {
-        overrides[pane.id] = title;
-      }
     }
   }
 

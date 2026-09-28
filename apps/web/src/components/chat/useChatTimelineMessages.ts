@@ -4,7 +4,6 @@ import type { Thread } from "../../types";
 import { type ChatMessage } from "../../types";
 import {
   collectUserMessageBlobPreviewUrls,
-  filterSidechatTranscriptMessages,
   revokeBlobPreviewUrl,
   revokeUserMessagePreviewUrls,
 } from "../ChatView.logic";
@@ -124,10 +123,7 @@ export function useChatTimelineMessages({
   }, []);
   const serverMessages = activeThread?.messages;
   const timelineMessages = useMemo(() => {
-    const messages = filterSidechatTranscriptMessages(
-      serverMessages ?? [],
-      Boolean(activeThread?.sidechatSourceThreadId),
-    );
+    const messages = serverMessages ?? [];
     const serverMessagesWithPreviewHandoff =
       Object.keys(attachmentPreviewHandoffByMessageId).length === 0
         ? messages
@@ -190,7 +186,6 @@ export function useChatTimelineMessages({
         : [...serverMessagesWithPreviewHandoff, ...pendingMessages];
     return setupBubbles.length === 0 ? withPending : [...withPending, ...setupBubbles];
   }, [
-    activeThread?.sidechatSourceThreadId,
     serverMessages,
     attachmentPreviewHandoffByMessageId,
     optimisticUserMessages,

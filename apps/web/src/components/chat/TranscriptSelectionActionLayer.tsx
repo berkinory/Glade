@@ -3,10 +3,9 @@
 // Layer: Chat transcript interaction UI
 
 import type { ThreadEnvironmentMode } from "@glade/contracts";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { createPortal } from "react-dom";
 
-import { toastManager } from "../ui/toast";
 import type { TranscriptAssistantSelection } from "./chatSelectionActions";
 import { SelectionNewChatComposer } from "./SelectionNewChatComposer";
 
@@ -17,10 +16,8 @@ interface TranscriptSelectionActionLayerProps {
   action: PendingTranscriptSelectionAction | null;
   defaultEnvMode: ThreadEnvironmentMode;
   canUseWorktree: boolean;
-  canAddToSide: boolean;
   onDismiss: () => void;
   onAddToChat: () => void;
-  onAddToSide: (selection: TranscriptAssistantSelection) => Promise<void>;
   onNewChat: (
     selection: TranscriptAssistantSelection,
     prompt: string,
@@ -33,8 +30,6 @@ export function TranscriptSelectionActionLayer(props: TranscriptSelectionActionL
   const [composerAction, setComposerAction] = useState<PendingTranscriptSelectionAction | null>(
     null,
   );
-  const [sideBusy, setSideBusy] = useState(false);
-  const sideInFlightRef = useRef(false);
 
   if (composerAction) {
     return createPortal(
@@ -62,30 +57,6 @@ export function TranscriptSelectionActionLayer(props: TranscriptSelectionActionL
       top={action.top}
       placement={action.placement}
       onAddToChat={props.onAddToChat}
-      disabled={sideBusy}
-      sideDisabled={!props.canAddToSide}
-      onAddToSide={() => {
-        if (sideInFlightRef.current) return;
-        sideInFlightRef.current = true;
-        setSideBusy(true);
-        void props
-          .onAddToSide(action.selection)
-          .then(() => {
-            props.onDismiss();
-            window.getSelection()?.removeAllRanges();
-          })
-          .catch((error: unknown) => {
-            toastManager.add({
-              type: "error",
-              title: "Could not add selection to Side",
-              description: error instanceof Error ? error.message : "Try again.",
-            });
-          })
-          .finally(() => {
-            sideInFlightRef.current = false;
-            setSideBusy(false);
-          });
-      }}
       onAddToNewChat={() => {
         setComposerAction(action);
         props.onDismiss();

@@ -268,6 +268,7 @@ managedAttachmentsLegacyLayer("managed attachment migration after private migrat
         [108, "GatewayCompletions"],
         [109, "RetireExternalConnections"],
         [110, "RetireProviders"],
+        [111, "RetireSidechats"],
       ]);
 
       const tracker = yield* trackerRows(sql);
@@ -330,6 +331,7 @@ managedAttachmentsLegacyLayer("managed attachment migration after private migrat
           { migration_id: 108, name: "GatewayCompletions" },
           { migration_id: 109, name: "RetireExternalConnections" },
           { migration_id: 110, name: "RetireProviders" },
+          { migration_id: 111, name: "RetireSidechats" },
         ],
       );
       const preserved = yield* sql<{ readonly count: number }>`
@@ -433,6 +435,7 @@ agentGatewayRetentionLegacyLayer(
           [108, "GatewayCompletions"],
           [109, "RetireExternalConnections"],
           [110, "RetireProviders"],
+          [111, "RetireSidechats"],
         ]);
 
         const columns = yield* sql<{ readonly name: string }>`
@@ -538,6 +541,7 @@ spacesMigrationCollisionLayer("Spaces migration after the private migration 70 c
         [108, "GatewayCompletions"],
         [109, "RetireExternalConnections"],
         [110, "RetireProviders"],
+        [111, "RetireSidechats"],
       ]);
 
       const tracker = yield* trackerRows(sql);
@@ -584,6 +588,7 @@ spacesMigrationCollisionLayer("Spaces migration after the private migration 70 c
           [108, "GatewayCompletions"],
           [109, "RetireExternalConnections"],
           [110, "RetireProviders"],
+          [111, "RetireSidechats"],
         ],
       );
 
@@ -684,6 +689,7 @@ spacesMigrationCollisionLayer("Spaces migration after the private migration 70 c
         [108, "GatewayCompletions"],
         [109, "RetireExternalConnections"],
         [110, "RetireProviders"],
+        [111, "RetireSidechats"],
       ]);
 
       const tracker = yield* trackerRows(sql);
@@ -726,6 +732,7 @@ spacesMigrationCollisionLayer("Spaces migration after the private migration 70 c
           [108, "GatewayCompletions"],
           [109, "RetireExternalConnections"],
           [110, "RetireProviders"],
+          [111, "RetireSidechats"],
         ],
       );
       const preservedSpaces = yield* sql<{ readonly spaceId: string }>`

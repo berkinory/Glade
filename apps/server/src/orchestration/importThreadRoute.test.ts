@@ -49,7 +49,6 @@ function makeCodexThread(): OrchestrationThread {
     subagentNickname: null,
     subagentRole: null,
     forkSourceThreadId: null,
-    sidechatSourceThreadId: null,
     lastKnownPr: null,
     latestTurn: null,
     createdAt: importedAt,

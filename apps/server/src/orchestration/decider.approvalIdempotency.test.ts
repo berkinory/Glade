@@ -76,7 +76,6 @@ async function createThreadReadModel(now: string): Promise<OrchestrationReadMode
         subagentNickname: null,
         subagentRole: null,
         forkSourceThreadId: null,
-        sidechatSourceThreadId: null,
         handoff: null,
         createdAt: now,
         updatedAt: now,

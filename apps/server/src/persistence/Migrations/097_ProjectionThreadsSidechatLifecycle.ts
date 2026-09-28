@@ -6,6 +6,9 @@ import { columnExists } from "./schemaHelpers.ts";
 export default Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
 
+  // A replay after retirement has already dropped the source column.
+  if (!(yield* columnExists(sql, "projection_threads", "sidechat_source_thread_id"))) return;
+
   if (!(yield* columnExists(sql, "projection_threads", "sidechat_last_activity_at"))) {
     yield* sql`
       ALTER TABLE projection_threads

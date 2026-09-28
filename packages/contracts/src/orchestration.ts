@@ -199,12 +199,6 @@ export const DEFAULT_RUNTIME_MODE: RuntimeMode = "full-access";
 export const ProviderInteractionMode = Schema.Literals(["default", "plan", "debug"]);
 export type ProviderInteractionMode = typeof ProviderInteractionMode.Type;
 export const DEFAULT_PROVIDER_INTERACTION_MODE: ProviderInteractionMode = "default";
-const SidechatSourceThreadId = Schema.optional(Schema.NullOr(ThreadId)).pipe(
-  Schema.withDecodingDefault(() => null),
-);
-const SidechatLifecycleTimestamp = Schema.optional(Schema.NullOr(IsoDateTime)).pipe(
-  Schema.withDecodingDefault(() => null),
-);
 export const ProviderRequestKind = Schema.Literals([
   "command",
   "file-read",
@@ -791,9 +785,6 @@ export const OrchestrationThread = Schema.Struct({
   forkSourceThreadId: Schema.optional(Schema.NullOr(ThreadId)).pipe(
     Schema.withDecodingDefault(() => null),
   ),
-  sidechatSourceThreadId: SidechatSourceThreadId,
-  sidechatLastActivityAt: SidechatLifecycleTimestamp,
-  sidechatExpiredAt: SidechatLifecycleTimestamp,
   lastKnownPr: Schema.optional(Schema.NullOr(OrchestrationThreadPullRequest)).pipe(
     Schema.withDecodingDefault(() => null),
   ),
@@ -884,9 +875,6 @@ export const OrchestrationThreadShell = Schema.Struct({
   forkSourceThreadId: Schema.optional(Schema.NullOr(ThreadId)).pipe(
     Schema.withDecodingDefault(() => null),
   ),
-  sidechatSourceThreadId: SidechatSourceThreadId,
-  sidechatLastActivityAt: SidechatLifecycleTimestamp,
-  sidechatExpiredAt: SidechatLifecycleTimestamp,
   lastKnownPr: Schema.optional(Schema.NullOr(OrchestrationThreadPullRequest)).pipe(
     Schema.withDecodingDefault(() => null),
   ),
@@ -1172,7 +1160,6 @@ const ThreadForkCreateCommand = Schema.Struct({
   createBranchFlowCompleted: Schema.optional(Schema.Boolean).pipe(
     Schema.withDecodingDefault(() => false),
   ),
-  sidechatSourceThreadId: SidechatSourceThreadId,
   importedMessages: Schema.Array(ThreadHandoffImportedMessage),
   createdAt: IsoDateTime,
 });
@@ -1691,21 +1678,6 @@ const ThreadConversationRollbackCompleteCommand = Schema.Struct({
   createdAt: IsoDateTime,
 });
 
-const ThreadSidechatActivityRecordCommand = Schema.Struct({
-  type: Schema.Literal("thread.sidechat.activity.record"),
-  commandId: CommandId,
-  threadId: ThreadId,
-  activityAt: IsoDateTime,
-});
-
-const ThreadSidechatExpireCommand = Schema.Struct({
-  type: Schema.Literal("thread.sidechat.expire"),
-  commandId: CommandId,
-  threadId: ThreadId,
-  expectedLastActivityAt: IsoDateTime,
-  expiredAt: IsoDateTime,
-});
-
 const InternalOrchestrationCommand = Schema.Union([
   ThreadClaudeCacheCompactedCommand,
   ThreadClaudeCacheSetCommand,
@@ -1723,8 +1695,6 @@ const InternalOrchestrationCommand = Schema.Union([
   ThreadConversationRollbackCommand,
   ThreadConversationRollbackCompleteCommand,
   ThreadDispatchQueuedTurnCommand,
-  ThreadSidechatActivityRecordCommand,
-  ThreadSidechatExpireCommand,
 ]);
 export type InternalOrchestrationCommand = typeof InternalOrchestrationCommand.Type;
 
@@ -1776,8 +1746,6 @@ export const OrchestrationEventType = Schema.Literals([
   "thread.proposed-plan-upserted",
   "thread.turn-diff-completed",
   "thread.activity-appended",
-  "thread.sidechat-activity-recorded",
-  "thread.sidechat-expired",
 ]);
 export type OrchestrationEventType = typeof OrchestrationEventType.Type;
 
@@ -1890,9 +1858,6 @@ export const ThreadCreatedPayload = Schema.Struct({
   forkSourceThreadId: Schema.optional(Schema.NullOr(ThreadId)).pipe(
     Schema.withDecodingDefault(() => null),
   ),
-  sidechatSourceThreadId: SidechatSourceThreadId,
-  sidechatLastActivityAt: SidechatLifecycleTimestamp,
-  sidechatExpiredAt: SidechatLifecycleTimestamp,
   lastKnownPr: Schema.optional(Schema.NullOr(OrchestrationThreadPullRequest)).pipe(
     Schema.withDecodingDefault(() => null),
   ),
@@ -1904,17 +1869,6 @@ export const ThreadCreatedPayload = Schema.Struct({
 export const ThreadDeletedPayload = Schema.Struct({
   threadId: ThreadId,
   deletedAt: IsoDateTime,
-});
-
-export const ThreadSidechatActivityRecordedPayload = Schema.Struct({
-  threadId: ThreadId,
-  lastActivityAt: IsoDateTime,
-});
-
-export const ThreadSidechatExpiredPayload = Schema.Struct({
-  threadId: ThreadId,
-  expectedLastActivityAt: IsoDateTime,
-  expiredAt: IsoDateTime,
 });
 
 export const ThreadArchivedPayload = Schema.Struct({
@@ -2408,16 +2362,6 @@ export const OrchestrationEvent = Schema.Union([
     ...EventBaseFields,
     type: Schema.Literal("thread.activity-appended"),
     payload: ThreadActivityAppendedPayload,
-  }),
-  Schema.Struct({
-    ...EventBaseFields,
-    type: Schema.Literal("thread.sidechat-activity-recorded"),
-    payload: ThreadSidechatActivityRecordedPayload,
-  }),
-  Schema.Struct({
-    ...EventBaseFields,
-    type: Schema.Literal("thread.sidechat-expired"),
-    payload: ThreadSidechatExpiredPayload,
   }),
 ]);
 export type OrchestrationEvent = typeof OrchestrationEvent.Type;

@@ -277,7 +277,6 @@ export function useComposerCommandMenuItems(input: {
   canOfferCompactCommand: boolean;
   canOfferReviewCommand: boolean;
   canOfferForkCommand: boolean;
-  canOfferSideCommand: boolean;
   canOfferExportCommand: boolean;
   surfaceAppSlashCommands?: ReadonlySet<string>;
   /** Artifact publishing state reported by provider command discovery. */
@@ -301,7 +300,6 @@ export function useComposerCommandMenuItems(input: {
     canOfferCompactCommand,
     canOfferReviewCommand,
     canOfferForkCommand,
-    canOfferSideCommand,
     canOfferExportCommand,
     surfaceAppSlashCommands,
     providerArtifacts,
@@ -397,7 +395,6 @@ export function useComposerCommandMenuItems(input: {
       canOfferCompactCommand,
       canOfferReviewCommand,
       canOfferForkCommand,
-      canOfferSideCommand,
       canOfferExportCommand,
       providerNativeCommandNames: providerNativeCommands.map((command) => command.name),
     });

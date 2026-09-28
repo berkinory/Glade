@@ -268,9 +268,6 @@ export interface Thread extends ThreadWorkspaceState {
   subagentNickname?: string | null;
   subagentRole?: string | null;
   forkSourceThreadId?: ThreadId | null;
-  sidechatSourceThreadId?: ThreadId | null;
-  sidechatLastActivityAt?: string | null;
-  sidechatExpiredAt?: string | null;
   handoff?: ThreadHandoff | null;
   claudeCacheReview?: PendingClaudeCacheReview | null;
   /** Client projection cursor shared by shell and detail cache-review updates. */
@@ -317,9 +314,6 @@ export interface ThreadShell extends ThreadWorkspaceState {
   subagentNickname?: string | null;
   subagentRole?: string | null;
   forkSourceThreadId?: ThreadId | null;
-  sidechatSourceThreadId?: ThreadId | null;
-  sidechatLastActivityAt?: string | null;
-  sidechatExpiredAt?: string | null;
   handoff?: ThreadHandoff | null;
   claudeCacheReview?: PendingClaudeCacheReview | null;
   claudeCacheReviewSequence?: number;
@@ -371,9 +365,6 @@ export interface SidebarThreadSummary {
   hasActionableProposedPlan: boolean;
   hasLiveTailWork: boolean;
   forkSourceThreadId?: ThreadId | null;
-  sidechatSourceThreadId?: ThreadId | null;
-  sidechatLastActivityAt?: string | null;
-  sidechatExpiredAt?: string | null;
   handoff?: ThreadHandoff | null;
   lastKnownPr?: OrchestrationThreadPullRequest | null;
 }

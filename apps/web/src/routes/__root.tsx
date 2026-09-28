@@ -146,8 +146,6 @@ import {
 } from "../hooks/useProviderAuthRefreshOnFocus";
 import { useProviderStatusRefresh } from "../hooks/useProviderStatusRefresh";
 import { resolveSplitViewThreadIds, selectSplitView, useSplitViewStore } from "../splitViewStore";
-import { useRightDockStore } from "../rightDockStore";
-import { resolveVisibleDockSidechatThreadIds } from "../rightDockStore.logic";
 import { arraysShallowEqual } from "../storeNormalization";
 import { providerModelDiscoveryInvalidationFingerprint } from "../lib/providerDiscoveryInvalidation";
 import { providerDiscoveryQueryKeys } from "../lib/providerDiscoveryReactQuery";
@@ -1170,41 +1168,15 @@ function EventRouter() {
           : [],
     [activeSplitView, routeThreadId],
   );
-  // Right-dock sidechat panes render a full ChatView for their embedded thread,
-  // so they need a detail lease exactly like split-view panes: without one the
-  // sidechat's snapshot never syncs and its transcript stays on the loading state.
-  const dockStateByThreadId = useRightDockStore((store) => store.dockStateByThreadId);
-  const visibleThreadIds = useMemo(
-    () => [
-      ...hostThreadIds,
-      ...resolveVisibleDockSidechatThreadIds({
-        dockRendered: routeSearch.view !== "editor",
-        dockStateByThreadId,
-        hostThreadIds,
-      }),
-    ],
-    [dockStateByThreadId, hostThreadIds, routeSearch.view],
-  );
   const retainedThreadIds = useRetainedThreadDetailIds();
   const serverThreadIdSet = useMemo(() => new Set(serverThreadIds), [serverThreadIds]);
-  const sidebarThreadSummaryById = useStore((store) => store.sidebarThreadSummaryById);
-  const sidechatThreadIdSet = useMemo(
-    () =>
-      new Set(
-        serverThreadIds.filter((threadId) =>
-          Boolean(sidebarThreadSummaryById[threadId]?.sidechatSourceThreadId),
-        ),
-      ),
-    [serverThreadIds, sidebarThreadSummaryById],
-  );
   // Stabilize the lease array by content: `serverThreads` re-emits on every
   // streaming update, and an identity-changing lease list would enqueue a no-op
   // subscription reconcile per render onto the serialized subscribe chain.
   const nextSubscribedThreadIds = resolveThreadDetailSubscriptionLeaseIds({
-    visibleThreadIds,
+    visibleThreadIds: hostThreadIds,
     retainedThreadIds,
     serverThreadIds: serverThreadIdSet,
-    retentionExcludedThreadIds: sidechatThreadIdSet,
   });
   const subscribedThreadIdsRef = useRef(nextSubscribedThreadIds);
   const subscribedThreadIds = arraysShallowEqual(
@@ -1230,8 +1202,8 @@ function EventRouter() {
     subscribedThreadIdsRef.current = subscribedThreadIds;
     // Retention must know what is on screen: an evicted visible thread keeps its
     // shell row and renders as an empty conversation until a snapshot lands.
-    setVisibleThreadDetailIds(visibleThreadIds);
-  }, [pathname, subscribedThreadIds, visibleThreadIds]);
+    setVisibleThreadDetailIds(hostThreadIds);
+  }, [pathname, subscribedThreadIds, hostThreadIds]);
 
   useEffect(() => {
     const api = readNativeApi();

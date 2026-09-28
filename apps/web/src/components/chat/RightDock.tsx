@@ -1,5 +1,5 @@
 // FILE: RightDock.tsx
-// Purpose: Tabbed multi-pane right sidebar shell (browser, diff, terminal, sidechat, git).
+// Purpose: Tabbed multi-pane right sidebar shell (browser, diff, terminal, git).
 // Layer: Chat right-dock UI
 // Depends on: ui/sidebar primitive, right-dock pane metadata, and a caller-provided pane renderer.
 

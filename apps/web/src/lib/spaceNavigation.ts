@@ -69,7 +69,6 @@ export function resolveSpaceSelectionTarget(input: {
   const availableThreads = input.threads.filter(
     (thread) =>
       thread.archivedAt == null &&
-      !thread.sidechatSourceThreadId &&
       isProjectInSpace(projectById.get(thread.projectId), spaceId, paths),
   );
 

@@ -28,7 +28,6 @@ import {
   PanelRightCloseIcon,
   PlusIcon,
   TerminalIcon,
-  XIcon,
 } from "~/lib/icons";
 import { formatRelativeTime } from "~/lib/relativeTime";
 import {
@@ -111,7 +110,6 @@ interface ChatHeaderProps {
   rightDockOpen?: boolean;
   onToggleRightDock?: () => void;
   surfaceMode?: "single" | "split";
-  isSidechat?: boolean;
   // When provided, the header collapses the
   // Open-in-editor + git-actions + diff-toggle cluster into one Environment button that
   // drives the Environment panel; otherwise the legacy cluster is rendered.
@@ -148,7 +146,6 @@ interface ChatHeaderProps {
   onCreateHandoff: (targetProvider: ProviderKind) => void;
   onNavigateToThread: (threadId: ThreadId) => void;
   onRenameThread: () => void;
-  onCloseThreadPane?: () => void;
 }
 
 const EDITOR_CHAT_HISTORY_LIMIT = 30;
@@ -534,7 +531,6 @@ export function ChatHeader({
   rightDockOpen: rightDockOpenProp,
   onToggleRightDock,
   surfaceMode: surfaceModeProp,
-  isSidechat: isSidechatProp,
   environment: environmentProp,
   chatLayoutAction: chatLayoutActionProp,
   changeThreadAction: changeThreadActionProp,
@@ -548,7 +544,6 @@ export function ChatHeader({
   onCreateHandoff,
   onNavigateToThread,
   onRenameThread,
-  onCloseThreadPane,
 }: ChatHeaderProps) {
   const hideSidebarControls = hideSidebarControlsProp ?? false;
   const hideHandoffControls = hideHandoffControlsProp ?? false;
@@ -558,7 +553,6 @@ export function ChatHeader({
   const diffDisabledReason = diffDisabledReasonProp ?? null;
   const rightDockOpen = rightDockOpenProp ?? false;
   const surfaceMode = surfaceModeProp ?? "single";
-  const isSidechat = isSidechatProp ?? false;
   const environment = environmentProp ?? null;
   const chatLayoutAction = chatLayoutActionProp ?? null;
   const changeThreadAction = changeThreadActionProp ?? null;
@@ -587,7 +581,6 @@ export function ChatHeader({
   // "maximize" affordance for an already-split focused pane.
   const inlineChatLayoutAction = chatLayoutAction?.kind === "maximize" ? chatLayoutAction : null;
   const threadIconKind = resolveChatHeaderThreadIconKind(activeThreadEntryPoint, activeThreadTitle);
-  const showSidechatTitleChip = isSidechat && compact;
 
   useEffect(() => {
     const el = headerRef.current;
@@ -704,13 +697,7 @@ export function ChatHeader({
               </div>
             ) : null}
             <div className={cn("flex min-w-0 items-center gap-2", editorChatControls && "h-full")}>
-              <div
-                className={cn(
-                  "flex min-w-0 items-center gap-2",
-                  showSidechatTitleChip &&
-                    "rounded-lg bg-secondary py-1 pl-2 pr-1 text-secondary-foreground",
-                )}
-              >
+              <div className="flex min-w-0 items-center gap-2">
                 {threadIconKind === "none" ? null : (
                   <span
                     className="inline-flex size-3.5 shrink-0 items-center justify-center"
@@ -734,22 +721,6 @@ export function ChatHeader({
                 >
                   {activeThreadTitle}
                 </h2>
-                {showSidechatTitleChip && onCloseThreadPane ? (
-                  <IconButton
-                    variant="chrome"
-                    size="icon-xs"
-                    label="Close selected Side"
-                    tooltip="Close selected Side"
-                    tooltipSide="bottom"
-                    className="size-5 rounded-lg [-webkit-app-region:no-drag] [&_svg]:size-3"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onCloseThreadPane();
-                    }}
-                  >
-                    <XIcon />
-                  </IconButton>
-                ) : null}
               </div>
               {editorChatControls ? (
                 <EditorRailTabs
@@ -870,7 +841,7 @@ export function ChatHeader({
           </Tooltip>
         ) : null}
 
-        {/* Change thread stays as a standalone control (split/sidechat only). */}
+        {/* Change thread stays as a standalone control in split views. */}
         {changeThreadAction ? (
           <Tooltip>
             <TooltipTrigger

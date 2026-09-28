@@ -76,8 +76,7 @@ export function useClaudeContextCompaction({
       thread.session.status === "connecting" ||
       thread.session.activeTurnId != null ||
       thread.claudeCacheReview != null ||
-      thread.archivedAt != null ||
-      thread.sidechatExpiredAt != null
+      thread.archivedAt != null
     )
       return false;
     const latestTurnId = thread.latestTurn?.turnId;

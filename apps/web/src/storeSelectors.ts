@@ -385,7 +385,7 @@ export function createComposerThreadMentionSourcesSelector(): (
 
     const nextSources = (threadIds ?? []).flatMap((threadId) => {
       const thread = summaryById[threadId];
-      return thread && !thread.sidechatSourceThreadId
+      return thread
         ? [
             {
               id: thread.id,
@@ -439,41 +439,9 @@ export function isSidebarThreadVisible(
   thread: SidebarThreadSummary,
   options?: SidebarThreadVisibilityOptions,
 ): boolean {
-  if (thread.sidechatSourceThreadId) return false;
   if (!options?.hideAutomationRunThreads) return true;
   if (thread.isPinned) return true;
   return !isAutomationRunThread(thread);
-}
-
-export function createSidechatSummariesForSourceSelector(
-  sourceThreadId: ThreadId,
-): (state: AppState) => readonly SidebarThreadSummary[] {
-  const selectSidebarSummaries = createSidebarThreadSummariesSelector();
-  let previousSummaries: readonly SidebarThreadSummary[] | undefined;
-  let previousSidechats: readonly SidebarThreadSummary[] = [];
-
-  return (state) => {
-    const summaries = selectSidebarSummaries(state);
-    if (summaries === previousSummaries) return previousSidechats;
-    previousSummaries = summaries;
-    const nextSidechats = summaries
-      .filter(
-        (thread) => thread.sidechatSourceThreadId === sourceThreadId && thread.archivedAt == null,
-      )
-      .toSorted(
-        (left, right) =>
-          Date.parse(right.sidechatLastActivityAt ?? right.updatedAt ?? right.createdAt) -
-          Date.parse(left.sidechatLastActivityAt ?? left.updatedAt ?? left.createdAt),
-      );
-    if (
-      nextSidechats.length === previousSidechats.length &&
-      nextSidechats.every((thread, index) => thread === previousSidechats[index])
-    ) {
-      return previousSidechats;
-    }
-    previousSidechats = nextSidechats;
-    return previousSidechats;
-  };
 }
 
 export function createSidebarDisplayThreadsSelector(

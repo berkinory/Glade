@@ -107,7 +107,6 @@ function makeThreadShell(
     subagentNickname: null,
     subagentRole: null,
     forkSourceThreadId: null,
-    sidechatSourceThreadId: null,
     lastKnownPr: null,
     latestTurn:
       id === "thread-parent"

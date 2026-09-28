@@ -43,7 +43,6 @@ function makeThread(threadId: string): OrchestrationThreadShell {
     subagentNickname: null,
     subagentRole: null,
     forkSourceThreadId: null,
-    sidechatSourceThreadId: null,
     lastKnownPr: null,
     latestTurn: {
       turnId: TurnId.makeUnsafe(`turn-${threadId}`),

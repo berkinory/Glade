@@ -832,35 +832,10 @@ export function resolveActiveThreadTitle(input: {
   return input.title;
 }
 
-// Sidechats carry imported fork history for provider context, but their transcript should start
-// visually clean so only new sidechat turns appear in the pane.
-export function filterSidechatTranscriptMessages(
-  messages: readonly ChatMessage[],
-  isSidechat: boolean,
-): ChatMessage[] {
-  return isSidechat
-    ? messages.filter((message) => message.source !== "fork-import")
-    : [...messages];
-}
-
-// Imported fork history should not lock a Side chat's provider before its first native turn.
-export function threadHasProviderLockingMessages(
-  thread: Pick<Thread, "messages" | "sidechatSourceThreadId">,
-): boolean {
-  if (!thread.sidechatSourceThreadId) {
-    return thread.messages.length > 0;
-  }
-  return thread.messages.some((message) => (message.source ?? "native") !== "fork-import");
-}
-
 export function threadHasProviderLockingActivity(
-  thread: Pick<Thread, "messages" | "sidechatSourceThreadId" | "latestTurn" | "session">,
+  thread: Pick<Thread, "messages" | "latestTurn" | "session">,
 ): boolean {
-  return (
-    thread.latestTurn !== null ||
-    thread.session !== null ||
-    threadHasProviderLockingMessages(thread)
-  );
+  return thread.latestTurn !== null || thread.session !== null || thread.messages.length > 0;
 }
 
 export function revokeBlobPreviewUrl(previewUrl: string | undefined): void {

@@ -46,7 +46,6 @@ interface RightDockStore {
         | "diffTurnId"
         | "diffFilePath"
         | "filePath"
-        | "threadId"
         | "pullRequestProjectId"
         | "pullRequestRepository"
         | "pullRequestNumber"

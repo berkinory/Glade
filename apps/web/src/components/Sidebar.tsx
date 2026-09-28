@@ -2124,10 +2124,7 @@ export default function Sidebar() {
       const latestThread = sortThreadsForSidebar(
         snapshot.threads
           .filter(
-            (thread) =>
-              thread.projectId === projectId &&
-              (thread.archivedAt ?? null) === null &&
-              !thread.sidechatSourceThreadId,
+            (thread) => thread.projectId === projectId && (thread.archivedAt ?? null) === null,
           )
           .map((thread) => ({
             id: thread.id,
@@ -3333,11 +3330,6 @@ export default function Sidebar() {
     clearSelection,
     navigate,
     openChatThreadPage,
-    openSidechatDock: ({ sourceThreadId, sidechatThreadId }) =>
-      openRightDockPane(sourceThreadId, {
-        kind: "sidechat",
-        threadId: sidechatThreadId,
-      }),
     openTerminalThreadPage,
     prewarmThreadDetailForIntent,
     rememberLastThreadRouteNow,
@@ -4071,7 +4063,6 @@ export default function Sidebar() {
   );
   const projectEmptyState = resolveProjectEmptyState({
     projectCount: standardProjects.length,
-    shouldShowProjectPathEntry: createProjectDialogOpen,
     threadsHydrated,
   });
   const standardProjectSidebarDataById = useMemo<ReadonlyMap<ProjectId, SidebarDerivedProjectData>>(
@@ -7417,8 +7408,7 @@ function SidebarSearchPaletteController(props: {
   onOpenThread: (threadId: string) => void;
 }) {
   const selectAllThreads = useMemo(() => createAllThreadsSelector(), []);
-  // Search keeps automation-run threads as an intent-driven escape hatch, while
-  // structurally nested side chats stay out of standalone thread results.
+  // Search keeps automation-run threads as an intent-driven escape hatch.
   const selectSidebarDisplayThreads = useMemo(() => createSidebarDisplayThreadsSelector(), []);
   const importProviderCapabilityQueries = useQueries({
     queries: (["codex", "claudeAgent", "cursor", "opencode"] as const).map((provider) =>

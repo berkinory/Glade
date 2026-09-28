@@ -95,10 +95,8 @@ import {
 import { useComposerFocusRequestStore } from "../composerFocusRequestStore";
 import {
   buildGoalSlashCommandPrompt,
-  canExecuteSideSlashCommand,
   canOfferForkSlashCommand,
   canOfferReviewSlashCommand,
-  canOfferSideSlashCommand,
   hasProviderNativeSlashCommand,
   resolveComposerSlashRootBranch,
 } from "../composerSlashCommands";
@@ -148,8 +146,7 @@ import {
   normalizeRuntimeModeForProvider,
   providerModelSupportsAutoRuntimeMode,
 } from "../lib/runtimeMode";
-import { addSelectionToSide, startSelectionChat } from "../lib/selectionChat";
-import { waitForSidechatCreator } from "../lib/sidechatCreatorRegistry";
+import { startSelectionChat } from "../lib/selectionChat";
 import { isStudioContainerProject } from "../lib/studioProjects";
 import { resolveSubagentPresentationForThread } from "../lib/subagentPresentation";
 import {
@@ -195,7 +192,6 @@ import { useStore } from "../store";
 import {
   createComposerThreadMentionSourcesSelector,
   createProjectSelector,
-  createSidechatSummariesForSourceSelector,
   createThreadSelector,
 } from "../storeSelectors";
 import { useTemporaryThreadStore } from "../temporaryThreadStore";
@@ -300,7 +296,6 @@ import {
 import { ContextWindowMeter } from "./chat/ContextWindowMeter";
 import { ExpandedImageOverlay } from "./chat/ExpandedImageOverlay";
 import { ExpandedImagePreview } from "./chat/ExpandedImagePreview";
-import { ExpiredSidechatNotice } from "./chat/ExpiredSidechatNotice";
 import type { MessagesTimelineController } from "./chat/MessagesTimeline";
 import { buildTurnDiffSummaryByAssistantMessageId } from "./chat/MessagesTimeline.logic";
 import { ProjectPicker } from "./chat/ProjectPicker";
@@ -508,12 +503,11 @@ interface ChatViewProps {
     onClick: () => void;
   } | null;
   onChangeThreadInSplitPane?: () => void;
-  onCloseThreadPane?: () => void;
   /**
    * Enables the ambient computer preview rail for this chat: when provided,
    * a live computer session renders below the Environment card and the chat
    * reserves gutter space for it so it never covers the transcript. Absent
-   * in editor-rail and dock-sidechat views, which keep no preview.
+   * in editor-rail views, which keep no preview.
    */
 }
 
@@ -539,7 +533,6 @@ export default function ChatView({
   onMaximizeSurface,
   viewModeAction: viewModeActionProp,
   onChangeThreadInSplitPane,
-  onCloseThreadPane,
 }: ChatViewProps) {
   // Prop defaults are resolved here instead of in the destructuring pattern: an
   // AssignmentPattern in the parameter list makes React Compiler bail out (silently —
@@ -677,9 +670,6 @@ export default function ChatView({
   const markWorkflowRunPaused = useWorkflowRunUiStore((store) => store.markPaused);
   const markWorkflowRunDismissed = useWorkflowRunUiStore((store) => store.markDismissed);
   const serverThread = useStore(useMemo(() => createThreadSelector(threadId), [threadId]));
-  const sourceThreadSidechats = useStore(
-    useMemo(() => createSidechatSummariesForSourceSelector(threadId), [threadId]),
-  );
   const threadDetailSyncState = useStore((state) =>
     threadId ? (state.threadDetailSyncById?.[threadId] ?? null) : null,
   );
@@ -704,9 +694,7 @@ export default function ChatView({
         : null,
     [crossTaskSourceThread?.modelSelection.provider, crossTaskSourceThreadId],
   );
-  const forkSourceThreadId = serverThread?.sidechatSourceThreadId
-    ? null
-    : (serverThread?.forkSourceThreadId ?? null);
+  const forkSourceThreadId = serverThread?.forkSourceThreadId ?? null;
   const forkSourceThread = useStore(
     useMemo(() => createThreadSelector(forkSourceThreadId), [forkSourceThreadId]),
   );
@@ -1596,8 +1584,7 @@ export default function ChatView({
     activeThreadId === null ? null : `${activeThreadId}:${activeLatestTurn?.turnId ?? "idle"}`;
   const activeTurnInProgress = activeTurnLayoutLive || keepSettledActiveTurnLayout;
   const isComposerApprovalState = activePendingApproval !== null;
-  const isSidechatExpired = Boolean(activeThread?.sidechatExpiredAt);
-  const isComposerEditorDisabled = isConnecting || isComposerApprovalState || isSidechatExpired;
+  const isComposerEditorDisabled = isConnecting || isComposerApprovalState;
   const canCollapsePastedTextToDraft = shouldEnableComposerPastedTextCollapse({
     isComposerApprovalState,
     hasPendingUserInput: pendingUserInputs.length > 0,
@@ -2048,25 +2035,6 @@ export default function ChatView({
       selectedMentionCount: selectedComposerMentions.length,
       interactionMode,
     });
-  const sideSlashCommandContext = {
-    imageCount: composerImages.length,
-    terminalContextCount: composerTerminalContexts.length,
-    selectedSkillCount: selectedComposerSkills.length,
-    selectedMentionCount: selectedComposerMentions.length,
-    interactionMode,
-    isSidechat: Boolean(activeThread?.sidechatSourceThreadId),
-  } as const;
-  const canExecuteSideCommand =
-    isServerThread &&
-    activeThread !== undefined &&
-    canExecuteSideSlashCommand(sideSlashCommandContext);
-  const canOfferSideCommand =
-    isServerThread &&
-    activeThread !== undefined &&
-    canOfferSideSlashCommand({
-      prompt: composerPromptWithoutActiveSlashTrigger,
-      ...sideSlashCommandContext,
-    });
   // Export is hidden while the thread is running so archives cannot capture a
   // partial assistant response. Same shared predicate as the server's 409
   // guard, so the composer and the export route cannot drift.
@@ -2090,7 +2058,6 @@ export default function ChatView({
       activeThread?.session?.status !== "closed",
     canOfferReviewCommand,
     canOfferForkCommand,
-    canOfferSideCommand,
     canOfferExportCommand,
     providerArtifacts,
     dynamicAgents,
@@ -2980,7 +2947,6 @@ export default function ChatView({
     enabled:
       Boolean(activeThread) &&
       !isInactiveSplitPane &&
-      !isSidechatExpired &&
       pendingUserInputs.length === 0 &&
       !isComposerApprovalState,
     composerImagesRef,
@@ -3604,7 +3570,7 @@ export default function ChatView({
   // --- Composer attachment entry points -------------------------------------
   const addComposerImages = useCallback(
     (files: readonly File[]) => {
-      if (!activeThreadId || files.length === 0 || isSidechatExpired) return;
+      if (!activeThreadId || files.length === 0) return;
 
       if (pendingUserInputs.length > 0) {
         toastManager.add({
@@ -3616,7 +3582,7 @@ export default function ChatView({
 
       enqueueComposerImages(files);
     },
-    [activeThreadId, enqueueComposerImages, isSidechatExpired, pendingUserInputs.length],
+    [activeThreadId, enqueueComposerImages, pendingUserInputs.length],
   );
 
   const removeComposerImage = (imageId: string) => {
@@ -3625,7 +3591,7 @@ export default function ChatView({
 
   const addComposerFiles = useCallback(
     (files: readonly File[]) => {
-      if (!activeThreadId || files.length === 0 || isSidechatExpired) return;
+      if (!activeThreadId || files.length === 0) return;
 
       if (pendingUserInputs.length > 0) {
         toastManager.add({
@@ -3650,13 +3616,7 @@ export default function ChatView({
           : error,
       );
     },
-    [
-      activeThreadId,
-      addComposerFilesToDraft,
-      isSidechatExpired,
-      pendingUserInputs.length,
-      setThreadError,
-    ],
+    [activeThreadId, addComposerFilesToDraft, pendingUserInputs.length, setThreadError],
   );
 
   const addComposerAttachments = useCallback(
@@ -3684,7 +3644,7 @@ export default function ChatView({
     onComposerDragLeave,
     onComposerDrop,
   } = useComposerDropzone({
-    disabled: isSidechatExpired,
+    disabled: false,
     addImages: addComposerImages,
     fileSupport: {
       genericFiles: "accept",
@@ -3704,7 +3664,7 @@ export default function ChatView({
   // Dropping a sidebar/activity chat row on the composer references it exactly
   // like picking it from the `@` menu: token in the prompt + mention binding.
   const { isThreadDragOverComposer, threadMentionDropzoneProps } = useComposerThreadMentionDrop({
-    disabled: isSidechatExpired,
+    disabled: false,
     currentThreadId: threadId,
     onDropThread: (droppedThreadId) => {
       const mention = resolveThreadMentionForThreadId({
@@ -4410,8 +4370,6 @@ export default function ChatView({
       isServerThread &&
       activeThread?.session !== null &&
       activeThread?.session?.status !== "closed",
-    canExecuteSideCommand,
-    sidechatTargetProviders: handoffTargetProviders,
     canOfferExportCommand,
     supportsTextNativeReviewCommand,
     fastModeEnabled,
@@ -5049,13 +5007,6 @@ export default function ChatView({
     showGitActions,
     diffOpen: resolvedDiffOpen,
     threadAutomations: threadAutomationItems,
-    sidechats: activeThread.sidechatSourceThreadId
-      ? null
-      : sourceThreadSidechats.map((sidechat) => ({
-          id: sidechat.id,
-          title: sidechat.title,
-          expiredAt: sidechat.sidechatExpiredAt ?? null,
-        })),
     diffDisabledReason,
     diffTotals: repoDiffTotals,
     branchToolbar: branchToolbarProps,
@@ -5132,32 +5083,6 @@ export default function ChatView({
     provider: selectedProvider,
     traits: composerTraitSelection,
   });
-  const startReplacementSidechat = () => {
-    const sourceThreadId = activeThread?.sidechatSourceThreadId;
-    if (!sourceThreadId) return;
-    void waitForSidechatCreator(sourceThreadId)
-      .then((createSidechat) => {
-        if (!createSidechat) {
-          toastManager.add({
-            type: "warning",
-            title: "Side chat is unavailable",
-            description: "Open the parent chat before starting a replacement side chat.",
-          });
-          return;
-        }
-        return createSidechat();
-      })
-      .catch((error) => {
-        toastManager.add({
-          type: "error",
-          title: "Could not start side chat",
-          description:
-            error instanceof Error
-              ? error.message
-              : "An error occurred while creating the side chat.",
-        });
-      });
-  };
   // The workflow card already lists its run and member agents, so the generic
   // "N background agents" footer only counts tasks outside the workflow.
   const composerBackgroundTaskCount = workflowRunState
@@ -5196,9 +5121,6 @@ export default function ChatView({
             {/* A bare wrapper keeps the normal-flow panels' -mb-px seam onto the input shell
                 via margin collapse. */}
             <div>
-              {isSidechatExpired ? (
-                <ExpiredSidechatNotice onStartNew={startReplacementSidechat} />
-              ) : null}
               {showComposerLiveChangesHeader ? (
                 <ComposerLiveChangesHeader
                   fileCount={activeTurnLiveDiffState.fileCount}
@@ -5361,10 +5283,8 @@ export default function ChatView({
                 COMPOSER_INPUT_SHELL_CLASS_NAME,
                 composerProviderState.composerFrameClassName,
                 composerOverlayOpen && !isComposerApprovalState && "overflow-visible",
-                isSidechatExpired && "pointer-events-none opacity-60",
                 isThreadDragOverComposer && "ring-1 ring-info/65",
               )}
-              aria-disabled={isSidechatExpired}
               {...threadMentionDropzoneProps}
             >
               <div
@@ -5614,7 +5534,6 @@ export default function ChatView({
                       phase,
                       busy: isSendBusy,
                       connecting: isConnecting,
-                      expired: isSidechatExpired,
                       hasPendingCacheReview: activeThread?.claudeCacheReview != null,
                       preparingImages: isPreparingComposerImages,
                       preparingWorktree: isPreparingWorktree,
@@ -5675,7 +5594,7 @@ export default function ChatView({
           isEditorRail ? "h-10" : CHAT_SURFACE_HEADER_HEIGHT_CLASS,
           isElectron && "drag-region",
           // The editor-rail chat header sits in the editor's second row (inside the
-          // right-side chat pane), not flush against the window edges — the editor's
+          // docked chat pane), not flush against the window edges — the editor's
           // own top bar already reserves both desktop window-control gutters. Applying
           // them here just leaves redundant empty space on the sides.
           !isEditorRail && desktopTopBarTrafficLightGutterClassName,
@@ -5692,7 +5611,6 @@ export default function ChatView({
           {...(isEditorRail
             ? { className: cn(CHAT_SURFACE_HEADER_PADDING_X_CLASS, "h-full") }
             : {})}
-          isSidechat={Boolean(activeThread.sidechatSourceThreadId)}
           hideSidebarControls={isEditorRail}
           hideHandoffControls={terminalWorkspaceTerminalTabActive || isEditorRail}
           minimalChrome={isCenteredEmptyLanding}
@@ -5770,7 +5688,6 @@ export default function ChatView({
           onCreateHandoff={onCreateHandoffThread}
           onNavigateToThread={onNavigateToThread}
           onRenameThread={() => setRenameDialogOpen(true)}
-          {...(onCloseThreadPane ? { onCloseThreadPane } : {})}
         />
       </ChatSurfaceHeader>
 
@@ -6181,24 +6098,14 @@ export default function ChatView({
         onOpenChange={setWorktreeHandoffDialogOpen}
         onConfirm={confirmWorktreeHandoff}
       />
-      {!isInactiveSplitPane && activeProject && !isSidechatExpired ? (
+      {!isInactiveSplitPane && activeProject ? (
         <TranscriptSelectionActionLayer
           key={threadId}
           action={pendingTranscriptSelectionAction}
           defaultEnvMode={selectionChatEnvMode ?? settings.defaultThreadEnvMode}
           canUseWorktree={isGitRepo && !isContainerLandingProject}
-          canAddToSide={isServerThread && !activeThread.sidechatSourceThreadId}
           onDismiss={dismissTranscriptSelectionAction}
           onAddToChat={commitTranscriptAssistantSelection}
-          onAddToSide={(selection) =>
-            addSelectionToSide({
-              selection,
-              project: activeProject,
-              sourceThread: activeThread,
-              selectedModelSelection,
-              runtimeMode,
-            })
-          }
           onNewChat={(selection, prompt, envMode, intent) =>
             startSelectionChat({
               selection,

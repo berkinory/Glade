@@ -257,7 +257,6 @@ export function useChatTurnSubmission({
         !lateSendHandlers ||
         !activeThread ||
         activeThread.claudeCacheReview != null ||
-        activeThread.sidechatExpiredAt ||
         isSendBusy ||
         isConnecting ||
         isVoiceTranscribing ||

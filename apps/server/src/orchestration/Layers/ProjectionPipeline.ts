@@ -587,9 +587,6 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
             subagentNickname: event.payload.subagentNickname ?? null,
             subagentRole: event.payload.subagentRole ?? null,
             forkSourceThreadId: event.payload.forkSourceThreadId,
-            sidechatSourceThreadId: event.payload.sidechatSourceThreadId,
-            sidechatLastActivityAt: event.payload.sidechatLastActivityAt,
-            sidechatExpiredAt: event.payload.sidechatExpiredAt,
             lastKnownPr: event.payload.lastKnownPr ?? null,
             latestTurnId: null,
             handoff: event.payload.handoff,
@@ -777,20 +774,6 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
             updatedAt: event.payload.updatedAt,
           }));
 
-        case "thread.sidechat-activity-recorded":
-          return yield* updateThreadProjection(event.payload.threadId, (thread) => ({
-            ...thread,
-            sidechatLastActivityAt: event.payload.lastActivityAt,
-            updatedAt: event.payload.lastActivityAt,
-          }));
-
-        case "thread.sidechat-expired":
-          return yield* updateThreadProjection(event.payload.threadId, (thread) => ({
-            ...thread,
-            sidechatExpiredAt: event.payload.expiredAt,
-            updatedAt: event.payload.expiredAt,
-          }));
-
         case "thread.turn-start-requested": {
           const existingRow = yield* projectionThreadRepository.getById({
             threadId: event.payload.threadId,
@@ -836,9 +819,6 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
                   runtimeMode: event.payload.runtimeMode,
                   interactionMode: event.payload.interactionMode,
                 }
-              : {}),
-            ...(existingRow.value.sidechatSourceThreadId
-              ? { sidechatLastActivityAt: event.payload.createdAt }
               : {}),
             updatedAt: event.payload.createdAt,
           });
@@ -957,11 +937,6 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
           const nextRow = yield* withRefreshedActionablePlanSummary({
             thread: {
               ...existingRow.value,
-              ...(event.type === "thread.session-set" &&
-              existingRow.value.sidechatSourceThreadId &&
-              !existingRow.value.sidechatExpiredAt
-                ? { sidechatLastActivityAt: event.payload.session.updatedAt }
-                : {}),
               latestTurnId:
                 event.type === "thread.session-set"
                   ? event.payload.session.activeTurnId

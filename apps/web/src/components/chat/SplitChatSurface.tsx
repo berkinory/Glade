@@ -59,7 +59,6 @@ import { useStore } from "../../store";
 import { createThreadShellsSelector } from "../../storeSelectors";
 import {
   normalizeSingleSearchFromPane,
-  resolveSplitPaneCloseDecision,
   resolveSplitPaneMaximizeDecision,
   resolveThreadPickerTitle,
   resolveToggledChatPanelPatch,
@@ -485,7 +484,6 @@ function SplitPaneSurface(props: {
     patch: Partial<Pick<SplitViewPanePanelState, "panel" | "diffTurnId" | "diffFilePath">>,
   ) => void;
   onMaximize: () => void;
-  onCloseThreadPane: () => void;
   onChooseThread: () => void;
   onSelectThread: (threadId: ThreadId) => void;
   onChatMounted: () => void;
@@ -548,7 +546,6 @@ function SplitPaneSurface(props: {
               onOpenTurnDiff={props.onOpenTurnDiff}
               onMaximize={props.onMaximize}
               onChangeThread={props.onChooseThread}
-              onCloseThreadPane={props.onCloseThreadPane}
               onMounted={props.onChatMounted}
             />
           ) : (
@@ -596,7 +593,7 @@ function SplitPaneSurface(props: {
 }
 
 // Module-level and shell-only: this surface only reads shell fields (title, projectId,
-// modelSelection, timestamps, sidechatSourceThreadId), so subscribing to full threads would
+// modelSelection, timestamps), so subscribing to full threads would
 // rebuild every thread's message/activity lists on each streaming flush for no benefit.
 const selectThreadShells = createThreadShellsSelector();
 
@@ -614,7 +611,6 @@ export function SplitChatSurface(props: { splitViewId: SplitViewId; routeThreadI
   const replacePaneThread = useSplitViewStore((store) => store.replacePaneThread);
   const dropThreadOnPane = useSplitViewStore((store) => store.dropThreadOnPane);
   const removeSplitView = useSplitViewStore((store) => store.removeSplitView);
-  const removePaneFromSplitView = useSplitViewStore((store) => store.removePaneFromSplitView);
   const [threadPickerPaneId, setThreadPickerPaneId] = useState<PaneId | null>(null);
   const requestFloatingBrowser = useFloatingBrowserRequestStore((store) => store.request);
   const dismissFloatingBrowserForThread = useFloatingBrowserRequestStore((store) => store.dismiss);
@@ -814,84 +810,6 @@ export function SplitChatSurface(props: { splitViewId: SplitViewId; routeThreadI
     void handleNewChat();
   };
 
-  const closePaneThread = (paneId: PaneId) => {
-    if (!activeSplitView) return;
-    const closingLeaf = findLeafPaneById(activeSplitView.root, paneId);
-    const closingThread = closingLeaf?.threadId
-      ? threads.find((thread) => thread.id === closingLeaf.threadId)
-      : null;
-
-    if (closingThread?.sidechatSourceThreadId) {
-      const decision = resolveSplitPaneCloseDecision({
-        splitViewId: activeSplitView.id,
-        sourceThreadId: activeSplitView.sourceThreadId,
-        closingThreadId: closingLeaf?.threadId ?? null,
-        closingSidechatSourceThreadId: closingThread.sidechatSourceThreadId,
-        nextFocusedThreadId: null,
-        nextLeafCount: 0,
-      });
-      if (decision.kind !== "single-thread") return;
-      void navigate({
-        to: "/$threadId",
-        params: { threadId: decision.threadId },
-        replace: true,
-        search: (previous) => ({
-          ...stripDiffSearchParams(previous),
-          splitViewId: undefined,
-        }),
-      }).then(() => {
-        removeSplitView(decision.splitViewIdToRemove);
-      });
-      return;
-    }
-
-    const closed = removePaneFromSplitView({
-      splitViewId: activeSplitView.id,
-      paneId,
-    });
-    if (!closed) return;
-
-    const nextSplitView = useSplitViewStore.getState().splitViewsById[activeSplitView.id];
-    const nextThreadId = nextSplitView ? resolveSplitViewFocusedThreadId(nextSplitView) : null;
-    const decision = resolveSplitPaneCloseDecision({
-      splitViewId: activeSplitView.id,
-      sourceThreadId: activeSplitView.sourceThreadId,
-      closingThreadId: closingLeaf?.threadId ?? null,
-      closingSidechatSourceThreadId: null,
-      nextFocusedThreadId: nextThreadId,
-      nextLeafCount: nextSplitView ? collectLeaves(nextSplitView.root).length : 0,
-    });
-
-    if (decision.kind === "single-thread") {
-      removeSplitView(decision.splitViewIdToRemove);
-      void navigate({
-        to: "/$threadId",
-        params: { threadId: decision.threadId },
-        replace: true,
-        search: (previous) => ({
-          ...stripDiffSearchParams(previous),
-          splitViewId: undefined,
-        }),
-      });
-      return;
-    }
-
-    if (decision.kind === "split-thread") {
-      void navigate({
-        to: "/$threadId",
-        params: { threadId: decision.threadId },
-        replace: true,
-        search: (previous) => ({
-          ...stripDiffSearchParams(previous),
-          splitViewId: decision.splitViewId,
-        }),
-      });
-      return;
-    }
-
-    void handleNewChat();
-  };
-
   const handleSetRatio = (nodeId: PaneId, ratio: number) => {
     if (!activeSplitView) return;
     setRatioForNode(activeSplitView.id, nodeId, ratio);
@@ -926,13 +844,11 @@ export function SplitChatSurface(props: { splitViewId: SplitViewId; routeThreadI
 
   const selectableThreads = useMemo(
     () =>
-      threads
-        .filter((thread) => !thread.sidechatSourceThreadId)
-        .toSorted(
-          (left, right) =>
-            Date.parse(right.updatedAt ?? right.createdAt) -
-            Date.parse(left.updatedAt ?? left.createdAt),
-        ),
+      threads.toSorted(
+        (left, right) =>
+          Date.parse(right.updatedAt ?? right.createdAt) -
+          Date.parse(left.updatedAt ?? left.createdAt),
+      ),
     [threads],
   );
   const splitThreadIds = new Set(activeSplitView ? resolveSplitViewThreadIds(activeSplitView) : []);
@@ -1012,7 +928,6 @@ export function SplitChatSurface(props: { splitViewId: SplitViewId; routeThreadI
         onPopFloatingBrowser={() => popFloatingBrowser(leaf.id)}
         onUpdatePanelState={(patch) => updatePanePanelState(leaf.id, patch)}
         onMaximize={maximizeFocusedPane}
-        onCloseThreadPane={() => closePaneThread(leaf.id)}
         onChooseThread={() => {
           setPaneFocus(leaf.id);
           setThreadPickerPaneId(leaf.id);

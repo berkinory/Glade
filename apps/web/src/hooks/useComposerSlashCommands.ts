@@ -1,5 +1,4 @@
 import {
-  PROVIDER_DISPLAY_NAMES,
   THREAD_GOAL_MAX_CHARS,
   type MessageId,
   type ModelSelection,
@@ -12,7 +11,7 @@ import {
   type ThreadId,
 } from "@glade/contracts";
 import { deriveAssociatedWorktreeMetadata } from "@glade/shared/threadWorkspace";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { newCommandId, newMessageId, newThreadId } from "../lib/utils";
 import { readNativeApi } from "../nativeApi";
 import type { Project, Thread } from "../types";
@@ -28,38 +27,24 @@ import {
   parseFastSlashCommandAction,
   parseForkSlashCommandArgs,
   parseGoalSlashCommandArgs,
-  parseSideSlashCommandArgs,
   type ForkSlashCommandTarget,
 } from "../composerSlashCommands";
-import {
-  buildThreadHandoffImportedMessages,
-  resolveThreadHandoffModelSelection,
-} from "../lib/threadHandoff";
+import { buildThreadHandoffImportedMessages } from "../lib/threadHandoff";
 import { toastManager } from "../components/ui/toast";
 import type { ComposerCommandItem } from "../components/chat/ComposerCommandMenu";
 import { buildNextProviderOptions } from "../providerModelOptions";
 import { resolveForkThreadEnvironment } from "../lib/threadEnvironment";
 import { type SplitViewId } from "../splitViewStore";
-import { useRightDockStore } from "../rightDockStore";
-import { registerSidechatCreator } from "../lib/sidechatCreatorRegistry";
 import { downloadUrlAsBlob } from "../lib/browserDownload";
 import { resolveWsHttpUrl } from "../lib/wsHttpUrl";
 import { useFeedbackDialogStore } from "../feedbackDialogStore";
 import { useComposerDraftStore } from "../composerDraftStore";
-import { useStore } from "../store";
-import { getThreadFromState } from "../threadDerivation";
 import { dispatchThreadGoal, dispatchThreadGoalPaused } from "../threadGoal";
 import {
   buildDraftThreadRenameCreateInput,
   dispatchThreadRename,
   dispatchThreadTitleRegeneration,
 } from "../lib/threadRename";
-import {
-  createOrJoinSidechat,
-  createSidechatThread,
-  sendSidechatPrompt,
-  type SidechatCreationFlight,
-} from "../lib/sidechatCreation";
 
 type ComposerSnapshot = {
   value: string;
@@ -81,8 +66,6 @@ export function useComposerSlashCommands(input: {
   isLocalDraftThread: boolean;
   supportsFastSlashCommand: boolean;
   canOfferCompactCommand: boolean;
-  canExecuteSideCommand: boolean;
-  sidechatTargetProviders: ReadonlyArray<ProviderKind>;
   canOfferExportCommand: boolean;
   supportsTextNativeReviewCommand: boolean;
   fastModeEnabled: boolean;
@@ -134,8 +117,6 @@ export function useComposerSlashCommands(input: {
     isLocalDraftThread,
     supportsFastSlashCommand,
     canOfferCompactCommand,
-    canExecuteSideCommand,
-    sidechatTargetProviders,
     canOfferExportCommand,
     supportsTextNativeReviewCommand,
     fastModeEnabled,
@@ -164,7 +145,6 @@ export function useComposerSlashCommands(input: {
     canOfferCompactCommand,
     canOfferReviewCommand: true,
     canOfferForkCommand: true,
-    canOfferSideCommand: true,
     canOfferExportCommand,
     providerNativeCommandNames,
   });
@@ -516,112 +496,6 @@ export function useComposerSlashCommands(input: {
       syncServerShellSnapshot,
     ],
   );
-
-  const sidechatCreationByKeyRef = useRef(new Map<string, SidechatCreationFlight>());
-  const createSidechatFromSlashCommand = useCallback(
-    (inputOptions?: { initialPrompt?: string; targetProvider?: ProviderKind }): Promise<true> => {
-      const api = readNativeApi();
-      if (
-        !api ||
-        !activeProject ||
-        !activeThread ||
-        !isServerThread ||
-        activeThread.sidechatSourceThreadId
-      ) {
-        toastManager.add({
-          type: "warning",
-          title: "Side is unavailable",
-          description: "Open a server-backed main thread before starting Side.",
-        });
-        return Promise.resolve(true);
-      }
-
-      const targetProvider = inputOptions?.targetProvider ?? null;
-      const sidechatModelSelection =
-        targetProvider && targetProvider !== selectedModelSelection.provider
-          ? resolveThreadHandoffModelSelection({
-              sourceThread: activeThread,
-              targetProvider,
-              projectDefaultModelSelection: activeProject.defaultModelSelection,
-              stickyModelSelectionByProvider:
-                useComposerDraftStore.getState().stickyModelSelectionByProvider,
-            })
-          : selectedModelSelection;
-
-      return createOrJoinSidechat({
-        inFlightByKey: sidechatCreationByKeyRef.current,
-        flightKey: `${activeThread.id}:${sidechatModelSelection.provider}`,
-        initialPrompt: inputOptions?.initialPrompt,
-        startCreation: (initialPrompt) =>
-          createSidechatThread({
-            api,
-            project: activeProject,
-            sourceThread: activeThread,
-            selectedModelSelection: sidechatModelSelection,
-            runtimeMode,
-            initialPrompt,
-            openSidechat: (sidechatThreadId) => {
-              useRightDockStore.getState().openPane(activeThread.id, {
-                kind: "sidechat",
-                threadId: sidechatThreadId,
-              });
-            },
-            syncServerShellSnapshot,
-          }),
-        sendQueuedPrompt: (sidechatThreadId, prompt) =>
-          sendSidechatPrompt({
-            api,
-            threadId: sidechatThreadId,
-            selectedModelSelection: sidechatModelSelection,
-            runtimeMode:
-              useComposerDraftStore.getState().draftsByThreadId[sidechatThreadId]?.runtimeMode ??
-              getThreadFromState(useStore.getState(), sidechatThreadId)?.runtimeMode ??
-              runtimeMode,
-            prompt,
-          }),
-        onCreationResult: (result) => {
-          if (result.promptError) {
-            toastManager.add({
-              type: "warning",
-              title: "Side chat started without the prompt",
-              description: "The side chat is open. Send the prompt again when it finishes loading.",
-            });
-          } else if (result.snapshotError) {
-            toastManager.add({
-              type: "warning",
-              title: "Side chat is still syncing",
-              description:
-                "The fork succeeded and will appear as soon as the thread list refreshes.",
-            });
-          }
-        },
-        onQueuedPromptError: () => {
-          toastManager.add({
-            type: "warning",
-            title: "Side chat prompt was not sent",
-            description: "The side chat is open. Send the prompt again when it finishes loading.",
-          });
-        },
-      });
-    },
-    [
-      activeProject,
-      activeThread,
-      isServerThread,
-      runtimeMode,
-      selectedModelSelection,
-      syncServerShellSnapshot,
-    ],
-  );
-
-  // Publish a stable host capability. Composer drafts, attachments, and modes only
-  // affect whether `/side` is offered; they must not make the dock action disappear.
-  useEffect(() => {
-    if (!activeProject || !activeThread || !isServerThread || activeThread.sidechatSourceThreadId) {
-      return;
-    }
-    return registerSidechatCreator(threadId, createSidechatFromSlashCommand);
-  }, [activeProject, activeThread, createSidechatFromSlashCommand, isServerThread, threadId]);
 
   const runCodexReviewStart = useCallback(
     async (target: "changes" | "base-branch") => {
@@ -1036,59 +910,13 @@ export function useComposerSlashCommands(input: {
         }
         return true;
       }
-      if (slashInvocation.command === "side") {
-        // Execute allows `/side <provider> [prompt]` even though the menu offer still
-        // requires an otherwise-empty composer (the args are meaningful prompt text).
-        if (!canExecuteSideCommand) {
-          toastManager.add({
-            type: "warning",
-            title: "Side is unavailable",
-            description: "Remove composer attachments or context before using /side.",
-          });
-          return true;
-        }
-        const { targetProvider, prompt, unavailableProvider } = parseSideSlashCommandArgs(
-          slashInvocation.args,
-          {
-            currentProvider: selectedModelSelection.provider,
-            availableTargetProviders: sidechatTargetProviders,
-          },
-        );
-        if (unavailableProvider) {
-          toastManager.add({
-            type: "warning",
-            title: `${PROVIDER_DISPLAY_NAMES[unavailableProvider]} is unavailable for Side`,
-            description: "Enable and sign in to that provider, then run /side again.",
-          });
-          return true;
-        }
-        // Hoisted out of the `try` below: React Compiler cannot lower `?:` inside
-        // a try block and would bail out of compiling this whole hook.
-        const sidechatOptions = targetProvider
-          ? { initialPrompt: prompt, targetProvider }
-          : { initialPrompt: prompt };
-        try {
-          editorActions.clearComposerSlashDraft();
-          await createSidechatFromSlashCommand(sidechatOptions);
-        } catch (error) {
-          toastManager.add({
-            type: "error",
-            title: "Could not start Side",
-            description:
-              error instanceof Error ? error.message : "An error occurred while creating Side.",
-          });
-        }
-        return true;
-      }
       return false;
     },
     [
       availableBuiltInSlashCommands,
-      canExecuteSideCommand,
       checkClaudeFastSlashCommandAvailability,
       compactProviderThread,
       createForkThreadFromSlashCommand,
-      createSidechatFromSlashCommand,
       editorActions,
       handleClearConversation,
       handleInteractionModeChange,
@@ -1097,7 +925,6 @@ export function useComposerSlashCommands(input: {
       openReviewTargetPicker,
       selectedProvider,
       selectedModelSelection.provider,
-      sidechatTargetProviders,
       supportsTextNativeReviewCommand,
       runCodexReviewStart,
       runExportSlashCommand,
@@ -1295,26 +1122,9 @@ export function useComposerSlashCommands(input: {
         editorActions.scheduleComposerFocus();
         return;
       }
-
-      if (item.command === "side") {
-        const applied = clearSlashCommandFromComposer();
-        if (!wasPromptReplacementApplied(applied)) {
-          return;
-        }
-        editorActions.setComposerHighlightedItemId(null);
-        void createSidechatFromSlashCommand().catch((error) => {
-          toastManager.add({
-            type: "error",
-            title: "Could not start Side",
-            description:
-              error instanceof Error ? error.message : "An error occurred while creating Side.",
-          });
-        });
-      }
     },
     [
       compactProviderThread,
-      createSidechatFromSlashCommand,
       editorActions,
       handleClearConversation,
       handleInteractionModeChange,

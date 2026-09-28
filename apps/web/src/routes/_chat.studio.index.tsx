@@ -64,7 +64,6 @@ function StudioIndexRouteView() {
     const summary = sidebarThreadSummaryById[threadId];
     return summary &&
       (summary.archivedAt ?? null) === null &&
-      !summary.sidechatSourceThreadId &&
       studioProjectIds.has(summary.projectId)
       ? [summary]
       : [];

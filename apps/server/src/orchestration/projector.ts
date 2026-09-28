@@ -43,8 +43,6 @@ import {
   ThreadUnarchivedPayload,
   ThreadRevertedPayload,
   ThreadSessionSetPayload,
-  ThreadSidechatActivityRecordedPayload,
-  ThreadSidechatExpiredPayload,
   ThreadTurnDiffCompletedPayload,
   ThreadTurnStartRequestedPayload,
 } from "./Schemas.ts";
@@ -564,9 +562,6 @@ export function projectEvent(
             subagentNickname: payload.subagentNickname,
             subagentRole: payload.subagentRole,
             forkSourceThreadId: payload.forkSourceThreadId,
-            sidechatSourceThreadId: payload.sidechatSourceThreadId,
-            sidechatLastActivityAt: payload.sidechatLastActivityAt,
-            sidechatExpiredAt: payload.sidechatExpiredAt,
             lastKnownPr: payload.lastKnownPr ?? null,
             latestTurn: null,
             createdAt: payload.createdAt,
@@ -591,38 +586,6 @@ export function projectEvent(
             : [...nextBase.threads, thread],
         };
       });
-
-    case "thread.sidechat-activity-recorded":
-      return decodeForEvent(
-        ThreadSidechatActivityRecordedPayload,
-        event.payload,
-        event.type,
-        "payload",
-      ).pipe(
-        Effect.map((payload) => ({
-          ...nextBase,
-          threads: updateThread(nextBase.threads, payload.threadId, {
-            sidechatLastActivityAt: payload.lastActivityAt,
-            updatedAt: payload.lastActivityAt,
-          }),
-        })),
-      );
-
-    case "thread.sidechat-expired":
-      return decodeForEvent(
-        ThreadSidechatExpiredPayload,
-        event.payload,
-        event.type,
-        "payload",
-      ).pipe(
-        Effect.map((payload) => ({
-          ...nextBase,
-          threads: updateThread(nextBase.threads, payload.threadId, {
-            sidechatExpiredAt: payload.expiredAt,
-            updatedAt: payload.expiredAt,
-          }),
-        })),
-      );
 
     case "thread.deleted":
       return decodeForEvent(ThreadDeletedPayload, event.payload, event.type, "payload").pipe(
@@ -931,9 +894,6 @@ export function projectEvent(
               ...(turnStartSession !== null ? { session: turnStartSession } : {}),
               runtimeMode: payload.runtimeMode,
               interactionMode: payload.interactionMode,
-              ...(thread.sidechatSourceThreadId
-                ? { sidechatLastActivityAt: payload.createdAt }
-                : {}),
               updatedAt: payload.createdAt,
             }),
           };
@@ -1133,9 +1093,6 @@ export function projectEvent(
           ...nextBase,
           threads: updateThread(nextBase.threads, payload.threadId, {
             session,
-            ...(thread.sidechatSourceThreadId && !thread.sidechatExpiredAt
-              ? { sidechatLastActivityAt: session.updatedAt }
-              : {}),
             latestTurn:
               session.status === "running" && session.activeTurnId !== null
                 ? thread.latestTurn?.turnId === session.activeTurnId &&

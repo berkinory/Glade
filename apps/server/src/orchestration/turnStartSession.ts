@@ -13,8 +13,7 @@ export function deriveTurnStartModelSelection(input: {
     : input.currentModelSelection;
 }
 
-// Sidechats import source transcript as `fork-import` rows for provider context.
-// Those imports must not freeze the first-turn provider the way native history does.
+// Imported fork history must not freeze the first-turn provider like native history does.
 export function countNativeTurnStartMessages(
   messages: ReadonlyArray<{ readonly source?: string | null }>,
 ): number {

@@ -31,8 +31,6 @@ import {
   ThreadConversationRollbackRequestedPayload as ContractsThreadConversationRollbackRequestedPayloadSchema,
   ThreadMessageEditResendRequestedPayload as ContractsThreadMessageEditResendRequestedPayloadSchema,
   ThreadSessionStopRequestedPayload as ContractsThreadSessionStopRequestedPayloadSchema,
-  ThreadSidechatActivityRecordedPayload as ContractsThreadSidechatActivityRecordedPayloadSchema,
-  ThreadSidechatExpiredPayload as ContractsThreadSidechatExpiredPayloadSchema,
 } from "@glade/contracts";
 
 // Server-internal alias surface, backed by contract schemas as the source of truth.
@@ -77,6 +75,3 @@ export const ThreadConversationRolledBackPayload =
 export const ThreadMessageEditResendRequestedPayload =
   ContractsThreadMessageEditResendRequestedPayloadSchema;
 export const ThreadSessionStopRequestedPayload = ContractsThreadSessionStopRequestedPayloadSchema;
-export const ThreadSidechatActivityRecordedPayload =
-  ContractsThreadSidechatActivityRecordedPayloadSchema;
-export const ThreadSidechatExpiredPayload = ContractsThreadSidechatExpiredPayloadSchema;
