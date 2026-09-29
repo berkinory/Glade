@@ -127,11 +127,6 @@ export const DEFAULT_SHORTCUT_FALLBACKS: ResolvedKeybindingsConfig = [
     whenAst: whenModChordAllowed,
   },
   {
-    command: "chat.newCursor",
-    shortcut: commandShortcut("r", { altKey: true }),
-    whenAst: whenModChordAllowed,
-  },
-  {
     command: "chat.split",
     shortcut: commandShortcut("\\"),
     whenAst: whenModChordAllowed,

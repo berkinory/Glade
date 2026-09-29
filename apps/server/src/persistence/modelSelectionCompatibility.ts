@@ -1,7 +1,18 @@
 // Normalize older persisted selections at read time. Event JSON remains untouched.
 import { DEFAULT_MODEL_BY_PROVIDER, ProviderKind, type ModelSelection } from "@glade/contracts";
 
-const retiredProviderIds = new Set(["antigravity", "devin", "droid", "omp", "pi", "gemini"]);
+const retiredProviderIds = new Set([
+  "antigravity",
+  "devin",
+  "droid",
+  "omp",
+  "pi",
+  "gemini",
+  "cursor",
+  "grok",
+  "opencode",
+  "kilo",
+]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -36,23 +47,18 @@ function normalizeOptions(
 function inferProvider(raw: unknown, model: string): ProviderKind | null {
   if (typeof raw === "string") {
     if (retiredProviderIds.has(raw.toLowerCase())) return null;
-    if (raw === "kilo") return "opencode";
     if (ProviderKind.literals.includes(raw as ProviderKind)) return raw as ProviderKind;
     const label = raw.toLowerCase();
     if (
       /\b(oh my pi|omp|pi|devin|windsurf|cognition|droid|factory|antigravity|gemini)\b/u.test(label)
     )
       return null;
-    if (label.includes("opencode") || label.includes("kilo")) return "opencode";
     if (label.includes("claude") || label.includes("anthropic")) return "claudeAgent";
-    if (label.includes("cursor")) return "cursor";
-    if (label.includes("grok") || label.includes("xai")) return "grok";
     if (label.includes("codex")) return "codex";
   }
   const lowerModel = model.toLowerCase();
   if (lowerModel.includes("gemini") || lowerModel.includes("devin")) return null;
   if (lowerModel.includes("claude")) return "claudeAgent";
-  if (lowerModel.includes("grok")) return "grok";
   return "codex";
 }
 

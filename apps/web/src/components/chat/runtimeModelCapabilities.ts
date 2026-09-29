@@ -16,7 +16,6 @@ import {
   normalizeModelSlug,
   trimOrNull,
 } from "@glade/shared/model";
-import { normalizeCursorModelVariantBaseId } from "../../cursorModelVariants";
 import { normalizeClaudeModelOptionSlug } from "../../providerModelOptions";
 
 function runtimeEffortLabel(value: string): string {
@@ -67,11 +66,7 @@ export function resolveRuntimeModelDescriptor(input: {
     if (normalizedCandidate === normalizedModel || normalizedResolvedModel === normalizedModel) {
       return true;
     }
-    return (
-      provider === "cursor" &&
-      normalizeCursorModelVariantBaseId(normalizedCandidate) ===
-        normalizeCursorModelVariantBaseId(normalizedModel)
-    );
+    return false;
   });
   if (exactMatch || provider !== "claudeAgent" || getClaudeContextWindowSuffix(model)) {
     return exactMatch;
@@ -94,7 +89,7 @@ export function getRuntimeAwareModelCapabilities(input: {
   const staticCapabilities = getModelCapabilities(input.provider, input.model);
   // Runtime discovery is authoritative when available; the static table is only a startup fallback.
   const supportsFastMode =
-    (input.provider === "codex" || input.provider === "cursor") && input.runtimeModel
+    input.provider === "codex" && input.runtimeModel
       ? input.runtimeModel.supportsFastMode === true
       : staticCapabilities.supportsFastMode;
   const supportsThinkingToggle =
@@ -109,14 +104,7 @@ export function getRuntimeAwareModelCapabilities(input: {
     input.runtimeModel?.optionDescriptors ?? staticCapabilities.optionDescriptors;
   const runtimeEfforts = input.runtimeModel?.supportedReasoningEfforts;
   // Providers with dynamic catalogs expose model-specific effort ladders here.
-  if (
-    (input.provider !== "codex" &&
-      input.provider !== "cursor" &&
-      input.provider !== "grok" &&
-      input.provider !== "opencode") ||
-    !runtimeEfforts ||
-    runtimeEfforts.length === 0
-  ) {
+  if (input.provider !== "codex" || !runtimeEfforts || runtimeEfforts.length === 0) {
     return {
       ...staticCapabilities,
       ...(optionDescriptors ? { optionDescriptors } : {}),
@@ -142,16 +130,6 @@ export function getRuntimeAwareModelCapabilities(input: {
       ...(effort.value === runtimeDefaultEffort ? { isDefault: true as const } : {}),
     };
   });
-
-  if (input.provider === "opencode") {
-    return {
-      ...staticCapabilities,
-      ...(optionDescriptors ? { optionDescriptors } : {}),
-      variantOptions: runtimeOptions,
-      supportsThinkingToggle,
-      contextWindowOptions,
-    };
-  }
 
   return {
     ...staticCapabilities,

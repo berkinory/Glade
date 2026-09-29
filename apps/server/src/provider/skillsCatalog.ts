@@ -143,7 +143,7 @@ async function isWalkableSkillDirectory(
   }
 }
 
-// Skills may be nested one namespace deep, e.g. `.cursor/skills/skills-sh/find-skills`.
+// Skills may be nested one namespace deep.
 // Subdirectories are visited concurrently but results are flattened in sorted name
 // order so name-dedup always picks the same winner across runs. Provider skill
 // folders may be symlinked, so directory checks intentionally follow symlinks.
@@ -349,15 +349,7 @@ export interface SkillsCatalogRootInput extends SkillsCatalogDiscoveryInput {
   readonly includeGladeRoot?: boolean;
 }
 
-const HOME_ORIGIN_ORDER = [
-  "glade",
-  "codex",
-  "claude",
-  "cursor",
-  "grok",
-  "opencode",
-  "agents",
-] as const;
+const HOME_ORIGIN_ORDER = ["glade", "codex", "claude", "agents"] as const;
 export type SkillsCatalogOrigin = (typeof HOME_ORIGIN_ORDER)[number] | "project";
 
 // Composer skill pickers refetch aggressively (per keystroke, per provider); a
@@ -421,21 +413,6 @@ const SKILL_ORIGIN_ROOTS = {
     homeRoots: (input) => [nodePath.join(input.homeDir, ".claude", "skills")],
     projectRootNames: [".claude"],
   },
-  cursor: {
-    homeRoots: (input) => [
-      nodePath.join(input.homeDir, ".cursor", "skills-cursor"),
-      nodePath.join(input.homeDir, ".cursor", "skills"),
-    ],
-    projectRootNames: [".cursor"],
-  },
-  grok: {
-    homeRoots: (input) => [nodePath.join(input.homeDir, ".grok", "skills")],
-    projectRootNames: [".grok"],
-  },
-  opencode: {
-    homeRoots: (input) => [nodePath.join(input.homeDir, ".config", "opencode", "skills")],
-    projectRootNames: [".opencode"],
-  },
   agents: {
     homeRoots: (input) => [nodePath.join(input.homeDir, ".agents", "skills")],
     projectRootNames: [".agents"],
@@ -445,9 +422,6 @@ const SKILL_ORIGIN_ROOTS = {
 const PROVIDER_SKILL_ORIGIN_PREFERENCES = {
   codex: ["codex", "agents"],
   claudeAgent: ["claude"],
-  cursor: ["cursor", "agents", "claude", "codex"],
-  grok: ["grok", "claude", "agents"],
-  opencode: ["opencode", "claude", "agents"],
 } as const satisfies Partial<Record<ProviderKind, readonly SkillsHomeOrigin[]>>;
 
 function homeRootsForOrigin(

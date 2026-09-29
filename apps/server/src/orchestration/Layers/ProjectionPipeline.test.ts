@@ -292,8 +292,8 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
           projectId: ProjectId.makeUnsafe("project-turn-settings"),
           title: "Thread",
           modelSelection: {
-            provider: "opencode",
-            model: "openai/gpt-5.1",
+            provider: "codex",
+            model: "gpt-5.4-mini",
           },
           runtimeMode: "full-access",
           branch: null,
@@ -317,8 +317,8 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
           threadId: ThreadId.makeUnsafe("thread-turn-settings"),
           messageId: MessageId.makeUnsafe("message-turn-settings"),
           modelSelection: {
-            provider: "opencode",
-            model: "openai/gpt-5.5",
+            provider: "codex",
+            model: "gpt-5.5",
           },
           runtimeMode: "approval-required",
           interactionMode: "debug",
@@ -345,8 +345,8 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
 
       assert.equal(rows.length, 1);
       assert.deepEqual(JSON.parse(rows[0]!.modelSelectionJson), {
-        provider: "opencode",
-        model: "openai/gpt-5.5",
+        provider: "codex",
+        model: "gpt-5.5",
       });
       assert.equal(rows[0]!.runtimeMode, "approval-required");
       assert.equal(rows[0]!.interactionMode, "debug");
@@ -371,7 +371,7 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
       assert.deepEqual(sessionRows, [
         {
           status: "starting",
-          providerName: "opencode",
+          providerName: "codex",
           runtimeMode: "approval-required",
           activeTurnId: null,
           updatedAt: turnRequestedAt,
@@ -394,7 +394,7 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
           session: {
             threadId: ThreadId.makeUnsafe("thread-turn-settings"),
             status: "ready",
-            providerName: "opencode",
+            providerName: "codex",
             runtimeMode: "approval-required",
             activeTurnId: null,
             lastError: null,
@@ -445,7 +445,7 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
         payload: {
           threadId: ThreadId.makeUnsafe("thread-turn-settings"),
           messageId: MessageId.makeUnsafe("message-turn-settings-cross-provider"),
-          modelSelection: { provider: "codex", model: "gpt-5-codex" },
+          modelSelection: { provider: "claudeAgent", model: "claude-sonnet-4-6" },
           runtimeMode: "full-access",
           interactionMode: "debug",
           createdAt: crossProviderRequestedAt,
@@ -466,10 +466,10 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
         WHERE threads.thread_id = 'thread-turn-settings'
       `;
       assert.deepEqual(JSON.parse(providerRows[0]!.modelSelectionJson), {
-        provider: "opencode",
-        model: "openai/gpt-5.5",
+        provider: "codex",
+        model: "gpt-5.5",
       });
-      assert.equal(providerRows[0]!.providerName, "opencode");
+      assert.equal(providerRows[0]!.providerName, "codex");
 
       // Automation-dispatched turns run with the automation's modes but must not
       // repaint the thread's persisted runtime/interaction modes.

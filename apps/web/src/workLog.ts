@@ -298,8 +298,7 @@ export function orderedActivities(
 // strip and to the child threads themselves — the transcript never renders a
 // subagent roster. The check runs on derived entries rather than raw activities
 // because providers stream the tool call first and attach receiver metadata on a
-// later lifecycle update that merges into the same entry. Generic OpenCode task
-// calls carry no receiver metadata and keep their ordinary chat row.
+// later lifecycle update that merges into the same entry.
 export function isRoutedSubagentWorkEntry(entry: Pick<WorkLogEntry, "itemType" | "subagents">) {
   return entry.itemType === "collab_agent_tool_call" && (entry.subagents?.length ?? 0) > 0;
 }

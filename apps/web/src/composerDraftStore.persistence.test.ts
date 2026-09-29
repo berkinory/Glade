@@ -240,40 +240,6 @@ describe("composerDraftStore persisted-state hydration", () => {
     expect(hydrated.draftThreadsByThreadId[threadId]?.runtimeMode).toBe("auto");
   });
 
-  it("migrates persisted Kilo draft and sticky selections to OpenCode", () => {
-    const threadId = ThreadId.makeUnsafe("thread-kilo-draft");
-    const kiloSelection = {
-      provider: "kilo",
-      model: "kilo/kilo-auto/free",
-      options: { variant: "high" },
-    };
-    const hydrated = normalizeCurrentPersistedComposerDraftStoreState({
-      draftsByThreadId: {
-        [threadId]: {
-          prompt: "Continue this draft",
-          attachments: [],
-          modelSelectionByProvider: {
-            opencode: { provider: "opencode", model: "openai/gpt-5" },
-            kilo: kiloSelection,
-          },
-          activeProvider: "kilo",
-        },
-      },
-      draftThreadsByThreadId: {},
-      projectDraftThreadIdByProjectId: {},
-      stickyModelSelectionByProvider: { kilo: kiloSelection },
-      stickyActiveProvider: "kilo",
-    });
-
-    expect(hydrated.draftsByThreadId[threadId]?.activeProvider).toBe("opencode");
-    expect(hydrated.draftsByThreadId[threadId]?.modelSelectionByProvider?.opencode).toEqual({
-      provider: "opencode",
-      model: "openai/gpt-5",
-    });
-    expect(hydrated.stickyActiveProvider).toBe("opencode");
-    expect(hydrated.stickyModelSelectionByProvider?.opencode?.provider).toBe("opencode");
-  });
-
   it("preserves a staged goal in draft-thread state during hydration and drops blank ones", () => {
     const projectId = ProjectId.makeUnsafe("project-goal");
     const threadId = ThreadId.makeUnsafe("thread-goal");
@@ -619,39 +585,6 @@ describe("composerDraftStore terminal contexts", () => {
     expect(mergedState.projectDraftThreadIdByProjectId).toEqual({});
   });
 
-  it("drops unsupported restored Grok reasoning efforts from legacy draft storage", () => {
-    const persistApi = useComposerDraftStore.persist as unknown as {
-      getOptions: () => {
-        merge: (
-          persistedState: unknown,
-          currentState: ReturnType<typeof useComposerDraftStore.getState>,
-        ) => ReturnType<typeof useComposerDraftStore.getState>;
-      };
-    };
-    const mergedState = persistApi.getOptions().merge(
-      {
-        draftsByThreadId: {
-          [threadId]: {
-            provider: "grok",
-            model: "grok-build",
-            modelOptions: {
-              grok: {
-                reasoningEffort: "xhigh",
-              },
-            },
-          },
-        },
-        draftThreadsByThreadId: {},
-        projectDraftThreadIdByProjectId: {},
-      },
-      useComposerDraftStore.getInitialState(),
-    );
-
-    expect(mergedState.draftsByThreadId[threadId]?.modelSelectionByProvider.grok).toEqual(
-      modelSelection("grok", "grok-build"),
-    );
-  });
-
   it("trims a runtime-discovered Codex effort from legacy draft storage", () => {
     const persistApi = useComposerDraftStore.persist as unknown as {
       getOptions: () => {
@@ -693,8 +626,8 @@ describe("composerDraftStore terminal contexts", () => {
     const codexSelection = modelSelection("codex", "gpt-5.6-sol", {
       reasoningEffort: "ultra",
     });
-    const cursorSelection = modelSelection("cursor", "cursor-auto", {
-      reasoningEffort: "high",
+    const claudeSelection = modelSelection("claudeAgent", "claude-sonnet-5", {
+      effort: "high",
     });
     const mergedState = persistApi.getOptions().merge(
       {
@@ -702,9 +635,9 @@ describe("composerDraftStore terminal contexts", () => {
           [threadId]: {
             modelSelectionByProvider: {
               codex: codexSelection,
-              cursor: cursorSelection,
+              claudeAgent: claudeSelection,
             },
-            activeProvider: "cursor",
+            activeProvider: "claudeAgent",
           },
         },
         draftThreadsByThreadId: {},
@@ -715,8 +648,8 @@ describe("composerDraftStore terminal contexts", () => {
 
     const draft = mergedState.draftsByThreadId[threadId];
     expect(draft?.modelSelectionByProvider.codex).toEqual(codexSelection);
-    expect(draft?.modelSelectionByProvider.cursor).toEqual(cursorSelection);
-    expect(draft?.activeProvider).toBe("cursor");
+    expect(draft?.modelSelectionByProvider.claudeAgent).toEqual(claudeSelection);
+    expect(draft?.activeProvider).toBe("claudeAgent");
   });
 });
 

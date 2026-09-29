@@ -4,7 +4,7 @@
 // Exports: isPrefixedToolArgumentSummary, parseToolArgumentSummary, extractToolArgumentField, toolArgumentSummaryToolName
 
 // Providers report dynamic/MCP tool calls with a detail string of the form
-// `ToolName: {jsonArgs}` (Claude), `ToolName {jsonArgs}` (some ACP agents), or
+// `ToolName: {jsonArgs}` (Claude), `ToolName {jsonArgs}`, or
 // bare `{jsonArgs}`. Every consumer of that format — raw-preview suppression,
 // web-fetch URL extraction, file-path extraction — goes through this module so
 // the format is recognized identically everywhere.

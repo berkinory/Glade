@@ -341,8 +341,6 @@ function makeGatewayCredentialsHarness(options?: {
     issueSessionToken: () => `gateway-token-${++sequence}`,
     verifySessionToken: () => null,
     verifySession: () => null,
-    issueStdioBootstrapToken: () => "gateway-bootstrap",
-    exchangeStdioBootstrapToken: () => null,
     bindWriteAuthority: () => null,
     verifyWriteAuthority: () => false,
     registerInFlightRequest: () => () => undefined,
@@ -368,7 +366,6 @@ function makeGatewayCredentialsHarness(options?: {
         bearerToken: `gateway-token-${++sequence}`,
       };
     },
-    stdioProxy: { command: "node", args: ["/state/proxy.mjs"] },
   } satisfies AgentGatewayCredentialsShape;
   return { cancelledTurns, credentials, leasedCapabilities, revokedTokens };
 }

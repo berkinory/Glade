@@ -160,26 +160,6 @@ it.effect("preserves thread activity payloads through the RPC JSON codec", () =>
   }),
 );
 
-it.effect("drops legacy provider passwords from decoded provider options", () =>
-  Effect.gen(function* () {
-    const parsed = yield* decodeProviderStartOptions({
-      opencode: {
-        binaryPath: "/custom/bin/opencode",
-        serverUrl: "http://127.0.0.1:4096",
-        serverPassword: "legacy-opencode-secret",
-      },
-    });
-
-    assert.deepStrictEqual(parsed, {
-      opencode: {
-        binaryPath: "/custom/bin/opencode",
-        serverUrl: "http://127.0.0.1:4096",
-      },
-    });
-    assert.doesNotMatch(JSON.stringify(parsed), /serverPassword|legacy-.*-secret/);
-  }),
-);
-
 it.effect("rejects turn diff input when fromTurnCount > toTurnCount", () =>
   Effect.gen(function* () {
     const result = yield* Effect.exit(
@@ -644,7 +624,7 @@ it.effect("ThreadHandoff decodes legacy provider names instead of failing the ro
       importedAt: "2026-01-01T00:00:00Z",
       bootstrapStatus: "completed",
     });
-    assert.equal(handoff.sourceProvider, "opencode");
+    assert.equal(handoff.sourceProvider, "kilo");
 
     const retired = yield* decodeThreadHandoff({
       sourceThreadId: "thread-src",

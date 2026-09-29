@@ -82,11 +82,10 @@ function expandProviderNativeSlashCommandNames(
 
 /**
  * Providers where app-owned /review (target picker + structured prompt) must
- * win over listing a native "review" command. OpenCode exposes /review in its
- * command list but does not honor bare `/review` text turns (#218).
+ * win over listing a native "review" command.
  */
 export function providerUsesAppOwnedReviewSlashCommand(provider: ProviderKind): boolean {
-  return provider === "codex" || provider === "opencode";
+  return provider === "codex";
 }
 
 function shouldKeepBuiltInSlashCommandDespiteNativeCollision(
@@ -133,7 +132,7 @@ export function shouldHideProviderNativeCommandFromComposerMenu(
 
 /**
  * True when a discovered native "review" command should be sent as plain
- * `/review` text. Codex/OpenCode use the app review UX instead (#218).
+ * `/review` text. Codex uses the app review UX instead (#218).
  */
 export function providerSupportsTextNativeReviewCommand(
   provider: ProviderKind,

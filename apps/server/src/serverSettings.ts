@@ -38,12 +38,6 @@ import {
   GIT_TEXT_GENERATION_PROVIDER_ORDER,
   hasDedicatedTextGenerationProvider,
 } from "./git/textGenerationSelection";
-import {
-  ProviderCredentials,
-  ProviderCredentialsLive,
-  type ExternalProviderServer,
-} from "./providerCredentials";
-
 export interface ServerSettingsShape {
   readonly start: Effect.Effect<void, ServerSettingsError>;
   readonly ready: Effect.Effect<void, ServerSettingsError>;
@@ -66,7 +60,7 @@ export interface ServerSettingsSnapshot {
   readonly settings: ServerSettings;
 }
 
-const SERVER_SETTINGS_MIGRATION_VERSION = 3;
+const SERVER_SETTINGS_MIGRATION_VERSION = 4;
 const PREVIOUS_GIT_TEXT_GENERATION_MODEL = "gpt-5.4-mini";
 const PREVIOUS_LUNA_GIT_TEXT_GENERATION_MODEL = "gpt-5.6-luna";
 
@@ -198,96 +192,17 @@ function normalizeSettings(
   );
 }
 
-const EXTERNAL_SERVER_PROVIDERS = ["opencode"] as const;
-
-function readLegacyProviderPasswords(raw: string): ReadonlyMap<ExternalProviderServer, string> {
-  try {
-    const parsed = JSON.parse(raw) as {
-      providers?: Partial<Record<ExternalProviderServer, { readonly serverPassword?: unknown }>>;
-    };
-    const passwords = new Map<ExternalProviderServer, string>();
-    for (const provider of EXTERNAL_SERVER_PROVIDERS) {
-      const value = parsed.providers?.[provider]?.serverPassword;
-      if (typeof value === "string" && value.trim().length > 0) {
-        passwords.set(provider, value.trim());
-      }
-    }
-    return passwords;
-  } catch {
-    return new Map();
-  }
-}
-
-function omitProviderPasswords(patch: ServerSettingsPatch): ServerSettingsPatch {
-  if (!patch.providers) return patch;
-  const { serverPassword: _openCodePassword, ...opencode } = patch.providers.opencode ?? {};
+function retireProviderSettings(value: unknown): unknown {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return value;
+  const settings = value as Record<string, unknown>;
+  const selection = settings.textGenerationModelSelection;
+  if (selection === null || typeof selection !== "object" || Array.isArray(selection)) return value;
+  const provider = (selection as Record<string, unknown>).provider;
+  if (provider === "codex" || provider === "claudeAgent") return value;
   return {
-    ...patch,
-    providers: {
-      ...patch.providers,
-      ...(patch.providers.opencode ? { opencode } : {}),
-    },
+    ...settings,
+    textGenerationModelSelection: { provider: "codex", model: DEFAULT_GIT_TEXT_GENERATION_MODEL },
   };
-}
-
-// Migrate only portable Kilo state. Its model/options shape and enabled flag
-// remain meaningful, but Kilo binary paths, endpoints, and credentials are not
-// compatible with the OpenCode process protocol and must not be copied.
-function migrateRemovedKiloSettings(settings: unknown): unknown {
-  if (settings === null || typeof settings !== "object" || Array.isArray(settings)) {
-    return settings;
-  }
-  const record = settings as Record<string, unknown>;
-  let migrated = record;
-  const selection = record.textGenerationModelSelection;
-  if (selection !== null && typeof selection === "object" && !Array.isArray(selection)) {
-    const selectionRecord = selection as Record<string, unknown>;
-    if (selectionRecord.provider === "kilo") {
-      const options = selectionRecord.options;
-      const migratedOptions =
-        options !== null &&
-        typeof options === "object" &&
-        !Array.isArray(options) &&
-        "kilo" in options
-          ? (options as Record<string, unknown>).kilo
-          : options;
-      migrated = {
-        ...migrated,
-        textGenerationModelSelection: {
-          ...selectionRecord,
-          provider: "opencode",
-          ...(migratedOptions === undefined ? {} : { options: migratedOptions }),
-        },
-      };
-    }
-  }
-
-  const providers = record.providers;
-  if (providers !== null && typeof providers === "object" && !Array.isArray(providers)) {
-    const providerRecord = providers as Record<string, unknown>;
-    const kilo = providerRecord.kilo;
-    if (kilo !== null && typeof kilo === "object" && !Array.isArray(kilo)) {
-      const kiloRecord = kilo as Record<string, unknown>;
-      const existingOpenCode =
-        providerRecord.opencode !== null &&
-        typeof providerRecord.opencode === "object" &&
-        !Array.isArray(providerRecord.opencode)
-          ? (providerRecord.opencode as Record<string, unknown>)
-          : {};
-      const { kilo: _removedKilo, ...remainingProviders } = providerRecord;
-      migrated = {
-        ...migrated,
-        providers: {
-          ...remainingProviders,
-          opencode: {
-            ...existingOpenCode,
-            ...(kiloRecord.enabled === true ? { enabled: true } : {}),
-          },
-        },
-      };
-    }
-  }
-  return migrated;
 }
 
 function decodeSettingsFromJson(settingsPath: string, raw: string) {
@@ -298,7 +213,7 @@ function decodeSettingsFromJson(settingsPath: string, raw: string) {
         ? (parsed as { revision?: unknown; migrationVersion?: unknown; settings: unknown })
         : null;
     const decoded = Schema.decodeUnknownExit(ServerSettings)(
-      migrateRemovedKiloSettings(envelope?.settings ?? parsed),
+      retireProviderSettings(envelope?.settings ?? parsed),
     );
     if (decoded._tag === "Failure") {
       return { _tag: "Failure" as const, error: Cause.pretty(decoded.cause) };
@@ -328,7 +243,6 @@ function decodeSettingsFromJson(settingsPath: string, raw: string) {
 
 const makeServerSettings = Effect.gen(function* () {
   const { settingsPath } = yield* ServerConfig;
-  const providerCredentials = yield* ProviderCredentials;
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const writeSemaphore = yield* Semaphore.make(1);
@@ -340,32 +254,6 @@ const makeServerSettings = Effect.gen(function* () {
 
   const emitChange = (settings: ServerSettings) =>
     PubSub.publish(changesPubSub, settings).pipe(Effect.asVoid);
-
-  const withCredentialState = (settings: ServerSettings) =>
-    Effect.all({
-      opencode: providerCredentials.isServerPasswordConfigured("opencode"),
-    }).pipe(
-      Effect.map(
-        (configured): ServerSettings => ({
-          ...settings,
-          providers: {
-            ...settings.providers,
-            opencode: {
-              ...settings.providers.opencode,
-              serverPasswordConfigured: configured.opencode,
-            },
-          },
-        }),
-      ),
-      Effect.mapError(
-        (cause) =>
-          new ServerSettingsError({
-            settingsPath,
-            detail: "failed to read provider credential state",
-            cause,
-          }),
-      ),
-    );
 
   const loadSettingsFromDisk = Effect.gen(function* () {
     const exists = yield* fs.exists(settingsPath).pipe(
@@ -380,7 +268,7 @@ const makeServerSettings = Effect.gen(function* () {
     );
     if (!exists) {
       return {
-        settings: yield* withCredentialState(DEFAULT_SERVER_SETTINGS),
+        settings: DEFAULT_SERVER_SETTINGS,
         revision: 0,
         migrated: false,
       };
@@ -406,35 +294,16 @@ const makeServerSettings = Effect.gen(function* () {
         error: decoded.error,
       });
       return {
-        settings: yield* withCredentialState(DEFAULT_SERVER_SETTINGS),
+        settings: DEFAULT_SERVER_SETTINGS,
         revision: 0,
         migrated: false,
       };
     }
-    const legacyPasswords = readLegacyProviderPasswords(raw);
-    yield* Effect.forEach(
-      legacyPasswords,
-      ([provider, password]) => providerCredentials.replaceServerPassword(provider, password),
-      { discard: true },
-    ).pipe(
-      Effect.mapError(
-        (cause) =>
-          new ServerSettingsError({
-            settingsPath,
-            detail: "failed to migrate provider credentials",
-            cause,
-          }),
-      ),
-    );
     return {
-      settings: yield* withCredentialState(
-        migrateSettings(decoded.value, decoded.migrationVersion),
-      ),
+      settings: migrateSettings(decoded.value, decoded.migrationVersion),
       revision: decoded.revision,
       migrated:
-        legacyPasswords.size > 0 ||
-        decoded.legacyFormat ||
-        decoded.migrationVersion !== SERVER_SETTINGS_MIGRATION_VERSION,
+        decoded.legacyFormat || decoded.migrationVersion !== SERVER_SETTINGS_MIGRATION_VERSION,
     };
   });
 
@@ -500,27 +369,8 @@ const makeServerSettings = Effect.gen(function* () {
       Effect.gen(function* () {
         const disk = yield* loadSettingsFromDisk;
         const current = disk.settings;
-        for (const provider of EXTERNAL_SERVER_PROVIDERS) {
-          const password = patch.providers?.[provider]?.serverPassword;
-          if (password !== undefined) {
-            yield* providerCredentials.replaceServerPassword(provider, password).pipe(
-              Effect.mapError(
-                (cause) =>
-                  new ServerSettingsError({
-                    settingsPath,
-                    detail: `failed to update ${provider} server password`,
-                    cause,
-                  }),
-              ),
-            );
-          }
-        }
-        const normalized = yield* normalizeSettings(
-          settingsPath,
-          current,
-          omitProviderPasswords(patch),
-        );
-        const next = yield* withCredentialState(normalized);
+        const normalized = yield* normalizeSettings(settingsPath, current, patch);
+        const next = normalized;
         const nextRevision = Math.max(disk.revision, yield* Ref.get(revisionRef)) + 1;
         yield* writeSettingsAtomically({
           revision: nextRevision,
@@ -560,6 +410,4 @@ const makeServerSettings = Effect.gen(function* () {
   } satisfies ServerSettingsShape;
 });
 
-export const ServerSettingsLive = Layer.effect(ServerSettingsService, makeServerSettings).pipe(
-  Layer.provide(ProviderCredentialsLive),
-);
+export const ServerSettingsLive = Layer.effect(ServerSettingsService, makeServerSettings);

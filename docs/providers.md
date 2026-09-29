@@ -10,9 +10,6 @@ consistent workspace.
 | ----------- | ------------------------------------------------------------ |
 | Claude Code | Your installed Claude Code runtime and authenticated account |
 | Codex       | Your installed and authenticated Codex CLI                   |
-| OpenCode    | Your local OpenCode runtime and configured model providers   |
-| Cursor      | Your local Cursor agent runtime and account                  |
-| Grok Build  | Your configured Grok Build runtime and access                |
 
 Use provider settings to check installation and authentication status.
 
@@ -194,19 +191,6 @@ selected context threshold remain under the existing Claude settings.
 after a matching native compaction boundary and successful completion. Failure or interruption
 keeps the message on hold. If delivery is uncertain, Glade does not automatically repeat the send.
 
-### OpenCode
-
-Glade uses OpenCode's legacy endpoint family, including `/session` and MCP
-for the Glade tools attached to managed sessions. Startup checks `GET /provider`
-and rejects a server that reports that route as unavailable; this does not identify
-the CLI's version. The SDK is pinned exactly (`1.18.31`) — bump it deliberately,
-never by range.
-
-The `opencode` executable resolves from `PATH` first, then the standard install
-locations (`~/.opencode/bin`, `~/.bun/bin`, npm/pnpm/yarn global bins, Homebrew,
-Volta, asdf, mise, proto, Deno, nvm/fnm). Set an explicit binary path in
-provider settings only when the install lives somewhere else entirely.
-
 ### Claude Artifacts, `/design` and `/slides`
 
 Claude Code keeps [Artifacts](https://code.claude.com/docs/en/artifacts) off by default for Agent
@@ -250,9 +234,7 @@ authentication, update paths, and provider-specific failure checks.
 Blocking questions show **Cancel** whether or not they offer choices. Cancel applies to
 the whole pending request, including any later questions in the same set. Once an
 answer or cancellation is being submitted, the form disables Cancel until the
-request settles. For OpenCode, cancellation uses its `question.reject` operation;
-submitting completed answers uses `question.reply`. Both requests are scoped to
-the task's OpenCode working directory.
+request settles.
 
 ## Codex asynchronous questions
 

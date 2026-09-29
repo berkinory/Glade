@@ -159,7 +159,7 @@ export function ComposerModelPickerRow(props: {
       </MenuSubTrigger>
       <ComposerPickerMenuSubPopup>
         <MenuGroup>
-          <MenuGroupLabel>{row.provider === "opencode" ? "Variant" : "Effort"}</MenuGroupLabel>
+          <MenuGroupLabel>Effort</MenuGroupLabel>
           <MenuRadioGroup value={selection.effort ?? ""}>
             {effortLevels.map((level) => (
               <MenuRadioItem

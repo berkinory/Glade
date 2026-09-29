@@ -1,7 +1,7 @@
 /**
  * startupTurnReconciliation - heal restart-orphaned turns at server boot.
  *
- * Provider runtimes (Codex app-server, ACP children, etc.) are purely
+ * Provider runtimes (Codex app-server, Claude SDK, etc.) are purely
  * in-memory: every one of them dies with the server process. A turn only
  * leaves the "running" state when its runtime emits a terminal event, so any
  * turn that was still in flight when the process exited has no surviving runtime

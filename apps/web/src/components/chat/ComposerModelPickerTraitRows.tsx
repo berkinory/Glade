@@ -24,7 +24,6 @@ import {
   resolveComposerTraitStatusLabel,
   supportsComposerFastModeControl,
 } from "./composerTraits";
-import { defaultAgentForProvider, getAgentOptions, getSelectedAgentValue } from "./TraitsPicker";
 import { useComposerTraitCommit } from "./useComposerTraitCommit";
 
 // Footer row "<Trait> ……… <value> ›" opening a radio submenu. Picking a value closes
@@ -92,9 +91,6 @@ export function ComposerModelPickerTraitRows(props: {
     props.runtimeModel,
   );
   const commitTrait = useComposerTraitCommit({ threadId, provider, model, modelOptions });
-  const agentOptions = getAgentOptions(provider, props.runtimeAgents);
-  const defaultAgent = defaultAgentForProvider(provider);
-  const selectedAgent = getSelectedAgentValue(provider, modelOptions) ?? defaultAgent ?? "";
   const contextWindowTraitId = selection.contextWindowDescriptor?.id ?? "contextWindow";
   const contextWindowValue = selection.contextWindow ?? selection.defaultContextWindow ?? "";
 
@@ -139,7 +135,7 @@ export function ComposerModelPickerTraitRows(props: {
     rows.push(
       <TraitRow
         key="effort"
-        label={provider === "opencode" ? "Variant" : "Effort"}
+        label="Effort"
         value={selection.effort ?? ""}
         valueLabel={resolveComposerTraitStatusLabel(selection) ?? ""}
         // Ultrathink is pinned by the prompt; the ladder is read-only until it is removed.
@@ -176,28 +172,6 @@ export function ComposerModelPickerTraitRows(props: {
       />,
     );
   }
-  if (agentOptions.length > 0 && defaultAgent !== null) {
-    rows.push(
-      <TraitRow
-        key="agent"
-        label="Agent"
-        value={selectedAgent}
-        valueLabel={
-          agentOptions.find((agent) => agent.name === selectedAgent)?.displayName ?? selectedAgent
-        }
-        options={agentOptions.map((agent) => ({
-          value: agent.name,
-          label: agent.displayName,
-          isDefault: agent.name === defaultAgent,
-        }))}
-        onValueChange={(value) => {
-          if (!value) return;
-          commitTrait({ agent: value === defaultAgent ? undefined : value });
-        }}
-      />,
-    );
-  }
-
   if (rows.length === 0 && !usesEffortSlider) return null;
   return (
     <div className="flex flex-col gap-px border-t border-border p-1">

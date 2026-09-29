@@ -6,7 +6,6 @@ import {
 } from "@glade/contracts";
 import { Effect, Layer } from "effect";
 
-import { parseOpenCodeModelSlug } from "../../provider/opencodeRuntime.ts";
 import { providerDisabledSettingsMessage } from "../../provider/enabledProviderAdapter.ts";
 import { ServerSettingsService } from "../../serverSettings.ts";
 import { TextGenerationError } from "../Errors.ts";
@@ -16,16 +15,12 @@ import { ProviderDiscoveryService } from "../../provider/Services/ProviderDiscov
 
 const makeProviderTextGeneration = Effect.gen(function* () {
   const codexTextGeneration = yield* TextGen.CodexTextGeneration;
-  const cursorTextGeneration = yield* TextGen.CursorTextGeneration;
-  const openCodeTextGeneration = yield* TextGen.OpenCodeTextGeneration;
   const serverSettings = yield* ServerSettingsService;
   const discovery = yield* ProviderDiscoveryService;
 
   const prepareCommitInput = (input: TextGen.CommitMessageGenerationInput) =>
     Effect.gen(function* () {
-      const provider =
-        input.modelSelection?.provider ??
-        (parseOpenCodeModelSlug(input.model) ? "opencode" : "codex");
+      const provider = input.modelSelection?.provider ?? "codex";
       const model = input.modelSelection?.model ?? input.model ?? DEFAULT_GIT_TEXT_GENERATION_MODEL;
       const startup = input.providerOptions?.[provider];
       const catalog = yield* discovery
@@ -33,9 +28,6 @@ const makeProviderTextGeneration = Effect.gen(function* () {
           provider,
           cwd: input.cwd,
           ...(startup?.binaryPath ? { binaryPath: startup.binaryPath } : {}),
-          ...(provider === "cursor" && input.providerOptions?.cursor?.apiEndpoint
-            ? { apiEndpoint: input.providerOptions.cursor.apiEndpoint }
-            : {}),
         })
         .pipe(
           Effect.mapError(
@@ -68,41 +60,17 @@ const makeProviderTextGeneration = Effect.gen(function* () {
         ...(reasoningEffort ? { reasoningEffort } : {}),
         ...(descriptor?.supportsFastMode ? { fastMode: true } : {}),
       };
-      const modelSelection: ModelSelection =
-        provider === "opencode"
-          ? {
-              provider,
-              model,
-              options: { ...(reasoningEffort ? { variant: reasoningEffort } : {}) },
-            }
-          : provider === "cursor"
-            ? {
-                provider,
-                model,
-                options: {
-                  ...(descriptor?.supportsThinkingToggle
-                    ? {
-                        ...(descriptor.supportsFastMode ? { fastMode: true } : {}),
-                        thinking: false,
-                      }
-                    : options),
-                },
-              }
-            : { provider: "codex", model, options };
+      const modelSelection: ModelSelection = { provider: "codex", model, options };
       return { ...input, model, modelSelection };
     });
 
   const resolveRequestedProvider = (input: {
     readonly model?: string;
     readonly modelSelection?: ModelSelection;
-  }): ProviderKind =>
-    input.modelSelection?.provider ??
-    (parseOpenCodeModelSlug(input.model) !== null ? "opencode" : "codex");
+  }): ProviderKind => input.modelSelection?.provider ?? "codex";
 
   const implementations = {
     codex: codexTextGeneration,
-    cursor: cursorTextGeneration,
-    opencode: openCodeTextGeneration,
   } satisfies Record<Selection.GitTextGenerationProvider, TextGen.TextGenerationShape>;
 
   const resolveImplementation = (

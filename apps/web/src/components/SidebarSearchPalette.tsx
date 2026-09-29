@@ -129,10 +129,7 @@ const IMPORT_PROJECTS_SOURCES: readonly {
   { id: "all", label: "From Claude Code and Codex", providers: ["claudeAgent", "codex"] },
 ];
 
-export type ImportProviderKind = Extract<
-  ProviderKind,
-  "codex" | "claudeAgent" | "cursor" | "opencode"
->;
+export type ImportProviderKind = Extract<ProviderKind, "codex" | "claudeAgent">;
 
 function actionHandler(
   actionId: string,
@@ -439,13 +436,7 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
     matchedThreads.length > 0;
   const importFieldLabel = importProvider === "codex" ? "Thread ID" : "Session ID";
   const importPlaceholder =
-    importProvider === "claudeAgent"
-      ? "Paste a Claude session id"
-      : importProvider === "cursor"
-        ? "Paste a Cursor session id"
-        : importProvider === "opencode"
-          ? "Paste an OpenCode session id"
-          : "Paste a Codex thread id";
+    importProvider === "claudeAgent" ? "Paste a Claude session id" : "Paste a Codex thread id";
 
   const hasHighlightedFolderItem =
     highlightedItemValue !== null && highlightedItemValue.startsWith("folder:");
@@ -649,13 +640,7 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
                       onClick={() => setImportProvider(provider)}
                     >
                       <SharedProviderIcon provider={provider} className="size-[15px]" />
-                      {provider === "claudeAgent"
-                        ? "Claude"
-                        : provider === "cursor"
-                          ? "Cursor"
-                          : provider === "opencode"
-                            ? "OpenCode"
-                            : "Codex"}
+                      {provider === "claudeAgent" ? "Claude" : "Codex"}
                     </Button>
                   ))}
                 </div>
@@ -686,11 +671,7 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
                 <p className="text-ui leading-snug text-muted-foreground">
                   {importProvider === "claudeAgent"
                     ? "Claude resumes a persisted session by session id."
-                    : importProvider === "cursor"
-                      ? "Cursor resumes a persisted session by session id."
-                      : importProvider === "opencode"
-                        ? "OpenCode resumes a persisted session by session id."
-                        : "Codex resumes a persisted thread by thread id."}
+                    : "Codex resumes a persisted thread by thread id."}
                 </p>
               </div>
               {importError ? (

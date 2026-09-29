@@ -119,18 +119,6 @@ export function useKanbanTaskComposerDiscovery(input: UseKanbanTaskComposerDisco
       provider: selectedProvider,
       cwd: composerSkillCwd,
       threadId: scratchThreadId,
-      binaryPath:
-        (selectedProvider === "opencode"
-          ? providerOptionsForDispatch?.opencode?.binaryPath
-          : null) ?? null,
-      serverUrl:
-        (selectedProvider === "opencode"
-          ? providerOptionsForDispatch?.opencode?.serverUrl
-          : null) ?? null,
-      experimentalWebSockets:
-        selectedProvider === "opencode"
-          ? providerOptionsForDispatch?.opencode?.experimentalWebSockets
-          : undefined,
       enabled:
         (composerTriggerKind === "slash-command" || composerTriggerKind === "slash-model") &&
         supportsNativeSlashCommandDiscovery(providerComposerCapabilitiesQuery.data) &&

@@ -1702,8 +1702,8 @@ routing.layer("ProviderServiceLive routing", (it) => {
       const newerResumeCursor = { cursor: "newer-resume" };
       const olderModelSelection = { provider: "codex" as const, model: "gpt-5.1-codex-mini" };
       const newerModelSelection = {
-        provider: "opencode" as const,
-        model: "opencode/minimax-m2.5-free",
+        provider: "codex" as const,
+        model: "gpt-5.5",
       };
       let olderDispatchStarted = false;
       let releaseOlderDispatch: ((result: ProviderTurnStartResult) => void) | undefined;

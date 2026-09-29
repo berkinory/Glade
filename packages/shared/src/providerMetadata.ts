@@ -55,39 +55,6 @@ export const PROVIDER_DESCRIPTORS = defineProviderDescriptors([
       learnMoreHref: "https://docs.anthropic.com/en/docs/about-claude/models#rate-limits",
     },
   },
-  {
-    kind: "cursor",
-    displayName: PROVIDER_DISPLAY_NAMES.cursor,
-    available: true,
-    setupDocsHref: "https://github.com/berkinory/Glade/blob/main/docs/providers.md",
-    supportsNativeTurnSteering: false,
-    usage: {
-      signInCommand: "cursor-agent login",
-      learnMoreHref: "https://cursor.com/dashboard",
-    },
-  },
-  {
-    kind: "grok",
-    displayName: PROVIDER_DISPLAY_NAMES.grok,
-    available: true,
-    setupDocsHref: "https://github.com/berkinory/Glade/blob/main/docs/providers.md",
-    supportsNativeTurnSteering: false,
-    usage: {
-      signInCommand: "grok login",
-      learnMoreHref: "https://console.x.ai",
-    },
-  },
-  {
-    kind: "opencode",
-    displayName: PROVIDER_DISPLAY_NAMES.opencode,
-    available: true,
-    setupDocsHref: "https://github.com/berkinory/Glade/blob/main/docs/providers.md",
-    supportsNativeTurnSteering: false,
-    usage: {
-      signInCommand: "opencode auth login",
-      learnMoreHref: "https://opencode.ai",
-    },
-  },
 ] as const satisfies readonly ProviderDescriptor[]);
 
 export const PROVIDER_DESCRIPTOR_BY_KIND = Object.fromEntries(

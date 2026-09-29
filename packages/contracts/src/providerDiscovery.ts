@@ -7,13 +7,7 @@ import { Schema } from "effect";
 import { TrimmedNonEmptyString } from "./baseSchemas";
 import { ProviderOptionDescriptor } from "./model";
 
-const ProviderDiscoveryKind = Schema.Literals([
-  "codex",
-  "claudeAgent",
-  "cursor",
-  "grok",
-  "opencode",
-]);
+const ProviderDiscoveryKind = Schema.Literals(["codex", "claudeAgent"]);
 
 export const ProviderSkillInterface = Schema.Struct({
   displayName: Schema.optional(TrimmedNonEmptyString),
@@ -78,7 +72,7 @@ export const ProviderListSkillsResult = Schema.Struct({
 export type ProviderListSkillsResult = typeof ProviderListSkillsResult.Type;
 
 // Unified cross-provider skills catalog (Glade portable skills). Descriptors use
-// `scope` to carry the origin label ("glade", "codex", "claude", "cursor", ...).
+// `scope` to carry the origin label ("glade", "codex", "claude", ...).
 export const ProviderSkillsCatalogInput = Schema.Struct({
   cwd: Schema.optional(TrimmedNonEmptyString),
 });

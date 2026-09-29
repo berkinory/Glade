@@ -38,8 +38,6 @@ export type ResolvedAgentAlias = AgentAliasDefinition & {
   readonly alias: string;
 };
 
-const OPENCODE_AGENT_MENTION_ALIASES: Record<string, AgentAliasDefinition> = {};
-
 const CODEX_AGENT_MENTION_ALIASES: Record<string, CodexAgentAliasDefinition> = {
   "5.5": {
     provider: "codex",
@@ -213,9 +211,6 @@ export const AGENT_MENTION_ALIASES_BY_PROVIDER: Record<
 > = {
   codex: CODEX_AGENT_MENTION_ALIASES,
   claudeAgent: CLAUDE_AGENT_MENTION_ALIASES,
-  cursor: {},
-  grok: {},
-  opencode: OPENCODE_AGENT_MENTION_ALIASES,
 } as const satisfies Record<ProviderKind, Record<string, AgentAliasDefinition>>;
 
 // Backward compatibility for legacy call sites that still expect a flat alias table.
@@ -227,9 +222,6 @@ export const AGENT_MENTION_ALIASES: Record<string, AgentAliasDefinition> = Objec
 const AGENT_MENTION_AUTOCOMPLETE_ALIASES_BY_PROVIDER: Record<ProviderKind, readonly string[]> = {
   codex: ["5.5", "5.4", "mini", "5.3-codex", "spark", "5.2", "5.2-codex"],
   claudeAgent: ["explore", "review", "build", "plan"],
-  cursor: [],
-  grok: [],
-  opencode: [],
 };
 
 function mapAgentEntries(input: Record<string, AgentAliasDefinition>): ResolvedAgentAlias[] {

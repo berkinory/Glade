@@ -100,7 +100,7 @@ const make = Effect.gen(function* () {
   const registry = yield* ProviderAdapterRegistry;
   const serverConfig = yield* ServerConfig;
   const serverSettings = yield* ServerSettingsService;
-  // One catalog cache for every provider: adapters that spawn a CLI/ACP process
+  // One catalog cache for every provider: adapters that spawn a CLI process
   // per listModels call share stale-while-revalidate, single-flight, and
   // failure-replay behaviour with adapters that reuse a running process.
   // Snapshots persist to stateDir so a restart reopens the picker with

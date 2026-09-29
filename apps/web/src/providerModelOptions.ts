@@ -1,28 +1,19 @@
 import {
   formatModelDisplayName,
-  humanizeModelSlug,
   normalizeModelDisplayName,
   normalizeModelSlug,
   resolveNewestKnownClaudeFamilyModel,
 } from "@glade/shared/model";
 import {
   MODEL_OPTIONS_BY_PROVIDER,
-  PROVIDER_DISPLAY_NAMES,
   type ClaudeModelOptions,
   type ClaudeModelSelection,
   type CodexModelOptions,
   type CodexModelSelection,
-  type CursorModelOptions,
-  type CursorModelSelection,
-  type GrokModelOptions,
-  type GrokModelSelection,
   type ModelSelection,
-  type OpenCodeModelOptions,
-  type OpenCodeModelSelection,
   type ProviderKind,
   type ProviderModelOptions,
 } from "@glade/contracts";
-import { normalizeCursorModelVariantBaseId } from "./cursorModelVariants";
 
 export type ProviderOptions = ProviderModelOptions[ProviderKind];
 
@@ -46,47 +37,13 @@ function normalizeCatalogModelName(name: string): string {
   return normalizeModelDisplayName(name);
 }
 
-/**
- * Returns the provider provenance shown when a model is detached from its
- * normal upstream-provider group (for example, inside Favourites).
- */
-export function providerModelOptionProvenanceLabel(input: {
-  provider: ProviderKind;
-  option: ProviderModelOption;
-}): string {
-  const upstreamProviderName = input.option.upstreamProviderName?.trim();
-  if (upstreamProviderName) {
-    return upstreamProviderName;
-  }
-
-  const upstreamProviderId = input.option.upstreamProviderId?.trim();
-  if (upstreamProviderId) {
-    return humanizeModelSlug(upstreamProviderId);
-  }
-
-  const slugProvider = input.option.slug.split("/", 1)[0]?.trim();
-  if (input.option.slug.includes("/") && slugProvider) {
-    return humanizeModelSlug(slugProvider);
-  }
-
-  return PROVIDER_DISPLAY_NAMES[input.provider];
-}
-
 export function formatProviderModelOptionName(input: {
   provider: ProviderKind;
   slug: string;
 }): string {
-  const trimmedSlug =
-    input.provider === "cursor" ? input.slug.trim().replace(/\[[^\]]*\]$/u, "") : input.slug.trim();
+  const trimmedSlug = input.slug.trim();
   if (trimmedSlug.length === 0) {
     return trimmedSlug;
-  }
-
-  if (input.provider === "opencode") {
-    const modelIdentifier = trimmedSlug.includes("/")
-      ? trimmedSlug.slice(trimmedSlug.lastIndexOf("/") + 1)
-      : trimmedSlug;
-    return formatModelDisplayName(modelIdentifier) ?? humanizeModelSlug(modelIdentifier);
   }
 
   return formatModelDisplayName(trimmedSlug) ?? trimmedSlug;
@@ -96,12 +53,6 @@ function normalizeDynamicModelSlug(provider: ProviderKind, slug: string): string
   if (provider === "claudeAgent") {
     const withoutContextSuffix = slug.replace(/\[[^\]]+\]$/u, "");
     return normalizeModelSlug(withoutContextSuffix, provider) ?? withoutContextSuffix;
-  }
-  if (provider === "grok") {
-    return slug.trim();
-  }
-  if (provider === "cursor") {
-    return normalizeCursorModelVariantBaseId(slug) ?? slug.trim();
   }
   return normalizeModelSlug(slug, provider) ?? slug;
 }
@@ -154,7 +105,7 @@ function orderClaudeModelOptions<T extends ProviderModelOption>(
  * Folds runtime-discovered models into the static option list for a provider:
  * discovered models lead (with display names recovered from the static list when
  * possible), static built-ins fill gaps unless discovery fully owns the catalog
- * (codex/opencode/cursor/grok). Codex also owns a successful
+ * (codex). Codex also owns a successful
  * empty catalog. Historical selected-model hints survive.
  * Claude is the exception: its discovered and static built-in models are merged
  * into the curated catalog order.
@@ -229,37 +180,16 @@ export function mergeDynamicModelOptions(input: {
     });
   }
 
-  // Scoped providers (opencode) surface catalog slugs as
-  // `<upstream-provider>/<model>`. A bare selected slug naming the same model id
-  // duplicates the discovered row; drop it only when exactly one discovered
-  // option carries that id so an ambiguous name never silently wins.
-  const scopedProvider = input.provider === "opencode";
-  const dynamicIdPartCounts = scopedProvider
-    ? normalizedDynamicOptions.reduce((counts, option) => {
-        const idPart = option.slug.slice(option.slug.lastIndexOf("/") + 1);
-        counts.set(idPart, (counts.get(idPart) ?? 0) + 1);
-        return counts;
-      }, new Map<string, number>())
-    : undefined;
-
   const selectedOnlyModels = input.staticOptions.filter((model) => {
     if (!("isSelectedHint" in model) || !model.isSelectedHint) return false;
     const normalizedSelectedSlug = normalizeDynamicModelSlug(input.provider, model.slug);
     if (dynamicNormalizedSlugs.has(normalizedSelectedSlug)) return false;
-    if (
-      !normalizedSelectedSlug.includes("/") &&
-      dynamicIdPartCounts?.get(normalizedSelectedSlug) === 1
-    )
-      return false;
     return true;
   });
   const staticBuiltInModels = input.staticOptions.filter(
     (model) => !("isSelectedHint" in model) || model.isSelectedHint !== true,
   );
-  const hasAuthoritativeCatalog =
-    input.provider === "codex" ||
-    (normalizedDynamicOptions.length > 0 &&
-      (input.provider === "opencode" || input.provider === "cursor" || input.provider === "grok"));
+  const hasAuthoritativeCatalog = input.provider === "codex";
   const missingStaticBuiltIns = hasAuthoritativeCatalog
     ? []
     : staticBuiltInModels.filter((model) => !dynamicNormalizedSlugs.has(model.slug));
@@ -310,33 +240,6 @@ export function groupProviderModelOptions(
   return groupedOptions;
 }
 
-export function groupProviderModelOptionsWithFavorites(input: {
-  options: ReadonlyArray<ProviderModelOption>;
-  favoriteSlugs: ReadonlySet<string>;
-  favoriteLabel?: string;
-}): ProviderModelOptionGroup[] {
-  if (input.favoriteSlugs.size === 0) {
-    return groupProviderModelOptions(input.options);
-  }
-
-  const favoriteOptions = input.options.filter((option) => input.favoriteSlugs.has(option.slug));
-  if (favoriteOptions.length === 0) {
-    return groupProviderModelOptions(input.options);
-  }
-  const groupedOptions = groupProviderModelOptions(
-    input.options.filter((option) => !input.favoriteSlugs.has(option.slug)),
-  );
-
-  return [
-    {
-      key: "__favorites__",
-      label: input.favoriteLabel ?? "Favourites",
-      options: favoriteOptions,
-    },
-    ...groupedOptions,
-  ];
-}
-
 /** Long grouped model lists collapse provider sections to keep submenus scannable. */
 export const COLLAPSIBLE_MODEL_GROUP_THRESHOLD = 3;
 
@@ -370,19 +273,7 @@ export function buildNextProviderOptions(
   if (provider === "claudeAgent") {
     return { ...(modelOptions as ClaudeModelOptions | undefined), ...patch } as ClaudeModelOptions;
   }
-  if (provider === "cursor") {
-    return { ...(modelOptions as CursorModelOptions | undefined), ...patch } as CursorModelOptions;
-  }
-  if (provider === "grok") {
-    return {
-      ...(modelOptions as GrokModelOptions | undefined),
-      ...patch,
-    } as GrokModelOptions;
-  }
-  return {
-    ...(modelOptions as OpenCodeModelOptions | undefined),
-    ...patch,
-  } as OpenCodeModelOptions;
+  return { ...(modelOptions as ClaudeModelOptions | undefined), ...patch } as ClaudeModelOptions;
 }
 
 export function buildProviderOptionPatch(
@@ -404,21 +295,6 @@ export function buildModelSelection(
   options?: ClaudeModelOptions | null | undefined,
   supportsAutoMode?: boolean | undefined,
 ): ClaudeModelSelection;
-export function buildModelSelection(
-  provider: "cursor",
-  model: string,
-  options?: CursorModelOptions | null | undefined,
-): CursorModelSelection;
-export function buildModelSelection(
-  provider: "grok",
-  model: string,
-  options?: GrokModelOptions | null | undefined,
-): GrokModelSelection;
-export function buildModelSelection(
-  provider: "opencode",
-  model: string,
-  options?: OpenCodeModelOptions | null | undefined,
-): OpenCodeModelSelection;
 export function buildModelSelection(
   provider: ProviderKind,
   model: string,
@@ -447,29 +323,5 @@ export function buildModelSelection(
         ...(options ? { options: options as ClaudeModelOptions } : {}),
         ...(typeof supportsAutoMode === "boolean" ? { supportsAutoMode } : {}),
       };
-    case "cursor":
-      return options
-        ? {
-            provider,
-            model,
-            options: options as CursorModelOptions,
-          }
-        : { provider, model };
-    case "grok":
-      return options
-        ? {
-            provider,
-            model,
-            options: options as GrokModelOptions,
-          }
-        : { provider, model };
-    case "opencode":
-      return options
-        ? {
-            provider,
-            model,
-            options: options as OpenCodeModelOptions,
-          }
-        : { provider, model };
   }
 }

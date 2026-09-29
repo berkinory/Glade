@@ -5,7 +5,6 @@
 
 import { type ModelSlug, type ProviderKind, type ServerProviderStatus } from "@glade/contracts";
 import { resolveSelectableModel } from "@glade/shared/model";
-import * as Schema from "effect/Schema";
 import { useDeferredValue, useEffect, useRef, useState } from "react";
 import { type ProviderPickerKind, PROVIDER_OPTIONS } from "../../session-logic";
 import { appHistory } from "../../appNavigation";
@@ -35,16 +34,9 @@ import { ShortcutKbd } from "../ui/shortcut-kbd";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import {
   groupProviderModelOptions,
-  groupProviderModelOptionsWithFavorites,
   shouldUseCollapsibleModelGroups,
   type ProviderModelOption,
 } from "../../providerModelOptions";
-import { useLocalStorage } from "../../hooks/useLocalStorage";
-import {
-  FAVORITE_MODEL_STORAGE_KEYS,
-  supportsModelFavorites,
-  type FavoriteModelProvider,
-} from "../../lib/modelFavorites";
 import { Skeleton } from "../ui/skeleton";
 import { PlusIcon } from "~/lib/icons";
 
@@ -139,21 +131,6 @@ function providerIconClassName(
 }
 
 const SEARCHABLE_MODEL_PICKER_THRESHOLD = 15;
-const FavoriteModelSlugs = Schema.Array(Schema.String);
-const EMPTY_FAVORITE_MODEL_SLUGS: ReadonlyArray<string> = [];
-
-// Keeps persisted favorite slugs compact and stable while preserving the user's order.
-function toggleFavoriteModelSlug(current: ReadonlyArray<string>, slug: string): string[] {
-  const normalizedCurrent = Array.from(new Set(current.filter((entry) => entry.trim().length > 0)));
-  return normalizedCurrent.includes(slug)
-    ? normalizedCurrent.filter((entry) => entry !== slug)
-    : [...normalizedCurrent, slug];
-}
-
-function stripParameterizedModelSuffix(model: string): string {
-  return model.trim().replace(/\[[^\]]*\]$/u, "");
-}
-
 function resolveSelectedModelLabel(input: {
   provider: ProviderKind;
   model: string;
@@ -164,15 +141,6 @@ function resolveSelectedModelLabel(input: {
     const resolvedOption = input.options.find((option) => option.slug === resolvedSlug);
     if (resolvedOption) {
       return resolvedOption.name;
-    }
-  }
-  if (input.provider === "cursor") {
-    const baseModel = stripParameterizedModelSuffix(input.model);
-    const baseMatch = input.options.find(
-      (option) => stripParameterizedModelSuffix(option.slug) === baseModel,
-    );
-    if (baseMatch) {
-      return baseMatch.name;
     }
   }
   return formatProviderModelOptionName({
@@ -219,16 +187,6 @@ export const ProviderModelMenuItems = function ProviderModelMenuItems(
 ) {
   const { onAfterSelection } = props;
   const [modelSearchQuery, setModelSearchQuery] = useState("");
-  const [cursorFavoriteModelSlugs, setCursorFavoriteModelSlugs] = useLocalStorage(
-    FAVORITE_MODEL_STORAGE_KEYS.cursor,
-    EMPTY_FAVORITE_MODEL_SLUGS,
-    FavoriteModelSlugs,
-  );
-  const [openCodeFavoriteModelSlugs, setOpenCodeFavoriteModelSlugs] = useLocalStorage(
-    FAVORITE_MODEL_STORAGE_KEYS.opencode,
-    EMPTY_FAVORITE_MODEL_SLUGS,
-    FavoriteModelSlugs,
-  );
   const deferredModelSearchQuery = useDeferredValue(modelSearchQuery);
   const activeProvider = props.lockedProvider ?? props.provider;
   const visibleAvailableProviderOptions = resolveVisibleProviderOptions({
@@ -238,12 +196,6 @@ export const ProviderModelMenuItems = function ProviderModelMenuItems(
     hiddenProviders: props.hiddenProviders,
     providerOrder: props.providerOrder,
   });
-  const openCodeFavoriteModelSlugSet = new Set(openCodeFavoriteModelSlugs);
-  const cursorFavoriteModelSlugSet = new Set(cursorFavoriteModelSlugs);
-  const favoriteModelSlugSets = {
-    cursor: cursorFavoriteModelSlugSet,
-    opencode: openCodeFavoriteModelSlugSet,
-  };
   const handleModelChange = (provider: ProviderKind, value: string) => {
     if (props.disabled) return;
     if (!value) return;
@@ -256,12 +208,6 @@ export const ProviderModelMenuItems = function ProviderModelMenuItems(
     props.onProviderModelChange(provider, resolvedModel);
     onAfterSelection?.();
   };
-  const toggleFavoriteModel = (provider: FavoriteModelProvider, slug: string) => {
-    const setFavoriteModelSlugs =
-      provider === "cursor" ? setCursorFavoriteModelSlugs : setOpenCodeFavoriteModelSlugs;
-    setFavoriteModelSlugs((current) => toggleFavoriteModelSlug(current, slug));
-  };
-
   const renderModelRadioGroup = (provider: ProviderKind) => {
     if (props.loadingModelProviders?.[provider]) {
       return (
@@ -277,9 +223,7 @@ export const ProviderModelMenuItems = function ProviderModelMenuItems(
     }
 
     const providerOptions = props.modelOptionsByProvider[provider];
-    const shouldShowSearch =
-      (provider === "opencode" || provider === "cursor") &&
-      providerOptions.length >= SEARCHABLE_MODEL_PICKER_THRESHOLD;
+    const shouldShowSearch = providerOptions.length >= SEARCHABLE_MODEL_PICKER_THRESHOLD;
     const normalizedModelSearchQuery = deferredModelSearchQuery.trim().toLowerCase();
     const filteredOptions =
       shouldShowSearch && normalizedModelSearchQuery.length > 0
@@ -287,16 +231,7 @@ export const ProviderModelMenuItems = function ProviderModelMenuItems(
             buildModelSearchText(option).includes(normalizedModelSearchQuery),
           )
         : providerOptions;
-    const favoriteProvider = supportsModelFavorites(provider) ? provider : null;
-    const favoriteModelSlugSet =
-      favoriteProvider !== null ? favoriteModelSlugSets[favoriteProvider] : undefined;
-    const groupedOptions =
-      favoriteModelSlugSet !== undefined
-        ? groupProviderModelOptionsWithFavorites({
-            options: filteredOptions,
-            favoriteSlugs: favoriteModelSlugSet,
-          })
-        : groupProviderModelOptions(filteredOptions);
+    const groupedOptions = groupProviderModelOptions(filteredOptions);
 
     const discoveryError = props.discoveryErrorsByProvider?.[provider];
     const discoveryErrorElement = discoveryError ? (
@@ -319,9 +254,6 @@ export const ProviderModelMenuItems = function ProviderModelMenuItems(
             provider={provider}
             activeModel={activeModelSlug}
             isSearching={normalizedModelSearchQuery.length > 0}
-            favoriteProvider={favoriteProvider}
-            favoriteModelSlugSet={favoriteModelSlugSet}
-            onToggleFavorite={toggleFavoriteModel}
             {...(onAfterSelection ? { onAfterSelection } : {})}
           />
         </MenuRadioGroup>

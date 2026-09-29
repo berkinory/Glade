@@ -228,9 +228,7 @@ function requireDiscoveredModels(
   // fallback. During a background refresh, however, keep a previously good
   // dynamic catalog and let React Query retry the transient failure.
   const isAuthoritativeEmptyCatalog =
-    result.source === "disabled" ||
-    result.source === "unsupported" ||
-    (provider === "opencode" && (result.source === "opencode" || result.source === "opencode-cli"));
+    result.source === "disabled" || result.source === "unsupported";
   if (
     provider !== "codex" &&
     provider !== "claudeAgent" &&
@@ -277,7 +275,7 @@ export const providerDiscoveryQueryKeys = {
 };
 
 export function providerModelDiscoveryRetry(provider: ProviderKind): number {
-  return provider === "cursor" ? 0 : 3;
+  return 3;
 }
 
 export function providerComposerCapabilitiesQueryOptions(provider: ProviderKind) {
@@ -339,7 +337,7 @@ export function providerCommandsQueryOptions(input: {
   threadId?: string | null;
   binaryPath?: string | null;
   serverUrl?: string | null;
-  // Undefined means "not applicable" (non-OpenCode providers); the body normalizes it.
+  // Undefined means "not applicable" for this provider; the body normalizes it.
   experimentalWebSockets?: boolean | undefined;
   enabled?: boolean;
 }) {

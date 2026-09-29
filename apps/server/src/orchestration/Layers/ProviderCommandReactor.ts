@@ -41,7 +41,6 @@ import {
   Duration,
   Deferred,
   Effect,
-  Equal,
   Exit,
   Layer,
   Option,
@@ -676,25 +675,6 @@ function isStaleClaudeResumeError(error: unknown): boolean {
     );
   }
   return String(error).toLowerCase().includes("no conversation found with session id");
-}
-
-function isOpenCodeCompatibleResumeError(error: unknown): boolean {
-  if (
-    !Schema.is(ProviderAdapterRequestError)(error) ||
-    error.provider !== "opencode" ||
-    error.method !== "session.update"
-  ) {
-    return false;
-  }
-  const detail = error.detail.toLowerCase();
-  return (
-    /\bstatus(?:code)?[=: ]+404\b/u.test(detail) ||
-    ((detail.includes("session") || detail.includes("conversation")) &&
-      (detail.includes("not found") ||
-        detail.includes("unknown session") ||
-        detail.includes("does not exist") ||
-        detail.includes("invalid session")))
-  );
 }
 
 function isRollbackStillInProgressError(error: unknown): boolean {
@@ -1826,9 +1806,7 @@ const make = Effect.gen(function* () {
               previousModelSelection ?? thread.modelSelection,
               desiredModelSelection,
             )
-          : currentProvider === "grok" &&
-            requestedModelSelection !== undefined &&
-            !Equal.equals(previousModelSelection, requestedModelSelection);
+          : false;
       const requestedComputerControl = options?.enableComputerControl;
       // A missing cache entry means the session was started by a dispatch that
       // carried no computer-control flag, which provisions the default (off), so
@@ -2026,49 +2004,13 @@ const make = Effect.gen(function* () {
         ...outcome,
         nativeResumeFailed: outcome.nativeResumeAttempted && !outcome.nativeResumeSucceeded,
       })),
-      Effect.catch((error) => {
-        if (!isOpenCodeCompatibleResumeError(error)) {
-          return Effect.fail(error);
-        }
-        return Effect.gen(function* () {
-          yield* clearStaleProviderResumeState({
-            threadId,
-            cause: error,
-          });
-          yield* Effect.logWarning(
-            "provider command reactor retrying OpenCode-compatible session without stale resume",
-            {
-              threadId,
-              provider: preferredProvider,
-            },
-          );
-          const recoveryOutcome = yield* startProviderSessionWithOutcome(
-            undefined,
-            registerPriorTranscriptBootstrapOnFreshStart,
-          );
-          return { ...recoveryOutcome, nativeResumeFailed: true };
-        });
-      }),
     );
     if (bootstrapTranscriptIfResumeFails && !startOutcome.nativeResumeSucceeded) {
       freshSessionContextBootstrapThreadIds.add(threadId);
     }
-    let retainContextBootstrapSuppression = false;
     if (startOutcome.priorTranscriptBootstrapPending) {
       if (shouldRegisterContextBootstrap) {
         freshSessionContextBootstrapThreadIds.add(threadId);
-      } else if (
-        preferredProvider === "opencode" &&
-        providerService.completePriorTranscriptBootstrap
-      ) {
-        // An explicit stop intentionally discards pending synthetic context.
-        // If its best-effort persistence cleanup was interrupted, finish that
-        // cleanup before starting the fresh session instead of resurrecting it.
-        const completed = yield* persistPriorTranscriptBootstrapCompletion(
-          threadId,
-          preferredProvider,
-        );
-        retainContextBootstrapSuppression = !completed;
       }
     }
     const startedSession = startOutcome.session;
@@ -2080,9 +2022,7 @@ const make = Effect.gen(function* () {
       threadSessionComputerControl.set(threadId, options.enableComputerControl);
     }
     yield* bindSessionToThread(startedSession);
-    if (!retainContextBootstrapSuppression) {
-      suppressContextBootstrapOnNextStartThreadIds.delete(threadId);
-    }
+    suppressContextBootstrapOnNextStartThreadIds.delete(threadId);
     return {
       activeSessionBeforeEnsure,
       activeSession: startedSession,
@@ -2311,9 +2251,6 @@ const make = Effect.gen(function* () {
       threadSessionModelSelections.get(input.threadId)?.provider ??
       thread.session?.providerName ??
       thread.modelSelection.provider;
-    const registerPriorTranscriptBootstrapOnFreshStart =
-      selectedProvider === "opencode" &&
-      listPriorTranscriptMessages(thread, transcriptBoundaryMessageId).length > 0;
     const {
       activeSessionBeforeEnsure,
       activeSession,
@@ -2327,9 +2264,6 @@ const make = Effect.gen(function* () {
       ...(input.providerOptions !== undefined ? { providerOptions: input.providerOptions } : {}),
       ...(input.dispatchMode === "steer" ? {} : { enableComputerControl }),
       ...(input.runtimeMode !== undefined ? { runtimeMode: input.runtimeMode } : {}),
-      ...(registerPriorTranscriptBootstrapOnFreshStart
-        ? { registerPriorTranscriptBootstrapOnFreshStart: true }
-        : {}),
     });
     if (activeSession.provider === "claudeAgent" && input.dispatchMode !== "steer") {
       const latestThread = yield* resolveThread(input.threadId);
@@ -2498,11 +2432,7 @@ const make = Effect.gen(function* () {
       hasPendingFreshSessionTranscriptBootstrap ||
       (input.dispatchMode !== "steer" && priorEscalationEvidence?.recapText != null);
     const shouldBootstrapPriorTranscriptContext =
-      ((selectedProvider === "opencode" &&
-        activeSessionBeforeEnsure === undefined &&
-        !nativeResumeSucceeded) ||
-        hasPendingPriorTranscriptBootstrap) &&
-      !shouldBootstrapHandoff;
+      hasPendingPriorTranscriptBootstrap && !shouldBootstrapHandoff;
     const priorTranscriptMessages = listPriorTranscriptMessages(
       thread,
       transcriptBoundaryMessageId,
@@ -2743,7 +2673,6 @@ const make = Effect.gen(function* () {
     } else {
       yield* captureMessageStartCheckpoint;
       const tracksDurableContextAcceptance =
-        selectedProvider === "opencode" &&
         hasPendingFreshSessionTranscriptBootstrap &&
         (priorTranscriptBootstrapRetiresOnAcceptedTurn ||
           specializedBootstrapCompletesFreshSessionContext);
@@ -2959,12 +2888,11 @@ const make = Effect.gen(function* () {
       let durableCompletionSucceeded = true;
       if (
         hasPendingFreshSessionTranscriptBootstrap &&
-        selectedProvider === "opencode" &&
         providerService.completePriorTranscriptBootstrap
       ) {
         durableCompletionSucceeded = yield* persistPriorTranscriptBootstrapCompletion(
           input.threadId,
-          selectedProvider,
+          selectedProvider as ProviderKind,
         );
       }
       if (durableCompletionSucceeded) {
@@ -5234,24 +5162,6 @@ const make = Effect.gen(function* () {
       pendingInterruptEscalations.delete(thread.id);
     }
     suppressContextBootstrapOnNextStartThreadIds.add(thread.id);
-    const stoppedProvider = Schema.is(ProviderKind)(thread.session?.providerName)
-      ? thread.session.providerName
-      : thread.modelSelection.provider;
-    if (stoppedProvider === "opencode" && providerService.completePriorTranscriptBootstrap) {
-      yield* providerService.completePriorTranscriptBootstrap({ threadId: thread.id }).pipe(
-        Effect.catchCause((cause) =>
-          Effect.logWarning(
-            "provider command reactor could not discard transcript bootstrap during session stop",
-            {
-              threadId: thread.id,
-              provider: stoppedProvider,
-              cause: Cause.pretty(cause),
-            },
-          ),
-        ),
-      );
-    }
-
     const providerThreadId =
       providerThread !== null
         ? resolveSubagentProviderThreadId(thread.id, providerThread.id)

@@ -2,7 +2,7 @@
 // Purpose: Builds provider child environments without Glade control-plane authority.
 // Layer: Server provider process security
 
-export type ProviderChildKind = "acp" | "claude" | "codex" | "cursor" | "grok" | "opencode";
+export type ProviderChildKind = "claude" | "codex";
 
 const PROVIDER_CREDENTIAL_KEYS = new Set([
   "ANTHROPIC_API_KEY",
@@ -13,9 +13,6 @@ const PROVIDER_CREDENTIAL_KEYS = new Set([
   "AWS_SESSION_TOKEN",
   "GOOGLE_APPLICATION_CREDENTIALS",
   "OPENAI_API_KEY",
-  "XAI_API_KEY",
-  "GROK_CODE_XAI_API_KEY",
-  "CURSOR_API_KEY",
   "DOCKER_AUTH_CONFIG",
 ]);
 
@@ -27,7 +24,8 @@ export function registerProviderCredentialKey(key: string): void {
 }
 
 export function isProviderCredentialKey(key: string): boolean {
-  return PROVIDER_CREDENTIAL_KEYS.has(key.trim().toUpperCase());
+  const normalized = key.trim().toUpperCase();
+  return PROVIDER_CREDENTIAL_KEYS.has(normalized) || /(?:_API_KEY|_AUTH_TOKEN)$/u.test(normalized);
 }
 
 const PROVIDER_CREDENTIAL_GRANTS: Record<ProviderChildKind, "all" | ReadonlySet<string>> = {
@@ -40,12 +38,7 @@ const PROVIDER_CREDENTIAL_GRANTS: Record<ProviderChildKind, "all" | ReadonlySet<
     "AWS_SESSION_TOKEN",
     "GOOGLE_APPLICATION_CREDENTIALS",
   ]),
-  cursor: new Set(["CURSOR_API_KEY"]),
-  grok: new Set(["XAI_API_KEY", "GROK_CODE_XAI_API_KEY"]),
-  // These profiles deliberately support arbitrary upstream model providers.
-  acp: "all",
   codex: "all",
-  opencode: "all",
 };
 
 const INHERITED_NATIVE_CAPABILITY_KEYS = new Set([
@@ -57,7 +50,7 @@ const INHERITED_NATIVE_CAPABILITY_KEYS = new Set([
 ]);
 
 const isTestHarnessKey = (key: string, env: NodeJS.ProcessEnv): boolean =>
-  Boolean(env.VITEST) && (key.startsWith("GLADE_FAKE_") || key.startsWith("GLADE_ACP_"));
+  Boolean(env.VITEST) && (key.startsWith("GLADE_FAKE_") || key.startsWith("GLADE_PROVIDER_"));
 
 export function buildProviderChildEnvironment(input: {
   readonly provider: ProviderChildKind;

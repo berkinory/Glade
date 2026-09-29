@@ -330,7 +330,7 @@ describe("canonical browser host RPC", () => {
           method: "executeTool",
           params: {
             session_id: "session-1",
-            provider: "cursor",
+            provider: "codex",
             thread_id: "thread-1",
             name: "browser_tabs",
             arguments: {},

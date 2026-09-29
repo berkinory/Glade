@@ -9,10 +9,8 @@ import {
   GLADE_MANAGED_CODEX_CONFIG_END,
 } from "../codexProcessEnv.ts";
 import {
-  buildAcpGladeMcpServers,
   buildClaudeMcpServers,
   buildCodexMcpConfigToml,
-  buildOpenCodeMcpServer,
   callAgentGatewayMcpTool,
   listAgentGatewayMcpTools,
   GLADE_AGENT_GATEWAY_TOKEN_ENV,
@@ -21,11 +19,6 @@ import {
 const connection = {
   url: "http://127.0.0.1:3773/mcp",
   bearerToken: "sagw_abc.def",
-};
-
-const stdioProxy = {
-  command: "/usr/local/bin/node",
-  args: ["/state/agent-gateway-mcp-proxy.mjs"],
 };
 
 describe("agent gateway MCP injection", () => {
@@ -179,16 +172,6 @@ describe("agent gateway MCP injection", () => {
     });
   });
 
-  it("builds an authenticated OpenCode remote MCP config with OAuth disabled", () => {
-    assert.deepEqual(buildOpenCodeMcpServer(connection), {
-      type: "remote",
-      url: connection.url,
-      enabled: true,
-      headers: { Authorization: `Bearer ${connection.bearerToken}` },
-      oauth: false,
-    });
-  });
-
   it("loads and invokes the canonical gateway catalog for native-tool providers", async () => {
     const requests: Array<{ readonly authorization: string | null; readonly body: unknown }> = [];
     const fetch = async (_input: string | URL | Request, init?: RequestInit) => {
@@ -240,40 +223,5 @@ describe("agent gateway MCP injection", () => {
       name: "glade_list_threads",
       arguments: { limit: 2 },
     });
-  });
-
-  it("uses the ACP http transport when the agent advertises support", () => {
-    const servers = buildAcpGladeMcpServers({
-      connection,
-      initializeResult: { agentCapabilities: { mcpCapabilities: { http: true } } },
-      stdioProxy,
-    });
-    assert.deepEqual(servers, [
-      {
-        type: "http",
-        name: "glade",
-        url: connection.url,
-        headers: [{ name: "Authorization", value: `Bearer ${connection.bearerToken}` }],
-      },
-    ]);
-  });
-
-  it("falls back to the stdio proxy when http is not advertised", () => {
-    const servers = buildAcpGladeMcpServers({
-      connection,
-      initializeResult: {},
-      stdioProxy,
-    });
-    assert.deepEqual(servers, [
-      {
-        name: "glade",
-        command: stdioProxy.command,
-        args: stdioProxy.args,
-        env: [
-          { name: "GLADE_AGENT_GATEWAY_URL", value: connection.url },
-          { name: GLADE_AGENT_GATEWAY_TOKEN_ENV, value: connection.bearerToken },
-        ],
-      },
-    ]);
   });
 });

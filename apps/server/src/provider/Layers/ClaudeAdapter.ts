@@ -1222,7 +1222,7 @@ function isClientSurfacedClaudeTool(toolName: string): boolean {
 
 // Stable per-call identity stamped on every tool lifecycle event's data so the client
 // can collapse started/updated/completed (and dedupe parallel calls) by tool-call id
-// instead of relying on row adjacency. Mirrors the shape other adapters emit (Grok).
+// instead of relying on row adjacency. Mirrors the shared runtime event shape.
 function toolLifecycleEventData(
   tool: Pick<ToolInFlight, "itemId" | "toolName" | "input">,
   extra?: Record<string, unknown>,

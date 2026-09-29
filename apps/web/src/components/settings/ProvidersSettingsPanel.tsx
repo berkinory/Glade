@@ -72,44 +72,22 @@ import { DebouncedSettingTextInput } from "./DebouncedSettingTextInput";
 import { SettingResetButton, useSettingsRestoreSignal } from "./SettingControls";
 import { SettingsListRow, SettingsRow, SettingsSection } from "./SettingsPanelPrimitives";
 
-type ProviderInstallTextKey =
-  | "claudeBinaryPath"
-  | "codexBinaryPath"
-  | "codexHomePath"
-  | "cursorBinaryPath"
-  | "cursorApiEndpoint"
-  | "grokBinaryPath"
-  | "openCodeBinaryPath"
-  | "openCodeServerUrl";
-type ProviderInstallPasswordKey = "openCodeServerPassword";
-type ProviderInstallPasswordConfiguredKey = "openCodeServerPasswordConfigured";
-type ProviderInstallBooleanKey = "claudeEnableArtifacts" | "openCodeExperimentalWebSockets";
-
-type ProviderInstallTextField = {
-  readonly kind: "text";
-  readonly settingsKey: ProviderInstallTextKey;
-  readonly label: string;
-  readonly placeholder: string;
-  readonly description: ReactNode;
-};
-type ProviderInstallPasswordField = {
-  readonly kind: "password";
-  readonly settingsKey: ProviderInstallPasswordKey;
-  readonly configuredKey: ProviderInstallPasswordConfiguredKey;
-  readonly label: string;
-  readonly placeholder: string;
-  readonly description: ReactNode;
-};
-type ProviderInstallBooleanField = {
-  readonly kind: "boolean";
-  readonly settingsKey: ProviderInstallBooleanKey;
-  readonly label: string;
-  readonly description: ReactNode;
-};
+type ProviderInstallTextKey = "claudeBinaryPath" | "codexBinaryPath" | "codexHomePath";
+type ProviderInstallBooleanKey = "claudeEnableArtifacts";
 type ProviderInstallField =
-  | ProviderInstallTextField
-  | ProviderInstallPasswordField
-  | ProviderInstallBooleanField;
+  | {
+      readonly kind: "text";
+      readonly settingsKey: ProviderInstallTextKey;
+      readonly label: string;
+      readonly placeholder: string;
+      readonly description: ReactNode;
+    }
+  | {
+      readonly kind: "boolean";
+      readonly settingsKey: ProviderInstallBooleanKey;
+      readonly label: string;
+      readonly description: ReactNode;
+    };
 type ProviderInstallSettings = {
   readonly provider: ProviderKind;
   readonly docs: ReadonlyArray<{ readonly label: string; readonly href: string }>;
@@ -184,99 +162,6 @@ const PROVIDER_INSTALL_SETTINGS: readonly ProviderInstallSettings[] = [
       },
     ],
   },
-  {
-    provider: "cursor",
-    docs: [
-      { label: "Install", href: "https://docs.cursor.com/en/cli/installation" },
-      { label: "Update", href: "https://docs.cursor.com/en/cli/installation#updates" },
-      { label: "Config", href: "https://docs.cursor.com/en/cli/overview" },
-    ],
-    fields: [
-      {
-        kind: "text",
-        settingsKey: "cursorBinaryPath",
-        label: "Cursor binary path",
-        placeholder: "Cursor Agent or Cursor CLI path",
-        description: (
-          <>
-            Leave blank to use <code>cursor-agent</code> from your PATH. Cursor editor CLI paths are
-            accepted too.
-          </>
-        ),
-      },
-      {
-        kind: "text",
-        settingsKey: "cursorApiEndpoint",
-        label: "Cursor API endpoint",
-        placeholder: "https://api2.cursor.sh",
-        description: "Optional Cursor API endpoint override passed to `cursor-agent -e`.",
-      },
-    ],
-  },
-  {
-    provider: "grok",
-    docs: [
-      { label: "Install", href: "https://docs.x.ai/build/overview" },
-      { label: "Headless", href: "https://docs.x.ai/build/cli/headless-scripting" },
-      { label: "Config", href: "https://docs.x.ai/build/overview" },
-    ],
-    fields: [
-      {
-        kind: "text",
-        settingsKey: "grokBinaryPath",
-        label: "Grok binary path",
-        placeholder: "Grok binary path",
-        description: (
-          <>
-            Leave blank to use <code>grok</code> from your PATH.
-          </>
-        ),
-      },
-    ],
-  },
-  {
-    provider: "opencode",
-    docs: [
-      { label: "Install", href: "https://opencode.ai/docs/" },
-      { label: "Update", href: "https://opencode.ai/docs/cli/" },
-      { label: "Config", href: "https://opencode.ai/docs/config/" },
-    ],
-    fields: [
-      {
-        kind: "text",
-        settingsKey: "openCodeBinaryPath",
-        label: "OpenCode binary path",
-        placeholder: "OpenCode binary path",
-        description: (
-          <>
-            Leave blank to use <code>opencode</code> from your PATH.
-          </>
-        ),
-      },
-      {
-        kind: "text",
-        settingsKey: "openCodeServerUrl",
-        label: "OpenCode server URL",
-        placeholder: "http://127.0.0.1:4096",
-        description: "Optional existing OpenCode server URL. Leave blank to spawn a local server.",
-      },
-      {
-        kind: "password",
-        settingsKey: "openCodeServerPassword",
-        configuredKey: "openCodeServerPasswordConfigured",
-        label: "OpenCode server password",
-        placeholder: "OpenCode server password",
-        description: "Optional password for an externally managed OpenCode server.",
-      },
-      {
-        kind: "boolean",
-        settingsKey: "openCodeExperimentalWebSockets",
-        label: "OpenAI response WebSockets",
-        description:
-          "Use Opencode's experimental OpenAI response WebSocket transport for managed local servers.",
-      },
-    ],
-  },
 ];
 
 const VISIBLE_PROVIDER_INSTALL_SETTINGS = PROVIDER_INSTALL_SETTINGS;
@@ -286,9 +171,7 @@ function isProviderInstallFieldDirty(
   settings: AppSettings,
   defaults: AppSettings,
 ): boolean {
-  return field.kind === "password"
-    ? settings[field.configuredKey] !== defaults[field.configuredKey]
-    : settings[field.settingsKey] !== defaults[field.settingsKey];
+  return settings[field.settingsKey] !== defaults[field.settingsKey];
 }
 
 function isProviderInstallConfigDirty(
@@ -314,11 +197,7 @@ function createProviderInstallDisclosureState(
   return Object.fromEntries(
     PROVIDER_INSTALL_SETTINGS.map((config) => [
       config.provider,
-      config.fields.some((field) =>
-        field.kind === "password"
-          ? settings[field.configuredKey]
-          : Boolean(settings[field.settingsKey]),
-      ),
+      config.fields.some((field) => Boolean(settings[field.settingsKey])),
     ]),
   ) as Record<ProviderKind, boolean>;
 }
@@ -541,9 +420,6 @@ function ProviderInstallFieldControl(props: {
     );
   }
 
-  const configured =
-    props.field.kind === "password" ? props.settings[props.field.configuredKey] : false;
-  const isPassword = props.field.kind === "password";
   return (
     <label htmlFor={id} className="block">
       <span className="block text-ui leading-snug font-medium text-foreground">
@@ -554,17 +430,11 @@ function ProviderInstallFieldControl(props: {
         size="sm"
         variant="soft"
         className="mt-1"
-        value={isPassword ? "" : props.settings[props.field.settingsKey]}
+        value={props.settings[props.field.settingsKey]}
         onCommit={(nextValue) =>
           props.updateSettings({ [props.field.settingsKey]: nextValue } as Partial<AppSettings>)
         }
-        placeholder={
-          isPassword && configured
-            ? "Configured — enter a replacement or leave blank"
-            : props.field.placeholder
-        }
-        type={isPassword ? "password" : undefined}
-        autoComplete={isPassword ? "new-password" : undefined}
+        placeholder={props.field.placeholder}
         spellCheck={false}
       />
       <span className="mt-1 block text-ui leading-snug text-muted-foreground">

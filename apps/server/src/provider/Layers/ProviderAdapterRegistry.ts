@@ -21,9 +21,6 @@ import {
 } from "../Services/ProviderAdapterRegistry.ts";
 import { ClaudeAdapter } from "../Services/ClaudeAdapter.ts";
 import { CodexAdapter } from "../Services/CodexAdapter.ts";
-import { CursorAdapter } from "../Services/CursorAdapter.ts";
-import { GrokAdapter } from "../Services/GrokAdapter.ts";
-import { OpenCodeAdapter } from "../Services/OpenCodeAdapter.ts";
 
 export interface ProviderAdapterRegistryLiveOptions {
   readonly adapters?: ReadonlyArray<ProviderAdapterShape<ProviderAdapterError>>;
@@ -34,13 +31,7 @@ const makeProviderAdapterRegistry = (options?: ProviderAdapterRegistryLiveOption
     const adapters =
       options?.adapters !== undefined
         ? options.adapters
-        : [
-            yield* CodexAdapter,
-            yield* ClaudeAdapter,
-            yield* CursorAdapter,
-            yield* GrokAdapter,
-            yield* OpenCodeAdapter,
-          ];
+        : [yield* CodexAdapter, yield* ClaudeAdapter];
 
     for (const adapter of adapters) {
       assertProviderAdapterConformance(adapter);

@@ -34,17 +34,10 @@ export function shouldInlineSkillForProvider(provider: ProviderKind, skillPath: 
       // Codex loads .codex and .agents skills natively, plus ~/.glade/skills
       // registered via skills/extraRoots/set. Only foreign provider roots
       // need inline instructions alongside their structured skill reference.
-      return [".claude", ".cursor"].some((dir) => segments.has(dir));
-    case "cursor":
-      // cursor-agent natively scans .cursor/.agents/.claude/.codex skill roots;
-      // only Glade-owned paths need inlining.
-      return segments.has(".glade");
+      return segments.has(".claude");
     case "claudeAgent":
       // Claude Code only loads skills from .claude/skills folders.
       return !segments.has(".claude");
-    default:
-      // Grok/OpenCode have no native skill support.
-      return true;
   }
 }
 

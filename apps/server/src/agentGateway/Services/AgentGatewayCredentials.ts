@@ -28,13 +28,6 @@ export interface AgentGatewayMcpConnection {
   readonly bearerToken: string;
 }
 
-export interface AgentGatewayStdioProxySpawn {
-  /** Interpreter (the server's own node/bun binary). */
-  readonly command: string;
-  /** Script arguments (path to the generated proxy script). */
-  readonly args: ReadonlyArray<string>;
-}
-
 export interface AgentGatewayCredentialsShape {
   /** Available when the host can correlate native events with MCP call metadata. */
   readonly nativeToolCalls?: import("../nativeToolCalls.ts").NativeToolCallRegistry;
@@ -52,13 +45,6 @@ export interface AgentGatewayCredentialsShape {
   readonly verifySessionToken: (token: string) => string | null;
   /** Resolve the complete non-secret invocation scope. */
   readonly verifySession: (token: string) => AgentGatewaySessionIdentity | null;
-  /**
-   * Mint a one-shot credential that a stdio proxy can exchange for the
-   * session bearer without exposing that bearer to the provider process.
-   */
-  readonly issueStdioBootstrapToken: (sessionToken: string) => string | null;
-  /** Consume one stdio bootstrap credential exactly once. */
-  readonly exchangeStdioBootstrapToken: (bootstrapToken: string) => string | null;
   /** Pin one request/batch to the exact running turn observed at ingress. */
   readonly bindWriteAuthority: (token: string, turnId: string) => AgentGatewayWriteAuthority | null;
   /** Recheck that a previously bound authority still belongs to a live session. */
@@ -87,8 +73,6 @@ export interface AgentGatewayCredentialsShape {
     provider: ProviderKind,
     options?: { readonly additionalCapabilities?: readonly AgentGatewayCapability[] },
   ) => AgentGatewayMcpConnection;
-  /** Spawn spec for the stdio->HTTP proxy used by stdio-only MCP clients. */
-  readonly stdioProxy: AgentGatewayStdioProxySpawn;
 }
 
 export class AgentGatewayCredentials extends ServiceMap.Service<

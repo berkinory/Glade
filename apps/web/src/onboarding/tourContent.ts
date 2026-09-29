@@ -32,7 +32,7 @@ export const TOUR_CARDS: ReadonlyArray<TourCard> = [
     label: "Any agent",
     title: "Run every coding agent in one workspace",
     description:
-      "Glade sits around the agent runtimes you already trust: Claude Code, Codex, Cursor, Grok, and OpenCode. The provider keeps its account, models, and limits. Glade owns the durable task, environment, transcript, and delivery workflow around it.",
+      "Glade sits around the agent runtimes you already trust: Claude Code and Codex. The provider keeps its account, models, and limits. Glade owns the durable task, environment, transcript, and delivery workflow around it.",
     highlights: [
       "Switch models mid-thread",
       "Hand a thread to another provider",

@@ -69,10 +69,7 @@ type AgentGatewaySessionLeaseCredentials = Pick<
   Partial<
     Pick<
       AgentGatewayCredentialsShape,
-      | "cancelSessionTurnRequests"
-      | "issueStdioBootstrapToken"
-      | "retireSessionTurn"
-      | "nativeToolCalls"
+      "cancelSessionTurnRequests" | "retireSessionTurn" | "nativeToolCalls"
     >
   >;
 
@@ -90,8 +87,6 @@ export const AGENT_GATEWAY_TURN_AUTHORITY_RETIRED = "gladeGatewayTurnAuthorityRe
 export interface AgentGatewaySessionLease {
   readonly connection: AgentGatewayMcpConnection;
   readonly registerNativeToolCall?: (call: import("./nativeToolCalls.ts").NativeToolCall) => void;
-  /** Mint a fresh one-shot proxy credential for a provider turn. */
-  readonly issueStdioBootstrapToken?: () => string | null;
   readonly cancelTurn: (turnId: string) => Promise<void>;
   /**
    * Retire write authority for a terminal turn. Transports without native
@@ -237,10 +232,6 @@ export function acquireAgentGatewaySessionLease(
           },
         }
       : {}),
-    issueStdioBootstrapToken: () => {
-      if (released) return null;
-      return credentials.issueStdioBootstrapToken?.(connection.bearerToken) ?? null;
-    },
     cancelTurn: (turnId) => {
       if (released) return Promise.resolve();
       return (

@@ -249,12 +249,11 @@ describe("AgentGatewaySessionLease", () => {
       bearerToken: "gateway-token",
     }));
     const revokeSessionToken = vi.fn();
-    const issueStdioBootstrapToken = vi.fn(() => "one-shot-bootstrap");
 
     const lease = acquireAgentGatewaySessionLease(
-      { connectionForThread, issueStdioBootstrapToken, revokeSessionToken },
+      { connectionForThread, revokeSessionToken },
       ThreadId.makeUnsafe("thread-1"),
-      "cursor",
+      "codex",
       AGENT_GATEWAY_NO_CAPABILITIES,
     );
 
@@ -263,14 +262,10 @@ describe("AgentGatewaySessionLease", () => {
       bearerToken: "gateway-token",
     });
     expect(connectionForThread).toHaveBeenCalledOnce();
-    expect(connectionForThread).toHaveBeenCalledWith("thread-1", "cursor");
-    expect(lease?.issueStdioBootstrapToken?.()).toBe("one-shot-bootstrap");
-    expect(issueStdioBootstrapToken).toHaveBeenCalledWith("gateway-token");
+    expect(connectionForThread).toHaveBeenCalledWith("thread-1", "codex");
 
     lease?.release();
     lease?.release();
-
-    expect(lease?.issueStdioBootstrapToken?.()).toBeNull();
 
     expect(revokeSessionToken).toHaveBeenCalledOnce();
     expect(revokeSessionToken).toHaveBeenCalledWith("gateway-token");
@@ -327,13 +322,13 @@ describe("AgentGatewaySessionLease", () => {
     const previous = acquireAgentGatewaySessionLease(
       credentials,
       threadId,
-      "grok",
+      "codex",
       AGENT_GATEWAY_NO_CAPABILITIES,
     );
     const replacement = acquireAgentGatewaySessionLease(
       credentials,
       threadId,
-      "grok",
+      "codex",
       AGENT_GATEWAY_NO_CAPABILITIES,
     );
 
@@ -391,7 +386,7 @@ describe("AgentGatewaySessionLease", () => {
         revokeSessionToken,
       },
       ThreadId.makeUnsafe("thread-1"),
-      "cursor",
+      "codex",
       AGENT_GATEWAY_NO_CAPABILITIES,
     );
 

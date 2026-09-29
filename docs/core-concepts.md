@@ -65,7 +65,7 @@ A turn is one cycle inside that task:
 
 Normal follow-ups reuse the provider runtime. Codex 0.158.0+ and Claude associate gateway calls
 with provider-generated call ids and the turn that issued them. Completed or interrupted turns
-cannot borrow the next turn's write authority. Older Codex and OpenCode runtimes are renewed between turns because their gateway
+cannot borrow the next turn's write authority. Older Codex runtimes are renewed between turns because their gateway
 transport cannot prove which turn issued a call. Stop drains and retires the interrupted runtime
 before resuming native history. Background recovery keeps the composer available.
 
@@ -119,8 +119,7 @@ and snapshots older ones before removing them; those snapshots expire after 30 d
 
 ## Providers, models, and sessions
 
-A provider is the coding-agent runtime Glade operates, such as Claude Code, Codex, OpenCode, Cursor,
-or another supported integration.
+A provider is the coding-agent runtime Glade operates, currently Claude Code or Codex.
 
 The provider supplies:
 
@@ -171,7 +170,7 @@ The intended loop is:
 6. Push and open a pull request when appropriate.
 
 Editing and resending the latest message restores its preceding workspace checkpoint and replays
-the corrected prompt in the same chat. Codex and OpenCode rewind their native conversation;
+the corrected prompt in the same chat. Codex rewinds its native conversation;
 Claude resumes a native copy of the exact retained prefix, including tool results. Editing does
 not replace the retained history with a generated summary. File-change cards also support
 undoing their changes.

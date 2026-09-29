@@ -225,22 +225,6 @@ export class CodexTextGeneration extends ServiceMap.Service<
 >()("glade/git/Services/TextGeneration/CodexTextGeneration") {}
 
 /**
- * OpenCodeTextGeneration - Provider-specific OpenCode implementation for git text generation.
- */
-export class OpenCodeTextGeneration extends ServiceMap.Service<
-  OpenCodeTextGeneration,
-  TextGenerationShape
->()("glade/git/Services/TextGeneration/OpenCodeTextGeneration") {}
-
-/**
- * CursorTextGeneration - Provider-specific Cursor implementation for git text generation.
- */
-export class CursorTextGeneration extends ServiceMap.Service<
-  CursorTextGeneration,
-  TextGenerationShape
->()("glade/git/Services/TextGeneration/CursorTextGeneration") {}
-
-/**
  * TextGeneration - Service tag for commit and PR text generation.
  */
 export class TextGeneration extends ServiceMap.Service<TextGeneration, TextGenerationShape>()(

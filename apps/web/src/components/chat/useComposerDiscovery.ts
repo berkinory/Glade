@@ -84,18 +84,6 @@ export function useComposerDiscovery({
       provider: selectedProvider,
       cwd: composerSkillCwd,
       threadId,
-      binaryPath:
-        selectedProvider === "opencode"
-          ? (providerOptionsForDispatch?.opencode?.binaryPath ?? null)
-          : null,
-      serverUrl:
-        (selectedProvider === "opencode"
-          ? providerOptionsForDispatch?.opencode?.serverUrl
-          : null) ?? null,
-      experimentalWebSockets:
-        selectedProvider === "opencode"
-          ? providerOptionsForDispatch?.opencode?.experimentalWebSockets
-          : undefined,
       enabled:
         (composerTriggerKind === "slash-command" ||
           composerTriggerKind === "slash-model" ||

@@ -48,22 +48,22 @@ describe("resolvePreferredComposerModelSelection", () => {
   });
 
   it("uses only the active provider selection for draft promotion", () => {
-    const cursorSelection = modelSelection("cursor", "cursor-auto", {
-      reasoningEffort: "high",
+    const claudeSelection = modelSelection("claudeAgent", "claude-sonnet-5", {
+      effort: "high",
     });
     expect(
       resolvePreferredComposerModelSelection({
         draft: {
           modelSelectionByProvider: {
             codex: modelSelection("codex", "gpt-5.6-sol", { reasoningEffort: "ultra" }),
-            cursor: cursorSelection,
+            claudeAgent: claudeSelection,
           },
-          activeProvider: "cursor",
+          activeProvider: "claudeAgent",
         },
         threadModelSelection: null,
         projectModelSelection: null,
       }),
-    ).toEqual(cursorSelection);
+    ).toEqual(claudeSelection);
   });
 });
 
@@ -280,67 +280,6 @@ describe("composerDraftStore modelSelection", () => {
       }),
     );
   });
-
-  it("prefers the active OpenCode thread model over a stale draft default when runtime models are available", () => {
-    const state = deriveEffectiveComposerModelState({
-      draft: {
-        modelSelectionByProvider: {
-          opencode: modelSelection("opencode", "openai/gpt-5"),
-        },
-        activeProvider: "opencode",
-      },
-      selectedProvider: "opencode",
-      threadModelSelection: modelSelection("opencode", "opencode/gpt-5-nano"),
-      projectModelSelection: null,
-      availableModelOptionsByProvider: {
-        opencode: [{ slug: "opencode/gpt-5-nano", name: "GPT-5 Nano" }],
-      },
-    });
-
-    expect(state.selectedModel).toBe("opencode/gpt-5-nano");
-  });
-
-  it("preserves the persisted OpenCode thread model when discovery omits it", () => {
-    const state = deriveEffectiveComposerModelState({
-      draft: {
-        modelSelectionByProvider: {},
-        activeProvider: "opencode",
-      },
-      selectedProvider: "opencode",
-      threadModelSelection: modelSelection("opencode", "openai/gpt-5.4"),
-      projectModelSelection: null,
-      availableModelOptionsByProvider: {
-        opencode: [
-          { slug: "openai/gpt-5-codex", name: "GPT-5-Codex" },
-          { slug: "openai/gpt-5.4-mini", name: "GPT-5.4 Mini" },
-        ],
-      },
-    });
-
-    expect(state.selectedModel).toBe("openai/gpt-5.4");
-  });
-
-  it("falls back to the first exposed OpenCode runtime model when the draft selection is stale", () => {
-    const state = deriveEffectiveComposerModelState({
-      draft: {
-        modelSelectionByProvider: {
-          opencode: modelSelection("opencode", "openai/gpt-5"),
-        },
-        activeProvider: "opencode",
-      },
-      selectedProvider: "opencode",
-      threadModelSelection: null,
-      projectModelSelection: null,
-      availableModelOptionsByProvider: {
-        opencode: [
-          { slug: "opencode/gpt-5-nano", name: "GPT-5 Nano" },
-          { slug: "opencode/big-pickle", name: "Big Pickle" },
-        ],
-      },
-    });
-
-    expect(state.selectedModel).toBe("opencode/gpt-5-nano");
-  });
 });
 
 describe("composerDraftStore setModelSelection", () => {
@@ -409,26 +348,6 @@ describe("composerDraftStore setModelSelection", () => {
       expectedSelection,
     );
     expect(state.stickyModelSelectionByProvider.codex).toEqual(expectedSelection);
-  });
-
-  it("restores Cursor state without transferring the active Codex effort", () => {
-    const store = useComposerDraftStore.getState();
-    const cursorSelection = modelSelection("cursor", "cursor-auto", {
-      reasoningEffort: "high",
-    });
-    store.setModelSelectionAndSticky(threadId, cursorSelection);
-    store.setModelSelectionAndSticky(
-      threadId,
-      modelSelection("codex", "gpt-5.6-sol", { reasoningEffort: "ultra" }),
-    );
-
-    store.setModelSelectionAndSticky(threadId, modelSelection("cursor", "cursor-auto"));
-
-    const state = useComposerDraftStore.getState();
-    expect(state.draftsByThreadId[threadId]?.modelSelectionByProvider.cursor).toEqual(
-      cursorSelection,
-    );
-    expect(state.stickyModelSelectionByProvider.cursor).toEqual(cursorSelection);
   });
 
   it("uses destination defaults when switching providers without saved state", () => {
@@ -750,23 +669,5 @@ describe("composerDraftStore provider-scoped option updates", () => {
     );
     expect(draft?.modelSelectionByProvider.claudeAgent?.options).toEqual({ effort: "max" });
     expect(draft?.activeProvider).toBe("codex");
-  });
-
-  it("retains Grok reasoning effort in provider-scoped options", () => {
-    const store = useComposerDraftStore.getState();
-
-    store.setProviderModelOptions(
-      threadId,
-      "grok",
-      { reasoningEffort: "high" },
-      { model: "grok-build" },
-    );
-
-    const draft = useComposerDraftStore.getState().draftsByThreadId[threadId];
-    expect(draft?.modelSelectionByProvider.grok).toEqual(
-      modelSelection("grok", "grok-build", {
-        reasoningEffort: "high",
-      }),
-    );
   });
 });

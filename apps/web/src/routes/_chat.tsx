@@ -391,17 +391,8 @@ function ChatRouteGlobalShortcuts() {
         return;
       }
 
-      if (
-        command === "chat.newClaude" ||
-        command === "chat.newCodex" ||
-        command === "chat.newCursor"
-      ) {
-        const provider =
-          command === "chat.newClaude"
-            ? "claudeAgent"
-            : command === "chat.newCodex"
-              ? "codex"
-              : "cursor";
+      if (command === "chat.newClaude" || command === "chat.newCodex") {
+        const provider = command === "chat.newClaude" ? "claudeAgent" : "codex";
         const target = resolveNewThreadTarget({ currentProjectId, latestUsableProjectId });
         if (!target) return;
         event.preventDefault();

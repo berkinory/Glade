@@ -76,9 +76,8 @@ export function isProviderUpdateActive(provider: ServerProviderStatus): boolean 
   return provider.updateState?.status === "queued" || provider.updateState?.status === "running";
 }
 
-// A provider whose latest version Glade cannot look up (self-updating CLIs such as
-// `cursor-agent`) is permanently "unknown". Treating that as an update prompt made its
-// row nag forever, so those providers get the update offered as a manual action instead.
+// A provider whose latest version Glade cannot look up stays "unknown" and offers
+// updates as a manual action.
 export function isProviderLatestVersionKnowable(provider: ServerProviderStatus): boolean {
   return provider.versionAdvisory?.latestVersionKnowable !== false;
 }

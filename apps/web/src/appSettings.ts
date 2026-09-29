@@ -29,7 +29,6 @@ import {
 
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { EnvMode } from "./components/BranchToolbar.logic";
-import { normalizeCursorModelVariantBaseId } from "./cursorModelVariants";
 import { formatProviderModelOptionName, type ProviderModelOption } from "./providerModelOptions";
 import {
   DEFAULT_PROVIDER_ORDER,
@@ -125,9 +124,6 @@ export function getDefaultNativeFontSmoothing(platform = globalThis.navigator?.p
 const BUILT_IN_MODEL_SLUGS_BY_PROVIDER: Record<ProviderKind, ReadonlySet<string>> = {
   codex: new Set(getModelOptions("codex").map((option) => option.slug)),
   claudeAgent: new Set(getModelOptions("claudeAgent").map((option) => option.slug)),
-  cursor: new Set(getModelOptions("cursor").map((option) => option.slug)),
-  grok: new Set(getModelOptions("grok").map((option) => option.slug)),
-  opencode: new Set(getModelOptions("opencode").map((option) => option.slug)),
 };
 
 const withDefaults =
@@ -211,17 +207,6 @@ export const AppSettingsSchema = Schema.Struct({
   ),
   codexBinaryPath: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
   codexHomePath: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
-  cursorBinaryPath: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
-  cursorApiEndpoint: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
-  // Deprecated Gemini keys remain decodable until normalization rewrites local storage.
-  grokBinaryPath: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
-  openCodeBinaryPath: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
-  openCodeServerUrl: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
-  openCodeServerPassword: Schema.String.check(Schema.isMaxLength(4096)).pipe(
-    withDefaults(() => ""),
-  ),
-  openCodeServerPasswordConfigured: Schema.Boolean.pipe(withDefaults(() => false)),
-  openCodeExperimentalWebSockets: Schema.Boolean.pipe(withDefaults(() => false)),
   defaultThreadEnvMode: EnvMode.pipe(withDefaults(() => "local" as const satisfies EnvMode)),
   confirmThreadDelete: Schema.Boolean.pipe(withDefaults(() => true)),
   // Opt-in: archiving a task also releases its worktree when nothing else uses it.
@@ -456,17 +441,8 @@ function normalizeAppSettings(settings: AppSettings): AppSettings {
     ...currentSettings,
     computerControlEnabled:
       settings.computerControlEnabled || legacyAllowComputerControlInNewChats === true,
-    // Password fields are accepted only as write-only update patches. Never retain
-    // reusable provider credentials in browser state or localStorage.
-    openCodeServerPassword: "",
     claudeBinaryPath: normalizeProviderBinaryPathOverride("claudeAgent", settings.claudeBinaryPath),
     codexBinaryPath: normalizeProviderBinaryPathOverride("codex", settings.codexBinaryPath),
-    cursorBinaryPath: normalizeProviderBinaryPathOverride("cursor", settings.cursorBinaryPath),
-    grokBinaryPath: normalizeProviderBinaryPathOverride("grok", settings.grokBinaryPath),
-    openCodeBinaryPath: normalizeProviderBinaryPathOverride(
-      "opencode",
-      settings.openCodeBinaryPath,
-    ),
     uiDensity: normalizeUiDensityValue(settings.uiDensity),
     chatWidth: normalizeChatWidthModeValue(settings.chatWidth),
     agentCursorFillColor: normalizeCursorHexColor(settings.agentCursorFillColor),
@@ -516,16 +492,9 @@ function serverSettingsToAppSettings(settings: ServerSettingsView): Partial<AppS
     claudeEnableArtifacts: settings.providers.claudeAgent.enableArtifacts,
     codexBinaryPath: settings.providers.codex.binaryPath,
     codexHomePath: settings.providers.codex.homePath,
-    cursorApiEndpoint: settings.providers.cursor.apiEndpoint,
-    cursorBinaryPath: settings.providers.cursor.binaryPath,
     defaultThreadEnvMode: settings.defaultThreadEnvMode,
     enableAssistantStreaming: settings.enableAssistantStreaming,
     enableProviderUpdateChecks: settings.enableProviderUpdateChecks,
-    grokBinaryPath: settings.providers.grok.binaryPath,
-    openCodeBinaryPath: settings.providers.opencode.binaryPath,
-    openCodeExperimentalWebSockets: settings.providers.opencode.experimentalWebSockets,
-    openCodeServerPasswordConfigured: settings.providers.opencode.serverPasswordConfigured,
-    openCodeServerUrl: settings.providers.opencode.serverUrl,
     disabledProviders: getServerDisabledProviders(settings),
     textGenerationProvider: settings.textGenerationModelSelection.provider,
     textGenerationModel: settings.textGenerationModelSelection.model,
@@ -540,8 +509,7 @@ function resolveTextGenerationProvider(input: {
   if (input.provider) {
     return input.provider;
   }
-  const model = input.model;
-  return model?.includes("/") ? "opencode" : "codex";
+  return "codex";
 }
 
 function hasOwn<Key extends keyof AppSettings>(patch: Partial<AppSettings>, key: Key): boolean {
@@ -549,14 +517,7 @@ function hasOwn<Key extends keyof AppSettings>(patch: Partial<AppSettings>, key:
 }
 
 function touchesProviderDiscoverySettings(patch: Partial<AppSettings>): boolean {
-  return (
-    hasOwn(patch, "claudeEnableArtifacts") ||
-    hasOwn(patch, "openCodeBinaryPath") ||
-    hasOwn(patch, "openCodeExperimentalWebSockets") ||
-    hasOwn(patch, "openCodeServerPassword") ||
-    hasOwn(patch, "openCodeServerUrl") ||
-    hasOwn(patch, "disabledProviders")
-  );
+  return hasOwn(patch, "claudeEnableArtifacts") || hasOwn(patch, "disabledProviders");
 }
 
 function serverSettingValuesEqual(left: unknown, right: unknown): boolean {
@@ -577,10 +538,7 @@ function pruneProviderPatchAgainstCurrentSettings(
     const patchRecord = providerPatch as Record<string, unknown>;
     const currentRecord = currentSettings.providers[provider] as unknown as Record<string, unknown>;
     for (const [key, value] of Object.entries(patchRecord)) {
-      const matchesCurrent =
-        key === "serverPassword"
-          ? value === "" && currentRecord.serverPasswordConfigured === false
-          : serverSettingValuesEqual(value, currentRecord[key]);
+      const matchesCurrent = serverSettingValuesEqual(value, currentRecord[key]);
       if (matchesCurrent) {
         delete patchRecord[key];
       }
@@ -636,37 +594,6 @@ export function appSettingsPatchToServerSettingsPatch(
         : {}),
     };
   }
-  if (hasOwn(patch, "cursorApiEndpoint") || hasOwn(patch, "cursorBinaryPath")) {
-    providers.cursor = {
-      ...(hasOwn(patch, "cursorApiEndpoint") ? { apiEndpoint: patch.cursorApiEndpoint ?? "" } : {}),
-      ...(hasOwn(patch, "cursorBinaryPath") ? { binaryPath: patch.cursorBinaryPath ?? "" } : {}),
-    };
-  }
-  if (hasOwn(patch, "grokBinaryPath")) {
-    providers.grok = {
-      ...(hasOwn(patch, "grokBinaryPath") ? { binaryPath: patch.grokBinaryPath ?? "" } : {}),
-    };
-  }
-  if (
-    hasOwn(patch, "openCodeBinaryPath") ||
-    hasOwn(patch, "openCodeExperimentalWebSockets") ||
-    hasOwn(patch, "openCodeServerUrl") ||
-    hasOwn(patch, "openCodeServerPassword") ||
-    false
-  ) {
-    providers.opencode = {
-      ...(hasOwn(patch, "openCodeBinaryPath")
-        ? { binaryPath: patch.openCodeBinaryPath ?? "" }
-        : {}),
-      ...(hasOwn(patch, "openCodeExperimentalWebSockets")
-        ? { experimentalWebSockets: Boolean(patch.openCodeExperimentalWebSockets) }
-        : {}),
-      ...(hasOwn(patch, "openCodeServerUrl") ? { serverUrl: patch.openCodeServerUrl ?? "" } : {}),
-      ...(hasOwn(patch, "openCodeServerPassword")
-        ? { serverPassword: patch.openCodeServerPassword ?? "" }
-        : {}),
-    };
-  }
   if (hasOwn(patch, "disabledProviders")) {
     const disabledProviders = new Set(normalizeHiddenProviders(patch.disabledProviders ?? []));
     for (const provider of DEFAULT_PROVIDER_ORDER) {
@@ -704,28 +631,15 @@ function buildInitialServerSettingsMigrationPatch(settings: AppSettings): Server
     "claudeEnableArtifacts",
     "codexBinaryPath",
     "codexHomePath",
-    "cursorApiEndpoint",
-    "cursorBinaryPath",
     "defaultThreadEnvMode",
     "enableAssistantStreaming",
     "enableProviderUpdateChecks",
-    "grokBinaryPath",
-    "openCodeBinaryPath",
-    "openCodeExperimentalWebSockets",
-    "openCodeServerPassword",
-    "openCodeServerUrl",
     "textGenerationModel",
     "textGenerationProvider",
   ] as const) {
     if (normalizedSettings[key] !== defaults[key]) {
       patch[key] = normalizedSettings[key] as never;
     }
-  }
-
-  // Migrate legacy browser-stored passwords once before normalizeAppSettings
-  // scrubs them from local state. All subsequent reads use redacted server views.
-  if (settings.openCodeServerPassword.trim()) {
-    patch.openCodeServerPassword = settings.openCodeServerPassword;
   }
 
   return appSettingsPatchToServerSettingsPatch(patch);
@@ -748,9 +662,6 @@ export function applyLocalAppSettingsPatch(
   return normalizeStoredAppSettings({
     ...settings,
     ...localPatch,
-    ...(hasOwn(patch, "openCodeServerPassword")
-      ? { openCodeServerPasswordConfigured: Boolean(patch.openCodeServerPassword?.trim()) }
-      : {}),
   });
 }
 
@@ -767,10 +678,7 @@ export function getAppModelOptions(
   const seen = new Set(options.map((option) => option.slug));
   const trimmedSelectedModel = selectedModel?.trim().toLowerCase();
 
-  const normalizedSelectedModel =
-    provider === "cursor"
-      ? normalizeCursorModelVariantBaseId(selectedModel)
-      : normalizeModelSlug(selectedModel, provider);
+  const normalizedSelectedModel = normalizeModelSlug(selectedModel, provider);
   const selectedModelMatchesExistingName =
     typeof trimmedSelectedModel === "string" &&
     options.some((option) => option.name.toLowerCase() === trimmedSelectedModel);
@@ -856,33 +764,13 @@ export function resolveAppModelSelection(
 }
 
 export function getProviderStartOptions(
-  settings: Pick<
-    AppSettings,
-    | "claudeBinaryPath"
-    | "codexBinaryPath"
-    | "codexHomePath"
-    | "cursorApiEndpoint"
-    | "cursorBinaryPath"
-    | "grokBinaryPath"
-    | "openCodeBinaryPath"
-    | "openCodeExperimentalWebSockets"
-    | "openCodeServerUrl"
-  >,
+  settings: Pick<AppSettings, "claudeBinaryPath" | "codexBinaryPath" | "codexHomePath">,
 ): ProviderStartOptions | undefined {
   const claudeBinaryPath = normalizeProviderBinaryPathOverride(
     "claudeAgent",
     settings.claudeBinaryPath,
   );
   const codexBinaryPath = normalizeProviderBinaryPathOverride("codex", settings.codexBinaryPath);
-  const cursorBinaryPath = normalizeProviderBinaryPathOverride("cursor", settings.cursorBinaryPath);
-  const grokBinaryPath = normalizeProviderBinaryPathOverride("grok", settings.grokBinaryPath);
-  const openCodeBinaryPath = normalizeProviderBinaryPathOverride(
-    "opencode",
-    settings.openCodeBinaryPath,
-  );
-  const hasOpenCodeStartOptions = Boolean(
-    openCodeBinaryPath || settings.openCodeExperimentalWebSockets || settings.openCodeServerUrl,
-  );
   const providerOptions: ProviderStartOptions = {
     ...(codexBinaryPath || settings.codexHomePath
       ? {
@@ -896,30 +784,6 @@ export function getProviderStartOptions(
       ? {
           claudeAgent: {
             binaryPath: claudeBinaryPath,
-          },
-        }
-      : {}),
-    ...(cursorBinaryPath || settings.cursorApiEndpoint
-      ? {
-          cursor: {
-            ...(cursorBinaryPath ? { binaryPath: cursorBinaryPath } : {}),
-            ...(settings.cursorApiEndpoint ? { apiEndpoint: settings.cursorApiEndpoint } : {}),
-          },
-        }
-      : {}),
-    ...(grokBinaryPath
-      ? {
-          grok: {
-            binaryPath: grokBinaryPath,
-          },
-        }
-      : {}),
-    ...(hasOpenCodeStartOptions
-      ? {
-          opencode: {
-            ...(openCodeBinaryPath ? { binaryPath: openCodeBinaryPath } : {}),
-            ...(settings.openCodeExperimentalWebSockets ? { experimentalWebSockets: true } : {}),
-            ...(settings.openCodeServerUrl ? { serverUrl: settings.openCodeServerUrl } : {}),
           },
         }
       : {}),
@@ -957,14 +821,7 @@ export function resolveFollowUpDispatchMode(input: {
 }
 
 export function getCustomBinaryPathForProvider(
-  settings: Pick<
-    AppSettings,
-    | "claudeBinaryPath"
-    | "codexBinaryPath"
-    | "cursorBinaryPath"
-    | "grokBinaryPath"
-    | "openCodeBinaryPath"
-  >,
+  settings: Pick<AppSettings, "claudeBinaryPath" | "codexBinaryPath">,
   provider: ProviderKind,
 ): string {
   switch (provider) {
@@ -972,12 +829,6 @@ export function getCustomBinaryPathForProvider(
       return normalizeProviderBinaryPathOverride(provider, settings.codexBinaryPath);
     case "claudeAgent":
       return normalizeProviderBinaryPathOverride(provider, settings.claudeBinaryPath);
-    case "cursor":
-      return normalizeProviderBinaryPathOverride(provider, settings.cursorBinaryPath);
-    case "grok":
-      return normalizeProviderBinaryPathOverride(provider, settings.grokBinaryPath);
-    case "opencode":
-      return normalizeProviderBinaryPathOverride(provider, settings.openCodeBinaryPath);
   }
 }
 

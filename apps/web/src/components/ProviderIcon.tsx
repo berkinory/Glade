@@ -7,66 +7,20 @@
 import { type ProviderKind } from "@glade/contracts";
 import type { ReactNode, SVGProps } from "react";
 
-import { CentralIcon } from "~/lib/central-icons";
 import { cn } from "~/lib/utils";
-import { ClaudeAI, CursorIcon, GrokIcon, type Icon, OpenAI, OpenCodeIcon } from "./Icons";
+import { ClaudeAI, type Icon, OpenAI } from "./Icons";
 
 export type ProviderIconTone = "default" | "header";
-
-// The bundled SVG has a dark outer fill, so dark mode swaps to the reversed Central asset.
-// React's SVGProps has no `title`, so accept it via an explicit prop type and forward it
-// only to CentralIcon (an HTML span, which supports `title`); the light-mode SVG conveys
-// its accessible name through aria-label instead.
-const OpenCodeProviderIcon = ({
-  className,
-  style,
-  title,
-  role,
-  "aria-hidden": ariaHidden,
-  "aria-label": ariaLabel,
-  ...svgProps
-}: SVGProps<SVGSVGElement> & { title?: string }) => {
-  const centralIconLabel =
-    ariaHidden === true || ariaHidden === "true" || typeof ariaLabel !== "string"
-      ? undefined
-      : ariaLabel;
-
-  return (
-    <>
-      <OpenCodeIcon
-        {...svgProps}
-        aria-hidden={ariaHidden}
-        aria-label={ariaLabel}
-        role={role}
-        className={cn(className, "dark:hidden")}
-        style={style}
-      />
-      <CentralIcon
-        name="opencode"
-        label={centralIconLabel}
-        title={title}
-        className={cn(className, "hidden dark:inline-block dark:text-foreground/90")}
-        style={style}
-      />
-    </>
-  );
-};
 
 export const PROVIDER_ICON_COMPONENT_BY_PROVIDER: Record<ProviderKind, Icon> = {
   codex: OpenAI,
   claudeAgent: ClaudeAI,
-  cursor: CursorIcon,
-  grok: GrokIcon,
-  opencode: OpenCodeProviderIcon,
 };
 
 export function providerIconToneClassName(
   provider: ProviderKind | null | undefined,
   tone: ProviderIconTone = "default",
 ): string {
-  if (provider === "opencode") {
-    return "text-muted-foreground/70";
-  }
   if (provider === "codex") {
     return tone === "header" ? "text-muted-foreground/85" : "text-foreground";
   }

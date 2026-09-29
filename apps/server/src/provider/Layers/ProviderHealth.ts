@@ -20,7 +20,6 @@ import type {
 import { ServerProviderUpdateError } from "@glade/contracts";
 import { parseCodexConfigModelProvider } from "@glade/shared/codexConfig";
 import { decodeJsonResult } from "@glade/shared/schemaJson";
-import { expandHomePath } from "@glade/shared/gladeHome";
 import type { SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
 import {
   Array,
@@ -56,16 +55,8 @@ import {
   buildProviderChildEnvironment,
   type ProviderChildKind,
 } from "../../providerChildEnvironment.ts";
-import { buildOpenCodeServerProcessEnv } from "../providerBinaryResolution.ts";
 import { ServerSettingsService } from "../../serverSettings";
 import { isWindowsShellCommandMissingResult } from "../../shell-command-detection";
-import {
-  buildCursorAgentCommand,
-  buildCursorAgentHeadlessEnv,
-  DEFAULT_CURSOR_AGENT_BINARY,
-  resolveCursorAgentBinaryPath,
-} from "../acp/CursorAcpCommand";
-import { hasGrokApiKeyEnv } from "../acp/GrokAcpSupport";
 import {
   claudeAuthMetadata,
   isStructuredClaudeAuthFalseNegativeCandidate,
@@ -109,31 +100,22 @@ export type { CommandResult } from "../providerCliOutput";
 
 const DEFAULT_TIMEOUT_MS = 4_000;
 const CLAUDE_HEALTH_TIMEOUT_MS = 20_000;
-const OPENCODE_HEALTH_TIMEOUT_MS = 20_000;
 const CODEX_AUTH_STATUS_ARGS = ["-c", "mcp_servers={}", "login", "status"] as const;
 const CODEX_PROVIDER = "codex" as const;
 const CLAUDE_AGENT_PROVIDER = "claudeAgent" as const;
-const CURSOR_PROVIDER = "cursor" as const;
-const GROK_PROVIDER = "grok" as const;
-const OPENCODE_PROVIDER = "opencode" as const;
 type ProviderStatuses = ReadonlyArray<ServerProviderStatus>;
 const DISABLED_PROVIDER_STATUS_MESSAGE = "Provider is disabled in Glade settings.";
 
 const PROVIDERS = [
   CODEX_PROVIDER,
   CLAUDE_AGENT_PROVIDER,
-  CURSOR_PROVIDER,
-  GROK_PROVIDER,
-  OPENCODE_PROVIDER,
 ] as const satisfies ReadonlyArray<ProviderKind>;
 
 const providerChildKind = (provider: ProviderKind): ProviderChildKind =>
   provider === CLAUDE_AGENT_PROVIDER ? "claude" : provider;
 
 const providerCommandEnv = (provider: ProviderKind): NodeJS.ProcessEnv =>
-  provider === OPENCODE_PROVIDER
-    ? buildOpenCodeServerProcessEnv({})
-    : buildProviderChildEnvironment({ provider: providerChildKind(provider) });
+  buildProviderChildEnvironment({ provider: providerChildKind(provider) });
 
 const UPDATE_OUTPUT_MAX_BYTES = 10_000;
 const MAX_REFRESH_REVISION_RETRIES = 1;
@@ -164,14 +146,6 @@ function isClaudeNativeCommandPath(commandPath: string): boolean {
 
 function isClaudeLatestHomebrewCommandPath(commandPath: string): boolean {
   return normalizeCommandPath(commandPath).includes("/caskroom/claude-code@latest/");
-}
-
-function isOpenCodeNativeCommandPath(commandPath: string): boolean {
-  const normalized = normalizeCommandPath(commandPath);
-  return (
-    normalized.endsWith("/.opencode/bin/opencode") ||
-    normalized.endsWith("/.opencode/bin/opencode.exe")
-  );
 }
 
 export const PACKAGE_MANAGED_PROVIDER_UPDATES: Partial<
@@ -208,24 +182,6 @@ export const PACKAGE_MANAGED_PROVIDER_UPDATES: Partial<
       // tell whether the installed CLI is current for the user's configured channel.
       latestVersionSource: null,
       isCommandPath: isClaudeNativeCommandPath,
-    },
-  },
-  opencode: {
-    provider: OPENCODE_PROVIDER,
-    binaryName: "opencode",
-    npmPackageName: "opencode-ai",
-    homebrew: { name: "anomalyco/tap/opencode", kind: "formula" },
-    latestVersionSource: { kind: "npm", name: "opencode-ai" },
-    nativeUpdate: {
-      executable: "opencode",
-      args: (installSource) =>
-        installSource === "unknown" || installSource === "native"
-          ? ["upgrade"]
-          : ["upgrade", "--method", installSource],
-      lockKey: "opencode-native",
-      strategy: "always",
-      excludedInstallSources: ["homebrew"],
-      isCommandPath: isOpenCodeNativeCommandPath,
     },
   },
 };
@@ -619,110 +575,6 @@ const runClaudeCommand = (
         : Effect.succeed(result),
     ),
   );
-
-const runGrokCommand = (args: ReadonlyArray<string>, executable = "grok") =>
-  runProviderCommand(executable, args, providerCommandEnv(GROK_PROVIDER)).pipe(
-    Effect.flatMap((result) =>
-      isWindowsShellCommandMissingResult({ code: result.code, stderr: result.stderr })
-        ? Effect.fail(new Error(`spawn ${executable} ENOENT`))
-        : Effect.succeed(result),
-    ),
-  );
-
-const runOpenCodeCommand = (args: ReadonlyArray<string>, executable = "opencode") =>
-  runProviderCommand(executable, args, providerCommandEnv(OPENCODE_PROVIDER)).pipe(
-    Effect.flatMap((result) =>
-      isWindowsShellCommandMissingResult({ code: result.code, stderr: result.stderr })
-        ? Effect.fail(new Error(`spawn ${executable} ENOENT`))
-        : Effect.succeed(result),
-    ),
-  );
-
-const runCursorCommand = (
-  args: ReadonlyArray<string>,
-  executable = DEFAULT_CURSOR_AGENT_BINARY,
-) => {
-  const command = buildCursorAgentCommand(executable, args);
-  return runProviderCommand(command.command, command.args, buildCursorAgentHeadlessEnv()).pipe(
-    Effect.flatMap((result) =>
-      isWindowsShellCommandMissingResult({ code: result.code, stderr: result.stderr })
-        ? Effect.fail(new Error(`spawn ${command.command} ENOENT`))
-        : Effect.succeed(result),
-    ),
-  );
-};
-
-function parseCursorAuthStatusFromOutput(result: CommandResult): {
-  readonly status: ServerProviderStatusState;
-  readonly authStatus: ServerProviderAuthStatus;
-  readonly message?: string;
-} {
-  const output = `${result.stdout}\n${result.stderr}`;
-  const lowerOutput = output.toLowerCase();
-
-  if (
-    lowerOutput.includes("unknown command") ||
-    lowerOutput.includes("unrecognized command") ||
-    lowerOutput.includes("unexpected argument")
-  ) {
-    return {
-      status: "warning",
-      authStatus: "unknown",
-      message:
-        "Cursor Agent authentication status command is unavailable in this Cursor Agent version.",
-    };
-  }
-
-  if (
-    lowerOutput.includes("authentication required") ||
-    lowerOutput.includes("not logged in") ||
-    lowerOutput.includes("not authenticated") ||
-    lowerOutput.includes("unauthenticated") ||
-    lowerOutput.includes("login required") ||
-    lowerOutput.includes("run 'agent login'") ||
-    lowerOutput.includes("run `agent login`") ||
-    lowerOutput.includes("run cursor-agent login")
-  ) {
-    return {
-      status: "error",
-      authStatus: "unauthenticated",
-      message: "Cursor Agent is not authenticated. Run `cursor-agent login` and try again.",
-    };
-  }
-
-  if (
-    lowerOutput.includes("logged in") ||
-    lowerOutput.includes("login successful") ||
-    lowerOutput.includes("authenticated")
-  ) {
-    return { status: "ready", authStatus: "authenticated" };
-  }
-
-  if (result.code === 0) {
-    return {
-      status: "warning",
-      authStatus: "unknown",
-      message: "Cursor Agent is installed, but Glade could not verify authentication status.",
-    };
-  }
-
-  const detail = detailFromResult(result);
-  return {
-    status: "warning",
-    authStatus: "unknown",
-    message: detail
-      ? `Could not verify Cursor Agent authentication status. ${detail}`
-      : "Could not verify Cursor Agent authentication status.",
-  };
-}
-
-function cursorModelsOutputHasModels(output: string): boolean {
-  return output.split(/\r?\n/u).some((line) => line.trim().length > 0 && line.includes(" - "));
-}
-
-function cursorModelsOutputHasNoModels(output: string): boolean {
-  return output.toLowerCase().includes("no models available");
-}
 
 // ── Health check ────────────────────────────────────────────────────
 
@@ -1122,355 +974,6 @@ export const makeCheckClaudeProviderStatus = (
 
 export const checkClaudeProviderStatus = makeCheckClaudeProviderStatus();
 
-// ── Grok health check ───────────────────────────────────────────────
-
-export const makeCheckGrokProviderStatus = (
-  binaryPath?: string,
-): Effect.Effect<ServerProviderStatus, never, ChildProcessSpawner.ChildProcessSpawner> =>
-  Effect.gen(function* () {
-    const checkedAt = new Date().toISOString();
-    const executable = nonEmptyTrimmed(binaryPath) ?? "grok";
-
-    const versionProbe = yield* probeProviderCliVersion(
-      runGrokCommand(["--version"], executable),
-      DEFAULT_TIMEOUT_MS,
-    );
-
-    if (versionProbe.outcome === "missing" || versionProbe.outcome === "failure") {
-      const error = versionProbe.cause;
-      return {
-        provider: GROK_PROVIDER,
-        status: "error" as const,
-        available: false,
-        authStatus: "unknown" as const,
-        checkedAt,
-        message:
-          versionProbe.outcome === "missing"
-            ? "Grok CLI (`grok`) is not installed or not on PATH."
-            : `Failed to execute Grok CLI health check: ${error instanceof Error ? error.message : String(error)}.`,
-      } satisfies ServerProviderStatus;
-    }
-
-    if (versionProbe.outcome === "timeout") {
-      return {
-        provider: GROK_PROVIDER,
-        status: "error" as const,
-        available: false,
-        authStatus: "unknown" as const,
-        checkedAt,
-        message: "Grok CLI is installed but failed to run. Timed out while running command.",
-      } satisfies ServerProviderStatus;
-    }
-
-    if (versionProbe.outcome === "nonzero") {
-      const version = versionProbe.result;
-      const detail = detailFromResult(version);
-      return {
-        provider: GROK_PROVIDER,
-        status: "error" as const,
-        available: false,
-        authStatus: "unknown" as const,
-        checkedAt,
-        message: detail
-          ? `Grok CLI is installed but failed to run. ${detail}`
-          : "Grok CLI is installed but failed to run.",
-      } satisfies ServerProviderStatus;
-    }
-    const version = versionProbe.result;
-    const parsedVersion = parseGenericCliVersion(`${version.stdout}\n${version.stderr}`);
-    const hasApiKey = hasGrokApiKeyEnv();
-
-    return {
-      provider: GROK_PROVIDER,
-      status: "ready" as const,
-      available: true,
-      authStatus: hasApiKey ? ("authenticated" as const) : ("unknown" as const),
-      version: parsedVersion,
-      checkedAt,
-      ...(hasApiKey
-        ? { authType: "apiKey", authLabel: "xAI API Key" }
-        : {
-            message:
-              "Grok CLI is installed. Run `grok` to authenticate locally, or set XAI_API_KEY before starting a session.",
-          }),
-    } satisfies ServerProviderStatus;
-  });
-
-export const checkGrokProviderStatus = makeCheckGrokProviderStatus();
-
-export const makeCheckOpenCodeProviderStatus = (
-  binaryPath?: string,
-): Effect.Effect<ServerProviderStatus, never, ChildProcessSpawner.ChildProcessSpawner> =>
-  Effect.gen(function* () {
-    const checkedAt = new Date().toISOString();
-    const executable = expandHomePath(nonEmptyTrimmed(binaryPath) ?? "opencode");
-
-    const versionProbe = yield* probeProviderCliVersion(
-      runOpenCodeCommand(["--version"], executable),
-      OPENCODE_HEALTH_TIMEOUT_MS,
-    );
-
-    if (versionProbe.outcome === "missing" || versionProbe.outcome === "failure") {
-      const error = versionProbe.cause;
-      return {
-        provider: OPENCODE_PROVIDER,
-        status: "error" as const,
-        available: false,
-        authStatus: "unknown" as const,
-        checkedAt,
-        message:
-          versionProbe.outcome === "missing"
-            ? "OpenCode CLI (`opencode`) is not installed or not on PATH."
-            : `Failed to execute OpenCode CLI health check: ${error instanceof Error ? error.message : String(error)}.`,
-      } satisfies ServerProviderStatus;
-    }
-
-    if (versionProbe.outcome === "timeout") {
-      return {
-        provider: OPENCODE_PROVIDER,
-        status: "error" as const,
-        available: false,
-        authStatus: "unknown" as const,
-        checkedAt,
-        message: `OpenCode CLI is installed but failed to run. ${PROVIDER_COMMAND_TIMEOUT_DETAIL}`,
-      } satisfies ServerProviderStatus;
-    }
-
-    if (versionProbe.outcome === "nonzero") {
-      const version = versionProbe.result;
-      const detail = detailFromResult(version);
-      return {
-        provider: OPENCODE_PROVIDER,
-        status: "error" as const,
-        available: false,
-        authStatus: "unknown" as const,
-        checkedAt,
-        message: detail
-          ? `OpenCode CLI is installed but failed to run. ${detail}`
-          : "OpenCode CLI is installed but failed to run.",
-      } satisfies ServerProviderStatus;
-    }
-    const version = versionProbe.result;
-    const parsedVersion = parseGenericCliVersion(`${version.stdout}\n${version.stderr}`);
-
-    return {
-      provider: OPENCODE_PROVIDER,
-      status: "ready" as const,
-      available: true,
-      authStatus: "unknown" as const,
-      version: parsedVersion,
-      checkedAt,
-      message:
-        "OpenCode CLI is installed. Configure provider credentials inside OpenCode as needed.",
-    } satisfies ServerProviderStatus;
-  });
-
-export const checkOpenCodeProviderStatus = makeCheckOpenCodeProviderStatus();
-
-// ── Cursor health check ─────────────────────────────────────────
-
-export const makeCheckCursorProviderStatus = (
-  binaryPath?: string,
-): Effect.Effect<ServerProviderStatus, never, ChildProcessSpawner.ChildProcessSpawner> =>
-  Effect.gen(function* () {
-    const checkedAt = new Date().toISOString();
-    const executable = resolveCursorAgentBinaryPath(nonEmptyTrimmed(binaryPath));
-
-    const versionProbe = yield* probeProviderCliVersion(
-      runCursorCommand(["--version"], executable),
-      DEFAULT_TIMEOUT_MS,
-    );
-
-    if (versionProbe.outcome === "missing" || versionProbe.outcome === "failure") {
-      const error = versionProbe.cause;
-      return {
-        provider: CURSOR_PROVIDER,
-        status: "error" as const,
-        available: false,
-        authStatus: "unknown" as const,
-        checkedAt,
-        message:
-          versionProbe.outcome === "missing"
-            ? "Cursor Agent CLI (`cursor-agent`) is not installed or not on PATH."
-            : `Failed to execute Cursor Agent CLI health check: ${error instanceof Error ? error.message : String(error)}.`,
-      } satisfies ServerProviderStatus;
-    }
-
-    if (versionProbe.outcome === "timeout") {
-      return {
-        provider: CURSOR_PROVIDER,
-        status: "error" as const,
-        available: false,
-        authStatus: "unknown" as const,
-        checkedAt,
-        message:
-          "Cursor Agent CLI is installed but failed to run. Timed out while running command.",
-      } satisfies ServerProviderStatus;
-    }
-
-    if (versionProbe.outcome === "nonzero") {
-      const version = versionProbe.result;
-      const detail = detailFromResult(version);
-      return {
-        provider: CURSOR_PROVIDER,
-        status: "error" as const,
-        available: false,
-        authStatus: "unknown" as const,
-        checkedAt,
-        message: detail
-          ? `Cursor Agent CLI is installed but failed to run. ${detail}`
-          : "Cursor Agent CLI is installed but failed to run.",
-      } satisfies ServerProviderStatus;
-    }
-    const version = versionProbe.result;
-    const parsedVersion = parseGenericCliVersion(`${version.stdout}\n${version.stderr}`);
-
-    const authProbe = yield* runCursorCommand(["status"], executable).pipe(
-      Effect.timeoutOption(DEFAULT_TIMEOUT_MS),
-      Effect.result,
-    );
-
-    if (Result.isFailure(authProbe)) {
-      const error = authProbe.failure;
-      return {
-        provider: CURSOR_PROVIDER,
-        status: "warning" as const,
-        available: true,
-        authStatus: "unknown" as const,
-        version: parsedVersion,
-        checkedAt,
-        message:
-          error instanceof Error
-            ? `Could not verify Cursor Agent authentication status: ${error.message}.`
-            : "Could not verify Cursor Agent authentication status.",
-      } satisfies ServerProviderStatus;
-    }
-
-    if (Option.isNone(authProbe.success)) {
-      return {
-        provider: CURSOR_PROVIDER,
-        status: "warning" as const,
-        available: true,
-        authStatus: "unknown" as const,
-        version: parsedVersion,
-        checkedAt,
-        message:
-          "Could not verify Cursor Agent authentication status. Timed out while running command.",
-      } satisfies ServerProviderStatus;
-    }
-
-    const parsedAuth = parseCursorAuthStatusFromOutput(authProbe.success.value);
-    if (parsedAuth.authStatus !== "authenticated") {
-      return {
-        provider: CURSOR_PROVIDER,
-        status: parsedAuth.status,
-        available: true,
-        authStatus: parsedAuth.authStatus,
-        version: parsedVersion,
-        checkedAt,
-        ...(parsedAuth.message ? { message: parsedAuth.message } : {}),
-      } satisfies ServerProviderStatus;
-    }
-
-    const modelsProbe = yield* runCursorCommand(["models"], executable).pipe(
-      Effect.timeoutOption(DEFAULT_TIMEOUT_MS),
-      Effect.result,
-    );
-
-    if (Result.isFailure(modelsProbe)) {
-      const error = modelsProbe.failure;
-      return {
-        provider: CURSOR_PROVIDER,
-        status: "warning" as const,
-        available: true,
-        authStatus: "authenticated" as const,
-        version: parsedVersion,
-        checkedAt,
-        message:
-          error instanceof Error
-            ? `Cursor Agent is authenticated, but model discovery failed: ${error.message}.`
-            : "Cursor Agent is authenticated, but model discovery failed.",
-      } satisfies ServerProviderStatus;
-    }
-
-    if (Option.isNone(modelsProbe.success)) {
-      return {
-        provider: CURSOR_PROVIDER,
-        status: "warning" as const,
-        available: true,
-        authStatus: "authenticated" as const,
-        version: parsedVersion,
-        checkedAt,
-        message:
-          "Cursor Agent is authenticated, but model discovery timed out before Glade could verify available models.",
-      } satisfies ServerProviderStatus;
-    }
-
-    const modelsResult = modelsProbe.success.value;
-    const modelsOutput = `${modelsResult.stdout}\n${modelsResult.stderr}`;
-    const modelAuth = parseCursorAuthStatusFromOutput(modelsResult);
-    if (modelAuth.authStatus === "unauthenticated") {
-      return {
-        provider: CURSOR_PROVIDER,
-        status: modelAuth.status,
-        available: true,
-        authStatus: modelAuth.authStatus,
-        version: parsedVersion,
-        checkedAt,
-        ...(modelAuth.message ? { message: modelAuth.message } : {}),
-      } satisfies ServerProviderStatus;
-    }
-    if (cursorModelsOutputHasNoModels(modelsOutput)) {
-      return {
-        provider: CURSOR_PROVIDER,
-        status: "error" as const,
-        available: false,
-        authStatus: "authenticated" as const,
-        version: parsedVersion,
-        checkedAt,
-        message:
-          "Cursor Agent is authenticated, but it reports no models available for this account.",
-      } satisfies ServerProviderStatus;
-    }
-    if (modelsResult.code !== 0) {
-      const detail = detailFromResult(modelsResult);
-      return {
-        provider: CURSOR_PROVIDER,
-        status: "warning" as const,
-        available: true,
-        authStatus: "authenticated" as const,
-        version: parsedVersion,
-        checkedAt,
-        message: detail
-          ? `Cursor Agent is authenticated, but model discovery failed. ${detail}`
-          : "Cursor Agent is authenticated, but model discovery failed.",
-      } satisfies ServerProviderStatus;
-    }
-    if (!cursorModelsOutputHasModels(modelsOutput)) {
-      return {
-        provider: CURSOR_PROVIDER,
-        status: "warning" as const,
-        available: true,
-        authStatus: "authenticated" as const,
-        version: parsedVersion,
-        checkedAt,
-        message:
-          "Cursor Agent is authenticated, but model discovery returned no recognizable model rows.",
-      } satisfies ServerProviderStatus;
-    }
-
-    return {
-      provider: CURSOR_PROVIDER,
-      status: "ready" as const,
-      available: true,
-      authStatus: "authenticated" as const,
-      version: parsedVersion,
-      checkedAt,
-    } satisfies ServerProviderStatus;
-  });
-
-export const checkCursorProviderStatus = makeCheckCursorProviderStatus();
-
 function comparableProviderVersionAdvisory(
   advisory: ServerProviderStatus["versionAdvisory"] | undefined,
 ): Omit<NonNullable<ServerProviderStatus["versionAdvisory"]>, "checkedAt"> | null {
@@ -1740,12 +1243,6 @@ export function makeProviderHealthLive(options?: { readonly providerUpdateTimeou
             return settings.providers.codex.binaryPath;
           case "claudeAgent":
             return settings.providers.claudeAgent.binaryPath;
-          case "cursor":
-            return settings.providers.cursor.binaryPath;
-          case "grok":
-            return settings.providers.grok.binaryPath;
-          case "opencode":
-            return expandHomePath(settings.providers.opencode.binaryPath);
         }
       };
 
@@ -1760,18 +1257,6 @@ export function makeProviderHealthLive(options?: { readonly providerUpdateTimeou
               updateExecutable: null,
               updateArgs: [],
               updateLockKey: null,
-            });
-          }
-          if (provider === "cursor") {
-            const command = buildCursorAgentCommand(getProviderBinaryPath(provider, settings), [
-              "update",
-            ]);
-            return makeProviderMaintenanceCapabilities({
-              provider,
-              packageName: null,
-              updateExecutable: command.command,
-              updateArgs: command.args,
-              updateLockKey: "cursor-agent",
             });
           }
           const definition = PACKAGE_MANAGED_PROVIDER_UPDATES[provider];
@@ -1920,21 +1405,6 @@ export function makeProviderHealthLive(options?: { readonly providerUpdateTimeou
                     settings.providers.claudeAgent.binaryPath,
                     serverConfig.homeDir,
                   ),
-                ),
-                checkProviderWhenEnabled(
-                  settings,
-                  CURSOR_PROVIDER,
-                  makeCheckCursorProviderStatus(settings.providers.cursor.binaryPath),
-                ),
-                checkProviderWhenEnabled(
-                  settings,
-                  GROK_PROVIDER,
-                  makeCheckGrokProviderStatus(settings.providers.grok.binaryPath),
-                ),
-                checkProviderWhenEnabled(
-                  settings,
-                  OPENCODE_PROVIDER,
-                  makeCheckOpenCodeProviderStatus(settings.providers.opencode.binaryPath),
                 ),
               ],
               {

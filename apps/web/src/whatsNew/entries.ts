@@ -304,8 +304,7 @@ export const WHATS_NEW_ENTRIES: readonly WhatsNewEntry[] = [
       {
         id: "glade-launch",
         title: "New",
-        description:
-          "Initial launch with five providers: Codex, Claude Code, Cursor, Grok, and OpenCode.",
+        description: "Initial launch with coding-agent providers.",
       },
     ],
   },

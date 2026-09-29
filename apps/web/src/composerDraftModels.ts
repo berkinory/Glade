@@ -3,12 +3,9 @@
 // Exports: Model state helpers used by persistence, actions, and the public facade.
 
 import {
-  GROK_REASONING_EFFORT_OPTIONS,
   ProviderKind,
   type ClaudeCodeEffort,
   type CodexReasoningEffort,
-  type CursorModelOptions,
-  type GrokReasoningEffort,
   type ModelSelection,
   type ModelSlug,
   type ProviderModelOptions,
@@ -17,7 +14,6 @@ import * as Schema from "effect/Schema";
 
 import {
   getDefaultModel,
-  normalizeGrokModelOptions,
   normalizeModelSlug,
   resolveModelSlugForProvider,
   resolveSelectableModel,
@@ -29,14 +25,9 @@ import { classifyProviderReasoningEffortSupport } from "./lib/codexReasoningEffo
 export const COMPOSER_PROVIDER_KINDS = [
   "codex",
   "claudeAgent",
-  "cursor",
-  "grok",
-  "opencode",
 ] as const satisfies readonly ProviderKind[];
 
 const isProviderKind = Schema.is(ProviderKind);
-
-const GROK_REASONING_EFFORT_SET = new Set<string>(GROK_REASONING_EFFORT_OPTIONS);
 
 export const LegacyCodexFields = Schema.Struct({
   effort: Schema.optionalKey(Schema.String),
@@ -100,9 +91,6 @@ function deriveEffectiveComposerModelOptions(input: {
 }
 
 export function normalizeProviderKind(value: unknown): ProviderKind | null {
-  if (value === "kilo") {
-    return "opencode";
-  }
   return isProviderKind(value) ? value : null;
 }
 
@@ -116,10 +104,6 @@ function trimStringOrUndefined(value: unknown): string | undefined {
 
 function booleanOrUndefined(value: unknown): boolean | undefined {
   return typeof value === "boolean" ? value : undefined;
-}
-
-function isGrokReasoningEffort(value: unknown): value is GrokReasoningEffort {
-  return typeof value === "string" && GROK_REASONING_EFFORT_SET.has(value);
 }
 
 export function makeModelSelection(
@@ -148,30 +132,6 @@ export function makeModelSelection(
           : {}),
         ...(typeof supportsAutoMode === "boolean" ? { supportsAutoMode } : {}),
       };
-    case "cursor":
-      return {
-        provider,
-        model,
-        ...(options
-          ? { options: options as Extract<ModelSelection, { provider: "cursor" }>["options"] }
-          : {}),
-      };
-    case "grok":
-      return {
-        provider,
-        model,
-        ...(options
-          ? { options: options as Extract<ModelSelection, { provider: "grok" }>["options"] }
-          : {}),
-      };
-    case "opencode":
-      return {
-        provider,
-        model,
-        ...(options
-          ? { options: options as Extract<ModelSelection, { provider: "opencode" }>["options"] }
-          : {}),
-      };
   }
 }
 
@@ -188,18 +148,6 @@ export function normalizeProviderModelOptions(
   const claudeCandidate =
     candidate?.claudeAgent && typeof candidate.claudeAgent === "object"
       ? (candidate.claudeAgent as Record<string, unknown>)
-      : null;
-  const cursorCandidate =
-    candidate?.cursor && typeof candidate.cursor === "object"
-      ? (candidate.cursor as Record<string, unknown>)
-      : null;
-  const grokCandidate =
-    candidate?.grok && typeof candidate.grok === "object"
-      ? (candidate.grok as Record<string, unknown>)
-      : null;
-  const openCodeCandidate =
-    candidate?.opencode && typeof candidate.opencode === "object"
-      ? (candidate.opencode as Record<string, unknown>)
       : null;
   const codexReasoningEffort: CodexReasoningEffort | undefined =
     trimStringOrUndefined(codexCandidate?.reasoningEffort) ??
@@ -251,50 +199,10 @@ export function normalizeProviderModelOptions(
         }
       : undefined;
 
-  const cursorReasoningEffort = trimStringOrUndefined(cursorCandidate?.reasoningEffort);
-  const cursorFastMode = booleanOrUndefined(cursorCandidate?.fastMode);
-  const cursorThinking = booleanOrUndefined(cursorCandidate?.thinking);
-  const cursorContextWindow = trimStringOrUndefined(cursorCandidate?.contextWindow);
-  const cursor: CursorModelOptions | undefined =
-    cursorReasoningEffort !== undefined ||
-    cursorFastMode !== undefined ||
-    cursorThinking !== undefined ||
-    cursorContextWindow !== undefined
-      ? {
-          ...(cursorReasoningEffort !== undefined
-            ? { reasoningEffort: cursorReasoningEffort }
-            : {}),
-          ...(cursorFastMode !== undefined ? { fastMode: cursorFastMode } : {}),
-          ...(cursorThinking !== undefined ? { thinking: cursorThinking } : {}),
-          ...(cursorContextWindow !== undefined ? { contextWindow: cursorContextWindow } : {}),
-        }
-      : undefined;
-
-  const grokReasoningEffort: GrokReasoningEffort | undefined = isGrokReasoningEffort(
-    grokCandidate?.reasoningEffort,
-  )
-    ? grokCandidate.reasoningEffort
-    : undefined;
-  const grok =
-    grokReasoningEffort !== undefined ? { reasoningEffort: grokReasoningEffort } : undefined;
-  const openCodeVariant = trimStringOrUndefined(openCodeCandidate?.variant);
-  const openCodeAgent = trimStringOrUndefined(openCodeCandidate?.agent);
-  const opencode =
-    openCodeVariant !== undefined || openCodeAgent !== undefined
-      ? {
-          ...(openCodeVariant !== undefined ? { variant: openCodeVariant } : {}),
-          ...(openCodeAgent !== undefined ? { agent: openCodeAgent } : {}),
-        }
-      : undefined;
-  if (!codex && !claude && !cursor && !grok && !opencode) {
-    return null;
-  }
+  if (!codex && !claude) return null;
   return {
     ...(codex ? { codex } : {}),
     ...(claude ? { claudeAgent: claude } : {}),
-    ...(cursor ? { cursor } : {}),
-    ...(grok ? { grok } : {}),
-    ...(opencode ? { opencode } : {}),
   };
 }
 
@@ -326,16 +234,7 @@ export function normalizeModelSelection(
     provider,
     provider === "codex" ? legacy?.legacyCodex : undefined,
   );
-  const options =
-    provider === "codex"
-      ? modelOptions?.codex
-      : provider === "claudeAgent"
-        ? modelOptions?.claudeAgent
-        : provider === "grok"
-          ? normalizeGrokModelOptions(model, modelOptions?.grok)
-          : provider === "cursor"
-            ? modelOptions?.cursor
-            : modelOptions?.opencode;
+  const options = provider === "codex" ? modelOptions?.codex : modelOptions?.claudeAgent;
   return makeModelSelection(
     provider,
     model,
@@ -365,18 +264,14 @@ export function reconcileProviderScopedModelSelection(
         : undefined,
     );
   }
-  if (
-    current.provider !== "codex" &&
-    current.provider !== "cursor" &&
-    current.provider !== "claudeAgent"
-  ) {
+  if (current.provider !== "codex" && current.provider !== "claudeAgent") {
     return requested;
   }
   let preservedOptions = current.options;
   const effort =
     current.provider === "claudeAgent"
       ? current.options?.effort
-      : current.provider === "codex" || current.provider === "cursor"
+      : current.provider === "codex"
         ? current.options?.reasoningEffort
         : undefined;
   if (
@@ -390,7 +285,7 @@ export function reconcileProviderScopedModelSelection(
     if (current.provider === "claudeAgent") {
       const { effort: _effort, ...remainingOptions } = current.options ?? {};
       preservedOptions = Object.keys(remainingOptions).length > 0 ? remainingOptions : undefined;
-    } else if (current.provider === "codex" || current.provider === "cursor") {
+    } else if (current.provider === "codex") {
       const { reasoningEffort: _reasoningEffort, ...remainingOptions } = current.options ?? {};
       preservedOptions = Object.keys(remainingOptions).length > 0 ? remainingOptions : undefined;
     }
@@ -443,10 +338,7 @@ export function legacySyncModelSelectionOptions(
   if (modelSelection === null) {
     return null;
   }
-  const normalizedOptions =
-    modelSelection.provider === "grok"
-      ? normalizeGrokModelOptions(modelSelection.model, modelOptions?.grok)
-      : modelOptions?.[modelSelection.provider];
+  const normalizedOptions = modelOptions?.[modelSelection.provider];
   return makeModelSelection(
     modelSelection.provider,
     modelSelection.model,
@@ -500,11 +392,7 @@ export function legacyToModelSelectionByProvider(
         const model =
           modelSelection?.provider === provider ? modelSelection.model : getDefaultModel(provider);
         if (model) {
-          result[provider] = makeModelSelection(
-            provider,
-            model,
-            provider === "grok" ? normalizeGrokModelOptions(model, modelOptions.grok) : options,
-          );
+          result[provider] = makeModelSelection(provider, model, options);
         }
       }
     }

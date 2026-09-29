@@ -2356,11 +2356,7 @@ export default function Sidebar() {
       const title =
         provider === "claudeAgent"
           ? `Imported Claude session${suffix ? ` ${suffix}` : ""}`
-          : provider === "cursor"
-            ? `Imported Cursor session${suffix ? ` ${suffix}` : ""}`
-            : provider === "opencode"
-              ? `Imported OpenCode session${suffix ? ` ${suffix}` : ""}`
-              : `Imported Codex thread${suffix ? ` ${suffix}` : ""}`;
+          : `Imported Codex thread${suffix ? ` ${suffix}` : ""}`;
       let createdThread = false;
 
       try {
@@ -5032,16 +5028,7 @@ export default function Sidebar() {
         id: "import-thread",
         label: "Import thread from...",
         description: "Attach a local thread to an existing provider session.",
-        keywords: [
-          "import",
-          "resume",
-          "thread",
-          "session",
-          "codex",
-          "claude",
-          "cursor",
-          "opencode",
-        ],
+        keywords: ["import", "resume", "thread", "session", "codex", "claude"],
         shortcutLabel: importThreadShortcutLabel,
       },
       {
@@ -6417,14 +6404,14 @@ function SidebarSearchPaletteController(props: {
   // Search keeps automation-run threads as an intent-driven escape hatch.
   const selectSidebarDisplayThreads = useMemo(() => createSidebarDisplayThreadsSelector(), []);
   const importProviderCapabilityQueries = useQueries({
-    queries: (["codex", "claudeAgent", "cursor", "opencode"] as const).map((provider) =>
+    queries: (["codex", "claudeAgent"] as const).map((provider) =>
       providerComposerCapabilitiesQueryOptions(provider),
     ),
   });
   const threads = useStore(selectAllThreads);
   const sidebarDisplayThreads = useStore(selectSidebarDisplayThreads);
   const importProviders: ReadonlyArray<ImportProviderKind> = (
-    ["codex", "claudeAgent", "cursor", "opencode"] as const
+    ["codex", "claudeAgent"] as const
   ).filter((provider, index) => supportsThreadImport(importProviderCapabilityQueries[index]?.data));
   // `threads` is rebuilt on every streamed store flush, so this projection is
   // cheap by construction (message text is cached per thread-messages array

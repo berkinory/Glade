@@ -10,13 +10,9 @@ import { ServerProviderStatus } from "@glade/contracts";
 import { Cause, Effect, FileSystem, Schema } from "effect";
 import { writeFileStringAtomically } from "../atomicWrite";
 
-const PROVIDER_STATUS_CACHE_IDS = [
-  "codex",
-  "claudeAgent",
-  "cursor",
-  "grok",
-  "opencode",
-] as const satisfies ReadonlyArray<ServerProviderStatus["provider"]>;
+const PROVIDER_STATUS_CACHE_IDS = ["codex", "claudeAgent"] as const satisfies ReadonlyArray<
+  ServerProviderStatus["provider"]
+>;
 
 const decodeProviderStatusCache = Schema.decodeUnknownEffect(
   Schema.fromJsonString(ServerProviderStatus),

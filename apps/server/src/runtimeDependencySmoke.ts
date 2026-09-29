@@ -4,12 +4,10 @@
 
 import { strict as assert } from "node:assert";
 
-import { loadAcpSdk } from "./provider/acp/AcpSdk.ts";
 import { loadClaudeAgentSdk } from "./provider/claudeAgentSdk.ts";
 
 // Keep these imports external, just like the server. Running this entrypoint
 // from app.asar exposes missing peers that the development install can hide.
-await loadAcpSdk();
 await loadClaudeAgentSdk();
 await import("open");
 await import("node-pty");

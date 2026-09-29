@@ -188,26 +188,6 @@ const listDefaultTestModels: (typeof ProviderDiscoveryService)["Service"]["listM
         ],
       },
     ],
-    cursor: [{ slug: "auto", name: "Auto" }],
-    grok: [{ slug: DEFAULT_MODEL_BY_PROVIDER.grok, name: "Grok 4.6" }],
-    opencode: [
-      { slug: "openai/gpt-5", name: "OpenAI GPT-5" },
-      {
-        slug: "deepseek/deepseek-flash",
-        name: "DeepSeek V4.1 Flash",
-        optionDescriptors: [
-          {
-            id: "variant",
-            label: "Variant",
-            type: "select",
-            options: [
-              { id: "default", label: "Default" },
-              { id: "high", label: "High" },
-            ],
-          },
-        ],
-      },
-    ],
   };
   return Effect.succeed({ models: modelsByProvider[provider] ?? [], source: "test" });
 };
@@ -419,8 +399,6 @@ function makeHarnessLayer(
           }
         : null;
     },
-    issueStdioBootstrapToken: () => "bootstrap-test-token",
-    exchangeStdioBootstrapToken: () => null,
     bindWriteAuthority: (token: string, turnId: string) => {
       const threadId = VALID_TOKENS[token];
       return threadId
@@ -454,7 +432,6 @@ function makeHarnessLayer(
       url: "http://127.0.0.1:3773/mcp",
       bearerToken: `token-for-${threadId}`,
     }),
-    stdioProxy: { command: "node", args: ["/tmp/proxy.mjs"] },
   });
 
   const threadsById = new Map(threads.map((thread) => [thread.id as string, thread]));
@@ -883,13 +860,7 @@ function makeHarnessLayer(
     listModels: options.listModels ?? listDefaultTestModels,
   } as unknown as (typeof ProviderDiscoveryService)["Service"]);
 
-  const providerKinds: ReadonlyArray<ProviderKind> = [
-    "codex",
-    "claudeAgent",
-    "cursor",
-    "grok",
-    "opencode",
-  ];
+  const providerKinds: ReadonlyArray<ProviderKind> = ["codex", "claudeAgent"];
   let providerStatuses =
     options.providerStatuses ??
     providerKinds.map(
@@ -1487,11 +1458,15 @@ describe("AgentGateway", () => {
       const response = yield* harness.callTool({
         token: "token-parent",
         name: "glade_create_thread",
-        args: { requestId: "create-grok", prompt: "analyze the feature", provider: "grok" },
+        args: {
+          requestId: "create-claude",
+          prompt: "analyze the feature",
+          provider: "claudeAgent",
+        },
       });
       assert.isFalse(isToolError(response.result), toolErrorText(response.result));
       const payload = toolResultJson(response.result);
-      assert.equal(payload.provider, "grok");
+      assert.equal(payload.provider, "claudeAgent");
       assert.strictEqual("parentThreadId" in payload, false);
 
       assert.equal(harness.dispatched.length, 3);
@@ -1501,8 +1476,8 @@ describe("AgentGateway", () => {
         // Gateway-created threads are ordinary top-level threads, not subagents.
         assert.strictEqual("parentThreadId" in create, false);
         assert.strictEqual("subagentNickname" in create, false);
-        assert.equal(create.modelSelection.provider, "grok");
-        assert.equal(create.modelSelection.model, DEFAULT_MODEL_BY_PROVIDER.grok);
+        assert.equal(create.modelSelection.provider, "claudeAgent");
+        assert.equal(create.modelSelection.model, DEFAULT_MODEL_BY_PROVIDER.claudeAgent);
         // Project and runtime mode default from the calling thread.
         assert.equal(create.projectId, PROJECT_ID);
         assert.equal(create.runtimeMode, "approval-required");
@@ -2868,8 +2843,8 @@ describe("AgentGateway", () => {
           notificationPolicy: "all",
           completionPolicy: { type: "none" },
           target: {
-            provider: "grok",
-            model: DEFAULT_MODEL_BY_PROVIDER.grok,
+            provider: "codex",
+            model: DEFAULT_MODEL_BY_PROVIDER.codex,
             options: { reasoningEffort: "ultra" },
           },
         },

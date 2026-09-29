@@ -1,17 +1,11 @@
-import { Option, Schema, SchemaIssue, SchemaTransformation, Struct } from "effect";
+import { Option, Schema, SchemaIssue, Struct } from "effect";
 import {
   ImportProjectInput,
   ImportProjectResult,
   ListProjectImportsInput,
   ListProjectImportsResult,
 } from "./projectImport";
-import {
-  ClaudeModelOptions,
-  CodexModelOptions,
-  CursorModelOptions,
-  GrokModelOptions,
-  OpenCodeModelOptions,
-} from "./model";
+import { ClaudeModelOptions, CodexModelOptions } from "./model";
 import { ProviderMentionReference, ProviderSkillReference } from "./providerDiscovery";
 import { AsyncUserInput, AsyncUserInputQuestions, AsyncUserInputResponse } from "./asyncUserInput";
 import { ProjectKind } from "./project";
@@ -61,16 +55,8 @@ export const ORCHESTRATION_WS_CHANNELS = {
   threadEvent: "orchestration.threadEvent",
 } as const;
 
-export const ProviderKind = Schema.Literals(["codex", "claudeAgent", "cursor", "grok", "opencode"]);
+export const ProviderKind = Schema.Literals(["codex", "claudeAgent"]);
 export type ProviderKind = typeof ProviderKind.Type;
-
-/**
- * Renamed provider IDs in durable payloads. Retired handoff sources retain
- * their original IDs below; they are provenance, never runnable providers.
- */
-export const LEGACY_PROVIDER_MIGRATIONS: Readonly<Record<string, ProviderKind>> = {
-  kilo: "opencode",
-};
 
 const RetiredProviderKind = Schema.Literals([
   "antigravity",
@@ -79,25 +65,15 @@ const RetiredProviderKind = Schema.Literals([
   "omp",
   "pi",
   "gemini",
+  "cursor",
+  "grok",
+  "opencode",
+  "kilo",
 ]);
 const HandoffSourceProviderKind = Schema.Union([ProviderKind, RetiredProviderKind]);
 
-/**
- * Decodes a persisted provider value, mapping legacy provider names through
- * `LEGACY_PROVIDER_MIGRATIONS`. Use for durable payloads (handoffs, snapshots)
- * where a removed provider must not make the whole row undecodable.
- */
-export const PersistedProviderKind = Schema.String.pipe(
-  Schema.decodeTo(
-    HandoffSourceProviderKind,
-    SchemaTransformation.transform({
-      // The target schema validates both active and historical source IDs.
-      decode: (provider) =>
-        (LEGACY_PROVIDER_MIGRATIONS[provider] ?? provider) as typeof HandoffSourceProviderKind.Type,
-      encode: (provider) => provider as string,
-    }),
-  ),
-);
+/** Historical provider IDs remain valid as handoff provenance only. */
+export const PersistedProviderKind = HandoffSourceProviderKind;
 export const ProviderApprovalPolicy = Schema.Literals([
   "untrusted",
   "on-failure",
@@ -127,34 +103,7 @@ export const ClaudeModelSelection = Schema.Struct({
 });
 export type ClaudeModelSelection = typeof ClaudeModelSelection.Type;
 
-export const CursorModelSelection = Schema.Struct({
-  provider: Schema.Literal("cursor"),
-  model: TrimmedNonEmptyString,
-  options: Schema.optional(CursorModelOptions),
-});
-export type CursorModelSelection = typeof CursorModelSelection.Type;
-
-export const GrokModelSelection = Schema.Struct({
-  provider: Schema.Literal("grok"),
-  model: TrimmedNonEmptyString,
-  options: Schema.optional(GrokModelOptions),
-});
-export type GrokModelSelection = typeof GrokModelSelection.Type;
-
-export const OpenCodeModelSelection = Schema.Struct({
-  provider: Schema.Literal("opencode"),
-  model: TrimmedNonEmptyString,
-  options: Schema.optional(OpenCodeModelOptions),
-});
-export type OpenCodeModelSelection = typeof OpenCodeModelSelection.Type;
-
-export const ModelSelection = Schema.Union([
-  CodexModelSelection,
-  ClaudeModelSelection,
-  CursorModelSelection,
-  GrokModelSelection,
-  OpenCodeModelSelection,
-]);
+export const ModelSelection = Schema.Union([CodexModelSelection, ClaudeModelSelection]);
 export type ModelSelection = typeof ModelSelection.Type;
 
 export const CodexProviderStartOptions = Schema.Struct({
@@ -169,27 +118,9 @@ export const ClaudeProviderStartOptions = Schema.Struct({
   enableArtifacts: Schema.optional(Schema.Boolean),
 });
 
-export const CursorProviderStartOptions = Schema.Struct({
-  binaryPath: Schema.optional(TrimmedNonEmptyString),
-  apiEndpoint: Schema.optional(TrimmedNonEmptyString),
-});
-
-export const GrokProviderStartOptions = Schema.Struct({
-  binaryPath: Schema.optional(TrimmedNonEmptyString),
-});
-
-export const OpenCodeProviderStartOptions = Schema.Struct({
-  binaryPath: Schema.optional(TrimmedNonEmptyString),
-  serverUrl: Schema.optional(TrimmedNonEmptyString),
-  experimentalWebSockets: Schema.optional(Schema.Boolean),
-});
-
 export const ProviderStartOptions = Schema.Struct({
   codex: Schema.optional(CodexProviderStartOptions),
   claudeAgent: Schema.optional(ClaudeProviderStartOptions),
-  cursor: Schema.optional(CursorProviderStartOptions),
-  grok: Schema.optional(GrokProviderStartOptions),
-  opencode: Schema.optional(OpenCodeProviderStartOptions),
 });
 export type ProviderStartOptions = typeof ProviderStartOptions.Type;
 

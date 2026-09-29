@@ -3,11 +3,8 @@
 // Layer: Web hooks
 // Depends on: useLocalStorage and the starred model storage helpers.
 
-import { useState } from "react";
-
 import {
   normalizeStarredModels,
-  seedStarredModelsFromLegacyFavorites,
   STARRED_MODELS_STORAGE_KEY,
   type StarredModel,
   StarredModelsSchema,
@@ -21,13 +18,7 @@ export function useStarredModels(): {
   toggleStarredModel: (entry: StarredModel) => void;
   unstarModel: (entry: Pick<StarredModel, "provider" | "model">) => void;
 } {
-  // Until the first edit writes the new key, legacy per-provider favourites stand in.
-  const [legacySeed] = useState(seedStarredModelsFromLegacyFavorites);
-  const [stored, setStored] = useLocalStorage(
-    STARRED_MODELS_STORAGE_KEY,
-    legacySeed,
-    StarredModelsSchema,
-  );
+  const [stored, setStored] = useLocalStorage(STARRED_MODELS_STORAGE_KEY, [], StarredModelsSchema);
   return {
     starredModels: normalizeStarredModels(stored),
     toggleStarredModel: (entry) => setStored((current) => toggleStarredModel(current, entry)),

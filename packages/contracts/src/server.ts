@@ -114,7 +114,7 @@ export const ServerProviderStatus = Schema.Struct({
       currentVersion: Schema.NullOr(TrimmedNonEmptyString),
       latestVersion: Schema.NullOr(TrimmedNonEmptyString),
       // False when Glade has no registry to learn the latest version from (a
-      // self-updating CLI like `cursor-agent`), so `status` can never leave
+      // self-updating CLI), so `status` can never leave
       // "unknown" no matter how current the install is. Absent on older servers,
       // where callers must assume a source exists and keep the legacy behavior.
       latestVersionKnowable: Schema.optional(Schema.Boolean),

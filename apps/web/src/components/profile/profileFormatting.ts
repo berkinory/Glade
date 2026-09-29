@@ -82,12 +82,6 @@ export function formatProviderLabel(provider: ProviderKind): string {
       return "Codex";
     case "claudeAgent":
       return "Claude";
-    case "cursor":
-      return "Cursor";
-    case "grok":
-      return "Grok";
-    case "opencode":
-      return "OpenCode";
   }
 }
 

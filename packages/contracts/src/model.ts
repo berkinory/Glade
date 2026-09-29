@@ -17,12 +17,7 @@ export const CLAUDE_CODE_EFFORT_OPTIONS = [
   ...CLAUDE_CODE_MODE_OPTIONS,
 ] as const;
 export type ClaudeCodeEffort = (typeof CLAUDE_CODE_EFFORT_OPTIONS)[number];
-// Union of every Grok CLI ladder. Per-model capabilities pick a subset:
-// grok-build keeps none/low/medium/high, Grok 4.5 drops none, Grok 4.6 adds xhigh.
-export const GROK_REASONING_EFFORT_OPTIONS = ["none", "low", "medium", "high", "xhigh"] as const;
-export type GrokReasoningEffort = (typeof GROK_REASONING_EFFORT_OPTIONS)[number];
-export type ProviderReasoningEffort = CodexReasoningEffort | ClaudeCodeEffort | GrokReasoningEffort;
-
+export type ProviderReasoningEffort = CodexReasoningEffort | ClaudeCodeEffort;
 export const ProviderOptionChoice = Schema.Struct({
   id: TrimmedNonEmptyString,
   label: TrimmedNonEmptyString,
@@ -85,31 +80,9 @@ export const ClaudeModelOptions = Schema.Struct({
 });
 export type ClaudeModelOptions = typeof ClaudeModelOptions.Type;
 
-export const OpenCodeModelOptions = Schema.Struct({
-  variant: Schema.optional(TrimmedNonEmptyString),
-  agent: Schema.optional(TrimmedNonEmptyString),
-});
-export type OpenCodeModelOptions = typeof OpenCodeModelOptions.Type;
-
-export const CursorModelOptions = Schema.Struct({
-  reasoningEffort: Schema.optional(TrimmedNonEmptyString),
-  fastMode: Schema.optional(Schema.Boolean),
-  thinking: Schema.optional(Schema.Boolean),
-  contextWindow: Schema.optional(Schema.String),
-});
-export type CursorModelOptions = typeof CursorModelOptions.Type;
-
-export const GrokModelOptions = Schema.Struct({
-  reasoningEffort: Schema.optional(Schema.Literals(GROK_REASONING_EFFORT_OPTIONS)),
-});
-export type GrokModelOptions = typeof GrokModelOptions.Type;
-
 export const ProviderModelOptions = Schema.Struct({
   codex: Schema.optional(CodexModelOptions),
   claudeAgent: Schema.optional(ClaudeModelOptions),
-  cursor: Schema.optional(CursorModelOptions),
-  grok: Schema.optional(GrokModelOptions),
-  opencode: Schema.optional(OpenCodeModelOptions),
 });
 export type ProviderModelOptions = typeof ProviderModelOptions.Type;
 
@@ -198,110 +171,6 @@ const CODEX_GPT_6_LUNA_CAPABILITIES: ModelCapabilities = {
     (level) => level.value !== "ultra",
   ),
 };
-
-const GROK_CLI_EFFORT_DESCRIPTIONS = {
-  low: "Quick, fast implementations",
-  medium: "Balanced effort with standard implementation and testing",
-  high: "Higher implementation quality with extensive reasoning",
-  xhigh: "Highest effort and reasoning level",
-} as const;
-
-function grokCliEffortOption(
-  value: Exclude<GrokReasoningEffort, "none">,
-  options: Pick<EffortOption, "isDefault"> = {},
-): EffortOption {
-  return {
-    value,
-    label: value === "xhigh" ? "Extra High" : `${value.charAt(0).toUpperCase()}${value.slice(1)}`,
-    description: GROK_CLI_EFFORT_DESCRIPTIONS[value],
-    ...options,
-  };
-}
-
-function grokCapabilities(reasoningEffortLevels: readonly EffortOption[]): ModelCapabilities {
-  return {
-    reasoningEffortLevels,
-    supportsFastMode: false,
-    supportsThinkingToggle: false,
-    promptInjectedEffortLevels: [],
-    contextWindowOptions: [],
-  };
-}
-
-const GROK_BUILD_CAPABILITIES = grokCapabilities([
-  { value: "none", label: "None" },
-  { value: "low", label: "Low", isDefault: true },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High" },
-]);
-
-const GROK_4_5_CAPABILITIES = grokCapabilities([
-  grokCliEffortOption("low"),
-  grokCliEffortOption("medium"),
-  grokCliEffortOption("high", { isDefault: true }),
-]);
-
-const GROK_4_6_CAPABILITIES = grokCapabilities([
-  grokCliEffortOption("low"),
-  grokCliEffortOption("medium"),
-  grokCliEffortOption("high", { isDefault: true }),
-  grokCliEffortOption("xhigh"),
-]);
-
-// Cursor's live catalog is discovered per session (see CursorAdapter.listModels);
-// these entries are the cold-start fallback and mirror the base model ids the
-// `cursor-agent` ACP session advertises, with fast/effort/thinking expressed as
-// per-model controls rather than the CLI's expanded `-fast`/`-high` slugs.
-const CURSOR_EFFORT_LABELS = {
-  none: "None",
-  minimal: "Minimal",
-  low: "Low",
-  medium: "Medium",
-  high: "High",
-  xhigh: "Extra High",
-  max: "Max",
-} as const;
-
-type CursorEffortValue = keyof typeof CURSOR_EFFORT_LABELS;
-
-function cursorCapabilities(input?: {
-  readonly efforts?: readonly CursorEffortValue[];
-  readonly defaultEffort?: CursorEffortValue;
-  readonly fast?: boolean;
-  readonly thinking?: boolean;
-}): ModelCapabilities {
-  const efforts = input?.efforts ?? [];
-  const defaultEffort =
-    input?.defaultEffort ?? (efforts.includes("high") ? "high" : efforts[efforts.length - 1]);
-  return {
-    reasoningEffortLevels: efforts.map((value) => ({
-      value,
-      label: CURSOR_EFFORT_LABELS[value],
-      ...(value === defaultEffort ? { isDefault: true as const } : {}),
-    })),
-    supportsFastMode: input?.fast ?? false,
-    supportsThinkingToggle: input?.thinking ?? false,
-    promptInjectedEffortLevels: [],
-    contextWindowOptions: [],
-  };
-}
-
-const CURSOR_CLAUDE_FULL_CAPABILITIES = cursorCapabilities({
-  efforts: ["low", "medium", "high", "xhigh", "max"],
-  thinking: true,
-  fast: true,
-});
-
-const CURSOR_CLAUDE_NO_FAST_CAPABILITIES = cursorCapabilities({
-  efforts: ["low", "medium", "high", "xhigh", "max"],
-  thinking: true,
-});
-
-const CURSOR_GPT_5_6_CAPABILITIES = cursorCapabilities({
-  efforts: ["none", "low", "medium", "high", "xhigh", "max"],
-  defaultEffort: "medium",
-  fast: true,
-});
 
 // Shared Claude building blocks. Capability shapes repeat across Claude
 // generations, so declare them once and let each model entry override only the
@@ -546,218 +415,6 @@ export const MODEL_OPTIONS_BY_PROVIDER = {
       },
     },
   ],
-  grok: [
-    {
-      slug: "grok-4.6",
-      name: "Grok 4.6",
-      capabilities: GROK_4_6_CAPABILITIES,
-    },
-  ],
-  opencode: [
-    {
-      slug: "openai/gpt-5",
-      name: "OpenAI GPT-5",
-      capabilities: EMPTY_MODEL_CAPABILITIES,
-    },
-  ],
-  cursor: [
-    {
-      // Cursor exposes auto as the `default` model id over ACP; the adapter maps it.
-      slug: "auto",
-      name: "Auto",
-      capabilities: cursorCapabilities(),
-    },
-    {
-      slug: "composer-2.5",
-      name: "Composer 2.5",
-      capabilities: cursorCapabilities({ fast: true }),
-    },
-    {
-      slug: "claude-opus-5",
-      name: "Claude Opus 5",
-      capabilities: CURSOR_CLAUDE_FULL_CAPABILITIES,
-    },
-    {
-      slug: "claude-opus-4-8",
-      name: "Claude Opus 4.8",
-      capabilities: CURSOR_CLAUDE_FULL_CAPABILITIES,
-    },
-    {
-      slug: "claude-opus-4-7",
-      name: "Claude Opus 4.7",
-      capabilities: CURSOR_CLAUDE_FULL_CAPABILITIES,
-    },
-    {
-      slug: "claude-opus-4-6",
-      name: "Claude Opus 4.6",
-      capabilities: cursorCapabilities({ efforts: ["high", "max"], thinking: true }),
-    },
-    {
-      slug: "claude-opus-4-5",
-      name: "Claude Opus 4.5",
-      capabilities: cursorCapabilities({ efforts: ["high"], thinking: true }),
-    },
-    {
-      slug: "claude-fable-5",
-      name: "Claude Fable 5",
-      capabilities: CURSOR_CLAUDE_NO_FAST_CAPABILITIES,
-    },
-    {
-      slug: "claude-sonnet-5",
-      name: "Claude Sonnet 5",
-      capabilities: CURSOR_CLAUDE_NO_FAST_CAPABILITIES,
-    },
-    {
-      slug: "claude-sonnet-4-6",
-      name: "Claude Sonnet 4.6",
-      capabilities: cursorCapabilities({ efforts: ["medium"], thinking: true }),
-    },
-    {
-      slug: "claude-sonnet-4-5",
-      name: "Claude Sonnet 4.5",
-      capabilities: cursorCapabilities({ thinking: true }),
-    },
-    {
-      slug: "claude-sonnet-4",
-      name: "Claude Sonnet 4",
-      capabilities: cursorCapabilities({ thinking: true }),
-    },
-    {
-      slug: "claude-haiku-4-5",
-      name: "Claude Haiku 4.5",
-      capabilities: cursorCapabilities(),
-    },
-    {
-      slug: "gpt-5.6-sol",
-      name: "GPT-5.6 Sol",
-      capabilities: CURSOR_GPT_5_6_CAPABILITIES,
-    },
-    {
-      slug: "gpt-5.6-terra",
-      name: "GPT-5.6 Terra",
-      capabilities: CURSOR_GPT_5_6_CAPABILITIES,
-    },
-    {
-      slug: "gpt-5.6-luna",
-      name: "GPT-5.6 Luna",
-      capabilities: CURSOR_GPT_5_6_CAPABILITIES,
-    },
-    {
-      slug: "gpt-5.5",
-      name: "GPT-5.5",
-      capabilities: cursorCapabilities({
-        efforts: ["none", "low", "medium", "high", "xhigh"],
-        defaultEffort: "medium",
-        fast: true,
-      }),
-    },
-    {
-      slug: "gpt-5.4",
-      name: "GPT-5.4",
-      capabilities: cursorCapabilities({
-        efforts: ["none", "low", "medium", "high", "xhigh"],
-        defaultEffort: "medium",
-        fast: true,
-      }),
-    },
-    {
-      slug: "gpt-5.4-mini",
-      name: "GPT-5.4 Mini",
-      capabilities: cursorCapabilities({
-        efforts: ["none", "low", "medium", "high", "xhigh"],
-        defaultEffort: "medium",
-      }),
-    },
-    {
-      slug: "gpt-5.4-nano",
-      name: "GPT-5.4 Nano",
-      capabilities: cursorCapabilities({
-        efforts: ["none", "low", "medium", "high", "xhigh"],
-        defaultEffort: "medium",
-      }),
-    },
-    {
-      slug: "gpt-5.3-codex",
-      name: "GPT-5.3 Codex",
-      capabilities: cursorCapabilities({
-        efforts: ["low", "medium", "high", "xhigh"],
-        fast: true,
-      }),
-    },
-    {
-      slug: "gpt-5.2",
-      name: "GPT-5.2",
-      capabilities: cursorCapabilities({
-        efforts: ["low", "medium", "high", "xhigh"],
-        fast: true,
-      }),
-    },
-    {
-      slug: "gpt-5.1",
-      name: "GPT-5.1",
-      capabilities: cursorCapabilities({ efforts: ["low", "medium", "high"] }),
-    },
-    {
-      slug: "gpt-5-mini",
-      name: "GPT-5 Mini",
-      capabilities: cursorCapabilities(),
-    },
-    {
-      slug: "grok-4.5",
-      name: "Grok 4.5",
-      capabilities: cursorCapabilities({
-        efforts: ["low", "medium", "high"],
-        defaultEffort: "high",
-        fast: true,
-      }),
-    },
-    {
-      slug: "grok-4.6",
-      name: "Grok 4.6",
-      capabilities: cursorCapabilities({
-        efforts: ["low", "medium", "high", "xhigh"],
-        defaultEffort: "high",
-        fast: true,
-      }),
-    },
-    {
-      slug: "gemini-3.1-pro",
-      name: "Gemini 3.1 Pro",
-      capabilities: cursorCapabilities(),
-    },
-    {
-      slug: "gemini-3.6-flash",
-      name: "Gemini 3.6 Flash",
-      capabilities: cursorCapabilities({
-        efforts: ["minimal", "low", "medium", "high"],
-      }),
-    },
-    {
-      slug: "gemini-3.5-flash",
-      name: "Gemini 3.5 Flash",
-      capabilities: cursorCapabilities(),
-    },
-    {
-      slug: "gemini-3-flash",
-      name: "Gemini 3 Flash",
-      capabilities: cursorCapabilities(),
-    },
-    {
-      slug: "gemini-2.5-flash",
-      name: "Gemini 2.5 Flash",
-      capabilities: cursorCapabilities(),
-    },
-    {
-      slug: "kimi-k2.7-code",
-      name: "Kimi K2.7 Code",
-      capabilities: cursorCapabilities(),
-    },
-    {
-      slug: "glm-5.2",
-      name: "GLM 5.2",
-      capabilities: cursorCapabilities({ efforts: ["high", "max"] }),
-    },
-  ],
 } as const satisfies Record<ProviderKind, readonly ModelDefinition[]>;
 export type ModelOptionsByProvider = typeof MODEL_OPTIONS_BY_PROVIDER;
 
@@ -769,9 +426,6 @@ export type ProviderWithDefaultModel = ProviderKind;
 export const DEFAULT_MODEL_BY_PROVIDER: Record<ProviderWithDefaultModel, ModelSlug> = {
   codex: "gpt-6-astra",
   claudeAgent: "claude-sonnet-5",
-  cursor: "auto",
-  grok: "grok-4.6",
-  opencode: "openai/gpt-5",
 };
 
 // Backward compatibility for existing Codex-only call sites.
@@ -785,11 +439,7 @@ export const DEFAULT_GIT_TEXT_GENERATION_REASONING_EFFORT = "high" as const;
  * driving them as coding agents for commit/PR text can run with write access
  * or violate provider terms.
  */
-export const GIT_TEXT_GENERATION_PROVIDERS = [
-  "codex",
-  "cursor",
-  "opencode",
-] as const satisfies readonly ProviderKind[];
+export const GIT_TEXT_GENERATION_PROVIDERS = ["codex"] as const satisfies readonly ProviderKind[];
 export type GitTextGenerationProvider = (typeof GIT_TEXT_GENERATION_PROVIDERS)[number];
 
 export const MODEL_SLUG_ALIASES_BY_PROVIDER: Record<ProviderKind, Record<string, ModelSlug>> = {
@@ -842,60 +492,6 @@ export const MODEL_SLUG_ALIASES_BY_PROVIDER: Record<ProviderKind, Record<string,
     "claude-haiku-4.5": "claude-haiku-4-5",
     "claude-haiku-4-5-20251001": "claude-haiku-4-5",
   },
-  // Retired Cursor slugs are remapped, not dropped: the agent answers -32602 for
-  // ids it no longer serves, so persisted selections must migrate to live ones.
-  cursor: {
-    auto: "auto",
-    default: "auto",
-    composer: "composer-2.5",
-    "composer-2.5": "composer-2.5",
-    "composer-2": "composer-2.5",
-    opus: "claude-opus-5",
-    "opus-5": "claude-opus-5",
-    "opus-4.8": "claude-opus-4-8",
-    "opus-4.7": "claude-opus-4-7",
-    "opus-4.6": "claude-opus-4-6",
-    "opus-4.6-thinking": "claude-opus-4-6",
-    sonnet: "claude-sonnet-5",
-    "sonnet-5": "claude-sonnet-5",
-    "sonnet-4.6": "claude-sonnet-4-6",
-    fable: "claude-fable-5",
-    "fable-5": "claude-fable-5",
-    sol: "gpt-5.6-sol",
-    "5.6": "gpt-5.6-sol",
-    "gpt-5.3": "gpt-5.3-codex",
-    "codex-5.3": "gpt-5.3-codex",
-    grok: "grok-4.6",
-    "grok-4.5": "grok-4.5",
-    "grok-4.6": "grok-4.6",
-    "cursor-grok-4.5": "grok-4.5",
-    "cursor-grok-4.6": "grok-4.6",
-    gemini: "gemini-3.1-pro",
-    "gemini-3": "gemini-3.1-pro",
-    "gemini-3-pro": "gemini-3.1-pro",
-    "gemini-3.1-pro-preview": "gemini-3.1-pro",
-    glm: "glm-5.2",
-    kimi: "kimi-k2.7-code",
-  },
-  grok: {
-    grok: "grok-build-0.1",
-    build: "grok-build-0.1",
-    "grok-build-0.1": "grok-build-0.1",
-    "grok-build": "grok-build",
-    "4.3": "grok-build",
-    "grok-4": "grok-build",
-    "grok-4.3": "grok-build",
-    "grok-latest": "grok-build",
-    "grok-code-fast": "grok-build-0.1",
-    "grok-code-fast-1": "grok-build-0.1",
-    "grok-code-fast-1-0825": "grok-build-0.1",
-    "code-fast": "grok-build-0.1",
-    "4.5": "grok-4.5",
-    "grok-4.5": "grok-4.5",
-    "4.6": "grok-4.6",
-    "grok-4.6": "grok-4.6",
-  },
-  opencode: {},
 };
 
 // ── Agent mention aliases ─────────────────────────────────────────────
@@ -920,18 +516,9 @@ export const MODEL_CAPABILITIES_INDEX = Object.fromEntries(
   ]),
 ) as unknown as Record<ProviderKind, Record<string, ModelCapabilities>>;
 
-Object.assign(MODEL_CAPABILITIES_INDEX.grok, {
-  "grok-build-0.1": GROK_BUILD_CAPABILITIES,
-  "grok-build": GROK_BUILD_CAPABILITIES,
-  "grok-4.5": GROK_4_5_CAPABILITIES,
-});
-
 // ── Provider display names ────────────────────────────────────────────
 
 export const PROVIDER_DISPLAY_NAMES: Record<ProviderKind, string> = {
   codex: "Codex",
   claudeAgent: "Claude",
-  cursor: "Cursor",
-  grok: "Grok",
-  opencode: "OpenCode",
 };

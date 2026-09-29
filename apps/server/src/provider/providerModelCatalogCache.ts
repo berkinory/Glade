@@ -2,7 +2,7 @@
  * Durable provider model catalog cache.
  *
  * The in-memory discovery cache (providerModelDiscoveryCache.ts) forgets
- * everything on restart, so the first picker open after boot paid full CLI/ACP
+ * everything on restart, so the first picker open after boot paid full CLI
  * discovery again. Persisting catalog snapshots to `stateDir` lets a restart
  * serve last-known models instantly while stale-while-revalidate refreshes
  * them in the background. The file is never authoritative over fresh probes.

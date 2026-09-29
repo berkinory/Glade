@@ -386,10 +386,6 @@ export function PluginLibrary() {
   const serverConfigQuery = useQuery(serverConfigQueryOptions());
   const codexCapabilitiesQuery = useQuery(providerComposerCapabilitiesQueryOptions("codex"));
   const claudeCapabilitiesQuery = useQuery(providerComposerCapabilitiesQueryOptions("claudeAgent"));
-  const cursorCapabilitiesQuery = useQuery(providerComposerCapabilitiesQueryOptions("cursor"));
-  const grokCapabilitiesQuery = useQuery(providerComposerCapabilitiesQueryOptions("grok"));
-  const openCodeCapabilitiesQuery = useQuery(providerComposerCapabilitiesQueryOptions("opencode"));
-
   const providerCapabilities: Record<ProviderKind, ProviderCapabilities> = {
     codex: {
       plugins: supportsPluginDiscovery(codexCapabilitiesQuery.data),
@@ -398,18 +394,6 @@ export function PluginLibrary() {
     claudeAgent: {
       plugins: supportsPluginDiscovery(claudeCapabilitiesQuery.data),
       skills: supportsSkillDiscovery(claudeCapabilitiesQuery.data),
-    },
-    cursor: {
-      plugins: supportsPluginDiscovery(cursorCapabilitiesQuery.data),
-      skills: supportsSkillDiscovery(cursorCapabilitiesQuery.data),
-    },
-    grok: {
-      plugins: supportsPluginDiscovery(grokCapabilitiesQuery.data),
-      skills: supportsSkillDiscovery(grokCapabilitiesQuery.data),
-    },
-    opencode: {
-      plugins: supportsPluginDiscovery(openCodeCapabilitiesQuery.data),
-      skills: supportsSkillDiscovery(openCodeCapabilitiesQuery.data),
     },
   };
 

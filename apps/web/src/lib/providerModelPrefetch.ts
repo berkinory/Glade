@@ -24,12 +24,7 @@ import {
 
 export type ProviderModelPrefetchSettings = Pick<
   AppSettings,
-  | "defaultProvider"
-  | "claudeBinaryPath"
-  | "cursorBinaryPath"
-  | "cursorApiEndpoint"
-  | "grokBinaryPath"
-  | "openCodeBinaryPath"
+  "defaultProvider" | "claudeBinaryPath"
 >;
 
 /**
@@ -39,9 +34,6 @@ export type ProviderModelPrefetchSettings = Pick<
 export const NEW_THREAD_MODEL_PREFETCH_PROVIDERS: ReadonlyArray<ProviderKind> = [
   "codex",
   "claudeAgent",
-  "cursor",
-  "grok",
-  "opencode",
   // Catalog discovery is cached and safe to
   // keep warm across hover/mount prefetches.
 ];
@@ -126,26 +118,6 @@ export function providerModelsPrefetchQueryOptions(input: {
       });
     case "codex":
       return providerModelsQueryOptions({ provider: "codex", priority });
-    case "cursor":
-      return providerModelsQueryOptions({
-        provider: "cursor",
-        binaryPath: settings.cursorBinaryPath || null,
-        apiEndpoint: settings.cursorApiEndpoint || null,
-        priority,
-      });
-    case "grok":
-      return providerModelsQueryOptions({
-        provider: "grok",
-        binaryPath: settings.grokBinaryPath || null,
-        priority,
-      });
-    case "opencode":
-      return providerModelsQueryOptions({
-        provider: "opencode",
-        binaryPath: settings.openCodeBinaryPath || null,
-        cwd,
-        priority,
-      });
   }
 }
 
@@ -162,12 +134,6 @@ function providerAgentsPrefetchQueryOptions(input: {
       return providerAgentsQueryOptions({ provider: "claudeAgent" });
     case "codex":
       return providerAgentsQueryOptions({ provider: "codex" });
-    case "opencode":
-      return providerAgentsQueryOptions({
-        provider: "opencode",
-        binaryPath: settings.openCodeBinaryPath || null,
-        cwd,
-      });
     default:
       return null;
   }

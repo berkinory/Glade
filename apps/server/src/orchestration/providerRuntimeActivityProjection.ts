@@ -806,12 +806,7 @@ export function projectProviderRuntimeActivities(
           createdAt: event.createdAt,
           tone: "info",
           kind: "runtime.warning",
-          summary: isBackgroundMove
-            ? "Moved to background"
-            : event.provider === "opencode" &&
-                (nativeType === "session.next.retried" || nativeType === "session.status")
-              ? "OpenCode retrying"
-              : "Runtime warning",
+          summary: isBackgroundMove ? "Moved to background" : "Runtime warning",
           // Keep the user-visible message even when raw detail is structured.
           payload: toActivityPayload({
             message,

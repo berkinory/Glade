@@ -8,18 +8,10 @@
  * - Codex: `[mcp_servers.glade]` TOML block (streamable HTTP +
  *   `bearer_token_env_var` resolved from the per-session process env).
  * - Claude Agent SDK: `mcpServers` record with an HTTP entry.
- * - ACP agents (cursor/grok): `mcpServers` session entries; HTTP when
- *   the agent advertises `mcpCapabilities.http`, otherwise a stdio proxy that
- *   forwards to the HTTP endpoint.
  *
  * @module agentGateway/mcpInjection
  */
-import type * as Acp from "@agentclientprotocol/sdk";
-
-import type {
-  AgentGatewayMcpConnection,
-  AgentGatewayStdioProxySpawn,
-} from "./Services/AgentGatewayCredentials.ts";
+import type { AgentGatewayMcpConnection } from "./Services/AgentGatewayCredentials.ts";
 
 export const GLADE_MCP_SERVER_NAME = "glade";
 export const GLADE_AGENT_GATEWAY_TOKEN_ENV = "GLADE_AGENT_GATEWAY_TOKEN";
@@ -56,32 +48,6 @@ export interface ClaudeMcpHttpServerConfig {
   readonly type: "http";
   readonly url: string;
   readonly headers: Record<string, string>;
-}
-
-export interface OpenCodeMcpRemoteServerConfig {
-  readonly type: "remote";
-  readonly url: string;
-  readonly enabled: true;
-  readonly headers: Record<string, string>;
-  readonly oauth: false;
-}
-
-/**
- * OpenCode's dynamic `mcp.add` endpoint is server/directory scoped rather
- * than session scoped. Callers must install this config through either a
- * provider process dedicated to the owning Glade thread or an exclusive
- * external-server/directory lock held for the full agent turn.
- */
-export function buildOpenCodeMcpServer(
-  connection: AgentGatewayMcpConnection,
-): OpenCodeMcpRemoteServerConfig {
-  return {
-    type: "remote",
-    url: connection.url,
-    enabled: true,
-    headers: { Authorization: authorizationHeader(connection) },
-    oauth: false,
-  };
 }
 
 export interface AgentGatewayMcpToolDescriptor {
@@ -197,51 +163,4 @@ export function buildClaudeMcpServers(
       headers: { Authorization: authorizationHeader(connection) },
     },
   };
-}
-
-export type AcpStdioProxySpawn = AgentGatewayStdioProxySpawn;
-
-// Structural view of an ACP initialize response so callers with untyped
-// (raw JSON) responses can reuse the same transport negotiation.
-export interface AcpInitializeCapabilitiesView {
-  readonly agentCapabilities?: {
-    readonly mcpCapabilities?: {
-      readonly http?: boolean;
-    };
-  } | null;
-}
-
-/**
- * Build the `mcpServers` entries for an ACP `session/new` / `session/load`
- * payload. Prefers the HTTP transport when the agent advertises support and
- * falls back to the stdio->HTTP proxy script otherwise (stdio is the ACP
- * baseline every agent must accept).
- */
-export function buildAcpGladeMcpServers(input: {
-  readonly connection: AgentGatewayMcpConnection;
-  readonly initializeResult: AcpInitializeCapabilitiesView;
-  readonly stdioProxy: AcpStdioProxySpawn;
-}): Array<Acp.McpServer> {
-  const supportsHttp = input.initializeResult.agentCapabilities?.mcpCapabilities?.http === true;
-  if (supportsHttp) {
-    return [
-      {
-        type: "http",
-        name: GLADE_MCP_SERVER_NAME,
-        url: input.connection.url,
-        headers: [{ name: "Authorization", value: authorizationHeader(input.connection) }],
-      },
-    ];
-  }
-  return [
-    {
-      name: GLADE_MCP_SERVER_NAME,
-      command: input.stdioProxy.command,
-      args: [...input.stdioProxy.args],
-      env: [
-        { name: GLADE_AGENT_GATEWAY_URL_ENV, value: input.connection.url },
-        { name: GLADE_AGENT_GATEWAY_TOKEN_ENV, value: input.connection.bearerToken },
-      ],
-    },
-  ];
 }

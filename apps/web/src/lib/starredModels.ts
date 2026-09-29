@@ -1,13 +1,11 @@
 // FILE: starredModels.ts
 // Purpose: Storage schema + pure helpers for starred model presets (provider + model + traits).
 // Layer: Web local-storage helpers used by the composer model picker and model cycle shortcuts.
-// Depends on: legacy per-provider favorite slugs (modelFavorites) for the one-time seed.
 
 import type { ProviderKind } from "@glade/contracts";
 import { Schema } from "effect";
 
 import { isProviderKind } from "../providerOrdering";
-import { FAVORITE_MODEL_STORAGE_KEYS, readFavoriteModelSlugs } from "./modelFavorites";
 
 export const STARRED_MODELS_STORAGE_KEY = "glade:starred-models:v1";
 
@@ -91,26 +89,10 @@ export function unstarModel(
   );
 }
 
-// Legacy per-provider favorites become trait-less presets until the user first edits stars.
-export function seedStarredModelsFromLegacyFavorites(): StoredStarredModel[] {
-  const providers = Object.keys(FAVORITE_MODEL_STORAGE_KEYS) as Array<
-    keyof typeof FAVORITE_MODEL_STORAGE_KEYS
-  >;
-  return providers.flatMap((provider) =>
-    readFavoriteModelSlugs(provider).map((model) => ({
-      provider,
-      model,
-      effort: null,
-      fastMode: null,
-      thinking: null,
-    })),
-  );
-}
-
 function readStoredStarredModels(): ReadonlyArray<StarredModel> {
   try {
     const raw = globalThis.localStorage?.getItem(STARRED_MODELS_STORAGE_KEY);
-    if (!raw) return normalizeStarredModels(seedStarredModelsFromLegacyFavorites());
+    if (!raw) return [];
     return normalizeStarredModels(
       Schema.decodeUnknownSync(StarredModelsSchema)(JSON.parse(raw) as unknown),
     );
@@ -119,10 +101,10 @@ function readStoredStarredModels(): ReadonlyArray<StarredModel> {
   }
 }
 
-// Model slugs the cycle shortcut should prefer: starred presets plus legacy favorites.
+// Model slugs the cycle shortcut should prefer.
 export function readStarredModelSlugs(provider: ProviderKind): string[] {
   const starred = readStoredStarredModels()
     .filter((entry) => entry.provider === provider)
     .map((entry) => entry.model);
-  return Array.from(new Set([...starred, ...readFavoriteModelSlugs(provider)]));
+  return Array.from(new Set(starred));
 }

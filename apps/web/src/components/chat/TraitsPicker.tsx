@@ -4,7 +4,6 @@
 // Depends on: shared trait resolution helpers, provider model option updates, and shared menu primitives.
 
 import {
-  type OpenCodeModelOptions,
   type ProviderAgentDescriptor,
   type ProviderKind,
   type ProviderModelDescriptor,
@@ -37,50 +36,6 @@ import {
 import { useComposerTraitCommit } from "./useComposerTraitCommit";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { ShortcutKbd } from "../ui/shortcut-kbd";
-
-export function defaultAgentForProvider(provider: ProviderKind): string | null {
-  if (provider === "opencode") return "build";
-  return null;
-}
-
-export function getAgentOptions(
-  provider: ProviderKind,
-  runtimeAgents: ReadonlyArray<ProviderAgentDescriptor> | null | undefined,
-): ReadonlyArray<ProviderAgentDescriptor> {
-  if (provider !== "opencode") return [];
-  return runtimeAgents ?? [];
-}
-
-export function getSelectedAgentValue(
-  provider: ProviderKind,
-  modelOptions: ProviderOptions | null | undefined,
-): string | null {
-  const defaultAgent = defaultAgentForProvider(provider);
-  if (!defaultAgent) return null;
-  const selectedAgent = (modelOptions as OpenCodeModelOptions | undefined)?.agent?.trim();
-  return selectedAgent && selectedAgent.length > 0 ? selectedAgent : defaultAgent;
-}
-
-// Whether the Agent radio section renders for this provider/runtime pair; lets
-// hosts decide on separators before TraitsMenuContent mounts.
-export function hasComposerAgentControls(
-  provider: ProviderKind,
-  runtimeAgents: ReadonlyArray<ProviderAgentDescriptor> | null | undefined,
-): boolean {
-  return (
-    getAgentOptions(provider, runtimeAgents).length > 0 &&
-    defaultAgentForProvider(provider) !== null
-  );
-}
-
-function findAgentLabel(
-  agents: ReadonlyArray<ProviderAgentDescriptor>,
-  value: string | null,
-): string | null {
-  if (!value) return null;
-  const agent = agents.find((candidate) => candidate.name === value);
-  return agent?.displayName ?? value;
-}
 
 // Mirrors the trigger label assembly so callers (e.g. the composer footer
 // width planner) can measure the summary without rendering the picker.
@@ -129,20 +84,14 @@ export function resolveTraitsTriggerSummary(options: {
     contextWindowOptions.length > 1 && contextWindow !== defaultContextWindow
       ? (contextWindowOptions.find((option) => option.value === contextWindow)?.label ?? null)
       : null;
-  const agentOptions = getAgentOptions(options.provider, options.runtimeAgents);
-  const selectedAgent = getSelectedAgentValue(options.provider, options.modelOptions);
-  const agentLabel = findAgentLabel(agentOptions, selectedAgent);
-  // Agent name stands in as the primary label for agent-driven providers
-  // (opencode) that expose no effort/thinking controls.
-  const resolvedPrimaryLabel = primaryLabel ?? agentLabel;
   const showsFastBadge = showsComposerFastModeBadge(selection) && !isFastOnlyControl;
-  const summaryText = [resolvedPrimaryLabel, showsFastBadge ? "Fast" : null, contextWindowLabel]
+  const summaryText = [primaryLabel, showsFastBadge ? "Fast" : null, contextWindowLabel]
     .filter((value): value is string => Boolean(value))
     .join(" · ");
 
   return {
     contextWindowLabel,
-    primaryLabel: resolvedPrimaryLabel,
+    primaryLabel: primaryLabel,
     showsFastBadge,
     summaryText,
   };
@@ -331,10 +280,6 @@ export const TraitsMenuContent = memo(function TraitsMenuContentImpl({
   // standalone radio section instead.
   const showsFastModeEffortToggle =
     includeFastMode && supportsFastModeControl && effortLevels.length > 0;
-  const agentOptions = getAgentOptions(provider, runtimeAgents);
-  const defaultAgent = defaultAgentForProvider(provider);
-  const selectedAgent = getSelectedAgentValue(provider, modelOptions);
-  const hasAgentControls = agentOptions.length > 0 && defaultAgent !== null;
   const hasPriorContextWindowSection = thinkingEnabled !== null;
   // Resolved up here rather than inline. React Compiler cannot lower a `??` in an object-key
   // position, which would make it skip this component entirely.
@@ -371,7 +316,7 @@ export const TraitsMenuContent = memo(function TraitsMenuContentImpl({
     commitTrait(plan.patch);
   };
 
-  if (!hasVisibleControls && !hasAgentControls) {
+  if (!hasVisibleControls) {
     return null;
   }
 
@@ -409,7 +354,7 @@ export const TraitsMenuContent = memo(function TraitsMenuContentImpl({
         <>
           {hasPriorEffortSection ? <MenuDivider /> : null}
           <TraitRadioSection
-            label={provider === "opencode" ? "Variant" : "Effort"}
+            label="Effort"
             labelTrailing={
               showsFastModeEffortToggle ? (
                 <FastModeToggle
@@ -451,26 +396,6 @@ export const TraitsMenuContent = memo(function TraitsMenuContentImpl({
               { value: "on", label: "Fast" },
             ]}
             onValueChange={(value) => commitTrait({ fastMode: value === "on" })}
-            onSelectionComplete={onSelectionComplete}
-          />
-        </>
-      ) : null}
-      {hasAgentControls ? (
-        <>
-          {hasVisibleControls ? <MenuDivider /> : null}
-          <TraitRadioSection
-            label="Agent"
-            value={selectedAgent ?? defaultAgent ?? ""}
-            options={agentOptions.map((agent) => ({
-              value: agent.name,
-              label: agent.displayName,
-              isDefault: agent.name === defaultAgent,
-              description: agent.description ?? null,
-            }))}
-            onValueChange={(value) => {
-              if (!value || !defaultAgent) return;
-              commitTrait({ agent: value === defaultAgent ? undefined : value });
-            }}
             onSelectionComplete={onSelectionComplete}
           />
         </>
@@ -544,11 +469,7 @@ export const TraitsPicker = memo(function TraitsPicker({
     { caps, effortLevels, thinkingEnabled, contextWindowOptions, fastModeDescriptor },
     { includeFastMode },
   );
-  const agentOptions = getAgentOptions(provider, runtimeAgents);
-  const defaultAgent = defaultAgentForProvider(provider);
-  const hasAgentControls = agentOptions.length > 0 && defaultAgent !== null;
-
-  if (!hasVisibleControls && !hasAgentControls) {
+  if (!hasVisibleControls) {
     return null;
   }
 

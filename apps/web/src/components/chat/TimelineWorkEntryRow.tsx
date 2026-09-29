@@ -313,7 +313,7 @@ function isGitHubMcpToolCall(workEntry: TimelineWorkEntry): boolean {
 
 // Glade's own agent-gateway tools (glade_list_threads, glade_create_thread,
 // ...) get the Glade mark instead of the generic MCP glyph. Providers report
-// the call differently: Claude prefixes the MCP server (mcp__glade__*), ACP
+// the call differently: Claude prefixes the MCP server (mcp__glade__*), other providers
 // agents surface the bare tool name (glade_*), and Codex reports server/tool
 // pairs that the label humanizer renders as "Glade: ...".
 function toolWorkEntryStatus(workEntry: TimelineWorkEntry): GladeMcpToolStatus {

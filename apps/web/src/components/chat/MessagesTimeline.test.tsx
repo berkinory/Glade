@@ -193,7 +193,7 @@ describe("MessagesTimeline", () => {
               tone: "error",
               activityKind: "provider.context.changed",
               providerContextLifecycle: {
-                provider: "opencode",
+                provider: "codex",
                 nativeHistory: "unavailable",
                 restartReason: "native-resume-failed",
                 sessionRestarted: true,

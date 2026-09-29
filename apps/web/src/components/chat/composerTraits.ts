@@ -21,37 +21,6 @@ import { getRuntimeAwareModelCapabilities } from "./runtimeModelCapabilities";
 
 const ULTRATHINK_PROMPT_PREFIX = "Ultrathink:\n";
 
-function getCursorBooleanModelParameter(
-  model: string | null | undefined,
-  key: "fast" | "thinking",
-): boolean | null {
-  const slug = typeof model === "string" ? model.trim().toLowerCase() : "";
-  const match = typeof model === "string" ? model.match(/\[([^\]]*)\]$/u) : null;
-  if (!match?.[1]) {
-    if (key === "fast" && slug.endsWith("-fast")) {
-      return true;
-    }
-    if (key === "thinking" && slug.includes("-thinking")) {
-      return true;
-    }
-    return null;
-  }
-  for (const part of match[1].split(",")) {
-    const [rawKey, rawValue] = part.split("=");
-    if (rawKey?.trim() !== key) {
-      continue;
-    }
-    const value = rawValue?.trim().toLowerCase();
-    if (value === "true") {
-      return true;
-    }
-    if (value === "false") {
-      return false;
-    }
-  }
-  return null;
-}
-
 function asSelectDescriptor(
   descriptor: ProviderOptionDescriptor | undefined,
 ): Extract<ProviderOptionDescriptor, { type: "select" }> | null {
@@ -145,18 +114,8 @@ export function getComposerTraitSelection(
   const isPromptInjected = resolvedEffort ? promptInjectedValues.includes(resolvedEffort) : false;
   const effort = resolvedEffort && !isPromptInjected ? resolvedEffort : defaultEffort;
 
-  const thinkingEnabled = thinkingDescriptor
-    ? provider === "cursor"
-      ? (thinkingDescriptor.currentValue ??
-        getCursorBooleanModelParameter(model, "thinking") ??
-        true)
-      : (thinkingDescriptor.currentValue ?? true)
-    : null;
-
-  const fastModeEnabled =
-    Boolean(fastModeDescriptor) &&
-    (fastModeDescriptor?.currentValue ??
-      (provider === "cursor" ? getCursorBooleanModelParameter(model, "fast") : false)) === true;
+  const thinkingEnabled = thinkingDescriptor ? (thinkingDescriptor.currentValue ?? true) : null;
+  const fastModeEnabled = Boolean(fastModeDescriptor) && fastModeDescriptor?.currentValue === true;
 
   const contextWindow = resolvedContextWindow ?? defaultContextWindow;
 
@@ -248,7 +207,6 @@ export function hasVisibleComposerTraitControls(
 
 // Persisted option key for the primary effort ladder when the descriptor is missing.
 function fallbackEffortOptionId(provider: ProviderKind): string {
-  if (provider === "opencode") return "variant";
   if (provider === "claudeAgent") return "effort";
   return "reasoningEffort";
 }

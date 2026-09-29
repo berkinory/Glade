@@ -50,10 +50,7 @@ import {
   type CodexAppServerSendTurnInput,
   type CodexAppServerStartSessionInput,
 } from "../../codexAppServerManager.ts";
-import {
-  evaluateAcpTurnIdleTick,
-  resolveAcpTurnIdleTimeoutMs,
-} from "../acp/AcpTurnIdleWatchdog.ts";
+import { evaluateTurnIdleTick, resolveTurnIdleTimeoutMs } from "../turnIdleTimeout.ts";
 import { AgentGatewayCredentials } from "../../agentGateway/Services/AgentGatewayCredentials.ts";
 import {
   acquireAgentGatewaySessionLease,
@@ -104,7 +101,7 @@ const PROVIDER = "codex" as const;
 // Every turn-scoped event (reasoning, tool output, deltas) resets the clock and
 // a pending question/approval pauses it, so only a wedged child trips this.
 // Generous by design; override with GLADE_CODEX_TURN_IDLE_TIMEOUT_MS.
-const CODEX_TURN_IDLE_TIMEOUT_MS = resolveAcpTurnIdleTimeoutMs({
+const CODEX_TURN_IDLE_TIMEOUT_MS = resolveTurnIdleTimeoutMs({
   envVar: "GLADE_CODEX_TURN_IDLE_TIMEOUT_MS",
   defaultMs: 900_000,
 });
@@ -1981,7 +1978,7 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
     const shouldSurfaceUnmappedEvent = makeUnmappedProviderEventGate();
 
     // Idle-progress backstop for codex turns. Same semantics as
-    // AcpTurnIdleWatchdog (any inbound activity resets it, a pending human
+    // turn idle watchdog (any inbound activity resets it, a pending human
     // decision pauses it), driven by one shared ticker because codex activity
     // arrives on a single manager event stream instead of per-session fibers.
     const turnWatchdogs = new Map<ThreadId, CodexTurnWatchdogEntry>();
@@ -2029,7 +2026,7 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
       const now = Date.now();
       for (const [threadId, entry] of turnWatchdogs) {
         const idleMs = now - entry.lastActivityAt;
-        const decision = evaluateAcpTurnIdleTick({
+        const decision = evaluateTurnIdleTick({
           isTurnActive: manager.isTurnActive(threadId, entry.turnId),
           isAwaitingHuman: manager.isAwaitingHumanResponse(threadId),
           idleMs,

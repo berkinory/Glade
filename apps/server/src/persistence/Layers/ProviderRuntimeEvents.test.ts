@@ -389,72 +389,70 @@ layer("ProviderRuntimeEventRepository", (it) => {
     }),
   );
 
-  it.effect(
-    "journals an oversized OpenCode item.completed by truncating payload string leaves",
-    () =>
-      Effect.gen(function* () {
-        const repository = yield* ProviderRuntimeEventRepository;
-        const oversizedResult = "x".repeat(PROVIDER_RUNTIME_EVENT_MAX_BYTES * 2);
-        const oversizedEvent = {
-          type: "item.completed",
-          eventId: EventId.makeUnsafe("runtime-event-oversized-opencode"),
-          provider: "opencode",
-          createdAt: "2026-07-14T00:03:00.000Z",
-          threadId: ThreadId.makeUnsafe("thread-runtime-journal"),
-          turnId: TurnId.makeUnsafe("turn-runtime-journal"),
-          itemId: RuntimeItemId.makeUnsafe("item-oversized-opencode"),
-          payload: {
-            itemType: "command_execution",
-            status: "completed",
-            title: "Run bash",
-            detail: oversizedResult,
-            data: { toolCallId: "call-1", toolName: "bash", result: oversizedResult },
-          },
-          raw: {
-            source: "opencode.sdk.event",
-            messageType: "tool_result",
-            payload: { result: oversizedResult },
-          },
-        } satisfies ProviderRuntimeEvent;
+  it.effect("journals an oversized Codex item.completed by truncating payload string leaves", () =>
+    Effect.gen(function* () {
+      const repository = yield* ProviderRuntimeEventRepository;
+      const oversizedResult = "x".repeat(PROVIDER_RUNTIME_EVENT_MAX_BYTES * 2);
+      const oversizedEvent = {
+        type: "item.completed",
+        eventId: EventId.makeUnsafe("runtime-event-oversized-codex"),
+        provider: "codex",
+        createdAt: "2026-07-14T00:03:00.000Z",
+        threadId: ThreadId.makeUnsafe("thread-runtime-journal"),
+        turnId: TurnId.makeUnsafe("turn-runtime-journal"),
+        itemId: RuntimeItemId.makeUnsafe("item-oversized-codex"),
+        payload: {
+          itemType: "command_execution",
+          status: "completed",
+          title: "Run bash",
+          detail: oversizedResult,
+          data: { toolCallId: "call-1", toolName: "bash", result: oversizedResult },
+        },
+        raw: {
+          source: "codex.app-server.notification",
+          messageType: "tool_result",
+          payload: { result: oversizedResult },
+        },
+      } satisfies ProviderRuntimeEvent;
 
-        const persisted = yield* repository.append(oversizedEvent);
-        assert.strictEqual(persisted.event.eventId, oversizedEvent.eventId);
-        if (persisted.event.type === "item.completed") {
-          const detail = persisted.event.payload.detail;
-          assert.isString(detail);
-          if (typeof detail === "string") {
-            assert.isBelow(detail.length, oversizedResult.length);
-          }
-          const data = persisted.event.payload.data as { readonly result?: string } | undefined;
-          const dataResult = data?.result;
-          assert.isString(dataResult);
-          if (typeof dataResult === "string") {
-            assert.isBelow(dataResult.length, oversizedResult.length);
-          }
+      const persisted = yield* repository.append(oversizedEvent);
+      assert.strictEqual(persisted.event.eventId, oversizedEvent.eventId);
+      if (persisted.event.type === "item.completed") {
+        const detail = persisted.event.payload.detail;
+        assert.isString(detail);
+        if (typeof detail === "string") {
+          assert.isBelow(detail.length, oversizedResult.length);
         }
-        const rawPayload = persisted.event.raw?.payload as
-          | {
-              readonly gladeTruncated?: unknown;
-              readonly originalBytes?: unknown;
-            }
-          | undefined;
-        assert.deepInclude(rawPayload, { gladeTruncated: true });
-        const originalBytes = rawPayload?.originalBytes;
-        assert.isNumber(originalBytes);
-        if (typeof originalBytes === "number") {
-          assert.isAbove(originalBytes, PROVIDER_RUNTIME_EVENT_MAX_BYTES);
+        const data = persisted.event.payload.data as { readonly result?: string } | undefined;
+        const dataResult = data?.result;
+        assert.isString(dataResult);
+        if (typeof dataResult === "string") {
+          assert.isBelow(dataResult.length, oversizedResult.length);
         }
+      }
+      const rawPayload = persisted.event.raw?.payload as
+        | {
+            readonly gladeTruncated?: unknown;
+            readonly originalBytes?: unknown;
+          }
+        | undefined;
+      assert.deepInclude(rawPayload, { gladeTruncated: true });
+      const originalBytes = rawPayload?.originalBytes;
+      assert.isNumber(originalBytes);
+      if (typeof originalBytes === "number") {
+        assert.isAbove(originalBytes, PROVIDER_RUNTIME_EVENT_MAX_BYTES);
+      }
 
-        const rows = yield* repository.readAfter({
-          sequenceExclusive: persisted.sequence - 1,
-          throughSequenceInclusive: persisted.sequence,
-          limit: 1,
-        });
-        assert.strictEqual(rows[0]?.event.eventId, "runtime-event-oversized-opencode");
+      const rows = yield* repository.readAfter({
+        sequenceExclusive: persisted.sequence - 1,
+        throughSequenceInclusive: persisted.sequence,
+        limit: 1,
+      });
+      assert.strictEqual(rows[0]?.event.eventId, "runtime-event-oversized-codex");
 
-        const duplicate = yield* repository.append(oversizedEvent);
-        assert.strictEqual(duplicate.sequence, persisted.sequence);
-      }),
+      const duplicate = yield* repository.append(oversizedEvent);
+      assert.strictEqual(duplicate.sequence, persisted.sequence);
+    }),
   );
 
   it.effect("journals an oversized raw-less event by truncating its payload leaves", () =>
@@ -478,7 +476,7 @@ layer("ProviderRuntimeEventRepository", (it) => {
       const oversizedEvent = {
         type: "item.completed",
         eventId: EventId.makeUnsafe("runtime-event-oversized-numbers"),
-        provider: "opencode",
+        provider: "codex",
         createdAt: "2026-07-14T00:04:00.000Z",
         threadId: ThreadId.makeUnsafe("thread-runtime-journal"),
         turnId: TurnId.makeUnsafe("turn-runtime-journal"),

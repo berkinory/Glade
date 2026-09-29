@@ -3312,12 +3312,6 @@ export default function ChatView({
         persistRuntimeMode: persistRuntimeModeChange,
         commit: () => {
           setComposerDraftModelSelectionAndSticky(activeThread.id, nextModelSelection);
-          if (provider === "cursor" && !selectionOptions?.modelOptions) {
-            setComposerDraftProviderModelOptions(activeThread.id, provider, undefined, {
-              persistSticky: true,
-              model: resolvedModel,
-            });
-          }
         },
       });
       if (!didCommitSelection) {

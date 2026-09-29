@@ -36,16 +36,7 @@ export interface SettingsSkillSection {
 
 const SHARED_SKILLS_SECTION = "shared";
 const PERSONAL_ORIGIN = "personal";
-export const ORIGIN_SECTION_ORDER = [
-  "glade",
-  "codex",
-  "claude",
-  "cursor",
-  "grok",
-  "opencode",
-  "agents",
-  "project",
-] as const;
+export const ORIGIN_SECTION_ORDER = ["glade", "codex", "claude", "agents", "project"] as const;
 export function skillOriginInfo(scope: string | undefined): SkillOriginInfo {
   switch (scope) {
     case "glade":
@@ -54,12 +45,6 @@ export function skillOriginInfo(scope: string | undefined): SkillOriginInfo {
       return { label: PROVIDER_DISPLAY_NAMES.codex, provider: "codex" };
     case "claude":
       return { label: PROVIDER_DISPLAY_NAMES.claudeAgent, provider: "claudeAgent" };
-    case "cursor":
-      return { label: PROVIDER_DISPLAY_NAMES.cursor, provider: "cursor" };
-    case "grok":
-      return { label: PROVIDER_DISPLAY_NAMES.grok, provider: "grok" };
-    case "opencode":
-      return { label: PROVIDER_DISPLAY_NAMES.opencode, provider: "opencode" };
     case "agents":
       return { label: "Shared (.agents)", provider: null };
     case "project":

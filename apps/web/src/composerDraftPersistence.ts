@@ -81,7 +81,7 @@ function normalizePersistedModelSelectionMap(
           ? (rawSelection as Record<string, unknown>).model
           : undefined,
     });
-    if (selection && !(legacyProvider === "kilo" && result.opencode !== undefined)) {
+    if (selection) {
       result[selection.provider] = selection;
     }
   }

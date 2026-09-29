@@ -1,16 +1,13 @@
 # Provider architecture
 
-Glade treats provider integrations as adapters behind server-owned orchestration and discovery boundaries. The web app does not talk to Codex, Claude, Cursor, or another coding-agent runtime directly: provider operations enter the server through the typed contracts in `@glade/contracts`. Session and turn lifecycle calls route through `ProviderService`; model, agent, skill, command, and plugin discovery routes through `ProviderDiscoveryService`; both ultimately resolve concrete `ProviderAdapter` implementations from the registry. Voice operations may access the registry directly where the provider capability is itself the boundary.
+Glade treats provider integrations as adapters behind server-owned orchestration and discovery boundaries. The web app does not talk to coding-agent runtimes directly: provider operations enter the server through the typed contracts in `@glade/contracts`. Session and turn lifecycle calls route through `ProviderService`; model, agent, skill, command, and plugin discovery routes through `ProviderDiscoveryService`; both ultimately resolve concrete `ProviderAdapter` implementations from the registry. Voice operations may access the registry directly where the provider capability is itself the boundary.
 
 ## Implemented providers
 
-`ProviderAdapterRegistryLive` currently registers five first-class provider kinds:
+`ProviderAdapterRegistryLive` currently registers two first-class provider kinds:
 
 - `codex`
 - `claudeAgent`
-- `cursor`
-- `grok`
-- `opencode`
 
 The registry is intentionally small. It maps `ProviderKind` to an adapter and lists the registered providers; it does not own session routing, persistence, or cross-provider orchestration.
 
@@ -61,14 +58,6 @@ Provider configuration is split across typed server settings, discovery/health s
 
 Capability and discovery data should be authoritative. UI surfaces should consume the shared provider metadata instead of hard-coding behavior from `ProviderKind` where a capability exists.
 
-## Shared provider families
-
-### ACP providers
-
-Cursor and Grok share the Agent Client Protocol infrastructure under `provider/acp`, including `AcpSessionRuntime` and common adapter/session/event helpers. Provider-specific ACP support should extend that shared lifecycle and protocol machinery rather than duplicating it. Individual providers can still layer their own spawn, authentication, model-selection, or compatibility behavior around the shared ACP runtime.
-
-Codex and Claude retain provider-specific integration paths where their native runtimes expose semantics that are not represented by the shared ACP family.
-
 ## Adding a provider
 
 A new first-class provider normally needs changes across several boundaries:
@@ -89,7 +78,6 @@ Prefer capability-driven behavior and existing shared protocol helpers. Do not a
 - `apps/server/src/provider/Layers/ProviderAdapterRegistry.ts` — concrete provider registry
 - `apps/server/src/provider/Layers/ProviderService.ts` — session-aware lifecycle routing
 - `apps/server/src/provider/Layers/ProviderDiscoveryService.ts` — model/agent/skill/command/plugin discovery routing
-- `apps/server/src/provider/acp/AcpSessionRuntime.ts` — shared ACP session runtime
 - `apps/server/src/provider/boundedCallbackIngress.ts` — bounded callback-producer ingress policy
 - `apps/server/src/orchestration/Layers/ProviderCommandReactor.ts` — orchestration intent to provider calls
 - `apps/server/src/orchestration/Layers/ProviderRuntimeIngestion.ts` — provider events to durable orchestration

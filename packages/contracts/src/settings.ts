@@ -29,28 +29,6 @@ export const ClaudeServerProviderSettings = Schema.Struct({
 });
 export type ClaudeServerProviderSettings = typeof ClaudeServerProviderSettings.Type;
 
-export const GrokServerProviderSettings = Schema.Struct({
-  ...ProviderSettingsBase,
-  binaryPath: StringSetting.pipe(Schema.withDecodingDefault(() => "grok")),
-});
-export type GrokServerProviderSettings = typeof GrokServerProviderSettings.Type;
-
-export const CursorServerProviderSettings = Schema.Struct({
-  ...ProviderSettingsBase,
-  binaryPath: StringSetting.pipe(Schema.withDecodingDefault(() => "cursor-agent")),
-  apiEndpoint: StringSetting.pipe(Schema.withDecodingDefault(() => "")),
-});
-export type CursorServerProviderSettings = typeof CursorServerProviderSettings.Type;
-
-export const OpenCodeServerProviderSettings = Schema.Struct({
-  ...ProviderSettingsBase,
-  binaryPath: StringSetting.pipe(Schema.withDecodingDefault(() => "opencode")),
-  serverUrl: StringSetting.pipe(Schema.withDecodingDefault(() => "")),
-  serverPasswordConfigured: Schema.Boolean.pipe(Schema.withDecodingDefault(() => false)),
-  experimentalWebSockets: Schema.Boolean.pipe(Schema.withDecodingDefault(() => false)),
-});
-export type OpenCodeServerProviderSettings = typeof OpenCodeServerProviderSettings.Type;
-
 const DisabledSkillNames = Schema.Array(Schema.String.check(Schema.isMaxLength(256))).pipe(
   Schema.withDecodingDefault(() => []),
 );
@@ -76,9 +54,6 @@ export const ServerSettings = Schema.Struct({
   providers: Schema.Struct({
     codex: CodexServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
     claudeAgent: ClaudeServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
-    cursor: CursorServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
-    grok: GrokServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
-    opencode: OpenCodeServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
   }).pipe(Schema.withDecodingDefault(() => ({}))),
   skills: SkillsServerSettings.pipe(Schema.withDecodingDefault(() => ({}))),
   // When the first-run welcome tour was completed or skipped. Server-backed so a
@@ -128,21 +103,6 @@ export const ServerSettingsPatch = Schema.Struct({
           ...ProviderSettingsBasePatch,
           launchArgs: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(4096))),
           enableArtifacts: Schema.optionalKey(Schema.Boolean),
-        }),
-      ),
-      cursor: Schema.optionalKey(
-        Schema.Struct({
-          ...ProviderSettingsBasePatch,
-          apiEndpoint: Schema.optionalKey(StringSetting),
-        }),
-      ),
-      grok: Schema.optionalKey(Schema.Struct(ProviderSettingsBasePatch)),
-      opencode: Schema.optionalKey(
-        Schema.Struct({
-          ...ProviderSettingsBasePatch,
-          serverUrl: Schema.optionalKey(StringSetting),
-          serverPassword: Schema.optionalKey(StringSetting),
-          experimentalWebSockets: Schema.optionalKey(Schema.Boolean),
         }),
       ),
     }),

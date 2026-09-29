@@ -122,7 +122,7 @@ describe("Provider authority invariants", () => {
     const tools = makeAgentGatewayComputerTools({ manager, authorizeAction });
     const type = tools.find((tool) => tool.definition.name === "computer_type_text")!;
     try {
-      for (const provider of ["codex", "claudeAgent", "cursor", "grok", "opencode"] as const) {
+      for (const provider of ["codex", "claudeAgent"] as const) {
         // A distinct text per provider keeps every call's repeat-guard key
         // distinct — the guard would refuse a third identical unverified
         // send before the approval gate this test measures.
@@ -138,7 +138,7 @@ describe("Provider authority invariants", () => {
         );
         expect(authorizeAction.mock.calls.at(-1)?.[0]).toBe("computer_type_text");
       }
-      expect(authorizeAction).toHaveBeenCalledTimes(5);
+      expect(authorizeAction).toHaveBeenCalledTimes(2);
     } finally {
       await manager.dispose();
     }

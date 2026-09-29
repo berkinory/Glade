@@ -2,7 +2,6 @@ import {
   CLAUDE_CODE_EFFORT_OPTIONS,
   CODEX_REASONING_EFFORT_OPTIONS,
   DEFAULT_MODEL_BY_PROVIDER,
-  GROK_REASONING_EFFORT_OPTIONS,
   type ModelSelection,
   type ProviderKind,
   type ProviderListModelsResult,
@@ -155,30 +154,6 @@ const PROVIDER_TARGET_OPTION_RULES = {
       }),
     },
   }),
-  cursor: defineProviderOptionConfig<"cursor">({
-    primaryOptionKey: "reasoningEffort",
-    options: {
-      reasoningEffort: providerOptionRule("string", CODEX_REASONING_EFFORT_OPTIONS),
-      fastMode: providerOptionRule("boolean", [], "model-discovery", {
-        advertised: false,
-        validation: { kind: "boolean-capability", capability: "supportsFastMode" },
-      }),
-      thinking: providerOptionRule("boolean", [], "model-discovery", {
-        advertised: false,
-        validation: { kind: "boolean-capability", capability: "supportsThinkingToggle" },
-      }),
-      contextWindow: providerOptionRule("string", [], "model-discovery", {
-        advertised: false,
-        validation: { kind: "context-window" },
-      }),
-    },
-  }),
-  grok: defineProviderOptionConfig<"grok">({
-    primaryOptionKey: "reasoningEffort",
-    options: {
-      reasoningEffort: providerOptionRule("string", GROK_REASONING_EFFORT_OPTIONS),
-    },
-  }),
   claudeAgent: defineProviderOptionConfig<"claudeAgent">({
     primaryOptionKey: "effort",
     options: {
@@ -198,16 +173,6 @@ const PROVIDER_TARGET_OPTION_RULES = {
       contextWindow: providerOptionRule("string", [], "model-discovery", {
         advertised: false,
         validation: { kind: "context-window" },
-      }),
-    },
-  }),
-  opencode: defineProviderOptionConfig<"opencode">({
-    primaryOptionKey: "variant",
-    options: {
-      variant: providerOptionRule("string", [], "model-discovery"),
-      agent: providerOptionRule("string", [], "model-discovery", {
-        validation: { kind: "non-empty-string" },
-        allowsCustomValue: true,
       }),
     },
   }),

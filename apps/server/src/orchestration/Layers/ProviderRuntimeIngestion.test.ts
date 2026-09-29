@@ -527,7 +527,7 @@ describe("ProviderRuntimeIngestion", () => {
     const rejectedEvent: ProviderRuntimeEvent = {
       type: "runtime.warning",
       eventId: asEventId("evt-previously-rejected"),
-      provider: "cursor",
+      provider: "codex",
       createdAt: "2026-07-14T00:00:00.000Z",
       threadId: lateThreadId,
       payload: { message: "Warning for a rejected command" },
@@ -572,7 +572,7 @@ describe("ProviderRuntimeIngestion", () => {
         projectId: asProjectId("project-1"),
         title: "Late thread",
         modelSelection: {
-          provider: "cursor",
+          provider: "codex",
           model: "cursor-default",
         },
         interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
@@ -590,7 +590,7 @@ describe("ProviderRuntimeIngestion", () => {
       harness.runtimeEventRepository.append({
         type: "turn.started",
         eventId: asEventId("evt-turn-started-after-rejected-command"),
-        provider: "cursor",
+        provider: "codex",
         createdAt: "2026-07-14T00:00:00.500Z",
         threadId,
         turnId,
@@ -601,7 +601,7 @@ describe("ProviderRuntimeIngestion", () => {
       harness.runtimeEventRepository.append({
         type: "content.delta",
         eventId: asEventId("evt-assistant-after-rejected-command"),
-        provider: "cursor",
+        provider: "codex",
         createdAt: "2026-07-14T00:00:01.000Z",
         threadId,
         turnId,
@@ -616,7 +616,7 @@ describe("ProviderRuntimeIngestion", () => {
       harness.runtimeEventRepository.append({
         type: "item.completed",
         eventId: asEventId("evt-assistant-complete-after-rejected-command"),
-        provider: "cursor",
+        provider: "codex",
         createdAt: "2026-07-14T00:00:02.000Z",
         threadId,
         turnId,
@@ -628,7 +628,7 @@ describe("ProviderRuntimeIngestion", () => {
       harness.runtimeEventRepository.append({
         type: "turn.completed",
         eventId: asEventId("evt-turn-complete-after-rejected-command"),
-        provider: "cursor",
+        provider: "codex",
         createdAt: "2026-07-14T00:00:03.000Z",
         threadId,
         turnId,
@@ -727,7 +727,7 @@ describe("ProviderRuntimeIngestion", () => {
     await push({
       type: "content.delta",
       eventId: eventId("1"),
-      provider: "opencode",
+      provider: "codex",
       createdAt: "2026-07-14T00:10:00.000Z",
       threadId,
       turnId,
@@ -737,7 +737,7 @@ describe("ProviderRuntimeIngestion", () => {
     await push({
       type: "content.delta",
       eventId: eventId("2"),
-      provider: "opencode",
+      provider: "codex",
       createdAt: "2026-07-14T00:10:01.000Z",
       threadId,
       turnId,
@@ -749,7 +749,7 @@ describe("ProviderRuntimeIngestion", () => {
     await push({
       type: "item.started",
       eventId: eventId("3"),
-      provider: "opencode",
+      provider: "codex",
       // Provider events can share the same millisecond. The causal event
       // boundary must still split assistant text around the tool row.
       createdAt: "2026-07-14T00:10:01.000Z",
@@ -761,7 +761,7 @@ describe("ProviderRuntimeIngestion", () => {
     await push({
       type: "content.delta",
       eventId: eventId("4"),
-      provider: "opencode",
+      provider: "codex",
       createdAt: "2026-07-14T00:10:01.000Z",
       threadId,
       turnId,
@@ -771,7 +771,7 @@ describe("ProviderRuntimeIngestion", () => {
     await push({
       type: "content.delta",
       eventId: eventId("5"),
-      provider: "opencode",
+      provider: "codex",
       createdAt: "2026-07-14T00:10:21.000Z",
       threadId,
       turnId,
@@ -781,7 +781,7 @@ describe("ProviderRuntimeIngestion", () => {
     await push({
       type: "item.completed",
       eventId: eventId("6"),
-      provider: "opencode",
+      provider: "codex",
       createdAt: "2026-07-14T00:10:30.000Z",
       threadId,
       turnId,
@@ -791,7 +791,7 @@ describe("ProviderRuntimeIngestion", () => {
     await push({
       type: "content.delta",
       eventId: eventId("7"),
-      provider: "opencode",
+      provider: "codex",
       createdAt: "2026-07-14T00:10:40.000Z",
       threadId,
       turnId,
@@ -801,7 +801,7 @@ describe("ProviderRuntimeIngestion", () => {
     await push({
       type: "item.completed",
       eventId: eventId("8"),
-      provider: "opencode",
+      provider: "codex",
       createdAt: "2026-07-14T00:10:45.000Z",
       threadId,
       turnId,
@@ -859,7 +859,7 @@ describe("ProviderRuntimeIngestion", () => {
     harness.emit({
       type: "turn.started",
       eventId: asEventId("evt-turn-started-before-ready"),
-      provider: "opencode",
+      provider: "codex",
       threadId: asThreadId("thread-1"),
       createdAt: new Date().toISOString(),
       turnId: asTurnId("turn-ready-clears"),
@@ -875,7 +875,7 @@ describe("ProviderRuntimeIngestion", () => {
     harness.emit({
       type: "session.state.changed",
       eventId: asEventId("evt-session-ready-clears-turn"),
-      provider: "opencode",
+      provider: "codex",
       threadId: asThreadId("thread-1"),
       createdAt: new Date().toISOString(),
       turnId: asTurnId("turn-ready-clears"),

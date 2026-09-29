@@ -61,17 +61,5 @@ export function providerStartOptionsFromServerSettings(
       ...(claudeBinaryPath ? { binaryPath: claudeBinaryPath } : {}),
       enableArtifacts: providers.claudeAgent.enableArtifacts,
     },
-    cursor: {
-      ...(providers.cursor.binaryPath ? { binaryPath: providers.cursor.binaryPath } : {}),
-      ...(providers.cursor.apiEndpoint ? { apiEndpoint: providers.cursor.apiEndpoint } : {}),
-    },
-    grok: {
-      ...(providers.grok.binaryPath ? { binaryPath: providers.grok.binaryPath } : {}),
-    },
-    opencode: {
-      ...(providers.opencode.binaryPath ? { binaryPath: providers.opencode.binaryPath } : {}),
-      ...(providers.opencode.serverUrl ? { serverUrl: providers.opencode.serverUrl } : {}),
-      experimentalWebSockets: providers.opencode.experimentalWebSockets,
-    },
   };
 }

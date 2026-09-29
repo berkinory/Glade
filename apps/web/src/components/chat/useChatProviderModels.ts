@@ -109,9 +109,6 @@ export function useChatProviderModels({
     return {
       codex: resolveHint("codex"),
       claudeAgent: resolveHint("claudeAgent"),
-      cursor: resolveHint("cursor"),
-      grok: resolveHint("grok"),
-      opencode: resolveHint("opencode"),
     };
   }, [
     activeProject?.defaultModelSelection,
@@ -224,8 +221,7 @@ export function useChatProviderModels({
           ? activeProject.defaultModelSelection
           : null;
   const providerModelsLoading = selectedProviderModelsLoading;
-  const selectedProviderRequiresRuntimeModels =
-    selectedProvider === "cursor" || selectedProvider === "opencode";
+  const selectedProviderRequiresRuntimeModels = false;
   const showComposerModelBootstrapSkeleton = shouldShowComposerModelBootstrapSkeleton({
     selectedProvider,
     selectedModel,

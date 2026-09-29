@@ -2022,19 +2022,7 @@ function toLegacySessionStatus(
 }
 
 export function toLegacyProvider(providerName: string | null): ProviderKind {
-  if (
-    providerName === "codex" ||
-    providerName === "claudeAgent" ||
-    providerName === "cursor" ||
-    providerName === "grok" ||
-    providerName === "opencode"
-  ) {
-    return providerName;
-  }
-  if (providerName === "kilo") {
-    return "opencode";
-  }
-  return "codex";
+  return providerName === "claudeAgent" ? "claudeAgent" : "codex";
 }
 
 function attachmentPreviewRoutePath(attachmentId: string): string {

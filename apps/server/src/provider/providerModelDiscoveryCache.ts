@@ -4,7 +4,7 @@
 //          entries immediately while revalidating in the background, single-
 //          flights concurrent discovery per key, applies a hard timeout ceiling,
 //          and short-circuits repeated failures so UI retries cannot fan out
-//          into CLI/ACP spawn storms.
+//          into CLI spawn storms.
 // Layer: Server provider runtime
 // Exports: makeProviderModelDiscoveryCache, ProviderModelDiscoveryCache,
 //          providerModelDiscoveryCacheKey, PROVIDER_MODEL_DISCOVERY_* defaults
@@ -29,7 +29,7 @@ export const PROVIDER_MODEL_DISCOVERY_STALE_TTL_MS = 24 * 60 * 60_000;
  */
 export const PROVIDER_MODEL_DISCOVERY_FAILURE_TTL_MS = 30_000;
 /**
- * Hard ceiling on a single discovery run. Some adapters (OpenCode CLI) have
+ * Hard ceiling on a single discovery run. Some adapters have
  * no internal timeout; this keeps every provider under the 60s WebSocket RPC
  * timeout so the client sees a real error instead of a transport timeout.
  */

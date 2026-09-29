@@ -223,12 +223,6 @@ export function resolvePromptEffortFromModelSelection(
       return modelSelection.options?.reasoningEffort ?? null;
     case "claudeAgent":
       return modelSelection.options?.effort ?? null;
-    case "cursor":
-      return modelSelection.options?.reasoningEffort ?? null;
-    case "grok":
-      return modelSelection.options?.reasoningEffort ?? null;
-    case "opencode":
-      return null;
   }
 }
 

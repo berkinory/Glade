@@ -27,11 +27,7 @@ import type { ProviderAdapterRegistryShape } from "../provider/Services/Provider
 import type { ProviderServiceShape } from "../provider/Services/ProviderService";
 import type { ServerSettingsShape } from "../serverSettings";
 import { parseManagedWorktreeWorkspaceRoot } from "../workspace/managedWorktree";
-import {
-  mapClaudeSessionMessages,
-  mapCodexSnapshotMessages,
-  mapOpenCodeSnapshotMessages,
-} from "./importedThreadMessages";
+import { mapClaudeSessionMessages, mapCodexSnapshotMessages } from "./importedThreadMessages";
 
 type ImportThreadRequest = OrchestrationImportThreadInput;
 
@@ -47,8 +43,6 @@ function providerResumeCursorForImport(provider: ProviderKind, externalId: strin
   switch (provider) {
     case "claudeAgent":
       return { resume: externalId };
-    case "opencode":
-      return { openCodeSessionId: externalId };
     default:
       return { threadId: externalId };
   }
@@ -136,7 +130,7 @@ export function makeImportThreadHandler(options: ImportThreadHandlerOptions) {
   });
 
   const resolveImportedProviderThreadContext = Effect.fn(function* (input: {
-    readonly provider: "codex" | "opencode";
+    readonly provider: "codex";
     readonly externalId: string;
     readonly projectWorkspaceRoot: string;
     readonly fallbackCwd?: string;
@@ -282,35 +276,6 @@ export function makeImportThreadHandler(options: ImportThreadHandlerOptions) {
     });
   });
 
-  const importOpenCodeCompatibleThreadHistory = Effect.fn(function* (input: {
-    readonly importedAt: string;
-    readonly provider: "opencode";
-    readonly threadId: ThreadId;
-  }) {
-    const adapter = yield* options.providerAdapterRegistry.getByProvider(input.provider);
-    const snapshot = yield* adapter
-      .readThread(input.threadId)
-      .pipe(
-        Effect.mapError((cause) =>
-          importMessagesError(
-            cause instanceof Error && cause.message.length > 0
-              ? cause.message
-              : "Failed to read OpenCode session history.",
-          ),
-        ),
-      );
-
-    yield* dispatchImportedMessages({
-      threadId: input.threadId,
-      messages: mapOpenCodeSnapshotMessages({
-        threadId: input.threadId,
-        turns: snapshot.turns,
-        importedAt: input.importedAt,
-      }),
-      createdAt: input.importedAt,
-    });
-  });
-
   return Effect.fnUntraced(function* (body: ImportThreadRequest) {
     const threadOption = yield* options.projectionSnapshotQuery.getThreadDetailById(body.threadId);
     if (Option.isNone(threadOption)) {
@@ -347,9 +312,7 @@ export function makeImportThreadHandler(options: ImportThreadHandlerOptions) {
     const effectiveModelSelection = thread.modelSelection;
 
     const importedProviderContext =
-      (thread.modelSelection.provider === "codex" ||
-        thread.modelSelection.provider === "opencode") &&
-      project
+      thread.modelSelection.provider === "codex" && project
         ? yield* resolveImportedProviderThreadContext({
             provider: thread.modelSelection.provider,
             externalId,
@@ -402,12 +365,6 @@ export function makeImportThreadHandler(options: ImportThreadHandlerOptions) {
           threadId: thread.id,
           externalId,
           cwd,
-          importedAt: session.updatedAt,
-        });
-      } else if (thread.modelSelection.provider === "opencode") {
-        yield* importOpenCodeCompatibleThreadHistory({
-          provider: thread.modelSelection.provider,
-          threadId: thread.id,
           importedAt: session.updatedAt,
         });
       }

@@ -2,19 +2,11 @@ import { Effect, Layer } from "effect";
 
 import { AgentGatewayCredentialsWithSecretsLive } from "../agentGateway/Layers/AgentGatewayCredentials";
 import { ServerConfig } from "../config";
-import {
-  makeProviderServerPasswordResolver,
-  ProviderCredentials,
-  ProviderCredentialsLive,
-} from "../providerCredentials";
 import { ServerSettingsService } from "../serverSettings";
 import { ProviderValidationError } from "./Errors";
 import { makeClaudeAdapterLive } from "./Layers/ClaudeAdapter";
 import { makeCodexAdapterLive } from "./Layers/CodexAdapter";
-import { makeCursorAdapterLive } from "./Layers/CursorAdapter";
 import { makeEventNdjsonLogger } from "./Layers/EventNdjsonLogger";
-import { makeGrokAdapterLive } from "./Layers/GrokAdapter";
-import { makeOpenCodeAdapterLive } from "./Layers/OpenCodeAdapter";
 import { ProviderAdapterRegistryLive } from "./Layers/ProviderAdapterRegistry";
 import { ProviderDiscoveryServiceLive } from "./Layers/ProviderDiscoveryService";
 import { makeDurableProviderServiceLive } from "./Layers/ProviderService";
@@ -28,9 +20,7 @@ export function makeServerProviderLayer(
   } = {},
 ) {
   return Effect.gen(function* () {
-    const credentials = yield* ProviderCredentials;
     const serverSettings = yield* ServerSettingsService;
-    const resolveProviderServerPassword = makeProviderServerPasswordResolver(credentials);
     const { logProviderEvents, providerEventLogPath } = yield* ServerConfig;
     const nativeEventLogger = logProviderEvents
       ? yield* makeEventNdjsonLogger(providerEventLogPath, {
@@ -55,24 +45,9 @@ export function makeServerProviderLayer(
     const claudeAdapterLayer = makeClaudeAdapterLive(
       nativeEventLogger ? { nativeEventLogger } : undefined,
     ).pipe(Layer.provide(agentGatewayCredentialsLayer));
-    const openCodeAdapterLayer = makeOpenCodeAdapterLive({
-      ...(nativeEventLogger ? { nativeEventLogger } : {}),
-      resolveServerPassword: resolveProviderServerPassword,
-    }).pipe(Layer.provide(agentGatewayCredentialsLayer));
-    const grokAdapterLayer = makeGrokAdapterLive(
-      {},
-      nativeEventLogger ? { nativeEventLogger } : undefined,
-    ).pipe(Layer.provide(agentGatewayCredentialsLayer));
-    const cursorAdapterLayer = makeCursorAdapterLive(
-      {},
-      nativeEventLogger ? { nativeEventLogger } : undefined,
-    ).pipe(Layer.provide(agentGatewayCredentialsLayer));
     const adapterRegistryLayer = ProviderAdapterRegistryLive.pipe(
       Layer.provide(codexAdapterLayer),
       Layer.provide(claudeAdapterLayer),
-      Layer.provide(cursorAdapterLayer),
-      Layer.provide(grokAdapterLayer),
-      Layer.provide(openCodeAdapterLayer),
       Layer.provideMerge(providerSessionDirectoryLayer),
     );
     const providerServiceLayer = makeDurableProviderServiceLive({
@@ -103,5 +78,5 @@ export function makeServerProviderLayer(
       adapterRegistryLayer,
       providerSessionDirectoryLayer,
     );
-  }).pipe(Effect.provide(ProviderCredentialsLive.pipe(Layer.orDie)), Layer.unwrap);
+  }).pipe(Layer.unwrap);
 }

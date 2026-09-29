@@ -14,9 +14,6 @@ import {
   hasEffortLevel,
   isClaudeUltrathinkPrompt,
   normalizeClaudeModelOptions,
-  normalizeCursorModelOptions,
-  normalizeOpenCodeModelOptions,
-  resolveLabeledOptionValue,
   trimOrNull,
 } from "@glade/shared/model";
 import { classifyCodexReasoningEffortSupport } from "../../lib/codexReasoningEffort";
@@ -78,43 +75,6 @@ export function getComposerProviderState(input: ComposerProviderStateInput): Com
       normalizedOptions = normalizeClaudeModelOptions(model, providerOptions);
       break;
     }
-    case "cursor": {
-      const providerOptions = modelOptions?.cursor;
-      rawEffort = trimOrNull(providerOptions?.reasoningEffort);
-      normalizedOptions = normalizeCursorModelOptions(model, providerOptions, caps);
-      break;
-    }
-    case "grok": {
-      const providerOptions = modelOptions?.grok;
-      rawEffort = trimOrNull(providerOptions?.reasoningEffort);
-      const defaultReasoningEffort = getDefaultEffort(caps);
-      const reasoningEffort =
-        rawEffort && hasEffortLevel(caps, rawEffort) && rawEffort !== defaultReasoningEffort
-          ? providerOptions?.reasoningEffort
-          : undefined;
-      normalizedOptions = reasoningEffort ? { reasoningEffort } : undefined;
-      break;
-    }
-    case "opencode": {
-      const providerOptions = modelOptions?.opencode;
-      rawEffort = trimOrNull(providerOptions?.variant);
-      const variantOptions = caps.variantOptions ?? [];
-      const reasoningVariant =
-        rawEffort && variantOptions.some((option) => option.value === rawEffort)
-          ? rawEffort
-          : undefined;
-      const agent = trimOrNull(providerOptions?.agent);
-      if (variantOptions.length > 0) {
-        const nextOptions = {
-          ...(reasoningVariant ? { variant: reasoningVariant } : {}),
-          ...(agent ? { agent } : {}),
-        };
-        normalizedOptions = Object.keys(nextOptions).length > 0 ? nextOptions : undefined;
-        break;
-      }
-      normalizedOptions = normalizeOpenCodeModelOptions(providerOptions);
-      break;
-    }
   }
 
   const draftEffort = trimOrNull(rawEffort);
@@ -123,21 +83,19 @@ export function getComposerProviderState(input: ComposerProviderStateInput): Com
     ? caps.promptInjectedEffortLevels.includes(draftEffort)
     : false;
   const promptEffort =
-    provider === "opencode"
-      ? resolveLabeledOptionValue(caps.variantOptions, draftEffort)
-      : draftEffort &&
-          !isPromptInjected &&
-          (provider === "codex"
-            ? classifyCodexReasoningEffortSupport({
-                model,
-                effort: draftEffort,
-                ...(runtimeModel ? { runtimeModel } : {}),
-              }) !== "unsupported"
-            : hasEffortLevel(caps, draftEffort))
-        ? draftEffort
-        : defaultEffort && hasEffortLevel(caps, defaultEffort)
-          ? defaultEffort
-          : null;
+    draftEffort &&
+    !isPromptInjected &&
+    (provider === "codex"
+      ? classifyCodexReasoningEffortSupport({
+          model,
+          effort: draftEffort,
+          ...(runtimeModel ? { runtimeModel } : {}),
+        }) !== "unsupported"
+      : hasEffortLevel(caps, draftEffort))
+      ? draftEffort
+      : defaultEffort && hasEffortLevel(caps, defaultEffort)
+        ? defaultEffort
+        : null;
 
   const ultrathinkActive =
     caps.promptInjectedEffortLevels.length > 0 && isClaudeUltrathinkPrompt(prompt);

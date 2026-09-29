@@ -77,13 +77,7 @@ export interface GladeHarnessPolicyDeliveryState {
   enableComputerControl?: boolean | undefined;
 }
 
-const PROVIDERS_WITH_THREAD_SCOPED_GLADE_MCP = new Set<ProviderKind>([
-  "codex",
-  "claudeAgent",
-  "cursor",
-  "grok",
-  "opencode",
-]);
+const PROVIDERS_WITH_THREAD_SCOPED_GLADE_MCP = new Set<ProviderKind>(["codex", "claudeAgent"]);
 
 export function providerHasGladeGatewayControl(input: {
   readonly provider: ProviderKind;

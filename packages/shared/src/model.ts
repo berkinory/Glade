@@ -6,13 +6,9 @@ import {
   type ClaudeApiEffort,
   type ClaudeModelOptions,
   type ClaudeCodeEffort,
-  type CursorModelOptions,
-  type GrokModelOptions,
-  type GrokReasoningEffort,
   type ModelCapabilities,
   type ModelSelection,
   type ModelSlug,
-  type OpenCodeModelOptions,
   type ProviderOptionDescriptor,
   type ProviderOptionSelection,
   type ProviderKind,
@@ -21,9 +17,6 @@ import {
 const MODEL_SLUG_SET_BY_PROVIDER: Record<ProviderKind, ReadonlySet<ModelSlug>> = {
   claudeAgent: new Set(MODEL_OPTIONS_BY_PROVIDER.claudeAgent.map((option) => option.slug)),
   codex: new Set(MODEL_OPTIONS_BY_PROVIDER.codex.map((option) => option.slug)),
-  cursor: new Set(MODEL_OPTIONS_BY_PROVIDER.cursor.map((option) => option.slug)),
-  grok: new Set(MODEL_OPTIONS_BY_PROVIDER.grok.map((option) => option.slug)),
-  opencode: new Set(MODEL_OPTIONS_BY_PROVIDER.opencode.map((option) => option.slug)),
 };
 
 export interface SelectableModelOption {
@@ -58,7 +51,6 @@ const MODEL_TOKEN_DISPLAY_NAMES: Readonly<Record<string, string>> = {
   gpt: "GPT",
   minimax: "MiniMax",
   openai: "OpenAI",
-  opencode: "OpenCode",
   swe: "SWE",
   xai: "xAI",
   xhigh: "XHigh",
@@ -75,9 +67,7 @@ const MODEL_FAMILY_TOKENS: ReadonlySet<string> = new Set([
   "claude",
   "codex",
   "composer",
-  "cursor",
   "gemini",
-  "grok",
   "inkling",
   "kimi",
   "nemotron",
@@ -175,32 +165,6 @@ export function formatModelDisplayName(model: string | null | undefined): string
 }
 
 // ── Effort helpers ────────────────────────────────────────────────────
-
-export function parseCursorCliReasoningEffort(model: string): string | undefined {
-  const tokens = model.trim().toLowerCase().split("-");
-  for (let index = tokens.length - 1; index >= 0; index -= 1) {
-    const token = tokens[index];
-    if (!token) {
-      continue;
-    }
-    if (token === "xhigh") {
-      return "xhigh";
-    }
-    if (token === "high" && tokens[index - 1] === "extra") {
-      return "xhigh";
-    }
-    if (
-      token === "max" ||
-      token === "none" ||
-      token === "low" ||
-      token === "medium" ||
-      token === "high"
-    ) {
-      return token;
-    }
-  }
-  return undefined;
-}
 
 export function hasEffortLevel(caps: ModelCapabilities, value: string): boolean {
   return caps.reasoningEffortLevels.some((l) => l.value === value);
@@ -353,9 +317,6 @@ function reasoningDescriptorId(provider: ProviderKind): string {
   if (provider === "claudeAgent") {
     return "effort";
   }
-  if (provider === "opencode") {
-    return "variant";
-  }
   return "reasoningEffort";
 }
 
@@ -363,14 +324,13 @@ function legacyCapabilityDescriptors(
   provider: ProviderKind,
   caps: ModelCapabilities,
 ): ProviderOptionDescriptor[] {
-  const primaryOptions =
-    provider === "opencode" ? (caps.variantOptions ?? []) : caps.reasoningEffortLevels;
+  const primaryOptions = caps.reasoningEffortLevels;
   const descriptors: ProviderOptionDescriptor[] = [];
   if (primaryOptions.length > 0) {
     const defaultPrimaryOption = primaryOptions.find((option) => option.isDefault);
     descriptors.push({
       id: reasoningDescriptorId(provider),
-      label: provider === "opencode" ? "Variant" : "Reasoning",
+      label: "Reasoning",
       type: "select",
       options: primaryOptions.map((option) => ({
         id: option.value,
@@ -463,13 +423,6 @@ export function getModelCapabilities(
   if (slug && MODEL_CAPABILITIES_INDEX[provider]?.[slug]) {
     return MODEL_CAPABILITIES_INDEX[provider][slug];
   }
-  if (provider === "grok" && slug) {
-    // Grok exposes reasoning effort as a provider-level CLI option, while its
-    // runtime model catalog contains only model ids. New models inherit the
-    // matching CLI ladder (grok-build vs Grok 4.5 vs Grok 4.6+) before discovery
-    // returns a descriptor.
-    return grokCapabilitiesForFamily(resolveGrokEffortFamily(slug));
-  }
   if (provider === "claudeAgent" && slug) {
     const newestKnown = resolveNewestKnownClaudeFamilyModel(slug);
     if (newestKnown) {
@@ -542,47 +495,6 @@ export function resolveNewestKnownClaudeFamilyModel(
     : null;
 }
 
-export function resolveGrokEffortFamily(model: string): "build" | "4.5" | "4.6" {
-  const slug = model.trim().toLowerCase();
-  if (
-    slug.includes("build") ||
-    slug.includes("code-fast") ||
-    slug === "grok-4" ||
-    slug === "grok-4.3" ||
-    slug.startsWith("grok-4.3-")
-  ) {
-    return "build";
-  }
-
-  const version = /grok-(\d+)\.(\d+)/u.exec(slug);
-  if (!version) {
-    // Preserve the legacy Grok Build ladder for custom or future aliases we
-    // cannot classify. Discovery can still opt known versioned models into
-    // the newer ladders without silently changing persisted custom models.
-    return "build";
-  }
-  const major = Number(version[1]);
-  const minor = Number(version[2]);
-  if (major < 4 || (major === 4 && minor <= 3)) {
-    return "build";
-  }
-  if (major === 4 && minor === 5) {
-    return "4.5";
-  }
-  return "4.6";
-}
-
-function grokCapabilitiesForFamily(family: "build" | "4.5" | "4.6"): ModelCapabilities {
-  const grokCaps = MODEL_CAPABILITIES_INDEX.grok;
-  if (family === "build") {
-    return grokCaps["grok-build"] ?? EMPTY_MODEL_CAPABILITIES;
-  }
-  if (family === "4.5") {
-    return grokCaps["grok-4.5"] ?? grokCaps["grok-4.6"] ?? EMPTY_MODEL_CAPABILITIES;
-  }
-  return grokCaps["grok-4.6"] ?? EMPTY_MODEL_CAPABILITIES;
-}
-
 export function isClaudeUltrathinkPrompt(text: string | null | undefined): boolean {
   return typeof text === "string" && /\bultrathink\b/i.test(text);
 }
@@ -647,17 +559,6 @@ export function resolveSelectableModel(
   const resolved = options.find((option) => option.slug === normalized);
   if (resolved) {
     return resolved.slug;
-  }
-
-  // OpenCode surfaces catalog slugs as
-  // `<upstream-provider>/<model>`, while saved selections and custom entries
-  // can hold the bare model id. Resolve a bare slug to a uniquely matching
-  // scoped option; ambiguity across upstream providers resolves to nothing.
-  if (provider === "opencode" && !normalized.includes("/")) {
-    const scoped = options.filter((option) => option.slug.endsWith(`/${normalized}`));
-    if (scoped.length === 1) {
-      return scoped[0]!.slug;
-    }
   }
 
   return null;
@@ -803,70 +704,6 @@ export function claudeSelectionRequiresRestart(
   return (
     prev.maxEffort !== desired.maxEffort || prev.autoCompactWindow !== desired.autoCompactWindow
   );
-}
-
-export function normalizeCursorModelOptions(
-  model: string | null | undefined,
-  modelOptions: CursorModelOptions | null | undefined,
-  capabilities: ModelCapabilities = getModelCapabilities("cursor", model),
-): CursorModelOptions | undefined {
-  const defaultReasoningEffort = getDefaultEffort(capabilities);
-  const rawEffort = trimOrNull(modelOptions?.reasoningEffort);
-  // Cursor's fast variants use a different implicit default (Grok fast → low).
-  // Always send the UI-selected effort, including the composer default.
-  const reasoningEffort =
-    rawEffort && hasEffortLevel(capabilities, rawEffort)
-      ? rawEffort
-      : defaultReasoningEffort && hasEffortLevel(capabilities, defaultReasoningEffort)
-        ? defaultReasoningEffort
-        : undefined;
-  const rawContextWindow = trimOrNull(modelOptions?.contextWindow);
-  const defaultContextWindow = getDefaultContextWindow(capabilities);
-  const contextWindow =
-    rawContextWindow &&
-    hasContextWindowOption(capabilities, rawContextWindow) &&
-    rawContextWindow !== defaultContextWindow
-      ? rawContextWindow
-      : undefined;
-  const fastMode = capabilities.supportsFastMode ? modelOptions?.fastMode === true : undefined;
-  const thinking =
-    capabilities.supportsThinkingToggle && modelOptions?.thinking !== undefined
-      ? modelOptions.thinking
-      : undefined;
-  const nextOptions: CursorModelOptions = {
-    ...(reasoningEffort ? { reasoningEffort } : {}),
-    ...(fastMode !== undefined ? { fastMode } : {}),
-    ...(thinking !== undefined ? { thinking } : {}),
-    ...(contextWindow ? { contextWindow } : {}),
-  };
-  return Object.keys(nextOptions).length > 0 ? nextOptions : undefined;
-}
-
-export function normalizeGrokModelOptions(
-  model: string | null | undefined,
-  modelOptions: GrokModelOptions | null | undefined,
-): GrokModelOptions | undefined {
-  const caps = getModelCapabilities("grok", model);
-  const reasoningEffort = trimOrNull(modelOptions?.reasoningEffort);
-  if (!reasoningEffort || !hasEffortLevel(caps, reasoningEffort)) {
-    return undefined;
-  }
-  if (reasoningEffort === getDefaultEffort(caps)) {
-    return undefined;
-  }
-  return { reasoningEffort: reasoningEffort as GrokReasoningEffort };
-}
-
-export function normalizeOpenCodeModelOptions(
-  modelOptions: OpenCodeModelOptions | null | undefined,
-): OpenCodeModelOptions | undefined {
-  const variant = trimOrNull(modelOptions?.variant);
-  const agent = trimOrNull(modelOptions?.agent);
-  const nextOptions: OpenCodeModelOptions = {
-    ...(variant ? { variant } : {}),
-    ...(agent ? { agent } : {}),
-  };
-  return Object.keys(nextOptions).length > 0 ? nextOptions : undefined;
 }
 
 export function applyClaudePromptEffortPrefix(
