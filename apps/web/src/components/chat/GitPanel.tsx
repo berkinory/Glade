@@ -81,7 +81,7 @@ function GitFileRow(props: {
   return (
     <div
       className={cn(
-        "group flex items-center gap-1.5 rounded-md px-1.5 py-1 text-left",
+        "group/git-file-row flex items-center gap-1.5 rounded-md px-1.5 py-1 text-left",
         props.isSelected ? "bg-sidebar-accent" : "hover:bg-sidebar-accent/60",
       )}
     >
@@ -101,11 +101,11 @@ function GitFileRow(props: {
         <DiffStat
           additions={props.file.insertions}
           deletions={props.file.deletions}
-          className="shrink-0 text-ui-sm group-hover:opacity-0 group-focus-within:opacity-0"
+          className="shrink-0 text-ui-sm group-hover/git-file-row:opacity-0 group-has-[:focus-visible]/git-file-row:opacity-0"
         />
         <span
           className={cn(
-            "w-5 shrink-0 text-center text-ui-sm font-semibold group-hover:opacity-0 group-focus-within:opacity-0",
+            "w-5 shrink-0 text-center text-ui-sm font-semibold group-hover/git-file-row:opacity-0 group-has-[:focus-visible]/git-file-row:opacity-0",
             status.color,
           )}
           title={status.label}
@@ -116,7 +116,7 @@ function GitFileRow(props: {
         <IconButton
           size="icon-xs"
           variant="ghost"
-          className="pointer-events-none absolute right-0 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
+          className="pointer-events-none absolute right-0 opacity-0 group-hover/git-file-row:pointer-events-auto group-hover/git-file-row:opacity-100 group-has-[:focus-visible]/git-file-row:pointer-events-auto group-has-[:focus-visible]/git-file-row:opacity-100"
           label={props.actionLabel}
           tooltip={props.actionLabel}
           disabled={props.actionDisabled}
