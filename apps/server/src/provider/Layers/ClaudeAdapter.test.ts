@@ -1,3 +1,4 @@
+import { makeNativeToolCallRegistry } from "../../agentGateway/nativeToolCalls.ts";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -287,6 +288,10 @@ function makeHarness(config?: {
 }
 
 function makeMultiQueryHarness(config?: {
+  readonly nativeHistory?: Pick<
+    ClaudeAdapterLiveOptions,
+    "readNativeSessionMessages" | "readNativeMessageParent" | "forkNativeSession"
+  >;
   readonly failCreateAt?: number;
   readonly gatewayCredentials?: AgentGatewayCredentialsShape;
   readonly onCreate?: (options: ClaudeQueryOptions) => void;
@@ -297,6 +302,7 @@ function makeMultiQueryHarness(config?: {
     readonly options: ClaudeQueryOptions;
   }> = [];
   let layer = makeClaudeAdapterLive({
+    ...config?.nativeHistory,
     createQuery: (input) => {
       if (queries.length === config?.failCreateAt) {
         throw new Error("simulated Claude spawn failure");
@@ -327,7 +333,9 @@ function makeGatewayCredentialsHarness(options?: {
   const revokedTokens: string[] = [];
   const leasedCapabilities: Array<readonly string[]> = [];
   const cancelledTurns: Array<{ readonly token: string; readonly turnId: string }> = [];
+  const nativeToolCalls = makeNativeToolCallRegistry();
   const credentials = {
+    nativeToolCalls,
     mcpEndpointUrl: "http://127.0.0.1:48123/mcp",
     setListeningPort: () => undefined,
     issueSessionToken: () => `gateway-token-${++sequence}`,
@@ -340,14 +348,17 @@ function makeGatewayCredentialsHarness(options?: {
     registerInFlightRequest: () => () => undefined,
     cancelInFlightRequests: () => ({ count: 0, settled: Promise.resolve() }),
     cancelSessionTurnRequests: (token, turnId) => {
+      nativeToolCalls.retire(token, turnId);
       cancelledTurns.push({ token, turnId });
       return options?.cancelSessionTurnRequests?.(token, turnId) ?? Promise.resolve();
     },
     retireSessionTurn: (token, turnId) => {
+      nativeToolCalls.retire(token, turnId);
       cancelledTurns.push({ token, turnId });
       return options?.cancelSessionTurnRequests?.(token, turnId) ?? Promise.resolve();
     },
     revokeSessionToken: (token: string) => {
+      nativeToolCalls.revoke(token);
       revokedTokens.push(token);
     },
     connectionForThread: (_threadId, _provider, leaseOptions) => {
@@ -2417,6 +2428,38 @@ describe("ClaudeAdapterLive", () => {
           attachments: [],
         });
 
+        const hooks = harness.createInputs[0]!.options.hooks!.PreToolUse![0]!.hooks;
+        for (const hook of hooks)
+          yield* Effect.promise(() =>
+            hook(
+              {
+                hook_event_name: "PreToolUse",
+                tool_name: "mcp__glade__computer_click",
+                tool_input: {},
+                tool_use_id: "tool-use-computer-click",
+                session_id: "sdk-computer",
+                transcript_path: "/tmp/transcript",
+                cwd: "/tmp",
+              } as HookInput,
+              "tool-use-computer-click",
+              { signal: new AbortController().signal },
+            ),
+          );
+        const turn = (yield* adapter.listSessions()).find(
+          (session) => session.threadId === THREAD_ID,
+        )?.activeTurnId;
+        assert.isDefined(turn);
+        assert.equal(
+          yield* Effect.promise(() =>
+            gateway.credentials.nativeToolCalls.resolve(
+              "gateway-token-1",
+              "tool-use-computer-click",
+              "computer_click",
+            ),
+          ),
+          turn,
+        );
+
         const canUseTool = harness.createInputs[0]?.options.canUseTool;
         assert.equal(typeof canUseTool, "function");
         if (!canUseTool) {
@@ -2572,83 +2615,167 @@ describe("ClaudeAdapterLive", () => {
     );
   });
 
-  it.effect("reports Claude rollback as restart-owned instead of mutating only local turns", () => {
-    const harness = makeHarness();
-    return Effect.gen(function* () {
-      const adapter = yield* ClaudeAdapter;
-
-      const session = yield* adapter.startSession({
-        threadId: THREAD_ID,
-        provider: "claudeAgent",
-        runtimeMode: "full-access",
+  it.effect(
+    "rewinds Claude through the native parent including hidden tool output, then resumes it",
+    () => {
+      const forks: unknown[] = [];
+      const harness = makeMultiQueryHarness({
+        nativeHistory: {
+          readNativeSessionMessages: async () => [
+            {
+              type: "user",
+              uuid: "kept-user",
+              message: { content: "remember 42" },
+              session_id: "9b37f02e-489d-4454-9f76-67a571840245",
+              parent_tool_use_id: null,
+              parent_agent_id: null,
+            },
+            {
+              type: "assistant",
+              uuid: "kept-assistant",
+              message: { content: [{ type: "tool_use" }] },
+              session_id: "9b37f02e-489d-4454-9f76-67a571840245",
+              parent_tool_use_id: null,
+              parent_agent_id: null,
+            },
+            {
+              type: "user",
+              uuid: "tool-result",
+              message: { content: [{ type: "tool_result" }] },
+              session_id: "9b37f02e-489d-4454-9f76-67a571840245",
+              parent_tool_use_id: null,
+              parent_agent_id: null,
+            },
+            {
+              type: "user",
+              uuid: "edited-user",
+              message: { content: "discard this" },
+              session_id: "9b37f02e-489d-4454-9f76-67a571840245",
+              parent_tool_use_id: null,
+              parent_agent_id: null,
+            },
+          ],
+          readNativeMessageParent: async ({ messageId }) => {
+            assert.equal(messageId, "edited-user");
+            return "structured-output-after-tool-result";
+          },
+          forkNativeSession: async (sessionId, options) => {
+            forks.push({ sessionId, options });
+            return { sessionId: "24dbd86f-55d1-4de2-8138-7d7bd04563c5" };
+          },
+        },
       });
+      return Effect.gen(function* () {
+        const adapter = yield* ClaudeAdapter;
+        yield* adapter.startSession({
+          threadId: THREAD_ID,
+          provider: "claudeAgent",
+          runtimeMode: "full-access",
+          resumeCursor: { resume: "9b37f02e-489d-4454-9f76-67a571840245" },
+        });
+        yield* adapter.rollbackThread(THREAD_ID, 1);
+        assert.deepEqual(forks, [
+          {
+            sessionId: "9b37f02e-489d-4454-9f76-67a571840245",
+            options: { upToMessageId: "structured-output-after-tool-result" },
+          },
+        ]);
+        assert.equal(
+          harness.createInputs[1]?.options.resume,
+          "24dbd86f-55d1-4de2-8138-7d7bd04563c5",
+        );
+        const sessions = yield* adapter.listSessions();
+        assert.equal(
+          (sessions[0]?.resumeCursor as { resume: string }).resume,
+          "24dbd86f-55d1-4de2-8138-7d7bd04563c5",
+        );
+        const turn = yield* adapter.sendTurn({ threadId: THREAD_ID, input: "edited prompt" });
+        assert.ok(turn.turnId);
+        assert.equal(harness.queries.length, 2);
+      }).pipe(Effect.provide(harness.layer));
+    },
+  );
 
-      const firstTurn = yield* adapter.sendTurn({
-        threadId: session.threadId,
-        input: "first",
-        attachments: [],
-      });
+  it.effect(
+    "refuses to edit when native history is unavailable instead of trimming only local turns",
+    () => {
+      const harness = makeHarness();
+      return Effect.gen(function* () {
+        const adapter = yield* ClaudeAdapter;
 
-      const firstCompletedFiber = yield* Stream.filter(
-        adapter.streamEvents,
-        (event) => event.type === "turn.completed",
-      ).pipe(Stream.runHead, Effect.forkChild);
+        const session = yield* adapter.startSession({
+          threadId: THREAD_ID,
+          provider: "claudeAgent",
+          runtimeMode: "full-access",
+        });
 
-      harness.query.emit({
-        type: "result",
-        subtype: "success",
-        is_error: false,
-        errors: [],
-        session_id: "sdk-session-rollback",
-        uuid: "result-first",
-      } as unknown as SDKMessage);
+        const firstTurn = yield* adapter.sendTurn({
+          threadId: session.threadId,
+          input: "first",
+          attachments: [],
+        });
 
-      const firstCompleted = yield* Fiber.join(firstCompletedFiber);
-      assert.equal(firstCompleted._tag, "Some");
-      if (firstCompleted._tag === "Some" && firstCompleted.value.type === "turn.completed") {
-        assert.equal(String(firstCompleted.value.turnId), String(firstTurn.turnId));
-      }
+        const firstCompletedFiber = yield* Stream.filter(
+          adapter.streamEvents,
+          (event) => event.type === "turn.completed",
+        ).pipe(Stream.runHead, Effect.forkChild);
 
-      const secondTurn = yield* adapter.sendTurn({
-        threadId: session.threadId,
-        input: "second",
-        attachments: [],
-      });
+        harness.query.emit({
+          type: "result",
+          subtype: "success",
+          is_error: false,
+          errors: [],
+          session_id: "sdk-session-rollback",
+          uuid: "result-first",
+        } as unknown as SDKMessage);
 
-      const secondCompletedFiber = yield* Stream.filter(
-        adapter.streamEvents,
-        (event) => event.type === "turn.completed",
-      ).pipe(Stream.runHead, Effect.forkChild);
+        const firstCompleted = yield* Fiber.join(firstCompletedFiber);
+        assert.equal(firstCompleted._tag, "Some");
+        if (firstCompleted._tag === "Some" && firstCompleted.value.type === "turn.completed") {
+          assert.equal(String(firstCompleted.value.turnId), String(firstTurn.turnId));
+        }
 
-      harness.query.emit({
-        type: "result",
-        subtype: "success",
-        is_error: false,
-        errors: [],
-        session_id: "sdk-session-rollback",
-        uuid: "result-second",
-      } as unknown as SDKMessage);
+        const secondTurn = yield* adapter.sendTurn({
+          threadId: session.threadId,
+          input: "second",
+          attachments: [],
+        });
 
-      const secondCompleted = yield* Fiber.join(secondCompletedFiber);
-      assert.equal(secondCompleted._tag, "Some");
-      if (secondCompleted._tag === "Some" && secondCompleted.value.type === "turn.completed") {
-        assert.equal(String(secondCompleted.value.turnId), String(secondTurn.turnId));
-      }
+        const secondCompletedFiber = yield* Stream.filter(
+          adapter.streamEvents,
+          (event) => event.type === "turn.completed",
+        ).pipe(Stream.runHead, Effect.forkChild);
 
-      const threadBeforeRollback = yield* adapter.readThread(session.threadId);
-      assert.equal(threadBeforeRollback.turns.length, 2);
+        harness.query.emit({
+          type: "result",
+          subtype: "success",
+          is_error: false,
+          errors: [],
+          session_id: "sdk-session-rollback",
+          uuid: "result-second",
+        } as unknown as SDKMessage);
 
-      const rolledBack = yield* Effect.exit(adapter.rollbackThread(session.threadId, 1));
-      assert.ok(Exit.isFailure(rolledBack));
+        const secondCompleted = yield* Fiber.join(secondCompletedFiber);
+        assert.equal(secondCompleted._tag, "Some");
+        if (secondCompleted._tag === "Some" && secondCompleted.value.type === "turn.completed") {
+          assert.equal(String(secondCompleted.value.turnId), String(secondTurn.turnId));
+        }
 
-      const threadAfterRollback = yield* adapter.readThread(session.threadId);
-      assert.equal(threadAfterRollback.turns.length, 2);
-      assert.equal(threadAfterRollback.turns[0]?.id, firstTurn.turnId);
-    }).pipe(
-      Effect.provideService(Random.Random, makeDeterministicRandomService()),
-      Effect.provide(harness.layer),
-    );
-  });
+        const threadBeforeRollback = yield* adapter.readThread(session.threadId);
+        assert.equal(threadBeforeRollback.turns.length, 2);
+
+        const rolledBack = yield* Effect.exit(adapter.rollbackThread(session.threadId, 1));
+        assert.ok(Exit.isFailure(rolledBack));
+
+        const threadAfterRollback = yield* adapter.readThread(session.threadId);
+        assert.equal(threadAfterRollback.turns.length, 2);
+        assert.equal(threadAfterRollback.turns[0]?.id, firstTurn.turnId);
+      }).pipe(
+        Effect.provideService(Random.Random, makeDeterministicRandomService()),
+        Effect.provide(harness.layer),
+      );
+    },
+  );
 
   it.effect("rejects unsupported live model switches before changing an Auto session", () => {
     const query = new FakeClaudeQuery();

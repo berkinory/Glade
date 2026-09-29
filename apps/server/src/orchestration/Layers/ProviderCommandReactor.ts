@@ -289,7 +289,10 @@ const runBoundedProviderCall = <E, R>(input: {
 
 export function isSafeLegacyProviderBlocker(lastError: string | null): boolean {
   const normalized = lastError?.toLowerCase() ?? "";
-  return normalized.includes("stdin closed before the frame was written");
+  return (
+    normalized.includes("stdin closed before the frame was written") ||
+    (normalized.includes("thread/rollback") && normalized.includes("unknown variant"))
+  );
 }
 
 function toNonEmptyProviderInput(value: string | undefined): string | undefined {
@@ -335,7 +338,6 @@ const PROVIDER_CONTEXT_LIFECYCLE_ACTIVITY_KIND = "provider.context.changed";
 const SESSION_CONTEXT_RECAP_PREVIEW_MAX_CHARS = 600;
 
 type ProviderContextLifecycleReason =
-  | "conversation-rebuilt"
   | "fresh-session"
   | "interrupt-escalation"
   | "native-history-unavailable"
@@ -699,7 +701,7 @@ function isRollbackStillInProgressError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   const normalized = message.toLowerCase();
   return (
-    normalized.includes("rollback") &&
+    (normalized.includes("rollback") || normalized.includes("revert")) &&
     (normalized.includes("turn is in progress") ||
       normalized.includes("turn in progress") ||
       normalized.includes("active turn"))
@@ -889,9 +891,6 @@ const make = Effect.gen(function* () {
   // Fresh sessions that cannot inherit native conversation state need one
   // transcript bootstrap for fork fallbacks.
   const freshSessionContextBootstrapThreadIds = new Set<string>();
-  // Providers without native rewind restart after rollback and receive the
-  // retained projection transcript once on their next prompt.
-  const rollbackContextBootstrapThreadIds = new Set<string>();
   // Keep observed context loss until recovery is accepted: a failed dispatch
   // can leave a replacement runtime alive without its previous history.
   type PendingInterruptEscalation = { evidence: ProviderContextLifecycleEvidence | null };
@@ -1086,7 +1085,6 @@ const make = Effect.gen(function* () {
     turnId?: TurnId;
     terminalEvent?: ProviderQueueDrainEvent;
     readonly clearFreshSessionTranscript: boolean;
-    readonly clearRollbackTranscript: boolean;
     readonly completeDurablePriorTranscript: boolean;
     lifecycleEvidence: ProviderContextLifecycleEvidence | null;
     readonly lifecycleEvidenceCreatedAt: string;
@@ -1098,7 +1096,6 @@ const make = Effect.gen(function* () {
   const suppressContextBootstrapOnNextStartThreadIds = new Set<string>();
   const clearPendingContextBootstraps = (threadId: string) => {
     freshSessionContextBootstrapThreadIds.delete(threadId);
-    rollbackContextBootstrapThreadIds.delete(threadId);
     pendingContextBootstrapAttempts.delete(threadId);
   };
 
@@ -1108,9 +1105,6 @@ const make = Effect.gen(function* () {
   ) => {
     if (attempt.clearFreshSessionTranscript) {
       freshSessionContextBootstrapThreadIds.delete(threadId);
-    }
-    if (attempt.clearRollbackTranscript) {
-      rollbackContextBootstrapThreadIds.delete(threadId);
     }
   };
 
@@ -1515,15 +1509,6 @@ const make = Effect.gen(function* () {
     readonly threadId: ThreadId;
     readonly numTurns: number;
   }) {
-    const projectedThread = yield* resolveThread(input.threadId);
-    const provider = projectedThread
-      ? Schema.is(ProviderKind)(projectedThread.session?.providerName)
-        ? projectedThread.session?.providerName
-        : projectedThread.modelSelection.provider
-      : undefined;
-    const rebuildsContext =
-      provider !== undefined &&
-      (yield* providerService.getCapabilities(provider)).conversationRollback === "restart-session";
     let attempt = 0;
     while (true) {
       let rollbackError: ProviderServiceError | null = null;
@@ -1540,16 +1525,6 @@ const make = Effect.gen(function* () {
           ),
         );
       if (rollbackError === null) {
-        if (rebuildsContext) {
-          rollbackContextBootstrapThreadIds.add(input.threadId);
-        }
-        return;
-      }
-      if (isStaleCodexResumeError(rollbackError)) {
-        yield* clearStaleProviderResumeState({
-          threadId: input.threadId,
-          cause: rollbackError,
-        });
         return;
       }
       if (isRollbackStillInProgressError(rollbackError) && attempt < 30) {
@@ -2519,12 +2494,8 @@ const make = Effect.gen(function* () {
     const hasPendingFreshSessionTranscriptBootstrap = freshSessionContextBootstrapThreadIds.has(
       input.threadId,
     );
-    const hasPendingRollbackTranscriptBootstrap = rollbackContextBootstrapThreadIds.has(
-      input.threadId,
-    );
     const hasPendingPriorTranscriptBootstrap =
       hasPendingFreshSessionTranscriptBootstrap ||
-      hasPendingRollbackTranscriptBootstrap ||
       (input.dispatchMode !== "steer" && priorEscalationEvidence?.recapText != null);
     const shouldBootstrapPriorTranscriptContext =
       ((selectedProvider === "opencode" &&
@@ -2570,11 +2541,9 @@ const make = Effect.gen(function* () {
       ? "interrupt-escalation"
       : nativeResumeFailed
         ? "native-resume-failed"
-        : rollbackContextBootstrapThreadIds.has(input.threadId)
-          ? "conversation-rebuilt"
-          : freshSessionContextBootstrapThreadIds.has(input.threadId)
-            ? "fresh-session"
-            : "native-history-unavailable";
+        : freshSessionContextBootstrapThreadIds.has(input.threadId)
+          ? "fresh-session"
+          : "native-history-unavailable";
     let providerContextLifecycleEvidence: ProviderContextLifecycleEvidence | null =
       input.reviewTarget === undefined &&
       input.dispatchMode !== "steer" &&
@@ -2775,10 +2744,9 @@ const make = Effect.gen(function* () {
       yield* captureMessageStartCheckpoint;
       const tracksDurableContextAcceptance =
         selectedProvider === "opencode" &&
-        ((hasPendingFreshSessionTranscriptBootstrap &&
-          (priorTranscriptBootstrapRetiresOnAcceptedTurn ||
-            specializedBootstrapCompletesFreshSessionContext)) ||
-          (hasPendingRollbackTranscriptBootstrap && priorTranscriptBootstrapRetiresOnAcceptedTurn));
+        hasPendingFreshSessionTranscriptBootstrap &&
+        (priorTranscriptBootstrapRetiresOnAcceptedTurn ||
+          specializedBootstrapCompletesFreshSessionContext);
       // Only Codex awaits a provider turn/start acknowledgement. The other
       // adapters enqueue/fork prompts or launch a process before acceptance;
       // their matching terminal success confirms that recovery was consumed.
@@ -2790,9 +2758,6 @@ const make = Effect.gen(function* () {
               clearFreshSessionTranscript:
                 priorTranscriptBootstrapText !== null ||
                 (tracksDurableContextAcceptance && hasPendingFreshSessionTranscriptBootstrap),
-              clearRollbackTranscript:
-                priorTranscriptBootstrapText !== null ||
-                (tracksDurableContextAcceptance && priorTranscriptBootstrapRetiresOnAcceptedTurn),
               completeDurablePriorTranscript:
                 tracksDurableContextAcceptance && hasPendingFreshSessionTranscriptBootstrap,
               lifecycleEvidence: providerContextLifecycleEvidence,
@@ -3004,9 +2969,6 @@ const make = Effect.gen(function* () {
       }
       if (durableCompletionSucceeded) {
         freshSessionContextBootstrapThreadIds.delete(input.threadId);
-        if (retiresPriorTranscriptBootstrap) {
-          rollbackContextBootstrapThreadIds.delete(input.threadId);
-        }
       }
     }
     return startedTurn;
@@ -3591,11 +3553,11 @@ const make = Effect.gen(function* () {
         ),
         Effect.ensuring(Effect.sync(() => editResendTurnStartKeys.delete(editResendKey))),
       );
-      // A requested steer can still become a separate queued turn (for
-      // providers without native steering, or if the live turn already
-      // settled). Persist that effective boundary while leaving native steer
-      // continuations unbound to a new turn.
-      if (startedTurn && event.payload.dispatchMode === "steer" && !isNativeSteer) {
+      // Persist the user/turn boundary as soon as the provider accepts a new
+      // turn. A turn that stops before assistant text arrives otherwise leaves
+      // the user message without turn metadata, making edit-and-resend vanish.
+      // Native steers continue an existing turn and keep their shared boundary.
+      if (startedTurn && !isNativeSteer) {
         yield* orchestrationEngine.dispatch({
           type: "thread.message.user.bind-turn",
           commandId: CommandId.makeUnsafe(
@@ -5108,6 +5070,7 @@ const make = Effect.gen(function* () {
       numTurns: editTarget.rollbackTurnCount,
       removedTurnIds: editTarget.removedTurnIds.map((turnId) => TurnId.makeUnsafe(turnId)),
       skipAttachmentPrune: true,
+      replacementText: payload.text,
       createdAt: payload.createdAt,
     });
 
@@ -5156,30 +5119,6 @@ const make = Effect.gen(function* () {
     });
   });
 
-  const stopActiveProviderRuntimeForEdit = Effect.fnUntraced(function* (input: {
-    readonly threadId: ThreadId;
-  }) {
-    const thread = yield* resolveThread(input.threadId);
-    const provider = thread
-      ? Schema.is(ProviderKind)(thread.session?.providerName)
-        ? thread.session?.providerName
-        : thread.modelSelection.provider
-      : undefined;
-    const rebuildsContext =
-      provider !== undefined &&
-      (yield* providerService.getCapabilities(provider)).conversationRollback === "restart-session";
-    if (rebuildsContext && providerService.clearSessionResumeCursor) {
-      yield* providerService.clearSessionResumeCursor({ threadId: input.threadId });
-      rollbackContextBootstrapThreadIds.add(input.threadId);
-      return;
-    }
-    if (providerService.stopRuntimeSession) {
-      yield* providerService.stopRuntimeSession({ threadId: input.threadId });
-      return;
-    }
-    yield* providerService.stopSession({ threadId: input.threadId });
-  });
-
   const processMessageEditResendRequestedWithoutLease = Effect.fnUntraced(function* (
     event: Extract<ProviderIntentEvent, { type: "thread.message-edit-resend-requested" }>,
   ) {
@@ -5214,13 +5153,11 @@ const make = Effect.gen(function* () {
       providerThread.session.activeTurnId !== null &&
       !isQueuedMessageEdit
     ) {
-      // Edits should replay from the last stable cursor, not wait for each
-      // provider's interrupt lifecycle to settle.
-      yield* stopActiveProviderRuntimeForEdit({ threadId: providerThread.id });
-      yield* processMessageEditResendPayload(event.payload, {
-        skipProviderRollback: true,
-        activeTurnId,
+      yield* providerService.interruptTurn({
+        threadId: providerThread.id,
+        turnId: providerThread.session.activeTurnId,
       });
+      yield* processMessageEditResendPayload(event.payload, { activeTurnId });
       return;
     }
 

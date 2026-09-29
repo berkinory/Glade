@@ -509,7 +509,7 @@ function ToastSurface({
               ? "truncate whitespace-nowrap"
               : compactContextual
                 ? "truncate whitespace-nowrap font-medium"
-                : "break-words",
+                : "line-clamp-3 [overflow-wrap:anywhere]",
           )}
           data-slot="toast-title"
         />

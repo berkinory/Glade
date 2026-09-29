@@ -63,6 +63,12 @@ A turn is one cycle inside that task:
 4. The provider completes, fails, or is interrupted.
 5. You review the result and decide what happens next.
 
+Normal follow-ups reuse the provider runtime. Codex 0.158.0+ and Claude associate gateway calls
+with provider-generated call ids and the turn that issued them. Completed or interrupted turns
+cannot borrow the next turn's write authority. Older Codex and OpenCode runtimes are renewed between turns because their gateway
+transport cannot prove which turn issued a call. Stop drains and retires the interrupted runtime
+before resuming native history. Background recovery keeps the composer available.
+
 A long task can contain many turns. Keep follow-ups connected to the same objective; create another
 task when the work needs a different owner, branch, or review boundary.
 
@@ -160,8 +166,13 @@ The intended loop is:
 5. Commit only the intended changes.
 6. Push and open a pull request when appropriate.
 
-Glade's checkpoint and revert controls can help recover task work, but committed Git history remains
-the strongest boundary for important changes.
+Editing and resending the latest message restores its preceding workspace checkpoint and replays
+the corrected prompt in the same chat. Codex and OpenCode rewind their native conversation;
+Claude resumes a native copy of the exact retained prefix, including tool results. Editing does
+not replace the retained history with a generated summary. File-change cards also support
+undoing their changes.
+Checkpoint restores preserve unchanged files and the Git staging area. Committed Git history
+remains the strongest boundary for important changes.
 
 ## Parallel work
 

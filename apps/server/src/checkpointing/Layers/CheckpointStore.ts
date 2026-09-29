@@ -354,25 +354,52 @@ const makeCheckpointStore = Effect.gen(function* () {
         return false;
       }
 
-      yield* git.execute({
-        operation,
-        cwd: input.cwd,
-        args: ["restore", "--source", commitOid, "--worktree", "--staged", "--", "."],
-      });
-      yield* git.execute({
-        operation,
-        cwd: input.cwd,
-        args: ["clean", "-fd", "--", "."],
-      });
-
-      const headExists = yield* hasHeadCommit(input.cwd);
-      if (headExists) {
-        yield* git.execute({
-          operation,
-          cwd: input.cwd,
-          args: ["reset", "--quiet", "--", "."],
-        });
-      }
+      // Compare through a temporary index so unchanged files retain their
+      // timestamps and developer file watchers do not reload the application.
+      // The real index belongs to the user and must keep their staged changes.
+      yield* Effect.acquireUseRelease(
+        fs.makeTempDirectory({ prefix: "glade-restore-checkpoint-" }),
+        (tempDir) =>
+          Effect.gen(function* () {
+            const env = { ...process.env, GIT_INDEX_FILE: path.join(tempDir, "index") };
+            yield* git.execute({
+              operation,
+              cwd: input.cwd,
+              args: ["read-tree", commitOid],
+              env,
+            });
+            yield* git.execute({
+              operation,
+              cwd: input.cwd,
+              args: ["add", "-A", "--", "."],
+              env,
+            });
+            const changed = yield* git.execute({
+              operation,
+              cwd: input.cwd,
+              args: ["diff", "--cached", "--name-only", "--no-renames", "-z", commitOid, "--", "."],
+              env,
+              maxOutputBytes: CHECKPOINT_DIFF_MAX_OUTPUT_BYTES,
+            });
+            yield* restoreWorktreePathsFromTree({
+              cwd: input.cwd,
+              treeOid: commitOid,
+              paths: changed.stdout.split("\0").filter(Boolean),
+            });
+          }),
+        (tempDir) => fs.remove(tempDir, { recursive: true, force: true }),
+      ).pipe(
+        Effect.catchTags({
+          PlatformError: (cause) =>
+            Effect.fail(
+              new CheckpointInvariantError({
+                operation,
+                detail: "Failed to restore checkpoint.",
+                cause,
+              }),
+            ),
+        }),
+      );
 
       return true;
     });

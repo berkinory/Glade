@@ -375,7 +375,9 @@ function rollbackProjectionMessagesFromMessage(
   return {
     keptRows: messages.slice(0, targetIndex),
     removedTurnIds: new Set(
-      removedRows.flatMap((message) => (message.turnId === null ? [] : [message.turnId])),
+      removedRows.flatMap((message) =>
+        message.role === "system" || message.turnId === null ? [] : [message.turnId],
+      ),
     ),
     changed: true,
   };
@@ -1029,7 +1031,11 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
 
         case "thread.reverted":
         case "thread.conversation-rolled-back": {
-          if (event.type === "thread.conversation-rolled-back" && event.payload.numTurns === 0) {
+          if (
+            event.type === "thread.conversation-rolled-back" &&
+            event.payload.numTurns === 0 &&
+            event.payload.replacementText === undefined
+          ) {
             return;
           }
           const existingRows = yield* projectionThreadMessageRepository.listByThreadId({
@@ -1059,6 +1065,22 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
               return;
             }
             keptRows = rollback.keptRows;
+            const editedMessage = existingRows.find(
+              (message) => message.messageId === event.payload.messageId,
+            );
+            if (event.payload.replacementText !== undefined && editedMessage) {
+              keptRows = [
+                ...keptRows,
+                {
+                  ...editedMessage,
+                  text: event.payload.replacementText,
+                  turnId: null,
+                  isStreaming: false,
+                  startsNewTurn: true,
+                  updatedAt: event.occurredAt,
+                },
+              ];
+            }
           }
 
           yield* projectionThreadMessageRepository.deleteByThreadId({

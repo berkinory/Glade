@@ -1,3 +1,4 @@
+import { makeNativeToolCallRegistry } from "./nativeToolCalls.ts";
 import { assert, describe, it } from "@effect/vitest";
 import { ProjectId, ThreadId, TurnId, type OrchestrationThreadShell } from "@glade/contracts";
 import { Deferred, Effect, Fiber, Option } from "effect";
@@ -93,13 +94,16 @@ function makeTransport(input: {
     },
   });
   const inFlightRequests = makeAgentGatewayInFlightRequestRegistry();
+  const nativeToolCalls = makeNativeToolCallRegistry();
   const credentials = {
+    nativeToolCalls,
     verifySession: sessionRegistry.verify,
     bindWriteAuthority: sessionRegistry.bindWriteAuthority,
     verifyWriteAuthority: sessionRegistry.verifyWriteAuthority,
     registerInFlightRequest: inFlightRequests.register,
     cancelInFlightRequests: inFlightRequests.cancel,
     cancelSessionTurnRequests: (token: string, turnId: string) => {
+      nativeToolCalls.retire(token, turnId);
       const session = sessionRegistry.verify(token);
       return session
         ? inFlightRequests.cancelTurn(session.sessionKey, turnId).settled
@@ -114,6 +118,7 @@ function makeTransport(input: {
     revokeSessionToken: (token: string) => {
       const session = sessionRegistry.verify(token);
       sessionRegistry.revoke(token);
+      nativeToolCalls.revoke(token);
       if (session) inFlightRequests.revokeSession(session.sessionKey);
     },
     connectionForThread: (
@@ -175,6 +180,7 @@ function makeTransport(input: {
       : {}),
   });
   return Object.assign(transport, {
+    leases,
     resolveToken: (token: string) => tokenAliases.get(token) ?? token,
     cancelTurn: (sessionKey: string, turnId: string) =>
       inFlightRequests.cancelTurn(sessionKeyAliases.get(sessionKey) ?? sessionKey, turnId),
@@ -859,5 +865,59 @@ describe("makeAgentGatewayMcpTransport capability truth", () => {
       assert.include(rpcErrorOf(mismatch).message, "Do not retry with this token");
       assert.deepEqual(denials, []);
     }),
+  );
+});
+
+describe("native MCP turn provenance", () => {
+  it.effect(
+    "keeps a session alive while rejecting stale, missing and mismatched call proofs in one batch",
+    () =>
+      Effect.gen(function* () {
+        const handled: string[] = [];
+        const transport = makeTransport({
+          threads: [makeThread("native")],
+          leaseCapabilities: { nativeToolCallScope: true },
+          tools: [
+            {
+              definition: { name: "write", description: "Write", inputSchema: { type: "object" } },
+              requiredCapability: "thread:write",
+              requiresActiveTurn: true,
+              handler: (_args, context) =>
+                Effect.sync(() => {
+                  handled.push(context.callerTurnId!);
+                  return { content: [{ type: "text" as const, text: "done" }] };
+                }),
+            },
+          ],
+        });
+        const lease = transport.leases.get("native")!;
+        lease.registerNativeToolCall!({ callId: "old", turnId: "turn-native", toolName: "write" });
+        transport.setThreadTurn("native", "next");
+        lease.registerNativeToolCall!({ callId: "new", turnId: "next", toolName: "write" });
+        lease.registerNativeToolCall!({ callId: "other", turnId: "next", toolName: "different" });
+        const result = yield* post(
+          transport,
+          "token-1",
+          ["old", "new", "other", null].map((callId, id) => ({
+            jsonrpc: "2.0",
+            id,
+            method: "tools/call",
+            params: { name: "write", arguments: {}, ...(callId ? { _meta: { callId } } : {}) },
+          })),
+        );
+        assert.equal(result.status, 200);
+        assert.deepEqual(handled, ["next"]);
+        assert.equal((result.body as unknown[]).length, 4);
+        yield* Effect.promise(() => lease.retireTurn("next"));
+        transport.setThreadTurn("native", "third");
+        lease.registerNativeToolCall!({ callId: "third-call", turnId: "third", toolName: "write" });
+        yield* post(transport, "token-1", {
+          jsonrpc: "2.0",
+          id: 5,
+          method: "tools/call",
+          params: { name: "write", _meta: { callId: "third-call" } },
+        });
+        assert.deepEqual(handled, ["next", "third"]);
+      }),
   );
 });

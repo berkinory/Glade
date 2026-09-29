@@ -1081,6 +1081,8 @@ const DIAGNOSTIC_ONLY_CODEX_METHODS = new Set([
   "remoteControl/status/changed",
   "skills/changed",
   "session/threadOpenRequested",
+  "session/threadOpenResolved",
+  "thread/reverted",
 ]);
 
 function mapUnmappedCodexEvent(

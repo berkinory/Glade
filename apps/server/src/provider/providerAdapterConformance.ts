@@ -6,7 +6,6 @@ import type {
 type CapabilityFlag = Exclude<
   keyof ProviderAdapterCapabilities,
   | "sessionModelSwitch"
-  | "conversationRollback"
   | "supportsSkillMentions"
   | "supportsPluginMentions"
   | "supportsLiveTurnDiffPatch"

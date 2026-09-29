@@ -143,6 +143,23 @@ export async function findClaudeSessionTranscriptPath(input: {
   return files.get(input.sessionId);
 }
 
+/** The actual chain parent can be a tool result or attachment hidden by the SDK reader. */
+export async function readClaudeSessionParentUuid(input: {
+  readonly sessionId: string;
+  readonly messageId: string;
+}): Promise<string | null> {
+  const file = await findClaudeSessionTranscriptPath(input);
+  if (!file) throw new Error("The native Claude transcript could not be found.");
+  for await (const entry of readTranscriptEntries(file)) {
+    if (entry.uuid !== input.messageId || entry.isSidechain === true) continue;
+    if (entry.parentUuid === null || typeof entry.parentUuid === "string") {
+      return entry.parentUuid;
+    }
+    throw new Error("The Claude edit boundary has no valid chain parent.");
+  }
+  throw new Error("The edited message is missing from the native Claude transcript.");
+}
+
 /** Read dates from a frozen native copy; the SDK supplies its selected message chain. */
 export async function readClaudeImportMessageDates(input: {
   readonly sessionId: string;

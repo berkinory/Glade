@@ -66,15 +66,12 @@ export interface ProviderSteerSubagentPayload {
   readonly skills?: ProviderSendTurnInput["skills"];
   readonly mentions?: ProviderSendTurnInput["mentions"];
 }
-export type ProviderConversationRollbackMode = "native" | "restart-session";
 
 export interface ProviderAdapterCapabilities {
   /**
    * Declares whether changing the model on an existing session is supported.
    */
   readonly sessionModelSwitch: ProviderSessionModelSwitchMode;
-  /** Restart-session adapters cannot rewind provider history and must rebuild context locally. */
-  readonly conversationRollback?: ProviderConversationRollbackMode;
   readonly supportsSkillMentions?: boolean;
   readonly supportsSkillDiscovery?: boolean;
   readonly supportsNativeSlashCommandDiscovery?: boolean;

@@ -23,6 +23,8 @@ export interface AgentGatewaySessionLeaseOptions {
  */
 export interface AgentGatewayCapabilityInput {
   readonly enableComputerControl?: boolean | undefined;
+  /** Enable only after verifying provider-generated MCP call ids. */
+  readonly nativeToolCallScope?: boolean | undefined;
 }
 
 /** Lease no optional capabilities. Spelled out so an omission reads as a choice. */
@@ -54,7 +56,10 @@ export function agentGatewaySessionLeaseOptionsFor(
 export function captureAgentGatewayCapabilityInput(
   input: AgentGatewayCapabilityInput,
 ): AgentGatewayCapabilityInput {
-  return { enableComputerControl: input.enableComputerControl === true };
+  return {
+    enableComputerControl: input.enableComputerControl === true,
+    ...(input.nativeToolCallScope ? { nativeToolCallScope: true } : {}),
+  };
 }
 
 type AgentGatewaySessionLeaseCredentials = Pick<
@@ -64,7 +69,10 @@ type AgentGatewaySessionLeaseCredentials = Pick<
   Partial<
     Pick<
       AgentGatewayCredentialsShape,
-      "cancelSessionTurnRequests" | "issueStdioBootstrapToken" | "retireSessionTurn"
+      | "cancelSessionTurnRequests"
+      | "issueStdioBootstrapToken"
+      | "retireSessionTurn"
+      | "nativeToolCalls"
     >
   >;
 
@@ -81,12 +89,13 @@ export const AGENT_GATEWAY_TURN_AUTHORITY_RETIRED = "gladeGatewayTurnAuthorityRe
  */
 export interface AgentGatewaySessionLease {
   readonly connection: AgentGatewayMcpConnection;
+  readonly registerNativeToolCall?: (call: import("./nativeToolCalls.ts").NativeToolCall) => void;
   /** Mint a fresh one-shot proxy credential for a provider turn. */
   readonly issueStdioBootstrapToken?: () => string | null;
   readonly cancelTurn: (turnId: string) => Promise<void>;
   /**
-   * Permanently retire write authority for a terminal turn while leaving the
-   * provider runtime available to drain background work. The admission fence
+   * Retire write authority for a terminal turn. Transports without native
+   * call provenance also retire the bearer for future turns. The admission fence
    * is synchronous; the promise represents only request drainage.
    */
   readonly retireTurn: (turnId: string) => Promise<void>;
@@ -121,9 +130,10 @@ function awaitAgentGatewayTurnCancellation(
 function startAgentGatewayTurnCancellation(
   lease: AgentGatewaySessionLease,
   turnId: string,
+  retireCredential = false,
 ): Effect.Effect<Promise<void>> {
   return Effect.try({
-    try: () => lease.cancelTurn(turnId),
+    try: () => (retireCredential ? lease.retireTurn(turnId) : lease.cancelTurn(turnId)),
     catch: (cause) => cause,
   }).pipe(
     Effect.catch((cause) =>
@@ -142,10 +152,11 @@ function startAgentGatewayTurnCancellation(
 export function cancelAgentGatewayTurn(
   lease: AgentGatewaySessionLease | undefined,
   turnId: string | undefined,
+  options?: { readonly retireCredential: boolean },
 ): Effect.Effect<void> {
   if (lease === undefined || turnId === undefined) return Effect.void;
 
-  return startAgentGatewayTurnCancellation(lease, turnId).pipe(
+  return startAgentGatewayTurnCancellation(lease, turnId, options?.retireCredential).pipe(
     Effect.flatMap((cancellation) => awaitAgentGatewayTurnCancellation(turnId, cancellation)),
   );
 }
@@ -211,10 +222,21 @@ export function acquireAgentGatewaySessionLease(
     options === undefined
       ? credentials.connectionForThread(threadId, provider)
       : credentials.connectionForThread(threadId, provider, options);
+  const nativeToolCalls = capabilityInput.nativeToolCallScope
+    ? credentials.nativeToolCalls
+    : undefined;
+  nativeToolCalls?.enable(connection.bearerToken);
   let released = false;
 
   return {
     connection,
+    ...(nativeToolCalls
+      ? {
+          registerNativeToolCall: (call: import("./nativeToolCalls.ts").NativeToolCall) => {
+            if (!released) nativeToolCalls.register(connection.bearerToken, call);
+          },
+        }
+      : {}),
     issueStdioBootstrapToken: () => {
       if (released) return null;
       return credentials.issueStdioBootstrapToken?.(connection.bearerToken) ?? null;
@@ -228,7 +250,9 @@ export function acquireAgentGatewaySessionLease(
     retireTurn: (turnId) => {
       if (released) return Promise.resolve();
       return (
-        credentials.retireSessionTurn?.(connection.bearerToken, turnId) ??
+        (nativeToolCalls
+          ? credentials.cancelSessionTurnRequests?.(connection.bearerToken, turnId)
+          : credentials.retireSessionTurn?.(connection.bearerToken, turnId)) ??
         credentials.cancelSessionTurnRequests?.(connection.bearerToken, turnId) ??
         Promise.resolve()
       );

@@ -233,7 +233,9 @@ function rollbackThreadMessagesFromMessage(
   return {
     messages: messages.slice(0, targetIndex),
     removedTurnIds: new Set(
-      removedMessages.flatMap((message) => (message.turnId === null ? [] : [message.turnId])),
+      removedMessages.flatMap((message) =>
+        message.role === "system" || message.turnId === null ? [] : [message.turnId],
+      ),
     ),
   };
 }
@@ -1281,7 +1283,7 @@ export function projectEvent(
         "payload",
       ).pipe(
         Effect.map((payload) => {
-          if (payload.numTurns === 0) {
+          if (payload.numTurns === 0 && payload.replacementText === undefined) {
             return nextBase;
           }
           const thread = nextBase.threads.find((entry) => entry.id === payload.threadId);
@@ -1294,6 +1296,21 @@ export function projectEvent(
             return nextBase;
           }
 
+          let messages = rollback.messages;
+          const editedMessage = thread.messages.find((message) => message.id === payload.messageId);
+          if (payload.replacementText !== undefined && editedMessage) {
+            messages = [
+              ...messages,
+              {
+                ...editedMessage,
+                text: payload.replacementText,
+                turnId: null,
+                streaming: false,
+                startsNewTurn: true,
+                updatedAt: event.occurredAt,
+              },
+            ];
+          }
           const checkpoints = thread.checkpoints
             .filter((checkpoint) => !rollback.removedTurnIds.has(checkpoint.turnId))
             .toSorted((left, right) => left.checkpointTurnCount - right.checkpointTurnCount)
@@ -1311,8 +1328,8 @@ export function projectEvent(
             threads: updateThread(nextBase.threads, payload.threadId, {
               checkpoints,
               messages: clearRemovedAsyncUserInputResponses(
-                rollback.messages,
-                new Set(rollback.messages.map((message) => message.id)),
+                messages,
+                new Set(messages.map((message) => message.id)),
                 event.sequence,
               ).slice(-MAX_THREAD_MESSAGES),
               proposedPlans,

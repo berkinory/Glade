@@ -4,6 +4,7 @@
 // Exports: useThreadErrorToast, buildThreadErrorToastOptions, threadErrorToastId
 
 import type { ThreadId } from "@glade/contracts";
+import { PROVIDER_DELIVERY_BLOCK_SUMMARY } from "@glade/shared/providerDeliveryBlock";
 import { useEffect, useRef, type RefObject } from "react";
 
 import { toastManager } from "../ui/toast";
@@ -17,13 +18,16 @@ export function threadErrorToastId(threadId: ThreadId): string {
 }
 
 function threadErrorToastTitle(error: string): string {
+  if (error.startsWith(PROVIDER_DELIVERY_BLOCK_SUMMARY)) {
+    return "This chat is blocked by an earlier provider error.";
+  }
   const firstLine = error.split(/\r?\n/u, 1)[0]?.trim() ?? "";
-  return (
+  const title =
     firstLine
       .replace(/^Error:\s*/u, "")
       .replace(/^Provider adapter process error \([^)]+\) for thread [^:]+:\s*/u, "") ||
-    "This task failed."
-  );
+    "This task failed.";
+  return title.length > 180 ? `${title.slice(0, 179).trimEnd()}…` : title;
 }
 
 export function buildThreadErrorToastOptions(input: {

@@ -1383,7 +1383,9 @@ export function hasLiveTurnTakenOver(input: {
   if (!input.localDispatch) {
     return false;
   }
-  if (input.phase === "running" || input.phase === "connecting") {
+  // A reconnect can belong to the previous turn's gateway rotation. Keep the
+  // dispatch marker until this send actually starts, including the ready gap.
+  if (input.phase === "running") {
     return true;
   }
   if (input.session?.activeTurnId != null) {

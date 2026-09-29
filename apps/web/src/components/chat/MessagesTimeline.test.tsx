@@ -87,8 +87,6 @@ function makeTimelineBaseProps() {
     expandedWorkGroups: {},
     onToggleWorkGroup: () => {},
     onOpenTurnDiff: () => {},
-    revertTurnCountByUserMessageId: new Map(),
-    onRevertUserMessage: () => {},
     isRevertingCheckpoint: false,
     onImageExpand: () => {},
     markdownCwd: undefined,
@@ -244,8 +242,6 @@ describe("MessagesTimeline", () => {
         expandedWorkGroups={{}}
         onToggleWorkGroup={() => {}}
         onOpenTurnDiff={() => {}}
-        revertTurnCountByUserMessageId={new Map()}
-        onRevertUserMessage={() => {}}
         isRevertingCheckpoint={false}
         onImageExpand={() => {}}
         markdownCwd={undefined}
@@ -304,8 +300,6 @@ describe("MessagesTimeline", () => {
         onToggleWorkGroup={() => {}}
         onOpenTurnDiff={() => {}}
         onOpenThread={() => {}}
-        revertTurnCountByUserMessageId={new Map()}
-        onRevertUserMessage={() => {}}
         isRevertingCheckpoint={false}
         onImageExpand={() => {}}
         markdownCwd={undefined}
@@ -356,8 +350,6 @@ describe("MessagesTimeline", () => {
         onToggleWorkGroup={() => {}}
         onOpenTurnDiff={() => {}}
         onOpenThread={() => {}}
-        revertTurnCountByUserMessageId={new Map()}
-        onRevertUserMessage={() => {}}
         isRevertingCheckpoint={false}
         onImageExpand={() => {}}
         markdownCwd={undefined}
@@ -411,10 +403,6 @@ describe("MessagesTimeline", () => {
         expandedWorkGroups={{}}
         onToggleWorkGroup={() => {}}
         onOpenTurnDiff={() => {}}
-        revertTurnCountByUserMessageId={
-          new Map([[MessageId.makeUnsafe("message-editable-user"), 0]])
-        }
-        onRevertUserMessage={() => {}}
         onEditUserMessage={() => true}
         editableUserMessageId={MessageId.makeUnsafe("message-editable-user")}
         isRevertingCheckpoint={false}
@@ -428,11 +416,10 @@ describe("MessagesTimeline", () => {
 
     expect(markup).toContain('aria-label="Copy message"');
     expect(markup).toContain('aria-label="Edit message"');
-    expect(markup).toContain('aria-label="Revert to this message"');
     expect(markup).toContain("size-[1.125em]");
   });
 
-  it("keeps edit available and hides undo before a revert checkpoint exists", async () => {
+  it("keeps edit available before a checkpoint exists", async () => {
     const { MessagesTimeline } = await import("./MessagesTimeline");
     const markup = renderToStaticMarkup(
       <MessagesTimeline
@@ -472,8 +459,6 @@ describe("MessagesTimeline", () => {
         expandedWorkGroups={{}}
         onToggleWorkGroup={() => {}}
         onOpenTurnDiff={() => {}}
-        revertTurnCountByUserMessageId={new Map()}
-        onRevertUserMessage={() => {}}
         onEditUserMessage={() => true}
         editableUserMessageId={MessageId.makeUnsafe("message-user-no-checkpoint")}
         isRevertingCheckpoint={false}
@@ -486,9 +471,7 @@ describe("MessagesTimeline", () => {
     );
 
     expect(markup).toContain('aria-label="Edit message"');
-    expect(markup).not.toContain('aria-label="Revert to this message"');
     expect(markup).not.toContain('title="Edit message"');
-    expect(markup).not.toContain('title="Revert to this message"');
   });
 
   it("keeps edit available while an assistant turn is running", async () => {
@@ -519,10 +502,6 @@ describe("MessagesTimeline", () => {
         expandedWorkGroups={{}}
         onToggleWorkGroup={() => {}}
         onOpenTurnDiff={() => {}}
-        revertTurnCountByUserMessageId={
-          new Map([[MessageId.makeUnsafe("message-user-running"), 1]])
-        }
-        onRevertUserMessage={() => {}}
         onEditUserMessage={() => true}
         editableUserMessageId={MessageId.makeUnsafe("message-user-running")}
         isRevertingCheckpoint={false}
@@ -538,7 +517,6 @@ describe("MessagesTimeline", () => {
     expect(markup).toContain('aria-label="Edit message"');
     expect(editButtonMarkup).not.toContain('disabled=""');
     expect(markup).not.toContain('title="Edit message"');
-    expect(markup).toMatch(/<button[^>]*disabled=""[^>]*aria-label="Revert to this message"/);
   });
 
   it("renders a 'Sent by agent' chip above agent-dispatched user messages", async () => {
@@ -569,8 +547,6 @@ describe("MessagesTimeline", () => {
         expandedWorkGroups={{}}
         onToggleWorkGroup={() => {}}
         onOpenTurnDiff={() => {}}
-        revertTurnCountByUserMessageId={new Map()}
-        onRevertUserMessage={() => {}}
         isRevertingCheckpoint={false}
         onImageExpand={() => {}}
         markdownCwd={undefined}
@@ -614,8 +590,6 @@ describe("MessagesTimeline", () => {
         expandedWorkGroups={{}}
         onToggleWorkGroup={() => {}}
         onOpenTurnDiff={() => {}}
-        revertTurnCountByUserMessageId={new Map()}
-        onRevertUserMessage={() => {}}
         isRevertingCheckpoint={false}
         onImageExpand={() => {}}
         markdownCwd={undefined}
@@ -670,8 +644,6 @@ describe("MessagesTimeline", () => {
         expandedWorkGroups={{}}
         onToggleWorkGroup={() => {}}
         onOpenTurnDiff={() => {}}
-        revertTurnCountByUserMessageId={new Map()}
-        onRevertUserMessage={() => {}}
         isRevertingCheckpoint={false}
         onImageExpand={() => {}}
         markdownCwd={undefined}
@@ -724,8 +696,6 @@ describe("MessagesTimeline", () => {
         expandedWorkGroups={{}}
         onToggleWorkGroup={() => {}}
         onOpenTurnDiff={() => {}}
-        revertTurnCountByUserMessageId={new Map()}
-        onRevertUserMessage={() => {}}
         isRevertingCheckpoint={false}
         onImageExpand={() => {}}
         markdownCwd={undefined}
@@ -827,8 +797,6 @@ describe("MessagesTimeline", () => {
         expandedWorkGroups={{}}
         onToggleWorkGroup={() => {}}
         onOpenTurnDiff={() => {}}
-        revertTurnCountByUserMessageId={new Map()}
-        onRevertUserMessage={() => {}}
         isRevertingCheckpoint={false}
         onImageExpand={() => {}}
         markdownCwd={undefined}
@@ -882,8 +850,6 @@ describe("MessagesTimeline", () => {
         expandedWorkGroups={{}}
         onToggleWorkGroup={() => {}}
         onOpenTurnDiff={() => {}}
-        revertTurnCountByUserMessageId={new Map()}
-        onRevertUserMessage={() => {}}
         isRevertingCheckpoint={false}
         onImageExpand={() => {}}
         markdownCwd={undefined}
@@ -928,8 +894,6 @@ describe("MessagesTimeline", () => {
         expandedWorkGroups={{}}
         onToggleWorkGroup={() => {}}
         onOpenTurnDiff={() => {}}
-        revertTurnCountByUserMessageId={new Map()}
-        onRevertUserMessage={() => {}}
         isRevertingCheckpoint={false}
         onImageExpand={() => {}}
         markdownCwd={undefined}
@@ -1047,8 +1011,6 @@ describe("MessagesTimeline", () => {
         expandedWorkGroups={{}}
         onToggleWorkGroup={() => {}}
         onOpenTurnDiff={() => {}}
-        revertTurnCountByUserMessageId={new Map()}
-        onRevertUserMessage={() => {}}
         isRevertingCheckpoint={false}
         onImageExpand={() => {}}
         markdownCwd={undefined}
@@ -1137,8 +1099,6 @@ describe("MessagesTimeline", () => {
         expandedWorkGroups={{}}
         onToggleWorkGroup={() => {}}
         onOpenTurnDiff={() => {}}
-        revertTurnCountByUserMessageId={new Map()}
-        onRevertUserMessage={() => {}}
         isRevertingCheckpoint={false}
         onImageExpand={() => {}}
         markdownCwd={undefined}
@@ -1191,8 +1151,6 @@ describe("MessagesTimeline", () => {
         expandedWorkGroups={{}}
         onToggleWorkGroup={() => {}}
         onOpenTurnDiff={() => {}}
-        revertTurnCountByUserMessageId={new Map()}
-        onRevertUserMessage={() => {}}
         isRevertingCheckpoint={false}
         onImageExpand={() => {}}
         markdownCwd={undefined}
@@ -1239,8 +1197,6 @@ describe("MessagesTimeline", () => {
         expandedWorkGroups={{}}
         onToggleWorkGroup={() => {}}
         onOpenTurnDiff={() => {}}
-        revertTurnCountByUserMessageId={new Map()}
-        onRevertUserMessage={() => {}}
         isRevertingCheckpoint={false}
         onImageExpand={() => {}}
         markdownCwd={undefined}
@@ -1708,8 +1664,6 @@ describe("MessagesTimeline", () => {
         expandedWorkGroups={{}}
         onToggleWorkGroup={() => {}}
         onOpenTurnDiff={() => {}}
-        revertTurnCountByUserMessageId={new Map()}
-        onRevertUserMessage={() => {}}
         isRevertingCheckpoint={false}
         onImageExpand={() => {}}
         markdownCwd={undefined}
@@ -1795,8 +1749,6 @@ describe("MessagesTimeline", () => {
         expandedWorkGroups={{}}
         onToggleWorkGroup={() => {}}
         onOpenTurnDiff={() => {}}
-        revertTurnCountByUserMessageId={new Map()}
-        onRevertUserMessage={() => {}}
         isRevertingCheckpoint={false}
         onImageExpand={() => {}}
         markdownCwd={undefined}
@@ -1863,8 +1815,6 @@ describe("MessagesTimeline", () => {
         expandedWorkGroups={{}}
         onToggleWorkGroup={() => {}}
         onOpenTurnDiff={() => {}}
-        revertTurnCountByUserMessageId={new Map()}
-        onRevertUserMessage={() => {}}
         onUndoTurnFiles={() => {}}
         isRevertingCheckpoint={false}
         onImageExpand={() => {}}

@@ -21,6 +21,7 @@ import {
 import type { LatestProposedPlanState } from "../../session-logic";
 import { buildSourceProposedPlanReference } from "../../session-logic";
 import { useStore } from "../../store";
+import { getThreadFromState } from "../../threadDerivation";
 import { truncateTitle } from "../../truncateTitle";
 import type { Project } from "../../types";
 import { type Thread } from "../../types";
@@ -322,25 +323,30 @@ export function useChatTurnFollowUps({
       if (!api || !activeThread || !isServerThread || isRevertingCheckpoint) {
         return false;
       }
+      const currentThread =
+        getThreadFromState(useStore.getState(), activeThread.id) ?? activeThread;
       const editTarget = resolveTailUserMessageEditTarget({
-        messages: activeThread.messages,
+        messages: currentThread.messages,
         messageId,
         activeTurnId:
-          activeThread.session?.orchestrationStatus === "running"
-            ? (activeThread.session.activeTurnId ?? null)
+          currentThread.session?.orchestrationStatus === "running"
+            ? (currentThread.session.activeTurnId ?? null)
             : null,
       });
       if (!editTarget.editable) {
-        setThreadError(activeThread.id, "Only the latest rollbackable user message can be edited.");
+        toastManager.add({ type: "warning", title: "Only the latest message can be edited." });
         return false;
       }
-      const originalMessage = activeThread.messages[editTarget.messageIndex];
+      const originalMessage = currentThread.messages[editTarget.messageIndex];
       if (!originalMessage || originalMessage.role !== "user") {
-        setThreadError(activeThread.id, "Only the latest rollbackable user message can be edited.");
+        toastManager.add({
+          type: "warning",
+          title: "This message is no longer available to edit.",
+        });
         return false;
       }
       if (isSendBusy || isConnecting || sendInFlightRef.current) {
-        setThreadError(activeThread.id, "Wait for the current send to start before editing.");
+        toastManager.add({ type: "warning", title: "Wait for the current send to start." });
         return false;
       }
 
@@ -383,6 +389,10 @@ export function useChatTurnFollowUps({
         return true;
       })()
         .catch((err: unknown) => {
+          if (err instanceof Error && err.message.includes("Only the latest rollbackable")) {
+            toastManager.add({ type: "warning", title: "Only the latest message can be edited." });
+            return false;
+          }
           setThreadError(
             activeThread.id,
             err instanceof Error ? err.message : "Failed to edit message.",

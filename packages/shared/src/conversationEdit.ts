@@ -5,6 +5,7 @@
 
 type TurnMessageLike<TTurnId extends string = string> = {
   readonly id: string;
+  readonly role?: string | undefined;
   readonly turnId?: TTurnId | null | undefined;
 };
 
@@ -44,7 +45,13 @@ function isNativeEditableSource(source: string | undefined): boolean {
 function collectUniqueTurnIds<TTurnId extends string>(
   messages: ReadonlyArray<TurnMessageLike<TTurnId>>,
 ): TTurnId[] {
-  return [...new Set(messages.flatMap((message) => (message.turnId ? [message.turnId] : [])))];
+  return [
+    ...new Set(
+      messages.flatMap((message) =>
+        message.role !== "system" && message.turnId ? [message.turnId] : [],
+      ),
+    ),
+  ];
 }
 
 export function collectTailTurnIds<TTurnId extends string>(input: {
@@ -120,7 +127,12 @@ export function resolveTailUserMessageEditTarget(input: {
     };
   }
 
-  if (input.activeTurnId) {
+  // A prompt that failed before a provider turn started still belongs to the
+  // editable tail. System notices may follow it, but assistant output may not.
+  if (
+    input.activeTurnId ||
+    input.messages.slice(messageIndex + 1).every((entry) => entry.role === "system")
+  ) {
     return {
       editable: true,
       messageId: message.id,

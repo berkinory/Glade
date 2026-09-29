@@ -1240,7 +1240,9 @@ export default function ChatView({
   const serverSettingsQuery = useQuery(serverSettingsQueryOptions());
 
   const phase = derivePhase(activeThread?.session ?? null);
-  const isConnecting = phase === "connecting";
+  // Gateway credential rotation reconnects the runtime after a finished turn.
+  // That background maintenance must not reopen the answer or block the composer.
+  const isConnecting = phase === "connecting" && activeLatestTurn?.completedAt == null;
   const providerDisplayName =
     PROVIDER_DISPLAY_NAMES[activeThread?.session?.provider ?? selectedProvider];
   const { workLogEntries, composerSubagentStripItems, stripSourceThreadId, workflowRunState } =
@@ -1760,39 +1762,6 @@ export default function ChatView({
       messages: messagesForDiffAnchoring,
     });
   }, [inferredCheckpointTurnCountByTurnId, turnDiffSummaries, timelineMessages]);
-  const revertTurnCountByUserMessageId = useMemo(() => {
-    const byUserMessageId = new Map<MessageId, number>();
-    for (let index = 0; index < timelineEntries.length; index += 1) {
-      const entry = timelineEntries[index];
-      if (!entry || entry.kind !== "message" || entry.message.role !== "user") {
-        continue;
-      }
-
-      for (let nextIndex = index + 1; nextIndex < timelineEntries.length; nextIndex += 1) {
-        const nextEntry = timelineEntries[nextIndex];
-        if (!nextEntry || nextEntry.kind !== "message") {
-          continue;
-        }
-        if (nextEntry.message.role === "user") {
-          break;
-        }
-        const summary = turnDiffSummaryByAssistantMessageId.get(nextEntry.message.id);
-        if (!summary) {
-          continue;
-        }
-        const turnCount =
-          summary.checkpointTurnCount ?? inferredCheckpointTurnCountByTurnId[summary.turnId];
-        if (typeof turnCount !== "number") {
-          break;
-        }
-        byUserMessageId.set(entry.message.id, Math.max(0, turnCount - 1));
-        break;
-      }
-    }
-
-    return byUserMessageId;
-  }, [inferredCheckpointTurnCountByTurnId, timelineEntries, turnDiffSummaryByAssistantMessageId]);
-
   const threadWorkspaceCwd = activeProject
     ? resolveSharedThreadWorkspaceCwd({
         projectCwd: activeProject.cwd,
@@ -3599,56 +3568,6 @@ export default function ChatView({
     },
   });
 
-  const onRevertToTurnCount = useCallback(
-    async (turnCount: number) => {
-      const api = readNativeApi();
-      if (!api || !activeThread || isRevertingCheckpoint) return;
-
-      if (hasLiveTurn || isSendBusy || isConnecting) {
-        setThreadError(activeThread.id, "Interrupt the current turn before reverting checkpoints.");
-        return;
-      }
-      const confirmed = await api.dialogs.confirm(
-        [
-          `Revert this thread to checkpoint ${turnCount}?`,
-          "This will discard newer messages and turn diffs in this thread.",
-          "This action cannot be undone.",
-        ].join("\n"),
-      );
-      if (!confirmed) {
-        return;
-      }
-
-      setIsRevertingCheckpoint(true);
-      setThreadError(activeThread.id, null);
-      try {
-        await api.orchestration.dispatchCommand({
-          type: "thread.checkpoint.revert",
-          commandId: newCommandId(),
-          threadId: activeThread.id,
-          turnCount,
-          scope: "thread",
-          createdAt: new Date().toISOString(),
-        });
-      } catch (err) {
-        setThreadError(
-          activeThread.id,
-          err instanceof Error ? err.message : "Failed to revert thread state.",
-        );
-      }
-      setIsRevertingCheckpoint(false);
-    },
-    [
-      setIsRevertingCheckpoint,
-      activeThread,
-      hasLiveTurn,
-      isConnecting,
-      isRevertingCheckpoint,
-      isSendBusy,
-      setThreadError,
-    ],
-  );
-
   const onUndoTurnFiles = useCallback(
     async (turnCounts: readonly number[]) => {
       const api = readNativeApi();
@@ -4525,16 +4444,6 @@ export default function ChatView({
   const onCloseEditorTerminal = useCallback(() => {
     void closeTerminal(terminalState.activeTerminalId);
   }, [closeTerminal, terminalState.activeTerminalId]);
-  const onRevertUserMessage = useCallback(
-    (messageId: MessageId) => {
-      const targetTurnCount = revertTurnCountByUserMessageId.get(messageId);
-      if (typeof targetTurnCount !== "number") {
-        return;
-      }
-      void onRevertToTurnCount(targetTurnCount);
-    },
-    [onRevertToTurnCount, revertTurnCountByUserMessageId],
-  );
   const onRunProjectScriptFromHeader = useCallback(
     (script: ProjectScript) => {
       void runProjectScript(script);
@@ -5729,8 +5638,6 @@ export default function ChatView({
                     onOpenAutomation={onOpenAutomation}
                     computerControlEnabled={enableComputerControl}
                     onEnableComputerControl={handleEnableComputerControlFromDenial}
-                    revertTurnCountByUserMessageId={revertTurnCountByUserMessageId}
-                    onRevertUserMessage={onRevertUserMessage}
                     onUndoTurnFiles={onUndoTurnFiles}
                     onEditUserMessage={onEditUserMessage}
                     onRespondToAsyncUserInput={onRespondToAsyncUserInput}

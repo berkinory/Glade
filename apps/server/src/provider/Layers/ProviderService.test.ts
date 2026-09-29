@@ -84,7 +84,6 @@ function asRuntimePayloadRecord(value: unknown): Record<string, unknown> {
 function makeFakeCodexAdapter(
   provider: ProviderKind = "codex",
   options?: {
-    readonly conversationRollback?: "native" | "restart-session";
     readonly didResumeSession?: NonNullable<
       ProviderAdapterShape<ProviderAdapterError>["didResumeSession"]
     >;
@@ -243,9 +242,6 @@ function makeFakeCodexAdapter(
     capabilities: {
       sessionModelSwitch: "in-session",
       supportsTurnSteering: true,
-      ...(options?.conversationRollback
-        ? { conversationRollback: options.conversationRollback }
-        : {}),
     },
     startSession,
     ...(provider === "claudeAgent" ? { prepareSessionReplacement } : {}),

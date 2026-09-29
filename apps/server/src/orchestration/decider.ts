@@ -2665,6 +2665,9 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
           ...(command.skipAttachmentPrune !== undefined
             ? { skipAttachmentPrune: command.skipAttachmentPrune }
             : {}),
+          ...(command.replacementText !== undefined
+            ? { replacementText: command.replacementText }
+            : {}),
         },
       };
     }

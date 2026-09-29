@@ -1,3 +1,4 @@
+import { nativeMcpCallId } from "./nativeToolCalls.ts";
 import { ThreadId, type OrchestrationThreadShell } from "@glade/contracts";
 import { Cause, Deferred, Effect, Exit, Fiber, Option } from "effect";
 
@@ -292,80 +293,84 @@ export function makeAgentGatewayMcpTransport(input: {
           "re-lease",
         );
       }
-      const callerWriteAuthority =
-        callerThread.value.latestTurn?.state === "running"
-          ? input.credentials.bindWriteAuthority(token, callerThread.value.latestTurn.turnId)
-          : null;
-      const assertCallerTurnActive = () =>
-        Effect.gen(function* () {
-          if (callerWriteAuthority === null) {
-            return yield* Effect.fail(
-              new GatewayToolError(
-                "caller_turn_inactive",
-                "This Glade write was rejected because this credential had no write authority for the exact active turn when the MCP request arrived.",
-                {
-                  callerThreadId,
-                  latestTurnId: callerThread.value.latestTurn?.turnId ?? null,
-                },
-              ),
-            );
-          }
-          if (!input.credentials.verifyWriteAuthority(callerWriteAuthority)) {
-            return yield* Effect.fail(
-              new GatewayToolError(
-                "caller_session_inactive",
-                "This Glade write was rejected because its provider-session authority is no longer active.",
-                { callerThreadId },
-              ),
-            );
-          }
-          const caller = yield* input
-            .requireThreadShell(callerThreadId)
-            .pipe(
-              Effect.mapError(
-                (error) =>
-                  new GatewayToolError(
-                    "caller_turn_inactive",
-                    "This Glade write was rejected because the caller thread could no longer be verified.",
-                    { callerThreadId, error: errorText(error) },
-                  ),
-              ),
-            );
-          if (
-            caller.latestTurn?.state !== "running" ||
-            caller.latestTurn.turnId !== callerWriteAuthority.turnId
-          ) {
-            return yield* Effect.fail(
-              new GatewayToolError(
-                "caller_turn_inactive",
-                "This Glade write was rejected because the turn that received this MCP request is no longer active. In-flight requests cannot inherit authority from a later turn.",
-                {
-                  callerThreadId,
-                  authorizedTurnId: callerWriteAuthority.turnId,
-                  latestTurnId: caller.latestTurn?.turnId ?? null,
-                  latestTurnState: caller.latestTurn?.state ?? null,
-                },
-              ),
-            );
-          }
-        });
-      const context: Omit<ToolContext, "jsonRpcRequestId"> = {
-        principal: {
-          kind: "provider-session",
-          sessionKey: callerSession.sessionKey,
-          threadId: callerThreadId,
-          provider: callerSession.provider,
-          turnId: callerWriteAuthority?.turnId ?? null,
-        },
-        callerThreadId,
-        // The nickname first: a subagent that has one is known by it, and its
-        // title describes the work rather than who is doing it.
-        callerThreadLabel: callerThread.value.subagentNickname ?? callerThread.value.title ?? null,
-        callerSessionKey: callerSession.sessionKey,
-        callerProvider: callerSession.provider,
-        callerCapabilities: callerSession.capabilities,
-        callerTurnId: callerWriteAuthority?.turnId ?? null,
-        assertCallerTurnActive,
+      const makeContext = (turnId: string | null): Omit<ToolContext, "jsonRpcRequestId"> => {
+        const callerWriteAuthority =
+          turnId === null ? null : input.credentials.bindWriteAuthority(token, turnId);
+        const assertCallerTurnActive = () =>
+          Effect.gen(function* () {
+            if (callerWriteAuthority === null) {
+              return yield* Effect.fail(
+                new GatewayToolError(
+                  "caller_turn_inactive",
+                  "This Glade write was rejected because this credential had no write authority for the exact active turn when the MCP request arrived.",
+                  {
+                    callerThreadId,
+                    latestTurnId: callerThread.value.latestTurn?.turnId ?? null,
+                  },
+                ),
+              );
+            }
+            if (
+              !input.credentials.verifyWriteAuthority(callerWriteAuthority) ||
+              input.credentials.nativeToolCalls?.isRetired(token, callerWriteAuthority.turnId)
+            ) {
+              return yield* Effect.fail(
+                new GatewayToolError(
+                  "caller_session_inactive",
+                  "This Glade write was rejected because its provider-session authority is no longer active.",
+                  { callerThreadId },
+                ),
+              );
+            }
+            const caller = yield* input
+              .requireThreadShell(callerThreadId)
+              .pipe(
+                Effect.mapError(
+                  (error) =>
+                    new GatewayToolError(
+                      "caller_turn_inactive",
+                      "This Glade write was rejected because the caller thread could no longer be verified.",
+                      { callerThreadId, error: errorText(error) },
+                    ),
+                ),
+              );
+            if (
+              caller.latestTurn?.state !== "running" ||
+              caller.latestTurn.turnId !== callerWriteAuthority.turnId
+            ) {
+              return yield* Effect.fail(
+                new GatewayToolError(
+                  "caller_turn_inactive",
+                  "This Glade write was rejected because the turn that received this MCP request is no longer active. In-flight requests cannot inherit authority from a later turn.",
+                  {
+                    callerThreadId,
+                    authorizedTurnId: callerWriteAuthority.turnId,
+                    latestTurnId: caller.latestTurn?.turnId ?? null,
+                    latestTurnState: caller.latestTurn?.state ?? null,
+                  },
+                ),
+              );
+            }
+          });
+        return {
+          principal: {
+            kind: "provider-session",
+            sessionKey: callerSession.sessionKey,
+            threadId: callerThreadId,
+            provider: callerSession.provider,
+            turnId: callerWriteAuthority?.turnId ?? null,
+          },
+          callerThreadId,
+          // The nickname first: a subagent that has one is known by it, and its
+          // title describes the work rather than who is doing it.
+          callerThreadLabel:
+            callerThread.value.subagentNickname ?? callerThread.value.title ?? null,
+          callerSessionKey: callerSession.sessionKey,
+          callerProvider: callerSession.provider,
+          callerCapabilities: callerSession.capabilities,
+          callerTurnId: callerWriteAuthority?.turnId ?? null,
+          assertCallerTurnActive,
+        };
       };
 
       const rawMessages = Array.isArray(requestInput.body)
@@ -394,6 +399,27 @@ export function makeAgentGatewayMcpTransport(input: {
         }
         requestIds.add(key);
       }
+      const resolveContext = (parsed: ReturnType<typeof parseMcpMessage>) =>
+        Effect.suspend(() => {
+          if (input.credentials.nativeToolCalls?.has(token)) {
+            if (parsed.kind !== "request" || parsed.request.method !== "tools/call")
+              return Effect.succeed(makeContext(null));
+            const callId = nativeMcpCallId(callerSession.provider, parsed.request.params);
+            const toolName = parsed.request.params.name;
+            const nativeCalls = input.credentials.nativeToolCalls;
+            if (!callId || typeof toolName !== "string") return Effect.succeed(makeContext(null));
+            return Effect.promise((signal) =>
+              nativeCalls.resolve(token, callId, toolName, signal),
+            ).pipe(Effect.map(makeContext));
+          }
+          return Effect.succeed(
+            makeContext(
+              callerThread.value.latestTurn?.state === "running"
+                ? callerThread.value.latestTurn.turnId
+                : null,
+            ),
+          );
+        });
       const responseSlots: McpResponseSlot[] = [];
       const cancellationRequestIds: Array<string | number> = [];
 
@@ -409,7 +435,16 @@ export function makeAgentGatewayMcpTransport(input: {
             let requestStarted = false;
             let cancellationRequested = false;
             const requestEffect = Deferred.await(registered).pipe(
-              Effect.andThen(handleRequest(parsed.request, context)),
+              Effect.andThen(resolveContext(parsed)),
+              Effect.flatMap((context) => {
+                // Register cancellation before waiting on the other transport,
+                // then transfer ownership to the proven turn without yielding.
+                unregister();
+                unregister = registerRequest(context.callerTurnId);
+                if (cancellationRequested || !input.credentials.verifySession(token))
+                  return Effect.interrupt;
+                return handleRequest(parsed.request, context);
+              }),
               Effect.catch((error) =>
                 Effect.succeed(
                   jsonRpcResult(parsed.request.id, mcpToolResultError(errorText(error))),
@@ -422,28 +457,30 @@ export function makeAgentGatewayMcpTransport(input: {
               ),
             );
             const fiber = yield* requestEffect.pipe(Effect.forkChild({ startImmediately: true }));
-            unregister = input.credentials.registerInFlightRequest({
-              sessionKey: callerSession.sessionKey,
-              turnId: context.callerTurnId,
-              requestId: parsed.request.id,
-              cancel: () => {
-                cancellationRequested = true;
-                if (!requestStarted) return Promise.resolve();
-                return new Promise<void>((resolve) => {
-                  // Avoid interrupting re-entrantly while an async Effect is
-                  // still installing its AbortController finalizer. The fiber
-                  // observer is the cleanup barrier returned to Stop.
-                  queueMicrotask(() => {
-                    if (fiber.pollUnsafe() !== undefined) {
-                      resolve();
-                      return;
-                    }
-                    fiber.addObserver(() => resolve());
-                    fiber.interruptUnsafe();
+            const registerRequest = (turnId: string | null) =>
+              input.credentials.registerInFlightRequest({
+                sessionKey: callerSession.sessionKey,
+                turnId,
+                requestId: parsed.request.id,
+                cancel: () => {
+                  cancellationRequested = true;
+                  if (!requestStarted) return Promise.resolve();
+                  return new Promise<void>((resolve) => {
+                    // Avoid interrupting re-entrantly while an async Effect is
+                    // still installing its AbortController finalizer. The fiber
+                    // observer is the cleanup barrier returned to Stop.
+                    queueMicrotask(() => {
+                      if (fiber.pollUnsafe() !== undefined) {
+                        resolve();
+                        return;
+                      }
+                      fiber.addObserver(() => resolve());
+                      fiber.interruptUnsafe();
+                    });
                   });
-                });
-              },
-            });
+                },
+              });
+            unregister = registerRequest(null);
             if (cancellationRequested) {
               // A terminal-turn tombstone cancelled this request during
               // registration. The handler is still fenced behind `registered`,

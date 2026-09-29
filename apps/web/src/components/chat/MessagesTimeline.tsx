@@ -459,8 +459,6 @@ interface MessagesTimelineProps {
   computerControlEnabled?: boolean;
   /** Switch computer control on from a "computer control denied" transcript card. */
   onEnableComputerControl?: () => void;
-  revertTurnCountByUserMessageId: Map<MessageId, number>;
-  onRevertUserMessage: (messageId: MessageId) => void;
   onUndoTurnFiles?: (turnCounts: readonly number[]) => void;
   onRespondToAsyncUserInput?: (messageId: MessageId, answers: readonly string[]) => Promise<void>;
   onEditUserMessage?: (messageId: MessageId, text: string) => boolean | Promise<boolean>;
@@ -550,8 +548,6 @@ export const MessagesTimeline = memo(function MessagesTimeline({
   onOpenAutomation,
   computerControlEnabled,
   onEnableComputerControl,
-  revertTurnCountByUserMessageId,
-  onRevertUserMessage,
   onUndoTurnFiles,
   onEditUserMessage,
   onRespondToAsyncUserInput,
@@ -766,7 +762,6 @@ export const MessagesTimeline = memo(function MessagesTimeline({
         activeTurnId,
         activeTurnStartedAt,
         turnDiffSummaryByAssistantMessageId,
-        revertTurnCountByUserMessageId,
       }),
     [
       timelineEntries,
@@ -776,7 +771,6 @@ export const MessagesTimeline = memo(function MessagesTimeline({
       activeTurnId,
       activeTurnStartedAt,
       turnDiffSummaryByAssistantMessageId,
-      revertTurnCountByUserMessageId,
     ],
   );
   const rows = useStableRows(rawRows);
@@ -1564,7 +1558,6 @@ export const MessagesTimeline = memo(function MessagesTimeline({
           const userMessageText = displayedUserMessage.visibleText;
           const userMessageExpanded = expandedUserMessagesById[row.message.id] ?? false;
           const showUserText = userMessageText.trim().length > 0 || terminalContexts.length > 0;
-          const canRevertAgentWork = typeof row.revertTurnCount === "number";
           const isEditingThisMessage = editingUserMessageId === row.message.id;
           const isSubmittingThisEdit = submittingEditedUserMessageId === row.message.id;
           const showEditUserMessage =
@@ -1758,20 +1751,6 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                             <NewThreadIcon className={MESSAGE_ACTION_ICON_CLASS_NAME} />
                           </MessageActionButton>
                         )}
-                        {canRevertAgentWork ? (
-                          <MessageActionButton
-                            label="Revert to this message"
-                            tooltip="Revert to this message"
-                            disabled={isRevertingCheckpoint || isWorking}
-                            className={cn(
-                              MESSAGE_HOVER_REVEAL_CLASS_NAME,
-                              "disabled:text-muted-foreground/35",
-                            )}
-                            onClick={() => onRevertUserMessage(row.message.id)}
-                          >
-                            <Undo2Icon className={MESSAGE_ACTION_ICON_CLASS_NAME} />
-                          </MessageActionButton>
-                        ) : null}
                       </div>
                     </div>
                   )}

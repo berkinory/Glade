@@ -3290,27 +3290,30 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
         yield* runIdleSensitiveProviderWork(
           input.threadId,
           Effect.gen(function* () {
-            const routed = yield* resolveRoutableSession({
+            const active = yield* resolveRoutableSession({
               threadId: input.threadId,
               operation: "ProviderService.rollbackConversation",
-              // Restart-based rollback only needs the persisted binding and must
-              // not replay the stale native cursor merely to close it again.
-              allowRecovery: false,
+              allowRecovery: true,
             });
-            if (routed.adapter.capabilities.conversationRollback === "restart-session") {
-              // Some provider protocols can resume but cannot rewind. Clear their
-              // native cursor so edit-and-resend cannot continue from stale history;
-              // ProviderCommandReactor bootstraps the retained transcript next turn.
-              yield* clearSessionResumeCursor({ threadId: input.threadId });
-            } else {
-              const active = routed.isActive
-                ? routed
-                : yield* resolveRoutableSession({
-                    threadId: input.threadId,
-                    operation: "ProviderService.rollbackConversation",
-                    allowRecovery: true,
-                  });
-              yield* active.adapter.rollbackThread(input.threadId, input.numTurns);
+            yield* active.adapter.rollbackThread(input.threadId, input.numTurns);
+            // Native rewind may replace the provider session (Claude forks the
+            // exact prefix). Persist that cursor before the edited turn starts.
+            const session = (yield* active.adapter.listSessions()).find(
+              (entry) => entry.threadId === input.threadId,
+            );
+            const binding = Option.getOrUndefined(yield* directory.getBinding(input.threadId));
+            if (session && binding) {
+              yield* directory.upsert({
+                ...binding,
+                resumeCursor: session.resumeCursor,
+                status: "stopped",
+                runtimePayload: {
+                  ...runtimePayloadRecord(binding.runtimePayload),
+                  activeTurnId: null,
+                  lastRuntimeEvent: "provider.rollbackConversation",
+                  lastRuntimeEventAt: new Date().toISOString(),
+                },
+              });
             }
           }),
           { scheduleIdleStopOnSuccess: true },

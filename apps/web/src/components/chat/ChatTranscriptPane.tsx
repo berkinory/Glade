@@ -90,7 +90,6 @@ interface ChatTranscriptPaneProps {
   onOpenAutomation?: ComponentProps<typeof MessagesTimeline>["onOpenAutomation"];
   computerControlEnabled?: ComponentProps<typeof MessagesTimeline>["computerControlEnabled"];
   onEnableComputerControl?: ComponentProps<typeof MessagesTimeline>["onEnableComputerControl"];
-  onRevertUserMessage: (messageId: MessageId) => void;
   onUndoTurnFiles?: ComponentProps<typeof MessagesTimeline>["onUndoTurnFiles"];
   onRespondToAsyncUserInput?: ComponentProps<typeof MessagesTimeline>["onRespondToAsyncUserInput"];
   onEditUserMessage?: (messageId: MessageId, text: string) => boolean | Promise<boolean>;
@@ -98,7 +97,6 @@ interface ChatTranscriptPaneProps {
   onScrollToBottom: () => void;
   onToggleWorkGroup?: (groupId: string) => void;
   resolvedTheme: "light" | "dark";
-  revertTurnCountByUserMessageId: Map<MessageId, number>;
   scrollButtonVisible: boolean;
   terminalWorkspaceTerminalTabActive: boolean;
   timelineEntries: ComponentProps<typeof MessagesTimeline>["timelineEntries"];
@@ -168,7 +166,6 @@ export function ChatTranscriptPane({
   onOpenAutomation,
   computerControlEnabled,
   onEnableComputerControl,
-  onRevertUserMessage,
   onUndoTurnFiles,
   onEditUserMessage,
   onRespondToAsyncUserInput,
@@ -176,7 +173,6 @@ export function ChatTranscriptPane({
   onScrollToBottom,
   onToggleWorkGroup,
   resolvedTheme,
-  revertTurnCountByUserMessageId,
   scrollButtonVisible,
   terminalWorkspaceTerminalTabActive,
   timelineEntries,
@@ -277,8 +273,6 @@ export function ChatTranscriptPane({
             {...(onOpenAutomation ? { onOpenAutomation } : {})}
             {...(computerControlEnabled !== undefined ? { computerControlEnabled } : {})}
             {...(onEnableComputerControl ? { onEnableComputerControl } : {})}
-            revertTurnCountByUserMessageId={revertTurnCountByUserMessageId}
-            onRevertUserMessage={onRevertUserMessage}
             {...(onUndoTurnFiles ? { onUndoTurnFiles } : {})}
             {...(onEditUserMessage ? { onEditUserMessage } : {})}
             {...(onRespondToAsyncUserInput ? { onRespondToAsyncUserInput } : {})}

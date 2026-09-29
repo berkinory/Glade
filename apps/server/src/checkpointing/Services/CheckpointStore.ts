@@ -97,7 +97,7 @@ export interface CheckpointStoreShape {
   ) => Effect.Effect<boolean, CheckpointStoreError>;
 
   /**
-   * Restore workspace/staging state to a checkpoint.
+   * Restore changed workspace files to a checkpoint, preserving the user's index.
    *
    * Optionally falls back to current `HEAD` when the checkpoint ref is missing.
    */

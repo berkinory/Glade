@@ -288,7 +288,6 @@ export type MessagesTimelineRow =
       // card (Undo / Review) is held back until the turn settles so it cannot
       // pre-empt the composer's live changes strip mid-turn.
       assistantTurnInProgress?: boolean | undefined;
-      revertTurnCount?: number | undefined;
     }
   | {
       // One slice of a completed assistant message whose streamed text was
@@ -610,7 +609,6 @@ export function deriveMessagesTimelineRows(input: {
   activeTurnId?: TurnId | null | undefined;
   activeTurnStartedAt: string | null;
   turnDiffSummaryByAssistantMessageId: ReadonlyMap<MessageId, TurnDiffSummary>;
-  revertTurnCountByUserMessageId: ReadonlyMap<MessageId, number>;
 }): MessagesTimelineRow[] {
   const nextRows: MessagesTimelineRow[] = [];
   const timelineMessages = input.timelineEntries.flatMap((entry) =>
@@ -749,8 +747,6 @@ export function deriveMessagesTimelineRows(input: {
         message.role === "assistant"
           ? input.turnDiffSummaryByAssistantMessageId.get(message.id)
           : undefined,
-      revertTurnCount:
-        message.role === "user" ? input.revertTurnCountByUserMessageId.get(message.id) : undefined,
     });
   }
 
@@ -1261,8 +1257,7 @@ function isRowUnchanged(a: MessagesTimelineRow, b: MessagesTimelineRow): boolean
         a.showAssistantCopyButton === bm.showAssistantCopyButton &&
         a.assistantCopyStreaming === bm.assistantCopyStreaming &&
         a.assistantTurnInProgress === bm.assistantTurnInProgress &&
-        a.assistantTurnDiffSummary === bm.assistantTurnDiffSummary &&
-        a.revertTurnCount === bm.revertTurnCount
+        a.assistantTurnDiffSummary === bm.assistantTurnDiffSummary
       );
     }
 

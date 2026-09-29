@@ -1675,6 +1675,7 @@ const ThreadConversationRollbackCompleteCommand = Schema.Struct({
   numTurns: NonNegativeInt,
   removedTurnIds: Schema.optional(Schema.Array(TurnId)),
   skipAttachmentPrune: Schema.optional(Schema.Boolean),
+  replacementText: Schema.optional(Schema.String),
   createdAt: IsoDateTime,
 });
 
@@ -2090,6 +2091,7 @@ export const ThreadConversationRolledBackPayload = Schema.Struct({
   numTurns: NonNegativeInt,
   removedTurnIds: Schema.optional(Schema.Array(TurnId)),
   skipAttachmentPrune: Schema.optional(Schema.Boolean),
+  replacementText: Schema.optional(Schema.String),
 });
 
 export const ThreadMessageEditResendRequestedPayload = Schema.Struct({

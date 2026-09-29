@@ -167,7 +167,7 @@ describe("legacy provider blocker recovery", () => {
     expect(outcome._tag).toBe("uncertain");
   });
 
-  it("accepts only failures that prove the command frame was not written", () => {
+  it("accepts only failures that prove the provider command was not executed", () => {
     expect(
       isSafeLegacyProviderBlocker(
         "Provider process tree 66212 did not prove exit (rootExited=true, captureComplete=false; no captured descendants remain).",
@@ -176,6 +176,12 @@ describe("legacy provider blocker recovery", () => {
     expect(
       isSafeLegacyProviderBlocker("Codex app-server stdin closed before the frame was written."),
     ).toBe(true);
+    expect(
+      isSafeLegacyProviderBlocker(
+        "Provider adapter request failed (codex) for thread/rollback: Invalid request: unknown variant `thread/rollback`",
+      ),
+    ).toBe(true);
+    expect(isSafeLegacyProviderBlocker("thread/rollback timed out after send")).toBe(false);
     expect(
       isSafeLegacyProviderBlocker(
         "Provider process tree did not prove exit (rootExited=false, captureComplete=true).",
@@ -246,7 +252,6 @@ describe("ProviderCommandReactor", () => {
     readonly baseDir?: string;
     readonly threadModelSelection?: ModelSelection;
     readonly sessionModelSwitch?: "unsupported" | "in-session" | "restart-session";
-    readonly conversationRollback?: "native" | "restart-session";
     readonly checkpointStore?: Partial<CheckpointStoreShape>;
     readonly forkThreadResult?: ProviderForkThreadResult | null;
     readonly startReactor?: boolean;
@@ -583,9 +588,6 @@ describe("ProviderCommandReactor", () => {
       getCapabilities: (_provider) =>
         Effect.succeed({
           sessionModelSwitch: input?.sessionModelSwitch ?? "in-session",
-          ...(input?.conversationRollback
-            ? { conversationRollback: input.conversationRollback }
-            : {}),
         }),
       rollbackConversation,
       compactThread: () => unsupported(),
@@ -2251,7 +2253,7 @@ describe("ProviderCommandReactor", () => {
     });
   });
 
-  it("stops an active provider runtime and immediately resends an edited latest message", async () => {
+  it("interrupts and rewinds the native conversation before resending an edited latest message", async () => {
     const harness = await createHarness();
     const now = new Date().toISOString();
     const imageAttachment = {
@@ -2324,13 +2326,10 @@ describe("ProviderCommandReactor", () => {
       }),
     );
 
-    await waitFor(() => harness.stopRuntimeSession.mock.calls.length === 1);
     await waitFor(() => harness.sendTurn.mock.calls.length === 1);
-    expect(harness.stopRuntimeSession.mock.calls[0]?.[0]).toEqual({
-      threadId: ThreadId.makeUnsafe("thread-1"),
-    });
-    expect(harness.interruptTurn.mock.calls.length).toBe(0);
-    expect(harness.rollbackConversation.mock.calls.length).toBe(0);
+    expect(harness.stopRuntimeSession).not.toHaveBeenCalled();
+    expect(harness.interruptTurn).toHaveBeenCalledOnce();
+    expect(harness.rollbackConversation).toHaveBeenCalledOnce();
     expect(harness.sendTurn.mock.calls[0]?.[0]).toMatchObject({
       threadId: ThreadId.makeUnsafe("thread-1"),
       input: "edited prompt",
@@ -2531,6 +2530,16 @@ describe("ProviderCommandReactor", () => {
       }),
     );
     await waitFor(() => harness.sendTurn.mock.calls.length === 1);
+    await waitFor(
+      async () =>
+        (await readHarnessThread(harness))?.messages.find(
+          (message) => message.id === asMessageId("msg-image-edit"),
+        )?.turnId != null,
+    );
+    const imageEditTurnId = (await readHarnessThread(harness))?.messages.find(
+      (message) => message.id === asMessageId("msg-image-edit"),
+    )?.turnId;
+    if (!imageEditTurnId) throw new Error("Expected the image prompt to bind to a turn.");
     harness.sendTurn.mockClear();
     await Effect.runPromise(
       harness.engine.dispatch({
@@ -2538,7 +2547,7 @@ describe("ProviderCommandReactor", () => {
         commandId: CommandId.makeUnsafe("cmd-image-edit-assistant-complete"),
         threadId: ThreadId.makeUnsafe("thread-1"),
         messageId: asMessageId("assistant-image-edit"),
-        turnId: asTurnId("turn-image-edit"),
+        turnId: imageEditTurnId,
         createdAt: now,
       }),
     );
@@ -2611,7 +2620,96 @@ describe("ProviderCommandReactor", () => {
     });
   });
 
-  it("clears stale provider resume state and completes message edit rollback", async () => {
+  it("rewinds a stopped conversation before resending an edited message", async () => {
+    const harness = await createHarness();
+    const now = new Date().toISOString();
+    await seedRollbackTarget(harness, {
+      messageId: asMessageId("user-message-restart-edit"),
+      turnId: asTurnId("turn-restart-edit"),
+      createdAt: now,
+    });
+    await Effect.runPromise(
+      harness.engine.dispatch({
+        type: "thread.message.edit-and-resend",
+        commandId: CommandId.makeUnsafe("cmd-restart-edit-resend"),
+        threadId: ThreadId.makeUnsafe("thread-1"),
+        messageId: asMessageId("user-message-restart-edit"),
+        text: "edited after stop",
+        runtimeMode: "approval-required",
+        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+        createdAt: now,
+      }),
+    );
+
+    await waitFor(() => harness.sendTurn.mock.calls.length === 1);
+    expect(harness.rollbackConversation).toHaveBeenCalledWith({
+      threadId: ThreadId.makeUnsafe("thread-1"),
+      numTurns: 1,
+    });
+    expect(harness.sendTurn.mock.calls[0]?.[0]).toMatchObject({
+      input: "edited after stop",
+    });
+    expect((await readHarnessThread(harness))?.messages.map((message) => message.text)).toEqual([
+      "edited after stop",
+    ]);
+  });
+
+  it("keeps a textless stopped turn editable after its active turn id clears", async () => {
+    const harness = await createHarness();
+    const now = new Date().toISOString();
+    const threadId = ThreadId.makeUnsafe("thread-1");
+    const messageId = asMessageId("user-textless-turn");
+    await dispatchHarnessUserTurn(harness, {
+      messageId,
+      text: "original prompt",
+      createdAt: now,
+    });
+    await waitFor(() => harness.sendTurn.mock.calls.length === 1);
+    await waitFor(
+      async () =>
+        (await readHarnessThread(harness))?.messages.find((message) => message.id === messageId)
+          ?.turnId != null,
+    );
+    const startedTurnId = (await readHarnessThread(harness))?.messages.find(
+      (message) => message.id === messageId,
+    )?.turnId;
+    expect(startedTurnId).toBeTruthy();
+    await Effect.runPromise(
+      harness.engine.dispatch({
+        type: "thread.session.set",
+        commandId: CommandId.makeUnsafe("cmd-textless-turn-stopped"),
+        threadId,
+        session: {
+          threadId,
+          status: "stopped",
+          providerName: "codex",
+          runtimeMode: "approval-required",
+          activeTurnId: null,
+          lastError: null,
+          updatedAt: now,
+        },
+        createdAt: now,
+      }),
+    );
+    await Effect.runPromise(
+      harness.engine.dispatch({
+        type: "thread.message.edit-and-resend",
+        commandId: CommandId.makeUnsafe("cmd-textless-turn-edit"),
+        threadId,
+        messageId,
+        text: "edited prompt",
+        runtimeMode: "approval-required",
+        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+        createdAt: now,
+      }),
+    );
+    await waitFor(() => harness.sendTurn.mock.calls.length === 2);
+    expect((await readHarnessThread(harness))?.messages.map((message) => message.text)).toEqual([
+      "edited prompt",
+    ]);
+  });
+
+  it("preserves the transcript when the provider cannot recover the native edit boundary", async () => {
     const harness = await createHarness();
     const now = new Date().toISOString();
     await seedRollbackTarget(harness, {
@@ -2631,20 +2729,25 @@ describe("ProviderCommandReactor", () => {
 
     await Effect.runPromise(
       harness.engine.dispatch({
-        type: "thread.conversation.rollback",
+        type: "thread.message.edit-and-resend",
         commandId: CommandId.makeUnsafe("cmd-conversation-rollback-stale-resume"),
         threadId: ThreadId.makeUnsafe("thread-1"),
         messageId: asMessageId("user-message-stale"),
-        numTurns: 1,
+        text: "corrected prompt",
+        runtimeMode: "approval-required",
+        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
         createdAt: now,
       }),
     );
 
-    await waitFor(() => harness.clearSessionResumeCursor.mock.calls.length === 1);
-    expect(harness.clearSessionResumeCursor).toHaveBeenCalledWith({
-      threadId: ThreadId.makeUnsafe("thread-1"),
-    });
-    expect(harness.stopSession.mock.calls.length).toBe(0);
+    await waitFor(async () => (await readHarnessThread(harness))?.session?.status === "error");
+    expect(harness.clearSessionResumeCursor).not.toHaveBeenCalled();
+    expect(harness.stopSession).not.toHaveBeenCalled();
+    expect(
+      (await readHarnessThread(harness))?.messages.some(
+        (message) => message.id === "user-message-stale",
+      ),
+    ).toBe(true);
   });
 
   it("does not revive stale Computer consent when a durable queued turn is promoted after re-enable", async () => {

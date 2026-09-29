@@ -15,6 +15,14 @@
 - The composer model button shows reasoning in smaller text and leaves context limits in the model details.
 - Shortcut hints use the same compact keycap throughout tooltips, menus, and the sidebar.
 
+### Fixed
+
+- Codex keeps its runtime between replies when native tool-call identity is available. Codex and Claude gateway calls stay bound to their originating turn; runtimes without call provenance renew safely. Background reconnects keep the composer available.
+- Editing a message no longer rewrites unchanged workspace files, avoiding unnecessary dev reloads, and preserves staged changes. The separate message Revert button was removed.
+- Stopped turns remain editable. Edits rewind native Codex, Claude, and OpenCode history without replacing it with a summary or briefly clearing the chat; stale edits show a short warning.
+- Older blocked chats recover on restart. Error toasts stay short and let you copy the full detail.
+- Provider bookkeeping stays out of the transcript. Codex startup logs respect their severity, and MCP connection failures show one concise message instead of retry traces.
+
 ## 0.0.4 - 2026-09-28
 
 ### Removed

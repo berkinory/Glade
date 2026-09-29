@@ -1,3 +1,4 @@
+import { readClaudeSessionParentUuid } from "../claudeProjectImport.ts";
 import { claudeTurnResultUsage, type ClaudeResultUsageBaseline } from "../claudeResultUsage.ts";
 import { restoreClaudeImportedCopyDates } from "../claudeImportedCopyDates.ts";
 /**
@@ -329,6 +330,7 @@ interface ToolInFlight {
 // (parent_tool_use_id on forwarded messages); the task_id arrives later via
 // task_started and is what query.stopTask needs.
 interface ClaudeSubagentRun {
+  readonly gatewayParentTurnId: string | undefined;
   readonly toolUseId: string;
   taskId: string | undefined;
   readonly context: ClaudeSessionContext;
@@ -340,6 +342,7 @@ interface ClaudeSessionContext {
   resultUsageBaseline?: ClaudeResultUsageBaseline;
   readonly gatewaySessionLease?: AgentGatewaySessionLease;
   session: ProviderSession;
+  readonly startInput: Parameters<ClaudeAdapterShape["startSession"]>[0];
   readonly lifecycleGeneration?: string;
   readonly promptQueue: Queue.Queue<PromptQueueItem>;
   readonly query: ClaudeQueryRuntime;
@@ -613,6 +616,7 @@ export interface ClaudeAdapterLiveOptions {
     sessionId: string,
     options?: { readonly dir?: string },
   ) => Promise<ReadonlyArray<SessionMessage>>;
+  readonly readNativeMessageParent?: typeof readClaudeSessionParentUuid;
   readonly nativeEventLogPath?: string;
   readonly nativeEventLogger?: EventNdjsonLogger;
   // Interval for polling a live workflow's transcript directory. Tests shrink it.
@@ -2717,7 +2721,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           return;
         }
         context.warnedUnhandledSdkKinds.add(kind);
-        yield* emitRuntimeWarning(context, message, detail);
+        yield* Effect.logWarning("claude.unhandled_sdk_message", { kind, message, detail });
       });
 
     const emitProposedPlanCompleted = (
@@ -3367,10 +3371,12 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         return existing;
       }
       const run: ClaudeSubagentRun = {
+        gatewayParentTurnId: context.turnState?.turnId,
         toolUseId,
         taskId: undefined,
         context: {
           session: context.session,
+          startInput: context.startInput,
           ...(context.lifecycleGeneration === undefined
             ? {}
             : { lifecycleGeneration: context.lifecycleGeneration }),
@@ -4538,6 +4544,10 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         }
 
         switch (message.subtype) {
+          case "commands_changed":
+            // The SDK updates supportedCommands() from this push. There is no
+            // user-visible runtime event or warning to emit.
+            return;
           case "init":
             if (Array.isArray(message.tools)) {
               context.initToolNames = new Set(message.tools);
@@ -5845,8 +5855,30 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           agentGatewayCredentials,
           threadId,
           PROVIDER,
-          input,
+          { ...input, nativeToolCallScope: true },
         );
+        const gatewayToolHook = async (hookInput: HookInput): Promise<HookJSONOutput> => {
+          if (
+            hookInput.hook_event_name !== "PreToolUse" ||
+            !hookInput.tool_name.startsWith("mcp__glade__")
+          )
+            return {};
+          const context = await Effect.runPromise(Ref.get(contextRef));
+          if (!context) return {};
+          const agentId = "agent_id" in hookInput ? hookInput.agent_id : undefined;
+          const turnId =
+            typeof agentId === "string"
+              ? [...context.subagentRuns.values()].find((run) => run.taskId === agentId)
+                  ?.gatewayParentTurnId
+              : context.turnState?.turnId;
+          if (turnId)
+            gatewaySessionLease?.registerNativeToolCall?.({
+              callId: hookInput.tool_use_id,
+              toolName: hookInput.tool_name.slice("mcp__glade__".length),
+              turnId,
+            });
+          return {};
+        };
         const queryOptions: ClaudeQueryOptions = {
           ...(input.cwd ? { cwd: input.cwd } : {}),
           // Model identity and the spawn-fixed compaction override are separate settings.
@@ -5887,7 +5919,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           forwardSubagentText: true,
           hooks: {
             SessionStart: [{ hooks: [sessionStartHook] }],
-            PreToolUse: [{ hooks: [subagentSteerHook] }],
+            PreToolUse: [{ hooks: [subagentSteerHook, gatewayToolHook] }],
           },
           canUseTool,
           env: withClaudeArtifactOptIn(claudeSdkEnv, providerOptions?.enableArtifacts),
@@ -6033,6 +6065,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
             ...(initialCacheObservation ? { cacheObservation: initialCacheObservation } : {}),
             ...(gatewaySessionLease ? { gatewaySessionLease } : {}),
             session,
+            startInput: input,
             artifactsEnabled: providerOptions?.enableArtifacts === true,
             ...(input.lifecycleGeneration !== undefined
               ? { lifecycleGeneration: input.lifecycleGeneration }
@@ -6819,14 +6852,94 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         return yield* snapshotThread(context);
       });
 
-    const rollbackThread: ClaudeAdapterShape["rollbackThread"] = (threadId, _numTurns) =>
-      Effect.fail(
-        new ProviderAdapterValidationError({
-          provider: PROVIDER,
-          operation: "rollbackThread",
-          issue:
-            `Claude rollback requires a session restart for thread '${threadId}'. ` +
-            "ProviderService owns that restart and retained-transcript bootstrap.",
+    const rollbackThread: ClaudeAdapterShape["rollbackThread"] = (threadId, numTurns) =>
+      withSessionLifecycleLock(
+        threadId,
+        Effect.gen(function* () {
+          const context = yield* requireSession(threadId);
+          if (context.turnState || context.pendingDispatches) {
+            return yield* new ProviderAdapterValidationError({
+              provider: PROVIDER,
+              operation: "rollbackThread",
+              issue: "Cannot rollback while an active turn is in progress.",
+            });
+          }
+          if (!Number.isInteger(numTurns) || numTurns < 1 || !context.resumeSessionId) {
+            return yield* new ProviderAdapterValidationError({
+              provider: PROVIDER,
+              operation: "rollbackThread",
+              issue: "The requested Claude edit boundary is invalid.",
+            });
+          }
+          const sourceSessionId = context.resumeSessionId;
+          const resumeCursor = yield* Effect.tryPromise({
+            try: async () => {
+              const readMessages =
+                options?.readNativeSessionMessages ??
+                (await loadClaudeAgentSdk()).getSessionMessages;
+              const messages = await readMessages(
+                sourceSessionId,
+                context.session.cwd ? { dir: context.session.cwd } : {},
+              );
+              // SDK history excludes meta/sidechain entries. Tool-result carriers
+              // are user-role messages too, but never a user prompt boundary.
+              const prompts = messages.filter((entry) => {
+                if (entry.type !== "user" || entry.parent_tool_use_id !== null) return false;
+                const message = entry.message as { content?: unknown } | null;
+                const content = message?.content;
+                return (
+                  typeof content === "string" ||
+                  (Array.isArray(content) &&
+                    content.length > 0 &&
+                    !content.some((block) => block?.type === "tool_result"))
+                );
+              });
+              const target = prompts[prompts.length - numTurns];
+              if (!target)
+                throw new Error("The edited prompt is missing from the native Claude history.");
+              const parent = await (
+                options?.readNativeMessageParent ?? readClaudeSessionParentUuid
+              )({
+                sessionId: sourceSessionId,
+                messageId: target.uuid,
+              });
+              // Fork the exact native prefix, including tool results and hidden
+              // attachments. An empty prefix needs no summary or history bootstrap.
+              const forked =
+                parent === null
+                  ? undefined
+                  : await forkNativeSession(sourceSessionId, {
+                      ...(context.session.cwd ? { dir: context.session.cwd } : {}),
+                      upToMessageId: parent,
+                    });
+              return {
+                threadId,
+                ...(forked ? { resume: forked.sessionId } : {}),
+                turnCount: prompts.length - numTurns,
+              };
+            },
+            catch: (cause) => toRequestError(threadId, "session/rollback", cause),
+          });
+          const startInput = {
+            ...context.startInput,
+            ...(context.session.model
+              ? {
+                  modelSelection: {
+                    ...(context.startInput.modelSelection?.provider === PROVIDER
+                      ? context.startInput.modelSelection
+                      : {}),
+                    provider: PROVIDER,
+                    model: context.session.model,
+                  },
+                }
+              : {}),
+            resumeCursor,
+            forkSourceResumeCursor: undefined,
+          };
+          const preflight = yield* resolveClaudeStartPreflight(startInput);
+          yield* stopSessionInternal(context, { emitExitEvent: false });
+          yield* startSessionUnlocked(startInput, preflight);
+          return yield* snapshotThread(yield* requireSession(threadId));
         }),
       );
 
@@ -7380,7 +7493,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       provider: PROVIDER,
       capabilities: {
         sessionModelSwitch: "in-session",
-        conversationRollback: "restart-session",
         supportsSkillMentions: false,
         supportsSkillDiscovery: false,
         supportsNativeSlashCommandDiscovery: true,

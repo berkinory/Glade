@@ -55,6 +55,8 @@ import { buildOpenCodeMcpServer, GLADE_MCP_SERVER_NAME } from "../../agentGatewa
 import { AgentGatewayCredentials } from "../../agentGateway/Services/AgentGatewayCredentials.ts";
 import {
   acquireAgentGatewaySessionLease,
+  AGENT_GATEWAY_CREDENTIAL_ROTATION_REQUIRED,
+  AGENT_GATEWAY_TURN_AUTHORITY_RETIRED,
   cancelAgentGatewayTurn,
   type AgentGatewaySessionLease,
   withAgentGatewayTurnCancellation,
@@ -184,6 +186,7 @@ interface OpenCodeSessionContext extends OpenCodeMessageState<Part> {
   readonly gatewayControlAvailable: boolean;
   readonly enableComputerControl?: boolean;
   gatewaySessionLease?: AgentGatewaySessionLease;
+  gatewayLeaseRetired?: boolean;
   session: ProviderSession;
   readonly lifecycleGeneration?: string;
   readonly client: OpencodeClient;
@@ -735,7 +738,14 @@ const clearActiveTurnState = Effect.fn("clearOpenCodeActiveTurnState")(function*
   options?: { readonly cancelGatewayTurn?: boolean },
 ) {
   if (options?.cancelGatewayTurn !== false) {
-    yield* cancelAgentGatewayTurn(context.gatewaySessionLease, context.activeTurnId);
+    if (context.gatewaySessionLease && context.activeTurnId) {
+      // This runtime does not attach native call ids to MCP. Fence the old
+      // transport now; ProviderService drains and replaces the owning runtime.
+      context.gatewayLeaseRetired = true;
+      yield* cancelAgentGatewayTurn(context.gatewaySessionLease, context.activeTurnId, {
+        retireCredential: true,
+      });
+    }
   }
   if (context.pendingHarnessPolicyTurnId === context.activeTurnId) {
     context.pendingHarnessPolicyTurnId = undefined;
@@ -1343,6 +1353,21 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
       const emit = (context: OpenCodeSessionContext, event: ProviderRuntimeEvent) =>
         Queue.offer(runtimeEvents, {
           ...event,
+          ...(context.gatewayLeaseRetired &&
+          (event.type === "turn.completed" || event.type === "turn.aborted")
+            ? {
+                raw: {
+                  source: event.raw?.source ?? "opencode.sdk.event",
+                  method: event.raw?.method ?? event.type,
+                  payload: {
+                    ...(typeof event.raw?.payload === "object" && event.raw.payload !== null
+                      ? event.raw.payload
+                      : {}),
+                    [AGENT_GATEWAY_TURN_AUTHORITY_RETIRED]: true,
+                  },
+                },
+              }
+            : {}),
           ...(context.lifecycleGeneration !== undefined
             ? { lifecycleGeneration: context.lifecycleGeneration }
             : {}),
@@ -3778,6 +3803,13 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
             issue: `${adapterConfig.displayName} turns require text input or at least one attachment.`,
           });
         }
+        if (context.gatewayLeaseRetired) {
+          return yield* new ProviderAdapterRequestError({
+            provider,
+            method: "session.promptAsync",
+            detail: `${AGENT_GATEWAY_CREDENTIAL_ROTATION_REQUIRED}: Resume the provider session before starting another turn.`,
+          });
+        }
         const harnessPolicy = takeGladeHarnessPolicyForProviderSession(
           {
             ...(context.harnessPolicyDelivered ? { harnessPolicyDelivered: true } : {}),
@@ -4211,15 +4243,19 @@ export function makeOpenCodeAdapterLive(options?: OpenCodeAdapterLiveOptions) {
             }),
           ).pipe(Effect.mapError(toAdapterRequestError));
 
-          const assistantMessages = (messages.data ?? []).filter(
-            (entry) => entry.info.role === "assistant",
-          );
-          const targetIndex = assistantMessages.length - numTurns - 1;
-          const target = targetIndex >= 0 ? assistantMessages[targetIndex] : null;
+          const userMessages = (messages.data ?? []).filter((entry) => entry.info.role === "user");
+          const target = userMessages[userMessages.length - numTurns];
+          if (!Number.isInteger(numTurns) || numTurns < 1 || !target) {
+            return yield* new ProviderAdapterValidationError({
+              provider,
+              operation: "rollbackThread",
+              issue: "The requested edit boundary is missing from the OpenCode conversation.",
+            });
+          }
           yield* runOpenCodeSdk("session.revert", () =>
             context.client.session.revert({
               sessionID: context.openCodeSessionId,
-              ...(target ? { messageID: target.info.id } : {}),
+              messageID: target.info.id,
             }),
           ).pipe(Effect.mapError(toAdapterRequestError));
 

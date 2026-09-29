@@ -505,7 +505,9 @@ function rollbackThreadMessagesFromMessage(
     messages: messages.slice(0, targetIndex),
     removedTurnIds: new Set(
       removedMessages.flatMap((message) =>
-        message.turnId === undefined || message.turnId === null ? [] : [message.turnId],
+        message.role === "system" || message.turnId === undefined || message.turnId === null
+          ? []
+          : [message.turnId],
       ),
     ),
   };
@@ -1548,7 +1550,7 @@ function applyOrchestrationEvent(
       );
 
     case "thread.conversation-rolled-back":
-      if (event.payload.numTurns === 0) {
+      if (event.payload.numTurns === 0 && event.payload.replacementText === undefined) {
         return state;
       }
       return applyThreadUpdate(
@@ -1559,11 +1561,32 @@ function applyOrchestrationEvent(
             thread.messages,
             event.payload.messageId,
           );
+          let messages = rollback.messages;
+          const editedMessage = thread.messages.find(
+            (message) => message.id === event.payload.messageId,
+          );
+          if (event.payload.replacementText !== undefined && editedMessage) {
+            messages = [
+              ...messages,
+              {
+                ...editedMessage,
+                text: event.payload.replacementText,
+                turnId: null,
+                streaming: false,
+                startsNewTurn: true,
+                updatedAt: event.occurredAt,
+              },
+            ];
+          }
           const removedTurnIds = new Set([
             ...rollback.removedTurnIds,
             ...(event.payload.removedTurnIds ?? []),
           ]);
-          if (rollback.messages.length === thread.messages.length && removedTurnIds.size === 0) {
+          if (
+            event.payload.replacementText === undefined &&
+            messages.length === thread.messages.length &&
+            removedTurnIds.size === 0
+          ) {
             return thread;
           }
 
@@ -1586,8 +1609,8 @@ function applyOrchestrationEvent(
             ...thread,
             turnDiffSummaries,
             messages: clearRemovedAsyncUserInputResponses(
-              rollback.messages,
-              new Set(rollback.messages.map((message) => message.id)),
+              messages,
+              new Set(messages.map((message) => message.id)),
               event.sequence,
             ).slice(-MAX_THREAD_MESSAGES),
             proposedPlans,
@@ -1595,7 +1618,7 @@ function applyOrchestrationEvent(
             pendingSourceProposedPlan: undefined,
             latestHumanMessageAt: deriveThreadSummaryMetadata({
               ...thread,
-              messages: rollback.messages,
+              messages,
             }).latestHumanMessageAt,
             latestTurn:
               latestCheckpoint === null

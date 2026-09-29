@@ -108,6 +108,32 @@ describe("conversationEdit", () => {
     });
   });
 
+  it("keeps a textless stopped prompt editable after system notices", () => {
+    expect(
+      resolveLatestTailUserMessageEditTarget({
+        messages: [
+          { id: "user-stopped", role: "user", source: "native", turnId: null },
+          { id: "notice", role: "system", turnId: null },
+        ],
+      }),
+    ).toMatchObject({
+      editable: true,
+      messageId: "user-stopped",
+      rollbackTurnCount: 0,
+    });
+  });
+
+  it("does not count system notice ids as extra provider turns", () => {
+    expect(
+      resolveLatestTailUserMessageEditTarget({
+        messages: [
+          { id: "user", role: "user", source: "native", turnId: "turn-1" },
+          { id: "notice", role: "system", turnId: "notice-turn" },
+        ],
+      }),
+    ).toMatchObject({ editable: true, removedTurnIds: ["turn-1"] });
+  });
+
   it("rejects older native user messages", () => {
     expect(
       resolveTailUserMessageEditTarget({

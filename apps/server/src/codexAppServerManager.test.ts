@@ -1964,6 +1964,41 @@ describe("thread checkpoint control", () => {
     });
   });
 
+  it("uses the exclusive native turn boundary when paginated Codex replaces rollback", async () => {
+    const { manager, context, sendRequest } = createThreadControlHarness();
+    sendRequest.mockImplementation(async (_context, method) => {
+      if (method === "thread/rollback") throw new Error("unknown variant `thread/rollback`");
+      if (method === "thread/read")
+        return {
+          thread: {
+            id: "thread_1",
+            turns: [
+              { id: "kept", items: [] },
+              { id: "edited", items: [] },
+              { id: "removed", items: [] },
+            ],
+          },
+        };
+      if (method === "thread/revert") return { thread: { id: "thread_1", turns: [] } };
+      throw new Error(`Unexpected request: ${method}`);
+    });
+    const result = await manager.rollbackThread(asThreadId("thread_1"), 2);
+    expect(sendRequest).toHaveBeenCalledWith(context, "thread/revert", {
+      threadId: "thread_1",
+      beforeTurnId: "edited",
+    });
+    expect(result.turns.map((turn) => turn.id)).toEqual(["kept"]);
+  });
+
+  it("does not treat a failed native rollback as permission to discard history", async () => {
+    const { manager, sendRequest } = createThreadControlHarness();
+    sendRequest.mockRejectedValue(new Error("rollback failed: storage unavailable"));
+    await expect(manager.rollbackThread(asThreadId("thread_1"), 1)).rejects.toThrow(
+      "storage unavailable",
+    );
+    expect(sendRequest).toHaveBeenCalledTimes(1);
+  });
+
   it("cancels the exact gateway turn even when Codex omits MCP cancellation notifications", async () => {
     const { manager, context, sendRequest } = createThreadControlHarness();
     let settleCancellation: (() => void) | undefined;
@@ -2850,6 +2885,48 @@ describe("handleServerNotification error normalization", () => {
         }),
       );
     }
+  });
+
+  it("keeps a proven-call runtime reusable after fencing a completed turn", () => {
+    const { manager, context, emitEvent } = createCollabNotificationHarness();
+    const registerNativeToolCall = vi.fn();
+    const retireTurn = vi.fn(() => Promise.resolve());
+    Object.assign(context, {
+      gatewaySessionLease: {
+        connection: { url: "http://localhost/mcp", bearerToken: "test" },
+        registerNativeToolCall,
+        retireTurn,
+        cancelTurn: vi.fn(),
+        release: vi.fn(),
+      },
+    });
+    handleServerNotificationForTest(manager, context, {
+      method: "item/started",
+      params: {
+        threadId: "provider_parent",
+        turnId: "turn_parent",
+        item: { id: "call-1", type: "mcpToolCall", server: "glade", tool: "write" },
+      },
+    });
+    expect(registerNativeToolCall).toHaveBeenCalledWith({
+      callId: "call-1",
+      turnId: "turn_parent",
+      toolName: "write",
+    });
+    handleServerNotificationForTest(manager, context, {
+      method: "turn/completed",
+      params: {
+        threadId: "provider_parent",
+        turn: { id: "turn_parent", status: "completed" },
+      },
+    });
+    expect(retireTurn).toHaveBeenCalledWith("turn_parent");
+    expect(context.gatewayCredentialRetired).not.toBe(true);
+    expect(emitEvent).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({ [AGENT_GATEWAY_TURN_AUTHORITY_RETIRED]: true }),
+      }),
+    );
   });
 
   it("settles native review when review mode exits", () => {

@@ -108,34 +108,37 @@ describe("shouldHoldQueuedComposerAutoDispatch", () => {
 });
 
 describe("resolveQueuedComposerAutoDispatchHold", () => {
-  it("does not drain remaining queued turns after message-sent / turn-start-requested", () => {
-    const now = Date.parse("2026-04-13T00:00:02.000Z");
-    expect(
-      hasServerAcknowledgedLocalDispatch({
-        localDispatch,
-        phase: "ready",
-        latestTurn: gapLatestTurn,
-        session: gapSession,
-        messages: [echoedUserMessage],
-        hasPendingApproval: false,
-        hasPendingUserInput: false,
-        threadError: null,
-      }),
-    ).toBe(true);
-    expect(
-      hasLiveTurnTakenOver({
-        localDispatch,
-        phase: "ready",
-        latestTurn: gapLatestTurn,
-        session: gapSession,
-        hasPendingApproval: false,
-        hasPendingUserInput: false,
-        threadError: null,
-        now,
-      }),
-    ).toBe(false);
-    expect(resolveHold({ now })).toBe(true);
-  });
+  it.each(["ready", "connecting"] as const)(
+    "does not drain queued turns before turn start while %s",
+    (phase) => {
+      const now = Date.parse("2026-04-13T00:00:02.000Z");
+      expect(
+        hasServerAcknowledgedLocalDispatch({
+          localDispatch,
+          phase,
+          latestTurn: gapLatestTurn,
+          session: gapSession,
+          messages: [echoedUserMessage],
+          hasPendingApproval: false,
+          hasPendingUserInput: false,
+          threadError: null,
+        }),
+      ).toBe(true);
+      expect(
+        hasLiveTurnTakenOver({
+          localDispatch,
+          phase,
+          latestTurn: gapLatestTurn,
+          session: gapSession,
+          hasPendingApproval: false,
+          hasPendingUserInput: false,
+          threadError: null,
+          now,
+        }),
+      ).toBe(false);
+      expect(resolveHold({ now, phase })).toBe(true);
+    },
+  );
 
   it("keeps holding once the dispatched turn is observably live", () => {
     expect(

@@ -36,6 +36,8 @@ export interface AgentGatewayStdioProxySpawn {
 }
 
 export interface AgentGatewayCredentialsShape {
+  /** Available when the host can correlate native events with MCP call metadata. */
+  readonly nativeToolCalls?: import("../nativeToolCalls.ts").NativeToolCallRegistry;
   /** Streamable-HTTP MCP endpoint served by this Glade instance. */
   readonly mcpEndpointUrl: string;
   /** Update the endpoint after the HTTP server resolves a dynamic listen port. */

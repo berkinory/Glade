@@ -44,6 +44,7 @@ import { normalizeModelSlug } from "@glade/shared/model";
 import { approvalSessionGrantWidensSessionPolicy } from "@glade/shared/approvalSessionGrant";
 import {
   JsonRpcStdioRequestRegistry,
+  JsonRpcStdioFramer,
   type JsonRpcPendingRequest,
 } from "@glade/shared/jsonrpc-stdio";
 import { decodeSubagentReceiverThreadIds } from "@glade/shared/subagents";
@@ -56,6 +57,7 @@ import {
   isCodexCliVersionSupported,
   MINIMUM_CODEX_AUTO_REVIEW_CLI_VERSION,
   MINIMUM_CODEX_EXCLUDE_TURNS_CLI_VERSION,
+  MINIMUM_CODEX_MCP_CALL_ID_CLI_VERSION,
   parseCodexCliVersion,
 } from "./provider/codexCliVersion";
 import {
@@ -976,6 +978,31 @@ export function classifyCodexStderrLine(rawLine: string): { message: string } | 
     return null;
   }
 
+  // Current Codex emits tracing JSON. Treating that as an unstructured error
+  // turns WARN retries and INFO bookkeeping into visible runtime failures.
+  if (line.startsWith("{")) {
+    try {
+      const record = asObject(JSON.parse(line));
+      const fields = asObject(record?.fields);
+      const message = asString(fields?.message);
+      if (message && typeof record?.level === "string") {
+        if (message === "MCP server startup failed") {
+          const server = asString(fields?.server_name) ?? "Configured";
+          return {
+            message: `MCP server "${server}" could not connect. Check its configuration or start the server.`,
+          };
+        }
+        // MCP reports the final named startup failure separately. Transport
+        // workers also log every transient retry at ERROR before that verdict.
+        if (record.level !== "ERROR" || record.target === "rmcp::transport::worker") return null;
+        if (BENIGN_ERROR_LOG_SNIPPETS.some((snippet) => message.includes(snippet))) return null;
+        return { message: normalizeCodexUserVisibleErrorMessage(message) };
+      }
+    } catch {
+      /* Preserve non-log process failures below. */
+    }
+  }
+
   const match = line.match(CODEX_STDERR_LOG_REGEX);
   if (match) {
     const level = match[1];
@@ -1194,7 +1221,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       const codexOptions = readCodexProviderOptions(input);
       const codexBinaryPath = codexOptions.binaryPath ?? "codex";
       const codexHomePath = codexOptions.homePath;
-      await this.assertSupportedCodexCliVersion({
+      const cliVersion = await this.assertSupportedCodexCliVersion({
         binaryPath: codexBinaryPath,
         cwd: resolvedCwd,
         ...(minimumVersion
@@ -1208,10 +1235,12 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
           : {}),
         ...(codexHomePath ? { homePath: codexHomePath } : {}),
       });
-      gatewaySessionLease = this.agentGatewayMcp?.acquireSessionLease(
-        threadId,
-        input.agentGatewayCapabilityInput,
-      );
+      gatewaySessionLease = this.agentGatewayMcp?.acquireSessionLease(threadId, {
+        ...input.agentGatewayCapabilityInput,
+        nativeToolCallScope:
+          cliVersion !== null &&
+          compareCodexCliVersions(cliVersion, MINIMUM_CODEX_MCP_CALL_ID_CLI_VERSION) >= 0,
+      });
       const child = this.spawnAppServer({
         binaryPath: codexBinaryPath,
         cwd: resolvedCwd,
@@ -1723,9 +1752,9 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
   private retireGatewayTurn(context: CodexSessionContext, turnId: TurnId): Promise<void> {
     const lease = context.gatewaySessionLease;
     if (!lease) return Promise.resolve();
-    // Flip the local admission fence before starting asynchronous request
-    // drainage. No following turn may reuse this runtime's bearer.
-    context.gatewayCredentialRetired = true;
+    // Legacy transports cannot prove a call's origin. Fence their whole bearer;
+    // proven calls retire only this turn, without undoing a prior hard stop.
+    if (lease.registerNativeToolCall === undefined) context.gatewayCredentialRetired = true;
     return this.runGatewayTurnCleanup(context, turnId, "retirement", () =>
       lease.retireTurn(turnId),
     );
@@ -2089,7 +2118,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         runtimeMode: input.runtimeMode,
         threadOpenMethod: "thread/fork",
       });
-      await this.assertSupportedCodexCliVersion({
+      const cliVersion = await this.assertSupportedCodexCliVersion({
         binaryPath: codexBinaryPath,
         cwd: resolvedCwd,
         ...(minimumVersion
@@ -2105,6 +2134,9 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       // forked runtime leases like-for-like capabilities instead of dropping
       // `computer:control` at the fork boundary.
       gatewaySessionLease = this.agentGatewayMcp?.acquireSessionLease(threadId, {
+        nativeToolCallScope:
+          cliVersion !== null &&
+          compareCodexCliVersions(cliVersion, MINIMUM_CODEX_MCP_CALL_ID_CLI_VERSION) >= 0,
         enableComputerControl: input.enableComputerControl === true,
       });
       const processEnv = await this.buildSessionProcessEnv(
@@ -2261,15 +2293,37 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       throw new Error("numTurns must be an integer >= 1.");
     }
 
-    const response = await this.sendRequest(context, "thread/rollback", {
-      threadId: providerThreadId,
-      numTurns,
-    });
+    let snapshot: CodexThreadSnapshot;
+    try {
+      const response = await this.sendRequest(context, "thread/rollback", {
+        threadId: providerThreadId,
+        numTurns,
+      });
+      snapshot = this.parseThreadSnapshot("thread/rollback", response);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      // Paginated app-servers replaced rollback with an exclusive turn boundary.
+      // Only negotiate an unsupported method; runtime failures must remain errors.
+      if (!/unknown variant [`']thread\/rollback[`']|method not found/i.test(message)) {
+        throw error;
+      }
+      const current = await this.readThreadSnapshot(context, providerThreadId);
+      const targetIndex = current.turns.length - numTurns;
+      const target = current.turns[targetIndex];
+      if (targetIndex < 0 || !target) {
+        throw new Error("The requested edit boundary is missing from the Codex conversation.");
+      }
+      await this.sendRequest(context, "thread/revert", {
+        threadId: providerThreadId,
+        beforeTurnId: target.id,
+      });
+      snapshot = { ...current, turns: current.turns.slice(0, targetIndex) };
+    }
     this.updateSession(context, {
       status: "ready",
       activeTurnId: undefined,
     });
-    return this.parseThreadSnapshot("thread/rollback", response);
+    return snapshot;
   }
 
   async compactThread(threadId: ThreadId): Promise<void> {
@@ -3255,12 +3309,14 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       delete context.detachStdout;
     };
 
-    context.child.stderr.on("data", (chunk: Buffer) => {
+    const stderrFramer = new JsonRpcStdioFramer(1024 * 1024, (error) => {
+      log.warn("codex stderr line discarded", { reason: error.reason });
+    });
+    const onStderrData = (chunk: Buffer) => {
       if (context.stopping) {
         return;
       }
-      const raw = chunk.toString();
-      const lines = raw.split(/\r?\n/g);
+      const lines = stderrFramer.push(chunk);
       for (const rawLine of lines) {
         const classified = classifyCodexStderrLine(rawLine);
         if (!classified) {
@@ -3269,6 +3325,11 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
 
         this.emitErrorEvent(context, "process/stderr", classified.message);
       }
+    };
+    context.child.stderr.on("data", onStderrData);
+    context.child.stderr.once("end", () => {
+      if (stderrFramer.bufferedBytes > 0) onStderrData(Buffer.from("\n"));
+      stderrFramer.close();
     });
 
     context.child.on("error", (error) => this.handleTransportFailure(context, error));
@@ -3445,12 +3506,29 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       ? (rawRoute.turnId ?? context.session.activeTurnId)
       : undefined;
     const gatewayTurnAuthorityRetired =
-      terminalGatewayTurnId !== undefined && context.gatewaySessionLease !== undefined;
-    if (gatewayTurnAuthorityRetired) {
-      // Fence synchronously before publishing the terminal event. ProviderService
-      // may admit B as soon as it consumes that event, so A's bearer must already
-      // be permanently unable to bind to another latestTurn.
+      terminalGatewayTurnId !== undefined &&
+      context.gatewaySessionLease !== undefined &&
+      context.gatewaySessionLease.registerNativeToolCall === undefined;
+    if (terminalGatewayTurnId !== undefined) {
+      // Fence A before publishing completion. Proven calls keep the runtime
+      // reusable; legacy clients must retire the entire bearer.
       void this.retireGatewayTurn(context, terminalGatewayTurnId);
+    }
+    if (notification.method === "item/started") {
+      const item = this.readObject(notification.params, "item");
+      const callId = this.readString(item, "id");
+      const toolName = this.readString(item, "tool");
+      const turnId = isChildConversation ? childParentTurnId : rawRoute.turnId;
+      if (
+        item?.type === "mcpToolCall" &&
+        item.server === "glade" &&
+        callId &&
+        toolName &&
+        turnId &&
+        turnId === context.session.activeTurnId
+      ) {
+        context.gatewaySessionLease?.registerNativeToolCall?.({ callId, toolName, turnId });
+      }
     }
     const eventPayload = gatewayTurnAuthorityRetired
       ? {
@@ -4009,8 +4087,10 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       context.collabReceiverTurns.clear();
       context.collabReceiverParents.clear();
       context.reviewTurnIds.delete(turnId);
-      const gatewayTurnAuthorityRetired = context.gatewaySessionLease !== undefined;
-      if (gatewayTurnAuthorityRetired) {
+      const gatewayTurnAuthorityRetired =
+        context.gatewaySessionLease !== undefined &&
+        context.gatewaySessionLease.registerNativeToolCall === undefined;
+      if (context.gatewaySessionLease) {
         // Match native terminal notifications: fence the bearer synchronously
         // before publishing the synthetic completion to ProviderService.
         void this.retireGatewayTurn(context, turnId);
@@ -4103,8 +4183,8 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     readonly homePath?: string;
     readonly minimumVersion?: string;
     readonly minimumVersionRequirement?: string;
-  }): Promise<void> {
-    await assertSupportedCodexCliVersion(input);
+  }): Promise<string | null> {
+    return assertSupportedCodexCliVersion(input);
   }
 
   private updateSession(context: CodexSessionContext, updates: Partial<ProviderSession>): void {
@@ -4643,7 +4723,7 @@ async function runCodexCliVersionGate(input: {
   readonly homePath?: string;
   readonly minimumVersion?: string;
   readonly minimumVersionRequirement?: string;
-}): Promise<CodexCliBinaryFingerprint | null> {
+}): Promise<{ fingerprint: CodexCliBinaryFingerprint | null; version: string | null }> {
   const env = await buildCodexProcessEnv({
     ...(input.homePath ? { homePath: input.homePath } : {}),
   });
@@ -4692,11 +4772,14 @@ async function runCodexCliVersionGate(input: {
     throw new Error(formatCodexCliUpgradeMessage(parsedVersion, minimumVersion));
   }
 
-  return resolvedPath && identity ? { path: resolvedPath, identity } : null;
+  return {
+    fingerprint: resolvedPath && identity ? { path: resolvedPath, identity } : null,
+    version: parsedVersion ?? null,
+  };
 }
 
 interface CodexCliVersionGateEntry {
-  promise: Promise<void>;
+  promise: Promise<string | null>;
   /** 0 until the probe resolves successfully; failed verdicts are never reused. */
   expiresAt: number;
   /**
@@ -4741,7 +4824,7 @@ async function assertSupportedCodexCliVersion(input: {
   readonly homePath?: string;
   readonly minimumVersion?: string;
   readonly minimumVersionRequirement?: string;
-}): Promise<void> {
+}): Promise<string | null> {
   // Prefer an explicit cwd check before spawning. A missing working directory
   // produces ENOENT that is otherwise misreported as a missing Codex binary. This
   // is per-call state, so it must run even when the version verdict is cached.
@@ -4754,12 +4837,10 @@ async function assertSupportedCodexCliVersion(input: {
     // expiresAt === 0 means the probe is still in flight: concurrent session
     // starts share it instead of each spawning their own Codex process.
     if (existing.expiresAt === 0) {
-      await existing.promise;
-      return;
+      return existing.promise;
     }
     if (existing.expiresAt > now && !isCodexCliVersionGateStale(existing)) {
-      await existing.promise;
-      return;
+      return existing.promise;
     }
     codexCliVersionGates.delete(key);
   }
@@ -4771,14 +4852,15 @@ async function assertSupportedCodexCliVersion(input: {
   }
 
   const entry: CodexCliVersionGateEntry = {
-    promise: Promise.resolve(),
+    promise: Promise.resolve(null),
     expiresAt: 0,
     fingerprint: null,
   };
   entry.promise = runCodexCliVersionGate(input).then(
-    (fingerprint) => {
+    ({ fingerprint, version }) => {
       entry.fingerprint = fingerprint;
       entry.expiresAt = Date.now() + CODEX_VERSION_CHECK_CACHE_TTL_MS;
+      return version;
     },
     (error: unknown) => {
       // Never cache a failure: the user may install or upgrade Codex at any time.
@@ -4789,7 +4871,7 @@ async function assertSupportedCodexCliVersion(input: {
     },
   );
   codexCliVersionGates.set(key, entry);
-  await entry.promise;
+  return entry.promise;
 }
 
 export const __codexCliVersionGateTesting = {
