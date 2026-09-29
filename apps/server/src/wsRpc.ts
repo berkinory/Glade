@@ -1480,13 +1480,6 @@ const makeWsRpcHandlersLayer = () =>
             refreshGitStatusAfter(input.cwd, gitManager.preparePullRequestThread(input)),
             "Failed to prepare pull request thread",
           ),
-        [WS_METHODS.pullRequestsList]: (input) =>
-          pullRequestsEffect(pullRequests.list(input), "Failed to list pull requests"),
-        [WS_METHODS.pullRequestsReviewRequestCount]: (input) =>
-          pullRequestsEffect(
-            pullRequests.reviewRequestCount(input),
-            "Failed to count pull request review requests",
-          ),
         [WS_METHODS.pullRequestsDetail]: (input) =>
           pullRequestsEffect(pullRequests.detail(input), "Failed to load pull request"),
         [WS_METHODS.pullRequestsDiff]: (input) =>
@@ -1495,8 +1488,6 @@ const makeWsRpcHandlersLayer = () =>
           pullRequestsEffect(pullRequests.action(input), "Pull request action failed"),
         [WS_METHODS.pullRequestsComment]: (input) =>
           pullRequestsEffect(pullRequests.comment(input), "Could not post the comment"),
-        [WS_METHODS.pullRequestsSetPinned]: (input) =>
-          rpcEffect(pullRequests.setPinned(input), "Failed to update pull request pin"),
         [WS_METHODS.gitListBranches]: (input) =>
           rpcEffect(git.listBranches(input), "Failed to list branches"),
         [WS_METHODS.gitListRecentCommits]: (input) =>

@@ -5,21 +5,11 @@ import type {
   PullRequestDetail,
   PullRequestDetailInput,
   PullRequestDiffResult,
-  PullRequestReviewRequestCountInput,
-  PullRequestReviewRequestCountResult,
-  PullRequestSetPinnedInput,
-  PullRequestSetPinnedResult,
-  PullRequestsListInput,
-  PullRequestsListResult,
 } from "@glade/contracts";
 import { ServiceMap } from "effect";
 import type { Effect } from "effect";
 
 export interface PullRequestServiceShape {
-  readonly list: (input: PullRequestsListInput) => Effect.Effect<PullRequestsListResult, unknown>;
-  readonly reviewRequestCount: (
-    input: PullRequestReviewRequestCountInput,
-  ) => Effect.Effect<PullRequestReviewRequestCountResult, unknown>;
   readonly detail: (input: PullRequestDetailInput) => Effect.Effect<PullRequestDetail, unknown>;
   readonly diff: (input: PullRequestDetailInput) => Effect.Effect<PullRequestDiffResult, unknown>;
   readonly action: (
@@ -28,9 +18,6 @@ export interface PullRequestServiceShape {
   readonly comment: (
     input: PullRequestCommentInput,
   ) => Effect.Effect<PullRequestActionResult, unknown>;
-  readonly setPinned: (
-    input: PullRequestSetPinnedInput,
-  ) => Effect.Effect<PullRequestSetPinnedResult, unknown>;
 }
 
 export class PullRequestService extends ServiceMap.Service<

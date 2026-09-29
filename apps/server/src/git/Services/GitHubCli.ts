@@ -14,12 +14,10 @@ import type {
   PullRequestCheck,
   PullRequestComment,
   PullRequestCommit,
-  PullRequestInvolvement,
   PullRequestLabel,
   PullRequestMergeCapabilities,
   PullRequestMergeMethod,
   PullRequestStack,
-  PullRequestStackSummary,
   PullRequestState,
 } from "@glade/contracts";
 
@@ -65,32 +63,6 @@ export interface GitHubRepositoryCloneUrls {
 export interface GitHubPullRequestReviewCommentsResult {
   readonly comments: ReadonlyArray<GitPullRequestComment>;
   readonly truncated: boolean;
-}
-
-export interface GitHubPullRequestListItem {
-  readonly number: number;
-  readonly title: string;
-  readonly url: string;
-  readonly author: PullRequestActor | null;
-  readonly headBranch: string;
-  readonly baseBranch: string;
-  readonly state: PullRequestState;
-  readonly isDraft: boolean;
-  readonly additions: number;
-  readonly deletions: number;
-  readonly createdAt: string;
-  readonly updatedAt: string;
-  readonly reviewDecision: string | null;
-  readonly reviewRequestLogins: ReadonlyArray<string>;
-  readonly labels: ReadonlyArray<PullRequestLabel>;
-  readonly mergeability: "mergeable" | "conflicting" | "unknown";
-  readonly stack: PullRequestStackSummary | null;
-}
-
-/** Internal list result retaining the raw array cardinality before malformed entries are dropped. */
-export interface GitHubPullRequestListBatch {
-  readonly entries: ReadonlyArray<GitHubPullRequestListItem>;
-  readonly rawCount: number;
 }
 
 export interface GitHubPullRequestDetailData {
@@ -146,37 +118,6 @@ export interface GitHubCliShape {
   readonly getViewerLogin: (input: {
     readonly cwd: string;
   }) => Effect.Effect<string, GitHubCliError>;
-
-  readonly listRepositoryPullRequests: (input: {
-    readonly cwd: string;
-    readonly repository: string;
-    readonly state: PullRequestState;
-    readonly involvement: PullRequestInvolvement;
-    readonly viewer: string;
-    readonly limit?: number;
-  }) => Effect.Effect<GitHubPullRequestListBatch, GitHubCliError>;
-
-  /**
-   * Fetch one pull request in the list-item shape (`gh pr view --json <list fields>`).
-   * Used to restore pinned PRs that fall outside the capped list results.
-   */
-  readonly getPullRequestListItem: (input: {
-    readonly cwd: string;
-    readonly repository: string;
-    readonly number: number;
-  }) => Effect.Effect<GitHubPullRequestListItem, GitHubCliError>;
-
-  /**
-   * List open PR numbers for which GitHub's review-requested search matches the viewer. Unlike
-   * `pr view` reviewRequests, this authoritative search includes requests to teams the viewer
-   * belongs to. Used sparingly to verify pinned PRs beyond the normal list cap.
-   */
-  readonly listReviewRequestedPullRequestNumbers: (input: {
-    readonly cwd: string;
-    readonly repository: string;
-    readonly viewer: string;
-    readonly limit?: number;
-  }) => Effect.Effect<ReadonlyArray<number>, GitHubCliError>;
 
   readonly getPullRequestDetail: (input: {
     readonly cwd: string;

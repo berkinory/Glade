@@ -1,6 +1,5 @@
 // FILE: relativeTime.ts
-// Purpose: Compact relative-time labels ("now", "5m", "3h", "2d", "1w", "5mo") for thread and
-//          pull request lists.
+// Purpose: Compact relative-time labels ("now", "5m", "3h", "2d", "1w", "5mo").
 // Layer: Web UI utility
 
 export function formatRelativeTime(iso: string): string {

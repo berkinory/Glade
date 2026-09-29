@@ -34,7 +34,6 @@ import { ThreadPrStatusBadge } from "~/components/pullRequest/ThreadPrStatusBadg
 import { PinStatusIcon, pinActionLabel } from "~/lib/pin";
 import { THREAD_CONTEXT_MENU_ICONS } from "~/lib/contextMenuIcons";
 import { ensureNativeApi } from "~/nativeApi";
-import { IoIosGitCompare } from "react-icons/io";
 import { GoRepoForked } from "react-icons/go";
 import {
   useCallback,
@@ -148,10 +147,6 @@ import {
   resolveLatestProjectTargetIdWithFallback,
   resolveNewThreadTarget,
 } from "../lib/projectShortcutTargets";
-import {
-  pullRequestQueryKeys,
-  pullRequestReviewRequestCountQueryOptions,
-} from "../lib/pullRequestReactQuery";
 import { prefetchModelsForNewThread } from "../lib/providerModelPrefetch";
 import {
   hasReconciledServerProviderStatuses,
@@ -314,7 +309,6 @@ import {
   getPinnedThreadsForSidebar,
   getUnpinnedThreadsForSidebar,
   orderPinnedProjectsForSidebar,
-  pullRequestRepositoryConfigFingerprint,
   getNextVisibleSidebarThreadId,
   getSidebarThreadIdsToPrewarm,
   groupSidebarThreadsByProjectId,
@@ -324,7 +318,6 @@ import {
   recoverExistingAddProjectTarget,
   runExclusiveProjectAddition,
   runProjectProvisionWithCancellationRecovery,
-  resolvePullRequestReviewBadge,
   DEBUG_FEATURE_FLAGS_MENU_STORAGE_KEY,
   resolveProjectEmptyState,
   resolveProjectStatusIndicator,
@@ -1152,7 +1145,6 @@ export default function Sidebar() {
   });
   const isOnKanban = pathname.startsWith("/kanban");
   const isOnAutomations = pathname.startsWith("/automations");
-  const isOnPullRequests = pathname.startsWith("/pull-requests");
   // Lightweight read of automations to drive the sidebar attention badge. Shares the
   // ["automations"] query cache with the Automations route (and its live stream updates).
   const automationListQuery = useQuery({
@@ -1178,22 +1170,6 @@ export default function Sidebar() {
         }
       : null;
   }, [automationListQuery.data]);
-  const pullRequestRepositoryConfig = useMemo(
-    () => pullRequestRepositoryConfigFingerprint(projects),
-    [projects],
-  );
-  const previousPullRequestRepositoryConfigRef = useRef(pullRequestRepositoryConfig);
-  useEffect(() => {
-    if (previousPullRequestRepositoryConfigRef.current === pullRequestRepositoryConfig) return;
-    previousPullRequestRepositoryConfigRef.current = pullRequestRepositoryConfig;
-    void queryClient.invalidateQueries({ queryKey: pullRequestQueryKeys.all });
-  }, [pullRequestRepositoryConfig, queryClient]);
-  // Count-only server query keeps rich pull-request rows off the wire and out of this cache.
-  const pullRequestsReviewingQuery = useQuery({
-    ...pullRequestReviewRequestCountQueryOptions({ projectId: null }),
-    enabled: projects.some((project) => project.kind === "project"),
-  });
-  const pullRequestsReviewBadge = resolvePullRequestReviewBadge(pullRequestsReviewingQuery.data);
   // Heartbeat automations grouped by their target thread, so each thread row can show a
   // clock chip indicating an automation is attached (mirrors the Environment panel section).
   const automationsByThreadId = useMemo(
@@ -3289,18 +3265,6 @@ export default function Sidebar() {
           void navigate({ to: "/kanban" });
         },
       },
-      pullRequests: {
-        icon: IoIosGitCompare,
-        label: "Pull requests",
-        active: isOnPullRequests,
-        badge: pullRequestsReviewBadge,
-        onClick: () => {
-          void navigate({
-            to: "/pull-requests",
-            search: { involvement: "all", state: "open" },
-          });
-        },
-      },
       automations: {
         icon: ClockIcon,
         label: "Automations",
@@ -3316,10 +3280,8 @@ export default function Sidebar() {
       handlePrimaryNewThread,
       isOnAutomations,
       isOnKanban,
-      isOnPullRequests,
       navigate,
       prefetchModelsForPrimaryNewThread,
-      pullRequestsReviewBadge,
     ],
   );
   const railRouteItemIds = SIDEBAR_NAV_ITEM_IDS.filter((id) => id !== "newThread");
@@ -4258,47 +4220,29 @@ export default function Sidebar() {
     );
   }
 
-  // Pull requests / new thread for one project. Shared by the tree's
-  // hover toolbar and the rail layout's Spaces drill-in header.
+  // New thread for one project. Shared by the tree's hover toolbar and the
+  // rail layout's Spaces drill-in header.
   function renderProjectThreadActions(project: (typeof sortedProjects)[number]) {
     return (
-      <>
-        <SidebarIconButton
-          icon={IoIosGitCompare}
-          label={`View pull requests for ${project.name}`}
-          tooltip="Pull requests"
-          tooltipSide="top"
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            // Opens the in-app pull requests view scoped to this project (selecting a
-            // row there opens the right-dock detail panel) instead of leaving for GitHub.
-            void navigate({
-              to: "/pull-requests",
-              search: { involvement: "all", state: "open", projectId: project.id },
-            });
-          }}
-        />
-        <SidebarIconButton
-          icon={NewThreadIcon}
-          label={`Create new thread in ${project.name}`}
-          tooltip={newThreadShortcutLabel ? `New thread (${newThreadShortcutLabel})` : "New thread"}
-          tooltipSide="top"
-          data-testid="new-thread-button"
-          onMouseEnter={() => {
-            prefetchModelsForProjectNewThread(project.id);
-          }}
-          onFocus={() => {
-            prefetchModelsForProjectNewThread(project.id);
-          }}
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            prefetchModelsForProjectNewThread(project.id);
-            void handleNewThread(project.id);
-          }}
-        />
-      </>
+      <SidebarIconButton
+        icon={NewThreadIcon}
+        label={`Create new thread in ${project.name}`}
+        tooltip={newThreadShortcutLabel ? `New thread (${newThreadShortcutLabel})` : "New thread"}
+        tooltipSide="top"
+        data-testid="new-thread-button"
+        onMouseEnter={() => {
+          prefetchModelsForProjectNewThread(project.id);
+        }}
+        onFocus={() => {
+          prefetchModelsForProjectNewThread(project.id);
+        }}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          prefetchModelsForProjectNewThread(project.id);
+          void handleNewThread(project.id);
+        }}
+      />
     );
   }
 
@@ -5398,7 +5342,7 @@ export default function Sidebar() {
   );
   // Rail layout: Home and Spaces switch the panel; route items navigate exactly like their
   // classic nav rows (prewarm included). The store's active item keeps one item selected.
-  const isOnThreadsSection = !isOnSettings && !isOnKanban && !isOnPullRequests && !isOnAutomations;
+  const isOnThreadsSection = !isOnSettings && !isOnKanban && !isOnAutomations;
   // One Help menu wiring for both homes: the classic footer and the rail's bottom cluster.
   const sidebarHelpMenuProps = {
     onOpenShortcuts: () => void navigate({ to: "/settings", search: { section: "shortcuts" } }),

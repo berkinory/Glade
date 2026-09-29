@@ -13,7 +13,6 @@ import {
   type PullRequestLabel,
   type PullRequestMergeCapabilities,
   type PullRequestStack,
-  type PullRequestStackSummary,
 } from "@glade/contracts";
 import { githubAvatarUrlForLogin } from "@glade/shared/githubAvatar";
 import {
@@ -30,8 +29,6 @@ import {
   type GitHubRepositoryCloneUrls,
   type GitHubCliShape,
   type GitHubPullRequestDetailData,
-  type GitHubPullRequestListBatch,
-  type GitHubPullRequestListItem,
   type GitHubPullRequestSummary,
 } from "../Services/GitHubCli.ts";
 
@@ -39,8 +36,6 @@ const DEFAULT_TIMEOUT_MS = 30_000;
 const PULL_REQUEST_DIFF_MAX_BYTES = 8 * 1024 * 1024;
 const GITHUB_HOST = "github.com";
 
-export const PULL_REQUEST_LIST_JSON_FIELDS =
-  "number,title,url,author,headRefName,baseRefName,state,isDraft,additions,deletions,updatedAt,createdAt,reviewDecision,reviewRequests,labels,mergedAt,mergeable";
 export const PULL_REQUEST_DETAIL_JSON_FIELDS =
   "number,title,body,url,author,state,isDraft,mergeable,mergeStateStatus,additions,deletions,changedFiles,headRefName,baseRefName,reviewDecision,reviewRequests,reviews,comments,statusCheckRollup,commits,labels,maintainerCanModify,createdAt,updatedAt,mergedAt,closedAt";
 
@@ -252,7 +247,7 @@ const RawRepositoryMergeCapabilitiesSchema = Schema.Struct({
   deleteBranchOnMerge: Schema.Boolean,
 });
 
-const RawPullRequestListItemSchema = Schema.Struct({
+const RawPullRequestBaseSchema = Schema.Struct({
   number: PositiveInt,
   title: TrimmedNonEmptyString,
   url: TrimmedNonEmptyString,
@@ -273,12 +268,8 @@ const RawPullRequestListItemSchema = Schema.Struct({
   mergeable: Schema.optional(Schema.NullOr(Schema.String)),
 });
 
-const RawPullRequestNumberSchema = Schema.Struct({
-  number: PositiveInt,
-});
-
 const RawPullRequestDetailSchema = Schema.Struct({
-  ...RawPullRequestListItemSchema.fields,
+  ...RawPullRequestBaseSchema.fields,
   body: Schema.optional(Schema.NullOr(Schema.String)),
   mergeable: Schema.optional(Schema.NullOr(Schema.String)),
   mergeStateStatus: Schema.optional(Schema.NullOr(Schema.String)),
@@ -363,22 +354,6 @@ const PULL_REQUEST_STACK_QUERY = `query($owner: String!, $repo: String!, $number
     }
   }
 }`;
-
-function buildPullRequestStackSummariesQuery(numbers: ReadonlyArray<number>): string {
-  const selections = numbers
-    .map(
-      (number) => `    pr_${number}: pullRequest(number: ${number}) {
-      stackEntry { position }
-      stack { number size baseRefName }
-    }`,
-    )
-    .join("\n");
-  return `query($owner: String!, $repo: String!) {
-  repository(owner: $owner, name: $repo) {
-${selections}
-  }
-}`;
-}
 
 const RawGraphQlErrorSchema = Schema.Struct({
   message: Schema.optional(Schema.NullOr(Schema.String)),
@@ -524,34 +499,6 @@ const RawPullRequestStackResponseSchema = Schema.Struct({
 type RawPullRequestStackEntry = Schema.Schema.Type<typeof RawPullRequestStackEntrySchema>;
 type RawPullRequestStackResponse = Schema.Schema.Type<typeof RawPullRequestStackResponseSchema>;
 
-const RawPullRequestStackSummarySchema = Schema.Struct({
-  stackEntry: Schema.optional(Schema.NullOr(Schema.Struct({ position: PositiveInt }))),
-  stack: Schema.optional(
-    Schema.NullOr(
-      Schema.Struct({
-        number: PositiveInt,
-        size: PositiveInt,
-        baseRefName: TrimmedNonEmptyString,
-      }),
-    ),
-  ),
-});
-
-const RawPullRequestStackSummariesResponseSchema = Schema.Struct({
-  errors: Schema.optional(Schema.NullOr(Schema.Array(Schema.NullOr(RawGraphQlErrorSchema)))),
-  data: Schema.optional(
-    Schema.NullOr(
-      Schema.Struct({
-        repository: Schema.optional(
-          Schema.NullOr(
-            Schema.Record(Schema.String, Schema.NullOr(RawPullRequestStackSummarySchema)),
-          ),
-        ),
-      }),
-    ),
-  ),
-});
-
 const RawAsyncMergeResultSchema = Schema.Struct({
   status: Schema.Literals(["pending", "merged", "enqueued", "failed"]),
   details: Schema.Struct({
@@ -693,36 +640,6 @@ function nonNegativeCount(value: number | null | undefined): number {
   return normalizeDiffCount(value) ?? 0;
 }
 
-function normalizePullRequestListItem(
-  raw: Schema.Schema.Type<typeof RawPullRequestListItemSchema>,
-): GitHubPullRequestListItem {
-  return {
-    number: raw.number,
-    title: raw.title,
-    url: raw.url,
-    author: normalizeActor(raw.author),
-    headBranch: raw.headRefName,
-    baseBranch: raw.baseRefName,
-    state: normalizePullRequestState(raw),
-    isDraft: raw.isDraft === true,
-    additions: nonNegativeCount(raw.additions),
-    deletions: nonNegativeCount(raw.deletions),
-    createdAt: raw.createdAt,
-    updatedAt: raw.updatedAt,
-    reviewDecision: raw.reviewDecision?.trim() || null,
-    // Only User review requests have a login. A Team slug is not a viewer identity and
-    // comparing it with the current user's login would create false-positive badges.
-    reviewRequestLogins: (raw.reviewRequests ?? []).flatMap((actor) => {
-      if (actor.__typename === "Team") return [];
-      const login = actor.login?.trim() || null;
-      return login ? [login] : [];
-    }),
-    labels: normalizeLabels(raw.labels),
-    mergeability: normalizePullRequestMergeability(raw.mergeable),
-    stack: null,
-  };
-}
-
 function normalizeDetailedChecks(
   raw: Schema.Schema.Type<typeof RawPullRequestChecksSchema>,
 ): PullRequestCheck[] {
@@ -793,7 +710,21 @@ function normalizePullRequestDetail(
     if (normalized) reviewers.set(normalized.login.toLowerCase(), normalized);
   }
   return {
-    ...normalizePullRequestListItem(raw),
+    number: raw.number,
+    title: raw.title,
+    url: raw.url,
+    author: normalizeActor(raw.author),
+    headBranch: raw.headRefName,
+    baseBranch: raw.baseRefName,
+    state: normalizePullRequestState(raw),
+    isDraft: raw.isDraft === true,
+    additions: nonNegativeCount(raw.additions),
+    deletions: nonNegativeCount(raw.deletions),
+    createdAt: raw.createdAt,
+    updatedAt: raw.updatedAt,
+    reviewDecision: raw.reviewDecision?.trim() || null,
+    labels: normalizeLabels(raw.labels),
+    mergeability: normalizePullRequestMergeability(raw.mergeable),
     body: raw.body ?? "",
     mergeable: raw.mergeable?.trim() || null,
     mergeStateStatus: raw.mergeStateStatus?.trim() || null,
@@ -817,32 +748,6 @@ function normalizePullRequestDetail(
       }),
     ),
   };
-}
-
-const decodeRawPullRequestListItem = Schema.decodeUnknownSync(RawPullRequestListItemSchema);
-
-export function decodeRepositoryPullRequestListJson(
-  raw: string,
-): Effect.Effect<GitHubPullRequestListBatch, GitHubCliError> {
-  const trimmed = raw.trim();
-  if (!trimmed) return Effect.succeed({ entries: [], rawCount: 0 });
-  return decodeGitHubJson(
-    trimmed,
-    Schema.Array(Schema.Unknown),
-    "listRepositoryPullRequests",
-    "GitHub CLI returned invalid repository PR list JSON.",
-  ).pipe(
-    Effect.map((rawEntries) => ({
-      rawCount: rawEntries.length,
-      entries: rawEntries.flatMap((entry) => {
-        try {
-          return [normalizePullRequestListItem(decodeRawPullRequestListItem(entry))];
-        } catch {
-          return [];
-        }
-      }),
-    })),
-  );
 }
 
 function normalizePullRequestReviewComments(
@@ -983,48 +888,6 @@ function getPullRequestStackPageInfo(raw: RawPullRequestStackResponse): {
   };
 }
 
-function normalizePullRequestStackSummaries(
-  raw: Schema.Schema.Type<typeof RawPullRequestStackSummariesResponseSchema>,
-  numbers: ReadonlyArray<number>,
-): Effect.Effect<ReadonlyMap<number, PullRequestStackSummary>, GitHubCliError> {
-  const graphQlErrorDetail = getGraphQlErrorDetail(raw);
-  if (graphQlErrorDetail) {
-    return Effect.fail(
-      new GitHubCliError({
-        operation: "listRepositoryPullRequests",
-        detail: graphQlErrorDetail,
-        reason: "other",
-      }),
-    );
-  }
-
-  const repository = raw.data?.repository;
-  if (!repository) {
-    return Effect.fail(
-      new GitHubCliError({
-        operation: "listRepositoryPullRequests",
-        detail: "GitHub returned incomplete pull request stack summaries.",
-        reason: "other",
-      }),
-    );
-  }
-
-  const summaries = new Map<number, PullRequestStackSummary>();
-  for (const number of numbers) {
-    const pullRequest = repository[`pr_${number}`];
-    const stack = pullRequest?.stack;
-    const stackEntry = pullRequest?.stackEntry;
-    if (!stack || !stackEntry || stackEntry.position > stack.size) continue;
-    summaries.set(number, {
-      number: stack.number,
-      size: stack.size,
-      position: stackEntry.position,
-      baseBranch: stack.baseRefName,
-    });
-  }
-  return Effect.succeed(summaries);
-}
-
 function normalizeRepositoryCloneUrls(
   raw: Schema.Schema.Type<typeof RawGitHubRepositoryCloneUrlsSchema>,
 ): GitHubRepositoryCloneUrls {
@@ -1046,10 +909,7 @@ function decodeGitHubJson<S extends Schema.Top>(
     | "getPullRequestWithChecks"
     | "getPullRequestReviewComments"
     | "getPullRequestStack"
-    | "listRepositoryPullRequests"
     | "getPullRequestDetail"
-    | "getPullRequestListItem"
-    | "listReviewRequestedPullRequestNumbers"
     | "getRepositoryMergeCapabilities"
     | "runPullRequestAction",
   invalidDetail: string,
@@ -1341,50 +1201,6 @@ const makeGitHubCli = Effect.gen(function* () {
   };
   const repositorySelector = (repository: string) => `${GITHUB_HOST}/${repository}`;
 
-  const enrichPullRequestListItemsWithStack = (input: {
-    cwd: string;
-    repository: string;
-    entries: ReadonlyArray<GitHubPullRequestListItem>;
-  }): Effect.Effect<ReadonlyArray<GitHubPullRequestListItem>> => {
-    const numbers = [...new Set(input.entries.map((entry) => entry.number))];
-    if (numbers.length === 0) return Effect.succeed(input.entries);
-    const [owner = "", repo = ""] = input.repository.split("/");
-    return execute({
-      cwd: input.cwd,
-      args: [
-        "api",
-        "graphql",
-        "--hostname",
-        GITHUB_HOST,
-        "-f",
-        `query=${buildPullRequestStackSummariesQuery(numbers)}`,
-        "-F",
-        `owner=${owner}`,
-        "-F",
-        `repo=${repo}`,
-      ],
-    }).pipe(
-      Effect.flatMap((result) =>
-        decodeGitHubJson(
-          result.stdout.trim(),
-          RawPullRequestStackSummariesResponseSchema,
-          "listRepositoryPullRequests",
-          "GitHub CLI returned invalid pull request stack summaries JSON.",
-        ),
-      ),
-      Effect.flatMap((raw) => normalizePullRequestStackSummaries(raw, numbers)),
-      Effect.map((summaries) =>
-        input.entries.map((entry) => ({
-          ...entry,
-          stack: summaries.get(entry.number) ?? null,
-        })),
-      ),
-      // Stack metadata is a progressive enhancement. A GraphQL/version/auth mismatch must not
-      // make the primary pull request list disappear.
-      Effect.catch(() => Effect.succeed(input.entries)),
-    );
-  };
-
   // One implementation behind both list methods so the field list, decoding, and
   // normalization cannot drift between the open-only and any-state lookups.
   const listPullRequestsWithState = (
@@ -1536,120 +1352,6 @@ const makeGitHubCli = Effect.gen(function* () {
                 }),
               );
         }),
-      ),
-    listRepositoryPullRequests: (input) => {
-      const searchTerms = [
-        ...(input.involvement === "reviewing" ? [`review-requested:${input.viewer}`] : []),
-        ...(input.state === "closed" ? ["is:unmerged"] : []),
-      ];
-      const involvementArgs = [
-        ...(input.involvement === "authored" ? ["--author", input.viewer] : []),
-        ...(searchTerms.length > 0 ? ["--search", searchTerms.join(" ")] : []),
-      ];
-      return validateRepository(input.repository, "listRepositoryPullRequests").pipe(
-        Effect.flatMap((repository) =>
-          execute({
-            cwd: input.cwd,
-            args: [
-              "pr",
-              "list",
-              "--repo",
-              repositorySelector(repository),
-              ...involvementArgs,
-              "--state",
-              input.state,
-              "--limit",
-              String(input.limit ?? 50),
-              "--json",
-              PULL_REQUEST_LIST_JSON_FIELDS,
-            ],
-          }).pipe(
-            Effect.flatMap((result) => decodeRepositoryPullRequestListJson(result.stdout)),
-            Effect.flatMap((batch) =>
-              enrichPullRequestListItemsWithStack({
-                cwd: input.cwd,
-                repository,
-                entries: batch.entries,
-              }).pipe(Effect.map((entries) => ({ ...batch, entries }))),
-            ),
-          ),
-        ),
-      );
-    },
-    getPullRequestListItem: (input) =>
-      validateRepository(input.repository, "getPullRequestListItem").pipe(
-        Effect.flatMap((repository) =>
-          execute({
-            cwd: input.cwd,
-            args: [
-              "pr",
-              "view",
-              String(input.number),
-              "--repo",
-              repositorySelector(repository),
-              "--json",
-              PULL_REQUEST_LIST_JSON_FIELDS,
-            ],
-          }).pipe(
-            Effect.flatMap((result) =>
-              decodeGitHubJson(
-                result.stdout.trim(),
-                Schema.Unknown,
-                "getPullRequestListItem",
-                "GitHub CLI returned invalid pull request JSON.",
-              ),
-            ),
-            Effect.flatMap((entry) =>
-              Effect.try({
-                try: () => normalizePullRequestListItem(decodeRawPullRequestListItem(entry)),
-                catch: () =>
-                  new GitHubCliError({
-                    operation: "getPullRequestListItem",
-                    detail: "GitHub CLI returned an unrecognized pull request shape.",
-                    reason: "other",
-                  }),
-              }),
-            ),
-            Effect.flatMap((entry) =>
-              enrichPullRequestListItemsWithStack({
-                cwd: input.cwd,
-                repository,
-                entries: [entry],
-              }).pipe(Effect.map((entries) => entries[0] ?? entry)),
-            ),
-          ),
-        ),
-      ),
-    listReviewRequestedPullRequestNumbers: (input) =>
-      validateRepository(input.repository, "listReviewRequestedPullRequestNumbers").pipe(
-        Effect.flatMap((repository) =>
-          execute({
-            cwd: input.cwd,
-            args: [
-              "search",
-              "prs",
-              "--repo",
-              repository,
-              "--review-requested",
-              input.viewer,
-              "--state",
-              "open",
-              "--limit",
-              String(input.limit ?? 1_000),
-              "--json",
-              "number",
-            ],
-          }),
-        ),
-        Effect.flatMap((result) =>
-          decodeGitHubJson(
-            result.stdout.trim(),
-            Schema.Array(RawPullRequestNumberSchema),
-            "listReviewRequestedPullRequestNumbers",
-            "GitHub CLI returned invalid review-requested pull request JSON.",
-          ),
-        ),
-        Effect.map((entries) => entries.map((entry) => entry.number)),
       ),
     getPullRequestDetail: (input) =>
       validateRepository(input.repository, "getPullRequestDetail").pipe(

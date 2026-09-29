@@ -22,7 +22,7 @@ using separate worktrees also have separate working directories and branches.
 
 - **Sidebar** — projects, spaces, tasks, and activity requiring attention. Prod and Dev builds offer a
   rail layout (Settings → General → Sidebar layout): a fixed column of icon tabs for Home, Spaces,
-  Kanban, Pull requests, Automations, and Settings, with the thread panel beside it and the
+  Kanban, Automations, and Settings, with the thread panel beside it and the
   route shown as a card inset from the window.
 - **Conversation** — user messages, agent responses, plans, tools, approvals, and subagent activity
 - **Composer** — objectives, attachments, provider selection, model selection, and task controls

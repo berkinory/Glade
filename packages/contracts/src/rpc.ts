@@ -166,12 +166,6 @@ import {
   PullRequestDetail,
   PullRequestDetailInput,
   PullRequestDiffResult,
-  PullRequestReviewRequestCountInput,
-  PullRequestReviewRequestCountResult,
-  PullRequestSetPinnedInput,
-  PullRequestSetPinnedResult,
-  PullRequestsListInput,
-  PullRequestsListResult,
   PullRequestsUnavailableError,
 } from "./pullRequests";
 import {
@@ -1026,21 +1020,6 @@ export const WsGitPreparePullRequestThreadRpc = Rpc.make(WS_METHODS.gitPreparePu
 
 const PullRequestsRpcError = Schema.Union([PullRequestsUnavailableError, WsRpcError]);
 
-export const WsPullRequestsListRpc = Rpc.make(WS_METHODS.pullRequestsList, {
-  payload: PullRequestsListInput,
-  success: PullRequestsListResult,
-  error: PullRequestsRpcError,
-});
-
-export const WsPullRequestsReviewRequestCountRpc = Rpc.make(
-  WS_METHODS.pullRequestsReviewRequestCount,
-  {
-    payload: PullRequestReviewRequestCountInput,
-    success: PullRequestReviewRequestCountResult,
-    error: PullRequestsRpcError,
-  },
-);
-
 export const WsPullRequestsDetailRpc = Rpc.make(WS_METHODS.pullRequestsDetail, {
   payload: PullRequestDetailInput,
   success: PullRequestDetail,
@@ -1065,12 +1044,6 @@ export const WsPullRequestsCommentRpc = Rpc.make(WS_METHODS.pullRequestsComment,
   payload: PullRequestCommentInput,
   success: PullRequestActionResult,
   error: PullRequestsRpcError,
-});
-
-export const WsPullRequestsSetPinnedRpc = Rpc.make(WS_METHODS.pullRequestsSetPinned, {
-  payload: PullRequestSetPinnedInput,
-  success: PullRequestSetPinnedResult,
-  error: WsRpcError,
 });
 
 export const WsGitListBranchesRpc = Rpc.make(WS_METHODS.gitListBranches, {
@@ -1594,13 +1567,10 @@ export const WsFeatureRpcGroup = RpcGroup.make(
   WsGitResolvePullRequestRpc,
   WsGitPullRequestSnapshotRpc,
   WsGitPreparePullRequestThreadRpc,
-  WsPullRequestsListRpc,
-  WsPullRequestsReviewRequestCountRpc,
   WsPullRequestsDetailRpc,
   WsPullRequestsDiffRpc,
   WsPullRequestsActionRpc,
   WsPullRequestsCommentRpc,
-  WsPullRequestsSetPinnedRpc,
   WsGitListBranchesRpc,
   WsGitListRecentCommitsRpc,
   WsGitReadCommitRpc,

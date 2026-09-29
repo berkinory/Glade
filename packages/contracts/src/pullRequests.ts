@@ -9,9 +9,6 @@ import {
 } from "./baseSchemas";
 import { GitPullRequestMergeability } from "./git";
 
-export const PullRequestInvolvement = Schema.Literals(["all", "reviewing", "authored"]);
-export type PullRequestInvolvement = typeof PullRequestInvolvement.Type;
-
 export const PullRequestState = Schema.Literals(["open", "closed", "merged"]);
 export type PullRequestState = typeof PullRequestState.Type;
 
@@ -127,101 +124,6 @@ export const PullRequestStack = Schema.Struct({
 });
 export type PullRequestStack = typeof PullRequestStack.Type;
 
-/** Compact stack identity used by list rows; full entries stay detail-only. */
-export const PullRequestStackSummary = Schema.Struct({
-  number: PositiveInt,
-  size: PositiveInt,
-  position: PositiveInt,
-  baseBranch: TrimmedNonEmptyString,
-});
-export type PullRequestStackSummary = typeof PullRequestStackSummary.Type;
-
-export const PullRequestProjectContext = Schema.Struct({
-  projectId: ProjectId,
-  projectTitle: TrimmedNonEmptyString,
-  isPinned: Schema.Boolean,
-});
-export type PullRequestProjectContext = typeof PullRequestProjectContext.Type;
-
-export const PullRequestListEntry = Schema.Struct({
-  projectId: ProjectId,
-  projectTitle: TrimmedNonEmptyString,
-  repository: TrimmedNonEmptyString,
-  number: PositiveInt,
-  title: TrimmedNonEmptyString,
-  url: TrimmedNonEmptyString,
-  author: Schema.NullOr(PullRequestActor),
-  headBranch: TrimmedNonEmptyString,
-  baseBranch: TrimmedNonEmptyString,
-  state: PullRequestState,
-  isDraft: Schema.Boolean,
-  additions: NonNegativeInt,
-  deletions: NonNegativeInt,
-  createdAt: IsoDateTime,
-  updatedAt: IsoDateTime,
-  reviewDecision: Schema.NullOr(Schema.String),
-  viewerReviewRequested: Schema.Boolean,
-  isPinned: Schema.optional(Schema.Boolean).pipe(Schema.withDecodingDefault(() => false)),
-  // A repository-level row can belong to several local projects/worktrees. The fallback keeps a
-  // newer client compatible with a server that still sends one project-local row at a time.
-  projectContexts: Schema.optional(Schema.Array(PullRequestProjectContext)).pipe(
-    Schema.withDecodingDefault(() => []),
-  ),
-  // Decoding default keeps a newer client compatible with an older server that predates
-  // the field (brief version skew during dev restarts must not reject whole payloads).
-  mergeability: Schema.optional(GitPullRequestMergeability).pipe(
-    Schema.withDecodingDefault(() => "unknown"),
-  ),
-  // Stack support is additive and the server may briefly be on an older build during restarts.
-  stack: Schema.optional(Schema.NullOr(PullRequestStackSummary)).pipe(
-    Schema.withDecodingDefault(() => null),
-  ),
-  labels: Schema.Array(PullRequestLabel),
-});
-export type PullRequestListEntry = typeof PullRequestListEntry.Type;
-
-export const PullRequestsListInput = Schema.Struct({
-  involvement: Schema.optional(PullRequestInvolvement),
-  state: PullRequestState,
-  projectId: Schema.optional(Schema.NullOr(ProjectId)),
-  forceRefresh: Schema.optional(Schema.Boolean),
-});
-export type PullRequestsListInput = typeof PullRequestsListInput.Type;
-
-export const PullRequestsListError = Schema.Struct({
-  projectId: ProjectId,
-  projectTitle: TrimmedNonEmptyString,
-  message: TrimmedNonEmptyString,
-});
-
-export const PullRequestsListRepositoryBatch = Schema.Struct({
-  projectId: ProjectId,
-  projectTitle: TrimmedNonEmptyString,
-  repository: TrimmedNonEmptyString,
-  truncated: Schema.Boolean,
-});
-export type PullRequestsListRepositoryBatch = typeof PullRequestsListRepositoryBatch.Type;
-
-export const PullRequestsListResult = Schema.Struct({
-  viewer: Schema.NullOr(TrimmedNonEmptyString),
-  entries: Schema.Array(PullRequestListEntry),
-  errors: Schema.Array(PullRequestsListError),
-  repositoryBatches: Schema.Array(PullRequestsListRepositoryBatch),
-});
-export type PullRequestsListResult = typeof PullRequestsListResult.Type;
-
-export const PullRequestReviewRequestCountInput = Schema.Struct({
-  projectId: Schema.optional(Schema.NullOr(ProjectId)),
-});
-export type PullRequestReviewRequestCountInput = typeof PullRequestReviewRequestCountInput.Type;
-
-export const PullRequestReviewRequestCountResult = Schema.Struct({
-  count: NonNegativeInt,
-  /** True means at least one repository could not be counted or reached the search cap. */
-  incomplete: Schema.Boolean,
-});
-export type PullRequestReviewRequestCountResult = typeof PullRequestReviewRequestCountResult.Type;
-
 export const PullRequestDetailInput = Schema.Struct({
   projectId: ProjectId,
   repository: TrimmedNonEmptyString,
@@ -303,22 +205,6 @@ export const PullRequestCommentInput = Schema.Struct({
   body: TrimmedNonEmptyString.check(Schema.isMaxLength(65536)),
 });
 export type PullRequestCommentInput = typeof PullRequestCommentInput.Type;
-
-export const PullRequestSetPinnedInput = Schema.Struct({
-  projectId: ProjectId,
-  repository: TrimmedNonEmptyString,
-  number: PositiveInt,
-  isPinned: Schema.Boolean,
-});
-export type PullRequestSetPinnedInput = typeof PullRequestSetPinnedInput.Type;
-
-export const PullRequestSetPinnedResult = Schema.Struct({
-  projectId: ProjectId,
-  repository: TrimmedNonEmptyString,
-  number: PositiveInt,
-  isPinned: Schema.Boolean,
-});
-export type PullRequestSetPinnedResult = typeof PullRequestSetPinnedResult.Type;
 
 // Actions acknowledge the mutation independently from the follow-up detail refetch. This keeps
 // a successful GitHub mutation from being reported as failed when a later read is unavailable.

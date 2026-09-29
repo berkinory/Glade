@@ -1,7 +1,6 @@
 // FILE: pullRequestDetail.logic.ts
-// Purpose: Pure helpers shared by every host of the pull request detail surface (the
-//          /pull-requests route overlay and the chat right-dock pane): the canonical
-//          pane identity key, the "PR #n" tab chip label, the plain-language state
+// Purpose: Pure helpers for pull request details in the chat dock: the canonical pane
+//          identity key, the "PR #n" tab chip label, the plain-language state
 //          descriptor, and the flattened chronological timeline event list.
 // Layer: Web domain helpers (no React)
 // Exports: pullRequestDetailInputKey, pullRequestPaneTabLabel, pullRequestDetailInputFromPane,

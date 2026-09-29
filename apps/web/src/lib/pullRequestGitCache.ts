@@ -8,10 +8,10 @@ import type {
 import { parseGitHubRepositoryNameWithOwnerFromPullRequestUrl } from "@glade/shared/githubRepository";
 import type { QueryClient, QueryFilters, QueryKey } from "@tanstack/react-query";
 
-import type { PullRequestActionListPatch } from "./pullRequestCache";
 import {
   activePullRequestActionPatch,
   hasPullRequestActionReadProtection,
+  type PullRequestActionPatch,
   type PullRequestActionReadFence,
 } from "./pullRequestMutationCoordinator";
 
@@ -21,7 +21,7 @@ type PullRequestIdentity = Pick<PullRequestDetailInput, "repository" | "number">
 
 export type GitPullRequestActionRollback = {
   queryKey: QueryKey;
-  previousFields: PullRequestActionListPatch;
+  previousFields: PullRequestActionPatch;
 };
 
 function cachedPullRequest(data: GitPullRequestCache | undefined): GitPullRequest | null {
@@ -78,7 +78,7 @@ export function pullRequestGitQueryFilters(
 
 function patchCachedPullRequest(
   data: GitPullRequestCache,
-  patch: PullRequestActionListPatch,
+  patch: PullRequestActionPatch,
 ): GitPullRequestCache {
   if ("pullRequest" in data) return { ...data, pullRequest: { ...data.pullRequest, ...patch } };
   return data.pr ? { ...data, pr: { ...data.pr, ...patch } } : data;
@@ -108,7 +108,7 @@ export function preserveActivePullRequestActionGitFields<T extends GitPullReques
 export function optimisticallyPatchPullRequestGitCaches(
   queryClient: QueryClient,
   input: PullRequestIdentity,
-  patch: PullRequestActionListPatch,
+  patch: PullRequestActionPatch,
 ): GitPullRequestActionRollback[] {
   if (Object.keys(patch).length === 0) return [];
   const rollback: GitPullRequestActionRollback[] = [];
@@ -133,7 +133,7 @@ export function optimisticallyPatchPullRequestGitCaches(
 export function rollbackPullRequestGitCaches(input: {
   queryClient: QueryClient;
   identity: PullRequestIdentity;
-  optimisticPatch: PullRequestActionListPatch;
+  optimisticPatch: PullRequestActionPatch;
   rollback: ReadonlyArray<GitPullRequestActionRollback>;
 }) {
   for (const { queryKey, previousFields } of input.rollback) {

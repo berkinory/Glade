@@ -1,6 +1,6 @@
 // FILE: fakeGitHubCli.ts
-// Purpose: Shared test fake for the GitHubCli service — scripted `gh` responses (PR lists,
-//          views, checkout, repo lookups) plus a call log for command assertions.
+// Purpose: Shared test fake for the GitHubCli service with scripted `gh` responses
+//          and a call log for command assertions.
 // Layer: Server test utility (imported by *.test.ts only; never by production code)
 // Note: list responses decode through the live layer's decodePullRequestListJson so raw
 //       gh-shaped fixtures ("OPEN", "CONFLICTING", …) normalize exactly like production.
@@ -16,15 +16,10 @@ import type {
 } from "@glade/contracts";
 
 import { GitHubCliError } from "../Errors.ts";
-import {
-  decodePullRequestListJson,
-  decodeRepositoryPullRequestListJson,
-  PULL_REQUEST_LIST_JSON_FIELDS,
-} from "../Layers/GitHubCli.ts";
+import { decodePullRequestListJson } from "../Layers/GitHubCli.ts";
 import {
   type GitHubCliShape,
   type GitHubPullRequestDetailData,
-  type GitHubPullRequestListItem,
   type GitHubPullRequestSummary,
   PULL_REQUEST_SUMMARY_JSON_FIELDS,
 } from "../Services/GitHubCli.ts";
@@ -53,11 +48,8 @@ export interface FakeGhScenario {
   reviewCommentsError?: GitHubCliError;
   createPullRequestError?: GitHubCliError;
   viewerLogin?: string;
-  repositoryPullRequestListJson?: string;
   pullRequestDetail?: GitHubPullRequestDetailData;
   pullRequestStack?: PullRequestStack | null;
-  pullRequestListItems?: GitHubPullRequestListItem[];
-  reviewRequestedPullRequestNumbers?: number[];
   mergeCapabilities?: PullRequestMergeCapabilities;
   pullRequestDiff?: { patch: string; truncated: boolean };
   mergeOutcome?: "merged" | "enqueued";
@@ -283,20 +275,6 @@ export function createGitHubCliWithFakeGh(scenario: FakeGhScenario = {}): {
           ? Effect.fail(scenario.failWith)
           : Effect.succeed(scenario.viewerLogin ?? "viewer");
       },
-      listRepositoryPullRequests: (input) => {
-        const involvementArgs =
-          input.involvement === "authored"
-            ? ` --author ${input.viewer}`
-            : input.involvement === "reviewing"
-              ? ` --search review-requested:${input.viewer}`
-              : "";
-        ghCalls.push(
-          `pr list --repo ${input.repository}${involvementArgs} --state ${input.state} --limit ${input.limit ?? 50} --json ${PULL_REQUEST_LIST_JSON_FIELDS}`,
-        );
-        return scenario.failWith
-          ? Effect.fail(scenario.failWith)
-          : decodeRepositoryPullRequestListJson(scenario.repositoryPullRequestListJson ?? "[]");
-      },
       getPullRequestDetail: (input) => {
         ghCalls.push(`pr view ${input.number} --repo ${input.repository}`);
         const detail = scenario.pullRequestDetail;
@@ -337,28 +315,6 @@ export function createGitHubCliWithFakeGh(scenario: FakeGhScenario = {}): {
         return scenario.failWith
           ? Effect.fail(scenario.failWith)
           : Effect.succeed({ mergeOutcome: scenario.mergeOutcome ?? null });
-      },
-      getPullRequestListItem: (input) => {
-        ghCalls.push(`pr view ${input.number} --repo ${input.repository} (list-item)`);
-        const item = scenario.pullRequestListItems?.find((entry) => entry.number === input.number);
-        return item
-          ? Effect.succeed(item)
-          : Effect.fail(
-              scenario.failWith ??
-                new GitHubCliError({
-                  operation: "getPullRequestListItem",
-                  detail: "Pull request not found.",
-                  reason: "other",
-                }),
-            );
-      },
-      listReviewRequestedPullRequestNumbers: (input) => {
-        ghCalls.push(
-          `search prs --repo ${input.repository} --review-requested ${input.viewer} --state open --limit ${input.limit ?? 1_000} --json number`,
-        );
-        return scenario.failWith
-          ? Effect.fail(scenario.failWith)
-          : Effect.succeed(scenario.reviewRequestedPullRequestNumbers ?? []);
       },
       commentOnPullRequest: (input) => {
         ghCalls.push(`pr comment ${input.number} --repo ${input.repository}`);

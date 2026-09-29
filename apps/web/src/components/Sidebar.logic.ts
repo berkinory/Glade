@@ -2,13 +2,7 @@
 // Purpose: Shared sidebar sorting and status helpers used by the thread list UI.
 // Exports: Sidebar row state derivation, add-project error helpers, sort utilities, and visibility helpers.
 
-import {
-  MAX_PINNED_PROJECTS,
-  type ProjectId,
-  type PullRequestReviewRequestCountResult,
-  type ThreadId,
-} from "@glade/contracts";
-import { pluralize } from "@glade/shared/text";
+import { MAX_PINNED_PROJECTS, type ProjectId, type ThreadId } from "@glade/contracts";
 import { resolveThreadEnvironmentMode } from "@glade/shared/threadEnvironment";
 import { isWorkspaceRootWithin, workspaceRootsEqual } from "@glade/shared/threadWorkspace";
 import type { SidebarProjectSortOrder, SidebarThreadSortOrder } from "../appSettings";
@@ -53,48 +47,6 @@ export type SidebarActionBadge = {
 
 export function isProjectsSidebarSurface(input: { readonly isOnSettings: boolean }): boolean {
   return !input.isOnSettings;
-}
-
-/** Keep partial review counts visible without presenting them as exact. */
-export function resolvePullRequestReviewBadge(
-  result: PullRequestReviewRequestCountResult | undefined,
-): SidebarActionBadge | null {
-  if (!result) return null;
-  if (result.incomplete) {
-    return result.count > 0
-      ? {
-          text: `${result.count}+`,
-          accessibleLabel: `At least ${result.count} ${pluralize(
-            result.count,
-            "pull request is",
-            "pull requests are",
-          )} waiting for your review`,
-        }
-      : null;
-  }
-  return result.count > 0
-    ? {
-        text: String(result.count),
-        accessibleLabel: `${result.count} ${pluralize(
-          result.count,
-          "pull request is",
-          "pull requests are",
-        )} waiting for your review`,
-      }
-    : null;
-}
-
-/** Stable repository-resolution input for PR caches. Sidebar-only presentation changes such as
- * expand/collapse and ordering do not invalidate; project roots/names do. */
-export function pullRequestRepositoryConfigFingerprint(
-  projects: ReadonlyArray<Pick<Project, "id" | "kind" | "cwd" | "name" | "remoteName">>,
-): string {
-  return JSON.stringify(
-    projects
-      .filter((project) => project.kind === "project")
-      .map((project) => [project.id, project.cwd, project.name, project.remoteName] as const)
-      .toSorted((left, right) => left[0].localeCompare(right[0])),
-  );
 }
 
 /**

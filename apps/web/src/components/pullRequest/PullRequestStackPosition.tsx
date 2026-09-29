@@ -1,16 +1,16 @@
 // FILE: PullRequestStackPosition.tsx
-// Purpose: Shared compact stack-position indicator for pull request list and detail surfaces.
+// Purpose: Compact stack-position indicator for pull request details.
 // Layer: Pull request presentation
 // Exports: PullRequestStackPosition
 
-import type { PullRequestStackSummary } from "@glade/contracts";
+import type { PullRequestStack } from "@glade/contracts";
 
 import { Badge } from "~/components/ui/badge";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { GitForkIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 
-type StackPosition = Pick<PullRequestStackSummary, "number" | "size" | "position" | "baseBranch">;
+type StackPosition = Pick<PullRequestStack, "number" | "size" | "position" | "baseBranch">;
 
 function stackPositionAriaLabel(stack: StackPosition): string {
   return `Stack #${stack.number}, pull request ${stack.position} of ${stack.size}`;

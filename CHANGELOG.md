@@ -4,6 +4,7 @@
 
 ### Removed
 
+- Standalone Pull Requests page and sidebar entry were removed.
 - Editor view and its separate workspace layout were removed; editing stays in Explorer.
 
 ### Improved

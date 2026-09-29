@@ -52,9 +52,7 @@ import {
 } from "./rightDockPaneMeta";
 import { useDesktopTopBarWindowControlsGutterClassName } from "~/hooks/useDesktopTopBarGutter";
 
-// Shared sizing defaults for dock hosts: the resize floor for a single readable pane and the
-// "half the shell, but never cramped" opening width. The thread route tunes its own values
-// around the composer; simpler hosts (e.g. the /pull-requests route) use these as-is.
+// Sizing defaults for the chat dock: a readable resize floor and a generous opening width.
 export const RIGHT_DOCK_MIN_WIDTH = 28 * 16;
 export const RIGHT_DOCK_DEFAULT_WIDTH = "max(28rem, calc(50vw - 8rem))";
 

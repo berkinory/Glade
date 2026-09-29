@@ -162,9 +162,6 @@ import {
   PullRequestActionInput,
   PullRequestCommentInput,
   PullRequestDetailInput,
-  PullRequestReviewRequestCountInput,
-  PullRequestSetPinnedInput,
-  PullRequestsListInput,
 } from "./pullRequests";
 import {
   GitHubProjectProvisionInput,
@@ -238,14 +235,11 @@ export const WS_METHODS = {
   gitPullRequestSnapshot: "git.pullRequestSnapshot",
   gitPreparePullRequestThread: "git.preparePullRequestThread",
 
-  // Global pull request methods
-  pullRequestsList: "pullRequests.list",
-  pullRequestsReviewRequestCount: "pullRequests.reviewRequestCount",
+  // Pull request detail and actions
   pullRequestsDetail: "pullRequests.detail",
   pullRequestsDiff: "pullRequests.diff",
   pullRequestsAction: "pullRequests.action",
   pullRequestsComment: "pullRequests.comment",
-  pullRequestsSetPinned: "pullRequests.setPinned",
 
   // Terminal methods
   terminalOpen: "terminal.open",
@@ -463,14 +457,11 @@ const WebSocketRequestBody = Schema.Union([
   tagRequestBody(WS_METHODS.gitPullRequestSnapshot, GitPullRequestSnapshotInput),
   tagRequestBody(WS_METHODS.gitPreparePullRequestThread, GitPreparePullRequestThreadInput),
 
-  // Global pull requests
-  tagRequestBody(WS_METHODS.pullRequestsList, PullRequestsListInput),
-  tagRequestBody(WS_METHODS.pullRequestsReviewRequestCount, PullRequestReviewRequestCountInput),
+  // Pull request detail and actions
   tagRequestBody(WS_METHODS.pullRequestsDetail, PullRequestDetailInput),
   tagRequestBody(WS_METHODS.pullRequestsDiff, PullRequestDetailInput),
   tagRequestBody(WS_METHODS.pullRequestsAction, PullRequestActionInput),
   tagRequestBody(WS_METHODS.pullRequestsComment, PullRequestCommentInput),
-  tagRequestBody(WS_METHODS.pullRequestsSetPinned, PullRequestSetPinnedInput),
 
   // Terminal methods
   tagRequestBody(WS_METHODS.terminalOpen, TerminalOpenInput),
