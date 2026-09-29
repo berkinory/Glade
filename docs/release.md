@@ -53,6 +53,10 @@ exact tag. Existing releases are never overwritten. The Cua native cache refresh
 its build inputs change for macOS arm64, macOS x64 and Linux x64. Native macOS and Linux Cua checks
 run on relevant pull requests and direct pushes to `main`.
 
+Workspace setup retries a failed frozen-lockfile Bun install once. This covers transient
+workspace prepare failures during a cold dependency extraction; a second failure still stops
+the job without building or publishing artifacts.
+
 After a published release is assembled, the dependent `sync-homebrew` job dispatches the
 `update-glade-cask.yml` workflow in `berkinory/homebrew-brew`. Set `HOMEBREW_TAP_TOKEN` in Glade's
 Actions secrets to a fine-grained token with Actions write access to that tap. The tap workflow
