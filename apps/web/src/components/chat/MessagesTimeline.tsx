@@ -3252,7 +3252,7 @@ const UserMessageEditForm = memo(function UserMessageEditForm(props: {
       props.onCancel();
       return;
     }
-    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
       event.preventDefault();
       if (canSubmit) {
         props.onSubmit(draft);
@@ -3291,20 +3291,12 @@ const UserMessageEditForm = memo(function UserMessageEditForm(props: {
           type="button"
           size="xs"
           variant="outline"
-          className="rounded-full px-2.5"
-          style={props.chatTypographyStyle}
           disabled={props.disabled}
           onClick={props.onCancel}
         >
           Cancel
         </Button>
-        <Button
-          type="submit"
-          size="xs"
-          className="rounded-full px-2.5"
-          style={props.chatTypographyStyle}
-          disabled={!canSubmit}
-        >
+        <Button type="submit" size="xs" disabled={!canSubmit}>
           Send
         </Button>
       </div>
