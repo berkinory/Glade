@@ -5038,24 +5038,20 @@ export default function Sidebar() {
   );
   const searchPaletteProjects = useMemo<SidebarSearchProject[]>(
     () =>
-      projects.map((project) => ({
-        id: project.id,
-        name: project.name,
-        remoteName: project.remoteName,
-        folderName: project.folderName,
-        localName: project.localName,
-        appearance: project.appearance ?? null,
-        cwd: project.cwd,
-        // Home chats are reachable from every Space, so they search as "Global".
-        spaceName: isOrdinarySpaceProject(project, {
-          homeDir,
-          chatWorkspaceRoot,
-        })
-          ? spaceDisplayName(project.spaceId, spaces, voidSpace)
-          : "Global",
-        createdAt: project.createdAt,
-        updatedAt: project.updatedAt,
-      })),
+      projects
+        .filter((project) => isOrdinarySpaceProject(project, { homeDir, chatWorkspaceRoot }))
+        .map((project) => ({
+          id: project.id,
+          name: project.name,
+          remoteName: project.remoteName,
+          folderName: project.folderName,
+          localName: project.localName,
+          appearance: project.appearance ?? null,
+          cwd: project.cwd,
+          spaceName: spaceDisplayName(project.spaceId, spaces, voidSpace),
+          createdAt: project.createdAt,
+          updatedAt: project.updatedAt,
+        })),
     [chatWorkspaceRoot, homeDir, projects, spaces, voidSpace],
   );
   const searchPaletteActions = useMemo<SidebarSearchAction[]>(
@@ -6413,7 +6409,6 @@ export default function Sidebar() {
           }}
           actions={searchPaletteActions}
           projects={searchPaletteProjects}
-          projectById={projectById}
           onCreateChat={() => void handleCreateHomeChat()}
           onCreateThread={handlePrimaryNewThread}
           onAddProjectPath={addProjectFromPath}
@@ -6463,7 +6458,6 @@ function SidebarSearchPaletteController(props: {
   onOpenChange: (open: boolean) => void;
   actions: readonly SidebarSearchAction[];
   projects: readonly SidebarSearchProject[];
-  projectById: ReadonlyMap<ProjectId, { name: string; remoteName: string }>;
   onCreateChat: () => void;
   onCreateThread: () => void;
   onAddProjectPath: (path: string, options?: { createIfMissing?: boolean }) => Promise<void>;
@@ -6502,16 +6496,16 @@ function SidebarSearchPaletteController(props: {
       if (!thread) {
         return [];
       }
+      const searchProject = searchProjectById.get(thread.projectId);
 
       return [
         {
           id: thread.id,
           title: thread.title,
           projectId: thread.projectId,
-          projectName: props.projectById.get(thread.projectId)?.name ?? "Unknown project",
-          projectRemoteName:
-            props.projectById.get(thread.projectId)?.remoteName ?? "Unknown project",
-          spaceName: searchProjectById.get(thread.projectId)?.spaceName ?? "Global",
+          projectName: searchProject?.name ?? "",
+          projectRemoteName: searchProject?.remoteName ?? "",
+          spaceName: searchProject?.spaceName ?? "Global",
           provider: thread.modelSelection.provider,
           createdAt: thread.createdAt,
           updatedAt: thread.updatedAt,
@@ -6519,7 +6513,7 @@ function SidebarSearchPaletteController(props: {
         },
       ];
     });
-  }, [props.projectById, props.projects, sidebarDisplayThreads, threads]);
+  }, [props.projects, sidebarDisplayThreads, threads]);
   const searchPaletteThreads = useStableValue(
     rebuiltSearchPaletteThreads,
     areSidebarSearchThreadListsEqual,

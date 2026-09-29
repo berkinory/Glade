@@ -5434,8 +5434,8 @@ export default function ChatView({
         />
       </ChatSurfaceHeader>
 
-      {/* Floating find panel — a root-level overlay so it sits on top of the
-          header and the docked Environment panel at the pane's top-right. */}
+      {/* Floating find panel overlays the header and docked Environment panel
+          at the pane's top-right. */}
       {shouldRenderChatPaneContent ? (
         <ChatThreadFindHost
           open={threadFindOpen}

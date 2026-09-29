@@ -1,6 +1,16 @@
 # Glade Changelog
 
-## 0.0.5 - Unreleased
+## 0.0.6 - Unreleased
+
+### Improved
+
+- File search results show plain names, and chat find uses a compact, clickable row.
+
+### Fixed
+
+- General search shows plain matches with clear chat and project labels, and keeps chat workspaces out of project results.
+
+## 0.0.5 - 2026-09-29
 
 ### New
 

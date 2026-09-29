@@ -87,7 +87,7 @@ const PALETTE_TEXT_CLASS = "min-w-0 flex-1 truncate text-ui";
 const PALETTE_META_CLASS = "max-w-[45%] shrink-0 truncate text-ui-meta text-muted-foreground/70";
 const PALETTE_STATUS_CLASS = "px-4 pt-1 pb-3 text-ui text-muted-foreground/79";
 
-// Actions that live under the "Settings" heading when the palette is idle.
+// Settings actions remain available from their dedicated surfaces.
 const SETTINGS_ACTION_IDS: ReadonlySet<string> = new Set([
   "settings",
   "usage-settings",
@@ -303,71 +303,6 @@ const THEME_MODE_ICONS: Record<"system" | "light" | "dark", IconComponent> = {
   dark: MoonIcon,
 };
 
-function threadMatchLabel(input: {
-  matchKind: "message" | "project" | "title";
-  messageMatchCount: number;
-}): string | null {
-  if (input.matchKind === "message") {
-    return input.messageMatchCount > 1 ? `${input.messageMatchCount} chat hits` : "Chat match";
-  }
-  if (input.matchKind === "project") {
-    return "Project match";
-  }
-  return null;
-}
-
-function tokenizeHighlightQuery(query: string): string[] {
-  const tokens = query
-    .trim()
-    .toLowerCase()
-    .split(/\s+/)
-    .filter((token) => token.length > 0)
-    .filter((token, index, allTokens) => allTokens.indexOf(token) === index);
-  return tokens.toSorted((left, right) => right.length - left.length);
-}
-
-function escapeRegExp(value: string): string {
-  return value.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function HighlightedText(props: { text: string; query: string; className?: string }) {
-  const tokens = tokenizeHighlightQuery(props.query);
-  let segments: Array<{ key: string; text: string; highlighted: boolean }>;
-  if (tokens.length === 0) {
-    segments = [{ key: "full", text: props.text, highlighted: false }];
-  } else {
-    const pattern = new RegExp(`(${tokens.map(escapeRegExp).join("|")})`, "gi");
-    const parts = props.text.split(pattern).filter((part) => part.length > 0);
-    let offset = 0;
-    segments = parts.map((part) => {
-      const segment = {
-        key: `${offset}-${part.length}`,
-        text: part,
-        highlighted: tokens.some((token) => token === part.toLowerCase()),
-      };
-      offset += part.length;
-      return segment;
-    });
-  }
-
-  return (
-    <span className={props.className}>
-      {segments.map((segment) =>
-        segment.highlighted ? (
-          <mark
-            key={segment.key}
-            className="rounded-[3px] bg-amber-200/80 px-[1px] text-current dark:bg-amber-300/25"
-          >
-            {segment.text}
-          </mark>
-        ) : (
-          <span key={segment.key}>{segment.text}</span>
-        ),
-      )}
-    </span>
-  );
-}
-
 export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
   const { activeTheme, resolvedTheme, setCodeThemeId, setTheme, theme } = useTheme();
   const [query, setQuery] = useState("");
@@ -456,15 +391,13 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
   const browseParentPath = canBrowse ? getBrowseParentPath(query) : null;
   const canBrowseUp = canBrowse && canNavigateUp(query);
 
-  const matchedActions = isBrowsing ? [] : matchSidebarSearchActions(props.actions, query);
-  // Idle: "Quick actions" then "Settings", like the ⌘P menu. Searching: one flat
-  // "Actions" group so a query never has to guess which heading a hit sits under.
-  const quickActions = query
-    ? matchedActions
-    : matchedActions.filter((action) => !SETTINGS_ACTION_IDS.has(action.id));
-  const settingsActions = query
-    ? []
-    : matchedActions.filter((action) => SETTINGS_ACTION_IDS.has(action.id));
+  const matchedActions =
+    isBrowsing || !trimmedQuery
+      ? []
+      : matchSidebarSearchActions(
+          props.actions.filter((action) => !SETTINGS_ACTION_IDS.has(action.id)),
+          query,
+        );
   const themeCommandItems = buildThemeCommandItems({
     query,
     resolvedTheme,
@@ -958,8 +891,7 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
                     <CommandGroupLabel className={PALETTE_GROUP_LABEL_CLASS}>
                       <span>{query ? "Threads" : "Recent chats"}</span>
                     </CommandGroupLabel>
-                    {matchedThreads.map(({ id, matchKind, messageMatchCount, snippet, thread }) => {
-                      const matchLabel = threadMatchLabel({ matchKind, messageMatchCount });
+                    {matchedThreads.map(({ id, matchKind, snippet, thread }) => {
                       const normalizedQuery = trimmedQuery.replaceAll(/\s+/g, " ").toLowerCase();
                       const matchContext =
                         snippet ??
@@ -1002,26 +934,26 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
                             )}
                           </span>
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-baseline gap-3">
+                            <div className="flex items-center gap-3">
                               <div className={PALETTE_TEXT_CLASS}>
-                                <HighlightedText
-                                  text={thread.title || "Untitled thread"}
-                                  query={query}
-                                />
+                                {thread.title || "Untitled thread"}
                               </div>
-                              {/* Keep the idle row compact; metadata search context appears below. */}
-                              <span className={PALETTE_META_CLASS}>{thread.projectName}</span>
+                              <span
+                                className={cn(PALETTE_META_CLASS, "inline-flex items-center gap-1")}
+                              >
+                                {thread.projectName ? (
+                                  <FolderClosed className="size-3 shrink-0" />
+                                ) : (
+                                  <NewChatIcon className="size-3 shrink-0" />
+                                )}
+                                <span className="truncate">{thread.projectName || "Chat"}</span>
+                              </span>
                             </div>
                             {matchContext ? (
                               <div className="flex items-start gap-3">
                                 <div className="min-w-0 flex-1 line-clamp-1 text-ui-meta leading-4 text-muted-foreground/78">
-                                  <HighlightedText text={matchContext} query={query} />
+                                  {matchContext}
                                 </div>
-                                {matchLabel ? (
-                                  <span className="shrink-0 text-ui-meta leading-4 text-muted-foreground/58">
-                                    {matchLabel}
-                                  </span>
-                                ) : null}
                               </div>
                             ) : null}
                           </div>
@@ -1031,21 +963,12 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
                   </CommandGroup>
                 ) : null}
 
-                {!isBrowsing && quickActions.length > 0 ? (
+                {!isBrowsing && matchedActions.length > 0 ? (
                   <CommandGroup>
                     <CommandGroupLabel className={PALETTE_GROUP_LABEL_CLASS}>
-                      <span>{query ? "Actions" : "Quick actions"}</span>
+                      <span>Actions</span>
                     </CommandGroupLabel>
-                    {quickActions.map(renderActionItem)}
-                  </CommandGroup>
-                ) : null}
-
-                {!isBrowsing && settingsActions.length > 0 ? (
-                  <CommandGroup>
-                    <CommandGroupLabel className={PALETTE_GROUP_LABEL_CLASS}>
-                      <span>Settings</span>
-                    </CommandGroupLabel>
-                    {settingsActions.map(renderActionItem)}
+                    {matchedActions.map(renderActionItem)}
                   </CommandGroup>
                 ) : null}
 
