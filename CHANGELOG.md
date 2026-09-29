@@ -35,6 +35,7 @@
 
 ### Fixed
 
+- Content search no longer silently stops at five matching lines per file; the bounded scan now uses the total result limit and reports partial results.
 - Chat header action labels stay visible when opening or closing a sidebar.
 - Deleting an Explorer file closes its preview. Finder actions use the system icon, and file breadcrumbs keep descenders visible.
 - Chat rows and headers show the provider icon even when the terminal is the saved primary view.

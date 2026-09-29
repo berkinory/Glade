@@ -40,8 +40,13 @@ export const projectQueryKeys = {
   ) => ["projects", "search-entries", cwd, query, limit, kind] as const,
   searchLocalEntries: (rootPath: string | null, query: string, limit: number) =>
     ["projects", "search-local-entries", rootPath, query, limit] as const,
-  searchContent: (cwd: string | null, query: string, limit: number) =>
-    ["projects", "search-content", cwd, query, limit] as const,
+  searchContent: (
+    cwd: string | null,
+    query: string,
+    limit: number,
+    matchCase = false,
+    wholeWord = false,
+  ) => ["projects", "search-content", cwd, query, limit, matchCase, wholeWord] as const,
 };
 
 interface ActiveProjectFileRefresh {
@@ -434,6 +439,8 @@ export function projectSearchLocalEntriesQueryOptions(input: {
 }
 
 export function projectSearchContentQueryOptions(input: {
+  matchCase?: boolean;
+  wholeWord?: boolean;
   cwd: string | null;
   query: string;
   enabled?: boolean;
@@ -443,7 +450,13 @@ export function projectSearchContentQueryOptions(input: {
   const limit = input.limit ?? DEFAULT_SEARCH_CONTENT_LIMIT;
   const trimmedQuery = input.query.trim();
   return queryOptions({
-    queryKey: projectQueryKeys.searchContent(input.cwd, trimmedQuery, limit),
+    queryKey: projectQueryKeys.searchContent(
+      input.cwd,
+      trimmedQuery,
+      limit,
+      input.matchCase,
+      input.wholeWord,
+    ),
     queryFn: async () => {
       const api = ensureNativeApi();
       if (!input.cwd) {
@@ -453,6 +466,8 @@ export function projectSearchContentQueryOptions(input: {
         cwd: input.cwd,
         query: trimmedQuery,
         limit,
+        matchCase: input.matchCase ?? false,
+        wholeWord: input.wholeWord ?? false,
       });
     },
     enabled:

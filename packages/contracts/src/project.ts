@@ -114,6 +114,8 @@ export const PROJECT_SEARCH_CONTENT_MIN_QUERY_LENGTH = 2;
 export const PROJECT_SEARCH_CONTENT_MAX_LINE_LENGTH = 1024;
 
 export const ProjectSearchContentInput = Schema.Struct({
+  matchCase: Schema.optional(Schema.Boolean),
+  wholeWord: Schema.optional(Schema.Boolean),
   cwd: TrimmedNonEmptyString,
   query: TrimmedNonEmptyString.check(Schema.isMaxLength(256)).check(
     Schema.isMinLength(PROJECT_SEARCH_CONTENT_MIN_QUERY_LENGTH),

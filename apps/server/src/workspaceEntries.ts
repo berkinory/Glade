@@ -1,3 +1,4 @@
+import { createContentSearchPattern } from "@glade/shared/searchQuery";
 import fs from "node:fs/promises";
 import type { Dirent } from "node:fs";
 import os from "node:os";
@@ -896,7 +897,6 @@ const CONTENT_SEARCH_DEFAULT_LIMIT = 50;
 const CONTENT_SEARCH_MAX_LIMIT = PROJECT_SEARCH_CONTENT_MAX_LIMIT;
 const CONTENT_SEARCH_MIN_QUERY_LENGTH = PROJECT_SEARCH_CONTENT_MIN_QUERY_LENGTH;
 const CONTENT_SEARCH_MAX_FILE_BYTES = 512 * 1024;
-const CONTENT_SEARCH_MAX_MATCHES_PER_FILE = 5;
 const CONTENT_SEARCH_TIME_BUDGET_MS = 4_000;
 const CONTENT_SEARCH_LINE_READ_CONCURRENCY = 8;
 const CONTENT_SEARCH_MAX_LINE_LENGTH = PROJECT_SEARCH_CONTENT_MAX_LINE_LENGTH;
@@ -921,7 +921,8 @@ function buildContentLineText(line: string): string {
 async function searchFileContent(
   cwd: string,
   relativePath: string,
-  normalizedQuery: string,
+  pattern: RegExp,
+  limit: number,
 ): Promise<ContentSearchMatch[] | null> {
   const absolutePath = await resolveRealPathWithinRoot(cwd, path.join(cwd, relativePath)).catch(
     () => null,
@@ -950,13 +951,10 @@ async function searchFileContent(
     }
 
     const contents = await fileHandle.readFile("utf8");
-    // Whole-file miss check before the line split: most files don't contain
-    // the query at all, and skipping the split + per-line scan cuts 50-68% off
-    // scan cost for typical queries (measured on this repo). The pathological
-    // case — a query matching a third of all files — pays ~36% extra on the
-    // files it hits, but the overall collect limit stops the scan after a
-    // handful of such files anyway.
-    if (!contents.toLowerCase().includes(normalizedQuery)) {
+    // Reject whole-file misses before allocating lines. Use the same compiled
+    // literal matcher here and per line so case and word options stay aligned.
+    pattern.lastIndex = 0;
+    if (!pattern.test(contents)) {
       return [];
     }
     const lines = contents.split("\n");
@@ -964,13 +962,14 @@ async function searchFileContent(
     for (let index = 0; index < lines.length; index += 1) {
       const line = lines[index];
       if (!line) continue;
-      if (!line.toLowerCase().includes(normalizedQuery)) continue;
+      pattern.lastIndex = 0;
+      if (!pattern.test(line)) continue;
       matches.push({
         path: relativePath,
         lineNumber: index + 1,
         lineText: buildContentLineText(line),
       });
-      if (matches.length >= CONTENT_SEARCH_MAX_MATCHES_PER_FILE) {
+      if (matches.length >= limit) {
         break;
       }
     }
@@ -989,8 +988,8 @@ async function searchFileContent(
 export async function searchWorkspaceContent(
   input: ProjectSearchContentInput,
 ): Promise<ProjectSearchContentResult> {
-  const normalizedQuery = input.query.trim().toLowerCase();
-  if (normalizedQuery.length < CONTENT_SEARCH_MIN_QUERY_LENGTH) {
+  const query = input.query.trim();
+  if (query.length < CONTENT_SEARCH_MIN_QUERY_LENGTH) {
     return { matches: [], truncated: false };
   }
 
@@ -1016,7 +1015,12 @@ export async function searchWorkspaceContent(
   const workers = Array.from(
     { length: Math.max(1, Math.min(CONTENT_SEARCH_LINE_READ_CONCURRENCY, filePaths.length)) },
     async () => {
+      const pattern = createContentSearchPattern(query, input);
       while (nextIndex < filePaths.length) {
+        if (collected.length > limit) {
+          truncated = true;
+          break;
+        }
         if (Date.now() > deadline) {
           truncated = true;
           break;
@@ -1026,11 +1030,12 @@ export async function searchWorkspaceContent(
         const fileMatches = await searchFileContent(
           input.cwd,
           filePaths[currentIndex] as string,
-          normalizedQuery,
+          pattern,
+          limit + 1,
         );
         scannedFiles += 1;
         if (fileMatches && fileMatches.length > 0) {
-          collected.push(...fileMatches);
+          collected.push(...fileMatches.slice(0, Math.max(0, limit + 1 - collected.length)));
         }
       }
     },
