@@ -35,6 +35,14 @@ Computer Use. `computerPermissions.ts` owns permission state and guide lifecycle
 `computerHelperProtocol.ts` validates helper messages. These do not expose capture
 attachment APIs or a keyboard capture watcher.
 
+## Workspace editing
+
+All editable workspace text files use the shared Pierre editor, including large
+files. Cmd/Ctrl+F opens its in-file
+search while the editor has focus instead of triggering chat search. File length
+no longer switches to a textarea editor. Read-only previews and binary-file
+handling retain their existing limits.
+
 ## Source Control
 
 Review panels expose a toolbar button to switch between stacked and split diffs in one click.

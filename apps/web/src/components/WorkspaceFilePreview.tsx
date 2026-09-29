@@ -275,6 +275,7 @@ function createPierreEditor(options: PierreEditorOptions<undefined>) {
 }
 
 type EditableFileContentsProps = {
+  revealPosition?: { lineNumber: number; requestId: number } | undefined;
   path: string;
   contents: string;
   cacheKey: string;
@@ -287,7 +288,14 @@ type EditableFileContentsProps = {
   onSave: () => void;
 };
 
-function PierreEditableFileContents(props: EditableFileContentsProps) {
+function EditableFileContents(props: EditableFileContentsProps) {
+  const pierreRef = useRef<PierreEditor<undefined> | null>(null);
+  const revealRef = useRef(props.revealPosition);
+  revealRef.current = props.revealPosition;
+  useEffect(() => {
+    if (props.revealPosition && !props.hidden)
+      pierreRef.current?.focus({ lineNumber: props.revealPosition.lineNumber });
+  }, [props.revealPosition, props.hidden]);
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const editorId = useId();
   const labelEditor = useCallback(() => {
@@ -342,7 +350,11 @@ function PierreEditableFileContents(props: EditableFileContentsProps) {
   );
   const editorOptions = useMemo<PierreEditorOptions<undefined>>(
     () => ({
-      onAttach: attachEditor,
+      onAttach: (editor) => {
+        pierreRef.current = editor;
+        attachEditor();
+        if (revealRef.current) editor.focus({ lineNumber: revealRef.current.lineNumber });
+      },
       onChange: (nextFile) => {
         const contents = nextFile.contents;
         setDocument((current) => ({ ...current, contents }));
@@ -355,6 +367,7 @@ function PierreEditableFileContents(props: EditableFileContentsProps) {
   return (
     <div
       ref={editorContainerRef}
+      data-workspace-file-editor
       className="editor-file-editor__pierre"
       hidden={props.hidden}
       aria-busy={props.saving}
@@ -380,70 +393,6 @@ function PierreEditableFileContents(props: EditableFileContentsProps) {
           }}
         />
       </EditProvider>
-    </div>
-  );
-}
-
-// Keep the editing engine stable for the open document: changing it while
-// typing would discard focus, selection and native undo history.
-function EditableFileContents(props: EditableFileContentsProps) {
-  const [plainText] = useState(
-    () =>
-      props.contents.length > MAX_SYNTAX_HIGHLIGHT_INPUT_CHARS ||
-      props.contents.split("\n").length > 1_000,
-  );
-  return plainText ? (
-    <NumberedPlainEditableFileContents {...props} />
-  ) : (
-    <PierreEditableFileContents {...props} />
-  );
-}
-
-function NumberedPlainEditableFileContents(props: EditableFileContentsProps) {
-  const editorRef = useRef<HTMLTextAreaElement>(null);
-  const gutterRef = useRef<HTMLDivElement>(null);
-  const lineCount = props.contents.split("\n").length;
-  const numbers = useMemo(
-    () =>
-      lineCount <= MAX_PLAIN_NUMBERED_LINES
-        ? Array.from({ length: lineCount }, (_, index) => (
-            <span key={index} className="editor-file-editor__gutter-line">
-              {index + 1}
-            </span>
-          ))
-        : null,
-    [lineCount],
-  );
-  const syncGutter = useCallback(() => {
-    if (editorRef.current && gutterRef.current)
-      gutterRef.current.style.transform = `translateY(${-editorRef.current.scrollTop}px)`;
-  }, []);
-  useEffect(syncGutter, [props.contents, props.hidden, syncGutter]);
-  return (
-    <div className="editor-file-editor-wrap" hidden={props.hidden}>
-      {numbers ? (
-        <div className="editor-file-editor__gutter" aria-hidden="true">
-          <div ref={gutterRef}>{numbers}</div>
-        </div>
-      ) : null}
-      <textarea
-        ref={editorRef}
-        className="editor-file-editor"
-        aria-label={`Edit ${props.path}`}
-        aria-busy={props.saving}
-        aria-invalid={props.invalid ? "true" : undefined}
-        value={props.contents}
-        spellCheck={false}
-        wrap="off"
-        onScroll={syncGutter}
-        onChange={(event) => props.onContentsChange(event.target.value)}
-        onKeyDown={(event) => {
-          if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
-            event.preventDefault();
-            props.onSave();
-          }
-        }}
-      />
     </div>
   );
 }
@@ -528,6 +477,8 @@ function FilePreviewLoadingState() {
 }
 
 export interface WorkspaceFilePreviewProps {
+  /** Explicit navigation request; repeated clicks may target the same line. */
+  revealPosition?: { lineNumber: number; requestId: number } | undefined;
   workspaceRoot: string | null;
   /**
    * Workspace-relative path of the previewed file. Binary previews (images,
@@ -610,6 +561,9 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
     filePath: string | null;
     rendered: boolean;
   } | null>(null);
+  useEffect(() => {
+    if (props.revealPosition) setMarkdownPreviewOverride({ filePath, rendered: false });
+  }, [props.revealPosition, filePath]);
   const markdownPreviewEnabled =
     props.markdownPreviewEnabled ??
     (markdownPreviewOverride !== null && markdownPreviewOverride.filePath === filePath
@@ -782,6 +736,23 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
     editableDocument != null &&
     editor.state.format?.expectedVersion !== editableDocument.version;
   const displayedFileContents = activeEditBuffer?.contents ?? fileContents;
+  useEffect(() => {
+    if (!props.revealPosition || editableDocument || showMarkdownPreview || !fileQuery.data) return;
+    const container = contentsRef.current;
+    const pre = container?.querySelector("pre");
+    if (!container || !pre) return;
+    const line = Math.max(
+      0,
+      Math.min(props.revealPosition.lineNumber - 1, fileContents.split("\n").length - 1),
+    );
+    const style = getComputedStyle(pre);
+    container.scrollTop = Math.max(
+      0,
+      line * Number.parseFloat(style.lineHeight) +
+        Number.parseFloat(style.paddingTop) -
+        container.clientHeight / 2,
+    );
+  }, [props.revealPosition, editableDocument, showMarkdownPreview, fileQuery.data, fileContents]);
   const lineCount =
     displayedFileContents.length === 0 ? 0 : displayedFileContents.split("\n").length;
   const readOnlyReason =
@@ -1166,6 +1137,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
         <>
           {activeEditBuffer && editableDocument ? (
             <EditableFileContents
+              revealPosition={props.revealPosition}
               key={activeEditBuffer.key}
               path={filePath}
               contents={activeEditBuffer.contents}

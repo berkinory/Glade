@@ -14,6 +14,7 @@
 
 ### Improved
 
+- All editable workspace files use the advanced editor, including its Cmd/Ctrl+F search. The size-based textarea editor and its dedicated styles are removed.
 - History marks merge commits and shows branch names where local or remote branch tips point.
 - History loads virtualized rows as you scroll, shows author photos when available, relative times, tags, and compact upstream status icons. Commit rows have an icon menu to copy the full hash, short hash, or subject. Selected commits open below with every file diff initially collapsed and file-shaped loading placeholders. Source Control tabs have icons and the Changes and History detail panes use 60% of the panel.
 - Review panels switch between stacked and split diffs with one toolbar button.
@@ -35,6 +36,7 @@
 
 ### Fixed
 
+- Cmd/Ctrl+F stays in the focused editor instead of opening chat search.
 - Content search no longer silently stops at five matching lines per file; the bounded scan now uses the total result limit and reports partial results.
 - Chat header action labels stay visible when opening or closing a sidebar.
 - Deleting an Explorer file closes its preview. Finder actions use the system icon, and file breadcrumbs keep descenders visible.

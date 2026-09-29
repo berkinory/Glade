@@ -248,6 +248,17 @@ export function useChatKeyboardShortcuts({
       }
 
       if (command === "chat.find") {
+        // The editor lives in a shadow root. Let its own find handler receive
+        // the shortcut before this capture-phase chat handler consumes it.
+        if (
+          event
+            .composedPath()
+            .some(
+              (target) =>
+                target instanceof Element && target.hasAttribute("data-workspace-file-editor"),
+            )
+        )
+          return;
         if (
           !shouldCaptureChatFindShortcut({
             shouldRenderChatPaneContent,

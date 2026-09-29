@@ -6,6 +6,12 @@ export const WHATS_NEW_ENTRIES: readonly WhatsNewEntry[] = [
     date: "Unreleased",
     features: [
       {
+        id: "consistent-workspace-editor",
+        title: "Improved",
+        description:
+          "Editable files use the advanced editor at every size, with Cmd/Ctrl+F file search that no longer opens chat search.",
+      },
+      {
         id: "source-control-adds-staged-only-commits-with-cmd-ctrl",
         title: "New",
         description:
