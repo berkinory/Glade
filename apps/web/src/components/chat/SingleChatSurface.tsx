@@ -97,6 +97,7 @@ import { pullRequestDetailInputFromPane } from "../pullRequest/pullRequestDetail
 import { usePullRequestPaneStateIcon } from "../pullRequest/usePullRequestPaneStateIcon";
 import { RouteInsetSurface } from "../RouteInsetSurface";
 import { SidebarInset } from "../ui/sidebar";
+import { Spinner } from "../ui/spinner";
 import { toastManager } from "../ui/toast";
 import { WorkspaceSearchPalette, type WorkspaceSearchPaletteMode } from "../WorkspaceSearchPalette";
 import {
@@ -918,10 +919,16 @@ export function SingleChatSurface(props: {
         );
       case "git":
         return (
-          <Suspense fallback={<PanelStateMessage>Loading source control...</PanelStateMessage>}>
+          <Suspense
+            fallback={
+              <PanelStateMessage>
+                <Spinner className="size-5" aria-label="Loading source control" />
+              </PanelStateMessage>
+            }
+          >
             <SourceControlDockPane
               threadId={props.threadId}
-              projectId={props.projectId}
+              workspaceRoot={workspaceRoot}
               view={pane.sourceControlView}
               diffTurnId={pane.diffTurnId}
               diffFilePath={pane.diffFilePath}

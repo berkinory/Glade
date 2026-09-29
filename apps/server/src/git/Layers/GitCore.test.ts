@@ -146,6 +146,19 @@ it.layer(TestLayer)("git integration", (it) => {
         expect(Buffer.byteLength(result.patch, "utf8")).toBeLessThanOrEqual(1_000_000);
         expect(result.truncated).toBe(true);
         expect(result.patch).toContain("diff --git a/generated.ts b/generated.ts");
+
+        yield* writeTextFile(path.join(tmp, "z-last.txt"), "visible even after a large diff\n");
+        const files = yield* core.readSourceControlFiles(tmp);
+        expect(files.unstaged.map((file) => file.path)).toEqual(["generated.ts", "z-last.txt"]);
+        const selected = yield* core.readUnstagedPatch(tmp, "z-last.txt");
+        expect(selected.truncated).toBe(false);
+        expect(selected.patch).toContain("+visible even after a large diff");
+        yield* git(tmp, ["add", "z-last.txt"]);
+        const stagedFiles = yield* core.readSourceControlFiles(tmp);
+        expect(stagedFiles.staged.map((file) => file.path)).toEqual(["z-last.txt"]);
+        expect((yield* core.readStagedPatch(tmp, "z-last.txt")).patch).toContain(
+          "+visible even after a large diff",
+        );
       }),
     );
 

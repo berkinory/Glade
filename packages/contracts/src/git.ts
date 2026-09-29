@@ -157,7 +157,7 @@ export const GitReadWorkingTreeDiffInput = Schema.Struct({
     Schema.Literals(["workingTree", "unstaged", "staged", "branch", "ref"]),
   ).pipe(Schema.withConstructorDefault(() => Option.some("workingTree" as const))),
   compareRef: Schema.optional(GitRevisionArgumentSchema),
-  /** Limit a workingTree patch to one exact workspace-relative file. */
+  /** Limit a workingTree, staged, or unstaged patch to one exact workspace-relative file. */
   filePath: Schema.optional(TrimmedNonEmptyStringSchema),
 });
 export type GitReadWorkingTreeDiffInput = typeof GitReadWorkingTreeDiffInput.Type;
@@ -483,6 +483,24 @@ export const GitReadWorkingTreeDiffResult = Schema.Struct({
   truncated: Schema.Boolean,
 });
 export type GitReadWorkingTreeDiffResult = typeof GitReadWorkingTreeDiffResult.Type;
+
+export const GitSourceControlFilesResult = Schema.Struct({
+  staged: Schema.Array(
+    Schema.Struct({
+      path: TrimmedNonEmptyStringSchema,
+      insertions: NonNegativeInt,
+      deletions: NonNegativeInt,
+    }),
+  ),
+  unstaged: Schema.Array(
+    Schema.Struct({
+      path: TrimmedNonEmptyStringSchema,
+      insertions: NonNegativeInt,
+      deletions: NonNegativeInt,
+    }),
+  ),
+});
+export type GitSourceControlFilesResult = typeof GitSourceControlFilesResult.Type;
 
 export const GitBlameLineResult = Schema.Struct({
   sha: Schema.String,

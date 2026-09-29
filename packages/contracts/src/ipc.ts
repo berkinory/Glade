@@ -71,6 +71,7 @@ import type {
   GitReadFileAtRevResult,
   GitReadWorkingTreeDiffInput,
   GitReadWorkingTreeDiffResult,
+  GitSourceControlFilesResult,
   GitWorkingTreeDiffStatsResult,
   GitRemoveIndexLockInput,
   GitRemoveWorktreeInput,
@@ -837,6 +838,7 @@ export interface NativeApi {
     readWorkingTreeDiff: (
       input: GitReadWorkingTreeDiffInput,
     ) => Promise<GitReadWorkingTreeDiffResult>;
+    readSourceControlFiles: (input: GitStatusInput) => Promise<GitSourceControlFilesResult>;
     readFileAtRev: (input: GitReadFileAtRevInput) => Promise<GitReadFileAtRevResult>;
     workingTreeDiffStats: (
       input: GitReadWorkingTreeDiffInput,

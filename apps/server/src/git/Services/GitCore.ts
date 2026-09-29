@@ -34,6 +34,7 @@ import type {
   GitStashInfoResult,
   GitStatusInput,
   GitStatusResult,
+  GitSourceControlFilesResult,
   GitWorkingTreeDiffStatsResult,
 } from "@glade/contracts";
 
@@ -240,12 +241,22 @@ export interface GitCoreShape {
   /**
    * Read only unstaged tracked changes plus untracked files.
    */
-  readonly readUnstagedPatch: (cwd: string) => Effect.Effect<GitWorkingTreePatch, GitCommandError>;
+  readonly readUnstagedPatch: (
+    cwd: string,
+    filePath?: string,
+  ) => Effect.Effect<GitWorkingTreePatch, GitCommandError>;
 
   /**
    * Read only staged changes.
    */
-  readonly readStagedPatch: (cwd: string) => Effect.Effect<GitWorkingTreePatch, GitCommandError>;
+  readonly readStagedPatch: (
+    cwd: string,
+    filePath?: string,
+  ) => Effect.Effect<GitWorkingTreePatch, GitCommandError>;
+
+  readonly readSourceControlFiles: (
+    cwd: string,
+  ) => Effect.Effect<GitSourceControlFilesResult, GitCommandError>;
 
   /**
    * Read aggregate branch changes from the upstream/base merge-base through the working tree.

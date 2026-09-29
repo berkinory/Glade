@@ -4,6 +4,7 @@
 
 ### Improved
 
+- Source Control lists every changed file from Git metadata without loading the full patch. It uses the same workspace as Explorer, shows the checkout path when clean, and opens a larger diff preview only after selecting a file. Refresh sits beside Staged.
 - Explorer menus have action icons and file management controls. New file and folder buttons create under the selected folder, with inline naming and renaming. Deleting an open file closes its preview. Finder actions use the system icon, file breadcrumbs keep descenders visible, and file previews show concise errors. Workspace files save with Cmd/Ctrl+S.
 - Explorer folder menus open directories in the platform file manager, and expansion changes without height or chevron motion.
 - Chat rows and headers show the provider icon even when the terminal is the saved primary view.

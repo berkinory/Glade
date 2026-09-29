@@ -4,12 +4,12 @@
 // Depends on: gitReactQuery (diff queries + stage/unstage mutations), diffRendering (patch parsing),
 //             @pierre/diffs FileDiff for the per-file viewer.
 //
-// The pane derives its cwd like DockTerminalPane (thread worktree or project cwd) and reads the
-// staged/unstaged patches, parsing them into file lists. Stage/unstage are index mutations routed
-// through GitCore; on settle we invalidate the per-cwd git caches so both lists stay in sync.
+// The pane receives the thread's resolved workspace root and lists files from Git status.
+// It loads a patch only for the selected file. Stage/unstage are index mutations routed through
+// GitCore; on settle we invalidate the per-cwd git caches so both lists stay in sync.
 
 import { type FileDiffMetadata } from "@pierre/diffs/react";
-import { type ProjectId, type ThreadId } from "@glade/contracts";
+import { type GitSourceControlFilesResult } from "@glade/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
@@ -18,27 +18,23 @@ import {
   buildFileDiffRenderKey,
   getRenderablePatch,
   resolveFileDiffPath,
-  sortFileDiffsByPath,
   splitRepoRelativePath,
-  summarizeFileDiffStats,
 } from "~/lib/diffRendering";
 import {
   gitQueryKeys,
   gitStageFilesMutationOptions,
   gitUnstageFilesMutationOptions,
   gitWorkingTreeDiffQueryOptions,
+  gitSourceControlFilesQueryOptions,
 } from "~/lib/gitReactQuery";
-import { PlusIcon, RefreshCwIcon, ResetIcon } from "~/lib/icons";
+import { CircleCheckIcon, PlusIcon, RefreshCwIcon, ResetIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
-import { useStore } from "~/store";
-import { createProjectSelector, createThreadWorkspaceMetadataSelector } from "~/storeSelectors";
 import { Alert } from "../ui/alert";
 import { Button } from "../ui/button";
 import { IconButton } from "../ui/icon-button";
-import { DiffTruncationWarning } from "../DiffTruncationWarning";
+import { Spinner } from "../ui/spinner";
 import { DOCK_HEADER_ICON_BUTTON_CLASS } from "./chatHeaderControls";
 import { DiffStat } from "./DiffStatLabel";
-import { DockPaneHeader } from "./DockPaneHeader";
 import { FileDiffCard, FileDiffSurface } from "./FileDiffView";
 import { FileEntryIcon } from "./FileEntryIcon";
 import { PanelStateMessage } from "./PanelStateMessage";
@@ -53,27 +49,20 @@ interface SelectedFile {
   path: string;
 }
 
-function parsePatchToSortedFiles(
-  patch: string | undefined,
-  cacheScope: string,
-): FileDiffMetadata[] {
-  const renderable = getRenderablePatch(patch, cacheScope);
-  return renderable?.kind === "files" ? sortFileDiffsByPath(renderable.files) : [];
-}
+type SourceFile = GitSourceControlFilesResult["staged"][number];
 
 function GitFileRow(props: {
-  fileDiff: FileDiffMetadata;
+  file: SourceFile;
   theme: "light" | "dark";
   isSelected: boolean;
   actionLabel: string;
   actionIcon: "stage" | "unstage";
   actionDisabled: boolean;
-  onSelect: (file: FileDiffMetadata) => void;
+  onSelect: (file: SourceFile) => void;
   onAction: (paths: string[]) => void;
 }) {
-  const filePath = resolveFileDiffPath(props.fileDiff);
+  const filePath = props.file.path;
   const { dir, name } = splitRepoRelativePath(filePath);
-  const stat = summarizeFileDiffStats([props.fileDiff]);
   return (
     <div
       className={cn(
@@ -84,7 +73,7 @@ function GitFileRow(props: {
       <button
         type="button"
         className="flex min-w-0 flex-1 items-center gap-1.5"
-        onClick={() => props.onSelect(props.fileDiff)}
+        onClick={() => props.onSelect(props.file)}
         title={filePath}
       >
         <FileEntryIcon pathValue={filePath} kind="file" theme={props.theme} className="size-4" />
@@ -94,8 +83,8 @@ function GitFileRow(props: {
         </span>
       </button>
       <DiffStat
-        additions={stat.additions}
-        deletions={stat.deletions}
+        additions={props.file.insertions}
+        deletions={props.file.deletions}
         className="shrink-0 text-ui-sm"
       />
       <IconButton
@@ -120,19 +109,19 @@ function GitFileRow(props: {
 function GitFileSection(props: {
   title: string;
   emptyLabel: string;
-  files: FileDiffMetadata[];
+  files: readonly SourceFile[];
   theme: "light" | "dark";
-  section: GitPanelSection;
   selectedPath: string | null;
   actionLabel: string;
   actionAllLabel: string;
   actionIcon: "stage" | "unstage";
   actionDisabled: boolean;
-  onSelect: (file: FileDiffMetadata) => void;
+  onSelect: (file: SourceFile) => void;
   onAction: (paths: string[]) => void;
+  onRefresh?: () => void;
+  hideEmptyLabel?: boolean;
 }) {
-  const stat = summarizeFileDiffStats(props.files);
-  const allPaths = props.files.map((file) => resolveFileDiffPath(file));
+  const allPaths = props.files.map((file) => file.path);
   return (
     <section className="min-w-0">
       <header className="flex items-center gap-2 px-1.5 py-1">
@@ -140,31 +129,49 @@ function GitFileSection(props: {
         <span className="rounded-full bg-muted px-1.5 text-ui-xs font-medium text-muted-foreground">
           {props.files.length}
         </span>
-        <DiffStat additions={stat.additions} deletions={stat.deletions} className="text-ui-xs" />
-        {props.files.length > 0 ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            className="ml-auto shrink-0"
-            disabled={props.actionDisabled}
-            onClick={() => props.onAction(allPaths)}
-          >
-            {props.actionAllLabel}
-          </Button>
-        ) : null}
+        <DiffStat
+          additions={props.files.reduce((sum, file) => sum + file.insertions, 0)}
+          deletions={props.files.reduce((sum, file) => sum + file.deletions, 0)}
+          className="text-ui-xs"
+        />
+        <div className="ml-auto flex items-center gap-1">
+          {props.files.length > 0 ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className="shrink-0"
+              disabled={props.actionDisabled}
+              onClick={() => props.onAction(allPaths)}
+            >
+              {props.actionAllLabel}
+            </Button>
+          ) : null}
+          {props.onRefresh ? (
+            <IconButton
+              size="icon-xs"
+              variant="ghost"
+              label="Refresh changes"
+              tooltip="Refresh changes"
+              className={DOCK_HEADER_ICON_BUTTON_CLASS}
+              onClick={props.onRefresh}
+            >
+              <RefreshCwIcon className="size-3.5" />
+            </IconButton>
+          ) : null}
+        </div>
       </header>
-      {props.files.length === 0 ? (
+      {props.files.length === 0 && !props.hideEmptyLabel ? (
         <p className="px-1.5 py-1 text-ui-sm text-muted-foreground/70">{props.emptyLabel}</p>
-      ) : (
+      ) : props.files.length > 0 ? (
         <div className="flex flex-col gap-0.5">
           {props.files.map((file) => {
-            const key = buildFileDiffRenderKey(file);
-            const filePath = resolveFileDiffPath(file);
+            const key = file.path;
+            const filePath = file.path;
             return (
               <GitFileRow
                 key={key}
-                fileDiff={file}
+                file={file}
                 theme={props.theme}
                 isSelected={props.selectedPath === filePath}
                 actionLabel={props.actionLabel}
@@ -176,7 +183,7 @@ function GitFileSection(props: {
             );
           })}
         </div>
-      )}
+      ) : null}
     </section>
   );
 }
@@ -191,42 +198,42 @@ function SelectedFileDiff(props: { fileDiff: FileDiffMetadata; theme: "light" | 
   );
 }
 
-export function GitPanel(props: {
-  hostThreadId: ThreadId;
-  projectId: ProjectId | null;
-  onClose?: () => void;
-}) {
+export function GitPanel(props: { workspaceRoot: string | null }) {
   const queryClient = useQueryClient();
   const { resolvedTheme } = useTheme();
   const theme = resolvedTheme as "light" | "dark";
-  // Shell-only, like DockTerminalPane: only `worktreePath` is read here, and the
-  // full thread selector would re-render the pane on every streamed token.
-  const threadWorkspace = useStore(
-    useMemo(() => createThreadWorkspaceMetadataSelector(props.hostThreadId), [props.hostThreadId]),
-  );
-  const project = useStore(
-    useMemo(() => createProjectSelector(props.projectId), [props.projectId]),
-  );
-  const cwd = threadWorkspace.worktreePath ?? project?.cwd ?? null;
+  const cwd = props.workspaceRoot;
 
   const [selected, setSelected] = useState<SelectedFile | null>(null);
 
   // No fixed polling: turn-driven file changes already push-invalidate the
   // working-tree-diff cache (see __root.tsx), and focus + the Refresh button +
   // post-mutation invalidation cover the rest. This keeps the pane cheap.
-  const stagedQuery = useQuery(gitWorkingTreeDiffQueryOptions({ cwd, scope: "staged" }));
-  const unstagedQuery = useQuery(gitWorkingTreeDiffQueryOptions({ cwd, scope: "unstaged" }));
-
-  const stagedPatch = stagedQuery.data?.patch;
-  const unstagedPatch = unstagedQuery.data?.patch;
-  const stagedFiles = useMemo(
-    () => parsePatchToSortedFiles(stagedPatch, `git-pane:staged:${theme}`),
-    [stagedPatch, theme],
+  const filesQuery = useQuery(gitSourceControlFilesQueryOptions(cwd));
+  const stagedFiles = filesQuery.data?.staged ?? [];
+  const unstagedFiles = filesQuery.data?.unstaged ?? [];
+  const selectedSection =
+    selected &&
+    !(selected.section === "staged" ? stagedFiles : unstagedFiles).some(
+      (file) => file.path === selected.path,
+    )
+      ? selected.section === "staged"
+        ? "unstaged"
+        : "staged"
+      : (selected?.section ?? "unstaged");
+  const selectedPatchQuery = useQuery(
+    gitWorkingTreeDiffQueryOptions({
+      cwd,
+      scope: selectedSection,
+      filePath: selected?.path ?? null,
+      enabled: selected !== null,
+    }),
   );
-  const unstagedFiles = useMemo(
-    () => parsePatchToSortedFiles(unstagedPatch, `git-pane:unstaged:${theme}`),
-    [theme, unstagedPatch],
-  );
+  const selectedPatch = selectedPatchQuery.data?.patch;
+  const selectedDiff = useMemo(() => {
+    const renderable = getRenderablePatch(selectedPatch, `git-pane:selected:${theme}`);
+    return renderable?.kind === "files" ? (renderable.files[0] ?? null) : null;
+  }, [selectedPatch, theme]);
 
   const stageMutation = useMutation(gitStageFilesMutationOptions({ cwd, queryClient }));
   const unstageMutation = useMutation(gitUnstageFilesMutationOptions({ cwd, queryClient }));
@@ -241,29 +248,35 @@ export function GitPanel(props: {
     unstageMutation.mutate(paths);
   };
 
-  const selectStaged = (file: FileDiffMetadata) => {
-    setSelected({ section: "staged", path: resolveFileDiffPath(file) });
+  const selectStaged = (file: SourceFile) => {
+    setSelected((current) =>
+      current?.section === "staged" && current.path === file.path
+        ? null
+        : { section: "staged", path: file.path },
+    );
   };
-  const selectUnstaged = (file: FileDiffMetadata) => {
-    setSelected({ section: "unstaged", path: resolveFileDiffPath(file) });
+  const selectUnstaged = (file: SourceFile) => {
+    setSelected((current) =>
+      current?.section === "unstaged" && current.path === file.path
+        ? null
+        : { section: "unstaged", path: file.path },
+    );
   };
 
   const refresh = () => {
     if (!cwd) return;
-    void queryClient.invalidateQueries({ queryKey: gitQueryKeys.workingTreeDiff(cwd, "staged") });
-    void queryClient.invalidateQueries({
-      queryKey: gitQueryKeys.workingTreeDiff(cwd, "unstaged"),
-    });
+    void queryClient.invalidateQueries({ queryKey: gitQueryKeys.sourceControlFiles(cwd) });
+    void queryClient.invalidateQueries({ queryKey: gitQueryKeys.workingTreeDiffs(cwd) });
   };
 
   // Resolve the selected file by path, preferring its stored section but falling
   // back to the other list so the diff (and row highlight) follow a file across a
   // stage/unstage move instead of silently clearing.
-  let selectedResolved: { section: GitPanelSection; file: FileDiffMetadata } | null = null;
+  let selectedResolved: { section: GitPanelSection; file: SourceFile } | null = null;
   if (selected) {
     const findInSection = (section: GitPanelSection) =>
       (section === "staged" ? stagedFiles : unstagedFiles).find(
-        (file) => resolveFileDiffPath(file) === selected.path,
+        (file) => file.path === selected.path,
       ) ?? null;
     const preferred = findInSection(selected.section);
     if (preferred) {
@@ -274,17 +287,11 @@ export function GitPanel(props: {
       selectedResolved = fallback ? { section: otherSection, file: fallback } : null;
     }
   }
-  const selectedFileDiff = selectedResolved?.file ?? null;
+  const selectedFileDiff = selectedResolved ? selectedDiff : null;
   const selectedPath = selected?.path ?? null;
 
-  const isLoading = stagedQuery.isLoading || unstagedQuery.isLoading;
-  const truncated = stagedQuery.data?.truncated === true || unstagedQuery.data?.truncated === true;
-  const error =
-    stagedQuery.error instanceof Error
-      ? stagedQuery.error.message
-      : unstagedQuery.error instanceof Error
-        ? unstagedQuery.error.message
-        : null;
+  const isLoading = filesQuery.isLoading;
+  const error = filesQuery.error instanceof Error ? filesQuery.error.message : null;
   const hasChanges = stagedFiles.length > 0 || unstagedFiles.length > 0;
 
   if (!cwd) {
@@ -293,89 +300,95 @@ export function GitPanel(props: {
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col">
-      <DockPaneHeader
-        title="Source control"
-        onClose={props.onClose}
-        closeLabel="Close source control"
-        actions={
-          <IconButton
-            size="icon-xs"
-            variant="ghost"
-            label="Refresh changes"
-            tooltip="Refresh changes"
-            className={DOCK_HEADER_ICON_BUTTON_CLASS}
-            onClick={refresh}
-          >
-            <RefreshCwIcon className="size-3.5" />
-          </IconButton>
-        }
-      />
-
-      <div className="flex max-h-[48%] min-h-0 shrink-0 flex-col gap-2 overflow-auto px-1.5 py-2">
-        {truncated ? (
-          <DiffTruncationWarning>
-            Glade stopped reading source-control changes at the diff size limit. Some files or
-            changes may be missing; bulk actions only affect the files shown.
-          </DiffTruncationWarning>
-        ) : null}
+      <div
+        className={cn(
+          "flex min-h-0 flex-col gap-2 overflow-auto px-1.5 py-2",
+          selectedResolved ? "max-h-[40%] shrink-0" : "flex-1",
+        )}
+      >
+        <GitFileSection
+          title="Staged"
+          emptyLabel="No staged changes."
+          files={stagedFiles}
+          theme={theme}
+          selectedPath={selectedResolved?.section === "staged" ? selectedPath : null}
+          actionLabel="Unstage file"
+          actionAllLabel="Unstage all"
+          actionIcon="unstage"
+          actionDisabled={mutating}
+          onSelect={selectStaged}
+          onAction={unstage}
+          onRefresh={refresh}
+          hideEmptyLabel={!hasChanges}
+        />
         {error ? (
           <Alert variant="error" size="sm" className="text-destructive">
             {error}
           </Alert>
         ) : null}
         {!error && isLoading && !hasChanges ? (
-          <p className="px-1.5 py-1 text-ui-sm text-muted-foreground/70">Loading changes...</p>
+          <div className="flex flex-1 items-center justify-center" aria-label="Loading changes">
+            <Spinner className="size-5 text-muted-foreground" />
+          </div>
         ) : null}
         {!error && !isLoading && !hasChanges ? (
-          <p className="px-1.5 py-2 text-center text-ui text-muted-foreground/70">
-            No changes in the working tree.
-          </p>
+          <div className="flex flex-1 flex-col items-center justify-center gap-2 px-5 text-center">
+            <span className="flex size-12 items-center justify-center rounded-2xl border border-border/70 bg-muted/50 text-muted-foreground">
+              <CircleCheckIcon className="size-6" aria-hidden="true" />
+            </span>
+            <span className="text-ui-lg font-medium text-foreground">No changes</span>
+            <span className="text-ui-sm text-muted-foreground">
+              No staged or unstaged files here.
+            </span>
+            <span className="max-w-full break-all text-ui-xs text-muted-foreground/70" title={cwd}>
+              {cwd}
+            </span>
+          </div>
         ) : null}
         {hasChanges ? (
-          <>
-            <GitFileSection
-              title="Staged"
-              emptyLabel="No staged changes."
-              files={stagedFiles}
-              theme={theme}
-              section="staged"
-              selectedPath={selectedResolved?.section === "staged" ? selectedPath : null}
-              actionLabel="Unstage file"
-              actionAllLabel="Unstage all"
-              actionIcon="unstage"
-              actionDisabled={mutating}
-              onSelect={selectStaged}
-              onAction={unstage}
-            />
-            <GitFileSection
-              title="Changes"
-              emptyLabel="No unstaged changes."
-              files={unstagedFiles}
-              theme={theme}
-              section="unstaged"
-              selectedPath={selectedResolved?.section === "unstaged" ? selectedPath : null}
-              actionLabel="Stage file"
-              actionAllLabel="Stage all"
-              actionIcon="stage"
-              actionDisabled={mutating}
-              onSelect={selectUnstaged}
-              onAction={stage}
-            />
-          </>
+          <GitFileSection
+            title="Changes"
+            emptyLabel="No unstaged changes."
+            files={unstagedFiles}
+            theme={theme}
+            selectedPath={selectedResolved?.section === "unstaged" ? selectedPath : null}
+            actionLabel="Stage file"
+            actionAllLabel="Stage all"
+            actionIcon="stage"
+            actionDisabled={mutating}
+            onSelect={selectUnstaged}
+            onAction={stage}
+          />
         ) : null}
       </div>
 
-      <div className="diff-panel-viewport min-h-0 min-w-0 flex-1 overflow-hidden border-t border-border/70">
-        {selectedFileDiff ? (
-          <SelectedFileDiff
-            key={`${buildFileDiffRenderKey(selectedFileDiff)}:${theme}`}
-            fileDiff={selectedFileDiff}
-            theme={theme}
-          />
-        ) : (
-          <PanelStateMessage density="compact">Select a file to view its diff.</PanelStateMessage>
-        )}
-      </div>
+      {selectedResolved ? (
+        <div className="diff-panel-viewport min-h-0 min-w-0 flex-1 overflow-hidden border-t border-border/70">
+          {selectedPatchQuery.data?.truncated ? (
+            <Alert variant="error" size="sm">
+              This file's diff exceeds the preview limit.
+            </Alert>
+          ) : selectedPatchQuery.error instanceof Error ? (
+            <Alert variant="error" size="sm">
+              {selectedPatchQuery.error.message}
+            </Alert>
+          ) : selectedFileDiff ? (
+            <SelectedFileDiff
+              key={`${buildFileDiffRenderKey(selectedFileDiff)}:${theme}`}
+              fileDiff={selectedFileDiff}
+              theme={theme}
+            />
+          ) : (
+            <PanelStateMessage density="compact">
+              {selectedPatchQuery.isLoading ? (
+                <Spinner className="size-5" aria-label="Loading diff" />
+              ) : (
+                "No diff to show."
+              )}
+            </PanelStateMessage>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }

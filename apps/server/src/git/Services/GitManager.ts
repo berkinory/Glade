@@ -28,6 +28,7 @@ import {
   GitRunStackedActionResult,
   GitStatusInput,
   GitStatusResult,
+  GitSourceControlFilesResult,
   GitSummarizeDiffInput,
   GitSummarizeDiffResult,
 } from "@glade/contracts";
@@ -72,6 +73,10 @@ export interface GitManagerShape {
   readonly readWorkingTreeDiff: (
     input: GitReadWorkingTreeDiffInput,
   ) => Effect.Effect<GitReadWorkingTreeDiffResult, GitManagerServiceError>;
+
+  readonly readSourceControlFiles: (
+    cwd: string,
+  ) => Effect.Effect<GitSourceControlFilesResult, GitManagerServiceError>;
 
   readonly blameLine: (
     input: GitBlameLineInput,

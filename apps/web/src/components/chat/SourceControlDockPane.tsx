@@ -1,4 +1,4 @@
-import type { ProjectId, ThreadId, TurnId } from "@glade/contracts";
+import type { ThreadId, TurnId } from "@glade/contracts";
 import { useEffect, useState } from "react";
 
 import type { DiffFileEditRequest } from "~/lib/diffEditBaseRev";
@@ -9,7 +9,7 @@ import { LazyDiffPanel } from "./ChatThreadSurfacePrimitives";
 
 export function SourceControlDockPane(props: {
   threadId: ThreadId;
-  projectId: ProjectId | null;
+  workspaceRoot: string | null;
   view: SourceControlView;
   diffTurnId: TurnId | null;
   diffFilePath: string | null;
@@ -54,11 +54,7 @@ export function SourceControlDockPane(props: {
       </div>
       <div className="min-h-0 flex-1">
         <div className={cn("h-full min-h-0", props.view !== "changes" && "hidden")}>
-          <GitPanel
-            hostThreadId={props.threadId}
-            projectId={props.projectId}
-            onClose={props.onClose}
-          />
+          <GitPanel workspaceRoot={props.workspaceRoot} />
         </div>
         {reviewOpened || props.view === "review" ? (
           <div className={cn("h-full min-h-0", props.view !== "review" && "hidden")}>

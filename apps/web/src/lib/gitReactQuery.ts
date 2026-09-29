@@ -45,6 +45,7 @@ export const gitQueryKeys = {
     ["git", "recent-commits", cwd, limit] as const,
   pullRequest: (cwd: string | null) => ["git", "pull-request", cwd] as const,
   workingTreeDiffs: (cwd: string | null) => ["git", "working-tree-diff", cwd] as const,
+  sourceControlFiles: (cwd: string | null) => ["git", "source-control-files", cwd] as const,
   workingTreeDiff: (
     cwd: string | null,
     scope: GitReadWorkingTreeDiffInput["scope"] = "workingTree",
@@ -213,6 +214,7 @@ function activeGitDetailQueries(queryClient: QueryClient, cwd: string) {
       type: "active",
     }),
     ...queryCache.findAll({ queryKey: gitQueryKeys.pullRequest(cwd), type: "active" }),
+    ...queryCache.findAll({ queryKey: gitQueryKeys.sourceControlFiles(cwd), type: "active" }),
     // A mounted diff editor keeps showing a base blob, and an open blame
     // popover its attribution, until refetched.
     ...queryCache.findAll({ queryKey: ["git", "file-at-rev", cwd] as const, type: "active" }),
@@ -234,6 +236,10 @@ async function refreshActiveGitDetails(queryClient: QueryClient, cwd: string): P
   await Promise.all([
     queryClient.invalidateQueries({
       queryKey: gitQueryKeys.workingTreeDiffs(cwd),
+      refetchType: "none",
+    }),
+    queryClient.invalidateQueries({
+      queryKey: gitQueryKeys.sourceControlFiles(cwd),
       refetchType: "none",
     }),
     queryClient.invalidateQueries({
@@ -266,11 +272,16 @@ export async function refreshGitWorkingTreeDiffsForCwd(
   cwd: string,
 ): Promise<void> {
   await queryClient.invalidateQueries({
+    queryKey: gitQueryKeys.sourceControlFiles(cwd),
+    refetchType: "none",
+  });
+  await queryClient.invalidateQueries({
     queryKey: gitQueryKeys.workingTreeDiffs(cwd),
     refetchType: "none",
   });
   const queries = activeGitDetailQueries(queryClient, cwd).filter(
-    (query) => query.queryKey[1] === "working-tree-diff",
+    (query) =>
+      query.queryKey[1] === "working-tree-diff" || query.queryKey[1] === "source-control-files",
   );
   for (const query of queries) {
     await enqueueGitRefresh(queryClient, () => refetchFreshGitQueries(queryClient, query.queryKey));
@@ -372,6 +383,7 @@ function cachedGitCwds(queryClient: QueryClient): string[] {
     "branches",
     "recent-commits",
     "working-tree-diff",
+    "source-control-files",
     "pull-request",
   ]);
   const cwds = queryClient
@@ -669,6 +681,21 @@ export function gitWorkingTreeDiffQueryOptions(input: {
     enabled: (input.enabled ?? true) && input.cwd !== null && (scope !== "ref" || !!compareRef),
     staleTime: GIT_WORKING_TREE_DIFF_STALE_TIME_MS,
     ...(refetchInterval !== undefined ? { refetchInterval } : {}),
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    ...GIT_EXPENSIVE_READ_RETRY_OPTIONS,
+  });
+}
+
+export function gitSourceControlFilesQueryOptions(cwd: string | null) {
+  return queryOptions({
+    queryKey: gitQueryKeys.sourceControlFiles(cwd),
+    queryFn: async () => {
+      if (!cwd) throw new Error("Source control is unavailable.");
+      return ensureNativeApi().git.readSourceControlFiles({ cwd });
+    },
+    enabled: cwd !== null,
+    staleTime: GIT_WORKING_TREE_DIFF_STALE_TIME_MS,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     ...GIT_EXPENSIVE_READ_RETRY_OPTIONS,

@@ -127,6 +127,7 @@ import {
   GitPullResult,
   GitReadWorkingTreeDiffInput,
   GitReadWorkingTreeDiffResult,
+  GitSourceControlFilesResult,
   GitWorkingTreeDiffStatsResult,
   GitRemoveIndexLockInput,
   GitRemoveWorktreeInput,
@@ -944,6 +945,12 @@ export const WsGitReadWorkingTreeDiffRpc = Rpc.make(WS_METHODS.gitReadWorkingTre
   error: WsRpcError,
 });
 
+export const WsGitReadSourceControlFilesRpc = Rpc.make(WS_METHODS.gitReadSourceControlFiles, {
+  payload: GitStatusInput,
+  success: GitSourceControlFilesResult,
+  error: WsRpcError,
+});
+
 export const WsGitBlameLineRpc = Rpc.make(WS_METHODS.gitBlameLine, {
   payload: GitBlameLineInput,
   success: GitBlameLineResult,
@@ -1520,6 +1527,7 @@ export const WsFeatureRpcGroup = RpcGroup.make(
   WsGitGithubRepositoryRpc,
   WsGitStatusRpc,
   WsGitReadWorkingTreeDiffRpc,
+  WsGitReadSourceControlFilesRpc,
   WsGitBlameLineRpc,
   WsGitReadFileAtRevRpc,
   WsGitWorkingTreeDiffStatsRpc,

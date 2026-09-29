@@ -1370,7 +1370,9 @@ export const makeGitManager = Effect.gen(function* () {
       if (
         input.filePath !== undefined &&
         input.scope !== undefined &&
-        input.scope !== "workingTree"
+        input.scope !== "workingTree" &&
+        input.scope !== "staged" &&
+        input.scope !== "unstaged"
       ) {
         return yield* gitManagerError(
           "readWorkingTreeDiff",
@@ -1391,15 +1393,18 @@ export const makeGitManager = Effect.gen(function* () {
         case "branch":
           return yield* gitCore.readBranchPatch(input.cwd);
         case "staged":
-          return yield* gitCore.readStagedPatch(input.cwd);
+          return yield* gitCore.readStagedPatch(input.cwd, input.filePath);
         case "unstaged":
-          return yield* gitCore.readUnstagedPatch(input.cwd);
+          return yield* gitCore.readUnstagedPatch(input.cwd, input.filePath);
         case "workingTree":
         default:
           return yield* gitCore.readWorkingTreePatch(input.cwd, input.filePath);
       }
     },
   );
+
+  const readSourceControlFiles: GitManagerShape["readSourceControlFiles"] = (cwd) =>
+    gitCore.readSourceControlFiles(cwd);
 
   const blameLine: GitManagerShape["blameLine"] = Effect.fnUntraced(function* (input) {
     return yield* gitCore.blameLine(input);
@@ -2498,6 +2503,7 @@ The local stash entry was kept for recovery.`,
     status,
     pullRequestForBranch,
     readWorkingTreeDiff,
+    readSourceControlFiles,
     readWorkingTreeDiffStats,
     blameLine,
     readFileAtRev,

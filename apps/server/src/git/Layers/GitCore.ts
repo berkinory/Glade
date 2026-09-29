@@ -1942,12 +1942,26 @@ export const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"
         return mergeBase;
       });
 
-    const readUnstagedPatch: GitCoreShape["readUnstagedPatch"] = (cwd) =>
+    const readUnstagedPatch: GitCoreShape["readUnstagedPatch"] = (cwd, filePath) =>
       Effect.gen(function* () {
+        if (filePath !== undefined && !isWorkspaceRelativePathSafe(filePath)) {
+          return yield* createGitCommandError(
+            "GitCore.readUnstagedPatch.path",
+            cwd,
+            ["diff"],
+            "Invalid file path.",
+          );
+        }
         const tracked = yield* executeGit(
           "GitCore.readUnstagedPatch.trackedPatch",
           cwd,
-          ["diff", "--patch", "--no-color", "--no-ext-diff"],
+          [
+            "diff",
+            "--patch",
+            "--no-color",
+            "--no-ext-diff",
+            ...(filePath ? ["--", `:(literal)${filePath}`] : []),
+          ],
           {
             allowNonZeroExit: true,
             timeoutMs: WORKING_TREE_DIFF_TIMEOUT_MS,
@@ -1962,26 +1976,109 @@ export const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"
           tracked.stdoutTruncated === true,
           DEFAULT_MAX_OUTPUT_BYTES,
         );
-        return yield* readUntrackedPatches(cwd, "GitCore.readUnstagedPatch", accumulator);
+        const untrackedFiles = filePath
+          ? yield* listUntrackedFiles(cwd, "GitCore.readUnstagedPatch", undefined, filePath)
+          : undefined;
+        return yield* readUntrackedPatches(
+          cwd,
+          "GitCore.readUnstagedPatch",
+          accumulator,
+          untrackedFiles,
+        );
       });
 
-    const readStagedPatch: GitCoreShape["readStagedPatch"] = (cwd) =>
-      executeGit(
-        "GitCore.readStagedPatch",
-        cwd,
-        ["diff", "--cached", "--patch", "--no-color", "--no-ext-diff"],
-        {
-          allowNonZeroExit: true,
-          timeoutMs: WORKING_TREE_DIFF_TIMEOUT_MS,
-          maxOutputBytes: DEFAULT_MAX_OUTPUT_BYTES,
-          outputMode: "truncate",
-        },
-      ).pipe(
-        Effect.map((result) => ({
-          patch: result.stdout,
-          truncated: result.stdoutTruncated === true,
-        })),
-      );
+    const readStagedPatch: GitCoreShape["readStagedPatch"] = (cwd, filePath) =>
+      Effect.gen(function* () {
+        if (filePath !== undefined && !isWorkspaceRelativePathSafe(filePath)) {
+          return yield* createGitCommandError(
+            "GitCore.readStagedPatch.path",
+            cwd,
+            ["diff"],
+            "Invalid file path.",
+          );
+        }
+        return yield* executeGit(
+          "GitCore.readStagedPatch",
+          cwd,
+          [
+            "diff",
+            "--cached",
+            "--patch",
+            "--no-color",
+            "--no-ext-diff",
+            ...(filePath ? ["--", `:(literal)${filePath}`] : []),
+          ],
+          {
+            allowNonZeroExit: true,
+            timeoutMs: WORKING_TREE_DIFF_TIMEOUT_MS,
+            maxOutputBytes: DEFAULT_MAX_OUTPUT_BYTES,
+            outputMode: "truncate",
+          },
+        ).pipe(
+          Effect.map((result) => ({
+            patch: result.stdout,
+            truncated: result.stdoutTruncated === true,
+          })),
+        );
+      });
+
+    const readSourceControlFiles: GitCoreShape["readSourceControlFiles"] = (cwd) =>
+      Effect.gen(function* () {
+        // Status and numstat output scales with path count, not with file contents.
+        // Fail explicitly on an extreme result instead of silently dropping paths.
+        const output = { maxOutputBytes: 20_000_000, timeoutMs: WORKING_TREE_DIFF_TIMEOUT_MS };
+        const [status, stagedStats, unstagedStats] = yield* Effect.all(
+          [
+            executeGit(
+              "GitCore.readSourceControlFiles.status",
+              cwd,
+              ["status", "--porcelain=v1", "-z", "--untracked-files=all"],
+              output,
+            ),
+            executeGit(
+              "GitCore.readSourceControlFiles.stagedStats",
+              cwd,
+              ["diff", "--cached", "--numstat", "-z"],
+              output,
+            ),
+            executeGit(
+              "GitCore.readSourceControlFiles.unstagedStats",
+              cwd,
+              ["diff", "--numstat", "-z"],
+              output,
+            ),
+          ],
+          { concurrency: "unbounded" },
+        );
+        const staged = new Set<string>();
+        const unstaged = new Set<string>();
+        const records = status.stdout.split("\0");
+        for (let index = 0; index < records.length; index += 1) {
+          const record = records[index] ?? "";
+          if (record.length < 4) continue;
+          const code = record.slice(0, 2);
+          const path = record.slice(3);
+          if (code[0] !== " " && code[0] !== "?") staged.add(path);
+          if (code[1] !== " " || code === "??") unstaged.add(path);
+          if (code.includes("R") || code.includes("C")) index += 1;
+        }
+        const toFiles = (paths: Set<string>, stdout: string) => {
+          const stats = new Map(
+            summarizeGitNumstatOutputs([stdout]).files.map((file) => [file.path, file]),
+          );
+          return [...paths]
+            .toSorted((a, b) => a.localeCompare(b))
+            .map((path) => ({
+              path,
+              insertions: stats.get(path)?.insertions ?? 0,
+              deletions: stats.get(path)?.deletions ?? 0,
+            }));
+        };
+        return {
+          staged: toFiles(staged, stagedStats.stdout),
+          unstaged: toFiles(unstaged, unstagedStats.stdout),
+        };
+      });
 
     const readWorkingTreePatch: GitCoreShape["readWorkingTreePatch"] = (cwd, filePath) =>
       Effect.gen(function* () {
@@ -4170,6 +4267,7 @@ export const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"
       readWorkingTreePatch,
       readUnstagedPatch,
       readStagedPatch,
+      readSourceControlFiles,
       readBranchPatch,
       blameLine,
       readFileAtRev,
