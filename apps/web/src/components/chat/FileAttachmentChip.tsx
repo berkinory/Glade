@@ -159,9 +159,6 @@ export function FileAttachmentChip({
             pathValue={file.name}
             mimeType={file.mimeType}
             kind="file"
-            // Attachment cards keep a calm, uniform glyph: the shared icon tint,
-            // not the per-type colors used in the diff/editor file lists.
-            colorMode="inherit"
             className="size-5"
           />
         }

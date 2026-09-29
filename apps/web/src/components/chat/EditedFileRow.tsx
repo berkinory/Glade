@@ -68,7 +68,6 @@ export function EditedFileRow(props: EditedFileRowProps) {
           pathValue={props.filePath}
           kind="file"
           theme={props.resolvedTheme}
-          colorMode="inherit"
           className="size-4 shrink-0 text-[var(--color-text-foreground)] opacity-70 dark:opacity-80"
         />
         <span

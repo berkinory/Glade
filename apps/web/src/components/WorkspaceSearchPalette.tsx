@@ -207,12 +207,7 @@ const FileResultRow = memo(function FileResultRow(props: {
           : props.onOpenFile(props.entry.path)
       }
     >
-      <FileEntryIcon
-        pathValue={props.entry.path}
-        kind={props.entry.kind}
-        colorMode="inherit"
-        className={ICON_CLASS}
-      />
+      <FileEntryIcon pathValue={props.entry.path} kind={props.entry.kind} className={ICON_CLASS} />
       <span className="min-w-0 flex-1 truncate text-ui-lg">
         <FileNameText text={base} query={props.highlightQuery} />
       </span>
@@ -235,12 +230,7 @@ const SnippetResultRow = memo(function SnippetResultRow(props: {
       className={`items-start py-1.5 ${ITEM_CLASS}`}
       onClick={() => props.onOpenFile(props.match.path)}
     >
-      <FileEntryIcon
-        pathValue={props.match.path}
-        kind="file"
-        colorMode="inherit"
-        className={`mt-0.5 ${ICON_CLASS}`}
-      />
+      <FileEntryIcon pathValue={props.match.path} kind="file" className={`mt-0.5 ${ICON_CLASS}`} />
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
           <span className="min-w-0 flex-1 truncate text-ui-lg">

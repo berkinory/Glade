@@ -5,17 +5,17 @@
 // Layer: UI shared component/helper
 // Exports: MentionChipIcon, createMentionChipIconElement
 
-import { getFileIconName, inferEntryKindFromPath } from "~/file-icons";
+import { getFileIconUrl, getFolderIconUrl, inferEntryKindFromPath } from "~/file-icons";
 import {
   findThreadProviderMentionReferenceForToken,
   resolveMentionChipKind,
   threadIdFromProviderMentionReference,
   type MentionChipKind,
 } from "~/lib/composerMentions";
-import { CentralIcon, createCentralIconElement } from "~/lib/central-icons";
+import { createCentralIconElement } from "~/lib/central-icons";
 import { MessageCircleIcon, PluginIcon } from "~/lib/icons";
 import { COMPOSER_INLINE_MENTION_CHIP_ICON_CLASS_NAME } from "../composerInlineChip";
-import { FolderClosed } from "../FolderClosed";
+import { FileEntryIcon } from "./FileEntryIcon";
 import type { ProviderMentionReference } from "@glade/contracts";
 import { threadIdFromThreadMentionPath } from "@glade/shared/threadMentions";
 import { useStore } from "~/store";
@@ -24,20 +24,7 @@ import { ProviderIcon } from "../ProviderIcon";
 
 export type { MentionChipKind };
 
-function composerMentionChipCentralIconName(path: string, kind: MentionChipKind = "path"): string {
-  if (kind === "plugin" || path.startsWith("plugin://")) {
-    return "puzzle";
-  }
-  if (inferEntryKindFromPath(path) === "directory") {
-    return "folder-2";
-  }
-  return getFileIconName(path);
-}
-
-// `theme` is retained for call-site compatibility but no longer affects icon
-// selection (Central icons are theme-agnostic `currentColor` glyphs).
-// `className` lets callers size the glyph per surface (composer token vs timeline
-// echo) while keeping the file/folder/plugin selection logic in one place.
+// `className` sizes the glyph per surface (composer token vs timeline echo).
 export const MentionChipIcon = function MentionChipIcon(props: {
   path: string;
   theme: "light" | "dark";
@@ -74,27 +61,29 @@ export const MentionChipIcon = function MentionChipIcon(props: {
   if (resolvedKind === "plugin") {
     return <PluginIcon className={className} />;
   }
-  const kind = inferEntryKindFromPath(props.path);
-  if (kind === "directory") {
-    return <FolderClosed className={className} />;
-  }
-  // Masked Central glyph painted with `bg-current`, so the file icon inherits the
-  // chip's text color (it shares the filename's color) instead of a per-filetype
-  // tint. `getFileIconName` already falls back to the bracket glyph when unknown.
-  return <CentralIcon name={getFileIconName(props.path)} className={className} />;
+  return (
+    <FileEntryIcon
+      pathValue={props.path}
+      kind={inferEntryKindFromPath(props.path)}
+      className={className}
+    />
+  );
 };
 
-// Lexical composer only — use a single masked Central icon (same as skill chips)
-// so @ tokens align with / and $ tokens. User-message bubbles keep MentionChipIcon.
+// Lexical composer builds its mention chips outside React.
 export function createMentionChipIconElement(
   path: string,
   kind: MentionChipKind = "path",
   className: string = COMPOSER_INLINE_MENTION_CHIP_ICON_CLASS_NAME,
 ): HTMLElement {
-  const iconName = composerMentionChipCentralIconName(path, kind);
-  return (
-    createCentralIconElement(iconName, className) ??
-    createCentralIconElement("code-brackets", className) ??
-    document.createElement("span")
-  );
+  if (kind === "plugin" || path.startsWith("plugin://")) {
+    return createCentralIconElement("puzzle", className) ?? document.createElement("span");
+  }
+  const icon = document.createElement("img");
+  icon.src =
+    inferEntryKindFromPath(path) === "directory" ? getFolderIconUrl(path) : getFileIconUrl(path);
+  icon.alt = "";
+  icon.setAttribute("aria-hidden", "true");
+  icon.className = className;
+  return icon;
 }

@@ -130,18 +130,13 @@ export function buildRightDockPaneLabelOverrides(
   return Object.keys(overrides).length > 0 ? overrides : undefined;
 }
 
-// Resolves a tab glyph: file panes show the per-file-type icon (matching the
-// pane header and explorer rows), every other pane uses its kind icon. The file
-// glyph inherits the tab's muted foreground color (colorMode="inherit") instead
-// of its extension color, so dock tabs read like the changed-file rows rather
-// than carrying a loud per-type tint.
+// File panes share the file-type icon used in headers and explorer rows.
 export function resolveRightDockPaneIcon(pane: RightDockPane): ReactNode {
   if (pane.kind === "file" && pane.filePath) {
     return (
       <FileEntryIcon
         pathValue={pane.filePath}
         kind="file"
-        colorMode="inherit"
         className={CHAT_SURFACE_CHIP_ICON_CLASS_NAME}
       />
     );
