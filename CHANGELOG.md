@@ -14,6 +14,7 @@
 
 ### Improved
 
+- History marks merge commits and shows branch names where local or remote branch tips point.
 - History loads virtualized rows as you scroll, shows author photos when available, relative times, tags, and compact upstream status icons. Commit rows have an icon menu to copy the full hash, short hash, or subject. Selected commits open below with every file diff initially collapsed and file-shaped loading placeholders. Source Control tabs have icons and the Changes and History detail panes use 60% of the panel.
 - Review panels switch between stacked and split diffs with one toolbar button.
 - Commit message AI enables supported fast mode and disables thinking when available, otherwise selecting the lowest supported effort, with a 90-second deadline.

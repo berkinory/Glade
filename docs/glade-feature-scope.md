@@ -51,6 +51,8 @@ Commit rows offer an icon menu to copy the full hash, short hash, or subject.
 History rows show author initials, relative time, and tags. Commits reachable
 from the tracked remote branch have a green up arrow; newer local commits have
 a yellow commit icon.
+Merge commits carry a Merge marker. Local and remote branch names appear only
+on the commit each branch currently points to; this is not a branch graph.
 Repositories without a remote upstream show neither icon.
 
 The right dock supports staged-only commits with a workspace-scoped message draft

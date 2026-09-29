@@ -283,9 +283,8 @@ function parseRecentCommitLines(stdout: string): ReadonlyArray<GitRecentCommit> 
   const commits: GitRecentCommit[] = [];
   for (const line of stdout.split("\n")) {
     if (line.length === 0) continue;
-    const [sha = "", shortSha = "", subject = "", committedAt = "", authorName = ""] = line.split(
-      RECENT_COMMIT_FIELD_SEPARATOR,
-    );
+    const [sha = "", shortSha = "", subject = "", committedAt = "", authorName = "", parents = ""] =
+      line.split(RECENT_COMMIT_FIELD_SEPARATOR);
     if (sha.length === 0 || shortSha.length === 0) continue;
     commits.push({
       sha,
@@ -293,6 +292,8 @@ function parseRecentCommitLines(stdout: string): ReadonlyArray<GitRecentCommit> 
       subject,
       committedAt,
       authorName,
+      isMerge: parents.trim().split(/\s+/).filter(Boolean).length > 1,
+      branches: [],
       pushStatus: "unknown",
       tags: [],
     });
@@ -3124,7 +3125,7 @@ export const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"
           input.cwd,
           [
             "log",
-            "--format=%H%x1f%h%x1f%s%x1f%cI%x1f%an",
+            "--format=%H%x1f%h%x1f%s%x1f%cI%x1f%an%x1f%P",
             "-n",
             String(limit + 1),
             "--skip",
@@ -3198,6 +3199,31 @@ export const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"
           tags.push(tagName);
           tagsBySha.set(sha, tags);
         }
+        const branchResult = yield* executeGit(
+          "GitCore.listRecentCommits.branches",
+          input.cwd,
+          [
+            "for-each-ref",
+            "--format=%(objectname)%00%(refname)%00%(symref)",
+            "refs/heads",
+            "refs/remotes",
+          ],
+          { timeoutMs: 10_000, maxOutputBytes: 2_000_000 },
+        );
+        const branchesBySha = new Map<string, string[]>();
+        for (const line of branchResult.stdout.split("\n")) {
+          const [sha, refname, symref] = line.split("\0");
+          if (!sha || !refname || symref) continue;
+          const name = refname.startsWith("refs/heads/")
+            ? refname.slice("refs/heads/".length)
+            : refname.startsWith("refs/remotes/")
+              ? refname.slice("refs/remotes/".length)
+              : null;
+          if (!name) continue;
+          const branches = branchesBySha.get(sha) ?? [];
+          branches.push(name);
+          branchesBySha.set(sha, branches);
+        }
         return {
           hasMore,
           commits: commits.map((commit) => ({
@@ -3209,6 +3235,7 @@ export const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"
                   ? ("unpushed" as const)
                   : ("pushed" as const),
             tags: tagsBySha.get(commit.sha) ?? [],
+            branches: branchesBySha.get(commit.sha) ?? [],
           })),
         };
       });

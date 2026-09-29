@@ -19,7 +19,9 @@ import {
   ArrowUpIcon,
   ChevronDownIcon,
   CopyIcon,
+  GitBranchIcon,
   GitCommitIcon,
+  GitMergeIcon,
   RefreshCwIcon,
   XIcon,
 } from "~/lib/icons";
@@ -173,6 +175,27 @@ function CommitRow(props: { commit: GitRecentCommit; selected: boolean; onSelect
       <span className="min-w-0 flex-1">
         <span className="flex min-w-0 items-center gap-1.5 text-ui-sm text-foreground">
           <span className="min-w-0 flex-1 truncate">{commit.subject || "(no subject)"}</span>
+          {commit.isMerge ? (
+            <span
+              className="inline-flex shrink-0 items-center gap-0.5 text-ui-xs text-muted-foreground"
+              title="Merge commit"
+            >
+              <GitMergeIcon className="size-3.5" aria-hidden />
+              Merge
+            </span>
+          ) : null}
+          {commit.branches.length > 0 ? (
+            <span
+              className="inline-flex min-w-0 max-w-24 items-center gap-0.5 rounded border border-border/70 px-1 text-ui-xs text-muted-foreground"
+              title={`Branches at this commit: ${commit.branches.join(", ")}`}
+            >
+              <GitBranchIcon className="size-3 shrink-0" aria-hidden />
+              <span className="min-w-0 truncate">{commit.branches[0]}</span>
+              {commit.branches.length > 1 ? (
+                <span className="shrink-0">+{commit.branches.length - 1}</span>
+              ) : null}
+            </span>
+          ) : null}
           {commit.tags.slice(0, 1).map((tag) => (
             <span
               key={tag}

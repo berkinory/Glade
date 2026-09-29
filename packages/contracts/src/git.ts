@@ -73,6 +73,8 @@ export const GitRecentCommit = Schema.Struct({
   subject: Schema.String,
   committedAt: Schema.String,
   authorName: Schema.String,
+  isMerge: Schema.Boolean,
+  branches: Schema.Array(Schema.String),
   pushStatus: Schema.Literals(["pushed", "unpushed", "unknown"]),
   tags: Schema.Array(Schema.String),
 });
