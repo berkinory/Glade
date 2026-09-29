@@ -4,7 +4,7 @@ import { FeatureSection } from "./FeatureSection";
 import type { WhatsNewFeature } from "./logic";
 
 const CATEGORY_TONES: Record<string, { text: string; dot: string }> = {
-  Added: {
+  New: {
     text: "text-emerald-600 dark:text-emerald-300/90",
     dot: "bg-emerald-500 dark:bg-emerald-300/90",
   },

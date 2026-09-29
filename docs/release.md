@@ -71,7 +71,7 @@ The local keychain does not transfer to GitHub runners. Missing Apple secrets st
 ## Cut a version
 
 1. Align package versions with `node scripts/update-release-package-versions.ts X.Y.Z`, then refresh `bun.lock` with `bun install --lockfile-only --ignore-scripts`.
-2. Update `CHANGELOG.md` and `apps/web/src/whatsNew/entries.ts`. Mark a version released only when it really ships.
+2. Update `CHANGELOG.md` and `apps/web/src/whatsNew/entries.ts`. Use `New` for newly available capabilities, `Improved` for refinements, `Fixed` for corrected behavior, and `Removed` for retired functionality. Keep category names consistent with the app release-note headings. Mark a version released only when it really ships.
 3. Run `bun run check`, `bun run test`, `bun scripts/check-windows-runtime-boundary.ts`, and `bun scripts/check-migration-lineage.ts`. Check the packaged app with an isolated profile on each supported platform.
 4. Commit the reviewed source on `main` and push it to `origin`. Wait for exact-commit CI and warm the Cua release cache before tagging that commit `vX.Y.Z` and pushing the tag. Do not push inherited upstream tags.
 5. Verify the GitHub Release notes link all four installers and list their SHA-256 checksums. The ten assets are four installers, two macOS update ZIPs, three platform update manifests, and the Windows blockmap. Verify both Homebrew architecture checksums.

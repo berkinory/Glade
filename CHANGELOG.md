@@ -1,6 +1,6 @@
 # Glade Changelog
 
-## Unreleased
+## 0.0.5 - Unreleased
 
 ### New
 
@@ -8,35 +8,33 @@
 - Generate commit messages from staged changes using the configured Git writing AI, without staging files or committing.
 - Source Control file menus can add untracked paths to the root .gitignore, preserving existing rules and escaping filenames literally.
 - Outgoing and incoming commit counts appear beside Fetch for branches with an upstream.
+- Explorer supports creating files and folders with inline names, renaming, deleting, and opening folders in the platform file manager.
+- Source Control file rows support Cmd/Ctrl and Shift selection for bulk staging, unstaging, and reverting from the context menu.
 
 ### Improved
 
 - Review panels switch between stacked and split diffs with one toolbar button.
-
 - Commit message AI enables supported fast mode and disables thinking when available, otherwise selecting the lowest supported effort, with a 90-second deadline.
-
 - The compact commit input keeps its AI action, spinner, and commit button aligned with the first line without overlapping text. Rebase uses the shared tooltip.
-
-- Code-block file headers use the bundled Symbols file icons.
-
-- Source Control keeps file status letters visible without shifting rows during hover, opens files in Explorer, and can revert unstaged changes with confirmation while preserving staged content. Newly created Explorer files open in the editor.
-- Source Control file rows support Cmd/Ctrl and Shift selection with right-click actions for opening, staging, unstaging, and reverting selected files. Empty Staged sections stay hidden, and the diff pane uses 55% of the available height.
+- Source Control keeps file status letters visible without shifting rows during hover, opens files in Explorer, and preserves staged content when reverting unstaged changes. Newly created Explorer files open in the editor.
+- Empty Staged sections stay hidden, and the diff pane uses 55% of the available height.
 - Changes header totals and untracked file rows include new-file line counts through a separate stats request, so the file list does not wait for content-based counting. Header totals remain visible while refreshing.
 - Source Control section headers use the same + and - actions as file rows. Stage and unstage refresh the file list first while broader Git status and diff refreshes finish in the background.
-- Source Control lists every changed file from Git metadata without loading the full patch. It uses the same workspace as Explorer, shows the checkout path when clean, and opens a larger diff preview only after selecting a file. Refresh sits beside Staged.
-- Explorer menus have action icons and file management controls. New file and folder buttons create under the selected folder, with inline naming and renaming. Deleting an open file closes its preview. Finder actions use the system icon, file breadcrumbs keep descenders visible, and file previews show concise errors. Workspace files save with Cmd/Ctrl+S.
-- Explorer folder menus open directories in the platform file manager, and expansion changes without height or chevron motion.
-- Chat rows and headers show the provider icon even when the terminal is the saved primary view.
-- The right sidebar opens on Explorer and keeps Explorer, Terminal, Source Control, Browser, and Simulator in a fixed order. Chat terminals now use the sidebar instead of a bottom drawer.
+- Source Control lists changed files from Git metadata without loading the full patch and uses the same workspace as Explorer. Its diff pane opens only after selecting a file. Refresh sits beside Staged; loading uses the shared spinner, and the empty state shows the checkout path.
+- Explorer menus have action icons, file previews show concise errors, and edits save explicitly with Cmd/Ctrl+S. Folder expansion changes without height or chevron motion.
+- File and folder icons across Explorer, editor, search, diffs, message attachments, and code-block headers use the bundled Symbols icon theme.
+- The right sidebar opens on Explorer and keeps Explorer, Terminal, Source Control, Browser, and Simulator in a fixed order. Chat terminals use the sidebar instead of a bottom drawer.
 - The right sidebar has a 28rem minimum width and can expand to 1.5 times its opening width. Panel buttons use icons, and switching panels preserves the resized width.
-- File and folder icons across Explorer, editor, search, diffs, and message attachments use the bundled Symbols icon theme.
 - Sidebar icons align more closely with their labels in project, chat, and Activity rows.
-- The composer model button shows reasoning in smaller text and leaves context limits in the model details.
+- The composer model button shows reasoning in readable text and leaves context limits in the model details.
 - Shortcut hints use the same compact keycap throughout tooltips, menus, and the sidebar.
+- Release notes separate new features under New from improvements and fixes in both the changelog and the app.
 
 ### Fixed
 
 - Chat header action labels stay visible when opening or closing a sidebar.
+- Deleting an Explorer file closes its preview. Finder actions use the system icon, and file breadcrumbs keep descenders visible.
+- Chat rows and headers show the provider icon even when the terminal is the saved primary view.
 
 - Replies keep their position as thinking gives way to text. Delayed session updates no longer flicker the activity indicator or briefly replace Stop with Send.
 - Codex keeps its runtime between replies when native tool-call identity is available. Codex and Claude gateway calls stay bound to their originating turn; runtimes without call provenance renew safely. Background reconnects keep the composer available.
@@ -107,6 +105,6 @@
 
 ## 0.0.1 - 2026-09-27
 
-### Added
+### New
 
 - Initial launch with five providers: Codex, Claude Code, Cursor, Grok, and OpenCode.
