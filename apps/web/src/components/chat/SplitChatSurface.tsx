@@ -228,7 +228,7 @@ function SplitPaneEmbeddedPanel(props: {
         onPointerDown={startResize}
       />
       {props.panel === "browser" ? (
-        <Suspense fallback={<PanelStateMessage>Loading browser...</PanelStateMessage>}>
+        <Suspense fallback={<PanelStateMessage loadingLabel="Loading browser" />}>
           <LazyBrowserPanel
             mode="sidebar"
             threadId={props.threadId}

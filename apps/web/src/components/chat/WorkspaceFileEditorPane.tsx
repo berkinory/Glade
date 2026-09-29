@@ -74,9 +74,7 @@ export function WorkspaceFileEditorPane(props: WorkspaceFileEditorPaneProps) {
           <p>{session.readOnlyReason}</p>
         </PanelStateMessage>
       ) : session.loading || !session.canEdit ? (
-        <PanelStateMessage density="compact" fill="flex">
-          <p>Loading file...</p>
-        </PanelStateMessage>
+        <PanelStateMessage density="compact" fill="flex" loadingLabel="Loading file" />
       ) : (
         <CodeEditorPane
           value={session.state.value}
