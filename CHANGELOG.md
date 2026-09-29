@@ -21,6 +21,7 @@
 
 ### Fixed
 
+- Search controls in the code editor stay steady as match counts change.
 - Editing a sent message now sends with Enter and uses standard action buttons.
 - Editing messages preserves conversation history and staged changes without rewriting unchanged files. Stopped replies remain editable. ([655214630](https://github.com/berkinory/Glade/commit/65521463052bb8c3b383269eaa2173fe9d76ab10))
 - Provider reconnects keep the composer available, and previously blocked chats recover after restarting. ([655214630](https://github.com/berkinory/Glade/commit/65521463052bb8c3b383269eaa2173fe9d76ab10))

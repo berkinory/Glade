@@ -174,6 +174,13 @@ export function buildDiffPanelUnsafeCSS(theme: "light" | "dark"): string {
   font-family: var(--font-ui-family) !important;
   font-variant-numeric: tabular-nums !important;
 }
+
+/* Keep the editor's search controls still as the match count changes. */
+[data-search-panel] [data-matches] {
+  width: 16ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
 `;
   diffPanelUnsafeCssCache.set(theme, css);
   return css;
