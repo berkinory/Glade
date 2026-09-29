@@ -17,6 +17,9 @@ import type { FileCommentSelection } from "~/lib/fileComments";
 import { projectListDirectoriesQueryOptions } from "~/lib/projectReactQuery";
 import { WorkspaceFilePreview } from "../WorkspaceFilePreview";
 import { PanelStateMessage } from "./PanelStateMessage";
+import { WorkspaceCodeSearch } from "./WorkspaceCodeSearch";
+import { IconButton } from "../ui/icon-button";
+import { FolderIcon, SearchIcon } from "~/lib/icons";
 import { WorkspaceExplorerSidebar } from "./workspaceExplorer";
 
 // The dock lays out as a fixed horizontal row, so the shared sidebar takes a
@@ -40,6 +43,9 @@ export const DockExplorerPane = function DockExplorerPane(props: {
     () => new Set<string>(),
   );
   const [searchQuery, setSearchQuery] = useState("");
+  const [codeQuery, setCodeQuery] = useState("");
+  const [searchMode, setSearchMode] = useState(false);
+  const [revealPosition, setRevealPosition] = useState<{ lineNumber: number; requestId: number }>();
 
   // Reveal requests (e.g. picking a folder in the Cmd+P palette) expand the
   // full ancestor chain and clear any name filter so the tree is what shows.
@@ -49,6 +55,8 @@ export const DockExplorerPane = function DockExplorerPane(props: {
   useEffect(() => {
     if (!revealRequest) return;
     setSearchQuery("");
+    setSearchMode(false);
+    setRevealPosition(undefined);
     if (revealRequest.filePath) setSelectedFilePath(revealRequest.filePath);
     const workspaceRoot = props.workspaceRoot;
     let cancelled = false;
@@ -93,6 +101,9 @@ export const DockExplorerPane = function DockExplorerPane(props: {
 
   const handleSelectFile = (path: string) => {
     setSelectedFilePath(path);
+    const parent = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
+    setExpandedDirectories((current) => new Set([...current, ...directoryChain(parent)]));
+    setRevealPosition(undefined);
   };
 
   const handleToggleDirectory = (path: string) => {
@@ -109,26 +120,70 @@ export const DockExplorerPane = function DockExplorerPane(props: {
 
   return (
     <div className="flex h-full min-h-0 w-full">
-      <WorkspaceExplorerSidebar
-        workspaceRoot={props.workspaceRoot}
-        selectedFilePath={selectedFilePath}
-        expandedDirectories={expandedDirectories}
-        query={searchQuery}
-        onQueryChange={setSearchQuery}
-        containerClassName={DOCK_EXPLORER_SIDEBAR_CLASS}
-        onSelectFile={handleSelectFile}
-        onDeleted={(path) => {
-          setSelectedFilePath((current) =>
-            current === path || current?.startsWith(`${path}/`) ? null : current,
-          );
-        }}
-        onToggleDirectory={handleToggleDirectory}
-        onReferenceInChat={props.onReferenceInChat}
-      />
+      <div className={DOCK_EXPLORER_SIDEBAR_CLASS}>
+        <div className="flex shrink-0 items-center gap-1 border-b border-border/65 px-2 py-1">
+          <span className="flex-1 text-ui-xs text-muted-foreground">
+            {searchMode ? "Search" : "Explorer"}
+          </span>
+          <IconButton
+            label="Show files"
+            tooltip="Show files"
+            variant={!searchMode ? "secondary" : "ghost"}
+            aria-pressed={!searchMode}
+            onClick={() => setSearchMode(false)}
+          >
+            <FolderIcon className="size-3.5" />
+          </IconButton>
+          <IconButton
+            label="Search file contents"
+            tooltip="Search file contents"
+            variant={searchMode ? "secondary" : "ghost"}
+            aria-pressed={searchMode}
+            onClick={() => setSearchMode(true)}
+          >
+            <SearchIcon className="size-3.5" />
+          </IconButton>
+        </div>
+        {searchMode ? (
+          <WorkspaceCodeSearch
+            key={props.workspaceRoot}
+            cwd={props.workspaceRoot}
+            selectedFilePath={selectedFilePath}
+            query={codeQuery}
+            onQueryChange={setCodeQuery}
+            onSelect={(match) => {
+              handleSelectFile(match.path);
+              setSearchQuery("");
+              setRevealPosition((previous) => ({
+                lineNumber: match.lineNumber,
+                requestId: (previous?.requestId ?? 0) + 1,
+              }));
+            }}
+          />
+        ) : (
+          <WorkspaceExplorerSidebar
+            workspaceRoot={props.workspaceRoot}
+            selectedFilePath={selectedFilePath}
+            expandedDirectories={expandedDirectories}
+            query={searchQuery}
+            onQueryChange={setSearchQuery}
+            containerClassName="flex min-h-0 flex-1 flex-col"
+            onSelectFile={handleSelectFile}
+            onDeleted={(path) => {
+              setSelectedFilePath((current) =>
+                current === path || current?.startsWith(`${path}/`) ? null : current,
+              );
+            }}
+            onToggleDirectory={handleToggleDirectory}
+            onReferenceInChat={props.onReferenceInChat}
+          />
+        )}
+      </div>
       <div className="flex min-h-0 min-w-0 flex-1">
         <WorkspaceFilePreview
           workspaceRoot={props.workspaceRoot}
           filePath={selectedFilePath}
+          revealPosition={revealPosition}
           liveRevalidationEnabled={props.isVisible}
           editable
           emptyState={

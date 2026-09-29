@@ -12,6 +12,12 @@ export const WHATS_NEW_ENTRIES: readonly WhatsNewEntry[] = [
           "Editable files use the advanced editor at every size, with Cmd/Ctrl+F file search that no longer opens chat search.",
       },
       {
+        id: "explorer-code-search",
+        title: "New",
+        description:
+          "Search code and text from Explorer with match-case and whole-word filters, clickable file groups, highlighted matches, and direct navigation. Results are no longer silently capped at five lines per file. Returning to Explorer expands the folders and scrolls to the selected file.",
+      },
+      {
         id: "source-control-adds-staged-only-commits-with-cmd-ctrl",
         title: "New",
         description:

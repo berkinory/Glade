@@ -19,6 +19,8 @@ import {
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
   forwardRef,
+  useEffect,
+  useRef,
 } from "react";
 
 import {
@@ -177,6 +179,7 @@ const ExplorerRow = forwardRef<
       ref={ref}
       type="button"
       className={fileRowClassName(selected, cn("h-7 pr-2 transition-none", className))}
+      data-selected-file={selected && !isDirectory ? "" : undefined}
       style={fileRowIndentStyle(depth)}
       title={entry.path}
       draggable
@@ -423,8 +426,38 @@ function WorkspaceFilesTreeBody(props: {
   actions: ReturnType<typeof useWorkspaceExplorerActions>;
   onEntryContextMenu: (entry: ProjectFileSystemEntry, position: { x: number; y: number }) => void;
 }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container || !props.selectedFilePath) return;
+    let frame = 0;
+    const reveal = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const row = container.querySelector<HTMLElement>("[data-selected-file]");
+        if (!row) return;
+        const viewport = container.getBoundingClientRect();
+        const bounds = row.getBoundingClientRect();
+        if (bounds.top < viewport.top) container.scrollTop += bounds.top - viewport.top;
+        else if (bounds.bottom > viewport.bottom)
+          container.scrollTop += bounds.bottom - viewport.bottom;
+        observer.disconnect();
+      });
+    };
+    // Ancestor directories load lazily. Reveal once the selected row mounts,
+    // then leave the user's subsequent scrolling alone.
+    const observer = new MutationObserver(reveal);
+    observer.observe(container, { childList: true, subtree: true });
+    reveal();
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+    };
+  }, [props.selectedFilePath, props.workspaceRoot]);
+
   return (
     <div
+      ref={scrollRef}
       className="min-h-0 flex-1 overflow-auto px-1 py-1"
       onClick={(event) => {
         if (event.target === event.currentTarget) props.actions.setSelectedDirectory("");

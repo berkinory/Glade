@@ -43,6 +43,20 @@ search while the editor has focus instead of triggering chat search. File length
 no longer switches to a textarea editor. Read-only previews and binary-file
 handling retain their existing limits.
 
+## Explorer search
+
+Explorer switches between the file tree/name search and content search. Content
+search uses the existing workspace index, matches plain text from two characters with match-case and whole-word toggles,
+and groups up to 100 matching lines by file without a per-file five-line cap. Selecting a result
+opens its source line in the shared editor without discarding existing drafts,
+selects the same file in Explorer, expands its parent folders, and scrolls it into
+view once those folders finish loading.
+Queries are debounced and scans run one at a time. Search loading reuses Explorer
+skeleton rows, file headers open the first match, and the active view is highlighted. The existing scan excludes
+binary files and files larger than 512 KiB, has a four-second scan budget, and
+reports index/result/time truncation. Regex, replace, and include/exclude filters
+are not exposed in this first version.
+
 ## Source Control
 
 Review panels expose a toolbar button to switch between stacked and split diffs in one click.

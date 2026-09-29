@@ -4,6 +4,7 @@
 
 ### New
 
+- Explorer can search code and text, group matching lines by file, highlight matches, and open results at their source line. Searches reuse the bounded workspace index and report partial results.
 - Source Control has a History tab with commit author, date, hash, full-branch commit-message filtering, and a read-only per-commit diff preview.
 - Source Control adds staged-only commits with Cmd/Ctrl+Enter, a compact branch picker, fetch, pull, push, and rebase with conflict continuation and abort.
 - Generate commit messages from staged changes using the configured Git writing AI, without staging files or committing.
@@ -15,7 +16,9 @@
 ### Improved
 
 - All editable workspace files use the advanced editor, including its Cmd/Ctrl+F search. The size-based textarea editor and its dedicated styles are removed.
+- Content-search filters have distinct active outlines, and selecting a result expands its parent folders and keeps the same file selected when returning to Explorer.
 - History marks merge commits and shows branch names where local or remote branch tips point.
+- Explorer content search includes inline match-case and whole-word controls, clickable file headers, shared hover styles and loading skeletons, compact match highlights, and visible active-mode buttons.
 - History loads virtualized rows as you scroll, shows author photos when available, relative times, tags, and compact upstream status icons. Commit rows have an icon menu to copy the full hash, short hash, or subject. Selected commits open below with every file diff initially collapsed and file-shaped loading placeholders. Source Control tabs have icons and the Changes and History detail panes use 60% of the panel.
 - Review panels switch between stacked and split diffs with one toolbar button.
 - Commit message AI enables supported fast mode and disables thinking when available, otherwise selecting the lowest supported effort, with a 90-second deadline.
@@ -37,11 +40,11 @@
 ### Fixed
 
 - Cmd/Ctrl+F stays in the focused editor instead of opening chat search.
+- Returning from content search to Explorer scrolls the selected file into view after its parent folders finish loading.
 - Content search no longer silently stops at five matching lines per file; the bounded scan now uses the total result limit and reports partial results.
 - Chat header action labels stay visible when opening or closing a sidebar.
 - Deleting an Explorer file closes its preview. Finder actions use the system icon, and file breadcrumbs keep descenders visible.
 - Chat rows and headers show the provider icon even when the terminal is the saved primary view.
-
 - Replies keep their position as thinking gives way to text. Delayed session updates no longer flicker the activity indicator or briefly replace Stop with Send.
 - Codex keeps its runtime between replies when native tool-call identity is available. Codex and Claude gateway calls stay bound to their originating turn; runtimes without call provenance renew safely. Background reconnects keep the composer available.
 - Editing a message no longer rewrites unchanged workspace files, avoiding unnecessary dev reloads, and preserves staged changes. The separate message Revert button was removed.

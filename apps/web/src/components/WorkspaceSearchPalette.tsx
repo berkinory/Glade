@@ -25,6 +25,7 @@ import {
   projectSearchContentQueryOptions,
   projectSearchEntriesQueryOptions,
 } from "~/lib/projectReactQuery";
+import { ContentSearchMatchText } from "./ContentSearchMatchText";
 import { buildMatchSegments } from "~/lib/matchHighlight";
 import { cn } from "~/lib/utils";
 import {
@@ -146,24 +147,6 @@ function FileNameText(props: { text: string; query: string }) {
   );
 }
 
-function SnippetLineText(props: { text: string; query: string }) {
-  const segments = buildMatchSegments(props.text, props.query);
-  if (!segments) return <>{props.text}</>;
-  return (
-    <>
-      {segments.map((segment) =>
-        segment.matched ? (
-          <span className="font-medium text-zinc-700 dark:text-zinc-200" key={segment.start}>
-            {segment.text}
-          </span>
-        ) : (
-          segment.text
-        ),
-      )}
-    </>
-  );
-}
-
 // Parent directory, clipped at the head rather than the tail: the deepest
 // folder is what disambiguates two identically named files, so long paths read
 // as `…/public/central-icons-reversed` instead of `apps/web/public/central-…`.
@@ -242,7 +225,7 @@ const SnippetResultRow = memo(function SnippetResultRow(props: {
           />
         </div>
         <div className={`truncate font-mono text-ui-sm leading-4 ${MUTED_TEXT_CLASS}`}>
-          <SnippetLineText text={props.match.lineText} query={props.highlightQuery} />
+          <ContentSearchMatchText text={props.match.lineText} query={props.highlightQuery} />
         </div>
       </div>
     </CommandItem>

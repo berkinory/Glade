@@ -1,12 +1,13 @@
 "use client";
 
 import { Input as InputPrimitive } from "@base-ui/react/input";
-import { forwardRef, type ComponentPropsWithoutRef } from "react";
+import { forwardRef, type ReactNode, type ComponentPropsWithoutRef } from "react";
 
 import { cn } from "~/lib/utils";
 import { SOFT_SURFACE_FILL_CLASS_NAME } from "~/surfaceStyles";
 
 type InputProps = Omit<ComponentPropsWithoutRef<typeof InputPrimitive>, "size"> & {
+  trailingAction?: ReactNode;
   size?: "sm" | "default" | "lg" | number;
   // "soft" gives the field a faint filled background instead of the default
   // surface-matching fill, so it reads as an input even on a flush card.
@@ -19,6 +20,7 @@ type InputProps = Omit<ComponentPropsWithoutRef<typeof InputPrimitive>, "size"> 
 const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   {
     className,
+    trailingAction,
     size: sizeProp,
     variant: variantProp,
     unstyled: unstyledProp,
@@ -78,6 +80,9 @@ const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
           {...props}
         />
       )}
+      {trailingAction ? (
+        <span className="flex shrink-0 items-center pr-1">{trailingAction}</span>
+      ) : null}
     </span>
   );
 });
