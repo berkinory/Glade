@@ -1,3 +1,4 @@
+import type { TaggedFailure } from "../platform/operationError.ts";
 import { nativeMcpCallId } from "./nativeToolCalls.ts";
 import { ThreadId, type OrchestrationThreadShell } from "@glade/contracts";
 import { Cause, Deferred, Effect, Exit, Fiber, Option } from "effect";
@@ -99,7 +100,7 @@ export function makeAgentGatewayMcpTransport(input: {
   readonly instructions: string;
   readonly requireThreadShell: (
     threadId: string,
-  ) => Effect.Effect<OrchestrationThreadShell, unknown>;
+  ) => Effect.Effect<OrchestrationThreadShell, TaggedFailure>;
   // Lets the gateway surface a capability denial to the user (e.g. as a thread
   // activity). Must not fail; the denial response is returned regardless.
   // Fires only for tool-call denials — never for authority 401s, which carry

@@ -1,3 +1,4 @@
+import type { TaggedFailure } from "../platform/operationError.ts";
 import {
   GLADE_GATEWAY_MAX_THREADS_PER_OPERATION,
   ThreadId,
@@ -57,12 +58,12 @@ export interface ThreadReadToolsInput {
   readonly providerDiscovery: ProviderDiscoveryServiceShape;
   readonly loadProviderAvailabilities: Effect.Effect<
     ReadonlyMap<ProviderKind, AgentGatewayProviderAvailability>,
-    unknown,
+    TaggedFailure,
     never
   >;
   readonly requireThreadShell: (
     threadId: string,
-  ) => Effect.Effect<OrchestrationThreadShell, unknown, never>;
+  ) => Effect.Effect<OrchestrationThreadShell, TaggedFailure, never>;
   readonly workspacePaths: SpaceAssignmentWorkspacePaths;
 }
 

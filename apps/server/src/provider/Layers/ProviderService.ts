@@ -1,3 +1,4 @@
+import type { TaggedFailure } from "../../platform/operationError.ts";
 /**
  * ProviderServiceLive - Cross-provider orchestration layer.
  *
@@ -103,12 +104,12 @@ export interface ProviderServiceLiveOptions {
   /** Production journal hook. The event must be durable before this effect returns. */
   readonly persistRuntimeEvent?: (
     event: ProviderRuntimeEvent,
-  ) => Effect.Effect<PersistedProviderRuntimeEvent, unknown>;
+  ) => Effect.Effect<PersistedProviderRuntimeEvent, TaggedFailure>;
   /** Durable fallback for events that can never be accepted by the canonical journal. */
   readonly quarantineRuntimeEvent?: (
     event: ProviderRuntimeEvent,
     cause: string,
-  ) => Effect.Effect<void, unknown>;
+  ) => Effect.Effect<void, TaggedFailure>;
   /** Test override for supervised event retry timing. */
   readonly runtimeEventRetryBaseDelayMs?: number;
   readonly runtimeEventRetryMaxDelayMs?: number;
@@ -764,8 +765,8 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
 
     const persistCanonicalRuntimeEvent = (
       event: ProviderRuntimeEvent,
-    ): Effect.Effect<PersistedProviderRuntimeEvent | undefined, unknown> => {
-      const persistence: Effect.Effect<PersistedProviderRuntimeEvent | undefined, unknown> =
+    ): Effect.Effect<PersistedProviderRuntimeEvent | undefined, TaggedFailure> => {
+      const persistence: Effect.Effect<PersistedProviderRuntimeEvent | undefined, TaggedFailure> =
         options?.persistRuntimeEvent
           ? options.persistRuntimeEvent(event)
           : Effect.succeed(undefined);
@@ -1350,7 +1351,7 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
     let scheduleRetiredGatewaySessionRecovery = (
       _event: ProviderRuntimeEvent,
     ): Effect.Effect<void> => Effect.void;
-    const processRuntimeEvent = (event: ProviderRuntimeEvent): Effect.Effect<void, unknown> =>
+    const processRuntimeEvent = (event: ProviderRuntimeEvent): Effect.Effect<void, TaggedFailure> =>
       Effect.uninterruptible(
         Effect.suspend(() => {
           const journalAndPublish = (acceptedEvent: ProviderRuntimeEvent) =>
@@ -1689,7 +1690,7 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
         isPermanentFailure: (cause) =>
           Option.match(Cause.findErrorOption(cause), {
             onNone: () => false,
-            onSome: (error) => error instanceof PersistenceDecodeError,
+            onSome: (error) => Schema.is(PersistenceDecodeError)(error),
           }),
         ...(options?.quarantineRuntimeEvent !== undefined
           ? { quarantineEvent: options.quarantineRuntimeEvent }

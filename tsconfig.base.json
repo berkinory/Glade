@@ -15,6 +15,26 @@
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "plugins": [
+      {
+        "name": "@effect/language-service",
+        "namespaceImportPackages": ["@effect/platform-node"],
+        "diagnosticSeverity": {
+          "importFromBarrel": "error",
+          "anyUnknownInErrorContext": "error",
+          "instanceOfSchema": "error",
+          "deterministicKeys": "error",
+          "globalErrorInEffectFailure": "error",
+          "unknownInEffectCatch": "error",
+          "globalErrorInEffectCatch": "error",
+          "promiseInEffectSuccess": "error",
+          "layerMergeAllWithDependencies": "error",
+          "multipleEffectProvide": "error"
+        },
+        "includeSuggestionsInTsc": false,
+        "missingDiagnosticNextLine": "error"
+      }
+    ]
   }
 }

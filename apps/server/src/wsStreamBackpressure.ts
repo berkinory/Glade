@@ -68,6 +68,16 @@ export interface BufferLiveUiStreamOptions<E2 = never, R2 = never> {
   readonly onDroppedEvents?: (report: LiveUiStreamDropReport) => Effect.Effect<void, E2, R2>;
 }
 
+export function bufferLiveUiStream<A, E, R>(
+  stream: Stream.Stream<A, E, R>,
+  options?: BufferLiveUiStreamOptions,
+): Stream.Stream<A, E, R>;
+export function bufferLiveUiStream<A, E, R, E2, R2>(
+  stream: Stream.Stream<A, E, R>,
+  options: BufferLiveUiStreamOptions<E2, R2> & {
+    readonly onDroppedEvents: (report: LiveUiStreamDropReport) => Effect.Effect<void, E2, R2>;
+  },
+): Stream.Stream<A, E | E2, R | R2>;
 export function bufferLiveUiStream<A, E, R, E2 = never, R2 = never>(
   stream: Stream.Stream<A, E, R>,
   options?: BufferLiveUiStreamOptions<E2, R2>,

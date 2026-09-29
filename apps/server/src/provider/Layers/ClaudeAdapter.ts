@@ -1,3 +1,4 @@
+import { normalizeOperationError } from "../../platform/operationError.ts";
 import { readClaudeSessionParentUuid } from "../claudeProjectImport.ts";
 import { claudeTurnResultUsage, type ClaudeResultUsageBaseline } from "../claudeResultUsage.ts";
 import { restoreClaudeImportedCopyDates } from "../claudeImportedCopyDates.ts";
@@ -2071,7 +2072,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           // live model switches keep their short bound.
           Effect.timeout(Duration.seconds(input.operation === "startSession" ? 55 : 5)),
           Effect.mapError((cause) =>
-            cause instanceof ProviderAdapterValidationError
+            Schema.is(ProviderAdapterValidationError)(cause)
               ? cause
               : new ProviderAdapterValidationError({
                   provider: PROVIDER,
@@ -2668,7 +2669,8 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       }
       return Effect.tryPromise({
         try: () => context.query.getContextUsage({ detail: "summary" }),
-        catch: (cause) => toError(cause, "Failed to read Claude context usage."),
+        catch: (cause) =>
+          normalizeOperationError(toError(cause, "Failed to read Claude context usage.")),
       }).pipe(
         Effect.timeoutOption(CLAUDE_CONTEXT_USAGE_TIMEOUT_MS),
         Effect.map(
@@ -3130,7 +3132,10 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           const restoreExit = yield* Effect.exit(
             Effect.tryPromise({
               try: () => context.query.setModel(reroutedFrom),
-              catch: (cause) => toError(cause, "Failed to restore Claude model after reroute."),
+              catch: (cause) =>
+                normalizeOperationError(
+                  toError(cause, "Failed to restore Claude model after reroute."),
+                ),
             }),
           );
           if (Exit.isSuccess(restoreExit)) {

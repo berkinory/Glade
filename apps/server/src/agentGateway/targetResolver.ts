@@ -19,6 +19,7 @@ export type AgentGatewayTargetErrorCode =
   | "model_option_unavailable";
 
 export class AgentGatewayTargetError extends Error {
+  readonly _tag = "AgentGatewayTargetError";
   readonly code: AgentGatewayTargetErrorCode;
   readonly details?: unknown;
 

@@ -5,6 +5,10 @@
 
 import { Effect } from "effect";
 
+class VoiceUploadCapacityError extends Error {
+  readonly _tag = "VoiceUploadCapacityError";
+}
+
 const MAX_CONCURRENT_VOICE_UPLOADS = 2;
 export const VOICE_UPLOAD_CAPACITY_ERROR_MESSAGE =
   "Too many voice uploads are already in progress. Try again shortly.";
@@ -38,7 +42,7 @@ class VoiceUploadAdmissionGate {
       Effect.flatMap((release) =>
         release
           ? Effect.succeed(release)
-          : Effect.fail(new Error(VOICE_UPLOAD_CAPACITY_ERROR_MESSAGE)),
+          : Effect.fail(new VoiceUploadCapacityError(VOICE_UPLOAD_CAPACITY_ERROR_MESSAGE)),
       ),
     );
     return Effect.acquireUseRelease(

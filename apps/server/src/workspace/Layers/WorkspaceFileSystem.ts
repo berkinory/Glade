@@ -1,3 +1,4 @@
+import { Schema } from "effect";
 import { createHash, randomUUID } from "node:crypto";
 import { constants as NodeFsConstants, type BigIntStats } from "node:fs";
 import * as NodeFs from "node:fs/promises";
@@ -540,8 +541,8 @@ const makeWorkspaceFileSystem = Effect.gen(function* () {
       },
       catch: (cause) => {
         if (
-          cause instanceof WorkspaceFileConflictError ||
-          cause instanceof WorkspaceFileDeletedError
+          Schema.is(WorkspaceFileConflictError)(cause) ||
+          Schema.is(WorkspaceFileDeletedError)(cause)
         ) {
           return cause;
         }

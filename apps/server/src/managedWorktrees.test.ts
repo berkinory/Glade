@@ -109,7 +109,7 @@ function makeGit(input: {
         stdout: `worktree /repo/project\nHEAD abc\nbranch refs/heads/main\n\nworktree ${cwd}\nHEAD abc\ndetached\n`,
         stderr: "",
       }),
-    withMutation: (_cwd: string, effect: Effect.Effect<unknown, unknown, unknown>) => effect,
+    withMutation: <A, E, R>(_cwd: string, effect: Effect.Effect<A, E, R>) => effect,
     snapshotWorktree: ({ outputPath }: { outputPath: string }) =>
       Effect.sync(() => {
         input.snapshots?.push(outputPath);

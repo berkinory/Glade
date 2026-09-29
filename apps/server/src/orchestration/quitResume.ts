@@ -1,3 +1,4 @@
+import type { TaggedFailure } from "../platform/operationError.ts";
 /**
  * quitResume - "Resume chats automatically" after a desktop quit.
  *
@@ -386,9 +387,9 @@ export const prepareQuitResume = (input: {
     { readonly threads: ReadonlyArray<QuitResumeRecordableThread> },
     never
   >;
-  readonly dispatch: (command: OrchestrationCommand) => Effect.Effect<unknown, unknown>;
+  readonly dispatch: (command: OrchestrationCommand) => Effect.Effect<unknown, TaggedFailure>;
   readonly abandonAfter?: Duration.Input;
-}): Effect.Effect<OrchestrationPrepareQuitResumeResult, unknown, FileSystem.FileSystem> =>
+}): Effect.Effect<OrchestrationPrepareQuitResumeResult, TaggedFailure, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     // Stamp before the snapshot: anything that completes after the snapshot is
     // then provably "completed since the record" for the resume precondition.

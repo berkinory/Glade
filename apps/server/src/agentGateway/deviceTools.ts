@@ -1,3 +1,4 @@
+import { normalizeOperationError } from "../platform/operationError.ts";
 /**
  * Agent gateway device tools - the agent's control surface for the device pane.
  *
@@ -237,7 +238,7 @@ export function makeAgentGatewayDeviceTools(
             );
             return mcpToolResultJson(value);
           },
-          catch: (error) => error,
+          catch: (error) => normalizeOperationError(error),
         }).pipe(
           Effect.catch((error) =>
             Effect.gen(function* () {
@@ -625,7 +626,7 @@ export function makeAgentGatewayDeviceTools(
                 ],
               } satisfies McpToolCallResult;
             },
-            catch: (error) => error,
+            catch: (error) => normalizeOperationError(error),
           }).pipe(Effect.catch((error) => Effect.succeed(mcpToolResultError(errorText(error)))));
         }),
     },

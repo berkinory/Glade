@@ -1,3 +1,4 @@
+import { normalizeOperationError } from "../platform/operationError.ts";
 /**
  * Agent-facing tools for the cua-driver CDP browser surface, exposed as
  * `computer_browser_*`.
@@ -697,7 +698,7 @@ export function makeAgentGatewayComputerBrowserTools(
           audit(computerBrowserEffect(name, boundedArgs, result));
           return browserResultToMcp(augmentBrowserResult(name, effectiveArgs, result));
         },
-        catch: (error) => error,
+        catch: (error) => normalizeOperationError(error),
       }).pipe(
         Effect.catch((error) => {
           if (!(error instanceof ComputerBackendError && error.controlRevoked)) {

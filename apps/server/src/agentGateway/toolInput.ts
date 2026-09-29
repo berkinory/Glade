@@ -29,7 +29,9 @@ export const MODEL_SELECTION_INPUT_SCHEMA = {
   additionalProperties: false,
 } as const;
 
-export class ToolInputError extends Error {}
+export class ToolInputError extends Error {
+  readonly _tag = "ToolInputError";
+}
 
 export const errorText = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);

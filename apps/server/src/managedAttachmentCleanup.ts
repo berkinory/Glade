@@ -1,3 +1,4 @@
+import { normalizeOperationError } from "./platform/operationError.ts";
 import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -36,7 +37,7 @@ const MANAGED_ATTACHMENT_ID_PATTERN = /^att_v2_[0-9a-f]{32}$/u;
 const unlinkIfPresent = (filePath: string) =>
   Effect.tryPromise({
     try: () => fs.unlink(filePath),
-    catch: (cause) => cause,
+    catch: (cause) => normalizeOperationError(cause),
   }).pipe(Effect.catch((cause) => (isMissingFileError(cause) ? Effect.void : Effect.fail(cause))));
 
 const cleanupErrorMessage = (cause: unknown) => String(cause).slice(0, 2_000);

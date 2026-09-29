@@ -49,6 +49,7 @@ export type DeviceFrameListener = (frame: DeviceStreamFrame) => void;
  * (no such device), so the manager can decide whether to keep the attachment.
  */
 export class DeviceBackendError extends Error {
+  readonly _tag = "DeviceBackendError";
   readonly retryable: boolean;
 
   constructor(

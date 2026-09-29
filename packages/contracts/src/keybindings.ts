@@ -149,24 +149,24 @@ export const KeybindingShortcut = Schema.Struct({
 });
 export type KeybindingShortcut = typeof KeybindingShortcut.Type;
 
-export const KeybindingWhenNode: Schema.Schema<KeybindingWhenNode> = Schema.Union([
+export const KeybindingWhenNode: Schema.Codec<KeybindingWhenNode> = Schema.Union([
   Schema.Struct({
     type: Schema.Literal("identifier"),
     name: Schema.NonEmptyString,
   }),
   Schema.Struct({
     type: Schema.Literal("not"),
-    node: Schema.suspend((): Schema.Schema<KeybindingWhenNode> => KeybindingWhenNode),
+    node: Schema.suspend((): Schema.Codec<KeybindingWhenNode> => KeybindingWhenNode),
   }),
   Schema.Struct({
     type: Schema.Literal("and"),
-    left: Schema.suspend((): Schema.Schema<KeybindingWhenNode> => KeybindingWhenNode),
-    right: Schema.suspend((): Schema.Schema<KeybindingWhenNode> => KeybindingWhenNode),
+    left: Schema.suspend((): Schema.Codec<KeybindingWhenNode> => KeybindingWhenNode),
+    right: Schema.suspend((): Schema.Codec<KeybindingWhenNode> => KeybindingWhenNode),
   }),
   Schema.Struct({
     type: Schema.Literal("or"),
-    left: Schema.suspend((): Schema.Schema<KeybindingWhenNode> => KeybindingWhenNode),
-    right: Schema.suspend((): Schema.Schema<KeybindingWhenNode> => KeybindingWhenNode),
+    left: Schema.suspend((): Schema.Codec<KeybindingWhenNode> => KeybindingWhenNode),
+    right: Schema.suspend((): Schema.Codec<KeybindingWhenNode> => KeybindingWhenNode),
   }),
 ]);
 export type KeybindingWhenNode =

@@ -21,6 +21,10 @@ import {
 } from "./sessionLease.ts";
 import type { ToolEntry } from "./toolRuntime.ts";
 
+class InjectedFailure extends Error {
+  readonly _tag = "InjectedFailure";
+}
+
 const NOW = "2026-07-22T03:00:00.000Z";
 
 function makeThread(threadId: string): OrchestrationThreadShell {
@@ -169,7 +173,7 @@ function makeTransport(input: {
     instructions: "test",
     requireThreadShell: (threadId) => {
       const thread = threads.get(threadId);
-      return thread ? Effect.succeed(thread) : Effect.fail(new Error("missing thread"));
+      return thread ? Effect.succeed(thread) : Effect.fail(new InjectedFailure("missing thread"));
     },
     ...(input.onCapabilityDenied ? { onCapabilityDenied: input.onCapabilityDenied } : {}),
     ...(input.computerToolNames

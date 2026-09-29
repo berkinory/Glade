@@ -1,3 +1,4 @@
+import type { TaggedFailure } from "./platform/operationError.ts";
 import {
   GitHandoffThreadInput,
   GitHandoffThreadResult,
@@ -129,7 +130,7 @@ export const gitHandoffMetadataCommand = (
 });
 
 export const recoverGitHandoffOperations = (
-  dispatch: (command: OrchestrationCommand) => Effect.Effect<unknown, unknown>,
+  dispatch: (command: OrchestrationCommand) => Effect.Effect<unknown, TaggedFailure>,
 ) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;

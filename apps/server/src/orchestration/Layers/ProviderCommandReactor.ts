@@ -1,3 +1,4 @@
+import type { TaggedFailure } from "../../platform/operationError.ts";
 import { computerActivationMetadata } from "../../computer/computerActivation.ts";
 import { parseComputerInvocation } from "@glade/shared/computerInvocation";
 import { AgentGatewaySessionRegistry } from "../../agentGateway/Services/AgentGatewaySessionRegistry";
@@ -159,6 +160,10 @@ import { deriveTurnStartSession } from "../turnStartSession.ts";
 import { TurnCheckpointCoordinator } from "../Services/TurnCheckpointCoordinator.ts";
 import { resolveProviderSessionThread as resolveProviderSessionThreadFromProjection } from "../providerSessionThread.ts";
 
+class ProviderCommandExecutionError extends Error {
+  readonly _tag = "ProviderCommandExecutionError";
+}
+
 type ProviderQueueDrainEvent = Extract<
   ProviderRuntimeEvent,
   {
@@ -218,7 +223,7 @@ export function classifyProviderAttemptOutcome(
 function providerFailureMessage(cause: Cause.Cause<unknown>): string {
   const failure = Option.getOrUndefined(Cause.findErrorOption(cause));
   const message =
-    failure instanceof ProviderAdapterProcessError && failure.detail.trim()
+    Schema.is(ProviderAdapterProcessError)(failure) && failure.detail.trim()
       ? failure.detail
       : failure instanceof Error && failure.message.trim()
         ? failure.message
@@ -1559,7 +1564,9 @@ const make = Effect.gen(function* () {
           )?.checkpointRef;
     if (!targetCheckpointRef) {
       return yield* Effect.fail(
-        new Error(`Checkpoint ref for edit replay turn ${targetTurnCount} is unavailable.`),
+        new ProviderCommandExecutionError(
+          `Checkpoint ref for edit replay turn ${targetTurnCount} is unavailable.`,
+        ),
       );
     }
 
@@ -1570,7 +1577,9 @@ const make = Effect.gen(function* () {
       !(yield* checkpointStore.hasCheckpointRef({ cwd, checkpointRef: targetCheckpointRef }))
     ) {
       return yield* Effect.fail(
-        new Error(`Filesystem checkpoint is unavailable for edit replay turn ${targetTurnCount}.`),
+        new ProviderCommandExecutionError(
+          `Filesystem checkpoint is unavailable for edit replay turn ${targetTurnCount}.`,
+        ),
       );
     }
 
@@ -1594,7 +1603,7 @@ const make = Effect.gen(function* () {
     });
     if (!restored) {
       return yield* Effect.fail(
-        new Error(
+        new ProviderCommandExecutionError(
           `Filesystem checkpoint for edit replay turn ${plan.targetTurnCount} became unavailable during the rollback.`,
         ),
       );
@@ -3410,7 +3419,7 @@ const make = Effect.gen(function* () {
                 // A refused configuration change leaves the existing runtime and
                 // its live turn intact. Do not project a false terminal state.
                 if (
-                  failure instanceof ProviderAdapterValidationError &&
+                  Schema.is(ProviderAdapterValidationError)(failure) &&
                   failure.operation === "session/reconfigure"
                 ) {
                   const optimisticSession = turnStartSession ?? thread.session;
@@ -3586,7 +3595,7 @@ const make = Effect.gen(function* () {
 
   const processClaudeCompactionTerminal: (
     event: ProviderQueueDrainEvent,
-  ) => Effect.Effect<void, unknown, Scope.Scope> = Effect.fnUntraced(function* (
+  ) => Effect.Effect<void, TaggedFailure, Scope.Scope> = Effect.fnUntraced(function* (
     event: ProviderQueueDrainEvent,
   ) {
     if (event.provider !== "claudeAgent") return;
@@ -3996,7 +4005,7 @@ const make = Effect.gen(function* () {
             sourceEvent.type !== "thread.turn-start-requested")
         ) {
           return yield* Effect.fail(
-            new Error(
+            new ProviderCommandExecutionError(
               `Queued turn promotion ${promotion.queuedEventSequence} has no valid source event.`,
             ),
           );
@@ -4044,7 +4053,7 @@ const make = Effect.gen(function* () {
         });
         if (!promoted) {
           return yield* Effect.fail(
-            new Error(
+            new ProviderCommandExecutionError(
               `Queued turn promotion ${promotion.queuedEventSequence} lost claim ownership.`,
             ),
           );
@@ -4857,7 +4866,7 @@ const make = Effect.gen(function* () {
       : [];
     if (!thread || removedTurnIds.length !== event.payload.numTurns) {
       return yield* Effect.fail(
-        new Error(
+        new ProviderCommandExecutionError(
           `Conversation rollback target '${event.payload.messageId}' is no longer valid for ${event.payload.numTurns} turn(s).`,
         ),
       );
@@ -4932,7 +4941,9 @@ const make = Effect.gen(function* () {
     );
     if (!originalThread || !originalMessage || originalMessage.role !== "user") {
       return yield* Effect.fail(
-        new Error(`Cannot edit missing user message '${payload.messageId}'.`),
+        new ProviderCommandExecutionError(
+          `Cannot edit missing user message '${payload.messageId}'.`,
+        ),
       );
     }
     const editTarget =
@@ -4958,7 +4969,7 @@ const make = Effect.gen(function* () {
           });
     if (!editTarget.editable) {
       return yield* Effect.fail(
-        new Error(
+        new ProviderCommandExecutionError(
           `Cannot edit non-tail user message '${payload.messageId}': ${editTarget.reason}.`,
         ),
       );
@@ -6467,7 +6478,7 @@ const make = Effect.gen(function* () {
             if (
               cause.reasons.length !== 1 ||
               Option.isNone(failure) ||
-              !(failure.value instanceof OrchestrationCommandInvariantError)
+              !Schema.is(OrchestrationCommandInvariantError)(failure.value)
             )
               return Effect.failCause(cause);
             return Effect.logError("Could not recover Claude compaction for task", {
@@ -6612,7 +6623,9 @@ const make = Effect.gen(function* () {
   const reconcileDelivery: ProviderCommandReactorShape["reconcileDelivery"] = (input) =>
     Effect.suspend(() =>
       reconcileDeliveryRuntime === undefined
-        ? Effect.fail(new Error("Provider delivery reconciliation is not ready"))
+        ? Effect.fail(
+            new ProviderCommandExecutionError("Provider delivery reconciliation is not ready"),
+          )
         : reconcileDeliveryRuntime(input),
     );
 
@@ -6623,7 +6636,7 @@ const make = Effect.gen(function* () {
       );
       const thread = yield* resolveThread(input.threadId);
       if (!thread || thread.deletedAt != null || thread.archivedAt != null) {
-        return yield* Effect.fail(new Error("Thread is unavailable."));
+        return yield* Effect.fail(new ProviderCommandExecutionError("Thread is unavailable."));
       }
       const context = buildThreadTitleConversationContext(thread.messages);
       if (!context) {
@@ -6704,13 +6717,13 @@ const make = Effect.gen(function* () {
 
   const pendingTitleGenerations = new Map<
     ThreadId,
-    Deferred.Deferred<OrchestrationRegenerateThreadTitleResult, unknown>
+    Deferred.Deferred<OrchestrationRegenerateThreadTitleResult, TaggedFailure>
   >();
   const regenerateThreadTitle: ProviderCommandReactorShape["regenerateThreadTitle"] = (input) =>
     Effect.suspend(() => {
       const pending = pendingTitleGenerations.get(input.threadId);
       if (pending) return Deferred.await(pending);
-      const result = Deferred.makeUnsafe<OrchestrationRegenerateThreadTitleResult, unknown>();
+      const result = Deferred.makeUnsafe<OrchestrationRegenerateThreadTitleResult, TaggedFailure>();
       pendingTitleGenerations.set(input.threadId, result);
       return generateConversationTitle(input).pipe(
         Effect.onExit((exit) => Deferred.done(result, exit)),

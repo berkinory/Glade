@@ -14,6 +14,10 @@ import { gatewayIsoNow } from "./creationUtils.ts";
 import { parseRecoverableCreationPlan } from "./operationPlan.ts";
 import { errorText } from "./toolInput.ts";
 
+class StartupRecoveryError extends Error {
+  readonly _tag = "StartupRecoveryError";
+}
+
 /**
  * Compensate durable gateway operations that were interrupted by a server
  * restart. Recovery is deliberately conservative: a worktree is touched only
@@ -79,7 +83,7 @@ export function recoverInterruptedAgentGatewayOperations(input: {
                     projected.value.gatewayOperationId !== operation.operationId
                   ) {
                     return yield* Effect.fail(
-                      new Error(
+                      new StartupRecoveryError(
                         `Refusing to delete thread ${entry.ids.threadId}: gateway ownership does not match operation ${operation.operationId}.`,
                       ),
                     );
@@ -92,7 +96,7 @@ export function recoverInterruptedAgentGatewayOperations(input: {
                 } else if (input.retainOnMissingThreadProjection) {
                   projectionDeferredThreadIds.add(entry.ids.threadId);
                   return yield* Effect.fail(
-                    new Error(
+                    new StartupRecoveryError(
                       `Cleanup remains pending for thread ${entry.ids.threadId}: its durable creation may still be awaiting projection.`,
                     ),
                   );
@@ -125,7 +129,7 @@ export function recoverInterruptedAgentGatewayOperations(input: {
                           if (!entry.worktreeOwnership) {
                             if (existsSync(plannedWorktreePath) || branch) {
                               return yield* Effect.fail(
-                                new Error(
+                                new StartupRecoveryError(
                                   `Cleanup remains pending for unverified worktree plan ${plannedWorktreePath}; automatic removal is unsafe without a durable ownership marker.`,
                                 ),
                               );
@@ -135,7 +139,7 @@ export function recoverInterruptedAgentGatewayOperations(input: {
                           if (!existsSync(plannedWorktreePath)) {
                             if (branch) {
                               return yield* Effect.fail(
-                                new Error(
+                                new StartupRecoveryError(
                                   `Refusing to delete branch ${newBranch}: the owned worktree is missing, so current branch ownership cannot be verified.`,
                                 ),
                               );
@@ -144,7 +148,7 @@ export function recoverInterruptedAgentGatewayOperations(input: {
                           }
                           if (newBranch !== null && branch?.worktreePath !== plannedWorktreePath) {
                             return yield* Effect.fail(
-                              new Error(
+                              new StartupRecoveryError(
                                 `Refusing to clean worktree ${plannedWorktreePath}: git does not register the operation-owned branch at that path.`,
                               ),
                             );
@@ -163,7 +167,7 @@ export function recoverInterruptedAgentGatewayOperations(input: {
                           });
                           if (!verification.verified) {
                             return yield* Effect.fail(
-                              new Error(
+                              new StartupRecoveryError(
                                 `Refusing to clean worktree ${plannedWorktreePath}: ${verification.reason ?? "ownership verification failed"}.`,
                               ),
                             );

@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { Effect } from "effect";
+import { Effect, Layer } from "effect";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
@@ -201,8 +201,11 @@ it("keeps layerTest state out of the source tree when passed the cwd", async () 
       Effect.gen(function* () {
         return yield* ServerConfig;
       }).pipe(
-        Effect.provide(ServerConfig.layerTest(process.cwd(), process.cwd())),
-        Effect.provide(NodeServices.layer),
+        Effect.provide(
+          ServerConfig.layerTest(process.cwd(), process.cwd()).pipe(
+            Layer.provide(NodeServices.layer),
+          ),
+        ),
       ),
     ),
   );

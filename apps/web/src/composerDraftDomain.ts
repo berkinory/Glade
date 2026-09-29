@@ -212,9 +212,9 @@ export interface DraftThreadMutationOptions {
 
 type DraftThreadCreatedAtMode = "accept-empty" | "preserve-existing-on-empty";
 
-interface ProjectDraftThread extends DraftThreadState {
+type ProjectDraftThread = DraftThreadState & {
   threadId: ThreadId;
-}
+};
 
 export interface ComposerDraftStoreState {
   setPendingUserInputDrafts: (

@@ -4,6 +4,7 @@ import type {
   ThreadHandoffImportedMessage,
   ThreadId,
 } from "@glade/contracts";
+import type { ProviderAdapterError, ProviderUnsupportedError } from "../provider/Errors.ts";
 import { Data, Effect } from "effect";
 import { loadClaudeAgentSdk } from "../provider/claudeAgentSdk";
 import { readClaudeImportMessageDates } from "../provider/claudeProjectImport";
@@ -44,7 +45,10 @@ export interface ReadProjectImportHistoryInput {
 export function makeProjectImportHistoryReader(registry: ProviderAdapterRegistryShape) {
   return Effect.fn(function* (
     input: ReadProjectImportHistoryInput,
-  ): Effect.fn.Return<ReadonlyArray<ThreadHandoffImportedMessage>, unknown> {
+  ): Effect.fn.Return<
+    ReadonlyArray<ThreadHandoffImportedMessage>,
+    ProjectImportError | ProviderAdapterError | ProviderUnsupportedError
+  > {
     if (input.provider === "claudeAgent") {
       const messages = yield* projectImportPromise(async () => {
         const sdk = await loadClaudeAgentSdk();

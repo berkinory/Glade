@@ -46,6 +46,7 @@ export interface DeviceUiTargetMatch {
 }
 
 export class DeviceUiTargetError extends Error {
+  readonly _tag = "DeviceUiTargetError";
   /** Candidate descriptions, so the agent can retry with a real label. */
   readonly candidates: readonly string[];
   /**

@@ -1,3 +1,4 @@
+import type { TaggedFailure } from "./platform/operationError.ts";
 // FILE: profileStatsArchive.ts
 // Purpose: Snapshot a thread's profile-stat aggregates into the durable
 // profile_stats_deleted_* tables, then hard-delete every row the thread owns
@@ -375,19 +376,19 @@ export interface ProfileStatsArchiveShape {
   /** True while hard deletion would erase unresolved provider delivery evidence. */
   readonly hasThreadPurgeFence: (input: {
     readonly threadId: string;
-  }) => Effect.Effect<boolean, unknown>;
+  }) => Effect.Effect<boolean, TaggedFailure>;
   // Snapshots the thread's stat aggregates and hard-deletes all of its rows in
   // one transaction. Returns false when the thread row is already gone.
   readonly purgeThreadWithStatsSnapshot: (input: {
     readonly threadId: string;
-  }) => Effect.Effect<boolean, unknown>;
+  }) => Effect.Effect<boolean, TaggedFailure>;
   // Purges every soft-deleted thread that a recorded delete event proves was a
   // manual delete; legacy retention deletes and unknown provenance are kept.
   // Catches per-thread failures so one bad thread cannot stall the sweep;
   // returns how many threads were purged.
   readonly purgeSoftDeletedManualThreads: (input?: {
-    readonly beforePurge?: (threadId: string) => Effect.Effect<boolean, unknown>;
-  }) => Effect.Effect<number, unknown>;
+    readonly beforePurge?: (threadId: string) => Effect.Effect<boolean, TaggedFailure>;
+  }) => Effect.Effect<number, TaggedFailure>;
 }
 
 export class ProfileStatsArchive extends ServiceMap.Service<

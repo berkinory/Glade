@@ -5,6 +5,10 @@ import { Effect, Schedule } from "effect";
 
 import { createAttachmentId } from "../attachmentStore";
 
+class AttachmentNormalizationError extends Error {
+  readonly _tag = "AttachmentNormalizationError";
+}
+
 export interface DispatchCommandNormalizerOptions<E> {
   readonly attachmentsDir: string;
   readonly chatWorkspaceRoot?: string;
@@ -115,7 +119,9 @@ export function makeDispatchCommandNormalizer<E>(options: DispatchCommandNormali
           if (attachment.type === "assistant-selection") {
             const attachmentId = createAttachmentId(turnStartCommand.threadId);
             if (!attachmentId) {
-              return yield* Effect.fail(new Error("Failed to create a safe attachment id."));
+              return yield* Effect.fail(
+                new AttachmentNormalizationError("Failed to create a safe attachment id."),
+              );
             }
 
             return {

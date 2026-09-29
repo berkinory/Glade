@@ -126,10 +126,10 @@ function createCloneProgressChunkHandler(
 }
 
 function classifyCloneFailure(cause: unknown): GitHubProjectProvisioningError {
-  if (cause instanceof GitHubProjectProvisioningError) return cause;
+  if (Schema.is(GitHubProjectProvisioningError)(cause)) return cause;
 
   const detail =
-    cause instanceof GitHubCliError || cause instanceof GitCommandError
+    Schema.is(GitHubCliError)(cause) || Schema.is(GitCommandError)(cause)
       ? cause.detail
       : cause instanceof Error
         ? cause.message
@@ -137,10 +137,10 @@ function classifyCloneFailure(cause: unknown): GitHubProjectProvisioningError {
   const lower = detail.toLowerCase();
 
   const exceededConfiguredCloneTimeout =
-    (cause instanceof GitCommandError &&
+    (Schema.is(GitCommandError)(cause) &&
       cause.operation === "clone public GitHub project" &&
       lower.endsWith(" timed out.")) ||
-    (cause instanceof GitHubCliError &&
+    (Schema.is(GitHubCliError)(cause) &&
       lower.includes("gh repo clone") &&
       lower.includes(" timed out."));
   if (exceededConfiguredCloneTimeout) {

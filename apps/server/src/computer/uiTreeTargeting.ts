@@ -61,6 +61,7 @@ export type ComputerTargetErrorCode =
 const MAX_REPORTED_CANDIDATES = 16;
 
 export class ComputerTargetError extends Error {
+  readonly _tag = "ComputerTargetError";
   readonly code: ComputerTargetErrorCode;
   readonly candidates: readonly ComputerTargetCandidate[];
   readonly notFound: boolean;

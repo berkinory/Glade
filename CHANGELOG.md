@@ -12,6 +12,7 @@
 
 - Development installs use published Effect beta packages with the existing process safety fixes.
 - Development checks reject lint warnings, unused code and cyclic source dependencies. Redundant dependency overrides and the retired cookie-import patch were removed.
+- Effect diagnostics now check every package with the same severity. Provider, persistence and gateway failures retain tagged error channels and explicit layer dependencies.
 - Development sessions can be stopped together with `bun run dev:stop`. ([b6978857c](https://github.com/berkinory/Glade/commit/b6978857c2a682bf85e05e191d6365bed0c955f1))
 - File search results show plain names, and chat find uses a compact, clickable row. ([21b19f418](https://github.com/berkinory/Glade/commit/21b19f418356ba91b240e29bc0d6058c71aa0110), [3cc479149](https://github.com/berkinory/Glade/commit/3cc4791490acf77e2030a08df60cbbfb0fcd48b9))
 - File editing keeps line numbers aligned and shows clearer caret, active line, and text selection. Caret shape is configurable in Appearance, and Cmd+Y redoes edits on macOS. ([044002601](https://github.com/berkinory/Glade/commit/0440026018eb78b0a797d23c65c4cf42ada7c3a1))

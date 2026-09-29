@@ -1,3 +1,4 @@
+import { normalizeOperationError } from "../platform/operationError.ts";
 // FILE: providerUsage/index.ts
 // Purpose: Orchestrate the live provider-usage fetchers — defensive batch fetch (one failure never
 // blocks the others), per-provider snapshot caching with single-flight coalescing, and enrichment
@@ -295,7 +296,7 @@ export const consumeCodexResetCreditEffect = Effect.fn(function* (
         invalidateProviderUsageSnapshots(["codex"]);
       }
     },
-    catch: (cause) => cause,
+    catch: (cause) => normalizeOperationError(cause),
   });
   return { outcome } as ServerConsumeCodexResetCreditResult;
 });

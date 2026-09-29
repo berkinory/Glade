@@ -986,8 +986,8 @@ const makeOrchestrationEngine = Effect.gen(function* () {
           const typedFailure = Cause.findErrorOption(cause);
           if (
             Option.isSome(typedFailure) &&
-            (typedFailure.value instanceof OrchestrationCommandInvariantError ||
-              typedFailure.value instanceof OrchestrationCommandIdentityCollisionError)
+            (Schema.is(OrchestrationCommandInvariantError)(typedFailure.value) ||
+              Schema.is(OrchestrationCommandIdentityCollisionError)(typedFailure.value))
           ) {
             return Effect.fail(typedFailure.value);
           }

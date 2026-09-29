@@ -66,6 +66,7 @@ const REQUEST_TIMEOUT_MS = 15_000;
 const MAX_CONTROL_LINE_BYTES = 4 * 1024 * 1024;
 
 export class DeviceHelperError extends Error {
+  readonly _tag = "DeviceHelperError";
   readonly code: string;
 
   constructor(code: string, message: string, options?: { readonly cause?: unknown }) {

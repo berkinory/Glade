@@ -1,3 +1,4 @@
+import type { TaggedFailure } from "../platform/operationError.ts";
 import {
   AutomationId,
   AutomationSchedule,
@@ -149,11 +150,11 @@ interface AutomationToolDependencies {
   readonly resolveAutomationTarget: (input: {
     readonly target: ModelSelection;
     readonly projectId: ProjectId;
-  }) => Effect.Effect<ModelSelection, unknown>;
+  }) => Effect.Effect<ModelSelection, TaggedFailure>;
   readonly surfaceAutomationProposal: (input: {
     readonly callerThreadId: ThreadId;
     readonly definition: AutomationDefinition;
-  }) => Effect.Effect<void, unknown>;
+  }) => Effect.Effect<void, TaggedFailure>;
 }
 
 function decodeSchedule(args: Record<string, unknown>): AutomationScheduleType | undefined {

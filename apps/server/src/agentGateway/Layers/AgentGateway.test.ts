@@ -64,6 +64,10 @@ import { ComputerService } from "../../computer/Services/ComputerService.ts";
 import { recordCreatedWorktreeInPlan } from "../operationPlan.ts";
 import { makeAgentGatewayInFlightRequestRegistry } from "../inFlightRequestRegistry.ts";
 
+class InjectedFailure extends Error {
+  readonly _tag = "InjectedFailure";
+}
+
 const NOW = "2026-03-01T10:00:00.000Z";
 const PROJECT_ID = ProjectId.makeUnsafe("project-1");
 
@@ -647,7 +651,7 @@ function makeHarnessLayer(
               );
             }
             const result = options.failDispatch?.(command)
-              ? Effect.fail(new Error("injected dispatch failure"))
+              ? Effect.fail(new InjectedFailure("injected dispatch failure"))
               : Effect.succeed({ sequence: dispatched.length });
             if (options.pauseAfterDispatch?.commandType !== command.type) return result;
             return Deferred.succeed(options.pauseAfterDispatch.entered, undefined).pipe(
@@ -724,7 +728,7 @@ function makeHarnessLayer(
   } as unknown as (typeof AutomationService)["Service"]);
 
   const gitLayer = Layer.succeed(GitCore, {
-    withMutation: (_cwd: string, effect: Effect.Effect<unknown, unknown, unknown>) => effect,
+    withMutation: <A, E, R>(_cwd: string, effect: Effect.Effect<A, E, R>) => effect,
     execute: (input: { operation: string; cwd: string; args: ReadonlyArray<string> }) =>
       Effect.sync(() => {
         gitExecutions.push(input);
@@ -786,7 +790,7 @@ function makeHarnessLayer(
       }),
     recordWorktreeOwnership: (input: { path: string; branch: string | null; token: string }) =>
       options.failRecordWorktreeOwnership
-        ? Effect.fail(new Error("injected ownership marker failure"))
+        ? Effect.fail(new InjectedFailure("injected ownership marker failure"))
         : Effect.sync(() => {
             verifiedOwnershipTokens.add(input.token);
             return {
@@ -808,7 +812,7 @@ function makeHarnessLayer(
       }).pipe(
         Effect.flatMap(() =>
           options.failRemoveWorktree
-            ? Effect.fail(new Error("injected worktree removal failure"))
+            ? Effect.fail(new InjectedFailure("injected worktree removal failure"))
             : Effect.void,
         ),
       ),
@@ -818,7 +822,7 @@ function makeHarnessLayer(
       }).pipe(
         Effect.flatMap(() =>
           options.failDeleteBranch
-            ? Effect.fail(new Error("injected branch deletion failure"))
+            ? Effect.fail(new InjectedFailure("injected branch deletion failure"))
             : Effect.void,
         ),
       ),
@@ -828,7 +832,7 @@ function makeHarnessLayer(
       }).pipe(
         Effect.flatMap(() =>
           options.failDeleteBranch
-            ? Effect.fail(new Error("injected branch deletion failure"))
+            ? Effect.fail(new InjectedFailure("injected branch deletion failure"))
             : Effect.void,
         ),
       ),
@@ -1020,7 +1024,7 @@ function makeHarnessLayer(
       now: string;
     }) => {
       if (options.failOperationComplete) {
-        return Effect.fail(new Error("injected operation completion failure"));
+        return Effect.fail(new InjectedFailure("injected operation completion failure"));
       }
       return Effect.gen(function* () {
         yield* Effect.sync(() => {

@@ -1,3 +1,4 @@
+import { normalizeOperationError, type TaggedFailure } from "./platform/operationError.ts";
 import { createHash } from "node:crypto";
 import type { Dirent } from "node:fs";
 import * as fs from "node:fs/promises";
@@ -8,6 +9,10 @@ import { Effect } from "effect";
 
 import type { GitCoreShape } from "./git/Services/GitCore.ts";
 import type { ProjectionSnapshotQueryShape } from "./orchestration/Services/ProjectionSnapshotQuery.ts";
+
+class ManagedWorktreeError extends Error {
+  readonly _tag = "ManagedWorktreeError";
+}
 
 const MANAGED_WORKTREE_SCAN_DEPTH = 6;
 export const MANAGED_WORKTREE_RETENTION_COUNT = 15;
@@ -47,14 +52,14 @@ export function isManagedWorktreePath(input: {
 export function isManagedWorktreePathCanonical(input: {
   readonly worktreesDir: string;
   readonly worktreePath: string;
-}): Effect.Effect<boolean, Error> {
+}): Effect.Effect<boolean, TaggedFailure> {
   return Effect.tryPromise({
     try: async () =>
       isManagedWorktreePath({
         worktreesDir: await fs.realpath(input.worktreesDir),
         worktreePath: await canonicalizeRemovedPath(input.worktreePath),
       }),
-    catch: (cause) => (cause instanceof Error ? cause : new Error(String(cause))),
+    catch: (cause) => normalizeOperationError(cause),
   });
 }
 
@@ -63,7 +68,7 @@ export function archivedWorktreeHasNoOtherOwners(input: {
   readonly worktreePath: string;
   readonly threadId: string;
   readonly threads: ReadonlyArray<ManagedWorktreeThreadRef>;
-}): Effect.Effect<boolean, Error> {
+}): Effect.Effect<boolean, TaggedFailure> {
   return Effect.tryPromise({
     try: async () => {
       const target = await fs.realpath(input.worktreePath);
@@ -78,7 +83,7 @@ export function archivedWorktreeHasNoOtherOwners(input: {
       }
       return targetOwnsPath;
     },
-    catch: (cause) => (cause instanceof Error ? cause : new Error(String(cause))),
+    catch: (cause) => normalizeOperationError(cause),
   });
 }
 
@@ -140,10 +145,10 @@ function parsePrimaryWorktreePath(stdout: string): string | null {
 export function listManagedWorktrees(input: {
   readonly worktreesDir: string;
   readonly git: GitCoreShape;
-}): Effect.Effect<ReadonlyArray<ServerManagedWorktree>, Error> {
+}): Effect.Effect<ReadonlyArray<ServerManagedWorktree>, TaggedFailure> {
   return Effect.tryPromise({
     try: () => findLinkedWorktreeRoots(input.worktreesDir),
-    catch: (cause) => (cause instanceof Error ? cause : new Error(String(cause))),
+    catch: (cause) => normalizeOperationError(cause),
   }).pipe(
     Effect.flatMap((worktreePaths) =>
       Effect.forEach(
@@ -162,7 +167,9 @@ export function listManagedWorktrees(input: {
                 return workspaceRoot
                   ? Effect.succeed({ path: worktreePath, workspaceRoot })
                   : Effect.fail(
-                      new Error(`Git did not report a primary worktree for ${worktreePath}.`),
+                      new ManagedWorktreeError(
+                        `Git did not report a primary worktree for ${worktreePath}.`,
+                      ),
                     );
               }),
               Effect.catch((error) =>
@@ -205,7 +212,7 @@ function isArchivedOnlyManagedWorktreeThread(thread: ManagedWorktreeThreadRef): 
 // anything on symlinked layouts. Missing paths fall back to plain resolution.
 function canonicalizeThreadWorktreePaths(
   threads: ReadonlyArray<ManagedWorktreeThreadRef>,
-): Effect.Effect<ReadonlyMap<string, string>, Error> {
+): Effect.Effect<ReadonlyMap<string, string>, TaggedFailure> {
   return Effect.tryPromise({
     try: async () => {
       const canonicalByRecordedPath = new Map<string, string>();
@@ -219,7 +226,7 @@ function canonicalizeThreadWorktreePaths(
       }
       return canonicalByRecordedPath;
     },
-    catch: (cause) => (cause instanceof Error ? cause : new Error(String(cause))),
+    catch: (cause) => normalizeOperationError(cause),
   });
 }
 
@@ -321,7 +328,7 @@ export function classifyManagedWorktreeRemovalCandidates(input: {
 const ensureSnapshotsDir = (snapshotsDir: string) =>
   Effect.tryPromise({
     try: () => fs.mkdir(snapshotsDir, { recursive: true, mode: 0o700 }),
-    catch: (cause) => (cause instanceof Error ? cause : new Error(String(cause))),
+    catch: (cause) => normalizeOperationError(cause),
   });
 
 const snapshotExists = (snapshotPath: string) =>
@@ -334,7 +341,7 @@ const snapshotExists = (snapshotPath: string) =>
           if ((cause as NodeJS.ErrnoException).code === "ENOENT") return false;
           throw cause;
         }),
-    catch: (cause) => (cause instanceof Error ? cause : new Error(String(cause))),
+    catch: (cause) => normalizeOperationError(cause),
   });
 
 function removeManagedWorktreeSafely(input: {
@@ -342,7 +349,7 @@ function removeManagedWorktreeSafely(input: {
   readonly snapshotsDir: string;
   readonly candidate: ManagedWorktreeRemovalCandidate;
   readonly git: GitCoreShape;
-}): Effect.Effect<boolean, Error> {
+}): Effect.Effect<boolean, TaggedFailure> {
   const { entry, thread, reason } = input.candidate;
   const snapshotPath = snapshotOutputPath({
     snapshotsDir: input.snapshotsDir,
@@ -415,7 +422,7 @@ export function pruneArchivedManagedWorktrees(input: {
   readonly snapshotsDir: string;
   readonly threads: ReadonlyArray<ManagedWorktreeThreadRef>;
   readonly git: GitCoreShape;
-}): Effect.Effect<ReadonlyArray<ServerManagedWorktree>, Error> {
+}): Effect.Effect<ReadonlyArray<ServerManagedWorktree>, TaggedFailure> {
   return Effect.gen(function* () {
     const inventory = yield* listManagedWorktrees(input);
     const canonicalByRecordedPath = yield* canonicalizeThreadWorktreePaths(input.threads);
@@ -455,7 +462,7 @@ export function pruneProjectedArchivedManagedWorktrees(input: {
   readonly worktreesDir: string;
   readonly snapshotQuery: ProjectionSnapshotQueryShape;
   readonly git: GitCoreShape;
-}): Effect.Effect<ReadonlyArray<ServerManagedWorktree>, Error> {
+}): Effect.Effect<ReadonlyArray<ServerManagedWorktree>, TaggedFailure> {
   return Effect.gen(function* () {
     // Deliberately not the shell snapshot: it hides soft-deleted threads, and a
     // retention-deleted thread still owns a worktree that must be reclaimed.
@@ -543,7 +550,7 @@ export function discardEmptyManagedWorktreeParent(input: {
       // readdir above cannot be lost.
       await fs.rmdir(parent);
     },
-    catch: (cause) => cause,
+    catch: (cause) => normalizeOperationError(cause),
   }).pipe(
     Effect.catch((cause) =>
       Effect.logWarning("managed worktree cleanup could not remove its empty parent folder", {
@@ -596,7 +603,7 @@ export function discardManagedWorktreeResidue(input: {
       }
       return removed;
     },
-    catch: (cause) => cause,
+    catch: (cause) => normalizeOperationError(cause),
   }).pipe(
     Effect.catch((cause) =>
       Effect.logWarning("managed worktree cleanup could not discard recovery snapshots", {
@@ -626,7 +633,7 @@ export function pruneExpiredManagedWorktreeSnapshots(input: {
 }): Effect.Effect<ReadonlyArray<string>, never> {
   return Effect.tryPromise({
     try: () => listSnapshotDirectories(input.snapshotsDir),
-    catch: (cause) => cause,
+    catch: (cause) => normalizeOperationError(cause),
   }).pipe(
     Effect.flatMap((snapshotPaths) => {
       const now = input.now ?? Date.now();
@@ -652,7 +659,7 @@ export function pruneExpiredManagedWorktreeSnapshots(input: {
               await fs.rm(snapshotPath, { recursive: true, force: true });
               return snapshotPath;
             },
-            catch: (cause) => cause,
+            catch: (cause) => normalizeOperationError(cause),
           }).pipe(
             Effect.catch((cause) =>
               Effect.logWarning("managed worktree snapshot expiry skipped an entry", {

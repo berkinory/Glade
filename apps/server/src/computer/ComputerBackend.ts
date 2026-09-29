@@ -276,6 +276,7 @@ export type ComputerFrameListener = (frame: ComputerStreamFrame) => void;
 export type ComputerBackendEventListener = (event: ComputerBackendEvent) => void;
 
 export class ComputerBackendError extends Error {
+  readonly _tag = "ComputerBackendError";
   readonly retryable: boolean;
   /**
    * The failure is a decision, not a fault: the backend's desktop is

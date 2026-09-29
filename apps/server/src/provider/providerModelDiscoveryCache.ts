@@ -64,8 +64,8 @@ interface CatalogEntry {
   readonly storedAt: number;
 }
 
-interface FailureEntry {
-  readonly exit: Exit.Exit<ProviderListModelsResult, unknown>;
+interface FailureEntry<E> {
+  readonly exit: DiscoveryExit<E>;
   readonly storedAt: number;
 }
 
@@ -129,8 +129,11 @@ export function makeProviderModelDiscoveryCache<E>(options?: {
   const maxEntries = options?.maxEntries ?? PROVIDER_MODEL_DISCOVERY_CACHE_MAX_ENTRIES;
 
   const catalogs = new Map<string, CatalogEntry>();
-  const failures = new Map<string, FailureEntry>();
-  const inflight = new Map<string, Deferred.Deferred<ProviderListModelsResult, unknown>>();
+  const failures = new Map<string, FailureEntry<E>>();
+  const inflight = new Map<
+    string,
+    Deferred.Deferred<ProviderListModelsResult, E | ProviderAdapterRequestError>
+  >();
 
   const emitCatalogsChanged = () => {
     try {
@@ -177,7 +180,7 @@ export function makeProviderModelDiscoveryCache<E>(options?: {
     return entry;
   };
 
-  const readFailure = (serialized: string, at: number): FailureEntry | undefined => {
+  const readFailure = (serialized: string, at: number): FailureEntry<E> | undefined => {
     const entry = failures.get(serialized);
     if (entry === undefined) return undefined;
     if (at - entry.storedAt > failureTtlMs) {
@@ -200,11 +203,7 @@ export function makeProviderModelDiscoveryCache<E>(options?: {
     emitCatalogsChanged();
   };
 
-  const storeFailure = (
-    serialized: string,
-    exit: Exit.Exit<ProviderListModelsResult, unknown>,
-    at: number,
-  ) => {
+  const storeFailure = (serialized: string, exit: DiscoveryExit<E>, at: number) => {
     failures.set(serialized, { exit, storedAt: at });
     while (failures.size > maxEntries) {
       const oldest = failures.keys().next().value;
@@ -236,11 +235,14 @@ export function makeProviderModelDiscoveryCache<E>(options?: {
     key: ProviderModelDiscoveryCacheKey,
     serialized: string,
     discover: Effect.Effect<ProviderListModelsResult, E>,
-  ): Effect.Effect<Deferred.Deferred<ProviderListModelsResult, unknown>> =>
+  ): Effect.Effect<Deferred.Deferred<ProviderListModelsResult, E | ProviderAdapterRequestError>> =>
     Effect.gen(function* () {
       const existing = inflight.get(serialized);
       if (existing !== undefined) return existing;
-      const deferred = yield* Deferred.make<ProviderListModelsResult, unknown>();
+      const deferred = yield* Deferred.make<
+        ProviderListModelsResult,
+        E | ProviderAdapterRequestError
+      >();
       inflight.set(serialized, deferred);
       const run = discover.pipe(
         Effect.timeoutOption(timeoutMs),
@@ -258,7 +260,7 @@ export function makeProviderModelDiscoveryCache<E>(options?: {
         Effect.exit,
         Effect.flatMap((exit) => {
           inflight.delete(serialized);
-          applyExit(serialized, exit as DiscoveryExit<E>);
+          applyExit(serialized, exit);
           return Deferred.done(deferred, exit);
         }),
       );
@@ -267,12 +269,9 @@ export function makeProviderModelDiscoveryCache<E>(options?: {
     });
 
   const awaitDiscovery = (
-    deferred: Deferred.Deferred<ProviderListModelsResult, unknown>,
+    deferred: Deferred.Deferred<ProviderListModelsResult, E | ProviderAdapterRequestError>,
   ): Effect.Effect<ProviderListModelsResult, E | ProviderAdapterRequestError> =>
-    Deferred.await(deferred) as Effect.Effect<
-      ProviderListModelsResult,
-      E | ProviderAdapterRequestError
-    >;
+    Deferred.await(deferred);
 
   const lookup: ProviderModelDiscoveryCache<E>["lookup"] = (key, discover) =>
     Effect.gen(function* () {
@@ -295,7 +294,7 @@ export function makeProviderModelDiscoveryCache<E>(options?: {
         return yield* awaitDiscovery(pending);
       }
       if (failure !== undefined) {
-        return yield* failure.exit as DiscoveryExit<E>;
+        return yield* failure.exit;
       }
       const deferred = yield* startDiscovery(key, serialized, discover);
       return yield* awaitDiscovery(deferred);

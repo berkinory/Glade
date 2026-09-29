@@ -1,3 +1,4 @@
+import type { TaggedFailure } from "../platform/operationError.ts";
 /**
  * providerRuntimeEventPump - Supervised adapter runtime-event ingestion.
  *
@@ -28,13 +29,13 @@ const DEFAULT_DEGRADED_HEAL_AFTER_SUCCESSES = 100;
 export interface ProviderRuntimeEventPumpOptions<R> {
   readonly provider: ProviderKind;
   readonly stream: Stream.Stream<ProviderRuntimeEvent>;
-  readonly processEvent: (event: ProviderRuntimeEvent) => Effect.Effect<void, unknown, R>;
+  readonly processEvent: (event: ProviderRuntimeEvent) => Effect.Effect<void, TaggedFailure, R>;
   readonly updateHealth: (health: ProviderRuntimeEventPumpHealth) => void;
   readonly isPermanentFailure?: (cause: Cause.Cause<unknown>) => boolean;
   readonly quarantineEvent?: (
     event: ProviderRuntimeEvent,
     cause: string,
-  ) => Effect.Effect<void, unknown, R>;
+  ) => Effect.Effect<void, TaggedFailure, R>;
   readonly retryBaseDelayMs?: number;
   readonly retryMaxDelayMs?: number;
   readonly degradedHealAfterSuccesses?: number;

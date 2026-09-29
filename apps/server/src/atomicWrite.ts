@@ -1,3 +1,4 @@
+import { normalizeOperationError } from "./platform/operationError.ts";
 import { constants as fsConstants, type Stats } from "node:fs";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
@@ -124,7 +125,7 @@ export const writeFileStringAtomically = (input: {
             await fs.rename(tempPath, input.filePath);
             await syncDirectoryEntry(directoryPath);
           },
-          catch: (cause) => cause,
+          catch: (cause) => normalizeOperationError(cause),
         }).pipe(
           Effect.ensuring(
             Effect.tryPromise(() => fs.rm(tempPath, { force: true })).pipe(

@@ -1,3 +1,4 @@
+import { normalizeOperationError } from "../platform/operationError.ts";
 import { constants as fsConstants, type Stats } from "node:fs";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
@@ -194,7 +195,7 @@ export type MigrationBackupResult = MigrationBackupPlan & {
 };
 
 const attemptPromise = <A>(tryPromise: () => Promise<A>) =>
-  Effect.tryPromise({ try: tryPromise, catch: (cause) => cause });
+  Effect.tryPromise({ try: tryPromise, catch: (cause) => normalizeOperationError(cause) });
 
 const latestMigrationId = Math.max(...migrationEntries.map(([id]) => id));
 

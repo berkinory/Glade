@@ -1,3 +1,4 @@
+import type { TaggedFailure } from "../platform/operationError.ts";
 import { ThreadId, type OrchestrationEvent, type OrchestrationThreadShell } from "@glade/contracts";
 import { Effect, Option } from "effect";
 
@@ -45,7 +46,7 @@ export function makeThreadDiagnosticTools(input: {
   readonly eventDeliveries: OrchestrationEventDeliveryRepositoryShape;
   readonly requireThreadShell: (
     threadId: string,
-  ) => Effect.Effect<OrchestrationThreadShell, unknown, never>;
+  ) => Effect.Effect<OrchestrationThreadShell, TaggedFailure, never>;
 }): ReadonlyArray<ToolEntry> {
   const readActivity: ToolEntry = {
     requiredCapability: "diagnostics:read",
@@ -308,7 +309,7 @@ export interface ThreadDiagnosticPageDependencies {
   readonly providerRuntimeEvents: ProviderRuntimeEventRepositoryShape;
   readonly requireThreadShell: (
     threadId: string,
-  ) => Effect.Effect<OrchestrationThreadShell, unknown, never>;
+  ) => Effect.Effect<OrchestrationThreadShell, TaggedFailure, never>;
 }
 
 export function makeThreadDiagnosticPageReaders(input: ThreadDiagnosticPageDependencies) {

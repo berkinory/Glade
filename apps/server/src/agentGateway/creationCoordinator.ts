@@ -1,3 +1,4 @@
+import type { TaggedFailure } from "../platform/operationError.ts";
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -46,6 +47,10 @@ import {
 import { ToolInputError, errorText } from "./toolInput.ts";
 import { GatewayToolError, gatewayToolErrorResult } from "./toolRuntime.ts";
 
+class CreationCoordinatorError extends Error {
+  readonly _tag = "CreationCoordinatorError";
+}
+
 const CREATION_REPLAY_WAIT_MS = 60_000;
 
 function interactionModeForGatewayTarget(_target: ModelSelection): ProviderInteractionMode {
@@ -86,7 +91,7 @@ interface CreationCoordinatorDependencies {
   readonly serverConfig: ServerConfigShape;
   readonly loadProviderAvailabilities: Effect.Effect<
     ReadonlyMap<ProviderKind, AgentGatewayProviderAvailability>,
-    unknown
+    TaggedFailure
   >;
   readonly requireThreadShell: (
     threadId: string,
@@ -649,7 +654,7 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
                             verification.verified
                               ? Effect.void
                               : Effect.fail(
-                                  new Error(
+                                  new CreationCoordinatorError(
                                     `Refusing live compensation: ${verification.reason ?? "ownership verification failed"}.`,
                                   ),
                                 ),
@@ -896,7 +901,9 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
                       try: (signal) =>
                         runWorktreeSetupScript(entry.projectScripts, trackedWorktree.path, signal),
                       catch: (cause) =>
-                        new Error(`Worktree setup script failed: ${errorText(cause)}`),
+                        new CreationCoordinatorError(
+                          `Worktree setup script failed: ${errorText(cause)}`,
+                        ),
                     });
                     yield* Effect.uninterruptible(
                       Effect.gen(function* () {
@@ -920,7 +927,7 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
                         });
                         if (!ownershipRecorded) {
                           return yield* Effect.fail(
-                            new Error(
+                            new CreationCoordinatorError(
                               `Could not persist ownership for created worktree ${trackedWorktree.path}; compensating it before dispatch.`,
                             ),
                           );

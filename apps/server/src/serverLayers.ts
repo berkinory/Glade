@@ -81,8 +81,6 @@ function makeServerRuntimeServicesLayer(
   );
 
   const runtimeServicesLayer = Layer.mergeAll(
-    OrchestrationLayerLive,
-    checkpointStoreLayer,
     checkpointDiffQueryLayer,
     RuntimeReceiptBusLive,
     TurnCheckpointCoordinatorLive,

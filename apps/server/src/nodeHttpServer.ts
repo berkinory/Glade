@@ -185,27 +185,33 @@ export const makeBoundedNodeHttpServer = Effect.fnUntraced(function* (
             hostname: address.address === "::" ? "0.0.0.0" : address.address,
             port: address.port,
           },
+    // HttpServer.make erases HTTP failures to unknown; Node handles the original causes as responses.
+    // @effect-diagnostics-next-line anyUnknownInErrorContext:off
     serve: Effect.fnUntraced(function* (httpApp, middleware) {
       const serveScope = yield* Effect.scope;
+      // Preserve the SDK's opaque HTTP failure channel at the transport boundary.
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       const handler = yield* NodeHttpServer.makeHandler(httpApp, {
-        middleware: middleware as any,
+        middleware,
         scope: serveScope,
-      }) as Effect.Effect<
-        (nodeRequest: http.IncomingMessage, nodeResponse: http.ServerResponse) => void
-      >;
+      });
       const featureUpgradeHandler = yield* NodeHttpServer.makeUpgradeHandler(
         Effect.succeed(featureWebSocketServer),
+        // Node consumes opaque HTTP failures; wrapping them would change response handling.
+        // @effect-diagnostics-next-line anyUnknownInErrorContext:off
         httpApp,
         {
-          middleware: middleware as any,
+          middleware,
           scope: serveScope,
         },
       );
       const bootstrapUpgradeHandler = yield* NodeHttpServer.makeUpgradeHandler(
         Effect.succeed(bootstrapWebSocketServer),
+        // Node consumes opaque HTTP failures; wrapping them would change response handling.
+        // @effect-diagnostics-next-line anyUnknownInErrorContext:off
         httpApp,
         {
-          middleware: middleware as any,
+          middleware,
           scope: serveScope,
         },
       );

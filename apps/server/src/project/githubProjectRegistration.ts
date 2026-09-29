@@ -1,3 +1,4 @@
+import type { TaggedFailure } from "../platform/operationError.ts";
 import { Effect } from "effect";
 
 import type { GitHubProjectCheckoutResult } from "./githubProjectProvisioning";
@@ -8,7 +9,7 @@ export function recoverUnregisteredGitHubCheckout(input: {
   readonly moveWorkspaceRoot: (
     workspaceRoot: string,
     recoveryPath: string,
-  ) => Effect.Effect<void, unknown>;
+  ) => Effect.Effect<void, TaggedFailure>;
 }): Effect.Effect<void, never> {
   if (
     input.checkout.checkout !== "created" ||

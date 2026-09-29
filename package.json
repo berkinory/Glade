@@ -39,6 +39,7 @@
     "check:architecture": "bun scripts/checks/moduleBoundaries.ts && knip"
   },
   "devDependencies": {
+    "@effect/language-service": "catalog:",
     "@effect/tsgo": "0.41.0",
     "@types/node": "catalog:",
     "@typescript/native": "npm:typescript@7.0.2",

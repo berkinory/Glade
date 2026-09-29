@@ -1,3 +1,4 @@
+import { normalizeOperationError } from "../platform/operationError.ts";
 import { constants as fsConstants } from "node:fs";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
@@ -367,7 +368,7 @@ async function release(lock: DatabaseLifecycleLock): Promise<void> {
 }
 
 const attemptPromise = <A>(action: () => Promise<A>) =>
-  Effect.tryPromise({ try: action, catch: (cause) => cause });
+  Effect.tryPromise({ try: action, catch: (cause) => normalizeOperationError(cause) });
 
 export const acquireDatabaseLifecycleLock = (dbPath: string) =>
   attemptPromise(() => acquire(dbPath));

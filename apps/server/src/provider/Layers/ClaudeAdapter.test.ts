@@ -1,3 +1,4 @@
+import { Schema } from "effect";
 import { makeNativeToolCallRegistry } from "../../agentGateway/nativeToolCalls.ts";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
@@ -3812,7 +3813,7 @@ describe("ClaudeAdapterLive forkThread", () => {
         return;
       }
       assert.instanceOf(result.failure, ProviderAdapterValidationError);
-      if (result.failure instanceof ProviderAdapterValidationError) {
+      if (Schema.is(ProviderAdapterValidationError)(result.failure)) {
         assert.include(result.failure.issue, "turn in flight");
       }
     }).pipe(
@@ -3843,7 +3844,7 @@ describe("ClaudeAdapterLive forkThread", () => {
         return;
       }
       assert.instanceOf(result.failure, ProviderAdapterRequestError);
-      if (result.failure instanceof ProviderAdapterRequestError) {
+      if (Schema.is(ProviderAdapterRequestError)(result.failure)) {
         assert.equal(result.failure.method, "session/fork");
         assert.include(result.failure.detail, "session file missing");
       }

@@ -57,6 +57,10 @@ import {
 } from "../../persistence/Layers/Sqlite.ts";
 import { AGENT_GATEWAY_TURN_AUTHORITY_RETIRED } from "../../agentGateway/sessionLease.ts";
 
+class InjectedFailure extends Error {
+  readonly _tag = "InjectedFailure";
+}
+
 const asRequestId = (value: string): ApprovalRequestId => ApprovalRequestId.makeUnsafe(value);
 const asEventId = (value: string): EventId => EventId.makeUnsafe(value);
 const asThreadId = (value: string): ThreadId => ThreadId.makeUnsafe(value);
@@ -406,7 +410,7 @@ const rotationRetry = makeProviderServiceLayer({
       const attempts = (rotationRetryPersistAttempts.get(eventId) ?? 0) + 1;
       rotationRetryPersistAttempts.set(eventId, attempts);
       if (eventId === ROTATION_RETRY_FAILURE_EVENT_ID && attempts === 1) {
-        return Effect.fail(new Error("injected transient runtime persistence failure"));
+        return Effect.fail(new InjectedFailure("injected transient runtime persistence failure"));
       }
       return Effect.succeed({ sequence: attempts, event });
     }),

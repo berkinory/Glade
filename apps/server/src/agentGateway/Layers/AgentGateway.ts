@@ -1,3 +1,4 @@
+import type { TaggedFailure } from "../../platform/operationError.ts";
 /**
  * AgentGatewayLive - Glade app-control MCP tool surface.
  *
@@ -222,7 +223,7 @@ const makeAgentGateway = Effect.gen(function* () {
   const resolveAutomationTarget = (input: {
     readonly target: ModelSelection;
     readonly projectId: ProjectId;
-  }): Effect.Effect<ModelSelection, unknown> =>
+  }): Effect.Effect<ModelSelection, TaggedFailure> =>
     Effect.gen(function* () {
       const project = yield* snapshotQuery.getProjectShellById(input.projectId).pipe(
         Effect.mapError((error) => new ToolInputError(errorText(error))),

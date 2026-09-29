@@ -1,3 +1,4 @@
+import type { TaggedFailure } from "./platform/operationError.ts";
 // FILE: threadRetention.ts
 // Purpose: Runs the server-side retention loop that archives inactive orchestration threads.
 // Layer: Server maintenance
@@ -90,7 +91,7 @@ function isThreadBusy(thread: RetentionThread): boolean {
 
 function listRetentionProtectedThreadIds(
   automationRepository: AutomationRepositoryShape,
-): Effect.Effect<ReadonlySet<ThreadId>, unknown> {
+): Effect.Effect<ReadonlySet<ThreadId>, TaggedFailure> {
   return automationRepository.list({ includeArchived: false }).pipe(
     Effect.map((result) => {
       const protectedThreadIds = new Set<ThreadId>();
@@ -225,7 +226,7 @@ const runThreadRetentionSweep = Effect.fn("runThreadRetentionSweep")(function* (
   orchestrationEngine: OrchestrationEngineShape,
   projectionSnapshotQuery: ProjectionSnapshotQueryShape,
   automationRepository: AutomationRepositoryShape,
-  pruneArchivedManagedWorktrees: Effect.Effect<void, unknown>,
+  pruneArchivedManagedWorktrees: Effect.Effect<void, TaggedFailure>,
 ) {
   const shellSnapshot = yield* projectionSnapshotQuery.getShellSnapshot();
   const protectedThreadIds = yield* listRetentionProtectedThreadIds(automationRepository);
@@ -325,7 +326,7 @@ export const startThreadRetentionJob = Effect.fn("startThreadRetentionJob")(func
       automationRepository,
       pruneArchivedManagedWorktrees,
     );
-    yield* Effect.forever(
+    return yield* Effect.forever(
       Effect.sleep(THREAD_RETENTION_SWEEP_INTERVAL_MS).pipe(
         Effect.flatMap(() =>
           runThreadRetentionSweep(

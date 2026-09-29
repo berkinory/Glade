@@ -1,3 +1,4 @@
+import { normalizeOperationError } from "../platform/operationError.ts";
 import type { ProviderKind, ThreadId } from "@glade/contracts";
 import { Effect, Exit } from "effect";
 
@@ -97,15 +98,19 @@ export interface AgentGatewaySessionLease {
   readonly release: () => void;
 }
 
+interface GatewayTurnCancellation {
+  readonly completion: Promise<void>;
+}
+
 const AGENT_GATEWAY_TURN_CANCELLATION_TIMEOUT = "2 seconds";
 
 function awaitAgentGatewayTurnCancellation(
   turnId: string,
-  cancellation: Promise<void>,
+  cancellation: GatewayTurnCancellation,
 ): Effect.Effect<void> {
   return Effect.tryPromise({
-    try: () => cancellation,
-    catch: (cause) => cause,
+    try: () => cancellation.completion,
+    catch: (cause) => normalizeOperationError(cause),
   }).pipe(
     Effect.timeoutOrElse({
       duration: AGENT_GATEWAY_TURN_CANCELLATION_TIMEOUT,
@@ -126,14 +131,16 @@ function startAgentGatewayTurnCancellation(
   lease: AgentGatewaySessionLease,
   turnId: string,
   retireCredential = false,
-): Effect.Effect<Promise<void>> {
+): Effect.Effect<GatewayTurnCancellation> {
   return Effect.try({
-    try: () => (retireCredential ? lease.retireTurn(turnId) : lease.cancelTurn(turnId)),
-    catch: (cause) => cause,
+    try: () => ({
+      completion: retireCredential ? lease.retireTurn(turnId) : lease.cancelTurn(turnId),
+    }),
+    catch: (cause) => normalizeOperationError(cause),
   }).pipe(
     Effect.catch((cause) =>
       Effect.logWarning("agent_gateway.turn_cancellation_failed", { turnId, cause }).pipe(
-        Effect.as(Promise.resolve()),
+        Effect.as({ completion: Promise.resolve() }),
       ),
     ),
   );

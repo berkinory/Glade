@@ -1,3 +1,4 @@
+import type { TaggedFailure } from "./platform/operationError.ts";
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Effect from "effect/Effect";
@@ -26,4 +27,4 @@ const RuntimeLayer = Layer.empty.pipe(
 Command.run(gladeCli, { version })
   .pipe(Effect.provide(RuntimeLayer))
   .pipe((program) => withDesktopParentLifetime(program, desktopParentInput))
-  .pipe((program) => NodeRuntime.runMain(program as Effect.Effect<void, unknown, never>));
+  .pipe((program) => NodeRuntime.runMain(program as Effect.Effect<void, TaggedFailure, never>));

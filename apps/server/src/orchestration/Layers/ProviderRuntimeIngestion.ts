@@ -1,3 +1,5 @@
+import { Schema } from "effect";
+import type { TaggedFailure } from "../../platform/operationError.ts";
 import {
   startComputerTurnTiming,
   endComputerTurnTiming,
@@ -593,7 +595,7 @@ export function selectProviderRuntimeJournalStream(input: {
   readonly streamPersistedEvents?: Stream.Stream<PersistedProviderRuntimeEvent>;
   readonly append: (
     event: ProviderRuntimeEvent,
-  ) => Effect.Effect<PersistedProviderRuntimeEvent, unknown>;
+  ) => Effect.Effect<PersistedProviderRuntimeEvent, TaggedFailure>;
 }) {
   return (
     input.streamPersistedEvents ??
@@ -3047,8 +3049,8 @@ const make = Effect.gen(function* () {
             const error = Option.getOrUndefined(Cause.findErrorOption(cause));
             if (
               input.source === "runtime" &&
-              (error instanceof OrchestrationCommandIdentityCollisionError ||
-                error instanceof OrchestrationCommandPreviouslyRejectedError)
+              (Schema.is(OrchestrationCommandIdentityCollisionError)(error) ||
+                Schema.is(OrchestrationCommandPreviouslyRejectedError)(error))
             ) {
               return quarantineUnreplayableCommand(input, error);
             }

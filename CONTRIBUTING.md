@@ -35,7 +35,10 @@ bun run check
 
 `check` rejects lint warnings, unused code reported by knip, source dependency
 violations and import cycles, including type-only cycles. `check:architecture`
-runs the dependency checks separately.
+runs the dependency checks separately. Effect language-service diagnostics use the
+shared base configuration in every package. Editor suggestions stay in the editor;
+compiler checks enforce the configured diagnostics. Only SDK transport boundaries
+that necessarily accept opaque errors may bypass a diagnostic, with a reason.
 
 Use `bun run check:fix` to apply formatting and safe lint fixes, then review the resulting diff.
 Run the affected tests. Use `bun run test` for cross-package and lifecycle

@@ -554,14 +554,14 @@ export interface DeviceUiNode {
   readonly children: readonly DeviceUiNode[];
 }
 
-export const DeviceUiNode: Schema.Schema<DeviceUiNode> = Schema.Struct({
+export const DeviceUiNode: Schema.Codec<DeviceUiNode> = Schema.Struct({
   role: Schema.String.check(Schema.isMaxLength(128)),
   subrole: Schema.NullOr(Schema.String.check(Schema.isMaxLength(128))),
   label: Schema.NullOr(Schema.String.check(Schema.isMaxLength(1_024))),
   value: Schema.NullOr(Schema.String.check(Schema.isMaxLength(1_024))),
   frame: DeviceUiFrame,
   activationPoint: Schema.NullOr(DeviceUiPoint),
-  children: Schema.Array(Schema.suspend((): Schema.Schema<DeviceUiNode> => DeviceUiNode)).check(
+  children: Schema.Array(Schema.suspend((): Schema.Codec<DeviceUiNode> => DeviceUiNode)).check(
     Schema.isMaxLength(512),
   ),
 });

@@ -36,6 +36,10 @@ import { migrationEntries, runMigrations } from "./Migrations.ts";
 import * as NodeSqliteClient from "./NodeSqliteClient.ts";
 import { makeSqlitePersistenceLive } from "./Layers/Sqlite.ts";
 
+class InjectedFailure extends Error {
+  readonly _tag = "InjectedFailure";
+}
+
 vi.mock("node:fs/promises", async () => {
   const actual = await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises");
   return {
@@ -164,7 +168,7 @@ describe("migration backups", () => {
           yield* runMigrations({ toMigrationInclusive: 52 });
           yield* sql`CREATE TABLE recovery_probe(value TEXT NOT NULL)`;
           yield* sql`INSERT INTO recovery_probe(value) VALUES ('before-failure')`;
-          yield* runWithPreMigrationBackup(
+          return yield* runWithPreMigrationBackup(
             dbPath,
             Effect.gen(function* () {
               const markerBeforeMutation = JSON.parse(
@@ -174,7 +178,7 @@ describe("migration backups", () => {
               ) as { phase: string };
               expect(markerBeforeMutation.phase).toBe("migration-in-progress");
               yield* sql`DELETE FROM recovery_probe`;
-              return yield* Effect.fail(new Error("injected migration failure"));
+              return yield* Effect.fail(new InjectedFailure("injected migration failure"));
             }),
           );
         }),
@@ -274,7 +278,10 @@ describe("migration backups", () => {
           const sql = yield* SqlClient.SqlClient;
           yield* runMigrations({ toMigrationInclusive: 52 });
           yield* sql`CREATE TABLE marker_probe(value TEXT NOT NULL)`;
-          yield* runWithPreMigrationBackup(dbPath, Effect.fail(new Error("leave durable marker")));
+          return yield* runWithPreMigrationBackup(
+            dbPath,
+            Effect.fail(new InjectedFailure("leave durable marker")),
+          );
         }),
       ),
     ).rejects.toThrow("leave durable marker");
@@ -350,9 +357,9 @@ describe("migration backups", () => {
           yield* runMigrations({ toMigrationInclusive: 52 });
           yield* sql`CREATE TABLE artifact_probe(value TEXT NOT NULL)`;
           yield* sql`INSERT INTO artifact_probe(value) VALUES ('restorable')`;
-          yield* runWithPreMigrationBackup(
+          return yield* runWithPreMigrationBackup(
             dbPath,
-            Effect.fail(new Error("leave recovery artifacts")),
+            Effect.fail(new InjectedFailure("leave recovery artifacts")),
           );
         }),
       ),
@@ -391,7 +398,10 @@ describe("migration backups", () => {
         const sql = yield* SqlClient.SqlClient;
         yield* runMigrations({ toMigrationInclusive: 52 });
         yield* sql`CREATE TABLE wedge_probe(value TEXT NOT NULL)`;
-        yield* runWithPreMigrationBackup(dbPath, Effect.fail(new Error("wedge the database")));
+        return yield* runWithPreMigrationBackup(
+          dbPath,
+          Effect.fail(new InjectedFailure("wedge the database")),
+        );
       }),
     ).catch(() => undefined);
 
@@ -440,7 +450,10 @@ describe("migration backups", () => {
         yield* runMigrations({ toMigrationInclusive: 52 });
         yield* sql`CREATE TABLE resume_probe(value TEXT NOT NULL)`;
         yield* sql`INSERT INTO resume_probe(value) VALUES ('survives-resume')`;
-        yield* runWithPreMigrationBackup(dbPath, Effect.fail(new Error("interrupted mid-flight")));
+        return yield* runWithPreMigrationBackup(
+          dbPath,
+          Effect.fail(new InjectedFailure("interrupted mid-flight")),
+        );
       }),
     ).catch(() => undefined);
 
@@ -488,7 +501,10 @@ describe("migration backups", () => {
       dbPath,
       Effect.gen(function* () {
         yield* runMigrations({ toMigrationInclusive: 52 });
-        yield* runWithPreMigrationBackup(dbPath, Effect.fail(new Error("interrupted mid-flight")));
+        return yield* runWithPreMigrationBackup(
+          dbPath,
+          Effect.fail(new InjectedFailure("interrupted mid-flight")),
+        );
       }),
     ).catch(() => undefined);
 
@@ -516,7 +532,10 @@ describe("migration backups", () => {
       dbPath,
       Effect.gen(function* () {
         yield* runMigrations({ toMigrationInclusive: 52 });
-        yield* runWithPreMigrationBackup(dbPath, Effect.fail(new Error("interrupted mid-flight")));
+        return yield* runWithPreMigrationBackup(
+          dbPath,
+          Effect.fail(new InjectedFailure("interrupted mid-flight")),
+        );
       }),
     ).catch(() => undefined);
 
@@ -527,7 +546,7 @@ describe("migration backups", () => {
         resumeMarkedMigration(
           dbPath,
           marker!,
-          Effect.fail(new Error("duplicate column name: fingerprint_version")),
+          Effect.fail(new InjectedFailure("duplicate column name: fingerprint_version")),
         ),
       ),
     ).rejects.toThrow("duplicate column name");
@@ -600,9 +619,9 @@ describe("migration backups", () => {
           const sql = yield* SqlClient.SqlClient;
           yield* runMigrations({ toMigrationInclusive: 52 });
           yield* sql`CREATE TABLE reapply_probe(value TEXT NOT NULL)`;
-          yield* runWithPreMigrationBackup(
+          return yield* runWithPreMigrationBackup(
             dbPath,
-            Effect.fail(new Error("duplicate column name: fingerprint_version")),
+            Effect.fail(new InjectedFailure("duplicate column name: fingerprint_version")),
           );
         }),
       ),
@@ -918,7 +937,10 @@ describe("migration backups", () => {
       dbPath,
       Effect.gen(function* () {
         yield* runMigrations({ toMigrationInclusive: 52 });
-        yield* runWithPreMigrationBackup(dbPath, Effect.fail(new Error("interrupted mid-flight")));
+        return yield* runWithPreMigrationBackup(
+          dbPath,
+          Effect.fail(new InjectedFailure("interrupted mid-flight")),
+        );
       }),
     ).catch(() => undefined);
 

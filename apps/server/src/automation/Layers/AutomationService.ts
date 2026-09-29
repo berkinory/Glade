@@ -1,3 +1,4 @@
+import { Schema } from "effect";
 import { randomUUID } from "node:crypto";
 
 import {
@@ -182,7 +183,7 @@ function resultSummary(value: string | null | undefined, fallback?: string): str
 }
 
 function completionFailureReason(error: unknown): string {
-  const message = error instanceof AutomationServiceError ? error.message : errorMessage(error);
+  const message = Schema.is(AutomationServiceError)(error) ? error.message : errorMessage(error);
   return normalizeAutomationCompletionReason(`Stop check failed: ${message}`);
 }
 

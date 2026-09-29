@@ -95,6 +95,10 @@ import { isClaudeAutoModeCliVersionSupported } from "../claudeCliVersion.ts";
 import { collectUint8StreamText } from "../../stream/collectUint8StreamText";
 import { buildCodexProcessEnv } from "../../codexProcessEnv.ts";
 
+class ProviderHealthProbeError extends Error {
+  readonly _tag = "ProviderHealthProbeError";
+}
+
 const DEFAULT_TIMEOUT_MS = 4_000;
 const CLAUDE_HEALTH_TIMEOUT_MS = 20_000;
 const CODEX_AUTH_STATUS_ARGS = ["-c", "mcp_servers={}", "login", "status"] as const;
@@ -555,7 +559,7 @@ const runCodexCommand = (
   runProviderCommand(executable, args, env).pipe(
     Effect.flatMap((result) =>
       isWindowsShellCommandMissingResult({ code: result.code, stderr: result.stderr })
-        ? Effect.fail(new Error(`spawn ${executable} ENOENT`))
+        ? Effect.fail(new ProviderHealthProbeError(`spawn ${executable} ENOENT`))
         : Effect.succeed(result),
     ),
   );
@@ -568,7 +572,7 @@ const runClaudeCommand = (
   runProviderCommand(executable, args, env).pipe(
     Effect.flatMap((result) =>
       isWindowsShellCommandMissingResult({ code: result.code, stderr: result.stderr })
-        ? Effect.fail(new Error(`spawn ${executable} ENOENT`))
+        ? Effect.fail(new ProviderHealthProbeError(`spawn ${executable} ENOENT`))
         : Effect.succeed(result),
     ),
   );

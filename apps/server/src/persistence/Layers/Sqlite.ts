@@ -1,3 +1,4 @@
+import { Schema } from "effect";
 import { totalmem } from "node:os";
 
 import { Effect, Layer, FileSystem, Path } from "effect";
@@ -20,6 +21,10 @@ import {
   acquireDatabaseLifecycleLock,
   releaseDatabaseLifecycleLock,
 } from "../DatabaseLifecycleLock.ts";
+
+class SqliteStartupError extends Error {
+  readonly _tag = "SqliteStartupError";
+}
 
 type RuntimeSqliteLayerConfig = {
   readonly filename: string;
@@ -84,7 +89,7 @@ const makeSetup = ({
         const lockingMode = lockingModeRows[0]?.locking_mode;
         if (lockingMode?.toLowerCase() !== "exclusive") {
           return yield* Effect.fail(
-            new Error(
+            new SqliteStartupError(
               `SQLite exclusive locking mode could not be enabled (result: ${lockingMode ?? "unknown"})`,
             ),
           );
@@ -147,11 +152,15 @@ const makeSetup = ({
         : runMigrations();
       yield* migrations.pipe(
         Effect.catch((cause) =>
-          cause instanceof MigrationSchemaTooNewError && dbPath
-            ? Effect.promise(() =>
+          Effect.gen(function* () {
+            if (Schema.is(MigrationSchemaTooNewError)(cause) && dbPath) {
+              const blocked = yield* Effect.promise(() =>
                 createMigrationSchemaTooNewStartupBlockError(dbPath, cause),
-              ).pipe(Effect.flatMap(Effect.fail))
-            : Effect.fail(cause),
+              );
+              return yield* Effect.fail(blocked);
+            }
+            return yield* Effect.fail(cause);
+          }),
         ),
       );
     }),

@@ -12,6 +12,10 @@ import {
   withAgentGatewayTurnCancellation,
 } from "./sessionLease.ts";
 
+class InjectedFailure extends Error {
+  readonly _tag = "InjectedFailure";
+}
+
 describe("AgentGatewaySessionLease", () => {
   it("cancels one exact turn while the provider session lease is live", async () => {
     const cancelSessionTurnRequests = vi.fn(() => Promise.resolve());
@@ -215,7 +219,7 @@ describe("AgentGatewaySessionLease", () => {
       withAgentGatewayTurnCancellation(
         lease,
         "turn-exact",
-        Effect.fail(new Error("provider stop failed")),
+        Effect.fail(new InjectedFailure("provider stop failed")),
       ),
     ).catch((error: unknown) => {
       settled = true;

@@ -160,7 +160,9 @@ const decodeRun = Schema.decodeUnknownEffect(AutomationRun);
 /** Upper bound on how many run rows the list query returns to a client snapshot. */
 const MAX_RUN_LIST_ROWS = 500;
 
-class AutomationRunClaimRejected extends Error {}
+class AutomationRunClaimRejected extends Error {
+  readonly _tag = "AutomationRunClaimRejected";
+}
 
 const ClaimAutomationIterationInput = Schema.Struct({
   id: AutomationDefinition.fields.id,

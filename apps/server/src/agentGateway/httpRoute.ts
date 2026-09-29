@@ -17,6 +17,10 @@ import { AgentGateway } from "./Services/AgentGateway";
 import { AgentGatewayCredentials } from "./Services/AgentGatewayCredentials";
 import { extractBearerToken } from "./bearerToken.ts";
 
+class HttpRouteError extends Error {
+  readonly _tag = "HttpRouteError";
+}
+
 export const AGENT_GATEWAY_MCP_MAX_BODY_BYTES = 1024 * 1024;
 
 const BODY_TOO_LARGE = Symbol("AgentGatewayMcpBodyTooLarge");
@@ -53,7 +57,7 @@ function readMcpJsonBody(
           kind: "ok" as const,
           body: JSON.parse(Buffer.concat(chunks, totalBytes).toString("utf8")) as unknown,
         }),
-        catch: () => new Error("Invalid JSON body."),
+        catch: () => new HttpRouteError("Invalid JSON body."),
       }),
     ),
     Effect.catch((error) =>

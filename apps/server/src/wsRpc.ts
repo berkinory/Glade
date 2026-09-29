@@ -180,6 +180,10 @@ import {
   makeGitHubProjectProvisioner,
 } from "./project/githubProjectProvisioning";
 
+class RpcRequestError extends Error {
+  readonly _tag = "RpcRequestError";
+}
+
 const MAX_DIAGNOSTIC_CHILD_PROCESSES = 80;
 const MAX_DIAGNOSTIC_ARGS_CHARS = 500;
 
@@ -303,8 +307,8 @@ function toWsRpcError(cause: unknown, fallbackMessage: string) {
     return cause;
   }
   if (
-    cause instanceof OrchestrationCommandInvariantError ||
-    cause instanceof OrchestrationCommandPreviouslyRejectedError
+    Schema.is(OrchestrationCommandInvariantError)(cause) ||
+    Schema.is(OrchestrationCommandPreviouslyRejectedError)(cause)
   ) {
     return new WsRpcError({
       message: cause.message,
@@ -401,7 +405,7 @@ const makeWsRpcHandlersLayer = () =>
           projectionReadModelQuery.getThreadShellById(ThreadId.makeUnsafe(threadId)).pipe(
             Effect.flatMap(
               Option.match({
-                onNone: () => Effect.fail(new Error("Thread was not found.")),
+                onNone: () => Effect.fail(new RpcRequestError("Thread was not found.")),
                 onSome: Effect.succeed,
               }),
             ),
@@ -527,7 +531,7 @@ const makeWsRpcHandlersLayer = () =>
         });
 
       const isGlobalGitHubCliError = (error: unknown): error is GitHubCliError =>
-        error instanceof GitHubCliError &&
+        Schema.is(GitHubCliError)(error) &&
         (error.reason === "not-installed" || error.reason === "not-authenticated");
 
       const toPullRequestsRpcError = (cause: unknown, fallbackMessage: string) => {
@@ -889,7 +893,7 @@ const makeWsRpcHandlersLayer = () =>
         effect.pipe(Effect.mapError((cause) => toWsRpcError(cause, fallbackMessage)));
 
       const toProjectProvisionRpcError = (cause: unknown) =>
-        cause instanceof GitHubProjectProvisioningError
+        Schema.is(GitHubProjectProvisioningError)(cause)
           ? new WsRpcError({
               message: cause.message,
               code: cause.code,
@@ -1264,13 +1268,13 @@ const makeWsRpcHandlersLayer = () =>
         [WS_METHODS.projectsWriteFile]: (input) =>
           workspaceFileSystem.writeFile(input).pipe(
             Effect.mapError((cause) =>
-              cause instanceof WorkspaceFileConflictError
+              Schema.is(WorkspaceFileConflictError)(cause)
                 ? new WsRpcError({
                     message: cause.message,
                     code: WORKSPACE_FILE_WRITE_CONFLICT_CODE,
                     retryable: false,
                   })
-                : cause instanceof WorkspaceFileDeletedError
+                : Schema.is(WorkspaceFileDeletedError)(cause)
                   ? new WsRpcError({
                       message: cause.message,
                       code: "WORKSPACE_FILE_DELETED",
@@ -1829,13 +1833,16 @@ const makeWsRpcHandlersLayer = () =>
           rpcEffect(
             getEnabledProviderAdapter(input.provider, serverSettings, providerAdapterRegistry).pipe(
               Effect.flatMap((adapter) =>
-                adapter.prewarmVoice
-                  ? adapter.prewarmVoice(input)
-                  : Effect.fail(
-                      new Error(
+                Effect.gen(function* () {
+                  if (!adapter.prewarmVoice) {
+                    return yield* Effect.fail(
+                      new RpcRequestError(
                         `Voice transcription is unavailable for provider '${input.provider}'.`,
                       ),
-                    ),
+                    );
+                  }
+                  return yield* adapter.prewarmVoice(input);
+                }),
               ),
             ),
             "Voice transcription prewarm failed",
@@ -1849,13 +1856,16 @@ const makeWsRpcHandlersLayer = () =>
                 providerAdapterRegistry,
               ).pipe(
                 Effect.flatMap((adapter) =>
-                  adapter.transcribeVoice
-                    ? adapter.transcribeVoice(input)
-                    : Effect.fail(
-                        new Error(
+                  Effect.gen(function* () {
+                    if (!adapter.transcribeVoice) {
+                      return yield* Effect.fail(
+                        new RpcRequestError(
                           `Voice transcription is unavailable for provider '${input.provider}'.`,
                         ),
-                      ),
+                      );
+                    }
+                    return yield* adapter.transcribeVoice(input);
+                  }),
                 ),
               ),
             ),
@@ -2374,7 +2384,7 @@ function makeWsNegotiateHttpRouteLayer() {
               : {};
           const headers = { "Cache-Control": "no-store", ...corsHeaders };
           const input = parseWsNegotiateSearchParams(url.searchParams);
-          if (input instanceof WsCompatibilityError) {
+          if (Schema.is(WsCompatibilityError)(input)) {
             return HttpServerResponse.jsonUnsafe(input, { status: 426, headers });
           }
           return yield* negotiateWsCompatibility(input).pipe(

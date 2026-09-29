@@ -404,7 +404,7 @@ const make = Effect.gen(function* () {
           : Effect.succeed(rows[0].lastAckedSequence),
       ),
       Effect.mapError((error) =>
-        error instanceof PersistenceDecodeError
+        Schema.is(PersistenceDecodeError)(error)
           ? error
           : toPersistenceSqlError("ProviderRuntimeEvent.getConsumerCursor")(error),
       ),

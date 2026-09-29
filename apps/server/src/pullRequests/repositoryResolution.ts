@@ -3,6 +3,10 @@ import { Effect } from "effect";
 
 import type { GitCoreShape } from "../git/Services/GitCore";
 
+class RepositoryResolutionError extends Error {
+  readonly _tag = "RepositoryResolutionError";
+}
+
 interface GitHubRepositoryLink {
   readonly nameWithOwner: string;
   readonly url: string;
@@ -43,7 +47,9 @@ function readCurrentBranch(git: GitCoreShape, cwd: string) {
         if (result.code !== 0) {
           if (/not a git repository/i.test(result.stderr)) return Effect.succeed(undefined);
           return Effect.fail(
-            new Error(result.stderr.trim() || `${operation} failed with exit code ${result.code}.`),
+            new RepositoryResolutionError(
+              result.stderr.trim() || `${operation} failed with exit code ${result.code}.`,
+            ),
           );
         }
         const trimmed = result.stdout.trim();
@@ -124,7 +130,7 @@ function readRepositoryConfig(git: GitCoreShape, cwd: string, branch: string | n
           return Effect.succeed(parseRepositoryConfig("", branch));
         }
         return Effect.fail(
-          new Error(
+          new RepositoryResolutionError(
             result.stderr.trim() ||
               `PullRequestService.githubRepository.config failed with exit code ${result.code}.`,
           ),
@@ -148,7 +154,9 @@ function readExpandedRemoteUrl(git: GitCoreShape, cwd: string, remoteName: strin
       Effect.flatMap((result) => {
         if (result.code !== 0) {
           return Effect.fail(
-            new Error(result.stderr.trim() || `${operation} failed with exit code ${result.code}.`),
+            new RepositoryResolutionError(
+              result.stderr.trim() || `${operation} failed with exit code ${result.code}.`,
+            ),
           );
         }
         return Effect.succeed(result.stdout.trim());

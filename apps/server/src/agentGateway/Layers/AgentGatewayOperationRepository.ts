@@ -10,6 +10,10 @@ import {
 } from "../Services/AgentGatewayOperationRepository.ts";
 import { recordCreatedWorktreeInPlan } from "../operationPlan.ts";
 
+class AgentGatewayOperationRepositoryError extends Error {
+  readonly _tag = "AgentGatewayOperationRepositoryError";
+}
+
 interface OperationRow {
   readonly operationId: string;
   readonly callerThreadId: string;
@@ -100,7 +104,9 @@ const makeAgentGatewayOperationRepository = Effect.gen(function* () {
           const [operation] = yield* readByScope(input);
           if (!operation) {
             return yield* Effect.fail(
-              new Error("Reserved gateway operation could not be read back."),
+              new AgentGatewayOperationRepositoryError(
+                "Reserved gateway operation could not be read back.",
+              ),
             );
           }
           let kind: ReserveAgentGatewayOperationResult["kind"];

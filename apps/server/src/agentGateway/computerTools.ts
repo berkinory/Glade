@@ -1,3 +1,4 @@
+import { normalizeOperationError } from "../platform/operationError.ts";
 import { parseCuaActionDiagnostics } from "@glade/shared/cuaActionDiagnostics";
 import { ComputerProgressGuard, type ComputerProgressAction } from "./computerProgressGuard.ts";
 import { beginComputerTurnCall } from "../computer/computerTurnTiming.ts";
@@ -2126,7 +2127,7 @@ export function makeAgentGatewayComputerTools(
             signal,
           };
         },
-        catch: (error) => error,
+        catch: (error) => normalizeOperationError(error),
       }).pipe(
         Effect.flatMap(({ result, signal }) => withSetupCard(name, context, signal, result)),
         Effect.catch((error) => {

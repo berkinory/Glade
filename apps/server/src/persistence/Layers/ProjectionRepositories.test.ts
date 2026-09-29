@@ -20,6 +20,10 @@ import { ProjectionThreadRepository } from "../Services/ProjectionThreads.ts";
 import { ProjectionStateRepository } from "../Services/ProjectionState.ts";
 import { ProjectionTurnRepository } from "../Services/ProjectionTurns.ts";
 
+class InjectedFailure extends Error {
+  readonly _tag = "InjectedFailure";
+}
+
 const projectionRepositoriesLayer = it.layer(
   Layer.mergeAll(
     ProjectionProjectRepositoryLive.pipe(Layer.provideMerge(SqlitePersistenceMemory)),
@@ -202,7 +206,9 @@ projectionRepositoriesLayer("Projection repositories", (it) => {
       `;
       const row = rows[0];
       if (!row) {
-        return yield* Effect.fail(new Error("Expected projection_projects row to exist."));
+        return yield* Effect.fail(
+          new InjectedFailure("Expected projection_projects row to exist."),
+        );
       }
 
       assert.strictEqual(
@@ -269,7 +275,7 @@ projectionRepositoriesLayer("Projection repositories", (it) => {
       `;
       const row = rows[0];
       if (!row) {
-        return yield* Effect.fail(new Error("Expected projection_threads row to exist."));
+        return yield* Effect.fail(new InjectedFailure("Expected projection_threads row to exist."));
       }
 
       assert.strictEqual(

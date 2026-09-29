@@ -1,3 +1,4 @@
+import type { TaggedFailure } from "./platform/operationError.ts";
 // FILE: profileStats.ts
 // Purpose: Compute Profile-page stats from Glade's local projection DB only.
 // The share card never reads provider archives or cloud services for metrics.
@@ -611,10 +612,10 @@ export function turnModelSelectionCte(
 export interface ProfileStatsQueryShape {
   readonly getProfileStats: (
     input: StatsGetProfileStatsInput,
-  ) => Effect.Effect<ProfileStats, unknown>;
+  ) => Effect.Effect<ProfileStats, TaggedFailure>;
   readonly getProfileTokenStats: (
     input: StatsGetProfileTokenStatsInput,
-  ) => Effect.Effect<ProfileTokenStats, unknown>;
+  ) => Effect.Effect<ProfileTokenStats, TaggedFailure>;
 }
 
 export class ProfileStatsQuery extends ServiceMap.Service<
@@ -639,7 +640,7 @@ const makeProfileStatsQuery = Effect.gen(function* () {
   // the UI retry path instead of producing believable zero-stats.
   const legacyCompatibleQuery = <T>(
     operation: string,
-    query: Effect.Effect<ReadonlyArray<T>, unknown>,
+    query: Effect.Effect<ReadonlyArray<T>, TaggedFailure>,
   ) =>
     query.pipe(
       Effect.catchIf(isMissingLegacyColumnError, (error) =>
@@ -1078,7 +1079,7 @@ const makeProfileStatsQuery = Effect.gen(function* () {
 
   const getProfileStats = (
     input: StatsGetProfileStatsInput,
-  ): Effect.Effect<ProfileStats, unknown> =>
+  ): Effect.Effect<ProfileStats, TaggedFailure> =>
     Effect.gen(function* () {
       const tz = sqliteModifierFromUtcOffsetMinutes(input.utcOffsetMinutes);
       const todayKey = localToday(input.utcOffsetMinutes);
@@ -1270,7 +1271,7 @@ const makeProfileStatsQuery = Effect.gen(function* () {
 
   const getProfileTokenStats = (
     input: StatsGetProfileTokenStatsInput,
-  ): Effect.Effect<ProfileTokenStats, unknown> =>
+  ): Effect.Effect<ProfileTokenStats, TaggedFailure> =>
     Effect.gen(function* () {
       const tz = sqliteModifierFromUtcOffsetMinutes(input.utcOffsetMinutes);
       const todayKey = localToday(input.utcOffsetMinutes);

@@ -1,3 +1,4 @@
+import type { TaggedFailure } from "../../platform/operationError.ts";
 /**
  * ProviderCommandReactor - Provider command reaction service interface.
  *
@@ -47,7 +48,7 @@ export interface ProviderCommandReactorShape {
   readonly listBlockingDeliveries: (input: {
     readonly threadId?: string | undefined;
     readonly limit: number;
-  }) => Effect.Effect<ReadonlyArray<ProviderBlockingDeliveryEvidence>, unknown>;
+  }) => Effect.Effect<ReadonlyArray<ProviderBlockingDeliveryEvidence>, TaggedFailure>;
 
   readonly reconcileDelivery: (input: {
     readonly eventSequence: number;
@@ -56,11 +57,11 @@ export interface ProviderCommandReactorShape {
     readonly outcome: ProviderDeliveryReconciliationOutcome;
     readonly reconciledBy: string;
     readonly note?: string | undefined;
-  }) => Effect.Effect<ProviderDeliveryReconciliationResult | null, unknown>;
+  }) => Effect.Effect<ProviderDeliveryReconciliationResult | null, TaggedFailure>;
 
   readonly regenerateThreadTitle: (input: {
     readonly threadId: ThreadId;
-  }) => Effect.Effect<OrchestrationRegenerateThreadTitleResult, unknown>;
+  }) => Effect.Effect<OrchestrationRegenerateThreadTitleResult, TaggedFailure>;
 }
 
 /**
