@@ -42,7 +42,7 @@ the branch has an upstream. Incoming counts reflect the last fetched remote stat
 
 The right dock supports staged-only commits with a workspace-scoped message draft
 and Cmd/Ctrl+Enter, AI message generation from staged changes without index or commit mutations, fetch across configured remotes, fast-forward-only pull, push of existing commits, and the
-shared branch picker. The commit button stays aligned with the first input line. Rebase lets users choose a target branch, resolve and stage
+shared branch picker. Commit message generation uses the configured model, enables advertised fast mode, and disables thinking or selects the lowest advertised effort. Its 90-second deadline includes model discovery. The commit button stays aligned with the first input line. Rebase lets users choose a target branch, resolve and stage
 conflicts, then continue or abort. Starting a rebase does not stash changes automatically.
 File menus add selected untracked files to the repository-root `.gitignore` using
 literal, rooted paths; tracked files remain tracked and existing ignore rules are preserved.

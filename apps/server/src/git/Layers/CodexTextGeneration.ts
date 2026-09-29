@@ -83,13 +83,22 @@ function normalizeCodexError(
   });
 }
 
-function sanitizeCodexConfigForTextGeneration(content: string): string {
+function sanitizeCodexConfigForTextGeneration(
+  content: string,
+  operation: TextGenerationOperation,
+): string {
   const lines = content.split(/\r?\n/g);
   const sanitized: string[] = [];
   let skippingSkillsConfig = false;
 
   for (const line of lines) {
     const trimmed = line.trim();
+    // Commit generation supplies only options advertised by the selected model.
+    if (
+      operation === "generateCommitMessage" &&
+      /^(model_reasoning_effort|service_tier)\s*=/.test(trimmed)
+    )
+      continue;
 
     if (trimmed.startsWith("[[")) {
       if (trimmed === "[[skills.config]]") {
@@ -200,7 +209,7 @@ const makeCodexTextGeneration = Effect.gen(function* () {
         yield* fileSystem
           .writeFileString(
             path.join(isolatedHomePath, "config.toml"),
-            sanitizeCodexConfigForTextGeneration(sourceConfig),
+            sanitizeCodexConfigForTextGeneration(sourceConfig, operation),
           )
           .pipe(
             Effect.mapError(
@@ -330,8 +339,22 @@ const makeCodexTextGeneration = Effect.gen(function* () {
           "read-only",
           "--model",
           resolveCodexModel(model, modelSelection) ?? DEFAULT_GIT_TEXT_GENERATION_MODEL,
-          "--config",
-          `model_reasoning_effort="${DEFAULT_GIT_TEXT_GENERATION_REASONING_EFFORT}"`,
+          ...(operation === "generateCommitMessage"
+            ? [
+                ...(modelSelection?.provider === "codex" && modelSelection.options?.reasoningEffort
+                  ? [
+                      "--config",
+                      `model_reasoning_effort=${JSON.stringify(modelSelection.options.reasoningEffort)}`,
+                    ]
+                  : []),
+                ...(modelSelection?.provider === "codex" && modelSelection.options?.fastMode
+                  ? ["--config", 'service_tier="fast"']
+                  : []),
+              ]
+            : [
+                "--config",
+                `model_reasoning_effort="${DEFAULT_GIT_TEXT_GENERATION_REASONING_EFFORT}"`,
+              ]),
           "--output-schema",
           schemaPath,
           "--output-last-message",
