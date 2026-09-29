@@ -3,8 +3,10 @@ import { FileDiff } from "@pierre/diffs/react";
 import { normalizeLineEndings } from "@glade/shared/text";
 import { useMemo, useRef, useState, type RefObject } from "react";
 
-import { buildDiffPanelUnsafeCSS, resolveDiffThemeName } from "~/lib/diffRendering";
+import { useAppSettings } from "~/appSettings";
+import { resolveDiffThemeName } from "~/lib/diffRendering";
 import { CodeEditBoundary } from "./CodeEditBoundary";
+import { buildCodeEditorUnsafeCSS } from "./codeEditorAppearance";
 import { useCodeEditorSaveKeyDownHandler, useCodeEditorSessionOptions } from "./CodeEditorPane";
 import type { CodeEditHistoryControls, CodeEditHistoryState } from "./pierreEdit";
 
@@ -24,6 +26,7 @@ export interface CodeDiffEditorPaneProps {
 }
 
 export function CodeDiffEditorPane(props: CodeDiffEditorPaneProps) {
+  const { settings } = useAppSettings();
   const originalRef = useRef(props.original);
   originalRef.current = props.original;
   const modifiedRef = useRef(props.modified);
@@ -62,7 +65,7 @@ export function CodeDiffEditorPane(props: CodeDiffEditorPaneProps) {
     () => ({
       theme: resolveDiffThemeName(props.resolvedTheme),
       themeType: props.resolvedTheme,
-      unsafeCSS: buildDiffPanelUnsafeCSS(props.resolvedTheme),
+      unsafeCSS: buildCodeEditorUnsafeCSS(props.resolvedTheme),
       diffStyle: props.renderSideBySide ? ("split" as const) : ("unified" as const),
       lineDiffType: "word" as const,
       disableFileHeader: true,
@@ -87,7 +90,8 @@ export function CodeDiffEditorPane(props: CodeDiffEditorPaneProps) {
 
   return (
     <div
-      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+      className="code-editor-pane flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+      data-editor-caret-style={settings.editorCaretStyle}
       onKeyDownCapture={saveKeyDownHandler}
     >
       <CodeEditBoundary>

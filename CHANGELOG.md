@@ -5,6 +5,7 @@
 ### Improved
 
 - File search results show plain names, and chat find uses a compact, clickable row.
+- File editing keeps line numbers aligned and shows clearer caret, active line, and text selection. Caret shape is configurable in Appearance, and Cmd+Y redoes edits on macOS.
 
 ### Fixed
 

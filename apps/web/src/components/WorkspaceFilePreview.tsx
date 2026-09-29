@@ -41,6 +41,7 @@ import {
 } from "react";
 
 import { basenameOfPath } from "~/file-icons";
+import { useAppSettings } from "~/appSettings";
 import { useWorkspaceFileEditorBuffer } from "~/hooks/useWorkspaceFileEditor";
 import { useTheme } from "~/hooks/useTheme";
 import { useProjectFileChangeSubscription } from "~/hooks/useProjectFileChangeSubscription";
@@ -49,11 +50,7 @@ import {
   getSelectionWithin,
   type ChatFileReference,
 } from "~/lib/chatReferences";
-import {
-  buildDiffPanelUnsafeCSS,
-  resolveDiffThemeName,
-  type DiffThemeName,
-} from "~/lib/diffRendering";
+import { resolveDiffThemeName, type DiffThemeName } from "~/lib/diffRendering";
 import { extractEditorGutterChanges, type EditorGutterChangeRange } from "~/lib/editorGutterDiff";
 import { formatFileCommentRange, type FileCommentSelection } from "~/lib/fileComments";
 import { showFileReferenceContextMenu } from "~/lib/fileReferenceContextMenu";
@@ -79,6 +76,8 @@ import {
   highlightCodeToHtmlWithFallback,
 } from "~/lib/syntaxHighlighting";
 import { cn } from "~/lib/utils";
+import { buildCodeEditorUnsafeCSS } from "./codeEditor/codeEditorAppearance";
+import { CODE_EDITOR_KEYMAP } from "./codeEditor/pierreEdit";
 import { resolveWorkspaceFileEditorReadOnlyReason } from "~/lib/workspaceFileEditor";
 import { readNativeApi } from "~/nativeApi";
 import ChatMarkdown from "./ChatMarkdown";
@@ -289,6 +288,7 @@ type EditableFileContentsProps = {
 };
 
 function EditableFileContents(props: EditableFileContentsProps) {
+  const { settings } = useAppSettings();
   const pierreRef = useRef<PierreEditor<undefined> | null>(null);
   const revealRef = useRef(props.revealPosition);
   revealRef.current = props.revealPosition;
@@ -350,6 +350,7 @@ function EditableFileContents(props: EditableFileContentsProps) {
   );
   const editorOptions = useMemo<PierreEditorOptions<undefined>>(
     () => ({
+      keymap: CODE_EDITOR_KEYMAP,
       onAttach: (editor) => {
         pierreRef.current = editor;
         attachEditor();
@@ -368,7 +369,8 @@ function EditableFileContents(props: EditableFileContentsProps) {
     <div
       ref={editorContainerRef}
       data-workspace-file-editor
-      className="editor-file-editor__pierre"
+      data-editor-caret-style={settings.editorCaretStyle}
+      className="code-editor-pane editor-file-editor__pierre"
       hidden={props.hidden}
       aria-busy={props.saving}
       aria-invalid={props.invalid ? "true" : undefined}
@@ -389,7 +391,7 @@ function EditableFileContents(props: EditableFileContentsProps) {
             overflow: "scroll",
             preferredHighlighter: "shiki-js",
             theme: props.themeName,
-            unsafeCSS: buildDiffPanelUnsafeCSS(props.theme),
+            unsafeCSS: buildCodeEditorUnsafeCSS(props.theme),
           }}
         />
       </EditProvider>

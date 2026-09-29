@@ -234,6 +234,12 @@ export const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     target: null,
   },
   {
+    id: "appearance:caret-style",
+    section: "appearance",
+    title: "Caret style",
+    keywords: "Choose a line or block cursor when editing files.",
+  },
+  {
     id: "appearance:time-format",
     section: "appearance",
     title: "Time format",

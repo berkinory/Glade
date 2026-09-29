@@ -11,6 +11,8 @@ import { useEffect, useMemo, useState } from "react";
 import {
   type AppSettings,
   type FollowUpBehavior,
+  type EditorCaretStyle,
+  DEFAULT_EDITOR_CARET_STYLE,
   DEFAULT_UI_DENSITY,
   DEFAULT_CHAT_WIDTH,
   type UiDensity,
@@ -109,6 +111,11 @@ const SIDEBAR_LAYOUT_OPTIONS = [
   { value: "classic", label: "Classic" },
   { value: "rail", label: "Rail" },
 ] as const satisfies readonly SettingsSegmentedOption<SidebarLayout>[];
+
+const EDITOR_CARET_STYLE_OPTIONS = [
+  { value: "line", label: "Line" },
+  { value: "block", label: "Block" },
+] as const satisfies readonly SettingsSegmentedOption<EditorCaretStyle>[];
 
 const UI_DENSITY_OPTIONS = [
   {
@@ -999,6 +1006,29 @@ function SettingsRouteView() {
               ariaLabel: "Enable font smoothing",
             })
           : null}
+      </SettingsSection>
+
+      <SettingsSection title="Editor">
+        <SettingsRow
+          title="Caret style"
+          description="Choose the cursor shape when editing a file."
+          resetAction={
+            settings.editorCaretStyle !== defaults.editorCaretStyle ? (
+              <SettingResetButton
+                label="caret style"
+                onClick={() => updateSettings({ editorCaretStyle: DEFAULT_EDITOR_CARET_STYLE })}
+              />
+            ) : null
+          }
+          control={
+            <SettingsSegmentedControl
+              value={settings.editorCaretStyle}
+              onValueChange={(editorCaretStyle) => updateSettings({ editorCaretStyle })}
+              ariaLabel="Editor caret style"
+              options={EDITOR_CARET_STYLE_OPTIONS}
+            />
+          }
+        />
       </SettingsSection>
 
       <SettingsSection title="Time and reading">

@@ -1240,6 +1240,13 @@ label:has(> select#reasoning-effort) select {
   width: max-content;
 }
 
+.code-editor-pane[data-editor-caret-style="block"] {
+  --glade-editor-caret-width: 1ch;
+  --glade-editor-caret-offset: 1.5px;
+  --glade-editor-caret-color: #fff;
+  --glade-editor-caret-blend: difference;
+}
+
 /* Line-number gutter for the read-only file preview. Rendered via CSS counters
    on the per-line spans (Shiki and the plain fallback both emit .line), so the
    numbers stay out of text selection, clipboard copies, and the selection

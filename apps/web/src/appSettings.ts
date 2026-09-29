@@ -88,6 +88,9 @@ export const TERMINAL_FONT_FAMILY_SUGGESTIONS: ReadonlyArray<string> = [
 export const TimestampFormat = Schema.Literals(["locale", "12-hour", "24-hour"]);
 export type TimestampFormat = typeof TimestampFormat.Type;
 export const DEFAULT_TIMESTAMP_FORMAT: TimestampFormat = "locale";
+export const EditorCaretStyle = Schema.Literals(["line", "block"]);
+export type EditorCaretStyle = typeof EditorCaretStyle.Type;
+export const DEFAULT_EDITOR_CARET_STYLE: EditorCaretStyle = "line";
 export const SidebarProjectSortOrder = Schema.Literals(["updated_at", "created_at", "manual"]);
 export type SidebarProjectSortOrder = typeof SidebarProjectSortOrder.Type;
 export const DEFAULT_SIDEBAR_PROJECT_SORT_ORDER: SidebarProjectSortOrder = "manual";
@@ -228,6 +231,7 @@ export const AppSettingsSchema = Schema.Struct({
   confirmThreadArchive: Schema.Boolean.pipe(withDefaults(() => false)),
   confirmTerminalTabClose: Schema.Boolean.pipe(withDefaults(() => true)),
   diffWordWrap: Schema.Boolean.pipe(withDefaults(() => false)),
+  editorCaretStyle: EditorCaretStyle.pipe(withDefaults(() => DEFAULT_EDITOR_CARET_STYLE)),
   showPullRequestDiffColors: Schema.Boolean.pipe(withDefaults(() => true)),
   // Local-only UI preferences for hiding sidebar surfaces a user doesn't want.
   // `showChatsSection` controls the standalone "Chats" list in the sidebar footer

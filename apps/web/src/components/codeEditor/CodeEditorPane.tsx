@@ -4,12 +4,15 @@ import { useQuery } from "@tanstack/react-query";
 import { useCallback, useMemo, useRef, type KeyboardEvent, type RefObject } from "react";
 
 import type { ResolvedKeybindingsConfig } from "@glade/contracts";
+import { useAppSettings } from "~/appSettings";
 import { isBrowserSaveChord } from "~/hooks/useWorkspaceFileEditorShortcuts";
-import { buildDiffPanelUnsafeCSS, resolveDiffThemeName } from "~/lib/diffRendering";
+import { resolveDiffThemeName } from "~/lib/diffRendering";
 import { isEditorFileSaveShortcut } from "~/keybindings";
 import { serverConfigQueryOptions } from "~/lib/serverReactQuery";
 import { CodeEditBoundary } from "./CodeEditBoundary";
+import { buildCodeEditorUnsafeCSS } from "./codeEditorAppearance";
 import {
+  CODE_EDITOR_KEYMAP,
   createCodeEditHistoryControls,
   readCodeEditHistoryState,
   type CodeEditHistoryControls,
@@ -55,6 +58,7 @@ export function useCodeEditorSessionOptions(input: {
       onHistoryChangeRef.current?.(history);
     };
     return {
+      keymap: CODE_EDITOR_KEYMAP,
       onAttach: (editor: PierreEditor) => {
         editorRef.current = editor;
         if (historyControlsRef) {
@@ -102,6 +106,7 @@ export function useCodeEditorSaveKeyDownHandler(onSave: () => void) {
 }
 
 export function CodeEditorPane(props: CodeEditorPaneProps) {
+  const { settings } = useAppSettings();
   const valueRef = useRef(props.value);
   valueRef.current = props.value;
   const file = useMemo(
@@ -121,7 +126,7 @@ export function CodeEditorPane(props: CodeEditorPaneProps) {
     () => ({
       theme: resolveDiffThemeName(props.resolvedTheme),
       themeType: props.resolvedTheme,
-      unsafeCSS: buildDiffPanelUnsafeCSS(props.resolvedTheme),
+      unsafeCSS: buildCodeEditorUnsafeCSS(props.resolvedTheme),
       disableFileHeader: true,
       overflow: "scroll" as const,
     }),
@@ -137,7 +142,8 @@ export function CodeEditorPane(props: CodeEditorPaneProps) {
 
   return (
     <div
-      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+      className="code-editor-pane flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+      data-editor-caret-style={settings.editorCaretStyle}
       onKeyDownCapture={saveKeyDownHandler}
     >
       <CodeEditBoundary>{content}</CodeEditBoundary>
