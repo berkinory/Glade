@@ -45,8 +45,8 @@ import remarkMath from "remark-math";
 import { copyTextToClipboard } from "../hooks/useCopyToClipboard";
 import { resolveDiffThemeName, type DiffThemeName } from "../lib/diffRendering";
 import { dedentCode, parseCodeFenceInfo, type CodeFenceInfo } from "../lib/codeFence";
-import { getFileIconName, pathLooksLikeKnownFile } from "../file-icons";
-import { CentralIcon } from "~/lib/central-icons";
+import { pathLooksLikeKnownFile } from "../file-icons";
+import { FileEntryIcon } from "./chat/FileEntryIcon";
 import { isLocalImageMarkdownSrc } from "../lib/localImageUrls";
 import { repairMarkdownTableDelimiters } from "../lib/markdownTableRepair";
 import { showFileReferenceContextMenu } from "../lib/fileReferenceContextMenu";
@@ -823,8 +823,9 @@ function CodeBlockHeaderTitle({ fence }: { fence: CodeFenceInfo }) {
   if (fence.isFileReference && fence.fileName) {
     return (
       <span className="chat-markdown-codeblock__file" title={fence.filePath ?? fence.fileName}>
-        <CentralIcon
-          name={getFileIconName(fence.filePath ?? fence.fileName)}
+        <FileEntryIcon
+          pathValue={fence.filePath ?? fence.fileName}
+          kind="file"
           className="chat-markdown-codeblock__file-icon"
         />
         <span className="chat-markdown-codeblock__file-name">{fence.fileName}</span>

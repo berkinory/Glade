@@ -544,5 +544,5 @@ it("keeps dollar filenames separate from math and rejects escaped delimiters", a
   expect(markup).toContain("[[literal]]");
   expect(markup).not.toContain("foo.md");
   expect(markup).not.toContain("alias.md");
-  expect(markup.match(/href=/g)).toHaveLength(1);
+  expect(markup.match(/<a\b[^>]*\bhref=/g)).toHaveLength(1);
 });

@@ -4,6 +4,8 @@
 
 ### Improved
 
+- Code-block file headers use the bundled Symbols file icons.
+
 - Source Control keeps file status letters visible without shifting rows during hover, opens files in Explorer, and can revert unstaged changes with confirmation while preserving staged content. Newly created Explorer files open in the editor.
 - Source Control file rows support Cmd/Ctrl and Shift selection with right-click actions for opening, staging, unstaging, and reverting selected files. Empty Staged sections stay hidden, and the diff pane uses 55% of the available height.
 - Changes header totals and untracked file rows include new-file line counts through a separate stats request, so the file list does not wait for content-based counting. Header totals remain visible while refreshing.
