@@ -4,53 +4,25 @@
 
 ### New
 
-- Explorer can search code and text, group matching lines by file, highlight matches, and open results at their source line. Searches reuse the bounded workspace index and report partial results.
-- Source Control has a History tab with commit author, date, hash, full-branch commit-message filtering, and a read-only per-commit diff preview.
-- Source Control adds staged-only commits with Cmd/Ctrl+Enter, a compact branch picker, fetch, pull, push, and rebase with conflict continuation and abort.
-- Generate commit messages from staged changes using the configured Git writing AI, without staging files or committing.
-- Source Control file menus can add untracked paths to the root .gitignore, preserving existing rules and escaping filenames literally.
-- Outgoing and incoming commit counts appear beside Fetch for branches with an upstream.
-- Explorer supports creating files and folders with inline names, renaming, deleting, and opening folders in the platform file manager.
-- Source Control file rows support Cmd/Ctrl and Shift selection for bulk staging, unstaging, and reverting from the context menu.
+- Search workspace contents from Explorer, filter matches, and jump directly to the matching line. ([d827cfdd2](https://github.com/berkinory/Glade/commit/d827cfdd2cf5c5826c2926b6a1796106154982b4))
+- Create, rename, and delete files and folders directly in Explorer. ([893378876](https://github.com/berkinory/Glade/commit/893378876700e32cc81cd2921d1edc7a29152361))
+- Commit staged changes, switch branches, fetch, pull, push, and manage rebases from Source Control. ([f51193d55](https://github.com/berkinory/Glade/commit/f51193d55340088197ecf9b09267f3a29a0b2b1e))
+- Browse and search commit history, inspect file diffs, and see branch and tag references. ([c020041a0](https://github.com/berkinory/Glade/commit/c020041a02764e2276d90111fe5665a502fba982), [7829610e2](https://github.com/berkinory/Glade/commit/7829610e24703fdbe537fe73ab99f39e3bea69d7))
+- Generate commit messages from staged changes with AI. ([f51193d55](https://github.com/berkinory/Glade/commit/f51193d55340088197ecf9b09267f3a29a0b2b1e))
+- Stage, unstage, or revert multiple files together in Source Control. ([40352945d](https://github.com/berkinory/Glade/commit/40352945d5e7f8314bd4da7bf53b222d98fa2430))
+- Add untracked files and folders to .gitignore from Source Control. ([f51193d55](https://github.com/berkinory/Glade/commit/f51193d55340088197ecf9b09267f3a29a0b2b1e))
 
 ### Improved
 
-- All editable workspace files use the advanced editor, including its Cmd/Ctrl+F search. The size-based textarea editor and its dedicated styles are removed.
-- Content-search filters have distinct active outlines, and selecting a result expands its parent folders and keeps the same file selected when returning to Explorer.
-- History marks merge commits and shows branch names where local or remote branch tips point.
-- Explorer content search includes inline match-case and whole-word controls, clickable file headers, shared hover styles and loading skeletons, compact match highlights, and visible active-mode buttons.
-- History loads virtualized rows as you scroll, shows author photos when available, relative times, tags, and compact upstream status icons. Commit rows have an icon menu to copy the full hash, short hash, or subject. Selected commits open below with every file diff initially collapsed and file-shaped loading placeholders. Source Control tabs have icons and the Changes and History detail panes use 60% of the panel.
-- Review panels switch between stacked and split diffs with one toolbar button.
-- Commit message AI enables supported fast mode and disables thinking when available, otherwise selecting the lowest supported effort, with a 90-second deadline.
-- The compact commit input keeps its AI action, spinner, and commit button aligned with the first line without overlapping text. Rebase uses the shared tooltip.
-- Source Control keeps file status letters visible without shifting rows during hover, opens files in Explorer, and preserves staged content when reverting unstaged changes. Newly created Explorer files open in the editor.
-- Empty Staged sections stay hidden, and the diff pane uses 60% of the available height.
-- Changes header totals and untracked file rows include new-file line counts through a separate stats request, so the file list does not wait for content-based counting. Header totals remain visible while refreshing.
-- Source Control section headers use the same + and - actions as file rows. Stage and unstage refresh the file list first while broader Git status and diff refreshes finish in the background.
-- Source Control lists changed files from Git metadata without loading the full patch and uses the same workspace as Explorer. Its diff pane opens only after selecting a file. Refresh sits beside Staged; loading uses the shared spinner, and the empty state shows the checkout path.
-- Explorer menus have action icons, file previews show concise errors, and edits save explicitly with Cmd/Ctrl+S. Folder expansion changes without height or chevron motion.
-- File and folder icons across Explorer, editor, search, diffs, message attachments, and code-block headers use the bundled Symbols icon theme.
-- The right sidebar opens on Explorer and keeps Explorer, Terminal, Source Control, Browser, and Simulator in a fixed order. Chat terminals use the sidebar instead of a bottom drawer.
-- The right sidebar has a 28rem minimum width and can expand to 1.5 times its opening width. Panel buttons use icons, and switching panels preserves the resized width.
-- Sidebar icons align more closely with their labels in project, chat, and Activity rows.
-- The composer model button shows reasoning in readable text and leaves context limits in the model details.
-- Shortcut hints use the same compact keycap throughout tooltips, menus, and the sidebar.
-- Release notes separate new features under New from improvements and fixes in both the changelog and the app.
+- Large files now use the full editor with in-file search; save edits explicitly with Cmd/Ctrl+S. ([12e24d1cd](https://github.com/berkinory/Glade/commit/12e24d1cd08d805508ad398b2550eac19245d90f), [893378876](https://github.com/berkinory/Glade/commit/893378876700e32cc81cd2921d1edc7a29152361))
+- Workspace tools share a resizable sidebar, with chat terminals alongside Explorer and Source Control. ([3a0a6c227](https://github.com/berkinory/Glade/commit/3a0a6c2279c0fcf394d6654ea647ebe849a2173c))
+- File and folder icons are consistent across workspace tools, attachments, and code blocks. ([eacb74af6](https://github.com/berkinory/Glade/commit/eacb74af620fe53b492da2d1d2bdda2d382906d0), [7c3b08f8f](https://github.com/berkinory/Glade/commit/7c3b08f8fbfa6f54c4e376bfc4d41f00c971f8f3))
 
 ### Fixed
 
-- Cmd/Ctrl+F stays in the focused editor instead of opening chat search.
-- Returning from content search to Explorer scrolls the selected file into view after its parent folders finish loading.
-- Content search no longer silently stops at five matching lines per file; the bounded scan now uses the total result limit and reports partial results.
-- Chat header action labels stay visible when opening or closing a sidebar.
-- Deleting an Explorer file closes its preview. Finder actions use the system icon, and file breadcrumbs keep descenders visible.
-- Chat rows and headers show the provider icon even when the terminal is the saved primary view.
-- Replies keep their position as thinking gives way to text. Delayed session updates no longer flicker the activity indicator or briefly replace Stop with Send.
-- Codex keeps its runtime between replies when native tool-call identity is available. Codex and Claude gateway calls stay bound to their originating turn; runtimes without call provenance renew safely. Background reconnects keep the composer available.
-- Editing a message no longer rewrites unchanged workspace files, avoiding unnecessary dev reloads, and preserves staged changes. The separate message Revert button was removed.
-- Stopped turns remain editable. Edits rewind native Codex, Claude, and OpenCode history without replacing it with a summary or briefly clearing the chat; stale edits show a short warning.
-- Older blocked chats recover on restart. Error toasts stay short and let you copy the full detail.
-- Provider bookkeeping stays out of the transcript. Codex startup logs respect their severity, and MCP connection failures show one concise message instead of retry traces.
+- Editing messages preserves conversation history and staged changes without rewriting unchanged files. Stopped replies remain editable. ([655214630](https://github.com/berkinory/Glade/commit/65521463052bb8c3b383269eaa2173fe9d76ab10))
+- Provider reconnects keep the composer available, and previously blocked chats recover after restarting. ([655214630](https://github.com/berkinory/Glade/commit/65521463052bb8c3b383269eaa2173fe9d76ab10))
+- Replies stay in place as thinking turns into text, and delayed session updates no longer flicker the send controls. ([bb24cd2cc](https://github.com/berkinory/Glade/commit/bb24cd2cc3f3b2b2b0e0fa4e0b5c2b55328660e5))
 
 ## 0.0.4 - 2026-09-28
 

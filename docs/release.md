@@ -82,6 +82,6 @@ Only Dev and Prod are supported. Dev uses blueprint artwork and an isolated prof
 
 ## Changelog format
 
-Keep the newest version first, with `Unreleased` until publication and an ISO date once released. Group entries under `Added`, `Improved`, `Fixed`, `Removed`, `Deprecated`, or `Security`; omit empty groups. Describe observable behavior in one concise bullet per change.
+Keep the newest version first, with `Unreleased` until publication and an ISO date once released. Group entries under `New`, `Improved`, `Fixed`, `Removed`, `Deprecated`, or `Security`; omit empty groups. Describe observable behavior in one concise bullet per change. Merge related work into one entry, omit minor cosmetic fixes and implementation details, and link the commits that introduced the behavior.
 
 When a change has an actual commit, append its short hash linked to the full SHA: `- Change description. ([SHORT_SHA](https://github.com/berkinory/Glade/commit/FULL_SHA))`. Do not invent hashes or use an unrelated commit. Uncommitted changes have no link. Mirror these categories in the in-app notes; their optional `commit` field renders the linked hash.

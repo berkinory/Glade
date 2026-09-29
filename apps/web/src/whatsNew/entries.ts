@@ -6,201 +6,91 @@ export const WHATS_NEW_ENTRIES: readonly WhatsNewEntry[] = [
     date: "Unreleased",
     features: [
       {
-        id: "consistent-workspace-editor",
-        title: "Improved",
-        description:
-          "Editable files use the advanced editor at every size, with Cmd/Ctrl+F file search that no longer opens chat search.",
-      },
-      {
         id: "explorer-code-search",
         title: "New",
         description:
-          "Search code and text from Explorer with match-case and whole-word filters, clickable file groups, highlighted matches, and direct navigation. Results are no longer silently capped at five lines per file. Returning to Explorer expands the folders and scrolls to the selected file.",
+          "Search workspace contents from Explorer, filter matches, and jump directly to the matching line.",
+        commit: "d827cfdd2cf5c5826c2926b6a1796106154982b4",
       },
       {
-        id: "source-control-adds-staged-only-commits-with-cmd-ctrl",
+        id: "explorer-file-management",
+        title: "New",
+        description: "Create, rename, and delete files and folders directly in Explorer.",
+        commit: "893378876700e32cc81cd2921d1edc7a29152361",
+      },
+      {
+        id: "source-control-actions",
         title: "New",
         description:
-          "Source Control adds staged-only commits with Cmd/Ctrl+Enter, a compact branch picker, fetch, pull, push, and rebase with conflict continuation and abort.",
+          "Commit staged changes, switch branches, fetch, pull, push, and manage rebases from Source Control.",
+        commit: "f51193d55340088197ecf9b09267f3a29a0b2b1e",
       },
       {
-        id: "generate-commit-messages-from-staged-changes-using-the-configured",
+        id: "source-control-history",
         title: "New",
         description:
-          "Generate commit messages from staged changes using the configured Git writing AI, without staging files or committing.",
+          "Browse and search commit history, inspect file diffs, and see branch and tag references.",
+        commit: "c020041a02764e2276d90111fe5665a502fba982",
       },
       {
-        id: "source-control-file-menus-can-add-untracked-paths-to",
+        id: "source-control-ai-messages",
         title: "New",
-        description:
-          "Source Control file menus can add untracked paths to the root .gitignore, preserving existing rules and escaping filenames literally.",
+        description: "Generate commit messages from staged changes with AI.",
+        commit: "f51193d55340088197ecf9b09267f3a29a0b2b1e",
       },
       {
-        id: "outgoing-and-incoming-commit-counts-appear-beside-fetch-for",
+        id: "source-control-bulk-actions",
         title: "New",
-        description:
-          "Outgoing and incoming commit counts appear beside Fetch for branches with an upstream.",
+        description: "Stage, unstage, or revert multiple files together in Source Control.",
+        commit: "40352945d5e7f8314bd4da7bf53b222d98fa2430",
       },
       {
-        id: "explorer-supports-creating-files-and-folders-with-inline-names",
+        id: "source-control-ignore",
         title: "New",
-        description:
-          "Explorer supports creating files and folders with inline names, renaming, deleting, and opening folders in the platform file manager.",
+        description: "Add untracked files and folders to .gitignore from Source Control.",
+        commit: "f51193d55340088197ecf9b09267f3a29a0b2b1e",
       },
       {
-        id: "source-control-file-rows-support-cmd-ctrl-and-shift",
-        title: "New",
-        description:
-          "Source Control file rows support Cmd/Ctrl and Shift selection for bulk staging, unstaging, and reverting from the context menu.",
-      },
-      {
-        id: "review-panels-switch-between-stacked-and-split-diffs-with",
+        id: "workspace-editor",
         title: "Improved",
         description:
-          "Review panels switch between stacked and split diffs with one toolbar button.",
+          "Large files now use the full editor with in-file search; save edits explicitly with Cmd/Ctrl+S.",
+        commit: "12e24d1cd08d805508ad398b2550eac19245d90f",
       },
       {
-        id: "commit-message-ai-enables-supported-fast-mode-and-disables",
+        id: "workspace-panels",
         title: "Improved",
         description:
-          "Commit message AI enables supported fast mode and disables thinking when available, otherwise selecting the lowest supported effort, with a 90-second deadline.",
+          "Workspace tools share a resizable sidebar, with chat terminals alongside Explorer and Source Control.",
+        commit: "3a0a6c2279c0fcf394d6654ea647ebe849a2173c",
       },
       {
-        id: "the-compact-commit-input-keeps-its-ai-action-spinner",
+        id: "workspace-file-icons",
         title: "Improved",
         description:
-          "The compact commit input keeps its AI action, spinner, and commit button aligned with the first line without overlapping text. Rebase uses the shared tooltip.",
+          "File and folder icons are consistent across workspace tools, attachments, and code blocks.",
+        commit: "eacb74af620fe53b492da2d1d2bdda2d382906d0",
       },
       {
-        id: "source-control-keeps-file-status-letters-visible-without-shifting",
-        title: "Improved",
-        description:
-          "Source Control keeps file status letters visible without shifting rows during hover, opens files in Explorer, and preserves staged content when reverting unstaged changes. Newly created Explorer files open in the editor.",
-      },
-      {
-        id: "empty-staged-sections-stay-hidden-and-the-diff-pane",
-        title: "Improved",
-        description:
-          "Empty Staged sections stay hidden, and the diff pane uses 55% of the available height.",
-      },
-      {
-        id: "changes-header-totals-and-untracked-file-rows-include-new",
-        title: "Improved",
-        description:
-          "Changes header totals and untracked file rows include new-file line counts through a separate stats request, so the file list does not wait for content-based counting. Header totals remain visible while refreshing.",
-      },
-      {
-        id: "source-control-section-headers-use-the-same-and-actions",
-        title: "Improved",
-        description:
-          "Source Control section headers use the same + and - actions as file rows. Stage and unstage refresh the file list first while broader Git status and diff refreshes finish in the background.",
-      },
-      {
-        id: "source-control-lists-changed-files-from-git-metadata-without",
-        title: "Improved",
-        description:
-          "Source Control lists changed files from Git metadata without loading the full patch and uses the same workspace as Explorer. Its diff pane opens only after selecting a file. Refresh sits beside Staged; loading uses the shared spinner, and the empty state shows the checkout path.",
-      },
-      {
-        id: "explorer-menus-have-action-icons-file-previews-show-concise",
-        title: "Improved",
-        description:
-          "Explorer menus have action icons, file previews show concise errors, and edits save explicitly with Cmd/Ctrl+S. Folder expansion changes without height or chevron motion.",
-      },
-      {
-        id: "file-and-folder-icons-across-explorer-editor-search-diffs",
-        title: "Improved",
-        description:
-          "File and folder icons across Explorer, editor, search, diffs, message attachments, and code-block headers use the bundled Symbols icon theme.",
-      },
-      {
-        id: "the-right-sidebar-opens-on-explorer-and-keeps-explorer",
-        title: "Improved",
-        description:
-          "The right sidebar opens on Explorer and keeps Explorer, Terminal, Source Control, Browser, and Simulator in a fixed order. Chat terminals use the sidebar instead of a bottom drawer.",
-      },
-      {
-        id: "the-right-sidebar-has-a-28rem-minimum-width-and",
-        title: "Improved",
-        description:
-          "The right sidebar has a 28rem minimum width and can expand to 1.5 times its opening width. Panel buttons use icons, and switching panels preserves the resized width.",
-      },
-      {
-        id: "sidebar-icons-align-more-closely-with-their-labels-in",
-        title: "Improved",
-        description:
-          "Sidebar icons align more closely with their labels in project, chat, and Activity rows.",
-      },
-      {
-        id: "the-composer-model-button-shows-reasoning-in-readable-text",
-        title: "Improved",
-        description:
-          "The composer model button shows reasoning in readable text and leaves context limits in the model details.",
-      },
-      {
-        id: "shortcut-hints-use-the-same-compact-keycap-throughout-tooltips",
-        title: "Improved",
-        description:
-          "Shortcut hints use the same compact keycap throughout tooltips, menus, and the sidebar.",
-      },
-      {
-        id: "release-notes-separate-new-features-under-new-from-improvements",
-        title: "Improved",
-        description:
-          "Release notes separate new features under New from improvements and fixes in both the changelog and the app.",
-      },
-      {
-        id: "chat-header-action-labels-stay-visible-when-opening-or",
-        title: "Fixed",
-        description: "Chat header action labels stay visible when opening or closing a sidebar.",
-      },
-      {
-        id: "deleting-an-explorer-file-closes-its-preview-finder-actions",
+        id: "chat-message-editing",
         title: "Fixed",
         description:
-          "Deleting an Explorer file closes its preview. Finder actions use the system icon, and file breadcrumbs keep descenders visible.",
+          "Editing messages preserves conversation history and staged changes without rewriting unchanged files. Stopped replies remain editable.",
+        commit: "65521463052bb8c3b383269eaa2173fe9d76ab10",
       },
       {
-        id: "chat-rows-and-headers-show-the-provider-icon-even",
+        id: "chat-session-recovery",
         title: "Fixed",
         description:
-          "Chat rows and headers show the provider icon even when the terminal is the saved primary view.",
+          "Provider reconnects keep the composer available, and previously blocked chats recover after restarting.",
+        commit: "65521463052bb8c3b383269eaa2173fe9d76ab10",
       },
       {
-        id: "replies-keep-their-position-as-thinking-gives-way-to",
+        id: "chat-reply-stability",
         title: "Fixed",
         description:
-          "Replies keep their position as thinking gives way to text. Delayed session updates no longer flicker the activity indicator or briefly replace Stop with Send.",
-      },
-      {
-        id: "codex-keeps-its-runtime-between-replies-when-native-tool",
-        title: "Fixed",
-        description:
-          "Codex keeps its runtime between replies when native tool-call identity is available. Codex and Claude gateway calls stay bound to their originating turn; runtimes without call provenance renew safely. Background reconnects keep the composer available.",
-      },
-      {
-        id: "editing-a-message-no-longer-rewrites-unchanged-workspace-files",
-        title: "Fixed",
-        description:
-          "Editing a message no longer rewrites unchanged workspace files, avoiding unnecessary dev reloads, and preserves staged changes. The separate message Revert button was removed.",
-      },
-      {
-        id: "stopped-turns-remain-editable-edits-rewind-native-codex-claude",
-        title: "Fixed",
-        description:
-          "Stopped turns remain editable. Edits rewind native Codex, Claude, and OpenCode history without replacing it with a summary or briefly clearing the chat; stale edits show a short warning.",
-      },
-      {
-        id: "older-blocked-chats-recover-on-restart-error-toasts-stay",
-        title: "Fixed",
-        description:
-          "Older blocked chats recover on restart. Error toasts stay short and let you copy the full detail.",
-      },
-      {
-        id: "provider-bookkeeping-stays-out-of-the-transcript-codex-startup",
-        title: "Fixed",
-        description:
-          "Provider bookkeeping stays out of the transcript. Codex startup logs respect their severity, and MCP connection failures show one concise message instead of retry traces.",
+          "Replies stay in place as thinking turns into text, and delayed session updates no longer flicker the send controls.",
+        commit: "bb24cd2cc3f3b2b2b0e0fa4e0b5c2b55328660e5",
       },
     ],
   },
