@@ -40,12 +40,13 @@ import { CHAT_BACKGROUND_CLASS_NAME } from "./composerPickerStyles";
 import { ComposerPickerMenuPopup } from "./ComposerPickerMenuPopup";
 import {
   CHAT_SURFACE_HEADER_ROW_CLASS_NAME,
+  CHAT_SURFACE_CONTROL_ACTIVE_CLASS_NAME,
   DOCK_HEADER_ICON_BUTTON_CLASS,
+  SurfaceChipIcon,
   SurfaceTabChip,
 } from "./chatHeaderControls";
 import {
   getRightDockPaneMeta,
-  type RightDockLauncherItem,
   resolveRightDockPaneIcon,
   resolveRightDockPaneLabel,
 } from "./rightDockPaneMeta";
@@ -54,17 +55,8 @@ import { useDesktopTopBarWindowControlsGutterClassName } from "~/hooks/useDeskto
 // Shared sizing defaults for dock hosts: the resize floor for a single readable pane and the
 // "half the shell, but never cramped" opening width. The thread route tunes its own values
 // around the composer; simpler hosts (e.g. the /pull-requests route) use these as-is.
-export const RIGHT_DOCK_MIN_WIDTH = 26 * 16;
+export const RIGHT_DOCK_MIN_WIDTH = 28 * 16;
 export const RIGHT_DOCK_DEFAULT_WIDTH = "max(28rem, calc(50vw - 8rem))";
-
-// Pane kinds whose content has a natural width, opened at that size rather than
-// at the even split. The device pane frames a portrait phone, so its useful
-// width is whatever lets the phone reach full height: a ~19.5:9 chassis stays
-// height-bound well past 480px, and opening narrower only shrinks the device
-// while leaving empty space above and below it.
-const RIGHT_DOCK_PREFERRED_WIDTH: Partial<Record<RightDockPaneKind, number>> = {
-  device: 38 * 16,
-};
 
 interface RightDockProps {
   state: RightDockThreadState;
@@ -80,7 +72,7 @@ interface RightDockProps {
   // swapping the generic kind icon for its live state glyph.
   paneIconOverrides?: Record<string, ReactNode | undefined>;
   addMenuKinds: readonly RightDockPaneKind[];
-  launcherItems?: readonly RightDockLauncherItem[];
+  primaryKinds?: readonly RightDockPaneKind[];
   // Single-pane hosts omit selection so their lone tab label is static; multi-pane chat hosts
   // provide the callback and keep the normal selectable-tab behavior.
   onSelectPane?: ((paneId: string) => void) | undefined;
@@ -95,34 +87,6 @@ interface RightDockProps {
     pane: RightDockPane,
     context: { runtimeMode: DockPaneRuntimeMode; isActive: boolean; isVisible: boolean },
   ) => ReactNode;
-}
-
-function RightDockLauncher(props: {
-  items: readonly RightDockLauncherItem[];
-  onOpen: (kind: RightDockPaneKind) => void;
-}) {
-  return (
-    <nav
-      aria-label="Open a panel"
-      className="flex h-full min-h-0 items-center justify-center overflow-y-auto p-6"
-    >
-      <div className="flex w-full max-w-sm flex-col gap-1.5">
-        {props.items.map(({ kind, Icon, label }) => (
-          <Button
-            key={kind}
-            variant="subtle"
-            size="xl"
-            className="h-11 w-full justify-start gap-3 rounded-xl px-4 text-ui-lg font-normal"
-            aria-label={`Open ${label}`}
-            onClick={() => props.onOpen(kind)}
-          >
-            <Icon className="size-4 shrink-0" />
-            <span>{label}</span>
-          </Button>
-        ))}
-      </div>
-    </nav>
-  );
 }
 
 function RightDockTab(props: {
@@ -248,9 +212,10 @@ export function RightDock(props: RightDockProps) {
     if (!props.state.open) setExpandedKey(null);
   }, [props.state.open]);
   const minWidth = props.minWidth;
-  const activePaneKind = activePane?.kind ?? null;
+  const [resizeMaxWidth, setResizeMaxWidth] = useState(minWidth * 1.5);
+  const widthInitializedRef = useRef(false);
   useEffect(() => {
-    if (!props.state.open) {
+    if (!props.state.open || widthInitializedRef.current) {
       return;
     }
     const wrapper = contentRef.current?.closest<HTMLElement>("[data-slot='sidebar-wrapper']");
@@ -258,15 +223,14 @@ export function RightDock(props: RightDockProps) {
     if (!wrapper || !shell) {
       return;
     }
-    // A phone-shaped pane has a natural width: half the shell leaves the device
-    // stranded in empty space, so kinds that render a fixed-aspect object open
-    // at their own comfortable size instead of the even split.
-    const preferredWidth = activePaneKind ? RIGHT_DOCK_PREFERRED_WIDTH[activePaneKind] : undefined;
-    const openWidth = preferredWidth ?? Math.round(shell.getBoundingClientRect().width / 2);
+    const openWidth = Math.round(shell.getBoundingClientRect().width / 2);
     if (openWidth > 0) {
-      wrapper.style.setProperty("--sidebar-width", `${Math.max(minWidth, openWidth)}px`);
+      const defaultWidth = Math.max(minWidth, openWidth);
+      setResizeMaxWidth(Math.round(defaultWidth * 1.5));
+      wrapper.style.setProperty("--sidebar-width", `${defaultWidth}px`);
+      widthInitializedRef.current = true;
     }
-  }, [props.state.open, minWidth, activePaneKind]);
+  }, [props.state.open, minWidth]);
   const renderedPanes = props.state.panes.filter(
     (pane) => pane.id === activePane?.id || keepMountedPaneIds.has(pane.id),
   );
@@ -320,6 +284,7 @@ export function RightDock(props: RightDockProps) {
         transparentSurface
         resizable={{
           minWidth: props.minWidth,
+          maxWidth: resizeMaxWidth,
           shouldAcceptWidth: props.shouldAcceptWidth,
         }}
       >
@@ -335,20 +300,50 @@ export function RightDock(props: RightDockProps) {
               desktopTopBarWindowControlsGutterClassName,
             )}
           >
-            <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
-              {props.state.panes.map((pane) => (
-                <RightDockTab
-                  key={pane.id}
-                  pane={pane}
-                  label={resolveRightDockPaneLabel(pane, props.paneLabelOverrides)}
-                  icon={props.paneIconOverrides?.[pane.id]}
-                  active={pane.id === props.state.activePaneId}
-                  onSelect={onSelectPane ? () => onSelectPane(pane.id) : undefined}
-                  onClose={() => props.onClosePane(pane.id)}
-                />
-              ))}
+            {props.primaryKinds ? (
+              <nav aria-label="Right sidebar panels" className="flex shrink-0 items-center gap-1">
+                {props.primaryKinds.map((kind) => {
+                  const { Icon, label } = getRightDockPaneMeta(kind);
+                  return (
+                    <IconButton
+                      key={kind}
+                      variant="chrome"
+                      size="icon-xs"
+                      label={label}
+                      tooltip={label}
+                      tooltipSide="bottom"
+                      title={label}
+                      aria-pressed={activePane?.kind === kind}
+                      className={cn(
+                        DOCK_HEADER_ICON_BUTTON_CLASS,
+                        activePane?.kind === kind && CHAT_SURFACE_CONTROL_ACTIVE_CLASS_NAME,
+                      )}
+                      onClick={() => props.onAddPane(kind)}
+                    >
+                      <SurfaceChipIcon icon={Icon} />
+                    </IconButton>
+                  );
+                })}
+              </nav>
+            ) : null}
+            <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {props.state.panes
+                .filter((pane) => !props.primaryKinds?.includes(pane.kind))
+                .map((pane) => (
+                  <RightDockTab
+                    key={pane.id}
+                    pane={pane}
+                    label={resolveRightDockPaneLabel(pane, props.paneLabelOverrides)}
+                    icon={props.paneIconOverrides?.[pane.id]}
+                    active={pane.id === props.state.activePaneId}
+                    onSelect={onSelectPane ? () => onSelectPane(pane.id) : undefined}
+                    onClose={() => props.onClosePane(pane.id)}
+                  />
+                ))}
             </div>
-            {props.state.panes.length > 0 && props.addMenuKinds.length > 0 ? (
+            {!props.primaryKinds &&
+            props.state.panes.length > 0 &&
+            props.addMenuKinds.length > 0 ? (
               <Menu modal={false}>
                 <MenuTrigger
                   render={
@@ -402,9 +397,6 @@ export function RightDock(props: RightDockProps) {
             </IconButton>
           </div>
           <div className="relative min-h-0 flex-1">
-            {activePane === null && props.launcherItems ? (
-              <RightDockLauncher items={props.launcherItems} onOpen={props.onAddPane} />
-            ) : null}
             {renderedPanes.map((pane) => {
               const isActive = pane.id === activePane?.id;
               const isVisible = isActive && props.state.open;

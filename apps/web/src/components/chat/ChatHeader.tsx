@@ -17,7 +17,6 @@ import React, { type Dispatch, type SetStateAction, useEffect, useRef, useState 
 import { FiGitBranch } from "react-icons/fi";
 import { HiMiniArrowsPointingOut } from "react-icons/hi2";
 import { TbExchange } from "react-icons/tb";
-import type { ThreadPrimarySurface } from "../../types";
 import GitActionsControl from "../GitActionsControl";
 import {
   CheckIcon,
@@ -70,7 +69,6 @@ const HEADER_COMPACT_BREAKPOINT = 700;
 interface ChatHeaderProps {
   activeThreadId: ThreadId;
   activeThreadTitle: string;
-  activeThreadEntryPoint: ThreadPrimarySurface;
   activeProvider: ProviderKind;
   activeProjectName: string | undefined;
   threadBreadcrumbs: ReadonlyArray<{
@@ -475,22 +473,9 @@ function EditorRailTabs(props: {
   );
 }
 
-export type ChatHeaderThreadIconKind = "none" | "provider" | "terminal";
-
-function resolveChatHeaderThreadIconKind(
-  entryPoint: ThreadPrimarySurface,
-  title?: string,
-): ChatHeaderThreadIconKind {
-  if (entryPoint === "chat" && isGenericChatThreadTitle(title)) {
-    return "none";
-  }
-  return entryPoint === "terminal" ? "terminal" : "provider";
-}
-
 export function ChatHeader({
   activeThreadId,
   activeThreadTitle,
-  activeThreadEntryPoint,
   activeProvider,
   activeProjectName,
   threadBreadcrumbs,
@@ -562,7 +547,7 @@ export function ChatHeader({
   // Split-chat creation moved to a shortcut only; the header keeps just the inline
   // "maximize" affordance for an already-split focused pane.
   const inlineChatLayoutAction = chatLayoutAction?.kind === "maximize" ? chatLayoutAction : null;
-  const threadIconKind = resolveChatHeaderThreadIconKind(activeThreadEntryPoint, activeThreadTitle);
+  const showThreadProviderIcon = !isGenericChatThreadTitle(activeThreadTitle);
 
   useEffect(() => {
     const el = headerRef.current;
@@ -680,22 +665,14 @@ export function ChatHeader({
             ) : null}
             <div className={cn("flex min-w-0 items-center gap-2", editorChatControls && "h-full")}>
               <div className="flex min-w-0 items-center gap-2">
-                {threadIconKind === "none" ? null : (
+                {showThreadProviderIcon ? (
                   <span
                     className="inline-flex size-3.5 shrink-0 items-center justify-center"
-                    title={
-                      threadIconKind === "terminal"
-                        ? "Terminal"
-                        : PROVIDER_DISPLAY_NAMES[activeProvider]
-                    }
+                    title={PROVIDER_DISPLAY_NAMES[activeProvider]}
                   >
-                    {threadIconKind === "terminal" ? (
-                      <TerminalIcon className="size-3.5 text-[var(--color-text-accent)]" />
-                    ) : (
-                      renderProviderIcon(activeProvider, "size-3.5")
-                    )}
+                    {renderProviderIcon(activeProvider, "size-3.5")}
                   </span>
-                )}
+                ) : null}
                 <h2
                   className="max-w-[clamp(12rem,42vw,36rem)] truncate font-system-ui text-ui font-normal text-foreground"
                   title={activeThreadTitle}

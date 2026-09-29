@@ -374,9 +374,8 @@ import { SidebarHeaderTrigger } from "./ui/sidebar";
 import { Skeleton } from "./ui/skeleton";
 import { toastManager } from "./ui/toast";
 
-// The terminal drawer drags in xterm plus its addons (~223 KB gzip). Both mount points
-// are conditional, so loading it lazily keeps the terminal stack out of the initial
-// chat bundle and defers the cost to the first time a terminal is actually opened.
+// The full-width terminal workspace loads xterm lazily, keeping its addons out of
+// the initial chat bundle until the workspace is opened.
 const ThreadTerminalDrawer = lazy(() => import("./ThreadTerminalDrawer"));
 
 const EMPTY_ACTIVITIES: OrchestrationThreadActivity[] = [];
@@ -476,6 +475,8 @@ interface ChatViewProps {
   panelState?: SplitViewPanePanelState;
   onToggleDiffPanel?: () => void;
   onToggleRightDock?: () => void;
+  onToggleTerminal?: () => void;
+  onOpenTerminal?: () => void;
   onToggleBrowserPanel?: () => void;
   onToggleDevicePanel?: () => void;
   onOpenBrowserUrl?: (url: string) => void;
@@ -510,6 +511,8 @@ export default function ChatView({
   panelState,
   onToggleDiffPanel,
   onToggleRightDock,
+  onToggleTerminal,
+  onOpenTerminal,
   onToggleBrowserPanel,
   onToggleDevicePanel,
   onOpenBrowserUrl,
@@ -3401,6 +3404,9 @@ export default function ChatView({
   const copyThreadIdToClipboard = useCopyThreadIdToClipboard();
 
   useChatKeyboardShortcuts({
+    onToggleTerminal,
+    onOpenTerminal,
+    expandTerminalWorkspace,
     onToggleDevicePanel,
     onSplitSurface,
     surfaceMode,
@@ -5446,7 +5452,6 @@ export default function ChatView({
         <ChatHeader
           activeThreadId={activeThread.id}
           activeThreadTitle={activeThreadDisplayTitle}
-          activeThreadEntryPoint={terminalState.entryPoint}
           activeProvider={activeThread.session?.provider ?? activeThread.modelSelection.provider}
           activeProjectName={isEditorRail ? undefined : activeProjectDisplayName}
           threadBreadcrumbs={threadBreadcrumbs}
@@ -5892,22 +5897,6 @@ export default function ChatView({
         ) : null}
       </div>
       {/* end horizontal flex container */}
-
-      {(() => {
-        if (!terminalState.terminalOpen || terminalWorkspaceOpen) {
-          return null;
-        }
-        return (
-          <Suspense fallback={null}>
-            <ThreadTerminalDrawer
-              key={activeThread.id}
-              {...terminalDrawerProps}
-              presentationMode="drawer"
-              onTogglePresentationMode={expandTerminalWorkspace}
-            />
-          </Suspense>
-        );
-      })()}
 
       <ComposerSlashStatusDialog
         open={isSlashStatusDialogOpen}

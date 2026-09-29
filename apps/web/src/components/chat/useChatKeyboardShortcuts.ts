@@ -48,6 +48,9 @@ function canHandleComposerPickerShortcut(
   );
 }
 interface ChatKeyboardShortcutsInput {
+  onToggleTerminal: (() => void) | undefined;
+  onOpenTerminal: (() => void) | undefined;
+  expandTerminalWorkspace: ReturnType<typeof useChatTerminalController>["expandTerminalWorkspace"];
   onToggleDevicePanel: (() => void) | undefined;
   onSplitSurface: (() => void) | undefined;
   surfaceMode: "single" | "split";
@@ -112,6 +115,9 @@ interface ChatKeyboardShortcutsInput {
 }
 
 export function useChatKeyboardShortcuts({
+  onToggleTerminal,
+  onOpenTerminal,
+  expandTerminalWorkspace,
   onToggleDevicePanel,
   onSplitSurface,
   surfaceMode,
@@ -163,6 +169,13 @@ export function useChatKeyboardShortcuts({
   activeThread,
 }: ChatKeyboardShortcutsInput) {
   useEffect(() => {
+    const revealTerminal = () => {
+      if (onOpenTerminal) {
+        onOpenTerminal();
+      } else if (surfaceMode === "split") {
+        expandTerminalWorkspace();
+      }
+    };
     if (surfaceMode === "split" && !isFocusedPane) {
       return;
     }
@@ -289,7 +302,18 @@ export function useChatKeyboardShortcuts({
       if (command === "terminal.toggle") {
         event.preventDefault();
         event.stopPropagation();
-        toggleTerminalVisibility();
+        if (onToggleTerminal) {
+          onToggleTerminal();
+        } else if (surfaceMode === "split") {
+          if (terminalWorkspaceOpen) {
+            setTerminalOpen(false);
+          } else {
+            setTerminalOpen(true);
+            expandTerminalWorkspace();
+          }
+        } else {
+          toggleTerminalVisibility();
+        }
         return;
       }
 
@@ -300,6 +324,7 @@ export function useChatKeyboardShortcuts({
           setTerminalOpen(true);
         }
         splitTerminalRight();
+        revealTerminal();
         return;
       }
 
@@ -310,6 +335,7 @@ export function useChatKeyboardShortcuts({
           setTerminalOpen(true);
         }
         splitTerminalLeft();
+        revealTerminal();
         return;
       }
 
@@ -320,6 +346,7 @@ export function useChatKeyboardShortcuts({
           setTerminalOpen(true);
         }
         splitTerminalDown();
+        revealTerminal();
         return;
       }
 
@@ -330,6 +357,7 @@ export function useChatKeyboardShortcuts({
           setTerminalOpen(true);
         }
         splitTerminalUp();
+        revealTerminal();
         return;
       }
 
@@ -345,13 +373,19 @@ export function useChatKeyboardShortcuts({
         event.preventDefault();
         event.stopPropagation();
         createTerminalFromShortcut();
+        revealTerminal();
         return;
       }
 
       if (command === "terminal.workspace.newFullWidth") {
         event.preventDefault();
         event.stopPropagation();
-        openNewFullWidthTerminal();
+        if (onOpenTerminal) {
+          createTerminalFromShortcut();
+          onOpenTerminal();
+        } else {
+          openNewFullWidthTerminal();
+        }
         return;
       }
 
@@ -498,6 +532,9 @@ export function useChatKeyboardShortcuts({
     scheduleComposerFocus,
     toggleComposerFocus,
     toggleTerminalVisibility,
+    onToggleTerminal,
+    onOpenTerminal,
+    expandTerminalWorkspace,
     activeThread,
     selectedProvider,
     selectedModel,

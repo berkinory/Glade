@@ -760,7 +760,7 @@ input {
   display: none;
 }
 
-/* Terminal drawer scrollbar parity with chat: inset the slider so it floats with
+/* Terminal scrollbar parity with chat: inset the slider so it floats with
    a small gap from the edge instead of hugging it. */
 .thread-terminal-drawer .xterm .xterm-scrollable-element > .scrollbar.vertical {
   width: 10px !important;

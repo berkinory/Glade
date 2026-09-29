@@ -1,12 +1,10 @@
 // FILE: DockTerminalPane.tsx
-// Purpose: Render an independent terminal workspace inside the right dock for a host thread.
+// Purpose: Render the thread's terminal workspace inside the right dock.
 // Layer: Chat right-dock UI
 // Depends on: useTerminalSurfaceController (shared store wiring), ThreadTerminalDrawer.
 //
-// The dock terminal set is isolated from the bottom drawer via a synthetic scope id
-// (dockTerminalThreadId), so the two never share xterm instances. All store wiring is
-// shared with other terminal surfaces through useTerminalSurfaceController; only the
-// "ensure a terminal is open" policy is surface-specific (here: a single terminal-only page).
+// Uses the thread's existing terminal sessions, including sessions opened before
+// the bottom drawer was retired.
 
 import { type ProjectId, type ThreadId } from "@glade/contracts";
 import { resolveThreadWorkspaceCwd } from "@glade/shared/threadEnvironment";
@@ -14,7 +12,6 @@ import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "r
 
 import { useTerminalSurfaceController } from "~/hooks/useTerminalSurfaceController";
 import { SINGLE_CHAT_PANE_SCOPE_ID } from "~/lib/chatPaneScope";
-import { dockTerminalThreadId } from "~/lib/dockTerminalScope";
 import {
   getTerminalContextComposerTarget,
   subscribeTerminalContextComposerTarget,
@@ -22,6 +19,7 @@ import {
 import { projectScriptRuntimeEnv } from "~/projectScripts";
 import { useStore } from "~/store";
 import { createProjectSelector, createThreadWorkspaceMetadataSelector } from "~/storeSelectors";
+import { useTerminalStateStore } from "~/terminalStateStore";
 import ThreadTerminalDrawer from "../ThreadTerminalDrawer";
 
 export function DockTerminalPane(props: {
@@ -32,7 +30,7 @@ export function DockTerminalPane(props: {
   isActive?: boolean;
   onClosePanel: () => void;
 }) {
-  const scopeId = dockTerminalThreadId(props.hostThreadId);
+  const scopeId = props.hostThreadId;
   const threadWorkspace = useStore(
     useMemo(() => createThreadWorkspaceMetadataSelector(props.hostThreadId), [props.hostThreadId]),
   );
@@ -55,7 +53,8 @@ export function DockTerminalPane(props: {
     : {};
 
   const terminal = useTerminalSurfaceController(scopeId);
-  const { terminalState, openTerminalThreadPage, bumpFocusRequest, newTerminalGroup } = terminal;
+  const { terminalState, bumpFocusRequest, newTerminalGroup } = terminal;
+  const setTerminalOpen = useTerminalStateStore((store) => store.setTerminalOpen);
   const closingFinalTerminalRef = useRef(false);
   const subscribeToComposerTarget = useCallback(
     (listener: () => void) =>
@@ -75,16 +74,16 @@ export function DockTerminalPane(props: {
   // A dock terminal pane normally shows a live terminal. An `exit` is final,
   // though: do not recreate a replacement terminal just as the panel closes.
   useEffect(() => {
-    if (terminalState.terminalOpen || closingFinalTerminalRef.current) {
+    if (!props.isActive || terminalState.terminalOpen || closingFinalTerminalRef.current) {
       return;
     }
-    openTerminalThreadPage(scopeId, { terminalOnly: true });
-  }, [openTerminalThreadPage, scopeId, terminalState.terminalOpen]);
+    setTerminalOpen(scopeId, true);
+  }, [props.isActive, scopeId, setTerminalOpen, terminalState.terminalOpen]);
 
   const createTerminal = () => {
     closingFinalTerminalRef.current = false;
     if (!terminalState.terminalOpen) {
-      openTerminalThreadPage(scopeId, { terminalOnly: true });
+      setTerminalOpen(scopeId, true);
       bumpFocusRequest();
       return;
     }

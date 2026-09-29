@@ -22,7 +22,8 @@ production artwork. Production updates come only from the Glade release reposito
 - Temporary chats: no composer toggle, sidebar badge, or delete-on-leave lifecycle.
   Existing conversations and unsent drafts remain available as regular chats.
 - Terminal threads: no project action, creation shortcut, terminal-specific draft slot,
-  or automatic thread naming and deletion. Sidebar and in-thread terminals remain available.
+  or automatic thread naming and deletion. The right sidebar hosts chat terminals;
+  the bottom terminal drawer has been removed.
 
 These are physical removals, not dormant implementations behind feature flags.
 

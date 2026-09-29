@@ -50,7 +50,7 @@ Invalid rules are ignored. Invalid config files are ignored. Warnings are logged
 
 ### Available Commands
 
-- `terminal.toggle`: open/close terminal drawer
+- `terminal.toggle`: open/close the terminal in the right sidebar (the full-width terminal workspace in split or editor views)
 - `terminal.split`: split terminal (in focused terminal context by default)
 - `terminal.new`: create new terminal (in focused terminal context by default)
 - `terminal.close`: close/kill the focused terminal (in focused terminal context by default)

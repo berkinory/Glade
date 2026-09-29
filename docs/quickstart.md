@@ -56,7 +56,7 @@ Follow the transcript and tool activity while the provider works.
 
 Useful controls:
 
-- `mod+j` opens the terminal drawer.
+- `mod+j` opens the terminal in the right sidebar.
 - `mod+d` opens the diff view.
 - `mod+shift+b` opens the browser.
 - Approval and user-input requests appear in the task.

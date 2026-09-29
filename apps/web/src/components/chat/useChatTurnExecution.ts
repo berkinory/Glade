@@ -394,7 +394,7 @@ export function useChatTurnExecution({
                 associatedWorktreeBranch: nextAssociatedWorktree.associatedWorktreeBranch,
                 associatedWorktreeRef: nextAssociatedWorktree.associatedWorktreeRef,
               });
-              // Keep local thread state in sync immediately so terminal drawer opens
+              // Keep local thread state in sync immediately so the terminal opens
               // with the worktree cwd/env instead of briefly using the project root.
               setStoreThreadWorkspace(threadIdForSend, {
                 branch: result.worktree.branch,

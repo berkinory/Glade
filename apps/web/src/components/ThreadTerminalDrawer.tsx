@@ -1,5 +1,5 @@
 // FILE: ThreadTerminalDrawer.tsx
-// Purpose: Hosts the terminal drawer/workspace chrome and each xterm viewport for a thread.
+// Purpose: Hosts terminal workspace chrome and each xterm viewport for a thread.
 // Layer: Chat terminal workspace UI
 // Depends on: xterm addons, native terminal APIs, and terminal workspace state from ChatView.
 

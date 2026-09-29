@@ -1,7 +1,7 @@
 // FILE: rightDockPaneMeta.tsx
 // Purpose: Shared semantic metadata (icon + label) for right-dock pane kinds.
 // Layer: Chat right-dock UI primitives
-// Exports: per-kind meta map, launcher items, and pane label/icon resolvers.
+// Exports: per-kind meta map and pane label/icon resolvers.
 
 import type { ReactNode } from "react";
 
@@ -27,20 +27,14 @@ export interface RightDockPaneMeta {
   Icon: LucideIcon;
 }
 
-export interface RightDockLauncherItem extends RightDockPaneMeta {
-  kind: RightDockPaneKind;
-}
-
 export const RIGHT_DOCK_PANE_META: Record<RightDockPaneKind, RightDockPaneMeta> = {
   browser: { label: "Browser", Icon: GlobeIcon },
-  // The contracts stay platform-neutral ("device") so Android emulators can plug
-  // in later, but the only backend today is the iOS Simulator, so that is what
-  // the label says.
-  device: { label: "iOS Simulator", Icon: DeviceMobileIcon },
+  // The contract stays platform-neutral ("device"); today the backend is iOS.
+  device: { label: "Simulator", Icon: DeviceMobileIcon },
   explorer: { label: "Explorer", Icon: FoldersIcon },
   file: { label: "File", Icon: FileIcon },
   terminal: { label: "Terminal", Icon: TerminalIcon },
-  git: { label: "Source control", Icon: GitCommitIcon },
+  git: { label: "Source Control", Icon: GitCommitIcon },
   pullRequest: { label: "Pull request", Icon: GitPullRequestIcon },
 };
 
@@ -56,53 +50,6 @@ const FALLBACK_RIGHT_DOCK_PANE_META: RightDockPaneMeta = {
 // directly, so an unknown kind degrades gracefully rather than throwing.
 export function getRightDockPaneMeta(kind: RightDockPaneKind): RightDockPaneMeta {
   return RIGHT_DOCK_PANE_META[kind] ?? FALLBACK_RIGHT_DOCK_PANE_META;
-}
-
-// Empty-dock launchers prioritize the everyday workspace tools. Source control is gated by
-// repository discovery, and Explorer needs a concrete workspace. Context-only
-// file and pull-request panes continue to open from their owning surfaces.
-const RIGHT_DOCK_LAUNCHER_ORDER: readonly RightDockPaneKind[] = [
-  "git",
-  "terminal",
-  "browser",
-  "explorer",
-  "device",
-];
-
-const RIGHT_DOCK_LAUNCHER_LABELS: Partial<Record<RightDockPaneKind, string>> = {
-  explorer: "Files",
-  git: "Source control",
-};
-
-export function resolveRightDockLauncherItems(input: {
-  hasWorkspace: boolean;
-  hasGitRepository: boolean;
-  /**
-   * Simulators need a macOS server with Xcode. Off macOS the entry is hidden
-   * outright rather than shown disabled: there is nothing the user could do
-   * from this machine to make it work.
-   */
-  hasDeviceSupport?: boolean;
-}): readonly RightDockLauncherItem[] {
-  return RIGHT_DOCK_LAUNCHER_ORDER.flatMap((kind) => {
-    if (kind === "git" && !input.hasGitRepository) {
-      return [];
-    }
-    if (kind === "explorer" && !input.hasWorkspace) {
-      return [];
-    }
-    if (kind === "device" && input.hasDeviceSupport !== true) {
-      return [];
-    }
-    const meta = getRightDockPaneMeta(kind);
-    return [
-      {
-        kind,
-        Icon: meta.Icon,
-        label: RIGHT_DOCK_LAUNCHER_LABELS[kind] ?? meta.label,
-      },
-    ];
-  });
 }
 
 // Resolves a tab label, preferring caller-provided per-pane overrides (e.g. the

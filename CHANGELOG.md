@@ -4,6 +4,9 @@
 
 ### Improved
 
+- Chat rows and headers show the provider icon even when the terminal is the saved primary view.
+- The right sidebar opens on Explorer and keeps Explorer, Terminal, Source Control, Browser, and Simulator in a fixed order. Chat terminals now use the sidebar instead of a bottom drawer.
+- The right sidebar has a 28rem minimum width and can expand to 1.5 times its opening width. Panel buttons use icons, and switching panels preserves the resized width.
 - File and folder icons across Explorer, editor, search, diffs, and message attachments use the bundled Symbols icon theme.
 - Sidebar icons align more closely with their labels in project, chat, and Activity rows.
 - The composer model button shows reasoning in smaller text and leaves context limits in the model details.

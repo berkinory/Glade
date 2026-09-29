@@ -1,14 +1,13 @@
 // FILE: dockTerminalScope.ts
-// Purpose: Derive a stable, isolated terminal scope id for right-dock terminals.
+// Purpose: Identify historical isolated dock terminal scopes during cleanup.
 // Layer: Terminal scope helpers
 // Exports: dock terminal scope prefix + id factory shared by the dock pane and cleanup.
 
 import type { ThreadId } from "@glade/contracts";
 import { dockTerminalScopeId } from "@glade/shared/terminalThreads";
 
-// Right-dock terminals run as an independent session set from the bottom drawer.
-// They reuse the per-thread terminal store/runtime keyed by this synthetic scope so
-// xterm instances never collide with the host thread's drawer terminals.
+// Older builds stored right-dock sessions under a synthetic scope. Keep the ID
+// factory for cleanup so those sessions do not survive a deleted host thread.
 export { DOCK_TERMINAL_SCOPE_PREFIX } from "@glade/shared/terminalThreads";
 
 export function dockTerminalThreadId(hostThreadId: ThreadId): ThreadId {

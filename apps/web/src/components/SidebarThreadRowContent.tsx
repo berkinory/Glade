@@ -15,7 +15,6 @@ import type { SidebarThreadSummary } from "../types";
 import { TerminalIcon } from "../lib/icons";
 import { cn } from "../lib/utils";
 import { ProviderIcon } from "./ProviderIcon";
-import { SidebarGlyph } from "./sidebarGlyphs";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 
 export interface SidebarThreadTerminalStatus {
@@ -134,7 +133,6 @@ function SidebarSubagentLabel({
 
 export function SidebarThreadRowContent({
   thread,
-  terminalEntryPoint,
   terminalStatus,
   terminalCount,
   isActive,
@@ -144,7 +142,6 @@ export function SidebarThreadRowContent({
   suffix,
 }: {
   thread: SidebarThreadSummary;
-  terminalEntryPoint: boolean;
   terminalStatus: SidebarThreadTerminalStatus | null;
   terminalCount: number;
   isActive: boolean;
@@ -185,8 +182,6 @@ export function SidebarThreadRowContent({
             style={{ backgroundColor: subagentPresentation?.accentColor }}
           />
         </span>
-      ) : terminalEntryPoint ? (
-        <SidebarGlyph icon={TerminalIcon} variant="chrome" />
       ) : showThreadProviderAvatar ? (
         <ProviderAvatarWithTerminal
           thread={thread}

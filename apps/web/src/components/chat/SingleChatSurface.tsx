@@ -1,8 +1,7 @@
 import type { FileDiffMetadata } from "@pierre/diffs/react";
 import { isWorkspaceRelativePathSafe } from "@glade/shared/path";
 import type { ProjectId, ThreadId, TurnId } from "@glade/contracts";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { flushWorkspaceEditors } from "~/lib/workspaceEditorSession";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
   lazy,
@@ -39,7 +38,6 @@ import type { DockPaneRuntimeMode } from "../../lib/dockPaneActivation";
 import type { FileCommentSelection } from "../../lib/fileComments";
 import type { DiffEditBaseRev, DiffFileEditRequest } from "../../lib/diffEditBaseRev";
 import { editorCenterModeFamily, type EditorCenterMode } from "../../lib/editorCenterMode";
-import { gitBranchesQueryOptions } from "../../lib/gitReactQuery";
 import { canComposerHandlePanelWidth } from "../../lib/panelResize";
 import { projectListDirectoriesQueryOptions } from "../../lib/projectReactQuery";
 import {
@@ -52,6 +50,7 @@ import {
 } from "../../lib/workspaceFileOpener";
 import { requestExplorerReveal } from "../../explorerRevealRequestStore";
 import { selectRightDockState, useRightDockStore } from "../../rightDockStore";
+import { useTerminalStateStore } from "../../terminalStateStore";
 import {
   resolveActivePane,
   type RightDockPane,
@@ -82,12 +81,8 @@ import {
 import { FloatingBrowserPanel } from "./FloatingBrowserPanel";
 import { shouldRenderFloatingBrowserPanel } from "./floatingBrowserPanel.logic";
 import { PanelStateMessage } from "./PanelStateMessage";
-import { RightDock } from "./RightDock";
-import {
-  buildRightDockPaneLabelOverrides,
-  getRightDockPaneMeta,
-  resolveRightDockLauncherItems,
-} from "./rightDockPaneMeta";
+import { RIGHT_DOCK_MIN_WIDTH, RightDock } from "./RightDock";
+import { buildRightDockPaneLabelOverrides, getRightDockPaneMeta } from "./rightDockPaneMeta";
 import {
   CHAT_BACKGROUND_CLASS_NAME,
   CHAT_MAIN_CONTENT_SURFACE_CLASS_NAME,
@@ -119,6 +114,7 @@ const EditorWorkspaceView = lazy(() =>
   })),
 );
 const DockTerminalPane = lazy(() => import("./DockTerminalPane"));
+const PRIMARY_DOCK_PANE_KINDS = ["explorer", "terminal", "git", "browser", "device"] as const;
 const SourceControlDockPane = lazy(() =>
   import("./SourceControlDockPane").then((module) => ({
     default: module.SourceControlDockPane,
@@ -136,7 +132,6 @@ const DockFilePane = lazy(() =>
 );
 
 const DIFF_INLINE_DEFAULT_WIDTH = "max(28rem, calc(50vw - 8rem))";
-const SINGLE_PANEL_MIN_WIDTH = 26 * 16;
 
 const allowAnySplitDirection = (_direction: SplitDirection) => true;
 
@@ -191,6 +186,17 @@ export function SingleChatSurface(props: {
   const setActivePane = useRightDockStore((store) => store.setActivePane);
   const setDockOpen = useRightDockStore((store) => store.setDockOpen);
   const updatePane = useRightDockStore((store) => store.updatePane);
+  const terminalPresentation = useTerminalStateStore((store) => {
+    const state = store.terminalStateByThreadId[props.threadId];
+    return state?.terminalOpen && state.presentationMode === "workspace";
+  });
+  const terminalOpen = useTerminalStateStore(
+    (store) => store.terminalStateByThreadId[props.threadId]?.terminalOpen ?? false,
+  );
+  const setTerminalOpen = useTerminalStateStore((store) => store.setTerminalOpen);
+  const setTerminalPresentationMode = useTerminalStateStore(
+    (store) => store.setTerminalPresentationMode,
+  );
   const activeProject = useStore(
     useMemo(() => createProjectSelector(props.projectId), [props.projectId]),
   );
@@ -214,15 +220,7 @@ export function SingleChatSurface(props: {
     threadWorkingDirectory:
       threadWorkspaceMetadata.workingDirectory ?? draftThread?.workingDirectory ?? null,
   });
-  const dockGitRepositoryQuery = useQuery(gitBranchesQueryOptions(workspaceRoot));
-  const hasGitRepository = dockGitRepositoryQuery.data?.isRepo === true;
   const hasDeviceSupport = useDeviceSupport();
-  const dockLauncherItems = resolveRightDockLauncherItems({
-    hasWorkspace: workspaceRoot !== null,
-    hasGitRepository,
-    hasDeviceSupport,
-  });
-  const availableDockPaneKinds = dockLauncherItems.map(({ kind }) => kind);
   const projects = useStore((store) => store.projects);
   const { settings: appSettings } = useAppSettings();
   const { handleNewThread } = useHandleNewThread();
@@ -339,6 +337,11 @@ export function SingleChatSurface(props: {
     toggleSingletonPane(props.threadId, { kind: "device" });
   };
   const handleToggleRightDock = () => {
+    if (!dockState.open && dockState.activePaneId === null) {
+      requestImmediateDockHydration("explorer");
+      openPane(props.threadId, { kind: "explorer" });
+      return;
+    }
     setDockOpen(props.threadId, !dockState.open);
   };
   const handleOpenBrowserUrl = () => {
@@ -782,11 +785,54 @@ export function SingleChatSurface(props: {
 
   const handleAddDockPane = (kind: RightDockPaneKind) => {
     requestImmediateDockHydration(kind);
-    openPane(props.threadId, {
-      kind,
-      ...(kind === "git" ? { sourceControlView: "changes" as const } : {}),
-    });
+    if (kind === "terminal") {
+      setTerminalPresentationMode(props.threadId, "drawer");
+    }
+    openPane(props.threadId, { kind });
   };
+
+  const handleToggleTerminalPane = () => {
+    if (dockState.open && activePane?.kind === "terminal") {
+      setDockOpen(props.threadId, false);
+    } else {
+      handleAddDockPane("terminal");
+    }
+  };
+
+  useEffect(() => {
+    if (dockState.open && dockState.activePaneId === null) {
+      requestImmediateDockHydration("explorer");
+      openPane(props.threadId, { kind: "explorer" });
+    }
+  }, [dockState.activePaneId, dockState.open, openPane, props.threadId]);
+
+  useEffect(() => {
+    if (!terminalPresentation || editorViewActive) return;
+    setTerminalPresentationMode(props.threadId, "drawer");
+    openPane(props.threadId, { kind: "terminal" });
+  }, [
+    editorViewActive,
+    openPane,
+    props.threadId,
+    setTerminalPresentationMode,
+    terminalPresentation,
+  ]);
+
+  useEffect(() => {
+    if (editorViewActive || terminalPresentation) return;
+    const terminalVisible = dockState.open && activePane?.kind === "terminal";
+    if (terminalOpen !== terminalVisible) {
+      setTerminalOpen(props.threadId, terminalVisible);
+    }
+  }, [
+    activePane?.kind,
+    dockState.open,
+    editorViewActive,
+    props.threadId,
+    setTerminalOpen,
+    terminalOpen,
+    terminalPresentation,
+  ]);
 
   const renderDockPane = (
     pane: RightDockPane,
@@ -1073,6 +1119,8 @@ export function SingleChatSurface(props: {
               panelState={chatPanelState}
               onToggleDiff={handleToggleDiff}
               onToggleRightDock={handleToggleRightDock}
+              onToggleTerminal={handleToggleTerminalPane}
+              onOpenTerminal={() => handleAddDockPane("terminal")}
               onToggleBrowser={handleToggleBrowser}
               onOpenBrowserUrl={handleOpenBrowserUrl}
               onOpenTurnDiff={handleOpenTurnDiff}
@@ -1100,11 +1148,11 @@ export function SingleChatSurface(props: {
         </ChatPaneDropOverlay>
         <RightDock
           state={dockState}
-          minWidth={SINGLE_PANEL_MIN_WIDTH}
+          minWidth={RIGHT_DOCK_MIN_WIDTH}
           defaultWidth={DIFF_INLINE_DEFAULT_WIDTH}
           shouldAcceptWidth={shouldAcceptDockWidth}
-          addMenuKinds={availableDockPaneKinds}
-          launcherItems={dockLauncherItems}
+          addMenuKinds={[]}
+          primaryKinds={PRIMARY_DOCK_PANE_KINDS}
           motionKey={props.threadId}
           activePaneRuntimeMode={
             floatingBrowserVisible && activePane?.kind === "browser"
@@ -1120,9 +1168,7 @@ export function SingleChatSurface(props: {
               closePane(props.threadId, paneId);
               return;
             }
-            void flushWorkspaceEditors(queryClient, workspaceRoot).then((saved) => {
-              if (saved) closePane(props.threadId, paneId);
-            });
+            closePane(props.threadId, paneId);
           }}
           onCollapse={() => setDockOpen(props.threadId, false)}
           onOpenChange={(open) => setDockOpen(props.threadId, open)}

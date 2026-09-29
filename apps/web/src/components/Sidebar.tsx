@@ -4013,7 +4013,6 @@ export default function Sidebar() {
 
   function renderPinnedThreadRow(thread: SidebarThreadSummary) {
     const threadTerminalState = selectThreadTerminalState(terminalStateByThreadId, thread.id);
-    const threadEntryPoint = threadTerminalState.entryPoint;
     const terminalStatus = terminalStatusFromThreadState({
       runningTerminalIds: threadTerminalState.runningTerminalIds,
       terminalAttentionStatesById: threadTerminalState.terminalAttentionStatesById,
@@ -4101,7 +4100,6 @@ export default function Sidebar() {
           >
             <SidebarThreadRowContent
               thread={thread}
-              terminalEntryPoint={threadEntryPoint === "terminal"}
               terminalStatus={terminalStatus}
               terminalCount={terminalCount}
               isActive={isActive}
@@ -4161,7 +4159,6 @@ export default function Sidebar() {
     topLevel = false,
   ) {
     const threadTerminalState = selectThreadTerminalState(terminalStateByThreadId, thread.id);
-    const threadEntryPoint = threadTerminalState.entryPoint;
     const isActive = visualActiveSidebarThreadId === thread.id;
     const isPinned = pinnedThreadIdSet.has(thread.id);
     const isSelected = selectedThreadIds.has(thread.id);
@@ -4268,7 +4265,6 @@ export default function Sidebar() {
           >
             <SidebarThreadRowContent
               thread={thread}
-              terminalEntryPoint={threadEntryPoint === "terminal"}
               terminalStatus={terminalStatus}
               terminalCount={terminalCount}
               isActive={isActive}

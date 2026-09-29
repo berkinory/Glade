@@ -188,7 +188,7 @@ Keep task ownership clear before scaling beyond one task.
 `mod` means Command on macOS and Ctrl on Windows or Linux.
 
 - `mod+n` — create a task
-- `mod+j` — toggle the terminal drawer
+- `mod+j` — toggle the terminal in the right sidebar
 - `mod+d` — toggle the diff view
 - `mod+shift+b` — toggle the browser
 - `mod+\` — split the current view
