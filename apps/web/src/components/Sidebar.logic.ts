@@ -330,7 +330,6 @@ export type SidebarDerivedProjectData = {
   /** Extra "Show more" pages currently applied, clamped to the real row count. */
   threadListExtraPages: number;
   canShowMoreThreads: boolean;
-  canShowLessThreads: boolean;
   activeEntryId: ThreadId | null;
   projectStatus: ReturnType<typeof resolveProjectStatusIndicator>;
 };
@@ -822,9 +821,8 @@ export function describeAddProjectError(message: string): string | null {
   return null;
 }
 
-// One "Show more" click reveals one extra page of rows; "Show less" hides one page again.
-// The requested page count is clamped to what the list can actually use, so stale persisted
-// values (or shrinking thread lists) self-heal instead of requiring dead "Show less" clicks.
+// One "Show more" click reveals one extra page of rows. The requested page count is
+// clamped to what the list can use when threads are removed.
 export type SidebarThreadListPaging = {
   /** Requested pages clamped to what `totalCount` can actually consume. */
   effectiveExtraPages: number;
@@ -1440,7 +1438,6 @@ export function deriveSidebarProjectData(input: {
         // The thread list is hidden while the folder is closed, so paging affordances are moot.
         threadListExtraPages: 0,
         canShowMoreThreads: false,
-        canShowLessThreads: false,
         activeEntryId: activeThread?.id ?? null,
         projectStatus,
       });
@@ -1486,7 +1483,6 @@ export function deriveSidebarProjectData(input: {
       // The active-thread reveal can force rows beyond the page cap; only offer "Show more"
       // while rows are genuinely hidden.
       canShowMoreThreads: paging.canShowMore && renderedEntries.length < orderedEntries.length,
-      canShowLessThreads: paging.canShowLess,
       activeEntryId: activeEntry?.rowId ?? null,
       projectStatus,
     });

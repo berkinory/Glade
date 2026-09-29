@@ -317,7 +317,6 @@ import {
   pullRequestRepositoryConfigFingerprint,
   getNextVisibleSidebarThreadId,
   getSidebarThreadIdsToPrewarm,
-  getVisibleSidebarEntriesForPreview,
   groupSidebarThreadsByProjectId,
   isLatestPinnedProjectMutation,
   isProjectsSidebarSurface,
@@ -326,7 +325,6 @@ import {
   runExclusiveProjectAddition,
   runProjectProvisionWithCancellationRecovery,
   resolvePullRequestReviewBadge,
-  resolveSidebarThreadListPaging,
   DEBUG_FEATURE_FLAGS_MENU_STORAGE_KEY,
   resolveProjectEmptyState,
   resolveProjectStatusIndicator,
@@ -377,6 +375,7 @@ import {
   SIDEBAR_SECTION_LABEL_CLASS_NAME,
 } from "../sidebarRowStyles";
 import { SettingsSidebarNav } from "./SettingsSidebarNav";
+import { SidebarVirtualChatList } from "./SidebarVirtualChatList";
 import {
   ComposerPickerMenuPopup,
   ComposerPickerMenuSubPopup,
@@ -446,7 +445,7 @@ const readGitHubProvisioningCapability = () =>
   readNativeApiServerCapability(WS_GITHUB_PROJECT_PROVISIONING_CAPABILITY);
 const readGitHubProvisioningServerCapability = () => false;
 const THREAD_PREVIEW_LIMIT = 5;
-// Each "Show more" click reveals this many extra rows; "Show less" hides them again page by page.
+// Each "Show more" click reveals this many extra project rows.
 const THREAD_PREVIEW_PAGE_SIZE = 5;
 // Mouse clicks must not focus the paging buttons, or the focus ring lingers as a solid block
 // after the click; they should only light up on hover/press. Keyboard focus is unaffected.
@@ -1353,9 +1352,6 @@ export default function Sidebar() {
   const [chatSectionExpanded, setChatSectionExpanded] = useState(
     () => readSidebarUiState().chatSectionExpanded,
   );
-  const [chatThreadListExtraPages, setChatThreadListExtraPages] = useState(
-    () => readSidebarUiState().chatThreadListExtraPages,
-  );
   const [dismissedThreadStatusKeyByThreadId, setDismissedThreadStatusKeyByThreadId] = useState<
     Record<string, string>
   >(() => readSidebarUiState().dismissedThreadStatusKeyByThreadId);
@@ -1384,7 +1380,6 @@ export default function Sidebar() {
     () =>
       subscribeSidebarUiState((state) => {
         setChatSectionExpanded(state.chatSectionExpanded);
-        setChatThreadListExtraPages(state.chatThreadListExtraPages);
         setThreadListExtraPagesByProjectCwd(
           new Map(Object.entries(state.projectThreadListExtraPagesByCwd)),
         );
@@ -2856,7 +2851,6 @@ export default function Sidebar() {
       setLastThreadRoute(nextLastThreadRoute);
       persistSidebarUiState({
         chatSectionExpanded,
-        chatThreadListExtraPages,
         projectThreadListExtraPagesByCwd: Object.fromEntries(threadListExtraPagesByProjectCwd),
         dismissedThreadStatusKeyByThreadId,
         lastThreadRoute: nextLastThreadRoute,
@@ -2866,7 +2860,6 @@ export default function Sidebar() {
     [
       activityViewEnabled,
       chatSectionExpanded,
-      chatThreadListExtraPages,
       dismissedThreadStatusKeyByThreadId,
       threadListExtraPagesByProjectCwd,
     ],
@@ -3403,46 +3396,6 @@ export default function Sidebar() {
     () => visibleChatThreadRows.map((row) => row.thread.id),
     [visibleChatThreadRows],
   );
-  const visibleChatPreviewEntries = useMemo(
-    () =>
-      visibleChatThreadRows.map((row) => ({
-        rowId: row.thread.id,
-        rootRowId: row.rootThreadId,
-        row,
-      })),
-    [visibleChatThreadRows],
-  );
-  const activeChatPreviewEntry =
-    activeSidebarThreadId === undefined
-      ? null
-      : (visibleChatPreviewEntries.find((entry) => entry.rowId === activeSidebarThreadId) ?? null);
-  const {
-    canShowLessChatThreads,
-    canShowMoreChatThreads,
-    chatThreadListEffectiveExtraPages,
-    renderedChatEntries,
-  } = useMemo(() => {
-    const paging = resolveSidebarThreadListPaging({
-      totalCount: visibleChatPreviewEntries.length,
-      baseLimit: THREAD_PREVIEW_LIMIT,
-      pageSize: THREAD_PREVIEW_PAGE_SIZE,
-      requestedExtraPages: chatThreadListExtraPages,
-    });
-    const { visibleEntries } = getVisibleSidebarEntriesForPreview({
-      entries: visibleChatPreviewEntries,
-      activeEntryId: activeChatPreviewEntry?.rowId,
-      previewLimit: paging.previewLimit,
-    });
-    return {
-      // Mirror deriveSidebarProjectData: the active-chat reveal can force rows past the page
-      // cap, so only offer "Show more" while rows are genuinely hidden.
-      canShowMoreChatThreads:
-        paging.canShowMore && visibleEntries.length < visibleChatPreviewEntries.length,
-      canShowLessChatThreads: paging.canShowLess,
-      chatThreadListEffectiveExtraPages: paging.effectiveExtraPages,
-      renderedChatEntries: visibleEntries,
-    };
-  }, [activeChatPreviewEntry?.rowId, chatThreadListExtraPages, visibleChatPreviewEntries]);
   const allStandardProjectsBase = useMemo(
     () =>
       sortedProjects.filter((project) =>
@@ -3629,7 +3582,6 @@ export default function Sidebar() {
   useEffect(() => {
     persistSidebarUiState({
       chatSectionExpanded,
-      chatThreadListExtraPages,
       projectThreadListExtraPagesByCwd: Object.fromEntries(threadListExtraPagesByProjectCwd),
       dismissedThreadStatusKeyByThreadId,
       lastThreadRoute,
@@ -3638,7 +3590,6 @@ export default function Sidebar() {
   }, [
     activityViewEnabled,
     chatSectionExpanded,
-    chatThreadListExtraPages,
     dismissedThreadStatusKeyByThreadId,
     threadListExtraPagesByProjectCwd,
     lastThreadRoute,
@@ -4157,6 +4108,7 @@ export default function Sidebar() {
     // their top-level rows align flush like pinned rows instead of the indented
     // column used for project-nested threads.
     topLevel = false,
+    virtualOffset?: number,
   ) {
     const threadTerminalState = selectThreadTerminalState(terminalStateByThreadId, thread.id);
     const isActive = visualActiveSidebarThreadId === thread.id;
@@ -4191,8 +4143,14 @@ export default function Sidebar() {
       <SidebarMenuSubItem
         key={thread.id}
         data-thread-hover-anchor={hoverAnchorId}
-        className="group/thread-row w-full"
+        className={cn(
+          "group/thread-row w-full",
+          virtualOffset === undefined ? null : "absolute top-0 left-0 pb-1",
+        )}
         data-thread-item
+        style={
+          virtualOffset === undefined ? undefined : { transform: `translateY(${virtualOffset}px)` }
+        }
       >
         {leadingPr ? (
           <ThreadPrStatusBadge
@@ -4344,61 +4302,34 @@ export default function Sidebar() {
     );
   }
 
-  // A project's thread rows plus its show more/less paging. Shared by the tree's folder
+  // A project's thread rows and paging. Shared by the tree's folder
   // disclosure and the rail layout's Spaces drill-in.
   function renderProjectThreadList(
     project: (typeof sortedProjects)[number],
     projectSidebarData: SidebarDerivedProjectData,
   ) {
-    const {
-      orderedProjectThreadIds,
-      visibleEntries,
-      threadListExtraPages,
-      canShowMoreThreads,
-      canShowLessThreads,
-    } = projectSidebarData;
+    const { orderedProjectThreadIds, visibleEntries, threadListExtraPages, canShowMoreThreads } =
+      projectSidebarData;
     return (
       <>
         {visibleEntries.map((entry) =>
           renderThreadRow(entry.thread, orderedProjectThreadIds, entry.depth),
         )}
 
-        {(canShowMoreThreads || canShowLessThreads) && (
+        {canShowMoreThreads && (
           <SidebarMenuSubItem className="w-full">
-            <div className="flex w-full items-center gap-1">
-              {canShowMoreThreads && (
-                <SidebarMenuSubButton
-                  render={<button type="button" />}
-                  data-thread-selection-safe
-                  size="sm"
-                  className="h-7 flex-1 translate-x-0 justify-start rounded-lg pr-2 pl-8 text-left text-ui text-muted-foreground/79 hover:bg-transparent hover:text-foreground active:bg-transparent active:text-foreground"
-                  onMouseDown={preventFocusOnMouseDown}
-                  onClick={() => {
-                    showMoreThreadsForProject(project.cwd, threadListExtraPages);
-                  }}
-                >
-                  <span>Show more</span>
-                </SidebarMenuSubButton>
-              )}
-              {canShowLessThreads && (
-                <SidebarMenuSubButton
-                  render={<button type="button" />}
-                  data-thread-selection-safe
-                  size="sm"
-                  className={cn(
-                    "h-7 translate-x-0 justify-start rounded-lg text-left text-ui text-muted-foreground/79 hover:bg-transparent hover:text-foreground active:bg-transparent active:text-foreground",
-                    // Keep the left indent when "Show less" is the only affordance left.
-                    canShowMoreThreads ? "w-auto flex-none px-2" : "flex-1 pr-2 pl-8",
-                  )}
-                  onMouseDown={preventFocusOnMouseDown}
-                  onClick={() => {
-                    showLessThreadsForProject(project.cwd, threadListExtraPages);
-                  }}
-                >
-                  <span>Show less</span>
-                </SidebarMenuSubButton>
-              )}
-            </div>
+            <SidebarMenuSubButton
+              render={<button type="button" />}
+              data-thread-selection-safe
+              size="sm"
+              className="h-7 w-full translate-x-0 justify-start rounded-lg pr-2 pl-8 text-left text-ui text-muted-foreground/79 hover:bg-transparent hover:text-foreground active:bg-transparent active:text-foreground"
+              onMouseDown={preventFocusOnMouseDown}
+              onClick={() => {
+                showMoreThreadsForProject(project.cwd, threadListExtraPages);
+              }}
+            >
+              <span>Show more</span>
+            </SidebarMenuSubButton>
           </SidebarMenuSubItem>
         )}
       </>
@@ -4696,6 +4627,21 @@ export default function Sidebar() {
     );
   }
 
+  const resetProjectThreadPagingOnClose = useCallback(
+    (projectId: ProjectId) => {
+      const project = projectById.get(projectId);
+      if (!project?.expanded) return;
+      const cwdKey = normalizeSidebarProjectThreadListCwd(project.cwd);
+      setThreadListExtraPagesByProjectCwd((current) => {
+        if (!current.has(cwdKey)) return current;
+        const next = new Map(current);
+        next.delete(cwdKey);
+        return next;
+      });
+    },
+    [projectById],
+  );
+
   const handleProjectTitleClick = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>, projectId: ProjectId) => {
       if (dragInProgressRef.current) {
@@ -4713,9 +4659,10 @@ export default function Sidebar() {
       if (selectedThreadIds.size > 0) {
         clearSelection();
       }
+      resetProjectThreadPagingOnClose(projectId);
       toggleProject(projectId);
     },
-    [clearSelection, selectedThreadIds.size, toggleProject],
+    [clearSelection, resetProjectThreadPagingOnClose, selectedThreadIds.size, toggleProject],
   );
 
   const handleProjectTitleKeyDown = useCallback(
@@ -4725,9 +4672,10 @@ export default function Sidebar() {
       if (dragInProgressRef.current) {
         return;
       }
+      resetProjectThreadPagingOnClose(projectId);
       toggleProject(projectId);
     },
-    [toggleProject],
+    [resetProjectThreadPagingOnClose, toggleProject],
   );
 
   useEffect(() => {
@@ -5410,20 +5358,28 @@ export default function Sidebar() {
     [setThreadListExtraPagesForProject],
   );
 
-  const showLessThreadsForProject = useCallback(
-    (projectCwd: string, currentExtraPages: number) => {
-      setThreadListExtraPagesForProject(projectCwd, currentExtraPages - 1);
-    },
-    [setThreadListExtraPagesForProject],
-  );
-
   const handleToggleProjects = useCallback(() => {
     if (allProjectsExpanded) {
+      const closingCwds = new Set(
+        standardProjects
+          .filter((project) => project.id !== focusedProjectId)
+          .map((project) => normalizeSidebarProjectThreadListCwd(project.cwd)),
+      );
+      setThreadListExtraPagesByProjectCwd((current) => {
+        const next = new Map([...current].filter(([cwd]) => !closingCwds.has(cwd)));
+        return next.size === current.size ? current : next;
+      });
       collapseProjectsExcept(focusedProjectId);
       return;
     }
     setAllProjectsExpanded(true);
-  }, [allProjectsExpanded, collapseProjectsExcept, focusedProjectId, setAllProjectsExpanded]);
+  }, [
+    allProjectsExpanded,
+    collapseProjectsExcept,
+    focusedProjectId,
+    setAllProjectsExpanded,
+    standardProjects,
+  ]);
 
   // Only macOS draws the traffic lights in the renderer's top-left, so only there
   // does the open-sidebar header need to reserve the gutter (mirrors the mac guard
@@ -5978,60 +5934,18 @@ export default function Sidebar() {
 
               <div className={cn(disclosureShellClassName(chatSectionExpanded), "pt-1")}>
                 <div className={DISCLOSURE_INNER_CLASS}>
-                  <SidebarMenu
-                    className={cn("gap-1", disclosureContentClassName(chatSectionExpanded))}
-                  >
+                  <div className={disclosureContentClassName(chatSectionExpanded)}>
                     {visibleChatThreadRows.length > 0 ? (
-                      renderedChatEntries.map((entry) =>
-                        renderThreadRow(
-                          entry.row.thread,
-                          visibleChatThreadIds,
-                          entry.row.depth,
-                          true,
-                        ),
-                      )
+                      <SidebarVirtualChatList
+                        rows={visibleChatThreadRows}
+                        renderRow={(row, offset) =>
+                          renderThreadRow(row.thread, visibleChatThreadIds, row.depth, true, offset)
+                        }
+                      />
                     ) : (
                       <div className="px-2 py-2 text-ui text-muted-foreground/48">No chats yet</div>
                     )}
-                    {canShowMoreChatThreads || canShowLessChatThreads ? (
-                      <SidebarMenuItem className="w-full">
-                        <div className="flex w-full items-center gap-1">
-                          {canShowMoreChatThreads ? (
-                            <SidebarMenuButton
-                              size="sm"
-                              className="h-7 flex-1 justify-start rounded-lg pr-2 pl-8 text-left text-ui font-normal text-muted-foreground/79 hover:bg-transparent hover:text-foreground active:bg-transparent active:text-foreground"
-                              onMouseDown={preventFocusOnMouseDown}
-                              onClick={() =>
-                                setChatThreadListExtraPages(chatThreadListEffectiveExtraPages + 1)
-                              }
-                            >
-                              <span>Show more</span>
-                            </SidebarMenuButton>
-                          ) : null}
-                          {canShowLessChatThreads ? (
-                            <SidebarMenuButton
-                              size="sm"
-                              className={cn(
-                                "h-7 justify-start rounded-lg text-left text-ui font-normal text-muted-foreground/79 hover:bg-transparent hover:text-foreground active:bg-transparent active:text-foreground",
-                                // Keep the left indent when "Show less" is the only affordance left.
-                                canShowMoreChatThreads
-                                  ? "w-auto flex-none px-2"
-                                  : "flex-1 pr-2 pl-8",
-                              )}
-                              onMouseDown={preventFocusOnMouseDown}
-                              onClick={() =>
-                                setChatThreadListExtraPages(
-                                  Math.max(0, chatThreadListEffectiveExtraPages - 1),
-                                )
-                              }
-                            >
-                              <span>Show less</span>
-                            </SidebarMenuButton>
-                          ) : null}
-                        </div>
-                      </SidebarMenuItem>
-                    ) : null}
-                  </SidebarMenu>
+                  </div>
                 </div>
               </div>
             </div>

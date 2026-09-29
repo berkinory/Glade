@@ -10,7 +10,6 @@ const SIDEBAR_UI_STATE_STORAGE_KEY = "glade:sidebar-ui:v1";
 
 export type SidebarUiState = {
   chatSectionExpanded: boolean;
-  chatThreadListExtraPages: number;
   projectThreadListExtraPagesByCwd: Record<string, number>;
   dismissedThreadStatusKeyByThreadId: Record<string, string>;
   lastThreadRoute: LastThreadRoute | null;
@@ -20,7 +19,6 @@ export type SidebarUiState = {
 
 const DEFAULT_SIDEBAR_UI_STATE: SidebarUiState = {
   chatSectionExpanded: false,
-  chatThreadListExtraPages: 0,
   projectThreadListExtraPagesByCwd: {},
   dismissedThreadStatusKeyByThreadId: {},
   lastThreadRoute: null,
@@ -74,10 +72,8 @@ export function readSidebarUiState(): SidebarUiState {
 
     const parsed = JSON.parse(raw) as {
       chatSectionExpanded?: boolean;
-      chatThreadListExtraPages?: number;
       projectThreadListExtraPagesByCwd?: Record<string, unknown>;
-      /** Legacy (pre-paging) all-or-nothing "Show more" flags, migrated to one extra page. */
-      chatThreadListExpanded?: boolean;
+      /** Legacy (pre-paging) project expansion flags, migrated to one extra page. */
       expandedProjectThreadListCwds?: string[];
       dismissedThreadStatusKeyByThreadId?: Record<string, string>;
       lastThreadRoute?: {
@@ -117,10 +113,6 @@ export function readSidebarUiState(): SidebarUiState {
 
     return {
       chatSectionExpanded: parsed.chatSectionExpanded === true,
-      chatThreadListExtraPages:
-        parsed.chatThreadListExtraPages === undefined && parsed.chatThreadListExpanded === true
-          ? 1
-          : sanitizeThreadListExtraPages(parsed.chatThreadListExtraPages),
       projectThreadListExtraPagesByCwd,
       dismissedThreadStatusKeyByThreadId: Object.fromEntries(
         Object.entries(parsed.dismissedThreadStatusKeyByThreadId ?? {}).filter(
@@ -167,7 +159,6 @@ export function persistSidebarUiState(input: SidebarUiState): void {
       SIDEBAR_UI_STATE_STORAGE_KEY,
       JSON.stringify({
         chatSectionExpanded: input.chatSectionExpanded,
-        chatThreadListExtraPages: sanitizeThreadListExtraPages(input.chatThreadListExtraPages),
         projectThreadListExtraPagesByCwd: sanitizeProjectThreadListExtraPagesByCwd(
           input.projectThreadListExtraPagesByCwd,
         ),
