@@ -48,10 +48,8 @@ interface TaskRequest {
   stopped: boolean;
 }
 
-// Keep the marker through ordinary model turns, with a native expiry backstop
-// if task-end cleanup cannot reach the overlay. This wait does not repaint.
 const CUA_CURSOR_IDLE_HIDE_MS = 60_000;
-/** A raw ENOENT names a path, not a remedy; source builds stage the driver themselves. */
+
 const CUA_DRIVER_MISSING_MESSAGE =
   "Cua Driver is not bundled. Run the provisioning script (`node apps/desktop/scripts/provision-cua-driver.mjs`, needs the pinned Rust toolchain) in this checkout, then relaunch Glade.";
 
@@ -74,97 +72,52 @@ interface Generation {
   retired: boolean;
   cancellationReady: boolean;
   inputInFlight: boolean;
-  /** Exact task owning input that has not yet acknowledged its release. */
+
   inputTask: CuaComputerTask | undefined;
   browserInputInFlight: boolean;
-  /** Stays set once any action tool was dispatched to this generation, so a
-   * driver that wedges before ever receiving input stays distinguishable
-   * from one that may still hold OS input it never confirmed releasing. */
+
   inputEverDispatched: boolean;
-  /**
-   * The session half of startup, opened lazily on the first call that needs
-   * it. A generation the warm path spawned may be handshake-validated with no
-   * session yet; assigning this promise is what makes session setup once-only.
-   */
+
   sessionOpening?: Promise<void>;
-  /**
-   * The transport-owner id every browser call rides under. It belongs to one
-   * persistent control connection that opened with `session_begin`: while that
-   * connection lives the driver counts it an active proxy session (which is
-   * what lets browser_download receive the host approval injection), and its
-   * EOF reaps every lifecycle session this transport owns — grants, endpoints,
-   * and owned browsers included. Closing it early is the teardown path; there
-   * is no session_end call to forget.
-   */
+
   controlSession: string;
   controlSocket: Socket | undefined;
-  /**
-   * Browser lifecycle labels this host has seen end — either because
-   * `end_browser_thread` ran or because the driver reported the session dead.
-   * The next call on an ended label revives it with `start_session` first,
-   * the documented revival path; a revived label starts empty (targets and
-   * refs do not survive session end) but stays a usable capability namespace.
-   */
+  // Browser lifecycle labels this host has seen end — either because `end_browser_thread` ran or
+  // because the driver reported the session dead.
   endedBrowserSessions: Set<string>;
-  /**
-   * Labels dispatched under this generation's control session. Kept so a
-   * control-connection reconnect can mark them all ended — the driver's EOF
-   * reaper has already torn down everything the old transport owned.
-   */
+
   liveBrowserSessions: Set<string>;
-  /**
-   * Per-task desktop session labels the driver reported ended (idle expiry
-   * or driver-side eviction). Mirrored from `endedBrowserSessions`: the next
-   * dispatch on an ended label revives it with `start_session` first — a
-   * session-scoped heal that must not retire the whole generation the way a
-   * shared-session death does.
-   */
+  // Mirrored from `endedBrowserSessions`: the next dispatch on an ended label revives it with
+  // `start_session` first — a session-scoped heal that must not retire the whole generation the way a
+  // shared-session death does.
   endedTaskSessions: Set<string>;
-  /**
-   * The normalized cursor style (JSON) the session last acknowledged, `""`
-   * for stock. Lets a live preference change skip redundant pushes and know
-   * whether a switch back to stock must reset a customized cursor.
-   */
+
   appliedCursorStyle: string;
-  /**
-   * Per task cursor session (`agent·…`), the custom style last applied, keyed
-   * by label. Task cursors are seeded from the driver's launch template and
-   * never inherit the shared session's style, so each one is styled before
-   * its first dispatch and skipped afterwards. Stock is never recorded: a
-   * task that never had custom colors sends nothing.
-   */
+
   appliedSessionCursorStyles: Map<string, string>;
-  /** Latest turn using each cursor label. A delayed old-turn end cannot hide it. */
+
   taskCursors: Map<string, TaskCursor>;
   retirement?: Promise<void>;
 }
 
-/**
- * The driver-side lifecycle label for one thread's browser namespace. Kept
- * deterministic — same thread, same label — so `end_browser_thread` can name
- * it and so an ended label revives in place instead of stranding the model's
- * cached target ids under a new namespace each call. Thread ids are unique,
- * so reuse after deletion cannot alias a different conversation's browser.
- */
+// Kept deterministic — same thread, same label — so `end_browser_thread` can name it and so an
+// ended label revives in place instead of stranding the model's cached target ids under a new
+// namespace each call. Thread ids are unique, so reuse after deletion cannot alias a different
+// conversation's browser.
 function browserSessionLabel(threadId: string): string {
   return `glade-browser-${threadId}`;
 }
 
-/**
- * The driver-side lifecycle label for one task's desktop session. The driver
- * derives everything about that cursor's identity from this one string: the
- * overlay keys cursor state by it, tints the badge from its hash, and paints
- * it verbatim as the badge text (the registry stamps `_public_session_label`
- * from `session`, and the badge clips at 28 chars — so the string leads with
- * the human label and embeds the full thread id at the tail). Every
- * attributed call runs under its own label rather than the shared generation
- * session, so each concurrent agent gets a distinguishable cursor and two
- * threads that share a display label still get distinct cursors and tints.
- * The `agent·` prefix is compact because badge space is scarce, and it keeps
- * task-derived labels out of the `glade-browser-*` lifecycle namespace, the
- * anonymous `default` cursor, and the `__cua_runtime_` runtime-key space —
- * none of which can be spelled with the prefix in place.
- */
+// The driver derives everything about that cursor's identity from this one string: the overlay keys
+// cursor state by it, tints the badge from its hash, and paints it verbatim as the badge text (the
+// registry stamps `_public_session_label` from `session`, and the badge clips at 28 chars — so the
+// string leads with the human label and embeds the full thread id at the tail). Every attributed
+// call runs under its own label rather than the shared generation session, so each concurrent agent
+// gets a distinguishable cursor and two threads that share a display label still get distinct
+// cursors and tints. The `agent·` prefix is compact because badge space is scarce, and it keeps
+// task-derived labels out of the `glade-browser-*` lifecycle namespace, the anonymous `default`
+// cursor, and the `__cua_runtime_` runtime-key space — none of which can be spelled with the prefix
+// in place.
 const AGENT_SESSION_LABEL_PREFIX = "agent·";
 const AGENT_SESSION_LABEL_MAX_CHARS = 120;
 const agentBadgeComponent = (value: string) => value.replace(/[\p{Cc}\p{Cf}]/gu, "").trim();
@@ -177,12 +130,6 @@ function agentSessionLabel(task: CuaComputerTask): string {
   return `${AGENT_SESSION_LABEL_PREFIX}${label}·${threadId}`;
 }
 
-/**
- * The agent cursor overlay's colors, pushed to the driver session as
- * `set_agent_cursor_style`. Every field is optional: an omitted channel keeps
- * the driver's stock treatment for it, and a style with no usable color at
- * all means the stock monochrome cursor — no call is made.
- */
 export interface CuaCursorStyle {
   readonly fill?: string;
   readonly rim?: string;
@@ -197,7 +144,6 @@ function normalizeCuaCursorColor(value: unknown): string | undefined {
   return CUA_CURSOR_COLOR_PATTERN.test(candidate) ? candidate : undefined;
 }
 
-/** Drop unusable channels so a half-typed color never reaches the driver. */
 function normalizeCuaCursorStyle(
   style: CuaCursorStyle | null | undefined,
 ): CuaCursorStyle | undefined {
@@ -244,21 +190,10 @@ const LOGGABLE_CUA_CODES = new Set([
   "background_pixel_focus_unavailable",
 ]);
 
-/**
- * How long a physical Escape keeps new mutating dispatch refused while the
- * interrupted input settles — the cooldown is a deadline, never a latch: it
- * lapses on its own, a repeated press only re-arms it, and the next action
- * afterwards dispatches with no user action and no re-arm. Reads are never
- * gated by it.
- */
 export const ESCAPE_INPUT_COOLDOWN_MS = 1_500;
 
-/**
- * Match names for a launch_app prime: the agent names an app ("Calculator")
- * or a bundle id ("com.apple.Calculator") while the daemon reports process
- * names ("Calculator"). Compare lowercased, with the bundle tail as a second
- * candidate so both spellings resolve without a bundle registry.
- */
+// Compare lowercased, with the bundle tail as a second candidate so both spellings resolve without
+// a bundle registry.
 function launchAppMatchNames(input: unknown): string[] {
   if (!input || typeof input !== "object") return [];
   const args = input as Record<string, unknown>;
@@ -272,16 +207,10 @@ function launchAppMatchNames(input: unknown): string[] {
   return names;
 }
 
-/**
- * A daemon whose host died by SIGKILL never sees retire() and its own stdin
- * watchdog can leave the process wedged: the tokio runtime exits but the
- * AppKit overlay keeps the process alive, leaking a ghost overlay window and
- * its socket dir. Kill any embedded daemon whose recorded host pid is gone.
- * A recycled pid reads as alive and is left alone — safe direction.
- */
+// A daemon whose host died by SIGKILL never sees retire() and its own stdin watchdog can leave the
+// process wedged: the tokio runtime exits but the AppKit overlay keeps the process alive, leaking a
+// ghost overlay window and its socket dir.
 export function sweepOrphanedCuaDrivers(): void {
-  // ps/env scanning exists on every unix the standalone host can run on;
-  // Windows orphan reaping is a different mechanism entirely.
   if (process.platform === "win32") return;
   let listing: string;
   try {
@@ -295,10 +224,7 @@ export function sweepOrphanedCuaDrivers(): void {
     const pid = Number(line.trim().split(/\s+/)[0]);
     if (!pid || pid === process.pid) continue;
     const socketDir = line.match(/--socket\s+(\S+)\//)?.[1];
-    // The dir of every still-running daemon is protected whether or not its
-    // env can be read: a transient ps failure or a daemon without the host
-    // marker is skipped below but stays alive, and reaping its socket dir
-    // would sever every new connection to it.
+
     if (socketDir) liveSocketDirs.add(socketDir);
     let env: string;
     try {
@@ -314,9 +240,7 @@ export function sweepOrphanedCuaDrivers(): void {
     try {
       process.kill(pid, "SIGKILL");
       log(`killed orphaned cua-driver pid=${pid} (host pid ${hostPid} gone)`);
-    } catch {
-      // Already gone.
-    }
+    } catch {}
   }
   for (const entry of sweepOwnedCuaRuntimeDirectories({ directory: tmpdir(), liveSocketDirs }))
     log(`removed stale owned driver directory ${entry}`);
@@ -330,17 +254,10 @@ const DRIVER_SESSION_DEATH_CODES = new Set([
   "session_not_found",
 ]);
 
-/**
- * The native driver ended this session (restart, timeout, or eviction) while
- * the host still held it: every later call with the same id fails the same
- * way, and no model-side retry can heal it. The driver confirms nothing was
- * dispatched, so retiring the generation and starting fresh once is replay-safe.
- */
 function isDriverSessionDeath(reply: CuaReply): boolean {
   if (!reply.ok) {
-    // A transport rejection carries the same verdict in `error`: retired only
-    // when dispatch is ruled out, so input that may have landed is never
-    // replayed.
+    // A transport rejection carries the same verdict in `error`: retired only when dispatch is ruled
+    // out, so input that may have landed is never replayed.
     return (
       reply.effect !== "dispatched-unknown" &&
       typeof reply.error === "string" &&
@@ -362,10 +279,8 @@ function isDriverSessionDeath(reply: CuaReply): boolean {
   return joined.includes("has ended") && joined.includes("start_session");
 }
 
-/** Lives in Electron's main process on macOS — only that GUI process spawns
- * the native daemon: a bundle-id string sent by a standalone server cannot
- * confer TCC. The standalone host entry (`cuaDriverHostStandalone`) runs the
- * same class on platforms where no such grant model exists. */
+// Lives in Electron's main process on macOS — only that GUI process spawns the native daemon: a
+// bundle-id string sent by a standalone server cannot confer TCC.
 export class CuaDriverHost {
   private static readonly defaultOwnPids: ReadonlySet<number> = new Set([process.pid]);
   private directory = "";
@@ -385,19 +300,11 @@ export class CuaDriverHost {
   private readonly repliedConnections = new WeakSet<Socket>();
   private activeInputTaskKey: string | undefined;
   private readonly monitoredTasks = new Map<string, string>();
-  /**
-   * Deadline until which mutating dispatch is refused after a physical
-   * Escape interrupt — a timestamp, never a flag: it lapses on its own and
-   * a repeated press just re-arms it. Reads are never gated by it.
-   */
+
   private inputInterruptCooldownUntil = 0;
-  /**
-   * Abort handles for mutating calls whose driver request is live right now.
-   * The input interrupt aborts them so the caller sees an immediate verdict
-   * instead of waiting on a wedged action; the driver's side finishes on its
-   * own clock and posts its matching releases. Reads never register — an
-   * observation in flight is not input.
-   */
+  // The input interrupt aborts them so the caller sees an immediate verdict instead of waiting on a
+  // wedged action; the driver's side finishes on its own clock and posts its matching releases. Reads
+  // never register — an observation in flight is not input.
   private readonly inFlightInputInterrupts = new Set<AbortController>();
   private readonly activeTaskCalls = new Map<AbortController, string>();
   private readonly desktopPauses = new Set<string>();
@@ -405,28 +312,20 @@ export class CuaDriverHost {
   private browserObservationRequired = false;
   private readonly browserRecoveryObservations = new Map<string, number>();
   private desktopEpoch = 0;
-  /**
-   * Monotonic count of OS desktop interruptions this host has observed —
-   * one per `pauseDesktop` signal (lock, sleep, session resign, or the
-   * startup-locked probe), never reset. Unlike {@link desktopEpoch}, which
-   * also advances on ordinary stops, this counts only real interruptions,
-   * which is what lets the backend invalidate pre-interruption consent when
-   * a lock/resume cycle netted back to "not paused" between two replies.
-   */
+  // Monotonic count of OS desktop interruptions this host has observed — one per `pauseDesktop`
+  // signal (lock, sleep, session resign, or the startup-locked probe), never reset. Unlike {@link
+  // desktopEpoch}, which also advances on ordinary stops, this counts only real interruptions, which
+  // is what lets the backend invalidate pre-interruption consent when a lock/resume cycle netted back
+  // to "not paused" between two replies.
   private desktopInterruptionCount = 0;
-  /**
-   * The `glade_native_revision` the live driver reported at handshake —
-   * `undefined` until the first spawn answers, `0` when the driver is an
-   * unpatched upstream build. Rides every reply so the backend can shape
-   * advertised capabilities to the driver actually running.
-   */
+
   private observedNativeRevision: number | undefined;
   private operations: Promise<void> = Promise.resolve();
   private stopping: Promise<void> = Promise.resolve();
-  /** Serializes live cursor-style pushes so two rapid changes cannot race. */
+  // Serializes live cursor-style pushes so two rapid changes cannot race.
   private cursorStyleUpdates: Promise<void> = Promise.resolve();
   private epoch = 0;
-  /** Separates listener failures from real cancellation during activation. */
+
   private inputMonitorEpochChanges = 0;
   private readonly connections = new Set<Socket>();
   private permissions: HostPermissions | undefined;
@@ -444,53 +343,26 @@ export class CuaDriverHost {
       setup: () => Promise<void>;
       checkPermissions?: (options?: { readonly force: boolean }) => Promise<HostPermissions>;
       releaseHeldInput?: () => Promise<void>;
-      /** Bound on each post-handshake startup call; defaults to 5s. */
+
       startupTimeoutMs?: number;
       normalizeOverview?: (result: CuaToolResult) => CuaToolResult;
       frameTap?: ComputerFrameTapHost;
-      /**
-       * Mirrors whether a live driver generation could dispatch input — the
-       * window during which the physical Escape monitor must be listening.
-       * The desktop wires this to the helper's `arm`/`disarm` commands.
-       */
+
       onInputMonitorArmedChange?: (armed: boolean) => void;
-      /** macOS listener health; omitted on hosts without this listener. */
+      // macOS listener health; omitted on hosts without this listener.
       inputMonitorState?: () => ComputerInputMonitorState;
       activateInputMonitor?: () => Promise<void>;
-      /**
-       * The masked-activation shield surface. Absent means `engage` requests
-       * are refused as unavailable — the caller must never fall back to an
-       * unmasked excursion under an armed flag.
-       */
+      // Absent means `engage` requests are refused as unavailable — the caller must never fall back to an
+      // unmasked excursion under an armed flag.
       shield?: ComputerShieldHost;
-      /**
-       * The `glade_native_revision` the spawned driver must report at
-       * handshake. Defaults to {@link CUA_NATIVE_REVISION} — the patched
-       * build the macOS desktop provisions. `null` expects a provisioned
-       * upstream driver: its metadata carries no Glade revision, so the
-       * revision check and the patch-only spawn flags are skipped, and the
-       * driver runs with the safety set upstream ships.
-       */
+
       nativeRevision?: number | null;
-      /**
-       * Where the host socket listens. Defaults to a unix socket in the
-       * private session directory — on Windows, a `\\.\pipe\` name, which
-       * Node maps to a named pipe. The standalone host passes an explicit
-       * endpoint so the server can be configured to reach it.
-       */
+
       hostEndpoint?: string;
-      /**
-       * Pids belonging to this application (main, helpers, renderers).
-       * Browser calls carrying one as `args.pid` are refused: the integrated
-       * browser is a separate surface and computer use must never bind the
-       * app that hosts it. Defaults to this process alone.
-       */
+      // Browser calls carrying one as `args.pid` are refused: the integrated browser is a separate
+      // surface and computer use must never bind the app that hosts it.
       ownPids?: () => ReadonlySet<number>;
-      /**
-       * The agent cursor's colors, read at each session open. `undefined`
-       * (or a style with no usable `#rrggbb` channel) keeps the driver's
-       * stock monochrome cursor: no `set_agent_cursor_style` call is made.
-       */
+
       cursorStyle?: () => CuaCursorStyle | null | undefined;
     },
   ) {}
@@ -503,8 +375,7 @@ export class CuaDriverHost {
     this.directory = await mkdtemp(join(tmpdir(), "glade-cua-"));
     await chmod(this.directory, 0o700);
     await markCuaRuntimeDirectory(this.directory);
-    // Named pipes are already private to the creating user on Windows; the
-    // 0o600 owner check is a unix-socket protection, applied where it exists.
+
     const endpoint =
       this.options.hostEndpoint ??
       (process.platform === "win32"
@@ -659,14 +530,7 @@ export class CuaDriverHost {
         const scope = await this.stopTaskInput(task);
         return { ok: true, result: { stop_scope: scope } };
       }
-      // The backend's generic input-stop verb — turn Stop, control revoke,
-      // the relayed physical-Escape notice, shutdown — all send it. While the
-      // host is serving it means interrupt input, not retire the driver: the
-      // generation, its sessions, and its browser bindings all survive, so
-      // the next action dispatches without a cold restart. Full retirement
-      // still belongs to the lifecycle callers — suspend(), dispose(),
-      // setup() — and to a stop arriving after the host already left the
-      // serving state.
+
       if (this.closed || this.suspended) await this.stop();
       else await this.interruptInput();
       return { ok: true };
@@ -677,19 +541,17 @@ export class CuaDriverHost {
       return { ok: true };
     }
     if (request.method === "shield") {
-      // Answered before the closed/suspended gate on purpose: engage checks
-      // those itself, while release must land in every host state — a shield
-      // left up because teardown was gated is exactly the failure this
-      // surface exists to prevent.
+      // Answered before the closed/suspended gate on purpose: engage checks those itself, while release
+      // must land in every host state — a shield left up because teardown was gated is exactly the
+      // failure this surface exists to prevent.
       return this.handleShield(request, task);
     }
     if (request.method === "end_browser_thread") {
-      // Explicit browser teardown for a removed thread: end the thread's
-      // lifecycle session so the driver runs its session-end hooks (targets,
-      // grants, owned browsers) now rather than at control-connection EOF.
-      // Queued like a call so it cannot race an in-flight call on the same
-      // label — ending a session under a dispatching call would turn a
-      // known-alive capability into a mid-flight session death.
+      // Explicit browser teardown for a removed thread: end the thread's lifecycle session so the driver
+      // runs its session-end hooks (targets, grants, owned browsers) now rather than at
+      // control-connection EOF. Queued like a call so it cannot race an in-flight call on the same label
+      // — ending a session under a dispatching call would turn a known-alive capability into a mid-flight
+      // session death.
       if (!task) throw new Error("Computer task attribution is required.");
       for (const [key, target] of this.browserTargets) {
         if (target.threadId === task.threadId) this.browserTargets.delete(key);
@@ -708,8 +570,6 @@ export class CuaDriverHost {
           generation.didExit ||
           !generation.controlSocket ||
           generation.controlSocket.destroyed ||
-          // Nothing was ever dispatched under this label — no session exists
-          // to end and none needs reviving later.
           (!generation.liveBrowserSessions.has(label) &&
             !generation.endedBrowserSessions.has(label))
         )
@@ -725,9 +585,7 @@ export class CuaDriverHost {
             },
             { timeoutMs: 5_000 },
           );
-          // Even a failed end marks the label ended for revival: the
-          // transport EOF will finish whatever the explicit call could not,
-          // and reviving an already-gone session is a no-op either way.
+
           generation.liveBrowserSessions.delete(label);
           generation.endedBrowserSessions.add(label);
         } catch {
@@ -771,9 +629,7 @@ export class CuaDriverHost {
         taskStopped()
       ) {
         const monitor = this.options.inputMonitorState?.();
-        // Listener failure fences input just like Stop. Preserve its useful
-        // diagnosis only when no other cancellation occurred while activating.
-        // The request still ends here without entering the operation queue.
+
         if (
           !connection.destroyed &&
           !this.closed &&
@@ -796,9 +652,8 @@ export class CuaDriverHost {
           this.monitoredTasks.delete(this.monitoredTasks.keys().next().value!);
       }
     }
-    // Hosts without a permission bridge can warm on first touch. On macOS,
-    // wait for the first granted snapshot below so the daemon cannot cache a
-    // denied TCC result before setup completes.
+    // Hosts without a permission bridge can warm on first touch. On macOS, wait for the first granted
+    // snapshot below so the daemon cannot cache a denied TCC result before setup completes.
     if (
       !this.options.checkPermissions &&
       (request.method === "probe" ||
@@ -842,9 +697,7 @@ export class CuaDriverHost {
       const refusal = linuxCuaAdmissionRefusal(name, request.args, request.deliveryMode);
       if (refusal) return refusal;
     }
-    // Browser calls mint session-scoped capabilities. Without task attribution
-    // there is no lifecycle label to scope them under, so they are refused at
-    // admission rather than dropped into an anonymous namespace.
+
     if (CUA_BROWSER_TOOLS.has(name) && !task)
       throw new Error("Computer browser calls require task attribution.");
     if (CUA_BROWSER_TOOLS.has(name)) {
@@ -867,8 +720,8 @@ export class CuaDriverHost {
       }
     }
     if (this.desktopPauses.size > 0) return this.desktopPauseReply();
-    // Observations and input share one native session. A pane capture must not
-    // race input or turn a harmless concurrent read into a driver restart.
+    // Observations and input share one native session. A pane capture must not race input or turn a
+    // harmless concurrent read into a driver restart.
     const previous = this.operations;
     const stopping = this.stopping;
     const epoch = this.epoch;
@@ -883,9 +736,9 @@ export class CuaDriverHost {
         } as const;
       if (this.desktopPauses.size > 0) return this.desktopPauseReply();
       if (process.platform === "linux" && CUA_BROWSER_TOOLS.has(name)) {
-        // Capability comes only from the embedded child handshake. A cold
-        // browser call must not trust model arguments or a configured path as
-        // evidence that this Linux artifact implements input cancellation.
+        // Capability comes only from the embedded child handshake. A cold browser call must not trust model
+        // arguments or a configured path as evidence that this Linux artifact implements input
+        // cancellation.
         const generation = await this.ensureSpawned();
         if (
           this.closed ||
@@ -918,11 +771,7 @@ export class CuaDriverHost {
             effect: "not-dispatched",
           };
       }
-      // A physical Escape's cooldown: mutating dispatch is refused with the
-      // desktop-pause dialect until the deadline lapses — checked at dispatch
-      // time, so a call queued past the window runs and one admitted inside
-      // it is refused. Reads are never gated: the generation stays live and
-      // observation flows through the whole cooldown.
+
       if (
         this.inputInterruptCooldownUntil > Date.now() &&
         (CUA_ACTION_TOOLS.has(name) || CUA_BROWSER_MUTATION_TOOLS.has(name))
@@ -932,9 +781,6 @@ export class CuaDriverHost {
         return this.taskStoppedReply();
       }
       if (name === "check_permissions" && this.options.checkPermissions) {
-        // ComputerPermission's short-lived helper avoids the embedded daemon's TCC cache.
-        // This remains an authenticated, read-only host operation: prompt args
-        // from tools never reach the permission request path.
         const check = this.options.checkPermissions;
         const cancelled = () =>
           this.closed ||
@@ -950,11 +796,6 @@ export class CuaDriverHost {
             effect: "not-dispatched",
           } as const;
         if (this.permissions && permissionsChanged(this.permissions, permissions)) {
-          // A single helper probe can read TCC mid-transition and report a
-          // phantom change the next probe reverts. Arming on it deadlocks the
-          // desktop: every action runs check_permissions first, so a flapping
-          // helper re-arms the gate after each observation clears it. Only a
-          // confirmed second read counts as a real change.
           const confirmed = await this.checkPermissions(connection, check, true, task);
           if (!confirmed || cancelled())
             return {
@@ -973,8 +814,7 @@ export class CuaDriverHost {
             `permission state changed accessibility ${this.permissions.accessibility} -> ${permissions.accessibility}, ` +
               `screen_recording ${this.permissions.screenRecording} -> ${permissions.screenRecording}; requiring fresh desktop observation`,
           );
-          // Already inside the operation queue: stop() would wait for itself.
-          // Retire directly, preserving its native cleanup acknowledgement.
+
           if (this.generation) await this.retire(this.generation);
         }
         this.permissions = permissions;
@@ -1011,9 +851,9 @@ export class CuaDriverHost {
       }
       const browserRecoverySetup = this.isIsolatedBrowserSetup(name, request.args);
       const browserRecoveryObserved = this.hasBrowserRecoveryObservation(request.args, task);
-      // Launching names an app, not anything on screen, so a stale view cannot
-      // misdirect it. Gating it left a task that starts by opening an app
-      // stuck after every lock or sleep: the app had no window to observe.
+      // Launching names an app, not anything on screen, so a stale view cannot misdirect it. Gating it
+      // left a task that starts by opening an app stuck after every lock or sleep: the app had no window
+      // to observe.
       if (
         (this.desktopObservationRequired &&
           ((CUA_ACTION_TOOLS.has(name) && name !== "launch_app") ||
@@ -1048,8 +888,7 @@ export class CuaDriverHost {
         task,
         request.deliveryMode === "foreground",
       );
-      // Frame tap updates carry no frames through this queue: they only point
-      // the dedicated helper channel at the task's window target.
+
       if (
         task &&
         !this.endedFrameTasks.has(cuaComputerTaskKey(task)) &&
@@ -1072,10 +911,8 @@ export class CuaDriverHost {
             log(`computer frame tap update failed: ${String(error)}`);
           }
         } else if (name === "launch_app") {
-          // launch_app carries no window (bundle/name only), so the tap would
-          // otherwise sit out the whole cold start until the first
-          // window-attributed call. Resolve the launched app's main window
-          // off the reply path: the agent's launch already returned.
+          // launch_app carries no window (bundle/name only), so the tap would otherwise sit out the whole
+          // cold start until the first window-attributed call.
           void this.primeTapAfterLaunch(task, request.args, connection, epoch).catch(
             (error: unknown) => log(`computer frame tap launch prime failed: ${String(error)}`),
           );
@@ -1090,14 +927,11 @@ export class CuaDriverHost {
     return operation;
   }
 
-  /**
-   * The `shield` host method: engage is admission-gated (closed, suspended,
-   * or desktop-paused hosts refuse so a mask never arms under an interrupted
-   * desktop), while release and release_all are teardown — accepted in every
-   * state and always safe to repeat. Shield commands never reach the driver
-   * or the operation queue: the helper owns the panels, and a queued shield
-   * request would deadlock an excursion whose cleanup waits on it.
-   */
+  // The `shield` host method: engage is admission-gated (closed, suspended, or desktop-paused hosts
+  // refuse so a mask never arms under an interrupted desktop), while release and release_all are
+  // teardown — accepted in every state and always safe to repeat. Shield commands never reach the
+  // driver or the operation queue: the helper owns the panels, and a queued shield request would
+  // deadlock an excursion whose cleanup waits on it.
   private async handleShield(
     request: Record<string, unknown>,
     task: CuaComputerTask | undefined,
@@ -1165,9 +999,6 @@ export class CuaDriverHost {
     force = false,
     task?: CuaComputerTask,
   ): Promise<HostPermissions | undefined> {
-    // Stop and disconnected status readers must release native admission even
-    // while a different feature owns a macOS prompt in the shared helper queue.
-    // Abandon only this wait; do not cancel ComputerPermission's permission request.
     return new Promise((resolve, reject) => {
       const cleanup = () => {
         this.pendingPermissionChecks.delete(cancel);
@@ -1209,24 +1040,11 @@ export class CuaDriverHost {
     const admittedDesktopEpoch = this.desktopEpoch;
     const isBrowser = CUA_BROWSER_TOOLS.has(name);
     const mutation = isBrowser ? CUA_BROWSER_MUTATION_TOOLS.has(name) : CUA_ACTION_TOOLS.has(name);
-    // Browser labels are minted from the task's thread: one capability
-    // namespace per thread, surviving turn boundaries, ended only by
-    // `end_browser_thread` or transport teardown.
+
     const label = isBrowser && task ? browserSessionLabel(task.threadId) : undefined;
-    // Desktop calls get a per-task cursor session: the overlay keys cursors —
-    // and the badge each one carries — by session label, so each attributed
-    // thread animates under its own color and name instead of the shared
-    // generation session. Minted lazily on dispatch; no extra round trip.
+
     const agentLabel = !isBrowser && task ? agentSessionLabel(task) : undefined;
-    // Per-call cancellation. The input interrupt aborts mutating calls
-    // through this signal; a caller's connection closing mid-flight aborts
-    // it too — the reply has no destination, so there is nothing to keep
-    // waiting on. Optional preview priming may outlive a replied launch, so
-    // only the host's explicit reply marker recognizes normal completion.
-    // Node also sets writableEnded after peer EOF when allowHalfOpen is false. Neither
-    // indicts the generation: a vanished caller or a pressed Escape says
-    // nothing about driver health, so the catch below deliberately does not
-    // retire on an aborted call.
+
     const callCancel = new AbortController();
     if (mutation) this.inFlightInputInterrupts.add(callCancel);
     if (task) this.activeTaskCalls.set(callCancel, cuaComputerTaskKey(task));
@@ -1235,18 +1053,13 @@ export class CuaDriverHost {
       const alreadyInterrupted = callCancel.signal.aborted;
       callCancel.abort();
       if (mutation && dispatched && !alreadyInterrupted) {
-        // Closing a socket does not stop a native input loop. Fence queued
-        // work immediately and keep subsequent admission behind the real
-        // native drain, just as an explicit Stop does.
         void this.interruptInput().catch((error: unknown) =>
           log(`disconnected input cleanup failed: ${String(error)}`),
         );
       }
     };
     connection.once("close", abort);
-    // Set only by the deliberate pre-dispatch guard below: a call cancelled
-    // before anything reached the driver has no grounds to retire the
-    // generation — whatever prompted the cancel has its own teardown path.
+
     let cancelledBeforeDispatch = false;
     try {
       let reply: CuaReply | undefined;
@@ -1265,14 +1078,8 @@ export class CuaDriverHost {
         const args = input && typeof input === "object" && !Array.isArray(input) ? input : {};
         let browserSessionId: string | undefined;
         if (isBrowser && label) {
-          // The transport owner must be a live proxy session for the driver's
-          // boundary to inject download approval; re-begin if the control
-          // connection died (its EOF already reaped every owned session).
           await this.ensureControlSession(generation);
           if (generation.endedBrowserSessions.has(label)) {
-            // Revival is the documented re-entry path for an ended id. It is
-            // attempted once here; a session that still reports dead after it
-            // returns the death reply verbatim rather than another retry.
             const revived = await cuaRequest<CuaReply>(
               generation.socket,
               {
@@ -1288,9 +1095,6 @@ export class CuaDriverHost {
           }
           browserSessionId = generation.controlSession;
         } else if (agentLabel && generation.endedTaskSessions.has(agentLabel)) {
-          // The same documented revival path browser labels ride, minus the
-          // transport envelope: a desktop task session owns itself, so the
-          // plain call form of start_session is what revives it.
           const revived = await cuaRequest<CuaReply>(
             generation.socket,
             {
@@ -1302,24 +1106,18 @@ export class CuaDriverHost {
           );
           if (revived.ok && !revived.result?.isError) {
             generation.endedTaskSessions.delete(agentLabel);
-            // A revived cursor is re-created from the driver's launch
-            // template, so any style remembered from the previous life of
-            // this label is stale: re-apply before the first action paints.
+
             generation.appliedSessionCursorStyles.delete(agentLabel);
           }
         }
-        // The action paints under its own task session, not the shared
-        // generation session, and the driver seeds every lazily-created
-        // session cursor from its launch template. The user's colors must be
-        // applied to the session the action actually paints, once per task.
+
         if (agentLabel) await this.applyCursorStyleForSession(generation, agentLabel);
         if (agentLabel && !generation.taskCursors.get(agentLabel)?.enabled) {
-          // Showing/hiding a cursor must not end its driver session: that
-          // session can still own retained accessibility refs across turns.
+          // Showing/hiding a cursor must not end its driver session: that session can still own retained
+          // accessibility refs across turns.
           cursorEnabled = await this.setTaskCursorEnabled(generation, agentLabel, true);
         }
-        // Session setup can await I/O. Stop must win even if it arrived after
-        // the initial dispatch guard and before the native request is sent.
+
         if (admittedEpoch !== this.epoch || connection.destroyed || callCancel.signal.aborted) {
           cancelledBeforeDispatch = !dispatched;
           throw new Error("Cancelled before dispatch.");
@@ -1365,10 +1163,7 @@ export class CuaDriverHost {
             ...(mutation && (this.options.nativeRevision !== null || generation.browserInputControl)
               ? { expected_input_epoch: generation.nativeInputEpoch }
               : {}),
-            // The daemon sanitizes reserved keys anyway, but the spread order
-            // is the real guard: the label overwrites any caller `session`,
-            // and `_session_id`/`_transport_session_id` are injected by the
-            // daemon from this request's envelope, never trusted from args.
+
             args: {
               ...args,
               session: label ?? agentLabel ?? generation.session,
@@ -1378,9 +1173,8 @@ export class CuaDriverHost {
           { timeoutMs: 30_000, mutation, signal: callCancel.signal },
         );
         if (attemptReply.result?.structuredContent?.input_cleanup_unconfirmed === true) {
-          // A tool reply is not a release acknowledgement. Keep CDP input
-          // uncertainty across later reads and process exits; OS key-ups
-          // cannot prove that the browser received its matching release.
+          // A tool reply is not a release acknowledgement. Keep CDP input uncertainty across later reads and
+          // process exits; OS key-ups cannot prove that the browser received its matching release.
           generation.inputInFlight = true;
           generation.browserInputInFlight ||= isBrowser;
           this.nativeInputCleanupPending = generation;
@@ -1391,19 +1185,13 @@ export class CuaDriverHost {
         }
         if (isDriverSessionDeath(attemptReply)) {
           if (isBrowser && label) {
-            // A browser session can die without the generation dying — the
-            // lifecycle registry expires idle ids and transport EOF reaps
-            // owned sessions. Mark it ended so the next attempt (and any
-            // later call) revives before dispatching.
             generation.liveBrowserSessions.delete(label);
             generation.endedBrowserSessions.add(label);
             if (attempt === 0) continue;
           } else if (agentLabel) {
-            // A task cursor session expires independently of the shared
-            // generation session the same way browser labels do: reviving the
-            // label in place keeps every other thread's cursor — and the
-            // driver itself — alive, where the shared-session path correctly
-            // retires the generation it can no longer trust.
+            // A task cursor session expires independently of the shared generation session the same way browser
+            // labels do: reviving the label in place keeps every other thread's cursor — and the driver itself
+            // — alive, where the shared-session path correctly retires the generation it can no longer trust.
             generation.endedTaskSessions.add(agentLabel);
             while (generation.endedTaskSessions.size > 256)
               generation.endedTaskSessions.delete(
@@ -1425,9 +1213,6 @@ export class CuaDriverHost {
           parseCuaActionDiagnostics(reply.result?.structuredContent)?.error_code ===
             "focus_restore_failed")
       ) {
-        // Input may already have landed. Preserve that uncertain result, but
-        // fence queued work and automatic observations after losing user focus.
-        // Only a fresh model observation may reopen admission; never replay.
         this.desktopObservationRequired = true;
         this.epoch += 1;
         this.desktopEpoch += 1;
@@ -1446,8 +1231,8 @@ export class CuaDriverHost {
       }
       if (isBrowser && task && reply.ok && !reply.result?.isError)
         this.rememberBrowserTarget(input, reply.result, task);
-      // Reads may finish during the cooldown, but must not release recovery
-      // tracking while continued physical input can still make them stale.
+      // Reads may finish during the cooldown, but must not release recovery tracking while continued
+      // physical input can still make them stale.
       if (
         modelObservation &&
         this.inputInterruptCooldownUntil <= Date.now() &&
@@ -1506,8 +1291,8 @@ export class CuaDriverHost {
         while (generation.taskCursors.size > 256) {
           const oldest = generation.taskCursors.keys().next().value!;
           if (!(await this.endCursorSession(generation, oldest))) {
-            // Native idle expiry bounds a failed cosmetic cleanup. Preserve
-            // retries under normal load without unbounded per-label metadata.
+            // Native idle expiry bounds a failed cosmetic cleanup. Preserve retries under normal load without
+            // unbounded per-label metadata.
             generation.taskCursors.delete(oldest);
           }
         }
@@ -1515,11 +1300,7 @@ export class CuaDriverHost {
       return reply;
     } catch (error) {
       let detail = String(error);
-      // A call that was cancelled — by the interrupt's abort or before
-      // anything was dispatched — proves nothing about the generation's
-      // health: nothing it observed indicts the driver. Retiring here would
-      // kill the process, its sessions, and its browser bindings on a
-      // host-side verdict alone. Every real dispatch failure still retires.
+
       if (generation && !cancelledBeforeDispatch && !callCancel.signal.aborted) {
         try {
           await this.retire(generation);
@@ -1543,8 +1324,6 @@ export class CuaDriverHost {
     }
   }
 
-  /** A single bounded read after mint/first action, never periodic polling.
-   * Enabled/position are driver state, not proof of pixels reaching a display. */
   private async logCursorState(
     generation: Generation,
     label: string,
@@ -1588,8 +1367,7 @@ export class CuaDriverHost {
   private async endCursorSession(generation: Generation, label: string): Promise<boolean> {
     const cursor = generation.taskCursors.get(label);
     const hidden = await this.setTaskCursorEnabled(generation, label, false);
-    // A lost reply can mean either visible or hidden. Keep its cleanup handle
-    // until acknowledged, and re-enable explicitly if a later action reuses it.
+
     if (hidden) generation.taskCursors.delete(label);
     else if (cursor) cursor.enabled = false;
     log(
@@ -1626,8 +1404,8 @@ export class CuaDriverHost {
     }
   }
 
-  /** End only the latest matching turn, in the same queue as native dispatch.
-   * A late terminal for turn A must not remove turn B's reused cursor. */
+  // End only the latest matching turn, in the same queue as native dispatch. A late terminal for turn
+  // A must not remove turn B's reused cursor.
   private async endTaskCursors(
     task: CuaComputerTask,
     allTurns = task.turnId === undefined,
@@ -1682,9 +1460,9 @@ export class CuaDriverHost {
       this.rememberTask(this.endedFrameTasks, this.frameTapTask);
       this.frameTapTask = undefined;
     }
-    // Preview/shield authority ends immediately. Cosmetic cursor cleanup
-    // stays on the native queue, but task Stop must not wait for another
-    // task's long-running native action merely to hide this task's cursor.
+    // Preview/shield authority ends immediately. Cosmetic cursor cleanup stays on the native queue, but
+    // task Stop must not wait for another task's long-running native action merely to hide this task's
+    // cursor.
     const cursorEnded = this.endTaskCursors(task, allTurns);
     if (!waitForCursor)
       void cursorEnded.catch((error: unknown) =>
@@ -1697,15 +1475,6 @@ export class CuaDriverHost {
     ]);
   }
 
-  /**
-   * `GLADE_CUA_WARM_ON_FIRST_TOUCH=1` asks the host to run the spawn plus
-   * validated handshake on first touch, after known grants on a host with a
-   * permission bridge. The initial check answers without the driver, so its
-   * cold start can overlap subsequent work without caching pre-grant TCC. Warming
-   * stops there on purpose: it opens no session, moves no focus, captures no
-   * pixels, and fires at most once per host lifetime so a retired driver is
-   * never re-warmed by polling alone.
-   */
   private warmAttempted = false;
 
   private warm(): void {
@@ -1718,21 +1487,9 @@ export class CuaDriverHost {
     });
   }
 
-  /**
-   * Open (or reopen) this generation's persistent control connection: the one
-   * socket that sends `session_begin` and then stays open. The driver ties
-   * two things to its lifetime — the active-proxy flag that lets
-   * browser_download carry the host approval bit, and the EOF reaper that
-   * tears down every lifecycle session the transport owns — so the id is
-   * reused on reconnect rather than minted fresh: re-beginning the same id
-   * re-arms it, and the just-reaped labels sit in `endedBrowserSessions`
-   * waiting for revival.
-   */
   private async ensureControlSession(generation: Generation): Promise<void> {
     if (generation.controlSocket && !generation.controlSocket.destroyed) return;
-    // The dead connection's EOF already reaped its owned sessions on the
-    // driver side; mirror that here so callers revive instead of dispatching
-    // into a capability namespace the driver no longer holds.
+
     if (generation.controlSocket) {
       for (const label of generation.liveBrowserSessions)
         generation.endedBrowserSessions.add(label);
@@ -1776,15 +1533,8 @@ export class CuaDriverHost {
       if (generation.controlSocket === socket) generation.controlSocket = undefined;
       throw error;
     }
-    // Late EOF after a successful begin still means the sessions are gone —
-    // keep the dead socket referenced only until the next check notices it.
   }
 
-  /**
-   * Spawn plus the validated handshake — the warmable half of startup. The
-   * returned generation has no session yet: `openSession` runs that half on
-   * the first call that needs it.
-   */
   private ensureSpawned(): Promise<Generation> {
     if (this.starting) return this.starting;
     const start = async () => {
@@ -1796,17 +1546,15 @@ export class CuaDriverHost {
       try {
         await access(this.options.binaryPath);
       } catch {
-        // Same wording as the probe: a raw ENOENT names a path, not a remedy.
         throw new Error(CUA_DRIVER_MISSING_MESSAGE);
       }
       const endpoint =
         process.platform === "win32"
           ? `\\\\.\\pipe\\glade-cua-driver-${randomUUID().slice(0, 8)}`
           : join(this.directory, `driver-${randomUUID().slice(0, 8)}.sock`);
-      // Park the compact cursor between actions until end_task removes it,
-      // with a one-minute native expiry if cleanup cannot be acknowledged.
-      // Idle compact cursors sleep without repainting; model latency must not
-      // make the only agent indicator disappear. Upstream cannot parse these flags.
+      // Park the compact cursor between actions until end_task removes it, with a one-minute native
+      // expiry if cleanup cannot be acknowledged. Idle compact cursors sleep without repainting; model
+      // latency must not make the only agent indicator disappear. Upstream cannot parse these flags.
       const expectsPatched = this.options.nativeRevision !== null;
       const child = spawn(
         this.options.binaryPath,
@@ -1827,18 +1575,11 @@ export class CuaDriverHost {
             CUA_DRIVER_HOST_BUNDLE_ID: this.options.bundleId,
             CUA_DRIVER_PERMISSION_MODE: "standard",
             CUA_DRIVER_RS_TELEMETRY_ENABLED: "0",
-            // Upgrade lifecycle belongs to the app, not the managed driver —
-            // the self-update check is an upstream network call plus a stderr
-            // banner on every spawn.
+
             CUA_DRIVER_RS_UPDATE_CHECK: "0",
-            // Owned by the GUI host, not supplied through public tool arguments.
-            // The native driver applies this only after foreground input cleanup.
+
             GLADE_CUA_FOREGROUND_OBSERVATION_MS: "100",
-            // The detector watches for windows/foreground changes the action
-            // spawned — typically within ~200ms — not for the target's own
-            // content. 350ms keeps the wildcard focus-steal suppressor armed
-            // past the typical case while saving ~650ms per background action
-            // over the default one-second window.
+
             GLADE_CUA_BACKGROUND_OBSERVATION_MS: "350",
             CUA_DRIVER_PARENT_LIVENESS_STDIN: "1",
             CUA_DRIVER_EMBEDDED_HOST_PID: String(process.pid),
@@ -1846,9 +1587,7 @@ export class CuaDriverHost {
           },
         },
       );
-      // Keep a short stderr tail so a wedged or panicking daemon is diagnosable
-      // after the fact; payloads may be private, so only lines are kept and only
-      // surfaced on exit, never streamed.
+
       const stderrTail: string[] = [];
       let stderrPending = "";
       child.stderr?.on("data", (chunk: Buffer) => {
@@ -1856,8 +1595,7 @@ export class CuaDriverHost {
         stderrPending = lines.pop()!.slice(-4096);
         for (const line of lines) {
           if (!line.trim()) continue;
-          // These native literals carry no app content. Other stderr remains
-          // private to the bounded shutdown tail; never stream arbitrary text.
+
           const overlay = line.match(
             /^glade_cua_overlay_init code=(overlay_display_unavailable|overlay_window_unavailable)$/,
           );
@@ -1927,10 +1665,9 @@ export class CuaDriverHost {
             await delay(50);
           }
         }
-        // `nativeRevision: null` expects an unpatched upstream driver — its
-        // metadata carries no Glade revision and the field must not be
-        // required. A patched build is still accepted there: a superset of
-        // the expected identity is never a downgrade.
+        // `nativeRevision: null` expects an unpatched upstream driver — its metadata carries no Glade
+        // revision and the field must not be required. A patched build is still accepted there: a superset
+        // of the expected identity is never a downgrade.
         const expectedNativeRevision =
           this.options.nativeRevision === undefined
             ? CUA_NATIVE_REVISION
@@ -1971,13 +1708,6 @@ export class CuaDriverHost {
     return this.starting;
   }
 
-  /**
-   * The session half of startup: `start_session` plus the once-per-generation
-   * cursor-motion setup, opened lazily on the first call that needs it so the
-   * warm path can stop at the validated handshake. Runs once per generation;
-   * a failure retires the generation so the next call starts clean rather
-   * than reusing a half-opened session.
-   */
   private async openSession(generation: Generation): Promise<void> {
     generation.sessionOpening ??= (async () => {
       const startupTimeoutMs = this.options.startupTimeoutMs ?? 5_000;
@@ -1996,8 +1726,7 @@ export class CuaDriverHost {
         throw new Error("Cua session initialization failed.");
       if (generation.retired || generation.didExit)
         throw new Error("Cua Driver stopped during startup.");
-      // Configure once per native generation, not before each input. The
-      // cursor remains visible without making travel distance delay the action.
+
       const motion = await cuaRequest<CuaReply>(
         generation.socket,
         {
@@ -2013,13 +1742,11 @@ export class CuaDriverHost {
       );
       if (!motion.ok || motion.result?.isError)
         throw new Error("Cua cursor initialization failed.");
-      // The user's cursor colors, read at the same once-per-generation timing
-      // as the motion feel. Stock sends nothing at all, so a default install
-      // keeps the driver's own monochrome art; an unpatched upstream driver
-      // has no style tool, so a configured style stays stock there. The
-      // shared session rarely paints an action (task calls carry their own
-      // label), so this is best-effort: a cosmetic color must never retire a
-      // driver, and the per-task application below carries the real work.
+      // Stock sends nothing at all, so a default install keeps the driver's own monochrome art; an
+      // unpatched upstream driver has no style tool, so a configured style stays stock there. The shared
+      // session rarely paints an action (task calls carry their own label), so this is best-effort: a
+      // cosmetic color must never retire a driver, and the per-task application below carries the real
+      // work.
       const style = normalizeCuaCursorStyle(this.options.cursorStyle?.());
       if (style && this.observedNativeRevision !== 0) {
         try {
@@ -2058,15 +1785,15 @@ export class CuaDriverHost {
 
   private async terminate(generation: Generation): Promise<void> {
     if (generation.didExit) return;
-    // End the lifetime pipe too: Tokio's blocking stdin reader otherwise
-    // keeps the native runtime alive during graceful shutdown.
+    // End the lifetime pipe too: Tokio's blocking stdin reader otherwise keeps the native runtime alive
+    // during graceful shutdown.
     generation.child.stdin?.end();
     const graceful = setTimeout(() => generation.child.kill("SIGTERM"), 500);
     const force = setTimeout(() => generation.child.kill("SIGKILL"), 1_500);
     try {
-      // Every retire branch that reaches terminate() has already proven the
-      // generation cannot hold OS input, so even a kernel-wedged process
-      // that survives SIGKILL must not hang the whole retirement chain.
+      // Every retire branch that reaches terminate() has already proven the generation cannot hold OS
+      // input, so even a kernel-wedged process that survives SIGKILL must not hang the whole retirement
+      // chain.
       await Promise.race([generation.exited, delay(4_000)]);
     } finally {
       clearTimeout(graceful);
@@ -2085,17 +1812,12 @@ export class CuaDriverHost {
     this.browserRecoveryObservations.clear();
     if (this.nativeInputCleanupPending === generation) this.nativeInputCleanupPending = undefined;
     this.updateInputMonitorArmed();
-    // Browser teardown rides the control connection's lifetime: closing it
-    // now lets the driver's EOF reaper end every session this transport owns
-    // while the daemon is still alive to run its cleanup hooks, instead of
-    // racing termination.
+    // Browser teardown rides the control connection's lifetime: closing it now lets the driver's EOF
+    // reaper end every session this transport owns while the daemon is still alive to run its cleanup
+    // hooks, instead of racing termination.
     generation.controlSocket?.destroy();
     generation.controlSocket = undefined;
     this.retiring = this.retiring.then(async () => {
-      // Captured up front: the flag clears on confirmed cleanup, and a driver
-      // exit event can land after the dead socket already broke the request —
-      // either ordering leaves the OS believing a synthetic button or modifier
-      // is held, and a user click landing under it feels dead system-wide.
       const inputUncertain = generation.inputInFlight;
       const releaseHeldInput = async () => {
         if (!inputUncertain || generation.browserInputInFlight || !this.options.releaseHeldInput)
@@ -2110,11 +1832,8 @@ export class CuaDriverHost {
         }
       };
       if (generation.didExit && generation.inputInFlight) {
-        // A confirmed release makes the desktop provably clean again — the
-        // generation clears and the next request spawns a replacement. Without
-        // a confirmed release the held state is unprovable: keep the dead
-        // generation referenced so every later request fails closed instead
-        // of a replacement compounding the uncertainty.
+        // Without a confirmed release the held state is unprovable: keep the dead generation referenced so
+        // every later request fails closed instead of a replacement compounding the uncertainty.
         if (await releaseHeldInput()) {
           if (this.generation === generation) this.generation = undefined;
           await rm(generation.socket, { force: true });
@@ -2141,14 +1860,8 @@ export class CuaDriverHost {
           cleanupConfirmed = false;
         }
         if (!cleanupConfirmed) {
-          // A dead socket can outrun the exit event: the process may already
-          // be gone, in which case this is the crash path, not a live driver
-          // withholding its acknowledgement. Give the exit a short grace.
           if (!generation.didExit) await Promise.race([generation.exited, delay(500)]);
           if (generation.didExit) {
-            // No input in flight means nothing is uncertain — the dead
-            // generation clears outright. With input in flight, only a
-            // confirmed release clears it.
             const cleared = !generation.inputInFlight || (await releaseHeldInput());
             if (cleared) {
               if (this.generation === generation) this.generation = undefined;
@@ -2160,20 +1873,16 @@ export class CuaDriverHost {
             );
           }
           if (!generation.inputEverDispatched) {
-            // The driver only ever holds OS input in response to a dispatched
-            // action, and none ever reached this generation — a wedge during
-            // startup or between reads cannot leave input held. Terminate and
-            // clear so the next request spawns a replacement instead of
-            // closing admission for the host's lifetime.
+            // The driver only ever holds OS input in response to a dispatched action, and none ever reached
+            // this generation — a wedge during startup or between reads cannot leave input held. Terminate and
+            // clear so the next request spawns a replacement instead of closing admission for the host's
+            // lifetime.
             await this.terminate(generation);
             if (this.generation === generation) this.generation = undefined;
             await rm(generation.socket, { force: true });
             return;
           }
-          // The process is genuinely alive and its acknowledgement could not
-          // be trusted — the in-gate releases may never have run, so the
-          // helper posts the OS-level ups before admission closes on this
-          // uncertainty. The driver is not killed or replaced.
+
           await releaseHeldInput();
           throw new Error(
             "Cua Driver did not confirm native input cleanup. Computer admission is closed; the driver was not killed or replaced.",
@@ -2181,18 +1890,17 @@ export class CuaDriverHost {
         }
         generation.inputInFlight = false;
       }
-      // Before the validated handshake no action can have been dispatched.
-      // Otherwise the authenticated acknowledgement above covers all matching
-      // releases and native context restoration before termination is allowed.
+      // Before the validated handshake no action can have been dispatched. Otherwise the authenticated
+      // acknowledgement above covers all matching releases and native context restoration before
+      // termination is allowed.
       await this.terminate(generation);
       if (this.generation === generation) this.generation = undefined;
       await rm(generation.socket, { force: true });
     });
     generation.retirement = this.retiring;
-    // The rejection belongs to whoever retired this generation — not to the
-    // sequencing chain. A cleanup that throws ("admission closed") must not
-    // leave `this.retiring` rejected forever, or one mid-input daemon death
-    // would refuse every generation the host ever tries to spawn.
+    // The rejection belongs to whoever retired this generation — not to the sequencing chain. A cleanup
+    // that throws ("admission closed") must not leave `this.retiring` rejected forever, or one
+    // mid-input daemon death would refuse every generation the host ever tries to spawn.
     this.retiring = this.retiring.then(
       () => undefined,
       () => undefined,
@@ -2200,21 +1908,17 @@ export class CuaDriverHost {
     return generation.retirement;
   }
 
-  /**
-   * Mirror a cursor-color change onto the live driver session. The preference
-   * itself is durable in the caller; this only pushes it to a generation whose
-   * session is already open, so changing a setting never spawns a driver. A
-   * failed push is logged and never fatal — the next session open reads the
-   * preference again. Passing null/undefined restores the stock cursor.
-   */
+  // The preference itself is durable in the caller; this only pushes it to a generation whose session
+  // is already open, so changing a setting never spawns a driver. A failed push is logged and never
+  // fatal — the next session open reads the preference again.
   setCursorStyle(style: CuaCursorStyle | null | undefined): Promise<void> {
     const next = normalizeCuaCursorStyle(style);
     const nextJson = next ? JSON.stringify(next) : "";
     const apply = async (): Promise<void> => {
       const generation = this.generation;
       if (!generation || generation.retired || generation.didExit) return;
-      // A generation without an opened session takes the preference at its
-      // next open; a settings change must not warm or spawn a driver.
+      // A generation without an opened session takes the preference at its next open; a settings change
+      // must not warm or spawn a driver.
       if (!generation.sessionOpening) return;
       await generation.sessionOpening.catch(() => undefined);
       if (
@@ -2248,19 +1952,10 @@ export class CuaDriverHost {
     return this.cursorStyleUpdates;
   }
 
-  /**
-   * Apply the current cursor preference to one task cursor session before its
-   * first dispatch. Task sessions never inherit the shared generation
-   * session's style — the driver seeds every lazily-created session cursor
-   * from its launch template — so the user's colors must be sent to the
-   * session the action actually paints under. Failures are logged and cost
-   * the action nothing: the cursor keeps the style it already had.
-   */
   private async applyCursorStyleForSession(generation: Generation, session: string): Promise<void> {
     const style = normalizeCuaCursorStyle(this.options.cursorStyle?.());
     const previous = generation.appliedSessionCursorStyles.get(session);
-    // Stock with no prior override: the template default is already correct,
-    // so nothing is sent (a default install never talks to the style tool).
+
     if (!style && previous === undefined) return;
     const styleJson = style ? JSON.stringify(style) : "";
     if (previous === styleJson) return;
@@ -2303,18 +1998,15 @@ export class CuaDriverHost {
     this.browserRecoveryObservations.clear();
     this.monitoredTasks.clear();
     this.epoch += 1;
-    // A read dispatched before a stop must not be admitted as a fresh
-    // observation afterwards: bumping the desktop epoch turns that silent
-    // clear-void into a visible stale-read refusal.
+    // A read dispatched before a stop must not be admitted as a fresh observation afterwards: bumping
+    // the desktop epoch turns that silent clear-void into a visible stale-read refusal.
     this.desktopEpoch += 1;
     for (const cancel of this.pendingPermissionChecks.keys()) cancel();
     const admitted = this.operations;
     const frameTapStopped = this.options.frameTap?.stop();
-    // Any shield still up belongs to an excursion this stop interrupts: drop
-    // it (and its helper) in parallel with the driver retire, same discipline.
+
     const shieldStopped = this.options.shield?.stop();
-    // Same discipline as `stopping` below: the stop caller sees the failure
-    // through the returned promise, never through an unhandled rejection.
+
     void frameTapStopped?.catch(() => undefined);
     void shieldStopped?.catch(() => undefined);
     const stopping = this.stopping.then(async () => {
@@ -2326,9 +2018,8 @@ export class CuaDriverHost {
       await frameTapStopped;
       await shieldStopped;
     });
-    // Same discipline as `retiring`: the caller sees the failure but the
-    // chain must not — one admission-closed stop must not refuse every
-    // later stop() for the host's lifetime.
+    // Same discipline as `retiring`: the caller sees the failure but the chain must not — one
+    // admission-closed stop must not refuse every later stop() for the host's lifetime.
     this.stopping = stopping.then(
       () => undefined,
       () => undefined,
@@ -2336,9 +2027,8 @@ export class CuaDriverHost {
     return stopping;
   }
 
-  /** Interrupt native input without retiring browser/session identity. Socket
-   * abort gives callers a prompt uncertain result; only the native gate's
-   * acknowledged drain authorizes later input. */
+  // Interrupt native input without retiring browser/session identity. Socket abort gives callers a
+  // prompt uncertain result; only the native gate's acknowledged drain authorizes later input.
   private interruptInput(): Promise<void> {
     this.epoch += 1;
     this.desktopEpoch += 1;
@@ -2346,8 +2036,7 @@ export class CuaDriverHost {
     const admitted = this.operations;
     const frameTapStopped = this.options.frameTap?.stop();
     const shieldStopped = this.options.shield?.stop();
-    // Same discipline as stop(): the interrupt caller sees failures through
-    // the returned promise, never through an unhandled rejection.
+
     void frameTapStopped?.catch(() => undefined);
     void shieldStopped?.catch(() => undefined);
     for (const interrupt of this.inFlightInputInterrupts) interrupt.abort();
@@ -2359,9 +2048,8 @@ export class CuaDriverHost {
       await frameTapStopped;
       await shieldStopped;
     });
-    // Same discipline as `retiring`/`stopping` everywhere else: the caller
-    // sees the failure but the chain must not — one failed interrupt must
-    // not refuse every later one for the host's lifetime.
+    // Same discipline as `retiring`/`stopping` everywhere else: the caller sees the failure but the
+    // chain must not — one failed interrupt must not refuse every later one for the host's lifetime.
     this.stopping = interrupting.then(
       () => undefined,
       () => undefined,
@@ -2371,8 +2059,7 @@ export class CuaDriverHost {
 
   private async interruptNativeInput(generation: Generation): Promise<void> {
     if (generation.retired || generation.didExit) return;
-    // The upstream Linux driver has no macOS native input gate. Preserve its
-    // existing transport stop; this branch makes no native cleanup claim.
+
     if (this.options.nativeRevision === null && !generation.browserInputControl) return;
     this.nativeInputCleanupPending = generation;
     let confirmed = false;
@@ -2400,8 +2087,8 @@ export class CuaDriverHost {
     }
     if (generation.retired || generation.didExit) return;
     if (!confirmed) {
-      // The native barrier stays closed. OS releases are only a fallback for
-      // unconfirmed cleanup, never proof that the old input loop has stopped.
+      // The native barrier stays closed. OS releases are only a fallback for unconfirmed cleanup, never
+      // proof that the old input loop has stopped.
       if (!generation.browserInputInFlight)
         await this.options.releaseHeldInput?.().catch((error: unknown) => {
           log(`interrupted held-input release failed: ${String(error)}`);
@@ -2416,18 +2103,8 @@ export class CuaDriverHost {
     if (this.nativeInputCleanupPending === generation) this.nativeInputCleanupPending = undefined;
   }
 
-  /**
-   * Physical Escape interrupt — momentary and self-healing. The press arms
-   * the {@link ESCAPE_INPUT_COOLDOWN_MS} cooldown and runs
-   * {@link interruptInput}: queued work is cancelled, in-flight mutating
-   * calls receive an uncertain result, and native input drains with its own
-   * matching releases. The driver and browser bindings survive. A fresh model
-   * observation is required before resuming, with no extra approval dialog.
-   *
-   * Returns whether the press engaged the interrupt. With no live or
-   * spawning driver generation, Escape is an ordinary key: the desktop
-   * ignores the event instead of interrupting a host nothing was driving.
-   */
+  // Escape drains held input and requires a fresh model observation before admission resumes. It
+  // preserves the driver and browser bindings.
   emergencyStopInput(): boolean {
     if (this.closed) return false;
     if (this.generation === undefined && this.starting === undefined) return false;
@@ -2441,13 +2118,11 @@ export class CuaDriverHost {
     return true;
   }
 
-  /** Background control shares the Mac with the human: their typing, clicks
-   * and app switches never pause it, even on the app the agent is using. Only
-   * a foreground action in flight — the agent driving the real cursor and
-   * keyboard — collides with physical input, so only that action is
-   * interrupted. Keep observing physical input during recovery so only quiet
-   * and fresh state release the pause. Physical Escape and Stop remain the
-   * ways to halt the agent. */
+  // Background control shares the Mac with the human: their typing, clicks and app switches never
+  // pause it, even on the app the agent is using. Only a foreground action in flight — the agent
+  // driving the real cursor and keyboard — collides with physical input, so only that action is
+  // interrupted. Keep observing physical input during recovery so only quiet and fresh state release
+  // the pause.
   physicalInput(event: PhysicalComputerInput): boolean {
     if (this.closed || !this.generation || this.generation.retired) return false;
     if (
@@ -2489,8 +2164,8 @@ export class CuaDriverHost {
       [...this.inFlightInputInterrupts].some((input) => !input.signal.aborted);
     this.inputInterruptCooldownUntil = Date.now() + ESCAPE_INPUT_COOLDOWN_MS;
     if (alreadyPaused && !affectedInputInFlight) {
-      // Repeated typing keeps observations stale without sending one native
-      // cancellation RPC per key. No new mutation can enter this paused gate.
+      // Repeated typing keeps observations stale without sending one native cancellation RPC per key. No
+      // new mutation can enter this paused gate.
       this.epoch += 1;
       this.desktopEpoch += 1;
       return true;
@@ -2519,10 +2194,6 @@ export class CuaDriverHost {
     );
   }
 
-  /**
-   * The helper only reports Escape while a live generation could dispatch
-   * input: armed on spawn, disarmed on retire, kill, or close.
-   */
   private updateInputMonitorArmed(): void {
     const armed =
       !this.closed &&
@@ -2542,7 +2213,7 @@ export class CuaDriverHost {
     return this.options.ownPids?.() ?? CuaDriverHost.defaultOwnPids;
   }
 
-  /** User Stop revokes the turn without changing OS grants. */
+  // User Stop revokes the turn without changing OS grants.
   async stopTaskByUser(task: CuaComputerTask): Promise<void> {
     await this.stopTaskInput(task);
   }
@@ -2571,12 +2242,9 @@ export class CuaDriverHost {
     for (const [cancel, owner] of this.activeTaskCalls) {
       if (stoppedKeys.has(owner)) cancel.abort();
     }
-    // Native input is serialized but shares one cancellation gate. Once
-    // this task dispatched input, stopping it must drain that generation
-    // and fence queued siblings too. Idle/queued tasks and observations
-    // need only their own revocation; they must not interrupt another task.
-    // A thread-wide Stop matches its admitted/known turns. It must not
-    // interrupt another thread just because the caller omitted a turn id.
+    // Idle/queued tasks and observations need only their own revocation; they must not interrupt
+    // another task. A thread-wide Stop matches its admitted/known turns. It must not interrupt another
+    // thread just because the caller omitted a turn id.
     const scope =
       this.generation?.inputInFlight &&
       this.generation.inputTask !== undefined &&
@@ -2622,14 +2290,10 @@ export class CuaDriverHost {
         CUA_BROWSER_MUTATION_TOOLS.has(name));
     if (!required) return true;
     const monitor = this.options.inputMonitorState?.();
-    // Existing portable native paths do not have a listener contract. The
-    // verified Linux browser port does: missing integration is not readiness.
+
     return monitor?.ready ?? !linuxBrowserMutation;
   }
 
-  /** A separate owned browser can be set up while old targets remain paused.
-   * Setup itself grants no recovery: its exact target/tab still needs a model
-   * snapshot before input, and a fresh page never unlocks an older target. */
   private isIsolatedBrowserSetup(name: string, input: unknown): boolean {
     if (name !== "browser_prepare" || !input || typeof input !== "object" || Array.isArray(input))
       return false;
@@ -2763,9 +2427,7 @@ export class CuaDriverHost {
         (target.browserTabId === undefined || args.tab_id === target.browserTabId)
       );
     }
-    // A model may deliberately re-aim at a usable sibling after the old window
-    // closes or moves off-Space. Never let an overview, another app, a degraded
-    // capture, or an empty sibling tree clear the task's takeover gate.
+
     const state = result.structuredContent;
     const exactWindow = args.window_id === target.windowId;
     return (
@@ -2785,8 +2447,6 @@ export class CuaDriverHost {
     );
   }
 
-  /** The native call args carry the agent's window target; task attribution
-   * alone does not say which window the tap should stream. */
   private frameTapTarget(task: CuaComputerTask, input: unknown): CuaPreviewTarget | undefined {
     if (!input || typeof input !== "object") return undefined;
     const args = input as Record<string, unknown>;
@@ -2804,15 +2464,6 @@ export class CuaDriverHost {
     return { task, pid: args.pid, windowId: args.window_id };
   }
 
-  /**
-   * Best-effort tap prime after a successful launch_app: find the launched
-   * app's main on-screen window and point the frame tap at it, so the preview
-   * is live from the cold start instead of the first window-attributed call.
-   * Detached from the agent's reply (which already returned); every guard the
-   * synchronous path checks is re-verified before pointing the tap. Never
-   * throws: failures keep the status quo (the tap starts on the next
-   * attributed call) and log one line.
-   */
   private async primeTapAfterLaunch(
     task: CuaComputerTask,
     input: unknown,
@@ -2877,8 +2528,6 @@ export class CuaDriverHost {
     });
   }
 
-  /** Backend shutdown must reject later requests as well as cancel admitted
-   * work. Ordinary turn Stop remains reusable without a backend restart. */
   suspend(): Promise<void> {
     this.suspended = true;
     return this.stop();
@@ -2888,13 +2537,10 @@ export class CuaDriverHost {
     if (!this.closed) this.suspended = false;
   }
 
-  /**
-   * The interruption state every host reply piggybacks: the sorted pause
-   * reasons active right now, and the never-reset interruption count. The
-   * count is the load-bearing half — a lock that engages and releases between
-   * two replies nets `desktopPauses` back to `[]`, so only the advancing
-   * counter proves the interruption cycle ran at all.
-   */
+  // The interruption state every host reply piggybacks: the sorted pause reasons active right now,
+  // and the never-reset interruption count. The count is the load-bearing half — a lock that engages
+  // and releases between two replies nets `desktopPauses` back to `[]`, so only the advancing counter
+  // proves the interruption cycle ran at all.
   private desktopState(): Pick<
     CuaReply,
     | "desktopEpoch"
@@ -2923,8 +2569,8 @@ export class CuaDriverHost {
     };
   }
 
-  /** OS desktop state is independent of backend restarts. A backend resume
-   * cannot reopen input while the screen is locked or another user is active. */
+  // OS desktop state is independent of backend restarts. A backend resume cannot reopen input while
+  // the screen is locked or another user is active.
   pauseDesktop(reason: string): Promise<void> {
     this.desktopPauses.add(reason);
     this.desktopInterruptionCount += 1;
@@ -2961,12 +2607,6 @@ export class CuaDriverHost {
     };
   }
 
-  /**
-   * The cooldown refusal a mutating call gets inside the physical-Escape
-   * interrupt window. Same dialect as a desktop pause — the backend reads
-   * `effect: "refused"` as `not-dispatched`. The deadline bounds the quiet
-   * period; a separate fresh-observation gate prevents blind continuation.
-   */
   private inputMonitorUnavailableReply(monitor = this.options.inputMonitorState?.()): CuaReply {
     const message =
       process.platform === "linux"

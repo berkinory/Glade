@@ -1,7 +1,3 @@
-// FILE: TerminalActivityIndicator.tsx
-// Purpose: Compact terminal lifecycle indicator for running, attention, and review states.
-// Layer: Terminal presentation primitive
-
 import type { TerminalVisualState } from "@glade/shared/terminalThreads";
 
 import { cn } from "~/lib/utils";
@@ -43,7 +39,6 @@ export default function TerminalActivityIndicator({
     >
       {RUNNING_INDICATOR_OFFSETS_MS.map((delayMs) => (
         <span
-          // CSS animation keeps busy terminal indicators out of React's render loop.
           key={delayMs}
           className="terminal-running-indicator__dot block size-1 rounded-full bg-current"
           style={{ animationDelay: `${delayMs}ms` }}

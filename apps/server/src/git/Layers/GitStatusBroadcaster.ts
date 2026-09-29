@@ -112,11 +112,10 @@ export const GitStatusBroadcasterLive = Layer.effect(
       Effect.gen(function* () {
         const normalizedCwd = normalizeCwd(input.cwd);
         const cached = yield* getCachedStatus(normalizedCwd);
-        // Only probe git for details when the cached remote metadata could still be
-        // reused. `statusDetails` spawns several git subprocesses, and a full status
-        // load runs it again, so probing against expired cache state would double the
-        // git work on every poll (the sidebar polls at 60 s against a 30 s TTL, so the
-        // reuse check could never pass on that path).
+        // Only probe git for details when the cached remote metadata could still be reused. `statusDetails`
+        // spawns several git subprocesses, and a full status load runs it again, so probing against expired
+        // cache state would double the git work on every poll (the sidebar polls at 60 s against a 30 s
+        // TTL, so the reuse check could never pass on that path).
         if (cached?.remote && isCachedRemoteStatusFresh({ cached })) {
           const details = yield* gitCore.statusDetails(normalizedCwd);
           if (canReuseCachedRemoteStatus({ cached, details })) {

@@ -1,14 +1,3 @@
-// FILE: remarkComposerChips.ts
-// Purpose: Remark plugin that rewrites composer inline tokens (skills, @-mentions,
-//          agent mentions, bare link chips, and terminal selections) inside markdown
-//          text nodes into custom elements, so user-message markdown renders the exact
-//          same chips as the composer echo. Running inside remark (after parsing) means
-//          tokens typed inside inline code or fenced blocks stay literal for free.
-// Layer: Web chat presentation logic
-// Exports: COMPOSER_CHIP_TAG_NAME, COMPOSER_CHIP_SEGMENT_ATTRIBUTE,
-//          terminal chip constants, ComposerChipSegment,
-//          createComposerChipsRemarkPlugin, parseComposerChipSegment
-
 import type { ProviderMentionReference } from "@glade/contracts";
 import {
   splitPromptIntoDisplaySegments,
@@ -52,8 +41,6 @@ interface MdastNode {
   };
 }
 
-// Text inside these nodes is already a reference to something else (a markdown
-// link label, an image alt, …); re-chipping it would double-decorate.
 const SKIPPED_PARENT_TYPES = new Set([
   "link",
   "linkReference",
@@ -71,7 +58,7 @@ function chipSegmentToNode(segment: ComposerChipSegment): MdastNode {
     type: "composerChip",
     data: {
       hName: COMPOSER_CHIP_TAG_NAME,
-      // hast property `dataSegment` reaches the React component as `data-segment`.
+
       hProperties: { dataSegment: JSON.stringify(segment) },
     },
     children: [],
@@ -127,8 +114,7 @@ export function createComposerChipsRemarkPlugin(
         replacements.push(chipSegmentToNode(segment));
         continue;
       }
-      // Only text segments can appear alongside chips here: the display split
-      // never emits terminal-context nodes.
+
       if (segment.type === "text" && segment.text.length > 0) {
         replacements.push({ type: "text", value: segment.text });
       }

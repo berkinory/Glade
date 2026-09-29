@@ -1,29 +1,3 @@
-/**
- * Resolving an accessibility node to the point that actually taps it.
- *
- * Agents are bad at coordinate arithmetic and worse at knowing which
- * coordinate of a node is the live one, so this module is the single place
- * that answers "where do I tap to hit the thing called X". Both the MCP
- * `device_tap` tool and any future caller go through it rather than each
- * re-deriving a centre point from a frame.
- *
- * Two rules carry most of the value:
- *
- * - The tap point is the node's `activationPoint` when it has one. UIKit
- *   merges a settings row and the control inside it into one element whose
- *   frame spans the row, so the frame centre of a switch row is dead space.
- * - A match that is scrolled out of view is refused rather than tapped. Its
- *   frame is still in the tree with off-screen coordinates, and tapping it
- *   would hit whatever happens to be at that position instead.
- *
- * The matching itself — exact label before substring, ambiguity refused rather
- * than guessed — is `@glade/shared/uiTreeTargeting`, shared with the desktop
- * family. What stays here is what UIKit specifically needs: labels compared
- * with case and surrounding space ignored, a subrole that counts as a role, and
- * "on screen" meaning the tap point falls inside the display's own frame.
- *
- * @module device/uiTreeTargeting
- */
 import type { DeviceUiNode, DeviceUiPoint } from "@glade/contracts";
 import {
   flattenUiTree,
@@ -32,7 +6,6 @@ import {
   type UiTreeTargetSpec,
 } from "@glade/shared/uiTreeTargeting";
 
-/** What the caller asked for. At least a label; role narrows an ambiguous one. */
 export interface DeviceUiTarget {
   readonly label: string;
   readonly role?: string | undefined;
@@ -41,28 +14,21 @@ export interface DeviceUiTarget {
 export interface DeviceUiTargetMatch {
   readonly point: DeviceUiPoint;
   readonly node: DeviceUiNode;
-  /** False when the match is in the tree but scrolled out of the display. */
+
   readonly onScreen: boolean;
 }
 
 export class DeviceUiTargetError extends Error {
   readonly _tag = "DeviceUiTargetError";
-  /** Candidate descriptions, so the agent can retry with a real label. */
+
   readonly candidates: readonly string[];
-  /**
-   * True when nothing matched the label at all.
-   *
-   * Distinguished from an ambiguous or off-screen match because long lists are
-   * virtualized: UIKit only materializes the rows near the viewport, so a row
-   * further down is genuinely absent from the tree until scrolling reaches it.
-   * A scroll loop must keep looking; an ambiguity must not be retried.
-   */
+  // Distinguished from an ambiguous or off-screen match because long lists are virtualized: UIKit
+  // only materializes the rows near the viewport, so a row further down is genuinely absent from the
+  // tree until scrolling reaches it. A scroll loop must keep looking; an ambiguity must not be
+  // retried.
   readonly notFound: boolean;
 
   constructor(message: string, candidates: readonly string[] = [], notFound = false) {
-    // Candidates go in the message, not just a field: every transport between
-    // here and the agent (MCP tool errors, WsRpcError) carries only the
-    // message, and a "no such label" with no list of real ones is a dead end.
     const listed =
       candidates.length === 0
         ? message
@@ -74,24 +40,20 @@ export class DeviceUiTargetError extends Error {
   }
 }
 
-/** How many near-misses to name; a whole screen of labels is noise, not help. */
 const MAX_REPORTED_CANDIDATES = 12;
 
 const childrenOf = (node: DeviceUiNode): readonly DeviceUiNode[] => node.children;
 
-/** Only a node with a label of its own can be named, or usefully listed back. */
 function labelledNodes(root: DeviceUiNode): readonly DeviceUiNode[] {
   return flattenUiTree(root, childrenOf).filter(
     (node) => node.label !== null && node.label.length > 0,
   );
 }
 
-/** Every label currently rendered, used to tell a moving list from a stuck one. */
 export function visibleLabels(root: DeviceUiNode): string[] {
   return labelledNodes(root).map((node) => node.label as string);
 }
 
-/** Where a tap on this node lands: its own control point, else the frame centre. */
 function tapPointForNode(node: DeviceUiNode): DeviceUiPoint {
   return uiTreeActivationPoint(node);
 }
@@ -107,7 +69,6 @@ function matchesRole(node: DeviceUiNode, role: string): boolean {
   );
 }
 
-/** A node is on screen when the point we would tap is inside the root's frame. */
 function isOnScreen(node: DeviceUiNode, root: DeviceUiNode): boolean {
   const point = tapPointForNode(node);
   return (
@@ -124,17 +85,10 @@ function describe(node: DeviceUiNode): string {
   return `${role} ${JSON.stringify(node.label ?? "")}${value}`;
 }
 
-/**
- * Locate the one node a label refers to, whether or not it is on screen.
- *
- * Exact label matches win outright: a screen with both "Developer" and
- * "Developer Mode" must not be ambiguous when the caller said "Developer".
- * Only when nothing matches exactly does this fall back to substring.
- *
- * Ambiguity is judged among visible matches first. A list that repeats a
- * label down its length would otherwise be unresolvable, when in practice the
- * one on screen is the one meant.
- */
+// Exact label matches win outright: a screen with both "Developer" and "Developer Mode" must not be
+// ambiguous when the caller said "Developer". Ambiguity is judged among visible matches first. A
+// list that repeats a label down its length would otherwise be unresolvable, when in practice the
+// one on screen is the one meant.
 export function findTarget(root: DeviceUiNode, target: DeviceUiTarget): DeviceUiTargetMatch {
   if (normalize(target.label).length === 0) {
     throw new DeviceUiTargetError("A tap target needs a non-empty label.");
@@ -176,20 +130,10 @@ function deviceTargetSpec(
   };
 }
 
-/**
- * The band a target must land in to count as usable.
- *
- * Not the whole screen: a row sitting under the status bar or behind a home
- * indicator is technically visible and practically untappable, and a row at
- * the very edge tends to be half-clipped. The inset is a fraction of screen
- * height so it scales across devices.
- */
 const SAFE_BAND_INSET_FRACTION = 0.12;
 
-/** One swipe covers most of a screen, but not so much that it overshoots. */
 const SCROLL_INCREMENT_FRACTION = 0.6;
 
-/** Long enough to read as a drag rather than a flick, which would coast past. */
 export const SCROLL_SWIPE_DURATION_MS = 400;
 
 export interface DeviceScrollStep {
@@ -200,14 +144,6 @@ export interface DeviceScrollStep {
   readonly durationMs: number;
 }
 
-/**
- * The swipe that moves a target toward the safe band, or null when it is
- * already there.
- *
- * Content moves opposite to the finger: to bring up something below the fold
- * the finger travels up, so the gesture always starts at the far side of the
- * screen from where it is heading.
- */
 export function planScrollStep(node: DeviceUiNode, root: DeviceUiNode): DeviceScrollStep | null {
   const inset = root.frame.height * SAFE_BAND_INSET_FRACTION;
   const bandTop = root.frame.y + inset;
@@ -219,8 +155,7 @@ export function planScrollStep(node: DeviceUiNode, root: DeviceUiNode): DeviceSc
   const increment = root.frame.height * SCROLL_INCREMENT_FRACTION;
   const midX = root.frame.x + root.frame.width / 2;
   const screenCentre = root.frame.y + root.frame.height / 2;
-  // Never swipe further than the gap: a target just past the band should not
-  // be flung to the other side of the screen and need a correcting swipe back.
+
   const distance = Math.min(increment, Math.abs(centre - screenCentre));
   const from = centre > bandBottom ? screenCentre + distance / 2 : screenCentre - distance / 2;
   const to = centre > bandBottom ? from - distance : from + distance;
@@ -228,16 +163,10 @@ export function planScrollStep(node: DeviceUiNode, root: DeviceUiNode): DeviceSc
   return { fromX: midX, fromY: from, toX: midX, toY: to, durationMs: SCROLL_SWIPE_DURATION_MS };
 }
 
-/** The two shapes a tap request can take, once validated. */
 export type DeviceTapRequest =
   | { readonly kind: "point"; readonly x: number; readonly y: number }
   | { readonly kind: "element"; readonly target: DeviceUiTarget };
 
-/**
- * Decide whether a tap names a point or an element, rejecting the shapes that
- * are neither. The schema cannot express "x and y together, or label" on its
- * own, so the either/or lives here and both callers share it.
- */
 export function readTapRequest(input: {
   readonly x?: number | undefined;
   readonly y?: number | undefined;

@@ -1,11 +1,3 @@
-// FILE: ComposerComputerControlEffortHint.tsx
-// Purpose: One-line strip above the composer suggesting Medium effort while a chat
-// drives the desktop, with one-click apply and a permanent dismiss. Mounts and
-// unmounts like its sibling stacked panels (live changes, goal) rather than
-// animating, so the rail never reserves space for a hint that is not showing.
-// Layer: Chat composer UI
-// Exports: ComposerComputerControlEffortHint
-
 import { MonitorIcon, XIcon } from "~/lib/icons";
 import { IconButton } from "../ui/icon-button";
 import {

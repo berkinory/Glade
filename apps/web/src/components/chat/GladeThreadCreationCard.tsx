@@ -1,7 +1,3 @@
-// FILE: GladeThreadCreationCard.tsx
-// Purpose: End-of-turn recap for threads created through the Glade MCP harness.
-// Layer: Chat transcript UI
-
 import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts";
 import { formatModelDisplayName } from "@glade/shared/model";
 import { memo } from "react";

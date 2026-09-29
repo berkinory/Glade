@@ -33,9 +33,6 @@ describe("computer permission copy", () => {
     ).toEqual([]);
   });
   it("names grants in one fixed order whatever order they arrive in", () => {
-    // Two surfaces describing the same state as "Screen Recording and
-    // Accessibility" and "Accessibility and Screen Recording" is how this got
-    // centralised in the first place.
     expect(sortComputerPermissions(["screenRecording", "accessibility"])).toEqual([
       "accessibility",
       "screenRecording",
@@ -59,22 +56,17 @@ describe("computer permission copy", () => {
     expect(advice).toContain("add the current build again");
     expect(advice).not.toContain("Glade has cleared");
     expect(advice).toContain("tccutil reset Accessibility com.agent.glade.dev");
-    // `ScreenCapture`, not "Screen Recording": the label is not the service name,
-    // and a user who types the label gets an error instead of a reset.
+
     expect(advice).toContain("tccutil reset ScreenCapture com.agent.glade.dev");
   });
 
   it("names the responsible app rather than assuming the released one", () => {
-    // A `.dev` flavor resetting the production identifier would revoke a
-    // separately installed Glade's grants and fix nothing here.
     const advice = computerStaleGrantAdvice(["accessibility"], "adhoc", "com.example.glade.canary");
     expect(advice).toContain("tccutil reset Accessibility com.example.glade.canary");
     expect(advice).not.toContain("com.agent.glade");
   });
 
   it("withholds the tccutil sentence when no responsible bundle id is known", () => {
-    // Better to say nothing than to hand the user a command that resets some
-    // other Glade. The System Settings advice still stands on its own.
     for (const bundleId of [undefined, "", "   "]) {
       const advice = computerStaleGrantAdvice(["accessibility"], "adhoc", bundleId);
       expect(advice).toContain("add the current build again");
@@ -101,9 +93,6 @@ describe("computer permission copy", () => {
 
 describe("computerGrantsBlockControl", () => {
   it("separates the grant that stops everything from the one that only blinds", () => {
-    // The whole point of the split: a missing Screen Recording grant leaves the
-    // window list, the accessibility tree and every input working, and telling
-    // an agent to stop over it costs the user the task.
     expect(computerGrantsBlockControl(["accessibility"])).toBe(true);
     expect(computerGrantsBlockControl(["accessibility", "screenRecording"])).toBe(true);
     expect(computerGrantsBlockControl(["screenRecording"])).toBe(false);

@@ -47,9 +47,7 @@ function fixture(options?: {
   let overviewWait: Promise<void> | undefined;
   let windowStateWait: Promise<void> | undefined;
   let typeGate: Promise<void> | undefined;
-  // type_text requests the fake driver is holding at once, so lane tests can
-  // prove writes overlapped at the native boundary rather than merely
-  // resolving in some order.
+
   let typingInFlight = 0;
   let typingMaxInFlight = 0;
   let extraWindows: Array<Record<string, unknown>> = [];
@@ -484,9 +482,7 @@ describe("Cua native boundary", () => {
 
   it("semantic text lane serializes same-window writes", async () => {
     const f = fixture({ semanticTextLaneGapMs: 0 });
-    // Two distinct elements in one window still share the lane: the native
-    // semantic lease is per (pid, window), so a second concurrent write to the
-    // window would be refused outright rather than queued.
+
     f.setElements([
       {
         role: "AXTextField",
@@ -781,7 +777,7 @@ describe("Cua hardening", () => {
   });
   it("degrades blind on a mid-task Screen Recording revoke without replaying input", async () => {
     const f = fixture();
-    // Grounded and driving before the revoke lands.
+
     await f.backend.captureScreenshot({
       kind: "window",
       windowId: "cua:10:20",
@@ -789,20 +785,19 @@ describe("Cua hardening", () => {
     await expect(f.backend.click({ x: -275, y: 30 }, "cua:10:20")).resolves.toBeDefined();
     const clicks = f.calls.filter((call) => call.name === "click").length;
 
-    // The revoke lands mid-task: the probe reports the grant missing...
     f.denyScreenRecording();
     expect(await f.backend.availability()).toMatchObject({
       kind: "permission-required",
       missing: ["screenRecording"],
     });
-    // ...perception goes blind but stays available: no pixels, no throw, tree intact...
+
     const blind = await f.backend.getState({ includeScreenshot: true });
     expect(blind.screenshot).toBeUndefined();
     await expect(
       f.backend.getState({ windowId: "cua:10:20", includeTree: true }),
     ).resolves.toMatchObject({ computerId: "desktop" });
     expect(f.backend.health().captureAvailable).toBe(false);
-    // ...and the desktop stays driveable: exactly one native input, never a replay.
+
     await expect(f.backend.typeText("abc", "cua:10:20")).resolves.toBeDefined();
     expect(f.calls.filter((call) => call.name === "click")).toHaveLength(clicks);
     expect(f.calls.filter((call) => isTyping(call.name))).toHaveLength(1);
@@ -810,7 +805,7 @@ describe("Cua hardening", () => {
   });
   it("requires a fresh granted observation to recover from a failed capture", async () => {
     const f = fixture();
-    // A capture that fails native-side flips health while dispatching zero input...
+
     f.failOverview();
     await expect(f.backend.getState({ includeScreenshot: true })).rejects.toThrow();
     expect(f.backend.health()).toMatchObject({
@@ -819,10 +814,9 @@ describe("Cua hardening", () => {
     });
     const overviews = f.calls.filter((call) => call.name === "get_desktop_state").length;
     expect(f.calls.some((call) => call.name === "click" || isTyping(call.name))).toBe(false);
-    // ...inputs keep working through the outage...
+
     await expect(f.backend.typeText("abc", "cua:10:20")).resolves.toBeDefined();
-    // ...and a latched heal is not enough: only a fresh successful observation
-    // recovers, so a still-failing capture flips health right back.
+
     f.grantPermissions();
     await f.backend.provision();
     expect(f.backend.health()).toMatchObject({
@@ -847,7 +841,7 @@ describe("Cua hardening", () => {
     await expect(f.backend.typeText("abc", "cua:10:20")).rejects.toMatchObject({
       effect: "dispatched-unknown",
     });
-    // Uncertain delivery may have moved the window: re-observe first.
+
     await expect(f.backend.click({ x: -275, y: 30 }, "cua:10:20")).rejects.toMatchObject({
       code: "stale_geometry",
     });
@@ -860,7 +854,7 @@ describe("Cua hardening", () => {
     await expect(f.backend.typeText("abc", "cua:10:20")).rejects.toMatchObject({
       effect: "not-dispatched",
     });
-    // A clean refusal dispatched nothing, so the grounding still stands.
+
     await expect(f.backend.click({ x: -275, y: 30 }, "cua:10:20")).resolves.toBeDefined();
     await f.backend.dispose();
   });

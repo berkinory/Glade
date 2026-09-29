@@ -59,13 +59,11 @@ describe("computer approval lease", () => {
     });
     const tool = tools.find((entry) => entry.definition.name === "computer_type_text")!;
     try {
-      // Turn one opens its consent prompt and waits for the user.
       const first = Effect.runPromise(
         tool.handler({ text: "late", include_screenshot: false }, context(threadId, "turn-1")),
       );
       await opened.promise;
-      // The turn ends and a new one prompts: the boundary cancels the old
-      // prompt, so the user's late accept for turn one settles false.
+
       const next = gate.requestTask({
         threadId,
         turnId: "turn-2",
@@ -110,12 +108,11 @@ describe("computer approval lease", () => {
       const result = await Effect.runPromise(
         tool.handler({ text: "expired", include_screenshot: false }, context(threadId, "turn-1")),
       );
-      // Expired approval reads as denied, the prompt never even opened, and no
-      // input was dispatched.
+      // Expired approval reads as denied, the prompt never even opened, and no input was dispatched.
       expect(result.isError).toBe(true);
       expect(publishes).toBe(0);
       expect(backend.callsFor("typeText")).toHaveLength(0);
-      // The gate is unpoisoned: a fresh prompt still works.
+
       const live = gate.request({
         threadId,
         signal: new AbortController().signal,
@@ -130,9 +127,6 @@ describe("computer approval lease", () => {
   });
 
   it("a desktop interruption revokes standing consent before the next mutating call", async () => {
-    // The manager wires the backend's interruption report into the shared
-    // gate, so this runs through the real authorize path: the answer that
-    // carried the pre-lock turn does not authorize the post-lock call.
     const backend = new FakeComputerBackend();
     const manager = new ComputerManager({ backend, actionSettleMs: 0 });
     const threadId = "interruption-consent-thread";
@@ -159,10 +153,7 @@ describe("computer approval lease", () => {
       computerApprovalGate.respond(threadId, prompts[0]!, "accept");
       await first;
       expect(backend.callsFor("typeText")).toHaveLength(1);
-      // The screen locked and unlocked between calls: the host's
-      // interruption count advanced, the backend announced it, and the
-      // standing grant is gone — the same tool republishes its prompt
-      // instead of riding the pre-interruption answer.
+
       backend.emitDesktopInterrupted(["screen-lock"]);
       const second = Effect.runPromise(
         tool.handler({ text: "after", include_screenshot: false }, ctx),

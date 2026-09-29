@@ -1,7 +1,6 @@
 import type { WebContents } from "electron";
 import { GLADE_DESKTOP_SCHEME } from "@glade/shared/desktopIdentity";
 
-/** Copy buttons share the OS clipboard; background reads remain denied. */
 export function isClipboardWritePermission(
   requester: Pick<WebContents, "isDestroyed" | "getURL"> | null,
   permission: string,
@@ -16,8 +15,6 @@ export function isClipboardWritePermission(
   )
     return false;
   try {
-    // Chromium enforces document focus. Native window focus may already have
-    // returned to the composer when an asynchronous copy requests permission.
     const page = new URL(requester.getURL());
     const trustedScheme = page.protocol === `${GLADE_DESKTOP_SCHEME}:`;
     if (

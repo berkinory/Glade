@@ -21,7 +21,6 @@ export function cuaHostProcessIsAlive(pid: number): boolean {
     process.kill(pid, 0);
     return true;
   } catch (error) {
-    // EPERM and other probe errors are not proof that the owner died.
     return (error as NodeJS.ErrnoException).code !== "ESRCH";
   }
 }
@@ -41,8 +40,6 @@ export async function markCuaRuntimeDirectory(directory: string): Promise<void> 
   );
 }
 
-/** Only explicit private runtime ownership permits recursive cleanup. Similar
- * prefixes, legacy unmarked directories, and a lazy live host are preserved. */
 export function sweepOwnedCuaRuntimeDirectories(options: {
   directory: string;
   liveSocketDirs: ReadonlySet<string>;
@@ -133,8 +130,6 @@ export function sweepOwnedCuaRuntimeDirectories(options: {
       rmSync(directory, { recursive: true, force: true });
       removed.push(entry);
     } catch {
-      // Missing, malformed, unreadable, or changed ownership is not permission
-      // to delete. A future sweep can reconsider a still-owned stale runtime.
     } finally {
       if (markerFd !== undefined) closeSync(markerFd);
     }

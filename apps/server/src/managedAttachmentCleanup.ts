@@ -131,7 +131,6 @@ export const runManagedAttachmentCleanupBatch = Effect.gen(function* () {
 });
 
 export interface ManagedAttachmentCleanupShape {
-  /** Run every currently-due cleanup job after attachment-producing work has stopped. */
   readonly drain: Effect.Effect<void>;
 }
 

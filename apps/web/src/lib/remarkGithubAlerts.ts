@@ -3,7 +3,6 @@ import type { Blockquote, Parent, Root } from "mdast";
 const GITHUB_ALERT_KINDS = ["note", "tip", "important", "warning", "caution"] as const;
 export type GithubAlertKind = (typeof GITHUB_ALERT_KINDS)[number];
 
-// GitHub only recognizes the marker alone on the first line of a blockquote.
 const ALERT_MARKER_PATTERN = /^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][ \t]*(?:\r?\n|$)/i;
 
 function toGithubAlert(node: Blockquote, source: string): void {
@@ -13,7 +12,7 @@ function toGithubAlert(node: Blockquote, source: string): void {
   if (text?.type !== "text") return;
   const match = ALERT_MARKER_PATTERN.exec(text.value);
   if (!match) return;
-  // A marker followed by inline content on the same line is not an alert.
+
   if (
     !match[0].endsWith("\n") &&
     match[0].length === text.value.length &&
@@ -25,13 +24,11 @@ function toGithubAlert(node: Blockquote, source: string): void {
   }
 
   text.value = text.value.slice(match[0].length);
-  // Keep find/wiki-link offsets aligned with the source after dropping the
-  // marker; the next line's `>` continuation prefix is not in the text value.
+
   const start = text.position?.start;
   if (start && start.offset !== undefined) {
     const removed = match[0];
     if (removed.endsWith("\n")) {
-      // Search the source: a CRLF there is a single `\n` in the text value.
       const lineStart = source.indexOf("\n", start.offset) + 1;
       const prefix = /^[ \t]*(?:>[ \t]?)*/.exec(source.slice(lineStart))![0];
       text.position!.start = {
@@ -66,8 +63,6 @@ function visit(node: Parent, source: string): void {
   }
 }
 
-// Renders GitHub's `> [!NOTE]` blockquote alerts; the marker is left as plain
-// text by remark-gfm, so tag the blockquote for the renderer and strip it.
 export function remarkGithubAlerts() {
   return (tree: Root, file: { value: unknown }) => visit(tree, String(file.value));
 }

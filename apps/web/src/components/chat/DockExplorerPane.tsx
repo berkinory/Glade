@@ -1,10 +1,3 @@
-// FILE: DockExplorerPane.tsx
-// Purpose: Right-dock pane that embeds the unified workspace explorer (a fixed
-//          search box over the file tree, switching to file-name results as the
-//          user types) alongside the shared file viewer.
-// Layer: Chat right-dock UI
-// Exports: DockExplorerPane
-
 import { useEffect, useState } from "react";
 
 import type { ThreadId } from "@glade/contracts";
@@ -22,10 +15,6 @@ import { IconButton } from "../ui/icon-button";
 import { FolderIcon, SearchIcon } from "~/lib/icons";
 import { WorkspaceExplorerSidebar } from "./workspaceExplorer";
 
-// The dock lays out as a fixed horizontal row, so the shared sidebar takes a
-// full-height fixed-width column (the editor's responsive default would collapse
-// to a stacked block here). With the activity rail gone, the search box sits at
-// the top of this column and the freed width goes to the file viewer.
 const DOCK_EXPLORER_SIDEBAR_CLASS =
   "flex h-full min-h-0 w-60 shrink-0 flex-col border-r border-border/65 bg-[var(--color-background-surface)]";
 
@@ -47,8 +36,6 @@ export const DockExplorerPane = function DockExplorerPane(props: {
   const [searchMode, setSearchMode] = useState(false);
   const [revealPosition, setRevealPosition] = useState<{ lineNumber: number; requestId: number }>();
 
-  // Reveal requests (e.g. picking a folder in the Cmd+P palette) expand the
-  // full ancestor chain and clear any name filter so the tree is what shows.
   const revealRequest = useExplorerRevealRequestStore(
     (state) => state.requestsByThreadId[props.threadId],
   );
@@ -69,9 +56,6 @@ export const DockExplorerPane = function DockExplorerPane(props: {
       return;
     }
 
-    // Windows links may use different casing from the actual entries. Resolve
-    // only the requested ancestor chain through the tree's shared query cache
-    // so expansion and manual toggles use the same canonical entry.path keys.
     const reveal = async () => {
       let parentPath = "";
       const paths: string[] = [];
@@ -91,8 +75,7 @@ export const DockExplorerPane = function DockExplorerPane(props: {
       }
       expand(paths);
     };
-    // A failed listing must not mark a guessed path expanded or disturb the
-    // current tree state.
+    // A failed listing must not mark a guessed path expanded or disturb the current tree state.
     void reveal().catch(() => undefined);
     return () => {
       cancelled = true;

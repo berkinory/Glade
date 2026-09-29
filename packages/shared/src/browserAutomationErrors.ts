@@ -8,7 +8,6 @@ import {
 } from "@glade/contracts";
 import { Schema } from "effect";
 
-// Classify known fields without exposing parser issues, code or credential values.
 export const browserInputErrorCode = (argumentsValue: unknown) => {
   if (
     argumentsValue !== null &&

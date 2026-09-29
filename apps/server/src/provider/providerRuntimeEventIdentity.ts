@@ -1,10 +1,5 @@
 import { EventId, type ProviderRuntimeEvent } from "@glade/contracts";
 
-/**
- * One provider-native notification may expand into multiple canonical events.
- * The durable journal keys events by `eventId`, so derived events must receive
- * stable, distinct ids while preserving the native id as their common prefix.
- */
 export function assignDerivedProviderRuntimeEventIds(
   events: ReadonlyArray<ProviderRuntimeEvent>,
 ): ReadonlyArray<ProviderRuntimeEvent> {

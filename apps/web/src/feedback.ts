@@ -1,15 +1,6 @@
-// FILE: feedback.ts
-// Purpose: Owns feedback categories, privacy-safe diagnostics, and delivery.
-// Layer: Web feature logic
-// Depends on: Glade GitHub issue drafts and the native browser opener.
-
 import { APP_VERSION } from "./branding";
 import { ensureNativeApi } from "./nativeApi";
 
-/**
- * `lead` opens the reported summary in the reporter's voice, so the category is
- * readable as a sentence rather than as an enum value.
- */
 export const FEEDBACK_CATEGORIES = [
   { value: "bug", label: "Bug", lead: "I ran into a bug" },
   { value: "session", label: "Session", lead: "I hit a session problem" },
@@ -51,7 +42,7 @@ type FeedbackDiagnostics = FeedbackThreadContext & {
 export interface FeedbackSubmission {
   category: FeedbackCategory | null;
   details: string;
-  /** Reader-facing rendering of `diagnostics`; the reporter never sees or edits it. */
+
   summary: string;
   diagnostics: FeedbackDiagnostics;
 }
@@ -64,10 +55,6 @@ function formatStateFlags(diagnostics: FeedbackThreadContext): string {
   return flags.length > 0 ? `${flags.join(", ")}.` : "nothing pending.";
 }
 
-/**
- * Renders diagnostics as the report a maintainer reads first, since incoming
- * feedback arrives without any context about what the reporter was doing.
- */
 function formatFeedbackSummary(input: {
   category: FeedbackCategory | null;
   diagnostics: FeedbackDiagnostics;
@@ -144,7 +131,6 @@ export function buildFeedbackSubmission(input: {
   };
 }
 
-/** Open the repository's issue form with the report details filled in. */
 export async function submitFeedback(submission: FeedbackSubmission): Promise<void> {
   const url = new URL("https://github.com/berkinory/Glade/issues/new");
   const { category, diagnostics, details, summary } = submission;

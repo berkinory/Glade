@@ -1,9 +1,3 @@
-// FILE: settingsSearchIndex.ts
-// Purpose: Declarative, searchable index of settings rows/sections so the sidebar can
-//          surface matches by title/description the same way the editor file search does.
-// Layer: Route/UI support
-// Exports: entry type, the index, section label lookup, and the ranking helper
-
 import { rankProviderDiscoveryItems } from "~/lib/providerDiscovery";
 import {
   settingRowAnchorId,
@@ -11,36 +5,17 @@ import {
   type SettingsSectionId,
 } from "./settingsNavigation";
 
-/**
- * One searchable settings result. `title` usually matches a string SettingsRow heading so
- * the default anchor can be derived; `target: null` marks panel-only or conditional rows.
- */
 export interface SettingsSearchEntry {
   id: string;
   section: SettingsSectionId;
   title: string;
   keywords: string;
   target?: string | null;
-  /**
-   * Whether this row exists on the machine the user is actually looking at.
-   * Omitted means "always". A search result for a row the panel does not render
-   * is a dead end: it scrolls to an anchor that is not there, and it tells the
-   * user Glade has a setting it does not.
-   */
+
   applies?: (context: SettingsSearchContext) => boolean;
 }
 
-/**
- * What the index needs to know about this server to decide which rows exist.
- * Deliberately a handful of booleans rather than the status objects themselves —
- * the index answers "does this row render", not "what does it say".
- */
 export interface SettingsSearchContext {
-  /**
-   * The desktop backend drives the screen the user is already looking at, so
-   * the preview describes the same visible desktop. True only once the status
-   * is known.
-   */
   readonly computerBackendIsVisibleDesktop: boolean;
 }
 
@@ -48,16 +23,11 @@ const DEFAULT_SETTINGS_SEARCH_CONTEXT: SettingsSearchContext = {
   computerBackendIsVisibleDesktop: false,
 };
 
-/** DOM id a result deep-links to, or null for panel-level entries with no anchored row. */
 export function settingsSearchEntryTarget(entry: SettingsSearchEntry): string | null {
   return entry.target === undefined ? settingRowAnchorId(entry.title) : entry.target;
 }
 
-// Mirrors row titles/descriptions rendered in settings panels. Panels stay mounted but render
-// null while inactive, so the sidebar cannot read every row at runtime; keep this list in sync
-// when rows are added, renamed, hidden conditionally, or represented as panel-level results.
 const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
-  // ── General ────────────────────────────────────────────────────────────────
   {
     id: "general:default-provider",
     section: "general",
@@ -163,7 +133,6 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     keywords: "Show the per-thread notepad in the Environment panel.",
   },
 
-  // ── Appearance ───────────────────────────────────────────────────────────────
   {
     id: "appearance:theme",
     section: "appearance",
@@ -246,7 +215,6 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
       "System default follows your browser or OS clock preference. timestamp 12-hour 24-hour locale",
   },
 
-  // ── Notifications ─────────────────────────────────────────────────────────────
   {
     id: "notifications:activity-toasts",
     section: "notifications",
@@ -262,16 +230,13 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
       "Show an OS notification when a chat or managed terminal agent finishes or needs input while the app is in the background. alerts toast",
   },
 
-  // ── Computer use ──────────────────────────────────────────────────────────────
   {
     id: "computer:status",
     section: "computer",
     title: "Computer status",
     keywords:
       "Whether agents can see and control this computer's desktop right now. desktop backend availability health kwin hyprland nested wayland linux mac macos screen recording accessibility computer use control status set up install plugin repair",
-    // The status row is conditional and its title is dynamic (Ready /
-    // Reconnecting / Unavailable), so link to the section rather than an
-    // anchored row.
+
     target: null,
   },
   {
@@ -305,7 +270,6 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     target: null,
   },
 
-  // ── Behavior ──────────────────────────────────────────────────────────────────
   {
     id: "behavior:follow-up-behavior",
     section: "behavior",
@@ -358,7 +322,6 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     keywords: "Ask before closing a terminal tab and clearing its history. safety confirm",
   },
 
-  // ── Keybindings ───────────────────────────────────────────────────────────────
   {
     id: "shortcuts:keyboard-shortcuts",
     section: "shortcuts",
@@ -368,7 +331,6 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     target: null,
   },
 
-  // ── Worktrees ─────────────────────────────────────────────────────────────────
   {
     id: "worktrees:managed-worktrees",
     section: "worktrees",
@@ -377,7 +339,6 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     target: null,
   },
 
-  // ── Archived ──────────────────────────────────────────────────────────────────
   {
     id: "archived:archived-threads",
     section: "archived",
@@ -386,7 +347,6 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     target: null,
   },
 
-  // ── Models ────────────────────────────────────────────────────────────────────
   {
     id: "models:git-writing-model",
     section: "models",
@@ -394,7 +354,6 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     keywords: "Used for generated commit messages, PR titles, and branch names.",
   },
 
-  // ── Providers ─────────────────────────────────────────────────────────────────
   {
     id: "providers:automatic-cli-update-checks",
     section: "providers",
@@ -422,7 +381,6 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     keywords: "Review provider versions and update tools. binary overrides path install",
   },
 
-  // ── Skills ────────────────────────────────────────────────────────────────────
   {
     id: "skills:skills",
     section: "skills",
@@ -431,7 +389,6 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     target: null,
   },
 
-  // ── Usage ─────────────────────────────────────────────────────────────────────
   {
     id: "usage:usage",
     section: "usage",
@@ -440,7 +397,6 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     target: null,
   },
 
-  // ── Advanced ──────────────────────────────────────────────────────────────────
   {
     id: "advanced:keybindings",
     section: "advanced",
@@ -478,11 +434,6 @@ export function settingsSectionLabel(section: SettingsSectionId): string {
   return SETTINGS_SECTION_LABEL_BY_ID.get(section) ?? section;
 }
 
-/**
- * Fuzzy-rank settings rows for the sidebar search. Title carries the strongest intent;
- * the description/synonym keywords and the owning section label match more loosely so a
- * query like "appearance" or "wrap" still surfaces the right rows.
- */
 export function rankSettingsSearchEntries(
   query: string,
   limit: number,

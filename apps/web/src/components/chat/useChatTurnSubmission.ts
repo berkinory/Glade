@@ -329,8 +329,8 @@ export function useChatTurnSubmission({
       let promptForSend =
         queuedChatTurn?.prompt ?? liveComposerSnapshot?.value ?? promptRef.current;
       if (queuedChatTurn === null) {
-        // Read the live editor snapshot, not an earlier React render. A queued
-        // command already froze its mode and generation and must not be inferred again.
+        // Read the live editor snapshot, not an earlier React render. A queued command already froze its
+        // mode and generation and must not be inferred again.
         const mode = resolveComputerInvocationMode({
           messageText: promptForSend,
           enableComputerControl: settings.computerControlEnabled,
@@ -345,12 +345,7 @@ export function useChatTurnSubmission({
         queuedChatTurn?.images ??
         useComposerDraftStore.getState().draftsByThreadId[activeThread.id]?.images ??
         composerImages;
-      // Existing image attachments can persist as IndexedDB blobs and hydrate into `images`
-      // asynchronously through the attachment loader. Right after a reload the user can
-      // hit send before that hydration finishes; without this, the not-yet-hydrated
-      // capture would be silently dropped from the message and then have its blob
-      // deleted when the composer clears after send. Live sends only: a queued turn
-      // already captured a fully-resolved image snapshot when it was queued.
+
       if (queuedChatTurn === null) {
         const pendingBlobAttachments = findPendingBlobComposerAttachments({
           persistedAttachments:
@@ -432,8 +427,7 @@ export function useChatTurnSubmission({
         composerFileCommentsForSend.length > 0 ||
         sendableComposerTerminalContexts.length > 0 ||
         sendableComposerPastedTexts.length > 0;
-      // Queued chat turns already captured their intended mode. Live plan follow-ups
-      // with attachments must use the normal send path so references are preserved.
+
       if (isLivePlanFollowUpSubmission) {
         const followUp = resolvePlanFollowUpSubmission({
           draftText: trimmed,
@@ -478,15 +472,12 @@ export function useChatTurnSubmission({
         composerFileCommentsForSend.length === 0 &&
         sendableComposerTerminalContexts.length === 0 &&
         sendableComposerPastedTexts.length === 0 &&
-        // Provider mentions are structured turn metadata, and automation definitions persist text only.
         selectedComposerMentionsForSend.length === 0;
       const hasPromptOnlySendableContent = hasNoStructuredComposerContext;
       if (hasPromptOnlySendableContent) {
         const handledSlashCommand =
           await lateSendHandlers.handleStandaloneSlashCommand(trimmedPromptForSend);
         if (handledSlashCommand) {
-          // A slash command (e.g. /clear) consumes the composer, so abandon any in-progress
-          // automation setup rather than leaving a stale banner/request behind.
           pendingAutomationConversationRef.current = null;
           setPendingAutomationConversation(null);
           return true;
@@ -764,10 +755,7 @@ export function useChatTurnSubmission({
       const composerPullRequestContextsSnapshot = [...sendableComposerPullRequestContexts];
       const composerSkillsSnapshot = [...selectedComposerSkillsForSend];
       const composerMentionsSnapshot = [...selectedComposerMentionsForSend];
-      // Trailing blocks are appended innermost-to-outermost: assistant selections,
-      // terminal contexts, file comments, pasted text, pull request contexts, then
-      // browser annotations (outermost). The display extractors unwrap them in the
-      // reverse order.
+
       const messageTextForSend = appendBrowserAnnotationsToPrompt(
         appendPullRequestContextsToPrompt(
           appendPastedTextsToPrompt(
@@ -830,9 +818,9 @@ export function useChatTurnSubmission({
           sizeBytes: file.sizeBytes,
         })),
       ];
-      // Sending the first message flips the centered empty landing into a normal
-      // transcript. Clear session-only landing overrides when default-open is enabled;
-      // otherwise keep the transition closed.
+      // Sending the first message flips the centered empty landing into a normal transcript. Clear
+      // session-only landing overrides when default-open is enabled; otherwise keep the transition
+      // closed.
       if (isCenteredEmptyLanding) {
         setEnvironmentPanelPreferenceOpen(
           resolveEnvironmentPanelPreferenceAfterFirstSend({
@@ -859,10 +847,7 @@ export function useChatTurnSubmission({
           source: "native",
         },
       ]);
-      // Mark the transcript as anchored before the optimistic row lands. The tail
-      // anchor sizes the spacer that lets this message sit at the viewport top,
-      // and its hook owns the slide; auto-follow stays armed for bookkeeping but
-      // pauses until the in-flight flag clears.
+
       armTranscriptAutoFollow(threadIdForSend, true);
       tailAnchorScrollInFlightRef.current = true;
       setTailAnchor({ threadId: threadIdForSend, messageId: messageIdForSend });
@@ -879,8 +864,8 @@ export function useChatTurnSubmission({
           description: toastCopy.description,
         });
       }
-      // Queued turns are dispatched from their captured snapshot, so this send path
-      // must not clear a separate live draft the user may already be editing.
+      // Queued turns are dispatched from their captured snapshot, so this send path must not clear a
+      // separate live draft the user may already be editing.
       if (queuedChatTurn === null) {
         promptHistoryNavigationRef.current = null;
         applyingPromptHistoryNavigationRef.current = false;
@@ -893,8 +878,7 @@ export function useChatTurnSubmission({
         setComposerHighlightedItemId(null);
         setComposerCursor(0);
         setComposerTrigger(null);
-        // A clicked submit button steals focus; return it after the controlled
-        // draft reset so rapid follow-up typing lands in the composer.
+
         scheduleComposerFocus();
       }
 

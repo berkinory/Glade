@@ -1,8 +1,3 @@
-// FILE: composerTraits.ts
-// Purpose: Centralizes composer trait resolution so menu surfaces read the same model capability state.
-// Layer: Chat composer state helpers
-// Depends on: shared model capability helpers and provider model option types.
-
 import {
   type ProviderOptionDescriptor,
   type ProviderKind,
@@ -56,7 +51,6 @@ function selectOptions(descriptor: Extract<ProviderOptionDescriptor, { type: "se
   );
 }
 
-// Merges legacy capability flags with descriptor-specific prompt injection hints.
 function promptInjectedValuesForDescriptor(
   capsPromptInjectedValues: ReadonlyArray<string>,
   descriptor: Extract<ProviderOptionDescriptor, { type: "select" }> | null,
@@ -66,7 +60,6 @@ function promptInjectedValuesForDescriptor(
   );
 }
 
-// Resolve the currently selected composer traits from capabilities plus draft overrides.
 export function getComposerTraitSelection(
   provider: ProviderKind,
   model: string | null | undefined,
@@ -142,11 +135,8 @@ export function getComposerTraitSelection(
   };
 }
 
-/** Resolved composer trait state; the single shape every trait surface reads. */
 export type ComposerTraitSelection = ReturnType<typeof getComposerTraitSelection>;
 
-// Human label for the currently selected reasoning/thinking trait, shared by the
-// composer trigger and any surface that summarizes a thread's model selection.
 export function resolveComposerTraitStatusLabel(
   selection: Pick<
     ReturnType<typeof getComposerTraitSelection>,
@@ -168,15 +158,12 @@ export function resolveComposerTraitStatusLabel(
     : null;
 }
 
-// A model exposes a speed control either through an explicit descriptor or the
-// legacy capability flag; every surface must agree on that test.
 export function supportsComposerFastModeControl(
   selection: Pick<ReturnType<typeof getComposerTraitSelection>, "caps" | "fastModeDescriptor">,
 ): boolean {
   return selection.fastModeDescriptor !== null || selection.caps.supportsFastMode;
 }
 
-// Fast mode is only worth surfacing when the model exposes the control and it is on.
 export function showsComposerFastModeBadge(
   selection: Pick<
     ReturnType<typeof getComposerTraitSelection>,
@@ -193,7 +180,7 @@ export function hasVisibleComposerTraitControls(
   >,
   options?: {
     includeFastMode?: boolean;
-    // Off when another surface (the effort slider card) already owns the effort ladder.
+
     includeEffort?: boolean;
   },
 ): boolean {
@@ -205,21 +192,18 @@ export function hasVisibleComposerTraitControls(
   );
 }
 
-// Persisted option key for the primary effort ladder when the descriptor is missing.
 function fallbackEffortOptionId(provider: ProviderKind): string {
   if (provider === "claudeAgent") return "effort";
   return "reasoningEffort";
 }
 
 export type ComposerEffortChangePlan =
-  // Prompt-injected levels (Claude Ultrathink) rewrite the prompt instead of the options.
   | { readonly kind: "prompt"; readonly prompt: string }
   | { readonly kind: "options"; readonly patch: Record<string, unknown> };
 
-// Single decision point for "the user picked effort X": every effort surface
-// (radio menu, slider) turns its choice into the same prompt rewrite or option
-// patch here, so ultrathink handling and option ids can never drift apart.
-// Returns null when the change must be ignored (locked by the prompt, unknown value).
+// Single decision point for "the user picked effort X": every effort surface (radio menu, slider)
+// turns its choice into the same prompt rewrite or option patch here, so ultrathink handling and
+// option ids can never drift apart.
 export function planComposerEffortChange(input: {
   provider: ProviderKind;
   selection: Pick<
@@ -250,9 +234,6 @@ export function planComposerEffortChange(input: {
   return { kind: "options", patch: buildProviderOptionPatch(provider, optionId, nextOption.value) };
 }
 
-// Index of the effort the slider thumb should rest on. While Ultrathink is
-// pinned by the prompt the resolved `effort` falls back to the default, so the
-// thumb follows the prompt-injected level instead when the ladder exposes it.
 export function resolveComposerEffortLadderIndex(
   selection: Pick<
     ReturnType<typeof getComposerTraitSelection>,

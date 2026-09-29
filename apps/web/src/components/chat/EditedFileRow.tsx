@@ -1,8 +1,3 @@
-// FILE: EditedFileRow.tsx
-// Purpose: Render one changed-file row; the row itself opens the review, and a
-// compact always-visible action opens the file in the preferred editor.
-// Layer: Chat changed-files UI
-
 import type { EditorId, ResolvedKeybindingsConfig } from "@glade/contracts";
 import type { CSSProperties } from "react";
 
@@ -87,9 +82,7 @@ export function EditedFileRow(props: EditedFileRowProps) {
         ) : null}
       </button>
 
-      {/* One compact action pair per row: the preferred editor's own icon (opens the
-          file in that app) plus its picker menu. The whole row already opens the
-          review, so no per-row Review button and no separate in-app open. */}
+      {}
       <OpenInPicker
         variant="compact"
         {...(props.keybindings ? { keybindings: props.keybindings } : {})}

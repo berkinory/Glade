@@ -50,8 +50,6 @@ import {
   type ToolEntry,
 } from "./toolRuntime.ts";
 
-// Target resolution failures keep their structured { code, details } envelope;
-// every other tool failure keeps the established plain-text result.
 const automationToolFailure = (error: unknown) =>
   error instanceof AgentGatewayTargetError
     ? gatewayToolErrorResult(error)
@@ -146,7 +144,7 @@ interface AutomationToolDependencies {
     caller: OrchestrationThreadShell,
     target: OrchestrationThreadShell,
   ) => Effect.Effect<void, ToolInputError>;
-  /** Validate an exact target against live discovery and the automation project's workspace. */
+
   readonly resolveAutomationTarget: (input: {
     readonly target: ModelSelection;
     readonly projectId: ProjectId;
@@ -236,7 +234,6 @@ function readWorktreeMode(args: Record<string, unknown>): AutomationWorktreeMode
 }
 
 function readMode(args: Record<string, unknown>): AutomationDefinition["mode"] {
-  // The default stays "heartbeat" for callers written before modes existed.
   const raw = readStringArg(args, "mode") ?? "heartbeat";
   if (raw !== "heartbeat" && raw !== "standalone" && raw !== "dedicated") {
     throw new ToolInputError('Argument "mode" must be "heartbeat", "standalone", or "dedicated".');
@@ -245,7 +242,6 @@ function readMode(args: Record<string, unknown>): AutomationDefinition["mode"] {
 }
 
 function readMemoryContent(args: Record<string, unknown>): string {
-  // "content" is the legacy name of "memory"; accept both so older callers keep working.
   const value = args.memory ?? args.content;
   if (typeof value !== "string") {
     throw new ToolInputError('Argument "memory" must be a string.');
@@ -287,8 +283,7 @@ export function makeAgentGatewayAutomationTools(
   ) =>
     Effect.gen(function* () {
       if (definition.sourceThreadId === caller.id) return;
-      // A standalone run executes in a per-run thread that matches neither source nor
-      // target, so without this branch an automation could never retire itself.
+
       const callerRun = yield* automationService
         .resolveCallerRun({
           callerThreadId: ThreadId.makeUnsafe(context.callerThreadId),
@@ -425,8 +420,6 @@ export function makeAgentGatewayAutomationTools(
         const explicitMaxIterations = readNullablePositiveInteger(args, "maxIterations");
         const maxIterations =
           explicitMaxIterations ??
-          // A run that keeps appending to one thread is a loop, so it gets a default cap;
-          // a fresh thread per run is a recurring task and stays unbounded.
           (fastSchedule
             ? DEFAULT_AUTOMATION_FAST_INTERVAL_MAX_ITERATIONS
             : automationContinuesThread(mode)
@@ -451,8 +444,7 @@ export function makeAgentGatewayAutomationTools(
         }
         const enabled = requestedEnabled ?? !suggested;
         const explicitTarget = readModelSelectionArg(args, "target");
-        // A cooldown longer than the schedule spacing would silently degrade the
-        // requested cadence to cooldown cadence, so the default is capped at the spacing.
+
         const defaultCooldownSeconds =
           scheduleSpacingSeconds === null
             ? DEFAULT_AUTOMATION_HEARTBEAT_COOLDOWN_SECONDS
@@ -472,8 +464,7 @@ export function makeAgentGatewayAutomationTools(
         let targetThreadId: ThreadId | null;
         let worktreeMode: AutomationWorktreeMode;
         let executionThread: OrchestrationThreadShell;
-        // Only heartbeat takes an existing thread. Standalone and dedicated both open their
-        // own, so both configure a project and a worktree mode.
+
         if (automationRequiresTargetThread(mode)) {
           if (args.projectId !== undefined || args.worktreeMode !== undefined) {
             throw new ToolInputError(
@@ -519,9 +510,6 @@ export function makeAgentGatewayAutomationTools(
           executionThread = caller;
         }
 
-        // An explicit standalone/dedicated target is validated against live provider
-        // availability, discovery, and the automation project's workspace before create.
-        // Heartbeats already rejected an explicit target above.
         const modelSelection =
           explicitTarget === undefined
             ? executionThread.modelSelection
@@ -654,9 +642,7 @@ export function makeAgentGatewayAutomationTools(
         const automationId = readStringArg(args, "automationId", { required: true })!;
         const caller = yield* requireThreadShell(context.callerThreadId);
         const { definition } = yield* requireAutomationDefinition(automationId);
-        // Automations that run in their own threads are project resources, so any caller in
-        // the project may read one. Heartbeat automations write into somebody's thread and
-        // stay restricted to callers authorized for that thread.
+
         const projectScopedRead =
           !automationRequiresTargetThread(definition.mode) &&
           definition.projectId === caller.projectId;

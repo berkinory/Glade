@@ -4,12 +4,6 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { ComputerShield } from "./computerShield";
 
-/**
- * The fake helper mirrors the real `--shield` protocol: it logs every stdin
- * command, answers `engage`/`release` with the NDJSON events the real helper
- * emits, and exits on `quit` or stdin EOF. `mode` variations cover the
- * refusal, silent-wedge, and crash shapes.
- */
 async function fixture(options: { mode?: "ok" | "refuse" | "silent" | "die" } = {}) {
   const directory = await mkdtemp(join(tmpdir(), "glade-shield-test-"));
   cleanups.push(() => rm(directory, { recursive: true, force: true }));
@@ -52,8 +46,7 @@ process.stdin.on("end", () => process.exit(0));
   await chmod(binary, 0o755);
   const shield = new ComputerShield({
     helperPath: binary,
-    // Real child-process startup competes with the full workspace suite. Keep
-    // the short deadline only for the test that deliberately wedges the helper.
+
     ...(options.mode === "silent" ? { engageTimeoutMs: 400 } : {}),
     onError: () => undefined,
   });
@@ -66,8 +59,7 @@ process.stdin.on("end", () => process.exit(0));
       .split("\n")
       .filter(Boolean)
       .map((row) => JSON.parse(row));
-  // A written command resolves locally; the fake only logs it once the line
-  // crosses the pipe, so assertions that count commands poll for delivery.
+
   const waitForCommands = async (expected: number) => {
     const deadline = Date.now() + 2_000;
     let rows: Array<{ command?: string; line?: string }> = [];
@@ -126,8 +118,8 @@ describe("ComputerShield", () => {
     await expect(
       f.shield.engage({ shieldId: "shield-1", frame: FRAME, windowId: 42, pid: 7 }, TASK),
     ).rejects.toThrow();
-    // The process is gone: a later releaseAll counts nothing because the
-    // live set was cleared by the death — the windows died with the helper.
+    // The process is gone: a later releaseAll counts nothing because the live set was cleared by the
+    // death — the windows died with the helper.
     expect(await f.shield.releaseAll()).toBe(0);
   });
 
@@ -142,13 +134,13 @@ describe("ComputerShield", () => {
     const commands = await f.waitForCommands(3);
     const releases = commands.filter((row) => row.command === "release").map((row) => row.line);
     expect(releases).toEqual(["release shield-1"]);
-    // shield-2 belongs to another task and is still live.
+
     expect(await f.shield.releaseAll()).toBe(1);
   });
 
   it("a shield confirmed after its task ended is released on arrival", async () => {
     const f = await fixture();
-    // Engage without awaiting confirmation so endTask lands first.
+
     const pending = f.shield.engage(
       { shieldId: "shield-1", frame: FRAME, windowId: 42, pid: 7 },
       TASK,
@@ -179,7 +171,7 @@ describe("ComputerShield", () => {
     await f.shield.stop();
     const commands = await f.commands();
     expect(commands.map((row) => row.command)).toEqual(["engage", "quit"]);
-    // The next engage lazily respawns a fresh helper.
+
     await f.shield.engage({ shieldId: "shield-3", frame: FRAME, windowId: 42, pid: 7 }, TASK);
     expect((await f.commands()).map((row) => row.command)).toEqual(["engage", "quit", "engage"]);
   });

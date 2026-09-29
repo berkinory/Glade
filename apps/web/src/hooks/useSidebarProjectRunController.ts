@@ -1,8 +1,3 @@
-// FILE: useSidebarProjectRunController.ts
-// Purpose: Owns Sidebar project-run discovery, server attribution, dialog state, and lifecycle actions.
-// Layer: Web Sidebar controller hook
-// Exports: useSidebarProjectRunController
-
 import {
   type ProjectDiscoveredScriptTarget,
   type ProjectId,
@@ -202,9 +197,7 @@ export function useSidebarProjectRunController(input: {
         try {
           const { servers } = await api.projects.listDevServers();
           useProjectRunStore.getState().replaceAll(servers);
-        } catch {
-          // The dev-server event stream remains the final reconciliation path.
-        }
+        } catch {}
         toastManager.add({
           type: "error",
           title: "Failed to stop run",

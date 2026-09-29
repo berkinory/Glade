@@ -1,13 +1,3 @@
-// FILE: EnvironmentPanel.tsx
-// Purpose: Codex-style "Environment" panel. Consolidates the chat-header diff toggle,
-//          the composer-footer env/branch pickers, the header git actions, and the
-//          "Open in editor" controls into one vertical list of full-width rows. Always
-//          rendered as the same rounded floating card; the only difference is whether it
-//          overlays pinned top-right of the chat column (p-3 gutters). Full-width single
-//          chat also reserves transcript/composer inset; split panes and an open right dock
-//          use floating overlay only. The card surface and content are identical either way.
-// Layer: Environment panel container
-
 import type {
   AutomationDefinition,
   EditorId,
@@ -54,24 +44,14 @@ import {
   EnvironmentSectionDivider,
 } from "./EnvironmentRow";
 
-// Horizontal space (px) the docked card reserves on the right edge of the chat area.
-// Mirrors the card footprint — w-72 (288px) plus the p-3 wrapper gutters — so insetting
-// the chat content by this amount clears the overlay while leaving the transcript's
-// scrollbar pinned to the viewport's far right.
 export const ENVIRONMENT_DOCKED_CONTENT_INSET_PX = 312;
 
 const ENVIRONMENT_PANEL_OVERLAY_WRAPPER_CLASS_NAME =
   "pointer-events-none absolute inset-y-0 right-0 z-20 flex flex-col items-end gap-3 overflow-y-auto p-3";
 
 export interface EnvironmentPanelProps {
-  /** Drives the slide-in/out transition; the panel stays mounted so CSS can interpolate. */
   open: boolean;
-  /**
-   * Both variants render the same top-right overlay card inside the chat column.
-   * `docked` also reserves layout space via {@link ENVIRONMENT_DOCKED_CONTENT_INSET_PX};
-   * `floating` is used when the column is narrow (split chat or right dock open) — overlay
-   * only, no content inset.
-   */
+
   variant: "docked" | "floating";
   gitCwd: string | null;
   openInTarget: string | null;
@@ -84,61 +64,57 @@ export interface EnvironmentPanelProps {
   keybindings: ResolvedKeybindingsConfig;
   availableEditors: ReadonlyArray<EditorId>;
   activeThreadId: ThreadId | null;
-  /** Active provider for the usage row (same chip the header shows). */
+
   activeProvider: ProviderKind;
-  /** Whether the active runtime exposes git actions (hides "Commit and Push" otherwise). */
+  // Whether the active runtime exposes git actions (hides "Commit and Push" otherwise).
   showGitActions: boolean;
-  /** Current diff-panel open state, so the "Changes" row reflects/toggles it. */
+
   diffOpen: boolean;
-  /** Heartbeat automations whose target is the active thread. */
+
   threadAutomations: readonly EnvironmentAutomationPanelItem[];
-  /** Non-null when the diff panel cannot be opened (e.g. no repo / no changes yet). */
+
   diffDisabledReason?: string | null;
-  /** Shared diff totals from ChatView so the mounted panel does not duplicate patch parsing. */
+
   diffTotals: RepoDiffTotals;
-  /** Env/branch picker config — `variant` is supplied by the panel. */
+
   branchToolbar: Omit<BranchToolbarProps, "variant">;
-  /**
-   * Rail content rendered below the env card inside the overlay wrapper
-   * (the ambient computer preview). The wrapper is a flex column, so this
-   * stacks under the card; see AmbientRailSlot for the closed-state slide.
-   */
+
   railBottom?: ReactNode;
-  /** Per-thread pinned-message checklist (server-synced). */
+
   pinnedMessages: readonly PinnedMessage[];
-  /** Live text of pinned messages still present in the transcript (for labels/availability). */
+
   pinnedMessageTextById: ReadonlyMap<MessageId, string>;
-  /** Per-thread freeform scratchpad notes (server-synced). */
+
   notes: string;
-  /** Active project whose local instructions should be edited. */
+
   activeProjectId: ProjectId | null;
-  /** Per-project freeform instructions, persisted locally and optionally copied into notes. */
+
   projectInstructions: string;
-  /** Whether the current thread is server-backed enough to accept notepad updates. */
+
   canCopyProjectInstructionsToNotes: boolean;
-  /** Persist local project instruction edits. */
+
   onProjectInstructionsChange: (projectId: ProjectId, instructions: string) => void;
-  /** Copy/append current project instructions into the active thread's notepad. */
+
   onCopyProjectInstructionsToNotes: () => void;
-  /** Toggle the Diff panel/route (same handler the header diff toggle used). */
+
   onToggleDiff: () => void;
-  /** Open the shared automation editor for a thread-bound automation row. */
+
   onOpenAutomation: (definition: AutomationDefinition) => void;
-  /** Open the repository URL in the in-app browser panel. */
+
   onOpenGithubRepository?: (url: string) => void;
-  /** Scroll the transcript to a pinned message. */
+
   onJumpToPinnedMessage: (messageId: MessageId) => void;
-  /** Toggle a pinned message's done state (strikethrough; stays pinned). */
+
   onTogglePinnedMessageDone: (messageId: MessageId) => void;
-  /** Remove a message from the pinned checklist. */
+
   onUnpinMessage: (messageId: MessageId) => void;
-  /** Set (`null` clears to auto) a pinned message's label. */
+
   onRenamePinnedMessage: (messageId: MessageId, label: string | null) => void;
-  /** Persist updated notes for the given thread (bound per section instance, not the active thread). */
+
   onNotesChange: (threadId: ThreadId, notes: string) => Promise<void>;
-  /** Dismiss the panel overlay — invoked after actions that open the dock. */
+
   onClose: () => void;
-  /** Registers the panel's "Commit and Push" row as the target for the global shortcut. */
+
   onRegisterCommitAndPushTrigger?: (trigger: (() => void) | null) => void;
 }
 
@@ -187,8 +163,8 @@ export function EnvironmentPanel({
   const { settings } = useAppSettings();
   const { additions, deletions, hasChanges } = diffTotals;
 
-  // Disable the Changes row only when the diff cannot be opened *and* is not already open
-  // (so an open diff stays toggleable closed even when there are no pending changes).
+  // Disable the Changes row only when the diff cannot be opened *and* is not already open (so an open
+  // diff stays toggleable closed even when there are no pending changes).
   const changesDisabled = diffDisabledReason !== null && !diffOpen;
 
   const content = (
@@ -208,11 +184,7 @@ export function EnvironmentPanel({
 
       <div className="flex items-center justify-between gap-2 px-2 pb-0.5 pt-0.5">
         <EnvironmentPanelTitle>Environment</EnvironmentPanelTitle>
-        {/*
-          icon-xs centers the 14px gear inside a 28/24px box, insetting it ~7/5px from the
-          content edge; pull it back so the glyph's right edge lines up with the rows' chevrons
-          (which sit flush against the same px-2 gutter).
-        */}
+        {}
         <IconButton
           label="Panel sections"
           tooltip="Panel sections"
@@ -254,11 +226,8 @@ export function EnvironmentPanel({
 
       <EnvironmentLocalServersSection enabled={open} />
 
-      {/*
-        Optional sections below the git block. Each renders its own leading divider only when it
-        actually shows, so toggling any section via the header gear menu never leaves a doubled or
-        dangling rule. Visibility is gated on the per-section AppSettings flags.
-      */}
+      {/* Each renders its own leading divider only when it actually shows, so toggling any section via the
+   header gear menu never leaves a doubled or dangling rule. */}
       {settings.showEnvironmentUsage ? <EnvironmentUsageSection provider={activeProvider} /> : null}
 
       {settings.showEnvironmentRepository && githubRepository && onOpenGithubRepository ? (
@@ -339,9 +308,6 @@ export function EnvironmentPanel({
     </div>
   );
 
-  // Top-right overlay pinned to the chat column with p-3 edge gutters (same footprint in
-  // split panes and when the right dock is open). Docked mode additionally insets transcript
-  // content; floating overlays only without stealing flex width from the narrow chat pane.
   return (
     <div
       className={ENVIRONMENT_PANEL_OVERLAY_WRAPPER_CLASS_NAME}

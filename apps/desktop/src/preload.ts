@@ -35,9 +35,6 @@ function parseBrowserOpenPanelRequest(payload: unknown): BrowserUseOpenPanelRequ
   return { threadId: threadId as BrowserUseOpenPanelRequest["threadId"] };
 }
 
-// Structured clone delivers a Node Buffer as Uint8Array; the JSON-era
-// {type:"Buffer",data:[...]} shape is normalized too so the listener always
-// receives a plain Uint8Array.
 function computerPreviewFrameBytes(value: unknown): Uint8Array | null {
   if (value instanceof Uint8Array) return value;
   if (value instanceof ArrayBuffer) return new Uint8Array(value);
@@ -97,7 +94,7 @@ function parseBrowserAnnotationEvent(payload: unknown): BrowserAnnotationEvent |
 
 contextBridge.exposeInMainWorld("desktopBridge", {
   getWsUrl: getDesktopWsUrl,
-  // Absolute path for OS-dropped File objects (folders with spaces/parens, etc.).
+
   getPathForFile: (file: File) => {
     try {
       const path = webUtils.getPathForFile(file);
@@ -156,8 +153,7 @@ contextBridge.exposeInMainWorld("desktopBridge", {
       };
     },
   },
-  // The renderer mirrors the agent cursor colors on change; the main process
-  // owns persistence and the live push to a running driver generation.
+
   computer: {
     setCursorStyle: (style: DesktopAgentCursorStyle | null) =>
       ipcRenderer.invoke(IPC.computerSetCursorStyle, style),

@@ -14,7 +14,6 @@ interface PendingUserInputPanelProps {
   onCancel: () => void;
 }
 
-// Keep pending-input choices neutral so they read like Codex list controls instead of accent buttons.
 export function ComposerPendingUserInputPanel({
   pendingUserInputs,
   submissionVersion,

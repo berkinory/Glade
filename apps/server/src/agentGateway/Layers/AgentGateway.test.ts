@@ -336,13 +336,13 @@ function makeHarnessLayer(
       readonly id: string;
       readonly automationId: AutomationDefinition["id"];
     }>;
-    /** The automation run that dispatched the caller's active turn, if any. */
+
     readonly callerAutomationRun?: {
       readonly callerThreadId: string;
       readonly id: string;
       readonly automationId: AutomationDefinition["id"];
     };
-    /** Serves the computer_* family in the tool catalog (denial paths only need the names). */
+
     readonly computerService?: Layer.Layer<ComputerService>;
   } = {},
 ) {
@@ -1477,16 +1477,14 @@ describe("AgentGateway", () => {
       const create = harness.dispatched[0]!;
       assert.equal(create.type, "thread.create");
       if (create.type === "thread.create") {
-        // Gateway-created threads are ordinary top-level threads, not subagents.
         assert.strictEqual("parentThreadId" in create, false);
         assert.strictEqual("subagentNickname" in create, false);
         assert.equal(create.modelSelection.provider, "claudeAgent");
         assert.equal(create.modelSelection.model, DEFAULT_MODEL_BY_PROVIDER.claudeAgent);
-        // Project and runtime mode default from the calling thread.
+
         assert.equal(create.projectId, PROJECT_ID);
         assert.equal(create.runtimeMode, "approval-required");
-        // Same placeholder title flow as UI threads so the first-turn reactor
-        // replaces it with a model-generated title.
+
         assert.equal(create.title, "analyze the feature");
       }
       const turn = harness.dispatched[1]!;
@@ -2183,10 +2181,6 @@ describe("AgentGateway", () => {
     }).pipe(Effect.provide(gatewayLayer));
   });
 
-  // Regression guard: with the setup script inside the uninterruptible creation
-  // section, the interrupt below would stall for the script's full 30s runtime
-  // and trip the test timeout instead of compensating promptly.
-
   it.effect("compensates a created thread when its MCP request fiber is interrupted", () => {
     const threadCreated = Deferred.makeUnsafe<void>();
     const releaseThreadCreate = Deferred.makeUnsafe<void>();
@@ -2609,7 +2603,6 @@ describe("AgentGateway", () => {
       assert.include(toolErrorText(rejected.result), "isolated worktree");
       assert.equal(harness.dispatched.length, 0);
 
-      // Omitting environment defaults to an isolated worktree, not local.
       const defaulted = yield* harness.callTool({
         token: "token-parent",
         name: "glade_create_thread",
@@ -2677,8 +2670,8 @@ describe("AgentGateway", () => {
         const created = harness.automationCreates[0]!;
         assert.equal(created.maxIterations, 10);
         assert.include(created.acknowledgedRisks ?? [], "fast-interval");
-        // The default cooldown must not exceed the schedule spacing, or the
-        // acknowledged fast interval would silently degrade to cooldown cadence.
+        // The default cooldown must not exceed the schedule spacing, or the acknowledged fast interval
+        // would silently degrade to cooldown cadence.
         assert.equal(created.heartbeatCooldownSeconds, 15);
       }).pipe(Effect.provide(gatewayLayer));
     },
@@ -2821,7 +2814,7 @@ describe("AgentGateway", () => {
         (toolResultJson(invalidOption.result).error as { code: string }).code,
         "model_option_unavailable",
       );
-      // Unknown option keys must reach the resolver instead of being silently stripped.
+
       const inventedOption = yield* create({
         provider: "codex",
         model: "gpt-5.6-sol",

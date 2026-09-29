@@ -38,8 +38,6 @@ export function ensurePrivateDirectorySync(
   });
   if (!supportsPosixPermissions(platform)) return;
 
-  // O_NOFOLLOW prevents an existing state/log directory symlink from turning
-  // startup permission repair into chmod of an unrelated external tree.
   const directoryFlags = fs.constants.O_RDONLY | fs.constants.O_DIRECTORY | fs.constants.O_NOFOLLOW;
   const descriptor = withPathContext("open without following symlinks", directoryPath, () =>
     fs.openSync(directoryPath, directoryFlags),
@@ -142,10 +140,6 @@ export async function repairPrivateFile(
   }
 }
 
-/**
- * Repairs a private tree without following symlinks. Owner-executable files
- * keep that capability, while all group/other access is removed.
- */
 export function repairPrivateTreeSync(
   rootPath: string,
   platform: NodeJS.Platform = process.platform,

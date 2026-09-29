@@ -23,10 +23,7 @@ const RUNTIME_STATE_RELATIVE_PATHS = [
   path.join("dev", "server-runtime.json"),
 ] as const;
 
-const WINDOWS_TRUSTED_RUNTIME_ACL_SIDS = new Set([
-  "S-1-5-18", // LocalSystem
-  "S-1-5-32-544", // Builtin Administrators
-]);
+const WINDOWS_TRUSTED_RUNTIME_ACL_SIDS = new Set(["S-1-5-18", "S-1-5-32-544"]);
 
 const WINDOWS_RUNTIME_ACL_SCRIPT = [
   "$ErrorActionPreference = 'Stop'",

@@ -220,7 +220,7 @@ describe("desktop Computer platform state", () => {
 
     const check = manager.refreshState();
     await flushPromises();
-    // Default checks include each Computer grant explicitly.
+
     expect(spawn).toHaveBeenNthCalledWith(
       1,
       process.execPath,
@@ -249,7 +249,7 @@ describe("desktop Computer platform state", () => {
       inputMonitoringPermission: "denied",
       screenRecordingPermission: "granted",
     });
-    // The default permission set includes Accessibility.
+
     expect((await check).accessibilityPermission).toBe("granted");
 
     const request = manager.requestPermissions();
@@ -523,7 +523,7 @@ describe("Computer permission guide", () => {
       await flushPromises();
       expect(guideChild.stdin.read()?.toString().trimEnd()).toBe("close");
       expect(guideChild.kill).not.toHaveBeenCalled();
-      // Wait for the 500 ms SIGTERM delay to elapse.
+
       await new Promise<void>((resolve) => setTimeout(resolve, 600));
       expect(guideChild.kill).toHaveBeenCalledWith("SIGTERM");
     } finally {
@@ -548,10 +548,9 @@ describe("Computer permission guide", () => {
   });
 
   it("never raises an OS prompt when a guide opens", async () => {
-    // No macOS prompt is ever raised by a guide: the inline steps plus the
-    // coach are the whole flow. A denied prompt cannot be re-raised, while the
-    // Settings page (toggle, or drag-and-drop where the list accepts it)
-    // always works.
+    // No macOS prompt is ever raised by a guide: the inline steps plus the coach are the whole flow. A
+    // denied prompt cannot be re-raised, while the Settings page (toggle, or drag-and-drop where the
+    // list accepts it) always works.
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval"] });
     const captureDirectory = mkdtempSync(join(tmpdir(), "glade-permissions-guide-ax-"));
     const guideChild = createFakeChildProcess();
@@ -589,8 +588,7 @@ describe("Computer permission guide", () => {
         expect.arrayContaining(["--permission-guide", "--pane", "accessibility"]),
         expect.any(Object),
       );
-      // Renderer parity: the OS request never fires. Later watch ticks
-      // re-check via --check-permissions (deduped while in flight).
+
       const requestCalls = () =>
         spawn.mock.calls.filter(([, args]) =>
           (args as readonly string[]).includes("--request-permissions"),
@@ -609,11 +607,8 @@ describe("Computer permission guide", () => {
   });
 
   it("closes the guide when a fresh check sees the grant the coach cannot", async () => {
-    // Accessibility grants never reach an already-running process, so the
-    // coach's own poll stays false; the manager's fresh-helper watch must
-    // detect the grant and retire the coach instead. Mock timers drive the
-    // 800ms tick deterministically; in-flight dedup keeps overlapping ticks
-    // from queueing a second check while the first is still pending.
+    // Accessibility grants never reach an already-running process, so the coach's own poll stays false;
+    // the manager's fresh-helper watch must detect the grant and retire the coach instead.
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval"] });
     const captureDirectory = mkdtempSync(join(tmpdir(), "glade-permissions-guide-watch-"));
     const guideChild = createFakeChildProcess();
@@ -656,9 +651,8 @@ describe("Computer permission guide", () => {
   });
 
   it("skips overlapping watch ticks while a grant check is in flight", async () => {
-    // In-flight dedup: the second 800ms tick must not spawn a second helper
-    // while the first check has not answered yet; once it resolves, the next
-    // tick may poll again.
+    // In-flight dedup: the second 800ms tick must not spawn a second helper while the first check has
+    // not answered yet; once it resolves, the next tick may poll again.
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval"] });
     const captureDirectory = mkdtempSync(join(tmpdir(), "glade-permissions-guide-dedup-"));
     const guideChild = createFakeChildProcess();
@@ -705,14 +699,14 @@ describe("Computer permission guide", () => {
       await vi.advanceTimersByTimeAsync(800);
       await flushPromises();
       expect(checkChildren).toHaveLength(1);
-      // Second tick fires while the first check is still pending: no new spawn.
+
       await vi.advanceTimersByTimeAsync(800);
       await flushPromises();
       expect(checkChildren).toHaveLength(1);
       releaseFirstCheck();
       await flushPromises();
       await flushPromises();
-      // Pending cleared: the next tick polls again.
+
       await vi.advanceTimersByTimeAsync(800);
       await flushPromises();
       await flushPromises();
@@ -725,9 +719,9 @@ describe("Computer permission guide", () => {
   });
 
   it("closes an ungranted guide after the 10-minute watch bound", async () => {
-    // The grant watch must not poll forever: after 10 minutes without a grant
-    // it stops, emits closed honestly via the existing guide-state plumbing,
-    // and pushes the current snapshot via the existing onState path. No new IPC.
+    // The grant watch must not poll forever: after 10 minutes without a grant it stops, emits closed
+    // honestly via the existing guide-state plumbing, and pushes the current snapshot via the existing
+    // onState path. No new IPC.
     vi.useFakeTimers({
       toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"],
     });
@@ -768,7 +762,7 @@ describe("Computer permission guide", () => {
       const closedCalls = onPermissionGuideState.mock.calls.filter(
         ([state]) => state === "closed",
       ).length;
-      // Bound cleared on stop: further time never re-emits.
+
       await vi.advanceTimersByTimeAsync(10 * 60 * 1000);
       await flushPromises();
       expect(onPermissionGuideState.mock.calls.filter(([state]) => state === "closed").length).toBe(
@@ -970,19 +964,13 @@ describe("Computer permission setup sessions", () => {
     const { manager, guideChildren, requests, openSettingsPane, closeSettingsApp, dispose } =
       createSessionManager(state);
     try {
-      // Callers may pass kinds out of order with dupes: the queue build sorts
-      // into [accessibility, inputMonitoring, screenRecording] and dedupes, so
-      // a single queue with its shift-only consumer still walks each pane once.
       await manager.startPermissionSetup(["screenRecording", "accessibility", "screenRecording"]);
       await flushPromises();
-      // Only the first missing pane is up: its settings page and its coach.
-      // No macOS prompt ever fires.
+
       expect(openSettingsPane).toHaveBeenLastCalledWith("accessibility");
       expect(requests).toEqual([]);
       expect(guideChildren).toHaveLength(1);
 
-      // The grant watch sees Accessibility flip: the first coach closes and the
-      // session advances to Screen Recording on its own.
       state.accessibility = "granted";
       await vi.waitFor(() => expect(guideChildren).toHaveLength(2), { timeout: 4000 });
       expect(guideChildren[0]!.stdin.read()?.toString().trimEnd()).toBe("close");
@@ -995,8 +983,7 @@ describe("Computer permission setup sessions", () => {
         { timeout: 4000 },
       );
       await flushPromises();
-      // The session is done: two panes opened, two coaches, no OS prompts, and
-      // the Settings the session opened is closed again.
+
       expect(openSettingsPane).toHaveBeenCalledTimes(2);
       expect(guideChildren).toHaveLength(2);
       expect(closeSettingsApp).toHaveBeenCalledTimes(1);
@@ -1019,7 +1006,7 @@ describe("Computer permission setup sessions", () => {
       expect(openSettingsPane).toHaveBeenCalledExactlyOnceWith("screen-recording");
       expect(requests).toEqual([]);
       expect(guideChildren).toHaveLength(1);
-      // The session is still mid-walk: Settings stays open.
+
       expect(closeSettingsApp).not.toHaveBeenCalled();
     } finally {
       dispose();
@@ -1034,9 +1021,7 @@ describe("Computer permission setup sessions", () => {
       await manager.startPermissionSetup(["accessibility", "screenRecording"]);
       await flushPromises();
       expect(guideChildren).toHaveLength(1);
-      // The user dismisses the first coach: the exit is not a grant, so the
-      // session must stop rather than open the next pane over their dismissal.
-      // A dismissed session never closes the user's Settings either.
+
       guideChildren[0]!.emit("exit", 0, null);
       guideChildren[0]!.stdout.end();
       guideChildren[0]!.stderr.end();
@@ -1060,7 +1045,7 @@ describe("Computer permission setup sessions", () => {
       await manager.startPermissionSetup(["accessibility", "screenRecording"]);
       await flushPromises();
       expect(guideChildren).toHaveLength(1);
-      // A spawn-level failure (EACCES/ENOENT) emits `error` without `exit`.
+
       guideChildren[0]!.emit("error", new Error("spawn EACCES"));
       await flushPromises();
       await new Promise<void>((resolve) => setTimeout(resolve, 900));

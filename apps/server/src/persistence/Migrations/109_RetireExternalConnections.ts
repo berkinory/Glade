@@ -1,7 +1,6 @@
 import { Effect } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 
-/** Retire integration credentials and bookkeeping; preserve projects and task history. */
 export default Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
   yield* sql`DROP VIEW IF EXISTS external_mcp_active_capacity_claims`;

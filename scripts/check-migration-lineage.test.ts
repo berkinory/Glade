@@ -62,8 +62,6 @@ describe("migration lineage guard", () => {
   });
 
   it("fails and names the pair when a shipped migration is renumbered", () => {
-    // The v0.6.0 regression: 54 became a different migration and the pins
-    // migration moved to 69.
     const current = parseMigrationLineage(
       sourceFor([
         [1, "OrchestrationEvents"],
@@ -142,8 +140,6 @@ describe("migration lineage guard", () => {
   });
 
   it("checks every release tag, newest first, and degrades to an empty list", () => {
-    // Users skip versions: a database is wedged by the release it was created
-    // under, not by the newest one.
     expect(resolveReleaseTags(() => ["v0.6.0", "v0.5.5", "v0.5.4"])).toEqual([
       "v0.6.0",
       "v0.5.5",
@@ -172,8 +168,7 @@ describe("migration lineage guard", () => {
   });
 
   it("reads the alias allowances this repository actually declares", () => {
-    // The v0.6.0 renumber is repaired at runtime, so the guard must not keep
-    // failing on it forever.
+    // The v0.6.0 renumber is repaired at runtime, so the guard must not keep failing on it forever.
     expect(parseMigrationLineageAllowances(migrationsSource())).toContainEqual({
       id: 54,
       name: "ProjectPullRequestPins",

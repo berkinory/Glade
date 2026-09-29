@@ -1,8 +1,3 @@
-// FILE: terminalCloseConfirmation.ts
-// Purpose: Shares terminal-tab close confirmation copy and dialog plumbing across chat and workspace surfaces.
-// Layer: UI logic helper
-// Depends on: Native dialog contract from the app shell.
-
 import type { NativeApi } from "@glade/contracts";
 
 function formatTerminalCloseSubject(terminalTitle: string | null | undefined): string {
@@ -10,7 +5,6 @@ function formatTerminalCloseSubject(terminalTitle: string | null | undefined): s
   return trimmedTitle && trimmedTitle.length > 0 ? `terminal "${trimmedTitle}"` : "this terminal";
 }
 
-// Prefer title overrides, then persisted labels, so confirmation copy matches visible tab names.
 export function resolveTerminalCloseTitle(options: {
   terminalId: string;
   terminalLabelsById: Record<string, string>;

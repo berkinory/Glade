@@ -1,21 +1,13 @@
-// FILE: providerMetadata.ts
-// Purpose: Exhaustive non-secret provider identity and presentation metadata.
-
 import { PROVIDER_DISPLAY_NAMES, type ProviderKind } from "@glade/contracts";
 
 export interface ProviderDescriptor {
   readonly kind: ProviderKind;
   readonly displayName: string;
   readonly available: boolean;
-  /**
-   * True when the provider runtime can inject a user message into a live turn
-   * without interrupting it (Codex `turn/steer`, Claude
-   * streaming-input prompt queue). Mirrors the adapter's
-   * `supportsTurnSteering` capability so the pure decider and the web client
-   * can route steers without a runtime round-trip; keep the two in sync.
-   */
+  // Mirrors the adapter's `supportsTurnSteering` capability so the pure decider and the web client
+  // can route steers without a runtime round-trip; keep the two in sync.
   readonly supportsNativeTurnSteering: boolean;
-  /** Glade provider setup and troubleshooting guide. */
+
   readonly setupDocsHref: string;
   readonly usage: {
     readonly signInCommand: string;
@@ -61,8 +53,6 @@ export const PROVIDER_DESCRIPTOR_BY_KIND = Object.fromEntries(
   PROVIDER_DESCRIPTORS.map((descriptor) => [descriptor.kind, descriptor]),
 ) as Record<ProviderKind, (typeof PROVIDER_DESCRIPTORS)[number]>;
 
-// Accepts plain strings so projection-sourced provider names can be checked
-// without casts; unknown providers are simply not steerable.
 export const providerSupportsNativeTurnSteering = (kind: string): boolean =>
   PROVIDER_DESCRIPTORS.some(
     (descriptor) => descriptor.kind === kind && descriptor.supportsNativeTurnSteering,

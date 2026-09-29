@@ -1,7 +1,3 @@
-// FILE: Sidebar.logic.ts
-// Purpose: Shared sidebar sorting and status helpers used by the thread list UI.
-// Exports: Sidebar row state derivation, add-project error helpers, sort utilities, and visibility helpers.
-
 import { MAX_PINNED_PROJECTS, type ProjectId, type ThreadId } from "@glade/contracts";
 import { resolveThreadEnvironmentMode } from "@glade/shared/threadEnvironment";
 import { isWorkspaceRootWithin, workspaceRootsEqual } from "@glade/shared/threadWorkspace";
@@ -44,12 +40,10 @@ export function isProjectsSidebarSurface(input: { readonly isOnSettings: boolean
   return !input.isOnSettings;
 }
 
-/**
- * Shared project roots can serve several threads, so their live Git status is environment state,
- * not thread ownership. Only a materialized worktree is thread-scoped: coding agents may checkout
- * or create a new branch there without going through Glade's branch picker, so its checked-out
- * branch is authoritative even when the persisted branch metadata is stale.
- */
+// Shared project roots can serve several threads, so their live Git status is environment state,
+// not thread ownership. Only a materialized worktree is thread-scoped: coding agents may checkout
+// or create a new branch there without going through Glade's branch picker, so its checked-out
+// branch is authoritative even when the persisted branch metadata is stale.
 function shouldUseLivePullRequestForSidebarThread(input: {
   readonly threadBranch: string | null;
   readonly liveBranch: string | null;
@@ -71,16 +65,15 @@ export function resolveSidebarThreadPullRequest<
   readonly livePullRequest: T | null;
   readonly persistedPullRequest: T | null;
 }): T | null {
-  // A shared local checkout can move because another thread is working in the same project root.
-  // Its live PR must never overwrite the durable PR explicitly associated with this thread.
+  // A shared local checkout can move because another thread is working in the same project root. Its
+  // live PR must never overwrite the durable PR explicitly associated with this thread.
   if (!input.hasDedicatedWorktree) {
     return input.persistedPullRequest;
   }
 
-  // A settled (merged/closed) PR is the thread's outcome, not a claim about the current
-  // checkout, so it stays visible after the checkout moves on — e.g. switching back to
-  // main after merging must flip the badge to "merged", not drop it and let stale
-  // metadata elsewhere keep it "open".
+  // A settled (merged/closed) PR is the thread's outcome, not a claim about the current checkout, so
+  // it stays visible after the checkout moves on — e.g. switching back to main after merging must
+  // flip the badge to "merged", not drop it and let stale metadata elsewhere keep it "open".
   const settledPersistedPullRequest =
     input.persistedPullRequest !== null && input.persistedPullRequest.state !== "open"
       ? input.persistedPullRequest
@@ -121,9 +114,7 @@ type SidebarThreadSortInput = {
   updatedAt?: string | undefined;
   latestUserMessageAt?: string | null | undefined;
   messages?: ReadonlyArray<Pick<ChatMessage, "role" | "createdAt">> | undefined;
-  // Present on real thread summaries; lets finished-but-unseen threads float to
-  // the top of the sort (see sortThreadsForSidebar). Optional so minimal test
-  // fixtures and legacy shapes keep plain timestamp ordering.
+
   latestTurn?: Thread["latestTurn"] | undefined;
   lastVisitedAt?: Thread["lastVisitedAt"] | undefined;
   hasLiveTailWork?: boolean | undefined;
@@ -146,13 +137,8 @@ function differentDisplayValue(
   return existing !== null && normalized === existing ? null : normalized;
 }
 
-/**
- * Display label for the container a thread lives in: real projects show their
- * user-facing name, while home chats read as
- * the app itself. Single rule shared by the Activity rows, pinned-row
- * suffixes, and thread hover cards, so a chat's auto-generated slug folder
- * never leaks into the UI as a fake "project name".
- */
+// Single rule shared by the Activity rows, pinned-row suffixes, and thread hover cards, so a chat's
+// auto-generated slug folder never leaks into the UI as a fake "project name".
 export function resolveThreadProjectLabel(
   project: Pick<Project, "kind" | "name" | "folderName"> | null | undefined,
 ): string {
@@ -162,16 +148,6 @@ export function resolveThreadProjectLabel(
   return nonEmptyDisplayValue(project.name) ?? project.folderName;
 }
 
-/**
- * Primary label for a project row in the Threads sidebar.
- *
- * Always prefer the configured display name (`project.name`, which already
- * reflects `localName` when set). Do not render the underlying folder name as a
- * competing sibling: a previous shrink-0 muted suffix could crowd the display
- * name out of a narrow row and leave only a greyed-out folder label visible,
- * while the hover card correctly showed the configured name (#1000). Folder
- * identity stays in the project hover card path row.
- */
 export function resolveSidebarProjectRowLabel(
   project: Pick<Project, "name" | "folderName">,
 ): string {
@@ -186,8 +162,6 @@ export type SidebarThreadHoverMetadata = {
   worktreeName: string | null;
 };
 
-/** Prefer the branch captured from the active workspace. The associated worktree branch is a
- * durable handoff/recovery identity and can legitimately lag after an agent checks out a branch. */
 export function resolveThreadDisplayBranch(
   thread: Pick<
     SidebarThreadSummary,
@@ -274,7 +248,7 @@ export type SidebarDerivedProjectData = {
   projectThreads: SidebarThreadSummary[];
   orderedProjectThreadIds: ThreadId[];
   visibleEntries: SidebarProjectEntry[];
-  /** Extra "Show more" pages currently applied, clamped to the real row count. */
+
   threadListExtraPages: number;
   canShowMoreThreads: boolean;
   activeEntryId: ThreadId | null;
@@ -296,21 +270,13 @@ export interface ThreadStatusPill {
   dismissalKey?: string;
 }
 
-/**
- * Which status — if any — a sidebar row shows in its trailing glyph slot.
- * Single owner of the visibility rule so the classic thread rows, the collapsed
- * project rows and the Activity rows can never disagree about when a spinner or
- * an unread-completion dot is on screen; only the surface-specific suppressions
- * are passed in.
- *
- * - `slotOccupied`: another affordance owns the slot right now (e.g. the thread
- *   jump shortcut label), so the status stays hidden until it clears.
- * - `isActive`: the row's thread is open, so a completion the user is already
- *   looking at is not advertised as unread.
- *
- * Every other status still asks something of the user (or is live work), so it
- * survives even on a dimmed/settled row.
- */
+// Single owner of the visibility rule so the classic thread rows, the collapsed project rows and
+// the Activity rows can never disagree about when a spinner or an unread-completion dot is on
+// screen; only the surface-specific suppressions are passed in. - `slotOccupied`: another
+// affordance owns the slot right now (e.g. the thread jump shortcut label), so the status stays
+// hidden until it clears. - `isActive`: the row's thread is open, so a completion the user is
+// already looking at is not advertised as unread. Every other status still asks something of the
+// user (or is live work), so it survives even on a dimmed/settled row.
 export function resolveThreadStatusTrailingIndicator(input: {
   status: ThreadStatusPill | null;
   slotOccupied?: boolean;
@@ -429,7 +395,6 @@ export function resolveSettingsBackTarget(input: {
   return { kind: "home" };
 }
 
-// Drops remembered "show more" paging for projects that are currently collapsed.
 export function pruneProjectThreadListPagingForCollapsedProjects<
   T extends Pick<Project, "cwd" | "expanded">,
 >(input: {
@@ -462,29 +427,11 @@ export function pruneProjectThreadListPagingForCollapsedProjects<
   return changed ? nextThreadListExtraPagesByProjectCwd : threadListExtraPagesByProjectCwd;
 }
 
-/**
- * Trailing padding that protects the title from the absolutely-positioned
- * trailing cluster, sized to what the slot ACTUALLY shows so the title runs as
- * far right as the on-screen content allows:
- *
- * - The relative time now lives in the row hover card, so an idle row with no
- *   status/jump glyph and no meta chips reserves almost nothing — the title runs
- *   to the row edge instead of truncating against permanently reserved space.
- * - A status/loader (or keyboard-jump) glyph occupies a ~2.25rem slot, and each
- *   fork/worktree/handoff meta chip adds width; the reserve grows only for the
- *   badges that are present.
- * - The wider reserve that clears the hover pin/archive actions is applied only
- *   on hover/focus (mirroring the project header row), so the title gives up that
- *   width exactly when those actions appear and not a moment sooner.
- *
- * Literal class strings are required so Tailwind's JIT scanner emits them.
- */
+// Reserve space only for visible row affordances. Tailwind requires complete literal classes.
 export function resolveThreadRowTrailingReserveClass(input: {
   metaChipCount: number;
   hasTrailingGlyph: boolean;
 }): string {
-  // Hover/focus reveals the pin/archive actions; the meta chips + glyph fade out
-  // at the same time, so the hover reserve is constant regardless of rest content.
   const hoverReserve =
     "transition-[padding] duration-120 ease-out group-hover/thread-row:pr-[4.75rem] group-focus-within/thread-row:pr-[4.75rem]";
   const { metaChipCount, hasTrailingGlyph } = input;
@@ -504,8 +451,6 @@ export function resolveThreadRowClassName(input: {
   isActive: boolean;
   isSelected: boolean;
 }): string {
-  // Trailing reserve for the absolute cluster is applied separately by callers
-  // via resolveThreadRowTrailingReserveClass so it can flex with the chip count.
   const baseClassName = SIDEBAR_THREAD_ROW_BASE_CLASS_NAME;
 
   if (input.isSelected && input.isActive) {
@@ -523,9 +468,6 @@ export function resolveThreadRowClassName(input: {
   return cn(baseClassName, SIDEBAR_ROW_IDLE_TEXT_CLASS_NAME, SIDEBAR_ROW_HOVER_CLASS_NAME);
 }
 
-// Single definition of "this thread is actively doing work" shared by the
-// Working status pill and the sidebar sort, so a thread's position and its
-// pill never disagree.
 export function isThreadActivelyWorking(thread: {
   hasLiveTailWork?: boolean | undefined;
   session?: Thread["session"] | undefined;
@@ -547,9 +489,7 @@ export function resolveThreadStatusPill(input: {
   hasPendingUserInput: boolean;
 }): ThreadStatusPill | null {
   const { thread } = input;
-  // A dead session can't receive approval/input answers anymore — drop the
-  // actionable pills instead of advertising a request nobody can fulfill.
-  // Mirrored by the kanban board's deriveKanbanColumn.
+
   const canAnswerPendingRequests = canSessionAnswerPendingRequests(thread.session);
   const hasPendingApprovals = input.hasPendingApprovals && canAnswerPendingRequests;
   const hasPendingUserInput = input.hasPendingUserInput && canAnswerPendingRequests;
@@ -672,10 +612,6 @@ export function findWorkspaceRootMatch<T>(
   return items.find((item) => workspaceRootsEqual(getWorkspaceRoot(item), targetWorkspaceRoot));
 }
 
-// Finds the item whose workspace root most specifically contains `targetPath`
-// (equal to it, or its closest ancestor). Used to attribute a dev server's cwd
-// to a project even when it runs from a monorepo subdirectory; the deepest root
-// wins so a nested project beats its parent.
 export function findDeepestWorkspaceRootMatch<T>(
   items: readonly T[],
   targetPath: string,
@@ -729,7 +665,6 @@ export async function runProjectProvisionWithCancellationRecovery<T>(input: {
   }
 }
 
-// Rechecks an existing local project against the server before the add flow decides to reuse it.
 export async function recoverExistingAddProjectTarget(input: {
   readonly existingProjectId: ProjectId | null | undefined;
   readonly workspaceRoot: string;
@@ -751,8 +686,6 @@ export async function recoverExistingAddProjectTarget(input: {
   return "create";
 }
 
-// Translates low-level add-project failures into a short explanation without
-// hiding the original error text that developers may need for diagnosis.
 export function describeAddProjectError(message: string): string | null {
   if (isDuplicateProjectCreateError(message)) {
     return "This usually means the folder is already linked to an existing project. On Windows, the same folder can arrive with a different path format, so it looks new even when it is not.";
@@ -768,12 +701,9 @@ export function describeAddProjectError(message: string): string | null {
   return null;
 }
 
-// One "Show more" click reveals one extra page of rows. The requested page count is
-// clamped to what the list can use when threads are removed.
 export type SidebarThreadListPaging = {
-  /** Requested pages clamped to what `totalCount` can actually consume. */
   effectiveExtraPages: number;
-  /** Row cap to render: `baseLimit + effectiveExtraPages * pageSize`. */
+
   previewLimit: number;
   canShowMore: boolean;
   canShowLess: boolean;
@@ -828,7 +758,6 @@ function collectActiveThreadAncestorIds<
   return ancestorIds;
 }
 
-// Build the project-local parent/child thread tree while preserving sort order from the input list.
 export function buildProjectThreadTree<
   T extends Pick<SidebarThreadSummary, "id" | "parentThreadId">,
 >(input: {
@@ -846,9 +775,7 @@ export function buildProjectThreadTree<
       roots.push(thread);
       continue;
     }
-    // Subagent threads are only reachable through their parent. When the parent
-    // is not in the list (archived or deleted), its subtree stays hidden instead
-    // of being promoted to top-level rows.
+
     if (!threadById.has(parentThreadId)) {
       continue;
     }
@@ -957,7 +884,6 @@ export function getPinnedThreadsForSidebar<T extends Pick<Thread, "id">>(
   return getPinnedItems(threads, pinnedThreadIds);
 }
 
-// Resolve the visible pinned ids from server state, local legacy pins, and pending user clicks.
 export function derivePinnedThreadIdsForSidebar<T extends Pick<Thread, "id" | "isPinned">>(input: {
   readonly threads: readonly T[];
   readonly persistedPinnedThreadIds: readonly T["id"][];
@@ -970,7 +896,6 @@ export function derivePinnedThreadIdsForSidebar<T extends Pick<Thread, "id" | "i
   });
 }
 
-// Only the newest pin mutation may roll back optimistic state after rapid clicks.
 export function isLatestPinnedThreadMutation<T>(input: {
   readonly threadId: T;
   readonly requestVersion: number;
@@ -1018,10 +943,6 @@ export function orderPinnedProjectsForSidebar<T extends Pick<Project, "id">>(
 }
 
 // Hide globally pinned rows from the per-project lists so the sidebar doesn't duplicate chats.
-// Exception: a pinned parent whose children are in the list stays in the tree.
-// The pinned section renders flat rows only, and buildProjectThreadTree hides
-// children with a missing parent — hiding such a parent would make its
-// descendants unreachable anywhere in the sidebar.
 function getUnpinnedThreadsForSidebar<
   T extends Pick<Thread, "id"> & Partial<Pick<SidebarThreadSummary, "parentThreadId">>,
 >(threads: readonly T[], pinnedThreadIds: readonly T["id"][]): T[] {
@@ -1043,14 +964,12 @@ function getUnpinnedThreadsForSidebar<
   return threads.filter((thread) => !hiddenThreadIds.has(thread.id));
 }
 
-// Only prune persisted pins after the thread snapshot has hydrated.
 export function shouldPrunePinnedThreads(input: { threadsHydrated: boolean }): boolean {
   return input.threadsHydrated;
 }
 
 export type ProjectEmptyState = "loading" | "empty" | null;
 
-// Keep the initial shell bootstrap visually distinct from a genuinely empty project list.
 export function resolveProjectEmptyState(input: {
   readonly projectCount: number;
   readonly threadsHydrated: boolean;
@@ -1062,7 +981,6 @@ export function resolveProjectEmptyState(input: {
   return input.threadsHydrated ? "empty" : "loading";
 }
 
-// Resolve the next sidebar-visible thread for keyboard cycling with wraparound.
 export function getNextVisibleSidebarThreadId(input: {
   visibleThreadIds: readonly Thread["id"][];
   activeThreadId: Thread["id"] | undefined;
@@ -1176,10 +1094,6 @@ function getThreadSortTimestamp(
   return getLatestUserMessageTimestamp(thread);
 }
 
-// A finished chat the user hasn't opened yet floats above the plain timestamp
-// order so it gets seen. Opening it (or dismissing its Completed pill, which
-// marks it visited) updates lastVisitedAt and the thread falls back into place.
-// A thread with live tail work isn't finished, so it stays in plain order.
 function isUnseenFinishedThread(thread: SidebarThreadSortInput): boolean {
   if (thread.hasLiveTailWork === true) {
     return false;
@@ -1190,10 +1104,6 @@ function isUnseenFinishedThread(thread: SidebarThreadSortInput): boolean {
   });
 }
 
-// Attention groups for the sidebar order: threads doing live work first so you
-// can watch what's going on, then finished-but-unseen ones so they get noticed,
-// then everything else by timestamp. Mirrors THREAD_STATUS_PRIORITY, where
-// Working/Connecting outrank Completed.
 function threadSortAttentionRank(thread: SidebarThreadSortInput): number {
   if (isThreadActivelyWorking(thread) || thread.session?.status === "connecting") {
     return 2;
@@ -1286,8 +1196,8 @@ export function sortProjectsForSidebar<
     threadsByProjectId.set(thread.projectId, existing);
   }
 
-  // Resolve each project's recency once; the comparator otherwise rescanned
-  // that project's threads on every comparison (O(P log P × threads)).
+  // Resolve each project's recency once; the comparator otherwise rescanned that project's threads on
+  // every comparison (O(P log P × threads)).
   const timestampByProjectId = new Map(
     projects.map(
       (project) =>
@@ -1307,7 +1217,6 @@ export function sortProjectsForSidebar<
   });
 }
 
-// Groups thread summaries once so project-specific sidebar derivations can reuse the same slices.
 export function groupSidebarThreadsByProjectId(
   threads: readonly SidebarThreadSummary[],
 ): ReadonlyMap<ProjectId, SidebarThreadSummary[]> {
@@ -1323,7 +1232,6 @@ export function groupSidebarThreadsByProjectId(
   return byProjectId;
 }
 
-// Centralizes the expensive per-project row derivation so Sidebar.tsx can mostly orchestrate UI state.
 export function deriveSidebarProjectData(input: {
   projects: readonly Pick<Project, "id" | "cwd" | "expanded">[];
   sortedSidebarThreadsByProjectId: ReadonlyMap<ProjectId, SidebarThreadSummary[]>;
@@ -1357,8 +1265,6 @@ export function deriveSidebarProjectData(input: {
       input.threadListExtraPagesByProjectCwd.get(input.normalizeProjectCwd(project.cwd)) ?? 0;
     const orderedProjectThreadIds = projectThreads.map((thread) => thread.id);
 
-    // Collapsed folders should not build or render their full tree; large projects can
-    // contain hundreds of rows and folder toggles are on the sidebar hot path.
     if (!project.expanded) {
       const activeThread =
         input.activeSidebarThreadId === undefined
@@ -1382,7 +1288,7 @@ export function deriveSidebarProjectData(input: {
         projectThreads,
         orderedProjectThreadIds,
         visibleEntries,
-        // The thread list is hidden while the folder is closed, so paging affordances are moot.
+
         threadListExtraPages: 0,
         canShowMoreThreads: false,
         activeEntryId: activeThread?.id ?? null,
@@ -1427,8 +1333,7 @@ export function deriveSidebarProjectData(input: {
       orderedProjectThreadIds,
       visibleEntries: renderedEntries,
       threadListExtraPages: paging.effectiveExtraPages,
-      // The active-thread reveal can force rows beyond the page cap; only offer "Show more"
-      // while rows are genuinely hidden.
+
       canShowMoreThreads: paging.canShowMore && renderedEntries.length < orderedEntries.length,
       activeEntryId: activeEntry?.rowId ?? null,
       projectStatus,
@@ -1437,7 +1342,3 @@ export function deriveSidebarProjectData(input: {
 
   return byProjectId;
 }
-
-// PR-state presentation (label/color/glyph) moved to
-// ~/components/pullRequest/pullRequestStatePresentation so the sidebar badge, kanban chip,
-// and the pull request feature surfaces all share one mapping.

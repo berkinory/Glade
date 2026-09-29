@@ -31,7 +31,6 @@ interface PullRequestServiceDependencies {
   ) => Effect.Effect<GitHubRepositoryInventory, TaggedFailure>;
 }
 
-/** The shell snapshot excludes deleted projects, so the omitted field is known to be null. */
 function liveProjectFromShell(shell: OrchestrationProjectShell): OrchestrationProject {
   return { ...shell, deletedAt: null };
 }

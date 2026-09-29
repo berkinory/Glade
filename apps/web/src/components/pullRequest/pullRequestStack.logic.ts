@@ -13,7 +13,6 @@ export type PullRequestStackAssessment = {
   readonly blocker: string | null;
 };
 
-/** Entries affected by merging the selected PR, ordered from the base branch upwards. */
 function pullRequestStackTargetEntries(
   stack: PullRequestStack,
 ): ReadonlyArray<PullRequestStackEntry> {

@@ -1,8 +1,3 @@
-// FILE: TimelineWorkEntryRow.tsx
-// Purpose: Renders transcript work/tool rows and their inline details.
-// Layer: Web chat presentation component
-// Exports: TimelineWorkEntryRow, EditedFileRowContent, prefersCompactWorkEntryRow
-
 import type { TurnId } from "@glade/contracts";
 import { PROVIDER_DESCRIPTORS } from "@glade/shared/providerMetadata";
 import {
@@ -88,9 +83,6 @@ import { formatLiveActivityMeta, useLiveActivityNow } from "../../lib/liveActivi
 import { openWorkspaceFileReference, useWorkspaceFileOpener } from "../../lib/workspaceFileOpener";
 import { MUTED_LABEL_TEXT_CLASS_NAME, MUTED_LABEL_TEXT_COLOR } from "~/surfaceStyles";
 
-// Rest tone is the shared quiet-label gray (same one the composer pickers use for
-// their effort/thinking labels) so a tool row and the picker below it read as one
-// muted tone; hover still lifts the whole row to full foreground.
 const WORK_ROW_MUTED_HOVER_TONE: Record<"tool-row" | "file-row", string> = {
   "tool-row": `${MUTED_LABEL_TEXT_CLASS_NAME} transition-colors group-hover/tool-row:text-foreground group-focus-visible/tool-row:text-foreground`,
   "file-row": `${MUTED_LABEL_TEXT_CLASS_NAME} transition-colors group-hover/file-row:text-foreground group-focus-visible/file-row:text-foreground`,
@@ -128,19 +120,13 @@ function workToneIcon(tone: TimelineWorkEntry["tone"]): {
       className: "text-muted-foreground/50",
     };
   }
-  // Generic tool calls with no recognizable kind read as "consulted something".
+
   return {
     icon: BookOpenIcon,
     className: "text-muted-foreground/45",
   };
 }
 
-/**
- * Try to extract a clean file path from a detail string that may contain JSON.
- * Handles patterns like:
- *   Read {"file_path":"/Users/foo/bar.ts","offset":10}
- *   {"file_path":"/path/to/file.ts"}
- */
 function extractFilePathFromDetail(detail: string): string | null {
   const plainPathMatch = /^(.+?\.[A-Za-z0-9][A-Za-z0-9._-]*)(?::\d+)?(?::\d+)?$/u.exec(
     detail.trim(),
@@ -148,8 +134,7 @@ function extractFilePathFromDetail(detail: string): string | null {
   if (plainPathMatch?.[1]?.includes("/")) {
     return plainPathMatch[1].trim();
   }
-  // "path" is generic enough that a nested match (e.g. inside a config object)
-  // may not be the file the tool acted on — only regex-scan truncated JSON.
+
   return extractToolArgumentField(detail, ["file_path", "filePath", "path", "filename"], {
     fallbackScan: "whenUnparsed",
   });
@@ -166,14 +151,12 @@ function workEntryPreview(workEntry: TimelineWorkEntry): string | null {
 
   if (workEntry.itemType === "command_execution" || workEntry.command || workEntry.rawCommand) {
     const command = workEntry.command ?? workEntry.rawCommand;
-    // Running and settled command rows share one target so the row text only
-    // swaps tense ("Searching for foo in src" → "Searched for foo in src").
+
     if (command) return deriveFriendlyCommandTarget(command);
   }
 
   if (workEntry.preview) return workEntry.preview;
 
-  // Prefer clean basenames from changedFiles
   if (workEntry.changedFiles && workEntry.changedFiles.length > 0) {
     const names = workEntry.changedFiles.map((p) => basenameOfPath(p));
     if (names.length === 1) return names[0]!;
@@ -184,46 +167,32 @@ function workEntryPreview(workEntry: TimelineWorkEntry): string | null {
     return workEntry.detail ?? workEntry.subagentAction?.prompt ?? null;
   }
 
-  // For detail, try to extract a clean file path first
   if (workEntry.detail) {
     const filePath = extractFilePathFromDetail(workEntry.detail);
     if (filePath) return basenameOfPath(filePath);
 
-    // For file-related entries, the heading alone is enough — don't show raw JSON
     if (isFileRelated) return null;
 
-    // For other entries, if the detail looks like raw JSON, skip it
     const trimmedDetail = workEntry.detail.trim();
     if (trimmedDetail.startsWith("{") || trimmedDetail.startsWith("[")) return null;
 
-    // Dynamic/MCP tool calls surface their arguments as `ToolName: {json}` —
-    // transport detail, not a human summary. The raw call stays in toolDetails.
-    // Failed calls keep their detail inline: it may carry the error text (e.g.
-    // an MCP error serialized as `McpError: {json}`), and on a failure more
-    // information beats a tidy row.
     if (toolWorkEntryStatus(workEntry) !== "failed" && isPrefixedToolArgumentSummary(trimmedDetail))
       return null;
 
     const readLinesMatch = /^Read\s+(\d+\s+lines?)$/i.exec(trimmedDetail);
     if (readLinesMatch?.[1]) return readLinesMatch[1];
 
-    // Clean, non-JSON detail — show it
     return trimmedDetail;
   }
 
   return null;
 }
 
-// Provider read tools (e.g. Claude's `Read`) arrive as generic dynamic tool calls
-// without a `file-read` requestKind, so match their tool name to surface the search icon
-// instead of the generic tool/wrench fallback.
 function isFileReadToolEntry(workEntry: TimelineWorkEntry): boolean {
   const name = (workEntry.toolName ?? "").toLowerCase().replace(/[^a-z]/g, "");
   return name === "read" || name === "readfile" || name === "viewfile";
 }
 
-// Command rows reuse toolCallLabel's wrapper-aware classifier so wrapped git/gh
-// commands get the GitHub mark while ordinary commands keep the terminal icon.
 function commandWorkEntryIcon(workEntry: TimelineWorkEntry): LucideIcon {
   const command = workEntry.command ?? workEntry.rawCommand;
   switch (command ? resolveCommandVisualKind(command) : "terminal") {
@@ -238,12 +207,10 @@ function commandWorkEntryIcon(workEntry: TimelineWorkEntry): LucideIcon {
 }
 
 function workEntryIcon(workEntry: TimelineWorkEntry): LucideIcon {
-  // User-input rows read as a question (awaiting an answer) and an upload
-  // (answer submitted) rather than the generic "info" checkmark.
   if (workEntry.activityKind === "user-input.requested") return CircleQuestionIcon;
   if (workEntry.activityKind === "user-input.resolved") return ArrowUpCircleIcon;
   if (workEntry.activityKind === "context-compaction") return ContextCompactionIcon;
-  // "Moved to background" notices read as a tray drop, not a warning check.
+
   if (workEntry.nativeEventType === "background_tasks_changed") return BackgroundTrayIcon;
   if (workEntry.providerContextLifecycle) {
     return workEntry.providerContextLifecycle.nativeHistory === "unavailable"
@@ -279,16 +246,10 @@ function workEntryIcon(workEntry: TimelineWorkEntry): LucideIcon {
   return workToneIcon(workEntry.tone).icon;
 }
 
-// Dynamic icon selection is data, not a component declaration. Keeping the
-// createElement call in this module helper avoids presenting a render-local
-// component binding to React Compiler.
 export function renderWorkEntryIcon(Icon: LucideIcon, className: string): ReactElement {
   return createElement(Icon, { className });
 }
 
-// The leading glyph for a tool row: recognizable product and surface icons win
-// over the kind-derived entry icon. Shared with the collapsed tool-group summary
-// row, which borrows its first entry's icon.
 export function workEntryLeftIcon(workEntry: TimelineWorkEntry): LucideIcon {
   if (isComputerWorkEntry(workEntry)) return ComputerUseIcon;
   if (isGitHubMcpToolCall(workEntry)) return GitHubIcon;
@@ -310,11 +271,6 @@ function isGitHubMcpToolCall(workEntry: TimelineWorkEntry): boolean {
   return Boolean(toolName?.startsWith("mcp__codex_apps__github"));
 }
 
-// Glade's own agent-gateway tools (glade_list_threads, glade_create_thread,
-// ...) get the Glade mark instead of the generic MCP glyph. Providers report
-// the call differently: Claude prefixes the MCP server (mcp__glade__*), other providers
-// agents surface the bare tool name (glade_*), and Codex reports server/tool
-// pairs that the label humanizer renders as "Glade: ...".
 function toolWorkEntryStatus(workEntry: TimelineWorkEntry): GladeMcpToolStatus {
   if (workEntry.toolStatus) return workEntry.toolStatus;
   return workEntry.activityKind !== undefined && workEntry.activityKind !== "tool.completed"
@@ -342,15 +298,11 @@ function isGladeToolCall(workEntry: TimelineWorkEntry): boolean {
   );
 }
 
-// Render command, agent-task, file-change, and file-read rows at the tighter
-// compact density so every tool-call line shares one height regardless of whether
-// it carries a disclosure chevron.
 export function prefersCompactWorkEntryRow(workEntry: TimelineWorkEntry): boolean {
   if (isCodexActivityStatusWorkEntry(workEntry)) {
     return true;
   }
-  // Commands stay compact even when surfaced with a non-terminal icon (read-only
-  // inspections like `cat` now use the file-read search icon).
+
   if (workEntry.itemType === "command_execution" || workEntry.command || workEntry.rawCommand) {
     return true;
   }
@@ -361,8 +313,6 @@ export function prefersCompactWorkEntryRow(workEntry: TimelineWorkEntry): boolea
     EntryIcon === AgentTaskIcon ||
     EntryIcon === PencilIcon ||
     EntryIcon === SkillCubeIcon ||
-    // File-read / inspect rows (e.g. `Read …`) surface the search icon and have no
-    // disclosure chevron; keep them at the same compact height as command rows.
     EntryIcon === SearchIcon
   );
 }
@@ -377,16 +327,12 @@ function capitalizePhrase(value: string): string {
 
 function toolWorkEntryHeading(workEntry: TimelineWorkEntry): string {
   if (computerToolName(workEntry.toolName)) {
-    // Work-log projection already resolves the action and target. The generic
-    // MCP presentation would replace that with "Glade clicked the desktop".
     const title = normalizeCompactToolLabel(workEntry.toolTitle ?? "");
     if (title && !isGenericToolTitle(title) && !computerToolName(title))
       return capitalizePhrase(title);
     return describeComputerToolCall({ toolName: workEntry.toolName, args: undefined })!.summary;
   }
-  // Task progress is semantic copy, not a tool lifecycle status. Preserve the
-  // trailing "completed" instead of passing it through the compact tool-label
-  // normalizer, which intentionally strips lifecycle suffixes.
+
   if (workEntry.activityKind === "turn.tasks.updated") {
     return capitalizePhrase(workEntry.label);
   }
@@ -414,10 +360,6 @@ function combineWorkEntryDisplayText(heading: string, preview: string | null): s
     : `${heading} ${preview}`;
 }
 
-// One sentence per row, live or settled: the tool's own verb plus what it acted
-// on ("Searched for foo in src"). Lifecycle state is never spelled out here —
-// the verb already carries the tense and `liveActivityMetaText` covers the rest.
-// Shared with the live tool-group line, which wears its newest call's sentence.
 function workEntryDisplayParts(workEntry: TimelineWorkEntry): {
   heading: string;
   preview: string | null;
@@ -470,9 +412,9 @@ function commandTooltipContent(command: string, displayText: string) {
   );
 }
 
-// Hover content for a tool-call row: the rich command card when a raw command is
-// present, otherwise the plain label (used to reveal truncated text / file paths).
-// Returns null when there's nothing worth showing so the row renders untouched.
+// Hover content for a tool-call row: the rich command card when a raw command is present, otherwise
+// the plain label (used to reveal truncated text / file paths). Returns null when there's nothing
+// worth showing so the row renders untouched.
 function toolRowTooltipContent(
   rawCommand: string | null | undefined,
   displayText: string,
@@ -484,10 +426,6 @@ function toolRowTooltipContent(
   return fallback ? <span className="whitespace-pre-wrap">{fallback}</span> : null;
 }
 
-// Frosted hover tooltip for tool-call rows — the same surface (via the `default`
-// variant) as the sidebar thread/project hover cards, so the rows read as one
-// system. Replaces the native `title` tooltip; renders the trigger untouched when
-// there's no content to show.
 function ToolRowTooltip(props: { content: ReactNode; children: ReactElement }) {
   if (!props.content) {
     return props.children;
@@ -518,9 +456,6 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
   onEnableComputerControl?: () => void;
   timestampFormat: TimestampFormat;
 }) {
-  // Defaults are applied in the body (not in the destructuring pattern): a default
-  // value inside a destructuring pattern makes React Compiler bail out on the whole
-  // component, silently dropping memoization for every tool-call row.
   const {
     workEntry,
     chatMetaFontSizePx,
@@ -543,12 +478,9 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
   const isCodexStatusRow = isCodexActivityStatusWorkEntry(workEntry);
   const isPlainRuntimeNoticeRow = isPlainRuntimeNoticeWorkEntry(workEntry);
   const EntryIcon = workEntryIcon(workEntry);
-  // Web-fetch tool calls surface the target site (favicon + URL) instead of the raw
-  // `WebFetch: {json}` arguments, reusing the same link-chip icon/label path as
-  // composer and markdown links so every site reference looks identical.
+
   const webFetchUrl = extractWebFetchUrl(workEntry);
-  // Standard tool rows keep one discoverable left glyph. Codex status rows
-  // deliberately skip it and reuse only the shared tool-label typography.
+
   const isGitHubToolRow = isGitHubMcpToolCall(workEntry);
   const isComputerToolRow = isComputerWorkEntry(workEntry);
   const isGladeBrowserToolRow = !isGitHubToolRow && isGladeBrowserWorkEntry(workEntry);
@@ -588,12 +520,9 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
     : undefined;
   const hasToolDetails = Boolean(workEntry.toolDetails);
   const providerContextLifecycle = workEntry.providerContextLifecycle;
-  // File-read rows open the referenced file in the in-app viewer when the
-  // hosting surface provides an opener (right-dock file pane / editor pane).
+
   const opener = useWorkspaceFileOpener();
-  // Per-file +N/-M parsed from this tool call's own patch, used as a fallback when
-  // the turn-diff summary isn't in scope (e.g. standalone work rows) so every
-  // "Edited <file>" row can still show diff stats.
+
   const toolDiffStatsByPath = useMemo(
     () =>
       isFileChangeWorkEntry(workEntry)
@@ -608,9 +537,8 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
       })
     : null;
 
-  // A computer-control denial renders as an actionable card (enable + retry)
-  // instead of a buried tool-error line. Kept after the hooks above so the
-  // early return never changes hook order.
+  // A computer-control denial renders as an actionable card (enable + retry) instead of a buried
+  // tool-error line. Kept after the hooks above so the early return never changes hook order.
   if (workEntry.computerSetupRequired) {
     return (
       <ConnectedComputerSetupRequiredCard
@@ -635,8 +563,8 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
     );
   }
 
-  // A created-automation row renders as its own card instead of a tool-call line.
-  // Kept after the hooks above so the early return never changes hook order.
+  // A created-automation row renders as its own card instead of a tool-call line. Kept after the
+  // hooks above so the early return never changes hook order.
   const automation = workEntry.automation;
   if (automation) {
     return (
@@ -675,7 +603,6 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
   const prefetchReadFile =
     readFilePath && opener?.prefetchFile ? () => opener.prefetchFile?.(readFilePath) : undefined;
 
-  // Use the text font size (matching the UI settings) for tool call rows
   const rowFontSizePx = textFontSizePx;
 
   return (
@@ -683,9 +610,6 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
       {showEditedRows ? (
         <div className="space-y-0.5">
           {changedFiles.map((changedFilePath) => {
-            // Prefer the turn-diff summary's per-file stat; fall back to the stat
-            // parsed from this tool call's own patch so the +N/-M shows even when
-            // no summary is in scope (standalone work rows) or it lacks the file.
             const summaryStat = fileDiffStatByPath?.get(changedFilePath);
             const changedFileStat =
               summaryStat && summaryStat.additions + summaryStat.deletions > 0
@@ -771,9 +695,7 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
               <div
                 className={cn(
                   "min-w-0 overflow-hidden",
-                  // Single-line tool labels size to their content so the disclosure
-                  // chevron can sit right after the name; the multi-line markdown
-                  // preview still needs the full row width.
+
                   showInlineAgentTaskPreview && "flex-1",
                 )}
               >
@@ -805,8 +727,7 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
                   <p
                     className={cn(
                       compact ? "truncate leading-5" : "truncate leading-6",
-                      // Match the leading icon's tone so the row reads as one muted unit, and
-                      // brighten the whole row to foreground on hover/focus instead of a fill.
+
                       WORK_ROW_MUTED_HOVER_TONE["tool-row"],
                       isPlainRuntimeNoticeRow && "italic",
                     )}
@@ -865,10 +786,6 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
   );
 });
 
-// Inner content for an "Edited <file> +n/-m" row. Mirrors the tool-call row treatment
-// (muted leading icon + label that brightens to foreground on hover/focus, same font
-// size) so edited rows read as the same visual unit. Callers own the interactive wrapper
-// (`group/file-row` button or disclosure summary) and pass the diff stat when available.
 export function EditedFileRowContent(props: {
   filePath: string;
   additions: number | undefined;
@@ -900,7 +817,7 @@ export function EditedFileRowContent(props: {
         className={cn(
           "font-system-ui max-w-[28rem] truncate underline-offset-2",
           WORK_ROW_MUTED_HOVER_TONE["file-row"],
-          // Filename doubles as a link affordance: underline on the same row hover/focus.
+
           "group-hover/file-row:underline group-focus-visible/file-row:underline",
         )}
         style={{ fontSize: `${fontSizePx}px` }}
@@ -923,11 +840,11 @@ function AgentActivityOpenSurface(props: {
   canOpen: boolean;
   children: ReactNode;
   compact: boolean;
-  /** Warm-up hook fired on hover/focus so opening feels instant. */
+
   onHover?: (() => void) | undefined;
   onOpen?: (() => void) | undefined;
   title?: string | undefined;
-  /** Styled frosted hover tooltip (preferred over the native `title`). */
+
   tooltip?: ReactNode;
   dataToolDetailTrigger?: boolean | undefined;
 }) {
@@ -937,8 +854,6 @@ function AgentActivityOpenSurface(props: {
     props.canOpen ? "cursor-pointer focus-visible:outline-none" : "cursor-default",
   );
 
-  // Wrap the real DOM element (not this component) so Base UI's tooltip trigger
-  // can attach its hover handlers and compose with our own onClick/onPointerEnter.
   const surface = props.canOpen ? (
     <button
       type="button"

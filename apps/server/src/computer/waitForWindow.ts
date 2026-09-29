@@ -8,7 +8,6 @@ const unavailable = (windowReason: NonNullable<ComputerLaunchAppResult["windowRe
   windowReason,
 });
 
-/** Match an app name/path conservatively; ambiguity never picks a window. */
 export async function waitForWindow(
   read: () => Promise<readonly ComputerWindow[]>,
   app: string,
@@ -19,9 +18,8 @@ export async function waitForWindow(
     readonly checkInputReady?: (windowId: string) => Promise<void>;
   },
 ): Promise<Pick<ComputerLaunchAppResult, "window" | "windowStatus" | "windowReason">> {
-  // A hung list/AX probe must not defeat the readiness polling budget. Abort
-  // only this read-only phase; the launch has already been sent and is never
-  // replayed or described as not dispatched.
+  // A hung list/AX probe must not defeat the readiness polling budget. Abort only this read-only
+  // phase; the launch has already been sent and is never replayed or described as not dispatched.
   const controller = new AbortController();
   const probeSignal = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -74,8 +72,7 @@ async function probeWindow(
         : window.appName?.toLocaleLowerCase() === name,
     );
     signal?.throwIfAborted();
-    // Titles, visibility and size do not prove which same-app window is the
-    // requested document. Keep the choice explicit when siblings exist.
+
     if (matches.length > 1) return unavailable("ambiguous");
     const candidate = matches[0];
     const reason = !candidate

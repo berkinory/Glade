@@ -1,8 +1,3 @@
-// FILE: decider.computerControl.test.ts
-// Purpose: Covers the computer-control opt-in surviving the decider: the flag rides
-//          turn-start, queued-dispatch, and edit-resend payloads when the command sets
-//          it, and defaults to off when the command omits it.
-
 import {
   CommandId,
   DEFAULT_PROVIDER_INTERACTION_MODE,

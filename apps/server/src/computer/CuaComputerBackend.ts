@@ -108,8 +108,7 @@ const number = (value: unknown): number =>
 function captureAccessAvailable(permission: Record<string, unknown>, platform: string): boolean {
   if (platform !== "linux" || typeof permission.screen_recording === "boolean")
     return permission.screen_recording === true;
-  // These are display prerequisites, not proof that every compositor exposes
-  // capture. A failed real capture still marks capture health unavailable.
+
   return (
     permission.x11 === true || (permission.wayland === true && permission.wayland_enabled === true)
   );
@@ -125,8 +124,8 @@ function missingComputerPermissions(
       : permission.accessibility;
   if (accessibility !== true) missing.push("accessibility");
   if (!captureAccessAvailable(permission, platform)) missing.push("screenRecording");
-  // Only the macOS host with a physical input listener reports this grant.
-  // Legacy/standalone drivers must not acquire an invented macOS requirement.
+  // Only the macOS host with a physical input listener reports this grant. Legacy/standalone drivers
+  // must not acquire an invented macOS requirement.
   if (platform === "darwin" && permission.input_monitoring === false)
     missing.push("inputMonitoring");
   return missing;
@@ -155,13 +154,7 @@ function rect(value: unknown): ComputerRect {
 }
 const sameRect = (a: ComputerRect, b: ComputerRect) =>
   a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
-/**
- * The driver's proof a visibility mutation landed: `effect: confirmed` backed
- * by a `value_readback` evidence row — the AXMinimized/isHidden re-read the
- * native tool itself took. The bare success text is never trusted on its own,
- * and the window list exposes no minimized flag to check against, so this
- * record is the only evidence the verdict can stand on.
- */
+
 function confirmedValueReadback(data: Record<string, unknown>): boolean {
   return (
     data.effect === "confirmed" &&
@@ -169,11 +162,7 @@ function confirmedValueReadback(data: Record<string, unknown>): boolean {
     data.evidence.some((item) => text(record(item).kind) === "value_readback")
   );
 }
-/**
- * The one tab a browser bind can point a pane still at: the only tab, or the
- * only active one. An ambiguous bind mints no still target — the pane waits
- * for the tab the next call names rather than guessing.
- */
+
 function resolvableStillTab(value: unknown): string | undefined {
   if (!Array.isArray(value)) return undefined;
   const tabs = value.flatMap((entry) => {
@@ -185,39 +174,19 @@ function resolvableStillTab(value: unknown): string | undefined {
   const active = tabs.filter((tab) => tab.active);
   return active.length === 1 ? active[0]!.id : undefined;
 }
-/** Longest a semantic text caller may wait, including its lane admission,
- * before failing honestly. The underlying write still drains so lane order
- * survives the timeout and nothing is replayed. Same-window writes serialize
- * because the native semantic lease is per (pid, window): a second concurrent
- * lease for one exact window is refused outright (driver rev 12), and AX
- * insertions plus their readback verification on one element must not
- * interleave. Different windows — same pid included — overlap. */
+// The underlying write still drains so lane order survives the timeout and nothing is replayed.
+// Same-window writes serialize because the native semantic lease is per (pid, window): a second
+// concurrent lease for one exact window is refused outright (driver rev 12), and AX insertions plus
+// their readback verification on one element must not interleave.
 const CUA_SEMANTIC_TEXT_LANE_HOLD_MS = 15_000;
-/** Settle gap the lane holds after each semantic text write, so the next
- * same-window insertion starts after AX quiesces. Bounded and inside the lane. */
+
 const CUA_SEMANTIC_TEXT_LANE_GAP_MS = 100;
-/** How long an observed element tree may serve internal target resolution.
- * Native dispatch still validates the element token, so expiry is the drift
- * bound for a control that survives but moved or changed meaning. */
+
 const RECENT_TREE_TTL_MS = 5_000;
-/**
- * Pane preview still cadence when nothing overrides it. Slower than the
- * Tier-1 default: each tick re-observes the exact window or browser tab the
- * task is using, and the pane reads as live at one hertz.
- * `GLADE_CUA_PREVIEW_STILL_MS` replaces it; the constructor option replaces
- * it in tests.
- */
+
 const CUA_STILL_FRAME_INTERVAL_MS = 1_000;
-/**
- * The semantic element actions this integration admits, what the pinned
- * driver's `click` element path performs for each (`action` argument, mapped
- * in `ax_actions::map_action`), and the AX action the element must advertise
- * for Glade to dispatch it.
- *
- * The driver's `map_action` silently defaults any unknown spelling to
- * AXPress, so names are mapped here explicitly: an unlisted request refuses
- * before dispatch rather than becoming a press the caller never asked for.
- */
+// The driver defaults unknown semantic actions to AXPress. Reject unlisted actions before dispatch
+// instead of silently pressing.
 const CUA_ELEMENT_ACTIONS: Readonly<
   Record<string, { readonly driverAction: string; readonly axAction: string }>
 > = {
@@ -245,14 +214,10 @@ function cuaKey(value: string): string {
       "not-dispatched",
       "unsupported_operation",
     );
-  // Glade-side spellings that already resolve to a driver keyname. Only
-  // entries whose target the pinned keymap accepts may live here: a name with
-  // no driver mapping (keypad keys, f13-f20, menu, help) passes through
-  // untouched so the driver's own "Unknown key name" refusal stays the honest
-  // gate and an extended keymap revision lights them up without a Glade
-  // change. Left-side modifier spellings resolve to the one physical code the
-  // driver posts for that modifier; right-side spellings stay refused until
-  // the keymap carries the right-key codes.
+  // Only entries whose target the pinned keymap accepts may live here: a name with no driver mapping
+  // (keypad keys, f13-f20, menu, help) passes through untouched so the driver's own "Unknown key
+  // name" refusal stays the honest gate and an extended keymap revision lights them up without a
+  // Glade change.
   const aliases: Record<string, string> = {
     meta: "command",
     super: "command",
@@ -281,12 +246,7 @@ function cuaKey(value: string): string {
   return aliases[key] ?? key;
 }
 
-/** The Cua backend. Cua owns native actions; Glade owns admission,
- * session authority, explicit delivery policy and the provider result. */
 export class CuaComputerBackend implements ComputerBackend {
-  // Focus-neutral semantic writes are a Glade-patch guarantee. Unknown
-  // (pre-handshake) reads as the patched default; `0` is the unpatched
-  // upstream driver, where the property is unverified and unclaimed.
   get focusNeutralSemanticText(): boolean {
     return (this.hostPlatform ?? process.platform) === "darwin" && this.driverNativeRevision !== 0;
   }
@@ -296,10 +256,7 @@ export class CuaComputerBackend implements ComputerBackend {
     );
   }
   readonly computerId = DEFAULT_COMPUTER_ID;
-  // The AXPress/meta-key dialect is macOS semantics; Windows and Linux
-  // drivers speak the generic desktop dialect (press, ctrl+chords). The
-  // host reports its own platform on every reply — a remote endpoint on
-  // another OS overrides the local assumption.
+
   get agentDialect(): "macos" | "linux" {
     return (this.hostPlatform ?? process.platform) === "darwin" ? "macos" : "linux";
   }
@@ -325,53 +282,25 @@ export class CuaComputerBackend implements ComputerBackend {
   private snapshot: Promise<void> | undefined;
   private selectedWindow: string | undefined;
   private readonly elementTokens = new WeakMap<ComputerUiNode, string>();
-  /**
-   * The AX action names the element advertised in the snapshot that produced
-   * it — the same `actions` list the driver's own dispatch checks. Nodes are
-   * recreated on every observation, so this is always the freshest claim.
-   */
+
   private readonly elementActions = new WeakMap<ComputerUiNode, ReadonlySet<string>>();
-  /**
-   * Elements living inside Chromium-family web content. AXSelectedText
-   * inserts never reach their DOM (verified against Electron 43), so text
-   * writes to these route through `set_value` with an independent re-read
-   * instead of the semantic-insert path native controls honour.
-   */
+  // Elements living inside Chromium-family web content. AXSelectedText inserts never reach their DOM
+  // (verified against Electron 43), so text writes to these route through `set_value` with an
+  // independent re-read instead of the semantic-insert path native controls honour.
   private readonly webContentElements = new WeakSet<ComputerUiNode>();
-  /**
-   * Element trees observed within the last few seconds, keyed by window id.
-   * Internal target resolution reuses them: the element tokens bound to these
-   * nodes are validated natively at dispatch, so an aged-out element refuses
-   * rather than pressing the wrong control. Retaining the root keeps every
-   * child node alive for the WeakMap token lookups.
-   */
+
   private readonly recentTrees = new Map<string, { at: number; root: ComputerUiNode }>();
   private readonly observedGeometry = new Map<string, ComputerRect>();
   private readonly stills: StillFramePublisher;
   private desktopEpoch: number | undefined;
-  /**
-   * The host's interruption count as of the newest reply observed. Unlike
-   * {@link desktopEpoch} it moves only on real OS interruptions (lock,
-   * sleep, session switch), so an advance — even with the pauses already
-   * back to empty — is the proof a lock/resume cycle ran since consent was
-   * last granted, and what drives the `desktop-interrupted` event.
-   */
+
   private desktopInterruptions: number | undefined;
-  /**
-   * The Glade native revision the live driver reported through host
-   * replies — `undefined` until the first reply carrying it, `0` on an
-   * unpatched upstream driver. Capabilities that exist only in the Glade
-   * patch are advertised only while this is nonzero or unknown.
-   */
+
   private driverNativeRevision: number | undefined;
-  /** The driver's host platform as last reported by a reply; undefined until first contact. */
+
   private hostPlatform: string | undefined;
   private readonly previewTasks = new Map<string, CuaComputerTask>();
-  /**
-   * What the pane still mirrors: the last exact window the task aimed at, or
-   * the last bound browser tab. The stills loop publishes nothing while this
-   * is undefined — a display-wide capture is never a pane frame.
-   */
+
   private stillTarget:
     | { readonly kind: "window"; readonly windowId: string }
     | {
@@ -387,15 +316,11 @@ export class CuaComputerBackend implements ComputerBackend {
       endpoint?: string;
       capability?: string | undefined;
       request?: typeof cuaRequest;
-      /** Test injection so lane tests do not wait out the real hold. */
+
       semanticTextLaneHoldMs?: number;
-      /** Test injection so lane tests do not sleep for real. */
+
       semanticTextLaneGapMs?: number;
-      /**
-       * Still-capture cadence for the pane preview; defaults to
-       * `GLADE_CUA_PREVIEW_STILL_MS`, then 1000 ms. Injectable so tests can
-       * observe the interval without env manipulation.
-       */
+
       stillIntervalMs?: number;
     } = {},
   ) {
@@ -412,9 +337,7 @@ export class CuaComputerBackend implements ComputerBackend {
       isCaptureAvailable: () => !this.disposed && !this.permissions.includes("screenRecording"),
       emit: () => undefined,
       now: Date.now,
-      // Still cadence is 1 s unless GLADE_CUA_PREVIEW_STILL_MS overrides it;
-      // the publisher floor keeps an aggressive value from queueing captures
-      // faster than one encode can finish.
+
       intervalMs: resolveStillIntervalMs(
         options.stillIntervalMs ?? cuaPreviewStillMsOverride() ?? CUA_STILL_FRAME_INTERVAL_MS,
       ),
@@ -423,11 +346,7 @@ export class CuaComputerBackend implements ComputerBackend {
   private readonly request: typeof cuaRequest;
   private readonly semanticTextLaneHoldMs: number;
   private readonly semanticTextLaneGapMs: number;
-  /**
-   * One tail promise per (pid, window) lane. Tails only ever resolve, so a
-   * failed write never wedges its lane-mates; entries are pruned when their
-   * owner settles.
-   */
+
   private readonly semanticTextLanes = new Map<string, Promise<void>>();
   onEvent(listener: ComputerBackendEventListener): () => void {
     this.listeners.add(listener);
@@ -438,11 +357,8 @@ export class CuaComputerBackend implements ComputerBackend {
     this.currentHealth = health;
     for (const listener of this.listeners) listener({ type: "health-changed", health });
   }
-  /**
-   * One unusable capture flips health unavailable. The action verdict stands —
-   * this never rewrites an input result — and inputs keep working: nothing on
-   * the input path gates on health, and the next granted refresh heals this.
-   */
+  // The action verdict stands — this never rewrites an input result — and inputs keep working:
+  // nothing on the input path gates on health, and the next granted refresh heals this.
   private markCaptureFailed(error: unknown): void {
     this.captureFailed = true;
     const message = error instanceof Error ? error.message : String(error);
@@ -471,25 +387,18 @@ export class CuaComputerBackend implements ComputerBackend {
     assertDesktopOperationActive();
     const task = request.method === "call" ? currentComputerTask() : undefined;
     if (task) this.trackPreviewTask(task);
-    // Per-operation baseline, captured at dispatch. A newer desktop generation
-    // observed while this call is in flight means the reply predates an
-    // interruption (lock/resume) — even when the reply itself carries the new
-    // generation — so it is rejected rather than trusted as current.
+
     const sendBaseline = this.desktopEpoch;
     const endpoint = this.endpoint;
     try {
-      // The socket round trip, counted and timed on the active call's timing
-      // record when GLADE_CUA_TIMING_LOG is on — durations only, never the
-      // request or reply payloads.
       currentComputerCall()?.timing?.count("host_calls");
       const reply = await timedComputerLeg("host", () =>
         this.request<CuaReply>(
           endpoint,
           {
             ...request,
-            // Host admission uses the server-authorized mode, never a model's
-            // native arguments. Linux does not implement the macOS background
-            // input contract and must refuse those routes before dispatch.
+            // Host admission uses the server-authorized mode, never a model's native arguments. Linux does not
+            // implement the macOS background input contract and must refuse those routes before dispatch.
             ...(request.method === "call" ? { deliveryMode: desktopDeliveryMode() } : {}),
             ...(task ? { task } : {}),
             ...(request.method === "call" &&
@@ -551,16 +460,11 @@ export class CuaComputerBackend implements ComputerBackend {
       throw error;
     }
   }
-  /**
-   * Adopt the host's interruption count from a reply and announce a real
-   * change once. The first observed count only sets the baseline — consent
-   * cannot predate first contact — while every later difference (an advance,
-   * or a reset from a host that restarted) proves the desktop went through
-   * an interruption boundary consent must not silently cross. Called before
-   * the epoch staleness checks so a reply that is about to be rejected still
-   * reports the interruption it observed. Replies missing the field (an
-   * older host) degrade to no tracking rather than false interruptions.
-   */
+  // The first observed count only sets the baseline — consent cannot predate first contact — while
+  // every later difference (an advance, or a reset from a host that restarted) proves the desktop
+  // went through an interruption boundary consent must not silently cross. Called before the epoch
+  // staleness checks so a reply that is about to be rejected still reports the interruption it
+  // observed.
   private observeDesktopInterruption(reply: CuaReply): void {
     const interruptions = reply.desktopInterruptions;
     if (
@@ -583,8 +487,6 @@ export class CuaComputerBackend implements ComputerBackend {
     mutation = false,
     allowModelObservation = true,
   ): Promise<CuaToolResult> {
-    // The native operation itself, on the call's timing record — the name is
-    // a fixed driver vocabulary, and nothing from `args` is recorded.
     currentComputerCall()?.timing?.count("native_calls");
     const reply = await timedComputerLeg("call", () =>
       this.host({ method: "call", name, args }, mutation, allowModelObservation),
@@ -596,10 +498,7 @@ export class CuaComputerBackend implements ComputerBackend {
       result.structuredContent?.status === "refused"
     ) {
       const structured = result.structuredContent ?? {};
-      // Only an explicit native pre-dispatch verdict proves no input. The
-      // host taxonomy also uses `not-dispatched`; legacy menu tools instead
-      // publish status/refusal without an effect. An explicit uncertain
-      // effect wins over conflicting legacy status or a refusal-looking code.
+
       const refused =
         structured.effect === "refused" ||
         structured.effect === "not-dispatched" ||
@@ -618,7 +517,7 @@ export class CuaComputerBackend implements ComputerBackend {
         text(structured.code) ||
         text(refusal.code) ||
         (refused ? "cua_refusal" : "cua_action_failed");
-      // Older driver hosts used a second spelling for the same pause latch.
+
       const code = nativeCode === "desktop_input_paused" ? "computer_input_paused" : nativeCode;
       if (code === "same_pid_keyboard_ambiguity") {
         message +=
@@ -693,14 +592,9 @@ export class CuaComputerBackend implements ComputerBackend {
   }
   async availability(options?: { readonly refresh?: boolean }): Promise<ComputerAvailability> {
     try {
-      // A grant notification can arrive while an earlier snapshot is still
-      // settling. Explicit status refreshes must read again after that snapshot.
       if (options?.refresh) await this.snapshot?.catch(() => undefined);
       await this.refresh(options?.refresh === true);
-    } catch {
-      // refresh records the failed native prerequisite in both availability
-      // and health. Status must carry that diagnosis instead of failing RPC.
-    }
+    } catch {}
     return this.currentAvailability;
   }
   health(): ComputerHealth {
@@ -718,9 +612,7 @@ export class CuaComputerBackend implements ComputerBackend {
       clipboard: true,
       focus: nativeInputAvailable,
       raise: nativeInputAvailable,
-      // The compact agent cursor is a Glade-patch rendering path. Unknown
-      // (no handshake yet) reads as the patched default; `0` is the
-      // unpatched upstream driver's honest answer.
+
       ghostCursor:
         (this.hostPlatform ?? process.platform) === "darwin" && this.driverNativeRevision !== 0,
       visibleDesktop: true,
@@ -729,33 +621,26 @@ export class CuaComputerBackend implements ComputerBackend {
   async missingPermissions() {
     return this.permissions;
   }
-  /**
-   * How this build is code-signed, for the stale-grant advice. The helper only
-   * reports the responsible bundle id, never the signature itself, so the
-   * honest stable answer is `unknown` — and it is stable per build rather than
-   * per probe, so it is a plain method rather than a reading that can flicker.
-   */
+  // The helper only reports the responsible bundle id, never the signature itself, so the honest
+  // stable answer is `unknown` — and it is stable per build rather than per probe, so it is a plain
+  // method rather than a reading that can flicker.
   buildSignature(): ComputerBuildSignature {
     return "unknown";
   }
   async provision(): Promise<string> {
-    // Let a pre-setup status read settle before invalidating it. Its missing
-    // grants must not win the refresh after the user requests permissions.
+    // Let a pre-setup status read settle before invalidating it. Its missing grants must not win the
+    // refresh after the user requests permissions.
     await this.snapshot?.catch(() => undefined);
     await this.host({ method: "setup" });
     this.snapshotAt = 0;
-    // No unconditional capture-failure reset here: only an observed
-    // screen_recording grant clears it, in refresh() below, so a setup that
-    // did not actually restore capture cannot launder the health away.
+
     await this.refresh(true);
     if (this.currentAvailability.kind === "backend-unavailable")
       return this.currentAvailability.message;
     if (!this.permissions.length)
       return "Computer permissions are ready. Send a message to continue; no action is retried automatically.";
     const missing = listComputerPermissions(this.permissions);
-    // The setup surface is macOS TCC; other platforms report through the
-    // driver's own probe, and the guidance names what the platform uses
-    // rather than a settings pane that does not exist there.
+
     return (this.hostPlatform ?? process.platform) === "darwin"
       ? `Allow ${missing} for this copy of Glade in System Settings. Return here to check again; if macOS asks you to quit and reopen the app, do so.`
       : `The driver host reports missing ${missing} access. Grant it at the OS level the platform uses (display-server access on Linux, integrity/UIAccess on Windows), then check again; no action is retried automatically.`;
@@ -767,12 +652,7 @@ export class CuaComputerBackend implements ComputerBackend {
       let permission =
         (await this.call("check_permissions", { prompt: false })).structuredContent ?? {};
       const hostPlatform = this.hostPlatform ?? process.platform;
-      // tccd can report a transient negative for a freshly spawned session
-      // while it maps the running app to its grants — observed to outlive a
-      // single 400ms re-probe at turn start. A missing report that follows a
-      // granted or unread state gets up to four delayed re-probes before it
-      // is published; a steady missing state converges on the last call and a
-      // granted answer short-circuits the remaining probes.
+
       if (
         missingComputerPermissions(permission, hostPlatform).length > 0 &&
         !this.hadMissingPermissions
@@ -786,11 +666,10 @@ export class CuaComputerBackend implements ComputerBackend {
       }
       this.permissions = missingComputerPermissions(permission, hostPlatform);
       this.hadMissingPermissions = this.permissions.length > 0;
-      // A capture failure clears only on an observed Screen Recording grant:
-      // neither a previous-missing transition nor an explicit setup proves
-      // pixels flow again, only a fresh probe saying so does.
-      // Only macOS's fresh grant proves its capture prerequisite recovered.
-      // A Linux compositor connection alone must not erase a capture failure.
+      // A capture failure clears only on an observed Screen Recording grant: neither a previous-missing
+      // transition nor an explicit setup proves pixels flow again, only a fresh probe saying so does.
+      // Only macOS's fresh grant proves its capture prerequisite recovered. A Linux compositor connection
+      // alone must not erase a capture failure.
       if (hostPlatform !== "linux" && permission.screen_recording === true)
         this.captureFailed = false;
       const bundleId = text(record(permission.source).host_bundle_id, 256);
@@ -811,9 +690,7 @@ export class CuaComputerBackend implements ComputerBackend {
           ? { lastFailure: { at: new Date().toISOString(), message: monitorMessage } }
           : {}),
       });
-      // TCC's setup surface is macOS-only: on other platforms the driver's
-      // own probe reports what it found, and the message names the access
-      // mechanism that platform actually has.
+
       const hostIsDarwin = hostPlatform === "darwin";
       this.currentAvailability = this.permissions.length
         ? {
@@ -893,8 +770,8 @@ export class CuaComputerBackend implements ComputerBackend {
           )
             ? w.space_ids
             : undefined;
-        // WindowServer can return zero-area placeholders. They are not input
-        // targets and must not make every other application unavailable.
+        // WindowServer can return zero-area placeholders. They are not input targets and must not make
+        // every other application unavailable.
         if (
           !Number.isInteger(pid) ||
           pid <= 0 ||
@@ -914,9 +791,7 @@ export class CuaComputerBackend implements ComputerBackend {
             ...(typeof w.keyboard_focused === "boolean"
               ? { keyboardFocused: w.keyboard_focused }
               : {}),
-            // A minimized window drops out of the screen list but keeps its
-            // Space membership; a hidden app's windows report no membership at
-            // all; an off-Space window reports on_current_space === false.
+
             minimized:
               w.is_on_screen === false &&
               w.on_current_space !== false &&
@@ -982,9 +857,7 @@ export class CuaComputerBackend implements ComputerBackend {
         "not-dispatched",
         "stale_target",
       );
-    // The desktop generation this resolution is grounded in. Checked again at
-    // inject: anything that moved the generation in between (a lock/resume the
-    // reads above did not yet see) must refuse before dispatch, never after.
+
     return {
       pid: window.pid,
       window_id: Number(windowId.split(":")[2]),
@@ -993,20 +866,14 @@ export class CuaComputerBackend implements ComputerBackend {
     };
   }
   async focusWindow(windowId: string): Promise<void> {
-    // Selection sends no input. The actual actuator revalidates the exact
-    // window immediately before dispatch; reuse the just-observed identity here.
     await this.target(windowId, !this.windows.some((window) => window.id === windowId));
     this.selectedWindow = windowId;
-    // The pane still follows the window the task aims at, so a watching pane
-    // mirrors the work without a per-action capture request.
+
     this.stillTarget = { kind: "window", windowId };
   }
   async checkInputReady(windowId: string): Promise<void> {
     const { pid, window_id, window } = await this.target(windowId);
     if (this.hostPlatform === "linux") {
-      // The Linux artifact has no native readiness gate. A fresh exact-window
-      // observation can clear a stale target pause, but does not certify input
-      // delivery: host admission still refuses unsupported background routes.
       if (!window.visible)
         throw new CuaActionError(
           "The Linux target is not visible in the current desktop session.",
@@ -1025,15 +892,7 @@ export class CuaComputerBackend implements ComputerBackend {
       );
     }
   }
-  /**
-   * The driver's AX-observer settle: `wait_for_settle` is a read-only tool —
-   * no input admission, no mutation lease — so this call runs through the
-   * ordinary read path. The native observer scopes to the exact window's AX
-   * subtree, debounces `quietMs` of silence, and reports `settled` plus the
-   * observed event count at `timeoutMs`. An older or refusing driver fails
-   * through `call`'s normal error path and the caller falls back to the fixed
-   * settle rather than retrying an uncertain wait.
-   */
+
   async waitForSettle(options: {
     readonly windowId: string;
     readonly timeoutMs: number;
@@ -1101,16 +960,15 @@ export class CuaComputerBackend implements ComputerBackend {
         "not-dispatched",
         "capture_unavailable",
       );
-    // The PNG header contains the dimensions; do not decode the full image
-    // until its bytes are needed by the preview transport.
+
     const dimensions = pngDimensions(Buffer.from(image.data.slice(0, 32), "base64"));
     const region = data.window_bounds ? rect(data.window_bounds) : fallback;
     if (!dimensions || !region) throw new Error("Cua screenshot is missing its coordinate frame.");
     const scale = dimensions.width / region.width;
     if (Math.abs(dimensions.height / region.height - scale) > 0.01)
       throw new Error("Cua screenshot dimensions disagree with its geometry.");
-    // Linux has no TCC grant that proves capture recovered. A validated frame
-    // does; a mere connection to the compositor must not clear a prior failure.
+    // Linux has no TCC grant that proves capture recovered. A validated frame does; a mere connection
+    // to the compositor must not clear a prior failure.
     if ((this.hostPlatform ?? process.platform) === "linux" && this.captureFailed) {
       this.captureFailed = false;
       this.setHealth({
@@ -1130,32 +988,21 @@ export class CuaComputerBackend implements ComputerBackend {
       capturedAt: new Date().toISOString(),
     };
   }
-  /**
-   * Registers a dispatching task as preview-live. Both entry points that
-   * attribute work to a task — `host()` for desktop calls, `browserCall` for
-   * the CDP surface — share it, so an endTask from either path reaches the
-   * host and the eviction bound holds across both.
-   */
+
   private trackPreviewTask(task: CuaComputerTask): void {
     const currentKey = cuaComputerTaskKey(task);
-    // Refresh recency: Map.set alone does not reorder, so a task that
-    // keeps dispatching would otherwise age out while live. Delete first.
+    // Refresh recency: Map.set alone does not reorder, so a task that keeps dispatching would otherwise
+    // age out while live. Delete first.
     if (this.previewTasks.has(currentKey)) this.previewTasks.delete(currentKey);
     this.previewTasks.set(currentKey, task);
-    // Evict oldest first, but never the task dispatching right now:
-    // evicting it would break the taskKey lock the preview helper relies on
-    // and silently drop its later endTask (preview leak).
+
     while (this.previewTasks.size > 256) {
       const oldest = [...this.previewTasks.keys()].find((key) => key !== currentKey);
       if (oldest === undefined) break;
       this.previewTasks.delete(oldest);
     }
   }
-  /**
-   * The model's whole-desktop observation, returned by an unscoped
-   * `get_state`. This is a model picture, never a pane frame: the preview
-   * stills are window/tab captures only.
-   */
+
   private async captureOverview(allowModelObservation = true): Promise<ComputerScreenshot> {
     try {
       const result = await this.call("get_desktop_state", {}, false, allowModelObservation);
@@ -1166,8 +1013,7 @@ export class CuaComputerBackend implements ComputerBackend {
         width: number(data.screen_width),
         height: number(data.screen_height),
       });
-      // No capture-failure reset here: only an observed Screen Recording grant
-      // (in refresh()) proves capture is back, so only it clears the flag.
+
       this.setHealth({
         ...this.currentHealth,
         status: "connected",
@@ -1201,9 +1047,8 @@ export class CuaComputerBackend implements ComputerBackend {
       this.observedGeometry.set(window.id, image.region!);
       return image;
     } catch (error) {
-      // Targeting failures above never reach here; anything failing past the
-      // target produced no usable pixels, so health flips while the throw —
-      // and any input verdict — stands exactly as before.
+      // Targeting failures above never reach here; anything failing past the target produced no usable
+      // pixels, so health flips while the throw — and any input verdict — stands exactly as before.
       if (!(error instanceof CuaActionError) || error.code !== "off_space_capture_unverified")
         this.markCaptureFailed(error);
       throw error;
@@ -1220,8 +1065,8 @@ export class CuaComputerBackend implements ComputerBackend {
     windowId?: string;
     reuseRecentTree?: boolean;
   }): Promise<ComputerState> {
-    // Focus metadata is optional observation work, never part of each input's
-    // cheap WindowServer identity/geometry revalidation.
+    // Focus metadata is optional observation work, never part of each input's cheap WindowServer
+    // identity/geometry revalidation.
     await this.refresh(
       false,
       options.reuseRecentTree !== true && isModelDesktopObservationActive(),
@@ -1243,8 +1088,7 @@ export class CuaComputerBackend implements ComputerBackend {
           unavailableWindowIds: this.windows.map((w) => w.id),
         },
       };
-    // refresh() already enumerated the windows. Native observation also
-    // verifies PID/window ownership, so a second desktop enumeration buys nothing.
+
     const { pid, window_id, window } = await this.target(options.windowId, false);
     state = { ...state, windows: [window] };
     if (!options.includeTree && !options.includeScreenshot) return state;
@@ -1257,11 +1101,10 @@ export class CuaComputerBackend implements ComputerBackend {
           accessibility: { status: "partial", unavailableWindowIds: [] },
         };
     }
-    // A read that did not ask for pixels skips capture, encode, and image
-    // delivery — but only because the flag travels on the wire: the driver
-    // treats an ABSENT include_screenshot as true, so explicit false is the
-    // pinned no-capture contract. (The retired AX_ONLY flag omitted the
-    // field to "pin" the same contract and got a full-size frame instead.)
+    // A read that did not ask for pixels skips capture, encode, and image delivery — but only because
+    // the flag travels on the wire: the driver treats an ABSENT include_screenshot as true, so explicit
+    // false is the pinned no-capture contract. (The retired AX_ONLY flag omitted the field to "pin" the
+    // same contract and got a full-size frame instead.)
     const wantsPixels = options.includeScreenshot === true;
     let result: CuaToolResult;
     try {
@@ -1276,10 +1119,9 @@ export class CuaComputerBackend implements ComputerBackend {
       });
       this.assertObservedWindow(result, pid, window_id);
     } catch (error) {
-      // Past the target, a read that asked for pixels produced no frame, so
-      // capture health flips. A tree-only failure never touched capture — a
-      // timed-out AX walk on a heavy app must not mark it unavailable — while
-      // the throw itself stands exactly as before.
+      // Past the target, a read that asked for pixels produced no frame, so capture health flips. A
+      // tree-only failure never touched capture — a timed-out AX walk on a heavy app must not mark it
+      // unavailable — while the throw itself stands exactly as before.
       if (wantsPixels) this.markCaptureFailed(error);
       throw error;
     }
@@ -1347,12 +1189,9 @@ export class CuaComputerBackend implements ComputerBackend {
       ...(image && "previewNote" in image ? { previewNote: image.previewNote } : {}),
     };
   }
-  /**
-   * The window's preview image, or a note when only the preview failed. A
-   * preview-only failure must not fail the observation: the tree above still
-   * stands and input is unaffected — reselecting (observing) the window
-   * resumes previews.
-   */
+  // The window's preview image, or a note when only the preview failed. A preview-only failure must
+  // not fail the observation: the tree above still stands and input is unaffected — reselecting
+  // (observing) the window resumes previews.
   private previewImage(
     result: CuaToolResult,
     windowId: string,
@@ -1385,23 +1224,20 @@ export class CuaComputerBackend implements ComputerBackend {
     preparedBounds?: ComputerRect,
   ): Promise<ComputerBackendActionResult> {
     const { pid, window_id, window, baseline } = await this.target(windowId);
-    // `select_text` shares the lane with semantic text writes on the same
-    // window for a harder reason than convenience: the native semantic lease
-    // is per (pid, window) and refuses a second concurrent lease, so a
-    // lane-unaware selection would race — or refuse against — a type_text
-    // write aimed at the same element. It is also a pure AX attribute write,
-    // so it carries no visibility requirement either.
+    // `select_text` shares the lane with semantic text writes on the same window for a harder reason
+    // than convenience: the native semantic lease is per (pid, window) and refuses a second concurrent
+    // lease, so a lane-unaware selection would race — or refuse against — a type_text write aimed at
+    // the same element. It is also a pure AX attribute write, so it carries no visibility requirement
+    // either.
     const semanticLaneWrite =
       name === "select_text" ||
-      // `set_value` is the same class of exact semantic mutation the lane
-      // exists for: the driver admits it under StableMembership on the same
-      // per-(pid, window) lease a concurrent type_text/select_text write
-      // would race (same-target → native_input_busy), and an element-token
-      // write carries no pointer's visibility requirement — the driver
-      // explicitly permits it on minimized, hidden and off-Space windows.
-      // Server-side every set_value dispatch is element-addressed (setValue
-      // refuses without a token), so the lane condition mirrors the driver's
-      // own uses_stable_space_membership check.
+      // `set_value` is the same class of exact semantic mutation the lane exists for: the driver admits
+      // it under StableMembership on the same per-(pid, window) lease a concurrent type_text/select_text
+      // write would race (same-target → native_input_busy), and an element-token write carries no
+      // pointer's visibility requirement — the driver explicitly permits it on minimized, hidden and
+      // off-Space windows. Server-side every set_value dispatch is element-addressed (setValue refuses
+      // without a token), so the lane condition mirrors the driver's own uses_stable_space_membership
+      // check.
       (name === "set_value" &&
         (args.element_token !== undefined || args.element_index !== undefined)) ||
       (name === "type_text" &&
@@ -1422,8 +1258,7 @@ export class CuaComputerBackend implements ComputerBackend {
         ),
       );
     }
-    // A retained AX action may operate off-Space. Any native pixel fallback
-    // still has to pass WindowPointer admission, which refuses that surface.
+
     const exactSemanticAction =
       this.exactTargetBackgroundInput &&
       name === "click" &&
@@ -1439,17 +1274,8 @@ export class CuaComputerBackend implements ComputerBackend {
     });
   }
 
-  /**
-   * Serialize background semantic text writes that share one exact window.
-   * The native semantic lease is per (pid, window): a second concurrent lease
-   * on the same window is refused outright, and a web element's
-   * compose-set_value-reread sequence must not interleave with a sibling
-   * write on the same element. Keying the lane on the window — not the pid —
-   * lets distinct windows of one app type truly concurrently while the exact
-   * target keeps ordering. Tails only resolve, the map prunes on settle, and
-   * the hold timeout fails the caller honestly while the lane drains in order
-   * behind it.
-   */
+  // Serialize semantic writes per exact window: native leases and compose/write/read sequences cannot
+  // interleave on one target.
   private async semanticTextInLane(
     pid: number,
     window_id: number,
@@ -1464,7 +1290,6 @@ export class CuaComputerBackend implements ComputerBackend {
     let dispatched = false;
     let abandoned = false;
     const assertAdmission = () => {
-      // An overdue timer may lose a turn to the read's completion microtask.
       if (abandoned || Date.now() >= deadline)
         throw new CuaActionError(
           "Semantic text admission expired; nothing was sent.",
@@ -1473,8 +1298,6 @@ export class CuaComputerBackend implements ComputerBackend {
       signal?.throwIfAborted();
     };
     const writeResult = predecessor.then(async () => {
-      // Check both queue admission and the actual mutation boundary: a web
-      // field read can outlive the caller before it has sent any input.
       assertAdmission();
       const laneWaitMs = Date.now() - laneWaitStarted;
       const deliveryStarted = Date.now();
@@ -1497,8 +1320,8 @@ export class CuaComputerBackend implements ComputerBackend {
         await new Promise((resolve) => setTimeout(resolve, this.semanticTextLaneGapMs));
       if (this.semanticTextLanes.get(key) === drained) this.semanticTextLanes.delete(key);
     };
-    // Keep the lane tied to the actual write, never to the caller's shorter
-    // wait. Both late success and late failure release it only after the gap.
+    // Keep the lane tied to the actual write, never to the caller's shorter wait. Both late success and
+    // late failure release it only after the gap.
     const drained = writeResult.then(releaseLane, releaseLane);
     this.semanticTextLanes.set(key, drained);
 
@@ -1550,9 +1373,6 @@ export class CuaComputerBackend implements ComputerBackend {
     const deliveryMode = desktopDeliveryMode();
     let nativeArgs = args;
     if (linux) {
-      // The unpatched Linux token actuators are not the macOS semantic
-      // contract: several rewalk the PID tree by ordinal and can GrabFocus.
-      // Do not turn a requested exact write into generic focused typing.
       if (
         name === "set_value" ||
         name === "select_text" ||
@@ -1580,9 +1400,9 @@ export class CuaComputerBackend implements ComputerBackend {
           "unsupported_linux_operation",
         );
       nativeArgs = { ...args };
-      // These keys select/validate Glade's patched macOS routes and are
-      // rejected by Linux's strict native schemas. The visible-use gate above
-      // runs first so removing them cannot relax a background-only promise.
+      // These keys select/validate Glade's patched macOS routes and are rejected by Linux's strict native
+      // schemas. The visible-use gate above runs first so removing them cannot relax a background-only
+      // promise.
       delete nativeArgs.force_synthetic;
       delete nativeArgs.coordinate_space;
       delete nativeArgs.expected_window_bounds;
@@ -1630,10 +1450,7 @@ export class CuaComputerBackend implements ComputerBackend {
         "not-dispatched",
         "stale_geometry",
       );
-    // Fence the dispatch against the generation the target was resolved in.
-    // The span above is synchronous today, so the operative guard for a
-    // generation that moves mid-flight lives in host(); this refuses before
-    // dispatch whenever resolution and injection ever straddle an await.
+
     if (baseline !== undefined && this.desktopEpoch !== undefined && this.desktopEpoch !== baseline)
       throw new CuaActionError(
         "The desktop changed after this target was resolved. Observe again before continuing.",
@@ -1642,9 +1459,6 @@ export class CuaComputerBackend implements ComputerBackend {
       );
     let pixel: Record<string, unknown> = {};
     if (point) {
-      // Model image pixels have already been mapped to desktop logical points.
-      // Native revision 3 validates the exact current target and converts these
-      // local logical points without capturing another PNG to infer scale.
       const x = point.x - bounds.x,
         y = point.y - bounds.y;
       if (
@@ -1667,8 +1481,7 @@ export class CuaComputerBackend implements ComputerBackend {
         {
           pid,
           window_id,
-          // Always-background semantic AX writes take no delivery_mode —
-          // there is no foreground/background split for an attribute write.
+
           ...(name !== "set_value" && name !== "select_text"
             ? { delivery_mode: deliveryMode }
             : {}),
@@ -1681,10 +1494,6 @@ export class CuaComputerBackend implements ComputerBackend {
         true,
       );
     } catch (error) {
-      // A revoke, abort, or uncertain delivery can follow partial input, so the
-      // grounding the next input would check against cannot survive it. Clean
-      // refusals (nothing dispatched) keep it, so a pause recovery does not pay
-      // for a recapture it does not need.
       if (
         desktopOperationSignal()?.aborted ||
         (error instanceof CuaActionError && error.effect === "dispatched-unknown")
@@ -1692,12 +1501,10 @@ export class CuaComputerBackend implements ComputerBackend {
         this.observedGeometry.clear();
       throw error;
     } finally {
-      // An error can follow partial input, so any earlier observation is stale.
       this.snapshotAt = 0;
     }
     const data = result.structuredContent ?? {};
-    // Cua 0.24 publishes ActionResult, replacing internal `path` with `route`
-    // and delivery metadata. Confirmed effects require its public evidence.
+
     const confirmed =
       data.effect === "confirmed" &&
       Array.isArray(data.evidence) &&
@@ -1705,7 +1512,7 @@ export class CuaComputerBackend implements ComputerBackend {
         ["value_readback", "window_change"].includes(text(record(item).kind)),
       );
     const mode = text(record(data.delivery).mode, 32) || "unknown";
-    // Most tools report `route`; a few (scroll among them) still report `path`.
+
     const route = text(data.route, 64) || text(data.path, 64);
     return {
       windowId: window.id,
@@ -1723,9 +1530,9 @@ export class CuaComputerBackend implements ComputerBackend {
     return this.input(
       "click",
       {
-        // Revision 34 checks advertised AXPress and suppresses activation on
-        // hit-test clicks. Older/unknown drivers retain the previous route.
-        // A modified click stays physical because AXPress would lose its keys.
+        // Revision 34 checks advertised AXPress and suppresses activation on hit-test clicks. Older/unknown
+        // drivers retain the previous route. A modified click stays physical because AXPress would lose its
+        // keys.
         ...((this.driverNativeRevision ?? 0) < 34 || modifiers?.length
           ? { force_synthetic: true }
           : {}),
@@ -1787,15 +1594,6 @@ export class CuaComputerBackend implements ComputerBackend {
     durationMs: number,
     windowId?: string,
   ): Promise<ComputerBackendActionResult> {
-    // Both scopes are admitted: a drag is exact-target by construction —
-    // `target()` below requires a live `cua:<pid>:<window_id>` and `local()`
-    // refuses any endpoint outside its bounds. In background mode the native
-    // driver applies its own WindowPointer admission (fresh window ownership,
-    // not-minimized/hidden, current-Space) before posting the window-local
-    // CGEvent gesture, and reports `unverifiable` for surfaces that drop the
-    // events, so the caller still verifies the drop from a fresh screenshot.
-    // A driver build that predates background drag support refuses with
-    // `background_unavailable`; foreground stays the explicit fallback.
     if (durationMs > 10_000)
       throw new CuaActionError(
         "Cua drag duration is limited to 10 seconds.",
@@ -1842,19 +1640,8 @@ export class CuaComputerBackend implements ComputerBackend {
       bounds,
     );
   }
-  /**
-   * A scroll is one wheel gesture at the target point. Two axes and held
-   * modifiers ride the same gesture: native rev 16 takes signed per-axis
-   * ticks plus a modifier list and posts them as one pixel-unit wheel stream,
-   * so a diagonal or ctrl-scroll no longer splits into two dispatches.
-   *
-   * When the target carries an element token and the request is an unmodified
-   * vertical scroll, the driver can try its quietest route first — AppKit
-   * scroll-bar AX presses, which never touch the pointer at all — before
-   * falling back to the wheel. Signed-tick mode deliberately skips that path:
-   * the deltas describe a wheel gesture, and mixing AX travel into wheel
-   * gearing would teach the calibration loop a ratio that is neither.
-   */
+  // Signed wheel ticks must bypass AX scrolling; mixing wheel and AX travel would corrupt learned
+  // calibration.
   async scroll(
     p: ComputerPoint | null,
     dx: number,
@@ -1873,9 +1660,9 @@ export class CuaComputerBackend implements ComputerBackend {
         verified: "unverifiable" as const,
         effect: "not-dispatched" as const,
       };
-    // Pinned macOS source defines one targeted line-notch as 120 wheel pixels.
-    // Expose the quantization per axis; never multiply a requested pixel into
-    // a notch. A nonzero axis still delivers at least one notch.
+    // Pinned macOS source defines one targeted line-notch as 120 wheel pixels. Expose the quantization
+    // per axis; never multiply a requested pixel into a notch. A nonzero axis still delivers at least
+    // one notch.
     const ticksX = dx ? Math.max(1, Math.round(Math.abs(dx) / 120)) : 0;
     const ticksY = dy ? Math.max(1, Math.round(Math.abs(dy) / 120)) : 0;
     if (ticksX > 50 || ticksY > 50)
@@ -1885,8 +1672,7 @@ export class CuaComputerBackend implements ComputerBackend {
         "unsupported_operation",
       );
     const mods = modifiers?.length ? modifiers.map(cuaKey) : undefined;
-    // CGEvent wheel ticks use negative values for down/right, opposite to
-    // the public pixel deltas. Linux receives named directions below.
+
     const wheelSign = (this.hostPlatform ?? process.platform) === "darwin" ? -1 : 1;
     const token = target ? this.elementTokens.get(target.node) : undefined;
     if (target && observedComputerTargetNode(target.target) && (!token || dx || mods))
@@ -1897,18 +1683,13 @@ export class CuaComputerBackend implements ComputerBackend {
       );
     const args: Record<string, unknown> =
       token !== undefined && !dx && mods === undefined
-        ? // AX-first: the driver resolves the token, tries scroll-bar presses,
-          // then falls back to a wheel at the element's centre.
-          {
+        ? {
             direction: dy > 0 ? "down" : "up",
             amount: ticksY,
             by: "line",
             element_token: token,
           }
         : {
-            // Wheel gesture: `direction` stays the schema-required dominant
-            // axis while the signed ticks carry the real per-axis amounts —
-            // including a two-axis diagonal in one dispatch.
             direction: ticksY ? (dy > 0 ? "down" : "up") : dx > 0 ? "right" : "left",
             delta_x: ticksX ? wheelSign * Math.sign(dx) * ticksX : 0,
             delta_y: ticksY ? wheelSign * Math.sign(dy) * ticksY : 0,
@@ -1939,8 +1720,7 @@ export class CuaComputerBackend implements ComputerBackend {
             "not-dispatched",
             "unsupported_operation",
           );
-        // Snapshot reads rotate native tokens. Compose and verify on the
-        // original retained element inside the driver's semantic lease.
+
         return this.input(
           "set_value",
           { element_token: token, value, append: true },
@@ -1949,15 +1729,9 @@ export class CuaComputerBackend implements ComputerBackend {
       }
       return this.webContentTypeText(target!.node, value);
     }
-    // Without an exact element the macOS driver inserts the whole string in one
-    // AXSelectedText write into the field the target window has focused, reads
-    // it back, and only then falls back to native key events. Forcing key
-    // events skipped that instant route and typed every sentence character by
-    // character. The driver's 30ms default gap is also overridden: exact
-    // semantic insertion is one acknowledged, cancellable write per character,
-    // so its pause is pure delay, while the key-event fallback keeps a short
-    // gap so apps do not drop characters. Other platforms run the strict
-    // upstream schema and keep their key-event route.
+    // The driver's 30ms default gap is also overridden: exact semantic insertion is one acknowledged,
+    // cancellable write per character, so its pause is pure delay, while the key-event fallback keeps a
+    // short gap so apps do not drop characters.
     const macos = (this.hostPlatform ?? process.platform) === "darwin";
     return this.input(
       "type_text",
@@ -1967,20 +1741,16 @@ export class CuaComputerBackend implements ComputerBackend {
           ? { element_token: token, semantic_only: true, ...(macos ? { delay_ms: 0 } : {}) }
           : macos && desktopDeliveryMode() !== "foreground"
             ? { delay_ms: 10 }
-            : // Approved foreground delivery is visible typing by request.
-              { force_synthetic: true }),
+            : { force_synthetic: true }),
       },
       target?.node.windowId ?? w,
     );
   }
-  /**
-   * Type into a Chromium-family web element. `AXSelectedText` writes dispatch
-   * successfully yet never reach the DOM (verified: Electron 43, inactive and
-   * frontmost alike), so the write composes `existing + text` through an
-   * `AXValue` set — which lands, fires `input`, and leaves the operator's front
-   * process untouched — then confirms the DOM value on a fresh read instead of
-   * trusting the dispatch reply.
-   */
+  // Type into a Chromium-family web element. `AXSelectedText` writes dispatch successfully yet never
+  // reach the DOM (verified: Electron 43, inactive and frontmost alike), so the write composes
+  // `existing + text` through an `AXValue` set — which lands, fires `input`, and leaves the
+  // operator's front process untouched — then confirms the DOM value on a fresh read instead of
+  // trusting the dispatch reply.
   private async webContentTypeText(
     node: ComputerUiNode,
     value: string,
@@ -2000,12 +1770,7 @@ export class CuaComputerBackend implements ComputerBackend {
       return await this.webSetValue(node, windowId, before, composed, admitMutation);
     });
   }
-  /**
-   * Write an `AXValue` into a web element and confirm it on a fresh read. The
-   * driver's own read-back runs before Chromium publishes the new value and so
-   * reports `unverifiable` on writes that landed; verification here re-resolves
-   * the element and compares its DOM-visible value.
-   */
+
   private async webSetValue(
     node: ComputerUiNode,
     windowId: string,
@@ -2028,13 +1793,8 @@ export class CuaComputerBackend implements ComputerBackend {
     if (after?.value === value) return { ...result, verified: "confirmed", effect: "verified" };
     return { ...result, verified: "unconfirmed", effect: "dispatched-unknown" };
   }
-  /**
-   * Re-observe one window and return the record for the same web element.
-   * Tokens are snapshot-scoped, so identity matches on role + label + frame,
-   * the stable tuple an unchanged element keeps across driver snapshots.
-   * Retained provider refs bypass this compatibility route and dispatch on
-   * their original token without another snapshot.
-   */
+  // Tokens are snapshot-scoped, so identity matches on role + label + frame, the stable tuple an
+  // unchanged element keeps across driver snapshots.
   private async resolveWebField(
     windowId: string,
     node: ComputerUiNode,
@@ -2122,9 +1882,9 @@ export class CuaComputerBackend implements ComputerBackend {
     if (observedComputerTargetNode(target.target))
       return this.input("set_value", { element_token: token, value }, target.node.windowId);
     if (this.webContentElements.has(target.node)) {
-      // The web path composes read → set_value → re-read on the same native
-      // semantic lease, so the whole compose takes the lane — the same shape
-      // webContentTypeText uses — instead of racing a same-window sibling.
+      // The web path composes read → set_value → re-read on the same native semantic lease, so the whole
+      // compose takes the lane — the same shape webContentTypeText uses — instead of racing a same-window
+      // sibling.
       const windowId = target.node.windowId;
       const { pid, window_id } = await this.target(windowId);
       return this.semanticTextInLane(pid, window_id, async (admitMutation) => {
@@ -2159,11 +1919,7 @@ export class CuaComputerBackend implements ComputerBackend {
         "not-dispatched",
         "stale_target",
       );
-    // Past AXPress the driver would submit an action the element never
-    // advertised and report the outcome as merely suspected_noop; refuse
-    // instead so an unsupported action is a clean non-dispatch. AXPress
-    // itself keeps its long-standing dispatch — the driver degrades it to a
-    // verified AXSelected write on collection items that never advertised it.
+
     if (
       spec.axAction !== "AXPress" &&
       this.elementActions.get(target.node)?.has(spec.axAction) !== true
@@ -2179,13 +1935,7 @@ export class CuaComputerBackend implements ComputerBackend {
       target.node.windowId,
     );
   }
-  /**
-   * Exact-range selection through `AXSelectedTextRange`: the native tool
-   * writes a CFRange on the fresh element token and verifies by reading the
-   * attribute back. Web content is deliberately not special-cased — the
-   * driver refuses a marker-range-only target pre-dispatch rather than
-   * approximating it with gestures, and Glade never composes a workaround.
-   */
+
   async selectText(target: ComputerResolvedTarget, range: ComputerTextRange) {
     const token = this.elementTokens.get(target.node);
     if (!token || !target.node.windowId)
@@ -2217,8 +1967,6 @@ export class CuaComputerBackend implements ComputerBackend {
     args?: readonly string[],
     options?: { readonly hidden?: boolean },
   ): Promise<ComputerLaunchAppResult> {
-    // A standalone endpoint can run on a different OS than the server.
-    // Learn that OS before choosing a launch schema or dispatching input.
     if (this.hostPlatform === undefined) await this.host({ method: "probe" });
     const linux = (this.hostPlatform ?? process.platform) === "linux";
     if (linux && options?.hidden !== false)
@@ -2234,8 +1982,7 @@ export class CuaComputerBackend implements ComputerBackend {
         "not-dispatched",
         "unsupported_operation",
       );
-    // Upstream splits launch_path on whitespace. Passing a path containing
-    // spaces could execute a different prefix, so use an installed app ID.
+
     if (linux && app.startsWith("/") && /\s/.test(app))
       throw new CuaActionError(
         "This Linux driver cannot launch an executable path containing whitespace. " +
@@ -2254,8 +2001,7 @@ export class CuaComputerBackend implements ComputerBackend {
             ? { bundle_id: app }
             : { name: app }),
         ...(args?.length ? { additional_arguments: args } : {}),
-        // hidden is a Glade macOS extension, absent from upstream Linux's
-        // strict schema. Linux visible consent is checked by the tool layer.
+
         ...(!linux && options?.hidden === true ? { hidden: true } : {}),
       },
       true,
@@ -2295,15 +2041,14 @@ export class CuaComputerBackend implements ComputerBackend {
     const apps: ComputerApp[] = [];
     for (const value of rows) {
       const row = record(value);
-      // pid is 0 for installed-but-not-running apps — those rows are the
-      // "is X installed?" half of the tool and must not be dropped.
+      // pid is 0 for installed-but-not-running apps — those rows are the "is X installed?" half of the
+      // tool and must not be dropped.
       const pid = number(row.pid);
       const name = text(row.name, 512) || text(row.app_name, 512);
       if (!Number.isSafeInteger(pid) || pid < 0 || !name) continue;
       const bundleId = text(row.bundle_id, 512);
-      // The driver's signature read, when it has one: durable consent grants
-      // pin to bundle id + team id, so a missing team id only ever narrows
-      // what a grant can match — it never invents an identity.
+      // The driver's signature read, when it has one: durable consent grants pin to bundle id + team id,
+      // so a missing team id only ever narrows what a grant can match — it never invents an identity.
       const teamId = text(row.team_id, 128) || text(row.signing_team_id, 128);
       const launchPath = text(row.launch_path, 4_096);
       const lastUsed = text(row.last_used, 64);
@@ -2345,11 +2090,10 @@ export class CuaComputerBackend implements ComputerBackend {
       true,
     );
     const data = result.structuredContent ?? {};
-    // The driver's own `effect: confirmed` + value_readback is not the
-    // verification. A mutation was already dispatched, so the only honest
-    // confirmation is a fresh list_windows read showing the exact frame on
-    // the exact window; a readback that cannot be taken or disagrees leaves
-    // the outcome unknown — never a silent success.
+    // The driver's own `effect: confirmed` + value_readback is not the verification. A mutation was
+    // already dispatched, so the only honest confirmation is a fresh list_windows read showing the
+    // exact frame on the exact window; a readback that cannot be taken or disagrees leaves the outcome
+    // unknown — never a silent success.
     let observed: ComputerRect | undefined;
     try {
       observed = (await this.readWindows()).find((candidate) => candidate.id === window.id)?.bounds;
@@ -2357,9 +2101,7 @@ export class CuaComputerBackend implements ComputerBackend {
       observed = undefined;
     }
     const confirmed = observed !== undefined && sameRect(observed, frame);
-    // Ground the next input on what the read-back actually saw, not on the
-    // requested frame: when the move did not land, `observed` is still the
-    // true geometry; when the read-back itself failed, nothing may stay.
+
     if (observed !== undefined) this.observedGeometry.set(window.id, observed);
     else this.observedGeometry.delete(window.id);
     this.snapshotAt = 0;
@@ -2374,17 +2116,15 @@ export class CuaComputerBackend implements ComputerBackend {
     target: ComputerMenuBackendTarget,
     path: readonly string[],
   ): Promise<ComputerBackendActionResult> {
-    // Fail closed rather than truncate: a sliced path can resolve to a
-    // different menu item than the caller named, which is worse than a refusal.
     if (path.length === 0 || path.length > 6 || path.some((segment) => segment.trim().length === 0))
       throw new CuaActionError(
         "A menu path needs one to six non-empty titles.",
         "not-dispatched",
         "invalid_arguments",
       );
-    // Two routes, one potentially activating driver tool. The manager gates
-    // both on visible-use authorization. The windowless form names only the
-    // application's AXMenuBar, so its result must not fabricate a window id.
+    // Two routes, one potentially activating driver tool. The manager gates both on visible-use
+    // authorization. The windowless form names only the application's AXMenuBar, so its result must not
+    // fabricate a window id.
     let result: CuaToolResult;
     let windowId: string | undefined;
     if ("windowId" in target) {
@@ -2406,8 +2146,7 @@ export class CuaComputerBackend implements ComputerBackend {
     }
     const data = result.structuredContent ?? {};
     const confirmed = data.effect === "confirmed";
-    // A menu command can open or close windows (a Save dialog, a Quit), so any
-    // earlier observation of the desktop no longer describes it.
+
     this.snapshotAt = 0;
     return {
       ...(windowId !== undefined ? { windowId } : {}),
@@ -2424,8 +2163,8 @@ export class CuaComputerBackend implements ComputerBackend {
     windowId: string,
     minimized: boolean,
   ): Promise<ComputerBackendActionResult> {
-    // Fail closed rather than coerce: a non-boolean flag cannot be honored
-    // exactly, and guessing a direction hides the caller's mistake.
+    // Fail closed rather than coerce: a non-boolean flag cannot be honored exactly, and guessing a
+    // direction hides the caller's mistake.
     if (typeof minimized !== "boolean")
       throw new CuaActionError(
         "set_window_minimized needs a boolean minimized flag.",
@@ -2436,8 +2175,7 @@ export class CuaComputerBackend implements ComputerBackend {
     const result = await this.call("set_window_minimized", { pid, window_id, minimized }, true);
     const data = result.structuredContent ?? {};
     const confirmed = confirmedValueReadback(data);
-    // A minimize or restore changes what is on screen; retained geometry no
-    // longer describes it.
+
     this.snapshotAt = 0;
     return {
       windowId: window.id,
@@ -2475,8 +2213,6 @@ export class CuaComputerBackend implements ComputerBackend {
     windowId: string,
     expect: readonly Record<string, unknown>[],
   ): Promise<ComputerVerifyStateResult> {
-    // Fail closed rather than truncate: a sliced predicate set can answer a
-    // different question than the caller asked, which is worse than a refusal.
     if (
       expect.length === 0 ||
       expect.length > 8 ||
@@ -2494,8 +2230,8 @@ export class CuaComputerBackend implements ComputerBackend {
       expect: [...expect],
     });
     const data = result.structuredContent ?? {};
-    // `unknown` is a verdict, not a failure shape: the driver could not prove
-    // the predicate either way, which must never collapse into `unsatisfied`.
+    // `unknown` is a verdict, not a failure shape: the driver could not prove the predicate either way,
+    // which must never collapse into `unsatisfied`.
     const status =
       data.status === "satisfied" || data.status === "unsatisfied" || data.status === "unknown"
         ? data.status
@@ -2515,20 +2251,14 @@ export class CuaComputerBackend implements ComputerBackend {
         "not-dispatched",
         "invalid_arguments",
       );
-    // kill_app is not an action-result tool: success is a bare "sent SIGKILL"
-    // text reply, so the only honest confirmation is an independent check that
-    // the process is actually gone afterwards.
+
     await this.call("kill_app", { pid }, true);
-    // The window set is stale the moment the signal lands: drop every retained
-    // geometry for the dead pid before the read-back, so nothing grounds a
-    // later call on a window that no longer exists.
+
     this.snapshotAt = 0;
-    // Map iterators tolerate deletion mid-walk: a key already visited is gone,
-    // one still pending is simply skipped — exactly what this loop wants.
+
     for (const key of this.observedGeometry.keys())
       if (key.startsWith(`cua:${pid}:`)) this.observedGeometry.delete(key);
-    // A killed process can linger in the app list for a beat while the OS
-    // reaps it — poll briefly before admitting the kill is unconfirmed.
+
     let gone = false;
     for (let attempt = 0; attempt < 4 && !gone; attempt += 1) {
       if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 250));
@@ -2560,12 +2290,7 @@ export class CuaComputerBackend implements ComputerBackend {
         "not-dispatched",
         "invalid_geometry",
       );
-    // The driver crops in "screenshot pixels" — the pixel space of its own
-    // get_window_state capture for this exact window, which is the window's
-    // display backing factor, not necessarily the main display's. Read that
-    // scale from a fresh capture-only state call (no max_dimension, so the
-    // returned image is the driver's native-resolution space) rather than
-    // assuming the desktop scale applies.
+
     let state: CuaToolResult;
     try {
       state = await this.call("get_window_state", {
@@ -2617,9 +2342,7 @@ export class CuaComputerBackend implements ComputerBackend {
         "capture_unavailable",
       );
     const bytes = Buffer.from(image.data, "base64");
-    // Dimensions come from the JPEG's own headers; the structured fields are
-    // only a fallback for a driver that omits them, and both must be sane
-    // before the result is trusted enough to hand a model.
+
     const dimensions = jpegDimensions(bytes) ?? {
       width: Math.trunc(number(data.width) || 0),
       height: Math.trunc(number(data.height) || 0),
@@ -2645,11 +2368,6 @@ export class CuaComputerBackend implements ComputerBackend {
     readonly windows: readonly ComputerAccessibilityTreeWindow[];
     readonly truncated: boolean;
   }> {
-    // The driver's snapshot is desktop-wide and takes no arguments at all —
-    // the named tool is the fast no-grant inventory, not a per-window AX
-    // walk. `window_id` scoping is therefore a Glade-side filter to the app
-    // that owns the exact window, resolved through the same fresh target()
-    // every window read uses.
     const scopedPid = windowId === undefined ? undefined : (await this.target(windowId)).pid;
     const result = await this.call("get_accessibility_tree");
     const data = result.structuredContent ?? {};
@@ -2664,8 +2382,7 @@ export class CuaComputerBackend implements ComputerBackend {
       const row = record(value);
       const pid = number(row.pid);
       const name = text(row.name);
-      // This inventory only ever lists running apps, so a non-positive pid is
-      // a malformed row, not the not-running marker list_apps uses.
+
       if (!Number.isSafeInteger(pid) || pid <= 0 || name.length === 0) continue;
       if (scopedPid !== undefined && pid !== scopedPid) continue;
       const bundleId = text(row.bundle_id, 512);
@@ -2676,8 +2393,7 @@ export class CuaComputerBackend implements ComputerBackend {
       const row = record(value);
       const pid = number(row.pid);
       const wid = number(row.window_id);
-      // Without the driver id pair no Glade window id can be formed, so the
-      // row is unresolvable rather than merely thin.
+
       if (!Number.isSafeInteger(pid) || pid <= 0 || !Number.isSafeInteger(wid) || wid <= 0)
         continue;
       if (scopedPid !== undefined && pid !== scopedPid) continue;
@@ -2704,9 +2420,6 @@ export class CuaComputerBackend implements ComputerBackend {
   async getCursorPosition(
     windowId?: string,
   ): Promise<Omit<ComputerCursorPosition, "computerId" | "availability">> {
-    // A scoped read also answers "is the cursor inside this window": the
-    // position itself is desktop-global either way, so scoping resolves the
-    // window's current bounds rather than changing what the driver returns.
     const window = windowId === undefined ? undefined : (await this.target(windowId)).window;
     const result = await this.call("get_cursor_position");
     const data = result.structuredContent ?? {};
@@ -2735,11 +2448,7 @@ export class CuaComputerBackend implements ComputerBackend {
         : {}),
     };
   }
-  /**
-   * One pane still of whatever the task is using: the exact window, or the tab
-   * of a bound driver-owned browser. No target means no frame — the pane shows
-   * its waiting state rather than a whole-desktop picture.
-   */
+
   private async captureStill(): Promise<Uint8Array | undefined> {
     const target = this.stillTarget;
     if (!target || this.disposed) return undefined;
@@ -2747,14 +2456,7 @@ export class CuaComputerBackend implements ComputerBackend {
       ? await this.captureBrowserStill(target)
       : await this.captureWindowStill(target.windowId);
   }
-  /**
-   * The pane still of one exact window: the driver's window capture with the
-   * same validation the model's screenshot path applies, but never marked as
-   * a model observation — the pane is not the model. Failure throws into the
-   * publisher's bounded retry; a window that moved off the current Space
-   * throws through the shared validation, so unverified pixels never become a
-   * pane frame.
-   */
+
   private async captureWindowStill(windowId: string): Promise<Uint8Array> {
     const { pid, window_id } = await this.target(windowId);
     const result = await this.call(
@@ -2771,12 +2473,7 @@ export class CuaComputerBackend implements ComputerBackend {
     );
     return Buffer.from(this.screenshot(result).bytesBase64, "base64");
   }
-  /**
-   * The tab still through the driver's CDP screenshot route. The snapshot is
-   * read-only and carries the task attribution browser calls require; a
-   * refusal (an ended session, a target that no longer resolves) is "nothing
-   * to publish", not a retry-worthy failure.
-   */
+
   private async captureBrowserStill(target: {
     readonly targetId: string;
     readonly tabId: string | undefined;
@@ -2804,14 +2501,7 @@ export class CuaComputerBackend implements ComputerBackend {
     );
     return image?.data !== undefined ? Buffer.from(image.data, "base64") : undefined;
   }
-  /**
-   * Remembers the browser tab the pane should mirror. A bind result mints the
-   * target id; a snapshot call names it directly. The tab id comes from the
-   * call, or from a bind whose tabs resolve to one — an ambiguous bind leaves
-   * the still target unset until a call names the tab. The tab id is sticky:
-   * a reply carrying neither an explicit tab nor resolvable tabs keeps the
-   * prior tab for the same target instead of clearing it.
-   */
+
   private noteBrowserStillTarget(
     args: Record<string, unknown>,
     result: CuaToolResult,
@@ -2843,9 +2533,7 @@ export class CuaComputerBackend implements ComputerBackend {
           this.previewTasks.delete(key);
       }
       const still = this.stillTarget;
-      // Native window stills have no task attribution. Stop that preview
-      // until a fresh observation supplies a target, rather than reuse a
-      // cancelled task's window for a surviving subscriber.
+
       if (
         still?.kind === "window" ||
         (still?.kind === "browser" &&
@@ -2889,8 +2577,8 @@ export class CuaComputerBackend implements ComputerBackend {
     for (const [key] of matches) {
       this.previewTasks.delete(key);
     }
-    // A pane still must never revive an ended browser session: drop the target
-    // the moment its task ends.
+    // A pane still must never revive an ended browser session: drop the target the moment its task
+    // ends.
     const still = this.stillTarget;
     if (
       still?.kind === "browser" &&
@@ -2898,23 +2586,16 @@ export class CuaComputerBackend implements ComputerBackend {
       (turnId === undefined || still.task.turnId === turnId)
     )
       this.stillTarget = undefined;
-    // Task-owned grounding ends with the task: a revoked task's window pixels
-    // must not ground a later claim, so the next input re-observes first.
+    // Task-owned grounding ends with the task: a revoked task's window pixels must not ground a later
+    // claim, so the next input re-observes first.
     this.observedGeometry.clear();
   }
-  /**
-   * The masked-activation shield, answered by the GUI host itself — the
-   * driver never sees these requests. Engage deliberately bypasses
-   * {@link host}: it runs inside the activation call's serialized slot
-   * already, and its failure must refuse that call rather than be queued
-   * behind it. The request is bounded tighter than an ordinary host call —
-   * a shield that cannot confirm in five seconds is a wedged helper, and the
-   * activation it gates must refuse.
-   *
-   * `mutation: true` because a lost engage reply is dispatched-unknown: the
-   * shield may be up. The server-minted `shield_id` survives exactly that
-   * case — the caller releases by id even when the reply never arrived.
-   */
+  // The masked-activation shield, answered by the GUI host itself — the driver never sees these
+  // requests. The request is bounded tighter than an ordinary host call — a shield that cannot
+  // confirm in five seconds is a wedged helper, and the activation it gates must refuse. `mutation:
+  // true` because a lost engage reply is dispatched-unknown: the shield may be up. The server-minted
+  // `shield_id` survives exactly that case — the caller releases by id even when the reply never
+  // arrived.
   async engageShield(target: ComputerShieldTarget): Promise<string> {
     if (this.disposed || !this.endpoint)
       throw new CuaActionError(
@@ -2931,8 +2612,7 @@ export class CuaComputerBackend implements ComputerBackend {
         "invalid_target",
       );
     const task = currentComputerTask();
-    // Same attribution the `call` path records: the host's end_task reply
-    // releases shields by it, so a task ending mid-engage still cleans up.
+
     if (task) this.trackPreviewTask(task);
     try {
       const reply = await timedComputerLeg("host", () =>
@@ -2971,11 +2651,8 @@ export class CuaComputerBackend implements ComputerBackend {
       throw error;
     }
   }
-  /**
-   * Release paths ride `request` directly — never the operation signal — so
-   * they still land while their own operation is being cancelled. That is
-   * the whole point: a shield outlives nothing.
-   */
+  // Release paths ride `request` directly — never the operation signal — so they still land while
+  // their own operation is being cancelled.
   async releaseShield(shieldId: string): Promise<void> {
     if (!this.endpoint || this.disposed) return;
     const reply = await this.request<CuaReply>(
@@ -2993,7 +2670,7 @@ export class CuaComputerBackend implements ComputerBackend {
         "not-dispatched",
       );
   }
-  /** The forced-release escape hatch; safe in every host state. */
+
   async releaseAllShields(): Promise<void> {
     if (!this.endpoint || this.disposed) return;
     const reply = await this.request<CuaReply>(
@@ -3011,17 +2688,8 @@ export class CuaComputerBackend implements ComputerBackend {
         "not-dispatched",
       );
   }
-  /**
-   * The CDP browser surface. Present whenever this backend exists — the GUI
-   * host admits the driver's browser family — so the gateway can advertise
-   * `computer_browser_*` whenever the computer surface is supported.
-   *
-   * Deliberately NOT routed through `call()`: the desktop path converts
-   * `isError`/`status:"refused"` replies into thrown `CuaActionError`s, but
-   * a browser refusal IS the result the model must branch on. The host checks
-   * fresh browser observations against the exact CDP target after interruption;
-   * they do not update desktop window geometry.
-   */
+  // Present whenever this backend exists — the GUI host admits the driver's browser family — so the
+  // gateway can advertise `computer_browser_*` whenever the computer surface is supported.
   readonly browser: ComputerBrowserBackend = {
     call: (call) => this.browserCall(call),
     endThread: (threadId) => this.endBrowserThread(threadId),
@@ -3039,9 +2707,7 @@ export class CuaComputerBackend implements ComputerBackend {
       ...(call.task.turnId ? { turnId: call.task.turnId } : {}),
       ...(call.task.label ? { label: call.task.label } : {}),
     };
-    // Browser work is a live preview task too: an endTask must still reach
-    // the host (frame tap, shields), and a bind call carrying the bound
-    // window's pid/window_id is what points the frame tap at it.
+
     this.trackPreviewTask(task);
     try {
       const reply = await timedComputerLeg("host", () =>
@@ -3061,9 +2727,7 @@ export class CuaComputerBackend implements ComputerBackend {
           { signal: call.signal, mutation: call.mutation, timeoutMs: 35_000 },
         ),
       );
-      // Desktop-epoch bookkeeping stays skipped on the CDP surface, but the
-      // interruption count is host state, not reply semantics: a browser
-      // reply proving a lock ran still invalidates pre-interruption consent.
+
       this.observeDesktopInterruption(reply);
       if (!reply.ok)
         throw new CuaActionError(
@@ -3078,12 +2742,7 @@ export class CuaComputerBackend implements ComputerBackend {
       throw error;
     }
   }
-  /**
-   * Thread-scoped browser teardown. Thread removal is reversible (archive →
-   * unarchive), but the session-end hooks are the driver's authoritative
-   * cleanup — endpoints, grants, and owned browsers release now, and a
-   * revived thread's next call reopens the same label via `start_session`.
-   */
+
   private async endBrowserThread(threadId: string): Promise<void> {
     if (!this.endpoint || this.disposed) return;
     const reply = await this.request<CuaReply>(this.endpoint, {
@@ -3096,9 +2755,8 @@ export class CuaComputerBackend implements ComputerBackend {
   }
   async dispose() {
     await this.stills.detach();
-    // Teardown cannot depend on the host still answering: an unreachable
-    // endpoint means the input path it owned is already gone, so a transport
-    // failure here confirms rather than defeats the stop.
+    // Teardown cannot depend on the host still answering: an unreachable endpoint means the input path
+    // it owned is already gone, so a transport failure here confirms rather than defeats the stop.
     await this.stopInput().catch(() => undefined);
     this.disposed = true;
     this.listeners.clear();

@@ -1,8 +1,3 @@
-// FILE: threadCreatePromotion.ts
-// Purpose: Makes draft-to-server thread promotion idempotent across racing UI callers.
-// Layer: Web orchestration helper
-// Exports: promoteThreadCreate, isDuplicateThreadCreateError
-
 import type { ClientOrchestrationCommand, NativeApi, ThreadId } from "@glade/contracts";
 import { markPromotedDraftThreads } from "../composerDraftStore";
 import { readNativeApi } from "../nativeApi";
@@ -14,7 +9,6 @@ type ThreadCreateCommand = Extract<ClientOrchestrationCommand, { type: "thread.c
 
 type PromoteThreadCreateResult = "created" | "exists" | "unavailable";
 interface PromoteThreadCreateOptions {
-  // Draft-aware callers use this when React knows the route is still local.
   readonly force?: boolean;
 }
 
@@ -67,9 +61,7 @@ async function dispatchPromoteThreadCreate(
       if (await recoverPromotedThreadFromShellSnapshot(api, command.threadId)) {
         return "exists";
       }
-    } catch {
-      // Keep the original duplicate-create failure visible if recovery cannot confirm success.
-    }
+    } catch {}
     throw error;
   }
 }

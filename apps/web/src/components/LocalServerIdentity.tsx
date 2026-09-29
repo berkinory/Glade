@@ -1,8 +1,3 @@
-// FILE: LocalServerIdentity.tsx
-// Purpose: Shared name + "address · folder" identity column for a detected local dev server.
-// Layer: Web UI primitive (shared between the Environment menu and the in-app browser home).
-// Depends on: shared local-server presentation helpers.
-
 import type { ServerLocalServerProcess } from "@glade/contracts";
 import {
   localServerAddressLabel,
@@ -12,13 +7,6 @@ import {
 
 import { cn } from "~/lib/utils";
 
-/**
- * Visual context the identity column renders into. Both surfaces share an
- * identical structure — a truncating primary label above a horizontal
- * "address · folder" meta line — and differ only in typography/color tokens:
- * - "menu": the Environment panel's Local Servers popup (app font tokens, muted foreground).
- * - "browser": the in-app browser's local-servers home (larger white-on-dark cards).
- */
 export type LocalServerIdentityTone = "menu" | "browser";
 
 interface LocalServerIdentityToneTokens {
@@ -46,11 +34,6 @@ const IDENTITY_TONE: Record<LocalServerIdentityTone, LocalServerIdentityToneToke
   },
 };
 
-/**
- * Name + "address · folder" identity column for a detected local dev server.
- * The folder (cwd basename) disambiguates servers whose live page titles collide
- * — e.g. two apps both titled "Glade" started from different directories.
- */
 export function LocalServerIdentity({
   server,
   tone,

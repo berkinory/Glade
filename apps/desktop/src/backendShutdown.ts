@@ -108,11 +108,9 @@ function resolveDesktopBackendShutdownUrl(backendHttpUrl: string): URL {
   return url;
 }
 
-/**
- * Begins the desktop-only shutdown POST without placing its credential in a URL.
- * The caller owns the request lifetime and must cancel it when the child exits or
- * the overall shutdown deadline is reached.
- */
+// Begins the desktop-only shutdown POST without placing its credential in a URL. The caller owns
+// the request lifetime and must cancel it when the child exits or the overall shutdown deadline is
+// reached.
 export function startDesktopBackendShutdownRequest(input: {
   readonly backendHttpUrl: string;
   readonly shutdownToken: string;
@@ -255,9 +253,7 @@ function runPosixBackendShutdown(input: {
       }
       try {
         input.child.kill(signal);
-      } catch {
-        // Later escalation and the absolute deadline still bound shutdown.
-      }
+      } catch {}
       if (hasExited(input.child)) {
         onExit();
       }
@@ -328,11 +324,6 @@ function runPosixBackendShutdown(input: {
   });
 }
 
-/**
- * Requests scoped macOS/Linux backend shutdown, then escalates to TERM and KILL.
- * Resolves only after the OS reports child exit: a response or sent signal is not
- * proof that provider descendants were finalized before updater handoff.
- */
 export function stopPosixBackendAndWait(input: {
   readonly child: BackendShutdownProcess;
   readonly backendHttpUrl: string;
@@ -418,8 +409,8 @@ function runWindowsBackendShutdown(input: {
 
     input.child.once("exit", onExit);
 
-    // The listener is installed first so an exit racing request construction
-    // cannot be missed. Synchronous transport failures still use the same timers.
+    // The listener is installed first so an exit racing request construction cannot be missed.
+    // Synchronous transport failures still use the same timers.
     try {
       pendingRequest = input.startRequest({
         backendHttpUrl: input.backendHttpUrl,
@@ -429,9 +420,7 @@ function runWindowsBackendShutdown(input: {
         pendingRequest.cancel();
         return;
       }
-      void pendingRequest.outcome.catch(() => {
-        // A custom request implementation cannot shorten or reset the deadline.
-      });
+      void pendingRequest.outcome.catch(() => {});
     } catch {
       pendingRequest = null;
     }
@@ -449,17 +438,13 @@ function runWindowsBackendShutdown(input: {
       forced = true;
       try {
         input.forceTerminate(input.child);
-      } catch {
-        // The absolute deadline still bounds shutdown if force termination fails.
-      }
+      } catch {}
       if (hasExited(input.child)) {
         onExit();
       }
     };
 
     if (input.forceKillDelayMs === 0) {
-      // Node normalizes sub-1 ms timers to the same effective delay. Run the
-      // zero-delay fallback now so it is provably before the overall timer.
       forceIfRunning();
     } else {
       forceTimer = setTimeout(forceIfRunning, input.forceKillDelayMs);
@@ -469,8 +454,6 @@ function runWindowsBackendShutdown(input: {
     if (settled) return;
 
     deadlineTimer = setTimeout(() => {
-      // Process state wins at the boundary even if an exit event is queued for
-      // the same turn; an HTTP response alone is never treated as success.
       if (hasExited(input.child)) {
         onExit();
         return;
@@ -481,11 +464,6 @@ function runWindowsBackendShutdown(input: {
   });
 }
 
-/**
- * Requests graceful Windows backend shutdown, waits for actual child exit, and
- * performs at most one forceful fallback at the original absolute threshold.
- * Repeated calls for the same live process share one operation.
- */
 export function stopWindowsBackendAndWait(input: {
   readonly child: BackendShutdownProcess;
   readonly backendHttpUrl: string;

@@ -16,32 +16,20 @@ export interface ComputerInputMonitorState {
 
 export interface EscapeKillSwitchMonitorOptions {
   helperPath: string;
-  /**
-   * Called for every physical, unmodified Escape the armed helper observed.
-   * The callback owns all kill semantics — this class only transports the
-   * event and tracks which side of the arm gate the helper is on.
-   */
+
   onEscape: () => void;
   onPhysicalInput?: (event: PhysicalComputerInput) => void;
   onStateChange?: (state: ComputerInputMonitorState) => void;
   onError?: (message: string) => void;
-  /** Injectable for tests. */
+
   spawn?: typeof ChildProcess.spawn;
 }
 
-/**
- * Owns the dedicated `--escape-monitor` helper process for the desktop.
- *
- * The helper's listen-only event tap observes physical Escape keypresses and
- * reports them without consuming them. It only reports while armed, so this
- * class forwards `setArmed` (driven by the computer host's live driver
- * generation) as `arm`/`disarm` stdin lines. An unexpected helper exit is
- * retried with exponential backoff; the armed flag is replayed after every
- * respawn so a restarted helper resumes on the same side of the gate.
- *
- * Readiness is explicit: a missing grant, disabled tap or dead helper closes
- * native input admission until the listener is healthy again.
- */
+// The helper's listen-only event tap observes physical Escape keypresses and reports them without
+// consuming them. It only reports while armed, so this class forwards `setArmed` (driven by the
+// computer host's live driver generation) as `arm`/`disarm` stdin lines. An unexpected helper exit
+// is retried with exponential backoff; the armed flag is replayed after every respawn so a
+// restarted helper resumes on the same side of the gate.
 export class EscapeKillSwitchMonitor {
   #options: EscapeKillSwitchMonitorOptions;
   #spawn: typeof ChildProcess.spawn;
@@ -76,17 +64,12 @@ export class EscapeKillSwitchMonitor {
   }
 
   async activate(refreshGrantedAccess = false): Promise<void> {
-    // The short-lived permission helper may see a newly granted TCC entry
-    // before this process's cached preflight does. Replace only that denied
-    // listener after a fresh grant probe; an ordinary action never prompts.
     if (refreshGrantedAccess && this.#state.error === "input-monitoring-required") {
       const child = this.#child;
       this.#child = null;
       try {
         child?.kill("SIGTERM");
-      } catch {
-        /* The old listener is already unavailable. */
-      }
+      } catch {}
     }
     this.setArmed(true);
     if (this.#state.ready || this.#state.error !== "input_monitor_starting") return;
@@ -134,9 +117,7 @@ export class EscapeKillSwitchMonitor {
     this.#child = null;
     try {
       child?.kill("SIGTERM");
-    } catch {
-      // Best effort; the helper also exits itself once its parent is gone.
-    }
+    } catch {}
   }
 
   #spawnHelper(): void {
@@ -178,8 +159,6 @@ export class EscapeKillSwitchMonitor {
       if (!this.#disposed) this.#scheduleRestart();
     });
 
-    // A fresh helper starts disarmed; replay the armed side of the gate so a
-    // respawn does not silently widen the window where Escape is inert.
     if (this.#armed) this.#writeCommand("arm");
   }
 
@@ -220,8 +199,8 @@ export class EscapeKillSwitchMonitor {
     try {
       this.#child?.stdin?.write(`${command}\n`);
     } catch {
-      // The close handler owns recovery; a lost arm update is corrected on
-      // the next respawn because the armed flag is replayed.
+      // The close handler owns recovery; a lost arm update is corrected on the next respawn because the
+      // armed flag is replayed.
     }
   }
 

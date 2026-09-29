@@ -3,12 +3,9 @@ import type { ComputerEvent } from "@glade/contracts";
 const MAX_COMPUTER_THREAD_INTERESTS_PER_CONNECTION = 64;
 
 interface ConnectionInterests {
-  // A connection with more views falls back to broadcast instead of losing
-  // updates for a view that remains open. Null also releases the remembered ids.
   threads: Set<string> | null;
 }
 
-/** Interests belong to the socket, so stream retries preserve them. */
 export class ComputerEventInterests {
   private readonly connections = new Map<string, ConnectionInterests>();
 
@@ -43,7 +40,6 @@ export class ComputerEventInterests {
   }
 
   accepts(connectionKey: string | undefined, event: ComputerEvent): boolean {
-    // In-process callers without the socket registry keep the prior behavior.
     if (connectionKey === undefined) return true;
     const interests = this.connections.get(connectionKey);
     if (!interests) return false;

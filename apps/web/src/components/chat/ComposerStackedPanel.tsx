@@ -1,8 +1,3 @@
-// FILE: ComposerStackedPanel.tsx
-// Purpose: Shared chrome for panels stacked above the composer input.
-// Layer: Chat composer layout primitive
-// Exports: ComposerStackedPanel and divider token for inner stacked-panel rows.
-
 import { type HTMLAttributes, type ReactNode, type Ref } from "react";
 
 import { cn } from "~/lib/utils";
@@ -14,15 +9,14 @@ export { COMPOSER_STACKED_PANEL_DIVIDER_CLASS_NAME } from "./composerStackedPane
 interface ComposerStackedPanelProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
   ref?: Ref<HTMLDivElement>;
-  /** Removes the top radius so this panel visually merges into the one above it. */
+
   attachedToPrevious?: boolean;
-  /** Lets clicks pass through the side margins to the transcript underneath. */
+
   passthroughSideMargins?: boolean;
-  /** Drops the hairline outline, keeping only the translucent surface (empty-landing tray). */
+
   borderless?: boolean;
 }
 
-/** Single owner for composer-stacked panel frame, border, radius, and surface chrome. */
 export function ComposerStackedPanel({
   children,
   className,

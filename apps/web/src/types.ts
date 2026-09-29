@@ -1,7 +1,3 @@
-// FILE: types.ts
-// Purpose: Shared web-app view models for threads, projects, terminal layout, and sidebar rows.
-// Exports: Runtime UI types consumed across store, routes, and components.
-
 import type {
   ModelSelection,
   MessageDispatchOrigin,
@@ -110,7 +106,7 @@ export interface ChatMessage {
   id: MessageId;
   role: "user" | "assistant" | "system";
   text: string;
-  /** Slices of streamed assistant text between row-making provider events. */
+
   textSegments?: OrchestrationMessageTextSegment[];
   asyncUserInput?: import("@glade/contracts").AsyncUserInput;
   attachments?: ChatAttachment[];
@@ -155,9 +151,6 @@ export interface TurnDiffSummary {
   checkpointTurnCounts?: number[] | undefined;
 }
 
-// Ephemeral client-side progress of the "New worktree" first-send setup
-// sequence (create branch → create worktree → copy changes → link thread →
-// start session). Rendered as a transient transcript row; never persisted.
 export type WorktreeSetupStepId =
   | "create-branch"
   | "create-worktree"
@@ -177,10 +170,6 @@ export interface WorktreeSetupSnapshot {
   steps: WorktreeSetupStep[];
 }
 
-/**
- * User choice made from the worktree setup card while preparation is in
- * flight: abandon the send entirely, or redirect it to the local checkout.
- */
 export type WorktreeSetupResolutionAction = "cancel" | "work-locally";
 
 export interface Project {
@@ -190,13 +179,13 @@ export interface Project {
   remoteName: string;
   folderName: string;
   localName: string | null;
-  /** Local look in the sidebar and rail; missing or null is the default folder. */
+
   appearance?: ProjectAppearance | null;
   cwd: string;
   defaultModelSelection: ModelSelection | null;
   expanded: boolean;
   isPinned?: boolean;
-  /** Missing on renderer state written before Spaces; normalized snapshots always set it. */
+
   spaceId?: SpaceId | null;
   createdAt?: string | undefined;
   updatedAt?: string | undefined;
@@ -269,7 +258,7 @@ export interface Thread extends ThreadWorkspaceState {
   forkSourceThreadId?: ThreadId | null;
   handoff?: ThreadHandoff | null;
   claudeCacheReview?: PendingClaudeCacheReview | null;
-  /** Client projection cursor shared by shell and detail cache-review updates. */
+
   claudeCacheReviewSequence?: number;
   lastKnownPr?: OrchestrationThreadPullRequest | null;
   latestUserMessageAt?: string | null;
@@ -296,10 +285,7 @@ export interface ThreadShell extends ThreadWorkspaceState {
   settledAt?: string | null;
   updatedAt?: string | undefined;
   isPinned?: boolean;
-  // Per-thread workspace annotations carried through the normalized projection so
-  // `getThreadFromState` reconstructs them (the shell is the source of truth for a Thread).
-  // These do not arrive on the sidebar shell snapshot, so the snapshot path preserves them
-  // from the previous shell rather than clobbering with `undefined`.
+
   pinnedMessages?: PinnedMessage[];
   notes?: string;
   goal?: string;
@@ -368,7 +354,6 @@ export interface SidebarThreadSummary {
   lastKnownPr?: OrchestrationThreadPullRequest | null;
 }
 
-/** Lightweight composer identity that ignores live turn/status churn. */
 export interface ComposerThreadMentionSource {
   id: ThreadId;
   projectId: ProjectId;

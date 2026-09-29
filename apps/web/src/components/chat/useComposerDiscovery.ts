@@ -121,7 +121,6 @@ export function useComposerDiscovery({
   );
   const workspaceEntries = workspaceEntriesQuery.data?.entries ?? EMPTY_PROJECT_ENTRIES;
 
-  // Keep plugin suggestions referentially stable so prompt-sync effects do not loop on rerender.
   const providerPlugins = useMemo(
     () =>
       providerPluginsQuery.data?.marketplaces.flatMap((marketplace) =>

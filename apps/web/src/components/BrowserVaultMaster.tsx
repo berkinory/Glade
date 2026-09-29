@@ -5,7 +5,6 @@ import { Input } from "./ui/input";
 
 type MasterAction = { kind: "setup" | "unlock" } | { kind: "reveal"; id: string };
 
-/** Mounted only while the human is authenticating; secrets never enter the vault snapshot. */
 export function BrowserVaultMaster({
   api,
   action,

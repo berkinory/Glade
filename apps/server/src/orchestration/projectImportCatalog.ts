@@ -1,4 +1,3 @@
-// Merge native provider metadata by local workspace identity, retaining each thread's source cwd.
 import path from "node:path";
 import { setImmediate } from "node:timers/promises";
 
@@ -69,8 +68,8 @@ function cachedLookup<T>(lookup: (value: string) => Promise<T>): (value: string)
   };
 }
 
-// A stale or inaccessible native cwd must not hide other providers' projects.
-// Keep unexpected filesystem failures visible instead of treating them as missing paths.
+// A stale or inaccessible native cwd must not hide other providers' projects. Keep unexpected
+// filesystem failures visible instead of treating them as missing paths.
 async function availableImportEntry<T>(lookup: () => Promise<T>): Promise<T | undefined> {
   try {
     return await lookup();
@@ -99,7 +98,7 @@ export async function buildProjectImportCatalog(
       continue;
     const root = await availableImportEntry(() => canonical(project.workspaceRoot));
     if (!root) continue;
-    // Keep a deterministic existing destination even if an older database contains duplicate roots.
+
     const identity = importPathIdentity(root);
     if (!existingByRoot.has(identity))
       existingByRoot.set(identity, { ...project, workspaceRoot: root });
@@ -129,7 +128,7 @@ export async function buildProjectImportCatalog(
     const git = await gitWorkspace(cwd);
     const existing = mostSpecificRoot(inferenceRoots, cwd);
     if (!git) return existing ?? cwd;
-    // Saved Glade and explicitly declared Codex subprojects both outrank Git's root.
+
     if (existing && contains(git.worktree ?? git.root, existing)) return existing;
     if (git.worktree) {
       const originalCwd = path.join(git.root, path.relative(git.worktree, cwd));
@@ -177,7 +176,7 @@ export async function buildProjectImportCatalog(
           hasUnavailableRoot = true;
           continue;
         }
-        // Claude has no native project IDs: its discovery groups are cwd hints.
+
         const root =
           provider === "claudeAgent"
             ? await availableImportEntry(() => derivedWorkspace(physicalRoot))
@@ -221,7 +220,6 @@ export async function buildProjectImportCatalog(
           : undefined;
       let root: string | undefined;
       if (sourceProject?.roots.length === 1 && !sourceProject.hasUnavailableRoot) {
-        // Explicit assignment survives even after a temporary worktree has been deleted.
         root = sourceProject.roots[0];
       } else if (sourceProject?.roots.length) {
         root = mostSpecificRoot(sourceProject.roots, cwd);

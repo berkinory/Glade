@@ -383,13 +383,7 @@ describe("shouldGiveUp", () => {
   });
 });
 
-// End-to-end integration: a real loopback HTTP server, the real Electron-style
-// request shape (node's http ClientRequest/IncomingMessage match it structurally),
-// and the real installResumableUpdateDownloader wiring. These prove the behaviour
-// the pure helpers can only imply: the downloader actually resumes from a byte
-// offset after a mid-stream drop and verifies the published checksum.
 describe("installResumableUpdateDownloader (integration)", () => {
-  // Deterministic 256 KiB payload so resume offsets are reproducible.
   const payload = Buffer.alloc(256 * 1024);
   for (let i = 0; i < payload.length; i += 1) {
     payload[i] = i % 251;
@@ -410,11 +404,7 @@ describe("installResumableUpdateDownloader (integration)", () => {
     await rm(tempDir, { force: true, recursive: true });
   });
 
-  // node's http request/response are structurally compatible with the Electron
-  // net shapes the downloader expects (on data/end/error/aborted, pause/resume,
-  // statusCode/headers; on error/abort/close, end, abort). This adapter is the
-  // executor.createRequest the real updater would provide. The unused Electron
-  // `redirect` event is simply never emitted by node, which is fine for the
+  // The unused Electron `redirect` event is simply never emitted by node, which is fine for the
   // same-origin loopback transfer under test.
   function makeExecutor(baseUrl: URL): UpdaterHttpExecutorLike {
     return {
@@ -477,15 +467,13 @@ describe("installResumableUpdateDownloader (integration)", () => {
         res.end(slice);
         return;
       }
-      // First connection: deliver a clean prefix, then sever the socket so the
-      // client must resume from wherever it got to (the core stall scenario).
+
       fullRequests += 1;
       res.writeHead(200, {
         "Content-Type": "application/octet-stream",
         "Content-Length": String(payload.length),
       });
       res.write(payload.subarray(0, payload.length / 2), () => {
-        // FIN after flush: the prefix is delivered, then the stream ends early.
         res.socket?.end();
       });
     });
@@ -509,10 +497,10 @@ describe("installResumableUpdateDownloader (integration)", () => {
     });
 
     expect(returned).toBe(destination);
-    // The downloaded file is byte-for-byte the published payload...
+
     const downloaded = await readFile(destination);
     expect(downloaded.equals(payload)).toBe(true);
-    // ...assembled across one dropped attempt + at least one ranged resume.
+
     expect(fullRequests).toBe(1);
     expect(rangeRequests).toBeGreaterThanOrEqual(1);
     expect(progressPercents.at(-1)).toBe(100);
@@ -541,7 +529,7 @@ describe("installResumableUpdateDownloader (integration)", () => {
         sha512: createHash("sha512").update("not-the-payload").digest("base64"),
       }),
     ).rejects.toThrow(/checksum mismatch/i);
-    // Verifies the bad bytes were discarded and re-fetched from zero exactly once.
+
     expect(requests).toBe(2);
   });
 });

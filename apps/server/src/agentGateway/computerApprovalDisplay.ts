@@ -1,6 +1,5 @@
 import { summarizeComputerAuditArgs } from "../computer/computerAuditLog.ts";
 
-/** Show an action's shape on a durable approval card without persisting input payloads. */
 export function computerApprovalDisplayArgs(args: Record<string, unknown>): string {
   const summary = summarizeComputerAuditArgs(args);
   return JSON.stringify(

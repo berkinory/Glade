@@ -1,8 +1,3 @@
-// FILE: ProjectPicker.tsx
-// Purpose: Folder selector beneath the new-chat composer that groups active folders and home
-//          folders while always creating chats as rows inside the shared Chats container.
-// Layer: Chat / empty-state entrypoint
-
 import {
   Fragment,
   memo,
@@ -65,16 +60,13 @@ interface ProjectPickerProps {
   onSelectWorkspaceRoot?: ((workspaceRoot: string) => void) | undefined;
   onCreateProjectFromPath?: ((workspaceRoot: string) => void | Promise<void>) | undefined;
   onResetToHome?: (() => void | Promise<void>) | undefined;
-  /** Class override for the trigger button (e.g. tighter height in the composer tray). */
+
   triggerClassName?: string;
-  /** Visual variant override for the trigger button. */
+
   triggerVariant?: ComponentProps<typeof PickerTriggerButton>["variant"];
-  /**
-   * Replaces the default PickerTriggerButton with a custom trigger element (e.g. the inline
-   * project name in the new-chat heading). The element receives the combobox trigger props.
-   */
+
   renderTrigger?: ReactElement<Record<string, unknown>>;
-  /** Optional copy for project and folder selection contexts. */
+
   emptyTriggerLabel?: string;
   addActionLabel?: string;
   resetActionLabel?: string;
@@ -83,7 +75,7 @@ interface ProjectPickerProps {
 
 interface ActiveFolderOption {
   projectId: ProjectId | null;
-  /** The project's look; null for worktree and raw-path rows, which keep the plain folder. */
+
   appearance: ProjectAppearance | null;
   spaceId: SpaceId | null;
   spaceName: string;
@@ -92,12 +84,6 @@ interface ActiveFolderOption {
   secondaryLabel: string | null;
 }
 
-/**
- * Existing projects switch the draft into that project; raw paths stay workspace roots.
- *
- * Module scope on purpose: the caller runs this inside a `try`, and React Compiler cannot lower a
- * conditional expression there — inlining it makes the whole picker skip compilation.
- */
 function startActiveFolderSelection(
   folder: ActiveFolderOption,
   handlers: {
@@ -401,8 +387,7 @@ export const ProjectPicker = memo(function ProjectPicker({
     ) {
       return;
     }
-    // Timeout-0 keeps every state write asynchronous (no wasted pre-paint
-    // render), which also keeps this component eligible for React Compiler.
+
     let cancelled = false;
     const timeoutId = window.setTimeout(() => {
       if (cancelled) return;
@@ -486,8 +471,6 @@ export const ProjectPicker = memo(function ProjectPicker({
       if (onCreateProjectFromPath) {
         await onCreateProjectFromPath(pickedPath);
       } else if (onSelectWorkspaceRoot) {
-        // Spelled out instead of `onSelectWorkspaceRoot?.(…)`: an optional call is a value block,
-        // which React Compiler cannot lower inside a `try`.
         onSelectWorkspaceRoot(pickedPath);
       }
       setIsPicking(false);
@@ -505,8 +488,6 @@ export const ProjectPicker = memo(function ProjectPicker({
     resetInFlightRef.current = true;
     setErrorMessage(null);
     try {
-      // Statement form, not `onResetToHome?.()` or a ternary, for the same reason as
-      // `handleAddNewProject`: any value block inside a `try` is one the compiler rejects.
       let reset: void | Promise<void> | undefined;
       if (onResetToHome) {
         reset = onResetToHome();
@@ -662,8 +643,7 @@ export const ProjectPicker = memo(function ProjectPicker({
           ) : null}
         </div>
       )}
-      {/* Width lives on the popup so the shell always fills it: the surface grows to a wide
-          trigger (`--anchor-width`) and never leaves an empty strip beside the rows. */}
+      {}
       <ComboboxPopup align={align} side={side} surface="composer" className="min-w-60 p-0">
         <PickerPanelShell
           variant="plain"

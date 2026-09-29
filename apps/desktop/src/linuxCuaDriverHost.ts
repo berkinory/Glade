@@ -3,7 +3,6 @@ import { join } from "node:path";
 import { CuaDriverHost } from "./cuaDriverHost";
 import type { LinuxEscapeKillSwitchMonitor } from "./linuxEscapeKillSwitchMonitor";
 
-/** Linux has no macOS helper; browser safety capabilities come from the live driver handshake. */
 export function createLinuxCuaDriverHost(options: {
   readonly isPackaged: boolean;
   readonly resourcesPath: string;

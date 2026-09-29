@@ -1,7 +1,3 @@
-/**
- * Adds durable thread environment intent to projected thread rows so
- * server-backed threads can stay in "worktree" mode before a worktree cwd exists.
- */
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import * as Effect from "effect/Effect";
 

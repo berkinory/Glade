@@ -1,10 +1,3 @@
-// FILE: localImageUrls.ts
-// Purpose: Builds authenticated local-image URLs for markdown image previews and downloads.
-// Layer: Web utility
-// Exports: local image URL detection and builders
-// Depends on: wsHttpUrl (so desktop requests carry the legacy startup token used by attachments)
-//             and @glade/shared/localPreviewFiles for the canonical route + extension allowlist.
-
 import {
   LOCAL_IMAGE_ROUTE_PATH,
   SUPPORTED_LOCAL_IMAGE_EXTENSION_REGEX,
@@ -37,8 +30,8 @@ export function isLocalImageMarkdownSrc(src: string | undefined): src is string 
   if (!SUPPORTED_LOCAL_IMAGE_EXTENSION_REGEX.test(normalized)) {
     return false;
   }
-  // Treat Windows-style absolute paths (e.g. `C:\foo\bar.png`) as local images even though
-  // their drive prefix would otherwise look like a URI scheme.
+  // Treat Windows-style absolute paths (e.g. `C:\foo\bar.png`) as local images even though their
+  // drive prefix would otherwise look like a URI scheme.
   if (isWindowsAbsolutePath(normalized)) {
     return true;
   }
@@ -50,7 +43,6 @@ export function isLocalImageMarkdownSrc(src: string | undefined): src is string 
   );
 }
 
-// Grants must name the same decoded file as the preview HTTP request.
 export function localImageAbsolutePath(src: string): string | null {
   const normalized = normalizeMarkdownImagePath(src);
   return isLocalImageMarkdownSrc(src) && isLocalAbsolutePath(normalized) ? normalized : null;
@@ -60,11 +52,9 @@ export function buildLocalImageUrl(input: {
   readonly src: string;
   readonly cwd: string | undefined;
   readonly download?: boolean;
-  // Accept an explicit `undefined` (not just absent) so callers can forward an
-  // optional `previewGrant: string | null | undefined` straight through under
-  // exactOptionalPropertyTypes. Internally falsy grants are simply omitted below.
+
   readonly grant?: string | null | undefined;
-  /** Changes the preview URL so an explicit reload bypasses browser caching. */
+
   readonly cacheKey?: string | number | undefined;
 }): string {
   const params = new URLSearchParams({ path: normalizeMarkdownImagePath(input.src) });
@@ -80,9 +70,7 @@ export function buildLocalImageUrl(input: {
   if (input.download) {
     params.set("download", "1");
   }
-  // Always route through the WS-derived HTTP origin so desktop builds (custom protocol)
-  // include the same legacy startup token attachments already use; in web/dev (where
-  // the page and server share an origin) this falls back to the same relative path.
+
   return resolveWsHttpUrl(`${LOCAL_IMAGE_ROUTE_PATH}?${params.toString()}`);
 }
 

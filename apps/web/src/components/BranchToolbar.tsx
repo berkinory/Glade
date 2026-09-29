@@ -1,6 +1,3 @@
-// FILE: BranchToolbar.tsx
-// Purpose: Renders the chat thread's compact workspace controls, including the
-// inline workspace handoff actions and runtime access toggle.
 import type {
   ProviderKind,
   ProviderModelDescriptor,
@@ -102,10 +99,9 @@ export interface BranchToolbarProps {
   handoffBusy?: boolean;
   onCheckoutPullRequestRequest?: (reference: string) => void;
   onComposerFocusRequest?: () => void;
-  // `toolbar` renders the compact composer-footer row; `panel` stacks the env and branch
-  // pickers as full-width Environment panel rows that open downward.
+
   variant?: BranchSelectorVariant;
-  // Keeps the Local/Worktree control visible while hiding Git-only branch UI for non-repo cwd.
+
   showBranchSelector?: boolean;
   showEnvironment?: boolean;
 }
@@ -121,9 +117,7 @@ export interface RuntimeUsageControlsProps {
   activeContextWindowLabel?: string | null | undefined;
   pendingContextWindowLabel?: string | null | undefined;
   className?: string | undefined;
-  // Force icon-only rendering regardless of container width. Used when the
-  // control is relocated outside the composer footer (which provides the
-  // @container the responsive sr-only fallback depends on).
+
   hideLabel?: boolean | undefined;
 }
 
@@ -302,8 +296,7 @@ export default function BranchToolbar({
           : {}),
       });
       const api = readNativeApi();
-      // If the effective cwd is about to change, stop the running session so the
-      // next message creates a new one with the correct cwd.
+
       if (serverThread?.session && worktreePath !== activeWorktreePath && api) {
         void api.orchestration
           .dispatchCommand({
@@ -409,9 +402,9 @@ export default function BranchToolbar({
         ) : null}
 
         {showBranchSelector ? (
-          /* ChatView stays mounted while the route switches threads. Reset the selector's
-             optimistic checkout state at that boundary so a previous thread cannot paint its
-             branch while the new thread's workspace query is resolving. */
+          // ChatView stays mounted while the route switches threads. Reset the selector's optimistic checkout
+          // state at that boundary so a previous thread cannot paint its branch while the new thread's
+          // workspace query is resolving.
           <BranchToolbarBranchSelector
             key={threadId}
             activeProjectCwd={branchProjectCwd ?? activeProject.cwd}

@@ -1,7 +1,4 @@
 import { useProjectImportDialogStore } from "~/projectImport/projectImportDialogStore";
-// FILE: Sidebar.tsx
-// Purpose: Renders the project/thread sidebar, including row status, sorting, and thread actions.
-// Exports: Sidebar
 
 import {
   AddPlusIcon,
@@ -422,7 +419,6 @@ import {
   resolveActiveSpaceId,
 } from "../lib/spaceGrouping";
 
-// Central glyphs for the sidebar section-header buttons (expand/collapse, sort, add).
 const ExpandAllIcon = createCentralIconComponent("expand-45");
 const CollapseAllIcon = createCentralIconComponent("minimize-45");
 const SortFilterIcon = createCentralIconComponent("filter-2");
@@ -435,10 +431,10 @@ const readGitHubProvisioningCapability = () =>
   readNativeApiServerCapability(WS_GITHUB_PROJECT_PROVISIONING_CAPABILITY);
 const readGitHubProvisioningServerCapability = () => false;
 const THREAD_PREVIEW_LIMIT = 5;
-// Each "Show more" click reveals this many extra project rows.
+
 const THREAD_PREVIEW_PAGE_SIZE = 5;
-// Mouse clicks must not focus the paging buttons, or the focus ring lingers as a solid block
-// after the click; they should only light up on hover/press. Keyboard focus is unaffected.
+// Mouse clicks must not focus the paging buttons, or the focus ring lingers as a solid block after
+// the click; they should only light up on hover/press. Keyboard focus is unaffected.
 const preventFocusOnMouseDown = (event: React.MouseEvent) => {
   event.preventDefault();
 };
@@ -456,7 +452,7 @@ const ADD_PROJECT_SNAPSHOT_CATCH_UP_MAX_ATTEMPTS = 6;
 const ADD_PROJECT_SNAPSHOT_CATCH_UP_DELAY_MS = 50;
 const GITHUB_CANCEL_RECOVERY_MAX_ATTEMPTS = 40;
 const GITHUB_CANCEL_RECOVERY_DELAY_MS = 250;
-/** Snap the optimistic segment selection back if the navigation never lands. */
+
 const DebugFeatureFlagsMenu = import.meta.env.DEV
   ? lazy(() =>
       import("./DebugFeatureFlagsMenu").then((module) => ({
@@ -484,8 +480,6 @@ type ProjectContextMenuState = {
   position: { x: number; y: number };
 };
 
-// Sidebar right-click menus (project rows, Space tabs) share one chrome; see
-// sidebarContextMenuStyles.
 const PROJECT_CONTEXT_MENU_PANEL_CLASS_NAME = SIDEBAR_CONTEXT_MENU_PANEL_CLASS_NAME;
 const PROJECT_CONTEXT_MENU_ITEM_CLASS_NAME = SIDEBAR_CONTEXT_MENU_ITEM_CLASS_NAME;
 const PROJECT_CONTEXT_MENU_ICON_CLASS_NAME = SIDEBAR_CONTEXT_MENU_ICON_CLASS_NAME;
@@ -533,7 +527,6 @@ function threadJumpLabelMapsEqual(
   return true;
 }
 
-// Resolve the visible numbered-thread hints from the active keybinding config.
 function buildThreadJumpLabelMap(input: {
   keybindings: ResolvedKeybindingsConfig;
   platform: string;
@@ -567,7 +560,6 @@ function WorktreeBadgeGlyph({ className }: { className?: string }) {
   return <WorktreeIcon aria-hidden="true" className={sidebarGlyphClass("meta", className)} />;
 }
 
-/** Pulsing green dot shown before a project name while a dev run is live. */
 function ProjectRunIndicatorDot({ className }: { className?: string }) {
   return (
     <span
@@ -581,22 +573,16 @@ function ProjectRunIndicatorDot({ className }: { className?: string }) {
   );
 }
 
-/** Meta chips fade on row hover so pin/archive actions can occupy the same slot. */
 const THREAD_ROW_META_CHIP_HOVER_FADE_CLASS_NAME = cn(
   "flex shrink-0 items-center",
   sidebarHoverRevealHideClassName("thread-row"),
 );
 
-/** Status glyph slot; matches the 15px meta-chip column so trailing icons stay compact. */
 function threadRowStatusSlotClassName(isSubagentThread: boolean, toneClassName?: string): string {
   return cn(
     "flex w-[15px] shrink-0 items-center justify-center leading-none tabular-nums",
     sidebarHoverRevealHideClassName("thread-row"),
-    isSubagentThread
-      ? "text-ui-xs"
-      : // Nudge the timestamp a hair above the meta scale while still tracking the user's
-        // typography setting (the CSS var is always set; the 11px is just an SSR fallback).
-        "text-[length:calc(var(--app-font-size-ui-meta,11px)+0.5px)]",
+    isSubagentThread ? "text-ui-xs" : "text-[length:calc(var(--app-font-size-ui-meta,11px)+0.5px)]",
     toneClassName ?? (isSubagentThread ? "text-muted-foreground/26" : "text-muted-foreground/38"),
   );
 }
@@ -618,7 +604,7 @@ type ThreadMetaChip = {
 
 function resolveThreadRowMetaChips(input: {
   thread: Pick<Thread, "forkSourceThreadId" | "envMode" | "worktreePath">;
-  /** Heartbeat automations targeting this thread; surfaced as an at-a-glance clock chip. */
+
   threadAutomations?: readonly AutomationDefinition[] | undefined;
 }): ThreadMetaChip[] {
   const chips: ThreadMetaChip[] = [];
@@ -759,12 +745,8 @@ function ProjectSortMenu({
   );
 }
 
-// Latest curated releases surfaced directly in the help menu. Static data, so
-// computed once at module scope rather than per render.
 const HELP_MENU_RELEASE_ENTRIES = sortEntriesByVersionDesc(WHATS_NEW_ENTRIES).slice(0, 3);
 
-// Footer help menu; swapped out for the desktop-update pill while an update is
-// available (see SidebarFooter).
 function SidebarHelpMenu({
   onOpenShortcuts,
   onOpenFeedback,
@@ -772,13 +754,11 @@ function SidebarHelpMenu({
 }: {
   onOpenShortcuts: () => void;
   onOpenFeedback: () => void;
-  /** Rail layout: the trigger takes the rail button look and the menu opens to the side. */
+
   inRail?: boolean;
 }) {
   const inRail = inRailProp ?? false;
-  // `openCount` keys the dialog so each open remounts the accordion — its rows
-  // capture `defaultOpen` in mount state, so a stale mount would ignore a
-  // newly selected version.
+
   const [releaseHistory, setReleaseHistory] = useState<{
     readonly open: boolean;
     readonly version: string | null;
@@ -915,8 +895,6 @@ function ChatSortMenu({
   );
 }
 
-/** Everything a primary nav row needs, keyed by `SidebarNavItemId` so persisted
- *  order/visibility settings can drive both the live rows and the customize card. */
 type SidebarNavItemDescriptor = {
   readonly icon: ComponentType<{ className?: string }>;
   readonly iconClassName?: string;
@@ -937,7 +915,6 @@ function SortableProjectItem({
   disabled?: boolean;
   children: (handleProps: SortableProjectHandleProps) => React.ReactNode;
 }) {
-  // Default resolved in the body — see SidebarPrimaryAction.
   const disabled = disabledProp ?? false;
   const {
     attributes,
@@ -967,10 +944,6 @@ function SortableProjectItem({
   );
 }
 
-/**
- * Header Activity toggle: a bell that lights up in the accent tone while the
- * Activity view is on, with an unread dot when completions are waiting.
- */
 const ACTIVITY_ONBOARDING_STORAGE_KEY = "glade:activity-onboarding:v1";
 const ACTIVITY_ONBOARDING_DURATION_MS = 8_000;
 
@@ -1001,9 +974,7 @@ function SidebarActivityBellButton({
     if (!onboardingVisible) return;
     try {
       window.localStorage.setItem(ACTIVITY_ONBOARDING_STORAGE_KEY, "seen");
-    } catch {
-      // Storage can be unavailable in private or restricted browser contexts.
-    }
+    } catch {}
     const timeout = window.setTimeout(() => {
       setOnboardingVisible(false);
       setTooltipOpen(false);
@@ -1089,7 +1060,7 @@ export default function Sidebar() {
   );
   const projects = useStore((store) => store.projects);
   const spaces = useStore((store) => store.spaces);
-  // Selection state only; the handlers and sync effects live in useSpacesController.
+
   const storedActiveSpaceId = useSpacesUiStore((store) => store.activeSpaceId);
   const chatSpaceByThreadId = useSpacesUiStore((store) => store.chatSpaceByThreadId);
   const pendingActiveSpaceId = useSpacesUiStore(
@@ -1097,8 +1068,7 @@ export default function Sidebar() {
   );
   const activeSpaceId = resolveActiveSpaceId(storedActiveSpaceId, spaces, pendingActiveSpaceId);
   const threadsHydrated = useStore((store) => store.threadsHydrated);
-  // Rail layout: nav destinations move to the rail (portaled next to this panel) and the
-  // panel shows Home or Spaces. Classic renders exactly as before.
+
   const isRailLayout = useSidebarLayout() === "rail";
   const railActiveItem = useRailShellStore((store) => store.activeItem);
   const railPanelView = useRailShellStore((store) => store.panelView);
@@ -1142,8 +1112,7 @@ export default function Sidebar() {
   });
   const isOnKanban = pathname.startsWith("/kanban");
   const isOnAutomations = pathname.startsWith("/automations");
-  // Lightweight read of automations to drive the sidebar attention badge. Shares the
-  // ["automations"] query cache with the Automations route (and its live stream updates).
+
   const automationListQuery = useQuery({
     queryKey: automationQueryKey,
     queryFn: () => ensureNativeApi().automation.list({}),
@@ -1167,8 +1136,7 @@ export default function Sidebar() {
         }
       : null;
   }, [automationListQuery.data]);
-  // Heartbeat automations grouped by their target thread, so each thread row can show a
-  // clock chip indicating an automation is attached (mirrors the Environment panel section).
+
   const automationsByThreadId = useMemo(
     () => groupAutomationsByContinuedThread(automationListQuery.data?.definitions ?? []),
     [automationListQuery.data],
@@ -1201,8 +1169,7 @@ export default function Sidebar() {
     }
 
     let cancelled = false;
-    // The sidebar is the visible empty-state owner. If startup hydrated empty
-    // before the desktop projection caught up, ask the lightweight shell endpoint once.
+
     void api.orchestration
       .getShellSnapshot()
       .then((snapshot) => {
@@ -1267,8 +1234,7 @@ export default function Sidebar() {
   }, []);
   const setSplitFocusedPane = useSplitViewStore((store) => store.setFocusedPane);
   const openRightDockPane = useRightDockStore((store) => store.openPane);
-  // Query defaults are applied after destructuring: a default inside the destructuring
-  // pattern makes React Compiler bail out on the whole Sidebar component.
+
   const keybindingsQuery = useQuery({
     ...serverConfigQueryOptions(),
     select: (config) => config.keybindings,
@@ -1280,10 +1246,9 @@ export default function Sidebar() {
   });
   const serverCwd = serverCwdQuery.data ?? null;
   const providerStatuses = useProviderStatusesForLocalConfig();
-  // Declared next to `keybindings` (rather than further down) because the project-row render
-  // helpers above read these labels. A const declared after the closure that captures it
-  // widens its inferred mutable range and makes React Compiler drop the memoization of every
-  // hook that depends on it. See Sidebar.compiler.test.ts.
+  // Declared next to `keybindings` (rather than further down) because the project-row render helpers
+  // above read these labels. A const declared after the closure that captures it widens its inferred
+  // mutable range and makes React Compiler drop the memoization of every hook that depends on it.
   const newThreadShortcutLabel =
     shortcutLabelForCommand(keybindings, "chat.new") ??
     shortcutLabelForCommand(keybindings, "chat.newLatestProject");
@@ -1310,7 +1275,7 @@ export default function Sidebar() {
   const [searchPaletteMode, setSearchPaletteMode] = useState<SidebarSearchPaletteMode>("search");
   const projectAdditionLockRef = useRef(false);
   const [renameDialogThreadId, setRenameDialogThreadId] = useState<ThreadId | null>(null);
-  // The project stays set after close so the dialog can play its exit transition.
+
   const [editProjectDialog, setEditProjectDialog] = useState<{
     projectId: ProjectId;
     open: boolean;
@@ -1318,7 +1283,7 @@ export default function Sidebar() {
   const [relocateProjectDialogId, setRelocateProjectDialogId] = useState<ProjectId | null>(null);
   const [projectContextMenuState, setProjectContextMenuState] =
     useState<ProjectContextMenuState | null>(null);
-  // "Show more" paging state: extra pages of THREAD_PREVIEW_PAGE_SIZE rows per project cwd.
+
   const [threadListExtraPagesByProjectCwd, setThreadListExtraPagesByProjectCwd] = useState<
     ReadonlyMap<string, number>
   >(() => new Map(Object.entries(readSidebarUiState().projectThreadListExtraPagesByCwd)));
@@ -1346,9 +1311,9 @@ export default function Sidebar() {
       return [...threadIds];
     });
   }, []);
-  // Sidebar UI state is stored as one blob. Adopt the complete external write
-  // so this tab cannot persist stale paging, dismissal, or route fields over a
-  // newer tab merely because the Activity toggle changed there.
+  // Sidebar UI state is stored as one blob. Adopt the complete external write so this tab cannot
+  // persist stale paging, dismissal, or route fields over a newer tab merely because the Activity
+  // toggle changed there.
   useEffect(
     () =>
       subscribeSidebarUiState((state) => {
@@ -1362,8 +1327,7 @@ export default function Sidebar() {
       }),
     [],
   );
-  // The swap unmounts one full surface and mounts the other; a transition keeps
-  // the click responsive instead of blocking the main thread on large sidebars.
+
   const setActivityViewEnabledSmoothly = useCallback((enabled: boolean) => {
     startTransition(() => {
       setActivityViewEnabled(enabled);
@@ -1383,8 +1347,7 @@ export default function Sidebar() {
   const [optimisticPinnedStateByProjectId, setOptimisticPinnedStateByProjectId] = useState<
     ReadonlyMap<ProjectId, boolean>
   >(() => new Map());
-  // Dedupes the manual-download fallback toast so a single failure surfaced by
-  // both the click handler and the install-watchdog push only notifies once.
+
   const lastDesktopUpdateErrorToastSignatureRef = useRef<string | null>(null);
   const selectedThreadIds = useThreadSelectionStore((s) => s.selectedThreadIds);
   const toggleThreadSelection = useThreadSelectionStore((s) => s.toggleThread);
@@ -1410,8 +1373,7 @@ export default function Sidebar() {
     () => new Map(projects.map((project) => [project.id, project] as const)),
     [projects],
   );
-  // Activity view + unread bell read the same visibility-filtered list, so the
-  // bell can never point at a row the Activity list is hiding.
+
   const visibleSidebarActivityThreads = useMemo(
     () =>
       sidebarThreads.filter((thread) => {
@@ -1432,7 +1394,7 @@ export default function Sidebar() {
       projectById,
     ],
   );
-  // Drives the unread dot on the header Activity bell.
+
   const hasUnreadActivity = useMemo(
     () =>
       hasUnreadActivityOutsideActiveThread(visibleSidebarActivityThreads, activeSidebarThreadId),
@@ -1483,9 +1445,6 @@ export default function Sidebar() {
       return;
     }
     if (routeActiveSidebarThreadId === optimisticActiveThreadId) {
-      // The route caught up; drop the optimistic override on the next tick. Async
-      // setState keeps this out of render, and activeSidebarThreadId already resolves
-      // to the same thread via `optimistic ?? route`, so the deferral is invisible.
       const settle = window.setTimeout(() => {
         setOptimisticActiveThreadId((current) =>
           current === optimisticActiveThreadId ? null : current,
@@ -1773,9 +1732,7 @@ export default function Sidebar() {
     const serverPinnedStateByProjectId = new Map(
       projects.map((project) => [project.id, project.isPinned === true] as const),
     );
-    // Reconciliation drops optimistic entries the server has confirmed while syncing
-    // the mirror ref. Deferring the setState off render (async is allowed) leaves the
-    // derived pinned lists unchanged, since a confirmed entry is redundant either way.
+
     const settle = window.setTimeout(() => {
       setOptimisticPinnedStateByProjectId((current) => {
         const reconciled = reconcileOptimisticPinState({
@@ -1792,8 +1749,6 @@ export default function Sidebar() {
   }, [optimisticPinnedStateByProjectId, projects]);
   const focusMostRecentThreadForProject = useCallback(
     (projectId: ProjectId) => {
-      // Only navigate to threads the sidebar actually shows — focusing a hidden
-      // automation-run thread would select a row the user can't see.
       const latestThread = sortThreadsForSidebar(
         sidebarThreads.filter(
           (thread) =>
@@ -1875,7 +1830,6 @@ export default function Sidebar() {
     [appSettings.sidebarThreadSortOrder, handleNewThread, navigate, setProjectExpanded],
   );
 
-  // Poll the server read model briefly after project.create so we only recover from fresh state.
   const waitForProjectInSnapshot = useCallback(
     async (
       api: NonNullable<ReturnType<typeof readNativeApi>>,
@@ -1895,9 +1849,6 @@ export default function Sidebar() {
     [],
   );
 
-  // Cancellation can arrive while the server is committing project.create. Give
-  // that durable commit and its read-model projection enough time to become
-  // observable before reporting the clone as cancelled.
   const waitForCancelledGitHubProjectInSnapshot = useCallback(
     async (
       api: NonNullable<ReturnType<typeof readNativeApi>>,
@@ -1934,7 +1885,6 @@ export default function Sidebar() {
     [],
   );
 
-  // Keep add-project recovery on the same fresh-snapshot path for create, duplicate, and existing-project flows.
   const recoverExistingProjectFromServer = useCallback(
     async (
       api: NonNullable<ReturnType<typeof readNativeApi>>,
@@ -1978,9 +1928,7 @@ export default function Sidebar() {
   const handleOpenProjectFromSearch = useCallback(
     (projectId: string) => {
       const typedProjectId = ProjectId.makeUnsafe(projectId);
-      // Match focusMostRecentThreadForProject's visibility filter: if a project's only
-      // threads are hidden automation runs, fall through to creating a fresh thread
-      // instead of focusing nothing.
+
       const hasProjectThread = sidebarThreads.some(
         (thread) =>
           thread.projectId === typedProjectId &&
@@ -2018,7 +1966,6 @@ export default function Sidebar() {
     [appSettings.sidebarThreadSortOrder, lastThreadRoute, splitViewsById],
   );
 
-  // Fresh unsent chats have a route id but no persisted sidebar summary yet.
   const draftThreadIds = useMemo(() => {
     const draftThreadIds = new Set<string>();
     for (const [threadId, draft] of Object.entries(draftThreadsByThreadId)) {
@@ -2045,17 +1992,14 @@ export default function Sidebar() {
     [draftThreadIds, resolveBackTargetForThreads, visibleSidebarActivityThreads],
   );
 
-  // Navigates to a resolved settings-back / segment-switch target. Returns whether it navigated
-  // to a thread so callers can fall back to creating a fresh chat/home route otherwise.
+  // Navigates to a resolved settings-back / segment-switch target. Returns whether it navigated to a
+  // thread so callers can fall back to creating a fresh chat/home route otherwise.
   const navigateToBackTarget = useCallback(
     (target: SettingsBackTarget) => {
       if (target.kind !== "thread") {
         return false;
       }
-      // The route swap re-renders the whole sidebar surface plus the destination
-      // ChatView in one go; run it as a transition so urgent click feedback (the
-      // segmented picker's optimistic thumb) paints first instead of freezing
-      // until the heavy render commits.
+
       startTransition(() => {
         void navigate({
           to: "/$threadId",
@@ -2085,9 +2029,6 @@ export default function Sidebar() {
       return;
     }
 
-    // Reuse the stored home-chat draft when one exists (same as the "New chat"
-    // button) so switching back to the Chats view never destroys an in-progress
-    // draft; only mint a fresh draft when there is nothing to resume.
     void handleNewChat();
   }, [handleNewChat, navigateToBackTarget, resolveBackToThreadsTarget]);
 
@@ -2097,13 +2038,8 @@ export default function Sidebar() {
     }
     prewarmHomeChatProject({ homeDir, chatWorkspaceRoot });
   }, [chatWorkspaceRoot, homeDir, threadsHydrated]);
-  // Opens a fresh home-chat draft directly on the draft thread route so the first send
-  // does not need a second route swap from "/" to "/$threadId".
+
   const handleCreateHomeChat = useCallback(async () => {
-    // Reuse the stored home-chat draft thread when one exists (matching the
-    // project "New thread" button), so a draft typed in a new chat survives
-    // switching to another thread and back. Only mint a fresh draft when there
-    // is no stored draft to resume.
     await handleNewChat();
   }, [handleNewChat]);
 
@@ -2121,12 +2057,6 @@ export default function Sidebar() {
         throw new Error("The app server is unavailable.");
       }
 
-      // The flow lives in a nested function that the exclusive lock helper merely awaits: React
-      // Compiler's BuildHIR cannot lower a `throw` or a value block (`?.`, `??`, ternary,
-      // conditional spread) that sits directly inside a try block, and a single one of them
-      // makes the entire Sidebar bail out of compilation — silently, since `panicThreshold`
-      // is unset. Nested function bodies are lowered separately and are unaffected, and the
-      // catch below still sees every rejection. See Sidebar.compiler.test.ts.
       const runAddProject = async () => {
         const existing = findWorkspaceRootMatch(projects, cwd, (project) => project.cwd);
         const existingRecovery = await recoverExistingAddProjectTarget({
@@ -2140,8 +2070,6 @@ export default function Sidebar() {
           return;
         }
         if (existing) {
-          // Local project state can briefly outlive a server-side project.deleted event.
-          // Continue to project.create so re-adding the folder revives it instead of opening a dead shell.
         }
 
         const creationResult = await createOrRecoverProjectFromPath({
@@ -2173,8 +2101,6 @@ export default function Sidebar() {
             return;
           }
           if (creationResult.created) {
-            // The opener's draft navigation was superseded; retrying here
-            // would override the user's newer route.
             throw new Error("Project creation was superseded before its chat opened.");
           }
         }
@@ -2187,9 +2113,6 @@ export default function Sidebar() {
           throw new Error(PROJECT_CREATE_EXISTING_SYNC_ERROR);
         }
 
-        // The command already committed successfully at this point. If the projection
-        // snapshot is just slow to catch up, continue with the local new-thread flow
-        // instead of surfacing a false-negative sidebar sync error.
         setProjectExpanded(creationResult.projectId, true);
         const threadId = await handleNewThread(creationResult.projectId).catch(() => null);
         if (!threadId) {
@@ -2242,8 +2165,6 @@ export default function Sidebar() {
     [currentProjectShortcutTargetId, latestUsableProjectId],
   );
 
-  // Warm model discovery before ChatView mounts so new-thread composers skip
-  // the "Loading models" skeleton when React Query already has a fresh cache hit.
   const prefetchModelsForProjectNewThread = useCallback(
     (projectId: ProjectId) => {
       const project = projects.find((candidate) => candidate.id === projectId);
@@ -2266,8 +2187,7 @@ export default function Sidebar() {
         projectCwd: project.cwd,
         draftWorktreePath: draftThread?.worktreePath ?? null,
         serverCwd,
-        // Match new-thread bootstrap: preserve existing drafts and apply project
-        // preferences only when creating a fresh one.
+
         envMode:
           draftThread?.envMode ??
           useProjectEnvironmentStore.getState().envModeByProjectId[projectId] ??
@@ -2301,8 +2221,6 @@ export default function Sidebar() {
       return;
     }
 
-    // The projects snapshot can be temporarily empty during startup. Wait for hydration
-    // before treating a missing target as a genuine no-project state.
     if (!threadsHydrated) {
       return;
     }
@@ -2531,9 +2449,7 @@ export default function Sidebar() {
             : []),
           { id: "copy-thread-id", label: "Copy Thread ID", icon: THREAD_CONTEXT_MENU_ICONS.copy },
           ...(options?.extraItems ?? []),
-          // Subagent threads are archived and restored through their parent
-          // (thread.archive cascades); archiving one alone would strand it with
-          // no sidebar or Archived-panel row to restore it from.
+
           ...(thread.parentThreadId
             ? []
             : [
@@ -2601,11 +2517,8 @@ export default function Sidebar() {
           threadId,
         );
 
-        // Reuse the active terminal when one is already open and idle so that
-        // repeatedly invoking "Open Path in Terminal" doesn't pile up tabs.
-        // Only spawn a fresh tab when there is no terminal yet, the active id
-        // is stale (no longer in the layout), or the active terminal is busy
-        // running a subprocess.
+        // Reuse the active terminal when one is already open and idle so that repeatedly invoking "Open
+        // Path in Terminal" doesn't pile up tabs.
         const candidateBaseTerminalId =
           currentTerminalState.activeTerminalId ||
           currentTerminalState.terminalIds[0] ||
@@ -2634,19 +2547,13 @@ export default function Sidebar() {
         const cdCommand = `cd ${quotePosixShellArgument(threadWorkspacePath)}\r`;
         try {
           if (shouldCreateNewTerminal) {
-            // A brand new PTY needs an explicit cwd so that the shell's first
-            // prompt already shows the workspace path. The follow-up `cd` write
-            // makes the navigation visible in the scrollback (it's effectively
-            // a no-op since the shell is already there, but it matches the
-            // user-typed-it experience).
             await api.terminal.open({
               threadId,
               terminalId: targetTerminalId,
               cwd: threadWorkspacePath,
             });
           }
-          // Existing PTYs keep their launch cwd/env on reattach; writing `cd`
-          // navigates in place without replacing shell state.
+
           await api.terminal.write({
             threadId,
             terminalId: targetTerminalId,
@@ -2738,9 +2645,8 @@ export default function Sidebar() {
       }
 
       if (clicked === "archive") {
-        // Subagent threads follow their parent's archive cascade. Archiving one
-        // directly would strand it, and archiving it after its parent in this
-        // loop would fail the not-archived invariant.
+        // Subagent threads follow their parent's archive cascade. Archiving one directly would strand it,
+        // and archiving it after its parent in this loop would fail the not-archived invariant.
         const archiveIds = ids.filter(
           (id) => (getThreadFromState(useStore.getState(), id)?.parentThreadId ?? null) === null,
         );
@@ -2845,8 +2751,7 @@ export default function Sidebar() {
     splitViewsById,
     terminalStateByThreadId,
   });
-  // PR chip on a thread row behaves like a link: a plain click opens the PR in the thread's
-  // right dock, while cmd/ctrl/middle-click (or a non-GitHub URL) opens it on GitHub.
+
   const openThreadPullRequest = useCallback(
     (
       event: MouseEvent<HTMLElement>,
@@ -2918,8 +2823,7 @@ export default function Sidebar() {
         value.source === "local"
           ? findWorkspaceRootMatch(projects, value.workspaceRoot, (project) => project.cwd)
           : null;
-      // Reopening an existing project must follow the Space where that project
-      // actually lives. New projects use the destination selected in the dialog.
+
       const destinationSpaceId = existingProject
         ? (existingProject.spaceId ?? null)
         : value.spaceId;
@@ -2967,9 +2871,8 @@ export default function Sidebar() {
                   },
                   { signal: options.signal },
                 ),
-              // Cancellation can race the server's project.create commit. If that
-              // commit won, recover the durable project and report success instead
-              // of telling the user a registered project was cancelled.
+              // Cancellation can race the server's project.create commit. If that commit won, recover the durable
+              // project and report success instead of telling the user a registered project was cancelled.
               recoverCommittedProject: () =>
                 openProvisionedProject(
                   requestedProjectId,
@@ -2999,14 +2902,11 @@ export default function Sidebar() {
         }
       };
 
-      // Keep the compiler-sensitive try block free of value/throw statements.
-      // Land on the destination space before creating so the sidebar follows the
-      // new project's thread instead of bouncing back to the previous space.
       try {
         await runCreateProject();
       } catch (error) {
-        // Project creation is one UI transaction: a failed command must not
-        // strand the sidebar in a Space unrelated to the current route.
+        // Project creation is one UI transaction: a failed command must not strand the sidebar in a Space
+        // unrelated to the current route.
         handleSelectSpaceForIncomingProject(previousSpaceId);
         throw error;
       }
@@ -3024,8 +2924,6 @@ export default function Sidebar() {
     ],
   );
 
-  // Tab index 0 is Void, then spaces in strip order — the same mapping the
-  // space.jump.N dispatch below uses, surfaced in each tab's tooltip.
   const jumpShortcutLabelForSpaceTab = useCallback(
     (tabIndex: number) => {
       const command = spaceJumpCommandForIndex(tabIndex);
@@ -3110,10 +3008,7 @@ export default function Sidebar() {
       );
       if (!confirmed) return;
 
-      // Nested function so the `try` body stays free of value blocks — see the comment on
-      // `runAddProject` above for why React Compiler requires this shape.
       const runRemoveProject = async () => {
-        // `project.delete` refuses non-empty folders, so `Remove` clears threads first.
         const deletionResult = await deleteProjectThreads(projectId, {
           confirmMessage: null,
           showEmptyToast: false,
@@ -3273,8 +3168,6 @@ export default function Sidebar() {
   );
   const railRouteItemIds = SIDEBAR_NAV_ITEM_IDS.filter((id) => id !== "newThread");
 
-  // Trees need child (subagent) threads too; the flat display list stays
-  // root-only for pinned rows and other non-tree consumers.
   const sidebarThreadsByProjectId = useMemo(
     () => groupSidebarThreadsByProjectId(sidebarTreeThreads),
     [sidebarTreeThreads],
@@ -3428,9 +3321,7 @@ export default function Sidebar() {
     () => standardProjects.length > 0 && standardProjects.every((project) => project.expanded),
     [standardProjects],
   );
-  // Rail layout Spaces panel: every ordinary project grouped by Space (level 1), and the
-  // drill-in project's rows (level 2). The drill-in always lists the project's threads,
-  // whatever its folder state in the Home tree, so it derives as expanded.
+
   const railSpacesSections = useMemo(
     () =>
       isRailLayout
@@ -3444,7 +3335,7 @@ export default function Sidebar() {
         : [],
     [activeSpaceId, allStandardProjectsBase, isRailLayout, spaces, voidSpace],
   );
-  // Rail layout: Spaces and single projects the user added to the rail from its "…" menu.
+
   const railShortcuts = useMemo(
     () =>
       isRailLayout
@@ -3487,8 +3378,6 @@ export default function Sidebar() {
   ]);
   const railSpacesPagedProjectId = railSpacesProject?.id ?? null;
 
-  // Reset per-project preview paging when a folder closes so reopening starts at five rows again.
-  // The Spaces drill-in shows its project as open whatever the tree says, so its paging stays.
   useEffect(() => {
     const settle = window.setTimeout(() => {
       setThreadListExtraPagesByProjectCwd((current) =>
@@ -3633,11 +3522,10 @@ export default function Sidebar() {
     [activityViewEnabled, visibleChatThreadIds, visibleSidebarThreadIds],
   );
   const visibleSidebarThreads = useMemo(
-    // Tree source so an active subagent row also gets PR badges and git targets.
     () => sidebarTreeThreads.filter((thread) => visibleSidebarThreadIdSet.has(thread.id)),
     [sidebarTreeThreads, visibleSidebarThreadIdSet],
   );
-  // PR badges only render on visible rows, so keep git/PR query setup off hidden project history.
+
   const prByThreadId = useThreadPullRequests({
     threads: visibleSidebarThreads,
     projectCwdById,
@@ -3686,9 +3574,7 @@ export default function Sidebar() {
       visibleThreadIds: visibleSidebarThreadIds,
       activeThreadId: activeSidebarThreadId,
     });
-    // Retaining a thread without cached detail would open a full-history
-    // snapshot stream speculatively; only cursor-resumable threads are cheap
-    // enough to keep warm from scroll position alone.
+
     const releaseCallbacks = threadIdsToPrewarm
       .filter((threadId) => hasThreadDetailResumeCursor(threadId))
       .map((threadId) => retainThreadDetailSubscription(threadId));
@@ -3700,13 +3586,10 @@ export default function Sidebar() {
     };
   }, [activeSidebarThreadId, visibleSidebarThreadIds]);
 
-  // Pinned rows share the thread-container label rule (project name, or
-  // "Glade" for project-less chats) with the hover cards and Activity rows.
   function resolvePinnedThreadProjectLabel(projectId: ProjectId): string {
     return resolveThreadProjectLabel(projectById.get(projectId));
   }
 
-  // Keep hover actions in the same trailing slot used by the timestamp they replace.
   function renderThreadArchiveAction(
     threadId: ThreadId,
     toneClassName: string,
@@ -3765,8 +3648,8 @@ export default function Sidebar() {
     timestampToneClassName?: string;
     hoverActions: ReactNode;
   }) {
-    // The jump shortcut owns the slot while it is visible; otherwise the shared
-    // rule decides which status glyph shows here.
+    // The jump shortcut owns the slot while it is visible; otherwise the shared rule decides which
+    // status glyph shows here.
     const trailingStatus = resolveThreadStatusTrailingIndicator({
       status: input.threadStatus,
       slotOccupied: Boolean(input.threadJumpLabel),
@@ -3785,9 +3668,6 @@ export default function Sidebar() {
           />
         ) : null}
         {trailingStatus ? (
-          // The relative time now lives in the row hover card, so the trailing
-          // slot only carries the live status/loader glyph; when idle it
-          // collapses and the hover action icons sit flush at the end.
           <span
             title={trailingStatus.label}
             className={threadRowStatusSlotClassName(
@@ -3803,8 +3683,6 @@ export default function Sidebar() {
     );
   }
 
-  // Section header (label + hover-revealed toolbar) shared by sidebar sections,
-  // so spacing/typography stay in lockstep; only the label and toolbar contents vary.
   function renderListSectionHeader(label: string, toolbar: ReactNode) {
     return (
       <div className="group/project-header relative my-1">
@@ -3822,8 +3700,7 @@ export default function Sidebar() {
       </div>
     );
   }
-  // Pinned header and rows.
-  // `pinnedThreads` is already the surface-appropriate list, so a single helper keeps both in sync.
+
   function renderPinnedThreadsSection() {
     if (pinnedThreads.length === 0) {
       return null;
@@ -3840,8 +3717,6 @@ export default function Sidebar() {
     );
   }
 
-  // Shared rich hover card for thread/chat rows. Worktree metadata is resolved
-  // once here so pinned and nested rows stay visually and semantically identical.
   function renderThreadHoverCardPopup(
     thread: SidebarThreadSummary,
     hoverAnchorId: string,
@@ -3859,9 +3734,6 @@ export default function Sidebar() {
     return (
       <TooltipPopup
         {...SIDEBAR_HOVER_CARD_POPUP_PROPS}
-        // Zero the viewport's px-2 py-1 inset so the card's own padding matches
-        // the project PreviewCard (which has no viewport). The var also drives
-        // the viewport width calc, so setting it to 0 keeps the content full-width.
         viewportClassName="[--viewport-inline-padding:0px] py-0"
         anchor={createThreadHoverCardAnchor(hoverAnchorId)}
         className={cn(SIDEBAR_HOVER_CARD_SURFACE_CLASS_NAME, "whitespace-normal leading-tight")}
@@ -3884,9 +3756,6 @@ export default function Sidebar() {
     );
   }
 
-  // Interactive hover card for project/folder rows: name + pin toggle, chat
-  // count, path, and an "Edit project" action. Rendered inside a PreviewCard so
-  // its controls stay reachable when the pointer moves into the card.
   function renderProjectHoverCardPopup(
     project: (typeof sortedProjects)[number],
     chatCount: number,
@@ -3929,10 +3798,7 @@ export default function Sidebar() {
     const pr = prByThreadId.get(thread.id) ?? null;
     const leadingPr = isSubagentThread || thread.forkSourceThreadId ? null : pr;
     const threadJumpLabel = visibleThreadJumpLabelByThreadId.get(thread.id) ?? null;
-    // The trailing cluster (meta chips + status glyph) is absolutely positioned; it
-    // only grows past the reserve when a live glyph (spinner/check/dot or jump label)
-    // occupies the status slot. In that state the right-aligned project label needs a
-    // hair of clearance so it stops kissing the worktree chip — see the margin below.
+
     const hasTrailingStatusGlyph = Boolean(threadStatus) || Boolean(threadJumpLabel);
     const hoverAnchorId = createSidebarThreadHoverAnchorId({
       scope: "pinned",
@@ -3962,10 +3828,7 @@ export default function Sidebar() {
             data-thread-item
             className={cn(
               SIDEBAR_HEADER_ROW_CLASS_NAME,
-              // Match the normal thread row: a flex row whose title claims all free
-              // space, with a trailing reserve that grows only for the badges actually
-              // present — instead of a rigid grid that permanently fenced off a
-              // timestamp-era column and squeezed the title/project even when wide.
+
               "relative gap-1.5 transition-colors",
               leadingPr && "pl-8",
               resolveThreadRowTrailingReserveClass({
@@ -4009,13 +3872,6 @@ export default function Sidebar() {
               }
               suffix={
                 projectLabel ? (
-                  // Right-aligned project context for the flattened pinned list. The title
-                  // (flex-1) pushes it to the content edge, so it shows in full when the row
-                  // has room and only truncates under real pressure, shifting left as the
-                  // trailing reserve grows on hover/status. When a live status glyph occupies
-                  // the trailing slot (e.g. the running spinner), the absolute cluster reaches
-                  // a few px past the reserve — a small margin keeps the folder name from
-                  // touching the worktree chip. It costs no space when the row is idle.
                   <span
                     className={cn(
                       "max-w-[40%] shrink-0 truncate text-right text-ui-meta text-muted-foreground/38 transition-[margin] duration-120 ease-out",
@@ -4053,9 +3909,7 @@ export default function Sidebar() {
     thread: SidebarThreadSummary,
     orderedProjectThreadIds: readonly ThreadId[],
     depth = 0,
-    // Chat rows sit directly under the "Chats" header (no project nesting), so
-    // their top-level rows align flush like pinned rows instead of the indented
-    // column used for project-nested threads.
+
     topLevel = false,
     virtualOffset?: number,
   ) {
@@ -4150,8 +4004,7 @@ export default function Sidebar() {
                 }}
                 onContextMenu={(event) => {
                   event.preventDefault();
-                  // A right-click inside an active multi-selection acts on the whole
-                  // selection; anywhere else it drops the selection and targets the row.
+
                   if (selectedThreadIds.size > 0 && selectedThreadIds.has(thread.id)) {
                     void handleMultiSelectContextMenu({
                       x: event.clientX,
@@ -4207,8 +4060,6 @@ export default function Sidebar() {
     );
   }
 
-  // New thread for one project. Shared by the tree's hover toolbar and the
-  // rail layout's Spaces drill-in header.
   function renderProjectThreadActions(project: (typeof sortedProjects)[number]) {
     return (
       <SidebarIconButton
@@ -4233,8 +4084,6 @@ export default function Sidebar() {
     );
   }
 
-  // A project's thread rows and paging. Shared by the tree's folder
-  // disclosure and the rail layout's Spaces drill-in.
   function renderProjectThreadList(
     project: (typeof sortedProjects)[number],
     projectSidebarData: SidebarDerivedProjectData,
@@ -4267,9 +4116,6 @@ export default function Sidebar() {
     );
   }
 
-  // A project reads as "running" when Glade tracks a run for it or when a local server
-  // (possibly started outside Glade) is attributed by cwd. Shared by the tree's project
-  // header and the rail layout's Spaces rows.
   function isSidebarProjectRunning(projectId: ProjectId): boolean {
     return (
       (projectRunsByProjectId[projectId] ?? null) !== null ||
@@ -4292,15 +4138,14 @@ export default function Sidebar() {
       : sidebarHoverRevealHideClassName("project-header");
     const isProjectRunning = isSidebarProjectRunning(project.id);
     const collapsedProjectStatus = project.expanded ? null : projectStatus;
-    // The "open dev server" affordance now lives in the project context menu, so
-    // the hover toolbar always reserves space for the three thread actions. The
-    // reserve lives on the *name* container (not the button) so only the truncating
-    // name yields to the overlay toolbar; the trailing run dot stays put and fades
-    // in place instead of sliding left. Focus is read from the group because the
+    // The "open dev server" affordance now lives in the project context menu, so the hover toolbar
+    // always reserves space for the three thread actions. The reserve lives on the *name* container
+    // (not the button) so only the truncating name yields to the overlay toolbar; the trailing run dot
+    // stays put and fades in place instead of sliding left. Focus is read from the group because the
     // name container itself is not focusable — the row's button is.
     const projectToolbarReserveClassName =
       "group-hover/project-header:pr-[4.75rem] group-has-[:focus-visible]/project-header:pr-[4.75rem]";
-    // Configured display name only — folder identity lives in the hover card (#1000).
+
     const projectRowLabel = resolveSidebarProjectRowLabel(project);
 
     return (
@@ -4327,9 +4172,8 @@ export default function Sidebar() {
               {...(isManualProjectSorting && dragHandleProps ? dragHandleProps.listeners : {})}
               {...(!isManualProjectSorting && spaces.length > 0
                 ? {
-                    // Native drag-to-file: drop the row on a space tab to move the
-                    // project. Manual sort mode is excluded because dnd-kit owns the
-                    // drag gesture there for reordering.
+                    // Native drag-to-file: drop the row on a space tab to move the project. Manual sort mode is
+                    // excluded because dnd-kit owns the drag gesture there for reordering.
                     draggable: true,
                     onDragStart: (event: ReactDragEvent<HTMLButtonElement>) => {
                       event.dataTransfer.effectAllowed = "move";
@@ -4370,8 +4214,7 @@ export default function Sidebar() {
               >
                 <span className={SIDEBAR_PROJECT_NAME_CLASS_NAME}>{projectRowLabel}</span>
               </div>
-              {/* Closed folders surface child-chat status on the project row; open
-                  folders leave that signal to their visible child thread rows. */}
+              {}
               {isProjectRunning || collapsedProjectStatus ? (
                 <span
                   aria-label={
@@ -4440,8 +4283,6 @@ export default function Sidebar() {
     );
   }
 
-  // Rail layout Spaces panel, level 1 row: opens the project's drill-in on click and keeps
-  // the tree's project context menu.
   function renderRailSpacesProjectRow(project: (typeof sortedProjects)[number]) {
     const isProjectRunning = isSidebarProjectRunning(project.id);
     return (
@@ -4478,8 +4319,6 @@ export default function Sidebar() {
     );
   }
 
-  // Rail layout Spaces panel: level 1 lists every Space with its projects; level 2 is one
-  // project's threads, opened from level 1 without leaving the current route.
   function renderRailSpacesPanel() {
     if (railSpacesProject && railSpacesProjectSidebarData) {
       return (
@@ -4581,7 +4420,6 @@ export default function Sidebar() {
         return;
       }
       if (suppressProjectClickAfterDragRef.current) {
-        // Consume the synthetic click emitted after a drag release.
         suppressProjectClickAfterDragRef.current = false;
         event.preventDefault();
         event.stopPropagation();
@@ -4731,7 +4569,7 @@ export default function Sidebar() {
       const spaceJumpIndex = spaceJumpIndexFromCommand(command ?? "");
       if (spaceJumpIndex !== null) {
         if (!isProjectsSidebarSurface({ isOnSettings })) return;
-        // Index 0 is Void, then spaces in strip order — the chord addresses what you see.
+
         const orderedSpaceIds: ReadonlyArray<SpaceId | null> = [
           null,
           ...spaces.map((space) => space.id),
@@ -4747,7 +4585,6 @@ export default function Sidebar() {
       }
       const jumpIndex = threadJumpIndexFromCommand(command ?? "");
       if (jumpIndex !== null) {
-        // The open model picker addresses its rows with the same mod+digit chord.
         if (isModelPickerShortcutScopeActive()) return;
         event.preventDefault();
         event.stopPropagation();
@@ -4861,9 +4698,6 @@ export default function Sidebar() {
     };
   }, []);
 
-  // Single entry point for update error toasts. Attaches the manual-download
-  // fallback (copy link + "Download manually") whenever a release URL is known,
-  // and dedupes by error signature so the same failure is not toasted twice.
   const surfaceDesktopUpdateError = useCallback(
     (input: { title: string; description: string; state: DesktopUpdateState | null }) => {
       const signature = getDesktopUpdateErrorSignature(input.state) ?? `adhoc:${input.description}`;
@@ -4896,14 +4730,8 @@ export default function Sidebar() {
     [],
   );
 
-  // The install watchdog (and any background-pushed failure) flips the update
-  // state to a download/install error without going through a click handler, so
-  // the fallback must also be surfaced reactively here. Dedup keeps it from
-  // doubling up with the click-handler toast for user-initiated failures.
   useEffect(() => {
     if (!getDesktopUpdateErrorSignature(desktopUpdateState)) {
-      // Returning to any non-error state (new download, success, up-to-date)
-      // clears the dedup key so the next distinct failure notifies again.
       lastDesktopUpdateErrorToastSignatureRef.current = null;
       return;
     }
@@ -4922,8 +4750,6 @@ export default function Sidebar() {
     });
   }, [desktopUpdateState, surfaceDesktopUpdateError]);
 
-  // Install failures deliberately preserve "downloaded" so the same artifact
-  // can be retried. Watch the error as well as the status to release the latch.
   useEffect(() => {
     if (
       desktopUpdateState?.status !== "downloaded" ||
@@ -5041,16 +4867,14 @@ export default function Sidebar() {
         keywords: ["usage", "limits", "credits", "quota", "providers"],
         shortcutLabel: usageSettingsShortcutLabel,
       },
-      // Space jumps ride the palette so keyboard users can reach any space by name
-      // without learning the previous/next-space chords.
+
       ...(spaces.length > 0
         ? [
             {
               id: "switch-space-void",
               label: `Switch to ${voidSpace.name}`,
               description: "Jump to unassigned projects.",
-              // "void" stays a keyword after a rename: it is what the palette answered to
-              // before, and it is still the only word for this group in the docs.
+
               keywords: ["space", "switch", "void", "unassigned", voidSpace.name],
               requiresQuery: true,
               run: () => handleSelectSpace(null),
@@ -5102,7 +4926,6 @@ export default function Sidebar() {
     if (!bridge || !desktopUpdateState) return;
     if (desktopUpdateButtonDisabled || desktopUpdateButtonAction === "none") return;
 
-    // Keep the sidebar action as the single visible entry point for manual checks.
     if (desktopUpdateButtonAction === "check") {
       void bridge
         .checkForUpdates()
@@ -5248,8 +5071,6 @@ export default function Sidebar() {
     surfaceDesktopUpdateError,
   ]);
 
-  // Both handlers step from the *effective* (clamped) page count reported by the derived
-  // project data, so stale/oversized stored paging self-heals on the very next click.
   const setThreadListExtraPagesForProject = useCallback(
     (projectCwd: string, nextExtraPages: number) => {
       const cwdKey = normalizeSidebarProjectThreadListCwd(projectCwd);
@@ -5299,15 +5120,8 @@ export default function Sidebar() {
     standardProjects,
   ]);
 
-  // Only macOS draws the traffic lights in the renderer's top-left, so only there
-  // does the open-sidebar header need to reserve the gutter (mirrors the mac guard
-  // in useDesktopTopBarTrafficLightGutterClassName used by the closed-state surfaces).
   const isMacDesktop = isMacNavigatorPlatform();
 
-  // Open-sidebar (in-sidebar) and non-electron wordmark clusters share the one
-  // SidebarLeadingControls primitive with the closed-state host headers, so the
-  // toggle + arrows look identical whether the sidebar is open or collapsed; only
-  // the wrapper layout differs per host.
   const titlebarControls = <SidebarLeadingControls className="hidden md:flex" />;
 
   const headerControls = <SidebarLeadingControls className="ml-auto hidden md:flex" />;
@@ -5318,15 +5132,14 @@ export default function Sidebar() {
       {headerControls}
     </div>
   );
-  // Rail layout: Home and Spaces switch the panel; route items navigate exactly like their
-  // classic nav rows (prewarm included). The store's active item keeps one item selected.
+
   const isOnThreadsSection = !isOnSettings && !isOnKanban && !isOnAutomations;
-  // One Help menu wiring for both homes: the classic footer and the rail's bottom cluster.
+
   const sidebarHelpMenuProps = {
     onOpenShortcuts: () => void navigate({ to: "/settings", search: { section: "shortcuts" } }),
     onOpenFeedback: openFeedbackDialog,
   };
-  // A pinned Space or project stands for what the panel shows, so Home/Spaces step back.
+
   const activeRailShortcutKey = resolveActiveRailShortcutKey({
     activeItem: railActiveItem,
     activeSpaceId,
@@ -5344,8 +5157,7 @@ export default function Sidebar() {
         onSelect: () => {
           setActivityViewEnabledSmoothly(false);
           selectRailPanelItem(id);
-          // Projects live next to the threads only: from another section, Home and
-          // Spaces go back to the thread view instead of opening over that section.
+
           if (!isOnThreadsSection) handleBackToThreads();
         },
       }),
@@ -5379,8 +5191,7 @@ export default function Sidebar() {
           onSelect: () => {
             setActivityViewEnabledSmoothly(false);
             selectRailPanelItem("home");
-            // Switching Space already lands on its last thread; the same Space only needs
-            // the thread view back when another section is open.
+
             if (shortcut.spaceId !== activeSpaceId) handleSelectSpace(shortcut.spaceId);
             else if (!isOnThreadsSection) handleBackToThreads();
           },
@@ -5437,13 +5248,13 @@ export default function Sidebar() {
       },
     },
   ];
-  // The rail owns the route destinations, so the panel keeps only "New thread".
+
   const panelSidebarNavIds = isRailLayout ? SIDEBAR_NAV_ITEM_IDS.slice(0, 1) : SIDEBAR_NAV_ITEM_IDS;
-  // Rail layout: Automations owns its list panel.
+
   const showRailAutomationsPanel = isRailLayout && isOnAutomations;
   const showRailSpacesPanel =
     isRailLayout && railPanelView === "spaces" && !isOnSettings && !activityViewEnabled;
-  // Switching Home/Spaces or the Spaces level replays the surface enter animation.
+
   const sidebarSurfaceKey = showRailSpacesPanel
     ? `spaces:${railSpacesProject?.id ?? ""}`
     : activityViewEnabled
@@ -5545,10 +5356,7 @@ export default function Sidebar() {
         ) : null}
         {isOnSettings ? (
           <SidebarGroup className="p-0">
-            {isRailLayout ? (
-              // The rail is the way back, so the panel opens on its title like every section.
-              <SidebarPanelTitle title="Settings"></SidebarPanelTitle>
-            ) : null}
+            {isRailLayout ? <SidebarPanelTitle title="Settings"></SidebarPanelTitle> : null}
             <SettingsSidebarNav
               activeSection={activeSettingsSection}
               onBack={isRailLayout ? null : handleBackToAppFromSettings}
@@ -5571,9 +5379,7 @@ export default function Sidebar() {
             <div
               className={cn(
                 "flex items-center gap-1 pt-0 pb-1 pr-2.5 pl-1.5",
-                // Rail layout: the panel has no header above it, so the title row gets
-                // breathing room from the panel's top edge. pt-1.5 puts the title's cap
-                // height as far from the top edge as its first letter is from the side.
+
                 isRailLayout && "pt-1.5",
               )}
             >
@@ -5601,9 +5407,9 @@ export default function Sidebar() {
                 />
               </div>
             </div>
-            {/* The keyed content remounts with a short enter animation. */}
+            {}
             <div key={sidebarSurfaceKey} className="sidebar-surface-enter">
-              {/* Primary sidebar actions stay limited to features we currently ship. */}
+              {}
               <SidebarGroup className="px-1.5 pt-1 pb-1.5">
                 <SidebarMenu className="gap-0.5">
                   {panelSidebarNavIds.map((id) => {
@@ -5874,7 +5680,7 @@ export default function Sidebar() {
       <SidebarFooter
         className={cn(
           "gap-2 border-sidebar-border border-t p-2 font-system-ui",
-          // Rail layout: Help lives in the rail, so the footer only carries the update pill.
+
           isRailLayout && "border-t-0 pt-0",
         )}
       >
@@ -6083,9 +5889,7 @@ export default function Sidebar() {
               ) : null}
               <MenuSub keepOpenOnFocusOut>
                 <MenuSubTrigger className={PROJECT_CONTEXT_MENU_ITEM_CLASS_NAME}>
-                  {/* The glyph is the project's current space, so the row doubles as a
-                      read-out of where it lives today. It wears the same secondary tone
-                      as every other leading glyph in this menu. */}
+                  {}
                   <span className={PROJECT_CONTEXT_MENU_ICON_CLASS_NAME}>
                     <SpaceIcon
                       icon={spaceDisplayIcon(projectContextMenuProject.spaceId, spaces, voidSpace)}
@@ -6356,8 +6160,6 @@ export default function Sidebar() {
   );
 }
 
-// Message text projections keyed by the thread's message array, which the
-// store keeps reference-stable while that thread's messages are unchanged.
 const searchPaletteMessagesByThreadMessages = new WeakMap<
   Thread["messages"],
   SidebarSearchThread["messages"]
@@ -6392,7 +6194,7 @@ function SidebarSearchPaletteController(props: {
   onOpenThread: (threadId: string) => void;
 }) {
   const selectAllThreads = useMemo(() => createAllThreadsSelector(), []);
-  // Search keeps automation-run threads as an intent-driven escape hatch.
+
   const selectSidebarDisplayThreads = useMemo(() => createSidebarDisplayThreadsSelector(), []);
   const importProviderCapabilityQueries = useQueries({
     queries: (["codex", "claudeAgent"] as const).map((provider) =>
@@ -6406,10 +6208,7 @@ function SidebarSearchPaletteController(props: {
   ).filter((_provider, index) =>
     supportsThreadImport(importProviderCapabilityQueries[index]?.data),
   );
-  // `threads` is rebuilt on every streamed store flush, so this projection is
-  // cheap by construction (message text is cached per thread-messages array
-  // below) and its result keeps the previous identity while nothing the
-  // palette shows has changed, sparing the palette a full rescore per token.
+
   const rebuiltSearchPaletteThreads = useMemo<SidebarSearchThread[]>(() => {
     const threadById = new Map(threads.map((thread) => [thread.id, thread] as const));
     const searchProjectById = new Map(

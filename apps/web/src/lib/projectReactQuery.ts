@@ -59,11 +59,6 @@ const activeProjectFileRefreshes = new WeakMap<
   Map<string, ActiveProjectFileRefresh>
 >();
 
-/**
- * Revalidates one active file read from scratch. A watcher can emit while the
- * initial read is still in flight; invalidation alone would join that older
- * fetch and let pre-change contents become the new cache value.
- */
 export function refetchFreshProjectFileQuery(
   queryClient: QueryClient,
   input: { readonly cwd: string | null; readonly relativePath: string | null },
@@ -109,8 +104,6 @@ export function refetchFreshProjectFileQuery(
   return entry.promise;
 }
 
-// Scope live file-change invalidations to one workspace so unrelated
-// project/worktree caches stay warm (mirrors invalidateGitQueriesForCwds).
 export function invalidateProjectFileQueriesForCwds(
   queryClient: QueryClient,
   cwds: Iterable<string>,
@@ -140,8 +133,7 @@ const DEFAULT_SEARCH_LOCAL_ENTRIES_LIMIT = 50;
 const DEFAULT_SEARCH_LOCAL_ENTRIES_STALE_TIME = 10_000;
 const DEFAULT_SEARCH_CONTENT_LIMIT = 50;
 const DEFAULT_SEARCH_CONTENT_STALE_TIME = 10_000;
-// Mirrors the schema bound in contracts: below this length the server would
-// reject the request at decode time, so the query must stay disabled.
+
 const SEARCH_CONTENT_MIN_QUERY_LENGTH = PROJECT_SEARCH_CONTENT_MIN_QUERY_LENGTH;
 const DEFAULT_READ_FILE_STALE_TIME = 5_000;
 const DEFAULT_WORKSPACE_FILE_REFERENCE_STALE_TIME = 15_000;
@@ -165,19 +157,13 @@ const EMPTY_SEARCH_CONTENT_RESULT: ProjectSearchContentResult = {
 };
 const ABSOLUTE_LOCAL_READ_CWD = "/";
 
-// Fire-and-forget warm-up of the server's workspace search index, called when
-// the search palette opens so the first keystroke's query never pays for a
-// cold index build. Failures are irrelevant: the search itself builds the
-// index anyway, just later.
 export function prewarmProjectSearchIndex(cwd: string | null): void {
   if (!cwd) return;
   try {
     void ensureNativeApi()
       .projects.prewarmSearchIndex({ cwd })
       .catch(() => undefined);
-  } catch {
-    // Native API not ready yet — nothing to warm.
-  }
+  } catch {}
 }
 
 export function isLocalPreviewGrantUsable(
@@ -191,8 +177,6 @@ export function isLocalPreviewGrantUsable(
   );
 }
 
-// Refresh short-lived preview grants while a file pane is open, with a cap so
-// backend restarts recover quickly instead of waiting for the full token TTL.
 function localPreviewGrantRefetchIntervalMs(
   grant: Pick<ProjectCreateLocalFilePreviewGrantResult, "expiresAt"> | null | undefined,
   nowMs = Date.now(),
@@ -269,8 +253,7 @@ export function projectReadFileQueryOptions(input: {
     },
     enabled: (input.enabled ?? true) && effectiveCwd !== null && input.relativePath !== null,
     staleTime: input.staleTime ?? DEFAULT_READ_FILE_STALE_TIME,
-    // File-not-found must surface immediately for out-of-root relocation.
-    // Capacity is retried in-place by the transport; do not stack another budget.
+
     retry: false,
     refetchInterval: expensiveReadErrorRefetchInterval,
   });
@@ -302,10 +285,9 @@ export function projectResolveWorkspaceFileReferenceQueryOptions(input: {
   });
 }
 
-// Locates a workspace-relative reference that failed to read because it never
-// existed under the workspace root: the server retries it against ancestors of
-// the root (bounded to the home directory) and returns the real absolute path,
-// or null. The caller then reopens the file through the preview-grant flow.
+// Locates a workspace-relative reference that failed to read because it never existed under the
+// workspace root: the server retries it against ancestors of the root (bounded to the home
+// directory) and returns the real absolute path, or null.
 export function projectResolveOutOfRootFileReferenceQueryOptions(input: {
   cwd: string | null;
   relativePath: string | null;

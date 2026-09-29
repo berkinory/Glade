@@ -1,10 +1,3 @@
-// FILE: AuthorAvatar.tsx
-// Purpose: Small circular author avatar shared by the pull request and commit history rows, detail headers,
-//          reviewers row, and comment cards — an image when GitHub gives us one, otherwise an
-//          initials fallback so every actor still reads as a person rather than a blank slot.
-// Layer: Shared author presentation
-// Exports: AuthorAvatar
-
 import { useState } from "react";
 
 import { cn } from "~/lib/utils";
@@ -34,8 +27,7 @@ export function AuthorAvatar({
   const size = sizeProp ?? "sm";
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const sizeClassName = SIZE_CLASS_NAME[size];
-  // Render only an avatar URL supplied by the source; a Git name alone does not
-  // identify an account and could display another person's photo.
+
   const src = actor?.avatarUrl;
   if (src && src !== failedSrc) {
     return (

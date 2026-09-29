@@ -132,13 +132,6 @@ interface CreationOperationStore {
   readonly fail: AgentGatewayOperationRepositoryShape["fail"];
 }
 
-/**
- * Build the durable, exactly-once thread-creation coordinator.
- *
- * The coordinator owns its per-caller-turn locks and all git/orchestration
- * compensation state. Keeping that state beside the saga prevents the MCP
- * transport and unrelated tools from becoming accidental recovery owners.
- */
 export const makeCreateThreadsHandler = Effect.fn(function* (
   dependencies: CreationCoordinatorDependencies,
 ) {
@@ -444,9 +437,7 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
               );
             }
             const requestedRef = spec.baseRef ?? spec.baseBranch ?? "HEAD";
-            // Named refs are shared across linked worktrees, while HEAD is checkout-local.
-            // Always resolve same-project requests from the caller's selected checkout so
-            // an explicit baseRef:"HEAD" cannot silently jump back to the primary checkout.
+
             const sourceCwd =
               caller?.projectId === projectId
                 ? (caller.worktreePath ?? project.workspaceRoot)
@@ -529,9 +520,7 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
             projectScripts: project.scripts,
             worktreeRef,
             copyChangesFrom,
-            // Deterministic like the planned path: an exact-plan retry must
-            // resolve to the same branch, and recovery reclaims it by name.
-            // The 8-hex-digit token keeps it a temporary glade/* branch.
+
             newBranch:
               environment === "worktree"
                 ? `${WORKTREE_BRANCH_PREFIX}/${stableGatewayDigest({ operationId, index, resource: "worktree-branch" }, 8)}`
@@ -621,23 +610,14 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
                         .removeWorktree({
                           cwd: worktree.cwd,
                           path: worktree.path,
-                          // Ownership was never recorded for this path: creation failed
-                          // right after the worktree appeared, or the interruptible setup
-                          // script failed or was interrupted. Copied baseline changes and
-                          // partial setup output make a non-forced removal fail by
-                          // construction.
+
                           force: true,
                         })
                         .pipe(
                           Effect.flatMap(() =>
                             worktree.branch === null
                               ? Effect.void
-                              : // The branch is this operation's own deterministic
-                                // glade/* name and its worktree was just force-removed.
-                                // A non-forced delete would fail whenever the pinned
-                                // ref is not merged into the root HEAD (e.g. PR heads),
-                                // stranding the name and blocking exact-plan retries.
-                                git.deleteBranch({
+                              : git.deleteBranch({
                                   cwd: worktree.cwd,
                                   branch: worktree.branch,
                                   force: true,
@@ -770,9 +750,6 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
       let claimedByThisFiber = false;
       const outcome = yield* Effect.uninterruptibleMask((restore) =>
         Effect.gen(function* () {
-          // Reservation and claim form one uninterruptible handshake. Once the
-          // durable reservation exists, this fiber either claims it while the
-          // compensation boundary is already installed or returns a replay.
           const reservation = yield* operationStore
             .reserve({
               operationId,
@@ -894,9 +871,8 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
                         return { created, trackedWorktree };
                       }),
                     );
-                    // The setup script can run for minutes, so it must stay
-                    // interruptible: the abort signal kills the child process and
-                    // the tracked, still-ownerless worktree is compensated away.
+                    // The setup script can run for minutes, so it must stay interruptible: the abort signal kills the
+                    // child process and the tracked, still-ownerless worktree is compensated away.
                     yield* Effect.tryPromise({
                       try: (signal) =>
                         runWorktreeSetupScript(entry.projectScripts, trackedWorktree.path, signal),
@@ -997,9 +973,9 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
                       : {}),
                     createdAt: gatewayIsoNow(),
                   });
-                  // The dispatch can outlive the caller turn. Recheck after it returns so
-                  // a child started in that final race window is compensated as part of
-                  // the same durable operation instead of being left detached.
+                  // The dispatch can outlive the caller turn. Recheck after it returns so a child started in that
+                  // final race window is compensated as part of the same durable operation instead of being left
+                  // detached.
                   yield* context.assertAuthority();
 
                   return {
@@ -1028,9 +1004,9 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
             threadIds: results.map((entry) => entry.threadId),
             threads: results,
           } satisfies GladeCreateThreadsResult;
-          // Once every deterministic dispatch succeeded, durable completion is
-          // the commit point. A late client cancellation must not roll back a
-          // fully-created operation or strand it between dispatching/completed.
+          // Once every deterministic dispatch succeeded, durable completion is the commit point. A late
+          // client cancellation must not roll back a fully-created operation or strand it between
+          // dispatching/completed.
           yield* operationStore.complete({
             operationId,
             resultJson: JSON.stringify(result),

@@ -1,11 +1,3 @@
-// FILE: ComposerExtrasPanel.tsx
-// Purpose: Composer `+` panel — one flat "Add" list (files, frontmost app window, goal, and the
-//   plan / debug / fast toggles) rendered with the shared command-menu panel chrome above the
-//   composer. The window row captures the frontmost app directly; its trailing arrow (or
-//   ArrowRight) opens the full window list as a second view.
-// Layer: Chat composer presentation
-// Depends on: ComposerMenuPanel chrome and caller-owned composer state.
-
 import type { ProviderInteractionMode, ThreadId } from "@glade/contracts";
 import { useEffect, useId, useRef, useState, type ChangeEvent } from "react";
 
@@ -24,7 +16,6 @@ import {
   type ComposerMenuPanelGroup,
 } from "./ComposerMenuPanel";
 
-/** Marks the `+` trigger so the panel's outside-press close does not fight the trigger's toggle. */
 export const COMPOSER_EXTRAS_TRIGGER_ATTRIBUTE = "data-composer-extras-trigger";
 
 const GLYPH = COMPOSER_MENU_PANEL_GLYPH_CLASS_NAME;
@@ -49,7 +40,7 @@ export function ComposerExtrasPanel(props: {
   onAddAttachments: (files: File[]) => void;
   onToggleFastMode: () => void;
   onInteractionModeChange: (mode: ProviderInteractionMode) => void;
-  /** Turns the draft into a `/goal` command so the goal chip flow is the same as typing it. */
+
   onInsertGoal: () => void;
   onClose: () => void;
   panelId: string;
@@ -107,7 +98,7 @@ export function ComposerExtrasPanel(props: {
   const selectableRowIds = groups.flatMap((group) =>
     group.rows.filter((row) => !row.disabled).map((row) => row.id),
   );
-  // Keep the highlight on a row that still exists after navigating between views.
+
   const highlightedRowId =
     activeRowId && selectableRowIds.includes(activeRowId)
       ? activeRowId
@@ -136,9 +127,6 @@ export function ComposerExtrasPanel(props: {
     }
   };
 
-  // The composer editor keeps focus while the panel is open so the user can keep typing;
-  // the panel therefore claims only its own navigation keys, in capture phase, so Enter
-  // cannot reach the composer form and send the draft.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
@@ -198,7 +186,6 @@ export function ComposerExtrasPanel(props: {
     };
   });
 
-  // Reset the hidden input so selecting the same file twice still emits a change event.
   const handleFileInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
     if (files.length > 0) {

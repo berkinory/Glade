@@ -1,7 +1,3 @@
-// FILE: useComposerImageIntake.ts
-// Purpose: Serializes image preparation, exposes pending UI state, and cancels stale draft work.
-// Layer: Web composer hook
-
 import { PROVIDER_SEND_TURN_MAX_ATTACHMENTS, type ThreadId } from "@glade/contracts";
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 
@@ -114,7 +110,6 @@ export function useComposerImageIntake(input: {
 }) {
   const threadId = input.threadId;
   const queue = useMemo(() => {
-    // A queue belongs to one thread; replacing it cancels that thread's pending preparation.
     void threadId;
     return new ComposerImageIntakeQueue();
   }, [threadId]);

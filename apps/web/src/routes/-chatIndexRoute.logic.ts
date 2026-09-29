@@ -1,9 +1,3 @@
-// FILE: chatIndexRoute.logic.ts
-// Purpose: The "/" landing's restore policy — which remembered thread route the home-chat
-//          surface may reopen, and under which Space.
-// Layer: Route UI logic helpers
-// Exports: home-chat restore-route resolution.
-
 import type { ProjectId, SpaceId, ThreadId } from "@glade/contracts";
 
 import { resolveRestorableThreadRoute, type LastThreadRoute } from "../chatRouteRestore";
@@ -12,13 +6,6 @@ import { isThreadReachableFromSpace } from "../lib/spaceNavigation";
 import { isHomeChatContainerProject } from "../lib/chatProjects";
 import type { Project } from "../types";
 
-/**
- * Set only when "/" was reached by *selecting* a Space. The landing then restores threads that
- * Space can reach and nothing else. Without it — cold start, a deep link, a plain refresh — the
- * remembered route decides the Space instead: `activeSpaceId` lives in sessionStorage and is
- * empty on a fresh launch, while the remembered route lives in localStorage and survives, so
- * scoping unconditionally would drop the user out of the Space they left the app in.
- */
 export interface ChatIndexLandingSpace {
   readonly spaceId: SpaceId | null;
   readonly chatSpaceByThreadId: Readonly<Record<string, SpaceId>>;
@@ -39,16 +26,10 @@ export function resolveChatIndexRestoreRoute(input: {
       | undefined
     >
   >;
-  /**
-   * Still-unsent chat drafts. They have a route id but no sidebar summary yet, so the summary
-   * lookup below never matches them, so a cold
-   * start on "/" can reopen an unsent draft instead of always minting a new one.
-   */
+
   readonly draftProjectIdByThreadId: ReadonlyMap<string, ProjectId>;
-  /**
-   * Populated panes from the split named by `lastThreadRoute`. `undefined` means the current
-   * client state could not resolve that split, so a Space-scoped restore must fail closed.
-   */
+  // Populated panes from the split named by `lastThreadRoute`. `undefined` means the current client
+  // state could not resolve that split, so a Space-scoped restore must fail closed.
   readonly rememberedSplitViewThreadIds: readonly ThreadId[] | undefined;
   readonly landingSpace: ChatIndexLandingSpace | null;
 }): LastThreadRoute | null {
@@ -56,9 +37,9 @@ export function resolveChatIndexRestoreRoute(input: {
 
   const availableThreadIds = new Set<string>();
   for (const threadId of [...input.threadIds, ...draftProjectIdByThreadId.keys()]) {
-    // Fail closed: a thread we can't classify is not restorable from "/". Summaries are built
-    // from the same snapshot as threadIds, so this only ever excludes a thread if that invariant
-    // breaks — and then a fresh draft beats restoring into the wrong segment.
+    // Fail closed: a thread we can't classify is not restorable from "/". Summaries are built from the
+    // same snapshot as threadIds, so this only ever excludes a thread if that invariant breaks — and
+    // then a fresh draft beats restoring into the wrong segment.
     const threadSummary = sidebarThreadSummaryById[threadId];
     const projectId = threadSummary?.projectId ?? draftProjectIdByThreadId.get(threadId);
     if (projectId === undefined) continue;

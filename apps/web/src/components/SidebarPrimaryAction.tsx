@@ -1,8 +1,3 @@
-// FILE: SidebarPrimaryAction.tsx
-// Purpose: The sidebar's primary action row ("New thread", "New automation", nav rows):
-//          leading glyph, label, and a trailing badge or hover shortcut.
-// Layer: Sidebar UI primitive (shared by the thread sidebar and the rail layout's panels)
-
 import type { ComponentType } from "react";
 
 import { cn } from "~/lib/utils";
@@ -30,9 +25,8 @@ export function SidebarPrimaryAction({
   shortcutLabel,
   badge,
 }: {
-  // Accepts both Lucide adapters and raw react-icons glyphs (rendered via SidebarGlyph).
   icon: ComponentType<{ className?: string }>;
-  /** Optional optical correction for glyphs whose artwork fills more of its view box. */
+
   iconClassName?: string;
   label: string;
   onClick?: () => void;
@@ -43,8 +37,6 @@ export function SidebarPrimaryAction({
   shortcutLabel?: string | null;
   badge?: SidebarActionBadge | null;
 }) {
-  // Defaults live in the body, not the destructuring pattern: an AssignmentPattern in
-  // the parameter list makes React Compiler bail out on the whole component.
   const active = activeProp ?? false;
   const disabled = disabledProp ?? false;
 

@@ -92,7 +92,7 @@ function sanitizeCodexConfigForTextGeneration(
 
   for (const line of lines) {
     const trimmed = line.trim();
-    // Commit generation supplies only options advertised by the selected model.
+
     if (
       operation === "generateCommitMessage" &&
       /^(model_reasoning_effort|service_tier)\s*=/.test(trimmed)

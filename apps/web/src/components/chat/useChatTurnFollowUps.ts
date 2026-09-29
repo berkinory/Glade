@@ -213,8 +213,6 @@ export function useChatTurnFollowUps({
     tailAnchorScrollInFlightRef.current = true;
     setTailAnchor({ threadId: threadIdForSend, messageId: messageIdForSend });
 
-    // Nested function so the `try` body holds no value blocks — see the comment on
-    // `deleteEmptyTerminalThread` above for why React Compiler requires this shape.
     const planDispatchSettings = {
       ...resolveQueuedTurnDispatchSettings(turnDispatchSettings, queuedTurn),
       interactionMode: nextInteractionMode,
@@ -229,8 +227,6 @@ export function useChatTurnFollowUps({
         createdAt: messageCreatedAt,
       });
 
-      // Keep the mode toggle and plan-follow-up banner in sync immediately
-      // while the same-thread implementation turn is starting.
       setComposerDraftInteractionMode(threadIdForSend, nextInteractionMode);
 
       const sourceProposedPlan =
@@ -267,10 +263,9 @@ export function useChatTurnFollowUps({
         )
           setComposerDraftComputerControlMode(threadIdForSend, "off");
       }
-      // Steers on providers without native mid-turn steering interrupt the live
-      // turn before re-dispatching; hold queued auto-dispatch through that gap
-      // so it can't race the steer. The live session provider decides the
-      // interrupt path server-side, so the gate keys off it rather than the
+      // Steers on providers without native mid-turn steering interrupt the live turn before
+      // re-dispatching; hold queued auto-dispatch through that gap so it can't race the steer. The live
+      // session provider decides the interrupt path server-side, so the gate keys off it rather than the
       // requested model selection.
       const livePlanProviderForSteerGate =
         activeThread?.session?.provider ?? modelSelectionForPlanDispatch.provider;
@@ -286,9 +281,7 @@ export function useChatTurnFollowUps({
         setQueuedSteerGate(nextSteerGate);
         armQueuedComposerSteerGate(threadId, nextSteerGate);
       }
-      // Optimistically open the plan sidebar when implementing (not refining).
-      // "default" mode here means the agent is executing the plan, which produces
-      // step-tracking activities that the sidebar will display.
+
       if (nextInteractionMode === "default") {
         planSidebarDismissedForTurnRef.current = null;
         setPlanSidebarOpen(true);
@@ -309,8 +302,7 @@ export function useChatTurnFollowUps({
         err instanceof Error ? err.message : "Failed to send plan follow-up.",
       );
       sendInFlightRef.current = false;
-      // The turn RPC failed, so no server turn exists for the watchdog to
-      // recover — drop the marker armed when the dispatch began.
+
       clearPendingTurnDispatch(threadIdForSend);
       resetLocalDispatch();
       return false;
@@ -421,10 +413,6 @@ export function useChatTurnFollowUps({
       setComposerDraftComputerControlMode,
     ],
   );
-  // Resuming a workflow is a normal composer turn instructing the agent to
-  // re-invoke the Workflow tool against the persisted script; completed agent()
-  // calls replay from cache, so a paused run picks up where it stopped. Sent as
-  // a pre-built chat turn so it takes the exact send path a queued turn does.
 
   const onResumeWorkflowRun = useCallback(async () => {
     if (!workflowRunState?.scriptPath || !workflowRunState.runId) return;
@@ -559,14 +547,14 @@ export function useChatTurnFollowUps({
         ) {
           setComposerDraftComputerControlMode(activeThread.id, "off");
         }
-        // The turn RPC resolved for a thread this view never made active, so
-        // arm the watchdog marker with that exact thread id before navigation.
+        // The turn RPC resolved for a thread this view never made active, so arm the watchdog marker with
+        // that exact thread id before navigation.
         markPendingTurnDispatch(nextThreadId);
         return api.orchestration.getShellSnapshot();
       })
       .then((snapshot) => {
         syncServerShellSnapshot(snapshot);
-        // Signal that the plan sidebar should open on the new thread.
+
         planSidebarOpenOnNextThreadRef.current = true;
         return navigate({
           to: "/$threadId",

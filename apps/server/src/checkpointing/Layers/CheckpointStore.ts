@@ -1,14 +1,3 @@
-/**
- * CheckpointStoreLive - Filesystem checkpoint store adapter layer.
- *
- * Implements hidden Git-ref checkpoint capture/restore directly with
- * Effect-native child process execution (`effect/unstable/process`).
- *
- * This layer owns filesystem/Git interactions only; it does not persist
- * checkpoint metadata and does not coordinate provider rollback semantics.
- *
- * @module CheckpointStoreLive
- */
 import { randomUUID } from "node:crypto";
 
 import { Cause, Deferred, Effect, Exit, Layer, FileSystem, Option, Path, Semaphore } from "effect";
@@ -21,11 +10,10 @@ import { CheckpointRef } from "@glade/contracts";
 
 const CHECKPOINT_DIFF_MAX_OUTPUT_BYTES = 10_000_000;
 
-// Individual git commands are already bounded by GitCore's default timeout;
-// this aggregate cap exists to unstick the shared in-flight capture slot if a
-// step without its own bound (e.g. temp-dir filesystem work) hangs. It exceeds
-// the worst per-command-capped chain, so it never truncates a capture the
-// per-command timeouts would allow.
+// Individual git commands are already bounded by GitCore's default timeout; this aggregate cap
+// exists to unstick the shared in-flight capture slot if a step without its own bound (e.g.
+// temp-dir filesystem work) hangs. It exceeds the worst per-command-capped chain, so it never
+// truncates a capture the per-command timeouts would allow.
 const CHECKPOINT_CAPTURE_TIMEOUT_MS = 180_000;
 
 const makeCheckpointStore = Effect.gen(function* () {
@@ -35,8 +23,6 @@ const makeCheckpointStore = Effect.gen(function* () {
   const captureLock = yield* Semaphore.make(1);
   const inFlightCaptures = new Map<string, Deferred.Deferred<void, CheckpointStoreError>>();
 
-  // Normalize the cwd so captures for the same repo reached via differently
-  // written paths (trailing slash, relative segments) share one in-flight slot.
   const captureKey = (input: { readonly cwd: string; readonly checkpointRef: CheckpointRef }) =>
     `${path.resolve(input.cwd)}\0${input.checkpointRef}`;
 
@@ -89,9 +75,6 @@ const makeCheckpointStore = Effect.gen(function* () {
         return null;
       }
 
-      // Preserve Git's stat cache in the throwaway index. Starting every
-      // checkpoint from `read-tree HEAD` discards it, forcing `git add -A` to
-      // rescan and re-hash the whole worktree before every user turn.
       const indexInfo = yield* fs.stat(indexPath);
       yield* fs.copyFile(indexPath, tempIndexPath);
       return indexInfo;
@@ -135,9 +118,6 @@ const makeCheckpointStore = Effect.gen(function* () {
     Effect.gen(function* () {
       const operation = "CheckpointStore.captureCheckpoint";
 
-      // Checked inside the single-flight owner (see captureCheckpoint) so the
-      // existence probe and the capture cannot interleave with another capture
-      // for the same (cwd, checkpointRef).
       if (input.skipIfExists) {
         const existingCommit = yield* resolveCheckpointCommit(input.cwd, input.checkpointRef);
         if (existingCommit !== null) {
@@ -169,11 +149,6 @@ const makeCheckpointStore = Effect.gen(function* () {
               });
             }
             if (workingIndexInfo !== null) {
-              // A copied index can describe a rapid same-size rewrite as clean
-              // when its cached stat tuple still matches. Really-refresh makes
-              // Git verify those racily-clean entries and leaves changed paths
-              // for the following add to hash, without discarding the cache for
-              // the rest of a large workspace.
               yield* git.execute({
                 operation,
                 cwd: input.cwd,
@@ -182,12 +157,6 @@ const makeCheckpointStore = Effect.gen(function* () {
                 allowNonZeroExit: true,
               });
 
-              // Copying or refreshing the temporary index advances its file
-              // timestamp. Git uses that timestamp to decide whether an entry
-              // whose cached stat tuple still matches is "racily clean" and
-              // needs hashing. Restore the working index's original timestamp
-              // so rapid same-size rewrites remain newer than (or equal to) the
-              // index snapshot and `git add` verifies their contents.
               if (workingIndexInfo.mtime !== undefined) {
                 yield* fs.utimes(
                   tempIndexPath,
@@ -277,8 +246,6 @@ const makeCheckpointStore = Effect.gen(function* () {
         return yield* Deferred.await(registration.deferred);
       }
 
-      // Let the git capture remain interruptible, but always notify waiters
-      // and clear the shared in-flight slot before this owner fiber exits.
       return yield* Effect.uninterruptibleMask((restore) =>
         Effect.gen(function* () {
           const exit = yield* Effect.exit(
@@ -298,9 +265,7 @@ const makeCheckpointStore = Effect.gen(function* () {
               ),
             ),
           );
-          // Waiters joined an in-flight capture they do not control; replaying the
-          // owner's raw interrupt cause would make callers treat it as their own
-          // fiber being interrupted. Surface a typed error instead.
+
           const waiterExit =
             Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)
               ? Exit.fail(
@@ -354,9 +319,9 @@ const makeCheckpointStore = Effect.gen(function* () {
         return false;
       }
 
-      // Compare through a temporary index so unchanged files retain their
-      // timestamps and developer file watchers do not reload the application.
-      // The real index belongs to the user and must keep their staged changes.
+      // Compare through a temporary index so unchanged files retain their timestamps and developer file
+      // watchers do not reload the application. The real index belongs to the user and must keep their
+      // staged changes.
       yield* Effect.acquireUseRelease(
         fs.makeTempDirectory({ prefix: "glade-restore-checkpoint-" }),
         (tempDir) =>
@@ -452,9 +417,9 @@ const makeCheckpointStore = Effect.gen(function* () {
       return result.stdout;
     });
 
-  // Rolls the working tree back to `treeOid` for the provided paths without
-  // touching the repository index: paths absent from the tree did not exist
-  // before the aborted apply, so they are deleted instead of restored.
+  // Rolls the working tree back to `treeOid` for the provided paths without touching the repository
+  // index: paths absent from the tree did not exist before the aborted apply, so they are deleted
+  // instead of restored.
   const restoreWorktreePathsFromTree = (input: {
     readonly cwd: string;
     readonly treeOid: string;
@@ -489,14 +454,6 @@ const makeCheckpointStore = Effect.gen(function* () {
       );
     });
 
-  // Fallback for undo when the working tree drifted after the checkpoint: a
-  // plain `git apply --reverse` is all-or-nothing, so any unrelated edit in a
-  // touched hunk aborts the whole undo.
-  //
-  // `git apply --3way` implies `--index` and therefore refuses to run while the
-  // working tree differs from the index. Point it at a throwaway index that
-  // mirrors the current working tree so the merge can run; the repository index
-  // stays untouched and the caller's `git reset` remains its only writer.
   const applyReverseWithThreeWayMerge = (input: {
     readonly cwd: string;
     readonly tempDir: string;
@@ -526,8 +483,7 @@ const makeCheckpointStore = Effect.gen(function* () {
         args: ["add", "-A", "--", "."],
         env: mergeIndexEnv,
       });
-      // Snapshot of the pre-attempt working tree, used to undo a conflicted
-      // 3-way apply (which writes conflict markers before failing).
+
       const preAttemptTreeResult = yield* git.execute({
         operation,
         cwd: input.cwd,
@@ -677,12 +633,11 @@ const makeCheckpointStore = Effect.gen(function* () {
     Effect.gen(function* () {
       const operation = "CheckpointStore.deleteCheckpointRefs";
 
-      // Ref deletion writes contend on packed-refs.lock, so a concurrent delete
-      // can lose the lock race. `allowNonZeroExit` keeps one loser from
-      // abandoning the rest of the batch, but the exit codes must still be
-      // inspected: silently discarding them made every caller's cleanup error
-      // handling unreachable. Deleting an already-absent ref exits 0, so the
-      // "missing refs are tolerated" contract is unaffected.
+      // Ref deletion writes contend on packed-refs.lock, so a concurrent delete can lose the lock race.
+      // `allowNonZeroExit` keeps one loser from abandoning the rest of the batch, but the exit codes must
+      // still be inspected: silently discarding them made every caller's cleanup error handling
+      // unreachable. Deleting an already-absent ref exits 0, so the "missing refs are tolerated" contract
+      // is unaffected.
       const results = yield* Effect.forEach(input.checkpointRefs, (checkpointRef) =>
         git
           .execute({

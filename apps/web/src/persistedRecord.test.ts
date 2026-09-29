@@ -43,7 +43,7 @@ describe("sanitizeStringKeyedRecord", () => {
     expect(result).toEqual({ safe: 1 });
     expect(Object.hasOwn(result, "__proto__")).toBe(false);
     expect(Object.hasOwn(result, "constructor")).toBe(false);
-    // The global prototype must remain untouched.
+
     expect(({} as Record<string, unknown>).polluted).toBeUndefined();
   });
 });

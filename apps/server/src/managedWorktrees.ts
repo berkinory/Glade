@@ -16,22 +16,16 @@ class ManagedWorktreeError extends Error {
 
 const MANAGED_WORKTREE_SCAN_DEPTH = 6;
 export const MANAGED_WORKTREE_RETENTION_COUNT = 15;
-/** Recovery snapshots written before automatic removal expire after 30 days. */
+
 export const MANAGED_WORKTREE_SNAPSHOT_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 const SNAPSHOT_MANIFEST_FILENAME = "snapshot.json";
-// `GitCore.snapshotWorktree` stages into `<outputPath>.tmp-XXXXXX` before an
-// atomic rename; a crash in between strands the staging directory.
+
 const SNAPSHOT_STAGING_DIR_PATTERN = /\.tmp-[A-Za-z0-9]+$/u;
 
-/** The single owner of where managed-worktree recovery snapshots live. */
 export function managedWorktreeSnapshotsDir(homeDir: string): string {
   return path.join(homeDir, "worktree-snapshots");
 }
 
-/**
- * Whether `worktreePath` lives strictly inside `worktreesDir`. Only such paths are
- * Glade-managed, so only they get residue cleanup (snapshots, empty parents).
- */
 export function isManagedWorktreePath(input: {
   readonly worktreesDir: string;
   readonly worktreePath: string;
@@ -48,7 +42,6 @@ export function isManagedWorktreePath(input: {
   );
 }
 
-/** Resolve aliases before classifying an existing checkout or its recorded owners. */
 export function isManagedWorktreePathCanonical(input: {
   readonly worktreesDir: string;
   readonly worktreePath: string;
@@ -63,7 +56,6 @@ export function isManagedWorktreePathCanonical(input: {
   });
 }
 
-/** Archive cleanup is conservative: even an archived sibling can be restored. */
 export function archivedWorktreeHasNoOtherOwners(input: {
   readonly worktreePath: string;
   readonly threadId: string;
@@ -87,17 +79,9 @@ export function archivedWorktreeHasNoOtherOwners(input: {
   });
 }
 
-/**
- * The only thread state managed-worktree retention reads. Structural on purpose so
- * both the narrow projection row and a full `OrchestrationThread` satisfy it, and so
- * the prune path never pulls a whole read model into memory just to look at five
- * columns.
- */
 export interface ManagedWorktreeThreadRef {
   readonly id: string;
-  // Widened with `| undefined` so both the narrow reader's normalized rows and a
-  // full `OrchestrationThread` (whose optional columns are `?: T | null` under
-  // `exactOptionalPropertyTypes`) structurally satisfy this ref.
+
   readonly archivedAt?: string | null | undefined;
   readonly deletedAt?: string | null | undefined;
   readonly worktreePath?: string | null | undefined;
@@ -206,10 +190,6 @@ function isArchivedOnlyManagedWorktreeThread(thread: ManagedWorktreeThreadRef): 
   return !isDeletedManagedWorktreeThread(thread) && (thread.archivedAt ?? null) !== null;
 }
 
-// The scanned inventory is realpath-canonical, while recorded thread paths may
-// reach the same directory through symlinks (e.g. /var -> /private/var).
-// Canonicalize the thread side too, or retention silently never matches
-// anything on symlinked layouts. Missing paths fall back to plain resolution.
 function canonicalizeThreadWorktreePaths(
   threads: ReadonlyArray<ManagedWorktreeThreadRef>,
 ): Effect.Effect<ReadonlyMap<string, string>, TaggedFailure> {
@@ -247,13 +227,7 @@ function snapshotOutputPath(input: {
   return path.join(input.snapshotsDir, `${threadPathSegment || "thread"}-${digest}`);
 }
 
-/**
- * Classify inventory entries into immediate reclaim vs retained archived keepers.
- * Active owners are never reclaim candidates. Deleted paths bypass the archived
- * retention window; only non-deleted archived worktrees honor it. Unowned inventory
- * is deliberately preserved: a newly-created worktree exists briefly before its
- * thread association is projected, and standalone worktrees are valid user data.
- */
+// Active owners are never reclaim candidates.
 export function classifyManagedWorktreeRemovalCandidates(input: {
   readonly inventory: ReadonlyArray<ServerManagedWorktree>;
   readonly threads: ReadonlyArray<ManagedWorktreeThreadRef>;
@@ -395,8 +369,7 @@ function removeManagedWorktreeSafely(input: {
           force: false,
           reclaimTemporaryBranch: true,
         });
-        // The snapshot stays as the recovery net for this automatic removal, but
-        // the per-worktree parent folder has nothing left to hold.
+
         yield* discardEmptyManagedWorktreeParent({
           worktreesDir: input.worktreesDir,
           worktreePath: entry.path,
@@ -416,7 +389,6 @@ function removeManagedWorktreeSafely(input: {
     );
 }
 
-/** Keep active worktrees and the 15 most recently archived managed worktrees. */
 export function pruneArchivedManagedWorktrees(input: {
   readonly worktreesDir: string;
   readonly snapshotsDir: string;
@@ -450,8 +422,7 @@ export function pruneArchivedManagedWorktrees(input: {
         { discard: true, concurrency: 1 },
       );
     }
-    // The age sweep runs on every pass (startup, retention, listing) even when
-    // nothing was removed now, so snapshots from earlier passes still expire.
+
     yield* pruneExpiredManagedWorktreeSnapshots({ snapshotsDir: input.snapshotsDir });
     return inventory.filter((entry) => !removedPaths.has(entry.path));
   });
@@ -464,8 +435,6 @@ export function pruneProjectedArchivedManagedWorktrees(input: {
   readonly git: GitCoreShape;
 }): Effect.Effect<ReadonlyArray<ServerManagedWorktree>, TaggedFailure> {
   return Effect.gen(function* () {
-    // Deliberately not the shell snapshot: it hides soft-deleted threads, and a
-    // retention-deleted thread still owns a worktree that must be reclaimed.
     const threads = yield* input.snapshotQuery.listManagedWorktreeThreads();
     return yield* pruneArchivedManagedWorktrees({
       worktreesDir: input.worktreesDir,
@@ -506,9 +475,6 @@ async function readSnapshotManifest(
   }
 }
 
-// A removed worktree no longer exists, so realpath it through its parent (which
-// usually still does) to reach the same canonical form the inventory scan and
-// snapshot digests used. Falls back to plain resolution.
 async function canonicalizeRemovedPath(targetPath: string): Promise<string> {
   const resolved = path.resolve(targetPath);
   return fs
@@ -521,11 +487,6 @@ async function canonicalizeRemovedPath(targetPath: string): Promise<string> {
     .catch(() => resolved);
 }
 
-/**
- * Remove the per-worktree parent folder (`<worktreesDir>/<repo>` or
- * `<worktreesDir>/<id>`) once it is empty. Only a direct child of `worktreesDir`
- * qualifies: never `worktreesDir` itself, never anything outside it. Never fails.
- */
 export function discardEmptyManagedWorktreeParent(input: {
   readonly worktreesDir: string;
   readonly worktreePath: string;
@@ -546,8 +507,8 @@ export function discardEmptyManagedWorktreeParent(input: {
         throw cause;
       }
       if (entries.length > 0) return;
-      // rmdir refuses a non-empty directory, so a worktree created here since the
-      // readdir above cannot be lost.
+      // rmdir refuses a non-empty directory, so a worktree created here since the readdir above cannot be
+      // lost.
       await fs.rmdir(parent);
     },
     catch: (cause) => normalizeOperationError(cause),
@@ -561,12 +522,6 @@ export function discardEmptyManagedWorktreeParent(input: {
   );
 }
 
-/**
- * Best-effort cleanup of what an explicit managed-worktree removal leaves behind:
- * recovery snapshots taken for that path, and the per-worktree parent folder
- * (`<worktreesDir>/<repo>` or `<worktreesDir>/<id>`) once it is empty. Never fails;
- * every problem is logged and skipped.
- */
 export function discardManagedWorktreeResidue(input: {
   readonly worktreesDir: string;
   readonly snapshotsDir: string;
@@ -622,11 +577,7 @@ export function discardManagedWorktreeResidue(input: {
   );
 }
 
-/**
- * Delete recovery snapshots older than {@link MANAGED_WORKTREE_SNAPSHOT_RETENTION_MS}.
- * Snapshots without a readable manifest are kept, except for staging directories an
- * interrupted snapshot left behind, which expire by mtime. Never fails.
- */
+// Never fails.
 export function pruneExpiredManagedWorktreeSnapshots(input: {
   readonly snapshotsDir: string;
   readonly now?: number;

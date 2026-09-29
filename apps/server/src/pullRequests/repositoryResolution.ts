@@ -14,7 +14,7 @@ interface GitHubRepositoryLink {
 
 export interface GitHubRepositoryInventory {
   readonly repositories: ReadonlyArray<GitHubRepositoryLink>;
-  /** False means discovery was incomplete and must never drive destructive cleanup. */
+  // False means discovery was incomplete and must never drive destructive cleanup.
   readonly authoritative: boolean;
 }
 
@@ -124,8 +124,7 @@ function readRepositoryConfig(git: GitCoreShape, cwd: string, branch: string | n
     .pipe(
       Effect.flatMap((result) => {
         if (result.code === 0) return Effect.succeed(parseRepositoryConfig(result.stdout, branch));
-        // `git config --get-regexp` uses exit code 1 when no keys match. That is an
-        // authoritative repository with no configured remotes, not a discovery failure.
+
         if (result.code === 1 && result.stdout.length === 0 && result.stderr.trim().length === 0) {
           return Effect.succeed(parseRepositoryConfig("", branch));
         }
@@ -145,7 +144,7 @@ function readExpandedRemoteUrl(git: GitCoreShape, cwd: string, remoteName: strin
     .execute({
       operation,
       cwd,
-      // Unlike the batched config read, this applies Git's url.*.insteadOf aliases.
+
       args: ["remote", "get-url", remoteName],
       allowNonZeroExit: true,
       maxOutputBytes: 64 * 1024,
@@ -173,24 +172,20 @@ function resolveGitHubRemote(
   const direct = gitHubRepositoryLinkFromRemoteUrl(configuredUrl);
   if (direct) return Effect.succeed(direct);
 
-  // Preserve the two-process common path. Only URLs the parser cannot understand need a
-  // targeted Git call so aliases such as `gh:owner/repo.git` are expanded correctly.
   return readExpandedRemoteUrl(git, cwd, remoteName).pipe(
     Effect.map(gitHubRepositoryLinkFromRemoteUrl),
   );
 }
 
-/** Resolve the repository owned by this workspace, preferring its origin remote. */
 export function resolveGitHubRepositories(git: GitCoreShape, cwd: string) {
   return Effect.gen(function* () {
-    // A regular folder has no pull requests. Other Git failures remain visible to callers.
     const branch = yield* readCurrentBranch(git, cwd);
     if (branch === undefined) {
       return { repositories: [], authoritative: true } satisfies GitHubRepositoryInventory;
     }
-    // This is the authoritative boundary. A failed local-config inventory must remain an error
-    // rather than becoming an empty list, because consumers may remove state for repositories
-    // not returned. Reading the relevant keys together avoids one process per config/remote.
+    // This is the authoritative boundary. A failed local-config inventory must remain an error rather
+    // than becoming an empty list, because consumers may remove state for repositories not returned.
+    // Reading the relevant keys together avoids one process per config/remote.
     const { branchRemote, pushDefaultRemote, remoteUrls } = yield* readRepositoryConfig(
       git,
       cwd,
@@ -222,7 +217,6 @@ export function resolveGitHubRepositories(git: GitCoreShape, cwd: string) {
   });
 }
 
-/** Resolve the workspace's repository link. */
 export function resolveGitHubRepository(git: GitCoreShape, cwd: string) {
   return resolveGitHubRepositories(git, cwd).pipe(
     Effect.map(({ repositories }) => ({ repository: repositories[0] ?? null, repositories })),

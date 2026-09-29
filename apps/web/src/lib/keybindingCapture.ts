@@ -2,11 +2,8 @@ import type { KeybindingShortcut } from "@glade/contracts";
 
 import { getNavigatorPlatform, isMacPlatform } from "~/lib/utils";
 
-/**
- * Converts the browser's key representation into the stable tokens accepted by
- * the keybindings config. Modifiers are deliberately excluded here because the
- * final keydown event already exposes the complete modifier state.
- */
+// Modifiers are deliberately excluded here because the final keydown event already exposes the
+// complete modifier state.
 function normalizeShortcutKeyToken(key: string): string | null {
   const normalized = key.toLowerCase();
   if (
@@ -42,11 +39,6 @@ function normalizeShortcutKeyToken(key: string): string | null {
   return null;
 }
 
-/**
- * Captures one key or a modifier combination. Three tokens is the maximum
- * supported by the UI (two modifiers plus the base key); returning null keeps
- * modifier-only keydowns from committing an incomplete binding.
- */
 export function keybindingFromKeyboardEvent(
   event: Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "shiftKey" | "altKey">,
   platform = getNavigatorPlatform(),

@@ -1,16 +1,8 @@
-// FILE: skillPromptInjection.ts
-// Purpose: Inlines portable skill instructions into the outgoing prompt for providers
-//          that cannot natively load the referenced skill files. This is the fallback
-//          that makes Glade catalog skills usable on every provider.
-// Layer: Server provider helper
-// Exports: buildInlineSkillInstructions
-
 import * as fs from "node:fs/promises";
 import * as nodePath from "node:path";
 
 import type { ProviderKind, ProviderSkillReference } from "@glade/contracts";
 
-// Per-skill cap keeps a single oversized SKILL.md from eating the turn budget.
 const MAX_INLINE_SKILL_CONTENT_CHARS = 24_000;
 
 const INLINE_SKILLS_HEADER =
@@ -31,12 +23,8 @@ function shouldInlineSkillForProvider(provider: ProviderKind, skillPath: string)
   const segments = pathSegments(skillPath);
   switch (provider) {
     case "codex":
-      // Codex loads .codex and .agents skills natively, plus ~/.glade/skills
-      // registered via skills/extraRoots/set. Only foreign provider roots
-      // need inline instructions alongside their structured skill reference.
       return segments.has(".claude");
     case "claudeAgent":
-      // Claude Code only loads skills from .claude/skills folders.
       return !segments.has(".claude");
   }
 }
@@ -71,7 +59,6 @@ export async function buildInlineSkillInstructions(input: {
     const candidate =
       text.length === 0 ? `${INLINE_SKILLS_HEADER}\n\n${block}` : `${text}\n\n${block}`;
     if (candidate.length > input.maxChars) {
-      // Keep whatever already fits instead of overflowing the provider turn budget.
       break;
     }
     text = candidate;

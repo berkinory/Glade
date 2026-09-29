@@ -1,4 +1,3 @@
-/** Decide whether a running turn has stopped making progress. */
 export function evaluateTurnIdleTick(input: {
   readonly isTurnActive: boolean;
   readonly isAwaitingHuman: boolean;
@@ -10,7 +9,6 @@ export function evaluateTurnIdleTick(input: {
   return input.idleMs >= input.idleTimeoutMs ? "timeout" : "continue";
 }
 
-/** Resolve a positive timeout override without disabling the idle backstop. */
 export function resolveTurnIdleTimeoutMs(input: {
   readonly envVar: string;
   readonly defaultMs: number;

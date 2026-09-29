@@ -100,17 +100,12 @@ const make = Effect.gen(function* () {
   const registry = yield* ProviderAdapterRegistry;
   const serverConfig = yield* ServerConfig;
   const serverSettings = yield* ServerSettingsService;
-  // One catalog cache for every provider: adapters that spawn a CLI process
-  // per listModels call share stale-while-revalidate, single-flight, and
-  // failure-replay behaviour with adapters that reuse a running process.
-  // Snapshots persist to stateDir so a restart reopens the picker with
-  // last-known models instead of a fresh discovery wait.
+
   const catalogCachePath = resolveProviderModelCatalogCachePath({
     stateDir: serverConfig.stateDir,
   });
   const persistedCatalogs = yield* readProviderModelCatalogCache(catalogCachePath);
-  // Writes serialize through a queue so concurrent cache mutations can't race
-  // the atomic file write.
+  // Writes serialize through a queue so concurrent cache mutations can't race the atomic file write.
   const catalogWriteQueue =
     yield* Queue.unbounded<ReadonlyArray<PersistedModelCatalogEntryInput>>();
   const writeCatalogSnapshot = (entries: ReadonlyArray<PersistedModelCatalogEntryInput>) =>
@@ -122,13 +117,9 @@ const make = Effect.gen(function* () {
         }),
       ),
     );
-  // Registered before the writer fiber: finalizers run LIFO, so at scope close
-  // the writer is interrupted first and this then drains anything still queued.
-  // The newest snapshot always reaches disk even on shutdown.
+
   yield* Effect.addFinalizer(() =>
     Effect.suspend(() => {
-      // Queue.takeAll would block on an empty queue; takeUnsafe drains
-      // synchronously so the newest queued snapshot wins.
       let latest: ReadonlyArray<PersistedModelCatalogEntryInput> | undefined;
       for (
         let taken = Queue.takeUnsafe(catalogWriteQueue);
@@ -143,8 +134,6 @@ const make = Effect.gen(function* () {
   yield* Effect.forkScoped(
     Effect.forever(
       Effect.flatMap(Queue.take(catalogWriteQueue), (first) => {
-        // Coalesce bursts: each queued item is a full snapshot, so drain to the
-        // newest before writing (e.g. several providers discovered at boot).
         let latest = first;
         for (
           let taken = Queue.takeUnsafe(catalogWriteQueue);
@@ -188,8 +177,7 @@ const make = Effect.gen(function* () {
       const capabilities = adapter.getComposerCapabilities
         ? yield* adapter.getComposerCapabilities()
         : disabledCapabilitiesForProvider(parsed.provider);
-      // The unified Glade skills catalog backs skill discovery for every
-      // provider, including ones without native skill support.
+
       return {
         ...capabilities,
         supportsSkillMentions: true,
@@ -279,8 +267,7 @@ const make = Effect.gen(function* () {
       if (parsed.provider !== "claudeAgent") {
         return yield* adapter.listCommands(parsed);
       }
-      // Server-owned like the session start options, so discovery lists the
-      // same commands a new Claude session will actually have.
+
       const settings = yield* serverSettings.getSettings.pipe(
         Effect.orElseSucceed(() => DEFAULT_SERVER_SETTINGS),
       );

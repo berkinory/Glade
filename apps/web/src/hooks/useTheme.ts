@@ -1,8 +1,3 @@
-// FILE: useTheme.ts
-// Purpose: Persists the Codex-style theme store and projects the active pack into DOM CSS variables.
-// Layer: Web appearance state hook
-// Exports: useTheme for mode, resolved variant, theme-pack import/export, and active theme metadata.
-
 import { useEffect, useSyncExternalStore } from "react";
 import { isElectron } from "../env";
 import { isMacNavigatorPlatform } from "../lib/utils";
@@ -39,16 +34,9 @@ const STORAGE_KEY = "glade:theme";
 const MEDIA_QUERY = "(prefers-color-scheme: dark)";
 
 let listeners: Array<() => void> = [];
-// Refreshed only when the store actually changes (a write, a cross-tab storage
-// event, or a media-query flip) so `getSnapshot` is a plain field read.
-// React re-reads the snapshot after a listener fires, which is exactly when
-// this cache is rebuilt, so the tearing guarantee holds. Reading and parsing
-// localStorage on every render of every theme consumer was measurable during
-// transcript streaming.
+
 let currentSnapshot: ThemeSnapshot | null = null;
 let lastDesktopTheme: ThemeMode | null = null;
-
-// ─── Store wiring ─────────────────────────────────────────────────────────
 
 function emitChange() {
   refreshSnapshot();
@@ -93,8 +81,7 @@ function computeSnapshot(): ThemeSnapshot {
 
 function refreshSnapshot(): ThemeSnapshot {
   const next = computeSnapshot();
-  // Keep the previous object when nothing changed so consumers' memoization
-  // and `useSyncExternalStore` see a stable reference.
+
   if (
     currentSnapshot &&
     currentSnapshot.systemDark === next.systemDark &&
@@ -150,15 +137,13 @@ function subscribe(listener: () => void): () => void {
   };
 }
 
-// ─── DOM projection ───────────────────────────────────────────────────────
-
 function applyThemeState(state: ThemeState, suppressTransitions = false) {
   if (typeof document === "undefined" || typeof window === "undefined") {
     return;
   }
 
   const root = document.documentElement;
-  // Some server-rendered tests stub only the tiny DOM surface they need.
+
   if (
     typeof root.classList?.toggle !== "function" ||
     typeof root.style?.setProperty !== "function" ||
@@ -223,12 +208,9 @@ function syncDesktopTheme(theme: ThemeMode) {
   });
 }
 
-// Apply immediately on module load to minimize flash before React mounts.
 if (typeof document !== "undefined") {
   applyThemeState(readStoredThemeState());
 }
-
-// ─── Public hook ──────────────────────────────────────────────────────────
 
 function setTheme(nextTheme: ThemeMode) {
   updateStoredThemeState((state) => ({
@@ -297,7 +279,6 @@ export function useTheme() {
       resolveThemePack(DEFAULT_THEME_STATE, variant),
     );
 
-  // Keep the DOM synced if something bypassed the immediate module-load apply.
   useEffect(() => {
     applyThemeState(snapshot.state);
   }, [snapshot.state]);

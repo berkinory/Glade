@@ -1,7 +1,3 @@
-// FILE: starredModels.ts
-// Purpose: Storage schema + pure helpers for starred model presets (provider + model + traits).
-// Layer: Web local-storage helpers used by the composer model picker and model cycle shortcuts.
-
 import type { ProviderKind } from "@glade/contracts";
 import { Schema } from "effect";
 
@@ -9,9 +5,6 @@ import { isProviderKind } from "../providerOrdering";
 
 export const STARRED_MODELS_STORAGE_KEY = "glade:starred-models:v1";
 
-// A starred preset pins the traits the user composed once so one click restores them.
-// `null` traits mean "leave whatever the provider currently uses" (legacy favorites,
-// models without that control).
 const StarredModelSchema = Schema.Struct({
   provider: Schema.String,
   model: Schema.String,
@@ -34,7 +27,6 @@ export type StoredStarredModel = typeof StarredModelSchema.Type;
 export function starredModelKey(
   entry: Pick<StoredStarredModel, "provider" | "model" | "effort" | "fastMode" | "thinking">,
 ): string {
-  // JSON keeps the key unambiguous: model slugs may contain any separator character.
   return JSON.stringify([
     entry.provider,
     entry.model,
@@ -44,14 +36,10 @@ export function starredModelKey(
   ]);
 }
 
-// Provider + model only. A provider tab row shares its traits with every model of that
-// provider, so it counts as starred when any preset of the model exists.
 export function starredModelSlotKey(entry: Pick<StoredStarredModel, "provider" | "model">): string {
   return JSON.stringify([entry.provider, entry.model]);
 }
 
-// Drops entries for providers this build no longer knows and de-duplicates by key,
-// preserving the user's order.
 export function normalizeStarredModels(
   stored: ReadonlyArray<StoredStarredModel>,
 ): ReadonlyArray<StarredModel> {
@@ -78,7 +66,6 @@ export function toggleStarredModel(
     : [...normalized, entry];
 }
 
-// Removes every preset of a model, whatever traits each one pins.
 export function unstarModel(
   current: ReadonlyArray<StoredStarredModel>,
   entry: Pick<StoredStarredModel, "provider" | "model">,
@@ -101,7 +88,6 @@ function readStoredStarredModels(): ReadonlyArray<StarredModel> {
   }
 }
 
-// Model slugs the cycle shortcut should prefer.
 export function readStarredModelSlugs(provider: ProviderKind): string[] {
   const starred = readStoredStarredModels()
     .filter((entry) => entry.provider === provider)

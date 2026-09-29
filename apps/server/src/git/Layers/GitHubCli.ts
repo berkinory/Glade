@@ -98,8 +98,6 @@ function normalizeGitHubCliError(operation: "execute" | "stdout", error: unknown
   });
 }
 
-// GitHub reports MERGEABLE/CONFLICTING/UNKNOWN; UNKNOWN also stands in for the
-// transient window right after a push while GitHub recomputes mergeability.
 function normalizePullRequestMergeability(
   mergeable: string | null | undefined,
 ): "mergeable" | "conflicting" | "unknown" {
@@ -169,8 +167,6 @@ const RawGitHubRepositoryCloneUrlsSchema = Schema.Struct({
   sshUrl: TrimmedNonEmptyString,
 });
 
-// `gh pr view --json statusCheckRollup` mixes CheckRun and StatusContext nodes; both are
-// covered by one permissive shape and told apart by which fields are populated.
 const RawStatusCheckRollupItemSchema = Schema.Struct({
   name: Schema.optional(Schema.NullOr(Schema.String)),
   context: Schema.optional(Schema.NullOr(Schema.String)),
@@ -197,10 +193,6 @@ const RawActorSchema = Schema.Struct({
   url: Schema.optional(Schema.NullOr(Schema.String)),
 });
 
-// Commit authors are the one GitHub actor shape that may be anonymous. `gh`
-// emits empty or null logins for commits authored with a local git identity;
-// keep that exception local to commits so PR users, reviewers, and comments
-// continue to reject malformed actor payloads.
 const RawCommitAuthorSchema = Schema.Struct({
   login: Schema.optional(Schema.NullOr(Schema.String)),
   name: Schema.optional(Schema.NullOr(Schema.String)),
@@ -537,7 +529,6 @@ function normalizePullRequestSummary(
   };
 }
 
-// Maps StatusContext states and CheckRun statuses/conclusions onto the shared check status.
 function normalizeCheckStatus(
   item: Schema.Schema.Type<typeof RawStatusCheckRollupItemSchema>,
 ): GitPullRequestCheckStatus {
@@ -605,9 +596,7 @@ function normalizeActor(
   return {
     login,
     name: raw.name?.trim() || null,
-    // gh's JSON never includes avatar URLs, so derive the canonical login-addressed one —
-    // but only from a real user login. A team's slug is not a username, and deriving from it
-    // could show an unrelated user who happens to share the name.
+
     avatarUrl: raw.avatarUrl?.trim() || (rawLogin ? githubAvatarUrlForLogin(rawLogin) : null),
     url: raw.url?.trim() || null,
   };
@@ -928,13 +917,9 @@ function decodeGitHubJson<S extends Schema.Top>(
 
 const decodeRawPullRequestEntry = Schema.decodeUnknownSync(RawGitHubPullRequestSchema);
 
-/**
- * Decode + normalize a `gh pr list --json` payload. Exported so test fakes parse fixtures
- * through the exact same schema/normalization as the live layer instead of re-implementing it.
- *
- * Entries are decoded individually: one malformed PR (a gh quirk or API oddity) must not
- * hide the healthy PRs in the same list. Only a payload that is not a JSON array fails.
- */
+// Exported so test fakes parse fixtures through the exact same schema/normalization as the live
+// layer instead of re-implementing it. Entries are decoded individually: one malformed PR (a gh
+// quirk or API oddity) must not hide the healthy PRs in the same list.
 export function decodePullRequestListJson(
   raw: string,
   operation: "listOpenPullRequests" | "listPullRequests" = "listPullRequests",
@@ -961,9 +946,6 @@ export function decodePullRequestListJson(
   );
 }
 
-// Git status and thread PR badges are re-read on every file-change/turn invalidation, and each
-// read is a GraphQL-backed `gh` call. A short shared TTL keeps those event storms from draining
-// the account's hourly GitHub budget while staying fresher than any client poll interval.
 const PULL_REQUEST_LOOKUP_CACHE_TTL_MS = 20_000;
 const PULL_REQUEST_LOOKUP_CACHE_MAX_ENTRIES = 256;
 
@@ -982,8 +964,7 @@ const makeGitHubCli = Effect.gen(function* () {
     maxEntries: PULL_REQUEST_LOOKUP_CACHE_MAX_ENTRIES,
     ttlMs: PULL_REQUEST_LOOKUP_CACHE_TTL_MS,
   });
-  // Mutations can change any cached summary (state, draft, base), so they drop everything rather
-  // than guess which references and head selectors alias the mutated pull request.
+
   const invalidatePullRequestLookups = Effect.all(
     [pullRequestLookupCache.invalidateAll, pullRequestHeadListCache.invalidateAll],
     { discard: true },
@@ -996,8 +977,7 @@ const makeGitHubCli = Effect.gen(function* () {
           cwd: input.cwd,
           timeoutMs: input.timeoutMs ?? DEFAULT_TIMEOUT_MS,
           signal,
-          // Repository discovery accepts GitHub.com remotes only. Pin the CLI host as well so a
-          // caller-level GH_HOST override cannot redirect commands that lack a --hostname flag.
+
           env: { ...process.env, ...input.env, GH_HOST: GITHUB_HOST },
           ...(input.maxBufferBytes !== undefined ? { maxBufferBytes: input.maxBufferBytes } : {}),
           ...(input.outputMode !== undefined ? { outputMode: input.outputMode } : {}),
@@ -1015,8 +995,7 @@ const makeGitHubCli = Effect.gen(function* () {
   const PULL_REQUEST_DIFF_MISSING_OBJECT_PATTERN =
     /bad object|unknown revision|not a valid object name|no merge base|bad revision/i;
   const PULL_REQUEST_DIFF_NO_MERGE_BASE_PATTERN = /no merge base/i;
-  // Deepen incrementally instead of turning an intentionally shallow checkout into a full clone.
-  // Additional fetched history is bounded to 1,344 generations per oversized-diff recovery.
+
   const PULL_REQUEST_DIFF_INITIAL_DEEPEN = 64;
   const PULL_REQUEST_DIFF_DEEPEN_STEPS = [256, 1_024] as const;
 
@@ -1033,8 +1012,7 @@ const makeGitHubCli = Effect.gen(function* () {
           cwd: gitInput.cwd,
           timeoutMs: gitInput.timeoutMs ?? DEFAULT_TIMEOUT_MS,
           signal,
-          // Never let git block on an interactive credential prompt; fail instead so the
-          // caller can surface the error.
+
           env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
           ...(gitInput.maxBufferBytes !== undefined
             ? { maxBufferBytes: gitInput.maxBufferBytes }
@@ -1058,10 +1036,9 @@ const makeGitHubCli = Effect.gen(function* () {
     }
   };
 
-  // Prefer the name of a configured remote that already points at the repository. Git resolves its
-  // URL and credentials internally, so an HTTPS token embedded in remote config never enters argv
-  // or process-runner error text. `--` makes the name an operand; suspicious leading-dash names are
-  // ignored entirely and use the anonymous HTTPS fallback instead.
+  // Git resolves its URL and credentials internally, so an HTTPS token embedded in remote config
+  // never enters argv or process-runner error text. `--` makes the name an operand; suspicious
+  // leading-dash names are ignored entirely and use the anonymous HTTPS fallback instead.
   const resolvePullRequestFetchSource = (cwd: string, repository: string) =>
     runGit({ cwd, args: ["remote", "-v"] }).pipe(
       Effect.map((result) => {
@@ -1081,10 +1058,6 @@ const makeGitHubCli = Effect.gen(function* () {
       Effect.catch(() => Effect.succeed(`https://github.com/${repository}.git`)),
     );
 
-  // Local fallback for oversized pull request diffs: resolve the PR's base/head commits via
-  // the REST API, diff them with `git diff base...head` (the same merge-base semantics the
-  // GitHub diff uses), and fetch the advertised pull head ref plus the base branch first only
-  // when the commits are not already in the local object database.
   const localPullRequestDiff = (
     cwd: string,
     repository: string,
@@ -1151,8 +1124,6 @@ const makeGitHubCli = Effect.gen(function* () {
         });
       const result = yield* diff.pipe(
         Effect.catch((error) =>
-          // Fetch-and-retry only when the failure means the commits are absent locally;
-          // timeouts, permission errors, or an unrelated git failure must surface as-is.
           !PULL_REQUEST_DIFF_MISSING_OBJECT_PATTERN.test(error.detail)
             ? Effect.fail(error)
             : resolvePullRequestFetchSource(cwd, repository).pipe(
@@ -1201,8 +1172,6 @@ const makeGitHubCli = Effect.gen(function* () {
   };
   const repositorySelector = (repository: string) => `${GITHUB_HOST}/${repository}`;
 
-  // One implementation behind both list methods so the field list, decoding, and
-  // normalization cannot drift between the open-only and any-state lookups.
   const listPullRequestsWithState = (
     input: { readonly cwd: string; readonly headSelector: string; readonly limit?: number },
     options: {
@@ -1273,16 +1242,13 @@ const makeGitHubCli = Effect.gen(function* () {
         cwd: input.cwd,
         args: ["api", "--hostname", GITHUB_HOST, "--method", "PUT", endpoint, "--input", "-"],
         stdin: JSON.stringify({ merge_method: input.mergeMethod, merge_action: "default" }),
-        // A duplicate in-flight request is HTTP 409 but returns the existing UUID, while a
-        // closed/draft PR is HTTP 400 with a terminal `failed` result. Both bodies are useful.
+
         allowNonZeroExit: true,
       });
       if (
         submission.code !== 0 &&
         /(?:HTTP\s+404|not found)/i.test(`${submission.stdout}\n${submission.stderr}`)
       ) {
-        // Async merge is a stacked-PR preview API. A repository without the preview returns 404;
-        // its standalone PRs must retain the existing synchronous merge path.
         return { mergeOutcome: "unavailable" };
       }
       let result = yield* decodeAsyncMergeResult(submission);
@@ -1503,10 +1469,7 @@ const makeGitHubCli = Effect.gen(function* () {
               patch: result.stdout,
               truncated: result.stdoutTruncated === true,
             })),
-            // GitHub's diff media type rejects pull requests touching more than 300 files
-            // (HTTP 406 "diff exceeded the maximum number of files" / "too_large"). The
-            // repository is checked out locally, so recover by producing the same merge-base
-            // diff with git itself.
+
             Effect.catch((error) =>
               PULL_REQUEST_DIFF_TOO_LARGE_PATTERN.test(error.detail)
                 ? localPullRequestDiff(input.cwd, repository, input.number)
@@ -1573,9 +1536,8 @@ const makeGitHubCli = Effect.gen(function* () {
     commentOnPullRequest: (input) =>
       validateRepository(input.repository, "commentOnPullRequest").pipe(
         Effect.flatMap((repository) =>
-          // Body travels over stdin (--body-file -): argv is visible in process listings and
-          // is echoed back inside process-runner failure messages, so it must never carry
-          // user-authored content.
+          // Body travels over stdin (--body-file -): argv is visible in process listings and is echoed back
+          // inside process-runner failure messages, so it must never carry user-authored content.
           execute({
             cwd: input.cwd,
             args: [
@@ -1704,8 +1666,7 @@ const makeGitHubCli = Effect.gen(function* () {
             pageInfo.endCursor !== null &&
             comments.length < PULL_REQUEST_REVIEW_COMMENT_LIMIT &&
             fetchedPages < PULL_REQUEST_REVIEW_THREAD_PAGE_LIMIT;
-          // hasNextPage alone marks truncation: a null endCursor still means threads remain,
-          // we just cannot page to them.
+
           if (!canFetchNextPage && pageInfo.hasNextPage) {
             truncated = true;
           }
@@ -1722,8 +1683,7 @@ const makeGitHubCli = Effect.gen(function* () {
             args: [
               "repo",
               "view",
-              // Preserve gh's current-host selection for existing fork/Enterprise flows.
-              // The pull-request browser methods above intentionally pin github.com.
+
               repository,
               "--json",
               "nameWithOwner,url,sshUrl",
@@ -1775,8 +1735,6 @@ const makeGitHubCli = Effect.gen(function* () {
       }).pipe(Effect.asVoid),
   } satisfies GitHubCliShape;
 
-  // `listOpenPullRequests` stays uncached: it backs the create-PR flow, which must observe the
-  // pull request it just created.
   return {
     ...service,
     listPullRequests: (input) =>

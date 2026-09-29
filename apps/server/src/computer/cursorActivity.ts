@@ -1,4 +1,3 @@
-/** Short, factual labels. Never display arguments, typed text, or model reasoning. */
 export function cursorToolActivity(tool: string): string {
   switch (tool) {
     case "computer_click":
@@ -66,7 +65,7 @@ export function cursorToolActivity(tool: string): string {
   }
 }
 
-/** Cosmetic updates never block input. Debounce brief tools and deduplicate token events. */
+// Cosmetic updates never block input. Debounce brief tools and deduplicate token events.
 export class CursorActivity {
   private owner: string | null = null;
   private base = "Thinking";
@@ -86,7 +85,7 @@ export class CursorActivity {
 
   setRuntime(thread: string, text: string, resumed = false): void {
     if (thread !== this.owner || this.base === text) return;
-    // Content/item events may continue arriving while a question is open.
+
     if (!resumed && ["Waiting for you", "Needs approval"].includes(this.base)) return;
     this.base = text;
     this.schedule();
@@ -118,7 +117,7 @@ export class CursorActivity {
       const text = this.owner === null ? null : waiting ? this.base : (active?.text ?? this.base);
       if (text === this.last) return;
       this.last = text;
-      // Catch synchronous and asynchronous backend failures alike.
+
       void Promise.resolve()
         .then(() => (this.disposed ? undefined : this.publish(text)))
         .catch(() => undefined);

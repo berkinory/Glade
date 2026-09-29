@@ -1,10 +1,3 @@
-// FILE: deviceFrameSource.ts
-// Purpose: Deliver encoded device video frames from the server to a pane's decoder.
-// Layer: Web transport helper
-// Exports: DeviceFrameSource contract and the pane-facing factory, both thin
-// wrappers over the shared binaryFrameSource mechanism.
-// Depends on: @glade/shared/deviceFrame for the binary envelope
-
 import {
   DEVICE_FRAME_RESYNC_MESSAGE,
   DEVICE_FRAME_WS_PATH,
@@ -27,11 +20,6 @@ interface DeviceFrameSourceHandlers {
 
 export type DeviceFrameSourceResetReason = FrameSourceResetReason;
 
-/**
- * Rebuilding the capture session is expensive (it tears down and recreates the
- * VideoToolbox encoder), so resync requests are debounced to this window; see
- * `resyncCooldownMs` in binaryFrameSource for the mechanism.
- */
 const DEVICE_FRAME_RESYNC_COOLDOWN_MS = 1_000;
 
 export interface DeviceFrameSource {

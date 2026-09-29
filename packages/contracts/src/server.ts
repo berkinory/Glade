@@ -18,7 +18,6 @@ import { AutomationCompletionPolicy, AutomationMode, AutomationSchedule } from "
 export const SERVER_VOICE_TRANSCRIPTION_MAX_AUDIO_BYTES = 10 * 1024 * 1024;
 const SERVER_VOICE_TRANSCRIPTION_MAX_AUDIO_BASE64_CHARS = 14_000_000;
 
-/** Owner-only diagnostic pages reuse the provider diagnostic readers and sanitizer. */
 export const ServerReadThreadDiagnosticsInput = Schema.Struct({
   source: Schema.Literals(["events", "runtime"]),
   threadId: ThreadId.check(Schema.isMaxLength(256)),
@@ -35,11 +34,6 @@ export const ServerReadThreadDiagnosticsInput = Schema.Struct({
 });
 export type ServerReadThreadDiagnosticsInput = typeof ServerReadThreadDiagnosticsInput.Type;
 
-/**
- * RPC JSON codecs must describe JSON values explicitly. `Schema.Unknown`
- * has no JSON representation and encodes successful pages as null.
- * The existing diagnostic readers own payload redaction and bounded detail.
- */
 export const ServerReadThreadDiagnosticsResult = Schema.Struct({
   threadId: ThreadId.check(Schema.isMaxLength(256)),
   events: Schema.Array(Schema.Json).check(Schema.isMaxLength(200)),
@@ -114,10 +108,7 @@ export const ServerProviderStatus = Schema.Struct({
       status: Schema.Literals(["unknown", "current", "behind_latest"]),
       currentVersion: Schema.NullOr(TrimmedNonEmptyString),
       latestVersion: Schema.NullOr(TrimmedNonEmptyString),
-      // False when Glade has no registry to learn the latest version from (a
-      // self-updating CLI), so `status` can never leave
-      // "unknown" no matter how current the install is. Absent on older servers,
-      // where callers must assume a source exists and keep the legacy behavior.
+
       latestVersionKnowable: Schema.optional(Schema.Boolean),
       updateCommand: Schema.NullOr(TrimmedNonEmptyString),
       canUpdate: Schema.Boolean,
@@ -183,12 +174,6 @@ export const ServerProviderUsageLine = Schema.Struct({
 });
 export type ServerProviderUsageLine = typeof ServerProviderUsageLine.Type;
 
-// Lifecycle of a live provider usage fetch. Absent status is treated as "ok" so
-// existing local-archive snapshots stay valid without setting it.
-//   ok          – fetched fresh usage from the provider backend
-//   needs-auth  – no/expired credential, or the backend rejected the token (read-only mode never refreshes)
-//   unsupported – the provider has no fetchable usage source for the current auth (e.g. API-key-only)
-//   error       – the fetch failed unexpectedly (network/parse); detail carries the reason
 export const ProviderUsageStatus = Schema.Literals(["ok", "needs-auth", "unsupported", "error"]);
 export type ProviderUsageStatus = typeof ProviderUsageStatus.Type;
 
@@ -248,8 +233,7 @@ export const ServerProviderUsageSnapshot = Schema.Struct({
   planName: Schema.optional(TrimmedNonEmptyString),
   detail: Schema.optional(TrimmedNonEmptyString),
   resetCredits: Schema.optional(ServerCodexResetCredits),
-  // True when this is a re-served last-good snapshot (e.g. the provider is rate-limiting live
-  // fetches) rather than a fresh read; `updatedAt` then still reflects the original fetch time.
+
   stale: Schema.optional(Schema.Boolean),
 });
 export type ServerProviderUsageSnapshot = typeof ServerProviderUsageSnapshot.Type;
@@ -263,9 +247,6 @@ export type ServerGetProviderUsageSnapshotInput = typeof ServerGetProviderUsageS
 export const ServerGetProviderUsageSnapshotResult = Schema.NullOr(ServerProviderUsageSnapshot);
 export type ServerGetProviderUsageSnapshotResult = typeof ServerGetProviderUsageSnapshotResult.Type;
 
-// Batch live-usage fetch for supported providers, powering the Settings → Usage section and
-// provider-scoped usage chips. Unfiltered requests return one entry per supported provider
-// (including needs-auth/error) so the UI can render a row each.
 export const ServerListProviderUsageInput = Schema.Struct({
   forceRefresh: Schema.optional(Schema.Boolean),
   provider: Schema.optional(ProviderKind),
@@ -290,8 +271,7 @@ export const ServerLocalServerProcess = Schema.Struct({
   command: TrimmedNonEmptyString,
   displayName: TrimmedNonEmptyString,
   pageTitle: Schema.optional(TrimmedNonEmptyString.check(Schema.isMaxLength(200))),
-  // Working directory of the listening process, when resolvable. Surfaced in the
-  // UI and used to attribute manually-started dev servers to a project by folder.
+
   cwd: Schema.optional(TrimmedNonEmptyString.check(Schema.isMaxLength(4_096))),
   args: Schema.String.check(Schema.isMaxLength(1_000)),
   ports: Schema.Array(PositiveInt),
@@ -386,8 +366,6 @@ export const ServerVoiceTranscriptionResult = Schema.Struct({
 });
 export type ServerVoiceTranscriptionResult = typeof ServerVoiceTranscriptionResult.Type;
 
-// Schema-validated automation intent extraction for composer-triggered creation.
-// The UI still owns confirmation/error copy; this result only describes what the model understood.
 export const ServerAutomationIntentMissingField = Schema.Literals([
   "schedule",
   "taskPrompt",
@@ -485,7 +463,7 @@ export const ServerLifecycleStreamEvent = Schema.Union([
       task: Schema.Literal("thread-retention"),
       state: Schema.Literals(["started", "progress", "completed", "failed"]),
       at: IsoDateTime,
-      // Legacy wire name retained so older clients can read retention progress.
+
       deletedCount: Schema.optional(Schema.Number),
       totalCount: Schema.optional(Schema.Number),
       error: Schema.optional(Schema.String),

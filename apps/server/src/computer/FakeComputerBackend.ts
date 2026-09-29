@@ -48,25 +48,19 @@ import { ComputerTargetError } from "./uiTreeTargeting.ts";
 const FAKE_SCREENSHOT_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
 
-/** A real 1×1 JPEG: zoom returns JPEG, not the PNG the ordinary captures carry. */
 const FAKE_ZOOM_BASE64 =
   "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAMCAgICAgMCAgIDAwMDBAYEBAQEBAgGBgUGCQgKCgkICQkKDA8MCgsOCwkJDRENDg8QEBEQCgwSExIQEw8QEBD/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKwA//9k=";
 
-/**
- * How many calls the fake remembers. A long-running server that leaves the
- * fake wired in would otherwise grow this array for the life of the process;
- * tests only ever look at recent calls, so the oldest entries are dropped.
- */
+// How many calls the fake remembers. A long-running server that leaves the fake wired in would
+// otherwise grow this array for the life of the process; tests only ever look at recent calls, so
+// the oldest entries are dropped.
 const MAX_RECORDED_CALLS = 1_000;
 
-/**
- * What the fake actually simulates. It enumerates windows with bounds and a
- * stacking order, captures, takes input, holds a clipboard, and focuses and
- * raises — so those are all true. `ghostCursor` is true because the fake moves
- * a pointer nothing else shares. `visibleDesktop` is false — a fake desktop
- * renders nowhere, so the pane is its only view, which also keeps the pane
- * auto-open path exercised under this backend.
- */
+// What the fake actually simulates. It enumerates windows with bounds and a stacking order,
+// captures, takes input, holds a clipboard, and focuses and raises — so those are all true.
+// `ghostCursor` is true because the fake moves a pointer nothing else shares. `visibleDesktop` is
+// false — a fake desktop renders nowhere, so the pane is its only view, which also keeps the pane
+// auto-open path exercised under this backend.
 const DEFAULT_FAKE_CAPABILITIES: ComputerCapabilities = {
   windows: true,
   windowBounds: true,
@@ -89,42 +83,21 @@ export interface FakeComputerBackendOptions {
   readonly computerId?: string;
   readonly availability?: ComputerAvailability;
   readonly health?: ComputerHealth;
-  /**
-   * Overrides what the fake claims to be able to do, so a test can drive the
-   * capability-gated refusals a less capable backend produces without
-   * standing up a real display server.
-   */
+
   readonly capabilities?: ComputerCapabilities;
   readonly screenSize?: ComputerScreenSize;
   readonly windows?: readonly ComputerWindow[];
-  /**
-   * The process list `listApps` answers. Defaults to one running app per
-   * default window, so the fixture mirrors what the real driver reports
-   * without a test having to name any.
-   */
+
   readonly apps?: readonly ComputerApp[];
   readonly root?: ComputerUiNode;
   readonly now?: () => string;
-  /**
-   * Opts the fake into the browser surface. `true` uses the built-in handler
-   * (a minted `target_id` for `get_browser_state`, `status:"completed"` for
-   * everything else); a function answers calls itself. Absent or `false`
-   * means the fake speaks no browser tools — `browser` stays undefined, which
-   * is how a desktop-only backend truthfully reports that.
-   */
+
   readonly browser?:
     | boolean
     | ((
         call: ComputerBrowserCall,
       ) => ComputerBrowserCallResult | void | Promise<ComputerBrowserCallResult | void>);
-  /**
-   * Opts the fake into driver-observed settling. `true` answers every
-   * `waitForSettle` call `{settled:true}` immediately; a function answers
-   * itself, so a test can return a busy surface or throw the
-   * "Unknown tool:" refusal an older driver produces. Absent or `false`
-   * means the backend truthfully has no observer — the method stays
-   * undefined and callers must take the fixed-settle fallback.
-   */
+
   readonly waitForSettle?:
     | boolean
     | ((options: {
@@ -138,20 +111,9 @@ export interface FakeComputerBackendOptions {
             readonly waitedMs: number;
             readonly eventsSeen?: number;
           }>);
-  /**
-   * Opts the fake into the activation-shield surface. `true` answers every
-   * `engageShield` with the caller's id; a function answers engages itself,
-   * so a test can refuse or wedge the way a real host can. Absent or `false`
-   * means the backend has no shield surface — the methods stay undefined,
-   * which is what makes an armed masked-activation flag fail closed.
-   */
+
   readonly shield?: boolean | ((target: ComputerShieldTarget) => void | Promise<void>);
-  /**
-   * What the fake reports as its input dialect. The real CUA backend reports
-   * `"macos"`; the fake defaults to absent (the manager reads that as
-   * `"linux"`) so existing fixtures keep their dialect-gated behavior, and a
-   * test that needs the macOS paths — masked activation among them — opts in.
-   */
+
   readonly agentDialect?: ComputerAgentDialect;
 }
 
@@ -176,32 +138,19 @@ export class FakeComputerBackend implements ComputerBackend {
   private clipboardText = "";
   private failures = new Map<string, Error>();
   private readonly queuedScreenshots: string[] = [];
-  /**
-   * When false the frame call still succeeds but the window keeps its old
-   * bounds — the readback-mismatch shape a driver that dispatched without the
-   * move landing produces.
-   */
+
   private frameApplies = true;
   private readonly refusedMenuPaths = new Map<string, Error>();
   private verifySatisfied = true;
   private cursorPosition: ComputerPoint = { x: 0, y: 0 };
   private disposed = false;
   readonly browser?: ComputerBrowserBackend;
-  /**
-   * Present only when `options.waitForSettle` opted the fake into the
-   * observer capability — exactly like a real backend that either exposes
-   * the driver's `wait_for_settle` read or does not. `NonNullable` because
-   * `exactOptionalPropertyTypes` makes the interface's optional member
-   * present-or-absent, never undefined.
-   */
+  // Present only when `options.waitForSettle` opted the fake into the observer capability — exactly
+  // like a real backend that either exposes the driver's `wait_for_settle` read or does not.
+  // `NonNullable` because `exactOptionalPropertyTypes` makes the interface's optional member
+  // present-or-absent, never undefined.
   readonly waitForSettle?: NonNullable<ComputerBackend["waitForSettle"]>;
-  /**
-   * Present only when `options.shield` opted the fake into the shield
-   * surface — exactly like a real backend that either exposes the host's
-   * shield command or does not. Engage still echoes the caller's id back:
-   * the manager mints it, so a fake that "lost the reply" is simulated with
-   * `failNext("engageShield")`, not by withholding the id.
-   */
+
   readonly engageShield?: NonNullable<ComputerBackend["engageShield"]>;
   readonly releaseShield?: NonNullable<ComputerBackend["releaseShield"]>;
   readonly releaseAllShields?: NonNullable<ComputerBackend["releaseAllShields"]>;
@@ -289,32 +238,23 @@ export class FakeComputerBackend implements ComputerBackend {
     return this.currentAvailability;
   }
 
-  /**
-   * Recorded under its own name so a test can prove which of the two a caller
-   * used: the whole point of the passive probe is that the paths which must not
-   * touch the display server can be shown not to.
-   */
+  // Recorded under its own name so a test can prove which of the two a caller used: the whole point
+  // of the passive probe is that the paths which must not touch the display server can be shown not
+  // to.
   async probeAvailability(): Promise<ComputerAvailability> {
     this.record("probeAvailability");
     this.throwIfFailed("probeAvailability");
     return this.currentAvailability;
   }
 
-  /** Not recorded as a call: reading health is a getter, not a backend operation. */
   health(): ComputerHealth {
     return this.currentHealth;
   }
 
-  /** Not recorded either, and for the same reason. */
   capabilities(): ComputerCapabilities {
     return this.currentCapabilities;
   }
 
-  /**
-   * No OS withholds anything from the fake. Declared rather than omitted so a
-   * test can substitute a backend that *is* missing a grant without the type
-   * complaining about a property the interface only optionally has.
-   */
   async missingPermissions(): Promise<readonly ComputerPermission[]> {
     return this.currentMissingPermissions;
   }
@@ -323,12 +263,6 @@ export class FakeComputerBackend implements ComputerBackend {
     this.currentMissingPermissions = [...permissions];
   }
 
-  /**
-   * Undefined by default: the fake is not a signed binary and has no signature
-   * to report, and reporting `signed` would be a lie a card could act on.
-   * Declared for the same reason `missingPermissions` is — so a test can
-   * substitute a build that *is* ad-hoc.
-   */
   buildSignature(): ComputerBuildSignature | undefined {
     return this.currentBuildSignature;
   }
@@ -386,8 +320,6 @@ export class FakeComputerBackend implements ComputerBackend {
     args: readonly string[],
     options?: { readonly hidden?: boolean },
   ): Promise<ComputerLaunchAppResult> {
-    // Recorded only when present, so every existing assertion on a plain
-    // launch keeps matching its two-argument shape.
     if (options !== undefined) this.record("launchApp", app, args, options);
     else this.record("launchApp", app, args);
     this.throwIfFailed("launchApp");
@@ -399,8 +331,7 @@ export class FakeComputerBackend implements ComputerBackend {
       appName: app,
       pid: this.nextPid++,
       bounds: { x: 120, y: 80, width: 900, height: 700 },
-      // A hidden launch renders nothing and takes no focus: frontmost is
-      // unchanged, which the fake models by leaving every existing flag alone.
+
       focused: false,
       minimized: false,
       visible: !hidden,
@@ -417,12 +348,6 @@ export class FakeComputerBackend implements ComputerBackend {
     return this.currentApps.map((app) => ({ ...app }));
   }
 
-  /**
-   * The fake's readback is its own window list: applying the frame is what a
-   * confirmed verification looks like, and `setFrameApplies(false)` produces
-   * the dispatched-but-unverified result a real backend reports when the move
-   * did not land.
-   */
   async setWindowFrame(
     windowId: string,
     frame: ComputerRect,
@@ -468,8 +393,6 @@ export class FakeComputerBackend implements ComputerBackend {
         );
       }
     } else if (!this.currentApps.some((app) => app.pid === target.pid && app.running)) {
-      // The windowless form proves the process, not a window — the same
-      // refusal the real driver raises for a pid that is not running.
       throw new ComputerBackendError(`No running application has pid ${target.pid}.`);
     }
     if (path.length === 0 || path.some((segment) => segment.trim().length === 0)) {
@@ -495,9 +418,7 @@ export class FakeComputerBackend implements ComputerBackend {
     if (index === -1) {
       throw new ComputerBackendError(`No desktop window has id ${JSON.stringify(windowId)}.`);
     }
-    // A minimized window renders nothing; a restored one shows again. The
-    // window stays in the list either way — like the real driver, the fake
-    // keeps it addressable for semantic reads while it is off screen.
+
     const window = this.currentWindows[index]!;
     this.currentWindows[index] = { ...window, minimized, visible: !minimized };
     this.currentRoot = defaultRoot(this.currentScreenSize, this.currentWindows);
@@ -517,8 +438,7 @@ export class FakeComputerBackend implements ComputerBackend {
     if (!app) {
       throw new ComputerBackendError(`No running application has pid ${pid}.`);
     }
-    // A hidden app renders none of its windows; unhiding restores whatever
-    // is not still minimized.
+
     this.currentWindows = this.currentWindows.map((window) =>
       window.pid === pid ? { ...window, visible: !hidden && !window.minimized } : window,
     );
@@ -605,11 +525,6 @@ export class FakeComputerBackend implements ComputerBackend {
     };
   }
 
-  /**
-   * Mirrors the driver's grant-free snapshot: only running apps and the
-   * on-screen window subset appear there, so minimized and hidden windows are
-   * filtered out rather than reported as a different "not visible" flag.
-   */
   async getAccessibilityTree(windowId?: string): Promise<{
     readonly apps: readonly ComputerAccessibilityTreeApp[];
     readonly windows: readonly ComputerAccessibilityTreeWindow[];
@@ -662,11 +577,6 @@ export class FakeComputerBackend implements ComputerBackend {
     return { apps, windows, truncated: false };
   }
 
-  /**
-   * The fake tracks where its own pointer actions last left the cursor, so a
-   * `moveCursor` followed by this read round-trips the way the real driver
-   * does.
-   */
   async getCursorPosition(
     windowId?: string,
   ): Promise<Omit<ComputerCursorPosition, "computerId" | "availability">> {
@@ -699,17 +609,14 @@ export class FakeComputerBackend implements ComputerBackend {
     };
   }
 
-  /** Places the fake cursor directly, for tests that need a known point. */
   setCursorPosition(point: ComputerPoint): void {
     this.cursorPosition = { ...point };
   }
 
-  /** Makes the next setWindowFrame report the dispatched-unverified shape. */
   setFrameApplies(applies: boolean): void {
     this.frameApplies = applies;
   }
 
-  /** Configures a persistent refusal for one menu path, like a disabled item. */
   refuseMenuPath(path: readonly string[], error: Error): void {
     this.refusedMenuPaths.set(path.join(""), error);
   }
@@ -726,8 +633,7 @@ export class FakeComputerBackend implements ComputerBackend {
   async focusWindow(windowId: string): Promise<void> {
     this.record("focusWindow", windowId);
     this.throwIfFailed("focusWindow");
-    // The pinned target is the only window that
-    // reports focused, so clearing and re-pinning behave like the real seat.
+
     this.currentWindows = this.currentWindows.map((item) => ({
       ...item,
       focused: item.id === windowId,
@@ -737,8 +643,7 @@ export class FakeComputerBackend implements ComputerBackend {
   async clearFocusWindow(): Promise<void> {
     this.record("clearFocusWindow");
     this.throwIfFailed("clearFocusWindow");
-    // No pinned target means no window reports
-    // focused — the blind spot behind the untargeted-scroll regression.
+
     this.currentWindows = this.currentWindows.map((item) => ({ ...item, focused: false }));
   }
 
@@ -799,8 +704,6 @@ export class FakeComputerBackend implements ComputerBackend {
     _windowId?: string,
     modifiers?: readonly ComputerInputModifier[],
   ): Promise<ComputerBackendActionResult> {
-    // Recorded only when present, so every existing assertion on a plain
-    // scroll keeps matching its three-argument shape.
     if (modifiers && modifiers.length > 0) this.record("scroll", point, deltaX, deltaY, modifiers);
     else this.record("scroll", point, deltaX, deltaY);
     this.throwIfFailed("scroll");
@@ -826,7 +729,6 @@ export class FakeComputerBackend implements ComputerBackend {
     return {};
   }
 
-  /** One in-memory string stands in for the shared system clipboard. */
   async readClipboard(): Promise<string> {
     this.record("readClipboard");
     this.throwIfFailed("readClipboard");
@@ -858,11 +760,6 @@ export class FakeComputerBackend implements ComputerBackend {
     return { point: target.point, value: action };
   }
 
-  /**
-   * The fake's selection is the slice of the element's own value: its
-   * "read-back" is exactly the substring the requested range covers, which
-   * is the honest emulation of a driver that confirmed the write.
-   */
   async selectText(
     target: ComputerResolvedTarget,
     range: ComputerTextRange,
@@ -927,18 +824,11 @@ export class FakeComputerBackend implements ComputerBackend {
     this.emit({ type: "windows-changed", windows: this.currentWindows });
   }
 
-  /** Drives a supervision transition for tests. */
   emitHealthChanged(health: ComputerHealth): void {
     this.currentHealth = health;
     this.emit({ type: "health-changed", health });
   }
 
-  /**
-   * Reports a desktop lock/sleep/session interruption the way the real
-   * backend does when a reply's `desktopInterruptions` count advances —
-   * `pauses` are the reasons still active at observation time, empty when
-   * the cycle already ended.
-   */
   emitDesktopInterrupted(pauses: readonly string[] = []): void {
     this.emit({ type: "desktop-interrupted", pauses });
   }
@@ -955,12 +845,6 @@ export class FakeComputerBackend implements ComputerBackend {
     this.failures.set(method, error);
   }
 
-  /**
-   * Hands the next captures these exact PNG bytes, in order, so a test can make
-   * two captures of one window differ — which is what any before/after
-   * comparison needs and what the single fixed fixture cannot express. Captures
-   * past the end of the queue return the fixture again.
-   */
   queueScreenshots(bytesBase64List: readonly string[]): void {
     this.queuedScreenshots.push(...bytesBase64List);
   }
@@ -969,11 +853,6 @@ export class FakeComputerBackend implements ComputerBackend {
     return this.calls.filter((call) => call.method === method);
   }
 
-  /**
-   * The shield ids the fake still considers up: engage adds, release removes.
-   * Lets a test prove a stranded shield was actually cleaned rather than
-   * trusting the call log alone.
-   */
   activeShields(): readonly string[] {
     return [...this.liveShields];
   }
@@ -998,11 +877,6 @@ export class FakeComputerBackend implements ComputerBackend {
     };
   }
 
-  /**
-   * Mirrors the real backend's contract: the reported region is the rect that
-   * was captured, and the scale is the screenshot's pixels per logical pixel
-   * after `maxDimension` downscaling.
-   */
   private screenshotOfRegion(region: ComputerRect, maxDimension?: number): ComputerScreenshot {
     const limit = maxDimension ?? DEFAULT_COMPUTER_CAPTURE_MAX_DIMENSION;
     const scale = Math.min(1, limit / Math.max(region.width, region.height));
@@ -1024,8 +898,6 @@ export class FakeComputerBackend implements ComputerBackend {
     point: ComputerPoint,
     modifiers?: readonly ComputerInputModifier[],
   ): Promise<ComputerBackendActionResult> {
-    // Recorded only when present, so every existing assertion on a plain
-    // pointer call keeps matching its two-argument shape.
     if (modifiers && modifiers.length > 0) this.record(method, point, modifiers);
     else this.record(method, point);
     this.throwIfFailed(method);
@@ -1063,9 +935,7 @@ export class FakeComputerBackend implements ComputerBackend {
     for (const listener of this.eventListeners) {
       try {
         listener(event);
-      } catch {
-        // One observer cannot prevent the backend's remaining observers.
-      }
+      } catch {}
     }
   }
 }

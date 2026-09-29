@@ -1,7 +1,3 @@
-// FILE: projectCreateRecovery.ts
-// Purpose: Centralizes duplicate `project.create` error parsing and recovery helpers.
-// Exports: duplicate-create error guards plus snapshot matching for import recovery.
-
 import type { OrchestrationReadModel } from "@glade/contracts";
 import { workspaceRootsEqual } from "@glade/shared/threadWorkspace";
 
@@ -27,8 +23,6 @@ interface ProjectLookupInput {
   readonly workspaceRoot?: string | null | undefined;
 }
 
-// Defaults to the original "project" kind so existing callers keep their current behavior;
-// callers can opt into their own kind set.
 function isRecoverableProjectKind(
   kind: string | undefined,
   recoverableKinds: ReadonlySet<string> = DEFAULT_RECOVERABLE_PROJECT_KINDS,
@@ -51,9 +45,6 @@ function wait(ms: number): Promise<void> {
   });
 }
 
-// Generic retry-with-backoff loop shared by every duplicate-create recovery flow: poll
-// `loadSnapshot` with linear backoff, then fall back to `repairSnapshot` once before giving up.
-// This is the single source of the 6-attempt / 50ms-backoff shape used across recovery helpers.
 async function waitForSnapshotMatch<TSnapshot, TMatch>(input: {
   readonly loadSnapshot: () => Promise<TSnapshot | null>;
   readonly findMatch: (snapshot: TSnapshot) => TMatch | null;
@@ -94,9 +85,6 @@ async function waitForSnapshotMatch<TSnapshot, TMatch>(input: {
   return { match: null, snapshot: latestSnapshot };
 }
 
-// Shared machinery behind the home-chat hidden-container candidate helper
-// project recovery: normalizes the cwd/workspaceRoot field naming difference between local store
-// projects and shell-snapshot rows, and finds a candidate by id via a caller-supplied predicate.
 export interface ContainerCandidateFields {
   readonly cwd?: string | undefined;
   readonly workspaceRoot?: string | undefined;
@@ -168,7 +156,6 @@ export function findRecoverableProject<T extends DuplicateProjectCreateRecoveryC
   );
 }
 
-// Prefers the explicit duplicate id, then falls back to workspace-root matching for older clients.
 export function findRecoverableProjectForDuplicateCreate<
   T extends DuplicateProjectCreateRecoveryCandidate,
 >(input: {
@@ -221,7 +208,6 @@ export async function waitForRecoverableProjectInReadModel<
   return { project: match, snapshot };
 }
 
-// Retries snapshot reads briefly so freshly restored projects can be reused by the first-send flow.
 export async function waitForRecoverableProjectForDuplicateCreate<
   TSnapshot extends SnapshotWithProjects<DuplicateProjectCreateRecoveryCandidate>,
 >(input: {

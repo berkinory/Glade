@@ -1,40 +1,11 @@
-// FILE: composerOverlay.ts
-// Purpose: Geometry for the floating composer — the transcript scrolls *under* the
-//   frosted composer, so its measured height becomes the transcript's bottom content inset.
-// Layer: Chat composer layout helper
-// Exports: useComposerOverlayHeight (measure), composerTranscriptBottomInsetPx (derive inset)
-//
-// The composer is absolutely positioned at `bottom-full` of the in-flow block that
-// carries the trailing gutter (and the git BranchToolbar), so the transcript's scroll
-// viewport ends exactly at the composer's BOTTOM edge. Content stays fully painted
-// while it scrolls behind the glass (the frosted surface is what dims and blurs it);
-// a viewport mask only dissolves it in a short band just above the composer's footer
-// row, so nothing ever shows behind the send controls or the padding strip below.
-
 import { useCallback, useRef, useState } from "react";
 
-/**
- * How far transcript content tucks under the composer's top edge at rest.
- * Mirrors the `-mt-5` overlap the in-flow composer used to have, so the resting
- * gap between the last row and the composer is unchanged — but now those 20px are
- * real content sliding behind the glass instead of a solid backing.
- */
 const COMPOSER_OVERLAY_TUCK_PX = 20;
 
-/**
- * Bottom content inset for the transcript given the measured composer overlay height.
- * Keep this the single conversion: the pane and the timeline must agree on it exactly,
- * or rows either hide behind the composer or float above a gap.
- */
 export function composerTranscriptBottomInsetPx(overlayHeightPx: number): number {
   return Math.max(0, Math.round(overlayHeightPx) - COMPOSER_OVERLAY_TUCK_PX);
 }
 
-/**
- * Transcript content is fully dissolved this far above the composer's bottom edge,
- * keeping the footer row (attach, access mode, model picker, send) clear of any
- * content scrolling underneath — only the editor region reveals the transcript.
- */
 const COMPOSER_OVERLAY_BOTTOM_CLEARANCE_PX = 52;
 
 function composerOverlayBottomClearancePx(surfaceBottomPx: number, footerTopPx: number): number {
@@ -44,21 +15,8 @@ function composerOverlayBottomClearancePx(surfaceBottomPx: number, footerTopPx: 
   );
 }
 
-/**
- * Height of the dissolve band above the footer clearance. Content scrolling behind
- * the glass stays fully painted (blurred and tinted by the surface) until it reaches
- * this band, then fades out before the footer row.
- */
 const COMPOSER_OVERLAY_MASK_FADE_PX = 40;
 
-/**
- * Mask for the transcript scroll viewport while the composer floats over it:
- * opaque through the composer's editor region — the frosted surface, not the mask,
- * is what obscures content there — then dissolving to fully transparent
- * `COMPOSER_OVERLAY_BOTTOM_CLEARANCE_PX` above the composer's bottom edge (which is
- * also the viewport's bottom edge). Derived from the same bottom inset the viewport
- * uses for padding so both always track the measured composer height together.
- */
 export function composerOverlayScrollMaskImage(
   bottomInsetPx: number,
   bottomClearancePx = COMPOSER_OVERLAY_BOTTOM_CLEARANCE_PX,
@@ -74,22 +32,12 @@ export function composerOverlayScrollMaskImage(
   return `linear-gradient(to bottom, #000 calc(100% - ${fadeStartPx}px), transparent calc(100% - ${fadeEndPx}px))`;
 }
 
-/** Gap between the composer's top edge and floating transcript affordances. */
 const COMPOSER_OVERLAY_AFFORDANCE_GAP_PX = 8;
 
-/**
- * Bottom offset for affordances that must float clear of the composer (the
- * scroll-to-bottom arrow). Derived from the same inset so it tracks composer growth.
- */
 export function composerOverlayAffordanceBottomPx(bottomInsetPx: number): number {
   return bottomInsetPx + COMPOSER_OVERLAY_TUCK_PX + COMPOSER_OVERLAY_AFFORDANCE_GAP_PX;
 }
 
-/**
- * Measures the composer overlay's border box. Rounded to whole pixels and only
- * committed on change, so a resize that settles on the same height never re-renders
- * the transcript (the composer resizes on every wrap of typed text).
- */
 export function useComposerOverlayHeight(): {
   overlayRef: (node: HTMLElement | null) => void;
   overlayHeightPx: number;

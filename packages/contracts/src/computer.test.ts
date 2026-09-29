@@ -90,9 +90,6 @@ describe("ComputerAvailability permission-required", () => {
   });
 
   it("refuses a permission state that names no grant", () => {
-    // An empty list would render as "Computer control needs " on the card, and
-    // would mean the backend reported a permission problem it cannot name — a
-    // state the setup signal expresses by not producing this kind at all.
     expect(decodes({ ...PERMISSION_REQUIRED, missing: [] })).toBe(false);
   });
 
@@ -117,10 +114,6 @@ describe("ComputerSetupRequiredPayload", () => {
   });
 
   it("accepts a payload with no signature, and refuses an unknown one", () => {
-    // Backends with no permission model report none, and the card simply says
-    // nothing about stale grants — but "notarized" is a value nothing produces,
-    // and reading it as ad-hoc would put a Terminal command in front of a
-    // release user.
     const decodes = (input: unknown): boolean => {
       try {
         Schema.decodeUnknownSync(ComputerSetupRequiredPayload as never)(input);

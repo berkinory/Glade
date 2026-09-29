@@ -220,8 +220,6 @@ describe("desktop migration recovery", () => {
   });
 
   it("does not accept a restore that leaves a marker the backend could still retry", async () => {
-    // The gate answers false for such a marker, so verifying with it would call
-    // this restore a success and hand the backend the unrepaired database.
     const choose = vi.fn().mockResolvedValueOnce("restore").mockResolvedValueOnce("quit");
     const requestRestart = vi.fn();
 
@@ -269,8 +267,7 @@ describe("desktop migration recovery", () => {
     ).resolves.toBe("update-requested");
     expect(choose).toHaveBeenCalledTimes(1);
     expect(restore).not.toHaveBeenCalled();
-    // The updater owns this quit; a second one would turn the install into a
-    // plain app quit.
+
     expect(requestQuit).not.toHaveBeenCalled();
   });
 
@@ -316,7 +313,7 @@ describe("desktop migration recovery", () => {
       }),
     ).resolves.toBe("quit-requested");
     expect(openReleasePage).toHaveBeenCalledTimes(1);
-    // Downloading is not an answer to the prompt: the database is still blocked.
+
     expect(restore).not.toHaveBeenCalled();
     expect(choose).toHaveBeenCalledTimes(2);
   });
@@ -470,8 +467,6 @@ describe("requiresDesktopMigrationRecovery", () => {
   });
 
   it("treats a marker written before the resume path existed as fully retryable", async () => {
-    // This is the shape every 0.6.0 install is wedged on; blocking it would
-    // hide the self-heal the upgrade exists to deliver.
     await withMarker(JSON.stringify({ phase: "migration-in-progress" }), (paths) => {
       expect(requiresDesktopMigrationRecovery(paths)).toBe(false);
     });

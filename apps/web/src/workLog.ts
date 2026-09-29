@@ -45,8 +45,7 @@ import type { ChatMessage, ProposedPlan } from "./types";
 type WorkLogRequestKind = ApprovalRequestKind;
 
 // Mirrors CHECKPOINT_REVERT_FAILED_ACTIVITY_KIND in
-// apps/server/src/orchestration/commandInvariants.ts, which the web app cannot
-// import.
+// apps/server/src/orchestration/commandInvariants.ts, which the web app cannot import.
 const CHECKPOINT_REVERT_FAILED_ACTIVITY_KIND = "checkpoint.revert.failed";
 const PROVIDER_CONTEXT_LIFECYCLE_ACTIVITY_KIND = "provider.context.changed";
 const SESSION_CONTEXT_RECAP_PREVIEW_MAX_CHARS = 600;
@@ -70,30 +69,18 @@ interface ProviderContextLifecycleInfo {
 }
 
 interface WorkLogComputerSetupRequired {
-  /**
-   * The grants the OS is withholding, so the card can name them. Empty when the
-   * backend refused without naming one — the card then says what it can.
-   */
   missing: readonly ComputerPermission[];
-  /**
-   * How the running build is signed, when the backend could say. Only an
-   * `adhoc` build gets the stale-grant explanation, because only there can
-   * System Settings show the switch on while the grant does not apply.
-   */
+  // Only an `adhoc` build gets the stale-grant explanation, because only there can System Settings
+  // show the switch on while the grant does not apply.
   buildSignature?: ComputerBuildSignature;
-  /**
-   * The app macOS files this Glade's grants against, when a desktop shell told
-   * the server which flavor it is. The card's `tccutil` advice names it, and
-   * absent means that advice is withheld rather than guessed — a guessed
-   * identifier resets a different Glade's grants.
-   */
+
   bundleId?: string;
 }
 
 export interface WorkLogEntry {
   id: string;
   createdAt: string;
-  /** Server-owned orchestration event sequence for causal ordering. */
+
   sequence?: number;
   turnId?: TurnId | null;
   label: string;
@@ -115,17 +102,13 @@ export interface WorkLogEntry {
   subagentAction?: WorkLogSubagentAction;
   automation?: WorkLogAutomation;
   gladeThreadCreation?: WorkLogGladeThreadCreation;
-  // Computer-control denial rows render as an actionable card (enable control
-  // and retry) instead of a plain error line; carry just what that card needs.
+
   computerControlDenied?: WorkLogComputerControlDenied;
   computerSetupRequired?: WorkLogComputerSetupRequired;
   providerContextLifecycle?: ProviderContextLifecycleInfo;
-  // Source activity kind, kept so the timeline can pick a kind-specific icon
-  // (e.g. user-input.requested -> question glyph) instead of the generic
-  // tone fallback. Same rationale as `toolName` below.
+
   activityKind?: OrchestrationThreadActivity["kind"];
-  // Provider-native event type carried through the activity payload (e.g.
-  // "background_tasks_changed") so the timeline can pick a specific icon.
+
   nativeEventType?: string;
 }
 
@@ -149,8 +132,6 @@ export interface WorkLogLiveActivity {
   elapsedSeconds?: number;
 }
 
-// Created-automation rows render as a dedicated card (icon + name + cadence + Open)
-// instead of a plain tool-call line, so carry just the fields that card needs.
 interface WorkLogAutomation {
   id: string;
   name: string;
@@ -221,7 +202,6 @@ export function isFileChangeWorkLogEntry(
   return workEntry.requestKind === "file-change" || workEntry.itemType === "file_change";
 }
 
-// Composer live chrome should count actual edit work, not bare file-change approvals.
 export function isProviderFileEditWorkLogEntry(
   workEntry: Pick<WorkLogEntry, "changedFiles" | "itemType" | "requestKind">,
 ): boolean {
@@ -239,9 +219,6 @@ export type TimelineEntry =
       message: ChatMessage;
     }
   | {
-      // One slice of a streamed assistant message that had tool calls inside
-      // its text span; positioned at the slice's own start time so reasoning
-      // interleaves with the tool rows instead of one block above them.
       id: string;
       kind: "message-segment";
       createdAt: string;
@@ -277,8 +254,6 @@ function isActivityOrderStable(activities: ReadonlyArray<OrchestrationThreadActi
   return true;
 }
 
-// Thread activity arrays are immutable store values and most call sites need the
-// same order; cache it so chat startup does not sort the same array repeatedly.
 export function orderedActivities(
   activities: ReadonlyArray<OrchestrationThreadActivity>,
 ): ReadonlyArray<OrchestrationThreadActivity> {
@@ -294,17 +269,14 @@ export function orderedActivities(
   return ordered;
 }
 
-// Routed subagent work (Claude's agent fan-out) belongs to the composer subagent
-// strip and to the child threads themselves — the transcript never renders a
-// subagent roster. The check runs on derived entries rather than raw activities
-// because providers stream the tool call first and attach receiver metadata on a
-// later lifecycle update that merges into the same entry.
+// Routed subagent work (Claude's agent fan-out) belongs to the composer subagent strip and to the
+// child threads themselves — the transcript never renders a subagent roster. The check runs on
+// derived entries rather than raw activities because providers stream the tool call first and
+// attach receiver metadata on a later lifecycle update that merges into the same entry.
 function isRoutedSubagentWorkEntry(entry: Pick<WorkLogEntry, "itemType" | "subagents">) {
   return entry.itemType === "collab_agent_tool_call" && (entry.subagents?.length ?? 0) > 0;
 }
 
-// Returns the same array when nothing is routed so memoized consumers keep their
-// reference identity on the common (no subagents) path.
 export function omitRoutedSubagentWorkEntries<Entry extends WorkLogEntry>(
   entries: ReadonlyArray<Entry>,
 ): ReadonlyArray<Entry> {
@@ -342,13 +314,7 @@ export function deriveWorkLogEntries(
     .filter((activity) => activity.summary !== "Checkpoint captured")
     .filter((activity) => !isPlanBoundaryToolActivity(activity))
     .map(toDerivedWorkLogEntry);
-  // Strip the derivation-only helpers that exist solely on DerivedWorkLogEntry.
-  // `toolName` and `activityKind` are intentionally kept: they are public
-  // WorkLogEntry fields that the timeline relies on to pick the right icon (e.g.
-  // file-read tools like Claude's `Read` -> search icon, GitHub MCP rows ->
-  // GitHub icon, user-input rows -> question / submit glyphs). Stripping
-  // `toolName` here previously made those icon checks dead code, leaving the
-  // generic wrench.
+
   return reconcileSettledLiveActivities(
     collapseDerivedWorkLogEntries(entries),
     ordered,
@@ -374,33 +340,22 @@ function shouldKeepActivityForWorkLog(
   latestTurnId: TurnId | undefined,
   visibleTurnIds: ReadonlySet<TurnId | string> | undefined,
 ): boolean {
-  // Context lifecycle evidence must survive message visibility filters. It is
-  // the durable explanation for why a turn may behave differently after reload.
   if (activity.kind === PROVIDER_CONTEXT_LIFECYCLE_ACTIVITY_KIND) {
     return true;
   }
 
-  // Thread-level compaction progress has no provider turn id but should stay visible.
   if (activity.kind === "context-compaction" && activity.turnId === null) {
     return true;
   }
 
-  // Created-automation milestones are thread-scoped and carry no provider turn id;
-  // keep them so the transcript card survives once the thread has turn-stamped messages.
   if (activity.kind === "automation.created") {
     return true;
   }
 
-  // Revert failures are the only feedback a failed Undo produces. They can be
-  // emitted before any checkpoint exists to anchor them to a turn (or against a
-  // turn that the revert itself just rolled out of view), so never let the
-  // turn-visibility filter drop them.
   if (activity.kind === CHECKPOINT_REVERT_FAILED_ACTIVITY_KIND) {
     return true;
   }
 
-  // A computer-control denial is the only actionable feedback for a desktop
-  // tool call rejected mid-turn; never let turn-visibility filtering hide it.
   if (activity.kind === COMPUTER_SETUP_REQUIRED_ACTIVITY_KIND) {
     return true;
   }
@@ -408,9 +363,6 @@ function shouldKeepActivityForWorkLog(
     return true;
   }
 
-  // An empty set means the transcript has no turn-stamped assistant messages
-  // (e.g. providers that never supply turn ids); fall back to the legacy
-  // latest-turn filter instead of hiding the whole work log.
   if (visibleTurnIds && visibleTurnIds.size > 0) {
     return activity.turnId !== null && visibleTurnIds.has(activity.turnId);
   }
@@ -422,7 +374,7 @@ function isQuietTurnLifecycleActivity(activity: OrchestrationThreadActivity): bo
   if (activity.kind !== "turn.completed" && activity.kind !== "turn.aborted") {
     return false;
   }
-  // Provider lifecycle rows close internal state; assistant/result text is rendered from messages.
+
   return activity.tone !== "error";
 }
 
@@ -523,11 +475,6 @@ export interface TaskListTaskSnapshot {
   status: "pending" | "inProgress" | "completed";
 }
 
-// Shared parser for `turn.tasks.updated` payloads. Returns null when the
-// payload carries no readable task list (missing/non-array `tasks`, or a
-// non-empty list where every entry is malformed); an explicit empty snapshot
-// parses to an empty array. Consumed here for transcript rows and by
-// session-logic's composer task-list card state.
 export function parseTaskListTasks(payload: unknown): TaskListTaskSnapshot[] | null {
   const record =
     payload && typeof payload === "object" ? (payload as Record<string, unknown>) : null;
@@ -682,10 +629,7 @@ function toDerivedWorkLogEntry(activity: OrchestrationThreadActivity): DerivedWo
         delete entry.detail;
       }
     }
-    // Providers snapshot the whole checklist on every change, so one row per
-    // turn (keep-latest) is the entire task history. Without a turn id there is
-    // no safe boundary between separate turns, so keep those snapshots
-    // independent instead of collapsing the whole thread into one row.
+
     if (activity.turnId !== null) {
       entry.collapseKey = `taskList:${activity.turnId}`;
     }
@@ -780,9 +724,9 @@ function toDerivedWorkLogEntry(activity: OrchestrationThreadActivity): DerivedWo
       payload,
       isRunning: activity.kind !== "tool.completed",
     });
-  // Task-list rows derive their own progress heading above. The generic
-  // activity summary ("Tasks updated") would otherwise become toolTitle and
-  // take precedence over that progress label in TimelineWorkEntryRow.
+  // Task-list rows derive their own progress heading above. The generic activity summary ("Tasks
+  // updated") would otherwise become toolTitle and take precedence over that progress label in
+  // TimelineWorkEntryRow.
   if (readableTitle && activity.kind !== "turn.tasks.updated") {
     entry.toolTitle = readableTitle;
   }
@@ -846,10 +790,9 @@ function deriveProviderRuntimeReconciliationCollapseKey(
   ) {
     return undefined;
   }
-  // Session and turn projections converge independently. A single stale turn
-  // can therefore be observed first as interrupted, then as terminal or
-  // failed. Those settlement actions refine one recovery; a runtime
-  // realignment remains distinct because its live turn id identifies separate
+  // Session and turn projections converge independently. A single stale turn can therefore be
+  // observed first as interrupted, then as terminal or failed. Those settlement actions refine one
+  // recovery; a runtime realignment remains distinct because its live turn id identifies separate
   // evidence.
   const operation = action === "align-running-turn" ? action : "settle-running-turn";
   return `provider-runtime-reconcile:${JSON.stringify([
@@ -1060,23 +1003,11 @@ function collapseDerivedWorkLogEntries(
   entries: ReadonlyArray<DerivedWorkLogEntry>,
 ): DerivedWorkLogEntry[] {
   const collapsed: DerivedWorkLogEntry[] = [];
-  // Tools that carry a unique tool-call id (collapseKey "tool:<id>") merge by that
-  // id regardless of position. This is what fixes providers that emit every tool's
-  // started event before any of their completed events — Claude's parallel tool
-  // calls — which the adjacency-only path below renders as a started row plus a
-  // separate completed row. The id is unique per call, so distinct calls of the
-  // same tool never merge into each other.
+
   const stableToolIndexByKey = new Map<string, number>();
-  // Older servers included the current observation sequence in recovery ids,
-  // so the same repair could be persisted more than once while projections
-  // converged. Preserve the first row for each semantic repair and hide only
-  // exact repeats; different turns and runtime realignments remain independently
-  // visible.
+
   const seenRuntimeReconciliationKeys = new Set<string>();
-  // Task-list snapshots (collapseKey "taskList:<turnId>") fold into one row per
-  // turn: each update replaces the row's content while the row itself stays
-  // anchored at the first update's position, so the transcript shows a single
-  // progressing checklist row instead of one "Tasks updated" row per snapshot.
+
   const taskListIndexByKey = new Map<string, number>();
   for (const entry of entries) {
     const runtimeReconciliationKey = entry.collapseKey?.startsWith("provider-runtime-reconcile:")
@@ -1184,13 +1115,12 @@ function mergeRuntimeWarningEntries(
   };
 }
 
-// A later task-list snapshot supersedes the earlier one wholesale (providers
-// resend the full checklist), so keep the newest content while preserving the
-// first row's id and createdAt: the id keeps React rows stable across updates
-// and the createdAt keeps the row anchored where the checklist first appeared.
-// A snapshot without readable tasks (explicit clear, or an unreadable payload)
-// carries no progress copy, so it must not overwrite a progressed row with the
-// generic "Tasks updated" label — keep the previous row's content instead.
+// A later task-list snapshot supersedes the earlier one wholesale (providers resend the full
+// checklist), so keep the newest content while preserving the first row's id and createdAt: the id
+// keeps React rows stable across updates and the createdAt keeps the row anchored where the
+// checklist first appeared. A snapshot without readable tasks (explicit clear, or an unreadable
+// payload) carries no progress copy, so it must not overwrite a progressed row with the generic
+// "Tasks updated" label — keep the previous row's content instead.
 function mergeTaskListEntries(
   previous: DerivedWorkLogEntry,
   next: DerivedWorkLogEntry,
@@ -1206,12 +1136,7 @@ function mergeTaskListEntries(
   };
 }
 
-// Ingestion emits compaction progress ("Compacting context") and its
-// terminal row ("Context compacted" / "... failed" / "... manually") as separate
-// activities; fold the terminal row into the in-progress one so the work log
-// shows a single resolving compaction entry instead of a stale spinner row.
 function isContextCompactionProgressLabel(label: string): boolean {
-  // Keep resolving progress rows persisted by older servers, too.
   return label === "Compacting context" || label === "Compacting conversation...";
 }
 
@@ -1228,8 +1153,8 @@ function shouldCollapseContextCompactionEntries(
   if (previous.turnId !== next.turnId) {
     return false;
   }
-  // Only merge into a row that is still in progress; a terminal row belongs to
-  // an earlier compaction and must not swallow the next one's progress row.
+  // Only merge into a row that is still in progress; a terminal row belongs to an earlier compaction
+  // and must not swallow the next one's progress row.
   return isContextCompactionProgressLabel(previous.label);
 }
 
@@ -1306,8 +1231,7 @@ function mergeDerivedWorkLogEntries(
     : (next.toolStatus ?? previous.toolStatus);
   const liveActivity = mergeWorkLogLiveActivity(previous.liveActivity, next.liveActivity);
   const toolDetails = mergeWorkLogToolDetails(previous.toolDetails, next.toolDetails);
-  // Keep the visual anchor below, but let the latest known turn own lifecycle
-  // settlement and live composer state when a background tool spans turns.
+
   const turnId = next.turnId ?? previous.turnId;
   return {
     ...previous,
@@ -1567,8 +1491,6 @@ function mergeChangedFiles(
   return [...new Set(merged)];
 }
 
-// Keep a stable lifecycle key so providers like Claude can stream many
-// in-progress tool deltas without turning each partial update into its own row.
 function deriveToolLifecycleCollapseKey(entry: DerivedWorkLogEntry): string | undefined {
   if (!isRenderableToolLifecycleActivity(entry.activityKind)) {
     return undefined;
@@ -2033,8 +1955,6 @@ function extractPrimaryCommandAction(
   return null;
 }
 
-// Codex has emitted commandActions both on the item and on the surrounding raw
-// payload; scan the nearby envelopes before falling back to generic command text.
 function collectCommandActions(
   payload: Record<string, unknown> | null,
   data: Record<string, unknown> | null,
@@ -2327,7 +2247,7 @@ function extractWorkLogItemType(
   if (typeof topLevel === "string" && isToolLifecycleItemType(topLevel)) {
     return topLevel;
   }
-  // Defensive: some provider payloads nest the type inside data or data.item
+
   const data = asRecord(payload?.data);
   const item = asRecord(data?.item);
   const nested = data?.itemType ?? item?.type ?? item?.kind ?? payload?.type ?? payload?.kind;
@@ -2465,9 +2385,9 @@ function compareActivitiesByOrder(
     return lifecycleRankComparison;
   }
 
-  // Compaction progress and terminal rows can share a millisecond; keep the
-  // progress row first so the work-log collapse can fold the pair (event ids
-  // are random and would otherwise order them arbitrarily).
+  // Compaction progress and terminal rows can share a millisecond; keep the progress row first so the
+  // work-log collapse can fold the pair (event ids are random and would otherwise order them
+  // arbitrarily).
   if (left.kind === "context-compaction" && right.kind === "context-compaction") {
     const compactionRankComparison =
       contextCompactionOrderRank(left.summary) - contextCompactionOrderRank(right.summary);
@@ -2567,14 +2487,11 @@ function mergeTimelineEntries(
   return merged;
 }
 
-// Keep one grouping per source message; obsolete snapshots can be collected.
 const coalescedMessageCache = new WeakMap<
   ChatMessage,
   { readonly signature: string; readonly displayMessage: ChatMessage }
 >();
 
-/** Old snapshots can contain one segment per token. Only a visible intervening
- * row warrants another Markdown document; keep the persisted text untouched. */
 function coalesceAdjacentMessageSegments(entries: TimelineEntry[]): TimelineEntry[] {
   if (
     !entries.some((entry, index) => {
@@ -2673,11 +2590,7 @@ export function deriveTimelineEntries(
     ) {
       return [];
     }
-    // Completed assistant messages whose streamed text was interleaved with
-    // tool rows render as one row per text segment, each positioned at its own
-    // start time, so the merged timeline shows reasoning next to the tool that
-    // interrupted it instead of one block above every tool. While the message
-    // is still streaming, keep the single live row (the streaming surface).
+
     const textSegments = displayMessage.textSegments;
     if (
       displayMessage.role === "assistant" &&
@@ -2717,8 +2630,8 @@ export function deriveTimelineEntries(
     entry,
   }));
 
-  // Late tool completion/replay timestamps must not move an earlier turn's
-  // work below a new user request and inflate that request's tool disclosure.
+  // Late tool completion/replay timestamps must not move an earlier turn's work below a new user
+  // request and inflate that request's tool disclosure.
   const userStarts: string[] = [];
   const messageOrder = new Map<string, number>();
   const turnOrder = new Map<string, number>();
@@ -2730,9 +2643,6 @@ export function deriveTimelineEntries(
     ? messages
     : messages.toSorted((a, b) => a.createdAt.localeCompare(b.createdAt));
   for (const message of orderedMessages) {
-    // Effective dispatch semantics are recorded before an emulated steer waits
-    // for interruption/promotion. Fall back to turn binding for events written
-    // before startsNewTurn existed; native steers remain continuations.
     const startsNewTurn =
       message.startsNewTurn ??
       (message.dispatchMode !== "steer" ||
@@ -2744,7 +2654,7 @@ export function deriveTimelineEntries(
     messageOrder.set(message.id, order);
     if (message.turnId && !turnOrder.has(message.turnId)) turnOrder.set(message.turnId, order);
   }
-  // Unattributed legacy activity keeps its chronological position.
+
   const chronologicalOrder = (createdAt: string): number => {
     let low = 0;
     let high = userStarts.length;
@@ -2764,9 +2674,7 @@ export function deriveTimelineEntries(
       );
       continue;
     }
-    // A merged work/plan row can carry a newer turnId than its anchor (a
-    // background tool's update owns the new turn) while a late replay can carry
-    // an old turnId with a fresh timestamp. Anchor it at whichever is earlier.
+
     const turnId =
       (entry.kind === "work" ? entry.entry.turnId : entry.proposedPlan.turnId) ?? undefined;
     const turnBlock = turnId === undefined ? undefined : turnOrder.get(turnId);

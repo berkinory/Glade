@@ -1,11 +1,3 @@
-// FILE: whatsNew/ChangelogAccordion.tsx
-// Purpose: Collapsible release-history accordion used by both the Settings
-// "Release history" surface and the `WhatsNewDialog` "Complete changelog"
-// secondary view. Each row summarises a release; expanding reveals the
-// grouped release notes for that version.
-// Layer: presentational — it assumes the caller has already sorted entries
-// newest-first (see `sortEntriesByVersionDesc`).
-
 import { useState } from "react";
 
 import { pluralize } from "@glade/shared/text";
@@ -18,12 +10,7 @@ import type { WhatsNewEntry } from "./logic";
 
 export interface ChangelogAccordionProps {
   readonly entries: readonly WhatsNewEntry[];
-  /**
-   * The version to expand by default. When set, the matching row is open on
-   * mount; all other rows start collapsed. Useful in the dialog, where we
-   * want the installed build's notes front-and-center even in the changelog
-   * view.
-   */
+
   readonly defaultExpandedVersion?: string | null;
   readonly className?: string;
 }

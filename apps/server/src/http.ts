@@ -79,9 +79,9 @@ import {
 } from "./voiceUploadAdmission";
 
 const PROJECT_FAVICON_CACHE_CONTROL = "public, max-age=3600";
-const SITE_FAVICON_CACHE_CONTROL_SUCCESS = "public, max-age=86400"; // 24 h
-const SITE_FAVICON_CACHE_CONTROL_FALLBACK = "public, max-age=3600"; // 1 h (negative result)
-const EDITOR_ICON_CACHE_CONTROL_SUCCESS = "public, max-age=86400"; // 24 h
+const SITE_FAVICON_CACHE_CONTROL_SUCCESS = "public, max-age=86400";
+const SITE_FAVICON_CACHE_CONTROL_FALLBACK = "public, max-age=3600";
+const EDITOR_ICON_CACHE_CONTROL_SUCCESS = "public, max-age=86400";
 const SVG_DOCUMENT_SECURITY_HEADERS = {
   "Content-Security-Policy": "sandbox; default-src 'none'; style-src 'unsafe-inline'",
   "X-Content-Type-Options": "nosniff",
@@ -109,8 +109,6 @@ interface HttpPayload {
   readonly body: string | Uint8Array;
 }
 
-// Shared by the Effect route and the legacy request listener so editor-icon
-// behavior cannot drift between the two HTTP stacks.
 const resolveEditorIconHttpPayload = Effect.fn(function* (input: {
   readonly url: URL;
   readonly serverConfig: ServerConfigShape;
@@ -244,12 +242,6 @@ function makeDesktopShutdownEffectRouteLayer(shutdownController: ServerShutdownC
   );
 }
 
-/**
- * The desktop relays physical Escape presses here after its local host latch
- * has already engaged. The manager-side latch is what keeps queued work from
- * dispatching once the desktop side is dead or restarting; both sides fail
- * closed independently rather than trusting a single transport.
- */
 function makeDesktopComputerEmergencyStopRouteLayer() {
   return HttpRouter.add(
     "POST",
@@ -306,11 +298,7 @@ function makeHealthEffectRouteLayer(readiness: ServerReadiness) {
           keybindingsReady: snapshot.keybindingsReady,
           terminalSubscriptionsReady: snapshot.terminalSubscriptionsReady,
           orchestrationSubscriptionsReady: snapshot.orchestrationSubscriptionsReady,
-          // /health is unauthenticated, so only shape-level diagnostics may
-          // leave the process. lastFailure carries pretty-printed causes whose
-          // schema-decode issues can embed raw event payloads (user prompts);
-          // it stays server-side — the log line that recorded the failure is
-          // where operators read the detail.
+
           projection: {
             state: projection.state,
             inFlight: projection.inFlight,
@@ -693,9 +681,6 @@ const projectFaviconEffectRouteLayer = HttpRouter.add(
   }).pipe(Effect.catchTag("AuthError", (error) => Effect.succeed(authErrorResponse(error)))),
 );
 
-// Resolves a real website favicon by domain (cached server-side, deduped by host)
-// so the UI can replace generic globe icons. Mirrors project-favicon's auth +
-// SVG-fallback shape; the actual fetch/cache logic lives in siteFaviconCache.ts.
 const siteFaviconEffectRouteLayer = HttpRouter.add(
   "GET",
   "/api/site-favicon",
@@ -704,9 +689,6 @@ const siteFaviconEffectRouteLayer = HttpRouter.add(
     const url = HttpServerRequest.toURL(request);
     if (!url) return HttpServerResponse.text("Bad Request", { status: 400 });
 
-    // Loaded via <img> tags, which cannot attach Authorization headers — accept the
-    // same startup-token rule the local-image/attachments routes use so favicons
-    // load in local dev without a session cookie.
     const config = yield* ServerConfig;
     if (!isLegacyTokenAuthorized({ config, url })) {
       yield* requireAuthenticatedRequest;
@@ -741,10 +723,6 @@ const siteFaviconEffectRouteLayer = HttpRouter.add(
   }).pipe(Effect.catchTag("AuthError", (error) => Effect.succeed(authErrorResponse(error)))),
 );
 
-// Builds a ZIP export of a single thread (thread.json + transcript.md) and streams
-// it back as a download. Loads only the requested thread detail so the export cost
-// scales with that thread rather than the whole projection; mirrors the auth shape
-// of the other binary GET routes (favicon/attachments).
 const threadExportEffectRouteLayer = HttpRouter.add(
   "GET",
   "/api/thread-export",
@@ -758,9 +736,6 @@ const threadExportEffectRouteLayer = HttpRouter.add(
       yield* requireAuthenticatedRequest;
     }
 
-    // Error responses need the trusted-origin CORS headers too: the desktop
-    // app fetches cross-origin (glade://app), and without them the browser masks
-    // a 400/404/409 body as an opaque network failure.
     const corsHeaders = localPreviewCorsHeaders({ config, request, url });
 
     const threadIdParam = url.searchParams.get("threadId")?.trim();
@@ -823,12 +798,6 @@ const editorIconEffectRouteLayer = HttpRouter.add(
   }).pipe(Effect.catchTag("AuthError", (error) => Effect.succeed(authErrorResponse(error)))),
 );
 
-// Streams a disk file as the response body instead of buffering it in memory:
-// preview files can be large (PDFs especially), and a full-file buffer per
-// request is an easy way to balloon server memory under concurrent loads.
-// Callers must have stat'ed the file already — an unreadable file after that
-// point aborts the connection mid-stream, which clients surface as a failed
-// load (the same outcome the buffered 404 produced, minus the status code).
 function streamedFileResponse(input: {
   readonly fileSystem: FileSystem.FileSystem;
   readonly path: string;
@@ -872,8 +841,6 @@ const localImageEffectRouteLayer = HttpRouter.add(
       });
     }
 
-    // Stream (don't use HttpServerResponse.file, which depends on
-    // Etag.Generator/Path services and was failing with a 500 here).
     const fileSystem = yield* FileSystem.FileSystem;
     const isDownload = url.searchParams.get("download") === "1";
     const safeFileName = previewFile.fileName.replaceAll('"', "");
@@ -884,13 +851,10 @@ const localImageEffectRouteLayer = HttpRouter.add(
       sizeBytes: previewFile.sizeBytes,
       headers: {
         "Cache-Control": "private, max-age=60",
-        // The PDF viewer fetches bytes from either the desktop app origin or
-        // the configured Vite dev origin. Reflect only those trusted origins:
-        // auth-token-less local servers must not expose workspace files to any
-        // random web page that can guess path/cwd query params.
+        // Reflect only those trusted origins: auth-token-less local servers must not expose workspace files
+        // to any random web page that can guess path/cwd query params.
         ...localPreviewCorsHeaders({ config, request, url }),
-        // PDFs render in an unsandboxed same-origin iframe; never let the
-        // browser second-guess the declared content type.
+
         "X-Content-Type-Options": "nosniff",
         ...(isSvg ? SVG_DOCUMENT_SECURITY_HEADERS : {}),
         ...(isDownload ? { "Content-Disposition": `attachment; filename="${safeFileName}"` } : {}),
@@ -1110,8 +1074,7 @@ const attachmentsEffectRouteLayer = HttpRouter.add(
     if (!url) return HttpServerResponse.text("Bad Request", { status: 400 });
 
     const config = yield* ServerConfig;
-    // Desktop image tags cannot attach Authorization headers; preserve the same
-    // startup token rule that the WebSocket route already accepts.
+
     if (!isLegacyTokenAuthorized({ config, url })) {
       yield* requireAuthenticatedRequest;
     }
@@ -1173,15 +1136,11 @@ const attachmentsEffectRouteLayer = HttpRouter.add(
       return HttpServerResponse.text("Not Found", { status: 404 });
     }
 
-    // Mirror local-image serving instead of using HttpServerResponse.file; the Effect
-    // route stack used by the desktop server can miss that helper's file services.
     return streamedFileResponse({
       fileSystem,
       path: filePath,
       sizeBytes: Number(fileInfo.size),
-      // Attachment access is session/token gated and attachments are mutable
-      // lifecycle resources: deletion or session revocation must take effect on
-      // the next request, including when a shared proxy is present.
+
       headers: {
         "Cache-Control": "private, no-store",
         Pragma: "no-cache",
@@ -1231,10 +1190,9 @@ const staticAndDevEffectRouteLayer = HttpRouter.add(
       candidate === staticRoot ||
       candidate.startsWith(staticRoot.endsWith(path.sep) ? staticRoot : `${staticRoot}${path.sep}`);
 
-    // Lexical containment is not containment: stat and readFile follow
-    // symlinks, so a link inside the root pointing outside it would be served.
-    // Canonicalize before opening anything. The root itself is canonicalized
-    // too, otherwise a symlinked staticDir would fail its own check.
+    // Lexical containment is not containment: stat and readFile follow symlinks, so a link inside the
+    // root pointing outside it would be served. The root itself is canonicalized too, otherwise a
+    // symlinked staticDir would fail its own check.
     const canonicalStaticRoot = yield* fileSystem
       .realPath(staticRoot)
       .pipe(Effect.catch(() => Effect.succeed(staticRoot)));
@@ -1249,8 +1207,7 @@ const staticAndDevEffectRouteLayer = HttpRouter.add(
       const real = yield* fileSystem
         .realPath(candidate)
         .pipe(Effect.catch(() => Effect.succeed(null)));
-      // A path that cannot be canonicalized does not exist; the caller's own
-      // stat/readFile will fail it, and refusing here keeps 404 semantics.
+
       return real === null ? false : isWithinCanonicalRoot(real);
     });
 
@@ -1265,13 +1222,6 @@ const staticAndDevEffectRouteLayer = HttpRouter.add(
       }
     }
 
-    // Serves a resolved static file, preferring build-time .br/.gz sidecars
-    // when the client accepts them. Content-Type always reflects the
-    // underlying file; Vary is set even on identity responses so shared
-    // caches never hand a compressed body to a client that cannot decode it.
-    // Every response carries an ETag derived from the served file (sidecar's
-    // when a sidecar is served, so validators differ per encoding), making
-    // no-cache revalidation a 304 instead of a full re-transfer.
     const serveStaticFile = Effect.fn(function* (resolvedPath: string) {
       const cacheHeaders = {
         "Cache-Control": staticCacheControl(path.relative(staticRoot, resolvedPath)),
@@ -1282,8 +1232,8 @@ const staticAndDevEffectRouteLayer = HttpRouter.add(
       const contentType =
         baseContentType === "text/html" ? "text/html; charset=utf-8" : baseContentType;
       const respond = Effect.fn(function* (servedPath: string, encoding?: string) {
-        // Canonicalize before opening: a symlink inside the root pointing
-        // outside it passes the lexical guard but must not be served.
+        // Canonicalize before opening: a symlink inside the root pointing outside it passes the lexical
+        // guard but must not be served.
         if (!(yield* resolvesInsideRoot(servedPath))) return null;
         const info = yield* fileSystem
           .stat(servedPath)
@@ -1302,9 +1252,7 @@ const staticAndDevEffectRouteLayer = HttpRouter.add(
         return HttpServerResponse.uint8Array(data, { status: 200, contentType, headers });
       });
       const preference = negotiateStaticEncodingPreference(request.headers["accept-encoding"]);
-      // Candidates are ranked by client weight with identity (null) in its own
-      // ranked position, so a client preferring identity over a coding is not
-      // handed a sidecar it ranked lower.
+
       for (const candidate of preference.candidates) {
         if (candidate === null) {
           const identityResponse = yield* respond(resolvedPath);
@@ -1312,14 +1260,14 @@ const staticAndDevEffectRouteLayer = HttpRouter.add(
           continue;
         }
         const sidecarPath = `${resolvedPath}${candidate.sidecarExtension}`;
-        // Sidecars share the traversal guard with their source file: appending
-        // an extension cannot escape the root, but keep the invariant explicit.
+        // Sidecars share the traversal guard with their source file: appending an extension cannot escape
+        // the root, but keep the invariant explicit.
         if (!isWithinStaticRoot(sidecarPath)) continue;
         const sidecarResponse = yield* respond(sidecarPath, candidate.encoding);
         if (sidecarResponse) return sidecarResponse;
       }
-      // Nothing acceptable was servable. With identity excluded that is a 406
-      // per RFC 9110 §12.5.3; otherwise the file itself is missing.
+      // Nothing acceptable was servable. With identity excluded that is a 406 per RFC 9110 §12.5.3;
+      // otherwise the file itself is missing.
       if (!preference.identityAcceptable) {
         return HttpServerResponse.text("Not Acceptable", {
           status: 406,

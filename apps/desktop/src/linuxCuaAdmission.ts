@@ -16,7 +16,7 @@ const UNCANCELLABLE_WINDOW_TOOLS = new Set([
   "invoke_menu",
 ]);
 
-/** These pinned routes observe an existing endpoint without changing a browser or profile. */
+// These pinned routes observe an existing endpoint without changing a browser or profile.
 export function linuxBrowserCallIsReadOnly(name: string, input: unknown): boolean {
   if (name === "get_browser_state") return true;
   const args =
@@ -31,16 +31,9 @@ export function linuxBrowserCallIsReadOnly(name: string, input: unknown): boolea
   );
 }
 
-/**
- * The upstream Linux artifact does not implement the patched macOS delivery
- * contract. Its background keyboard paths can call AT-SPI GrabFocus, menu
- * invocation activates a window, and desktop input uses the global pointer.
- * Keep these routes closed until their compositor/target isolation is proven.
- * `deliveryMode` is trusted host-envelope metadata from the server's existing
- * visible-use authorizer, never a native argument or a model-supplied override.
- * Browser mutation support may open only after the host verifies the pinned
- * browser cancellation revision and capability on its own driver generation.
- */
+// Keep these routes closed until their compositor/target isolation is proven. `deliveryMode` is
+// trusted host-envelope metadata from the server's existing visible-use authorizer, never a native
+// argument or a model-supplied override.
 export function linuxCuaAdmissionRefusal(
   name: string,
   input: unknown,
@@ -58,8 +51,6 @@ export function linuxCuaAdmissionRefusal(
     )
       return undefined;
     if (name === "browser_prepare") {
-      // Headless/windowed is a Glade patch extension. The current Linux
-      // artifact ignores windowed:false and would open a visible Chromium.
       if (!browserInputControlVerified && args.allow_launch === true && args.windowed !== true)
         return refusal(
           "linux_headless_browser_unavailable",
@@ -67,9 +58,6 @@ export function linuxCuaAdmissionRefusal(
         );
     }
     if (browserInputControlVerified) {
-      // The browser-only Linux port qualifies isolated, driver-owned headless
-      // bindings. Its native boundary independently checks binding ownership;
-      // neither visible Chromium nor personal-profile setup is part of it.
       if (name === "browser_prepare" && args.windowed === true)
         return refusal(
           "linux_windowed_browser_unavailable",
@@ -114,9 +102,7 @@ export function linuxCuaAdmissionRefusal(
       "This Linux route does not prove the observed element's exact window/object identity. Native pointer and keyboard input are also unavailable until cancellation cleanup is supported. Use observation or an existing debuggable browser when appropriate.",
     );
   }
-  // Clipboard and process-control approval remain the server's responsibility;
-  // these operations do not synthesize desktop input or implicitly activate a
-  // window. The ordinary agent cursor is an overlay, not the human pointer.
+
   if (
     name === "clipboard_read" ||
     name === "clipboard_write" ||

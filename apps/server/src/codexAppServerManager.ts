@@ -188,7 +188,7 @@ type CodexSessionApprovalOverride = {
 interface CodexSessionContext {
   readonly enableComputerControl?: boolean;
   readonly gatewaySessionLease?: AgentGatewaySessionLease;
-  /** Set once this runtime's bearer is permanently fenced to a terminal turn. */
+
   gatewayCredentialRetired?: boolean;
   activeInteractionMode?: ProviderInteractionMode | undefined;
   session: ProviderSession;
@@ -322,13 +322,7 @@ export interface CodexAppServerStartSessionInput {
   readonly resumeCursor?: unknown;
   readonly forkSourceResumeCursor?: unknown;
   readonly providerOptions?: ProviderSessionStartInput["providerOptions"];
-  /**
-   * Session-start facts the gateway lease derives its capabilities from.
-   * Required on purpose: a lease that forgets it fails silently (the
-   * credential is issued, the tools are just missing), so the manager refuses
-   * an omission at its boundary instead of minting a degraded credential.
-   * Pass AGENT_GATEWAY_NO_CAPABILITIES when the session leases nothing.
-   */
+
   readonly agentGatewayCapabilityInput: AgentGatewayCapabilityInput;
   readonly runtimeMode: RuntimeMode;
 }
@@ -349,12 +343,7 @@ export interface CodexThreadSnapshot {
 
 const CODEX_VERSION_CHECK_TIMEOUT_MS = 4_000;
 const CODEX_VERSION_CHECK_MAX_OUTPUT_BYTES = 1024 * 1024;
-/**
- * How long a successful `codex --version` verdict stays valid. Session start and
- * resume both gate on it, so without memoization every one of those paths spawned a
- * fresh Codex process. Failures are never cached, so installing or upgrading Codex
- * takes effect immediately.
- */
+
 const CODEX_VERSION_CHECK_CACHE_TTL_MS = 10 * 60 * 1000;
 
 const ANSI_ESCAPE_CHAR = String.fromCharCode(27);
@@ -376,15 +365,13 @@ const RECOVERABLE_THREAD_RESUME_ERROR_SNIPPETS = [
 const CODEX_DEFAULT_MODEL = DEFAULT_MODEL_BY_PROVIDER.codex;
 const CODEX_SPARK_MODEL = "gpt-5.3-codex-spark";
 const CODEX_SPARK_DISABLED_PLAN_TYPES = new Set<CodexPlanType>(["free", "go", "plus"]);
-// Discovery results live in the bounded caches below, so keeping a dedicated
-// app-server process alive for ten minutes only retains its process tree. A
-// short grace period still collapses startup bursts from adjacent UI queries.
+
 const CODEX_DISCOVERY_SESSION_IDLE_MS = 15_000;
 const CODEX_VOICE_AUTH_CACHE_TTL_MS = 60_000;
 const CODEX_PENDING_SETTLE_DEADLINE_MS = 2_000;
 
-// Bounds the best-effort answers written to parked server requests: a child that
-// stopped draining stdin must never hold session teardown hostage.
+// Bounds the best-effort answers written to parked server requests: a child that stopped draining
+// stdin must never hold session teardown hostage.
 function withCodexPendingSettleDeadline(settle: Promise<unknown>): Promise<void> {
   return Promise.race([
     settle.then(() => undefined),
@@ -636,7 +623,6 @@ The \`request_user_input\` tool is unavailable in Default mode. If you call it w
 In Default mode, strongly prefer making reasonable assumptions and executing the user's request rather than stopping to ask questions. If you absolutely must ask a question because the answer cannot be discovered from local context and a reasonable assumption would be risky, ask the user directly with a concise plain-text question. Never write a multiple choice question as a textual assistant message.
 </collaboration_mode>${CODEX_BROWSER_TOOL_ROUTING_INSTRUCTIONS}\n\n${GLADE_GATEWAY_HARNESS_POLICY}`;
 
-// Maps Glade's simple runtime toggle to Codex thread-level permission overrides.
 function mapCodexRuntimeMode(runtimeMode: RuntimeMode): {
   readonly approvalPolicy: CodexApprovalPolicy;
   readonly approvalsReviewer: CodexApprovalsReviewer;
@@ -741,7 +727,6 @@ function shouldWarnCodexFreshStartWithoutResume(input: {
   return input.threadOpenMethod === "thread/start" && input.previouslyBound;
 }
 
-// turn/start uses sandboxPolicy objects, so keep this separate from thread/start.
 function mapCodexRuntimeModeToTurnOverrides(runtimeMode: RuntimeMode): {
   readonly approvalPolicy: CodexApprovalPolicy;
   readonly approvalsReviewer: CodexApprovalsReviewer;
@@ -776,8 +761,6 @@ const CODEX_ALWAYS_ALLOW_SESSION_TURN_OVERRIDES: CodexSessionApprovalOverride = 
   sandboxPolicy: { type: "dangerFullAccess" },
 };
 
-// Glade re-sends turn-level Codex permission overrides, so keep "always allow"
-// as live session state instead of relying on one native approval reply.
 function resolveCodexTurnOverrides(context: CodexSessionContext): {
   readonly approvalPolicy: CodexApprovalPolicy;
   readonly approvalsReviewer: CodexApprovalsReviewer;
@@ -917,17 +900,10 @@ function toCodexUserInputAnswers(
   );
 }
 
-/**
- * Canonical parse of an `item/tool/requestUserInput` payload into renderable
- * questions. This is the single source of truth shared by the manager (which
- * must refuse — and answer — requests it cannot surface) and `CodexAdapter`
- * (which projects them into `user-input.requested`); if the two ever disagree,
- * codex parks forever on a question nobody can see.
- *
- * Deliberately lenient: an option carries its label as its description when
- * codex sends none (the UI hides a description identical to the label), and a
- * question with no options is kept as a free-text prompt.
- */
+// Canonical parse of an `item/tool/requestUserInput` payload into renderable questions. This is the
+// single source of truth shared by the manager (which must refuse — and answer — requests it cannot
+// surface) and `CodexAdapter` (which projects them into `user-input.requested`); if the two ever
+// disagree, codex parks forever on a question nobody can see.
 export function parseCodexUserInputQuestions(
   payload: Record<string, unknown> | undefined,
 ): UserInputQuestion[] | undefined {
@@ -978,8 +954,6 @@ function classifyCodexStderrLine(rawLine: string): { message: string } | null {
     return null;
   }
 
-  // Current Codex emits tracing JSON. Treating that as an unstructured error
-  // turns WARN retries and INFO bookkeeping into visible runtime failures.
   if (line.startsWith("{")) {
     try {
       const record = asObject(JSON.parse(line));
@@ -992,15 +966,12 @@ function classifyCodexStderrLine(rawLine: string): { message: string } | null {
             message: `MCP server "${server}" could not connect. Check its configuration or start the server.`,
           };
         }
-        // MCP reports the final named startup failure separately. Transport
-        // workers also log every transient retry at ERROR before that verdict.
+
         if (record.level !== "ERROR" || record.target === "rmcp::transport::worker") return null;
         if (BENIGN_ERROR_LOG_SNIPPETS.some((snippet) => message.includes(snippet))) return null;
         return { message: normalizeCodexUserVisibleErrorMessage(message) };
       }
-    } catch {
-      /* Preserve non-log process failures below. */
-    }
+    } catch {}
   }
 
   const match = line.match(CODEX_STDERR_LOG_REGEX);
@@ -1135,9 +1106,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     );
   }
 
-  // The Glade MCP server rides on the shared overlay config (no secrets),
-  // while the per-thread bearer token travels through the app-server process
-  // env referenced by `bearer_token_env_var`.
   private async buildSessionProcessEnv(
     homePath: string | undefined,
     gatewayBearerToken: string | undefined,
@@ -1154,10 +1122,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     return env;
   }
 
-  // Registers `~/.glade/skills` as a codex skill root so portable skills are
-  // first-class: skills/list returns them and turn/start `skill` items inject
-  // their instructions. Verified live: skill items with paths outside known
-  // roots are silently ignored by codex app-server, so this call is required.
   private async registerGladeSkillsRoot(context: CodexSessionContext): Promise<void> {
     if (!this.gladeSkillsDir) {
       return;
@@ -1168,8 +1132,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       });
     } catch (error) {
       if (!this.isContextRoutable(context)) throw error;
-      // Older codex builds (< extra-roots support) keep working; Glade-only
-      // skills simply stay invisible to codex on those versions.
+
       log.warn("skills/extraRoots/set unavailable", { error });
     }
   }
@@ -1287,9 +1250,8 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
 
       await this.writeMessage(context, { method: "initialized" });
       await this.registerGladeSkillsRoot(context);
-      // Model discovery is lazy and cached by ProviderDiscoveryService. Keeping model/list
-      // out of this serial cold-start path avoids an otherwise unused request
-      // with its own 20-second deadline.
+      // Model discovery is lazy and cached by ProviderDiscoveryService. Keeping model/list out of this
+      // serial cold-start path avoids an otherwise unused request with its own 20-second deadline.
       try {
         const accountReadResponse = await this.sendRequest(context, "account/read", {});
         log.info("account/read response", { accountReadResponse });
@@ -1483,8 +1445,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
           message,
         });
       }
-      // A post-exit snapshot can miss reparented children even when cleanup
-      // succeeds. Only pre-exit capture can certify a safe startup rejection.
+
       const rejectionError =
         previousSessionStopped && (!context || context.teardownCapturedBeforeExit === true)
           ? new CodexSessionStartError(message, { cause })
@@ -1503,8 +1464,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     context.collabReceiverTurns.clear();
     context.collabReceiverParents.clear();
 
-    // Normal sends never interrupt active work. The orchestration layer decides
-    // when a queued follow-up is ready to become a provider turn.
     const turnInput = buildCodexTurnInput(input);
     if (turnInput.length === 0) {
       throw new Error("Turn input must include text or attachments.");
@@ -1754,8 +1713,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
   private retireGatewayTurn(context: CodexSessionContext, turnId: TurnId): Promise<void> {
     const lease = context.gatewaySessionLease;
     if (!lease) return Promise.resolve();
-    // Legacy transports cannot prove a call's origin. Fence their whole bearer;
-    // proven calls retire only this turn, without undoing a prior hard stop.
+
     if (lease.registerNativeToolCall === undefined) context.gatewayCredentialRetired = true;
     return this.runGatewayTurnCleanup(context, turnId, "retirement", () =>
       lease.retireTurn(turnId),
@@ -1770,8 +1728,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     const context = this.requireSession(threadId);
     const effectiveTurnId = turnId ?? context.session.activeTurnId;
 
-    // Stop must also unpark codex from any question/approval it is blocked on;
-    // turn/interrupt alone does not settle server-initiated requests.
     await this.settlePendingHumanRequests(
       context,
       "turn interrupted",
@@ -1804,14 +1760,13 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       turnId: effectiveTurnId,
       isTrackedReviewTurn: context.reviewTurnIds.has(effectiveTurnId),
     });
-    // Codex app-server currently completes `turn/interrupt` without reliably
-    // forwarding MCP `notifications/cancelled` to stdio servers. A collab child
-    // shares the parent's gateway credential, and gateway requests therefore
-    // carry the parent turn id rather than the child's provider-native id. On a
-    // targeted child stop, tombstone the parent gateway turn without stopping
-    // the parent runtime. This deliberately disables gateway tools for the rest
-    // of that parent turn: without a child-specific transport, re-enabling them
-    // would also re-authorize indistinguishable late child requests.
+    // Codex app-server currently completes `turn/interrupt` without reliably forwarding MCP
+    // `notifications/cancelled` to stdio servers. A collab child shares the parent's gateway
+    // credential, and gateway requests therefore carry the parent turn id rather than the child's
+    // provider-native id. On a targeted child stop, tombstone the parent gateway turn without stopping
+    // the parent runtime. This deliberately disables gateway tools for the rest of that parent turn:
+    // without a child-specific transport, re-enabling them would also re-authorize indistinguishable
+    // late child requests.
     const gatewayTurnId =
       providerThreadIdOverride === undefined ? effectiveTurnId : context.session.activeTurnId;
     const gatewayCancellation = gatewayTurnId
@@ -1819,9 +1774,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       : Promise.resolve();
     let gatewayRevocationError: unknown;
     try {
-      // A session bearer has no trustworthy per-turn provenance. Revoke it
-      // after tombstoning A but before asking Codex to interrupt; the provider
-      // runtime is retired by ProviderService before another turn can start.
       context.gatewaySessionLease?.release();
       if (context.gatewaySessionLease) context.gatewayCredentialRetired = true;
     } catch (error) {
@@ -1917,7 +1869,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     }
   }
 
-  /** True while `turnId` is still the session's live turn. */
   isTurnActive(threadId: ThreadId, turnId: TurnId): boolean {
     const context = this.sessions.get(threadId);
     return (
@@ -1928,18 +1879,14 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     );
   }
 
-  /** True while the session is legitimately blocked on a human decision. */
   isAwaitingHumanResponse(threadId: ThreadId): boolean {
     const context = this.sessions.get(threadId);
     return context !== undefined && this.hasPendingHumanRequests(context);
   }
 
-  /**
-   * Force-settles a turn whose app-server went silent. Best-effort interrupt
-   * first — a child that is merely slow settles itself and emits its own
-   * terminal notification — then a synthetic `turn/aborted` so a wedged child
-   * cannot leave the session "running" forever.
-   */
+  // Best-effort interrupt first — a child that is merely slow settles itself and emits its own
+  // terminal notification — then a synthetic `turn/aborted` so a wedged child cannot leave the
+  // session "running" forever.
   async abandonTurn(threadId: ThreadId, turnId: TurnId, detail: string): Promise<void> {
     const context = this.sessions.get(threadId);
     if (!context || !this.isTurnActive(threadId, turnId)) {
@@ -2028,8 +1975,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       });
       return this.parseThreadSnapshot("thread/read", response);
     } catch (error) {
-      // Older app-servers expose only thread/read. New paginated stores reject
-      // its full-history flag, requiring full items on every turns page.
       const message = error instanceof Error ? error.message : String(error);
       if (!/include.?turns|paginated|thread\/turns\/list|full.history/i.test(message)) {
         throw error;
@@ -2132,9 +2077,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         ...(codexHomePath ? { homePath: codexHomePath } : {}),
       });
       signal?.throwIfAborted();
-      // A fork carries the same computer-control fact a start does, so the
-      // forked runtime leases like-for-like capabilities instead of dropping
-      // `computer:control` at the fork boundary.
+
       gatewaySessionLease = this.agentGatewayMcp?.acquireSessionLease(threadId, {
         nativeToolCallScope:
           cliVersion !== null &&
@@ -2187,9 +2130,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       try {
         const accountReadResponse = await this.sendRequest(context, "account/read", {});
         context.account = readCodexAccountSnapshot(accountReadResponse);
-      } catch {
-        // Fork can proceed without account metadata; model fallback will stay best-effort.
-      }
+      } catch {}
 
       const normalizedModel =
         input.modelSelection?.provider === "codex"
@@ -2204,8 +2145,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       if (input.requireCompletedSource) {
         const source = await this.readThreadSnapshot(context, sourceProviderThreadId);
         const lastTurn = source.turns.at(-1);
-        // Historical payloads can omit status. Require affirmative completion
-        // evidence instead of treating missing metadata as an idle source.
+
         const completedAt = lastTurn?.completedAt;
         const hasCompletionDate =
           typeof completedAt === "number"
@@ -2305,8 +2245,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       snapshot = this.parseThreadSnapshot("thread/rollback", response);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      // Paginated app-servers replaced rollback with an exclusive turn boundary.
-      // Only negotiate an unsupported method; runtime failures must remain errors.
+
       if (!/unknown variant [`']thread\/rollback[`']|method not found/i.test(message)) {
         throw error;
       }
@@ -2347,8 +2286,8 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       activeTurnId: context.session.activeTurnId ?? null,
     }).pipe(this.runPromise);
 
-    // Compaction outside a turn must not claim "running": there is no turn id to
-    // reconcile it against, so the session could never be settled back to ready.
+    // Compaction outside a turn must not claim "running": there is no turn id to reconcile it against,
+    // so the session could never be settled back to ready.
     if (context.session.activeTurnId !== undefined) {
       this.updateSession(context, {
         status: "running",
@@ -2482,11 +2421,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
 
     context.pendingApprovals.delete(requestId);
     const isPermissionRequest = isPermissionApprovalRequest(pendingRequest);
-    // The session override widens every later approval — commands and file
-    // changes included — so only a command/file-change prompt may set it. A
-    // tool call keeps its own, properly scoped channel: `acceptForSession` on
-    // an MCP tool request rides back as `_meta.persist: "session"`, which is
-    // the persistence Codex itself advertised, not a blanket grant.
+
     const overridesSessionPolicy =
       decision === "acceptForSession" &&
       approvalSessionGrantWidensSessionPolicy(pendingRequest.requestKind);
@@ -2522,8 +2457,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     answers: ProviderUserInputAnswers,
   ): Promise<void> {
     const codexAnswers = toCodexUserInputAnswers(answers);
-    // The pending entry survives a failed write so the request stays answerable;
-    // dropping it first would strand codex on an id nobody can respond to.
+
     await this.writeMessage(context, {
       id: pendingRequest.jsonRpcId,
       result: {
@@ -2559,15 +2493,11 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     return context.pendingApprovals.size > 0 || context.pendingUserInputs.size > 0;
   }
 
-  /**
-   * Answers every outstanding human-facing server request so an abnormal exit
-   * (stop, interrupt, process exit, idle timeout) can never leave codex parked
-   * on a JSON-RPC id nobody will ever respond to.
-   *
-   * Abnormal paths only: unlike the human-driven responses, an entry is dropped
-   * even when its write fails, because the request is being abandoned and a
-   * surviving entry would only leak into the next turn.
-   */
+  // Answers every outstanding human-facing server request so an abnormal exit (stop, interrupt,
+  // process exit, idle timeout) can never leave codex parked on a JSON-RPC id nobody will ever
+  // respond to. Abnormal paths only: unlike the human-driven responses, an entry is dropped even when
+  // its write fails, because the request is being abandoned and a surviving entry would only leak
+  // into the next turn.
   private async settlePendingHumanRequests(
     context: CodexSessionContext,
     reason: string,
@@ -2665,8 +2595,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         new Error("Session stopped before request completed.");
       this.rejectPendingRequests(context, stopError);
       if (this.hasPendingHumanRequests(context)) {
-        // Answer parked server requests while stdin is still writable, then close.
-        // Time-boxed so a child that stopped reading stdin cannot stall teardown.
         settleBeforeTeardown = withCodexPendingSettleDeadline(
           this.settlePendingHumanRequests(context, "session stopped"),
         ).finally(() => {
@@ -2678,10 +2606,8 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
 
       context.detachStdout?.();
 
-      // The session becomes unroutable immediately, but remains in the map as a
-      // replacement barrier until teardown proves the old process tree exited.
-      // Otherwise a failed proof could let startSession spawn a second provider
-      // process for the same thread.
+      // Otherwise a failed proof could let startSession spawn a second provider process for the same
+      // thread.
       this.updateSession(context, {
         status: "closed",
         activeTurnId: undefined,
@@ -2689,8 +2615,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       this.emitLifecycleEvent(context, "session/closed", "Session stopped");
     }
     let stopPromise: Promise<void>;
-    // Teardown starts synchronously unless parked requests still need answering,
-    // so a stop with nothing parked stays as prompt as it was before settling.
+
     const teardown = settleBeforeTeardown
       ? settleBeforeTeardown.then(() => this.teardownContextProcess(context))
       : this.teardownContextProcess(context);
@@ -2709,7 +2634,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
           threadId,
           error,
         });
-        // A later stop/start may retry proof after the process has exited.
+
         if (context.stopPromise === stopPromise) {
           delete context.stopPromise;
         }
@@ -2921,9 +2846,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       throw new Error(`Unknown session for thread: ${threadId}`);
     }
 
-    // "Session is closed" is the phrase CodexAdapter maps to the typed
-    // recoverable session error. A failed turn may leave a healthy process with
-    // status "error", so only transport/process health controls routability.
     if (!this.isContextRoutable(context)) {
       throw new Error(`Session is closed for thread: ${threadId}`);
     }
@@ -2959,8 +2881,8 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
   ): Promise<CodexSessionContext> {
     const normalizedThreadId = threadId?.trim();
     const normalizedCwd = cwd?.trim() || undefined;
-    // Explicit archive/profile selection cannot borrow an unrelated runtime
-    // merely because it happens to use the same working directory.
+    // Explicit archive/profile selection cannot borrow an unrelated runtime merely because it happens
+    // to use the same working directory.
     if (providerOptions !== undefined) {
       return this.getOrCreateDiscoverySession(normalizedCwd ?? process.cwd(), providerOptions);
     }
@@ -2973,11 +2895,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         ) {
           return session;
         }
-      } catch {
-        // Discovery is read-only metadata, so if the current draft thread does not
-        // have a live Codex session yet we can still service repo-scoped
-        // discovery through a dedicated discovery session for that cwd.
-      }
+      } catch {}
     }
     if (normalizedCwd) {
       for (const activeSession of this.sessions.values()) {
@@ -3030,8 +2948,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     readonly threadId?: string;
     readonly refreshToken: boolean;
   }): Promise<CodexVoiceTranscriptionAuthContext> {
-    // Auth is account-scoped, so a live thread session remains reusable even when
-    // a worktree project reports a different cwd from the provider session.
     let context: CodexSessionContext | undefined;
     const normalizedThreadId = input.threadId?.trim();
     if (normalizedThreadId) {
@@ -3040,9 +2956,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         if (this.isContextInitializedAndRoutable(candidate)) {
           context = candidate;
         }
-      } catch {
-        // A draft or closed thread can still use a cwd-scoped discovery session.
-      }
+      } catch {}
     }
     const authContext = context ?? (await this.resolveContextForDiscovery(undefined, input.cwd));
     const readAuthStatus = async (refreshToken: boolean) => {
@@ -3182,9 +3096,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       try {
         const accountReadResponse = await this.sendRequest(context, "account/read", {});
         context.account = readCodexAccountSnapshot(accountReadResponse);
-      } catch {
-        // Discovery can still function without account metadata.
-      }
+      } catch {}
       this.updateSession(context, { status: "ready" });
       this.scheduleDiscoverySessionIdleStop(discoveryKey);
       return context;
@@ -3254,7 +3166,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     this.rejectPendingRequests(context, stopError);
     context.detachStdout?.();
     context.stdinWriter?.close(stopError);
-    // Keep a non-routable replacement barrier until exit is proven.
+
     let stopPromise: Promise<void>;
     stopPromise = this.teardownContextProcess(context).then(
       () => {
@@ -3348,8 +3260,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       const exitError = new Error(message);
       context.stdinWriter.close(exitError);
       this.requestRegistry(context).processExited(exitError);
-      // The child is gone, so the responses cannot land; settling still clears
-      // the maps and emits the resolutions that close the pending UI cards.
+
       void this.settlePendingHumanRequests(context, "session exited");
       this.updateSession(context, {
         status: "closed",
@@ -3357,8 +3268,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         lastError: code === 0 ? context.session.lastError : message,
       });
       this.emitLifecycleEvent(context, "session/exited", message);
-      // Retire resources promptly while retaining the replacement barrier until
-      // teardown settles. Post-exit capture keeps startup failures uncertain.
+
       this.stopFailedContext(context);
     });
   }
@@ -3391,9 +3301,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       source: "transport",
       sessionAttemptId: context.sessionAttemptId,
     };
-    // Startup can report the original cause after cleanup. Pending requests
-    // keep stopSession's uncertain outcome: this error may belong to a different
-    // write, or a frame that reached the provider before the pipe closed.
+
     context.transportError = error;
     this.updateSession(context, { status: "error", lastError: message });
     this.emitErrorEvent(context, "protocol/transportError", message);
@@ -3423,18 +3331,12 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     try {
       parsed = JSON.parse(rawLine);
     } catch {
-      // App-server stdout is JSONL, but Codex subprocesses and hooks can leak
-      // arbitrary output onto the same pipe, including fragments that begin
-      // like JSON-RPC. An unparseable line cannot be a usable protocol frame;
-      // ignore it and let any affected request fail through its normal timeout.
       logIgnoredCodexStdout(rawLine, line, "invalid JSON fragment");
       return;
     }
 
     const protocolEnvelope = asObject(parsed);
     if (!protocolEnvelope || !isCodexProtocolEnvelope(protocolEnvelope)) {
-      // Command output can also be valid standalone JSON (`{}`, `[]`, strings,
-      // numbers). Only JSON-RPC-shaped envelopes belong to app-server itself.
       logIgnoredCodexStdout(rawLine, line, "valid JSON without a JSON-RPC envelope");
       return;
     }
@@ -3515,8 +3417,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       context.gatewaySessionLease !== undefined &&
       context.gatewaySessionLease.registerNativeToolCall === undefined;
     if (terminalGatewayTurnId !== undefined) {
-      // Fence A before publishing completion. Proven calls keep the runtime
-      // reusable; legacy clients must retire the entire bearer.
       void this.retireGatewayTurn(context, terminalGatewayTurnId);
     }
     if (notification.method === "item/started") {
@@ -3574,8 +3474,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     }
 
     if (notification.method === "thread/compacted") {
-      // Compaction is the only work that can hold the session "running" without
-      // a turn; settle it here so the status cannot stay stuck once it lands.
       if (
         !isChildConversation &&
         context.session.activeTurnId === undefined &&
@@ -3694,10 +3592,8 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         });
         return;
       }
-      // `review/start` can emit the final review result via `exitedReviewMode`
-      // before the terminal `turn/completed` notification arrives. If that
-      // completion never shows up, settle the session here instead of leaving
-      // native review stuck in "running" forever.
+      // If that completion never shows up, settle the session here instead of leaving native review stuck
+      // in "running" forever.
       log.info("[codex-review] settling review from exitedReviewMode notification", {
         threadId: context.session.threadId,
         reviewTurnId: reviewTurnId ?? null,
@@ -3730,9 +3626,8 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         message !== undefined && !willRetry && isNonFatalCodexErrorMessage(message);
 
       if (willRetry) {
-        // Only a live turn may restore "running"; otherwise a retryable error
-        // arriving between turns would strand the session with no turn to
-        // reconcile against.
+        // Only a live turn may restore "running"; otherwise a retryable error arriving between turns would
+        // strand the session with no turn to reconcile against.
         if (context.session.activeTurnId !== undefined) {
           this.updateSession(context, {
             status: "running",
@@ -3788,8 +3683,8 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         },
       })
     ) {
-      // This exact call still passes through the gateway's task consent and
-      // revocation checks. Never grant persistence to unrelated MCP tools.
+      // This exact call still passes through the gateway's task consent and revocation checks. Never
+      // grant persistence to unrelated MCP tools.
       await this.writeMessage(context, {
         id: request.id,
         result: { action: "accept", content: null, _meta: null },
@@ -3839,9 +3734,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
           ? { mcpSessionPersistenceAdvertised: mcpSessionPersistenceAdvertised === true }
           : {}),
       };
-      // A session grant answers the command/file-change prompts it came from.
-      // Tool calls are gated on their own channel (see respondToRequest), so
-      // they neither set the override nor get swept up by it.
+
       if (
         context.sessionApprovalOverride &&
         approvalSessionGrantWidensSessionPolicy(pendingRequest.requestKind)
@@ -3853,8 +3746,8 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     }
 
     const isUserInputRequest = request.method === "item/tool/requestUserInput";
-    // Parsed up front: a request whose questions cannot be rendered must never
-    // become a pending entry, because nothing would ever answer its JSON-RPC id.
+    // Parsed up front: a request whose questions cannot be rendered must never become a pending entry,
+    // because nothing would ever answer its JSON-RPC id.
     const userInputQuestions = isUserInputRequest
       ? parseCodexUserInputQuestions(asObject(request.params))
       : undefined;
@@ -3889,8 +3782,8 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       ...(providerParentThreadId ? { providerParentThreadId } : {}),
       requestId,
       requestKind,
-      // The composer offers "Always allow this session" unless told otherwise;
-      // an MCP approval that did not advertise session persistence cannot honor it.
+      // The composer offers "Always allow this session" unless told otherwise; an MCP approval that did
+      // not advertise session persistence cannot honor it.
       payload:
         isMcpToolCallApproval && mcpSessionPersistenceAdvertised !== true
           ? { ...asObject(request.params), sessionApprovalAvailable: false }
@@ -3903,7 +3796,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
 
     if (isUserInputRequest) {
       if (userInputQuestions) {
-        // Intentionally unanswered: a human replies through respondToUserInput.
         return;
       }
 
@@ -3929,10 +3821,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
   }
 
   private handleResponse(context: CodexSessionContext, response: JsonRpcResponse): void {
-    // Preserve the app-server's existing compatibility behavior for malformed
-    // error envelopes: only an error carrying a message rejected a request.
-    // Some older Codex builds emitted an error code without a message and the
-    // old manager treated that as a response with an undefined result.
     this.requestRegistry(context).handleResponse(
       response.error?.message
         ? response
@@ -3952,8 +3840,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     const id = context.nextRequestId;
     context.nextRequestId += 1;
 
-    // The registry owns the pending map and the timeout; upstream's idle-timer kick
-    // still has to happen on every settled request, success or failure.
     const result = await this.requestRegistry(context)
       .requestWithId(
         id,
@@ -4009,7 +3895,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       "session/ready",
       `Connected to thread ${input.providerThreadId}`,
     );
-    // Resume/fork do not notify session start; emit it so idle-stop re-arms.
+
     this.emitLifecycleEvent(
       context,
       "session/started",
@@ -4096,8 +3982,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         context.gatewaySessionLease !== undefined &&
         context.gatewaySessionLease.registerNativeToolCall === undefined;
       if (context.gatewaySessionLease) {
-        // Match native terminal notifications: fence the bearer synchronously
-        // before publishing the synthetic completion to ProviderService.
         void this.retireGatewayTurn(context, turnId);
       }
       this.updateSession(context, {
@@ -4234,9 +4118,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     const meta = this.readObject(params, "_meta");
     const explicitName = this.readString(meta, "tool_name");
     if (explicitName !== undefined) return `mcp__glade__${explicitName}`;
-    // Current Codex builds omit tool_name from native MCP approvals. Accept
-    // only their complete generated message, after checking the reserved
-    // server and native approval kind above; never infer from descriptions.
+
     const name = /^Allow the glade MCP server to run tool "([a-z_]+)"\?$/.exec(
       this.readString(params, "message") ?? "",
     )?.[1];
@@ -4382,10 +4264,8 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         resumeCursor: context.session.resumeCursor,
       }),
     );
-    // A child can emit events before its collab tool-call payload populates the
-    // receiver maps. During a live parent turn, another provider thread belongs
-    // to that active conversation. Preserve the mapped parent when one exists;
-    // otherwise provide the active provider thread required for child routing.
+    // Preserve the mapped parent when one exists; otherwise provide the active provider thread required
+    // for child routing.
     const isUnmappedChildConversation =
       mappedProviderParentThreadId === undefined &&
       context.session.status === "running" &&
@@ -4455,10 +4335,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
   }
 
   private shouldSuppressChildConversationNotification(method: string): boolean {
-    // Intentionally do NOT suppress `turn/plan/updated` or `item/plan/delta` here,
-    // even for child conversations. These are the events that let the active plan
-    // card advance ("1 out of 5" → "2 out of 5" ...) and render streaming plan text;
-    // suppressing them freezes the plan UI at its initial all-pending snapshot.
     return (
       method === "thread/started" ||
       method === "thread/status/changed" ||
@@ -4620,15 +4496,11 @@ interface CodexVersionCommandResult {
   readonly stderr: string;
 }
 
-/**
- * Run `codex --version` asynchronously.
- *
- * This intentionally mirrors `spawnSync`'s result shape (`error` / `status` /
- * `stdout` / `stderr`) so the version-gate semantics below stay byte-for-byte
- * identical, but without blocking the event loop: a synchronous spawn froze the
- * WebSocket fanout, PTY drains, and every provider's stdio for the duration of the
- * probe (measured ~80-97 ms, up to the 4 s timeout when the binary hangs).
- */
+// Run `codex --version` asynchronously. This intentionally mirrors `spawnSync`'s result shape
+// (`error` / `status` / `stdout` / `stderr`) so the version-gate semantics below stay byte-for-byte
+// identical, but without blocking the event loop: a synchronous spawn froze the WebSocket fanout,
+// PTY drains, and every provider's stdio for the duration of the probe (measured ~80-97 ms, up to
+// the 4 s timeout when the binary hangs).
 function runCodexVersionCommand(input: {
   readonly binaryPath: string;
   readonly cwd: string;
@@ -4665,17 +4537,15 @@ function runCodexVersionCommand(input: {
       }
       resolve(result);
     };
-    // Bound captured output the same way spawnSync's maxBuffer did; `codex
-    // --version` prints a single line, so truncation only affects pathological
-    // output and never the parsed version.
+
     const append = (buffer: string, chunk: string) =>
       buffer.length >= CODEX_VERSION_CHECK_MAX_OUTPUT_BYTES
         ? buffer
         : (buffer + chunk).slice(0, CODEX_VERSION_CHECK_MAX_OUTPUT_BYTES);
 
     timer = setTimeout(() => {
-      // SIGKILL (rather than spawnSync's SIGTERM) because the promise settles here
-      // regardless: a binary that ignores SIGTERM would otherwise linger forever.
+      // SIGKILL (rather than spawnSync's SIGTERM) because the promise settles here regardless: a binary
+      // that ignores SIGTERM would otherwise linger forever.
       child.kill("SIGKILL");
       finish({
         error: new Error(
@@ -4705,7 +4575,6 @@ function runCodexVersionCommand(input: {
   });
 }
 
-/** What the probe observed about the file it actually ran, so a later swap can be detected. */
 interface CodexCliBinaryFingerprint {
   readonly path: string;
   readonly identity: string;
@@ -4720,9 +4589,9 @@ async function runCodexCliVersionGate(input: {
 }): Promise<{ fingerprint: CodexCliBinaryFingerprint | null; version: string | null }> {
   const env = await buildCodexProcessEnv(input.homePath ? { homePath: input.homePath } : {});
   // Resolved against the env the spawn below uses, never `process.env`. On macOS and Linux
-  // `buildCodexProcessEnv` can replace PATH with the login shell's, so resolving through the
-  // process environment could fingerprint a different `codex` than the one being probed — or
-  // none at all — and the staleness check would then be watching the wrong file.
+  // `buildCodexProcessEnv` can replace PATH with the login shell's, so resolving through the process
+  // environment could fingerprint a different `codex` than the one being probed — or none at all —
+  // and the staleness check would then be watching the wrong file.
   const resolvedPath = resolveExecutable(input.binaryPath, { env });
   const identity = resolvedPath ? executableIdentity(resolvedPath) : null;
   const result = await runCodexVersionCommand({
@@ -4772,17 +4641,9 @@ async function runCodexCliVersionGate(input: {
 
 interface CodexCliVersionGateEntry {
   promise: Promise<string | null>;
-  /** 0 until the probe resolves successfully; failed verdicts are never reused. */
+
   expiresAt: number;
-  /**
-   * The file the successful probe ran, or null when it could not be located.
-   *
-   * The path alone does not identify a binary: `npm i -g @openai/codex`, a downgrade or a local
-   * rebuild all leave the path untouched, so a purely path-keyed cache would keep serving the
-   * pre-upgrade verdict for the rest of the TTL — long enough to swallow a downgrade below the
-   * supported floor. Re-stat'ing this exact file on a cache hit costs one syscall and needs no
-   * environment, which is why the fingerprint lives on the entry instead of in the key.
-   */
+
   fingerprint: CodexCliBinaryFingerprint | null;
 }
 
@@ -4793,18 +4654,13 @@ function codexCliVersionGateKey(
   homePath: string | undefined,
   minimumVersion: string | undefined,
 ): string {
-  // The installed version depends only on which binary runs and which CODEX_HOME
-  // shapes its environment. The required floor is part of the verdict, while the
-  // caller's cwd is not. JSON encoding keeps the components unambiguous, since a
-  // path may contain any separator we'd pick.
   return JSON.stringify([binaryPath, homePath ?? "", minimumVersion ?? ""]);
 }
 
-/** True when the file behind a cached verdict is no longer the one that was probed. */
 function isCodexCliVersionGateStale(entry: CodexCliVersionGateEntry): boolean {
   if (!entry.fingerprint) {
-    // Nothing was located at probe time, so there is nothing to compare against. The probe is
-    // what reports that failure, and failures are never cached, so no stale pass can hide here.
+    // Nothing was located at probe time, so there is nothing to compare against. The probe is what
+    // reports that failure, and failures are never cached, so no stale pass can hide here.
     return false;
   }
   return executableIdentity(entry.fingerprint.path) !== entry.fingerprint.identity;
@@ -4817,17 +4673,15 @@ async function assertSupportedCodexCliVersion(input: {
   readonly minimumVersion?: string;
   readonly minimumVersionRequirement?: string;
 }): Promise<string | null> {
-  // Prefer an explicit cwd check before spawning. A missing working directory
-  // produces ENOENT that is otherwise misreported as a missing Codex binary. This
-  // is per-call state, so it must run even when the version verdict is cached.
+  // Prefer an explicit cwd check before spawning. A missing working directory produces ENOENT that is
+  // otherwise misreported as a missing Codex binary. This is per-call state, so it must run even when
+  // the version verdict is cached.
   assertCodexWorkingDirectoryExists(input.cwd);
 
   const key = codexCliVersionGateKey(input.binaryPath, input.homePath, input.minimumVersion);
   const now = Date.now();
   const existing = codexCliVersionGates.get(key);
   if (existing) {
-    // expiresAt === 0 means the probe is still in flight: concurrent session
-    // starts share it instead of each spawning their own Codex process.
     if (existing.expiresAt === 0) {
       return existing.promise;
     }
@@ -4855,7 +4709,6 @@ async function assertSupportedCodexCliVersion(input: {
       return version;
     },
     (error: unknown) => {
-      // Never cache a failure: the user may install or upgrade Codex at any time.
       if (codexCliVersionGates.get(key) === entry) {
         codexCliVersionGates.delete(key);
       }

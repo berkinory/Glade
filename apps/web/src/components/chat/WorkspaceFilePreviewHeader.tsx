@@ -1,18 +1,3 @@
-// FILE: WorkspaceFilePreviewHeader.tsx
-// Purpose: Editor-style header for the shared workspace file preview — a path
-//          breadcrumb (project › …dirs › file) on the left, and an overflow
-//          menu + "Open in editor" split button on the right. Shared by the
-//          right-dock file/explorer panes and the editor center pane so every
-//          surface reads identically. Under width pressure the breadcrumb
-//          collapses whole middle directories behind a single "…" crumb
-//          (never letter-shards like "S… › O…"), keeping the nearest parent
-//          folders and the filename readable; only once every directory is
-//          hidden does the filename itself truncate. The header is a
-//          `header-actions` inline-size query container so the "Open" control
-//          sheds its text label for an icon as the pane narrows.
-// Layer: Chat/editor file-preview UI
-// Exports: WorkspaceFilePreviewHeader
-
 import { isWorkspaceRelativePathSafe, joinWorkspaceRelativePath } from "@glade/shared/path";
 import { Fragment, useLayoutEffect, useRef, useState } from "react";
 
@@ -41,34 +26,26 @@ import {
 interface WorkspaceFilePreviewHeaderProps {
   workspaceRoot: string | null;
   filePath: string;
-  /** Markdown files get an inline Source/Preview segmented switcher. */
+
   isMarkdown: boolean;
-  /** True while the rendered preview is shown; false for the source view. */
+
   markdownPreviewEnabled: boolean;
   onMarkdownPreviewChange: (rendered: boolean) => void;
-  /** Whole-file chat actions, surfaced in the overflow menu when wired. */
+
   onReferenceInChat?: ((reference: ChatFileReference) => void) | undefined;
-  /**
-   * Text contents of the previewed file, enabling the overflow menu's
-   * "Copy contents" action. Null when no text is loaded (binary previews,
-   * pending/failed reads).
-   */
+
   contentsForCopy?: string | null;
-  /** Shown when the preview only holds a partial read of a large file. */
+
   truncated?: boolean;
-  /** Marks the currently open source buffer as different from its saved version. */
+
   dirty?: boolean;
-  /** Short reason the current source cannot be edited safely. */
+
   readOnlyReason?: string | null;
-  /** Re-fetches the current file without discarding a dirty edit buffer. */
+
   onReload?: (() => void) | undefined;
   reloading?: boolean;
 }
 
-// Source (raw file, where selecting text yields a precise line/column chat
-// reference) vs. Preview (rendered markdown, read-only — browse + task lists).
-// Ordered Source-first so the interactive mode reads as the primary surface.
-// Icon-only by design: the title tooltip + sr-only text carry the labels.
 const MARKDOWN_VIEW_SEGMENTS = [
   {
     rendered: false,
@@ -89,20 +66,10 @@ interface BreadcrumbSegment {
   key: string;
 }
 
-// Reserved room for the unsaved-changes dot after the filename (size-1.5 dot
-// + ml-1.5 gap), plus a small epsilon absorbing fractional-width rounding.
 const DIRTY_DOT_RESERVE_PX = 12;
 const FILE_ICON_RESERVE_PX = 20;
 const MEASURE_EPSILON_PX = 1;
 
-/**
- * Breadcrumb that collapses whole middle directories behind a single "…"
- * crumb when the row runs out of room, instead of letting every crumb
- * truncate into unreadable letter-shards. A hidden mirror of the full path
- * is measured (ResizeObserver keeps it honest across pane resizes and late
- * font loads) to decide how many trailing directories still fit next to the
- * filename; the filename itself only truncates once no directory fits.
- */
 function CollapsingPathBreadcrumb(props: {
   prefixSegments: BreadcrumbSegment[];
   fileSegment: string;
@@ -139,8 +106,7 @@ function CollapsingPathBreadcrumb(props: {
         trailingReserveWidth:
           FILE_ICON_RESERVE_PX + (dirty ? DIRTY_DOT_RESERVE_PX : 0) + MEASURE_EPSILON_PX,
       });
-      // Keep the previous state object when nothing changed so resize frames
-      // that land on the same layout skip the re-render entirely.
+
       setCollapsedLayout((current) => {
         if (current === nextLayout) return current;
         if (current === null || nextLayout === null) return nextLayout;
@@ -152,8 +118,7 @@ function CollapsingPathBreadcrumb(props: {
     };
 
     compute();
-    // Observing the hidden mirror too re-measures when its natural width
-    // changes without a pane resize (late-loading fonts, new file path).
+
     const observer = new ResizeObserver(compute);
     observer.observe(nav);
     observer.observe(measure);
@@ -183,9 +148,7 @@ function CollapsingPathBreadcrumb(props: {
       aria-label="File path"
       className="relative flex min-w-0 flex-1 items-center overflow-hidden text-ui leading-snug"
     >
-      {/* Hidden mirror of the full breadcrumb at natural width, measured to
-          decide how many directories fit. Absolutely positioned so it never
-          affects layout; invisible so it never paints. */}
+      {}
       <div
         ref={measureRef}
         aria-hidden="true"
@@ -242,8 +205,6 @@ export const WorkspaceFilePreviewHeader = function WorkspaceFilePreviewHeader(
 ) {
   const { filePath, workspaceRoot } = props;
 
-  // Out-of-workspace previews (e.g. a session's scratch directory under the
-  // OS temp dir) arrive as absolute paths; everything in-workspace is relative.
   const fileIsOutsideWorkspace = !isWorkspaceRelativePathSafe(filePath);
 
   const relativeSegments = filePath
@@ -251,8 +212,7 @@ export const WorkspaceFilePreviewHeader = function WorkspaceFilePreviewHeader(
     .split("/")
     .filter((segment) => segment.length > 0);
   const segments = relativeSegments;
-  // Key each crumb by its cumulative path so repeated folder names (e.g. two
-  // `src` dirs at different depths) still get stable, unique React keys.
+
   const prefixSegments = segments.slice(0, -1).map((name, index) => ({
     name,
     key: segments.slice(0, index + 1).join("/"),
@@ -375,9 +335,7 @@ export const WorkspaceFilePreviewHeader = function WorkspaceFilePreviewHeader(
           </ComposerPickerMenuPopup>
         </Menu>
 
-        {/* Responsive (default) mode: the "Open" label rides the same
-            `header-actions` container declared on this header, so it shows on a
-            wide pane and collapses to the editor icon when the pane is narrow. */}
+        {}
         <OpenInPicker openInTarget={openInTarget} />
       </div>
     </div>

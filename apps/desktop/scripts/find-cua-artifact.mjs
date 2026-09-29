@@ -1,5 +1,3 @@
-// Only the dedicated successful default-branch producer may supply cross-run
-// binaries. Exact build-key and executable verification still happen on import.
 export async function findCuaArtifact(github, repo, key) {
   if (!/^cua-v1-[a-f0-9]{64}$/.test(key)) throw new Error("Invalid Cua build key.");
   const { data: repository } = await github.rest.repos.get(repo);
@@ -7,8 +5,8 @@ export async function findCuaArtifact(github, repo, key) {
     ...repo,
     workflow_id: "cua-release-cache.yml",
   });
-  // Bound lookup cost even if unrelated workflows upload colliding names. A
-  // miss compiles pinned source; it never relaxes trust or fingerprint checks.
+  // Bound lookup cost even if unrelated workflows upload colliding names. A miss compiles pinned
+  // source; it never relaxes trust or fingerprint checks.
   for (let page = 1; page <= 3; page++) {
     const { data } = await github.rest.actions.listArtifactsForRepo({
       ...repo,

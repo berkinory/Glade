@@ -1,10 +1,3 @@
-// FILE: composerComputerControlHint.test.ts
-// Purpose: Locks the composer computer-control effort hint to its four conditions
-// (control on and available, claudeAgent, Medium on the ladder, effort untouched)
-// and to the state transitions its apply/dismiss actions produce.
-// Layer: Web chat composer tests
-// Depends on: shouldShowComputerControlEffortHint, getComposerTraitSelection
-
 import { type ClaudeModelOptions } from "@glade/contracts";
 import { describe, expect, it } from "vitest";
 
@@ -17,7 +10,7 @@ import {
 import { getComposerTraitSelection } from "./composerTraits";
 
 const OPUS_5 = "claude-opus-5";
-// Opus 4.8 carries the Ultrathink prompt mode; Opus 5 does not.
+
 const OPUS_4_8 = "claude-opus-4-8";
 
 function traitsFor(

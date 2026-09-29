@@ -1,8 +1,3 @@
-// FILE: shortcutsSheet.ts
-// Purpose: Build the shortcut reference sections shown by the keyboard shortcuts sheet.
-// Layer: UI helper
-// Depends on: keybinding label resolution, project script command mapping, and platform helpers.
-
 import {
   STATIC_KEYBINDING_COMMANDS,
   type KeybindingCommand,
@@ -51,7 +46,6 @@ interface ShortcutDefinition {
   description: string;
 }
 
-// Space jumps address the switcher's visual tab order, so slot 1 is the built-in Home group.
 const SPACE_JUMP_DEFINITIONS: readonly ShortcutDefinition[] = Array.from(
   { length: 9 },
   (_, index) => ({
@@ -314,7 +308,6 @@ export interface EditableShortcutDefinition {
   description: string;
 }
 
-/** All built-in commands that can be assigned from Settings → Keybindings. */
 export function listEditableShortcutDefinitions(): EditableShortcutDefinition[] {
   const definitionsByCommand = new Map<KeybindingCommand, EditableShortcutDefinition>();
   for (const definition of [
@@ -496,9 +489,6 @@ export function buildShortcutSheetSections(
   return sections;
 }
 
-// Match a single entry against a free-text query on the human-readable label, the
-// description, and the rendered shortcut label, so a user can search by action name
-// ("terminal"), intent ("split"), or even the key combo itself ("⌘N" / "ctrl+n").
 function shortcutSheetEntryMatchesQuery(entry: ShortcutSheetEntry, needle: string): boolean {
   return (
     entry.label.toLowerCase().includes(needle) ||
@@ -507,9 +497,6 @@ function shortcutSheetEntryMatchesQuery(entry: ShortcutSheetEntry, needle: strin
   );
 }
 
-// Filter each section's entries against a free-text query, dropping sections that end up
-// empty. Shared by the keyboard-shortcuts dialog (Mod+/) and the settings reference panel
-// so the two surfaces search identically.
 export function filterShortcutSheetSections(
   sections: ShortcutSheetSection[],
   query: string,

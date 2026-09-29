@@ -35,8 +35,7 @@ export function makeServerProviderLayer(
     const providerSessionDirectoryLayer = ProviderSessionDirectoryLive.pipe(
       Layer.provide(ProviderSessionRuntimeRepositoryLive),
     );
-    // Gives gateway-capable sessions their thread-scoped glade_* credentials.
-    // Gateway-capable sessions receive thread-scoped credentials.
+
     const agentGatewayCredentialsLayer =
       options.agentGatewayCredentialsLayer ?? AgentGatewayCredentialsWithSecretsLive;
     const codexAdapterLayer = makeCodexAdapterLive(

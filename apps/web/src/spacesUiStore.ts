@@ -1,6 +1,3 @@
-// FILE: spacesUiStore.ts
-// Purpose: Keeps per-window Space selection and last working-context restoration.
-
 import type { ProjectId, SpaceId, ThreadId } from "@glade/contracts";
 import { create } from "zustand";
 
@@ -138,9 +135,7 @@ export const useSpacesUiStore = create<SpacesUiState>((set, get) => ({
     if (typeof window !== "undefined") {
       try {
         window.localStorage.setItem(CHAT_SPACE_STORAGE_KEY, JSON.stringify(next));
-      } catch {
-        // Keep the active window usable if browser storage is unavailable.
-      }
+      } catch {}
     }
     set({ chatSpaceByThreadId: next });
   },

@@ -1,7 +1,3 @@
-// FILE: ComputerSetupRequiredCard.tsx
-// Purpose: Shows the current desktop permission state and an explicit setup action.
-// Layer: Chat transcript UI
-
 import { useQuery } from "@tanstack/react-query";
 import { useProvisionComputer } from "~/hooks/useProvisionComputer";
 import { useRefreshOnWindowReturn } from "~/hooks/useRefreshOnWindowReturn";
@@ -32,32 +28,14 @@ export function ComputerSetupRequiredCard({
   onSetUp,
   onRecheck,
 }: {
-  /**
-   * The grants the OS is withholding. Naming them is most of this card's value:
-   * "a permission Glade needs" sends the user hunting through Privacy &
-   * Security, while "Accessibility" tells them exactly which switch to find.
-   * Empty when the backend refused without naming one.
-   */
+  // Naming them is most of this card's value: "a permission Glade needs" sends the user hunting
+  // through Privacy & Security, while "Accessibility" tells them exactly which switch to find.
   readonly missing?: readonly ComputerPermission[];
-  /**
-   * How this Glade is signed. On a locally built copy the missing grant may be
-   * one macOS still lists as given — pinned to a binary a rebuild replaced —
-   * which is the difference between "grant it" and "the switch lies to you".
-   */
+
   readonly buildSignature?: ComputerBuildSignature;
-  /**
-   * The app macOS files this Glade's grants against, as the server reported it.
-   * The stale-grant advice names it in a `tccutil reset`, and there is no safe
-   * default: the `.dev` and `.canary` flavors are separate bundle identifiers,
-   * so guessing the released one hands the user a command that revokes a
-   * different Glade's working permissions. Absent means the advice omits the
-   * command entirely.
-   */
+
   readonly bundleId?: string;
-  // Live setup state, derived from the desktop's current availability rather
-  // than remembered from a button press: once the grants land — including when
-  // the user simply allows the dialog macOS already showed — the card flips to a
-  // confirmation instead of offering a button that would do nothing.
+
   readonly computerControlReady?: boolean;
   readonly status?: ComputerStatusResult;
   readonly statusError?: string;
@@ -107,9 +85,7 @@ export function ComputerSetupRequiredCard({
     !statusError &&
     availability?.kind !== "unsupported-platform" &&
     status?.provisionable !== false;
-  // Only ever non-null on a locally built copy with a grant outstanding: on a
-  // signed build the switch in System Settings means what it says, and the
-  // extra paragraph would be a red herring.
+
   const staleGrantAdvice =
     !ready && currentSignature
       ? computerStaleGrantAdvice(currentMissing, currentSignature, currentBundleId)
@@ -134,7 +110,6 @@ export function ComputerSetupRequiredCard({
   );
 }
 
-/** The desktop is shared, so setup status is independent of the selected chat. */
 export function ConnectedComputerSetupRequiredCard(
   props: Parameters<typeof ComputerSetupRequiredCard>[0],
 ) {

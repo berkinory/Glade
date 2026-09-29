@@ -1,8 +1,3 @@
-// Purpose: Branch/worktree picker for the chat toolbar.
-// Coordinates branch checkout/create actions and decorates rows with git metadata.
-// Depends on: git React Query helpers, native API mutations, and toolbar selection rules.
-// Note: the "Create branch" footer row uses raw <button> because it is a
-// menu-item-style affordance inside a ComboboxPopup, not a generic action.
 import type { GitBranch, GitStashInfoResult, GitStatusResult, NativeApi } from "@glade/contracts";
 import { pluralize } from "@glade/shared/text";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -78,11 +73,6 @@ import {
 } from "./chat/pickerPanelStyles";
 import type { ThreadWorkspacePatch } from "../types";
 
-/**
- * Where the selector is rendered. `toolbar` keeps the compact composer-footer pill;
- * `panel` makes the trigger a full-width Environment panel row and drops its menu
- * downward instead of upward.
- */
 export type BranchSelectorVariant = "toolbar" | "panel" | "compact";
 
 interface BranchToolbarBranchSelectorProps {
@@ -195,9 +185,6 @@ function handleCheckoutError(
     onRequestDiscardStash: (input: { cwd: string }) => void;
   },
 ): void {
-  // Recovery always acts on input.cwd, which can differ from the selector's own checkout
-  // (e.g. "Stash & Switch" from a dedicated worktree back to the project root), so every
-  // retry passes it as the awaited refresh scope instead of relying on the default.
   const retryRefreshOptions = { refreshCwds: [input.cwd] } as const;
   const retryStashAndCheckout = async (): Promise<void> => {
     await input.api.git.stashAndCheckout({ cwd: input.cwd, branch: input.branch });
@@ -484,9 +471,7 @@ export function BranchToolbarBranchSelector({
     (action: () => Promise<void>, options?: { readonly refreshCwds?: readonly string[] }) => {
       startBranchActionTransition(async () => {
         await action().catch(() => undefined);
-        // Only the acted-on checkout gates re-enabling the selector; the remaining cached
-        // repos (checked-out markers in sibling worktrees) refresh in the background so a
-        // slow unrelated worktree cannot hold the selector disabled.
+
         const awaitedCwds = options?.refreshCwds ?? (branchCwd ? [branchCwd] : []);
         await refreshGitQueriesScoped(queryClient, awaitedCwds).catch(() => undefined);
       });
@@ -553,7 +538,6 @@ export function BranchToolbarBranchSelector({
     const api = readNativeApi();
     if (!api || !branchCwd || isBranchActionPending) return;
 
-    // In new-worktree mode, selecting a branch sets the base branch.
     if (isSelectingWorktreeBase) {
       onSetThreadWorkspace({ branch: branch.name, worktreePath: null });
       setIsBranchMenuOpen(false);
@@ -567,7 +551,6 @@ export function BranchToolbarBranchSelector({
       branch,
     });
 
-    // If the branch already lives in a worktree, point the thread there.
     if (selectionTarget.reuseExistingWorktree) {
       onSetThreadWorkspace({
         branch: branch.name,

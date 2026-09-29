@@ -30,7 +30,6 @@ const echoedUserMessage: ChatMessage = {
   streaming: false,
 };
 
-/** Idle-looking gap after `thread.message-sent` + `thread.turn-start-requested`. */
 const gapLatestTurn: Thread["latestTurn"] = {
   turnId: "turn-1" as never,
   state: "running",

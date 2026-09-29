@@ -1,10 +1,5 @@
-// FILE: profileFormatting.ts
-// Purpose: Pure display formatters shared by the Profile page and the shareable card.
-// Layer: web profile feature (no I/O, safe to use during html-to-image render).
-
 import type { ProviderKind } from "@glade/contracts";
 
-// Compact token/count formatting matching the reference card ("17bn", "538m", "1.2k").
 export function formatCompact(value: number | null | undefined): string {
   if (value === null || value === undefined || !Number.isFinite(value)) {
     return "—";
@@ -27,7 +22,6 @@ function trimZero(value: number): string {
   return Number.isInteger(rounded) ? `${rounded}` : rounded.toFixed(1);
 }
 
-// Thousands-separated integer ("4,934").
 export function formatNumber(value: number | null | undefined): string {
   if (value === null || value === undefined || !Number.isFinite(value)) {
     return "—";
@@ -39,7 +33,6 @@ export function formatDays(value: number): string {
   return `${formatNumber(value)} ${value === 1 ? "day" : "days"}`;
 }
 
-// Title-case a home-directory basename into a friendly display name.
 export function toDisplayName(basename: string): string {
   const cleaned = basename
     .replace(/[._-]+/g, " ")
@@ -64,7 +57,6 @@ export function normalizeHandle(value: string): string {
   return `@${slug || "glade"}`;
 }
 
-// Pretty short date for "peak day" tooltips ("Apr 3").
 export function formatShortDate(day: string | null): string | null {
   if (!day) {
     return null;

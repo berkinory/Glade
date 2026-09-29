@@ -1,8 +1,6 @@
 import * as Effect from "effect/Effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 
-// Preserve former Studio folders and their threads as ordinary projects. Both
-// the journal and the projection must agree before startup replays events.
 export default Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
 

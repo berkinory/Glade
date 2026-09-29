@@ -1,16 +1,3 @@
-// FILE: useComputerEventBridge.ts
-// Purpose: Capture computer events globally and arm the in-chat preview sessions.
-// Layer: Web event bridge hook
-// Exports: useComputerEventBridge
-// Depends on: nativeApi computer.onEvent, computerStateStore, computerPreviewStore
-//
-// Mirrors useDeviceEventBridge: the computer engine lives in apps/server, so the
-// open-pane signal is a WebSocket push and this works in a plain browser tab as
-// well as the desktop app.
-//
-// `computer.open-pane-requested` arms the owning thread's preview session.
-// The in-chat popover is the only Computer surface.
-
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 
@@ -26,7 +13,6 @@ import { ensureNativeApi } from "~/nativeApi";
 import { useComputerPreviewStore } from "../computerPreviewStore";
 import { useComputerStateStore } from "../computerStateStore";
 
-/** A native grant can land while System Settings owns focus and query polling is paused. */
 export function subscribeComputerPermissionStatus(
   queryClient: QueryClient,
   bridge: Pick<
@@ -37,8 +23,8 @@ export function subscribeComputerPermissionStatus(
   if (!bridge) return () => undefined;
   let previous: string | undefined;
   return bridge.onState((state) => {
-    // ComputerPermission-only snapshots do not establish Accessibility and must not turn
-    // an unused Computer feature on. Only refresh an already requested status.
+    // ComputerPermission-only snapshots do not establish Accessibility and must not turn an unused
+    // Computer feature on. Only refresh an already requested status.
     if (
       !state.supported ||
       state.platform !== "macos" ||
@@ -58,7 +44,6 @@ export function subscribeComputerPermissionStatus(
   });
 }
 
-/** Mounted once by EventRouter, including while settings or split view is open. */
 export function useComputerEventBridge(): void {
   const queryClient = useQueryClient();
   useEffect(() => subscribeComputerPermissionStatus(queryClient), [queryClient]);
@@ -92,15 +77,9 @@ export function useComputerEventBridge(): void {
           break;
         }
         case "computer.open-pane-requested":
-          // The server sends this once per lease. What honors it is the
-          // preview session on the owning thread, armed whether or not that
-          // chat is on screen.
           preview.requestPreviewSurface(event.threadId);
           break;
         case "computer.input-stopped":
-          // Host-wide: update the latch every surface reads, and re-pull the
-          // status the settings panel polls so its indicator flips at the
-          // press rather than on the next interval.
           store.setInputStopped(event.stopped);
           void queryClient.invalidateQueries({
             queryKey: serverQueryKeys.computerStatus(),
@@ -110,10 +89,7 @@ export function useComputerEventBridge(): void {
           break;
       }
     });
-    // Thread state also arrives through getThreadState seeds, which never pass
-    // the push handler above. Watching the store itself feeds both paths into
-    // the same edge detection, and a wholesale cache reset (server restart)
-    // ends every session with it.
+
     const unsubscribeThreadStates = useComputerStateStore.subscribe((state, previous) => {
       const nextStates = state.threadStatesByThreadId;
       if (nextStates === previous.threadStatesByThreadId) {

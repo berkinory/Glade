@@ -27,11 +27,6 @@ export type ComputerImageStreamStatus =
   | { readonly kind: "streaming" }
   | { readonly kind: "error"; readonly message: string };
 
-/**
- * Keeps the previous status object when nothing about it actually changed. A
- * decoded frame reports "streaming" at stream rate, and a fresh object every
- * time would re-render the whole pane once per frame for no visible difference.
- */
 function mergeComputerImageStreamStatus(
   previous: ComputerImageStreamStatus,
   next: ComputerImageStreamStatus,
@@ -73,9 +68,7 @@ export function useComputerImageStream(input: {
     if (!enabled || !pageVisible || computerId === null) {
       setStatus({ kind: "idle" });
       setDimensions(null);
-      // The canvas keeps its last decoded frame: the tap (or this stream when
-      // it re-subscribes) paints over it, so wiping here would flash a blank
-      // viewport during every stills-to-tap handoff and page-hide cycle.
+
       return;
     }
     if (!isImageBitmapAvailable()) {
@@ -103,11 +96,10 @@ export function useComputerImageStream(input: {
       decoding = true;
       let bitmap: ImageBitmap | null = null;
       try {
-        // The payload is a view over that message's own buffer, and the Blob
-        // constructor copies the bytes it is given, so this is the only copy a
-        // multi-megabyte frame needs. The cast narrows the decoder's
-        // `ArrayBufferLike` to what `Blob` accepts: this buffer came from a
-        // WebSocket message, which is never shared memory.
+        // The payload is a view over that message's own buffer, and the Blob constructor copies the bytes
+        // it is given, so this is the only copy a multi-megabyte frame needs. The cast narrows the
+        // decoder's `ArrayBufferLike` to what `Blob` accepts: this buffer came from a WebSocket message,
+        // which is never shared memory.
         const payload = frame.payload as Uint8Array<ArrayBuffer>;
         bitmap = await globalThis.createImageBitmap(new Blob([payload], { type: "image/png" }));
         if (!isCurrent() || disposed) return;

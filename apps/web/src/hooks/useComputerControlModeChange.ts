@@ -8,7 +8,6 @@ import {
   readLocalComputerPermissionBridge,
 } from "~/lib/computerProvisioning";
 
-/** Explicit activation opens the native permission guide when grants are missing. */
 export function useComputerControlModeChange({
   threadId,
   setMode,
@@ -43,8 +42,7 @@ export function useComputerControlModeChange({
           revokeQueued: mode === "off",
           generation: result.generation ?? 0,
         });
-        // Enabling against a reset server generation leaves control off: the
-        // queued intent it would have armed is stale, so say so plainly.
+
         if (mode !== "off" && !result.enabled && current()) {
           toastManager.add({
             title: "Computer control was reset",
@@ -60,7 +58,7 @@ export function useComputerControlModeChange({
             startPermissionSetup: (kinds) => computerPermission.startPermissionSetup(kinds),
             isCurrent: current,
           });
-          if (!ready) return; // Keep Settings/its floating guide in front.
+          if (!ready) return;
         }
         if (current()) focusComposer();
       })().catch((error) => {

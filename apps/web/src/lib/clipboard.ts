@@ -90,8 +90,6 @@ export function useCopyToClipboard<TContext = void>({
   const onErrorRef = React.useRef(onError);
   const timeoutRef = React.useRef(timeout);
 
-  // Mirrored in an effect (not during render) so the hook stays eligible for
-  // React Compiler; copyToClipboard only runs from post-commit user events.
   React.useEffect(() => {
     onCopyRef.current = onCopy;
     onErrorRef.current = onError;
@@ -125,7 +123,6 @@ export function useCopyToClipboard<TContext = void>({
     );
   }, []);
 
-  // Cleanup timeout on unmount
   React.useEffect(() => {
     return (): void => {
       if (timeoutIdRef.current) {

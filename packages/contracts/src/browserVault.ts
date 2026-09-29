@@ -1,7 +1,6 @@
 import { Schema } from "effect";
 
 export const BrowserVaultSettings = Schema.Struct({
-  // Retain the persisted key; consent now covers account metadata only.
   agentUse: Schema.Boolean,
   offerSave: Schema.Boolean,
   autosave: Schema.Boolean,

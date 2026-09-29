@@ -1,10 +1,3 @@
-// FILE: PullRequestCodeTab.tsx
-// Purpose: The Code tab of the pull request detail surface — owns the diff query and the
-//          patch viewport. Lazy-loaded by PullRequestDetailPanel so the diff renderer and its
-//          worker infrastructure never ship to users who only read the list or Summary.
-// Layer: Pull request presentation
-// Exports: default PullRequestCodeTab (for React.lazy)
-
 import type { PullRequestDetail, PullRequestDetailInput } from "@glade/contracts";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -36,9 +29,6 @@ function PullRequestCodeTab({
   const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(() => new Set());
   const diffQuery = useQuery(pullRequestDiffQueryOptions(input));
 
-  // Parse once per distinct patch (mirroring DiffPanel): every collapse toggle
-  // and theme change re-renders this tab, and the patch can be up to 8 MiB.
-  // Totals come from the parsed result rather than a second full parse.
   const patch = diffQuery.data?.patch;
   const renderablePatch = useMemo(
     () => getRenderablePatch(patch, `pull-request:${input.projectId}:${input.number}`),

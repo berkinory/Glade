@@ -52,8 +52,6 @@ describe("Linux desktop host startup", () => {
     expect(activate).not.toHaveBeenCalled();
     expect(armed).toBe(false);
     for (const turnId of ["one", "two"]) {
-      // The protected PID refuses before a missing driver could be spawned;
-      // the request still exercises the host's attributed task lifecycle.
       await expect(
         cuaRequest<CuaReply>(f.endpoint, {
           method: "call",
@@ -90,8 +88,8 @@ describe("Linux desktop host startup", () => {
       const f = await fixture(isPackaged);
       const result = await cuaRequest<CuaReply>(f.endpoint, { method: "probe", capability });
       expect(result).toMatchObject({ ok: false, error: expect.stringContaining("provisioning") });
-      // A missing optional Computer artifact must not reject desktop/server
-      // startup or prevent the app from displaying its unavailable state.
+      // A missing optional Computer artifact must not reject desktop/server startup or prevent the app
+      // from displaying its unavailable state.
       await expect(
         cuaRequest<CuaReply>(f.endpoint, { method: "probe", capability: "not-the-capability" }),
       ).resolves.toMatchObject({ ok: false });

@@ -1,11 +1,3 @@
-/**
- * Shared plan-mode helpers for provider adapters.
- *
- * Adapters use this prompt shim when their native plan mode does not emit a
- * first-class proposed-plan event. The extraction helpers keep the UI path
- * provider-agnostic by converting tagged markdown into canonical runtime events.
- */
-
 import type { ProviderInteractionMode } from "@glade/contracts";
 
 const PROVIDER_PLAN_MODE_PROMPT_PREFIX = [

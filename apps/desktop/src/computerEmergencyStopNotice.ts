@@ -55,16 +55,8 @@ function unrefTimer(timer: ReturnType<typeof setTimeout>): void {
   }
 }
 
-/**
- * Best-effort relay of a physical Escape interrupt into the backend's
- * computer manager. The desktop's local interrupt already engaged before
- * this runs, so a lost notice must never delay or weaken the stop — the
- * retries only cover a backend that is mid-restart when the key lands.
- *
- * Authorization reuses the desktop-owner shutdown credential: a caller that
- * may stop the backend may also stop its computer input. The notice carries
- * no payload; everything it means is implied by the authenticated route.
- */
+// The desktop's local interrupt already engaged before this runs, so a lost notice must never delay
+// or weaken the stop — the retries only cover a backend that is mid-restart when the key lands.
 export function notifyBackendComputerEmergencyStop(input: {
   readonly backendHttpUrl: string;
   readonly shutdownToken: string;

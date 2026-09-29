@@ -2,8 +2,8 @@ import type { GladePackagedDesktopFlavor } from "@glade/shared/desktopIdentity";
 
 export const BRAND_ASSET_PATHS = {
   productionMacIconPng: "assets/prod/black-macos-1024.png",
-  // Icon Composer source for the macOS 26 bundle icon. Only a layered ".icon"
-  // asset gets the Liquid Glass material; a flat ICNS/PNG never does.
+  // Icon Composer source for the macOS 26 bundle icon. Only a layered ".icon" asset gets the Liquid
+  // Glass material; a flat ICNS/PNG never does.
   productionMacIconComposer: "assets/prod/Glade.icon",
   productionMacCompiledIconCatalog: "assets/prod/Glade-Assets.car",
   productionMacLegacyIconPng: "assets/prod/black-macos-legacy-1024.png",
@@ -26,13 +26,12 @@ export interface DesktopIconAssetPaths {
   readonly macIconPng: string;
   readonly macIconComposer: string;
   readonly macLegacyIconPng: string;
-  /** Dark-appearance dock icon; absent flavors keep their inherited resource. */
+
   readonly macLegacyDarkIconPng?: string;
   readonly linuxIconPng: string;
   readonly windowsIconIco: string;
 }
 
-/** Packaged Glade builds use the production artwork. */
 export function desktopIconAssetPaths(flavor: DesktopBuildFlavor): DesktopIconAssetPaths {
   if (flavor !== "production") {
     throw new Error(`Unsupported Glade packaged flavor: ${flavor}`);
@@ -89,7 +88,6 @@ export const PUBLISH_ICON_OVERRIDES: ReadonlyArray<IconOverride> = [
   },
 ];
 
-/** Favicon overrides for a production package. */
 export function publishIconOverrides(flavor: DesktopBuildFlavor): ReadonlyArray<IconOverride> {
   if (flavor !== "production") {
     throw new Error(`Unsupported Glade packaged flavor: ${flavor}`);

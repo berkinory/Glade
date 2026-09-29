@@ -27,7 +27,6 @@ import {
   ThreadConversationRolledBackPayload as ContractsThreadConversationRolledBackPayloadSchema,
 } from "@glade/contracts";
 
-// Server-internal alias surface, backed by contract schemas as the source of truth.
 export const SpaceCreatedPayload = ContractsSpaceCreatedPayloadSchema;
 export const SpaceMetaUpdatedPayload = ContractsSpaceMetaUpdatedPayloadSchema;
 export const SpaceOrderUpdatedPayload = ContractsSpaceOrderUpdatedPayloadSchema;

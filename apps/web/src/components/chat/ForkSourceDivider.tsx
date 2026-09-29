@@ -1,7 +1,3 @@
-// FILE: ForkSourceDivider.tsx
-// Purpose: Link a forked transcript back to the immediate source chat.
-// Layer: Chat transcript UI
-
 import { PROVIDER_DISPLAY_NAMES, type ProviderKind, type ThreadId } from "@glade/contracts";
 import { memo, type MouseEvent } from "react";
 

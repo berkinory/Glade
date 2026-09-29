@@ -1,7 +1,3 @@
-// FILE: shell.ts
-// Purpose: Shared helpers for probing login-shell environment values safely.
-// Exports: shell candidate resolution plus PATH/environment capture utilities.
-
 import * as OS from "node:os";
 import { execFileSync } from "node:child_process";
 
@@ -18,23 +14,13 @@ function trimNonEmpty(value: string | null | undefined): string | undefined {
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
 }
 
-/**
- * Marks an environment whose PATH was already resolved from the user's real
- * environment (login shell, launchctl, or the Windows registry) by a parent process.
- *
- * Probing a login shell costs ~1s because `-ilc` sources the user's full interactive
- * rc (nvm, pyenv, conda, oh-my-zsh, direnv). The desktop shell pays that once before
- * it spawns the backend, and the backend inherits the result — so without this marker
- * the same probe is serialized a second time before the server ever starts listening.
- */
+// Probing a login shell costs ~1s because `-ilc` sources the user's full interactive rc (nvm,
+// pyenv, conda, oh-my-zsh, direnv). The desktop shell pays that once before it spawns the backend,
+// and the backend inherits the result — so without this marker the same probe is serialized a
+// second time before the server ever starts listening.
 export const SHELL_ENVIRONMENT_HYDRATED_ENV_NAME = "GLADE_PATH_HYDRATED";
 export const SHELL_ENVIRONMENT_HYDRATED_ENV_VALUE = "1";
 
-/**
- * A populated PATH proves nothing on its own — every process inherits one, including
- * the truncated `/usr/bin:/bin` a GUI launch starts with. Only an explicit marker from
- * a process that actually ran the probe may suppress it.
- */
 export function isShellEnvironmentHydrated(env: NodeJS.ProcessEnv): boolean {
   return (
     env[SHELL_ENVIRONMENT_HYDRATED_ENV_NAME] === SHELL_ENVIRONMENT_HYDRATED_ENV_VALUE &&
@@ -42,11 +28,8 @@ export function isShellEnvironmentHydrated(env: NodeJS.ProcessEnv): boolean {
   );
 }
 
-/**
- * Stamps (or clears) the hydration marker on an environment handed to a child process.
- * Always written explicitly: an inherited marker from an unrelated parent must never
- * suppress a probe this process did not actually perform.
- */
+// Always written explicitly: an inherited marker from an unrelated parent must never suppress a
+// probe this process did not actually perform.
 export function applyShellEnvironmentHydrationMarker(
   env: NodeJS.ProcessEnv,
   hydrated: boolean,
@@ -127,11 +110,9 @@ export function mergePathEntries(
   const merged: string[] = [];
   const seen = new Set<string>();
 
-  // Windows paths are case-insensitive and tolerate a trailing separator, so the
-  // registry PATH and the inherited PATH overlap with the same entry in different
-  // casing or with/without a trailing slash. Normalize the dedup key on win32 to
-  // collapse those near-duplicates (the first-seen spelling is preserved); posix
-  // stays an exact match.
+  // Windows paths are case-insensitive and tolerate a trailing separator, so the registry PATH and
+  // the inherited PATH overlap with the same entry in different casing or with/without a trailing
+  // slash.
   const dedupKey = (entry: string): string =>
     isWindows ? entry.toLowerCase().replace(/[\\/]+$/, "") : entry;
 
@@ -230,25 +211,16 @@ export const readEnvironmentFromLoginShell: ShellEnvironmentReader = (
   return environment;
 };
 
-// Windows has no login-shell to probe; the user's persisted environment lives in the
-// registry (HKCU + HKLM). A GUI process launched from a stale Explorer inherits an
-// outdated environment block, so we read the registry directly to pick up current values.
-
 export function isPathName(name: string): boolean {
   return name.toUpperCase() === "PATH";
 }
 
-// Merge the Machine and User registry scopes the way Windows composes the environment:
-// User scope wins for ordinary variables, and PATH is Machine entries followed by User entries.
 export function mergeWindowsScopes(
   machine: Partial<Record<string, string>>,
   user: Partial<Record<string, string>>,
 ): Partial<Record<string, string>> {
   const merged: Partial<Record<string, string>> = {};
 
-  // Windows environment variable names are case-insensitive, so a Machine `Foo` and
-  // a User `FOO` are the same variable. Track the stored key per lowercased name so a
-  // later (User) scope overrides the earlier (Machine) value instead of leaving both.
   const keyByLowerName = new Map<string, string>();
   const assignNonPath = (source: Partial<Record<string, string>>): void => {
     for (const [name, value] of Object.entries(source)) {
@@ -287,10 +259,6 @@ export type WindowsEnvironmentReader = (
   execFile?: ExecFileSyncLike,
 ) => Partial<Record<string, string>>;
 
-// NOTE: keep this on Windows PowerShell 5.1 (`powershell.exe`), not `pwsh`. WinPS 5.1's
-// `ConvertTo-Json` escapes non-ASCII as `\uXXXX`, so the stdout stays pure ASCII and
-// survives the OEM-codepage console encoding. `pwsh` emits raw UTF-8 and would corrupt
-// non-ASCII paths read back here.
 const WINDOWS_ENVIRONMENT_SCRIPT = [
   "$ErrorActionPreference='Stop';",
   "function dump($s){$m=[ordered]@{};$v=[Environment]::GetEnvironmentVariables($s);",
@@ -299,8 +267,6 @@ const WINDOWS_ENVIRONMENT_SCRIPT = [
   "[Console]::Out.Write(($o|ConvertTo-Json -Compress -Depth 3))",
 ].join("");
 
-// Resolve the absolute interpreter path instead of relying on PATH lookup, so a
-// malicious `powershell.exe` planted earlier on PATH cannot be executed here.
 function resolveWindowsPowerShellPath(): string {
   const systemRoot = trimNonEmpty(process.env.SystemRoot) ?? "C:\\Windows";
   return `${systemRoot}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`;

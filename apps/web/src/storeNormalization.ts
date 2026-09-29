@@ -1,7 +1,3 @@
-// FILE: storeNormalization.ts
-// Purpose: Normalizes orchestration projects, threads, messages, and activities with stable identity.
-// Exports: Pure normalization and equality helpers consumed by projection and event reduction.
-
 import {
   MessageId,
   type OrchestrationReadModel,
@@ -54,8 +50,7 @@ export type ProjectNormalizationInput = Pick<
 >;
 
 export const MAX_THREAD_MESSAGES = 2_000;
-// Matches the server-side activity retention budget: a smaller client cap would
-// silently drop work the server still serves in its snapshots.
+
 const MAX_THREAD_ACTIVITIES = 2_000;
 const LOCAL_USER_MESSAGE_RETENTION_MS = 10_000;
 const PENDING_INTERACTION_REQUEST_KINDS = new Set(["approval.requested", "user-input.requested"]);
@@ -219,11 +214,6 @@ export function arraysShallowEqual<T>(
   return true;
 }
 
-/**
- * Structural equality for the message's text-segment list (streamed assistant
- * slices). Used on the normalize fast path so segment updates propagate when
- * deltas extend or re-slice a message.
- */
 function textSegmentArraysEqual(
   left:
     | ReadonlyArray<{
@@ -381,16 +371,8 @@ export function normalizeProject(
   const hasKnownLegacyExpansion =
     rememberedUiState.projectOrderCount === 0 &&
     (rememberedUiState.expandedProjectCount > 0 || rememberedUiState.isLegacyExpansionPayload);
-  // Expansion resolves from three states, in priority order:
-  // 1. Previous match — a previous project with the same workspace root keeps its
-  //    live expansion, so server syncs never clobber local toggles.
-  // 2. Remembered state — when this cwd is known to the persisted order, or the
-  //    payload is a legacy expansion-only payload, reuse the remembered expansion.
-  // 3. Default — a project we have never seen starts expanded.
-  // `isLegacyExpansionPayload` is true only while the remembered payload uses the
-  // legacy shape (expandedProjectCwds with no projectOrderCwds). It flips off for
-  // good once modern order state is remembered, and is what lets an empty legacy
-  // list mean "all collapsed" instead of "no preference, default expanded".
+  // Live expansion wins over persisted preferences during sync. An empty expansion-only payload means
+  // all collapsed; an unknown project defaults to expanded.
   const expanded =
     (previous && projectCwdKey(previous.cwd) === workspaceRootKey
       ? previous.expanded
@@ -541,9 +523,7 @@ export function normalizeChatMessage(
   previous: ChatMessage | undefined,
 ): ChatMessage {
   const attachments = normalizeChatAttachments(incoming.attachments, previous?.attachments);
-  // Partial live updates omit skills/mentions; keep the previous arrays so optimistic
-  // rows don't lose plugin metadata before thread.message-sent arrives. If message edit
-  // can remove @mentions, treat explicit incoming.skills/mentions === [] as a clear.
+
   const skills =
     incoming.skills && incoming.skills.length > 0 ? incoming.skills : (previous?.skills ?? []);
   const mentions =
@@ -683,13 +663,6 @@ function shouldRetainLiveAssistantMessageForHotPath(
   );
 }
 
-/**
- * A locally dispatched user message has no server twin until the dispatch is
- * projected, so a snapshot generated before that projection legitimately lacks
- * it. Retaining it for a short window keeps what the user just sent on screen,
- * while still letting a deliberate server-side removal (checkpoint rewind) win
- * once the window closes.
- */
 function shouldRetainLiveUserMessageForHotPath(
   previousThread: Thread,
   message: ChatMessage,
@@ -721,8 +694,8 @@ function mergeReadModelMessagesWithLiveHotPath(
   incomingMessages: ReadModelThread["messages"],
   previousThread: Thread | undefined,
   options?: {
-    // Turn the snapshot has just settled: its message contents are final, so the
-    // "local row looks richer" heuristics must not resurrect mid-stream text.
+    // Turn the snapshot has just settled: its message contents are final, so the "local row looks
+    // richer" heuristics must not resurrect mid-stream text.
     readonly authoritativeTurnId?: TurnId | null;
   },
 ): ReadModelThread["messages"] {
@@ -824,9 +797,6 @@ function mergeReadModelMessagesWithLiveHotPath(
     return incomingMessages;
   }
 
-  // `toSorted` is stable, so equal `createdAt` values keep insertion order
-  // (incoming order first, then retained local rows). Tie-breaking on the random
-  // message id instead would reshuffle same-millisecond rows on every merge.
   return [...mergedById.values()].toSorted((left, right) =>
     left.createdAt.localeCompare(right.createdAt),
   );
@@ -918,13 +888,9 @@ function mergeReadModelSessionWithLiveHotPath(
       lastError: previousSession.lastError ?? incomingSession.lastError,
     };
   }
-  // When the snapshot is strictly newer than the local session AND carries a
-  // terminal latestTurn for a different turn than the one preserved locally, the
-  // server has provably moved past the local turn — resurrecting "running" with
-  // the stale activeTurnId would desync the session from the (adopted) settled
-  // turn forever. Equal timestamps are ambiguous (a queued follow-up can start in
-  // the same millisecond the prior turn settles), so they preserve the local
-  // running session and let the next live event or snapshot resolve the race.
+  // Equal timestamps are ambiguous (a queued follow-up can start in the same millisecond the prior
+  // turn settles), so they preserve the local running session and let the next live event or snapshot
+  // resolve the race.
   const supersededByTerminalTurn =
     incomingSession.updatedAt > previousSession.updatedAt &&
     options.incomingLatestTurn != null &&
@@ -1022,12 +988,11 @@ export function mergeReadModelThreadDetailWithLiveHotPath(
     return incoming;
   }
 
-  // A scoped projection refresh is authoritative for a *terminal transition*: the
-  // turn it settles must not keep local streaming flags or a resurrected running
-  // session alive. It is not authoritative for message contents, so the normal
-  // merge still runs — skipping it drops locally streamed assistant text and
-  // locally preserved mentions/skills/attachments the snapshot has not caught up
-  // with yet.
+  // A scoped projection refresh is authoritative for a *terminal transition*: the turn it settles
+  // must not keep local streaming flags or a resurrected running session alive. It is not
+  // authoritative for message contents, so the normal merge still runs — skipping it drops locally
+  // streamed assistant text and locally preserved mentions/skills/attachments the snapshot has not
+  // caught up with yet.
   const settledLocalTurnId =
     previousThread.latestTurn?.state === "running" &&
     incoming.latestTurn !== null &&
@@ -1207,24 +1172,9 @@ export function normalizeActivities(
 
 type ThreadActivity = Thread["activities"][number];
 
-/**
- * Incremental equivalent of repeatedly calling
- * `normalizeActivities([...previous, activity], previous)` while folding a batch of
- * `thread.activity-appended` events into one thread write.
- *
- * `normalizeActivities` re-dedupes, re-maps and re-caps the whole list for every activity, which
- * is O(events x activities) inside a batch. The accumulator keeps an id index instead, so each
- * append is O(1) amortised while staying observationally identical:
- * - unseen ids append at the end, known ids merge in place via `preferRicherActivity`,
- * - the cap is applied after every append (not just once at the end), so retention of pending
- *   approval/user-input requests is decided at exactly the same points,
- * - `result()` returns `previous` by reference when the batch changed nothing, and `append()`
- *   reports per-activity change so callers can reproduce the old `updatedAt` bumping rule.
- */
 export interface ThreadActivityAccumulator {
-  /** Appends one already-sequenced activity. Returns true when the accumulated list changed. */
   readonly append: (activity: ThreadActivity) => boolean;
-  /** Accumulated activities, reference-identical to `previous` when nothing changed. */
+
   readonly result: () => Thread["activities"];
 }
 
@@ -1233,8 +1183,8 @@ export function createThreadActivityAccumulator(
 ): ThreadActivityAccumulator {
   const deduped = dedupeActivitiesById(previous);
   // `dedupeActivitiesById` only returns a new array when it actually removed a duplicate, so a
-  // different reference here means the first `append()` must report a change even if that append
-  // is itself a no-op (matching `normalizeActivities`, which dedupes `previous` on every call).
+  // different reference here means the first `append()` must report a change even if that append is
+  // itself a no-op (matching `normalizeActivities`, which dedupes `previous` on every call).
   let pendingDedupeChange = deduped !== previous;
   let working: ThreadActivity[] = deduped;
   let owned = pendingDedupeChange;
@@ -1279,7 +1229,7 @@ export function createThreadActivityAccumulator(
       }
       if (working.length > MAX_THREAD_ACTIVITIES) {
         const capped = capThreadActivities(working);
-        // `capThreadActivities` only filters, so an unchanged length means unchanged contents.
+
         if (capped.length !== working.length) {
           working = capped;
           owned = true;
@@ -1301,19 +1251,9 @@ export function withOrchestrationEventSequence(
   activity: OrchestrationThreadActivity,
   sequence: number,
 ): OrchestrationThreadActivity {
-  // Match the read-model projection: runtime journal activity sequences and
-  // orchestration envelope sequences are different counters. Overwriting the
-  // former only on live updates reorders snapshot history into the new turn.
   return { ...activity, sequence: activity.sequence ?? sequence };
 }
 
-/**
- * How many of the oldest activities to drop so the tail stays under the cap
- * *without* cutting a turn in half — a half-dropped turn renders as an incomplete
- * work group. Extends the minimum drop forward to the next turn boundary, unless
- * that would consume the whole array (a single turn larger than the cap), where
- * showing a partial turn beats showing nothing.
- */
 function resolveTurnAlignedDropCount(
   activities: readonly Thread["activities"][number][],
   minimumDropCount: number,
@@ -1388,11 +1328,6 @@ function pendingInteractionRequestIds(
   return pendingRequestIds;
 }
 
-/** Dedupe specialized for the streaming hot path: when `activities` extends the previously
- *  normalized (already deduped) array by appending, only the appended tail can introduce a
- *  duplicate, so membership checks against the previous `byId` record replace the full
- *  Map-building pass. Any other shape (replaced slot, snapshot rewrite, missing previous
- *  slice) falls back to `dedupeActivitiesById` for identical results. */
 export function dedupeActivitiesByIdAfterAppend<TActivity extends Thread["activities"][number]>(
   activities: ReadonlyArray<TActivity>,
   previousActivities: ReadonlyArray<TActivity> | undefined,
@@ -1519,9 +1454,9 @@ export function normalizeThreadSession(
   if (!incoming) {
     return null;
   }
-  // Shell snapshots and the live thread stream arrive independently. A delayed
-  // pre-turn session must not replace the running session (or revive a finished
-  // one), otherwise the composer briefly loses its stop/queue controls.
+  // Shell snapshots and the live thread stream arrive independently. A delayed pre-turn session must
+  // not replace the running session (or revive a finished one), otherwise the composer briefly loses
+  // its stop/queue controls.
   if (previous && incoming.updatedAt < previous.updatedAt) {
     return previous;
   }
@@ -1916,8 +1851,7 @@ export function normalizeThreadShellSnapshot(
     handoff,
     claudeCacheReview,
     ...(claudeCacheReviewSequence !== undefined ? { claudeCacheReviewSequence } : {}),
-    // The sidebar shell snapshot/event does not carry detail-only annotations, so keep those
-    // values instead of clobbering them with `undefined`. Goals are shell state and update here.
+
     ...(previous?.pinnedMessages !== undefined ? { pinnedMessages: previous.pinnedMessages } : {}),
     ...(previous?.notes !== undefined ? { notes: previous.notes } : {}),
     ...(previous?.goalAchievements !== undefined

@@ -1,9 +1,3 @@
-// FILE: KanbanCardView.tsx
-// Purpose: Presentational kanban card — title, draft preview, provider/branch/env/PR
-//          meta row with status pill and relative timestamp.
-// Layer: UI component (pure; drag wiring lives in KanbanColumn)
-// Exports: KanbanCardView
-
 import type { ThreadId } from "@glade/contracts";
 import { GoRepoForked } from "react-icons/go";
 
@@ -24,20 +18,19 @@ import { RAISED_SURFACE_CHROME_CLASS_NAME } from "../chat/composerPickerStyles";
 import { KanbanStatusIcon } from "./KanbanStatusIcon";
 import { KANBAN_COLUMN_LABELS, kanbanThreadCardId, type KanbanCard } from "./kanban.logic";
 
-/** Resolved PR badge per thread from the board root's useThreadPullRequests call. */
 export type KanbanCardPrLookup = ReadonlyMap<ThreadId, ThreadPullRequest>;
 
 interface KanbanCardViewProps {
   card: KanbanCard;
   onOpen?: (card: KanbanCard) => void;
-  /** Right-click handler — opens the sidebar-style thread/draft context menu. */
+
   onContextMenu?: (card: KanbanCard, event: React.MouseEvent) => void;
   prByThreadId: KanbanCardPrLookup;
-  /** Rendered inside the DragOverlay — lifted styling, no interactions. */
+
   isOverlay?: boolean;
-  /** The in-column original while its overlay clone is being dragged. */
+
   isDragSource?: boolean;
-  /** Shared wall-clock tick from the board root for live elapsed labels. */
+
   nowMs?: number;
 }
 
@@ -50,10 +43,6 @@ function KanbanCardColumnLabel({ card }: { card: KanbanCard }) {
   );
 }
 
-// Pills that merely restate the card's column add nothing, so we drop them and
-// let the column label speak: "Working"/"Connecting" duplicate the "In Progress"
-// column, and "Completed" duplicates "Done". Distinct, actionable states
-// (Pending Approval, Awaiting Input, Plan Ready) still surface as pills.
 const REDUNDANT_COLUMN_PILL_LABELS = new Set(["Working", "Connecting", "Completed"]);
 
 function KanbanCardStatusPill({ card }: { card: KanbanCard }) {
@@ -81,8 +70,7 @@ function KanbanCardViewComponent({
 }: KanbanCardViewProps) {
   const isOverlay = isOverlayProp ?? false;
   const isDragSource = isDragSourceProp ?? false;
-  // Thread-backed draft cards keep their own title, so the unsent prompt is shown
-  // separately; local drafts and unsent-prompt cards already title themselves from it.
+
   const showDraftPreview =
     card.column === "draft" &&
     card.draftPrompt.length > 0 &&
@@ -93,9 +81,9 @@ function KanbanCardViewComponent({
     envMode: card.envMode,
     worktreePath: card.worktreePath,
   }).worktreeBadgeLabel;
-  // An explicit null from the resolver means the persisted PR was ruled out (e.g. the
-  // checkout moved on); rows the board root has not resolved yet get the same validation
-  // without live status instead of the raw — possibly stale — persisted badge.
+  // An explicit null from the resolver means the persisted PR was ruled out (e.g. the checkout moved
+  // on); rows the board root has not resolved yet get the same validation without live status instead
+  // of the raw — possibly stale — persisted badge.
   const pr = card.thread
     ? prByThreadId.has(card.threadId)
       ? (prByThreadId.get(card.threadId) ?? null)
@@ -119,9 +107,7 @@ function KanbanCardViewComponent({
       className={cn(
         "flex w-full cursor-pointer flex-col gap-1.5 rounded-lg bg-card/70 px-3 py-2.5 text-left transition-colors",
         RAISED_SURFACE_CHROME_CLASS_NAME,
-        // The shared raised chrome drops its border in dark mode (shadow-only),
-        // which leaves kanban cards edgeless against the column. Re-add a faint
-        // hairline so each card stays visually separated in dark mode.
+
         "dark:border dark:border-white/[0.05]",
         "hover:bg-card focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none",
         isOverlay && "bg-card shadow-lg dark:shadow-lg",
@@ -176,8 +162,6 @@ function KanbanCardViewComponent({
         ) : null}
         <span className="ml-auto flex min-w-0 shrink-0 items-center gap-2">
           {card.isOptimisticDispatch ? (
-            // Optimistically In Progress — the thread's real status (Draft/Completed)
-            // would contradict the column until the first runtime signal arrives.
             <>
               <span className="flex shrink-0 items-center gap-1.5 text-ui-sm leading-snug text-sky-600 dark:text-sky-300/90">
                 <LoaderIcon className="size-3 shrink-0 animate-spin" aria-hidden />

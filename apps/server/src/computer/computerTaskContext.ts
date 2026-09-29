@@ -8,7 +8,6 @@ export function currentComputerTask(): CuaComputerTask | undefined {
   return scope?.active ? scope.task : undefined;
 }
 
-/** Task attribution is local IPC metadata, never additional model context. */
 export async function withComputerTask<A>(
   task: CuaComputerTask,
   run: () => Promise<A>,

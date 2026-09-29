@@ -7,11 +7,11 @@ import {
 } from "./cliVersion.ts";
 
 const MINIMUM_CODEX_CLI_VERSION = "0.37.0";
-// Earliest version verified to correlate MCP _meta.callId with item/started.
+
 export const MINIMUM_CODEX_MCP_CALL_ID_CLI_VERSION = "0.158.0";
-// `approvalsReviewer: "auto_review"` and its companion messages shipped in rust-v0.124.0.
+
 export const MINIMUM_CODEX_AUTO_REVIEW_CLI_VERSION = "0.124.0";
-// `excludeTurns` for thread/resume and thread/fork shipped in rust-v0.125.0.
+
 export const MINIMUM_CODEX_EXCLUDE_TURNS_CLI_VERSION = "0.125.0";
 
 function parseSemver(version: string): ParsedCliVersion | null {
@@ -27,7 +27,6 @@ function parseSemver(version: string): ParsedCliVersion | null {
     return null;
   }
 
-  // Preserve Codex's numeric-prefix parsing; generic provider versions require digits only.
   const major = Number.parseInt(majorSegment, 10);
   const minor = Number.parseInt(minorSegment, 10);
   const patch = Number.parseInt(patchSegment, 10);

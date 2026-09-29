@@ -223,8 +223,6 @@ export function appendTerminalContextsToPrompt(
   return trimmedPrompt.length > 0 ? `${trimmedPrompt}\n\n${contextBlock}` : contextBlock;
 }
 
-// Edits operate on visible bubble text. Reattach the hidden composer metadata
-// blocks from the original message so resend keeps the same references.
 export function appendOriginalComposerPromptBlocks(input: {
   editedPrompt: string;
   originalPrompt: string;
@@ -300,10 +298,6 @@ export function deriveDisplayedUserMessageState(
   prompt: string,
   options: DisplayedUserMessageOptions,
 ): DisplayedUserMessageState {
-  // Trailing blocks are serialized in order: assistant selections, terminal
-  // contexts, file comments, pasted text, pull request contexts, then browser
-  // annotations (outermost). Strip them in reverse so each extractor sees its
-  // block at the end.
   const extractedBrowserAnnotations =
     options.messageId === undefined
       ? { promptText: prompt, annotations: [] }
@@ -321,8 +315,6 @@ export function deriveDisplayedUserMessageState(
     options.hideImageOnlyBootstrapPrompt === true &&
     extractedAssistantSelections.promptText.trim() === IMAGE_ONLY_BOOTSTRAP_PROMPT;
   return {
-    // Keep the internal bootstrap prompt hidden while still giving image-only
-    // user messages a visible bubble in the transcript.
     visibleText: hidePrompt
       ? IMAGE_ONLY_VISIBLE_PLACEHOLDER
       : extractedAssistantSelections.promptText,

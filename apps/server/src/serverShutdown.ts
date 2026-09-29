@@ -7,18 +7,14 @@ import { isLoopbackHost } from "./startupAccess";
 
 export const DESKTOP_SHUTDOWN_ROUTE_PATH = "/api/desktop/shutdown";
 
-/**
- * Loopback-only route the desktop uses to relay a physical Escape press into
- * the computer manager's host-wide kill. It shares the desktop-owner shutdown
- * credential: the same trust domain that may stop the backend may also stop
- * its computer input.
- */
+// Loopback-only route the desktop uses to relay a physical Escape press into the computer manager's
+// host-wide kill. It shares the desktop-owner shutdown credential: the same trust domain that may
+// stop the backend may also stop its computer input.
 export const DESKTOP_COMPUTER_EMERGENCY_STOP_ROUTE_PATH = "/api/desktop/computer/emergency-stop";
 
 export interface ServerShutdownController {
-  /** Completes the stop signal once. `true` identifies the first request. */
   readonly requestStop: Effect.Effect<boolean, never>;
-  /** Completes when the server should leave its scoped runtime. */
+
   readonly stopSignal: Effect.Effect<void, never>;
 }
 
@@ -43,10 +39,6 @@ function digestToken(token: string): Buffer {
   return createHash("sha256").update(token, "utf8").digest();
 }
 
-/**
- * Hash both values before comparing them so `timingSafeEqual` always receives
- * fixed-length buffers, even for malformed or attacker-controlled input.
- */
 export function matchesDesktopShutdownToken(expected: string, presented: string): boolean {
   return timingSafeEqual(digestToken(expected), digestToken(presented));
 }
@@ -61,12 +53,6 @@ function readBearerToken(authorization: string | undefined): string | undefined 
   return match?.[1];
 }
 
-/**
- * Keeps desktop shutdown authority separate from browser authentication. The
- * route is hidden unless both the configured deployment and the actual peer
- * are local-only; only then do credential failures return an authentication
- * response.
- */
 export function authorizeDesktopShutdown(input: {
   readonly config: Pick<ServerConfigShape, "mode" | "host" | "publicUrl" | "desktopShutdownToken">;
   readonly remoteAddress: string | null | undefined;

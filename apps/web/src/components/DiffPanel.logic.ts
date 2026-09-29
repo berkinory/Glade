@@ -1,8 +1,3 @@
-// FILE: DiffPanel.logic.ts
-// Purpose: Resolve the thread context the diff panel should use across server-backed and local draft chats.
-// Exports: resolveDiffPanelThread, diff view source helpers
-// Depends on: ChatView.logic draft-thread normalization.
-
 import { type ModelSelection, type ThreadId, type TurnId } from "@glade/contracts";
 import type { FileDiffMetadata } from "@pierre/diffs/react";
 
@@ -16,7 +11,6 @@ import type { ChatMessage, Thread } from "../types";
 
 export type DiffViewKind = "repo" | "turn";
 
-/** Distinguishes all-turns vs last-turn when no specific turn id is selected. */
 export type DiffPanelTurnScopeIntent = "all" | "last";
 
 export type DiffPanelViewSource =
@@ -58,7 +52,6 @@ export function isDiffPanelRepoScopeOption(value: string): value is DiffPanelRep
   );
 }
 
-// Reuse the chat-view draft fallback so diff surfaces keep working before the first server turn exists.
 export function resolveDiffPanelThread(input: {
   threadId: ThreadId | null | undefined;
   serverThread: Thread | undefined;
@@ -84,7 +77,6 @@ export function resolveInitialDiffViewKind(selectedTurnId: TurnId | null): DiffV
   return selectedTurnId === null ? "repo" : "turn";
 }
 
-/** Relaxed cadence for the open review pane — git invalidation handles turn boundaries. */
 const DIFF_PANEL_REPO_LIVE_REFETCH_INTERVAL_MS = 10_000;
 
 export function resolveDiffPanelRepoLiveRefresh(input: {
@@ -124,7 +116,6 @@ export function resolveDiffPanelRepoLiveRefetchIntervalMs(input: {
   return DIFF_PANEL_REPO_LIVE_REFETCH_INTERVAL_MS;
 }
 
-/** Gate expensive git/diff fetches so a hidden or collapsed review pane stays idle. */
 export function resolveDiffPanelQueriesEnabled(input: {
   diffOpen: boolean;
   queriesEnabled?: boolean;
@@ -214,7 +205,6 @@ export function isStaleDiffTurnSelection(
   return !orderedTurnDiffSummaries.some((summary) => summary.turnId === selectedTurnId);
 }
 
-/** Radio value for the left diff-source picker; null when a specific older turn is active. */
 export function resolveDiffPanelScopePickerValue(input: {
   viewSource: DiffPanelViewSource;
   latestTurnId: TurnId | null;
@@ -349,17 +339,8 @@ export function areAllRenderableFilesCollapsed(
   return files.every((fileDiff) => collapsedFiles.has(buildFileDiffRenderKey(fileDiff)));
 }
 
-/**
- * Track whether the diff viewport is in a "select all then copy" gesture so the copy
- * handler can substitute the full raw diff instead of the few mounted rows the
- * virtualizer left in the DOM.
- *
- * The diff surface renders into shadow DOM, so a native Cmd/Ctrl+A actually selects the
- * surrounding light-DOM page and the resulting `copy` event never travels through the
- * viewport element. We listen on `document`: the keydown still passes through the
- * viewport (so we can tell the select-all happened there), and this state machine decides
- * whether the very next copy should be hijacked.
- */
+// Shadow DOM sends select-all copy events through document, not the diff viewport. Substitute the
+// full diff only after a select-all gesture inside that viewport.
 export function resolveDiffSelectAllArmed(
   previous: boolean,
   event: Pick<KeyboardEvent, "key" | "metaKey" | "ctrlKey">,

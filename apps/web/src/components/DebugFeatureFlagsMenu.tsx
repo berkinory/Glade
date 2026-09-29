@@ -1,7 +1,3 @@
-// FILE: DebugFeatureFlagsMenu.tsx
-// Purpose: Keeps local-only feature flag controls reusable without showing them in the product sidebar.
-// Exports: DebugFeatureFlagsMenu
-
 import { FlagIcon } from "~/lib/icons";
 import {
   FEATURE_FLAGS,
@@ -22,7 +18,6 @@ import { ComposerPickerMenuPopup } from "./chat/ComposerPickerMenuPopup";
 import { SidebarMenuButton } from "./ui/sidebar";
 import { toastManager } from "./ui/toast";
 
-// Triggers local-only toast scenarios that are awkward to reproduce through real Git failures.
 function triggerActionFailedToasts(values: Record<ToggleFeatureFlagId, boolean>): void {
   const copyText =
     "Error: Git command failed in /Users/ibrahime/Documents/Projects/glade\n\n" +

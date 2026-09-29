@@ -1,7 +1,3 @@
-// FILE: debugMode.ts
-// Purpose: Applies Glade's provider-independent evidence-first Debug instructions.
-// Layer: Provider prompt policy
-
 import type { ProviderInteractionMode } from "@glade/contracts";
 
 export const PROVIDER_DEBUG_MODE_PROMPT_PREFIX = `<glade_debug_mode>

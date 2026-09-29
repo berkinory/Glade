@@ -27,14 +27,13 @@ function spaceId(value: unknown, required: boolean): number | undefined {
   return value;
 }
 
-/** The caller sees its selection, never another thread's identity. */
+// The caller sees its selection, never another thread's identity.
 function publicReservation(value: ComputerSpaceReservation | null) {
   if (!value) return null;
   const { threadId: _threadId, turnId: _turnId, ...selection } = value;
   return selection;
 }
 
-/** A discoverable route through computer_inspect, with no added idle tool schema. */
 export function makeComputerSpaceTools(options: SpaceToolsOptions): readonly ToolEntry[] {
   const broker = options.manager.spaceBroker;
   return [

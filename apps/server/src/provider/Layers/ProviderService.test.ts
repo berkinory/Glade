@@ -1,8 +1,3 @@
-// FILE: ProviderService.test.ts
-// Purpose: Verifies cross-provider routing, persistence, recovery, and runtime lifecycle behavior.
-// Layer: Provider service integration tests
-// Depends on: ProviderServiceLive with in-memory adapter and SQLite fakes.
-
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -883,10 +878,9 @@ routing.layer("ProviderServiceLive routing", (it) => {
           cwd: "/tmp/project",
           runtimeMode: "full-access",
         });
-        // Rotate the runtime generation (as a stop does), keep a live adapter
-        // session around (the zombie), and rewind the persisted binding to the
-        // old generation — a turn send must not fast-path into that session,
-        // whose events the stale-generation gate would reject.
+        // Rotate the runtime generation (as a stop does), keep a live adapter session around (the zombie),
+        // and rewind the persisted binding to the old generation — a turn send must not fast-path into that
+        // session, whose events the stale-generation gate would reject.
         assert.equal(typeof provider.stopRuntimeSession, "function");
         if (!provider.stopRuntimeSession) assert.fail("Expected stopRuntimeSession");
         yield* provider.stopRuntimeSession({ threadId });
@@ -909,8 +903,6 @@ routing.layer("ProviderServiceLive routing", (it) => {
         yield* provider.sendTurn({ threadId, input: "after the wedge", attachments: [] });
         assert.equal(staleSettlementRouting.codex.sendTurn.mock.calls.length, sendCallsBefore + 1);
 
-        // Recovery re-adopts the persisted generation, so the still-live
-        // session's events become visible again instead of being dropped.
         staleSettlementRouting.codex.emit({
           type: "content.delta",
           eventId: asEventId("stale-binding-delta"),
@@ -1581,8 +1573,6 @@ routing.layer("ProviderServiceLive routing", (it) => {
         assert.match(failure.issue, /could not be retired safely/);
       }
 
-      // An explicit session replacement is the recovery authority after a
-      // failed teardown and clears the fail-closed fence.
       yield* provider.startSession(threadId, {
         provider: "codex",
         threadId,
@@ -2563,15 +2553,11 @@ liveFallback.layer("ProviderServiceLive live-fallback settled turns", (it) => {
       const threadId = asThreadId("thread-live-fallback-settled");
       const turnId = asTurnId("turn-live-fallback-settled");
 
-      // The adapter owns a live session but startSession has not persisted a
-      // binding row yet (the startup window resolveRoutableSession allows).
       liveFallback.codex.hasSession.mockImplementation((candidate: ThreadId) =>
         Effect.succeed(candidate === threadId),
       );
       liveFallback.codex.sendTurn.mockImplementationOnce((input: ProviderSendTurnInput) =>
         Effect.gen(function* () {
-          // The terminal runtime event is fully processed before sendTurn
-          // returns, so the post-dispatch write takes the settled-turn branch.
           liveFallback.codex.emit({
             type: "turn.completed",
             eventId: asEventId("evt-live-fallback-settled"),

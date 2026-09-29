@@ -27,11 +27,6 @@ export function readDiffFileAnchors(root: HTMLElement | null): DiffFileAnchor[] 
   return anchors;
 }
 
-/**
- * Index of the last position whose value is at or below `threshold`, or -1 when
- * none is. Values must be non-decreasing by index; each is read at most
- * O(log n) times, so callers can back it with layout reads.
- */
 export function findLastIndexAtOrBelow(
   length: number,
   threshold: number,

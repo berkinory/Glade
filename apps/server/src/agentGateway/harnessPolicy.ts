@@ -2,7 +2,6 @@ import { computerToolInstructions } from "./computerGuidance.ts";
 
 import { AUTOMATION_AUTHORING_GUIDANCE } from "./automationAuthoringGuidance.ts";
 
-/** Canonical, versioned host policy delivered to every supported provider. */
 export const GLADE_HARNESS_POLICY_VERSION = "2026-09-20.1";
 export const GLADE_HARNESS_POLICY_MARKER = `[Glade harness policy ${GLADE_HARNESS_POLICY_VERSION}]`;
 
@@ -12,11 +11,6 @@ export interface GladeHarnessCapabilities {
   readonly enableComputerControl?: boolean | undefined;
 }
 
-/**
- * Render one truthful policy. Providers without a safely thread-scoped MCP
- * connection still receive host identity, but are never told they can mutate
- * Glade resources.
- */
 export function renderGladeHarnessPolicy(capabilities: GladeHarnessCapabilities): string {
   const controlPolicy = capabilities.gatewayControlAvailable
     ? [
@@ -38,7 +32,7 @@ export function renderGladeHarnessPolicy(capabilities: GladeHarnessCapabilities)
         "Mode controls execution: heartbeat appends to an idle target thread; standalone opens a fresh thread per independent run; dedicated reuses one automation-owned thread so runs build on each other without writing into another thread.",
         "Prefer dedicated for ongoing observation or tracking: standalone runs cannot see prior runs beyond memory, while dedicated keeps one growing thread.",
         'Mode does not restrict stop conditions. completionPolicy {"type":"ai-evaluated","stopWhen":"..."} works in both modes and disables the automation when the clause matches a successful run; prefer it over encoding the stop condition in the prompt. maxIterations remains the backstop, and an automation-dispatched run may always call glade_cancel_automation on its own automation.',
-        // Claude discovers these same instructions on create/update tool schemas.
+
         ...(capabilities.automationAuthoring === "tool-descriptions"
           ? []
           : [AUTOMATION_AUTHORING_GUIDANCE]),

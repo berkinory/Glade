@@ -1,7 +1,3 @@
-// FILE: check-migration-lineage.ts
-// Purpose: Fail closed when a released migration's (id, name) tracker identity changes.
-// Layer: CI preflight
-
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -10,21 +6,11 @@ import { fileURLToPath } from "node:url";
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const migrationsFile = "apps/server/src/persistence/Migrations.ts";
 
-/**
- * Every shipped Glade database records its applied migrations as (id, name)
- * rows in `effect_sql_migrations`, and the runtime reconciler in
- * `Migrations.ts` treats a name that does not match the ID as a foreign
- * lineage: it truncates the tracker and replays the schema. Renumbering or
- * renaming a migration that a release already wrote therefore corrupts every
- * database from that release. v0.6.0 moved `ProjectPullRequestPins` from 54 to
- * 69 and did exactly that.
- *
- * Appending new migrations is always safe. This guard rejects changes to pairs
- * any reachable release tag already shipped — not just the newest one, because
- * a database is wedged by the release *it* was created under, and users skip
- * versions. A pair that today's `MIGRATION_LINEAGE_ALIASES` knows how to repair
- * is exempt: that divergence is handled rather than merely present.
- */
+// Appending new migrations is always safe. This guard rejects changes to pairs any reachable
+// release tag already shipped — not just the newest one, because a database is wedged by the
+// release *it* was created under, and users skip versions. A pair that today's
+// `MIGRATION_LINEAGE_ALIASES` knows how to repair is exempt: that divergence is handled rather than
+// merely present.
 
 export interface MigrationLineageEntry {
   readonly id: number;
@@ -37,32 +23,22 @@ export interface MigrationLineageViolation {
   readonly currentName: string | null;
 }
 
-/** A released (id, name) pair whose divergence from today's lineage is handled. */
 export interface MigrationLineageAllowance {
   readonly id: number;
   readonly name: string;
 }
 
-/**
- * Divergences that already shipped and that the runtime handles by a mechanism
- * other than `MIGRATION_LINEAGE_ALIASES`. Each entry is a reviewed claim that
- * upgrading such a database is safe today; nothing may be added here without
- * naming the mechanism that makes it so.
- *
- * These exist because the guard was written after the fact. New divergences are
- * not supposed to reach this list — append a migration instead.
- */
+// Each entry is a reviewed claim that upgrading such a database is safe today; nothing may be added
+// here without naming the mechanism that makes it so. These exist because the guard was written
+// after the fact.
 const HANDLED_RELEASED_DIVERGENCES: readonly MigrationLineageAllowance[] = [
   // v0.0.15 and older recorded these two at 17/18 before the slots were reused.
-  // `LAST_SHARED_LINEAGE_MIGRATION_ID` sits at 16 precisely because of them: a
-  // divergence above that boundary takes the replay path, and every migration
-  // past 16 is idempotent, so replaying 17.. over such a database is safe.
+  // `LAST_SHARED_LINEAGE_MIGRATION_ID` sits at 16 precisely because of them: a divergence above that
+  // boundary takes the replay path, and every migration past 16 is idempotent, so replaying 17.. over
+  // such a database is safe.
   { id: 17, name: "ProjectionThreadsArchivedAt" },
   { id: 18, name: "ProjectionThreadsArchivedAtIndex" },
-  // Renamed in place (not renumbered) during the Glade identity cutover, so
-  // migration 32 is the same migration under a new name. `reconcileMigrationLineage`
-  // renames the tracker row back to the canonical name whenever the rows below
-  // it are canonical, which is the only way this pair can occur.
+
   { id: 32, name: "ReconcileLegacyT3SchemaImport" },
 ];
 
@@ -86,11 +62,9 @@ export function parseMigrationLineage(source: string): MigrationLineageEntry[] {
   return entries;
 }
 
-/**
- * The (id, name) pairs the runtime reconciler can repair without replaying a
- * schema. Absent block means no aliases are declared, which is the normal state
- * — only a parsed-but-empty block would be suspicious, and that reads the same.
- */
+// The (id, name) pairs the runtime reconciler can repair without replaying a schema. Absent block
+// means no aliases are declared, which is the normal state — only a parsed-but-empty block would be
+// suspicious, and that reads the same.
 export function parseMigrationLineageAllowances(source: string): MigrationLineageAllowance[] {
   const block = aliasesBlockPattern.exec(source);
   if (block === null || block[1] === undefined) {
@@ -102,11 +76,6 @@ export function parseMigrationLineageAllowances(source: string): MigrationLineag
   }));
 }
 
-/**
- * Structural problems that make the lineage unusable regardless of history:
- * the Effect migrator rejects duplicate IDs outright, and out-of-order entries
- * mean the file no longer reads as an append-only log.
- */
 export function findLineageStructureViolations(
   entries: readonly MigrationLineageEntry[],
 ): string[] {
@@ -165,11 +134,6 @@ const defaultListTags = (pattern: string): readonly string[] => {
     : [];
 };
 
-/**
- * Every reachable release tag, newest first, or an empty list when history has
- * none — a shallow CI clone or a fork without tags must degrade to a warning,
- * never a hard failure.
- */
 export function resolveReleaseTags(
   listTags: (pattern: string) => readonly string[] = defaultListTags,
 ): string[] {
@@ -181,10 +145,6 @@ interface TaggedViolation {
   readonly tags: string[];
 }
 
-/**
- * Collapses per-tag violations to one line per broken pair. Every v0.5.x tag
- * shipping the same migration 54 is one mistake, not five.
- */
 export function groupViolationsByPair(
   perTag: ReadonlyArray<{
     readonly tag: string;
@@ -237,8 +197,6 @@ function main(): void {
   for (const tag of tags) {
     const released = git(["show", `${tag}:${migrationsFile}`]);
     if (released.status !== 0) {
-      // Predates the file, or history is too shallow to read it. Either way this
-      // tag carries no lineage claim we can verify.
       skipped.push(tag);
       continue;
     }
@@ -246,8 +204,6 @@ function main(): void {
     try {
       releasedEntries = parseMigrationLineage(released.stdout);
     } catch {
-      // A release whose entries array we cannot parse predates the shape this
-      // guard understands; failing on it would block every future change.
       skipped.push(tag);
       continue;
     }

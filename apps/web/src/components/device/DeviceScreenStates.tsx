@@ -1,18 +1,8 @@
-// FILE: DeviceScreenStates.tsx
-// Purpose: The non-video states that render on the simulated phone screen.
-// Layer: Device pane presentation
-// Exports: DeviceSetupScreen, DeviceEmptyScreen, DeviceBootingScreen
-//
-// These sit inside the bezel, so they are styled against the phone's near-black
-// screen rather than the app surface: fixed light-on-dark values, not theme
-// tokens, because a phone screen does not change with the app's theme.
-
 import type { DeviceSetupStep } from "@glade/contracts";
 
 import { CheckIcon, LoaderCircleIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 
-/** Screen-local palette. Kept here so no caller has to remember the values. */
 const SCREEN_TEXT = "text-white/90";
 const SCREEN_MUTED = "text-white/45";
 const SCREEN_DIM = "text-white/28";
@@ -25,23 +15,15 @@ function ScreenSpinner(props: { className?: string }) {
   );
 }
 
-/**
- * The setup checklist, rendered as phone-native rows: a radio circle that fills
- * as each step completes, the step name, and a quiet qualifier underneath. Steps
- * that cannot start yet are dimmed rather than hidden, so the whole path is
- * visible from the first screen.
- */
 export function DeviceSetupScreen(props: {
   title: string;
   description: string;
   steps: readonly DeviceSetupStep[];
-  /** Shown as a live status line while the server re-checks the environment. */
+
   checkingLabel?: string | null;
   footnote?: string | null;
   action?: { readonly label: string; readonly onClick: () => void } | null;
 }) {
-  // The first unfinished step is the only actionable one; everything after it is
-  // blocked on it, which is what the dimming communicates.
   const activeIndex = props.steps.findIndex((step) => !step.done);
 
   return (
@@ -138,7 +120,6 @@ export function DeviceEmptyScreen(props: { message: string }) {
   );
 }
 
-/** Mirrors a phone powering on: the device's name, then a patient spinner. */
 export function DeviceBootingScreen(props: { deviceName: string; label: string }) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 px-[12%] text-center">

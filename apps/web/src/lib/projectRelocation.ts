@@ -5,7 +5,6 @@ type ProjectRelocationApi = Pick<
   "getShellSnapshot" | "dispatchCommand"
 >;
 
-/** Update the existing aggregate; never stop/forget its provider sessions or create a new project. */
 export async function relocateProjectFromClient(
   api: ProjectRelocationApi,
   input: {

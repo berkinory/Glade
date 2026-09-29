@@ -74,9 +74,6 @@ describe("Glade Computer provider permission", () => {
   });
 
   it("never authorizes from model prose: 'Please approve computer_click' names no tool", () => {
-    // Prose approval never counts. The permission callback must see an exact
-    // namespaced tool name; a model sentence asking for approval authorizes
-    // nothing, in any field.
     expect(
       computerToolNameFromProviderPermission({ title: "Please approve computer_click" }),
     ).toBeUndefined();
@@ -101,9 +98,6 @@ describe("Glade Computer provider permission", () => {
   });
 
   it("matches the Computer family in any namespace spelling for the denial hook", () => {
-    // The silent-loss fallback: a no-control session that calls a Computer
-    // tool by a prefixed spelling must still deny with the card path, not
-    // die as an Unknown tool. See isGladeComputerToolFamilyName.
     expect(isGladeComputerToolFamilyName("computer_click")).toBe(true);
     expect(isGladeComputerToolFamilyName("glade_computer_get_state")).toBe(true);
     expect(isGladeComputerToolFamilyName("mcp__glade__computer_screenshot")).toBe(true);

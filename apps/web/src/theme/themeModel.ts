@@ -32,7 +32,7 @@ export interface ThemeState {
   chromeThemes: Record<ThemeVariant, ChromeTheme>;
   codeThemeIds: Record<ThemeVariant, string>;
   mode: ThemeMode;
-  /** Ignore the theme pack's custom UI font and let the native system stack apply. */
+
   systemUiFont: boolean;
 }
 

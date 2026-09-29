@@ -94,8 +94,6 @@ const COMPOSER_EDITOR_HMR_KEY = `composer-editor-${Math.random().toString(36).sl
 
 const ComposerRemoveTerminalContextContext = createContext<(contextId: string) => void>(() => {});
 
-// Node classes imported from ./composer-nodes
-
 function terminalContextSignature(contexts: ReadonlyArray<TerminalContextDraft>): string {
   return contexts
     .map((context) =>
@@ -522,10 +520,7 @@ interface ComposerPromptEditorProps {
   ariaLabel?: string | undefined;
   className?: string;
   onRemoveTerminalContext: (contextId: string) => void;
-  /**
-   * Invoked when a sufficiently large text paste should collapse into an attachment
-   * card instead of inserting raw text. When omitted, pastes insert as text.
-   */
+
   onCollapsePastedText?: (text: string) => void;
   onChange: (
     nextValue: string,
@@ -790,17 +785,14 @@ function ComposerSlashCommandTransformPlugin() {
   return null;
 }
 
-// Converts a bare URL into a link chip as soon as a delimiter follows it while typing, mirroring
-// the read-only message bubble. The controlled value→editor sync never re-tokenizes user input
-// (the editor text already equals the prompt string, so the rewrite is skipped), so live chipping
-// must run as a node transform. A chip's text content is the raw URL, so the serialized prompt is
-// unchanged and selection/length stay stable.
+// The controlled value→editor sync never re-tokenizes user input (the editor text already equals
+// the prompt string, so the rewrite is skipped), so live chipping must run as a node transform. A
+// chip's text content is the raw URL, so the serialized prompt is unchanged and selection/length
+// stay stable.
 function ComposerLinkTransformPlugin() {
   const [editor] = useLexicalComposerContext();
 
   useEffect(() => {
-    // registerNodeTransform(TextNode) fires only for plain text nodes; the chip subclasses have
-    // their own node types and are skipped. The isComposerInlineTokenNode guard is defensive.
     return editor.registerNodeTransform(TextNode, (node) => {
       if (isComposerInlineTokenNode(node)) {
         return;
@@ -820,9 +812,6 @@ function ComposerLinkTransformPlugin() {
   return null;
 }
 
-// A paste whose entire payload is one bare URL chips immediately, with no trailing delimiter,
-// matching how the sent-message bubble renders it. Mixed or prose pastes fall through to the
-// default handler; ComposerLinkTransformPlugin then chips any delimiter-terminated URLs in them.
 function ComposerLinkPastePlugin() {
   const [editor] = useLexicalComposerContext();
 
@@ -835,10 +824,7 @@ function ComposerLinkPastePlugin() {
         if (!url) {
           return false;
         }
-        // Command listeners already run inside an editor update, so read the selection and insert
-        // synchronously here (a nested editor.update would be deferred, letting the default paste
-        // also run — a double insert). When there is no caret to insert at, fall through to the
-        // default paste so the URL is still pasted as text and the transform chips it later.
+
         const selection = $getSelection();
         if (!$isRangeSelection(selection)) {
           return false;
@@ -854,10 +840,8 @@ function ComposerLinkPastePlugin() {
   return null;
 }
 
-// Thread mention chips resolve their provider icon from the sidebar summaries,
-// which may not be loaded yet when a draft is restored (and can change after a
-// provider handoff). Refresh the stored provider on existing chips whenever the
-// summaries change so the icon never stays stale.
+// Refresh the stored provider on existing chips whenever the summaries change so the icon never
+// stays stale.
 function ComposerThreadMentionProviderPlugin() {
   const [editor] = useLexicalComposerContext();
   const threadMentionSources = useStore(
@@ -894,10 +878,9 @@ function ComposerThreadMentionProviderPlugin() {
   return null;
 }
 
-// A sufficiently large text paste collapses into an attachment card instead of
-// flooding the editor. Intercepting at the Lexical command level (rather than the
-// React onPaste prop) is required: Lexical's own paste listener would otherwise
-// insert the raw text before a bubbled React handler could preventDefault.
+// Intercepting at the Lexical command level (rather than the React onPaste prop) is required:
+// Lexical's own paste listener would otherwise insert the raw text before a bubbled React handler
+// could preventDefault.
 function ComposerBigPastePlugin(props: { onCollapsePastedText: (text: string) => void }) {
   const [editor] = useLexicalComposerContext();
   const onCollapseRef = useRef(props.onCollapsePastedText);
@@ -914,7 +897,7 @@ function ComposerBigPastePlugin(props: { onCollapsePastedText: (text: string) =>
         if (!clipboardData) {
           return false;
         }
-        // Image/file pastes are handled by the composer dropzone — never collapse them.
+
         if (clipboardData.files.length > 0) {
           return false;
         }
@@ -970,9 +953,7 @@ function ComposerPromptEditorInner({
     onChangeRef.current = onChange;
   }, [onChange]);
 
-  // Disabling the editor (e.g. while a turn dispatch is connecting) turns off
-  // contenteditable, which drops browser focus to <body>. Remember whether the
-  // composer owned focus at disable time and hand it back once re-enabled, so
+  // Remember whether the composer owned focus at disable time and hand it back once re-enabled, so
   // sending a message never silently kicks the user out of the input.
   const restoreFocusOnEnableRef = useRef(false);
   useEffect(() => {
@@ -1076,7 +1057,6 @@ function ComposerPromptEditorInner({
     editor.getRootElement()?.blur();
   }, [editor]);
 
-  // Keep global shortcuts decoupled from Lexical's root element details.
   const isEditorFocused = useCallback(() => {
     const rootElement = editor.getRootElement();
     return Boolean(
@@ -1272,7 +1252,7 @@ export const ComposerPromptEditor = forwardRef<
 ) {
   const initialValueRef = useRef(value);
   const initialTerminalContextsRef = useRef(terminalContexts);
-  // Normalize once at the wrapper boundary so the inner editor can treat mention refs as concrete.
+
   const normalizedMentionReferences = mentionReferences ?? [];
   const initialMentionReferencesRef = useRef(normalizedMentionReferences);
   const initialConfig: InitialConfigType = {

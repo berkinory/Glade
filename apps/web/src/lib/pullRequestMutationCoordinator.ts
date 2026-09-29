@@ -62,7 +62,6 @@ export function finishPullRequestActionProtection(
   if (active.size === 0) state?.byIdentity.delete(protection.identityKey);
 }
 
-/** A read that started before an action settled must still respect its successful intent. */
 export function capturePullRequestActionReadFence(
   queryClient: QueryClient,
 ): PullRequestActionReadFence {

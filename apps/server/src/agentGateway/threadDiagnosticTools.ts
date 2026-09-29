@@ -302,8 +302,6 @@ export function makeThreadDiagnosticTools(input: {
   return [readActivity, readEvents, readRuntimeEvents, diagnoseThread];
 }
 
-/** Shared bounded page readers. They need no provider identity; each transport
- * must enforce its own authorization before invoking them. */
 export interface ThreadDiagnosticPageDependencies {
   readonly eventStore: OrchestrationEventStoreShape;
   readonly providerRuntimeEvents: ProviderRuntimeEventRepositoryShape;

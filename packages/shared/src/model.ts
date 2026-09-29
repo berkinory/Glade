@@ -56,10 +56,6 @@ const MODEL_TOKEN_DISPLAY_NAMES: Readonly<Record<string, string>> = {
   xhigh: "XHigh",
 };
 
-// First tokens that mark a provider-supplied label as a model-family name
-// worth normalizing: the brand tokens plus families whose casing is already
-// title-case. Anything else (custom names like "MyModel", "K2P6") keeps its
-// original casing untouched.
 const MODEL_FAMILY_TOKENS: ReadonlySet<string> = new Set([
   ...Object.keys(MODEL_TOKEN_DISPLAY_NAMES),
   "adaptive",
@@ -83,10 +79,6 @@ function humanizeModelToken(token: string): string {
 
 const MODEL_DATE_OR_BUILD_TOKEN_PATTERN = /^\d{8}$/u;
 
-// Rejoins version fragments split on "-"/"_": a pure-digit token merges onto a
-// preceding token that already ends in a digit, so "swe-1-6" reads as 1.6,
-// "claude-opus-4-8" as 4.8, and "kimi-k2-6" as K2.6. Zero-prefixed tokens and
-// eight-digit provider date/build stamps stay separate, never version minors.
 function joinModelVersionTokens(tokens: string[]): string[] {
   const merged: string[] = [];
   for (const token of tokens) {
@@ -106,15 +98,10 @@ function joinModelVersionTokens(tokens: string[]): string[] {
   return merged;
 }
 
-// Canonical brand shapes that differ from plain space-joined words.
 function restoreModelNameSeparators(name: string): string {
   return name.replace(/\bGPT (\d)/gu, "GPT-$1");
 }
 
-// Turns a raw model slug into a readable label when no built-in name exists.
-// Provider-scoped custom ids ("vendor/model") stay verbatim; everything else is
-// tokenized on -/_, version fragments rejoined with ".", known model-family
-// brands restored to their canonical casing, and GPT versions rehyphenated.
 export function humanizeModelSlug(slug: string): string {
   if (slug.includes("/")) {
     return slug;
@@ -123,14 +110,6 @@ export function humanizeModelSlug(slug: string): string {
   return restoreModelNameSeparators(tokens.join(" "));
 }
 
-/**
- * Normalizes a provider-supplied display name to Glade's canonical casing:
- * known brand tokens are re-cased ("Swe" → "SWE", "Deepseek" → "DeepSeek"),
- * slug separators become spaces ("GLM-5.3-Flash" → "GLM 5.3 Flash"), digit
- * fragments rejoin as versions, and GPT versions keep their hyphen. Gated on a
- * known family first token so freeform names keep their casing; non-brand
- * tokens and a parenthesized tail pass through unchanged.
- */
 export function normalizeModelDisplayName(name: string): string {
   const trimmed = name.trim();
   const parenIndex = trimmed.indexOf("(");
@@ -164,8 +143,6 @@ export function formatModelDisplayName(model: string | null | undefined): string
   return MODEL_NAME_BY_SLUG.get(normalized.toLowerCase()) ?? humanizeModelSlug(normalized);
 }
 
-// ── Effort helpers ────────────────────────────────────────────────────
-
 export function hasEffortLevel(caps: ModelCapabilities, value: string): boolean {
   return caps.reasoningEffortLevels.some((l) => l.value === value);
 }
@@ -186,7 +163,6 @@ export function hasAutoCompactWindowOption(caps: ModelCapabilities, value: strin
   return caps.autoCompactWindowOptions?.some((option) => option.value === value) ?? false;
 }
 
-// Claude model ids may carry a context-window qualifier, e.g. `claude-fable-5-1[1m]`.
 const CLAUDE_CONTEXT_WINDOW_SUFFIX_PATTERN = /\[([^\]]+)\]$/u;
 
 export function getClaudeContextWindowSuffix(model: string | null | undefined): string | null {
@@ -410,8 +386,6 @@ export function getProviderOptionCurrentValue(
   return descriptor.currentValue ?? descriptor.options.find((option) => option.isDefault)?.id;
 }
 
-// ── Data-driven capability resolver ───────────────────────────────────
-
 export function getModelCapabilities(
   provider: ProviderKind,
   model: string | null | undefined,
@@ -433,10 +407,6 @@ export function getModelCapabilities(
   return EMPTY_MODEL_CAPABILITIES;
 }
 
-// Claude Code ships new models before Glade's catalog lists them. Catalog
-// entries always win; only an id that is newer than every catalog model of its
-// family borrows that family's newest capabilities. Older or unrecognized ids
-// keep the empty fallback so custom and legacy selections do not gain options.
 const CLAUDE_FAMILY_MODEL_PATTERN =
   /^claude-(fable|opus|sonnet|haiku)-(\d{1,2})(?:-(\d{1,2}))?(?:-\d{8})?$/u;
 
@@ -473,11 +443,6 @@ const NEWEST_CLAUDE_CATALOG_MODEL_BY_FAMILY = (() => {
   return newest;
 })();
 
-/**
- * Returns the newest catalog model of `slug`'s Claude family when `slug` is a
- * newer release the catalog does not list yet (e.g. `claude-opus-6` → the
- * newest catalog Opus). Catalog, older, and unrecognized ids return `null`.
- */
 export function resolveNewestKnownClaudeFamilyModel(
   model: string | null | undefined,
 ): ModelSlug | null {
@@ -596,11 +561,6 @@ export function trimOrNull<T extends string>(value: T | null | undefined): T | n
   return trimmed || null;
 }
 
-/**
- * Keeps only explicit Claude option overrides. The model-native auto-compact
- * window stays unset so Claude Code can apply server tuning, settings.json,
- * and CLAUDE_CODE_AUTO_COMPACT_WINDOW.
- */
 export function normalizeClaudeModelOptions(
   model: string | null | undefined,
   modelOptions: ClaudeModelOptions | null | undefined,
@@ -649,11 +609,6 @@ export function resolveApiModelId(modelSelection: ModelSelection): string {
   return modelSelection.model;
 }
 
-/**
- * Map a requested Claude Code effort to the API effort passed at session spawn.
- * `ultrathink` is prompt-injected (no API effort); `ultracode` runs as xhigh plus
- * the `ultracode` session setting.
- */
 export function getEffectiveClaudeCodeEffort(
   effort: ClaudeCodeEffort | null | undefined,
 ): ClaudeApiEffort | null {
@@ -668,8 +623,6 @@ interface ClaudeSpawnProfile {
   readonly autoCompactWindow: string | undefined;
 }
 
-// Claude's live flag settings do not refresh the runtime auto-compaction window.
-// Keep this profile aligned with the adapter's normalized spawn settings.
 function claudeSpawnProfile(selection: Extract<ModelSelection, { provider: "claudeAgent" }>) {
   const caps = getModelCapabilities("claudeAgent", selection.model);
   const requestedEffort = trimOrNull(selection.options?.effort ?? null);
@@ -681,7 +634,6 @@ function claudeSpawnProfile(selection: Extract<ModelSelection, { provider: "clau
   } satisfies ClaudeSpawnProfile;
 }
 
-/** Restart only for spawn-fixed settings; resume preserves identity, not guaranteed cache hits. */
 export function claudeSelectionRequiresRestart(
   previous: ModelSelection | undefined,
   next: ModelSelection,
@@ -690,16 +642,12 @@ export function claudeSelectionRequiresRestart(
     return false;
   }
   if (previous === undefined) {
-    // First observation in this process: the live session was started from the
-    // same selection source, so treat it as unchanged rather than replaying.
     return false;
   }
   if (previous.provider !== "claudeAgent") {
     return true;
   }
-  // Normalize against each model before deciding a model-only switch is live:
-  // a persisted `max` request may become spawn-fixed (or stop being so) as the
-  // selected model's capabilities change.
+
   const prev = claudeSpawnProfile(previous);
   const desired = claudeSpawnProfile(next);
   return (

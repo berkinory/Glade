@@ -24,19 +24,13 @@ function limitSection(value: string, maxChars: number): string {
   return `${truncated}\n\n[truncated]`;
 }
 
-// Describes how to recover a single-field result from non-JSON output. `maxWords` rejects
-// sentence-length prose so it never masquerades as a short field (e.g. a title or branch),
-// letting the caller fall back to its own message-derived default instead.
 interface RawTextFallback {
   readonly key: string;
   readonly maxWords?: number;
 }
 
-// Prefer the requested field, otherwise the first usable string value, so a wrong-key
-// JSON object (e.g. {"name":"Foo"}) yields "Foo" instead of the literal braces.
-
-// A provider may return a bare value for a single-field prompt even when JSON was requested.
-// Coerce that value into the expected string field.
+// Prefer the requested field, otherwise the first usable string value, so a wrong-key JSON object
+// (e.g. {"name":"Foo"}) yields "Foo" instead of the literal braces.
 
 export function sanitizeCommitSubject(raw: string): string {
   const singleLine = raw.trim().split(/\r?\n/g)[0]?.trim() ?? "";
@@ -212,7 +206,6 @@ export function buildDiffSummaryPrompt(input: { readonly patch: string }) {
   };
 }
 
-// Converts an explicit composer trigger into the same automation fields the create API expects.
 export function buildAutomationIntentPrompt(input: {
   readonly message: string;
   readonly defaultMode?: AutomationMode;
@@ -290,8 +283,6 @@ export function buildAutomationIntentPrompt(input: {
   };
 }
 
-// Evaluates a heartbeat stop clause from the completed run output, separate from the
-// automation agent so the agent cannot self-disable the loop.
 export function buildAutomationCompletionEvaluationPrompt(input: {
   readonly automationName: string;
   readonly automationPrompt: string;
@@ -417,8 +408,7 @@ export function buildThreadTitlePrompt(input: {
     outputSchemaJson: Schema.Struct({
       title: Schema.String,
     }),
-    // Looser than the final cap: raw (non-JSON) output is only rejected as "not a
-    // title" past this size; sanitizeGeneratedThreadTitle still trims to the cap.
+
     rawTextFallback: {
       key: "title",
       maxWords: MAX_CHAT_THREAD_TITLE_WORDS + 4,

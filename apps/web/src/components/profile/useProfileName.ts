@@ -1,14 +1,8 @@
-// FILE: useProfileName.ts
-// Purpose: Editable, locally-persisted display name for the Profile. Falls back to the
-// server-derived default (home-dir basename) until the user overrides it. Local-only.
-// Layer: web profile feature.
-
 import { Schema } from "effect";
 import { useLocalStorage } from "~/hooks/useLocalStorage";
 
 const PROFILE_NAME_STORAGE_KEY = "glade:profile:name:v1";
 
-// Empty string means "use the server default".
 const StoredNameSchema = Schema.String;
 
 export function useProfileName(defaultName: string) {

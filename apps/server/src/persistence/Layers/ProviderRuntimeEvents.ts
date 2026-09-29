@@ -16,24 +16,6 @@ import {
   type ProviderRuntimeEventRepositoryShape,
 } from "../Services/ProviderRuntimeEvents.ts";
 
-/**
- * How far the consumer cursor may advance between journal retention scans.
- *
- * Retention keeps every event of an open turn plus a trailing diagnostic tail,
- * so while a turn streams there is nothing new to delete, yet the scan has no
- * lower bound and re-probes the whole retained backlog on every single event —
- * quadratic in the length of a turn (measured: 1.38 ms/event at 8k events,
- * 3.07 ms/event at 16k events, ~25 s cumulative).
- *
- * Scanning once per interval instead makes that cost linear-ish while changing
- * nothing about what is retained: skipping a scan can only delay a delete, and
- * every event that settles a turn forces a scan immediately, so the backlog of
- * a finished turn is still released as soon as it becomes deletable. The bound
- * on extra retained rows is one interval's worth of accepted events.
- *
- * Deliberately matched to PROVIDER_RUNTIME_EVENT_RETAIN_ACCEPTED: roughly one
- * scan per tail-length of accepted events falling out of the diagnostic tail.
- */
 const PROVIDER_RUNTIME_EVENT_RETENTION_SCAN_INTERVAL = PROVIDER_RUNTIME_EVENT_RETAIN_ACCEPTED;
 
 const ProviderRuntimeEventJson = Schema.fromJsonString(ProviderRuntimeEvent);
@@ -48,10 +30,6 @@ const decodeStoredRow = Schema.decodeUnknownEffect(StoredRowSchema);
 const SequenceRowSchema = Schema.Struct({ sequence: NonNegativeInt });
 const decodeSequenceRow = Schema.decodeUnknownEffect(SequenceRowSchema);
 
-/**
- * Longest-prefix string truncation that never splits a UTF-8 code point.
- * Returns the whole string when it already fits.
- */
 export const truncateUtf8ToBytes = (value: string, maxBytes: number): string => {
   const encoded = Buffer.from(value, "utf8");
   if (encoded.byteLength <= maxBytes) return value;
@@ -62,18 +40,8 @@ export const truncateUtf8ToBytes = (value: string, maxBytes: number): string => 
   return encoded.subarray(0, prefixEnd).toString("utf8");
 };
 
-/**
- * Budget assigned to every string leaf so a single oversized field (typically a
- * provider tool result copied verbatim into `payload.detail` or `payload.data`)
- * never exhausts the durable journal budget by itself.
- */
 const JOURNAL_STRING_LEAF_BUDGET_BYTES = 64 * 1024;
 
-/**
- * Shrink every string leaf inside a runtime event payload to the per-leaf
- * budget, recursing through records and arrays. Non-string leaves are kept:
- * they are either small structural fields or values with no safe truncation.
- */
 const shrinkRuntimeEventStrings = (value: unknown): unknown => {
   if (typeof value === "string") {
     return truncateUtf8ToBytes(value, JOURNAL_STRING_LEAF_BUDGET_BYTES);
@@ -102,10 +70,9 @@ const encodePersistableEvent = (event: ProviderRuntimeEvent) =>
       return { event, eventJson };
     }
 
-    // Shrink oversized string leaves so one huge tool output no longer strands
-    // the live item in quarantine. The raw payload is replaced by a forensics
-    // marker (its own copy of the tool output would otherwise re-blow the
-    // budget), while source/method/messageType survive for diagnostics.
+    // Shrink oversized string leaves so one huge tool output no longer strands the live item in
+    // quarantine. The raw payload is replaced by a forensics marker (its own copy of the tool output
+    // would otherwise re-blow the budget), while source/method/messageType survive for diagnostics.
     const compactedEvent = {
       ...event,
       payload: shrinkRuntimeEventStrings(event.payload),
@@ -150,8 +117,6 @@ const make = Effect.gen(function* () {
       const appendResult = yield* sql
         .withTransaction(
           Effect.gen(function* () {
-            // SQLite reserves the AUTOINCREMENT rowid before conflict handling, so duplicate event
-            // IDs consume sequence values. Sequence is a cursor, not a dense counter; gaps are valid.
             const inserted = yield* sql<Record<string, unknown>>`
             INSERT INTO provider_runtime_events (
               event_id, thread_id, turn_id, lifecycle_generation, event_type,
@@ -342,14 +307,12 @@ const make = Effect.gen(function* () {
     };
 
   // Open-turn rows keep their whole event range on the startup replay path
-  // (`rebuildAcceptedOpenTurnState`, which runs before the server listens), so
-  // rows that can never produce output again must not survive: settled turns,
-  // turns of purged or deleted threads, and turns of archived threads that the
-  // projection does not consider running (archiving neither interrupts a turn
-  // nor is permanent, so a still-running turn on an archived thread stays).
-  // Pruning is one-way: once a turn's row is gone, its journal rows become
-  // eligible for the retention sweep below, so every criterion here must
-  // describe a turn that can no longer emit output.
+  // (`rebuildAcceptedOpenTurnState`, which runs before the server listens), so rows that can never
+  // produce output again must not survive: settled turns, turns of purged or deleted threads, and
+  // turns of archived threads that the projection does not consider running (archiving neither
+  // interrupts a turn nor is permanent, so a still-running turn on an archived thread stays). Pruning
+  // is one-way: once a turn's row is gone, its journal rows become eligible for the retention sweep
+  // below, so every criterion here must describe a turn that can no longer emit output.
   const pruneSettledOpenTurns: ProviderRuntimeEventRepositoryShape["pruneSettledOpenTurns"] = sql`
       DELETE FROM provider_runtime_open_turns
       WHERE EXISTS (
@@ -440,8 +403,6 @@ const make = Effect.gen(function* () {
   const isThreadTerminalEventType = (eventType: string) =>
     eventType === "session.exited" || eventType === "runtime.error";
 
-  // Open-turn bookkeeping for one accepted row. Runs inside the caller's
-  // transaction, in journal order.
   const recordAckedOpenTurn = (event: AckedEventRow, updatedAt: string) =>
     Effect.gen(function* () {
       const isTerminalTurnEvent = isTerminalTurnEventType(event.eventType);
@@ -483,9 +444,6 @@ const make = Effect.gen(function* () {
       return isTerminalTurnEvent || isThreadTerminalEvent;
     });
 
-  // Pending rows are above the cursor. Accepted rows for an open turn remain
-  // replayable until its terminal output is accepted; all other accepted
-  // history is bounded to a diagnostic tail.
   const sweepAcceptedHistoryThrough = (throughSequence: number) => sql`
     DELETE FROM provider_runtime_events AS event
     WHERE event.sequence <= ${throughSequence}
@@ -505,15 +463,9 @@ const make = Effect.gen(function* () {
       )
   `;
 
-  // Highest cursor position whose retention scan has already run. Process-local
-  // on purpose: it is a "do not rescan yet" hint, never a durability record. A
-  // restart resets it to 0, which makes the next cursor advance scan — the safe
-  // direction, since the only effect of losing it is pruning sooner.
   let lastRetentionScanSequence = 0;
 
   const rememberRetentionScan = (retentionScanSequence: number | null) =>
-    // Only a committed scan may move the hint forward; a rolled back
-    // transaction leaves it where it was so the next advance rescans.
     Effect.sync(() => {
       if (retentionScanSequence !== null) {
         lastRetentionScanSequence = Math.max(lastRetentionScanSequence, retentionScanSequence);
@@ -552,9 +504,6 @@ const make = Effect.gen(function* () {
           if (cursor === undefined) return false;
           if (cursor >= input.eventSequence) return true;
 
-          // Event ids are idempotent and SQLite may leave sequence gaps after a
-          // conflicting insert. Contiguity therefore means the exact next
-          // stored row, not arithmetic sequence + 1.
           const nextRows = yield* sql<{ readonly sequence: number | null }>`
             SELECT MIN(sequence) AS sequence
             FROM provider_runtime_events
@@ -580,10 +529,6 @@ const make = Effect.gen(function* () {
 
           const settlesOpenTurns = yield* recordAckedOpenTurn(event, input.updatedAt);
 
-          // Nothing below the cursor can become deletable while a turn only
-          // grows, so the scan is worth running when a turn just settled (its
-          // whole backlog is releasable now) or when enough events have piled up
-          // since the last scan. See the interval constant for why this is safe.
           if (
             !settlesOpenTurns &&
             input.eventSequence - lastRetentionScanSequence <
@@ -602,12 +547,6 @@ const make = Effect.gen(function* () {
       );
   };
 
-  // Page-level acknowledgement: one transaction moves the cursor through every
-  // stored row in (cursor, throughSequence] and applies the same per-row
-  // open-turn bookkeeping and retention policy as the single-row advance. The
-  // caller must have processed exactly those rows, in order; the rows between
-  // the cursor and the target are re-read here so the bookkeeping never depends
-  // on what the caller remembers.
   const advanceConsumerCursorThrough: ProviderRuntimeEventRepositoryShape["advanceConsumerCursorThrough"] =
     (input) => {
       let retentionScanSequence: number | null = null;
@@ -624,8 +563,8 @@ const make = Effect.gen(function* () {
               WHERE sequence > ${cursor} AND sequence <= ${input.throughSequence}
               ORDER BY sequence ASC
             `;
-            // The target must be a stored row: a page always ends on one, so a
-            // miss means the journal changed underneath the caller.
+            // The target must be a stored row: a page always ends on one, so a miss means the journal changed
+            // underneath the caller.
             if (
               events.length === 0 ||
               events[events.length - 1]!.sequence !== input.throughSequence

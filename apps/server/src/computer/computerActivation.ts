@@ -1,12 +1,11 @@
 import type { ComputerControlMode } from "@glade/contracts";
 import { resolveComputerInvocationMode } from "@glade/shared/computerInvocation";
 
-/** Freeze explicit turn intent without promoting a slash invocation to chat access. */
 export function computerActivationMetadata(input: {
   readonly enableComputerControl?: boolean | undefined;
   readonly computerControlMode?: ComputerControlMode | undefined;
   readonly computerControlGeneration?: number | undefined;
-  /** Only the decider supplies fresh, user-authored text; replay uses frozen mode. */
+
   readonly userMessageText?: string | undefined;
   readonly dispatchOrigin?: string | undefined;
 }): {

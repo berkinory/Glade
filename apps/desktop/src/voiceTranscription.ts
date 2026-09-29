@@ -1,8 +1,3 @@
-// FILE: voiceTranscription.ts
-// Purpose: Owns the desktop-specific voice transcription flow for Electron builds.
-// Layer: Desktop IPC + ChatGPT upload bridge
-// Depends on: Codex auth discovery, Electron net uploads, and the shared server voice contract.
-
 import { spawnProcess } from "@glade/shared/processRuntime";
 
 import { app, ipcMain } from "electron";
@@ -23,8 +18,6 @@ import {
 import { SERVER_TRANSCRIBE_VOICE_CHANNEL } from "./ipcChannels";
 
 const MAX_VOICE_DURATION_MS = 120_000;
-
-// --- Input validation ------------------------------------------------------
 
 function normalizeVoiceBase64(value: string): string | null {
   const normalized = value.trim().replace(/\s+/g, "");
@@ -81,8 +74,6 @@ function readNonEmptyString(value: unknown): string | null {
   return normalized.length > 0 ? normalized : null;
 }
 
-// --- Auth discovery --------------------------------------------------------
-
 async function resolveDesktopVoiceAuth(
   cwd: string,
 ): Promise<{ token: string; transcriptionUrl: string }> {
@@ -130,9 +121,7 @@ async function resolveDesktopVoiceAuth(
         );
       }
     });
-    child.stderr.on("data", () => {
-      // Ignore stderr noise from the discovery process; the JSON-RPC result is authoritative.
-    });
+    child.stderr.on("data", () => {});
     child.stdout.on("data", (chunk) => {
       stdoutBuffer += chunk.toString();
       const lines = stdoutBuffer.split(/\n/);
@@ -209,8 +198,6 @@ async function resolveDesktopVoiceAuth(
   });
 }
 
-// --- Network upload --------------------------------------------------------
-
 async function requestDesktopVoiceTranscription(input: {
   readonly audioBuffer: Buffer;
   readonly mimeType: string;
@@ -233,9 +220,7 @@ function readVoiceResponseErrorMessage(statusCode: number, body: string): string
     if (providerMessage) {
       return providerMessage;
     }
-  } catch {
-    // Fall back to a status-based message when the upstream body is not JSON.
-  }
+  } catch {}
 
   if (statusCode === 401) {
     return "Your ChatGPT login has expired. Sign in again.";
@@ -246,8 +231,6 @@ function readVoiceResponseErrorMessage(statusCode: number, body: string): string
 
   return `Transcription failed with status ${statusCode}.`;
 }
-
-// --- IPC entrypoint --------------------------------------------------------
 
 async function transcribeVoiceViaDesktopBridge(
   input: ServerVoiceTranscriptionInput,

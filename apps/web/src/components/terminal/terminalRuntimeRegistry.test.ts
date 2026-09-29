@@ -58,7 +58,7 @@ describe("terminal runtime memory ownership", () => {
       removeOrphanedTerminalRuntimes(active);
       expect(runtime.create.mock.calls.length - runtime.dispose.mock.calls.length).toBe(2);
     }
-    // Hidden, still-owned terminals reuse their original xterm instances.
+
     const created = runtime.create.mock.calls.length;
     for (const id of active) attach(id);
     expect(runtime.create).toHaveBeenCalledTimes(created);

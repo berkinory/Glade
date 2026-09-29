@@ -1,8 +1,4 @@
 import { useCallback } from "react";
-// FILE: ThemePackEditor.tsx
-// Purpose: Per-variant theme card matching the Codex appearance settings layout.
-// Layer: Web settings UI
-// Exports: ThemePackEditor
 
 import { type CSSProperties, useEffect, useId, useMemo, useRef, useState } from "react";
 import { HexColorPicker } from "react-colorful";
@@ -51,7 +47,6 @@ type ThemePackEditorProps = {
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 const COLOR_PICKER_COMMIT_DELAY_MS = 220;
 
-/** Borderless text action in the editor's header chrome (Copy, Import). */
 const EDITOR_TEXT_ACTION_CLASS_NAME = cn(
   "rounded-md px-2 py-1 text-ui leading-snug text-[var(--color-text-foreground-secondary)]",
   ELEVATED_HOVER_SURFACE_RAISED_TEXT_CLASS_NAME,
@@ -131,7 +126,7 @@ export function ThemePackEditor({
 
   return (
     <SettingsCard divided={false}>
-      {/* Header */}
+      {}
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:py-3.5">
         <div className="flex items-center gap-2">
           <h3 className="text-ui-lg font-medium text-foreground">{titleLabel}</h3>
@@ -323,8 +318,6 @@ export function ThemePackEditor({
   );
 }
 
-// ── Row primitive ─────────────────────────────────────────────────────────
-
 function ThemeRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div
@@ -338,8 +331,6 @@ function ThemeRow({ label, children }: { label: string; children: React.ReactNod
     </div>
   );
 }
-
-// ── Color pill ────────────────────────────────────────────────────────────
 
 function ColorPill({
   color,
@@ -356,8 +347,7 @@ function ColorPill({
   const pendingCommitRef = useRef<string | null>(null);
   const colorRef = useRef(color);
   const [draftHexRaw, setDraftHex] = useState<string | null>(null);
-  // Derived: once the committed color catches up to the draft (commit round-
-  // trip), the draft dissolves in the same render — no state-clearing effect.
+
   const draftHex = draftHexRaw === color ? null : draftHexRaw;
   const [isOpen, setIsOpen] = useState(false);
   const normalizedDraftHex = draftHex?.trim().toLowerCase() ?? null;
@@ -379,8 +369,6 @@ function ColorPill({
     commitTimerRef.current = null;
   }, []);
 
-  // Explicit undefined check instead of a ref-reading default parameter,
-  // which React Compiler does not support yet (it would skip this component).
   const commitColor = (nextInput?: string | null) => {
     const next = nextInput === undefined ? pendingCommitRef.current : nextInput;
     clearCommitTimer();
@@ -406,8 +394,6 @@ function ColorPill({
     [clearCommitTimer],
   );
 
-  // Dragging updates only this local preview; the real theme store is committed
-  // after a short idle delay so CSS-var projection stays smooth.
   const handleValidDraft = (next: string) => {
     const normalized = next.trim().toLowerCase();
     setDraftHex(normalized);
@@ -452,8 +438,6 @@ function ColorPill({
                 SETTINGS_CONTROL_RADIUS_CLASS_NAME,
                 "group relative flex h-8 min-w-44 items-center gap-2 overflow-hidden border px-2 pr-3 text-left transition-[transform,box-shadow] hover:scale-[1.005] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
               )}
-              // borderColor rides the readable color so a near-white fill still shows
-              // a crisp edge against the (also near-white) settings card.
               style={{ backgroundColor: previewColor, color: textColor, borderColor: ringColor }}
               aria-label={ariaLabel}
             />
@@ -530,8 +514,6 @@ function CodeThemeSelectOption({ label, theme }: { label: string; theme: ChromeT
   );
 }
 
-// ── Font input ────────────────────────────────────────────────────────────
-
 function FontInput({
   value,
   placeholder,
@@ -563,8 +545,6 @@ function FontInput({
     />
   );
 }
-
-// ── Slider ────────────────────────────────────────────────────────────────
 
 function ContrastSlider({
   value,
@@ -599,8 +579,6 @@ function ContrastSlider({
     </div>
   );
 }
-
-// ── Import dialog ─────────────────────────────────────────────────────────
 
 function ImportThemeDialog({
   variant,
@@ -684,8 +662,6 @@ function ImportThemeDialog({
     </Dialog>
   );
 }
-
-// ── Helpers ───────────────────────────────────────────────────────────────
 
 function ResetGlyph() {
   return (

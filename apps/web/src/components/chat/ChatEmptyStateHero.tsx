@@ -1,8 +1,3 @@
-// FILE: ChatEmptyStateHero.tsx
-// Purpose: Render the centered empty-state hero for blank transcripts.
-// Layer: Chat presentation
-// Depends on: the caller-supplied project display name.
-
 import { GladeLogo } from "~/components/GladeLogo";
 
 export const ChatEmptyStateHero = function ChatEmptyStateHero({

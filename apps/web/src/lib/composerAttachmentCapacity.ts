@@ -1,7 +1,3 @@
-// FILE: composerAttachmentCapacity.ts
-// Purpose: Defines the composer attachment limit as one shared, commit-time invariant.
-// Layer: Web composer domain utility
-
 import { PROVIDER_SEND_TURN_MAX_ATTACHMENTS } from "@glade/contracts";
 
 interface AttachmentIdCarrier {
@@ -15,10 +11,6 @@ export interface ComposerAttachmentCountDraft {
   readonly persistedAttachments?: ReadonlyArray<AttachmentIdCarrier> | undefined;
 }
 
-/**
- * Counts live references plus persisted images that have not hydrated yet.
- * Hydrating an image with the same id therefore consumes no additional slot.
- */
 export function effectiveComposerAttachmentCount(
   draft: ComposerAttachmentCountDraft | undefined,
 ): number {

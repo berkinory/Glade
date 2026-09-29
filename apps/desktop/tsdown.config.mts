@@ -1,8 +1,3 @@
-// FILE: tsdown.config.ts
-// Purpose: Builds Electron main/preload code and controls diagnostic source maps.
-// Layer: Desktop build config
-// Depends on: tsdown.
-
 import { createHash } from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -34,8 +29,7 @@ export default defineConfig([
     ...shared,
     entry: ["src/main.ts"],
     clean: true,
-    // Electron exposes this builtin only at runtime; keeping it external avoids
-    // asking Rolldown to resolve a package that intentionally does not exist.
+
     external: ["original-fs"],
     define: {
       __GLADE_WINDOWS_UPDATER_PUBLISHER__: JSON.stringify(windowsUpdaterPublisher),
@@ -53,9 +47,7 @@ export default defineConfig([
   },
   {
     ...shared,
-    // The cross-platform driver host, deployable to a Windows/Linux target:
-    // `node dist-electron/cuaDriverHostStandalone.js --driver <path>`. It
-    // must bundle the shared protocol (no node_modules on the target).
+
     entry: ["src/cuaDriverHostStandalone.ts"],
     noExternal: (id) => id.startsWith("@glade/"),
   },

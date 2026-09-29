@@ -1,9 +1,3 @@
-// FILE: SkillsSettingsPanel.tsx
-// Purpose: Settings → Skills panel. Lists every skill from the unified cross-provider
-// catalog (~/.glade/skills plus each provider's skills folder), shows which provider
-// a skill comes from, and lets the user enable/disable each one. Disabled skills are
-// hidden from the composer skill picker on every provider.
-
 import type { ProviderKind, ServerSettings } from "@glade/contracts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
@@ -67,8 +61,6 @@ export function SkillsSettingsPanel() {
   );
 
   const setSkillEnabled = (skillName: string, enabled: boolean) => {
-    // Read through the query cache (not the render closure) so rapid toggles
-    // build on each other instead of clobbering the previous patch.
     const latestSettings = queryClient.getQueryData<ServerSettings>(serverQueryKeys.settings());
     const currentDisabled = latestSettings?.skills.disabled ?? [...disabledSkillNames];
     const key = settingsSkillNameKey(skillName);
@@ -80,7 +72,6 @@ export function SkillsSettingsPanel() {
     }
     const disabled = [...next].toSorted();
     if (latestSettings) {
-      // Optimistic flip; a failed patch invalidates back to the server state.
       queryClient.setQueryData(serverQueryKeys.settings(), {
         ...latestSettings,
         skills: { disabled },
@@ -90,7 +81,7 @@ export function SkillsSettingsPanel() {
       .server.updateSettings({ skills: { disabled } })
       .then((nextSettings) => {
         queryClient.setQueryData(serverQueryKeys.settings(), nextSettings);
-        // Composer skill pickers are served filtered by these toggles.
+
         void queryClient.invalidateQueries({ queryKey: providerDiscoveryQueryKeys.all });
       })
       .catch(() => {

@@ -21,8 +21,6 @@ describe("LengthPrefixedRecordParser", () => {
   });
 
   it("reassembles a record split across chunks", () => {
-    // A pipe delivers whatever size it likes, so the split can fall anywhere —
-    // including inside the length prefix itself.
     const parser = new LengthPrefixedRecordParser();
     const record = encodeLengthPrefixedRecord(payload(9, 8, 7, 6));
 
@@ -33,8 +31,6 @@ describe("LengthPrefixedRecordParser", () => {
   });
 
   it("joins a record's chunks once, not on every chunk that arrives", () => {
-    // Re-concatenating the pending bytes per chunk is quadratic in the record
-    // size, which is what a multi-megabyte keyframe in 64 KB reads costs.
     const parser = new LengthPrefixedRecordParser();
     const record = encodeLengthPrefixedRecord(new Uint8Array(64 * 1024).fill(7));
     const concat = vi.spyOn(Buffer, "concat");
@@ -81,9 +77,6 @@ describe("LengthPrefixedRecordParser", () => {
   });
 
   it("throws on a record past the limit rather than trying to resynchronize", () => {
-    // The length that would find the next record is read from the same bytes
-    // that are already wrong, so there is nothing to skip forward to: the
-    // caller has to drop the connection.
     const parser = new LengthPrefixedRecordParser(16);
     const oversized = Buffer.alloc(4);
     oversized.writeUInt32LE(64, 0);

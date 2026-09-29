@@ -11,8 +11,6 @@ import { ModelSelection, ProviderStartOptions } from "./orchestration";
 
 const TrimmedNonEmptyStringSchema = TrimmedNonEmptyString;
 
-// Domain Types
-
 export const GitStackedAction = Schema.Literals([
   "commit",
   "push",
@@ -50,8 +48,7 @@ const GitPrStepStatus = Schema.Literals(["created", "opened_existing", "skipped_
 const GitStatusPrState = Schema.Literals(["open", "closed", "merged"]);
 const GitPullRequestReference = TrimmedNonEmptyStringSchema;
 const GitPullRequestState = Schema.Literals(["open", "closed", "merged"]);
-// GitHub's mergeability is eventually consistent: "unknown" is a real transient state
-// while GitHub recomputes after a push, not a decode fallback to branch on.
+
 export const GitPullRequestMergeability = Schema.Literals(["mergeable", "conflicting", "unknown"]);
 export type GitPullRequestMergeability = typeof GitPullRequestMergeability.Type;
 const GitPreparePullRequestThreadMode = Schema.Literals(["local", "worktree"]);
@@ -98,15 +95,13 @@ const GitResolvedPullRequest = Schema.Struct({
   state: GitPullRequestState,
   isDraft: Schema.Boolean,
   mergeability: GitPullRequestMergeability,
-  // Null when `gh` did not report diff sizes, so the UI can hide the stat instead of
-  // rendering a misleading "+0 −0".
+
   additions: Schema.NullOr(NonNegativeInt),
   deletions: Schema.NullOr(NonNegativeInt),
   changedFiles: Schema.NullOr(NonNegativeInt),
 });
 export type GitResolvedPullRequest = typeof GitResolvedPullRequest.Type;
 
-// Normalized CI check state combining GitHub CheckRun conclusions and commit status states.
 export const GitPullRequestCheckStatus = Schema.Literals([
   "pending",
   "success",
@@ -124,7 +119,6 @@ export const GitPullRequestCheck = Schema.Struct({
 });
 export type GitPullRequestCheck = typeof GitPullRequestCheck.Type;
 
-// Root comment of an unresolved review thread (resolved threads and replies are excluded).
 export const GitPullRequestComment = Schema.Struct({
   id: TrimmedNonEmptyStringSchema,
   author: Schema.NullOr(TrimmedNonEmptyStringSchema),
@@ -134,8 +128,6 @@ export const GitPullRequestComment = Schema.Struct({
   createdAt: Schema.NullOr(TrimmedNonEmptyStringSchema),
 });
 export type GitPullRequestComment = typeof GitPullRequestComment.Type;
-
-// RPC Inputs
 
 export const GitStatusInput = Schema.Struct({
   cwd: TrimmedNonEmptyStringSchema,
@@ -149,8 +141,6 @@ export type GitHubRepositoryInput = typeof GitHubRepositoryInput.Type;
 
 const GIT_REV_MAX_LENGTH = 256;
 
-// A revision names a commit, never a flag: rejecting option-like values here
-// keeps client-supplied revisions from being parsed as git options.
 const GitRevisionArgumentSchema = TrimmedNonEmptyStringSchema.check(
   Schema.isMaxLength(GIT_REV_MAX_LENGTH),
   Schema.isPattern(/^[^-]/),
@@ -162,9 +152,9 @@ export const GitReadWorkingTreeDiffInput = Schema.Struct({
     Schema.Literals(["workingTree", "unstaged", "staged", "branch", "ref"]),
   ).pipe(Schema.withConstructorDefault(() => Option.some("workingTree" as const))),
   compareRef: Schema.optional(GitRevisionArgumentSchema),
-  /** Limit a workingTree, staged, or unstaged patch to one exact workspace-relative file. */
+
   filePath: Schema.optional(TrimmedNonEmptyStringSchema),
-  /** Return untracked per-file counts with unstaged totals for Source Control rows. */
+
   includeUntrackedFiles: Schema.optional(Schema.Boolean),
 });
 export type GitReadWorkingTreeDiffInput = typeof GitReadWorkingTreeDiffInput.Type;
@@ -174,7 +164,7 @@ export const GitBlameLineInput = Schema.Struct({
   filePath: TrimmedNonEmptyStringSchema,
   line: PositiveInt,
   rev: Schema.optional(GitRevisionArgumentSchema),
-  /** Blame at the branch diff's base (upstream or fallback merge base) instead of `rev`. */
+
   base: Schema.optional(Schema.Literal("branch")),
 });
 export type GitBlameLineInput = typeof GitBlameLineInput.Type;
@@ -193,10 +183,7 @@ export const GitReadFileAtRevInput = Schema.Struct({
     Schema.isMaxLength(GIT_READ_FILE_AT_REV_PATH_MAX_LENGTH),
   ),
   rev: Schema.optional(GitRevisionArgumentSchema),
-  /**
-   * Read the file at a base the server resolves: the branch diff's upstream or
-   * fallback merge base, or the index (stage 0) for unstaged-scope diffs.
-   */
+
   base: Schema.optional(Schema.Literals(["branch", "index"])),
   maxBytes: Schema.optional(
     PositiveInt.check(Schema.isLessThanOrEqualTo(GIT_READ_FILE_AT_REV_MAX_BYTES)),
@@ -212,7 +199,6 @@ export const GitReadFileAtRevResult = Schema.Struct({
 });
 export type GitReadFileAtRevResult = typeof GitReadFileAtRevResult.Type;
 
-// Read-only diff summary requests reuse the shared git text-generation model settings.
 export const GitSummarizeDiffInput = Schema.Struct({
   cwd: TrimmedNonEmptyStringSchema,
   scope: Schema.optional(Schema.Literals(["workingTree", "unstaged", "staged", "branch"])).pipe(
@@ -233,12 +219,12 @@ export const GitRunStackedActionInput = Schema.Struct({
   action: GitStackedAction,
   commitMessage: Schema.optional(TrimmedNonEmptyStringSchema.check(Schema.isMaxLength(10_000))),
   featureBranch: Schema.optional(Schema.Boolean),
-  // PR content overrides for create_pr/commit_push_pr; missing fields are generated.
+
   prTitle: Schema.optional(TrimmedNonEmptyStringSchema.check(Schema.isMaxLength(300))),
   prBody: Schema.optional(TrimmedNonEmptyStringSchema.check(Schema.isMaxLength(60_000))),
   prDraft: Schema.optional(Schema.Boolean),
-  // The user explicitly chose to leave working-tree changes out of a push/create_pr,
-  // so the dirty-tree safety guard must not reject the action.
+  // The user explicitly chose to leave working-tree changes out of a push/create_pr, so the
+  // dirty-tree safety guard must not reject the action.
   allowDirtyWorkingTree: Schema.optional(Schema.Boolean),
   filePaths: Schema.optional(
     Schema.Array(TrimmedNonEmptyStringSchema).check(Schema.isMinLength(1)),
@@ -258,7 +244,7 @@ export const GitListBranchesInput = Schema.Struct({
 export type GitListBranchesInput = typeof GitListBranchesInput.Type;
 
 export const DEFAULT_GIT_RECENT_COMMIT_LIMIT = 20;
-// Per-request ceiling. History can page through the complete branch.
+
 export const MAX_GIT_RECENT_COMMIT_LIMIT = 50;
 
 export const GitListRecentCommitsInput = Schema.Struct({
@@ -296,11 +282,9 @@ export const GitCreateDetachedWorktreeInput = Schema.Struct({
   ref: TrimmedNonEmptyStringSchema,
   path: Schema.NullOr(TrimmedNonEmptyStringSchema),
   copyChangesFrom: Schema.optional(TrimmedNonEmptyStringSchema),
-  // When set, the worktree is created on this new branch (pinned at `ref`)
-  // instead of a detached HEAD, so threads get a branch attached from birth.
+
   newBranch: Schema.optional(TrimmedNonEmptyStringSchema),
-  // Caller-chosen correlation id echoed on every setup progress event, so
-  // concurrent creations can be told apart by progress subscribers.
+
   progressId: Schema.optional(TrimmedNonEmptyStringSchema),
 });
 export type GitCreateDetachedWorktreeInput = typeof GitCreateDetachedWorktreeInput.Type;
@@ -344,18 +328,16 @@ export const GitRemoveWorktreeInput = Schema.Struct({
   cwd: TrimmedNonEmptyStringSchema,
   path: TrimmedNonEmptyStringSchema,
   force: Schema.optional(Schema.Boolean),
-  // Automatic archive cleanup must revalidate the exact archived event on the
-  // server before removing a checkout. Manual removals leave this unset.
+
   archiveCleanup: Schema.optional(
     Schema.Struct({
       threadId: ThreadId,
       archiveSequence: NonNegativeInt,
     }),
   ),
-  // Managed worktrees are born on temporary glade/* branches. When set, a
-  // removal also deletes that branch so retiring the worktree cannot strand it;
-  // user-named branches are never touched. Handoff flows leave this unset
-  // because they re-home the branch into the root checkout instead.
+  // When set, a removal also deletes that branch so retiring the worktree cannot strand it;
+  // user-named branches are never touched. Handoff flows leave this unset because they re-home the
+  // branch into the root checkout instead.
   reclaimTemporaryBranch: Schema.optional(Schema.Boolean),
 });
 export type GitRemoveWorktreeInput = typeof GitRemoveWorktreeInput.Type;
@@ -417,8 +399,6 @@ export const GitRevertUnstagedFileInput = Schema.Struct({
   path: TrimmedNonEmptyStringSchema,
 });
 export type GitRevertUnstagedFileInput = typeof GitRevertUnstagedFileInput.Type;
-
-// RPC Results
 
 const GitStatusPr = Schema.Struct({
   number: PositiveInt,
@@ -544,14 +524,6 @@ export const GitBlameLineResult = Schema.Struct({
 });
 export type GitBlameLineResult = typeof GitBlameLineResult.Type;
 
-/**
- * Line counts for a scope's patch, without the patch itself.
- *
- * The `+N/-M` badge surfaces only ever needed these three numbers, and a working tree with a
- * large diff makes the patch text megabytes — sending it so the renderer can re-derive them
- * costs bandwidth and main-thread parse time proportional to the diff. `null` totals mean the
- * scope is clean.
- */
 export const GitWorkingTreeDiffStatsResult = Schema.Struct({
   additions: NonNegativeInt,
   deletions: NonNegativeInt,
@@ -568,7 +540,6 @@ export const GitWorkingTreeDiffStatsResult = Schema.Struct({
 });
 export type GitWorkingTreeDiffStatsResult = typeof GitWorkingTreeDiffStatsResult.Type;
 
-// Stage/unstage are fire-and-forget index mutations; callers refetch status/diff.
 export const GitStageFilesResult = Schema.Struct({
   ok: Schema.Boolean,
 });
@@ -603,8 +574,6 @@ export const GitCreateDetachedWorktreeResult = Schema.Struct({
 });
 export type GitCreateDetachedWorktreeResult = typeof GitCreateDetachedWorktreeResult.Type;
 
-// Real phases of detached-worktree creation, in execution order: create the
-// branch, materialize the checkout, then copy local changes (when requested).
 export const GitWorktreeSetupPhase = Schema.Literals(["branch", "worktree", "copy-changes"]);
 export type GitWorktreeSetupPhase = typeof GitWorktreeSetupPhase.Type;
 
@@ -643,7 +612,6 @@ export const GitResolvePullRequestResult = Schema.Struct({
 });
 export type GitResolvePullRequestResult = typeof GitResolvePullRequestResult.Type;
 
-// Live CI + review-comment snapshot for one PR (drives the Environment panel PR section).
 export const GitPullRequestSnapshotResult = Schema.Struct({
   pullRequest: GitResolvedPullRequest,
   checks: Schema.Array(GitPullRequestCheck),

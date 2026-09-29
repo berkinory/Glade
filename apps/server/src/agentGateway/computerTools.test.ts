@@ -37,8 +37,6 @@ function resultJson(result: McpToolCallResult): unknown {
   return text?.type === "text" ? JSON.parse(text.text) : undefined;
 }
 
-/** A backend that never implemented the optional clipboard methods. */
-
 function makeContext(
   provider: ProviderKind = "claudeAgent",
   threadId = THREAD,
@@ -66,18 +64,12 @@ function makeContext(
 async function setup(
   backend = new FakeComputerBackend(),
   authorizeAction?: AgentGatewayComputerToolsOptions["authorizeAction"],
-  /**
-   * The never-raise authorization resolver. Defaults to the user having asked
-   * to see the screen: these suites exercise the raise/foreground mechanics,
-   * and the gate itself has dedicated tests that pass an explicit refusal.
-   */
+
   resolveForegroundAuthorization: AgentGatewayComputerToolsOptions["resolveForegroundAuthorization"] = async () => ({
     userRequestedVisibleUse: true,
   }),
   requestForegroundConsent?: AgentGatewayComputerToolsOptions["requestForegroundConsent"],
 ) {
-  // A zero settle delay: these tests assert on what the post-action capture
-  // does, not on how long the desktop is given to repaint.
   const manager = new ComputerManager({ backend, actionSettleMs: 0 });
   const browserTools = manager.supportsBrowser
     ? makeAgentGatewayComputerBrowserTools({
@@ -106,14 +98,7 @@ async function setup(
     if (!tool) throw new Error(`no such tool: ${name}`);
     return await Effect.runPromise(tool.handler(args, makeContext(provider, threadId, label)));
   };
-  /**
-   * Look at the desktop the way the model does before it points: a workspace
-   * screenshot. The fake workspace is 1920×1080 and the perception budget caps
-   * an image handed to a model at 1536 on its longest side, so this frame comes
-   * back at 1536×864, scale 0.8, from (0, 0) — a screenshot pixel is 1.25
-   * desktop points, and that conversion is exactly what the server does for the
-   * model rather than asking it to.
-   */
+
   const see = async (threadId = THREAD, label: string | null = null) => {
     const state = await call(
       "computer_get_state",
@@ -130,11 +115,6 @@ async function setup(
 
 type ToolsByName = Map<string, { definition: { inputSchema: unknown } }>;
 
-/** One property's `enum`, for the schemas whose vocabulary is backend-dependent. */
-
-/** One property's description, for the same reason. */
-
-/** The `window_id` blurb one tool advertises, which is backend-dependent prose. */
 function windowIdDescription(byName: ToolsByName, tool: string): string {
   const schema = byName.get(tool)?.definition.inputSchema as
     | { properties?: { window_id?: { description?: string } } }
@@ -200,8 +180,7 @@ describe("agent gateway computer tools", () => {
       "Exact window for label or x/y targeting",
     );
     expect(windowIdDescription(byName, "computer_type_text")).toContain("does not activate it");
-    // The activate tool no longer promises consent-covered foreground: the
-    // user's own task text is the authorization, and the description says so.
+
     expect(byName.get("computer_activate_window")?.definition.description).toContain(
       "Unless the user's own task text asked to see the screen",
     );
@@ -223,10 +202,7 @@ describe("agent gateway computer tools", () => {
 
   it("exposes the native batch fast path behind computer:control, with 15 specialist tools hidden", async () => {
     const { byName, tools } = await setup();
-    // 33 registered desktop tools: 18 advertised, including the batch fast
-    // path, plus 15 specialists. The 7 recording/replay tools, the three click
-    // variants and computer_hotkey are gone entirely — their behavior folded
-    // into computer_click's count/button and computer_press_key's chord.
+
     expect(tools.map((tool) => tool.definition.name)).toEqual([
       "computer_spaces",
       "computer_list_windows",
@@ -284,8 +260,7 @@ describe("agent gateway computer tools", () => {
       "computer_set_value",
       "computer_run",
     ]);
-    // Hidden mutations remain reachable through the advertised batch tool;
-    // computer_help returns only the specific schema a model asks for.
+
     expect(
       tools.filter((tool) => tool.discoveryOnly === true).map((tool) => tool.definition.name),
     ).toEqual([
@@ -331,9 +306,7 @@ describe("agent gateway computer tools", () => {
         "computer_set_app_visibility",
       ]),
     );
-    // A hover posts no event, presses nothing, and no longer aims the keyboard,
-    // so there is nothing for a human to approve and nothing destructive to
-    // warn about. It was gated back when `move` still re-pointed the keyboard.
+
     expect(computerToolRequiresApproval("computer_move_cursor")).toBe(true);
     expect(
       (
@@ -342,7 +315,7 @@ describe("agent gateway computer tools", () => {
           | undefined
       )?.destructiveHint,
     ).toBe(false);
-    // Waiting touches nothing at all.
+
     expect(computerToolRequiresApproval("computer_wait")).toBe(false);
     for (const name of COMPUTER_APPROVAL_REQUIRED_TOOLS) {
       expect(computerToolRequiresApproval(name)).toBe(true);
@@ -362,17 +335,13 @@ describe("agent gateway computer tools", () => {
     expect(state.content.find((entry) => entry.type === "image")).toMatchObject({
       mimeType: "image/png",
     });
-    // The id is how the model names this picture later; the size is the space
-    // its coordinates are in. Region and scale still travel for the pane and
-    // for debugging, but the model is never asked to do arithmetic with them.
+
     const text = state.content.find((entry) => entry.type === "text");
     if (text?.type === "text") expect(text.text).toBe(JSON.stringify(JSON.parse(text.text)));
     expect(JSON.parse(text?.type === "text" ? text.text : "{}")).toMatchObject({
       screenshot: {
         screenshotId: "shot-1",
-        // The 1920x1080 workspace comes back downscaled: no image handed to a
-        // model may exceed the vision-API resize threshold, or the model reads
-        // coordinates off a picture the server never produced.
+
         width: 1_536,
         height: 864,
         region: { x: 0, y: 0, width: 1_920, height: 1_080 },
@@ -381,11 +350,9 @@ describe("agent gateway computer tools", () => {
     });
   });
 
-  /**
-   * The elements digest is the parity lever with macOS visual understanding:
-   * without it the model's only grounding is pixel estimation from a
-   * downscaled screenshot, which is how forms turned into scroll-hunting.
-   */
+  // The elements digest is the parity lever with macOS visual understanding: without it the model's
+  // only grounding is pixel estimation from a downscaled screenshot, which is how forms turned into
+  // scroll-hunting.
 
   it("refuses to point before the conversation has seen a screenshot", async () => {
     const { backend, call } = await setup();
@@ -398,14 +365,12 @@ describe("agent gateway computer tools", () => {
         message: expect.stringContaining("computer_screenshot"),
       },
     });
-    // A scroll distance is in screenshot pixels too, so it needs a frame even
-    // without a point.
+
     const scroll = await call("computer_scroll", { delta_x: 0, delta_y: 100 });
     expect(scroll.isError).toBe(true);
     expect(backend.callsFor("click")).toHaveLength(0);
     expect(backend.callsFor("scroll")).toHaveLength(0);
 
-    // A label needs no picture: it is resolved from the accessibility tree.
     const byLabel = await call("computer_click", {
       label: "Calculate",
       role: "button",
@@ -468,11 +433,7 @@ describe("agent gateway computer tools", () => {
 
     expect(result.isError).not.toBe(true);
     expect(result.content.map((entry) => entry.type)).toEqual(["text", "image"]);
-    // A bare coordinate names no window, so the capture goes to the window the
-    // compositor routed the click to — the topmost one at the point — and the
-    // metadata says which window the pixels cover. (An untargeted action also
-    // clears the pinned focus, so the focused-window fallback cannot answer
-    // here; the action point is what identifies the window.)
+
     const text = result.content.find((entry) => entry.type === "text");
     expect(JSON.parse(text?.type === "text" ? text.text : "{}")).toMatchObject({
       action: "computer_click",
@@ -487,16 +448,13 @@ describe("agent gateway computer tools", () => {
     expect(backend.callsFor("captureScreenshot").at(-1)?.args[0]).toEqual({
       kind: "window",
       windowId: "fake-terminal",
-      // Action observations spend a smaller pixel budget than perception ones.
+
       maxDimension: COMPUTER_ACTION_OBSERVATION_MAX_DIMENSION,
     });
 
-    // The observation is the picture the model reads next, so it is also the
-    // one its next coordinates are in: (5, 5) of the terminal is desktop (45, 45).
     await call("computer_click", { x: 5, y: 5 });
     expect(backend.callsFor("click").at(-1)?.args[0]).toEqual({ x: 45, y: 45 });
-    // The identical capture comes back as screenshotUnchanged, and the model is
-    // told to keep reading the previous picture — so that stays the frame.
+
     const repeat = await call("computer_click", { x: 5, y: 5 });
     expect(resultJson(repeat)).toMatchObject({ screenshotUnchanged: true });
     await call("computer_click", { x: 6, y: 6 });
@@ -508,9 +466,9 @@ describe("agent gateway computer tools", () => {
     const originalClick = backend.click.bind(backend);
     backend.click = async (target) => {
       const result = await originalClick(target);
-      // The click closed every window: by observation time the target is gone,
-      // and the one thing the result must not contain is a screenshot of
-      // whatever window remains focused — on a live desktop, the human's.
+      // The click closed every window: by observation time the target is gone, and the one thing the
+      // result must not contain is a screenshot of whatever window remains focused — on a live desktop,
+      // the human's.
       backend.emitWindowsChanged([]);
       return result;
     };
@@ -566,9 +524,7 @@ describe("agent gateway computer tools", () => {
 
   it("refuses the third identical mutating call that observed nothing", async () => {
     const { backend, call } = await setup();
-    // A keypress on the fake backend reports no delivery verdict, so its
-    // effect is dispatched-unknown — the unverified repeat this guard exists
-    // for. Two are ordinary retries; the third is a loop.
+
     const args = { key: "enter", include_screenshot: false };
     const first = await call("computer_press_key", args);
     expect(first.isError).not.toBe(true);
@@ -645,8 +601,8 @@ describe("agent gateway computer tools", () => {
   });
 
   it("refuses the repeat before the approval prompt and before dispatch", async () => {
-    // The guard fires ahead of consent: a refused loop must not spend an
-    // approval prompt on an action that will not run.
+    // The guard fires ahead of consent: a refused loop must not spend an approval prompt on an action
+    // that will not run.
     let approvals = 0;
     const { backend, call } = await setup(new FakeComputerBackend(), async () => {
       approvals += 1;
@@ -670,8 +626,7 @@ describe("agent gateway computer tools", () => {
       const result = await call("computer_get_state", { include_screenshot: false });
       expect(result.isError).not.toBe(true);
     }
-    // computer_read_clipboard sits in the approval set for privacy, but a
-    // re-read is not a mutating loop: it is deliberately out of the guard.
+
     for (let attempt = 0; attempt < 4; attempt += 1) {
       const result = await call("computer_read_clipboard", {});
       expect(result.isError).not.toBe(true);
@@ -708,7 +663,7 @@ describe("agent gateway computer tools", () => {
       node: expect.objectContaining({ label: "Display" }),
     });
     expect(selectCalls[0]?.args[1]).toEqual({ start: 0, length: 2 });
-    // The fake's read-back is the substring the range covers: "468"[0..2].
+
     expect(resultJson(selectText)).toMatchObject({
       action: "computer_select_text",
       value: "46",
@@ -734,13 +689,10 @@ describe("agent gateway computer tools", () => {
     expect(backend.callsFor("writeClipboard")).toHaveLength(0);
   });
 
-  /**
-   * MCP tool arguments are never validated against their JSON Schemas, so
-   * these bounds are enforced at the tool layer: an oversized set_value that
-   * fell back to typed keystrokes would hold the exclusive desktop lease and
-   * the turn for hours, and thousands of hotkey keys would hold the seat
-   * indefinitely as press/release pairs.
-   */
+  // MCP tool arguments are never validated against their JSON Schemas, so these bounds are enforced
+  // at the tool layer: an oversized set_value that fell back to typed keystrokes would hold the
+  // exclusive desktop lease and the turn for hours, and thousands of hotkey keys would hold the seat
+  // indefinitely as press/release pairs.
 
   it("refuses control-off mutations even for a gated provider without touching the backend", async () => {
     const { backend, manager, call } = await setup();
@@ -765,8 +717,7 @@ describe("agent gateway computer tools", () => {
       { label: "Display", start: 0, length: -1 },
       { label: "Display", start: 0.5, length: 1 },
       { label: "Display", start: 0, length: COMPUTER_SELECT_TEXT_RANGE_MAX + 1 },
-      // A coordinate cannot name which characters a range covers — refused
-      // outright rather than resolving the window's first writable field.
+
       { x: 100, y: 200, start: 0, length: 1 },
     ]) {
       const result = await call("computer_select_text", args);
@@ -788,7 +739,6 @@ describe("agent gateway computer tools", () => {
     const { backend, call, manager, see } = await setup();
     await see("thread-a");
 
-    // The first action to land owns the desktop; nothing asks for it explicitly.
     const owned = await call("computer_click", { x: 10, y: 10 }, undefined, "thread-a");
     expect(owned.isError).not.toBe(true);
 
@@ -801,12 +751,12 @@ describe("agent gateway computer tools", () => {
         message: expect.stringContaining("another conversation"),
       },
     });
-    // The refusal happens before the backend, so the loser never moves anything.
+
     expect(backend.callsFor("typeText")).toHaveLength(0);
 
-    // Reading the desktop is never arbitrated: the blocked thread can keep
-    // watching, which is what makes "try again later" actionable advice. (The
-    // state call gives the zoom that follows it a screenshot to point into.)
+    // Reading the desktop is never arbitrated: the blocked thread can keep watching, which is what
+    // makes "try again later" actionable advice. (The state call gives the zoom that follows it a
+    // screenshot to point into.)
     for (const [name, args] of [
       ["computer_list_windows", {}],
       ["computer_get_state", { include_screenshot: true }],
@@ -817,7 +767,6 @@ describe("agent gateway computer tools", () => {
       expect(perception.isError).not.toBe(true);
     }
 
-    // Turn end hands the desktop over; the roles then swap.
     await manager.releaseDesktopControl("thread-a");
     const handover = await call("computer_type_text", { text: "hello" }, undefined, "thread-b");
     expect(handover.isError).not.toBe(true);
@@ -827,24 +776,10 @@ describe("agent gateway computer tools", () => {
     });
   });
 
-  /**
-   * Models spell an omitted optional field as an explicit `null` all the time.
-   * Deciding "this scroll has a target" from which keys are present read that
-   * as a target, built an empty one, and had it refused as
-   * computer_target_invalid — a hard failure for a request that meant "scroll
-   * wherever the pointer is".
-   */
-
-  /**
-   * The JSON Schema bound is advisory: nothing validates MCP tool arguments
-   * against it before dispatch. Unclamped, a duration of 1e9 held the pointer
-   * button — and the exclusive desktop lease — for eleven days.
-   */
-
   it("never hands the model an image larger than it will actually be shown", async () => {
-    // Above roughly 1568 px on the long edge a vision API downscales the picture
-    // before the model sees it, so the model reads coordinates off an image the
-    // server never produced and the mapping is wrong by that ratio.
+    // Above roughly 1568 px on the long edge a vision API downscales the picture before the model sees
+    // it, so the model reads coordinates off an image the server never produced and the mapping is
+    // wrong by that ratio.
     const { backend, byName, call } = await setup();
     const schema = byName.get("computer_screenshot")?.definition.inputSchema as {
       properties: { max_dimension: { maximum: number } };
@@ -852,8 +787,6 @@ describe("agent gateway computer tools", () => {
     expect(schema.properties.max_dimension.maximum).toBe(DEFAULT_COMPUTER_CAPTURE_MAX_DIMENSION);
     expect(DEFAULT_COMPUTER_CAPTURE_MAX_DIMENSION).toBe(1_536);
 
-    // The schema bound is advisory — nothing validates MCP arguments against it
-    // — so the request is clamped here too.
     await call("computer_screenshot", {
       window_id: "fake-terminal",
       max_dimension: 8_000,
@@ -867,7 +800,6 @@ describe("agent gateway computer tools", () => {
 });
 
 describe("agent gateway computer setup prompts", () => {
-  /** One tool call against a backend whose window read fails the given way. */
   async function readFailingWith(error: unknown) {
     const backend = Object.assign(new FakeComputerBackend(), {
       listWindows: () => Promise.reject(error),
@@ -893,7 +825,6 @@ describe("agent gateway computer setup prompts", () => {
     expect(setupPrompts).toEqual(["computer_list_windows"]);
   });
 
-  /** One `computer_list_windows` against a backend that succeeds but is blocked. */
   async function readWith(overrides: Partial<FakeComputerBackend>) {
     const backend = Object.assign(new FakeComputerBackend(), overrides);
     const manager = new ComputerManager({ backend, actionSettleMs: 0 });
@@ -921,10 +852,6 @@ describe("agent gateway computer setup prompts", () => {
   }
 
   it("reads the missing grants fresh on every call, never from the previous answer", async () => {
-    // The live failure this signature exists to prevent: the user granted Screen
-    // Recording between two tool calls, the second call re-read a cached
-    // "missing", and the card and the model's refusal stayed on screen over a
-    // desktop that already worked.
     let granted = false;
     const { prompts } = await readWith({
       missingPermissions: () => {
@@ -1131,7 +1058,7 @@ describe("computer never-raise gate", () => {
       expect(raised.isError).not.toBe(true);
       expect(consent).toHaveBeenCalledTimes(1);
       expect(backend.callsFor("raiseWindow").length).toBeGreaterThan(0);
-      // The grant holds for the turn: a second raise does not prompt again.
+
       await call("computer_activate_window", { window_id: "fake-calculator" });
       expect(consent).toHaveBeenCalledTimes(1);
     } finally {
@@ -1159,9 +1086,6 @@ describe("computer never-raise gate", () => {
 });
 
 describe("computer_inspect", () => {
-  // The route is provider-agnostic; one gated and one gate-less provider cover
-  // both approval branches.
-
   it("refuses unknown routes, invalid schemas and extra fields before any backend call", async () => {
     const authorize = vi.fn(async () => true);
     const { backend, manager, call } = await setup(new FakeComputerBackend(), authorize);
@@ -1223,7 +1147,7 @@ describe("computer_run", () => {
         ok: false,
         error: { message: "seat unavailable" },
       });
-      // The third step never dispatched.
+
       expect(backend.callsFor("pressKey")).toHaveLength(0);
     } finally {
       await manager.dispose();
@@ -1291,7 +1215,7 @@ describe("computer_run", () => {
         ),
       );
       expect(result.isError).toBe(true);
-      // The turn died before step two: one click dispatched, nothing typed.
+
       expect(backend.callsFor("click")).toHaveLength(1);
       expect(backend.callsFor("typeText")).toHaveLength(0);
     } finally {
@@ -1382,8 +1306,8 @@ describe("multi-app driving", () => {
         expect(zoomed.isError).not.toBe(true);
         expect(zoomed.content.map((entry) => entry.type)).toEqual(["text", "image"]);
         expect(zoomed.content[1]).toMatchObject({ mimeType: "image/jpeg" });
-        // The magnified frame must not become a coordinate frame: a click aimed
-        // from it would land off-target.
+        // The magnified frame must not become a coordinate frame: a click aimed from it would land
+        // off-target.
         expect(resultJson(zoomed)).not.toHaveProperty("screenshot.screenshotId");
 
         const outOfBounds = await call("computer_zoom", {
@@ -1480,8 +1404,6 @@ describe("element refs", () => {
       const first = elementsOf(await call("computer_get_state", {}));
       const calculate = first.find((element) => element.label === "Calculate")!;
 
-      // A scoped second listing still shows the same number for it — refs do
-      // not re-seat when the model narrows or widens its view.
       const second = elementsOf(await call("computer_get_state", { window_id: "fake-calculator" }));
       expect(second.find((element) => element.label === "Calculate")?.ref).toBe(calculate.ref);
 

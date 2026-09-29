@@ -11,17 +11,16 @@ import {
 import type { AgentGatewayComputerToolsOptions } from "./computerTools.ts";
 import type { ToolContext } from "./toolRuntime.ts";
 
-/** Include agent-origin rows so an existing row cannot look like new steering. */
 function lastUserRowId(messages: readonly OrchestrationMessage[]): string | undefined {
   return messages.findLast((message) => message.role === "user")?.id;
 }
 
 export interface ComputerForegroundConsentOptions {
   readonly gate: Pick<ComputerApprovalGate, "hasForegroundGrant" | "requestForegroundTask">;
-  /** The caller thread's messages, or undefined when the thread is gone. */
+
   readonly loadMessages: (threadId: string) => Promise<readonly OrchestrationMessage[] | undefined>;
   readonly knownAppNames: () => readonly string[];
-  /** Publishes the approval card for one prompt and later its resolution. */
+
   readonly publish: (
     name: string,
     args: Record<string, unknown>,
@@ -29,15 +28,9 @@ export interface ComputerForegroundConsentOptions {
   ) => (requestId: string, decision?: ProviderApprovalDecision) => Promise<void>;
 }
 
-/**
- * Whether a computer task may bring windows in front of the user. Native apps
- * and browsers share it, and full-access mode alone never answers yes.
- *
- * Two sources count: the user's own words in this task, or their click on the
- * visible-use approval card this turn. The card is asked only when the words
- * did not already answer, and its answer (either way) holds for the turn, so
- * the model can neither word its way past it nor make the user repeat it.
- */
+// Native apps and browsers share it, and full-access mode alone never answers yes. The card is
+// asked only when the words did not already answer, and its answer (either way) holds for the turn,
+// so the model can neither word its way past it nor make the user repeat it.
 export function makeComputerForegroundConsent(options: ComputerForegroundConsentOptions): {
   readonly resolveForegroundAuthorization: NonNullable<
     AgentGatewayComputerToolsOptions["resolveForegroundAuthorization"]

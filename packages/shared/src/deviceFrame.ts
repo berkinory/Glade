@@ -7,7 +7,6 @@ import {
   type DeviceFrameHeader,
 } from "@glade/contracts";
 
-/** Encoded device frames use a dedicated, uncompressed WebSocket connection. */
 export const DEVICE_FRAME_WS_PATH = "/ws/device-frames";
 export const DEVICE_FRAME_WS_UDID_PARAM = "udid";
 export const DEVICE_FRAME_RESYNC_MESSAGE = "device.frame.resync";
@@ -31,10 +30,6 @@ const DEVICE_FRAME_CODEC = {
   maxStreamIdBytes: DEVICE_FRAME_MAX_DEVICE_ID_BYTES,
 } as const;
 
-/**
- * Serializes a device frame through the shared binary envelope codec. The
- * device-shaped wrapper preserves the existing wire format and error names.
- */
 export const encodeDeviceFrame = (frame: DeviceFrame): Uint8Array => {
   try {
     return encodeFrameEnvelope(DEVICE_FRAME_CODEC, {
@@ -55,7 +50,6 @@ export const encodeDeviceFrame = (frame: DeviceFrame): Uint8Array => {
   }
 };
 
-/** Parses a binary device-frame message without copying its payload. */
 export const decodeDeviceFrame = (bytes: Uint8Array): DeviceFrameDecodeResult => {
   const result = decodeFrameEnvelope(DEVICE_FRAME_CODEC, bytes);
   if (!result.ok) {

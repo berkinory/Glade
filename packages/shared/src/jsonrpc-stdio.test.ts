@@ -35,8 +35,7 @@ describe("shared JSON-RPC stdio transport", () => {
     expect(() => framer.push(Buffer.from("56789"))).toThrowError(
       expect.objectContaining({ reason: "frame-too-large" }),
     );
-    // The partial line used to be retained, so it both re-threw on every later
-    // push and would have been spliced onto whatever line arrived next.
+
     expect(framer.bufferedBytes).toBe(0);
     expect(framer.push(Buffer.from('tail\n{"id":1}\n'))).toEqual(['{"id":1}']);
   });
@@ -49,7 +48,6 @@ describe("shared JSON-RPC stdio transport", () => {
     expect(framer.push(Buffer.from("still the same oversized line"))).toEqual([]);
     expect(framer.push(Buffer.from('tail\n{"id":1}\n'))).toEqual(['{"id":1}']);
 
-    // One report for one bad line, not one per chunk it spanned.
     expect(errors.map((error) => error.reason)).toEqual(["frame-too-large"]);
     expect(framer.bufferedBytes).toBe(0);
   });

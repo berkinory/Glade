@@ -262,8 +262,7 @@ validationLayer("CodexAdapterLive validation", (it) => {
         effort: "high",
         serviceTier: "fast",
         runtimeMode: "full-access",
-        // The manager owns Codex session restarts, so it carries the capability
-        // facts its gateway lease derives from.
+
         agentGatewayCapabilityInput: { enableComputerControl: false },
       });
     }),
@@ -1328,9 +1327,6 @@ lifecycleLayer("CodexAdapterLive lifecycle", (it) => {
         const adapter = yield* CodexAdapter;
         const firstEventFiber = yield* Stream.runHead(adapter.streamEvents).pipe(Effect.forkChild);
 
-        // `item/agentMessage/completed` has no explicit mapping (only the
-        // `item/agentMessage/delta` stream does); before the passthrough
-        // fallback this event produced no runtime event at all.
         lifecycleManager.emit("event", {
           id: asEventId("evt-unmapped-agent-message-completed"),
           kind: "notification",
@@ -1361,7 +1357,7 @@ lifecycleLayer("CodexAdapterLive lifecycle", (it) => {
         if (firstEvent.value.type !== "event.unmapped") {
           return;
         }
-        // Raw native type/label is carried as the title source.
+
         assert.equal(firstEvent.value.payload.nativeType, "item/agentMessage/completed");
         assert.equal(firstEvent.value.payload.detail, "Finished the refactor");
         const serialized = JSON.stringify(firstEvent.value);
@@ -1371,7 +1367,7 @@ lifecycleLayer("CodexAdapterLive lifecycle", (it) => {
         assert.deepEqual(firstEvent.value.raw?.payload, {
           gladeSanitized: true,
         });
-        // Provider refs still resolved from the raw event.
+
         assert.equal(firstEvent.value.itemId, "agent_message_9");
         assert.equal(firstEvent.value.providerRefs?.providerItemId, "agent_message_9");
       }),

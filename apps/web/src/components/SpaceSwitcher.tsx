@@ -1,6 +1,3 @@
-// FILE: SpaceSwitcher.tsx
-// Purpose: Arc-style horizontal Space tabs with reordering and tab management.
-
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -48,7 +45,6 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 
 export type SpaceActivityTone = "attention" | "running" | "completed";
 
-/** HTML5 drag payload for filing a project by dropping it onto a space tab. */
 export const PROJECT_SPACE_DRAG_MIME = "application/x-glade-project";
 
 function readDraggedProjectId(event: DragEvent): ProjectId | null {
@@ -66,44 +62,29 @@ function isProjectDrag(event: DragEvent): boolean {
   return event.dataTransfer.types.includes(PROJECT_SPACE_DRAG_MIME);
 }
 
-/**
- * A tab dot is a whole space summarised into one pixel, so it has to speak the same
- * colour language as the per-thread status dots it stands in for (see the `dotClass`
- * values in Sidebar.logic.ts): amber = you are blocking something, sky = work in
- * flight, emerald = finished. Tones are per-theme because a 400-weight dot dies on
- * the light sidebar and glares on the dark one.
- */
+// A tab dot is a whole space summarised into one pixel, so it has to speak the same colour language
+// as the per-thread status dots it stands in for (see the `dotClass` values in Sidebar.logic.ts):
+// amber = you are blocking something, sky = work in flight, emerald = finished. Tones are per-theme
+// because a 400-weight dot dies on the light sidebar and glares on the dark one.
 const SPACE_ACTIVITY_DOT_CLASS_NAME: Record<SpaceActivityTone, string> = {
   attention: "bg-amber-500 dark:bg-amber-300/90",
   running: "bg-sky-500 dark:bg-sky-300/80",
   completed: "bg-emerald-500 dark:bg-emerald-300/90",
 };
 
-/** Spoken and hover wording for a tone. The internal tone keys must never reach a user. */
+// Spoken and hover wording for a tone. The internal tone keys must never reach a user.
 const SPACE_ACTIVITY_LABEL: Record<SpaceActivityTone, string> = {
   attention: "Needs attention",
   running: "Working",
   completed: "Done",
 };
 
-/**
- * Width of the edge fade that signals more tabs are scrolled out of view. The overflow
- * distances are seeded at 0 here (no fade) and then written straight onto the node by
- * `useTabStripOverflow`; declaring them up front keeps the mask valid on first paint.
- */
 const TAB_STRIP_FADE_CLASS_NAME =
   "mask-l-from-[calc(100%-min(var(--fade-size),var(--space-overflow-start)))] mask-r-from-[calc(100%-min(var(--fade-size),var(--space-overflow-end)))] [--fade-size:1.25rem] [--space-overflow-end:0px] [--space-overflow-start:0px]";
 
 const SPACE_TAB_CLASS_NAME =
   "relative flex size-6 shrink-0 cursor-pointer touch-none items-center justify-center rounded-md text-muted-foreground/70 outline-hidden transition-colors hover:bg-[var(--sidebar-accent)] hover:text-[var(--sidebar-accent-foreground)] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring";
 
-/**
- * Hover and selection share one token (`--sidebar-accent`/`--sidebar-accent-active`
- * resolve to the same 4% wash), so an icon-only tab cannot lean on background alone
- * the way a labelled sidebar row does. Selection is carried by the hairline ring and
- * full-strength glyph on top of that wash. The ring is inset: drawn outside it would
- * make the active tab render 26px next to a 24px hovered neighbour.
- */
 const SPACE_TAB_ACTIVE_CLASS_NAME =
   "bg-[var(--sidebar-accent-active)] text-[var(--sidebar-accent-foreground)] ring-1 ring-border/70 ring-inset";
 
@@ -112,7 +93,6 @@ function SpaceActivityDot({ tone }: { tone: SpaceActivityTone }) {
     <span
       aria-hidden="true"
       className={cn(
-        // The ring punches the dot out of the tab surface beneath it.
         "pointer-events-none absolute top-0.5 right-0.5 size-1.5 rounded-full ring-2 ring-[var(--sidebar)]",
         SPACE_ACTIVITY_DOT_CLASS_NAME[tone],
       )}
@@ -126,36 +106,32 @@ interface SpaceTabSortable {
   setNodeRef: SortableState["setNodeRef"];
   style: CSSProperties;
   isDragging: boolean;
-  /**
-   * Pointer activators only. dnd-kit's `attributes` are deliberately not carried across —
-   * see `SortableSpaceTab`.
-   */
+
   listeners: SortableState["listeners"];
 }
 
 function SpaceTab(props: {
   icon: SpaceIconValue;
   name: string;
-  /** Extra tooltip/spoken context that the icon alone cannot carry (Void). */
+
   hint?: string;
-  /** Rendered jump-chord label (e.g. "⌘⌥2") appended to the tooltip. */
+
   shortcutLabel?: string | null;
   active: boolean;
   activityTone: SpaceActivityTone | null;
   onSelect: () => void;
-  /** Opens the name/icon editor. Double-click is the discoverable half of the context menu. */
+
   onEdit: () => void;
-  /** Second tooltip line naming the pointer gestures this tab supports. */
+
   gestureHint?: string;
   onContextMenu?: (event: MouseEvent<HTMLButtonElement>) => void;
-  /** Files the dragged project into this tab's space. */
+
   onProjectDrop?: (projectId: ProjectId) => void;
   sortable?: SpaceTabSortable;
 }) {
   const toneLabel = props.activityTone ? SPACE_ACTIVITY_LABEL[props.activityTone] : null;
   const detail = toneLabel ?? props.hint ?? null;
-  // Counter, not a boolean: dragenter/dragleave also fire for the tab's child spans, and
-  // a boolean would flicker off while the pointer crosses them.
+
   const dragDepthRef = useRef(0);
   const [dropActive, setDropActive] = useState(false);
   const { onProjectDrop } = props;
@@ -199,7 +175,6 @@ function SpaceTab(props: {
             role="tab"
             data-space-tab
             aria-selected={props.active}
-            // Roving tabindex: the strip is one tab stop, arrows move within it.
             tabIndex={props.active ? 0 : -1}
             aria-label={[props.name, props.hint, toneLabel].filter(Boolean).join(", ")}
             onClick={props.onSelect}
@@ -225,9 +200,7 @@ function SpaceTab(props: {
         {props.shortcutLabel ? (
           <ShortcutKbd shortcutLabel={props.shortcutLabel} className="ms-1" />
         ) : null}
-        {/* Renaming and reordering are pointer gestures with no visible affordance of their
-            own, so the tooltip is the only place they can be discovered. It is a deliberate
-            hover, and the line is muted and secondary, so it stays out of the way once known. */}
+        {}
         {props.gestureHint ? (
           <span className="mt-0.5 block text-[0.9em] text-muted-foreground/60">
             {props.gestureHint}
@@ -248,11 +221,6 @@ function SortableSpaceTab(props: {
   onContextMenu: (event: MouseEvent<HTMLButtonElement>) => void;
   onProjectDrop: (projectId: ProjectId) => void;
 }) {
-  // `sortable.attributes` is dropped whole, not filtered: `role`/`tabIndex`/`aria-pressed`
-  // fight the tab role and roving tabindex, and the rest advertise a keyboard drag that
-  // does not exist here — the strip registers a PointerSensor only, so dnd-kit's "press
-  // the space bar to pick up" instructions would send a screen-reader user into the
-  // button's onClick and switch Space. Reordering is pointer-only, so it stays unspoken.
   const sortable = useSortable({ id: props.space.id });
 
   return (
@@ -272,8 +240,7 @@ function SortableSpaceTab(props: {
         style: {
           transform: CSS.Translate.toString(sortable.transform),
           transition: sortable.transition,
-          // A tab is primarily a click target, so it only claims the drag cursor once a
-          // drag is actually under way.
+
           ...(sortable.isDragging ? { cursor: "grabbing" } : {}),
         },
         isDragging: sortable.isDragging,
@@ -283,17 +250,8 @@ function SortableSpaceTab(props: {
   );
 }
 
-/**
- * Tracks how far the strip is scrolled past each edge so the fade only appears on the
- * side that actually has hidden tabs. Mirrors the overflow-driven fade in ScrollArea,
- * which cannot be reused here: its viewport is focusable and would inject a tab stop
- * into the middle of the tablist.
- *
- * The distances are written onto the node as custom properties rather than held in
- * state: this runs on every scroll frame, and re-rendering the whole strip (each tab
- * is a tooltip and a dnd-kit sortable) to move a gradient by a pixel is work the
- * compositor already does for free.
- */
+// ScrollArea adds a tab stop unsuitable for this tablist. Write fades to CSS properties to avoid
+// rendering every tab on each scroll frame.
 function useTabStripOverflow(dependencyKey: string) {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
 
@@ -311,8 +269,7 @@ function useTabStripOverflow(dependencyKey: string) {
 
     update();
     node.addEventListener("scroll", update, { passive: true });
-    // Catches the strip being resized by the sidebar; `dependencyKey` covers tabs
-    // being added or removed, which leaves the scroller's own box unchanged.
+
     const observer = new ResizeObserver(update);
     observer.observe(node);
     return () => {
@@ -324,15 +281,9 @@ function useTabStripOverflow(dependencyKey: string) {
   return scrollerRef;
 }
 
-/**
- * The active space's name doubles as its rename affordance: double-click edits in
- * place, Enter or blur commits when valid, Escape cancels. Void has no stored row but
- * renames the same way — its name is a local presentation preference, and being unable
- * to rename the one group every install starts in is exactly the wrong asymmetry.
- */
 function SpaceNameLabel(props: {
   displayName: string;
-  /** Names held by the other spaces (and by Void), which this rename may not collide with. */
+
   takenNames: ReadonlyArray<string>;
   onRename: (name: string) => void;
 }) {
@@ -390,7 +341,7 @@ interface SpaceSwitcherProps {
   spaces: ReadonlyArray<Space>;
   activeSpaceId: SpaceId | null;
   activityBySpaceId: ReadonlyMap<SpaceId | null, SpaceActivityTone>;
-  /** How the unfiled group presents itself; user-set, so never the constant. */
+
   voidSpace: VoidSpacePresentation;
   onSelect: (spaceId: SpaceId | null) => void;
   onCreate: () => void;
@@ -398,19 +349,16 @@ interface SpaceSwitcherProps {
   onDelete: (space: Space) => void;
   onReorder: (orderedSpaceIds: ReadonlyArray<SpaceId>, movedSpaceId: SpaceId) => void;
   onRenameSpace: (space: Space, name: string) => void;
-  /** Void edits are presentation-only, so they take a separate path from a Space rename. */
+
   onEditVoid: () => void;
   onRenameVoid: (name: string) => void;
   onResetVoid: () => void;
   onDropProject: (projectId: ProjectId, spaceId: SpaceId | null) => void;
-  /** Jump-chord label for a tab position (0 = Void), shown in the tab tooltip. */
+
   jumpShortcutLabelForTab?: (tabIndex: number) => string | null;
 }
 
 export function SpaceSwitcher(props: SpaceSwitcherProps) {
-  // Zero spaces means zero chrome: the strip (and the Void tab it would carry) only
-  // exists once there is a second place for a project to be. Creation lives in the
-  // project context menu and the command palette until then.
   if (props.spaces.length === 0) {
     return null;
   }
@@ -421,15 +369,10 @@ function SpaceSwitcherStrip(props: SpaceSwitcherProps) {
   const { onSelect } = props;
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
   const [contextState, setContextState] = useState<{
-    /** `null` targets Void, which has no row but still owns a name and an icon. */
     space: Space | null;
     position: { x: number; y: number };
   } | null>(null);
-  /**
-   * A finished drag still ends in a `click` on the tab that was picked up, which would
-   * navigate into the space the user was only rearranging. The flag is armed when a drag
-   * starts and disarmed by the next press, so a swallowed click can never eat the one after it.
-   */
+
   const dragEndedRef = useRef(false);
   const contextAnchor = useMemo(
     () => (contextState ? createClientPointMenuAnchor(contextState.position) : null),
@@ -437,21 +380,15 @@ function SpaceSwitcherStrip(props: SpaceSwitcherProps) {
   );
   const spaceOrderKey = props.spaces.map((space) => space.id).join();
   const scrollerRef = useTabStripOverflow(spaceOrderKey);
-  /**
-   * `activeSpaceId` can name a Space this strip has no tab for: the selection is restored
-   * from session storage synchronously on reload while `spaces` is still empty, and another
-   * window can delete the Space we are sitting in. Every other Space id in the app resolves
-   * to "unassigned" when it cannot be found, so this one does too — otherwise the header
-   * would name one Space while no tab looked selected, and, because the tab stop rides on
-   * the selected tab, the whole strip would silently drop out of the Tab order. Presenting
-   * Void is also the state the store reconciles itself to a moment later.
-   */
+  // Every other Space id in the app resolves to "unassigned" when it cannot be found, so this one
+  // does too — otherwise the header would name one Space while no tab looked selected, and, because
+  // the tab stop rides on the selected tab, the whole strip would silently drop out of the Tab order.
   const activeSpaceId = resolveActiveSpaceId(props.activeSpaceId, props.spaces);
   const activeSpace = activeSpaceId
     ? (props.spaces.find((space) => space.id === activeSpaceId) ?? null)
     : null;
   const activeSpaceName = spaceDisplayName(activeSpaceId, props.spaces, props.voidSpace);
-  /** Every name the header rename must not land on: the other spaces, plus Void or itself. */
+  // Every name the header rename must not land on: the other spaces, plus Void or itself.
   const takenNames = [
     ...props.spaces.filter((space) => space.id !== activeSpaceId).map((space) => space.name),
     ...(activeSpace ? [props.voidSpace.name] : []),
@@ -460,9 +397,6 @@ function SpaceSwitcherStrip(props: SpaceSwitcherProps) {
     props.voidSpace.name !== DEFAULT_VOID_SPACE.name ||
     props.voidSpace.icon !== DEFAULT_VOID_SPACE.icon;
 
-  /**
-   * A tab click that only ends a drag is dropped rather than navigating (see `dragEndedRef`).
-   */
   const selectFromClick = useCallback(
     (spaceId: SpaceId | null) => {
       if (dragEndedRef.current) {
@@ -474,14 +408,6 @@ function SpaceSwitcherStrip(props: SpaceSwitcherProps) {
     [onSelect],
   );
 
-  /**
-   * Manual activation: the arrows move focus and Enter/Space commits (native on a
-   * `<button>`). Tabs normally select as you arrow onto them, but selecting a Space
-   * here is a route change that tears down and restores an entire working context —
-   * sweeping the strip would fire one navigation per keypress and leave the loser
-   * contexts recorded as "most recent". Users who want to sweep have the dedicated
-   * previous/next-space shortcuts, which are built for exactly that.
-   */
   const handleTabStripKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     const tabs = Array.from(
@@ -501,7 +427,6 @@ function SpaceSwitcherStrip(props: SpaceSwitcherProps) {
     tabs[nextIndex]?.focus();
   }, []);
 
-  // Void sits outside the scroller, so it can never need revealing.
   useEffect(() => {
     if (activeSpaceId === null) return;
     scrollerRef.current
@@ -518,8 +443,6 @@ function SpaceSwitcherStrip(props: SpaceSwitcherProps) {
         )}
       >
         <SpaceNameLabel
-          // Keyed by the active space so switching spaces mid-edit discards the draft
-          // instead of leaving an input bound to a different space's rename handler.
           key={spaceKey(activeSpaceId)}
           displayName={activeSpaceName}
           takenNames={takenNames}
@@ -530,9 +453,7 @@ function SpaceSwitcherStrip(props: SpaceSwitcherProps) {
         />
       </div>
 
-      {/* px-1 keeps a 24px tab's 14px glyph centred on the same x (16px) as the
-          leading glyph of a project row below, so the two lists share one optical margin.
-          gap-1: adjacent washed tabs (active next to hovered) read as one blob at 2px. */}
+      {}
       <div className="flex items-center gap-1 px-1">
         <div
           role="tablist"
@@ -540,15 +461,13 @@ function SpaceSwitcherStrip(props: SpaceSwitcherProps) {
           aria-orientation="horizontal"
           className="flex min-w-0 flex-1 items-center gap-1"
           onKeyDown={handleTabStripKeyDown}
-          // Every press starts a fresh interaction, so it clears any click suppression a
-          // previous drag armed but never spent (a drag cancelled with Escape, say).
+          // Every press starts a fresh interaction, so it clears any click suppression a previous drag armed
+          // but never spent (a drag cancelled with Escape, say).
           onPointerDownCapture={() => {
             dragEndedRef.current = false;
           }}
         >
-          {/* Void keeps its place at the head of the strip even when renamed: it is not a
-              stored row, so it has no sort order to move, and "everything not filed" reads
-              as the origin of the list rather than one entry within it. */}
+          {}
           <SpaceTab
             icon={props.voidSpace.icon}
             name={props.voidSpace.name}
@@ -660,9 +579,6 @@ function SpaceSwitcherStrip(props: SpaceSwitcherProps) {
                 <span>{contextState.space ? "Edit space…" : "Edit name and icon…"}</span>
               </MenuItem>
               {contextState.space ? (
-                // Neutral, not red: deleting a space only files its projects back into
-                // Void, and the sibling project menu keeps its harder "Delete project"
-                // neutral too. Reddening the milder action would invert the hierarchy.
                 <MenuItem
                   className={SIDEBAR_CONTEXT_MENU_ITEM_CLASS_NAME}
                   onClick={() => {
@@ -675,8 +591,6 @@ function SpaceSwitcherStrip(props: SpaceSwitcherProps) {
                   <span>Delete space</span>
                 </MenuItem>
               ) : voidIsCustomized ? (
-                // Void cannot be deleted — it is where projects live when they are nowhere —
-                // so the slot below "Edit" is the way back to the shipped name and icon.
                 <MenuItem
                   className={SIDEBAR_CONTEXT_MENU_ITEM_CLASS_NAME}
                   onClick={() => {

@@ -50,8 +50,6 @@ export function resolveBranchToolbarValue(input: {
   return currentGitBranch ?? activeThreadBranch;
 }
 
-// Local threads should mirror the concrete checkout; stale thread metadata makes
-// the current Git branch appear selectable while clicks only perform a no-op.
 export function shouldSyncLocalThreadBranch(input: {
   envMode: EnvMode;
   activeWorktreePath: string | null;
@@ -72,7 +70,6 @@ export function shouldSyncLocalThreadBranch(input: {
   );
 }
 
-// Branch-only local updates should keep the paired worktree metadata intact.
 export function resolveAssociatedWorktreeMetadataAfterWorkspacePatch(input: {
   branch: string | null;
   worktreePath: string | null;

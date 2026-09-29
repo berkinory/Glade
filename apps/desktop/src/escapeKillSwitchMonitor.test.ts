@@ -9,13 +9,6 @@ import {
   type EscapeKillSwitchMonitorOptions,
 } from "./escapeKillSwitchMonitor";
 
-/**
- * A stand-in for the `--escape-monitor` helper: stdin lines are captured as
- * arm/disarm commands, stdout is the NDJSON channel the helper reports on,
- * and `close`/`error` simulate the process dying underneath the monitor.
- * `stdin.write` is a plain function rather than a real Writable so command
- * delivery is synchronous in assertions.
- */
 class FakeHelper extends EventEmitter {
   readonly stdout = new PassThrough();
   readonly stderr = new PassThrough();
@@ -77,8 +70,8 @@ describe("EscapeKillSwitchMonitor", () => {
     helpers[0]!.stdout.write('{"type":"ready"}\n');
     helpers[0]!.stdout.write('{"type":"escape","capturedAt":"2026-09-18T00:00:00Z"}\n');
     await vi.waitFor(() => expect(onEscape).toHaveBeenCalledTimes(1));
-    // A second physical press is a second event — the monitor must not
-    // coalesce repeated presses, because each one re-confirms the kill.
+    // A second physical press is a second event — the monitor must not coalesce repeated presses,
+    // because each one re-confirms the kill.
     helpers[0]!.stdout.write('{"type":"escape"}\n');
     await vi.waitFor(() => expect(onEscape).toHaveBeenCalledTimes(2));
     monitor.dispose();
@@ -109,12 +102,11 @@ describe("EscapeKillSwitchMonitor", () => {
     monitor.setArmed(true);
     const first = helpers[0]!;
     first.emit("close", 1);
-    // First respawn waits the base backoff, not forever.
+
     vi.advanceTimersByTime(1_100);
     expect(helpers).toHaveLength(2);
     const second = helpers[1]!;
-    // The armed side of the gate is replayed so a restarted helper does not
-    // silently widen the window where Escape is inert.
+
     expect(second.stdinCommands).toEqual(["arm\n"]);
     monitor.dispose();
   });

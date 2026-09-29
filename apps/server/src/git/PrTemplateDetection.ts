@@ -248,8 +248,6 @@ export const detectPrTemplate = Effect.fn("detectPrTemplate")(function* (
       ["docs", docsEntries],
     ]);
 
-    // GitHub checks the supported default-file locations in this order. A default file is
-    // automatically applied even when chooser-only templates also exist in a template directory.
     for (const rootDirectory of TEMPLATE_ROOT_DIRECTORIES) {
       const entries = entriesByRoot.get(rootDirectory) ?? [];
       const selection = yield* selectTemplate({

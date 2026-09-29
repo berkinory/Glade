@@ -1,8 +1,3 @@
-// FILE: computerPermissionsIpc.ts
-// Purpose: Centralizes the desktop Computer IPC contract and renderer push events.
-// Layer: Desktop IPC adapter
-// Depends on: Electron IPC and DesktopComputerManager.
-
 import type { IpcMain, WebContents } from "electron";
 import type {
   DesktopComputerPermissionGuideState,

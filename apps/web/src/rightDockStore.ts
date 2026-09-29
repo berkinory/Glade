@@ -1,8 +1,3 @@
-// FILE: rightDockStore.ts
-// Purpose: Persist the tabbed right-dock state (open panes + active tab) per host thread.
-// Layer: UI state store
-// Exports: dock store hook, per-thread selector, and stable default snapshot.
-
 import type { ThreadId } from "@glade/contracts";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
@@ -57,9 +52,6 @@ interface RightDockStore {
   clearThreadDockState: (threadId: ThreadId) => void;
 }
 
-// Frozen shared snapshot: it is handed back from `selectRightDockState` for any
-// thread without persisted dock state, so it must stay a stable, immutable
-// reference (transitions always build new objects rather than mutating it).
 const DEFAULT_RIGHT_DOCK_STATE = createDefaultRightDockState();
 Object.freeze(DEFAULT_RIGHT_DOCK_STATE);
 Object.freeze(DEFAULT_RIGHT_DOCK_STATE.panes);
@@ -117,8 +109,8 @@ export const useRightDockStore = create<RightDockStore>()(
     {
       name: RIGHT_DOCK_STORAGE_KEY,
       storage: createJSONStorage(() => localStorage),
-      // Validate persisted panes on rehydrate so a stale/unknown pane kind from
-      // an older app version can never crash the dock during render.
+      // Validate persisted panes on rehydrate so a stale/unknown pane kind from an older app version can
+      // never crash the dock during render.
       merge: (persisted, current) => ({
         ...current,
         dockStateByThreadId: sanitizeRightDockStateByThreadId(
@@ -130,8 +122,6 @@ export const useRightDockStore = create<RightDockStore>()(
 );
 
 export function selectRightDockState(threadId: ThreadId | null) {
-  // Keep the fallback snapshot stable so React does not observe phantom store
-  // changes while mounting a thread that has no persisted dock state yet.
   return (store: RightDockStore) =>
     (threadId ? store.dockStateByThreadId[threadId] : undefined) ?? DEFAULT_RIGHT_DOCK_STATE;
 }

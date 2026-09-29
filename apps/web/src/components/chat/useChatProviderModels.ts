@@ -61,8 +61,8 @@ export function useChatProviderModels({
       activeThread.messages.length > 0 ||
       activeThread.session !== null),
   );
-  // Forks import source history as fork-import rows. Those imports must not lock the
-  // provider picker before the Side produces its first native turn (#810).
+  // Forks import source history as fork-import rows. Those imports must not lock the provider picker
+  // before the Side produces its first native turn (#810).
   const hasProviderLockingActivity = Boolean(
     activeThread && threadHasProviderLockingActivity(activeThread),
   );
@@ -77,7 +77,6 @@ export function useChatProviderModels({
   const selectedProvider = useMemo<ProviderKind>(
     () =>
       lockedProvider ??
-      // Keep an unstarted draft pinned to its explicit provider; availability is validated at send time.
       selectedProviderByThreadId ??
       resolveAvailableProviderPreference({
         preferredProvider: preferredDraftProvider,

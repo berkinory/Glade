@@ -1,9 +1,6 @@
 import * as Effect from "effect/Effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 
-// Operator reconciliation is append-only evidence. The delivery row may move
-// back to retry or forward to succeeded, but the decision that authorized that
-// transition remains attached to the exact consumer/event owner.
 export default Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
 

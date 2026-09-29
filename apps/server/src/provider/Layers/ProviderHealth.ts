@@ -1,13 +1,3 @@
-/**
- * ProviderHealthLive - Cache-backed provider health service.
- *
- * Seeds provider status from disk cache when available, then refreshes from
- * CLI probes without blocking the rest of server startup.
- *
- * Uses effect's ChildProcessSpawner to run CLI probes natively.
- *
- * @module ProviderHealthLive
- */
 import * as OS from "node:os";
 import type {
   ProviderKind,
@@ -179,18 +169,12 @@ const PACKAGE_MANAGED_PROVIDER_UPDATES: Partial<
       args: () => ["update"],
       lockKey: "claude-native",
       strategy: "matching-path",
-      // Native Claude owns stable/latest channel selection. npm's latest tag cannot
-      // tell whether the installed CLI is current for the user's configured channel.
+
       latestVersionSource: null,
       isCommandPath: isClaudeNativeCommandPath,
     },
   },
 };
-
-// ── Pure helpers ────────────────────────────────────────────────────
-//
-// Generic CLI-output parsing lives in ../providerCliOutput; Claude auth-status
-// interpretation lives in ../claudeAuthStatus.
 
 function resolveVoiceTranscriptionAvailability(
   authMethod: string | undefined,
@@ -200,12 +184,6 @@ function resolveVoiceTranscriptionAvailability(
   }
   return authMethod === "chatgpt" || authMethod === "chatgptAuthTokens";
 }
-
-// ── Subscription type detection ─────────────────────────────────────
-//
-// Walks arbitrary JSON output from `<provider> auth status` looking for a
-// subscription/plan identifier. Used as a best-effort first pass; the SDK
-// probe below is the reliable source when available.
 
 const SUBSCRIPTION_TYPE_KEYS = [
   "subscriptionType",
@@ -280,8 +258,6 @@ function extractClaudeAuthMethodFromOutput(result: CommandResult): string | unde
   return Option.getOrUndefined(findAuthMethodDeep(parsed.success));
 }
 
-// ── Codex subscription label ────────────────────────────────────────
-
 type CodexPlanTypeLiteral =
   | "free"
   | "go"
@@ -353,14 +329,8 @@ function extractCodexAccountTypeFromOutput(result: CommandResult): string | unde
   return walk(parsed.success);
 }
 
-// ── Claude SDK capability probe ─────────────────────────────────────
-//
-// Spawns a lightweight Claude Agent SDK session and reads the
-// initialization result. The prompt is a never-yielding AsyncIterable so
-// no user message reaches the Anthropic API — we get account metadata
-// (including subscription type) from local IPC, then abort the
-// subprocess. Used as a fallback when `claude auth status` output
-// doesn't include subscription info.
+// The prompt is a never-yielding AsyncIterable so no user message reaches the Anthropic API — we
+// get account metadata (including subscription type) from local IPC, then abort the subprocess.
 
 const CAPABILITIES_PROBE_TIMEOUT_MS = 8_000;
 
@@ -503,18 +473,9 @@ function parseAuthStatusFromOutput(result: CommandResult): {
   };
 }
 
-// ── Codex CLI config detection ──────────────────────────────────────
-
-/**
- * Providers that use OpenAI-native authentication via `codex login`.
- * When the configured `model_provider` is one of these, the `codex login
- * status` probe still runs. For any other provider value the auth probe
- * is skipped because authentication is handled externally (e.g. via
- * environment variables like `PORTKEY_API_KEY` or `AZURE_API_KEY`).
- */
+// For any other provider value the auth probe is skipped because authentication is handled
+// externally (e.g. via environment variables like `PORTKEY_API_KEY` or `AZURE_API_KEY`).
 const OPENAI_AUTH_PROVIDERS = new Set(["openai"]);
-
-// ── Effect-native command execution ─────────────────────────────────
 
 const collectStreamAsString = <E>(stream: Stream.Stream<Uint8Array, E>): Effect.Effect<string, E> =>
   Stream.runFold(
@@ -532,8 +493,7 @@ const runProviderCommand = (
     const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
     const command = makeEffectProcessCommand(executable, args, {
       env,
-      // Health probes are non-interactive. Leaving stdin as a pipe can keep CLIs
-      // when a CLI waits after its output is complete.
+
       stdin: "ignore",
     });
 
@@ -577,8 +537,6 @@ const runClaudeCommand = (
     ),
   );
 
-// ── Health check ────────────────────────────────────────────────────
-
 async function makeCodexProbeEnv(homePath?: string): Promise<NodeJS.ProcessEnv> {
   const normalizedHomePath = nonEmptyTrimmed(homePath);
   return buildCodexProcessEnv(normalizedHomePath ? { homePath: normalizedHomePath } : {});
@@ -620,7 +578,6 @@ const makeCheckCodexProviderStatus = (
     const checkedAt = new Date().toISOString();
     const probeEnv = yield* Effect.promise(() => makeCodexProbeEnv(homePath));
 
-    // Probe 1: `codex --version` — is the CLI reachable?
     const versionProbe = yield* probeProviderCliVersion(
       runCodexCommand(["--version"], executable, probeEnv),
       DEFAULT_TIMEOUT_MS,
@@ -683,12 +640,6 @@ const makeCheckCodexProviderStatus = (
       parsedVersion !== null &&
       compareCodexCliVersions(parsedVersion, MINIMUM_CODEX_AUTO_REVIEW_CLI_VERSION) >= 0;
 
-    // Probe 2: `codex login status` — is the user authenticated?
-    //
-    // Custom model providers (e.g. Portkey, Azure OpenAI proxy) handle
-    // authentication through their own environment variables, so `codex
-    // login status` will report "not logged in" even when the CLI works
-    // fine.  Skip the auth probe entirely for non-OpenAI providers.
     if (yield* hasCustomModelProviderForEnv(probeEnv)) {
       return {
         provider: CODEX_PROVIDER,
@@ -775,8 +726,6 @@ const makeCheckCodexProviderStatus = (
   );
 };
 
-// ── Claude Agent health check ───────────────────────────────────────
-
 const CLAUDE_AUTH_FALSE_NEGATIVE_RETRY_DELAY_MS = 1_000;
 
 const makeCheckClaudeProviderStatus = (
@@ -792,7 +741,6 @@ const makeCheckClaudeProviderStatus = (
       homeDir ? { env: process.env, homeDir } : { env: process.env },
     );
 
-    // Probe 1: `claude --version` — is the CLI reachable?
     const versionProbe = yield* probeProviderCliVersion(
       runClaudeCommand(["--version"], executable, claudeEnv),
       CLAUDE_HEALTH_TIMEOUT_MS,
@@ -843,10 +791,6 @@ const makeCheckClaudeProviderStatus = (
     const parsedVersion = parseGenericCliVersion(`${version.stdout}\n${version.stderr}`);
     const supportsAutoRuntimeMode = isClaudeAutoModeCliVersionSupported(parsedVersion);
 
-    // Probe 2: `claude auth status` — is the user authenticated? The command can
-    // redeem a single-use rotating OAuth refresh token, so it is serialized with
-    // every other `claude auth status` invocation in this process (credential
-    // keepalive, concurrent health probes) via the shared lock.
     const runAuthStatusProbe = Effect.acquireUseRelease(
       Effect.promise(() => acquireClaudeAuthStatusLock()),
       () =>
@@ -893,10 +837,9 @@ const makeCheckClaudeProviderStatus = (
     const credentialSummary = readClaudeCliCredentialsSummary(
       homeDir ? { env: claudeEnv, homeDir } : { env: claudeEnv },
     );
-    // A structured `loggedIn:false` with a clean exit and no local credential
-    // record to rescue it (macOS keeps OAuth in the Keychain, not on disk) is
-    // the signature of a lost refresh-token rotation race with a concurrent
-    // `claude auth status` invocation. Re-probe once after the rotation settles.
+    // A structured `loggedIn:false` with a clean exit and no local credential record to rescue it
+    // (macOS keeps OAuth in the Keychain, not on disk) is the signature of a lost refresh-token
+    // rotation race with a concurrent `claude auth status` invocation.
     if (
       !credentialSummary.usable &&
       isStructuredClaudeAuthFalseNegativeCandidate(authOutput, parsed)
@@ -920,20 +863,13 @@ const makeCheckClaudeProviderStatus = (
       credentialSummary.usable && structuredFalseNegative && resolveSubscriptionType
         ? yield* resolveSubscriptionType
         : undefined;
-    // Claude 2.1.x can report `loggedIn:false` from `auth status` while a live
-    // SDK init still reads account metadata. Token strings alone are not enough:
-    // require the SDK probe before treating the credential file as authenticated.
+
     const effectiveParsed: ReturnType<typeof parseClaudeAuthStatusFromOutput> =
       credentialProbeSubscriptionType !== undefined
         ? { status: "ready", authStatus: "authenticated" }
         : parsed;
     const useCredentialMetadata = credentialProbeSubscriptionType !== undefined;
 
-    // Determine subscription type from multiple sources (cheapest first):
-    // 1. JSON output of `claude auth status` (may or may not contain it)
-    // 2. Cached SDK probe (spawns a Claude process on miss, reads
-    //    `initializationResult()` for account metadata, then aborts
-    //    immediately — no API tokens are consumed)
     let subscriptionType =
       extractSubscriptionTypeFromOutput(authOutput) ??
       credentialProbeSubscriptionType ??
@@ -1042,9 +978,9 @@ function stabilizeProviderStatusesAgainstTransientTimeouts(
       return status;
     }
 
-    // A single slow CLI probe should not make an already usable provider look broken.
-    // The previous update advisory is network-backed evidence, though, so it must
-    // not survive a probe that could not confirm the installed version.
+    // A single slow CLI probe should not make an already usable provider look broken. The previous
+    // update advisory is network-backed evidence, though, so it must not survive a probe that could not
+    // confirm the installed version.
     const stabilizedStatus = {
       ...previous,
       checkedAt: status.checkedAt,
@@ -1093,7 +1029,6 @@ function mergeProviderStatusUpdates(
   return orderProviderStatuses([...statusByProvider.values()]);
 }
 
-// Keeps local CLI version/status visible while removing network-backed update metadata.
 function makeSuppressedProviderVersionAdvisory(
   status: ServerProviderStatus,
   currentVersion?: string | null,
@@ -1116,8 +1051,6 @@ function suppressProviderVersionAdvisory(status: ServerProviderStatus): ServerPr
   };
 }
 
-// Disabled providers are a settings overlay, not a probe result. Keep the raw
-// cached/probed status intact so re-enabling a provider can reuse it immediately.
 function projectProviderStatusesForSettings(
   statuses: ReadonlyArray<ServerProviderStatus>,
   settings: ServerSettings,
@@ -1151,8 +1084,6 @@ function projectProviderStatusesForSettings(
 
   return orderProviderStatuses(projected);
 }
-
-// ── Layer ───────────────────────────────────────────────────────────
 
 function makeProviderHealthLive(options?: { readonly providerUpdateTimeoutMs?: number }) {
   const providerUpdateTimeoutMs = options?.providerUpdateTimeoutMs ?? PROVIDER_UPDATE_TIMEOUT_MS;
@@ -1216,10 +1147,8 @@ function makeProviderHealthLive(options?: { readonly providerUpdateTimeoutMs?: n
           }),
       });
 
-      // 5-minute TTL cache for the Claude SDK subscription probe. The probe
-      // spawns a short-lived `claude` subprocess to read account metadata
-      // from the local init handshake; capacity=1 because the probe has no
-      // parameters.
+      // The probe spawns a short-lived `claude` subprocess to read account metadata from the local init
+      // handshake; capacity=1 because the probe has no parameters.
       const claudeSubscriptionCache = yield* Cache.make({
         capacity: 1,
         timeToLive: Duration.minutes(5),
@@ -1439,22 +1368,17 @@ function makeProviderHealthLive(options?: { readonly providerUpdateTimeoutMs?: n
         let revisionRetries = 0;
         while (true) {
           const refreshRevision = (yield* serverSettings.getSnapshot).revision;
-          // Drop the cached Claude subscription probe so switching accounts (login
-          // / logout / add account outside the app) is reflected on the next
-          // refresh instead of being pinned to the old account for up to 5 minutes.
+
           yield* Cache.invalidate(claudeSubscriptionCache, "claude");
           const loadedStatuses = yield* loadProviderStatuses;
           if ((yield* serverSettings.getSnapshot).revision !== refreshRevision) {
-            // A caller that joined this refresh expects the settings mutation it
-            // just made to be reflected. Retry in the same shared fiber so an
-            // enable cannot resolve with the stale pre-mutation probe.
+            // A caller that joined this refresh expects the settings mutation it just made to be reflected.
+            // Retry in the same shared fiber so an enable cannot resolve with the stale pre-mutation probe.
             if (revisionRetries < MAX_REFRESH_REVISION_RETRIES) {
               revisionRetries += 1;
               continue;
             }
-            // Keep the joined refresh bounded, but queue one final cycle so a
-            // second settings mutation cannot leave the newest provider state
-            // waiting for an unrelated future refresh.
+
             yield* Ref.set(refreshNeedsFollowUpRef, true);
             const currentStatuses = yield* Ref.get(statusesRef);
             return yield* projectStatusesForCurrentSettings(currentStatuses);
@@ -1480,8 +1404,6 @@ function makeProviderHealthLive(options?: { readonly providerUpdateTimeoutMs?: n
         }
       });
 
-      // Keep a single refresh in flight so repeated config reads do not spawn
-      // overlapping CLI probes while the cache already gives us a usable answer.
       function ensureRefreshFiber(): Effect.Effect<Fiber.Fiber<ProviderStatuses, never>> {
         return Effect.gen(function* () {
           const inFlight = yield* Ref.get(refreshFiberRef);
@@ -1501,8 +1423,7 @@ function makeProviderHealthLive(options?: { readonly providerUpdateTimeoutMs?: n
             if (Exit.isSuccess(refreshExit)) {
               return refreshExit.value;
             }
-            // Keep the current in-memory snapshot as the source of truth if a
-            // foreground refresh fails after startup.
+
             const rawStatuses = yield* Ref.get(statusesRef);
             return yield* projectStatusesForCurrentSettings(rawStatuses);
           }).pipe(
@@ -1512,9 +1433,7 @@ function makeProviderHealthLive(options?: { readonly providerUpdateTimeoutMs?: n
                 if (!(yield* Ref.getAndSet(refreshNeedsFollowUpRef, false))) {
                   return;
                 }
-                // The bounded follow-up was dirtied too. Debounce one more
-                // shared refresh so a sustained settings burst cannot keep the
-                // current callers stuck or spin CLI probes without a pause.
+
                 yield* Effect.sleep(Duration.millis(REFRESH_REVISION_RESCHEDULE_DELAY_MS)).pipe(
                   Effect.andThen(ensureRefreshFiber().pipe(Effect.asVoid)),
                   Effect.forkIn(refreshScope),
@@ -1775,8 +1694,6 @@ function makeProviderHealthLive(options?: { readonly providerUpdateTimeoutMs?: n
       });
 
       return {
-        // Mirror upstream's behavior here: reads consume the latest stable
-        // snapshot, while refreshes happen explicitly or from provider streams.
         getStatuses: Ref.get(statusesRef).pipe(Effect.flatMap(projectStatusesForCurrentSettings)),
         refresh,
         updateProvider,

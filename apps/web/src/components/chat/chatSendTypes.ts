@@ -32,18 +32,11 @@ interface PlanFollowUpSubmission {
   queuedTurn?: QueuedComposerPlanFollowUp;
 }
 
-/**
- * Send-path handlers that are declared *after* `onSend` in the component body (they depend on
- * state and callbacks that are set up later) yet have to be reachable from it — and, for
- * `send` itself, from the queued-turn dispatcher that is declared before it.
- *
- * Reading a later-declared binding from an earlier one makes React Compiler bail out on the
- * whole component ("Cannot access variable before it is declared") — silently, since
- * `panicThreshold` is unset — which would drop memoization for the single hottest component in
- * the app. Routing those calls through one latest-value ref keeps every reference well-ordered.
- * The ref is only ever read from user-driven send flows, never during render, and it is
- * refreshed in a layout effect so no passive-effect window can serve a stale handler.
- */
+// Reading a later-declared binding from an earlier one makes React Compiler bail out on the whole
+// component ("Cannot access variable before it is declared") — silently, since `panicThreshold` is
+// unset — which would drop memoization for the single hottest component in the app. The ref is only
+// ever read from user-driven send flows, never during render, and it is refreshed in a layout
+// effect so no passive-effect window can serve a stale handler.
 
 export interface LateComposerSendHandlers {
   readonly send: (

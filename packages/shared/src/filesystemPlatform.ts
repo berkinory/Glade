@@ -1,7 +1,3 @@
-// FILE: filesystemPlatform.ts
-// Purpose: Centralizes filesystem operations whose durability or identity semantics differ by OS.
-// Layer: Shared platform runtime
-
 import { constants as fsConstants, type Stats } from "node:fs";
 import * as fs from "node:fs/promises";
 
@@ -11,7 +7,6 @@ export function supportsPosixPermissions(platform: NodeJS.Platform = process.pla
   return platform !== "win32";
 }
 
-/** Flushes directory-entry changes where the platform exposes durable directory fsync. */
 export async function syncDirectoryEntry(
   directoryPath: string,
   platform: NodeJS.Platform = process.platform,
@@ -32,10 +27,8 @@ export async function syncDirectoryEntry(
   }
 }
 
-/**
- * Flushes a regular file created by Glade. Windows FlushFileBuffers requires
- * write access; POSIX additionally retains no-follow protection.
- */
+// Flushes a regular file created by Glade. Windows FlushFileBuffers requires write access; POSIX
+// additionally retains no-follow protection.
 export async function syncRegularFile(
   filePath: string,
   platform: NodeJS.Platform = process.platform,
@@ -51,7 +44,6 @@ export async function syncRegularFile(
   }
 }
 
-/** POSIX inode identity is stable; Windows callers rely on guarded path checks. */
 export function sameFileIdentity(
   left: Pick<Stats, "dev" | "ino">,
   right: Pick<Stats, "dev" | "ino">,

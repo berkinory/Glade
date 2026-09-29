@@ -1,9 +1,3 @@
-/**
- * ProviderIcon - shared provider glyphs for chat, sidebar, and picker surfaces.
- *
- * Centralizes provider-to-icon mapping so new providers do not need repeated
- * branching across every UI surface.
- */
 import { type ProviderKind } from "@glade/contracts";
 import type { ReactNode, SVGProps } from "react";
 

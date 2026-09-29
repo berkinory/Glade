@@ -1,7 +1,3 @@
-// FILE: desktopWsBridge.ts
-// Purpose: Shares the desktop WebSocket bridge channel and env fallback rules.
-// Exports: channel name plus helpers used by Electron main, preload, and tests.
-
 export function normalizeDesktopWsUrl(value: unknown): string | null {
   if (typeof value !== "string") {
     return null;

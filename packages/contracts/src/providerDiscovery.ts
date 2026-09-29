@@ -1,8 +1,3 @@
-// FILE: providerDiscovery.ts
-// Purpose: Defines provider discovery request/response contracts shared across web and server.
-// Layer: Shared contracts
-// Exports: provider discovery schemas and inferred types used by the WS/native API.
-
 import { Schema } from "effect";
 import { TrimmedNonEmptyString } from "./baseSchemas";
 import { ProviderOptionDescriptor } from "./model";
@@ -71,8 +66,6 @@ export const ProviderListSkillsResult = Schema.Struct({
 });
 export type ProviderListSkillsResult = typeof ProviderListSkillsResult.Type;
 
-// Unified cross-provider skills catalog (Glade portable skills). Descriptors use
-// `scope` to carry the origin label ("glade", "codex", "claude", ...).
 export const ProviderSkillsCatalogInput = Schema.Struct({
   cwd: Schema.optional(TrimmedNonEmptyString),
 });
@@ -102,9 +95,6 @@ export const ProviderListCommandsInput = Schema.Struct({
 });
 export type ProviderListCommandsInput = typeof ProviderListCommandsInput.Type;
 
-// Whether the provider can publish hosted artifacts in this session: `disabled`
-// means the host setting is off, `unavailable` means the provider refused it
-// (plan, login, version or organization policy).
 export const ProviderArtifactsState = Schema.Literals(["available", "disabled", "unavailable"]);
 export type ProviderArtifactsState = typeof ProviderArtifactsState.Type;
 
@@ -116,7 +106,6 @@ export const ProviderListCommandsResult = Schema.Struct({
 });
 export type ProviderListCommandsResult = typeof ProviderListCommandsResult.Type;
 
-// Plugin discovery mirrors Codex app-server's marketplace + plugin summary surface.
 export const ProviderPluginMarketplaceInterface = Schema.Struct({
   displayName: Schema.optional(TrimmedNonEmptyString),
 });
@@ -259,9 +248,6 @@ export const ProviderContextWindowDescriptor = Schema.Struct({
 });
 export type ProviderContextWindowDescriptor = typeof ProviderContextWindowDescriptor.Type;
 
-// Some provider CLIs expose a family-level model with a matrix of concrete
-// process-start variants. The web app uses this mapping to keep the friendly
-// effort/context/fast controls separate from the provider's opaque model UID.
 export const ProviderModelVariantDescriptor = Schema.Struct({
   model: TrimmedNonEmptyString,
   reasoningEffort: Schema.optional(TrimmedNonEmptyString),
@@ -279,8 +265,7 @@ export const ProviderModelDescriptor = Schema.Struct({
   upstreamProviderId: Schema.optional(TrimmedNonEmptyString),
   upstreamProviderName: Schema.optional(TrimmedNonEmptyString),
   optionDescriptors: Schema.optional(Schema.Array(ProviderOptionDescriptor)),
-  // Codex model/list results are normalized here so the web app can consume both
-  // the legacy string array and Remodex-style reasoning objects uniformly.
+
   supportedReasoningEfforts: Schema.optional(Schema.Array(ProviderReasoningEffortDescriptor)),
   defaultReasoningEffort: Schema.optional(TrimmedNonEmptyString),
   supportsFastMode: Schema.optional(Schema.Boolean),
@@ -296,8 +281,7 @@ export const ProviderListModelsResult = Schema.Struct({
   models: Schema.Array(ProviderModelDescriptor),
   source: Schema.optional(TrimmedNonEmptyString),
   cached: Schema.optional(Schema.Boolean),
-  // A concise, redacted explanation when live discovery failed and the result
-  // was populated from a static fallback.
+
   error: Schema.optional(TrimmedNonEmptyString),
 });
 export type ProviderListModelsResult = typeof ProviderListModelsResult.Type;

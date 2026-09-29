@@ -1,9 +1,3 @@
-// FILE: DevicePanel.logic.ts
-// Purpose: Pure decision logic for the iOS Simulator dock pane (video gating, input mapping, picker/availability views).
-// Layer: Component logic helper
-// Exports: frame-gate state machine, canvas/device coordinate mapping, hardware-button and key translation, picker + availability view models
-// Depends on: device contracts and the shared frame envelope header only — no DOM, no React.
-
 import type {
   DeviceAvailability,
   DeviceCapabilityId,
@@ -22,37 +16,20 @@ import type {
 
 import { DEVICE_CAPABILITY_LABELS } from "@glade/contracts";
 
-// ── Frame gating ─────────────────────────────────────────────────────
-//
-// A WebCodecs VideoDecoder must be configured from a codec-config frame (SPS/PPS)
-// before it accepts any sample, and after configuring it must receive a keyframe
-// before any delta frame or it errors out. The stream is lossy by design (the
-// server drops frames under backpressure), so sequence gaps are expected and must
-// re-arm the keyframe requirement rather than kill the pane.
-
-type DeviceFrameGatePhase =
-  /** No codec config seen yet: nothing can be decoded. */
-  | "awaiting-config"
-  /** Configured, but no keyframe has been admitted since the last configure or gap. */
-  | "awaiting-keyframe"
-  /** Decoding normally. */
-  | "streaming";
+type DeviceFrameGatePhase = "awaiting-config" | "awaiting-keyframe" | "streaming";
 
 export interface DeviceFrameGateState {
   readonly phase: DeviceFrameGatePhase;
-  /** Sequence of the last admitted frame; null before the first admission. */
+
   readonly lastSequence: number | null;
-  /** Frames dropped since the gate last reached "streaming". Diagnostics only. */
+
   readonly droppedSinceResync: number;
 }
 
 type DeviceFrameGateAction =
-  /** Hand the payload to `VideoDecoder.configure` (or `decode` for media frames). */
   | { readonly kind: "configure" }
   | { readonly kind: "decode"; readonly keyframe: boolean }
-  /** Frame cannot be decoded in the current phase. */
   | { readonly kind: "drop"; readonly reason: DeviceFrameDropReason }
-  /** Frame belongs to another device/thread and was never ours to decode. */
   | { readonly kind: "ignore" };
 
 type DeviceFrameDropReason =
@@ -64,11 +41,7 @@ type DeviceFrameDropReason =
 export interface DeviceFrameGateStep {
   readonly state: DeviceFrameGateState;
   readonly action: DeviceFrameGateAction;
-  /**
-   * True when the gate newly needs a keyframe it cannot produce itself, so the
-   * caller should ask the server for one instead of waiting for the next
-   * natural IDR (which may be seconds away at a low keyframe interval).
-   */
+
   readonly requestKeyframe: boolean;
 }
 
@@ -76,21 +49,14 @@ export function createDeviceFrameGateState(): DeviceFrameGateState {
   return { phase: "awaiting-config", lastSequence: null, droppedSinceResync: 0 };
 }
 
-// u32 sequence wraps, so "next" is computed modulo 2^32 rather than by addition.
 const SEQUENCE_MODULUS = 2 ** 32;
 
-/**
- * Distance from `previous` to `next` going forward through the wrap point.
- * Used to tell a small forward gap (dropped frames) from a stale/reordered
- * frame, which would otherwise look like an enormous forward jump.
- */
+// Used to tell a small forward gap (dropped frames) from a stale/reordered frame, which would
+// otherwise look like an enormous forward jump.
 function forwardSequenceDistance(previous: number, next: number): number {
   return (next - previous + SEQUENCE_MODULUS) % SEQUENCE_MODULUS;
 }
 
-// Beyond this, a "forward" jump is far more likely a stale frame from a previous
-// stream generation than a real burst of drops, so it is discarded rather than
-// treated as a gap.
 const MAX_PLAUSIBLE_SEQUENCE_GAP = 1_024;
 
 export function stepDeviceFrameGate(
@@ -102,8 +68,6 @@ export function stepDeviceFrameGate(
     return { state, action: { kind: "ignore" }, requestKeyframe: false };
   }
 
-  // Codec config re-arms the keyframe requirement: a new parameter set means the
-  // decoder is reconfigured, and a decoder cannot resume mid-GOP after that.
   if (header.codecConfig) {
     return {
       state: {
@@ -127,8 +91,8 @@ export function stepDeviceFrameGate(
   if (state.lastSequence !== null) {
     const distance = forwardSequenceDistance(state.lastSequence, header.sequence);
     if (distance === 0 || distance > MAX_PLAUSIBLE_SEQUENCE_GAP) {
-      // Reordered, duplicated, or from a previous stream generation. Dropping it
-      // keeps `lastSequence` monotonic so one stale frame cannot wedge the gate.
+      // Reordered, duplicated, or from a previous stream generation. Dropping it keeps `lastSequence`
+      // monotonic so one stale frame cannot wedge the gate.
       return {
         state: { ...state, droppedSinceResync: state.droppedSinceResync + 1 },
         action: { kind: "drop", reason: "stale-sequence" },
@@ -136,8 +100,6 @@ export function stepDeviceFrameGate(
       };
     }
     if (distance > 1 && !header.keyframe && state.phase === "streaming") {
-      // Frames were dropped mid-GOP. Decoding onward would render visible
-      // corruption, so hold until the next keyframe and ask for one now.
       return {
         state: {
           phase: "awaiting-keyframe",
@@ -169,13 +131,10 @@ export function stepDeviceFrameGate(
   };
 }
 
-// ── Coordinate mapping ───────────────────────────────────────────────
-
 export interface DeviceCanvasGeometry {
-  /** Decoded frame size in pixels. */
   readonly frameWidth: number;
   readonly frameHeight: number;
-  /** Rendered canvas size in CSS pixels (its bounding box). */
+
   readonly displayWidth: number;
   readonly displayHeight: number;
 }
@@ -185,12 +144,6 @@ export interface DevicePoint {
   readonly y: number;
 }
 
-/**
- * Frames arrive at the device's native pixel resolution while input is injected
- * in device points, so the scale factor is derived from the frame rather than
- * assumed: `object-fit: contain` letterboxes, and a click in a letterbox band
- * has no device coordinate at all.
- */
 function deviceContainRect(geometry: DeviceCanvasGeometry): {
   readonly offsetX: number;
   readonly offsetY: number;
@@ -219,14 +172,10 @@ function deviceContainRect(geometry: DeviceCanvasGeometry): {
   };
 }
 
-/**
- * Maps a pointer position (relative to the canvas bounding box) to device
- * points. Returns null for clicks in the letterbox bands, which must not be
- * clamped onto the screen edge — a stray tap at (0, y) is worse than no tap.
- */
+// Returns null for clicks in the letterbox bands, which must not be clamped onto the screen edge —
+// a stray tap at (0, y) is worse than no tap.
 export function canvasPointToDevicePoint(
   geometry: DeviceCanvasGeometry & {
-    /** Device screen size in points; falls back to frame pixels when unknown. */
     readonly devicePointWidth?: number;
     readonly devicePointHeight?: number;
   },
@@ -244,8 +193,7 @@ export function canvasPointToDevicePoint(
 
   const pointWidth = geometry.devicePointWidth ?? geometry.frameWidth;
   const pointHeight = geometry.devicePointHeight ?? geometry.frameHeight;
-  // Round to whole points: the helper injects integral HID coordinates, and a
-  // fractional point would be truncated inconsistently across the hop.
+
   return {
     x: clampToRange(Math.round((withinX / rect.width) * pointWidth), 0, pointWidth),
     y: clampToRange(Math.round((withinY / rect.height) * pointHeight), 0, pointHeight),
@@ -256,13 +204,6 @@ function clampToRange(value: number, minimum: number, maximum: number): number {
   return Math.min(Math.max(value, minimum), maximum);
 }
 
-// ── Tap vs swipe ─────────────────────────────────────────────────────
-
-/**
- * Below this movement a drag is a tap: trackpads and touchscreens jitter a few
- * pixels during a press, and sending a 3px swipe instead of a tap makes buttons
- * feel unreliable.
- */
 const DEVICE_TAP_MOVEMENT_THRESHOLD_POINTS = 8;
 
 export type DevicePointerGesture =
@@ -274,10 +215,6 @@ export type DevicePointerGesture =
       readonly durationMs: number;
     };
 
-/**
- * Classifies a completed pointer interaction. A press that started or ended
- * outside the screen area yields no gesture rather than a clamped one.
- */
 export function resolveDevicePointerGesture(input: {
   readonly from: DevicePoint | null;
   readonly to: DevicePoint | null;
@@ -297,13 +234,10 @@ export function resolveDevicePointerGesture(input: {
     kind: "swipe",
     from,
     to,
-    // A zero-duration swipe is rejected by the helper as a flick with infinite
-    // velocity; clamp to a single frame's worth of time.
+
     durationMs: Math.max(16, Math.round(input.durationMs)),
   };
 }
-
-// ── Hardware buttons and keyboard ────────────────────────────────────
 
 export interface DeviceShortcutEventLike {
   readonly key: string;
@@ -314,17 +248,8 @@ export interface DeviceShortcutEventLike {
   readonly ctrlKey: boolean;
 }
 
-/**
- * Simulator.app's hardware chords, matched before keyboard passthrough so the
- * muscle memory carries over. Everything else with Cmd held is left to the
- * browser/app rather than injected, since Cmd+W/Cmd+R on a focused canvas must
- * still reach Glade.
- *
- * One of Simulator.app's chords is deliberately absent, for one reason:
- * claiming a chord swallows the keystroke, so a chord the backend refuses is
- * worse than no chord at all. ⌘→ rotate is a window command with no HID usage
- * and no simctl equivalent.
- */
+// Leave unclaimed Cmd shortcuts to Glade. Do not swallow simulator rotate chords that the backend
+// cannot inject.
 export function resolveDeviceHardwareButtonShortcut(
   event: DeviceShortcutEventLike,
 ): DeviceHardwareButton | null {
@@ -348,8 +273,6 @@ export function deviceKeyModifiers(event: DeviceShortcutEventLike): DeviceKeyMod
   return modifiers;
 }
 
-// HID usage codes (page 0x07) for the keys the pane forwards. Letters and digits
-// are computed; only the named keys need a table.
 const HID_USAGE_BY_KEY: Readonly<Record<string, number>> = {
   Enter: 0x28,
   Escape: 0x29,
@@ -377,11 +300,6 @@ const HID_USAGE_A = 0x04;
 const HID_USAGE_1 = 0x1e;
 const HID_USAGE_0 = 0x27;
 
-/**
- * Translates a DOM key to a HID usage code. Returns null for keys the device
- * has no equivalent for (function keys, dead keys, IME composition), which are
- * dropped rather than guessed at.
- */
 export function deviceHidUsageForKey(key: string): number | null {
   if (key.length === 1) {
     const lower = key.toLowerCase();
@@ -398,21 +316,17 @@ export function deviceHidUsageForKey(key: string): number | null {
   return HID_USAGE_BY_KEY[key] ?? null;
 }
 
-// ── Device picker ────────────────────────────────────────────────────
-
 type DevicePickerAction =
-  /** Already booted: attaching is all that is needed. */
   | { readonly kind: "attach" }
-  /** Shut down: boot first, then attach when the boot resolves. */
   | { readonly kind: "boot-then-attach" }
-  /** Mid-transition: selecting would race the state machine. */
+  // Mid-transition: selecting would race the state machine.
   | { readonly kind: "wait" };
 
 export interface DevicePickerEntry {
   readonly device: DeviceDescriptor;
   readonly attached: boolean;
   readonly action: DevicePickerAction;
-  /** Secondary line, e.g. `iOS 18.2 · Booted`. */
+
   readonly detail: string;
 }
 
@@ -438,11 +352,6 @@ function devicePickerAction(state: DeviceDescriptor["state"]): DevicePickerActio
   }
 }
 
-/**
- * Booted devices sort first so the common case (pick the running simulator) is
- * one click away; within a group, name order keeps the list stable as states
- * churn during boots.
- */
 export function buildDevicePickerEntries(input: {
   readonly devices: readonly DeviceDescriptor[];
   readonly attachedDeviceUdid: DeviceUdid | null;
@@ -464,16 +373,10 @@ export function buildDevicePickerEntries(input: {
     }));
 }
 
-// ── Availability ─────────────────────────────────────────────────────
-
 export type DeviceAvailabilityView =
   | { readonly kind: "ready" }
-  /**
-   * The pane opens and works, but some capability failed its preflight. Kept
-   * separate from "blocked" because the user has nothing to fix and everything
-   * else still runs: blocking the pane over a broken accessibility path would
-   * cost streaming and input for no reason.
-   */
+  // Kept separate from "blocked" because the user has nothing to fix and everything else still runs:
+  // blocking the pane over a broken accessibility path would cost streaming and input for no reason.
   | {
       readonly kind: "degraded";
       readonly notice: string;
@@ -483,17 +386,12 @@ export type DeviceAvailabilityView =
       readonly kind: "blocked";
       readonly title: string;
       readonly description: string;
-      /** Present only for setup-required; drives the live checklist. */
+
       readonly steps: readonly DeviceSetupStep[];
-      /** Whether the pane should keep polling/listening for a state change. */
+
       readonly retryable: boolean;
     };
 
-/**
- * "Accessibility inspection unavailable with Xcode 26.3 — streaming and input
- * unaffected": names what broke, the toolchain that broke it, and what still
- * works, so the notice answers the obvious next question in one line.
- */
 function describeDegradedCapabilities(
   capabilities: readonly DeviceCapabilityStatus[],
   toolchain: DeviceToolchain | undefined,
@@ -515,11 +413,6 @@ function describeDegradedCapabilities(
   return `${list(broken)} unavailable${xcode}${unaffected}.`;
 }
 
-/**
- * True when every setup step the user can act on is done and only the helper
- * build is left. Xcode, the license and a runtime all need the user; the helper
- * only needs an attach, which the picker provides.
- */
 function onlyHelperBuildRemains(steps: readonly DeviceSetupStep[]): boolean {
   const remaining = steps.filter((step) => !step.done);
   return remaining.length > 0 && remaining.every((step) => step.id === "build-device-helper");
@@ -540,11 +433,6 @@ export function resolveDeviceAvailabilityView(
         retryable: false,
       };
     case "setup-required":
-      // The helper is the one step the user cannot perform: it is built on
-      // first attach. Blocking on it hid the picker, so there was no way to
-      // attach, so it never built — the setup card asked for the one thing it
-      // prevented. When it is all that remains, show the picker and let
-      // choosing a device do the build.
       if (onlyHelperBuildRemains(availability.steps)) return { kind: "ready" };
       return {
         kind: "blocked",
@@ -572,19 +460,11 @@ export function resolveDeviceAvailabilityView(
   }
 }
 
-/**
- * Every 3x device Apple ships is a phone, and every phone is narrow: 3x frames
- * land at 1080-1320px. Wider frames are iPads, which are always 2x. Choosing on
- * the frame width directly avoids the trap of a plausible-looking point width —
- * an iPad's 1640px divides by 3 into 547, which is a perfectly reasonable
- * number and completely wrong.
- */
 function inferDeviceScaleFactor(framePixelWidth: number): number {
   if (!Number.isFinite(framePixelWidth) || framePixelWidth <= 0) return 1;
   if (framePixelWidth >= 1000 && framePixelWidth <= 1400) return 3;
   if (framePixelWidth > 1400) return 2;
-  // Below 1000px: a 2x phone (750-828px) or a 1x frame. Point widths under 320
-  // do not exist on shipping hardware, so anything that small is already points.
+
   return framePixelWidth >= 640 ? 2 : 1;
 }
 
@@ -597,17 +477,10 @@ function usablePointSize(
   return { width, height };
 }
 
-/**
- * Resolves the device's point dimensions, in descending order of authority:
- *
- * 1. `geometry` from the device descriptor. This is the helper's own attachment
- *    geometry — the exact numbers the backend validates input against — so a
- *    coordinate derived from it can never be rejected as out of bounds.
- * 2. The accessibility tree's root frame, for a server that predates the
- *    geometry field or a device attached elsewhere.
- * 3. The scale inferred from the frame width, which only has to pick between
- *    Apple's three scale factors.
- */
+// Resolves the device's point dimensions, in descending order of authority: 1. `geometry` from the
+// device descriptor. This is the helper's own attachment geometry — the exact numbers the backend
+// validates input against — so a coordinate derived from it can never be rejected as out of bounds.
+// 2.
 export function resolveDevicePointSize(input: {
   readonly framePixelWidth: number;
   readonly framePixelHeight: number;
@@ -629,18 +502,9 @@ export function resolveDevicePointSize(input: {
   };
 }
 
-// ── Screen recording ─────────────────────────────────────────────────
-
-/**
- * The pane's view of a recording.
- *
- * `starting` and `stopping` exist because both RPCs are slow enough to see:
- * the server waits for simctl's "Recording started" before acking, and stopping
- * sends SIGINT and waits for the container to finalise. Without the two
- * transitional phases the toolbar button would sit in its old state for a
- * second and invite a second click, which is exactly the double-start the
- * backend refuses.
- */
+// The pane's view of a recording. `starting` and `stopping` exist because both RPCs are slow enough
+// to see: the server waits for simctl's "Recording started" before acking, and stopping sends
+// SIGINT and waits for the container to finalise.
 export type DeviceRecordingState =
   | { readonly kind: "idle" }
   | { readonly kind: "starting" }
@@ -653,19 +517,15 @@ export type DeviceRecordingEvent =
   | { readonly kind: "stop-requested" }
   | { readonly kind: "stopped" }
   | { readonly kind: "failed" }
-  /** The device went away (detached, shut down, or the stream ended). */
   | { readonly kind: "device-lost" };
 
 export function createDeviceRecordingState(): DeviceRecordingState {
   return { kind: "idle" };
 }
 
-/**
- * Advances the recording state, ignoring events that do not apply to the
- * current phase. Ignoring rather than throwing is deliberate: a stop that
- * arrives after a failure, or a second click that beats the first response, is
- * a race the UI should absorb silently rather than a bug to surface.
- */
+// Ignoring rather than throwing is deliberate: a stop that arrives after a failure, or a second
+// click that beats the first response, is a race the UI should absorb silently rather than a bug to
+// surface.
 export function stepDeviceRecording(
   state: DeviceRecordingState,
   event: DeviceRecordingEvent,
@@ -687,15 +547,10 @@ export function stepDeviceRecording(
   }
 }
 
-/** Whether the toolbar's record button should read as active. */
 export function isDeviceRecordingActive(state: DeviceRecordingState): boolean {
   return state.kind === "recording" || state.kind === "stopping";
 }
 
-/**
- * Which RPC a click on the record button should send, or null while a
- * transition is already in flight and a second call would be refused.
- */
 export function deviceRecordingClickIntent(state: DeviceRecordingState): "start" | "stop" | null {
   if (state.kind === "idle") return "start";
   if (state.kind === "recording") return "stop";
@@ -707,15 +562,7 @@ export interface DeviceSetupAction {
   readonly url: string;
 }
 
-/**
- * The one thing the user can act on right now. Only Xcode installation has a
- * destination Glade can send them to — every other step either completes on
- * its own or is driven from Xcode itself — so the screen shows a single button
- * or none, rather than a row of links that mostly go nowhere.
- */
 const DEVICE_SETUP_ACTIONS: Partial<Record<DeviceSetupStepId, DeviceSetupAction>> = {
-  // The https form rather than macappstore://: the shell bridge only forwards
-  // http(s), and macOS hands this link to the App Store app regardless.
   "install-xcode": {
     label: "Open Mac App Store",
     url: "https://apps.apple.com/app/xcode/id497799835",
@@ -729,18 +576,11 @@ export function resolveDeviceSetupAction(
   return next ? (DEVICE_SETUP_ACTIONS[next.id] ?? null) : null;
 }
 
-/**
- * The checklist re-reports on its own, so a "checking" line is only honest while
- * steps remain. Once everything is done the pane is about to flip to the picker
- * and a spinner would be a lie.
- */
 export function deviceSetupCheckingLabel(steps: readonly DeviceSetupStep[]): string | null {
   const next = steps.find((step) => !step.done);
   if (!next) return null;
   return next.id === "install-xcode" ? "Checking for Xcode…" : "Checking your setup…";
 }
-
-// ── Thread state helpers ─────────────────────────────────────────────
 
 function attachedDeviceFromThreadState(
   state: ThreadDeviceState | undefined,
@@ -749,31 +589,11 @@ function attachedDeviceFromThreadState(
   return state.devices.find((device) => device.udid === state.attachedDeviceUdid) ?? null;
 }
 
-/**
- * A device the user picked, before the server has confirmed it.
- *
- * `supersedes` is the attachment the pick was made against. It is what tells a
- * selection still in flight from one the server has already answered: while the
- * thread still reports that old attachment, nothing has happened yet and the
- * pick stands; the moment it reports anything else, the server has spoken and
- * its answer wins — whether that is the picked device, or a different one an
- * agent claimed in the meantime.
- */
 export interface PendingDeviceSelection {
   readonly device: DeviceDescriptor;
   readonly supersedes: DeviceUdid | null;
 }
 
-/**
- * The device the pane should be showing right now: the one the user just
- * picked, until the server's state catches up with that choice.
- *
- * Booting a cold simulator takes the better part of a minute, and until the
- * attach resolved the thread state named no device at all — so the picker sat
- * on "Choose a simulator" and the screen stayed blank while the machine was
- * visibly working. Preferring the pending selection makes the pane reflect the
- * intent immediately and reconcile when the real descriptor arrives.
- */
 export function resolveDisplayedDevice(input: {
   readonly threadState: ThreadDeviceState | undefined;
   readonly pending: PendingDeviceSelection | null;
@@ -783,25 +603,16 @@ export function resolveDisplayedDevice(input: {
   if (!pending) return attached;
 
   const reported = input.threadState?.attachedDeviceUdid ?? null;
-  // The server has moved off the attachment this pick was made against, so its
-  // answer is the current truth even when it is not the device that was picked.
+
   if (reported !== pending.supersedes) return attached;
 
-  // Still pending. Prefer the thread's own copy of the descriptor where it has
-  // one: it carries the live runtime state and the helper's measured geometry,
-  // both fresher than the listing the pick came from.
   const known = input.threadState?.devices.find((device) => device.udid === pending.device.udid);
   return known ?? pending.device;
 }
 
-/**
- * What the phone's screen should say while an attachment comes up.
- *
- * Driven by the server's phase where there is one, because only the server
- * knows whether it is waiting on the boot or on the display. `selecting` is the
- * client-only stage before the first response, and every stage names the device
- * so the pane never shows an anonymous spinner.
- */
+// Driven by the server's phase where there is one, because only the server knows whether it is
+// waiting on the boot or on the display. `selecting` is the client-only stage before the first
+// response, and every stage names the device so the pane never shows an anonymous spinner.
 export function deviceAttachStatusLabel(input: {
   readonly phase: ThreadDeviceState["attachPhase"] | undefined;
   readonly deviceState: DeviceDescriptor["state"];
@@ -822,12 +633,6 @@ export function deviceAttachStatusLabel(input: {
   return input.pendingSelection ? "Connecting…" : null;
 }
 
-/**
- * The stream is only worth holding when the pane is live, a device is attached,
- * and that device is actually booted. Preview panes (restored but not yet
- * activated) and hidden tabs unsubscribe so a background thread never decodes
- * H.264 it will not paint.
- */
 export function shouldSubscribeToDeviceStream(input: {
   readonly runtimeMode: "live" | "preview";
   readonly isVisible: boolean;

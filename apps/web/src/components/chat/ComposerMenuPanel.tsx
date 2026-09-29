@@ -1,9 +1,3 @@
-// FILE: ComposerMenuPanel.tsx
-// Purpose: Shared floating panel chrome + row layout for every composer menu (slash/mention
-//   command menu, the `+` extras panel) so all composer menus read as one surface.
-// Layer: Chat composer presentation
-// Depends on: Command primitives and the shared composer picker style tokens.
-
 import { memo, useEffect, useRef, type ReactNode } from "react";
 
 import { cn } from "~/lib/utils";
@@ -24,12 +18,8 @@ import {
 export const COMPOSER_MENU_PANEL_GROUP_LABEL_CLASS_NAME =
   "px-2 pt-1 pb-0.5 text-ui-sm font-normal text-muted-foreground/60";
 
-/** Glyph size shared by every panel row icon, whatever the menu. */
 export const COMPOSER_MENU_PANEL_GLYPH_CLASS_NAME = "size-3.5";
 
-// Single icon column shared by every menu row. Rows differ only by the glyph,
-// its color, and the name — slot geometry stays constant so files, folders,
-// skills, plugins, commands, and agents line up identically.
 const COMPOSER_MENU_PANEL_ICON_SLOT_CLASS_NAME =
   "flex size-4 shrink-0 items-center justify-center text-muted-foreground/60";
 
@@ -37,9 +27,9 @@ type ComposerMenuPanelRow = {
   id: string;
   icon?: ReactNode;
   title: string;
-  /** Dimmed text trailing the title on the same line. */
+
   secondary?: string | null;
-  /** Right-aligned metadata (path, scope, shortcut, chevron, check). */
+
   trailing?: ReactNode;
   disabled?: boolean;
 };
@@ -55,9 +45,9 @@ export function ComposerMenuPanel(props: {
   activeRowId: string | null;
   onHighlightRow: (rowId: string | null) => void;
   onSelectRow: (rowId: string) => void;
-  /** Non-selectable content rendered under the last group inside the list. */
+
   footer?: ReactNode;
-  /** Loading / empty copy rendered as a sibling of the list. */
+
   status?: ReactNode;
   listClassName?: string;
   surfaceClassName?: string;
@@ -118,11 +108,6 @@ export function ComposerMenuPanel(props: {
   );
 }
 
-// Props are destructured rather than read off a `props` object: `rowRef` lands on a JSX `ref`,
-// which makes React Compiler treat it as a ref — and through `props.rowRef` that verdict spreads
-// to the whole `props` object, so every later `props.x` read looks like a ref access during render
-// and the component bails out of compilation entirely. Separate bindings keep the verdict on
-// `rowRef` alone. Do not collapse these back into a `props` parameter.
 const ComposerMenuPanelItem = memo(function ComposerMenuPanelItem({
   row,
   isActive,

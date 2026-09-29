@@ -1,4 +1,3 @@
-// Source Control file rows, status labels, and section headers.
 import type { GitSourceControlFileStatus, GitSourceControlFilesResult } from "@glade/contracts";
 import type { MouseEvent } from "react";
 

@@ -1,7 +1,3 @@
-// FILE: storeEventReducer.ts
-// Purpose: Reduces ordered orchestration domain events into normalized client state.
-// Exports: Normal and hot-path event batch reducers.
-
 import {
   type OrchestrationEvent,
   type OrchestrationPendingInteraction,
@@ -133,8 +129,6 @@ function markInteractionResponding(
   return changed ? next : thread.pendingInteractions;
 }
 
-/** Pure reconciliation over the pending-interaction list alone: batch callers thread the
- *  accumulated list through directly instead of cloning the whole `Thread` per event. */
 function reconcilePendingInteractionsFromActivity(
   threadId: ThreadId,
   pendingInteractions: Thread["pendingInteractions"],
@@ -338,12 +332,6 @@ function reconcileLatestTurnFromSession(
     });
   }
 
-  // Mirror of the server projector's settlement rule: once the session leaves
-  // "running", no later event is guaranteed to close the turn (checkpoint diff
-  // events only enrich it), so a still-running latestTurn settles here. A retained
-  // activeTurnId blocks settlement (except on error): stop-requested flows emit
-  // "interrupted" while keeping the turn active until the provider's terminal
-  // event decides the real outcome.
   const settledState =
     session.status === "error"
       ? ("error" as const)
@@ -352,11 +340,7 @@ function reconcileLatestTurnFromSession(
         : session.status === "ready"
           ? ("completed" as const)
           : null;
-  // A non-error session snapshot whose updatedAt predates the running turn's
-  // start reflects the state from before that turn existed; settling on it
-  // would close a just-started turn with a bogus fresh completedAt (and fire a
-  // phantom completion notification). Errors still settle regardless: an error
-  // snapshot is terminal whatever its ordering.
+
   if (
     settledState !== null &&
     thread.latestTurn?.state === "running" &&
@@ -530,10 +514,9 @@ function applyTurnDiffSummaryToThread(
       )
     : sortTurnDiffSummaries([...thread.turnDiffSummaries, nextSummary]);
 
-  // Mirror of the server projector's placeholder guard: a provider-diff
-  // placeholder only carries live diff totals and must never change the turn
-  // lifecycle — neither close a running turn nor flip an already-settled one
-  // to "interrupted" when it loses the race against session settlement.
+  // Mirror of the server projector's placeholder guard: a provider-diff placeholder only carries live
+  // diff totals and must never change the turn lifecycle — neither close a running turn nor flip an
+  // already-settled one to "interrupted" when it loses the race against session settlement.
   const isSameTurnPlaceholder =
     isProviderDiffPlaceholderRef(nextSummary.checkpointRef) &&
     nextSummary.status === "missing" &&
@@ -549,10 +532,9 @@ function applyTurnDiffSummaryToThread(
             requestedAt: thread.latestTurn?.requestedAt ?? nextSummary.completedAt,
             startedAt: thread.latestTurn?.startedAt ?? nextSummary.completedAt,
             completedAt: nextSummary.completedAt,
-            // Prefer the incoming assistantMessageId when present; otherwise keep
-            // the previous one from the same turn. Turn-diff events may arrive
-            // before the message has been finalized and carry a null id — they
-            // must not erase a real id already recorded by thread.message-sent.
+            // Prefer the incoming assistantMessageId when present; otherwise keep the previous one from the
+            // same turn. Turn-diff events may arrive before the message has been finalized and carry a null id
+            // — they must not erase a real id already recorded by thread.message-sent.
             assistantMessageId:
               nextSummary.assistantMessageId ??
               (thread.latestTurn?.turnId === nextSummary.turnId
@@ -615,9 +597,8 @@ function mergeStreamingMessage(
   } else if (incomingMessage.streaming || incomingMessage.text.length === 0) {
     nextText = `${existingMessage.text}${incomingMessage.text}`;
   } else {
-    // Non-streaming completions carry the server's authoritative accumulated
-    // text. Always prefer them so a duplicated or divergent local stream cannot
-    // survive after the turn settles.
+    // Non-streaming completions carry the server's authoritative accumulated text. Always prefer them
+    // so a duplicated or divergent local stream cannot survive after the turn settles.
     if (
       import.meta.env.DEV &&
       incomingMessage.text !== existingMessage.text &&
@@ -703,9 +684,9 @@ function mergeStreamingMessage(
 
 function applyThreadMessageSentEvent(thread: Thread, event: ThreadMessageSentEvent): Thread {
   const payload = event.payload;
-  // Single backward scan: streaming deltas target the newest message, so walking from the tail
-  // finds it in O(1) instead of scanning the (up to MAX_THREAD_MESSAGES) list front-to-back on
-  // every delta. Message ids are unique per thread, so scan direction cannot change the match.
+  // Single backward scan: streaming deltas target the newest message, so walking from the tail finds
+  // it in O(1) instead of scanning the (up to MAX_THREAD_MESSAGES) list front-to-back on every delta.
+  // Message ids are unique per thread, so scan direction cannot change the match.
   let existingIndex = -1;
   for (let index = thread.messages.length - 1; index >= 0; index -= 1) {
     if (thread.messages[index]!.id === payload.messageId) {
@@ -739,7 +720,6 @@ function applyThreadMessageSentEvent(thread: Thread, event: ThreadMessageSentEve
   if (existingMessage) {
     const mergedMessage = mergeStreamingMessage(existingMessage, incomingMessage);
     if (mergedMessage !== null) {
-      // Only the affected slot is replaced; every other message stays reference-identical.
       messages = thread.messages.with(existingIndex, mergedMessage);
     }
   } else {
@@ -895,7 +875,6 @@ function applyOrchestrationEvent(
     }
 
     case "thread.deleted":
-      // Deletion is terminal for both active sidebar rows and archived settings rows.
       return removeDeletedThreadFromClientState(state, event.payload.threadId, event.sequence);
 
     case "thread.meta-updated":
@@ -1245,8 +1224,6 @@ function applyOrchestrationEvent(
       );
 
     case "thread.turn-interrupt-requested": {
-      // Interrupt requests are best-effort and can fail or time out. Keep the
-      // latest-turn clock/state live until the provider confirms a terminal event.
       return state;
     }
 
@@ -1303,9 +1280,9 @@ function applyOrchestrationEvent(
             event.payload.modelSelection !== undefined
               ? normalizeModelSelection(event.payload.modelSelection, thread.modelSelection)
               : thread.modelSelection;
-          // Automation-dispatched turns must not repaint the thread's persisted
-          // modes (mirrors the server projection): the automation's modes govern
-          // its own turn only, while the user's composer selection stays put.
+          // Automation-dispatched turns must not repaint the thread's persisted modes (mirrors the server
+          // projection): the automation's modes govern its own turn only, while the user's composer selection
+          // stays put.
           const adoptTurnModes = event.payload.dispatchOrigin !== "automation";
           const runtimeMode = adoptTurnModes ? event.payload.runtimeMode : thread.runtimeMode;
           const interactionMode = adoptTurnModes
@@ -1695,8 +1672,6 @@ function applyThreadActivityEventBatch(
     state,
     firstEvent.payload.threadId,
     (thread) => {
-      // One accumulator for the whole batch: appending N activities used to re-normalize the
-      // full activity list N times (O(batch x activities)); it is now O(batch) amortised.
       const activityAccumulator = createThreadActivityAccumulator(thread.activities);
       let nextPendingInteractions = thread.pendingInteractions;
       let updatedAt = thread.updatedAt ?? thread.createdAt;

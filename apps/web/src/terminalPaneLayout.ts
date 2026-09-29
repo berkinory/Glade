@@ -1,8 +1,3 @@
-// FILE: terminalPaneLayout.ts
-// Purpose: Pure helpers for terminal pane-tree normalization and split mutations.
-// Layer: Terminal domain helpers
-// Depends on: terminal layout types shared by the store and terminal UI.
-
 import {
   DEFAULT_THREAD_TERMINAL_ID,
   type ThreadTerminalGroup,
@@ -418,7 +413,6 @@ export function removeTerminalFromGroupLayout(
   group: ThreadTerminalGroup,
   terminalId: string,
 ): ThreadTerminalGroup | null {
-  // Compute the adjacent terminal BEFORE removal so the neighbor lookup uses the original tree.
   const adjacentId = findAdjacentTerminalId(group.layout, terminalId);
 
   const result = removeTerminalFromLayoutNode(group.layout, terminalId);

@@ -1,6 +1,3 @@
-// FILE: runEnvelope.ts
-// Purpose: Builds the single canonical synthetic message sent to automation runs.
-
 import type { AutomationDefinition, AutomationRun } from "@glade/contracts";
 import { automationContinuesThread, automationOwnsItsThread } from "@glade/shared/automationMode";
 
@@ -27,14 +24,10 @@ function iterationLabel(definition: AutomationDefinition, run: AutomationRun): s
   return `${iteration}/${definition.maxIterations ?? "∞"}`;
 }
 
-// Every mode may retire its own automation: the run-scoped authorization in
-// glade_cancel_automation covers standalone runs, whose per-run thread owns nothing else.
 const SELF_CANCEL_INSTRUCTION =
   "You may call glade_cancel_automation on this automation when it is no longer needed.";
 
 function reportingInstructions(mode: AutomationDefinition["mode"]): string {
-  // A run that continues a thread leaves its work visible in that thread, so it reports
-  // only what the user still needs to see. A run with a thread to itself reports fully.
   if (automationContinuesThread(mode)) {
     return [
       "Before finishing, call glade_report_automation_result.",

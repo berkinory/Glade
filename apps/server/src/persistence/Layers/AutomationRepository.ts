@@ -157,7 +157,6 @@ function withResultDefaults(run: AutomationRun): NonNullable<AutomationRun["resu
 const decodeDefinition = Schema.decodeUnknownEffect(AutomationDefinition);
 const decodeRun = Schema.decodeUnknownEffect(AutomationRun);
 
-/** Upper bound on how many run rows the list query returns to a client snapshot. */
 const MAX_RUN_LIST_ROWS = 500;
 
 class AutomationRunClaimRejected extends Error {
@@ -1057,11 +1056,6 @@ const makeAutomationRepository = Effect.gen(function* () {
       `,
   });
 
-  // Writes a new result but carries the triage fields (archivedAt/unread) over from the
-  // existing row atomically, so a background update can never clobber a concurrent user
-  // archive/mark-read landing between the run reload and this write.
-  // unread is round-tripped through json() so it stays a JSON boolean rather than the
-  // 0/1 that json_extract yields.
   const markRunResultPreservingTriageRow = SqlSchema.void({
     Request: MarkAutomationRunResultInput,
     execute: ({ id, result, updatedAt }) =>
@@ -1557,8 +1551,7 @@ const makeAutomationRepository = Effect.gen(function* () {
       interactionMode: input.interactionMode ?? "default",
       worktreeMode: input.worktreeMode ?? "auto",
       mode,
-      // Only heartbeat takes a caller-supplied thread. A dedicated automation starts
-      // without one and claims the thread its first run creates.
+
       targetThreadId: automationRequiresTargetThread(mode) ? (input.targetThreadId ?? null) : null,
       proposalState: input.proposalState ?? null,
       notificationPolicy: input.notificationPolicy ?? "all",
@@ -1724,9 +1717,7 @@ const makeAutomationRepository = Effect.gen(function* () {
       turnId: null,
       triggerType: run.trigger.type,
     }).pipe(Effect.mapError(toPersistenceSqlError("AutomationRepository.createRun:insert")));
-    // Scheduled runs dedupe on (automationId, scheduledFor) via INSERT OR IGNORE +
-    // the partial unique index, so a re-run of the same occurrence returns the existing
-    // row. Manual runs are never deduped and are read back by their own run id.
+
     if (run.trigger.type === "scheduled") {
       return inserted.pipe(
         Effect.flatMap(() =>

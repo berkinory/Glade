@@ -1,7 +1,3 @@
-// FILE: storeSelectors.ts
-// Purpose: Stable Zustand selectors for entity lookups and lightweight sidebar projections.
-// Exports: Selector factories used by routes and sidebar-heavy components.
-
 import type { ProjectId, ThreadEnvironmentMode, ThreadId } from "@glade/contracts";
 import { isAutomationRunThread } from "@glade/shared/automationMode";
 
@@ -122,11 +118,6 @@ export interface AccountRateLimitThreadActivities {
 
 const EMPTY_RATE_LIMIT_THREADS: readonly AccountRateLimitThreadActivities[] = [];
 
-/** Threads narrowed to just their account rate-limit activities (the only input
- *  `deriveAccountRateLimits` reads). Unlike `createAllThreadsSelector`, this ignores message
- *  slices entirely and returns a reference-stable result while ordinary activities stream in:
- *  the result only changes when a rate-limit activity itself is added, removed, or replaced.
- *  Usage chips subscribe here so a streaming turn does not re-render them per store flush. */
 export function createAccountRateLimitThreadsSelector(): (
   state: AppState,
 ) => readonly AccountRateLimitThreadActivities[] {
@@ -167,8 +158,6 @@ export function createAccountRateLimitThreadsSelector(): (
       }
     }
 
-    // Rate-limit activities are rare, so nearly every activity append lands here with an
-    // element-wise identical result; keep the previous reference to spare subscribers.
     const unchanged =
       nextResult.length === previousResult.length &&
       nextResult.every((entry, entryIndex) => {
@@ -190,25 +179,18 @@ export function createAccountRateLimitThreadsSelector(): (
   };
 }
 
-/** Shell-only projection of all threads, in `threadIds` order.
- *
- *  It reads only `threadIds` + `threadShellById`, so it never rebuilds for message/activity
- *  *content* changes — but it is NOT fully stable while a turn streams: `ThreadShell.updatedAt`
- *  is part of the shell, and `threadShellsEqual` compares it, so every delta that advances
- *  `updatedAt` writes a new shell and yields a new array here. That comparison has to stay:
- *  the shell is where `updatedAt` lives, and the sidebar both sorts by it
- *  (`components/Sidebar.logic.ts`) and renders it (`components/SidebarSearchPalette.tsx`).
- *
- *  So: cheaper and far less churny than `createAllThreadsSelector` (one new array per delta
- *  instead of rebuilding every thread's message/activity lists), but subscribers that must not
- *  re-render during streaming should select a narrower slice (e.g.
- *  `createThreadWorkspaceMetadataSelector`) rather than relying on this being stable. */
+// Shell-only projection of all threads, in `threadIds` order. It reads only `threadIds` +
+// `threadShellById`, so it never rebuilds for message/activity *content* changes — but it is NOT
+// fully stable while a turn streams: `ThreadShell.updatedAt` is part of the shell, and
+// `threadShellsEqual` compares it, so every delta that advances `updatedAt` writes a new shell and
+// yields a new array here. So: cheaper and far less churny than `createAllThreadsSelector` (one new
+// array per delta instead of rebuilding every thread's message/activity lists), but subscribers
+// that must not re-render during streaming should select a narrower slice (e.g.
+// `createThreadWorkspaceMetadataSelector`) rather than relying on this being stable.
 export function createThreadShellsSelector(): (state: AppState) => readonly ThreadShell[] {
   return (state) => collectByIds(state.threadIds, state.threadShellById, EMPTY_THREAD_SHELLS);
 }
 
-/** True when no known thread has any messages (vacuously true with zero threads).
- *  Reads message id lists only, so streaming content updates do not invalidate it. */
 export function createAllThreadsMessagelessSelector(): (state: AppState) => boolean {
   let previousThreadIds: readonly ThreadId[] | undefined;
   let previousMessageIdsByThreadId: AppState["messageIdsByThreadId"] | undefined;
@@ -255,7 +237,6 @@ export function createThreadWorkspaceMetadataSelector(
       return EMPTY_THREAD_WORKSPACE_METADATA;
     }
 
-    // Shell-only: avoid subscribing preview panes to live message/activity detail slices.
     const source = state.threadShellById?.[threadId];
     const envMode = source?.envMode;
     const worktreePath = source?.worktreePath ?? null;
@@ -295,10 +276,6 @@ const EMPTY_THREAD_GIT_ACTIONS_METADATA: ThreadGitActionsMetadata = {
   title: undefined,
 };
 
-/** Shell-only git-action inputs (worktree, branch, title) that stay reference-stable
- *  while a turn streams. The git actions control is always mounted on the chat
- *  surface and only reads these fields; subscribing it to the full derived Thread
- *  re-rendered it on every message/activity delta. */
 export function createThreadGitActionsMetadataSelector(
   threadId: ThreadId | null | undefined,
 ): (state: AppState) => ThreadGitActionsMetadata {
@@ -426,15 +403,9 @@ export function createComposerThreadMentionSourcesSelector(): (
 }
 
 export interface SidebarThreadVisibilityOptions {
-  /** Drop the per-run threads standalone automations create (pinned ones stay). */
   readonly hideAutomationRunThreads?: boolean;
 }
 
-/**
- * Whether a thread row belongs in user-facing thread lists (sidebar tree, Kanban,
- * project picker, search). Housekeeping consumers that must see every thread
- * (retention and reconciliation) read the unfiltered summaries selector instead.
- */
 export function isSidebarThreadVisible(
   thread: SidebarThreadSummary,
   options?: SidebarThreadVisibilityOptions,
@@ -468,10 +439,6 @@ export function createSidebarDisplayThreadsSelector(
   };
 }
 
-// Sidebar tree source: unlike the flat display selector above, this keeps
-// child (subagent) threads so buildProjectThreadTree can nest them under
-// their parent row behind the "N subagents" expand toggle. Flat consumers
-// (pinned rows, search palette) should keep using the display selector.
 export function createSidebarTreeThreadsSelector(
   options?: SidebarThreadVisibilityOptions,
 ): (state: AppState) => readonly SidebarThreadSummary[] {
@@ -493,15 +460,11 @@ export function createSidebarTreeThreadsSelector(
   };
 }
 
-/**
- * Last time each project was actually *used*, i.e. when a thread of that project last received a
- * user message (falling back to the thread's creation time for threads never written to).
- *
- * Deliberately not `Project.updatedAt`: that timestamp only moves when project *metadata* changes
- * (creation, rename, pin, scripts), so ranking by it surfaces the most recently created project
- * instead of the one you were last talking in. Deliberately not thread `updatedAt` either: that
- * churns on every streamed token and would rebuild this map continuously.
- */
+// Last time each project was actually *used*, i.e. when a thread of that project last received a
+// user message (falling back to the thread's creation time for threads never written to).
+// Deliberately not `Project.updatedAt`: that timestamp only moves when project *metadata* changes
+// (creation, rename, pin, scripts), so ranking by it surfaces the most recently created project
+// instead of the one you were last talking in.
 export function createProjectLastActivityAtSelector(): (
   state: AppState,
 ) => ReadonlyMap<ProjectId, string> {

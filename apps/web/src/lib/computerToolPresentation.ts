@@ -1,20 +1,5 @@
-// FILE: computerToolPresentation.ts
-// Purpose: Say what a desktop tool call actually does, in the words a person would use,
-//          for the approval card and the transcript.
-// Layer: Web UI logic
-// Exports: COMPUTER_TOOL_TITLES, describeComputerToolCall
-//
-// Every browser tool has a curated presentation and every computer tool had
-// none, so an approval for the most consequential thing Glade can do — moving a
-// pointer on the user's own machine — read
-// `mcp__glade__computer_click  x 812  y 344`, which is the raw wire call. The
-// decision the user is being asked to make is "click *what*", and the answer is
-// assembled here: verb, where, and which window, resolved from the window list
-// the pane already receives rather than left as an opaque id.
-
 import type { ComputerWindow } from "@glade/contracts";
 
-/** The gateway's Computer tools, and the verb each one performs. */
 export const COMPUTER_TOOL_TITLES = {
   computer_screenshot: "Take a screenshot",
   computer_get_state: "Read the screen",
@@ -63,12 +48,6 @@ export const COMPUTER_TOOL_TITLES = {
 
 export type ComputerToolName = keyof typeof COMPUTER_TOOL_TITLES;
 
-/**
- * The bare tool name inside whatever wrapping a provider applied, or null.
- * Providers surface the same gateway tool as `computer_click`,
- * `mcp__glade__computer_click`, and other permutations, so identity is
- * recovered from the suffix rather than matched exactly.
- */
 export function computerToolName(candidate: string | null | undefined): ComputerToolName | null {
   if (!candidate) return null;
   const normalized = candidate
@@ -83,20 +62,15 @@ export function computerToolName(candidate: string | null | undefined): Computer
 
 export interface ComputerToolCallDescription {
   readonly tool: ComputerToolName;
-  /** One line: verb, target, window. Never the raw arguments. */
+
   readonly summary: string;
-  /** The arguments worth showing, already named and formatted. */
+
   readonly params: ReadonlyArray<{ readonly name: string; readonly value: string }>;
 }
 
-/**
- * "Click on “Save” in Safari — Google".
- *
- * `windows` is the live window list, used only to turn an opaque `window_id`
- * into the app and title a person recognises. Without a match the id is dropped
- * rather than printed: an id tells the user nothing they can check against what
- * is on their screen.
- */
+// "Click on “Save” in Safari — Google". `windows` is the live window list, used only to turn an
+// opaque `window_id` into the app and title a person recognises. Without a match the id is dropped
+// rather than printed: an id tells the user nothing they can check against what is on their screen.
 export function describeComputerToolCall(input: {
   readonly toolName: string | null | undefined;
   readonly args: Readonly<Record<string, unknown>> | undefined;
@@ -149,8 +123,7 @@ export function describeComputerToolCall(input: {
       params: describeParams(tool, args, input.windows),
     };
   }
-  // The visibility pair's flag is the verb's direction: an approval that reads
-  // "Minimize or restore" makes the user guess which half is being asked for.
+
   const verb =
     tool === "computer_press_key" && readString(args.key)
       ? "Press"
@@ -192,12 +165,10 @@ export function describeComputerToolCall(input: {
   return { tool, summary, params: describeParams(tool, args, input.windows) };
 }
 
-/** true/false pick the verb's direction; anything else keeps the generic title. */
 function directionVerb(flag: unknown, whenTrue: string, whenFalse: string): string | undefined {
   return flag === true ? whenTrue : flag === false ? whenFalse : undefined;
 }
 
-/** "in Safari" — the pid resolved through the window list, or "" when it cannot be. */
 function describePidTarget(
   args: Readonly<Record<string, unknown>>,
   windows: readonly ComputerWindow[] | undefined,
@@ -208,7 +179,6 @@ function describePidTarget(
   return app ? `in ${app}` : "";
 }
 
-/** "at (812, 344) in Safari — Google", "on “Save” in Notes", or "". */
 function describeTarget(
   args: Readonly<Record<string, unknown>>,
   windows: readonly ComputerWindow[] | undefined,
@@ -232,10 +202,7 @@ function describeTarget(
   } else if (app) {
     parts.push(`in ${app}`);
   }
-  // Coordinates appear only when nothing else names the target: a window or
-  // app title is what a person checks against their screen, and the raw pair
-  // stays in the parameter rows either way. Zoom is the exception — the region
-  // is the whole point of the call.
+
   if (parts.length === 0 && coordinates) {
     parts.push(coordinates);
   }
@@ -254,11 +221,10 @@ function describeDragTarget(
   return fromTarget && toTarget ? `from ${fromTarget} to ${toTarget}` : "";
 }
 
-/** The thing being typed, pressed, or scrolled — the part that is not a target. */
 function describePayload(tool: ComputerToolName, args: Readonly<Record<string, unknown>>): string {
-  // Values typed into a field or copied to the clipboard can be credentials or
-  // other private data. The expanded parameter list may show the exact action
-  // being approved, but transcript summaries must never repeat that content.
+  // Values typed into a field or copied to the clipboard can be credentials or other private data.
+  // The expanded parameter list may show the exact action being approved, but transcript summaries
+  // must never repeat that content.
   if (
     tool === "computer_type_text" ||
     tool === "computer_set_value" ||
@@ -346,7 +312,6 @@ function describeBrowserAction(
   return COMPUTER_TOOL_TITLES[tool];
 }
 
-/** A page's domain is useful context; credentials, paths and query values are not a tool title. */
 function browserSite(value: unknown): string | null {
   const url = readString(value);
   if (!url) return null;
@@ -408,10 +373,8 @@ function keyboardShortcut(value: string): string {
     .join(" + ");
 }
 
-/**
- * The argument rows, named for a reader rather than for the wire. A coordinate
- * pair is one row, not two, because it is one fact.
- */
+// The argument rows, named for a reader rather than for the wire. A coordinate pair is one row, not
+// two, because it is one fact.
 function describeParams(
   tool: ComputerToolName,
   args: Readonly<Record<string, unknown>>,
@@ -451,8 +414,6 @@ function describeParams(
   const text = readString(args.text) ?? readString(args.value);
   if (text !== null && text.length > 0) {
     rows.push({
-      // The clipboard is not a text field, and calling both "Text" is how a
-      // clipboard write reads as typing into whatever has focus.
       name: tool === "computer_write_clipboard" ? "Clipboard" : "Text",
       value: truncate(text, 200),
     });
@@ -466,8 +427,7 @@ function describeParams(
   if (dx !== null || dy !== null) {
     rows.push({ name: "Scroll", value: `${dx ?? 0}, ${dy ?? 0}` });
   }
-  // The range is what is being approved — show it as one fact, the way a
-  // coordinate pair is.
+
   if (tool === "computer_select_text") {
     const start = readNumber(args.start);
     const length = readNumber(args.length);
@@ -493,19 +453,16 @@ function describeParams(
       });
     }
   }
-  // The off-screen flag changes what the launch does to the user's screen, so
-  // the card shows it rather than letting "Open an app" read as ordinary.
+
   if (tool === "computer_launch_app" && args.hidden === true) {
     rows.push({ name: "Hidden", value: "yes" });
   }
-  // The pid is what the call actually targeted; the app name resolved into the
-  // summary is the friendly gloss, not a substitute for the real argument.
+
   if (tool === "computer_set_app_visibility") {
     const pid = readNumber(args.pid);
     if (pid !== null) rows.push({ name: "PID", value: `${pid}` });
   }
-  // A run approves the whole list at once, so the list is what the card must
-  // show: each step's verb, in order, never its arguments.
+
   if (tool === "computer_run" && Array.isArray(args.steps)) {
     const kinds = args.steps
       .map((step) => readString(readRecord(step)?.type))

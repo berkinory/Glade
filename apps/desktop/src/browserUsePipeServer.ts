@@ -1,7 +1,3 @@
-// FILE: browserUsePipeServer.ts
-// Purpose: Exposes the canonical high-level browser host over a private local RPC pipe.
-// Layer: Desktop browser automation bridge
-
 import * as Crypto from "node:crypto";
 import * as FS from "node:fs";
 import * as Net from "node:net";
@@ -18,12 +14,9 @@ import { BrowserAutomationHostError } from "./browserAutomation/hostErrors";
 import type { DesktopBrowserManager } from "./browserManager";
 
 const FRAME_HEADER_BYTES = 4;
-// 8 MiB PNG sidecars expand to about 10.7 MiB in base64; 12 MiB keeps the
-// contract maximum plus bounded structured content inside one correlated frame.
+
 const MAX_MESSAGE_BYTES = 12 * 1024 * 1024;
-// The gateway accepts JSON-RPC batches of up to 50 messages and currently
-// opens one short-lived pipe connection per browser call. Keep enough room for
-// a full batch plus control traffic while retaining a finite local bound.
+
 const MAX_CLIENTS = 64;
 const MAX_IN_FLIGHT_REQUESTS = 16;
 const MAX_QUEUED_OUTPUT_BYTES = 1024 * 1024;
@@ -34,7 +27,7 @@ const PIPE_NAME_PREFIX = "glade-browser-host";
 export const GLADE_BROWSER_HOST_PIPE_ENV = "GLADE_BROWSER_HOST_PIPE_PATH";
 const GLADE_BROWSER_HOST_CAPABILITY_ENV = "GLADE_BROWSER_HOST_CAPABILITY";
 export const GLADE_BROWSER_HOST_CAPABILITY_FD_ENV = "GLADE_BROWSER_HOST_CAPABILITY_FD";
-/** @deprecated Read/written only while old backend builds are still supported. */
+
 export const GLADE_BROWSER_USE_PIPE_ENV = "GLADE_BROWSER_USE_PIPE_PATH";
 
 type RpcId = string | number;
@@ -110,9 +103,7 @@ export function resolveDefaultBrowserHostPipePath(
   if (platform === "win32") {
     return `\\\\.\\pipe\\${PIPE_NAME_PREFIX}-${suffix}`;
   }
-  // Darwin limits sockaddr_un paths to roughly 104 bytes, while OS.tmpdir()
-  // normally expands to a long /var/folders/... path. /tmp keeps the address
-  // bounded; the per-user directory is still created and verified as 0700.
+
   const uid = process.getuid?.();
   const privateDirectory = uid === undefined ? PIPE_DIR : `${PIPE_DIR}-${uid}`;
   return Path.join("/tmp", privateDirectory, `${suffix}.sock`);
@@ -159,11 +150,6 @@ function encodeFrame(message: unknown): Buffer {
   return Buffer.concat([header, payload]);
 }
 
-/**
- * Bytes needed before the first pending frame can be decoded: the header
- * alone while it is still incomplete, then header + payload. `null` when the
- * header already announces an oversized frame, mirroring `decodeFrames`.
- */
 function expectedFrameLength(chunks: ReadonlyArray<Buffer>): number | null {
   const header = Buffer.alloc(FRAME_HEADER_BYTES);
   let copied = 0;
@@ -347,10 +333,6 @@ export class BrowserHostPipeServer {
   }
 
   private handleData(client: PipeClient, chunk: Buffer): void {
-    // Accumulate chunks and only concatenate once the pending bytes can hold a
-    // complete frame. Re-concatenating the whole pending buffer on every socket
-    // chunk made reassembling a multi-megabyte screenshot frame quadratic
-    // (~1 GiB of memmove for one 10 MiB frame) on the main-process event loop.
     client.pendingChunks.push(chunk);
     client.pendingBytes += chunk.length;
     const expectedFrameBytes = expectedFrameLength(client.pendingChunks);
@@ -540,5 +522,3 @@ export class BrowserHostPipeServer {
     return "written";
   }
 }
-
-/** @deprecated Compatibility alias for callers using the former browser-use name. */

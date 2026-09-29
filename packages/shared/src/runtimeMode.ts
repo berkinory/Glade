@@ -15,11 +15,6 @@ export function unsupportedAutoRuntimeModeMessage(provider: ProviderKind): strin
   return `Provider "${provider}" does not support Auto runtime mode. Auto is available only for Codex and Claude Code.`;
 }
 
-/**
- * Human-readable reason an Auto-mode model selection is invalid, or null when
- * the selection may run in Auto. Shared by orchestration and automations so
- * both enforce the identical policy.
- */
 export function autoRuntimeModeSelectionIssue(input: {
   readonly runtimeMode: RuntimeMode;
   readonly modelSelection: {
@@ -38,9 +33,8 @@ export function autoRuntimeModeSelectionIssue(input: {
     input.modelSelection.provider === "claudeAgent" &&
     input.modelSelection.supportsAutoMode !== true
   ) {
-    // Fail closed on an unknown capability: the Claude adapter refuses to
-    // start Auto sessions without a confirmed flag, so persisting Auto here
-    // would only defer the failure to runtime.
+    // Fail closed on an unknown capability: the Claude adapter refuses to start Auto sessions without a
+    // confirmed flag, so persisting Auto here would only defer the failure to runtime.
     return input.modelSelection.supportsAutoMode === false
       ? `Claude model "${input.modelSelection.model}" does not support Auto mode.`
       : `Claude model "${input.modelSelection.model}" has not been verified to support Auto mode.`;

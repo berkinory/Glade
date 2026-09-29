@@ -1,9 +1,3 @@
-// FILE: ComputerSettingsPanel.tsx
-// Purpose: Own the Computer use settings panel: one surface for the control toggle,
-//          the honest attention-only status line, cursor colors, and the preview.
-// Layer: Settings UI components
-// Exports: ComputerSettingsPanel
-
 import {
   COMPUTER_HYPRLAND_BACKEND,
   COMPUTER_KWIN_BACKEND,
@@ -63,7 +57,6 @@ import { SettingsCard, SettingsRow, SettingsSectionShell } from "./SettingsPanel
 import { ComputerGettingStarted } from "./ComputerGettingStarted";
 import { ComputerAuditHistorySection } from "./ComputerAuditHistorySection";
 
-/** Stable identity, so the provision hook's toast copy is not rebuilt every render. */
 const EMPTY_PERMISSIONS: readonly ComputerPermission[] = [];
 
 const BACKEND_DISPLAY_NAMES: Record<string, string> = {
@@ -75,7 +68,6 @@ const BACKEND_DISPLAY_NAMES: Record<string, string> = {
   fake: "Test backend",
 };
 
-/** Ordered to read as a sentence of abilities, most consequential first. */
 const CAPABILITY_LABELS: ReadonlyArray<{
   readonly key: keyof ComputerCapabilities;
   readonly label: string;
@@ -91,12 +83,10 @@ const CAPABILITY_LABELS: ReadonlyArray<{
   { key: "ghostCursor", label: "ghost cursor" },
 ];
 
-/**
- * The abilities to read out. `captureAvailable` is live health, not a static
- * capability: a backend can advertise capture and still be unable to take a
- * frame because the OS has not granted it, and listing "screen capture" in that
- * state is the panel telling the user something the desktop cannot do.
- */
+// The abilities to read out. `captureAvailable` is live health, not a static capability: a backend
+// can advertise capture and still be unable to take a frame because the OS has not granted it, and
+// listing "screen capture" in that state is the panel telling the user something the desktop cannot
+// do.
 function capabilitySummary(capabilities: ComputerCapabilities, captureAvailable: boolean): string {
   const enabled = CAPABILITY_LABELS.filter(
     (entry) => capabilities[entry.key] && (entry.key !== "capture" || captureAvailable),
@@ -104,11 +94,6 @@ function capabilitySummary(capabilities: ComputerCapabilities, captureAvailable:
   return enabled.length > 0 ? enabled.join(", ") : "none";
 }
 
-/**
- * One agent-cursor color field: a validated hex input and the swatch it
- * resolves to. Only a complete `#rrggbb` (or an intentional clear) commits to
- * settings, so a half-typed value never reaches the stored preference.
- */
 function CursorColorField({
   label,
   value,
@@ -119,8 +104,7 @@ function CursorColorField({
   onChange: (value: string) => void;
 }) {
   const [draft, setDraft] = useState(value);
-  // Follow a committed value that landed from elsewhere (Reset, another
-  // window) instead of stranding the field on the old draft.
+
   useEffect(() => setDraft(value), [value]);
   const resolved = normalizeCursorHexColor(value);
   const draftIsValid = draft.trim() === "" || normalizeCursorHexColor(draft) !== "";
@@ -171,7 +155,7 @@ export function ComputerSettingsPanel({
   const statusQuery = useQuery({
     ...computerStatusQueryOptions(),
     enabled: active,
-    // Health can flip (reconnecting, recovered) while the panel is open.
+
     refetchInterval: active ? COMPUTER_STATUS_VISIBLE_REFETCH_INTERVAL_MS : false,
   });
 
@@ -179,10 +163,9 @@ export function ComputerSettingsPanel({
   const [computerPermissionState, setComputerPermissionState] =
     useState<DesktopComputerState | null>(null);
   const [guidePane, setGuidePane] = useState<DesktopComputerSettingsPane | null>(null);
-  // Advanced is details, not a default: the surface opens calm and stays that
-  // way until the user asks for permissions, grants, and abilities.
+
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  // The desktop permission bridge owns fresh native grant checks and coaching.
+
   const localPermissionBridge = readLocalComputerPermissionBridge();
   const hasNativePermissionSetup =
     localPermissionBridge !== null && computerPermissionSetupSupported(computerPermissionState);
@@ -190,9 +173,7 @@ export function ComputerSettingsPanel({
     hasNativePermissionSetup && computerPermissionState?.permissionSetupErrorCode
       ? computerPermissionState.message
       : null;
-  // Returning from System Settings must re-pull both the server status and the
-  // native grant snapshot — the toggle the user just flipped lives in the
-  // second one.
+
   const refreshPermissionState = useCallback(() => {
     const bridge = readLocalComputerPermissionBridge();
     if (!bridge) return;
@@ -206,14 +187,8 @@ export function ComputerSettingsPanel({
     refreshPermissionState();
   }, active);
 
-  // Mirror the cursor colors to the desktop app on mount and on every change,
-  // including while this panel is not the active section (the hooks above the
-  // `!active` return stay mounted). A plain browser has no bridge: no-op.
   useAgentCursorDesktopSync(settings);
 
-  // Panel-level on purpose: hooks above the `!active` return stay mounted while
-  // the surface is hidden, so a dismissed coach still clears the remembered
-  // pane instead of resurrecting the guide on return.
   useComputerPermissionGuideBridge({
     permissionKinds: COMPUTER_PERMISSIONS,
     onStateChange: setComputerPermissionState,
@@ -238,11 +213,7 @@ export function ComputerSettingsPanel({
       unsubscribe();
     };
   }, [active]);
-  /**
-   * The grants the OS is withholding, named. The availability message already
-   * explains what to do; the attention row below names them, and the native
-   * checklist in Advanced is the per-grant walkthrough.
-   */
+
   const nativeMissingPermissions =
     hasNativePermissionSetup && computerPermissionState
       ? missingComputerPermissions(computerPermissionState)
@@ -253,15 +224,13 @@ export function ComputerSettingsPanel({
       : status?.availability.kind === "permission-required"
         ? status.availability.missing
         : EMPTY_PERMISSIONS;
-  // macOS itself says every grant is in place. This is what lets an idle
-  // backend, which has checked nothing since launch, still show as ready.
+
   const grantsConfirmed =
     hasNativePermissionSetup &&
     computerPermissionState !== null &&
     nativePermissionSetupError === null &&
     nativeMissingPermissions.length === 0;
-  // Idle status is intentionally side-effect-free. Fresh local grant evidence
-  // can reveal setup needs without starting Computer or its input listener.
+
   const availability =
     nativeMissingPermissions.length > 0 && status?.availability.kind === "available"
       ? {
@@ -271,10 +240,10 @@ export function ComputerSettingsPanel({
           message: computerPermissionSetupMessage(nativeMissingPermissions, "unknown"),
         }
       : status?.availability;
-  // The same provision the chat's setup card runs, through the same hook: one
-  // call in flight at a time whichever surface started it, and one account of
-  // what happened. This surface keeps that account inline rather than as a
-  // toast, because it has room for it and is where the user is already looking.
+  // The same provision the chat's setup card runs, through the same hook: one call in flight at a
+  // time whichever surface started it, and one account of what happened. This surface keeps that
+  // account inline rather than as a toast, because it has room for it and is where the user is
+  // already looking.
   const setup = useProvisionComputer({ missing: missingPermissions });
 
   if (!active) return null;
@@ -292,12 +261,9 @@ export function ComputerSettingsPanel({
   const backend =
     status?.availability.kind === "available" ? (status.availability.backend ?? null) : null;
   const health = status?.health;
-  // How this backend shares the machine, in the user's terms. macOS is the one
-  // backend with no seat of its own: it drives the desktop the human is looking
-  // at. Elsewhere, the emergency release is a shortcut the compositor plugin
-  // (KWin or Hyprland) registers with the compositor — no other backend binds
-  // it, and a nested offscreen session never hears the human's keys, so only a
-  // visible plugin-backed desktop may promise it.
+  // Elsewhere, the emergency release is a shortcut the compositor plugin (KWin or Hyprland) registers
+  // with the compositor — no other backend binds it, and a nested offscreen session never hears the
+  // human's keys, so only a visible plugin-backed desktop may promise it.
   const capabilitiesDescription =
     backend === "cua" && status?.capabilities.input === false
       ? "This backend can observe desktop windows, but native desktop input is unavailable. Isolated headless browser actions require a verified browser runtime and an available task-scoped Escape shortcut. Use Stop in the chat to interrupt the task."
@@ -308,42 +274,24 @@ export function ComputerSettingsPanel({
             status?.capabilities.visibleDesktop === true
           ? `The agent shares the computer described by this backend. Press ${COMPUTER_RELEASE_CONTROL_HOTKEY} at any time to stop it from acting on the desktop, and press it again to let it resume.`
           : "The agent drives its own seat, so your cursor and focus stay untouched.";
-  /**
-   * Screen capture is granted separately from input on every backend that has a
-   * permission model at all, so a desktop can be fully driveable and still
-   * blind.
-   *
-   * The two readings differ on purpose. `captureUnavailable` is "nothing has
-   * proved capture works", which is also true of a backend nobody has engaged
-   * yet — enough to offer Set up, not enough to accuse the OS of refusing.
-   * `captureBlocked` is the refusal itself: a helper that is running and still
-   * cannot see. Only that one earns the warning, and without it the surface is
-   * entirely green while every screenshot fails.
-   */
+  // Unproven capture can offer setup; only a running helper that cannot capture proves an OS refusal.
   const captureUnavailable = health?.captureAvailable === false;
   const captureBlocked = captureUnavailable && health?.status === "connected";
   const localPlatformUnsupported =
     localPermissionBridge !== null &&
     computerPermissionState !== null &&
     computerPermissionState.platform !== "macos";
-  // Shared with the chat's setup card, which asks the same question of the same
-  // status after pressing the same server-side Set up.
+
   const needsSetup =
     !localPlatformUnsupported &&
     (nativePermissionSetupError !== null ||
       nativeMissingPermissions.length > 0 ||
       computerStatusNeedsSetup(status, grantsConfirmed));
-  // The one counter worth carrying beside the status sentence; a last failure
-  // is already the reconnect sentence, so it is not repeated here.
+
   const healthNotes = [computerReconnectsNote(health)].filter(
     (note): note is string => note !== null,
   );
-  /**
-   * One status row says whether the desktop is ready, connected, or needs the
-   * user — a blocked backend, a missing grant, a screen-capture refusal, a
-   * reconnect in flight, or a status query that failed. Only the last kind
-   * carries an action, the one that fixes or rechecks it.
-   */
+
   const showAttentionRow =
     nativePermissionSetupError !== null ||
     availabilityView.kind === "ready" ||
@@ -391,8 +339,7 @@ export function ComputerSettingsPanel({
         {statusQuery.isFetching ? "Checking…" : "Check again"}
       </Button>
     ) : null;
-  // Stock is the default and stores no override; only an explicit Custom
-  // choice can differ from the default state.
+
   const cursorColorMode = settings.agentCursorColorMode ?? DEFAULT_AGENT_CURSOR_COLOR_MODE;
   const cursorColorsDirty =
     cursorColorMode !== (defaults.agentCursorColorMode ?? DEFAULT_AGENT_CURSOR_COLOR_MODE) ||
@@ -404,9 +351,7 @@ export function ComputerSettingsPanel({
 
   return (
     <div className="space-y-6">
-      {/* The whole surface: the toggle that turns desktop control on, the one
-          attention row when the desktop cannot deliver, and the two
-          preferences that shape a session. */}
+      {}
       <SettingsSectionShell
         id={settingRowAnchorId("Computer control")}
         title="Computer control"
@@ -448,9 +393,7 @@ export function ComputerSettingsPanel({
               control={attentionAction}
             />
           ) : null}
-          {/* The agent's on-screen pointer. Stock keeps the driver's monochrome
-              cursor and stores nothing beyond the default; Custom is the only
-              state that carries fill/rim overrides to the desktop cursor host. */}
+          {}
           <SettingsRow
             title="Cursor colors"
             description="The agent pointer is stock monochrome by default — like a normal pointer. Custom colors apply to new computer sessions."
@@ -496,12 +439,7 @@ export function ComputerSettingsPanel({
               </div>
             ) : null}
           </SettingsRow>
-          {/* On a backend that drives the visible desktop the pane defaults to
-              stills-only (interactive mode stays off — a second cursor on the
-              user's own screen is worse than none), but the preview itself is
-              wanted: watching the agent's captured view inside the app is how a
-              user follows background work in windows they are not looking at.
-              One row owns both choices: whether it opens, and how big it is. */}
+          {}
           <SettingsRow
             title="Preview"
             description="Show the live preview the first time an agent acts on the desktop in a chat. Compact keeps it small and glanceable; Large gives it the full wide card."
@@ -545,8 +483,7 @@ export function ComputerSettingsPanel({
       <ComputerGettingStarted />
       <ComputerAuditHistorySection />
 
-      {/* Details stay out of the way until asked for: the per-grant checklist
-          the macOS helper drives and what this backend can actually do. */}
+      {}
       <SettingsSectionShell
         title="Advanced"
         action={
@@ -564,11 +501,6 @@ export function ComputerSettingsPanel({
         <DisclosureRegion open={advancedOpen}>
           <div className="flex flex-col gap-4">
             {hasNativePermissionSetup && computerPermissionState ? (
-              // One permission section serves every surface; only the pane set
-              // differs. The coach and settings deep links live in the shared
-              // section, so Computer never grows a second guide stack. The
-              // Recheck footer is off here: the attention row's Set up is this
-              // panel's one check action.
               <ComputerPermissionSection
                 panes={COMPUTER_PERMISSION_PANES}
                 permissionKinds={COMPUTER_PERMISSIONS}

@@ -9,8 +9,6 @@ import {
   type AutomationRunReactorShape,
 } from "../Services/AutomationRunReactor.ts";
 
-// Only events that can change an automation turn's lifecycle should trigger reconciliation.
-// Message/activity streams can be token-level noisy, so they stay off this hot path.
 const RECONCILE_EVENT_TYPES: ReadonlySet<OrchestrationEvent["type"]> = new Set([
   "thread.turn-diff-completed",
   "thread.approval-response-requested",
@@ -79,8 +77,6 @@ const make = Effect.gen(function* () {
     );
 
   const start: AutomationRunReactorShape["start"] = Effect.fn(function* () {
-    // Close out runs orphaned by a crash/restart before watching live events. Reconcile is
-    // idempotent, so any overlap with the live stream is harmless.
     yield* automationService.recoverPendingRuns().pipe(
       Effect.catchCause((cause) =>
         Effect.logWarning("automation run reactor recovery failed", {

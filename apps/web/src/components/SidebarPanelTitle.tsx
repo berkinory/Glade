@@ -1,11 +1,5 @@
-// FILE: SidebarPanelTitle.tsx
-// Purpose: Title row at the top of a sidebar panel ("Settings", "Automations"), aligned with
-//          the thread surface picker's title so every panel opens on the same baseline.
-// Layer: Sidebar UI primitive
-
 import type { ReactNode } from "react";
 
-/** Panel title type: display face at the title size (titles may use a fixed size). */
 export const SIDEBAR_PANEL_TITLE_CLASS_NAME =
   "font-display min-w-0 truncate text-[17px] text-foreground";
 

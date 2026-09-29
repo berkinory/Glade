@@ -1,7 +1,3 @@
-// FILE: whatsNew/FeatureSection.tsx
-// Purpose: Render one release-note row inside a category section.
-// Layer: presentational — no state, no data fetching, no storage.
-
 import { cn } from "~/lib/utils";
 
 import type { WhatsNewFeature } from "./logic";

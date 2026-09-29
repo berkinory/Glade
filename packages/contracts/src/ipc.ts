@@ -301,16 +301,14 @@ import type { BrowserAnnotationMethods } from "./browserAnnotations";
 export interface ContextMenuItem<T extends string = string> {
   id: T;
   label: string;
-  /** Starts a new visual group before this actionable row. */
+
   separatorBefore?: boolean;
   destructive?: boolean;
-  /** Central icon basename from the reversed set (e.g. `"pencil"`) or inline `<svg>` markup. */
+
   icon?: string;
 }
 
-/** Context menu row sent over the desktop bridge with its icon pre-rasterized by the renderer. */
 export interface DesktopContextMenuItem<T extends string = string> extends ContextMenuItem<T> {
-  /** `data:image/png;base64,` template image rendered at 2x for a 16pt menu icon. */
   iconDataUrl?: string;
   iconTemplate?: boolean;
 }
@@ -349,12 +347,9 @@ export interface DesktopUpdateState {
   errorContext: "check" | "download" | "install" | null;
   canRetry: boolean;
   installFailureCount: number;
-  // Build flavor of the running desktop app ("production" | "development").
+
   flavor: "production" | "development";
-  // Public URL where the user can manually download the release when the
-  // in-app updater cannot apply it (silent installer failure, unsigned build,
-  // read-only install location, unsupported platform). Null when no GitHub
-  // update source is configured.
+
   releaseUrl: string | null;
 }
 
@@ -365,16 +360,11 @@ export interface DesktopUpdateActionResult {
 }
 
 export interface BrowserTabState {
-  /** Live popup relationship; not restored as an OAuth session after restart. */
   openerTabId?: string;
   id: string;
   url: string;
   title: string;
-  /**
-   * Agent-owned tabs use a main-process WebContentsView so the exact page can
-   * stay alive while its chat route is not mounted. Older snapshots omit this
-   * field and are treated as renderer-owned by the web app.
-   */
+
   runtimeSurface?: "native" | "renderer";
   status: "live" | "suspended";
   isLoading: boolean;
@@ -431,11 +421,11 @@ export interface BrowserSetPanelBoundsInput {
   threadId: ThreadId;
   bounds: BrowserPanelBounds | null;
   surface?: "native" | "renderer";
-  /** A DOM overlay temporarily covers a still-mounted browser panel. */
+
   occluded?: boolean;
-  /** Keep the live native page offscreen and show a non-interactive thumbnail. */
+
   preview?: boolean;
-  /** Guest page zoom for a presentation surface; omitted/1 keeps the normal 100% viewport. */
+
   pageZoomFactor?: number;
 }
 
@@ -471,7 +461,6 @@ export type DesktopComputerStatus =
 
 export type DesktopComputerSettingsPane = "accessibility" | "input-monitoring" | "screen-recording";
 
-/** A macOS privacy grant the Computer helper can check or request. */
 export type DesktopComputerPermissionKind = "accessibility" | "inputMonitoring" | "screenRecording";
 
 export type DesktopComputerPermissionGuideState = "closed" | "granted";
@@ -480,33 +469,25 @@ export interface DesktopComputerState {
   platform: DesktopComputerPlatform;
   supported: boolean;
   status: DesktopComputerStatus;
-  /**
-   * Only present once a caller asked about Accessibility; the helper reports
-   * just the grants it was queried for, so an absent field means "not asked".
-   */
+
   accessibilityPermission?: DesktopComputerPermission;
   inputMonitoringPermission: DesktopComputerPermission;
   screenRecordingPermission: DesktopComputerPermission;
   message: string | null;
-  /** Explicit setup failures survive passive grant refreshes until setup is retried. */
+
   permissionSetupErrorCode?:
     | "permission_setup_bundle_unavailable"
     | "permission_setup_registration_unresolved"
     | "permission_setup_identity_mismatch";
-  /** Name macOS shows for this build in System Settings permission lists. */
+
   appDisplayName: string;
 }
 
-// Pushed from the desktop main process when the in-app browser copy-link chord fires
-// while the native page (not the React chrome) holds keyboard focus.
 export interface BrowserCopyLinkEvent {
   threadId: ThreadId;
   url: string;
 }
 
-// Pushed after the desktop browser host has accepted an agent request. Keeping
-// the requested thread in the event prevents whichever chat happens to be
-// visible from stealing the browser session.
 export interface BrowserUseOpenPanelRequest {
   threadId: ThreadId;
 }
@@ -548,7 +529,6 @@ export interface DesktopWindowState {
   isFullscreen: boolean;
 }
 
-/** Main → renderer: ask whether quit should proceed while chats are running. */
 export type DesktopQuitConfirmationPresentation = "native" | "in-app";
 
 export interface DesktopQuitConfirmationRequest {
@@ -561,10 +541,6 @@ export interface DesktopQuitConfirmationChat {
   readonly title: string;
 }
 
-/**
- * Renderer → main: first ack that the UI received the request, then the user's
- * Stay / Quit decision. `ready` with `runningCount === 0` is treated as allow.
- */
 export type DesktopQuitConfirmationResponse =
   | {
       readonly requestId: string;
@@ -578,7 +554,6 @@ export type DesktopQuitConfirmationResponse =
       readonly allow: boolean;
     };
 
-/** Windows/Linux frameless title bar preference vs the live BrowserWindow frame. */
 export interface DesktopCustomTitleBarState {
   supported: boolean;
   preference: boolean;
@@ -595,23 +570,12 @@ export interface GladeStorageSnapshot {
   readonly entries: Readonly<Record<string, string>>;
 }
 
-/**
- * One frame of the desktop app's native computer preview tap: a complete JPEG
- * of the driven window. `seq` is monotonic per host process; the first frame
- * marks stream start and frames simply stop when the tap ends or dies. Sent
- * over the desktop bridge only, never through the computer WebSocket path.
- */
 export interface DesktopComputerPreviewFrame {
   readonly windowId: number;
   readonly seq: number;
   readonly jpeg: Uint8Array;
 }
 
-/**
- * Agent cursor colors mirrored from the renderer to the desktop main process.
- * Each channel is a `#rrggbb` string; an omitted channel keeps the driver's
- * stock treatment for it, and `null` is the stock monochrome cursor.
- */
 export interface DesktopAgentCursorStyle {
   readonly fill?: string;
   readonly rim?: string;
@@ -620,10 +584,7 @@ export interface DesktopAgentCursorStyle {
 
 export interface DesktopBridge {
   getWsUrl: () => string | null;
-  /**
-   * Absolute filesystem path for a File from drag/drop or file inputs.
-   * Electron only (`webUtils.getPathForFile`). Returns null when unavailable.
-   */
+
   getPathForFile?: (file: File) => string | null;
   pickFolder: () => Promise<string | null>;
   saveFile?: (input: {
@@ -654,30 +615,18 @@ export interface DesktopBridge {
     getState: () => Promise<DesktopWindowState>;
     onState: (listener: (state: DesktopWindowState) => void) => () => void;
   };
-  /**
-   * Windows/Linux only. `frame` is fixed at BrowserWindow creation, so changing
-   * the preference requires a relaunch before `active` catches up.
-   */
+  // Windows/Linux only. `frame` is fixed at BrowserWindow creation, so changing the preference
+  // requires a relaunch before `active` catches up.
   customTitleBar?: {
     getState: () => Promise<DesktopCustomTitleBarState>;
     setPreference: (enabled: boolean) => Promise<DesktopCustomTitleBarState>;
     relaunch: () => Promise<void>;
   };
-  /**
-   * Live desktop frames from the native computer frame tap, desktop app only.
-   * Plain browser clients never see this member; their preview keeps drawing
-   * the WebSocket stills stream.
-   */
+
   computerPreview?: {
     onFrame: (listener: (frame: DesktopComputerPreviewFrame) => void) => () => void;
   };
-  /**
-   * Desktop-owned computer preferences. `setCursorStyle` mirrors the agent
-   * cursor colors to the main process, which persists them for the next Cua
-   * driver session and live-pushes them when a session is already open.
-   * `null` restores the stock cursor. Plain browser clients never see this
-   * member; their settings stay local and the driver is not running there.
-   */
+
   computer?: {
     setCursorStyle: (style: DesktopAgentCursorStyle | null) => Promise<void>;
   };
@@ -686,7 +635,7 @@ export interface DesktopBridge {
     listener: (request: DesktopQuitConfirmationRequest) => void,
   ) => () => void;
   replyQuitConfirmation: (response: DesktopQuitConfirmationResponse) => void;
-  /** Current `webContents` page zoom (1 = 100%). Used to keep macOS traffic-light gutter aligned. */
+
   getZoomFactor: () => number;
   onZoomFactorChange: (listener: (zoomFactor: number) => void) => () => void;
   getUpdateState: () => Promise<DesktopUpdateState>;
@@ -705,12 +654,9 @@ export interface DesktopBridge {
     requestPermissions: (
       permissions?: readonly DesktopComputerPermissionKind[],
     ) => Promise<DesktopComputerState>;
-    /**
-     * Reads current grants without prompting, then walks the floating permission
-     * coach through each pane still missing a grant — opening its System
-     * Settings page and raising that pane's prompt as each step begins, so macOS
-     * never shows several permission dialogs at once.
-     */
+    // Reads current grants without prompting, then walks the floating permission coach through each
+    // pane still missing a grant — opening its System Settings page and raising that pane's prompt as
+    // each step begins, so macOS never shows several permission dialogs at once.
     startPermissionSetup: (
       permissions: readonly DesktopComputerPermissionKind[],
     ) => Promise<DesktopComputerState>;
@@ -812,7 +758,6 @@ export interface NativeApi {
     showInFolder: (path: string) => Promise<void>;
   };
   git: {
-    // Existing branch/worktree API
     githubRepository: (input: GitHubRepositoryInput) => Promise<GitHubRepositoryResult>;
     listBranches: (input: GitListBranchesInput) => Promise<GitListBranchesResult>;
     listRecentCommits: (input: GitListRecentCommitsInput) => Promise<GitListRecentCommitsResult>;
@@ -845,7 +790,7 @@ export interface NativeApi {
     preparePullRequestThread: (
       input: GitPreparePullRequestThreadInput,
     ) => Promise<GitPreparePullRequestThreadResult>;
-    // Stacked action API
+
     pull: (input: GitPullInput) => Promise<GitPullResult>;
     status: (input: GitStatusInput) => Promise<GitStatusResult>;
     readWorkingTreeDiff: (
@@ -1003,9 +948,7 @@ export interface NativeApi {
     annotations: BrowserAnnotationMethods;
     onCopyLink: (callback: (event: BrowserCopyLinkEvent) => void) => () => void;
   };
-  // macOS-only in practice: off darwin the server answers `list`/`getThreadState`
-  // with an `unsupported-platform` availability and refuses the rest, so the pane
-  // renders its blocked state rather than the client guessing at capabilities.
+
   device: {
     list: (input: DeviceListInput) => Promise<DeviceListResult>;
     boot: (input: DeviceBootInput) => Promise<DeviceBootResult>;
@@ -1029,7 +972,6 @@ export interface NativeApi {
     onEvent: (callback: (event: DeviceEvent) => void) => () => void;
   };
   computer: {
-    /** Thread-independent backend status for surfaces outside any conversation. */
     getStatus: (input: ComputerGetStatusInput) => Promise<ComputerStatusResult>;
     getAuditHistory: (
       input: ComputerGetAuditHistoryInput,
@@ -1040,7 +982,7 @@ export interface NativeApi {
     ) => Promise<ComputerControlEnabledResult>;
     getThreadState: (input: ComputerThreadInput) => Promise<ThreadComputerState>;
     getState: (input: ComputerGetStateInput) => Promise<ComputerState>;
-    /** User input from the computer dock pane; needs no agent turn in flight. */
+
     inputClick: (input: ComputerInputClickInput) => Promise<ComputerActionResult>;
     inputScroll: (input: ComputerInputScrollInput) => Promise<ComputerActionResult>;
     inputKey: (input: ComputerInputKeyInput) => Promise<ComputerActionResult>;

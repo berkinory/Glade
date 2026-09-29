@@ -31,8 +31,6 @@ export interface ProviderModelOptionGroup {
   options: ProviderModelOption[];
 }
 
-// Normalize known families to their canonical casing, keeping the provider's
-// variant wording. Unknown or freeform names pass through unchanged.
 function normalizeCatalogModelName(name: string): string {
   return normalizeModelDisplayName(name);
 }
@@ -57,9 +55,9 @@ function normalizeDynamicModelSlug(provider: ProviderKind, slug: string): string
   return normalizeModelSlug(slug, provider) ?? slug;
 }
 
-// Claude Code lists its current models by alias (`opus[1m]`) with the concrete id
-// in `resolvedModel`. When that id is a release newer than the catalog knows, list
-// it under its own id; otherwise the alias would fold into an older catalog model.
+// Claude Code lists its current models by alias (`opus[1m]`) with the concrete id in
+// `resolvedModel`. When that id is a release newer than the catalog knows, list it under its own
+// id; otherwise the alias would fold into an older catalog model.
 export function normalizeClaudeModelOptionSlug(model: {
   slug: string;
   resolvedModel?: string | undefined;
@@ -72,17 +70,10 @@ export function normalizeClaudeModelOptionSlug(model: {
     : normalizeDynamicModelSlug("claudeAgent", model.slug);
 }
 
-// Claude discovery order comes from the CLI's own catalog, which interleaves
-// families (Haiku ahead of Opus) and shifts with every CLI release. Rank Claude
-// models by our curated catalog instead so the picker stays strongest-first and
-// static-only models land next to their family rather than after the list.
 const CLAUDE_CATALOG_RANK_BY_SLUG: ReadonlyMap<string, number> = new Map(
   MODEL_OPTIONS_BY_PROVIDER.claudeAgent.map((model, index) => [model.slug as string, index]),
 );
 
-// Models the CLI exposes but the catalog does not know yet (a release landing
-// before Glade updates) sort just ahead of their family's newest catalog model,
-// so a new Opus stays below Fable. Other unknown models sort first.
 function claudeModelRank(slug: string): number {
   const catalogRank = CLAUDE_CATALOG_RANK_BY_SLUG.get(slug);
   if (catalogRank !== undefined) {
@@ -101,15 +92,6 @@ function orderClaudeModelOptions<T extends ProviderModelOption>(
   );
 }
 
-/**
- * Folds runtime-discovered models into the static option list for a provider:
- * discovered models lead (with display names recovered from the static list when
- * possible), static built-ins fill gaps unless discovery fully owns the catalog
- * (codex). Codex also owns a successful
- * empty catalog. Historical selected-model hints survive.
- * Claude is the exception: its discovered and static built-in models are merged
- * into the curated catalog order.
- */
 export function mergeDynamicModelOptions(input: {
   provider: ProviderKind;
   staticOptions: ReadonlyArray<ProviderModelOption & { isSelectedHint?: boolean }>;
@@ -122,7 +104,6 @@ export function mergeDynamicModelOptions(input: {
     upstreamProviderName?: string | null | undefined;
   }>;
 }): ReadonlyArray<ProviderModelOption & { isSelectedHint?: boolean }> {
-  // Selected-model placeholders have generated names, not curated metadata.
   const staticNameBySlug = new Map(
     input.staticOptions
       .filter((model) => !model.isSelectedHint)
@@ -159,8 +140,6 @@ export function mergeDynamicModelOptions(input: {
       slug: normalizedSlug,
       name:
         staticNameBySlug.get(normalizedSlug) ??
-        // Claude Code names rows by alias ("Opus (1M context)"); an uncatalogued
-        // Claude release reads better as its versioned id ("Claude Opus 6").
         (input.provider === "claudeAgent" && resolveNewestKnownClaudeFamilyModel(normalizedSlug)
           ? displayNameFallback
           : undefined) ??
@@ -240,7 +219,6 @@ export function groupProviderModelOptions(
   return groupedOptions;
 }
 
-/** Long grouped model lists collapse provider sections to keep submenus scannable. */
 const COLLAPSIBLE_MODEL_GROUP_THRESHOLD = 3;
 
 export function shouldUseCollapsibleModelGroups(groupCount: number, isSearching: boolean): boolean {

@@ -108,7 +108,7 @@ describe("Provider authority invariants", () => {
       expect((await manager.getThreadState("audit")).controlGeneration).toBe(stopped.generation);
       expect(await manager.admitControl("audit", "request", 0, true)).toBe(false);
       expect(await manager.admitControl("audit", "request", stopped.generation, true)).toBe(true);
-      // Re-arming this explicit request never authorizes later turns or goals.
+
       expect(manager.canContinueChatControl("audit")).toBe(false);
     } finally {
       await manager.dispose();
@@ -121,9 +121,6 @@ describe("Provider authority invariants", () => {
     const type = tools.find((tool) => tool.definition.name === "computer_type_text")!;
     try {
       for (const provider of ["codex", "claudeAgent"] as const) {
-        // A distinct text per provider keeps every call's repeat-guard key
-        // distinct — the guard would refuse a third identical unverified
-        // send before the approval gate this test measures.
         await Effect.runPromise(
           type.handler(
             { text: `check-${provider}`, window_id: "fake-terminal", include_screenshot: false },

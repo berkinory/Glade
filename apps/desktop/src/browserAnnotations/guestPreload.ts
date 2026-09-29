@@ -34,7 +34,7 @@ import {
 import "../browserWebMcp/guestBridge";
 
 const HOST_ATTRIBUTE = "data-glade-browser-annotations";
-/** Mutation storms are coalesced into at most one marker re-resolve per window. */
+
 const MARKER_REVALIDATE_DELAY_MS = 400;
 const VIEWPORT_GAP = 12;
 const ANCHOR_GAP = 18;
@@ -42,19 +42,19 @@ const INSPECTOR_GAP = 8;
 const NOTICE_GAP = 8;
 const COMMENT_MIN_HEIGHT = 22;
 const COMMENT_MAX_HEIGHT = 112;
-/** Keep live styles accurate without turning the inspector into a per-frame style read. */
+
 const INSPECTION_REFRESH_INTERVAL_MS = 100;
-/** Long enough to read a one-line notice, short enough not to sit in the way. */
+
 const NOTICE_DURATION_MS = 4_000;
 const UNANCHORABLE_NOTICE = "This element can't be pinned. Try one next to it.";
 const INVISIBLE_TARGET_NOTICE = "This element has no visible box. Try one next to it.";
 const STALE_TARGET_NOTICE = "This element changed. Pick it again — your comment is kept.";
-/** ASCII unit separator: never present in the tag/role parts it joins. */
+
 const FINGERPRINT_SEPARATOR = String.fromCharCode(31);
 const documentToken = createGuestIdentifier(globalThis.crypto);
-/** Last URL the host was told about, so state-only history entries stay quiet. */
+
 let lastDocumentHref = globalThis.location.href;
-/** Private marker identity intentionally ignores only URL fragments. */
+
 let lastDocumentIdentityUrl = browserAnnotationDocumentIdentityUrl(globalThis.location.href);
 
 interface ResolvedMarker {
@@ -81,7 +81,7 @@ let notice: HTMLElement | null = null;
 let activeSession: { sessionId: string } | null = null;
 let hoveredElement: Element | null = null;
 let selectedElement: Element | null = null;
-/** Pointer offset inside the selected element, so the composer follows it. */
+
 let selectionAnchor: { x: number; y: number } | null = null;
 let inspectedElement: Element | null = null;
 let inspectedCard: InspectorCard | null = null;
@@ -133,12 +133,9 @@ function sendReady(source = currentSource()): void {
   });
 }
 
-/**
- * In-page navigation can change the document identity the host keys markers by.
- * Drop a stale projection immediately when the sanitized source URL changes,
- * but keep it across fragment-only navigation because fragments are not part
- * of annotation identity and the same markers remain valid.
- */
+// Drop a stale projection immediately when the sanitized source URL changes, but keep it across
+// fragment-only navigation because fragments are not part of annotation identity and the same
+// markers remain valid.
 function handleDocumentIdentityChange(): void {
   const source = currentSource();
   const documentIdentityUrl = browserAnnotationDocumentIdentityUrl(globalThis.location.href);
@@ -154,11 +151,6 @@ function handleDocumentIdentityChange(): void {
   sendReady(source);
 }
 
-/**
- * History events also fire for entries that only swap `history.state`. Those
- * leave the document identity alone, so resetting on them would blink every
- * badge for the round trip it takes the host to send the same list back.
- */
 function handleHistoryNavigation(): void {
   if (globalThis.location.href === lastDocumentHref) return;
   if (activeSession) endInteractiveSession(false);
@@ -182,7 +174,6 @@ function looksSensitiveLocator(value: string): boolean {
   );
 }
 
-/** The `#id` selector for an element, when that id is safe to publish and unique. */
 function uniqueIdSelector(element: Element): string | null {
   if (!element.id || looksSensitiveLocator(element.id)) return null;
   const byId = `#${cssEscape(element.id)}`;
@@ -211,17 +202,11 @@ function uniqueSelector(element: Element): string | null {
     );
     const index = siblings.indexOf(current) + 1;
     segments.unshift(`${tag}:nth-of-type(${Math.max(1, index)})`);
-    // Anchoring at the nearest uniquely identified ancestor keeps deeply nested
-    // targets inside the selector budget. Walking all the way to <html> instead
-    // overflows it in framework trees, and an overflowing selector turns a save
-    // into a silent cancel that discards the comment.
+
     const anchor = uniqueIdSelector(parent);
     if (anchor) {
       const anchored = [anchor, ...segments].join(" > ");
       if (anchored.length <= GUEST_ANNOTATION_MAX_SELECTOR_LENGTH) return anchored;
-      // A long-but-valid id can push this anchored path over the contract limit
-      // even when the structural path to <html> is short. Keep walking so that
-      // fallback still gets a chance instead of rejecting an addressable node.
     }
     current = parent;
   }
@@ -351,11 +336,6 @@ function isSensitiveElement(element: Element): boolean {
   );
 }
 
-/**
- * The selector a commit for this element would carry, or `null` when the guest
- * cannot address it within the contract's bounds. Selection and commit share
- * this check so the composer never accepts a comment it would have to discard.
- */
 function annotationSelectorFor(element: Element): string | null {
   if (currentSource().url.length > GUEST_ANNOTATION_MAX_URL_LENGTH) return null;
   return uniqueSelector(element);
@@ -379,9 +359,7 @@ function describeElement(element: Element, comment: string): BrowserAnnotation |
     id: createGuestIdentifier(globalThis.crypto),
     source: currentSource(),
     selector,
-    // Custom elements can carry tag names longer than the contract allows, and
-    // the trusted parser drops the whole commit rather than truncating — which
-    // would lose the comment the user just wrote.
+
     tagName: element.tagName.slice(0, GUEST_ANNOTATION_MAX_TAG_NAME_LENGTH),
     role,
     name,
@@ -423,8 +401,6 @@ function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(Math.max(value, minimum), Math.max(minimum, maximum));
 }
 
-// --- Frame scheduling ------------------------------------------------------
-
 function scheduleFrame(): void {
   if (frameHandle !== null) return;
   if (!activeSession && !markersNeedResolve && resolvedMarkers.length === 0) return;
@@ -434,9 +410,7 @@ function scheduleFrame(): void {
 function runFrame(): void {
   frameHandle = null;
   renderOverlay();
-  // While the picker is live the overlay tracks the page continuously. One
-  // bounded geometry pass per frame is far cheaper than reacting to every page
-  // mutation, and it keeps the outline glued to animated or virtualised layout.
+
   if (activeSession && !document.hidden) scheduleFrame();
 }
 
@@ -448,8 +422,6 @@ function invalidateMarkersSoon(): void {
     scheduleFrame();
   }, MARKER_REVALIDATE_DELAY_MS);
 }
-
-// --- Element inspection ----------------------------------------------------
 
 function styleSnapshot(style: CSSStyleDeclaration): ElementStyleSnapshot {
   return {
@@ -483,7 +455,7 @@ function paintInspectorRows(card: InspectorCard): void {
     key.textContent = row.label;
     const value = document.createElement("span");
     value.className = "value";
-    // Page-derived strings are written as text, never as markup.
+
     value.textContent = row.value;
     line.append(key, value);
     rows.append(line);
@@ -502,7 +474,6 @@ function inspectorCardsMatch(left: InspectorCard | null, right: InspectorCard): 
   );
 }
 
-/** Refreshes live styles at a bounded rate while per-frame work stays geometry-only. */
 function refreshInspection(element: Element | null, rect: DOMRect | null): void {
   if (!element || !rect || !outline) {
     inspectedElement = element;
@@ -527,8 +498,7 @@ function refreshInspection(element: Element | null, rect: DOMRect | null): void 
   });
   if (!inspectorCardsMatch(inspectedCard, nextCard)) paintInspectorRows(nextCard);
   inspectedCard = nextCard;
-  // Mirroring the element's own corners makes the outline read as the element
-  // rather than as a box drawn around it.
+
   const borderRadius = formatCssBorderRadius([
     style.borderTopLeftRadius,
     style.borderTopRightRadius,
@@ -538,20 +508,12 @@ function refreshInspection(element: Element | null, rect: DOMRect | null): void 
   if (outline.style.borderRadius !== borderRadius) outline.style.borderRadius = borderRadius;
 }
 
-// --- Overlay geometry ------------------------------------------------------
-
 function boundsOf(element: Element | null): DOMRect | null {
   if (!element?.isConnected) return null;
   const bounds = element.getBoundingClientRect();
   return bounds.width > 0 && bounds.height > 0 ? bounds : null;
 }
 
-/**
- * Writes a floating card's viewport offset, clamped so the whole card stays
- * visible. Every overlay card goes through here, which is also what keeps the
- * render pass free of measurements: the caller supplies the size it already
- * read during the frame's single measurement phase.
- */
 function placeCard(card: HTMLElement, size: DOMRect, left: number, top: number): void {
   card.style.transform = `translate3d(${Math.round(
     clamp(left, VIEWPORT_GAP, globalThis.innerWidth - size.width - VIEWPORT_GAP),
@@ -560,7 +522,6 @@ function placeCard(card: HTMLElement, size: DOMRect, left: number, top: number):
   )}px,0)`;
 }
 
-/** Horizontal offset beside an anchor point, flipping sides when it would overflow. */
 function besideAnchor(anchorX: number, width: number): number {
   const maxLeft = globalThis.innerWidth - width - VIEWPORT_GAP;
   return anchorX + ANCHOR_GAP <= maxLeft ? anchorX + ANCHOR_GAP : anchorX - width - ANCHOR_GAP;
@@ -593,8 +554,8 @@ function positionPopover(bounds: DOMRect, size: DOMRect): void {
 
 function positionNotice(size: DOMRect, composer: DOMRect | null): void {
   if (!notice) return;
-  // With the composer open the notice belongs under it; otherwise it sits
-  // beside the pointer exactly like the composer would.
+  // With the composer open the notice belongs under it; otherwise it sits beside the pointer exactly
+  // like the composer would.
   if (composer) {
     placeCard(notice, size, composer.left, composer.bottom + NOTICE_GAP);
     return;
@@ -613,7 +574,6 @@ function hideNotice(): void {
   }
 }
 
-/** Explains a refused selection or a failed save without stealing focus. */
 function showNotice(message: string): void {
   noticeText = message;
   noticeAnchor = { x: pointer.x, y: pointer.y };
@@ -714,11 +674,6 @@ function paintMarkers(measured: readonly (DOMRect | null)[]): void {
   }
 }
 
-/**
- * One frame of overlay work, ordered read-then-write. Interleaving the two
- * makes the browser recompute layout once per card; keeping every measurement
- * ahead of every transform costs a single layout for the whole frame.
- */
 function renderOverlay(): void {
   if (!outline || !popover || !badgeLayer || !inspector || !cursorBubble) return;
   if (host && !host.isConnected && document.documentElement) {
@@ -735,20 +690,15 @@ function renderOverlay(): void {
   }
   if (markersNeedResolve) resolveMarkers();
 
-  // Page measurements first: nothing written below has touched the page yet.
   const focus = activeSession ? (selectedElement ?? hoveredElement) : null;
   const bounds = boundsOf(focus);
   if (selectedElement && !bounds) {
-    // A selected node can collapse without disconnecting. Do not leave focus in
-    // a hidden composer or let Enter publish an invisible target; release the
-    // selection while preserving any comment the user already typed.
     releaseSelectionWithNotice(INVISIBLE_TARGET_NOTICE);
   }
   const measuredMarkers = measureMarkers();
 
-  // Then the content and visibility of every card, because a hidden card
-  // measures as a zero box and a late text change would invalidate a
-  // measurement already taken.
+  // Then the content and visibility of every card, because a hidden card measures as a zero box and a
+  // late text change would invalidate a measurement already taken.
   refreshInspection(bounds ? focus : null, bounds);
   const showsComposer = bounds !== null && selectedElement !== null;
   const showsInspector = bounds !== null && !showsComposer && inspectedCard !== null;
@@ -763,13 +713,10 @@ function renderOverlay(): void {
     if (inspectorSize.textContent !== size) inspectorSize.textContent = size;
   }
 
-  // Card measurements. Unchanged inspection content writes nothing above, so in
-  // the steady state these reads reuse the layout the page measurements forced.
   const composerCard = showsComposer ? popover.getBoundingClientRect() : null;
   const inspectorCard = showsInspector ? inspector.getBoundingClientRect() : null;
   const noticeCard = notice && noticeText !== null ? notice.getBoundingClientRect() : null;
 
-  // Writes only, from here to the end of the frame.
   if (bounds) positionOutline(bounds);
   if (bounds && composerCard) positionPopover(bounds, composerCard);
   if (bounds && inspectorCard) positionInspector(bounds, inspectorCard);
@@ -780,15 +727,12 @@ function renderOverlay(): void {
   paintMarkers(measuredMarkers);
 }
 
-// --- Session lifecycle -----------------------------------------------------
-
 function setPageCursorHidden(hidden: boolean): void {
   try {
     if (hidden) {
       if (!pageCursorSheet) {
         pageCursorSheet = new CSSStyleSheet();
-        // A constructed sheet keeps the native cursor hidden behind the
-        // annotation bubble without mutating the page or tripping its CSP.
+
         pageCursorSheet.replaceSync("*,*::before,*::after{cursor:none!important}");
       }
       if (!document.adoptedStyleSheets.includes(pageCursorSheet)) {
@@ -801,9 +745,7 @@ function setPageCursorHidden(hidden: boolean): void {
         (sheet) => sheet !== pageCursorSheet,
       );
     }
-  } catch {
-    // Constructed stylesheets are unavailable; the native cursor stays visible.
-  }
+  } catch {}
 }
 
 function autoSizeComment(): void {
@@ -818,8 +760,7 @@ function clearSelection(options: { readonly keepComment?: boolean } = {}): void 
   selectedElement = null;
   selectionAnchor = null;
   hoveredElement = null;
-  // Re-acquire whatever sits under the resting pointer instead of waiting for
-  // the next move event.
+
   pointerNeedsHitTest = true;
   if (textarea && options.keepComment !== true) {
     textarea.value = "";
@@ -838,9 +779,7 @@ function selectTarget(target: Element, point: { x: number; y: number } | null): 
     showNotice(INVISIBLE_TARGET_NOTICE);
     return;
   }
-  // Refuse targets the guest cannot address before the composer opens. Letting
-  // the user type into a comment that can never be committed is worse than
-  // saying so up front.
+
   if (!annotationSelectorFor(target)) {
     showNotice(UNANCHORABLE_NOTICE);
     return;
@@ -852,16 +791,9 @@ function selectTarget(target: Element, point: { x: number; y: number } | null): 
     x: point ? clamp(point.x - bounds.left, 0, bounds.width) : bounds.width / 2,
     y: point ? clamp(point.y - bounds.top, 0, bounds.height) : bounds.height / 2,
   };
-  // Whatever is already in the box carries over, whether the user is re-aiming
-  // at a different element or recovering from a save that failed on a stale
-  // target. Losing typed text to a stray click is the bug this picker had; the
-  // paths that genuinely end a selection clear the box themselves.
-  // Open and focus synchronously so the first keystroke after selection cannot
-  // land in the page while waiting for the next animation frame.
+
   renderOverlay();
-  // The textarea must be visible before scrollHeight can represent a carried
-  // multi-line comment. Repaint once after sizing so the composer is positioned
-  // using its final height.
+
   autoSizeComment();
   renderOverlay();
   textarea?.focus({ preventScroll: true });
@@ -905,10 +837,6 @@ function submitAnnotation(): void {
   }
   const annotation = describeElement(target, textarea?.value ?? "");
   if (!annotation) {
-    // The target stopped being addressable between selection and save. Ending
-    // the session here would throw away the comment the user just wrote and
-    // report it to the host as a deliberate cancel, so release the selection
-    // only, keep the text, and say what happened.
     releaseSelectionWithNotice(STALE_TARGET_NOTICE);
     renderOverlay();
     return;
@@ -939,8 +867,6 @@ function applyVisualTheme(theme: BrowserAnnotationTheme): void {
   host.style.setProperty("--annotation-primary-text", theme.primaryText);
 }
 
-// --- Event isolation -------------------------------------------------------
-
 function installInteractionListeners(): void {
   if (interactionListenersInstalled) return;
   interactionListenersInstalled = true;
@@ -951,17 +877,15 @@ function installInteractionListeners(): void {
       if (!activeSession) return;
       const overlayTarget = isOverlayTarget(event.target);
       isolateInteractionEvent(event);
-      // The session hides the native cursor, so the bubble is the only cursor
-      // the user can see. Synthetic moves must never steer it: a page that
-      // could would show the outline and inspector on one element while the
-      // real pointer — and therefore the click — sat on another.
+      // The session hides the native cursor, so the bubble is the only cursor the user can see. Synthetic
+      // moves must never steer it: a page that could would show the outline and inspector on one element
+      // while the real pointer — and therefore the click — sat on another.
       if (!event.isTrusted) return;
       pointer.x = event.clientX;
       pointer.y = event.clientY;
       pointer.inside = true;
       pointer.overOverlay = overlayTarget;
-      // Hit testing is deferred to the frame so a fast pointer cannot force one
-      // synchronous layout flush per move event.
+
       if (!overlayTarget && !selectedElement) pointerNeedsHitTest = true;
       scheduleFrame();
     },
@@ -993,9 +917,7 @@ function installInteractionListeners(): void {
         }
         return;
       }
-      // Keyboard and assistive-technology activation can produce a trusted
-      // click without a pointerdown. Keep that path selectable while ignoring
-      // synthetic page-script clicks.
+
       if (!selectedElement && event.isTrusted && event.target instanceof Element) {
         selectTarget(event.target, null);
       }
@@ -1008,13 +930,12 @@ function installInteractionListeners(): void {
       if (!activeSession) return;
       const overlayTarget = isOverlayTarget(event.target);
       isolateInteractionEvent(event, !overlayTarget);
-      // The host element is discoverable in the page's DOM, so a page script can
-      // aim synthetic key events at it. Isolate those like any other event, but
-      // never let them cancel the session or publish the user's comment.
+      // The host element is discoverable in the page's DOM, so a page script can aim synthetic key events
+      // at it. Isolate those like any other event, but never let them cancel the session or publish the
+      // user's comment.
       if (!event.isTrusted) return;
       suppressedKeyups.add(keyboardEventIdentity(event));
-      // During IME composition Enter confirms the candidate and Escape abandons
-      // it; neither is a picker command.
+
       if (event.isComposing) return;
       if (event.key === "Escape") {
         if (overlayTarget) event.preventDefault();
@@ -1047,10 +968,6 @@ function installInteractionListeners(): void {
     true,
   );
 
-  // Prevent the selected page from observing any later phase of the trusted
-  // pointer/mouse/touch gesture. Overlay controls keep their native defaults
-  // (focus, text selection, and scrolling) while their composed events remain
-  // private to the closed shadow root.
   for (const eventType of [
     "pointerup",
     "pointercancel",
@@ -1101,9 +1018,6 @@ function installInteractionListeners(): void {
     );
   }
 
-  // Register the keyboard/input boundary before page scripts run. Overlay
-  // controls keep native editing defaults; page targets are cancelled, and
-  // wheel propagation is hidden while native scrolling remains available.
   for (const eventType of [
     "keypress",
     "beforeinput",
@@ -1127,8 +1041,7 @@ function installInteractionListeners(): void {
           event,
           eventType !== "wheel" && !isOverlayTarget(event.target),
         );
-        // Composed events are retargeted to the host by the closed shadow root,
-        // so the focused control identifies the comment field.
+
         if (overlayTarget && eventType === "input" && shadow?.activeElement === textarea) {
           autoSizeComment();
           scheduleFrame();
@@ -1137,9 +1050,8 @@ function installInteractionListeners(): void {
       true,
     );
   }
-  // A key held while the window loses focus never delivers its keyup here, so
-  // the pending identity would otherwise swallow the page's own keyup for that
-  // key long after the session ended.
+  // A key held while the window loses focus never delivers its keyup here, so the pending identity
+  // would otherwise swallow the page's own keyup for that key long after the session ended.
   globalThis.addEventListener("blur", () => suppressedKeyups.clear());
   document.addEventListener("scroll", scheduleFrame, true);
   globalThis.addEventListener("resize", scheduleFrame);
@@ -1156,8 +1068,6 @@ function eventHitsElement(event: MouseEvent, element: Element | null): boolean {
     event.clientY <= bounds.bottom
   );
 }
-
-// --- Overlay construction --------------------------------------------------
 
 const OVERLAY_STYLE = `
   :host {
@@ -1366,9 +1276,7 @@ function initializeOverlay(): void {
   document.documentElement.append(host);
   markerResizeObserver = new ResizeObserver(scheduleFrame);
   markerResizeObserver.observe(document.documentElement);
-  // Structural changes and locator-relevant attributes can invalidate a
-  // resolved marker. Limit attribute observation to the selector/fingerprint
-  // inputs so unrelated page churn cannot reproject the overlay every frame.
+
   new MutationObserver((records) => {
     if (projectedMarkers.length === 0) return;
     if (
@@ -1422,9 +1330,9 @@ ipcRenderer.on(BROWSER_ANNOTATION_GUEST_COMMAND_CHANNEL, (_event, rawCommand: un
   scheduleFrame();
 });
 
-// Preloads execute before page scripts. Install the capture boundary now,
-// rather than at DOMContentLoaded, so an untrusted page cannot register an
-// earlier listener for picker clicks or private comment input.
+// Preloads execute before page scripts. Install the capture boundary now, rather than at
+// DOMContentLoaded, so an untrusted page cannot register an earlier listener for picker clicks or
+// private comment input.
 installInteractionListeners();
 
 if (document.readyState === "loading") {

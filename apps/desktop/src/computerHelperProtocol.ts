@@ -46,8 +46,6 @@ export function parseComputerHelperMessage(line: string): ComputerHelperMessage 
   if (!parsed || typeof parsed !== "object") return null;
   const value = parsed as Record<string, unknown>;
 
-  // The helper reports only the permission kinds it was asked about, so every
-  // field is optional; a payload carrying none is not a permissions message.
   if (value.type === "permissions") {
     const permissions: Extract<ComputerHelperMessage, { type: "permissions" }> = {
       type: "permissions",

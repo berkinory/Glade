@@ -77,9 +77,9 @@ function makeTransport(input: {
   readonly tools: ReadonlyArray<ToolEntry>;
   readonly threads: ReadonlyArray<OrchestrationThreadShell>;
   readonly leaseCapabilities?: AgentGatewayCapabilityInput;
-  /** Thread ids that hold a session lease but no longer exist in the snapshot. */
+
   readonly ghostThreads?: ReadonlyArray<string>;
-  /** Computer family names threaded to the transport (absent from tools). */
+
   readonly computerToolNames?: ReadonlyArray<string>;
   readonly onCapabilityDenied?: (denial: McpTransportTestDenial) => Effect.Effect<void>;
 }) {
@@ -302,9 +302,7 @@ describe("makeAgentGatewayMcpTransport cancellation", () => {
                     },
                     { once: true },
                   );
-                  // Wake the Stop path before tryPromise returns, reproducing
-                  // the re-entrant window where a direct interrupt would miss
-                  // Effect's not-yet-installed AbortController finalizer.
+
                   Deferred.doneUnsafe(hostStarted, Effect.void);
                 });
               },
@@ -340,8 +338,8 @@ describe("makeAgentGatewayMcpTransport cancellation", () => {
         yield* Deferred.await(hostAbortObserved);
         assert.deepEqual(yield* Fiber.join(request), { status: 202 });
 
-        // A detached cell can race and issue the request after Stop. The turn
-        // tombstone must reject it before the handler starts.
+        // A detached cell can race and issue the request after Stop. The turn tombstone must reject it
+        // before the handler starts.
         assert.deepEqual(yield* post(transport, "token-1", { ...body, id: "late-request" }), {
           status: 202,
         });
@@ -603,8 +601,6 @@ describe("makeAgentGatewayMcpTransport tools/list", () => {
 
   it.effect("omits tools the caller's session was never granted", () =>
     Effect.gen(function* () {
-      // A session without computer:control can never call these tools; listing
-      // them would cost the model prompt tokens and a guaranteed denial.
       const transport = makeTransport({ threads: [makeThread("thread-plain")], tools: catalog });
       const response = yield* post(transport, "token-1", listBody);
       assert.equal(response.status, 200);
@@ -636,17 +632,14 @@ describe("makeAgentGatewayMcpTransport tools/list", () => {
         annotations: { title: "Click" },
         _meta: { "anthropic/alwaysLoad": true },
       });
-      // A tool that declares no _meta must not gain an empty one: an MCP client
-      // is entitled to treat the key's absence as "no hints".
+      // A tool that declares no _meta must not gain an empty one: an MCP client is entitled to treat the
+      // key's absence as "no hints".
       assert.isFalse("_meta" in tools[0]!);
     }),
   );
 
   it.effect("withholds discovery-only tools from the list but still dispatches them", () =>
     Effect.gen(function* () {
-      // The advertised catalog stays small on purpose: a tool marked
-      // discoveryOnly is absent from tools/list yet reaches its handler on an
-      // exact-name tools/call — capability and approval gates unchanged.
       const discoveryCatalog: ReadonlyArray<ToolEntry> = [
         ...catalog,
         {
@@ -734,7 +727,7 @@ describe("makeAgentGatewayMcpTransport capability truth", () => {
               denials.push(denial);
             }),
         });
-        // Active turn, missing capability: deny and surface exactly once.
+
         const denied = yield* post(transport, "token-1", toolCallBody("computer_click"));
         assert.equal(denied.status, 200);
         assert.equal(
@@ -743,7 +736,7 @@ describe("makeAgentGatewayMcpTransport capability truth", () => {
         );
         assert.equal(denials.length, 1);
         assert.equal(handlerCalls, 0);
-        // Inactive turn, same missing capability: authority wins, hook stays silent.
+
         transport.setThreadTurnState("thread-order", "completed");
         const inactive = yield* post(transport, "token-1", {
           ...toolCallBody("computer_click"),
@@ -764,7 +757,7 @@ describe("makeAgentGatewayMcpTransport capability truth", () => {
       const denials: Array<McpTransportTestDenial> = [];
       const transport = makeTransport({
         threads: [makeThread("thread-denied")],
-        // The computer tool is known to the family but absent from this catalog.
+
         tools: [],
         computerToolNames: ["computer_click"],
         onCapabilityDenied: (denial) =>
@@ -859,7 +852,7 @@ describe("makeAgentGatewayMcpTransport capability truth", () => {
       assert.equal(gone.status, 401);
       assert.deepEqual(authorityDataOf(gone), { code: "thread-gone", retry: "do-not-retry" });
       assert.include(rpcErrorOf(gone).message, "Do not retry");
-      // token-2 leases thread-mismatch as codex, but the live session names claudeAgent.
+
       const mismatch = yield* post(transport, "token-2", listBody);
       assert.equal(mismatch.status, 401);
       assert.deepEqual(authorityDataOf(mismatch), {

@@ -1,10 +1,5 @@
 import { statSync } from "node:fs";
 
-/**
- * Missing project CWDs often surface as spawn ENOENT (Node/Effect access the
- * working directory before the binary). Callers must distinguish that from a
- * missing Codex installation so the UI can prompt relocate/reconnect.
- */
 export function formatMissingCodexWorkingDirectoryError(cwd: string): string {
   return `Project working directory no longer exists: ${cwd}. Relocate or reconnect the project in Glade.`;
 }

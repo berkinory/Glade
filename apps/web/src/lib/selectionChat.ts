@@ -1,5 +1,3 @@
-// Purpose: Route selected transcript text through the new-chat flow.
-
 import type { ProjectId, ThreadEnvironmentMode, ThreadId } from "@glade/contracts";
 
 import { useComposerDraftStore, type QueuedComposerChatTurn } from "../composerDraftStore";
@@ -63,8 +61,7 @@ export async function startSelectionChat(
     requestComposerFocus(threadId);
     return;
   }
-  // The destination ChatView drains this queue through its regular first-send path,
-  // including worktree creation, setup scripts, attachment serialization and recovery.
+
   drafts.enqueueQueuedTurn(threadId, {
     id: randomUUID(),
     kind: "chat",

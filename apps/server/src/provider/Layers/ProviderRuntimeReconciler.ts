@@ -1,12 +1,3 @@
-/**
- * ProviderRuntimeReconcilerLive - Repairs live runtime/projection divergence.
- *
- * This is the same-process counterpart to startupTurnReconciliation. It uses
- * Adapter sessions as live evidence and always settles ambiguous missing-event
- * cases as interrupted rather than inventing successful completion.
- *
- * @module ProviderRuntimeReconcilerLive
- */
 import {
   CommandId,
   EventId,
@@ -48,10 +39,7 @@ export interface ProviderRuntimeReconcilerLiveOptions {
 }
 
 function reconciliationKey(plan: ProviderRuntimeReconciliationPlan): string {
-  // A stale turn can move through multiple settlement plans while the session
-  // and turn projections converge. Those are retries/refinements of one
-  // recovery, not separate user-visible recoveries. Runtime realignment stays
-  // distinct because each live runtime turn is independent evidence.
+  // Runtime realignment stays distinct because each live runtime turn is independent evidence.
   const operation = plan.action === "align-running-turn" ? plan.action : "settle-running-turn";
   return `provider-runtime-reconcile:${JSON.stringify([
     plan.provider,
@@ -86,7 +74,6 @@ const make = (options?: ProviderRuntimeReconcilerLiveOptions) =>
       ),
     );
 
-    /** Compares everything that constitutes a repair; `updatedAt` always moves. */
     const isSameProjectedSession = (
       current: OrchestrationSession | null,
       next: OrchestrationSession,
@@ -139,14 +126,10 @@ const make = (options?: ProviderRuntimeReconcilerLiveOptions) =>
             : plan.action === "settle-terminal-projection"
               ? plan.terminalSession.lastError
               : null,
-        // Always `now`. Replaying a terminal session's original timestamp keeps
-        // the staleness clock frozen, so the same repair is replanned forever.
+
         updatedAt: now,
       };
 
-      // Nothing left to repair: the projected session already matches the plan
-      // and no turn is left running. Dispatching anyway writes two fresh events
-      // on every tick for as long as the thread stays a candidate.
       if (
         thread.latestTurn?.state !== "running" &&
         isSameProjectedSession(thread.session, session)
@@ -155,13 +138,9 @@ const make = (options?: ProviderRuntimeReconcilerLiveOptions) =>
       }
 
       const key = reconciliationKey(plan);
-      // Command ids identify attempts because timestamps can legitimately
-      // change between retries. The activity id identifies the semantic repair,
-      // allowing projectors to suppress a repeated visible recovery while a
-      // failed or lagging session update remains safe to retry.
+      // Command ids identify attempts because timestamps can legitimately change between retries.
       const attemptKey = `${key}:${crypto.randomUUID()}`;
-      // Session first: it is the repair. If only one of the two lands, it must
-      // be the one that unsticks the thread, not the note explaining it.
+
       yield* orchestrationEngine.dispatch({
         type: "thread.session.set",
         commandId: CommandId.makeUnsafe(`${attemptKey}:session`),
@@ -194,10 +173,8 @@ const make = (options?: ProviderRuntimeReconcilerLiveOptions) =>
         createdAt: now,
       });
 
-      // The durable binding still advertises the turn that was just settled,
-      // which keeps the thread a reconciliation candidate forever. Only merge
-      // into an existing row: an upsert would otherwise resurrect a binding for
-      // a thread that no longer has one.
+      // Only merge into an existing row: an upsert would otherwise resurrect a binding for a thread that
+      // no longer has one.
       if (
         input.binding !== undefined &&
         session.activeTurnId === null &&
@@ -230,8 +207,7 @@ const make = (options?: ProviderRuntimeReconcilerLiveOptions) =>
         ],
         { concurrency: 4 },
       );
-      // One batched read instead of up to `candidateLimit` point reads
-      // contending on the single SQLite handle every reconciliation tick.
+
       const threads = yield* projectionSnapshotQuery.getThreadShellsByIds(candidateThreadIds);
       const threadById = new Map(threads.map((thread) => [thread.id, thread]));
       const bindingByThreadId = new Map(bindings.map((binding) => [binding.threadId, binding]));

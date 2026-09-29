@@ -1,7 +1,6 @@
 import { lstat, unlink } from "node:fs/promises";
 import { createConnection } from "node:net";
 
-/** Replace only an owned socket whose former listener is proven absent. */
 export async function clearStaleCuaHostSocket(
   endpoint: string,
   platform: NodeJS.Platform = process.platform,
@@ -28,8 +27,6 @@ export async function clearStaleCuaHostSocket(
     );
   });
 
-  // A different host may have replaced the path while the probe was in
-  // flight. Never unlink that host's listener based on the earlier result.
   const current = await socketIdentity(endpoint);
   if (!current) return;
   if (probe === "missing" || candidate.dev !== current.dev || candidate.ino !== current.ino)

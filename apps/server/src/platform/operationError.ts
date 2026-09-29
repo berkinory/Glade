@@ -9,7 +9,6 @@ class ExternalOperationError extends Data.TaggedError("ExternalOperationError")<
 }> {}
 
 export function normalizeOperationError(cause: unknown): TaggedFailure {
-  // Domain failures retain their identity; opaque SDK/Node failures cross into a typed channel.
   if (cause instanceof Error && "_tag" in cause && typeof cause._tag === "string")
     return cause as TaggedFailure;
   const code =

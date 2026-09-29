@@ -1,11 +1,3 @@
-// FILE: ComposerQueuedHeader.tsx
-// Purpose: Queued follow-up rows shown as a panel that merges into the top of the
-// composer input (each with Steer / Delete / Edit actions). Rounded only on top with
-// a flat, borderless bottom that fuses flush onto the composer; spans the full composer
-// width while the composer below keeps its own full rounding.
-// Layer: Chat composer UI
-// Exports: ComposerQueuedHeader
-
 import type { QueuedComposerTurn } from "../../composerDraftStore";
 import { SteerIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
@@ -34,9 +26,6 @@ function firstNonEmptyLine(value: string): string {
   );
 }
 
-// Queue previews use the shared markdown renderer for inline chips/emphasis, but
-// must stay a single composer row even when the queued prompt is a heading, list,
-// or fenced code block.
 function compactQueuedComposerPreviewMarkdown(value: string): string {
   const firstLine = firstNonEmptyLine(value);
   if (firstLine.length === 0) {
@@ -60,7 +49,7 @@ interface ComposerQueuedHeaderProps {
   onSteer: (queuedTurn: QueuedComposerTurn) => void;
   onRemove: (queuedTurnId: string) => void;
   onEdit: (queuedTurn: QueuedComposerTurn) => void;
-  /** Workspace root used to resolve local file links/mentions inside the parsed preview. */
+
   cwd?: string | undefined;
   attachedToPrevious?: boolean;
 }

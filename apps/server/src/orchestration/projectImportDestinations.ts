@@ -1,7 +1,6 @@
 import type { OrchestrationReadModel, ThreadId } from "@glade/contracts";
 import type { ProjectImportOrigin } from "../persistence/projectImportRepository";
 
-/** Use the same destination liveness rules for preview, deduplication, and retries. */
 export function makeProjectImportDestinations(
   model: Pick<OrchestrationReadModel, "projects" | "threads">,
 ) {
@@ -20,7 +19,7 @@ export function makeProjectImportDestinations(
     if (!origin) return undefined;
     const destination = findThread(origin.threadId);
     if (destination) return { ...origin, ...destination };
-    // A crash after reservation but before thread.create must retry the same identity.
+
     if (
       origin.status === "pending" &&
       !threads.has(origin.threadId) &&

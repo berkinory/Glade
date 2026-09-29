@@ -131,11 +131,11 @@ export async function prepareChatSendWorkspace({
       titleSeed = GENERIC_CHAT_THREAD_TITLE;
     }
   }
-  // Keep the optimistic label short while the server asks Codex for a better summary.
+
   const title = buildPromptThreadTitleFallback(titleSeed);
   const currentStoreState = useStore.getState();
-  // Keep an optimistically selected Space across the command/snapshot race. The server
-  // validates this best-effort target and degrades genuinely stale/deleted ids to Void.
+  // Keep an optimistically selected Space across the command/snapshot race. The server validates this
+  // best-effort target and degrades genuinely stale/deleted ids to Void.
   const activeSpaceIdForSend = readActiveSpaceId();
   const firstSendDefaultModelSelection = buildModelSelection(
     selectedModelSelectionForSend.provider,
@@ -191,10 +191,7 @@ export async function prepareChatSendWorkspace({
     if (firstSendTarget.kind === "create-project") {
       const projectId = newProjectId();
       const createdAt = firstSendCreatedAt.toISOString();
-      // Managed chat rows stay global; a folder mention creates an ordinary project and
-      // should inherit the Space where the first send originated. Resolved before the
-      // `try`: a value block inside a try body makes React Compiler bail out on the whole
-      // component.
+
       const createProjectSpaceFields =
         firstSendTarget.creation.kind === "project" ? { spaceId: activeSpaceIdForSend } : {};
       try {
@@ -222,7 +219,6 @@ export async function prepareChatSendWorkspace({
           throw error;
         }
 
-        // If the server already knows this workspace root, reuse that project and continue.
         const { snapshot, project: recoveredProject } =
           await waitForRecoverableProjectForDuplicateCreate({
             message: description,
@@ -263,8 +259,8 @@ export async function prepareChatSendWorkspace({
     nextAssociatedWorktreeRef = null;
   }
 
-  // The branch query can finish just after the user chooses New worktree. Use the
-  // resolved active branch at send time instead of rejecting an otherwise valid fast send.
+  // The branch query can finish just after the user chooses New worktree. Use the resolved active
+  // branch at send time instead of rejecting an otherwise valid fast send.
   if (
     isFirstMessage &&
     nextThreadEnvMode === "worktree" &&
@@ -274,9 +270,9 @@ export async function prepareChatSendWorkspace({
     nextThreadBranch = activeRootBranch ?? null;
   }
 
-  // A settled local thread keeps its historical branch until the user resumes it, so the
-  // composer can explain the branch change. Refresh Git status before sending because the
-  // cached branch query may still be loading or may lag behind an out-of-band checkout.
+  // A settled local thread keeps its historical branch until the user resumes it, so the composer can
+  // explain the branch change. Refresh Git status before sending because the cached branch query may
+  // still be loading or may lag behind an out-of-band checkout.
   if (shouldResumeSettledLocalThread) {
     if (!gitBranchSourceCwd) {
       setStoreThreadError(threadIdForSend, "Unable to determine the current branch.");
@@ -307,8 +303,6 @@ export async function prepareChatSendWorkspace({
       ? nextThreadBranch
       : null;
 
-  // In worktree mode, require an explicit base branch so we don't silently
-  // fall back to local execution when branch selection is missing.
   const shouldCreateWorktree =
     isFirstMessage && nextThreadEnvMode === "worktree" && !nextThreadWorktreePath;
   if (shouldCreateWorktree && !nextThreadBranch) {
@@ -323,8 +317,7 @@ export async function prepareChatSendWorkspace({
     ? setupProjectScript(targetProjectScriptsForSend)
     : null;
   const worktreeSetupScriptName = setupScriptForWorktree?.name ?? null;
-  // Branching off the checkout's current branch also carries its uncommitted
-  // changes into the worktree, which the setup card surfaces as its own step.
+
   const worktreeCopiesLocalChanges =
     Boolean(baseBranchForWorktree) && baseBranchForWorktree === activeRootBranch;
   return {

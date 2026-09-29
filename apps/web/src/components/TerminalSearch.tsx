@@ -1,8 +1,4 @@
 import { useMemo, useCallback } from "react";
-// FILE: TerminalSearch.tsx
-// Purpose: Provides the in-terminal find bar and navigation controls.
-// Layer: Terminal presentation component
-// Exports: TerminalSearch
 
 import type { SearchAddon, ISearchOptions } from "@xterm/addon-search";
 import { useEffect, useRef, useState } from "react";
@@ -94,8 +90,6 @@ export function TerminalSearch({ searchAddon, isOpen, onClose }: TerminalSearchP
     scheduleSearch(newQuery);
   };
 
-  // Re-run search when case sensitivity or search addon changes
-  // (but not on query change — handleInputChange handles that).
   const prevCaseSensitiveRef = useRef(caseSensitive);
   const prevSearchAddonRef = useRef<SearchAddon | null>(searchAddon);
   useEffect(() => {
@@ -106,8 +100,6 @@ export function TerminalSearch({ searchAddon, isOpen, onClose }: TerminalSearchP
     prevCaseSensitiveRef.current = caseSensitive;
     prevSearchAddonRef.current = searchAddon;
     if (searchAddon && query) {
-      // Inline debounce (rather than scheduleSearch) so every state write in
-      // this effect happens inside the timer, keeping it compiler-eligible.
       clearSearchTimer();
       searchTimerRef.current = window.setTimeout(() => {
         searchTimerRef.current = null;

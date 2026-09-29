@@ -1,6 +1,3 @@
-// FILE: storageOriginMigration.ts
-// Purpose: Imports Glade browser state before renderer stores hydrate after a desktop origin move.
-
 import type { GladeStorageSnapshot } from "@glade/contracts";
 
 const MAX_SNAPSHOT_ENTRIES = 2_048;
@@ -63,9 +60,7 @@ export function bootstrapGladeStorageOriginMigration(): void {
     if (snapshot && importGladeStorageSnapshot(snapshot)) {
       void bridge.acknowledgeSnapshot().catch(() => undefined);
     }
-  } catch {
-    // Keep the snapshot for a later retry if preload or storage is unavailable.
-  }
+  } catch {}
 }
 
 bootstrapGladeStorageOriginMigration();

@@ -1,8 +1,4 @@
 import type { TaggedFailure } from "./platform/operationError.ts";
-// FILE: threadRetention.ts
-// Purpose: Runs the server-side retention loop that archives inactive orchestration threads.
-// Layer: Server maintenance
-// Exports: retention constants, archive-root selection, and scoped job startup.
 
 import {
   CommandId,
@@ -25,8 +21,6 @@ import {
 } from "./persistence/Services/AutomationRepository";
 import { ServerLifecycleEvents } from "./serverLifecycleEvents";
 
-// Stable prefix for retention commands. Older versions used it for reversible
-// soft-deletes; current versions archive threads so users can restore them.
 export const THREAD_RETENTION_COMMAND_ID_PREFIX = "thread-retention:";
 
 const THREAD_RETENTION_UNUSED_MS = 7 * 24 * 60 * 60 * 1000;
@@ -47,10 +41,9 @@ function parseIsoMs(value: string | null | undefined): number | null {
   return Number.isFinite(ms) ? ms : null;
 }
 
-// Never trust a single timestamp: forked/handoff threads inherit the source
-// conversation's message timestamps, so `latestUserMessageAt` can predate the
-// thread's own creation. The newest signal wins so a thread is only swept when
-// every timestamp we have is past the cutoff.
+// Never trust a single timestamp: forked/handoff threads inherit the source conversation's message
+// timestamps, so `latestUserMessageAt` can predate the thread's own creation. The newest signal
+// wins so a thread is only swept when every timestamp we have is past the cutoff.
 function getThreadLastActivityMs(thread: RetentionThread): number | null {
   let lastActivityMs: number | null = null;
   for (const value of [thread.latestUserMessageAt, thread.updatedAt, thread.createdAt]) {
@@ -63,8 +56,6 @@ function getThreadLastActivityMs(thread: RetentionThread): number | null {
   return lastActivityMs;
 }
 
-// Archiving is an explicit "keep this, out of my way" signal, so archived
-// threads are never swept.
 function isThreadArchived(thread: RetentionThread): boolean {
   return "archivedAt" in thread && (thread.archivedAt ?? null) !== null;
 }
@@ -96,8 +87,6 @@ function listRetentionProtectedThreadIds(
     Effect.map((result) => {
       const protectedThreadIds = new Set<ThreadId>();
       for (const definition of result.definitions) {
-        // Any thread an enabled automation still continues, whether the user chose it
-        // (heartbeat) or the automation created it for itself (dedicated).
         const continuationThreadId = automationContinuationThreadId(definition);
         if (definition.enabled && continuationThreadId !== null) {
           protectedThreadIds.add(continuationThreadId);
@@ -168,10 +157,6 @@ function isThreadEligibleForRetention(
   return lastActivityMs !== null && lastActivityMs <= cutoffMs;
 }
 
-// Archiving a parent also archives its active subagent subtree. Select only roots
-// whose entire subtree is eligible, then omit eligible descendants that the root
-// command will archive. This prevents retention from cascading over a protected,
-// pinned, busy, or recent child and avoids duplicate archive commands.
 function getRetentionArchiveRootIds(
   readModel: Pick<OrchestrationReadModel, "threads"> | Pick<OrchestrationShellSnapshot, "threads">,
   nowMs = Date.now(),
@@ -286,7 +271,6 @@ const runThreadRetentionSweep = Effect.fn("runThreadRetentionSweep")(function* (
     { concurrency: 1 },
   ).pipe(Effect.asVoid);
 
-  // Snapshot expiry must advance even on days with no newly archived threads.
   yield* pruneArchivedManagedWorktrees.pipe(
     Effect.catch((error) =>
       Effect.logWarning("managed worktree retention failed after thread retention sweep", {
@@ -316,8 +300,7 @@ export const startThreadRetentionJob = Effect.fn("startThreadRetentionJob")(func
     snapshotQuery: projectionSnapshotQuery,
     git,
   }).pipe(Effect.asVoid);
-  // Give startup/projection bootstrap a short settling window, then run one
-  // archive pass promptly so desktop installs do not need to stay open for 24 hours.
+
   yield* Effect.gen(function* () {
     yield* Effect.sleep(THREAD_RETENTION_INITIAL_SWEEP_DELAY_MS);
     yield* runThreadRetentionSweep(

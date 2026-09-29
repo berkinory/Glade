@@ -1,6 +1,3 @@
-/** Driver diagnostics are persisted in logs. Only fixed vocabulary and numeric
- * native error/identity fields may cross this boundary; never copy native error
- * messages, labels, element values, titles or arbitrary structured payloads. */
 const DELIVERY_PATHS = ["ax", "pixel", "semantic", "keyboard", "menu"] as const;
 const ACTUATORS = [
   "ax_press",
@@ -55,7 +52,6 @@ const integer = (value: unknown, min: number, max: number): number | undefined =
     ? value
     : undefined;
 
-/** Read the diagnostics envelope of a driver's structuredContent. */
 export function parseCuaActionDiagnostics(value: unknown): CuaActionDiagnostics | undefined {
   const source = record(record(value)?.diagnostics);
   if (!source) return undefined;
@@ -83,7 +79,6 @@ export function parseCuaActionDiagnostics(value: unknown): CuaActionDiagnostics 
   return entries.length ? (Object.fromEntries(entries) as CuaActionDiagnostics) : undefined;
 }
 
-/** Human-readable reason generated from reviewed static codes, never app data. */
 export function cuaActionDiagnosticMessage(diagnostics: CuaActionDiagnostics): string | undefined {
   return diagnostics.error_code ? ERROR_MESSAGES[diagnostics.error_code] : undefined;
 }

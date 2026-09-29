@@ -1,6 +1,3 @@
-// FILE: SpaceEditorDialog.tsx
-// Purpose: Shared create/edit dialog for a Space name and curated Central icon.
-
 import { SPACE_NAME_MAX_LENGTH } from "@glade/contracts";
 import { useEffect, useId, useRef, useState } from "react";
 
@@ -38,18 +35,13 @@ export interface SpaceEditorValue {
   readonly icon: SpaceIconValue;
 }
 
-/**
- * `void` edits the group of projects that are in no Space. It is the same form — a name and
- * an icon — over a presentation preference instead of a stored row, so it shares this dialog
- * rather than growing a near-identical second one.
- */
 export type SpaceEditorMode = "create" | "edit" | "void";
 
 export function SpaceEditorDialog(props: {
   open: boolean;
   mode: SpaceEditorMode;
   initialValue?: SpaceEditorValue | undefined;
-  /** Names already taken by another Space (or by Void), which this one may not collide with. */
+
   existingNames: ReadonlyArray<string>;
   onOpenChange: (open: boolean) => void;
   onSubmit: (value: SpaceEditorValue) => Promise<void> | void;
@@ -59,11 +51,7 @@ export function SpaceEditorDialog(props: {
   const defaultIcon: SpaceIconValue = isVoid ? DEFAULT_VOID_SPACE_ICON : DEFAULT_SPACE_ICON;
   const [name, setName] = useState("");
   const [icon, setIcon] = useState<SpaceIconValue>(defaultIcon);
-  /**
-   * In create mode the icon tracks the name (`suggestSpaceIcon`) until the user taps
-   * the grid, which pins their choice. Editing starts pinned: a rename must never
-   * silently swap an icon someone already chose.
-   */
+  // Editing starts pinned: a rename must never silently swap an icon someone already chose.
   const [iconPinned, setIconPinned] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -75,9 +63,6 @@ export function SpaceEditorDialog(props: {
   const iconLegendId = `${fieldId}-icon-legend`;
 
   useEffect(() => {
-    // Seed on the closed -> open transition only. `initialValue` is recomputed from the
-    // live snapshot every render, so seeding whenever it changes would let a rename from
-    // another window overwrite the name the user is part-way through typing here.
     if (props.open === openedRef.current) return;
     openedRef.current = props.open;
     if (!props.open) return;
@@ -86,8 +71,7 @@ export function SpaceEditorDialog(props: {
     setIconPinned(props.mode !== "create");
     setSubmitting(false);
     setSubmitError(null);
-    // Deferred a frame: the dialog moves focus itself on open, so selecting the name
-    // has to happen after that lands or it is immediately undone. Matches PickerPanelShell.
+
     const frame = requestAnimationFrame(() => nameInputRef.current?.select());
     return () => cancelAnimationFrame(frame);
   }, [defaultIcon, props.initialValue?.icon, props.initialValue?.name, props.mode, props.open]);
@@ -100,11 +84,9 @@ export function SpaceEditorDialog(props: {
     trimmedName.length === 0
       ? "Enter a name."
       : duplicateName
-        ? // Deliberately not "a space with this name": the taken name may be Void's, which
-          // is not a space, and either way the user's next move is the same.
-          "That name is already taken."
+        ? "That name is already taken."
         : null;
-  // An empty field is a starting point, not a mistake — only speak up once there is input.
+
   const visibleNameError = name.length > 0 ? nameError : null;
 
   const submit = async () => {
@@ -136,10 +118,7 @@ export function SpaceEditorDialog(props: {
           </DialogDescription>
         </DialogHeader>
         <DialogPanel className="space-y-4">
-          {/* The error sits outside the label on purpose: text inside a wrapping label
-              becomes part of the field's accessible name, so nesting it here would have
-              the field announce itself as "Name A space with this name already exists."
-              and then repeat the message as its description. */}
+          {}
           <div className="space-y-1.5">
             <label htmlFor={nameInputId} className={cn("block", FIELD_LABEL_CLASS_NAME)}>
               Name
@@ -153,7 +132,7 @@ export function SpaceEditorDialog(props: {
               {...(visibleNameError ? { "aria-describedby": nameErrorId } : {})}
               onChange={(event) => {
                 setName(event.target.value);
-                // The icon follows the name until the user pins one from the grid.
+
                 if (!iconPinned) setIcon(suggestSpaceIcon(event.target.value));
               }}
               onKeyDown={(event) => {
@@ -178,8 +157,6 @@ export function SpaceEditorDialog(props: {
             <div
               role="radiogroup"
               aria-labelledby={iconLegendId}
-              // The grid reflows between 10 and 5 columns, so the icons are driven as one
-              // linear radio group: either axis steps to the neighbouring icon and selects it.
               onKeyDown={(event) => handleRadioGridKeyDown(event, "[data-space-icon]")}
               className="grid grid-cols-10 gap-1.5 max-sm:grid-cols-5"
             >
@@ -193,7 +170,6 @@ export function SpaceEditorDialog(props: {
                     data-space-icon
                     aria-checked={selected}
                     aria-label={option.label}
-                    // Roving tabindex: the whole grid is one tab stop.
                     tabIndex={selected ? 0 : -1}
                     onClick={() => {
                       setIcon(option.name);

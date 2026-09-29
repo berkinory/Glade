@@ -1,28 +1,17 @@
-// FILE: ComposerChoiceRow.tsx
-// Purpose: Shared list-style choice row (leading number chip + label + inline
-// description + optional trailing affordance) used by both composer decision cards —
-// the pending-approval card and the AskUserQuestion card — so approvals and questions
-// read as one coherent set of Codex-style list controls instead of drifting apart.
-// Layer: Chat composer UI
-// Exports: ComposerChoiceRow, ComposerChoiceTone
-
 import { type ReactNode } from "react";
 import { cn } from "~/lib/utils";
 
-/** Semantic accent for a choice row. `neutral` reads like a plain list control;
- *  `primary` nudges the recommended action; `destructive` marks a rejecting action. */
 export type ComposerChoiceTone = "neutral" | "primary" | "destructive";
 
 interface ComposerChoiceRowProps {
-  /** 1-based shortcut number shown in the leading chip; `null` hides the chip. */
   shortcut: number | null;
   label: string;
   description?: string | null;
-  /** Neutral "chosen" state (single/multi select) — filled chip + persistent fill. */
+
   selected?: boolean;
   tone?: ComposerChoiceTone;
   disabled?: boolean;
-  /** Trailing affordance, e.g. a check icon on the selected option. */
+
   trailing?: ReactNode;
   onSelect: () => void;
 }

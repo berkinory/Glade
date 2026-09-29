@@ -1,8 +1,3 @@
-// FILE: serverWorkspacePaths.ts
-// Purpose: Normalize server-provided home and chat workspace paths.
-// Layer: Web domain helper
-// Exports: ServerWorkspacePaths plus normalization and fallback helpers.
-
 import { resolveChatContainerWorkspaceRoot } from "@glade/shared/projectContainers";
 
 export interface ServerWorkspacePaths {

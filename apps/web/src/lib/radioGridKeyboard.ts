@@ -1,15 +1,5 @@
-// FILE: radioGridKeyboard.ts
-// Purpose: Arrow-key handling for a grid of role="radio" buttons with a roving tabindex.
-// Layer: Web lib
-// Exports: handleRadioGridKeyDown
-
 import type { KeyboardEvent } from "react";
 
-/**
- * Moves focus to the neighbouring cell and, unless `selectOnMove` is false, selects it (clicks
- * it). Without `columns` every arrow steps linearly and wraps, for grids that reflow; with
- * `columns`, Up/Down move a row.
- */
 export function handleRadioGridKeyDown(
   event: KeyboardEvent<HTMLElement>,
   cellSelector: string,

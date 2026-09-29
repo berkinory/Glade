@@ -2,17 +2,13 @@ import type { OrchestrationMessage } from "@glade/contracts";
 
 import { latestUserAuthoredMessage } from "./computerVisibleUse.ts";
 
-/**
- * Only a complete, explicit user sentence designates a native Space ID.
- * Mission Control positions, quoted examples, provider output and automation
- * messages never grant this scope. The exact ID avoids guessing which
- * display's “Desktop 2” the user meant.
- */
+// Mission Control positions, quoted examples, provider output and automation messages never grant
+// this scope.
 function messageDesignatesComputerSpaces(text: string): readonly number[] {
   const request = text
     .replace(/```[\s\S]*?```|`[^`]*`|"[^"\n]*"|“[^”\n]*”/g, "")
     .replace(/^\s*>.*$/gm, "");
-  // A later stop or negative instruction wins over an earlier positive sentence.
+
   if (/\b(?:stop|cancel|do not|don['’]t|never|non|smetti|evita|annulla|fermati)\b/i.test(request))
     return [];
   const ids = request
@@ -33,8 +29,7 @@ export function computerSpaceDesignationForMessages(
   messages: readonly OrchestrationMessage[],
 ): readonly number[] {
   const latest = latestUserAuthoredMessage(messages);
-  // An agent/automation-origin follow-up starts no new human designation.
-  // Do not borrow an older human sentence for that later task.
+
   const latestUserRole = messages.findLast((message) => message.role === "user");
   return latest && latest === latestUserRole ? messageDesignatesComputerSpaces(latest.text) : [];
 }

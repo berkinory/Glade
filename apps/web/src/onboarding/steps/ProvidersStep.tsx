@@ -1,10 +1,3 @@
-// FILE: ProvidersStep.tsx
-// Purpose: Provider grid for the welcome tour: one card per runtime with its detection
-//          status, an enable/disable checkbox bound to the server-backed `disabledProviders`
-//          setting, inline sign-in for detected-but-unauthenticated CLIs, and a setup-guide
-//          link for missing ones.
-// Layer: Web UI component
-
 import type { ProviderKind, ServerProviderStatus } from "@glade/contracts";
 import { VISIBLE_PROVIDER_DESCRIPTORS } from "../../providerCatalog";
 import { useQuery } from "@tanstack/react-query";
@@ -30,7 +23,6 @@ import { ProviderConnectTerminal } from "./ProviderConnectTerminal";
 
 const EMPTY_STATUSES: readonly ServerProviderStatus[] = [];
 
-/** Status as a dot + word; the dot carries the colour, the copy stays muted. */
 const STATE_PRESENTATION: Record<ProviderSetupState, { label: string; dotClassName: string }> = {
   connected: { label: "Connected", dotClassName: "bg-status-success" },
   "needs-sign-in": { label: "Needs sign-in", dotClassName: "bg-warning" },
@@ -43,11 +35,9 @@ const STATE_PRESENTATION: Record<ProviderSetupState, { label: string; dotClassNa
 const INLINE_ACTION_CLASS_NAME =
   "cursor-pointer text-foreground underline decoration-foreground/40 underline-offset-[3px] transition-colors hover:decoration-foreground motion-reduce:transition-none";
 
-/**
- * Raw detection statuses with custom-binary overrides applied but *without* folding the
- * disabled flag in: this step must keep showing "installed" for a provider the user just
- * unchecked, otherwise the card appears to lose its CLI.
- */
+// Raw detection statuses with custom-binary overrides applied but *without* folding the disabled
+// flag in: this step must keep showing "installed" for a provider the user just unchecked,
+// otherwise the card appears to lose its CLI.
 function useDetectedProviderStatuses(): readonly ServerProviderStatus[] {
   const { settings } = useAppSettings();
   const serverConfigQuery = useQuery(serverConfigQueryOptions());
@@ -66,13 +56,9 @@ function useDetectedProviderStatuses(): readonly ServerProviderStatus[] {
   );
 }
 
-/**
- * Optimistic disabled-provider selection. `disabledProviders` is server-owned and is not
- * applied to local settings until the round-trip completes, so deriving each write from
- * `settings.disabledProviders` would let a second toggle rebuild the list without the
- * first change. Every write instead comes from this draft, and the draft only resyncs
- * from the server once no write is in flight (e.g. after a failed request is rolled back).
- */
+// Optimistic disabled-provider selection. `disabledProviders` is server-owned and is not applied to
+// local settings until the round-trip completes, so deriving each write from
+// `settings.disabledProviders` would let a second toggle rebuild the list without the first change.
 function useDisabledProvidersDraft(): {
   readonly disabled: ReadonlySet<ProviderKind>;
   readonly setProviderDisabled: (provider: ProviderKind, disabled: boolean) => void;
@@ -82,9 +68,7 @@ function useDisabledProvidersDraft(): {
     () => new Set(settings.disabledProviders),
   );
   const draftRef = useRef(draft);
-  // State, not a ref: a rejected write refetches settings *before* the count drops, so the
-  // resync must run again once the final write settles or the draft would stay rolled
-  // forward on the rejected value.
+
   const [pendingWrites, setPendingWrites] = useState(0);
   const serverDisabledProviders = settings.disabledProviders;
 
@@ -120,7 +104,6 @@ export function ProvidersStep(props: { readonly detection: ProviderDetection }) 
   const [connectingProvider, setConnectingProvider] = useState<ProviderKind | null>(null);
   const { disabled: disabledSet, setProviderDisabled } = useDisabledProvidersDraft();
 
-  // Probe once on entry so a CLI installed while the intro was open shows up.
   const refreshedOnEntryRef = useRef(false);
   useEffect(() => {
     if (refreshedOnEntryRef.current) return;
@@ -158,8 +141,6 @@ export function ProvidersStep(props: { readonly detection: ProviderDetection }) 
     setConnectingProvider(provider);
   };
 
-  // The terminal mounts below the provider grid in a fixed-height dialog; bring it into
-  // view so the sign-in prompt is not left under the scroll fold.
   const terminalRegionRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!connectingProvider) return;
@@ -281,8 +262,7 @@ export function ProvidersStep(props: { readonly detection: ProviderDetection }) 
       <DisclosureRegion open={connecting !== undefined}>
         {connecting && connectingSignInCommand !== undefined && homeDir !== null ? (
           <div ref={terminalRegionRef} className="flex flex-col gap-1.5">
-            {/* Always-available close: the card's "Done" link disappears once the
-                provider is detected as connected, but the terminal stays mounted. */}
+            {}
             <div className="flex items-center justify-between text-ui text-muted-foreground">
               <span>
                 Signing in to {connecting.descriptor.displayName} ·{" "}

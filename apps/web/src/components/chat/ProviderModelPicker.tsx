@@ -1,8 +1,3 @@
-// FILE: ProviderModelPicker.tsx
-// Purpose: Renders the composer provider/model menu and supports controlled opening for shortcuts.
-// Layer: Chat composer presentation
-// Depends on: provider availability metadata, shared menu primitives, and picker trigger styling.
-
 import { type ModelSlug, type ProviderKind, type ServerProviderStatus } from "@glade/contracts";
 import { resolveSelectableModel } from "@glade/shared/model";
 import { useDeferredValue, useEffect, useRef, useState } from "react";
@@ -81,11 +76,6 @@ export function resolveLiveProviderAvailability(provider: ServerProviderStatus |
 
 export const AVAILABLE_PROVIDER_OPTIONS = PROVIDER_OPTIONS.filter(isAvailableProviderOption);
 
-// Removes user-hidden providers from a provider option list while always
-// preserving any providers the caller marks as protected (the active and
-// locked provider for the current thread). Without that carve-out, hiding the
-// provider you're already using would erase the entry that lets you switch
-// away from it.
 function filterProviderOptionsByVisibility<T extends { value: ProviderKind }>(
   options: ReadonlyArray<T>,
   hiddenProviders: ReadonlySet<ProviderKind>,
@@ -99,8 +89,6 @@ function filterProviderOptionsByVisibility<T extends { value: ProviderKind }>(
   );
 }
 
-// Providers the picker may offer: installed ones in the user's order, minus hidden
-// providers, always keeping the active/locked provider reachable.
 export function resolveVisibleProviderOptions(input: {
   provider: ProviderKind;
   lockedProvider: ProviderKind | null;
@@ -174,14 +162,10 @@ type ProviderModelMenuItemsProps = {
   providerOrder?: ReadonlyArray<ProviderKind>;
   disabled?: boolean;
   onProviderModelChange: (provider: ProviderKind, model: ModelSlug) => void;
-  // Invoked after a model selection commits so callers can close ancestor
-  // menus and refocus the composer.
+
   onAfterSelection?: () => void;
 };
 
-// Renders only the popup body of the provider/model picker. Designed to be
-// dropped into any shared picker popup or submenu so the same selection logic can
-// be reused by the standalone picker and the combined composer trait picker.
 const ProviderModelMenuItems = function ProviderModelMenuItems(props: ProviderModelMenuItemsProps) {
   const { onAfterSelection } = props;
   const [modelSearchQuery, setModelSearchQuery] = useState("");
@@ -394,7 +378,7 @@ type ProviderModelPickerProps = {
   providerOrder?: ReadonlyArray<ProviderKind>;
   activeProviderIconClassName?: string;
   compact?: boolean;
-  // Icon-only trigger for narrow composers; the model name moves to title/sr-only.
+
   hideLabel?: boolean;
   disabled?: boolean;
   open?: boolean;
@@ -428,7 +412,7 @@ export const ProviderModelPicker = function ProviderModelPicker(props: ProviderM
     if (selectionCommitTimerRef.current !== null) {
       window.clearTimeout(selectionCommitTimerRef.current);
     }
-    // Base UI restores focus to the trigger while closing; refocus callers after that tick.
+
     selectionCommitTimerRef.current = window.setTimeout(() => {
       selectionCommitTimerRef.current = null;
       onSelectionCommitted?.();
@@ -458,7 +442,6 @@ export const ProviderModelPicker = function ProviderModelPicker(props: ProviderM
         <ProviderIcon
           aria-hidden="true"
           className={cn(
-            // opacity-100 opts out of the Button base's [&_svg]:opacity-80 dimming.
             "size-3.5 shrink-0 opacity-100",
             providerIconClassName(activeProvider, "text-muted-foreground/70"),
             props.activeProviderIconClassName,

@@ -18,8 +18,6 @@ export interface UseWorkspaceFileEditorInput {
 const subscribeEmpty = () => () => undefined;
 const readEmpty = () => INITIAL_WORKSPACE_FILE_EDITOR_STATE;
 
-/** The preview already owns its file query (including path relocation). Both
- * entry points attach to the same canonical buffer and serialized writer. */
 export function useWorkspaceFileEditorBuffer(
   input: UseWorkspaceFileEditorInput & {
     file: ProjectReadFileResult | undefined;

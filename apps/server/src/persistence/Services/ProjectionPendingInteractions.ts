@@ -1,4 +1,3 @@
-/** Durable settlement authority shared by approvals and structured user input. */
 import {
   ApprovalRequestId,
   CommandId,
@@ -66,7 +65,7 @@ export interface ProjectionPendingInteractionRepositoryShape {
   readonly listByThreadId: (
     input: typeof ListProjectionPendingInteractionsInput.Type,
   ) => Effect.Effect<ReadonlyArray<ProjectionPendingInteraction>, ProjectionRepositoryError>;
-  /** Outstanding callbacks, excluding explicit invalidations; omitting threadId is for boot recovery. */
+
   readonly listUnsettled: (input: {
     readonly threadId?: ThreadId;
   }) => Effect.Effect<ReadonlyArray<ProjectionPendingInteraction>, ProjectionRepositoryError>;
@@ -76,12 +75,7 @@ export interface ProjectionPendingInteractionRepositoryShape {
   readonly getByIdentity: (
     input: typeof GetProjectionPendingInteractionInput.Type,
   ) => Effect.Effect<Option.Option<ProjectionPendingInteraction>, ProjectionRepositoryError>;
-  /**
-   * Atomically assigns an unsettled interaction to exactly one response
-   * command. Claims `pending`/`retryable`/`uncertain` rows, plus `responding`
-   * rows whose claim is old enough to be considered orphaned — a permanently
-   * unclaimable row would strand its prompt with no way to answer or dismiss.
-   */
+
   readonly claimResponse: (
     input: typeof ClaimProjectionPendingInteractionResponseInput.Type,
   ) => Effect.Effect<boolean, ProjectionRepositoryError>;

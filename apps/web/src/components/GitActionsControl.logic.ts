@@ -7,7 +7,6 @@ import { isTemporaryWorktreeBranch, resolveUniqueGladeBranchName } from "@glade/
 
 type GitActionIconName = "commit" | "push" | "pr";
 
-/** Every glyph a git affordance can render — see `gitActionGlyphs.tsx` for the map. */
 export type GitGlyphName = GitActionIconName | "sync" | "branch";
 
 type GitDialogAction = "commit" | "push" | "commit_push" | "create_pr";
@@ -116,13 +115,6 @@ export type CreatePrExecution =
   | { kind: "open_pr" }
   | { kind: "unavailable"; hint: string };
 
-/**
- * Create PR is a "do everything" action: it resolves whichever stacked action
- * completes the missing steps (commit → push/publish → PR) from the current git
- * state. Behind/diverged branches stay blocked so a one-click action never has
- * to auto-resolve merge conflicts; the default branch keeps its confirmation
- * dialog (handled by the caller) before switching to a feature branch.
- */
 export function resolveCreatePrExecution(input: {
   gitStatus: GitStatusResult | null;
   isBusy: boolean;
@@ -197,7 +189,6 @@ function tracksDefaultUpstream(
   return FALLBACK_DEFAULT_BRANCH_NAMES.has(trackedBranchName);
 }
 
-/** Git state a dialog resolves its available actions from — shared by Create PR and Commit. */
 export interface GitDialogContext {
   gitStatus: GitStatusResult | null;
   isBusy: boolean;
@@ -212,13 +203,6 @@ export interface CreatePrDialogRuntimeStatus {
   statusOverride: GitStatusResult | null;
 }
 
-/**
- * A post-push toast carries a synthetic status so its CTA can open even when
- * the query cache still reflects the pre-push branch. Preserve that exact
- * stale object as a freshness marker: the synthetic snapshot wins while the
- * cache still returns it, then a newly fetched live object takes over so later
- * working-tree or branch changes are reflected by the dialog.
- */
 export function resolveCreatePrDialogRuntimeStatus(input: {
   liveGitStatus: GitStatusResult | null;
   statusOverride: GitStatusResult | null;
@@ -242,12 +226,6 @@ export function resolveCreatePrDialogRuntimeStatus(input: {
   };
 }
 
-/**
- * Execution for the Create PR dialog, honoring the "Commit and push local
- * changes" toggle: with the toggle off a dirty tree is evaluated as if it were
- * clean, so the dialog can offer a PR from already-committed work only (and
- * correctly reports unavailability when nothing is committed).
- */
 export function resolveCreatePrDialogExecution(
   context: GitDialogContext,
   includeLocalChanges: boolean,
@@ -265,10 +243,9 @@ export function resolveCreatePrDialogExecution(
 export interface CreatePrDialogView {
   branchName: string | null;
   baseBranchName: string;
-  // The PR head does not exist on the remote yet: either the current branch is
-  // unpublished or a feature branch will be created off the default branch.
+
   isNewBranch: boolean;
-  // Submitting creates an auto-named feature branch first (default-branch flow).
+
   willCreateFeatureBranch: boolean;
   showCommitToggle: boolean;
   insertions: number;
@@ -294,10 +271,6 @@ export type CreatePrBrowserPreparation =
   | { kind: "open_pr" }
   | { kind: "unavailable"; hint: string };
 
-/**
- * "Open PR in browser" runs only the missing local steps (commit and/or push)
- * and then opens the GitHub compare page, leaving PR authoring to the browser.
- */
 export function resolveCreatePrBrowserPreparation(
   context: GitDialogContext,
   includeLocalChanges: boolean,
@@ -429,11 +402,6 @@ export function buildMenuItems(
   ];
 }
 
-/**
- * Human-readable reason a git menu item is unavailable. Shared by the dropdown picker
- * rows and the Commit dialog action rows so the same blocked action always explains
- * itself with the same sentence.
- */
 export function resolveGitMenuActionDisabledReason(input: {
   item: GitActionMenuItem;
   gitStatus: GitStatusResult | null;
@@ -518,9 +486,9 @@ export interface GitCommitDialogAction {
   id: GitCommitDialogActionId;
   label: string;
   icon: GitGlyphName;
-  /** Stacked action to dispatch; `create_pr` hands off to the Create PR dialog. */
+
   action: "commit" | "push" | "commit_push" | "create_pr";
-  /** Commit onto a freshly created feature branch instead of the current one. */
+
   featureBranch: boolean;
   disabled: boolean;
   disabledReason: string | null;
@@ -528,15 +496,9 @@ export interface GitCommitDialogAction {
 
 const NO_FILE_SELECTION_HINT = "Select at least one file to commit.";
 
-/**
- * Action rows offered by the Commit dialog. Commit-family rows reuse the dropdown
- * menu's availability and wording (so "Commit & push" collapses to "Push" on a clean
- * tree exactly as the menu does), while the PR row mirrors the one-click Create PR
- * resolution and only ever hands off to the Create PR dialog.
- */
 export function resolveCommitDialogActions(input: {
   context: GitDialogContext;
-  /** False when the user excluded every changed file in the dialog's file list. */
+
   hasFileSelection: boolean;
 }): GitCommitDialogAction[] {
   const { gitStatus, isBusy, isDefaultBranch, hasOriginRemote, defaultBranchName } = input.context;
@@ -586,7 +548,7 @@ export function resolveCommitDialogActions(input: {
     hasOriginRemote,
     defaultBranchName,
   });
-  // A pure push needs no working-tree selection; anything that commits does.
+
   const pushCommits = pushItem?.dialogAction !== "push";
 
   return [
@@ -785,12 +747,6 @@ export function resolveQuickAction(
   };
 }
 
-/**
- * Availability of the literal `create_pr` stacked action (clean tree required).
- * Guards stale dispatches from surfaces that resolved their action earlier
- * (quick action, post-push toast CTA); the menu path resolves the full chain
- * via resolveCreatePrExecution instead.
- */
 export function resolveCreatePrActionAvailability(input: {
   gitStatus: GitStatusResult | null;
   isDefaultBranch?: boolean;
@@ -845,7 +801,6 @@ export function resolvePullActionAvailability(input: {
   return { canRun: true, hint: null };
 }
 
-/** Promote Pull as the primary git affordance while it is available or already running. */
 function shouldPromotePullAction(input: {
   quickAction: GitQuickAction;
   isPullRunning: boolean;
@@ -859,11 +814,9 @@ export interface PromotedPullPresentation {
   label: string;
 }
 
-/**
- * Chrome for a promoted Pull control. `resolveQuickAction` collapses to a disabled
- * "Commit" hint while any git action is running, so callers must not use that label
- * while Pull is the promoted affordance.
- */
+// Chrome for a promoted Pull control. `resolveQuickAction` collapses to a disabled "Commit" hint
+// while any git action is running, so callers must not use that label while Pull is the promoted
+// affordance.
 export function resolvePromotedPullPresentation(input: {
   quickAction: GitQuickAction;
   isPullRunning: boolean;
@@ -940,8 +893,6 @@ export function resolveLiveThreadBranchUpdate(input: {
     return null;
   }
 
-  // Branch list not ready yet — don't treat "status arrived first" as out-of-sync
-  // or we permanently invalidate and show "Refreshing git status...".
   if (input.threadBranch === null) {
     return null;
   }
@@ -967,5 +918,3 @@ export function resolveLiveThreadBranchUpdate(input: {
     branch: input.gitStatus.branch,
   };
 }
-
-// Re-export from shared for backwards compatibility in this module's exports

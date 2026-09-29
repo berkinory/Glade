@@ -1,7 +1,3 @@
-/**
- * Adds durable per-thread text markers to projected thread details.
- * `thread_markers_json` stores highlight/underline ranges created from transcript selections.
- */
 import * as Effect from "effect/Effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 

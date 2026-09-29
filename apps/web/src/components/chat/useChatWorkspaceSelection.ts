@@ -36,7 +36,6 @@ function waitForDraftProjectSyncDelay(ms: number): Promise<void> {
   });
 }
 
-// Waits for a project to appear in the shell snapshot before a local draft points at it.
 async function waitForShellProjectById(
   api: NativeApi,
   projectId: ProjectId,
@@ -148,7 +147,6 @@ export function useChatWorkspaceSelection({
         restoreComposerFocus?: boolean;
       },
     ) => {
-      // Project moves reset branch; the previous project's current branch may not exist here.
       moveDraftThreadToProject(threadId, projectId, LOCAL_PROJECT_DRAFT_CONTEXT);
       if (options?.restoreComposerFocus ?? true) {
         scheduleComposerFocus();
@@ -158,8 +156,8 @@ export function useChatWorkspaceSelection({
   );
 
   const handleResetWorkspaceToHome = useCallback(() => {
-    // The inline reset action prevents pointer-down from stealing editor focus. Avoid refocusing
-    // an already-focused editor: focusAtEnd would move its cursor and schedule a redundant frame.
+    // The inline reset action prevents pointer-down from stealing editor focus. Avoid refocusing an
+    // already-focused editor: focusAtEnd would move its cursor and schedule a redundant frame.
     // Picker-menu resets still restore focus because the editor is no longer active in that path.
     const restoreComposerFocus = !composerEditorRef.current?.isFocused();
     if (isLocalDraftThread) {

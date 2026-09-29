@@ -88,9 +88,8 @@ function processAbortError(): Error {
   return error;
 }
 
-// The platform boundary decides whether a kill needs tree traversal (Windows
-// batch shims) or Node's direct signal (POSIX); application code never invokes
-// OS tree commands itself.
+// The platform boundary decides whether a kill needs tree traversal (Windows batch shims) or Node's
+// direct signal (POSIX); application code never invokes OS tree commands itself.
 function killChild(child: ChildProcessHandle, signal: "SIGTERM" | "SIGKILL" = "SIGTERM"): void {
   signalOwnedChildProcess(child, signal);
 }
@@ -163,8 +162,8 @@ export async function runProcess(
     };
 
     const onAbort = (): void => {
-      // The first terminal cause wins: a signal that arrives after the timeout fired must not
-      // relabel the already-timed-out process as an explicit cancellation.
+      // The first terminal cause wins: a signal that arrives after the timeout fired must not relabel the
+      // already-timed-out process as an explicit cancellation.
       if (settled || aborted || timedOut) return;
       aborted = true;
       if (timeoutTimer) {

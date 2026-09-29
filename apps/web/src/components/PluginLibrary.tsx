@@ -1,8 +1,3 @@
-// FILE: PluginLibrary.tsx
-// Purpose: Hosts the plugin and skill browser surfaced from provider discovery APIs.
-// Layer: Route-level screen
-// Exports: PluginLibrary
-
 import {
   PROVIDER_DISPLAY_NAMES,
   type ProviderKind,
@@ -65,8 +60,6 @@ import {
 } from "~/hooks/useDesktopTopBarGutter";
 import { Skeleton } from "./ui/skeleton";
 
-// ── Types ──────────────────────────────────────────────────────────────────
-
 type DiscoveryTab = "plugins" | "skills";
 type ProviderCapabilities = { plugins: boolean; skills: boolean };
 type PluginEntry = {
@@ -79,8 +72,6 @@ type PluginBrandArtwork = {
   color: string;
   icon: IconType;
 };
-
-// ── Constants ──────────────────────────────────────────────────────────────
 
 const PROVIDER_ICON: Record<ProviderKind, React.FC<React.SVGProps<SVGSVGElement>>> = {
   ...PROVIDER_ICON_COMPONENT_BY_PROVIDER,
@@ -100,8 +91,6 @@ const KNOWN_PLUGIN_BRANDS: Record<string, PluginBrandArtwork> = {
   stripe: { icon: SiStripe, color: "#635BFF" },
   vercel: { icon: SiVercel, color: "#111111" },
 };
-
-// ── Utilities ──────────────────────────────────────────────────────────────
 
 function pluginEntryKey(entry: Pick<PluginEntry, "marketplacePath" | "plugin">): string {
   return `${entry.marketplacePath}::${entry.plugin.name}`;
@@ -143,7 +132,6 @@ function resolvePluginBrand(plugin: ProviderPluginDescriptor): PluginBrandArtwor
   return undefined;
 }
 
-/** Stable hue 0–359 from a string, for consistent per-item icon colors. */
 function nameToHue(name: string): number {
   let h = 0;
   for (let i = 0; i < name.length; i++) {
@@ -151,8 +139,6 @@ function nameToHue(name: string): number {
   }
   return Math.abs(h) % 360;
 }
-
-// ── Icon glyphs ────────────────────────────────────────────────────────────
 
 function PluginGlyph({ plugin }: { plugin: ProviderPluginDescriptor }) {
   const accent = resolvePluginAccent(plugin);
@@ -170,7 +156,6 @@ function PluginGlyph({ plugin }: { plugin: ProviderPluginDescriptor }) {
         boxShadow: `0 0 0 0.5px hsl(${hue} 40% 30% / 0.35)`,
       };
 
-  // Prefer metadata-provided artwork so marketplace plugins keep their own branding.
   if (logo && !logoFailed) {
     return (
       <span
@@ -224,8 +209,6 @@ function SkillGlyph({ skill }: { skill: ProviderSkillDescriptor }) {
     </span>
   );
 }
-
-// ── UI controls ────────────────────────────────────────────────────────────
 
 function TabButton({
   label,
@@ -316,8 +299,6 @@ function InstalledStatus({ installed }: { installed: boolean }) {
   );
 }
 
-// ── Grid items ─────────────────────────────────────────────────────────────
-
 function PluginGridItem({ entry }: { entry: PluginEntry }) {
   const description =
     entry.plugin.interface?.shortDescription ??
@@ -360,8 +341,6 @@ function SectionHeader({ title }: { title: string }) {
   return <h2 className="px-3 pb-1 pt-2 text-[15px] font-semibold text-foreground">{title}</h2>;
 }
 
-// ── Main component ─────────────────────────────────────────────────────────
-
 export function PluginLibrary() {
   const desktopTopBarTrafficLightGutterClassName = useDesktopTopBarTrafficLightGutterClassName();
   const desktopTopBarWindowControlsGutterClassName =
@@ -397,10 +376,6 @@ export function PluginLibrary() {
     },
   };
 
-  // Auto-fallback: when the current tab/provider combo is unsupported, render
-  // the first capable provider. Derived (not synced into state) so switching
-  // tabs never renders an unsupported frame, and the user's own selection
-  // resurfaces if its provider becomes capable again.
   const supportsSelectedTab =
     selectedTab === "plugins"
       ? providerCapabilities[selectedProvider].plugins
@@ -491,12 +466,10 @@ export function PluginLibrary() {
     ? rankProviderDiscoveryItems(discoveredSkills, skillSearchQuery, buildSkillSearchFields)
     : discoveredSkills;
 
-  // ── Render ───────────────────────────────────────────────────────────────
-
   return (
     <SidebarInset className="h-dvh min-h-0 overflow-hidden isolate">
       <div className="flex h-full flex-col">
-        {/* ── Top nav ───────────────────────────────────────────────────── */}
+        {}
         <div
           className={cn(
             "drag-region flex shrink-0 items-center gap-3 border-b border-border px-4 sm:px-6",
@@ -544,16 +517,16 @@ export function PluginLibrary() {
           </div>
         </div>
 
-        {/* ── Scrollable body ───────────────────────────────────────────── */}
+        {}
         <div className="min-h-0 flex-1 overflow-y-auto">
-          {/* Hero */}
+          {}
           <div className="px-6 py-10 text-center">
             <h1 className="text-[28px] font-semibold text-foreground">
               Make {providerLabel} work your way
             </h1>
           </div>
 
-          {/* Search */}
+          {}
           <div className="mx-auto max-w-2xl px-6 pb-6">
             <InputGroup className="rounded-xl bg-background/70 shadow-xs">
               <InputGroupAddon>
@@ -573,7 +546,7 @@ export function PluginLibrary() {
             </InputGroup>
           </div>
 
-          {/* Warnings */}
+          {}
           {((!discoveryCwd && selectedTab === "skills") ||
             (selectedTab === "plugins" && !!pluginsQuery.data?.remoteSyncError) ||
             (selectedTab === "plugins" &&
@@ -598,7 +571,7 @@ export function PluginLibrary() {
             </div>
           )}
 
-          {/* Grid content */}
+          {}
           <div className="px-3 pb-10 sm:px-5">
             {selectedTab === "plugins" ? (
               <>

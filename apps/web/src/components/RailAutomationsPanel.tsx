@@ -1,9 +1,3 @@
-// FILE: RailAutomationsPanel.tsx
-// Purpose: The rail layout's Automations panel: title, "New automation", and every automation
-//          (active, then paused) as compact rows that open its detail page in the content area.
-// Layer: App shell panel (rendered by ThreadSidebar while the Automations section is active)
-// Depends on: the shared automation list pieces and create dialog (routes/-automations.list).
-
 import type { AutomationDefinition } from "@glade/contracts";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useState } from "react";

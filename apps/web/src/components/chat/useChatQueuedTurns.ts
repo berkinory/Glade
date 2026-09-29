@@ -150,16 +150,10 @@ export function useChatQueuedTurns({
 
   const autoDispatchingQueuedTurnRef = useRef(false);
 
-  // Holds queued-composer auto-dispatch through a non-natively-steerable
-  // provider steer's interrupt→re-dispatch gap; see
-  // resolveQueuedSteerGateTransition. Seed from the shared map so a remount
-  // during the interrupt gap still sees the gate the watcher has been holding.
-
   const [queuedSteerGate, setQueuedSteerGate] = useState<QueuedSteerGate | null>(() =>
     getQueuedComposerSteerGate(threadId),
   );
-  // Bumped to re-evaluate auto-dispatch when only non-reactive guards (refs)
-  // blocked it; nothing else re-triggers the effect once they reset.
+
   const [queuedAutoDispatchTick, setQueuedAutoDispatchTick] = useState(0);
 
   useEffect(() => {
@@ -195,7 +189,7 @@ export function useChatQueuedTurns({
       promptRef.current = nextPrompt;
       clearComposerDraftContent(activeThread.id);
       setComposerDraftPrompt(activeThread.id, nextPrompt);
-      // Editing a queued turn should recreate the same draft state the user queued.
+
       setDraftThreadContext(activeThread.id, {
         runtimeMode: queuedTurn.runtimeMode,
         interactionMode: queuedTurn.interactionMode,
@@ -243,7 +237,7 @@ export function useChatQueuedTurns({
       setComposerDraftModelSelection(activeThread.id, queuedTurn.modelSelection);
       setComposerDraftRuntimeMode(activeThread.id, queuedTurn.runtimeMode);
       setComposerDraftInteractionMode(activeThread.id, queuedTurn.interactionMode);
-      // Restore the frozen switch plus its revocation generation.
+
       const restoredComputerMode = resolveComputerControlMode(
         queuedTurn.computerControlMode,
         queuedTurn.enableComputerControl,
@@ -358,8 +352,6 @@ export function useChatQueuedTurns({
     [removeQueuedComposerTurn, restoreQueuedTurnToComposer],
   );
 
-  // Advance/expire the steer gate as the session moves through the
-  // interrupt→steered-turn handoff (or fails out of it).
   const sessionErroredForSteerGate = activeThread?.session?.status === "error";
   const activeTurnIdForSteerGate = activeThread?.session?.activeTurnId ?? null;
 
@@ -414,7 +406,7 @@ export function useChatQueuedTurns({
       isQueuedComposerAwaitingTurnStart(threadId) ||
       resolveQueuedComposerAutoDispatchHold({
         localDispatch,
-        // A mini-composer submission queues the first turn before the draft has a session.
+
         phase: isLocalDraftThread ? "ready" : phase,
         latestTurn: activeLatestTurn,
         session: activeThread?.session ?? null,
@@ -436,9 +428,6 @@ export function useChatQueuedTurns({
       sendInFlightRef.current ||
       sendPreflightInFlightRef.current
     ) {
-      // These guards are refs, so nothing re-triggers this effect once they
-      // reset; poll until the in-flight send settles instead of leaving the
-      // queue stuck at the end of a turn.
       const timer = window.setTimeout(() => setQueuedAutoDispatchTick((tick) => tick + 1), 250);
       return () => window.clearTimeout(timer);
     }
@@ -458,8 +447,6 @@ export function useChatQueuedTurns({
       return () => window.clearTimeout(timer);
     }
     if (!tryBeginQueuedComposerAutoDispatch(threadId)) {
-      // The watcher already owns this thread's queue head (background drain
-      // started before this ChatView claimed). Poll until that send settles.
       const timer = window.setTimeout(() => setQueuedAutoDispatchTick((tick) => tick + 1), 250);
       return () => window.clearTimeout(timer);
     }

@@ -1,8 +1,3 @@
-// FILE: TerminalIdentityIcon.tsx
-// Purpose: Renders a terminal/provider icon without extra activity chrome.
-// Layer: Terminal presentation primitive
-// Depends on: shared terminal icon keys plus local provider/icon components.
-
 import type { TerminalIconKey } from "@glade/shared/terminalThreads";
 
 import { TerminalSquare } from "~/lib/icons";
@@ -15,7 +10,6 @@ interface TerminalIdentityIconProps {
   className?: string;
 }
 
-// Keep provider branding reusable across every terminal surface.
 export default function TerminalIdentityIcon({ iconKey, className }: TerminalIdentityIconProps) {
   const IconComponent =
     iconKey === "openai" ? OpenAI : iconKey === "claude" ? ClaudeAI : TerminalSquare;

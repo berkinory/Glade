@@ -49,9 +49,7 @@ async function fixture(
     crash?: boolean;
     sessionDeathOnce?: boolean;
     sessionDeathTransport?: boolean;
-    // Opt-in: logs `session:`/`open_session:` lines for the label each call
-    // rides. Off by default so full-event-list assertions in older tests are
-    // not polluted by the added instrumentation.
+
     logSessions?: boolean;
     browserRefusal?: boolean;
     browserHang?: boolean;
@@ -90,7 +88,6 @@ async function fixture(
     listWindows?: Array<Record<string, unknown>>;
   } = {},
 ) {
-  // Model the driver's platform explicitly, independently of the CI runner.
   const platformDescriptor = Object.getOwnPropertyDescriptor(process, "platform")!;
   Object.defineProperty(process, "platform", { value: options.platform ?? "darwin" });
   cleanups.push(async () => {
@@ -241,26 +238,19 @@ process.stdin.resume(); process.stdin.on('end',retire);
     } catch (error) {
       if (!options.cleanup && !options.crash && !options.browserCleanupUnconfirmed) throw error;
     }
-    // These are fake executables created by this test, with no OS input API.
-    // A deliberately invalid cleanup acknowledgement must leave them alive.
+
     for (const event of await events().catch(() => [])) {
       if (event.event === "start") {
         try {
           process.kill(event.pid, "SIGKILL");
-        } catch {
-          /* Already exited. */
-        }
+        } catch {}
       }
     }
   });
   const endpoint = await host.listen();
   return { host, endpoint, events };
 }
-/** Wait for a real driver event; a missed barrier must fail the test. */
-/**
- * Physical input while the agent drives the real cursor and keyboard: the one
- * collision that still interrupts, and so the way into native takeover.
- */
+
 async function foregroundCollision(
   f: Awaited<ReturnType<typeof fixture>>,
   task: { threadId: string; turnId: string },
@@ -366,8 +356,7 @@ describe("Cua macOS host retirement", () => {
     });
     await cuaRequest(f.endpoint, { method: "call", name: "check_permissions" });
     await cuaRequest(f.endpoint, { method: "call", name: "get_screen_size" });
-    // A dispatched action makes this generation's input state unprovable, so
-    // the failed cleanup must keep the driver alive and admission closed.
+
     await cuaRequest(f.endpoint, {
       method: "call",
       name: "press_key",
@@ -390,7 +379,7 @@ describe("Cua macOS host retirement", () => {
     const f = await fixture();
     await f.host.pauseDesktop("screen-lock");
     await f.host.pauseDesktop("system-sleep");
-    f.host.resume(); // A backend restart cannot unlock the desktop.
+    f.host.resume();
     const press = () => cuaRequest(f.endpoint, { method: "call", name: "press_key" });
     await expect(press()).resolves.toMatchObject({
       result: {
@@ -415,10 +404,7 @@ describe("Cua macOS host retirement", () => {
   });
 
   it("retires a driver-ended session and retries once with a fresh one", async () => {
-    // The driver can end a session the host still holds (restart, timeout).
-    // Without a heal, every later call fails the same way and no model-side
-    // retry can recover. The driver confirms nothing dispatched, so one
-    // retire-plus-retry is replay-safe.
+    // The driver confirms nothing dispatched, so one retire-plus-retry is replay-safe.
     const f = await fixture(capability, { sessionDeathOnce: true });
     const reply = await cuaRequest<CuaReply>(f.endpoint, {
       method: "call",
@@ -428,8 +414,7 @@ describe("Cua macOS host retirement", () => {
     expect(reply.ok).toBe(true);
     expect(reply.result?.isError).not.toBe(true);
     const events = await f.events();
-    // The dead generation retired (new driver process) and the key reached
-    // the fresh session exactly once.
+
     expect(events.filter((event) => event.event === "start")).toHaveLength(2);
     expect(events.filter((event) => event.event === "key")).toHaveLength(1);
   });
@@ -560,8 +545,7 @@ describe("Cua macOS host retirement", () => {
         { timeoutMs: 1_000, mutation: true },
       ),
     ).resolves.toMatchObject({ ok: false });
-    // Without a confirmed release the held state is unprovable — no
-    // replacement generation may spawn over it, now or later.
+
     await expect(
       cuaRequest(f.endpoint, { method: "call", name: "check_permissions" }),
     ).resolves.toMatchObject({ ok: false, effect: "not-dispatched" });
@@ -584,10 +568,9 @@ describe("Cua macOS host retirement", () => {
   });
   it("rejects an upstream binary before native input is admitted", async () => {
     const f = await fixture(capability, { unpatched: true });
-    // The default host still expects the patched build, so it passes the
-    // Glade cursor flags — a faithful upstream binary exits on arguments it
-    // cannot parse, which refuses the call before any input is dispatched.
-    // Even a binary that tolerated them would fail the revision handshake.
+    // The default host still expects the patched build, so it passes the Glade cursor flags — a
+    // faithful upstream binary exits on arguments it cannot parse, which refuses the call before any
+    // input is dispatched.
     await expect(
       cuaRequest(f.endpoint, {
         method: "call",
@@ -708,15 +691,14 @@ describe("browser surface", () => {
     });
     expect(reply.ok).toBe(true);
     const events = (await f.events()).map((row) => row.event);
-    // The first browser call opened the persistent control connection; the
-    // dispatch then rode the thread's lifecycle label under that transport id.
+
     expect(events.some((event) => event.startsWith("session-begin:glade-transport-"))).toBe(true);
     expect(
       events.some((event) =>
         event.startsWith("browser:browser_navigate:glade-browser-thread:glade-transport-"),
       ),
     ).toBe(true);
-    // A caller-supplied session can never override the minted label.
+
     const forged = await cuaRequest<CuaReply>(f.endpoint, {
       method: "call",
       name: "browser_click",
@@ -760,9 +742,9 @@ describe("browser surface", () => {
       effect: "refused",
       code: "browser_self_target",
     });
-    // The refusal is decided at admission: no daemon ever started.
+
     await expect(f.events()).rejects.toMatchObject({ code: "ENOENT" });
-    // An unrelated pid still dispatches normally.
+
     const other = await cuaRequest<CuaReply>(f.endpoint, {
       method: "call",
       name: "get_browser_state",
@@ -791,11 +773,11 @@ describe("physical Escape interrupt", () => {
         releaseCalls += 1;
       },
     });
-    // Prime a live generation.
+
     await expect(pressKey(f.endpoint)).resolves.toMatchObject({ ok: true });
 
-    // The fake driver holds a type_text reply for 10s — the wedged-provider
-    // shape the interrupt exists for. The press must not wait on it.
+    // The fake driver holds a type_text reply for 10s — the wedged-provider shape the interrupt exists
+    // for. The press must not wait on it.
     const hung = cuaRequest(
       f.endpoint,
       { method: "call", name: "type_text", args: { text: "fixture" } },
@@ -803,8 +785,7 @@ describe("physical Escape interrupt", () => {
     );
     await waitForEvent(f, "dispatch");
     expect(f.host.emergencyStopInput()).toBe(true);
-    // A socket abort returns promptly, while the separate native interrupt
-    // drains the old operation and releases its own held input.
+
     await expect(hung).resolves.toMatchObject({ ok: false });
     await waitForEvent(f, "interrupt-ack");
     expect(releaseCalls).toBe(0);
@@ -816,8 +797,6 @@ describe("physical Escape interrupt", () => {
     expect(mid.some((event) => event.event === "retiring")).toBe(false);
     expect(mid.filter((event) => event.event === "start")).toHaveLength(1);
 
-    // Inside the cooldown a mutating call is refused with the paused
-    // dialect, while reads keep dispatching on the same generation.
     await expect(pressKey(f.endpoint)).resolves.toMatchObject({
       ok: true,
       result: {
@@ -829,8 +808,6 @@ describe("physical Escape interrupt", () => {
       cuaRequest(f.endpoint, { method: "call", name: "list_windows" }),
     ).resolves.toMatchObject({ ok: true });
 
-    // Time alone cannot make the model's old target state fresh. A preview
-    // or target-readiness probe cannot clear the model-observation gate.
     await new Promise((resolve) => setTimeout(resolve, ESCAPE_INPUT_COOLDOWN_MS + 50));
     await expect(pressKey(f.endpoint)).resolves.toMatchObject({
       result: { structuredContent: { code: "computer_input_paused" } },
@@ -860,11 +837,7 @@ describe("physical Escape interrupt", () => {
         await release.promise;
       },
     });
-    // The fake driver exits on dispatch. The call's own retirement stays
-    // pending on the release gate (or the interrupt's abort lands first —
-    // either way the crashed generation is still the host's live reference
-    // when Escape lands) — and the request's reply is legitimately blocked
-    // on that cleanup, which is why it is not awaited yet.
+
     const crashing = cuaRequest(
       f.endpoint,
       { method: "call", name: "type_text", args: { text: "fixture" } },
@@ -872,15 +845,12 @@ describe("physical Escape interrupt", () => {
     );
     await waitForEvent(f, "crash");
     expect(f.host.emergencyStopInput()).toBe(true);
-    // Let the crash retirement finish: with the release confirmed the dead
-    // generation clears, and nothing else holds admission.
+
     release.resolve();
     await expect(crashing).resolves.toMatchObject({ ok: false });
-    // stop() joins the pending retirement chain, so its return proves the
-    // generation cleared rather than merely having had time to.
+
     await f.host.stop();
-    // The replacement generation still needs a fresh model observation;
-    // successful crash cleanup does not validate the interrupted model state.
+
     await new Promise((resolve) => setTimeout(resolve, ESCAPE_INPUT_COOLDOWN_MS + 50));
     await cuaRequest(f.endpoint, {
       method: "call",
@@ -992,7 +962,7 @@ describe("physical Escape interrupt", () => {
       controller.abort();
       expect(await call).toMatchObject({ effect: "dispatched-unknown" });
       await waitForEvent(f, "interrupt");
-      // The next call is admitted behind the matching native cleanup ACK.
+
       await expect(pressKey(f.endpoint)).resolves.toMatchObject({ ok: true, result: {} });
       await new Promise((resolve) => setTimeout(resolve, 180));
       const events = (await f.events()).map((event) => event.event);
@@ -1095,7 +1065,7 @@ describe("physical Escape interrupt", () => {
     expect((await act()).result?.structuredContent?.code).toBe("computer_input_paused");
     expect((await f.events()).filter((e) => e.event === "key")).toHaveLength(1);
     await read(true);
-    // The fixture fails again, but exactly one new explicitly observed action ran.
+
     expect((await act()).result).toEqual(result);
     expect((await f.events()).filter((e) => e.event === "key")).toHaveLength(2);
   });
@@ -1246,8 +1216,7 @@ describe("verified Linux browser input capability", () => {
       },
     });
     host = f.host;
-    // Reproduce the real startup order: passive discovery has already warmed
-    // the driver, so a failed listener activation invalidates its input epoch.
+
     await cuaRequest(f.endpoint, {
       method: "call",
       name: "get_browser_state",

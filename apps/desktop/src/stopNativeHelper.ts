@@ -1,6 +1,5 @@
 import type * as ChildProcess from "node:child_process";
 
-/** Wait for the owned helper before allowing another request or removing its files. */
 export async function stopNativeHelper(
   child: ChildProcess.ChildProcess,
   hasExited: () => boolean,

@@ -1,11 +1,3 @@
-// FILE: useKanbanCardContextMenu.tsx
-// Purpose: Right-click context menu for kanban cards, mirroring the sidebar thread
-//          menu (rename / pin / copy path / copy id / archive / delete). Reuses the
-//          same shared primitives the sidebar uses (native contextMenu, clipboard,
-//          worktree cleanup, rename flow) instead of duplicating its action logic.
-// Layer: Kanban UI hook
-// Exports: useKanbanCardContextMenu
-
 import type { ThreadId } from "@glade/contracts";
 import { resolveThreadWorkspaceCwd } from "@glade/shared/threadEnvironment";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -37,9 +29,8 @@ interface RenameTarget {
 }
 
 export interface KanbanCardContextMenuController {
-  /** Attach to each card's `onContextMenu`. */
   onCardContextMenu: (card: KanbanCard, event: MouseEvent) => void;
-  /** Render once near the board root. */
+
   renameDialog: React.ReactNode;
 }
 
@@ -64,13 +55,11 @@ async function archiveCardThread(
   if (!api) return;
   const thread = getThreadFromState(useStore.getState(), threadId);
   if (!thread) return;
-  // Archived threads leave the board's thread feed, so a live optimistic
-  // dispatch entry could never reconcile — drop it with the card.
+
   useKanbanUiStore.getState().clearOptimisticDispatch(threadId);
   const archiveSequence = await archiveThreadFromClient(api.orchestration, threadId);
   if (!worktreeRelease.enabled) return;
-  // Kanban has no Undo toast. Give the asynchronous archive cleanup time to
-  // stop the provider before asking the server to validate and remove anything.
+
   globalThis.setTimeout(() => {
     void releaseOrphanedWorktreeAfterArchive({
       threadId,
@@ -109,15 +98,13 @@ export function useKanbanCardContextMenu(): KanbanCardContextMenuController {
   const copyThreadIdToClipboard = useCopyThreadIdToClipboard();
 
   const deleteCardThread = async (card: KanbanCard) => {
-    // A deleted thread can never reconcile its optimistic dispatch — drop the
-    // entry first so no phantom In Progress card survives the deletion.
     useKanbanUiStore.getState().clearOptimisticDispatch(card.threadId);
-    // Local-only draft (never promoted): just drop it from the draft store.
+
     if (card.thread === null) {
       clearDraftThread(card.threadId);
       return;
     }
-    // A settled thread can have a separate draft card for its unsent composer prompt.
+
     if (isKanbanDraftOnlyCard(card)) {
       clearComposerContent(card.threadId);
       return;

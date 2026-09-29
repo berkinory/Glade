@@ -1,8 +1,3 @@
-// FILE: projectTerminalRunner.ts
-// Purpose: Shared helper for launching project commands in managed terminal sessions.
-// Layer: Web terminal orchestration helper
-// Exports: runProjectCommandInTerminal and default dimensions for script terminals.
-
 import type { NativeApi, TerminalSessionSnapshot, ThreadId } from "@glade/contracts";
 import { deriveTerminalCommandIdentity, type TerminalCliKind } from "@glade/shared/terminalThreads";
 

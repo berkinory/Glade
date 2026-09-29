@@ -1,13 +1,3 @@
-// FILE: ProjectHoverCardContent.tsx
-// Purpose: Interactive hover-card body for sidebar project/folder rows — project
-//          name + pin toggle on the header line, then the chat count, the project
-//          path, and a clickable "Edit project" action.
-// Layer: Sidebar UI component
-// Exports: ProjectHoverCardContent
-// Why: Rendered inside a Base UI PreviewCard (hover-open + interactive), so the
-//      pin and "Edit project" rows are real controls. Spacing/type mirror the
-//      app's menu rows (12px UI font, compact padding) so it reads as native.
-
 import { MessageCircleIcon, SettingsIcon } from "~/lib/icons";
 import { PinStatusIcon, pinActionLabel } from "~/lib/pin";
 import type { ProjectAppearance } from "~/lib/projectAppearance";
@@ -25,20 +15,14 @@ export type ProjectHoverCardContentProps = {
   appearance: ProjectAppearance | null;
   isPinned: boolean;
   chatCount: number;
-  /** Display path (already home-abbreviated, e.g. ~/Developer/glade). */
+
   path: string;
   onTogglePin: () => void;
   onEditProject: () => void;
 };
 
-// One shared row rhythm for every line. No dividers: the card separates rows
-// with even spacing only (the outer container owns the padding inset), so rows
-// stay flush and read as a single clean menu. Tight vertical padding keeps the
-// card slim.
 const ROW_CLASS_NAME = SIDEBAR_HOVER_CARD_ROW_CLASS_NAME;
-// Icons stay one step dimmer than their label so the glyph reads as a quiet
-// affordance, not a peer of the text. Central glyphs paint via bg-current, so
-// the explicit text color here tints them directly.
+
 const ICON_CLASS_NAME = "size-3.5 shrink-0 text-muted-foreground";
 
 function formatChatCount(count: number): string {

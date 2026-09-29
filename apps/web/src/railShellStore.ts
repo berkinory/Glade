@@ -1,8 +1,3 @@
-// FILE: railShellStore.ts
-// Purpose: Per-window state for the rail layout: the active rail item, which panel the
-//          panel column shows (Home or Spaces), and the Spaces drill-in project.
-// Layer: Web UI store (sessionStorage, modeled on spacesUiStore)
-
 import type { ProjectId } from "@glade/contracts";
 import { create } from "zustand";
 
@@ -42,8 +37,6 @@ function readPersisted(): PersistedRailShellState {
     ) as Partial<PersistedRailShellState> | null;
     const panelView = isRailPanelItemId(parsed?.panelView) ? parsed.panelView : "home";
     return {
-      // The active item is re-derived from the route on mount (reconcile), so only a
-      // valid panel item is worth restoring here.
       activeItem: panelView,
       panelView,
       spacesProjectId:
@@ -71,13 +64,12 @@ function persist(state: PersistedRailShellState): void {
 }
 
 interface RailShellState extends PersistedRailShellState {
-  /** Route of the last reconcile; the active item re-syncs only when it changes. */
   reconciledRouteKey: string | null;
   selectPanelItem: (id: RailPanelItemId) => void;
   selectRouteItem: (id: RailRouteItemId) => void;
   openSpacesProject: (projectId: ProjectId) => void;
   closeSpacesProject: () => void;
-  /** `projectIds: null` means the project list is not hydrated yet, so the drill-in is kept. */
+
   reconcile: (input: { pathname: string; projectIds: ReadonlySet<ProjectId> | null }) => void;
 }
 
@@ -102,8 +94,7 @@ export const useRailShellStore = create<RailShellState>((set, get) => ({
   },
   reconcile: ({ pathname, projectIds }) => {
     const current = get();
-    // A clicked panel item stays active on a route item's route (Spaces while on Pull
-    // requests); only a navigation re-syncs it.
+
     const routeKey = pathname;
     const activeItem =
       routeKey === current.reconciledRouteKey

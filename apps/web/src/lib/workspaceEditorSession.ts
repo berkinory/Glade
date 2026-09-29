@@ -45,8 +45,6 @@ export function dirtyWorkspaceEditorPaths(client: QueryClient, cwd: string): Rea
   );
 }
 
-/** One buffer and one writer per file, shared by all editor surfaces. Failed
- * drafts survive panel unmounts; clean, unused sessions are released. */
 class WorkspaceEditorSession {
   private state = INITIAL_WORKSPACE_FILE_EDITOR_STATE;
   private listeners = new Set<() => void>();
@@ -116,7 +114,6 @@ class WorkspaceEditorSession {
     this.paused = false;
   };
 
-  /** Drains edits typed during an explicit save. Failure retains the draft. */
   flush = (overwrite = false): Promise<boolean> => {
     if (this.writing) return this.writing;
     if (this.paused) return Promise.resolve(!this.dirty);
@@ -137,8 +134,7 @@ class WorkspaceEditorSession {
               lineEnding: format.lineEnding,
               ...(guarded ? { expectedVersion: format.expectedVersion } : {}),
             });
-            // Cancel reads that predate the write, including aliases resolved to
-            // this file, before publishing the new disk version to all surfaces.
+
             const queries = this.client.getQueryCache().findAll({
               queryKey: ["projects", "read-file", this.cwd],
               predicate: (query) =>
@@ -161,8 +157,8 @@ class WorkspaceEditorSession {
               contents: value,
               expectedVersion: result.version,
             });
-            // Git latency or refresh failure must never change a successful save
-            // into a failed write. Existing refresh queues serialize detail reads.
+            // Git latency or refresh failure must never change a successful save into a failed write. Existing
+            // refresh queues serialize detail reads.
             void refreshGitAfterFileWrite(this.client, this.cwd).catch(() => undefined);
             guarded = true;
           } catch (error) {

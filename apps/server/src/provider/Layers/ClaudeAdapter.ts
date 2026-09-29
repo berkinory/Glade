@@ -2,14 +2,7 @@ import { normalizeOperationError } from "../../platform/operationError.ts";
 import { readClaudeSessionParentUuid } from "../claudeProjectImport.ts";
 import { claudeTurnResultUsage, type ClaudeResultUsageBaseline } from "../claudeResultUsage.ts";
 import { restoreClaudeImportedCopyDates } from "../claudeImportedCopyDates.ts";
-/**
- * ClaudeAdapterLive - Scoped live implementation for the Claude Agent provider adapter.
- *
- * Wraps `@anthropic-ai/claude-agent-sdk` query sessions behind the generic
- * provider adapter contract and emits canonical runtime events.
- *
- * @module ClaudeAdapterLive
- */
+
 import { execProcessFile, spawnProcess } from "@glade/shared/processRuntime";
 import type {
   AgentInfo,
@@ -223,13 +216,10 @@ interface ClaudeTurnState {
   readonly turnId: TurnId;
   readonly startedAt: string;
   readonly interactionMode: ProviderInteractionMode;
-  // True for auto-started turns that wrap assistant output arriving without an
-  // active turn (background agent/subagent responses between user prompts).
-  // Synthetic turns are never steered: a sendTurn auto-closes them, and a
-  // steerTurn falls back to a normal turn dispatch.
+
   readonly synthetic?: true;
   readonly explicitCompaction?: { readonly nativeSessionId: string; boundaryObserved: boolean };
-  // Set while a "Compacting context" progress row awaits its compact boundary.
+
   compactionInProgress?: boolean;
   readonly items: Array<unknown>;
   readonly assistantTextBlocks: Map<number, AssistantTextBlockState>;
@@ -241,10 +231,7 @@ interface ClaudeTurnState {
     readonly message: string;
   };
   nextSyntheticAssistantBlockIndex: number;
-  // Offset into assistantTextBlockOrder where the current assistant API
-  // message's blocks begin. A turn spans many API messages (tool-use round
-  // trips; a subagent's whole conversation shares one synthetic turn), while
-  // snapshot backfill aligns by position within a single message.
+
   assistantMessageBlockBase: number;
 }
 
@@ -292,7 +279,6 @@ function coerceClaudeAnswerValue(value: unknown): string {
   return "";
 }
 
-// Claude's AskUserQuestion SDK expects answers keyed by question text; the web UI submits stable ids.
 function remapAnswersToClaudeQuestionText(
   questions: ReadonlyArray<UserInputQuestion>,
   answers: ProviderUserInputAnswers,
@@ -327,9 +313,6 @@ interface ToolInFlight {
   readonly lastEmittedInputFingerprint?: string;
 }
 
-// One live Task tool spawn. Subagent SDK traffic is keyed by the Task tool_use_id
-// (parent_tool_use_id on forwarded messages); the task_id arrives later via
-// task_started and is what query.stopTask needs.
 interface ClaudeSubagentRun {
   readonly gatewayParentTurnId: string | undefined;
   readonly toolUseId: string;
@@ -347,38 +330,27 @@ interface ClaudeSessionContext {
   readonly lifecycleGeneration?: string;
   readonly promptQueue: Queue.Queue<PromptQueueItem>;
   readonly query: ClaudeQueryRuntime;
-  // Spawn-fixed: the Artifact opt-in is an environment variable of this process.
+
   readonly artifactsEnabled: boolean;
-  // Tool names from Claude's `init` message, once the first turn has produced it.
+
   initToolNames?: ReadonlySet<string>;
   readonly messageStream?: AsyncIterable<SDKMessage>;
   readonly processOwner: ClaudeProcessOwner;
   stopDeferred?: Deferred.Deferred<void, ProviderAdapterProcessError>;
-  // Controls/attachment reads can yield before turnState is installed.
+
   pendingDispatches?: number;
   streamFiber: Fiber.Fiber<void, Error> | undefined;
   readonly startedAt: string;
   readonly basePermissionMode: PermissionMode | undefined;
-  // The mode the CLI provably spawned in (from queryOptions, or the SDK's
-  // "default" when omitted). This is the ONLY permission mode we can prove the
-  // running CLI is in: `canUseTool` is shadowed under bypassPermissions, so once
-  // any prompt has run the CLI's mode is opaque (a future SDK adding a
-  // mode-changing tool like EnterPlanMode would silently diverge from anything
-  // we tracked). We therefore only skip the redundant first-turn
-  // `setPermissionMode` while this spawn state is still authoritative.
+
   readonly spawnPermissionMode: PermissionMode;
-  // True until the first prompt of the session has been dispatched. While true,
-  // the CLI is provably still in `spawnPermissionMode`; once cleared we can no
-  // longer prove the CLI's mode, so every turn re-sends `setPermissionMode`
-  // unconditionally.
+
   firstTurnSpawnModeAuthoritative: boolean;
   lastInteractionMode: ProviderInteractionMode | undefined;
   currentApiModelId: string | undefined;
   resumeSessionId: string | undefined;
   readonly pendingApprovals: Map<ApprovalRequestId, PendingApproval>;
-  // Supervised-mode "Always allow this session": later canUseTool prompts
-  // auto-allow for this live session only. Auto must keep routing every SDK
-  // "ask" outcome through its reviewer/user boundary.
+
   approvalsAlwaysAllowedForSession: boolean;
   readonly pendingUserInputs: Map<ApprovalRequestId, PendingUserInput>;
   readonly turns: Array<{
@@ -388,9 +360,7 @@ interface ClaudeSessionContext {
   readonly inFlightTools: Map<number, ToolInFlight>;
   readonly trackedTasks: Map<string, ClaudeTrackedTask>;
   turnState: ClaudeTurnState | undefined;
-  // Survives `turnState` being cleared so a terminal result that arrives with no
-  // live turn still names the turn it settles. An id-less `turn.completed` is
-  // dropped by runtime ingestion and leaves the projection running forever.
+
   lastTurnId: TurnId | undefined;
   interruptRequestedTurnId: TurnId | undefined;
   lastKnownContextWindow: number | undefined;
@@ -407,75 +377,54 @@ interface ClaudeSessionContext {
   hasObservedCacheRequest?: boolean;
   tokenUsageState: ClaudeTokenUsageState;
   compactionMessageId: string | undefined;
-  // Assistant snapshots report one API call at a time. Keep their processed-token
-  // accounting separately from the current context size so compaction can clear
-  // the meter without resetting the cumulative processed estimate.
+
   processedTokenTotal: number;
   processedTokenTurnBaseline: number;
-  // Native results normally delimit SDK turns. A synthetic UI turn can close
-  // before its result, so every logical completion must advance this baseline.
+
   processedTokenResultBaseline: number;
   processedTokenBaselineKnown: boolean;
   readonly requestUsage: ClaudeRequestUsage;
   lastResultUuid: string | undefined;
   lastAssistantUuid: string | undefined;
   lastThreadStartedId: string | undefined;
-  // Original API model id the runtime rerouted away from (safeguard refusal
-  // fallback). Tracks the in-flight turn only; turn completion restores the
-  // user-selected model via setModel so the fallback cannot pin later turns.
+
   rerouteOriginalApiModelId: string | undefined;
-  // Context-size warnings already emitted for this session (once per threshold).
+
   readonly emittedContextUsageWarnings: Set<string>;
   stopped: boolean;
-  // Unrecognized SDK message kinds already surfaced as a runtime warning. Newer
-  // Claude SDKs stream high-frequency telemetry (e.g. `thinking_tokens`); de-duping
-  // here keeps a single unknown kind from flooding the conversation timeline.
+
   readonly warnedUnhandledSdkKinds: Set<string>;
-  // Live Task tool spawns keyed by tool_use_id. Each run owns a scoped context
-  // whose events carry `subagentRefs`, so ingestion routes them to the child thread.
+
   readonly subagentRuns: Map<string, ClaudeSubagentRun>;
-  // Mid-task user messages queued per subagent tool_use_id, drained by the
-  // PreToolUse hook on the subagent's next tool call.
+
   readonly pendingSubagentSteers: Map<string, Array<string>>;
-  // Stop requests that arrived before task_started mapped the tool_use_id to an
-  // SDK task id; fired via query.stopTask the moment the mapping lands.
+
   readonly pendingSubagentStops: Set<string>;
-  // Last background-task ids from background_tasks_changed (REPLACE
-  // semantics); diffed so only newly backgrounded work gets announced.
-  // Foreground/terminal patches may evict ids, but background patches never
-  // seed the set because they can race the aggregate snapshot and suppress its
-  // "Moved to background" notice entirely.
+  // Last background-task ids from background_tasks_changed (REPLACE semantics); diffed so only newly
+  // backgrounded work gets announced. Foreground/terminal patches may evict ids, but background
+  // patches never seed the set because they can race the aggregate snapshot and suppress its "Moved
+  // to background" notice entirely.
   readonly knownBackgroundTaskIds: Set<string>;
-  // Task ids with provider-terminal evidence. Agent-scoped human interactions
-  // are cancelled only on this evidence (or whole-session stop), never merely
-  // because their parent foreground turn completed.
+  // Task ids with provider-terminal evidence. Agent-scoped human interactions are cancelled only on
+  // this evidence (or whole-session stop), never merely because their parent foreground turn
+  // completed.
   readonly terminalTaskIds: Set<string>;
-  // Final status per tool-use id whose task already settled (terminal
-  // task_updated or task_notification). Late messages still tagged with them
-  // must not resurrect a scoped run: the synthetic turn that would start on
-  // the settled child thread never completes and pins the strip row on
-  // "Running". The status also corrects the Task tool_result's error shape
-  // (a user stop returns an error result that would otherwise read "Failed").
+  // Late messages still tagged with them must not resurrect a scoped run: the synthetic turn that
+  // would start on the settled child thread never completes and pins the strip row on "Running". The
+  // status also corrects the Task tool_result's error shape (a user stop returns an error result that
+  // would otherwise read "Failed").
   readonly settledSubagentToolUseIds: Map<string, "completed" | "failed" | "stopped">;
-  // Live workflow runs (task_type "local_workflow") by task id. The SDK carries no
-  // parent-task linkage, so agent tasks that start while exactly one workflow is
-  // live get tagged with it (recorded in workflowTaskIdByMemberTaskId); with
-  // concurrent workflows membership is ambiguous and stays untagged.
+
   readonly liveWorkflowTaskIds: Set<string>;
-  // Workflow identity survives a terminal task_updated until task_notification
-  // supplies the authoritative final output file.
+
   readonly knownWorkflowTaskIds: Set<string>;
   readonly workflowTaskIdByMemberTaskId: Map<string, string>;
-  // Live transcript-directory pollers per workflow task id, plus the agent
-  // labels seen so far (first-seen order from "<phase>: <label>" progress
-  // descriptions) that the poller zips against journal start order.
+
   readonly workflowRuntimePollers: Map<string, Fiber.Fiber<void>>;
   readonly workflowAgentLabels: Map<string, Array<string>>;
-  // Poller state per workflow task id, kept reachable so settle can backfill
-  // runtime-only fields (effort) into the final output-file snapshots.
+
   readonly workflowRuntimeStates: Map<string, ClaudeWorkflowRuntimeState>;
-  // Set on subagent-scoped contexts only: stamps providerThreadId (the Task
-  // tool_use_id) + providerParentThreadId on every runtime event this context emits.
+
   readonly subagentRefs?: {
     readonly providerThreadId: string;
     readonly providerParentThreadId: string;
@@ -484,9 +433,7 @@ interface ClaudeSessionContext {
 
 interface ClaudeStopSessionOptions {
   readonly emitExitEvent?: boolean;
-  // A terminal SDK message is handled on the stream fiber itself. In that
-  // path, closing the query lets the stream finish naturally; interrupting the
-  // current fiber would abort teardown before the session is removed.
+
   readonly interruptStream?: boolean;
 }
 
@@ -510,9 +457,9 @@ interface ClaudeQueryRuntime extends AsyncIterable<SDKMessage> {
 }
 
 function prestartClaudeMessageStream(queryRuntime: ClaudeQueryRuntime): AsyncIterable<SDKMessage> {
-  // SDK discovery waits for a handshake that only starts on the first iterator read.
-  // Keep that read for the real stream consumer, while making cancellation win the
-  // race so session teardown never waits on an unread first message.
+  // SDK discovery waits for a handshake that only starts on the first iterator read. Keep that read
+  // for the real stream consumer, while making cancellation win the race so session teardown never
+  // waits on an unread first message.
   const iterator = queryRuntime[Symbol.asyncIterator]();
   const firstResult = iterator.next();
   void firstResult.catch(() => undefined);
@@ -603,8 +550,8 @@ async function readInstalledClaudeCliVersion(input: {
 }
 
 export interface ClaudeAdapterLiveOptions {
-  // Async because the default implementation lazily imports the Claude Agent
-  // SDK; test doubles may still return a runtime synchronously.
+  // Async because the default implementation lazily imports the Claude Agent SDK; test doubles may
+  // still return a runtime synchronously.
   readonly createQuery?: (input: {
     readonly prompt: AsyncIterable<SDKUserMessage>;
     readonly options: ClaudeQueryOptions;
@@ -620,7 +567,7 @@ export interface ClaudeAdapterLiveOptions {
   readonly readNativeMessageParent?: typeof readClaudeSessionParentUuid;
   readonly nativeEventLogPath?: string;
   readonly nativeEventLogger?: EventNdjsonLogger;
-  // Interval for polling a live workflow's transcript directory. Tests shrink it.
+
   readonly workflowRuntimePollIntervalMs?: number;
   readonly spawnClaudeCodeProcess?: (options: ClaudeSpawnOptions) => ClaudeOwnedProcess;
   readonly teardownProcessTree?: typeof teardownProviderProcessTree;
@@ -633,8 +580,7 @@ export interface ClaudeAdapterLiveOptions {
 
 const CLAUDE_NATIVE_COMMAND_LOOKUP_TIMEOUT_MS = 2_000;
 const CLAUDE_ARTIFACT_TOOL_NAME = "Artifact";
-// `/slides` registers only while the Artifact tool is live. Used until a session
-// reports its real tool list; discovery processes never reach that message.
+
 const CLAUDE_ARTIFACT_PROBE_COMMAND = "slides";
 
 function resolveClaudeArtifactsState(input: {
@@ -649,8 +595,6 @@ function resolveClaudeArtifactsState(input: {
   return available ? "available" : "unavailable";
 }
 
-// Claude drops these while the Artifact tool is off, which would leave the composer
-// no row to explain why. Listed only when Claude did not report them itself.
 const CLAUDE_ARTIFACT_COMMANDS = [
   { name: "design", description: "Make a new Design artifact from a brief" },
   { name: "slides", description: "Make a new Slides deck artifact from a brief" },
@@ -698,8 +642,6 @@ function isSyntheticClaudeThreadId(value: string): boolean {
   return value.startsWith("claude-thread-");
 }
 
-// Claude hook system messages can carry transient session ids; only durable
-// conversation messages should advance the resumable provider cursor.
 function hasDurableClaudeSessionId(message: SDKMessage): boolean {
   if (message.type !== "system") {
     return true;
@@ -807,12 +749,6 @@ function interruptionMessageFromClaudeCause(cause: Cause.Cause<Error>): string {
   return isClaudeInterruptedMessage(message) ? "Claude runtime interrupted." : message;
 }
 
-// SIGINT (130) and SIGTERM (143) are graceful stop requests, not crashes. When the
-// Claude subprocess receives one from outside our own stop path (an idle reaper, the
-// OS, or a parent process tearing the process group down), the SDK stream throws
-// "Claude Code process exited with code 143". Treat that as a suspend-and-resume,
-// not a hard failure with an error toast. SIGKILL (137) is intentionally excluded:
-// it usually signals an OOM/forced kill that is worth surfacing.
 const CLAUDE_BENIGN_TERMINATION_EXIT_CODES = new Set([130, 143]);
 
 const CLAUDE_BENIGN_TERMINATION_MESSAGE =
@@ -875,8 +811,6 @@ function claudeEffectiveContextBudget(context: ClaudeSessionContext): number | u
   );
 }
 
-// Safeguard reroutes (e.g. Fable 5 refusal -> Opus fallback) stream as an
-// untyped system message; match it structurally so SDK type drift stays inert.
 interface ClaudeModelRefusalFallback {
   readonly originalModel: string;
   readonly fallbackModel: string;
@@ -903,8 +837,7 @@ function readClaudeModelRefusalFallback(message: unknown): ClaudeModelRefusalFal
   if (record.type !== "system" || record.subtype !== "model_refusal_fallback") {
     return undefined;
   }
-  // Claude Agent SDK 0.3.x emits snake_case fields. Accept camelCase too so a
-  // future typed SDK projection cannot silently disable reroute protection.
+
   const originalModel =
     readNonEmptyString(record.original_model) ?? readNonEmptyString(record.originalModel);
   const fallbackModel =
@@ -921,8 +854,6 @@ function readClaudeModelRefusalFallback(message: unknown): ClaudeModelRefusalFal
   };
 }
 
-// VCS state transitions (commit, checkout, rebase) stream as an untyped system
-// message; match structurally so SDK type drift stays inert.
 interface ClaudeVcsStateChange {
   readonly kind?: string;
   readonly cwd?: string;
@@ -950,8 +881,7 @@ function readClaudeVcsStateChange(message: unknown): ClaudeVcsStateChange | unde
 }
 
 const DEFAULT_WORKFLOW_RUNTIME_POLL_INTERVAL_MS = 2_000;
-// Synthetic description for poller-emitted task.progress events; consumers key
-// off payload.workflowAgents, not this text.
+
 const WORKFLOW_AGENTS_PROGRESS_DESCRIPTION = "Workflow agents";
 
 function resolveSelectedClaudeThinkingToggle(
@@ -1080,8 +1010,7 @@ function syncClaudeCacheResumeCursor(context: ClaudeSessionContext): void {
     string,
     unknown
   >;
-  // Cache observations can precede the first SDK message. Preserve the saved
-  // transcript counters rather than deriving them from unloaded local turns.
+
   context.session = {
     ...context.session,
     resumeCursor: {
@@ -1102,7 +1031,6 @@ function hasActiveClaudeRuntimeWork(context: ClaudeSessionContext): boolean {
   );
 }
 
-// Persistent TODOs block compaction but survive restart through the resume cursor.
 function hasActiveClaudeCompactionWork(context: ClaudeSessionContext): boolean {
   return hasActiveClaudeRuntimeWork(context) || hasUnfinishedClaudeTasks(context.trackedTasks);
 }
@@ -1174,9 +1102,6 @@ function isReadOnlyToolName(toolName: string): boolean {
 }
 
 function classifyRequestType(toolName: string): CanonicalRequestType {
-  // MCP tools are always generic tool approvals, whatever their names contain
-  // ("search", "create_file", "run_command"): a command or file kind would let
-  // "Always allow this session" on one MCP tool widen the whole session.
   if (toolName.startsWith("mcp__")) {
     return "tool_approval";
   }
@@ -1184,10 +1109,7 @@ function classifyRequestType(toolName: string): CanonicalRequestType {
     return "file_read_approval";
   }
   const itemType = classifyToolItemType(toolName);
-  // Everything else — MCP tools, subagent launches, plain built-ins — is a generic
-  // tool approval. This must be the canonical request type, not an item-type string:
-  // the request kind mapping is keyed on approval types, and an unmapped value makes
-  // the approval unrenderable, which hangs the turn with no way to respond.
+
   return itemType === "command_execution"
     ? "command_execution_approval"
     : itemType === "file_change"
@@ -1203,8 +1125,6 @@ function summarizeToolRequest(
   const commandValue = input.command ?? input.cmd;
   const command = typeof commandValue === "string" ? commandValue : undefined;
   if (command && command.trim().length > 0) {
-    // Truncation can land on a space or newline even after trimming the full
-    // command. Runtime-event display metadata must itself end trimmed.
     return `${toolName}: ${command.trim().slice(0, 400).trimEnd()}`;
   }
   if (serializedInput.length <= 400) {
@@ -1213,17 +1133,14 @@ function summarizeToolRequest(
   return `${toolName}: ${serializedInput.slice(0, 397)}...`;
 }
 
-// Tools whose result is surfaced through a dedicated runtime channel — AskUserQuestion
-// via the user-input request flow, ExitPlanMode via the proposed-plan flow — must NOT
-// also emit a generic tool-call lifecycle item, or the timeline shows a redundant
-// "ToolName: {json}" row alongside the real interaction surface.
+// Tools whose result is surfaced through a dedicated runtime channel — AskUserQuestion via the
+// user-input request flow, ExitPlanMode via the proposed-plan flow — must NOT also emit a generic
+// tool-call lifecycle item, or the timeline shows a redundant "ToolName: {json}" row alongside the
+// real interaction surface.
 function isClientSurfacedClaudeTool(toolName: string): boolean {
   return toolName === "AskUserQuestion" || toolName === "ExitPlanMode";
 }
 
-// Stable per-call identity stamped on every tool lifecycle event's data so the client
-// can collapse started/updated/completed (and dedupe parallel calls) by tool-call id
-// instead of relying on row adjacency. Mirrors the shared runtime event shape.
 function toolLifecycleEventData(
   tool: Pick<ToolInFlight, "itemId" | "toolName" | "input">,
   extra?: Record<string, unknown>,
@@ -1238,9 +1155,6 @@ function toolLifecycleEventData(
   };
 }
 
-// Receiver identity for the shared subagent-thread machinery: ingestion spawns a
-// child thread per receiverThreadId on collab_agent_tool_call items and titles it
-// from these hints (see extractSubagentIdentityHints in @glade/shared/subagents).
 function subagentReceiverData(
   tool: Pick<ToolInFlight, "itemId" | "input">,
 ): Record<string, unknown> {
@@ -1299,8 +1213,8 @@ const CLAUDE_SETTING_SOURCES = [
   "local",
 ] as const satisfies ReadonlyArray<SettingSource>;
 const CLAUDE_CONTEXT_USAGE_TIMEOUT_MS = 1_000;
-// The SDK's interrupt resolves only once the CLI acknowledges it; a wedged CLI
-// would otherwise stall the caller (and the provider command reactor) forever.
+// The SDK's interrupt resolves only once the CLI acknowledges it; a wedged CLI would otherwise
+// stall the caller (and the provider command reactor) forever.
 const CLAUDE_INTERRUPT_TIMEOUT = Duration.seconds(10);
 export const buildEmbeddedClaudeSystemPromptAppend = (
   gatewayControlAvailable: boolean,
@@ -1351,9 +1265,6 @@ function buildClaudeSdkSubagents(): Record<string, AgentDefinition> {
     };
   }
 
-  // Effort-tier worker variants: the Agent tool input has a `model` param but no
-  // effort param, so effort is selected by picking the matching worker type.
-  // Model stays unset (inherit) so the tool's `model` input composes with it.
   for (const tier of CLAUDE_WORKER_EFFORT_TIERS) {
     const agentName = `worker-${tier}`;
     if (agents[agentName]) {
@@ -1373,9 +1284,7 @@ function isClaudeCompactionCommand(text: string | undefined): boolean {
   return /^\/compact(?:\s|$)/.test(text?.trim() ?? "");
 }
 
-// `/name` followed by whitespace or end of input. A path such as `/Users/me/x`
-// continues with another slash and stays ordinary model input. When the session
-// reported its commands, `/etc is odd` stays model input too; without that list
+// When the session reported its commands, `/etc is odd` stays model input too; without that list
 // (startup race, discovery failure) the shape alone decides.
 function isClaudeNativeSlashCommand(
   text: string | undefined,
@@ -1391,9 +1300,6 @@ function buildPromptText(
   input: ProviderSendTurnInput,
   nativeCommandNames?: ReadonlySet<string>,
 ): string {
-  // Native slash commands (`/compact`, `/design`, plugin commands) must start
-  // the payload, including in Plan mode or with a prompt-based effort option.
-  // A prefix turns them into model input, which the model cannot invoke.
   if (isClaudeNativeSlashCommand(input.input, nativeCommandNames)) return input.input!.trim();
   const basePrompt = buildClaudeSubagentPrompt(input.input?.trim() ?? "").prompt;
   const rawEffort =
@@ -2001,8 +1907,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
   return Effect.gen(function* () {
     const fileSystem = yield* FileSystem.FileSystem;
     const serverConfig = yield* ServerConfig;
-    // Optional so adapter tests can run without the gateway layer; when
-    // present, every session gets the glade_* MCP tools.
+
     const agentGatewayCredentials = Option.getOrUndefined(
       yield* Effect.serviceOption(AgentGatewayCredentials),
     );
@@ -2014,8 +1919,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           })
         : undefined);
 
-    // The Claude Agent SDK is imported on first query construction rather than at
-    // module scope, so boots that never open a Claude session never pay for it.
     const createQuery = async (input: {
       readonly prompt: AsyncIterable<SDKUserMessage>;
       readonly options: ClaudeQueryOptions;
@@ -2067,9 +1970,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
                 toMessage(cause, "unknown discovery error"),
             }),
         }).pipe(
-          // ProviderService gives session startup 60 seconds. Let cold startup
-          // discovery use nearly that budget while retaining cleanup headroom;
-          // live model switches keep their short bound.
           Effect.timeout(Duration.seconds(input.operation === "startSession" ? 55 : 5)),
           Effect.mapError((cause) =>
             Schema.is(ProviderAdapterValidationError)(cause)
@@ -2471,10 +2371,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           return;
         }
 
-        // Align against only the current API message's blocks: aligning from
-        // position 0 would collide with completed blocks from earlier messages
-        // in the same turn and silently drop this snapshot's text (subagent
-        // conversations arrive as complete messages under one synthetic turn).
         const orderedBlocks = turnState.assistantTextBlockOrder
           .slice(turnState.assistantMessageBlockBase)
           .map((block) => ({
@@ -2511,8 +2407,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           }
         }
 
-        // Without stream events there is no message_start to advance the base,
-        // so move it past this snapshot's blocks once they are settled.
         turnState.assistantMessageBlockBase = turnState.assistantTextBlockOrder.length;
       });
 
@@ -2611,8 +2505,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         });
       });
 
-    // Claude reports only the compact boundary, so publish the progress row the
-    // transcript shows while native compaction is still running.
     const emitCompactionProgress = (context: ClaudeSessionContext): Effect.Effect<void> =>
       Effect.gen(function* () {
         const turnState = context.turnState;
@@ -2636,9 +2528,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         });
       });
 
-    // Warn once per session per threshold when the logical prompt is large. Cache
-    // reads still count toward context size, but are materially cheaper than fresh
-    // input, so the warning names both instead of equating all tokens with cost.
     const maybeEmitContextUsageWarning = (
       context: ClaudeSessionContext,
       rawUsage: Record<string, unknown>,
@@ -2708,10 +2597,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         });
       });
 
-    // Surfaces each distinct unrecognized SDK message kind at most once per session.
-    // Without this, high-frequency telemetry the adapter doesn't model (notably the
-    // `thinking_tokens` system subtype streamed on every reasoning tick) turns into a
-    // "Runtime warning" timeline entry per message and floods the conversation.
     const warnUnhandledSdkKind = (
       context: ClaudeSessionContext,
       kind: string,
@@ -2774,7 +2659,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         });
       });
 
-    // Normalizes Claude TodoWrite tool calls into the shared runtime task-list event.
     const emitTodoTasksUpdated = (
       context: ClaudeSessionContext,
       input: {
@@ -3010,10 +2894,9 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       result?: SDKResultMessage,
     ): Effect.Effect<void> =>
       Effect.gen(function* () {
-        // A terminal foreground turn cannot retain its root callbacks once the
-        // UI can no longer answer them. Agent callbacks remain actionable until
-        // their own task has provider-terminal evidence or the session stops;
-        // background membership messages may race the callback itself.
+        // A terminal foreground turn cannot retain its root callbacks once the UI can no longer answer
+        // them. Agent callbacks remain actionable until their own task has provider-terminal evidence or
+        // the session stops; background membership messages may race the callback itself.
         if (context.turnState) {
           yield* settlePendingHumanInteractions(context, {
             type: "foregroundTurn",
@@ -3044,8 +2927,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           context.lastKnownAutoCompactThreshold = liveAutoCompactThreshold;
         }
 
-        // result.usage settles this turn's main loop, not the context size or
-        // subagents. Successful results may correct provisional block output down.
         const accumulatedSnapshot = normalizeClaudeTokenUsage(
           result?.usage,
           claudeEffectiveContextBudget(context),
@@ -3100,8 +2981,8 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
                     maxTokens,
                   )
                 : accountedAccumulatedSnapshot;
-        // The context merge preserves context size; accounting has its own final
-        // value and must not inherit the merge's monotonic provisional maximum.
+        // The context merge preserves context size; accounting has its own final value and must not inherit
+        // the merge's monotonic provisional maximum.
         let usageSnapshot = mergedUsageSnapshot
           ? {
               ...withoutProcessedTokenTotal(mergedUsageSnapshot),
@@ -3117,16 +2998,10 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           context.processedTokenTotal -
             (result ? context.processedTokenResultBaseline : context.processedTokenTurnBaseline),
         );
-        // A synthetic/background UI turn may be auto-closed before the SDK emits
-        // a result. Its per-request usage is still final for this logical turn;
-        // carry it into the next result baseline and quarantine late snapshots so
-        // a later result cannot replace the cumulative total below these tokens.
+
         context.processedTokenResultBaseline = context.processedTokenTotal;
         context.requestUsage.settleTurn();
 
-        // A safeguard reroute only applies to the turn that just finished.
-        // Restore the user-selected model so subsequent turns do not silently
-        // stay on the (heavier) fallback; the safeguard may reroute again.
         const reroutedFrom = context.rerouteOriginalApiModelId;
         if (reroutedFrom !== undefined) {
           const restoreExit = yield* Effect.exit(
@@ -3168,10 +3043,9 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
             });
           }
 
-          // Runtime ingestion drops a terminal event it cannot attribute to a
-          // turn, which strands the projection in "running". The last turn this
-          // session owned is the only turn this result can belong to, because a
-          // newer one would still have live turn state.
+          // Runtime ingestion drops a terminal event it cannot attribute to a turn, which strands the
+          // projection in "running". The last turn this session owned is the only turn this result can belong
+          // to, because a newer one would still have live turn state.
           const settledTurnId = context.lastTurnId;
           if (settledTurnId === undefined) {
             yield* Effect.logWarning("claude turn result arrived with no attributable turn", {
@@ -3240,7 +3114,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           }
           context.inFlightTools.delete(index);
         }
-        // Clear any remaining stale entries (e.g. from interrupted content blocks)
+
         context.inFlightTools.clear();
 
         for (const block of turnState.assistantTextBlockOrder) {
@@ -3272,7 +3146,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           });
         }
 
-        // Feed Claude edits into the same placeholder checkpoint flow used by Codex.
         if (status === "completed" && turnState.sawFileChange) {
           const diffStamp = yield* makeEventStamp();
           yield* offerRuntimeEvent(context, {
@@ -3315,8 +3188,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         }
 
         const stamp = yield* makeEventStamp();
-        // Terminal consumers can immediately dispatch another turn. Settle the
-        // live session and cursor first, with no mutation after publication.
+
         if (context.interruptRequestedTurnId === turnState.turnId) {
           context.interruptRequestedTurnId = undefined;
         }
@@ -3362,11 +3234,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         });
       });
 
-    // A subagent run gets its own scoped context sharing the parent session/query:
-    // the same handlers project its messages, but every event carries subagentRefs
-    // (providerThreadId = Task tool_use_id, providerParentThreadId = parent thread),
-    // so ingestion's provider-ref path routes it to the `subagent:<parent>:<toolUseId>`
-    // child thread and the reactor's interrupt decoding hands the toolUseId back here.
     const ensureSubagentRun = (
       context: ClaudeSessionContext,
       toolUseId: string,
@@ -3393,9 +3260,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           startedAt: context.startedAt,
           basePermissionMode: context.basePermissionMode,
           spawnPermissionMode: context.spawnPermissionMode,
-          // Subagent contexts only project events for an already-running CLI;
-          // they never dispatch the first prompt, so spawn state is not theirs
-          // to prove.
+
           firstTurnSpawnModeAuthoritative: false,
           lastInteractionMode: undefined,
           currentApiModelId: undefined,
@@ -3416,8 +3281,8 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           currentUltracode: context.currentUltracode,
           currentFastMode: context.currentFastMode,
           lastKnownAutoCompactThreshold: context.lastKnownAutoCompactThreshold,
-          // Session-level context usage controls answer for the main conversation
-          // only; subagent completion must not poll them.
+          // Session-level context usage controls answer for the main conversation only; subagent completion
+          // must not poll them.
           contextUsageControlEnabled: false,
           lastKnownTokenUsage: undefined,
           tokenUsageState: "current",
@@ -3456,10 +3321,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       return run;
     };
 
-    // Opens a tool item and emits item.started. Streaming turns key the entry
-    // by stream block index; complete-message turns (subagent conversations
-    // arrive without stream events) use synthetic negative keys that stream
-    // deltas can never reference.
     const openInFlightTool = (
       context: ClaudeSessionContext,
       input: {
@@ -3685,8 +3546,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
             return;
           }
           const toolName = block.name;
-          // AskUserQuestion / ExitPlanMode are rendered by their own runtime channels;
-          // emitting a generic tool item here would duplicate them as a raw row.
+
           if (isClientSurfacedClaudeTool(toolName)) {
             return;
           }
@@ -3745,9 +3605,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
 
           const [index, tool] = toolEntry;
           const itemStatus = toolResult.isError ? "failed" : "completed";
-          // A user-stopped task returns an error-shaped tool_result; the settled
-          // status stamps a per-agent state so the row reads "Stopped", not
-          // "Failed".
+
           const settledStatus =
             tool.toolName === "Task" || tool.toolName === "Agent"
               ? context.settledSubagentToolUseIds.get(tool.itemId)
@@ -3823,9 +3681,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
             });
           }
 
-          // The Workflow tool returns async_launched with the persisted script
-          // path and runId; surfacing them on task.updated is what lets the
-          // panel offer stop-then-resume.
           const workflowLaunch =
             tool.toolName === "Workflow"
               ? (parseClaudeWorkflowLaunch(toolResult.structuredResult) ??
@@ -3904,8 +3759,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         }
       });
 
-    // Auto-start a synthetic turn for messages that arrive without an active turn
-    // (e.g., background agent/subagent responses between user prompts).
     const ensureSyntheticTurn = (context: ClaudeSessionContext): Effect.Effect<void> =>
       Effect.gen(function* () {
         if (context.turnState) {
@@ -3955,8 +3808,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         });
       });
 
-    // Transcript marker on the child thread, emitted only at actual delivery
-    // (the PreToolUse hook fired inside the subagent), never on enqueue.
     const emitSubagentSteerDelivered = (
       run: ClaudeSubagentRun,
       message: string,
@@ -4031,12 +3882,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
               typeof toolUse.name === "string" &&
               !isClientSurfacedClaudeTool(toolUse.name)
             ) {
-              // Subagent conversations are forwarded as complete messages only
-              // (no stream events), so this snapshot is the sole chance to open
-              // their tool items. The parent thread always streams and opens
-              // tools from content_block_start — which can arrive after this
-              // snapshot, so registering here for the parent would duplicate
-              // the item. Dedupe by tool-use id in case a subagent ever streams.
               const toolUseId = toolUse.id;
               const alreadyOpen = Array.from(context.inFlightTools.values()).some(
                 (tool) => tool.itemId === toolUseId,
@@ -4096,9 +3941,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           yield* backfillAssistantTextBlocksFromSnapshot(context, message);
         }
 
-        // Capture per-API-call usage from the assistant response for accurate
-        // context window tracking. Unlike task_progress (accumulated per-task),
-        // this reflects the actual prompt + output size for this single API call.
         const perCallUsage = (message.message as { usage?: unknown } | undefined)?.usage;
         if (perCallUsage) {
           const messageId = message.message.id ?? message.request_id ?? message.uuid;
@@ -4207,11 +4049,8 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
 
         yield* completeTurn(context, status, errorMessage, message);
 
-        // Claude Code caches account credentials in the live SDK process. An
-        // auth/account failure cannot be recovered by reusing that query after
-        // the user logs in, so retire it after publishing the failed turn. The
-        // ProviderService keeps the refreshed resume cursor from turn.completed
-        // and starts a fresh process for the next message.
+        // An auth/account failure cannot be recovered by reusing that query after the user logs in, so
+        // retire it after publishing the failed turn.
         if (assistantError && claudeAssistantErrorRequiresProcessRestart(assistantError.code)) {
           yield* stopSessionInternal(context, {
             emitExitEvent: true,
@@ -4220,9 +4059,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         }
       });
 
-    // Task usage totals belong to the agent that spent them: subagent tasks feed the
-    // child thread's token meter, everything else feeds the parent as before. This
-    // also keeps per-task totals off the parent's context-window snapshot.
     const emitTaskUsageSnapshot = (
       context: ClaudeSessionContext,
       message: Extract<SDKMessage, { subtype: "task_progress" | "task_notification" }>,
@@ -4265,9 +4101,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         });
       });
 
-    // Workflow scripts arrive inline: task_started.prompt carries the full text,
-    // with the Workflow tool input (`script`, or a resume-style `scriptPath` read
-    // best-effort) as fallback. Absence just means no parsed meta on the event.
     const resolveWorkflowScriptText = (
       context: ClaudeSessionContext,
       message: Extract<SDKMessage, { subtype: "task_started" }>,
@@ -4296,10 +4129,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       options?.workflowRuntimePollIntervalMs ?? DEFAULT_WORKFLOW_RUNTIME_POLL_INTERVAL_MS,
     );
 
-    // Polls a live workflow's transcript directory (journal.jsonl + per-agent
-    // transcripts) and emits task.progress events carrying per-agent runtime
-    // snapshots. Runs detached like streamFiber; exits when the workflow
-    // settles or the session stops, and is interrupted eagerly on both.
     const startWorkflowRuntimePoller = (
       context: ClaudeSessionContext,
       taskId: string,
@@ -4362,9 +4191,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
     ): Effect.Effect<void> =>
       Effect.gen(function* () {
         context.workflowAgentLabels.delete(taskId);
-        // workflowRuntimeStates survives poller teardown: a terminal
-        // task_updated stops the poller before task_notification backfills
-        // effort into the final snapshots; the state is dropped there instead.
+
         const fiber = context.workflowRuntimePollers.get(taskId);
         if (!fiber) {
           return;
@@ -4382,18 +4209,10 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           return;
         }
 
-        // Benign high-frequency telemetry we intentionally don't project. `thinking_tokens`
-        // streams on every reasoning tick while extended thinking is active. Short-circuit
-        // before allocating an event stamp so it can't flood the timeline (or churn
-        // allocations) with "Runtime warning" entries.
         if (message.subtype === "thinking_tokens") {
           return;
         }
 
-        // `task_updated` is an incremental task patch. Status transitions surface as
-        // `task.updated` on the parent thread (workflow panels track pause/kill through
-        // them); tracked subagent runs additionally keep the child thread truthful via
-        // `session.state.changed`. Non-status patches stay dropped.
         if (message.subtype === "task_updated") {
           const patch = message.patch;
           const status = patch?.status;
@@ -4407,10 +4226,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
             context.terminalTaskIds.add(message.task_id);
             yield* settlePendingHumanInteractionsForAgent(context, message.task_id);
           }
-          // A foreground/terminal patch can safely evict an id from the last
-          // background snapshot. Do not add on `true`: that patch may arrive
-          // before the aggregate snapshot whose newly-backgrounded notice we
-          // still need to emit.
+
           if (isTerminalStatus || isBackgrounded === false) {
             context.knownBackgroundTaskIds.delete(message.task_id);
           }
@@ -4509,9 +4325,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           },
         };
 
-        // Safeguard reroute (e.g. Fable 5 refusal -> Opus fallback). Track the
-        // fallback for the in-flight turn only; turn completion restores the
-        // user-selected model so one refusal cannot pin later turns to Opus.
         const refusalFallback = readClaudeModelRefusalFallback(message);
         if (refusalFallback) {
           context.rerouteOriginalApiModelId ??= refusalFallback.originalModel;
@@ -4536,8 +4349,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           return;
         }
 
-        // VCS transitions let the thread git metadata reactor refresh the durable
-        // branch/PR projection mid-turn instead of waiting for the turn boundary.
         const vcsStateChange = readClaudeVcsStateChange(message);
         if (vcsStateChange) {
           yield* offerRuntimeEvent(context, {
@@ -4550,8 +4361,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
 
         switch (message.subtype) {
           case "commands_changed":
-            // The SDK updates supportedCommands() from this push. There is no
-            // user-visible runtime event or warning to emit.
             return;
           case "init":
             if (Array.isArray(message.tools)) {
@@ -4646,15 +4455,14 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
             return;
           case "task_started": {
             context.terminalTaskIds.delete(message.task_id);
-            // Subagent tasks get a run entry so later task_progress/notification and
-            // stopTask can be keyed by the Task tool_use_id ingestion routes on.
+
             if (
               message.tool_use_id &&
               (message.subagent_type !== undefined || context.subagentRuns.has(message.tool_use_id))
             ) {
               const run = ensureSubagentRun(context, message.tool_use_id);
               run.taskId = message.task_id;
-              // A stop that raced the spawn window fires now that the task id exists.
+
               if (context.pendingSubagentStops.delete(message.tool_use_id)) {
                 yield* Effect.tryPromise(() => context.query.stopTask(message.task_id)).pipe(
                   Effect.catch((cause) =>
@@ -4672,14 +4480,8 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
               context.knownWorkflowTaskIds.add(message.task_id);
             } else if (
               context.liveWorkflowTaskIds.size === 1 &&
-              // Ambient housekeeping tasks (each Bash call an agent makes
-              // surfaces as its own local_bash task) are not workflow members;
-              // tagging them floods the run panel with pseudo-agent rows.
               message.task_type !== "local_bash" &&
               message.skip_transcript !== true &&
-              // Task-tool subagent spawns already surface in the subagent
-              // strip via their collab item; tagging them too would list the
-              // same agent twice (strip row + workflow member row).
               !(message.tool_use_id !== undefined && message.subagent_type !== undefined)
             ) {
               const [workflowTaskId] = context.liveWorkflowTaskIds;
@@ -4722,9 +4524,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           }
           case "task_progress": {
             yield* emitTaskUsageSnapshot(context, message);
-            // Workflow progress descriptions arrive as "<phase>: <label>" in agent
-            // start order; the label list is what the transcript poller zips
-            // against journal starts to attach labels to live snapshots.
+
             if (context.liveWorkflowTaskIds.has(message.task_id)) {
               const separator = message.description.indexOf(": ");
               const label = (
@@ -4761,8 +4561,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
             yield* settlePendingHumanInteractionsForAgent(context, message.task_id);
             context.knownBackgroundTaskIds.delete(message.task_id);
             const workflowTaskId = context.workflowTaskIdByMemberTaskId.get(message.task_id);
-            // Settled workflows: the output file's workflowProgress carries the
-            // final per-agent states/models the live stream never surfaced.
+
             const workflowOutputText =
               context.knownWorkflowTaskIds.has(message.task_id) &&
               typeof message.output_file === "string" &&
@@ -4772,8 +4571,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
             const parsedWorkflowAgents = workflowOutputText
               ? parseClaudeWorkflowProgressAgents(workflowOutputText)
               : undefined;
-            // The output file carries no reasoning effort; the live poller saw
-            // it on the transcripts, so carry it over by agent id at settle.
+
             const runtimeEffortByAgentId = new Map(
               Array.from(
                 context.workflowRuntimeStates.get(message.task_id)?.agents.values() ?? [],
@@ -4840,9 +4638,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
             });
             return;
           case "background_tasks_changed": {
-            // REPLACE semantics: the payload is the full live background set.
-            // Announce only newly backgrounded work with a one-line notice;
-            // removals settle through their own task lifecycle events.
             const tasks = Array.isArray(message.tasks) ? message.tasks : [];
             const added = tasks.filter((task) => !context.knownBackgroundTaskIds.has(task.task_id));
             context.knownBackgroundTaskIds.clear();
@@ -4954,12 +4749,8 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       Effect.gen(function* () {
         yield* logNativeSdkMessage(context, message);
 
-        // Claude also sets parent_tool_use_id on async Bash progress, so route only
-        // ids already recognized as Task/Agent tools onto child threads.
         const subagentToolUseId = recognizedSubagentParentToolUseId(context, message);
         if (subagentToolUseId !== undefined) {
-          // A settled task's zombie tail (messages already in flight when the
-          // stop landed) is dropped, not projected onto the settled child.
           if (context.settledSubagentToolUseIds.has(subagentToolUseId)) {
             return;
           }
@@ -4995,7 +4786,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
             return;
           case "conversation_reset":
             invalidateClaudeCache(context);
-            // The query survives /clear even when its cumulative counters restart.
+
             delete context.resultUsageBaseline;
             context.requestUsage.reset();
             context.compactionMessageId = undefined;
@@ -5053,10 +4844,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
               );
             }
           } else if (isClaudeBenignTerminationCause(exit.cause)) {
-            // External SIGTERM/SIGINT: a graceful stop, not a crash. Suspend the turn
-            // without an error toast so the session resumes on the next message.
-            // Marker for how often the expensive path fires: the next message on
-            // this thread pays a full resume replay of the conversation.
+            // Suspend the turn without an error toast so the session resumes on the next message.
             yield* Effect.logInfo("claude.session.benign_termination", {
               threadId: context.session.threadId,
               hadActiveTurn: context.turnState !== undefined,
@@ -5071,17 +4859,12 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
               "Claude runtime stream failed.",
             );
             if (isClaudeMissingResumeConversationCause(exit.cause)) {
-              // The SDK can accept a resumed query and report the missing
-              // native conversation only after the prompt is queued. Drop the
-              // dead native ids before completing the turn so ProviderService
-              // persists a cursor without `resume`; the next dispatch then
-              // starts a fresh Claude session and bootstraps Glade's retained
+              // Drop the dead native ids before completing the turn so ProviderService persists a cursor without
+              // `resume`; the next dispatch then starts a fresh Claude session and bootstraps Glade's retained
               // transcript instead of replaying the same broken id forever.
               context.resumeSessionId = undefined;
               context.lastAssistantUuid = undefined;
-              // The map is the source for `turn.tasks.updated`, so clearing it
-              // silently would strand the turn's task chips: the next dispatch
-              // sees an empty map and emits no correction.
+
               if (context.trackedTasks.size > 0) {
                 context.trackedTasks.clear();
                 yield* emitTrackedTasksUpdated(context, {
@@ -5153,9 +4936,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         } catch (cause) {
           yield* emitRuntimeError(context, "Failed to close Claude runtime query.", cause);
         }
-        // Do not release session ownership until teardown proves the old
-        // process tree exited. The stopped context remains non-routable and
-        // prevents a replacement process from being spawned concurrently.
+
         yield* teardownClaudeProcess(context.session.threadId, context.processOwner);
 
         const updatedAt = yield* nowIso;
@@ -5253,8 +5034,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           : Effect.void;
       });
 
-    // Only slash-shaped input pays for the lookup; the SDK serves it from the
-    // cached initialize response. No answer means the input shape decides.
     const resolveNativeCommandNames = (
       context: ClaudeSessionContext,
       text: string | undefined,
@@ -5273,7 +5052,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           )
         : Effect.succeed(undefined);
 
-    // Keep version/binary validation ahead of retirement for permission Auto.
     const resolveClaudeStartPreflight = (
       input: Parameters<ClaudeAdapterShape["startSession"]>[0],
     ) =>
@@ -5330,10 +5108,10 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
                 }),
             ),
           );
-          // Work can arrive during the asynchronous version probe. Check last.
+
           yield* assertSessionReplaceable(input.threadId);
           const session = context.session;
-          // The service keeps this generation current until retirement succeeds.
+
           yield* stopSessionInternal(context, { emitExitEvent: false });
           return {
             previousSession: session,
@@ -5387,8 +5165,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         );
 
         const contextRef = yield* Ref.make<ClaudeSessionContext | undefined>(undefined);
-        // Auto initialization can run hooks before contextRef is installed.
-        // Keep one observation in this start's closure, never a global buffer.
+
         let startupCacheObservation: ClaudeCacheObservation | undefined;
         const sessionStartHook = async (
           hookInput: HookInput,
@@ -5423,10 +5200,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           return {};
         };
 
-        /**
-         * Handle AskUserQuestion tool calls by emitting a `user-input.requested`
-         * runtime event and waiting for the user to respond via `respondToUserInput`.
-         */
         const handleAskUserQuestion = (
           context: ClaudeSessionContext,
           toolInput: Record<string, unknown>,
@@ -5449,7 +5222,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
               context.turnState?.turnId ??
               (callbackOptions.agentID !== undefined ? context.lastTurnId : undefined);
 
-            // Parse questions from the SDK's AskUserQuestion input.
             const rawQuestions = Array.isArray(toolInput.questions) ? toolInput.questions : [];
             const questions: Array<UserInputQuestion> = rawQuestions.map(
               (q: Record<string, unknown>, idx: number) => ({
@@ -5480,11 +5252,9 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
               settlementStarted: false,
             };
 
-            // Stamp before registering ownership so terminal settlement cannot
-            // publish a resolution before its request while the clock yields.
             const requestedStamp = yield* makeEventStamp();
             pendingUserInputs.set(requestId, pendingInput);
-            // Emit user-input.requested so the UI can present the questions.
+
             yield* offerRuntimeEvent(context, {
               type: "user-input.requested",
               eventId: requestedStamp.eventId,
@@ -5516,7 +5286,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
               });
             }
 
-            // Handle abort (e.g. turn interrupted while waiting for user input).
             const onAbort = () => {
               Effect.runFork(
                 settlePendingUserInput(context, requestId, pendingInput, {
@@ -5526,10 +5295,9 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
               );
             };
             callbackOptions.signal.addEventListener("abort", onAbort, { once: true });
-            // Abort may have happened during event publication, before registration.
+
             if (callbackOptions.signal.aborted) onAbort();
 
-            // Block until the user provides answers.
             const result = yield* Deferred.await(resultDeferred).pipe(
               Effect.ensuring(
                 Effect.sync(() => {
@@ -5545,8 +5313,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
               } satisfies PermissionResult;
             }
 
-            // Return the answers to the SDK in the expected format:
-            // { questions: [...], answers: { questionText: selectedLabel } }
             return {
               behavior: "allow",
               updatedInput: {
@@ -5556,11 +5322,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
             } satisfies PermissionResult;
           });
 
-        // Host-side PreToolUse hook: the only SDK channel that reaches a RUNNING
-        // subagent (inbound messages with parent_tool_use_id become main-thread
-        // turns). Hook input `agent_id` equals the run's task_id. It fires on
-        // every tool call, so the no-steer path must stay trivial; queued
-        // messages are drained on the subagent's next tool call.
         const subagentSteerHook = async (hookInput: HookInput): Promise<HookJSONOutput> => {
           const agentId = "agent_id" in hookInput ? hookInput.agent_id : undefined;
           if (pendingSubagentSteers.size === 0 || typeof agentId !== "string") {
@@ -5607,9 +5368,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
                 } satisfies PermissionResult;
               }
 
-              // Handle AskUserQuestion: surface clarifying questions to the
-              // user via the user-input runtime event channel, regardless of
-              // runtime mode (plan mode relies on this heavily).
               if (toolName === "AskUserQuestion") {
                 return yield* handleAskUserQuestion(context, toolInput, callbackOptions);
               }
@@ -5663,14 +5421,9 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
                 } satisfies PermissionResult;
               }
 
-              // In native Auto mode the SDK calls canUseTool only for the
-              // classifier's interactive "ask" outcome. Auto-allowed calls
-              // bypass this hook, while auto-denied calls arrive as
-              // permission_denied stream messages. Keep this prompt so risky
-              // calls still reach the user instead of becoming unrestricted.
               const requestId = ApprovalRequestId.makeUnsafe(yield* Random.nextUUIDv4);
               const requestType = classifyRequestType(toolName);
-              // The approval detail is persisted with the card; keep credentials out.
+
               const detail = summarizeToolRequest(
                 toolName,
                 toolInput,
@@ -5757,9 +5510,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
               );
 
               if (decision === "accept" || decision === "acceptForSession") {
-                // Only command and file prompts widen the whole session. A tool
-                // grant stays scoped to that tool through the SDK's permission
-                // suggestions below, so the next Bash or Edit still prompts.
                 const requestKind = approvalRequestKindFromRequestType(requestType);
                 if (
                   decision === "acceptForSession" &&
@@ -5767,10 +5517,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
                   requestKind !== null &&
                   approvalSessionGrantWidensSessionPolicy(requestKind)
                 ) {
-                  // The SDK's permission suggestions only cover some requests;
-                  // supervised mode preserves its live "always allow" fallback.
-                  // Auto stays reviewer-gated and applies only SDK-provided
-                  // permission suggestions below.
                   context.approvalsAlwaysAllowedForSession = true;
                 }
                 return {
@@ -5822,18 +5568,14 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
             : (toPermissionMode(providerOptions?.permissionMode) ??
               (input.runtimeMode === "full-access" ? "bypassPermissions" : undefined));
         const settings = {
-          // Pin only explicit non-native overrides. Otherwise Claude Code owns
-          // resolution via server tuning, settings.json, and
-          // CLAUDE_CODE_AUTO_COMPACT_WINDOW.
+          // Pin only explicit non-native overrides. Otherwise Claude Code owns resolution via server tuning,
+          // settings.json, and CLAUDE_CODE_AUTO_COMPACT_WINDOW.
           autoCompactEnabled: true,
           ...(requestedAutoCompactWindowTokens !== undefined
             ? { autoCompactWindow: requestedAutoCompactWindowTokens }
             : {}),
           ...(typeof thinking === "boolean" ? { alwaysThinkingEnabled: thinking } : {}),
-          // Non-max effort lives in the flag-settings layer so later selection
-          // changes apply live via applyFlagSettings instead of a restart-and-
-          // resume replay. `max` has no Settings equivalent (effortLevel caps
-          // at xhigh) and stays a spawn-time query option below.
+
           ...(effectiveEffort && effectiveEffort !== "max" ? { effortLevel: effectiveEffort } : {}),
           ...(fastMode ? { fastMode: true } : {}),
           ...(ultracode ? { ultracode: true } : {}),
@@ -5843,15 +5585,12 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           preflight ?? (yield* resolveClaudeStartPreflight(input));
         const failedStartupProcessOwner = failedStartupProcessOwners.get(threadId);
         if (failedStartupProcessOwner) {
-          // A prior createQuery failure may have happened after spawning. Do
-          // not create another runtime until that orphan's exit is proven.
           yield* teardownFailedStartupProcess(threadId, failedStartupProcessOwner);
         }
         const existing = sessions.get(threadId);
         if (existing) {
           yield* assertSessionReplaceable(threadId);
-          // Retire and prove the old process tree before spawning its replacement.
-          // A replacement spawn failure is truthfully a stopped session, never two runtimes.
+
           yield* stopSessionInternal(existing, { emitExitEvent: false });
         }
         const processOwner: ClaudeProcessOwner = {};
@@ -5886,7 +5625,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         };
         const queryOptions: ClaudeQueryOptions = {
           ...(input.cwd ? { cwd: input.cwd } : {}),
-          // Model identity and the spawn-fixed compaction override are separate settings.
+
           ...(apiModelId ? { model: apiModelId } : {}),
           pathToClaudeCodeExecutable: providerOptions?.binaryPath ?? "claude",
           settingSources: [...CLAUDE_SETTING_SOURCES],
@@ -5897,16 +5636,12 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
               agentGatewayCredentials !== undefined,
               input.enableComputerControl === true,
             ),
-            // Strip per-user dynamic sections (working directory, auto-memory
-            // path) into the first user message so the cached system-prompt
-            // prefix stays static across sessions and users. Tradeoff: that
-            // context steers marginally less authoritatively from a user turn.
+
             excludeDynamicSections: true,
             ...(snapshotSupported ? { snapshot: true } : {}),
           },
           ...(Object.keys(claudeSubagents).length > 0 ? { agents: claudeSubagents } : {}),
-          // Only `max` effort is spawn-fixed; every other level rides in
-          // `settings.effortLevel` so it can change live mid-session.
+
           ...(effectiveEffort === "max" ? { effort: "max" as const } : {}),
           ...(permissionMode ? { permissionMode } : {}),
           ...(permissionMode === "bypassPermissions"
@@ -5919,8 +5654,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           ...(existingResumeSessionId ? { resume: existingResumeSessionId } : {}),
           ...(newSessionId ? { sessionId: newSessionId } : {}),
           includePartialMessages: true,
-          // Forward full subagent conversations (text + thinking) tagged with
-          // parent_tool_use_id so child threads can stream live.
+
           forwardSubagentText: true,
           hooks: {
             SessionStart: [{ hooks: [sessionStartHook] }],
@@ -5988,7 +5722,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
               operation: "startSession",
             });
           } else if (!cachedModels) {
-            // Populate model cache in the background from the first non-Auto session.
             queryRuntime
               .supportedModels()
               .then((models) => {
@@ -5998,12 +5731,9 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
                   cached: false,
                 };
               })
-              .catch(() => {
-                /* ignore discovery failures */
-              });
+              .catch(() => {});
           }
 
-          // Populate agent cache in background from first session
           if (!cachedAgents) {
             queryRuntime
               .supportedAgents()
@@ -6019,9 +5749,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
                   cached: false,
                 };
               })
-              .catch(() => {
-                /* ignore discovery failures */
-              });
+              .catch(() => {});
           }
 
           const processedTokenBaselineKnown =
@@ -6082,8 +5810,8 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
             streamFiber: undefined,
             startedAt,
             basePermissionMode: permissionMode,
-            // A fresh CLI starts in `permissionMode` when queryOptions provides
-            // one, otherwise the SDK's "default" mode (queryOptions omits it).
+            // A fresh CLI starts in `permissionMode` when queryOptions provides one, otherwise the SDK's
+            // "default" mode (queryOptions omits it).
             spawnPermissionMode: permissionMode ?? "default",
             firstTurnSpawnModeAuthoritative: true,
             lastInteractionMode: undefined,
@@ -6244,8 +5972,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
     > = (threadId) =>
       Effect.gen(function* () {
         const context = yield* requireSession(threadId);
-        // This control request initializes the native protocol but does not
-        // deliver a user prompt. Older runtimes may omit SessionStart metadata.
+
         const usage = yield* readClaudeContextUsage(context);
         if (context.stopped || sessions.get(threadId) !== context) return undefined;
         const observedAt = yield* nowIso;
@@ -6253,9 +5980,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         const contextTokens =
           (usage ? claudeCacheContextTokens(usage) : undefined) ?? previous?.contextTokens;
         if (!previous && contextTokens === undefined) return undefined;
-        // SessionStart can report cache size/warmth without a model. Bind that
-        // evidence to the current runtime before preflight compares a requested
-        // switch; retain an explicit old-model prefix until a request refreshes it.
+
         const model = previous?.model ?? context.currentApiModelId;
         const observation: ClaudeCacheObservation = {
           ...(previous ?? {
@@ -6277,16 +6002,11 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         return context.cacheObservation;
       });
 
-    // Apply interaction mode on every turn so sticky SDK permission state
-    // cannot leak plan mode across service/recovery paths that omit it. The
-    // desired mode is computed exactly as before. We skip the control request
-    // in exactly one provable case: the first turn of a session whose desired
-    // mode equals the mode the CLI spawned in — sending it there would be
-    // redundant AND would block that first turn on the CLI's init handshake.
-    // In every other case we send unconditionally, because once any prompt has
-    // run the CLI's mode is opaque (`canUseTool` is shadowed under
-    // bypassPermissions, so a future mode-changing tool could diverge from
-    // anything we tracked); only the pre-first-prompt state is provable.
+    // Apply interaction mode on every turn so sticky SDK permission state cannot leak plan mode across
+    // service/recovery paths that omit it. In every other case we send unconditionally, because once
+    // any prompt has run the CLI's mode is opaque (`canUseTool` is shadowed under bypassPermissions, so
+    // a future mode-changing tool could diverge from anything we tracked); only the pre-first-prompt
+    // state is provable.
     const applyInteractionModePermission = (
       context: ClaudeSessionContext,
       threadId: ThreadId,
@@ -6331,8 +6051,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         if (isCompaction) {
           const commands = yield* Effect.tryPromise({
             try: () => context.query.supportedCommands(),
-            // Discovery is read-only and precedes prompt enqueue. A failed
-            // lookup proves that this compaction request was never dispatched.
+
             catch: (cause) =>
               new ProviderAdapterValidationError({
                 provider: PROVIDER,
@@ -6381,8 +6100,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         );
 
         if (context.turnState) {
-          // Auto-close a stale synthetic turn (from background agent responses
-          // between user prompts) to prevent blocking the user's next turn.
           yield* completeTurn(context, "completed");
         }
 
@@ -6420,8 +6137,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           yield* updateResumeCursor(context);
         }
 
-        // Re-announce model switches, but do not label a catalog capacity as
-        // the effective auto window. Claude settings and runtime tuning own it.
         if (modelSelection && apiModelChanged) {
           context.emittedContextUsageWarnings.delete("near-window");
           context.emittedContextUsageWarnings.delete("large-prompt");
@@ -6443,8 +6158,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           });
         }
 
-        // The thinking toggle mirrors the spawn-time `alwaysThinkingEnabled`
-        // setting; flipping it live avoids a restart-and-resume replay.
         const requestedThinking = resolveSelectedClaudeThinkingToggle(
           modelSelection?.model,
           modelSelection?.options?.thinking,
@@ -6460,10 +6173,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           context.currentAlwaysThinkingEnabled = requestedThinking;
         }
 
-        // Effort, fast mode, and ultracode are Settings keys too, so selection
-        // changes apply live instead of forcing a restart-and-resume replay.
-        // `max` effort has no Settings equivalent; transitions involving it
-        // restart upstream (claudeSelectionRequiresRestart) before this runs.
         if (modelSelection) {
           const turnCaps = getModelCapabilities("claudeAgent", modelSelection.model);
           const requestedEffortOption = trimOrNull(modelSelection.options?.effort ?? null);
@@ -6530,8 +6239,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         };
 
         const updatedAt = yield* nowIso;
-        // Native events can arrive while local preparation awaits controls or
-        // cursor updates. Reserve only after one final synchronous idle check.
+
         if (
           isCompaction &&
           (context.stopped ||
@@ -6592,8 +6300,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           message,
         }).pipe(Effect.mapError((cause) => toRequestError(input.threadId, "turn/start", cause)));
 
-        // The first prompt has been dispatched; the CLI's spawn mode is no longer
-        // provably its current mode, so subsequent turns re-send unconditionally.
         context.firstTurnSpawnModeAuthoritative = false;
 
         return {
@@ -6605,8 +6311,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         };
       });
 
-    // Reserve dispatch before asynchronous controls so replacement cannot retire
-    // a session that has accepted a send but has not installed its turn yet.
     const withPendingDispatch = (
       input: ProviderSendTurnInput,
       dispatch: ReturnType<ClaudeAdapterShape["sendTurn"]>,
@@ -6652,14 +6356,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         ),
       );
 
-    // A steer rides the live SDK agent loop: the message is pushed into the
-    // session's streaming prompt input and the work continues as the same
-    // turn — no interrupt, no new turn boundary. The CLI delivers it when it
-    // builds the next API request, so a steer parked behind long-running
-    // tools is read only once they return (inherent to the agent loop; the
-    // interactive Claude Code CLI behaves the same). Only a real user turn
-    // can be steered; with no live turn (or only a synthetic one wrapping
-    // background agent output) the message dispatches as a normal turn.
     const steerTurn: ClaudeAdapterShape["steerTurn"] = (input) =>
       withPendingDispatch(
         input,
@@ -6671,9 +6367,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
             return yield* sendTurn(input);
           }
 
-          // Steering across an interaction-mode change (e.g. a plan follow-up
-          // that starts implementing) must flip the CLI's permission mode even
-          // though no new turn starts.
           const effectiveInteractionMode = yield* applyInteractionModePermission(
             context,
             input.threadId,
@@ -6729,13 +6422,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       Effect.gen(function* () {
         const context = yield* requireSession(threadId);
 
-        // A subagent provider thread id targets one Task tool spawn: stop that task
-        // instead of interrupting the whole turn. Before task_started maps the tool
-        // use to a task id there is nothing to stop yet, so queue the request and
-        // fire it the moment the mapping lands (backgrounding is not stopping).
         if (providerThreadId !== undefined) {
-          // Already settled: nothing to stop, and queueing would leak a stop
-          // that could fire on an unrelated future task.
           if (context.settledSubagentToolUseIds.has(providerThreadId)) {
             return;
           }
@@ -6749,13 +6436,8 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
                   try: () => context.query.stopTask(taskId),
                   catch: (cause) => toRequestError(threadId, "turn/interrupt", cause),
                 });
-          // Claude subagents share the parent query's MCP transport. Their
-          // browser calls are consequently registered under the active parent
-          // turn, not the Task tool id. Tombstone and drain that gateway turn
-          // while stopping only the requested task; the parent query remains
-          // alive, but gateway tools stay closed until its next turn. Revoke
-          // the shared bearer before either asynchronous stop can yield so a
-          // delayed request cannot inherit authority from the following turn.
+          // Revoke the shared bearer before either asynchronous stop can yield so a delayed request cannot
+          // inherit authority from the following turn.
           yield* withAgentGatewayTurnCancellation(
             context.gatewaySessionLease,
             context.turnState?.turnId,
@@ -6795,8 +6477,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         }
       });
 
-    // Stops one background task by its SDK task id (workflow runs and their member
-    // agents included); the SDK answers with a task_notification status "stopped".
     const stopTask: ClaudeAdapterShape["stopTask"] = (threadId, taskId) =>
       Effect.gen(function* () {
         const context = yield* requireSession(threadId);
@@ -6806,9 +6486,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         });
       });
 
-    // Moves one in-flight foreground Task call to the background (the CLI's
-    // Ctrl+B): the blocking Task tool_result returns immediately, the parent
-    // turn continues, and the task settles later via task_notification.
     const backgroundTask: ClaudeAdapterShape["backgroundTask"] = (threadId, toolUseId) =>
       Effect.gen(function* () {
         const context = yield* requireSession(threadId);
@@ -6818,8 +6495,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         });
       });
 
-    // Queues a mid-task user message for one running subagent; the PreToolUse
-    // hook injects it as additionalContext on the subagent's next tool call.
     const steerSubagent: ClaudeAdapterShape["steerSubagent"] = (
       threadId,
       providerThreadId,
@@ -6834,9 +6509,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
             detail: `Subagent '${providerThreadId}' already finished; the message was not delivered.`,
           });
         }
-        // The PreToolUse hook channel is text-only: project every attachment
-        // (images included) as a disk-path reference the subagent can read
-        // with its own tools.
+
         const attachmentsBlock = buildFileAttachmentsPromptBlock({
           attachments: input.attachments,
           attachmentsDir: serverConfig.attachmentsDir,
@@ -6886,8 +6559,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
                 sourceSessionId,
                 context.session.cwd ? { dir: context.session.cwd } : {},
               );
-              // SDK history excludes meta/sidechain entries. Tool-result carriers
-              // are user-role messages too, but never a user prompt boundary.
+
               const prompts = messages.filter((entry) => {
                 if (entry.type !== "user" || entry.parent_tool_use_id !== null) return false;
                 const message = entry.message as { content?: unknown } | null;
@@ -6908,8 +6580,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
                 sessionId: sourceSessionId,
                 messageId: target.uuid,
               });
-              // Fork the exact native prefix, including tool results and hidden
-              // attachments. An empty prefix needs no summary or history bootstrap.
+
               const forked =
                 parent === null
                   ? undefined
@@ -6950,12 +6621,8 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
 
     const forkThread: NonNullable<ClaudeAdapterShape["forkThread"]> = (input) =>
       Effect.gen(function* () {
-        // Prefer the live session's cursor: the persisted binding may lag the
-        // runtime by a turn.
         const liveSource = sessions.get(input.sourceThreadId);
-        // Mid-turn `lastAssistantUuid` can point at a tool_use without its
-        // result yet, so a fork now would cut the transcript in an incomplete
-        // state. Let the retained-transcript fallback handle busy sources.
+
         if (liveSource?.turnState !== undefined) {
           return yield* new ProviderAdapterValidationError({
             provider: PROVIDER,
@@ -7010,8 +6677,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
                 content.every((block) => block?.type === "text")));
           const hasPendingToolUse =
             Array.isArray(content) && content.some((block) => block?.type === "tool_use");
-          // Missing legacy metadata is different from an explicit unfinished
-          // stream (null) or tool-use boundary. Token exhaustion is terminal too.
+
           if (
             lastMessage?.type !== "assistant" ||
             hasPendingToolUse ||
@@ -7027,8 +6693,8 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
                 "Wait for the source Claude conversation to finish its turn before importing it.",
             });
           }
-          // Freeze the boundary before the SDK copies the file: new messages
-          // appended concurrently by Claude must not enter the imported copy.
+          // Freeze the boundary before the SDK copies the file: new messages appended concurrently by Claude
+          // must not enter the imported copy.
           upToMessageId = lastMessage.uuid;
           importedSourceMessages = messages;
         }
@@ -7063,10 +6729,9 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
               }),
           });
         }
-        // The SDK fork remaps every message uuid, so the source's resume pin
-        // (`resumeSessionAt`) and tracked tasks must not carry into the fork.
-        // A live context restarts `turns` at [] on resume, so its length can
-        // undercount the cumulative persisted total — keep the larger of the two.
+        // The SDK fork remaps every message uuid, so the source's resume pin (`resumeSessionAt`) and
+        // tracked tasks must not carry into the fork. A live context restarts `turns` at [] on resume, so
+        // its length can undercount the cumulative persisted total — keep the larger of the two.
         const resumeCursor = {
           threadId: input.threadId,
           resume: forked.sessionId,
@@ -7163,14 +6828,12 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         return context !== undefined && !context.stopped;
       });
 
-    // Native discovery caches — avoid spawning a process per query.
     let commandsCache: {
       result: ProviderListCommandsResult;
       cwd: string;
       enableArtifacts: boolean;
     } | null = null;
-    // Keyed by everything the spawned process depends on, so a lookup never joins
-    // (and then caches) a discovery started for another workspace or Artifact opt-in.
+
     const pendingCommandDiscoveries = new Map<string, Promise<ProviderListCommandsResult>>();
     let commandDiscoveryTail: Promise<unknown> = Promise.resolve();
     let pendingModelDiscovery: Promise<ProviderListModelsResult> | null = null;
@@ -7181,19 +6844,14 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       binaryPath: string,
       discover: (queryRuntime: ClaudeQueryRuntime) => Promise<T>,
     ): Promise<T> {
-      // Never spawn another discovery process until every previously unproven
-      // process tree has been reaped successfully.
+      // Never spawn another discovery process until every previously unproven process tree has been
+      // reaped successfully.
       await Effect.runPromise(teardownFailedDiscoveryProcesses());
 
-      // Spawn a lightweight Claude Code process for native discovery. SDK
-      // capability methods await an initialization promise that only resolves
-      // when the async generator is iterated (driving the subprocess handshake).
       const processOwner: ClaudeProcessOwner = {};
       let tempQuery: ClaudeQueryRuntime | undefined;
 
       try {
-        // Query construction itself may invoke the spawn callback before
-        // throwing, so it belongs inside the same ownership boundary.
         tempQuery = await createQuery({
           prompt: neverResolvingUserMessageStream(),
           options: {
@@ -7208,12 +6866,9 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         });
         const queryRuntime = tempQuery;
 
-        // Drive the iterator so the subprocess completes its init handshake.
-        // This runs in the background; close() in the finally block stops it.
         void (async () => {
           for await (const message of queryRuntime) {
             void message;
-            /* consume until closed */
           }
         })().catch(() => undefined);
 
@@ -7260,10 +6915,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
     ) =>
       Effect.gen(function* () {
         const enableArtifacts = input.enableArtifacts === true;
-        // 1. Try an active session first (cheapest path).
-        // A thread's own session is the truth for that thread. Without one, only
-        // borrow a session spawned with the same Artifact opt-in a new session
-        // would get, or its command list would misreport `/design` and `/slides`.
+
         const ownContext = input.threadId
           ? sessions.get(ThreadId.makeUnsafe(input.threadId))
           : undefined;
@@ -7289,13 +6941,12 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
               initToolNames: context.initToolNames,
             }),
           );
-          // Cache under the flag this process was spawned with, not the current
-          // setting, so a pre-toggle session cannot poison fresh discovery.
+          // Cache under the flag this process was spawned with, not the current setting, so a pre-toggle
+          // session cannot poison fresh discovery.
           commandsCache = { result, cwd: input.cwd, enableArtifacts: context.artifactsEnabled };
           return result;
         }
 
-        // 2. Return from cache if valid and not force-reloading.
         if (
           commandsCache &&
           commandsCache.cwd === input.cwd &&
@@ -7305,14 +6956,11 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           return { ...commandsCache.result, cached: true } satisfies ProviderListCommandsResult;
         }
 
-        // 3. Spawn a temporary process for discovery (deduplicating concurrent requests).
         const claudeSdkEnv = yield* resolveClaudeSdkEnv;
         const binaryPath = input.binaryPath ?? "claude";
         const discoveryKey = JSON.stringify([input.cwd, binaryPath, enableArtifacts]);
         let discoveryPromise = pendingCommandDiscoveries.get(discoveryKey);
         if (!discoveryPromise) {
-          // Distinct lookups queue behind each other: still one temporary Claude
-          // process at a time, as when every caller shared a single promise.
           const previous = commandDiscoveryTail;
           const started = previous
             .catch(() => undefined)
@@ -7411,7 +7059,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           return { ...cachedModels, cached: true };
         }
 
-        // Prefer an active session so discovery does not spawn another process.
         for (const [, context] of sessions) {
           if (!context.stopped && context.query) {
             const result = yield* Effect.tryPromise({
@@ -7427,9 +7074,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           }
         }
 
-        // Cold starts have no active Claude session. Discover with one
-        // short-lived SDK process so the UI receives model capability flags on
-        // its first request instead of caching an empty "pending" catalog.
         const claudeSdkEnv = yield* resolveClaudeSdkEnv;
         const discoveryPromise =
           pendingModelDiscovery ??

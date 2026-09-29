@@ -15,13 +15,11 @@ const PNG_400x200 = (() => {
 const BOUNDS = { x: 0, y: 0, width: 200, height: 100 };
 
 interface GuardControls {
-  /** Answer readiness with a native auth-sheet refusal. */
   refuseReadinessAsAuthSheet: () => void;
-  /** Answer keyboard input with a native refusal under `code`. */
+
   refuseInput: (code: string) => void;
 }
 
-/** Scripted Cua stub: no Fake — Fake enforces no delivery mode or sheet state. */
 function guardFixture(): {
   backend: CuaComputerBackend;
   calls: Array<{ name?: string }>;
@@ -103,8 +101,7 @@ function guardFixture(): {
       };
     return { ok: true, result: { structuredContent: {} } };
   };
-  // The real host identifies its platform on every reply. Direct input starts
-  // with list_windows, so probe-only metadata does not describe this host yet.
+
   const request = vi.fn(async (_endpoint: string, req: Record<string, unknown>) => ({
     ...respond(req),
     hostPlatform: "darwin",
@@ -133,7 +130,6 @@ function guardFixture(): {
 describe("computer foreground guard", () => {
   const platformDescriptor = Object.getOwnPropertyDescriptor(process, "platform")!;
   beforeEach(() => {
-    // The backend may run on Linux while its authenticated native host is macOS.
     Object.defineProperty(process, "platform", { ...platformDescriptor, value: "linux" });
   });
   afterEach(() => {
@@ -143,7 +139,6 @@ describe("computer foreground guard", () => {
   it("background never activates: raise is refused before any native call", async () => {
     const { backend, calls } = guardFixture();
     try {
-      // Default delivery is background: activation is refused, not queued.
       await expect(backend.raiseWindow("cua:10:20")).rejects.toMatchObject({
         effect: "not-dispatched",
         code: "foreground_required",
@@ -174,11 +169,11 @@ describe("computer foreground guard", () => {
         code: "auth_sheet_focused",
         inputPause: { windowId: "cua:10:20" },
       });
-      // Observation stays available past the sheet; the pause is input-only.
+
       await expect(backend.getState({ windowId: "cua:10:20" })).resolves.toMatchObject({
         computerId: "desktop",
       });
-      // Readiness surfaces the same code through the read-only path.
+
       controls.refuseReadinessAsAuthSheet();
       await expect(backend.checkInputReady("cua:10:20")).rejects.toMatchObject({
         effect: "not-dispatched",

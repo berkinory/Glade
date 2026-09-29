@@ -45,7 +45,6 @@ function computerAuditHistoryEntries(
   ].slice(0, COMPUTER_AUDIT_HISTORY_MAX_LIMIT);
 }
 
-/** No polling: history is read only after the user opens it, and refreshed on request. */
 export function ComputerAuditHistorySection() {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();

@@ -14,7 +14,7 @@ export {
   withoutDesktopCancellation,
 } from "@glade/shared/desktopOperationQueue";
 
-/** A detached continuation cannot turn a completed call into fresh input authority. */
+// A detached continuation cannot turn a completed call into fresh input authority.
 export function assertDesktopOperationAdmission(): void {
   const operation = desktopOperationContext();
   if (operation && !operation.active) {
@@ -25,8 +25,6 @@ export function assertDesktopOperationAdmission(): void {
   operation?.signal?.throwIfAborted();
 }
 
-/** The Glade-bound queue: closed/full/target-switch failures stay
- * `ComputerBackendError`s so gateway `instanceof` checks keep working. */
 export class DesktopOperationQueue extends SharedDesktopOperationQueue {
   constructor() {
     super(ComputerBackendError);

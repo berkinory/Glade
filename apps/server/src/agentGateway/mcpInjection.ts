@@ -1,16 +1,3 @@
-/**
- * Provider-facing config builders for the Glade agent gateway.
- *
- * One shared module shapes the same MCP connection (endpoint URL + per-thread
- * bearer token) into every provider's native MCP configuration format so the
- * injection rules cannot drift between adapters:
- *
- * - Codex: `[mcp_servers.glade]` TOML block (streamable HTTP +
- *   `bearer_token_env_var` resolved from the per-session process env).
- * - Claude Agent SDK: `mcpServers` record with an HTTP entry.
- *
- * @module agentGateway/mcpInjection
- */
 import type { AgentGatewayMcpConnection } from "./Services/AgentGatewayCredentials.ts";
 
 export const GLADE_MCP_SERVER_NAME = "glade";
@@ -20,17 +7,12 @@ function authorizationHeader(connection: AgentGatewayMcpConnection): string {
   return `Bearer ${connection.bearerToken}`;
 }
 
-/**
- * Codex reads MCP servers from `config.toml`; the config file is shared by all
- * sessions of one Codex home, so the token is never written into it. Instead
- * the block references an env var that Glade sets per app-server process.
- *
- * The shell_environment_policy table keeps that env var out of exec tool
- * subprocesses: codex defaults to `ignore_default_excludes = true`, so the
- * built-in *TOKEN* filter is inactive and workspace commands would otherwise
- * inherit the gateway bearer token. Appended per-table, so a user-defined
- * policy table is never duplicated (their policy then governs).
- */
+// Codex reads MCP servers from `config.toml`; the config file is shared by all sessions of one
+// Codex home, so the token is never written into it. The shell_environment_policy table keeps that
+// env var out of exec tool subprocesses: codex defaults to `ignore_default_excludes = true`, so the
+// built-in *TOKEN* filter is inactive and workspace commands would otherwise inherit the gateway
+// bearer token. Appended per-table, so a user-defined policy table is never duplicated (their
+// policy then governs).
 export function buildCodexMcpConfigToml(endpointUrl: string): string {
   return [
     `[mcp_servers.${GLADE_MCP_SERVER_NAME}]`,
@@ -104,7 +86,6 @@ async function postAgentGatewayJsonRpc(input: {
   return payload.result;
 }
 
-/** Load the canonical gateway tool descriptors for native-tool providers. */
 export async function listAgentGatewayMcpTools(input: {
   readonly connection: AgentGatewayMcpConnection;
   readonly fetch?: AgentGatewayMcpFetch;
@@ -134,7 +115,6 @@ export async function listAgentGatewayMcpTools(input: {
   });
 }
 
-/** Invoke the canonical gateway dispatcher through its authenticated MCP route. */
 export function callAgentGatewayMcpTool(input: {
   readonly connection: AgentGatewayMcpConnection;
   readonly name: string;

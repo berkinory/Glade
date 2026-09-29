@@ -1,5 +1,3 @@
-// Build the exact upstream commit plus the native patch required by the host.
-// The upstream binary archive is baseline provenance, never a patched artifact.
 import { timeBuildStage, startBuildStage } from "../../../scripts/lib/build-timing.ts";
 import { mkdir, readFile, writeFile, chmod, mkdtemp, rm, copyFile, cp } from "node:fs/promises";
 import { createHash } from "node:crypto";
@@ -39,8 +37,7 @@ const sourceTargets = {
   darwin: targets.darwin,
   linux: { arm64: "aarch64-unknown-linux-gnu", x64: "x86_64-unknown-linux-gnu" },
 };
-// Windows keeps the pinned upstream artifact. Linux builds the browser-only
-// cancellation delta after the base patch; this does not enable native input.
+
 const upstreamAsset = {
   win32: { binary: "cua-driver.exe", suffix: "zip" },
   linux: { binary: "cua-driver", suffix: "tar.gz" },
@@ -48,7 +45,7 @@ const upstreamAsset = {
 const architectures = arch === "universal" ? ["arm64", "x64"] : [arch];
 const artifact = option("--artifact-dir") ?? process.env.GLADE_CUA_ARTIFACT_DIR;
 const signIdentity = option("--sign-identity") ?? process.env.GLADE_CUA_SIGN_IDENTITY;
-/** Stable signing identifier so macOS TCC remembers the driver across rebuilds. */
+
 const CUA_DRIVER_SIGN_IDENTIFIER = "com.agent.glade.cua.driver";
 const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const patchPath = fileURLToPath(
@@ -85,8 +82,7 @@ if (platform === "linux") {
     artifact,
   });
 }
-// Check the compiler before fetching ~190 MB of upstream source: a missing or
-// mismatched toolchain is the common failure and needs no network to detect.
+
 if (!(option("--artifact-dir") ?? process.env.GLADE_CUA_ARTIFACT_DIR) && platform !== "win32") {
   let found;
   try {
@@ -106,9 +102,7 @@ const environment = {
   ...process.env,
   CUA_DRIVER_RS_TELEMETRY_ENABLED: "0",
   GIT_TERMINAL_PROMPT: "0",
-  // The pinned Rust toolchain's debug stripping can misalign proc-macro
-  // dylibs, which macOS 27 refuses to load (rust-lang/rust#157750). Preserve
-  // symbols during this build; do not change the pinned compiler or source.
+
   ...(platform === "darwin"
     ? { CARGO_PROFILE_RELEASE_STRIP: process.env.CARGO_PROFILE_RELEASE_STRIP ?? "none" }
     : {}),
@@ -158,9 +152,6 @@ try {
       );
     }
   } else if (platform === "win32") {
-    // Windows: stage the upstream release binary for the pinned
-    // version. The authoritative checksum comes from the release's own
-    // checksums.txt, verified before anything reaches the destination.
     const releaseBase = `https://github.com/trycua/cua/releases/download/cua-driver-rs-v${release.version}`;
     const checksums = await (await fetch(`${releaseBase}/checksums.txt`)).text();
     const expected = new Map(
@@ -178,8 +169,7 @@ try {
     );
     if (digest(downloaded) !== wantSha) throw new Error(`Upstream ${assetName} checksum mismatch.`);
     await writeFile(archivePath, downloaded);
-    // bsdtar (macOS, Windows) reads zip and tar.gz; GNU tar does not read
-    // zip, so fall back to unzip for the Windows asset on Linux hosts.
+
     try {
       run("tar", ["-xf", archivePath, "-C", staged]);
     } catch {
@@ -216,7 +206,7 @@ try {
     const commit = output("git", ["-C", source, "rev-parse", `${release.source}^{commit}`]);
     if (commit !== release.source) throw new Error("Cua source commit mismatch.");
     const archive = join(temporary, "source.tar");
-    // Ignore local checkout edits; only the pinned commit enters the build.
+
     run("git", ["-C", source, "archive", `--output=${archive}`, release.source, "libs/cua-driver"]);
     const build = join(temporary, "build");
     await mkdir(build);
@@ -302,8 +292,6 @@ try {
     };
   }
   if (platform === "darwin") {
-    // Validate a foreign architecture without requiring Rosetta. The GUI also
-    // verifies version, native revision, embedded mode and PID before dispatch.
     const present = output("lipo", ["-archs", binary]).split(/\s+/);
     if (architectures.some((value) => !present.includes(value === "x64" ? "x86_64" : "arm64")))
       throw new Error("Cua Mach-O is missing a requested architecture.");
@@ -315,17 +303,13 @@ try {
   }
   await mkdir(destination, { recursive: true });
   if (platform === "win32" || (platform === "linux" && provenance.patched === false)) {
-    // The upstream archive is a bundle — driver plus its sidecars (cursor
-    // theme, SDK, node runtime, UIA/Wayland helpers). Stage them all — from
-    // the verified artifact dir when one was supplied, else the download.
     await cp(artifact ? resolve(artifact) : join(temporary, "upstream"), destination, {
       recursive: true,
     });
     if (platform !== "win32") await chmod(join(destination, upstreamAsset.binary), 0o755);
   } else if (platform === "linux") {
-    // A previous upstream install may have left separately loadable SDK
-    // binaries here. They are not used by Glade's direct daemon transport
-    // and must not masquerade as this newly patched runtime.
+    // A previous upstream install may have left separately loadable SDK binaries here. They are not
+    // used by Glade's direct daemon transport and must not masquerade as this newly patched runtime.
     for (const obsolete of [
       "libcua_driver_sdk.so",
       "cua_driver_node_runtime.node",
@@ -342,16 +326,9 @@ try {
       if (path === "cua-cursor-theme" || path.endsWith(".sh")) await chmod(stagedPath, 0o755);
     }
   } else {
-    // Stage via a content write, not copyFile: macOS clonefile carries the
-    // protected com.apple.provenance xattr, and Gatekeeper kills the staged
-    // binary (SIGKILL at exec) when that marker survives onto a new path.
     await writeFile(join(destination, "cua-driver"), await readFile(binary));
     await chmod(join(destination, "cua-driver"), 0o755);
-    // Re-stamp the signature. Default is a plain adhoc signature (the linker's
-    // embedded `linker-signed` flag signature is killed at exec on recent
-    // macOS). When a signing identity is supplied, use it with a stable
-    // identifier so macOS TCC remembers this driver across rebuilds instead of
-    // prompting as a brand-new unknown app every time.
+
     const signArgs = ["--force"];
     if (signIdentity) {
       signArgs.push("--identifier", CUA_DRIVER_SIGN_IDENTIFIER, "--sign", signIdentity);
@@ -359,15 +336,11 @@ try {
       signArgs.push("--sign", "-");
     }
     run("codesign", [...signArgs, join(destination, "cua-driver")]);
-    // Signing rewrites the executable bytes, so record the digest of the
-    // final staged file. The reuse path verifies binarySha256 against exactly
-    // these bytes; recording the pre-sign digest forced every consumer to
-    // patch provenance.json and re-sign by hand.
+
     if (signIdentity) provenance.signedIdentity = signIdentity;
     provenance.binarySha256 = digest(await readFile(join(destination, "cua-driver")));
   }
-  // Legacy Mac artifacts predate the platform field; Mach-O/lipo verification
-  // above establishes it without invalidating or recompiling their signed bytes.
+
   provenance.platform = platform;
   await writeFile(join(destination, "provenance.json"), JSON.stringify(provenance, null, 2) + "\n");
   await copyFile(

@@ -1,6 +1,3 @@
-// FILE: SpaceProjectPickerDialog.tsx
-// Purpose: Searchable bulk assignment flow for populating an empty Space.
-
 import type { ProjectId } from "@glade/contracts";
 import { useEffect, useMemo, useState } from "react";
 
@@ -54,11 +51,7 @@ export function SpaceProjectPickerDialog(props: {
   }, [props.open, props.targetSpace?.id]);
 
   const targetSpaceId = props.targetSpace?.id ?? null;
-  /**
-   * Everything that could move — i.e. every ordinary project not already in the target.
-   * Membership goes through `isOrdinarySpaceProject` (the one rule for what a Space can
-   * hold) rather than a local kind check, so containers stay out regardless of caller.
-   */
+
   const movableProjects = useMemo(
     () =>
       props.projects.filter(
@@ -115,7 +108,6 @@ export function SpaceProjectPickerDialog(props: {
     }
   };
 
-  // Three different nothings: no projects at all, none left to move, none matching the search.
   const emptyMessage =
     props.projects.length === 0
       ? "No projects yet."
@@ -183,8 +175,8 @@ export function SpaceProjectPickerDialog(props: {
                           <span className="min-w-0 flex-1 truncate text-ui text-foreground/88">
                             {project.name}
                           </span>
-                          {/* Presentational: the row itself is the checkbox, so this must not
-                              be another focusable control. Mirrors ui/checkbox's chrome. */}
+                          {/* Presentational: the row itself is the checkbox, so this must not be another focusable control.
+   Mirrors ui/checkbox's chrome. */}
                           <span
                             aria-hidden="true"
                             className={cn(

@@ -1,11 +1,3 @@
-// FILE: BrowserPanel.tsx
-// Purpose: Renders the in-app browser chrome and mirrors the native Electron view.
-// Layer: Desktop-only React component
-// Depends on: browserStateStore, nativeApi browser bridge, DiffPanelShell
-//
-// Note: raw <button>s for autocomplete-suggestion rows and tab-title activate
-// regions are intentional — list-row and tab semantics, not shadcn Buttons.
-
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -176,8 +168,6 @@ function BrowserAnnotationButton(props: {
   );
 }
 
-// The browser itself lives inside a sheet, and toast portals/positioners are just
-// layout containers. Treating either as blockers hides the WebContentsView.
 const NATIVE_BROWSER_NON_OBSCURING_OVERLAY_SELECTOR = [
   "[data-panel-resize-overlay='true']",
   "[data-floating-browser-controls='true']",
@@ -241,14 +231,12 @@ function formatBrowserActionError(error: unknown): string | null {
 }
 
 function ignoreBrowserBoundsSyncError(): void {
-  // Bounds sync is best-effort plumbing between the React shell and the native
-  // browser surface. Avoid surfacing transient geometry-sync failures as user-facing
-  // browser errors because they do not reflect page navigation health.
+  // Bounds sync is best-effort plumbing between the React shell and the native browser surface. Avoid
+  // surfacing transient geometry-sync failures as user-facing browser errors because they do not
+  // reflect page navigation health.
 }
 
-function ignoreBrowserWebviewDetachError(): void {
-  // Renderer webview detach is best-effort cleanup; a stale/destroyed guest is already gone.
-}
+function ignoreBrowserWebviewDetachError(): void {}
 
 function setBrowserWebviewOverlayOcclusion(
   webview: BrowserWebviewElement | null,
@@ -257,8 +245,7 @@ function setBrowserWebviewOverlayOcclusion(
   if (!webview) {
     return;
   }
-  // Never use visibility:hidden on a <webview>. Electron unpaints or kills the
-  // guest, which shows as a black card and BrowserHostUnavailable to the agent.
+
   webview.style.pointerEvents = occluded ? "none" : "auto";
 }
 
@@ -385,7 +372,6 @@ function isBrowserPerfLoggingEnabled(): boolean {
   }
 }
 
-// Keeps a restored browser pane visually occupied while the live webview hydrates.
 function BrowserRuntimePreview(props: { title: string; detail: string }) {
   return (
     <div
@@ -457,8 +443,6 @@ function browserLocalServerUrl(server: ServerLocalServerProcess): string | null 
   return `http://localhost:${port}/`;
 }
 
-// Paints a tiny browser-preview tile without fetching screenshots or adding network work.
-// The page name and address are rendered into the tile so it reads as a real preview.
 function BrowserLocalServerThumbnail({ server }: { server: ServerLocalServerProcess }) {
   const label = localServerPrimaryLabel(server);
   const port = server.ports[0];
@@ -485,7 +469,6 @@ function BrowserLocalServerThumbnail({ server }: { server: ServerLocalServerProc
   );
 }
 
-// Replaces about:blank with a local-server launcher so the browser never opens to white.
 function BrowserLocalServersHome({
   activeTabId,
   loading,
@@ -576,8 +559,6 @@ function BrowserPanel({
   runtimeMode: runtimeModeProp,
   onRequestLive,
 }: BrowserPanelProps) {
-  // Defaults belong in the body, never in the destructuring pattern: React Compiler cannot lower an
-  // AssignmentPattern there and silently drops the whole component's memoization.
   const runtimeMode = runtimeModeProp ?? "live";
   const isFloatingMode = mode === "floating";
   const api = readNativeApi();
@@ -607,10 +588,7 @@ function BrowserPanel({
   const browserWebviewWebContentsIdRef = useRef<number | null>(null);
   const detachedBrowserWebviewsRef = useRef(new WeakSet<BrowserWebviewElement>());
   const browserWebviewAttachKeyRef = useRef<string | null>(null);
-  // Unlike effect-local state, this lease survives browser metadata pushes.
-  // Main can emit a newer tab snapshot before attachWebview() resolves; keeping
-  // the in-flight key here prevents that render from issuing another bind for
-  // the same physical guest and starving its compositor with IPC churn.
+
   const browserWebviewAttachInFlightKeyRef = useRef<string | null>(null);
   const activeTabInitialUrlRef = useRef(BROWSER_BLANK_URL);
   const copyScreenshotButtonRef = useRef<HTMLButtonElement>(null);
@@ -639,8 +617,7 @@ function BrowserPanel({
   });
   const [addressValue, setAddressValue] = useState("");
   const [isAddressFocused, setIsAddressFocused] = useState(false);
-  // Programmatic focus (e.g. right after "New tab") should not pop the suggestion list
-  // over the tab strip; the user has to type or click into the field first.
+
   const [addressSuggestionsSuppressed, setAddressSuggestionsSuppressed] = useState(false);
   const [workspaceReady, setWorkspaceReady] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -722,8 +699,8 @@ function BrowserPanel({
     }
   }, []);
 
-  // Renderer-owned <webview>s are adopted by the desktop manager. Always detach before
-  // removing the DOM node so main never keeps a stale webContents runtime.
+  // Renderer-owned <webview>s are adopted by the desktop manager. Always detach before removing the
+  // DOM node so main never keeps a stale webContents runtime.
   const detachRendererBrowserWebview = useCallback(
     (expectedWebview?: BrowserWebviewElement) => {
       const webview = browserWebviewRef.current;
@@ -742,10 +719,7 @@ function BrowserPanel({
         let webContentsId = browserWebviewWebContentsIdRef.current ?? undefined;
         try {
           webContentsId ??= webview.getWebContentsId?.();
-        } catch {
-          // A destroyed guest can no longer answer getWebContentsId(). Retain the
-          // id captured during attachment so main can still discard its lease.
-        }
+        } catch {}
         if (webContentsId && webContentsId > 0) {
           try {
             const detachPromise = api.browser.detachWebview({ threadId, tabId, webContentsId });
@@ -796,8 +770,6 @@ function BrowserPanel({
 
     const releaseLiveHost = browserPanelHideScheduler.acquire(threadId);
 
-    // Timeout-0 keeps the reset writes asynchronous (no wasted pre-paint
-    // render), which also keeps this component eligible for React Compiler.
     let cancelled = false;
     const timeoutId = window.setTimeout(() => {
       if (cancelled) {
@@ -863,7 +835,6 @@ function BrowserPanel({
 
     if (showLocalServersHome || usesNativeRuntime) {
       if (rendererHasPopup && browserWebviewStageRef.current) {
-        // Keep the renderer-owned opener alive while its native popup is shown.
         browserWebviewStageRef.current.style.visibility = "hidden";
         return;
       }
@@ -900,15 +871,9 @@ function BrowserPanel({
       webview.style.backgroundColor = "#0d0d0d";
       webview.setAttribute("partition", BROWSER_WEBVIEW_PARTITION);
       webview.setAttribute("webpreferences", "contextIsolation=yes,nodeIntegration=no,sandbox=yes");
-      // A <webview> blocks window.open() unless `allowpopups` is set. Without it, clicking
-      // "Continue with Google" (and any OAuth/popup flow) is silently dropped before the main
-      // process's window-open handler ever runs. Enabling it lets the popup classifier in
-      // browserManager decide popup-vs-tab and keep the OAuth `window.opener` handshake alive.
+
       webview.setAttribute("allowpopups", "true");
-      // No `useragent` attribute on purpose: the desktop main process spoofs a desktop Chrome
-      // UA on the shared persistent partition, so this webview (and OAuth popups) inherit the
-      // same identity. This keeps in-app Google/OAuth sign-in working without duplicating the
-      // UA string into the renderer.
+
       webview.dataset.rendererGeneration = String(browserRendererGeneration);
       browserWebviewWebContentsIdRef.current = null;
       browserWebviewRef.current = webview;
@@ -974,17 +939,14 @@ function BrowserPanel({
       if (browserWebviewAttachKeyRef.current === attachKey) {
         return;
       }
-      // A previous layout-effect generation may still be completing. Serialize
-      // physical guest adoption so an older response can never overwrite the
-      // currently visible tab binding.
+      // A previous layout-effect generation may still be completing. Serialize physical guest adoption so
+      // an older response can never overwrite the currently visible tab binding.
       if (browserWebviewAttachInFlightKeyRef.current !== null) {
         scheduleAttachRetry();
         return;
       }
       browserWebviewAttachInFlightKeyRef.current = attachKey;
-      // Publish the requested lease before IPC. attachWebview() emits browser
-      // state synchronously from main, so waiting for its Promise to resolve
-      // would let React clean this effect up and immediately submit it again.
+
       browserWebviewAttachKeyRef.current = attachKey;
       const finishAttachment = (state: ThreadBrowserState | null) => {
         if (browserWebviewAttachInFlightKeyRef.current === attachKey) {
@@ -1003,9 +965,9 @@ function BrowserPanel({
           }
           return;
         }
-        // A tab switch can supersede this request while IPC is in flight. Main
-        // processes invokes in order, and the current effect will bind the new
-        // tab next; never let the stale completion rewrite its renderer lease.
+        // A tab switch can supersede this request while IPC is in flight. Main processes invokes in order,
+        // and the current effect will bind the new tab next; never let the stale completion rewrite its
+        // renderer lease.
         if (
           browserWebviewRef.current === webview &&
           browserWebviewTabIdRef.current === activeTabId
@@ -1045,10 +1007,6 @@ function BrowserPanel({
       },
     });
 
-    // Subscribe before assigning src: a cached/blank page may begin loading
-    // synchronously, before getWebContentsId() becomes available. The bounded
-    // backoff below makes that renderer-to-main handshake reliable even while
-    // Electron throttles requestAnimationFrame in the background.
     webview.addEventListener("dom-ready", attachVisibleWebview);
     webview.addEventListener("did-start-loading", attachVisibleWebview);
     webview.addEventListener("render-process-gone", handleRendererLoss);
@@ -1131,9 +1089,9 @@ function BrowserPanel({
 
     const syncBounds = () => {
       perfCountersRef.current.syncAttempts += 1;
-      // While the local-servers home is up, force the browser surface hidden instead of
-      // trusting the obscuring-overlay heuristic. The native/inline webview otherwise paints
-      // about:blank white over our dark DOM home — the "always white" empty state.
+      // While the local-servers home is up, force the browser surface hidden instead of trusting the
+      // obscuring-overlay heuristic. The native/inline webview otherwise paints about:blank white over
+      // our dark DOM home — the "always white" empty state.
       const obscuredByOverlay =
         (!isFloatingMode || usesNativeRuntime) &&
         (browserPageError !== null ||
@@ -1191,8 +1149,6 @@ function BrowserPanel({
         .catch(ignoreBrowserBoundsSyncError);
     };
 
-    // The panel can slide horizontally without resizing. A short burst keeps the
-    // native browser view in lockstep without paying for a long frame-by-frame loop.
     const syncBoundsBurst = (frames = BROWSER_BOUNDS_SYNC_BURST_FRAMES) => {
       if (boundsBurstFrameRef.current !== null) {
         perfCountersRef.current.burstExtensions += 1;
@@ -1271,9 +1227,9 @@ function BrowserPanel({
       scheduleSyncBounds();
     });
     observer.observe(element);
-    // A zoom change moves the slot on the DIP grid. It usually reflows the panel too
-    // (so the observer above fires), but a slot with a fixed CSS px size keeps its
-    // measured rect and would otherwise strand the native view at the old scale.
+    // A zoom change moves the slot on the DIP grid. It usually reflows the panel too (so the observer
+    // above fires), but a slot with a fixed CSS px size keeps its measured rect and would otherwise
+    // strand the native view at the old scale.
     const unsubscribeZoom = subscribeDesktopZoomFactor(scheduleSyncBounds);
     window.addEventListener("resize", scheduleSyncBounds);
     window.addEventListener(BROWSER_PANEL_BOUNDS_SYNC_EVENT, scheduleSyncBounds);
@@ -1333,8 +1289,6 @@ function BrowserPanel({
           if (!cancelled && src) setPreviewFrame({ tabId: activeTabId, src });
         }
       } catch {
-        // A navigation or closing tab can invalidate a frame; retry without
-        // disturbing the live page or surfacing a transient capture error.
       } finally {
         if (!cancelled)
           timer = setTimeout(() => {
@@ -1496,9 +1450,9 @@ function BrowserPanel({
     if (!api) {
       return;
     }
-    // Creating a tab never needs a live renderer: main records it (suspended when this
-    // thread's panel is not attached) and the next bounds sync shows it. Wake a preview
-    // pane instead of silently dropping the action until the user clicks twice.
+    // Creating a tab never needs a live renderer: main records it (suspended when this thread's panel
+    // is not attached) and the next bounds sync shows it. Wake a preview pane instead of silently
+    // dropping the action until the user clicks twice.
     if (!isLiveRuntime) {
       requestLiveRuntime();
     }
@@ -1607,10 +1561,7 @@ function BrowserPanel({
     if (!activeTab) {
       return;
     }
-    // Desktop: copy through the native Electron clipboard. navigator.clipboard can reject
-    // with "Document is not focused" while the native browser view holds focus, so this
-    // mirrors the keyboard chord — main writes the URL and emits onCopyLink, which surfaces
-    // the toast in the listener below.
+
     if (isElectron && api) {
       void runBrowserAction(() => api.browser.copyLink({ threadId, tabId: activeTab.id }));
       return;
@@ -1627,14 +1578,10 @@ function BrowserPanel({
       () => {
         toastManager.add({ type: "success", title: BROWSER_COPY_LINK_TOAST_TITLE });
       },
-      () => {
-        // Clipboard writes can reject without user gesture; nothing actionable to surface.
-      },
+      () => {},
     );
   }, [activeTab, api, runBrowserAction, threadId]);
 
-  // React chrome focus path: the native page handles the chord through the desktop main
-  // process, so this only fires when the address bar/tab strip (not the page) is focused.
   useEffect(() => {
     if (!isLiveRuntime) {
       return;
@@ -1665,7 +1612,6 @@ function BrowserPanel({
     };
   }, [copyActiveTabLink, isLiveRuntime]);
 
-  // Native page focus path: main already wrote the URL to the clipboard, so just toast.
   useEffect(() => {
     if (!api || !isLiveRuntime) {
       return;
@@ -1704,7 +1650,7 @@ function BrowserPanel({
       className={cn("flex min-w-0 flex-1 items-center gap-2", mode === "floating" && "cursor-grab")}
       data-floating-browser-header={mode === "floating" ? "true" : undefined}
     >
-      {/* Keep the browser chrome interactive inside Electron's draggable titlebar. */}
+      {}
       <div className="relative flex min-w-0 flex-1 items-center gap-2 [-webkit-app-region:no-drag]">
         <div className="flex shrink-0 items-center gap-1 [-webkit-app-region:no-drag]">
           <Button

@@ -1,7 +1,3 @@
-// FILE: threadActivation.logic.ts
-// Purpose: Pure routing decisions for opening threads as single chats or split panes.
-// Exports: split-aware activation resolvers shared by sidebar click, keyboard, and search flows.
-
 import type { ThreadId } from "@glade/contracts";
 import { resolveSplitViewPaneIdForThread } from "./splitViewStore";
 import { type PaneId, type SplitView, type SplitViewId } from "./splitViewModel";
@@ -11,12 +7,6 @@ export type ThreadCommandActivation =
   | { kind: "single"; threadId: ThreadId }
   | { kind: "split"; threadId: ThreadId; splitViewId: SplitViewId; paneId: PaneId };
 
-/**
- * Decide what a sidebar/search/keyboard activation should do for a thread.
- *
- * Callers decide which split (if any) is "preferred". That means the currently
- * active split first, then any persisted split block with deterministic ownership.
- */
 export function resolveThreadCommandActivation(input: {
   threadId: ThreadId;
   threadExists: boolean;
@@ -44,13 +34,8 @@ export function resolveThreadCommandActivation(input: {
   return { kind: "single", threadId: input.threadId };
 }
 
-/**
- * Resolve whether thread activation should land in a split.
- *
- * While a split is active, that split's panes win. Otherwise every persisted
- * split block can be restored, but ambiguous non-source membership falls back to
- * single chat instead of guessing by recency.
- */
+// Otherwise every persisted split block can be restored, but ambiguous non-source membership falls
+// back to single chat instead of guessing by recency.
 export function resolvePreferredSplitForCommand(input: {
   activeSplitView: SplitView | null;
   splitViewsById: Record<SplitViewId, SplitView | undefined>;

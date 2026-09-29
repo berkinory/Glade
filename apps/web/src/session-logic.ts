@@ -80,11 +80,10 @@ function formatDuration(durationMs: number): string {
   if (durationMs < 1_000) return `${Math.max(1, Math.round(durationMs))}ms`;
   if (durationMs < 10_000) return `${(durationMs / 1_000).toFixed(1)}s`;
   if (durationMs < 60_000) return `${Math.round(durationMs / 1_000)}s`;
-  // Keep settled-time rounding while sharing larger units with live clocks.
+
   return formatClockDuration(Math.round(durationMs / 1_000) * 1_000);
 }
 
-// Keep long-running timers compact with days/hours, hours/minutes, or minutes/seconds.
 export function formatClockDuration(durationMs: number): string {
   const elapsedSeconds = Math.max(0, Math.floor(durationMs / 1_000));
   if (elapsedSeconds < 60) return `${elapsedSeconds}s`;
@@ -139,14 +138,10 @@ export function hasLiveLatestTurn(
   return !isLatestTurnSettled(latestTurn, session);
 }
 
-/**
- * Pending approval / user-input requests are only actionable while the session
- * that raised them can still receive the answer. Once the session is closed or
- * errored the request is dead — status surfaces (sidebar pill, kanban column)
- * must not present the thread as awaiting action forever after a provider
- * crash. A thread with no session yet keeps the request actionable: the flag
- * can arrive ahead of the session snapshot.
- */
+// Once the session is closed or errored the request is dead — status surfaces (sidebar pill, kanban
+// column) must not present the thread as awaiting action forever after a provider crash. A thread
+// with no session yet keeps the request actionable: the flag can arrive ahead of the session
+// snapshot.
 export function canSessionAnswerPendingRequests(
   session: Pick<ThreadSession, "status"> | null | undefined,
 ): boolean {
@@ -156,25 +151,11 @@ export function canSessionAnswerPendingRequests(
   return session.status !== "closed" && session.status !== "error";
 }
 
-/**
- * Minimal view a session needs to expose to answer "is a turn live?": its status
- * label and its in-flight turn id. Kept structural (not `Pick<ThreadSession>`) so
- * the predicate also accepts the orchestration read-model session, whose status is
- * a wider union and whose `activeTurnId` is `TurnId | null` rather than
- * `TurnId | undefined`. Both shapes satisfy this.
- */
 type RunningTurnSessionView = {
   status: string;
   activeTurnId?: TurnId | null | undefined;
 };
 
-/**
- * A session is actively running a turn: it reports the `running` status and still
- * has an in-flight `activeTurnId`. This is the single rule for "there is live work
- * on this session right now" during read-model reconciliation. Thread lifecycle
- * cleanup is server-owned and intentionally does not use this predicate as a UI
- * gate.
- */
 export function isSessionRunningTurn<T extends RunningTurnSessionView>(
   session: T | null | undefined,
 ): session is T & { activeTurnId: TurnId } {
@@ -238,9 +219,6 @@ export function deriveActiveTaskListState(
     return currentTurnTaskList.tasks.length > 0 ? currentTurnTaskList : null;
   }
 
-  // Task lists describe work state beyond the lifetime of one provider turn. Keep the
-  // latest unfinished list visible after completion, abort, reload, and follow-up turns
-  // until the provider completes every task or sends an explicit empty snapshot.
   const latestPriorTaskList =
     allTaskListActivities.map(toActiveTaskListState).findLast((taskList) => taskList !== null) ??
     null;
@@ -257,7 +235,6 @@ export function deriveActiveTaskListState(
     : null;
 }
 
-// Counts still-running background work for the active turn so compact UI can surface agent activity.
 export function deriveActiveBackgroundTasksState(
   activities: ReadonlyArray<OrchestrationThreadActivity>,
   latestTurnId: TurnId | undefined,
@@ -299,8 +276,6 @@ export function deriveActiveBackgroundTasksState(
       continue;
     }
 
-    // Status patches can end a task (killed/completed/failed) without a
-    // task.completed notification following on the same turn.
     if (activity.kind === "task.updated") {
       const status = payload && typeof payload.status === "string" ? payload.status : undefined;
       if (
@@ -329,8 +304,6 @@ export function deriveActiveBackgroundTasksState(
     : null;
 }
 
-// Keeps the UI "working" while the provider still has visible assistant text or
-// background-task updates to finish for the latest turn.
 export function hasLiveTurnTailWork(input: {
   latestTurn: Pick<OrchestrationLatestTurn, "turnId" | "completedAt"> | null;
   messages: ReadonlyArray<Pick<ChatMessage, "role" | "streaming" | "turnId">>;
@@ -347,14 +320,9 @@ export function hasLiveTurnTailWork(input: {
       message.role === "assistant" && message.turnId === latestTurnId && message.streaming,
   );
   if (hasStreamingAssistantText) {
-    // Once the turn is terminal, a stale `streaming` flag should not keep the
-    // stop button/timer alive indefinitely.
     return input.latestTurn?.completedAt == null;
   }
 
-  // Some providers can leave task lifecycle bookkeeping behind after the turn
-  // has already closed. Once the session is no longer running, those stale
-  // task rows should not keep the whole chat in a live state.
   if (input.session?.orchestrationStatus !== "running") {
     return false;
   }

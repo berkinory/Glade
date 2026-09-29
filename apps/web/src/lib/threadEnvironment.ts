@@ -1,8 +1,3 @@
-// FILE: threadEnvironment.ts
-// Purpose: Shared helpers for deriving thread environment intent and fork targets.
-// Layer: Web domain helpers
-// Exports: thread env resolution + `/fork` target planning
-
 import type { ThreadEnvironmentMode } from "@glade/contracts";
 import {
   isPendingThreadWorktree,
@@ -65,7 +60,6 @@ export interface DiffEnvironmentState {
   disabledReason: string | null;
 }
 
-// Diff surfaces stay disabled while a worktree-intended chat is still waiting for its path.
 export function resolveDiffEnvironmentState(input: {
   projectCwd?: string | null | undefined;
   envMode?: ThreadEnvironmentMode | null | undefined;
@@ -87,8 +81,6 @@ export function resolveDiffEnvironmentState(input: {
   };
 }
 
-// Fork planning keeps "local" attached to the current local checkout. For worktree-backed
-// threads that means reusing the existing worktree, while "worktree" always plans a new one.
 export function resolveForkThreadEnvironment(input: {
   target: ForkThreadTarget;
   activeRootBranch: string | null;
@@ -130,8 +122,6 @@ export function resolveForkThreadEnvironment(input: {
     };
   }
 
-  // Codex-style "Fork Into Local" stays in the current local checkout, which for a
-  // worktree-backed thread means reusing that worktree rather than bouncing to root.
   if (sourceEnvMode === "worktree" && sourceWorktreePath) {
     const associatedWorktree = deriveAssociatedWorktreeMetadata({
       branch: sourceBranch,

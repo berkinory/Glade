@@ -1,8 +1,3 @@
-// FILE: ComputerControlDeniedCard.test.tsx
-// Purpose: Keeps the denial card's Enable wiring truthful: the button only
-// shows while control is off, and the card flips to a confirmation once on.
-// Layer: Chat transcript UI regression test
-
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 

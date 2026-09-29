@@ -40,7 +40,6 @@ import {
   planMigrationLineageAliasRepairs,
 } from "./Migrations.ts";
 
-/** Keep at most this many finished pre-migration SQLite backups (issue #618). */
 export const MIGRATION_BACKUP_RETENTION = 5;
 export const FAILED_MIGRATION_BUNDLE_RETENTION = 3;
 
@@ -78,11 +77,6 @@ function formatBytes(bytes: number): string {
   return `${value < 10 && unit > 0 ? value.toFixed(1) : Math.round(value)} ${units[unit]}`;
 }
 
-/**
- * Raised instead of starting a backup that cannot possibly fit. Failing here is
- * deliberate: migrating without a restorable snapshot risks the user's data,
- * and half-writing one risks their disk.
- */
 class InsufficientMigrationBackupSpaceError extends Error {
   readonly _tag = "InsufficientMigrationBackupSpaceError";
 
@@ -119,16 +113,8 @@ const logicalDatabaseSizeBytes = Effect.gen(function* () {
   return Number.isFinite(logicalBytes) && logicalBytes >= 0 ? logicalBytes : null;
 });
 
-/**
- * Estimates the largest useful SQLite snapshot before applying a safety
- * factor. `page_count * page_size` describes the connection's logical database
- * and therefore includes committed pages that are still only in the WAL.
- *
- * If the PRAGMAs are unavailable, the main file plus the physical WAL is a
- * conservative fallback. Failure to inspect either source is deliberately
- * represented as `null`; an indeterminate estimate must not block a legitimate
- * upgrade.
- */
+// Failure to inspect either source is deliberately represented as `null`; an indeterminate estimate
+// must not block a legitimate upgrade.
 export const estimateMigrationBackupRequiredBytes = (dbPath: string) =>
   Effect.gen(function* () {
     const logicalBytes = yield* logicalDatabaseSizeBytes.pipe(
@@ -153,8 +139,8 @@ export const estimateMigrationBackupRequiredBytes = (dbPath: string) =>
         try {
           walBytes = (await fs.stat(`${dbPath}-wal`)).size;
         } catch {
-          // The WAL is optional, and an unreadable fallback must not make
-          // startup less reliable than it was before the space guard existed.
+          // The WAL is optional, and an unreadable fallback must not make startup less reliable than it was
+          // before the space guard existed.
         }
         snapshotBytes = mainFileBytes + walBytes;
       }
@@ -164,11 +150,8 @@ export const estimateMigrationBackupRequiredBytes = (dbPath: string) =>
     });
   });
 
-/**
- * Refuses to begin a snapshot the filesystem cannot hold. A `statfs` that is
- * unavailable or racing must never block a legitimate upgrade, so an
- * indeterminate answer is treated as "proceed".
- */
+// Refuses to begin a snapshot the filesystem cannot hold. A `statfs` that is unavailable or racing
+// must never block a legitimate upgrade, so an indeterminate answer is treated as "proceed".
 async function assertBackupSpaceAvailable(
   requiredBytes: number | null,
   backupDirectory: string,
@@ -257,12 +240,11 @@ const inspectMigrationBackupPlan = Effect.gen(function* () {
     }
   }
   const inspectedHighWaterMark = Math.max(...inspectedNames.keys(), 0);
-  // This is the same post-alias predicate the reconciler uses. Sharing it keeps
-  // "this database needs consent" and "this database will be replayed" aligned.
+
   const firstDiverged = findFirstMigrationLineageDivergence(inspectedNames, inspectedHighWaterMark);
   if (firstDiverged !== undefined) {
     const [firstDivergedId, expectedName] = firstDiverged;
-    // Shared-lineage divergence is rejected before the migrator mutates data.
+
     if (firstDivergedId <= LAST_SHARED_LINEAGE_MIGRATION_ID) {
       return null;
     }
@@ -329,19 +311,6 @@ function nullOnMissing(cause: unknown): null {
   throw cause;
 }
 
-/**
- * The only guarded way this module is allowed to delete files.
- *
- * `names` lists the directory's regular files (readdir's `isFile()` is already
- * false for symlinks), `lstat` reads one of them, and `unlink` removes one only
- * after re-checking that it is still a regular, non-symlinked file.
- *
- * The directory itself is opened with no-follow semantics and kept open for the
- * whole sweep. This prevents a symlinked backup root from redirecting cleanup
- * into another database's directory; identity checks before every unlink also
- * reject replacement of the root while cleanup is running. A missing directory
- * is not an error — nothing to reclaim is the expected steady state.
- */
 type DirectorySweep = {
   readonly names: ReadonlyArray<string>;
   readonly lstat: (name: string) => Promise<Stats | null>;
@@ -375,9 +344,8 @@ async function withCleanupDirectory(
     });
   };
 
-  // Windows cannot portably open and fsync directory handles. The lstat checks
-  // still reject symlink roots there; on Unix, keep an O_NOFOLLOW descriptor
-  // open for the entire destructive sweep.
+  // Windows cannot portably open and fsync directory handles. The lstat checks still reject symlink
+  // roots there; on Unix, keep an O_NOFOLLOW descriptor open for the entire destructive sweep.
   if (process.platform === "win32") {
     await run(pathStat);
     return;
@@ -398,13 +366,6 @@ async function withCleanupDirectory(
   }
 }
 
-/**
- * Removes matching regular files from a directory.
- *
- * `olderThanMs` restricts removal to artifacts that have aged past a cutoff.
- * Omitting it removes every match regardless of age, which is only correct for
- * artifacts whose exclusive owner is the caller holding the lifecycle lock.
- */
 async function removeRegularFiles(
   directory: string,
   matches: (name: string) => boolean,
@@ -430,27 +391,16 @@ async function removeRegularFiles(
 const removeStaleRegularFiles = (directory: string, matches: (name: string) => boolean) =>
   removeRegularFiles(directory, matches, { olderThanMs: STALE_RECOVERY_ARTIFACT_AGE_MS });
 
-/**
- * Matches the temporary snapshot `createMigrationBackup` writes before renaming
- * a finished backup into place.
- *
- * The leading dot is load-bearing: it is precisely why these orphans never
- * matched the finished-backup prefix that retention pruning filters on, so a
- * stranded partial could never be reclaimed by any existing cleanup path.
- */
+// The leading dot is load-bearing: it is precisely why these orphans never matched the
+// finished-backup prefix that retention pruning filters on, so a stranded partial could never be
+// reclaimed by any existing cleanup path.
 function isMigrationBackupPartial(dbBasename: string): (name: string) => boolean {
   const partialPrefix = `.${dbBasename}.pre-migration-`;
   return (name) => name.startsWith(partialPrefix) && name.endsWith(".partial");
 }
 
-/**
- * Matches a temporary migration-state JSON file before its atomic rename.
- *
- * These land next to the database rather than in the backup directory, so the
- * backup-partial sweep never sees them. The write window is tiny, but a crash
- * inside it strands the file permanently — in the very directory whose file churn
- * is what users notice.
- */
+// Matches a temporary migration-state JSON file before its atomic rename. These land next to the
+// database rather than in the backup directory, so the backup-partial sweep never sees them.
 function isAtomicMigrationJsonPartial(basename: string): (name: string) => boolean {
   const partialPrefix = `${basename}.`;
   return (name) => name !== basename && name.startsWith(partialPrefix) && name.endsWith(".partial");
@@ -459,30 +409,13 @@ function isAtomicMigrationJsonPartial(basename: string): (name: string) => boole
 const BUNDLE_SIDECAR_SUFFIXES = ["-wal", "-shm"] as const;
 const BUNDLE_SIDECAR_PATTERN = /-(?:wal|shm)$/u;
 
-/**
- * Matches the compact UTC timestamp every generated artifact carries.
- *
- * `compactTimestamp` has emitted `YYYYMMDDThhmmssmmmZ` for as long as this
- * module has existed, but artifacts written by older releases (the
- * `pre-tracker-repair` snapshots) use the shorter `YYYYMMDDThhmm` form, so both
- * the seconds and the milliseconds are optional and the `Z` is not required.
- * The digit lookarounds stop a longer run of digits from being read as a
- * timestamp that happens to start inside it.
- */
+// Accept both existing timestamp formats. Digit boundaries prevent interpreting a timestamp inside
+// a longer numeric name.
 const ARTIFACT_TIMESTAMP_PATTERN =
   /(?<!\d)(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})?(\d{3})?Z?(?!\d)/gu;
 
-/**
- * Orders retention on the timestamp the writer encoded into the filename.
- *
- * The name is the only ordering key that survives a restore, a copy, or a
- * backup tool, all of which rewrite `mtime` freely — and reordering a family by
- * mtime is how the *newest* snapshot could be the one that gets pruned.
- *
- * Returns `null` for a name whose timestamp cannot be read. Callers must treat
- * that as "retain, never delete": an artifact whose age is unknown cannot be
- * proven older than the ones being kept.
- */
+// Order backups by their encoded timestamps: copying or restoring changes mtime. Retain artifacts
+// whose age cannot be established.
 function artifactTimestampMs(name: string): number | null {
   let parsed: number | null = null;
   for (const match of name.matchAll(ARTIFACT_TIMESTAMP_PATTERN)) {
@@ -500,38 +433,21 @@ function artifactTimestampMs(name: string): number | null {
   return parsed;
 }
 
-/**
- * One prefix-delimited family of migration artifacts, and how much of it to keep.
- *
- * `directory` is part of the descriptor on purpose: the snapshot families live
- * in `migrationBackupDirectory(dbPath)` while the failed-migration bundles live
- * beside the database in `path.dirname(dbPath)`, and a family pointed at the
- * wrong tree would either reclaim nothing or reclaim something it does not own.
- */
 type MigrationArtifactFamily = {
   readonly directory: string;
-  /** Full filename prefix, database basename included. Never matches the live database. */
+
   readonly prefix: string;
-  /** Suffix every member carries, when the family has one. */
+
   readonly suffix?: string;
-  /** How many of the newest members survive. */
+
   readonly retention: number;
-  /** Members own their SQLite `-wal`/`-shm` sidecars and are reclaimed together. */
+
   readonly bundled?: boolean;
-  /** Repair 0600/regular-file expectations while walking the family. */
+
   readonly ensurePrivate?: boolean;
 };
 
-/**
- * Keeps the newest `retention` members of one family and reclaims the rest.
- *
- * This is the single implementation of retention for every artifact family. The
- * families differ only in where they live, what they are named, how many to
- * keep, and whether they carry sidecars — never in their safety rules, which is
- * why those rules live here once: regular files only, no symlink following, no
- * deletion of a name the prefix does not claim, no deletion of a name whose age
- * cannot be established, and ENOENT tolerated throughout.
- */
+// Retention never follows symlinks or deletes artifacts with an unclaimed prefix or unknown age.
 async function pruneMigrationArtifactFamily(family: MigrationArtifactFamily): Promise<void> {
   const suffix = family.suffix ?? "";
   await withCleanupDirectory(family.directory, async ({ names, unlink }) => {
@@ -546,9 +462,8 @@ async function pruneMigrationArtifactFamily(family: MigrationArtifactFamily): Pr
       await Promise.all(
         [...members].map(async (name) => {
           if (family.bundled && !present.has(name)) {
-            // A crash can leave only WAL/SHM sidecars. They are not a restorable
-            // bundle, so they never occupy a retention slot and are reclaimed
-            // outright instead of being ranked against real artifacts.
+            // A crash can leave only WAL/SHM sidecars. They are not a restorable bundle, so they never occupy a
+            // retention slot and are reclaimed outright instead of being ranked against real artifacts.
             await Promise.all(
               BUNDLE_SIDECAR_SUFFIXES.map((sidecar) => unlink(`${name}${sidecar}`)),
             );
@@ -587,7 +502,6 @@ async function pruneMigrationArtifactFamily(family: MigrationArtifactFamily): Pr
   });
 }
 
-/** Restorable snapshots this codebase writes before it migrates a database. */
 const preMigrationBackupFamily = (dbPath: string, retention: number): MigrationArtifactFamily => ({
   directory: migrationBackupDirectory(dbPath),
   prefix: `${path.basename(dbPath)}.pre-migration-`,
@@ -596,18 +510,6 @@ const preMigrationBackupFamily = (dbPath: string, retention: number): MigrationA
   ensurePrivate: true,
 });
 
-/**
- * Full-size snapshots an older release wrote beside real backups before it
- * repaired a malformed migration tracker.
- *
- * Nothing in this codebase writes them any more and no recovery path can
- * restore from one, so they are pure one-shot diagnostics — which is exactly
- * why no prune ever matched them and why a stranded copy sat unreclaimed for
- * the lifetime of the install. They are the same size as the database itself,
- * and the snapshot taken minutes either side of one is already retained by the
- * `pre-migration` family, so a single newest copy is kept purely as a forensic
- * last resort.
- */
 export const TRACKER_REPAIR_SNAPSHOT_RETENTION = 1;
 
 const trackerRepairSnapshotFamily = (dbPath: string): MigrationArtifactFamily => ({
@@ -618,13 +520,6 @@ const trackerRepairSnapshotFamily = (dbPath: string): MigrationArtifactFamily =>
   ensurePrivate: true,
 });
 
-/**
- * The live database an explicit restore moved aside, with its WAL and SHM.
- *
- * These land next to the database rather than in the backup directory. They can
- * hold writes made after the last snapshot, so more than one is kept — but they
- * are also full-size copies, which is why the bound matters.
- */
 const failedMigrationBundleFamily = (dbPath: string): MigrationArtifactFamily => ({
   directory: path.dirname(dbPath),
   prefix: `${path.basename(dbPath)}.failed-migration-`,
@@ -635,36 +530,20 @@ const failedMigrationBundleFamily = (dbPath: string): MigrationArtifactFamily =>
 const pruneFailedMigrationBundles = (dbPath: string): Promise<void> =>
   pruneMigrationArtifactFamily(failedMigrationBundleFamily(dbPath));
 
-/**
- * Reclaims every artifact family a migration can strand, except the restorable
- * `pre-migration` snapshots.
- *
- * Those are deliberately excluded: this runs on the normal startup path, ahead
- * of the guard that validates the recovery marker, so it must not be able to
- * remove the snapshot the marker points at. The families it does prune are the
- * ones no code path ever restores from, and therefore the ones that could grow
- * without bound — a failed-migration bundle was only ever pruned by the
- * explicit restore command, which most installs never run.
- */
+// Reclaims every artifact family a migration can strand, except the restorable `pre-migration`
+// snapshots. Those are deliberately excluded: this runs on the normal startup path, ahead of the
+// guard that validates the recovery marker, so it must not be able to remove the snapshot the
+// marker points at. The families it does prune are the ones no code path ever restores from, and
+// therefore the ones that could grow without bound — a failed-migration bundle was only ever pruned
+// by the explicit restore command, which most installs never run.
 const pruneUnreferencedMigrationArtifacts = (dbPath: string): Promise<void> =>
   Promise.all([
     pruneMigrationArtifactFamily(trackerRepairSnapshotFamily(dbPath)),
     pruneFailedMigrationBundles(dbPath),
   ]).then(() => undefined);
 
-/**
- * Applies retention to every migration artifact family, each independently.
- *
- * Per-family retention is the point: a shared bound would let one family's churn
- * evict another's, and a single prefix match is what left the `failed-migration`
- * and `pre-tracker-repair` families unreclaimable for their entire existence.
- */
 const pruneMigrationBackups = (dbPath: string, retention = MIGRATION_BACKUP_RETENTION) =>
   attemptPromise(async () => {
-    // Orphaned partials are unreferenced by construction: the only writer holds
-    // the database lifecycle lock, and a partial that outlived its writer can
-    // never be promoted to a backup. Reclaim them unconditionally — an age
-    // cutoff here is what allowed them to accumulate without bound.
     await removeRegularFiles(
       migrationBackupDirectory(dbPath),
       isMigrationBackupPartial(path.basename(dbPath)),
@@ -681,9 +560,7 @@ export const createMigrationBackup = (dbPath: string, plan: MigrationBackupPlan)
     const backupDirectory = migrationBackupDirectory(dbPath);
     yield* attemptPromise(() => ensurePrivateBackupDirectory(backupDirectory));
     const basename = path.basename(dbPath);
-    // Unconditional, not age-gated. Every partial found here outlived the
-    // process that wrote it, and the 24h staleness cutoff that used to guard
-    // this sweep is what let a restart loop accumulate them without bound.
+
     yield* attemptPromise(() =>
       removeRegularFiles(backupDirectory, isMigrationBackupPartial(basename)),
     );
@@ -704,16 +581,14 @@ export const createMigrationBackup = (dbPath: string, plan: MigrationBackupPlan)
         await syncDirectoryEntry(backupDirectory);
       });
     }).pipe(
-      // Must span the whole critical section, not just the vacuum. A failure
-      // while syncing or renaming otherwise strands a full-size copy of the
-      // database that no cleanup path could reclaim.
+      // Must span the whole critical section, not just the vacuum. A failure while syncing or renaming
+      // otherwise strands a full-size copy of the database that no cleanup path could reclaim.
       Effect.tapError(() => attemptPromise(() => fs.unlink(temporaryPath)).pipe(Effect.ignore)),
     );
     yield* pruneMigrationBackups(dbPath);
     return { ...plan, backupPath, createdAt } satisfies MigrationBackupResult;
   });
 
-/** Durably replaces private JSON in one atomic rename; never leaves a partial behind. */
 async function writePrivateJsonFile(filePath: string, payload: unknown): Promise<void> {
   const temporaryPath = `${filePath}.${randomUUID()}.partial`;
   try {
@@ -802,9 +677,8 @@ export const runWithPreMigrationBackup = <A, E, R>(
     const backup = plan ? yield* createMigrationBackup(dbPath, plan) : null;
     const recoveryPayload = backup ? migrationRecoveryPayload(dbPath, backup) : null;
     if (recoveryPayload) {
-      // This write-ahead marker must be durable before migrations can mutate
-      // the live database. A later startup will fail closed until an operator
-      // explicitly restores the known-good snapshot.
+      // This write-ahead marker must be durable before migrations can mutate the live database. A later
+      // startup will fail closed until an operator explicitly restores the known-good snapshot.
       yield* writeRecoveryMarker(dbPath, recoveryPayload);
     }
     const result = yield* migration;
@@ -815,11 +689,8 @@ export const runWithPreMigrationBackup = <A, E, R>(
     return result;
   });
 
-/**
- * Restores a standalone SQLite migration snapshot. The caller must stop every
- * process using the database first; stale WAL/SHM files are moved aside with
- * the failed main database so they cannot replay into the restored snapshot.
- */
+// The caller must stop every process using the database first; stale WAL/SHM files are moved aside
+// with the failed main database so they cannot replay into the restored snapshot.
 const restoreSqliteMigrationBackup = (input: {
   readonly dbPath: string;
   readonly backupPath: string;
@@ -869,7 +740,6 @@ const restoreSqliteMigrationBackup = (input: {
       }
       await fs.rename(restoredTemporaryPath, input.dbPath);
     } catch (cause) {
-      // Rollback is valid only before the restored main database is installed.
       await fs.unlink(restoredTemporaryPath).catch(() => undefined);
       let rollbackSucceeded = true;
       for (const [source, destination] of moved.toReversed()) {
@@ -883,9 +753,6 @@ const restoreSqliteMigrationBackup = (input: {
       throw cause;
     }
 
-    // Make the database/WAL/SHM swap durable before the caller records the
-    // completed restore and clears the marker. Until both happen, a crash or
-    // cleanup failure remains an explicit, retryable recovery state.
     await syncDirectoryEntry(path.dirname(input.dbPath));
     await pruneFailedMigrationBundles(input.dbPath);
     await syncDirectoryEntry(path.dirname(input.dbPath));
@@ -1024,9 +891,9 @@ function assertMigrationBackupCompatible(
 export type MigrationRecoveryMarker = {
   readonly markerPath: string;
   readonly backupPath: string;
-  /** How many times startup has already re-run the interrupted migration. */
+
   readonly resumeAttempts: number;
-  /** The marker verbatim, so a resume can bump one field without losing the rest. */
+
   readonly payload: Record<string, unknown>;
 };
 
@@ -1173,22 +1040,12 @@ export async function inspectCompletedMigrationBackupForSchemaTooNew(
   };
 }
 
-/**
- * Reclaims stranded migration artifacts before startup can fail closed.
- *
- * A database that already needs recovery never reaches the backup path, so this
- * must run ahead of {@link requireNoPendingMigrationRecovery}. Without it a
- * wedged install keeps every partial its restart loop produced — the failure
- * mode that filled hundreds of gigabytes in minutes.
- *
- * Four things are swept: snapshot partials, marker partials, provenance
- * partials, and artifact families that no recovery path can restore from.
- * Removing partials unconditionally is safe only
- * because every caller holds the database lifecycle lock, which makes this
- * process their sole owner; the retained families are bounded rather than
- * emptied. It never removes a finished `pre-migration` backup, never a live
- * marker, never the database or its WAL/SHM.
- */
+// Reclaims stranded migration artifacts before startup can fail closed. A database that already
+// needs recovery never reaches the backup path, so this must run ahead of {@link
+// requireNoPendingMigrationRecovery}. Removing partials unconditionally is safe only because every
+// caller holds the database lifecycle lock, which makes this process their sole owner; the retained
+// families are bounded rather than emptied. It never removes a finished `pre-migration` backup,
+// never a live marker, never the database or its WAL/SHM.
 export const reclaimOrphanedMigrationArtifacts = (dbPath: string) =>
   attemptPromise(async () => {
     const markerPath = migrationRecoveryMarkerPath(dbPath);
@@ -1210,7 +1067,6 @@ export const reclaimOrphanedMigrationArtifacts = (dbPath: string) =>
     ]);
   }).pipe(Effect.ignore);
 
-/** Read-only startup guard. It never restores, renames, or removes recovery files. */
 export const requireNoPendingMigrationRecovery = (dbPath: string) =>
   attemptPromise(async () => {
     const marker = await readValidatedRecoveryMarker(dbPath);
@@ -1235,15 +1091,10 @@ async function readValidatedRecoveryMarker(
   }
 }
 
-/**
- * Read-only startup gate that permits a bounded self-heal.
- *
- * Returns the pending marker when startup is still allowed to re-run the
- * interrupted migration, `null` when nothing is pending, and fails closed with
- * {@link MigrationRecoveryRequiredError} once the resume budget is spent or the
- * marker cannot be validated. Like the strict guard, it never restores,
- * renames, or removes anything.
- */
+// Returns the pending marker when startup is still allowed to re-run the interrupted migration,
+// `null` when nothing is pending, and fails closed with {@link MigrationRecoveryRequiredError} once
+// the resume budget is spent or the marker cannot be validated. Like the strict guard, it never
+// restores, renames, or removes anything.
 export const inspectPendingMigrationRecovery = (dbPath: string) =>
   attemptPromise(async () => {
     const marker = await readValidatedRecoveryMarker(dbPath);
@@ -1258,22 +1109,11 @@ export const inspectPendingMigrationRecovery = (dbPath: string) =>
     return marker;
   });
 
-/**
- * Re-runs the migration an earlier startup was interrupted during.
- *
- * Deliberately does *not* take a fresh backup and does *not* rewrite the
- * marker's backup pointer: the snapshot this database must fall back to is the
- * one captured before the first attempt. Re-snapshotting here would both point
- * recovery at an already-broken database and copy the full file on every
- * restart — the exact behaviour that filled disks in the field.
- *
- * The attempt is charged to the durable budget *before* the migration runs, so
- * a process that dies mid-migration still consumes one attempt and the loop
- * terminates. Only success clears the marker. Effect's SQL migrator rolls its
- * transaction back when a migration statement fails, so treating a
- * duplicate-looking error as success would merely hide the restore point while
- * leaving the same migration ready to fail again on the next startup.
- */
+// The attempt is charged to the durable budget *before* the migration runs, so a process that dies
+// mid-migration still consumes one attempt and the loop terminates. Effect's SQL migrator rolls its
+// transaction back when a migration statement fails, so treating a duplicate-looking error as
+// success would merely hide the restore point while leaving the same migration ready to fail again
+// on the next startup.
 export const resumeMarkedMigration = <A, E, R>(
   dbPath: string,
   marker: MigrationRecoveryMarker,
@@ -1301,11 +1141,6 @@ export const resumeMarkedMigration = <A, E, R>(
     return result;
   });
 
-/**
- * Explicit one-shot restore path for the active recovery marker or the latest
- * completed migration provenance. The operator must stop every Glade process
- * before invoking it; startup itself deliberately never calls this function.
- */
 export interface RestoreMarkedMigrationBackupOptions {
   readonly expectedBackupPath?: string | undefined;
   readonly expectedProvenancePath?: string | undefined;
@@ -1392,9 +1227,7 @@ export const restoreMarkedMigrationBackup = (
           dbPath,
           backupPath: record.backupPath,
           latestSupportedMigrationId: latestMigrationId,
-          // Defer the fail-closed marker until the backup has been copied and
-          // verified. If the live swap then rolls back completely, restore the
-          // marker state that existed before this explicit attempt.
+
           beforeLiveDatabaseSwap: () =>
             writePrivateJsonFile(restoreMarkerPath, restoreMarkerPayload),
           afterLiveDatabaseRollback: restoringCompletedProvenance

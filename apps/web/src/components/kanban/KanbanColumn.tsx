@@ -1,8 +1,3 @@
-// FILE: KanbanColumn.tsx
-// Purpose: One kanban column — droppable body, sortable draft cards, done render cap.
-// Layer: UI component (project-board building block)
-// Exports: KanbanColumn, parseKanbanColumnDropId
-
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -95,18 +90,18 @@ function KanbanColumnComponent({
   columnKey: KanbanColumnKey;
   cards: readonly KanbanCard[];
   onOpenCard: (card: KanbanCard) => void;
-  /** Right-click handler forwarded to each card's context menu. */
+
   onCardContextMenu?: ((card: KanbanCard, event: React.MouseEvent) => void) | undefined;
-  /** Draft column in the project board: cards reorder via dnd-kit sortable. */
+
   sortable?: boolean;
-  /** Project board only — the column body registers as a drop target. */
+
   droppable?: boolean;
-  /** Card currently being dragged, for drop-target affordances. */
+
   activeCard?: KanbanCard | null;
-  /** Renders a + button in the column header (Draft column's new-task entry point). */
+
   onNewCard?: (() => void) | undefined;
   prByThreadId: KanbanCardPrLookup;
-  /** Shared board clock for live elapsed labels. */
+
   nowMs?: number;
 }) {
   const sortable = sortableProp ?? false;
@@ -116,8 +111,6 @@ function KanbanColumnComponent({
   const { isOver, setNodeRef } = useDroppable({ id: dropId, disabled: !droppable });
   const [showAll, setShowAll] = useState(false);
 
-  // Done columns can grow unbounded; cap the initial render so opening the board
-  // stays cheap for long-lived projects.
   const cappedCards =
     columnKey === "done" && !showAll && cards.length > DONE_RENDER_CAP
       ? cards.slice(0, DONE_RENDER_CAP)

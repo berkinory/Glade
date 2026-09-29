@@ -1,16 +1,8 @@
-// FILE: composerMentions.ts
-// Purpose: Share parsing/formatting helpers for `@...` composer mentions, including quoted paths.
-// Layer: Web composer helper
-// Exports: mention token formatters plus regex helpers used by composer parsing and prompt sync.
-
 import type { ProviderMentionReference, ProviderSkillReference } from "@glade/contracts";
 import { isThreadMentionPath, threadIdFromThreadMentionPath } from "@glade/shared/threadMentions";
 
 export const SKILL_MENTION_PREFIX = "/";
 
-// The alternation must be unambiguous — a backslash may only match the escape
-// branch — or unclosed `@"` + a backslash run backtracks exponentially on the
-// per-keystroke composer parse (ReDoS).
 const QUOTED_MENTION_PATH_SOURCE = String.raw`((?:\\.|[^"\\])*)`;
 
 export function createComposerMentionTokenRegex(options: {
@@ -51,11 +43,6 @@ function encodeComposerMentionQuotedPath(path: string): string {
   return path.replace(/["\\]/g, "\\$&");
 }
 
-/**
- * Paths that need quoting so spaces, parentheses, and shell-ish characters
- * stay a single mention token (#351). Prefer quoting over relying on the
- * unquoted `[^()\s@]+` trigger form.
- */
 export function composerMentionPathNeedsQuoting(path: string): boolean {
   return /[\s()@"'`$\\]/.test(path);
 }

@@ -6,7 +6,6 @@ import {
   serverRuntimeSecret,
 } from "./serverRuntimeProof";
 
-/** Proves that a discovered endpoint owns the private local runtime-state secret. */
 export const serverRuntimeRouteLayer = HttpRouter.add(
   "POST",
   "/api/server/runtime-challenge",

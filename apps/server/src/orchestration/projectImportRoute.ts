@@ -70,8 +70,7 @@ export function makeProjectImportHandlers(options: ProjectImportRouteOptions) {
     string,
     { session: ResolvedImportSession; projectKey: string; expiresAt: number }
   >();
-  // One native copy at a time bounds subprocesses, and serializes project creation
-  // and origin reservations across browser clients sharing this server.
+
   const imports = makeKeyedLock<string>();
   const readHistory =
     options.readHistory ?? makeProjectImportHistoryReader(options.providerAdapterRegistry);
@@ -418,8 +417,7 @@ export function makeProjectImportHandlers(options: ProjectImportRouteOptions) {
             ? { codex: configuredOptions.codex }
             : { claudeAgent: claudeBinaryPath ? { binaryPath: claudeBinaryPath } : {} };
         const runtimeCwd = workingDirectory ?? (directoryExists ? workspaceRoot : undefined);
-        // The ledger and native binding survive failures. Retrying the same origin
-        // resumes this frozen copy, while deterministic command IDs prevent replay.
+
         const importHistory = Effect.gen(function* () {
           const copied = yield* options.providerService.importExternalThread!({
             threadId,
@@ -456,8 +454,8 @@ export function makeProjectImportHandlers(options: ProjectImportRouteOptions) {
             });
           }
         });
-        // Cleanup failure must be surfaced. It cannot be silently reported as a
-        // successful import with an unproven provider process still attached.
+        // Cleanup failure must be surfaced. It cannot be silently reported as a successful import with an
+        // unproven provider process still attached.
         yield* Effect.uninterruptibleMask((restore) =>
           Effect.gen(function* () {
             const result = yield* Effect.exit(restore(importHistory));

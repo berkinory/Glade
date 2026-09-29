@@ -3,7 +3,7 @@ import { TrimmedNonEmptyString } from "./baseSchemas";
 import type { ProviderKind } from "./baseSchemas";
 
 export const CODEX_REASONING_EFFORT_OPTIONS = ["low", "medium", "high", "xhigh"] as const;
-// Codex app-server can add model-specific efforts through runtime discovery.
+
 export type CodexReasoningEffort = string;
 export const CLAUDE_API_EFFORT_OPTIONS = ["low", "medium", "high", "xhigh", "max"] as const;
 export type ClaudeApiEffort = (typeof CLAUDE_API_EFFORT_OPTIONS)[number];
@@ -64,7 +64,6 @@ export const ProviderOptionSelections = Schema.Array(ProviderOptionSelection);
 export type ProviderOptionSelections = typeof ProviderOptionSelections.Type;
 
 export const CodexModelOptions = Schema.Struct({
-  // Codex runtime discovery can expose early-access effort values outside the built-in enum.
   reasoningEffort: Schema.optional(TrimmedNonEmptyString),
   fastMode: Schema.optional(Schema.Boolean),
 });
@@ -75,7 +74,7 @@ export const ClaudeModelOptions = Schema.Struct({
   effort: Schema.optional(Schema.Literals(CLAUDE_CODE_EFFORT_OPTIONS)),
   fastMode: Schema.optional(Schema.Boolean),
   autoCompactWindow: Schema.optional(Schema.String),
-  // Legacy persisted field. Normalization migrates this to autoCompactWindow.
+
   contextWindow: Schema.optional(Schema.String),
 });
 export type ClaudeModelOptions = typeof ClaudeModelOptions.Type;
@@ -151,8 +150,6 @@ const CODEX_GPT_5_5_CAPABILITIES: ModelCapabilities = {
   ],
 };
 
-// GPT-6 Astra is the Codex app-server default. Its ladder extends past xhigh with
-// max/ultra and defaults to medium, mirroring `model/list`.
 const CODEX_GPT_6_CAPABILITIES: ModelCapabilities = {
   ...CODEX_GPT_5_CAPABILITIES,
   reasoningEffortLevels: [
@@ -172,9 +169,6 @@ const CODEX_GPT_6_LUNA_CAPABILITIES: ModelCapabilities = {
   ),
 };
 
-// Shared Claude building blocks. Capability shapes repeat across Claude
-// generations, so declare them once and let each model entry override only the
-// fields that genuinely differ (mirrors the CODEX_GPT_5_* pattern above).
 const CLAUDE_AUTO_COMPACT_WINDOWS: readonly ContextWindowOption[] = [
   { value: "auto", label: "Auto (Claude Code)", isDefault: true },
   { value: "200k", label: "200k" },
@@ -202,8 +196,6 @@ function claudeCodeModeOption(
   return { value, label, description, apiEffortValue, controlSource: "provider-setting" };
 }
 
-// No-fast xhigh ladder: newer Claude Code models with xhigh/max API efforts and
-// the ultracode mode setting, but no ultrathink prompt mode or fast mode.
 const CLAUDE_NO_FAST_XHIGH_CAPABILITIES: ModelCapabilities = {
   reasoningEffortLevels: [
     claudeApiEffortOption("low", "Low"),
@@ -221,18 +213,13 @@ const CLAUDE_NO_FAST_XHIGH_CAPABILITIES: ModelCapabilities = {
   contextWindowTokens: 1_000_000,
 };
 
-// Fable 5 and 5.1 share the ladder: thinking is always on (no toggle, no
-// ultrathink prompt mode), effort runs low..max, and there is no fast-mode lane.
 const CLAUDE_FABLE_CAPABILITIES: ModelCapabilities = CLAUDE_NO_FAST_XHIGH_CAPABILITIES;
 
-// Opus 5 and 5.5 keep the Claude 5 ladder (thinking is adaptive, so no ultrathink prompt
-// mode) but stays on the Opus fast-mode lane that Fable and Sonnet lack.
 const CLAUDE_OPUS_5_CAPABILITIES: ModelCapabilities = {
   ...CLAUDE_NO_FAST_XHIGH_CAPABILITIES,
   supportsFastMode: true,
 };
 
-// Full reasoning ladder: xhigh + ultracode + ultrathink (Opus 4.7/4.8).
 const CLAUDE_FLAGSHIP_CAPABILITIES: ModelCapabilities = {
   reasoningEffortLevels: [
     claudeApiEffortOption("low", "Low"),
@@ -251,7 +238,6 @@ const CLAUDE_FLAGSHIP_CAPABILITIES: ModelCapabilities = {
   contextWindowTokens: 1_000_000,
 };
 
-// Reasoning ladder before xhigh/ultracode landed (Opus 4.6, Sonnet 4.6).
 const CLAUDE_EXTENDED_THINKING_CAPABILITIES: ModelCapabilities = {
   ...CLAUDE_FLAGSHIP_CAPABILITIES,
   reasoningEffortLevels: [
@@ -263,7 +249,6 @@ const CLAUDE_EXTENDED_THINKING_CAPABILITIES: ModelCapabilities = {
   ],
 };
 
-// Sonnet 5 adds xhigh for long agentic work, while staying in the Sonnet no-fast-mode lane.
 const CLAUDE_SONNET_5_CAPABILITIES: ModelCapabilities = CLAUDE_NO_FAST_XHIGH_CAPABILITIES;
 
 type ModelDefinition = {
@@ -271,14 +256,6 @@ type ModelDefinition = {
   readonly name: string;
   readonly capabilities: ModelCapabilities;
 };
-
-// Static catalog entries that rely on live CLI discovery advertise no
-// capabilities of their own.
-
-/**
- * TODO: This should not be a static array, each provider
- * should return its own model list over the WS API.
- */
 
 export const MODEL_OPTIONS_BY_PROVIDER = {
   codex: [
@@ -421,17 +398,10 @@ export const DEFAULT_MODEL_BY_PROVIDER: Record<ProviderWithDefaultModel, ModelSl
   claudeAgent: "claude-sonnet-5",
 };
 
-// Backward compatibility for existing Codex-only call sites.
 export const DEFAULT_MODEL = DEFAULT_MODEL_BY_PROVIDER.codex;
 export const DEFAULT_GIT_TEXT_GENERATION_MODEL = "gpt-6-luna" as const;
 export const DEFAULT_GIT_TEXT_GENERATION_REASONING_EFFORT = "high" as const;
 
-/**
- * Providers with a dedicated Git text-generation backend. Keep the Settings
- * picker in sync with this list. Chat-only agents have no one-shot git-writing path, and
- * driving them as coding agents for commit/PR text can run with write access
- * or violate provider terms.
- */
 export const GIT_TEXT_GENERATION_PROVIDERS = ["codex"] as const satisfies readonly ProviderKind[];
 export type GitTextGenerationProvider = (typeof GIT_TEXT_GENERATION_PROVIDERS)[number];
 
@@ -487,18 +457,12 @@ export const MODEL_SLUG_ALIASES_BY_PROVIDER: Record<ProviderKind, Record<string,
   },
 };
 
-// ── Agent mention aliases ─────────────────────────────────────────────
-
-// ── Model capabilities index ──────────────────────────────────────────
-
 export const MODEL_CAPABILITIES_INDEX = Object.fromEntries(
   Object.entries(MODEL_OPTIONS_BY_PROVIDER).map(([provider, models]) => [
     provider,
     Object.fromEntries(models.map((m) => [m.slug, m.capabilities])),
   ]),
 ) as unknown as Record<ProviderKind, Record<string, ModelCapabilities>>;
-
-// ── Provider display names ────────────────────────────────────────────
 
 export const PROVIDER_DISPLAY_NAMES: Record<ProviderKind, string> = {
   codex: "Codex",

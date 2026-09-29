@@ -1,8 +1,5 @@
 import type { PendingUserInputRecoveryDraft } from "./pendingUserInputRecovery";
 import type { ComposerComputerControlMode } from "./computerControlMode";
-// FILE: composerDraftDomain.ts
-// Purpose: Defines composer draft state, stable defaults, and content/project normalization.
-// Exports: Internal domain primitives plus public facade types.
 
 import {
   type ModelSelection,
@@ -150,10 +147,7 @@ export type QueuedComposerTurn = QueuedComposerChatTurn | QueuedComposerPlanFoll
 export interface ComposerThreadDraftState {
   pendingUserInputDrafts?: Record<string, PendingUserInputRecoveryDraft>;
   prompt: string;
-  // Non-null only while composer prompt-history browsing is active: the user's
-  // real draft, kept safe while `prompt` temporarily holds a recalled history
-  // entry. Restored (and cleared) when a browse is interrupted by a thread
-  // switch or reload.
+
   promptHistorySavedDraft: ComposerPromptHistorySavedDraft | null;
   images: ComposerImageAttachment[];
   files: ComposerFileAttachment[];
@@ -188,8 +182,7 @@ export interface DraftThreadState {
   workingDirectory?: string | null;
   lastKnownPr?: OrchestrationThreadPullRequest | null;
   envMode: DraftThreadEnvMode;
-  // Goal staged before the thread exists server-side; persisted via
-  // `thread.meta.update` when the first send promotes the draft.
+
   goal?: string;
   promotedTo?: ThreadId;
 }
@@ -200,13 +193,11 @@ export interface DraftThreadMutationOptions {
   workingDirectory?: string | null;
   lastKnownPr?: OrchestrationThreadPullRequest | null;
   createdAt?: string;
-  // Explicitly `| undefined`: callers forward a `ThreadWorkspacePatch`, whose `envMode` is
-  // optional in the same way, and under `exactOptionalPropertyTypes` a bare `?:` would reject
-  // that spread even though the value sets are identical ("local" | "worktree").
+
   envMode?: DraftThreadEnvMode | undefined;
   runtimeMode?: RuntimeMode;
   interactionMode?: ProviderInteractionMode;
-  // Empty string clears the staged goal; undefined leaves it unchanged.
+
   goal?: string;
 }
 
@@ -233,13 +224,8 @@ export interface ComposerDraftStoreState {
     threadId: ThreadId,
     options?: DraftThreadMutationOptions,
   ) => void;
-  /**
-   * Registers a standalone draft thread without claiming the project's
-   * composer-draft mapping. Unlike setProjectDraftThreadId this never replaces
-   * (and therefore never deletes) the mapped draft, so any number of standalone
-   * drafts — e.g. kanban tasks — can coexist per project. Create-only: an
-   * existing draft thread is left untouched.
-   */
+  // Unlike setProjectDraftThreadId this never replaces (and therefore never deletes) the mapped
+  // draft, so any number of standalone drafts — e.g. kanban tasks — can coexist per project.
   registerDraftThread: (
     threadId: ThreadId,
     options: {
@@ -257,10 +243,7 @@ export interface ComposerDraftStoreState {
     threadId: ThreadId,
     options: DraftThreadMutationOptions & { projectId?: ProjectId },
   ) => void;
-  /**
-   * Moves an existing draft into a project's primary draft slot while deleting
-   * the draft that used to occupy that slot, if no other project still maps it.
-   */
+
   moveDraftThreadToProject: (
     threadId: ThreadId,
     projectId: ProjectId,
@@ -498,11 +481,7 @@ export function createEmptyThreadDraft(): ComposerThreadDraftState {
     activeProvider: null,
     runtimeMode: null,
     interactionMode: null,
-    // Tri-state: undefined means "no explicit choice". A chat that has not
-    // started yet then follows the machine-wide computerControlEnabled
-    // setting (off by default), including while permission setup is needed; its
-    // first send records the resolved value here so later setting changes leave
-    // the chat alone. A chat with turns and no recorded choice is off.
+
     enableComputerControl: undefined,
   };
 }
@@ -693,7 +672,7 @@ export function captureComposerPromptHistorySavedDraft(input: {
   const { threadId, draft, prompt } = input;
   return {
     prompt,
-    // Keep the same image objects here: ownership moves from visible composer to saved snapshot.
+
     images: [...draft.images],
     files: [...draft.files],
     nonPersistedImageIds: [...draft.nonPersistedImageIds],
@@ -740,7 +719,7 @@ export function buildTransferredComposerDraft(input: {
     mentions: [...sourceDraft.mentions],
     enableComputerControl: sourceDraft.enableComputerControl,
     computerControlMode: sourceDraft.computerControlMode,
-    // Revocation generations belong to the target thread, never the copied prompt.
+
     computerControlGeneration: base.computerControlGeneration ?? 0,
     restoredSourceProposedPlan: null,
   };
@@ -811,8 +790,6 @@ export function shouldRemoveDraft(draft: ComposerThreadDraftState): boolean {
     draft.activeProvider === null &&
     draft.runtimeMode === null &&
     draft.interactionMode === null &&
-    // An explicit false is still content: it records the user's choice to keep
-    // computer control off in this chat when the new-chat default is on.
     draft.enableComputerControl === undefined &&
     draft.computerControlMode === undefined
   );

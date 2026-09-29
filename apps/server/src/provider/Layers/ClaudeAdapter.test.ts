@@ -474,8 +474,6 @@ async function readFirstPromptMessage(
 const THREAD_ID = ThreadId.makeUnsafe("thread-claude-1");
 const RESUME_THREAD_ID = ThreadId.makeUnsafe("thread-claude-resume");
 
-// `name` or `name:alias`.
-
 describe("Claude Glade harness policy", () => {
   it("advertises scoped MCP additively when credentials are available", () => {
     const text = buildEmbeddedClaudeSystemPromptAppend(true);
@@ -586,7 +584,7 @@ describe("ClaudeAdapterLive", () => {
       assert.include(systemPrompt.append ?? "", "worker-<tier>");
       assert.include(systemPrompt.append ?? "", GLADE_HARNESS_POLICY_MARKER);
       assert.include(systemPrompt.append ?? "", "Glade is the host and harness");
-      // This characterization harness intentionally omits gateway credentials.
+
       assert.include(systemPrompt.append ?? "", "Glade MCP control is unavailable");
     }).pipe(
       Effect.provideService(Random.Random, makeDeterministicRandomService()),
@@ -623,7 +621,6 @@ describe("ClaudeAdapterLive", () => {
         attachments: [],
       });
 
-      // The steer rides the live turn: same turn id, no new turn boundary.
       assert.equal(String(steered.turnId), String(turn.turnId));
 
       const createInput = harness.getLastCreateQueryInput();
@@ -1244,7 +1241,6 @@ describe("ClaudeAdapterLive", () => {
         assert.equal(data.nickname, "Review the database layer");
       }
 
-      // The subagent's assistant text streams on the child thread, never the parent.
       const textDeltas = runtimeEvents.filter(
         (event) =>
           event.type === "content.delta" && event.payload.delta.includes("Reviewing the migration"),
@@ -1255,7 +1251,6 @@ describe("ClaudeAdapterLive", () => {
         true,
       );
 
-      // Subagent usage (assistant per-call + task_progress) feeds only the child meter.
       const usageEvents = runtimeEvents.filter(
         (event) => event.type === "thread.token-usage.updated",
       );
@@ -1280,10 +1275,6 @@ describe("ClaudeAdapterLive", () => {
       Effect.provide(harness.layer),
     );
   });
-
-  // Subagent conversations arrive as complete assistant/user messages only — the CLI
-  // forwards no stream events for them — so every message after the first, and every
-  // tool call, must project from the snapshots alone.
 
   it.effect("stops a targeted subagent task instead of interrupting the whole turn", () => {
     const harness = makeHarness();
@@ -1320,8 +1311,6 @@ describe("ClaudeAdapterLive", () => {
       assert.equal(harness.query.interruptCalls.length, 0);
       assert.equal(harness.query.backgroundTasksCalls.length, 0);
 
-      // Without a known task id (task_started not seen yet) the stop is queued —
-      // never backgrounded — and fires the moment task_started maps the tool use.
       yield* adapter.interruptTurn(session.threadId, undefined, "tool-task-pending");
       assert.equal(harness.query.backgroundTasksCalls.length, 0);
       assert.deepEqual(harness.query.stopTaskCalls, ["task-stop-1"]);
@@ -1336,7 +1325,7 @@ describe("ClaudeAdapterLive", () => {
         session_id: "sdk-session-stop",
         uuid: "task-started-pending-1",
       } as unknown as SDKMessage);
-      // Wait for the stream handler to process the mapping and fire the queued stop.
+
       for (let i = 0; i < 10_000 && harness.query.stopTaskCalls.length < 2; i += 1) {
         yield* Effect.yieldNow;
       }
@@ -1375,9 +1364,6 @@ describe("ClaudeAdapterLive", () => {
         });
         const query = harness.queries[0]!;
 
-        // The child shares the parent's MCP transport. Stop only the child
-        // provider task, but tombstone/drain the parent gateway turn so an
-        // indistinguishable late child browser request cannot survive Stop.
         const childStopFiber = yield* adapter
           .interruptTurn(session.threadId, undefined, "tool-task-pending")
           .pipe(Effect.forkChild);
@@ -1465,7 +1451,6 @@ describe("ClaudeAdapterLive", () => {
         uuid: "task-started-steer-1",
       } as unknown as SDKMessage);
 
-      // No pending steer: the hook stays a clean passthrough.
       assert.deepEqual(yield* invokeHook("task-steer-1"), {});
 
       yield* adapter.steerSubagent(session.threadId, "tool-task-steer-1", {
@@ -1484,7 +1469,6 @@ describe("ClaudeAdapterLive", () => {
         },
       });
 
-      // The queue drained: a second delivery attempt passes through untouched.
       assert.deepEqual(yield* invokeHook("task-steer-1"), {});
 
       const runtimeEvents = Array.from(yield* Fiber.join(runtimeEventsFiber));
@@ -1854,8 +1838,6 @@ describe("ClaudeAdapterLive", () => {
       assert.equal(spawnCalls, 1);
       assert.equal(teardownCalls, 1);
 
-      // The second attempt retries teardown and fails before createQuery can
-      // spawn another process.
       assert.isTrue(Exit.isFailure(yield* Effect.exit(adapter.startSession(input))));
       assert.equal(createCalls, 1);
       assert.equal(spawnCalls, 1);
@@ -1928,8 +1910,6 @@ describe("ClaudeAdapterLive", () => {
       assert.equal(spawnCalls, 1);
       assert.equal(teardownCalls, 1);
 
-      // The retry must fail while reaping the retained owner, before another
-      // temporary process can be spawned.
       assert.isTrue(Exit.isFailure(yield* Effect.exit(listCommands(input))));
       assert.equal(spawnCalls, 1);
       assert.equal(teardownCalls, 2);
@@ -3341,14 +3321,12 @@ describe("ClaudeAdapterLive", () => {
     return Effect.gen(function* () {
       const adapter = yield* ClaudeAdapter;
 
-      // Start session in approval-required mode so canUseTool fires.
       const session = yield* adapter.startSession({
         threadId: THREAD_ID,
         provider: "claudeAgent",
         runtimeMode: "approval-required",
       });
 
-      // Drain the session startup events (started, configured, state.changed).
       yield* Stream.take(adapter.streamEvents, 3).pipe(Stream.runDrain);
 
       yield* adapter.sendTurn({
@@ -3384,7 +3362,6 @@ describe("ClaudeAdapterLive", () => {
         return;
       }
 
-      // Simulate Claude calling AskUserQuestion with structured questions.
       const askInput = {
         questions: [
           {
@@ -3405,7 +3382,6 @@ describe("ClaudeAdapterLive", () => {
         requestId: "request-tool-ask-1",
       });
 
-      // The adapter should emit a user-input.requested event.
       const requestedEvent = yield* Stream.runHead(adapter.streamEvents);
       assert.equal(requestedEvent._tag, "Some");
       if (requestedEvent._tag !== "Some") {
@@ -3423,14 +3399,12 @@ describe("ClaudeAdapterLive", () => {
         providerItemId: ProviderItemId.makeUnsafe("tool-ask-1"),
       });
 
-      // Respond with the user's answers.
       yield* adapter.respondToUserInput(
         session.threadId,
         ApprovalRequestId.makeUnsafe(requestId!),
         { Framework: "React" },
       );
 
-      // The adapter should emit a user-input.resolved event.
       const resolvedEvent = yield* Stream.runHead(adapter.streamEvents);
       assert.equal(resolvedEvent._tag, "Some");
       if (resolvedEvent._tag !== "Some") {
@@ -3447,13 +3421,12 @@ describe("ClaudeAdapterLive", () => {
         providerItemId: ProviderItemId.makeUnsafe("tool-ask-1"),
       });
 
-      // The canUseTool promise should resolve with the answers in SDK format.
       const permissionResult = yield* Effect.promise(() => permissionPromise);
       assert.equal((permissionResult as PermissionResult).behavior, "allow");
       const updatedInput = (permissionResult as { updatedInput: Record<string, unknown> })
         .updatedInput;
       assert.deepEqual(updatedInput.answers, { "Which framework?": "React" });
-      // Original questions should be passed through.
+
       assert.deepEqual(updatedInput.questions, askInput.questions);
     }).pipe(
       Effect.provideService(Random.Random, makeDeterministicRandomService()),
@@ -3752,8 +3725,7 @@ describe("ClaudeAdapterLive forkThread", () => {
           options: { dir: "/repo/source", upToMessageId: "assistant-uuid-9" },
         },
       ]);
-      // The SDK fork remaps message uuids, so the fork cursor must resume the
-      // new session id without inheriting `resumeSessionAt` or tracked tasks.
+
       assert.deepEqual(result, {
         threadId: RESUME_THREAD_ID,
         resumeCursor: {

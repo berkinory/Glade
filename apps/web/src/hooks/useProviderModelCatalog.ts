@@ -1,4 +1,3 @@
-// Shared provider model catalog for composer-like surfaces.
 import type {
   ProviderAgentDescriptor,
   ProviderKind,

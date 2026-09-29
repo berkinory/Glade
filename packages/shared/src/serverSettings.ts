@@ -44,7 +44,6 @@ export function applyServerSettingsPatch(
   };
 }
 
-/** Server-owned launch options derived from the persisted non-secret settings snapshot. */
 export function providerStartOptionsFromServerSettings(
   settings: ServerSettings,
 ): ProviderStartOptions {

@@ -74,7 +74,6 @@ function keyTokens(key: string): string[] {
   );
 }
 
-/** True when a JSON object key names a credential rather than benign metadata. */
 export function isSensitiveKey(key: string): boolean {
   if (isProviderCredentialKey(key)) {
     return true;
@@ -92,7 +91,6 @@ export function isSensitiveKey(key: string): boolean {
     return true;
   }
   if (TOKEN_TERMINAL_WORDS[terminal]) {
-    // `prompt_tokens`, `total_tokens`, `completion_tokens` are usage counters, not secrets.
     const qualifier = tokens.at(-2);
     return qualifier === undefined || SECRET_TOKEN_QUALIFIERS[qualifier] === true;
   }
@@ -104,7 +102,6 @@ export function isSensitiveKey(key: string): boolean {
 
 export const REDACTED_SENSITIVE_VALUE = "[redacted]";
 
-/** `JSON.stringify` replacer that hides the value of every credential-named field. */
 export function redactSensitiveJsonFields(key: string, value: unknown): unknown {
   return isSensitiveKey(key) ? REDACTED_SENSITIVE_VALUE : value;
 }

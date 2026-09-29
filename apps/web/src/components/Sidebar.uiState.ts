@@ -1,8 +1,3 @@
-// FILE: Sidebar.uiState.ts
-// Purpose: Persists sidebar-only UI preferences plus the last chat route for restore flows.
-// Layer: Browser storage helper
-// Exports: sidebar UI state read/write helpers.
-
 import { normalizeWorkspaceRootForComparison } from "@glade/shared/threadWorkspace";
 import type { LastThreadRoute } from "../chatRouteRestore";
 
@@ -13,7 +8,7 @@ export type SidebarUiState = {
   projectThreadListExtraPagesByCwd: Record<string, number>;
   dismissedThreadStatusKeyByThreadId: Record<string, string>;
   lastThreadRoute: LastThreadRoute | null;
-  /** Swaps the Projects surface for the flat task-feed Activity view. */
+
   activityViewEnabled: boolean;
 };
 
@@ -25,8 +20,6 @@ const DEFAULT_SIDEBAR_UI_STATE: SidebarUiState = {
   activityViewEnabled: false,
 };
 
-// Persisted paging is a request, not a promise: render-time clamping trims it to the real
-// thread count, so the cap here only guards against absurd/corrupted stored values.
 const MAX_PERSISTED_THREAD_LIST_EXTRA_PAGES = 1000;
 
 export function normalizeSidebarProjectThreadListCwd(cwd: string): string {
@@ -53,7 +46,7 @@ function sanitizeProjectThreadListExtraPagesByCwd(
     if (normalizedCwd.length === 0 || extraPages <= 0) {
       continue;
     }
-    // Duplicate cwds that normalize to the same key keep the deepest paging.
+
     extraPagesByCwd[normalizedCwd] = Math.max(extraPagesByCwd[normalizedCwd] ?? 0, extraPages);
   }
   return extraPagesByCwd;
@@ -73,7 +66,7 @@ export function readSidebarUiState(): SidebarUiState {
     const parsed = JSON.parse(raw) as {
       chatSectionExpanded?: boolean;
       projectThreadListExtraPagesByCwd?: Record<string, unknown>;
-      /** Legacy (pre-paging) project expansion flags, migrated to one extra page. */
+
       expandedProjectThreadListCwds?: string[];
       dismissedThreadStatusKeyByThreadId?: Record<string, string>;
       lastThreadRoute?: {
@@ -99,7 +92,7 @@ export function readSidebarUiState(): SidebarUiState {
     const projectThreadListExtraPagesByCwd = sanitizeProjectThreadListExtraPagesByCwd(
       parsed.projectThreadListExtraPagesByCwd,
     );
-    // Legacy state expanded whole lists at once; the closest paged equivalent is one extra page.
+
     for (const legacyCwd of parsed.expandedProjectThreadListCwds ?? []) {
       if (typeof legacyCwd !== "string") {
         continue;
@@ -131,12 +124,6 @@ export function readSidebarUiState(): SidebarUiState {
   }
 }
 
-/**
- * Notifies when another tab rewrites the persisted sidebar UI state. Every tab
- * persists this key wholesale from its in-memory state, so without adopting
- * external writes a two-tab session silently fights over fields like the
- * Activity view toggle (last writer wins and the toggle feels "stuck").
- */
 export function subscribeSidebarUiState(listener: (state: SidebarUiState) => void): () => void {
   if (typeof window === "undefined") {
     return () => {};
@@ -178,7 +165,5 @@ export function persistSidebarUiState(input: SidebarUiState): void {
         activityViewEnabled: input.activityViewEnabled,
       }),
     );
-  } catch {
-    // Ignore storage errors so sidebar rendering keeps working when persistence is unavailable.
-  }
+  } catch {}
 }

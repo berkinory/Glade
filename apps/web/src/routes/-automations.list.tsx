@@ -1,9 +1,3 @@
-// FILE: -automations.list.tsx
-// Purpose: The automation list pieces shared by the Automations page and the rail layout's
-//          Automations panel: the list row, its subtitle and unread rules, the countdown
-//          clock, and the create dialog with its form and warning state.
-// Layer: Route-private UI module (the "-" prefix keeps it out of the route tree)
-
 import {
   type AutomationCreateInput,
   type AutomationDefinition,
@@ -47,21 +41,12 @@ import {
   runStatusLabel,
 } from "./-automations.shared";
 
-// Sidebar summaries carry every field these surfaces read (id, projectId, title,
-// modelSelection) and do not rebuild on streamed message/activity deltas
-// the way the fully derived thread list does.
 const selectAllThreads = createSidebarThreadSummariesSelector();
 
-/** Unread successful result the user has not opened yet — surfaced as quiet row meta. */
 export function hasUnreadResult(run: AutomationRun | null): boolean {
   return run?.status === "succeeded" && isUnresolvedTriageResult(run.result);
 }
 
-/**
- * Minimal automation list row: a leading status glyph, a two-line title/detail stack,
- * and optional right-aligned meta plus a hover delete. `dimmed` mutes the title for
- * paused rows.
- */
 export function AutomationListRow({
   onClick,
   leading,
@@ -80,18 +65,15 @@ export function AutomationListRow({
   readonly meta?: ReactNode;
   readonly onDelete?: () => void;
   readonly dimmed?: boolean;
-  /** `panel`: the compact sidebar-row size used by the rail layout's Automations panel. */
+
   readonly density?: "page" | "panel";
-  /** The automation open in the content area (panel rows only). */
+
   readonly active?: boolean;
 }) {
   const dimmed = dimmedProp ?? false;
   const isPanel = (densityProp ?? "page") === "panel";
   const active = activeProp ?? false;
   return (
-    // A div with role="button" (not a real <button>) so inline controls like the hover delete
-    // can be nested buttons; the keydown guard lets those controls handle their own events
-    // without also firing the row's navigation.
     <div
       role="button"
       tabIndex={0}
@@ -159,13 +141,6 @@ export function AutomationListRow({
   );
 }
 
-/**
- * Second line of an automation row: the spelled-out cadence, then the live run status
- * while a run is in flight, the next-run countdown while the automation is active, or
- * "Done" once a one-shot has fired. When the latest run ended badly the warning
- * ("Last run failed", …) is appended so the amber glyph always has words next to it;
- * a warned one-shot skips the redundant "Done".
- */
 export function automationRowSubtitle(
   definition: AutomationDefinition,
   latestRun: AutomationRun | null,
@@ -194,8 +169,6 @@ export function automationRowSubtitle(
   return segments.join(" · ");
 }
 
-// Why the server stopped an automation on its own. "schedule" and "user" return null:
-// the row already reads "Done" / renders dimmed as paused for those.
 function stoppedReasonLabel(definition: AutomationDefinition): string | null {
   switch (definition.disabledReason) {
     case "failures":
@@ -211,7 +184,6 @@ function stoppedReasonLabel(definition: AutomationDefinition): string | null {
   }
 }
 
-/** Coarse clock for the "Next run in …" countdowns; nothing else in a row is time-derived. */
 export function useAutomationListClock(): number {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -221,11 +193,6 @@ export function useAutomationListClock(): number {
   return now;
 }
 
-/**
- * The "New automation" dialog with its form and risk-warning state. Every open starts from a
- * fresh draft on the first project. The caller supplies its create mutation, so the page and
- * the rail panel each keep their own pending state.
- */
 export function AutomationCreateDialog({
   open,
   onOpenChange,
@@ -249,7 +216,6 @@ export function AutomationCreateDialog({
     ReadonlySet<AutomationDraftWarningId>
   >(() => new Set());
 
-  // Reset to a fresh draft each time the dialog opens.
   const [wasOpen, setWasOpen] = useState(open);
   if (open !== wasOpen) {
     setWasOpen(open);

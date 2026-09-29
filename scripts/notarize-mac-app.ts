@@ -83,4 +83,3 @@ runMacCommand(
   ["--verify", "--deep", "--strict", "--verbose=4", app],
   "app-final-signature-validation",
 );
-// Retain the archive, digests and submission ID with this exact packaging stage.

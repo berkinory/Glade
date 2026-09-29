@@ -1,15 +1,9 @@
-// FILE: AttachmentRemoveButton.tsx
-// Purpose: Shared circular "remove" affordance for composer attachments. One primitive
-//   keeps dismiss behavior consistent while each attachment shape chooses placement.
-// Layer: Chat composer presentation
-
 import { XIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 
 export type AttachmentRemoveButtonSize = "sm" | "md";
 type AttachmentRemoveButtonPlacement = "corner" | "center-right";
-// `solid` is the high-contrast badge on image/file attachment tiles; `ghost` is
-// the subtle dismiss tucked inside compact count pills (selections, comments).
+
 type AttachmentRemoveButtonTone = "solid" | "ghost";
 
 const ATTACHMENT_REMOVE_BUTTON_SIZE_STYLES: Record<
@@ -28,7 +22,7 @@ const ATTACHMENT_REMOVE_BUTTON_TONE_STYLES: Record<AttachmentRemoveButtonTone, s
 
 interface AttachmentRemoveButtonProps {
   onRemove: () => void;
-  /** Accessible label, e.g. `Remove screenshot.png`. */
+
   label: string;
   size?: AttachmentRemoveButtonSize;
   placement?: AttachmentRemoveButtonPlacement;
@@ -59,7 +53,6 @@ export function AttachmentRemoveButton({
         className,
       )}
       aria-label={label}
-      // Keep composer focus put when dismissing from the attachments row.
       onMouseDown={(event) => event.preventDefault()}
       onClick={onRemove}
     >

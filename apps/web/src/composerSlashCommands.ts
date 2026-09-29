@@ -78,10 +78,6 @@ function expandProviderNativeSlashCommandNames(
   return [...expandedNames];
 }
 
-/**
- * Providers where app-owned /review (target picker + structured prompt) must
- * win over listing a native "review" command.
- */
 function providerUsesAppOwnedReviewSlashCommand(provider: ProviderKind): boolean {
   return provider === "codex";
 }
@@ -97,9 +93,6 @@ function shouldKeepBuiltInSlashCommandDespiteNativeCollision(
     command === "computer-use" ||
     command === "export" ||
     command === "feedback" ||
-    // /fork is app-owned everywhere: it creates a Glade thread with fork
-    // lineage (native session forking per provider), which a provider-native
-    // "fork" text command cannot do.
     command === "fork" ||
     command === "goal" ||
     command === "rename" ||
@@ -128,10 +121,6 @@ export function shouldHideProviderNativeCommandFromComposerMenu(
   );
 }
 
-/**
- * True when a discovered native "review" command should be sent as plain
- * `/review` text. Codex uses the app review UX instead (#218).
- */
 export function providerSupportsTextNativeReviewCommand(
   provider: ProviderKind,
   nativeCommandNames: ReadonlyArray<{ readonly name: string } | string>,
@@ -378,7 +367,6 @@ export function parseFastSlashCommandAction(text: string): FastSlashCommandActio
   return "invalid";
 }
 
-/** Prefilled objectives are literal even when they match a `/goal` control word. */
 export function buildGoalSlashCommandPrompt(goal: string): string {
   return `/goal -- ${goal.trim()}`;
 }
@@ -466,10 +454,6 @@ export function getAvailableComposerSlashCommands(input: {
           "automation",
         ]
       : [
-          // /fork is app-level for the same reason — it creates a Glade thread with fork
-          // lineage (native session forking under the hood), not a provider text command.
-          // /export is app-level too — Glade owns the thread transcript, so the download
-          // happens in the app rather than being forwarded to Claude's native /export.
           ...(input.canOfferForkCommand ? (["fork"] as const) : []),
           ...(input.canOfferExportCommand ? (["export"] as const) : []),
           "goal",
@@ -510,7 +494,6 @@ export function buildSlashReviewComposerPrompt(args: string): string {
   return `${basePrompt}\nFocus especially on: ${trimmedArgs}`;
 }
 
-// `/fork` optionally accepts only an explicit target shorthand like `/fork local`.
 export function parseForkSlashCommandArgs(args: string): {
   target: ForkSlashCommandTarget | null;
   invalid: boolean;

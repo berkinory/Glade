@@ -104,8 +104,6 @@ export function isUpdateVersionNewer(currentVersion: string, candidateVersion: s
   if (candidate.minor !== current.minor) return candidate.minor > current.minor;
   if (candidate.patch !== current.patch) return candidate.patch > current.patch;
 
-  // Both prereleases of the same core: compare semver identifiers so a
-  // prerelease train can advance within one base version (beta.2 > beta.1).
   if (current.prerelease !== null && candidate.prerelease !== null) {
     const candidateParts = candidate.prerelease.split(".");
     const currentParts = current.prerelease.split(".");
@@ -128,12 +126,9 @@ export function isUpdateVersionNewer(currentVersion: string, candidateVersion: s
     return false;
   }
 
-  // Treat stable as newer than the same prerelease, but never reinstall the
-  // exact same stable version from a stale updater cache.
   return current.prerelease !== null && candidate.prerelease === null;
 }
 
-/** Production accepts stable versions; Dev does not use the packaged updater. */
 export function isUpdateVersionAllowedForFlavor(
   candidateVersion: string,
   flavor: GladeDesktopFlavor,
@@ -165,7 +160,6 @@ export function shouldCheckForUpdatesOnForeground(args: {
     return false;
   }
 
-  // Ignore fleeting blur/focus churn from window transitions and native dialogs.
   if (foregroundedAtMs - backgroundedAtMs < minBackgroundDurationMs) {
     return false;
   }

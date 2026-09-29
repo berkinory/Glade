@@ -1,7 +1,3 @@
-// FILE: ProvidersSettingsPanel.tsx
-// Purpose: Own provider picker, update, and CLI installation settings workflows.
-// Layer: Settings panel
-
 import {
   PROVIDER_DISPLAY_NAMES,
   type ProviderKind,
@@ -484,8 +480,7 @@ function ProviderToolRow(props: {
     ? shouldPromptProviderUpdate(props.providerStatus) &&
       (showProviderUpdateStatus || updateAdvisory?.status === "unknown")
     : false;
-  // Self-updating CLIs never report a latest version, so the update stays available
-  // inside the panel rather than as a header badge that can never be satisfied.
+
   const showSelfManagedUpdate = props.providerStatus
     ? shouldOfferProviderUpdateAction(props.providerStatus) &&
       !isProviderLatestVersionKnowable(props.providerStatus)

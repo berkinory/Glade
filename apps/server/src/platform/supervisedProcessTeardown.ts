@@ -1,7 +1,3 @@
-// FILE: supervisedProcessTeardown.ts
-// Purpose: Owns graceful, forced, and verified teardown for provider/runtime process trees.
-// Layer: Server platform runtime
-
 import { didProcessFailToSpawn } from "@glade/shared/processRuntime";
 
 import {
@@ -28,7 +24,7 @@ const FINAL_PROOF_INSPECTION_MAX_MS = 250;
 
 export interface SupervisedProcessTeardownInput {
   readonly rootPid: number;
-  /** Must resolve only after the owned root process has emitted its terminal exit. */
+
   readonly rootExited: Promise<unknown>;
   readonly termGraceMs?: number;
   readonly forceExitMs?: number;
@@ -47,7 +43,7 @@ export interface ProcessExitHandle {
 export interface SupervisedProcessTeardownResult {
   readonly escalated: boolean;
   readonly signalErrors: ReadonlyArray<Error>;
-  /** Only true when the initial descendant snapshot completed before root exit. */
+
   readonly capturedBeforeRootExit?: boolean;
 }
 
@@ -58,7 +54,7 @@ export interface SupervisedProcessTeardownDependencies {
   readonly inspectProcessTree: (
     tree: CapturedProcessTree,
   ) => Promise<CapturedProcessTreeInspection>;
-  /** Fresh native liveness observation, taken after the descendant snapshot. */
+
   readonly isRootRunning: (rootPid: number) => Promise<boolean>;
   readonly now: () => number;
   readonly sleep: (milliseconds: number) => Promise<void>;
@@ -115,9 +111,9 @@ export async function teardownChildProcessTree(
   teardownProcessTree: typeof teardownProviderProcessTree = teardownProviderProcessTree,
 ): Promise<SupervisedProcessTeardownResult> {
   if (process.pid === undefined) {
-    // A witnessed Node spawn error proves there was no process tree to retire.
-    // Missing cwd/executable must not become a second, permanent cleanup failure.
-    // Unknown PID-less handles still fail closed below.
+    // A witnessed Node spawn error proves there was no process tree to retire. Missing cwd/executable
+    // must not become a second, permanent cleanup failure. Unknown PID-less handles still fail closed
+    // below.
     if (didProcessFailToSpawn(process)) return { escalated: false, signalErrors: [] };
     throw new Error("Cannot prove process exit because the spawned process has no PID.");
   }
@@ -127,10 +123,6 @@ export async function teardownChildProcessTree(
   });
 }
 
-/**
- * Owns the complete process-tree stop sequence. Success means the exact root
- * emitted exit and every identity-matched descendant captured before TERM is gone.
- */
 export async function teardownProviderProcessTree(
   input: SupervisedProcessTeardownInput,
   dependencies: Partial<SupervisedProcessTeardownDependencies> = {},
@@ -194,17 +186,13 @@ export async function teardownProviderProcessTree(
     () => {
       rootExited = true;
     },
-    () => {
-      // A rejected watcher is not evidence that the owned process exited.
-    },
+    () => {},
   );
 
   try {
     const tree = await captureTree(input.rootPid);
-    // PPID traversal after root exit can miss reparented descendants. Cleanup
-    // can still retire the observed tree, but callers must not treat that as
-    // proof that an interrupted provider command had no surviving side effects.
-    // The exit promise alone is insufficient: native exit can precede its callback.
+    // Cleanup can still retire the observed tree, but callers must not treat that as proof that an
+    // interrupted provider command had no surviving side effects.
     const rootRunningAfterCapture =
       !rootExited &&
       (await (
@@ -298,9 +286,6 @@ export async function teardownProviderProcessTree(
     let forceTree = tree;
     let forceDescendantsVerified = false;
     if (platform === "win32" && rootExited && tree.captureComplete !== false) {
-      // When the Windows root is already gone, taskkill /T can no longer own
-      // traversal. Re-snapshot through CIM immediately before escalation and
-      // pass only descendants whose PID, command, and creation identity match.
       const forceInspection = await inspectTree(
         tree,
         positiveDuration(input.forceExitMs, DEFAULT_FORCE_EXIT_MS),
@@ -312,15 +297,12 @@ export async function teardownProviderProcessTree(
         };
         forceDescendantsVerified = true;
       } else {
-        // The root PID may already have been reused and descendant identities
-        // are unknown. Do not target stale numeric PIDs; the proof step below
-        // will fail closed with ProviderProcessExitUnprovenError.
+        // The root PID may already have been reused and descendant identities are unknown. Do not target
+        // stale numeric PIDs; the proof step below will fail closed with ProviderProcessExitUnprovenError.
         forceTree = { descendants: [], captureComplete: false };
       }
     }
 
-    // Once the root has exited, never signal its numeric PID again: it may have
-    // been reused. Force only descendants verified immediately before escalation.
     signal("SIGKILL", !rootExited, forceTree, forceDescendantsVerified);
     const forced = await waitForExitProof(
       positiveDuration(input.forceExitMs, DEFAULT_FORCE_EXIT_MS),

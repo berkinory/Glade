@@ -1,14 +1,5 @@
 import type { ThreadId } from "@glade/contracts";
 import { SourceControlToolbar } from "./SourceControlToolbar";
-// FILE: GitPanel.tsx
-// Purpose: Source-control staging pane for the right dock (staged/unstaged lists + per-file diff).
-// Layer: Chat right-dock UI
-// Depends on: gitReactQuery (diff queries + stage/unstage mutations), diffRendering (patch parsing),
-//             @pierre/diffs FileDiff for the per-file viewer.
-//
-// The pane receives the thread's resolved workspace root and lists files from Git status.
-// It loads a patch only for the selected file. Stage/unstage are index mutations routed through
-// GitCore; on settle we invalidate the per-cwd git caches so both lists stay in sync.
 
 import { type FileDiffMetadata } from "@pierre/diffs/react";
 import { useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -52,7 +43,6 @@ import { selectGitFiles, type GitFileSelection, type GitFileSectionId } from "./
 
 type GitPanelSection = GitFileSectionId;
 
-// Diff preview is keyed by section + path so it survives stage/unstage moves.
 interface SelectedFile {
   section: GitPanelSection;
   path: string;
@@ -82,9 +72,6 @@ export function GitPanel(props: {
   const [fileSelection, setFileSelection] = useState<GitFileSelection | null>(null);
   const [reverting, setReverting] = useState<readonly SourceFile[] | null>(null);
 
-  // No fixed polling: turn-driven file changes already push-invalidate the
-  // working-tree-diff cache (see __root.tsx), and focus + the Refresh button +
-  // post-mutation invalidation cover the rest. This keeps the pane cheap.
   const filesQuery = useQuery(gitSourceControlFilesQueryOptions(cwd));
   const stagedFiles = filesQuery.data?.staged ?? [];
   const unstagedFiles = filesQuery.data?.unstaged ?? [];
@@ -232,9 +219,6 @@ export function GitPanel(props: {
     void queryClient.invalidateQueries({ queryKey: gitQueryKeys.workingTreeDiffs(cwd) });
   };
 
-  // Resolve the selected file by path, preferring its stored section but falling
-  // back to the other list so the diff (and row highlight) follow a file across a
-  // stage/unstage move instead of silently clearing.
   let selectedResolved: { section: GitPanelSection; file: SourceFile } | null = null;
   if (selected) {
     const findInSection = (section: GitPanelSection) =>

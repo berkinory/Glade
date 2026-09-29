@@ -1,8 +1,4 @@
 import { useCallback } from "react";
-// FILE: EnvironmentProjectInstructionsSection.tsx
-// Purpose: Environment-panel section for project-scoped instructions that seed thread notes.
-// Layer: Environment panel section
-// Exports: EnvironmentProjectInstructionsSection
 
 import { useEffect, useRef, useState, type ChangeEventHandler } from "react";
 import { THREAD_NOTES_MAX_CHARS, type ProjectId } from "@glade/contracts";
@@ -106,7 +102,7 @@ function useProjectInstructionsAutosave({
       }
       return;
     }
-    // Keep the project id with the pending payload; active projects can switch before debounce fires.
+
     pendingSaveRef.current = {
       projectId: currentProjectId,
       value: nextValue,

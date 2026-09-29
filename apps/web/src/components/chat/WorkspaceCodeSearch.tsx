@@ -27,8 +27,7 @@ export function WorkspaceCodeSearch(props: {
     ...projectSearchContentQueryOptions({ cwd: props.cwd, ...request, limit: 100 }),
     retry: false,
   });
-  // Finish the bounded scan before starting the latest query; intermediate
-  // keystrokes never queue additional full-workspace scans.
+
   useEffect(() => {
     if (
       !result.isFetching &&

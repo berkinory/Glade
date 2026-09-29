@@ -3,7 +3,6 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { resolveCodexGeneratedImagesRoot } from "../codexGeneratedImages.ts";
 
-/** Browser proof uses the existing durable image store and chat image allowlist. */
 export async function saveBrowserProof(
   threadId: string,
   data: string,

@@ -1,9 +1,3 @@
-// FILE: KanbanProjectBoardView.tsx
-// Purpose: Full 3-column board for one project — drag a Draft card onto In Progress to
-//          dispatch its prompt, or reorder drafts; other moves are derived-only.
-// Layer: UI component (owns the board DndContext)
-// Exports: KanbanProjectBoardView
-
 import {
   DndContext,
   DragOverlay,
@@ -43,7 +37,7 @@ function resolveDropColumn(board: KanbanProjectBoard, overId: string): KanbanCol
   if (columnDrop) {
     return columnDrop.projectId === board.projectId ? columnDrop.column : null;
   }
-  // Sortable draft cards are the only non-column droppables on this board.
+
   return board.draft.some((card) => card.cardId === overId) ? "draft" : null;
 }
 
@@ -77,8 +71,7 @@ export function KanbanProjectBoardView({
   const refreshProviderStatuses = useRefreshProviderStatusesNow();
   const setDraftOrder = useKanbanUiStore((state) => state.setDraftOrder);
   const [activeCard, setActiveCard] = useState<KanbanCard | null>(null);
-  // A completed drag still emits a click on the source card; swallow exactly that one
-  // so dropping a card never also opens its chat.
+
   const suppressClickRef = useRef(false);
 
   const sensors = useSensors(
@@ -107,8 +100,7 @@ export function KanbanProjectBoardView({
       });
       return;
     }
-    // The dispatch marks the optimistic overlay synchronously, so the card jumps
-    // to In Progress before any round-trip; failure results revert it.
+
     const result = await dispatchKanbanDraftCard({
       card,
       defaultProvider: settings.defaultProvider,
@@ -160,8 +152,6 @@ export function KanbanProjectBoardView({
   };
 
   const releaseClickSuppression = () => {
-    // The trailing click (if any) fires synchronously after dragend; release on the
-    // next tick so regular clicks keep working when the drop happens off-card.
     window.setTimeout(() => {
       suppressClickRef.current = false;
     }, 0);
@@ -193,16 +183,15 @@ export function KanbanProjectBoardView({
           ? null
           : board.draft.some((draftCard) => draftCard.cardId === overId)
             ? reorderDraftCardIds(visibleCardIds, activeId, overId)
-            : // Dropped on the column body itself: move to the end.
-              reorderDraftCardIds(visibleCardIds, activeId, visibleCardIds.at(-1) ?? activeId);
+            : reorderDraftCardIds(visibleCardIds, activeId, visibleCardIds.at(-1) ?? activeId);
       if (nextOrder) {
         setDraftOrder(board.projectId, nextOrder);
       }
       return;
     }
     if (targetColumn === "inProgress") {
-      // A drag that started before the board re-derived could re-drop a card whose
-      // dispatch is still settling; a second drop must not queue another turn.
+      // A drag that started before the board re-derived could re-drop a card whose dispatch is still
+      // settling; a second drop must not queue another turn.
       if (useKanbanUiStore.getState().optimisticDispatchByThreadId[card.threadId]) {
         return;
       }

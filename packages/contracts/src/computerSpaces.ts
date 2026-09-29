@@ -2,7 +2,6 @@ import { Schema } from "effect";
 
 export const COMPUTER_SPACES_MAX_LENGTH = 256;
 
-/** WindowServer IDs are session-local integers, not Mission Control positions. */
 export const ComputerSpaceId = Schema.Int.check(
   Schema.isGreaterThan(0),
   Schema.isLessThanOrEqualTo(Number.MAX_SAFE_INTEGER),
@@ -13,7 +12,7 @@ const SpaceIdentity = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLen
 
 export const ComputerSpace = Schema.Struct({
   id: ComputerSpaceId,
-  /** A stable identity is required before reserving a session-local numeric ID. */
+
   uuid: Schema.NullOr(SpaceIdentity),
   displayId: SpaceIdentity,
   kind: Schema.Literals(["desktop", "fullscreen", "unknown"]),
@@ -23,13 +22,12 @@ export type ComputerSpace = typeof ComputerSpace.Type;
 
 export const ComputerSpaceInventory = Schema.Struct({
   spaces: Schema.Array(ComputerSpace).check(Schema.isMaxLength(COMPUTER_SPACES_MAX_LENGTH)),
-  /** False when any display, identity, or current-Space reading is incomplete. */
+
   complete: Schema.Boolean,
   source: Schema.Literal("macos-managed-spaces"),
 });
 export type ComputerSpaceInventory = typeof ComputerSpaceInventory.Type;
 
-/** A Glade task reservation of a user-designated existing Space, not OS ownership. */
 export interface ComputerSpaceReservation {
   readonly threadId: string;
   readonly turnId: string | null;

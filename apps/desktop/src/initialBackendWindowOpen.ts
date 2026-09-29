@@ -1,8 +1,3 @@
-// FILE: initialBackendWindowOpen.ts
-// Purpose: Coordinates first packaged-window reveal without waiting on backend readiness.
-// Layer: Desktop startup utility
-// Exports: openInitialBackendWindow
-
 type BackendWindowReadySource = "listening" | "http";
 
 export interface InitialBackendWindowOpenOptions {
@@ -25,8 +20,6 @@ export function openInitialBackendWindow(options: InitialBackendWindowOpenOption
   }
 
   if (!options.hasExistingWindow()) {
-    // The packaged renderer is served from local files, so surface the window
-    // while the backend finishes startup instead of leaving macOS menu-bar-only.
     options.createWindow();
     options.writeLog("bootstrap main window created");
   }

@@ -1,11 +1,3 @@
-// FILE: DockTerminalPane.tsx
-// Purpose: Render the thread's terminal workspace inside the right dock.
-// Layer: Chat right-dock UI
-// Depends on: useTerminalSurfaceController (shared store wiring), ThreadTerminalDrawer.
-//
-// Uses the thread's existing terminal sessions, including sessions opened before
-// the bottom drawer was retired.
-
 import { type ProjectId, type ThreadId } from "@glade/contracts";
 import { resolveThreadWorkspaceCwd } from "@glade/shared/threadEnvironment";
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
@@ -25,8 +17,7 @@ import ThreadTerminalDrawer from "../ThreadTerminalDrawer";
 function DockTerminalPane(props: {
   hostThreadId: ThreadId;
   projectId: ProjectId | null;
-  // When false the pane stays mounted but hidden (another dock tab is active),
-  // so the xterm runtime sleeps its visual work without detaching its DOM.
+
   isActive?: boolean;
   onClosePanel: () => void;
 }) {
@@ -71,8 +62,6 @@ function DockTerminalPane(props: {
     readComposerTarget,
   );
 
-  // A dock terminal pane normally shows a live terminal. An `exit` is final,
-  // though: do not recreate a replacement terminal just as the panel closes.
   useEffect(() => {
     if (!props.isActive || terminalState.terminalOpen || closingFinalTerminalRef.current) {
       return;

@@ -1,4 +1,3 @@
-// Keep Apple submission state beside the exact payload, never in shared caches.
 import { spawn, spawnSync } from "node:child_process";
 import { hashFile } from "./file-digest.ts";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -12,8 +11,8 @@ export interface NotarySubmission {
   stapledSha256?: string;
 }
 export function appNotaryStateDirectory(app: string): string {
-  // Bundle discovery treats a directory ending in .app as executable content.
-  // Retained submission state must never masquerade as another app bundle.
+  // Bundle discovery treats a directory ending in .app as executable content. Retained submission
+  // state must never masquerade as another app bundle.
   return join(dirname(app), `.app-notary-${basename(app)}-state`);
 }
 function reusableSubmission(state: NotarySubmission, digest: string): boolean {
@@ -92,8 +91,6 @@ export async function notarizeMacPayload(
   let waitError: unknown;
   try {
     await new Promise<void>((resolve, reject) => {
-      // Human-readable output is deliberately inherited: --output-format json
-      // suppresses progress. A failed wait keeps Apple's submission ID intact.
       const child = spawn("xcrun", ["notarytool", "wait", state.id, ...auth], { stdio: "inherit" });
       child.once("error", reject);
       child.once("exit", (code) =>
@@ -111,7 +108,7 @@ export async function notarizeMacPayload(
   } catch (error) {
     throw waitError ?? error;
   }
-  // Save Apple's diagnostics on success and failure, without credentials.
+
   const logPath = join(stateDir, `${state.id}.log.json`);
   try {
     runMacCommand(

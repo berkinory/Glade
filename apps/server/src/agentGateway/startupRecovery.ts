@@ -18,11 +18,6 @@ class StartupRecoveryError extends Error {
   readonly _tag = "StartupRecoveryError";
 }
 
-/**
- * Compensate durable gateway operations that were interrupted by a server
- * restart. Recovery is deliberately conservative: a worktree is touched only
- * when its post-creation ownership proof still matches the live Git state.
- */
 export function recoverInterruptedAgentGatewayOperations(input: {
   readonly operationRepository: Pick<
     AgentGatewayOperationRepositoryShape,
@@ -175,8 +170,7 @@ export function recoverInterruptedAgentGatewayOperations(input: {
                           yield* input.git.removeWorktree({
                             cwd: entry.workspaceRoot,
                             path: plannedWorktreePath,
-                            // A verified baseline may intentionally contain copied local
-                            // changes, so Git requires force even though ownership is proven.
+
                             force: true,
                           });
                           if (newBranch !== null) {

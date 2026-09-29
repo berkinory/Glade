@@ -1,8 +1,3 @@
-// FILE: TraitsPicker.tsx
-// Purpose: Renders composer trait controls for effort, thinking, and fast mode across menu surfaces.
-// Layer: Chat composer presentation
-// Depends on: shared trait resolution helpers, provider model option updates, and shared menu primitives.
-
 import { type ProviderKind, type ProviderModelDescriptor, type ThreadId } from "@glade/contracts";
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronDownIcon, FastModeIcon, FastModeOutlineIcon, SettingsIcon } from "~/lib/icons";
@@ -32,8 +27,6 @@ import { useComposerTraitCommit } from "./useComposerTraitCommit";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { ShortcutKbd } from "../ui/shortcut-kbd";
 
-// Mirrors the trigger label assembly so callers (e.g. the composer footer
-// width planner) can measure the summary without rendering the picker.
 export function resolveTraitsTriggerSummary(options: {
   provider: ProviderKind;
   model: string | null | undefined;
@@ -61,19 +54,17 @@ export function resolveTraitsTriggerSummary(options: {
     contextWindowOptions,
     defaultContextWindow,
   } = selection;
-  // Providers whose only trait control is the fast toggle surface it as the
-  // primary label ("Fast"/"Default") instead of the appended badge.
+
   const isFastOnlyControl =
     supportsComposerFastModeControl(selection) &&
     effortLevels.length === 0 &&
     thinkingEnabled === null &&
     contextWindowOptions.length <= 1;
-  // The shared status ladder (ultrathink → effort → thinking) covers every model
-  // that exposes those controls; the fast-only fallback only applies when it does not.
+
   const primaryLabel =
     resolveComposerTraitStatusLabel(selection) ??
     (isFastOnlyControl ? (fastModeEnabled ? "Fast" : "Default") : null);
-  // Only departures from the default context window earn a label.
+
   const contextWindowLabel =
     contextWindowOptions.length > 1 && contextWindow !== defaultContextWindow
       ? (contextWindowOptions.find((option) => option.value === contextWindow)?.label ?? null)
@@ -91,11 +82,6 @@ export function resolveTraitsTriggerSummary(options: {
   };
 }
 
-// Compact icon toggle for fast mode. Outline zap (Central reversed set) = default
-// speed, filled zap (Central fill set) = fast mode on. Toggling keeps the menu
-// open so the state flip is visible in place. `tone="muted"` docks at the far
-// right of the Effort section header; `tone="accent"` is the slider card's
-// larger, accent-colored variant.
 export function FastModeToggle({
   enabled,
   onToggle,
@@ -149,11 +135,6 @@ interface TraitRadioOption {
   description?: string | null;
 }
 
-// Shared layout for one composer trait section: a labeled radio group whose rows
-// optionally show a "(default)" suffix and a right-side description tooltip.
-// `onSelectionComplete` runs on every row click (not just on value change) so
-// re-selecting the already-active option still closes the menu — a radio group's
-// `onValueChange` does not fire when the value is unchanged.
 function TraitRadioSection({
   label,
   labelTrailing,
@@ -226,8 +207,7 @@ export interface TraitsMenuContentProps {
   prompt: string;
   onPromptChange: (prompt: string) => void;
   includeFastMode?: boolean;
-  // Drop the Effort ladder and the Speed section; the slider card renders both
-  // itself and only needs the remaining trait sections (thinking, context, agent).
+
   excludeEffort?: boolean;
   modelOptions?: ProviderOptions | null | undefined;
   onSelectionComplete?: () => void;
@@ -267,22 +247,18 @@ const TraitsMenuContent = memo(function TraitsMenuContentImpl({
     { includeFastMode },
   );
   const supportsFastModeControl = supportsComposerFastModeControl({ caps, fastModeDescriptor });
-  // Fast mode rides the Effort header as a compact icon toggle whenever an
-  // effort section exists; fast-only models (no effort levels) keep the
-  // standalone radio section instead.
+
   const showsFastModeEffortToggle =
     includeFastMode && supportsFastModeControl && effortLevels.length > 0;
   const hasPriorContextWindowSection = thinkingEnabled !== null;
-  // Resolved up here rather than inline. React Compiler cannot lower a `??` in an object-key
-  // position, which would make it skip this component entirely.
+
   const contextWindowTraitId = contextWindowDescriptor?.id ?? "contextWindow";
   const hasPriorEffortSection = thinkingEnabled !== null || contextWindowOptions.length > 1;
   const hasPriorFastModeSection =
     thinkingEnabled !== null || effortLevels.length > 0 || contextWindowOptions.length > 1;
 
   const commitTraitOptions = useComposerTraitCommit({ threadId, provider, model, modelOptions });
-  // Commit a trait change and close the menu. Every section funnels here; the
-  // fast-mode header toggle passes `keepMenuOpen` so its state flip stays visible.
+
   const commitTrait = useCallback(
     (patch: Record<string, unknown>, options?: { keepMenuOpen?: boolean }) => {
       commitTraitOptions(patch);
@@ -293,10 +269,6 @@ const TraitsMenuContent = memo(function TraitsMenuContentImpl({
     [commitTraitOptions, onSelectionComplete],
   );
 
-  // Deliberately not wrapped in `useCallback`: its inputs all come out of one
-  // `getComposerTraitSelection` call, which React Compiler memoizes as a single scope, so no
-  // hand-written dependency list can match it and the validator refuses to compile the component at
-  // all. Letting the compiler own this memoization is what gets the whole file optimized.
   const handleEffortChange = (value: string) => {
     const plan = planComposerEffortChange({ provider, selection, prompt, value });
     if (!plan) return;
@@ -415,8 +387,7 @@ export const TraitsPicker = memo(function TraitsPicker({
   onOpenChange?: (open: boolean) => void;
   onSelectionCommitted?: () => void;
   shortcutLabel?: string | null;
-  // Icon-only trigger (gear + chevron) for narrow composers; the effort/context
-  // summary moves to title/sr-only.
+
   hideLabel?: boolean;
 }) {
   const includeFastMode = includeFastModeProp ?? true;

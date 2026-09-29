@@ -17,7 +17,7 @@ const BLAME_POPOVER_HEIGHT_PX = 116;
 export interface DiffLineBlameTarget {
   filePath: string;
   line: number;
-  /** Deleted lines live in the diff's base tree; everything else is the working tree. */
+
   side: "base" | "workingTree";
   left: number;
   top: number;
@@ -80,7 +80,7 @@ function BlameActionButton(props: { label: string; icon: ReactNode; onClick: () 
 export function DiffLineBlamePopover(props: {
   target: DiffLineBlameTarget;
   cwd: string | null;
-  /** The diff's base revision, used to blame deleted lines where they still exist. */
+
   base: DiffEditBaseRev;
   timestampFormat: TimestampFormat;
   onReferenceInChat: ((target: DiffLineBlameTarget) => void) | undefined;

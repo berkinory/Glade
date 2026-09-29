@@ -141,8 +141,6 @@ async function writeFileAtomically(
     null;
 
   try {
-    // O_EXCL prevents a pre-existing link at the temporary name. O_NOFOLLOW is
-    // an additional POSIX safeguard; Windows does not implement it reliably.
     const noFollow = process.platform === "win32" ? 0 : NodeFsConstants.O_NOFOLLOW;
     handle = await NodeFs.open(
       temporaryPath,
@@ -167,9 +165,6 @@ async function writeFileAtomically(
     }
     temporaryIdentity = { dev: temporaryHandleStat.dev, ino: temporaryHandleStat.ino };
     if (targetStat !== null) {
-      // open(2) always filters its requested mode through the process umask.
-      // Replacement writes must restore the existing file's exact permission
-      // bits through the already-validated descriptor before it is renamed.
       await handle.chmod(mode);
     }
     await handle.writeFile(contents);
@@ -177,11 +172,9 @@ async function writeFileAtomically(
     await handle.close();
     handle = undefined;
 
-    // Node does not expose portable openat/renameat APIs. Re-check the parent
-    // immediately before rename to narrow the remaining directory-swap race.
-    // Eliminating that final path-based rename race would require a native
-    // descriptor-relative rename primitive; do not weaken these checks as a
-    // substitute for one.
+    // Re-check the parent immediately before rename to narrow the remaining directory-swap race.
+    // Eliminating that final path-based rename race would require a native descriptor-relative rename
+    // primitive; do not weaken these checks as a substitute for one.
     const realParent = await resolveRealPathWithinRoot(realRoot, NodePath.dirname(filePath));
     const realTemporaryPathBeforeRename = await resolveRealPathWithinRoot(realRoot, temporaryPath);
     const temporaryPathStatBeforeRename = await NodeFs.stat(temporaryPath);
@@ -234,10 +227,6 @@ async function writeFileAtomically(
   }
 }
 
-// Outcome of canonicalizing a requested path against the workspace root:
-// "resolved" means the file exists inside the root, "outside" means it exists
-// but escapes the root (rejected), and "missing" means it does not exist (so a
-// bare/partial reference can fall back to the workspace index).
 type RealPathResolution =
   | { readonly status: "resolved"; readonly realPath: string }
   | { readonly status: "outside" }
@@ -248,9 +237,6 @@ const makeWorkspaceFileSystem = Effect.gen(function* () {
   const workspacePaths = yield* WorkspacePaths;
   const workspaceEntries = yield* WorkspaceEntries;
 
-  // Canonicalize a workspace-relative path and classify the outcome. ENOENT is
-  // surfaced as "missing" (not a hard failure) so callers can attempt the
-  // bare/partial-reference fallback; other realpath failures still error.
   const resolveInRootRealPath = (relativePath: string, absolutePath: string, cwd: string) =>
     Effect.tryPromise({
       try: async (): Promise<RealPathResolution> => {
@@ -329,11 +315,6 @@ const makeWorkspaceFileSystem = Effect.gen(function* () {
           input.cwd,
         );
 
-        // References often carry only a file's basename or a partial tail (e.g.
-        // `chatReferences.ts` for `apps/web/src/lib/chatReferences.ts`),
-        // which resolves to a non-existent path under the root. Fall back to a
-        // unique match in the tracked workspace index so the in-app viewer can
-        // still open it; ambiguous names stay unresolved and surface the error.
         if (resolution.status === "missing") {
           const fallbackRelativePath = yield* workspaceEntries
             .resolveFileBySuffix({ cwd: input.cwd, relativePath: input.relativePath })
@@ -383,8 +364,6 @@ const makeWorkspaceFileSystem = Effect.gen(function* () {
         realPath = resolution.realPath;
       }
 
-      // The requested path (not its resolved target) decides whether the file
-      // is a symlink, so editors can refuse to write through the link.
       const symlink = yield* Effect.promise(() =>
         NodeFs.lstat(target.absolutePath).then(
           (stat) => stat.isSymbolicLink(),
@@ -392,8 +371,6 @@ const makeWorkspaceFileSystem = Effect.gen(function* () {
         ),
       );
 
-      // Stat through the open handle so the size and the bytes come from the
-      // same file even if the path is swapped between the two calls.
       const { bytes, fileSize } = yield* Effect.tryPromise({
         try: async () => {
           const handle = await NodeFs.open(realPath, "r");
@@ -481,8 +458,7 @@ const makeWorkspaceFileSystem = Effect.gen(function* () {
     });
 
     const guardedWrite = input.expectedVersion !== undefined;
-    // Any save that knows the file's format re-encodes with it, so an
-    // unguarded overwrite keeps CRLF/BOM files in their original shape too.
+
     const textFormat =
       input.encoding !== undefined && input.lineEnding !== undefined && input.lineEnding !== "mixed"
         ? { encoding: input.encoding, lineEnding: input.lineEnding }
@@ -526,8 +502,6 @@ const makeWorkspaceFileSystem = Effect.gen(function* () {
           return "outside" as const;
         }
 
-        // Re-resolve after parent creation so existing targets and any links
-        // introduced concurrently are canonicalized before replacement.
         const finalRealTarget = await resolveRealPathForCreateWithinRoot(
           input.cwd,
           target.absolutePath,

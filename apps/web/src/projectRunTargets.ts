@@ -1,8 +1,3 @@
-// FILE: projectRunTargets.ts
-// Purpose: Choose the sidebar run command from saved scripts and discovered package scripts.
-// Layer: Web project-run logic
-// Exports: selectPrimaryProjectRunCommand and labels for sidebar run actions.
-
 import type { ProjectDiscoveredScriptTarget, ProjectScript } from "@glade/contracts";
 
 import { nextProjectScriptId, primaryProjectScript } from "./projectScripts";
@@ -71,11 +66,6 @@ export function selectPrimaryProjectRunCommand(input: {
   return null;
 }
 
-// Persists the command typed in the run dialog as the project's primary run
-// script, so the next launch defaults to the same command. Returns the updated
-// scripts array, or null when nothing needs to change (empty or identical
-// command). Mirrors `selectPrimaryProjectRunCommand`: a non-setup script is the
-// canonical holder of the run command.
 export function upsertProjectRunCommandScripts(input: {
   scripts: ProjectScript[];
   command: string;

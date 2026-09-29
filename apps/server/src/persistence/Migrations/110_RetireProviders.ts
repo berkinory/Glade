@@ -1,8 +1,6 @@
 import * as Effect from "effect/Effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 
-// Keep the original rows for recovery, but never replay a runtime or schedule
-// an automation through an adapter that no longer exists.
 export default Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
 

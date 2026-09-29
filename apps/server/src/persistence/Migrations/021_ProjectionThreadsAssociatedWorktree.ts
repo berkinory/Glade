@@ -1,7 +1,3 @@
-/**
- * Tracks the durable associated worktree path for threads so handoff can
- * return to the same workspace even after the thread is moved back to Local.
- */
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import * as Effect from "effect/Effect";
 

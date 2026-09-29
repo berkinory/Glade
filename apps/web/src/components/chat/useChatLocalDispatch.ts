@@ -35,9 +35,7 @@ export function useChatLocalDispatch({
 }: ChatLocalDispatchInput) {
   const [localDispatch, setLocalDispatch] = useState<LocalDispatchSnapshot | null>(null);
   const failedWorktreeSetupDispatchStartedAtRef = useRef<string | null>(null);
-  // Live handle to the in-flight send's worktree preparation, resolved by the
-  // setup card's Cancel / Work locally buttons. One send at a time can prepare
-  // a worktree (the composer is send-busy while it runs), so a single ref is safe.
+
   const worktreeSetupResolutionRef = useRef<WorktreeSetupResolution | null>(null);
   const [worktreeSetupPendingAction, setWorktreeSetupPendingAction] =
     useState<WorktreeSetupResolutionAction | null>(null);
@@ -127,9 +125,6 @@ export function useChatLocalDispatch({
     setLocalDispatch(null);
   }, []);
 
-  // Clears only the setup stepper from the dispatch marker: after "Work
-  // locally" the send continues (composer stays busy, Thinking shimmer takes
-  // over) but the worktree card animates out.
   const clearLocalDispatchWorktreeSetup = useCallback(() => {
     setLocalDispatch((current) =>
       current?.worktreeSetup ? { ...current, worktreeSetup: null } : current,
@@ -145,14 +140,9 @@ export function useChatLocalDispatch({
     setWorktreeSetupPendingAction(action);
   }, []);
 
-  // The dispatch marker normally clears when the thread stream echoes the sent
-  // turn. Once the turn RPC has resolved the server owns the turn, so a stream
-  // that never echoes (dead subscription, lost event) must not lock the
-  // composer forever: this fallback force-clears the marker after a bound. The
-  // startedAt match keeps a stale timer from clearing a newer dispatch, and an
-  // already-acknowledged dispatch is left alone — the send spinner has
-  // released, and the awaiting-turn bridge legitimately keeps `localDispatch`
-  // alive until takeover or its own fail-open bound.
+  // Once the turn RPC has resolved the server owns the turn, so a stream that never echoes (dead
+  // subscription, lost event) must not lock the composer forever: this fallback force-clears the
+  // marker after a bound.
   const localDispatchStartedAtRef = useRef<string | null>(null);
   useEffect(() => {
     localDispatchStartedAtRef.current = localDispatch?.startedAt ?? null;
@@ -163,10 +153,6 @@ export function useChatLocalDispatch({
   }, [serverAcknowledgedLocalDispatch]);
   const localDispatchAckFallbackTimeoutRef = useRef<number | null>(null);
   const armLocalDispatchAckFallback = useCallback((threadIdForSend: ThreadId) => {
-    // The turn RPC has resolved, so the server provably owns a turn. Re-arm
-    // the cross-component watchdog marker here: pre-dispatch work (worktree
-    // creation, attachment uploads) can outlive the marker's age cap, and this
-    // is the moment its clock should restart.
     markPendingTurnDispatch(threadIdForSend);
     const armedStartedAt = localDispatchStartedAtRef.current;
     if (armedStartedAt === null) {
@@ -198,8 +184,6 @@ export function useChatLocalDispatch({
     [],
   );
 
-  // Fallback cleanup for a failed worktree setup: clears the dispatch after the
-  // error hold unless a newer dispatch already replaced it.
   const scheduleFailedWorktreeSetupDispatchReset = useCallback(() => {
     const failedDispatchStartedAt = failedWorktreeSetupDispatchStartedAtRef.current;
     window.setTimeout(() => {
@@ -223,9 +207,8 @@ export function useChatLocalDispatch({
     if (!turnTakenOver) {
       return;
     }
-    // A failed worktree setup would otherwise reset in the same commit that
-    // painted the error (thread errors count as takeover), so hold the
-    // row briefly before letting it animate out.
+    // A failed worktree setup would otherwise reset in the same commit that painted the error (thread
+    // errors count as takeover), so hold the row briefly before letting it animate out.
     if (localDispatchWorktreeSetupFailed) {
       const failedDispatchStartedAt = localDispatch?.startedAt;
       if (!failedDispatchStartedAt) {
@@ -254,8 +237,8 @@ export function useChatLocalDispatch({
     turnTakenOver,
   ]);
 
-  // Fail-open: if takeover never arrives, clear the awaiting-turn bridge so
-  // Thinking cannot stick forever. Skipped while worktree setup is active.
+  // Fail-open: if takeover never arrives, clear the awaiting-turn bridge so Thinking cannot stick
+  // forever. Skipped while worktree setup is active.
   useEffect(() => {
     if (!localDispatch || turnTakenOver || localDispatch.worktreeSetup) {
       return;

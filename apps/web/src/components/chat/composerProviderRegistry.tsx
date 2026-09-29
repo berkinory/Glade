@@ -1,8 +1,3 @@
-// FILE: composerProviderRegistry.tsx
-// Purpose: Normalizes provider-specific composer state for display and dispatch.
-// Layer: Chat composer orchestration
-// Depends on: shared model helpers and runtime model discovery metadata.
-
 import {
   type ModelSlug,
   type ProviderKind,

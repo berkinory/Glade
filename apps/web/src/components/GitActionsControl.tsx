@@ -1,8 +1,3 @@
-// FILE: GitActionsControl.tsx
-// Purpose: Render the chat-header git action control, commit dialog, and action toasts.
-// Layer: Header action control
-// Depends on: git React Query hooks, native shell bridges, and shared picker/menu primitives.
-
 import { DEFAULT_GIT_TEXT_GENERATION_MODEL } from "@glade/contracts";
 import type {
   GitActionProgressEvent,
@@ -109,16 +104,13 @@ interface GitActionsControlProps {
   gitCwd: string | null;
   activeThreadId: ThreadId | null;
   hideQuickActionLabel?: boolean;
-  // `header` renders the split quick-action button; `panel` collapses git actions into
-  // an Environment row + dropdown, promoting Pull as the primary row when behind upstream.
+
   variant?: "header" | "panel";
-  // `always` (default) keeps the control mounted. `pull-available` hides the header
-  // control unless Pull is the current action or a pull is already running — used
-  // next to Hand off / Add action while Environment owns the rest of git actions.
+
   visibleWhen?: "always" | "pull-available";
-  // Lets a parent capture "run commit & push for this instance's repo" so a global
-  // keyboard shortcut can trigger it without duplicating the action logic. Called with
-  // `null` on unmount/dependency change so a stale trigger never lingers.
+  // Lets a parent capture "run commit & push for this instance's repo" so a global keyboard shortcut
+  // can trigger it without duplicating the action logic. Called with `null` on unmount/dependency
+  // change so a stale trigger never lingers.
   onRegisterCommitAndPushTrigger?: ((trigger: (() => void) | null) => void) | undefined;
 }
 
@@ -163,9 +155,6 @@ interface RunGitActionWithToastInput {
   afterSuccess?: (result: GitRunStackedActionResult) => void;
 }
 
-// Overrides captured when the Create PR dialog opens from a surface with a
-// pre-resolved git status (e.g. the post-push toast CTA); null means "open
-// against the live status".
 interface CreatePrDialogState {
   statusOverride: GitStatusResult | null;
   statusOverrideSource: GitStatusResult | null;
@@ -181,7 +170,6 @@ interface GitPickerMenuItem {
   onSelect: () => void;
 }
 
-// Keep "/" literal in branch names; GitHub compare URLs expect it unescaped.
 function encodeBranchForCompareUrl(branch: string): string {
   return branch.split("/").map(encodeURIComponent).join("/");
 }
@@ -200,8 +188,6 @@ function resolveProgressDescription(progress: ActiveGitActionProgress): string |
   return formatElapsedDescription(progress.hookStartedAtMs ?? progress.phaseStartedAtMs);
 }
 
-// Map a header quick action onto its shared glyph name; null falls back to a hint icon.
-// Every push-family action collapses to "push" so the button matches the picker rows.
 function resolveGitQuickActionGlyph(quickAction: GitQuickAction): GitGlyphName | null {
   if (quickAction.kind === "open_pr") return "pr";
   if (quickAction.kind === "run_pull") return "sync";
@@ -219,10 +205,6 @@ function GitQuickActionIcon({ quickAction }: { quickAction: GitQuickAction }) {
   return <InfoIcon className={GIT_ACTION_ICON_CLASS} />;
 }
 
-// The commit-and-push behavior moves between menu items with git state: on a feature
-// branch with pending changes it is the `commit_push` item, while on the default branch
-// (or with ahead-only commits) it lives under the `push` item. Both the panel row's
-// enabled state and the global shortcut resolve their target through this one rule.
 function findRunnableCommitPushMenuItem(items: GitActionMenuItem[]): GitActionMenuItem | null {
   return (
     items.find((item) => (item.id === "commit_push" || item.id === "push") && !item.disabled) ??
@@ -255,7 +237,7 @@ export default function GitActionsControl({
   const isPanel = variant === "panel";
   const createBranchNameFieldId = useId();
   const { settings } = useAppSettings();
-  // Manual memoization kept: this file does not compile under React Compiler (see compile-report).
+
   const providerOptions = useMemo(() => getProviderStartOptions(settings), [settings]);
   const gitTextGenerationModelSelection = useMemo(
     (): ModelSelection => ({
@@ -264,8 +246,7 @@ export default function GitActionsControl({
     }),
     [settings.textGenerationModel, settings.textGenerationProvider],
   );
-  // Shell-only slice: the full derived Thread gets a new reference on every
-  // streamed delta, which re-rendered this always-mounted control per token.
+
   const activeThread = useStore(
     useMemo(() => createThreadGitActionsMetadataSelector(activeThreadId), [activeThreadId]),
   );
@@ -301,12 +282,11 @@ export default function GitActionsControl({
     gitBranchesQueryOptions(gitCwd),
   );
   const branchList = branchListData ?? null;
-  // Default to true while loading so we don't flash init controls.
+
   const isRepo = branchList?.isRepo ?? true;
   const hasOriginRemote = branchList?.hasOriginRemote ?? false;
   const currentBranch = branchList?.branches.find((branch) => branch.current)?.name ?? null;
-  // Only poll status after branch discovery confirms a repo — avoids non-repo
-  // cwds feeding a permanent "Refreshing git status..." invalidation loop.
+
   const {
     data: gitStatusData,
     error: gitStatusError,
@@ -514,12 +494,8 @@ export default function GitActionsControl({
           progress.lastOutputLine = null;
           break;
         case "action_finished":
-          // The terminal stream response owns the final toast so success is rendered once.
-          // Its server-side status refresh is detached, keeping this event-to-response gap short.
           return;
         case "action_failed":
-          // Same reasoning as action_finished — let the HTTP error handler
-          // manage the final toast state to avoid a flash of bare title.
           return;
       }
 
@@ -571,9 +547,8 @@ export default function GitActionsControl({
     });
   }, [gitStatusForActions, threadToastData]);
 
-  // Single entry point for every "Create PR" surface: opens the PR dialog when a
-  // PR can be created, opens the existing PR when one is already open, and
-  // explains unavailability otherwise.
+  // Single entry point for every "Create PR" surface: opens the PR dialog when a PR can be created,
+  // opens the existing PR when one is already open, and explains unavailability otherwise.
   const openCreatePrDialog = useCallback(
     (input?: {
       statusOverride?: GitStatusResult | null;
@@ -1038,8 +1013,6 @@ export default function GitActionsControl({
     [createPrDialogRuntimeStatus, defaultBranchName, hasOriginRemote, isGitActionRunning],
   );
 
-  // The Commit dialog always resolves against live status — unlike Create PR it is never
-  // opened from a surface carrying a post-push snapshot.
   const commitDialogContext = useMemo<GitDialogContext>(
     () => ({
       gitStatus: gitStatusForActions,
@@ -1070,8 +1043,7 @@ export default function GitActionsControl({
   const handleCommitDialogSubmit = useCallback(
     (submission: GitCommitDialogSubmission) => {
       setIsCommitDialogOpen(false);
-      // Create PR owns its own authoring dialog (title/description/draft), so the
-      // commit dialog hands off instead of dispatching a PR chain itself.
+
       if (submission.action === "create_pr") {
         openCreatePrDialog();
         return;
@@ -1114,8 +1086,6 @@ export default function GitActionsControl({
       return;
     }
     if (quickAction.action) {
-      // PR-creating quick actions go through the Create PR dialog so the user
-      // can review title/description/draft before the chain runs.
       if (quickAction.action === "create_pr" || quickAction.action === "commit_push_pr") {
         openCreatePrDialog();
         return;
@@ -1270,8 +1240,8 @@ export default function GitActionsControl({
 
   useEffect(() => {
     if (!onRegisterCommitAndPushTrigger) return;
-    // Pull-only header instances must not steal the Environment panel's commit &
-    // push shortcut registration, including while they are hidden.
+    // Pull-only header instances must not steal the Environment panel's commit & push shortcut
+    // registration, including while they are hidden.
     if (visibleWhen === "pull-available") return;
     const target = findRunnableCommitPushMenuItem(gitActionMenuItems);
     if (!target) {
@@ -1434,8 +1404,8 @@ export default function GitActionsControl({
   const showPromotedPullAction = promotedPull !== null;
   if (visibleWhen === "pull-available") {
     if (!promotedPull) return null;
-    // Pull-only chrome: Environment already owns commit/push/PR dialogs, so this
-    // instance must not mount a second copy of them beside the panel control.
+    // Pull-only chrome: Environment already owns commit/push/PR dialogs, so this instance must not
+    // mount a second copy of them beside the panel control.
     return (
       <ChatHeaderButton
         type="button"
@@ -1456,8 +1426,6 @@ export default function GitActionsControl({
 
   const runnableCommitPushMenuItem = findRunnableCommitPushMenuItem(gitActionMenuItems);
 
-  // Shared dropdown body — the picker rows plus the contextual git-status warnings.
-  // Rendered identically by the header split button and the panel "Commit and Push" row.
   const gitMenuContent = (
     <>
       <MenuGroup>
@@ -1523,7 +1491,6 @@ export default function GitActionsControl({
     </>
   );
 
-  // The git action dialogs are identical across surfaces; only the trigger differs.
   const gitActionDialogs = (
     <>
       <GitCreatePrDialog
@@ -1650,8 +1617,7 @@ export default function GitActionsControl({
 
   if (isPanel) {
     const showPanelPullRow = showPromotedPullAction;
-    // The panel row runs its action on click — exactly like Pull — and the chevron
-    // beside it is the only way into the git actions menu (and its dialogs).
+
     const panelPrimaryLabel = showPanelPullRow
       ? (promotedPull?.label ?? "Pull")
       : (runnableCommitPushMenuItem?.label ?? "Commit and Push");

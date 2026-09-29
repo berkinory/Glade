@@ -1,8 +1,4 @@
 import { useCallback } from "react";
-// FILE: ChatPaneDropOverlay.tsx
-// Purpose: Renders the 4-quadrant drop-zone overlay used to split a chat surface by dragging a sidebar thread.
-// Layer: UI component (route surfaces wrap it around <ChatView /> or empty-state placeholders)
-// Exports: ChatPaneDropOverlay component, drag MIME constant, drop-zone helpers used by tests
 
 import { useEffect, useRef, type DragEvent as ReactDragEvent, type ReactNode } from "react";
 import { type ThreadId } from "@glade/contracts";
@@ -45,15 +41,14 @@ function chooseAllowedZone(
 }
 
 interface ChatPaneDropOverlayProps {
-  // Centralized tree-aware predicate. Split panes use this to enforce the 2x2 depth cap.
   canDropInDirection?: (direction: SplitDirection) => boolean;
-  // ThreadIds whose drops should be ignored (e.g. threads already mounted in this split view).
+
   excludedThreadIds?: ReadonlySet<ThreadId>;
   onDrop(payload: ThreadDragPayload & { direction: SplitDirection; side: SplitDropSide }): void;
-  // Outer wrapper className. Defaults to a layout-neutral filler that participates in flex containers.
+
   className?: string;
   children: ReactNode;
-  // Identifier used to reset internal state when the wrapped surface changes (e.g. pane id).
+
   paneScopeId?: string;
 }
 
@@ -83,7 +78,6 @@ function getDropZoneFromPointer(
       : chooseAllowedZone("right", "left", isZoneAllowed);
   }
 
-  // VS Code-style regions: favor left/right on wide panes, top/bottom on tall panes.
   const preferHorizontal = rect.width >= rect.height;
   const chooseHorizontal = () =>
     relX < 0.5
@@ -123,7 +117,6 @@ function parseThreadDragPayload(event: ReactDragEvent): ThreadDragPayload | null
   return readThreadDragPayload(event.dataTransfer);
 }
 
-// Applies the same thread constraints for hover feedback and the final drop.
 function isThreadDragPayloadAllowed(payload: ThreadDragPayload, rules: ThreadDropRules): boolean {
   if (rules.excludedThreadIds?.has(payload.threadId)) return false;
   return true;
@@ -187,7 +180,7 @@ export function ChatPaneDropOverlay(props: ChatPaneDropOverlayProps) {
   const getAllowedZoneForEvent = (event: ReactDragEvent<HTMLDivElement>) => {
     const zone = getZoneForEvent(event);
     if (!zone) return null;
-    // Drag data is unreadable until `drop`; fall back to the in-app drag source.
+
     const activeThreadId = getActiveThreadDragId();
     const payload =
       parseThreadDragPayload(event) ?? (activeThreadId ? { threadId: activeThreadId } : null);
@@ -202,8 +195,6 @@ export function ChatPaneDropOverlay(props: ChatPaneDropOverlayProps) {
     return zone;
   };
 
-  // The composer turns a thread drop into an @mention; it owns the event there,
-  // so only drop the split preview left over from the surrounding pane.
   const deferToMentionDropzone = (event: ReactDragEvent<HTMLDivElement>): boolean => {
     if (!isWithinThreadMentionDropzone(event.target)) return false;
     setPreviewZone(null);

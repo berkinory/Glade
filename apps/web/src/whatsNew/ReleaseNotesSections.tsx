@@ -1,5 +1,3 @@
-// Group the curated notes like CHANGELOG.md: one category heading, then its changes.
-
 import { FeatureSection } from "./FeatureSection";
 import type { WhatsNewFeature } from "./logic";
 

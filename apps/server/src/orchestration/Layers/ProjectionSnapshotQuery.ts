@@ -90,11 +90,9 @@ const decodeThreadDetailSnapshot = Schema.decodeUnknownEffect(OrchestrationThrea
 const decodeModelSelection = Schema.decodeUnknownEffect(ModelSelection);
 const ModelSelectionJsonUnknown = Schema.fromJsonString(Schema.Unknown);
 const MAX_THREAD_MESSAGES = 2_000;
-// Bulk read-model snapshot: stays aligned with the in-memory projector window
-// (`orchestration/projector.ts`), which trims every live thread to the same cap.
+
 const MAX_SNAPSHOT_THREAD_ACTIVITIES = 500;
-// A single opened thread keeps a much deeper window: providers emit hundreds of
-// activity rows per turn, so a 500-row tail dropped the previous turns' work log.
+
 const MAX_THREAD_DETAIL_ACTIVITIES = 2_000;
 const MAX_TURN_GENERATED_IMAGE_ACTIVITY_RECORDS = 64;
 const ProjectionProjectDbRowSchema = ProjectionProject.mapFields(
@@ -139,12 +137,7 @@ const ProjectionThreadShellDbRowSchema = Schema.Struct(ProjectionThreadShellFiel
     modelSelection: ModelSelectionJsonUnknown,
   }),
 );
-/**
- * Narrow projection row for managed-worktree retention. Deliberately keeps
- * soft-deleted threads visible: retention-deleted threads still own on-disk
- * worktrees that must be snapshotted and reclaimed. Fields are picked from
- * `ProjectionThread` so decoding stays identical to the full thread reader.
- */
+
 const ProjectionManagedWorktreeThreadRowSchema = Schema.Struct({
   threadId: ProjectionThread.fields.threadId,
   archivedAt: ProjectionThread.fields.archivedAt,
@@ -758,7 +751,7 @@ function toProjectedThread(input: {
       ? { claudeCacheReview: threadRow.claudeCacheReview }
       : {}),
     latestUserMessageAt: summary.latestUserMessageAt,
-    // The retained message window may contain only agent output.
+
     latestHumanMessageAt: threadRow.latestHumanMessageAt ?? null,
     hasPendingApprovals: summary.hasPendingApprovals,
     hasPendingUserInput: summary.hasPendingUserInput,
@@ -780,19 +773,13 @@ function toProjectedThread(input: {
   };
 }
 
-/**
- * Derive the snapshot fence from projector cursor rows.
- *
- * An empty cursor table is a fresh database, whose fence is legitimately 0. A
- * non-empty table missing a required cursor is a different situation entirely:
- * the fence is unknown, and mapping it to 0 would report the snapshot as
- * "high-water events behind" forever — every stream (re)start would demand a
- * resnapshot that can never succeed. That state is only reachable through an
- * interrupted projection repair, so it fails with a typed
- * ProjectionStateIncompleteError instead of silently degrading. The projection
- * bootstrap reconstructs the hot cursor on startup (see
- * initializeHotProjectionCursor), so the error also self-heals on restart.
- */
+// An empty cursor table is a fresh database, whose fence is legitimately 0. A non-empty table
+// missing a required cursor is a different situation entirely: the fence is unknown, and mapping it
+// to 0 would report the snapshot as "high-water events behind" forever — every stream (re)start
+// would demand a resnapshot that can never succeed. That state is only reachable through an
+// interrupted projection repair, so it fails with a typed ProjectionStateIncompleteError instead of
+// silently degrading. The projection bootstrap reconstructs the hot cursor on startup (see
+// initializeHotProjectionCursor), so the error also self-heals on restart.
 function computeSnapshotSequence(
   stateRows: ReadonlyArray<Schema.Schema.Type<typeof ProjectionStateDbRowSchema>>,
 ): Effect.Effect<number, ProjectionStateIncompleteError> {
@@ -830,13 +817,6 @@ function computeSnapshotSequence(
 const makeProjectionSnapshotQuery = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
 
-  // Soft-deleted rows can remain while their purge is fenced or deferred. `getSnapshot` is
-  // the only reader that hydrates message/activity bodies for the whole database at once,
-  // and every consumer of its read model drops soft-deleted threads before use. Ranking
-  // those rows is pure waste.
-  //
-  // Filtering by thread removes whole `PARTITION BY thread_id` partitions, so the
-  // ROW_NUMBER() ranks of the threads that survive are bit-for-bit unchanged.
   const liveThreadScope = sql`
     thread_id IN (SELECT thread_id FROM projection_threads WHERE deleted_at IS NULL)
   `;
@@ -1044,8 +1024,6 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
       `,
   });
 
-  // Rank only identities before loading bodies. Sorting full tool outputs/text
-  // makes SQLite copy the entire history into temporary b-trees before the cap.
   const listThreadMessageRows = SqlSchema.findAll({
     Request: Schema.Void,
     Result: ProjectionThreadMessageDbRowSchema,
@@ -1119,8 +1097,6 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
       `,
   });
 
-  // Fetch only segments belonging to the retained message window, including
-  // both identity columns: provider message ids may repeat across threads.
   const loadMessageSegments = (
     messages: ReadonlyArray<ProjectionThreadMessageDbRow>,
     tracePrefix: string,
@@ -1382,9 +1358,6 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
       `,
   });
 
-  // Seek one turn per thread using the existing (thread_id, requested_at) index.
-  // Keep the history timestamp as a scalar aggregate instead of decoding every
-  // historical turn merely to discard it in collectProjectedLatestTurns.
   const listLatestTurnRows = SqlSchema.findAll({
     Request: Schema.Void,
     Result: ProjectionLatestTurnDbRowSchema,
@@ -1456,7 +1429,6 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
       `,
   });
 
-  // Cheap targeted reads avoid hydrating the full snapshot for startup and diff lookups.
   const readProjectionCounts = SqlSchema.findOne({
     Request: Schema.Void,
     Result: ProjectionCountsRowSchema,
@@ -1552,11 +1524,6 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
       `,
   });
 
-  // Deliberately NOT filtered by `deleted_at`. Every other thread lookup here
-  // hides soft-deleted rows, but `thread.create` is decided against the
-  // tombstone-inclusive command read model: a thread id stays bound to its
-  // aggregate forever. A caller that gates creation on an active-only lookup
-  // would keep re-creating a soft-deleted thread and be rejected every time.
   const getAnyThreadIdRowById = SqlSchema.findOneOption({
     Request: ThreadIdLookupInput,
     Result: ProjectionThreadIdLookupRowSchema,
@@ -2034,8 +2001,6 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
       `,
   });
 
-  // Same row per thread as `getLatestTurnRowByThread`: the newest turn by
-  // (requested_at, turn_id), ranked inside the batch instead of one query each.
   const listLatestTurnRowsByThreads = SqlSchema.findAll({
     Request: ThreadIdsLookupInput,
     Result: ProjectionLatestTurnDbRowSchema,
@@ -2157,9 +2122,6 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
       `,
   });
 
-  // Generated-image references are recovered at turn settlement. Keep this query
-  // independent of the 500-row thread-detail activity window: a long-running turn
-  // can emit far more tool activities before its terminal event arrives.
   const listGeneratedImageActivityRowsByTurn = SqlSchema.findAll({
     Request: ThreadTurnLookupInput,
     Result: ProjectionGeneratedImageActivityDbRowSchema,
@@ -2701,8 +2663,6 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
         ),
         Effect.map((rows) =>
           rows.map(
-            // Normalize absent columns to `null` so the published row shape stays
-            // strict (`string | null`) rather than leaking `undefined` outward.
             (row): ProjectionManagedWorktreeThread => ({
               id: row.threadId,
               archivedAt: row.archivedAt ?? null,
@@ -2927,9 +2887,6 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
         Effect.map(Option.isSome),
       );
 
-  // Three light row reads (thread, latest turn, session) and no transcript
-  // decode. Shared by `getThreadShellById` and the synthetic-subagent parent
-  // lookup so both stay equally cheap on the provider-event hot path.
   const loadThreadShell = (threadId: ThreadId, tracePrefix: string) =>
     Effect.gen(function* () {
       const threadRow = yield* getThreadRowById({ threadId }).pipe(
@@ -3100,10 +3057,6 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
           }),
         );
 
-  // Hydrate a full thread detail projection without opening its own transaction.
-  // Returns the raw projected thread without the final OrchestrationThread
-  // validation so callers can run that CPU-bound decode outside the SQL
-  // transaction (the single shared connection stays blocked for its duration).
   const loadThreadDetailRaw = (
     threadId: ThreadId,
     options: { readonly messageLimit: number | null; readonly tracePrefix: string } = {
@@ -3335,10 +3288,10 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
           }),
         );
 
-  // Capture the projection cursor and thread detail in one transaction so the
-  // snapshot fence cannot advance past the detail payload the client receives.
-  // Schema validation runs once, after the transaction commits: the decode of a
-  // full transcript is CPU-bound and must not hold the shared SQL connection.
+  // Capture the projection cursor and thread detail in one transaction so the snapshot fence cannot
+  // advance past the detail payload the client receives. Schema validation runs once, after the
+  // transaction commits: the decode of a full transcript is CPU-bound and must not hold the shared
+  // SQL connection.
   const getThreadDetailSnapshotById: ProjectionSnapshotQueryShape["getThreadDetailSnapshotById"] = (
     threadId,
   ) =>

@@ -1,8 +1,3 @@
-// FILE: ChatHeader.tsx
-// Purpose: Renders the chat top bar with project actions and panel toggles.
-// Layer: Chat shell header
-// Depends on: project action controls, git actions, and panel toggle callbacks
-
 import {
   type EditorId,
   type ProjectScript,
@@ -49,9 +44,7 @@ interface ChatHeaderProps {
   className?: string;
   hideSidebarControls?: boolean;
   hideHandoffControls?: boolean;
-  // Empty-draft landings hide all thread-scoped chrome (title, Hand off, project
-  // scripts, git/open-in) — the chat hasn't started yet — keeping only the sidebar
-  // cluster plus the Environment and right-panel toggles.
+
   minimalChrome?: boolean;
   isGitRepo: boolean;
   openInTarget: string | null;
@@ -69,9 +62,9 @@ interface ChatHeaderProps {
   rightDockOpen?: boolean;
   onToggleRightDock?: () => void;
   surfaceMode?: "single" | "split";
-  // When provided, the header collapses the
-  // Open-in-editor + git-actions + diff-toggle cluster into one Environment button that
-  // drives the Environment panel; otherwise the legacy cluster is rendered.
+  // When provided, the header collapses the Open-in-editor + git-actions + diff-toggle cluster into
+  // one Environment button that drives the Environment panel; otherwise the legacy cluster is
+  // rendered.
   environment?: EnvironmentToggleState | null;
   chatLayoutAction?: {
     kind: "split" | "maximize";
@@ -149,9 +142,6 @@ export function ChatHeader({
     hasChanges: showDiffTotals,
   } = diffTotals;
 
-  // Own the open-favorite editor shortcut here so it survives regardless of which editor UI
-  // is mounted (the legacy Open-in button, the Environment panel's Editor section, or
-  // neither while the panel is closed). The header is always present for a project thread.
   useOpenFavoriteEditorShortcut({
     keybindings,
     availableEditors,
@@ -161,8 +151,7 @@ export function ChatHeader({
 
   const isSplitPane = surfaceMode === "split";
   const compact = isSplitPane;
-  // Split-chat creation moved to a shortcut only; the header keeps just the inline
-  // "maximize" affordance for an already-split focused pane.
+
   const inlineChatLayoutAction = chatLayoutAction?.kind === "maximize" ? chatLayoutAction : null;
   const showThreadProviderIcon = !isGenericChatThreadTitle(activeThreadTitle);
 
@@ -177,9 +166,6 @@ export function ChatHeader({
     );
   };
 
-  // Single-chat surfaces use this as a true right-dock visibility toggle. Hosts
-  // without a multi-pane dock (split/editor surfaces) keep the legacy diff-only
-  // behavior until they gain their own launcher surface.
   const togglesRightDock = onToggleRightDock !== undefined;
   const rightPanelToggleControl = showDiffToggle ? (
     <Tooltip>
@@ -324,7 +310,7 @@ export function ChatHeader({
           </Tooltip>
         ) : null}
 
-        {/* Change thread stays as a standalone control in split views. */}
+        {}
         {changeThreadAction ? (
           <Tooltip>
             <TooltipTrigger
@@ -342,11 +328,7 @@ export function ChatHeader({
           </Tooltip>
         ) : null}
 
-        {/* Environment: one button consolidating Open-in-editor and most git actions into
-            the Environment panel. Pull still appears in this action cluster when the
-            branch is behind. The right-side panel control stays beside it, acting as the
-            multi-pane dock toggle on single chats and the legacy diff toggle in split hosts.
-            Falls back to the legacy controls when no environment is resolved. */}
+        {}
         {environment ? (
           <>
             <EnvironmentToggle environment={environment} />
@@ -354,8 +336,7 @@ export function ChatHeader({
           </>
         ) : (
           <>
-            {/* Open in editor: dedicated split-button with an editor switcher; the project
-                action control now lives beside Hand off as its own project command surface. */}
+            {}
             {!minimalChrome && activeProjectName ? (
               <OpenInPicker
                 keybindings={keybindings}

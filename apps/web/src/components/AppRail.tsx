@@ -1,11 +1,3 @@
-// FILE: AppRail.tsx
-// Purpose: The rail layout's fixed icon tab strip (Home, Spaces, route destinations, Settings).
-// Layer: App shell component
-// Exports: AppRailItem, AppRailPortal, AppRailSlotProvider
-// Depends on: SidebarIconButton and the shared sidebar row tokens. ThreadSidebar owns the
-//             items and their handlers and portals the rail into the slot the route shell
-//             places left of the panel, so no handler moves out of ThreadSidebar.
-
 import { type ComponentType, createContext, type ReactNode, useContext } from "react";
 import { createPortal } from "react-dom";
 
@@ -23,13 +15,11 @@ import type { SidebarActionBadge } from "./Sidebar.logic";
 import { SidebarIconButton } from "./SidebarIconButton";
 
 type RailGlyph = ComponentType<{ className?: string }>;
-/** A rail button's glyph pair: outline at rest, filled while active (like Codex). */
+
 export type AppRailGlyphs = { readonly idle: RailGlyph; readonly active: RailGlyph };
 
-// Glyph components are cached so a shortcut keeps one component identity across renders.
 const glyphCache = new Map<string, AppRailGlyphs>();
 
-/** Rail glyphs for a Central icon name (rail items and Space shortcuts). */
 export function railCentralGlyphs(name: string): AppRailGlyphs {
   const cacheKey = `central:${name}`;
   const cached = glyphCache.get(cacheKey);
@@ -42,7 +32,6 @@ export function railCentralGlyphs(name: string): AppRailGlyphs {
   return glyphs;
 }
 
-/** Rail glyphs for a project shortcut: the same glyph its sidebar row shows. */
 export function railProjectGlyphs(
   cwd: string,
   appearance: ProjectAppearance | null,
@@ -65,7 +54,6 @@ export function railProjectGlyphs(
   return glyphs;
 }
 
-/** Central glyphs matching the Codex rail for the fixed rail items. */
 const RAIL_ITEM_GLYPH_NAMES: Record<RailItemId, string> = {
   home: "home-roof-door",
   spaces: "folders",
@@ -78,11 +66,9 @@ export function railItemGlyphs(id: RailItemId): AppRailGlyphs {
   return railCentralGlyphs(RAIL_ITEM_GLYPH_NAMES[id]);
 }
 
-/** The rail's "more" glyph (Codex's "…"). */
 export const RAIL_MORE_GLYPHS = railCentralGlyphs("dot-grid-1x3-horizontal");
 
 export type AppRailItem = {
-  /** A rail item id, or a shortcut key ("space:…" / "project:…"). */
   readonly id: string;
   readonly glyphs: AppRailGlyphs;
   readonly label: string;
@@ -95,19 +81,17 @@ export type AppRailItem = {
 
 type AppRailProps = {
   items: ReadonlyArray<AppRailItem>;
-  /** Spaces and projects the user added from the "…" menu, below the fixed items. */
+
   shortcuts: ReadonlyArray<AppRailItem>;
-  /** The "…" menu trigger, after the shortcuts. */
+
   moreSlot?: ReactNode;
   bottomItems: ReadonlyArray<AppRailItem>;
-  /** Rendered above the bottom items (the Help menu, like Codex's rail). */
+
   bottomSlot?: ReactNode;
 };
 
-/** Rail glyph size, shared with controls rendered into the rail slot (the Help menu). */
 export const APP_RAIL_GLYPH_CLASS_NAME = "size-5";
 
-/** Rail button box and active/idle tone, shared with controls rendered into the rail slot. */
 export function appRailButtonClassName(active: boolean): string {
   return cn(
     "size-9 rounded-lg",
@@ -135,7 +119,7 @@ function AppRailButton({ item }: { item: AppRailItem }) {
         {...(item.onMouseEnter ? { onMouseEnter: item.onMouseEnter } : {})}
         {...(item.onFocus ? { onFocus: item.onFocus } : {})}
       />
-      {/* Same corner dot as the Activity bell's unread marker; the count is in the tooltip. */}
+      {}
       {item.badge ? (
         <span
           aria-hidden
@@ -176,10 +160,8 @@ function AppRail({ items, shortcuts, moreSlot, bottomItems, bottomSlot }: AppRai
 
 const AppRailSlotContext = createContext<HTMLElement | null>(null);
 
-/** Provided by the route shell with the element the rail renders into. */
 export const AppRailSlotProvider = AppRailSlotContext.Provider;
 
-/** Renders the rail into the shell's slot; nothing when no slot is mounted (classic layout). */
 export function AppRailPortal(props: AppRailProps) {
   const slot = useContext(AppRailSlotContext);
   return slot ? createPortal(<AppRail {...props} />, slot) : null;

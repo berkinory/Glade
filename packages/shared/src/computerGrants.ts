@@ -1,45 +1,15 @@
-/**
- * The macOS privacy grants desktop control needs, in the words the user reads.
- *
- * Three surfaces have to agree on this copy — the server backend's availability
- * message, the desktop app's send-time preflight, and the web card and settings
- * panel — and they used to spell it out separately, which is how "Screen
- * Recording and Accessibility" and "Accessibility and Screen Recording" ended up
- * describing the same state in the same session. One ordering, one label per
- * grant, one place that knows what to say about a stale ad-hoc grant.
- *
- * @module computerGrants
- */
-/**
- * The macOS privacy grants desktop control needs, in the words the user reads.
- *
- * Three surfaces have to agree on this copy — the server backend's availability
- * message, the desktop app's send-time preflight, and the web card and settings
- * panel — and they used to spell it out separately, which is how "Screen
- * Recording and Accessibility" and "Accessibility and Screen Recording" ended up
- * describing the same state in the same session. One ordering, one label per
- * grant, one place that knows what to say about a stale ad-hoc grant.
- *
- * @module computerGrants
- */
 import type {
   ComputerBuildSignature,
   ComputerPermission,
   DesktopComputerState,
 } from "@glade/contracts";
 
-/**
- * Fixed setup order, shared with the native permission guide.
- */
 export const COMPUTER_PERMISSIONS: readonly ComputerPermission[] = [
   "accessibility",
   "screenRecording",
   "inputMonitoring",
 ];
 
-/** Shared grant names for the desktop Computer helper and permission UI. */
-
-/** A grant snapshot is evidence; an idle backend's connectivity is not. */
 export function missingComputerPermissions(
   state: Pick<
     DesktopComputerState,
@@ -54,59 +24,38 @@ export function missingComputerPermissions(
   return COMPUTER_PERMISSIONS.filter((permission) => grants[permission] !== "granted");
 }
 
-/**
- * The grants without which the desktop cannot be driven at all.
- *
- * The distinction is the difference between "stop and wait for the user" and
- * "carry on with one hand tied": Accessibility gates every synthetic event and
- * every accessibility read. Input Monitoring is required for interruptible
- * control. Screen Recording only takes away images; semantic reads remain
- * available without it.
- *
- * Retained for existing callers; the canonical check is inline in
- * computerGrantsBlockControl below.
- */
+// The grants without which the desktop cannot be driven at all.
 export const COMPUTER_BLOCKING_PERMISSIONS: readonly ComputerPermission[] = [
   "accessibility",
   "inputMonitoring",
 ];
 
-/** Whether any of these missing grants stops the desktop being driven at all. */
 export function computerGrantsBlockControl(permissions: readonly ComputerPermission[]): boolean {
   return COMPUTER_BLOCKING_PERMISSIONS.some((permission) => permissions.includes(permission));
 }
 
-/** Exactly what System Settings › Privacy & Security calls each grant. */
+// Exactly what System Settings › Privacy & Security calls each grant.
 export const COMPUTER_PERMISSION_LABELS: Readonly<Record<ComputerPermission, string>> = {
   accessibility: "Accessibility",
   screenRecording: "Screen Recording",
   inputMonitoring: "Input Monitoring",
 };
 
-/**
- * The service name `tccutil` files each grant under, which is not the label:
- * Screen Recording is `ScreenCapture` on the command line, and a user who types
- * the label instead gets an error rather than a reset.
- *
- * Exported because the macOS backend resets the app's own stale ad-hoc rows
- * before asking for a grant, and it has to name the services the same way this
- * copy does — two spellings of `ScreenCapture` is exactly the class of bug this
- * module exists to prevent.
- */
+// Exported because the macOS backend resets the app's own stale ad-hoc rows before asking for a
+// grant, and it has to name the services the same way this copy does — two spellings of
+// `ScreenCapture` is exactly the class of bug this module exists to prevent.
 export const TCC_SERVICE_NAMES: Readonly<Record<ComputerPermission, string>> = {
   accessibility: "Accessibility",
   screenRecording: "ScreenCapture",
   inputMonitoring: "ListenEvent",
 };
 
-/** The missing grants in `COMPUTER_PERMISSIONS` order, deduplicated. */
 export function sortComputerPermissions(
   permissions: readonly ComputerPermission[],
 ): readonly ComputerPermission[] {
   return COMPUTER_PERMISSIONS.filter((permission) => permissions.includes(permission));
 }
 
-/** "Accessibility", or "Accessibility and Screen Recording". */
 export function listComputerPermissions(permissions: readonly ComputerPermission[]): string {
   const labels = sortComputerPermissions(permissions).map(
     (permission) => COMPUTER_PERMISSION_LABELS[permission],
@@ -116,32 +65,20 @@ export function listComputerPermissions(permissions: readonly ComputerPermission
   return `${labels.slice(0, -1).join(", ")} and ${labels.at(-1)}`;
 }
 
-/**
- * What to tell a user whose System Settings already shows Glade switched on
- * while the helper still reports the grant missing — or null when that cannot be
- * what happened.
- *
- * macOS pins an ad-hoc signature's grant to the binary's cdhash, so a local
- * rebuild invalidates it without changing anything the user can see. A
- * Developer ID signature keys on identifier plus team and survives rebuilds, so
- * this advice would be a red herring on a release build and is withheld there.
- * The grant is filed against the app, not the helper bundle it spawns, which is
- * why the reset names the app's identifier.
- *
- * The application does not reset grants automatically. The user can remove
- * and re-add this specific build in System Settings, or reset its own bundle
- * explicitly when the responsible identity is known.
- *
- * `bundleId` is the *responsible* app's identifier — the Glade the grant is
- * actually filed against, which `.dev` and `.canary` builds do not share with a
- * released one. It is optional because nothing can derive it: a server started
- * outside the desktop shell has no app behind it, and the desktop tells the
- * backend which flavor it is through
- * `GLADE_DESKTOP_BUNDLE_ID_ENV`. When it is unknown the whole `tccutil`
- * sentence is withheld rather than printed with a guess, because the guess a
- * user would paste into Terminal resets a *different* Glade's grants — the one
- * they have installed — and leaves this one exactly as broken as before.
- */
+// What to tell a user whose System Settings already shows Glade switched on while the helper still
+// reports the grant missing — or null when that cannot be what happened. macOS pins an ad-hoc
+// signature's grant to the binary's cdhash, so a local rebuild invalidates it without changing
+// anything the user can see. A Developer ID signature keys on identifier plus team and survives
+// rebuilds, so this advice would be a red herring on a release build and is withheld there. The
+// user can remove and re-add this specific build in System Settings, or reset its own bundle
+// explicitly when the responsible identity is known. `bundleId` is the *responsible* app's
+// identifier — the Glade the grant is actually filed against, which `.dev` and `.canary` builds do
+// not share with a released one. It is optional because nothing can derive it: a server started
+// outside the desktop shell has no app behind it, and the desktop tells the backend which flavor it
+// is through `GLADE_DESKTOP_BUNDLE_ID_ENV`. When it is unknown the whole `tccutil` sentence is
+// withheld rather than printed with a guess, because the guess a user would paste into Terminal
+// resets a *different* Glade's grants — the one they have installed — and leaves this one exactly
+// as broken as before.
 export function computerStaleGrantAdvice(
   permissions: readonly ComputerPermission[],
   buildSignature: ComputerBuildSignature,
@@ -162,10 +99,6 @@ export function computerStaleGrantAdvice(
   return `${base} To clear only this app's old grant, run \`${commands}\` in Terminal and grant access again.`;
 }
 
-/**
- * The whole user-facing explanation for a missing grant: what is needed, where
- * to give it, and — on an ad-hoc build only — why the switch may already look on.
- */
 export function computerPermissionSetupMessage(
   permissions: readonly ComputerPermission[],
   buildSignature: ComputerBuildSignature,

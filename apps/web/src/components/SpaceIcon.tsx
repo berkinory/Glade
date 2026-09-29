@@ -1,6 +1,3 @@
-// FILE: SpaceIcon.tsx
-// Purpose: Renders built-in and custom Space icons through Glade's Central asset renderer.
-
 import { SPACE_ICON_NAMES, type SpaceIconName } from "@glade/contracts";
 
 import { CentralIcon } from "~/lib/central-icons";
@@ -9,11 +6,6 @@ import { cn } from "~/lib/utils";
 
 export type SpaceIconValue = VoidSpaceIconName;
 
-/**
- * Spoken names for the curated icon set. The asset basenames leak numbering and
- * compound words ("chart-2", "camera-1", "gamecontroller") that read badly to a
- * screen reader and in the picker, so every icon gets a human label here.
- */
 const SPACE_ICON_LABELS: Record<SpaceIconName, string> = {
   bag: "Bag",
   home: "Home",
@@ -42,15 +34,11 @@ export interface SpaceIconOption {
   readonly label: string;
 }
 
-/** Icon options in the order the picker offers them. */
 export const SPACE_ICON_OPTIONS: ReadonlyArray<SpaceIconOption> = SPACE_ICON_NAMES.map((name) => ({
   name,
   label: SPACE_ICON_LABELS[name],
 }));
 
-/**
- * The black hole remains a custom icon choice for the unfiled group.
- */
 export const VOID_SPACE_ICON_OPTIONS: ReadonlyArray<SpaceIconOption> = [
   { name: UNFILED_SPACE_SPECIAL_ICON, label: "Black hole" },
   ...SPACE_ICON_OPTIONS,

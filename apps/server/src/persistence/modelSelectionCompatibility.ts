@@ -1,4 +1,3 @@
-// Normalize older persisted selections at read time. Event JSON remains untouched.
 import { DEFAULT_MODEL_BY_PROVIDER, ProviderKind, type ModelSelection } from "@glade/contracts";
 
 const retiredProviderIds = new Set([
@@ -68,8 +67,8 @@ export function normalizeLegacyModelSelection(input: {
   readonly options: unknown;
 }): Record<string, unknown> {
   const provider = inferProvider(input.provider, input.model);
-  // Retired selections cannot be resumed safely. Project/thread projections use a
-  // valid default while the original provider/model remain in the event journal.
+  // Retired selections cannot be resumed safely. Project/thread projections use a valid default while
+  // the original provider/model remain in the event journal.
   if (provider === null) {
     return { provider: "codex", model: DEFAULT_MODEL_BY_PROVIDER.codex } satisfies ModelSelection;
   }

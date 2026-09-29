@@ -109,13 +109,8 @@ export const Route = createFileRoute("/_chat/automations/$automationId")({
   component: AutomationDetailView,
 });
 
-// Sidebar summaries carry every field these surfaces read (id, projectId, title,
-// modelSelection) and do not rebuild on streamed message/activity deltas
-// the way the fully derived thread list does.
 const selectAllThreads = createSidebarThreadSummariesSelector();
 
-// Commit the trimmed text: the validators trim before checking, so committing the raw
-// draft would persist stray whitespace the validation never saw.
 const trimDraft = (value: string) => value.trim();
 
 function lastFinishedRun(runs: readonly AutomationRun[]): AutomationRun | null {
@@ -138,7 +133,6 @@ const RUN_DATE_TIME_FORMATTER = new Intl.DateTimeFormat(undefined, {
   minute: "2-digit",
 });
 
-// Reference-style absolute timestamp: "Today at 09:00", "Tomorrow at 12:30", "5 May 2026, 09:05".
 function formatRunTimestamp(value: string | null): string {
   if (!value) return "—";
   const date = new Date(value);
@@ -151,8 +145,6 @@ function formatRunTimestamp(value: string | null): string {
   return RUN_DATE_TIME_FORMATTER.format(date);
 }
 
-// Presentation for the Status pill: maps the shared lifecycle state to a label and dot color.
-// The state decision lives in ~/lib/automationStatus so this pill and the list never drift.
 function automationStatusDisplay(definition: AutomationDefinition): {
   readonly label: string;
   readonly dotClassName: string;
@@ -169,8 +161,6 @@ function automationStatusDisplay(definition: AutomationDefinition): {
   }
 }
 
-// Explanation for an automation the server stopped on its own. "user" and "schedule"
-// return null — the status pill already reads "Paused" / "Done" for those.
 function automationStoppedExplanation(definition: AutomationDefinition): string | null {
   if (definition.enabled || definition.disabledReason == null) return null;
   switch (definition.disabledReason) {
@@ -197,8 +187,7 @@ function AutomationDetailView() {
     useDesktopTopBarWindowControlsGutterClassName();
   const projects = useStore((state) => state.projects);
   const threads = useStore(selectAllThreads);
-  // Risky inline edits (local checkout, mode changes that claim or release a thread) are
-  // held here and only patched once confirmed through the anchored popover.
+
   const [pendingWorktreeChange, setPendingWorktreeChange] = useState<AutomationWorktreeMode | null>(
     null,
   );
@@ -218,8 +207,6 @@ function AutomationDetailView() {
     markRunReadMutation,
     archiveRunMutation,
     runsByAutomationId,
-    // Running an automation keeps the user on this info page; the live run surfaces in
-    // "Previous runs" (click a run there to open its thread), matching the reference UX.
   } = useAutomations();
 
   const definition = data.definitions.find((candidate) => candidate.id === automationId) ?? null;
@@ -281,9 +268,9 @@ function AutomationDetailView() {
   const project = projects.find((candidate) => candidate.id === definition.projectId);
   const continuationThreadId = automationContinuationThreadId(definition);
   const continuedThread = threads.find((candidate) => candidate.id === continuationThreadId);
-  // Heartbeat inherits its thread's environment, so it never picks one. A dedicated
-  // automation still picks freely until its first run claims a thread: after that every
-  // run reuses that thread, so its project and checkout are fixed.
+  // Heartbeat inherits its thread's environment, so it never picks one. A dedicated automation still
+  // picks freely until its first run claims a thread: after that every run reuses that thread, so its
+  // project and checkout are fixed.
   const ownsItsEnvironment = !automationRequiresTargetThread(definition.mode);
   const canChooseEnvironment = ownsItsEnvironment && continuationThreadId === null;
   const sourceThread = definition.sourceThreadId
@@ -296,16 +283,13 @@ function AutomationDetailView() {
   const stopWhen = stopWhenFromCompletionPolicy(definition.completionPolicy ?? { type: "none" });
   const pendingProposal = definition.proposalState === "pending";
   const stoppedAfterFailures = !definition.enabled && definition.disabledReason === "failures";
-  // A pending proposal must be accepted before the server allows any update, so every
-  // inline control is read-only until then instead of erroring on each interaction.
+
   const editable = !pendingProposal;
   const editDisabledTitle = editable ? undefined : "Accept the automation proposal first";
 
   const patch = (input: Omit<AutomationUpdateInput, "id">) =>
     updateMutation.mutate({ id: definition.id, ...input });
 
-  // One-time risk approval surfaced at the top of the panel when an already-created
-  // automation still needs it (e.g. created via the API). Persists on the automation.
   const approvalGaps = automationApprovalGaps({
     schedule: definition.schedule,
     enabled: definition.enabled,
@@ -317,8 +301,8 @@ function AutomationDetailView() {
     acknowledgedRisks: definition.acknowledgedRisks,
   });
   const approveAutomationRisks = () =>
-    // Records consent and any server-required fast-loop cap. Pause/resume stays separate so
-    // approving never silently re-enables an automation the user deliberately paused.
+    // Records consent and any server-required fast-loop cap. Pause/resume stays separate so approving
+    // never silently re-enables an automation the user deliberately paused.
     updateMutation.mutateAsync({
       id: definition.id,
       acknowledgedRisks: approvalGaps.acknowledgedRisks,
@@ -330,14 +314,12 @@ function AutomationDetailView() {
     try {
       await approveAutomationRisks();
     } catch {
-      return; // update failed; the mutation already surfaced the error toast
+      return;
     }
     runNowMutation.mutate(definition);
   };
   const approvalBusy = updateMutation.isPending || runNowMutation.isPending;
 
-  // Applying a new model selection (model swap or a capability tweak) refreshes the saved
-  // provider start options the same way the model picker does, then patches both at once.
   const applyModelSelection = (nextModelSelection: ModelSelection) => {
     const providerOptions = providerOptionsForAutomationModelSelection(
       definition,
@@ -350,9 +332,9 @@ function AutomationDetailView() {
     });
   };
 
-  // Editing "Runs in" to a mode that can touch the project checkout needs one-time
-  // consent; the confirm patches worktreeMode and the acknowledgement atomically because
-  // the server validates risk acknowledgements against the merged definition.
+  // Editing "Runs in" to a mode that can touch the project checkout needs one-time consent; the
+  // confirm patches worktreeMode and the acknowledgement atomically because the server validates risk
+  // acknowledgements against the merged definition.
   const requestWorktreeChange = (value: AutomationWorktreeMode) => {
     if (
       (value === "local" || value === "auto") &&
@@ -371,8 +353,7 @@ function AutomationDetailView() {
     });
     setPendingWorktreeChange(null);
   };
-  // The popover copy comes from the shared draft warnings so the wording can't drift
-  // from the creation dialog.
+
   const pendingWorktreeWarning = pendingWorktreeChange
     ? buildAutomationDraftWarnings({
         schedule: definition.schedule,
@@ -386,9 +367,6 @@ function AutomationDetailView() {
       }).find((warning) => warning.id === "local-checkout")
     : undefined;
 
-  // Mode changes: switching to heartbeat must patch {mode, targetThreadId} atomically
-  // (the server refuses a heartbeat without a target), and leaving a mode that holds a
-  // thread deserves a confirm — the automation stops writing to it, the thread stays.
   const projectThreads = automationTargetThreads(threads, definition.projectId);
   const requestModeChange = (nextMode: AutomationDefinition["mode"]) => {
     if (nextMode === definition.mode) return;
@@ -435,7 +413,7 @@ function AutomationDetailView() {
           CHAT_BACKGROUND_CLASS_NAME,
         )}
       >
-        {/* Left column: breadcrumb header + the prompt. */}
+        {}
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <header
             className={cn(
@@ -506,10 +484,7 @@ function AutomationDetailView() {
           </main>
         </div>
 
-        {/* Right column: action header + details panel. The header carries the shared bottom
-            hairline (horizontal), and the body below carries the vertical seam — so the vertical
-            line starts at the header's bottom edge instead of running up through it. Both use the
-            same --app-surface-divider token and meet cleanly at the corner. */}
+        {}
         <div className="flex min-h-0 w-80 shrink-0 flex-col overflow-hidden">
           <header
             className={cn(
@@ -556,9 +531,6 @@ function AutomationDetailView() {
                     runNowMutation.isPending ||
                     pendingProposal ||
                     stoppedAfterFailures ||
-                    // Stay disabled while an approval update is in flight: the cache merges
-                    // acknowledgedRisks optimistically, so warnings clears before the server
-                    // persists and a run dispatched in that window hits the old definition.
                     updateMutation.isPending ||
                     approvalGaps.runBlockingWarnings.length > 0
                   }
@@ -585,8 +557,6 @@ function AutomationDetailView() {
               <AutomationApprovalBanner
                 warnings={approvalGaps.warnings}
                 busy={approvalBusy}
-                // Swallow the rejection here; the mutation's onError already toasts. Without
-                // this, void-ing the rejected promise would surface an unhandled rejection.
                 onApprove={() => void approveAutomationRisks().catch(() => undefined)}
                 onApproveAndRun={() => void handleApproveAndRunNow()}
               />
@@ -632,9 +602,6 @@ function AutomationDetailView() {
                       className="self-start"
                       disabled={!editable || updateMutation.isPending}
                       title={editDisabledTitle}
-                      // Server-side, re-enabling clears the disabled reason and resets the
-                      // failure counter (and the iteration count for run-limit stops), so one
-                      // click fully recovers the automation.
                       onClick={() => patch({ enabled: true })}
                     >
                       Re-enable
@@ -643,10 +610,7 @@ function AutomationDetailView() {
                 ) : null}
               </DetailGroup>
 
-              {/* Every MUTATING control below carries disabled={!editable} explicitly while a
-                  proposal is pending. A wrapping <fieldset disabled> would be terser, but it
-                  also killed the read-only navigation buttons (Created from, Open thread) —
-                  exactly the context needed to judge the proposal. */}
+              {}
               <DetailGroup title="Details">
                 {!ownsItsEnvironment ? (
                   <DetailRow label="Runs in">Thread</DetailRow>
@@ -777,8 +741,6 @@ function AutomationDetailView() {
                       value={schedule.expression}
                       validate={automationCronExpressionError}
                       normalize={trimDraft}
-                      // The commit closes over the current schedule; if an external update
-                      // unmounts this row the closure is stale, so never flush through it.
                       flushOnUnmount={false}
                       disabled={!editable}
                       title={editDisabledTitle}
@@ -849,8 +811,6 @@ function AutomationDetailView() {
                   <EditRow label="Timezone">
                     <InlineCommitTextInput
                       value={schedule.timezone}
-                      // Non-empty + real IANA zone: committing "" would unrender this row
-                      // (its only editor) for good, and unknown zones are doomed requests.
                       validate={automationTimezoneError}
                       normalize={trimDraft}
                       flushOnUnmount={false}
@@ -953,8 +913,6 @@ function AutomationDetailView() {
                   />
                 </EditRow>
                 {definition.mode === "heartbeat" ? (
-                  // Heartbeat targets are the user's choice, so the thread stays editable.
-                  // Dedicated threads are server-owned and keep the read-only row below.
                   <EditRow label="Thread">
                     <div className="flex min-w-0 items-center">
                       {continuedThread ? (
@@ -1111,13 +1069,6 @@ function AutomationDetailView() {
   );
 }
 
-/**
- * Inline edit rows for the selected model's capabilities — reasoning effort, fast mode,
- * thinking, context window, etc. The knobs are derived from the provider's capability
- * descriptors, so each provider surfaces exactly the controls it supports (and none when it
- * supports nothing). Changing a value reuses the same model-selection patch path as the
- * model picker, keeping provider start options in sync.
- */
 function ModelOptionRows({
   modelSelection,
   disabled,
@@ -1217,8 +1168,6 @@ function RunRow({
   };
   const resultTitle = runResultTitle(run);
   return (
-    // The whole row opens its thread (the run's chat history); inline actions stop
-    // propagation so they don't also navigate.
     <div
       role={openable ? "button" : undefined}
       tabIndex={openable ? 0 : undefined}

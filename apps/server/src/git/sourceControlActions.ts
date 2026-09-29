@@ -7,7 +7,6 @@ import { isWorkspaceRelativePathSafe } from "@glade/shared/path";
 import { GitCommandError } from "./Errors.ts";
 import type { GitCoreShape } from "./Services/GitCore.ts";
 
-// These operations share GitCore's process boundary and repository mutation lock.
 export function sourceControlActions(git: GitCoreShape) {
   const run = (cwd: string, args: readonly string[]) =>
     git.execute({ operation: "SourceControl", cwd, args, timeoutMs: 120_000 });
@@ -58,7 +57,7 @@ export function sourceControlActions(git: GitCoreShape) {
         const active = (yield* rebaseState(input.cwd)).inProgress;
         if (input.action === "start") {
           if (active) return yield* fail(input.cwd, "A rebase is already in progress.");
-          // Resolve the selected ref before passing it to rebase, so ref names cannot be options.
+
           const target = yield* run(input.cwd, [
             "rev-parse",
             "--verify",
@@ -107,7 +106,7 @@ export function sourceControlActions(git: GitCoreShape) {
           if (ignored.code === 0) continue;
           if (ignored.code !== 1)
             return yield* fail(cwd, ignored.stderr || "Could not inspect ignore rules.");
-          // Anchor exact paths at the root and escape glob syntax, including trailing spaces.
+
           rules.push("/" + relative.replace(/[\\*?[\] !#]/g, "\\$&"));
         }
         if (!rules.length) return;

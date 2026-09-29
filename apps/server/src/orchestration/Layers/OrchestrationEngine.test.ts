@@ -34,10 +34,6 @@ import { ServerConfig } from "../../config.ts";
 import { ORCHESTRATION_EVENT_PUBSUB_CAPACITY } from "../orchestrationAdmission.ts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 
-/**
- * Command ids whose fingerprinting throws synchronously, standing in for any
- * synchronous defect raised while the worker builds a command's pipeline.
- */
 const fingerprintPoison = vi.hoisted(() => new Set<string>());
 
 vi.mock("../commandFingerprint.ts", async (importOriginal) => {
@@ -421,8 +417,7 @@ describe("OrchestrationEngine", () => {
           createdAt,
         }),
       );
-      // Each delta fits the journal budget, but their combined text exceeds
-      // 512 KiB. Later output includes a surrogate pair split across deltas.
+
       const chunks = [
         "é漢😀".repeat(30_000),
         `${"é漢😀".repeat(30_000)}\nSecond segment \ud83d`,
@@ -536,10 +531,6 @@ describe("OrchestrationEngine", () => {
       reason: "stopped",
     });
 
-    // A turn start takes the priority `user` lane, but priority is not
-    // admissibility: the WebSocket keeps serving while the engine quiesces, and
-    // starting a provider turn here would spawn a session the shutdown fences
-    // moments later, orphaning the turn.
     await expect(
       system.run(
         system.engine.dispatch({
@@ -776,7 +767,7 @@ describe("OrchestrationEngine", () => {
     const system = await createOrchestrationSystem();
     const { engine } = system;
     const projectId = asProjectId("project-slow-subscriber");
-    // Overflow by more than one durable replay page (500 events).
+
     const count = ORCHESTRATION_EVENT_PUBSUB_CAPACITY + 510;
     try {
       const initial = await system.run(
@@ -792,7 +783,6 @@ describe("OrchestrationEngine", () => {
       );
       const result = await system.run(
         Effect.gen(function* () {
-          // Attach before loading/processing work, as startup and reactors do.
           const live = yield* engine.subscribeDomainEvents;
           for (let i = 0; i < count; i++) {
             yield* engine.dispatch({
@@ -1795,8 +1785,6 @@ describe("OrchestrationEngine", () => {
         ).pipe(Effect.timeoutOption("5 seconds")),
       );
 
-      // The defect fails this command immediately instead of leaving the caller to
-      // wait out the dispatch timeout.
       expect(Option.isSome(poisonedOutcome)).toBe(true);
       const outcome = Option.getOrThrow(poisonedOutcome);
       expect(outcome._tag).toBe("Failure");
@@ -1804,7 +1792,6 @@ describe("OrchestrationEngine", () => {
         expect(outcome.failure).toMatchObject({ _tag: "OrchestrationCommandInternalError" });
       }
 
-      // The worker survived: the next command still runs.
       await expect(
         system.run(
           system.engine.dispatch({
@@ -1819,7 +1806,6 @@ describe("OrchestrationEngine", () => {
         ),
       ).resolves.toMatchObject({ sequence: expect.any(Number) });
 
-      // The poisoned envelope was still finished, so `outstanding` did not leak.
       const drained = await system.run(
         Effect.timeoutOption(system.engine.drain, "5 seconds").pipe(Effect.map(Option.isSome)),
       );

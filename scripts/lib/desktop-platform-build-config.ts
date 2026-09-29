@@ -1,8 +1,3 @@
-// FILE: desktop-platform-build-config.ts
-// Purpose: Builds platform-specific electron-builder config fragments for desktop artifacts.
-// Layer: Release/build helper
-// Depends on: Desktop packaging policy and electron-builder config shape.
-
 import { fileURLToPath } from "node:url";
 
 import type { GladePackagedDesktopFlavor } from "@glade/shared/desktopIdentity";
@@ -23,9 +18,7 @@ const MAC_COMPUTER_HELPER_BUNDLE_PATH = "Contents/Helpers/glade-computer-helper"
 const MAC_DEVICE_HELPER_STAGE_PATH = "apps/server/dist/device-helper";
 export const MAC_DEVICE_HELPER_RESOURCE_PATH = "Resources/device-helper";
 const WINDOWS_INSTALLER_GUID = "5ae5e85a-0788-48c2-ab48-b8fd29cfc1e1";
-// Asset catalog name of the compiled Icon Composer icon. macOS 26 reads
-// CFBundleIconName out of Assets.car and renders that layered icon with the
-// Liquid Glass material; older releases ignore it and keep using the ICNS.
+
 export const MAC_ICON_ASSET_NAME = "Glade";
 export const MAC_ICON_COMPOSER_DEPLOYMENT_TARGET = "26.0";
 const MAC_ICON_ASSETS_CAR_STAGE_PATH = "apps/desktop/resources/Assets.car";
@@ -51,7 +44,7 @@ export interface CreateDesktopPlatformBuildConfigInput {
   readonly platform: "linux" | "mac" | "win";
   readonly target: string;
   readonly signed?: boolean;
-  /** Seal isolated local bundles without selecting a release certificate. */
+  // Seal isolated local bundles without selecting a release certificate.
   readonly adHocSign?: boolean;
   readonly windowsAzureSignOptions?: Record<string, string>;
   readonly flavor?: GladePackagedDesktopFlavor | undefined;
@@ -99,20 +92,16 @@ export function createDesktopPlatformBuildConfig(
       icon: MAC_DMG_ICON_PATH,
       category: "public.app-category.developer-tools",
       hardenedRuntime: input.signed === true,
-      // The mandatory afterSign hook splits Apple upload/wait timings and
-      // staples the app before electron-builder creates either container.
+
       notarize: false,
-      // Use electron-builder's per-file signing pass, including the inherited
-      // entitlements. Leaving only Electron's linker signature does not bind
-      // the app's actual identity or seal its Info.plist and resources.
+
       ...(input.adHocSign === true && input.signed !== true
         ? { identity: "-", timestamp: "none" }
         : {}),
       entitlements: MAC_ENTITLEMENTS_PATH,
       entitlementsInherit: MAC_INHERITED_ENTITLEMENTS_PATH,
       binaries: [MAC_COMPUTER_HELPER_BUNDLE_PATH, "Contents/Resources/cua-driver/cua-driver"],
-      // Both app trees contain the pre-lipo'd helpers and architecture-labelled
-      // vendor prebuilds. Those binaries are selected by path at runtime.
+
       x64ArchFiles:
         "Contents/{Helpers/glade-computer-helper,Resources/cua-driver/cua-driver,Resources/app.asar.unpacked/node_modules/**/darwin-*/**,Resources/app.asar.unpacked/node_modules/**/*-darwin-*/**}",
       extendInfo: {
@@ -140,14 +129,11 @@ export function createDesktopPlatformBuildConfig(
         window: { width: 642, height: 406 },
         iconSize: 128,
         contents: [
-          // Omit path so electron-builder uses the packaged app and its actual filename.
           { x: 172, y: 135, type: "file" },
           { x: 514, y: 241, type: "link", path: "/Applications" },
         ],
         sign: input.signed === true,
-        // The signed release flow notarizes and staples the DMG after electron-builder exits.
-        // Do not emit a blockmap/update entry whose hashes would describe the pre-stapled image;
-        // macOS auto-updates use the separately finalized ZIP artifact.
+
         writeUpdateInfo: false,
       },
       files: [
@@ -166,8 +152,7 @@ export function createDesktopPlatformBuildConfig(
           from: MAC_DEVICE_HELPER_STAGE_PATH,
           to: MAC_DEVICE_HELPER_RESOURCE_PATH,
         },
-        // electron-builder only knows how to place an ICNS; the compiled asset
-        // catalog has to be copied into Contents/Resources by hand.
+
         {
           from: MAC_ICON_ASSETS_CAR_STAGE_PATH,
           to: MAC_ICON_ASSETS_CAR_BUNDLE_PATH,
@@ -180,9 +165,7 @@ export function createDesktopPlatformBuildConfig(
   if (input.platform === "linux") {
     return {
       ...nativePackaging,
-      // The driver is spawned by path; an executable inside app.asar cannot
-      // serve that path. Keep the staged copy outside the archive and omit
-      // both source and runtime-resource copies from the application bundle.
+
       files: [
         ...files,
         "!apps/desktop/resources/cua-driver/**",
@@ -205,8 +188,7 @@ export function createDesktopPlatformBuildConfig(
 
   return {
     ...nativePackaging,
-    // Keep the Windows product registration stable while the public app ID changes.
-    // This lets NSIS updates replace the existing installation and own its uninstaller.
+
     nsis: {
       guid: WINDOWS_INSTALLER_GUID,
     },

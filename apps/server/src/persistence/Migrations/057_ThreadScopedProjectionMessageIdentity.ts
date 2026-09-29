@@ -3,18 +3,9 @@ import * as SqlClient from "effect/unstable/sql/SqlClient";
 
 import { primaryKeyColumns } from "./schemaHelpers.ts";
 
-/**
- * Provider message ids are only stable inside their owning thread. Rebuild the
- * projection table around that durable identity so a provider may reuse an id
- * in another thread without moving or overwriting the original message.
- */
 export default Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
 
-  // A rebuild is only safe against the pre-state. Replaying it over an already
-  // rebuilt table would copy the columns listed below into a fresh table and
-  // drop every column later migrations added (`sequence`), so the thread-scoped
-  // key is treated as the durable post-state marker and the rebuild is skipped.
   const primaryKey = yield* primaryKeyColumns(sql, "projection_thread_messages");
   if (primaryKey.includes("thread_id")) {
     return;

@@ -1,8 +1,3 @@
-// FILE: rightDockPaneMeta.tsx
-// Purpose: Shared semantic metadata (icon + label) for right-dock pane kinds.
-// Layer: Chat right-dock UI primitives
-// Exports: per-kind meta map and pane label/icon resolvers.
-
 import type { ReactNode } from "react";
 
 import { basenameOfPath } from "~/file-icons";
@@ -29,7 +24,7 @@ export interface RightDockPaneMeta {
 
 const RIGHT_DOCK_PANE_META: Record<RightDockPaneKind, RightDockPaneMeta> = {
   browser: { label: "Browser", Icon: GlobeIcon },
-  // The contract stays platform-neutral ("device"); today the backend is iOS.
+
   device: { label: "Simulator", Icon: DeviceMobileIcon },
   explorer: { label: "Explorer", Icon: FoldersIcon },
   file: { label: "File", Icon: FileIcon },
@@ -38,22 +33,15 @@ const RIGHT_DOCK_PANE_META: Record<RightDockPaneKind, RightDockPaneMeta> = {
   pullRequest: { label: "Pull request", Icon: GitPullRequestIcon },
 };
 
-// Neutral fallback for any pane kind we no longer recognize (e.g. stale
-// persisted state). Persisted dock state is sanitized on rehydrate, so this is
-// only a defensive guard to keep a single bad pane from crashing render.
 const FALLBACK_RIGHT_DOCK_PANE_META: RightDockPaneMeta = {
   label: "Panel",
   Icon: InfoIcon,
 };
 
-// Always resolve pane meta through this helper instead of indexing the map
-// directly, so an unknown kind degrades gracefully rather than throwing.
 export function getRightDockPaneMeta(kind: RightDockPaneKind): RightDockPaneMeta {
   return RIGHT_DOCK_PANE_META[kind] ?? FALLBACK_RIGHT_DOCK_PANE_META;
 }
 
-// Resolves a tab label, preferring caller-provided per-pane overrides (e.g. the
-// a caller-specific title) before falling back to the kind label.
 export function resolveRightDockPaneLabel(
   pane: RightDockPane,
   overrides?: Record<string, string | undefined>,
@@ -77,7 +65,6 @@ export function buildRightDockPaneLabelOverrides(
   return Object.keys(overrides).length > 0 ? overrides : undefined;
 }
 
-// File panes share the file-type icon used in headers and explorer rows.
 export function resolveRightDockPaneIcon(pane: RightDockPane): ReactNode {
   if (pane.kind === "file" && pane.filePath) {
     return (

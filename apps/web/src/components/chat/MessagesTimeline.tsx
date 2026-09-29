@@ -1,8 +1,3 @@
-// FILE: MessagesTimeline.tsx
-// Purpose: Renders the chat transcript rows and lets LegendList own scrolling/follow behavior.
-// Layer: Web chat presentation component
-// Exports: MessagesTimeline
-
 import {
   type EditorId,
   type MessageId,
@@ -182,35 +177,24 @@ import {
 const MAX_VISIBLE_INLINE_TOOL_ENTRIES = 4;
 const EMPTY_EDITOR_KEYBINDINGS: ResolvedKeybindingsConfig = [];
 const EMPTY_AVAILABLE_EDITORS: ReadonlyArray<EditorId> = [];
-// Changed-files list in the per-turn card is capped so large turns stay compact;
-// the rest are revealed via an inline "Show more" row.
+
 const MAX_VISIBLE_CHANGED_FILES = 5;
-// The composer overlaps the transcript by design, so the list needs extra tail
-// space beyond the overlap to keep final cards from sitting flush against it.
+
 const BOTTOM_CONTENT_INSET_PX = 64;
 const MESSAGE_HOVER_REVEAL_CLASS_NAME =
   "opacity-0 transition-opacity pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto";
-// How long a jumped-to message keeps its highlight tint before fading back out.
+
 const JUMP_HIGHLIGHT_DURATION_MS = 1200;
 const FIND_FINE_SCROLL_RETRY_TIMEOUT_MS = 900;
 const FIND_FINE_SCROLL_MAX_RETRY_FRAMES = 90;
 const MESSAGE_SEND_ENTER_ANIMATION_MS = 180;
 const MESSAGE_SEND_ENTER_CLEANUP_BUFFER_MS = 60;
-// Treat any partially visible row (>= 1px) as in view, so the navigation trail's
-// "active" tick tracks the topmost rendered row rather than waiting for a turn to
-// be substantially on-screen.
+
 const TRAIL_VIEWABILITY_CONFIG = { itemVisiblePercentThreshold: 0 } as const;
 const EMPTY_GOAL_ACHIEVEMENTS: readonly ThreadGoalAchievement[] = [];
 const EMPTY_GOAL_ACHIEVEMENTS_BY_TURN_ID = new Map<TurnId, ThreadGoalAchievement>();
 const EMPTY_MESSAGE_ID_SET: ReadonlySet<MessageId> = new Set();
 
-// Imperative LegendList access goes through these module-level helpers instead of
-// inline `ref.current` reads. The timeline's list ref is `listRef ?? fallbackListRef`,
-// which React Compiler cannot recognize as a ref, so an inline `.current` read makes it
-// infer a `ref.current` dependency that no manual dep array can declare — and the whole
-// component bails out with "Existing memoization could not be preserved". Behind an
-// opaque module-level call the inferred dependency is the ref object itself, matching the
-// hand-written dep arrays. See MessagesTimeline.compiler.test.ts.
 function scrollLegendListToEnd(listRef: RefObject<LegendListRef | null>): void {
   void listRef.current?.scrollToEnd?.({ animated: false });
 }
@@ -228,10 +212,6 @@ function readLegendListState(
   return listRef.current?.getState?.();
 }
 
-/**
- * Imperative handle the transcript exposes so the Environment panel's pinned-message
- * checklist can scroll the virtualized list to (and briefly flash) a specific message.
- */
 export interface MessagesTimelineController {
   scrollToMessage: (
     messageId: MessageId,
@@ -240,8 +220,6 @@ export interface MessagesTimelineController {
   setActiveFindMatch: (match: ThreadFindMatch | null) => void;
 }
 
-// Keeps the origin/steer marker visually attached to the whole sent-message stack.
-// Which marker (if any) applies comes from the shared resolveUserTurnMarker predicate.
 const USER_TURN_MARKER_PRESENTATION: Record<
   UserTurnMarkerKind,
   { readonly Icon: LucideIcon; readonly label: string }
@@ -287,29 +265,20 @@ function getMonotonicTimeMs(): number {
   return typeof performance === "undefined" ? Date.now() : performance.now();
 }
 
-// Per-step status glyph for the worktree setup stepper. Mirrors the active
-// task-list card: spinner while active, check when done, hollow node pending.
 function WorktreeSetupStepGlyph({ status }: { status: WorktreeSetupStep["status"] }) {
   if (status === "done") {
-    // Foreground (black) check, same box as the spinner so done/active nodes match.
     return <CircleCheckIcon className="size-2.5 text-[var(--color-text-foreground)]" />;
   }
   if (status === "active") {
-    // Spinner sized to match the pending nodes, in foreground (black) so the
-    // active step reads as the current work rather than an accent flourish.
     return <LoaderIcon className="size-2.5 animate-spin text-[var(--color-text-foreground)]" />;
   }
   if (status === "error") {
     return <CircleAlertIcon className="size-2.5 text-destructive" />;
   }
-  // Lucide circles render at ~83% of their box, so an 8px ring matches the
-  // visible diameter of the size-2.5 spinner/check glyphs.
+
   return <span className="block size-2 rounded-full border border-[color:var(--color-border)]" />;
 }
 
-// Transient "Preparing worktree..." panel: a compact bordered card with a
-// git-branch header and a connected stepper. Hugs its content so it reads as a
-// status chip rather than a full-width block.
 function WorktreeSetupCard({
   steps,
   pendingAction,
@@ -319,9 +288,6 @@ function WorktreeSetupCard({
   pendingAction?: WorktreeSetupResolutionAction | null | undefined;
   onResolve?: ((action: WorktreeSetupResolutionAction) => void) | undefined;
 }) {
-  // The send pipeline only honors a resolution at checkpoints before the turn
-  // dispatch, so hide the actions once "Starting session" is underway (or the
-  // setup already failed) rather than offering a cancel that can no longer win.
   const canResolve =
     onResolve !== undefined &&
     steps.every((step) => step.status !== "error") &&
@@ -402,47 +368,40 @@ interface MessagesTimelineProps {
   isWorking: boolean;
   workingLabel?: WorkingLabel | undefined;
   activeTurnInProgress: boolean;
-  /** Transient "New worktree" setup progress; rendered as an ephemeral step card at the tail. */
+
   worktreeSetup?: WorktreeSetupSnapshot | null;
-  /** Action already chosen from the worktree setup card; disables its buttons while it applies. */
+
   worktreeSetupPendingAction?: WorktreeSetupResolutionAction | null;
-  /** Resolve the in-flight worktree preparation (cancel the send or fall back to the local checkout). */
+
   onResolveWorktreeSetup?: (action: WorktreeSetupResolutionAction) => void;
   followLiveOutput?: boolean;
   emptyStateContent?: ReactNode;
   listRef?: RefObject<LegendListRef | null>;
-  /** Receives the scroll-to-message controller so the Environment panel can jump to a pin. */
+
   controllerRef?: RefObject<MessagesTimelineController | null>;
-  /** Message ids currently pinned for the active thread (drives the footer pin toggle state). */
+
   pinnedMessageIds?: ReadonlySet<MessageId>;
-  /** Excludes transient rows from persistent pin affordances. */
+
   canPinMessage?: (messageId: MessageId) => boolean;
-  /** Toggle a message's pinned state from the assistant footer. */
+
   onTogglePinMessage?: (messageId: MessageId) => void;
-  /** Fork the thread from the assistant footer, carrying the transcript up to that turn. */
+
   onForkFromMessage?: (messageId: MessageId) => void;
-  /** Recorded goal achievements; each renders a footer badge on its turn's terminal assistant message. */
+
   goalAchievements?: readonly ThreadGoalAchievement[];
-  /** User messages inserted locally by send actions, eligible for the subtle enter affordance. */
+
   enteringUserMessageIds?: ReadonlySet<MessageId>;
-  /**
-   * Just-sent user message to anchor at the top of the viewport for the live turn.
-   * While set, the tail spacer reserves the space below it so the streaming response
-   * fills the remaining viewport; null collapses the reserve (turn finished).
-   */
+
   tailAnchorMessageId?: MessageId | null;
-  /**
-   * Shared flag set by ChatView on send and cleared by the tail-anchor hook once
-   * the anchored slide settles; ChatView's auto-follow re-snaps pause while set.
-   */
+
   tailAnchorScrollInFlightRef?: RefObject<boolean> | undefined;
-  /** Provenance for a conversation created from another Glade task. */
+
   crossTaskOrigin?: CrossTaskOrigin | null;
-  /** Immediate source chat for a forked transcript. */
+
   forkSource?: ForkSourceReference | null;
   handoffSource?: ForkSourceReference | null;
   timelineEntries: ReturnType<typeof deriveTimelineEntries>;
-  /** Stable source messages, before plans/tools reshape the presentation rows. */
+
   messageChangeSignal?: unknown;
   turnDiffSummaryByAssistantMessageId: Map<MessageId, TurnDiffSummary>;
   expandedWorkGroups?: Record<string, boolean>;
@@ -450,29 +409,24 @@ interface MessagesTimelineProps {
   onOpenAgentActivity?: (activityId: string) => void;
   onOpenTurnDiff: (turnId: TurnId, filePath?: string) => void;
   onOpenThread?: (threadId: ThreadId) => void;
-  /** Open an automation's detail page from a "created automation" transcript card. */
+
   onOpenAutomation?: (automationId: string) => void;
-  /** Whether the composer currently has computer control on; flips denial cards to their confirmed state. */
+
   computerControlEnabled?: boolean;
-  /** Switch computer control on from a "computer control denied" transcript card. */
+
   onEnableComputerControl?: () => void;
   onUndoTurnFiles?: (turnCounts: readonly number[]) => void;
   onRespondToAsyncUserInput?: (messageId: MessageId, answers: readonly string[]) => Promise<void>;
   onEditUserMessage?: (messageId: MessageId, text: string) => boolean | Promise<boolean>;
-  /**
-   * The user message the edit affordance may target, resolved by the owner from
-   * the raw thread messages (the same list the server-side edit policy
-   * validates). The timeline must not re-derive this from its own rows: they are
-   * createdAt-sorted and include optimistic/filtered entries, so a row-derived
-   * target can point at a message the server rejects.
-   */
+  // The timeline must not re-derive this from its own rows: they are createdAt-sorted and include
+  // optimistic/filtered entries, so a row-derived target can point at a message the server rejects.
   editableUserMessageId?: MessageId | null;
   activeTurnId?: TurnId | null;
   isRevertingCheckpoint: boolean;
   onImageExpand: (preview: ExpandedImagePreview) => void;
   onIsAtEndChange?: (isAtEnd: boolean) => void;
   onNavigate?: () => void;
-  /** Emits current + visible sent-message anchors as the viewport scrolls (drives the trail). */
+
   onTrailHighlightsChange?: (snapshot: ActiveTrailSnapshot) => void;
   onMessagesClickCapture?: ComponentProps<typeof LegendList>["onClickCapture"];
   onMessagesMouseUp?: ComponentProps<typeof LegendList>["onMouseUp"];
@@ -489,24 +443,16 @@ interface MessagesTimelineProps {
   chatFontSizePx?: number;
   timestampFormat: TimestampFormat;
   workspaceRoot: string | undefined;
-  /** Already-loaded launcher config; avoids one config subscription per changed-file row. */
+
   keybindings?: ResolvedKeybindingsConfig;
   availableEditors?: ReadonlyArray<EditorId>;
-  /**
-   * Right padding (px) applied to the scroll viewport so transcript rows clear a right-edge
-   * overlay (e.g. the docked Environment card). The scrollbar stays pinned to the viewport's
-   * far right; only the content is inset.
-   */
+
   contentInsetRightPx?: number | undefined;
-  /**
-   * Bottom padding (px) applied to the scroll viewport so transcript rows clear the
-   * floating composer. Passed through `style` (not a class) on purpose: LegendList reads
-   * style padding, so it can account for the inset in its own end-space math.
-   */
+
   contentInsetBottomPx?: number | undefined;
-  /** Measured distance from the composer's bottom edge to the top of its footer controls. */
+
   contentInsetBottomClearancePx?: number | undefined;
-  /** In-thread find highlight; matching itself lives on projected messages, not the DOM. */
+
   findHighlight?: ThreadFindHighlight | null;
 }
 
@@ -576,10 +522,6 @@ export const MessagesTimeline = memo(function MessagesTimeline({
   contentInsetBottomClearancePx,
   findHighlight: findHighlightProp,
 }: MessagesTimelineProps) {
-  // Prop defaults are resolved in the body rather than in the destructuring pattern:
-  // an `AssignmentPattern` in the parameter list makes React Compiler bail out on the
-  // entire component (silently, since `panicThreshold` is unset), which would drop
-  // memoization for the whole transcript. See MessagesTimeline.compiler.test.ts.
   const workingLabel = workingLabelProp ?? "Thinking";
   const worktreeSetup = worktreeSetupProp ?? null;
   const worktreeSetupPendingAction = worktreeSetupPendingActionProp ?? null;
@@ -591,11 +533,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
   const findHighlight = findHighlightProp ?? null;
   const editorKeybindings = keybindings ?? EMPTY_EDITOR_KEYBINDINGS;
   const installedEditors = availableEditors ?? EMPTY_AVAILABLE_EDITORS;
-  // The timeline remounts per thread (and when the agent-activity detail view
-  // closes), but the anchor lives above it and survives those remounts. An
-  // anchor that is already set at mount time therefore describes a slide that
-  // has *already* played — re-entry must land at the anchored end directly
-  // rather than replaying the glide from the top of the whole conversation.
+
   const [inheritedTailAnchorMessageId] = useState<MessageId | null>(
     () => tailAnchorMessageIdProp ?? null,
   );
@@ -613,17 +551,8 @@ export const MessagesTimeline = memo(function MessagesTimeline({
   const normalizedChatFontSizePx = normalizeChatFontSizePx(
     chatFontSizePxProp ?? DEFAULT_CHAT_FONT_SIZE_PX,
   );
-  // Inset rows from the right (overriding the gutter's right padding) without moving the
-  // scroll viewport, so the scrollbar stays pinned to the far right while content clears
-  // any right-edge overlay. Kept stable so LegendList isn't re-rendered on unrelated updates.
-  // The bottom inset clears the floating composer the transcript scrolls under; it is
-  // padding on the scroll viewport (not a taller footer) so the list's own footer-layout
-  // and initial-scroll machinery is never resized from outside. The mask dissolves rows
-  // as they pass behind the composer's glass so nothing remains visible behind its
-  // footer controls (see composerOverlayScrollMaskImage).
+
   const listScrollStyle = useMemo(() => {
-    // LegendList can seed its cross-axis size while the pane is narrow. Keep the
-    // scroll viewport tied to the pane so rows recenter when the window grows.
     const style: CSSProperties = { width: "100%" };
     if (contentInsetRightPx) {
       style.paddingRight = contentInsetRightPx;
@@ -681,9 +610,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
       [messageId]: open,
     }));
   }, []);
-  // Manual open/closed overrides for the collapsed tool-group summary rows,
-  // keyed per group. Deliberately separate from expandedWorkGroupsState, whose
-  // meaning is "show rows past the live +N cap".
+
   const [toolGroupSummaryOverrides, setToolGroupSummaryOverrides] = useState<
     Record<string, boolean>
   >({});
@@ -696,7 +623,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
   const [expandedFileChangesByTurnId, setExpandedFileChangesByTurnId] = useState<
     Record<string, boolean>
   >({});
-  // Tracks which turns have their changed-files list expanded past MAX_VISIBLE_CHANGED_FILES.
+
   const [expandedFileListByTurnId, setExpandedFileListByTurnId] = useState<Record<string, boolean>>(
     {},
   );
@@ -706,11 +633,9 @@ export const MessagesTimeline = memo(function MessagesTimeline({
   const [editingUserMessageId, setEditingUserMessageId] = useState<MessageId | null>(null);
   const [submittingEditedUserMessageId, setSubmittingEditedUserMessageId] =
     useState<MessageId | null>(null);
-  // Transient highlight applied to a message jumped-to from the pinned-message checklist.
+
   const [highlightedMessageId, setHighlightedMessageId] = useState<MessageId | null>(null);
-  // Index achievements by the turn whose completion achieved the goal, so each
-  // badge anchors to that turn's terminal assistant message. Last one wins per
-  // turn (a turn can only end one goal at a time anyway).
+
   const goalAchievements = goalAchievementsProp ?? EMPTY_GOAL_ACHIEVEMENTS;
   const goalAchievementByTurnId = useMemo<ReadonlyMap<TurnId, ThreadGoalAchievement>>(() => {
     if (goalAchievements.length === 0) {
@@ -735,8 +660,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
   useTailAnchorScroll({
     listRef: resolvedListRef,
     timelineRootRef,
-    // An inherited anchor already reached its resting position before this
-    // mount; the list bootstraps there via `initialScrollAtEnd` instead.
+
     anchorMessageId: hasInheritedTailAnchor ? null : tailAnchorMessageId,
     anchorScrollInFlightRef: tailAnchorScrollInFlightRef,
     onAnchorSlideFinished: handleTailAnchorSlideFinished,
@@ -793,11 +717,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
     return rows[lastImportedMessageIndex + 1]?.id ?? null;
   }, [canRenderForkSourceDivider, rows]);
   const forkDividerAtEnd = canRenderForkSourceDivider && forkDividerBeforeRowId === null;
-  // Fixed bottom content inset. The variable space that lets a just-sent
-  // message anchor at the viewport top is reserved natively by LegendList's
-  // `anchoredEndSpace` below, not by resizing this footer — resizing the footer
-  // from outside fights the list's own footer-layout and initial-scroll
-  // machinery (visible as send-time scroll jumps).
+
   const listFooter = useMemo(
     () => (
       <>
@@ -813,13 +733,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
     ),
     [forkDividerAtEnd, forkSourceDivider],
   );
-  // Native reserve for the anchored send: LegendList sizes an end space so the
-  // anchor row can sit at the viewport top when scrolled to the end, keeps that
-  // reserve in sync with measured tail sizes inside its own layout pass, and
-  // shrinks it to zero as the streaming response grows (automatic hand-off to
-  // follow-the-tail). `anchorOffset` carries the container's own CSS vertical
-  // padding, which the list cannot see (it only reads style props), so that
-  // "at end" lands the anchor exactly one top-inset below the viewport top.
+
   const tailAnchorRowIndex = useMemo(() => {
     if (tailAnchorMessageId === null) {
       return -1;
@@ -838,9 +752,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
       return;
     }
     const style = getComputedStyle(node);
-    // Only the *class-based* padding belongs here. The composer inset is applied through
-    // `style.paddingBottom`, which the list already reads and reserves for itself —
-    // counting it twice would push the anchored message a composer-height off the top.
+
     const bottomPadding = Math.max(
       0,
       (Number.parseFloat(style.paddingBottom) || 0) - (contentInsetBottomPx ?? 0),
@@ -858,10 +770,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
           },
     [anchorVerticalInsetPx, tailAnchorRowIndex],
   );
-  // `anchoredEndSpaceSize` is an internal LegendList signal used only to make
-  // the native reserve observable to the browser regression harness. Its
-  // public listener union deliberately omits it, so narrow the internal hook
-  // locally rather than weakening the ref type throughout the transcript.
+
   useEffect(() => {
     const state = resolvedListRef.current?.getState?.();
     const listenForAnchoredEndSpace = state?.listen as
@@ -871,8 +780,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
       timelineRootRef.current?.setAttribute("data-anchored-end-space", String(Math.round(size)));
     });
   }, [resolvedListRef]);
-  // The newest work group renders its rows inline while the turn is live; every
-  // older run of tool calls folds into a "Ran N commands..." summary row.
+
   const lastLiveWorkGroupId = useMemo(() => findLastLiveWorkGroupId(rows), [rows]);
   const firstUserMessageId = useMemo(() => {
     for (const row of rows) {
@@ -922,8 +830,8 @@ export const MessagesTimeline = memo(function MessagesTimeline({
       toolGroupSummaryOverrides,
     ],
   );
-  // Latest rows kept in a ref so the imperative scroll controller can look up a message's
-  // index lazily without re-installing the controller on every transcript change.
+  // Latest rows kept in a ref so the imperative scroll controller can look up a message's index
+  // lazily without re-installing the controller on every transcript change.
   const rowsRef = useRef(rows);
   useEffect(() => {
     rowsRef.current = rows;
@@ -1131,9 +1039,9 @@ export const MessagesTimeline = memo(function MessagesTimeline({
       window.cancelAnimationFrame(frameId);
     };
   }, [onIsAtEndChange, resolvedListRef, rows.length]);
-  // Sent-message anchors (id + position in the virtualized row list) for the
-  // navigation trail. Held in a ref so the viewability callback stays stable and
-  // doesn't re-subscribe LegendList on every transcript change.
+  // Sent-message anchors (id + position in the virtualized row list) for the navigation trail. Held
+  // in a ref so the viewability callback stays stable and doesn't re-subscribe LegendList on every
+  // transcript change.
   const userMessageAnchors = useMemo<MessageTrailAnchor[]>(() => {
     const anchors: MessageTrailAnchor[] = [];
     rows.forEach((row, index) => {
@@ -1158,11 +1066,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
     },
     [onTrailHighlightsChange],
   );
-  // Scroll events can fire several times per frame (smooth scrolls, streaming
-  // re-sticks); the trail-highlight derivation is coalesced to one per frame.
-  // At-end ownership stays synchronous: ChatView's auto-follow layout effect
-  // reads it via a ref in the same frame, and a deferred update would let a
-  // scheduled scrollToEnd override a user gesture that just scrolled away.
+
   const listScrollFrameRef = useRef<number | null>(null);
   useEffect(() => {
     return () => {
@@ -1207,9 +1111,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
     tailExpansionScrollSuppressedRef.current = true;
     clearTailExpansionScrollTimers();
   }, [clearTailExpansionScrollTimers]);
-  // These retries only preserve an existing bottom stick while tail content
-  // settles. A direct user gesture owns the viewport immediately and must
-  // cancel every delayed re-stick scheduled by an earlier image/disclosure.
+
   const handleMessagesPointerCancel = useCallback<
     NonNullable<MessagesTimelineProps["onMessagesPointerCancel"]>
   >(
@@ -1311,8 +1213,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
         return Promise.resolve();
       }
       setSubmittingEditedUserMessageId(messageId);
-      // Promise chain instead of async/try-finally: React Compiler does not yet
-      // support try/finally, and it would skip optimizing this whole component.
+
       return Promise.resolve(onEditUserMessage(messageId, nextText))
         .then((saved) => {
           if (saved) {
@@ -1361,8 +1262,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
       {row.kind === "work" &&
         (() => {
           const groupId = row.id;
-          // Creation milestones are reserved for the end-of-turn recap card.
-          // The provider's actual Glade MCP tool rows remain visible here.
+
           const groupedEntries = row.groupedEntries.filter(
             (workEntry) => !workEntry.gladeThreadCreation,
           );
@@ -1395,8 +1295,8 @@ export const MessagesTimeline = memo(function MessagesTimeline({
             expanded: isExpanded,
             maxVisibleEntries: MAX_VISIBLE_WORK_LOG_ENTRIES,
             keep: "last",
-            // The capability-denied card carries the only affordance to unblock
-            // the agent, so it must never disappear behind the "Show more" cap.
+            // The capability-denied card carries the only affordance to unblock the agent, so it must never
+            // disappear behind the "Show more" cap.
             shouldCapEntry: (workEntry) =>
               !workEntry.computerControlDenied && !workEntry.computerSetupRequired,
           });
@@ -1584,9 +1484,9 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                     isEditingThisMessage ? "w-full max-w-full" : "max-w-[80%]",
                   )}
                 >
-                  {/* Keep user-message chrome outside the bubble so the message reads as one simple block. */}
-                  {/* The cross-task origin label already attributes this turn to another Glade thread,
-                      so suppress the dispatch chip here to avoid a duplicate "Sent by …" marker. */}
+                  {}
+                  {/* The cross-task origin label already attributes this turn to another Glade thread, so suppress the
+   dispatch chip here to avoid a duplicate "Sent by …" marker. */}
                   {showCrossTaskOrigin ? null : (
                     <UserDispatchModeChip
                       dispatchMode={row.message.dispatchMode}
@@ -1784,8 +1684,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
               statusEntries,
               toolGroupId,
               toolExpanded,
-              // Ordered (tool + narration interleaved) so chunking sees the
-              // thinking/info boundaries that split tool runs mid-turn.
+
               orderedRenderableEntries: displayEntries.filter(isRenderableToolEntry),
               renderableToolEntries: toolEntries.filter(isRenderableToolEntry),
               visibleRenderableToolEntries: visibleToolEntries.filter(isRenderableToolEntry),
@@ -1808,14 +1707,12 @@ export const MessagesTimeline = memo(function MessagesTimeline({
           });
           const messagePinned = pinnedMessageIds?.has(row.message.id) ?? false;
           const messageCanPin = canPinMessage?.(row.message.id) ?? true;
-          // Offer the pin toggle wherever copy is offered (a complete, terminal answer);
-          // keep it visible for an already-pinned message so it can always be unpinned.
+
           const showPinToggle =
             messageCanPin &&
             Boolean(onTogglePinMessage) &&
             (assistantCopyState.visible || messagePinned);
-          // Fork rides the same "settled, persisted answer" signal as copy: an
-          // ephemeral or still-streaming bubble has no turn to fork from.
+
           const showForkAction =
             messageCanPin && Boolean(onForkFromMessage) && assistantCopyState.visible;
           const turnSummary = row.assistantTurnDiffSummary;
@@ -1834,11 +1731,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
             (turnSummary?.files.length ?? 0) > 0
               ? turnSummary!.files
               : [];
-          // Only the turn's final answer carries a timestamp. Intermediate
-          // working preambles (and their inline tool calls) stay timestamp-free
-          // so a live turn reads as one block, not a stack of timestamped
-          // fragments. `showAssistantCopyButton` is exactly the terminal-message
-          // signal (see deriveTerminalAssistantMessageIds).
+
           const isTerminalAssistantMessage =
             row.showAssistantCopyButton && !row.assistantTurnInProgress;
           const goalAchievement =
@@ -1870,9 +1763,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
               ),
             ).values(),
           ];
-          // Computer setup/denied cards carry the only affordance to unblock the
-          // agent, so a settled turn shows the latest of each after the answer
-          // instead of burying it inside the closed "Worked for" disclosure.
+
           const collapsedComputerActionEntries = [
             ...new Map(
               (row.collapsedTurnItems ?? []).flatMap((item) =>
@@ -1927,8 +1818,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
               display.toolGroupId !== null &&
               display.toolGroupId === lastLiveWorkGroupId &&
               (activeTurnInProgress || isWorking);
-            // Leading groups are never a live tail: the message's own text
-            // already follows them, so their last tool run collapses too.
+
             const plannedRenderChunks = planWorkEntryRenderChunks(
               display.orderedRenderableEntries,
               {
@@ -1953,13 +1843,11 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                         {renderChunks.map((chunk) => {
                           const fold = resolveWorkEntryChunkFold(chunk);
                           if (!fold) {
-                            // Narration-tone entries render in the status block
-                            // below; here they only serve as run boundaries.
                             return chunk.entries
                               .filter((workEntry) => workEntry.tone === "tool")
                               .map(renderInlineToolRow);
                           }
-                          // Message ids stay stable while a live group's first-entry id can drift.
+
                           const summaryRowKey = `${placement}:${row.message.id}:${chunk.id}`;
                           const summaryOverrideKey = `${summaryRowKey}${fold.keySuffix}`;
                           return (
@@ -2127,8 +2015,6 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                 <div
                   aria-hidden="true"
                   inert
-                  // The clone is visual-only for the entire close transition; keep it inert
-                  // even while the inner DisclosureRegion starts open for its first frame.
                   className="pointer-events-none mb-3 select-none"
                   data-settled-turn-collapse-transition="true"
                 >
@@ -2152,11 +2038,6 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                     }}
                   >
                     <CollapsibleTrigger
-                      // ChatView's click anchor preserves this trigger's screen position
-                      // while the disclosure height animates, so opening it should not tail-scroll.
-                      // -ml-0.5 optically aligns the leading "W" with the reply
-                      // text below: the box is already flush, but the W glyph
-                      // carries a left side-bearing that reads as an inset.
                       className={cn(
                         "-ml-0.5 inline-flex items-center gap-1 pb-2 text-left transition-colors duration-120 hover:text-foreground",
                         MUTED_LABEL_TEXT_CLASS_NAME,
@@ -2267,12 +2148,6 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                     ))
                   : null}
                 {(() => {
-                  // Hold the end-of-turn changes card (Undo / Review) until the
-                  // turn settles. While the turn is live the composer's own
-                  // live-changes strip owns this surface; showing the card too
-                  // would duplicate it and pre-empt the strip mid-turn.
-                  // Checkpoints capture the shared workspace. If this turn ran no tools,
-                  // changes made by another chat during it cannot belong to this reply.
                   if (
                     !turnSummary ||
                     row.assistantTurnInProgress ||
@@ -2318,8 +2193,6 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                     file: (typeof checkpointFiles)[number],
                     withFirstReset: boolean,
                   ) => {
-                    // Hoisted out of JSX: a `??` inside an `&&` test makes React Compiler
-                    // bail out ("Unexpected terminal kind `logical` for logical test block").
                     const additions = file.additions ?? 0;
                     const deletions = file.deletions ?? 0;
                     const fileKind = file.kind ?? "modified";
@@ -2450,11 +2323,6 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                   assistantCopyState.visible ||
                   assistantMeta.length > 0 ||
                   goalAchievement !== null) && (
-                  // Turn-end actions read Copy → Fork → Pin → time and stay visible at
-                  // rest: they belong to a settled turn, so hiding them behind hover made
-                  // the whole row feel undiscoverable. The leading button pulls left by
-                  // its own icon inset — (2em button − 1.125em glyph) / 2 — so the first
-                  // glyph, not the invisible hit area, aligns with the message text.
                   <div
                     className="mt-0.5 flex items-center gap-2 font-system-ui font-normal text-muted-foreground [&>button+button]:-ml-2 [&>button:first-child]:-ml-[0.4375em]"
                     style={chatMessageFooterStyle}
@@ -2472,8 +2340,6 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                       </MessageActionButton>
                     ) : null}
                     {showPinToggle ? (
-                      // Same Central pin glyph in both states — the darker tint is what
-                      // signals "this message is pinned".
                       <MessageActionButton
                         label={pinActionLabel("message", messagePinned)}
                         tooltip={messagePinned ? "Unpin from panel" : "Pin to panel"}
@@ -2488,8 +2354,6 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                       <p className="tabular-nums">{assistantMeta}</p>
                     ) : null}
                     {goalAchievement !== null ? (
-                      // Divided off from the actions: the achieved goal is a durable fact
-                      // about the turn, not something you can act on.
                       <>
                         <div aria-hidden className="h-3 w-px shrink-0 bg-border" />
                         <p
@@ -2547,8 +2411,6 @@ export const MessagesTimeline = memo(function MessagesTimeline({
     </div>
   );
 
-  // Transient rows (for example failed first-send worktree setup) must be able
-  // to render even when there are no persisted chat messages yet.
   const hasRenderableTranscriptContent =
     hasMessages || rows.length > 0 || canRenderForkSourceDivider;
   if (!hasRenderableTranscriptContent && !isWorking) {
@@ -2572,14 +2434,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
         keyExtractor={(row) => row.id}
         renderItem={({ item }) => renderRowContent(item)}
         estimatedItemSize={90}
-        // LegendList caches rendered rows, so every local expansion map that changes row content
-        // has to be surfaced through extraData.
         extraData={timelineExtraData}
-        // Deliberately keyed off the *inherited* anchor rather than
-        // `tailAnchorSlideInFlight`: LegendList re-targets the end on every data
-        // change while this is true, which would yank a live post-send anchor
-        // out of its hold. A remount that inherits an already-settled anchor has
-        // no slide to preserve, so bootstrapping at the end is what we want.
         initialScrollAtEnd={tailAnchorMessageId === null || hasInheritedTailAnchor}
         {...(anchoredEndSpace ? { anchoredEndSpace } : {})}
         maintainScrollAtEnd={followLiveOutput && !tailAnchorSlideInFlight}
@@ -2607,14 +2462,6 @@ export const MessagesTimeline = memo(function MessagesTimeline({
         onWheel={handleMessagesWheel}
         data-chat-scroll-container="true"
         ListFooterComponent={listFooter}
-        // `scroll-fade-b` (vendored shadcn 4.12.0 util in index.css) masks the bottom
-        // edge so streamed content dissolves toward the composer. It is scroll-aware
-        // via `animation-timeline: scroll()`, so the fade clears at the live edge and a
-        // pinned or non-scrollable transcript stays crisp (no permanent shadow).
-        // With the floating composer the viewport bottom sits *behind* the frosted
-        // surface, so the scroll-aware fade is replaced by the fixed composer mask in
-        // `listScrollStyle`: rows dissolve through the glass over the editor region and
-        // are fully cut before the composer's footer controls.
         className={cn(
           "h-full overflow-x-hidden overscroll-y-contain py-3 [scrollbar-gutter:stable] sm:py-4",
           contentInsetBottomPx ? null : "scroll-fade-b",
@@ -2637,8 +2484,6 @@ type SettledTurnCollapseTimer = {
   cleanupTimeout: number | null;
 };
 
-// Reuse stable row references so streaming updates only force React work for
-// rows whose visible content actually changed.
 function useStableRows(rows: MessagesTimelineRow[]): MessagesTimelineRow[] {
   const previousStateRef = useRef<StableMessagesTimelineRowsState>({
     byId: new Map<string, MessagesTimelineRow>(),
@@ -2648,11 +2493,6 @@ function useStableRows(rows: MessagesTimelineRow[]): MessagesTimelineRow[] {
   return useMemo(() => reconcileStableTimelineRows(rows, previousStateRef), [rows]);
 }
 
-// The reconciliation reads and rewrites the previous-state cache during the memo,
-// which the compiler rejects. Keeping it in a module helper that takes the ref
-// (module functions aren't compiled) preserves the per-row identity reuse: a
-// whole-array useStableValue would drop every row reference whenever any single row
-// changed, re-rendering the entire streaming transcript instead of just that row.
 function reconcileStableTimelineRows(
   rows: MessagesTimelineRow[],
   previousStateRef: RefObject<StableMessagesTimelineRowsState>,
@@ -2662,8 +2502,6 @@ function reconcileStableTimelineRows(
   return nextState.result;
 }
 
-// Animates only user rows that ChatView identifies as local optimistic sends;
-// transcript hydration can add rows too, but should not replay send motion.
 function useMessageSendEnterAnimations(
   rows: readonly MessagesTimelineRow[],
   enteringUserMessageIds: ReadonlySet<MessageId>,
@@ -2695,11 +2533,6 @@ function useMessageSendEnterAnimations(
   return enteringRowIds;
 }
 
-// The fresh-row detection compares against the previous layout pass and stamps the
-// entering class before paint, so the send motion cannot flash. Running it from a
-// module helper (which the compiler doesn't scan) keeps that synchronous setState
-// out of the compiled hook without deferring it to a rAF/timeout that would paint a
-// frame before the class lands.
 function applyMessageSendEnterAnimation(params: {
   rows: readonly MessagesTimelineRow[];
   enteringUserMessageIds: ReadonlySet<MessageId>;
@@ -2752,9 +2585,6 @@ interface WorktreeSetupPresentation {
   open: boolean;
 }
 
-// Keeps the transient worktree-setup card mounted through one shared-disclosure
-// close animation after ChatView clears the snapshot, mirroring
-// useSettledTurnCollapseTransitions' rAF-flip + delayed-cleanup shape.
 function useWorktreeSetupPresentation(
   worktreeSetup: WorktreeSetupSnapshot | null,
 ): WorktreeSetupPresentation | null {
@@ -2789,10 +2619,6 @@ function useWorktreeSetupPresentation(
   return presented;
 }
 
-// Opens synchronously so the card is mounted before paint, then hands the close off
-// to a rAF-flip + delayed unmount. Isolated in a module helper (not compiled) so the
-// synchronous open setState stays out of the compiled hook while its exact ordering
-// against the close timers is preserved.
 function reconcileWorktreeSetupPresentation(params: {
   worktreeSetup: WorktreeSetupSnapshot | null;
   presented: WorktreeSetupPresentation | null;
@@ -2831,8 +2657,6 @@ function reconcileWorktreeSetupPresentation(params: {
   });
 }
 
-// Keeps newly folded turn details mounted for one shared-disclosure close
-// animation, so settled turns do not disappear in one height recalculation.
 function useSettledTurnCollapseTransitions(
   rows: readonly MessagesTimelineRow[],
 ): Readonly<Record<string, SettledTurnCollapseTransition>> {
@@ -2918,10 +2742,6 @@ function useSettledTurnCollapseTransitions(
   return transitions;
 }
 
-// Detects turns that just folded and drives their close animation. Kept in a module
-// helper (not compiled) so the synchronous open setState stays out of the hook while
-// its ordering against scheduleTransitionClose — which needs the open state committed
-// before it schedules the closing rAF — is preserved exactly.
 function applySettledTurnCollapseTransitions(params: {
   rows: readonly MessagesTimelineRow[];
   previousAssistantMessageIdsRef: RefObject<ReadonlySet<string>>;
@@ -2953,9 +2773,9 @@ function applySettledTurnCollapseTransitions(params: {
     }
     const messageId = row.message.id;
     currentAssistantMessageIds.add(messageId);
-    // Only the assistant row belonging to the live turn has an expanded layout
-    // on screen worth animating away. Thread-wide working state also covers
-    // reconnects, approvals, and newer turns, so it must not qualify history.
+    // Only the assistant row belonging to the live turn has an expanded layout on screen worth
+    // animating away. Thread-wide working state also covers reconnects, approvals, and newer turns, so
+    // it must not qualify history.
     if (row.assistantTurnInProgress || row.message.streaming) {
       watchedLiveMessageIds.add(messageId);
     }
@@ -3085,7 +2905,6 @@ const UserImageAttachmentThumbnail = memo(function UserImageAttachmentThumbnail(
   );
 });
 
-// Renders read-only user text with the same inline skill pill treatment as the composer.
 function renderFindWrappedText(
   text: string,
   keyPrefix: string,
@@ -3208,7 +3027,6 @@ function hasOnlyInlineSkillChips(
   return skillCount > 0;
 }
 
-// Inline editor for replaying a user message after the following assistant turn is rolled back.
 const UserMessageEditForm = memo(function UserMessageEditForm(props: {
   initialValue: string;
   disabled: boolean;
@@ -3302,10 +3120,6 @@ const UserMessageEditForm = memo(function UserMessageEditForm(props: {
   );
 });
 
-// Measures the clamped message against its content before paint so the fade mask
-// never flickers. Kept in a module helper (not compiled) so the synchronous
-// overflow setState — unavoidable for a layout measurement — stays out of the
-// compiled component.
 function measureUserMessageOverflow(
   collapsed: boolean,
   contentRef: RefObject<HTMLDivElement | null>,
@@ -3325,8 +3139,6 @@ function measureUserMessageOverflow(
   return observeUserMessageOverflow(element, measure);
 }
 
-// Show more/less for long user messages: a visual max-height clamp (with a fade
-// mask) around the fully rendered message instead of the old character slice.
 const UserMessageCollapsibleText = memo(function UserMessageCollapsibleText(props: {
   text: string;
   expanded: boolean;
@@ -3443,9 +3255,6 @@ const UserMessageBody = memo(function UserMessageBody(props: {
     );
   }
 
-  // Plain sent text renders as markdown (same pipeline as assistant messages);
-  // the user variant keeps single newlines, skips math, and renders composer
-  // tokens as chips via the composer-chips remark plugin.
   return (
     <ChatMarkdown
       variant="user"

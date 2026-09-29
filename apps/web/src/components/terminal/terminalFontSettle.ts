@@ -1,9 +1,3 @@
-// FILE: terminalFontSettle.ts
-// Purpose: Refit xterm after web fonts finish loading so early measurements do not stick.
-// Layer: Terminal runtime utility
-// Exports: waitForTerminalFontReady
-// Depends on: Browser FontFaceSet API
-
 const DEFAULT_FONT_LOAD_TIMEOUT_MS = 2_000;
 
 // Waits for the configured terminal font, but never blocks resize recovery forever.
@@ -27,7 +21,6 @@ export async function waitForTerminalFontReady(input: {
   try {
     await Promise.race([Promise.resolve(fonts.load(`${input.fontSize}px ${fontFamily}`)), timeout]);
   } catch {
-    // Refit anyway; a bad font spec should not permanently strand terminal dimensions.
   } finally {
     if (timeoutId !== null) {
       window.clearTimeout(timeoutId);

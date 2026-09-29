@@ -1,15 +1,3 @@
-/**
- * Parsing and interpretation of the device helper's `--probe` output.
- *
- * The helper reports each capability (framebuffer, hid, accessibility, encoder)
- * separately, because the private symbols behind them move independently
- * between Xcode releases. Keeping the parse and the availability mapping here —
- * away from process spawning — is what lets both be unit-tested against
- * synthetic probe payloads, including toolchains we cannot install.
- *
- * @module device/helperCapabilities
- */
-
 import {
   DEVICE_CAPABILITY_LABELS,
   type DeviceAvailability,
@@ -18,7 +6,6 @@ import {
   type DeviceToolchain,
 } from "@glade/contracts";
 
-/** Every capability, in the order the pane should list them. */
 const DEVICE_CAPABILITY_IDS = [
   "framebuffer",
   "hid",
@@ -30,7 +17,7 @@ export interface HelperProbeResult {
   readonly ok: boolean;
   readonly capabilities: readonly DeviceCapabilityStatus[];
   readonly toolchain: DeviceToolchain | undefined;
-  /** A whole-helper failure (frameworks would not load, CoreSimulator unreachable). */
+
   readonly error: string | undefined;
 }
 
@@ -57,14 +44,9 @@ const parseToolchain = (value: unknown): DeviceToolchain | undefined => {
     : toolchain;
 };
 
-/**
- * One capability entry: `"ok"`, or an object naming what failed.
- *
- * An entry the helper did not report at all is treated as broken rather than
- * assumed working — an older helper that predates a capability genuinely cannot
- * provide it, and silently claiming otherwise would surface as a mystery
- * failure at the point of use.
- */
+// An entry the helper did not report at all is treated as broken rather than assumed working — an
+// older helper that predates a capability genuinely cannot provide it, and silently claiming
+// otherwise would surface as a mystery failure at the point of use.
 const parseCapability = (id: DeviceCapabilityId, raw: unknown): DeviceCapabilityStatus => {
   if (raw === "ok") return { id, ok: true };
   const record = asRecord(raw);
@@ -79,10 +61,6 @@ const parseCapability = (id: DeviceCapabilityId, raw: unknown): DeviceCapability
   };
 };
 
-/**
- * Parse `--probe` stdout. Never throws: a helper that emits garbage is a
- * degraded helper, and the pane must render that rather than crash.
- */
 export const parseHelperProbe = (stdout: string): HelperProbeResult => {
   let parsed: unknown;
   try {
@@ -117,8 +95,8 @@ export const parseHelperProbe = (stdout: string): HelperProbeResult => {
   const capabilitiesRecord = asRecord(record["capabilities"]);
   const error = asNonEmptyString(record["error"]);
 
-  // A helper too old to report capabilities still answers `ok`. Trust that
-  // rather than reporting four phantom breakages.
+  // A helper too old to report capabilities still answers `ok`. Trust that rather than reporting four
+  // phantom breakages.
   if (!capabilitiesRecord) {
     const ok = record["ok"] === true;
     return {
@@ -141,20 +119,13 @@ export const parseHelperProbe = (stdout: string): HelperProbeResult => {
   };
 };
 
-/**
- * Map a probe onto the availability the pane renders, once setup is otherwise
- * complete.
- *
- * A capability failure is deliberately *not* `setup-required`: there is nothing
- * to install, so the pane opens and everything backed by a working capability
- * keeps working.
- */
+// Map a probe onto the availability the pane renders, once setup is otherwise complete. A
+// capability failure is deliberately *not* `setup-required`: there is nothing to install, so the
+// pane opens and everything backed by a working capability keeps working.
 export const availabilityFromProbe = (probe: HelperProbeResult): DeviceAvailability => {
   const broken = probe.capabilities.filter((capability) => !capability.ok);
 
   if (broken.length === 0) {
-    // Frameworks that would not load at all leave no per-capability detail;
-    // that is a helper failure, not a degraded one.
     if (!probe.ok && probe.error !== undefined) {
       return { kind: "helper-unavailable", message: probe.error };
     }
@@ -163,7 +134,6 @@ export const availabilityFromProbe = (probe: HelperProbeResult): DeviceAvailabil
       : { kind: "available" };
   }
 
-  // Everything broken means the helper is unusable, not partially usable.
   if (broken.length === probe.capabilities.length) {
     return {
       kind: "helper-unavailable",
@@ -174,7 +144,6 @@ export const availabilityFromProbe = (probe: HelperProbeResult): DeviceAvailabil
   return { kind: "degraded", capabilities: probe.capabilities, toolchain: probe.toolchain };
 };
 
-/** Names the toolchain a failure was measured on, when the helper reported it. */
 const describeToolchain = (toolchain: DeviceToolchain | undefined): string => {
   if (!toolchain) return "";
   const version = toolchain.xcodeVersion;
@@ -185,7 +154,6 @@ const describeToolchain = (toolchain: DeviceToolchain | undefined): string => {
   return "";
 };
 
-/** A one-line summary of what is broken, for logs and error messages. */
 const describeBrokenCapabilities = (
   broken: readonly DeviceCapabilityStatus[],
   toolchain: DeviceToolchain | undefined,
@@ -199,12 +167,8 @@ const describeBrokenCapabilities = (
   return `${list} unavailable${where ? ` with ${where}` : ""}`;
 };
 
-/**
- * The error an operation raises when the capability behind it is broken.
- *
- * Names the capability and the Xcode it broke on, because the actionable fact
- * is "this Xcode moved a symbol", not "the call failed".
- */
+// Names the capability and the Xcode it broke on, because the actionable fact is "this Xcode moved
+// a symbol", not "the call failed".
 export const capabilityUnavailableMessage = (
   capability: DeviceCapabilityStatus,
   toolchain: DeviceToolchain | undefined,

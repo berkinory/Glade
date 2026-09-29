@@ -2,7 +2,6 @@ import type { Writable } from "node:stream";
 
 import { ByteAccumulator } from "./byteAccumulator";
 
-/** Default byte budgets shared by the Codex and native helper transports. */
 export const JSONRPC_STDIO_MAX_FRAME_BYTES = 16 * 1024 * 1024;
 export const JSONRPC_STDIO_MAX_QUEUED_STDIN_BYTES = 32 * 1024 * 1024;
 
@@ -47,27 +46,20 @@ export class JsonRpcStdioRequestTimeoutError extends Error {
   }
 }
 
-/**
- * Notified for each line the framer had to drop, either because it outgrew the
- * frame budget or because it was not valid UTF-8.
- *
- * By the time this runs the framer has already resynchronized past the offending
- * line, so a handler that returns normally lets framing continue with the next
- * one. The default handler rethrows, which keeps a framing failure fatal for the
- * callers that treat transport errors as session-ending.
- */
+// Notified for each line the framer had to drop, either because it outgrew the frame budget or
+// because it was not valid UTF-8. By the time this runs the framer has already resynchronized past
+// the offending line, so a handler that returns normally lets framing continue with the next one.
 export type JsonRpcStdioLineErrorHandler = (error: JsonRpcStdioTransportError) => void;
 
 function rethrowLineError(error: JsonRpcStdioTransportError): never {
   throw error;
 }
 
-/** Raw-byte JSONL framing. Retaining bytes until newline keeps split UTF-8 safe. */
 export class JsonRpcStdioFramer {
   private readonly pending = new ByteAccumulator();
   private readonly decoder = new TextDecoder("utf-8", { fatal: true });
   private ended = false;
-  /** Set while the remainder of a dropped line is being skipped to its newline. */
+
   private skipping = false;
 
   constructor(
@@ -79,15 +71,6 @@ export class JsonRpcStdioFramer {
     }
   }
 
-  /**
-   * Frames a chunk, returning every complete line it completed.
-   *
-   * A line that cannot be framed costs exactly that line: its bytes are dropped,
-   * the scan continues to the next newline (across chunks if the line is still
-   * arriving), and the failure is reported through `onLineError` once the whole
-   * chunk has been consumed. Reporting last is what keeps a throwing handler
-   * from leaving unread bytes behind and desynchronizing the next chunk.
-   */
   push(chunk: Buffer | Uint8Array | string): ReadonlyArray<string> {
     if (this.ended) {
       throw this.makeTransportError({
@@ -144,7 +127,6 @@ export class JsonRpcStdioFramer {
     }
   }
 
-  /** Discards buffered bytes and permanently closes this framer. */
   close(): void {
     this.discardFrame();
     this.skipping = false;
@@ -168,7 +150,6 @@ export class JsonRpcStdioFramer {
     this.pending.clear();
   }
 
-  /** Returns the overflow error instead of throwing, so the caller can resync. */
   private append(chunk: Buffer): JsonRpcStdioTransportError | undefined {
     if (chunk.length === 0) return undefined;
     const observedBytes = this.pending.byteLength + chunk.length;
@@ -183,7 +164,6 @@ export class JsonRpcStdioFramer {
     return undefined;
   }
 
-  /** The decoded line, or the decode failure. Either way the bytes are consumed. */
   private takeFrame(): string | JsonRpcStdioTransportError {
     let frame = this.pending.take(this.pending.byteLength);
     if (frame.at(-1) === 0x0d) frame = frame.subarray(0, -1);
@@ -206,7 +186,6 @@ type PendingWrite = {
   readonly reject: (error: Error) => void;
 };
 
-/** Serializes JSONL writes, bounds retained frames, and honors stream drain. */
 export class JsonRpcStdioWriter {
   private readonly pending: PendingWrite[] = [];
   private queuedBytes = 0;
@@ -388,7 +367,6 @@ export interface JsonRpcStdioRequestRegistryOptions {
   readonly lifecycle?: JsonRpcStdioLifecycleHooks;
 }
 
-/** Correlates requests with responses and provides process lifecycle hooks. */
 export class JsonRpcStdioRequestRegistry {
   private readonly pending: Map<string, JsonRpcPendingRequest>;
   private readonly requestTimeoutMs: number;
@@ -482,7 +460,6 @@ export class JsonRpcStdioRequestRegistry {
     });
   }
 
-  /** Resolve a response. Returns false for an unknown or notification-shaped id. */
   handleResponse(response: JsonRpcResponse): boolean {
     const key = String(response.id);
     const request = this.pending.get(key);

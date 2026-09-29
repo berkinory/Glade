@@ -1,8 +1,3 @@
-// FILE: useSidebarThreadActions.ts
-// Purpose: Owns Sidebar thread pinning, archive/undo, deletion, and project-batch actions.
-// Layer: Web Sidebar controller hook
-// Exports: useSidebarThreadActions
-
 import { type ProjectId, ThreadId } from "@glade/contracts";
 import { pluralize } from "@glade/shared/text";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -50,22 +45,13 @@ import { useThreadSelectionStore } from "../threadSelectionStore";
 import type { Project, SidebarThreadSummary } from "../types";
 
 const ARCHIVE_UNDO_TOAST_DURATION_MS = 8000;
-/**
- * How long a confirmed settle override may outlive its projection push. Well
- * past normal push latency: the expiry is a last resort against a lost or
- * reordered push, not part of the happy path, where reconciliation clears the
- * override as soon as the projection agrees.
- */
+
 const SETTLE_OVERRIDE_MAX_LIFETIME_MS = 15_000;
 
-/**
- * Unarchives a thread, treating "it was already unarchived" as success.
- *
- * The undo toast can fire after the thread came back some other way (a second client, a replayed
- * command), and that race is not an error worth showing. Kept at module scope because React Compiler
- * cannot lower a `throw` inside a `try`/`catch`, and inlining this would cost the whole sidebar
- * actions hook its compilation.
- */
+// The undo toast can fire after the thread came back some other way (a second client, a replayed
+// command), and that race is not an error worth showing. Kept at module scope because React
+// Compiler cannot lower a `throw` inside a `try`/`catch`, and inlining this would cost the whole
+// sidebar actions hook its compilation.
 async function unarchiveThreadIgnoringAlreadyRestored(threadId: ThreadId): Promise<void> {
   try {
     const api = readNativeApi();
@@ -301,14 +287,10 @@ export function useSidebarThreadActions(input: {
           });
         }
       } catch (error) {
-        // A newer toggle owns the override now; dropping it here would revert to
-        // a state the user has already moved on from.
         if (isLatestRequest()) clearOptimisticThreadSettled(threadId);
         throw error;
       }
-      // The command is durable, so the override only bridges the gap until the
-      // projection push lands. Expiring it keeps a lost or reordered push from
-      // pinning the row to a stale state forever.
+
       if (!isLatestRequest()) return;
       const expiry = window.setTimeout(() => {
         settleOverrideExpiryTimeoutsRef.current.delete(threadId);
@@ -332,8 +314,6 @@ export function useSidebarThreadActions(input: {
     [setThreadSettled],
   );
 
-  // Drop optimistic settle entries once the server-confirmed state agrees, so
-  // later pushes from other clients are no longer masked by a stale override.
   useEffect(() => {
     if (optimisticSettledMutationByThreadId.size === 0) return;
     let settle: number | undefined;
@@ -591,8 +571,7 @@ export function useSidebarThreadActions(input: {
       const runArchive = async (): Promise<boolean> => {
         const archiveSequence = await archiveThreadFromClient(api.orchestration, threadId);
         archiveCleanupSequenceByThreadIdRef.current.set(threadId, archiveSequence);
-        // Undo owns its visible lifetime. Other archive entry points get the
-        // same grace period, allowing provider and terminal cleanup to settle.
+
         if (appSettings.archiveDeletesOrphanedWorktree && !options?.waitForUndo) {
           globalThis.setTimeout(
             () => releaseArchivedWorktree(threadId, archiveSequence),
@@ -683,8 +662,8 @@ export function useSidebarThreadActions(input: {
       toastManager.add({
         id: `archive-undo:${threadId}:${randomUUID()}`,
         timeout: 0,
-        // Covers swipe/Escape dismissal as well as the visible timer. A pending
-        // Undo must never turn a disappearing toast into a cleanup request.
+        // Covers swipe/Escape dismissal as well as the visible timer. A pending Undo must never turn a
+        // disappearing toast into a cleanup request.
         onClose: () => {
           if (archiveUndoPendingThreadIdsRef.current.has(threadId)) return;
           releaseArchivedWorktree(threadId, archiveSequence);
@@ -846,8 +825,7 @@ export function useSidebarThreadActions(input: {
       }
 
       const deletedIds = new Set<ThreadId>(projectThreads.map((thread) => thread.id));
-      // Built once, outside the loop's `try`: React Compiler cannot lower a conditional spread
-      // inside a try block and would skip this hook entirely.
+
       const worktreeCleanupOverride = options?.worktreeCleanupMode
         ? { worktreeCleanupMode: options.worktreeCleanupMode }
         : {};

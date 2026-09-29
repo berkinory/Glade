@@ -12,81 +12,50 @@ import type {
 import { readComputerAuditHistory } from "./computerAuditHistory.ts";
 import { computerAuditTailLines, readComputerAuditFileTail } from "./computerAuditFile.ts";
 
-/**
- * Append-only local evidence for mutating `computer_*` calls.
- *
- * One JSON object per line beside `computer-control.json`, written at the seam
- * where the call's final effect is already known — after the tool handler has
- * the delivered effect, or after the refusal is typed. It exists for abuse
- * review: which thread drove which app, what it asked for, and what happened.
- * It is not telemetry — nothing leaves the machine — and it is deliberately
- * lossy about arguments: keys and sizes, never typed text, never clipboard
- * contents, never a payload a secret could hide in.
- *
- * Bounded two ways at once: at most {@link COMPUTER_AUDIT_MAX_ENTRIES} lines
- * and at most {@link COMPUTER_AUDIT_MAX_BYTES} bytes. Crossing either cap
- * compacts toward the newest half of both caps, written through temp-file + rename
- * `ComputerControlState` persists with, so a crash mid-compaction leaves the
- * old file intact rather than a truncated one. Legacy files are read from a
- * bounded tail, and a single oversized or unserializable record is omitted.
- *
- * Writes are serialized on a private promise chain — the desktop operation
- * queue cannot serialize refusals that happen before an operation slot is
- * taken, and a `computer_run`'s steps all finish inside one slot. Every line
- * is a single `appendFile`, which local filesystems deliver atomically for
- * writes this size. A write failure is swallowed: evidence collection must
- * never fail the action it records, and a caller told "the click failed" when
- * the click landed is a worse failure than a gap in the log.
- */
+// It exists for abuse review: which thread drove which app, what it asked for, and what happened.
+// It is not telemetry — nothing leaves the machine — and it is deliberately lossy about arguments:
+// keys and sizes, never typed text, never clipboard contents, never a payload a secret could hide
+// in. Crossing either cap compacts toward the newest half of both caps, written through temp-file +
+// rename `ComputerControlState` persists with, so a crash mid-compaction leaves the old file intact
+// rather than a truncated one. Writes are serialized on a private promise chain — the desktop
+// operation queue cannot serialize refusals that happen before an operation slot is taken, and a
+// `computer_run`'s steps all finish inside one slot. Every line is a single `appendFile`, which
+// local filesystems deliver atomically for writes this size. A write failure is swallowed: evidence
+// collection must never fail the action it records, and a caller told "the click failed" when the
+// click landed is a worse failure than a gap in the log.
 export const COMPUTER_AUDIT_MAX_ENTRIES = 10_000;
 export const COMPUTER_AUDIT_MAX_BYTES = 2 * 1024 * 1024;
-/** Compaction keeps the newest half so the log stays bounded without churning. */
+
 const COMPUTER_AUDIT_COMPACT_TO = Math.floor(COMPUTER_AUDIT_MAX_ENTRIES / 2);
 const COMPUTER_AUDIT_COMPACT_BYTES = Math.floor(COMPUTER_AUDIT_MAX_BYTES / 2);
 
-/**
- * The effect side of one audit record. The first three are the delivery
- * taxonomy the wire result already reports; `refused` covers every typed
- * refusal (denylist, approval denied, control revoked, target errors), and
- * `error` is anything else that stopped the call — always with `code` naming
- * what refused or failed.
- */
 export type { ComputerAuditEffect } from "@glade/contracts";
 
 export interface ComputerAuditEntry {
-  /** ISO timestamp; written by the log, not the caller. */
   readonly ts: string;
-  /** The tool name as the model sees it, e.g. `computer_click`. */
+
   readonly tool: string;
   readonly threadId?: string;
   readonly turnId?: string;
-  /** Gateway JSON-RPC request identity; it is not a provider tool-item ID. */
+
   readonly gatewayRequestId?: string;
-  /** The resolved target when one is known — window id, pid, app, bundle id. */
+
   readonly target?: {
     readonly windowId?: string;
     readonly pid?: number;
     readonly app?: string;
     readonly bundleId?: string;
   };
-  /**
-   * Argument summary produced by {@link summarizeComputerAuditArgs} — keys and
-   * sizes only for payload-bearing fields.
-   */
+
   readonly args?: Record<string, unknown>;
   readonly effect: ComputerAuditEffect;
-  /** The typed refusal or error code when `effect` is `refused`/`error`. */
+
   readonly code?: string;
-  /** Native actuator metadata only; never raw driver messages or field values. */
+
   readonly diagnostics?: CuaActionDiagnostics;
   readonly layer?: "driver-host" | "native-driver" | "server-manager";
 }
 
-/**
- * Argument keys whose values are user payloads. Recorded as sizes only —
- * typed text, a set-value payload, a clipboard write, a launch argument list
- * and an upload's file paths are exactly the fields a secret could ride in.
- */
 const COMPUTER_AUDIT_SENSITIVE_ARGS: ReadonlySet<string> = new Set([
   "text",
   "value",
@@ -98,10 +67,8 @@ const COMPUTER_AUDIT_SENSITIVE_ARGS: ReadonlySet<string> = new Set([
   "payload",
 ]);
 
-/** Longest logged string field; a label or path longer than this is cut. */
 const COMPUTER_AUDIT_MAX_STRING = 256;
 
-/** Keep a bounded transport identity without inventing a provider call ID. */
 export function computerAuditGatewayRequestId(value: unknown): { gatewayRequestId?: string } {
   const id =
     typeof value === "string"
@@ -112,13 +79,7 @@ export function computerAuditGatewayRequestId(value: unknown): { gatewayRequestI
   return id !== undefined && /^[A-Za-z0-9_.:-]{1,128}$/.test(id) ? { gatewayRequestId: id } : {};
 }
 
-/**
- * Project one tool-call argument object onto what the log may keep: scalars
- * pass through for the non-sensitive keys, payload keys become a character or
- * item count, arrays become their contents' scalars, and nested target objects
- * keep one level of scalars. The result must never contain a typed string, a
- * clipboard payload, or a file path list.
- */
+// The result must never contain a typed string, a clipboard payload, or a file path list.
 export function summarizeComputerAuditArgs(args: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(args)) {
@@ -138,8 +99,6 @@ function summarizeComputerAuditValue(key: string, value: unknown): unknown {
   }
   if (Array.isArray(value)) {
     if (key === "steps") {
-      // A computer_run's step list is its declaration: the count and the step
-      // types are the useful record; the payloads stay out.
       return {
         count: value.length,
         types: value
@@ -182,11 +141,6 @@ function summarizeComputerAuditValue(key: string, value: unknown): unknown {
 }
 
 export class ComputerAuditLog {
-  /**
-   * Estimated size/count of the file as this process sees it, loaded on the
-   * first append so a pre-existing log counts toward the caps rather than
-   * being measured only from this boot's writes.
-   */
   private entries = 0;
   private bytes = 0;
   private loaded = false;
@@ -198,12 +152,9 @@ export class ComputerAuditLog {
     private readonly now: () => Date = () => new Date(),
   ) {}
 
-  /** Queue one record. Never throws and never waits: the log is fire-and-forget. */
   record(entry: Omit<ComputerAuditEntry, "ts">): void {
     if (this.filePath === undefined) return;
     try {
-      // Re-project at the persistence boundary, even if a caller supplied an
-      // object carrying extra native fields despite its static type.
       const { diagnostics: suppliedDiagnostics, ...metadata } = entry;
       const diagnostics = parseCuaActionDiagnostics({ diagnostics: suppliedDiagnostics });
       const line = `${JSON.stringify({
@@ -218,7 +169,6 @@ export class ComputerAuditLog {
     }
   }
 
-  /** Settles once every queued append — and any compaction — has finished. */
   async flush(): Promise<void> {
     await this.chain;
   }

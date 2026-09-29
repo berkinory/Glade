@@ -14,12 +14,6 @@ function record(value: unknown): Record<string, unknown> | undefined {
     : undefined;
 }
 
-/**
- * Classify only evidence produced by the pinned driver's implementation.
- * A dispatch acknowledgement, character count or changed page is not proof.
- * The closed ActionResult used by click/type/pointer has no legacy status or
- * refusal code; its refusal still needs to survive in the audit history.
- */
 export function computerBrowserEffect(
   name: ComputerBrowserToolName,
   args: Record<string, unknown>,
@@ -35,8 +29,6 @@ export function computerBrowserEffect(
       typeof detail?.delivered_chars === "number" &&
       detail.delivered_chars > 0)
   ) {
-    // Older driver replies put a delivered prefix inside a refusal. Some
-    // input already ran, so this is not a pre-dispatch rejection.
     return { effect: "dispatched-unknown" };
   }
   if (structured?.status === "refused" || structured?.effect === "refused") {
@@ -65,8 +57,6 @@ export function computerBrowserEffect(
     Number.isSafeInteger(structured.bytes) &&
     structured.bytes >= 0
   ) {
-    // The driver waits for the matching download-completed event, then proves
-    // a canonical regular file exists directly inside the approved directory.
     return { effect: "verified" };
   }
   const verification = record(structured?.verification);
@@ -83,17 +73,12 @@ export function computerBrowserEffect(
     verification.method === "page_frame_tree" &&
     verification.status === "confirmed"
   ) {
-    // One bounded native read compares the committed frame, document loader
-    // and destination. Redirects, old documents and unavailable reads stay
-    // unknown; this proves the destination, never the page's business result.
     return { effect: "verified" };
   }
-  // Even value_readback on DOM typing proves only the field content. It does
-  // not prove a search, form submission or application-level acceptance.
+
   return { effect: "dispatched-unknown" };
 }
 
-/** Keep field evidence useful without presenting it as application success. */
 export function computerBrowserFieldReadback(
   name: ComputerBrowserToolName,
   args: Record<string, unknown>,

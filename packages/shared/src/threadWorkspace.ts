@@ -1,8 +1,3 @@
-// FILE: threadWorkspace.ts
-// Purpose: Share worktree and workspace-root helpers used across web and server flows.
-// Layer: Shared util
-// Exports: associated worktree helpers plus workspace-root comparison helpers
-
 export interface AssociatedWorktreeMetadata {
   associatedWorktreePath: string | null;
   associatedWorktreeBranch: string | null;
@@ -52,10 +47,6 @@ export function normalizeWorkspaceRootForComparison(
       ? normalized
       : prefix;
 
-  // macOS commonly surfaces the same temp/workspace location through both
-  // `/var/...` and `/private/var/...` (likewise `/tmp/...` vs `/private/tmp/...`).
-  // Treat those aliases as identical so imported worktree paths still match
-  // their project workspace roots during resume/import flows.
   if (
     options?.platform === "darwin" &&
     (finalValue.startsWith("/private/var/") || finalValue.startsWith("/private/tmp/"))
@@ -80,10 +71,9 @@ export function workspaceRootsEqual(
   );
 }
 
-// True when `candidate` is `ancestorRoot` itself or a path nested beneath it.
-// Comparison happens on normalized roots so trailing slashes, separator style,
-// and macOS `/private` aliasing never cause false negatives. The nesting check
-// is segment-aware, so `/a/app` is not treated as inside `/a/ap`.
+// Comparison happens on normalized roots so trailing slashes, separator style, and macOS `/private`
+// aliasing never cause false negatives. The nesting check is segment-aware, so `/a/app` is not
+// treated as inside `/a/ap`.
 export function isWorkspaceRootWithin(
   candidate: string,
   ancestorRoot: string,
@@ -101,15 +91,11 @@ export function isWorkspaceRootWithin(
   return normalizedCandidate.startsWith(prefix);
 }
 
-// Per-thread scratch working directories (under a per-user cache container)
-// used when a provider session starts before any project workspace exists,
-// e.g. a chat's first turn racing its workspace provisioning.
+// Per-thread scratch working directories (under a per-user cache container) used when a provider
+// session starts before any project workspace exists, e.g. a chat's first turn racing its workspace
+// provisioning.
 export const SCRATCH_WORKSPACES_DIRNAME = "glade-codex-workspaces";
 
-// True when an absolute path points inside a per-thread scratch workspace.
-// This is a string-level gate on purpose: the web client uses it to decide
-// whether an out-of-workspace file reference can still preview in-app, while
-// the server's local-preview allowlist enforces real (realpath) containment.
 export function isScratchWorkspacePath(filePath: string): boolean {
   const normalized = filePath.trim().replace(/\\/g, "/");
   const isAbsolute = normalized.startsWith("/") || /^[a-z]:\//i.test(normalized);
@@ -119,10 +105,7 @@ export function isScratchWorkspacePath(filePath: string): boolean {
 export function deriveAssociatedWorktreeMetadata(input: {
   branch?: string | null;
   worktreePath?: string | null;
-  // Checked with `!== undefined` below to distinguish "derive from worktreePath"
-  // (undefined) from "explicitly none" (null). The thread schema marks these
-  // Schema.optional, so the param type must admit an explicit undefined under
-  // exactOptionalPropertyTypes.
+
   associatedWorktreePath?: string | null | undefined;
   associatedWorktreeBranch?: string | null | undefined;
   associatedWorktreeRef?: string | null | undefined;
@@ -152,7 +135,7 @@ export function deriveAssociatedWorktreeMetadata(input: {
 export function deriveAssociatedWorktreeMetadataPatch(input: {
   branch?: string | null;
   worktreePath?: string | null;
-  // Same undefined-aware semantics as deriveAssociatedWorktreeMetadata above.
+
   associatedWorktreePath?: string | null | undefined;
   associatedWorktreeBranch?: string | null | undefined;
   associatedWorktreeRef?: string | null | undefined;

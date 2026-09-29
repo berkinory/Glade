@@ -1,15 +1,9 @@
-// FILE: stagedDraftNavigation.ts
-// Purpose: Serializes draft-route creation per project slot and finalizes staged drafts only
-//          after their destination route actually commits.
-// Layer: Web navigation orchestration
-
 const inFlightDraftNavigationBySlot = new Map<string, Promise<unknown>>();
 
 export function draftNavigationSlotKey(projectId: string): string {
   return projectId;
 }
 
-/** Coalesces repeated clicks/shortcuts that target the same project draft. */
 export function runDraftNavigationOnce<T>(slotKey: string, run: () => Promise<T>): Promise<T> {
   const existing = inFlightDraftNavigationBySlot.get(slotKey) as Promise<T> | undefined;
   if (existing) {
@@ -27,10 +21,6 @@ export function runDraftNavigationOnce<T>(slotKey: string, run: () => Promise<T>
   return operation;
 }
 
-/**
- * Keeps the previous routed draft alive while the destination loads. A superseding navigation
- * rolls the staged draft back without treating the user's newer navigation as an error.
- */
 export async function stageDraftNavigation(input: {
   readonly stage: () => void;
   readonly navigate: () => Promise<void>;

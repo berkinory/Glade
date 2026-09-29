@@ -1,12 +1,3 @@
-// FILE: ComposerPendingApprovalPanel.tsx
-// Purpose: Detached card, floating just above the composer, that surfaces a pending
-// tool approval — the command / file context plus approve / decline / cancel actions
-// rendered as list-style choice rows. Mirrors ComposerPendingUserInputPanel (same
-// surface, spacing, chips, and scoped keyboard shortcuts) so approvals and AskUserQuestion
-// prompts read as one coherent decision surface instead of the old fused-banner look.
-// Layer: Chat composer UI
-// Exports: ComposerPendingApprovalPanel
-
 import { type ApprovalRequestId, type ProviderApprovalDecision } from "@glade/contracts";
 import { pendingRequestInstanceKey } from "@glade/shared/threadSummary";
 import { type KeyboardEvent, useRef } from "react";
@@ -42,7 +33,6 @@ type ApprovalAction = {
   tone: ComposerChoiceTone;
 };
 
-// Order is the card-local shortcut order (1-4): recommended action first, stop-everything last.
 const APPROVAL_ACTIONS: ReadonlyArray<ApprovalAction> = [
   {
     decision: "accept",
@@ -74,9 +64,9 @@ const WITHOUT_SESSION_APPROVAL = APPROVAL_ACTIONS.filter(
   (action) => action.decision !== "acceptForSession",
 );
 
-// Glade-owned Computer consent: never session-wide, and each scope names its
-// own decision. Visible use is separate from routine consent: allowing desktop
-// actions never covers taking the user's screen.
+// Glade-owned Computer consent: never session-wide, and each scope names its own decision. Visible
+// use is separate from routine consent: allowing desktop actions never covers taking the user's
+// screen.
 const COMPUTER_SCOPES: Record<
   NonNullable<PendingApproval["approvalScope"]>,
   { readonly prompt: string; readonly actions: ReadonlyArray<ApprovalAction> }
@@ -181,17 +171,14 @@ export const ComposerPendingApprovalPanel = function ComposerPendingApprovalPane
       approval.lifecycleGeneration,
       approval.requestKind,
     ).catch(() => {
-      // Immediate command failures remain retryable. A successful dispatch keeps
-      // the claim until the request disappears or a newer durable retry attempt
-      // changes `submissionKey`.
       if (submittedRequestKeyRef.current === submissionKey) {
         submittedRequestKeyRef.current = null;
       }
     });
   };
 
-  // Digit shortcuts bubble from focused controls inside this card only; a bare
-  // number key elsewhere in the app must never approve a tool request.
+  // Digit shortcuts bubble from focused controls inside this card only; a bare number key elsewhere
+  // in the app must never approve a tool request.
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (isResponding || event.metaKey || event.ctrlKey || event.altKey) return;
     const target = event.target;
@@ -356,16 +343,6 @@ function formatToolParameterValue(value: unknown): string {
   }
 }
 
-/**
- * Parses the approval `detail` string into structured fields.
- *
- * Detail is produced server-side by `summarizeToolRequest` as
- * `"${toolName}: ${JSON.stringify(input)}"` and is clamped to ~400 characters.
- * That means JSON.parse often fails on truncated payloads like
- * `{"file_path":"/long/path","old_string":" .fo...`. We therefore try JSON
- * first and fall back to targeted regex extraction so we can still surface the
- * file path / command even from a chopped-off string.
- */
 function parseApprovalDetail(detail: string | undefined): ParsedApproval {
   const empty: ParsedApproval = {
     tool: null,
@@ -415,7 +392,6 @@ function parseApprovalDetail(detail: string | undefined): ParsedApproval {
     return { tool, fileName: null, fileDir: null, command: url, fallback: null };
   }
 
-  // Payload is not a recognized JSON shape — treat it as a raw command/text.
   const fallback = collapseWhitespace(payload);
   return {
     tool,
@@ -426,11 +402,8 @@ function parseApprovalDetail(detail: string | undefined): ParsedApproval {
   };
 }
 
-/**
- * Extracts the first matching string field from a (possibly truncated) JSON
- * object. Prefers a real JSON.parse when it succeeds, otherwise falls back to
- * a permissive regex that tolerates truncation mid-value.
- */
+// Prefers a real JSON.parse when it succeeds, otherwise falls back to a permissive regex that
+// tolerates truncation mid-value.
 function extractJsonString(payload: string, keys: ReadonlyArray<string>): string | null {
   const parsed = tryParseJson(payload);
   if (parsed && typeof parsed === "object") {
@@ -460,14 +433,9 @@ function tryParseJson(value: string): unknown {
   }
 }
 
-/**
- * Pulls a JSON string value for `key` out of a possibly truncated JSON-ish
- * payload. Handles the common `\"` and `\\` escapes inside the string body.
- * If the value is unterminated (truncation), returns whatever was captured.
- */
 function regexExtractString(payload: string, key: string): string | null {
   const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  // Anchored to `"key"` followed by a colon and an opening quote.
+
   const pattern = new RegExp(`"${escapedKey}"\\s*:\\s*"`, "g");
   const match = pattern.exec(payload);
   if (!match) return null;
@@ -491,7 +459,7 @@ function regexExtractString(payload: string, key: string): string | null {
     }
     out += ch;
   }
-  // Truncated before closing quote — return partial value if we got anything.
+
   return out.length > 0 ? out : null;
 }
 

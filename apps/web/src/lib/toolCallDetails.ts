@@ -1,9 +1,3 @@
-// FILE: toolCallDetails.ts
-// Purpose: Extract bounded command/edit details from provider tool lifecycle payloads.
-// Layer: Web transcript data utility
-// Exports: deriveWorkLogToolDetails, mergeWorkLogToolDetails
-// Depends on: provider runtime item metadata already truncated by server ingestion
-
 import type { ToolLifecycleItemType } from "@glade/contracts";
 import { stripTrailingToolExitCode as stripTrailingExitCode } from "@glade/shared/toolOutputSummary";
 
@@ -125,7 +119,6 @@ function commandEqualsDetail(command: string | undefined, detail: string | undef
   return command.trim() === stripTrailingExitCode(detail).output;
 }
 
-// Collects command output without stringifying the full payload; ingestion already bounds each field.
 function extractToolOutputDetails(input: {
   payload: Record<string, unknown> | null;
   detail?: string | undefined;

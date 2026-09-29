@@ -1,10 +1,3 @@
-/**
- * Lightweight browser metadata cache keyed by thread.
- *
- * The live browser surface stays in Electron; the web app only keeps enough
- * state to render tabs/toolbars and survive thread switches predictably.
- */
-
 import type { ThreadBrowserState, ThreadId } from "@glade/contracts";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
@@ -93,8 +86,8 @@ function sanitizeBrowserHistoryEntry(rawEntry: unknown): BrowserHistoryEntry | n
   return { url, title, tabId };
 }
 
-// Drops malformed persisted history so a corrupt entry can never reach the
-// upsert path (which dereferences `entry.url`) or render as a broken tab.
+// Drops malformed persisted history so a corrupt entry can never reach the upsert path (which
+// dereferences `entry.url`) or render as a broken tab.
 function sanitizeRecentHistoryByThreadId(value: unknown): Record<string, BrowserHistoryEntry[]> {
   return sanitizeStringKeyedRecord(value, (rawEntries) => {
     if (!Array.isArray(rawEntries)) {
@@ -104,8 +97,7 @@ function sanitizeRecentHistoryByThreadId(value: unknown): Record<string, Browser
       .map(sanitizeBrowserHistoryEntry)
       .filter((entry): entry is BrowserHistoryEntry => entry !== null)
       .slice(0, BROWSER_HISTORY_LIMIT);
-    // Drop threads whose history fully fails validation so we don't retain
-    // empty placeholder keys in storage.
+
     return entries.length > 0 ? entries : null;
   });
 }
@@ -141,10 +133,9 @@ export const useBrowserStateStore = create<BrowserStateStore>()(
       upsertThreadState: (state) =>
         set((current) => {
           const previousState = current.threadStatesByThreadId[state.threadId];
-          // Main pushes state before some invoke Promises resolve. A delayed
-          // response can therefore arrive after a newer onState snapshot; it
-          // must never roll browser chrome (or the renderer binding inputs)
-          // back to an older tab/runtime generation.
+          // Main pushes state before some invoke Promises resolve. A delayed response can therefore arrive
+          // after a newer onState snapshot; it must never roll browser chrome (or the renderer binding
+          // inputs) back to an older tab/runtime generation.
           if (previousState && previousState.version >= state.version) {
             return current;
           }

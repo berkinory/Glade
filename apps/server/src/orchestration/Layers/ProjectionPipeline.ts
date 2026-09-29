@@ -99,8 +99,7 @@ export const ORCHESTRATION_PROJECTOR_NAMES = {
   threadSessions: "projection.thread-sessions",
   threadTurns: "projection.thread-turns",
   checkpoints: "projection.checkpoints",
-  // Preserve the established cursor identity. Migration 062 resets it so the
-  // widened projector replays approval and user-input history exactly once.
+
   pendingInteractions: "projection.pending-approvals",
 } as const;
 
@@ -229,7 +228,6 @@ function shouldApplyPendingInteractionsProjection(event: OrchestrationEvent): bo
   );
 }
 
-// Destructive history edits are rare and rebuild from bounded/indexed summary queries.
 const withRebuiltThreadShellSummary = Effect.fn(function* (input: {
   readonly thread: ProjectionThread;
   readonly projectionThreadMessageRepository: ProjectionThreadMessageRepositoryShape;
@@ -743,10 +741,9 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
           });
           const hasLatestTurn = existingRow.value.latestTurnId !== null;
           const hasSession = Option.isSome(session);
-          // `canAdoptFirstTurnProvider` only consults the transcript on a brand-new
-          // thread (no turn, no session). This projector runs inside the hot
-          // turn-start commit, so an established thread must not pay a full
-          // transcript + text-segment load just to have it discarded.
+          // `canAdoptFirstTurnProvider` only consults the transcript on a brand-new thread (no turn, no
+          // session). This projector runs inside the hot turn-start commit, so an established thread must not
+          // pay a full transcript + text-segment load just to have it discarded.
           const messages =
             hasLatestTurn || hasSession
               ? []
@@ -762,9 +759,9 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
               messages,
             }),
           });
-          // Automation-dispatched turns run with the automation's modes but must not
-          // repaint the thread's persisted modes: on a heartbeat target thread the
-          // user's own composer selection has to survive the automation turn.
+          // Automation-dispatched turns run with the automation's modes but must not repaint the thread's
+          // persisted modes: on a heartbeat target thread the user's own composer selection has to survive
+          // the automation turn.
           const adoptTurnModes = event.payload.dispatchOrigin !== "automation";
           yield* projectionThreadRepository.upsert({
             ...existingRow.value,
@@ -782,9 +779,6 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
           return;
         }
 
-        // Turn completion must advance updated_at here too, or projection repair
-        // replay regresses it to the turn start (re-marks read chats unread).
-        // Monotonic: stale events (retries, imports) carry earlier occurredAt.
         case "thread.session-set":
         case "thread.turn-diff-completed":
           return yield* updateThreadProjection(event.payload.threadId, (thread) => ({
@@ -823,7 +817,6 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
       }
     });
 
-  // Keep denormalized shell summary work out of the live transcript projector path.
   const applyThreadShellSummariesProjection: ProjectorDefinition["apply"] = (event) =>
     Effect.gen(function* () {
       switch (event.type) {
@@ -1089,14 +1082,12 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
             event.sequence,
           );
           yield* Effect.forEach(keptRows, projectionThreadMessageRepository.upsert);
-          // Reinserted retained messages must still reject deltas from before
-          // this rollback, even though their chunk rows have been compacted.
+
           yield* sql`UPDATE projection_thread_messages SET text_event_sequence = ${event.sequence}
             WHERE thread_id = ${event.payload.threadId}`.pipe(
             Effect.mapError(toPersistenceSqlError("ProjectionPipeline.retainMessageTextSequence")),
           );
-          // The rollback rewrites message history, so the repository deletion
-          // intentionally drops all derived segment boundaries for the thread.
+
           if (event.type === "thread.reverted" || event.payload.skipAttachmentPrune !== true) {
             attachmentSideEffects.prunedThreadRelativePaths.set(
               event.payload.threadId,
@@ -1181,8 +1172,7 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
             kind: event.payload.activity.kind,
             summary: event.payload.activity.summary,
             payload: event.payload.activity.payload,
-            // The orchestration log is durable and monotonic across provider
-            // restarts, unlike provider-local counters that may reset to zero.
+
             sequence: event.payload.activity.sequence ?? event.sequence,
             createdAt: event.payload.activity.createdAt,
           });
@@ -1323,10 +1313,6 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
           if (event.payload.session.status !== "running" || turnId === null) {
             const settledState = settleTurnStateFromSession(event.payload.session, "running");
             if (settledState !== null) {
-              // Close the newest still-open turn when the runtime reports that
-              // the thread is no longer running. Error sessions may retain the
-              // failed turn id for attribution, so prefer that exact open turn
-              // before falling back to the newest open row.
               const openTurns = (yield* projectionTurnRepository.listByThreadId({
                 threadId: event.payload.threadId,
               }))
@@ -1415,7 +1401,7 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
               requestedAt: Option.isSome(pendingTurnStart)
                 ? pendingTurnStart.value.requestedAt
                 : event.occurredAt,
-              // Keep `startedAt` tied to provider runtime start, not the earlier user dispatch.
+
               startedAt: event.payload.session.updatedAt ?? event.occurredAt,
               completedAt: null,
               checkpointTurnCount: null,
@@ -1454,9 +1440,7 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
               startedAt: existing.startedAt ?? event.payload.createdAt,
               requestedAt: existing.requestedAt ?? event.payload.createdAt,
             } satisfies ProjectionTurn;
-            // Every streaming delta of an assistant message replays this event.
-            // After the first delta the row already carries these exact values,
-            // so skip the rewrite instead of issuing a full-row UPDATE per token.
+
             if (
               nextTurn.assistantMessageId === existing.assistantMessageId &&
               nextTurn.state === existing.state &&
@@ -1489,20 +1473,14 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
         }
 
         case "thread.turn-interrupt-requested": {
-          // An interrupt request is only intent, not confirmation. The provider
-          // can still reject it or time out, so we keep the persisted turn state
-          // unchanged until a terminal runtime event arrives.
           return;
         }
 
         case "thread.task-stop-requested": {
-          // Same as interrupts: intent only. Task state settles via the
-          // provider's task lifecycle events.
           return;
         }
 
         case "thread.task-background-requested": {
-          // Intent only: the provider confirms via a task_updated backgrounded patch.
           return;
         }
 
@@ -1531,10 +1509,8 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
           if (Option.isSome(existingTurn)) {
             yield* projectionTurnRepository.upsertByTurnId({
               ...existingTurn.value,
-              // Preserve the persisted assistantMessageId when the event payload
-              // is null. Placeholder turn-diff events can fire before the
-              // assistant message is finalized; they must not erase a real id
-              // recorded earlier by thread.message-sent.
+              // Placeholder turn-diff events can fire before the assistant message is finalized; they must not
+              // erase a real id recorded earlier by thread.message-sent.
               assistantMessageId:
                 event.payload.assistantMessageId ?? existingTurn.value.assistantMessageId,
               state: nextState,
@@ -1725,12 +1701,10 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
               "responseCommandId",
             );
             if (responseCommandIdValue === null) {
-              // Reconciliation (server restart, provider session restart)
-              // reports stale requests without a claiming response command: no
-              // response was in flight, but the provider callback that could
-              // consume the interaction is gone. Settle the row anyway —
-              // leaving it `pending` kept threads answerable-looking forever
-              // while every actual response hit a dead provider.
+              // Reconciliation (server restart, provider session restart) reports stale requests without a
+              // claiming response command: no response was in flight, but the provider callback that could
+              // consume the interaction is gone. Settle the row anyway — leaving it `pending` kept threads
+              // answerable-looking forever while every actual response hit a dead provider.
               if (
                 existingRow.value.status === "confirmed" ||
                 !createStalePendingInteractionMatcher([activity])(existingRow.value)
@@ -1933,8 +1907,6 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
     (projector) => projector.name === ORCHESTRATION_PROJECTOR_NAMES.projects,
   );
 
-  // Project metadata changes only touch the project projection, so keep them
-  // off the slower full-projector pass used by thread and runtime events.
   const selectProjectorsForEvent = (
     event: OrchestrationEvent,
     phase?: ProjectorDefinition["phase"],
@@ -2028,14 +2000,13 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
           ),
         );
 
-  // A phase whose projectors all rejected the event still has to keep its cursor
-  // moving, because the snapshot sequence exposed to clients is the minimum of
-  // the phase cursors (see ProjectionSnapshotQuery.computeSnapshotSequence) and
-  // a lagging cursor would make clients replay push events they already have.
-  // The write is one idempotent upsert, so it does not need — and must not pay
-  // for — an explicit transaction: SQLite already commits a lone statement
-  // atomically. The deferred phase rejects every assistant delta, so this is the
-  // difference between one transaction per streamed token and one statement.
+  // A phase whose projectors all rejected the event still has to keep its cursor moving, because the
+  // snapshot sequence exposed to clients is the minimum of the phase cursors (see
+  // ProjectionSnapshotQuery.computeSnapshotSequence) and a lagging cursor would make clients replay
+  // push events they already have. The write is one idempotent upsert, so it does not need — and must
+  // not pay for — an explicit transaction: SQLite already commits a lone statement atomically. The
+  // deferred phase rejects every assistant delta, so this is the difference between one transaction
+  // per streamed token and one statement.
   const advancePhaseCursorOnly = (event: OrchestrationEvent, phaseCursor: ProjectorName) =>
     projectionStateRepository.upsert({
       projector: phaseCursor,
@@ -2090,13 +2061,6 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
       hotProjectorNames.has(row.projector as ProjectorName),
     );
     if (sourceRows.length === 0) {
-      // A fully empty cursor table is a fresh database and needs no hot row:
-      // the empty table itself reads as sequence 0. A non-empty table with no
-      // hot-phase rows can only mean an empty journal (bootstrap just replayed
-      // every projector, and any journal with at least one event leaves a
-      // cursor row per projector via the boundary-event skip path), so a zero
-      // hot cursor is the exact fence. Without it the snapshot sequence would
-      // be underivable and the engine could not load its command read model.
       if (stateRows.length > 0) {
         yield* projectionStateRepository.upsert({
           projector: ORCHESTRATION_PROJECTOR_NAMES.hot,
@@ -2139,10 +2103,6 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
       return;
     }
 
-    // The hot cursor commits in the same transaction as every selected hot projector. A
-    // lagging per-projector cursor therefore covers only events that its predicate rejected.
-    // Align existing cursors before replay so a long-lived process does not rescan that backlog
-    // on its next restart. Missing cursors still replay from the beginning for upgrade safety.
     yield* sql.withTransaction(
       Effect.forEach(laggingProjectors, (projector) =>
         projectionStateRepository.upsert({
@@ -2154,14 +2114,11 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
     );
   });
 
-  // Replay batching amortizes SQLite commit fsyncs, which dominate a large
-  // catch-up: one transaction per event costs ~0.5ms of commit overhead each,
-  // so a multi-hundred-thousand-event backlog takes minutes on fsync alone.
-  // Committing the batch's applied rows and a single tail-cursor upsert
-  // together keeps the invariant that a committed cursor never runs ahead of
-  // its committed rows; a mid-batch crash merely re-applies up to one batch of
-  // idempotent events on the next start. Live projection is untouched — it
-  // stays one transaction per event, atomic with the journal append.
+  // Replay batching amortizes SQLite commit fsyncs, which dominate a large catch-up: one transaction
+  // per event costs ~0.5ms of commit overhead each, so a multi-hundred-thousand-event backlog takes
+  // minutes on fsync alone. Committing the batch's applied rows and a single tail-cursor upsert
+  // together keeps the invariant that a committed cursor never runs ahead of its committed rows; a
+  // mid-batch crash merely re-applies up to one batch of idempotent events on the next start.
   const BOOTSTRAP_REPLAY_BATCH_SIZE = 500;
 
   const applyBootstrapReplayBatch = (
@@ -2184,15 +2141,13 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
               yield* projector.apply(event, attachmentSideEffects);
             }
           }
-          // The tail event advances the cursor whether or not it matched the
-          // predicate, subsuming the old skipped-event cursor preservation.
+
           yield* projectionStateRepository.upsert({
             projector: projector.name,
             lastAppliedSequence: lastEvent.sequence,
             updatedAt: lastEvent.occurredAt,
           });
-          // Mirror runProjectorsForEventCore: cleanup markers commit with the
-          // rows that made the attachments unreferenced.
+
           for (const threadId of attachmentSideEffects.deletedThreadIds) {
             yield* managedAttachments.markCleanupByThread({
               ownerThreadId: threadId,
@@ -2292,13 +2247,8 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
       Effect.asVoid,
     );
 
-  // The deferred phase rejects every streamed assistant delta, so for those
-  // events its only work is moving its cursor (see advancePhaseCursorOnly). Do
-  // that inside the hot transaction, which already dirties the projection_state
-  // page, instead of paying a second commit per token chunk after it. Only a
-  // cursor that is caught up with the hot phase may be moved here: a lagging
-  // cursor belongs to a failed or in-flight deferred catch-up that must still
-  // replay the events it is behind on.
+  // The deferred phase rejects every streamed assistant delta, so for those events its only work is
+  // moving its cursor (see advancePhaseCursorOnly).
   const settleDeferredPhaseInHotTransaction = (event: OrchestrationEvent) =>
     Effect.gen(function* () {
       if (selectProjectorsForEvent(event, "deferred").length > 0) return false;
@@ -2374,15 +2324,10 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
       ),
     );
 
-  // Surface per-projector lag instead of letting a stalled or missing cursor
-  // manifest as unrelated stream failures. `phase` distinguishes the report
-  // taken before replay (how far behind did we start?) from the one after
-  // (did replay actually converge? — it must, so any residual lag is an error).
   const reportProjectorLag = (phase: "before-replay" | "after-replay", highWaterSequence: number) =>
     Effect.gen(function* () {
       const stateRows = yield* projectionStateRepository.listAll();
       if (stateRows.length === 0) {
-        // Fresh database: no cursors exist yet and nothing can lag.
         return;
       }
       const sequenceByProjector = new Map(
@@ -2411,9 +2356,7 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
         lagByProjector,
         missingProjectors,
       };
-      // Missing rows before replay are normal on a fresh database; residual lag
-      // after a successful replay is not — it means a projector silently failed
-      // to reach the head this bootstrap claims to have replayed through.
+
       if (phase === "after-replay") {
         yield* Effect.logError("orchestration projectors lag the journal after bootstrap").pipe(
           Effect.annotateLogs(annotations),

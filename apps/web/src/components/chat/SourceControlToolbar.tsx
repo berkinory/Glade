@@ -38,7 +38,6 @@ import {
 import { hasUnsavedWorkspaceEditors } from "~/lib/workspaceEditorSession";
 import { ComposerPickerMenuPopup } from "./ComposerPickerMenuPopup";
 
-// A workspace draft survives tab/thread switches and is shared by panes of the same repo.
 const useCommitDrafts = create<{
   messages: Record<string, string>;
   set: (cwd: string, message: string) => void;
@@ -92,7 +91,6 @@ export function SourceControlToolbar({
     mutation.mutate(request, {
       onSuccess: () => {
         if (request.action === "commit") {
-          // Do not clear a draft edited in another pane while the commit was running.
           if (useCommitDrafts.getState().messages[cwd] === message) setDraft(cwd, "");
           toastManager.add({ type: "success", title: "Staged changes committed" });
         } else

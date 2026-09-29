@@ -1,9 +1,3 @@
-// FILE: localServerMonitor.ts
-// Purpose: Finds local development servers listening on localhost/private ports and
-//          stops a selected server process after re-validating it is still a dev listener.
-// Layer: Server runtime utility used by the WebSocket RPC layer.
-// Depends on: node child_process lsof/ps output and shared server contract shapes.
-
 import { execFile } from "node:child_process";
 import path from "node:path";
 
@@ -43,7 +37,7 @@ interface ParsedLsofListener {
 interface LocalServerProcessInfo {
   readonly ppid: number;
   readonly commandLine: string;
-  /** Unredacted process-table text retained only for internal classification. */
+
   readonly rawCommandLine?: string;
 }
 
@@ -80,15 +74,12 @@ const EXCLUDED_PROCESS_COMMANDS = new Set([
   "glade",
 ]);
 
-// Chromium/Electron spawns child processes (renderers, GPU, utility, plugin hosts) that can hold
-// a localhost port yet are app internals, never dev servers — e.g. Discord's RPC helper sits on
-// :6463, inside the broad dev-port range. The `--type=` flag is Chromium's own child-process
-// marker, so it's a precise signal independent of which app spawned it.
+// Chromium/Electron spawns child processes (renderers, GPU, utility, plugin hosts) that can hold a
+// localhost port yet are app internals, never dev servers — e.g. The `--type=` flag is Chromium's
+// own child-process marker, so it's a precise signal independent of which app spawned it.
 const CHROMIUM_CHILD_ARGS_PATTERN =
   /--type=(?:renderer|gpu-process|gpu|utility|zygote|plugin|ppapi|broker|crashpad-handler)\b/i;
 
-// Electron/Chromium per-role helper executables ("Discord Helper (Renderer)", "Slack Helper
-// (GPU)") — matched by name so they're filtered even when the full arg list is unavailable.
 const APP_HELPER_COMMAND_PATTERN = /\bhelper\s*\((?:renderer|gpu|plugin|alerts)\)/i;
 
 const DEV_COMMAND_LABELS = new Map<string, string>([
@@ -124,7 +115,7 @@ const DEV_ARGS_PATTERN =
 
 const pageTitleCache = new Map<string, CachedPageTitle>();
 const pageTitleInFlight = new Map<string, Promise<string | null>>();
-// Preserve lineage-only command context without extending the public local-server contract.
+
 const pageTitleProbeArgs = new WeakMap<ServerLocalServerProcess, string>();
 
 function execFileText(command: string, args: readonly string[]): Promise<string> {
@@ -177,7 +168,6 @@ function parseLsofEndpoint(
   };
 }
 
-// Parses `lsof -F pcPn` listener records into one row per listening address.
 function parseLsofTcpListenOutput(output: string): ParsedLsofListener[] {
   const listeners: ParsedLsofListener[] = [];
   let currentPid: number | null = null;
@@ -226,8 +216,6 @@ function parseLsofTcpListenOutput(output: string): ParsedLsofListener[] {
   return listeners;
 }
 
-// Parses `lsof -d cwd -Fn` records into a pid -> working-directory map. Each
-// process appears as a `p<pid>` line followed by an `n<path>` line for its cwd.
 function parseLsofCwdOutput(output: string): Map<number, string> {
   const cwdByPid = new Map<number, string>();
   let currentPid: number | null = null;
@@ -316,7 +304,6 @@ function isMetroDevServerCommand(command: string, args: string): boolean {
   );
 }
 
-// Some dev tools let a generic child own the port while the parent has the useful command.
 function processLineageCommandLines(
   pid: number,
   processInfoByPid: ReadonlyMap<number, LocalServerProcessInfo>,
@@ -490,7 +477,6 @@ function extractMetaContent(html: string, names: readonly string[]): string | nu
   return null;
 }
 
-// Pulls a human label from small HTML previews without depending on a DOM runtime.
 function extractLocalServerPageTitle(html: string): string | null {
   const metaTitle = extractMetaContent(html, ["application-name", "og:title", "twitter:title"]);
   if (metaTitle) {
@@ -575,7 +561,6 @@ function isLocalPageTitleHost(hostname: string): boolean {
   );
 }
 
-// Title probes must stay on local/private hosts even when a dev server redirects.
 function isLocalPageTitleProbeUrl(value: string): boolean {
   try {
     const parsed = new URL(value);
@@ -840,9 +825,6 @@ function toServerProcess(
   return server;
 }
 
-// Resolves the working directory for a listener, walking up the process lineage
-// when the listening pid itself has no resolvable cwd (e.g. a generic child that
-// inherited the dev tool's directory). Mirrors how command lines are resolved.
 function resolveProcessCwd(
   pid: number,
   processInfoByPid: ReadonlyMap<number, LocalServerProcessInfo>,
@@ -910,8 +892,6 @@ async function readProcessInfoBatch(
   return parseProcessInfo(output);
 }
 
-// Resolves each pid's working directory via `lsof -d cwd`. Only user-owned
-// processes are reported (which dev servers are); others are silently absent.
 async function readProcessCwdBatch(pids: readonly number[]): Promise<Map<number, string>> {
   if (pids.length === 0 || process.platform === "win32") {
     return new Map();
@@ -943,7 +923,6 @@ async function readProcessInfoWithAncestors(
   return allProcessInfo;
 }
 
-// Builds UI-ready process rows from raw listener rows; exported for focused parser tests.
 function buildLocalServerProcesses(
   listeners: readonly ParsedLsofListener[],
   processInfoByPid: ReadonlyMap<number, LocalServerProcessInfo> = new Map(),
@@ -966,8 +945,7 @@ export async function listLocalServers(): Promise<ServerListLocalServersResult> 
   const listeners = await readLsofListeners();
   const pids = [...new Set(listeners.map((listener) => listener.pid))];
   const processInfoByPid = await readProcessInfoWithAncestors(pids);
-  // Resolve cwd across the full lineage so a generic port-holding child can fall
-  // back to its dev-tool parent's directory (cwd is inherited across fork/exec).
+
   const cwdByPid = await readProcessCwdBatch([...new Set([...pids, ...processInfoByPid.keys()])]);
   const servers = buildLocalServerProcesses(listeners, processInfoByPid, cwdByPid);
   return {

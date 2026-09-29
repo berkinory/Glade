@@ -1,8 +1,3 @@
-// FILE: ComputerPermissionCopy.test.tsx
-// Purpose: Guards the web permissions copy slice — pane labels stay in sync and
-//          the guide never claims a live system dialog is open.
-// Layer: Component rendering tests (pure, no TCC/Electron/timers).
-
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { ComputerPermissionGuide } from "./ComputerPermissionGuide";

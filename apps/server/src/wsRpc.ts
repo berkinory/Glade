@@ -187,10 +187,8 @@ class RpcRequestError extends Error {
 const MAX_DIAGNOSTIC_CHILD_PROCESSES = 80;
 const MAX_DIAGNOSTIC_ARGS_CHARS = 500;
 
-// Bounded window a thread subscription waits for the projector to commit the
-// thread's detail read model before failing with THREAD_SNAPSHOT_NOT_FOUND.
-// Covers subscribe-vs-projection races on freshly created threads; a thread
-// that truly does not exist still fails, just this much later.
+// Covers subscribe-vs-projection races on freshly created threads; a thread that truly does not
+// exist still fails, just this much later.
 const THREAD_DETAIL_SNAPSHOT_BOOTSTRAP_TIMEOUT_MS = 5_000;
 const THREAD_DETAIL_SNAPSHOT_BOOTSTRAP_POLL_MS = 100;
 
@@ -199,8 +197,6 @@ class WsRequestAdmissionMiddleware extends RpcMiddleware.Service<WsRequestAdmiss
   { error: WsRpcError, requiredForClient: false },
 ) {}
 
-// Optional device and computer groups are served on the same socket: one
-// connection, one admission middleware, one exhaustive handler map.
 const AdmittedWsFeatureRpcGroup = WsFeatureRpcGroup.merge(WsDeviceRpcGroup)
   .merge(WsComputerRpcGroup)
   .middleware(WsRequestAdmissionMiddleware);
@@ -211,9 +207,6 @@ const wsRequestAdmissionMiddlewareLayer = Layer.effect(
     const admission = yield* makeWsRequestAdmission;
     const connectionSessions = yield* WsConnectionSessions;
     return ((effect, options) => {
-      // Handler fibers descend from the RPC server fiber (forked at layer build),
-      // not from the connection's HTTP upgrade fiber, so connection-scoped
-      // services must be re-provided here from the connection-session registry.
       const scoped = provideWsConnectionSession(
         effect,
         connectionSessions.lookup(Headers.get(options.headers, WS_CONNECTION_SESSION_HEADER)),
@@ -225,7 +218,6 @@ const wsRequestAdmissionMiddlewareLayer = Layer.effect(
   }),
 );
 
-// Relative subdirectories scaffolded under a freshly created chat container workspace root.
 const CHAT_WORKSPACE_SUBDIRECTORIES = ["work", "outputs"] as const;
 
 interface ProcessTableRow {
@@ -317,9 +309,7 @@ function toWsRpcError(cause: unknown, fallbackMessage: string) {
       cause,
     });
   }
-  // Missing projector cursors make the snapshot fence underivable. Mark the
-  // failure non-retryable with its own code so clients surface a diagnosable
-  // fault instead of restarting the stream into the same condition forever.
+
   if (Schema.is(ProjectionStateIncompleteError)(cause)) {
     return new WsRpcError({
       message: cause.message,
@@ -334,9 +324,6 @@ function toWsRpcError(cause: unknown, fallbackMessage: string) {
   });
 }
 
-// Process-wide so a subscriber's restart chain survives its own reconnects
-// (the client id is stable across a socket reconnect), but keyed per
-// subscriber inside the tracker — see makeResnapshotEscalationTracker.
 const resnapshotEscalationTracker = makeResnapshotEscalationTracker();
 
 const failLiveUiStreamForSnapshotResync = (report: LiveUiStreamDropReport) =>
@@ -346,9 +333,6 @@ const failLiveUiStreamForSnapshotResync = (report: LiveUiStreamDropReport) =>
     }),
   );
 
-// Must mirror the cases of toShellStreamEvent: events rejected here are dropped
-// before the live-UI buffer so the sliding window only holds events that can
-// actually project to a shell update.
 function isShellRelevantEvent(event: OrchestrationEvent): boolean {
   return (
     event.type === "space.created" ||
@@ -411,9 +395,9 @@ const makeWsRpcHandlersLayer = () =>
             ),
           ),
       });
-      // Optional so route-level tests and non-macOS builds can mount the RPC
-      // group without a device engine; the handlers below then refuse cleanly
-      // with the same unsupported-platform answer the backend would give.
+      // Optional so route-level tests and non-macOS builds can mount the RPC group without a device
+      // engine; the handlers below then refuse cleanly with the same unsupported-platform answer the
+      // backend would give.
       const deviceService = Option.getOrUndefined(yield* Effect.serviceOption(DeviceService));
       const computerService = Option.getOrUndefined(yield* Effect.serviceOption(ComputerService));
       const connectionSessions = yield* WsConnectionSessions;
@@ -511,13 +495,10 @@ const makeWsRpcHandlersLayer = () =>
             ),
           );
 
-      // A thread subscription can race the projector: the client subscribes the
-      // moment a create/turn RPC resolves, while the detail read model commits
-      // asynchronously behind the journal. Failing straight away with
-      // THREAD_SNAPSHOT_NOT_FOUND tears the stream down for a thread the server
-      // is actively running. Waiting here is safe because the cursor-safe
-      // stream attaches its live tap before evaluating the snapshot effect, so
-      // no event that commits during the wait is lost.
+      // A thread subscription can race the projector: the client subscribes the moment a create/turn RPC
+      // resolves, while the detail read model commits asynchronously behind the journal. Waiting here is
+      // safe because the cursor-safe stream attaches its live tap before evaluating the snapshot effect,
+      // so no event that commits during the wait is lost.
       const loadThreadDetailSnapshotWithBootstrapWait = (threadId: ThreadId) =>
         Effect.gen(function* () {
           const deadline = Date.now() + THREAD_DETAIL_SNAPSHOT_BOOTSTRAP_TIMEOUT_MS;
@@ -597,7 +578,7 @@ const makeWsRpcHandlersLayer = () =>
           Effect.provideService(Path.Path, path),
         );
       });
-      // Scaffold the managed chat workspace after its project is accepted.
+
       const prepareWorkspaceSubdirectories = Effect.fnUntraced(function* (
         workspaceRoot: string,
         relativeDirnames: readonly string[],
@@ -617,8 +598,8 @@ const makeWsRpcHandlersLayer = () =>
       });
       const prepareChatWorkspaceRoot = (workspaceRoot: string) =>
         prepareWorkspaceSubdirectories(workspaceRoot, CHAT_WORKSPACE_SUBDIRECTORIES);
-      // Instruction files are best-effort: they steer agents toward the Outbox layout but
-      // must never fail (or retry-loop) the container create that scaffolds the folders.
+      // Instruction files are best-effort: they steer agents toward the Outbox layout but must never fail
+      // (or retry-loop) the container create that scaffolds the folders.
       const normalizeDispatchCommand = makeDispatchCommandNormalizer<WsRpcError>({
         attachmentsDir: config.attachmentsDir,
         chatWorkspaceRoot: config.chatWorkspaceRoot,
@@ -745,8 +726,7 @@ const makeWsRpcHandlersLayer = () =>
               new WsRpcError({ message: "Archive cleanup only removes managed worktrees." }),
             );
           }
-          // A detached HEAD may contain commits with no branch reference. Do
-          // not silently make those commits unreachable through auto-cleanup.
+
           const branchContext = yield* git.readBranchContext(input.path);
           if (!branchContext.isRepo || branchContext.branch === null) {
             return yield* Effect.fail(
@@ -765,8 +745,7 @@ const makeWsRpcHandlersLayer = () =>
               new WsRpcError({ message: "Another task still refers to this worktree." }),
             );
           }
-          // Archive's terminal reactor is asynchronous. Close only sessions
-          // opened before this archive event, preserving a newer restored one.
+
           yield* terminalManager.closeSessionsOpenedAtOrBefore({
             threadId,
             openedAtOrBefore: archiveEvent.payload.archivedAt,
@@ -787,8 +766,8 @@ const makeWsRpcHandlersLayer = () =>
         snapshotQuery: projectionReadModelQuery,
         git,
       }).pipe(
-        // A retention failure must not present as an empty inventory: fall back
-        // to a plain scan so listing callers still see the real worktrees.
+        // A retention failure must not present as an empty inventory: fall back to a plain scan so listing
+        // callers still see the real worktrees.
         Effect.catchCause((cause) =>
           Effect.logWarning("managed worktree retention failed", {
             cause: String(cause),
@@ -923,9 +902,9 @@ const makeWsRpcHandlersLayer = () =>
               const { command: normalizedCommand, prepareWorkspaceRoot } =
                 yield* normalizeDispatchCommand({ command });
               const result = yield* dispatchOrchestrationCommand(normalizedCommand);
-              // Only scaffold managed workspace-root subdirectories (Inbox/Outbox/work/outputs)
-              // AFTER the decider has accepted the command. A rejected dispatch (e.g. a
-              // cross-kind workspace-root ownership conflict) must never mutate the filesystem.
+              // Only scaffold managed workspace-root subdirectories (Inbox/Outbox/work/outputs) AFTER the decider
+              // has accepted the command. A rejected dispatch (e.g. a cross-kind workspace-root ownership
+              // conflict) must never mutate the filesystem.
               if (prepareWorkspaceRoot) {
                 yield* prepareWorkspaceRoot;
               }
@@ -1001,8 +980,6 @@ const makeWsRpcHandlersLayer = () =>
           ),
         [ORCHESTRATION_WS_METHODS.prepareQuitResume]: (input) =>
           rpcEffect(
-            // Gated as a whole (not just its dispatches) so the record can never be
-            // written while startup is still claiming the previous quit's record.
             runtimeStartup.enqueueCommand(
               prepareQuitResume({
                 request: input,
@@ -1042,8 +1019,6 @@ const makeWsRpcHandlersLayer = () =>
             clientId,
             { key: "orchestration.shell" },
             makeCursorSafeSnapshotLiveStream({
-              // Keyed per subscriber: concurrent clients hitting the same
-              // stale fence are independent first offenses, not one chain.
               resnapshotEscalation: {
                 streamKey: `${clientId}:orchestration.shell`,
                 tracker: resnapshotEscalationTracker,
@@ -1097,23 +1072,13 @@ const makeWsRpcHandlersLayer = () =>
               threadId: input.threadId,
             },
             makeCursorSafeSnapshotLiveStream({
-              // Keyed per subscriber: concurrent clients hitting the same
-              // stale fence are independent first offenses, not one chain.
               resnapshotEscalation: {
                 streamKey: `${clientId}:orchestration.thread:${input.threadId}`,
                 tracker: resnapshotEscalationTracker,
               },
-              // Cursor resume: a client holding cached detail replays only the
-              // gap. Out-of-range cursors (negative or overflowing gap) fall
-              // back to the snapshot inside the stream factory.
+
               resumeFromSequence: input.afterSequence,
-              // A hard-purged thread leaves no rows to replay while the journal
-              // head stays above the cursor, so the gap check alone would
-              // accept the resume and stream nothing. Falling through to the
-              // snapshot path surfaces THREAD_SNAPSHOT_NOT_FOUND instead.
-              // The shell read shares the detail loader's active-thread
-              // predicate but skips hydrating and validating the transcript,
-              // which the resume path would discard for a boolean anyway.
+
               resumeSubjectExists: projectionReadModelQuery.getThreadShellById(input.threadId).pipe(
                 Effect.map(Option.isSome),
                 Effect.mapError((cause) =>
@@ -1178,8 +1143,7 @@ const makeWsRpcHandlersLayer = () =>
                     event: item.event,
                   });
                 }
-                // A silently empty snapshot would leave the client waiting forever
-                // for thread history; fail identifiably so it can surface the state.
+
                 return Option.isSome(item.snapshot.detail)
                   ? Stream.succeed<OrchestrationThreadStreamItem>({
                       kind: "snapshot",
@@ -1352,9 +1316,9 @@ const makeWsRpcHandlersLayer = () =>
                   const existingProjectId = yield* findRegisteredProjectId(
                     normalizedCommand.workspaceRoot,
                   );
-                  // Re-adding an existing checkout opens the existing project as-is. In
-                  // particular, it must not silently move that project between Spaces;
-                  // newProjectSpaceId applies only when project.create runs below.
+                  // Re-adding an existing checkout opens the existing project as-is. In particular, it must not
+                  // silently move that project between Spaces; newProjectSpaceId applies only when project.create
+                  // runs below.
                   const registration = existingProjectId
                     ? { projectId: existingProjectId, created: false }
                     : yield* dispatchOrchestrationCommand(normalizedCommand).pipe(
@@ -1369,8 +1333,8 @@ const makeWsRpcHandlersLayer = () =>
                           ),
                         ),
                       );
-                  // This assignment is synchronous, so a pending interruption cannot run
-                  // recovery between a successful dispatch and recording that fact.
+                  // This assignment is synchronous, so a pending interruption cannot run recovery between a
+                  // successful dispatch and recording that fact.
                   registrationCommitted = true;
                   if (registration.created && prepareWorkspaceRoot) {
                     yield* prepareWorkspaceRoot;
@@ -1392,9 +1356,7 @@ const makeWsRpcHandlersLayer = () =>
                         fileSystem.rename(workspaceRoot, recoveryPath),
                     }),
                   ),
-                  // Promotion and registration form one critical section. If the client cancels
-                  // after cloning, finish registration first so its workspace is never moved out
-                  // from under a committed project. Recovery must share the same guarantee.
+
                   Effect.uninterruptible,
                 );
 
@@ -1548,8 +1510,7 @@ const makeWsRpcHandlersLayer = () =>
                         : input,
                     ),
                   ),
-                  // Automatic archive cleanup preserves recovery data; an
-                  // explicit removal discards snapshots and empty directories.
+
                   Effect.tap(() =>
                     isManagedWorktreePathCanonical({
                       worktreesDir: config.worktreesDir,
@@ -1736,8 +1697,6 @@ const makeWsRpcHandlersLayer = () =>
         [WS_METHODS.terminalClose]: (input) =>
           rpcEffect(terminalManager.close(input), "Failed to close terminal"),
         [WS_METHODS.subscribeTerminalEvents]: (_, { clientId }) =>
-          // Terminal output is an ordered byte stream with renderer ACK accounting.
-          // Keep this lossless: dropping chunks would create holes until reattach.
           streamAdmission.guard(
             clientId,
             { key: "terminal.events" },
@@ -2092,24 +2051,8 @@ const makeWsRpcHandlersLayer = () =>
           streamAdmission.guard(
             clientId,
             { key: "device.events" },
-            // Device pushes are lossy by design: thread state is a versioned
-            // full snapshot, so a client that falls behind converges on the
-            // next one rather than needing every intermediate state.
-            //
-            // `Stream.never`, not `Stream.empty`, where no device engine can
-            // run. This is an infinite subscription, and the client treats one
-            // that completes as a zombie socket: it forces a full reconnect to
-            // recover it, and an empty stream completes instantly, so the pair
-            // loops. That churn restarts every other subscription with it,
-            // which is how unrelated RPCs began missing their replies on Linux
-            // CI. Staying open and silent is what "no events will ever arrive"
-            // actually means.
-            //
-            // Gated on `supported`, not just on the service existing: the layer
-            // is provided on every platform so callers need not branch on null,
-            // and off darwin it resolves to a service whose backend reports
-            // unsupported-platform. `makeWsDeviceHandlers` already branches the
-            // same way.
+            // Device state pushes are full snapshots and can drop intermediate versions. Unsupported platforms
+            // keep the subscription silent and open; completion would trigger endless transport reconnects.
             deviceService?.supported !== true
               ? Stream.never
               : bufferLiveUiStream(
@@ -2155,8 +2098,7 @@ const makeWsRpcHandlersLayer = () =>
                           Effect.runFork(Queue.offer(queue, event).pipe(Effect.asVoid));
                         },
                       );
-                      // Socket cleanup owns interests; a stream retry only
-                      // replaces its listener and must retain every live view.
+
                       yield* Effect.addFinalizer(() => Effect.sync(unsubscribe));
                     }),
                   ),
@@ -2176,9 +2118,6 @@ const makeRpcWebSocketHttpEffect = RpcServer.toHttpEffectWebsocket(AdmittedWsFea
     "rpc.transport": "websocket",
     "rpc.system": "effect-rpc",
   },
-  // JSON keeps the wire format symmetric with any web build. A serialization
-  // mismatch on this single multiplexed socket is a hard connect failure, and the
-  // desktop/dev setup routinely runs server and web on independently-built copies.
 }).pipe(Effect.provide(makeWsRpcLayer().pipe(Layer.provideMerge(RpcSerialization.layerJson))));
 
 const makeBootstrapWebSocketHttpEffect = RpcServer.toHttpEffectWebsocket(WsBootstrapRpcGroup, {
@@ -2231,12 +2170,6 @@ export function authenticateRpcWebSocketUpgrade(input: {
   return input.serverAuth.authenticateWebSocketUpgrade(input.request);
 }
 
-/**
- * Apply the feature socket's authentication policy to the separate device
- * frame socket. The desktop bridge still supplies the loopback-only legacy
- * `?token=` credential, so this path must share the same compatibility rule as
- * the RPC socket rather than calling ServerAuth directly.
- */
 export function authorizeDeviceFrameWebSocketUpgrade(input: {
   readonly config: Pick<ServerConfigShape, "authToken" | "host" | "publicUrl">;
   readonly legacyToken: string | null;
@@ -2249,7 +2182,6 @@ export function authorizeDeviceFrameWebSocketUpgrade(input: {
   );
 }
 
-/** Computer still frames use the same trusted-origin and authentication policy. */
 const authorizeComputerFrameWebSocketUpgrade = authorizeDeviceFrameWebSocketUpgrade;
 
 export function makeWebsocketRpcRouteLayer<R>(
@@ -2268,12 +2200,8 @@ export function makeWebsocketRpcRouteLayer<R>(
       const rpcWebSocketHttpEffect = yield* rpcWebSocketHttpEffectSource;
       const connectionSessions = yield* WsConnectionSessions;
       const router = yield* HttpRouter.HttpRouter;
-      // RPC handlers run on fibers forked from the layer-build scope, not from
-      // this per-connection fiber, so the authenticated session cannot be
-      // provided as a plain service around rpcWebSocketHttpEffect. Instead the
-      // session is registered for the connection's lifetime and its key is
-      // injected as a synthetic upgrade header; the admission middleware
-      // resolves it back into handler-scoped services on every request.
+      // RPC handlers run on fibers forked from the layer-build scope, not from this per-connection fiber,
+      // so the authenticated session cannot be provided as a plain service around rpcWebSocketHttpEffect.
       const runWithConnectionSession = (
         request: HttpServerRequest.HttpServerRequest,
         session: WsConnectionSession,
@@ -2352,10 +2280,6 @@ export function makeWebsocketRpcRouteLayer<R>(
   );
 }
 
-// Negotiation over plain HTTP: a connect costs exactly one WebSocket upgrade
-// instead of the legacy bootstrap-socket round trip. Advertised to clients via
-// the "transport.http-negotiate" capability; the WS_BOOTSTRAP_PATH socket stays
-// available for older clients during rollout.
 function makeWsNegotiateHttpRouteLayer() {
   return Layer.effectDiscard(
     Effect.gen(function* () {
@@ -2368,15 +2292,15 @@ function makeWsNegotiateHttpRouteLayer() {
           const config = yield* ServerConfig;
           const url = trustedWebSocketRequestUrl(request, config);
           if (!url) {
-            // Same no-store discipline as the negotiated responses: an
-            // intermediary must never cache a refusal keyed on our behalf.
+            // Same no-store discipline as the negotiated responses: an intermediary must never cache a refusal
+            // keyed on our behalf.
             return HttpServerResponse.text("Forbidden", {
               status: 403,
               headers: { "Cache-Control": "no-store", Vary: "Origin" },
             });
           }
-          // The desktop app fetches cross-origin (glade://app); reflect only
-          // origins the WS upgrade itself would trust.
+          // The desktop app fetches cross-origin (glade://app); reflect only origins the WS upgrade itself
+          // would trust.
           const origin = normalizeCorsOrigin(request.headers.origin);
           const corsHeaders =
             origin && isTrustedAppOrigin({ origin, requestOrigin: url.origin, config })
@@ -2431,20 +2355,14 @@ function makeWebsocketBootstrapRouteLayer<R>(
   );
 }
 
-// Both negotiation surfaces: the single-handshake HTTP endpoint and the legacy
-// bootstrap socket kept for older clients during rollout. Exported separately
-// so route-level tests can mount them beside a custom feature RPC group.
 export const makeWebsocketNegotiationRouteLayer = () =>
   Layer.merge(
     makeWsNegotiateHttpRouteLayer(),
     makeWebsocketBootstrapRouteLayer(makeBootstrapWebSocketHttpEffect),
   );
 
-/**
- * Video rides a second WebSocket (see `deviceFrameRoute`), so it is admitted by
- * the same rules as the RPC upgrade: trusted origin, then whatever
- * authentication the config requires.
- */
+// Video rides a second WebSocket (see `deviceFrameRoute`), so it is admitted by the same rules as
+// the RPC upgrade: trusted origin, then whatever authentication the config requires.
 const deviceFrameRouteLayer = makeDeviceFrameRouteLayer({
   authorizeUpgrade: (request) =>
     Effect.gen(function* () {
@@ -2481,8 +2399,7 @@ export const websocketRpcRouteLayer = Layer.mergeAll(
   deviceFrameRouteLayer,
   computerFrameRouteLayer,
   makeWebsocketNegotiationRouteLayer(),
-  // The registry must be provided here so the upgrade route and the RPC
-  // middleware (built from the same source effect) share one instance.
+
   makeWebsocketRpcRouteLayer(makeRpcWebSocketHttpEffect).pipe(
     Layer.provide(WsConnectionSessionsLive),
   ),

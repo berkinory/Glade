@@ -93,9 +93,6 @@ const makeAppendAndProject =
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
-// Scenario event appender: generates the event envelope (ids, causation,
-// metadata) so tests only spell the meaningful fields. `prefix` keeps ids
-// unique across the shared per-file test database.
 const makeScenarioAppender = (
   appendAndProject: ReturnType<typeof makeAppendAndProject>,
   prefix: string,
@@ -471,8 +468,8 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
       });
       assert.equal(providerRows[0]!.providerName, "codex");
 
-      // Automation-dispatched turns run with the automation's modes but must not
-      // repaint the thread's persisted runtime/interaction modes.
+      // Automation-dispatched turns run with the automation's modes but must not repaint the thread's
+      // persisted runtime/interaction modes.
       const automationRequestedAt = "2026-02-26T13:00:20.000Z";
       const automationEvent = yield* eventStore.append({
         type: "thread.turn-start-requested",
@@ -764,8 +761,7 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
         occurredAt: completedAt,
         payload: { threadId, session: session("ready", null, completedAt) },
       });
-      // A late-arriving session event whose sequence follows completion but
-      // whose occurredAt precedes it (retry, import, reconciliation).
+
       yield* appendScenarioEvent({
         type: "thread.session-set",
         aggregateKind: "thread",
@@ -787,8 +783,8 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
 
       assert.equal((yield* readThreadUpdatedAt)[0]!.updatedAt, completedAt);
 
-      // Projection repair resets projector cursors and replays from the journal;
-      // the stale event must not regress the thread row during the rebuild.
+      // Projection repair resets projector cursors and replays from the journal; the stale event must not
+      // regress the thread row during the rebuild.
       yield* sql`
         DELETE FROM projection_state
         WHERE projector = ${ORCHESTRATION_PROJECTOR_NAMES.threads}
@@ -1033,7 +1029,7 @@ it.layer(Layer.fresh(makeProjectionPipelinePrefixedTestLayer("glade-text-segment
               updatedAt: "2026-07-14T10:00:01.000Z",
             },
           });
-          // Delta 1 starts the message and its first segment.
+
           yield* append({
             eventId: "evt-text-segments-delta-1",
             commandId: "cmd-text-segments-delta-1",
@@ -1042,7 +1038,7 @@ it.layer(Layer.fresh(makeProjectionPipelinePrefixedTestLayer("glade-text-segment
             streaming: true,
             segmentStartedAt: "2026-07-14T10:00:02.000Z",
           });
-          // Delta 2 continues segment 1 (no row event in between).
+
           yield* append({
             eventId: "evt-text-segments-delta-2",
             commandId: "cmd-text-segments-delta-2",
@@ -1050,18 +1046,18 @@ it.layer(Layer.fresh(makeProjectionPipelinePrefixedTestLayer("glade-text-segment
             text: "scan files.",
             streaming: true,
           });
-          // Delta 3 starts a new segment: a tool row ran in between.
+
           yield* append({
             eventId: "evt-text-segments-delta-3",
             commandId: "cmd-text-segments-delta-3",
-            // A causal boundary can share a millisecond with the first segment;
-            // its persisted identity must not overwrite the earlier segment.
+            // A causal boundary can share a millisecond with the first segment; its persisted identity must not
+            // overwrite the earlier segment.
             occurredAt: "2026-07-14T10:00:02.000Z",
             text: "Found the largest test file: ",
             streaming: true,
             segmentStartedAt: "2026-07-14T10:00:02.000Z",
           });
-          // Delta 4 continues segment 2.
+
           yield* append({
             eventId: "evt-text-segments-delta-4",
             commandId: "cmd-text-segments-delta-4",
@@ -1069,7 +1065,7 @@ it.layer(Layer.fresh(makeProjectionPipelinePrefixedTestLayer("glade-text-segment
             text: "ClaudeAdapter.test.ts (~357KB).",
             streaming: true,
           });
-          // Completion collapses nothing: boundaries persist, tail endedAt advances.
+
           yield* append({
             eventId: "evt-text-segments-complete",
             commandId: "cmd-text-segments-complete",
@@ -1491,11 +1487,6 @@ it.effect("fast-forwards lagging hot projector cursors before restart replay", (
 
 it.effect("rebuilds a deleted hot cursor and advances a stalled projector on bootstrap", () =>
   Effect.gen(function* () {
-    // Field regression: an interrupted repair deletes projection.hot together
-    // with most per-projector cursors, and one surviving cursor can be stuck
-    // hundreds of thousands of events behind. Bootstrap must replay the
-    // stalled projector to the journal head and recreate projection.hot so the
-    // snapshot sequence becomes derivable again.
     const { dbPath } = yield* ServerConfig;
     const persistenceLayer = makeSqlitePersistenceLive(dbPath);
     const projectionLayer = OrchestrationProjectionPipelineLive.pipe(
@@ -1586,8 +1577,6 @@ it.effect("rebuilds a deleted hot cursor and advances a stalled projector on boo
         yield* projectionPipeline.projectEvent(savedEvent);
       }
 
-      // Reproduce the interrupted-repair shape: no hot cursor, and one
-      // projector stalled behind the journal head.
       yield* sql`
         DELETE FROM projection_state
         WHERE projector = ${ORCHESTRATION_PROJECTOR_NAMES.hot}
@@ -1627,7 +1616,7 @@ it.effect("rebuilds a deleted hot cursor and advances a stalled projector on boo
       cursorByProjector.get(ORCHESTRATION_PROJECTOR_NAMES.threadMessages),
       latestSequence,
     );
-    // The stalled projector actually replayed its backlog, not just its cursor.
+
     assert.equal(messageCount, 5);
   }).pipe(
     Effect.provide(
@@ -1643,10 +1632,9 @@ it.effect("rebuilds a deleted hot cursor and advances a stalled projector on boo
 
 it.effect("replays a backlog larger than one commit batch without losing rows or cursors", () =>
   Effect.gen(function* () {
-    // Bootstrap replay commits in batches (BOOTSTRAP_REPLAY_BATCH_SIZE = 500)
-    // to amortize fsync. A backlog spanning multiple batches, with the final
-    // batch partially filled, must still converge: every event applied, the
-    // cursor at the journal head, and — because rows and cursor share each
+    // Bootstrap replay commits in batches (BOOTSTRAP_REPLAY_BATCH_SIZE = 500) to amortize fsync. A
+    // backlog spanning multiple batches, with the final batch partially filled, must still converge:
+    // every event applied, the cursor at the journal head, and — because rows and cursor share each
     // batch transaction — never a committed cursor ahead of committed rows.
     const { dbPath } = yield* ServerConfig;
     const persistenceLayer = makeSqlitePersistenceLive(dbPath);
@@ -1731,7 +1719,7 @@ it.effect("replays a backlog larger than one commit batch without losing rows or
           },
         });
       }
-      // No cursors, no rows: the entire backlog replays through bootstrap.
+
       yield* sql`DELETE FROM projection_state`;
       yield* sql`DELETE FROM projection_thread_messages`;
     }).pipe(Effect.provide(projectionLayer));
@@ -2281,7 +2269,6 @@ it.layer(
         `;
       assert.deepEqual(rowsAfterRequest, [{ pendingApprovalCount: 0, pendingUserInputCount: 1 }]);
 
-      // Simulate rows written by older projectors that treated user-input requests as approvals.
       yield* sql`
             INSERT INTO projection_pending_interactions (
               interaction_kind,
@@ -2573,9 +2560,9 @@ it.layer(
         },
       });
 
-      // Restart/session reconciliation reports the request as stale without a
-      // responseCommandId: nothing ever claimed the row, but the provider
-      // callback that could consume it is gone. The row must not stay pending.
+      // Restart/session reconciliation reports the request as stale without a responseCommandId: nothing
+      // ever claimed the row, but the provider callback that could consume it is gone. The row must not
+      // stay pending.
       yield* eventStore.append({
         type: "thread.activity-appended",
         eventId: EventId.makeUnsafe("evt-stale-reconcile-failed"),
@@ -3152,8 +3139,6 @@ it.layer(
         },
       });
 
-      // Deltas deliberately include multi-byte characters, empty chunks and
-      // trailing whitespace: the appended text must match a plain JS join.
       const deltas = Array.from({ length: 64 }, (_, index) =>
         index % 8 === 3 ? "" : `δ${index}-${"x".repeat(index % 5)}${index % 4 === 0 ? "\n" : " "}`,
       );
@@ -3174,8 +3159,8 @@ it.layer(
             messageId,
             role: "assistant",
             text: delta,
-            // The first delta creates the row without a turn; the next one binds
-            // it, and a later conflicting turn must not steal the binding.
+            // The first delta creates the row without a turn; the next one binds it, and a later conflicting
+            // turn must not steal the binding.
             turnId: index === 0 ? null : index === deltas.length - 1 ? otherTurnId : turnId,
             streaming: true,
             ...(index === 1 ? { dispatchOrigin: "agent" as const } : {}),
@@ -3227,9 +3212,6 @@ it.layer(
       `;
       assert.equal(streamed?.sequence, firstDeltaSequence[0]?.sequence);
 
-      // Every phase cursor must stay exactly at the last projected event: the
-      // client snapshot sequence is their minimum, and a lagging cursor makes
-      // clients replay deltas they already applied.
       const lastDeltaSequence = yield* sql<{ readonly sequence: number }>`
         SELECT sequence FROM orchestration_events
         WHERE event_id = ${`evt-stream-append-delta-${deltas.length - 1}`}
@@ -3241,7 +3223,6 @@ it.layer(
       `;
       assert.equal(shellCursor[0]?.lastAppliedSequence, lastDeltaSequence[0]?.sequence);
 
-      // Non-streaming writes replace the accumulated text instead of appending.
       yield* appendAndProject({
         type: "thread.message-sent",
         eventId: EventId.makeUnsafe("evt-stream-append-final"),
@@ -3264,7 +3245,6 @@ it.layer(
         },
       });
 
-      // An empty non-streaming write keeps the stored text.
       yield* appendAndProject({
         type: "thread.message-sent",
         eventId: EventId.makeUnsafe("evt-stream-append-complete"),
@@ -3383,8 +3363,6 @@ it.layer(
         });
       }
 
-      // Replaying the journal from scratch must land on the same text: the
-      // append path is only correct if it is driven by the event log alone.
       yield* sql`DELETE FROM projection_thread_messages WHERE thread_id = ${threadId}`;
       yield* sql`DELETE FROM projection_state`;
       yield* projectionPipeline.bootstrap;
@@ -5335,7 +5313,7 @@ it.layer(makeProjectionPipelinePrefixedTestLayer("glade-projection-pipeline-defe
             });
 
           yield* projectionPipeline.bootstrap;
-          // A full pass brings both phase cursors to the same sequence.
+
           const first = yield* streamedDelta(1, "one ");
           yield* projectionPipeline.projectEvent(first);
           assert.strictEqual(yield* cursorOf(ORCHESTRATION_PROJECTOR_NAMES.hot), first.sequence);
@@ -5344,8 +5322,6 @@ it.layer(makeProjectionPipelinePrefixedTestLayer("glade-projection-pipeline-defe
             first.sequence,
           );
 
-          // Caught up: a streamed delta has no deferred projector, so the hot
-          // transaction moves the deferred cursor itself and reports it settled.
           const second = yield* streamedDelta(2, "two ");
           const settled = yield* sql.withTransaction(
             projectionPipeline.projectHotEventInCurrentTransaction(second),
@@ -5357,8 +5333,8 @@ it.layer(makeProjectionPipelinePrefixedTestLayer("glade-projection-pipeline-defe
             second.sequence,
           );
 
-          // Lagging (a failed or in-flight deferred catch-up): the hot transaction
-          // must leave the deferred cursor alone so the catch-up still replays.
+          // Lagging (a failed or in-flight deferred catch-up): the hot transaction must leave the deferred
+          // cursor alone so the catch-up still replays.
           yield* sql`
         UPDATE projection_state SET last_applied_sequence = ${first.sequence}
         WHERE projector = ${ORCHESTRATION_PROJECTOR_NAMES.threadShellSummaries}

@@ -1,4 +1,3 @@
-/** Translate OS desktop availability into independent, composable input gates. */
 export interface ComputerDesktopLifecycleHost {
   pauseDesktop(reason: string): Promise<void>;
   resumeDesktop(reason: string): void;
@@ -31,7 +30,7 @@ export function registerComputerDesktopLifecycle(
     register(pauseEvent, () => pause(reason));
     register(resumeEvent, () => host.resumeDesktop(reason));
   }
-  // Events alone miss an app launched while the screen is already locked.
+
   if (monitor.getSystemIdleState(1) === "locked") pause("screen-lock");
   return () => {
     for (const [event, listener] of registrations) monitor.removeListener(event, listener);

@@ -1,8 +1,3 @@
-// FILE: voiceUploadAdmission.ts
-// Purpose: Bounds voice uploads before request bodies are buffered in server memory.
-// Layer: Server transport utility
-// Exports: voiceUploadAdmissionGate
-
 import { Effect } from "effect";
 
 class VoiceUploadCapacityError extends Error {

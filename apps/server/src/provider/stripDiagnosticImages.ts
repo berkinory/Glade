@@ -1,9 +1,3 @@
-/**
- * Image bodies belong to model delivery, not retained diagnostics or snapshots.
- * This transforms unknown diagnostic JSON; image fields do not retain their
- * original types. The source object is never changed. Unchanged acyclic branches
- * are shared; cycles point to the diagnostic copy rather than back to the source.
- */
 export function stripDiagnosticImages(value: unknown): unknown {
   const seen = new WeakMap<object, unknown>();
   const visit = (input: unknown): unknown => {

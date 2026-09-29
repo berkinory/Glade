@@ -1,9 +1,4 @@
 import { normalizeOperationError } from "../platform/operationError.ts";
-// FILE: providerUsage/index.ts
-// Purpose: Orchestrate the live provider-usage fetchers — defensive batch fetch (one failure never
-// blocks the others), per-provider snapshot caching with single-flight coalescing, and enrichment
-// of Codex/Claude live snapshots with the locally-derived token-total usage lines. Exposes both a
-// plain async API (for tests) and an Effect that reads ServerConfig (for the WS RPC handler).
 
 import type {
   ProviderKind,
@@ -26,7 +21,6 @@ import { errorSnapshot } from "./parse";
 import { PROVIDER_USAGE_FETCHERS } from "./registry";
 import type { ProviderUsageContext } from "./types";
 
-// Providers whose live snapshot is enriched with on-disk token-total lines (24h/7d/30d).
 const LOCAL_ARCHIVE_PROVIDERS: ReadonlySet<ProviderKind> = new Set(["codex", "claudeAgent"]);
 
 const providerChildKind = (provider: ProviderKind): ProviderChildKind =>
@@ -75,13 +69,6 @@ function buildProviderContext(
   };
 }
 
-// Every UI surface (header chip, branch toolbar, settings panel) plus their periodic refetches
-// funnels through this cache, so one browser tab doesn't hammer provider endpoints — or spawn
-// `claude auth status` processes — once per surface. Fresh snapshots are served from memory,
-// concurrent requests for the same provider coalesce into a single fetch, and `forceRefresh`
-// (the settings panel's explicit refresh button) bypasses the TTL but still joins an in-flight
-// fetch. Degraded snapshots (errors, re-served last-good data) expire faster so recovery is
-// picked up quickly. Keyed by ProviderKind, so the cache is inherently bounded.
 const SNAPSHOT_CACHE_TTL_MS = 5 * 60 * 1000;
 const SNAPSHOT_CACHE_DEGRADED_TTL_MS = 60 * 1000;
 
@@ -210,7 +197,6 @@ async function enrichWithLocalUsage(
   return { ...snapshot, usageLines: [...snapshot.usageLines, ...localLines] };
 }
 
-/** Plain async batch fetch for supported providers. Never throws. */
 async function collectProviderUsageSnapshots(
   ctx: ProviderUsageContext,
   options: {
@@ -274,8 +260,6 @@ export const listProviderUsage = Effect.fn(function* (input: ServerListProviderU
   });
 });
 
-/** Spend one banked Codex reset, then drop the cached Codex snapshot so the
- * next read reflects the spend. A spent reset shows up as a fresh quota read. */
 export const consumeCodexResetCreditEffect = Effect.fn(function* (
   input: ServerConsumeCodexResetCreditInput,
 ) {
@@ -292,7 +276,6 @@ export const consumeCodexResetCreditEffect = Effect.fn(function* (
           ...input,
         });
       } finally {
-        // A lost reply may still have spent the reset. Never retain pre-attempt quota data.
         invalidateProviderUsageSnapshots(["codex"]);
       }
     },

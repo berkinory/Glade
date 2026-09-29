@@ -1,8 +1,3 @@
-// FILE: ComposerModelPicker.logic.ts
-// Purpose: Pure helpers turning composer trait state into starred presets and back.
-// Layer: Chat composer state helpers
-// Depends on: composer trait resolution and the starred model storage shape.
-
 import type { ModelSlug, ProviderKind } from "@glade/contracts";
 import { resolveSelectableModel } from "@glade/shared/model";
 
@@ -20,11 +15,9 @@ import {
 
 type ComposerTraitSelection = ReturnType<typeof getComposerTraitSelection>;
 
-/** Tab id of the starred presets list; every other tab id is a provider kind. */
 export const STARRED_TAB = "starred";
 export type ComposerModelPickerTab = typeof STARRED_TAB | ProviderKind;
 
-/** Marks the open picker so global mod+digit handlers (thread jump) yield to its rows. */
 export const MODEL_PICKER_POPUP_ATTRIBUTE = "data-model-picker-popup";
 
 export function isModelPickerShortcutScopeActive(): boolean {
@@ -34,11 +27,8 @@ export function isModelPickerShortcutScopeActive(): boolean {
   );
 }
 
-/** Rows beyond this index get no ⌘N hint. */
 export const MODEL_PICKER_SHORTCUT_ROW_LIMIT = 9;
 
-// Snapshot the traits a star should restore. Controls the model does not expose stay
-// `null` so applying the preset never invents an option the provider would reject.
 export function resolveStarredTraits(
   selection: Pick<
     ComposerTraitSelection,
@@ -57,8 +47,6 @@ export function resolveStarredTraits(
   };
 }
 
-// Option patch that restores a preset's traits on its model. `selection` must be the
-// target model's trait selection so option ids and supported levels come from it.
 export function buildStarredModelOptionsPatch(input: {
   provider: ProviderKind;
   selection: ComposerTraitSelection;
@@ -69,7 +57,7 @@ export function buildStarredModelOptionsPatch(input: {
   if (starred.effort !== null) {
     const plan = planComposerEffortChange({
       provider,
-      // A preset is applied independently of the prompt's Ultrathink lock.
+
       selection: { ...selection, ultrathinkPromptControlled: false },
       prompt: "",
       value: starred.effort,
@@ -87,7 +75,6 @@ export function buildStarredModelOptionsPatch(input: {
   return patch;
 }
 
-// "High · Fast" style summary of a preset, labelled through the target model's ladder.
 function formatStarredTraitsLabel(
   starred: Pick<StarredModel, "effort" | "fastMode" | "thinking">,
   effortLevels: ComposerTraitSelection["effortLevels"],
@@ -107,7 +94,6 @@ function formatStarredTraitsLabel(
     .join(" · ");
 }
 
-// A preset counts as "current" when every trait it pins matches the composer's.
 function starredTraitsMatch(
   starred: Pick<StarredModel, "effort" | "fastMode" | "thinking">,
   current: Pick<StarredModel, "effort" | "fastMode" | "thinking">,
@@ -119,18 +105,17 @@ function starredTraitsMatch(
   );
 }
 
-// One row of the picker list, already resolved to what selecting it commits.
 export type ComposerModelPickerRow = {
   key: string;
   provider: ProviderKind;
   model: string;
   selectableModel: ModelSlug | null;
   name: string;
-  /** Muted text after the name: the trait summary of a starred preset. */
+
   detail: string | null;
   selected: boolean;
   groupLabel: string | null;
-  /** Present on starred rows: the preset to restore and to un-star. */
+
   preset: StarredModel | null;
 };
 
@@ -215,7 +200,6 @@ export function buildStarredTabRows(input: {
   });
 }
 
-// Index (0-based) of the picker row a mod+digit chord addresses, or null.
 export function modelPickerShortcutRowIndex(event: {
   key: string;
   metaKey: boolean;

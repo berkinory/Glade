@@ -1,5 +1,3 @@
-// Purpose: Add the thread working-directory column used by local environments.
-
 import * as Effect from "effect/Effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 

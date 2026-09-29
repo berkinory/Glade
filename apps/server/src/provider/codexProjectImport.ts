@@ -1,7 +1,3 @@
-// FILE: codexProjectImport.ts
-// Purpose: Discover local Codex projects and thread metadata without loading provider sessions.
-// Layer: Provider metadata discovery
-
 import fs from "node:fs/promises";
 import path from "node:path";
 
@@ -57,7 +53,6 @@ async function realpathIfPresent(value: string): Promise<string> {
   }
 }
 
-/** Resolve the same source identity for discovery and preview validation, including home overlays. */
 export async function resolveCodexProjectImportHome(
   input: CodexProjectImportInput = {},
 ): Promise<string> {
@@ -65,7 +60,6 @@ export async function resolveCodexProjectImportHome(
     resolveBaseCodexHomePath(input.env ?? process.env, input.homePath),
   );
   try {
-    // Glade's overlay links this file to the original home. Keep one provenance identity.
     return path.dirname(await fs.realpath(path.join(home, ".codex-global-state.json")));
   } catch (error) {
     if (isMissing(error)) return home;
@@ -286,7 +280,7 @@ export async function discoverCodexProjects(
     const sqliteHome = await realpathIfPresent(env.CODEX_SQLITE_HOME?.trim() || sourceHome);
     const dbPath = await findStateDatabase(sqliteHome);
     if (dbPath) database = await openDatabase(dbPath);
-    // A read transaction keeps projects, assignments, and thread metadata on one SQLite snapshot.
+
     database?.exec("BEGIN");
     const tables = new Set(
       database

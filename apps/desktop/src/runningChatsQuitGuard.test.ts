@@ -162,8 +162,8 @@ describe("running chats quit guard", () => {
     });
     expect(guard.hasPendingAsk()).toBe(true);
 
-    // The renderer hosting the ask is gone — the quit it was part of must
-    // proceed, but no user said yes, so the allowed latch must not set.
+    // The renderer hosting the ask is gone — the quit it was part of must proceed, but no user said
+    // yes, so the allowed latch must not set.
     guard.allowPending();
 
     await expect(first).resolves.toBe(true);

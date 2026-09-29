@@ -1,13 +1,5 @@
 import type { TaggedFailure } from "../platform/operationError.ts";
-/**
- * providerRuntimeEventPump - Supervised adapter runtime-event ingestion.
- *
- * Owns retry, restart, and health tracking at the ProviderAdapter.streamEvents
- * seam. An event is retried in place until its canonical processing succeeds,
- * so transient persistence failures cannot consume and lose terminal events.
- *
- * @module providerRuntimeEventPump
- */
+
 import type { ProviderKind, ProviderRuntimeEvent } from "@glade/contracts";
 import { Cause, Effect, Stream } from "effect";
 
@@ -18,12 +10,7 @@ import type {
 
 const DEFAULT_RETRY_BASE_DELAY_MS = 25;
 const DEFAULT_RETRY_MAX_DELAY_MS = 2_000;
-// "Degraded" exists to say the pump may be missing events. After this many
-// consecutive successfully processed events since the last quarantine, that
-// claim is no longer supported by evidence, and staying degraded forever has
-// a real cost: reconciliation refuses to settle stale turns for a provider
-// whose pump is not healthy. Heal, and keep the lastQuarantined* fields as
-// the durable forensic record.
+
 const DEFAULT_DEGRADED_HEAL_AFTER_SUCCESSES = 100;
 
 export interface ProviderRuntimeEventPumpOptions<R> {
@@ -112,13 +99,6 @@ function health(input: {
   };
 }
 
-/**
- * Consume one Adapter stream forever.
- *
- * Per-event failures retry the same event before another queue item is taken.
- * Unexpected stream completion/defect restarts the subscription after backoff.
- * Scope interruption remains the only way this Effect completes.
- */
 export function runProviderRuntimeEventPump<R>(
   options: ProviderRuntimeEventPumpOptions<R>,
 ): Effect.Effect<void, never, R> {
@@ -140,7 +120,6 @@ export function runProviderRuntimeEventPump<R>(
   let lastQuarantinedEventId: string | undefined;
   let lastQuarantinedAt: string | undefined;
 
-  /** Returns true when this success flipped the pump from degraded to healed. */
   const noteSuccessAndMaybeHeal = (): boolean => {
     if (quarantinedEvents === 0) return false;
     successesSinceQuarantine += 1;

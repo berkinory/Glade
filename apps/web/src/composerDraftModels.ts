@@ -1,7 +1,3 @@
-// FILE: composerDraftModels.ts
-// Purpose: Normalizes provider-scoped model selections and resolves effective composer models.
-// Exports: Model state helpers used by persistence, actions, and the public facade.
-
 import {
   ProviderKind,
   type ClaudeCodeEffort,
@@ -384,7 +380,7 @@ export function legacyToModelSelectionByProvider(
   modelOptions: ProviderModelOptions | null | undefined,
 ): Partial<Record<ProviderKind, ModelSelection>> {
   const result: Partial<Record<ProviderKind, ModelSelection>> = {};
-  // Add entries from the options bag (for non-active providers)
+
   if (modelOptions) {
     for (const provider of COMPOSER_PROVIDER_KINDS) {
       const options = modelOptions[provider];
@@ -397,7 +393,7 @@ export function legacyToModelSelectionByProvider(
       }
     }
   }
-  // Add/overwrite the active selection (it's authoritative for its provider)
+
   if (modelSelection) {
     result[modelSelection.provider] = modelSelection;
   }
@@ -483,10 +479,6 @@ export function resolvePreferredComposerModelSelection(input: {
   projectModelSelection: ModelSelection | null | undefined;
   defaultProvider?: ProviderKind | null | undefined;
 }): ModelSelection {
-  // The draft's selection is the user's most recently used target: a fresh draft
-  // is seeded from the sticky (last-used) state, so this precedence is what
-  // makes a new chat reopen with the model and options used last time. Project
-  // and global defaults only apply when nothing has been used yet.
   const draftProviderWithSelection =
     COMPOSER_PROVIDER_KINDS.find(
       (provider) => input.draft?.modelSelectionByProvider?.[provider] !== undefined,

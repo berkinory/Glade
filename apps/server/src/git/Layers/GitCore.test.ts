@@ -1,7 +1,3 @@
-// FILE: GitCore.test.ts
-// Purpose: Exercises GitCore repository operations, branch/worktree flows, and status summaries.
-// Layer: Server Git service tests
-// Depends on: Effect test layers plus real temporary Git repositories.
 import { existsSync } from "node:fs";
 import * as fs from "node:fs/promises";
 import path from "node:path";
@@ -15,8 +11,6 @@ import { GitCoreLive } from "./GitCore.ts";
 import { GitCore } from "../Services/GitCore.ts";
 import { GitCheckoutDirtyWorktreeError, GitCommandError } from "../Errors.ts";
 import { ServerConfig } from "../../config.ts";
-
-// ── Helpers ──
 
 const ServerConfigLayer = ServerConfig.layerTest(process.cwd(), {
   prefix: "glade-git-core-test-",
@@ -55,7 +49,6 @@ function readTextFile(
   });
 }
 
-/** Run a raw git command for test setup (not under test). */
 function git(
   cwd: string,
   args: ReadonlyArray<string>,
@@ -74,7 +67,6 @@ function git(
   });
 }
 
-/** Create a repo with an initial commit so branches work. */
 function initRepoWithCommit(
   cwd: string,
 ): Effect.Effect<
@@ -94,8 +86,6 @@ function initRepoWithCommit(
     return { initialBranch };
   });
 }
-
-// ── Tests ──
 
 it.layer(TestLayer)("git integration", (it) => {
   describe("bounded working-tree and ref reads", () => {
@@ -220,12 +210,6 @@ it.layer(TestLayer)("git integration", (it) => {
     );
   });
 
-  // ── initGitRepo ──
-
-  // ── listGitBranches ──
-
-  // ── checkoutGitBranch ──
-
   describe("checkoutGitBranch", () => {
     it.effect("does not silently checkout a local branch when a remote ref no longer exists", () =>
       Effect.gen(function* () {
@@ -256,27 +240,22 @@ it.layer(TestLayer)("git integration", (it) => {
         yield* initRepoWithCommit(tmp);
         yield* (yield* GitCore).createBranch({ cwd: tmp, branch: "other" });
 
-        // Create a conflicting change: modify README on current branch
         yield* writeTextFile(path.join(tmp, "README.md"), "modified\n");
         yield* git(tmp, ["add", "README.md"]);
 
-        // First, checkout other branch cleanly
         yield* git(tmp, ["stash"]);
         yield* (yield* GitCore).checkoutBranch({ cwd: tmp, branch: "other" });
         yield* writeTextFile(path.join(tmp, "README.md"), "other content\n");
         yield* git(tmp, ["add", "."]);
         yield* git(tmp, ["commit", "-m", "other change"]);
 
-        // Go back to default branch
         const defaultBranch = (yield* (yield* GitCore).listBranches({ cwd: tmp })).branches.find(
           (b) => !b.current,
         )!.name;
         yield* (yield* GitCore).checkoutBranch({ cwd: tmp, branch: defaultBranch });
 
-        // Make uncommitted changes to the same file
         yield* writeTextFile(path.join(tmp, "README.md"), "conflicting local\n");
 
-        // Checkout should fail due to uncommitted changes
         const result = yield* Effect.result(
           (yield* GitCore).checkoutBranch({ cwd: tmp, branch: "other" }),
         );
@@ -326,12 +305,6 @@ it.layer(TestLayer)("git integration", (it) => {
       }),
     );
   });
-
-  // ── createGitBranch ──
-
-  // ── renameGitBranch ──
-
-  // ── createGitWorktree + removeGitWorktree ──
 
   describe("createGitWorktree", () => {
     it.effect("creates a worktree with a new branch from the base branch", () =>
@@ -412,8 +385,7 @@ it.layer(TestLayer)("git integration", (it) => {
         yield* initRepoWithCommit(tmp);
         const core = yield* GitCore;
         const wtPath = path.join(tmp, "wt-rollback-branch");
-        // A plain file at the target path makes `git worktree add` fail after
-        // the branch has already been created.
+
         yield* writeTextFile(wtPath, "occupied\n");
 
         const result = yield* Effect.exit(
@@ -524,12 +496,6 @@ it.layer(TestLayer)("git integration", (it) => {
     );
   });
 
-  // ── Full flow: worktree creation from base branch ──
-
-  // ── Full flow: thread switching simulation ──
-
-  // ── Full flow: checkout conflict ──
-
   describe("GitCore", () => {
     it.effect("reverts only working-tree changes and removes an exact untracked file", () =>
       Effect.gen(function* () {
@@ -569,7 +535,6 @@ it.layer(TestLayer)("git integration", (it) => {
 
         yield* core.commit(tmp, "Add only a.txt", "");
 
-        // b.txt should still be untracked after commit
         const statusAfter = yield* git(tmp, ["status", "--porcelain"]);
         expect(statusAfter).toContain("b.txt");
         expect(statusAfter).not.toContain("a.txt");

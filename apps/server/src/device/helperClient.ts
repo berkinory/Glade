@@ -1,29 +1,3 @@
-/**
- * HelperClient - the only module that knows the native device-helper's wire
- * protocol.
- *
- * The helper is a Swift process compiled on demand against the user's Xcode
- * (private CoreSimulator/SimulatorKit frameworks, so it cannot ship prebuilt).
- * It speaks two channels:
- *
- * - Control: newline-delimited JSON-RPC 2.0 over stdin/stdout. Requests carry
- *   an integer id; responses carry `result` or `error`. It also emits a `ready`
- *   notification at startup.
- * - Frames: the server listens on a unix socket and passes its path to
- *   `stream.start`; the helper connects as a client and writes
- *   `u32 little-endian length` followed by that many bytes. Those bytes are
- *   already the `@glade/contracts` device-frame envelope, so this module only
- *   removes the length prefix and hands the envelope on untouched.
- *
- * Two protocol facts that shape callers:
- *
- * - The helper attaches to one simulator at a time (`attach`), and every input,
- *   read, and stream method acts on that attachment rather than taking a udid.
- * - Input coordinates are normalized to 0..1, not device points. Conversion
- *   uses the geometry `attach` returns.
- *
- * @module device/helperClient
- */
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { createServer, type Server, type Socket } from "node:net";
@@ -76,7 +50,6 @@ export class DeviceHelperError extends Error {
   }
 }
 
-/** Geometry from `attach`, used to convert device points into normalized input. */
 export interface DeviceHelperAttachment {
   readonly udid: string;
   readonly pointWidth: number;
@@ -94,13 +67,7 @@ export interface HelperClientOptions {
   readonly env?: NodeJS.ProcessEnv | undefined;
   readonly requestTimeoutMs?: number;
   readonly onExit?: (reason: string) => void;
-  /**
-   * The confined command to spawn instead of `binaryPath` directly.
-   *
-   * Resolved by the caller because building it reads the filesystem while
-   * `start()` is synchronous. Absent means the helper runs unconfined, which is
-   * also what happens off macOS or with the opt-out set.
-   */
+  // Resolved by the caller because building it reads the filesystem while `start()` is synchronous.
   readonly launch?: HelperSandboxCommand | undefined;
 }
 
@@ -112,13 +79,9 @@ function asRecord(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {};
 }
 
-/**
- * One axis of a device-point coordinate as a 0..1 fraction of the screen.
- *
- * The error names both the offending value and the valid range, because the
- * overwhelmingly common cause is a caller passing frame pixels: seeing
- * "1019 is outside 0..402" makes the scale factor obvious immediately.
- */
+// The error names both the offending value and the valid range, because the overwhelmingly common
+// cause is a caller passing frame pixels: seeing "1019 is outside 0..402" makes the scale factor
+// obvious immediately.
 function normalizeCoordinate(
   value: number,
   extent: number,
@@ -141,18 +104,12 @@ function readNumber(record: Record<string, unknown>, key: string, fallback: numb
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
-/**
- * The helper's length-prefixed frame records, in this module's error type.
- *
- * The splitting itself lives in `@glade/shared/lengthPrefixedRecords` so any
- * other helper framing payloads the same way reuses it; only the failure type
- * is this module's, because a desynced stream here is a `DeviceHelperError`
- * the transport already knows how to drop a socket on.
- */
+// The splitting itself lives in `@glade/shared/lengthPrefixedRecords` so any other helper framing
+// payloads the same way reuses it; only the failure type is this module's, because a desynced
+// stream here is a `DeviceHelperError` the transport already knows how to drop a socket on.
 class DeviceFramePrefixParser {
   private readonly parser = new LengthPrefixedRecordParser();
 
-  /** Returns every complete payload now available, in order. */
   push(chunk: Uint8Array): readonly Uint8Array[] {
     try {
       return this.parser.push(chunk);
@@ -168,10 +125,6 @@ class DeviceFramePrefixParser {
   }
 }
 
-/**
- * Owns one helper process: spawn, JSON-RPC over stdio, and the unix socket the
- * helper connects back to with frames.
- */
 export class HelperClient {
   private process: ChildProcessWithoutNullStreams | null = null;
   private stdoutFramer: JsonRpcStdioFramer | null = null;
@@ -195,14 +148,11 @@ export class HelperClient {
     return this.process !== null && !this.exited;
   }
 
-  /** The simulator this helper is currently bound to, if any. */
   get attachedDevice(): DeviceHelperAttachment | null {
     return this.attachment;
   }
 
   start(): void {
-    // A disposed client stays disposed: restarting here would resurrect a
-    // helper its owner already tore down, and nothing would ever stop it.
     if (this.disposed) throw disposedError();
     if (this.process) return;
     const launch = this.options.launch;
@@ -237,9 +187,6 @@ export class HelperClient {
     });
     this.requestRegistry.processStarted();
 
-    // Every listener is bound to the process it was installed for. A child
-    // that has been disposed keeps flushing stdout and still reports its exit,
-    // and neither may reach the transport or the owner after it is retired.
     child.stdout.on("data", (chunk: Buffer) => {
       if (this.process !== child) return;
       this.consumeStdout(chunk);
@@ -247,8 +194,8 @@ export class HelperClient {
     child.stderr.setEncoding("utf8");
     child.stderr.on("data", (chunk: string) => {
       if (this.process !== child) return;
-      // Keep only a tail: helper diagnostics belong in the failure message but
-      // must never grow without bound over a long-lived session.
+      // Keep only a tail: helper diagnostics belong in the failure message but must never grow without
+      // bound over a long-lived session.
       this.stderrTail = `${this.stderrTail}${chunk}`.slice(-4_096);
     });
     child.on("error", (error) => {
@@ -291,17 +238,13 @@ export class HelperClient {
     }
   }
 
-  /**
-   * Bind the helper to one simulator. The helper holds a single attachment, so
-   * attaching to a different device implicitly replaces the previous one.
-   */
   async attach(
     udid: string,
     options: { readonly force?: boolean } = {},
   ): Promise<DeviceHelperAttachment> {
     if (!options.force && this.attachment?.udid === udid) return this.attachment;
-    // Cleared before the request: a failed re-attach must not leave the caller
-    // believing the previous, now-dead attachment is still good.
+    // Cleared before the request: a failed re-attach must not leave the caller believing the previous,
+    // now-dead attachment is still good.
     this.attachment = null;
     const result = asRecord(await this.request(HELPER_METHODS.attach, { udid }));
     const capabilities = asRecord(result.capabilities);
@@ -328,30 +271,15 @@ export class HelperClient {
     return attachment;
   }
 
-  /**
-   * Forget the cached attachment for a device.
-   *
-   * The helper's attachment holds a display descriptor tied to one boot of the
-   * simulator. Shutting the device down invalidates that descriptor, but the
-   * helper process outlives the simulator, so without this the next `attach`
-   * would short-circuit on the matching udid and every call would fail against
-   * a dead framebuffer.
-   */
+  // Shutting the device down invalidates that descriptor, but the helper process outlives the
+  // simulator, so without this the next `attach` would short-circuit on the matching udid and every
+  // call would fail against a dead framebuffer.
   invalidateAttachment(udid: string): void {
     if (this.attachment?.udid === udid) this.attachment = null;
   }
 
-  /**
-   * Convert device points to the normalized 0..1 coordinates the helper's input
-   * methods expect.
-   *
-   * Out-of-bounds coordinates are rejected, never clamped. Clamping looked
-   * forgiving but was the worst possible behaviour: a caller sending frame
-   * pixels instead of points (1206x2622 rather than 402x874) had every tap
-   * pinned to the screen edge and acked as success, hiding a real
-   * coordinate-space bug behind a green result. A caller wrong about the
-   * coordinate space has to hear about it.
-   */
+  // Reject out-of-bounds points instead of clamping: clamping hides coordinate-space errors behind
+  // successful edge taps.
   normalize(x: number, y: number): { readonly x: number; readonly y: number } {
     const attachment = this.attachment;
     if (!attachment) {
@@ -366,11 +294,8 @@ export class HelperClient {
     };
   }
 
-  /**
-   * Start capture for the attached device. The server owns the socket: it
-   * listens first and passes the path, so the helper never has to guess where
-   * to connect and a stale socket file cannot be reused.
-   */
+  // The server owns the socket: it listens first and passes the path, so the helper never has to
+  // guess where to connect and a stale socket file cannot be reused.
   async startStream(udid: string, onFrame: (frame: DeviceStreamFrame) => void): Promise<void> {
     await this.stopStream();
     await this.attach(udid);
@@ -389,8 +314,6 @@ export class HelperClient {
         try {
           payloads = parser.push(chunk);
         } catch {
-          // A desynced stream cannot resynchronize: drop it rather than
-          // emitting garbage NALs into the decoder.
           socket.destroy();
           return;
         }
@@ -403,10 +326,7 @@ export class HelperClient {
             timestampMs: header.timestampMs,
             keyframe: header.keyframe,
             codecConfig: header.codecConfig,
-            // Envelope stripped: the transport re-encodes one with the routing
-            // device id it already has, so forwarding the record whole would
-            // leave a second header in front of the access unit and every frame
-            // would fail to decode.
+
             data: payload,
           });
         }
@@ -452,8 +372,6 @@ export class HelperClient {
     child?.kill("SIGTERM");
   }
 
-  // ── Internals ──────────────────────────────────────────────────────
-
   private async closeFrameSocket(): Promise<void> {
     this.frameSocket?.destroy();
     this.frameSocket = null;
@@ -476,8 +394,6 @@ export class HelperClient {
         if (trimmed.length > 0) this.handleControlLine(trimmed);
       }
     } catch (error) {
-      // Only a push after `close()` reaches here; per-line failures are reported
-      // through `handleControlLineError` and never abort the chunk.
       const message = error instanceof Error ? error.message : String(error);
       this.rejectInFlight(
         new DeviceHelperError("helper_protocol_error", message, { cause: error }),
@@ -485,17 +401,9 @@ export class HelperClient {
     }
   }
 
-  /**
-   * A line the framer had to drop. The framer has already resynchronized, so
-   * this only decides how loudly to react.
-   *
-   * Undecodable bytes are ignored exactly like the non-JSON diagnostics the
-   * helper also writes to stdout. An oversized line is louder, because it means
-   * a response we were waiting for is gone: in-flight requests are rejected so
-   * callers fail fast instead of sitting out the full timeout. Neither case
-   * touches the process or the write path — the helper is still there, and the
-   * next request has to be able to reach it.
-   */
+  // The framer has already resynchronized, so this only decides how loudly to react. An oversized
+  // line is louder, because it means a response we were waiting for is gone: in-flight requests are
+  // rejected so callers fail fast instead of sitting out the full timeout.
   private handleControlLineError(error: JsonRpcStdioTransportError): void {
     if (error.reason !== "frame-too-large") return;
     this.rejectInFlight(
@@ -510,11 +418,10 @@ export class HelperClient {
     try {
       message = JSON.parse(line);
     } catch {
-      // Helper logs that are not JSON are ignored.
       return;
     }
     const record = asRecord(message);
-    // Notifications (`ready`, diagnostics) carry no id and need no reply.
+
     if (typeof record.id !== "number") return;
     const error =
       record.error === undefined || record.error === null ? undefined : asRecord(record.error);
@@ -532,24 +439,10 @@ export class HelperClient {
     });
   }
 
-  /**
-   * Reject everything in flight without ending the transport.
-   *
-   * Used for protocol-level damage, which costs us the responses we were waiting
-   * on but leaves a live helper on the other end of a still-usable stdin.
-   */
   private rejectInFlight(error: DeviceHelperError): void {
     this.requestRegistry?.rejectAll(error);
   }
 
-  /**
-   * Reject everything in flight and close the write path for good; used on exit,
-   * spawn failure, and disposal.
-   *
-   * Closing the writer is irreversible and `start()` will not rebuild it while a
-   * process is set, so this must stay reserved for a helper that is actually
-   * gone.
-   */
   private fail(error: DeviceHelperError): void {
     this.requestRegistry?.processExited(error);
     this.stdinWriter?.close(error);

@@ -148,13 +148,11 @@ export function ProjectImportPanel(props: {
           }));
         }
       }
-      // Refresh once per batch. Import events also update the live store while the batch runs.
+
       try {
         const snapshot = await api.orchestration.getShellSnapshot();
         if (mountedRef.current) syncSnapshot(snapshot);
-      } catch {
-        // A reconnect will hydrate the store; successful durable imports remain successful.
-      }
+      } catch {}
     } catch (caught) {
       if (mountedRef.current)
         setError(caught instanceof Error ? caught.message : "Could not start the import.");

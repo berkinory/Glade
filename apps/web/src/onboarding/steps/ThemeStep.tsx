@@ -1,8 +1,3 @@
-// FILE: ThemeStep.tsx
-// Purpose: Appearance step of the welcome tour: System / Light / Dark with the shared
-//          theme-mode picker, then the theme pack. Changes apply live behind the dialog.
-// Layer: Web UI component
-
 import { ThemeModePicker } from "~/components/settings/ThemeModePicker";
 import { useRadioGroupKeyboardNav } from "~/hooks/useRadioGroupKeyboardNav";
 import { useTheme } from "~/hooks/useTheme";
@@ -10,18 +5,12 @@ import { cn } from "~/lib/utils";
 import { CODE_THEME_OPTIONS, getCodeThemeSeed } from "~/theme/theme.logic";
 import { type ThemeVariant } from "../../theme/themeModel";
 
-/**
- * Packs that ship both a light and a dark variant. Picking one here sets it for both
- * variants so the choice holds whichever mode the system lands on; single-variant packs
- * stay in Settings → Appearance where each variant is edited on its own.
- */
 const ONBOARDING_THEME_PACKS = CODE_THEME_OPTIONS.filter(
   (option) => option.variants.includes("light") && option.variants.includes("dark"),
 );
 const ONBOARDING_THEME_PACK_IDS = ONBOARDING_THEME_PACKS.map((option) => option.id);
 const THEME_VARIANTS: readonly ThemeVariant[] = ["light", "dark"];
 
-/** Surface disc with the pack's accent as a corner dot, in the variant the app resolves to. */
 function ThemePackSwatch(props: { codeThemeId: string; variant: ThemeVariant }) {
   const seed = getCodeThemeSeed(props.codeThemeId, props.variant);
   return (
@@ -44,8 +33,7 @@ export function ThemeStep() {
   const selectPack = (codeThemeId: string) => {
     for (const variant of THEME_VARIANTS) setCodeThemeId(variant, codeThemeId);
   };
-  // A single-variant pack (chosen earlier in Settings) is not in this list; fall back to
-  // the first option as the roving tab stop so the group stays reachable by keyboard.
+
   const rovingValue = ONBOARDING_THEME_PACK_IDS.includes(selectedPackId)
     ? selectedPackId
     : (ONBOARDING_THEME_PACK_IDS[0] ?? selectedPackId);

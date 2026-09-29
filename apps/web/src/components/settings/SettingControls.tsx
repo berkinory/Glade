@@ -1,9 +1,3 @@
-// FILE: SettingControls.tsx
-// Purpose: Reusable settings row controls (reset button, select, segmented control).
-// Layer: Settings UI components
-// Exports: SettingResetButton, SettingsSelectControl, SettingsSegmentedControl,
-//          useSettingsRestoreSignal
-
 import { type ReactNode, useEffect, useEffectEvent, useRef } from "react";
 import { cn } from "~/lib/utils";
 import { Button } from "~/components/ui/button";
@@ -88,9 +82,6 @@ export type SettingsSegmentedOption<T extends string> = {
   label: string;
 };
 
-/** Inline row of toggle buttons used in place of a select when there are only a
- *  handful of mutually exclusive options (e.g. UI density, follow-up behavior).
- *  The active option reads as a filled pill; the rest stay quiet until hovered. */
 export function SettingsSegmentedControl<T extends string>({
   value,
   onValueChange,

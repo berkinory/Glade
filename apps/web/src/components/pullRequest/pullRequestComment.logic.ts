@@ -1,18 +1,9 @@
-// FILE: pullRequestComment.logic.ts
-// Purpose: Pure detector for "finding-style" review comments (bots like Cursor Bugbot post a
-//          leading markdown H1/H2/H3 title followed by a "High|Medium|Low Severity" line) so the
-//          detail panel's comment cards can elevate them into a styled title + severity
-//          subheading instead of rendering the raw markdown heading inline. Ordinary comments
-//          that don't match this shape fall back to plain markdown rendering untouched.
-// Layer: Web domain helpers (no React)
-// Exports: PullRequestCommentSeverity, ParsedFindingComment, parseFindingComment
-
 export type PullRequestCommentSeverity = "High" | "Medium" | "Low";
 
 export interface ParsedFindingComment {
   title: string;
   severity: PullRequestCommentSeverity;
-  /** Remaining body markdown, with the title heading and severity line removed. */
+
   body: string;
 }
 
@@ -36,13 +27,6 @@ function nextNonBlankIndex(lines: readonly string[], from: number): number {
   return index;
 }
 
-/**
- * Detects a leading H1-H3 title immediately followed (allowing blank lines) by a
- * standalone `High|Medium|Low Severity` line, and returns the title, severity, and remaining body
- * with both lines stripped. Returns null for any comment that doesn't match this exact shape —
- * ordinary comments (including ones that merely start with a heading, or a bot summary line) are
- * left for plain markdown rendering.
- */
 export function parseFindingComment(body: string): ParsedFindingComment | null {
   const lines = body.split(/\r?\n/);
 

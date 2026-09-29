@@ -1,8 +1,3 @@
-// FILE: runtimeModelCapabilities.ts
-// Purpose: Bridges runtime-discovered model metadata into composer capabilities without replacing static defaults wholesale.
-// Layer: Chat composer helpers
-// Exports: runtime model lookup and Codex capability overrides derived from provider discovery responses.
-
 import type {
   EffortOption,
   ModelCapabilities,
@@ -43,7 +38,6 @@ function runtimeEffortLabel(value: string): string {
   }
 }
 
-// Matches the selected model to its runtime descriptor after provider-specific normalization.
 export function resolveRuntimeModelDescriptor(input: {
   provider: ProviderKind;
   model: string | null | undefined;
@@ -72,22 +66,18 @@ export function resolveRuntimeModelDescriptor(input: {
     return exactMatch;
   }
 
-  // The Claude picker hides context qualifiers and may replace an alias with
-  // a newer resolved id. Use the same projection to recover its metadata,
-  // while preserving exact matches and explicitly qualified selections above.
   return runtimeModels.find(
     (candidate) => normalizeClaudeModelOptionSlug(candidate) === normalizedModel,
   );
 }
 
-// Reuses static capability flags but lets runtime-discovered models override exposed effort menus.
 export function getRuntimeAwareModelCapabilities(input: {
   provider: ProviderKind;
   model: string | null | undefined;
   runtimeModel?: ProviderModelDescriptor | undefined;
 }): ModelCapabilities {
   const staticCapabilities = getModelCapabilities(input.provider, input.model);
-  // Runtime discovery is authoritative when available; the static table is only a startup fallback.
+
   const supportsFastMode =
     input.provider === "codex" && input.runtimeModel
       ? input.runtimeModel.supportsFastMode === true
@@ -103,7 +93,7 @@ export function getRuntimeAwareModelCapabilities(input: {
   const optionDescriptors =
     input.runtimeModel?.optionDescriptors ?? staticCapabilities.optionDescriptors;
   const runtimeEfforts = input.runtimeModel?.supportedReasoningEfforts;
-  // Providers with dynamic catalogs expose model-specific effort ladders here.
+
   if (input.provider !== "codex" || !runtimeEfforts || runtimeEfforts.length === 0) {
     return {
       ...staticCapabilities,

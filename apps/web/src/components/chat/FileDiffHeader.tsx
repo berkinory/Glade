@@ -1,10 +1,3 @@
-// FILE: FileDiffHeader.tsx
-// Purpose: Glade-styled file header for @pierre/diffs cards in side panels
-//          (PR Code tab, review DiffPanel, Git pane). Replaces Pierre's default
-//          path/+N chrome with the same icon / filename+dir / DiffStat language
-//          used by the jump menu and explorer rows.
-// Layer: Chat/diff UI primitives
-
 import type { FileDiffMetadata } from "@pierre/diffs/react";
 import { type ReactNode } from "react";
 
@@ -24,7 +17,7 @@ function stripPatchPathPrefix(path: string): string {
 export const FileDiffHeader = function FileDiffHeader(props: {
   fileDiff: FileDiffMetadata;
   theme: "light" | "dark";
-  /** Optional trailing chrome (file-actions menu, collapse chevron, etc.). */
+
   trailing?: ReactNode;
 }) {
   const filePath = resolveFileDiffPath(props.fileDiff);

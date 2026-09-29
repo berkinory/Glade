@@ -1,8 +1,3 @@
-// FILE: runningChatsQuitGuard.ts
-// Purpose: Coordinates the renderer Stay/Quit handshake before a user-initiated desktop quit.
-// Layer: Desktop quit policy
-// Depends on: Quit confirmation IPC payloads from the renderer.
-
 import type {
   DesktopQuitConfirmationChat,
   DesktopQuitConfirmationPresentation,
@@ -100,11 +95,8 @@ export interface RunningChatsQuitGuard {
   readonly hasAllowedQuit: () => boolean;
   readonly hasPendingAsk: () => boolean;
   readonly cancelPending: () => void;
-  /**
-   * Resolve the pending ask as allowed WITHOUT latching `allowed` — a dead
-   * renderer proved the ask can never be answered, not that the user said
-   * yes, so a later quit must still get to ask.
-   */
+  // Resolve the pending ask as allowed WITHOUT latching `allowed` — a dead renderer proved the ask
+  // can never be answered, not that the user said yes, so a later quit must still get to ask.
   readonly allowPending: () => void;
   readonly receiveResponse: (payload: unknown) => void;
   readonly askRenderer: (input: {

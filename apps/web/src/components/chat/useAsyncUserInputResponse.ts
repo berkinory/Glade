@@ -51,8 +51,8 @@ export function useAsyncUserInputResponse(threadId: ThreadId) {
         await api.orchestration.subscribeThread(buildThreadSubscribeInput(threadId));
         return;
       }
-      // A competing client may have answered first. Refresh the authoritative
-      // response; a refresh failure must not turn accepted input into a retry.
+      // A competing client may have answered first. Refresh the authoritative response; a refresh failure
+      // must not turn accepted input into a retry.
       clearThreadDetailResumeCursor(threadId);
       void api.orchestration.subscribeThread(buildThreadSubscribeInput(threadId)).catch(() => {});
     },

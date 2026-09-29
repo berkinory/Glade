@@ -21,11 +21,10 @@ export function mergeAsyncUserInput(
   const incomingSequence = incoming.responseSequence ?? 0;
   if (previousSequence > incomingSequence) return previous;
   if (incomingSequence > previousSequence) return incoming;
-  // Legacy snapshots have no sequence; retain an already accepted answer.
+
   return previous.response ? previous : incoming;
 }
 
-// Only use on deliberate history removal, before applying transcript size caps.
 export function clearRemovedAsyncUserInputResponses<
   T extends { readonly asyncUserInput?: AsyncUserInput | undefined },
 >(messages: ReadonlyArray<T>, retainedMessageIds: ReadonlySet<string>, sequence: number): T[] {

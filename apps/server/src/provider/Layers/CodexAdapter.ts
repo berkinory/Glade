@@ -1,11 +1,3 @@
-/**
- * CodexAdapterLive - Scoped live implementation for the Codex provider adapter.
- *
- * Wraps `CodexAppServerManager` behind the `CodexAdapter` service contract and
- * maps manager failures into the shared `ProviderAdapterError` algebra.
- *
- * @module CodexAdapterLive
- */
 import {
   AsyncUserInputQuestions,
   type ChatAttachment,
@@ -96,11 +88,6 @@ import { type EventNdjsonLogger, makeEventNdjsonLogger } from "./EventNdjsonLogg
 
 const PROVIDER = "codex" as const;
 
-// Backstop for an alive-but-silent codex app-server: if a turn produces no
-// activity at all for this long, abort it instead of showing "Working" forever.
-// Every turn-scoped event (reasoning, tool output, deltas) resets the clock and
-// a pending question/approval pauses it, so only a wedged child trips this.
-// Generous by design; override with GLADE_CODEX_TURN_IDLE_TIMEOUT_MS.
 const CODEX_TURN_IDLE_TIMEOUT_MS = resolveTurnIdleTimeoutMs({
   envVar: "GLADE_CODEX_TURN_IDLE_TIMEOUT_MS",
   defaultMs: 900_000,
@@ -216,9 +203,7 @@ function toSessionError(
       cause,
     });
   }
-  // A closed stdin is the transport-level signature of a dead app-server
-  // process; treat it as a closed session so callers recover via resume
-  // instead of surfacing a raw request failure.
+
   if (normalized.includes("session is closed") || normalized.includes("stdin closed")) {
     return new ProviderAdapterSessionClosedError({
       provider: PROVIDER,
@@ -266,7 +251,6 @@ function asNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
-// Keep manager-emitted stderr lines visible without escalating them into a fatal thread error.
 function providerErrorMapsToWarning(event: ProviderEvent): boolean {
   return (
     event.kind === "error" &&
@@ -925,8 +909,8 @@ function mapItemLifecycle(
   const canonicalItemType =
     lifecycle === "item.completed" && itemType === "review_exited" ? "assistant_message" : itemType;
 
-  // Only the provider-authored summary is user-visible reasoning. Raw content
-  // may contain model trace data and must not leak into transcript activities.
+  // Only the provider-authored summary is user-visible reasoning. Raw content may contain model trace
+  // data and must not leak into transcript activities.
   const detail =
     itemType === "reasoning" ? reasoningSummaryDetail(source) : itemDetail(source, payload ?? {});
   const status = itemStatus(lifecycle, source.status);
@@ -1073,7 +1057,6 @@ function mapCodexHookEvent(
   };
 }
 
-// Configuration/lifecycle bookkeeping belongs in native diagnostics, not the transcript.
 const DIAGNOSTIC_ONLY_CODEX_METHODS = new Set([
   "remoteControl/status/changed",
   "skills/changed",
@@ -1149,8 +1132,6 @@ function mapToRuntimeEvents(
 
   if (event.kind === "request") {
     if (event.method === "item/tool/requestUserInput") {
-      // The manager refuses (and answers) unrenderable requests, so reaching
-      // this branch with no questions means nothing is parked on the reply.
       const questions = parseCodexUserInputQuestions(payload);
       if (!questions) {
         return [];
@@ -1916,18 +1897,13 @@ function mapToRuntimeEvents(
     ];
   }
 
-  // No explicit mapping matched: keep the event visible instead of dropping
-  // it. The raw native method becomes the row title and the raw payload the
-  // preview, so a provider protocol addition degrades to a readable row rather
-  // than silence.
   return [mapUnmappedCodexEvent(event, canonicalThreadId)];
 }
 
 const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
   Effect.gen(function* () {
     const serverConfig = yield* Effect.service(ServerConfig);
-    // Optional so adapter tests can run without the gateway layer; when
-    // present, every session gets the glade_* MCP tools.
+
     const agentGatewayCredentials = Option.getOrUndefined(
       yield* Effect.serviceOption(AgentGatewayCredentials),
     );
@@ -1953,9 +1929,7 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
               ? {
                   agentGatewayMcp: {
                     endpointUrl: () => agentGatewayCredentials.mcpEndpointUrl,
-                    // Codex leases inside the app-server manager, which owns
-                    // session restarts. The manager carries the start input's
-                    // capability facts; review runtimes request none.
+
                     acquireSessionLease: (threadId, capabilityInput) =>
                       acquireAgentGatewaySessionLease(
                         agentGatewayCredentials,
@@ -1977,10 +1951,9 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
     );
     const shouldSurfaceUnmappedEvent = makeUnmappedProviderEventGate();
 
-    // Idle-progress backstop for codex turns. Same semantics as
-    // turn idle watchdog (any inbound activity resets it, a pending human
-    // decision pauses it), driven by one shared ticker because codex activity
-    // arrives on a single manager event stream instead of per-session fibers.
+    // Same semantics as turn idle watchdog (any inbound activity resets it, a pending human decision
+    // pauses it), driven by one shared ticker because codex activity arrives on a single manager event
+    // stream instead of per-session fibers.
     const turnWatchdogs = new Map<ThreadId, CodexTurnWatchdogEntry>();
 
     const armTurnWatchdog = (threadId: ThreadId, turnId: TurnId): void => {
@@ -2036,13 +2009,11 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
           continue;
         }
         if (decision === "touch") {
-          // Blocked on a human, not hung: keep the clock fresh so the turn
-          // cannot trip the watchdog the instant it resumes.
           entry.lastActivityAt = now;
           continue;
         }
-        // Both "stop" (the turn already settled) and "timeout" disarm; a timeout
-        // disarms first so a slow interrupt cannot let the next tick re-fire.
+        // Both "stop" (the turn already settled) and "timeout" disarm; a timeout disarms first so a slow
+        // interrupt cannot let the next tick re-fire.
         turnWatchdogs.delete(threadId);
         if (decision === "timeout") {
           abandonStalledTurn(threadId, entry.turnId, idleMs);
@@ -2147,8 +2118,6 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
           try: () => manager.sendTurn(managerInput),
           catch: (cause) => toRequestError(input.threadId, "turn/start", cause),
         }).pipe(
-          // Armed here as well as on `turn.started`, so a child that goes silent
-          // before its first notification is still covered.
           Effect.tap((result) => Effect.sync(() => armTurnWatchdog(input.threadId, result.turnId))),
           Effect.map((result) => ({
             ...result,
@@ -2166,9 +2135,7 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
           catch: (cause) => toRequestError(input.threadId, "turn/steer", cause),
         }).pipe(
           Effect.tap((result) => Effect.sync(() => armTurnWatchdog(input.threadId, result.turnId))),
-          // The `turn/steer` response carries no runtime event and the model
-          // only consumes injected input at its next turn boundary, so without
-          // this a landed steer is indistinguishable from a dropped one.
+
           Effect.tap((result) => {
             const message = input.input?.trim();
             if (!message) {
@@ -2492,8 +2459,6 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
               nativeEvent.bytes + sizedRuntimeEvents.reduce((total, item) => total + item.bytes, 0),
           });
           if (result === "terminal-overflow") {
-            // This means the reserved terminal budget itself was exhausted.
-            // The runtime reconciler remains the final recovery fence.
             void Effect.runPromise(
               Effect.logError("Codex callback ingress exhausted terminal reserve", {
                 threadId: event.threadId,

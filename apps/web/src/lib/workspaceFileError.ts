@@ -1,4 +1,3 @@
-// File preview errors should describe the file and next step, not expose RPC internals.
 export function formatWorkspaceFileError(error: unknown): string {
   if (!(error instanceof Error)) return "Could not read file.";
   const detail = error.message.replace(/^workspaceFileSystem\.[\w]+ failed for .*?:\s*/u, "");

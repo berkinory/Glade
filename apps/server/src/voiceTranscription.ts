@@ -1,9 +1,3 @@
-// FILE: voiceTranscription.ts
-// Purpose: Validates Remodex-style WAV payloads and proxies them to ChatGPT transcription.
-// Layer: Server utility
-// Exports: transcribeVoiceWithChatGptSession
-// Depends on: ChatGPT session auth supplied by Codex app-server callers.
-
 import { Buffer } from "node:buffer";
 
 import type {
@@ -21,7 +15,6 @@ export interface ChatGptVoiceAuthContext {
   readonly transcriptionUrl?: string;
 }
 
-// Validate the captured WAV clip and retry once if the ChatGPT session needs a refresh.
 export async function transcribeVoiceWithChatGptSession(input: {
   readonly request: ServerVoiceTranscriptionInput;
   readonly resolveAuth: (refreshToken: boolean) => Promise<ChatGptVoiceAuthContext>;
@@ -69,7 +62,6 @@ export async function transcribeVoiceWithChatGptSession(input: {
   return { text };
 }
 
-// Keep the server-side contract strict so the private backend only sees normalized clips.
 function decodeVoiceAudio(input: ServerVoiceTranscriptionInput): Buffer {
   if (input.mimeType !== "audio/wav") {
     throw new Error("Only WAV audio is supported for voice transcription.");
@@ -90,9 +82,7 @@ function decodeVoiceAudio(input: ServerVoiceTranscriptionInput): Buffer {
   }
 
   const audioBuffer = Buffer.from(normalizedBase64, "base64");
-  // `isLikelyBase64` already pins the alphabet and padding shape, so comparing
-  // the decoded length against what the base64 length implies catches a
-  // truncated or mis-padded payload without re-encoding ~13 MB just to compare.
+
   if (!audioBuffer.length || audioBuffer.length !== expectedBase64DecodedLength(normalizedBase64)) {
     throw new Error("The recorded audio could not be decoded.");
   }
@@ -134,9 +124,7 @@ function readTranscriptionErrorMessage(response: OutboundHttpResponse): string {
     if (providerMessage) {
       errorMessage = providerMessage;
     }
-  } catch {
-    // Keep the generic status-based message when the provider body is empty or invalid.
-  }
+  } catch {}
 
   if (response.status === 401 || response.status === 403) {
     return "Your ChatGPT login has expired. Sign in again.";

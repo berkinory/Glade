@@ -8,9 +8,6 @@ import {
 
 import { readFileAsDataUrl } from "../../lib/composerSend";
 
-// Shared by the live-composer and prompt-history attachment sync effects:
-// Images are persisted as data URLs. Serialization failures retain the previous
-// attachment record so an unreadable file does not erase a saved attachment.
 async function stagePersistedComposerImageAttachments(input: {
   threadId: ThreadId;
   images: ReadonlyArray<ComposerImageAttachment>;
@@ -93,7 +90,7 @@ export function useComposerAttachmentPersistence({
       if (cancelled) {
         return;
       }
-      // Stage attachments in persisted draft state first so persist middleware can write them.
+
       void syncComposerDraftPersistedAttachments(threadId, staged);
     })();
     return () => {

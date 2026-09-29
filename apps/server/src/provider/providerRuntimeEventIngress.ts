@@ -32,10 +32,6 @@ function providerRuntimeEventBytes(event: ProviderRuntimeEvent): number {
   }
 }
 
-/**
- * Raw provider payloads are diagnostic data. Compact them before the callback
- * ingress so one pathological native message cannot consume the whole budget.
- */
 export function compactProviderRuntimeEventForIngress(
   event: ProviderRuntimeEvent,
 ): SizedProviderRuntimeEvent {

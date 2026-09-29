@@ -15,7 +15,7 @@ import {
   withDesktopOperationSignal,
 } from "../computer/DesktopOperationQueue.ts";
 import { setTimeout as waitForComputer } from "node:timers/promises";
-/** Agent-facing desktop perception and control tools. */
+
 import { Effect } from "effect";
 
 import {
@@ -116,29 +116,18 @@ import {
 } from "./toolRuntime.ts";
 import { ToolGuidanceCadence } from "./toolGuidanceCadence.ts";
 
-/** Compact only Computer result JSON; preserve every value and other tool families. */
 function mcpToolResultJson(value: unknown): McpToolCallResult {
   return { content: [{ type: "text", text: JSON.stringify(value) }] };
 }
 
 export const COMPUTER_CONTROL_CAPABILITY = "computer:control" as const;
 
-/**
- * First-mutation disclosure prepended to the first mutating computer result
- * in a turn. It names the switch the user owns, so a transcript that drove
- * the desktop always says so up front.
- */
 const COMPUTER_CONTROL_FIRST_MUTATION_DISCLOSURE =
   "Computer control ON for this turn: the agent is driving the desktop and the user can switch it off in Settings.";
 
 const COMPUTER_TOOL_REFRESH_GUIDANCE =
   "Computer routing reminder: observe with computer_get_state and exact window_id before acting; prefer element refs; computer_invoke_menu activates the app, so only with visible-use consent. Use coordinates only for controls absent from elements. computer_type_text with window_id alone inserts the whole string into the focused field; never spell text through computer_press_key. Background text is focus-neutral only when Cua proves one writable Accessibility target. Foreground delivery requires the user's visible-use authorization; never replay uncertain delivery; off-Space pixels are not live.";
 
-/**
- * Attached to every null-window launch result, always rather than on
- * cadence: a launch that yields no window is the exact moment the next step
- * matters, and the description alone does not stop a relaunch loop.
- */
 const INPUT_PAUSE_REQUERY_HINT =
   "To resume, call computer_get_state with the paused window_id, or with include_screenshot: true when no window is named; never replay an uncertain action.";
 
@@ -157,23 +146,14 @@ function withLaunchGuidance(result: ComputerLaunchAppResult) {
   return result.window === null ? { ...result, toolGuidance: LAUNCH_NULL_WINDOW_GUIDANCE } : result;
 }
 
-/**
- * Re-exported so a caller reaching for the computer family's gate finds it, and
- * so nothing is tempted to declare a second copy. The set itself lives in
- * `approvalGate.ts`, shared with the device family — it used to be declared
- * once per family, and a provider added to one list and not the other was a
- * silent bypass.
- */
-
 export const COMPUTER_APPROVAL_REQUIRED_TOOLS = new Set([
-  // The one read in this set on purpose: the clipboard is the human's, and it
-  // can hold something they copied privately — a password manager entry, a
-  // token — that is not otherwise visible to the agent. Reading it must never
-  // be auto-approved the way perception tools are.
+  // The one read in this set on purpose: the clipboard is the human's, and it can hold something they
+  // copied privately — a password manager entry, a token — that is not otherwise visible to the
+  // agent. Reading it must never be auto-approved the way perception tools are.
   "computer_read_clipboard",
   "computer_launch_app",
   "computer_click",
-  // Overlay changes still require computer authority.
+
   "computer_move_cursor",
   "computer_drag",
   "computer_scroll",
@@ -182,20 +162,14 @@ export const COMPUTER_APPROVAL_REQUIRED_TOOLS = new Set([
   "computer_write_clipboard",
   "computer_set_value",
   "computer_perform_action",
-  // An exact selection writes the target's state too — same mutating class
-  // as set_value, approved the same way.
+
   "computer_select_text",
   "computer_paste",
-  // A run is the same actions it contains, approved once for the list the
-  // model declared rather than once per dispatch.
+
   "computer_run",
-  // The only tool whose whole effect is on what the human sees on their own
-  // screen, which is exactly why it is gated.
+
   "computer_activate_window",
-  // Window motion and menu invocation mutate the app the user is looking at;
-  // kill_app force-terminates it and loses unsaved state. The visibility
-  // lifecycle pair mutates what is on screen without activating anything —
-  // a hidden app that vanishes mid-gesture is still the user's desktop.
+
   "computer_set_window_frame",
   "computer_invoke_menu",
   "computer_kill_app",
@@ -207,20 +181,11 @@ export function computerToolRequiresApproval(name: string): boolean {
   return COMPUTER_APPROVAL_REQUIRED_TOOLS.has(name);
 }
 
-/**
- * The calls the local audit log records: every approval-gated computer tool —
- * the mutating set plus `computer_read_clipboard`, the one read that can lift
- * a private payload the agent could not otherwise see. Perception reads stay
- * out: they are the ordinary traffic, and the log exists for abuse review,
- * not telemetry.
- */
+// The calls the local audit log records: every approval-gated computer tool — the mutating set plus
+// `computer_read_clipboard`, the one read that can lift a private payload the agent could not
+// otherwise see.
 const COMPUTER_AUDITED_TOOLS = COMPUTER_APPROVAL_REQUIRED_TOOLS;
 
-/**
- * The audit entry's target: the ids the call declared first, then the window
- * the result resolved when one rode it. `drivenApps` carries the apps the
- * call targeted, so a window-grain tool still names its app.
- */
 function computerAuditTarget(
   args: Record<string, unknown>,
   drivenApps: ReadonlySet<string>,
@@ -241,7 +206,6 @@ function computerAuditTarget(
   };
 }
 
-/** The window id a successful call resolved, when the result reports one. */
 function computerAuditResultWindowId(value: unknown): string | undefined {
   if (isToolResult(value)) return computerAuditResultWindowId(toolResultPayload(value));
   if (value === null || typeof value !== "object") return undefined;
@@ -255,12 +219,9 @@ function computerAuditResultWindowId(value: unknown): string | undefined {
     : undefined;
 }
 
-/**
- * The effect a completed call earned: the delivered verdict when one rode the
- * result (`verified`, `dispatched-unknown`, `not-dispatched`), and the honest
- * "the backend accepted it" answer otherwise — which is what
- * `dispatched-unknown` exists to say.
- */
+// The effect a completed call earned: the delivered verdict when one rode the result (`verified`,
+// `dispatched-unknown`, `not-dispatched`), and the honest "the backend accepted it" answer
+// otherwise — which is what `dispatched-unknown` exists to say.
 function computerAuditSuccessEffect(name: string, value: unknown): ComputerAuditEffect {
   if (isToolResult(value)) return computerAuditSuccessEffect(name, toolResultPayload(value));
   const delivery = (value as { delivery?: { effect?: unknown } } | null | undefined)?.delivery;
@@ -272,8 +233,7 @@ function computerAuditSuccessEffect(name: string, value: unknown): ComputerAudit
     return delivery.effect;
   if (name === "computer_run") {
     const batch = value as { completed?: unknown; steps?: unknown } | null | undefined;
-    // A failing first step may already have sent input. Zero completed steps
-    // is not proof of zero dispatch when the step's native error says unknown.
+
     if (
       Array.isArray(batch?.steps) &&
       batch.steps.some(
@@ -290,14 +250,12 @@ function computerAuditSuccessEffect(name: string, value: unknown): ComputerAudit
   return "dispatched-unknown";
 }
 
-/** The effect/code pair a failed call reports — a typed refusal or a fault. */
 export function computerAuditErrorOutcome(error: unknown): {
   readonly effect: ComputerAuditEffect;
   readonly code: string;
   readonly diagnostics?: ComputerAuditEntry["diagnostics"];
   readonly layer?: ComputerAuditEntry["layer"];
 } {
-  // A CuaActionError already carries the delivery taxonomy's verdict.
   if (error instanceof CuaActionError)
     return {
       effect: error.effect,
@@ -316,11 +274,9 @@ export function computerAuditErrorOutcome(error: unknown): {
   return { effect: "error", code: "error" };
 }
 
-/** Computer tools are capability-gated. Provider-side schema loading varies;
- * inactive sessions receive no computer definitions. */
 export interface AgentGatewayComputerToolsOptions {
   readonly manager: ComputerManager;
-  /** Already registered Computer tools from another family, for on-demand help only. */
+
   readonly relatedTools?: readonly ToolEntry[];
   readonly resolveSpaceDesignation?: (context: ToolContext) => Promise<readonly number[]>;
   readonly authorizeAction?: (
@@ -329,40 +285,25 @@ export interface AgentGatewayComputerToolsOptions {
     context: ToolContext,
     signal: AbortSignal,
   ) => Promise<boolean>;
-  /**
-   * Called when a tool call failed because the OS is withholding a privacy
-   * grant Glade needs. The gateway turns it into one actionable chat card;
-   * the tool result is returned unchanged either way, so this must not fail.
-   */
+  // Called when a tool call failed because the OS is withholding a privacy grant Glade needs. The
+  // gateway turns it into one actionable chat card; the tool result is returned unchanged either way,
+  // so this must not fail.
   readonly onSetupRequired?: (input: {
     readonly toolName: string;
-    /** The grants to name on the card; empty when the backend named none. */
+
     readonly missing: readonly ComputerPermission[];
-    /**
-     * How the backend's build is signed, when it knows. The card says nothing
-     * about stale grants without it, and must not on a signed build.
-     */
+    // The card says nothing about stale grants without it, and must not on a signed build.
     readonly buildSignature?: ComputerBuildSignature;
-    /** The app macOS holds responsible for the grants, when the desktop shell reported one. */
+
     readonly bundleId?: string;
     readonly context: ToolContext;
   }) => Effect.Effect<void>;
-  /**
-   * Whether the thread's current task text asked to see the desktop. Read by
-   * every raise-shaped call — `computer_activate_window`, a foreground
-   * delivery, a visible launch — and absent means "not authorized", never a
-   * default yes. The layer implements it from the thread's latest user
-   * message; a resolver that fails also refuses.
-   */
+  // Read by every raise-shaped call — `computer_activate_window`, a foreground delivery, a visible
+  // launch — and absent means "not authorized", never a default yes.
   readonly resolveForegroundAuthorization?: (
     context: ToolContext,
   ) => Promise<ComputerForegroundAuthorization>;
-  /**
-   * Ask the user, on the approval card, whether this task may bring windows
-   * to the front. Called before the desktop queue for a raise-shaped call the
-   * task text did not authorize; an approval makes the resolver above answer
-   * yes for the rest of the turn. Absent means the refusal stands.
-   */
+
   readonly requestForegroundConsent?: (
     name: string,
     args: Record<string, unknown>,
@@ -371,20 +312,13 @@ export interface AgentGatewayComputerToolsOptions {
   ) => Promise<boolean>;
 }
 
-/**
- * Whether a call can move a window in front of the user, mirroring every site
- * that resolves foreground authorization — including the steps of a run, so
- * consent is asked once up front rather than refused halfway through. A step
- * behind if_element/unless_element still asks: a run that stops partway
- * leaves the app half-changed, which costs more than one card.
- */
 function callNeedsForeground(
   name: string,
   args: Record<string, unknown>,
   dialect: string,
 ): boolean {
   if (args.delivery_mode === "foreground") return true;
-  // Standalone tools and run steps share names once the prefix is dropped.
+
   const raises = (type: unknown, step: Record<string, unknown>): boolean =>
     type === "activate_window" ||
     type === "invoke_menu" ||
@@ -401,12 +335,6 @@ function callNeedsForeground(
   );
 }
 
-/**
- * What an observed action hands back: the result alone, for the actions the
- * gateway photographs afterwards, or a result that already carries its own
- * observation. `result` is the discriminator — a `ComputerActionResult` has no
- * such field.
- */
 type ObservedActionOutcome =
   | ComputerActionResult
   | {
@@ -414,37 +342,17 @@ type ObservedActionOutcome =
       readonly observation?: ComputerActionObservation;
     };
 
-/**
- * One wording for how the model points at things, shared by every tool that
- * returns an image: it points into the picture it was given, in that picture's
- * own pixels, and the server does the geometry (see screenshotFrames.ts). The
- * model is never asked to turn a screenshot pixel into a desktop coordinate —
- * the harnesses behind the Codex app and Anthropic's computer tool do not ask
- * either, and the arithmetic that did (region + pixel / scale across offset,
- * downscaled captures) was where clicks went astray.
- */
 const SCREENSHOT_FRAME_NOTE =
   "Screenshots include screenshotId and pixel width/height; pass x/y as pixel coordinates in that image from its top-left corner. The server maps them onto the desktop.";
 
-/**
- * Both clipboard tools must say the same thing about ownership: the desktop has
- * one clipboard and the human is the other party using it.
- */
 const SHARED_CLIPBOARD_NOTE =
   "The desktop has a single clipboard shared with the human user, not a private one for the agent.";
 
-/** The coordinate rule each pointer tool carries, self-contained. */
 const POINTER_COORDINATE_HINT =
   "x/y are pixels in the received screenshot, never desktop coordinates.";
 
-/**
- * The parity lever for visual grounding: when the model knows a control's
- * label from get_state, label-targeting resolves to that exact control, while
- * a pixel estimate from a downscaled screenshot can land a few points off.
- */
 const SEMANTIC_TARGETING_NOTE = "Prefer label and role from computer_get_state over estimated x/y.";
 
-/** The short form the action tools carry. */
 const ACTION_SCREENSHOT_HINT =
   "Returns a screenshot of the affected window unless include_screenshot:false.";
 
@@ -459,18 +367,14 @@ const INCLUDE_ACTION_SCREENSHOT_PROPERTY = {
 const WINDOW_FOCUS_NOTE =
   "focused: agent target; keyboardFocused: app keyboard window; active: native activation. Absent fields mean unknown.";
 
-/** The short form the keyboard tools carry. */
 const KEYBOARD_TARGET_HINT =
   "Pass window_id or use the last aimed window; hover does not aim keys. Use a field ref or label to disambiguate text targets.";
 
-/** The short form the input tools carry. */
 const DELIVERY_HINT =
   "delivery.verified and delivery.effect report evidence, not retry permission — never replay an uncertain action.";
 
-/** Longest step list one computer_run accepts. */
 const COMPUTER_RUN_MAX_STEPS = 25;
 
-/** Bounded perception routes whose results do not fit a run's JSON steps. */
 const COMPUTER_INSPECTION_TOOL_NAMES = [
   "computer_read_clipboard",
   "computer_zoom",
@@ -483,11 +387,6 @@ function isInspectionToolName(name: string): boolean {
   return (COMPUTER_INSPECTION_TOOL_NAMES as readonly string[]).includes(name);
 }
 
-/**
- * These canonical schemas are flat string/number objects. Validate the
- * selected definition itself, rather than copy its fields into a second
- * schema. Reject unfamiliar schema constraints instead of ignoring them.
- */
 function validateInspectionArguments(
   value: unknown,
   definition: ToolEntry["definition"],
@@ -527,12 +426,6 @@ function validateInspectionArguments(
   return args;
 }
 
-/**
- * Per-app notes that change how the standard tools behave, attached once to
- * the first state read scoped to that app's window. Verified behavior only —
- * a hint that guesses teaches the model a wrong move it then has to unlearn.
- * Keyed by the lowercase appName computer_list_windows reports.
- */
 const APP_GUIDANCE: Record<string, string> = {
   slack: COMPUTER_HELP_SECTIONS.slack,
 };
@@ -572,14 +465,6 @@ function textTargetProperty(): Record<string, unknown> {
   };
 }
 
-/**
- * Modifiers held down for the whole gesture and released after it.
- *
- * Not expressible as a computer_press_key chord, which presses and releases:
- * by the time the click arrived nothing was held and the application saw a
- * plain click. So shift-click, cmd-click and ctrl-scroll had no reachable
- * spelling at all.
- */
 const MODIFIERS_PROPERTY = {
   modifiers: {
     type: "array",
@@ -643,7 +528,6 @@ const TARGET_PROPERTIES = {
   },
 } as const;
 
-/** Pointer targeting reveals the same window the input will reach. */
 function targetProperties(): Record<string, unknown> {
   return {
     ...TARGET_PROPERTIES,
@@ -655,12 +539,6 @@ function targetProperties(): Record<string, unknown> {
   };
 }
 
-/**
- * The refusal payload a session without an approval gate reports — shared
- * with the browser surface so both families name the same code and say the
- * same words. Each side serializes it its own way: the desktop family
- * pretty-prints through `mcpToolResultJson`, the browser family compact.
- */
 export function computerApprovalRequiredError(name: string): {
   readonly code: "ComputerApprovalRequired";
   readonly message: string;
@@ -671,12 +549,8 @@ export function computerApprovalRequiredError(name: string): {
   };
 }
 
-/**
- * The failure payload a typed driver refusal reports — `error` is the
- * refusal code, not a message, because the model branches on it. Shared
- * with the browser surface, which serializes it compact rather than
- * through `mcpToolResultJson`.
- */
+// The failure payload a typed driver refusal reports — `error` is the refusal code, not a message,
+// because the model branches on it.
 export function cuaActionErrorPayload(error: CuaActionError): {
   readonly error: string;
   readonly effect: string;
@@ -706,11 +580,6 @@ function approvalUnavailableResult(name: string): McpToolCallResult {
   };
 }
 
-/**
- * The refusal carries a code and `retryable` rather than only prose so a model
- * can tell "wait and try again" apart from the target and approval failures it
- * must fix before retrying.
- */
 function leaseErrorResult(error: ComputerLeaseError): McpToolCallResult {
   return {
     ...mcpToolResultJson({
@@ -738,31 +607,15 @@ function targetErrorResult(error: ComputerTargetError): McpToolCallResult {
   };
 }
 
-/**
- * Whether a target was actually given, decided by what survived reading rather
- * than by which keys the model happened to emit. Models routinely spell an
- * omitted optional field as an explicit `null`, and a key-presence test reads
- * `{"x": null}` as "has a target" and then hands the manager an empty target,
- * which is refused as `computer_target_invalid` — a hard failure for a request
- * that plainly meant "no target".
- */
 function hasTargetFields(target: ComputerTarget): boolean {
   return Object.keys(target).length > 0;
 }
 
-/** Accepts both spellings, because models emit the camelCase one either way. */
+// Accepts both spellings, because models emit the camelCase one either way.
 function readWindowIdArg(args: Record<string, unknown>): string | undefined {
   return readStringArg(args, "window_id") ?? readStringArg(args, "windowId");
 }
 
-/**
- * The target a menu invocation names — `window_id` (one exact window, with
- * the driver's focus-sensitive exact-window semantics), or `app`/`pid` (the
- * application-level menu bar of a running process, no window needed, the
- * only route for an app that has none). Exactly one form is required: they
- * are different routes, so mixing them is refused rather than silently
- * preferring one.
- */
 function readMenuTargetArg(args: Record<string, unknown>): ComputerMenuTarget {
   const windowId = readWindowIdArg(args);
   const app = readStringArg(args, "app");
@@ -784,7 +637,6 @@ function readMenuTargetArg(args: Record<string, unknown>): ComputerMenuTarget {
   throw new ToolInputError('"pid" must be a positive integer.');
 }
 
-/** The one-to-six-title menu path both the tool and a run step accept. */
 function readMenuPathArg(args: Record<string, unknown>, subject: string): readonly string[] {
   const path = readStringArrayArg(args, "path");
   if (!path?.length || path.length > 6 || path.some((title) => title.trim().length === 0)) {
@@ -797,11 +649,6 @@ function readScreenshotIdArg(args: Record<string, unknown>): string | undefined 
   return readStringArg(args, "screenshot_id") ?? readStringArg(args, "screenshotId");
 }
 
-/**
- * A target as the model wrote it: x/y still in screenshot pixels, plus the
- * screenshot they belong to. It becomes a `ComputerTarget` only once the
- * frame registry has turned the pixels into a desktop point.
- */
 interface ScreenshotTarget extends ComputerTarget {
   readonly screenshotId?: string;
 }
@@ -810,9 +657,7 @@ function readScreenshotTarget(args: Record<string, unknown>): ScreenshotTarget {
   const x = readNumberArg(args, "x");
   const y = readNumberArg(args, "y");
   const screenshotId = readScreenshotIdArg(args);
-  // Verbatim, never trimmed: the targeters match a label exactly as given (see
-  // uiTreeTargeting's `computerTargetSpec`), so trimming here silently
-  // retargeted a caller that named "Save " at a different control called "Save".
+
   const label = readVerbatimStringArg(args, "label");
   const role = readStringArg(args, "role");
   const windowId = readWindowIdArg(args);
@@ -858,15 +703,9 @@ function readScrollDelta(args: Record<string, unknown>): { deltaX: number; delta
 }
 
 const DEFAULT_DRAG_DURATION_MS = 250;
-/**
- * Clamped rather than refused: the caller's intent is clear, only the scale is
- * wrong.
- *
- * The contract's bound is enforced here as well as declared in the JSON Schema
- * because nothing validates MCP tool arguments against that schema before
- * dispatch: an unclamped `duration_ms` of 1e9 is a drag that holds the button —
- * and the exclusive desktop lease — for eleven days.
- */
+// The contract's bound is enforced here as well as declared in the JSON Schema because nothing
+// validates MCP tool arguments against that schema before dispatch: an unclamped `duration_ms` of
+// 1e9 is a drag that holds the button — and the exclusive desktop lease — for eleven days.
 function readDragDurationMs(args: Record<string, unknown>): number {
   const value = readNumberArg(args, "duration_ms");
   if (value === undefined) return DEFAULT_DRAG_DURATION_MS;
@@ -886,12 +725,9 @@ function readRequiredText(args: Record<string, unknown>): string {
   return value;
 }
 
-/**
- * The `computer_set_value` payload. Bounded like `readRequiredText` because
- * MCP arguments are never validated against the tool's JSON Schema: an
- * unbounded value that falls back to typed keystrokes would hold the exclusive
- * desktop lease — and the turn — for hours typing it out.
- */
+// Bounded like `readRequiredText` because MCP arguments are never validated against the tool's JSON
+// Schema: an unbounded value that falls back to typed keystrokes would hold the exclusive desktop
+// lease — and the turn — for hours typing it out.
 function readSetValueValue(args: Record<string, unknown>): string {
   const value = readRawRequiredString(args, "value");
   if (value.length > COMPUTER_TEXT_MAX_LENGTH)
@@ -899,13 +735,10 @@ function readSetValueValue(args: Record<string, unknown>): string {
   return value;
 }
 
-/**
- * The `computer_select_text` range: two required non-negative integers,
- * bounded like every other argument because nothing validates MCP calls
- * against the JSON Schema. Never clamped and never defaulted — an offset the
- * element cannot take is the native layer's to refuse, while a malformed or
- * negative range is refused here before any state read is paid for.
- */
+// The `computer_select_text` range: two required non-negative integers, bounded like every other
+// argument because nothing validates MCP calls against the JSON Schema. Never clamped and never
+// defaulted — an offset the element cannot take is the native layer's to refuse, while a malformed
+// or negative range is refused here before any state read is paid for.
 function readSelectTextRange(args: Record<string, unknown>): ComputerTextRange {
   const start = readNumberArg(args, "start");
   const length = readNumberArg(args, "length");
@@ -925,12 +758,6 @@ function readSelectTextRange(args: Record<string, unknown>): ComputerTextRange {
   return { start, length };
 }
 
-/**
- * The `computer_select_text` target is semantic only: a selection writes a
- * range on one element, and a pixel coordinate cannot name which characters
- * that range covers — so x/y is refused outright rather than silently
- * resolving the window's first writable field.
- */
 function readSelectTextTarget(args: Record<string, unknown>): ComputerTarget {
   const target = readScreenshotTarget(args);
   if (target.x !== undefined || target.y !== undefined || target.screenshotId !== undefined) {
@@ -947,13 +774,6 @@ function readSelectTextTarget(args: Record<string, unknown>): ComputerTarget {
   };
 }
 
-/**
- * The click's gesture selectors. `count` carries the gestures the folded
- * double- and triple-click tools had, `button` the right-click. The manager
- * owns the support matrix — the primary button at any count, the secondary
- * button at count 1 — and refuses the rest before dispatch, so this reader
- * only bounds the shape.
- */
 function readClickGesture(
   args: Record<string, unknown>,
 ): { count?: 1 | 2 | 3; button?: "left" | "right" | "middle" } | undefined {
@@ -972,14 +792,6 @@ function readClickGesture(
   };
 }
 
-/**
- * The `key` argument: one key name, or one "mod+mod+key" chord. A value with
- * no "+" is a plain key; a "+"-joined value splits into the chord the
- * backend's own validation rules on. A part left empty by a stray "+" makes
- * the whole value a plain key again, so a literal "+" still presses and a
- * malformed "cmd++s" meets the driver's honest unknown-key refusal instead
- * of a half-parsed chord.
- */
 function readKeyOrChord(args: Record<string, unknown>): {
   readonly key: string;
   readonly chord: readonly string[] | undefined;
@@ -1012,7 +824,6 @@ function readActionName(args: Record<string, unknown>): string {
   return value;
 }
 
-/** Bounded in bytes rather than characters: the backend pipes it to a process. */
 function readClipboardText(args: Record<string, unknown>): string {
   const value = readRawRequiredString(args, "text");
   if (Buffer.byteLength(value, "utf8") > MAX_COMPUTER_CLIPBOARD_BYTES) {
@@ -1025,23 +836,13 @@ function readClipboardText(args: Record<string, unknown>): string {
 
 const CAPTURE_REGION_KEYS = ["x", "y", "width", "height"] as const;
 
-/**
- * No target at all is the third, deliberate form: capture whatever window has
- * focus. It is resolved by the manager rather than here because focus is a
- * live property of the desktop, not of the request.
- */
+// No target at all is the third, deliberate form: capture whatever window has focus. It is resolved
+// by the manager rather than here because focus is a live property of the desktop, not of the
+// request.
 type ScreenshotRequest =
   | ComputerCaptureRequest
   | { readonly kind: "focused"; readonly maxDimension?: number };
 
-/**
- * The window and rect request forms are mutually exclusive on purpose: a
- * window id and a loose rect disagree about what "the region" is, and silently
- * preferring one would hand the model a screenshot of the wrong thing.
- *
- * A rect arrives in the pixels of the screenshot the model is zooming into;
- * `mapRegion` turns it into the desktop rect the backend captures.
- */
 function readCaptureRequest(
   args: Record<string, unknown>,
   mapRegion: (region: ComputerRect) => ComputerRect,
@@ -1082,15 +883,11 @@ function readCaptureRequest(
   return { kind: "region", region: mapRegion(region), ...limit };
 }
 
-/**
- * Clamped to the agent image budget rather than to the backend's native ceiling.
- *
- * A larger request is not merely wasteful, it is wrong: a vision API downscales
- * anything past roughly 1568 px on its long edge before the model sees it, so
- * the model would read coordinates off a picture the server never produced and
- * every click would land short. The schema advertises the same maximum, and
- * this enforces it, because nothing validates MCP arguments against a schema.
- */
+// Clamped to the agent image budget rather than to the backend's native ceiling. A larger request
+// is not merely wasteful, it is wrong: a vision API downscales anything past roughly 1568 px on its
+// long edge before the model sees it, so the model would read coordinates off a picture the server
+// never produced and every click would land short. The schema advertises the same maximum, and this
+// enforces it, because nothing validates MCP arguments against a schema.
 function readCaptureMaxDimension(args: Record<string, unknown>): number | undefined {
   const value = readNumberArg(args, "max_dimension");
   if (value === undefined) return undefined;
@@ -1100,12 +897,6 @@ function readCaptureMaxDimension(args: Record<string, unknown>): number | undefi
 
 const COMPUTER_MODIFIERS: readonly ComputerInputModifier[] = ["ctrl", "alt", "shift", "meta"];
 
-/**
- * The modifiers to hold across a gesture, refusing a name this desktop cannot
- * press rather than silently dropping it — a shift-click delivered as a plain
- * click is a selection replaced instead of extended, and nothing in the result
- * would say so.
- */
 function readModifiers(args: Record<string, unknown>): readonly ComputerInputModifier[] {
   const raw = readStringArrayArg(args, "modifiers");
   if (raw === undefined || raw.length === 0) return [];
@@ -1121,12 +912,6 @@ function readModifiers(args: Record<string, unknown>): readonly ComputerInputMod
   return [...new Set(modifiers as ComputerInputModifier[])];
 }
 
-/**
- * Clamped rather than refused, like the drag duration: the caller's intent is
- * clear and only the scale is wrong. The ceiling is what keeps a model that
- * reads "wait for the installer" as minutes from stalling the whole turn behind
- * a sleep nothing can interrupt.
- */
 function readWaitDurationMs(args: Record<string, unknown>): number {
   const value = readNumberArg(args, "duration_ms");
   if (value === undefined) throw new ToolInputError('Missing required argument "duration_ms".');
@@ -1141,17 +926,12 @@ function isToolResult(value: unknown): value is McpToolCallResult {
   );
 }
 
-/**
- * The availability a manager result carries, for the results that carry one.
- *
- * Looks inside an already-built tool result too, because the perception reads
- * that matter most build one themselves: `computer_get_state` returns image
- * content beside its JSON, so its availability rode in a text part rather than
- * on a plain object and the permission-required branch could never fire for the
- * one tool an agent reaches for first. Every text part this module produces is
- * `JSON.stringify` of its own payload, so parsing it back is reading our own
- * writing, not guessing at someone else's format.
- */
+// Looks inside an already-built tool result too, because the perception reads that matter most
+// build one themselves: `computer_get_state` returns image content beside its JSON, so its
+// availability rode in a text part rather than on a plain object and the permission-required branch
+// could never fire for the one tool an agent reaches for first. Every text part this module
+// produces is `JSON.stringify` of its own payload, so parsing it back is reading our own writing,
+// not guessing at someone else's format.
 function resultAvailability(value: unknown): ComputerAvailability | undefined {
   if (typeof value !== "object" || value === null) return undefined;
   if (isToolResult(value)) return resultAvailability(toolResultPayload(value));
@@ -1160,7 +940,6 @@ function resultAvailability(value: unknown): ComputerAvailability | undefined {
   return availability as ComputerAvailability;
 }
 
-/** The decoded JSON payload of a tool result's text part, when it has one. */
 function toolResultPayload(result: McpToolCallResult): Record<string, unknown> | undefined {
   const part = result.content.find((entry) => entry.type === "text");
   if (part?.type !== "text") return undefined;
@@ -1174,18 +953,8 @@ function toolResultPayload(result: McpToolCallResult): Record<string, unknown> |
   }
 }
 
-/**
- * Replaces a permission-blocked result's user-facing prose with one line aimed
- * at the model.
- *
- * The availability message is written for the person reading the setup card —
- * where to click in System Settings, why the switch may already look on — and
- * handing it to an agent produced essays about macOS privacy instead of the one
- * sentence the situation needs. The card is already on screen; the model's part
- * is to stop. The rest of the payload is untouched, because a result can be
- * genuinely useful (a window list, a screen size) and still report a grant that
- * is missing.
- */
+// The rest of the payload is untouched, because a result can be genuinely useful (a window list, a
+// screen size) and still report a grant that is missing.
 function withSetupNote(value: unknown, signal: ComputerSetupSignal | undefined): unknown {
   if (signal === undefined || typeof value !== "object" || value === null) return value;
   const availability = resultAvailability(value);
@@ -1203,17 +972,6 @@ function withSetupNote(value: unknown, signal: ComputerSetupSignal | undefined):
   };
 }
 
-/**
- * The setup note on whatever shape the call produced, which is the whole point:
- * it used to reach only plain-object results, and every result that carries a
- * screenshot — a screenshot, a state read with an image, every observed action
- * — is already a built tool result, as is every error. So the model was handed
- * the card's existence with none of the instruction that goes with it on
- * exactly the paths where a grant is most likely to be the reason it is stuck.
- *
- * A JSON text part gains a `setupRequired` field; anything else gains a
- * trailing paragraph, which is the honest fallback for prose.
- */
 function withSetupNoteOnResult(
   result: McpToolCallResult,
   signal: ComputerSetupSignal | undefined,
@@ -1234,11 +992,6 @@ function withSetupNoteOnResult(
   return { ...result, content };
 }
 
-/**
- * First-mutation disclosure on whatever shape the call produced. A JSON text
- * part gains a `disclosure` field; anything else gains a leading line, so the
- * first mutating payload in a turn always names the switch.
- */
 function withDisclosureOnResult(result: McpToolCallResult, disclosure: string): McpToolCallResult {
   const index = result.content.findIndex((entry) => entry.type === "text");
   if (index === -1) {
@@ -1262,9 +1015,7 @@ function withDisclosureOnResult(result: McpToolCallResult, disclosure: string): 
       };
       return { ...result, content };
     }
-  } catch {
-    // Fall through to the prose prepend below.
-  }
+  } catch {}
   content[index] = { type: "text", text: `${disclosure}\n\n${part.text}` };
   return { ...result, content };
 }
@@ -1286,11 +1037,6 @@ function withSetupNoteInText(text: string, note: string): string {
   });
 }
 
-/**
- * Whether every entry in a listing shares one window id. The common scoped
- * read is exactly this case, and repeating the same 15-40 char id on all 60
- * entries was a third of a full elements payload.
- */
 function uniformElementWindowId(
   items: readonly { readonly windowId?: string | null }[],
 ): string | undefined {
@@ -1300,7 +1046,6 @@ function uniformElementWindowId(
     : undefined;
 }
 
-/** The same entries without their `windowId` field, for a hoisted listing. */
 function stripElementWindowId<T extends { readonly windowId?: string | null }>(
   items: readonly T[],
 ): readonly T[] {
@@ -1310,13 +1055,7 @@ function stripElementWindowId<T extends { readonly windowId?: string | null }>(
   });
 }
 
-/**
- * The wire form of one elements listing: the window id is hoisted out of
- * each entry into a single `elementWindowId` when the whole listing belongs
- * to one window, and kept per entry when the listing spans windows — there
- * the id is what tells the model which window an action must name. Stored
- * digests are never touched, so refs and diffs keep their full identity.
- */
+// Stored digests are never touched, so refs and diffs keep their full identity.
 function hoistElementWindowId<T extends { readonly windowId?: string | null }>(
   items: readonly T[],
 ): { readonly items: readonly T[]; readonly elementWindowId?: string } {
@@ -1339,9 +1078,7 @@ function withGuidanceOnResult(
     const value: unknown = JSON.parse(part.text);
     if (value !== null && typeof value === "object" && !Array.isArray(value)) {
       const record = value as Record<string, unknown>;
-      // A result that already carries its own next step (a null-window
-      // launch, a refusal with a branch) keeps it: the generic reminder
-      // appends instead of overwriting, or the targeted fix dies here.
+
       const existing = typeof record.toolGuidance === "string" ? record.toolGuidance : undefined;
       content[index] = {
         type: "text",
@@ -1352,9 +1089,7 @@ function withGuidanceOnResult(
       };
       return { ...result, content };
     }
-  } catch {
-    // Non-JSON result text keeps its original shape and receives the reminder inline.
-  }
+  } catch {}
   content[index] = { type: "text", text: `${guidance}\n${part.text}` };
   return { ...result, content };
 }
@@ -1363,50 +1098,19 @@ export function makeAgentGatewayComputerTools(
   options: AgentGatewayComputerToolsOptions,
 ): ReadonlyArray<ToolEntry> {
   const { manager, onSetupRequired } = options;
-  /**
-   * The screenshots each thread has been shown, so its x/y can be read as
-   * pixels in one of them. Lives with the tools rather than the manager
-   * because it is the tool surface's contract with the model: the manager
-   * and the pane keep speaking desktop coordinates.
-   */
+  // The screenshots each thread has been shown, so its x/y can be read as pixels in one of them.
+  // Lives with the tools rather than the manager because it is the tool surface's contract with the
+  // model: the manager and the pane keep speaking desktop coordinates.
   const frames = new ScreenshotFrameRegistry();
 
-  /**
-   * Consecutive unchanged scrolls per thread, with the window they were on.
-   * Three in a row on the same window means the content is not moving, so the
-   * fourth is refused before it touches the backend. A changed picture, a
-   * different window, or any non-scroll call clears the streak.
-   */
   const unchangedScrolls = new Map<string, { windowId: string | undefined; count: number }>();
 
-  /**
-   * Turns that already disclosed first-mutation control. One disclosure per
-   * (thread, turn): the first mutating result carries it, the rest stay quiet.
-   */
   const disclosedFirstMutations = new Set<string>();
 
-  /**
-   * The last element digest each thread saw, per observation scope
-   * (window_id + label_contains). `diff` on computer_get_state compares the
-   * fresh read against it; a batch's closing state re-baselines the scope it
-   * observed so a following diff does not re-report what the run already
-   * returned.
-   */
   const elementDigests = new Map<string, ComputerActionableElements>();
 
-  /**
-   * Element refs are stable handles, not listing positions. A thread's table
-   * binds a number to an actionable identity — window, role, full label and
-   * which same-labelled control it is — the first time a listing shows it;
-   * later listings remap their elements onto the same numbers. Ref 7 keeps
-   * meaning "that Save button" across observations and window-scoped reads,
-   * so a diff does not silently move the handles a model is holding.
-   *
-   * Native refs retain the observed actuator identity; a fresh tree must never
-   * substitute a same-labelled control. Other backends resolve against their
-   * tree as before. The cap clears the table without recycling numbers a model
-   * could still be holding — old refs then fail loudly instead of retargeting.
-   */
+  // Refs bind observed actuator identities, not listing positions. Refreshes and eviction must never
+  // retarget a ref the model already holds.
   interface ElementRefTable {
     next: number;
     readonly byKey: Map<string, number>;
@@ -1415,10 +1119,6 @@ export function makeAgentGatewayComputerTools(
   const elementRefTables = new Map<string, ElementRefTable>();
   const MAX_ELEMENT_REFS = 512;
 
-  /**
-   * Stamp a digest's items with the thread's stable refs, minting new numbers
-   * for first-seen identities. Returns a new digest; the input is untouched.
-   */
   const syncElementRefs = (
     threadId: string,
     elements: ComputerActionableElements,
@@ -1428,8 +1128,7 @@ export function makeAgentGatewayComputerTools(
       table = { next: 0, byKey: new Map(), entries: new Map() };
       elementRefTables.set(threadId, table);
     }
-    // Clear before stamping the listing, so every ref returned in this digest
-    // remains resolvable. next stays monotonic across bounded table eviction.
+
     if (table.entries.size + elements.items.length > MAX_ELEMENT_REFS) {
       table.byKey.clear();
       table.entries.clear();
@@ -1454,16 +1153,8 @@ export function makeAgentGatewayComputerTools(
     return { ...elements, items };
   };
 
-  /**
-   * Digests key on thread × window × filter, and nothing purges them when a
-   * thread ends — over a long session they would grow without bound. The cap
-   * is far above the scopes one session realistically diffs; eviction loses
-   * only diff granularity, never a read the model is holding.
-   *
-   * Storing is also stamping: the digest that lands here carries the thread's
-   * stable refs, and the same copy is what the caller serializes, so the
-   * numbers a model reads always resolve through the table written here.
-   */
+  // Bound digest history per thread, window and filter. Stamp the stored digest with the same refs
+  // returned to the model.
   const rememberDigest = (
     threadId: string,
     key: string,
@@ -1476,7 +1167,6 @@ export function makeAgentGatewayComputerTools(
     return stable;
   };
 
-  /** Apps whose guidance note a thread has already been shown. */
   const appHintsSeen = new Set<string>();
   const guidanceCadence = new ToolGuidanceCadence(10, 256);
 
@@ -1486,7 +1176,6 @@ export function makeAgentGatewayComputerTools(
     labelContains: string | undefined,
   ): string => JSON.stringify([threadId, windowId ?? null, labelContains ?? null]);
 
-  /** One diff and wire format for explicit reads and best-effort action observations. */
   const elementChangeFields = (
     before: ComputerActionableElements | undefined,
     stable: ComputerActionableElements,
@@ -1500,8 +1189,7 @@ export function makeAgentGatewayComputerTools(
       return selected;
     };
     const added = take(changes.added);
-    // A removed entry's ref is a dead handle — the element is
-    // gone — so showing it would make it look citable.
+
     const removed = take(changes.removed).map(({ ref: _ref, ...entry }) => entry);
     const changed = take(changes.changed);
     const omitted =
@@ -1511,9 +1199,8 @@ export function makeAgentGatewayComputerTools(
       added.length -
       removed.length -
       changed.length;
-    // One window id for the whole change set when every entry
-    // names the same window; per entry otherwise, because that
-    // is what tells the model which window to address.
+    // One window id for the whole change set when every entry names the same window; per entry
+    // otherwise, because that is what tells the model which window to address.
     const elementWindowId = uniformElementWindowId([
       ...changes.added,
       ...changes.changed,
@@ -1527,8 +1214,7 @@ export function makeAgentGatewayComputerTools(
       },
       ...(omitted > 0 ? { elementChangesOmitted: omitted } : {}),
       ...(elementWindowId === undefined ? {} : { elementWindowId }),
-      // Either side reporting less than the full tree makes the
-      // diff itself partial — removals beyond a cap are invisible.
+
       ...((before !== undefined && !before.complete) || !stable.complete
         ? { elementChangesIncomplete: true }
         : {}),
@@ -1561,19 +1247,11 @@ export function makeAgentGatewayComputerTools(
       );
       return { ...result, ...elementChangeFields(before, stable, 40) };
     } catch {
-      // The input already ran. Read failures do not change its delivery result;
-      // cancellation still ends the operation instead of publishing stale state.
       assertDesktopOperationActive();
       return result;
     }
   };
 
-  /**
-   * PNG bytes travel as MCP image content and the metadata as the text part.
-   * Delivering is also remembering: the screenshot becomes the frame the
-   * thread's next x/y are measured in, and the metadata carries the id that
-   * lets the model name it later.
-   */
   const deliverScreenshot = (
     threadId: string,
     payload: Record<string, unknown>,
@@ -1585,12 +1263,8 @@ export function makeAgentGatewayComputerTools(
       throw new ToolInputError("Screenshot identity differs from the requested window.");
     }
     windowId ??= screenshot.windowId;
-    // GLADE_CUA_CAPTURE_REUSE: when the fresh capture is byte-for-byte the
-    // latest delivered frame with the same coordinate frame, name that frame
-    // instead of shipping identical pixels again. The capture itself always
-    // ran — byte identity is the only proof nothing moved — so this never
-    // serves a stale picture; it saves the image part of the result. Same
-    // rule the post-action observer applies, extended to explicit reads.
+    // The capture itself always ran — byte identity is the only proof nothing moved — so this never
+    // serves a stale picture; it saves the image part of the result.
     if (cuaCaptureReuseEnabled()) {
       const reused = frames.matchLatest(threadId, screenshot, windowId);
       if (reused) {
@@ -1649,20 +1323,9 @@ export function makeAgentGatewayComputerTools(
       request.kind === "window" ? request.windowId : undefined,
     );
 
-  /**
-   * The model's target as the manager understands it: screenshot pixels
-   * become a desktop point through the frame they were measured in. A target
-   * with no coordinates (a label, or nothing) passes through untouched, and a
-   * half coordinate is left for the manager to refuse with its usual message.
-   */
   const resolveTarget = (target: ScreenshotTarget, threadId: string): ComputerTarget => {
     const { screenshotId, ...rest } = target;
-    // A ref names the element the thread's listings first showed under that
-    // number: it resolves to the recorded identity — full label, role,
-    // window — plus the ordinal that tells same-labelled controls apart.
-    // Label, role or window_id sent beside a ref are read as a claim about
-    // which element the ref meant; a mismatch means caller and server are
-    // looking at different listings, and guessing is worse than refusing.
+
     if (typeof target.ref === "number") {
       if (target.x !== undefined || target.y !== undefined) {
         throw new ToolInputError(
@@ -1678,8 +1341,7 @@ export function makeAgentGatewayComputerTools(
             : `ref ${target.ref} does not match any element this thread has observed. Observe again with computer_get_state.`,
         );
       }
-      // Long labels reach the model truncated at the ellipsis, so a claim
-      // only has to match what the listing actually showed.
+
       const claim = normalizeLabelSpaces(target.label ?? "").replace(/…$/, "");
       if (target.label !== undefined && !normalizeLabelSpaces(entry.label).startsWith(claim)) {
         throw new ToolInputError(
@@ -1737,12 +1399,6 @@ export function makeAgentGatewayComputerTools(
   ): ComputerTarget =>
     resolveTarget(readNestedScreenshotTarget(args, name), context.callerThreadId);
 
-  /**
-   * The never-raise authorization a call would carry, resolved only for the
-   * calls that can move a window in front of the user — activate, foreground
-   * delivery, a visible launch, and their run-step equivalents. A
-   * resolver failure or an absent resolver is a refusal, never an inferred yes.
-   */
   const foregroundAuthorization = async (
     context: ToolContext,
   ): Promise<ComputerForegroundAuthorization> => {
@@ -1755,11 +1411,6 @@ export function makeAgentGatewayComputerTools(
     }
   };
 
-  /**
-   * Raise the chat's setup card for this call, if it earned one, and hand the
-   * result back either way. A card is user-facing feedback about the tool call,
-   * never a substitute for answering it.
-   */
   const withSetupCard = (
     name: string,
     context: ToolContext,
@@ -1778,15 +1429,9 @@ export function makeAgentGatewayComputerTools(
 
   const progressGuard = new ComputerProgressGuard();
 
-  /**
-   * The calls that mutate the desktop — the approval taxonomy minus its one
-   * read: the shared clipboard is gated for privacy, and re-reading it is not
-   * a loop hazard the way a repeated keystroke is.
-   */
   const isMutatingToolCall = (toolName: string): boolean =>
     computerToolRequiresApproval(toolName) && toolName !== "computer_read_clipboard";
 
-  /** Deterministic key for one call: tool name + args with volatile fields out. */
   const repeatedActionKey = (toolName: string, args: Record<string, unknown>): string => {
     const stable = (value: unknown): string =>
       value === null || typeof value !== "object"
@@ -1819,8 +1464,7 @@ export function makeAgentGatewayComputerTools(
       const guidance = guidanceCadence.shouldRefresh(context.callerThreadId)
         ? COMPUTER_TOOL_REFRESH_GUIDANCE
         : undefined;
-      // The audit record's resolved fields, filled as the call learns them:
-      // the targeted apps before dispatch, the delivered window id after.
+
       let drivenApps: ReadonlySet<string> = new Set();
       let resultWindowId: string | undefined;
       const audit = (outcome: {
@@ -1854,12 +1498,9 @@ export function makeAgentGatewayComputerTools(
               "computer_invoke_menu requires foreground delivery and explicit visible-use authorization; it cannot preserve background focus.",
             );
           }
-          // Fresh screenshots and alternating failed techniques must not
-          // disguise retries. No turn ID means no cross-turn retained guard.
+          // Fresh screenshots and alternating failed techniques must not disguise retries. No turn ID means
+          // no cross-turn retained guard.
           if (mutating && context.callerTurnId) {
-            // History lookup is not target validation: frame-setting x/y are
-            // desktop bounds, not screenshot pixels, and consent still runs
-            // before parsing or resolving a requested input target.
             const requestedWindow = args.window_id ?? args.windowId;
             const refWindow =
               typeof args.ref === "number"
@@ -1920,8 +1561,8 @@ export function makeAgentGatewayComputerTools(
               };
             }
           }
-          // Visible-use consent is collected here, before the desktop queue, so
-          // a prompt the user has not answered yet never holds the desktop.
+          // Visible-use consent is collected here, before the desktop queue, so a prompt the user has not
+          // answered yet never holds the desktop.
           if (
             options.requestForegroundConsent !== undefined &&
             callNeedsForeground(name, args, manager.agentDialect) &&
@@ -1944,15 +1585,12 @@ export function makeAgentGatewayComputerTools(
               signal: undefined,
             };
           }
-          // Any non-scroll call breaks an unchanged-scroll streak: the model
-          // looked or did something else instead of scrolling blindly on.
+
           if (name !== "computer_scroll") unchangedScrolls.delete(context.callerThreadId);
-          // Recorded before the call, because the call is what claims the
-          // desktop, and the badge has to name this thread from the first
-          // action rather than from the second.
+          // Recorded before the call, because the call is what claims the desktop, and the badge has to name
+          // this thread from the first action rather than from the second.
           manager.setThreadLabel(context.callerThreadId, context.callerThreadLabel);
-          // Action targeting and automatic previews do not replace a model's
-          // explicit observation after a desktop interruption.
+
           const invoke = () =>
             withComputerTask(
               {
@@ -1964,9 +1602,6 @@ export function makeAgentGatewayComputerTools(
                 name === "computer_get_state" ||
                 name === "computer_screenshot" ||
                 name === "computer_wait" ||
-                // A run's internal reads — the wait-step polls and the closing
-                // state — are the model's observations, with the same authority
-                // to satisfy a pending observation requirement.
                 name === "computer_run"
                   ? withModelDesktopObservation(() => run(args, context))
                   : run(args, context),
@@ -2022,10 +1657,9 @@ export function makeAgentGatewayComputerTools(
                         ? await foregroundAuthorization(context)
                         : undefined;
                     return withDesktopDeliveryMode(foreground ? "foreground" : "background", () =>
-                      // Activate and menu already restore in the manager;
-                      // every other foreground call gets
-                      // the same excursion treatment, so a foreground type or
-                      // click cannot strand the user's window behind the target.
+                      // Activate and menu already restore in the manager; every other foreground call gets the same
+                      // excursion treatment, so a foreground type or click cannot strand the user's window behind the
+                      // target.
                       foreground && !restoresOwnForeground
                         ? manager.withForegroundRestore(
                             context.callerThreadId,
@@ -2053,11 +1687,8 @@ export function makeAgentGatewayComputerTools(
                     ? readWindowIdArg(args)
                     : undefined,
                 );
-          // The effect is final here: the delivered verdict rode the result
-          // for dispatch-capable backends, and anything else is the honest
-          // "the backend accepted it" answer `dispatched-unknown` exists to
-          // carry. Written before the setup read so a hung permission probe
-          // cannot lose a record of input already sent.
+          // Written before the setup read so a hung permission probe cannot lose a record of input already
+          // sent.
           resultWindowId = computerAuditResultWindowId(value);
           const successEffect = computerAuditSuccessEffect(name, value);
           finishTurnTiming?.(
@@ -2092,16 +1723,8 @@ export function makeAgentGatewayComputerTools(
               ...(typeof refusalCode === "string" ? { code: refusalCode } : {}),
             });
           }
-          // A call can succeed and still report that the desktop is out of
-          // reach: a perception read answers with a `permission-required`
-          // availability, and a missing Screen Recording grant blocks nothing at
-          // all yet leaves the agent blind. Both are the user's to fix, so both
-          // take the same route to the same card as a thrown refusal.
-          //
-          // Awaited rather than remembered: the read costs a round trip only
-          // when the last one saw a gap, and that is exactly the moment it must
-          // not be answered from memory — the call after the user grants the
-          // permission is the one that has to see it land.
+          // Refresh missing grants before answering: the next call after a user grants permission must
+          // observe the grant. Successful but blind reads still need the setup card.
           const signal = computerSetupSignal({
             availability: resultAvailability(value),
             missing: await manager.missingPermissions(),
@@ -2110,8 +1733,7 @@ export function makeAgentGatewayComputerTools(
           let result: McpToolCallResult = isToolResult(value)
             ? withSetupNoteOnResult(value, signal)
             : mcpToolResultJson(withSetupNote(value, signal));
-          // First mutation of a turn prepends the control disclosure: the
-          // transcript must say Computer control is ON from the first input.
+
           if (computerToolRequiresApproval(name)) {
             const disclosureKey = `${context.callerThreadId}:${context.callerTurnId ?? "no-turn"}`;
             if (!disclosedFirstMutations.has(disclosureKey)) {
@@ -2120,9 +1742,6 @@ export function makeAgentGatewayComputerTools(
             }
           }
           return {
-            // The note reaches both shapes. A plain object takes it as a field
-            // on the payload; a result the handler already built — anything
-            // carrying a screenshot — takes it in its text part.
             result,
             signal,
           };
@@ -2131,14 +1750,12 @@ export function makeAgentGatewayComputerTools(
       }).pipe(
         Effect.flatMap(({ result, signal }) => withSetupCard(name, context, signal, result)),
         Effect.catch((error) => {
-          // The kill switch writes nothing: a disabled thread refusing input
-          // is a state, not an event, and the log must stay empty for it.
           const outcome = computerAuditErrorOutcome(error);
           if (!(error instanceof ComputerBackendError && error.controlRevoked)) {
             audit(outcome);
           }
-          // Refusals and uncertain delivery are tracked separately: a refused
-          // retry was not sent, but must not hide a previous uncertain action.
+          // Refusals and uncertain delivery are tracked separately: a refused retry was not sent, but must
+          // not hide a previous uncertain action.
           if (
             progressAction &&
             !(
@@ -2180,10 +1797,7 @@ export function makeAgentGatewayComputerTools(
                   : error instanceof ComputerLeaseError
                     ? leaseErrorResult(error)
                     : mcpToolResultError(errorText(error));
-          // A missing OS grant is the only failure a user has to act on, so it
-          // is the only one that raises a card. Everything else — a target that
-          // moved, an undelivered keystroke, arguments the desktop refused — is
-          // the agent's to recover from and stays a plain tool error.
+
           return Effect.promise(() => manager.missingPermissions()).pipe(
             Effect.flatMap((missing) => {
               const signal = computerSetupSignal({
@@ -2191,10 +1805,7 @@ export function makeAgentGatewayComputerTools(
                 missing,
                 buildSignature: manager.buildSignature(),
               });
-              // The failure path is where the note matters most and where it
-              // used to be absent entirely: the model was handed the backend's
-              // raw refusal with nothing telling it the user had been asked for
-              // a grant, so it explained macOS privacy in prose or retried.
+
               return withSetupCard(name, context, signal, withSetupNoteOnResult(failure, signal));
             }),
           );
@@ -2209,12 +1820,8 @@ export function makeAgentGatewayComputerTools(
     description: string,
     inputSchema: Record<string, unknown>,
     run: (args: Record<string, unknown>, context: ToolContext) => Promise<unknown>,
-    /**
-     * Overrides the write annotations for an action that is not one. Only the
-     * hover uses it: it posts mouse movement, presses nothing, and never aims the
-     * keyboard, so `destructiveHint: true` was telling every provider to treat
-     * a look as a change.
-     */
+    // Only the hover uses it: it posts mouse movement, presses nothing, and never aims the keyboard, so
+    // `destructiveHint: true` was telling every provider to treat a look as a change.
     annotations: Record<string, unknown> = WRITE_TOOL_ANNOTATIONS,
   ): ToolEntry => ({
     requiredCapability: COMPUTER_CONTROL_CAPABILITY,
@@ -2241,22 +1848,10 @@ export function makeAgentGatewayComputerTools(
     handler: handle(name, run),
   });
 
-  /**
-   * Direct gateway clients may call these tools by name; provider models use
-   * advertised computer_run for supported steps. Discovery does not install a
-   * hidden definition in the provider. Capability, approval and audit remain
-   * unchanged for both routes.
-   */
   const discoveryOnly = (entry: ToolEntry): ToolEntry => ({ ...entry, discoveryOnly: true });
 
-  /**
-   * One wording and one shape for a post-action observation, whoever captured
-   * it: the generic path here, and the scroll path, which takes its own
-   * before/after captures and hands the after one back already taken.
-   * Observation is best-effort — the action already happened, so a perception
-   * failure must not convert its success into an error result — and no
-   * observation degrades to the plain JSON result.
-   */
+  // Observation is best-effort — the action already happened, so a perception failure must not
+  // convert its success into an error result — and no observation degrades to the plain JSON result.
   const withObservation = (
     context: ToolContext,
     result: Record<string, unknown>,
@@ -2297,11 +1892,8 @@ export function makeAgentGatewayComputerTools(
     );
   };
 
-  /**
-   * The generic path: the action ran, now go and look at it. Reads
-   * `include_screenshot` itself, because an action that took no observation
-   * must not pay for one here either.
-   */
+  // Reads `include_screenshot` itself, because an action that took no observation must not pay for
+  // one here either.
   const observeAfterAction = async (
     args: Record<string, unknown>,
     result: ComputerActionResult,
@@ -2321,13 +1913,13 @@ export function makeAgentGatewayComputerTools(
               2_000,
               desktopOperationSignal(),
             ).catch((error: unknown) => {
-              // Input already happened. A failed observation must not imply it is
-              // safe to send that input again; cancellation still stops the turn.
+              // Input already happened. A failed observation must not imply it is safe to send that input again;
+              // cancellation still stops the turn.
               assertDesktopOperationActive();
               return { status: "unavailable", note: errorText(error) };
             });
-    // The clamped point when the display server moved the pointer, because the
-    // window under where the action actually landed is the one it affected.
+    // The clamped point when the display server moved the pointer, because the window under where the
+    // action actually landed is the one it affected.
     return withObservation(
       context,
       readiness === undefined ? result : { ...result, readiness },
@@ -2340,18 +1932,13 @@ export function makeAgentGatewayComputerTools(
     );
   };
 
-  /**
-   * An action whose visible outcome matters: every pointer, keyboard, and
-   * semantic action goes through here so its result carries the screenshot.
-   * Launching an app does not — its window appears seconds later, so a capture
-   * taken now would only show the desktop from before the launch — and neither
-   * does writing the clipboard, which changes nothing on screen.
-   *
-   * An action that already observed itself returns its own capture alongside
-   * the result and is not photographed a second time: scrolling has to capture
-   * before and after to measure its travel, and the after capture is the same
-   * picture this would otherwise take.
-   */
+  // An action whose visible outcome matters: every pointer, keyboard, and semantic action goes
+  // through here so its result carries the screenshot. Launching an app does not — its window appears
+  // seconds later, so a capture taken now would only show the desktop from before the launch — and
+  // neither does writing the clipboard, which changes nothing on screen. An action that already
+  // observed itself returns its own capture alongside the result and is not photographed a second
+  // time: scrolling has to capture before and after to measure its travel, and the after capture is
+  // the same picture this would otherwise take.
   const observedActionEntry = (
     name: string,
     title: string,
@@ -2410,12 +1997,6 @@ export function makeAgentGatewayComputerTools(
     additionalProperties: false,
   } as const;
 
-  /**
-   * The folded click's fields: the shared pointer target plus `count` and
-   * `button`, which carry what the separate double-, triple- and right-click
-   * tools used to spell. The manager owns which gesture pairs a desktop
-   * supports and refuses the rest before dispatch.
-   */
   const clickSchema = {
     type: "object",
     properties: {
@@ -2438,13 +2019,9 @@ export function makeAgentGatewayComputerTools(
     additionalProperties: false,
   } as const;
 
-  /**
-   * The fields one `computer_run` step type accepts. Listed exhaustively so a
-   * mistyped field is refused at parse time instead of silently ignored — a
-   * step that drops the field the model meant is a step that does the wrong
-   * thing. Camel-case aliases are admitted because the argument readers accept
-   * them everywhere else.
-   */
+  // Listed exhaustively so a mistyped field is refused at parse time instead of silently ignored — a
+  // step that drops the field the model meant is a step that does the wrong thing. Camel-case aliases
+  // are admitted because the argument readers accept them everywhere else.
   const RUN_TARGET_FIELDS = [
     "x",
     "y",
@@ -2485,8 +2062,7 @@ export function makeAgentGatewayComputerTools(
     ],
     set_value: [...RUN_TARGET_FIELDS, "value"],
     perform_action: [...RUN_TARGET_FIELDS, "action"],
-    // Semantic-only like its standalone tool: a range cannot be aimed at a
-    // pixel, so x/y/screenshot_id are not accepted fields.
+
     select_text: [
       "label",
       "role",
@@ -2522,16 +2098,11 @@ export function makeAgentGatewayComputerTools(
     verify_state: ["window_id", "windowId", "expect"],
   };
 
-  /**
-   * Fields every step type accepts on top of its own: element conditions
-   * evaluated against live state at the moment the step would run, and the
-   * per-step failure policy.
-   */
   const RUN_CONDITION_FIELDS = ["if_element", "unless_element", "continue_on_error"] as const;
 
   interface PreparedRunStep {
     readonly type: string;
-    /** The step object as declared — the inner record's redaction input. */
+
     readonly step: Record<string, unknown>;
     readonly ifElement: ComputerTarget | undefined;
     readonly unlessElement: ComputerTarget | undefined;
@@ -2539,13 +2110,6 @@ export function makeAgentGatewayComputerTools(
     readonly run: () => Promise<unknown>;
   }
 
-  /**
-   * Parse one step into a ready-to-call closure. Every argument reader runs
-   * now — including coordinate resolution against the frame registry — so a
-   * malformed batch is refused whole, before step zero dispatches anything.
-   * What stays deferred is what must stay fresh: semantic targets resolve
-   * against live state inside each manager call, at the moment that step runs.
-   */
   const prepareRunStep = (
     type: string,
     step: Record<string, unknown>,
@@ -2570,9 +2134,6 @@ export function makeAgentGatewayComputerTools(
         return () => manager.drag(threadId, from, to, durationMs);
       }
       case "scroll": {
-        // The same frame mapping and half-window limit the standalone tool
-        // applies, minus its unchanged-scroll streak: a batch step observes
-        // nothing, so there is no travel to measure the streak from.
         const raw = readScreenshotTarget(step);
         const frame = frames.resolve(threadId, raw.screenshotId);
         const resolved = resolveTarget(raw, threadId);
@@ -2691,9 +2252,7 @@ export function makeAgentGatewayComputerTools(
         if (windowId === undefined) {
           throw new ToolInputError('Step "activate_window" requires "window_id".');
         }
-        // Foreground promotion is scoped to this one step: the rest of the
-        // run keeps the batch's delivery mode. The same never-raise gate the
-        // standalone tool takes applies per step — a run is not a bypass.
+
         return async () => {
           const authorization = await foregroundAuthorization(context);
           return withDesktopDeliveryMode("foreground", () =>
@@ -2705,8 +2264,7 @@ export function makeAgentGatewayComputerTools(
         const app = readStringArg(step, "app", { required: true })!;
         const appArgs = readStringArrayArg(step, "arguments") ?? [];
         const waitMs = readBooleanArg(step, "wait_for_window") === false ? 0 : 2_000;
-        // On macOS a normal launch requests activates=false. Hiding the app
-        // is independent from foreground delivery and often disables its UI.
+
         const hidden = readBooleanArg(step, "hidden");
         return async () => {
           if (dialect !== "macos" && hidden === false) {
@@ -2794,9 +2352,7 @@ export function makeAgentGatewayComputerTools(
         const labelContains =
           readVerbatimStringArg(step, "label_contains") ??
           readVerbatimStringArg(step, "labelContains");
-        // A mid-run observation: it re-baselines the scope's diff, mints the
-        // elements' refs for later steps and the model's next calls, and
-        // reports the listing back in the step's own result.
+
         return async () => {
           const state = await manager.getState({
             includeTree: true,
@@ -2823,8 +2379,8 @@ export function makeAgentGatewayComputerTools(
             ...(wire?.elementWindowId === undefined
               ? {}
               : { elementWindowId: wire.elementWindowId }),
-            // An empty listing with an unreadable tree must not look like
-            // "nothing on screen" — carry the read's own status with it.
+            // An empty listing with an unreadable tree must not look like "nothing on screen" — carry the
+            // read's own status with it.
             ...(state.accessibility !== undefined ? { accessibility: state.accessibility } : {}),
             ...(stable?.sourceIncomplete ? { elementsSourceIncomplete: true } : {}),
             ...(stable !== undefined && !stable.complete
@@ -2855,14 +2411,6 @@ export function makeAgentGatewayComputerTools(
     }
   };
 
-  /**
-   * An `if_element`/`unless_element` clause: a target object carrying the
-   * same fields an action step does — label, role, ref, window_id. A ref is
-   * bound to its listed identity at parse time, so the check asks about the
-   * element the model meant, not whatever its ref happens to point at later.
-   * Only a label-carrying target is a usable condition: a bare window or
-   * role matches everything, which is no condition at all.
-   */
   const readStepElementCondition = (
     step: Record<string, unknown>,
     name: string,
@@ -2877,15 +2425,6 @@ export function makeAgentGatewayComputerTools(
     return target;
   };
 
-  /**
-   * Live presence of a condition element at the moment the step would run:
-   * one fresh tree read, resolved the same way an action would resolve it.
-   * "Present" means an action could reach it now: a resolvable on-screen
-   * match, or ambiguous candidates — several hits still prove the element
-   * is there, whichever one it is. An off-screen-only match counts as
-   * absent (a step gated on it could not act anyway), as does a missing or
-   * unreadable tree — no guesses.
-   */
   const elementConditionPresent = async (target: ComputerTarget): Promise<boolean> => {
     const state = await manager.getState({
       includeTree: true,
@@ -2908,11 +2447,6 @@ export function makeAgentGatewayComputerTools(
     }
   };
 
-  /**
-   * The error one failed step reports. Same taxonomy the outer handler maps
-   * to whole-call results, kept compact: the batch result is data, and the
-   * step's failure is one entry in it.
-   */
   const runStepError = (error: unknown): Record<string, unknown> =>
     error instanceof ComputerBackendError && error.inputPause
       ? {
@@ -2974,8 +2508,7 @@ export function makeAgentGatewayComputerTools(
         `"steps" accepts at most ${COMPUTER_RUN_MAX_STEPS} steps; got ${rawSteps.length}. Split the sequence into multiple computer_run calls.`,
       );
     }
-    // Validate everything before anything dispatches: a batch that cannot
-    // parse is refused whole rather than running its good half.
+
     const prepared: PreparedRunStep[] = rawSteps.map((entry, index) => {
       if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
         throw new ToolInputError(`Step ${index} must be an object with a "type" field.`);
@@ -3014,17 +2547,14 @@ export function makeAgentGatewayComputerTools(
     const steps: Record<string, unknown>[] = [];
     let stopped = false;
     let stoppedReason: "no_usable_window" | undefined;
-    // The window the last step touched scopes the closing state read.
+
     let lastWindowId: string | undefined;
     for (const [index, preparedStep] of prepared.entries()) {
-      // Between steps, not just around the batch: a revocation or a dead turn
-      // stops the run before the next dispatch, not after it.
       assertDesktopOperationActive();
       await Effect.runPromise(context.assertCallerTurnActive(), {
         signal: desktopOperationSignal(),
       });
-      // Element conditions evaluate against live state at the moment the step
-      // would run — the answer a get_state gave ten steps ago is not it.
+
       const skippedReason = await (async (): Promise<string | undefined> => {
         if (
           preparedStep.ifElement !== undefined &&
@@ -3076,15 +2606,11 @@ export function makeAgentGatewayComputerTools(
           preparedStep.type === "launch_app" &&
           (value as ComputerLaunchAppResult).windowStatus === "no_usable_window"
         ) {
-          // Launch may have succeeded, but the next planned input has no
-          // established target. Preserve its result; never call it unexecuted.
           stopped = true;
           stoppedReason = "no_usable_window";
           break;
         }
       } catch (error) {
-        // A cancelled desktop operation or dead turn is the call ending, not a
-        // step failing: propagate it rather than file it as batch data.
         desktopOperationSignal()?.throwIfAborted();
         await Effect.runPromise(context.assertCallerTurnActive(), {
           signal: desktopOperationSignal(),
@@ -3102,11 +2628,6 @@ export function makeAgentGatewayComputerTools(
       }
     }
 
-    // The closing read is the batch's own observation: it satisfies a pending
-    // observation requirement (this call runs under withModelDesktopObservation),
-    // re-baselines the thread's diff scope, and reports the state the run left
-    // behind. It is best-effort — the steps already ran, so a read failure is
-    // reported beside them rather than converting a finished run into an error.
     const stateFields = await (async (): Promise<Record<string, unknown>> => {
       try {
         assertDesktopOperationActive();
@@ -3158,8 +2679,7 @@ export function makeAgentGatewayComputerTools(
     const payload: Record<string, unknown> = {
       computerId: manager.computerId,
       steps,
-      // A skipped step satisfied its condition check, not its action — count
-      // it apart so "completed" keeps meaning "actually ran".
+
       completed: steps.filter((entry) => entry.ok === true && entry.skipped !== true).length,
       ...(skippedCount > 0 ? { skipped: skippedCount } : {}),
       stopped,
@@ -3189,7 +2709,6 @@ export function makeAgentGatewayComputerTools(
     return Object.hasOwn(RUN_STEP_FIELDS, stepType) ? stepType : undefined;
   };
 
-  /** Describe real provider routes; an index entry does not register a tool. */
   const computerToolIndexText = (): string => {
     const line = (entry: ToolEntry): string =>
       `- ${entry.definition.name}${
@@ -3218,10 +2737,6 @@ export function makeAgentGatewayComputerTools(
     ].join("\n");
   };
 
-  // Named rather than returned inline so the computer_help handler can
-  // generate its tools-chapter index from the catalog itself — a folded or
-  // renamed tool can never leave the chapter naming something that no longer
-  // exists.
   const entries: ToolEntry[] = [
     ...makeComputerSpaceTools({
       manager,
@@ -3308,11 +2823,6 @@ export function makeAgentGatewayComputerTools(
         },
       },
       handler: handle("computer_get_state", async (args, context) => {
-        // One perception read feeds both renderings: the elements digest always
-        // rides (that is what makes labels discoverable), while the full
-        // accessibility text rendering stays opt-in for its payload size — and
-        // is now only *rendered* when asked for, rather than rendered on every
-        // read and discarded here.
         const wantText = readBooleanArg(args, "include_text") ?? false;
         const windowId = readWindowIdArg(args);
         const labelContains =
@@ -3332,8 +2842,7 @@ export function makeAgentGatewayComputerTools(
               ...(labelContains === undefined ? {} : { labelContains }),
             })
           : undefined;
-        // The baseline moves on every successful digest, diff or not: the
-        // comparison is always against what this thread last saw in the scope.
+
         const digestKey = digestScopeKey(context.callerThreadId, windowId, labelContains);
         const before = elementDigests.get(digestKey);
         const stable =
@@ -3348,8 +2857,8 @@ export function makeAgentGatewayComputerTools(
           const note = appName === undefined ? undefined : APP_GUIDANCE[appName];
           const seenKey = JSON.stringify([context.callerThreadId, appName]);
           if (note === undefined || appHintsSeen.has(seenKey)) return undefined;
-          // Thread-keyed, never purged on thread end — bounded like the
-          // digests; eviction only re-shows a hint a stale entry suppressed.
+          // Thread-keyed, never purged on thread end — bounded like the digests; eviction only re-shows a
+          // hint a stale entry suppressed.
           while (appHintsSeen.size >= 256) appHintsSeen.delete(appHintsSeen.keys().next().value!);
           appHintsSeen.add(seenKey);
           return note;
@@ -3368,9 +2877,7 @@ export function makeAgentGatewayComputerTools(
                       ? {}
                       : { elementWindowId: wire.elementWindowId }),
                     ...(stable.sourceIncomplete ? { elementsSourceIncomplete: true } : {}),
-                    // Both halves together: "there is more" is only actionable
-                    // alongside how much more, which is what decides between
-                    // looking again and narrowing the query.
+
                     ...(stable.complete
                       ? {}
                       : {
@@ -3605,10 +3112,7 @@ export function makeAgentGatewayComputerTools(
           properties: {},
           additionalProperties: false,
         },
-        // Not READ_ONLY_TOOL_ANNOTATIONS: providers auto-approve on
-        // readOnlyHint, and this read must go through approval — the clipboard
-        // can hold something the human copied privately. It mutates nothing,
-        // hence destructiveHint stays false.
+
         annotations: {
           title: "Read computer clipboard",
           readOnlyHint: false,
@@ -3650,8 +3154,8 @@ export function makeAgentGatewayComputerTools(
       },
       async (args, context) => {
         const hidden = readBooleanArg(args, "hidden");
-        // macOS launches without activating regardless of the hidden option.
-        // Other backends retain their explicit visible-launch authorization.
+        // macOS launches without activating regardless of the hidden option. Other backends retain their
+        // explicit visible-launch authorization.
         if (dialect !== "macos" && hidden === false) {
           const authorization = await foregroundAuthorization(context);
           if (!authorization.userRequestedVisibleUse) {
@@ -3761,9 +3265,7 @@ export function makeAgentGatewayComputerTools(
         )
           throw new ToolInputError("x/y/width/height must be finite, with positive size.");
         const zoom = await manager.zoomWindow(windowId, region);
-        // The magnified frame is NOT registered as a coordinate frame: its
-        // pixels are enlarged and window-local, so letting clicks resolve
-        // against it would aim them off-target. It is display-only.
+
         const { bytesBase64, ...metadata } = zoom;
         return {
           content: [
@@ -3874,8 +3376,7 @@ export function makeAgentGatewayComputerTools(
               Object.hasOwn(args, "arguments") ? args.arguments : {},
               entry.definition,
             );
-            // Delegate once: the canonical handler owns approval, cancellation,
-            // queue admission and image delivery. No second lease or capture.
+
             return entry.handler(toolArgs, context);
           } catch (error) {
             return Effect.succeed(mcpToolResultError(errorText(error)));
@@ -3955,8 +3456,7 @@ export function makeAgentGatewayComputerTools(
                 }),
           };
         }
-        // The tools chapter's static intro gains the generated catalog index
-        // on the way out — same text for "tools" alone and inside "all".
+
         const sectionText = (name: string): string | undefined => {
           const text = COMPUTER_HELP_SECTIONS[name as ComputerHelpTopic];
           return name === "tools" && text !== undefined
@@ -4085,9 +3585,6 @@ export function makeAgentGatewayComputerTools(
       ),
     ),
     {
-      // Not actionEntry on purpose: the visibility lifecycle never activates,
-      // so advertising delivery_mode would promise a foreground excursion the
-      // operation's whole contract is built to refuse.
       requiredCapability: COMPUTER_CONTROL_CAPABILITY,
       requiresActiveTurn: true,
       discoveryOnly: true,
@@ -4183,10 +3680,9 @@ export function makeAgentGatewayComputerTools(
         targetSchema,
         async (args, context) =>
           manager.moveCursor(context.callerThreadId, readTarget(args, context)),
-        // Not destructive: it changes only where the
-        // agent's own overlay is drawn. `readOnlyHint` stays false because
-        // something on screen does move, so a provider that surfaces write tools
-        // still shows it.
+        // Not destructive: it changes only where the agent's own overlay is drawn. `readOnlyHint` stays
+        // false because something on screen does move, so a provider that surfaces write tools still shows
+        // it.
         {
           readOnlyHint: false,
           destructiveHint: false,
@@ -4255,12 +3751,10 @@ export function makeAgentGatewayComputerTools(
           !hasTargetFields(resolved) && frame.windowId !== undefined
             ? { ...resolved, windowId: frame.windowId }
             : resolved;
-        // The distance is in the same picture's pixels as the point, so a
-        // scroll needs a frame even when it names no point at all.
+
         const requestedDelta = readScrollDelta(args);
         const delta = screenshotDeltaToDesktop(frame, requestedDelta.deltaX, requestedDelta.deltaY);
-        // Keep adjacent observations overlapping even when the model repeats
-        // a pixel count after the screenshot changes scale.
+
         const limited = {
           deltaX:
             Math.sign(delta.deltaX) * Math.min(Math.abs(delta.deltaX), frame.region.width / 2),
@@ -4304,23 +3798,20 @@ export function makeAgentGatewayComputerTools(
         const scrollObservation = outcome.observation;
         const capturedWindow =
           scrollObservation && "screenshot" in scrollObservation ? scrollObservation : undefined;
-        // With wait_for_label the wrapper re-captures, so only travel counts;
-        // otherwise an after-capture identical to the latest frame is the same
-        // unchanged signal withObservation will report.
+        // With wait_for_label the wrapper re-captures, so only travel counts; otherwise an after-capture
+        // identical to the latest frame is the same unchanged signal withObservation will report.
         const willBeUnchanged =
           args.wait_for_label === undefined &&
           capturedWindow !== undefined &&
           frames.matchLatest(threadId, capturedWindow.screenshot, capturedWindow.windowId) !==
             undefined;
         const resultWindow = outcome.result.windowId ?? capturedWindow?.windowId ?? incomingWindow;
-        // Vertical correlation cannot rule out horizontal travel. Only a
-        // vertical-only request or an identical full frame proves no observed
-        // movement for the gesture as a whole.
+
         const noMovementObserved = willBeUnchanged || (limited.deltaX === 0 && traveledY === 0);
         if (noMovementObserved) {
           const current = unchangedScrolls.get(threadId);
-          // One entry per thread, never purged on thread end — bounded like
-          // the digests; losing a streak only resets the repeated-scroll nudge.
+          // One entry per thread, never purged on thread end — bounded like the digests; losing a streak only
+          // resets the repeated-scroll nudge.
           while (unchangedScrolls.size >= 256 && !unchangedScrolls.has(threadId))
             unchangedScrolls.delete(unchangedScrolls.keys().next().value!);
           if (current && current.windowId === resultWindow) {
@@ -4473,8 +3964,7 @@ export function makeAgentGatewayComputerTools(
         if (windowId === undefined) {
           throw new ToolInputError('Missing required argument "window_id".');
         }
-        // Never-raise default: the user's own task text must have asked to see
-        // the screen before this tool can move a window in front of them.
+
         return manager.foregroundWithRestore(
           context.callerThreadId,
           windowId,
@@ -4584,9 +4074,7 @@ export function makeAgentGatewayComputerTools(
               properties: {
                 type: { type: "string", enum: Object.keys(RUN_STEP_FIELDS) },
               },
-              // Details are loaded through computer_help when needed; the
-              // existing per-kind parser still rejects unsupported fields
-              // and malformed values for the entire batch before dispatch.
+
               additionalProperties: true,
             },
             description:
@@ -4606,18 +4094,6 @@ export function makeAgentGatewayComputerTools(
   return entries;
 }
 
-/**
- * The semantic action names this desktop's accessibility layer actually
- * accepts.
- *
- * The parameter was a bare string with no enum, so models invented plausible
- * names — `AXPress` on a Linux desktop, `toggle` on macOS — and every one of
- * them came back as a refusal the caller could do nothing with. Both lists are
- * what the backends really implement: `KWinComputerBackend.performAction` maps
- * exactly two names onto a synthetic click and refuses everything else, while
- * the macOS backend forwards each listed name to the driver recipe that
- * performs the matching `AXUIElementPerformAction` on the resolved element.
- */
 function semanticActionNames(dialect: ComputerAgentDialect): readonly string[] {
   return dialect === "macos"
     ? ["AXPress", "press", "open", "show_menu", "menu", "pick", "confirm", "cancel"]
@@ -4636,26 +4112,12 @@ function performActionArgumentNote(dialect: ComputerAgentDialect): string {
     : 'Use "activate" or "click".';
 }
 
-/**
- * What range selection means on each backend family. macOS writes
- * `AXSelectedTextRange` natively on a fresh element token and confirms by
- * reading the attribute back; a target with no settable selection attribute
- * — web content addressed only through marker ranges included — refuses
- * before dispatch, and no layer approximates the selection with
- * triple-click, select-all, or a pointer drag.
- */
 function selectTextNote(dialect: ComputerAgentDialect): string {
   return dialect === "macos"
     ? "Cua writes AXSelectedTextRange on a freshly resolved element token and verifies the selection by native read-back. A target without a settable selection attribute refuses before dispatch — nothing falls back to triple-click or select-all, and an uncertain result is never replayed. Label and role come from computer_get_state; pass window_id alone when the window holds exactly one writable text control."
     : "This desktop exposes no native range-selection write, so the call refuses rather than approximating the selection with triple-click, select-all, or a pointer drag.";
 }
 
-/**
- * What a chord may contain, which is not the same question on the two
- * families: macOS throws unless exactly one key is not a modifier, and Linux
- * presses every key at once and releases them in reverse. Neither treats the
- * chord as a sequence of separate keystrokes, so the note says so on both.
- */
 function hotkeyFormNote(dialect: ComputerAgentDialect): string {
   return dialect === "macos"
     ? 'A chord is one or more modifiers plus exactly one other key, pressed together and released together — "meta+s" to save, "meta+shift+z" to redo. More than one non-modifier key is refused; to press two shortcuts, call this twice.'
@@ -4680,15 +4142,11 @@ function launchAppArgumentNote(dialect: ComputerAgentDialect): string {
     : 'The application: an executable name on PATH ("firefox"), a desktop application id ("org.mozilla.firefox"), or an absolute path to an executable. The result reports what the name resolved to.';
 }
 
-/**
- * Whether this list can be silently short, and why.
- *
- * Only macOS can: without the screen-capture grant `CGWindowListCopyWindowInfo`
- * omits window names, and an untitled off-screen window is unaddressable and so
- * is dropped — which takes every minimized and off-Space window off the list
- * with it. Saying so on Linux, where the compositor plugin enumerates windows
- * with no such grant, would only invite doubt about a list that is complete.
- */
+// Only macOS can: without the screen-capture grant `CGWindowListCopyWindowInfo` omits window names,
+// and an untitled off-screen window is unaddressable and so is dropped — which takes every
+// minimized and off-Space window off the list with it. Saying so on Linux, where the compositor
+// plugin enumerates windows with no such grant, would only invite doubt about a list that is
+// complete.
 function windowListCompletenessNote(dialect: ComputerAgentDialect): string {
   return dialect === "macos"
     ? " If the result carries a setupRequired note about a screen-capture grant, this list is also incomplete: without that grant macOS withholds window titles, and an untitled off-screen window cannot be addressed and is left out — so minimized and other-Space windows disappear from it. What it does report is accurate."

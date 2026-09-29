@@ -1,7 +1,3 @@
-// FILE: GitCore.ts
-// Purpose: Implements low-level Git operations used by server orchestration and UI status.
-// Layer: Server Git service
-// Exports: GitCoreLive.
 import {
   Cache,
   Data,
@@ -60,15 +56,11 @@ import { ServerConfig } from "../../config.ts";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_MAX_OUTPUT_BYTES = 1_000_000;
-// Successful upstream refreshes stay warm for 15s. Failures used to use
-// Duration.zero, which re-ran `git fetch` on every git.status and created a
-// permanent fetch storm for unreachable remotes (#515). Cache failures too,
-// with a longer TTL so a dead remote settles into occasional retries.
+
 const STATUS_UPSTREAM_REFRESH_INTERVAL = Duration.seconds(15);
 const STATUS_UPSTREAM_REFRESH_FAILURE_INTERVAL = Duration.seconds(30);
 const STATUS_UPSTREAM_REFRESH_FAILURE_INTERVAL_MAX = Duration.seconds(300);
-// 5s was below realistic authenticated-fetch cost on Windows (credential helper
-// latency). Align with the success refresh interval.
+
 const STATUS_UPSTREAM_REFRESH_TIMEOUT = Duration.seconds(15);
 const STATUS_UPSTREAM_REFRESH_CACHE_CAPACITY = 2_048;
 type StatusUpstreamRefreshResult = "refreshed" | "failed";
@@ -80,13 +72,10 @@ interface StatusUpstreamRefreshCacheKeyFields {
   readonly upstreamBranch: string;
 }
 
-// NUL cannot appear in filesystem paths or git refs, so it is an unambiguous
-// separator for the composite backoff key.
 function statusUpstreamRefreshBackoffMapKey(key: StatusUpstreamRefreshCacheKeyFields): string {
   return `${key.cwd}\u0000${key.upstreamRef}\u0000${key.remoteName}\u0000${key.upstreamBranch}`;
 }
 
-/** Failure state is scoped and bounded like the upstream refresh cache itself. */
 function makeStatusUpstreamRefreshCacheTimeToLive() {
   const consecutiveFailures = new Map<string, number>();
   return {
@@ -103,7 +92,7 @@ function makeStatusUpstreamRefreshCacheTimeToLive() {
         return STATUS_UPSTREAM_REFRESH_INTERVAL;
       }
       const failures = consecutiveFailures.get(mapKey) ?? 0;
-      // Refresh insertion order so active repositories retain their backoff.
+
       consecutiveFailures.delete(mapKey);
       consecutiveFailures.set(mapKey, Math.min(failures + 1, 5));
       if (consecutiveFailures.size > STATUS_UPSTREAM_REFRESH_CACHE_CAPACITY) {
@@ -154,9 +143,8 @@ const NON_REPOSITORY_STATUS_DETAILS = Object.freeze({
 });
 
 type TraceTailState = {
-  /** Bytes of the trace file already consumed; the next read starts here. */
   processedBytes: number;
-  /** Trailing bytes after the last newline, kept raw so a multibyte character split across reads survives. */
+
   remainder: Uint8Array;
 };
 
@@ -198,7 +186,6 @@ function hasNodeErrorCode(cause: unknown, code: string): boolean {
   );
 }
 
-/** Returns the longest UTF-8 prefix that fits without splitting a code point. */
 function truncateUtf8Prefix(value: string, maxBytes: number): string {
   if (maxBytes <= 0) return "";
   const encoded = Buffer.from(value, "utf8");
@@ -269,8 +256,7 @@ function parseBranchLine(line: string): { name: string; current: boolean } | nul
   if (trimmed.length === 0) return null;
 
   const name = trimmed.replace(/^[*+]\s+/, "");
-  // Exclude symbolic refs like: "origin/HEAD -> origin/main".
-  // Exclude detached HEAD pseudo-refs like: "(HEAD detached at origin/main)".
+
   if (name.includes(" -> ") || name.startsWith("(")) return null;
 
   return {
@@ -437,9 +423,9 @@ function createGitCommandError(
 }
 
 function isSuccessfulNoIndexDiff(result: ExecuteGitResult): boolean {
-  // `--no-index` uses code 1 both for a normal difference and for some read errors.
-  // A produced diff record distinguishes the normal case. Stderr is not decisive because
-  // Git may emit advisory warnings (for example, line-ending conversion) alongside it.
+  // `--no-index` uses code 1 both for a normal difference and for some read errors. A produced diff
+  // record distinguishes the normal case. Stderr is not decisive because Git may emit advisory
+  // warnings (for example, line-ending conversion) alongside it.
   return result.code === 0 || (result.code === 1 && result.stdout.length > 0);
 }
 
@@ -602,9 +588,7 @@ const createTrace2Monitor = Effect.fn(function* (
     });
 
   const deltaMutex = yield* Semaphore.make(1);
-  // Tail the file from the last consumed byte instead of re-reading it whole
-  // on every watch event: the trace only grows while git and its hooks run, so
-  // whole-file reads made the tail quadratic in the trace size.
+
   const readTraceDelta = deltaMutex.withPermit(
     Effect.gen(function* () {
       const { processedBytes } = yield* Ref.get(traceTailState);
@@ -754,8 +738,7 @@ const collectGitOutput = Effect.fn(function* <E>(
           });
         }
       }
-      // Once the retained UTF-8 prefix is complete, keep draining the pipe so
-      // the child can exit promptly, but skip decoding when no listener needs it.
+
       if (outputMode === "truncate" && retainedPrefixComplete && !onLine) {
         return;
       }
@@ -787,8 +770,6 @@ const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"] }) =>
 
     const buildGeneratedDetachedWorktreePath = () =>
       Effect.gen(function* () {
-        // Keep auto-generated detached worktrees short and opaque so the
-        // filesystem path stays stable-looking regardless of the source ref.
         for (let attempt = 0; attempt < 8; attempt += 1) {
           const shortId = randomUUID().replace(/-/g, "").slice(0, 4);
           const candidateParent = path.join(worktreesDir, shortId);
@@ -839,10 +820,7 @@ const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"] }) =>
               }),
             )
             .pipe(Effect.mapError(toGitCommandError(commandInput, "failed to spawn.")));
-          // Keep cancellation ownership explicit even though spawn is already
-          // Scope-bound: an RPC interruption closes this Scope and kills the child
-          // before execute settles. The spawner's own finalizer safely handles the
-          // second cleanup attempt.
+
           yield* Effect.addFinalizer(() => child.kill().pipe(Effect.ignore));
 
           const [stdoutResult, stderrResult, exitCode] = yield* Effect.all(
@@ -1059,8 +1037,7 @@ const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"] }) =>
           );
 
           const tempIndexEnv = { GIT_INDEX_FILE: tempIndexPath };
-          // Stage into a copied index only; this lets Git detect directory refactors
-          // without touching the user's real staging area.
+
           yield* executeGit(
             "GitCore.statusDetails.moveAwareAddAll",
             cwd,
@@ -1245,8 +1222,7 @@ const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"] }) =>
             return log.pipe(Effect.as("failed" as const));
           }),
         ),
-      // Keep successful refreshes warm; cache failures with exponential backoff
-      // per upstream so unreachable remotes do not re-fetch on every git.status.
+
       timeToLive: upstreamRefreshPolicy.timeToLive,
     });
 
@@ -1605,11 +1581,10 @@ const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"] }) =>
           behindCount = 0;
         }
 
-        // Repo-level metadata for the status panel: whether an `origin` remote is configured
-        // and whether the current branch is the repo's default branch. Resolved from the same
-        // helpers `listGitBranches` uses so the two stay consistent; each lookup degrades to a
-        // safe default on failure so it never breaks the status read. `resolvePrimaryRemoteName`
-        // returns "origin" only when that remote exists, so it doubles as the origin check.
+        // Resolved from the same helpers `listGitBranches` uses so the two stay consistent; each lookup
+        // degrades to a safe default on failure so it never breaks the status read.
+        // `resolvePrimaryRemoteName` returns "origin" only when that remote exists, so it doubles as the
+        // origin check.
         const primaryRemoteName = yield* resolvePrimaryRemoteName(cwd).pipe(
           Effect.catch(() => Effect.succeed(null)),
         );
@@ -1812,9 +1787,9 @@ const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"] }) =>
       return resolveFiles.pipe(
         Effect.flatMap((untrackedFiles) =>
           Effect.gen(function* () {
-            // Sequential capture is intentional: parallel children would race for the shared
-            // budget and make the retained file prefix nondeterministic. Stop launching work as
-            // soon as the ordered prefix is full.
+            // Sequential capture is intentional: parallel children would race for the shared budget and make
+            // the retained file prefix nondeterministic. Stop launching work as soon as the ordered prefix is
+            // full.
             for (const filePath of untrackedFiles.toSorted()) {
               if (accumulator.truncated) break;
               const separatorBytes = accumulator.bytes > 0 && !accumulator.endsWithNewline ? 1 : 0;
@@ -1824,7 +1799,6 @@ const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"] }) =>
                 break;
               }
 
-              // Git diff omits untracked files, so synthesize a normal patch for each one.
               const operation = `${operationPrefix}.untrackedPatch`;
               const args = [
                 "diff",
@@ -1867,10 +1841,6 @@ const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"] }) =>
       );
     };
 
-    // `git diff --no-index` exits 1 both when it found differences (the expected
-    // outcome for an untracked file vs /dev/null) and when it could not read the
-    // path (e.g. the file vanished between `ls-files` and the diff). Only the former
-    // may be treated as success: it produces a numstat record.
     const readUntrackedNumstats = (
       cwd: string,
       operationPrefix: string,
@@ -2034,8 +2004,6 @@ const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"] }) =>
 
     const readSourceControlFiles: GitCoreShape["readSourceControlFiles"] = (cwd) =>
       Effect.gen(function* () {
-        // Status and numstat output scales with path count, not with file contents.
-        // Fail explicitly on an extreme result instead of silently dropping paths.
         const output = { maxOutputBytes: 20_000_000, timeoutMs: WORKING_TREE_DIFF_TIMEOUT_MS };
         const [status, stagedStats, unstagedStats] = yield* Effect.all(
           [
@@ -2165,9 +2133,7 @@ const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"] }) =>
             undefined,
             filePath,
           );
-          // A destination alone hides its rename relationship from Git. Stream
-          // rename metadata so unrelated paths cannot exhaust the capture limit,
-          // then include the old name in the bounded patch.
+
           if (headExists && baseType?.code !== 0 && !untrackedFiles.includes(filePath)) {
             let field = 0;
             let sourcePath = "";
@@ -2239,7 +2205,7 @@ const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"] }) =>
         }
 
         const maxBytes = input.maxBytes ?? GIT_READ_FILE_AT_REV_MAX_BYTES;
-        // The index is not a commit: its blob is addressed as `:<path>`.
+
         const baseRev =
           input.base === "index"
             ? null
@@ -2247,9 +2213,6 @@ const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"] }) =>
               ? yield* resolveBranchMergeBase(input.cwd)
               : input.rev?.trim() || "HEAD";
 
-        // `missing` is reserved for a valid revision that lacks the path; a
-        // revision that no longer resolves (a deleted compare branch) is an
-        // error, not an empty base.
         const resolvedRev =
           baseRev === null
             ? "index"
@@ -2347,9 +2310,9 @@ const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"] }) =>
 
     const blameLine: GitCoreShape["blameLine"] = (input) =>
       Effect.gen(function* () {
-        // The revision comes from the client, so it is resolved to an object ID
-        // before it is placed on the blame command line; an option-like value
-        // would otherwise be parsed as a blame flag rather than a revision.
+        // The revision comes from the client, so it is resolved to an object ID before it is placed on the
+        // blame command line; an option-like value would otherwise be parsed as a blame flag rather than a
+        // revision.
         const requestedRev = input.rev?.trim() ?? "";
         const resolvedRev =
           input.base === "branch"
@@ -2371,9 +2334,6 @@ const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"] }) =>
           allowNonZeroExit: true,
         });
         if (result.code !== 0) {
-          // A working-tree line in a file HEAD does not know (untracked, newly
-          // staged, or any file in a repository without commits) has no history
-          // yet: report it as uncommitted rather than failing the popover.
           if (resolvedRev === null && /no such (?:path|ref)/i.test(result.stderr)) {
             return UNCOMMITTED_BLAME_RESULT;
           }
@@ -2397,13 +2357,6 @@ const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"] }) =>
         return parsed;
       });
 
-    // `git diff <ref>` only visits paths the index tracks, so a path the ref
-    // has, the index dropped, and the working tree recreated would show up
-    // twice: as a tracked deletion plus a synthesized untracked addition. A
-    // temporary index populated from the ref makes git itself diff every ref
-    // path against the working tree (with its own path quoting, mode, and
-    // size handling), and `ls-files --others` against that index yields
-    // exactly the working tree files the ref does not have.
     const withRefIndex = <A>(
       cwd: string,
       resolvedRef: string,
@@ -2432,9 +2385,7 @@ const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"] }) =>
             env,
             fallbackErrorMessage: "git read-tree failed",
           });
-          // Seed changed gitlinks from the real index so Git, rather than a
-          // /dev/null filesystem comparison, renders their mode and commit.
-          // This also works when a submodule has not been initialized.
+
           const additions = yield* executeGit(
             `${operationPrefix}.gitlinkAdditions`,
             cwd,
@@ -2474,9 +2425,6 @@ const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"] }) =>
         }),
       );
 
-    // Working tree files the ref lacks: the temporary index's untracked
-    // listing, plus paths the real index tracks that an ignore rule would hide
-    // from that listing (a force-added build artifact, for example).
     const listWorkingTreeAdditionsAgainstRef = (
       cwd: string,
       resolvedRef: string,
@@ -3754,10 +3702,6 @@ const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"] }) =>
             ),
           ));
 
-        // Branch-backed managed worktrees still pin to the resolved commit, so
-        // ownership proofs and pruning behave exactly like the detached form.
-        // The branch is created before the (slow) checkout so progress phases
-        // reflect the real boundary between the two.
         if (newBranch) {
           yield* onPhase("branch");
           yield* executeGit("GitCore.createDetachedWorktree.createBranch", input.cwd, [
@@ -3908,10 +3852,6 @@ const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"] }) =>
 
     const removeWorktree: GitCoreShape["removeWorktree"] = (input) =>
       Effect.gen(function* () {
-        // Resolve the branch and its HEAD before removal: afterwards the
-        // worktree checkout is gone and can no longer answer. Only temporary
-        // glade/* branches qualify for reclamation; detached HEADs and
-        // user-named branches resolve to null.
         const temporaryBranch = input.reclaimTemporaryBranch
           ? yield* executeGit(
               "GitCore.removeWorktree.readBranch",
@@ -3954,10 +3894,9 @@ const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"] }) =>
             ),
           ),
         );
-        // Drop administrative entries for worktrees whose directories vanished
-        // out of band, so stale `.git/worktrees/<name>` metadata cannot pin their
-        // branches or confuse later listings. The removal itself already
-        // succeeded; a prune failure is logged, never surfaced.
+        // Drop administrative entries for worktrees whose directories vanished out of band, so stale
+        // `.git/worktrees/<name>` metadata cannot pin their branches or confuse later listings. The removal
+        // itself already succeeded; a prune failure is logged, never surfaced.
         yield* executeGit("GitCore.removeWorktree.prune", input.cwd, ["worktree", "prune"], {
           timeoutMs: 10_000,
         }).pipe(
@@ -3971,11 +3910,8 @@ const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"] }) =>
           Effect.asVoid,
         );
         if (temporaryBranch !== null) {
-          // Compare-and-delete against the HEAD observed above: if a concurrent
-          // Git process repointed the ref since then, its commits survive. The
-          // removal itself already succeeded; a branch cleanup failure must not
-          // surface as a failed removal, but it must be logged — a stranded
-          // deterministic branch blocks later reuse of its name.
+          // The removal itself already succeeded; a branch cleanup failure must not surface as a failed
+          // removal, but it must be logged — a stranded deterministic branch blocks later reuse of its name.
           yield* executeGit(
             "GitCore.removeWorktree.reclaimBranch",
             input.cwd,
@@ -4043,7 +3979,6 @@ const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"] }) =>
         return { branch: targetBranch };
       });
 
-    // Publish branch refs immediately so GitHub-backed workflows can see new worktree branches.
     const publishBranch: GitCoreShape["publishBranch"] = (input) =>
       Effect.gen(function* () {
         const remoteName = yield* resolvePushRemoteName(input.cwd, input.branch);
@@ -4182,7 +4117,6 @@ const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"] }) =>
           );
         }
 
-        // Refresh upstream refs in the background so checkout remains responsive.
         yield* Effect.forkScoped(
           refreshCheckedOutBranchUpstream(input.cwd).pipe(Effect.ignoreCause({ log: true })),
         );
@@ -4238,7 +4172,6 @@ const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"] }) =>
 
         if (!createdStash) return;
 
-        // Apply first, then drop only after success so failed/conflicted reapplies keep the stash intact.
         const applyResult = yield* executeGit(
           "GitCore.stashAndCheckout.stashApply",
           input.cwd,
@@ -4431,9 +4364,6 @@ const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"] }) =>
 
     const unstageFiles: GitCoreShape["unstageFiles"] = (cwd, paths) =>
       Effect.gen(function* () {
-        // `git reset` resolves against HEAD, which does not exist before the first
-        // commit. Fall back to `git rm --cached` so newly staged files can still be
-        // unstaged in a freshly initialized repository.
         const headExists = yield* executeGit(
           "GitCore.unstageFiles.headExists",
           cwd,

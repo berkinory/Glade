@@ -148,7 +148,6 @@ export {
   type AutomationFormState,
 };
 
-/** Starter prompts surfaced behind the composer's "Use template" button. */
 export const AUTOMATION_TEMPLATES: readonly {
   readonly label: string;
   readonly name: string;
@@ -210,7 +209,6 @@ function runStatusVariant(
   }
 }
 
-/** Status-colored dot/icon class for a single run, shared by the detail history and triage rows. */
 function runStatusDotClassName(status: AutomationRun["status"]): string {
   switch (runStatusVariant(status)) {
     case "success":
@@ -226,11 +224,6 @@ function runStatusDotClassName(status: AutomationRun["status"]): string {
   }
 }
 
-/**
- * True when a click/keydown originated from an interactive control nested inside a clickable
- * row (delete button, link, input, etc.) rather than the row surface itself. Row components use
- * it to let inner controls handle their own events without also triggering the row's action.
- */
 export function isRowInteractiveEventTarget(
   target: EventTarget | null,
   currentTarget: HTMLElement,
@@ -241,11 +234,8 @@ export function isRowInteractiveEventTarget(
   return Boolean(target.closest("button,a,input,textarea,select,[contenteditable='true']"));
 }
 
-/**
- * Leading status glyph for a single run row: a quiet check for success, otherwise a
- * status-colored dot. Shared by the detail history and the list triage rows so both
- * surfaces read identically.
- */
+// Leading status glyph for a single run row: a quiet check for success, otherwise a status-colored
+// dot. Shared by the detail history and the list triage rows so both surfaces read identically.
 export function RunStatusIndicator({
   status,
   className,
@@ -352,11 +342,6 @@ export function canCancelAutomationRun(run: AutomationRun): boolean {
   );
 }
 
-/**
- * Plain-language warning for a latest run that needs the user's attention, or null when
- * the run ended normally (or is still progressing). Drives the amber glyph and the
- * subtitle warning segment on automation list rows.
- */
 export function automationAttentionLabel(run: AutomationRun): string | null {
   switch (run.status) {
     case "waiting-for-approval":
@@ -385,20 +370,10 @@ export function isLiveRun(run: AutomationRun | null): run is LiveAutomationRun {
   );
 }
 
-/**
- * Icon + tint for an automation list row's leading status glyph.
- * - Live runs spin with a circular loading glyph.
- * - Completed successful runs show a checkmark circle.
- * - Failed/cancelled/interrupted runs keep the warning exclamation.
- * - Scheduled (enabled with a future next run) shows a clock.
- * - Paused automations show a pause glyph.
- */
 export function automationListRowIcon(
   definition: AutomationDefinition,
   latestRun: AutomationRun | null,
 ): { readonly name: string; readonly className: string } {
-  // Pausing prevents future dispatches but does not cancel an in-flight run, so the
-  // active run state must take precedence over the definition's enabled flag.
   if (isLiveRun(latestRun)) {
     return {
       name: "loading-circle",
@@ -406,8 +381,6 @@ export function automationListRowIcon(
     };
   }
   if (!definition.enabled) {
-    // Auto-disabled after consecutive failures is a problem to look at, not a pause the
-    // user chose — keep the warning glyph so the row doesn't read as intentionally idle.
     if (definition.disabledReason === "failures") {
       return { name: "exclamation-circle", className: "size-4 text-amber-500" };
     }
@@ -431,7 +404,6 @@ function isNewerTimestamp(candidate: string, existing: string): boolean {
   return candidate.localeCompare(existing) > 0;
 }
 
-// Snapshots are reconciliation data, so equal timestamps keep the live cache winner.
 function isSameOrNewerTimestamp(candidate: string, existing: string): boolean {
   return candidate.localeCompare(existing) >= 0;
 }
@@ -608,13 +580,6 @@ export function applyAutomationEvent(
   }
 }
 
-/**
- * Roll back only the fields a failed update patched. Restoring the whole pre-mutation list
- * snapshot would also clobber everything that landed after it — a second inline edit's
- * optimistic merge, stream upserts — so the failed patch's keys are restored from the
- * pre-merge definition into the definition as it exists in the cache *now*. Input keys the
- * definition never had (legacy aliases) are removed rather than restored.
- */
 function rollbackAutomationDefinitionPatch(
   list: AutomationListResult,
   input: AutomationUpdateInput,
@@ -626,10 +591,8 @@ function rollbackAutomationDefinitionPatch(
       const next: Record<string, unknown> = { ...definition };
       for (const key of Object.keys(input)) {
         if (key === "id") continue;
-        // A newer optimistic patch or authoritative stream event may already have
-        // replaced this field while the failed request was in flight. Only undo the
-        // value this mutation itself installed; otherwise an older failure can erase
-        // the newer edit.
+        // Only undo the value this mutation itself installed; otherwise an older failure can erase the
+        // newer edit.
         if (!Object.is(next[key], (input as unknown as Record<string, unknown>)[key])) {
           continue;
         }
@@ -664,8 +627,7 @@ export function useAutomations(onRunStarted?: (threadId: ThreadId) => void) {
     ...automationDefinitionUpdateMutationOptions((input) =>
       ensureNativeApi().automation.update(input),
     ),
-    // Optimistically merge the patch so inline edits on the detail page feel instant; the
-    // server's authoritative definition (with recomputed nextRunAt) arrives via the stream.
+
     onMutate: (input) => {
       const previous = queryClient.getQueryData<AutomationListResult>(automationQueryKey);
       const previousDefinition =
@@ -686,9 +648,9 @@ export function useAutomations(onRunStarted?: (threadId: ThreadId) => void) {
     },
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: automationQueryKey }),
     onError: (error, input, context) => {
-      // A failed update would otherwise leave its optimistic merge in the cache until the
-      // next stream tick. Roll back just this patch's fields — not the whole snapshot, which
-      // would also erase concurrent edits' merges (see rollbackAutomationDefinitionPatch).
+      // A failed update would otherwise leave its optimistic merge in the cache until the next stream
+      // tick. Roll back just this patch's fields — not the whole snapshot, which would also erase
+      // concurrent edits' merges (see rollbackAutomationDefinitionPatch).
       const previousDefinition = context?.previousDefinition;
       if (previousDefinition) {
         queryClient.setQueryData<AutomationListResult>(automationQueryKey, (prev) =>
@@ -756,12 +718,10 @@ export function useAutomations(onRunStarted?: (threadId: ThreadId) => void) {
   };
 }
 
-/** Subtle labeled pill used in the automation composer toolbar. */
 const CHIP_CLASS =
   "gap-1.5 rounded-lg px-2 font-normal text-[var(--color-text-foreground-secondary)]";
 type CadenceOption = { readonly value: string; readonly label: string };
 
-/** Heartbeat run-count presets ("" = unlimited). */
 const MAX_ITERATION_PRESETS: readonly CadenceOption[] = [
   { value: "", label: "Unlimited" },
   { value: "10", label: "10 runs" },
@@ -785,8 +745,6 @@ export function maxIterationOptions(
   return [{ value, label: maxIterationLabel(value) }, ...MAX_ITERATION_PRESETS];
 }
 
-// Shown at the top of an automation's detail panel when saving or manual run actions need
-// one-time risk approval.
 export function AutomationApprovalBanner({
   warnings,
   busy,
@@ -986,7 +944,7 @@ export function AutomationDialog({
       ? intervalAmount
       : intervalAmount * 60
     : undefined;
-  // "Hourly" is its own ScheduleKind in this dialog, so the interval list skips it.
+
   const intervalPresetOptions = automationIntervalPresetOptions({
     currentSeconds: intervalSeconds,
     includeHourly: false,
@@ -1125,8 +1083,7 @@ export function AutomationDialog({
 
         <div className="flex flex-wrap items-center gap-2 px-4 pb-4 pt-1">
           <div className="flex flex-1 flex-wrap items-center gap-0.5">
-            {/* Heartbeat runs inherit the target thread's environment; every other mode
-                opens its own thread and therefore picks one. */}
+            {}
             {automationRequiresTargetThread(form.mode) ? null : (
               <Menu>
                 <MenuTrigger render={<Button variant="ghost" size="sm" className={CHIP_CLASS} />}>
@@ -1353,8 +1310,7 @@ export function AutomationDialog({
                     <MenuRadioItem value="heartbeat">Heartbeat</MenuRadioItem>
                   </MenuRadioGroup>
                 </MenuGroup>
-                {/* Only heartbeat continues a thread the user picks; a dedicated automation
-                    creates and keeps its own. */}
+                {}
                 {automationRequiresTargetThread(form.mode) ? (
                   <>
                     <MenuSeparator />

@@ -37,7 +37,6 @@ function readTaskString(
 }
 
 function readTaskId(input: Record<string, unknown>): string | undefined {
-  // Claude Code repairs these aliases before execution, but streamed input is raw.
   return readTaskString(input, "taskId", "id", "task_id");
 }
 

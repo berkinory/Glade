@@ -94,9 +94,6 @@ describe("computerDenylistMatch", () => {
   });
 
   it("refuses anything else that names itself a password manager too", () => {
-    // The app-name prefix rule is deliberately broad: a surface calling
-    // itself "Passwords …" or "1Password …" is exactly what the denylist
-    // exists to keep the agent out of.
     expect(computerDenylistMatch({ name: "Passwords Manager Pro" })?.matched).toBe(
       "app name passwords",
     );
@@ -121,12 +118,12 @@ describe("computer denylist", () => {
   it("refuses a bare-point click inside a denylisted window", async () => {
     const backend = deniedFixture();
     const manager = new ComputerManager({ backend, actionSettleMs: 0 });
-    // (400, 300) is inside the 1Password bounds, outside the editor's.
+
     await expect(manager.click("thread-1", { x: 400, y: 300 })).rejects.toMatchObject({
       code: "computer_denylist_refused",
     });
     expect(backend.callsFor("click")).toHaveLength(0);
-    // A point outside the denied bounds still dispatches.
+
     await expect(manager.click("thread-1", { x: 1_200, y: 200 })).resolves.toMatchObject({
       action: "computer_click",
     });
@@ -162,7 +159,7 @@ describe("computer denylist", () => {
   it("refuses a scoped state read of a denylisted window but still lists it", async () => {
     const backend = deniedFixture();
     const manager = new ComputerManager({ backend, actionSettleMs: 0 });
-    // Presence stays enumerable: the model can see the surface exists.
+
     const listed = await manager.listWindows();
     expect(listed.windows.map((window) => window.id)).toContain(DENIED_WINDOW.id);
     await expect(manager.getState({ windowId: DENIED_WINDOW.id })).rejects.toMatchObject({
@@ -180,7 +177,7 @@ describe("computer denylist", () => {
     await expect(manager.getState({ includeScreenshot: true })).rejects.toMatchObject({
       code: "computer_denylist_refused",
     });
-    // Without a screenshot the same read answers window metadata only.
+
     await expect(manager.getState()).resolves.toMatchObject({ computerId: "desktop" });
     await manager.dispose();
   });
@@ -191,8 +188,7 @@ describe("computer denylist", () => {
     await expect(
       manager.click("thread-1", { label: "Unlock", windowId: DENIED_WINDOW.id }),
     ).rejects.toMatchObject({ code: "computer_denylist_refused" });
-    // An unscoped semantic query walks a desktop-wide tree that cannot exclude
-    // the denied window's elements (non-macOS dialect), so it refuses too.
+
     await expect(manager.click("thread-1", { label: "Unlock" })).rejects.toMatchObject({
       code: "computer_denylist_refused",
     });
@@ -237,8 +233,7 @@ describe("computer denylist", () => {
   it("leaves the pane's own input exempt from the input denylist", async () => {
     const backend = deniedFixture();
     const manager = new ComputerManager({ backend, actionSettleMs: 0 });
-    // The human at the keyboard (threadId undefined) is not a competing agent:
-    // pane input to the denied window still dispatches.
+
     await expect(manager.click(undefined, { x: 400, y: 300 })).resolves.toMatchObject({
       action: "computer_click",
     });

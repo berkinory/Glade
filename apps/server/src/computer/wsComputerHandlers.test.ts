@@ -78,12 +78,11 @@ describe("computer WebSocket handlers", () => {
             : handlers[COMPUTER_WS_METHODS.inputKey]({ key: "enter" });
       const fiber = Effect.runFork(request);
       try {
-        // Let the RPC enter the manager while the first transaction owns the queue.
         await new Promise<void>((resolve) => setImmediate(resolve));
         await Effect.runPromise(Fiber.interrupt(fiber));
         held.resolve();
         await blocking;
-        // A subsequent admitted operation proves the cancelled queue entry drained.
+
         await manager.withAgentActivity("observer", async () => undefined);
         expect(backend.callsFor("click")).toHaveLength(0);
         expect(backend.callsFor("scroll")).toHaveLength(0);
@@ -140,8 +139,6 @@ describe("computer WebSocket handlers", () => {
   it("handles every request method in the RPC group", () => {
     const { handlers } = setup();
 
-    // The stream method is wired in wsRpc where the admission guard lives.
-    // `rearmInput` no longer exists anywhere — input never latches.
     const expected = Object.values(COMPUTER_WS_METHODS).filter(
       (method) => method !== COMPUTER_WS_METHODS.subscribeEvents,
     );
@@ -170,7 +167,7 @@ describe("computer WebSocket handlers", () => {
     );
 
     expect(result.action).toBe("computer_select_text");
-    // The fake's read-back is the selected substring of the Display value "0".
+
     expect(result.value).toBe("0");
     const calls = backend.callsFor("selectText");
     expect(calls).toHaveLength(1);

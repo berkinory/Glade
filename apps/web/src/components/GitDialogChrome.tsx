@@ -1,9 +1,3 @@
-// FILE: GitDialogChrome.tsx
-// Purpose: The shared shell of every git dialog (Create PR, Commit) — popup sizing and
-//          submit chord, the branch heading, the borderless message fields, and the
-//          bottom action rows with their "why is this unavailable" tooltip.
-// Layer: Git dialog UI primitive
-
 import type { ReactNode } from "react";
 import {
   Dialog,
@@ -16,10 +10,6 @@ import {
 import { Popover, PopoverPopup, PopoverTrigger } from "~/components/ui/popover";
 import { cn } from "~/lib/utils";
 
-/**
- * Popup shell shared by the git dialogs: same width, no close button, and ⌘/Ctrl+↵
- * runs the dialog's primary action.
- */
 export function GitDialogShell({
   open,
   onOpenChange,
@@ -49,7 +39,6 @@ export function GitDialogShell({
   );
 }
 
-/** Muted context line (branch flow, dialog kind) above the branch the action targets. */
 export function GitDialogHeading({
   eyebrow,
   eyebrowTrailing,
@@ -59,7 +48,7 @@ export function GitDialogHeading({
   eyebrow: ReactNode;
   eyebrowTrailing?: ReactNode;
   subject: string;
-  /** Marks a subject the dialog will derive rather than one that already exists. */
+
   subjectMuted?: boolean;
 }) {
   return (
@@ -80,16 +69,13 @@ export function GitDialogHeading({
   );
 }
 
-/** Body between the heading and the action rows. */
 export function GitDialogBody({ children }: { children: ReactNode }) {
   return <DialogPanel className="space-y-1 pt-2">{children}</DialogPanel>;
 }
 
-/** Borderless authoring field (PR title/description, commit message). */
 export const GIT_DIALOG_FIELD_CLASS =
   "w-full bg-transparent py-1 font-system-ui text-ui leading-snug outline-none placeholder:text-muted-foreground/70";
 
-/** Hairline-separated action strip pinned to the bottom of a git dialog. */
 export function GitDialogActionList({ children }: { children: ReactNode }) {
   return <div className="border-[color:var(--color-border)] border-t p-2">{children}</div>;
 }
@@ -105,7 +91,7 @@ export function GitDialogActionRow({
 }: {
   highlighted?: boolean;
   disabled?: boolean;
-  /** Shown as a hover tooltip while the row is disabled. */
+
   disabledReason?: string | null;
   onClick: () => void;
   icon: ReactNode;
@@ -134,7 +120,6 @@ export function GitDialogActionRow({
     return row;
   }
 
-  // The disabled button drops pointer events, so the trigger span owns the hover.
   return (
     <Popover>
       <PopoverTrigger

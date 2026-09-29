@@ -8,7 +8,6 @@ type TurnTiming = {
   firstWrite?: number;
 };
 
-/** Opt-in local timing only: no screenshots, payloads, or model context. */
 class ComputerTurnTimings {
   private readonly turns = new Map<string, TurnTiming>();
 
@@ -37,8 +36,8 @@ class ComputerTurnTimings {
     const key = JSON.stringify([threadId, turnId]);
     const state = this.turns.get(key)!;
     const started = this.now();
-    // Capture the preceding observation at dispatch, not completion: a
-    // concurrent read must not produce a negative observe-to-write interval.
+    // Capture the preceding observation at dispatch, not completion: a concurrent read must not produce
+    // a negative observe-to-write interval.
     const observation = state.lastObservation;
     return (completed: boolean) => {
       if (!completed || this.turns.get(key) !== state) return;

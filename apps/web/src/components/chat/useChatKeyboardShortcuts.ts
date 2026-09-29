@@ -182,7 +182,7 @@ export function useChatKeyboardShortcuts({
 
     const handler = (event: globalThis.KeyboardEvent) => {
       if (!activeThreadId || event.defaultPrevented) return;
-      // Mirror terminal interrupt semantics without stealing regular copy shortcuts.
+
       if (
         hasLiveTurn &&
         isMacNavigatorPlatform() &&
@@ -198,12 +198,7 @@ export function useChatKeyboardShortcuts({
         onInterruptFromStopControl();
         return;
       }
-      // Ctrl+B mirrors the native CLI: background all foreground running
-      // subagents. Literal Ctrl on every platform, but stays out of the
-      // terminal, where Ctrl+B is real shell input (readline cursor-back,
-      // tmux prefix), and out of text-editing surfaces, where Ctrl+B is the
-      // native macOS "move cursor back" binding. Silent no-op (event
-      // untouched) when nothing qualifies.
+
       if (
         event.ctrlKey &&
         !event.metaKey &&
@@ -248,8 +243,6 @@ export function useChatKeyboardShortcuts({
       }
 
       if (command === "chat.find") {
-        // The editor lives in a shadow root. Let its own find handler receive
-        // the shortcut before this capture-phase chat handler consumes it.
         if (
           event
             .composedPath()
@@ -437,10 +430,7 @@ export function useChatKeyboardShortcuts({
           commitAndPushTriggerRef.current();
           return;
         }
-        // No registered trigger inside a git-enabled thread means the action just
-        // isn't runnable right now (clean tree, behind upstream, action in flight)
-        // — tell the user instead of eating the chord silently. Outside git threads
-        // the chord falls through untouched.
+
         if (showGitActions && isGitRepo) {
           event.preventDefault();
           event.stopPropagation();
@@ -463,8 +453,8 @@ export function useChatKeyboardShortcuts({
       if (command === "device.toggle") {
         event.preventDefault();
         event.stopPropagation();
-        // Unlike the browser this works in a plain tab, but only against a macOS
-        // server; the surface leaves the handler unwired when it cannot host one.
+        // Unlike the browser this works in a plain tab, but only against a macOS server; the surface leaves
+        // the handler unwired when it cannot host one.
         onToggleDevicePanel?.();
         return;
       }
@@ -478,8 +468,6 @@ export function useChatKeyboardShortcuts({
         return;
       }
 
-      // The handler already bailed out when no thread is open, so the active thread id
-      // is always the one the user is looking at (the focused pane when split).
       if (command === "thread.copyId") {
         event.preventDefault();
         event.stopPropagation();

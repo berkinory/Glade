@@ -13,7 +13,7 @@ export type DiffPanelMode = "inline" | "sheet" | "sidebar" | "floating";
 
 function getDiffPanelHeaderRowClassName(mode: DiffPanelMode) {
   const shouldUseDragRegion = isElectron && mode !== "sheet" && mode !== "floating";
-  // Match RightDock tab strip inset (`px-1.5`) so picker triggers line up under dock tabs.
+
   return cn(
     "flex w-full min-w-0 items-center gap-1.5 px-1.5",
     CHAT_SURFACE_HEADER_HEIGHT_CLASS,

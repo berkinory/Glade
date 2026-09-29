@@ -1,21 +1,8 @@
 import { Schema } from "effect";
 
-/**
- * Contract surface for the cua-driver browser tool family — the CDP route
- * exposed as `computer_browser_*` on the agent gateway. These are NOT the
- * integrated `browser_*` automation tools (see `browserAutomation*`): the
- * integrated surface owns a Glade-managed browser home, while this family
- * dispatches through the desktop driver's CDP engine, which is the only route
- * that reaches browsers the driver launched or an approved existing profile.
- *
- * The driver is authoritative for opaque capabilities: `target_id` is minted
- * by `get_browser_state`, `tab_id` and page refs are scoped to that session,
- * and refs die on navigation. Nothing here may interpret a browser target as
- * a desktop window id, and nothing here may trust a caller-provided session,
- * transport, or ownership field — the host injects those.
- */
+// Nothing here may interpret a browser target as a desktop window id, and nothing here may trust a
+// caller-provided session, transport, or ownership field — the host injects those.
 
-/** Gateway names in registration order; each maps to exactly one driver tool. */
 export const COMPUTER_BROWSER_TOOL_NAMES = [
   "computer_browser_state",
   "computer_browser_prepare",
@@ -31,12 +18,6 @@ export const COMPUTER_BROWSER_TOOL_NAMES = [
 
 export type ComputerBrowserToolName = (typeof COMPUTER_BROWSER_TOOL_NAMES)[number];
 
-/**
- * The pinned driver's closed refusal vocabulary, mirrored for consumers that
- * branch on `structuredContent.refusal.code`. Additive-only upstream; a code
- * outside this set must still surface verbatim, never be coerced into another
- * code or dropped.
- */
 export const COMPUTER_BROWSER_REFUSAL_CODES = [
   "browser_route_unavailable",
   "browser_requires_setup",
@@ -65,32 +46,14 @@ export const ComputerBrowserRefusal = Schema.Struct({
 });
 export type ComputerBrowserRefusal = typeof ComputerBrowserRefusal.Type;
 
-/**
- * What a `status:"refused"` call looks like inside `structuredContent`. The
- * driver keeps `isError` unset for deliberate refusals — the refusal IS the
- * result — so gateways must branch on `structuredContent.status`, not on
- * protocol error plumbing.
- */
 export const ComputerBrowserRefusedContent = Schema.Struct({
   status: Schema.Literal("refused"),
   refusal: ComputerBrowserRefusal,
 });
 export type ComputerBrowserRefusedContent = typeof ComputerBrowserRefusedContent.Type;
 
-/**
- * `structuredContent.status` values the pinned driver emits across the
- * browser family. `completed` marks terminal successes whose payload shape is
- * per-tool; tools may also emit other success markers, so treat the set as
- * open — the only status a consumer may assume is `refused`.
- */
 export const ComputerBrowserResultStatus = Schema.String;
 
-/**
- * The driver returns browser state (`get_browser_state`) as structured
- * content containing at least a minted `target_id` and a `tabs` inventory.
- * Everything beyond that is engine-version data: this schema declares the
- * fields Glade itself reads and leaves the rest opaque.
- */
 export const ComputerBrowserTabInfo = Schema.Struct({
   tab_id: Schema.String,
 });
@@ -102,7 +65,6 @@ export const ComputerBrowserState = Schema.Struct({
 });
 export type ComputerBrowserState = typeof ComputerBrowserState.Type;
 
-/** Tool-name → driver-name mapping. Kept next to the names it constrains. */
 export const COMPUTER_BROWSER_DRIVER_NAMES: Record<ComputerBrowserToolName, string> = {
   computer_browser_state: "get_browser_state",
   computer_browser_prepare: "browser_prepare",

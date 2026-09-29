@@ -30,18 +30,8 @@ export function resolveLatestProjectTargetId(
   return resolveUsableProjectId(projects, latestProjectId);
 }
 
-/**
- * Last time each project was used, keyed by project id (see
- * `createProjectLastActivityAtSelector`). Projects absent from the map have no threads yet.
- */
 export type ProjectLastActivityAt = ReadonlyMap<ProjectId, string>;
 
-/**
- * Ranks a project by when it was last *used* — the newest user message across its threads — and
- * only falls back to its metadata timestamps when it has no threads at all. Ranking by
- * `Project.updatedAt` alone would order by "most recently created/renamed project", which is not
- * what "last used project" means to the user.
- */
 function projectRecencyKey(project: Project, lastActivityAt: ProjectLastActivityAt): string {
   return lastActivityAt.get(project.id) ?? project.updatedAt ?? project.createdAt ?? "";
 }
@@ -69,17 +59,13 @@ export function resolveLatestProjectTargetIdWithFallback(
 
 export interface NewThreadTarget {
   readonly projectId: ProjectId;
-  /**
-   * Whether the new thread should inherit the active surface's branch/worktree/env.
-   * True only when we target the focused project; on the latest-project fallback that
-   * context belongs to a project no longer in view, so we defer to its own defaults.
-   */
+
   readonly inheritContext: boolean;
 }
 
-// Single rule for which project a global "new thread" action targets: the focused project
-// when one is usable, otherwise the most recently used project. Shared by click, palette,
-// and keyboard entry points so they never disagree on the fallback.
+// Single rule for which project a global "new thread" action targets: the focused project when one
+// is usable, otherwise the most recently used project. Shared by click, palette, and keyboard entry
+// points so they never disagree on the fallback.
 export function resolveNewThreadTarget(input: {
   currentProjectId: ProjectId | null;
   latestUsableProjectId: ProjectId | null;

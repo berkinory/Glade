@@ -13,7 +13,6 @@ import {
 import { DESKTOP_IPC_CHANNELS } from "./ipcChannels";
 import { stopNativeHelper } from "./stopNativeHelper";
 
-/** Channel carrying live JPEG frames to the renderer: {windowId, seq, jpeg}. */
 const COMPUTER_PREVIEW_FRAME_CHANNEL = DESKTOP_IPC_CHANNELS.computerPreviewFrame;
 
 const FRAME_TAP_MAX_FRAME_BYTES = 4 * 1024 * 1024;
@@ -49,12 +48,6 @@ function tapTargetKey(target: CuaPreviewTarget): string {
   return `${cuaComputerTaskKey(target.task)}:${target.pid}:${target.windowId}`;
 }
 
-/**
- * One task, one target, one helper process. Frames travel helper -> unix
- * socket -> renderer; they never enter the driver request path or its
- * operation queue. A dead tap stays dead for its target: update() for the
- * same key never respawns it.
- */
 export class ComputerFrameTap implements ComputerFrameTapHost {
   private desired: CuaPreviewTarget | undefined;
   private active: ActiveTap | undefined;
@@ -89,8 +82,7 @@ export class ComputerFrameTap implements ComputerFrameTapHost {
       (task.turnId === undefined || candidate.turnId === task.turnId);
     if (this.desired && !matches(this.desired.task)) return;
     if (!this.desired && this.active && !matches(this.active.task)) return;
-    // The task formally ended; its failure memory ends with it. Without a
-    // turnId the end covers every turn of the thread.
+
     const deadPrefix =
       task.turnId === undefined
         ? `[${JSON.stringify(task.threadId)},`
@@ -239,14 +231,13 @@ export class ComputerFrameTap implements ComputerFrameTapHost {
     };
     const tap = state;
     child.on("error", (error) => this.kill(tap, error));
-    // Helper exit ends the tap no matter the cause: the protocol has no
-    // graceful-stop event, so every exit is terminal for this target.
+
     child.once("exit", () => this.kill(tap, undefined));
     child.once("close", () => lines.close());
     child.stderr?.resume();
     lines.on("line", (line) => this.helperLine(tap, line));
-    // Claim the slot before returning: a helper connect racing the caller's
-    // own assignment would otherwise be rejected as an unknown peer.
+    // Claim the slot before returning: a helper connect racing the caller's own assignment would
+    // otherwise be rejected as an unknown peer.
     this.active = tap;
     return tap;
   }
@@ -300,12 +291,9 @@ export class ComputerFrameTap implements ComputerFrameTapHost {
       if (message.type === "error") {
         this.kill(state, new Error(`Computer frame tap: ${message.code ?? "capture failed"}`));
       }
-    } catch {
-      /* Only protocol lines emitted by the owned helper are consumed. */
-    }
+    } catch {}
   }
 
-  /** Unexpected helper death poisons only this target; retire() kills are exempt. */
   private kill(state: ActiveTap, error: unknown): void {
     const wasExited = state.exited;
     state.exited = true;

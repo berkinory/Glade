@@ -21,9 +21,7 @@ function isErrnoExceptionWithCode(cause: unknown): cause is {
 const closeServer = (server: Net.Server) => {
   try {
     server.close();
-  } catch {
-    // Ignore close failures during cleanup.
-  }
+  } catch {}
 };
 
 const tryReservePort = (port: number): Effect.Effect<number, NetError> =>
@@ -61,39 +59,19 @@ const tryReservePort = (port: number): Effect.Effect<number, NetError> =>
   });
 
 export interface NetServiceShape {
-  /**
-   * Returns true when a TCP server can bind to {host, port}.
-   */
   readonly canListenOnHost: (port: number, host: string) => Effect.Effect<boolean>;
 
-  /**
-   * Checks loopback availability on both IPv4 and IPv6 localhost addresses.
-   */
   readonly isPortAvailableOnLoopback: (port: number) => Effect.Effect<boolean>;
 
-  /**
-   * Reserve an ephemeral loopback port and release it immediately.
-   */
   readonly reserveLoopbackPort: (host?: string) => Effect.Effect<number, NetError>;
 
-  /**
-   * Resolve an available listening port, preferring the provided port first.
-   */
   readonly findAvailablePort: (preferred: number) => Effect.Effect<number, NetError>;
 }
 
-/**
- * NetService - Service tag for startup networking helpers.
- */
 export class NetService extends ServiceMap.Service<NetService, NetServiceShape>()(
   "@glade/shared/Net/NetService",
 ) {
   static readonly layer = Layer.sync(NetService, () => {
-    /**
-     * Returns true when a TCP server can bind to {host, port}.
-     * `EADDRNOTAVAIL` is treated as available so IPv6-absent hosts don't fail
-     * loopback availability checks.
-     */
     const canListenOnHost = (port: number, host: string): Effect.Effect<boolean> =>
       Effect.callback<boolean>((resume) => {
         const server = Net.createServer();
@@ -128,10 +106,6 @@ export class NetService extends ServiceMap.Service<NetService, NetServiceShape>(
         });
       });
 
-    /**
-     * Reserve an ephemeral loopback port and release it immediately.
-     * Returns the reserved port number.
-     */
     const reserveLoopbackPort = (host = "127.0.0.1"): Effect.Effect<number, NetError> =>
       Effect.callback<number, NetError>((resume) => {
         const probe = Net.createServer();

@@ -614,8 +614,7 @@ describe("Codex app-server teardown", () => {
     await Promise.resolve();
     expect(revokeSessionToken).toHaveBeenCalledOnce();
     expect(teardownProcessTree).toHaveBeenCalledTimes(1);
-    // Unroutable immediately: follow-ups must fall through to thread/resume
-    // instead of writing into the dying process's stdin.
+
     expect(manager.hasSession(threadId)).toBe(false);
     expect(exitProven).toBe(false);
 
@@ -726,18 +725,15 @@ describe("codex CLI version gate", () => {
     const { assertSupportedCodexCliVersion, reset } = __codexCliVersionGateTesting;
     reset();
     try {
-      // Concurrent session starts must share one in-flight probe.
       await Promise.all([
         assertSupportedCodexCliVersion({ binaryPath, cwd: dir, homePath }),
         assertSupportedCodexCliVersion({ binaryPath, cwd: dir, homePath }),
       ]);
       expect(probeCount()).toBe(1);
 
-      // A later start/resume reuses the cached verdict instead of spawning again.
       await assertSupportedCodexCliVersion({ binaryPath, cwd: dir, homePath });
       expect(probeCount()).toBe(1);
 
-      // The per-call working-directory precondition is never served from the cache.
       await expect(
         assertSupportedCodexCliVersion({
           binaryPath,
@@ -747,7 +743,6 @@ describe("codex CLI version gate", () => {
       ).rejects.toThrow(formatMissingCodexWorkingDirectoryError(path.join(dir, "missing")));
       expect(probeCount()).toBe(1);
 
-      // An expired verdict re-probes.
       reset();
       await assertSupportedCodexCliVersion({ binaryPath, cwd: dir, homePath });
       expect(probeCount()).toBe(2);
@@ -777,7 +772,6 @@ describe("codex CLI version gate", () => {
     const { assertSupportedCodexCliVersion, reset } = __codexCliVersionGateTesting;
     reset();
     try {
-      // Preserve compatibility with custom development builds for ordinary sessions.
       await assertSupportedCodexCliVersion({ binaryPath, cwd: dir, homePath });
       await expect(
         assertSupportedCodexCliVersion({
@@ -806,10 +800,6 @@ describe("codex CLI version gate", () => {
   });
 
   it("re-probes when a PATH-resolved codex is replaced behind the same bare name", async () => {
-    // The production default is the bare name `codex`, so the fingerprint is only useful if it
-    // survives PATH resolution. It is taken from the same env object handed to the spawn a few
-    // lines later, which is what keeps it pointed at the binary actually being probed even when
-    // that env carries a login-shell PATH the process itself never had.
     const dir = mkdtempSync(path.join(os.tmpdir(), "glade-codex-version-path-"));
     const homePath = path.join(dir, "codex-home");
     mkdirSync(homePath, { recursive: true });
@@ -826,7 +816,7 @@ describe("codex CLI version gate", () => {
         { mode: 0o755 },
       );
     };
-    // Prepended, so this copy wins over any real codex on the machine.
+
     vi.stubEnv("PATH", `${dir}${path.delimiter}${process.env.PATH ?? ""}`);
 
     const { assertSupportedCodexCliVersion, reset } = __codexCliVersionGateTesting;
@@ -944,8 +934,7 @@ describe("buildCodexProcessEnv", () => {
 
       const overlayHome = path.join(runtimeHome, "codex-home-overlay");
       mkdirSync(overlayHome, { recursive: true });
-      // Links left behind by releases that mirrored SQLite state per file,
-      // including a WAL sidecar whose source Codex has since checkpointed away.
+
       const legacyLinks = ["state_5.sqlite", "thread_history_1.sqlite-wal"];
       for (const entry of legacyLinks) {
         symlinkSync(path.join(tempDir, entry), path.join(overlayHome, entry), "file");
@@ -965,7 +954,7 @@ describe("buildCodexProcessEnv", () => {
         if (entry === "memories_1.sqlite") continue;
         expect(lstatOrUndefined(path.join(overlayHome, entry))).toBeUndefined();
       }
-      // A regular database file in the overlay is not Glade's to destroy.
+
       expect(lstatSync(staleOverlayDbPath).isSymbolicLink()).toBe(false);
       expect(readFileSync(staleOverlayDbPath, "utf8")).toBe("stale-overlay-db");
       const overlayHistoryPath = path.join(overlayHome, "history.jsonl");
@@ -2292,7 +2281,6 @@ describe("respondToRequest", () => {
       "acceptForSession",
     );
 
-    // The command grant is not a tool grant: the tool approval still waits for its own answer.
     expect(context.pendingApprovals.has(mcpRequest.requestId)).toBe(true);
     expect(writeMessage).not.toHaveBeenCalledWith(context, expect.objectContaining({ id: 100 }));
   });
@@ -3153,8 +3141,7 @@ describe("CodexAppServerManager process teardown", () => {
     const concurrentStop = manager.stopSession(threadId);
 
     expect(teardownProcessTree).toHaveBeenCalledTimes(1);
-    // Closed publishes eagerly: the session must become unroutable the moment
-    // stop begins, with teardown proof continuing behind the returned promise.
+
     expect(closedEvents).toEqual(["session/closed"]);
     expect(manager.hasSession(threadId)).toBe(false);
     expect(manager.listSessions()).toHaveLength(0);

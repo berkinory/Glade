@@ -55,7 +55,7 @@ function invalidateActionDetails(queryClient: QueryClient, input: PullRequestAct
       exact: true,
     });
   }
-  // A stack merge can change several PRs in the same repository.
+
   return queryClient.invalidateQueries({
     predicate: (query) => {
       const key = query.queryKey;
@@ -119,14 +119,13 @@ export function pullRequestActionMutationOptions(queryClient: QueryClient) {
           rollback: context.gitRollback,
         });
       }
-      // The command may have reached GitHub even when its response failed.
+
       await Promise.allSettled([
         invalidateActionDetails(queryClient, input),
         queryClient.invalidateQueries(pullRequestGitQueryFilters(input)),
       ]);
     },
     onSuccess: async (result, input) => {
-      // Follow-up reads cannot turn an accepted GitHub action into a failed mutation.
       await Promise.allSettled([
         invalidateActionDetails(queryClient, input),
         queryClient.invalidateQueries(pullRequestGitQueryFilters(input, result.workspaceRoot)),

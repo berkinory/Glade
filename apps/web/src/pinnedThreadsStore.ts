@@ -1,8 +1,3 @@
-// FILE: pinnedThreadsStore.ts
-// Purpose: Persists the globally pinned chat thread ids used by the sidebar.
-// Layer: UI state store
-// Exports: usePinnedThreadsStore
-
 import { type ThreadId } from "@glade/contracts";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";

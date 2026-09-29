@@ -1,10 +1,3 @@
-/**
- * ServerSettings - Server-authoritative settings persistence.
- *
- * Owns settings that affect server-side behavior. The web app can continue to
- * keep UI-only preferences in local storage while these values become durable
- * and process-authoritative on the server.
- */
 import {
   DEFAULT_GIT_TEXT_GENERATION_MODEL,
   DEFAULT_MODEL_BY_PROVIDER,

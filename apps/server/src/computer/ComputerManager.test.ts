@@ -39,10 +39,6 @@ function deferred(): {
   return { promise, resolve };
 }
 
-/**
- * A calculator buried under a full-screen browser: the live failure window
- * scoping exists for, where a bare coordinate click lands on the browser.
- */
 function coveredCalculatorWindows(): readonly ComputerWindow[] {
   return [
     {
@@ -317,14 +313,6 @@ describe("ComputerManager background task ownership", () => {
 });
 
 describe("ComputerManager and FakeComputerBackend", () => {
-  /**
-   * `lastError` and availability messages are schema-bounded at 2048
-   * characters, and both are composed from backend error text nothing here
-   * controls. One oversized D-Bus diagnostic used to fail the encode of the
-   * whole getThreadState payload — breaking thread-state pushes for that
-   * thread until the message changed.
-   */
-
   it("dispatches a supported semantic click once and never retries an uncertain AX effect", async () => {
     const backend = Object.assign(new FakeComputerBackend(), {
       agentDialect: "macos" as const,
@@ -370,7 +358,7 @@ describe("ComputerManager and FakeComputerBackend", () => {
       action: "computer_perform_action",
       point: { x: 1_180, y: 228 },
     });
-    // The fake's read-back is the substring the range covers: "468"[0..2].
+
     await expect(
       manager.selectText("thread-1", { label: "Display" }, { start: 0, length: 2 }),
     ).resolves.toMatchObject({
@@ -385,10 +373,6 @@ describe("ComputerManager and FakeComputerBackend", () => {
       code: "computer_target_invalid",
     });
 
-    // A bare window id is a real scroll target — the window itself, at its
-    // own point — while for the semantic writes below a target that names no
-    // control refuses up front with what is missing, instead of matching
-    // every node in scope and dumping the whole tree as an ambiguity refusal.
     await expect(
       manager.scroll("thread-1", { windowId: "fake-calculator" }, 0, 300),
     ).resolves.toMatchObject({
@@ -425,21 +409,16 @@ describe("ComputerManager and FakeComputerBackend", () => {
     await expect(covered).rejects.toMatchObject({
       code: "computer_target_occluded",
     });
-    // The refusal has to name what is in the way, or the model has nothing to
-    // act on but a retry.
+
     await expect(covered).rejects.toThrow(/Browser/);
-    // Nothing was injected: the point of refusing is that no click lands in the
-    // covering window.
+
     expect(backend.callsFor("click")).toHaveLength(0);
     expect(backend.callsFor("focusWindow")).toHaveLength(0);
 
-    // A label target resolves to the same buried window and is refused too.
     await expect(
       manager.click("thread-1", { label: "Calculate", role: "button" }),
     ).rejects.toMatchObject({ code: "computer_target_occluded" });
 
-    // A point the covering window does not contain is safe to click without a
-    // raise, so it goes through.
     await expect(
       manager.click("thread-1", { x: 1_100, y: 200, windowId: "fake-browser" }),
     ).resolves.toMatchObject({
@@ -467,8 +446,6 @@ describe("ComputerManager and FakeComputerBackend", () => {
       message: expect.stringMatching(/another conversation; no input was sent\. Do not retry/),
     });
 
-    // Watching is safe while someone else drives, so nothing read-only is gated
-    // — including the blocked thread's own state.
     await expect(manager.listWindows()).resolves.toMatchObject({
       computerId: backend.computerId,
     });
@@ -485,8 +462,6 @@ describe("ComputerManager and FakeComputerBackend", () => {
       controlledByOtherThread: false,
     });
 
-    // The human at the pane is not a competing agent: their input carries no
-    // thread, and it neither waits for the lease nor takes it.
     await expect(manager.click(undefined, { x: 30, y: 30 })).resolves.toMatchObject({
       action: "computer_click",
     });
@@ -494,7 +469,6 @@ describe("ComputerManager and FakeComputerBackend", () => {
       code: "computer_controlled_by_other_thread",
     });
 
-    // Both panels learned about the handover without polling.
     expect(
       states.some((state) => state.threadId === "thread-b" && state.controlledByOtherThread),
     ).toBe(true);
@@ -584,8 +558,7 @@ describe("ComputerManager and FakeComputerBackend", () => {
     await expect(manager.typeText("thread-b", "hi")).resolves.toMatchObject({
       action: "computer_type_text",
     });
-    // The release promise must settle while endTask remains pending, so it
-    // cannot wedge lifecycle ingestion or the owning action's finalizer.
+
     let released = false;
     void release.then(() => {
       released = true;
@@ -597,8 +570,7 @@ describe("ComputerManager and FakeComputerBackend", () => {
     }
     await release;
     expect(backend.endTask).toHaveBeenCalledWith("thread-a", "turn-one");
-    // The failure is still evidence: a stale preview is reported on the
-    // owner's state rather than silently leaked.
+
     await vi.waitFor(() =>
       expect(
         states.some(
@@ -610,12 +582,9 @@ describe("ComputerManager and FakeComputerBackend", () => {
     await manager.dispose();
   });
 
-  /**
-   * The release runtime ingestion sends on session.exited can land while the
-   * dead session's last call is still executing — a gateway call cannot be
-   * aborted. Handing the desktop over at that moment would put two threads on
-   * the same pointer, so the release waits for the call to drain.
-   */
+  // The release runtime ingestion sends on session.exited can land while the dead session's last call
+  // is still executing — a gateway call cannot be aborted. Handing the desktop over at that moment
+  // would put two threads on the same pointer, so the release waits for the call to drain.
   it("defers a release until the owner's in-flight call drains", async () => {
     const backend = new FakeComputerBackend();
     const manager = new ComputerManager({ backend });
@@ -632,7 +601,7 @@ describe("ComputerManager and FakeComputerBackend", () => {
     await started.promise;
 
     await manager.releaseDesktopControl("thread-a");
-    // Still A's desktop: the release is recorded, not applied.
+
     await expect(manager.typeText("thread-b", "hi")).rejects.toThrow(/another conversation/);
     await expect(manager.getThreadState("thread-b")).resolves.toMatchObject({
       controlledByOtherThread: true,
@@ -640,7 +609,7 @@ describe("ComputerManager and FakeComputerBackend", () => {
 
     finish.resolve();
     await inFlight;
-    // The drain completed the release, and told every thread so.
+
     await expect(manager.getThreadState("thread-b")).resolves.toMatchObject({
       controlledByOtherThread: false,
     });
@@ -669,8 +638,8 @@ describe("ComputerManager and FakeComputerBackend", () => {
         await manager.click("thread-a", { x: 10, y: 10 });
         started.resolve();
         await releaseRecorded.promise;
-        // Turn two renews the lease while turn one's release is still only
-        // recorded — the deferred release must not tear the renewal down.
+        // Turn two renews the lease while turn one's release is still only recorded — the deferred release
+        // must not tear the renewal down.
         await manager.withAgentActivity(
           "thread-a",
           () => manager.click("thread-a", { x: 11, y: 11 }),
@@ -688,14 +657,11 @@ describe("ComputerManager and FakeComputerBackend", () => {
     finish.resolve();
     await inFlight;
 
-    // Turn one's deferred release matched the stamped turn and left turn
-    // two's lease alone: the desktop still belongs to thread-a.
     await expect(manager.getThreadState("thread-b")).resolves.toMatchObject({
       controlledByOtherThread: true,
     });
     await expect(manager.typeText("thread-b", "hi")).rejects.toThrow(/another conversation/);
 
-    // The owning turn can still release normally.
     await manager.releaseDesktopControl("thread-a", "turn-2");
     await expect(manager.getThreadState("thread-b")).resolves.toMatchObject({
       controlledByOtherThread: false,
@@ -762,8 +728,6 @@ describe("ComputerManager and FakeComputerBackend", () => {
       /another conversation/,
     );
 
-    // An owner that is mid-call still holds the pointer, however long ago the
-    // call started — the crash this backstop exists for leaves nothing running.
     nowMs = 10_000;
     const started = deferred();
     const finish = deferred();
@@ -788,20 +752,6 @@ describe("ComputerManager and FakeComputerBackend", () => {
     await manager.dispose();
   });
 
-  /**
-   * The same backstop, on the backend that ships: a visible desktop surfaces no
-   * pane, so nothing ever created a runtime record for an agent thread, and the
-   * in-flight guard read zero from a thread that was mid-drag. The desktop could
-   * then be taken from under it by another conversation.
-   */
-
-  /**
-   * Every publish reads the window list, and every window read can report a
-   * change, so one change used to schedule a pass whose own reads scheduled the
-   * next — multiplied by thread count, on a desktop where nothing more than a
-   * clock title was moving.
-   */
-
   it("drops late frames and state updates after a thread is removed", async () => {
     const backend = new FakeComputerBackend();
     const manager = new ComputerManager({ backend });
@@ -825,10 +775,6 @@ describe("ComputerManager and FakeComputerBackend", () => {
   });
 
   it("refuses a window-scoped click when the desktop reports no geometry", async () => {
-    // Passing window_id is a request for a guarantee — that the point lands in
-    // that window. Without bounds nothing can check it, and clicking anyway
-    // would drop the guarantee silently instead of telling the agent to drop
-    // the scope or target by label.
     const backend = new FakeComputerBackend({
       windows: [
         {
@@ -854,9 +800,6 @@ describe("ComputerManager and FakeComputerBackend", () => {
     const backend = new FakeComputerBackend();
     const manager = new ComputerManager({ backend, actionSettleMs: 0 });
 
-    // No window holds the agent's focus; the human's browser is active and
-    // topmost. Action observation must widen to the workspace rather than
-    // zoom into the human's window.
     backend.emitWindowsChanged([
       {
         id: "human-browser",
@@ -877,8 +820,6 @@ describe("ComputerManager and FakeComputerBackend", () => {
       kind: "region",
     });
 
-    // The perception path keeps its wider fallback: an explicit untargeted
-    // screenshot request may still show the active window.
     const perception = await manager.captureFocusedWindow();
     expect(perception.windowId).toBe("human-browser");
 
@@ -918,8 +859,6 @@ describe("ComputerManager and FakeComputerBackend", () => {
       "over",
     );
 
-    // The same overlap with no stacking order: a guess could photograph a
-    // window the action never touched, so the workspace fallback answers.
     backend.emitWindowsChanged(overlapping(false));
     const widened = await manager.captureActionScreenshot(undefined, {
       x: 400,
@@ -935,18 +874,6 @@ describe("ComputerManager and FakeComputerBackend", () => {
     await manager.dispose();
   });
 
-  /**
-   * The first backend call establishes the backend.
-   * Panels are seeded for every chat the web app renders, so the seeding path
-   * must stay passive, and the first real use is what pays.
-   */
-
-  /**
-   * Image tokens scale with pixel area, and a mutating action attaches a shot
-   * every time, so the observation spends a quarter of the perception budget.
-   * The mapping metadata is what keeps that free: the agent converts pixels to
-   * desktop coordinates through region and scale either way.
-   */
   it("downscales large action observations while keeping the coordinate mapping exact", async () => {
     const tall = COMPUTER_ACTION_OBSERVATION_MAX_DIMENSION + 1_000;
     const backend = new FakeComputerBackend({
@@ -974,18 +901,14 @@ describe("ComputerManager and FakeComputerBackend", () => {
       throw new Error("the action observation carried no screenshot");
     }
     const { region, scale, width, height } = observed.screenshot;
-    // A window taller than the budget scales down to it, and the region still
-    // names the window's own rect, so screenshot (x, y) maps back exactly.
+
     expect(scale).toBeCloseTo(COMPUTER_ACTION_OBSERVATION_MAX_DIMENSION / tall, 10);
     expect(region).toEqual({ x: 100, y: 100, width: 1_280, height: tall });
-    // The middle of the image is still the middle of the window: region.x +
-    // screenshot_x / scale, the mapping every computer tool describes.
+
     if (region === undefined || scale === undefined) throw new Error("no coordinate mapping");
     expect(region.x + width / 2 / scale).toBeCloseTo(region.x + region.width / 2, 0);
     expect(region.y + height / 2 / scale).toBeCloseTo(region.y + region.height / 2, 0);
 
-    // Perception keeps the full budget: zooming back in is how the agent reads
-    // detail the observation lost.
     await manager.captureFocusedWindow();
     expect(backend.callsFor("captureScreenshot").at(-1)?.args[0]).toEqual({
       kind: "window",
@@ -995,12 +918,10 @@ describe("ComputerManager and FakeComputerBackend", () => {
     await manager.dispose();
   });
 
-  /**
-   * A manager whose travel measurement is scripted, so the tests exercise the
-   * closed loop rather than the correlator (which has its own unit tests). Each
-   * queued screenshot makes one capture's bytes differ from the last, because
-   * byte-identical captures short-circuit to "did not move" before measuring.
-   */
+  // A manager whose travel measurement is scripted, so the tests exercise the closed loop rather than
+  // the correlator (which has its own unit tests). Each queued screenshot makes one capture's bytes
+  // differ from the last, because byte-identical captures short-circuit to "did not move" before
+  // measuring.
   function calibratedScrollFixture(
     travels: readonly (number | undefined)[],
     backend = new FakeComputerBackend(),
@@ -1016,10 +937,6 @@ describe("ComputerManager and FakeComputerBackend", () => {
   }
 
   it("converts measured travel out of capture pixels before reporting or learning it", async () => {
-    // A window wider than the observation budget is captured downscaled, so the
-    // correlator's answer is in capture pixels and means less travel than it
-    // says. Reporting it unconverted would teach the store a gearing that is
-    // really the zoom factor.
     const backend = new FakeComputerBackend({
       windows: [
         {
@@ -1035,12 +952,10 @@ describe("ComputerManager and FakeComputerBackend", () => {
     });
     const { manager } = calibratedScrollFixture([800], backend);
 
-    // Probe-sized on purpose, so the request goes out in one measured leg.
     const result = await manager.scrollCalibrated("thread-1", { x: 900, y: 500 }, 0, 40, {
       observe: true,
     });
 
-    // 1536/1920 = 0.8, so 800 capture pixels of travel are 1000 logical ones.
     expect(result.result.scroll?.traveledY).toBe(1_000);
     expect(result.result.scroll?.gearing).toBe(25);
 
@@ -1048,9 +963,6 @@ describe("ComputerManager and FakeComputerBackend", () => {
   });
 
   it("suppresses a wrong-way measurement instead of reporting or learning it", async () => {
-    // The live footer-alias case: the correlator locked onto repetitive
-    // content and answered with travel opposing the injection. That number
-    // must reach neither the caller nor the store.
     const { backend, manager } = calibratedScrollFixture([-752, undefined]);
 
     const result = await manager.scrollCalibrated("thread-1", { x: 1_100, y: 200 }, 0, 100, {
@@ -1070,12 +982,6 @@ describe("ComputerManager and FakeComputerBackend", () => {
       vi.restoreAllMocks();
     });
 
-    /**
-     * The scripted-measurement fixture with a nonzero settle, so whether the
-     * leg waited is visible on the timer. Screenshots are queued one per
-     * capture so byte identity cannot short-circuit the measurement before it
-     * runs.
-     */
     function settleScrollFixture(
       travels: readonly (number | undefined)[],
       backend = new FakeComputerBackend(),
@@ -1097,11 +1003,6 @@ describe("ComputerManager and FakeComputerBackend", () => {
       readonly mock: { readonly calls: readonly (readonly unknown[])[] };
     }) => spy.mock.calls.filter((call) => call[1] === 60).length;
 
-    /**
-     * One scroll that teaches the window's gearing the settled way — the flag
-     * is off, so the probe and the remainder both wait — after which the route
-     * carries a real prediction and further legs can prove arrival early.
-     */
     const teachGearing = async (manager: ComputerManager) => {
       await manager.scrollCalibrated("thread-1", { x: 1_100, y: 200 }, 0, 400, { observe: true });
     };
@@ -1126,9 +1027,6 @@ describe("ComputerManager and FakeComputerBackend", () => {
         observe: true,
       });
 
-      // The measured arrival waives the wait, but the backend's own verdict
-      // stands: the observation proving travel is not the driver reporting
-      // the delivery verified.
       expect(settleWaited(spy)).toBe(0);
       expect(result.result.scroll?.traveledY).toBe(400);
       expect(result.result.delivery).toEqual({
@@ -1272,10 +1170,6 @@ function foregroundRaisedIds(backend: FakeComputerBackend): readonly unknown[] {
   return backend.callsFor("raiseWindow").map((call) => call.args[0]);
 }
 
-/**
- * The task-text authorization every raise now needs. These suites exercise the
- * raise/restore mechanics themselves; the never-raise gate has its own tests.
- */
 const VISIBLE_USE_AUTHORIZED = { userRequestedVisibleUse: true } as const;
 
 describe("ComputerManager foreground containment", () => {
@@ -1288,7 +1182,6 @@ describe("ComputerManager foreground containment", () => {
       now: () => clock,
     });
     try {
-      // The human drives the desktop through the pane: no owning thread.
       await manager.click(undefined, { x: 100, y: 100 });
       const refused = await manager
         .foregroundWithRestore("thread-1", "fake-calculator", undefined, VISIBLE_USE_AUTHORIZED)
@@ -1298,7 +1191,7 @@ describe("ComputerManager foreground containment", () => {
         effect: "not-dispatched",
       });
       expect(foregroundRaisedIds(backend)).toEqual([]);
-      // Quiet for the guard window: the same authorized raise now runs.
+
       clock += 2_001;
       const result = await manager.foregroundWithRestore(
         "thread-1",
@@ -1320,7 +1213,6 @@ describe("ComputerManager foregroundWithRestore", () => {
     const manager = new ComputerManager({ backend, actionSettleMs: 0 });
     const actions = foregroundRestoreActions(manager);
     try {
-      // The default fake listing is topmost-first: fake-terminal is frontmost.
       const result = await manager.foregroundWithRestore(
         "thread-1",
         "fake-calculator",
@@ -1358,8 +1250,7 @@ describe("ComputerManager foregroundWithRestore", () => {
           VISIBLE_USE_AUTHORIZED,
         ),
       ).rejects.toThrow("input blew up");
-      // The desktop is put back even though the input failed — and a failed
-      // action emits no computer.action event, as on every other path.
+
       expect(foregroundRaisedIds(backend)).toEqual(["fake-calculator", "fake-terminal"]);
       expect(actions).toHaveLength(0);
     } finally {
@@ -1373,20 +1264,17 @@ describe("ComputerManager masked activation", () => {
     vi.unstubAllEnvs();
   });
 
-  /** The canary's two flags, both required before any shield may arm. */
   function armMaskedActivation(apps = "org.kde.kcalc"): void {
     vi.stubEnv("GLADE_CUA_MASKED_ACTIVATION", "1");
     vi.stubEnv("GLADE_CUA_MASKED_APPS", apps);
   }
 
-  /** A macOS-dialect fake with the shield surface present — the CUA shape. */
   function shieldedMacBackend(
     options: ConstructorParameters<typeof FakeComputerBackend>[0] = {},
   ): FakeComputerBackend {
     return new FakeComputerBackend({ agentDialect: "macos", shield: true, ...options });
   }
 
-  /** The engage→raise→restore→release order, as one recorded method list. */
   function shieldExcursionOrder(backend: FakeComputerBackend): readonly string[] {
     return backend.calls
       .filter((call) => ["engageShield", "raiseWindow", "releaseShield"].includes(call.method))
@@ -1408,8 +1296,7 @@ describe("ComputerManager masked activation", () => {
         VISIBLE_USE_AUTHORIZED,
       );
       expect(result.windowId).toBe("fake-calculator");
-      // The mask goes up before the target moves and comes down only after
-      // the previous window is back — the excursion is never visible.
+
       expect(shieldExcursionOrder(backend)).toEqual([
         "engageShield",
         "raiseWindow:fake-calculator",
@@ -1424,7 +1311,7 @@ describe("ComputerManager masked activation", () => {
       });
       const shieldId = (engage.args[0] as { shieldId: string }).shieldId;
       expect(shieldId).toMatch(/^shield-[0-9a-f]{8}$/);
-      // The manager minted the id, so release names the same one.
+
       expect(backend.callsFor("releaseShield").map((call) => call.args[0])).toEqual([shieldId]);
       expect(backend.activeShields()).toEqual([]);
       expect(actions).toHaveLength(1);
@@ -1440,8 +1327,8 @@ describe("ComputerManager masked activation", () => {
 
   it("refuses the activation when the opt-in is armed but no shield surface exists", async () => {
     armMaskedActivation();
-    // A macOS backend whose host build lacks the shield command: the armed
-    // opt-in must fail closed rather than degrade to a visible raise.
+    // A macOS backend whose host build lacks the shield command: the armed opt-in must fail closed
+    // rather than degrade to a visible raise.
     const backend = new FakeComputerBackend({ agentDialect: "macos" });
     const manager = new ComputerManager({ backend, actionSettleMs: 0 });
     try {
@@ -1475,8 +1362,7 @@ describe("ComputerManager masked activation", () => {
           VISIBLE_USE_AUTHORIZED,
         ),
       ).rejects.toThrow("window closed");
-      // The raise failed under an up mask: the finally path still released
-      // it — a shield outlives nothing, not even a dead excursion.
+
       expect(backend.callsFor("releaseShield")).toHaveLength(1);
       expect(backend.activeShields()).toEqual([]);
     } finally {
@@ -1503,8 +1389,6 @@ it("an action resolving after thread removal does not resurrect the thread's sta
   pending.resolve();
   await Promise.allSettled([launching, removing]);
 
-  // The launch's emitAction fired after removal: the tombstone must keep it
-  // from opening a pane or recreating the record the removal deleted.
   expect(events.some((event) => event.type === "computer.open-pane-requested")).toBe(false);
   const statesBefore = events.filter((event) => event.type === "computer.thread-state").length;
   const state = await manager.getThreadState("removed-thread");
@@ -1524,8 +1408,8 @@ it("thread removal completes on a wedged stop — the teardown wait is bounded",
   vi.useFakeTimers();
   try {
     const removing = manager.handleThreadRemoved("wedged");
-    // The host never answers stopInput: only the teardown bound lets the
-    // removal finish — the tombstone and deletions are already held.
+    // The host never answers stopInput: only the teardown bound lets the removal finish — the tombstone
+    // and deletions are already held.
     await vi.advanceTimersByTimeAsync(COMPUTER_CONTROL_ENABLE_TIMEOUT_MS + 1_000);
     await removing;
     expect(backend.stopInput).toHaveBeenCalled();

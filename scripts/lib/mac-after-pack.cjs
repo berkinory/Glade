@@ -1,4 +1,3 @@
-// This interval includes the builder's sanity/fuse preparation before signing.
 const starts = new Map();
 module.exports = (context) => {
   starts.set(context.appOutDir, performance.now());

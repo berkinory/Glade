@@ -10,9 +10,9 @@ export interface ComputerProgressScope {
 
 export interface ComputerProgressAction {
   readonly scope: ComputerProgressScope;
-  /** Stable resolved target identity, excluding observation/screenshot IDs. */
+
   readonly targetKey: string;
-  /** Stable semantic action identity, excluding observation/screenshot IDs. */
+
   readonly actionKey: string;
 }
 
@@ -24,7 +24,7 @@ export interface ComputerProgressOutcome {
 export interface ComputerProgressBlock {
   readonly code: "repeated_computer_refusal" | "repeated_unverified_action";
   readonly message: string;
-  /** This blocked call was not sent; earlier uncertain input may have been. */
+
   readonly effect: "not-dispatched";
   readonly retryable: false;
   readonly previousInputMayHaveTakenEffect: boolean;
@@ -44,9 +44,7 @@ const HISTORY_LIMIT = 12;
 const REFUSAL_LIMIT = 3;
 const CYCLE_REPETITIONS = 3;
 const MAXIMUM_CYCLE_LENGTH = 4;
-// Admission can recover without a desktop action proving progress (for
-// example, another task releases its lease or the user grants a permission).
-// These codes are exempt only when the outcome proves no input was sent.
+
 const TRANSIENT_ADMISSION_CODES = new Set([
   "computer_controlled_by_other_thread",
   "computer_busy",
@@ -67,7 +65,6 @@ const TRANSIENT_ADMISSION_CODES = new Set([
   "auth_sheet_focused",
 ]);
 
-// Retain neither raw arguments nor unbounded strings in long-lived state.
 const digest = (value: string): string => createHash("sha256").update(value).digest("base64url");
 
 const scopeKey = (scope: ComputerProgressScope): string =>
@@ -79,8 +76,6 @@ function appendBounded<T>(entries: T[], value: T): void {
 }
 
 function repeatsUncertainCycle(actions: readonly string[], nextAction: string): boolean {
-  // Preserve the existing limit: two identical uncertain deliveries do not
-  // justify sending a third. Different actions need stronger loop evidence.
   if (actions.at(-1) === nextAction && actions.at(-2) === nextAction) return true;
 
   for (let period = 2; period <= MAXIMUM_CYCLE_LENGTH; period += 1) {
@@ -104,18 +99,12 @@ function repeatsRefusal(refusals: readonly RefusedAction[], action: string): boo
   for (const refusal of refusals) {
     reasons.set(refusal.reason, (reasons.get(refusal.reason) ?? 0) + 1);
   }
-  // A new semantic approach remains available. Once an approach has already
-  // received the repeated refusal, alternating it with another cannot evade it.
+
   return refusals.some(
     (refusal) => refusal.action === action && (reasons.get(refusal.reason) ?? 0) >= REFUSAL_LIMIT,
   );
 }
 
-/**
- * Stops confirmed mutation retry patterns, not ordinary multi-step work.
- * Callers record only completed mutations, never this guard's own refusal.
- * Merely obtaining a fresh observation provides no evidence of progress.
- */
 export class ComputerProgressGuard {
   private readonly scopes = new Map<string, Map<string, TargetHistory>>();
 
@@ -161,8 +150,7 @@ export class ComputerProgressGuard {
       return;
     }
     const refused = outcome.effect === "refused" || outcome.effect === "not-dispatched";
-    // Neither a no-op nor a transient admission failure arms this guard or
-    // erases earlier uncertainty. The admission boundary still enforces them.
+
     if (refused && (!outcome.code || TRANSIENT_ADMISSION_CODES.has(outcome.code))) return;
 
     const key = scopeKey(action.scope);
@@ -185,13 +173,10 @@ export class ComputerProgressGuard {
     if (refused) {
       appendBounded(history.refusals, { action: actionKey, reason: digest(outcome.code!) });
     } else {
-      // An unclassified error may follow dispatch. Do not treat it as proof
-      // that the previous input was harmless or safe to repeat.
       appendBounded(history.uncertainActions, actionKey);
     }
   }
 
-  /** Only an actual observed effect or a successful explicit verification qualifies. */
   recordVerifiedProgress(scope: ComputerProgressScope, targetKey: string): void {
     const key = scopeKey(scope);
     const targets = this.scopes.get(key);

@@ -115,12 +115,11 @@ function shouldAcceptDockWidth({
   nextWidth: number;
   wrapper: HTMLElement;
 }) {
-  // Closing the dock gives the composer more room, so only expansion needs a layout probe.
   if (nextWidth <= currentWidth) return true;
   const previousSidebarWidth = wrapper.style.getPropertyValue("--sidebar-width");
   return canComposerHandlePanelWidth({
     nextWidth,
-    // Scope the width probe to the main composer.
+
     paneScopeId: SINGLE_CHAT_PANE_SCOPE_ID,
     applyWidth: (width) => {
       wrapper.style.setProperty("--sidebar-width", `${width}px`);
@@ -177,13 +176,9 @@ export function SingleChatSurface(props: {
   const draftThread = useComposerDraftStore(
     (store) => store.draftThreadsByThreadId[props.threadId] ?? null,
   );
-  // A registered-but-unpromoted draft is the freeze case: landing a brand-new
-  // chat commits the whole ChatView subtree synchronously. Defer that mount
-  // behind the chat mount loader so the paint is never blocked. Opening an
-  // existing thread keeps today's immediate mount (no draft -> no loader).
+  // Defer that mount behind the chat mount loader so the paint is never blocked.
   const isBrandNewDraftThread = draftThread !== null;
-  // File preview must follow the same runtime cwd as chat markdown, diffs, and git:
-  // worktree-backed threads resolve links against their materialized worktree.
+
   const workspaceRoot = resolveFilePreviewWorkspaceRoot({
     projectCwd: activeProject?.cwd ?? null,
     threadEnvMode: threadWorkspaceMetadata.envMode ?? draftThread?.envMode ?? null,
@@ -221,8 +216,6 @@ export function SingleChatSurface(props: {
     activePane,
   });
 
-  // Bridge the dock's active browser/review pane back into the panelState shape the
-  // chat shell still consumes (diff badge, toggle pressed state, transcript gating).
   const chatPanelState: SplitViewPanePanelState = {
     panel:
       activePane?.kind === "browser"
@@ -273,8 +266,7 @@ export function SingleChatSurface(props: {
       diffFilePath: filePath ?? null,
     });
   };
-  // Stable identities: these feed memoized result rows in the search palette,
-  // so recreating them per render would defeat the rows' React.memo bailout.
+
   const handleOpenWorkspaceSearchFile = useCallback(
     (relativePath: string) => {
       requestImmediateDockHydration("file");
@@ -292,9 +284,6 @@ export function SingleChatSurface(props: {
     [requestImmediateDockHydration, openPane, props.threadId],
   );
 
-  // Ctrl/Cmd+P opens the file-name search palette; Ctrl/Cmd+Shift+F opens the
-  // snippet (content) search. Registered with capture so it wins over page-level
-  // defaults (print, browser find) while the chat surface is mounted.
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.repeat || event.altKey) return;
@@ -323,9 +312,6 @@ export function SingleChatSurface(props: {
     addChatFileComment(props.threadId, comment);
   };
 
-  // Hover warm-up shared by both surfaces' file openers: file contents land in
-  // the React Query cache and the matching Shiki highlighter loads, so the
-  // preview paints instantly on click.
   const prefetchOpenerFile = useCallback(
     (path: string) => {
       if (!workspaceRoot || resolveWorkspaceDirectoryOpenTarget(path, workspaceRoot) !== null) {
@@ -338,10 +324,7 @@ export function SingleChatSurface(props: {
     },
     [workspaceRoot, queryClient],
   );
-  // Chat surface: file references open in the right-dock file pane, while the
-  // workspace root and explicit directory references open in Explorer.
-  // Other references retain the existing dock file preview and external-editor
-  // fallback behavior.
+
   const dockFileOpener = useMemo<WorkspaceFileOpener>(
     () => ({
       openFile: (path) => {
@@ -352,9 +335,7 @@ export function SingleChatSurface(props: {
           requestExplorerReveal(props.threadId, directoryPath);
           return true;
         }
-        // In-workspace references map to relative paths for the file-read RPC;
-        // binary previews in a session's scratch workspace (outside the chat
-        // workspace) open by absolute path through the local-image route.
+
         const targetPath = resolveDockFileOpenTarget(path, workspaceRoot);
         if (!targetPath) {
           return false;
@@ -483,7 +464,6 @@ export function SingleChatSurface(props: {
     [dockState.panes],
   );
 
-  // The pull request pane is a singleton, so at most one tab needs the live state glyph.
   const pullRequestPane = dockState.panes.find(
     (pane) => pane.kind === "pullRequest" && pullRequestDetailInputFromPane(pane) !== null,
   );
@@ -595,11 +575,7 @@ export function SingleChatSurface(props: {
         if (context.runtimeMode === "preview") {
           return <PanelStateMessage>Terminal is sleeping. Restoring shortly.</PanelStateMessage>;
         }
-        // Kept mounted across tab switches; visibility toggles the xterm runtime
-        // instead of detaching/reattaching it (avoids the open-lag + fit flicker).
-        // Also sleep it while the dock is collapsed: a closed dock keeps the pane
-        // mounted (offcanvas is CSS-only), so without this the off-screen terminal
-        // would keep WebGL + resize observers alive for nothing.
+
         return (
           <Suspense fallback={<PanelStateMessage loadingLabel="Loading terminal" />}>
             <DockTerminalPane

@@ -4,8 +4,6 @@ import { describe, expect, it } from "vitest";
 
 import { WsServerReadThreadDiagnosticsRpc } from "./rpc";
 
-// This is the exact conversion RpcServer and RpcClient apply. Decoding the
-// schema directly misses lossy JSON representations such as Schema.Unknown.
 const exitCodec = Schema.toCodecJson(Rpc.exitSchema(WsServerReadThreadDiagnosticsRpc));
 const encode = Schema.encodeUnknownSync(exitCodec);
 const decode = Schema.decodeUnknownSync(exitCodec);

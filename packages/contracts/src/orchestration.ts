@@ -70,7 +70,6 @@ const RetiredProviderKind = Schema.Literals([
 ]);
 const HandoffSourceProviderKind = Schema.Union([ProviderKind, RetiredProviderKind]);
 
-/** Historical provider IDs remain valid as handoff provenance only. */
 export const PersistedProviderKind = HandoffSourceProviderKind;
 export const ProviderApprovalPolicy = Schema.Literals([
   "untrusted",
@@ -138,18 +137,14 @@ export const ProviderRequestKind = Schema.Literals([
 export type ProviderRequestKind = typeof ProviderRequestKind.Type;
 export const AssistantDeliveryMode = Schema.Literals(["buffered", "streaming"]);
 export type AssistantDeliveryMode = typeof AssistantDeliveryMode.Type;
-// Queue is the default "send message" behavior; steer is an urgent redirect.
+
 export const TurnDispatchMode = Schema.Literals(["queue", "steer"]);
 export type TurnDispatchMode = typeof TurnDispatchMode.Type;
 export const DEFAULT_TURN_DISPATCH_MODE: TurnDispatchMode = "queue";
-// Marks who dispatched a user turn: a person typing, an automation run, or
-// another agent through the Glade agent gateway (MCP tools).
-// Absent is treated as "user"; only server-dispatched turns carry the flag.
+
 export const MessageDispatchOrigin = Schema.Literals(["user", "automation", "agent"]);
 export type MessageDispatchOrigin = typeof MessageDispatchOrigin.Type;
-// "automation_run" marks only the per-run throwaway threads standalone automations
-// create. Dedicated automations' own threads stay unmarked: they are persistent
-// conversations the user keeps, not run artifacts.
+
 export const ThreadCreationSource = Schema.Literals([
   "glade_mcp",
   "external_mcp",
@@ -196,8 +191,7 @@ export type OrchestrationMessageSource = typeof OrchestrationMessageSource.Type;
 export const PROVIDER_SEND_TURN_MAX_INPUT_CHARS = 120_000;
 export const PROVIDER_SEND_TURN_MAX_ATTACHMENTS = 8;
 export const PROVIDER_SEND_TURN_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
-// Raw local images may exceed the provider-safe payload limit when they can be
-// normalized on-device before upload (for example Retina PNG screenshots).
+
 export const PROVIDER_SEND_TURN_MAX_IMAGE_IMPORT_BYTES = 32 * 1024 * 1024;
 export const PROVIDER_SEND_TURN_MAX_FILE_BYTES = 25 * 1024 * 1024;
 export const MAX_PINNED_PROJECTS = 3;
@@ -207,7 +201,7 @@ export const THREAD_NOTES_MAX_CHARS = 16_384;
 export const THREAD_GOAL_MAX_CHARS = 4_096;
 export const PINNED_MESSAGES_MAX_COUNT = 100;
 export const PINNED_MESSAGE_LABEL_MAX_CHARS = 60;
-// Correlation id is command id by design in this model.
+
 export const CorrelationId = CommandId;
 export type CorrelationId = typeof CorrelationId.Type;
 
@@ -300,9 +294,9 @@ export type ProjectScript = typeof ProjectScript.Type;
 
 export const SPACE_NAME_MAX_LENGTH = 32;
 export const SPACES_MAX_COUNT = 50;
-/** Reserved client-side identity for the virtual collection of unassigned projects. */
+
 export const RESERVED_VOID_SPACE_ID = "void";
-/** Per-command cap for bulk assignment; clients chunk larger selections. */
+
 export const SPACE_PROJECTS_ASSIGN_MAX_COUNT = 200;
 export const SPACE_ICON_NAMES = [
   "bag",
@@ -385,7 +379,6 @@ export const OrchestrationMessageRole = Schema.Literals(["user", "assistant", "s
 export type OrchestrationMessageRole = typeof OrchestrationMessageRole.Type;
 
 export const OrchestrationMessageTextSegment = Schema.Struct({
-  /** Causal orchestration-event order; disambiguates equal timestamps. */
   sequence: NonNegativeInt,
   startedAt: IsoDateTime,
   endedAt: IsoDateTime,
@@ -393,10 +386,6 @@ export const OrchestrationMessageTextSegment = Schema.Struct({
 });
 export type OrchestrationMessageTextSegment = typeof OrchestrationMessageTextSegment.Type;
 
-// One contiguous run of assistant text deltas between row-making provider
-// events (tool calls, warnings, ...). The web timeline interleaves these
-// segments with tool rows so streamed reasoning renders in execution order
-// instead of one block above every tool call.
 export const OrchestrationMessage = Schema.Struct({
   id: MessageId,
   role: OrchestrationMessageRole,
@@ -419,8 +408,8 @@ export type OrchestrationMessage = typeof OrchestrationMessage.Type;
 
 export const ThreadHandoff = Schema.Struct({
   sourceThreadId: ThreadId,
-  // Handoff metadata is durable: a removed source provider must not make the
-  // whole thread row (and with it the thread list) undecodable.
+  // Handoff metadata is durable: a removed source provider must not make the whole thread row (and
+  // with it the thread list) undecodable.
   sourceProvider: PersistedProviderKind,
   importedAt: IsoDateTime,
   bootstrapStatus: ThreadHandoffBootstrapStatus,
@@ -536,8 +525,7 @@ export const OrchestrationThreadPullRequest = Schema.Struct({
   baseBranch: TrimmedNonEmptyString,
   headBranch: TrimmedNonEmptyString,
   state: Schema.Literals(["open", "closed", "merged"]),
-  // Optional so `last_known_pr_json` rows persisted before these fields existed still
-  // decode. Literals stay inline: importing git.ts here would create an import cycle.
+
   isDraft: Schema.optional(Schema.Boolean),
   mergeability: Schema.optional(Schema.Literals(["mergeable", "conflicting", "unknown"])),
   additions: Schema.optional(Schema.NullOr(NonNegativeInt)),
@@ -546,12 +534,6 @@ export const OrchestrationThreadPullRequest = Schema.Struct({
 });
 export type OrchestrationThreadPullRequest = typeof OrchestrationThreadPullRequest.Type;
 
-/**
- * A message the user pinned to the chat's sidebar checklist. `label` is an
- * optional user override; when null the UI derives a label from the message
- * text. `done` tracks the checklist "addressed" state. Decoding defaults keep
- * older/partial persisted entries decodable as the shape evolves.
- */
 export const ThreadNotes = Schema.String.check(Schema.isMaxLength(THREAD_NOTES_MAX_CHARS));
 export type ThreadNotes = typeof ThreadNotes.Type;
 export const ThreadGoal = Schema.String.check(Schema.isMaxLength(THREAD_GOAL_MAX_CHARS));
@@ -565,22 +547,12 @@ export const ThreadGoalContinuationTrigger = Schema.Literals([
   "startup-recovery",
 ]);
 export type ThreadGoalContinuationTrigger = typeof ThreadGoalContinuationTrigger.Type;
-/**
- * Goal pursuit timing. `goalStartedAt` is (re)stamped by the decider whenever a
- * non-empty goal is set and rebased on resume so `now - goalStartedAt` is always
- * the active pursuit duration. A non-null `goalPausedAt` means the goal is
- * paused: injection stops and the elapsed clock freezes at `goalPausedAt`.
- */
+
 export const ThreadGoalTimingFields = {
   goalStartedAt: Schema.optional(Schema.NullOr(IsoDateTime)),
   goalPausedAt: Schema.optional(Schema.NullOr(IsoDateTime)),
 };
-/**
- * A completed goal, recorded when the decider processes a `goalAchieved` intent.
- * `elapsedMs` is the pause-adjusted pursuit duration (null for legacy goals with
- * no recorded start) and `turnId` anchors the transcript "Goal achieved" badge to
- * the turn that was live when the goal completed.
- */
+
 export const ThreadGoalAchievement = Schema.Struct({
   goal: ThreadGoal,
   achievedAt: IsoDateTime,
@@ -626,7 +598,6 @@ export type ProjectionPendingInteractionStatus = typeof ProjectionPendingInterac
 export const ProjectionPendingInteractionDecision = Schema.NullOr(ProviderApprovalDecision);
 export type ProjectionPendingInteractionDecision = typeof ProjectionPendingInteractionDecision.Type;
 
-/** Unresolved provider interaction settlement exposed to thread-detail consumers. */
 export const OrchestrationPendingInteraction = Schema.Struct({
   interactionKind: ProjectionPendingInteractionKind,
   requestId: ApprovalRequestId,
@@ -926,11 +897,6 @@ export const SpaceDeleteCommand = Schema.Struct({
   spaceId: SpaceId,
 });
 
-/**
- * Bulk assignment into one target space, applied atomically in a single transaction.
- * Moving projects out to Void stays per-project via `project.meta.update` — the only
- * bulk surface in the app files projects *into* a space.
- */
 export const SpaceProjectsAssignCommand = Schema.Struct({
   type: Schema.Literal("space.projects.assign"),
   commandId: CommandId,
@@ -948,18 +914,14 @@ export const ProjectCreateCommand = Schema.Struct({
   kind: Schema.optional(ProjectKind).pipe(Schema.withDecodingDefault(() => "project")),
   title: TrimmedNonEmptyString,
   workspaceRoot: TrimmedNonEmptyString,
-  /** Importing into an existing folder must preserve even an empty project shell. */
+
   preserveExistingProject: Schema.optional(Schema.Boolean),
   createWorkspaceRootIfMissing: Schema.optional(Schema.Boolean).pipe(
     Schema.withDecodingDefault(() => false),
   ),
   defaultModelSelection: Schema.optional(Schema.NullOr(ModelSelection)),
   isPinned: Schema.optional(Schema.Boolean).pipe(Schema.withDecodingDefault(() => false)),
-  /**
-   * Space the project is born into (usually the client's active space). Best-effort:
-   * an unusable target (deleted space, non-ordinary kind) degrades to Void rather
-   * than failing creation.
-   */
+
   spaceId: Schema.optional(Schema.NullOr(SpaceId)),
   createdAt: IsoDateTime,
 });
@@ -1116,7 +1078,7 @@ const ThreadMetaUpdateCommand = Schema.Struct({
   commandId: CommandId,
   threadId: ThreadId,
   title: Schema.optional(TrimmedNonEmptyString),
-  /** Apply the title only while no newer durable title event exists. */
+
   expectedTitleSequence: Schema.optional(NonNegativeInt),
   modelSelection: Schema.optional(ModelSelection),
   envMode: Schema.optional(ThreadEnvironmentMode),
@@ -1128,7 +1090,7 @@ const ThreadMetaUpdateCommand = Schema.Struct({
   associatedWorktreeRef: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
   createBranchFlowCompleted: Schema.optional(Schema.Boolean),
   isPinned: Schema.optional(Schema.Boolean),
-  // Desired settled state; the decider stamps the authoritative settledAt timestamp.
+
   isSettled: Schema.optional(Schema.Boolean),
   parentThreadId: Schema.optional(Schema.NullOr(ThreadId)),
   subagentAgentId: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
@@ -1140,10 +1102,9 @@ const ThreadMetaUpdateCommand = Schema.Struct({
   notes: Schema.optional(ThreadNotes),
   goal: Schema.optional(ThreadGoal),
   goalStartBehavior: Schema.optional(ThreadGoalStartBehavior),
-  // Desired paused state; the decider stamps the authoritative goal timestamps.
+
   goalPaused: Schema.optional(Schema.Boolean),
-  // Marks the active goal accomplished: the decider records a ThreadGoalAchievement
-  // (with pause-adjusted elapsed time) and clears the goal in the same event.
+
   goalAchieved: Schema.optional(Schema.Boolean),
 });
 
@@ -1227,13 +1188,10 @@ export const ThreadTurnStartCommand = Schema.Struct({
     Schema.withDecodingDefault(() => DEFAULT_PROVIDER_INTERACTION_MODE),
   ),
   sourceProposedPlan: Schema.optional(SourceProposedPlanReference),
-  // Server-only (quit resume): accept the turn only while the thread is not archived,
-  // has nothing in flight, and no turn finished on its own since the record was
-  // taken (the recorded turn itself, or any later one). Clients cannot set it:
-  // ClientThreadTurnStartCommand omits the field, so decoding strips a spoofed value.
+  // Clients cannot set it: ClientThreadTurnStartCommand omits the field, so decoding strips a spoofed
+  // value.
   resumePrecondition: Schema.optional(
     Schema.Struct({
-      /** Turn in flight when the chat was recorded; null while the provider was still connecting. */
       recordedTurnId: Schema.NullOr(TurnId),
       recordedAt: IsoDateTime,
     }),
@@ -1528,9 +1486,7 @@ const ThreadMessageAssistantDeltaCommand = Schema.Struct({
   messageId: MessageId,
   delta: Schema.String,
   turnId: Schema.optional(TurnId),
-  // Present only when this delta starts a NEW text segment: a row-making
-  // provider event (tool call, warning, ...) intervened since the previous
-  // assistant delta. Positions the segment in the merged timeline.
+
   segmentStartedAt: Schema.optional(IsoDateTime),
   segmentSequence: Schema.optional(NonNegativeInt),
   createdAt: IsoDateTime,
@@ -1644,7 +1600,7 @@ export const OrchestrationEventType = Schema.Literals([
   "project.deleted",
   "thread.created",
   "thread.deleted",
-  // Legacy desktop installs can still contain these rows in orchestration_events.
+
   "thread.archived",
   "thread.unarchived",
   "thread.meta-updated",
@@ -1803,16 +1759,16 @@ export const ThreadDeletedPayload = Schema.Struct({
 
 export const ThreadArchivedPayload = Schema.Struct({
   threadId: ThreadId,
-  // Required for new events, optional for legacy events
+
   archivedAt: Schema.optional(IsoDateTime),
   updatedAt: Schema.optional(IsoDateTime),
 });
 
 export const ThreadUnarchivedPayload = Schema.Struct({
   threadId: ThreadId,
-  // Legacy field - kept for backward compatibility with old events
+
   unarchivedAt: Schema.optional(IsoDateTime),
-  // Required for new events
+
   updatedAt: Schema.optional(IsoDateTime),
 });
 
@@ -1893,9 +1849,7 @@ export const ThreadMessageSentPayload = Schema.Struct({
   messageId: MessageId,
   role: OrchestrationMessageRole,
   text: Schema.String,
-  // Mirrors ThreadMessageAssistantDeltaCommand.segmentStartedAt: set on the
-  // first delta of a new text segment (after a row-making event). The message
-  // projection persists segment boundaries into the message's textSegments.
+
   segmentStartedAt: Schema.optional(IsoDateTime),
   segmentSequence: Schema.optional(NonNegativeInt),
   attachments: Schema.optional(Schema.Array(ChatAttachment)),
@@ -2478,11 +2432,6 @@ export const OrchestrationReconcileProviderDeliveryResult = Schema.Struct({
 export type OrchestrationReconcileProviderDeliveryResult =
   typeof OrchestrationReconcileProviderDeliveryResult.Type;
 
-/**
- * Desktop quit with "Resume chats automatically": the server durably records the
- * listed threads (plus their current turn) and interrupts them in one step, so
- * the renderer can reply to the quit request only after the record exists.
- */
 export const QUIT_RESUME_MAX_THREADS = 256;
 export const QUIT_RESUME_MAX_PROMPT_CHARS = 2_000;
 
@@ -2491,13 +2440,12 @@ export const OrchestrationPrepareQuitResumeInput = Schema.Struct({
     Schema.isMinLength(1),
     Schema.isMaxLength(QUIT_RESUME_MAX_THREADS),
   ),
-  /** User-turn text dispatched on each recorded thread at the next server start. */
+
   continuationPrompt: TrimmedNonEmptyString.check(Schema.isMaxLength(QUIT_RESUME_MAX_PROMPT_CHARS)),
 });
 export type OrchestrationPrepareQuitResumeInput = typeof OrchestrationPrepareQuitResumeInput.Type;
 
 export const OrchestrationPrepareQuitResumeResult = Schema.Struct({
-  /** Threads durably recorded for resume (unknown or deleted threads are dropped). */
   recordedThreadIds: Schema.Array(ThreadId),
   recordedAt: IsoDateTime,
 });
@@ -2511,10 +2459,7 @@ export type OrchestrationUnsubscribeShellInput = typeof OrchestrationUnsubscribe
 
 export const OrchestrationSubscribeThreadInput = Schema.Struct({
   threadId: ThreadId,
-  // Cursor of the last event the client already applied. When present and the
-  // gap fits the server's replay limit, the stream replays only the gap and
-  // skips the full-history snapshot. Optional so older clients keep the
-  // snapshot-first behavior unchanged.
+
   afterSequence: Schema.optional(NonNegativeInt),
 });
 export type OrchestrationSubscribeThreadInput = typeof OrchestrationSubscribeThreadInput.Type;

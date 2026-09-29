@@ -1,9 +1,3 @@
-// FILE: claudePluginSkills.ts
-// Purpose: Resolve active Claude Code plugin skill roots from Claude's installed
-//          plugin registry without scanning orphaned cache versions.
-// Layer: Server provider discovery helper
-// Exports: discoverClaudePluginSkillRoots
-
 import * as fs from "node:fs/promises";
 import * as nodePath from "node:path";
 
@@ -134,11 +128,6 @@ async function installAppliesToCwd(
   return pathIsWithin(canonicalProjectPath, canonicalCwd);
 }
 
-/**
- * Claude keeps old plugin versions in its cache temporarily. The installed
- * registry is therefore the source of truth; only its current install paths are
- * considered, and those paths must resolve inside Claude's plugin cache.
- */
 export async function discoverClaudePluginSkillRoots(input: {
   readonly homeDir: string;
   readonly cwd?: string | null;
@@ -173,9 +162,9 @@ export async function discoverClaudePluginSkillRoots(input: {
     if (!namespace || !(await installAppliesToCwd(install, cwd))) {
       continue;
     }
-    // Claude resolves one effective installation per plugin ID. Once the
-    // highest-precedence applicable scope is selected, a lower-precedence copy
-    // must not contribute additional skills even if the selected path is broken.
+    // Claude resolves one effective installation per plugin ID. Once the highest-precedence applicable
+    // scope is selected, a lower-precedence copy must not contribute additional skills even if the
+    // selected path is broken.
     selectedPluginIds.add(pluginId);
     const canonicalInstallPath = await canonicalPath(install.installPath);
     if (!canonicalInstallPath || !pathIsWithin(canonicalCacheRoot, canonicalInstallPath)) {

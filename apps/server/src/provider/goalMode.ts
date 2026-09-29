@@ -1,7 +1,3 @@
-// FILE: goalMode.ts
-// Purpose: Injects Glade's provider-independent persistent thread objective.
-// Layer: Provider prompt policy
-
 function escapeXmlText(value: string): string {
   return value
     .replaceAll("&", "&amp;")
@@ -11,10 +7,6 @@ function escapeXmlText(value: string): string {
     .replaceAll("'", "&apos;");
 }
 
-/**
- * The goal to inject for a thread, honoring pause: a paused goal stays
- * persisted but is withheld from provider prompts until resumed.
- */
 export function activeThreadGoal(thread: {
   readonly goal?: string | undefined;
   readonly goalPausedAt?: string | null | undefined;

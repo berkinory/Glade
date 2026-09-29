@@ -1,8 +1,3 @@
-// FILE: useKanbanTaskScratchDraft.ts
-// Purpose: Owns the throwaway composer-draft thread used by the kanban new-task dialog.
-// Layer: Kanban UI hook
-// Exports: useKanbanTaskScratchDraft
-
 import type { ModelSlug, ProviderKind } from "@glade/contracts";
 import { getDefaultModel } from "@glade/shared/model";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -25,8 +20,6 @@ import { buildModelSelection, type ProviderOptions } from "../../providerModelOp
 import { toastManager } from "../ui/toast";
 
 export function useKanbanTaskScratchDraft(input: { readonly defaultProvider: ProviderKind }) {
-  // Scratch composer draft backing the dialog: model/effort/speed state lives in
-  // the composer draft store under this throwaway thread id, exactly like chat.
   const [scratchThreadId] = useState(() => newThreadId());
   useEffect(() => {
     useComposerDraftStore.getState().applyStickyState(scratchThreadId);
@@ -110,7 +103,7 @@ export function useKanbanTaskScratchDraft(input: { readonly defaultProvider: Pro
   ) => {
     const store = useComposerDraftStore.getState();
     const nextSelection = buildModelSelection(provider, model, options, supportsAutoMode);
-    // Mirrors the composer: update the scratch draft and persist the sticky selection.
+
     store.setModelSelectionAndSticky(scratchThreadId, nextSelection);
   };
 

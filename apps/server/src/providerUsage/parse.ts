@@ -1,8 +1,3 @@
-// FILE: providerUsage/parse.ts
-// Purpose: Small, dependency-free parsing/formatting helpers and snapshot builders shared by
-// the per-provider usage fetchers. Kept pure so the per-provider parsers can be unit-tested
-// without touching the network, filesystem, or keychain.
-
 import type {
   ProviderKind,
   ProviderUsageStatus,
@@ -21,7 +16,7 @@ export function asFiniteNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
   }
-  // Several provider APIs send numeric quotas as strings (e.g. unix-ms timestamps).
+
   if (typeof value === "string" && value.trim().length > 0) {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : undefined;

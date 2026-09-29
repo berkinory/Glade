@@ -1,10 +1,5 @@
 "use client";
 
-// FILE: slider.tsx
-// Purpose: Shared accent-colored single-value slider primitive with optional step marks.
-// Layer: Base UI component
-// Exports: Slider
-
 import { Slider as SliderPrimitive } from "@base-ui/react/slider";
 import { useEffect, useState } from "react";
 

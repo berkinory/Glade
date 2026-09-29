@@ -143,23 +143,16 @@ export interface FrameSubscriberStats {
   readonly queued: number;
 }
 
-/** How a frame is primed and gated, decided by the owner of the frame type. */
 export interface FrameClassification {
   readonly keyframe: boolean;
   readonly codecConfig: boolean;
 }
 
-/** `classify` for frame types that carry the flags under their own names. */
 export const classifyByFrameFlags = (frame: FrameClassification): FrameClassification => frame;
 
 export interface FrameTransportOptions<TStreamId extends string, TFrame> {
   readonly encode: (streamId: TStreamId, frame: TFrame) => Uint8Array;
-  /**
-   * Keyframe/codec-config classification, supplied by the owner of `TFrame`.
-   * Reading the flags off an unconstrained generic at runtime treats a missing
-   * field as `false`, so a frame type that spells them differently would leave
-   * every subscriber waiting for a keyframe that never comes.
-   */
+
   readonly classify: (frame: TFrame) => FrameClassification;
   readonly queueLimit?: number;
   readonly socketBudgetBytes?: number;
@@ -180,13 +173,6 @@ interface Subscriber<TStreamId extends string> {
   flushing?: boolean;
 }
 
-/**
- * Bounded, keyframe-aware fan-out for any encoded frame stream.
- *
- * The transport retains only the latest codec-config and keyframe for late
- * subscribers. Slow subscribers drop their backlog and wait for a clean
- * keyframe rather than receiving undecodable delta frames.
- */
 export class FrameTransport<TStreamId extends string, TFrame> {
   private readonly subscribers = new Map<string, Subscriber<TStreamId>>();
   private readonly subscribersByStream = new Map<string, Set<Subscriber<TStreamId>>>();
@@ -260,9 +246,8 @@ export class FrameTransport<TStreamId extends string, TFrame> {
 
     if (isCodecConfig) {
       this.codecConfig.set(streamId, encoded);
-      // The cached keyframe belongs to the previous config and cannot be decoded
-      // under this one, so a subscriber arriving before the next keyframe must
-      // not be primed with it.
+      // The cached keyframe belongs to the previous config and cannot be decoded under this one, so a
+      // subscriber arriving before the next keyframe must not be primed with it.
       this.latestKeyframe.delete(streamId);
     } else if (isKeyframe) this.latestKeyframe.set(streamId, encoded);
 
@@ -312,11 +297,7 @@ export class FrameTransport<TStreamId extends string, TFrame> {
   private deliver(
     subscriber: Subscriber<TStreamId>,
     encoded: Uint8Array,
-    /**
-     * Codec config is never dropped outright (nothing decodes without it), but
-     * it does not ride past the caps either: a stalled subscriber keeps exactly
-     * one, the latest, in place of whatever backlog preceded it.
-     */
+
     essential = false,
   ): void {
     if (!subscriber.sink.isOpen()) {
@@ -341,10 +322,8 @@ export class FrameTransport<TStreamId extends string, TFrame> {
     }
 
     if (essential) {
-      // A new config makes the queued frames moot: they belong to the old
-      // config, and the decoder needs the keyframe that follows the new one.
-      // Replacing the backlog also bounds a stall that sees config after
-      // config, which would otherwise grow the queue without limit.
+      // Replacing the backlog also bounds a stall that sees config after config, which would otherwise
+      // grow the queue without limit.
       subscriber.dropped += subscriber.queue.length;
       subscriber.queue.length = 0;
       subscriber.queue.push(encoded);
@@ -360,9 +339,6 @@ export class FrameTransport<TStreamId extends string, TFrame> {
       return;
     }
 
-    // The count cap alone let a backlog of huge keyframes grow unbounded
-    // (eight frames x whatever a frame weighs), so the queue is bounded in
-    // bytes too: whichever ceiling trips first drops the backlog.
     if (
       subscriber.queue.length >= this.queueLimit ||
       subscriber.queuedBytes + encoded.byteLength > this.socketBudgetBytes

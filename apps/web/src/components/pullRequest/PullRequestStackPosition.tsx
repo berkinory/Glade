@@ -1,8 +1,3 @@
-// FILE: PullRequestStackPosition.tsx
-// Purpose: Compact stack-position indicator for pull request details.
-// Layer: Pull request presentation
-// Exports: PullRequestStackPosition
-
 import type { PullRequestStack } from "@glade/contracts";
 
 import { Badge } from "~/components/ui/badge";

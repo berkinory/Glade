@@ -36,8 +36,6 @@ it("keeps stop available across delayed session snapshots and accepts actual com
   ]);
   const runningTurn = threadsOf(state)[0]!.latestTurn;
 
-  // These are separate subscriptions: shell snapshots can lag behind the live
-  // thread event even while carrying the current latestTurn projection.
   const delayed = makeReadModelThread({ session: readySession, latestTurn: runningTurn });
   state = applyShellEvent(state, {
     kind: "thread-upserted",

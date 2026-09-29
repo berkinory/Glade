@@ -1,9 +1,3 @@
-// FILE: toolCallLabel.ts
-// Purpose: Normalizes generic tool-call titles and humanizes command executions for timeline rows.
-// Layer: UI utility
-// Exports: deriveReadableToolTitle, deriveReadableCommandDisplay, deriveFriendlyCommandTarget, command icon classifiers, normalizeCompactToolLabel, isGenericToolTitle, extractWebFetchUrl
-// Depends on: @glade/contracts tool lifecycle item types
-
 import type { ToolLifecycleItemType } from "@glade/contracts";
 import { BROWSER_TOOL_TITLES } from "@glade/shared/browserAutomationPresentation";
 import {
@@ -21,9 +15,6 @@ export function normalizeCompactToolLabel(value: string): string {
     .trim();
 }
 
-// Canonical form for comparing tool display strings (heading vs preview vs
-// label): ignores case, whitespace runs, and trailing status words so dedup
-// decisions behave identically in the work-log builder and the timeline rows.
 export function normalizeToolTextForComparison(value: string | undefined): string {
   return normalizeCompactToolLabel(value ?? "")
     .toLowerCase()
@@ -31,10 +22,6 @@ export function normalizeToolTextForComparison(value: string | undefined): strin
     .trim();
 }
 
-// Web-fetch tool calls (e.g. Claude's `WebFetch`) arrive as generic dynamic tool
-// calls whose detail is the raw `ToolName: {json}` argument summary. Recognizing
-// them lets the timeline surface the target site (favicon + URL) instead of the
-// raw JSON arguments.
 const WEB_FETCH_TOOL_NAMES = new Set(["webfetch", "fetch", "urlfetch", "fetchurl", "httpfetch"]);
 
 function isWebFetchToolName(toolName: string | null | undefined): boolean {
@@ -51,11 +38,6 @@ function isWebFetchToolName(toolName: string | null | undefined): boolean {
   );
 }
 
-// Pulls the first http(s) URL out of a web-fetch tool call's argument summary.
-// Prefers the JSON `url`/`uri` field (the actual shape) and falls back to a bare
-// URL token so a slightly different summary still resolves. Returns null for
-// non-fetch tools or when no usable URL is present, so callers fall back to the
-// generic tool-call rendering.
 export function extractWebFetchUrl(input: {
   readonly toolName?: string | null | undefined;
   readonly detail?: string | null | undefined;
@@ -76,7 +58,6 @@ export function extractWebFetchUrl(input: {
   return null;
 }
 
-// Turns internal MCP identifiers into readable inline labels for timeline rows.
 function humanizeMcpToolIdentifier(value: string): string | null {
   const trimmed = value.trim();
   if (!trimmed.startsWith("mcp__")) {
@@ -127,7 +108,6 @@ interface GladeMcpToolPresentation {
   readonly failed: string;
 }
 
-// Historical messages still contain retired tools; presentation does not expose them to agents.
 const BROWSER_HISTORY_TITLES = {
   ...BROWSER_TOOL_TITLES,
   browser_snapshot: "Snapshot browser page",
@@ -155,16 +135,11 @@ const GLADE_BROWSER_TOOL_PRESENTATIONS = Object.fromEntries(
   }),
 ) as Record<GladeBrowserToolName, GladeMcpToolPresentation>;
 
-/**
- * The desktop tools, spoken. Every browser tool had a curated presentation and
- * every computer tool had none, so the most consequential rows in the
- * transcript — an agent moving a pointer on the user's own machine — fell
- * through to the invented "Glade is handling computer click" fallback.
- *
- * The wording deliberately keeps the machine in the sentence ("this computer's
- * desktop") rather than saying "the desktop", because on the backends that
- * matter it is the user's own.
- */
+// Every browser tool had a curated presentation and every computer tool had none, so the most
+// consequential rows in the transcript — an agent moving a pointer on the user's own machine — fell
+// through to the invented "Glade is handling computer click" fallback. The wording deliberately
+// keeps the machine in the sentence ("this computer's desktop") rather than saying "the desktop",
+// because on the backends that matter it is the user's own.
 const GLADE_COMPUTER_TOOL_PRESENTATIONS = {
   glade_computer_screenshot: presentComputerTool("taking a screenshot", "took a screenshot"),
   glade_computer_get_state: presentComputerTool("reading the screen", "read the screen"),
@@ -519,9 +494,7 @@ function resolveGladeMcpToolPresentation(
     if (knownPresentation) {
       return knownPresentation;
     }
-    // Free-text summaries (e.g. reconciler activity lines) can begin with the
-    // word "Glade" and normalize into a fake tool identifier; only
-    // identifier-shaped candidates may take an invented fallback presentation.
+
     if (/\s/.test(candidate.trim())) {
       continue;
     }
@@ -561,9 +534,6 @@ export function isGladeBrowserToolCall(input: GladeMcpToolTitleInput): boolean {
   return resolveGladeBrowserToolName([input.toolName, input.title, input.fallbackLabel]) !== null;
 }
 
-// Every provider exposes Glade's MCP tools differently: MCP, dynamic, and even
-// file-change rows can all represent the same gateway action. Normalize by tool
-// identity instead of provider item type so transport details never reach the UI.
 export function deriveGladeMcpToolTitle(input: GladeMcpToolTitleInput): string | null {
   const presentation = resolveGladeMcpToolPresentation([
     input.toolName,
@@ -612,7 +582,6 @@ export function deriveReadableToolTitle(input: ReadableToolTitleInput): string |
     : null;
   const commandLike = input.itemType === "command_execution" || input.requestKind === "command";
 
-  // Derive a verbal label from requestKind when the title is generic
   const requestKindLabel = humanizeRequestKind(input.requestKind, input.itemType);
 
   if (normalizedTitle.length > 0 && !isGenericToolTitle(normalizedTitle)) {
@@ -631,8 +600,6 @@ export function deriveReadableToolTitle(input: ReadableToolTitleInput): string |
     return descriptor;
   }
 
-  // A generic request kind describes the transport, while the payload can name
-  // the actual tool. Only use it after the provider metadata has been checked.
   if (requestKindLabel) {
     return requestKindLabel;
   }
@@ -664,7 +631,7 @@ function humanizeRequestKind(
   if (requestKind === "file-read") return "Read";
   if (requestKind === "file-change" || itemType === "file_change") return "Edited";
   if (requestKind === "tool") return "Tool";
-  // Don't handle command types here — let humanizeCommandToolLabel produce more specific labels
+
   if (itemType === "web_search") return "Searched the web";
   if (itemType === "image_generation") return "Generated image";
   if (itemType === "image_view") return "Viewed image";
@@ -869,10 +836,6 @@ function collectDescriptorCandidates(
   }
 }
 
-// Read-only inspection commands surfaced with the search/magnifying-glass icon in
-// the timeline (reads, searches, finds, listings), as opposed to commands that
-// mutate or execute, which keep the terminal icon. These sets are the single
-// source of truth for both the command labels below and the icon decision.
 const READ_FILE_COMMAND_TOOLS = new Set(["cat", "nl", "head", "tail", "sed", "less", "more"]);
 const SEARCH_COMMAND_TOOLS = new Set(["rg", "grep", "ag", "ack"]);
 const FIND_COMMAND_TOOLS = new Set(["find", "fd"]);
@@ -887,7 +850,6 @@ function isInspectCommandTool(tool: string): boolean {
   );
 }
 
-// Derives the compact command sentence shown inline while preserving the full command for hover/detail UI.
 export function deriveReadableCommandDisplay(
   rawCommand: string,
   isRunning = false,
@@ -987,9 +949,6 @@ function firstCommandExecutable(rawCommand: string): string {
   return executable.split(/[\\/]/u).at(-1)?.toLowerCase() ?? "";
 }
 
-// The object half of a command row's sentence ("Searched <for foo in src>"),
-// kept short enough to read inline. Shell wrappers that carry no meaning for a
-// human (a full pwsh.exe path) collapse to the shell's friendly name.
 export function deriveFriendlyCommandTarget(rawCommand: string): string {
   const executable = firstCommandExecutable(rawCommand);
   if (
@@ -1008,8 +967,6 @@ export function deriveFriendlyCommandTarget(rawCommand: string): string {
   return target.length <= 72 ? target : `${target.slice(0, 69).trimEnd()}…`;
 }
 
-// Classifies command rows for transcript glyphs after peeling away shell/env wrappers.
-// This keeps `git -C`, `env ... gh`, and `/bin/zsh -lc "cd ... && git ..."` visually branded.
 export function resolveCommandVisualKind(rawCommand: string): CommandVisualKind {
   const command = stripCommandDisplayWrappers(unwrapShellCommandIfPresent(rawCommand));
   const [tool] = splitToolAndArgs(firstShellCommandSegment(command));

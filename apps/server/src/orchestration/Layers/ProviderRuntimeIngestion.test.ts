@@ -106,8 +106,8 @@ function createProviderServiceHarness(options?: { readonly persistedStream?: boo
     compactThread: () => unsupported(),
     closeRuntimeEvents: Effect.void,
     streamEvents: Stream.fromPubSub(runtimeEventPubSub),
-    // Only the already-persisted path uses this; when present the ingestion
-    // ignores `streamEvents`, so ordinary harnesses must not provide it.
+    // Only the already-persisted path uses this; when present the ingestion ignores `streamEvents`, so
+    // ordinary harnesses must not provide it.
     ...(options?.persistedStream === true
       ? { streamPersistedEvents: Stream.fromPubSub(persistedEventPubSub) }
       : {}),
@@ -221,12 +221,6 @@ function emitPendingUserInputRequest(
     },
   });
 }
-
-/**
- * Emits an approval request that names no turn, the shape a Codex MCP
- * elicitation (no `turnId` in its JSON-RPC params) or a Claude `canUseTool`
- * callback with no bound turn state produces.
- */
 
 const pendingInteractionStatus = (
   thread: OrchestrationThread | undefined,
@@ -439,8 +433,6 @@ describe("ProviderRuntimeIngestion", () => {
       updatedAt: createdAt,
     });
 
-    // `engine.getReadModel()` is the command-side model; pending-interaction
-    // rows and their counts only exist in the projection, so read them there.
     const readProjectedThread = async (
       threadId: ThreadId = ThreadId.makeUnsafe("thread-1"),
     ): Promise<OrchestrationThread | undefined> =>
@@ -470,8 +462,7 @@ describe("ProviderRuntimeIngestion", () => {
         message: "Recovered durable provider output",
       },
     };
-    // This is the exact command the runtime event dispatches. Persisting it
-    // first models a crash after orchestration acceptance but before cursor ack.
+
     await Effect.runPromise(
       harness.engine.dispatch({
         type: "thread.activity.append",
@@ -536,10 +527,9 @@ describe("ProviderRuntimeIngestion", () => {
       `provider:${rejectedEvent.eventId}:thread-activity-append:${lateThreadId}:runtime.warning:${rejectedEvent.eventId}`,
     );
 
-    // Model a durable rejection: the exact command this event replays into was
-    // already rejected by an invariant (thread-2 did not exist yet when it was
-    // first dispatched), so every replay raises PreviouslyRejected — retrying
-    // the journal row can never succeed.
+    // Model a durable rejection: the exact command this event replays into was already rejected by an
+    // invariant (thread-2 did not exist yet when it was first dispatched), so every replay raises
+    // PreviouslyRejected — retrying the journal row can never succeed.
     await expect(
       Effect.runPromise(
         harness.engine.dispatch({
@@ -723,7 +713,7 @@ describe("ProviderRuntimeIngestion", () => {
     const push = (event: ProviderRuntimeEvent) =>
       Effect.runPromise(harness.runtimeEventRepository.append(event));
     const eventId = (suffix: string) => asEventId(`evt-segment-${suffix}`);
-    // Plan text before any tool activity.
+
     await push({
       type: "content.delta",
       eventId: eventId("1"),
@@ -744,14 +734,13 @@ describe("ProviderRuntimeIngestion", () => {
       itemId,
       payload: { streamKind: "assistant_text", delta: "scan files." },
     });
-    // A tool call runs between the second and third text deltas.
+
     const toolItemId = asItemId("tool-segment-interleave");
     await push({
       type: "item.started",
       eventId: eventId("3"),
       provider: "codex",
-      // Provider events can share the same millisecond. The causal event
-      // boundary must still split assistant text around the tool row.
+
       createdAt: "2026-07-14T00:10:01.000Z",
       threadId,
       turnId,
@@ -830,9 +819,7 @@ describe("ProviderRuntimeIngestion", () => {
     ).toEqual([
       {
         startedAt: "2026-07-14T00:10:00.000Z",
-        // Live (streaming) delivery stamps each segment with its own last
-        // delta's emit time, so endedAt reflects when that slice actually
-        // finished arriving rather than the terminal event's time.
+
         endedAt: "2026-07-14T00:10:01.000Z",
         text: "Plan: scan files.",
       },
@@ -843,8 +830,7 @@ describe("ProviderRuntimeIngestion", () => {
       },
       {
         startedAt: "2026-07-14T00:10:40.000Z",
-        // The trailing segment closes when the message completes rather than
-        // at its last delta, since no later boundary exists to stamp it.
+
         endedAt: "2026-07-14T00:10:45.000Z",
         text: "Done.",
       },
@@ -916,10 +902,8 @@ describe("ProviderRuntimeIngestion", () => {
     );
     expect(pendingInteractionStatus(pendingThread, "req-interrupted-user-input")).toBe("pending");
 
-    // A Stop rotates the lifecycle generation without emitting `session.started`,
-    // so the interrupted turn's terminal event is the only settlement signal
-    // left. Without it the row stayed `pending` forever and the sidebar kept
-    // showing "Awaiting Input" on an idle thread.
+    // A Stop rotates the lifecycle generation without emitting `session.started`, so the interrupted
+    // turn's terminal event is the only settlement signal left.
     harness.emit({
       type: "turn.completed",
       eventId: asEventId("evt-turn-completed-interrupted-user-input"),
@@ -985,7 +969,6 @@ describe("ProviderRuntimeIngestion", () => {
     const pending = await harness.readProjectedThread();
     expect(pendingInteractionStatus(pending, requestId)).toBe("pending");
 
-    // Only the provider's live callback owner can settle this request.
     harness.emit({
       ...common,
       type: "request.resolved",
@@ -1013,8 +996,6 @@ describe("ProviderRuntimeIngestion", () => {
       (thread) => thread.hasPendingUserInput === true,
     );
 
-    // A session.exited from a different generation says nothing about this
-    // row's runtime, so it must leave the request answerable.
     harness.emit({
       type: "session.exited",
       eventId: asEventId("evt-session-exited-other-generation"),
@@ -1136,15 +1117,14 @@ describe("ProviderRuntimeIngestion", () => {
       ),
     );
 
-    // Replay the same image_generation_end event with a fresh eventId (provider would use a
-    // new id even for an idempotent replay). The dedup guard should prevent any further
-    // delta or complete dispatches because the target message already references the image.
+    // Replay the same image_generation_end event with a fresh eventId (provider would use a new id even
+    // for an idempotent replay). The dedup guard should prevent any further delta or complete
+    // dispatches because the target message already references the image.
     harness.emit({
       ...imageEvent,
       eventId: asEventId("evt-replay-image-complete-2"),
     });
 
-    // Give the ingestion worker a beat to process the replay.
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     const finalText = await Effect.runPromise(
@@ -1157,7 +1137,6 @@ describe("ProviderRuntimeIngestion", () => {
       ),
     );
 
-    // Same text, still finalized, and the image markdown is not duplicated.
     expect(finalText).toBe(eventCountBeforeReplay);
     const occurrences = finalText.split(`![Generated image](${imagePath})`).length - 1;
     expect(occurrences).toBe(1);
@@ -1604,8 +1583,6 @@ describe("ProviderRuntimeIngestion", () => {
       secondThreadId,
     );
 
-    // A terminal event for the buffered turn must neither erase its policy for
-    // late events nor disturb the still-active streaming turn on another thread.
     harness.emit({
       type: "content.delta",
       eventId: asEventId("evt-late-delta-overlap-buffered"),
@@ -2067,10 +2044,9 @@ describe("ProviderRuntimeIngestion", () => {
       }),
     );
 
-    // A later provider event for the same child must not try to resurrect the
-    // tombstoned thread: `thread.create` would be rejected, and the rejection is
-    // stored against a deterministic command id, so every later replay of this
-    // event would fail on the stored rejection.
+    // A later provider event for the same child must not try to resurrect the tombstoned thread:
+    // `thread.create` would be rejected, and the rejection is stored against a deterministic command
+    // id, so every later replay of this event would fail on the stored rejection.
     harness.emit({
       ...collabEvent,
       eventId: asEventId("evt-collab-deleted-child-2"),
@@ -2082,8 +2058,6 @@ describe("ProviderRuntimeIngestion", () => {
     const child = readModel.threads.find((thread) => thread.id === childThreadId);
     expect(child?.deletedAt).not.toBeNull();
 
-    // The journal keeps flowing: a blocked row would pin the cursor and stall
-    // every thread's projection.
     harness.emit({
       type: "runtime.warning",
       eventId: asEventId("evt-after-deleted-child"),
@@ -2126,10 +2100,9 @@ describe("ProviderRuntimeIngestion", () => {
       },
     };
 
-    // Bind the child-create command id to a rejected command, the way a build
-    // that reshaped provider command ids leaves receipts the next build can
-    // never reuse. The startup rebuild runs on the server's boot path, so a row
-    // it can never replay must degrade to a warning, not a crash loop.
+    // Bind the child-create command id to a rejected command, the way a build that reshaped provider
+    // command ids leaves receipts the next build can never reuse. The startup rebuild runs on the
+    // server's boot path, so a row it can never replay must degrade to a warning, not a crash loop.
     const rejected = await Effect.runPromise(
       Effect.result(
         harness.engine.dispatch({
@@ -2344,8 +2317,7 @@ describe("ProviderRuntimeIngestion", () => {
         ),
       );
     }
-    // Every notification arrives while the first one's drain is still in
-    // flight, so the rest must be picked up as pages by that drain.
+
     for (const row of rows) harness.emitPersisted(row);
     const target = rows.at(-1)!.sequence;
     const deadline = Date.now() + 5_000;
@@ -2364,8 +2336,7 @@ describe("ProviderRuntimeIngestion", () => {
       `,
     );
     expect(acks.at(-1)?.toSequence).toBe(target);
-    // One acknowledgement for the first notification, then the backlog in
-    // (at most) pages; never one transaction per event.
+
     expect(acks.length).toBeLessThan(rows.length);
     expect(acks.length).toBeLessThanOrEqual(4);
   });

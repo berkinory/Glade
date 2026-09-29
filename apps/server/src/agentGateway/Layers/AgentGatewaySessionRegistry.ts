@@ -67,10 +67,6 @@ export function makeAgentGatewaySessionRegistry(options?: {
       return candidates.at(-1)?.identity.capabilities.has("computer:control") ?? false;
     },
     issue: (threadId, provider, issueOptions) => {
-      // Every provider runtime owns an independent credential. Replacement
-      // runtimes overlap their predecessor during startup, and the outgoing
-      // runtime revokes its own token during teardown. Reusing a token here
-      // would therefore let old-session cleanup invalidate the replacement.
       const issuedAt = now();
       const sessionKey = `gateway-session:${randomId()}`;
       const token = `sagw_session_${randomId()}`;
@@ -126,9 +122,8 @@ export function makeAgentGatewaySessionRegistry(options?: {
       if (registered.retiredWriteTurnId !== undefined) {
         return registered.retiredWriteTurnId === turnId;
       }
-      // Record A even when it never called a gateway tool. This is the
-      // critical case: a detached request from A must not arrive during B and
-      // become the first request to bind this credential.
+      // Record A even when it never called a gateway tool. This is the critical case: a detached request
+      // from A must not arrive during B and become the first request to bind this credential.
       registered.retiredWriteTurnId = turnId;
       return true;
     },

@@ -371,8 +371,8 @@ async function listenHungLoopbackServer(
 ): Promise<{ readonly server: Http.Server; readonly origin: string }> {
   const server = resources.trackServer(
     Http.createServer((_request, _response) => {
-      // Intentionally never acknowledge: production request cancellation must
-      // release this socket when the child exits or the deadline is reached.
+      // Intentionally never acknowledge: production request cancellation must release this socket when
+      // the child exits or the deadline is reached.
     }),
   );
   await resources.withTimeout(

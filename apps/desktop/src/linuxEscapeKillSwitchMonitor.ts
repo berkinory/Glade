@@ -8,7 +8,7 @@ type ShortcutRegistry = Pick<
   "register" | "unregister" | "isRegistered" | "isSuspended"
 >;
 
-/** Inspect the existing desktop configuration without changing its display backend. */
+// Inspect the existing desktop configuration without changing its display backend.
 export function linuxEscapeSession(
   ozonePlatform = "",
   environment: NodeJS.ProcessEnv = process.env,
@@ -32,15 +32,11 @@ export interface LinuxEscapeKillSwitchMonitorOptions {
   readonly onError?: (message: string) => void;
 }
 
-/**
- * A task-scoped X11 Escape shortcut for the packaged Linux app. Unlike the
- * macOS event tap, this consumes Escape and does not observe physical input or
- * human takeover. The host owns task attribution, arming and the native stop.
- *
- * Electron 43's portal registration reports a local callback, not a successful
- * compositor binding, and single-shortcut unregister does not clear that map.
- * Do not claim a working kill switch or reserve a persistent key on Wayland.
- */
+// A task-scoped X11 Escape shortcut for the packaged Linux app. Unlike the macOS event tap, this
+// consumes Escape and does not observe physical input or human takeover. The host owns task
+// attribution, arming and the native stop. Electron 43's portal registration reports a local
+// callback, not a successful compositor binding, and single-shortcut unregister does not clear that
+// map. Do not claim a working kill switch or reserve a persistent key on Wayland.
 export class LinuxEscapeKillSwitchMonitor {
   #options: LinuxEscapeKillSwitchMonitorOptions;
   #armed = false;
@@ -93,8 +89,8 @@ export class LinuxEscapeKillSwitchMonitor {
       return;
     }
     if (this.#registered && this.state.ready) return;
-    // After suspension/loss, obtain a fresh OS registration. Electron's local
-    // registration map alone cannot prove its attempt to resume the key grab.
+    // After suspension/loss, obtain a fresh OS registration. Electron's local registration map alone
+    // cannot prove its attempt to resume the key grab.
     if (!this.#release()) return;
     const registry = this.#options.shortcutRegistry;
     try {
@@ -151,9 +147,7 @@ export class LinuxEscapeKillSwitchMonitor {
         this.#registered = false;
         return true;
       }
-    } catch {
-      // Keep ownership so disposal can retry releasing this one shortcut.
-    }
+    } catch {}
     this.#unavailable("linux_escape_release_failed", "The Escape shortcut could not be released.");
     return false;
   }

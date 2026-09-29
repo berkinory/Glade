@@ -1,8 +1,3 @@
-// FILE: editorMetadata.ts
-// Purpose: Resolve the shared web-facing labels and icons for supported editors.
-// Layer: Web UI metadata
-// Exports: editor option builders used by the chat header and open-in picker.
-
 import { EDITORS, type EditorId } from "@glade/contracts";
 import { EDITOR_ICON_ROUTE_PATH } from "@glade/shared/editorIcons";
 import { createElement, useEffect, useState } from "react";
@@ -76,7 +71,7 @@ const EDITOR_ICONS: Partial<Record<EditorId, Icon>> = {
   rubymine: RubyMineIcon,
   datagrip: DataGripIcon,
   "android-studio": AndroidStudioIcon,
-  // Windows and Linux retain the generic file-manager glyph.
+
   "file-manager": FolderClosed,
   "system-default": AppsIcon,
 };
@@ -104,7 +99,7 @@ function resolveNativeEditorIcon(editorId: EditorId): Icon {
         loadedNativeIcons.add(editorId);
         if (mounted) setAvailable(true);
       };
-      // A missing app or startup HTTP failure can recover later. Retry on remount.
+
       icon.src = resolveEditorNativeIconUrl(editorId);
       return () => {
         mounted = false;
@@ -137,37 +132,29 @@ function resolveNativeEditorIcon(editorId: EditorId): Icon {
   return EditorNativeIcon;
 }
 
-// Build labels from the shared catalog so newly supported editors appear without
-// duplicating the editor list across multiple UI components.
 function resolveEditorLabel(editorId: EditorId, platform: string): string {
   if (editorId === "file-manager") {
     return isMacPlatform(platform) ? "Finder" : isWindowsPlatform(platform) ? "Explorer" : "Files";
   }
 
   if (editorId === "system-default") {
-    // macOS PDFs open in Preview by default; Windows/Linux use whatever viewer is
-    // registered as the system handler, so keep the label generic off-Mac.
     return isMacPlatform(platform) ? "Preview" : "Default app";
   }
 
   return EDITORS.find((editor) => editor.id === editorId)?.label ?? editorId;
 }
 
-// Keep the header/picker resilient even when a brand-specific icon does not exist yet.
 function resolveEditorIcon(editorId: EditorId): Icon {
   return EDITOR_ICONS[editorId] ?? AppsIcon;
 }
 
 function resolveEditorDisplayIcon(editorId: EditorId, platform: string): Icon {
   if (editorId === "file-manager" && isMacPlatform(platform)) return FinderIcon;
-  // Bundled vector marks stay sharp at menu size and render on the first frame.
-  // Only editors without a matching mark need an installed app icon lookup.
+  // Bundled vector marks stay sharp at menu size and render on the first frame. Only editors without
+  // a matching mark need an installed app icon lookup.
   return EDITOR_ICONS[editorId] ?? resolveNativeEditorIcon(editorId);
 }
 
-// Build a single option for an editor id that may not appear in the platform's
-// installed-editor catalog (e.g. the always-available "system-default" opener that
-// surfaces opt into without it being part of `availableEditors`).
 export function resolveEditorOption(editorId: EditorId, platform: string): EditorOption {
   return {
     value: editorId,

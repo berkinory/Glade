@@ -1,14 +1,9 @@
-// FILE: backendNodeOptions.ts
-// Purpose: Builds Node runtime arguments for the packaged desktop backend child.
-// Layer: Desktop process startup helper
-// Exports: backend heap limit and process-local Node argument helpers.
-
 const MB = 1024 * 1024;
 const DEFAULT_BACKEND_HEAP_FRACTION = 0.25;
 const MIN_BACKEND_OLD_SPACE_MB = 3072;
 const MAX_BACKEND_OLD_SPACE_MB = 8192;
-// Explicit overrides get wider latitude than the computed default, but are still
-// clamped: a typo like "64" must not give the backend a heap it cannot boot with.
+// Explicit overrides get wider latitude than the computed default, but are still clamped: a typo
+// like "64" must not give the backend a heap it cannot boot with.
 const MIN_CONFIGURED_OLD_SPACE_MB = 1024;
 const MAX_CONFIGURED_OLD_SPACE_MB = 32768;
 const OLD_SPACE_FLAG_PATTERN = /(?:^|\s)--max[-_]old[-_]space[-_]size(?:=|\s|$)/;

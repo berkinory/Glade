@@ -1,9 +1,3 @@
-// FILE: BrowserTabStrip.tsx
-// Purpose: Horizontal tab strip for the in-app browser panel (tab pills, new-tab button,
-// chrome status chip). Owns only presentation + keeping the active tab scrolled into view.
-// Layer: Web UI component
-// Depends on: BrowserPanel.logic chrome styles/status, contracts BrowserTabState
-
 import { useLayoutEffect, useRef } from "react";
 import type { BrowserTabState } from "@glade/contracts";
 import { isBlankBrowserTabUrl } from "@glade/shared/browserSession";
@@ -23,16 +17,13 @@ export interface BrowserTabStripProps {
   tabs: readonly BrowserTabState[];
   activeTabId: string | null;
   status: BrowserChromeStatus | null;
-  // Extend the frameless window drag region across the strip's empty space so the panel
-  // is easy to grab; interactive children stay no-drag via global CSS (`.drag-region button`).
+
   dragRegion: boolean;
   onSelectTab: (tabId: string) => void;
   onCloseTab: (tabId: string) => void;
   onCreateTab: () => void;
 }
 
-// Scroll only the strip itself (not `scrollIntoView`, which would also scroll every
-// scrollable ancestor such as the dock or chat column when the pane mounts offscreen).
 function scrollTabIntoView(strip: HTMLElement, tab: HTMLElement): void {
   const stripRect = strip.getBoundingClientRect();
   const tabRect = tab.getBoundingClientRect();
@@ -49,8 +40,6 @@ export function BrowserTabStrip(props: BrowserTabStripProps) {
   const { activeTabId, onCloseTab, onCreateTab, onSelectTab } = props;
   const stripRef = useRef<HTMLDivElement>(null);
 
-  // A tab created/selected past the visible edge ("New tab" appends at the end) must come
-  // into view or the action looks like it did nothing.
   useLayoutEffect(() => {
     const strip = stripRef.current;
     if (!strip || activeTabId === null) {

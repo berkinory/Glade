@@ -1,8 +1,3 @@
-// FILE: useComposerVoiceController.ts
-// Purpose: Own the composer voice-note state machine for recording, cancellation, and transcription.
-// Layer: Chat composer hook
-// Depends on: useVoiceRecorder, ChatView voice helper logic, and the native API voice endpoint.
-
 import { type ProviderKind, type ServerProviderStatus, type ThreadId } from "@glade/contracts";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
@@ -68,7 +63,6 @@ const DEFAULT_FAILURE_COPY: ComposerVoiceFailureCopy = {
   refreshActionLabel: "Refresh status",
 };
 
-// Keeps the async transcription lifecycle out of ChatView so the component can stay UI-focused.
 export function useComposerVoiceController(
   options: UseComposerVoiceControllerOptions,
 ): UseComposerVoiceControllerResult {
@@ -103,8 +97,7 @@ export function useComposerVoiceController(
     ...DEFAULT_FAILURE_COPY,
     ...failureCopyOverrides,
   };
-  // A transcription can resolve immediately after navigation commits, so stamp
-  // its identity before passive effects and browser events can observe it.
+
   useLayoutEffect(() => {
     voiceThreadIdRef.current = threadId;
     voiceProviderRef.current = selectedProvider;
@@ -122,8 +115,7 @@ export function useComposerVoiceController(
     const invalidatedRequestId = voiceTranscriptionRequestIdRef.current + 1;
     voiceTranscriptionRequestIdRef.current = invalidatedRequestId;
     voiceRecordingStartedAtRef.current = null;
-    // The spinner reset rides the cancel promise so no state is written
-    // synchronously inside the effect (keeps the hook compiler-eligible).
+
     void cancelVoiceRecording().finally(() => {
       if (voiceTranscriptionRequestIdRef.current === invalidatedRequestId) {
         setIsVoiceTranscribing(false);
@@ -256,8 +248,6 @@ export function useComposerVoiceController(
       voiceThreadIdRef.current === requestThreadId &&
       voiceProviderRef.current === requestProvider;
 
-    // Promise chain instead of async/try-catch-finally: React Compiler does
-    // not yet support try/finally, and it would skip optimizing this hook.
     return stopVoiceRecording()
       .then((payload) => {
         if (!isCurrentVoiceRequest()) {

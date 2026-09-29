@@ -1,19 +1,3 @@
-/**
- * Minimal MCP (Model Context Protocol) JSON-RPC handling for the Glade agent
- * gateway.
- *
- * Implements the stateless subset of the MCP streamable-HTTP transport the
- * gateway needs: `initialize`, `ping`, `tools/list`, and `tools/call`, plus
- * notification acknowledgement. Every POST gets a single JSON response (the
- * spec allows servers to answer with `application/json` instead of an SSE
- * stream), so no session or stream state is kept server-side.
- *
- * Pure request/response shaping lives here so it can be unit tested without
- * the HTTP or Effect layers.
- *
- * @module agentGateway/protocol
- */
-
 const MCP_DEFAULT_PROTOCOL_VERSION = "2025-06-18";
 const MCP_SUPPORTED_PROTOCOL_VERSIONS = new Set(["2025-06-18", "2025-03-26", "2024-11-05"]);
 
@@ -35,23 +19,13 @@ interface JsonRpcNotification {
   readonly params: Record<string, unknown>;
 }
 
-/**
- * MCP `_meta` on a tool definition: namespaced hints a client may honour.
- *
- * The spec reserves `_meta` for exactly this and requires clients to ignore
- * namespaces they do not know, so every key here is inert for every consumer
- * except the one that defined it. The shape is closed rather than an open
- * record: each key has to be a documented, verified contract with some client,
- * and a typo in a namespaced string key is otherwise undetectable.
- *
- * - `anthropic/alwaysLoad`: the Claude Code harness includes this tool's schema
- *   in the prompt instead of deferring it behind its tool-search indirection
- *   (equivalent to `defer_loading: false` on the API). Verified against the
- *   2.1.x CLI's generic MCP tool normalization, which reads it for any server
- *   type, and documented in `@anthropic-ai/claude-agent-sdk`.
- * - `anthropic/searchHint`: replaces the description the same harness indexes
- *   (and sends) for a *deferred* tool. Unused today — see computerTools.ts.
- */
+// The spec reserves `_meta` for exactly this and requires clients to ignore namespaces they do not
+// know, so every key here is inert for every consumer except the one that defined it. The shape is
+// closed rather than an open record: each key has to be a documented, verified contract with some
+// client, and a typo in a namespaced string key is otherwise undetectable. -
+// `anthropic/alwaysLoad`: the Claude Code harness includes this tool's schema in the prompt instead
+// of deferring it behind its tool-search indirection (equivalent to `defer_loading: false` on the
+// API).
 interface McpToolMeta {
   readonly "anthropic/alwaysLoad"?: boolean;
   readonly "anthropic/searchHint"?: string;
@@ -107,11 +81,6 @@ export type ParsedMcpMessage =
   | { readonly kind: "response" }
   | { readonly kind: "invalid"; readonly id: JsonRpcId };
 
-/**
- * Classify one raw JSON-RPC message. Responses and notifications require no
- * reply body; invalid entries produce an error response bound to whatever id
- * could be recovered.
- */
 export function parseMcpMessage(raw: unknown): ParsedMcpMessage {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
     return { kind: "invalid", id: null };
@@ -124,7 +93,6 @@ export function parseMcpMessage(raw: unknown): ParsedMcpMessage {
     return { kind: "invalid", id };
   }
   if (typeof record.method !== "string" || record.method.length === 0) {
-    // No method: either a client -> server response (has result/error) or garbage.
     if ("result" in record || "error" in record) {
       return { kind: "response" };
     }

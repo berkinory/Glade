@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-// Collect one complete, source-matched release from independently built platforms.
 
 import { createHash } from "node:crypto";
 import {

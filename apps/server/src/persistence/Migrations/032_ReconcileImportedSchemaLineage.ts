@@ -1,22 +1,5 @@
-/**
- * Reconciles schema after importing a database from a predecessor lineage whose
- * `effect_sql_migrations` tracker already records IDs 17-31 under unrelated
- * names. Because the migrator skips by ID, Glade migrations 17-31 never run
- * on those imports, leaving columns like
- * `env_mode` missing and crashing the server on first query.
- *
- * Migration #023 previously held this self-healing logic, but predecessor DBs
- * also have a row for ID 23 belonging to an unrelated migration,
- * so the migrator skipped it too. This migration was renumbered past the
- * Glade migrations known at the time, but predecessor trackers eventually
- * outran it as well (SYN-99). `reconcileMigrationLineage` in Migrations.ts
- * now repairs foreign trackers before the migrator runs, so this migration
- * is guaranteed to execute on legacy imports regardless of the imported
- * tracker's high-water mark.
- *
- * Idempotent and a no-op for fresh Glade installs (every column already
- * exists from the in-order runs of 17-31).
- */
+// Foreign trackers can skip required schema migrations by numeric ID. Reconcile tracker lineage
+// before running the idempotent schema repair.
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import * as Effect from "effect/Effect";
 

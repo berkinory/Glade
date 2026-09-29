@@ -1,8 +1,3 @@
-// FILE: threadBootstrap.ts
-// Purpose: Pure helpers for draft reuse and thread creation payloads.
-// Layer: Web bootstrap/domain helpers
-// Exports: draft patching, reuse checks, and thread creation state resolution.
-
 import {
   DEFAULT_RUNTIME_MODE,
   type ModelSelection,
@@ -29,7 +24,7 @@ export interface NewThreadOptions {
   envMode?: DraftThreadEnvMode;
   provider?: ProviderKind;
   fresh?: boolean;
-  /** Keep a draft outside the project's single reusable draft slot. */
+
   standalone?: boolean;
 }
 
@@ -82,7 +77,6 @@ export interface ThreadCreationState {
   workingDirectory: string | null;
 }
 
-// Decide whether we should reuse a stored draft, the current route draft, or create a fresh one.
 export function resolveThreadBootstrapPlan(input: {
   latestActiveDraftThread: DraftThreadState | null;
   projectId: ProjectId;
@@ -112,7 +106,6 @@ export function resolveThreadBootstrapPlan(input: {
   return { kind: "fresh" };
 }
 
-// Build the initial draft-thread metadata for a brand new thread bootstrap.
 export function createFreshDraftThreadSeed(input: {
   createdAt: string;
   options: NewThreadOptions | undefined;
@@ -130,7 +123,6 @@ export function createFreshDraftThreadSeed(input: {
   };
 }
 
-// Detect whether the caller wants to override stored draft context before reuse.
 function hasDraftContextOverrides(options?: NewThreadOptions): boolean {
   return (
     options?.branch !== undefined ||
@@ -140,7 +132,6 @@ function hasDraftContextOverrides(options?: NewThreadOptions): boolean {
   );
 }
 
-// Build the exact patch we should apply to an existing draft before reusing it.
 export function buildDraftThreadContextPatch(options?: NewThreadOptions): {
   branch?: string | null;
   envMode?: DraftThreadEnvMode;
@@ -164,7 +155,6 @@ export function buildDraftThreadContextPatch(options?: NewThreadOptions): {
   };
 }
 
-// Reuse only when the active route draft already belongs to the target project.
 function shouldReuseActiveDraftThread(input: {
   draftThread: DraftThreadState | null;
   projectId: ProjectId;
@@ -179,7 +169,6 @@ function shouldReuseActiveDraftThread(input: {
   );
 }
 
-// Resolve the durable thread payload for a promoted draft from the most specific state.
 export function resolveThreadCreationState(
   input: ResolveThreadCreationStateInput,
 ): ThreadCreationState {
@@ -214,10 +203,7 @@ export function resolveThreadCreationState(
         ? input.activeDraftThread.runtimeMode
         : null) ??
       DEFAULT_RUNTIME_MODE,
-    interactionMode:
-      // Plan mode is an explicit composer/thread choice. Do not copy it from
-      // the previously active thread into a fresh session bootstrap.
-      input.draftThread?.interactionMode ?? DEFAULT_INTERACTION_MODE,
+    interactionMode: input.draftThread?.interactionMode ?? DEFAULT_INTERACTION_MODE,
     lastKnownPr:
       input.draftThread?.lastKnownPr ??
       (input.activeThread?.projectId === input.projectId ? input.activeThread.lastKnownPr : null) ??

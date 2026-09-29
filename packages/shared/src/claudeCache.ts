@@ -2,7 +2,6 @@ import type { ClaudeCacheObservation } from "@glade/contracts";
 
 export const CLAUDE_LARGE_CONTEXT_TOKENS = 100_000;
 
-/** Re-evaluate persisted evidence without making a request or extending its TTL. */
 export function assessClaudeCache(
   observation: ClaudeCacheObservation | undefined,
   nowMs: number,
@@ -33,8 +32,7 @@ export function assessClaudeCache(
     lastResponseAt === undefined ? undefined : Math.floor((nowMs - lastResponseAt) / 1_000);
   const cacheAgeSeconds =
     cacheReferenceAt === undefined ? undefined : Math.floor((nowMs - cacheReferenceAt) / 1_000);
-  // A native expired report remains useful without a TTL. A warm report cannot
-  // promise continued warmth once time has advanced and its TTL is unknown.
+
   const state =
     observation.state === "likely-expired"
       ? "likely-expired"

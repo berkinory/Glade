@@ -52,16 +52,13 @@ describe("agent gateway MCP injection", () => {
     const merged = mergeShellEnvPolicyExclude(withExclude, GLADE_AGENT_GATEWAY_TOKEN_ENV);
     assert.include(merged, `exclude = ["${GLADE_AGENT_GATEWAY_TOKEN_ENV}", "AWS_*"]`);
 
-    // Idempotent: the var is not added twice.
     assert.equal(mergeShellEnvPolicyExclude(merged, GLADE_AGENT_GATEWAY_TOKEN_ENV), merged);
 
-    // A policy table without an exclude key gains one.
     const withoutExclude = ["[shell_environment_policy]", 'inherit = "core"'].join("\n");
     const gained = mergeShellEnvPolicyExclude(withoutExclude, GLADE_AGENT_GATEWAY_TOKEN_ENV);
     assert.include(gained, `exclude = ["${GLADE_AGENT_GATEWAY_TOKEN_ENV}"]`);
     assert.include(gained, 'inherit = "core"');
 
-    // No policy table: unchanged (the managed section appends its own).
     assert.equal(
       mergeShellEnvPolicyExclude('[model]\nname = "gpt-5.5"', GLADE_AGENT_GATEWAY_TOKEN_ENV),
       '[model]\nname = "gpt-5.5"',
@@ -155,8 +152,7 @@ describe("agent gateway MCP injection", () => {
       GLADE_MANAGED_CODEX_CONFIG_END,
       "",
     ].join("\n");
-    // A rewrite without appendConfigToml recovers the block so concurrent env
-    // preps (version checks, text generation) don't strip the session's MCP entry.
+
     assert.equal(extractManagedCodexConfigSection(overlayConfig), section);
     assert.isUndefined(extractManagedCodexConfigSection('[model]\nname = "gpt-5.5"\n'));
   });

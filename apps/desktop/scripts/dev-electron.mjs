@@ -87,9 +87,6 @@ function cleanupStaleDevApps() {
 }
 
 function listStaleComputerUsePids() {
-  // Only macOS exposes a verifiable Glade (Dev) executable path for these
-  // helpers. Linux process command lines do not currently carry a dev-owner
-  // marker, so reaping by the generic script name could kill another install.
   if (process.platform !== "darwin") {
     return [];
   }
@@ -104,8 +101,7 @@ function listStaleComputerUsePids() {
     if (!/computerUseMcp\.mjs\s+mcp(?:\s|$)/.test(command)) {
       return false;
     }
-    // Leave the current worktree's helper alone and only reap stale runtimes
-    // from other worktrees or abandoned dev sessions.
+
     if (command.includes(desktopDir)) {
       return false;
     }
@@ -157,8 +153,8 @@ function startApp() {
     return;
   }
 
-  // Rebuilds can remove dist before replacing it. Never launch Electron into
-  // that gap (it shows a modal "Cannot find module" error instead of waiting).
+  // Rebuilds can remove dist before replacing it. Never launch Electron into that gap (it shows a
+  // modal "Cannot find module" error instead of waiting).
   const bundlesReady = requiredFiles.every((file) => {
     try {
       const stat = statSync(join(desktopDir, file));
@@ -287,7 +283,6 @@ function killChildTree(signal) {
     return;
   }
 
-  // Kill direct children as a final fallback in case normal shutdown leaves stragglers.
   spawnSync("pkill", [`-${signal}`, "-P", String(process.pid)], { stdio: "ignore" });
 }
 

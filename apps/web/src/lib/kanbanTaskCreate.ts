@@ -1,9 +1,3 @@
-// FILE: kanbanTaskCreate.ts
-// Purpose: Creates a standalone draft thread from the kanban new-task dialog — the
-//          draft lands in the board's Draft column and dispatches like any other card.
-// Layer: Web orchestration helper
-// Exports: createKanbanDraftTask, createAndSendKanbanTask, KanbanDraftTaskInput
-
 import type {
   AssistantDeliveryMode,
   ModelSelection,
@@ -22,7 +16,7 @@ import { newThreadId } from "./utils";
 export interface KanbanDraftTaskInput {
   projectId: ProjectId;
   prompt: string;
-  /** Optional scratch composer whose full transferable content seeds the new task. */
+
   sourceComposerThreadId?: ThreadId;
   modelSelection: ModelSelection;
   runtimeMode: RuntimeMode;
@@ -30,11 +24,6 @@ export interface KanbanDraftTaskInput {
   envMode: DraftThreadEnvMode;
 }
 
-/**
- * Registers a new mapping-less draft thread and seeds its composer content. The
- * project's regular composer draft is untouched, so any number of tasks can be
- * created back to back.
- */
 export function createKanbanDraftTask(input: KanbanDraftTaskInput): ThreadId {
   const store = useComposerDraftStore.getState();
   const threadId = newThreadId();
@@ -55,12 +44,6 @@ export function createKanbanDraftTask(input: KanbanDraftTaskInput): ThreadId {
   return threadId;
 }
 
-/**
- * Creates the draft, then immediately promotes + dispatches it so the task skips
- * the Draft column and lands in In Progress — the "send now" path for the new-task
- * dialog. Reuses {@link dispatchKanbanDraftThread} so a sent task behaves exactly
- * like dragging a Draft card onto In Progress.
- */
 export async function createAndSendKanbanTask(
   input: KanbanDraftTaskInput & {
     defaultProvider: ProviderKind;

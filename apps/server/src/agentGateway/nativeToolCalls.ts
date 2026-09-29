@@ -1,4 +1,3 @@
-/** Provider-owned tool ids connect MCP traffic to the turn that issued it. */
 export interface NativeToolCall {
   readonly callId: string;
   readonly turnId: string;
@@ -24,7 +23,7 @@ export function makeNativeToolCallRegistry() {
     register(token: string, call: NativeToolCall) {
       const session = sessions.get(token);
       if (!session || session.retiredTurns.has(call.turnId)) return;
-      // A provider call id may never be reassigned to a later turn.
+
       if (!session.calls.has(call.callId)) session.calls.set(call.callId, call);
       for (const wake of session.pending) wake();
     },
@@ -36,8 +35,7 @@ export function makeNativeToolCallRegistry() {
     ): Promise<string | null> {
       const session = sessions.get(token);
       if (!session || signal?.aborted) return null;
-      // Stdio and HTTP are independent transports: HTTP may arrive before the
-      // already-emitted native item event. Wait briefly for proof, never guess B.
+
       if (!session.calls.has(callId)) {
         await new Promise<void>((resolve) => {
           const finish = () => {

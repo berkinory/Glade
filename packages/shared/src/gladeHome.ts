@@ -1,15 +1,9 @@
-// FILE: gladeHome.ts
-// Purpose: Resolves the user-level Glade base directory without Effect, so the backend
-// server and the Electron main process agree on one location during early startup.
-// Exports: expandHomePath, resolveGladeHomeDirectory, GLADE_HOME_ENV_NAME.
-
 import * as OS from "node:os";
 import * as Path from "node:path";
 
 export const GLADE_HOME_ENV_NAME = "GLADE_HOME";
 export const DEFAULT_GLADE_HOME_DIRECTORY_NAME = ".glade";
 
-/** Expands a leading `~` against the user's home directory; other inputs pass through. */
 export function expandHomePath(input: string, homeDirectory: string = OS.homedir()): string {
   if (input === "~") {
     return homeDirectory;
@@ -20,20 +14,12 @@ export function expandHomePath(input: string, homeDirectory: string = OS.homedir
   return input;
 }
 
-/**
- * Resolves the Glade base directory the same way for every process in the install.
- *
- * Deliberately plain Node: the Electron main process needs this before Effect (or even
- * `app.whenReady()`) is available, and the login-shell environment cache has to land in
- * the same place whichever process wrote it first.
- */
 export function resolveGladeHomeDirectory(
   options: {
-    /** Explicit override; falls back to `GLADE_HOME` from `env`. */
     readonly configuredHome?: string | undefined;
     readonly env?: NodeJS.ProcessEnv;
     readonly homeDirectory?: string;
-    /** Flavor-specific default (`.glade-dev`), used only when nothing is configured. */
+
     readonly directoryName?: string;
   } = {},
 ): string {

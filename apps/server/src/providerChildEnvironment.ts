@@ -1,7 +1,3 @@
-// FILE: providerChildEnvironment.ts
-// Purpose: Builds provider child environments without Glade control-plane authority.
-// Layer: Server provider process security
-
 export type ProviderChildKind = "claude" | "codex";
 
 const PROVIDER_CREDENTIAL_KEYS = new Set([

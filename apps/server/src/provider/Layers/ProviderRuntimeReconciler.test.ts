@@ -151,7 +151,7 @@ describe("ProviderRuntimeReconcilerLive", () => {
     await Effect.gen(function* () {
       const reconciler = yield* ProviderRuntimeReconciler;
       yield* reconciler.reconcileNow;
-      // The projection can remain stale for another observation cycle.
+
       yield* reconciler.reconcileNow;
       bindingStatus = "error";
       providerSession = {
@@ -163,9 +163,6 @@ describe("ProviderRuntimeReconcilerLive", () => {
       yield* reconciler.reconcileNow;
     }).pipe(Effect.provide(layer), Effect.runPromise);
 
-    // Session repair dispatches first so a partial failure still unsticks the
-    // thread, and `updatedAt` is the dispatch time rather than the terminal
-    // session's original timestamp (which would freeze the staleness clock).
     expect(commands.map((command) => command.type)).toEqual([
       "thread.session.set",
       "thread.activity.append",

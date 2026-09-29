@@ -1,9 +1,3 @@
-// FILE: ComposerModelPickerTabs.tsx
-// Purpose: Icon tab strip of the composer model picker — starred presets, one tab per
-//   offered provider, and a shortcut to provider settings.
-// Layer: Chat composer presentation
-// Depends on: provider icons/availability helpers and tooltip primitives.
-
 import { type ProviderKind, type ServerProviderStatus } from "@glade/contracts";
 import { type ReactNode } from "react";
 
@@ -34,7 +28,6 @@ function PickerTabButton(props: {
             className={cn(
               "relative flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted-foreground/70 outline-none transition-colors hover:bg-[var(--color-background-button-secondary-hover)] hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring/60 disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent",
               props.active &&
-                // The accent token is theme-injected; fall back to the icon color without it.
                 "text-foreground after:absolute after:inset-x-1.5 after:-bottom-1 after:h-0.5 after:rounded-full after:bg-[var(--color-text-accent,currentColor)]",
             )}
             onClick={props.onSelect}
@@ -53,7 +46,7 @@ function PickerTabButton(props: {
 export type ComposerModelPickerProviderTab = {
   provider: ProviderKind;
   label: string;
-  /** Null when the provider can be opened; otherwise why not ("Sign in", "Checking"…). */
+  // Null when the provider can be opened; otherwise why not ("Sign in", "Checking"…).
   unavailableLabel: string | null;
 };
 

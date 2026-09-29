@@ -48,7 +48,6 @@ export function serverConfigQueryOptions() {
   });
 }
 
-/** Polled while the Computer use settings panel is visible, so keep it refetchable. */
 export const COMPUTER_STATUS_VISIBLE_REFETCH_INTERVAL_MS = 10_000;
 
 export function computerStatusQueryOptions() {
@@ -56,8 +55,7 @@ export function computerStatusQueryOptions() {
     queryKey: serverQueryKeys.computerStatus(),
     queryFn: async () => {
       const api = ensureNativeApi();
-      // Desktop-bridge NativeApi implementations update out of band and may
-      // predate the computer namespace.
+
       if (!api.computer) {
         throw new Error("This app build cannot read computer status.");
       }
@@ -67,7 +65,6 @@ export function computerStatusQueryOptions() {
   });
 }
 
-/** Share one setup request across the settings panel and transcript cards. */
 let computerProvisionInFlight: Promise<ComputerProvisionResult> | undefined;
 export function provisionComputer(): Promise<ComputerProvisionResult> {
   if (computerProvisionInFlight) return computerProvisionInFlight;
@@ -108,11 +105,8 @@ function recordProviderStatusSnapshot(
   return snapshot;
 }
 
-/**
- * Folds an authoritative provider snapshot into server.config. Provider streams
- * can win the race against the initial config query, so retain the latest
- * snapshot and apply it after config hydration instead of dropping it.
- */
+// Provider streams can win the race against the initial config query, so retain the latest snapshot
+// and apply it after config hydration instead of dropping it.
 export async function reconcileServerProviderStatuses(
   queryClient: QueryClient,
   providers: readonly ServerProviderStatus[],
@@ -146,10 +140,8 @@ export async function reconcileServerProviderStatuses(
   }));
 }
 
-/**
- * Refreshes the config projection when the WebSocket reopens without letting
- * the response overwrite a provider snapshot that arrived while it was in flight.
- */
+// Refreshes the config projection when the WebSocket reopens without letting the response overwrite
+// a provider snapshot that arrived while it was in flight.
 export async function refreshServerConfigAfterTransportOpen(
   queryClient: QueryClient,
   options?: {
@@ -193,11 +185,6 @@ export function serverAuthSessionQueryOptions() {
   });
 }
 
-/**
- * The execution environment (OS, arch, server version) is fixed for the life of
- * a server process, so it caches indefinitely; a restart drops the socket and
- * remounts the app, which refetches.
- */
 export function serverEnvironmentQueryOptions() {
   return queryOptions({
     queryKey: serverQueryKeys.environment(),
@@ -260,8 +247,6 @@ export function serverLocalServersQueryOptions(
   });
 }
 
-// Sidebar project badges need a snapshot, but idle Home should not keep shelling out
-// through lsof/ps; active Glade-owned runs still poll for responsive status.
 export function sidebarLocalServersQueryOptions(input: {
   hasActiveProjectRun: boolean;
   hasProjects: boolean;
@@ -319,8 +304,8 @@ export async function consumeCodexResetCredit(input: ServerConsumeCodexResetCred
   return api.server.consumeCodexResetCredit(input);
 }
 
-/** Provider enablement changes alter the membership of the batch and invalidate any
- * provider-scoped result that may otherwise survive after a provider is disabled. */
+// Provider enablement changes alter the membership of the batch and invalidate any provider-scoped
+// result that may otherwise survive after a provider is disabled.
 export async function invalidateProviderUsageQueries(queryClient: QueryClient): Promise<void> {
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: serverQueryKeys.allProviderUsage() }),
@@ -328,8 +313,6 @@ export async function invalidateProviderUsageQueries(queryClient: QueryClient): 
   ]);
 }
 
-// Local profile + shareable-card core statistics. The client passes its own fixed
-// UTC offset; all metrics are computed from Glade's local DB projections.
 export function serverProfileStatsQueryOptions(input: { enabled?: boolean } = {}) {
   const utcOffsetMinutes = -new Date().getTimezoneOffset();
   return queryOptions({
@@ -347,8 +330,6 @@ export function serverProfileStatsQueryOptions(input: { enabled?: boolean } = {}
   });
 }
 
-// DB-backed token totals and token heatmap, split from core stats so the Profile
-// page can paint first and upgrade token-only surfaces later.
 export function serverProfileTokenStatsQueryOptions(input: { enabled?: boolean } = {}) {
   const utcOffsetMinutes = -new Date().getTimezoneOffset();
   return queryOptions({
@@ -366,9 +347,6 @@ export function serverProfileTokenStatsQueryOptions(input: { enabled?: boolean }
   });
 }
 
-// Live remaining-usage for every provider. Always fetches the full batch under a single query
-// key so every surface (settings panel, header chips, branch toolbar) shares one cache entry
-// and one request cycle; the server caches per-provider snapshots, so the batch is cheap.
 export function serverAllProviderUsageQueryOptions(
   input:
     | boolean

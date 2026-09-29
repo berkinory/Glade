@@ -140,12 +140,11 @@ const make = Effect.gen(function* () {
     );
 
   const cancelThread: QueuedTurnPromotionRepositoryShape["cancelThread"] = (input) =>
-    // Cancel BOTH 'queued' and 'promoting' rows. A row claimed for a drain sits
-    // in 'promoting'; if we only cancelled 'queued', a thread deletion racing an
-    // in-flight drain could cancel nothing, and the drain's error path would
-    // later `releaseClaim` the row back to 'queued', resurrecting it. Cancelling
-    // the 'promoting' row means the later `releaseClaim` (WHERE state='promoting')
-    // no longer matches, so the cancelled turn stays dead.
+    // Cancel BOTH 'queued' and 'promoting' rows. A row claimed for a drain sits in 'promoting'; if we
+    // only cancelled 'queued', a thread deletion racing an in-flight drain could cancel nothing, and
+    // the drain's error path would later `releaseClaim` the row back to 'queued', resurrecting it.
+    // Cancelling the 'promoting' row means the later `releaseClaim` (WHERE state='promoting') no longer
+    // matches, so the cancelled turn stays dead.
     sql`
       UPDATE queued_turn_promotions
       SET state = 'cancelled', claim_owner = NULL, claimed_at = NULL,

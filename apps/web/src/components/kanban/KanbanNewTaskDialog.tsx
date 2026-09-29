@@ -1,13 +1,3 @@
-// FILE: KanbanNewTaskDialog.tsx
-// Purpose: Linear-style "New task" dialog — a compact composer that drafts a task
-//          (prompt + provider/model/effort + permissions + mode + environment + voice)
-//          and drops it into the board's Draft column. Model state is driven through
-//          a scratch composer-draft-store thread so the split model + effort/options
-//          pickers work exactly like a fresh chat composer; the project's regular
-//          composer draft is untouched.
-// Layer: Kanban UI component
-// Exports: KanbanNewTaskDialog
-
 import type {
   ProjectId,
   ProviderInteractionMode,
@@ -98,17 +88,13 @@ interface KanbanNewTaskProjectOption {
 
 export interface KanbanNewTaskDialogProps {
   onOpenChange: (open: boolean) => void;
-  /** Boards available as task destinations, in board display order. */
+
   projectOptions: ReadonlyArray<KanbanNewTaskProjectOption>;
   initialProjectId: ProjectId | null;
-  /** Seeds the "Send as draft" toggle — true when opened from the Draft column's "+". */
+
   initialSendAsDraft?: boolean;
 }
 
-/**
- * Mount with a fresh `key` per open so all draft state initializes lazily; closing
- * is signalled through onOpenChange(false) and the parent unmounts the dialog.
- */
 export function KanbanNewTaskDialog({
   onOpenChange,
   projectOptions,
@@ -163,9 +149,7 @@ export function KanbanNewTaskDialog({
   const [interactionMode, setInteractionMode] =
     useState<ProviderInteractionMode>(DEFAULT_INTERACTION_MODE);
   const [envMode, setEnvMode] = useState<DraftThreadEnvMode>("local");
-  // Off by default: a new task is sent straight to In Progress (like starting a
-  // fresh chat). The Draft column's "+" opens the dialog with the toggle on, so
-  // the task parks in Draft — matching where the user clicked.
+
   const [sendAsDraft, setSendAsDraft] = useState(initialSendAsDraft);
   const [isModelPickerOpen, setIsModelPickerOpen] = useState(false);
   const [isTraitsPickerOpen, setIsTraitsPickerOpen] = useState(false);
@@ -181,8 +165,6 @@ export function KanbanNewTaskDialog({
     serverCwd: serverConfigQuery.data?.cwd ?? null,
   });
 
-  // Voice transcription always rides on the Codex ChatGPT session, regardless of
-  // which provider the task targets — gate the mic on the Codex status.
   const voiceProviderStatus = useMemo(
     () => findProviderStatus(providerStatuses, "codex"),
     [providerStatuses],
@@ -205,8 +187,7 @@ export function KanbanNewTaskDialog({
     selectedRuntimeAgents,
   } = useProviderModelCatalog({
     selectedProvider,
-    // Keep discovery warm whenever either picker can open so cursor/codex effort
-    // and fast-mode controls are populated, not just the model list.
+
     discoveryEnabled: isModelPickerOpen || isTraitsPickerOpen,
     cwd: providerModelDiscoveryCwd,
     modelHintByProvider,
@@ -328,8 +309,6 @@ export function KanbanNewTaskDialog({
     onCreate: handleCreateRequest,
   });
 
-  // Resolve the provider model once
-  // discovery delivers the catalog.
   useEffect(() => {
     if (selectedModel !== null) {
       return;
@@ -387,8 +366,6 @@ export function KanbanNewTaskDialog({
 
   const isVoiceActive = voice.isVoiceRecording || voice.isVoiceTranscribing;
 
-  // Cmd/Ctrl+Enter submits from anywhere in the dialog, not just the textarea —
-  // the focus is often on a picker (model/effort/project) when the user commits.
   const handleSubmitShortcut = useCallback(
     (event: React.KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
@@ -457,7 +434,7 @@ export function KanbanNewTaskDialog({
   return (
     <Dialog open onOpenChange={onOpenChange}>
       <DialogPopup className="max-w-3xl rounded-3xl" onKeyDown={handleSubmitShortcut}>
-        {/* Linear-style breadcrumb header: project chip › title, same type size. */}
+        {}
         <DialogHeader className="px-4 pt-3.5 pb-0">
           <div className="flex min-w-0 items-center gap-2">
             <KanbanTaskProjectPicker
@@ -475,7 +452,7 @@ export function KanbanNewTaskDialog({
             send it.
           </DialogDescription>
         </DialogHeader>
-        {/* Flush, borderless composer body: same Lexical prompt editor and attachment row as chat. */}
+        {}
         <DialogPanel
           className="px-4 pt-2 pb-2"
           onDragEnter={onComposerDragEnter}
@@ -556,11 +533,7 @@ export function KanbanNewTaskDialog({
             />
           </div>
         </DialogPanel>
-        {/* Linear-style footer (not DialogFooter, whose !important button overrides
-            would deform the chips): a chips row mirroring the chat composer
-            (`+` extras + permissions left, model + effort right), then a hairline
-            separator and a compact bottom bar with voice on the left and the
-            create controls on the right. */}
+        {}
         <div className="flex w-full flex-col">
           <div className="px-4 pb-2.5">
             {isVoiceActive ? (
@@ -590,8 +563,7 @@ export function KanbanNewTaskDialog({
                   />
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
-                  {/* Same split controls as a fresh chat composer: model picker plus
-                      the separate effort/thinking/speed picker. */}
+                  {}
                   <ProviderModelPicker
                     compact
                     provider={selectedProvider}

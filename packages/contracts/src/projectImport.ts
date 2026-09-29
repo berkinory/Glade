@@ -43,8 +43,6 @@ export const ListProjectImportsResult = Schema.Struct({
 });
 export type ListProjectImportsResult = typeof ListProjectImportsResult.Type;
 
-// One item per request gives progress and cancellation between durable imports.
-// A null thread key links an empty project without creating any conversation.
 export const ImportProjectInput = Schema.Struct({
   projectKey: TrimmedNonEmptyString,
   threadKey: Schema.NullOr(TrimmedNonEmptyString),

@@ -1,16 +1,3 @@
-/**
- * Front-consuming byte queue for stream parsers.
- *
- * A pipe or socket delivers arbitrary chunks, so a parser has to hold a partial
- * record until the rest arrives. Re-concatenating the pending bytes on every
- * chunk is quadratic in the record size: an 8 MB record arriving in 64 KB
- * chunks copies about half a gigabyte to deliver eight. Chunks are kept as
- * they arrive and joined once, when a whole record is taken.
- *
- * The newline framer in `./jsonrpc-stdio` and the length-prefixed splitter in
- * `./lengthPrefixedRecords` both buffer through this.
- */
-
 export class ByteAccumulator {
   private readonly chunks: Buffer[] = [];
   private length = 0;
@@ -19,17 +6,12 @@ export class ByteAccumulator {
     return this.length;
   }
 
-  /**
-   * Appends a copy of `chunk`. Callers may hand over views into buffers they
-   * keep writing to, and the bytes have to survive until the record completes.
-   */
   append(chunk: Uint8Array): void {
     if (chunk.byteLength === 0) return;
     this.chunks.push(Buffer.from(chunk));
     this.length += chunk.byteLength;
   }
 
-  /** A little-endian u32 read in place, without joining the pending chunks. */
   readUInt32LE(offset: number): number {
     if (offset < 0 || offset + 4 > this.length) {
       throw new RangeError("Byte accumulator u32 read is out of range");
@@ -45,11 +27,6 @@ export class ByteAccumulator {
     );
   }
 
-  /**
-   * Removes the first `byteLength` bytes and returns them as one buffer. The
-   * result is backed by memory this accumulator owns and never writes again, so
-   * it stays valid after later appends.
-   */
   take(byteLength: number): Buffer {
     const first = this.chunks[0];
     if (first && first.byteLength >= byteLength) {
@@ -62,7 +39,6 @@ export class ByteAccumulator {
     return taken;
   }
 
-  /** Removes the first `byteLength` bytes without joining them. */
   skip(byteLength: number): void {
     this.checkRange(byteLength);
     let remaining = byteLength;

@@ -1,6 +1,3 @@
-// FILE: EnvironmentUsageSection.tsx
-// Purpose: "Usage" section of the Environment panel — compact menu for the active provider.
-
 import type { ProviderKind } from "@glade/contracts";
 import { providerUsageDisplayName } from "@glade/shared/providerUsage";
 import { useQuery } from "@tanstack/react-query";
@@ -28,16 +25,14 @@ import {
 export function EnvironmentUsageSection({ provider }: { provider: ProviderKind }) {
   const usageQuery = useQuery(serverAllProviderUsageQueryOptions());
   const settingsQuery = useQuery(serverSettingsQueryOptions());
-  // The batch snapshot is an enrichment, not a gate: thread and provider rate limits can still
-  // supply a row when the live fetch fails or is missing from the batch.
+
   const snapshot = (usageQuery.data ?? []).find((entry) => entry.provider === provider);
   const model = useProviderUsageMenuModel(provider, { providerSnapshot: snapshot });
 
   if (settingsQuery.data?.providers[provider].enabled === false) {
     return null;
   }
-  // Local token totals are not useful in this compact panel. Only show providers with
-  // a rate-limit row to display.
+
   if (model.rows.length === 0) {
     return null;
   }

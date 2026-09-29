@@ -1,10 +1,5 @@
 import { useCallback } from "react";
-/**
- * SidebarSearchPalette - Command-style palette for sidebar actions, threads, and projects.
- *
- * Keeps the sidebar search UX aligned with the shared command primitives so
- * keyboard navigation and shortcut labels behave like the rest of the app.
- */
+
 import {
   BugReportIcon,
   CheckIcon,
@@ -75,8 +70,6 @@ import {
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 
-// Palette skin — shared with the ⌘P workspace palette so both surfaces read as one
-// menu: 44px bare input, settings-scale type, 30px squircle rows, single keycap pills.
 const PALETTE_INPUT_CLASS =
   "font-system-ui h-11 w-full min-w-0 bg-transparent px-3.5 text-ui-lg text-foreground outline-none placeholder:text-muted-foreground/70";
 const PALETTE_GROUP_LABEL_CLASS =
@@ -88,7 +81,6 @@ const PALETTE_TEXT_CLASS = "min-w-0 flex-1 truncate text-ui";
 const PALETTE_META_CLASS = "max-w-[45%] shrink-0 truncate text-ui-meta text-muted-foreground/70";
 const PALETTE_STATUS_CLASS = "px-4 pt-1 pb-3 text-ui text-muted-foreground/79";
 
-// Settings actions remain available from their dedicated surfaces.
 const SETTINGS_ACTION_IDS: ReadonlySet<string> = new Set([
   "settings",
   "usage-settings",
@@ -119,7 +111,6 @@ interface SidebarSearchPaletteProps {
   onImportProjects: (providers: readonly ProjectImportProvider[]) => void;
 }
 
-// Second page of the "Import projects" command: pick which local tool to import from.
 const IMPORT_PROJECTS_SOURCES: readonly {
   id: string;
   label: string;
@@ -224,14 +215,10 @@ function createThemeCommandItem(
   };
 }
 
-// Treat any token of length >= 2 that is a prefix of `keyword` as a match,
-// so typing `th` / `the` already starts surfacing theme actions.
 function hasTokenPrefixOf(query: string, keyword: string): boolean {
   return queryTokens(query).some((token) => token.length >= 2 && keyword.startsWith(token));
 }
 
-// Keep the palette quiet by default, then expose focused appearance actions
-// once the user is clearly asking about theme modes.
 function buildThemeCommandItems(input: {
   query: string;
   resolvedTheme: "light" | "dark";
@@ -311,13 +298,11 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
   const [importId, setImportId] = useState("");
   const [importError, setImportError] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
-  // Derived fallback (no syncing effect): an unavailable provider renders as
-  // the first available one, and the user's pick resurfaces if it comes back.
+
   const importProvider = props.importProviders.includes(importProviderState)
     ? importProviderState
     : (props.importProviders[0] ?? "codex");
-  // Error keyed to the query it was produced for: editing the query derives
-  // straight back to null with no state-clearing effect.
+
   const [addProjectErrorState, setAddProjectErrorState] = useState<{
     query: string;
     message: string;
@@ -337,8 +322,7 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
     if (props.open) {
       return;
     }
-    // Timeout-0 keeps the reset writes asynchronous (the palette is already
-    // hidden), which keeps this component eligible for React Compiler.
+
     const timeoutId = window.setTimeout(() => {
       setQuery("");
       setHighlightedItemValue(null);
@@ -425,9 +409,7 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
     query.trim().length > 0 &&
     (themeCommandItems.length > 0 || matchedCurrentThemes.length > 0);
   const matchedProjects = isBrowsing ? [] : matchSidebarSearchProjects(props.projects, query);
-  // Scoring normalizes and scans every message of every thread; keep it keyed
-  // on the thread set and query so highlight/keyboard/state re-renders and
-  // unrelated store flushes do not rescore the whole workspace.
+
   const matchedThreads = useMemo(
     () => (isBrowsing ? [] : matchSidebarSearchThreads(props.threads, query)),
     [isBrowsing, props.threads, query],
@@ -489,8 +471,7 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
     }
     setIsAddingProject(true);
     setAddProjectError(null);
-    // Promise chain instead of async/try-finally: React Compiler does not yet
-    // support try/finally, and it would skip optimizing this whole component.
+
     void Promise.resolve(
       props.onAddProjectPath(resolveBrowseSubmitPath(), {
         createIfMissing: willCreateMissingFolder,
@@ -784,7 +765,7 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
                 setHighlightedItemValue(typeof value === "string" ? value : null);
               }}
             >
-              {/* Bare input, no hairline: the header row IS the input, like ⌘P. */}
+              {}
               <div className="relative">
                 <AutocompletePrimitive.Input
                   autoFocus
@@ -869,8 +850,7 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
                   </CommandGroup>
                 ) : null}
 
-                {/* Recent threads lead when idle (mirrors the Ctrl+Tab switcher order);
-                    with a query the group turns into the thread matches. */}
+                {}
                 {!isBrowsing && matchedThreads.length > 0 ? (
                   <CommandGroup>
                     <CommandGroupLabel className={PALETTE_GROUP_LABEL_CLASS}>
@@ -990,8 +970,7 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
                         <span className={PALETTE_TEXT_CLASS}>
                           {project.name || "Untitled project"}
                         </span>
-                        {/* Opening a project from here can switch Space, so the destination
-                            is worth naming; the path is what identifies the project. */}
+                        {}
                         <span className={PALETTE_META_CLASS}>
                           {project.spaceName
                             ? `${project.spaceName} · ${project.cwd}`
@@ -1093,9 +1072,7 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
                   </>
                 ) : null}
               </CommandList>
-              {/* Status copy and banners live outside the listbox: assistive
-                  tech treats listbox children as options, so anything that is
-                  not selectable goes in this polite live region instead. */}
+              {}
               <CommandStatus className="p-0">
                 {isBrowsing ? (
                   unsupportedWindowsPath ? (

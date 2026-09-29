@@ -1,8 +1,3 @@
-// FILE: MessagesTimeline.test.tsx
-// Purpose: Covers transcript row rendering and SSR-safe presentation contracts.
-// Layer: Web chat component tests
-// Depends on: renderToStaticMarkup and a mocked LegendList.
-
 import { CheckpointRef, MessageId, ThreadId, TurnId } from "@glade/contracts";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, describe, expect, it, vi } from "vitest";
@@ -74,8 +69,6 @@ vi.mock("@legendapp/list/react", async () => {
   return { LegendList };
 });
 
-// Baseline MessagesTimeline props shared across render tests; spread the
-// result and override individual props (or pass them as JSX after the spread).
 function makeTimelineBaseProps() {
   return {
     hasMessages: true,
@@ -128,8 +121,7 @@ beforeAll(() => {
       classList,
       offsetHeight: 0,
     },
-    // flushStorageBeforePageHide registers visibilitychange at module load of
-    // the MessagesTimeline import chain (via composerDraftStore).
+
     addEventListener: () => {},
     removeEventListener: () => {},
     visibilityState: "visible",
@@ -140,18 +132,11 @@ beforeAll(() => {
   });
 });
 
-// Warm the component module once: the first dynamic import pays the whole
-// component-graph transform, which exceeds the 5s per-test timeout on slow CI
-// runners (observed >10s under a full parallel suite). beforeAll keeps that
-// cost off any single test's clock; the explicit timeout keeps it off the
-// default 10s hook clock too.
 beforeAll(async () => {
   await import("./MessagesTimeline");
 }, 120_000);
 
 describe("MessagesTimeline", () => {
-  // The first test pays the full dynamic-import cost of the MessagesTimeline
-  // module graph, which can exceed 10s under CI thread contention.
   it("renders an accent deep link to the immediate fork source", async () => {
     const { MessagesTimeline } = await import("./MessagesTimeline");
     const markup = renderToStaticMarkup(
@@ -583,8 +568,7 @@ describe("MessagesTimeline", () => {
     );
 
     expect(markup).toContain("Show more");
-    // The full text stays rendered; collapsing is a visual max-height clamp with
-    // a fade mask, so markdown structures are never sliced mid-syntax.
+
     expect(markup).toContain(hiddenTail);
     expect(markup).toContain('data-user-message-clamp="true"');
     expect(markup).toContain("max-height:");
@@ -992,8 +976,7 @@ describe("MessagesTimeline", () => {
 
     expect(markup).toContain("Worked for");
     expect(markup).toContain(">done</p>");
-    // Trailing work folds into the terminal reply's collapsed disclosure rather
-    // than leaving a detached work row at the end of the transcript.
+
     expect(markup).not.toContain("Tool 1");
     expect(markup).not.toContain("Tool 2");
     expect(markup).not.toContain('data-timeline-row-kind="work"');
@@ -1184,7 +1167,6 @@ describe("MessagesTimeline", () => {
     const { MessagesTimeline } = await import("./MessagesTimeline");
     const baseProps = makeTimelineBaseProps();
 
-    // Provider-style server/tool identifier while the call is active.
     const claudeMarkup = renderToStaticMarkup(
       <MessagesTimeline
         {...baseProps}
@@ -1213,8 +1195,6 @@ describe("MessagesTimeline", () => {
     expect(claudeMarkup).toContain("Glade is creating a thread");
     expect(claudeMarkup).not.toContain("Glade__glade_create_thread");
 
-    // A provider may misclassify an MCP action containing "create" or "list"
-    // as a file change. Tool identity still wins over that transport category.
     const codexMarkup = renderToStaticMarkup(
       <MessagesTimeline
         {...baseProps}
@@ -1371,8 +1351,6 @@ describe("MessagesTimeline", () => {
     expect(dynamicToolMarkup).toContain("ToolSearch");
     expect(dynamicToolMarkup).not.toContain("&quot;query&quot;");
 
-    // Failed calls are exempt: the JSON-shaped detail may be the only place
-    // the error surfaces, so it stays visible inline.
     const failedArgsMarkup = renderSingleToolRow({
       id: "work-glade-failed-args",
       createdAt: "2026-03-17T19:12:28.000Z",
@@ -1483,8 +1461,6 @@ describe("MessagesTimeline", () => {
       />,
     );
 
-    // The original MCP tool call is preserved inside the settled turn's
-    // "Worked for..." disclosure; the recap is an additional final artifact.
     expect(markup).toContain("Worked for");
     expect(markup).toContain('data-glade-thread-creation-card="true"');
     expect(markup).toContain("2 threads created");
@@ -1634,8 +1610,6 @@ describe("MessagesTimeline", () => {
       />,
     );
 
-    // The tool work collapses, but the changed-files summary stays anchored at
-    // the end of the turn with every file from the turn diff.
     expect(markup).toContain("Worked for");
     expect(markup).toContain("Edited 2 files");
     expect(markup).toContain("apps/web/src/components/chat/MessagesTimeline.test.tsx");

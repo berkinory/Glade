@@ -1,8 +1,3 @@
-// FILE: ProviderUsageSettingsPanel.tsx
-// Purpose: Settings → Usage panel. One card per supported provider showing live remaining
-// quota/credits with linear progress meters, the provider brand icon, and plan/status pills.
-// Usage is fetched read-only from each CLI's stored credentials by the server.
-
 import type { ServerProviderUsageSnapshot } from "@glade/contracts";
 import {
   PROVIDER_USAGE_PROVIDERS,
@@ -157,7 +152,7 @@ export function ProviderUsageSettingsPanel() {
   const { settings } = useAppSettings();
   const codexHomePath = settings.codexHomePath || null;
   const threads = useStore(useMemo(() => createAllThreadsSelector(), []));
-  // Account/thread fallback rows are shared by every provider card; derive them once per panel.
+
   const threadRateLimits = deriveAccountRateLimits(threads);
   const usageQuery = useQuery(serverAllProviderUsageQueryOptions());
   const refreshMutation = useMutation({
@@ -170,8 +165,6 @@ export function ProviderUsageSettingsPanel() {
     },
   });
 
-  // Use the live payload only. Inventing error placeholders for omitted providers
-  // would count as "connected" and hide unsigned cards.
   const cards = selectVisibleProviderUsageSnapshots(usageQuery.data ?? []);
 
   const showInitialLoading = usageQuery.isPending && !usageQuery.data;

@@ -1,12 +1,3 @@
-/**
- * AgentGatewayCredentialsLive - Live layer for agent gateway credentials.
- *
- * Issues opaque in-memory credentials. Tokens live for the provider session,
- * can be revoked independently, and intentionally do not survive a Glade
- * restart.
- *
- * @module agentGateway/Layers/AgentGatewayCredentials
- */
 import { makeNativeToolCallRegistry } from "../nativeToolCalls.ts";
 
 import { Effect, Layer } from "effect";
@@ -28,9 +19,6 @@ interface AgentGatewayEndpoint {
   readonly setListeningPort: (listeningPort: number) => void;
 }
 
-// Providers run as local child processes, so they must target a host the HTTP
-// server actually listens on. Wildcard binds cover loopback; an explicit host
-// (e.g. `::1` or a LAN address) does not, so reuse it verbatim.
 export function resolveAgentGatewayEndpointHost(configHost: string | undefined): string {
   if (configHost === undefined || isWildcardHost(configHost)) {
     return "127.0.0.1";
@@ -90,8 +78,8 @@ const makeAgentGatewayCredentials = Effect.gen(function* () {
   const retireSessionTurn: AgentGatewayCredentialsShape["retireSessionTurn"] = (token, turnId) => {
     const session = sessionRegistry.verify(token);
     if (!session) return Promise.resolve();
-    // Retire synchronously before exposing the asynchronous drain barrier.
-    // Requests racing the terminal event can no longer bind this bearer to B.
+    // Retire synchronously before exposing the asynchronous drain barrier. Requests racing the terminal
+    // event can no longer bind this bearer to B.
     sessionRegistry.retireWriteAuthority(token, turnId);
     nativeToolCalls.retire(token, turnId);
     return inFlightRequests.cancelTurn(session.sessionKey, turnId).settled;
@@ -125,6 +113,4 @@ const AgentGatewayCredentialsLive = Layer.effect(
   makeAgentGatewayCredentials,
 ).pipe(Layer.provide(AgentGatewaySessionRegistryLive));
 
-// Single shared composition so every consumer (HTTP gateway, provider
-// adapters) reuses the same memoized in-memory session registry.
 export const AgentGatewayCredentialsWithSecretsLive = AgentGatewayCredentialsLive.pipe(Layer.orDie);

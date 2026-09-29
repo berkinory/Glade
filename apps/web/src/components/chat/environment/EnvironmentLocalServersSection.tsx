@@ -1,8 +1,3 @@
-// FILE: EnvironmentLocalServersSection.tsx
-// Purpose: Environment panel row/menu for active local dev servers with one-click stop actions.
-// Layer: Environment panel section
-// Depends on: server local-server React Query helpers and the shared Environment row skin.
-
 import type { ReactNode } from "react";
 
 import type { ServerLocalServerProcess } from "@glade/contracts";
@@ -30,7 +25,6 @@ function describeServerCount(count: number): string {
   return `${count} server${count === 1 ? "" : "s"} running`;
 }
 
-/** Compact, non-closing icon action used for the menu's Refresh affordance. */
 function LocalServersRefreshButton({
   refreshing,
   onRefresh,
@@ -52,13 +46,6 @@ function LocalServersRefreshButton({
   );
 }
 
-/**
- * A single running server: status dot, name, and its `localhost:<port>` address,
- * plus a plain stop icon. Only the stop button is interactive (and the only red
- * accent), so the row itself stays clean — no row-wide highlight, no boxed
- * button chrome. The right padding keeps the stop button clear of the popup's
- * overlay scrollbar.
- */
 function LocalServerRow({
   server,
   stopping,
@@ -76,7 +63,7 @@ function LocalServerRow({
 
   return (
     <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-[0.5rem] py-0.5 pl-2 pr-2.5">
-      {/* Running indicator: a soft-haloed dot so an active server reads at a glance. */}
+      {}
       <span className="relative flex size-2 shrink-0 items-center justify-center" aria-hidden>
         <span className="absolute size-2 rounded-full bg-success/25" />
         <span className="relative size-1 rounded-full bg-success" />
@@ -102,7 +89,6 @@ function LocalServerRow({
   );
 }
 
-/** Centered placeholder for loading / error / empty states inside the menu body. */
 function LocalServersPlaceholder({
   icon,
   title,

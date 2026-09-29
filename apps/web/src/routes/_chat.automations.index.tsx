@@ -42,8 +42,7 @@ function AutomationsRouteView() {
   const desktopTopBarWindowControlsGutterClassName =
     useDesktopTopBarWindowControlsGutterClassName();
   const projects = useStore((state) => state.projects);
-  // Rail layout: the Automations panel lists every automation, so this page is the
-  // "pick one or create one" landing instead of a second copy of the list.
+
   const isRailLayout = useSidebarLayout() === "rail";
   const [dialogOpen, setDialogOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<AutomationStatusFilter>("all");

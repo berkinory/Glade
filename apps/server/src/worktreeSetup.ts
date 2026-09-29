@@ -8,7 +8,6 @@ function findWorktreeSetupScript(scripts: ReadonlyArray<ProjectScript>): Project
   return scripts.find((script) => script.runOnWorktreeCreate) ?? null;
 }
 
-/** Run the project's configured setup command in a freshly-created worktree. */
 export async function runWorktreeSetupScript(
   scripts: ReadonlyArray<ProjectScript>,
   cwd: string,

@@ -1,11 +1,3 @@
-// FILE: PullRequestMarkdown.tsx
-// Purpose: Shared renderer for PR descriptions and comment bodies — GitHub-flavored bodies
-//          pass through the pure preprocessing (template comments stripped, `<br>` tags
-//          resolved) and `<details>` blocks render as native closed disclosures instead of
-//          leaking literal tags and boilerplate walls into the view.
-// Layer: Pull request presentation
-// Exports: PullRequestMarkdown
-
 import { useState } from "react";
 
 import ChatMarkdown from "~/components/ChatMarkdown";
@@ -19,7 +11,6 @@ import {
 import { PR_BODY_TEXT_CLASS_NAME, PR_META_TEXT_CLASS_NAME } from "./pullRequestText";
 
 function DetailsSection({ summary, body, cwd }: { summary: string; body: string; cwd: string }) {
-  // Closed by default, matching GitHub: these blocks are boilerplate by convention.
   const [open, setOpen] = useState(false);
   return (
     <Collapsible open={open} onOpenChange={setOpen} className="my-2">
@@ -54,7 +45,7 @@ export function PullRequestMarkdown({
   cwd,
 }: {
   text: string;
-  /** Rendered (as markdown) when the prepared body is empty. */
+
   fallback: string;
   cwd: string;
 }) {
@@ -74,7 +65,6 @@ export function PullRequestMarkdown({
       {sections.map((section, index) =>
         section.kind === "markdown" ? (
           <ChatMarkdown
-            // Section order is stable for a given body; the body itself is the real key.
             key={index}
             text={section.text}
             cwd={cwd}

@@ -72,9 +72,7 @@ export function ChatMountLoader() {
         CHAT_BACKGROUND_CLASS_NAME,
       )}
     >
-      {/* Inline @keyframes so the delayed fade needs no global stylesheet; the
-          delay keeps the common fast mount (a couple of frames) from flashing a
-          spinner — short waits show only the plain chat background. */}
+      {}
       <style>{`@keyframes chat-mount-loader-in { from { opacity: 0; } to { opacity: 1; } }`}</style>
       <div className="opacity-0 [animation:chat-mount-loader-in_200ms_ease-out_150ms_forwards] motion-reduce:animate-none motion-reduce:opacity-100">
         <Spinner className="size-5 text-muted-foreground" />
@@ -115,12 +113,11 @@ export function DeferredChatView(props: {
     if (!props.deferMount) {
       return;
     }
-    // readyMountKey is keyed by mountKey, so a changed mountKey already makes
-    // canMountChatView false (loader) without an eager reset here; the double
-    // rAF then stamps the new key once the paint has settled. Chromium can
-    // suppress animation frames while an Electron window is starting or being
-    // background-throttled, so keep a bounded fallback: a deferred draft must
-    // never remain on the mount loader forever just because frames did not run.
+    // readyMountKey is keyed by mountKey, so a changed mountKey already makes canMountChatView false
+    // (loader) without an eager reset here; the double rAF then stamps the new key once the paint has
+    // settled. Chromium can suppress animation frames while an Electron window is starting or being
+    // background-throttled, so keep a bounded fallback: a deferred draft must never remain on the mount
+    // loader forever just because frames did not run.
     return scheduleDeferredChatMount(window, () => setReadyMountKey(mountKey));
   }, [mountKey, props.deferMount]);
 

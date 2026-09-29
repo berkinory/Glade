@@ -1,8 +1,3 @@
-// FILE: _chat.settings.tsx
-// Purpose: Render the dedicated settings experience with its own section sidebar and grouped panels.
-// Layer: Route screen
-// Exports: Settings route component for `/settings`
-
 import { PROVIDER_DISPLAY_NAMES, type ProviderKind } from "@glade/contracts";
 import { VISIBLE_PROVIDER_DESCRIPTORS } from "../providerCatalog";
 import { createFileRoute, useSearch } from "@tanstack/react-router";
@@ -105,8 +100,6 @@ import {
 } from "../settingsNavigation";
 import { SETTINGS_PAGE_BACKGROUND_CLASS_NAME } from "../settingsPanelStyles";
 
-// ── Settings taxonomy ──────────────────────────────────────────────────────
-
 const SIDEBAR_LAYOUT_OPTIONS = [
   { value: "classic", label: "Classic" },
   { value: "rail", label: "Rail" },
@@ -185,21 +178,13 @@ const FOLLOW_UP_BEHAVIOR_OPTIONS = [
   { value: "steer", label: "Steer" },
 ] as const satisfies ReadonlyArray<{ value: FollowUpBehavior; label: string }>;
 
-// ── Settings UI primitives ────────────────────────────────────────────────
-
-// Shared settings controls live in ~/components/settings/SettingControls.
-
 function isProviderSelectOption(value: string): value is ProviderKind {
   return PROVIDER_SELECT_OPTIONS.includes(value as ProviderKind);
 }
 
-// Keys of AppSettings whose value is a plain boolean — the only ones that can be
-// driven by the shared on/off toggle row below.
 type BooleanSettingKey = {
   [Key in keyof AppSettings]-?: AppSettings[Key] extends boolean ? Key : never;
 }[keyof AppSettings];
-
-// ── Route screen ───────────────────────────────────────────────────────────
 
 function SettingsRouteView() {
   const routeSearch = useSearch({ strict: false }) as Record<string, unknown>;
@@ -282,7 +267,6 @@ function SettingsRouteView() {
     );
   }, [settings.terminalFontFamily]);
 
-  // Deep links and sidebar search targets all resolve to stable DOM ids in the active panel.
   useEffect(() => {
     if (!settingsTarget) return;
     const frame = window.requestAnimationFrame(() => {
@@ -313,10 +297,6 @@ function SettingsRouteView() {
     setResetEpoch((current) => current + 1);
   }
 
-  // Shared on/off settings row: a labelled Switch bound to a boolean AppSettings
-  // key, with the standard "reset to default" affordance shown only when changed.
-  // Rows with bespoke controls (e.g. the desktop-notifications Test button) keep
-  // their own markup instead of using this helper.
   const renderBooleanSettingRow = (config: {
     settingKey: BooleanSettingKey;
     title: string;
@@ -676,10 +656,7 @@ function SettingsRouteView() {
           ) : null
         }
       >
-        {/* The mode picker is the one settings control that sits directly on the page
-            instead of inside a card — the mockups are the whole UI, so boxing them in
-            a card reads as chrome around chrome. The anchor keeps search deep-links
-            (`?target=setting-theme`) working without the SettingsRow. */}
+        {}
         <div id={settingRowAnchorId("Theme")} className="scroll-mt-24 pb-1.5">
           <ThemeModePicker value={theme} onValueChange={setTheme} ariaLabel="Theme preference" />
         </div>
@@ -1209,16 +1186,8 @@ function SettingsRouteView() {
       )}
     >
       <RouteInsetSurface surfaceClassName={SETTINGS_PAGE_BACKGROUND_CLASS_NAME}>
-        {/* Companion sidebar trigger so settings is reachable-and-exitable even when the
-          sidebar is collapsed (web/mobile have no global Back arrow). Pinned to the
-          card's top-left — at the same header height + traffic-light gutter as the
-          chat and route headers — so the collapsed-state toggle sits by the traffic
-          lights instead of floating in the centered settings body. It renders nothing
-          while the sidebar is open (SidebarHeaderNavigationControls returns null), so it
-          adds no navigation chrome in the common (open) state and never shifts the centered
-          content (hence absolute, not a layout-occupying header row). The strip stays a
-          drag-region so the Windows frameless window can be moved by its top edge; the
-          caption buttons themselves are a separate fixed cluster (see root route). */}
+        {/* Keep settings navigation available with the sidebar collapsed. Preserve the Windows drag region
+   without covering its caption controls. */}
         <div
           className={cn(
             "drag-region absolute inset-x-0 top-0 z-10 flex items-center",
@@ -1261,8 +1230,7 @@ function SettingsRouteView() {
               ) : null}
 
               {renderRouteOwnedPanel()}
-              {/* These workflow owners stay mounted so drafts, request guards, and pending
-                  mutations retain route lifetime while inactive panels render no DOM. */}
+              {}
               <div className="contents">
                 <NotificationsSettingsPanel
                   active={activeSection === "notifications"}
@@ -1303,9 +1271,7 @@ function SettingsRouteView() {
             </div>
           </div>
         </div>
-        {/* Mounted at the route level (outside the scrollable panel) so the
-          dialog portal can overlay the entire settings view without being
-          clipped by the content wrapper's overflow. */}
+        {}
         <ReleaseHistoryDialog
           open={releaseHistoryOpen}
           onOpenChange={setReleaseHistoryOpen}

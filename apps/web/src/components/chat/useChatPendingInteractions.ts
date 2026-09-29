@@ -173,9 +173,7 @@ export function useChatPendingInteractions({
         : null,
     [activePendingDraftAnswers, activePendingQuestionIndex, activePendingUserInput],
   );
-  // Read once here for the same reason as `activeLatestTurnId`: an `activePendingProgress?.x`
-  // read inside a memo body makes React Compiler infer `activePendingProgress` as the
-  // dependency, which no longer matches the hand-written property-path dep.
+
   const activePendingQuestion = activePendingProgress?.activeQuestion ?? null;
   const activePendingResolvedAnswers = useMemo(
     () =>
@@ -251,9 +249,7 @@ export function useChatPendingInteractions({
       setRespondingRequestKeys((existing) =>
         existing.includes(requestKey) ? existing : [...existing, requestKey],
       );
-      // Persist supervised "always allow" client-side so the next turn (after an
-      // idle-stop or runtime restart) uses full access. Auto remains the durable
-      // thread policy; its server-side override applies only to the live session.
+
       const durableRuntimeMode = resolveRuntimeModeAfterApprovalDecision(
         runtimeMode,
         decision,
@@ -278,8 +274,8 @@ export function useChatPendingInteractions({
               message.includes(APPROVAL_ALREADY_ANSWERED_INVARIANT_MARKER),
             )
           ) {
-            // The authoritative response won the race. Force a full detail
-            // snapshot so a stale local card cannot immediately submit again.
+            // The authoritative response won the race. Force a full detail snapshot so a stale local card
+            // cannot immediately submit again.
             clearThreadDetailResumeCursor(activeThreadId);
             await api.orchestration
               .subscribeThread(buildThreadSubscribeInput(activeThreadId))
@@ -336,8 +332,7 @@ export function useChatPendingInteractions({
             ...(lifecycleGeneration !== undefined ? { lifecycleGeneration } : {}),
             createdAt: new Date().toISOString(),
           });
-          // Refresh identities and settlement after command acceptance; acceptance
-          // alone does not mean Claude received the answer.
+
           clearThreadDetailResumeCursor(activeThreadId);
           await api.orchestration.subscribeThread(buildThreadSubscribeInput(activeThreadId));
         })

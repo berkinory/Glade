@@ -74,14 +74,13 @@ function isTerminalLatestTurn(
   return latestTurn.state === "completed" || latestTurn.state === "error";
 }
 
-// Turn lifecycle must settle with the session: once a session leaves "running",
-// no provider event will ever mark the turn complete on its own, so a running
-// latestTurn is settled here. Checkpoint diff events (thread.turn-diff-completed)
-// only enrich the terminal state afterwards — they are not the lifecycle authority.
-// A retained activeTurnId blocks settlement (except on error): stop-requested flows
-// deliberately emit "interrupted" while keeping the turn active until the provider's
-// terminal event decides the real outcome, and a premature settle here could never
-// be corrected because settlement only applies to running turns.
+// Turn lifecycle must settle with the session: once a session leaves "running", no provider event
+// will ever mark the turn complete on its own, so a running latestTurn is settled here. Checkpoint
+// diff events (thread.turn-diff-completed) only enrich the terminal state afterwards — they are not
+// the lifecycle authority. A retained activeTurnId blocks settlement (except on error):
+// stop-requested flows deliberately emit "interrupted" while keeping the turn active until the
+// provider's terminal event decides the real outcome, and a premature settle here could never be
+// corrected because settlement only applies to running turns.
 function settleLatestTurnForSessionStatus(
   latestTurn: OrchestrationThread["latestTurn"],
   session: Pick<OrchestrationSession, "status" | "activeTurnId" | "updatedAt">,
@@ -100,9 +99,6 @@ function settleLatestTurnForSessionStatus(
   };
 }
 
-// Every projected event patches exactly one thread, and streaming assistant
-// deltas run this on the dispatch hot path, so patch the single affected slot
-// instead of mapping a closure over every thread.
 function updateThread(
   threads: ReadonlyArray<OrchestrationThread>,
   threadId: ThreadId,
@@ -117,9 +113,6 @@ function updateThread(
   return nextThreads;
 }
 
-// Message ids are unique within a thread and streamed deltas land on the newest
-// message, so searching backwards finds the target in one step instead of
-// scanning the whole (capped at MAX_THREAD_MESSAGES) transcript.
 function findMessageIndexFromEnd(
   messages: ReadonlyArray<OrchestrationMessage>,
   messageId: string,
@@ -302,14 +295,6 @@ export function createEmptyReadModel(nowIso: string): OrchestrationReadModel {
   };
 }
 
-/**
- * Mirrors the SQLite message_text_segments projection in the in-memory read
- * model: streamed assistant deltas accumulate into the current segment, a
- * row-making provider event between deltas starts a new segment at its own
- * time (segmentStartedAt), and completion keeps the boundaries when the
- * collated segment text matches the final text. Single-segment messages and
- * edits/rewrites/imports need no side table metadata and drop the segments.
- */
 function deriveNextMessageTextSegments(
   previous: ReadonlyArray<OrchestrationMessageTextSegment> | undefined,
   input: {
@@ -350,7 +335,6 @@ function deriveNextMessageTextSegments(
     ];
   }
 
-  // Completion / edit / rewrite / import.
   if (previous && previous.length > 1) {
     const collatedSegmentText = previous.map((segment) => segment.text).join("");
     if (collatedSegmentText === input.text || input.text.length === 0) {
@@ -421,8 +405,7 @@ export function projectEvent(
             ...nextBase,
             spaces: nextBase.spaces.map((space) => {
               const sortOrder = orderBySpaceId.get(space.id);
-              // A listed space whose position did not move is not a change; skipping it keeps
-              // this read model, the SQL projection, and the client store byte-identical.
+
               return sortOrder === undefined || sortOrder === space.sortOrder
                 ? space
                 : { ...space, sortOrder, updatedAt: payload.updatedAt };
@@ -939,9 +922,9 @@ export function projectEvent(
           "message",
         );
 
-        // Hot path: one streamed delta must not cost a full copy-and-rebuild of
-        // the transcript. Update the one affected slot in a single shallow copy
-        // and only re-cap when the transcript actually grew past the limit.
+        // Hot path: one streamed delta must not cost a full copy-and-rebuild of the transcript. Update the
+        // one affected slot in a single shallow copy and only re-cap when the transcript actually grew past
+        // the limit.
         const existingIndex = findMessageIndexFromEnd(thread.messages, message.id);
         let cappedMessages: ReadonlyArray<OrchestrationMessage>;
         if (existingIndex >= 0) {
@@ -954,8 +937,6 @@ export function projectEvent(
           const nextSegments =
             message.role === "assistant"
               ? deriveNextMessageTextSegments(entry.textSegments, {
-                  // For streaming deltas the segment owns only this delta's
-                  // text (resolvedText is the whole accumulated message).
                   text: message.streaming ? message.text : resolvedText,
                   streaming: message.streaming,
                   segmentStartedAt: payload.segmentStartedAt,
@@ -1150,11 +1131,6 @@ export function projectEvent(
           "checkpoint",
         );
 
-        // Do not let a placeholder (status "missing") overwrite a checkpoint
-        // that has already been captured with a real git ref (status "ready").
-        // ProviderRuntimeIngestion may fire multiple turn.diff.updated events
-        // per turn; without this guard later placeholders would clobber the
-        // real capture dispatched by CheckpointReactor.
         const existing = thread.checkpoints.find((entry) => entry.turnId === checkpoint.turnId);
         if (existing && existing.status !== "missing" && checkpoint.status === "missing") {
           return nextBase;
@@ -1167,10 +1143,8 @@ export function projectEvent(
           .toSorted((left, right) => left.checkpointTurnCount - right.checkpointTurnCount)
           .slice(-MAX_THREAD_CHECKPOINTS);
 
-        // Preserve the previous latestTurn assistantMessageId when the
-        // incoming payload has none. Turn-diff placeholders can fire before
-        // the assistant message is finalized — they must not erase a real id
-        // that thread.message-sent has already recorded.
+        // Turn-diff placeholders can fire before the assistant message is finalized — they must not erase a
+        // real id that thread.message-sent has already recorded.
         const preservedAssistantMessageId =
           payload.assistantMessageId ??
           (thread.latestTurn?.turnId === payload.turnId
@@ -1189,18 +1163,14 @@ export function projectEvent(
           ? thread.latestTurn
           : matchingLatestTurn !== null
             ? {
-                // Checkpoints describe filesystem state; the provider session is
-                // the lifecycle authority. In particular, a successful empty git
-                // capture must not turn an interrupted, answer-less turn into a
-                // completed one merely because both checkpoint commands and
-                // runtime ingestion subscribe to the same terminal event.
+                // Checkpoints describe filesystem state; the provider session is the lifecycle authority. In
+                // particular, a successful empty git capture must not turn an interrupted, answer-less turn into a
+                // completed one merely because both checkpoint commands and runtime ingestion subscribe to the same
+                // terminal event.
                 ...matchingLatestTurn,
                 assistantMessageId: preservedAssistantMessageId,
               }
             : {
-                // Historical/sessionless checkpoint projections have no matching
-                // lifecycle row to enrich, so retain the legacy reconstruction
-                // behavior for those imports and rollback paths.
                 turnId: payload.turnId,
                 state: checkpointStatusToLatestTurnState(payload.status),
                 requestedAt: payload.completedAt,

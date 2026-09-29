@@ -1,4 +1,3 @@
-/** Still-image computer frame WebSocket route. */
 import {
   COMPUTER_FRAME_RESYNC_MESSAGE,
   COMPUTER_FRAME_WS_COMPUTER_ID_PARAM,

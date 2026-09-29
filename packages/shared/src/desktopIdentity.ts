@@ -1,13 +1,10 @@
-// FILE: desktopIdentity.ts
-// Purpose: Defines the canonical desktop application identity across packaging and runtime.
-
 export const GLADE_DESKTOP_SCHEME = "glade";
 export const GLADE_DESKTOP_ORIGIN = `${GLADE_DESKTOP_SCHEME}://app`;
 export const GLADE_DESKTOP_ENTRY_URL = `${GLADE_DESKTOP_ORIGIN}/index.html`;
 export const GLADE_DESKTOP_UPDATE_CHANNEL = "glade";
 export const GLADE_PRODUCTION_BUNDLE_ID = "com.agent.glade";
 export const GLADE_DEVELOPMENT_BUNDLE_ID = `${GLADE_PRODUCTION_BUNDLE_ID}.dev`;
-/** Display/setup identity of the GUI host; this value does not confer native authority. */
+
 export const GLADE_DESKTOP_BUNDLE_ID_ENV = "GLADE_DESKTOP_BUNDLE_ID";
 export const GLADE_SOURCE_DESKTOP_BUILD_MARKER = "glade-source-desktop-build-v2";
 export const GLADE_DESKTOP_SMOKE_USER_DATA_ENV = "GLADE_DESKTOP_SMOKE_USER_DATA";
@@ -50,7 +47,6 @@ export function resolveGladeDesktopFlavor(input: {
   return input.isDevelopment ? "development" : "production";
 }
 
-/** Packaged identity is fixed when the artifact is staged, before it is signed. */
 export function resolveGladeDesktopRuntimeFlavor(input: {
   readonly isPackaged: boolean;
   readonly isDevelopment: boolean;
@@ -65,9 +61,7 @@ export function resolveGladeDesktopRuntimeFlavor(input: {
     }
     throw new Error("The packaged Glade desktop flavor is invalid. Rebuild the application.");
   }
-  // Source launchers also use an app bundle on macOS. Their build marker keeps
-  // the existing environment-based routing, while legacy packaged apps remain
-  // Stable even when a developer shell happens to export a different flavor.
+
   if (input.isPackaged && input.allowDevelopmentOverride !== true) {
     return "production";
   }

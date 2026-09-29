@@ -7,18 +7,13 @@ import { registerComputerDesktopLifecycle } from "./computerDesktopLifecycle";
 import { COMPUTER_PERMISSIONS } from "@glade/shared/computerGrants";
 import { CUA_HOST_SOCKET_ENV } from "@glade/shared/cuaDriverProtocol";
 import { MODEL_SCREEN_IMAGE_MAX_DIMENSION } from "@glade/shared/modelImageBudget";
-// FILE: main.ts
-// Purpose: Starts the Electron shell, backend process, native menus, IPC bridges, and updater.
-// Layer: Desktop main process
-// Depends on: Electron, backend startup helpers, browser manager, and update runtime.
 
 import * as ChildProcess from "node:child_process";
 import * as Crypto from "node:crypto";
 import * as FS from "node:fs";
 import * as OS from "node:os";
 import * as Path from "node:path";
-// Electron-only builtin that sees app.asar as a real file instead of a virtual
-// directory — required to stat the archive itself for swap detection.
+
 import * as OriginalFS from "original-fs";
 
 import {
@@ -315,22 +310,8 @@ if (
   throw new Error("The source desktop launcher and built main are incompatible. Rebuild Glade.");
 }
 
-// Capture the real archive identity before any explicit app.asar lookup. Static
-// snapshotting and the runtime watcher both use this same generation as their
-// baseline, so a replacement during startup cannot silently become "normal."
 const startupBundleIdentity = captureStartupBundleIdentity();
 
-// Deliberately still on the pre-`whenReady()` path. On posix it is normally a cache read
-// (see `createCachedLoginShellEnvironmentReader`); only a first launch, a changed shell
-// startup file, or an aged-out entry pays the ~1s login-shell probe again.
-// The reads a few lines below decide where this install's data lives, and two of them
-// depend on what this probe brings in: `resolveUserDataPath()` takes the Electron profile
-// directory from XDG_CONFIG_HOME on Linux, which the login-shell probe captures, and
-// `BASE_DIR` prefers GLADE_HOME, which the Windows registry read hydrates whenever the
-// user set it persistently. Resolving either against an unhydrated environment would
-// silently relocate an existing user's profile and data directory.
-// (The probe also carries PATH, SSH_AUTH_SOCK and HOMEBREW_* for later provider spawns.
-// APPDATA on Windows is inherited from the process env, not hydrated here.)
 const shellEnvironmentSync = syncShellEnvironment();
 
 const IPC = DESKTOP_IPC_CHANNELS;
@@ -362,8 +343,7 @@ const STATE_DIR = Path.join(BASE_DIR, "userdata");
 const DESKTOP_WINDOW_STATE_PATH = Path.join(STATE_DIR, "desktop-window-state.json");
 const DESKTOP_APP_ICON_PATH = Path.join(STATE_DIR, "desktop-app-icon");
 const DESKTOP_CUSTOM_TITLE_BAR_PATH = Path.join(STATE_DIR, "desktop-custom-title-bar.json");
-// Written by the renderer-mirrored agent cursor colors; read at each driver
-// session open so a persisted custom cursor survives app restarts.
+
 const AGENT_CURSOR_PREFERENCE_PATH = Path.join(STATE_DIR, "agent-cursor-colors.json");
 const DESKTOP_SCHEME = desktopIdentity.scheme;
 const ROOT_DIR = Path.resolve(__dirname, "../../..");
@@ -380,15 +360,14 @@ const APP_RUN_ID = Crypto.randomBytes(6).toString("hex");
 const DESKTOP_BACKEND_SHUTDOWN_TOKEN = Crypto.randomBytes(32).toString("hex");
 const DESKTOP_BROWSER_HOST_CAPABILITY = Crypto.randomBytes(32).toString("base64url");
 const DESKTOP_BROWSER_HOST_CAPABILITY_FD = 3;
-// Electron's single-instance lock is scoped through userData on Windows/Linux.
-// Set the flavor-specific profile first so Prod and Dev never contend
-// for the same lock even when they use the same Electron executable.
+// Electron's single-instance lock is scoped through userData on Windows/Linux. Set the
+// flavor-specific profile first so Prod and Dev never contend for the same lock even when they use
+// the same Electron executable.
 const userDataPath = resolveUserDataPath();
 app.setPath("userData", userDataPath);
 
-// Monitor-only: observes uncaught exceptions for diagnostics without changing
-// Node's exit behavior — the POSIX EPIPE filter and the default crash path
-// stay exactly as before.
+// Monitor-only: observes uncaught exceptions for diagnostics without changing Node's exit behavior
+// — the POSIX EPIPE filter and the default crash path stay exactly as before.
 process.on("uncaughtExceptionMonitor", (_error: unknown) => {});
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
@@ -398,27 +377,23 @@ const AUTO_UPDATE_FOREGROUND_RECHECK_MIN_INTERVAL_MS = 5 * 60 * 1000;
 const AUTO_UPDATE_FOREGROUND_RECHECK_MIN_BACKGROUND_MS = 30 * 1000;
 const AUTO_UPDATE_CHECK_TIMEOUT_MS = 45 * 1000;
 const AUTO_UPDATE_DOWNLOAD_STALL_TIMEOUT_MS = 60 * 1000;
-// Upper bound on how long we wait for electron-updater to release a cancelled
-// download before allowing a retry, so a wedged updater promise can't block updates.
+
 const AUTO_UPDATE_DOWNLOAD_SETTLE_TIMEOUT_MS = 20 * 1000;
 const AUTO_UPDATE_STALLED_DOWNLOAD_CANCELLATION_SUPPRESSION_MS = 2 * 60 * 1000;
-// How long we give quitAndInstall() to actually quit/relaunch the app before we
-// conclude the OS installer never started (unsigned/quarantined build, read-only
-// install dir, blocked NSIS run) and surface the manual-download fallback.
+
 const AUTO_UPDATE_INSTALL_WATCHDOG_MS = 15 * 1000;
 const AUTO_UPDATE_DIAGNOSTICS_TIMEOUT_MS = 2_800;
-// The OS key store can pend forever on an unanswered securityd prompt (locked
-// keychain, signature change, wedged SecurityAgent). Startup must not wait on
-// it: session cookies are disposable, a bricked launch is not.
+// The OS key store can pend forever on an unanswered securityd prompt (locked keychain, signature
+// change, wedged SecurityAgent). Startup must not wait on it: session cookies are disposable, a
+// bricked launch is not.
 const BROWSER_SESSION_RESTORE_TIMEOUT_MS = 5_000;
-// User-driven like the menu and renderer reasons, so it must not be filtered
-// out by the automatic-activity suppression a previous install failure arms.
+// User-driven like the menu and renderer reasons, so it must not be filtered out by the
+// automatic-activity suppression a previous install failure arms.
 const UPDATE_CHECK_REASON_MIGRATION_RECOVERY = "migration recovery";
 const UPDATE_INSTALL_MARKER_FILE_NAME = "pending-update-install.json";
 const BACKEND_FORCE_KILL_DELAY_MS = 8_000;
 const BACKEND_SHUTDOWN_TIMEOUT_MS = 10_000;
-// Provider finalizers stop every owned runtime concurrently, but POSIX leaves
-// extra headroom for the rest of the Effect scope to close cleanly.
+
 const POSIX_BACKEND_TERMINATE_DELAY_MS = 15_000;
 const POSIX_BACKEND_FORCE_KILL_DELAY_MS = 18_000;
 const POSIX_BACKEND_SHUTDOWN_TIMEOUT_MS = 20_000;
@@ -434,7 +409,7 @@ const browserPerfLoggingEnabled = process.env.GLADE_BROWSER_PERF === "1";
 type DesktopUpdateErrorContext = DesktopUpdateState["errorContext"];
 
 let mainWindow: BrowserWindow | null = null;
-/** Whether the live BrowserWindow was created with `frame: false` (win32/linux). */
+
 let customTitleBarActive = false;
 let backendProcess: ChildProcess.ChildProcess | null = null;
 let backendPort = 0;
@@ -443,13 +418,12 @@ let backendHttpUrl = "";
 let backendWsUrl = "";
 let backendReadinessAbortController: AbortController | null = null;
 let backendInitialWindowOpenInFlight: Promise<void> | null = null;
-// Guards every blocking backend-lifecycle dialog (startup block, give-up) so a
-// crash loop can never stack modal windows on top of each other.
+
 let backendLifecycleDialogInFlight: Promise<void> | null = null;
 let backendListeningDetector: ServerListeningDetector | null = null;
 const backendSupervision = new BackendSupervisionPolicy();
-// Survives window recreation on purpose: a renderer that keeps dying must not refill
-// its reload budget just because the crash produced a new window.
+// Survives window recreation on purpose: a renderer that keeps dying must not refill its reload
+// budget just because the crash produced a new window.
 const rendererCrashPolicy = new RendererCrashPolicy();
 let rendererCrashDialogInFlight: Promise<void> | null = null;
 let lastBackendFailureDetail: string | null = null;
@@ -756,10 +730,7 @@ async function waitForBackendWindowReady(baseUrl: string): Promise<"listening" |
     waitForHttpReady: () =>
       waitForBackendHttpReady(baseUrl, {
         path: "/health",
-        // The child supervisor, not elapsed wall time, owns the terminal
-        // condition. Large projection catch-up can legitimately outlive a
-        // minute; this observer is cancelled when that child exits or the app
-        // shuts down.
+
         timeoutMs: null,
         isReady: async (response) => {
           if (!response.ok) {
@@ -872,7 +843,6 @@ function initializePackagedLogging(): void {
     installStdIoCapture();
     writeDesktopLogHeader(`runtime log capture enabled logDir=${LOG_DIR}`);
   } catch (error) {
-    // Logging setup should never block app startup.
     console.error("[desktop] failed to initialize packaged logging", error);
   }
 }
@@ -901,11 +871,10 @@ function getDestructiveMenuIcon(): Electron.NativeImage | undefined {
     return undefined;
   }
 }
-// Renderer-rasterized Central icons: 32px PNGs shown in a 16pt macOS menu slot.
+
 const CONTEXT_MENU_ICON_DATA_URL_PREFIX = "data:image/png;base64,";
 const CONTEXT_MENU_ICON_MAX_DATA_URL_LENGTH = 64_000;
-// NSMenu sizes to its widest title and Electron has no minimum width; trailing em
-// spaces add a little breathing room on the right of macOS context menus.
+
 const MAC_CONTEXT_MENU_LABEL_TRAILING_PADDING = "\u2003\u2003";
 
 function createContextMenuIcon(
@@ -954,7 +923,6 @@ let downloadedUpdateArtifact: {
 } | null = null;
 let downloadedUpdateIdentityTask: Promise<void> | null = null;
 
-// Download callbacks may replace the task while the caller awaits the transfer.
 function pendingDownloadedUpdateIdentity(): Promise<void> | null {
   return downloadedUpdateIdentityTask;
 }
@@ -1000,8 +968,7 @@ function replayDeferredDesktopQuitAfterUpdaterSettles(): boolean {
       writeDesktopLogHeader(`${intent.reason} replaying deferred quit after updater settled`);
       requestGracefulAppQuit(intent.reason);
     },
-    // Preflight callers only need to replay a pending quit. Full install
-    // recovery separately decides whether the stopped backend must be resumed.
+
     resumeApp: () => undefined,
   });
   return outcome !== "resumed-app";
@@ -1010,16 +977,12 @@ function replayDeferredDesktopQuitAfterUpdaterSettles(): boolean {
 function recoverDesktopAfterUpdaterInstallFailure(): void {
   if (replayDeferredDesktopQuitAfterUpdaterSettles()) return;
 
-  // A second updater failure signal can race the replay above (for example,
-  // before-quit handoff validation followed by the cancelled preparation).
-  // Once graceful shutdown owns the lifecycle, do not revive the backend or
-  // enqueue another quit chain.
+  // A second updater failure signal can race the replay above (for example, before-quit handoff
+  // validation followed by the cancelled preparation).
   if (desktopShutdownPromise !== null || isQuitting) {
     return;
   }
 
-  // The backend was already stopped for install preparation. When no quit was
-  // requested in the meantime, restore the live app and its update polling.
   startBackend();
   scheduleUpdatePoll();
 }
@@ -1092,11 +1055,10 @@ async function logMacUpdateDiagnostics(context: string): Promise<void> {
   }
 }
 
-// quitAndInstall() is a fire-and-forget void call with no success signal: when
-// the OS installer silently fails the app never quits and the user is left with
-// no feedback (the "update doesn't work for some people" report). If the process
-// is still alive after the watchdog window, recover and surface an actionable
-// install failure so the UI can offer the manual-download fallback.
+// quitAndInstall() is a fire-and-forget void call with no success signal: when the OS installer
+// silently fails the app never quits and the user is left with no feedback (the "update doesn't
+// work for some people" report). If the process is still alive after the watchdog window, recover
+// and surface an actionable install failure so the UI can offer the manual-download fallback.
 function armInstallWatchdog(): void {
   clearUpdateInstallWatchdogTimer();
   updateInstallWatchdogTimer = setTimeout(() => {
@@ -1129,9 +1091,7 @@ protocol.registerSchemesAsPrivileged([
       secure: true,
       supportFetchAPI: true,
       corsEnabled: true,
-      // Let V8 persist compiled bytecode for renderer bundles served over this scheme
-      // (Chromium only code-caches http(s) by default), so cold launches skip
-      // recompiling the multi-MB app bundle.
+
       codeCache: true,
     },
   },
@@ -1152,11 +1112,8 @@ function resolveAppRoot(): string {
   return app.getAppPath();
 }
 
-/**
- * Read the baked-in app-update.yml config (if applicable). The file ships inside
- * the package and never changes at runtime, so the parsed result is cached to keep
- * repeated callers off the synchronous-FS path on the main thread.
- */
+// The file ships inside the package and never changes at runtime, so the parsed result is cached to
+// keep repeated callers off the synchronous-FS path on the main thread.
 function readAppUpdateYml(): Record<string, string> | null {
   if (appUpdateYmlCache !== undefined) {
     return appUpdateYmlCache;
@@ -1167,14 +1124,11 @@ function readAppUpdateYml(): Record<string, string> | null {
 
 function parseAppUpdateYml(): Record<string, string> | null {
   try {
-    // electron-updater reads from process.resourcesPath in packaged builds,
-    // or dev-app-update.yml via app.getAppPath() in dev.
     const ymlPath = app.isPackaged
       ? Path.join(process.resourcesPath, "app-update.yml")
       : Path.join(app.getAppPath(), "dev-app-update.yml");
     const raw = FS.readFileSync(ymlPath, "utf-8");
-    // The YAML is simple key-value pairs — avoid pulling in a YAML parser by
-    // doing a line-based parse (fields: provider, owner, repo, releaseType, …).
+
     const entries: Record<string, string> = {};
     for (const line of raw.split("\n")) {
       const match = line.match(/^(\w+):\s*(.+)$/);
@@ -1234,7 +1188,6 @@ function resolveAboutCommitHash(): string | null {
     return aboutCommitHashCache;
   }
 
-  // Only packaged builds are required to expose commit metadata.
   if (!app.isPackaged) {
     aboutCommitHashCache = null;
     return aboutCommitHashCache;
@@ -1316,9 +1269,6 @@ function desktopMigrationRecoveryPaths(): DesktopMigrationRecoveryPaths {
 
 function isDesktopMigrationRecoveryPending(): boolean {
   try {
-    // Deliberately not "a marker exists": while the backend still has resume
-    // attempts left, a failed start is an ordinary restart, not a recovery
-    // prompt. Escalating early would bury the self-heal under a dialog.
     return requiresDesktopMigrationRecovery(desktopMigrationRecoveryPaths());
   } catch (error) {
     // An unreadable marker path must not break crash supervision.
@@ -1329,7 +1279,6 @@ function isDesktopMigrationRecoveryPending(): boolean {
   }
 }
 
-/** Joins user-facing options as "a, b or c". */
 function formatRecoveryOptionList(options: ReadonlyArray<string>): string {
   if (options.length <= 1) return options[0] ?? "";
   return `${options.slice(0, -1).join(", ")} or ${options[options.length - 1]}`;
@@ -1339,16 +1288,13 @@ async function handleDesktopMigrationRecovery(): Promise<DesktopMigrationRecover
   const paths = desktopMigrationRecoveryPaths();
   desktopStartupBlockedForDatabaseRestore = true;
   const outcome = await recoverDesktopMigrationIfRequired({
-    // The gate opens only once the backend has spent its resume budget, while
-    // the post-restore verification checks the marker file itself.
     requiresRecovery: () => requiresDesktopMigrationRecovery(paths),
     markerRemains: () => hasPendingDesktopMigrationRecovery(paths),
     choose: async ({ previousFailure }) => {
-      // The user is here because Glade cannot open its database, so the
-      // in-app update button is unreachable by definition. A newer build is
-      // often the actual fix, and this dialog is the only surface left to
-      // offer it from: installing it in place when the updater can reach the
-      // feed, and handing over the download page otherwise.
+      // The user is here because Glade cannot open its database, so the in-app update button is
+      // unreachable by definition. A newer build is often the actual fix, and this dialog is the only
+      // surface left to offer it from: installing it in place when the updater can reach the feed, and
+      // handing over the download page otherwise.
       const releaseUrl = updateState.releaseUrl;
       const canInstallUpdate = canInstallUpdateFromRecovery();
       const restoreFailed = previousFailure?.attempt === "restore";
@@ -1454,7 +1400,7 @@ function resolveDesktopStaticDir(): string | null {
 
 interface ServedStaticRoot {
   readonly dir: string;
-  /** True when serving a real-disk snapshot instead of reading through the asar. */
+
   readonly snapshotted: boolean;
 }
 
@@ -1483,12 +1429,9 @@ class BundleChangedDuringStartupError extends Error {
 
 let servedStaticRootCache: ServedStaticRoot | null | undefined;
 
-// Serving static assets straight out of app.asar is vulnerable to the archive
-// being replaced beneath the running app (Electron caches the header per process,
-// so every later read returns bytes from the wrong offsets). Extract the client
-// to a per-archive snapshot on real disk and serve that instead — both for the
-// glade:// protocol here and, via GLADE_STATIC_DIR, for the backend's HTTP static
-// route. Memoized so one app run serves one coherent asset generation.
+// Serving static assets straight out of app.asar is vulnerable to the archive being replaced
+// beneath the running app (Electron caches the header per process, so every later read returns
+// bytes from the wrong offsets). Memoized so one app run serves one coherent asset generation.
 function resolveServedStaticRoot(): ServedStaticRoot | null {
   if (servedStaticRootCache === undefined) {
     servedStaticRootCache = computeServedStaticRoot();
@@ -1503,7 +1446,6 @@ function computeServedStaticRoot(): ServedStaticRoot | null {
   }
   const archivePath = findAsarArchivePath(sourceDir);
   if (!archivePath) {
-    // Plain-directory client (dev, unpacked build): real files already survive swaps.
     return { dir: sourceDir, snapshotted: false };
   }
   const startupArchiveSignature =
@@ -1547,15 +1489,10 @@ function computeServedStaticRoot(): ServedStaticRoot | null {
 
   const currentArchiveSignature = readBundleSignature(archivePath);
   if (!isBundleStable(archiveSignature, currentArchiveSignature)) {
-    // A newly-created snapshot may contain reads from both archive generations.
-    // Never leave it behind for a future launch to reuse.
     if (!snapshot.reused) {
       try {
         FS.rmSync(snapshot.dir, { recursive: true, force: true });
-      } catch {
-        // The signature changes the snapshot key, so failed cleanup is disk waste
-        // rather than a path the replacement generation can accidentally reuse.
-      }
+      } catch {}
     }
     throw new BundleChangedDuringStartupError({
       bundlePath: archivePath,
@@ -1586,8 +1523,6 @@ function handleFatalStartupError(stage: string, error: unknown): void {
 function registerDesktopProtocol(): void {
   if (isDevelopment || desktopProtocolRegistered) return;
 
-  // An unreadable first observation cannot be replaced by a later baseline:
-  // Electron may already hold the header for the generation that disappeared.
   if (startupBundleIdentity && !startupBundleIdentity.signature) {
     throw new BundleChangedDuringStartupError({
       bundlePath: startupBundleIdentity.path,
@@ -1696,8 +1631,6 @@ function handleDesktopZoomShortcut(
   if (action === "resetZoom") {
     target.setZoomFactor(1);
   } else {
-    // Same 1.1 step as the View-menu click handlers so keyboard and menu
-    // zoom can never drift apart.
     adjustWebContentsZoom(
       target,
       action === "zoomIn" ? DESKTOP_MENU_ZOOM_FACTOR_STEP : 1 / DESKTOP_MENU_ZOOM_FACTOR_STEP,
@@ -1716,8 +1649,6 @@ function adjustWindowZoomFromMenu(multiplier: number): void {
   adjustWebContentsZoom(webContents, multiplier);
 }
 
-// A configured app-update.yml (or the mock-updates flag) is the prerequisite for any
-// auto-update activity; centralized so the menu and the enable check stay in lockstep.
 function hasConfiguredUpdateFeed(): boolean {
   return readAppUpdateYml() !== null || Boolean(process.env.GLADE_DESKTOP_MOCK_UPDATES);
 }
@@ -1956,8 +1887,6 @@ function resolveComputerHelperPath(): string {
   return Path.resolve(__dirname, "..", ".electron-runtime", "computer", "glade-computer-helper");
 }
 
-/// The .app bundle that owns this process; the permission guide drags this
-/// bundle into the System Settings privacy lists.
 function resolveComputerAppBundlePath(): string {
   let directory = Path.dirname(app.getPath("exe"));
   while (directory !== Path.dirname(directory)) {
@@ -1996,8 +1925,7 @@ function initializeDesktopComputer(): void {
       const paneUrl = COMPUTER_SETTINGS_PANE_URLS[pane];
       if (paneUrl) void shell.openExternal(paneUrl).catch(() => undefined);
     },
-    // Best effort: quit System Settings after a permission setup session lands
-    // every grant, so the user is not left staring at a pane they are done with.
+
     closeSettingsApp: () => {
       try {
         const child = ChildProcess.execFile("/usr/bin/osascript", [
@@ -2007,9 +1935,7 @@ function initializeDesktopComputer(): void {
           'tell application "System Preferences" to quit',
         ]);
         child.on("error", () => undefined);
-      } catch {
-        // Grants already landed; a lingering Settings window is not a failure.
-      }
+      } catch {}
     },
     onState: (state) => {
       sendComputerEvent(mainWindow, (webContents) => sendComputerState(webContents, state));
@@ -2022,12 +1948,10 @@ function initializeDesktopComputer(): void {
   });
 }
 
-// Keep the app badge aligned with desktop notifications that arrive off-focus.
 function syncUnreadNotificationBadge(): void {
   app.setBadgeCount(unreadBackgroundNotificationCount);
 }
 
-// Count minimized, hidden, or unfocused windows as background notification targets.
 function isMainWindowForeground(window: BrowserWindow | null): boolean {
   if (!window || window.isDestroyed()) {
     return false;
@@ -2048,8 +1972,8 @@ function clearUnreadNotificationBadge(): void {
   syncUnreadNotificationBadge();
 }
 
-// Reuse the existing desktop window when the app is launched again so users
-// don't end up with multiple packaged instances racing the same local state.
+// Reuse the existing desktop window when the app is launched again so users don't end up with
+// multiple packaged instances racing the same local state.
 function focusMainWindow(options: { stealAppFocus?: boolean } = {}): void {
   if (!mainWindow || mainWindow.isDestroyed()) {
     mainWindow = null;
@@ -2062,16 +1986,12 @@ function focusMainWindow(options: { stealAppFocus?: boolean } = {}): void {
     mainWindow.show();
   }
   if (process.platform === "darwin" && options.stealAppFocus === true) {
-    // BrowserWindow.focus() alone does not activate an app while another macOS
-    // application owns focus. Only Computer is an explicit global user gesture;
-    // notification clicks and ordinary activation keep their existing focus policy.
     app.show();
     app.focus({ steal: true });
   }
   mainWindow.focus();
 }
 
-// Show a native OS notification and refocus the app window when the alert is clicked.
 function showDesktopNotification(input: {
   title: string;
   body?: string;
@@ -2115,12 +2035,6 @@ function showDesktopNotification(input: {
   return true;
 }
 
-/**
- * Resolve the Electron userData directory path.
- *
- * Electron derives the default userData path from `productName` in
- * package.json. We override it to a clean lowercase Glade name.
- */
 function resolveUserDataPath(): string {
   const appDataBase = resolveDesktopAppDataBase();
   return resolveDesktopUserDataPath({
@@ -2167,8 +2081,6 @@ function configureAppIdentity(): void {
   }
 }
 
-// Older macOS needs pre-rounded artwork as a runtime Dock override. macOS 26+
-// renders the appearance-aware Icon Composer asset when Default is selected.
 function usesLegacyMacDockIcon(): boolean {
   if (process.platform !== "darwin") return false;
   const darwinMajor = Number.parseInt(OS.release().split(".")[0] ?? "", 10);
@@ -2215,8 +2127,6 @@ function windowsShortcutSearchDirectories(): string[] {
 }
 
 function syncWindowsTaskbarShortcuts(shellIconPath: string): string[] {
-  // Always point shortcuts at the materialized ICO. Reverting to process.execPath
-  // leaves Explorer serving the previous custom icon from its AUMID cache.
   const shortcutIconPath = shellIconPath;
   const shortcutPaths = collectWindowsShortcutPaths({
     directories: windowsShortcutSearchDirectories(),
@@ -2329,7 +2239,6 @@ async function syncMacAppBundleIcon(
   icon: DesktopAppIcon,
   image: Electron.NativeImage | null,
 ): Promise<void> {
-  // Do not customize the shared Electron executable used by development runs.
   if (!app.isPackaged || lastPersistedMacAppIcon === icon) return;
   const bundlePath = resolveMacAppBundlePath(process.execPath, process.platform);
   if (!bundlePath) return;
@@ -2433,8 +2342,8 @@ async function applyDesktopAppIconUnlocked(
       usesLegacyDockIcon: usesLegacyMacDockIcon(),
     })
   ) {
-    // Remove the persistent override before asking AppKit to reload the bundle
-    // icon, otherwise it can read the previous custom artwork again.
+    // Remove the persistent override before asking AppKit to reload the bundle icon, otherwise it can
+    // read the previous custom artwork again.
     await syncMacAppBundleIcon(icon, null);
     app.dock?.setIcon(null as unknown as Electron.NativeImage);
     return;
@@ -2489,9 +2398,9 @@ async function applyDesktopAppIconUnlocked(
     } catch {
       hwnd = null;
     }
-    // Never block window creation/show on Explorer COM. The helper used to
-    // wait on a synchronous window icon message while Electron waited in
-    // spawnSync — deadlock, no window. Stamp properties on the next turn.
+    // Never block window creation/show on Explorer COM. The helper used to wait on a synchronous window
+    // icon message while Electron waited in spawnSync — deadlock, no window. Stamp properties on the
+    // next turn.
     try {
       applyWindowsTaskbarIcon({
         window,
@@ -2513,8 +2422,7 @@ async function applyDesktopAppIconUnlocked(
         );
       }
     }
-    // User-initiated changes stamp immediately so Explorer can finish before
-    // the next click. Startup still defers so window creation is not blocked.
+
     await queueWindowsShellAppUserModelStamp(
       {
         appId: APP_USER_MODEL_ID,
@@ -2547,9 +2455,7 @@ function registerMacAppearanceIconSync(): void {
   if (process.platform !== "darwin") {
     return;
   }
-  // macOS does not swap a runtime dock image when the system appearance
-  // changes, so re-apply the persisted preference. On macOS 26 the default
-  // preference short-circuits to the bundle icon, which adapts on its own.
+
   nativeTheme.on("updated", () => {
     void applyPersistedDesktopAppIcon().catch((error) => {
       console.warn("[desktop] Failed to persist the macOS app icon", error);
@@ -2561,7 +2467,6 @@ function readLaunchVersionRecordContents(): string | null {
   try {
     return FS.readFileSync(resolveLaunchVersionRecordPath(app.getPath("userData")), "utf8");
   } catch {
-    // No prior record (fresh profile) or an unreadable file.
     return null;
   }
 }
@@ -2569,9 +2474,6 @@ function readLaunchVersionRecordContents(): string | null {
 function persistLastLaunchVersion(version: string): void {
   const recordPath = resolveLaunchVersionRecordPath(app.getPath("userData"));
   try {
-    // The userData directory is not guaranteed to exist this early on a clean
-    // first launch, so ensure it before writing or the record silently fails to
-    // persist and the refresh re-runs on every launch.
     FS.mkdirSync(Path.dirname(recordPath), { recursive: true });
     FS.writeFileSync(recordPath, serializeLaunchVersionRecord(version));
   } catch (error) {
@@ -2579,13 +2481,12 @@ function persistLastLaunchVersion(version: string): void {
   }
 }
 
-// macOS keeps an aggressive Launch Services / IconServices cache keyed by bundle
-// path + identifier. electron-updater swaps the bundle in place, so after an
-// update the refreshed icon.icns is already on disk while the dock and Finder
-// keep painting the previous icon — most visibly on Tahoe, where we no longer
-// apply a runtime dock icon (see applyLegacyMacDockIcon). When the version
-// changes across launches, force Launch Services to re-read the bundle so the
-// new icon shows on every surface. Best-effort: never blocks startup.
+// macOS keeps an aggressive Launch Services / IconServices cache keyed by bundle path + identifier.
+// electron-updater swaps the bundle in place, so after an update the refreshed icon.icns is already
+// on disk while the dock and Finder keep painting the previous icon — most visibly on Tahoe, where
+// we no longer apply a runtime dock icon (see applyLegacyMacDockIcon). When the version changes
+// across launches, force Launch Services to re-read the bundle so the new icon shows on every
+// surface. Best-effort: never blocks startup.
 function refreshMacIconCacheOnVersionChange(): void {
   if (process.platform !== "darwin" || !app.isPackaged) {
     return;
@@ -2597,9 +2498,6 @@ function refreshMacIconCacheOnVersionChange(): void {
     return;
   }
 
-  // Record the new version before refreshing so a failed re-registration is not
-  // retried on every launch; the icon then heals on the next version bump
-  // instead of spawning lsregister each time.
   persistLastLaunchVersion(currentVersion);
 
   const bundlePath = resolveMacAppBundlePath(process.execPath, process.platform);
@@ -2607,16 +2505,10 @@ function refreshMacIconCacheOnVersionChange(): void {
     return;
   }
 
-  // Bump the bundle mtime so Launch Services notices the swap, then re-register
-  // it. The codesign signature covers Contents, not the bundle directory mtime,
-  // so this is signature-safe; the bundle may be read-only for this user, in
-  // which case the re-registration below still nudges the cache.
   try {
     const now = new Date();
     FS.utimesSync(bundlePath, now, now);
-  } catch {
-    // Read-only bundle: fall through to lsregister.
-  }
+  } catch {}
 
   const child = ChildProcess.spawn(LSREGISTER_PATH, ["-f", bundlePath], { stdio: "ignore" });
   child.unref();
@@ -2630,9 +2522,6 @@ function refreshMacIconCacheOnVersionChange(): void {
   });
 }
 
-// How often the bundle-swap watcher stats app.asar. A stat is cheap; the cost of
-// missing a swap is every subsequent asar read returning bytes from the wrong
-// file (invisible icons, corrupted lazy-loaded route chunks), so poll briskly.
 const BUNDLE_SWAP_POLL_INTERVAL_MS = 15_000;
 
 let bundleSwapPollTimer: NodeJS.Timeout | null = null;
@@ -2682,12 +2571,11 @@ function restartAfterStartupBundleSwap(error: BundleChangedDuringStartupError): 
     });
 }
 
-// Electron caches the asar header per process, so once app.asar changes on disk
-// (updater retry racing a relaunch, a reinstall, a build copied over the bundle)
-// every archive read in this process — the glade:// protocol, the backend's static
-// files, lazily-loaded renderer chunks — resolves to stale offsets and silently
-// returns the wrong bytes. Detect the swap and offer a restart; continuing is
-// never safe.
+// Electron caches the asar header per process, so once app.asar changes on disk (updater retry
+// racing a relaunch, a reinstall, a build copied over the bundle) every archive read in this
+// process — the glade:// protocol, the backend's static files, lazily-loaded renderer chunks —
+// resolves to stale offsets and silently returns the wrong bytes. Detect the swap and offer a
+// restart; continuing is never safe.
 function startBundleSwapWatcher(): void {
   if (!app.isPackaged || bundleSwapPollTimer) {
     return;
@@ -2705,8 +2593,6 @@ function startBundleSwapWatcher(): void {
   }
 
   bundleSwapPollTimer = setInterval(() => {
-    // The updater owns the quit/relaunch during its own install handoff, and a
-    // quitting app is about to re-read the new archive anyway.
     if (isQuitting || isUpdaterInstallPreparing || bundleSwapPromptOpen) {
       return;
     }
@@ -2717,8 +2603,7 @@ function startBundleSwapWatcher(): void {
     writeDesktopLogHeader(
       `bundle swap detected path=${bundlePath} size=${baseline.size}->${current?.size ?? "unknown"}`,
     );
-    // Re-arm on the new identity so declining the restart still catches the
-    // next replacement instead of re-prompting for the same one.
+
     baseline = current;
     bundleSwapPromptOpen = true;
     void dialog
@@ -2757,9 +2642,6 @@ function clearUpdatePollTimer(): void {
   }
 }
 
-// Starts the periodic background update check. Used by configureAutoUpdater and
-// by the install watchdog recovery so polling resumes after a silent install
-// failure instead of staying off until the next app restart.
 function scheduleUpdatePoll(): void {
   if (updatePollTimer || automaticUpdateActivitySuppressed) {
     return;
@@ -2920,8 +2802,6 @@ function processInstallMarkerOnStartup(): void {
   void logMacUpdateDiagnostics("startup install verification failure");
 }
 
-// electron-updater can leave a same-version ZIP in `pending` after a restart or
-// a failed install attempt. Clearing it prevents stale "ready" states.
 async function clearPendingUpdateCache(reason: string): Promise<void> {
   const pendingDir = getPendingUpdateCacheDir();
   if (!pendingDir || updateDownloadInFlight) {
@@ -2937,8 +2817,6 @@ async function clearPendingUpdateCache(reason: string): Promise<void> {
   }
 }
 
-// Terminal updater events can arrive before downloadUpdate() settles; defer cache deletion
-// until the updater has released its in-flight download bookkeeping.
 function clearPendingUpdateCacheWhenSafe(reason: string): void {
   pendingUpdateCacheClearQueue.request(reason, updateDownloadInFlight, (safeReason) => {
     void clearPendingUpdateCache(safeReason);
@@ -2968,8 +2846,8 @@ function armUpdateCheckTimeout(reason: string): void {
       return;
     }
     updateCheckInFlight = false;
-    // electron-updater may never settle its own promise, so this is also where
-    // anyone awaiting the check has to be released.
+    // electron-updater may never settle its own promise, so this is also where anyone awaiting the
+    // check has to be released.
     settleActiveUpdateCheck?.();
     setUpdateState(
       reduceDesktopUpdateStateOnCheckFailure(
@@ -3022,7 +2900,6 @@ function consumeStalledDownloadCancellationSuppression(): void {
   }
 }
 
-// Bounds a silent updater download while allowing slow downloads that keep making progress.
 function armUpdateDownloadStallTimer(reason: string): void {
   clearUpdateDownloadStallTimer();
   updateDownloadStallTimer = setTimeout(() => {
@@ -3090,17 +2967,12 @@ function handleDesktopAppForegrounded(): void {
   void checkForUpdates("foreground");
 }
 
-/**
- * Publishes the running check so a caller that needs its *outcome* — migration
- * recovery — can join it. `checkForUpdates` is a deliberate no-op while another
- * check holds the lock, and without this the caller would read the intermediate
- * "checking" state as a failed download.
- *
- * The returned finish is idempotent and only clears state it still owns, so the
- * check-timeout path can settle a stuck check without stranding a later one.
- */
+// Publishes the running check so a caller that needs its *outcome* — migration recovery — can join
+// it. `checkForUpdates` is a deliberate no-op while another check holds the lock, and without this
+// the caller would read the intermediate "checking" state as a failed download. The returned finish
+// is idempotent and only clears state it still owns, so the check-timeout path can settle a stuck
+// check without stranding a later one.
 function beginActiveUpdateCheck(): () => void {
-  // Assigned by the executor, which runs before the constructor returns.
   let settle!: () => void;
   const check = new Promise<void>((resolve) => {
     settle = resolve;
@@ -3194,8 +3066,7 @@ async function downloadAvailableUpdate(): Promise<{
   downloadedUpdateArtifact = null;
   downloadedUpdateIdentityTask = null;
   setUpdateState(reduceDesktopUpdateStateOnDownloadStart(updateState));
-  // Keep existing cancellation suppressions across immediate retries; the old
-  // updater cancellation can arrive after a new download has already started.
+
   lastUpdateDownloadProgressSample = null;
   const cancellationToken = new CancellationToken();
   updateDownloadCancellationToken = cancellationToken;
@@ -3205,11 +3076,10 @@ async function downloadAvailableUpdate(): Promise<{
   armUpdateDownloadStallTimer("download start");
   console.info("[desktop-updater] Downloading update...");
 
-  // Track electron-updater's own download promise separately from the stall race.
-  // When the stall timer wins the race it cancels this promise, but the updater
-  // keeps its internal download promise set until that cancellation unwinds. We
-  // observe its settlement here (so a late rejection can't surface as an unhandled
-  // rejection) and wait on it before releasing the in-flight flag below.
+  // Track electron-updater's own download promise separately from the stall race. When the stall
+  // timer wins the race it cancels this promise, but the updater keeps its internal download promise
+  // set until that cancellation unwinds. We observe its settlement here (so a late rejection can't
+  // surface as an unhandled rejection) and wait on it before releasing the in-flight flag below.
   let updaterDownloadSettled = false;
   const updaterDownloadPromise = autoUpdater.downloadUpdate(cancellationToken);
   const updaterDownloadSettledPromise = updaterDownloadPromise.then(
@@ -3238,9 +3108,9 @@ async function downloadAvailableUpdate(): Promise<{
     return { accepted: true, completed: false };
   } finally {
     clearUpdateDownloadStallTimer();
-    // Hold the in-flight flag until the updater download actually settles, so an
-    // immediate retry can't grab the still-cancelling promise (which would reject
-    // as "cancelled"). Bounded so a stuck updater promise can't wedge updates.
+    // Hold the in-flight flag until the updater download actually settles, so an immediate retry can't
+    // grab the still-cancelling promise (which would reject as "cancelled"). Bounded so a stuck updater
+    // promise can't wedge updates.
     if (!updaterDownloadSettled) {
       await Promise.race([
         updaterDownloadSettledPromise,
@@ -3262,8 +3132,6 @@ async function downloadAvailableUpdate(): Promise<{
   }
 }
 
-// Starts the automatic prepare step after a successful update check; install
-// stays user-controlled so active agent work is not interrupted by a restart.
 function prepareAvailableUpdateInBackground(reason: string): void {
   if (updateDownloadInFlight || updateState.status !== "available") {
     return;
@@ -3284,50 +3152,31 @@ function prepareAvailableUpdateInBackground(reason: string): void {
         activeUpdatePreparation = null;
       }
     });
-  // Published so a caller that needs the download finished — migration
-  // recovery — can await this one instead of racing a second download
-  // against it.
+  // Published so a caller that needs the download finished — migration recovery — can await this one
+  // instead of racing a second download against it.
   activeUpdatePreparation = preparation;
 }
 
-/**
- * Whether the recovery prompt can offer an in-place update.
- *
- * Deliberately permissive about the current status: the check has usually not
- * run yet at this point in startup, so "we do not know of an update" is not a
- * reason to hide the option. Only a completed check that found nothing newer
- * is, because then updating provably cannot repair anything.
- */
+// Deliberately permissive about the current status: the check has usually not run yet at this point
+// in startup, so "we do not know of an update" is not a reason to hide the option. Only a completed
+// check that found nothing newer is, because then updating provably cannot repair anything.
 function canInstallUpdateFromRecovery(): boolean {
   return updaterConfigured && updateState.status !== "up-to-date";
 }
 
-/**
- * Drives check → download → install for an install whose database is wedged.
- *
- * This is the only recovery option that needs nothing from the user afterwards,
- * so it runs the whole updater sequence rather than stopping at "an update is
- * available". Resolves to a message to show in the next prompt when the update
- * could not be installed, or to null once the install handoff has started.
- */
 async function installLatestUpdateForMigrationRecovery(): Promise<string | null> {
   if (!updaterConfigured) {
     return resolveAutoUpdateDisabledReason() ?? "Automatic updates are not available.";
   }
 
   if (updateState.status !== "downloaded") {
-    // The automatic startup check is armed before this prompt appears, so one
-    // may already be running. Joining it is what gets a real answer: starting a
-    // second check here would return without doing anything and leave the
-    // status at "checking", which reads as a download failure below.
     const inFlightCheck = activeUpdateCheck;
     if (inFlightCheck === null) {
       await checkForUpdates(UPDATE_CHECK_REASON_MIGRATION_RECOVERY);
     } else {
       await inFlightCheck;
     }
-    // A successful check starts the download itself; await that one rather
-    // than starting a competing transfer.
+
     const preparation = activeUpdatePreparation;
     if (preparation !== null) {
       await preparation;
@@ -3344,10 +3193,9 @@ async function installLatestUpdateForMigrationRecovery(): Promise<string | null>
   }
 
   await installDownloadedUpdate();
-  // quitAndInstall never resolves — the process exits under it. A handoff that
-  // silently fails is cleared by the install watchdog instead, and waiting for
-  // that verdict is what keeps a failed install from leaving a live app with
-  // no window and no way back to this prompt.
+  // quitAndInstall never resolves — the process exits under it. A handoff that silently fails is
+  // cleared by the install watchdog instead, and waiting for that verdict is what keeps a failed
+  // install from leaving a live app with no window and no way back to this prompt.
   await waitForMigrationRecoveryInstallHandoff();
   if (isUpdaterQuitAndInstallInFlight) {
     return null;
@@ -3355,12 +3203,6 @@ async function installLatestUpdateForMigrationRecovery(): Promise<string | null>
   return updateState.message ?? "The downloaded update could not be installed.";
 }
 
-/**
- * Waits out the install watchdog window, which is the earliest a failed handoff
- * can be known: nothing else clears `isUpdaterQuitAndInstallInFlight`, so there
- * is nothing to poll for. A successful handoff exits the process well before
- * this resolves.
- */
 async function waitForMigrationRecoveryInstallHandoff(): Promise<void> {
   if (!isUpdaterQuitAndInstallInFlight) return;
   await new Promise<void>((resolve) => {
@@ -3484,9 +3326,7 @@ async function installDownloadedUpdate(): Promise<{
   } finally {
     if (!isUpdaterQuitAndInstallInFlight && isUpdaterInstallPreparing) {
       clearUpdaterInstallInFlightAfterError();
-      // Validation can reject a stale or changed artifact before the backend is
-      // stopped and before the main install try/catch starts. A quit deferred
-      // during that asynchronous validation still has to be replayed.
+
       replayDeferredDesktopQuitAfterUpdaterSettles();
     }
     updateInstallPreparation.release(preparationAttempt);
@@ -3563,24 +3403,19 @@ function configureAutoUpdater(): void {
 
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = false;
-  // The dedicated channel keeps the permanent compatibility release on the
-  // default feed while Glade versions advance independently.
+
   autoUpdater.channel = desktopUpdateChannel(desktopFlavor);
   autoUpdater.allowPrerelease = DESKTOP_UPDATE_ALLOW_PRERELEASE;
   autoUpdater.allowDowngrade = false;
-  // Match electron-updater's native GitHub provider path; the packaged
-  // app-update.yml owns the production feed, and generic feeds stay mock-only.
-  // macOS release builds repack and validate the Squirrel update zip, then omit
-  // the stale zip blockmap so ShipIt always installs the exact signed payload.
+
   autoUpdater.disableDifferentialDownload =
     process.platform === "darwin" || isArm64HostRunningIntelBuild(desktopRuntimeInfo);
-  // electron-updater has no working idle timeout on macOS (its socket timeout is
-  // wired to a `socket` event Electron's net.request never emits) and never
-  // resumes from a byte offset, so a stalled CDN transfer hangs for minutes
-  // until TCP recovers on its own. installResumableUpdateDownloader replaces the
-  // download transfer with a stall-aware, resumable one and installs a real idle
-  // timeout, so an intermittent stall becomes a brief reconnect-and-resume
-  // instead of a multi-minute freeze. Independent of the zip-validation fix.
+  // electron-updater has no working idle timeout on macOS (its socket timeout is wired to a `socket`
+  // event Electron's net.request never emits) and never resumes from a byte offset, so a stalled CDN
+  // transfer hangs for minutes until TCP recovers on its own. installResumableUpdateDownloader
+  // replaces the download transfer with a stall-aware, resumable one and installs a real idle
+  // timeout, so an intermittent stall becomes a brief reconnect-and-resume instead of a multi-minute
+  // freeze.
   if (!installResumableUpdateDownloader(autoUpdater as unknown as ResumableDownloaderTarget)) {
     console.warn(
       "[desktop-updater] Could not install resumable update downloader; falling back to default transfer.",
@@ -3713,7 +3548,7 @@ function configureAutoUpdater(): void {
 
   scheduleUpdatePoll();
 }
-// Builds process-local Node args so provider/tool children do not inherit Glade's heap guard.
+
 function backendNodeArgs(): string[] {
   const configuredMaxOldSpaceMb =
     BACKEND_MAX_OLD_SPACE_ENV_KEYS.map((key) => process.env[key]).find(
@@ -3733,8 +3568,8 @@ let escapeKillSwitchMonitor: EscapeKillSwitchMonitor | undefined;
 let linuxEscapeKillSwitchMonitor: LinuxEscapeKillSwitchMonitor | undefined;
 
 function stopComputerInputFromEscape(): void {
-  // Native interruption owns the drain. The backend notice only relays the
-  // interrupted state; a slow provider must not delay the local stop.
+  // Native interruption owns the drain. The backend notice only relays the interrupted state; a slow
+  // provider must not delay the local stop.
   if (!cuaDriverHost?.emergencyStopInput()) return;
   notifyBackendComputerEmergencyStop({
     backendHttpUrl,
@@ -3791,16 +3626,12 @@ async function startCuaHost(): Promise<void> {
       : Path.join(resolveAppRoot(), "apps/desktop/resources/cua-driver/cua-driver"),
     bundleId: desktopIdentity.bundleId,
     capability: DESKTOP_BROWSER_HOST_CAPABILITY,
-    // Computer use must never bind the app hosting it: the integrated
-    // browser's webviews live in this app's own renderer pids.
+    // Computer use must never bind the app hosting it: the integrated browser's webviews live in this
+    // app's own renderer pids.
     ownPids: () => new Set([process.pid, ...app.getAppMetrics().map((m) => m.pid)]),
-    // Stock by default: a missing preference file reads as null and the host
-    // sends no style call at all.
+
     cursorStyle: () => readAgentCursorPreference(AGENT_CURSOR_PREFERENCE_PATH),
     checkPermissions: async (options) => {
-      // The Computer manager owns the shared native permission helper; lazily
-      // starting it here keeps the CUA host working even when Computer itself is
-      // still disabled.
       initializeDesktopComputer();
       const state = await computerManager!.refreshState(COMPUTER_PERMISSIONS, {
         force: options?.force === true,
@@ -3831,9 +3662,6 @@ async function startCuaHost(): Promise<void> {
       await computerManager!.startPermissionSetup(COMPUTER_PERMISSIONS);
     },
     releaseHeldInput: async () => {
-      // Same lazily-started shared helper as the permission checks: the Computer
-      // binary posts the releases, and it exists whether or not Computer itself
-      // is enabled.
       initializeDesktopComputer();
       await computerManager!.releaseHeldInput();
     },
@@ -3846,11 +3674,9 @@ async function startCuaHost(): Promise<void> {
       },
       onError: (error) => safeConsoleError("[desktop] computer frame tap failed", error),
     }),
-    // The masked-activation shield host: same Computer helper binary, its own
-    // long-lived process, lazily spawned on the first engage. Always wired —
-    // the server decides per call whether the armed flag + per-app opt-in
-    // name a masked activation, and a missing surface must fail closed there
-    // rather than degrade to an unmasked raise.
+    // Always wired — the server decides per call whether the armed flag + per-app opt-in name a masked
+    // activation, and a missing surface must fail closed there rather than degrade to an unmasked
+    // raise.
     shield: new ComputerShield({
       helperPath: resolveComputerHelperPath(),
       onError: (error) => safeConsoleError("[desktop] computer shield failed", error),
@@ -3872,10 +3698,7 @@ async function startCuaHost(): Promise<void> {
     },
   });
   await attachCuaHost(host);
-  // The physical Escape kill switch lives in a dedicated helper process: its
-  // listen-only event tap can report a hardware Escape even while Electron's
-  // main process is busy. Readiness is exposed through Computer status and
-  // gates input until Input Monitoring and the listener are both healthy.
+
   if (!escapeKillSwitchMonitor) {
     escapeKillSwitchMonitor = new EscapeKillSwitchMonitor({
       helperPath: resolveComputerHelperPath(),
@@ -3899,8 +3722,7 @@ function backendEnv(): NodeJS.ProcessEnv {
       browserHostPipeServer ? GLADE_BROWSER_HOST_PIPE_PATH : null,
       browserHostPipeServer ? DESKTOP_BROWSER_HOST_CAPABILITY_FD : null,
     ),
-    // Point the backend's HTTP static route at the same swap-immune snapshot the
-    // glade:// protocol serves, so both surfaces survive app.asar being replaced.
+
     ...(servedStaticRoot?.snapshotted ? { GLADE_STATIC_DIR: servedStaticRoot.dir } : {}),
     ...(app.isPackaged
       ? { [DEVICE_HELPER_SOURCE_DIR_ENV]: Path.join(process.resourcesPath, "device-helper") }
@@ -3920,10 +3742,10 @@ function backendEnv(): NodeJS.ProcessEnv {
     GLADE_AUTH_TOKEN: backendAuthToken,
     GLADE_DESKTOP_SHUTDOWN_TOKEN: DESKTOP_BACKEND_SHUTDOWN_TOKEN,
   };
-  // The backend runs the same login-shell probe at startup and does not begin listening
-  // until it returns, so an unmarked child serializes a second ~1s hydration behind ours.
-  // Written explicitly in both directions: an inherited marker must never suppress a
-  // probe when our own hydration failed and the child's PATH is the raw launch one.
+  // The backend runs the same login-shell probe at startup and does not begin listening until it
+  // returns, so an unmarked child serializes a second ~1s hydration behind ours. Written explicitly
+  // in both directions: an inherited marker must never suppress a probe when our own hydration failed
+  // and the child's PATH is the raw launch one.
   return applyShellEnvironmentHydrationMarker(env, shellEnvironmentSync.pathHydrated);
 }
 
@@ -3938,9 +3760,9 @@ function scheduleBackendRestart(reason: string): void {
     case "ignore":
       return;
     case "recover-migration":
-      // The marker is written mid-session by the migration that just killed the
-      // backend, so bootstrap's one-shot check never saw it. Recovery owns the
-      // process from here; respawning would only repeat the failed migration.
+      // The marker is written mid-session by the migration that just killed the backend, so bootstrap's
+      // one-shot check never saw it. Recovery owns the process from here; respawning would only repeat
+      // the failed migration.
       writeDesktopLogHeader(
         `migration recovery marker detected after backend failure reason=${sanitizeLogValue(reason)}`,
       );
@@ -3970,14 +3792,10 @@ function scheduleBackendRestart(reason: string): void {
   }
 }
 
-// Runs the same recovery flow bootstrap uses, but for a marker that appeared while
-// the app was already running. Shown once per app run — the policy owns that latch.
 async function runMidSessionMigrationRecovery(reason: string): Promise<void> {
   const outcome = await handleDesktopMigrationRecovery();
   if (outcome !== "continue") return;
 
-  // The marker vanished between the crash check and the recovery run (another
-  // process cleared it), so fall back to the normal supervised restart.
   await restartBackendAfterCrash(reason);
 }
 
@@ -4003,10 +3821,6 @@ async function openDesktopLogDirectory(): Promise<void> {
   }
 }
 
-/**
- * Replaces the eternal loading skeleton with a blocking, actionable window once
- * supervision stops respawning the backend.
- */
 function presentBackendStartupGiveUp(reason: string): void {
   if (isQuitting || backendLifecycleDialogInFlight) return;
 
@@ -4030,7 +3844,6 @@ function presentBackendStartupGiveUp(reason: string): void {
       }
 
       if (result.response === 0) {
-        // A user-driven retry is a fresh lifecycle start, not another crash cycle.
         backendLifecycleDialogInFlight = null;
         await restartBackendAfterCrash("manual retry after backend startup failure", "lifecycle");
         return;
@@ -4304,8 +4117,8 @@ function handleBackendStartupBlock(block: BackendStartupBlock): void {
       noLink: true,
     });
     if (result.response === 0) {
-      // Let a fast failed retry present the block again instead of racing this
-      // dialog task's finalizer and leaving the window inert.
+      // Let a fast failed retry present the block again instead of racing this dialog task's finalizer
+      // and leaving the window inert.
       backendLifecycleDialogInFlight = null;
       await restartBackendAfterCrash("database lifecycle lock retry", "lifecycle");
     } else {
@@ -4328,15 +4141,11 @@ async function restartBackendAfterCrash(
   }
 
   if (trigger === "lifecycle") {
-    // Reset before reserving the port so a user-driven retry gets a full restart
-    // budget even when the retry itself fails before the process is spawned.
     backendSupervision.reset();
   }
 
   cancelBackendReadinessWait();
-  // The aborted observer settles on a later microtask. Clear its identity now
-  // so the replacement child always gets a fresh readiness observation even
-  // when the renderer window survived the crash.
+
   backendInitialWindowOpenInFlight = null;
   try {
     await reserveBackendEndpoint("backend restart");
@@ -4351,18 +4160,13 @@ async function restartBackendAfterCrash(
   ensureInitialBackendWindowOpen(backendHttpUrl);
 }
 
-/**
- * "lifecycle" covers every deliberate start — bootstrap, a failed update install
- * handing the backend back, or a user-driven retry — and clears the crash backoff
- * and circuit breaker. Only the supervised crash path keeps the failure count.
- */
 type BackendStartTrigger = "lifecycle" | "crash-restart";
 
 function startBackend(trigger: BackendStartTrigger = "lifecycle"): void {
   if (isQuitting || backendProcess) return;
-  // Recovery owns the database until it clears the marker. Callers that restart
-  // the backend after an unrelated failure — a given-up update install, say —
-  // must not hand it a database the user is being asked how to repair.
+  // Recovery owns the database until it clears the marker. Callers that restart the backend after an
+  // unrelated failure — a given-up update install, say — must not hand it a database the user is
+  // being asked how to repair.
   if (desktopStartupBlockedForDatabaseRestore) {
     writeDesktopLogHeader("backend start suppressed while migration recovery is pending");
     return;
@@ -4380,18 +4184,16 @@ function startBackend(trigger: BackendStartTrigger = "lifecycle"): void {
 
   const child = ChildProcess.spawn(process.execPath, [...backendNodeArgs(), backendEntry], {
     cwd: resolveBackendCwd(),
-    // In Electron main, process.execPath points to the Electron binary.
-    // Run the child in Node mode so this backend process does not become a GUI app instance.
+
     env: {
       ...backendEnv(),
       ELECTRON_RUN_AS_NODE: "1",
       GLADE_SERVER_ENTRY: backendEntry,
       GLADE_DESKTOP_PARENT_STDIN: "1",
     },
-    // Keep output piped in every environment so startup blockers and readiness
-    // are observable even when packaged log setup is unavailable. The fourth
-    // pipe carries the browser-host capability and must never be inherited.
-    // Leave stdin open: EOF lets the backend clean up if this main process dies.
+    // Keep output piped in every environment so startup blockers and readiness are observable even when
+    // packaged log setup is unavailable. The fourth pipe carries the browser-host capability and must
+    // never be inherited.
     stdio: ["pipe", "pipe", "pipe", "pipe"],
   });
   const capabilityPipe = child.stdio[DESKTOP_BROWSER_HOST_CAPABILITY_FD];
@@ -4437,9 +4239,9 @@ function startBackend(trigger: BackendStartTrigger = "lifecycle"): void {
     detectors: [listeningDetector, startupBlockDetector, outputTailDetector],
   });
 
-  // A successful spawn only proves that Electron created the process. Reset the
-  // crash backoff and the circuit breaker after the backend actually listens;
-  // otherwise a startup error becomes a permanent 500 ms restart loop.
+  // A successful spawn only proves that Electron created the process. Reset the crash backoff and the
+  // circuit breaker after the backend actually listens; otherwise a startup error becomes a permanent
+  // 500 ms restart loop.
   void listeningDetector.promise.then(
     () => {
       if (backendListeningDetector === listeningDetector) {
@@ -4581,7 +4383,6 @@ function hideDesktopWindowForImmediateQuit(): void {
   }
 }
 
-// Keeps Electron alive long enough for backend finalizers to reap provider child processes.
 async function shutdownDesktopRuntime(reason: string): Promise<void> {
   if (desktopShutdownPromise) {
     return desktopShutdownPromise;
@@ -4705,8 +4506,6 @@ function registerIpcHandlers(): void {
 
   ipcMain.removeAllListeners(IPC.wsUrl);
   ipcMain.on(IPC.wsUrl, (event: IpcMainEvent) => {
-    // The backend port is reserved at runtime, so preload asks main for the
-    // live URL instead of trusting build-time or inherited renderer env.
     event.returnValue =
       normalizeDesktopWsUrl(backendWsUrl) ?? resolveDesktopWsUrlFromEnv(process.env);
   });
@@ -4785,8 +4584,7 @@ function registerIpcHandlers(): void {
   const enqueueDesktopAppIconApply = createExclusiveApplyQueue(async (icon: DesktopAppIcon) => {
     const shouldPersist = shouldUpdateDesktopAppIcon(readDesktopAppIcon(), icon);
     if (shouldPersist) persistDesktopAppIcon(icon);
-    // Renderer hydration mirrors this native preference. Explicit clicks on
-    // macOS/Windows can retry a failed shell update even if the choice is saved.
+
     if (!shouldPersist && process.platform !== "win32" && process.platform !== "darwin") return;
     await applyDesktopAppIcon(icon, mainWindow, { flushShellIconCache: true });
   });
@@ -4985,9 +4783,6 @@ function registerIpcHandlers(): void {
 
   ipcMain.removeHandler(IPC.computerSetCursorStyle);
   ipcMain.handle(IPC.computerSetCursorStyle, async (_event, rawStyle: unknown) => {
-    // The renderer's mirrored value is the authority for this preference: the
-    // normalized style is persisted first, so even a failed live push leaves
-    // the next generation correct. Stock removes the stored override.
     const style = normalizeAgentCursorStylePreference(rawStyle);
     writeAgentCursorPreference(AGENT_CURSOR_PREFERENCE_PATH, style);
     if (cuaDriverHost) {
@@ -4996,8 +4791,6 @@ function registerIpcHandlers(): void {
       });
     }
   });
-
-  // Alternate-channel IPC is deliberately not registered in Glade.
 
   ipcMain.removeHandler(IPC.updateGetState);
   ipcMain.handle(IPC.updateGetState, async () => updateState);
@@ -5087,7 +4880,7 @@ function registerIpcHandlers(): void {
 }
 
 function getIconOption(): { icon: string } | Record<string, never> {
-  if (process.platform === "darwin") return {}; // macOS uses .icns from app bundle
+  if (process.platform === "darwin") return {};
   if (process.platform !== "linux" && process.platform !== "win32") return {};
   const icon = readDesktopAppIcon();
   const resourceName = desktopAppIconResourceName({
@@ -5115,37 +4908,23 @@ function getIconOption(): { icon: string } | Record<string, never> {
   }
 }
 
-// macOS backs the translucent shell with window vibrancy, so the window is created
-// transparent (`#00000000`) over the vibrancy material. Windows/Linux have no vibrancy:
-// a transparent window there leaves backdrop-filter surfaces bleeding through and, on
-// fractional DPI, rendering blurry. So off macOS we create an opaque window and skip the
-// macOS-only options. The background tracks the OS light/dark appearance purely to avoid
-// a bright flash before the renderer paints — the window is shown only after first paint
-// (`show: false`), so this color is not expected to match a custom in-app theme exactly.
 function getWindowMaterialOptions(): BrowserWindowConstructorOptions {
   if (process.platform !== "darwin") {
     return { backgroundColor: nativeTheme.shouldUseDarkColors ? "#181818" : "#ffffff" };
   }
   return {
     vibrancy: "under-window",
-    // "followWindow" lets macOS drop vibrancy blending to inactive when the
-    // window is backgrounded, so WindowServer stops continuously recompositing
-    // it. "active" forced full-cost blending even when the app was unfocused.
+
     visualEffectState: "followWindow",
     backgroundColor: "#00000000",
   };
 }
 
-// macOS keeps native traffic lights inset into the renderer's top chrome. Windows and
-// Linux can use a frameless shell with renderer-owned minimize/maximize/close controls
-// (see Settings → Appearance → Use custom title bar). `frame` is fixed at construction.
 function getTitleBarOptions(): BrowserWindowConstructorOptions {
   if (process.platform === "darwin") {
     return {
       titleBarStyle: "hiddenInset",
-      // Derived from the shared chat-surface header geometry (@glade/shared/desktopChrome)
-      // so the native lights and the renderer's leading toggle/arrow controls always share
-      // the same vertical center. Tune the height/radius there, never the raw px here.
+
       trafficLightPosition: getMacTrafficLightPosition(),
     };
   }
@@ -5202,7 +4981,7 @@ function createWindow(): BrowserWindow {
       nodeIntegration: false,
       sandbox: true,
       webviewTag: true,
-      // Let Chromium throttle renderer timers/rAF when the window is hidden.
+
       backgroundThrottling: true,
     },
   });
@@ -5279,9 +5058,6 @@ function createWindow(): BrowserWindow {
     emitUpdateState();
   });
   window.once("ready-to-show", () => {
-    // Preserve the original first-launch behavior, then respect the state saved
-    // by subsequent closes. Normal bounds are restored before maximizing so the
-    // native restore control returns to the user's last windowed size.
     if (!savedWindowState || savedWindowState.isMaximized) {
       window.maximize();
     }
@@ -5355,13 +5131,9 @@ function createWindow(): BrowserWindow {
   return window;
 }
 
-/**
- * Renderer crashes used to be entirely invisible to the main process: no listener, no
- * log line, no telemetry, and no way back — a renderer OOM kill just left the user
- * staring at a blank window. Recovery is deliberately narrow: only reasons the renderer
- * can actually come back from reload, and only a few times, because a deterministic
- * crash reloading forever is worse than one blank window.
- */
+// Recovery is deliberately narrow: only reasons the renderer can actually come back from reload,
+// and only a few times, because a deterministic crash reloading forever is worse than one blank
+// window.
 function attachRendererCrashRecovery(window: BrowserWindow): void {
   let reloadTimer: ReturnType<typeof setTimeout> | null = null;
   const clearReloadTimer = (): void => {
@@ -5371,10 +5143,9 @@ function attachRendererCrashRecovery(window: BrowserWindow): void {
   };
 
   window.webContents.on("render-process-gone", (_event, details) => {
-    // A renderer that dies while hosting the quit-confirmation ask can never
-    // answer it — declining would abandon a requested quit and (worse) show
-    // the recovery prompt below, leaving a dead-UI app alive forever. Allow
-    // the pending ask and count it as quitting for the crash policy.
+    // A renderer that dies while hosting the quit-confirmation ask can never answer it — declining
+    // would abandon a requested quit and (worse) show the recovery prompt below, leaving a dead-UI app
+    // alive forever.
     const quitAskPending = runningChatsQuitGuard.hasPendingAsk();
     runningChatsQuitGuard.allowPending();
     const description = `reason=${details.reason} exitCode=${details.exitCode}`;
@@ -5410,9 +5181,9 @@ function attachRendererCrashRecovery(window: BrowserWindow): void {
     }
   });
 
-  // A hung renderer is not a crash — Chromium keeps the process alive — so it never
-  // reaches the listener above. Logging both edges makes a freeze that the user
-  // reports as "the app died" distinguishable from an actual crash in the same log.
+  // A hung renderer is not a crash — Chromium keeps the process alive — so it never reaches the
+  // listener above. Logging both edges makes a freeze that the user reports as "the app died"
+  // distinguishable from an actual crash in the same log.
   window.webContents.on("unresponsive", () => {
     writeDesktopLogHeader("renderer unresponsive");
   });
@@ -5427,10 +5198,6 @@ function attachRendererCrashRecovery(window: BrowserWindow): void {
   window.on("closed", clearReloadTimer);
 }
 
-/**
- * Replaces the blank window with a blocking, actionable one once automatic recovery
- * stops (or was never allowed for this crash reason).
- */
 function presentRendererCrashRecovery(
   window: BrowserWindow,
   reason: string,
@@ -5469,7 +5236,6 @@ function presentRendererCrashRecovery(
       }
 
       if (result.response === 0) {
-        // A user-driven reload is a fresh start, not a continuation of the streak.
         rendererCrashPolicy.reset();
         if (!window.isDestroyed()) {
           window.webContents.reload();
@@ -5499,8 +5265,8 @@ function configureMediaPermissions(): void {
       trustedRequester: trustedMainRenderer,
     },
     {
-      // Browser pages are untrusted web origins. They must never inherit the
-      // microphone grant used by Glade's own voice-composer renderer.
+      // Browser pages are untrusted web origins. They must never inherit the microphone grant used by
+      // Glade's own voice-composer renderer.
       targetSession: session.fromPartition(BROWSER_SESSION_PARTITION),
       trustedRequester: () => null,
     },
@@ -5554,9 +5320,6 @@ function configureMediaPermissions(): void {
   }
 }
 
-// Override Electron's userData path before the `ready` event so that
-// Chromium session data uses a filesystem-friendly directory name.
-// Must be called synchronously at the top level — before `app.whenReady()`.
 if (hasSingleInstanceLock) {
   repairBrowserProfileBeforeElectronReady(userDataPath);
 }
@@ -5584,11 +5347,7 @@ async function bootstrap(): Promise<void> {
   if (!(await requireCurrentDesktopMigrationBundle())) {
     return;
   }
-  // Ahead of the recovery gate on purpose. A startup that blocks below returns
-  // early, and every path that could ship the fix for whatever blocked it lives
-  // after that return: an install wedged on a bad migration would be unable to
-  // update out of it, which is exactly how 0.6.0 stranded its users. The
-  // updater touches no database state, so configuring it first is safe.
+
   configureAutoUpdater();
 
   const migrationRecoveryOutcome = await handleDesktopMigrationRecovery();
@@ -5671,7 +5430,6 @@ app.on("before-quit", (event) => {
   }
 
   if (isUpdaterQuitAndInstallInFlight) {
-    // Electron's updater owns this quit; canceling it would turn install into a plain app quit.
     try {
       if (
         !activeUpdateInstallHandoff ||
@@ -5700,9 +5458,7 @@ app.on("before-quit", (event) => {
       recoverDesktopAfterUpdaterInstallFailure();
       return;
     }
-    // Keep any deferred plain-quit intent until the process actually exits.
-    // before-quit is not proof of a successful updater handoff: the watchdog
-    // can still discover that quitAndInstall left this process alive.
+
     if (deferredDesktopQuitIntent.observeUpdaterQuitAttempt()) {
       writeDesktopLogHeader("deferred quit preserved through updater quit-and-install attempt");
     }
@@ -5711,7 +5467,6 @@ app.on("before-quit", (event) => {
   }
 
   if (isUpdaterInstallPreparing) {
-    // Keep user/system quits from preempting the pending updater install with a plain app.quit().
     deferDesktopQuitUntilUpdaterSettles("before-quit");
     event.preventDefault();
     return;
@@ -5799,10 +5554,8 @@ if (hasSingleInstanceLock) {
     });
 }
 
-// GPU, utility, and pepper process failures never reach the window's renderer listener,
-// so without this they are invisible too. Chromium respawns these itself — the value is
-// the log line that explains a sudden loss of GPU acceleration or a dead audio/network
-// service. Clean exits are routine teardown, so they stay out of the log.
+// GPU, utility, and pepper process failures never reach the window's renderer listener, so without
+// this they are invisible too. Clean exits are routine teardown, so they stay out of the log.
 app.on("child-process-gone", (_event, details) => {
   if (details.reason === "clean-exit") return;
   const attributes = [

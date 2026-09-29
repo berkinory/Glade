@@ -1,8 +1,3 @@
-// FILE: -rootEventInvalidation.ts
-// Purpose: Classifies streamed orchestration events that invalidate shared query caches.
-// Layer: Root route utility
-// Exports: Event invalidation predicates for provider, project, and Git caches.
-
 import { type OrchestrationEvent, type ThreadId } from "@glade/contracts";
 import { resolveThreadWorkspaceCwd } from "@glade/shared/threadEnvironment";
 
@@ -59,17 +54,11 @@ function isPotentiallyFileMutatingToolCompletion(event: OrchestrationEvent): boo
   ) {
     return false;
   }
-  // Known read-only tools should not trigger expensive file/diff reads. Every
-  // other completed tool can write through a shell, MCP, subagent, script, or
-  // provider-specific payload, including older payloads with no itemType.
+
   const itemType = activityItemType(event);
   return itemType !== "web_search" && itemType !== "image_view";
 }
 
-// Activities stream while a turn is still running; file-change tool calls are the
-// earliest signal that workspace files were touched. Invalidating the project
-// file queries on them lets the editor file tree and open file preview refresh
-// mid-turn instead of waiting for the turn diff to complete.
 export function getProjectFileInvalidationThreadIdForEvent(
   event: OrchestrationEvent,
 ): ThreadId | null {
@@ -100,7 +89,6 @@ export function getGitInvalidationThreadIdForEvent(event: OrchestrationEvent): T
   return "threadId" in event.payload ? (event.payload.threadId as ThreadId) : null;
 }
 
-// Resolve after domain events apply, so worktree metadata changes target the new cwd.
 export function resolveGitInvalidationCwdForThreadId(
   state: AppState,
   threadId: ThreadId,

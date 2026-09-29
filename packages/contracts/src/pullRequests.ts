@@ -111,10 +111,6 @@ export const PullRequestStackEntry = Schema.Struct({
 });
 export type PullRequestStackEntry = typeof PullRequestStackEntry.Type;
 
-/**
- * GitHub orders stack entries from the ultimate base branch upwards. `position` is the selected
- * pull request's one-based position, so merging that PR affects entries `1...position` atomically.
- */
 export const PullRequestStack = Schema.Struct({
   number: PositiveInt,
   size: PositiveInt,
@@ -144,8 +140,8 @@ export const PullRequestDetail = Schema.Struct({
   state: PullRequestState,
   isDraft: Schema.Boolean,
   mergeable: Schema.NullOr(Schema.String),
-  // Decoding default keeps a newer client compatible with an older server that predates
-  // the field (brief version skew during dev restarts must not reject whole payloads).
+  // Decoding default keeps a newer client compatible with an older server that predates the field
+  // (brief version skew during dev restarts must not reject whole payloads).
   mergeability: Schema.optional(GitPullRequestMergeability).pipe(
     Schema.withDecodingDefault(() => "unknown"),
   ),
@@ -169,12 +165,11 @@ export const PullRequestDetail = Schema.Struct({
   commentsIncomplete: Schema.Boolean,
   commits: Schema.Array(PullRequestCommit),
   mergeCapabilities: PullRequestMergeCapabilities,
-  // A missing field is a standalone PR or a brief older-server/newer-client version skew.
+
   stack: Schema.optional(Schema.NullOr(PullRequestStack)).pipe(
     Schema.withDecodingDefault(() => null),
   ),
-  // Stack lookup is optional for rendering detail, but merge UX must distinguish an unavailable
-  // lookup from a confirmed standalone pull request.
+
   stackMetadataIncomplete: Schema.optional(Schema.Boolean).pipe(
     Schema.withDecodingDefault(() => false),
   ),
@@ -200,21 +195,17 @@ export const PullRequestCommentInput = Schema.Struct({
   projectId: ProjectId,
   repository: TrimmedNonEmptyString,
   number: PositiveInt,
-  // GitHub rejects comment bodies past 65536 characters; enforcing it here keeps oversized
-  // payloads off the wire and out of subprocess plumbing entirely.
+
   body: TrimmedNonEmptyString.check(Schema.isMaxLength(65536)),
 });
 export type PullRequestCommentInput = typeof PullRequestCommentInput.Type;
 
-// Actions acknowledge the mutation independently from the follow-up detail refetch. This keeps
-// a successful GitHub mutation from being reported as failed when a later read is unavailable.
 export const PullRequestActionResult = Schema.Struct({
   projectId: ProjectId,
   repository: TrimmedNonEmptyString,
   number: PositiveInt,
   workspaceRoot: TrimmedNonEmptyString,
-  // Async merges may finish immediately or be handed to GitHub's merge queue. Older servers and
-  // non-merge actions omit the field, which decodes as null for rolling dev restarts.
+
   mergeOutcome: Schema.optional(Schema.NullOr(Schema.Literals(["merged", "enqueued"]))).pipe(
     Schema.withDecodingDefault(() => null),
   ),

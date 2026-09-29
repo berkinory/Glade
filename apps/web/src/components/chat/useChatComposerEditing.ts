@@ -83,7 +83,7 @@ export function useChatComposerEditing({
       }
       const next = replaceTextRange(promptRef.current, rangeStart, rangeEnd, replacement);
       let nextCursor = collapseExpandedComposerCursor(next.text, next.cursor);
-      // Apply cursor offset if specified (e.g., -1 to position inside parentheses)
+
       if (options?.cursorOffset !== undefined) {
         nextCursor = Math.max(0, nextCursor + options.cursorOffset);
       }
@@ -169,10 +169,6 @@ export function useChatComposerEditing({
     };
   }, [readComposerSnapshot]);
 
-  // Shared insertion path for picker selections (mentions, plugins, skills,
-  // agents, provider-native commands, local folders). Guarantees the replacement
-  // is flanked by a leading space when landing next to a non-whitespace char and
-  // absorbs an existing trailing space so we don't end up with double spaces.
   const applyComposerTriggerReplacement = useCallback(
     (params: {
       snapshot: { value: string };
@@ -213,7 +209,6 @@ export function useChatComposerEditing({
     [setComposerHighlightedItemId, applyPromptReplacement],
   );
 
-  // Replaces the active `@...` token with a completed absolute folder mention.
   const handleSelectLocalDirectoryMention = useCallback(
     (absolutePath: string) => {
       const { snapshot, trigger } = resolveActiveComposerTrigger();
@@ -227,10 +222,6 @@ export function useChatComposerEditing({
     [applyComposerTriggerReplacement, resolveActiveComposerTrigger],
   );
 
-  // Rewrites the active `@...` mention to an absolute folder path with a trailing separator
-  // so the local-folder picker stays open and the user can keep browsing by clicking or typing.
-  // Paths that need quoting (spaces, parentheses, …) are written as an unclosed
-  // `@"...` so detectComposerTrigger keeps matching while the user descends (#351).
   const handleNavigateLocalFolder = useCallback(
     (absolutePath: string) => {
       const { snapshot, trigger } = resolveActiveComposerTrigger();

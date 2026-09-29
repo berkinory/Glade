@@ -1,16 +1,3 @@
-/** Shared provider-host Computer guidance. Never included in MCP initialize:
- * clients may expand server instructions per tool.
- *
- * Perception and mutations share the task's computer:control capability.
- * Disabled sessions receive neither this block nor the Computer tool catalog.
- */
-
-/**
- * The situational playbook chapters `computer_help` serves on demand. They
- * carry the same load they did when injected — a session now pays for one only
- * when the task actually touches that surface instead of every
- * computer-enabled session fronting the whole catalog.
- */
 export const COMPUTER_HELP_SECTIONS = {
   browser:
     'computer_browser_* uses the desktop driver\'s CDP route; browser_* is in-app. IDs/refs are separate: never pass one for the other. computer_browser_prepare (allow_launch:true, profile mode "isolated_named") is headless by default. Linux needs the verified driver and packaged host\'s direct-X11 Escape listener; see topic "linux". windowed:true needs user authorization on macOS; Linux refuses it. A pid selects the app for a driver_owned_headless profile without its cookies. computer_browser_state({pid}) binds target_id and tab_id. Use the site\'s own search box with computer_browser_type input_route "dom_event"; do not leave the browser for search. Refs die on navigation: snapshot again. verification {scope:"navigation",status:"confirmed"} proves only destination. DOM value_readback proves field content, not submission. Unknown effects: observe once; never automatically repeat input.',
@@ -46,7 +33,6 @@ export type ComputerHelpTopic = keyof typeof COMPUTER_HELP_SECTIONS;
 
 export const COMPUTER_HELP_TOPICS = Object.keys(COMPUTER_HELP_SECTIONS) as ComputerHelpTopic[];
 
-/** One line per chapter — what a bare computer_help call returns. */
 export const COMPUTER_HELP_INDEX = [
   "browser — driving a separate driver-owned browser profile over CDP (computer_browser_*)",
   "menus — app inventory, menu-bar titles, window frames, zoom, cursor position, state checks, force-quit (list_apps, invoke_menu, set_window_frame, kill_app, zoom, get_accessibility_tree, get_cursor_position, verify_state)",
@@ -64,7 +50,6 @@ export const COMPUTER_HELP_INDEX = [
   "linux — observation, preview and isolated headless browser control with direct-X11 Escape",
 ].join("\n");
 
-/** Delivered only in an activated provider session, never through MCP initialize. */
 export function computerToolInstructions(): string {
   return [
     "## Glade computer use",

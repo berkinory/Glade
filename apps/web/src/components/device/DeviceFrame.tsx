@@ -1,21 +1,3 @@
-// FILE: DeviceFrame.tsx
-// Purpose: SVG device chassis that frames every device-pane state, with working hardware buttons.
-// Layer: Device pane presentation primitive
-// Exports: DeviceScreen, deviceKindFor
-// Depends on: device contracts for the button names.
-//
-// Drawn rather than composited from Apple's bezel artwork: those images are
-// licensed for marketing use, must be used unmodified, and explicitly may not
-// be turned into buttons — which is exactly what the side nubs below are — and
-// a fixed image is one device, while this pane frames anything from an iPhone
-// to a 13" iPad. The frame is an SVG of concentric squircle bands sized from
-// the device's own pixel dimensions, so one drawing fits every aspect.
-//
-// The chassis is also the pane's container rather than a decoration around the
-// video: setup checklists, boot spinners, and the live canvas all render on the
-// screen, so the pane reads as one object instead of a rectangle with chrome
-// stacked above and below it.
-
 import type { DeviceFamily, DeviceHardwareButton } from "@glade/contracts";
 import { memo, useId, useMemo, type CSSProperties, type ReactNode } from "react";
 
@@ -26,7 +8,7 @@ export type DeviceKind = "iPhone" | "androidPhone" | "iPad";
 
 type Nub = {
   side: "left" | "right" | "top";
-  /** Offset along the edge in device pixels. Negative on `top` measures from the right. */
+
   at: number;
   len: number;
   name: string;
@@ -36,11 +18,11 @@ type DeviceSpec = {
   pixelW: number;
   pixelH: number;
   screenRadius: number;
-  /** The three concentric band widths, outermost first. */
+
   frame: number;
   silver: number;
   grey: number;
-  /** How far the side buttons protrude past the outer band. */
+
   nubProtrude: number;
   nubs: Nub[];
 };
@@ -94,21 +76,12 @@ const SHADOW: CSSProperties = {
   filter: "drop-shadow(0 2px 6px rgb(0 0 0 / 0.2)) drop-shadow(0 12px 32px rgb(0 0 0 / 0.25))",
 };
 
-/** Screen pixels per device point, per kind. */
 export const RESOLUTION_SCALE: Record<DeviceKind, number> = {
   iPhone: 3,
   androidPhone: 1,
   iPad: 2,
 };
 
-/**
- * Which chassis to draw a device in.
- *
- * `family` comes from the simulator's device type profile and is authoritative
- * wherever it exists. The name is the fallback for a backend that could not
- * read the profile, and it only holds for as long as every Apple tablet has
- * "iPad" in its name.
- */
 export function deviceKindFor(device: {
   platform: string;
   name: string;
@@ -132,10 +105,6 @@ function metrics(kind: DeviceKind, pixelW?: number, pixelH?: number) {
   };
 }
 
-/**
- * Where the live screen sits inside the frame box. Percentages, so the caller
- * can size the box however it likes and the screen follows.
- */
 function screenGeometry(kind: DeviceKind = "iPhone", pixelW?: number, pixelH?: number) {
   const { spec, margin, W, H } = metrics(kind, pixelW, pixelH);
   const w = pixelW ?? spec.pixelW;
@@ -144,17 +113,11 @@ function screenGeometry(kind: DeviceKind = "iPhone", pixelW?: number, pixelH?: n
     aspect: W / H,
     insetXPct: (100 * margin) / W,
     insetYPct: (100 * margin) / H,
-    // Percentage radii on both axes, so the corners stay circular under any aspect.
+
     screenBorderRadius: `${(100 * spec.screenRadius) / w}% / ${(100 * spec.screenRadius) / h}%`,
   };
 }
 
-/**
- * Continuous ("squircle") rounded rectangle. Each corner is three cubic Béziers
- * rather than an arc — that curvature ramp is what makes it read as an Apple
- * device instead of a rounded rect. The magic numbers are fixed multiples of the
- * corner radius and are not derivable from anything simpler.
- */
 function squirclePath(x: number, y: number, w: number, h: number, radius: number): string {
   const r = Math.min(radius, Math.min(w, h) / 3.06);
   const c1 = 1.528665 * r;
@@ -221,7 +184,6 @@ function framePaths(kind: DeviceKind, pixelW?: number, pixelH?: number) {
           edge: `M${W - p} ${at}H${W - 6}Q${W} ${at} ${W} ${capTop}V${capBottom}Q${W} ${at + len} ${W - 6} ${at + len}H${W - p}`,
         };
       case "top": {
-        // A negative `at` is measured from the right edge.
         const x = at >= 0 ? at : W + at - len;
         return {
           fill: `M${x} 0v${p}h${len}V0z`,
@@ -275,7 +237,7 @@ const DeviceFrame = memo(function DeviceFrame({
       focusable={false}
     >
       <defs>
-        {/* The tight 45/55 stop pair is the specular line down the band. */}
+        {}
         <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#e8e8ec" />
           <stop offset="45%" stopColor="#bcbcc0" />
@@ -307,7 +269,6 @@ const DeviceFrame = memo(function DeviceFrame({
   );
 });
 
-/** Solid black body behind the screen. Carries the drop shadow. */
 const DeviceSilhouette = memo(function DeviceSilhouette({
   kind = "iPhone",
   pixelWidth,
@@ -332,19 +293,11 @@ const DeviceSilhouette = memo(function DeviceSilhouette({
   );
 });
 
-/**
- * Every nub the frame draws, and what pressing it does.
- *
- * `button` is what the press sends. A nub with no `button` is drawn metal with
- * a tooltip: it explains why there is nothing to press rather than offering a
- * control that would refuse, which is the state the pane must never ship. The
- * action button (the ring/silent switch's replacement) is the only such nub;
- * it maps to nothing the helper can inject.
- *
- * Apple puts volume up and down on two separate buttons, so both chassis draw
- * two nubs. `volumeRocker` belongs to the Android spec, whose backend does not
- * exist yet; it gets its press when that lands.
- */
+// Every nub the frame draws, and what pressing it does. `button` is what the press sends. A nub
+// with no `button` is drawn metal with a tooltip: it explains why there is nothing to press rather
+// than offering a control that would refuse, which is the state the pane must never ship. Apple
+// puts volume up and down on two separate buttons, so both chassis draw two nubs. `volumeRocker`
+// belongs to the Android spec, whose backend does not exist yet; it gets its press when that lands.
 const NUB_ACTIONS: Record<
   string,
   { readonly label: string; readonly button?: DeviceHardwareButton; readonly hint?: string }
@@ -354,19 +307,12 @@ const NUB_ACTIONS: Record<
   power: { label: "Lock", button: "lock" },
 };
 
-/** Direction a pressed nub travels: always into the chassis. */
 const NUB_PRESS_IN: Record<Nub["side"], string> = {
   left: "active:translate-x-[1.5px]",
   right: "active:-translate-x-[1.5px]",
   top: "active:translate-y-[1.5px]",
 };
 
-/**
- * Hit rectangles for the drawn nubs, as percentages of the frame box. The SVG
- * already draws the hardware; these are the invisible controls laid over it,
- * deep enough (the full chassis margin) that a few pixels of protruding metal
- * are not the only thing to click.
- */
 function nubHitRects(kind: DeviceKind, pixelW?: number, pixelH?: number) {
   const { spec, margin, W, H } = metrics(kind, pixelW, pixelH);
   return spec.nubs.map(({ side, at, len, name }) => {
@@ -405,11 +351,7 @@ export const DeviceScreen = memo(function DeviceScreen({
   pixelHeight?: number | undefined;
   className?: string;
   buttonsDisabled?: boolean;
-  /**
-   * Turn the whole device a quarter turn. The guest keeps rendering portrait —
-   * CoreSimulator has no orientation API — so this rotates the assembled
-   * device, buttons and all, rather than re-deriving a landscape chassis.
-   */
+
   landscape?: boolean;
   onPressButton?: ((button: DeviceHardwareButton) => void) | undefined;
 }) {
@@ -435,10 +377,6 @@ export const DeviceScreen = memo(function DeviceScreen({
   return (
     <div
       className={cn(
-        // No overflow clip: the chassis shadow reaches ~32px past the device,
-        // and clipping it left a hard horizontal cut where the control rail
-        // began. Padding keeps the device off the pane edges, and the sizing
-        // below already stops the frame itself from escaping the box.
         "flex h-full min-h-0 items-center justify-center p-6 [container-type:size]",
         className,
       )}
@@ -446,9 +384,6 @@ export const DeviceScreen = memo(function DeviceScreen({
       <div
         className="relative"
         style={{
-          // Turned, the device's height runs across the pane, so the fit is
-          // measured against the transposed axis; without this the rotated
-          // device shrinks to whatever its untumbled height allowed.
           height: landscape
             ? `min(100cqw, calc(100cqh / ${geo.aspect}))`
             : `min(100cqh, calc(100cqw / ${geo.aspect}))`,
@@ -472,14 +407,7 @@ export const DeviceScreen = memo(function DeviceScreen({
           pixelHeight={pixelHeight}
           className="pointer-events-none absolute inset-0 h-full w-full select-none"
         />
-        {/*
-          The frame draws the hardware; this lays the controls over it.
-          Simulator.app's side buttons are clickable and so are the ones backed
-          by a real press, which is why each carries an accessible name and a
-          focus ring even though its face is the SVG's. A nub with no button is
-          rendered as a plain hover target instead: it explains itself rather
-          than inviting a click that the backend would only refuse.
-        */}
+        {}
         {nubs.map(({ name, side, style }) => {
           const action = NUB_ACTIONS[name];
           if (!action) return null;
@@ -506,9 +434,6 @@ export const DeviceScreen = memo(function DeviceScreen({
                       style={style}
                     />
                   ) : (
-                    // Not a button: it has nothing to activate, so it takes no
-                    // tab stop and offers no press affordance — only the
-                    // tooltip that says why.
                     <span
                       aria-label={action.label}
                       className="absolute cursor-default rounded-full"

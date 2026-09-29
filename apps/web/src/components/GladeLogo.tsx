@@ -1,7 +1,3 @@
-// FILE: GladeLogo.tsx
-// Purpose: Render the Glade mark as an inline SVG that follows theme foreground color.
-// Layer: Shared app branding primitive
-
 import type { SVGProps } from "react";
 import { GLADE_MARK_QUADRANT, GLADE_MARK_ROTATIONS, GLADE_MARK_VIEWBOX } from "~/assets/gladeMark";
 import { cn } from "~/lib/utils";

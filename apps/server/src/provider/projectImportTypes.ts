@@ -1,4 +1,3 @@
-// Provider-owned discovery metadata. Runtime bindings and import decisions belong to orchestration.
 export interface NativeImportProject {
   readonly id: string;
   readonly title: string;

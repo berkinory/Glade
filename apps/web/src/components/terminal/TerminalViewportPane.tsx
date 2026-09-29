@@ -1,12 +1,3 @@
-// FILE: TerminalViewportPane.tsx
-// Purpose: Renders the active terminal pane tree with nested splits and pane-local tab strips.
-// Layer: Terminal presentation components
-// Depends on: caller-provided viewport renderer so xterm lifecycle can stay external.
-//
-// Note: pane-tab activate and close buttons are intentionally raw <button>; they
-// are tab-strip affordances, not shadcn Buttons. See TerminalChrome.tsx for the
-// same rationale.
-
 import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 
 import type { ResolvedTerminalVisualIdentity } from "@glade/shared/terminalThreads";

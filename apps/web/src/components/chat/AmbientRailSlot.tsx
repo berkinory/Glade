@@ -1,17 +1,3 @@
-// FILE: AmbientRailSlot.tsx
-// Purpose: Positions rail content below the Environment card with a smooth
-// slide when the card opens or closes.
-// Layer: Chat surface UI
-// Depends on: React only.
-//
-// The env card closes by sliding away while keeping its flex height, which
-// would strand anything below it under a phantom gap. This slot measures the
-// previous sibling (the env card) and pulls up by exactly its height while
-// the env is closed, on the same 180ms clock — content glides into the
-// vacated place. Must stay position: static: the preview card measures its
-// offset parent for vertical space, and that must remain the full-height rail
-// wrapper rather than this slot.
-
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 export function AmbientRailSlot(props: {

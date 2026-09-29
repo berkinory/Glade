@@ -1,35 +1,24 @@
-// FILE: kanbanUiStore.ts
-// Purpose: Persists kanban control-center UI state (manual draft-card order per project)
-//          plus the ephemeral optimistic-dispatch overlay for drag-to-In-Progress drops.
-// Layer: UI state store
-// Exports: useKanbanUiStore
-
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
 import type { KanbanOptimisticDispatchSnapshot } from "./components/kanban/kanban.logic";
 
 interface KanbanUiStoreState {
-  /** Manual order of draft-column card ids per project, captured after a drag. */
   draftOrderByProjectId: Record<string, string[]>;
   setDraftOrder: (projectId: string, order: readonly string[]) => void;
   clearDraftOrder: (projectId: string) => void;
-  /**
-   * Ephemeral (never persisted): dispatched drops still waiting for their first
-   * runtime signal. The board renders these In Progress; reconciliation clears them
-   * when runtime state settles, expiry reverts them when it never does.
-   */
+
   optimisticDispatchByThreadId: Record<string, KanbanOptimisticDispatchSnapshot>;
   markOptimisticDispatch: (threadId: string, entry: KanbanOptimisticDispatchSnapshot) => void;
   clearOptimisticDispatch: (threadId: string) => void;
-  /** Removes entries dropped at or before cutoffMs; returns them for revert toasts. */
+
   expireOptimisticDispatches: (
     cutoffMs: number,
   ) => Array<[string, KanbanOptimisticDispatchSnapshot]>;
 }
 
 const KANBAN_UI_STORAGE_KEY = "glade:kanban-ui:v1";
-// Stale card ids are harmless (ordering ignores unknown ids) but should not grow unbounded.
+
 const MAX_DRAFT_ORDER_LENGTH = 200;
 
 function sanitizeDraftOrder(value: unknown): string[] {

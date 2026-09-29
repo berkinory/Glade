@@ -4,7 +4,7 @@ import type { ChatRightPanel } from "./diffRouteSearch";
 export type SplitViewId = string;
 export type PaneId = string;
 export type SplitDirection = "horizontal" | "vertical";
-// "first" maps to the top/left side of a split; "second" maps to the bottom/right side.
+
 export type SplitDropSide = "first" | "second";
 
 export interface SplitViewPanePanelState {
@@ -26,7 +26,7 @@ export interface SplitNode {
   kind: "split";
   id: PaneId;
   direction: SplitDirection;
-  // first = left (horizontal) | top (vertical); second = right | bottom.
+
   first: Pane;
   second: Pane;
   ratio: number;

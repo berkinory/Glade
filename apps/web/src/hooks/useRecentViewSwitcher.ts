@@ -1,8 +1,4 @@
 import { useCallback } from "react";
-// FILE: useRecentViewSwitcher.ts
-// Purpose: Own the Ctrl+Tab recent-primary-view MRU wiring for the chat shell.
-// Layer: UI hook
-// Exports: useRecentViewSwitcher
 
 import { ThreadId } from "@glade/contracts";
 import type { ResolvedTerminalVisualIdentity } from "@glade/shared/terminalThreads";
@@ -50,7 +46,6 @@ interface UseRecentViewSwitcherInput {
   projects: NewThreadContext["projects"];
 }
 
-// Encapsulates recent-view persistence, pruning, prewarm, and activation.
 export function useRecentViewSwitcher(input: UseRecentViewSwitcherInput) {
   const navigate = useNavigate();
   const pathname = useLocation({ select: (location) => location.pathname });

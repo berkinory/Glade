@@ -1,13 +1,3 @@
-// FILE: GeneratedMarkdownImage.tsx
-// Purpose: Renders Codex-generated images embedded in assistant markdown with
-//          loading skeleton, hover overlay (expand/download), and inline error card.
-// Layer: Web chat presentation component
-// Exports: GeneratedMarkdownImage
-// Notes: Pure UI; loading state and the error card are shared with the editor
-//        previews via `~/components/LocalImagePreview`. The image frame uses raw
-//        <button> because it wires into class-based stylesheet selectors
-//        (`chat-generated-image__*`) rather than shadcn Button.
-
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type MouseEvent, useEffect, useRef, useState } from "react";
 
@@ -38,7 +28,6 @@ function stopPropagation(event: MouseEvent<HTMLElement>) {
 }
 
 export function GeneratedMarkdownImage(props: GeneratedMarkdownImageProps) {
-  // Reset grant recovery when the source or workspace changes, including A → B → A.
   return <GeneratedMarkdownImageContent key={JSON.stringify([props.src, props.cwd])} {...props} />;
 }
 
@@ -82,8 +71,8 @@ function GeneratedMarkdownImageContent(props: GeneratedMarkdownImageProps) {
       grantQuery.isSuccess &&
       isLocalPreviewGrantUsable(grantQuery.data)
     ) {
-      // Freeze the loaded preview. Another file pane may renew the same cache
-      // entry; that must not make historical chat images download again.
+      // Freeze the loaded preview. Another file pane may renew the same cache entry; that must not make
+      // historical chat images download again.
       setPreviewGrant(grantQuery.data.grant);
     }
   }, [needsGrant, previewGrant, grantQuery.data, grantQuery.isFetching, grantQuery.isSuccess]);
@@ -92,8 +81,7 @@ function GeneratedMarkdownImageContent(props: GeneratedMarkdownImageProps) {
       src,
       cwd,
       previewGrant,
-      // Desktop/Downloads captures need the same per-file grant as the file pane.
-      // Keep workspace and temporary images on the existing HTTP-only fast path.
+
       onPreviewError: () => {
         if (absolutePath !== null) setNeedsGrant(true);
       },
@@ -104,7 +92,7 @@ function GeneratedMarkdownImageContent(props: GeneratedMarkdownImageProps) {
     (grantQuery.isFetching || (grantQuery.isSuccess && isLocalPreviewGrantUsable(grantQuery.data)));
   const resolveGrantedUrl = async (download: boolean) => {
     if (!needsGrant || absolutePath === null) return download ? downloadUrl : previewUrl;
-    // A backgrounded chat can outlive the grant TTL. Renew at the point of use.
+
     const grant = await queryClient.fetchQuery({ ...grantOptions, retry: retryGrant });
     return buildLocalImageUrl({ src, cwd, download, grant: grant.grant });
   };

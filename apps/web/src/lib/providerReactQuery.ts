@@ -1,8 +1,3 @@
-// FILE: providerReactQuery.ts
-// Purpose: Builds React Query options for provider-backed orchestration RPC calls.
-// Layer: Web data fetching helpers
-// Depends on: native API bridge, orchestration contracts, and React Query.
-
 import {
   OrchestrationGetFullThreadDiffInput,
   OrchestrationGetTurnDiffInput,
@@ -41,7 +36,6 @@ export const providerQueryKeys = {
     ] as const,
 };
 
-/** Keep polling while placeholder checkpoints are still being written. */
 const CHECKPOINT_DIFF_PENDING_REFETCH_INTERVAL_MS = 2_000;
 const CHECKPOINT_DIFF_PENDING_REFETCH_MAX_ATTEMPTS = 12;
 
@@ -111,7 +105,6 @@ function isCheckpointTemporarilyUnavailable(error: unknown): boolean {
   const message = asCheckpointErrorMessage(error).toLowerCase();
   return (
     message.includes("exceeds current turn count") ||
-    // Placeholder checkpoint rows can arrive before the checkpoint writer finishes.
     message.includes("checkpoint diff is not available yet")
   );
 }
@@ -155,7 +148,6 @@ export function checkpointDiffQueryOptions(input: CheckpointDiffQueryInput) {
         }
         return await api.orchestration.getTurnDiff(decodedRequest.value.input);
       } catch (error) {
-        // Keep the transport's typed backpressure contract for retry and display policies.
         if (isRpcCapacityExceededError(error)) throw error;
         throw new Error(normalizeCheckpointErrorMessage(error), { cause: error });
       }

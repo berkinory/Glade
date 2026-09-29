@@ -1,12 +1,3 @@
-/**
- * DrainableWorker - Bounded single-consumer work admission with staged shutdown.
- *
- * The capacity covers both the item currently being processed and queued items.
- * `enqueue` applies backpressure, while `tryEnqueue` rejects overload immediately.
- * Scope closure quiesces admission, drains accepted work, and only then stops the queue.
- *
- * @module DrainableWorker
- */
 import { Cause, Data, Deferred, Effect, Exit, Queue, Ref, Scope } from "effect";
 
 export const DEFAULT_DRAINABLE_WORKER_CAPACITY = 256;
@@ -22,7 +13,6 @@ export class DrainableWorkerAdmissionError extends Data.TaggedError(
 }> {}
 
 export interface DrainableWorkerOptions {
-  /** Maximum number of active plus queued items. */
   readonly capacity?: number;
 }
 
@@ -33,32 +23,20 @@ export interface DrainableWorkerStatus {
 }
 
 export interface DrainableWorker<A> {
-  /**
-   * Admit work, waiting for bounded capacity when the worker is full.
-   * Returns false when shutdown has already quiesced admission.
-   */
   readonly enqueue: (item: A) => Effect.Effect<boolean>;
 
-  /** Admit work immediately or fail with an explicit overload/lifecycle reason. */
   readonly tryEnqueue: (item: A) => Effect.Effect<void, DrainableWorkerAdmissionError>;
 
-  /** Stop accepting new work without interrupting already accepted items. */
+  // Stop accepting new work without interrupting already accepted items.
   readonly quiesce: Effect.Effect<void>;
 
-  /** Resolve when the current accepted-work generation is settled. */
   readonly drain: Effect.Effect<void>;
 
-  /** Quiesce, drain accepted work, then stop the underlying worker queue. */
   readonly stop: Effect.Effect<void>;
 
-  /** Current lifecycle and admission counters. */
   readonly status: Effect.Effect<DrainableWorkerStatus>;
 }
 
-/**
- * Run producer subscriptions in a child scope owned by the worker lifecycle.
- * Closing the caller scope first stops producers, then drains and stops the worker.
- */
 export const startDrainableWorkerProducers = <A, E, R>(
   worker: DrainableWorker<A>,
   producers: Effect.Effect<void, E, Scope.Scope | R>,
@@ -282,8 +260,6 @@ export const makeDrainableWorker = <A, E, R>(
       ),
     );
 
-    // Registered after the worker fiber so scope finalization drains before
-    // forkScoped interrupts the consumer.
     yield* Effect.addFinalizer(() => stop);
 
     return {

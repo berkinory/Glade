@@ -3,8 +3,6 @@ import * as SqlClient from "effect/unstable/sql/SqlClient";
 
 import { columnExists } from "./schemaHelpers.ts";
 
-// Side chats were short-lived child conversations. Remove them and their descendants
-// before the 0.0.3 runtime starts; regular threads and their history are untouched.
 export default Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
 

@@ -1,4 +1,3 @@
-// Shared Symbols file/folder glyph for explorer, composer, diff, editor, and timeline.
 import { getAttachmentIconUrl, getFileIconUrl, getFolderIconUrl } from "../../file-icons";
 import { cn } from "~/lib/utils";
 

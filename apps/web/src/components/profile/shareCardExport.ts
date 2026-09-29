@@ -1,9 +1,3 @@
-// FILE: shareCardExport.ts
-// Purpose: Fully offline rendering of the share card to a PNG, plus clipboard copy,
-// file download, and social-intent URLs. No data leaves the device to BUILD the image;
-// opening a social composer is an explicit, user-initiated action.
-// Layer: web profile feature.
-
 import { toBlob } from "html-to-image";
 import { copyPngBlobToDesktopClipboard } from "~/lib/desktopClipboard";
 import { readNativeApi } from "~/nativeApi";
@@ -16,9 +10,6 @@ const SHARE_URL = "https://github.com/berkinory/Glade";
 
 export type ShareTarget = "x" | "linkedin" | "reddit";
 
-// Renders the given node to a PNG blob entirely on-device (canvas serialization).
-// Passing explicit width/height keeps the export deterministic and free of trailing
-// whitespace regardless of layout measurement quirks.
 export async function renderNodeToPngBlob(
   node: HTMLElement,
   size?: { width: number; height: number },
@@ -51,7 +42,6 @@ export async function copyImageToClipboard(blob: Blob): Promise<boolean> {
   }
 }
 
-// Opens an external URL via the desktop shell when available, else a new browser tab.
 export function openExternalUrl(url: string): void {
   const api = readNativeApi();
   if (api?.shell?.openExternal) {

@@ -103,9 +103,6 @@ export function closeServerRuntimePipeline(input: {
   readonly subscriptionsScope: Scope.Closeable;
 }): Effect.Effect<void> {
   return input.orchestrationEngine.quiesce.pipe(
-    // Drain already-admitted commands while every subscriber is live. Provider
-    // close then fences terminal runtime events into subscriber workers; scope
-    // close drains those workers before the engine accepts its final stop.
     Effect.andThen(input.orchestrationEngine.drain),
     Effect.andThen(input.providerService.closeRuntimeEvents),
     Effect.andThen(Scope.close(input.subscriptionsScope, Exit.void)),
@@ -114,19 +111,12 @@ export function closeServerRuntimePipeline(input: {
   );
 }
 
-/**
- * Starts the subscriber pipeline in the order restart recovery depends on.
- *
- * The orchestration reactor starts first: runtime ingestion replays the
- * provider events the previous process journaled but never ingested, so a turn
- * whose terminal event reached the journal completes normally instead of being
- * reported as interrupted. Restart reconciliation then settles the turns whose
- * runtimes died with that process. The remaining reactors start last, because
- * their first pass reads thread state (a heartbeat automation skips a target
- * thread with an active turn, the runtime reconciler settles stale running
- * turns) and a restart-orphaned turn still reads as running until
- * reconciliation settles it.
- */
+// The orchestration reactor starts first: runtime ingestion replays the provider events the
+// previous process journaled but never ingested, so a turn whose terminal event reached the journal
+// completes normally instead of being reported as interrupted. The remaining reactors start last,
+// because their first pass reads thread state (a heartbeat automation skips a target thread with an
+// active turn, the runtime reconciler settles stale running turns) and a restart-orphaned turn
+// still reads as running until reconciliation settles it.
 export function startServerRuntimePipeline<R>(input: {
   readonly orchestrationReactor: Pick<
     OrchestrationReactorShape,
@@ -141,10 +131,8 @@ export function startServerRuntimePipeline<R>(input: {
   return Effect.gen(function* () {
     yield* Scope.provide(input.orchestrationReactor.start, input.subscriptionsScope);
     yield* input.reconcileRestartStuckTurns;
-    // The reconciliation above terminalizes durable turn projections without a
-    // provider terminal event. Remove their replay-ledger rows now so the next
-    // process start cannot replay state-dependent commands against the terminal
-    // projection.
+    // Remove their replay-ledger rows now so the next process start cannot replay state-dependent
+    // commands against the terminal projection.
     yield* input.orchestrationReactor.reconcileSettledOpenTurns;
     for (const reactor of input.reactors) {
       yield* Scope.provide(reactor.start(), input.subscriptionsScope);
@@ -194,8 +182,7 @@ export const createEffectServer = Effect.fn(function* (
 
   let nodeServer: http.Server | null = null;
   patchBunWebSocketCloseEventCompatibility();
-  // Keep embedded/test callers safe if they construct ServerConfig without
-  // passing through the CLI's loopback-default resolution.
+
   const listenOptions = { host: config.host ?? "127.0.0.1", port: config.port };
   const httpServer = yield* makeBoundedNodeHttpServer(() => {
     nodeServer = http.createServer();
@@ -247,9 +234,8 @@ export const createEffectServer = Effect.fn(function* (
   );
   yield* startServerRuntimePipeline({
     orchestrationReactor,
-    // Heal turns orphaned by the previous process exit (their in-memory runtimes
-    // died, so they can never complete on their own) before clients can observe
-    // the stale "Working" state.
+    // Heal turns orphaned by the previous process exit (their in-memory runtimes died, so they can
+    // never complete on their own) before clients can observe the stale "Working" state.
     reconcileRestartStuckTurns: reconcileRestartStuckTurns.pipe(
       Effect.provide(ProjectionPendingInteractionRepositoryLive),
     ),
@@ -269,12 +255,10 @@ export const createEffectServer = Effect.fn(function* (
       (cause) => new ServerLifecycleError({ operation: "recoverGitHandoffOperations", cause }),
     ),
   );
-  // Claim the previous quit's "Resume chats automatically" record while no
-  // command (and so no new quit) can run yet; a missing record costs one stat.
+
   const quitResumeRecord = yield* claimQuitResumeRecordAtStartup;
   yield* runtimeStartup.markCommandReady;
-  // The recorded chats get their continuation turn now that the orphaned turns
-  // above are settled. Forked so the (rare) dispatch work never delays readiness.
+
   yield* resumeQuitInterruptedChats(quitResumeRecord).pipe(Effect.forkIn(subscriptionsScope));
 
   yield* lifecycleEvents.publish({
