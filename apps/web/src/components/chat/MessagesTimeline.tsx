@@ -35,7 +35,6 @@ import {
 import {
   deriveTimelineEntries,
   formatClockDuration,
-  formatClockElapsed,
   isFileChangeWorkLogEntry,
   type WorkLogEntry,
 } from "../../session-logic";
@@ -403,7 +402,6 @@ interface MessagesTimelineProps {
   isWorking: boolean;
   workingLabel?: WorkingLabel | undefined;
   activeTurnInProgress: boolean;
-  activeTurnStartedAt: string | null;
   /** Transient "New worktree" setup progress; rendered as an ephemeral step card at the tail. */
   worktreeSetup?: WorktreeSetupSnapshot | null;
   /** Action already chosen from the worktree setup card; disables its buttons while it applies. */
@@ -518,7 +516,6 @@ export const MessagesTimeline = memo(function MessagesTimeline({
   isWorking,
   workingLabel: workingLabelProp,
   activeTurnInProgress,
-  activeTurnStartedAt,
   worktreeSetup: worktreeSetupProp,
   worktreeSetupPendingAction: worktreeSetupPendingActionProp,
   onResolveWorktreeSetup,
@@ -760,7 +757,6 @@ export const MessagesTimeline = memo(function MessagesTimeline({
         worktreeSetupOpen: presentedWorktreeSetup?.open ?? false,
         activeTurnInProgress,
         activeTurnId,
-        activeTurnStartedAt,
         turnDiffSummaryByAssistantMessageId,
       }),
     [
@@ -769,7 +765,6 @@ export const MessagesTimeline = memo(function MessagesTimeline({
       presentedWorktreeSetup,
       activeTurnInProgress,
       activeTurnId,
-      activeTurnStartedAt,
       turnDiffSummaryByAssistantMessageId,
     ],
   );
@@ -1345,7 +1340,6 @@ export const MessagesTimeline = memo(function MessagesTimeline({
             row.assistantTurnInProgress)
           ? "pb-1"
           : row.kind === "work" ||
-              row.kind === "working-header" ||
               (row.kind === "message" && row.message.role === "assistant") ||
               row.kind === "message-segment"
             ? "pb-2"
@@ -2531,26 +2525,6 @@ export const MessagesTimeline = memo(function MessagesTimeline({
         </div>
       )}
 
-      {row.kind === "working-header" && (
-        <div>
-          {/* Non-collapsible twin of the settled "Worked for" header: same label
-              tone, size, and full-width divider, but counting up live. -ml-0.5
-              optically aligns the leading "W" with the reply text below. */}
-          <div
-            className={cn("-ml-0.5 pb-2", MUTED_LABEL_TEXT_CLASS_NAME)}
-            style={{ fontSize: chatTypographyStyle.fontSize }}
-          >
-            Working for{" "}
-            {nowIso ? (
-              (formatClockElapsed(row.createdAt, nowIso) ?? "0s")
-            ) : (
-              <WorkingTimer createdAt={row.createdAt} />
-            )}
-          </div>
-          <div className="h-px w-full bg-border" />
-        </div>
-      )}
-
       {row.kind === "working" && (
         <div
           ref={syncAnimationsToTimelineOrigin}
@@ -3068,32 +3042,6 @@ function collectAbsoluteFilePathsFromWorkEntries(entries: ReadonlyArray<WorkLogE
     if (command && isLocalAbsolutePath(command)) paths.add(command);
   }
   return [...paths];
-}
-
-// Keep the live clock scoped to tiny leaf components so active Claude turns do
-// not force the full transcript tree to re-render every second.
-function WorkingTimer({ createdAt }: { createdAt: string }) {
-  const textRef = useRef<HTMLSpanElement>(null);
-  const initialText = formatWorkingTimerNow(createdAt);
-
-  useEffect(() => {
-    const updateText = () => {
-      if (textRef.current) {
-        textRef.current.textContent = formatWorkingTimerNow(createdAt);
-      }
-    };
-    updateText();
-    const id = window.setInterval(updateText, 1000);
-    return () => {
-      window.clearInterval(id);
-    };
-  }, [createdAt]);
-
-  return <span ref={textRef}>{initialText}</span>;
-}
-
-function formatWorkingTimerNow(startIso: string): string {
-  return formatClockElapsed(startIso, new Date().toISOString()) ?? "0s";
 }
 
 const UserImageAttachmentThumbnail = memo(function UserImageAttachmentThumbnail(props: {

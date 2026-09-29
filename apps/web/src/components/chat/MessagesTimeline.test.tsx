@@ -81,7 +81,6 @@ function makeTimelineBaseProps() {
     hasMessages: true,
     isWorking: false,
     activeTurnInProgress: false,
-    activeTurnStartedAt: null,
     turnDiffSummaryByAssistantMessageId: new Map(),
     nowIso: "2026-03-17T19:12:30.000Z",
     expandedWorkGroups: {},
@@ -222,7 +221,6 @@ describe("MessagesTimeline", () => {
         hasMessages
         isWorking={false}
         activeTurnInProgress={false}
-        activeTurnStartedAt={null}
         timelineEntries={[
           {
             id: "entry-1",
@@ -263,7 +261,6 @@ describe("MessagesTimeline", () => {
         hasMessages
         isWorking={false}
         activeTurnInProgress={false}
-        activeTurnStartedAt={null}
         crossTaskOrigin={{
           sourceThreadId: ThreadId.makeUnsafe("source-thread"),
           sourceProvider: "codex",
@@ -324,7 +321,6 @@ describe("MessagesTimeline", () => {
         hasMessages
         isWorking={false}
         activeTurnInProgress={false}
-        activeTurnStartedAt={null}
         crossTaskOrigin={{
           sourceThreadId: ThreadId.makeUnsafe("source-thread"),
           sourceProvider: "codex",
@@ -370,7 +366,6 @@ describe("MessagesTimeline", () => {
         hasMessages
         isWorking={false}
         activeTurnInProgress={false}
-        activeTurnStartedAt={null}
         timelineEntries={[
           {
             id: "entry-editable-user",
@@ -426,7 +421,6 @@ describe("MessagesTimeline", () => {
         hasMessages
         isWorking={false}
         activeTurnInProgress={false}
-        activeTurnStartedAt={null}
         timelineEntries={[
           {
             id: "entry-user-no-checkpoint",
@@ -482,7 +476,6 @@ describe("MessagesTimeline", () => {
         isWorking
         activeTurnInProgress
         activeTurnId={TurnId.makeUnsafe("turn-user-running")}
-        activeTurnStartedAt="2026-03-17T19:12:30.000Z"
         timelineEntries={[
           {
             id: "entry-user-running",
@@ -526,7 +519,6 @@ describe("MessagesTimeline", () => {
         hasMessages
         isWorking={false}
         activeTurnInProgress={false}
-        activeTurnStartedAt={null}
         timelineEntries={[
           {
             id: "entry-agent-user-message",
@@ -570,7 +562,6 @@ describe("MessagesTimeline", () => {
         hasMessages
         isWorking={false}
         activeTurnInProgress={false}
-        activeTurnStartedAt={null}
         timelineEntries={[
           {
             id: "entry-long-user-message",
@@ -617,7 +608,6 @@ describe("MessagesTimeline", () => {
         hasMessages
         isWorking={false}
         activeTurnInProgress={false}
-        activeTurnStartedAt={null}
         timelineEntries={[
           {
             id: "entry-user-selection-fallback",
@@ -682,7 +672,6 @@ describe("MessagesTimeline", () => {
         hasMessages
         isWorking
         activeTurnInProgress
-        activeTurnStartedAt="2026-03-17T19:12:28.000Z"
         timelineEntries={[
           {
             id: "entry-compacting",
@@ -707,7 +696,7 @@ describe("MessagesTimeline", () => {
 
     expect(markup).toContain("Compacting context");
     expect(markup).toContain("/central-icons-reversed/arrows-hide.svg");
-    expect(markup).toContain("Working for");
+    expect(markup).toContain("Thinking");
     expect(markup).not.toContain("h-px flex-1 bg-border");
   });
 
@@ -721,7 +710,6 @@ describe("MessagesTimeline", () => {
         isWorking
         activeTurnInProgress
         activeTurnId={activeTurnId}
-        activeTurnStartedAt="2026-03-17T19:12:28.000Z"
         timelineEntries={[
           {
             id: "entry-tasks-updated",
@@ -765,7 +753,6 @@ describe("MessagesTimeline", () => {
         hasMessages
         isWorking={false}
         activeTurnInProgress={false}
-        activeTurnStartedAt={null}
         timelineEntries={[
           {
             id: "entry-work-inline",
@@ -822,7 +809,6 @@ describe("MessagesTimeline", () => {
         hasMessages
         isWorking
         activeTurnInProgress
-        activeTurnStartedAt="2026-05-09T16:31:20.000Z"
         timelineEntries={[
           {
             id: "entry-claude-agent-task",
@@ -873,7 +859,6 @@ describe("MessagesTimeline", () => {
         isWorking
         activeTurnInProgress
         activeTurnId={activeTurnId}
-        activeTurnStartedAt="2026-03-17T19:12:28.000Z"
         timelineEntries={[
           {
             id: "entry-reasoning-trace",
@@ -944,7 +929,6 @@ describe("MessagesTimeline", () => {
         isWorking
         activeTurnInProgress
         activeTurnId={activeTurnId}
-        activeTurnStartedAt="2026-03-17T19:12:28.000Z"
         timelineEntries={deriveWorkLogEntries([activity], activeTurnId).map((entry) => ({
           id: entry.id,
           kind: "work" as const,
@@ -968,7 +952,6 @@ describe("MessagesTimeline", () => {
         hasMessages
         isWorking={false}
         activeTurnInProgress={false}
-        activeTurnStartedAt={null}
         timelineEntries={[
           {
             id: "entry-assistant-final",
@@ -1037,7 +1020,6 @@ describe("MessagesTimeline", () => {
         hasMessages
         isWorking={false}
         activeTurnInProgress={false}
-        activeTurnStartedAt={null}
         timelineEntries={[
           {
             id: "entry-inline-file-change",
@@ -1124,7 +1106,6 @@ describe("MessagesTimeline", () => {
         hasMessages
         isWorking={false}
         activeTurnInProgress={false}
-        activeTurnStartedAt={null}
         timelineEntries={[
           {
             id: "entry-file-change-details",
@@ -1174,7 +1155,6 @@ describe("MessagesTimeline", () => {
         hasMessages
         isWorking={false}
         activeTurnInProgress={false}
-        activeTurnStartedAt={null}
         timelineEntries={[
           {
             id: "entry-inline-command",
@@ -1604,7 +1584,6 @@ describe("MessagesTimeline", () => {
         hasMessages
         isWorking={false}
         activeTurnInProgress={false}
-        activeTurnStartedAt={null}
         timelineEntries={[
           {
             id: "entry-inline-multi-file-change",
@@ -1693,7 +1672,6 @@ describe("MessagesTimeline", () => {
         hasMessages
         isWorking={false}
         activeTurnInProgress={false}
-        activeTurnStartedAt={null}
         timelineEntries={[
           {
             id: "entry-inline-summary-fallback",
@@ -1776,7 +1754,6 @@ describe("MessagesTimeline", () => {
         hasMessages
         isWorking={false}
         activeTurnInProgress={false}
-        activeTurnStartedAt={null}
         timelineEntries={[
           {
             id: "entry-assistant-diff",

@@ -304,15 +304,7 @@ export type MessagesTimelineRow =
       createdAt: string;
       proposedPlan: ProposedPlan;
     }
-  | { kind: "working"; id: string; createdAt: string | null }
-  | {
-      // Live-turn header that mirrors the settled "Worked for Xs" disclosure
-      // (label + full-width divider), but is non-collapsible and counts up while
-      // the turn is still running. Sits at the top of the active turn.
-      kind: "working-header";
-      id: string;
-      createdAt: string;
-    }
+  | { kind: "working"; id: string }
   | {
       // Transient "Preparing worktree..." step card shown during the New
       // worktree first-send setup. `open` drives the shared disclosure close
@@ -607,7 +599,6 @@ export function deriveMessagesTimelineRows(input: {
   worktreeSetupOpen: boolean;
   activeTurnInProgress?: boolean;
   activeTurnId?: TurnId | null | undefined;
-  activeTurnStartedAt: string | null;
   turnDiffSummaryByAssistantMessageId: ReadonlyMap<MessageId, TurnDiffSummary>;
 }): MessagesTimelineRow[] {
   const nextRows: MessagesTimelineRow[] = [];
@@ -763,13 +754,26 @@ export function deriveMessagesTimelineRows(input: {
     });
   }
 
-  // The generic Thinking shimmer remains the single live status. Provider work
-  // rows are transcript history and must never replace it.
-  if (input.isWorking && !(input.worktreeSetup && input.worktreeSetupOpen)) {
+  // Waiting occupies the next answer's position. Once the tail has answer text,
+  // that text is the live surface; do not append another status below it. A new
+  // tool/work entry at the tail brings the waiting indicator back.
+  const tailEntry = input.timelineEntries.at(-1);
+  const tailHasAssistantText =
+    (tailEntry?.kind === "message" || tailEntry?.kind === "message-segment") &&
+    tailEntry.message.role === "assistant" &&
+    (input.activeTurnId == null || tailEntry.message.turnId === input.activeTurnId) &&
+    (tailEntry.kind === "message-segment"
+      ? (tailEntry.message.textSegments?.[tailEntry.segmentIndex]?.text ?? tailEntry.message.text)
+      : tailEntry.message.text
+    ).trim().length > 0;
+  if (
+    input.isWorking &&
+    !tailHasAssistantText &&
+    !(input.worktreeSetup && input.worktreeSetupOpen)
+  ) {
     nextRows.push({
       kind: "working",
       id: "working-indicator-row",
-      createdAt: input.activeTurnStartedAt,
     });
   }
 
@@ -779,37 +783,7 @@ export function deriveMessagesTimelineRows(input: {
     activeTurnId: input.activeTurnId ?? null,
   });
 
-  // The live turn wears a "Working for Xs" header + divider — the counting-up
-  // twin of a settled turn's "Worked for Xs" disclosure. It anchors to the top
-  // of the active turn (right after the user message that opened it) and needs a
-  // real start time to count from; the trailing "Thinking" shimmer covers the
-  // gap before one exists. Inserted after collapse so folding is untouched.
-  if (
-    input.isWorking &&
-    input.activeTurnStartedAt &&
-    !(input.worktreeSetup && input.worktreeSetupOpen)
-  ) {
-    nextRows.splice(findLiveTurnHeaderInsertIndex(nextRows), 0, {
-      kind: "working-header",
-      id: "working-header-row",
-      createdAt: input.activeTurnStartedAt,
-    });
-  }
-
   return nextRows;
-}
-
-// The live turn starts at the most recent user message, so its header slots in
-// right after it. Absent any user message (degenerate transcripts) the header
-// leads the transcript so the "Working for" copy is never lost.
-function findLiveTurnHeaderInsertIndex(rows: ReadonlyArray<MessagesTimelineRow>): number {
-  for (let index = rows.length - 1; index >= 0; index -= 1) {
-    const row = rows[index]!;
-    if (row.kind === "message" && row.message.role === "user") {
-      return index + 1;
-    }
-  }
-  return 0;
 }
 
 // Returns the terminal assistant only when it is still the transcript tail.
@@ -1217,10 +1191,7 @@ function isRowUnchanged(a: MessagesTimelineRow, b: MessagesTimelineRow): boolean
 
   switch (a.kind) {
     case "working":
-      return a.createdAt === (b as typeof a).createdAt;
-
-    case "working-header":
-      return a.createdAt === (b as typeof a).createdAt;
+      return true;
 
     case "worktree-setup": {
       const bw = b as typeof a;

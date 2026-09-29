@@ -1519,6 +1519,12 @@ export function normalizeThreadSession(
   if (!incoming) {
     return null;
   }
+  // Shell snapshots and the live thread stream arrive independently. A delayed
+  // pre-turn session must not replace the running session (or revive a finished
+  // one), otherwise the composer briefly loses its stop/queue controls.
+  if (previous && incoming.updatedAt < previous.updatedAt) {
+    return previous;
+  }
   const nextLastError =
     incoming.lastError && !isNonFatalThreadErrorMessage(incoming.lastError)
       ? incoming.lastError
@@ -1648,7 +1654,7 @@ export function normalizeThreadFromReadModel(
       : incomingPendingInteractions === undefined
         ? undefined
         : [...incomingPendingInteractions];
-  const error = normalizeThreadErrorMessage(incoming.session?.lastError);
+  const error = normalizeThreadErrorMessage(session?.lastError);
   const lastVisitedAt = previous?.lastVisitedAt ?? incoming.updatedAt;
   const resolvedLatestHumanMessageAt = incoming.latestHumanMessageAt;
   const resolvedLatestUserMessageAt =
@@ -1847,7 +1853,7 @@ export function normalizeThreadShellSnapshot(
     deepEqualJson(previous.lastKnownPr, incoming.lastKnownPr)
       ? previous.lastKnownPr
       : (incoming.lastKnownPr ?? null);
-  const error = normalizeThreadErrorMessage(incoming.session?.lastError);
+  const error = normalizeThreadErrorMessage(session?.lastError);
   const lastVisitedAt = previous?.lastVisitedAt ?? incoming.updatedAt;
   const nextWorktreePath = incoming.worktreePath;
   const nextWorkingDirectory = incoming.workingDirectory ?? null;

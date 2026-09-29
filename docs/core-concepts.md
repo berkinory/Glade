@@ -69,6 +69,10 @@ cannot borrow the next turn's write authority. Older Codex and OpenCode runtimes
 transport cannot prove which turn issued a call. Stop drains and retires the interrupted runtime
 before resuming native history. Background recovery keeps the composer available.
 
+The transcript keeps one waiting indicator until answer text takes its place. Starting or
+finishing a turn does not insert or remove a timer above the reply. Session updates from
+the live stream and sidebar snapshots cannot overwrite a newer session state.
+
 A long task can contain many turns. Keep follow-ups connected to the same objective; create another
 task when the work needs a different owner, branch, or review boundary.
 

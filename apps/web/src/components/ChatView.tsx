@@ -166,7 +166,6 @@ import { AutomationDialog, automationsForThread } from "../routes/-automations.s
 import {
   deriveActiveBackgroundTasksState,
   deriveActiveTaskListState,
-  deriveActiveWorkStartedAt,
   derivePhase,
   deriveTimelineEntries,
   findLatestProposedPlan,
@@ -1510,11 +1509,6 @@ export default function ChatView({
   const [keepSettledActiveTurnLayout, setKeepSettledActiveTurnLayout] = useState(false);
   const previousActiveTurnLayoutLiveRef = useRef(activeTurnLayoutLive);
   const previousActiveTurnLayoutKeyRef = useRef<string | null>(null);
-  const activeWorkStartedAt = hasLiveTurnTail
-    ? (activeLatestTurn?.startedAt ?? null)
-    : hasLiveTurn
-      ? deriveActiveWorkStartedAt(activeLatestTurn, activeThread?.session ?? null, null)
-      : null;
   const activeTurnLayoutKey =
     activeThreadId === null ? null : `${activeThreadId}:${activeLatestTurn?.turnId ?? "idle"}`;
   const activeTurnInProgress = activeTurnLayoutLive || keepSettledActiveTurnLayout;
@@ -5611,7 +5605,6 @@ export default function ChatView({
                     worktreeSetupPendingAction={worktreeSetupPendingAction}
                     onResolveWorktreeSetup={onResolveWorktreeSetup}
                     activeTurnInProgress={activeTurnInProgress}
-                    activeTurnStartedAt={activeWorkStartedAt}
                     listRef={legendListRef}
                     timelineControllerRef={timelineControllerRef}
                     findHighlightStore={threadFindHighlightStore}

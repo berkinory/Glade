@@ -1215,6 +1215,9 @@ function applyOrchestrationEvent(
         event.payload.threadId,
         (thread) => {
           const session = normalizeThreadSession(event.payload.session, thread.session);
+          if (session && event.payload.session.updatedAt < session.updatedAt) {
+            return thread;
+          }
           const error = normalizeThreadErrorMessage(event.payload.session.lastError);
           const latestTurn = reconcileLatestTurnFromSession(thread, event.payload.session, error);
           if (
