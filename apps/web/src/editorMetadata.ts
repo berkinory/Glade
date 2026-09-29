@@ -41,6 +41,18 @@ export interface EditorOption {
   readonly Icon: Icon;
 }
 
+const FinderIcon: Icon = ({ className, style, ...props }) =>
+  createElement(
+    "svg",
+    { ...props, className, style, viewBox: "0 0 1 1", xmlns: "http://www.w3.org/2000/svg" },
+    createElement("image", {
+      href: "/finder.png",
+      width: 1,
+      height: 1,
+      preserveAspectRatio: "xMidYMid meet",
+    }),
+  );
+
 const EDITOR_ICONS: Partial<Record<EditorId, Icon>> = {
   cursor: CursorIcon,
   vscode: VisualStudioCode,
@@ -64,7 +76,7 @@ const EDITOR_ICONS: Partial<Record<EditorId, Icon>> = {
   rubymine: RubyMineIcon,
   datagrip: DataGripIcon,
   "android-studio": AndroidStudioIcon,
-  // Reuse the sidebar's closed-project folder glyph so "Open in folder" matches.
+  // Windows and Linux retain the generic file-manager glyph.
   "file-manager": FolderClosed,
   "system-default": AppsIcon,
 };
@@ -146,7 +158,8 @@ function resolveEditorIcon(editorId: EditorId): Icon {
   return EDITOR_ICONS[editorId] ?? AppsIcon;
 }
 
-function resolveEditorDisplayIcon(editorId: EditorId): Icon {
+function resolveEditorDisplayIcon(editorId: EditorId, platform: string): Icon {
+  if (editorId === "file-manager" && isMacPlatform(platform)) return FinderIcon;
   // Bundled vector marks stay sharp at menu size and render on the first frame.
   // Only editors without a matching mark need an installed app icon lookup.
   return EDITOR_ICONS[editorId] ?? resolveNativeEditorIcon(editorId);
@@ -159,7 +172,7 @@ export function resolveEditorOption(editorId: EditorId, platform: string): Edito
   return {
     value: editorId,
     label: resolveEditorLabel(editorId, platform),
-    Icon: resolveEditorDisplayIcon(editorId),
+    Icon: resolveEditorDisplayIcon(editorId, platform),
   };
 }
 
@@ -171,6 +184,6 @@ export function resolveAvailableEditorOptions(
   return EDITORS.filter((editor) => availableEditorIds.has(editor.id)).map((editor) => ({
     value: editor.id,
     label: resolveEditorLabel(editor.id, platform),
-    Icon: resolveEditorDisplayIcon(editor.id),
+    Icon: resolveEditorDisplayIcon(editor.id, platform),
   }));
 }

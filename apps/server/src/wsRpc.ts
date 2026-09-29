@@ -1279,6 +1279,8 @@ const makeWsRpcHandlersLayer = () =>
                   : toWsRpcError(cause, "Failed to write workspace file"),
             ),
           ),
+        [WS_METHODS.projectsManageEntry]: (input) =>
+          rpcEffect(workspaceFileSystem.manageEntry(input), "Failed to update workspace entry"),
         [WS_METHODS.projectsRunDevServer]: (input) =>
           rpcEffect(devServerManager.run(input), "Failed to start dev server"),
         [WS_METHODS.projectsStopDevServer]: (input) =>

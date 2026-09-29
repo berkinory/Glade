@@ -1,3 +1,4 @@
+import { formatWorkspaceFileError } from "~/lib/workspaceFileError";
 import type { ProjectReadFileResult } from "@glade/contracts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
@@ -54,8 +55,7 @@ export function useWorkspaceFileEditorBuffer(
   const handleChange = useCallback((value: string) => session?.change(value), [session]);
   const save = useCallback(() => session?.save(), [session]);
   const overwrite = useCallback(() => session?.overwrite(), [session]);
-  const pauseAutosave = useCallback(() => session?.pause(), [session]);
-  const resumeAutosave = useCallback(() => session?.resume(), [session]);
+  const discard = useCallback(() => session?.discard(), [session]);
   return {
     state,
     dirty: isWorkspaceFileEditorDirty(state),
@@ -67,8 +67,7 @@ export function useWorkspaceFileEditorBuffer(
     overwrite,
     reloadFromDisk,
     flush,
-    pauseAutosave,
-    resumeAutosave,
+    discard,
   };
 }
 
@@ -98,7 +97,7 @@ export function useWorkspaceFileEditor(input: UseWorkspaceFileEditorInput) {
     loading: fileQuery.isLoading,
     loadError:
       fileQuery.error instanceof Error
-        ? fileQuery.error.message
+        ? formatWorkspaceFileError(fileQuery.error)
         : fileQuery.error
           ? "Could not read file."
           : null,

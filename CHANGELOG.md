@@ -4,6 +4,8 @@
 
 ### Improved
 
+- Explorer menus have action icons and file management controls. New file and folder buttons create under the selected folder, with inline naming and renaming. Deleting an open file closes its preview. Finder actions use the system icon, file breadcrumbs keep descenders visible, and file previews show concise errors. Workspace files save with Cmd/Ctrl+S.
+- Explorer folder menus open directories in the platform file manager, and expansion changes without height or chevron motion.
 - Chat rows and headers show the provider icon even when the terminal is the saved primary view.
 - The right sidebar opens on Explorer and keeps Explorer, Terminal, Source Control, Browser, and Simulator in a fixed order. Chat terminals now use the sidebar instead of a bottom drawer.
 - The right sidebar has a 28rem minimum width and can expand to 1.5 times its opening width. Panel buttons use icons, and switching panels preserves the resized width.

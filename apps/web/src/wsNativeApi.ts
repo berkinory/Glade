@@ -544,6 +544,7 @@ export function createWsNativeApi(): NativeApi {
       createLocalFilePreviewGrant: (input) =>
         transport.request(WS_METHODS.projectsCreateLocalFilePreviewGrant, input),
       writeFile: (input) => transport.request(WS_METHODS.projectsWriteFile, input),
+      manageEntry: (input) => transport.request(WS_METHODS.projectsManageEntry, input),
       runDevServer: (input) => transport.request(WS_METHODS.projectsRunDevServer, input),
       stopDevServer: (input) => transport.request(WS_METHODS.projectsStopDevServer, input),
       listDevServers: () => transport.request(WS_METHODS.projectsListDevServers),

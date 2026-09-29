@@ -1,6 +1,6 @@
 import { Fragment, type ReactNode } from "react";
+import { FileEntryIcon } from "./FileEntryIcon";
 
-import { basenameOfPath } from "~/file-icons";
 import {
   ChevronRightIcon,
   Redo2Icon,
@@ -23,16 +23,15 @@ import {
 import { Button } from "../ui/button";
 import { CHAT_SURFACE_HEADER_DIVIDER_CLASS_NAME, ChatHeaderIconButton } from "./chatHeaderControls";
 
-export function workspaceFileEditorBreadcrumbSegments(
-  workspaceRoot: string | null,
-  filePath: string,
-): { prefixSegments: ReadonlyArray<{ name: string; key: string }>; fileSegment: string } {
-  const projectName = workspaceRoot ? basenameOfPath(workspaceRoot) : null;
+export function workspaceFileEditorBreadcrumbSegments(filePath: string): {
+  prefixSegments: ReadonlyArray<{ name: string; key: string }>;
+  fileSegment: string;
+} {
   const relativeSegments = filePath
     .replace(/\\/g, "/")
     .split("/")
     .filter((segment) => segment.length > 0);
-  const segments = projectName ? [projectName, ...relativeSegments] : relativeSegments;
+  const segments = relativeSegments;
   return {
     prefixSegments: segments.slice(0, -1).map((name, index) => ({
       name,
@@ -88,22 +87,15 @@ export function WorkspaceFileEditorHistoryActions(props: WorkspaceFileEditorHist
 }
 
 interface WorkspaceFileEditorHeaderProps {
-  workspaceRoot: string | null;
   filePath: string;
   title: string;
   dirty: boolean;
-  saving: boolean;
-  canSave: boolean;
   actions?: ReactNode;
-  onSave: () => void;
   onClose: () => void;
 }
 
 export function WorkspaceFileEditorHeader(props: WorkspaceFileEditorHeaderProps) {
-  const { fileSegment, prefixSegments } = workspaceFileEditorBreadcrumbSegments(
-    props.workspaceRoot,
-    props.filePath,
-  );
+  const { fileSegment, prefixSegments } = workspaceFileEditorBreadcrumbSegments(props.filePath);
 
   return (
     <div
@@ -112,7 +104,7 @@ export function WorkspaceFileEditorHeader(props: WorkspaceFileEditorHeaderProps)
         CHAT_SURFACE_HEADER_DIVIDER_CLASS_NAME,
       )}
     >
-      <nav aria-label="File path" className="flex min-w-0 flex-1 items-center text-ui leading-none">
+      <nav aria-label="File path" className="flex min-w-0 flex-1 items-center text-ui leading-snug">
         <span className="flex min-w-0 shrink-[9999] items-center overflow-hidden">
           {prefixSegments.map((segment) => (
             <Fragment key={segment.key}>
@@ -124,6 +116,7 @@ export function WorkspaceFileEditorHeader(props: WorkspaceFileEditorHeaderProps)
             </Fragment>
           ))}
         </span>
+        <FileEntryIcon pathValue={props.filePath} kind="file" className="mr-1 size-3.5 shrink-0" />
         <span
           className="min-w-0 shrink truncate font-medium text-foreground"
           title={props.filePath}
@@ -141,21 +134,8 @@ export function WorkspaceFileEditorHeader(props: WorkspaceFileEditorHeaderProps)
 
       <span className="shrink-0 text-ui-sm text-muted-foreground/70">{props.title}</span>
 
-      <span role="status" className="shrink-0 text-ui-sm text-muted-foreground">
-        {props.saving ? "Saving..." : props.dirty ? "Unsaved changes" : "Saved"}
-      </span>
       <div className="flex shrink-0 items-center gap-1.5">
         {props.actions}
-        <Button
-          type="button"
-          size="xs"
-          variant="chrome-outline"
-          className="!h-7 shrink-0 rounded-lg"
-          disabled={!props.canSave || props.saving}
-          onClick={props.onSave}
-        >
-          {props.saving ? "Saving..." : "Save"}
-        </Button>
         <ChatHeaderIconButton
           type="button"
           tone="plain"

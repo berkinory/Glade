@@ -93,6 +93,7 @@ import {
   ProjectSearchLocalEntriesInput,
   ProjectStopDevServerInput,
   ProjectWriteFileInput,
+  ProjectManageEntryInput,
 } from "./project";
 import { FilesystemBrowseInput } from "./filesystem";
 import {
@@ -178,6 +179,7 @@ export const WS_METHODS = {
   projectsResolveOutOfRootFileReference: "projects.resolveOutOfRootFileReference",
   projectsCreateLocalFilePreviewGrant: "projects.createLocalFilePreviewGrant",
   projectsWriteFile: "projects.writeFile",
+  projectsManageEntry: "projects.manageEntry",
   projectsRunDevServer: "projects.runDevServer",
   projectsStopDevServer: "projects.stopDevServer",
   projectsListDevServers: "projects.listDevServers",
@@ -370,6 +372,7 @@ const WebSocketRequestBody = Schema.Union([
     ProjectCreateLocalFilePreviewGrantInput,
   ),
   tagRequestBody(WS_METHODS.projectsWriteFile, ProjectWriteFileInput),
+  tagRequestBody(WS_METHODS.projectsManageEntry, ProjectManageEntryInput),
   tagRequestBody(WS_METHODS.projectsRunDevServer, ProjectRunDevServerInput),
   tagRequestBody(WS_METHODS.projectsStopDevServer, ProjectStopDevServerInput),
   tagRequestBody(WS_METHODS.projectsListDevServers, Schema.Struct({})),

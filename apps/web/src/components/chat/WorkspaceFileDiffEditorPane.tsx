@@ -75,7 +75,6 @@ export function WorkspaceFileDiffEditorPane(props: WorkspaceFileDiffEditorPanePr
       className="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-[var(--color-background-surface)]"
     >
       <WorkspaceFileEditorHeader
-        workspaceRoot={props.workspaceRoot}
         filePath={props.filePath}
         title={
           originalQuery.data?.resolvedRev
@@ -83,9 +82,6 @@ export function WorkspaceFileDiffEditorPane(props: WorkspaceFileDiffEditorPanePr
             : "Diff"
         }
         dirty={session.dirty}
-        saving={session.state.saving}
-        canSave={session.dirty && editable}
-        onSave={session.save}
         onClose={session.requestClose}
         actions={
           <>

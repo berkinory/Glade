@@ -908,7 +908,10 @@ const CONTEXT_MENU_ICON_MAX_DATA_URL_LENGTH = 64_000;
 // spaces add a little breathing room on the right of macOS context menus.
 const MAC_CONTEXT_MENU_LABEL_TRAILING_PADDING = "\u2003\u2003";
 
-function createContextMenuIcon(dataUrl: unknown): Electron.NativeImage | undefined {
+function createContextMenuIcon(
+  dataUrl: unknown,
+  template = true,
+): Electron.NativeImage | undefined {
   if (
     process.platform !== "darwin" ||
     typeof dataUrl !== "string" ||
@@ -922,7 +925,7 @@ function createContextMenuIcon(dataUrl: unknown): Electron.NativeImage | undefin
     { scaleFactor: 2 },
   );
   if (icon.isEmpty()) return undefined;
-  icon.setTemplateImage(true);
+  icon.setTemplateImage(template);
   return icon;
 }
 let updatePollTimer: ReturnType<typeof setInterval> | null = null;
@@ -4799,7 +4802,7 @@ function registerIpcHandlers(): void {
           label: item.label,
           separatorBefore: item.separatorBefore === true,
           destructive: item.destructive === true,
-          icon: createContextMenuIcon(item.iconDataUrl),
+          icon: createContextMenuIcon(item.iconDataUrl, item.iconTemplate !== false),
         }));
       if (normalizedItems.length === 0) {
         return null;

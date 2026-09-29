@@ -190,6 +190,20 @@ export const ProjectWriteFileResult = Schema.Struct({
 });
 export type ProjectWriteFileResult = typeof ProjectWriteFileResult.Type;
 
+export const ProjectManageEntryInput = Schema.Struct({
+  cwd: TrimmedNonEmptyString,
+  action: Schema.Literals(["create", "rename", "delete"]),
+  kind: ProjectEntryKind,
+  relativePath: TrimmedNonEmptyString.check(Schema.isMaxLength(PROJECT_FILE_PATH_MAX_LENGTH)),
+  nextName: Schema.optional(TrimmedNonEmptyString.check(Schema.isMaxLength(255))),
+});
+export type ProjectManageEntryInput = typeof ProjectManageEntryInput.Type;
+
+export const ProjectManageEntryResult = Schema.Struct({
+  relativePath: TrimmedNonEmptyString,
+});
+export type ProjectManageEntryResult = typeof ProjectManageEntryResult.Type;
+
 export const ProjectReadFileInput = Schema.Struct({
   cwd: TrimmedNonEmptyString,
   relativePath: TrimmedNonEmptyString.check(Schema.isMaxLength(PROJECT_READ_FILE_PATH_MAX_LENGTH)),

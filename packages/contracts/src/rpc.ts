@@ -221,6 +221,8 @@ import {
   ProjectStopDevServerResult,
   ProjectWriteFileInput,
   ProjectWriteFileResult,
+  ProjectManageEntryInput,
+  ProjectManageEntryResult,
 } from "./project";
 import {
   ServerConfig,
@@ -533,6 +535,12 @@ export const WsProjectsCreateLocalFilePreviewGrantRpc = Rpc.make(
 export const WsProjectsWriteFileRpc = Rpc.make(WS_METHODS.projectsWriteFile, {
   payload: ProjectWriteFileInput,
   success: ProjectWriteFileResult,
+  error: WsRpcError,
+});
+
+export const WsProjectsManageEntryRpc = Rpc.make(WS_METHODS.projectsManageEntry, {
+  payload: ProjectManageEntryInput,
+  success: ProjectManageEntryResult,
   error: WsRpcError,
 });
 
@@ -1501,6 +1509,7 @@ export const WsFeatureRpcGroup = RpcGroup.make(
   WsProjectsResolveOutOfRootFileReferenceRpc,
   WsProjectsCreateLocalFilePreviewGrantRpc,
   WsProjectsWriteFileRpc,
+  WsProjectsManageEntryRpc,
   WsProjectsRunDevServerRpc,
   WsProjectsStopDevServerRpc,
   WsProjectsListDevServersRpc,

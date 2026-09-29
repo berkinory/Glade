@@ -6178,7 +6178,9 @@ export default function Sidebar() {
                   )
                 }
               >
-                <ProjectContextMenuIcon icon={FolderOpenIcon} />
+                <span className={PROJECT_CONTEXT_MENU_ICON_CLASS_NAME}>
+                  <img src="/finder.png" alt="" className="size-3.5 object-contain" />
+                </span>
                 <span>Open in Finder</span>
               </MenuItem>
               <MenuItem

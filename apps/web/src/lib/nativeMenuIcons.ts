@@ -26,12 +26,15 @@ async function loadMenuIconSvg(icon: string): Promise<string | null> {
 }
 
 async function rasterizeMenuIcon(icon: string): Promise<string | null> {
-  const markup = await loadMenuIconSvg(icon);
-  if (!markup) return null;
-  // Template images only use alpha; macOS tints them for appearance and highlight.
-  const svg = markup.replaceAll("currentColor", "#000");
   const image = new Image();
-  image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  if (icon.startsWith("/")) {
+    image.src = icon;
+  } else {
+    const markup = await loadMenuIconSvg(icon);
+    if (!markup) return null;
+    const svg = markup.replaceAll("currentColor", "#000");
+    image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  }
   await image.decode();
 
   const size = NATIVE_MENU_ICON_POINTS * NATIVE_MENU_ICON_SCALE;
@@ -65,7 +68,9 @@ export function withNativeMenuIcons<T extends string>(
     items.map(async (item) => {
       if (!item.icon) return item;
       const iconDataUrl = await resolveIconDataUrl(item.icon);
-      return iconDataUrl ? { ...item, iconDataUrl } : item;
+      return iconDataUrl
+        ? { ...item, iconDataUrl, ...(item.icon.startsWith("/") ? { iconTemplate: false } : {}) }
+        : item;
     }),
   );
 }

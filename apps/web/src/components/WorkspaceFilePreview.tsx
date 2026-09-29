@@ -1,3 +1,4 @@
+import { formatWorkspaceFileError } from "~/lib/workspaceFileError";
 // FILE: WorkspaceFilePreview.tsx
 // Purpose: Shared single-file preview (code with syntax highlighting, parsed
 //          markdown, images, PDFs) for workspace files plus absolute local
@@ -1069,23 +1070,10 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
         markdownPreviewEnabled={showMarkdownPreview}
         onMarkdownPreviewChange={handleMarkdownPreviewChange}
         onReferenceInChat={onReferenceInChat}
-        onAskWhyInChat={onAskWhyInChat}
         contentsForCopy={fileIsImage || fileQuery.data === undefined ? null : displayedFileContents}
         truncated={fileQuery.data?.truncated ?? false}
         onEditFile={editFile}
         dirty={editBufferDirty}
-        saveState={
-          activeEditBuffer
-            ? activeEditBuffer.error
-              ? "Save failed"
-              : activeEditBuffer.saving
-                ? "Saving..."
-                : editBufferDirty
-                  ? "Unsaved changes"
-                  : "Saved"
-            : undefined
-        }
-        onSave={activeEditBuffer ? editor.save : undefined}
         readOnlyReason={readOnlyReason}
         reloading={fileIsImage || fileIsPdf ? binaryPreviewReloading : fileQuery.isFetching}
         onReload={workspaceRoot && filePath ? handleFileReload : undefined}
@@ -1134,7 +1122,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
               ? "Refreshing file..."
               : "File refresh delayed."
             : fileReadError instanceof Error
-              ? fileReadError.message
+              ? formatWorkspaceFileError(fileReadError)
               : "Could not refresh file."}
         </div>
       ) : null}
@@ -1169,7 +1157,7 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
       ) : !hasFileContents && fileReadError ? (
         <PanelStateMessage density="compact" fill="flex" className="items-start justify-start p-3">
           <p className="text-left text-ui-sm text-destructive/85">
-            {fileReadError instanceof Error ? fileReadError.message : "Could not read file."}
+            {formatWorkspaceFileError(fileReadError)}
           </p>
         </PanelStateMessage>
       ) : !hasFileContents ? (

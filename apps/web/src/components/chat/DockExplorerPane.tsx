@@ -15,7 +15,6 @@ import { directoryChain, useExplorerRevealRequestStore } from "~/explorerRevealR
 import type { ChatFileReference } from "~/lib/chatReferences";
 import type { FileCommentSelection } from "~/lib/fileComments";
 import { projectListDirectoriesQueryOptions } from "~/lib/projectReactQuery";
-import { flushWorkspaceEditors } from "~/lib/workspaceEditorSession";
 import { WorkspaceFilePreview } from "../WorkspaceFilePreview";
 import { PanelStateMessage } from "./PanelStateMessage";
 import { WorkspaceExplorerSidebar } from "./workspaceExplorer";
@@ -91,12 +90,8 @@ export const DockExplorerPane = function DockExplorerPane(props: {
     };
   }, [revealRequest, props.workspaceRoot, props.threadId, queryClient]);
 
-  const selectionRequestRef = useRef(0);
   const handleSelectFile = (path: string) => {
-    const request = ++selectionRequestRef.current;
-    void flushWorkspaceEditors(queryClient, props.workspaceRoot).then((saved) => {
-      if (saved && request === selectionRequestRef.current) setSelectedFilePath(path);
-    });
+    setSelectedFilePath(path);
   };
 
   const handleToggleDirectory = (path: string) => {
@@ -121,6 +116,11 @@ export const DockExplorerPane = function DockExplorerPane(props: {
         onQueryChange={setSearchQuery}
         containerClassName={DOCK_EXPLORER_SIDEBAR_CLASS}
         onSelectFile={handleSelectFile}
+        onDeleted={(path) => {
+          setSelectedFilePath((current) =>
+            current === path || current?.startsWith(`${path}/`) ? null : current,
+          );
+        }}
         onToggleDirectory={handleToggleDirectory}
         onReferenceInChat={props.onReferenceInChat}
       />

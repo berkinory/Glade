@@ -5,6 +5,8 @@ import type {
   ProjectReadFileResult,
   ProjectWriteFileInput,
   ProjectWriteFileResult,
+  ProjectManageEntryInput,
+  ProjectManageEntryResult,
 } from "@glade/contracts";
 import { WorkspacePathOutsideRootError } from "./WorkspacePaths";
 
@@ -62,6 +64,12 @@ export interface WorkspaceFileSystemShape {
     | WorkspaceFileDeletedError
     | WorkspaceFileSystemError
     | WorkspacePathOutsideRootError
+  >;
+  readonly manageEntry: (
+    input: ProjectManageEntryInput,
+  ) => Effect.Effect<
+    ProjectManageEntryResult,
+    WorkspaceFileSystemError | WorkspacePathOutsideRootError
   >;
 }
 

@@ -14,8 +14,6 @@ import {
   type WorkspaceFileEditorAction,
 } from "./workspaceFileEditor";
 
-export const WORKSPACE_EDITOR_AUTOSAVE_MS = 400;
-
 const sessions = new WeakMap<QueryClient, Map<string, WorkspaceEditorSession>>();
 
 /** One buffer and one writer per file, shared by all editor surfaces. Failed
@@ -23,7 +21,6 @@ const sessions = new WeakMap<QueryClient, Map<string, WorkspaceEditorSession>>()
 export class WorkspaceEditorSession {
   private state = INITIAL_WORKSPACE_FILE_EDITOR_STATE;
   private listeners = new Set<() => void>();
-  private timer: ReturnType<typeof setTimeout> | undefined;
   private writing: Promise<boolean> | undefined;
   private paused = false;
   private editGeneration = 0;
@@ -39,10 +36,8 @@ export class WorkspaceEditorSession {
 
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
-    this.schedule();
     return () => {
       this.listeners.delete(listener);
-      if (this.listeners.size === 0) this.clearTimer();
       queueMicrotask(() => this.releaseIfUnused());
     };
   };
@@ -80,35 +75,18 @@ export class WorkspaceEditorSession {
   change = (value: string) => {
     this.editGeneration += 1;
     this.dispatch({ type: "changed", value });
-    this.schedule();
   };
-
-  private clearTimer() {
-    clearTimeout(this.timer);
-    this.timer = undefined;
-  }
-
-  private schedule() {
-    this.clearTimer();
-    if (this.paused || this.writing || !this.dirty || this.state.saveError || this.state.conflict)
-      return;
-    this.timer = setTimeout(() => void this.flush(), WORKSPACE_EDITOR_AUTOSAVE_MS);
-  }
 
   pause = () => {
     this.paused = true;
-    this.clearTimer();
   };
 
   resume = () => {
     this.paused = false;
-    this.schedule();
   };
 
-  /** Drains edits typed during a write too. Failure retains the draft and stops
-   * automatic retries; only an explicit Save/Overwrite retries it. */
+  /** Drains edits typed during an explicit save. Failure retains the draft. */
   flush = (overwrite = false): Promise<boolean> => {
-    this.clearTimer();
     if (this.writing) return this.writing;
     if (this.paused) return Promise.resolve(!this.dirty);
     if (!this.dirty) return Promise.resolve(true);
@@ -214,6 +192,11 @@ export class WorkspaceEditorSession {
     this.paused = false;
     void this.flush(true);
   };
+
+  discard = () => {
+    this.dispatch({ type: "closed" });
+    this.releaseIfUnused();
+  };
 }
 
 export function getWorkspaceEditorSession(client: QueryClient, cwd: string, relativePath: string) {
@@ -238,19 +221,4 @@ export function hasUnsavedWorkspaceEditors(client: QueryClient, cwd?: string | n
   return [...(sessions.get(client)?.values() ?? [])].some(
     (session) => (cwd == null || session.cwd === cwd) && (session.dirty || session.saving),
   );
-}
-
-export async function flushWorkspaceEditors(
-  client: QueryClient,
-  cwd?: string | null,
-): Promise<boolean> {
-  const pending = [...(sessions.get(client)?.values() ?? [])].filter(
-    (session) => (cwd == null || session.cwd === cwd) && (session.dirty || session.saving),
-  );
-  const results = await Promise.all(
-    pending.map((session) =>
-      session.getSnapshot().saveError || session.getSnapshot().conflict ? false : session.flush(),
-    ),
-  );
-  return results.every(Boolean);
 }

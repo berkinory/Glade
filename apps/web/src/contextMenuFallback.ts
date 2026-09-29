@@ -3,6 +3,13 @@ import { createCentralIconElement } from "./lib/central-icons";
 import { isInlineSvgMenuIcon } from "./lib/nativeMenuIcons";
 
 function createMenuIconElement(icon: string): HTMLElement | null {
+  if (icon.startsWith("/")) {
+    const image = document.createElement("img");
+    image.src = icon;
+    image.alt = "";
+    image.className = "size-4 shrink-0 object-contain";
+    return image;
+  }
   if (!isInlineSvgMenuIcon(icon)) return createCentralIconElement(icon, "opacity-60");
   const wrapper = document.createElement("span");
   wrapper.className = "flex size-4 shrink-0 items-center justify-center opacity-60 [&>svg]:size-4";
@@ -92,7 +99,7 @@ export function showContextMenuFallback<T extends string>(
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = isDestructive
-        ? "flex w-full min-h-7 cursor-default select-none items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-ui text-foreground/86 transition-colors"
+        ? "flex w-full min-h-7 cursor-default select-none items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-ui text-destructive transition-colors hover:bg-destructive/10"
         : "flex w-full min-h-7 cursor-default select-none items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-ui text-foreground/86 transition-colors";
 
       const icon = item.icon ? createMenuIconElement(item.icon) : null;

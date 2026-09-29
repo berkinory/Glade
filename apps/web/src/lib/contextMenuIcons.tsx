@@ -6,6 +6,7 @@
 //      other icon sets are rendered to SVG markup from the same components the app shows.
 
 import { renderToStaticMarkup } from "react-dom/server";
+import { IconFilePlus } from "@tabler/icons-react";
 
 import { THREAD_ARCHIVE_ICON } from "~/components/ThreadArchiveActionButton";
 import {
@@ -30,5 +31,16 @@ export const THREAD_CONTEXT_MENU_ICONS = {
   // Same glyph as the thread row's hover archive button.
   archive: renderToStaticMarkup(<THREAD_ARCHIVE_ICON size={24} />),
   // Same glyph as the delete rows in the sidebar project and space menus.
+  delete: renderToStaticMarkup(<Trash2 />),
+} as const;
+
+export const FILE_CONTEXT_MENU_ICONS = {
+  reference: "chat-bubble-7",
+  copy: COPY_ICON_NAME,
+  finder: "/finder.png",
+  fileManager: "folder-open-front",
+  createFile: renderToStaticMarkup(<IconFilePlus size={24} />),
+  createFolder: "folder-add-left",
+  rename: PENCIL_ICON_NAME,
   delete: renderToStaticMarkup(<Trash2 />),
 } as const;

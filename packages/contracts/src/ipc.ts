@@ -140,6 +140,8 @@ import type {
   ProjectStopDevServerResult,
   ProjectWriteFileInput,
   ProjectWriteFileResult,
+  ProjectManageEntryInput,
+  ProjectManageEntryResult,
 } from "./project";
 import type { FilesystemBrowseInput, FilesystemBrowseResult } from "./filesystem";
 import type {
@@ -303,6 +305,7 @@ export interface ContextMenuItem<T extends string = string> {
 export interface DesktopContextMenuItem<T extends string = string> extends ContextMenuItem<T> {
   /** `data:image/png;base64,` template image rendered at 2x for a 16pt menu icon. */
   iconDataUrl?: string;
+  iconTemplate?: boolean;
 }
 
 export type DesktopUpdateStatus =
@@ -780,6 +783,7 @@ export interface NativeApi {
       input: ProjectCreateLocalFilePreviewGrantInput,
     ) => Promise<ProjectCreateLocalFilePreviewGrantResult>;
     writeFile: (input: ProjectWriteFileInput) => Promise<ProjectWriteFileResult>;
+    manageEntry: (input: ProjectManageEntryInput) => Promise<ProjectManageEntryResult>;
     runDevServer: (input: ProjectRunDevServerInput) => Promise<ProjectRunDevServerResult>;
     stopDevServer: (input: ProjectStopDevServerInput) => Promise<ProjectStopDevServerResult>;
     listDevServers: () => Promise<ProjectListDevServersResult>;

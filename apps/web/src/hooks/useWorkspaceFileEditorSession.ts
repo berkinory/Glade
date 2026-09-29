@@ -30,7 +30,7 @@ export function useWorkspaceFileEditorSession(input: {
   const [pendingDiscard, setPendingDiscard] = useState<WorkspaceFileEditorDiscardIntent | null>(
     null,
   );
-  const { dirty, reloadFromDisk, save, flush, pauseAutosave, resumeAutosave } = controller;
+  const { dirty, reloadFromDisk, save, discard } = controller;
   const saving = controller.state.saving;
   // A close or reload requested while a save is in flight waits for that save:
   // unmounting immediately would let the write land after "discard" promised
@@ -67,10 +67,14 @@ export function useWorkspaceFileEditorSession(input: {
   }, [saving]);
 
   const requestClose = useCallback(() => {
-    void flush().then((saved) => {
-      if (saved) onClose();
-    });
-  }, [flush, onClose]);
+    if (saving) {
+      setAfterSave("close");
+    } else if (dirty) {
+      setPendingDiscard("close");
+    } else {
+      onClose();
+    }
+  }, [dirty, onClose, saving]);
 
   const requestReload = useCallback(() => {
     if (saving) {
@@ -78,12 +82,11 @@ export function useWorkspaceFileEditorSession(input: {
       return;
     }
     if (dirty) {
-      pauseAutosave();
       setPendingDiscard("reload");
       return;
     }
     reloadFromDisk();
-  }, [pauseAutosave, dirty, reloadFromDisk, saving]);
+  }, [dirty, reloadFromDisk, saving]);
 
   const confirmPendingDiscard = useCallback(() => {
     const intent = pendingDiscard;
@@ -96,16 +99,16 @@ export function useWorkspaceFileEditorSession(input: {
       return;
     }
     if (intent === "close") {
+      discard();
       onClose();
       return;
     }
     reloadFromDisk();
-  }, [onClose, pendingDiscard, reloadFromDisk, saving]);
+  }, [discard, onClose, pendingDiscard, reloadFromDisk, saving]);
 
   const cancelPendingDiscard = useCallback(() => {
     setPendingDiscard(null);
-    resumeAutosave();
-  }, [resumeAutosave]);
+  }, []);
 
   useEffect(() => {
     if (!enabled || dirty || saving) {

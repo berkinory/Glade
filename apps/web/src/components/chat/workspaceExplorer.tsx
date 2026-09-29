@@ -6,6 +6,10 @@
 //          ExplorerActivityBarButton, useExplorerEntryPrefetch, setFileReferenceDragData.
 
 import type { ProjectEntry, ProjectFileSystemEntry } from "@glade/contracts";
+import { isWorkspaceRelativePathSafe, joinWorkspaceRelativePath } from "@glade/shared/path";
+import { IconFilePlus, IconFolderPlus } from "@tabler/icons-react";
+import { ExplorerInlineName } from "./ExplorerInlineName";
+import { useWorkspaceExplorerActions } from "./useWorkspaceExplorerActions";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -124,6 +128,7 @@ const ExplorerRow = forwardRef<
     expanded: boolean;
     onSelectFile: (path: string) => void;
     onPrefetchEntry: (entry: ProjectFileSystemEntry) => void;
+    onSelectDirectory: (path: string) => void;
     onEntryContextMenu: (entry: ProjectFileSystemEntry, position: { x: number; y: number }) => void;
   } & ComponentPropsWithoutRef<"button">
 >(function ExplorerRow(
@@ -134,6 +139,7 @@ const ExplorerRow = forwardRef<
     expanded,
     onSelectFile,
     onPrefetchEntry,
+    onSelectDirectory,
     onEntryContextMenu,
     className,
     onClick,
@@ -147,8 +153,10 @@ const ExplorerRow = forwardRef<
   const handleClick = (event: ReactMouseEvent<HTMLButtonElement>) => {
     onClick?.(event);
     if (isDirectory) {
+      onSelectDirectory(entry.path);
       return;
     }
+    onSelectDirectory(entry.parentPath ?? "");
     onSelectFile(entry.path);
   };
   const handlePrefetch = () => {
@@ -168,7 +176,7 @@ const ExplorerRow = forwardRef<
       {...EXPLORER_ROW_PROPS}
       ref={ref}
       type="button"
-      className={fileRowClassName(selected, cn("h-7 pr-2", className))}
+      className={fileRowClassName(selected, cn("h-7 pr-2 transition-none", className))}
       style={fileRowIndentStyle(depth)}
       title={entry.path}
       draggable
@@ -179,7 +187,14 @@ const ExplorerRow = forwardRef<
       onContextMenu={handleContextMenu}
     >
       {isDirectory ? (
-        <DisclosureChevron open={expanded} className="opacity-75" />
+        <>
+          <DisclosureChevron open={expanded} className="opacity-75 transition-none" />
+          <FileEntryIcon
+            pathValue={entry.path}
+            kind="directory"
+            className="size-3.5 shrink-0 opacity-75"
+          />
+        </>
       ) : (
         <FileEntryIcon
           pathValue={entry.path}
@@ -221,6 +236,7 @@ function WorkspaceDirectory(props: {
   onSelectFile: (path: string) => void;
   onToggleDirectory: (path: string) => void;
   onPrefetchEntry: (entry: ProjectFileSystemEntry) => void;
+  actions: ReturnType<typeof useWorkspaceExplorerActions>;
   onEntryContextMenu: (entry: ProjectFileSystemEntry, position: { x: number; y: number }) => void;
 }) {
   const query = useQuery(
@@ -243,9 +259,29 @@ function WorkspaceDirectory(props: {
     );
   }
 
+  const edit = props.actions.edit;
+  const inline = (depth: number) =>
+    edit ? (
+      <ExplorerInlineName
+        key={`${edit.action}:${edit.entry?.path ?? edit.parent}:${edit.kind}`}
+        kind={edit.kind}
+        path={edit.entry?.path ?? (edit.parent ? `${edit.parent}/new` : "new")}
+        depth={depth}
+        initialName={edit.entry?.name ?? ""}
+        creating={edit.action === "create"}
+        onSubmit={props.actions.submitEdit}
+        onCancel={props.actions.cancelEdit}
+      />
+    ) : null;
   return (
     <>
+      {edit?.action === "create" && edit.parent === (props.relativePath ?? "")
+        ? inline(props.depth)
+        : null}
       {(query.data?.entries ?? []).filter(shouldShowExplorerEntry).map((entry) => {
+        if (edit?.action === "rename" && edit.entry?.path === entry.path)
+          return inline(props.depth);
+
         if (entry.kind !== "directory") {
           return (
             <ExplorerRow
@@ -256,6 +292,7 @@ function WorkspaceDirectory(props: {
               expanded={false}
               onSelectFile={props.onSelectFile}
               onPrefetchEntry={props.onPrefetchEntry}
+              onSelectDirectory={props.actions.setSelectedDirectory}
               onEntryContextMenu={props.onEntryContextMenu}
             />
           );
@@ -272,17 +309,16 @@ function WorkspaceDirectory(props: {
                 <ExplorerRow
                   entry={entry}
                   depth={props.depth}
-                  selected={false}
+                  selected={props.actions.selectedDirectory === entry.path}
                   expanded={expanded}
                   onSelectFile={props.onSelectFile}
+                  onSelectDirectory={props.actions.setSelectedDirectory}
                   onPrefetchEntry={props.onPrefetchEntry}
                   onEntryContextMenu={props.onEntryContextMenu}
                 />
               }
             />
-            {/* Keep children mounted only while open (plus the closing transition Base UI
-                manages) so the height animation plays and lazy listings stay cached. */}
-            <CollapsiblePanel>
+            <CollapsiblePanel className="transition-none">
               <WorkspaceDirectory
                 cwd={props.cwd}
                 relativePath={entry.path}
@@ -292,6 +328,7 @@ function WorkspaceDirectory(props: {
                 onSelectFile={props.onSelectFile}
                 onToggleDirectory={props.onToggleDirectory}
                 onPrefetchEntry={props.onPrefetchEntry}
+                actions={props.actions}
                 onEntryContextMenu={props.onEntryContextMenu}
               />
             </CollapsiblePanel>
@@ -305,20 +342,93 @@ function WorkspaceDirectory(props: {
 // Opening the file-reference context menu from a tree row (full entry) or a
 // search-result row (path only). Both wrap the same menu, so they live here
 // instead of being re-declared in every sidebar that renders these rows.
+function explorerRevealPath(
+  workspaceRoot: string | null,
+  relativePath: string,
+): string | undefined {
+  return workspaceRoot && isWorkspaceRelativePathSafe(relativePath)
+    ? joinWorkspaceRelativePath(workspaceRoot, relativePath)
+    : undefined;
+}
+
 function useTreeEntryContextMenu(
+  workspaceRoot: string | null,
   onReferenceInChat: ((reference: ChatFileReference) => void) | undefined,
+  actions: ReturnType<typeof useWorkspaceExplorerActions>,
 ) {
   return (entry: ProjectFileSystemEntry, position: { x: number; y: number }) => {
-    void showFileReferenceContextMenu({ path: entry.path, position, onReferenceInChat });
+    const revealPath = explorerRevealPath(workspaceRoot, entry.path);
+    void showFileReferenceContextMenu({
+      path: entry.path,
+      ...(revealPath ? { revealPath } : {}),
+      revealKind: entry.kind,
+      position,
+      onReferenceInChat,
+      ...(entry.kind === "directory"
+        ? {
+            onCreateFile: () => actions.create(entry.path, "file"),
+            onCreateFolder: () => actions.create(entry.path, "directory"),
+          }
+        : {}),
+      onRename: () => actions.rename(entry),
+      onDelete: () => actions.deleteEntry(entry),
+    });
   };
 }
 
 function useResultEntryContextMenu(
+  workspaceRoot: string | null,
   onReferenceInChat: ((reference: ChatFileReference) => void) | undefined,
+  actions?: ReturnType<typeof useWorkspaceExplorerActions>,
 ) {
   return (path: string, position: { x: number; y: number }) => {
-    void showFileReferenceContextMenu({ path, position, onReferenceInChat });
+    const revealPath = explorerRevealPath(workspaceRoot, path);
+    void showFileReferenceContextMenu({
+      path,
+      ...(revealPath ? { revealPath } : {}),
+      position,
+      onReferenceInChat,
+      ...(actions
+        ? {
+            onRename: () =>
+              actions.rename({ path, name: splitRepoRelativePath(path).name, kind: "file" }),
+            onDelete: () =>
+              actions.deleteEntry({ path, name: splitRepoRelativePath(path).name, kind: "file" }),
+          }
+        : {}),
+    });
   };
+}
+
+function ExplorerCreateButtons(props: {
+  disabled?: boolean;
+  onCreateFile: () => void;
+  onCreateFolder: () => void;
+}) {
+  return (
+    <div className="flex shrink-0 items-center gap-0.5">
+      <button
+        type="button"
+        className="rounded p-1 text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-40"
+        aria-label="New file"
+        title="New file"
+        disabled={props.disabled}
+        onClick={props.onCreateFile}
+      >
+        <IconFilePlus className="size-4" />
+      </button>
+      <button
+        type="button"
+        className="rounded p-1 text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-40"
+        aria-label="New folder"
+        title="New folder"
+        disabled={props.disabled}
+        onClick={props.onCreateFolder}
+      >
+        <IconFolderPlus className="size-4" />
+      </button>
+    </div>
+  );
 }
 
 // Scrollable file-tree body, shared by the standalone files sidebar and the
@@ -330,10 +440,16 @@ function WorkspaceFilesTreeBody(props: {
   onSelectFile: (path: string) => void;
   onToggleDirectory: (path: string) => void;
   onPrefetchEntry: (entry: ProjectFileSystemEntry) => void;
+  actions: ReturnType<typeof useWorkspaceExplorerActions>;
   onEntryContextMenu: (entry: ProjectFileSystemEntry, position: { x: number; y: number }) => void;
 }) {
   return (
-    <div className="min-h-0 flex-1 overflow-auto px-1 py-1">
+    <div
+      className="min-h-0 flex-1 overflow-auto px-1 py-1"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) props.actions.setSelectedDirectory("");
+      }}
+    >
       {props.workspaceRoot ? (
         <WorkspaceDirectory
           cwd={props.workspaceRoot}
@@ -344,6 +460,7 @@ function WorkspaceFilesTreeBody(props: {
           onSelectFile={props.onSelectFile}
           onToggleDirectory={props.onToggleDirectory}
           onPrefetchEntry={props.onPrefetchEntry}
+          actions={props.actions}
           onEntryContextMenu={props.onEntryContextMenu}
         />
       ) : (
@@ -363,16 +480,38 @@ export function WorkspaceFilesSidebar(props: {
   onSelectFile: (path: string) => void;
   onToggleDirectory: (path: string) => void;
   onReferenceInChat: ((reference: ChatFileReference) => void) | undefined;
+  onDeleted?: ((path: string) => void) | undefined;
 }) {
   const prefetchEntry = useExplorerEntryPrefetch(props.workspaceRoot);
-  const handleEntryContextMenu = useTreeEntryContextMenu(props.onReferenceInChat);
+  const actions = useWorkspaceExplorerActions(
+    props.workspaceRoot,
+    props.selectedFilePath,
+    props.onSelectFile,
+    props.expandedDirectories,
+    props.onToggleDirectory,
+    props.onDeleted,
+  );
+  const handleEntryContextMenu = useTreeEntryContextMenu(
+    props.workspaceRoot,
+    props.onReferenceInChat,
+    actions,
+  );
   const handleListKeyDown = useExplorerListNavigation();
   return (
     <aside
       className={props.containerClassName ?? EXPLORER_SIDEBAR_CONTAINER_CLASS}
       onKeyDown={handleListKeyDown}
     >
+      <div className="flex shrink-0 items-center justify-between border-b border-border/65 px-3 py-1 text-ui-sm">
+        <span>Files</span>
+        <ExplorerCreateButtons
+          disabled={!props.workspaceRoot}
+          onCreateFile={() => actions.create(actions.selectedDirectory, "file")}
+          onCreateFolder={() => actions.create(actions.selectedDirectory, "directory")}
+        />
+      </div>
       <WorkspaceFilesTreeBody
+        actions={actions}
         workspaceRoot={props.workspaceRoot}
         selectedFilePath={props.selectedFilePath}
         expandedDirectories={props.expandedDirectories}
@@ -381,6 +520,7 @@ export function WorkspaceFilesSidebar(props: {
         onPrefetchEntry={prefetchEntry}
         onEntryContextMenu={handleEntryContextMenu}
       />
+      {actions.dialogs}
     </aside>
   );
 }
@@ -391,18 +531,32 @@ function WorkspaceSearchResultRow(props: {
   onSelectFile: (path: string) => void;
   onPrefetchEntry: (entry: Pick<ProjectFileSystemEntry, "path" | "kind">) => void;
   onEntryContextMenu: (path: string, position: { x: number; y: number }) => void;
+  actions?: ReturnType<typeof useWorkspaceExplorerActions> | undefined;
 }) {
   const { entry, onEntryContextMenu, onPrefetchEntry, onSelectFile } = props;
   const { dir, name } = splitRepoRelativePath(entry.path);
   const handlePrefetch = () => {
     onPrefetchEntry(entry);
   };
+  if (props.actions?.edit?.action === "rename" && props.actions.edit.entry?.path === entry.path) {
+    return (
+      <ExplorerInlineName
+        kind="file"
+        path={entry.path}
+        depth={0}
+        initialName={splitRepoRelativePath(entry.path).name}
+        creating={false}
+        onSubmit={props.actions.submitEdit}
+        onCancel={props.actions.cancelEdit}
+      />
+    );
+  }
 
   return (
     <button
       {...EXPLORER_ROW_PROPS}
       type="button"
-      className={fileRowClassName(props.selected, "h-8 px-2")}
+      className={fileRowClassName(props.selected, "h-8 px-2 transition-none")}
       title={entry.path}
       draggable
       onDragStart={(event) => {
@@ -484,6 +638,8 @@ function WorkspaceSearchInputHeader(props: {
   autoFocus?: boolean;
   onQueryChange: (query: string) => void;
   onSelectFile: (path: string) => void;
+  onCreateFile?: (() => void) | undefined;
+  onCreateFolder?: (() => void) | undefined;
 }) {
   const { onQueryChange, onSelectFile, query, search } = props;
   const handleInputKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
@@ -506,17 +662,25 @@ function WorkspaceSearchInputHeader(props: {
 
   return (
     <div className="shrink-0 border-b border-border/65 p-2">
-      <SearchInput
-        value={query}
-        autoFocus={props.autoFocus}
-        spellCheck={false}
-        autoCorrect="off"
-        autoCapitalize="off"
-        placeholder="Search files..."
-        aria-label="Search files"
-        onChange={(event) => onQueryChange(event.target.value)}
-        onKeyDown={handleInputKeyDown}
-      />
+      <div className="flex items-center gap-1">
+        <SearchInput
+          value={query}
+          autoFocus={props.autoFocus}
+          spellCheck={false}
+          autoCorrect="off"
+          autoCapitalize="off"
+          placeholder="Search files..."
+          aria-label="Search files"
+          onChange={(event) => onQueryChange(event.target.value)}
+          onKeyDown={handleInputKeyDown}
+        />
+        {props.onCreateFile && props.onCreateFolder ? (
+          <ExplorerCreateButtons
+            onCreateFile={props.onCreateFile}
+            onCreateFolder={props.onCreateFolder}
+          />
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -530,6 +694,7 @@ function WorkspaceSearchResultsBody(props: {
   onSelectFile: (path: string) => void;
   onPrefetchEntry: (entry: Pick<ProjectFileSystemEntry, "path" | "kind">) => void;
   onEntryContextMenu: (path: string, position: { x: number; y: number }) => void;
+  actions?: ReturnType<typeof useWorkspaceExplorerActions> | undefined;
 }) {
   const { fileMatches } = props.search;
   return (
@@ -569,6 +734,7 @@ function WorkspaceSearchResultsBody(props: {
               onSelectFile={props.onSelectFile}
               onPrefetchEntry={props.onPrefetchEntry}
               onEntryContextMenu={props.onEntryContextMenu}
+              actions={props.actions}
             />
           ))
         )}
@@ -592,7 +758,10 @@ export function WorkspaceSearchSidebar(props: {
   onReferenceInChat: ((reference: ChatFileReference) => void) | undefined;
 }) {
   const prefetchEntry = useExplorerEntryPrefetch(props.workspaceRoot);
-  const handleEntryContextMenu = useResultEntryContextMenu(props.onReferenceInChat);
+  const handleEntryContextMenu = useResultEntryContextMenu(
+    props.workspaceRoot,
+    props.onReferenceInChat,
+  );
   const handleListKeyDown = useExplorerListNavigation();
   const search = useWorkspaceFileSearch(props.workspaceRoot, props.query);
 
@@ -641,10 +810,27 @@ export function WorkspaceExplorerSidebar(props: {
   onSelectFile: (path: string) => void;
   onToggleDirectory: (path: string) => void;
   onReferenceInChat: ((reference: ChatFileReference) => void) | undefined;
+  onDeleted?: ((path: string) => void) | undefined;
 }) {
   const prefetchEntry = useExplorerEntryPrefetch(props.workspaceRoot);
-  const handleTreeEntryContextMenu = useTreeEntryContextMenu(props.onReferenceInChat);
-  const handleResultEntryContextMenu = useResultEntryContextMenu(props.onReferenceInChat);
+  const actions = useWorkspaceExplorerActions(
+    props.workspaceRoot,
+    props.selectedFilePath,
+    props.onSelectFile,
+    props.expandedDirectories,
+    props.onToggleDirectory,
+    props.onDeleted,
+  );
+  const handleTreeEntryContextMenu = useTreeEntryContextMenu(
+    props.workspaceRoot,
+    props.onReferenceInChat,
+    actions,
+  );
+  const handleResultEntryContextMenu = useResultEntryContextMenu(
+    props.workspaceRoot,
+    props.onReferenceInChat,
+    actions,
+  );
   const handleListKeyDown = useExplorerListNavigation();
   const search = useWorkspaceFileSearch(props.workspaceRoot, props.query);
 
@@ -656,11 +842,28 @@ export function WorkspaceExplorerSidebar(props: {
       <WorkspaceSearchInputHeader
         query={props.query}
         search={search}
+        onCreateFile={
+          props.workspaceRoot
+            ? () => {
+                props.onQueryChange("");
+                actions.create(actions.selectedDirectory, "file");
+              }
+            : undefined
+        }
+        onCreateFolder={
+          props.workspaceRoot
+            ? () => {
+                props.onQueryChange("");
+                actions.create(actions.selectedDirectory, "directory");
+              }
+            : undefined
+        }
         onQueryChange={props.onQueryChange}
         onSelectFile={props.onSelectFile}
       />
       {search.inputQuery.length === 0 ? (
         <WorkspaceFilesTreeBody
+          actions={actions}
           workspaceRoot={props.workspaceRoot}
           selectedFilePath={props.selectedFilePath}
           expandedDirectories={props.expandedDirectories}
@@ -677,8 +880,10 @@ export function WorkspaceExplorerSidebar(props: {
           onSelectFile={props.onSelectFile}
           onPrefetchEntry={prefetchEntry}
           onEntryContextMenu={handleResultEntryContextMenu}
+          actions={actions}
         />
       )}
+      {actions.dialogs}
     </aside>
   );
 }
@@ -693,7 +898,7 @@ export function ExplorerActivityBarButton(props: {
     <button
       type="button"
       className={cn(
-        "relative flex h-12 w-full cursor-pointer items-center justify-center text-muted-foreground/72 transition-colors hover:bg-[var(--color-background-button-secondary-hover)] hover:text-foreground",
+        "relative flex h-12 w-full cursor-pointer items-center justify-center text-muted-foreground/72 hover:bg-[var(--color-background-button-secondary-hover)] hover:text-foreground",
         props.active && "bg-[var(--color-background-button-secondary)] text-foreground",
       )}
       aria-label={props.label}

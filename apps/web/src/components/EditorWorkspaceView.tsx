@@ -71,7 +71,6 @@ import {
 import { ProjectMenuPicker, type ProjectMenuPickerOption } from "./ProjectMenuPicker";
 import { WorkspaceFileDiffEditorPane } from "./chat/WorkspaceFileDiffEditorPane";
 import { useQueryClient } from "@tanstack/react-query";
-import { flushWorkspaceEditors } from "~/lib/workspaceEditorSession";
 import { WorkspaceFileEditorPane } from "./chat/WorkspaceFileEditorPane";
 import { WorkspaceFilePreview } from "./WorkspaceFilePreview";
 
@@ -98,6 +97,7 @@ interface EditorWorkspaceViewProps {
   diffPanel: ReactNode;
   chatPanel: ReactNode;
   onSelectFile: (path: string) => void;
+  onDeletedFile?: ((path: string) => void) | undefined;
   onSelectDiffFile: (path: string) => void;
   onToggleDirectory: (path: string) => void;
   editFilePath: string | null;
@@ -424,16 +424,9 @@ export function EditorWorkspaceView(props: EditorWorkspaceViewProps) {
   const centerFamily = editorCenterModeFamily(centerMode);
 
   const queryClient = useQueryClient();
-  const leaveRequestRef = useRef(0);
-  const guardLeavingEdit = useCallback(
-    (run: () => void) => {
-      const request = ++leaveRequestRef.current;
-      void flushWorkspaceEditors(queryClient, props.workspaceRoot).then((saved) => {
-        if (saved && request === leaveRequestRef.current) run();
-      });
-    },
-    [queryClient, props.workspaceRoot],
-  );
+  const guardLeavingEdit = useCallback((run: () => void) => {
+    run();
+  }, []);
   useImperativeHandle(props.leaveGuardRef, () => ({ guardLeavingEdit }), [guardLeavingEdit]);
   const activityBarSelection = (item: EditorActivityBarItem) => ({
     item,
@@ -689,6 +682,7 @@ export function EditorWorkspaceView(props: EditorWorkspaceViewProps) {
               selectedFilePath={props.selectedFilePath}
               expandedDirectories={props.expandedDirectories}
               onSelectFile={guardedSelectFile}
+              onDeleted={props.onDeletedFile}
               onToggleDirectory={props.onToggleDirectory}
               onReferenceInChat={props.onReferenceInChat}
             />

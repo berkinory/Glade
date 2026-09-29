@@ -1,4 +1,4 @@
-import { flushWorkspaceEditors } from "~/lib/workspaceEditorSession";
+import { hasUnsavedWorkspaceEditors } from "~/lib/workspaceEditorSession";
 import { resolveComputerInvocationMode } from "@glade/shared/computerInvocation";
 import {
   prepareComputerPermissionGuide,
@@ -268,15 +268,15 @@ export function useChatTurnSubmission({
         getThreadFromState(useStore.getState(), activeThread.id)?.claudeCacheReview != null;
       if (hasPendingCacheReview()) return false;
       sendPreflightInFlightRef.current = true;
-      const editorSaved = await flushWorkspaceEditors(
+      const editorSaved = !hasUnsavedWorkspaceEditors(
         queryClient,
         threadWorkspaceCwd ?? chatWorkspaceRoot,
-      ).catch(() => false);
+      );
       sendPreflightInFlightRef.current = false;
       if (!editorSaved) {
         setThreadError(
           threadId,
-          "Could not save editor changes. Resolve the save error before sending; your prompt and file draft are preserved.",
+          "Save your editor changes with Cmd/Ctrl+S before sending. Your prompt and file draft are preserved.",
         );
         return false;
       }

@@ -23,6 +23,7 @@ import {
   resolveRealPathForCreateWithinRoot,
   resolveRealPathWithinRoot,
 } from "../realPathContainment";
+import { manageWorkspaceEntry } from "../workspaceEntryMutation";
 
 const DEFAULT_READ_FILE_MAX_BYTES = 1_000_000;
 const UTF8_BOM = Buffer.from([0xef, 0xbb, 0xbf]);
@@ -568,7 +569,29 @@ export const makeWorkspaceFileSystem = Effect.gen(function* () {
     return { relativePath: target.relativePath, version: fileVersion(bytes) };
   });
 
-  return { readFile, writeFile } satisfies WorkspaceFileSystemShape;
+  const manageEntry: WorkspaceFileSystemShape["manageEntry"] = Effect.fn(
+    "WorkspaceFileSystem.manageEntry",
+  )(function* (input) {
+    const target = yield* workspacePaths.resolveRelativePathWithinRoot({
+      workspaceRoot: input.cwd,
+      relativePath: input.relativePath,
+    });
+    const result = yield* Effect.tryPromise({
+      try: () => manageWorkspaceEntry(input, target.absolutePath),
+      catch: (cause) =>
+        new WorkspaceFileSystemError({
+          cwd: input.cwd,
+          relativePath: input.relativePath,
+          operation: "workspaceFileSystem.manageEntry",
+          detail: cause instanceof Error ? cause.message : String(cause),
+          cause,
+        }),
+    });
+    yield* workspaceEntries.invalidate(input.cwd);
+    return result;
+  });
+
+  return { readFile, writeFile, manageEntry } satisfies WorkspaceFileSystemShape;
 });
 
 export const WorkspaceFileSystemLive = Layer.effect(WorkspaceFileSystem, makeWorkspaceFileSystem);

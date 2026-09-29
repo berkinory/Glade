@@ -204,19 +204,22 @@ complete current list.
 File and explorer panels can expand across the chat area. Restore returns to the
 split layout; closing the last maximized panel returns to the chat. Closing the
 last panel in the ordinary split layout keeps the panel launcher open.
+Explorer has separate New File and New Folder buttons that create under the selected
+folder (or the workspace root). Names and renames are edited inline; context
+menus also offer rename and delete. Deleting an open file closes its preview.
+Right-clicking a folder can open it in the system file manager.
 
-Editable workspace files autosave after a 400 ms pause in typing. Save or
-Cmd/Ctrl+S saves immediately. The file editor, diff editor, and explorer share
-the same buffer and writer for an open file. Successful saves update Unstaged
-changes; they do not stage the file. Switching files, navigating to another
-page, and sending a prompt wait for pending editor saves.
+Editable workspace files save with Cmd/Ctrl+S. The dot beside a filename marks
+unsaved changes. The file editor, diff editor, and explorer share one buffer and
+writer for an open file. Successful saves update Unstaged changes without staging
+the file. Navigation and prompt submission are blocked while drafts are unsaved.
+Closing or reloading a dirty editor asks whether to discard its draft.
 
-If a write fails or the file has changed on disk, autosave stops and keeps the
-draft. Save errors stay visible until resolved. Retry Save after fixing the cause,
-or use Reload from disk and confirm discarding the draft before leaving or sending. Reload
-discards the draft; an explicit Overwrite action in the full editor bypasses the
-version check. Drafts retained after a panel closes live only in the current app
-session, so they are not crash recovery backups.
+If a write fails or the file changed on disk, the draft remains available with
+the error shown. Retry Cmd/Ctrl+S after fixing the cause, or reload and confirm
+discarding the draft. An explicit Overwrite action in the full editor bypasses
+the version check. Drafts retained after a panel closes live only in the current
+app session and are not crash recovery backups.
 
 Markdown previews support basic workspace Wiki links: `[[notes/design]]` opens
 `notes/design.md` from the workspace root, and `[[notes/design|Design notes]]`

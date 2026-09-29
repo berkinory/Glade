@@ -16,13 +16,13 @@
 import { isWorkspaceRelativePathSafe, joinWorkspaceRelativePath } from "@glade/shared/path";
 import { Fragment, useLayoutEffect, useRef, useState } from "react";
 
-import { basenameOfPath } from "~/file-icons";
 import { useCopyFileContentsToClipboard, useCopyPathToClipboard } from "~/hooks/useCopyToClipboard";
 import type { ChatFileReference } from "~/lib/chatReferences";
 import {
   ChevronRightIcon,
   CodeIcon,
   CopyIcon,
+  MessageCircleIcon,
   EllipsisIcon,
   EyeOpenIcon,
   PencilIcon,
@@ -33,6 +33,7 @@ import { Menu, MenuItem, MenuTrigger } from "../ui/menu";
 import { CHAT_SURFACE_HEADER_DIVIDER_CLASS_NAME, ChatHeaderIconButton } from "./chatHeaderControls";
 import { ComposerPickerMenuPopup } from "./ComposerPickerMenuPopup";
 import { OpenInPicker } from "./OpenInPicker";
+import { FileEntryIcon } from "./FileEntryIcon";
 import {
   calculateBreadcrumbLayout,
   type CollapsedBreadcrumbLayout,
@@ -48,7 +49,6 @@ interface WorkspaceFilePreviewHeaderProps {
   onMarkdownPreviewChange: (rendered: boolean) => void;
   /** Whole-file chat actions, surfaced in the overflow menu when wired. */
   onReferenceInChat?: ((reference: ChatFileReference) => void) | undefined;
-  onAskWhyInChat?: ((reference: ChatFileReference) => void) | undefined;
   /**
    * Text contents of the previewed file, enabling the overflow menu's
    * "Copy contents" action. Null when no text is loaded (binary previews,
@@ -60,8 +60,6 @@ interface WorkspaceFilePreviewHeaderProps {
   onEditFile?: (() => void) | undefined;
   /** Marks the currently open source buffer as different from its saved version. */
   dirty?: boolean;
-  saveState?: string | undefined;
-  onSave?: (() => void) | undefined;
   /** Short reason the current source cannot be edited safely. */
   readOnlyReason?: string | null;
   /** Re-fetches the current file without discarding a dirty edit buffer. */
@@ -96,6 +94,7 @@ interface BreadcrumbSegment {
 // Reserved room for the unsaved-changes dot after the filename (size-1.5 dot
 // + ml-1.5 gap), plus a small epsilon absorbing fractional-width rounding.
 const DIRTY_DOT_RESERVE_PX = 12;
+const FILE_ICON_RESERVE_PX = 20;
 const MEASURE_EPSILON_PX = 1;
 
 /**
@@ -139,7 +138,8 @@ function CollapsingPathBreadcrumb(props: {
         renderedFileWidth: file.getBoundingClientRect().width,
         prefixWidths: crumbWidths,
         ellipsisWidth,
-        trailingReserveWidth: (dirty ? DIRTY_DOT_RESERVE_PX : 0) + MEASURE_EPSILON_PX,
+        trailingReserveWidth:
+          FILE_ICON_RESERVE_PX + (dirty ? DIRTY_DOT_RESERVE_PX : 0) + MEASURE_EPSILON_PX,
       });
       // Keep the previous state object when nothing changed so resize frames
       // that land on the same layout skip the re-render entirely.
@@ -183,7 +183,7 @@ function CollapsingPathBreadcrumb(props: {
     <nav
       ref={navRef}
       aria-label="File path"
-      className="relative flex min-w-0 flex-1 items-center overflow-hidden text-ui leading-none"
+      className="relative flex min-w-0 flex-1 items-center overflow-hidden text-ui leading-snug"
     >
       {/* Hidden mirror of the full breadcrumb at natural width, measured to
           decide how many directories fit. Absolutely positioned so it never
@@ -219,6 +219,7 @@ function CollapsingPathBreadcrumb(props: {
           {crumbChevron}
         </Fragment>
       ))}
+      <FileEntryIcon pathValue={filePath} kind="file" className="mr-1 size-3.5" />
       <span
         ref={fileRef}
         className="min-w-0 shrink truncate font-medium text-foreground"
@@ -247,17 +248,11 @@ export const WorkspaceFilePreviewHeader = function WorkspaceFilePreviewHeader(
   // OS temp dir) arrive as absolute paths; everything in-workspace is relative.
   const fileIsOutsideWorkspace = !isWorkspaceRelativePathSafe(filePath);
 
-  // Breadcrumb segments: project folder name, then each path part. Splitting
-  // here (vs. rendering the raw string) lets middle directories collapse
-  // behind a "…" crumb under width pressure while the filename stays pinned.
-  // Absolute paths drop the project prefix — they live outside the workspace.
-  const projectName =
-    fileIsOutsideWorkspace || !workspaceRoot ? null : basenameOfPath(workspaceRoot);
   const relativeSegments = filePath
     .replace(/\\/g, "/")
     .split("/")
     .filter((segment) => segment.length > 0);
-  const segments = projectName ? [projectName, ...relativeSegments] : relativeSegments;
+  const segments = relativeSegments;
   // Key each crumb by its cumulative path so repeated folder names (e.g. two
   // `src` dirs at different depths) still get stable, unique React keys.
   const prefixSegments = segments.slice(0, -1).map((name, index) => ({
@@ -266,12 +261,9 @@ export const WorkspaceFilePreviewHeader = function WorkspaceFilePreviewHeader(
   }));
   const fileSegment = segments.at(-1) ?? filePath;
 
-  const { onReferenceInChat, onAskWhyInChat, contentsForCopy } = props;
+  const { onReferenceInChat, contentsForCopy } = props;
   const referenceWholeFile = () => {
     onReferenceInChat?.({ path: filePath });
-  };
-  const askWhyWholeFile = () => {
-    onAskWhyInChat?.({ path: filePath });
   };
   const copyFileContents = useCopyFileContentsToClipboard();
   const copyPathToClipboard = useCopyPathToClipboard();
@@ -309,22 +301,7 @@ export const WorkspaceFilePreviewHeader = function WorkspaceFilePreviewHeader(
         </span>
       ) : null}
 
-      {props.saveState ? (
-        <span role="status" className="shrink-0 text-ui-sm text-muted-foreground">
-          {props.saveState}
-        </span>
-      ) : null}
       <div className="flex shrink-0 items-center gap-1.5">
-        {props.onSave ? (
-          <button
-            type="button"
-            onClick={props.onSave}
-            disabled={!props.dirty || props.saveState === "Saving..."}
-            className="rounded-md px-2 py-1 text-ui-sm disabled:opacity-50"
-          >
-            Save
-          </button>
-        ) : null}
         {props.isMarkdown ? (
           <div
             role="radiogroup"
@@ -399,14 +376,15 @@ export const WorkspaceFilePreviewHeader = function WorkspaceFilePreviewHeader(
                   })
                 }
               >
+                <CopyIcon className="size-3.5 shrink-0 text-muted-foreground" />
                 Copy contents
               </MenuItem>
             ) : null}
             {onReferenceInChat ? (
-              <MenuItem onClick={referenceWholeFile}>Reference in chat</MenuItem>
-            ) : null}
-            {onAskWhyInChat ? (
-              <MenuItem onClick={askWhyWholeFile}>Ask why this changed</MenuItem>
+              <MenuItem onClick={referenceWholeFile}>
+                <MessageCircleIcon className="size-3.5 shrink-0 text-muted-foreground" />
+                Reference in chat
+              </MenuItem>
             ) : null}
           </ComposerPickerMenuPopup>
         </Menu>
