@@ -35,7 +35,7 @@ import {
 } from "~/lib/projectReactQuery";
 import { getSyntaxHighlighterPromise, getSyntaxLanguageForPath } from "~/lib/syntaxHighlighting";
 import { cn } from "~/lib/utils";
-import { Skeleton } from "../ui/skeleton";
+import { ExplorerLoadingRows } from "./ExplorerLoadingRows";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "../ui/collapsible";
 import { DisclosureChevron } from "../ui/DisclosureChevron";
 import { SearchInput } from "../ui/search-input";
@@ -206,26 +206,6 @@ const ExplorerRow = forwardRef<
     </button>
   );
 });
-
-const EXPLORER_SKELETON_ROW_WIDTHS = ["w-9/12", "w-6/12", "w-7/12"];
-
-function ExplorerLoadingRows(props: { depth: number }) {
-  return (
-    <div
-      className="space-y-1.5 py-1.5 pr-2"
-      style={fileRowIndentStyle(props.depth)}
-      role="status"
-      aria-label="Loading directory..."
-    >
-      {EXPLORER_SKELETON_ROW_WIDTHS.map((width) => (
-        <div key={width} className="flex h-5 items-center gap-1.5">
-          <Skeleton className="size-3.5 shrink-0 rounded-sm" />
-          <Skeleton className={cn("h-3 rounded-full", width)} />
-        </div>
-      ))}
-    </div>
-  );
-}
 
 function WorkspaceDirectory(props: {
   cwd: string;

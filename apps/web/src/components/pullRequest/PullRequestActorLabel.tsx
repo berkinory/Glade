@@ -10,7 +10,7 @@
 import type { PullRequestActor } from "@glade/contracts";
 
 import { cn } from "~/lib/utils";
-import { PullRequestAvatar } from "./PullRequestAvatar";
+import { AuthorAvatar } from "../AuthorAvatar";
 
 export function PullRequestActorLabel({
   actor,
@@ -23,7 +23,7 @@ export function PullRequestActorLabel({
   const login = actor?.login ?? "ghost";
   return (
     <span className={cn("flex min-w-0 items-center gap-1.5", className)} title={login}>
-      <PullRequestAvatar actor={actor} size="sm" />
+      <AuthorAvatar actor={actor} size="sm" />
       <span className="truncate">{login}</span>
     </span>
   );

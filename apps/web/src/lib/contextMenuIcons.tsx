@@ -6,7 +6,7 @@
 //      other icon sets are rendered to SVG markup from the same components the app shows.
 
 import { renderToStaticMarkup } from "react-dom/server";
-import { IconFilePlus, IconFileOff } from "@tabler/icons-react";
+import { IconFilePlus, IconFileOff, IconHash } from "@tabler/icons-react";
 
 import { THREAD_ARCHIVE_ICON } from "~/components/ThreadArchiveActionButton";
 import {
@@ -54,4 +54,10 @@ export const GIT_FILE_CONTEXT_MENU_ICONS = {
   stage: renderToStaticMarkup(<PlusIcon className="size-4" />),
   unstage: renderToStaticMarkup(<MinusIcon className="size-4" />),
   revert: renderToStaticMarkup(<RotateCcwIcon className="size-4" />),
+} as const;
+
+export const GIT_COMMIT_CONTEXT_MENU_ICONS = {
+  hash: COPY_ICON_NAME,
+  shortHash: renderToStaticMarkup(<IconHash size={24} />),
+  subject: "text-block",
 } as const;

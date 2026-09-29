@@ -35,7 +35,7 @@ import {
 } from "../../ui/menu";
 import { toastManager } from "../../ui/toast";
 import { DEFAULT_TOAST_TIMEOUT_MS } from "../../ui/toast.logic";
-import { PullRequestAvatar } from "../../pullRequest/PullRequestAvatar";
+import { AuthorAvatar } from "../../AuthorAvatar";
 import {
   copyPullRequestLink,
   PullRequestConfirmActionDialog,
@@ -240,14 +240,13 @@ function CommentsMenuRow({
       >
         {comment.author ? (
           <span className="shrink-0" title={comment.author}>
-            <PullRequestAvatar
+            <AuthorAvatar
               actor={{
                 login: comment.author,
                 name: null,
                 // Review-thread authors are users or bots, never team slugs, so the
                 // login-derived avatar is safe here (same as pullRequestOperations).
                 avatarUrl: githubAvatarUrlForLogin(comment.author),
-                url: null,
               }}
             />
           </span>

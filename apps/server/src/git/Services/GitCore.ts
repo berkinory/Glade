@@ -25,6 +25,8 @@ import type {
   GitListBranchesResult,
   GitListRecentCommitsInput,
   GitListRecentCommitsResult,
+  GitReadCommitInput,
+  GitReadCommitResult,
   GitPullResult,
   GitRemoveIndexLockInput,
   GitRemoveWorktreeInput,
@@ -336,6 +338,10 @@ export interface GitCoreShape {
   readonly listRecentCommits: (
     input: GitListRecentCommitsInput,
   ) => Effect.Effect<GitListRecentCommitsResult, GitCommandError>;
+
+  readonly readCommit: (
+    input: GitReadCommitInput,
+  ) => Effect.Effect<GitReadCommitResult, GitCommandError>;
 
   /**
    * Pull current branch from upstream using fast-forward only.

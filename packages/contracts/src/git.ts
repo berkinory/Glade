@@ -72,6 +72,9 @@ export const GitRecentCommit = Schema.Struct({
   shortSha: TrimmedNonEmptyStringSchema,
   subject: Schema.String,
   committedAt: Schema.String,
+  authorName: Schema.String,
+  pushStatus: Schema.Literals(["pushed", "unpushed", "unknown"]),
+  tags: Schema.Array(Schema.String),
 });
 export type GitRecentCommit = typeof GitRecentCommit.Type;
 
@@ -253,8 +256,7 @@ export const GitListBranchesInput = Schema.Struct({
 export type GitListBranchesInput = typeof GitListBranchesInput.Type;
 
 export const DEFAULT_GIT_RECENT_COMMIT_LIMIT = 20;
-// The compare-with picker shows at most a handful of rows; a hard ceiling keeps
-// an untrusted client from asking `git log` for an unbounded history.
+// Per-request ceiling. History can page through the complete branch.
 export const MAX_GIT_RECENT_COMMIT_LIMIT = 50;
 
 export const GitListRecentCommitsInput = Schema.Struct({
@@ -262,8 +264,22 @@ export const GitListRecentCommitsInput = Schema.Struct({
   limit: Schema.optional(
     PositiveInt.check(Schema.isLessThanOrEqualTo(MAX_GIT_RECENT_COMMIT_LIMIT)),
   ).pipe(Schema.withConstructorDefault(() => Option.some(DEFAULT_GIT_RECENT_COMMIT_LIMIT))),
+  offset: Schema.optional(NonNegativeInt),
+  query: Schema.optional(Schema.String.check(Schema.isMaxLength(200))),
 });
 export type GitListRecentCommitsInput = typeof GitListRecentCommitsInput.Type;
+
+export const GitReadCommitInput = Schema.Struct({
+  cwd: TrimmedNonEmptyStringSchema,
+  sha: Schema.String.check(Schema.isPattern(/^[0-9a-f]{40}$/i)),
+});
+export type GitReadCommitInput = typeof GitReadCommitInput.Type;
+
+export const GitReadCommitResult = Schema.Struct({
+  patch: Schema.String,
+  truncated: Schema.Boolean,
+});
+export type GitReadCommitResult = typeof GitReadCommitResult.Type;
 
 export const GitCreateWorktreeInput = Schema.Struct({
   cwd: TrimmedNonEmptyStringSchema,
@@ -571,6 +587,7 @@ export type GitListBranchesResult = typeof GitListBranchesResult.Type;
 
 export const GitListRecentCommitsResult = Schema.Struct({
   commits: Schema.Array(GitRecentCommit),
+  hasMore: Schema.Boolean,
 });
 export type GitListRecentCommitsResult = typeof GitListRecentCommitsResult.Type;
 

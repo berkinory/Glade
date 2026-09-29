@@ -118,6 +118,8 @@ import {
   GitListRecentCommitsInput,
   GitListBranchesResult,
   GitListRecentCommitsResult,
+  GitReadCommitInput,
+  GitReadCommitResult,
   GitPreparePullRequestThreadInput,
   GitPreparePullRequestThreadResult,
   GitPullInput,
@@ -1083,6 +1085,12 @@ export const WsGitListRecentCommitsRpc = Rpc.make(WS_METHODS.gitListRecentCommit
   error: WsRpcError,
 });
 
+export const WsGitReadCommitRpc = Rpc.make(WS_METHODS.gitReadCommit, {
+  payload: GitReadCommitInput,
+  success: GitReadCommitResult,
+  error: WsRpcError,
+});
+
 export const WsGitCreateWorktreeRpc = Rpc.make(WS_METHODS.gitCreateWorktree, {
   payload: GitCreateWorktreeInput,
   success: GitCreateWorktreeResult,
@@ -1595,6 +1603,7 @@ export const WsFeatureRpcGroup = RpcGroup.make(
   WsPullRequestsSetPinnedRpc,
   WsGitListBranchesRpc,
   WsGitListRecentCommitsRpc,
+  WsGitReadCommitRpc,
   WsGitCreateWorktreeRpc,
   WsGitCreateDetachedWorktreeRpc,
   WsGitRemoveWorktreeRpc,

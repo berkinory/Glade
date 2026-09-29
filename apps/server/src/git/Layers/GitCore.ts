@@ -283,11 +283,19 @@ function parseRecentCommitLines(stdout: string): ReadonlyArray<GitRecentCommit> 
   const commits: GitRecentCommit[] = [];
   for (const line of stdout.split("\n")) {
     if (line.length === 0) continue;
-    const [sha = "", shortSha = "", subject = "", committedAt = ""] = line.split(
+    const [sha = "", shortSha = "", subject = "", committedAt = "", authorName = ""] = line.split(
       RECENT_COMMIT_FIELD_SEPARATOR,
     );
     if (sha.length === 0 || shortSha.length === 0) continue;
-    commits.push({ sha, shortSha, subject, committedAt });
+    commits.push({
+      sha,
+      shortSha,
+      subject,
+      committedAt,
+      authorName,
+      pushStatus: "unknown",
+      tags: [],
+    });
   }
   return commits;
 }
@@ -3109,10 +3117,20 @@ export const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"
     const listRecentCommits: GitCoreShape["listRecentCommits"] = (input) =>
       Effect.gen(function* () {
         const limit = input.limit ?? DEFAULT_GIT_RECENT_COMMIT_LIMIT;
+        const offset = input.offset ?? 0;
+        const query = input.query?.trim();
         const result = yield* executeGit(
           "GitCore.listRecentCommits",
           input.cwd,
-          ["log", "--format=%H%x1f%h%x1f%s%x1f%cI", "-n", String(limit)],
+          [
+            "log",
+            "--format=%H%x1f%h%x1f%s%x1f%cI%x1f%an",
+            "-n",
+            String(limit + 1),
+            "--skip",
+            String(offset),
+            ...(query ? ["--fixed-strings", "--regexp-ignore-case", `--grep=${query}`] : []),
+          ],
           {
             timeoutMs: 10_000,
             allowNonZeroExit: true,
@@ -3124,10 +3142,96 @@ export const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"
         );
 
         if (result.code !== 0) {
-          return { commits: [] };
+          return { commits: [], hasMore: false };
         }
 
-        return { commits: parseRecentCommitLines(result.stdout) };
+        const page = parseRecentCommitLines(result.stdout);
+        const hasMore = page.length > limit;
+        const commits = page.slice(0, limit);
+        if (commits.length === 0) return { commits, hasMore: false };
+
+        const context = yield* readBranchContext(input.cwd);
+        const upstream = context.upstreamRef
+          ? yield* executeGit(
+              "GitCore.listRecentCommits.upstream",
+              input.cwd,
+              ["rev-parse", "--symbolic-full-name", "@{upstream}"],
+              { timeoutMs: 5_000, allowNonZeroExit: true, maxOutputBytes: 4_096 },
+            )
+          : null;
+        const hasRemoteUpstream =
+          upstream?.code === 0 && upstream.stdout.trim().startsWith("refs/remotes/");
+        const outgoing = hasRemoteUpstream
+          ? yield* executeGit(
+              "GitCore.listRecentCommits.outgoing",
+              input.cwd,
+              [
+                "log",
+                "--format=%H",
+                "-n",
+                String(offset + limit),
+                ...(query ? ["--fixed-strings", "--regexp-ignore-case", `--grep=${query}`] : []),
+                "HEAD",
+                "--not",
+                "@{upstream}",
+              ],
+              { timeoutMs: 10_000, allowNonZeroExit: true },
+            )
+          : null;
+        const unpushed = outgoing?.code === 0 ? new Set(outgoing.stdout.trim().split("\n")) : null;
+        const tagResult = yield* executeGit(
+          "GitCore.listRecentCommits.tags",
+          input.cwd,
+          [
+            "for-each-ref",
+            "--format=%(objectname)%00%(*objectname)%00%(refname:strip=2)%00",
+            "refs/tags",
+          ],
+          { timeoutMs: 10_000, maxOutputBytes: 2_000_000 },
+        );
+        const tagsBySha = new Map<string, string[]>();
+        for (const line of tagResult.stdout.split("\n")) {
+          const [objectSha, peeledSha, tagName] = line.split("\0");
+          if (!objectSha || !tagName) continue;
+          const sha = peeledSha || objectSha;
+          const tags = tagsBySha.get(sha) ?? [];
+          tags.push(tagName);
+          tagsBySha.set(sha, tags);
+        }
+        return {
+          hasMore,
+          commits: commits.map((commit) => ({
+            ...commit,
+            pushStatus:
+              unpushed === null
+                ? ("unknown" as const)
+                : unpushed.has(commit.sha)
+                  ? ("unpushed" as const)
+                  : ("pushed" as const),
+            tags: tagsBySha.get(commit.sha) ?? [],
+          })),
+        };
+      });
+
+    const readCommit: GitCoreShape["readCommit"] = (input) =>
+      Effect.gen(function* () {
+        const result = yield* executeGit(
+          "GitCore.readCommit",
+          input.cwd,
+          [
+            "show",
+            "--format=",
+            "--root",
+            "-m",
+            "--first-parent",
+            "--patch",
+            "--no-color",
+            "--no-ext-diff",
+            input.sha,
+          ],
+          { timeoutMs: 10_000, maxOutputBytes: 5_000_000, outputMode: "truncate" },
+        );
+        return { patch: result.stdout, truncated: result.stdoutTruncated === true };
       });
 
     const createWorktree: GitCoreShape["createWorktree"] = (input) =>
@@ -4342,6 +4446,7 @@ export const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"
       readConfigValue,
       listBranches,
       listRecentCommits,
+      readCommit,
       createWorktree,
       recordWorktreeOwnership,
       verifyWorktreeOwnership,

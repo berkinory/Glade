@@ -18,7 +18,7 @@ import {
   PR_META_TEXT_CLASS_NAME,
   PR_QUIET_INK_CLASS_NAME,
 } from "./pullRequestText";
-import { PullRequestAvatar } from "./PullRequestAvatar";
+import { AuthorAvatar } from "../AuthorAvatar";
 import { PullRequestDiffStat } from "./PullRequestDiffStat";
 import { PullRequestMetaLine } from "./PullRequestMetaLine";
 import { PullRequestStateGlyph } from "./PullRequestStateGlyph";
@@ -123,7 +123,7 @@ export const PullRequestRow = function PullRequestRow({
           >
             {/* The avatar leads the line without a separator — it labels the row's author, it
                 isn't one of the dot-separated facts about the PR. */}
-            <PullRequestAvatar actor={entry.author} size="sm" className="shrink-0" />
+            <AuthorAvatar actor={entry.author} size="sm" className="shrink-0" />
             <PullRequestMetaLine className="flex-1">
               {showProjectTitle ? (
                 <span className="max-w-[12rem] truncate" title={projectTitle}>

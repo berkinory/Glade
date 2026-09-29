@@ -63,6 +63,8 @@ import type {
   GitListBranchesResult,
   GitListRecentCommitsInput,
   GitListRecentCommitsResult,
+  GitReadCommitInput,
+  GitReadCommitResult,
   GitPullInput,
   GitPullResult,
   GitBlameLineInput,
@@ -820,6 +822,7 @@ export interface NativeApi {
     githubRepository: (input: GitHubRepositoryInput) => Promise<GitHubRepositoryResult>;
     listBranches: (input: GitListBranchesInput) => Promise<GitListBranchesResult>;
     listRecentCommits: (input: GitListRecentCommitsInput) => Promise<GitListRecentCommitsResult>;
+    readCommit: (input: GitReadCommitInput) => Promise<GitReadCommitResult>;
     createWorktree: (input: GitCreateWorktreeInput) => Promise<GitCreateWorktreeResult>;
     createDetachedWorktree: (
       input: GitCreateDetachedWorktreeInput,

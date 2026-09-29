@@ -4,6 +4,7 @@
 
 ### New
 
+- Source Control has a History tab with commit author, date, hash, full-branch commit-message filtering, and a read-only per-commit diff preview.
 - Source Control adds staged-only commits with Cmd/Ctrl+Enter, a compact branch picker, fetch, pull, push, and rebase with conflict continuation and abort.
 - Generate commit messages from staged changes using the configured Git writing AI, without staging files or committing.
 - Source Control file menus can add untracked paths to the root .gitignore, preserving existing rules and escaping filenames literally.
@@ -13,11 +14,12 @@
 
 ### Improved
 
+- History loads virtualized rows as you scroll, shows author photos when available, relative times, tags, and compact upstream status icons. Commit rows have an icon menu to copy the full hash, short hash, or subject. Selected commits open below with every file diff initially collapsed and file-shaped loading placeholders. Source Control tabs have icons and the Changes and History detail panes use 60% of the panel.
 - Review panels switch between stacked and split diffs with one toolbar button.
 - Commit message AI enables supported fast mode and disables thinking when available, otherwise selecting the lowest supported effort, with a 90-second deadline.
 - The compact commit input keeps its AI action, spinner, and commit button aligned with the first line without overlapping text. Rebase uses the shared tooltip.
 - Source Control keeps file status letters visible without shifting rows during hover, opens files in Explorer, and preserves staged content when reverting unstaged changes. Newly created Explorer files open in the editor.
-- Empty Staged sections stay hidden, and the diff pane uses 55% of the available height.
+- Empty Staged sections stay hidden, and the diff pane uses 60% of the available height.
 - Changes header totals and untracked file rows include new-file line counts through a separate stats request, so the file list does not wait for content-based counting. Header totals remain visible while refreshing.
 - Source Control section headers use the same + and - actions as file rows. Stage and unstage refresh the file list first while broader Git status and diff refreshes finish in the background.
 - Source Control lists changed files from Git metadata without loading the full patch and uses the same workspace as Explorer. Its diff pane opens only after selecting a file. Refresh sits beside Staged; loading uses the shared spinner, and the empty state shows the checkout path.

@@ -1501,6 +1501,8 @@ const makeWsRpcHandlersLayer = () =>
           rpcEffect(git.listBranches(input), "Failed to list branches"),
         [WS_METHODS.gitListRecentCommits]: (input) =>
           rpcEffect(git.listRecentCommits(input), "Failed to list recent commits"),
+        [WS_METHODS.gitReadCommit]: (input) =>
+          rpcEffect(git.readCommit(input), "Failed to read commit"),
         [WS_METHODS.gitCreateWorktree]: (input) =>
           rpcEffect(
             refreshGitStatusAfter(

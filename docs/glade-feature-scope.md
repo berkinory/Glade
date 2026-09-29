@@ -42,6 +42,17 @@ Review panels expose a toolbar button to switch between stacked and split diffs 
 Source Control shows outgoing and incoming commit counts to the left of Fetch when
 the branch has an upstream. Incoming counts reflect the last fetched remote state.
 
+History pages through commits on the current branch as the virtualized list scrolls.
+Filtering searches commit messages across the branch, including unloaded pages.
+Selecting a commit shows its read-only patch below the list with file diffs
+initially collapsed; large patches are capped and marked partial. The detail pane
+uses 60% of the available height, as does the Changes diff pane.
+Commit rows offer an icon menu to copy the full hash, short hash, or subject.
+History rows show author initials, relative time, and tags. Commits reachable
+from the tracked remote branch have a green up arrow; newer local commits have
+a yellow commit icon.
+Repositories without a remote upstream show neither icon.
+
 The right dock supports staged-only commits with a workspace-scoped message draft
 and Cmd/Ctrl+Enter, AI message generation from staged changes without index or commit mutations, fetch across configured remotes, fast-forward-only pull, push of existing commits, and the
 shared branch picker. Commit message generation uses the configured model, enables advertised fast mode, and disables thinking or selects the lowest advertised effort. Its 90-second deadline includes model discovery. The commit button stays aligned with the first input line. Rebase lets users choose a target branch, resolve and stage
