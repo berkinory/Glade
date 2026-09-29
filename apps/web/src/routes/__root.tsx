@@ -1,4 +1,3 @@
-import { EditorDirtyRouteGuard } from "../components/EditorDirtyRouteGuard";
 import {
   PROVIDER_DISPLAY_NAMES,
   ThreadId,
@@ -318,7 +317,6 @@ function RootRouteView() {
         <AnchoredToastProvider>
           <GitProgressToastPreviewDev />
           <EventRouter />
-          <EditorDirtyRouteGuard />
           <ProviderStatusRefreshCoordinator />
           <GlobalShortcutsDialog />
           <BrowserVaultDialog />

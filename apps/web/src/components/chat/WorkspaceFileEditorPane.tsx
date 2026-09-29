@@ -98,12 +98,16 @@ export function WorkspaceFileEditorPane(props: WorkspaceFileEditorPaneProps) {
         confirmLabel={
           session.pendingDiscard === "reload" ? "Reload and discard" : "Discard changes"
         }
+        saveLabel={session.pendingDiscard === "reload" ? "Save and reload" : "Save and close"}
+        busy={session.savingPendingDiscard}
+        error={session.pendingSaveError}
         onOpenChange={(open) => {
           if (!open) {
             session.cancelPendingDiscard();
           }
         }}
         onConfirm={session.confirmPendingDiscard}
+        onSave={session.savePendingDiscard}
       />
     </div>
   );

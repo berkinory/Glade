@@ -9,6 +9,7 @@
 
 ### Fixed
 
+- Unsaved file edits stay available across navigation and are marked in Explorer.
 - General search shows plain matches with clear chat and project labels, and keeps chat workspaces out of project results.
 
 ## 0.0.5 - 2026-09-29

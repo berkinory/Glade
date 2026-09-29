@@ -19,8 +19,11 @@ import {
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
   forwardRef,
+  useCallback,
   useEffect,
+  useMemo,
   useRef,
+  useSyncExternalStore,
 } from "react";
 
 import {
@@ -37,6 +40,11 @@ import {
 } from "~/lib/projectReactQuery";
 import { getSyntaxHighlighterPromise, getSyntaxLanguageForPath } from "~/lib/syntaxHighlighting";
 import { cn } from "~/lib/utils";
+import {
+  dirtyWorkspaceEditorPaths,
+  dirtyWorkspaceEditorRevision,
+  subscribeDirtyWorkspaceEditors,
+} from "~/lib/workspaceEditorSession";
 import { ExplorerLoadingRows } from "./ExplorerLoadingRows";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "../ui/collapsible";
 import { DisclosureChevron } from "../ui/DisclosureChevron";
@@ -128,6 +136,7 @@ const ExplorerRow = forwardRef<
     depth: number;
     selected: boolean;
     expanded: boolean;
+    dirty: boolean;
     onSelectFile: (path: string) => void;
     onPrefetchEntry: (entry: ProjectFileSystemEntry) => void;
     onSelectDirectory: (path: string) => void;
@@ -139,6 +148,7 @@ const ExplorerRow = forwardRef<
     depth,
     selected,
     expanded,
+    dirty,
     onSelectFile,
     onPrefetchEntry,
     onSelectDirectory,
@@ -181,7 +191,8 @@ const ExplorerRow = forwardRef<
       className={fileRowClassName(selected, cn("h-7 pr-2 transition-none", className))}
       data-selected-file={selected && !isDirectory ? "" : undefined}
       style={fileRowIndentStyle(depth)}
-      title={entry.path}
+      title={dirty ? `${entry.path} (unsaved changes)` : entry.path}
+      aria-label={dirty ? `${entry.name} (unsaved changes)` : undefined}
       draggable
       onDragStart={handleDragStart}
       onClick={handleClick}
@@ -206,6 +217,12 @@ const ExplorerRow = forwardRef<
         />
       )}
       <span className="min-w-0 truncate">{entry.name}</span>
+      {dirty ? (
+        <span
+          aria-hidden="true"
+          className="ml-1 size-1.5 shrink-0 rounded-full bg-[var(--color-text-accent)]"
+        />
+      ) : null}
     </button>
   );
 });
@@ -216,6 +233,7 @@ function WorkspaceDirectory(props: {
   depth: number;
   selectedFilePath: string | null;
   expandedDirectories: ReadonlySet<string>;
+  dirtyPaths: ReadonlySet<string>;
   onSelectFile: (path: string) => void;
   onToggleDirectory: (path: string) => void;
   onPrefetchEntry: (entry: ProjectFileSystemEntry) => void;
@@ -273,6 +291,7 @@ function WorkspaceDirectory(props: {
               depth={props.depth}
               selected={entry.path === props.selectedFilePath}
               expanded={false}
+              dirty={props.dirtyPaths.has(entry.path)}
               onSelectFile={props.onSelectFile}
               onPrefetchEntry={props.onPrefetchEntry}
               onSelectDirectory={props.actions.setSelectedDirectory}
@@ -281,6 +300,8 @@ function WorkspaceDirectory(props: {
           );
         }
         const expanded = props.expandedDirectories.has(entry.path);
+        const dirty =
+          !expanded && [...props.dirtyPaths].some((path) => path.startsWith(`${entry.path}/`));
         return (
           <Collapsible
             key={entry.path}
@@ -294,6 +315,7 @@ function WorkspaceDirectory(props: {
                   depth={props.depth}
                   selected={props.actions.selectedDirectory === entry.path}
                   expanded={expanded}
+                  dirty={dirty}
                   onSelectFile={props.onSelectFile}
                   onSelectDirectory={props.actions.setSelectedDirectory}
                   onPrefetchEntry={props.onPrefetchEntry}
@@ -308,6 +330,7 @@ function WorkspaceDirectory(props: {
                 depth={props.depth + 1}
                 selectedFilePath={props.selectedFilePath}
                 expandedDirectories={props.expandedDirectories}
+                dirtyPaths={props.dirtyPaths}
                 onSelectFile={props.onSelectFile}
                 onToggleDirectory={props.onToggleDirectory}
                 onPrefetchEntry={props.onPrefetchEntry}
@@ -427,6 +450,20 @@ function WorkspaceFilesTreeBody(props: {
   onEntryContextMenu: (entry: ProjectFileSystemEntry, position: { x: number; y: number }) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
+  const subscribe = useCallback(
+    (listener: () => void) => subscribeDirtyWorkspaceEditors(queryClient, listener),
+    [queryClient],
+  );
+  const getRevision = useCallback(() => dirtyWorkspaceEditorRevision(queryClient), [queryClient]);
+  const dirtyRevision = useSyncExternalStore(subscribe, getRevision, getRevision);
+  const dirtyPaths = useMemo(
+    () =>
+      props.workspaceRoot
+        ? dirtyWorkspaceEditorPaths(queryClient, props.workspaceRoot)
+        : new Set<string>(),
+    [dirtyRevision, props.workspaceRoot, queryClient],
+  );
   useEffect(() => {
     const container = scrollRef.current;
     if (!container || !props.selectedFilePath) return;
@@ -470,6 +507,7 @@ function WorkspaceFilesTreeBody(props: {
           depth={0}
           selectedFilePath={props.selectedFilePath}
           expandedDirectories={props.expandedDirectories}
+          dirtyPaths={dirtyPaths}
           onSelectFile={props.onSelectFile}
           onToggleDirectory={props.onToggleDirectory}
           onPrefetchEntry={props.onPrefetchEntry}

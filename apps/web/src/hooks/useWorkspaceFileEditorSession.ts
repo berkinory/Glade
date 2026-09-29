@@ -13,7 +13,10 @@ export interface WorkspaceFileEditorSession extends WorkspaceFileEditorControlle
   requestClose: () => void;
   requestReload: () => void;
   confirmPendingDiscard: () => void;
+  savePendingDiscard: () => void;
   cancelPendingDiscard: () => void;
+  pendingSaveError: string | null;
+  savingPendingDiscard: boolean;
 }
 
 export function useWorkspaceFileEditorSession(input: {
@@ -30,7 +33,9 @@ export function useWorkspaceFileEditorSession(input: {
   const [pendingDiscard, setPendingDiscard] = useState<WorkspaceFileEditorDiscardIntent | null>(
     null,
   );
-  const { dirty, reloadFromDisk, save, discard } = controller;
+  const { dirty, reloadFromDisk, save, discard, flush } = controller;
+  const [pendingSaveError, setPendingSaveError] = useState<string | null>(null);
+  const [savingPendingDiscard, setSavingPendingDiscard] = useState(false);
   const saving = controller.state.saving;
   // A close or reload requested while a save is in flight waits for that save:
   // unmounting immediately would let the write land after "discard" promised
@@ -70,6 +75,7 @@ export function useWorkspaceFileEditorSession(input: {
     if (saving) {
       setAfterSave("close");
     } else if (dirty) {
+      setPendingSaveError(null);
       setPendingDiscard("close");
     } else {
       onClose();
@@ -82,6 +88,7 @@ export function useWorkspaceFileEditorSession(input: {
       return;
     }
     if (dirty) {
+      setPendingSaveError(null);
       setPendingDiscard("reload");
       return;
     }
@@ -106,8 +113,30 @@ export function useWorkspaceFileEditorSession(input: {
     reloadFromDisk();
   }, [discard, onClose, pendingDiscard, reloadFromDisk, saving]);
 
+  const savePendingDiscard = useCallback(() => {
+    const intent = pendingDiscard;
+    if (intent === null || savingPendingDiscard) return;
+    setSavingPendingDiscard(true);
+    setPendingSaveError(null);
+    void flush()
+      .then((saved) => {
+        if (!saved) {
+          setPendingSaveError("Could not save this file. Check the editor error and try again.");
+          return;
+        }
+        setPendingDiscard(null);
+        if (intent === "close") onClose();
+        else reloadFromDisk();
+      })
+      .catch(() => {
+        setPendingSaveError("Could not save this file. Check the editor error and try again.");
+      })
+      .finally(() => setSavingPendingDiscard(false));
+  }, [flush, onClose, pendingDiscard, reloadFromDisk, savingPendingDiscard]);
+
   const cancelPendingDiscard = useCallback(() => {
     setPendingDiscard(null);
+    setPendingSaveError(null);
   }, []);
 
   useEffect(() => {
@@ -131,6 +160,9 @@ export function useWorkspaceFileEditorSession(input: {
     requestClose,
     requestReload,
     confirmPendingDiscard,
+    savePendingDiscard,
     cancelPendingDiscard,
+    pendingSaveError,
+    savingPendingDiscard,
   };
 }

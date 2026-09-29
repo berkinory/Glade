@@ -15,6 +15,35 @@ import {
 } from "./workspaceFileEditor";
 
 const sessions = new WeakMap<QueryClient, Map<string, WorkspaceEditorSession>>();
+const dirtyListeners = new WeakMap<QueryClient, Set<() => void>>();
+const dirtyRevisions = new WeakMap<QueryClient, number>();
+
+function notifyDirtyEditors(client: QueryClient) {
+  dirtyRevisions.set(client, (dirtyRevisions.get(client) ?? 0) + 1);
+  for (const listener of dirtyListeners.get(client) ?? []) listener();
+}
+
+export function subscribeDirtyWorkspaceEditors(client: QueryClient, listener: () => void) {
+  let listeners = dirtyListeners.get(client);
+  if (!listeners) {
+    listeners = new Set();
+    dirtyListeners.set(client, listeners);
+  }
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+export function dirtyWorkspaceEditorRevision(client: QueryClient) {
+  return dirtyRevisions.get(client) ?? 0;
+}
+
+export function dirtyWorkspaceEditorPaths(client: QueryClient, cwd: string): ReadonlySet<string> {
+  return new Set(
+    [...(sessions.get(client)?.values() ?? [])]
+      .filter((session) => session.cwd === cwd && session.dirty)
+      .map((session) => session.relativePath),
+  );
+}
 
 /** One buffer and one writer per file, shared by all editor surfaces. Failed
  * drafts survive panel unmounts; clean, unused sessions are released. */
@@ -57,8 +86,10 @@ export class WorkspaceEditorSession {
   private dispatch(action: WorkspaceFileEditorAction) {
     const next = workspaceFileEditorReducer(this.state, action);
     if (next === this.state) return;
+    const wasDirty = this.dirty;
     this.state = next;
     for (const listener of this.listeners) listener();
+    if (wasDirty !== this.dirty) notifyDirtyEditors(this.client);
   }
 
   load(file: ProjectReadFileResult) {

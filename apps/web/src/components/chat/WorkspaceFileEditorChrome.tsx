@@ -157,6 +157,10 @@ interface WorkspaceFileEditorDiscardDialogProps {
   confirmLabel: string;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
+  onSave?: () => void;
+  saveLabel?: string;
+  busy?: boolean;
+  error?: string | null;
 }
 
 export function WorkspaceFileEditorDiscardDialog(props: WorkspaceFileEditorDiscardDialogProps) {
@@ -166,14 +170,20 @@ export function WorkspaceFileEditorDiscardDialog(props: WorkspaceFileEditorDisca
         <AlertDialogHeader>
           <AlertDialogTitle>{props.title}</AlertDialogTitle>
           <AlertDialogDescription>{props.description}</AlertDialogDescription>
+          {props.error ? <p className="text-ui-sm text-destructive">{props.error}</p> : null}
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogClose render={<Button variant="outline" size="sm" />}>
+          <AlertDialogClose render={<Button variant="outline" size="sm" disabled={props.busy} />}>
             Cancel
           </AlertDialogClose>
-          <Button variant="destructive" size="sm" onClick={props.onConfirm}>
+          <Button variant="destructive" size="sm" disabled={props.busy} onClick={props.onConfirm}>
             {props.confirmLabel}
           </Button>
+          {props.onSave ? (
+            <Button variant="default" size="sm" disabled={props.busy} onClick={props.onSave}>
+              {props.busy ? "Saving..." : (props.saveLabel ?? "Save")}
+            </Button>
+          ) : null}
         </AlertDialogFooter>
       </AlertDialogPopup>
     </AlertDialog>
