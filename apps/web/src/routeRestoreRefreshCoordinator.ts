@@ -3,8 +3,8 @@ import type { OrchestrationReadModel, OrchestrationShellSnapshot } from "@glade/
 type EmptyRouteRestoreRefreshHandler = () => Promise<boolean>;
 
 /** Wait for projection catch-up before a full rebuild on large state DBs. */
-export const EMPTY_ROUTE_PROJECTION_POLL_ATTEMPTS = 12;
-export const EMPTY_ROUTE_PROJECTION_POLL_INTERVAL_MS = 500;
+const EMPTY_ROUTE_PROJECTION_POLL_ATTEMPTS = 12;
+const EMPTY_ROUTE_PROJECTION_POLL_INTERVAL_MS = 500;
 
 let activeEmptyRouteRestoreRefreshHandler: EmptyRouteRestoreRefreshHandler | null = null;
 

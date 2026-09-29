@@ -15,7 +15,7 @@ const THREAD_DETAIL_RETENTION_EVICTION_MS = 15 * 60 * 1000;
 // admission. It must exceed everything that retains at once (sidebar prewarm
 // window + split-view threads + a parent's live subagent children), otherwise the
 // map sits permanently over capacity and evicts warm detail on every store write.
-export const MAX_CACHED_THREAD_DETAIL_SUBSCRIPTIONS = 32;
+const MAX_CACHED_THREAD_DETAIL_SUBSCRIPTIONS = 32;
 
 type RetainedThreadEntry = {
   refCount: number;
@@ -107,10 +107,7 @@ function isThreadDetailEvictionUnsafe(threadId: ThreadId): boolean {
   );
 }
 
-export function shouldReconcileThreadDetailRetention(
-  current: AppState,
-  previous: AppState,
-): boolean {
+function shouldReconcileThreadDetailRetention(current: AppState, previous: AppState): boolean {
   return (
     current.sidebarThreadSummaryById !== previous.sidebarThreadSummaryById ||
     current.threadShellById !== previous.threadShellById ||
@@ -270,7 +267,7 @@ export function retainThreadDetailSubscription(threadId: ThreadId): () => void {
   return release;
 }
 
-export function releaseThreadDetailSubscription(threadId: ThreadId): void {
+function releaseThreadDetailSubscription(threadId: ThreadId): void {
   const entry = retainedThreadEntries.get(threadId);
   if (!entry) {
     return;
@@ -286,7 +283,7 @@ export function releaseThreadDetailSubscription(threadId: ThreadId): void {
   evictIdleEntriesToCapacity();
 }
 
-export function subscribeRetainedThreadDetailIds(listener: () => void): () => void {
+function subscribeRetainedThreadDetailIds(listener: () => void): () => void {
   listeners.add(listener);
   return () => {
     listeners.delete(listener);
@@ -305,7 +302,7 @@ export function subscribeThreadDetailEvictions(listener: (threadId: ThreadId) =>
   };
 }
 
-export function getRetainedThreadDetailIdsSnapshot(): readonly ThreadId[] {
+function getRetainedThreadDetailIdsSnapshot(): readonly ThreadId[] {
   return cachedSnapshot;
 }
 
@@ -346,13 +343,4 @@ export function useRetainedThreadDetailIds(): readonly ThreadId[] {
     getRetainedThreadDetailIdsSnapshot,
     getRetainedThreadDetailIdsSnapshot,
   );
-}
-
-export function resetRetainedThreadDetailSubscriptionsForTests(): void {
-  for (const entry of retainedThreadEntries.values()) {
-    clearEvictionTimeout(entry);
-  }
-  retainedThreadEntries.clear();
-  visibleThreadIds = new Set();
-  emitChange();
 }

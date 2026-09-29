@@ -14,7 +14,7 @@ export function deriveTurnStartModelSelection(input: {
 }
 
 // Imported fork history must not freeze the first-turn provider like native history does.
-export function countNativeTurnStartMessages(
+function countNativeTurnStartMessages(
   messages: ReadonlyArray<{ readonly source?: string | null }>,
 ): number {
   let count = 0;

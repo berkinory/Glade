@@ -21,7 +21,7 @@ export class ServerRuntimeStartup extends ServiceMap.Service<
 
 type CommandReadinessState = "pending" | "ready" | ServerRuntimeStartupError;
 
-export const makeServerRuntimeStartup = Effect.gen(function* () {
+const makeServerRuntimeStartup = Effect.gen(function* () {
   const commandReady = yield* Deferred.make<void, ServerRuntimeStartupError>();
   const commandReadinessState = yield* Ref.make<CommandReadinessState>("pending");
 

@@ -3,14 +3,14 @@
 // build time by apps/web's Vite precompress plugin — the server never
 // compresses on the request path.
 
-export const STATIC_IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable";
+const STATIC_IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable";
 // Non-hashed files (index.html, manifests) must revalidate so deploys take
 // effect on the next load.
-export const STATIC_REVALIDATE_CACHE_CONTROL = "no-cache";
+const STATIC_REVALIDATE_CACHE_CONTROL = "no-cache";
 // Icon sets have stable names but change only on dependency bumps, and the UI
 // requests thousands of them per session; a bounded max-age keeps them out of
 // the per-load revalidation path without an eternal-cache deploy hazard.
-export const STATIC_ICON_CACHE_CONTROL = "public, max-age=86400";
+const STATIC_ICON_CACHE_CONTROL = "public, max-age=86400";
 
 const ICON_DIRECTORY_PREFIXES = ["central-icons-reversed/", "central-icons-fill/"];
 
@@ -25,7 +25,7 @@ export function staticCacheControl(relativePath: string): string {
   return STATIC_REVALIDATE_CACHE_CONTROL;
 }
 
-export interface StaticEncodingCandidate {
+interface StaticEncodingCandidate {
   readonly encoding: "br" | "gzip";
   readonly sidecarExtension: ".br" | ".gz";
 }

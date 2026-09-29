@@ -5,8 +5,8 @@
 //          skills folder, deduping by name with provider-native copies winning for
 //          the active provider.
 // Layer: Server provider discovery helper
-// Exports: parseSkillFrontmatter, collectSkillsFromRoots, discoverSkillsCatalog,
-//          mergeSkillsIntoCatalog, filterDisabledSkills, ensureGladeSkillsDir
+// Exports: discoverSkillsCatalog,
+//          mergeSkillsIntoCatalog, filterDisabledSkills
 
 import * as fs from "node:fs/promises";
 import * as nodePath from "node:path";
@@ -16,7 +16,7 @@ import { discoverClaudePluginSkillRoots } from "./claudePluginSkills.ts";
 
 type FrontmatterValue = string | boolean;
 
-export interface SkillRoot {
+interface SkillRoot {
   readonly path: string;
   readonly scope: string;
   readonly includeMarkdownFiles?: boolean;
@@ -48,7 +48,7 @@ function parseYamlScalar(value: string): FrontmatterValue {
 }
 
 // Parses the small scalar frontmatter subset used by Agent Skills without pulling in YAML.
-export function parseSkillFrontmatter(markdown: string): Record<string, FrontmatterValue> {
+function parseSkillFrontmatter(markdown: string): Record<string, FrontmatterValue> {
   const normalized = markdown.replace(/\r\n/g, "\n");
   const match = /^---\s*\n([\s\S]*?)\n---\s*(?:\n|$)/.exec(normalized);
   if (!match) {
@@ -103,7 +103,7 @@ function readBooleanField(
 
 // ── Filesystem walking ───────────────────────────────────────────────
 
-export function ancestorsFromDeepest(cwd: string): string[] {
+function ancestorsFromDeepest(cwd: string): string[] {
   const resolved = nodePath.resolve(cwd);
   const ancestors: string[] = [];
   let current = resolved;
@@ -167,7 +167,7 @@ async function isReadableMarkdownFile(
   }
 }
 
-export async function collectSkillMarkdownPaths(
+async function collectSkillMarkdownPaths(
   rootPath: string,
   options?: {
     readonly includeMarkdownFiles?: boolean;
@@ -229,7 +229,7 @@ export async function collectSkillMarkdownPaths(
   return visit(rootPath, 0);
 }
 
-export async function readSkillDescriptor(input: {
+async function readSkillDescriptor(input: {
   readonly skillPath: string;
   readonly scope: string;
   readonly namespace?: string;
@@ -279,7 +279,7 @@ export async function readSkillDescriptor(input: {
   };
 }
 
-export function skillNameKey(name: string): string {
+function skillNameKey(name: string): string {
   return name.trim().toLowerCase();
 }
 
@@ -314,7 +314,7 @@ async function collectSkillDescriptorsFromRoots(
 
 // Scans all roots concurrently, then dedupes by name in root order so earlier
 // roots keep precedence. Within a root, SKILL.md path order is preserved.
-export async function collectSkillsFromRoots(
+async function collectSkillsFromRoots(
   roots: ReadonlyArray<SkillRoot>,
 ): Promise<ProviderSkillDescriptor[]> {
   const allSkills = await collectSkillDescriptorsFromRoots(roots);
@@ -344,13 +344,12 @@ export interface SkillsCatalogDiscoveryInput {
   readonly forceReload?: boolean;
 }
 
-export interface SkillsCatalogRootInput extends SkillsCatalogDiscoveryInput {
+interface SkillsCatalogRootInput extends SkillsCatalogDiscoveryInput {
   /** Native provider scans can opt out; the catalog itself always includes Glade. */
   readonly includeGladeRoot?: boolean;
 }
 
 const HOME_ORIGIN_ORDER = ["glade", "codex", "claude", "agents"] as const;
-export type SkillsCatalogOrigin = (typeof HOME_ORIGIN_ORDER)[number] | "project";
 
 // Composer skill pickers refetch aggressively (per keystroke, per provider); a
 // short TTL absorbs that burst while still picking up new skill files quickly.
@@ -366,18 +365,12 @@ const skillsCatalogCache = new Map<string, SkillsCatalogCacheEntry>();
 const skillsCatalogInflight = new Map<string, Promise<ReadonlyArray<ProviderSkillDescriptor>>>();
 const ensuredGladeSkillsDirs = new Set<string>();
 
-export function clearSkillsCatalogCacheForTests(): void {
-  skillsCatalogCache.clear();
-  skillsCatalogInflight.clear();
-  ensuredGladeSkillsDirs.clear();
-}
-
 export function gladeSkillsDir(gladeBaseDir: string): string {
   return nodePath.join(gladeBaseDir, "skills");
 }
 
 // Creates the portable skills folder on first use so users have a drop-in target.
-export async function ensureGladeSkillsDir(gladeBaseDir: string): Promise<string> {
+async function ensureGladeSkillsDir(gladeBaseDir: string): Promise<string> {
   const dir = gladeSkillsDir(gladeBaseDir);
   if (ensuredGladeSkillsDirs.has(dir)) {
     return dir;
@@ -504,15 +497,11 @@ function rootsForOrderedOrigins(
   return [...projectRoots, ...homeRoots];
 }
 
-export function skillsCatalogRoots(input: SkillsCatalogRootInput): SkillRoot[] {
+function skillsCatalogRoots(input: SkillsCatalogRootInput): SkillRoot[] {
   return rootsForOrderedOrigins(
     input,
     orderedOriginsForProvider(input.provider, input.includeGladeRoot !== false),
   );
-}
-
-export function providerNativeSkillRoots(input: SkillsCatalogRootInput): SkillRoot[] {
-  return rootsForOrderedOrigins(input, orderedOriginsForProvider(input.provider, false, false));
 }
 
 export async function discoverSkillsCatalog(

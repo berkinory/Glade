@@ -17,7 +17,7 @@ export interface WorkLogToolOutputDetails {
   truncated?: boolean;
 }
 
-export interface WorkLogToolEditDetails {
+interface WorkLogToolEditDetails {
   path?: string;
   oldText?: string;
   newText?: string;

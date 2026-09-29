@@ -10,7 +10,7 @@ export function projectImportKey(...parts: ReadonlyArray<string>): string {
 
 // Codex on Windows can store extended-length paths. Resolve their ordinary
 // drive/UNC equivalents so a missing child's parent remains a valid root.
-export function normalizeWindowsImportPath(value: string): string {
+function normalizeWindowsImportPath(value: string): string {
   if (!value.startsWith("\\\\?\\")) return value;
   const rest = value.slice(4);
   if (/^UNC\\/i.test(rest)) return `\\\\${rest.slice(4)}`;

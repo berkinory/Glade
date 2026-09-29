@@ -37,7 +37,7 @@ const FIND_QUERY_MAX_LENGTH = 200;
 const FIND_STEP_BUTTON_CLASS_NAME =
   "size-7 rounded-md border-transparent bg-transparent text-muted-foreground shadow-none hover:bg-muted-foreground/15 hover:text-foreground sm:size-7";
 
-export function ThreadFindBar({
+function ThreadFindBar({
   open,
   focusNonce,
   timelineEntries,

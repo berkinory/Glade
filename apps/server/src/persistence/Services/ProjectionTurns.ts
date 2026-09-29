@@ -87,7 +87,7 @@ export const GetProjectionTurnByTurnIdInput = Schema.Struct({
 });
 export type GetProjectionTurnByTurnIdInput = typeof GetProjectionTurnByTurnIdInput.Type;
 
-export interface ProjectionTurnWaitSnapshot {
+interface ProjectionTurnWaitSnapshot {
   readonly existingThreadIds: ReadonlyArray<GetProjectionTurnByTurnIdInput["threadId"]>;
   readonly turns: ReadonlyArray<{
     readonly threadId: GetProjectionTurnByTurnIdInput["threadId"];

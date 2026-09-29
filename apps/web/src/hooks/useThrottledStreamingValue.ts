@@ -3,7 +3,7 @@
 //          consumer (e.g. a Shiki re-highlight of a growing code block) while a message is
 //          streaming, without ever dropping the final value.
 // Layer: Web UI streaming primitive
-// Exports: useThrottledStreamingValue, planThrottledCommit (pure, unit-tested)
+// Exports: useThrottledStreamingValue
 // Why: The reveal cadence (useSmoothStreamedText, ~25 commits/s) is right for prose but
 //      far too fast for consumers whose cost grows with the value — re-tokenizing a whole
 //      code block 25×/s is quadratic in its length. This hook passes the first change
@@ -13,7 +13,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-export type ThrottledCommitPlan =
+type ThrottledCommitPlan =
   | { readonly immediate: true }
   | { readonly immediate: false; readonly delayMs: number };
 
@@ -21,7 +21,7 @@ export type ThrottledCommitPlan =
  * Decide whether a new value may commit now or must wait for the trailing edge of the
  * current interval. `lastCommitAtMs === 0` marks a fresh burst and always commits.
  */
-export function planThrottledCommit(
+function planThrottledCommit(
   lastCommitAtMs: number,
   nowMs: number,
   intervalMs: number,

@@ -10,7 +10,7 @@ import { DEFAULT_AUTOMATION_STOP_AFTER_CONSECUTIVE_FAILURES } from "@glade/contr
 /** "never" or a positive integer rendered as a string ("1", "3", "5", …). */
 export type AutomationFailurePolicyValue = string;
 
-export const AUTOMATION_FAILURE_POLICY_NEVER: AutomationFailurePolicyValue = "never";
+const AUTOMATION_FAILURE_POLICY_NEVER: AutomationFailurePolicyValue = "never";
 
 export const DEFAULT_AUTOMATION_FAILURE_POLICY_VALUE: AutomationFailurePolicyValue = String(
   DEFAULT_AUTOMATION_STOP_AFTER_CONSECUTIVE_FAILURES,

@@ -12,11 +12,11 @@ import type {
   ProjectionSnapshotQueryShape,
 } from "../orchestration/Services/ProjectionSnapshotQuery.ts";
 
-export const THREAD_MENTION_MESSAGE_LIMIT = 20;
-export const THREAD_MENTION_MAX_MESSAGE_CHARS = 1_500;
-export const THREAD_MENTION_MAX_CONTEXT_CHARS = 8_000;
-export const THREAD_MENTION_MAX_TOTAL_CONTEXT_CHARS = 16_000;
-export const THREAD_MENTION_MAX_TITLE_CHARS = 200;
+const THREAD_MENTION_MESSAGE_LIMIT = 20;
+const THREAD_MENTION_MAX_MESSAGE_CHARS = 1_500;
+const THREAD_MENTION_MAX_CONTEXT_CHARS = 8_000;
+const THREAD_MENTION_MAX_TOTAL_CONTEXT_CHARS = 16_000;
+const THREAD_MENTION_MAX_TITLE_CHARS = 200;
 
 const EARLIER_CONTEXT_TRUNCATION_MARKER = "[... earlier transcript context truncated]\n";
 const THREAD_MENTION_MIN_CONTEXT_CHARS = 256;
@@ -24,11 +24,11 @@ const THREAD_MENTION_CONTEXT_SEPARATOR_CHARS = 2;
 const THREAD_MENTION_CONTEXT_CLOSE_TAG = "</mentioned_thread_context>";
 const THREAD_MENTION_BLOCK_TRUNCATION_MARKER = "\n[... context block truncated]\n";
 
-export function isThreadMentionReference(reference: ProviderMentionReference): boolean {
+function isThreadMentionReference(reference: ProviderMentionReference): boolean {
   return isThreadMentionPath(reference.path);
 }
 
-export function threadIdFromMentionReference(reference: ProviderMentionReference): string | null {
+function threadIdFromMentionReference(reference: ProviderMentionReference): string | null {
   return threadIdFromThreadMentionPath(reference.path);
 }
 
@@ -59,7 +59,7 @@ function fitContextBlockToMaxChars(block: string, maxChars: number): string {
   return `${prefix}${THREAD_MENTION_BLOCK_TRUNCATION_MARKER}${THREAD_MENTION_CONTEXT_CLOSE_TAG}`;
 }
 
-export function formatThreadMentionContextBlock(input: {
+function formatThreadMentionContextBlock(input: {
   readonly reference: ProviderMentionReference;
   readonly thread: OrchestrationThreadMentionContext | null;
   readonly maxChars?: number;

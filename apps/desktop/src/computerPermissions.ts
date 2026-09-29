@@ -60,7 +60,7 @@ export interface DesktopComputerManagerOptions {
   closeSettingsApp?: () => void;
 }
 
-export function desktopComputerPlatform(platform: NodeJS.Platform): DesktopComputerPlatform {
+function desktopComputerPlatform(platform: NodeJS.Platform): DesktopComputerPlatform {
   if (platform === "darwin") return "macos";
   if (platform === "win32") return "windows";
   if (platform === "linux") return "linux";

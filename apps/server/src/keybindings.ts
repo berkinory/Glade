@@ -45,7 +45,7 @@ import * as Semaphore from "effect/Semaphore";
 import { writeFileStringAtomically } from "./atomicWrite";
 import { ServerConfig } from "./config";
 
-export class KeybindingsConfigError extends Schema.TaggedErrorClass<KeybindingsConfigError>()(
+class KeybindingsConfigError extends Schema.TaggedErrorClass<KeybindingsConfigError>()(
   "KeybindingsConfigParseError",
   {
     configPath: Schema.String,
@@ -73,7 +73,7 @@ const SIDEBAR_SEARCH_DEFAULT_KEYBINDINGS = [
   { key: "ctrl+k", command: "sidebar.search", when: "!isMac" },
 ] as const satisfies ReadonlyArray<KeybindingRule>;
 
-export const DEFAULT_KEYBINDINGS: ReadonlyArray<KeybindingRule> = [
+const DEFAULT_KEYBINDINGS: ReadonlyArray<KeybindingRule> = [
   { key: "mod+b", command: "sidebar.toggle", when: "!terminalFocus" },
   ...SIDEBAR_SEARCH_DEFAULT_KEYBINDINGS,
   { key: "mod+alt+u", command: "sidebar.activity", when: "!terminalFocus || isMac" },
@@ -204,7 +204,7 @@ function normalizeKeyToken(token: string): string {
 }
 
 /** @internal - Exported for testing */
-export function parseKeybindingShortcut(value: string): KeybindingShortcut | null {
+function parseKeybindingShortcut(value: string): KeybindingShortcut | null {
   const rawTokens = value
     .toLowerCase()
     .split("+")
@@ -403,7 +403,7 @@ function parseKeybindingWhenExpression(expression: string): KeybindingWhenNode |
 }
 
 /** @internal - Exported for testing */
-export function compileResolvedKeybindingRule(rule: KeybindingRule): ResolvedKeybindingRule | null {
+function compileResolvedKeybindingRule(rule: KeybindingRule): ResolvedKeybindingRule | null {
   const shortcut = parseKeybindingShortcut(rule.key);
   if (!shortcut) return null;
 
@@ -423,9 +423,7 @@ export function compileResolvedKeybindingRule(rule: KeybindingRule): ResolvedKey
   };
 }
 
-export function compileResolvedKeybindingsConfig(
-  config: KeybindingsConfig,
-): ResolvedKeybindingsConfig {
+function compileResolvedKeybindingsConfig(config: KeybindingsConfig): ResolvedKeybindingsConfig {
   const compiled: Mutable<ResolvedKeybindingsConfig> = [];
   for (const rule of config) {
     const result = Schema.decodeExit(ResolvedKeybindingFromConfig)(rule);
@@ -436,7 +434,7 @@ export function compileResolvedKeybindingsConfig(
   return compiled;
 }
 
-export const ResolvedKeybindingFromConfig = KeybindingRule.pipe(
+const ResolvedKeybindingFromConfig = KeybindingRule.pipe(
   Schema.decodeTo(
     Schema.toType(ResolvedKeybindingRule),
     SchemaTransformation.transformOrFail({
@@ -608,12 +606,12 @@ const KeybindingsConfigPrettyJson = KeybindingsConfigJson.pipe(
   }),
 );
 
-export interface KeybindingsConfigState {
+interface KeybindingsConfigState {
   readonly keybindings: ResolvedKeybindingsConfig;
   readonly issues: readonly ServerConfigIssue[];
 }
 
-export interface KeybindingsChangeEvent {
+interface KeybindingsChangeEvent {
   readonly keybindings: ResolvedKeybindingsConfig;
   readonly issues: readonly ServerConfigIssue[];
 }

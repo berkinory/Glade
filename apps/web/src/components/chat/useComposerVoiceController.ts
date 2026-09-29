@@ -22,7 +22,7 @@ import {
   sanitizeVoiceErrorMessage,
 } from "../ChatView.logic";
 
-export interface ComposerVoiceFailureCopy {
+interface ComposerVoiceFailureCopy {
   transcriptionFailedTitle: string;
   fallbackDescription: string;
   authExpiredTitle: string;

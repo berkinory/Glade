@@ -27,7 +27,7 @@ export interface RightDockPaneMeta {
   Icon: LucideIcon;
 }
 
-export const RIGHT_DOCK_PANE_META: Record<RightDockPaneKind, RightDockPaneMeta> = {
+const RIGHT_DOCK_PANE_META: Record<RightDockPaneKind, RightDockPaneMeta> = {
   browser: { label: "Browser", Icon: GlobeIcon },
   // The contract stays platform-neutral ("device"); today the backend is iOS.
   device: { label: "Simulator", Icon: DeviceMobileIcon },

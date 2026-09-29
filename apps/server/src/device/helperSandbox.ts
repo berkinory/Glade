@@ -23,7 +23,7 @@ import * as path from "node:path";
 /** Set to skip confinement entirely. Logged loudly wherever it is honoured. */
 export const SANDBOX_OPT_OUT_ENV = "GLADE_DEVICE_HELPER_NO_SANDBOX";
 
-export const SANDBOX_PROFILE_NAME = "device-helper.sb";
+const SANDBOX_PROFILE_NAME = "device-helper.sb";
 
 export interface HelperSandboxContext {
   /** The helper binary about to be run. */
@@ -50,7 +50,7 @@ export interface HelperSandboxCommand {
  * `.app` itself. CommandLineTools has no enclosing bundle; its developer dir is
  * returned unchanged and `/Library/Developer` in the profile covers it.
  */
-export function xcodeAppRoot(developerDir: string): string {
+function xcodeAppRoot(developerDir: string): string {
   const marker = `${path.sep}Contents${path.sep}Developer`;
   const index = developerDir.indexOf(marker);
   return index === -1 ? developerDir : developerDir.slice(0, index);
@@ -69,7 +69,7 @@ async function resolved(target: string): Promise<string> {
 }
 
 /** Whether the opt-out is set in the environment governing this run. */
-export function sandboxDisabled(env: NodeJS.ProcessEnv = process.env): boolean {
+function sandboxDisabled(env: NodeJS.ProcessEnv = process.env): boolean {
   const value = env[SANDBOX_OPT_OUT_ENV]?.trim();
   return value !== undefined && value.length > 0 && value !== "0" && value !== "false";
 }

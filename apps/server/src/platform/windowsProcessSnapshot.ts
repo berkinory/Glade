@@ -43,7 +43,7 @@ while (($request = [Console]::In.ReadLine()) -ne $null) {
 }
 `.trim();
 
-export interface ProcessChildrenSnapshotWorker {
+interface ProcessChildrenSnapshotWorker {
   capture(): Promise<ProcessChildrenMap>;
   dispose(): void;
 }
@@ -127,7 +127,7 @@ function decodeSnapshotCommand(encodedCommand: string): string | null {
 }
 
 /** Parses one base64-delimited worker row without trusting command-line contents as separators. */
-export function parseWindowsProcessSnapshotLine(
+function parseWindowsProcessSnapshotLine(
   line: string,
 ): { pid: number; ppid: number; command: string; startedAt?: string } | null {
   const fields = line.split("\t");
@@ -274,7 +274,7 @@ class PowerShellProcessSnapshotWorker implements ProcessChildrenSnapshotWorker {
   }
 }
 
-export function createPowerShellProcessSnapshotWorker(
+function createPowerShellProcessSnapshotWorker(
   options: PowerShellProcessSnapshotWorkerOptions = {},
 ): ProcessChildrenSnapshotWorker {
   return new PowerShellProcessSnapshotWorker(options);

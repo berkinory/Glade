@@ -13,7 +13,6 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 import { EDITORS, type EditorId } from "@glade/contracts";
-import { EDITOR_ICON_ROUTE_PATH } from "@glade/shared/editorIcons";
 
 import {
   getEditorMacApplications,
@@ -22,8 +21,6 @@ import {
   resolveWindowsStorePackageInstallLocation,
   type EditorDefinition,
 } from "./editorAppDiscovery";
-
-export { EDITOR_ICON_ROUTE_PATH };
 
 const execFileAsync = promisify(execFile);
 const MAX_DESKTOP_FILES_TO_SCAN = 1_500;
@@ -743,9 +740,4 @@ export async function resolveCachedEditorIcon(input: {
     });
   inFlight.set(key, promise);
   return promise;
-}
-
-export function clearEditorIconInFlightCache(): void {
-  inFlight.clear();
-  negativeCache.clear();
 }

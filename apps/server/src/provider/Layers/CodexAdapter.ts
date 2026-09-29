@@ -2560,8 +2560,6 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
     } satisfies CodexAdapterShape;
   });
 
-export const CodexAdapterLive = Layer.effect(CodexAdapter, makeCodexAdapter());
-
 export function makeCodexAdapterLive(options?: CodexAdapterLiveOptions) {
   return Layer.effect(CodexAdapter, makeCodexAdapter(options));
 }

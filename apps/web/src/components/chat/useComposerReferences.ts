@@ -93,7 +93,7 @@ export function useComposerReferences({
 
   useEffect(() => {
     updateSelectedComposerSkills((existing) => {
-      const nextSkills = filterPromptSkillReferences(prompt, existing, selectedProvider);
+      const nextSkills = filterPromptSkillReferences(prompt, existing);
       return providerSkillReferencesEqual(existing, nextSkills) ? existing : nextSkills;
     });
   }, [prompt, selectedProvider, updateSelectedComposerSkills]);

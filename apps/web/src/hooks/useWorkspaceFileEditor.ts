@@ -1,11 +1,7 @@
-import { formatWorkspaceFileError } from "~/lib/workspaceFileError";
 import type { ProjectReadFileResult } from "@glade/contracts";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 
-import { projectReadFileQueryOptions, refetchFreshProjectFileQuery } from "~/lib/projectReactQuery";
-import { refreshGitAfterFileWrite } from "~/lib/gitReactQuery";
-import { useProjectFileChangeSubscription } from "./useProjectFileChangeSubscription";
 import { getWorkspaceEditorSession } from "~/lib/workspaceEditorSession";
 import {
   INITIAL_WORKSPACE_FILE_EDITOR_STATE,
@@ -70,38 +66,3 @@ export function useWorkspaceFileEditorBuffer(
     discard,
   };
 }
-
-export function useWorkspaceFileEditor(input: UseWorkspaceFileEditorInput) {
-  const client = useQueryClient();
-  const fileQuery = useQuery(
-    projectReadFileQueryOptions({
-      cwd: input.cwd,
-      relativePath: input.filePath,
-      enabled: input.enabled,
-    }),
-  );
-  const controller = useWorkspaceFileEditorBuffer({ ...input, file: fileQuery.data });
-  const onFileChange = useCallback(() => {
-    if (!input.cwd) return;
-    void refetchFreshProjectFileQuery(client, { cwd: input.cwd, relativePath: input.filePath });
-    void refreshGitAfterFileWrite(client, input.cwd).catch(() => undefined);
-  }, [client, input.cwd, input.filePath]);
-  useProjectFileChangeSubscription({
-    cwd: input.cwd,
-    relativePath: fileQuery.data?.relativePath ?? null,
-    enabled: input.enabled,
-    onChange: onFileChange,
-  });
-  return {
-    ...controller,
-    loading: fileQuery.isLoading,
-    loadError:
-      fileQuery.error instanceof Error
-        ? formatWorkspaceFileError(fileQuery.error)
-        : fileQuery.error
-          ? "Could not read file."
-          : null,
-  };
-}
-
-export type WorkspaceFileEditorController = ReturnType<typeof useWorkspaceFileEditor>;

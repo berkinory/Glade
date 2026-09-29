@@ -10,9 +10,9 @@ const RPC_CAPACITY_EXCEEDED_CODES = new Set([
   "RPC_REQUEST_CAPACITY_EXCEEDED",
 ]);
 
-export const RPC_CAPACITY_RETRY_LIMIT = 12;
+const RPC_CAPACITY_RETRY_LIMIT = 12;
 export const MAX_UNARY_RPC_CAPACITY_RETRY_ATTEMPTS = RPC_CAPACITY_RETRY_LIMIT;
-export const DEFAULT_RPC_CAPACITY_RETRY_MS = 250;
+const DEFAULT_RPC_CAPACITY_RETRY_MS = 250;
 const DEFAULT_GENERIC_RETRY_LIMIT = 3;
 
 export function isRpcCapacityExceededError(error: unknown): error is {
@@ -33,7 +33,7 @@ function isRetryableRpcCapacityExceededError(error: unknown): boolean {
   return isRpcCapacityExceededError(error) && error.retryable !== false;
 }
 
-export function getRpcCapacityRetryAfterMs(error: unknown): number {
+function getRpcCapacityRetryAfterMs(error: unknown): number {
   if (!isRpcCapacityExceededError(error)) return DEFAULT_RPC_CAPACITY_RETRY_MS;
   const retryAfterMs = error.retryAfterMs;
   return typeof retryAfterMs === "number" && retryAfterMs > 0
@@ -78,7 +78,7 @@ export const EXPENSIVE_READ_RETRY_OPTIONS: ExpensiveReadRetryFns = {
   retryDelay: expensiveReadRetryDelay as ExpensiveReadRetryFns["retryDelay"],
 };
 
-export const MAX_EXPENSIVE_READ_ERROR_REFETCH_INTERVAL_MS = 10_000;
+const MAX_EXPENSIVE_READ_ERROR_REFETCH_INTERVAL_MS = 10_000;
 
 /**
  * Error-only refetch so a saturated read recovers without waiting for another

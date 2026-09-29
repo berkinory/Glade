@@ -3,7 +3,7 @@
 //          suppresses animation frames during Electron startup/background throttling.
 // Layer: Chat surface lifecycle helper
 
-export const DEFERRED_CHAT_MOUNT_FALLBACK_MS = 500;
+const DEFERRED_CHAT_MOUNT_FALLBACK_MS = 500;
 
 export interface DeferredChatMountScheduler {
   requestAnimationFrame(callback: FrameRequestCallback): number;

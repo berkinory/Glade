@@ -15,7 +15,7 @@ export interface MacDmgNotaryCredentials {
   readonly appleApiIssuer: string | undefined;
 }
 
-export interface MacDmgCommand {
+interface MacDmgCommand {
   readonly command: string;
   readonly args: ReadonlyArray<string>;
 }
@@ -36,7 +36,7 @@ export interface RebuildUnsignedMacDmgOptions {
   readonly verbose?: boolean;
 }
 
-export function buildUnsignedMacDmgCommands(
+function buildUnsignedMacDmgCommands(
   appBundlePath: string,
   imageRoot: string,
   dmgPath: string,
@@ -72,7 +72,7 @@ function requireCredential(value: string | undefined, name: string): string {
   return normalized;
 }
 
-export function resolveSingleMacDmgFileName(entries: ReadonlyArray<string>): string {
+function resolveSingleMacDmgFileName(entries: ReadonlyArray<string>): string {
   const diskImages = entries.filter((entry) => entry.endsWith(".dmg"));
   if (diskImages.length !== 1 || !diskImages[0]) {
     throw new Error(`Expected one macOS DMG artifact, found ${diskImages.length}.`);
@@ -80,7 +80,7 @@ export function resolveSingleMacDmgFileName(entries: ReadonlyArray<string>): str
   return diskImages[0];
 }
 
-export function buildMacDmgFinalizationCommands(
+function buildMacDmgFinalizationCommands(
   dmgPath: string,
   credentials: MacDmgNotaryCredentials,
 ): ReadonlyArray<MacDmgCommand> {

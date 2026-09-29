@@ -37,7 +37,7 @@ function firstNonEmptyLine(value: string): string {
 // Queue previews use the shared markdown renderer for inline chips/emphasis, but
 // must stay a single composer row even when the queued prompt is a heading, list,
 // or fenced code block.
-export function compactQueuedComposerPreviewMarkdown(value: string): string {
+function compactQueuedComposerPreviewMarkdown(value: string): string {
   const firstLine = firstNonEmptyLine(value);
   if (firstLine.length === 0) {
     return "Queued follow-up";

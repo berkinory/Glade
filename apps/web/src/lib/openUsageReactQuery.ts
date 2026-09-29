@@ -13,7 +13,7 @@ function isOpenUsagePollingEnabled(): boolean {
   return window.localStorage.getItem(OPEN_USAGE_ENABLED_STORAGE_KEY) === "true";
 }
 
-export const openUsageQueryKeys = {
+const openUsageQueryKeys = {
   all: ["openUsage"] as const,
   provider: (provider: ProviderKind | null | undefined) =>
     ["openUsage", "provider", provider ?? null] as const,

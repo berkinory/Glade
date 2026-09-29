@@ -3,7 +3,7 @@
 //          that cannot natively load the referenced skill files. This is the fallback
 //          that makes Glade catalog skills usable on every provider.
 // Layer: Server provider helper
-// Exports: shouldInlineSkillForProvider, buildInlineSkillInstructions
+// Exports: buildInlineSkillInstructions
 
 import * as fs from "node:fs/promises";
 import * as nodePath from "node:path";
@@ -27,7 +27,7 @@ function pathSegments(path: string): Set<string> {
   );
 }
 
-export function shouldInlineSkillForProvider(provider: ProviderKind, skillPath: string): boolean {
+function shouldInlineSkillForProvider(provider: ProviderKind, skillPath: string): boolean {
   const segments = pathSegments(skillPath);
   switch (provider) {
     case "codex":

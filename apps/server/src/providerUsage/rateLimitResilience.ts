@@ -11,9 +11,9 @@ import type { ProviderKind, ServerProviderUsageSnapshot } from "@glade/contracts
 import { errorSnapshot } from "./parse";
 
 /** Fallback backoff when a 429 carries no usable Retry-After header. */
-export const DEFAULT_RATE_LIMIT_COOLDOWN_MS = 5 * 60 * 1000;
+const DEFAULT_RATE_LIMIT_COOLDOWN_MS = 5 * 60 * 1000;
 /** Upper bound on a cooldown so a huge/hostile Retry-After can't freeze usage on stale data for hours. */
-export const MAX_RATE_LIMIT_COOLDOWN_MS = 15 * 60 * 1000;
+const MAX_RATE_LIMIT_COOLDOWN_MS = 15 * 60 * 1000;
 /**
  * Cap on tracked credential fingerprints per resilience instance. Keys are derived from on-disk
  * credentials, so churn (re-logins rotating tokens) would otherwise grow the map without bound

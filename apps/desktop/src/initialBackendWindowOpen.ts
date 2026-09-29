@@ -3,7 +3,7 @@
 // Layer: Desktop startup utility
 // Exports: openInitialBackendWindow
 
-export type BackendWindowReadySource = "listening" | "http";
+type BackendWindowReadySource = "listening" | "http";
 
 export interface InitialBackendWindowOpenOptions {
   readonly isDevelopment: boolean;

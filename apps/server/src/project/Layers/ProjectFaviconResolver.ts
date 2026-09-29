@@ -51,7 +51,7 @@ function extractIconHref(source: string): string | null {
   return null;
 }
 
-export const makeProjectFaviconResolver = Effect.gen(function* () {
+const makeProjectFaviconResolver = Effect.gen(function* () {
   const fileSystem = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
 

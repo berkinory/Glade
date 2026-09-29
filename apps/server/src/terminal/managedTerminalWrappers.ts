@@ -315,7 +315,7 @@ export ZDOTDIR=${quotedZshDir}
   );
 }
 
-export function prepareManagedTerminalWrappers(options: {
+function prepareManagedTerminalWrappers(options: {
   baseEnv: NodeJS.ProcessEnv;
   rootDir: string;
   zshRootDir: string;

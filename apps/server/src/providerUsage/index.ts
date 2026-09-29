@@ -121,13 +121,6 @@ async function resolveCredentialKey(
   }
 }
 
-/** Test-only: drop the snapshot cache and any in-flight coalescing state. */
-export function __resetProviderUsageCacheForTests(): void {
-  snapshotCache.clear();
-  inFlightFetches.clear();
-  snapshotCacheGenerations.clear();
-}
-
 function invalidateProviderUsageSnapshots(providers: ReadonlyArray<ProviderKind>): void {
   for (const provider of providers) {
     snapshotCache.delete(provider);
@@ -217,7 +210,7 @@ async function enrichWithLocalUsage(
 }
 
 /** Plain async batch fetch for supported providers. Never throws. */
-export async function collectProviderUsageSnapshots(
+async function collectProviderUsageSnapshots(
   ctx: ProviderUsageContext,
   options: {
     forceRefresh?: boolean;

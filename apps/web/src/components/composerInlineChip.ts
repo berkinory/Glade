@@ -15,13 +15,13 @@ import {
 
 // ── Shared spacing ────────────────────────────────────────────────────
 // One gap token for block sides (vs plain text) and icon→label inside the block.
-export const COMPOSER_INLINE_CHIP_SIDE_GAP_CLASS_NAME = "mx-0.5";
+const COMPOSER_INLINE_CHIP_SIDE_GAP_CLASS_NAME = "mx-0.5";
 export const COMPOSER_INLINE_CHIP_ICON_LABEL_GAP_CLASS_NAME = "mr-1";
 
 // ── Shared base ───────────────────────────────────────────────────────
 // Plain inline flow (not inline-flex) so parsed tokens share the same line box /
 // caret strut as typed text. Icons are inline-block at 1em beside an inline label.
-export const COMPOSER_INLINE_CHIP_BASE_CLASS_NAME = cn(
+const COMPOSER_INLINE_CHIP_BASE_CLASS_NAME = cn(
   "inline max-w-full select-none align-baseline font-medium",
   COMPOSER_INLINE_CHIP_SIDE_GAP_CLASS_NAME,
   COMPOSER_EDITOR_TEXT_CLASS_NAME,
@@ -34,10 +34,10 @@ export const COMPOSER_INLINE_DECORATOR_HOST_CLASS_NAME = "inline";
 // ── Variants ──────────────────────────────────────────────────────────
 // `plain`  → in-composer look: no background, sits inline with typed text.
 // `soft`   → tinted pill used when a token is echoed inside a sent message.
-export type ComposerInlineChipFill = "plain" | "soft";
+type ComposerInlineChipFill = "plain" | "soft";
 // `accent` → skill + file/folder/plugin tokens (shared info color).
 // `neutral`→ generic tokens (foreground color).
-export type ComposerInlineChipTone = "accent" | "neutral";
+type ComposerInlineChipTone = "accent" | "neutral";
 
 const COMPOSER_INLINE_CHIP_FILL_CLASS_NAME: Record<ComposerInlineChipFill, string> = {
   plain: "",
@@ -56,7 +56,7 @@ const COMPOSER_INLINE_CHIP_TONE_SOFT_BG_CLASS_NAME: Record<ComposerInlineChipTon
 };
 
 /** Builds an inline chip class from the shared base plus a fill + tone variant. */
-export function composerInlineChipClassName(options?: {
+function composerInlineChipClassName(options?: {
   fill?: ComposerInlineChipFill;
   tone?: ComposerInlineChipTone;
   className?: string;
@@ -116,7 +116,7 @@ export interface AgentChipColor {
   readonly bg: string;
   readonly text: string;
 }
-export const DEFAULT_AGENT_CHIP_COLOR: AgentChipColor = {
+const DEFAULT_AGENT_CHIP_COLOR: AgentChipColor = {
   bg: "rgb(245 158 11 / 0.15)",
   text: "rgb(245 158 11)",
 };
@@ -135,10 +135,6 @@ export function resolveAgentChipColor(color: string | undefined): AgentChipColor
 // ── Sent-message echoes (timeline) ────────────────────────────────────
 // Mirror the in-composer chip exactly (plain, accent color, no fill) so a sent
 // skill/file/folder token reads identically to how it looked while typing.
-export const COMPOSER_INLINE_SKILL_CHIP_CLASS_NAME = COMPOSER_EDITOR_INLINE_CHIP_CLASS_NAME;
-export const COMPOSER_INLINE_MENTION_CHIP_CLASS_NAME = COMPOSER_EDITOR_INLINE_CHIP_CLASS_NAME;
-export const COMPOSER_INLINE_MENTION_CHIP_ICON_CLASS_NAME =
-  COMPOSER_INLINE_CHIP_INLINE_ICON_CLASS_NAME;
 
 /** Openable file-mention chip (assistant markdown links). Same plain accent look
  *  as a static mention chip, plus pointer affordance + hover underline so it

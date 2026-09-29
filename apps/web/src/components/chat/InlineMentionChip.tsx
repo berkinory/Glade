@@ -14,7 +14,7 @@ import type { ProviderMentionReference } from "@glade/contracts";
 import { basenameOfPath, pathLooksLikeKnownFile } from "~/file-icons";
 import { openWorkspaceFileReference, useWorkspaceFileOpener } from "~/lib/workspaceFileOpener";
 import {
-  COMPOSER_INLINE_MENTION_CHIP_CLASS_NAME,
+  COMPOSER_EDITOR_INLINE_CHIP_CLASS_NAME,
   COMPOSER_INLINE_MENTION_CHIP_INTERACTIVE_CLASS_NAME,
 } from "../composerInlineChip";
 import { InlineChipContent } from "../InlineChip";
@@ -101,7 +101,7 @@ export function InlineMentionChip(props: InlineMentionChipProps) {
   }
 
   return (
-    <span className={COMPOSER_INLINE_MENTION_CHIP_CLASS_NAME} title={props.path}>
+    <span className={COMPOSER_EDITOR_INLINE_CHIP_CLASS_NAME} title={props.path}>
       {inner}
     </span>
   );

@@ -33,7 +33,7 @@ const MAX_ENTRIES_PER_LIST = 50;
 
 const EMPTY_LIST: readonly string[] = Object.freeze([]);
 
-export function createDefaultWorkflowRunUiThreadState(): WorkflowRunUiThreadState {
+function createDefaultWorkflowRunUiThreadState(): WorkflowRunUiThreadState {
   return { pausedByUser: EMPTY_LIST, dismissed: EMPTY_LIST };
 }
 
@@ -91,7 +91,7 @@ function sanitizeWorkflowRunUiThreadState(rawState: unknown): WorkflowRunUiThrea
 
 // Validates persisted per-thread workflow-run flags so a malformed entry
 // degrades to defaults instead of flowing into the UI.
-export function sanitizeWorkflowRunUiStateByThreadId(
+function sanitizeWorkflowRunUiStateByThreadId(
   value: unknown,
 ): Record<string, WorkflowRunUiThreadState> {
   return sanitizeStringKeyedRecord(value, sanitizeWorkflowRunUiThreadState);
@@ -169,7 +169,7 @@ export const useWorkflowRunUiStore = create<WorkflowRunUiStoreState>()(
   ),
 );
 
-export function selectWorkflowRunUiThreadState(threadId: ThreadId | null) {
+function selectWorkflowRunUiThreadState(threadId: ThreadId | null) {
   return (store: WorkflowRunUiStoreState): WorkflowRunUiThreadState =>
     // Keep the fallback snapshot stable so React does not observe a phantom store
     // change while mounting a thread that has no tracked workflow-run flags yet.

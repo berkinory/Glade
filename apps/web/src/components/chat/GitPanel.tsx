@@ -459,5 +459,3 @@ export function GitPanel(props: {
     </div>
   );
 }
-
-export default GitPanel;

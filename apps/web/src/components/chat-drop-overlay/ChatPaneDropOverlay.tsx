@@ -16,11 +16,11 @@ import {
 } from "../../lib/threadDrag";
 import { cn } from "../../lib/utils";
 
-export { THREAD_DRAG_MIME, type ThreadDragPayload } from "../../lib/threadDrag";
+export { type ThreadDragPayload } from "../../lib/threadDrag";
 
 export type DropZone = "top" | "bottom" | "left" | "right";
 
-export interface ThreadDropRules {
+interface ThreadDropRules {
   excludedThreadIds?: ReadonlySet<ThreadId> | undefined;
 }
 
@@ -56,7 +56,7 @@ interface ChatPaneDropOverlayProps {
   paneScopeId?: string;
 }
 
-export function getDropZoneFromPointer(
+function getDropZoneFromPointer(
   rect: { left: number; top: number; width: number; height: number },
   clientX: number,
   clientY: number,
@@ -123,10 +123,7 @@ function parseThreadDragPayload(event: ReactDragEvent): ThreadDragPayload | null
 }
 
 // Applies the same thread constraints for hover feedback and the final drop.
-export function isThreadDragPayloadAllowed(
-  payload: ThreadDragPayload,
-  rules: ThreadDropRules,
-): boolean {
+function isThreadDragPayloadAllowed(payload: ThreadDragPayload, rules: ThreadDropRules): boolean {
   if (rules.excludedThreadIds?.has(payload.threadId)) return false;
   return true;
 }

@@ -242,7 +242,7 @@ type RealPathResolution =
   | { readonly status: "outside" }
   | { readonly status: "missing"; readonly cause: unknown };
 
-export const makeWorkspaceFileSystem = Effect.gen(function* () {
+const makeWorkspaceFileSystem = Effect.gen(function* () {
   const path = yield* Path.Path;
   const workspacePaths = yield* WorkspacePaths;
   const workspaceEntries = yield* WorkspaceEntries;

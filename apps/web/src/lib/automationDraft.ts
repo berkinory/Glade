@@ -1,19 +1,15 @@
 // FILE: automationDraft.ts
 // Purpose: Builds editable automation drafts and safety warnings for chat-triggered creation.
 // Layer: Web lib
-// Exports: AutomationCreationDraft plus pure warning/skill helpers.
+// Exports: pure automation draft warning/skill helpers.
 // Depends on: automation contracts shared with the native API.
 
 import { DEFAULT_AUTOMATION_FAST_INTERVAL_MAX_ITERATIONS } from "@glade/contracts";
 import type {
   AutomationMode,
   AutomationSchedule,
-  AutomationInteractionMode,
   AutomationWorktreeMode,
-  ModelSelection,
-  ProjectId,
   RuntimeMode,
-  ThreadId,
 } from "@glade/contracts";
 import { automationRequiresTargetThread } from "@glade/shared/automationMode";
 
@@ -24,8 +20,6 @@ import type { ChatAutomationExecutionScope } from "./automationIntent";
 function automationOpensItsOwnCheckout(mode: AutomationMode): boolean {
   return !automationRequiresTargetThread(mode);
 }
-
-export type AutomationCreationDraftSource = "slash" | "mention" | "dialog" | "generated";
 
 export type AutomationDraftWarningId =
   | "attachments-not-persisted"
@@ -46,25 +40,7 @@ export interface AutomationDraftWarning {
 
 export type AutomationAcknowledgedRiskId = "full-access" | "local-checkout" | "fast-interval";
 
-export interface AutomationCreationDraft {
-  readonly source: AutomationCreationDraftSource;
-  readonly name: string;
-  readonly prompt: string;
-  readonly schedule: AutomationSchedule;
-  readonly mode: AutomationMode;
-  readonly targetThreadId: ThreadId | null;
-  readonly projectId: ProjectId;
-  readonly modelSelection: ModelSelection;
-  readonly runtimeMode: RuntimeMode;
-  readonly interactionMode: AutomationInteractionMode;
-  readonly worktreeMode: AutomationWorktreeMode;
-  readonly maxIterations: number | null;
-  /** Consecutive failed runs before auto-disable; null = never auto-disable. */
-  readonly stopAfterConsecutiveFailures: number | null;
-  readonly warnings: readonly AutomationDraftWarning[];
-}
-
-export function containsAutomationSkillReference(prompt: string): boolean {
+function containsAutomationSkillReference(prompt: string): boolean {
   return /(^|\s)\$[a-z0-9][a-z0-9_-]*(?=\s|$|[,.!?;:])/i.test(prompt);
 }
 

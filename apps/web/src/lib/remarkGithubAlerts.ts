@@ -1,6 +1,6 @@
 import type { Blockquote, Parent, Root } from "mdast";
 
-export const GITHUB_ALERT_KINDS = ["note", "tip", "important", "warning", "caution"] as const;
+const GITHUB_ALERT_KINDS = ["note", "tip", "important", "warning", "caution"] as const;
 export type GithubAlertKind = (typeof GITHUB_ALERT_KINDS)[number];
 
 // GitHub only recognizes the marker alone on the first line of a blockquote.

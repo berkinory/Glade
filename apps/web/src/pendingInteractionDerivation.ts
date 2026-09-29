@@ -31,7 +31,7 @@ export interface PendingApproval {
   toolParamsDisplay?: ReadonlyArray<PendingToolParamDisplay>;
 }
 
-export interface PendingToolParamDisplay {
+interface PendingToolParamDisplay {
   name: string;
   value: unknown;
   displayName?: string;

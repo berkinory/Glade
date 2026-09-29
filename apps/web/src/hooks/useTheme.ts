@@ -11,7 +11,6 @@ import {
   type ChromeTheme,
   type ThemeFonts,
   type ThemeMode,
-  type ThemePack,
   type ThemeState,
   type ThemeVariant,
   areThemePacksEqual,
@@ -326,4 +325,4 @@ export function useTheme() {
   } as const;
 }
 
-export type { ChromeTheme, ThemeFonts, ThemeMode, ThemePack, ThemeState, ThemeVariant };
+export type { ChromeTheme, ThemeMode, ThemeState, ThemeVariant };

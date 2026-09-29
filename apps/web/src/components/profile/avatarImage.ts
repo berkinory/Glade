@@ -11,7 +11,7 @@ const AVATAR_QUALITY = 0.82;
 
 // Hard cap on the encoded string so a pathological image can never blow the localStorage
 // budget. Comfortable for a 160px square (~5–12 KB typical).
-export const AVATAR_MAX_DATA_URL_LENGTH = 200_000;
+const AVATAR_MAX_DATA_URL_LENGTH = 200_000;
 
 export class AvatarImageError extends Error {}
 

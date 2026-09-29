@@ -94,14 +94,14 @@ export function checkpointRevertDeleteInProgressDetail(threadId: ThreadId): stri
   return `Thread '${threadId}' has a checkpoint revert in progress. Wait for it to finish before deleting the thread.`;
 }
 
-export function findThreadById(
+function findThreadById(
   readModel: OrchestrationReadModel,
   threadId: ThreadId,
 ): OrchestrationThread | undefined {
   return readModel.threads.find((thread) => thread.id === threadId);
 }
 
-export function findProjectById(
+function findProjectById(
   readModel: OrchestrationReadModel,
   projectId: ProjectId,
 ): OrchestrationProject | undefined {

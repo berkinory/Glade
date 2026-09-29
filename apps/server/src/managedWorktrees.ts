@@ -99,7 +99,7 @@ export interface ManagedWorktreeThreadRef {
   readonly associatedWorktreePath?: string | null | undefined;
 }
 
-export type ManagedWorktreeRemovalReason = "deleted" | "archived-retention";
+type ManagedWorktreeRemovalReason = "deleted" | "archived-retention";
 
 export interface ManagedWorktreeRemovalCandidate {
   readonly entry: ServerManagedWorktree;

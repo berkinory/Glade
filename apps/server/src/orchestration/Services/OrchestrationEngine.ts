@@ -25,11 +25,11 @@ import type {
 } from "../../persistence/Errors.ts";
 import type { ManagedAttachmentPrincipal } from "../../managedAttachmentPrincipal.ts";
 
-export interface OrchestrationDispatchContext {
+interface OrchestrationDispatchContext {
   readonly attachmentPrincipal?: ManagedAttachmentPrincipal;
 }
 
-export interface OrchestrationProjectionCatchUpStatus {
+interface OrchestrationProjectionCatchUpStatus {
   /**
    * "unknown" means the lag probe itself failed (journal or cursor read
    * error): the projection may be fine or badly broken, and reporting either

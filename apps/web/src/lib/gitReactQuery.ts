@@ -274,7 +274,7 @@ async function refreshActiveGitDetails(queryClient: QueryClient, cwd: string): P
  * file changes. Reads stay on the shared Git queue so stats and patch variants
  * cannot consume expensive-read capacity in parallel.
  */
-export async function refreshGitWorkingTreeDiffsForCwd(
+async function refreshGitWorkingTreeDiffsForCwd(
   queryClient: QueryClient,
   cwd: string,
 ): Promise<void> {
@@ -347,7 +347,7 @@ export function refreshGitAfterFileWrite(queryClient: QueryClient, cwd: string):
  * that just settled), so joining would return without ever observing the new repository
  * state. In that case a fresh refresh is queued behind the running one instead.
  */
-export function refreshGitQueriesForCwd(
+function refreshGitQueriesForCwd(
   queryClient: QueryClient,
   cwd: string,
   depth: GitRefreshDepth = "active-details",
@@ -637,33 +637,6 @@ export function gitWorkingTreeDiffStatsQueryOptions(input: {
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     ...GIT_EXPENSIVE_READ_RETRY_OPTIONS,
-  });
-}
-
-export function gitReadFileAtRevQueryOptions(input: {
-  cwd: string | null;
-  filePath: string | null;
-  rev?: string | undefined;
-  base?: "branch" | "index" | undefined;
-  enabled?: boolean;
-}) {
-  const { cwd, filePath, base, rev } = input;
-  return queryOptions({
-    queryKey: gitQueryKeys.fileAtRev(cwd, filePath, rev ?? null, base ?? null),
-    queryFn: async () => {
-      const api = ensureNativeApi();
-      if (!cwd || !filePath) {
-        throw new Error("File revision read is unavailable.");
-      }
-      return api.git.readFileAtRev({
-        cwd,
-        filePath,
-        ...(rev !== undefined ? { rev } : {}),
-        ...(base !== undefined ? { base } : {}),
-      });
-    },
-    enabled: (input.enabled ?? true) && cwd !== null && filePath !== null,
-    staleTime: GIT_WORKING_TREE_DIFF_STALE_TIME_MS,
   });
 }
 

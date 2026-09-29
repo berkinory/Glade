@@ -112,7 +112,7 @@ export interface MessageTrailAnchor {
  * scrolled above the fold beneath a long assistant reply. Anchors must be sorted
  * by ascending `rowIndex` (transcript order); the topmost index is `0`.
  */
-export function resolveActiveTrailMessageId(
+function resolveActiveTrailMessageId(
   anchors: readonly MessageTrailAnchor[],
   topVisibleRowIndex: number,
 ): MessageId | null {
@@ -138,7 +138,7 @@ export interface ActiveTrailSnapshot {
   visibleIds: readonly MessageId[];
 }
 
-export const EMPTY_ACTIVE_TRAIL_SNAPSHOT: ActiveTrailSnapshot = {
+const EMPTY_ACTIVE_TRAIL_SNAPSHOT: ActiveTrailSnapshot = {
   currentId: null,
   visibleIds: [],
 };
@@ -155,10 +155,7 @@ function areMessageIdListsEqual(a: readonly MessageId[], b: readonly MessageId[]
   return true;
 }
 
-export function areActiveTrailSnapshotsEqual(
-  a: ActiveTrailSnapshot,
-  b: ActiveTrailSnapshot,
-): boolean {
+function areActiveTrailSnapshotsEqual(a: ActiveTrailSnapshot, b: ActiveTrailSnapshot): boolean {
   return a.currentId === b.currentId && areMessageIdListsEqual(a.visibleIds, b.visibleIds);
 }
 

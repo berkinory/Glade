@@ -5,7 +5,6 @@ import {
   type ProviderNativeCommandDescriptor,
   type ProviderPluginDescriptor,
   type ProviderSkillDescriptor,
-  type ProviderStartOptions,
   ThreadId,
 } from "@glade/contracts";
 import { useDebouncedValue } from "@tanstack/react-pacer";
@@ -45,7 +44,6 @@ interface ComposerDiscoveryInput {
   composerTrigger: ComposerTrigger | null;
   composerCommandPicker: "fork-target" | "review-target" | null;
   providerModelDiscoveryCwd: string | null;
-  providerOptionsForDispatch: ProviderStartOptions | undefined;
   gitCwd: string | null;
   discoverNativeCompaction?: boolean;
 }
@@ -56,7 +54,6 @@ export function useComposerDiscovery({
   composerTrigger,
   composerCommandPicker,
   providerModelDiscoveryCwd,
-  providerOptionsForDispatch,
   gitCwd,
   discoverNativeCompaction,
 }: ComposerDiscoveryInput) {

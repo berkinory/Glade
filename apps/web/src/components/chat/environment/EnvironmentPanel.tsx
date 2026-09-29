@@ -48,7 +48,6 @@ import { EnvironmentPinnedSection } from "./EnvironmentPinnedSection";
 import { EnvironmentProjectInstructionsSection } from "./EnvironmentProjectInstructionsSection";
 import {
   ENVIRONMENT_ROW_ICON_CLASS_NAME,
-  EnvironmentCollapsibleSection,
   EnvironmentLabeledSection,
   EnvironmentPanelTitle,
   EnvironmentRow,

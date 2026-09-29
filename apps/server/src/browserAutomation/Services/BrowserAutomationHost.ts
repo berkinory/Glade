@@ -3,7 +3,7 @@ import { ServiceMap, type Effect } from "effect";
 
 import type { BrowserHostRpcError } from "../browserHostRpcClient.ts";
 
-export interface BrowserAutomationHostCall {
+interface BrowserAutomationHostCall {
   readonly sessionKey: string;
   readonly provider: ProviderKind;
   readonly threadId: ThreadId;

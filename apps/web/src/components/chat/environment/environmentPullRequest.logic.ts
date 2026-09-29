@@ -204,7 +204,7 @@ export function describePullRequestComment(
 const FIX_PROMPT_COMMENT_BODY_MAX_LENGTH = 1_500;
 const FIX_PROMPT_FIELD_MAX_LENGTH = 300;
 // Keeps the pasted prompt bounded even when GitHub reports many open review threads.
-export const FIX_PROMPT_MAX_COMMENTS = 20;
+const FIX_PROMPT_MAX_COMMENTS = 20;
 
 function formatFixPromptInlineField(value: string): string {
   return truncate(
@@ -241,7 +241,7 @@ function formatReviewCommentItems(input: {
 }
 
 // Embed the visible review batch so one Fix action creates one coherent composer prompt.
-export function buildFixReviewCommentsPrompt(input: {
+function buildFixReviewCommentsPrompt(input: {
   prNumber: number;
   prUrl: string;
   comments: ReadonlyArray<GitPullRequestComment>;
@@ -255,7 +255,7 @@ export function buildFixReviewCommentsPrompt(input: {
 }
 
 /** Checks the agent can act on: failed or cancelled runs (pending/skipped/neutral are not). */
-export function failingPullRequestChecks(
+function failingPullRequestChecks(
   checks: ReadonlyArray<GitPullRequestCheck>,
 ): GitPullRequestCheck[] {
   return checks.filter((check) => check.status === "failure" || check.status === "cancelled");
@@ -272,7 +272,7 @@ function formatFailingCheckItems(checks: ReadonlyArray<GitPullRequestCheck>): st
 
 // Handed to the agent by Repair → Failing checks. The git snapshot only knows check names
 // and URLs, so the prompt asks the agent to reproduce the failure locally first.
-export function buildFixFailingChecksPrompt(input: {
+function buildFixFailingChecksPrompt(input: {
   prNumber: number;
   prUrl: string;
   headBranch: string;
@@ -289,7 +289,7 @@ export function buildFixFailingChecksPrompt(input: {
 }
 
 // Repair → Everything: one prompt that covers every actionable item the snapshot reports.
-export function buildRepairEverythingPrompt(input: {
+function buildRepairEverythingPrompt(input: {
   prNumber: number;
   prUrl: string;
   baseBranch: string;
@@ -479,7 +479,7 @@ function describePullRequestState(pr: PullRequestCardSource): string {
 }
 
 // "Add to chat": the PR itself as context, without asking the agent to do anything yet.
-export function buildPullRequestReferencePrompt(pr: PullRequestCardSource): string {
+function buildPullRequestReferencePrompt(pr: PullRequestCardSource): string {
   const diffStat = summarizePullRequestDiffStat(pr);
   const sizeLine = diffStat
     ? `Size: +${diffStat.additions} −${diffStat.deletions}${diffStat.filesLabel ? ` across ${diffStat.filesLabel}` : ""}.`

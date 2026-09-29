@@ -26,7 +26,7 @@ const toAuthControlPlaneError =
   (cause: unknown): AuthControlPlaneError =>
     new AuthControlPlaneError({ message, cause });
 
-export const makeAuthControlPlane = Effect.gen(function* () {
+const makeAuthControlPlane = Effect.gen(function* () {
   const bootstrapCredentials = yield* BootstrapCredentialService;
   const sessions = yield* SessionCredentialService;
 

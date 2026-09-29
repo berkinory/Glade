@@ -142,12 +142,12 @@ const DEFAULT_SEARCH_CONTENT_LIMIT = 50;
 const DEFAULT_SEARCH_CONTENT_STALE_TIME = 10_000;
 // Mirrors the schema bound in contracts: below this length the server would
 // reject the request at decode time, so the query must stay disabled.
-export const SEARCH_CONTENT_MIN_QUERY_LENGTH = PROJECT_SEARCH_CONTENT_MIN_QUERY_LENGTH;
+const SEARCH_CONTENT_MIN_QUERY_LENGTH = PROJECT_SEARCH_CONTENT_MIN_QUERY_LENGTH;
 const DEFAULT_READ_FILE_STALE_TIME = 5_000;
 const DEFAULT_WORKSPACE_FILE_REFERENCE_STALE_TIME = 15_000;
 const LOCAL_PREVIEW_GRANT_REFRESH_SAFETY_MS = 15_000;
 const LOCAL_PREVIEW_GRANT_MIN_REFETCH_INTERVAL_MS = 1_000;
-export const LOCAL_PREVIEW_GRANT_MAX_REFETCH_INTERVAL_MS = 30_000;
+const LOCAL_PREVIEW_GRANT_MAX_REFETCH_INTERVAL_MS = 30_000;
 const EMPTY_SEARCH_ENTRIES_RESULT: ProjectSearchEntriesResult = {
   entries: [],
   truncated: false,
@@ -193,7 +193,7 @@ export function isLocalPreviewGrantUsable(
 
 // Refresh short-lived preview grants while a file pane is open, with a cap so
 // backend restarts recover quickly instead of waiting for the full token TTL.
-export function localPreviewGrantRefetchIntervalMs(
+function localPreviewGrantRefetchIntervalMs(
   grant: Pick<ProjectCreateLocalFilePreviewGrantResult, "expiresAt"> | null | undefined,
   nowMs = Date.now(),
 ): number | false {

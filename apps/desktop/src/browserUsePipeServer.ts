@@ -32,7 +32,7 @@ const PIPE_DIR = "glade-browser-host";
 const PIPE_NAME_PREFIX = "glade-browser-host";
 
 export const GLADE_BROWSER_HOST_PIPE_ENV = "GLADE_BROWSER_HOST_PIPE_PATH";
-export const GLADE_BROWSER_HOST_CAPABILITY_ENV = "GLADE_BROWSER_HOST_CAPABILITY";
+const GLADE_BROWSER_HOST_CAPABILITY_ENV = "GLADE_BROWSER_HOST_CAPABILITY";
 export const GLADE_BROWSER_HOST_CAPABILITY_FD_ENV = "GLADE_BROWSER_HOST_CAPABILITY_FD";
 /** @deprecated Read/written only while old backend builds are still supported. */
 export const GLADE_BROWSER_USE_PIPE_ENV = "GLADE_BROWSER_USE_PIPE_PATH";
@@ -542,4 +542,3 @@ export class BrowserHostPipeServer {
 }
 
 /** @deprecated Compatibility alias for callers using the former browser-use name. */
-export { BrowserHostPipeServer as BrowserUsePipeServer };

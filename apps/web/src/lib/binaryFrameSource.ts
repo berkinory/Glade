@@ -75,7 +75,7 @@ export interface BinaryFrameSource {
  * handshake message. It keys on the stream (device, computer) rather than the
  * thread: two threads watching one source share the same capture output.
  */
-export function binaryFrameSocketUrl(input: {
+function binaryFrameSocketUrl(input: {
   readonly streamId: string;
   readonly streamIdParam: string;
   readonly wsPath: string;

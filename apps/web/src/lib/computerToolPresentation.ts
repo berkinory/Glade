@@ -2,7 +2,7 @@
 // Purpose: Say what a desktop tool call actually does, in the words a person would use,
 //          for the approval card and the transcript.
 // Layer: Web UI logic
-// Exports: COMPUTER_TOOL_TITLES, isComputerToolName, describeComputerToolCall
+// Exports: COMPUTER_TOOL_TITLES, describeComputerToolCall
 //
 // Every browser tool has a curated presentation and every computer tool had
 // none, so an approval for the most consequential thing Glade can do — moving a
@@ -79,10 +79,6 @@ export function computerToolName(candidate: string | null | undefined): Computer
     if (normalized === name || normalized.endsWith(`_${name}`)) return name;
   }
   return null;
-}
-
-export function isComputerToolName(candidate: string | null | undefined): boolean {
-  return computerToolName(candidate) !== null;
 }
 
 export interface ComputerToolCallDescription {

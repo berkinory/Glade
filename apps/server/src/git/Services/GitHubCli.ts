@@ -60,7 +60,7 @@ export interface GitHubRepositoryCloneUrls {
   readonly sshUrl: string;
 }
 
-export interface GitHubPullRequestReviewCommentsResult {
+interface GitHubPullRequestReviewCommentsResult {
   readonly comments: ReadonlyArray<GitPullRequestComment>;
   readonly truncated: boolean;
 }

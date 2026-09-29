@@ -44,12 +44,12 @@ import {
   type AutomationFailurePolicyValue,
 } from "./automationFailurePolicy";
 
-export const defaultModelSelection: ModelSelection = {
+const defaultModelSelection: ModelSelection = {
   provider: "codex",
   model: "gpt-5-codex",
 };
 
-export const TIME_OF_DAY_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+const TIME_OF_DAY_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 const LEGACY_WALL_CLOCK_TIMEZONE = "UTC";
 
@@ -227,28 +227,11 @@ const DATE_TIME_FORMATTER = new Intl.DateTimeFormat(undefined, {
   minute: "2-digit",
 });
 
-export function formatDateTime(value: string | null): string {
+function formatDateTime(value: string | null): string {
   if (!value) return "Not scheduled";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return DATE_TIME_FORMATTER.format(date);
-}
-
-function timezoneSuffix(schedule: AutomationSchedule): string {
-  if (
-    (schedule.type === "daily" ||
-      schedule.type === "weekdays" ||
-      schedule.type === "weekly" ||
-      schedule.type === "cron") &&
-    schedule.timezone
-  ) {
-    return ` ${schedule.timezone}`;
-  }
-  return " UTC";
-}
-
-function formatIntervalSchedule(seconds: number): string {
-  return seconds % 60 === 0 ? `Every ${seconds / 60} min` : `Every ${seconds} sec`;
 }
 
 function formatIntervalCadence(seconds: number): string {
@@ -258,27 +241,8 @@ function formatIntervalCadence(seconds: number): string {
   return `Every ${seconds}s`;
 }
 
-export function formatSchedule(schedule: AutomationSchedule): string {
-  switch (schedule.type) {
-    case "manual":
-      return "Manual";
-    case "once":
-      return `Once ${formatDateTime(schedule.runAt)}`;
-    case "interval":
-      return formatIntervalSchedule(schedule.everySeconds);
-    case "daily":
-      return `Daily ${schedule.timeOfDay}${timezoneSuffix(schedule)}`;
-    case "weekdays":
-      return `Weekdays ${schedule.timeOfDay}${timezoneSuffix(schedule)}`;
-    case "weekly":
-      return `Weekly ${weekdayLabel(schedule.dayOfWeek)} ${schedule.timeOfDay}${timezoneSuffix(schedule)}`;
-    case "cron":
-      return `Cron ${schedule.expression} ${schedule.timezone}`;
-  }
-}
-
 /** "09:00" -> "9:00": drops the leading zero on the hour for friendlier cadence labels. */
-export function formatClockTime(timeOfDay: string): string {
+function formatClockTime(timeOfDay: string): string {
   const [hours, minutes] = timeOfDay.split(":");
   const hour = Number.parseInt(hours ?? "", 10);
   if (Number.isNaN(hour)) return timeOfDay;
@@ -387,11 +351,11 @@ export function groupAutomationsByContinuedThread(
 // Single preset list for every interval picker (creation dialog and detail page)
 // so cadence options and labels never diverge between surfaces.
 
-export const AUTOMATION_INTERVAL_PRESET_SECONDS: readonly number[] = [
+const AUTOMATION_INTERVAL_PRESET_SECONDS: readonly number[] = [
   900, 1800, 3600, 7200, 21600, 43200, 86400,
 ];
 
-export function formatIntervalPresetLabel(seconds: number): string {
+function formatIntervalPresetLabel(seconds: number): string {
   if (seconds === 3600) return "Every hour";
   if (seconds % 3600 === 0) return `Every ${seconds / 3600} hours`;
   if (seconds >= 60 && seconds % 60 === 0) return `Every ${seconds / 60} min`;

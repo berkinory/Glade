@@ -8,7 +8,7 @@ import { latestUserAuthoredMessage } from "./computerVisibleUse.ts";
  * messages never grant this scope. The exact ID avoids guessing which
  * display's “Desktop 2” the user meant.
  */
-export function messageDesignatesComputerSpaces(text: string): readonly number[] {
+function messageDesignatesComputerSpaces(text: string): readonly number[] {
   const request = text
     .replace(/```[\s\S]*?```|`[^`]*`|"[^"\n]*"|“[^”\n]*”/g, "")
     .replace(/^\s*>.*$/gm, "");

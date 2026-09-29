@@ -37,7 +37,7 @@ export interface ComposerSubagentStripItem {
 }
 
 // Leading "back to the main thread" row shown while a subagent thread is open.
-export interface ComposerSubagentStripParentItem {
+interface ComposerSubagentStripParentItem {
   kind: "parent";
   key: string;
   threadId: ThreadId;

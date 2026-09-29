@@ -24,7 +24,7 @@ import {
 } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 
-import { DOCK_HEADER_ICON_BUTTON_CLASS, SurfaceTabChip } from "../chat/chatHeaderControls";
+import { CHAT_HEADER_ICON_CONTROL_CLASS_NAME, SurfaceTabChip } from "../chat/chatHeaderControls";
 import type {
   ThreadTerminalLayoutNode,
   ThreadTerminalPresentationMode,
@@ -83,7 +83,7 @@ function canMoveTerminalToOwnGroup(node: ThreadTerminalLayoutNode, terminalId: s
 function PaneActionButton(props: { label: string; onClick: () => void; children: ReactNode }) {
   return (
     <IconButton
-      className={DOCK_HEADER_ICON_BUTTON_CLASS}
+      className={CHAT_HEADER_ICON_CONTROL_CLASS_NAME}
       onClick={(event) => {
         event.stopPropagation();
         props.onClick();

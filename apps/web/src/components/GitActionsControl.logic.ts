@@ -5,12 +5,12 @@ import type {
 } from "@glade/contracts";
 import { isTemporaryWorktreeBranch, resolveUniqueGladeBranchName } from "@glade/shared/git";
 
-export type GitActionIconName = "commit" | "push" | "pr";
+type GitActionIconName = "commit" | "push" | "pr";
 
 /** Every glyph a git affordance can render — see `gitActionGlyphs.tsx` for the map. */
 export type GitGlyphName = GitActionIconName | "sync" | "branch";
 
-export type GitDialogAction = "commit" | "push" | "commit_push" | "create_pr";
+type GitDialogAction = "commit" | "push" | "commit_push" | "create_pr";
 
 export interface GitActionMenuItem {
   id: "commit" | "commit_push" | "push" | "pr";
@@ -512,7 +512,7 @@ export function resolveGitMenuActionDisabledReason(input: {
   return "Create PR is currently unavailable.";
 }
 
-export type GitCommitDialogActionId = "commit_new_branch" | "commit" | "commit_push" | "create_pr";
+type GitCommitDialogActionId = "commit_new_branch" | "commit" | "commit_push" | "create_pr";
 
 export interface GitCommitDialogAction {
   id: GitCommitDialogActionId;
@@ -846,7 +846,7 @@ export function resolvePullActionAvailability(input: {
 }
 
 /** Promote Pull as the primary git affordance while it is available or already running. */
-export function shouldPromotePullAction(input: {
+function shouldPromotePullAction(input: {
   quickAction: GitQuickAction;
   isPullRunning: boolean;
 }): boolean {
@@ -969,4 +969,3 @@ export function resolveLiveThreadBranchUpdate(input: {
 }
 
 // Re-export from shared for backwards compatibility in this module's exports
-export { resolveAutoFeatureBranchName } from "@glade/shared/git";

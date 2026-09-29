@@ -7,8 +7,8 @@ import {
   type JsonRpcStdioTransportErrorReason,
 } from "@glade/shared/jsonrpc-stdio";
 
-export const CODEX_APP_SERVER_MAX_FRAME_BYTES = JSONRPC_STDIO_MAX_FRAME_BYTES;
-export const CODEX_APP_SERVER_MAX_QUEUED_STDIN_BYTES = JSONRPC_STDIO_MAX_QUEUED_STDIN_BYTES;
+const CODEX_APP_SERVER_MAX_FRAME_BYTES = JSONRPC_STDIO_MAX_FRAME_BYTES;
+const CODEX_APP_SERVER_MAX_QUEUED_STDIN_BYTES = JSONRPC_STDIO_MAX_QUEUED_STDIN_BYTES;
 
 export type CodexAppServerTransportErrorReason = JsonRpcStdioTransportErrorReason;
 
@@ -35,7 +35,7 @@ export class CodexAppServerTransportError extends JsonRpcStdioTransportError {
  * which the manager already ignores when it is not JSON, and the framer has
  * resynchronized past it.
  */
-export const isFatalCodexLineError = (error: JsonRpcStdioTransportError): boolean =>
+const isFatalCodexLineError = (error: JsonRpcStdioTransportError): boolean =>
   error.reason === "frame-too-large";
 
 /** Codex-compatible name for the shared raw-byte JSONL framer. */

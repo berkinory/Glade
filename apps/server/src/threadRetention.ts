@@ -28,9 +28,9 @@ import { ServerLifecycleEvents } from "./serverLifecycleEvents";
 // soft-deletes; current versions archive threads so users can restore them.
 export const THREAD_RETENTION_COMMAND_ID_PREFIX = "thread-retention:";
 
-export const THREAD_RETENTION_UNUSED_MS = 7 * 24 * 60 * 60 * 1000;
-export const THREAD_RETENTION_INITIAL_SWEEP_DELAY_MS = 5 * 60 * 1000;
-export const THREAD_RETENTION_SWEEP_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const THREAD_RETENTION_UNUSED_MS = 7 * 24 * 60 * 60 * 1000;
+const THREAD_RETENTION_INITIAL_SWEEP_DELAY_MS = 5 * 60 * 1000;
+const THREAD_RETENTION_SWEEP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const THREAD_RETENTION_BATCH_SIZE = 25;
 const THREAD_RETENTION_BATCH_PAUSE_MS = 50;
 
@@ -171,7 +171,7 @@ function isThreadEligibleForRetention(
 // whose entire subtree is eligible, then omit eligible descendants that the root
 // command will archive. This prevents retention from cascading over a protected,
 // pinned, busy, or recent child and avoids duplicate archive commands.
-export function getRetentionArchiveRootIds(
+function getRetentionArchiveRootIds(
   readModel: Pick<OrchestrationReadModel, "threads"> | Pick<OrchestrationShellSnapshot, "threads">,
   nowMs = Date.now(),
   protectedThreadIds: ReadonlySet<ThreadId> = new Set(),
@@ -221,7 +221,7 @@ export function getRetentionArchiveRootIds(
     .map((thread) => thread.id);
 }
 
-export const runThreadRetentionSweep = Effect.fn("runThreadRetentionSweep")(function* (
+const runThreadRetentionSweep = Effect.fn("runThreadRetentionSweep")(function* (
   orchestrationEngine: OrchestrationEngineShape,
   projectionSnapshotQuery: ProjectionSnapshotQueryShape,
   automationRepository: AutomationRepositoryShape,

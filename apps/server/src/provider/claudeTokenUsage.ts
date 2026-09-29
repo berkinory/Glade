@@ -30,9 +30,9 @@ const CLAUDE_DEFAULT_CONTEXT_WINDOW_TOKENS = 200_000;
 const CLAUDE_CONTEXT_WARNING_RATIO = 0.8;
 const CLAUDE_UNCACHED_INGESTION_WARNING_TOKENS = 50_000;
 
-export type ClaudeContextUsageWarningKey = "uncached-ingestion" | "near-window" | "large-prompt";
+type ClaudeContextUsageWarningKey = "uncached-ingestion" | "near-window" | "large-prompt";
 
-export interface ClaudeContextUsageWarning {
+interface ClaudeContextUsageWarning {
   readonly key: ClaudeContextUsageWarningKey;
   readonly message: string;
 }
@@ -63,7 +63,7 @@ function finiteClaudeTokenCountOrZero(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
-export function claudePromptTokensFromRawUsage(usage: Record<string, unknown>): number {
+function claudePromptTokensFromRawUsage(usage: Record<string, unknown>): number {
   return (
     finiteClaudeTokenCountOrZero(usage.input_tokens) +
     finiteClaudeTokenCountOrZero(usage.cache_creation_input_tokens) +

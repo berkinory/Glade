@@ -12,14 +12,12 @@ import {
   supportsCustomTitleBar,
 } from "@glade/shared/desktopTitleBar";
 
-export interface PersistedCustomTitleBarPreference {
+interface PersistedCustomTitleBarPreference {
   readonly version: 1;
   readonly enabled: boolean;
 }
 
-export function parseCustomTitleBarPreference(
-  value: unknown,
-): PersistedCustomTitleBarPreference | null {
+function parseCustomTitleBarPreference(value: unknown): PersistedCustomTitleBarPreference | null {
   if (!value || typeof value !== "object") {
     return null;
   }

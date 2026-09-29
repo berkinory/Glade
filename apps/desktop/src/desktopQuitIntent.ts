@@ -2,7 +2,7 @@ export interface DeferredDesktopQuitIntent {
   readonly reason: string;
 }
 
-export type DeferredDesktopQuitSettlement =
+type DeferredDesktopQuitSettlement =
   | { readonly type: "replay-quit"; readonly intent: DeferredDesktopQuitIntent }
   | { readonly type: "resume-app" }
   | { readonly type: "already-replaying" };

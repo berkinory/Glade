@@ -54,7 +54,7 @@ export interface ServerSettingsShape {
   readonly streamViews: Stream.Stream<ServerSettingsView>;
 }
 
-export interface ServerSettingsSnapshot {
+interface ServerSettingsSnapshot {
   readonly revision: number;
   readonly migrationVersion: number;
   readonly settings: ServerSettings;
@@ -85,7 +85,7 @@ function migrateSettings(settings: ServerSettings, migrationVersion: number): Se
   };
 }
 
-export function toServerSettingsView(settings: ServerSettings): ServerSettingsView {
+function toServerSettingsView(settings: ServerSettings): ServerSettingsView {
   return settings;
 }
 
@@ -150,7 +150,7 @@ export class ServerSettingsService extends ServiceMap.Service<
     );
 }
 
-export function resolveTextGenerationProvider(settings: ServerSettings): ServerSettings {
+function resolveTextGenerationProvider(settings: ServerSettings): ServerSettings {
   const selection = settings.textGenerationModelSelection;
   if (
     hasDedicatedTextGenerationProvider(selection.provider) &&

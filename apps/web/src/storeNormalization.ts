@@ -224,7 +224,7 @@ export function arraysShallowEqual<T>(
  * slices). Used on the normalize fast path so segment updates propagate when
  * deltas extend or re-slice a message.
  */
-export function textSegmentArraysEqual(
+function textSegmentArraysEqual(
   left:
     | ReadonlyArray<{
         readonly sequence: number;
@@ -1422,7 +1422,7 @@ export function dedupeActivitiesByIdAfterAppend<TActivity extends Thread["activi
   return activities as TActivity[];
 }
 
-export function dedupeActivitiesById<TActivity extends Thread["activities"][number]>(
+function dedupeActivitiesById<TActivity extends Thread["activities"][number]>(
   activities: ReadonlyArray<TActivity>,
 ): TActivity[] {
   const indexById = new Map<string, number>();
@@ -2021,7 +2021,7 @@ function toLegacySessionStatus(
   }
 }
 
-export function toLegacyProvider(providerName: string | null): ProviderKind {
+function toLegacyProvider(providerName: string | null): ProviderKind {
   return providerName === "claudeAgent" ? "claudeAgent" : "codex";
 }
 

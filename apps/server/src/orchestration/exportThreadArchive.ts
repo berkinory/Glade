@@ -17,7 +17,7 @@ import zlib from "node:zlib";
 
 import type { OrchestrationMessage, OrchestrationThread } from "@glade/contracts";
 
-export interface ThreadArchiveEntry {
+interface ThreadArchiveEntry {
   readonly name: string;
   readonly chunks: Iterable<string>;
 }

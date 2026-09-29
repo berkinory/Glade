@@ -1,7 +1,5 @@
 // Shared timings for interaction motion. Nothing here delays the action itself.
-export const UI_MOTION_QUICK_MS = 100;
 export const UI_MOTION_REVEAL_MS = 130;
-export const UI_MOTION_PANEL_MS = 150;
 
 export const UI_MOTION_QUICK_CLASS = "duration-100 ease-out motion-reduce:transition-none";
 export const UI_MOTION_REVEAL_CLASS = "duration-130 ease-out motion-reduce:transition-none";

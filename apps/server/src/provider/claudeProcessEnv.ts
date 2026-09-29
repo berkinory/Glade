@@ -58,7 +58,7 @@ export interface ClaudeCliCredentialsSummary {
   readonly subscriptionType?: string;
 }
 
-export function resolveClaudeCredentialsPaths(input?: {
+function resolveClaudeCredentialsPaths(input?: {
   readonly env?: NodeJS.ProcessEnv;
   readonly homeDir?: string;
 }): ReadonlyArray<string> {
@@ -73,7 +73,7 @@ export function resolveClaudeCredentialsPaths(input?: {
   return [...new Set(paths)];
 }
 
-export function readClaudeCliCredentialsContentSummary(
+function readClaudeCliCredentialsContentSummary(
   content: string,
   nowMs = Date.now(),
 ): ClaudeCliCredentialsSummary {
@@ -94,7 +94,7 @@ export function readClaudeCliCredentialsContentSummary(
   };
 }
 
-export function hasUsableClaudeCliCredentials(input?: {
+function hasUsableClaudeCliCredentials(input?: {
   readonly env?: NodeJS.ProcessEnv;
   readonly homeDir?: string;
   readonly nowMs?: number;

@@ -1,5 +1,5 @@
 import { splitPromptIntoComposerSegments } from "./composer-editor-mentions";
-import { isBuiltInComposerSlashCommand, type ComposerSlashCommand } from "./composerSlashCommands";
+import { type ComposerSlashCommand } from "./composerSlashCommands";
 import {
   composerMentionQuotedPathHasClosingQuote,
   decodeComposerMentionQuotedPath,
@@ -398,20 +398,6 @@ export function detectComposerTrigger(text: string, cursorInput: number): Compos
     rangeStart: mentionStart,
     rangeEnd: cursor,
   };
-}
-
-export function parseStandaloneComposerSlashCommand(
-  text: string,
-): Exclude<ComposerSlashCommand, "model"> | null {
-  const match = /^\/([a-z-]+)\s*$/i.exec(text.trim());
-  if (!match) {
-    return null;
-  }
-  const command = match[1]?.toLowerCase();
-  if (!command || !isBuiltInComposerSlashCommand(command) || command === "model") {
-    return null;
-  }
-  return command;
 }
 
 export function replaceTextRange(

@@ -1284,7 +1284,6 @@ function SettingsRouteView() {
                   settings={settings}
                   defaults={defaults}
                   updateSettings={updateSettings}
-                  resetEpoch={resetEpoch}
                 />
                 <ProvidersSettingsPanel
                   active={activeSection === "providers"}

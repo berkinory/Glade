@@ -468,7 +468,7 @@ function stripVolatileTerminalRuntimeState(state: ThreadTerminalState): ThreadTe
   };
 }
 
-export function sanitizePersistedTerminalStateByThreadId(
+function sanitizePersistedTerminalStateByThreadId(
   terminalStateByThreadId: Record<ThreadId, ThreadTerminalState> | null | undefined,
 ): Record<ThreadId, ThreadTerminalState> {
   const next: Record<ThreadId, ThreadTerminalState> = {};

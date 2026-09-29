@@ -65,7 +65,7 @@ export function patchBunWebSocketCloseEventCompatibility() {
   });
 }
 
-export function patchCloseEventTarget(target: CloseEventTarget) {
+function patchCloseEventTarget(target: CloseEventTarget) {
   const socket = target as CloseEventTarget & { readonly [PATCHED]?: true };
   if (socket[PATCHED]) return;
 

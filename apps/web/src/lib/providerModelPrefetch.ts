@@ -18,7 +18,6 @@ import {
   providerAgentsQueryOptions,
   providerComposerCapabilitiesQueryOptions,
   providerDiscoveryQueryKeys,
-  providerModelDiscoveryRetry,
   providerModelsQueryOptions,
 } from "./providerDiscoveryReactQuery";
 
@@ -31,7 +30,7 @@ export type ProviderModelPrefetchSettings = Pick<
  * Providers whose model catalogs are runtime-discovered (not static) and thus
  * need warming before the picker can show anything beyond the static fallback.
  */
-export const NEW_THREAD_MODEL_PREFETCH_PROVIDERS: ReadonlyArray<ProviderKind> = [
+const NEW_THREAD_MODEL_PREFETCH_PROVIDERS: ReadonlyArray<ProviderKind> = [
   "codex",
   "claudeAgent",
   // Catalog discovery is cached and safe to
@@ -39,10 +38,10 @@ export const NEW_THREAD_MODEL_PREFETCH_PROVIDERS: ReadonlyArray<ProviderKind> = 
 ];
 
 /** Warm results stay fresh for 30 minutes; the interactive staleTime is 15min. */
-export const NEW_THREAD_MODEL_PREFETCH_STALE_TIME_MS = 30 * 60_000;
+const NEW_THREAD_MODEL_PREFETCH_STALE_TIME_MS = 30 * 60_000;
 
 /** Retain warmed catalogs as long as the server's stale-while-revalidate window. */
-export const NEW_THREAD_MODEL_PREFETCH_GC_TIME_MS = 24 * 60 * 60_000;
+const NEW_THREAD_MODEL_PREFETCH_GC_TIME_MS = 24 * 60 * 60_000;
 
 const EMPTY_PROVIDER_STATUSES: readonly ServerProviderStatus[] = [];
 
@@ -62,7 +61,7 @@ function resolveNewThreadModelPrefetchProvider(input: {
   );
 }
 
-export function resolveNewThreadModelPrefetchCwd(input: {
+function resolveNewThreadModelPrefetchCwd(input: {
   /** options.worktreePath from the new-thread call (only meaningful with hasExplicitWorktreePath). */
   worktreePath?: string | null | undefined;
   /** True when the caller passed options.worktreePath (even as null) — explicit intent always wins. */
@@ -100,14 +99,13 @@ export function resolveNewThreadModelPrefetchCwd(input: {
  * Build the same listModels query options ChatView uses for a provider, so a
  * prefetch lands on the exact cache key the composer will read on mount.
  */
-export function providerModelsPrefetchQueryOptions(input: {
+function providerModelsPrefetchQueryOptions(input: {
   provider: ProviderKind;
   settings: ProviderModelPrefetchSettings;
   cwd?: string | null;
   priority?: "background" | "prefetch" | undefined;
 }) {
   const { priority, provider, settings } = input;
-  const cwd = input.cwd ?? null;
 
   switch (provider) {
     case "claudeAgent":
@@ -126,8 +124,7 @@ function providerAgentsPrefetchQueryOptions(input: {
   settings: ProviderModelPrefetchSettings;
   cwd?: string | null;
 }) {
-  const { provider, settings } = input;
-  const cwd = input.cwd ?? null;
+  const { provider } = input;
 
   switch (provider) {
     case "claudeAgent":
@@ -139,7 +136,7 @@ function providerAgentsPrefetchQueryOptions(input: {
   }
 }
 
-export function prefetchProviderModelsForNewThread(
+function prefetchProviderModelsForNewThread(
   queryClient: QueryClient,
   input: {
     settings: ProviderModelPrefetchSettings;
@@ -160,10 +157,7 @@ export function prefetchProviderModelsForNewThread(
     });
     void queryClient.prefetchQuery({
       ...modelsOptions,
-      retry:
-        provider === "codex" || provider === "claudeAgent"
-          ? 0
-          : providerModelDiscoveryRetry(provider),
+      retry: 0,
       staleTime: NEW_THREAD_MODEL_PREFETCH_STALE_TIME_MS,
       gcTime: NEW_THREAD_MODEL_PREFETCH_GC_TIME_MS,
     });

@@ -31,7 +31,7 @@ const PAGE_TITLE_MAX_URLS_PER_SERVER = 3;
 const PAGE_TITLE_REDIRECT_LIMIT = 3;
 const PAGE_TITLE_CACHE_MAX = 250;
 
-export interface ParsedLsofListener {
+interface ParsedLsofListener {
   readonly pid: number;
   readonly command: string;
   readonly protocol: "tcp";
@@ -40,7 +40,7 @@ export interface ParsedLsofListener {
   readonly family: ServerLocalServerAddress["family"];
 }
 
-export interface LocalServerProcessInfo {
+interface LocalServerProcessInfo {
   readonly ppid: number;
   readonly commandLine: string;
   /** Unredacted process-table text retained only for internal classification. */
@@ -178,7 +178,7 @@ function parseLsofEndpoint(
 }
 
 // Parses `lsof -F pcPn` listener records into one row per listening address.
-export function parseLsofTcpListenOutput(output: string): ParsedLsofListener[] {
+function parseLsofTcpListenOutput(output: string): ParsedLsofListener[] {
   const listeners: ParsedLsofListener[] = [];
   let currentPid: number | null = null;
   let currentCommand = "";
@@ -228,7 +228,7 @@ export function parseLsofTcpListenOutput(output: string): ParsedLsofListener[] {
 
 // Parses `lsof -d cwd -Fn` records into a pid -> working-directory map. Each
 // process appears as a `p<pid>` line followed by an `n<path>` line for its cwd.
-export function parseLsofCwdOutput(output: string): Map<number, string> {
+function parseLsofCwdOutput(output: string): Map<number, string> {
   const cwdByPid = new Map<number, string>();
   let currentPid: number | null = null;
   for (const rawLine of output.split(/\r?\n/g)) {
@@ -254,7 +254,7 @@ export function parseLsofCwdOutput(output: string): Map<number, string> {
   return cwdByPid;
 }
 
-export function parseProcessInfo(output: string): Map<number, LocalServerProcessInfo> {
+function parseProcessInfo(output: string): Map<number, LocalServerProcessInfo> {
   const rows = new Map<number, LocalServerProcessInfo>();
   for (const line of output.split(/\r?\n/g)) {
     const match = line.match(/^\s*(\d+)\s+(\d+)\s+(.+?)\s*$/);
@@ -352,7 +352,7 @@ function normalizeProcessText(command: string, args: string): string {
   return `${command} ${args}`.toLowerCase();
 }
 
-export function isIgnoredLocalServerProcess(input: DevServerCandidateInput): boolean {
+function isIgnoredLocalServerProcess(input: DevServerCandidateInput): boolean {
   const text = normalizeProcessText(input.command, input.args);
   const commandName = normalizeCommandName(input.command, input.args);
   if (input.ports.every((port) => port < 1024)) {
@@ -382,7 +382,7 @@ function devScriptNameFromArgs(args: string): string | null {
   return match?.[1] ?? null;
 }
 
-export function detectDevServerKindFromText(input: DevServerCandidateInput): string | null {
+function detectDevServerKindFromText(input: DevServerCandidateInput): string | null {
   const commandName = normalizeCommandName(input.command, input.args);
   const text = normalizeProcessText(input.command, input.args);
   if (isExpoDevServerCommand(input.command, input.args)) return "Expo";
@@ -491,7 +491,7 @@ function extractMetaContent(html: string, names: readonly string[]): string | nu
 }
 
 // Pulls a human label from small HTML previews without depending on a DOM runtime.
-export function extractLocalServerPageTitle(html: string): string | null {
+function extractLocalServerPageTitle(html: string): string | null {
   const metaTitle = extractMetaContent(html, ["application-name", "og:title", "twitter:title"]);
   if (metaTitle) {
     return metaTitle;
@@ -743,7 +743,7 @@ async function mapWithConcurrency<T, R>(
   return results;
 }
 
-export async function enrichLocalServerProcessesWithPageTitles(
+async function enrichLocalServerProcessesWithPageTitles(
   servers: readonly ServerLocalServerProcess[],
   fetchTitle: (url: string) => Promise<string | null> = resolvePageTitleFromUrl,
 ): Promise<ServerLocalServerProcess[]> {
@@ -944,7 +944,7 @@ async function readProcessInfoWithAncestors(
 }
 
 // Builds UI-ready process rows from raw listener rows; exported for focused parser tests.
-export function buildLocalServerProcesses(
+function buildLocalServerProcesses(
   listeners: readonly ParsedLsofListener[],
   processInfoByPid: ReadonlyMap<number, LocalServerProcessInfo> = new Map(),
   cwdByPid: ReadonlyMap<number, string> = new Map(),

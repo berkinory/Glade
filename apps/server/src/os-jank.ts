@@ -11,10 +11,7 @@ import {
   readPathFromLoginShell,
 } from "@glade/shared/shell";
 import { createCachedLoginShellPathReader } from "@glade/shared/loginShellEnvironment";
-import {
-  expandHomePath as expandHomePathSync,
-  resolveGladeHomeDirectory,
-} from "@glade/shared/gladeHome";
+import { resolveGladeHomeDirectory } from "@glade/shared/gladeHome";
 
 function logPathHydrationWarning(message: string, error?: unknown): void {
   console.warn(`[server] ${message}`, error instanceof Error ? error.message : (error ?? ""));
@@ -81,9 +78,6 @@ export function fixPath(
     logWarning("Failed to hydrate PATH from the user environment.", error);
   }
 }
-
-export const expandHomePath = (input: string): Effect.Effect<string> =>
-  Effect.succeed(expandHomePathSync(input));
 
 export const resolveBaseDir = (raw: string | undefined): Effect.Effect<string> =>
   Effect.succeed(resolveGladeHomeDirectory({ configuredHome: raw }));

@@ -6,7 +6,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mts", ".cts"]);
-export const CENTRAL_ICON_DIRECTORIES = ["central-icons-reversed", "central-icons-fill"] as const;
+const CENTRAL_ICON_DIRECTORIES = ["central-icons-reversed", "central-icons-fill"] as const;
 
 export async function listFiles(root: string): Promise<string[]> {
   const entries = await fs

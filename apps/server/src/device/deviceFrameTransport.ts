@@ -5,20 +5,14 @@
  * and keyframe rules.
  */
 import { encodeDeviceFrame } from "@glade/shared/deviceFrame";
-import {
-  classifyByFrameFlags,
-  FrameTransport,
-  type FrameSink,
-  type FrameSubscriberStats,
-} from "@glade/shared/frameTransport";
+import { classifyByFrameFlags, FrameTransport, type FrameSink } from "@glade/shared/frameTransport";
 
 import type { DeviceStreamFrame } from "./DeviceBackend.ts";
 
-export const DEVICE_FRAME_QUEUE_LIMIT = 8;
-export const DEVICE_FRAME_SOCKET_BUDGET_BYTES = 2 * 1024 * 1024;
+const DEVICE_FRAME_QUEUE_LIMIT = 8;
+const DEVICE_FRAME_SOCKET_BUDGET_BYTES = 2 * 1024 * 1024;
 
 export type DeviceFrameSink = FrameSink;
-export type DeviceFrameSubscriberStats = FrameSubscriberStats;
 
 export interface DeviceFrameTransportOptions {
   readonly queueLimit?: number;

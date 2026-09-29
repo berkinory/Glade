@@ -1,7 +1,7 @@
 // FILE: toolCallDetailsFormatting.ts
 // Purpose: Format captured tool-call commands and output for transcript detail views.
 // Layer: Web transcript presentation utility
-// Exports: formatShellTranscript, formatToolOutputText,
+// Exports: formatShellTranscript,
 //          createMarkdownCodeFence
 // Depends on: WorkLogToolOutputDetails shape from toolCallDetails
 
@@ -24,7 +24,7 @@ export function formatShellTranscript(
     : formatShellCommand(command);
 }
 
-export function formatToolOutputText(output: WorkLogToolOutputDetails | undefined): string | null {
+function formatToolOutputText(output: WorkLogToolOutputDetails | undefined): string | null {
   if (!output) {
     return null;
   }

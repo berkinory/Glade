@@ -274,13 +274,6 @@ type ModelDefinition = {
 
 // Static catalog entries that rely on live CLI discovery advertise no
 // capabilities of their own.
-const EMPTY_MODEL_CAPABILITIES: ModelCapabilities = {
-  reasoningEffortLevels: [],
-  supportsFastMode: false,
-  supportsThinkingToggle: false,
-  promptInjectedEffortLevels: [],
-  contextWindowOptions: [],
-};
 
 /**
  * TODO: This should not be a static array, each provider

@@ -6,7 +6,7 @@ interface PtyExitEvent {
   readonly exitCode: number;
 }
 
-export interface PtyTerminal {
+interface PtyTerminal {
   readonly kill: () => void;
   readonly onData: (listener: (chunk: string) => void) => Disposable;
   readonly onExit: (listener: (event: PtyExitEvent) => void) => Disposable;

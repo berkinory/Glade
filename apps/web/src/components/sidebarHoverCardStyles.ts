@@ -7,7 +7,7 @@
 // Exports: SIDEBAR_HOVER_CARD_TRIGGER_PROPS, SIDEBAR_HOVER_CARD_POPUP_PROPS,
 //          SIDEBAR_HOVER_CARD_SURFACE_CLASS_NAME,
 //          SIDEBAR_HOVER_CARD_CONTAINER_PADDING_CLASS_NAME,
-//          SIDEBAR_HOVER_CARD_ROW_PADDING_CLASS_NAME, SIDEBAR_HOVER_CARD_ROW_CLASS_NAME
+//          SIDEBAR_HOVER_CARD_ROW_CLASS_NAME
 // Why: The thread card is a Base UI Tooltip and the project card a PreviewCard —
 //      two different primitives. Centralizing every shared characteristic here is
 //      what keeps the two reading as one component instead of two look-alikes.
@@ -19,7 +19,7 @@ import { TOOLTIP_OPEN_DELAY_MS } from "./ui/tooltip";
 export const SIDEBAR_HOVER_CARD_CONTAINER_PADDING_CLASS_NAME = "p-0.5";
 
 /** Per-row padding for each line in a hover card (header, meta, menu rows). */
-export const SIDEBAR_HOVER_CARD_ROW_PADDING_CLASS_NAME = "px-1.5 py-1";
+const SIDEBAR_HOVER_CARD_ROW_PADDING_CLASS_NAME = "px-1.5 py-1";
 
 /**
  * Full per-row treatment shared by both hover cards: layout, padding, compact

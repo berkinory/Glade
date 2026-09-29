@@ -84,7 +84,7 @@ const EDITOR_ICONS: Partial<Record<EditorId, Icon>> = {
 const NATIVE_EDITOR_ICON_COMPONENTS = new Map<EditorId, Icon>();
 const loadedNativeIcons = new Set<EditorId>();
 
-export function resolveEditorNativeIconUrl(editorId: EditorId): string {
+function resolveEditorNativeIconUrl(editorId: EditorId): string {
   const params = new URLSearchParams({ id: editorId });
   return resolveWsHttpUrl(`${EDITOR_ICON_ROUTE_PATH}?${params.toString()}`);
 }
@@ -139,7 +139,7 @@ function resolveNativeEditorIcon(editorId: EditorId): Icon {
 
 // Build labels from the shared catalog so newly supported editors appear without
 // duplicating the editor list across multiple UI components.
-export function resolveEditorLabel(editorId: EditorId, platform: string): string {
+function resolveEditorLabel(editorId: EditorId, platform: string): string {
   if (editorId === "file-manager") {
     return isMacPlatform(platform) ? "Finder" : isWindowsPlatform(platform) ? "Explorer" : "Files";
   }

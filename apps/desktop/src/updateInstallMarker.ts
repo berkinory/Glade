@@ -16,7 +16,7 @@ import {
 const INSTALL_MARKER_SCHEMA_VERSION = 2;
 const INSTALL_MARKER_STALE_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
 
-export type InstallMarkerPhase = "requested" | "handoff" | "failed";
+type InstallMarkerPhase = "requested" | "handoff" | "failed";
 
 export interface UpdateInstallMarker {
   readonly schemaVersion: 2;
@@ -36,7 +36,7 @@ export interface UpdateInstallHandoffExpectation {
   readonly artifact: UpdateArtifactIdentity;
 }
 
-export function installMarkerMatchesHandoffExpectation(
+function installMarkerMatchesHandoffExpectation(
   marker: UpdateInstallMarker,
   expected: UpdateInstallHandoffExpectation,
 ): boolean {

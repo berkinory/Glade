@@ -19,7 +19,7 @@ import { useCallback, useRef, useState } from "react";
  * gap between the last row and the composer is unchanged — but now those 20px are
  * real content sliding behind the glass instead of a solid backing.
  */
-export const COMPOSER_OVERLAY_TUCK_PX = 20;
+const COMPOSER_OVERLAY_TUCK_PX = 20;
 
 /**
  * Bottom content inset for the transcript given the measured composer overlay height.
@@ -35,12 +35,9 @@ export function composerTranscriptBottomInsetPx(overlayHeightPx: number): number
  * keeping the footer row (attach, access mode, model picker, send) clear of any
  * content scrolling underneath — only the editor region reveals the transcript.
  */
-export const COMPOSER_OVERLAY_BOTTOM_CLEARANCE_PX = 52;
+const COMPOSER_OVERLAY_BOTTOM_CLEARANCE_PX = 52;
 
-export function composerOverlayBottomClearancePx(
-  surfaceBottomPx: number,
-  footerTopPx: number,
-): number {
+function composerOverlayBottomClearancePx(surfaceBottomPx: number, footerTopPx: number): number {
   return Math.max(
     COMPOSER_OVERLAY_BOTTOM_CLEARANCE_PX,
     Math.ceil(Math.max(0, surfaceBottomPx - footerTopPx)),
@@ -52,7 +49,7 @@ export function composerOverlayBottomClearancePx(
  * the glass stays fully painted (blurred and tinted by the surface) until it reaches
  * this band, then fades out before the footer row.
  */
-export const COMPOSER_OVERLAY_MASK_FADE_PX = 40;
+const COMPOSER_OVERLAY_MASK_FADE_PX = 40;
 
 /**
  * Mask for the transcript scroll viewport while the composer floats over it:

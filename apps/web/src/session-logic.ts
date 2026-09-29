@@ -30,17 +30,11 @@ export {
   deriveWorkLogEntries,
   isFileChangeWorkLogEntry,
   isProviderFileEditWorkLogEntry,
-  isRoutedSubagentWorkEntry,
   omitRoutedSubagentWorkEntries,
   orderedActivities,
   type TimelineEntry,
-  type WorkLogAutomation,
   type WorkLogEntry,
-  type WorkLogLiveActivity,
-  type WorkLogLiveActivityState,
   type WorkLogSubagent,
-  type WorkLogSubagentAction,
-  type WorkLogGladeCreatedThread,
   type WorkLogGladeThreadCreation,
 } from "./workLog";
 
@@ -103,16 +97,6 @@ export function formatClockDuration(durationMs: number): string {
   const seconds = elapsedSeconds % 60;
   if (hours > 0) return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
   return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
-}
-
-export function formatClockElapsed(startIso: string, endIso: string | undefined): string | null {
-  if (!endIso) return null;
-  const startedAt = Date.parse(startIso);
-  const endedAt = Date.parse(endIso);
-  if (Number.isNaN(startedAt) || Number.isNaN(endedAt) || endedAt < startedAt) {
-    return null;
-  }
-  return formatClockDuration(endedAt - startedAt);
 }
 
 export function formatElapsed(startIso: string, endIso: string | undefined): string | null {

@@ -91,7 +91,7 @@ const EMPTY_COMPOSER_FILES: ReadonlyArray<ComposerFileAttachment> = [];
 
 function ignoreComposerFileRemoval(_fileId: string): void {}
 
-export interface KanbanNewTaskProjectOption {
+interface KanbanNewTaskProjectOption {
   id: ProjectId;
   name: string;
 }
@@ -321,7 +321,6 @@ export function KanbanNewTaskDialog({
     selectedProjectCwd: selectedProject?.cwd ?? null,
     serverCwd: serverConfigQuery.data?.cwd ?? null,
     serverHomeDir: serverConfigQuery.data?.homeDir ?? null,
-    providerOptionsForDispatch,
     hiddenProviders: settings.hiddenProviders,
     providerOrder: settings.providerOrder,
     handleProviderModelChange,
@@ -614,7 +613,6 @@ export function KanbanNewTaskDialog({
                     model={selectedModel}
                     runtimeModel={selectedRuntimeModel}
                     runtimeModels={runtimeModelsByProvider[selectedProvider]}
-                    runtimeAgents={selectedRuntimeAgents}
                     modelOptions={selectedProviderModelOptions}
                     prompt={prompt}
                     onPromptChange={setPrompt}

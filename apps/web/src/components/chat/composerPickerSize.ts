@@ -7,7 +7,7 @@
 export type ComposerPickerSize = "small" | "normal";
 
 /** Global picker menu density — set to "small" or "normal". */
-export const COMPOSER_PICKER_SIZE: ComposerPickerSize = "normal";
+const COMPOSER_PICKER_SIZE: ComposerPickerSize = "normal";
 
 export function resolveComposerPickerSize(
   size: ComposerPickerSize | undefined,

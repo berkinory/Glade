@@ -10,14 +10,14 @@ import type { ReactNode, SVGProps } from "react";
 import { cn } from "~/lib/utils";
 import { ClaudeAI, type Icon, OpenAI } from "./Icons";
 
-export type ProviderIconTone = "default" | "header";
+type ProviderIconTone = "default" | "header";
 
 export const PROVIDER_ICON_COMPONENT_BY_PROVIDER: Record<ProviderKind, Icon> = {
   codex: OpenAI,
   claudeAgent: ClaudeAI,
 };
 
-export function providerIconToneClassName(
+function providerIconToneClassName(
   provider: ProviderKind | null | undefined,
   tone: ProviderIconTone = "default",
 ): string {

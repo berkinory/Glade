@@ -13,7 +13,7 @@ import { isOrdinarySpaceProject } from "~/lib/spaces";
 import type { Project, SidebarThreadSummary } from "~/types";
 
 /** Strict membership: a project Spaces organize, filed into `spaceId`. */
-export function isProjectInSpace(
+function isProjectInSpace(
   project: Project | null | undefined,
   spaceId: SpaceId | null,
   paths: ServerWorkspacePaths,

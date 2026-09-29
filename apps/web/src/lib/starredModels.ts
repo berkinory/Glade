@@ -12,7 +12,7 @@ export const STARRED_MODELS_STORAGE_KEY = "glade:starred-models:v1";
 // A starred preset pins the traits the user composed once so one click restores them.
 // `null` traits mean "leave whatever the provider currently uses" (legacy favorites,
 // models without that control).
-export const StarredModelSchema = Schema.Struct({
+const StarredModelSchema = Schema.Struct({
   provider: Schema.String,
   model: Schema.String,
   effort: Schema.NullOr(Schema.String),

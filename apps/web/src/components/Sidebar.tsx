@@ -79,7 +79,6 @@ import {
   type ResolvedKeybindingsConfig,
   WS_GITHUB_PROJECT_PROVISIONING_CAPABILITY,
 } from "@glade/contracts";
-import { isGenericChatThreadTitle } from "@glade/shared/chatThreads";
 import { parseGitHubRepositoryNameWithOwnerFromPullRequestUrl } from "@glade/shared/githubRepository";
 import { getDefaultModel } from "@glade/shared/model";
 import { pluralize } from "@glade/shared/text";
@@ -136,7 +135,6 @@ import {
   createSidebarTreeThreadsSelector,
   isSidebarThreadVisible,
 } from "../storeSelectors";
-import { derivePendingApprovals, derivePendingUserInputs } from "../session-logic";
 import { useThreadPullRequests } from "../hooks/useThreadPullRequests";
 import {
   providerComposerCapabilitiesQueryOptions,
@@ -307,7 +305,6 @@ import {
   createSidebarThreadHoverAnchorId,
   findWorkspaceRootMatch,
   getPinnedThreadsForSidebar,
-  getUnpinnedThreadsForSidebar,
   orderPinnedProjectsForSidebar,
   getNextVisibleSidebarThreadId,
   getSidebarThreadIdsToPrewarm,

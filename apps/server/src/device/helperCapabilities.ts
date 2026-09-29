@@ -19,7 +19,7 @@ import {
 } from "@glade/contracts";
 
 /** Every capability, in the order the pane should list them. */
-export const DEVICE_CAPABILITY_IDS = [
+const DEVICE_CAPABILITY_IDS = [
   "framebuffer",
   "hid",
   "accessibility",
@@ -175,7 +175,7 @@ export const availabilityFromProbe = (probe: HelperProbeResult): DeviceAvailabil
 };
 
 /** Names the toolchain a failure was measured on, when the helper reported it. */
-export const describeToolchain = (toolchain: DeviceToolchain | undefined): string => {
+const describeToolchain = (toolchain: DeviceToolchain | undefined): string => {
   if (!toolchain) return "";
   const version = toolchain.xcodeVersion;
   const build = toolchain.xcodeBuild;
@@ -186,7 +186,7 @@ export const describeToolchain = (toolchain: DeviceToolchain | undefined): strin
 };
 
 /** A one-line summary of what is broken, for logs and error messages. */
-export const describeBrokenCapabilities = (
+const describeBrokenCapabilities = (
   broken: readonly DeviceCapabilityStatus[],
   toolchain: DeviceToolchain | undefined,
 ): string => {

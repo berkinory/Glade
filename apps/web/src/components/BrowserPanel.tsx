@@ -141,7 +141,7 @@ function BrowserActionMenuIcon({ icon: Icon }: { icon: LucideIcon }) {
   );
 }
 
-export function BrowserAnnotationButton(props: {
+function BrowserAnnotationButton(props: {
   controller: BrowserAnnotationsController;
   disabled: boolean;
 }) {
@@ -569,7 +569,7 @@ function BrowserLocalServersHome({
   );
 }
 
-export function BrowserPanel({
+function BrowserPanel({
   mode,
   threadId,
   onClosePanel,

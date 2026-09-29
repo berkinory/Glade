@@ -6,14 +6,14 @@ import type { PersistenceSqlError } from "../Errors.ts";
 
 export const PROVIDER_COMMAND_REACTOR_CONSUMER = "provider-command-reactor.v1";
 
-export const OrchestrationEventDeliveryState = Schema.Literals([
+const OrchestrationEventDeliveryState = Schema.Literals([
   "inflight",
   "retry",
   "succeeded",
   "dead",
   "uncertain",
 ]);
-export type OrchestrationEventDeliveryState = typeof OrchestrationEventDeliveryState.Type;
+type OrchestrationEventDeliveryState = typeof OrchestrationEventDeliveryState.Type;
 
 export const OrchestrationConsumerState = Schema.Struct({
   consumerName: Schema.String,

@@ -15,7 +15,7 @@ export interface AgentCursorStylePreference {
   readonly shadow?: string;
 }
 
-export interface PersistedAgentCursorPreference {
+interface PersistedAgentCursorPreference {
   readonly version: 1;
   readonly style: AgentCursorStylePreference | null;
 }
@@ -50,7 +50,7 @@ export function normalizeAgentCursorStylePreference(
   };
 }
 
-export function parseAgentCursorPreference(value: unknown): PersistedAgentCursorPreference | null {
+function parseAgentCursorPreference(value: unknown): PersistedAgentCursorPreference | null {
   if (!value || typeof value !== "object") return null;
   const candidate = value as Record<string, unknown>;
   if (candidate.version !== 1 || !("style" in candidate)) return null;

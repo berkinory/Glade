@@ -15,7 +15,6 @@ import {
 } from "@glade/shared/migrationRecovery";
 export {
   migrationBackupDirectory,
-  migrationBackupProvenancePath,
   migrationRecoveryMarkerPath,
 } from "@glade/shared/migrationRecovery";
 
@@ -83,7 +82,7 @@ function formatBytes(bytes: number): string {
  * deliberate: migrating without a restorable snapshot risks the user's data,
  * and half-writing one risks their disk.
  */
-export class InsufficientMigrationBackupSpaceError extends Error {
+class InsufficientMigrationBackupSpaceError extends Error {
   readonly _tag = "InsufficientMigrationBackupSpaceError";
 
   constructor(
@@ -207,7 +206,7 @@ function migrationLineageFingerprint(
     .digest("hex");
 }
 
-export const inspectMigrationBackupPlan = Effect.gen(function* () {
+const inspectMigrationBackupPlan = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
   const tables = yield* sql<{ readonly name: string }>`
     SELECT name FROM sqlite_master
@@ -659,7 +658,7 @@ const pruneUnreferencedMigrationArtifacts = (dbPath: string): Promise<void> =>
  * evict another's, and a single prefix match is what left the `failed-migration`
  * and `pre-tracker-repair` families unreclaimable for their entire existence.
  */
-export const pruneMigrationBackups = (dbPath: string, retention = MIGRATION_BACKUP_RETENTION) =>
+const pruneMigrationBackups = (dbPath: string, retention = MIGRATION_BACKUP_RETENTION) =>
   attemptPromise(async () => {
     // Orphaned partials are unreferenced by construction: the only writer holds
     // the database lifecycle lock, and a partial that outlived its writer can

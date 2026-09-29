@@ -335,7 +335,7 @@ function parseCodexSessionSummaryLine(line: string): CodexSessionSummary | null 
   };
 }
 
-export async function readCodexSessionSummary(path: string): Promise<CodexSessionSummary | null> {
+async function readCodexSessionSummary(path: string): Promise<CodexSessionSummary | null> {
   let handle: Awaited<ReturnType<typeof fs.open>>;
   try {
     handle = await fs.open(path, "r");
@@ -524,9 +524,7 @@ async function listRecentClaudeTranscriptFiles(
  * backend. Stream chunks and cap individual records so malformed or tool-heavy lines cannot
  * recreate the same problem inside a line reader.
  */
-export async function readClaudeUsageSamples(
-  path: string,
-): Promise<ReadonlyArray<ClaudeUsageSample>> {
+async function readClaudeUsageSamples(path: string): Promise<ReadonlyArray<ClaudeUsageSample>> {
   const samples: ClaudeUsageSample[] = [];
   const seenKeys = new Set<string>();
   const stream = createReadStream(path);

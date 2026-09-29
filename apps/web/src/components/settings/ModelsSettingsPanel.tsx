@@ -31,9 +31,8 @@ export function ModelsSettingsPanel({
   settings,
   defaults,
   updateSettings,
-  resetEpoch,
   active,
-}: AppSettingsBinding & { readonly resetEpoch: number; readonly active: boolean }) {
+}: AppSettingsBinding & { readonly active: boolean }) {
   const serverConfigQuery = useQuery(serverConfigQueryOptions());
 
   const { textGenerationModel, textGenerationProvider } = settings;

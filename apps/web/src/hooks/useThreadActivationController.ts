@@ -37,7 +37,7 @@ export type ThreadActivationControllerInput = {
 };
 
 // Runs the complete sidebar activation side-effect chain for one thread intent.
-export function activateThreadFromSidebarIntent(
+function activateThreadFromSidebarIntent(
   input: ThreadActivationControllerInput,
   threadId: ThreadId,
 ): void {

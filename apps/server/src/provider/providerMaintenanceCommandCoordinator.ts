@@ -2,7 +2,7 @@ import * as Effect from "effect/Effect";
 import * as Ref from "effect/Ref";
 import * as Semaphore from "effect/Semaphore";
 
-export interface ProviderMaintenanceCommandCoordinatorShape<E> {
+interface ProviderMaintenanceCommandCoordinatorShape<E> {
   readonly withCommandLock: <A, R>(input: {
     readonly targetKey: string;
     readonly lockKey: string;

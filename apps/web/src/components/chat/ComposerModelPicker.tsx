@@ -7,7 +7,6 @@
 
 import {
   type ModelSlug,
-  type ProviderAgentDescriptor,
   type ProviderKind,
   type ProviderModelDescriptor,
   type ProviderModelOptions,
@@ -115,7 +114,6 @@ type ComposerModelPickerProps = {
   runtimeModelsByProvider?: Partial<
     Record<ProviderKind, ReadonlyArray<ProviderModelDescriptor> | null | undefined>
   >;
-  runtimeAgents?: ReadonlyArray<ProviderAgentDescriptor> | null | undefined;
   modelOptions: ProviderModelOptions[ProviderKind] | undefined;
   prompt: string;
   onPromptChange: (prompt: string) => void;
@@ -514,7 +512,6 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
             threadId={threadId}
             model={props.model}
             runtimeModel={props.runtimeModel}
-            runtimeAgents={props.runtimeAgents}
             modelOptions={props.modelOptions}
             prompt={props.prompt}
             onPromptChange={props.onPromptChange}

@@ -3,12 +3,7 @@
 // Layer: Chat composer presentation
 // Depends on: shared trait resolution helpers, provider model option updates, and shared menu primitives.
 
-import {
-  type ProviderAgentDescriptor,
-  type ProviderKind,
-  type ProviderModelDescriptor,
-  type ThreadId,
-} from "@glade/contracts";
+import { type ProviderKind, type ProviderModelDescriptor, type ThreadId } from "@glade/contracts";
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronDownIcon, FastModeIcon, FastModeOutlineIcon, SettingsIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
@@ -45,7 +40,6 @@ export function resolveTraitsTriggerSummary(options: {
   prompt: string;
   modelOptions: ProviderOptions | null | undefined;
   runtimeModel?: ProviderModelDescriptor | undefined;
-  runtimeAgents: ReadonlyArray<ProviderAgentDescriptor> | null | undefined;
 }): {
   contextWindowLabel: string | null;
   primaryLabel: string | null;
@@ -229,7 +223,6 @@ export interface TraitsMenuContentProps {
   model: string | null | undefined;
   runtimeModel?: ProviderModelDescriptor | undefined;
   runtimeModels?: ReadonlyArray<ProviderModelDescriptor> | null | undefined;
-  runtimeAgents?: ReadonlyArray<ProviderAgentDescriptor> | null | undefined;
   prompt: string;
   onPromptChange: (prompt: string) => void;
   includeFastMode?: boolean;
@@ -240,12 +233,11 @@ export interface TraitsMenuContentProps {
   onSelectionComplete?: () => void;
 }
 
-export const TraitsMenuContent = memo(function TraitsMenuContentImpl({
+const TraitsMenuContent = memo(function TraitsMenuContentImpl({
   provider,
   threadId,
   model,
   runtimeModel,
-  runtimeAgents,
   prompt,
   onPromptChange,
   includeFastMode: includeFastModeProp,
@@ -409,7 +401,6 @@ export const TraitsPicker = memo(function TraitsPicker({
   threadId,
   model,
   runtimeModel,
-  runtimeAgents,
   prompt,
   onPromptChange,
   includeFastMode: includeFastModeProp,
@@ -484,7 +475,6 @@ export const TraitsPicker = memo(function TraitsPicker({
     prompt,
     modelOptions,
     runtimeModel,
-    runtimeAgents,
   });
 
   const isCodexStyle = provider === "codex";
@@ -589,7 +579,6 @@ export const TraitsPicker = memo(function TraitsPicker({
           threadId={threadId}
           model={model}
           runtimeModel={runtimeModel}
-          runtimeAgents={runtimeAgents}
           prompt={prompt}
           onPromptChange={onPromptChange}
           includeFastMode={includeFastMode}

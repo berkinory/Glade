@@ -4,9 +4,9 @@
 //          collapsed tool-group disclosure in the transcript.
 // Layer: Web chat presentation helpers
 // Exports: MIN_COLLAPSIBLE_TOOL_GROUP_SIZE, workEntryRowCount,
-//          multiFileEditLabel, ToolCallSummaryCategory,
+//          multiFileEditLabel,
 //          ToolCallGroupSummary, isSummarizableToolCallEntry,
-//          classifyToolCallSummaryCategory, summarizeToolCallGroup
+//          summarizeToolCallGroup
 
 import { pluralize } from "@glade/shared/text";
 import { isFileChangeWorkLogEntry, type WorkLogEntry } from "../../session-logic";
@@ -28,16 +28,9 @@ export function multiFileEditLabel(entry: WorkLogEntry): string | null {
   return rowCount > 1 ? summaryPartLabel("edit", rowCount, true) : null;
 }
 
-export type ToolCallSummaryCategory =
-  | "command"
-  | "edit"
-  | "read"
-  | "search"
-  | "agent"
-  | "tool"
-  | "other";
+type ToolCallSummaryCategory = "command" | "edit" | "read" | "search" | "agent" | "tool" | "other";
 
-export interface ToolCallGroupSummaryPart {
+interface ToolCallGroupSummaryPart {
   category: ToolCallSummaryCategory;
   count: number;
   label: string;
@@ -76,7 +69,7 @@ function classifyCommandVerb(verb: string): ToolCallSummaryCategory {
   return "command";
 }
 
-export function classifyToolCallSummaryCategory(entry: WorkLogEntry): ToolCallSummaryCategory {
+function classifyToolCallSummaryCategory(entry: WorkLogEntry): ToolCallSummaryCategory {
   if (isFileChangeWorkLogEntry(entry)) {
     return "edit";
   }

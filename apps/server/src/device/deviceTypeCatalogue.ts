@@ -22,7 +22,7 @@ import type { DeviceFamily, DeviceGeometry } from "@glade/contracts";
 
 import type { runProcess } from "../processRunner.ts";
 
-export interface DeviceTypeProfile {
+interface DeviceTypeProfile {
   readonly family: DeviceFamily;
   readonly geometry: DeviceGeometry;
 }
@@ -53,7 +53,7 @@ interface SimctlDeviceType {
   readonly bundlePath?: unknown;
 }
 
-export interface ParsedDeviceType {
+interface ParsedDeviceType {
   readonly identifier: string;
   readonly family: DeviceFamily;
   readonly profilePath: string;
@@ -64,7 +64,7 @@ export interface ParsedDeviceType {
  * profile for. Entries missing an identifier, a bundle, or a family this pane
  * can draw are dropped rather than half-filled.
  */
-export function parseSimctlDeviceTypes(json: string): readonly ParsedDeviceType[] {
+function parseSimctlDeviceTypes(json: string): readonly ParsedDeviceType[] {
   let parsed: unknown;
   try {
     parsed = JSON.parse(json);
@@ -97,7 +97,7 @@ export function parseSimctlDeviceTypes(json: string): readonly ParsedDeviceType[
  * of the three (or reporting nonsense) yields null, so a device keeps whatever
  * the helper later measures rather than inheriting a bad guess.
  */
-export function parseDeviceTypeProfile(json: string): DeviceGeometry | null {
+function parseDeviceTypeProfile(json: string): DeviceGeometry | null {
   let parsed: unknown;
   try {
     parsed = JSON.parse(json);

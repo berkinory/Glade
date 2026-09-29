@@ -24,13 +24,7 @@ import {
   ThreadRevertedPayload as ContractsThreadRevertedPayloadSchema,
   ThreadActivityAppendedPayload as ContractsThreadActivityAppendedPayloadSchema,
   ThreadTurnStartRequestedPayload as ContractsThreadTurnStartRequestedPayloadSchema,
-  ThreadTurnInterruptRequestedPayload as ContractsThreadTurnInterruptRequestedPayloadSchema,
-  ThreadApprovalResponseRequestedPayload as ContractsThreadApprovalResponseRequestedPayloadSchema,
-  ThreadCheckpointRevertRequestedPayload as ContractsThreadCheckpointRevertRequestedPayloadSchema,
   ThreadConversationRolledBackPayload as ContractsThreadConversationRolledBackPayloadSchema,
-  ThreadConversationRollbackRequestedPayload as ContractsThreadConversationRollbackRequestedPayloadSchema,
-  ThreadMessageEditResendRequestedPayload as ContractsThreadMessageEditResendRequestedPayloadSchema,
-  ThreadSessionStopRequestedPayload as ContractsThreadSessionStopRequestedPayloadSchema,
 } from "@glade/contracts";
 
 // Server-internal alias surface, backed by contract schemas as the source of truth.
@@ -62,16 +56,5 @@ export const ThreadRevertedPayload = ContractsThreadRevertedPayloadSchema;
 export const ThreadActivityAppendedPayload = ContractsThreadActivityAppendedPayloadSchema;
 
 export const ThreadTurnStartRequestedPayload = ContractsThreadTurnStartRequestedPayloadSchema;
-export const ThreadTurnInterruptRequestedPayload =
-  ContractsThreadTurnInterruptRequestedPayloadSchema;
-export const ThreadApprovalResponseRequestedPayload =
-  ContractsThreadApprovalResponseRequestedPayloadSchema;
-export const ThreadCheckpointRevertRequestedPayload =
-  ContractsThreadCheckpointRevertRequestedPayloadSchema;
-export const ThreadConversationRollbackRequestedPayload =
-  ContractsThreadConversationRollbackRequestedPayloadSchema;
 export const ThreadConversationRolledBackPayload =
   ContractsThreadConversationRolledBackPayloadSchema;
-export const ThreadMessageEditResendRequestedPayload =
-  ContractsThreadMessageEditResendRequestedPayloadSchema;
-export const ThreadSessionStopRequestedPayload = ContractsThreadSessionStopRequestedPayloadSchema;

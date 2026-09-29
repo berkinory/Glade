@@ -1,7 +1,7 @@
 // FILE: toolArgumentSummary.ts
 // Purpose: Single source of truth for the provider `ToolName: {json}` tool argument-summary wire format.
 // Layer: UI utility
-// Exports: isPrefixedToolArgumentSummary, parseToolArgumentSummary, extractToolArgumentField, toolArgumentSummaryToolName
+// Exports: isPrefixedToolArgumentSummary, extractToolArgumentField, toolArgumentSummaryToolName
 
 // Providers report dynamic/MCP tool calls with a detail string of the form
 // `ToolName: {jsonArgs}` (Claude), `ToolName {jsonArgs}`, or
@@ -24,7 +24,7 @@ export function toolArgumentSummaryToolName(detail: string): string | null {
   return /^([\w.-]+):/.exec(detail.trim())?.[1] ?? null;
 }
 
-export interface ToolArgumentSummary {
+interface ToolArgumentSummary {
   // Identifier prefix before the JSON args; null for bare `{json}` details or
   // prose prefixes (e.g. `Read {json}` without a colon keeps toolName null).
   readonly toolName: string | null;
@@ -34,7 +34,7 @@ export interface ToolArgumentSummary {
 
 // Decomposes an argument summary around its outermost `{...}` slice. Returns
 // null when the detail carries no JSON-like object at all.
-export function parseToolArgumentSummary(detail: string): ToolArgumentSummary | null {
+function parseToolArgumentSummary(detail: string): ToolArgumentSummary | null {
   const trimmed = detail.trim();
   const jsonStart = trimmed.indexOf("{");
   if (jsonStart < 0) {

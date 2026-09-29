@@ -1,7 +1,7 @@
 // FILE: toolCallLabel.ts
 // Purpose: Normalizes generic tool-call titles and humanizes command executions for timeline rows.
 // Layer: UI utility
-// Exports: deriveReadableToolTitle, deriveReadableCommandDisplay, deriveFriendlyCommandTarget, command icon classifiers, deriveInlineCommandCall, normalizeCompactToolLabel, isGenericToolTitle, extractWebFetchUrl
+// Exports: deriveReadableToolTitle, deriveReadableCommandDisplay, deriveFriendlyCommandTarget, command icon classifiers, normalizeCompactToolLabel, isGenericToolTitle, extractWebFetchUrl
 // Depends on: @glade/contracts tool lifecycle item types
 
 import type { ToolLifecycleItemType } from "@glade/contracts";
@@ -1023,10 +1023,6 @@ export function resolveCommandVisualKind(rawCommand: string): CommandVisualKind 
     return "github";
   }
   return "terminal";
-}
-
-export function deriveInlineCommandCall(rawCommand: string): string {
-  return stripCommandDisplayWrappers(unwrapShellCommandIfPresent(rawCommand));
 }
 
 function humanizeGitCommand(

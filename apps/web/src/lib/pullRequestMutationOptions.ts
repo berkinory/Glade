@@ -19,7 +19,7 @@ import {
 } from "./pullRequestMutationCoordinator";
 import { pullRequestQueryKeys } from "./pullRequestQueryOptions";
 
-export const pullRequestMutationKeys = {
+const pullRequestMutationKeys = {
   action: ["pull-requests", "action"] as const,
   comment: ["pull-requests", "comment"] as const,
 };

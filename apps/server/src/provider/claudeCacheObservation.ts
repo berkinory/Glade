@@ -32,7 +32,7 @@ export function claudeCacheContextTokens(usage: {
     : total;
 }
 
-export function observedClaudeCacheTtl(usage: Record<string, unknown>): number | undefined {
+function observedClaudeCacheTtl(usage: Record<string, unknown>): number | undefined {
   const creation = usage.cache_creation;
   if (!creation || typeof creation !== "object") return undefined;
   const fields = creation as Record<string, unknown>;

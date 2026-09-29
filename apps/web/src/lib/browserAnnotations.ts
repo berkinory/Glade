@@ -22,7 +22,7 @@ import {
   sanitizeBrowserAnnotationUrl,
 } from "@glade/shared/browserAnnotations";
 
-export const BROWSER_ANNOTATIONS_VERSION = 2 as const;
+const BROWSER_ANNOTATIONS_VERSION = 2 as const;
 export const BROWSER_ANNOTATION_MAX_COUNT = 32;
 
 const FIELD_LIMITS = {

@@ -10,7 +10,6 @@ import type {
   ProviderKind,
   ProviderMentionReference,
   ProviderSkillReference,
-  ProviderStartOptions,
   ThreadId,
 } from "@glade/contracts";
 import {
@@ -54,7 +53,6 @@ interface UseKanbanTaskComposerMenuInput {
   readonly selectedProjectCwd: string | null;
   readonly serverCwd: string | null;
   readonly serverHomeDir: string | null;
-  readonly providerOptionsForDispatch: ProviderStartOptions | undefined;
   readonly hiddenProviders: readonly ProviderKind[];
   readonly providerOrder: readonly ProviderKind[];
   readonly handleProviderModelChange: (provider: ProviderKind, model: ModelSlug) => void;
@@ -79,7 +77,6 @@ export function useKanbanTaskComposerMenu(input: UseKanbanTaskComposerMenuInput)
     selectedProjectCwd,
     serverCwd,
     serverHomeDir,
-    providerOptionsForDispatch,
     hiddenProviders,
     providerOrder,
     handleProviderModelChange,
@@ -115,7 +112,6 @@ export function useKanbanTaskComposerMenu(input: UseKanbanTaskComposerMenuInput)
     serverCwd,
     serverHomeDir,
     scratchThreadId,
-    providerOptionsForDispatch,
     hiddenProviders,
     providerOrder,
   });

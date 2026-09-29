@@ -123,7 +123,7 @@ export class ProviderUnsupportedError extends Schema.TaggedErrorClass<ProviderUn
 /**
  * ProviderSessionNotFoundError - Provider-facing session not found.
  */
-export class ProviderSessionNotFoundError extends Schema.TaggedErrorClass<ProviderSessionNotFoundError>()(
+class ProviderSessionNotFoundError extends Schema.TaggedErrorClass<ProviderSessionNotFoundError>()(
   "ProviderSessionNotFoundError",
   {
     threadId: Schema.String,

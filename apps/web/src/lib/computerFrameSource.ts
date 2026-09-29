@@ -13,7 +13,7 @@ import {
   type WebSocketLike,
 } from "./binaryFrameSource";
 
-export interface ComputerFrameSourceHandlers {
+interface ComputerFrameSourceHandlers {
   readonly onFrame: (frame: ComputerFrame) => void;
   readonly onReset: (reason: ComputerFrameSourceResetReason) => void;
 }

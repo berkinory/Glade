@@ -52,7 +52,7 @@ export type ProjectScript = ContractProjectScript;
 export type ThreadTerminalSplitDirection = "horizontal" | "vertical";
 export type ThreadTerminalSplitPosition = "top" | "right" | "bottom" | "left";
 
-export interface ThreadTerminalLeafNode {
+interface ThreadTerminalLeafNode {
   type: "terminal";
   paneId: string;
   terminalIds: string[];
@@ -104,8 +104,7 @@ export type ChatAttachment =
   | ChatFileAttachment
   | ChatAssistantSelectionAttachment;
 
-export type OrchestrationMessageTextSegment =
-  import("@glade/contracts").OrchestrationMessageTextSegment;
+type OrchestrationMessageTextSegment = import("@glade/contracts").OrchestrationMessageTextSegment;
 
 export interface ChatMessage {
   id: MessageId;
@@ -138,7 +137,7 @@ export interface ProposedPlan {
   updatedAt: string;
 }
 
-export interface TurnDiffFileChange {
+interface TurnDiffFileChange {
   path: string;
   kind?: string | undefined;
   additions?: number | undefined;
@@ -166,7 +165,7 @@ export type WorktreeSetupStepId =
   | "prepare-thread"
   | "run-setup-action"
   | "start-session";
-export type WorktreeSetupStepStatus = "pending" | "active" | "done" | "error";
+type WorktreeSetupStepStatus = "pending" | "active" | "done" | "error";
 
 export interface WorktreeSetupStep {
   id: WorktreeSetupStepId;
@@ -213,7 +212,7 @@ export interface Space {
   updatedAt: string;
 }
 
-export interface ThreadWorkspaceState {
+interface ThreadWorkspaceState {
   envMode?: ThreadEnvironmentMode | undefined;
   branch: string | null;
   worktreePath: string | null;

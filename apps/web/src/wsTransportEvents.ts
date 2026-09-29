@@ -7,17 +7,17 @@ import type { WsCompatibilityError } from "@glade/contracts";
 
 export type WsTransportState = "connecting" | "open" | "closed" | "incompatible" | "disposed";
 
-export const GLADE_WS_TRANSPORT_STATE_EVENT = "glade:ws-transport-state";
-export const GLADE_WS_COMPATIBILITY_ISSUE_EVENT = "glade:ws-compatibility-issue";
+const GLADE_WS_TRANSPORT_STATE_EVENT = "glade:ws-transport-state";
+const GLADE_WS_COMPATIBILITY_ISSUE_EVENT = "glade:ws-compatibility-issue";
 
 let latestCompatibilityIssue: WsCompatibilityError | null = null;
 let latestTransportState: WsTransportState | null = null;
 
-export interface WsTransportStateEventDetail {
+interface WsTransportStateEventDetail {
   state: WsTransportState;
 }
 
-export interface WsCompatibilityIssueEventDetail {
+interface WsCompatibilityIssueEventDetail {
   issue: WsCompatibilityError | null;
 }
 

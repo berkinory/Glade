@@ -50,7 +50,7 @@ interface TaskRequest {
 
 // Keep the marker through ordinary model turns, with a native expiry backstop
 // if task-end cleanup cannot reach the overlay. This wait does not repaint.
-export const CUA_CURSOR_IDLE_HIDE_MS = 60_000;
+const CUA_CURSOR_IDLE_HIDE_MS = 60_000;
 /** A raw ENOENT names a path, not a remedy; source builds stage the driver themselves. */
 const CUA_DRIVER_MISSING_MESSAGE =
   "Cua Driver is not bundled. Run the provisioning script (`node apps/desktop/scripts/provision-cua-driver.mjs`, needs the pinned Rust toolchain) in this checkout, then relaunch Glade.";

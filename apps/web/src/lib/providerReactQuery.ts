@@ -42,8 +42,8 @@ export const providerQueryKeys = {
 };
 
 /** Keep polling while placeholder checkpoints are still being written. */
-export const CHECKPOINT_DIFF_PENDING_REFETCH_INTERVAL_MS = 2_000;
-export const CHECKPOINT_DIFF_PENDING_REFETCH_MAX_ATTEMPTS = 12;
+const CHECKPOINT_DIFF_PENDING_REFETCH_INTERVAL_MS = 2_000;
+const CHECKPOINT_DIFF_PENDING_REFETCH_MAX_ATTEMPTS = 12;
 
 function shouldUseFullThreadDiffApi(input: CheckpointDiffQueryInput): boolean {
   return (

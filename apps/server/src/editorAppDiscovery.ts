@@ -58,12 +58,12 @@ export function getEditorWindowsStorePackages(
   return "windowsStorePackages" in editor ? editor.windowsStorePackages : undefined;
 }
 
-export function normalizeMacApplicationBundleName(appName: string): string {
+function normalizeMacApplicationBundleName(appName: string): string {
   return appName.endsWith(".app") ? appName : `${appName}.app`;
 }
 
 // Checks the standard user/system app locations, including JetBrains Toolbox installs.
-export function resolveMacApplicationSearchPaths(
+function resolveMacApplicationSearchPaths(
   appName: string,
   env: NodeJS.ProcessEnv,
 ): ReadonlyArray<string> {
@@ -175,11 +175,7 @@ function writePowerShellAppxLookupCache(key: string, value: string | null, now: 
   });
 }
 
-export function clearWindowsStorePackageDiscoveryCache(): void {
-  powershellAppxLookupCache.clear();
-}
-
-export function resolveWindowsStorePackageDirectoryFromPowerShell(
+function resolveWindowsStorePackageDirectoryFromPowerShell(
   packages: readonly WindowsStorePackageDefinition[] | undefined,
   platform: NodeJS.Platform,
   env: NodeJS.ProcessEnv,

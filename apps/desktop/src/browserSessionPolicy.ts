@@ -32,7 +32,7 @@ export type BrowserSessionDownloadListener = (event: BrowserSessionDownloadEvent
 
 type ResponseHeaders = Readonly<Record<string, string | readonly string[] | undefined>>;
 
-export function isWebMcpCompatibilityAllowedByHeaders(
+function isWebMcpCompatibilityAllowedByHeaders(
   url: string,
   headers: ResponseHeaders | undefined,
 ): boolean {

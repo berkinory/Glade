@@ -274,10 +274,6 @@ export const providerDiscoveryQueryKeys = {
     [...providerDiscoveryQueryKeys.agentsForProvider(provider), binaryPath, cwd] as const,
 };
 
-export function providerModelDiscoveryRetry(provider: ProviderKind): number {
-  return 3;
-}
-
 export function providerComposerCapabilitiesQueryOptions(provider: ProviderKind) {
   return queryOptions({
     queryKey: providerDiscoveryQueryKeys.composerCapabilities(provider),
@@ -380,20 +376,6 @@ export function providerCommandsQueryOptions(input: {
   });
 }
 
-/**
- * True only while the first real models fetch is still outstanding.
- * Once discovery settles — with a catalog OR a failure (e.g. missing Cursor
- * CLI, #103) — background refetches must not re-blank the composer picker,
- * and a failed provider must not park the model control on a skeleton.
- */
-export function isInitialModelDiscoveryPending(query: {
-  readonly isLoading: boolean;
-  readonly isFetching: boolean;
-  readonly isPlaceholderData: boolean;
-}): boolean {
-  return query.isLoading || (query.isFetching && query.isPlaceholderData);
-}
-
 export function providerModelsQueryOptions(input: {
   provider: ProviderKind;
   binaryPath?: string | null;
@@ -430,7 +412,7 @@ export function providerModelsQueryOptions(input: {
       ),
     enabled: input.enabled ?? true,
     // Cached catalogs paint immediately while stale entries revalidate in the background.
-    retry: providerModelDiscoveryRetry(input.provider),
+    retry: 3,
     // The server caches catalogs (30min fresh, then stale-while-revalidate,
     // persisted across restarts), so a refetch is a cheap RPC — but there is no
     // value in asking more often than the cache can change. Changes to paths,

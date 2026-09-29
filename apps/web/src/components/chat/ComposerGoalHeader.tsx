@@ -4,7 +4,7 @@
 // preview that fades out at the end plus the live pursuit timer; the chevron
 // expands the full objective. Edit / pause-resume / delete act on the persisted goal.
 // Layer: Chat composer UI
-// Exports: ComposerGoalHeader, goalElapsedMs
+// Exports: ComposerGoalHeader
 
 import { useState } from "react";
 
@@ -32,7 +32,7 @@ import {
  * (no `goalStartedAt`). While paused the clock freezes at `goalPausedAt`; the
  * server rebases `goalStartedAt` on resume so the paused span never counts.
  */
-export function goalElapsedMs(
+function goalElapsedMs(
   input: {
     readonly goalStartedAt?: string | null | undefined;
     readonly goalPausedAt?: string | null | undefined;

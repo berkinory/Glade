@@ -18,7 +18,7 @@ import type { Space } from "~/types";
  * The unfiled group is not a stored Space, so its name and icon are defaults here rather
  * than a row. The presentation is overridable per install (see `voidSpaceStore`).
  */
-export const DEFAULT_VOID_SPACE_NAME = "Home";
+const DEFAULT_VOID_SPACE_NAME = "Home";
 export const DEFAULT_VOID_SPACE_ICON: SpaceIconName = "home";
 export const UNFILED_SPACE_SPECIAL_ICON = "black-hole";
 /** Fallback for a Space whose icon is unknown, and what the editor opens on. */

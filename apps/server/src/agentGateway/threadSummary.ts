@@ -85,13 +85,13 @@ export function summarizeThreadShell(
   };
 }
 
-export const READ_THREAD_DEFAULT_MESSAGE_LIMIT = 20;
+const READ_THREAD_DEFAULT_MESSAGE_LIMIT = 20;
 export const READ_THREAD_MAX_MESSAGE_LIMIT = 100;
-export const READ_THREAD_DEFAULT_MESSAGE_CHARS = 1500;
+const READ_THREAD_DEFAULT_MESSAGE_CHARS = 1500;
 export const READ_THREAD_MAX_MESSAGE_CHARS = 20_000;
 export const WAIT_THREAD_SUMMARY_MAX_CHARS = 2_000;
 
-export interface AgentThreadMessageSummary {
+interface AgentThreadMessageSummary {
   readonly index: number;
   readonly messageId: string;
   readonly messageVersion: string;
@@ -102,7 +102,7 @@ export interface AgentThreadMessageSummary {
   readonly createdAt: string;
 }
 
-export interface AgentThreadSingleMessagePage {
+interface AgentThreadSingleMessagePage {
   readonly index: number;
   readonly messageId: string;
   readonly messageVersion: string;

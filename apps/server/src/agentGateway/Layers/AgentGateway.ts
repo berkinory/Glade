@@ -131,7 +131,7 @@ function readThreadGoalArg(args: Record<string, unknown>): string {
   return goal;
 }
 
-export const makeAgentGateway = Effect.gen(function* () {
+const makeAgentGateway = Effect.gen(function* () {
   const credentials = yield* AgentGatewayCredentials;
   const snapshotQuery = yield* ProjectionSnapshotQuery;
   const orchestrationEngine = yield* OrchestrationEngineService;

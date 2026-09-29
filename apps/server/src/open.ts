@@ -28,17 +28,17 @@ import {
 // Definitions
 // ==============================
 
-export class OpenError extends Schema.TaggedErrorClass<OpenError>()("OpenError", {
+class OpenError extends Schema.TaggedErrorClass<OpenError>()("OpenError", {
   message: Schema.String,
   cause: Schema.optional(Schema.Defect),
 }) {}
 
-export interface OpenInEditorInput {
+interface OpenInEditorInput {
   readonly cwd: string;
   readonly editor: EditorId;
 }
 
-export interface EditorLaunch {
+interface EditorLaunch {
   readonly command: string;
   readonly args: ReadonlyArray<string>;
 }
@@ -353,7 +353,7 @@ export class Open extends ServiceMap.Service<Open, OpenShape>()("glade/open") {}
 // Implementations
 // ==============================
 
-export const resolveEditorLaunch = Effect.fnUntraced(function* (
+const resolveEditorLaunch = Effect.fnUntraced(function* (
   input: OpenInEditorInput,
   platform: NodeJS.Platform = process.platform,
   env: NodeJS.ProcessEnv = process.env,
@@ -443,7 +443,7 @@ function launchDetachedWithEditorFallback(
   );
 }
 
-export const launchDetached = (launch: EditorLaunch) =>
+const launchDetached = (launch: EditorLaunch) =>
   Effect.gen(function* () {
     if (!isCommandAvailable(launch.command)) {
       return yield* new OpenError({ message: `Editor command not found: ${launch.command}` });

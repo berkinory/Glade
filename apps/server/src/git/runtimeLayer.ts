@@ -13,13 +13,13 @@ export const TextGenerationLayerLive = ProviderTextGenerationLive.pipe(
   Layer.provide(ServerSettingsLive),
 );
 
-export const GitManagerLayerLive = GitManagerLive.pipe(
+const GitManagerLayerLive = GitManagerLive.pipe(
   Layer.provideMerge(GitCoreLive),
   Layer.provideMerge(GitHubCliLive),
   Layer.provideMerge(TextGenerationLayerLive),
 );
 
-export const GitStatusBroadcasterLayerLive = GitStatusBroadcasterLive.pipe(
+const GitStatusBroadcasterLayerLive = GitStatusBroadcasterLive.pipe(
   Layer.provide(Layer.mergeAll(GitCoreLive, GitManagerLayerLive)),
 );
 

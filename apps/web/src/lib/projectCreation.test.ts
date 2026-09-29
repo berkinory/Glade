@@ -9,7 +9,6 @@ import {
   type ProjectId,
   SpaceId,
 } from "@glade/contracts";
-import { getDefaultModel } from "@glade/shared/model";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { useSpacesUiStore } from "../spacesUiStore";

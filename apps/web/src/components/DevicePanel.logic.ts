@@ -30,7 +30,7 @@ import { DEVICE_CAPABILITY_LABELS } from "@glade/contracts";
 // server drops frames under backpressure), so sequence gaps are expected and must
 // re-arm the keyframe requirement rather than kill the pane.
 
-export type DeviceFrameGatePhase =
+type DeviceFrameGatePhase =
   /** No codec config seen yet: nothing can be decoded. */
   | "awaiting-config"
   /** Configured, but no keyframe has been admitted since the last configure or gap. */
@@ -46,7 +46,7 @@ export interface DeviceFrameGateState {
   readonly droppedSinceResync: number;
 }
 
-export type DeviceFrameGateAction =
+type DeviceFrameGateAction =
   /** Hand the payload to `VideoDecoder.configure` (or `decode` for media frames). */
   | { readonly kind: "configure" }
   | { readonly kind: "decode"; readonly keyframe: boolean }
@@ -55,7 +55,7 @@ export type DeviceFrameGateAction =
   /** Frame belongs to another device/thread and was never ours to decode. */
   | { readonly kind: "ignore" };
 
-export type DeviceFrameDropReason =
+type DeviceFrameDropReason =
   | "no-codec-config"
   | "awaiting-keyframe"
   | "sequence-gap"
@@ -191,7 +191,7 @@ export interface DevicePoint {
  * assumed: `object-fit: contain` letterboxes, and a click in a letterbox band
  * has no device coordinate at all.
  */
-export function deviceContainRect(geometry: DeviceCanvasGeometry): {
+function deviceContainRect(geometry: DeviceCanvasGeometry): {
   readonly offsetX: number;
   readonly offsetY: number;
   readonly width: number;
@@ -263,7 +263,7 @@ function clampToRange(value: number, minimum: number, maximum: number): number {
  * pixels during a press, and sending a 3px swipe instead of a tap makes buttons
  * feel unreliable.
  */
-export const DEVICE_TAP_MOVEMENT_THRESHOLD_POINTS = 8;
+const DEVICE_TAP_MOVEMENT_THRESHOLD_POINTS = 8;
 
 export type DevicePointerGesture =
   | { readonly kind: "tap"; readonly point: DevicePoint }
@@ -400,7 +400,7 @@ export function deviceHidUsageForKey(key: string): number | null {
 
 // ── Device picker ────────────────────────────────────────────────────
 
-export type DevicePickerAction =
+type DevicePickerAction =
   /** Already booted: attaching is all that is needed. */
   | { readonly kind: "attach" }
   /** Shut down: boot first, then attach when the boot resolves. */
@@ -423,7 +423,7 @@ const RUNTIME_STATE_LABELS = {
   "shutting-down": "Shutting down",
 } as const satisfies Record<DeviceDescriptor["state"], string>;
 
-export function deviceRuntimeStateLabel(state: DeviceDescriptor["state"]): string {
+function deviceRuntimeStateLabel(state: DeviceDescriptor["state"]): string {
   return RUNTIME_STATE_LABELS[state];
 }
 
@@ -579,7 +579,7 @@ export function resolveDeviceAvailabilityView(
  * an iPad's 1640px divides by 3 into 547, which is a perfectly reasonable
  * number and completely wrong.
  */
-export function inferDeviceScaleFactor(framePixelWidth: number): number {
+function inferDeviceScaleFactor(framePixelWidth: number): number {
   if (!Number.isFinite(framePixelWidth) || framePixelWidth <= 0) return 1;
   if (framePixelWidth >= 1000 && framePixelWidth <= 1400) return 3;
   if (framePixelWidth > 1400) return 2;

@@ -23,7 +23,7 @@ export interface ShortcutEventLike {
   repeat?: boolean;
 }
 
-export interface ShortcutMatchContext {
+interface ShortcutMatchContext {
   terminalFocus: boolean;
   terminalOpen: boolean;
   [key: string]: boolean;
@@ -85,7 +85,7 @@ const whenThreadJumpAvailable = whenOr(
 // where `mod` is Ctrl and keys like Ctrl+N are real shell input that must pass through.
 const whenModChordAllowed = whenOr(whenNotTerminalFocus, whenIdentifier("isMac"));
 
-export const DEFAULT_SHORTCUT_FALLBACKS: ResolvedKeybindingsConfig = [
+const DEFAULT_SHORTCUT_FALLBACKS: ResolvedKeybindingsConfig = [
   {
     command: "sidebar.activity",
     shortcut: commandShortcut("u", { altKey: true }),
@@ -438,7 +438,7 @@ function findEffectiveShortcutForCommand(
   return findEffectiveKeybindingForCommand(keybindings, command, options)?.shortcut ?? null;
 }
 
-export function findEffectiveKeybindingForCommand(
+function findEffectiveKeybindingForCommand(
   keybindings: ResolvedKeybindingsConfig,
   command: KeybindingCommand,
   options?: ShortcutMatchOptions,
@@ -670,14 +670,6 @@ export function isOpenFavoriteEditorShortcut(
   options?: ShortcutMatchOptions,
 ): boolean {
   return matchesCommandShortcut(event, keybindings, "editor.openFavorite", options);
-}
-
-export function isEditorFileSaveShortcut(
-  event: ShortcutEventLike,
-  keybindings: ResolvedKeybindingsConfig,
-  options?: ShortcutMatchOptions,
-): boolean {
-  return matchesCommandShortcut(event, keybindings, "editor.file.save", options);
 }
 
 export function isTerminalClearShortcut(event: ShortcutEventLike): boolean {

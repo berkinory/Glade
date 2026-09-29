@@ -128,7 +128,7 @@ function assertMacZipFrameworkSymlinks(zipPath: string): string {
   return appBundleName;
 }
 
-export function verifyMacAppSignature(
+function verifyMacAppSignature(
   appBundlePath: string,
   requireSignature: boolean,
   expectedBundleIdentifier?: string,

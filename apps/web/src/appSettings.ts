@@ -37,7 +37,6 @@ import {
 } from "./providerOrdering";
 import { ensureNativeApi } from "./nativeApi";
 import { providerDiscoveryQueryKeys } from "./lib/providerDiscoveryReactQuery";
-import { SIDEBAR_NAV_ITEM_IDS } from "./sidebarNavOrdering";
 import {
   invalidateProviderUsageQueries,
   reconcileServerProviderStatuses,
@@ -62,13 +61,13 @@ export const MAX_CHAT_FONT_SIZE_PX = 18;
 export const DEFAULT_CHAT_FONT_SIZE_PX = 13;
 export const MIN_TERMINAL_FONT_SIZE_PX = 10;
 export const MAX_TERMINAL_FONT_SIZE_PX = 22;
-export const DEFAULT_TERMINAL_FONT_SIZE_PX = 12;
+const DEFAULT_TERMINAL_FONT_SIZE_PX = 12;
 
 // Terminal font is a free-form font-family value: the user can type any font
 // installed on their machine. An empty value keeps the bundled default stack
 // (defined in index.css). The list below is only autocomplete inspiration shown
 // in the settings input — it does NOT restrict what can be entered.
-export const DEFAULT_TERMINAL_FONT_FAMILY = "";
+const DEFAULT_TERMINAL_FONT_FAMILY = "";
 
 export const TERMINAL_FONT_FAMILY_SUGGESTIONS: ReadonlyArray<string> = [
   "JetBrains Mono",
@@ -86,17 +85,17 @@ export const TERMINAL_FONT_FAMILY_SUGGESTIONS: ReadonlyArray<string> = [
 
 export const TimestampFormat = Schema.Literals(["locale", "12-hour", "24-hour"]);
 export type TimestampFormat = typeof TimestampFormat.Type;
-export const DEFAULT_TIMESTAMP_FORMAT: TimestampFormat = "locale";
+const DEFAULT_TIMESTAMP_FORMAT: TimestampFormat = "locale";
 export const EditorCaretStyle = Schema.Literals(["line", "block"]);
 export type EditorCaretStyle = typeof EditorCaretStyle.Type;
 export const DEFAULT_EDITOR_CARET_STYLE: EditorCaretStyle = "line";
 export const SidebarProjectSortOrder = Schema.Literals(["updated_at", "created_at", "manual"]);
 export type SidebarProjectSortOrder = typeof SidebarProjectSortOrder.Type;
-export const DEFAULT_SIDEBAR_PROJECT_SORT_ORDER: SidebarProjectSortOrder = "manual";
+const DEFAULT_SIDEBAR_PROJECT_SORT_ORDER: SidebarProjectSortOrder = "manual";
 export const SidebarThreadSortOrder = Schema.Literals(["updated_at", "created_at"]);
 export const ComputerPreviewSize = Schema.Literals(["compact", "large"]);
 export type ComputerPreviewSize = typeof ComputerPreviewSize.Type;
-export const DEFAULT_COMPUTER_PREVIEW_SIZE: ComputerPreviewSize = "compact";
+const DEFAULT_COMPUTER_PREVIEW_SIZE: ComputerPreviewSize = "compact";
 export const AgentCursorColorMode = Schema.Literals(["stock", "custom"]);
 export type AgentCursorColorMode = typeof AgentCursorColorMode.Type;
 export const DEFAULT_AGENT_CURSOR_COLOR_MODE: AgentCursorColorMode = "stock";
@@ -104,27 +103,22 @@ export const DEFAULT_AGENT_CURSOR_COLOR_MODE: AgentCursorColorMode = "stock";
 /** Classic: one sidebar column. Rail: fixed icon tabs plus a panel (see useSidebarLayout). */
 export const SidebarLayout = Schema.Literals(["classic", "rail"]);
 export type SidebarLayout = typeof SidebarLayout.Type;
-export const DEFAULT_SIDEBAR_LAYOUT: SidebarLayout = "classic";
+const DEFAULT_SIDEBAR_LAYOUT: SidebarLayout = "classic";
 export type SidebarThreadSortOrder = typeof SidebarThreadSortOrder.Type;
-export const DEFAULT_SIDEBAR_THREAD_SORT_ORDER: SidebarThreadSortOrder = "updated_at";
+const DEFAULT_SIDEBAR_THREAD_SORT_ORDER: SidebarThreadSortOrder = "updated_at";
 export const FollowUpBehavior = Schema.Literals(["queue", "steer"]);
 export type FollowUpBehavior = typeof FollowUpBehavior.Type;
-export const DEFAULT_FOLLOW_UP_BEHAVIOR: FollowUpBehavior = "queue";
+const DEFAULT_FOLLOW_UP_BEHAVIOR: FollowUpBehavior = "queue";
 export const UiDensity = Schema.Literals(UI_DENSITY_MODES);
 export type UiDensity = typeof UiDensity.Type;
 export { DEFAULT_UI_DENSITY };
-export const ChatWidthMode = Schema.Literals(CHAT_WIDTH_MODES);
-export type ChatWidthMode = typeof ChatWidthMode.Type;
+const ChatWidthMode = Schema.Literals(CHAT_WIDTH_MODES);
+type ChatWidthMode = typeof ChatWidthMode.Type;
 export { DEFAULT_CHAT_WIDTH };
 
-export function getDefaultNativeFontSmoothing(platform = globalThis.navigator?.platform ?? "") {
+function getDefaultNativeFontSmoothing(platform = globalThis.navigator?.platform ?? "") {
   return /mac|iphone|ipad|ipod/i.test(platform);
 }
-
-const BUILT_IN_MODEL_SLUGS_BY_PROVIDER: Record<ProviderKind, ReadonlySet<string>> = {
-  codex: new Set(getModelOptions("codex").map((option) => option.slug)),
-  claudeAgent: new Set(getModelOptions("claudeAgent").map((option) => option.slug)),
-};
 
 const withDefaults =
   <
@@ -192,7 +186,7 @@ const PersistedHiddenModels = Schema.Array(
   ),
 );
 
-export const AppSettingsSchema = Schema.Struct({
+const AppSettingsSchema = Schema.Struct({
   claudeBinaryPath: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
   claudeEnableArtifacts: Schema.Boolean.pipe(withDefaults(() => false)),
   // Server-backed first-run marker; see ServerSettings.onboardingCompletedAt.
@@ -457,7 +451,7 @@ function normalizeAppSettings(settings: AppSettings): AppSettings {
   };
 }
 
-export function getServerDisabledProviders(
+function getServerDisabledProviders(
   settings: Pick<ServerSettingsView, "providers">,
 ): ProviderKind[] {
   return DEFAULT_PROVIDER_ORDER.filter((provider) => !settings.providers[provider].enabled);
@@ -549,7 +543,7 @@ function pruneProviderPatchAgainstCurrentSettings(
   }
 }
 
-export function appSettingsPatchToServerSettingsPatch(
+function appSettingsPatchToServerSettingsPatch(
   patch: Partial<AppSettings>,
   currentSettings?: Pick<ServerSettingsView, "providers">,
 ): ServerSettingsPatch {
@@ -645,7 +639,7 @@ function buildInitialServerSettingsMigrationPatch(settings: AppSettings): Server
   return appSettingsPatchToServerSettingsPatch(patch);
 }
 
-export function normalizeStoredAppSettings(settings: AppSettings): AppSettings {
+function normalizeStoredAppSettings(settings: AppSettings): AppSettings {
   return {
     ...normalizeAppSettings(settings),
     // Provider enablement belongs to the connected server. Scrub legacy values
@@ -654,7 +648,7 @@ export function normalizeStoredAppSettings(settings: AppSettings): AppSettings {
   };
 }
 
-export function applyLocalAppSettingsPatch(
+function applyLocalAppSettingsPatch(
   settings: AppSettings,
   patch: Partial<AppSettings>,
 ): AppSettings {
@@ -698,7 +692,7 @@ export function getAppModelOptions(
   return options;
 }
 
-export function mapCatalogModelOptionsToAppModelOptions(
+function mapCatalogModelOptionsToAppModelOptions(
   provider: GitTextGenerationProvider,
   options: ReadonlyArray<ProviderModelOption & { isSelectedHint?: boolean }>,
 ): AppModelOption[] {

@@ -135,10 +135,7 @@ function requestsKnownAppForeground(text: string, context: ComputerForegroundCon
 }
 
 /** Whether one message text explicitly asks to see the desktop. Pure. */
-export function messageRequestsVisibleUse(
-  text: string,
-  context: ComputerForegroundContext = {},
-): boolean {
+function messageRequestsVisibleUse(text: string, context: ComputerForegroundContext = {}): boolean {
   const request = unquotedRequest(text);
   return (
     !BACKGROUND_USE_PATTERNS.some((pattern) => pattern.test(request)) &&

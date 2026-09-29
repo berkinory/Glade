@@ -52,9 +52,9 @@ export interface AgentGatewayProviderAvailability {
 export const AGENT_GATEWAY_TARGET_OPTIONS_DESCRIPTION =
   "Provider-specific target options. Use targetConstruction[provider].optionsByModel[model] when present; otherwise use providerOptions. Preserve each option's exact key and valueType. allowedValues are authoritative unless allowsCustomValue is true.";
 
-export type AgentGatewayTargetOptionValue = string | number | boolean;
+type AgentGatewayTargetOptionValue = string | number | boolean;
 
-export interface AgentGatewayTargetOptionRule {
+interface AgentGatewayTargetOptionRule {
   readonly key: string;
   readonly valueType: "string" | "number" | "boolean";
   readonly allowedValues: ReadonlyArray<AgentGatewayTargetOptionValue>;

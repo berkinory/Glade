@@ -1,7 +1,7 @@
 // FILE: useComposerThreadMentionDrop.ts
 // Purpose: Turn a thread row dropped on the composer into the same @mention the `@` menu inserts.
 // Layer: Web composer hook
-// Exports: useComposerThreadMentionDrop, canDropThreadMention
+// Exports: useComposerThreadMentionDrop
 
 import { useEffect, useState, type DragEvent } from "react";
 import { type ThreadId } from "@glade/contracts";
@@ -15,7 +15,7 @@ import {
 } from "~/lib/threadDrag";
 
 // A chat cannot mention itself, so its own row must not light the composer up.
-export function canDropThreadMention(input: {
+function canDropThreadMention(input: {
   readonly disabled: boolean;
   readonly currentThreadId: ThreadId | null;
   readonly draggedThreadId: ThreadId | null;

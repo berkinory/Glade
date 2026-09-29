@@ -5,7 +5,7 @@
 // Exports: RendererCrashPolicy, rendererReloadDelayMs, isRecoverableRendererCrashReason
 
 /** First backoff step; doubles per crash inside the same streak. */
-export const RENDERER_RELOAD_BASE_DELAY_MS = 500;
+const RENDERER_RELOAD_BASE_DELAY_MS = 500;
 export const RENDERER_RELOAD_MAX_DELAY_MS = 4_000;
 
 /**

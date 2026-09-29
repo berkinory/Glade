@@ -21,8 +21,8 @@
  * @module runtimeJournalPoisonGate
  */
 
-export const RUNTIME_JOURNAL_POISON_DRAIN_LIMIT = 240;
-export const RUNTIME_JOURNAL_POISON_MIN_BLOCKED_MS = 60_000;
+const RUNTIME_JOURNAL_POISON_DRAIN_LIMIT = 240;
+const RUNTIME_JOURNAL_POISON_MIN_BLOCKED_MS = 60_000;
 
 export interface RuntimeJournalPoisonGate {
   /**

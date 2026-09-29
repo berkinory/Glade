@@ -1,5 +1,5 @@
-export const COMPOSER_FOOTER_COMPACT_BREAKPOINT_PX = 620;
-export const COMPOSER_FOOTER_WIDE_ACTIONS_COMPACT_BREAKPOINT_PX = 720;
+const COMPOSER_FOOTER_COMPACT_BREAKPOINT_PX = 620;
+const COMPOSER_FOOTER_WIDE_ACTIONS_COMPACT_BREAKPOINT_PX = 720;
 
 export function shouldUseCompactComposerFooter(
   width: number | null,
@@ -33,10 +33,10 @@ export interface ComposerFooterControlsPlan {
 
 // Tier 0 = everything visible ... tier 3 = icons only, tier 4 = leading
 // controls move below the input.
-export const COMPOSER_FOOTER_MAX_TIER = 4;
+const COMPOSER_FOOTER_MAX_TIER = 4;
 // Extra width (px) required beyond the recorded overflow point before stepping
 // back to a richer tier, so a 1px resize cannot oscillate between tiers.
-export const COMPOSER_FOOTER_TIER_PROMOTION_SLACK_PX = 32;
+const COMPOSER_FOOTER_TIER_PROMOTION_SLACK_PX = 32;
 
 export function composerFooterPlanForTier(
   tier: number,

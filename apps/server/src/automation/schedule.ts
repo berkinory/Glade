@@ -23,7 +23,7 @@ function scheduleUsesJitter(schedule: AutomationSchedule): boolean {
   );
 }
 
-export function deterministicAutomationJitterSeconds(input: {
+function deterministicAutomationJitterSeconds(input: {
   readonly installSalt: string;
   readonly automationId: AutomationId;
 }): number {

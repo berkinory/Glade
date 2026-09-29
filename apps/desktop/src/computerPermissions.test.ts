@@ -501,7 +501,7 @@ describe("Computer permission guide", () => {
   });
 
   it("forwards guide state events to the renderer", async () => {
-    const { manager, guideChild, onPermissionGuideState, dispose } = await createGuideManager();
+    const { guideChild, onPermissionGuideState, dispose } = await createGuideManager();
     try {
       guideChild.stdout.write(`${JSON.stringify({ type: "permission-guide", state: "shown" })}\n`);
       await flushPromises();
@@ -532,7 +532,7 @@ describe("Computer permission guide", () => {
   });
 
   it("forwards a crash/exit as closed when no final state was emitted", async () => {
-    const { manager, guideChild, onPermissionGuideState, dispose } = await createGuideManager();
+    const { guideChild, onPermissionGuideState, dispose } = await createGuideManager();
     try {
       guideChild.stdout.write(`${JSON.stringify({ type: "permission-guide", state: "shown" })}\n`);
       await flushPromises();

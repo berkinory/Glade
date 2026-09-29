@@ -7,7 +7,7 @@ import { getNavigatorPlatform, isMacPlatform } from "~/lib/utils";
  * the keybindings config. Modifiers are deliberately excluded here because the
  * final keydown event already exposes the complete modifier state.
  */
-export function normalizeShortcutKeyToken(key: string): string | null {
+function normalizeShortcutKeyToken(key: string): string | null {
   const normalized = key.toLowerCase();
   if (
     normalized === "meta" ||

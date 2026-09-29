@@ -3,7 +3,7 @@
 //          patch viewport. Lazy-loaded by PullRequestDetailPanel so the diff renderer and its
 //          worker infrastructure never ship to users who only read the list or Summary.
 // Layer: Pull request presentation
-// Exports: PullRequestCodeTab (default export for React.lazy)
+// Exports: default PullRequestCodeTab (for React.lazy)
 
 import type { PullRequestDetail, PullRequestDetailInput } from "@glade/contracts";
 import { useQuery } from "@tanstack/react-query";
@@ -25,7 +25,7 @@ import { PullRequestMetaLine } from "./PullRequestMetaLine";
 import { PR_META_TEXT_CLASS_NAME } from "./pullRequestText";
 import { PullRequestWarningNote } from "./PullRequestWarningNote";
 
-export function PullRequestCodeTab({
+function PullRequestCodeTab({
   input,
   detail,
 }: {

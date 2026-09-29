@@ -66,7 +66,7 @@ function foldTargetAlias(argumentsValue: Record<string, unknown>): Record<string
 }
 
 /** Normalize common provider spellings while keeping the desktop schema strict. */
-export function normalizeGatewayBrowserArguments(
+function normalizeGatewayBrowserArguments(
   name: BrowserToolName,
   argumentsValue: Record<string, unknown>,
 ): Record<string, unknown> {

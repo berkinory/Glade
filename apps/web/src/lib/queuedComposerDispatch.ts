@@ -152,11 +152,7 @@ export async function dispatchQueuedComposerTurnHeadless(input: {
     effort: queuedTurn.selectedPromptEffort,
     text: outgoingTextSeed,
   });
-  const mentionedSkills = filterPromptSkillReferences(
-    outgoingMessageText,
-    queuedTurn.skills,
-    queuedTurn.selectedProvider,
-  );
+  const mentionedSkills = filterPromptSkillReferences(outgoingMessageText, queuedTurn.skills);
   const mentionedMentions = filterPromptProviderMentionReferences(
     outgoingMessageText,
     queuedTurn.mentions,

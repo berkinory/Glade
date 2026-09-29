@@ -12,9 +12,9 @@ import {
   type ManagedAttachmentCleanupJob,
 } from "./persistence/Services/ManagedAttachments";
 
-export const MANAGED_ATTACHMENT_WRITING_LEASE_MS = 10 * 60 * 1_000;
-export const MANAGED_ATTACHMENT_CLEANUP_BATCH_SIZE = 64;
-export const MANAGED_ATTACHMENT_TOMBSTONE_RETENTION_MS = 30 * 24 * 60 * 60 * 1_000;
+const MANAGED_ATTACHMENT_WRITING_LEASE_MS = 10 * 60 * 1_000;
+const MANAGED_ATTACHMENT_CLEANUP_BATCH_SIZE = 64;
+const MANAGED_ATTACHMENT_TOMBSTONE_RETENTION_MS = 30 * 24 * 60 * 60 * 1_000;
 const CLEANUP_LEASE_MS = 60_000;
 const CLEANUP_INTERVAL = "5 minutes";
 

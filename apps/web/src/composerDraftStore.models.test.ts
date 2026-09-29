@@ -1,7 +1,6 @@
 import { ThreadId, type ModelSelection } from "@glade/contracts";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
-  deriveEffectiveComposerModelState,
   resolvePreferredComposerModelSelection,
   useComposerDraftStore,
 } from "./composerDraftStore";

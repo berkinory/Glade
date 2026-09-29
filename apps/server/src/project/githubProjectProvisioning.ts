@@ -22,7 +22,7 @@ const MAX_CLONE_PROGRESS_MESSAGE_LENGTH = 240;
 const CLONE_PROGRESS_LINE =
   /^(?:remote:\s*)?(?:Enumerating objects|Counting objects|Compressing objects|Receiving objects|Resolving deltas|Updating files|Checking out files|Filtering content):/i;
 
-export const GitHubProjectProvisioningErrorCode = Schema.Literals([
+const GitHubProjectProvisioningErrorCode = Schema.Literals([
   "INVALID_REPOSITORY",
   "INVALID_DESTINATION",
   "DESTINATION_CONFLICT",
@@ -34,7 +34,7 @@ export const GitHubProjectProvisioningErrorCode = Schema.Literals([
   "DISK_FULL",
   "CLONE_FAILED",
 ]);
-export type GitHubProjectProvisioningErrorCode = typeof GitHubProjectProvisioningErrorCode.Type;
+type GitHubProjectProvisioningErrorCode = typeof GitHubProjectProvisioningErrorCode.Type;
 
 export class GitHubProjectProvisioningError extends Schema.TaggedErrorClass<GitHubProjectProvisioningError>()(
   "GitHubProjectProvisioningError",

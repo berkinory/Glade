@@ -15,7 +15,7 @@ import { buildLocalImageUrl, localImageFileName } from "~/lib/localImageUrls";
 import { cn } from "~/lib/utils";
 import { toastManager } from "./ui/toast";
 
-export type LocalImagePreviewStatus = "loading" | "ready" | "error";
+type LocalImagePreviewStatus = "loading" | "ready" | "error";
 
 type LocalImagePreviewImgProps = Pick<
   ImgHTMLAttributes<HTMLImageElement>,

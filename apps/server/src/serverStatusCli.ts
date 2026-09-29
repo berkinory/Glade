@@ -1,9 +1,9 @@
-export const DEFAULT_SERVER_STATUS_URL = "http://127.0.0.1:3773";
+const DEFAULT_SERVER_STATUS_URL = "http://127.0.0.1:3773";
 const DEFAULT_SERVER_STATUS_TIMEOUT_MS = 3_000;
 
 type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
-export interface GladeServerHealthSnapshot {
+interface GladeServerHealthSnapshot {
   readonly status: string;
   readonly startupReady: boolean;
   readonly pushBusReady?: boolean;

@@ -30,7 +30,7 @@ import {
 import {
   composerMentionPathNeedsQuoting,
   formatComposerMentionToken,
-  skillMentionPrefix,
+  SKILL_MENTION_PREFIX,
 } from "~/lib/composerMentions";
 import {
   syncTerminalContextsByIds,
@@ -82,7 +82,6 @@ export function useKanbanTaskComposerEditor(input: UseKanbanTaskComposerEditorIn
     composerSkills,
     composerMentions,
     scratchThreadId,
-    selectedProvider,
     handleProviderModelChange,
     setInteractionMode,
     onCreate,
@@ -244,7 +243,7 @@ export function useKanbanTaskComposerEditor(input: UseKanbanTaskComposerEditorIn
       applyComposerTriggerReplacement({
         snapshot,
         trigger,
-        base: `${skillMentionPrefix(selectedProvider)}${item.skill.name} `,
+        base: `${SKILL_MENTION_PREFIX}${item.skill.name} `,
         onApplied: () => {
           const nextSkill = {
             name: item.skill.name,

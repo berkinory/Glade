@@ -6,7 +6,7 @@ import type { ProjectId, ThreadId } from "@glade/contracts";
 import type { SidebarThreadSummary } from "../types";
 import { hasUnseenCompletion, isThreadActivelyWorking } from "./Sidebar.logic";
 
-export function isThreadRunningForActivity(
+function isThreadRunningForActivity(
   thread: Pick<SidebarThreadSummary, "hasLiveTailWork" | "session" | "latestTurn">,
 ): boolean {
   return isThreadActivelyWorking(thread) || thread.session?.status === "connecting";
@@ -17,7 +17,7 @@ export function isThreadRunningForActivity(
  * at least once. Drafts stay out, but a thread whose very first turn is
  * starting up already counts as running work.
  */
-export function isActivityThread(thread: SidebarThreadSummary): boolean {
+function isActivityThread(thread: SidebarThreadSummary): boolean {
   if (thread.archivedAt != null) return false;
   if (thread.parentThreadId) return false;
   return thread.latestTurn !== null || isThreadRunningForActivity(thread);
@@ -42,15 +42,15 @@ function parseTimestampMs(value: string | null | undefined): number {
 }
 
 /** Activity follows the last human send; background work and reads do not move rows. */
-export type ActivityRecencyInput = Pick<SidebarThreadSummary, "createdAt" | "latestHumanMessageAt">;
+type ActivityRecencyInput = Pick<SidebarThreadSummary, "createdAt" | "latestHumanMessageAt">;
 
-export function resolveActivityRecencyIso(thread: ActivityRecencyInput): string {
+function resolveActivityRecencyIso(thread: ActivityRecencyInput): string {
   return thread.latestHumanMessageAt && parseTimestampMs(thread.latestHumanMessageAt) > 0
     ? thread.latestHumanMessageAt
     : thread.createdAt;
 }
 
-export function resolveActivityRecencyMs(thread: ActivityRecencyInput): number {
+function resolveActivityRecencyMs(thread: ActivityRecencyInput): number {
   return parseTimestampMs(resolveActivityRecencyIso(thread));
 }
 
@@ -117,7 +117,7 @@ export function buildActivityViewModel(input: {
 
 export type ActivityDateBucket = "today" | "yesterday" | "earlier";
 
-export function resolveActivityDateBucket(
+function resolveActivityDateBucket(
   thread: ActivityRecencyInput,
   nowMs: number,
 ): ActivityDateBucket {
@@ -281,17 +281,17 @@ export function resolveActivityScope(
   return { scope: scopeSelection, projectFilterIds: new Set([scopeSelection]) };
 }
 
-export const ACTIVITY_RECENT_LIMIT = 5;
+const ACTIVITY_RECENT_LIMIT = 5;
 
 /**
  * Recent turns over at 4am, not midnight: a session that runs past midnight is
  * still the same working day, and resetting the section out from under a live
  * session is worse than carrying it a few hours longer.
  */
-export const ACTIVITY_DAY_START_HOUR = 4;
+const ACTIVITY_DAY_START_HOUR = 4;
 
 /** Start of the working day `nowMs` belongs to, in local time. */
-export function resolveActivityDayStartMs(nowMs: number): number {
+function resolveActivityDayStartMs(nowMs: number): number {
   const dayStart = new Date(nowMs);
   dayStart.setHours(ACTIVITY_DAY_START_HOUR, 0, 0, 0);
   if (dayStart.getTime() > nowMs) dayStart.setDate(dayStart.getDate() - 1);

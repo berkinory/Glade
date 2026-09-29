@@ -5,7 +5,7 @@
 //          native collapsibles, and standalone `<br>` tags become newlines. Both passes are
 //          fence-aware so code samples survive verbatim.
 // Layer: Web domain helpers (no React)
-// Exports: PullRequestMarkdownSection, stripHtmlComments, preparePullRequestMarkdown,
+// Exports: PullRequestMarkdownSection, preparePullRequestMarkdown,
 //          splitPullRequestMarkdownSections, pullRequestMarkdownPreview
 
 const FENCE_PATTERN = /```[\s\S]*?```|~~~[\s\S]*?~~~/g;
@@ -39,7 +39,7 @@ function insideAnyRange(index: number, ranges: ReadonlyArray<[number, number]>):
 /** Strips HTML comments (PR template boilerplate like "READ BEFORE OPENING") from markdown
  *  before rendering — GitHub never shows them, so neither should the detail view. Fence-aware:
  *  comments inside fenced code blocks are content and survive. */
-export function stripHtmlComments(markdown: string): string {
+function stripHtmlComments(markdown: string): string {
   return markdown
     .split(FENCED_CODE_SPLIT_PATTERN)
     .map((segment, index) =>

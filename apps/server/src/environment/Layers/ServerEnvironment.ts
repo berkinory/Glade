@@ -31,7 +31,7 @@ function platformArch(): ExecutionEnvironmentDescriptor["platform"]["arch"] {
   }
 }
 
-export const makeServerEnvironment = Effect.fn(function* () {
+const makeServerEnvironment = Effect.fn(function* () {
   const fileSystem = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const serverConfig = yield* ServerConfig;

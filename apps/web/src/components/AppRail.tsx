@@ -1,7 +1,7 @@
 // FILE: AppRail.tsx
 // Purpose: The rail layout's fixed icon tab strip (Home, Spaces, route destinations, Settings).
 // Layer: App shell component
-// Exports: AppRail, AppRailItem, AppRailPortal, AppRailSlotProvider
+// Exports: AppRailItem, AppRailPortal, AppRailSlotProvider
 // Depends on: SidebarIconButton and the shared sidebar row tokens. ThreadSidebar owns the
 //             items and their handlers and portals the rail into the slot the route shell
 //             places left of the panel, so no handler moves out of ThreadSidebar.
@@ -146,7 +146,7 @@ function AppRailButton({ item }: { item: AppRailItem }) {
   );
 }
 
-export function AppRail({ items, shortcuts, moreSlot, bottomItems, bottomSlot }: AppRailProps) {
+function AppRail({ items, shortcuts, moreSlot, bottomItems, bottomSlot }: AppRailProps) {
   return (
     <nav
       aria-label="Primary"

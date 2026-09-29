@@ -11,14 +11,14 @@ import {
 
 export type ThemeMode = "light" | "dark" | "system";
 export type ThemeVariant = "light" | "dark";
-export type WindowMaterial = "opaque" | "translucent";
+type WindowMaterial = "opaque" | "translucent";
 
 export interface ThemeFonts {
   ui: string | null;
   code: string | null;
 }
 
-export interface ThemeSemanticColors {
+interface ThemeSemanticColors {
   diffAdded: string;
   diffRemoved: string;
   skill: string;
@@ -53,7 +53,7 @@ export interface CodeThemeOption {
   variants: readonly ThemeVariant[];
 }
 
-export interface ThemeSharePayload {
+interface ThemeSharePayload {
   codeThemeId: string;
   theme: ChromeTheme;
   variant: ThemeVariant;
@@ -64,7 +64,7 @@ export interface ThemeCssVariableBuild {
   variables: Record<string, string>;
 }
 
-export interface ThemeDerivedTokens {
+interface ThemeDerivedTokens {
   accentBackground: string;
   accentBackgroundActive: string;
   accentBackgroundHover: string;
@@ -103,7 +103,7 @@ export interface ThemeDerivedTokens {
   textForegroundTertiary: string;
 }
 
-export interface ResolvedThemeTokens {
+interface ResolvedThemeTokens {
   aliases: Record<string, string>;
   codexVariables: Record<string, string>;
   computed: {
@@ -236,7 +236,7 @@ export const CODE_THEME_OPTIONS: readonly CodeThemeOption[] = [
   { id: "vscode-plus", label: "VS Code Plus", variants: ["light", "dark"] },
 ] as const;
 
-export const DEFAULT_CHROME_THEME_BY_VARIANT: Record<ThemeVariant, ChromeTheme> = {
+const DEFAULT_CHROME_THEME_BY_VARIANT: Record<ThemeVariant, ChromeTheme> = {
   dark: {
     accent: "#339cff",
     contrast: 0,
@@ -280,11 +280,11 @@ export const DEFAULT_THEME_STATE: ThemeState = {
 
 // ─── Theme catalog helpers ────────────────────────────────────────────────
 
-export function isThemeMode(value: unknown): value is ThemeMode {
+function isThemeMode(value: unknown): value is ThemeMode {
   return value === "light" || value === "dark" || value === "system";
 }
 
-export function isThemeVariant(value: unknown): value is ThemeVariant {
+function isThemeVariant(value: unknown): value is ThemeVariant {
   return value === "light" || value === "dark";
 }
 
@@ -292,14 +292,14 @@ export function getAvailableCodeThemes(variant: ThemeVariant): readonly CodeThem
   return CODE_THEME_OPTIONS.filter((option) => option.variants.includes(variant));
 }
 
-export function isCodeThemeAvailable(codeThemeId: string, variant: ThemeVariant): boolean {
+function isCodeThemeAvailable(codeThemeId: string, variant: ThemeVariant): boolean {
   const normalizedCodeThemeId = codeThemeId.trim().toLowerCase();
   return CODE_THEME_OPTIONS.some(
     (option) => option.id === normalizedCodeThemeId && option.variants.includes(variant),
   );
 }
 
-export function normalizeCodeThemeId(
+function normalizeCodeThemeId(
   codeThemeId: unknown,
   variant: ThemeVariant,
   fallback = DEFAULT_THEME_STATE.codeThemeIds[variant],
@@ -311,7 +311,7 @@ export function normalizeCodeThemeId(
 
 // ─── Theme normalization ──────────────────────────────────────────────────
 
-export function normalizeThemeFonts(value: unknown): ThemeFonts {
+function normalizeThemeFonts(value: unknown): ThemeFonts {
   const fonts = isRecord(value) ? value : {};
   return {
     code: normalizeFontSelection(fonts.code),
@@ -319,7 +319,7 @@ export function normalizeThemeFonts(value: unknown): ThemeFonts {
   };
 }
 
-export function normalizeSemanticColors(
+function normalizeSemanticColors(
   value: unknown,
   fallback: ThemeSemanticColors,
 ): ThemeSemanticColors {
@@ -331,7 +331,7 @@ export function normalizeSemanticColors(
   };
 }
 
-export function normalizeChromeTheme(value: unknown, variant: ThemeVariant): ChromeTheme {
+function normalizeChromeTheme(value: unknown, variant: ThemeVariant): ChromeTheme {
   const fallback = DEFAULT_CHROME_THEME_BY_VARIANT[variant];
   const theme = isRecord(value) ? value : {};
 
@@ -349,7 +349,7 @@ export function normalizeChromeTheme(value: unknown, variant: ThemeVariant): Chr
   };
 }
 
-export function normalizeThemePack(value: unknown, variant: ThemeVariant): ThemePack {
+function normalizeThemePack(value: unknown, variant: ThemeVariant): ThemePack {
   const pack = isRecord(value) ? value : {};
   return {
     codeThemeId: normalizeCodeThemeId(pack.codeThemeId, variant),
@@ -373,7 +373,7 @@ function hasStoredCustomUiFont(state: Record<string, unknown>): boolean {
   });
 }
 
-export function normalizeThemeState(value: unknown): ThemeState {
+function normalizeThemeState(value: unknown): ThemeState {
   const state = isRecord(value) ? value : {};
   const codeThemeIds = isRecord(state.codeThemeIds) ? state.codeThemeIds : {};
   const chromeThemes = isRecord(state.chromeThemes) ? state.chromeThemes : {};
@@ -437,7 +437,7 @@ export function createThemeShareString(variant: ThemeVariant, pack: ThemePack): 
   })}`;
 }
 
-export function parseThemeShareString(rawValue: string): ThemeSharePayload {
+function parseThemeShareString(rawValue: string): ThemeSharePayload {
   const value = rawValue.trim();
   if (!value.startsWith(THEME_SHARE_PREFIX)) {
     throw new Error("Theme share string must start with codex-theme-v1:");
@@ -475,7 +475,7 @@ export function canParseThemeShareString(value: string, targetVariant?: ThemeVar
   }
 }
 
-export function parseThemeShareStringForVariant(
+function parseThemeShareStringForVariant(
   value: string,
   targetVariant?: ThemeVariant,
 ): ThemeSharePayload {
@@ -815,10 +815,7 @@ export function buildThemeCssVariables(
   };
 }
 
-export function buildResolvedThemeTokens(
-  pack: ThemePack,
-  variant: ThemeVariant,
-): ResolvedThemeTokens {
+function buildResolvedThemeTokens(pack: ThemePack, variant: ThemeVariant): ResolvedThemeTokens {
   const computedTheme = buildComputedTheme(pack.theme, variant);
   const derived =
     variant === "light"

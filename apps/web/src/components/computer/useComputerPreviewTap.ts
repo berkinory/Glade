@@ -18,7 +18,7 @@ import { useComputerStateStore } from "../../computerStateStore";
  * Silence longer than this ends tap ownership of the canvas: the popover
  * falls back to the stills stream until fresh tap frames arrive again.
  */
-export const COMPUTER_PREVIEW_TAP_QUIET_MS = 1_000;
+const COMPUTER_PREVIEW_TAP_QUIET_MS = 1_000;
 
 export interface ComputerPreviewTapFrameSize {
   readonly width: number;

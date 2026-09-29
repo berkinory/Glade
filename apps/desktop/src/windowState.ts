@@ -37,7 +37,7 @@ function isWindowBounds(value: unknown): value is DesktopWindowBounds {
   );
 }
 
-export function parseDesktopWindowState(value: unknown): PersistedDesktopWindowState | null {
+function parseDesktopWindowState(value: unknown): PersistedDesktopWindowState | null {
   if (!value || typeof value !== "object") {
     return null;
   }

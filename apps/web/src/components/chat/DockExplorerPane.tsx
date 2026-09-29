@@ -5,7 +5,7 @@
 // Layer: Chat right-dock UI
 // Exports: DockExplorerPane
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { ThreadId } from "@glade/contracts";
 import { isNormalizedWindowsAbsolutePath } from "@glade/shared/path";

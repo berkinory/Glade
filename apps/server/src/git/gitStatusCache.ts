@@ -17,7 +17,7 @@ export interface CachedGitStatus {
   readonly remote: CachedValue<GitStatusRemoteResult | null> | null;
 }
 
-export const REMOTE_STATUS_CACHE_TTL_MS = 30_000;
+const REMOTE_STATUS_CACHE_TTL_MS = 30_000;
 
 /**
  * Upper bound on cached working directories.
@@ -28,7 +28,7 @@ export const REMOTE_STATUS_CACHE_TTL_MS = 30_000;
  * recently written directory is always safe, and it keeps the copy-on-write update
  * below O(limit) instead of O(directories ever seen).
  */
-export const GIT_STATUS_CACHE_MAX_ENTRIES = 64;
+const GIT_STATUS_CACHE_MAX_ENTRIES = 64;
 
 /**
  * Copy-on-write insert with least-recently-written eviction. Re-inserting the key

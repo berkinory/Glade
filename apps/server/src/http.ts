@@ -213,7 +213,7 @@ export function makeEffectHttpRouteLayer(
   );
 }
 
-export function makeDesktopShutdownEffectRouteLayer(shutdownController: ServerShutdownController) {
+function makeDesktopShutdownEffectRouteLayer(shutdownController: ServerShutdownController) {
   return HttpRouter.add(
     "POST",
     DESKTOP_SHUTDOWN_ROUTE_PATH,
@@ -250,7 +250,7 @@ export function makeDesktopShutdownEffectRouteLayer(shutdownController: ServerSh
  * dispatching once the desktop side is dead or restarting; both sides fail
  * closed independently rather than trusting a single transport.
  */
-export function makeDesktopComputerEmergencyStopRouteLayer() {
+function makeDesktopComputerEmergencyStopRouteLayer() {
   return HttpRouter.add(
     "POST",
     DESKTOP_COMPUTER_EMERGENCY_STOP_ROUTE_PATH,
@@ -290,7 +290,7 @@ export function makeDesktopComputerEmergencyStopRouteLayer() {
   );
 }
 
-export function makeHealthEffectRouteLayer(readiness: ServerReadiness) {
+function makeHealthEffectRouteLayer(readiness: ServerReadiness) {
   return HttpRouter.add(
     "GET",
     "/health",
@@ -375,7 +375,7 @@ function trustedMutationCorsHeaders(input: {
   };
 }
 
-export function isLegacyTokenAuthorized(input: {
+function isLegacyTokenAuthorized(input: {
   readonly config: ServerConfigShape;
   readonly url: URL;
 }): boolean {
@@ -651,7 +651,7 @@ export const authEffectRouteLayer = HttpRouter.add(
   ),
 );
 
-export const projectFaviconEffectRouteLayer = HttpRouter.add(
+const projectFaviconEffectRouteLayer = HttpRouter.add(
   "GET",
   "/api/project-favicon",
   Effect.gen(function* () {
@@ -800,7 +800,7 @@ const threadExportEffectRouteLayer = HttpRouter.add(
   }).pipe(Effect.catchTag("AuthError", (error) => Effect.succeed(authErrorResponse(error)))),
 );
 
-export const editorIconEffectRouteLayer = HttpRouter.add(
+const editorIconEffectRouteLayer = HttpRouter.add(
   "GET",
   EDITOR_ICON_ROUTE_PATH,
   Effect.gen(function* () {
@@ -843,7 +843,7 @@ function streamedFileResponse(input: {
   });
 }
 
-export const localImageEffectRouteLayer = HttpRouter.add(
+const localImageEffectRouteLayer = HttpRouter.add(
   "GET",
   LOCAL_IMAGE_ROUTE_PATH,
   Effect.gen(function* () {
@@ -1101,7 +1101,7 @@ export const binaryUploadEffectRouteLayer = Layer.merge(
   ),
 );
 
-export const attachmentsEffectRouteLayer = HttpRouter.add(
+const attachmentsEffectRouteLayer = HttpRouter.add(
   "GET",
   `${ATTACHMENTS_ROUTE_PREFIX}/*`,
   Effect.gen(function* () {
@@ -1190,7 +1190,7 @@ export const attachmentsEffectRouteLayer = HttpRouter.add(
   }).pipe(Effect.catchTag("AuthError", (error) => Effect.succeed(authErrorResponse(error)))),
 );
 
-export const staticAndDevEffectRouteLayer = HttpRouter.add(
+const staticAndDevEffectRouteLayer = HttpRouter.add(
   "GET",
   "*",
   Effect.gen(function* () {

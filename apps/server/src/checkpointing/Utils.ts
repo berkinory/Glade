@@ -9,12 +9,12 @@ import {
 } from "@glade/contracts";
 import { resolveThreadWorkspaceCwd as resolveSharedThreadWorkspaceCwd } from "@glade/shared/threadEnvironment";
 
-export const CHECKPOINT_REFS_PREFIX = "refs/glade/checkpoints";
+const CHECKPOINT_REFS_PREFIX = "refs/glade/checkpoints";
 
 const MANAGED_CHECKPOINT_REF_PATTERN =
   /^refs\/([A-Za-z0-9._-]+)\/checkpoints\/([A-Za-z0-9_-]+)\/(turn|message-start|turn-start|turn-live|revert-rescue)\/([A-Za-z0-9_-]+)$/;
 
-export interface ManagedCheckpointRefParts {
+interface ManagedCheckpointRefParts {
   readonly namespace: string;
   readonly threadToken: string;
   readonly kind: "turn" | "message-start" | "turn-start" | "turn-live" | "revert-rescue";
@@ -22,7 +22,7 @@ export interface ManagedCheckpointRefParts {
   readonly familyPrefix: string;
 }
 
-export function parseManagedCheckpointRef(value: string): ManagedCheckpointRefParts | null {
+function parseManagedCheckpointRef(value: string): ManagedCheckpointRefParts | null {
   const match = MANAGED_CHECKPOINT_REF_PATTERN.exec(value);
   if (!match) return null;
   const [, namespace, threadToken, kind, valueToken] = match;

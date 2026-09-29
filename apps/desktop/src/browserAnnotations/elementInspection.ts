@@ -17,7 +17,7 @@ export interface ElementStyleSnapshot {
   readonly radius: readonly [string, string, string, string];
 }
 
-export interface InspectorRow {
+interface InspectorRow {
   readonly label: string;
   readonly value: string;
 }
@@ -77,7 +77,7 @@ function splitCssComponents(value: string): readonly string[] {
  * Renders a computed color as the short hex form designers recognise, keeping
  * alpha as an explicit percentage so translucent surfaces stay readable.
  */
-export function formatCssColor(value: string): string | null {
+function formatCssColor(value: string): string | null {
   const trimmed = value.trim();
   if (trimmed.length === 0) return null;
   const match = /^rgba?\(([^)]*)\)$/i.exec(trimmed);
@@ -104,7 +104,7 @@ export function formatCssColor(value: string): string | null {
  * Collapses four computed edge lengths into CSS shorthand, or `null` when the
  * box contributes nothing worth showing.
  */
-export function formatCssBox(values: readonly [string, string, string, string]): string | null {
+function formatCssBox(values: readonly [string, string, string, string]): string | null {
   const shorthand = collapseCssSides(values);
   return shorthand === "0" ? null : shorthand;
 }
@@ -139,7 +139,7 @@ export function formatCssBorderRadius(values: readonly [string, string, string, 
 }
 
 /** Renders the computed font the way a CSS `font` shorthand reads. */
-export function formatCssFont(snapshot: ElementStyleSnapshot): string {
+function formatCssFont(snapshot: ElementStyleSnapshot): string {
   const weight =
     snapshot.fontWeight === "400" || snapshot.fontWeight === "normal"
       ? ""

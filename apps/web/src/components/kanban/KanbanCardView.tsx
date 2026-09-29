@@ -27,7 +27,7 @@ import { KANBAN_COLUMN_LABELS, kanbanThreadCardId, type KanbanCard } from "./kan
 /** Resolved PR badge per thread from the board root's useThreadPullRequests call. */
 export type KanbanCardPrLookup = ReadonlyMap<ThreadId, ThreadPullRequest>;
 
-export interface KanbanCardViewProps {
+interface KanbanCardViewProps {
   card: KanbanCard;
   onOpen?: (card: KanbanCard) => void;
   /** Right-click handler — opens the sidebar-style thread/draft context menu. */

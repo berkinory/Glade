@@ -69,7 +69,7 @@ import { OrchestrationEngineService } from "./Services/OrchestrationEngine.ts";
  * 10s). A record still owned by a live process this long after it was written
  * belongs to a quit that was cancelled and must not survive.
  */
-export const QUIT_RESUME_ABANDON_AFTER_MS = 30_000;
+const QUIT_RESUME_ABANDON_AFTER_MS = 30_000;
 
 /** Sleep without keeping the Node process alive during a normal desktop shutdown. */
 const sleepUnref = (duration: Duration.Input) =>
@@ -82,7 +82,7 @@ const sleepUnref = (duration: Duration.Input) =>
     return Effect.sync(() => clearTimeout(timer));
   });
 
-export const QuitResumeRecord = Schema.Struct({
+const QuitResumeRecord = Schema.Struct({
   version: Schema.Literal(1),
   /** Unique per quit; command/message ids derive from it so replays dedup and quits never collide. */
   recordId: TrimmedNonEmptyString,
@@ -96,7 +96,7 @@ export const QuitResumeRecord = Schema.Struct({
     }),
   ).check(Schema.isMaxLength(QUIT_RESUME_MAX_THREADS)),
 });
-export type QuitResumeRecord = typeof QuitResumeRecord.Type;
+type QuitResumeRecord = typeof QuitResumeRecord.Type;
 
 const decodeQuitResumeRecord = Schema.decodeUnknownEffect(Schema.fromJsonString(QuitResumeRecord));
 
@@ -113,7 +113,7 @@ export type QuitResumeRecordableThread = Pick<
 >;
 
 /** Read-model thread fields the boot-time planner inspects (a superset is fine). */
-export type QuitResumeThread = Pick<
+type QuitResumeThread = Pick<
   OrchestrationThread,
   | "id"
   | "projectId"
@@ -124,15 +124,15 @@ export type QuitResumeThread = Pick<
   | "runtimeMode"
   | "interactionMode"
 >;
-export type QuitResumeProject = Pick<OrchestrationProject, "id" | "deletedAt">;
+type QuitResumeProject = Pick<OrchestrationProject, "id" | "deletedAt">;
 
-export type QuitResumeSkipReason =
+type QuitResumeSkipReason =
   | "thread-missing"
   | "thread-deleted"
   | "project-missing"
   | ThreadResumePreconditionViolation;
 
-export interface QuitResumePlan {
+interface QuitResumePlan {
   readonly commands: ReadonlyArray<ThreadTurnStartCommand>;
   readonly skipped: ReadonlyArray<{
     readonly threadId: ThreadId;
@@ -154,7 +154,7 @@ function inFlightTurnId(thread: QuitResumeRecordableThread): TurnId | null {
  * that finished while it was open has nothing to resume. Unknown and deleted
  * threads are dropped, duplicates collapse, order is kept.
  */
-export function buildQuitResumeRecord(input: {
+function buildQuitResumeRecord(input: {
   readonly request: OrchestrationPrepareQuitResumeInput;
   readonly threads: ReadonlyArray<QuitResumeRecordableThread>;
   readonly recordId: string;
@@ -183,7 +183,7 @@ export function buildQuitResumeRecord(input: {
   };
 }
 
-export function buildQuitInterruptCommand(input: {
+function buildQuitInterruptCommand(input: {
   readonly threadId: ThreadId;
   readonly turnId: TurnId | null;
   readonly recordId: string;
@@ -210,7 +210,7 @@ export function buildQuitInterruptCommand(input: {
  * Command and message ids derive from the record so an accidental re-run
  * collides with the engine's receipt dedup instead of starting a second turn.
  */
-export function planQuitResumeTurns(input: {
+function planQuitResumeTurns(input: {
   readonly record: QuitResumeRecord;
   readonly threads: ReadonlyArray<QuitResumeThread>;
   readonly projects: ReadonlyArray<QuitResumeProject>;
@@ -272,7 +272,7 @@ export function planQuitResumeTurns(input: {
   return { commands, skipped };
 }
 
-export const persistQuitResumeRecord = (input: {
+const persistQuitResumeRecord = (input: {
   readonly path: string;
   readonly record: QuitResumeRecord;
 }) =>
@@ -281,7 +281,7 @@ export const persistQuitResumeRecord = (input: {
     contents: `${JSON.stringify(input.record)}\n`,
   });
 
-export const clearQuitResumeRecord = (path: string) =>
+const clearQuitResumeRecord = (path: string) =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
     yield* fs.remove(path, { force: true });
@@ -296,7 +296,7 @@ export type QuitResumeRecordRead =
  * `absent` when there is no file, `invalid` when a file is there but cannot be
  * read or is not a record.
  */
-export const readQuitResumeRecord = (
+const readQuitResumeRecord = (
   path: string,
 ): Effect.Effect<QuitResumeRecordRead, never, FileSystem.FileSystem> =>
   Effect.gen(function* () {
@@ -323,7 +323,7 @@ export const readQuitResumeRecord = (
  * then remove the private copy. `absent` when there was nothing to claim. A
  * private copy left behind by a crash is never mistaken for a fresh record.
  */
-export const claimQuitResumeRecord = (
+const claimQuitResumeRecord = (
   path: string,
 ): Effect.Effect<QuitResumeRecordRead, never, FileSystem.FileSystem> =>
   Effect.gen(function* () {

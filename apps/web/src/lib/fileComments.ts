@@ -36,7 +36,7 @@ export interface ExtractedFileComments {
   comments: ParsedFileCommentEntry[];
 }
 
-export type FileCommentValidationError = "empty" | "too-long";
+type FileCommentValidationError = "empty" | "too-long";
 
 export function normalizeFileCommentText(text: string): string {
   return text
@@ -54,7 +54,7 @@ function normalizeLineRange(
   return { startLine: start, endLine: end };
 }
 
-export function getFileCommentValidationError(
+function getFileCommentValidationError(
   comment: Pick<FileCommentSelection, "path" | "text">,
 ): FileCommentValidationError | null {
   const path = comment.path.trim();
@@ -112,9 +112,7 @@ export function formatFileCommentTitleSeed(commentCount: number): string {
   return commentCount === 1 ? "File comment" : "File comments";
 }
 
-export function buildFileCommentsPromptBlock(
-  comments: ReadonlyArray<FileCommentSelection>,
-): string {
+function buildFileCommentsPromptBlock(comments: ReadonlyArray<FileCommentSelection>): string {
   const normalizedComments = comments
     .map((comment) => normalizeFileCommentSelection(comment))
     .filter((comment): comment is FileCommentSelection => comment !== null);

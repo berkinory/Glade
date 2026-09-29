@@ -1,7 +1,7 @@
 // FILE: KanbanColumn.tsx
 // Purpose: One kanban column — droppable body, sortable draft cards, done render cap.
 // Layer: UI component (project-board building block)
-// Exports: KanbanColumn, kanbanColumnDropId, parseKanbanColumnDropId
+// Exports: KanbanColumn, parseKanbanColumnDropId
 
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -24,7 +24,7 @@ import {
 const COLUMN_DROP_ID_PREFIX = "kanban-column";
 const DONE_RENDER_CAP = 30;
 
-export function kanbanColumnDropId(projectId: ProjectId, column: KanbanColumnKey): string {
+function kanbanColumnDropId(projectId: ProjectId, column: KanbanColumnKey): string {
   return `${COLUMN_DROP_ID_PREFIX}|${column}|${projectId}`;
 }
 

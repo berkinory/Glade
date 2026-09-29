@@ -3,7 +3,7 @@
 // Layer: UI state helpers
 // Exports: dock pane types, default-state factory, and immutable open/close/activate helpers.
 
-import type { ProjectId, ThreadId, TurnId } from "@glade/contracts";
+import type { ProjectId, TurnId } from "@glade/contracts";
 import { isPlainObject, sanitizeStringKeyedRecord } from "./persistedRecord";
 
 // Single source of truth for the dock pane kinds. The union type, the runtime
@@ -20,7 +20,7 @@ const RIGHT_DOCK_PANE_KINDS = [
 ] as const;
 
 export type RightDockPaneKind = (typeof RIGHT_DOCK_PANE_KINDS)[number];
-export type PullRequestInitialTab = "summary" | "timeline" | "code";
+type PullRequestInitialTab = "summary" | "timeline" | "code";
 export type SourceControlView = "changes" | "review" | "history";
 
 const RIGHT_DOCK_PANE_KIND_SET: ReadonlySet<string> = new Set(RIGHT_DOCK_PANE_KINDS);
@@ -55,7 +55,7 @@ const SINGLETON_PANE_KINDS: ReadonlySet<RightDockPaneKind> = new Set(
   RIGHT_DOCK_PANE_KINDS.filter((kind) => !MULTI_INSTANCE_PANE_KINDS.has(kind)),
 );
 
-export function isSingletonPaneKind(kind: RightDockPaneKind): boolean {
+function isSingletonPaneKind(kind: RightDockPaneKind): boolean {
   return SINGLETON_PANE_KINDS.has(kind);
 }
 
@@ -67,7 +67,7 @@ export function createDefaultRightDockState(): RightDockThreadState {
   };
 }
 
-export function isRightDockPaneKind(value: unknown): value is RightDockPaneKind {
+function isRightDockPaneKind(value: unknown): value is RightDockPaneKind {
   return typeof value === "string" && RIGHT_DOCK_PANE_KIND_SET.has(value);
 }
 
@@ -119,7 +119,7 @@ function sanitizePersistedPane(value: unknown): RightDockPane | null {
   };
 }
 
-export function sanitizeRightDockThreadState(value: unknown): RightDockThreadState {
+function sanitizeRightDockThreadState(value: unknown): RightDockThreadState {
   if (!isPlainObject(value)) {
     return createDefaultRightDockState();
   }

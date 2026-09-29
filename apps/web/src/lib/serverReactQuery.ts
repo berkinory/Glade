@@ -6,13 +6,11 @@ import type {
   ServerListProviderUsageInput,
   ServerProviderStatus,
   ServerStopLocalServerInput,
-  ThreadId,
 } from "@glade/contracts";
 import { mutationOptions, queryOptions, type QueryClient } from "@tanstack/react-query";
 import { ensureNativeApi } from "~/nativeApi";
-import { EXPENSIVE_READ_RETRY_OPTIONS } from "./expensiveReadRetry";
 
-export const LOCAL_SERVERS_VISIBLE_REFETCH_INTERVAL_MS = 10_000;
+const LOCAL_SERVERS_VISIBLE_REFETCH_INTERVAL_MS = 10_000;
 const LOCAL_SERVERS_DEFAULT_STALE_TIME_MS = 3_000;
 
 export const serverQueryKeys = {
@@ -35,7 +33,7 @@ export const serverQueryKeys = {
   computerAuditHistory: () => ["server", "computerAuditHistory"] as const,
 };
 
-export const serverMutationKeys = {
+const serverMutationKeys = {
   stopLocalServer: () => ["server", "mutation", "stopLocalServer"] as const,
 };
 

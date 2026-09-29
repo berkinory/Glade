@@ -192,10 +192,10 @@ function resolvableStillTab(value: unknown): string | undefined {
  * lease for one exact window is refused outright (driver rev 12), and AX
  * insertions plus their readback verification on one element must not
  * interleave. Different windows — same pid included — overlap. */
-export const CUA_SEMANTIC_TEXT_LANE_HOLD_MS = 15_000;
+const CUA_SEMANTIC_TEXT_LANE_HOLD_MS = 15_000;
 /** Settle gap the lane holds after each semantic text write, so the next
  * same-window insertion starts after AX quiesces. Bounded and inside the lane. */
-export const CUA_SEMANTIC_TEXT_LANE_GAP_MS = 100;
+const CUA_SEMANTIC_TEXT_LANE_GAP_MS = 100;
 /** How long an observed element tree may serve internal target resolution.
  * Native dispatch still validates the element token, so expiry is the drift
  * bound for a control that survives but moved or changed meaning. */

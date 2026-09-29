@@ -3,7 +3,7 @@
 //          cards). Polls live git status per checkout plus the stored PR reference per
 //          thread, then resolves which PR each thread row should surface.
 // Layer: UI state hook (resolution rules live in Sidebar.logic.ts)
-// Exports: useThreadPullRequests, resolveThreadPullRequestFallback, toThreadPullRequest
+// Exports: useThreadPullRequests, resolveThreadPullRequestFallback
 
 import type {
   GitStatusResult,
@@ -33,7 +33,7 @@ const THREAD_PR_REFETCH_INTERVAL_MS = 300_000;
 
 // Also accepts persisted `lastKnownPr` entries, whose draft/mergeability/diff fields are
 // optional because older rows predate them.
-export function toThreadPullRequest(
+function toThreadPullRequest(
   pr:
     | NonNullable<ThreadPullRequest>
     | {

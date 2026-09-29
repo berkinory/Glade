@@ -807,7 +807,7 @@ function sentenceCase(value: string): string {
   return `${trimmed.charAt(0).toUpperCase()}${trimmed.slice(1)}`;
 }
 
-export function deriveAutomationIntentName(prompt: string): string {
+function deriveAutomationIntentName(prompt: string): string {
   const withoutUrls = stripUrls(prompt);
   const availabilitySubject = withoutUrls.match(
     /\b(?:check|verify|monitor|watch|controlla|verifica|monitora)\s+(?:if|whether|se)?\s*(.+?)\s+(?:is|are|e|available|disponibile|disponibili|in stock)\b/i,
@@ -890,16 +890,6 @@ export function parsePlainChatAutomationInvocation(
 }
 
 // Parses only explicit scheduled intents so regular automation questions keep going to the model.
-export function parseChatAutomationIntent(
-  value: string,
-  options: { readonly nowIso?: string } = {},
-): ChatAutomationIntent | null {
-  const invocation = extractChatAutomationInvocation(value);
-  if (invocation === null) {
-    return null;
-  }
-  return parseChatAutomationInvocation(invocation, options);
-}
 
 export function shouldGenerateAutomationIntent(input: {
   readonly deterministicIntent: ChatAutomationIntent | null;

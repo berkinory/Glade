@@ -161,10 +161,7 @@ const STRICT_PROVIDER_LIFECYCLE_GUARD = process.env.GLADE_STRICT_PROVIDER_LIFECY
  * stream is healthy and the consumer is caught up. Live events still drain
  * immediately; this poll only recovers rows whose notification was missed.
  */
-export function nextRuntimeJournalSafetyPollDelayMs(
-  currentDelayMs: number,
-  hadBacklog: boolean,
-): number {
+function nextRuntimeJournalSafetyPollDelayMs(currentDelayMs: number, hadBacklog: boolean): number {
   if (hadBacklog) return PROVIDER_RUNTIME_REPLAY_POLL_MIN_MS;
   return Math.min(
     PROVIDER_RUNTIME_REPLAY_POLL_MAX_MS,
@@ -313,7 +310,7 @@ function inferRuntimeModeFromUserInputAnswers(
   return null;
 }
 
-export function appendCappedBufferedText(existing: string, delta: string, limit: number): string {
+function appendCappedBufferedText(existing: string, delta: string, limit: number): string {
   const normalizedLimit = Math.max(0, Math.floor(limit));
   if (normalizedLimit === 0) {
     return "";
@@ -508,7 +505,7 @@ function asObject(value: unknown): Record<string, unknown> | undefined {
 }
 
 /** Resolves persisted image tool records independently of the bounded thread-detail window. */
-export function collectPersistedGeneratedImagePaths(
+function collectPersistedGeneratedImagePaths(
   records: ReadonlyArray<ProjectionGeneratedImageActivityRecord>,
 ): string[] {
   const paths: string[] = [];

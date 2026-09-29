@@ -3,7 +3,7 @@
 //          that validates the pane's identity fields, builds the PullRequestDetailInput, and
 //          keys the panel so switching pull requests remounts it in the chat dock.
 // Layer: Pull request presentation
-// Exports: PullRequestDockPane
+// Exports: default PullRequestDockPane (for React.lazy)
 
 import type { RightDockPane } from "~/rightDockStore.logic";
 
@@ -14,7 +14,7 @@ import {
 } from "./pullRequestDetail.logic";
 import { PullRequestDetailPanel } from "./PullRequestDetailPanel";
 
-export function PullRequestDockPane({
+function PullRequestDockPane({
   pane,
   onClose,
   onSelectPullRequest,

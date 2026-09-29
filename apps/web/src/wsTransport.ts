@@ -103,7 +103,7 @@ class WsTransportRpcError extends Data.TaggedError("WsTransportRpcError")<{
   readonly cause?: unknown;
 }> {}
 
-export class WsTransportRequestInterruptedError extends Data.TaggedError(
+class WsTransportRequestInterruptedError extends Data.TaggedError(
   "WsTransportRequestInterruptedError",
 )<{
   readonly message: string;
@@ -734,7 +734,7 @@ function omitNullUserInputAnswers(input: unknown): unknown {
   };
 }
 
-export function isServerLifecyclePushChannel(channel: string): boolean {
+function isServerLifecyclePushChannel(channel: string): boolean {
   return channel === WS_CHANNELS.serverWelcome || channel === WS_CHANNELS.serverMaintenanceUpdated;
 }
 

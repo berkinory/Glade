@@ -2779,7 +2779,6 @@ function emitUpdateState(): void {
 }
 
 function setUpdateState(patch: Partial<DesktopUpdateState>): void {
-  const previousStatus = updateState.status;
   updateState = { ...updateState, ...patch };
   emitUpdateState();
 }

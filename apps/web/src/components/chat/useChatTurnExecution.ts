@@ -113,8 +113,6 @@ type ChatTurnExecutionInput = Pick<
   | "runProjectScript"
   | "persistThreadSettingsForNextTurn"
   | "rememberCustomBinaryPathForDispatch"
-  | "computerControlChangeSequence"
-  | "setComposerDraftComputerControlMode"
   | "setSettledThreadBranchWarningDismissedThreadId"
   | "armLocalDispatchAckFallback"
   | "setQueuedSteerGate"
@@ -164,8 +162,6 @@ export function useChatTurnExecution({
   runProjectScript,
   persistThreadSettingsForNextTurn,
   rememberCustomBinaryPathForDispatch,
-  computerControlChangeSequence,
-  setComposerDraftComputerControlMode,
   setSettledThreadBranchWarningDismissedThreadId,
   armLocalDispatchAckFallback,
   setQueuedSteerGate,
@@ -233,7 +229,6 @@ export function useChatTurnExecution({
         messageCreatedAt,
         turnAttachmentsPromise,
         messageIdForSend,
-        providerOptionsForDispatchForSend,
         outgoingMessageText,
         mentionedSkillsForSend,
         mentionedPluginMentionsForSend,
@@ -243,7 +238,6 @@ export function useChatTurnExecution({
         currentActiveGitBranchForSend,
         queuedChatTurn,
         turnDispatchSettings: preparedTurnDispatchSettings,
-        computerControlSequenceForSend,
         promptForSend,
         composerImagesSnapshot,
         composerFilesSnapshot,

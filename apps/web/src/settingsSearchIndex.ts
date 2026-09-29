@@ -56,7 +56,7 @@ export function settingsSearchEntryTarget(entry: SettingsSearchEntry): string | 
 // Mirrors row titles/descriptions rendered in settings panels. Panels stay mounted but render
 // null while inactive, so the sidebar cannot read every row at runtime; keep this list in sync
 // when rows are added, renamed, hidden conditionally, or represented as panel-level results.
-export const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
+const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
   // ── General ────────────────────────────────────────────────────────────────
   {
     id: "general:default-provider",

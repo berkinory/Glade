@@ -2,7 +2,7 @@
 // Purpose: Right-click menu shared by file rows, file previews, and chat file
 //          links (editor explorer, changed-file lists, dock file pane).
 // Layer: Web UI helpers
-// Exports: showFileReferenceContextMenu, getRevealInFolderLabel
+// Exports: showFileReferenceContextMenu
 
 import { formatSelectionLabel, type ChatFileReference } from "~/lib/chatReferences";
 import { copyTextToClipboard } from "~/hooks/useCopyToClipboard";
@@ -12,7 +12,7 @@ import { toastManager } from "~/components/ui/toast";
 import { FILE_CONTEXT_MENU_ICONS } from "./contextMenuIcons";
 import { showContextMenuFallback } from "~/contextMenuFallback";
 
-export function getRevealInFolderLabel(platform: string): string {
+function getRevealInFolderLabel(platform: string): string {
   if (isWindowsPlatform(platform)) {
     return "Open in Explorer";
   }

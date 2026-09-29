@@ -11,7 +11,7 @@ import {
 } from "~/lib/rateLimits";
 import { deriveUsagePace, type UsagePaceSummary } from "~/lib/usagePace";
 
-export type ProviderUsageTone = "healthy" | "warning" | "danger";
+type ProviderUsageTone = "healthy" | "warning" | "danger";
 
 export interface ProviderUsageDisplayRow extends VisibleRateLimitRow {
   remainingLabel: string;
@@ -31,7 +31,7 @@ export interface ProviderUsageProgressTrackProps {
   markerClassName: string;
 }
 
-export const PROVIDER_USAGE_TONE_CLASS_NAME: Record<ProviderUsageTone, string> = {
+const PROVIDER_USAGE_TONE_CLASS_NAME: Record<ProviderUsageTone, string> = {
   healthy: "bg-emerald-500",
   warning: "bg-amber-500",
   danger: "bg-red-500",
@@ -74,7 +74,7 @@ function windowDurationMinsForRow(row: VisibleRateLimitRow): number | undefined 
   return undefined;
 }
 
-export function providerUsageToneClassName(tone: ProviderUsageTone): string {
+function providerUsageToneClassName(tone: ProviderUsageTone): string {
   return PROVIDER_USAGE_TONE_CLASS_NAME[tone];
 }
 
@@ -90,7 +90,7 @@ export function providerUsageProgressTrackProps(
   };
 }
 
-export function deriveProviderUsageDisplayRow(row: VisibleRateLimitRow): ProviderUsageDisplayRow {
+function deriveProviderUsageDisplayRow(row: VisibleRateLimitRow): ProviderUsageDisplayRow {
   const remainingPercent = clampPercent(row.remainingPercent);
   const pace = deriveUsagePace({
     remainingPercent,

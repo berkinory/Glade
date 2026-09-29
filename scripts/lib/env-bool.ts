@@ -18,11 +18,3 @@ export function parseBooleanEnvValue(name: string, rawValue: string): boolean {
     `${name} must be a boolean value: true/false, 1/0, yes/no, or on/off. Received '${rawValue}'.`,
   );
 }
-
-export function parseOptionalBooleanEnvValue(
-  name: string,
-  rawValue: string | undefined,
-  defaultValue: boolean,
-): boolean {
-  return rawValue === undefined ? defaultValue : parseBooleanEnvValue(name, rawValue);
-}

@@ -15,7 +15,7 @@ import type {
 
 // --- pane lookup ---
 
-export function findPaneById(root: Pane, paneId: PaneId): Pane | null {
+function findPaneById(root: Pane, paneId: PaneId): Pane | null {
   if (root.id === paneId) {
     return root;
   }
@@ -36,7 +36,7 @@ export function findSplitNodeById(root: Pane, paneId: PaneId): SplitNode | null 
 }
 
 // Returns the SplitNode that directly contains the pane with paneId, or null if paneId is the root.
-export function findParentSplitNode(root: Pane, paneId: PaneId): SplitNode | null {
+function findParentSplitNode(root: Pane, paneId: PaneId): SplitNode | null {
   if (root.kind === "leaf") {
     return null;
   }
@@ -46,7 +46,7 @@ export function findParentSplitNode(root: Pane, paneId: PaneId): SplitNode | nul
   return findParentSplitNode(root.first, paneId) ?? findParentSplitNode(root.second, paneId);
 }
 
-export function findPaneDepth(root: Pane, paneId: PaneId): number | null {
+function findPaneDepth(root: Pane, paneId: PaneId): number | null {
   if (root.id === paneId) {
     return 0;
   }
@@ -162,7 +162,7 @@ export function removeLeafByPaneId(root: Pane, paneId: PaneId): RemoveLeafResult
 // Returns true if a target leaf can be subdivided in the requested direction without exceeding
 // the depth-cap of 2 (root SplitNode + at most one perpendicular SplitNode under each side).
 // When parentDirection is null (root-level leaf), any direction is allowed.
-export function canSubdivide(
+function canSubdivide(
   parentDirection: SplitDirection | null,
   requestedDirection: SplitDirection,
 ): boolean {

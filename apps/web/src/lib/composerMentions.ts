@@ -6,9 +6,7 @@
 import type { ProviderMentionReference, ProviderSkillReference } from "@glade/contracts";
 import { isThreadMentionPath, threadIdFromThreadMentionPath } from "@glade/shared/threadMentions";
 
-export function skillMentionPrefix(provider: string): string {
-  return "/";
-}
+export const SKILL_MENTION_PREFIX = "/";
 
 // The alternation must be unambiguous — a backslash may only match the escape
 // branch — or unclosed `@"` + a backslash run backtracks exponentially on the
@@ -73,13 +71,9 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-export function promptIncludesSkillMention(
-  prompt: string,
-  skillName: string,
-  provider: string,
-): boolean {
+function promptIncludesSkillMention(prompt: string, skillName: string): boolean {
   const escapedSkillName = escapeRegExp(skillName);
-  const prefixes = [skillMentionPrefix(provider), "$"];
+  const prefixes = [SKILL_MENTION_PREFIX, "$"];
   return prefixes.some((prefix) => {
     const pattern = new RegExp(`(^|\\s)${escapeRegExp(prefix)}${escapedSkillName}(?=\\s|$)`, "i");
     return pattern.test(prompt);
@@ -89,9 +83,8 @@ export function promptIncludesSkillMention(
 export function filterPromptSkillReferences(
   prompt: string,
   skills: ReadonlyArray<ProviderSkillReference>,
-  provider: string,
 ): ProviderSkillReference[] {
-  return skills.filter((skill) => promptIncludesSkillMention(prompt, skill.name, provider));
+  return skills.filter((skill) => promptIncludesSkillMention(prompt, skill.name));
 }
 
 export function providerSkillReferencesEqual(
@@ -152,7 +145,7 @@ export function isPluginProviderMentionReference(mention: ProviderMentionReferen
   return mention.path.startsWith("plugin://");
 }
 
-export function isThreadProviderMentionReference(mention: ProviderMentionReference): boolean {
+function isThreadProviderMentionReference(mention: ProviderMentionReference): boolean {
   return isThreadMentionPath(mention.path);
 }
 

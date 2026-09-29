@@ -4,7 +4,6 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createConnection } from "node:net";
 import { CuaDriverHost, ESCAPE_INPUT_COOLDOWN_MS } from "./cuaDriverHost";
-import { cuaHostProcessIsAlive } from "./cuaRuntimeOwnership";
 import type { ComputerInputMonitorState } from "./escapeKillSwitchMonitor";
 import {
   cuaRequest as rawCuaRequest,
@@ -610,22 +609,6 @@ describe("Cua macOS host retirement", () => {
   });
 });
 
-/** The args of every `set_agent_cursor_style` call the fixture recorded. */
-function stylePayloads(events: Array<{ event: string }>): Array<Record<string, unknown>> {
-  return events
-    .filter((row) => row.event.startsWith("style:"))
-    .map((row) => JSON.parse(row.event.slice("style:".length)) as Record<string, unknown>);
-}
-
-describe("agent cursor style", () => {
-  const pressKey = (endpoint: string) =>
-    cuaRequest<CuaReply>(endpoint, {
-      method: "call",
-      name: "press_key",
-      args: { key: "enter", _glade_foreground_observation_ms: 0 },
-    });
-});
-
 describe("task-owned user stop", () => {
   const task = { threadId: "thread", turnId: "turn" };
   it("user Stop refuses subsequent calls from the same turn", async () => {
@@ -711,85 +694,6 @@ describe("task-owned user stop", () => {
     expect(events).not.toContain("interrupt");
     expect(events).not.toContain("retiring");
   });
-});
-
-describe("frame tap launch prime", () => {
-  const task = { threadId: "thread", turnId: "turn" };
-  const calculator = {
-    pid: 101,
-    window_id: 202,
-    app_name: "Calculator",
-    title: "Calculator",
-    bounds: { x: 0, y: 0, width: 400, height: 600 },
-    is_on_screen: true,
-  };
-  function tapDouble() {
-    const updates: Array<unknown> = [];
-    return {
-      updates,
-      host: {
-        update: (target: unknown) => {
-          updates.push(target);
-        },
-        endTask: async () => {},
-        stop: async () => {},
-        dispose: async () => {},
-      },
-    };
-  }
-});
-
-describe("frame tap browser targeting", () => {
-  const task = { threadId: "thread", turnId: "turn" };
-  function tapDouble() {
-    const updates: Array<unknown> = [];
-    return {
-      updates,
-      host: {
-        update: (target: unknown) => {
-          updates.push(target);
-        },
-        endTask: async () => {},
-        stop: async () => {},
-        dispose: async () => {},
-      },
-    };
-  }
-});
-
-describe("driver warm-up on first touch", () => {
-  const FLAG = "GLADE_CUA_WARM_ON_FIRST_TOUCH";
-  let savedFlag: string | undefined;
-  let captured = false;
-
-  const setFlag = (value: string | undefined) => {
-    if (!captured) {
-      captured = true;
-      savedFlag = process.env[FLAG];
-    }
-    if (value === undefined) delete process.env[FLAG];
-    else process.env[FLAG] = value;
-  };
-
-  afterEach(() => {
-    if (captured) {
-      if (savedFlag === undefined) delete process.env[FLAG];
-      else process.env[FLAG] = savedFlag;
-      captured = false;
-      savedFlag = undefined;
-    }
-    vi.restoreAllMocks();
-  });
-});
-
-describe("per-agent cursor identity", () => {
-  const press = (endpoint: string, task?: Record<string, unknown>) =>
-    cuaRequest<CuaReply>(endpoint, {
-      method: "call",
-      name: "press_key",
-      args: { key: "enter" },
-      ...(task ? { task } : {}),
-    });
 });
 
 describe("browser surface", () => {

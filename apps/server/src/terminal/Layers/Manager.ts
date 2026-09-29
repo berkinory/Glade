@@ -74,8 +74,6 @@ import {
   type ProcessChildrenSnapshotObserver,
 } from "../windowsProcessSnapshot";
 
-export type { TerminalSubprocessActivity } from "../subprocessActivity";
-
 const DEFAULT_HISTORY_LINE_LIMIT = 5_000;
 const DEFAULT_PERSIST_DEBOUNCE_MS = 250;
 const DEFAULT_SUBPROCESS_POLL_INTERVAL_MS = 1_000;
@@ -308,11 +306,6 @@ function resolveShellCandidates(
     shellCandidateFromCommand("sh", platform),
   ]);
 }
-
-export const __terminalManagerShellTesting = {
-  resolveShellCandidates,
-  windowsDefaultTerminalShell: WINDOWS_DEFAULT_TERMINAL_SHELL,
-};
 
 function isRetryableShellSpawnError(error: unknown): boolean {
   const queue: unknown[] = [error];
@@ -624,11 +617,6 @@ function sanitizeTerminalHistoryChunk(
   return { visibleText, pendingControlSequence: "", titleSignals, hookEvents };
 }
 
-export const __terminalHistorySanitizeTesting = {
-  sanitizeTerminalHistoryChunk,
-  maxPendingControlSequenceLength: MAX_PENDING_CONTROL_SEQUENCE_LENGTH,
-};
-
 function legacySafeThreadId(threadId: string): string {
   return threadId.replace(/[^a-zA-Z0-9._-]/g, "_");
 }
@@ -761,7 +749,7 @@ interface KillEscalationHandle {
   rootExited: boolean;
 }
 
-export class TerminalManagerRuntime extends EventEmitter<TerminalManagerEvents> {
+class TerminalManagerRuntime extends EventEmitter<TerminalManagerEvents> {
   private readonly sessions = new Map<string, TerminalSessionState>();
   private readonly logsDir: string;
   private managedWrapperBinDir: string | null;

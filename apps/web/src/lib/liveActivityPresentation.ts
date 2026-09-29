@@ -45,7 +45,7 @@ function getLiveActivityClockSnapshot(): number {
   return liveActivityClockNowMs;
 }
 
-export function isLiveActivityInProgress(activity: WorkLogLiveActivity): boolean {
+function isLiveActivityInProgress(activity: WorkLogLiveActivity): boolean {
   return (
     activity.state === "starting" ||
     activity.state === "thinking" ||
@@ -73,7 +73,7 @@ function parseTimestamp(value: string | undefined): number | null {
   return Number.isNaN(timestamp) ? null : timestamp;
 }
 
-export function liveActivityElapsedMs(activity: WorkLogLiveActivity, nowMs: number): number | null {
+function liveActivityElapsedMs(activity: WorkLogLiveActivity, nowMs: number): number | null {
   const startedAtMs = parseTimestamp(activity.startedAt);
   const lastActivityAtMs = parseTimestamp(activity.lastActivityAt);
   const reportedElapsedMs =

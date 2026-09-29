@@ -6,7 +6,7 @@
 
 import type { ProviderKind, ThreadId } from "@glade/contracts";
 
-export const ONBOARDING_TERMINAL_SCOPE_PREFIX = "onboarding-terminal:";
+const ONBOARDING_TERMINAL_SCOPE_PREFIX = "onboarding-terminal:";
 
 /**
  * Terminal sessions are keyed server-side by thread and terminal id. Two tabs or windows

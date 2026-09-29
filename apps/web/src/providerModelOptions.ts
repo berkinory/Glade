@@ -241,7 +241,7 @@ export function groupProviderModelOptions(
 }
 
 /** Long grouped model lists collapse provider sections to keep submenus scannable. */
-export const COLLAPSIBLE_MODEL_GROUP_THRESHOLD = 3;
+const COLLAPSIBLE_MODEL_GROUP_THRESHOLD = 3;
 
 export function shouldUseCollapsibleModelGroups(groupCount: number, isSearching: boolean): boolean {
   return groupCount >= COLLAPSIBLE_MODEL_GROUP_THRESHOLD && !isSearching;

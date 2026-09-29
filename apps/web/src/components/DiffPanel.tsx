@@ -57,7 +57,7 @@ import { createProjectSelector } from "../storeSelectors";
 import { inferCheckpointTurnCountByTurnId } from "../session-logic";
 import { useAppSettings } from "../appSettings";
 import { useComposerDraftStore } from "../composerDraftStore";
-import { DOCK_HEADER_ICON_BUTTON_CLASS } from "./chat/chatHeaderControls";
+import { CHAT_HEADER_ICON_CONTROL_CLASS_NAME } from "./chat/chatHeaderControls";
 import {
   areAllRenderableFilesCollapsed,
   isStaleDiffTurnSelection,
@@ -121,8 +121,6 @@ interface DiffPanelProps {
   queriesEnabled?: boolean;
   onEditFile?: (request: DiffFileEditRequest) => void;
 }
-
-export { DiffWorkerPoolProvider } from "./DiffWorkerPoolProvider";
 
 export default function DiffPanel({
   mode: modeProp,
@@ -1007,7 +1005,7 @@ export default function DiffPanel({
             variant="chrome"
             size="icon-xs"
             label="Close file view"
-            className={DOCK_HEADER_ICON_BUTTON_CLASS}
+            className={CHAT_HEADER_ICON_CONTROL_CLASS_NAME}
             onClick={(event) => {
               event.stopPropagation();
               onClosePanel();

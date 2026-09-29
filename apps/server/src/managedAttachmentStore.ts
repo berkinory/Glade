@@ -18,12 +18,12 @@ import {
   syncDirectoryEntry,
 } from "./privatePathPermissions";
 
-export const MANAGED_ATTACHMENT_STAGING_TTL_MS = 60 * 60 * 1_000;
+const MANAGED_ATTACHMENT_STAGING_TTL_MS = 60 * 60 * 1_000;
 const MANAGED_ATTACHMENT_ID_PREFIX = "att_v2_";
 
 export type BinaryChatAttachment = ChatImageAttachment | ChatFileAttachment;
 
-export class ManagedAttachmentStoreError extends Error {
+class ManagedAttachmentStoreError extends Error {
   readonly status: number;
   readonly code: string;
 

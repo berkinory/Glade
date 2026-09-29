@@ -54,7 +54,7 @@ export function makeAgentGatewayEndpoint(
   };
 }
 
-export const makeAgentGatewayCredentials = Effect.gen(function* () {
+const makeAgentGatewayCredentials = Effect.gen(function* () {
   const config = yield* ServerConfig;
   const sessionRegistry = yield* AgentGatewaySessionRegistry;
   const inFlightRequests = makeAgentGatewayInFlightRequestRegistry();
@@ -120,7 +120,7 @@ export const makeAgentGatewayCredentials = Effect.gen(function* () {
   } satisfies AgentGatewayCredentialsShape;
 });
 
-export const AgentGatewayCredentialsLive = Layer.effect(
+const AgentGatewayCredentialsLive = Layer.effect(
   AgentGatewayCredentials,
   makeAgentGatewayCredentials,
 ).pipe(Layer.provide(AgentGatewaySessionRegistryLive));

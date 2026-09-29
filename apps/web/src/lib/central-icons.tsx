@@ -50,7 +50,7 @@ export function getCentralIconUrl(
 // Shared base classes so the React component and the imperative DOM helper stay
 // pixel-identical (single uniform fill tinted to the current text color).
 const CENTRAL_ICON_BASE_CLASS = "inline-block size-4 shrink-0 bg-current";
-export const CENTRAL_ICON_SLOT = "central-icon";
+const CENTRAL_ICON_SLOT = "central-icon";
 
 // CSS-mask shorthand value that paints the icon as a solid `bg-current` fill.
 function centralIconMaskValue(iconUrl: string): string {

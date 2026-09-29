@@ -54,9 +54,7 @@ function createTerminalLeaf(
   };
 }
 
-export function isTerminalSplitNode(
-  node: ThreadTerminalLayoutNode,
-): node is ThreadTerminalSplitNode {
+function isTerminalSplitNode(node: ThreadTerminalLayoutNode): node is ThreadTerminalSplitNode {
   return node.type === "split";
 }
 
@@ -168,10 +166,7 @@ export function collectTerminalIdsFromLayout(node: ThreadTerminalLayoutNode): st
   return node.children.flatMap((child) => collectTerminalIdsFromLayout(child));
 }
 
-export function findAdjacentTerminalId(
-  node: ThreadTerminalLayoutNode,
-  terminalId: string,
-): string | null {
+function findAdjacentTerminalId(node: ThreadTerminalLayoutNode, terminalId: string): string | null {
   if (node.type === "terminal") {
     return null;
   }
@@ -197,10 +192,7 @@ export function findFirstTerminalIdInLayout(node: ThreadTerminalLayoutNode): str
   );
 }
 
-export function layoutContainsTerminalId(
-  node: ThreadTerminalLayoutNode,
-  terminalId: string,
-): boolean {
+function layoutContainsTerminalId(node: ThreadTerminalLayoutNode, terminalId: string): boolean {
   if (node.type === "terminal") {
     return collectTerminalIdsFromLayout(node).includes(terminalId);
   }

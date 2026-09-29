@@ -3,7 +3,7 @@ import { Effect } from "effect";
 
 import type { GitCoreShape } from "../git/Services/GitCore";
 
-export interface GitHubRepositoryLink {
+interface GitHubRepositoryLink {
   readonly nameWithOwner: string;
   readonly url: string;
 }

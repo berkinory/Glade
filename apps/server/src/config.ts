@@ -167,7 +167,7 @@ export const deriveServerPaths = Effect.fn(function* (
   };
 });
 
-export function resolveDefaultChatWorkspaceRoot(input: {
+function resolveDefaultChatWorkspaceRoot(input: {
   readonly homeDir: string;
   readonly platform?: NodeJS.Platform;
 }): string {

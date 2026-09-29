@@ -4,9 +4,7 @@ import { runProcess } from "./processRunner.ts";
 
 const WORKTREE_SETUP_TIMEOUT_MS = 10 * 60_000;
 
-export function findWorktreeSetupScript(
-  scripts: ReadonlyArray<ProjectScript>,
-): ProjectScript | null {
+function findWorktreeSetupScript(scripts: ReadonlyArray<ProjectScript>): ProjectScript | null {
   return scripts.find((script) => script.runOnWorktreeCreate) ?? null;
 }
 

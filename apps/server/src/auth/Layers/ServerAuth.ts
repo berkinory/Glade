@@ -76,7 +76,7 @@ function toAuthenticatedSession(session: {
   };
 }
 
-export const makeServerAuth = Effect.gen(function* () {
+const makeServerAuth = Effect.gen(function* () {
   const policy = yield* ServerAuthPolicy;
   const bootstrapCredentials = yield* BootstrapCredentialService;
   const authControlPlane = yield* AuthControlPlane;

@@ -3,13 +3,13 @@ import { Effect, Stream } from "effect";
 // FILE: wsStreamBackpressure.ts
 // Purpose: Bound UI-facing websocket stream backlogs without weakening durable event processing.
 // Layer: Server websocket transport
-// Exports: bufferLiveUiStream, normalizeLiveUiStreamBufferCapacity, recordLiveUiStreamIngress
+// Exports: bufferLiveUiStream
 // Depends on: Effect Stream
 
-export const DEFAULT_LIVE_UI_STREAM_BUFFER_CAPACITY = 1_024;
+const DEFAULT_LIVE_UI_STREAM_BUFFER_CAPACITY = 1_024;
 const DROP_REPORT_GROWTH_STEP = 500;
 
-export interface LiveUiStreamLagState {
+interface LiveUiStreamLagState {
   ingressCount: number;
   egressCount: number;
   reportedDroppedAtLeast: number;
@@ -22,11 +22,11 @@ export interface LiveUiStreamDropReport {
   readonly message: string;
 }
 
-export function makeLiveUiStreamLagState(): LiveUiStreamLagState {
+function makeLiveUiStreamLagState(): LiveUiStreamLagState {
   return { ingressCount: 0, egressCount: 0, reportedDroppedAtLeast: 0 };
 }
 
-export function normalizeLiveUiStreamBufferCapacity(capacity: number): number {
+function normalizeLiveUiStreamBufferCapacity(capacity: number): number {
   if (!Number.isFinite(capacity)) {
     return DEFAULT_LIVE_UI_STREAM_BUFFER_CAPACITY;
   }
@@ -40,7 +40,7 @@ export function normalizeLiveUiStreamBufferCapacity(capacity: number): number {
  * `capacity` of the lagging events. Reports are gated so a stalled subscriber
  * logs once up front and then only as the loss keeps growing.
  */
-export function recordLiveUiStreamIngress(
+function recordLiveUiStreamIngress(
   state: LiveUiStreamLagState,
   capacity: number,
   reportGrowthStep = DROP_REPORT_GROWTH_STEP,

@@ -2,7 +2,7 @@
 // Purpose: Pure rules for the rail layout's tab strip: item ids, route item order, and
 //          which item is active for a pathname, plus the Spaces panel's section list.
 // Layer: Web shell logic
-// Exports: rail item ids/types, railItemForPathname,
+// Exports: rail item ids/types,
 //          reconcileActiveRailItem, buildRailSpacesSections
 
 import type { ProjectId, SpaceId } from "@glade/contracts";
@@ -127,7 +127,7 @@ function matchesRoute(pathname: string, route: string): boolean {
 }
 
 /** The route rail item that owns a pathname, or null for thread and chat-index routes. */
-export function railItemForPathname(pathname: string): RailRouteItemId | null {
+function railItemForPathname(pathname: string): RailRouteItemId | null {
   if (matchesRoute(pathname, "/kanban")) return "kanban";
   if (matchesRoute(pathname, "/automations")) return "automations";
   if (matchesRoute(pathname, "/settings")) return "settings";

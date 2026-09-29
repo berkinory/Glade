@@ -28,7 +28,7 @@ export interface ProviderLatestVersionSource {
   readonly homebrewKind?: "formula" | "cask";
 }
 
-export interface ProviderHomebrewPackageDefinition {
+interface ProviderHomebrewPackageDefinition {
   readonly name: string;
   readonly kind: "formula" | "cask";
   readonly isCommandPath?: (commandPath: string) => boolean;
@@ -41,7 +41,7 @@ export interface ProviderMaintenanceCapabilities {
   readonly update: ProviderMaintenanceCommandAction | null;
 }
 
-export interface ProviderMaintenanceCommandAction {
+interface ProviderMaintenanceCommandAction {
   readonly command: string;
   readonly executable: string;
   readonly args: ReadonlyArray<string>;
@@ -152,7 +152,7 @@ export function normalizeCommandPath(commandPath: string): string {
  * into nvm's prefix). Derive the prefix that owns the detected binary so the
  * update can pin it explicitly.
  */
-export function deriveNpmGlobalPrefix(commandPath: string): string | null {
+function deriveNpmGlobalPrefix(commandPath: string): string | null {
   // normalizeCommandPath preserves length, so indices map back onto the
   // original string, keeping its casing and separators intact.
   const normalized = normalizeCommandPath(commandPath);
@@ -495,7 +495,7 @@ function isHomebrewCommandPath(commandPath: string): boolean {
   );
 }
 
-export function resolvePackageManagedProviderMaintenance(
+function resolvePackageManagedProviderMaintenance(
   definition: PackageManagedProviderMaintenanceDefinition,
   options?: ProviderMaintenanceCapabilityResolutionOptions,
 ): ProviderMaintenanceCapabilities {
@@ -612,7 +612,7 @@ function deriveVersionAdvisory(input: {
   return { status: "current", message: null };
 }
 
-export function createProviderVersionAdvisory(input: {
+function createProviderVersionAdvisory(input: {
   readonly provider: ProviderKind;
   readonly currentVersion: string | null;
   readonly latestVersion?: string | null;
@@ -687,7 +687,7 @@ const fetchHomebrewLatestVersion = Effect.fn("fetchHomebrewLatestVersion")(funct
   }).pipe(Effect.catch(() => Effect.succeed(null)));
 });
 
-export const resolveLatestProviderVersion = Effect.fn("resolveLatestProviderVersion")(function* (
+const resolveLatestProviderVersion = Effect.fn("resolveLatestProviderVersion")(function* (
   maintenanceCapabilities: ProviderMaintenanceCapabilities,
 ) {
   const source = maintenanceCapabilities.latestVersionSource;

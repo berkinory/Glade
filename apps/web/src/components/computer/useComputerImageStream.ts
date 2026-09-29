@@ -32,7 +32,7 @@ export type ComputerImageStreamStatus =
  * decoded frame reports "streaming" at stream rate, and a fresh object every
  * time would re-render the whole pane once per frame for no visible difference.
  */
-export function mergeComputerImageStreamStatus(
+function mergeComputerImageStreamStatus(
   previous: ComputerImageStreamStatus,
   next: ComputerImageStreamStatus,
 ): ComputerImageStreamStatus {

@@ -7,11 +7,11 @@ import * as Path from "node:path";
 
 import type { GladeStorageSnapshot } from "@glade/contracts";
 
-export const GLADE_STORAGE_SNAPSHOT_FILE_NAME = "glade-storage-origin-v1.json";
+const GLADE_STORAGE_SNAPSHOT_FILE_NAME = "glade-storage-origin-v1.json";
 export const GLADE_STORAGE_SNAPSHOT_MAX_BYTES = 16 * 1024 * 1024;
-export const GLADE_STORAGE_SNAPSHOT_MAX_ENTRIES = 2_048;
-export const GLADE_STORAGE_SNAPSHOT_MAX_KEY_LENGTH = 512;
-export const GLADE_STORAGE_SNAPSHOT_MAX_VALUE_LENGTH = 16 * 1024 * 1024;
+const GLADE_STORAGE_SNAPSHOT_MAX_ENTRIES = 2_048;
+const GLADE_STORAGE_SNAPSHOT_MAX_KEY_LENGTH = 512;
+const GLADE_STORAGE_SNAPSHOT_MAX_VALUE_LENGTH = 16 * 1024 * 1024;
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
@@ -21,7 +21,7 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return prototype === Object.prototype || prototype === null;
 }
 
-export function isGladeStorageKey(key: string): boolean {
+function isGladeStorageKey(key: string): boolean {
   return key.startsWith("glade:") || key.startsWith("glade.");
 }
 

@@ -26,15 +26,15 @@ import type { Effect } from "effect";
 
 import type { AutomationRepositoryError } from "../Errors.ts";
 
-export const CreateAutomationDefinitionInput = Schema.Struct({
+const CreateAutomationDefinitionInput = Schema.Struct({
   id: AutomationId,
   input: AutomationCreateInput,
   now: Schema.String,
   nextRunAt: Schema.optional(Schema.NullOr(Schema.String)),
 });
-export type CreateAutomationDefinitionInput = typeof CreateAutomationDefinitionInput.Type;
+type CreateAutomationDefinitionInput = typeof CreateAutomationDefinitionInput.Type;
 
-export interface SaveAutomationDefinitionInput {
+interface SaveAutomationDefinitionInput {
   readonly definition: AutomationDefinition;
   readonly expectedUpdatedAt: string;
 }
@@ -90,7 +90,7 @@ export const ResolvePendingAutomationProposalInput = Schema.Struct({
 export type ResolvePendingAutomationProposalInput =
   typeof ResolvePendingAutomationProposalInput.Type;
 
-export const CreateAutomationRunInput = Schema.Struct({
+const CreateAutomationRunInput = Schema.Struct({
   id: AutomationRunId,
   automationId: AutomationId,
   projectId: ProjectId,
@@ -110,7 +110,7 @@ export const CreateAutomationRunInput = Schema.Struct({
   permissionSnapshot: AutomationPermissionSnapshot,
   now: Schema.String,
 });
-export type CreateAutomationRunInput = typeof CreateAutomationRunInput.Type;
+type CreateAutomationRunInput = typeof CreateAutomationRunInput.Type;
 
 export const GetAutomationMemoryInput = Schema.Struct({
   automationId: AutomationId,
@@ -204,7 +204,7 @@ export const MarkAutomationRunSucceededInput = Schema.Struct({
 });
 export type MarkAutomationRunSucceededInput = typeof MarkAutomationRunSucceededInput.Type;
 
-export interface MarkAutomationRunSucceededResult {
+interface MarkAutomationRunSucceededResult {
   readonly run: AutomationRun;
   readonly transitioned: boolean;
   readonly failureCountReset: boolean;

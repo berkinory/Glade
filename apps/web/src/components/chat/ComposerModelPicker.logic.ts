@@ -88,7 +88,7 @@ export function buildStarredModelOptionsPatch(input: {
 }
 
 // "High · Fast" style summary of a preset, labelled through the target model's ladder.
-export function formatStarredTraitsLabel(
+function formatStarredTraitsLabel(
   starred: Pick<StarredModel, "effort" | "fastMode" | "thinking">,
   effortLevels: ComposerTraitSelection["effortLevels"],
 ): string {
@@ -108,7 +108,7 @@ export function formatStarredTraitsLabel(
 }
 
 // A preset counts as "current" when every trait it pins matches the composer's.
-export function starredTraitsMatch(
+function starredTraitsMatch(
   starred: Pick<StarredModel, "effort" | "fastMode" | "thinking">,
   current: Pick<StarredModel, "effort" | "fastMode" | "thinking">,
 ): boolean {

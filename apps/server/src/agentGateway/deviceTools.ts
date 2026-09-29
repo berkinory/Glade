@@ -47,9 +47,9 @@ import {
   type ToolEntry,
 } from "./toolRuntime.ts";
 
-export const DEVICE_CONTROL_CAPABILITY = "device:control" as const;
+const DEVICE_CONTROL_CAPABILITY = "device:control" as const;
 
-export function deviceToolRequiresApproval(name: string): boolean {
+function deviceToolRequiresApproval(name: string): boolean {
   return DEVICE_APPROVAL_REQUIRED_TOOLS.has(name);
 }
 
@@ -75,7 +75,7 @@ const AGENT_RECOVERABLE_ERROR_PATTERNS: readonly RegExp[] = [
   /scrolling stopped moving/iu,
 ];
 
-export function isViewerFacingDeviceError(error: unknown): boolean {
+function isViewerFacingDeviceError(error: unknown): boolean {
   const message = errorText(error);
   return !AGENT_RECOVERABLE_ERROR_PATTERNS.some((pattern) => pattern.test(message));
 }

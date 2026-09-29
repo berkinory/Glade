@@ -94,7 +94,7 @@ function namespaceForPlugin(pluginId: string): string | null {
 
 type PathContainmentApi = Pick<typeof nodePath, "isAbsolute" | "relative" | "sep">;
 
-export function pathIsWithin(
+function pathIsWithin(
   parentPath: string,
   childPath: string,
   pathApi: PathContainmentApi = nodePath,

@@ -90,7 +90,7 @@ interface UsageCount {
 
 // SQLite DATETIME() modifier that shifts UTC timestamps into the caller's LOCAL
 // wall-clock time (for example "+02:00" / "-05:00").
-export function sqliteModifierFromUtcOffsetMinutes(offsetMinutes: number): string {
+function sqliteModifierFromUtcOffsetMinutes(offsetMinutes: number): string {
   const safe = Number.isFinite(offsetMinutes) ? Math.trunc(offsetMinutes) : 0;
   const sign = safe < 0 ? "-" : "+";
   const abs = Math.abs(safe);
@@ -365,7 +365,7 @@ const HEATMAP_LEVELS = 4;
 // max and flattens the entire grid to level 1. Ranking spreads active days across
 // all four levels regardless of scale, and ties share a level (a window where every
 // active day is identical renders uniformly at level 4).
-export function heatmapIntensity(count: number, sortedActiveCounts: readonly number[]): number {
+function heatmapIntensity(count: number, sortedActiveCounts: readonly number[]): number {
   if (count <= 0 || sortedActiveCounts.length === 0) {
     return 0;
   }

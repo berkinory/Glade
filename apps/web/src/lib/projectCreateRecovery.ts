@@ -54,7 +54,7 @@ function wait(ms: number): Promise<void> {
 // Generic retry-with-backoff loop shared by every duplicate-create recovery flow: poll
 // `loadSnapshot` with linear backoff, then fall back to `repairSnapshot` once before giving up.
 // This is the single source of the 6-attempt / 50ms-backoff shape used across recovery helpers.
-export async function waitForSnapshotMatch<TSnapshot, TMatch>(input: {
+async function waitForSnapshotMatch<TSnapshot, TMatch>(input: {
   readonly loadSnapshot: () => Promise<TSnapshot | null>;
   readonly findMatch: (snapshot: TSnapshot) => TMatch | null;
   readonly repairSnapshot?: (() => Promise<TSnapshot | null>) | undefined;

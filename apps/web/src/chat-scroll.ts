@@ -1,4 +1,4 @@
-export const AUTO_SCROLL_BOTTOM_THRESHOLD_PX = 64;
+const AUTO_SCROLL_BOTTOM_THRESHOLD_PX = 64;
 
 interface ScrollPosition {
   scrollTop: number;
@@ -6,7 +6,7 @@ interface ScrollPosition {
   scrollHeight: number;
 }
 
-export function getScrollContainerDistanceFromBottom(position: ScrollPosition): number {
+function getScrollContainerDistanceFromBottom(position: ScrollPosition): number {
   const { scrollTop, clientHeight, scrollHeight } = position;
   if (![scrollTop, clientHeight, scrollHeight].every(Number.isFinite)) {
     return 0;

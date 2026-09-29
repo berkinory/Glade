@@ -219,11 +219,7 @@ async function dispatchKanbanDraftThreadOnce(
     effort: resolvePromptEffortFromModelSelection(modelSelection),
     text: messageText || (composerImages.length > 0 ? IMAGE_ONLY_BOOTSTRAP_PROMPT : ""),
   });
-  const mentionedSkills = filterPromptSkillReferences(
-    outgoingMessageText,
-    skills,
-    modelSelection.provider,
-  );
+  const mentionedSkills = filterPromptSkillReferences(outgoingMessageText, skills);
   const mentionedMentions = filterPromptProviderMentionReferences(outgoingMessageText, mentions);
   const turnAttachmentsPromise = stageUploadComposerAttachments({
     threadId,

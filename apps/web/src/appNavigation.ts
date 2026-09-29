@@ -48,7 +48,7 @@ function resolveKnownAppHistoryMaxIndex(history: RouterHistory, currentIndex: nu
 
 // Records the highest app-owned history index seen so browser-global history.length
 // cannot make Forward look available before this app creates a forward entry.
-export function syncAppNavigationState(
+function syncAppNavigationState(
   history: RouterHistory = appHistory,
   action?: HistorySubscriberAction,
 ): AppNavigationState {

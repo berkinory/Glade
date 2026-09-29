@@ -10,7 +10,6 @@ import {
   IconAlertTriangle,
   IconArchive,
   IconArrowBackUp,
-  IconArrowForwardUp,
   IconArrowDown,
   IconArrowLeft,
   IconArrowRight,
@@ -120,10 +119,6 @@ export const UsageGaugeIcon: LucideIcon = centralIconWrapper("gauge");
 export const BugReportIcon: LucideIcon = centralIconWrapper("bug");
 /** The "+" affordance behind every add/create action (Add project, activity header). */
 export const AddPlusIcon: LucideIcon = centralIconWrapper("plus-medium");
-/** 2x3 dot grip for drag-to-reorder handles (provider rows, sidebar nav customize). */
-export const DragHandleIcon: LucideIcon = centralIconWrapper("dot-grid-2x3");
-/** Sliders glyph for "customize this surface" entries. */
-export const CustomizeIcon: LucideIcon = centralIconWrapper("settings-slider-three");
 export const EraserIcon: LucideIcon = centralIconWrapper("eraser");
 export const ArrowLeftIcon = adaptIcon(IconArrowLeft);
 export const ArrowRightIcon = adaptIcon(IconArrowRight);
@@ -138,7 +133,6 @@ export const SortIcon: LucideIcon = centralIconWrapper("arrow-top-bottom");
 // createCentralIconElement.
 export const AGENT_ROBOT_ICON_NAME = "robot";
 export const BotIcon: LucideIcon = centralIconWrapper(AGENT_ROBOT_ICON_NAME);
-export const BookIcon: LucideIcon = centralIconWrapper("book-simple");
 export const BookOpenIcon: LucideIcon = centralIconWrapper("newspaper-2");
 export const BugIcon = adaptIcon(IconBug);
 export const CameraIcon = adaptIcon(IconCamera);
@@ -217,7 +211,6 @@ export const GitPullRequestClosedIcon: LucideIcon = centralIconWrapper("request-
 export const GitMergeConflictIcon: LucideIcon = centralIconWrapper("merge-conflict");
 // Three descending-width lines — the app's one "filter controls" glyph (pull
 // request list filters, and anywhere else that opens a filter popover).
-export const FilterIcon: LucideIcon = centralIconWrapper("filter-2");
 // Two-person glyph for "reviewers"/"people" rows (pull request meta grid).
 export const UsersIcon: LucideIcon = centralIconWrapper("user-group");
 // One globe for the whole app (browser rows, web search, favicon fallback,
@@ -249,8 +242,6 @@ export const HistoryIcon = adaptIcon(IconHistory);
 export const InfoIcon = adaptIcon(IconInfoCircle);
 export const KanbanIcon = centralIconWrapper("columns-3-wide");
 export const KeyboardIcon: LucideIcon = centralIconWrapper("keyboard");
-/** Take-control affordance for the computer dock pane. */
-export const CursorClickIcon: LucideIcon = centralIconWrapper("cursor-click");
 export const ListChecksIcon = adaptIcon(IconListCheck);
 export const ListTodoIcon = adaptIcon(IconListDetails);
 export const Loader2Icon = adaptIcon(IconLoader2);
@@ -319,7 +310,6 @@ export const Undo2Icon = adaptIcon(IconArrowBackUp);
 // row resets, Restore defaults, effort-slider reset, space reset, file revert):
 // the Central reversed counter-clockwise arrow, never a Tabler/Lucide rotate glyph.
 export const ResetIcon: LucideIcon = centralIconWrapper("arrow-rotate-counter-clockwise");
-export const Redo2Icon = adaptIcon(IconArrowForwardUp);
 export const WorktreeIcon = centralIconWrapper("arrow-split-right");
 export const XIcon = adaptIcon(IconX);
 export const ZapIcon = adaptIcon(IconBolt);

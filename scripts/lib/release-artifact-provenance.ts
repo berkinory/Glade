@@ -30,7 +30,7 @@ export interface ReleaseArtifactProvenanceInput {
   readonly artifactFileNames?: ReadonlyArray<string>;
 }
 
-export interface ReleaseArtifactDigest {
+interface ReleaseArtifactDigest {
   readonly fileName: string;
   readonly size: number;
   readonly sha256: string;
@@ -136,7 +136,7 @@ function requireSingleArtifact(
   return matches[0]!;
 }
 
-export async function collectReleaseArtifactDigests(
+async function collectReleaseArtifactDigests(
   assetsDirectory: string,
   artifactFileNames?: ReadonlyArray<string>,
 ): Promise<ReadonlyArray<ReleaseArtifactDigest>> {

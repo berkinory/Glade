@@ -4,7 +4,7 @@
 // PNG-compressed ICO entries update window chrome but resolve to the generic
 // blank-page glyph on the Win11 taskbar.
 
-export const WINDOWS_SHELL_ICO_BMP_SIZES = [16, 20, 24, 32, 40, 48] as const;
+const WINDOWS_SHELL_ICO_BMP_SIZES = [16, 20, 24, 32, 40, 48] as const;
 
 export interface ShellIcoBitmap {
   readonly width: number;
@@ -18,20 +18,6 @@ export interface IcoPngImage {
   readonly png: Buffer;
 }
 
-export interface IcoEntryInfo {
-  readonly width: number;
-  readonly height: number;
-  readonly encoding: "png" | "bmp";
-}
-
-export function inspectIcoEntries(ico: Buffer): IcoEntryInfo[] {
-  return readIcoDirectory(ico).map((entry) => {
-    const header = ico.subarray(entry.offset, entry.offset + 8);
-    const encoding = header[0] === 0x89 && header[1] === 0x50 ? "png" : "bmp";
-    return { width: entry.width, height: entry.height, encoding };
-  });
-}
-
 export function extractIcoPngImages(ico: Buffer): IcoPngImage[] {
   const images: IcoPngImage[] = [];
   for (const entry of readIcoDirectory(ico)) {
@@ -42,7 +28,7 @@ export function extractIcoPngImages(ico: Buffer): IcoPngImage[] {
   return images;
 }
 
-export function encodeWindowsShellIco(images: readonly ShellIcoBitmap[]): Buffer {
+function encodeWindowsShellIco(images: readonly ShellIcoBitmap[]): Buffer {
   const unique = new Map<number, ShellIcoBitmap>();
   for (const image of images) {
     if (image.width <= 0 || image.width !== image.height) continue;

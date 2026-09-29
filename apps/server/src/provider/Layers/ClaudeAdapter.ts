@@ -7531,8 +7531,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
   });
 }
 
-export const ClaudeAdapterLive = Layer.effect(ClaudeAdapter, makeClaudeAdapter());
-
 export function makeClaudeAdapterLive(options?: ClaudeAdapterLiveOptions) {
   return Layer.effect(ClaudeAdapter, makeClaudeAdapter(options));
 }

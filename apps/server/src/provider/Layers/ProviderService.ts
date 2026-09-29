@@ -119,8 +119,8 @@ export interface ProviderServiceLiveOptions {
 }
 
 const DEFAULT_PROVIDER_RUNTIME_IDLE_STOP_MS = 10 * 60 * 1000;
-export const PROVIDER_RUNTIME_EVENT_BUFFER_CAPACITY = 2_048;
-export const PROVIDER_RUNTIME_QUARANTINE_CAUSE_MAX_BYTES = 16 * 1024;
+const PROVIDER_RUNTIME_EVENT_BUFFER_CAPACITY = 2_048;
+const PROVIDER_RUNTIME_QUARANTINE_CAUSE_MAX_BYTES = 16 * 1024;
 const configuredProviderRuntimeIdleStopMs = process.env.GLADE_PROVIDER_RUNTIME_IDLE_STOP_MS;
 const PROVIDER_RUNTIME_IDLE_STOP_MS = Number.isFinite(Number(configuredProviderRuntimeIdleStopMs))
   ? Math.max(0, Number(configuredProviderRuntimeIdleStopMs))
@@ -142,7 +142,7 @@ function validateAutoRuntimeMode(
       );
 }
 
-export function summarizeProviderRuntimeQuarantineCause(cause: string): {
+function summarizeProviderRuntimeQuarantineCause(cause: string): {
   readonly cause: string;
   readonly causeTruncated?: true;
   readonly causeOriginalBytes?: number;
@@ -3539,8 +3539,6 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
           }),
     } satisfies ProviderServiceShape;
   });
-
-export const ProviderServiceLive = Layer.effect(ProviderService, makeProviderService());
 
 export function makeProviderServiceLive(options?: ProviderServiceLiveOptions) {
   return Layer.effect(ProviderService, makeProviderService(options));

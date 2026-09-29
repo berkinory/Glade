@@ -12,8 +12,6 @@ import {
 } from "@glade/shared/composerSlashCommands";
 import { rankProviderDiscoveryItems } from "./lib/providerDiscovery";
 
-export { BUILT_IN_COMPOSER_SLASH_COMMANDS };
-
 export type ComposerSlashCommand = BuiltInComposerSlashCommand;
 
 export interface ComposerSlashCommandDefinition {
@@ -84,7 +82,7 @@ function expandProviderNativeSlashCommandNames(
  * Providers where app-owned /review (target picker + structured prompt) must
  * win over listing a native "review" command.
  */
-export function providerUsesAppOwnedReviewSlashCommand(provider: ProviderKind): boolean {
+function providerUsesAppOwnedReviewSlashCommand(provider: ProviderKind): boolean {
   return provider === "codex";
 }
 
@@ -267,7 +265,7 @@ export function isBuiltInComposerSlashCommand(value: string): value is ComposerS
   return isBuiltInComposerSlashCommandName(value);
 }
 
-export function parseComposerSlashInvocation(text: string): ComposerSlashInvocation | null {
+function parseComposerSlashInvocation(text: string): ComposerSlashInvocation | null {
   return parseComposerSlashInvocationForCommands(text, BUILT_IN_COMPOSER_SLASH_COMMANDS);
 }
 
@@ -350,7 +348,7 @@ export function buildSubagentsPrompt(existingPrompt: string): string {
   return trimmedPrompt.length > 0 ? `${trimmedPrompt}\n\n${cannedPrompt}` : cannedPrompt;
 }
 
-export function buildReviewPrompt(input: { target: "changes" | "base-branch" }): string {
+function buildReviewPrompt(input: { target: "changes" | "base-branch" }): string {
   const baseInstruction =
     "Review the local code changes for bugs, risks, behavioural regressions, and missing tests. Findings first, ordered by severity.";
   if (input.target === "base-branch") {

@@ -13,7 +13,7 @@ export interface HistoryLimits {
 }
 
 /** Trim to the last `maxLines` lines, preserving a trailing newline if present. */
-export function capHistoryLines(history: string, maxLines: number): string {
+function capHistoryLines(history: string, maxLines: number): string {
   if (history.length === 0) return history;
   const hasTrailingNewline = history.endsWith("\n");
   const lines = history.split("\n");
@@ -35,7 +35,7 @@ export function capHistoryLines(history: string, maxLines: number): string {
  * an SGR/CSI/OSC sequence that xterm will replay. `scanWindow` bounds how far we
  * look for a preferred boundary before falling back to a code-point boundary.
  */
-export function capHistoryBytes(history: string, maxBytes: number, scanWindow = 65_536): string {
+function capHistoryBytes(history: string, maxBytes: number, scanWindow = 65_536): string {
   if (history.length === 0) return history;
   if (maxBytes <= 0) return "";
 

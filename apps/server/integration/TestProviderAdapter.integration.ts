@@ -35,7 +35,7 @@ export interface TestTurnResponse {
   }) => Effect.Effect<void, never>;
 }
 
-export type FixtureProviderRuntimeEvent = {
+type FixtureProviderRuntimeEvent = {
   readonly type: string;
   readonly eventId: EventId;
   readonly provider: ProviderKind;

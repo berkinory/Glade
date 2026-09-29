@@ -65,7 +65,7 @@ import {
 } from "./uiTreeTargeting.ts";
 
 /** How long a Glade-booted device stays up with no thread attached. */
-export const DEVICE_IDLE_SHUTDOWN_MS = 10 * 60 * 1000;
+const DEVICE_IDLE_SHUTDOWN_MS = 10 * 60 * 1000;
 
 /**
  * How long to keep retrying a stream attach that keeps failing transiently.
@@ -77,10 +77,10 @@ export const DEVICE_IDLE_SHUTDOWN_MS = 10 * 60 * 1000;
  * seconds covers the bad case and still fails while the user is watching rather
  * than leaving them staring at a spinner forever.
  */
-export const DEVICE_ATTACH_DEADLINE_MS = 60_000;
+const DEVICE_ATTACH_DEADLINE_MS = 60_000;
 
 /** Gap between attach retries. Short enough to feel immediate once ready. */
-export const DEVICE_ATTACH_RETRY_MS = 750;
+const DEVICE_ATTACH_RETRY_MS = 750;
 
 /**
  * What to tell the user when the display never appeared.
@@ -101,14 +101,14 @@ const DISPLAY_TIMEOUT_MESSAGE =
  * (no such device, a broken capability, a helper that will not compile) is
  * reported immediately, because retrying it for a minute only delays the truth.
  */
-export function isTransientAttachFailure(error: unknown): boolean {
+function isTransientAttachFailure(error: unknown): boolean {
   if (error instanceof DeviceBackendError && error.retryable) return true;
   const message = error instanceof Error ? error.message : String(error);
   return /framebuffer surface|display has no|is not booted|not attached|no display/iu.test(message);
 }
 
 /** Enough to cross a long Settings list; short enough to fail fast on a typo. */
-export const DEVICE_DEFAULT_MAX_SCROLLS = 8;
+const DEVICE_DEFAULT_MAX_SCROLLS = 8;
 
 export type DeviceEventListener = (event: DeviceEvent) => void;
 
@@ -1062,7 +1062,7 @@ export class DeviceManager {
   }
 }
 
-export function errorMessage(error: unknown): string {
+function errorMessage(error: unknown): string {
   if (error instanceof DeviceBackendError) return error.message;
   if (error instanceof Error) return error.message;
   return String(error);

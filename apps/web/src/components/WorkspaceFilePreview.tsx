@@ -4,7 +4,7 @@ import { formatWorkspaceFileError } from "~/lib/workspaceFileError";
 //          markdown, images, PDFs) for workspace files plus absolute local
 //          file references reused by editor and right-dock panes.
 // Layer: Web chat presentation component
-// Exports: WorkspaceFilePreview, isMarkdownPreviewablePath
+// Exports: WorkspaceFilePreview
 
 import type { ProjectFileChangeEvent, ProjectReadFileResult } from "@glade/contracts";
 import type { FileContents as PierreFileContents } from "@pierre/diffs";
@@ -93,7 +93,7 @@ import { Skeleton } from "./ui/skeleton";
 
 const MARKDOWN_PREVIEW_EXTENSIONS = new Set([".markdown", ".md", ".mdx"]);
 
-export function isMarkdownPreviewablePath(filePath: string): boolean {
+function isMarkdownPreviewablePath(filePath: string): boolean {
   const extension = lowerCaseExtensionOf(filePath);
   return extension !== null && MARKDOWN_PREVIEW_EXTENSIONS.has(extension);
 }

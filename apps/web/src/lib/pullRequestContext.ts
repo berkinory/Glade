@@ -143,9 +143,7 @@ export function formatPullRequestContextTitleSeed(
 
 // --- Send-time serialization (cards -> trailing block)
 
-export function buildPullRequestContextBlock(
-  contexts: ReadonlyArray<PullRequestContextDraft>,
-): string {
+function buildPullRequestContextBlock(contexts: ReadonlyArray<PullRequestContextDraft>): string {
   const usable = normalizePullRequestContexts(contexts);
   if (usable.length === 0) {
     return "";

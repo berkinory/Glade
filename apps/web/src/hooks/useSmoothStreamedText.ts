@@ -2,7 +2,7 @@
 // Purpose: Reveal streamed assistant text at a steady, adaptive cadence so tokens appear
 //          fluidly instead of in the ~100ms network clumps that land in the store.
 // Layer: Web UI streaming primitive
-// Exports: useSmoothStreamedText, stepSmoothReveal (pure stepper, unit-tested)
+// Exports: useSmoothStreamedText
 // Why: The transport coalesces deltas into one store update per ~100ms
 //      (apps/web/src/routes/__root.tsx Throttler), so rendering each clump verbatim looks
 //      choppy. This hook drains the already-delivered buffer on requestAnimationFrame at a
@@ -32,13 +32,13 @@ const VELOCITY_LERP = 0.15;
 const MAX_FRAME_SECONDS = 0.05;
 // Minimum spacing between React commits. The reveal float still advances every frame at
 // the smoothed velocity; this only batches how often the grown prefix is pushed to state.
-export const MIN_EMIT_INTERVAL_MS = 40;
+const MIN_EMIT_INTERVAL_MS = 40;
 
 /**
  * Mutable per-message reveal state. Owned by the hook via refs; the pure stepper below
  * mutates it in place so the rAF loop allocates nothing per frame.
  */
-export interface SmoothRevealState {
+interface SmoothRevealState {
   /** Revealed character count, accumulated as a float across frames. */
   shown: number;
   /** Smoothed reveal velocity in chars/second. */
@@ -49,11 +49,11 @@ export interface SmoothRevealState {
   lastEmitAt: number;
 }
 
-export function createSmoothRevealState(shown: number): SmoothRevealState {
+function createSmoothRevealState(shown: number): SmoothRevealState {
   return { shown, velocity: 0, lastFrameAt: 0, lastEmitAt: 0 };
 }
 
-export interface SmoothRevealStep {
+interface SmoothRevealStep {
   /** Floored character count to commit this frame, or null when no commit is due. */
   emitCount: number | null;
   /** True when the backlog is drained and the loop should sleep until the next flush. */
@@ -69,7 +69,7 @@ export interface SmoothRevealStep {
  * up with the target (never hold back the final characters of a burst), or no commit
  * has happened yet in this burst.
  */
-export function stepSmoothReveal(
+function stepSmoothReveal(
   state: SmoothRevealState,
   nowMs: number,
   targetLength: number,

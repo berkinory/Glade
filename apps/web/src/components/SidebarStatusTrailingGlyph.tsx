@@ -6,7 +6,7 @@ import { cn } from "~/lib/utils";
 import type { ThreadStatusPill } from "./Sidebar.logic";
 import { ThreadRunningSpinner } from "./ThreadRunningSpinner";
 
-export function SidebarUnreadCompletionGlyph({ className }: { className?: string }) {
+function SidebarUnreadCompletionGlyph({ className }: { className?: string }) {
   return (
     <span
       role="img"

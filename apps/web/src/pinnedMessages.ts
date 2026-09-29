@@ -31,7 +31,7 @@ const INLINE_EMPHASIS_PATTERN = /[*_`~]+/g;
  * Derive a human-readable label from a pinned message's text: the first non-empty
  * line, lightly de-marked and truncated. Returns "" when there is no usable text.
  */
-export function derivePinLabel(messageText: string): string {
+function derivePinLabel(messageText: string): string {
   const normalized = messageText.replace(/\r\n/g, "\n");
   let firstLine = "";
   for (const rawLine of normalized.split("\n")) {
@@ -66,7 +66,7 @@ export function displayLabelFor(pin: PinnedMessage, messageText: string | undefi
   return messageText === undefined ? "" : derivePinLabel(messageText);
 }
 
-export { clampThreadNotes, isMessagePinned, normalizePinLabel };
+export { isMessagePinned, normalizePinLabel };
 
 export function addPin(
   pins: readonly PinnedMessage[] | undefined,

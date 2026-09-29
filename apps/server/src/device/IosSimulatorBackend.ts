@@ -84,7 +84,7 @@ const MAX_RECORDING_STDERR_LENGTH = 64 * 1024;
 /** Screenshots are PNG on stdout-adjacent temp files; cap what we will read. */
 const MAX_SCREENSHOT_BYTES = 32 * 1024 * 1024;
 
-export const DEVICE_HELPER_CACHE_ROOT = path.join(homedir(), ...DEVICE_HELPER_CACHE_SEGMENTS);
+const DEVICE_HELPER_CACHE_ROOT = path.join(homedir(), ...DEVICE_HELPER_CACHE_SEGMENTS);
 
 /**
  * Resolve the helper sources in both execution layouts.
@@ -94,7 +94,7 @@ export const DEVICE_HELPER_CACHE_ROOT = path.join(homedir(), ...DEVICE_HELPER_CA
  * the bundled layout first makes packaged desktop and published CLI builds use
  * their staged asset without changing the development path.
  */
-export function resolveDeviceHelperSourceDir(
+function resolveDeviceHelperSourceDir(
   moduleDirectory: string,
   sourceExists: (candidate: string) => boolean = (candidate) =>
     existsSync(path.join(candidate, "build.sh")),
@@ -180,7 +180,7 @@ function formatRuntimeIdentifier(identifier: string): string {
  * profile missing) are dropped: showing them in the picker only produces boots
  * that fail.
  */
-export function parseSimctlDevices(
+function parseSimctlDevices(
   json: string,
   catalogue: DeviceTypeCatalogue = new Map(),
 ): readonly DeviceDescriptor[] {
@@ -226,7 +226,7 @@ export function parseSimctlDevices(
   return devices;
 }
 
-export function hasBootableIosRuntime(devices: readonly DeviceDescriptor[]): boolean {
+function hasBootableIosRuntime(devices: readonly DeviceDescriptor[]): boolean {
   return devices.length > 0;
 }
 
@@ -237,7 +237,7 @@ export function hasBootableIosRuntime(devices: readonly DeviceDescriptor[]): boo
  * a beta or versioned install (`Xcode-beta.app`, `Xcode-27.0.app`) is only
  * picked when it is the sole full Xcode on the machine. Exported for tests.
  */
-export function orderXcodeAppCandidates(entries: readonly string[]): readonly string[] {
+function orderXcodeAppCandidates(entries: readonly string[]): readonly string[] {
   return entries
     .filter((name) => name.startsWith("Xcode") && name.endsWith(".app"))
     .toSorted((a, b) => {
@@ -247,7 +247,7 @@ export function orderXcodeAppCandidates(entries: readonly string[]): readonly st
     });
 }
 
-export async function selectRecordingDirectory(
+async function selectRecordingDirectory(
   candidates: readonly string[],
   fallback: string,
 ): Promise<string> {
@@ -1444,7 +1444,7 @@ function isInputNotDeliveredError(error: unknown): boolean {
   return /not delivered to the simulator/iu.test(message);
 }
 
-export function isStaleDescriptorError(error: unknown): boolean {
+function isStaleDescriptorError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   return /framebuffer surface|display has no|not attached/iu.test(message);
 }
@@ -1462,7 +1462,7 @@ const HID_MODIFIER_USAGES: Partial<Record<DeviceKeyModifier, number>> = {
  * and its frames are in display coordinates. Fill in the contract's shape so
  * the pane and the agent see one predictable node type.
  */
-export function normalizeUiNode(raw: unknown): DeviceUiNode {
+function normalizeUiNode(raw: unknown): DeviceUiNode {
   const node = typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {};
   const frame =
     typeof node.frame === "object" && node.frame !== null
@@ -1505,7 +1505,7 @@ export function normalizeUiNode(raw: unknown): DeviceUiNode {
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 /** Width/height live in the IHDR chunk at a fixed offset; no decoder needed. */
-export function readPngDimensions(
+function readPngDimensions(
   bytes: Buffer,
 ): { readonly width: number; readonly height: number } | null {
   if (bytes.byteLength < 24 || !bytes.subarray(0, 8).equals(PNG_SIGNATURE)) return null;

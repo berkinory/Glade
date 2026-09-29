@@ -38,7 +38,7 @@ export const DIFF_PANEL_PICKER_SCOPE_OPTIONS: ReadonlyArray<DiffPanelRepoScopeOp
   "branch",
 ];
 
-export const DIFF_PANEL_COMPARE_REF_VALUE_PREFIX = "ref:";
+const DIFF_PANEL_COMPARE_REF_VALUE_PREFIX = "ref:";
 
 export function buildDiffPanelCompareRefValue(ref: string): `ref:${string}` {
   return `${DIFF_PANEL_COMPARE_REF_VALUE_PREFIX}${ref}`;
@@ -85,7 +85,7 @@ export function resolveInitialDiffViewKind(selectedTurnId: TurnId | null): DiffV
 }
 
 /** Relaxed cadence for the open review pane — git invalidation handles turn boundaries. */
-export const DIFF_PANEL_REPO_LIVE_REFETCH_INTERVAL_MS = 10_000;
+const DIFF_PANEL_REPO_LIVE_REFETCH_INTERVAL_MS = 10_000;
 
 export function resolveDiffPanelRepoLiveRefresh(input: {
   latestTurn: Thread["latestTurn"];

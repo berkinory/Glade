@@ -13,7 +13,7 @@ export function readDiagnosticPageLimit(args: Record<string, unknown>): number {
   );
 }
 
-export function diagnosticEventMessageId(event: OrchestrationEvent): string | null {
+function diagnosticEventMessageId(event: OrchestrationEvent): string | null {
   if (
     event.type !== "thread.message-sent" ||
     typeof event.payload !== "object" ||

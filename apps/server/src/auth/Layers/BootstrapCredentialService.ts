@@ -51,7 +51,7 @@ const toPairingLink = (row: {
   expiresAt: row.expiresAt,
 });
 
-export const makeBootstrapCredentialService = Effect.gen(function* () {
+const makeBootstrapCredentialService = Effect.gen(function* () {
   const pairingLinks = yield* AuthPairingLinkRepository;
   const seededGrantsRef = yield* Ref.make(new Map<string, StoredBootstrapGrant>());
   const changesPubSub = yield* PubSub.unbounded<BootstrapCredentialChange>();

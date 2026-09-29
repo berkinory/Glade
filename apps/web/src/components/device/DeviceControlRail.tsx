@@ -1,7 +1,7 @@
 // FILE: DeviceControlRail.tsx
 // Purpose: Slim icon toolbar of device actions below the phone bezel.
 // Layer: Device pane presentation
-// Exports: DeviceControlRail, DEVICE_RAIL_HEIGHT_CLASS, DEVICE_RAIL_GROUPS
+// Exports: DeviceControlRail, DEVICE_RAIL_HEIGHT_CLASS
 //
 // The rail carries the actions that have no home on the hardware itself:
 // lock and volume moved onto the drawn side buttons of the bezel, where the
@@ -23,14 +23,14 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 
 export type DeviceRailAction = "home" | "screenshot" | "record" | "rotate" | "shutdown" | "detach";
 
-export interface DeviceRailItem {
+interface DeviceRailItem {
   readonly id: DeviceRailAction;
   readonly label: string;
   readonly shortcut?: string;
   readonly Icon: LucideIcon;
 }
 
-export interface DeviceRailGroup {
+interface DeviceRailGroup {
   readonly id: string;
   readonly items: readonly DeviceRailItem[];
 }
@@ -44,7 +44,7 @@ export interface DeviceRailGroup {
  * still worth having — it is how you look at a landscape layout — and it is
  * named for what it actually turns.
  */
-export const DEVICE_RAIL_GROUPS: readonly DeviceRailGroup[] = [
+const DEVICE_RAIL_GROUPS: readonly DeviceRailGroup[] = [
   {
     id: "screen",
     items: [

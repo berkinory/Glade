@@ -238,7 +238,7 @@ type ComposerCommandGroupModel = {
   items: ComposerCommandItem[];
 };
 
-export function groupCommandItems(
+function groupCommandItems(
   items: ComposerCommandItem[],
   triggerKind: ComposerTriggerKind | null,
   groupSlashCommandSections: boolean,

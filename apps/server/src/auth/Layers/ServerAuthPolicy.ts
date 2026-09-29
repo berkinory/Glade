@@ -6,7 +6,7 @@ import { isLoopbackHost, isWildcardHost } from "../../startupAccess";
 import { ServerAuthPolicy, type ServerAuthPolicyShape } from "../Services/ServerAuthPolicy";
 import { resolveSessionCookieName } from "../utils";
 
-export const makeServerAuthPolicy = Effect.gen(function* () {
+const makeServerAuthPolicy = Effect.gen(function* () {
   const config = yield* ServerConfig;
   const remoteReachable = isWildcardHost(config.host) || !isLoopbackHost(config.host);
 

@@ -25,7 +25,7 @@ export interface CompletedThreadCandidate {
   assistantSummary: string | null;
 }
 
-export interface ThreadAttentionCandidate {
+interface ThreadAttentionCandidate {
   kind: "approval" | "user-input";
   threadId: Thread["id"];
   projectId: Thread["projectId"];
@@ -686,7 +686,7 @@ function requestedActivityInstanceKeys(
 }
 
 // Compare consecutive activity snapshots and emit only fresh input-needed transitions.
-export function collectThreadAttentionCandidates(
+function collectThreadAttentionCandidates(
   previousThreads: readonly Thread[],
   nextThreads: readonly Thread[],
 ): ThreadAttentionCandidate[] {
@@ -833,7 +833,7 @@ export function buildTaskCompletionCopy(candidate: CompletedThreadCandidate): {
   };
 }
 
-export function buildThreadAttentionCopy(candidate: ThreadAttentionCandidate): {
+function buildThreadAttentionCopy(candidate: ThreadAttentionCandidate): {
   title: string;
   body: string;
 } {

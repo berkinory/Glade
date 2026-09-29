@@ -23,7 +23,7 @@ const scriptsDirectory = dirname(scriptPath);
 const desktopDirectory = resolve(scriptsDirectory, "..");
 const sourceDirectory = join(desktopDirectory, "native", "computer");
 
-export const defaultComputerHelperPath = join(
+const defaultComputerHelperPath = join(
   desktopDirectory,
   ".electron-runtime",
   "computer",
@@ -49,7 +49,7 @@ const frameworkArguments = [
   "ScreenCaptureKit",
 ];
 
-export function swiftTargetsForArch(arch) {
+function swiftTargetsForArch(arch) {
   switch (arch) {
     case "arm64":
       return [{ arch: "arm64", target: "arm64-apple-macos12.3" }];

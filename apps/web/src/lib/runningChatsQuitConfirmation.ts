@@ -3,7 +3,7 @@
 // Layer: UI logic helper
 // Depends on: Sidebar-equivalent "working" signals (running/connecting/live tail).
 
-export interface RunningChatQuitCandidate {
+interface RunningChatQuitCandidate {
   readonly id: string;
   readonly title: string;
   readonly hasLiveTailWork?: boolean | undefined;
@@ -24,7 +24,7 @@ export interface RunningChatsQuitCopy {
 }
 
 /** Bounded wait for the server to record the resume intent; quit must stay snappy. */
-export const QUIT_RESUME_PREPARE_TIMEOUT_MS = 1500;
+const QUIT_RESUME_PREPARE_TIMEOUT_MS = 1500;
 
 export interface RunningChatsQuitStoreSlice {
   readonly sidebarThreadSummaryById: Readonly<Record<string, RunningChatQuitCandidate>>;
@@ -41,7 +41,7 @@ function runningChatDisplayTitle(title: string | null | undefined): string {
   return trimmed && trimmed.length > 0 ? trimmed : UNTITLED_CHAT_TITLE;
 }
 
-export function isRunningChatForQuit(thread: {
+function isRunningChatForQuit(thread: {
   readonly hasLiveTailWork?: boolean | undefined;
   readonly session?: { readonly status?: string | null } | null | undefined;
 }): boolean {
@@ -52,7 +52,7 @@ export function isRunningChatForQuit(thread: {
   return status === "running" || status === "connecting";
 }
 
-export function listRunningChatsForQuit(
+function listRunningChatsForQuit(
   threads: ReadonlyArray<RunningChatQuitCandidate>,
 ): ReadonlyArray<RunningChatQuitSummary> {
   const seen = new Set<string>();

@@ -626,5 +626,3 @@ export function PullRequestDetailPanel({
     </div>
   );
 }
-
-export default PullRequestDetailPanel;

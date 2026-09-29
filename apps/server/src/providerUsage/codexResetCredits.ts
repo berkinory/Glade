@@ -38,7 +38,7 @@ function epochToIso(value: unknown): string | undefined {
 }
 
 /** Pure parse of the `rateLimitResetCredits` payload from `account/rateLimits/read`. */
-export function parseCodexResetCredits(json: unknown): ServerCodexResetCredits | undefined {
+function parseCodexResetCredits(json: unknown): ServerCodexResetCredits | undefined {
   const root = asRecord(json);
   const raw =
     root?.rateLimitResetCredits ??
@@ -87,7 +87,7 @@ export function parseCodexResetCredits(json: unknown): ServerCodexResetCredits |
 }
 
 /** Only the ordinary Codex bucket can make a reset worthwhile; other model quotas cannot. */
-export function canUseCodexResetCredit(json: unknown): boolean | undefined {
+function canUseCodexResetCredit(json: unknown): boolean | undefined {
   const root = asRecord(json);
   const buckets = asRecord(root?.rateLimitsByLimitId);
   const core = buckets ? asRecord(buckets.codex) : asRecord(root?.rateLimits);

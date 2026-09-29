@@ -202,7 +202,7 @@ export function resolveThreadMentionForThreadId(input: {
   };
 }
 
-export function buildThreadMentionComposerItems(input: {
+function buildThreadMentionComposerItems(input: {
   readonly threads: readonly ComposerThreadMentionSource[];
   readonly projects: readonly Project[];
   readonly currentThreadId: string | null;

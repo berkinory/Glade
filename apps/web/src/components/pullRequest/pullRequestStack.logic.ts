@@ -14,7 +14,7 @@ export type PullRequestStackAssessment = {
 };
 
 /** Entries affected by merging the selected PR, ordered from the base branch upwards. */
-export function pullRequestStackTargetEntries(
+function pullRequestStackTargetEntries(
   stack: PullRequestStack,
 ): ReadonlyArray<PullRequestStackEntry> {
   return stack.entries.filter(

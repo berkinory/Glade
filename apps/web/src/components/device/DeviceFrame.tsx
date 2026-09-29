@@ -1,7 +1,7 @@
 // FILE: DeviceFrame.tsx
 // Purpose: SVG device chassis that frames every device-pane state, with working hardware buttons.
 // Layer: Device pane presentation primitive
-// Exports: DeviceScreen, DeviceFrame, DeviceSilhouette, deviceKindFor, screenGeometry
+// Exports: DeviceScreen, deviceKindFor
 // Depends on: device contracts for the button names.
 //
 // Drawn rather than composited from Apple's bezel artwork: those images are
@@ -136,7 +136,7 @@ function metrics(kind: DeviceKind, pixelW?: number, pixelH?: number) {
  * Where the live screen sits inside the frame box. Percentages, so the caller
  * can size the box however it likes and the screen follows.
  */
-export function screenGeometry(kind: DeviceKind = "iPhone", pixelW?: number, pixelH?: number) {
+function screenGeometry(kind: DeviceKind = "iPhone", pixelW?: number, pixelH?: number) {
   const { spec, margin, W, H } = metrics(kind, pixelW, pixelH);
   const w = pixelW ?? spec.pixelW;
   const h = pixelH ?? spec.pixelH;
@@ -253,7 +253,7 @@ type LayerProps = {
   style?: CSSProperties;
 };
 
-export const DeviceFrame = memo(function DeviceFrame({
+const DeviceFrame = memo(function DeviceFrame({
   kind = "iPhone",
   pixelWidth,
   pixelHeight,
@@ -308,7 +308,7 @@ export const DeviceFrame = memo(function DeviceFrame({
 });
 
 /** Solid black body behind the screen. Carries the drop shadow. */
-export const DeviceSilhouette = memo(function DeviceSilhouette({
+const DeviceSilhouette = memo(function DeviceSilhouette({
   kind = "iPhone",
   pixelWidth,
   pixelHeight,

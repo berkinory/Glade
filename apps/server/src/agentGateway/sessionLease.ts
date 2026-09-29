@@ -39,7 +39,7 @@ export function agentGatewayCapabilitiesFor(
   return capabilities;
 }
 
-export function agentGatewaySessionLeaseOptionsFor(
+function agentGatewaySessionLeaseOptionsFor(
   input: AgentGatewayCapabilityInput,
 ): AgentGatewaySessionLeaseOptions | undefined {
   const additionalCapabilities = agentGatewayCapabilitiesFor(input);

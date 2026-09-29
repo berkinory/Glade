@@ -1,7 +1,7 @@
 // FILE: useSidebarLayout.ts
 // Purpose: The single resolver for which app shell renders: classic sidebar or rail + panel.
 // Layer: Web shell hook
-// Exports: SidebarLayout, resolveSidebarLayout, useSidebarLayout
+// Exports: SidebarLayout, useSidebarLayout
 
 import { useAppSettings, type SidebarLayout } from "../appSettings";
 import { useIsMobile } from "./useMediaQuery";
@@ -12,10 +12,7 @@ export type { SidebarLayout };
  * The rail layout requires the user preference and a desktop
  * viewport. It is available in Dev and Prod; mobile stays classic.
  */
-export function resolveSidebarLayout(input: {
-  setting: SidebarLayout;
-  isMobile: boolean;
-}): SidebarLayout {
+function resolveSidebarLayout(input: { setting: SidebarLayout; isMobile: boolean }): SidebarLayout {
   return input.setting === "rail" && !input.isMobile ? "rail" : "classic";
 }
 

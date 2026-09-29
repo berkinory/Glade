@@ -81,14 +81,14 @@ interface ThreadCheckpointCleanup {
   readonly checkpointRefs: ReadonlyArray<CheckpointRef>;
 }
 
-export interface ThreadTurnSnapshotRow {
+interface ThreadTurnSnapshotRow {
   readonly provider: string | null;
   readonly model: string | null;
   readonly reasoning: string | null;
   readonly turnCount: number;
 }
 
-export interface ThreadTokenSnapshotRow {
+interface ThreadTokenSnapshotRow {
   readonly createdAt: string;
   readonly provider: string | null;
   readonly model: string | null;
@@ -202,7 +202,7 @@ function hasProfileStatsContribution(input: {
 
 // Mirrors the per-turn extraction in profileStats.queryTurnInsights: the turn
 // event's own modelSelection wins, otherwise the thread's selection applies.
-export function aggregateThreadTurnSnapshotRows(
+function aggregateThreadTurnSnapshotRows(
   events: ReadonlyArray<TurnEventRow>,
   threadModelSelectionJson: string | null,
 ): ThreadTurnSnapshotRow[] {
@@ -286,7 +286,7 @@ function addTokenSnapshotRow(
 // DATETIME(created_at, tz) bucketing stays identical to the live query for any
 // client UTC offset, and are keyed by the row's per-turn provider/model (the
 // thread's own selection fills in rows without turn attribution).
-export function aggregateThreadTokenRows(
+function aggregateThreadTokenRows(
   rows: ReadonlyArray<TokenActivityRow>,
   fallbackSelection?: { readonly provider: string | null; readonly model: string | null },
 ): ThreadTokenSnapshotRow[] {

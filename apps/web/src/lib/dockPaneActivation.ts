@@ -16,7 +16,7 @@ const DOCK_PANE_DEFERRED_HYDRATION_FRAMES = 2;
 // subtree is still offscreen, so frame-only promotion can leave a heavy pane in
 // preview forever even after the route becomes visible. Keep the paint-friendly
 // frame path, but cap it with a task-based fallback.
-export const DOCK_PANE_DEFERRED_HYDRATION_TIMEOUT_MS = 250;
+const DOCK_PANE_DEFERRED_HYDRATION_TIMEOUT_MS = 250;
 
 export interface DeferredDockPaneHydrationScheduler {
   readonly requestFrame: (callback: () => void) => number;

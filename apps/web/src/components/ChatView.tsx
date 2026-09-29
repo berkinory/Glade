@@ -310,7 +310,6 @@ import {
   CHAT_BACKGROUND_CLASS_NAME,
   CHAT_COLUMN_FRAME_CLASS_NAME,
   CHAT_COLUMN_GUTTER_CLASS_NAME,
-  COMPOSER_COLUMN_FRAME_CLASS_NAME,
   COMPOSER_COMMAND_MENU_FLOATING_WRAPPER_CLASS_NAME,
   COMPOSER_EDITOR_PADDING_CLASS_NAME,
   COMPOSER_FOLDER_PICKER_CAPSULE_HOVER_CLASS_NAME,
@@ -577,7 +576,6 @@ export default function ChatView({
     setComposerDraftRuntimeMode,
     setComposerDraftInteractionMode,
     setComposerDraftComputerControlMode,
-    setComposerDraftComputerControl,
     enqueueQueuedComposerTurn,
     insertQueuedComposerTurn,
     removeQueuedComposerTurnFromDraft,
@@ -1785,7 +1783,6 @@ export default function ChatView({
     composerTrigger,
     composerCommandPicker,
     providerModelDiscoveryCwd,
-    providerOptionsForDispatch,
     gitCwd,
     discoverNativeCompaction:
       selectedProvider === "claudeAgent" &&
@@ -3708,7 +3705,6 @@ export default function ChatView({
     setComposerDraftRuntimeMode,
     setComposerDraftInteractionMode,
     setComposerDraftComputerControlMode,
-    setComposerDraftComputerControl,
     setComposerCursor,
     setComposerTrigger,
     scheduleComposerFocus,
@@ -3738,7 +3734,6 @@ export default function ChatView({
     sendInFlightRef,
     turnDispatchSettings,
     computerControlChangeSequence,
-    setComposerDraftComputerControlMode,
     showPlanFollowUpPrompt,
     activeProposedPlan,
     hasQueueableLiveTurn,
@@ -3975,7 +3970,6 @@ export default function ChatView({
     prompt,
     modelOptions: selectedProviderModelOptions,
     ...(selectedRuntimeModel ? { runtimeModel: selectedRuntimeModel } : {}),
-    runtimeAgents: dynamicAgents,
   });
   const composerFooterPlanInputsKey = [
     composerFooterModelLabel,
@@ -4035,7 +4029,6 @@ export default function ChatView({
       threadId={threadId}
       runtimeModel={selectedRuntimeModel}
       runtimeModelsByProvider={runtimeModelsByProvider}
-      runtimeAgents={dynamicAgents}
       modelOptions={selectedProviderModelOptions}
       prompt={prompt}
       onPromptChange={setPromptFromTraits}
@@ -5243,7 +5236,7 @@ export default function ChatView({
         data-chat-composer-form="deferred"
       >
         <div
-          className={cn(COMPOSER_INPUT_SURFACE_CLASS_NAME, COMPOSER_COLUMN_FRAME_CLASS_NAME)}
+          className={cn(COMPOSER_INPUT_SURFACE_CLASS_NAME, CHAT_COLUMN_FRAME_CLASS_NAME)}
           style={{ height: secondaryChromePlaceholderHeight }}
         />
       </div>
@@ -5484,7 +5477,7 @@ export default function ChatView({
                 <div className="w-full shrink-0 pb-3 sm:pb-4">
                   {composerSection}
                   {relocateComposerLeadingControls ? (
-                    <div className={COMPOSER_COLUMN_FRAME_CLASS_NAME}>
+                    <div className={CHAT_COLUMN_FRAME_CLASS_NAME}>
                       <div className="flex w-full items-center gap-1">
                         <div className="flex shrink-0 items-center gap-1 pl-1">
                           {renderComposerLeadingControls({ iconOnly: true })}
@@ -5606,7 +5599,7 @@ export default function ChatView({
                   {secondaryChromeReady &&
                   ((isGitRepo && !environmentEnabled) || relocateComposerLeadingControls) ? (
                     <div className={CHAT_COLUMN_GUTTER_CLASS_NAME}>
-                      <div className={COMPOSER_COLUMN_FRAME_CLASS_NAME}>
+                      <div className={CHAT_COLUMN_FRAME_CLASS_NAME}>
                         <div className="flex w-full items-center gap-1">
                           {relocateComposerLeadingControls ? (
                             <div className="flex shrink-0 items-center gap-1 pl-1">

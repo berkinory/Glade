@@ -300,7 +300,7 @@ function toNonEmptyProviderInput(value: string | undefined): string | undefined 
 }
 
 // Codex app-server still expects `$skill` text next to the structured skill item.
-export function normalizeSkillMentionTextForProvider(input: {
+function normalizeSkillMentionTextForProvider(input: {
   readonly provider: ProviderKind;
   readonly messageText: string;
   readonly skills?: ReadonlyArray<ProviderSkillReference>;
@@ -449,7 +449,7 @@ const PROVIDER_COMMAND_CLAIM_LEASE_MS = 30_000;
 // the prior attempt settles instead of sleeping blindly to lease expiry.
 const PROVIDER_COMMAND_CLAIM_SETTLEMENT_POLL_MS = 1_000;
 
-export interface ProviderCommandClaimSnapshot {
+interface ProviderCommandClaimSnapshot {
   readonly state: string;
   readonly claimOwner?: string | null;
   readonly claimExpiresAt?: string | null;
@@ -463,7 +463,7 @@ export interface ProviderCommandClaimSnapshot {
  * expired paths. Failed reads keep waiting on the last known snapshot so a
  * transient store error degrades to today's full-lease wait, not a wrong turn.
  */
-export function awaitInflightClaimSettlement<TClaim extends ProviderCommandClaimSnapshot>(input: {
+function awaitInflightClaimSettlement<TClaim extends ProviderCommandClaimSnapshot>(input: {
   readonly readClaim: () => Effect.Effect<TClaim | undefined, never>;
   readonly deadlineMs: number;
   readonly pollIntervalMs?: number;
@@ -653,18 +653,6 @@ function interactionFailureSettlementStatus(
         : ("retryable" as const);
     },
   });
-}
-
-function isStaleCodexResumeError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  const normalized = message.toLowerCase();
-  return (
-    normalized.includes("thread/resume") &&
-    (normalized.includes("no rollout found") ||
-      normalized.includes("thread not found") ||
-      normalized.includes("missing thread") ||
-      normalized.includes("unknown thread"))
-  );
 }
 
 function isStaleClaudeResumeError(error: unknown): boolean {
@@ -2252,7 +2240,6 @@ const make = Effect.gen(function* () {
       thread.session?.providerName ??
       thread.modelSelection.provider;
     const {
-      activeSessionBeforeEnsure,
       activeSession,
       nativeResumeSucceeded,
       nativeResumeFailed,

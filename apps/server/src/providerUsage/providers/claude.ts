@@ -253,13 +253,7 @@ async function nudgeClaudeCliAuthRefresh(ctx: ProviderUsageContext): Promise<boo
   }
 }
 
-/** Test-only: replace the CLI nudge (lock + exec) and clear its cooldown memory. */
-export function __setClaudeAuthNudgeDepsForTests(deps: Partial<ClaudeAuthNudgeDeps> | null): void {
-  authNudgeDeps = { ...defaultAuthNudgeDeps, ...(deps ?? {}) };
-  authNudgeNotBeforeMs.clear();
-}
-
-export function parseClaudeUsage(input: { json: unknown; nowMs: number; planName?: string }) {
+function parseClaudeUsage(input: { json: unknown; nowMs: number; planName?: string }) {
   const root = asRecord(input.json);
   const limits: ServerProviderUsageLimit[] = [];
   const usageLines: ServerProviderUsageLine[] = [];
@@ -353,11 +347,6 @@ const claudeRateLimit = createRateLimitResilience({
   detail: (retryMins) =>
     `Anthropic is rate-limiting usage checks — showing your last values, retrying in ~${retryMins}m. Manual refreshes only extend the limit.`,
 });
-
-/** Test-only: clear the cross-call last-good/cooldown memory so cases start from a cold state. */
-export function __resetClaudeUsageRateLimitState(): void {
-  claudeRateLimit.reset();
-}
 
 export const claudeUsageFetcher: ProviderUsageFetcher = {
   provider: "claudeAgent",

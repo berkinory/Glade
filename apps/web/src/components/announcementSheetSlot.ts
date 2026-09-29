@@ -21,7 +21,7 @@ interface AnnouncementSheetSlotStore {
   handOff: () => void;
 }
 
-export const useAnnouncementSheetSlotStore = create<AnnouncementSheetSlotStore>((set) => ({
+const useAnnouncementSheetSlotStore = create<AnnouncementSheetSlotStore>((set) => ({
   owner: null,
   handedOff: false,
   claim: (id) => set((state) => (state.owner === null && !state.handedOff ? { owner: id } : state)),

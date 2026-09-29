@@ -22,7 +22,7 @@ type ExplorerNavigationKey = "ArrowDown" | "ArrowUp" | "Home" | "End";
  * the ends; from outside, Down enters at the top and Up at the bottom. Pure so it
  * can be unit-tested without a DOM.
  */
-export function nextExplorerRowIndex(
+function nextExplorerRowIndex(
   key: ExplorerNavigationKey,
   currentIndex: number,
   rowCount: number,

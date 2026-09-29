@@ -86,15 +86,14 @@ export const CHAT_HEADER_ICON_STRENGTH_CLASS_NAME =
 export const CHAT_HEADER_CONTROL_CLASS_NAME = "!h-7 shrink-0 rounded-lg";
 
 /** Idle text tone for flat header/dock controls (toggles, tabs, chrome icon buttons). */
-export const CHAT_SURFACE_CONTROL_IDLE_TEXT_CLASS_NAME =
-  "text-[var(--color-text-foreground-secondary)]";
+const CHAT_SURFACE_CONTROL_IDLE_TEXT_CLASS_NAME = "text-[var(--color-text-foreground-secondary)]";
 
 /** Active/pressed flat background shared by header toggles and dock tabs. */
 export const CHAT_SURFACE_CONTROL_ACTIVE_CLASS_NAME =
   "bg-[var(--color-background-button-secondary)] text-[var(--color-text-foreground)]";
 
 /** Hover treatment for idle flat surface controls. */
-export const CHAT_SURFACE_CONTROL_HOVER_CLASS_NAME =
+const CHAT_SURFACE_CONTROL_HOVER_CLASS_NAME =
   "hover:bg-[var(--color-background-button-secondary-hover)] hover:text-[var(--color-text-foreground)]";
 
 /**
@@ -151,7 +150,7 @@ export const CHAT_HEADER_TOGGLE_CLASS_NAME = cn(
 /** Flat dock tab chip — shares the header diff toggle chrome, but adds one extra
  *  step of right padding (`px-1.5` → `pr-2.5`) so the label/trailing edge has a
  *  touch more breathing room than the symmetric chip base. */
-export const DOCK_TAB_CHIP_CLASS_NAME = cn(
+const DOCK_TAB_CHIP_CLASS_NAME = cn(
   CHAT_SURFACE_CHIP_CLASS_NAME,
   "inline-flex min-w-0 items-center pr-2.5",
 );
@@ -159,16 +158,16 @@ export const DOCK_TAB_CHIP_CLASS_NAME = cn(
 /** Icon slot for dock tabs — bare larger icon at rest; on hover a circular disc + X appears.
  *  Color is muted while the tab (not the close button) is hovered and brightens to full
  *  foreground on direct hover of the close button so the X reads as interactive. */
-export const DOCK_TAB_ICON_SLOT_CLASS_NAME =
+const DOCK_TAB_ICON_SLOT_CLASS_NAME =
   "relative flex size-4 shrink-0 cursor-pointer items-center justify-center rounded-full bg-transparent text-[var(--color-text-foreground-secondary)] transition-colors group-hover/dock-tab:bg-[var(--color-background-button-secondary-hover)] group-focus-within/dock-tab:bg-[var(--color-background-button-secondary-hover)] hover:bg-[var(--color-background-button-secondary)] hover:text-[var(--color-text-foreground)]";
 
 /** Dock-only extra: fade the resting glyph out so the hover X can swap in.
  *  Layered on top of {@link SurfaceChipIcon}'s shared size/strength. */
-export const DOCK_TAB_ICON_HOVER_HIDE_CLASS_NAME =
+const DOCK_TAB_ICON_HOVER_HIDE_CLASS_NAME =
   "transition-opacity group-hover/dock-tab:opacity-0 group-focus-within/dock-tab:opacity-0";
 
 /** Hover glyph: thicker X centered inside the disc. */
-export const DOCK_TAB_CLOSE_GLYPH_CLASS_NAME =
+const DOCK_TAB_CLOSE_GLYPH_CLASS_NAME =
   "absolute size-3.5 shrink-0 opacity-0 transition-opacity group-hover/dock-tab:opacity-100 group-focus-within/dock-tab:opacity-100";
 
 /**
@@ -284,7 +283,6 @@ export const CHAT_HEADER_ICON_CONTROL_CLASS_NAME =
  * Aliases {@link CHAT_HEADER_ICON_CONTROL_CLASS_NAME} so dock header buttons stay the
  * same 28px size as the chat header instead of drifting to 24px (icon-xs) per surface.
  */
-export const DOCK_HEADER_ICON_BUTTON_CLASS = CHAT_HEADER_ICON_CONTROL_CLASS_NAME;
 
 /** Flatten the trailing edge of a split-button's leading control so it butts up
  *  against the shared divider (drops the end radius + the doubled end border). */
@@ -323,10 +321,10 @@ export function ChatHeaderSplitDivider() {
 export type DiffRenderMode = "stacked" | "split";
 
 /** Visual treatment shared across the header row. */
-export type ChatHeaderControlTone = "plain" | "outline";
+type ChatHeaderControlTone = "plain" | "outline";
 
 /** Maps a header tone onto the shared Button variant taxonomy. */
-export function chatHeaderControlVariant(
+function chatHeaderControlVariant(
   tone: ChatHeaderControlTone,
 ): NonNullable<ComponentProps<typeof Button>["variant"]> {
   return tone === "outline" ? "chrome-outline" : "chrome";

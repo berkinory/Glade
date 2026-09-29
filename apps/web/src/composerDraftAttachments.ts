@@ -148,7 +148,7 @@ export function revokeDraftComposerImagePreviewUrls(
   revokePromptHistorySavedDraftPreviewUrls(draft.promptHistorySavedDraft);
 }
 
-export function isComposerImageBlobReferenced(
+function isComposerImageBlobReferenced(
   draftsByThreadId: Readonly<Record<string, ComposerThreadDraftState | undefined>>,
   blobKey: string,
 ): boolean {
@@ -169,7 +169,7 @@ export function isComposerImageBlobReferenced(
   return false;
 }
 
-export function findSupersededComposerImageBlobAttachments(
+function findSupersededComposerImageBlobAttachments(
   previousAttachments: ReadonlyArray<PersistedComposerImageAttachment>,
   nextAttachments: ReadonlyArray<PersistedComposerImageAttachment>,
 ): PersistedComposerImageAttachment[] {

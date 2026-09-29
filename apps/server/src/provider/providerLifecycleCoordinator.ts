@@ -4,7 +4,7 @@ import type { ThreadId } from "@glade/contracts";
 import { Duration, Effect, Option } from "effect";
 import * as Semaphore from "effect/Semaphore";
 
-export interface ProviderLifecycleLease {
+interface ProviderLifecycleLease {
   readonly generation: string;
   readonly isCurrent: () => boolean;
   /**

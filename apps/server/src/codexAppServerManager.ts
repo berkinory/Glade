@@ -452,7 +452,7 @@ function normalizeCodexUserVisibleErrorMessage(rawMessage: string): string {
   return message;
 }
 
-export function readCodexAccountSnapshot(response: unknown): CodexAccountSnapshot {
+function readCodexAccountSnapshot(response: unknown): CodexAccountSnapshot {
   const record = asObject(response);
   const account = asObject(record?.account) ?? record;
   const accountType = asString(account?.type);
@@ -623,7 +623,7 @@ Do not ask "should I proceed?" in the final output. The user can easily switch o
 Only produce at most one \`<proposed_plan>\` block per turn, and only when you are presenting a complete spec.
 </collaboration_mode>${CODEX_BROWSER_TOOL_ROUTING_INSTRUCTIONS}\n\n${GLADE_GATEWAY_HARNESS_POLICY}`;
 
-export const CODEX_DEFAULT_MODE_DEVELOPER_INSTRUCTIONS = `<collaboration_mode># Collaboration Mode: Default
+const CODEX_DEFAULT_MODE_DEVELOPER_INSTRUCTIONS = `<collaboration_mode># Collaboration Mode: Default
 
 You are now in Default mode. Any previous instructions for other modes (e.g. Plan mode) are no longer active.
 
@@ -717,7 +717,7 @@ export function buildCodexThreadOpenRequest(input: {
   };
 }
 
-export function resolveCodexThreadOpenMinimumVersion(input: {
+function resolveCodexThreadOpenMinimumVersion(input: {
   readonly runtimeMode: RuntimeMode;
   readonly threadOpenMethod: CodexThreadOpenRequest["method"];
 }): string | undefined {
@@ -734,7 +734,7 @@ export function resolveCodexThreadOpenMinimumVersion(input: {
   );
 }
 
-export function shouldWarnCodexFreshStartWithoutResume(input: {
+function shouldWarnCodexFreshStartWithoutResume(input: {
   readonly threadOpenMethod: string;
   readonly previouslyBound: boolean;
 }): boolean {
@@ -789,7 +789,7 @@ function resolveCodexTurnOverrides(context: CodexSessionContext): {
   );
 }
 
-export function resolveCodexModelForAccount(
+function resolveCodexModelForAccount(
   model: string | undefined,
   account: CodexAccountSnapshot,
 ): string | undefined {
@@ -813,7 +813,7 @@ function spawnCodexAppServer(input: {
   });
 }
 
-export function normalizeCodexModelSlug(
+function normalizeCodexModelSlug(
   model: string | undefined | null,
   preferredId?: string,
 ): string | undefined {
@@ -842,7 +842,7 @@ function buildCodexInitializeParams() {
   } as const;
 }
 
-export function buildCodexCollaborationMode(input: {
+function buildCodexCollaborationMode(input: {
   readonly enableComputerControl?: boolean;
   readonly interactionMode?: ProviderInteractionMode;
   readonly model?: string;
@@ -972,7 +972,7 @@ export function parseCodexUserInputQuestions(
   return parsedQuestions.length > 0 ? parsedQuestions : undefined;
 }
 
-export function classifyCodexStderrLine(rawLine: string): { message: string } | null {
+function classifyCodexStderrLine(rawLine: string): { message: string } | null {
   const line = normalizeCodexProcessLine(rawLine);
   if (isIgnorableCodexProcessLine(line)) {
     return null;
@@ -1019,7 +1019,7 @@ export function classifyCodexStderrLine(rawLine: string): { message: string } | 
   return { message: normalizeCodexUserVisibleErrorMessage(line) };
 }
 
-export function isRecoverableThreadResumeError(error: unknown): boolean {
+function isRecoverableThreadResumeError(error: unknown): boolean {
   const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
   if (!message.includes("thread/resume")) {
     return false;
@@ -1028,7 +1028,7 @@ export function isRecoverableThreadResumeError(error: unknown): boolean {
   return RECOVERABLE_THREAD_RESUME_ERROR_SNIPPETS.some((snippet) => message.includes(snippet));
 }
 
-export function formatCodexThreadResumeError(error: unknown, providerThreadId: string): Error {
+function formatCodexThreadResumeError(error: unknown, providerThreadId: string): Error {
   const originalError = error instanceof Error ? error : new Error(String(error));
   if (!originalError.message.toLowerCase().includes("already has an active writer")) {
     return originalError;
@@ -4511,16 +4511,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
 
     const candidate = (value as Record<string, unknown>)[key];
     return typeof candidate === "boolean" ? candidate : undefined;
-  }
-
-  private readFirstBoolean(value: unknown, keys: readonly string[]): boolean | undefined {
-    for (const key of keys) {
-      const candidate = this.readBoolean(value, key);
-      if (candidate !== undefined) {
-        return candidate;
-      }
-    }
-    return undefined;
   }
 
   private isExitedReviewModeNotification(notification: JsonRpcNotification): boolean {

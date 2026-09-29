@@ -1,5 +1,5 @@
-export const DIFF_RENDER_SURFACE_SELECTOR = ".diff-render-surface";
-export const DIFF_FILE_ANCHOR_SELECTOR = "[data-diff-file-path]";
+const DIFF_RENDER_SURFACE_SELECTOR = ".diff-render-surface";
+const DIFF_FILE_ANCHOR_SELECTOR = "[data-diff-file-path]";
 
 export interface DiffFileAnchor {
   path: string;
@@ -52,10 +52,7 @@ export function findLastIndexAtOrBelow(
   return found;
 }
 
-export function findDiffFileAnchor(
-  viewport: HTMLElement | null,
-  filePath: string,
-): HTMLElement | null {
+function findDiffFileAnchor(viewport: HTMLElement | null, filePath: string): HTMLElement | null {
   return readDiffFileAnchors(viewport).find((anchor) => anchor.path === filePath)?.element ?? null;
 }
 

@@ -22,11 +22,7 @@ import {
   DEVICE_FRAME_WS_PATH,
   DEVICE_FRAME_WS_UDID_PARAM,
 } from "@glade/shared/deviceFrame";
-import {
-  decodeFrameResyncRequest,
-  makeFrameSink,
-  type FrameSink,
-} from "@glade/shared/frameTransport";
+import { decodeFrameResyncRequest, makeFrameSink } from "@glade/shared/frameTransport";
 import { Effect, Layer } from "effect";
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http";
 
@@ -41,13 +37,8 @@ const MAX_CLIENT_MESSAGE_BYTES = 1_024;
  * null for anything unrecognized, which the caller ignores rather than
  * treating as a protocol error.
  */
-export function decodeResyncRequest(message: string | Uint8Array): "resync" | null {
+function decodeResyncRequest(message: string | Uint8Array): "resync" | null {
   return decodeFrameResyncRequest(message, DEVICE_FRAME_RESYNC_MESSAGE, MAX_CLIENT_MESSAGE_BYTES);
-}
-
-export interface DeviceFrameSocketWriter {
-  readonly write: (bytes: Uint8Array) => void;
-  readonly sink: FrameSink;
 }
 
 /**
@@ -55,7 +46,7 @@ export interface DeviceFrameSocketWriter {
  * to the socket but not yet acknowledged as flushed. The transport reads that
  * number to decide whether the client is keeping up.
  */
-export function makeDeviceFrameSink(options: {
+function makeDeviceFrameSink(options: {
   readonly send: (bytes: Uint8Array) => Promise<void> | void;
   readonly isOpen: () => boolean;
 }): DeviceFrameSink {

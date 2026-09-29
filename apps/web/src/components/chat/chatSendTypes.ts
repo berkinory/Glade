@@ -25,7 +25,7 @@ import type { useChatTranscriptScroll } from "./useChatTranscriptScroll";
 import type { useComposerReferences } from "./useComposerReferences";
 import type { useComposerVoiceController } from "./useComposerVoiceController";
 
-export interface PlanFollowUpSubmission {
+interface PlanFollowUpSubmission {
   text: string;
   interactionMode: "default" | "plan";
   dispatchMode: "queue" | "steer";
@@ -231,9 +231,6 @@ export interface ChatTurnSubmissionInput {
   selectedPromptEffort: ReturnType<typeof useChatProviderModels>["selectedPromptEffort"];
   turnDispatchSettings: TurnDispatchSettings;
   computerControlChangeSequence: RefObject<number>;
-  setComposerDraftComputerControlMode: ReturnType<
-    typeof useChatComposerDraft
-  >["setComposerDraftComputerControlMode"];
   pendingAutomationConversationRef: ReturnType<
     typeof useChatAutomationSetup
   >["pendingAutomationConversationRef"];

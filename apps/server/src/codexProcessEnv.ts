@@ -32,7 +32,7 @@ const CODEX_OVERLAY_SHARED_STATE_FILES = new Set(["auth.json"]);
 const CODEX_SQLITE_STATE_ENTRY_PATTERN = /^.+\.sqlite(?:-(?:wal|shm|journal))?$/;
 const GLADE_CONFIG_SUPPRESSIONS_FILE = "glade-config-suppressions-v1.json";
 const GLADE_MANAGED_MCP_TABLE_HEADER = "[mcp_servers.glade]";
-export const GLADE_COMPETING_BROWSER_PLUGIN_SECTION_HEADERS = [
+const GLADE_COMPETING_BROWSER_PLUGIN_SECTION_HEADERS = [
   '[plugins."browser@openai-bundled"]',
   '[plugins."chrome@openai-bundled"]',
   '[plugins."computer-use@openai-bundled"]',
@@ -58,7 +58,7 @@ function isSafePluginSectionHeader(value: unknown): value is string {
   );
 }
 
-export async function readGladeConfigSuppressions(markerPath: string): Promise<readonly string[]> {
+async function readGladeConfigSuppressions(markerPath: string): Promise<readonly string[]> {
   try {
     const parsed = JSON.parse(await fs.readFile(markerPath, "utf8")) as unknown;
     if (typeof parsed !== "object" || parsed === null) return [];
@@ -82,7 +82,7 @@ function findConflictingLocalBrowserPluginSections(config: string): readonly str
   ];
 }
 
-export function disableCodexConfigSections(
+function disableCodexConfigSections(
   config: string,
   sectionHeaders: readonly string[],
   appendMissing = false,
@@ -159,7 +159,7 @@ async function writeGladeConfigSuppressions(
   await fs.rename(temporaryPath, markerPath);
 }
 
-export async function linkOrCopyCodexOverlayEntry(
+async function linkOrCopyCodexOverlayEntry(
   input: {
     readonly entryName: string;
     readonly sourcePath: string;
@@ -182,7 +182,7 @@ export async function linkOrCopyCodexOverlayEntry(
   }
 }
 
-export function prioritizeCodexOverlayEntries(entries: readonly string[]): string[] {
+function prioritizeCodexOverlayEntries(entries: readonly string[]): string[] {
   const sharedStateEntries: string[] = [];
   const otherEntries: string[] = [];
 

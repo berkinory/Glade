@@ -12,8 +12,6 @@
  */
 import type { ComputerUiNode } from "@glade/contracts";
 
-import { clampTextToLength } from "./utf8Truncation.ts";
-
 export function describeComputerUiTree(root: ComputerUiNode): string {
   const lines: string[] = [];
   const visit = (node: ComputerUiNode, depth: number): void => {
@@ -29,14 +27,4 @@ export function describeComputerUiTree(root: ComputerUiNode): string {
   };
   visit(root, 0);
   return lines.join("\n");
-}
-
-/**
- * `text` cut to `maxLength` characters with a marker in place of the tail.
- *
- * Kept as this module's name for the shared surrogate-safe clamp, because every
- * caller here is talking about a UI node's text.
- */
-export function clampNodeText(text: string, maxLength: number): string {
-  return clampTextToLength(text, maxLength);
 }

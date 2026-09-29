@@ -3,7 +3,7 @@
 //          shared by the composer command menu, the Lexical inline chip, and the
 //          read-only echo in sent messages so `/goal` looks the same everywhere.
 // Layer: Web UI utility
-// Exports: SLASH_COMMAND_ICONS, slashCommandIcon
+// Exports: slashCommandIcon
 
 import {
   BotIcon,
@@ -25,7 +25,7 @@ import {
 // Reuse the app's existing icon components for each concept so slash commands
 // stay coherent with how plan/fork/review/model/etc. appear everywhere else.
 // Don't introduce bespoke glyphs here — map to the shared `~/lib/icons` exports.
-export const SLASH_COMMAND_ICONS: Record<string, LucideIcon> = {
+const SLASH_COMMAND_ICONS: Record<string, LucideIcon> = {
   clear: EraserIcon,
   compact: Minimize2,
   model: BrainIcon,

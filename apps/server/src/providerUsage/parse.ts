@@ -29,11 +29,6 @@ export function asFiniteNumber(value: unknown): number | undefined {
   return undefined;
 }
 
-export function asNonNegativeNumber(value: unknown): number | undefined {
-  const parsed = asFiniteNumber(value);
-  return parsed !== undefined && parsed >= 0 ? parsed : undefined;
-}
-
 export function asString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
 }
@@ -43,14 +38,6 @@ export function clampPercent(value: number | undefined): number | undefined {
     return undefined;
   }
   return Math.min(100, Math.max(0, value));
-}
-
-/** Convert a fraction (0..1) or an already-percent value (0..100) into a clamped 0..100 percent. */
-export function toUsedPercent(value: number | undefined): number | undefined {
-  if (value === undefined || !Number.isFinite(value)) {
-    return undefined;
-  }
-  return clampPercent(value <= 1 ? value * 100 : value);
 }
 
 export function isoFromUnixSeconds(value: unknown): string | undefined {

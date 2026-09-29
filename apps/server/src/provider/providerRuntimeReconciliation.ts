@@ -29,7 +29,7 @@ export const DEFAULT_RUNTIME_RECONCILIATION_STALE_AFTER_MS = 15_000;
  * every appended message, so a legitimately long-running turn keeps resetting
  * this clock and is never affected.
  */
-export const RUNTIME_RECONCILIATION_MAX_TURN_AGE_MS = 45 * 60_000;
+const RUNTIME_RECONCILIATION_MAX_TURN_AGE_MS = 45 * 60_000;
 
 export type ProviderRuntimeReconciliationPlan =
   | {

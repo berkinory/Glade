@@ -1,7 +1,7 @@
 // FILE: backendProcessOutput.ts
 // Purpose: Tee piped backend output into startup detectors and the configured log destination.
 
-export interface BackendOutputDetector {
+interface BackendOutputDetector {
   push(chunk: Buffer, source: "stdout" | "stderr"): void;
   end?(source: "stdout" | "stderr"): void;
 }

@@ -310,7 +310,7 @@ export function activationPointForNode(node: ComputerUiNode): ComputerPoint {
   return uiTreeActivationPoint(node);
 }
 
-export function candidateDescriptions(
+function candidateDescriptions(
   nodes: readonly ComputerUiNode[],
 ): readonly ComputerTargetCandidate[] {
   return nodes.slice(0, MAX_REPORTED_CANDIDATES).map((node) => ({
@@ -609,7 +609,7 @@ export function diffActionableElements(
   return { added, removed, changed };
 }
 
-export function describeTarget(target: ComputerTarget): string {
+function describeTarget(target: ComputerTarget): string {
   const parts = [
     target.label ? `label=${JSON.stringify(target.label)}` : null,
     target.role ? `role=${JSON.stringify(target.role)}` : null,

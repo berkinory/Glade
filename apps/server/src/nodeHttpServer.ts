@@ -111,7 +111,7 @@ function normalizeUpgradePath(requestUrl: string | undefined): string {
  * lands on the uncompressed server, so no unauthenticated connection can hold
  * zlib state regardless of how its path is spelled.
  */
-export function upgradePathAllowsCompression(requestUrl: string | undefined): boolean {
+function upgradePathAllowsCompression(requestUrl: string | undefined): boolean {
   return normalizeUpgradePath(requestUrl) === COMPRESSED_UPGRADE_PATH;
 }
 

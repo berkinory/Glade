@@ -26,11 +26,7 @@ export interface ResolvedForkThreadEnvironment {
   associatedWorktreeRef: string | null;
 }
 
-export {
-  isPendingThreadWorktree,
-  resolveThreadEnvironmentMode,
-  resolveThreadWorkspaceState,
-} from "@glade/shared/threadEnvironment";
+export { resolveThreadEnvironmentMode } from "@glade/shared/threadEnvironment";
 
 export interface ThreadEnvironmentPresentation {
   mode: ThreadEnvironmentMode;

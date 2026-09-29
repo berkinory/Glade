@@ -1,7 +1,7 @@
 import { WsRpcError, type OrchestrationEvent } from "@glade/contracts";
 import { Cause, Effect, Queue, Scope, Stream } from "effect";
 
-export const ORCHESTRATION_SNAPSHOT_REPLAY_LIMIT = 4_096;
+const ORCHESTRATION_SNAPSHOT_REPLAY_LIMIT = 4_096;
 
 export type SnapshotLiveStreamItem<Snapshot> =
   | { readonly kind: "snapshot"; readonly snapshot: Snapshot }

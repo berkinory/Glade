@@ -51,7 +51,10 @@ import { DiffPanelViewToggle } from "./DiffPanelViewToggle";
 import { DiffPanelFileJumpMenu } from "./DiffPanelFileJumpMenu";
 import { ComposerPickerMenuPopup } from "./chat/ComposerPickerMenuPopup";
 import { EnvironmentRowBody, EnvironmentRowChevron } from "./chat/environment/EnvironmentRow";
-import { DOCK_HEADER_ICON_BUTTON_CLASS, type DiffRenderMode } from "./chat/chatHeaderControls";
+import {
+  CHAT_HEADER_ICON_CONTROL_CLASS_NAME,
+  type DiffRenderMode,
+} from "./chat/chatHeaderControls";
 import { DiffStat } from "./chat/DiffStatLabel";
 import { IconButton } from "./ui/icon-button";
 import {
@@ -518,7 +521,7 @@ export const DiffPanelToolbar = function DiffPanelToolbar(props: DiffPanelToolba
               variant="chrome"
               size="icon-xs"
               label="Close file view"
-              className={DOCK_HEADER_ICON_BUTTON_CLASS}
+              className={CHAT_HEADER_ICON_CONTROL_CLASS_NAME}
               onClick={(event) => {
                 event.stopPropagation();
                 props.onClosePanel?.();

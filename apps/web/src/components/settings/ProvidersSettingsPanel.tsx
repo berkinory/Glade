@@ -182,10 +182,7 @@ function isProviderInstallConfigDirty(
   return config.fields.some((field) => isProviderInstallFieldDirty(field, settings, defaults));
 }
 
-export function isProviderInstallSettingsDirty(
-  settings: AppSettings,
-  defaults: AppSettings,
-): boolean {
+function isProviderInstallSettingsDirty(settings: AppSettings, defaults: AppSettings): boolean {
   return PROVIDER_INSTALL_SETTINGS.some((config) =>
     isProviderInstallConfigDirty(config, settings, defaults),
   );
@@ -208,7 +205,7 @@ function createClosedProviderInstallDisclosureState(): Record<ProviderKind, bool
   ) as Record<ProviderKind, boolean>;
 }
 
-export function createProviderInstallResetPatch(defaults: AppSettings): Partial<AppSettings> {
+function createProviderInstallResetPatch(defaults: AppSettings): Partial<AppSettings> {
   return Object.fromEntries(
     PROVIDER_INSTALL_SETTINGS.flatMap((config) =>
       config.fields.map((field) => [field.settingsKey, defaults[field.settingsKey]]),

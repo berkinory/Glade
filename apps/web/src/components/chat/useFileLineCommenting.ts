@@ -11,7 +11,7 @@ import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 
 // A line's geometry in the scroll container's content space (independent of the
 // current scroll offset), used to position the absolute "+" button, the blue
 // highlight band, and the anchored comment box.
-export interface FileLineGeometry {
+interface FileLineGeometry {
   lineNumber: number;
   top: number;
   height: number;

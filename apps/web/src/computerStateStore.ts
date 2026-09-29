@@ -122,12 +122,6 @@ export function selectThreadComputerState(
   return (store) => store.threadStatesByThreadId[threadId];
 }
 
-export function selectThreadComputerAction(
-  threadId: ThreadId,
-): (store: ComputerStateStore) => ComputerActionEvent | undefined {
-  return (store) => store.lastActionByThreadId[threadId];
-}
-
 /** Composer availability does not change with desktop activity or geometry. */
 export function useThreadComputerAvailability(threadId: ThreadId) {
   return useComputerStateStore(

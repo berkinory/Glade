@@ -3,7 +3,7 @@
 //          by the right-dock explorer pane.
 // Layer: Chat workspace-browsing UI primitives
 // Exports: WorkspaceExplorerSidebar,
-//          ExplorerActivityBarButton, useExplorerEntryPrefetch, setFileReferenceDragData.
+//          .
 
 import type { ProjectEntry, ProjectFileSystemEntry } from "@glade/contracts";
 import { isWorkspaceRelativePathSafe, joinWorkspaceRelativePath } from "@glade/shared/path";
@@ -17,7 +17,6 @@ import {
   type DragEvent as ReactDragEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
-  type ReactNode,
   forwardRef,
   useCallback,
   useEffect,
@@ -49,7 +48,6 @@ import { ExplorerLoadingRows } from "./ExplorerLoadingRows";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "../ui/collapsible";
 import { DisclosureChevron } from "../ui/DisclosureChevron";
 import { SearchInput } from "../ui/search-input";
-import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { EXPLORER_ROW_PROPS, useExplorerListNavigation } from "./explorerListNavigation";
 import { FileEntryIcon } from "./FileEntryIcon";
 import { fileRowClassName, fileRowIndentStyle } from "./fileRowStyles";
@@ -86,7 +84,7 @@ const EXPLORER_SIDEBAR_CONTAINER_CLASS =
   "flex min-h-[11rem] w-full shrink-0 flex-col border-b border-border/65 bg-[var(--color-background-surface)] lg:h-full lg:w-56 lg:border-b-0 lg:border-r";
 
 // Marks the drag payload so the chat composer can accept it as a reference.
-export function setFileReferenceDragData(dataTransfer: DataTransfer, path: string): void {
+function setFileReferenceDragData(dataTransfer: DataTransfer, path: string): void {
   dataTransfer.effectAllowed = "copy";
   dataTransfer.setData(CHAT_FILE_REFERENCE_DRAG_TYPE, formatChatFileReference({ path }));
   dataTransfer.setData("text/plain", path);
@@ -106,7 +104,7 @@ function shouldShowExplorerEntry(entry: ProjectFileSystemEntry): boolean {
  * Warms caches for an explorer entry before it is clicked: directory listings
  * for folders, file contents plus the matching syntax highlighter for files.
  */
-export function useExplorerEntryPrefetch(cwd: string | null) {
+function useExplorerEntryPrefetch(cwd: string | null) {
   const queryClient = useQueryClient();
   return (entry: Pick<ProjectFileSystemEntry, "path" | "kind">) => {
     if (!cwd) {
@@ -834,42 +832,5 @@ export function WorkspaceExplorerSidebar(props: {
       )}
       {actions.dialogs}
     </aside>
-  );
-}
-
-export function ExplorerActivityBarButton(props: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  const button = (
-    <button
-      type="button"
-      className={cn(
-        "relative flex h-12 w-full cursor-pointer items-center justify-center text-muted-foreground/72 hover:bg-[var(--color-background-button-secondary-hover)] hover:text-foreground",
-        props.active && "bg-[var(--color-background-button-secondary)] text-foreground",
-      )}
-      aria-label={props.label}
-      aria-pressed={props.active}
-      title={props.label}
-      onClick={props.onClick}
-    >
-      <span
-        className={cn(
-          "absolute left-0 top-1/2 h-6 w-0.5 -translate-y-1/2 rounded-r-full bg-transparent",
-          props.active && "bg-foreground/85",
-        )}
-        aria-hidden="true"
-      />
-      {props.children}
-    </button>
-  );
-
-  return (
-    <Tooltip>
-      <TooltipTrigger render={button} />
-      <TooltipPopup side="right">{props.label}</TooltipPopup>
-    </Tooltip>
   );
 }

@@ -1,6 +1,6 @@
 import type { ComputerEvent } from "@glade/contracts";
 
-export const MAX_COMPUTER_THREAD_INTERESTS_PER_CONNECTION = 64;
+const MAX_COMPUTER_THREAD_INTERESTS_PER_CONNECTION = 64;
 
 interface ConnectionInterests {
   // A connection with more views falls back to broadcast instead of losing

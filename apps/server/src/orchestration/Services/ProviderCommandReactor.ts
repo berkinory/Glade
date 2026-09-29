@@ -15,7 +15,7 @@ import type {
   ProviderDeliveryReconciliationOutcome,
 } from "../../persistence/Services/OrchestrationEventDeliveries.ts";
 
-export interface ProviderDeliveryReconciliationResult {
+interface ProviderDeliveryReconciliationResult {
   readonly eventSequence: number;
   readonly threadId: ThreadId;
   readonly outcome: ProviderDeliveryReconciliationOutcome;

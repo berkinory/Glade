@@ -16,11 +16,11 @@ import { ComputerService } from "./Services/ComputerService.ts";
 
 const MAX_CLIENT_MESSAGE_BYTES = 1_024;
 
-export function decodeResyncRequest(message: string | Uint8Array): "resync" | null {
+function decodeResyncRequest(message: string | Uint8Array): "resync" | null {
   return decodeFrameResyncRequest(message, COMPUTER_FRAME_RESYNC_MESSAGE, MAX_CLIENT_MESSAGE_BYTES);
 }
 
-export function makeComputerFrameSink(options: {
+function makeComputerFrameSink(options: {
   readonly send: (bytes: Uint8Array) => Promise<void> | void;
   readonly isOpen: () => boolean;
 }): FrameSink {

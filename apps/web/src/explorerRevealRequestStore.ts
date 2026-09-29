@@ -9,7 +9,7 @@
 import type { ThreadId } from "@glade/contracts";
 import { create } from "zustand";
 
-export interface ExplorerRevealRequest {
+interface ExplorerRevealRequest {
   /** Workspace-relative directory path to expand in the tree. */
   path: string;
   /** Optional file to select and preview after revealing its parent directory. */

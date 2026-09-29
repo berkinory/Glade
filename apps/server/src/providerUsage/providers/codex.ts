@@ -337,7 +337,7 @@ function resetFromWindow(
   return undefined;
 }
 
-export function parseCodexUsage(input: {
+function parseCodexUsage(input: {
   json: unknown;
   headers?: Record<string, string>;
   nowMs: number;

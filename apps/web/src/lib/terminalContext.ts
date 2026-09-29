@@ -29,7 +29,7 @@ export interface TerminalContextDraft extends TerminalContextSelection {
   createdAt: string;
 }
 
-export interface ExtractedTerminalContexts {
+interface ExtractedTerminalContexts {
   promptText: string;
   contextCount: number;
   previewTitle: string | null;
@@ -57,7 +57,7 @@ export interface ParsedTerminalContextEntry {
 export const INLINE_TERMINAL_CONTEXT_PLACEHOLDER = "\uFFFC";
 export const IMAGE_ONLY_BOOTSTRAP_PROMPT =
   "[User attached one or more images without additional text. Respond using the conversation context and the attached image(s).]";
-export const IMAGE_ONLY_VISIBLE_PLACEHOLDER = "(No Content)";
+const IMAGE_ONLY_VISIBLE_PLACEHOLDER = "(No Content)";
 
 const TRAILING_TERMINAL_CONTEXT_BLOCK_PATTERN =
   /\n*<terminal_context>\n([\s\S]*?)\n<\/terminal_context>\s*$/;
@@ -78,7 +78,7 @@ export function normalizeTerminalContextText(text: string): string {
   return text.replace(/\r\n/g, "\n").replace(/^\n+|\n+$/g, "");
 }
 
-export function hasTerminalContextText(context: { text: string }): boolean {
+function hasTerminalContextText(context: { text: string }): boolean {
   return normalizeTerminalContextText(context.text).length > 0;
 }
 
@@ -112,7 +112,7 @@ export function terminalContextIdListsEqual<T extends { id: string }>(
   );
 }
 
-export function normalizeTerminalContextSelection(
+function normalizeTerminalContextSelection(
   selection: TerminalContextSelection,
 ): TerminalContextSelection | null {
   const text = normalizeTerminalContextText(selection.text);
@@ -132,10 +132,7 @@ export function normalizeTerminalContextSelection(
   };
 }
 
-export function formatTerminalContextRange(selection: {
-  lineStart: number;
-  lineEnd: number;
-}): string {
+function formatTerminalContextRange(selection: { lineStart: number; lineEnd: number }): string {
   return selection.lineStart === selection.lineEnd
     ? `line ${selection.lineStart}`
     : `lines ${selection.lineStart}-${selection.lineEnd}`;
@@ -274,7 +271,7 @@ export function appendOriginalComposerPromptBlocks(input: {
   return editedPrompt.length > 0 ? `${editedPrompt}\n\n${serializedBlocks}` : serializedBlocks;
 }
 
-export function extractTrailingTerminalContexts(prompt: string): ExtractedTerminalContexts {
+function extractTrailingTerminalContexts(prompt: string): ExtractedTerminalContexts {
   const match = TRAILING_TERMINAL_CONTEXT_BLOCK_PATTERN.exec(prompt);
   if (!match) {
     return {
@@ -382,7 +379,7 @@ function parseTerminalContextEntries(block: string): ParsedTerminalContextEntry[
   return entries;
 }
 
-export function countInlineTerminalContextPlaceholders(prompt: string): number {
+function countInlineTerminalContextPlaceholders(prompt: string): number {
   let count = 0;
   for (const char of prompt) {
     if (char === INLINE_TERMINAL_CONTEXT_PLACEHOLDER) {

@@ -11,7 +11,7 @@ import type { FileDiffMetadata } from "@pierre/diffs/react";
 
 import { compareDiffPaths, resolveFileDiffPath } from "./diffRendering";
 
-export interface FileDiffTreeFileNode {
+interface FileDiffTreeFileNode {
   kind: "file";
   /** Leaf name (the final path segment). */
   name: string;
@@ -20,7 +20,7 @@ export interface FileDiffTreeFileNode {
   fileDiff: FileDiffMetadata;
 }
 
-export interface FileDiffTreeDirectoryNode {
+interface FileDiffTreeDirectoryNode {
   kind: "directory";
   /** Display name; compressed chains render as `parent/child`. */
   name: string;

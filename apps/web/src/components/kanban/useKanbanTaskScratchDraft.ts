@@ -72,7 +72,7 @@ export function useKanbanTaskScratchDraft(input: { readonly defaultProvider: Pro
   } | null>(null);
 
   useEffect(() => {
-    const nextSkills = filterPromptSkillReferences(prompt, composerSkills, selectedProvider);
+    const nextSkills = filterPromptSkillReferences(prompt, composerSkills);
     if (!providerSkillReferencesEqual(composerSkills, nextSkills)) {
       useComposerDraftStore.getState().setSkills(scratchThreadId, nextSkills);
     }

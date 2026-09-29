@@ -59,7 +59,7 @@ function normalizePromptForMatching(prompt: string): string {
  * Requires both a scope mention and an action verb so "add a simulator target
  * to the build" does not silently attach a screenshot to an unrelated request.
  */
-export function promptLooksLikeDeviceTask(prompt: string): boolean {
+function promptLooksLikeDeviceTask(prompt: string): boolean {
   const normalized = normalizePromptForMatching(prompt);
   if (!DEVICE_SCOPE_PATTERNS.some((pattern) => normalized.includes(pattern))) {
     return false;
@@ -67,7 +67,7 @@ export function promptLooksLikeDeviceTask(prompt: string): boolean {
   return DEVICE_ACTION_PATTERNS.some((pattern) => normalized.includes(pattern));
 }
 
-export function deviceScreenshotAttachmentName(input: DeviceScreenshotResult): string {
+function deviceScreenshotAttachmentName(input: DeviceScreenshotResult): string {
   return input.name.trim().length > 0 ? input.name : `simulator-${Date.now()}.png`;
 }
 
@@ -84,7 +84,7 @@ function fileFromDeviceScreenshot(screenshot: DeviceScreenshotResult): File {
   });
 }
 
-export async function prepareComposerImageFromDeviceScreenshot(
+async function prepareComposerImageFromDeviceScreenshot(
   screenshot: DeviceScreenshotResult,
 ): Promise<ComposerImageAttachment> {
   const file = fileFromDeviceScreenshot(screenshot);

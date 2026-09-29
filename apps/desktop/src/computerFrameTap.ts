@@ -14,7 +14,7 @@ import { DESKTOP_IPC_CHANNELS } from "./ipcChannels";
 import { stopNativeHelper } from "./stopNativeHelper";
 
 /** Channel carrying live JPEG frames to the renderer: {windowId, seq, jpeg}. */
-export const COMPUTER_PREVIEW_FRAME_CHANNEL = DESKTOP_IPC_CHANNELS.computerPreviewFrame;
+const COMPUTER_PREVIEW_FRAME_CHANNEL = DESKTOP_IPC_CHANNELS.computerPreviewFrame;
 
 const FRAME_TAP_MAX_FRAME_BYTES = 4 * 1024 * 1024;
 const MAX_DEAD_TARGETS = 256;

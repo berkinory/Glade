@@ -55,9 +55,7 @@ export {
   parseContentRangeTotal,
   selectSha512Encoding,
   shouldGiveUp,
-  type DownloadResponseAction,
   type ResumableDownloadConfig,
-  type ResumableProgressInfo,
 } from "./resumableUpdateDownloadPolicy";
 
 export interface ResumableDownloadLogger {
@@ -79,7 +77,7 @@ interface CancellationTokenLike {
   ): Promise<T>;
 }
 
-export interface ResumableDownloadCallOptions {
+interface ResumableDownloadCallOptions {
   readonly headers?: Record<string, string> | null;
   readonly cancellationToken: CancellationTokenLike;
   readonly sha512?: string;

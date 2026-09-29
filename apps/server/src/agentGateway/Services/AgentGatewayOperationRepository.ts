@@ -2,7 +2,7 @@ import type { CompletionRepository } from "../completionRepository.ts";
 import { ServiceMap } from "effect";
 import type { Effect } from "effect";
 
-export type AgentGatewayOperationStatus =
+type AgentGatewayOperationStatus =
   | "reserved"
   | "dispatching"
   | "completed"
@@ -31,7 +31,7 @@ export type ReserveAgentGatewayOperationResult =
   | { readonly kind: "idempotency_conflict"; readonly operation: AgentGatewayOperationRecord }
   | { readonly kind: "creation_plan_locked"; readonly operation: AgentGatewayOperationRecord };
 
-export interface ReserveAgentGatewayOperationInput {
+interface ReserveAgentGatewayOperationInput {
   readonly operationId: string;
   readonly callerThreadId: string;
   readonly callerTurnId: string;

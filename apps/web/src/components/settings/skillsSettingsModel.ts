@@ -7,12 +7,12 @@ import type { ProviderKind, ProviderSkillDescriptor } from "@glade/contracts";
 import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts";
 import { DEFAULT_PROVIDER_ORDER } from "~/providerOrdering";
 
-export interface SkillOriginInfo {
+interface SkillOriginInfo {
   readonly label: string;
   readonly provider: ProviderKind | null;
 }
 
-export interface SettingsSkillSource {
+interface SettingsSkillSource {
   readonly skill: ProviderSkillDescriptor;
   readonly origin: string;
   readonly originInfo: SkillOriginInfo;
@@ -36,8 +36,8 @@ export interface SettingsSkillSection {
 
 const SHARED_SKILLS_SECTION = "shared";
 const PERSONAL_ORIGIN = "personal";
-export const ORIGIN_SECTION_ORDER = ["glade", "codex", "claude", "agents", "project"] as const;
-export function skillOriginInfo(scope: string | undefined): SkillOriginInfo {
+const ORIGIN_SECTION_ORDER = ["glade", "codex", "claude", "agents", "project"] as const;
+function skillOriginInfo(scope: string | undefined): SkillOriginInfo {
   switch (scope) {
     case "glade":
       return { label: "Glade", provider: null };
@@ -54,7 +54,7 @@ export function skillOriginInfo(scope: string | undefined): SkillOriginInfo {
   }
 }
 
-export function providersForSkillOrigin(origin: string): ProviderKind[] {
+function providersForSkillOrigin(origin: string): ProviderKind[] {
   const provider = skillOriginInfo(origin).provider;
   return provider ? [provider] : [];
 }
@@ -63,7 +63,7 @@ export function settingsSkillNameKey(name: string): string {
   return name.trim().toLowerCase();
 }
 
-export function skillDisplayName(skill: ProviderSkillDescriptor): string {
+function skillDisplayName(skill: ProviderSkillDescriptor): string {
   return skill.interface?.displayName ?? skill.name;
 }
 
@@ -71,7 +71,7 @@ export function providerDisplayName(provider: ProviderKind): string {
   return PROVIDER_DISPLAY_NAMES[provider];
 }
 
-export function sortProviderStack(providers: ReadonlyArray<ProviderKind>): ProviderKind[] {
+function sortProviderStack(providers: ReadonlyArray<ProviderKind>): ProviderKind[] {
   return providers.toSorted(
     (left, right) => DEFAULT_PROVIDER_ORDER.indexOf(left) - DEFAULT_PROVIDER_ORDER.indexOf(right),
   );

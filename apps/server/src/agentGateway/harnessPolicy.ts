@@ -1,5 +1,3 @@
-import type { ProviderKind } from "@glade/contracts";
-
 import { computerToolInstructions } from "./computerGuidance.ts";
 
 import { AUTOMATION_AUTHORING_GUIDANCE } from "./automationAuthoringGuidance.ts";
@@ -71,62 +69,3 @@ export function renderGladeHarnessPolicy(capabilities: GladeHarnessCapabilities)
 export const GLADE_GATEWAY_HARNESS_POLICY = renderGladeHarnessPolicy({
   gatewayControlAvailable: true,
 });
-
-export interface GladeHarnessPolicyDeliveryState {
-  harnessPolicyDelivered?: boolean | undefined;
-  enableComputerControl?: boolean | undefined;
-}
-
-const PROVIDERS_WITH_THREAD_SCOPED_GLADE_MCP = new Set<ProviderKind>(["codex", "claudeAgent"]);
-
-export function providerHasGladeGatewayControl(input: {
-  readonly provider: ProviderKind;
-  readonly scopedGatewayConnectionAvailable: boolean;
-}): boolean {
-  return (
-    input.scopedGatewayConnectionAvailable &&
-    PROVIDERS_WITH_THREAD_SCOPED_GLADE_MCP.has(input.provider)
-  );
-}
-
-/** Return the private host-context block exactly once for one provider session. */
-export function takeGladeHarnessPolicyForSession(
-  state: GladeHarnessPolicyDeliveryState,
-  capabilities: GladeHarnessCapabilities,
-): string | null {
-  if (state.harnessPolicyDelivered === true) return null;
-  state.harnessPolicyDelivered = true;
-  return [
-    "<glade_host_context>",
-    renderGladeHarnessPolicy(capabilities),
-    "</glade_host_context>",
-  ].join("\n");
-}
-
-/**
- * Provider-aware delivery guard. The transport flag must only become true
- * after a provider has installed thread-scoped gateway tools successfully.
- */
-export function takeGladeHarnessPolicyForProviderSession(
-  state: GladeHarnessPolicyDeliveryState,
-  input: {
-    readonly provider: ProviderKind;
-    readonly scopedGatewayConnectionAvailable: boolean;
-  },
-): string | null {
-  return takeGladeHarnessPolicyForSession(state, {
-    gatewayControlAvailable: providerHasGladeGatewayControl(input),
-    enableComputerControl: state.enableComputerControl === true,
-  });
-}
-
-export function takeGladeHarnessPolicyTextPartForProviderSession(
-  state: GladeHarnessPolicyDeliveryState,
-  input: {
-    readonly provider: ProviderKind;
-    readonly scopedGatewayConnectionAvailable: boolean;
-  },
-): { readonly type: "text"; readonly text: string } | null {
-  const text = takeGladeHarnessPolicyForProviderSession(state, input);
-  return text === null ? null : { type: "text", text };
-}

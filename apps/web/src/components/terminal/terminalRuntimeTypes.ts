@@ -9,7 +9,7 @@ import { type TerminalActivityState, type TerminalCliKind } from "@glade/shared/
 import { Terminal, type IDisposable } from "@xterm/xterm";
 import type { TerminalLinkMatch } from "../../terminal-links";
 
-export interface TerminalRuntimeCallbacks {
+interface TerminalRuntimeCallbacks {
   onSessionExited: () => void;
   onTerminalMetadataChange: (
     terminalId: string,
@@ -42,7 +42,7 @@ export interface TerminalRuntimeViewState {
   isVisible: boolean;
 }
 
-export interface TerminalPendingWrite {
+interface TerminalPendingWrite {
   data: string;
   byteLength: number;
   queuedAt: number;

@@ -1,6 +1,6 @@
 import { getNavigatorPlatform, isMacPlatform } from "./lib/utils";
 
-export type TerminalLinkKind = "url" | "path";
+type TerminalLinkKind = "url" | "path";
 
 export interface TerminalLinkMatch {
   kind: TerminalLinkKind;
@@ -9,7 +9,7 @@ export interface TerminalLinkMatch {
   end: number;
 }
 
-export interface TerminalLinkBufferPosition {
+interface TerminalLinkBufferPosition {
   x: number;
   y: number;
 }
@@ -24,7 +24,7 @@ export interface TerminalBufferLineLike {
   translateToString(trimRight?: boolean): string;
 }
 
-export interface WrappedTerminalLinkLineSegment {
+interface WrappedTerminalLinkLineSegment {
   bufferLineNumber: number;
   text: string;
   startIndex: number;

@@ -21,14 +21,14 @@ const FILE_ROW_FOCUS_BLOCK_CLASS_NAME =
  * padding differ per surface, so callers append them (e.g. `"h-7 pr-2"`).
  * Keyboard focus mirrors the selected block (see the active-block note above).
  */
-export const FILE_ROW_BASE_CLASS_NAME = cn(
+const FILE_ROW_BASE_CLASS_NAME = cn(
   "flex w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-md text-left text-ui transition-colors",
   "focus-visible:outline-none",
   FILE_ROW_FOCUS_BLOCK_CLASS_NAME,
 );
 
 /** Selected vs. resting/hover tone for a file row. */
-export function fileRowToneClassName(selected: boolean): string {
+function fileRowToneClassName(selected: boolean): string {
   return selected
     ? FILE_ROW_SELECTED_BLOCK_CLASS_NAME
     : "text-foreground/78 hover:bg-[var(--color-background-button-secondary-hover)] hover:text-foreground";

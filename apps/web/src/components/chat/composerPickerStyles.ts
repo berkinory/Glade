@@ -5,8 +5,6 @@
 
 import { MUTED_LABEL_TEXT_CLASS_NAME } from "~/surfaceStyles";
 
-export { COMPOSER_PICKER_SIZE, type ComposerPickerSize } from "./composerPickerSize";
-
 /** Soft, dispersed outer shadow for the composer input shell and floating pickers. */
 export const COMPOSER_SURFACE_SHADOW_CLASS_NAME =
   "shadow-[0_4px_18px_-6px_color-mix(in_srgb,var(--foreground)_7%,transparent)] dark:shadow-[0_6px_24px_-10px_rgba(0,0,0,0.30)]";
@@ -23,7 +21,7 @@ export const COMPOSER_PICKER_TRIGGER_TEXT_CLASS_NAME =
  * `size-3` `ChevronDownIcon` so the three triggers stay on identical icon + chevron sizes.
  * Capsule radius so the hover fill reads as a pill, matching the other toolbar chips.
  */
-export const COMPOSER_TOOLBAR_CAPSULE_HOVER_CLASS_NAME =
+const COMPOSER_TOOLBAR_CAPSULE_HOVER_CLASS_NAME =
   "rounded-full transition-colors hover:bg-[var(--color-background-button-secondary-hover)]";
 
 export const COMPOSER_FOLDER_PICKER_CAPSULE_HOVER_CLASS_NAME = `${COMPOSER_TOOLBAR_CAPSULE_HOVER_CLASS_NAME} group-hover/project-picker-trigger:bg-[var(--color-background-button-secondary-hover)]`;
@@ -64,9 +62,6 @@ export const COMPOSER_PICKER_OPTION_RADIUS_CLASS_NAME = "rounded-[0.625rem]";
 /** Collapsible section headers inside model provider lists. */
 export const COMPOSER_PICKER_MODEL_GROUP_HEADER_CLASS_NAME = `grid w-full grid-cols-[0.75rem_minmax(0,1fr)_2.5rem] items-center gap-x-1.5 ${COMPOSER_PICKER_RADIUS_CLASS_NAME} px-2 py-1 text-left text-ui-xs font-medium text-muted-foreground/80 outline-none transition-colors hover:bg-[color-mix(in_srgb,var(--foreground)_4%,transparent)] focus-visible:ring-0`;
 
-/** Indents model row labels under collapsible group headers. */
-export const COMPOSER_PICKER_MODEL_ROW_LABEL_INDENT_CLASS_NAME = "pl-[1.125rem]";
-
 /** Muted accent text for effort labels and empty-landing folder names.
  *  Aliases the shared quiet-label tone so the picker and the transcript tool rows
  *  can never drift onto two different grays. */
@@ -77,7 +72,7 @@ export const COMPOSER_MUTED_ACCENT_TEXT_CLASS_NAME = MUTED_LABEL_TEXT_CLASS_NAME
 // sync with dropdown group labels like "Git actions". Picker padding is still
 // tuned via the `--picker-section-py` token on `[data-slot="menu-label"]`.
 
-export const COMPOSER_MAX_WIDTH_CLASS_NAME = "max-w-[var(--app-chat-max-width,46rem)]";
+const COMPOSER_MAX_WIDTH_CLASS_NAME = "max-w-[var(--app-chat-max-width,46rem)]";
 /** Main chat column background — matches the theme Background setting exactly. */
 export const CHAT_BACKGROUND_CLASS_NAME = "bg-[var(--color-background-surface)]";
 
@@ -121,7 +116,6 @@ export const CHAT_COLUMN_GUTTER_CLASS_NAME =
 export const CHAT_COLUMN_FRAME_CLASS_NAME = `mx-auto w-full min-w-0 ${COMPOSER_MAX_WIDTH_CLASS_NAME}`;
 
 /** Max width for the composer shell only; outer wrappers stay full width for shadow bleed. */
-export const COMPOSER_COLUMN_FRAME_CLASS_NAME = CHAT_COLUMN_FRAME_CLASS_NAME;
 
 /**
  * Frame for rows stacked above the composer (queued steer/queue rows, live file
@@ -146,7 +140,7 @@ export const COMPOSER_INPUT_SHELL_CLASS_NAME =
  *  its attached banners, the Environment panel, kanban cards. Light and dark values
  *  live on `--surface-border` in `index.css`, behind the shared
  *  `--surface-border-strength` knob, so these surfaces can never drift apart. */
-export const RAISED_SURFACE_BORDER_CLASS_NAME = "border-[color:var(--surface-border)]";
+const RAISED_SURFACE_BORDER_CLASS_NAME = "border-[color:var(--surface-border)]";
 
 /** Shared border for panels stacked above the composer; dark mode matches the live changes strip. */
 export const COMPOSER_STACKED_SURFACE_BORDER_CLASS_NAME =
@@ -180,7 +174,7 @@ export const APP_TRANSLUCENT_POPUP_SURFACE_CLASS_NAME = `${APP_TRANSLUCENT_POPUP
 export const APP_TOOLTIP_SURFACE_CLASS_NAME = `${APP_TRANSLUCENT_POPUP_SURFACE_BASE_CLASS_NAME} rounded-lg shadow-xl`;
 
 /** Shared border, radius, and shadow for composer-attached popup panels. */
-export const COMPOSER_PICKER_MENU_SURFACE_CHROME_CLASS_NAME = `border border-border ${COMPOSER_PICKER_RADIUS_CLASS_NAME} ${COMPOSER_SURFACE_SHADOW_CLASS_NAME}`;
+const COMPOSER_PICKER_MENU_SURFACE_CHROME_CLASS_NAME = `border border-border ${COMPOSER_PICKER_RADIUS_CLASS_NAME} ${COMPOSER_SURFACE_SHADOW_CLASS_NAME}`;
 
 /** Visual shell for composer picker dropdown panels (menus attached to the composer). */
 export const COMPOSER_PICKER_MENU_SURFACE_CLASS_NAME = `${APP_TRANSLUCENT_POPUP_SURFACE_BASE_CLASS_NAME} ${COMPOSER_PICKER_MENU_SURFACE_CHROME_CLASS_NAME}`;

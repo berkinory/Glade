@@ -7,10 +7,10 @@ import { XIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 
 export type AttachmentRemoveButtonSize = "sm" | "md";
-export type AttachmentRemoveButtonPlacement = "corner" | "center-right";
+type AttachmentRemoveButtonPlacement = "corner" | "center-right";
 // `solid` is the high-contrast badge on image/file attachment tiles; `ghost` is
 // the subtle dismiss tucked inside compact count pills (selections, comments).
-export type AttachmentRemoveButtonTone = "solid" | "ghost";
+type AttachmentRemoveButtonTone = "solid" | "ghost";
 
 const ATTACHMENT_REMOVE_BUTTON_SIZE_STYLES: Record<
   AttachmentRemoveButtonSize,

@@ -23,7 +23,7 @@ export const KANBAN_COLUMN_LABELS: Record<KanbanColumnKey, string> = {
   done: "Done",
 };
 
-export const KANBAN_FALLBACK_DRAFT_TITLE = "New thread";
+const KANBAN_FALLBACK_DRAFT_TITLE = "New thread";
 
 /** Pending composer content for one thread, projected from the composer draft store. */
 export interface KanbanComposerDraftSnapshot {
@@ -192,7 +192,7 @@ export function kanbanThreadCardId(threadId: ThreadId): string {
   return `thread:${threadId}`;
 }
 
-export function kanbanDraftCardId(threadId: ThreadId): string {
+function kanbanDraftCardId(threadId: ThreadId): string {
   return `draft:${threadId}`;
 }
 
@@ -479,7 +479,7 @@ function compareByRecencyDesc(left: KanbanCard, right: KanbanCard): number {
  * in the manual order keep that relative order and lead the column; unknown cards
  * (created after the last manual drag) keep their recency order behind them.
  */
-export function orderDraftCards(
+function orderDraftCards(
   cards: readonly KanbanCard[],
   manualOrder: readonly string[] | undefined,
 ): KanbanCard[] {
@@ -639,7 +639,7 @@ export function buildKanbanBoard(input: BuildKanbanBoardInput): KanbanBoard {
 }
 
 /** Overview project columns list cards In Progress → Draft → Done. */
-export function flattenProjectBoardForOverview(board: KanbanProjectBoard): KanbanCard[] {
+function flattenProjectBoardForOverview(board: KanbanProjectBoard): KanbanCard[] {
   return [...board.inProgress, ...board.draft, ...board.done];
 }
 

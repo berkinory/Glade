@@ -28,17 +28,17 @@ export interface FloatingBrowserPanelSize {
 export type FloatingBrowserResizeEdge = "n" | "e" | "s" | "w" | "ne" | "nw" | "se" | "sw";
 
 export const FLOATING_BROWSER_PANEL_MARGIN_PX = BROWSER_FLOATING_PANEL_MARGIN_PX;
-export const FLOATING_BROWSER_PANEL_ASPECT_RATIO =
+const FLOATING_BROWSER_PANEL_ASPECT_RATIO =
   BROWSER_AUTOMATION_VIEWPORT_WIDTH / BROWSER_AUTOMATION_VIEWPORT_HEIGHT;
 export const FLOATING_BROWSER_PANEL_DEFAULT_SIZE: FloatingBrowserPanelSize = {
   width: 320,
   height: 200,
 };
-export const FLOATING_BROWSER_PANEL_MIN_SIZE: FloatingBrowserPanelSize = {
+const FLOATING_BROWSER_PANEL_MIN_SIZE: FloatingBrowserPanelSize = {
   width: 320,
   height: 200,
 };
-export const FLOATING_BROWSER_PANEL_MAX_SIZE: FloatingBrowserPanelSize = {
+const FLOATING_BROWSER_PANEL_MAX_SIZE: FloatingBrowserPanelSize = {
   width: 760,
   height: 475,
 };
@@ -288,7 +288,7 @@ export function floatingBrowserResizeCursor(edge: FloatingBrowserResizeEdge): st
   return "nwse-resize";
 }
 
-export const FLOATING_BROWSER_DRAG_THRESHOLD_PX = 4;
+const FLOATING_BROWSER_DRAG_THRESHOLD_PX = 4;
 
 export function isFloatingBrowserDragGesture(
   delta: { x: number; y: number },

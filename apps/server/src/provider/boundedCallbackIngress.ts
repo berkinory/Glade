@@ -8,14 +8,14 @@
  */
 import { Cause, Effect, Fiber, Option, Scope } from "effect";
 
-export type BoundedCallbackIngressOfferResult =
+type BoundedCallbackIngressOfferResult =
   | "accepted"
   | "dropped"
   | "evicted-for-terminal"
   | "closed"
   | "terminal-overflow";
 
-export interface BoundedCallbackIngressStatus {
+interface BoundedCallbackIngressStatus {
   readonly accepting: boolean;
   readonly queued: number;
   readonly queuedBytes: number;

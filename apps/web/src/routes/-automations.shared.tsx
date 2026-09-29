@@ -48,20 +48,15 @@ import { toastManager } from "~/components/ui/toast";
 import type { AutomationDraftWarning, AutomationDraftWarningId } from "~/lib/automationDraft";
 import {
   acknowledgedRiskIdsForFormWarnings,
-  applyScheduleToForm,
   automationFastIntervalLimitMessage,
   automationFormSubmitBlockReason,
   automationIntervalPresetOptions,
   buildAutomationFormWarnings,
   createInputFromForm,
   datetimeLocalFromIso,
-  defaultModelSelection,
   formatCadence,
   formatCadenceLong,
-  formatClockTime,
-  formatDateTime,
   formatNextRun,
-  formatSchedule,
   formFromDefinition,
   groupAutomationsByContinuedThread,
   automationsForThread,
@@ -75,12 +70,10 @@ import {
   scheduleFromKind,
   scheduleKindFromSchedule,
   SCHEDULE_KIND_OPTIONS,
-  TIME_OF_DAY_PATTERN,
   updateWeeklyScheduleDay,
   updateWeeklyScheduleTime,
   weekdayLabel,
   type AutomationFormState,
-  type IntervalUnit,
   type ScheduleKind,
 } from "~/lib/automationForm";
 import {
@@ -107,7 +100,7 @@ import { useStore } from "~/store";
 import { resolveThreadPickerTitle } from "./-chatThreadRoute.logic";
 
 export const automationQueryKey = ["automations"] as const;
-export const EMPTY_AUTOMATION_LIST: AutomationListResult = {
+const EMPTY_AUTOMATION_LIST: AutomationListResult = {
   definitions: [],
   runs: [],
   memories: [],
@@ -123,7 +116,7 @@ export function automationTargetThreads<TThread extends Pick<Thread, "projectId"
   return threads.filter((thread) => thread.projectId === projectId);
 }
 
-export function automationDefinitionUpdateMutationOptions(
+function automationDefinitionUpdateMutationOptions(
   mutationFn: (input: AutomationUpdateInput) => Promise<AutomationDefinition>,
 ) {
   return { scope: AUTOMATION_DEFINITION_UPDATE_SCOPE, mutationFn };
@@ -131,39 +124,28 @@ export function automationDefinitionUpdateMutationOptions(
 
 export {
   acknowledgedRiskIdsForFormWarnings,
-  applyScheduleToForm,
-  automationFastIntervalLimitMessage,
-  automationFormSubmitBlockReason,
   automationIntervalPresetOptions,
   buildAutomationFormWarnings,
   createInputFromForm,
   datetimeLocalFromIso,
-  defaultModelSelection,
   formatCadence,
   formatCadenceLong,
-  formatClockTime,
-  formatDateTime,
   formatNextRun,
-  formatSchedule,
   formFromDefinition,
   groupAutomationsByContinuedThread,
   automationsForThread,
   isFormSubmittable,
   isoFromDatetimeLocal,
-  modelSelectionForProjectChange,
   projectModelSelection,
   providerOptionsForAutomationModelSelection,
   scheduleFromForm,
   scheduleFromKind,
   scheduleKindFromSchedule,
   SCHEDULE_KIND_OPTIONS,
-  TIME_OF_DAY_PATTERN,
   updateWeeklyScheduleDay,
   updateWeeklyScheduleTime,
   weekdayLabel,
   type AutomationFormState,
-  type IntervalUnit,
-  type ScheduleKind,
 };
 
 /** Starter prompts surfaced behind the composer's "Use template" button. */
@@ -208,7 +190,7 @@ export function formatRelativeTime(iso: string | null): string {
   return `${Math.floor(days / 30)}mo`;
 }
 
-export function runStatusVariant(
+function runStatusVariant(
   status: AutomationRun["status"],
 ): "success" | "warning" | "error" | "info" | "outline" {
   switch (status) {
@@ -229,7 +211,7 @@ export function runStatusVariant(
 }
 
 /** Status-colored dot/icon class for a single run, shared by the detail history and triage rows. */
-export function runStatusDotClassName(status: AutomationRun["status"]): string {
+function runStatusDotClassName(status: AutomationRun["status"]): string {
   switch (runStatusVariant(status)) {
     case "success":
       return "text-emerald-500";
@@ -306,7 +288,7 @@ export function isUnresolvedTriageResult(result: AutomationRunResult | null): bo
   return Boolean(result && result.unread && result.archivedAt === null);
 }
 
-export function unresolvedTriageRuns(runs: readonly AutomationRun[]): AutomationRun[] {
+function unresolvedTriageRuns(runs: readonly AutomationRun[]): AutomationRun[] {
   return runs.filter((run) => isTriageRun(run));
 }
 
@@ -633,7 +615,7 @@ export function applyAutomationEvent(
  * pre-merge definition into the definition as it exists in the cache *now*. Input keys the
  * definition never had (legacy aliases) are removed rather than restored.
  */
-export function rollbackAutomationDefinitionPatch(
+function rollbackAutomationDefinitionPatch(
   list: AutomationListResult,
   input: AutomationUpdateInput,
   previousDefinition: AutomationDefinition,
@@ -930,7 +912,7 @@ export function AutomationModelPicker({
   );
 }
 
-export function reconcileAutomationFormAutoModeSupport(
+function reconcileAutomationFormAutoModeSupport(
   form: AutomationFormState,
   supported: boolean,
 ): AutomationFormState {

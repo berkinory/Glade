@@ -22,7 +22,7 @@ export const COMPUTER_CONTROL_HINT_ACTION_LABEL = "Use Medium";
  * pick: provider option normalization drops a selection that equals the default,
  * so `effort === defaultEffort` is exactly the untouched state.
  */
-export type ComputerControlEffortHintTraits = Pick<
+type ComputerControlEffortHintTraits = Pick<
   ComposerTraitSelection,
   "effort" | "defaultEffort" | "effortLevels" | "ultrathinkPromptControlled"
 >;

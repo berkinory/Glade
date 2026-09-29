@@ -24,7 +24,7 @@ export type OrchestrationCommandAdmissionDecision =
  *   turn starts.
  * - `normal`: retention, projections and every other background command.
  */
-export type OrchestrationCommandLane = "control" | "user" | "normal";
+type OrchestrationCommandLane = "control" | "user" | "normal";
 
 export interface OrchestrationCommandQueues<A> {
   readonly control: Queue.Queue<A>;
@@ -43,7 +43,7 @@ export interface OrchestrationCommandQueues<A> {
  * turn the shutdown is about to fence, orphaning it. Lane priority for user
  * actions is expressed by {@link orchestrationCommandLane} instead.
  */
-export function usesReservedCommandAdmission(type: OrchestrationCommand["type"]): boolean {
+function usesReservedCommandAdmission(type: OrchestrationCommand["type"]): boolean {
   switch (type) {
     case "thread.turn.interrupt":
     // Task stop/background are user control-plane actions like interrupt:
@@ -71,9 +71,7 @@ export function isQuiescingCommandAdmissible(type: OrchestrationCommand["type"])
   return usesReservedCommandAdmission(type) || type === "thread.activity.append";
 }
 
-export function orchestrationCommandLane(
-  type: OrchestrationCommand["type"],
-): OrchestrationCommandLane {
+function orchestrationCommandLane(type: OrchestrationCommand["type"]): OrchestrationCommandLane {
   if (usesReservedCommandAdmission(type)) {
     return "control";
   }

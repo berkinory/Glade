@@ -23,7 +23,7 @@ import type {
 } from "./terminalRuntimeTypes";
 import { buildTerminalRuntimeKey } from "./terminalRuntimeTypes";
 
-export { buildTerminalRuntimeKey, type TerminalRuntimeCallbacks } from "./terminalRuntimeTypes";
+export { buildTerminalRuntimeKey } from "./terminalRuntimeTypes";
 
 // --- Registry orchestration -------------------------------------------------
 

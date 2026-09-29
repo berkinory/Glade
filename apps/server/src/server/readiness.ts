@@ -1,6 +1,6 @@
 import { Deferred, Effect } from "effect";
 
-export interface ServerReadinessSnapshot {
+interface ServerReadinessSnapshot {
   readonly httpListening: boolean;
   readonly pushBusReady: boolean;
   readonly keybindingsReady: boolean;

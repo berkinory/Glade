@@ -24,7 +24,7 @@ const STORAGE_KEY = "glade:void-space:v1";
  * with a presentation that is safe to render: a non-empty name within the same length limit
  * a stored Space name obeys, and an icon the renderer actually has an asset for.
  */
-export function normalizeVoidSpace(value: unknown): VoidSpacePresentation {
+function normalizeVoidSpace(value: unknown): VoidSpacePresentation {
   const record =
     typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {};
   const name =

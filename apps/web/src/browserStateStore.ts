@@ -95,9 +95,7 @@ function sanitizeBrowserHistoryEntry(rawEntry: unknown): BrowserHistoryEntry | n
 
 // Drops malformed persisted history so a corrupt entry can never reach the
 // upsert path (which dereferences `entry.url`) or render as a broken tab.
-export function sanitizeRecentHistoryByThreadId(
-  value: unknown,
-): Record<string, BrowserHistoryEntry[]> {
+function sanitizeRecentHistoryByThreadId(value: unknown): Record<string, BrowserHistoryEntry[]> {
   return sanitizeStringKeyedRecord(value, (rawEntries) => {
     if (!Array.isArray(rawEntries)) {
       return null;
@@ -112,9 +110,7 @@ export function sanitizeRecentHistoryByThreadId(
   });
 }
 
-export function createDedupedBrowserStateStorage(
-  resolveStorage: () => StringStorage,
-): StringStorage {
+function createDedupedBrowserStateStorage(resolveStorage: () => StringStorage): StringStorage {
   const lastWrittenValueByName = new Map<string, string>();
 
   return {

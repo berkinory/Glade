@@ -8,7 +8,7 @@ import * as SqlClient from "effect/unstable/sql/SqlClient";
 import { normalizePersistedModelSelection } from "../modelSelectionCompatibility.ts";
 
 type JsonObject = Record<string, unknown>;
-export const MIGRATION_035_PAGE_SIZE = 128;
+const MIGRATION_035_PAGE_SIZE = 128;
 
 function isRecord(value: unknown): value is JsonObject {
   return typeof value === "object" && value !== null && !Array.isArray(value);

@@ -17,7 +17,7 @@ const MEMORY_DIAGNOSTICS_ENV_KEYS = [
   "GLADE_SERVER_MEMORY_DIAGNOSTICS",
 ] as const;
 
-export interface ServerMemoryDiagnosticSnapshot {
+interface ServerMemoryDiagnosticSnapshot {
   readonly rssMb: number;
   readonly heapUsedMb: number;
   readonly heapTotalMb: number;
@@ -27,7 +27,7 @@ export interface ServerMemoryDiagnosticSnapshot {
   readonly arrayBuffersMb: number;
 }
 
-export interface ServerMemoryDiagnosticLogPayload {
+interface ServerMemoryDiagnosticLogPayload {
   readonly rssMb: number;
   readonly heapUsedMb: number;
   readonly heapTotalMb: number;
@@ -42,7 +42,7 @@ export interface ServerMemoryDiagnosticsLogger {
   readonly warn: (message: string, payload: ServerMemoryDiagnosticLogPayload) => void;
 }
 
-export function readServerMemoryDiagnosticSnapshot(): ServerMemoryDiagnosticSnapshot {
+function readServerMemoryDiagnosticSnapshot(): ServerMemoryDiagnosticSnapshot {
   const memory = process.memoryUsage();
   const heap = V8.getHeapStatistics();
   const heapLimit = heap.heap_size_limit;
@@ -71,7 +71,7 @@ function toServerMemoryDiagnosticLogPayload(
   };
 }
 
-export function shouldWarnServerMemory(
+function shouldWarnServerMemory(
   snapshot: ServerMemoryDiagnosticSnapshot,
   warningHeapUsedRatio: number,
 ): boolean {

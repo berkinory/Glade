@@ -24,7 +24,7 @@ function parseConfiguredOldSpaceMb(value: string | null | undefined): number | n
   return Math.min(MAX_CONFIGURED_OLD_SPACE_MB, Math.max(MIN_CONFIGURED_OLD_SPACE_MB, parsed));
 }
 
-export function resolveBackendMaxOldSpaceMb(input: {
+function resolveBackendMaxOldSpaceMb(input: {
   readonly configuredMb?: string | null | undefined;
   readonly totalMemoryBytes: number;
 }): number {
@@ -39,10 +39,7 @@ export function resolveBackendMaxOldSpaceMb(input: {
 }
 
 // Keeps desktop backend heap room proportional to the host without changing inherited env.
-export function withBackendHeapLimitArg(
-  nodeOptions: string | undefined,
-  maxOldSpaceMb: number,
-): string[] {
+function withBackendHeapLimitArg(nodeOptions: string | undefined, maxOldSpaceMb: number): string[] {
   const existingOptions = nodeOptions?.trim() ?? "";
   if (OLD_SPACE_FLAG_PATTERN.test(existingOptions)) {
     return [];

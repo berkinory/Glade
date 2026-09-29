@@ -46,7 +46,7 @@ export type CollapsedTurnChunk =
   | { kind: "item"; item: CollapsedTurnItem }
   | { kind: "tool-group"; id: string; entries: WorkLogEntry[] };
 
-export type WorkEntryChunk =
+type WorkEntryChunk =
   | { kind: "item"; id: string; entry: WorkLogEntry }
   | { kind: "tool-group"; id: string; entries: WorkLogEntry[] };
 
@@ -88,7 +88,7 @@ export function chunkCollapsedTurnItems(
   return chunks;
 }
 
-export function chunkWorkEntries(entries: ReadonlyArray<WorkLogEntry>): WorkEntryChunk[] {
+function chunkWorkEntries(entries: ReadonlyArray<WorkLogEntry>): WorkEntryChunk[] {
   return chunkCollapsedTurnItems(
     entries.map((entry) => ({ kind: "work" as const, id: entry.id, entry })),
   ).map((chunk) => {
@@ -248,7 +248,7 @@ export function findLastLiveWorkGroupId(rows: ReadonlyArray<MessagesTimelineRow>
   return null;
 }
 
-export interface TimelineDurationMessage {
+interface TimelineDurationMessage {
   id: string;
   role: "user" | "assistant" | "system";
   createdAt: string;
@@ -385,7 +385,7 @@ export function resolveThreadFindJumpTarget(
   return null;
 }
 
-export function computeMessageDurationStart(
+function computeMessageDurationStart(
   messages: ReadonlyArray<TimelineDurationMessage>,
 ): Map<string, string> {
   const result = new Map<string, string>();
@@ -565,7 +565,7 @@ function mergeTurnDiffSummaries(
   };
 }
 
-export function deriveTerminalAssistantMessageIds(
+function deriveTerminalAssistantMessageIds(
   messages: ReadonlyArray<TimelineDurationMessage>,
 ): Set<string> {
   const terminalAssistantMessageIds = new Set<string>();

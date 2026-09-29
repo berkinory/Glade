@@ -212,7 +212,7 @@ export interface DraftThreadMutationOptions {
 
 type DraftThreadCreatedAtMode = "accept-empty" | "preserve-existing-on-empty";
 
-export interface ProjectDraftThread extends DraftThreadState {
+interface ProjectDraftThread extends DraftThreadState {
   threadId: ThreadId;
 }
 

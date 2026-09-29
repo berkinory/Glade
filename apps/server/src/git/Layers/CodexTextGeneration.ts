@@ -27,7 +27,6 @@ import {
   type ThreadTitleGenerationResult,
   type TextGenerationOperation,
   type TextGenerationShape,
-  TextGeneration,
 } from "../Services/TextGeneration.ts";
 import {
   buildBranchNamePrompt,
@@ -692,5 +691,3 @@ export const CodexTextGenerationServiceLive = Layer.effect(
   CodexTextGeneration,
   makeCodexTextGeneration,
 );
-
-export const CodexTextGenerationLive = Layer.effect(TextGeneration, makeCodexTextGeneration);

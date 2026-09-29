@@ -18,7 +18,7 @@ export interface AgentGatewaySessionIdentity {
   readonly capabilities: ReadonlySet<AgentGatewayCapability>;
 }
 
-export interface AgentGatewayIssuedSession extends AgentGatewaySessionIdentity {
+interface AgentGatewayIssuedSession extends AgentGatewaySessionIdentity {
   readonly token: string;
 }
 

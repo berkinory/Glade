@@ -19,8 +19,6 @@ import {
   resolveCodexHomeAllowlistCandidates,
 } from "./codexHomePaths.ts";
 
-export { CODEX_GENERATED_IMAGE_ARTIFACT_KIND };
-
 const CODEX_GENERATED_IMAGE_ITEM_TYPES = new Set([
   "imagegeneration",
   "imagegenerationcall",
@@ -45,12 +43,12 @@ function asString(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
-export function normalizeNonEmptyString(value: unknown): string | undefined {
+function normalizeNonEmptyString(value: unknown): string | undefined {
   const trimmed = asString(value)?.trim();
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
 }
 
-export function normalizeCodexGeneratedImageItemType(raw: unknown): string {
+function normalizeCodexGeneratedImageItemType(raw: unknown): string {
   const type = normalizeNonEmptyString(raw);
   if (!type) return "";
   return type
@@ -64,14 +62,14 @@ export function isCodexGeneratedImageItemType(raw: unknown): boolean {
   return CODEX_GENERATED_IMAGE_ITEM_TYPES.has(normalizeCodexGeneratedImageItemType(raw));
 }
 
-export const isSupportedLocalImagePath = isSupportedLocalImagePathShared;
+const isSupportedLocalImagePath = isSupportedLocalImagePathShared;
 
 /**
  * Resolves the home directory the codex app-server child process actually
  * writes images under for the current process env. Glade uses its isolated
  * Codex overlay, not the user's source `~/.codex` directory.
  */
-export function resolveCodexHomePath(homePath?: string): string {
+function resolveCodexHomePath(homePath?: string): string {
   return resolveActiveCodexHomeWritePath(homePath?.trim() ? { homePath } : {});
 }
 
@@ -103,19 +101,19 @@ export function firstStringValue(
   return undefined;
 }
 
-export function extractCodexGeneratedImagePath(
+function extractCodexGeneratedImagePath(
   record: Record<string, unknown> | undefined,
 ): string | undefined {
   return firstStringValue(record, IMAGE_PATH_KEYS);
 }
 
-export function extractCodexGeneratedImageCallId(
+function extractCodexGeneratedImageCallId(
   record: Record<string, unknown> | undefined,
 ): string | undefined {
   return firstStringValue(record, IMAGE_CALL_ID_KEYS);
 }
 
-export function predictedCodexGeneratedImagePath(input: {
+function predictedCodexGeneratedImagePath(input: {
   readonly item: Record<string, unknown>;
   readonly threadId: ThreadId | string | undefined;
   readonly codexHomePath?: string;
@@ -129,7 +127,7 @@ export function predictedCodexGeneratedImagePath(input: {
 }
 
 // Mirrors Remodex relay behavior: keep metadata, drop bulky inline image data.
-export function annotateCodexGeneratedImagePayload(input: {
+function annotateCodexGeneratedImagePayload(input: {
   readonly value: unknown;
   readonly threadId: ThreadId | string | undefined;
   readonly codexHomePath?: string;
@@ -250,7 +248,7 @@ export function isCodexGeneratedImageArtifact(
   );
 }
 
-export function markdownImagePath(filePath: string): string {
+function markdownImagePath(filePath: string): string {
   const trimmed = filePath.trim();
   if (trimmed.includes(")") || trimmed.includes(" ") || trimmed.includes("%")) {
     const escaped = trimmed.replaceAll("%", "%25").replaceAll(">", "%3E").replaceAll(")", "%29");

@@ -10,7 +10,7 @@ import * as Path from "node:path";
 
 const APPUSERMODEL_FMTID = "9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3";
 
-export const WINDOWS_SHELL_APPUSERMODEL_SOURCE = `
+const WINDOWS_SHELL_APPUSERMODEL_SOURCE = `
 using System;
 using System.Runtime.InteropServices;
 
@@ -240,9 +240,9 @@ export interface ApplyWindowsShellAppUserModelOptions {
   readonly flush?: boolean;
 }
 
-export const WINDOWS_SHELL_HELPER_TIMEOUT_MS = 2500;
+const WINDOWS_SHELL_HELPER_TIMEOUT_MS = 2500;
 
-export function windowsShellIconResource(iconPath: string, iconIndex = 0): string {
+function windowsShellIconResource(iconPath: string, iconIndex = 0): string {
   return `${iconPath},${iconIndex}`;
 }
 
@@ -251,7 +251,7 @@ export function nativeWindowHandleToHwnd(handle: Buffer): bigint {
   return BigInt(handle.readUInt32LE(0));
 }
 
-export function windowsShellAppUserModelHelperName(): string {
+function windowsShellAppUserModelHelperName(): string {
   const hash = Crypto.createHash("sha1")
     .update(WINDOWS_SHELL_APPUSERMODEL_SOURCE)
     .digest("hex")
@@ -259,7 +259,7 @@ export function windowsShellAppUserModelHelperName(): string {
   return `windows-shell-appusermodel-${hash}.exe`;
 }
 
-export function cscCompilerCandidates(): string[] {
+function cscCompilerCandidates(): string[] {
   const root = process.env.WINDIR?.trim() || "C:\\Windows";
   return [
     Path.join(root, "Microsoft.NET", "Framework64", "v4.0.30319", "csc.exe"),
@@ -267,9 +267,7 @@ export function cscCompilerCandidates(): string[] {
   ];
 }
 
-export function resolveCscCompiler(
-  exists: (path: string) => boolean = FS.existsSync,
-): string | null {
+function resolveCscCompiler(exists: (path: string) => boolean = FS.existsSync): string | null {
   for (const candidate of cscCompilerCandidates()) {
     if (exists(candidate)) return candidate;
   }

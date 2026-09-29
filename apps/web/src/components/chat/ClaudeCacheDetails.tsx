@@ -60,7 +60,7 @@ function formatCacheTokens(value: number | undefined): string {
   return value === undefined ? "Unavailable" : `${formatContextWindowTokens(value)} tokens`;
 }
 
-export function formatCacheDuration(seconds: number): string {
+function formatCacheDuration(seconds: number): string {
   if (seconds < 60) return "less than a minute";
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes} ${minutes === 1 ? "minute" : "minutes"}`;

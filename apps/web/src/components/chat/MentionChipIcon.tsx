@@ -14,7 +14,7 @@ import {
 } from "~/lib/composerMentions";
 import { createCentralIconElement } from "~/lib/central-icons";
 import { MessageCircleIcon, PluginIcon } from "~/lib/icons";
-import { COMPOSER_INLINE_MENTION_CHIP_ICON_CLASS_NAME } from "../composerInlineChip";
+import { COMPOSER_INLINE_CHIP_INLINE_ICON_CLASS_NAME } from "../composerInlineChip";
 import { FileEntryIcon } from "./FileEntryIcon";
 import type { ProviderMentionReference } from "@glade/contracts";
 import { threadIdFromThreadMentionPath } from "@glade/shared/threadMentions";
@@ -32,7 +32,7 @@ export const MentionChipIcon = function MentionChipIcon(props: {
   mentionReferences?: ReadonlyArray<ProviderMentionReference>;
   className?: string;
 }) {
-  const className = props.className ?? COMPOSER_INLINE_MENTION_CHIP_ICON_CLASS_NAME;
+  const className = props.className ?? COMPOSER_INLINE_CHIP_INLINE_ICON_CLASS_NAME;
   const resolvedKind = resolveMentionChipKind(props.path, {
     ...(props.kind ? { kind: props.kind } : {}),
     ...(props.mentionReferences ? { mentionReferences: props.mentionReferences } : {}),
@@ -74,7 +74,7 @@ export const MentionChipIcon = function MentionChipIcon(props: {
 export function createMentionChipIconElement(
   path: string,
   kind: MentionChipKind = "path",
-  className: string = COMPOSER_INLINE_MENTION_CHIP_ICON_CLASS_NAME,
+  className: string = COMPOSER_INLINE_CHIP_INLINE_ICON_CLASS_NAME,
 ): HTMLElement {
   if (kind === "plugin" || path.startsWith("plugin://")) {
     return createCentralIconElement("puzzle", className) ?? document.createElement("span");

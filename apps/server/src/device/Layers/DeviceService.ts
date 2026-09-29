@@ -37,7 +37,7 @@ function defaultBootOwnershipPath(): string {
   return path.join(stateDir, "device-boot-ownership.json");
 }
 
-export function makeDeviceServiceLayer(options: DeviceServiceLiveOptions = {}) {
+function makeDeviceServiceLayer(options: DeviceServiceLiveOptions = {}) {
   return Layer.effect(
     DeviceService,
     Effect.gen(function* () {

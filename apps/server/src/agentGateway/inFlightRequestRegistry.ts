@@ -1,4 +1,4 @@
-export type AgentGatewayJsonRpcRequestId = string | number | null;
+type AgentGatewayJsonRpcRequestId = string | number | null;
 
 export interface AgentGatewayInFlightRequestRegistration {
   readonly sessionKey: string;

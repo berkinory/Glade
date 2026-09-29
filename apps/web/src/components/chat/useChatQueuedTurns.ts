@@ -82,9 +82,6 @@ interface ChatQueuedTurnsInput {
   setComposerDraftComputerControlMode: ReturnType<
     typeof useChatComposerDraft
   >["setComposerDraftComputerControlMode"];
-  setComposerDraftComputerControl: ReturnType<
-    typeof useChatComposerDraft
-  >["setComposerDraftComputerControl"];
   setComposerCursor: ReturnType<typeof useChatComposerDraft>["setComposerCursor"];
   setComposerTrigger: ReturnType<typeof useChatComposerDraft>["setComposerTrigger"];
   scheduleComposerFocus: () => void;
@@ -129,7 +126,6 @@ export function useChatQueuedTurns({
   setComposerDraftRuntimeMode,
   setComposerDraftInteractionMode,
   setComposerDraftComputerControlMode,
-  setComposerDraftComputerControl,
   setComposerCursor,
   setComposerTrigger,
   scheduleComposerFocus,

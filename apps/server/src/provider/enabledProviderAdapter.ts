@@ -11,7 +11,7 @@ import { Effect } from "effect";
 import type { ServerSettingsShape } from "../serverSettings";
 import type { ProviderAdapterRegistryShape } from "./Services/ProviderAdapterRegistry";
 
-export class ProviderDisabledError extends Error {
+class ProviderDisabledError extends Error {
   readonly status = 409;
 }
 

@@ -11,9 +11,9 @@ import type { BrowserWindow } from "electron";
 // toggle and keeps rendering its cached button icon, so the button must stay
 // detached long enough for the shell to process the removal before it is
 // re-registered and re-reads the window icon and AppUserModel properties.
-export const WINDOWS_TASKBAR_ICON_REFRESH_DELAY_MS = 400;
+const WINDOWS_TASKBAR_ICON_REFRESH_DELAY_MS = 400;
 
-export interface WindowsTaskbarIconIdentity {
+interface WindowsTaskbarIconIdentity {
   readonly appId: string;
   readonly relaunchCommand: string;
   readonly relaunchDisplayName: string;
@@ -62,15 +62,6 @@ export function nextWindowsShellIconCacheKey(iconKey: string): string {
     lastMaterializedIconKey = iconKey;
   }
   return `${iconKey}-${windowsShellIconGeneration}`;
-}
-
-export function resetWindowsShellIconGenerationForTests(): void {
-  windowsShellIconGeneration = 0;
-  lastMaterializedIconKey = null;
-}
-
-export function isWindowsTaskbarIconRefreshPending(): boolean {
-  return taskbarReregisterTimer !== null;
 }
 
 export interface WindowsShortcutDetails {
@@ -151,13 +142,13 @@ export function syncWindowsShortcutIcons(input: {
   return { matched, updated };
 }
 
-export function clearWindowsTaskbarIconRefresh(): void {
+function clearWindowsTaskbarIconRefresh(): void {
   if (taskbarReregisterTimer === null) return;
   clearTimeout(taskbarReregisterTimer);
   taskbarReregisterTimer = null;
 }
 
-export function windowsTaskbarIconPropertyUpdates(input: {
+function windowsTaskbarIconPropertyUpdates(input: {
   readonly iconPath: string;
   readonly identity: WindowsTaskbarIconIdentity;
 }): {

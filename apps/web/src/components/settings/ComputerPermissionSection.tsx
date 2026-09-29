@@ -91,7 +91,7 @@ function ComputerPermissionBadge({ permission }: { permission: DesktopComputerPe
   );
 }
 
-export function computerPanePermission(
+function computerPanePermission(
   state: DesktopComputerState,
   pane: DesktopComputerSettingsPane,
 ): DesktopComputerPermission {

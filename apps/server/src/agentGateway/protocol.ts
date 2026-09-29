@@ -14,7 +14,7 @@
  * @module agentGateway/protocol
  */
 
-export const MCP_DEFAULT_PROTOCOL_VERSION = "2025-06-18";
+const MCP_DEFAULT_PROTOCOL_VERSION = "2025-06-18";
 const MCP_SUPPORTED_PROTOCOL_VERSIONS = new Set(["2025-06-18", "2025-03-26", "2024-11-05"]);
 
 export const JSON_RPC_INVALID_REQUEST = -32600;
@@ -30,7 +30,7 @@ export interface JsonRpcRequest {
   readonly params: Record<string, unknown>;
 }
 
-export interface JsonRpcNotification {
+interface JsonRpcNotification {
   readonly method: string;
   readonly params: Record<string, unknown>;
 }
@@ -52,7 +52,7 @@ export interface JsonRpcNotification {
  * - `anthropic/searchHint`: replaces the description the same harness indexes
  *   (and sends) for a *deferred* tool. Unused today — see computerTools.ts.
  */
-export interface McpToolMeta {
+interface McpToolMeta {
   readonly "anthropic/alwaysLoad"?: boolean;
   readonly "anthropic/searchHint"?: string;
 }
@@ -152,7 +152,7 @@ export function parseMcpMessage(raw: unknown): ParsedMcpMessage {
   return { kind: "request", request: { jsonrpc: "2.0", id, method: record.method, params } };
 }
 
-export function negotiateMcpProtocolVersion(requested: unknown): string {
+function negotiateMcpProtocolVersion(requested: unknown): string {
   if (typeof requested === "string" && MCP_SUPPORTED_PROTOCOL_VERSIONS.has(requested)) {
     return requested;
   }

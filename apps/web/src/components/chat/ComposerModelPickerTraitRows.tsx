@@ -4,12 +4,7 @@
 // Layer: Chat composer presentation
 // Depends on: composer trait resolution, the shared trait commit hook, and menu primitives.
 
-import {
-  type ProviderAgentDescriptor,
-  type ProviderKind,
-  type ProviderModelDescriptor,
-  type ThreadId,
-} from "@glade/contracts";
+import { type ProviderKind, type ProviderModelDescriptor, type ThreadId } from "@glade/contracts";
 import { useState, type ReactNode } from "react";
 
 import { cn } from "~/lib/utils";
@@ -74,7 +69,6 @@ export function ComposerModelPickerTraitRows(props: {
   threadId: ThreadId;
   model: string;
   runtimeModel: ProviderModelDescriptor | undefined;
-  runtimeAgents: ReadonlyArray<ProviderAgentDescriptor> | null | undefined;
   modelOptions: ProviderOptions | undefined;
   prompt: string;
   onPromptChange: (prompt: string) => void;

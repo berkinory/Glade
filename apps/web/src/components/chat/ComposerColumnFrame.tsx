@@ -16,7 +16,7 @@ import {
 
 import { cn } from "~/lib/utils";
 import {
-  COMPOSER_COLUMN_FRAME_CLASS_NAME,
+  CHAT_COLUMN_FRAME_CLASS_NAME,
   COMPOSER_STACKED_HEADER_FRAME_CLASS_NAME,
 } from "./composerPickerStyles";
 
@@ -44,7 +44,7 @@ export const ComposerColumnFrame = function ComposerColumnFrame({
 }: ComposerColumnFrameProps) {
   return (
     <ComposerColumnFrameContext.Provider value={true}>
-      <div className={cn(COMPOSER_COLUMN_FRAME_CLASS_NAME, className)}>{children}</div>
+      <div className={cn(CHAT_COLUMN_FRAME_CLASS_NAME, className)}>{children}</div>
     </ComposerColumnFrameContext.Provider>
   );
 };

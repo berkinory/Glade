@@ -16,7 +16,7 @@ export interface ComputerFrameGateState {
   readonly lastSequence: number | null;
 }
 
-export type ComputerFrameGateAction = "ignore" | "drop-stale" | "decode";
+type ComputerFrameGateAction = "ignore" | "drop-stale" | "decode";
 
 export interface ComputerFrameGateStep {
   readonly state: ComputerFrameGateState;
@@ -61,7 +61,7 @@ export function stepComputerFrameGate(
  * idle. The server does not connect at boot, so after every launch health
  * reads non-connected with a clean record until something uses the desktop.
  */
-export function computerBackendIsIdle(health: ComputerHealth | undefined): boolean {
+function computerBackendIsIdle(health: ComputerHealth | undefined): boolean {
   return (
     health?.status === "unavailable" &&
     health.consecutiveFailures === 0 &&
@@ -208,8 +208,7 @@ export function computerStatusNeedsSetup(
  * tooltip, and the settings panel's health notes — and three copies is three
  * chances to describe the same supervision state differently.
  */
-export const COMPUTER_RECONNECTING_NOTE =
-  "The desktop backend dropped out and is being reconnected.";
+const COMPUTER_RECONNECTING_NOTE = "The desktop backend dropped out and is being reconnected.";
 
 /** The note counting reconnects since startup, or null when there were none. */
 export function computerReconnectsNote(health: ComputerHealth | undefined): string | null {
@@ -244,7 +243,7 @@ export function computerCanvasLabel(input: {
  * printed. A failure keeps its message, because that is the only part of a
  * failed action worth the space.
  */
-export function computerActionLabel(
+function computerActionLabel(
   action: Pick<ComputerActionEvent, "action" | "ok" | "message"> | undefined,
 ): string | null {
   if (!action) return null;

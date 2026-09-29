@@ -8,7 +8,7 @@ import {
 
 const VISIBLE_DIFF_FILE_TOLERANCE_PX = 8;
 
-export function resolveVisibleDiffFilePath(surface: HTMLElement): string | null {
+function resolveVisibleDiffFilePath(surface: HTMLElement): string | null {
   const anchors = readDiffFileAnchors(surface);
   if (anchors.length === 0) {
     return null;

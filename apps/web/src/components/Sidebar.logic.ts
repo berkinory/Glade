@@ -31,13 +31,8 @@ import {
 } from "../session-logic";
 import { formatWorktreePathForDisplay } from "../worktreeCleanup";
 
-export {
-  extractDuplicateProjectCreateProjectId,
-  isDuplicateProjectCreateError,
-} from "../lib/projectCreateRecovery";
-
-export const THREAD_SELECTION_SAFE_SELECTOR = "[data-thread-item], [data-thread-selection-safe]";
-export const SIDEBAR_THREAD_PREWARM_LIMIT = 10;
+const THREAD_SELECTION_SAFE_SELECTOR = "[data-thread-item], [data-thread-selection-safe]";
+const SIDEBAR_THREAD_PREWARM_LIMIT = 10;
 export const DEBUG_FEATURE_FLAGS_MENU_STORAGE_KEY = "glade:show-debug-feature-flags-menu";
 export type SidebarNewThreadEnvMode = "local" | "worktree";
 export type SidebarActionBadge = {
@@ -55,7 +50,7 @@ export function isProjectsSidebarSurface(input: { readonly isOnSettings: boolean
  * or create a new branch there without going through Glade's branch picker, so its checked-out
  * branch is authoritative even when the persisted branch metadata is stale.
  */
-export function shouldUseLivePullRequestForSidebarThread(input: {
+function shouldUseLivePullRequestForSidebarThread(input: {
   readonly threadBranch: string | null;
   readonly liveBranch: string | null;
   readonly hasDedicatedWorktree: boolean;
@@ -257,7 +252,7 @@ export function shouldShowDebugFeatureFlagsMenu(input: {
   return input.isDev && isLoopbackHostname(input.hostname) && input.storageValue === "true";
 }
 
-export type SidebarProjectEntry = {
+type SidebarProjectEntry = {
   kind: "thread";
   rowId: ThreadId;
   rootRowId: ThreadId;
@@ -892,7 +887,7 @@ export function buildProjectThreadTree<
   return orderedRows;
 }
 
-export function getVisibleSidebarEntriesForPreview<
+function getVisibleSidebarEntriesForPreview<
   T extends {
     rowId: Thread["id"];
     rootRowId: Thread["id"];
@@ -1027,7 +1022,7 @@ export function orderPinnedProjectsForSidebar<T extends Pick<Project, "id">>(
 // The pinned section renders flat rows only, and buildProjectThreadTree hides
 // children with a missing parent — hiding such a parent would make its
 // descendants unreachable anywhere in the sidebar.
-export function getUnpinnedThreadsForSidebar<
+function getUnpinnedThreadsForSidebar<
   T extends Pick<Thread, "id"> & Partial<Pick<SidebarThreadSummary, "parentThreadId">>,
 >(threads: readonly T[], pinnedThreadIds: readonly T["id"][]): T[] {
   if (pinnedThreadIds.length === 0) {
@@ -1254,7 +1249,7 @@ export function getFallbackThreadIdAfterDelete<
   );
 }
 
-export function getProjectSortTimestamp(
+function getProjectSortTimestamp(
   project: SidebarProject,
   projectThreads: readonly SidebarThreadSortInput[],
   sortOrder: Exclude<SidebarProjectSortOrder, "manual">,

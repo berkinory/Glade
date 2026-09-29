@@ -8,8 +8,8 @@ import { deriveTerminalCommandIdentity, type TerminalCliKind } from "@glade/shar
 
 import { projectScriptRuntimeEnv } from "./projectScripts";
 
-export const PROJECT_COMMAND_TERMINAL_COLS = 120;
-export const PROJECT_COMMAND_TERMINAL_ROWS = 30;
+const PROJECT_COMMAND_TERMINAL_COLS = 120;
+const PROJECT_COMMAND_TERMINAL_ROWS = 30;
 
 export interface ProjectCommandTerminalMetadata {
   cliKind: TerminalCliKind | null;

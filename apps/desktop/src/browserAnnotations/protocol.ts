@@ -20,14 +20,14 @@ import { sanitizeBrowserAnnotationPageTitle } from "@glade/shared/browserAnnotat
 
 export const BROWSER_ANNOTATION_PROTOCOL_VERSION = 1 as const;
 
-export interface AnnotationGuestReadyMessage {
+interface AnnotationGuestReadyMessage {
   readonly version: 1;
   readonly kind: "ready";
   readonly documentToken: string;
   readonly source: BrowserAnnotationSource;
 }
 
-export interface AnnotationGuestCommittedMessage {
+interface AnnotationGuestCommittedMessage {
   readonly version: 1;
   readonly kind: "committed";
   readonly documentToken: string;
@@ -35,14 +35,14 @@ export interface AnnotationGuestCommittedMessage {
   readonly annotation: BrowserAnnotation;
 }
 
-export interface AnnotationGuestCancelledMessage {
+interface AnnotationGuestCancelledMessage {
   readonly version: 1;
   readonly kind: "cancelled";
   readonly documentToken: string;
   readonly sessionId: string;
 }
 
-export interface AnnotationGuestMarkersProjectedMessage {
+interface AnnotationGuestMarkersProjectedMessage {
   readonly version: 1;
   readonly kind: "markers-projected";
   readonly documentToken: string;

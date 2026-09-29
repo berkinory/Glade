@@ -6,7 +6,7 @@ import {
   type ParsedCliVersion,
 } from "./cliVersion.ts";
 
-export const MINIMUM_CODEX_CLI_VERSION = "0.37.0";
+const MINIMUM_CODEX_CLI_VERSION = "0.37.0";
 // Earliest version verified to correlate MCP _meta.callId with item/started.
 export const MINIMUM_CODEX_MCP_CALL_ID_CLI_VERSION = "0.158.0";
 // `approvalsReviewer: "auto_review"` and its companion messages shipped in rust-v0.124.0.

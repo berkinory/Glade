@@ -10,7 +10,7 @@
 import { homedir } from "node:os";
 import path from "node:path";
 
-export const GLADE_CODEX_HOME_OVERLAY_DIR = "codex-home-overlay";
+const GLADE_CODEX_HOME_OVERLAY_DIR = "codex-home-overlay";
 
 export interface CodexHomePathsInput {
   readonly env?: NodeJS.ProcessEnv;

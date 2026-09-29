@@ -23,7 +23,7 @@ export interface ComputerServiceLiveOptions {
 
 let warnedMissingControlStatePath = false;
 
-export function makeComputerServiceLayer(options: ComputerServiceLiveOptions = {}) {
+function makeComputerServiceLayer(options: ComputerServiceLiveOptions = {}) {
   return Layer.effect(
     ComputerService,
     Effect.gen(function* () {

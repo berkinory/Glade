@@ -6,7 +6,7 @@ import {
 } from "@glade/contracts";
 import { Schema } from "effect";
 
-export const PROJECT_SCRIPT_KEYBINDING_INVALID_MESSAGE = "Invalid keybinding.";
+const PROJECT_SCRIPT_KEYBINDING_INVALID_MESSAGE = "Invalid keybinding.";
 
 function normalizeProjectScriptKeybindingInput(
   keybinding: string | null | undefined,

@@ -31,14 +31,14 @@ export interface ChatFileReference {
 // payload is the already-formatted reference text (mention token).
 export const CHAT_FILE_REFERENCE_DRAG_TYPE = "application/x-glade-file-reference";
 
-export function formatLineRangeLabel(startLine: number, endLine: number): string {
+function formatLineRangeLabel(startLine: number, endLine: number): string {
   return endLine !== startLine ? `lines ${startLine}-${endLine}` : `line ${startLine}`;
 }
 
 // Wrap a snippet in a fenced block whose fence is longer than any backtick run
 // inside it (so selected code that itself contains ``` survives Markdown), after
 // normalizing newlines, trimming blank edges, and capping the length.
-export function fenceCodeSnippet(snippet: string): string {
+function fenceCodeSnippet(snippet: string): string {
   const normalized = snippet.replace(/\r\n/g, "\n").replace(/^\n+|\n+$/g, "");
   const truncated =
     normalized.length > CHAT_ASSISTANT_SELECTION_TEXT_MAX_CHARS
@@ -170,7 +170,7 @@ function columnsOnLastLine(text: string): number {
 }
 
 // Pure line-range math, separated from the DOM selection plumbing for testability.
-export function computeSelectionLineRange(
+function computeSelectionLineRange(
   prefixText: string,
   selectedText: string,
 ): { startLine: number; endLine: number } {
@@ -182,7 +182,7 @@ export function computeSelectionLineRange(
 // Pure 1-based column math. `startColumn` is the column of the first selected
 // character; `endColumn` is the column of the last selected character (trailing
 // newlines are ignored so a line-spanning selection ends on real content).
-export function computeSelectionColumns(
+function computeSelectionColumns(
   prefixText: string,
   selectedText: string,
 ): { startColumn: number; endColumn: number } {

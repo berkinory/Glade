@@ -41,7 +41,7 @@ export interface ProviderUsageSummaryData {
   readonly resetCredits?: ServerCodexResetCredits | undefined;
 }
 
-export function resolveProviderUsageSummary(input: {
+function resolveProviderUsageSummary(input: {
   provider: ProviderKind | null;
   accountRateLimits: ReadonlyArray<ProviderRateLimit>;
   authoritativeLiveSnapshot: ServerGetProviderUsageSnapshotResult;

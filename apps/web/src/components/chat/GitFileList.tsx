@@ -7,7 +7,7 @@ import { splitRepoRelativePath } from "~/lib/diffRendering";
 import { EyeOpenIcon, MinusIcon, PlusIcon, RefreshCwIcon, RotateCcwIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { IconButton } from "../ui/icon-button";
-import { DOCK_HEADER_ICON_BUTTON_CLASS } from "./chatHeaderControls";
+import { CHAT_HEADER_ICON_CONTROL_CLASS_NAME } from "./chatHeaderControls";
 import { DiffStat } from "./DiffStatLabel";
 import { FileEntryIcon } from "./FileEntryIcon";
 
@@ -184,7 +184,7 @@ export function GitFileSection(props: {
               variant="ghost"
               label="Refresh changes"
               tooltip="Refresh changes"
-              className={DOCK_HEADER_ICON_BUTTON_CLASS}
+              className={CHAT_HEADER_ICON_CONTROL_CLASS_NAME}
               onClick={props.onRefresh}
             >
               <RefreshCwIcon className="size-3.5" />

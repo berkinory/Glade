@@ -188,4 +188,3 @@ const PlanSidebar = function PlanSidebar({
 };
 
 export default PlanSidebar;
-export type { PlanSidebarProps };

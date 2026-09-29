@@ -5,7 +5,7 @@ import { Effect, Ref } from "effect";
 
 export type WsRequestClass = "control" | "standard" | "expensive-read";
 
-export const WS_REQUEST_CLASS_LIMITS: Readonly<Record<WsRequestClass, number>> = {
+const WS_REQUEST_CLASS_LIMITS: Readonly<Record<WsRequestClass, number>> = {
   control: 16,
   standard: 12,
   "expensive-read": 2,

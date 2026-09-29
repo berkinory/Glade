@@ -887,18 +887,8 @@ managedAttachmentsConstraintsLayer("managed attachment schema constraints", (it)
   );
 });
 
-const latestMigrationId = Math.max(...migrationEntries.map(([id]) => id));
-
 // `migrationEntries` is `as const`, so an inferred Map keys on the literal id union and rejects
 // the plain `number` ids these helpers are looked up with. Widen the key type once, here.
-const canonicalNamesById = new Map<number, string>(
-  migrationEntries.map(([id, name]) => [id, name] as const),
-);
-
-const canonicalTrackerThrough = (throughId: number) =>
-  new Map<number, string>(
-    migrationEntries.filter(([id]) => id <= throughId).map(([id, name]) => [id, name] as const),
-  );
 
 const trackerCreatedAtById = (sql: SqlClient.SqlClient) =>
   sql<{ readonly migration_id: number; readonly created_at: string }>`

@@ -7,7 +7,7 @@ import { SIDEBAR_SECTION_LABEL_CLASS_NAME } from "./sidebarRowStyles";
 import { SOFT_SURFACE_FILL_CLASS_NAME } from "./surfaceStyles";
 
 /** Corner radius for top-level settings boxes: cards, empty states, dropdown panels. */
-export const SETTINGS_RADIUS_CLASS_NAME = "rounded-xl";
+const SETTINGS_RADIUS_CLASS_NAME = "rounded-xl";
 
 /** One step inside {@link SETTINGS_RADIUS_CLASS_NAME}, for anything that sits within a card
  *  (inset lists, rows) or is too small to carry the card radius (chips, drag handles) — a
@@ -20,7 +20,7 @@ export const SETTINGS_INSET_RADIUS_CLASS_NAME = "rounded-lg";
 export const SETTINGS_CONTROL_RADIUS_CLASS_NAME = "rounded-lg!";
 
 /** Same border token as Button `outline` / `chrome-outline` variants. */
-export const SETTINGS_CONTROL_BORDER_CLASS_NAME = "border border-[color:var(--color-border)]";
+const SETTINGS_CONTROL_BORDER_CLASS_NAME = "border border-[color:var(--color-border)]";
 
 /** Main settings shell — opaque and matched to the chat surface (see `--app-settings-surface`),
  *  so cards/rows read as outline-only on the same background as the chat. */
@@ -50,9 +50,6 @@ export const SETTINGS_CARD_ROW_TITLE_CLASS_NAME = "text-ui font-medium text-fore
 
 /** Row description — standard app UI typography. */
 export const SETTINGS_CARD_ROW_DESCRIPTION_CLASS_NAME = "text-ui text-muted-foreground";
-
-/** Divider between stacked rows inside one card. */
-export const SETTINGS_CARD_ROW_DIVIDER_CLASS_NAME = "border-t border-[color:var(--color-border)]";
 
 /** Hairlines between the stacked children of a card or inset list. Applied by
  *  {@link SETTINGS_CARD_CLASS_NAME} consumers (`SettingsCard`) and by any surface that

@@ -1,7 +1,7 @@
 // FILE: useThreadErrorToast.ts
 // Purpose: Surfaces thread-level runtime errors as a floating error toast.
 // Layer: Chat status presentation
-// Exports: useThreadErrorToast, buildThreadErrorToastOptions, threadErrorToastId
+// Exports: useThreadErrorToast, buildThreadErrorToastOptions
 
 import type { ThreadId } from "@glade/contracts";
 import { PROVIDER_DELIVERY_BLOCK_SUMMARY } from "@glade/shared/providerDeliveryBlock";
@@ -13,7 +13,7 @@ type ThreadErrorToastOptions = Parameters<typeof toastManager.add>[0];
 
 /** One toast per thread: re-adding under the same id updates the card in place
  *  instead of stacking a new toast for every error update. */
-export function threadErrorToastId(threadId: ThreadId): string {
+function threadErrorToastId(threadId: ThreadId): string {
   return `thread-error:${threadId}`;
 }
 

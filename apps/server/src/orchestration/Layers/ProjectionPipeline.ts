@@ -601,9 +601,6 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
         }
 
         case "thread.meta-updated": {
-          const currentThread = yield* projectionThreadRepository.getById({
-            threadId: event.payload.threadId,
-          });
           return yield* updateThreadProjection(event.payload.threadId, (thread) => {
             const nextCreateBranchFlowCompleted =
               event.payload.createBranchFlowCompleted !== undefined

@@ -27,7 +27,7 @@ export const DESKTOP_TOP_BAR_TRAFFIC_LIGHT_GUTTER_CLASS = "desktop-top-bar-traff
  * above the inset content block (`index.css` paints them in the shell tone). Every top bar
  * already takes one of the gutter class names below, so the gutter hooks carry the marker.
  */
-export const RAIL_LAYOUT_TOP_BAR_CLASS = "app-top-bar";
+const RAIL_LAYOUT_TOP_BAR_CLASS = "app-top-bar";
 
 function withRailLayoutTopBarClass(
   gutterClassName: string | null,
@@ -51,7 +51,7 @@ function withRailLayoutTopBarClass(
  * content instead of reserving a column — the next surface to the right has to
  * provide it instead.
  */
-export function shouldReserveDesktopTopBarTrafficLightGutter(input: {
+function shouldReserveDesktopTopBarTrafficLightGutter(input: {
   isElectron: boolean;
   isMacDesktop: boolean;
   sidebarOpen: boolean;
@@ -142,7 +142,7 @@ export function useDesktopTopBarTrafficLightGutterClassName(): string | null {
  * as conflicting with `pr-*`, so the override must win the cascade outright. Both the
  * base and `sm:` variants are emitted so it also beats `sm:px-*`.
  */
-export const DESKTOP_TOP_BAR_WINDOW_CONTROLS_GUTTER_CLASS = "pr-[138px]! sm:pr-[138px]!";
+const DESKTOP_TOP_BAR_WINDOW_CONTROLS_GUTTER_CLASS = "pr-[138px]! sm:pr-[138px]!";
 
 /**
  * Pure helper: should a top bar at the right edge of the desktop window reserve
@@ -151,7 +151,7 @@ export const DESKTOP_TOP_BAR_WINDOW_CONTROLS_GUTTER_CLASS = "pr-[138px]! sm:pr-[
  * the window's top-right, so every right-flush chrome surface reserves the gutter
  * whenever the live window is frameless.
  */
-export function shouldReserveDesktopTopBarWindowControlsGutter(input: {
+function shouldReserveDesktopTopBarWindowControlsGutter(input: {
   isElectron: boolean;
   customTitleBarActive: boolean;
 }): boolean {

@@ -11,7 +11,7 @@ import {
 } from "./cdpRuntime";
 import { browserHostError } from "./hostErrors";
 
-export type BrowserLoadMilestone = "commit" | "domcontentloaded" | "load" | "networkidle";
+type BrowserLoadMilestone = "commit" | "domcontentloaded" | "load" | "networkidle";
 
 const NETWORK_IDLE_WINDOW_MS = 500;
 const POLL_INTERVAL_MS = 25;
@@ -103,7 +103,7 @@ function lifecycleEventMilestone(name: string | undefined): BrowserLoadMilestone
   }
 }
 
-export const browserLoadMilestoneSatisfied = (
+const browserLoadMilestoneSatisfied = (
   observed: BrowserLoadMilestone,
   expected: BrowserLoadMilestone,
 ): boolean => milestoneRank(observed) >= milestoneRank(expected);

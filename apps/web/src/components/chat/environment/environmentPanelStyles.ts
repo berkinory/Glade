@@ -8,10 +8,7 @@ import { COMPOSER_PLACEHOLDER_TEXT_CLASS_NAME } from "~/components/chat/composer
 import { cn } from "~/lib/utils";
 
 /** Panel title and section labels. */
-export const ENVIRONMENT_PANEL_LABEL_CLASS_NAME = cn(
-  "font-normal",
-  COMPOSER_PLACEHOLDER_TEXT_CLASS_NAME,
-);
+const ENVIRONMENT_PANEL_LABEL_CLASS_NAME = cn("font-normal", COMPOSER_PLACEHOLDER_TEXT_CLASS_NAME);
 
 /** Top-of-card title row. */
 export const ENVIRONMENT_PANEL_TITLE_CLASS_NAME = cn(ENVIRONMENT_PANEL_LABEL_CLASS_NAME, "text-ui");

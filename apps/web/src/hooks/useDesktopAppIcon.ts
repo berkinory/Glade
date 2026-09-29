@@ -13,7 +13,7 @@ interface DesktopAppIconSynchronizerInput {
   readonly updateRendererIcon: (icon: DesktopAppIcon) => void;
 }
 
-export function createDesktopAppIconSynchronizer(input: DesktopAppIconSynchronizerInput) {
+function createDesktopAppIconSynchronizer(input: DesktopAppIconSynchronizerInput) {
   let nativeIcon: DesktopAppIcon | null = null;
 
   const hydrate = async (rendererIcon: DesktopAppIcon): Promise<void> => {

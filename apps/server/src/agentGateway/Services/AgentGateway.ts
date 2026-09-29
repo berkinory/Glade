@@ -12,7 +12,7 @@
 import { ServiceMap } from "effect";
 import type { Effect } from "effect";
 
-export interface AgentGatewayHttpResult {
+interface AgentGatewayHttpResult {
   readonly status: number;
   /** JSON body; omitted for empty (202/405) responses. */
   readonly body?: unknown;

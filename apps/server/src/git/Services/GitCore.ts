@@ -69,15 +69,15 @@ export interface GitStatusDetails extends Omit<GitStatusResult, "pr"> {
   upstreamRef: string | null;
 }
 
-export interface GitBranchContext {
+interface GitBranchContext {
   readonly isRepo: boolean;
   readonly branch: string | null;
   readonly upstreamRef: string | null;
 }
 
-export type GitDiffScope = "branch" | "staged" | "unstaged" | "workingTree" | "ref";
+type GitDiffScope = "branch" | "staged" | "unstaged" | "workingTree" | "ref";
 
-export interface GitPreparedCommitContext {
+interface GitPreparedCommitContext {
   stagedSummary: string;
   stagedPatch: string;
 }
@@ -95,7 +95,7 @@ export interface ExecuteGitProgress {
   }) => Effect.Effect<void, never>;
 }
 
-export interface GitCommitProgress {
+interface GitCommitProgress {
   readonly onOutputLine?: (input: {
     stream: "stdout" | "stderr";
     text: string;
@@ -113,14 +113,14 @@ export interface GitCommitOptions {
   readonly progress?: GitCommitProgress;
 }
 
-export interface GitPushResult {
+interface GitPushResult {
   status: "pushed" | "skipped_up_to_date";
   branch: string;
   upstreamBranch?: string | undefined;
   setUpstream?: boolean | undefined;
 }
 
-export interface GitRangeContext {
+interface GitRangeContext {
   commitSummary: string;
   diffSummary: string;
   diffPatch: string;
@@ -131,23 +131,23 @@ export interface GitWorkingTreePatch {
   truncated: boolean;
 }
 
-export interface GitRenameBranchInput {
+interface GitRenameBranchInput {
   cwd: string;
   oldBranch: string;
   newBranch: string;
 }
 
-export interface GitRenameBranchResult {
+interface GitRenameBranchResult {
   branch: string;
 }
 
-export interface GitDeleteBranchInput {
+interface GitDeleteBranchInput {
   cwd: string;
   branch: string;
   force?: boolean | undefined;
 }
 
-export interface GitWorktreeOwnershipProof {
+interface GitWorktreeOwnershipProof {
   readonly token: string;
   readonly gitDir: string;
   readonly branch: string | null;
@@ -156,50 +156,50 @@ export interface GitWorktreeOwnershipProof {
   readonly stateHash?: string;
 }
 
-export interface GitVerifyWorktreeOwnershipResult {
+interface GitVerifyWorktreeOwnershipResult {
   readonly verified: boolean;
   readonly reason: string | null;
 }
 
-export interface GitSnapshotWorktreeInput {
+interface GitSnapshotWorktreeInput {
   readonly cwd: string;
   readonly outputPath: string;
 }
 
-export interface GitFetchPullRequestBranchInput {
+interface GitFetchPullRequestBranchInput {
   cwd: string;
   prNumber: number;
   branch: string;
 }
 
-export interface GitFetchPullRequestCommitInput {
+interface GitFetchPullRequestCommitInput {
   cwd: string;
   prNumber: number;
   /** When provided by a full PR URL, must match the remote used for the fetch. */
   expectedRepositoryNameWithOwner?: string;
 }
 
-export interface GitEnsureRemoteInput {
+interface GitEnsureRemoteInput {
   cwd: string;
   preferredName: string;
   url: string;
 }
 
-export interface GitFetchRemoteBranchInput {
+interface GitFetchRemoteBranchInput {
   cwd: string;
   remoteName: string;
   remoteBranch: string;
   localBranch: string;
 }
 
-export interface GitSetBranchUpstreamInput {
+interface GitSetBranchUpstreamInput {
   cwd: string;
   branch: string;
   remoteName: string;
   remoteBranch: string;
 }
 
-export interface GitPublishBranchInput {
+interface GitPublishBranchInput {
   cwd: string;
   branch: string;
 }

@@ -10,7 +10,7 @@ import { GLADE_DESKTOP_ORIGIN } from "@glade/shared/desktopIdentity";
 import type { ServerConfigShape } from "./config";
 import { isLoopbackHost, isWildcardHost } from "./startupAccess";
 
-export const DESKTOP_APP_CORS_ORIGINS: ReadonlySet<string> = new Set([GLADE_DESKTOP_ORIGIN]);
+const DESKTOP_APP_CORS_ORIGINS: ReadonlySet<string> = new Set([GLADE_DESKTOP_ORIGIN]);
 
 export function normalizeCorsOrigin(rawOrigin: string | ReadonlyArray<string> | undefined) {
   if (Array.isArray(rawOrigin) && rawOrigin.length !== 1) {

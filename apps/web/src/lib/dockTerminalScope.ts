@@ -8,7 +8,6 @@ import { dockTerminalScopeId } from "@glade/shared/terminalThreads";
 
 // Older builds stored right-dock sessions under a synthetic scope. Keep the ID
 // factory for cleanup so those sessions do not survive a deleted host thread.
-export { DOCK_TERMINAL_SCOPE_PREFIX } from "@glade/shared/terminalThreads";
 
 export function dockTerminalThreadId(hostThreadId: ThreadId): ThreadId {
   return dockTerminalScopeId(hostThreadId) as ThreadId;

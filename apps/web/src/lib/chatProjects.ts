@@ -298,16 +298,6 @@ export function prewarmHomeChatProject(paths: ServerWorkspacePaths): void {
   void ensureHomeChatProject(paths).catch(() => undefined);
 }
 
-export async function resetHomeChatProjectPrewarmStateForTests(): Promise<void> {
-  const pendingOperations = [
-    ...pendingHomeChatCreationByWorkspaceRoot.values(),
-    ...pendingHomeChatFixupByWorkspaceRoot.values(),
-  ];
-  pendingHomeChatCreationByWorkspaceRoot.clear();
-  pendingHomeChatFixupByWorkspaceRoot.clear();
-  await Promise.allSettled(pendingOperations);
-}
-
 export function isHomeChatContainerProject(
   project: Pick<Project, "cwd" | "kind" | "name" | "remoteName"> | null | undefined,
   paths: ServerWorkspacePaths,

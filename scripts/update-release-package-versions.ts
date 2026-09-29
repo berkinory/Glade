@@ -18,7 +18,7 @@ interface MutablePackageJson {
   [key: string]: unknown;
 }
 
-export function updateReleasePackageVersions(
+function updateReleasePackageVersions(
   version: string,
   options: UpdateReleasePackageVersionsOptions = {},
 ): { changed: boolean } {

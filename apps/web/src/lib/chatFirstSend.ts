@@ -4,7 +4,7 @@ import { workspaceRootsEqual } from "@glade/shared/threadWorkspace";
 import type { Project } from "../types";
 import { buildChatWorkspaceFolderPath } from "./chatWorkspaceFolders";
 
-export interface FirstSendProjectTarget {
+interface FirstSendProjectTarget {
   targetProjectId: Project["id"];
   targetProjectKind: Project["kind"];
   targetProjectCwd: string;
@@ -12,7 +12,7 @@ export interface FirstSendProjectTarget {
   targetProjectDefaultModelSelection: ModelSelection | null;
 }
 
-export interface FirstSendProjectCreation {
+interface FirstSendProjectCreation {
   workspaceRoot: string;
   title: string;
   kind: Project["kind"];

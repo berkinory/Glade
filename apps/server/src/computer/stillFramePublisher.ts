@@ -39,14 +39,14 @@ const MAX_FORCE_RETRIES = 1;
  * Twice a second: fast enough that the pane reads as live, slow enough that a
  * window PNG encode is not the machine's busiest job.
  */
-export const DEFAULT_STILL_INTERVAL_MS = 500;
+const DEFAULT_STILL_INTERVAL_MS = 500;
 
 /**
  * The floor a caller-supplied interval is clamped to. Below this the capture
  * for one tick has not finished before the next is due, so the loop only ever
  * queues work it cannot do.
  */
-export const MIN_STILL_INTERVAL_MS = 100;
+const MIN_STILL_INTERVAL_MS = 100;
 
 /** The one clamp both Tier-1 backends apply to their configured interval. */
 export function resolveStillIntervalMs(intervalMs: number | undefined): number {

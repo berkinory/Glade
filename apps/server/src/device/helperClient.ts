@@ -32,7 +32,6 @@ import * as path from "node:path";
 
 import { decodeDeviceFrame } from "@glade/shared/deviceFrame";
 import {
-  encodeLengthPrefixedRecord,
   LengthPrefixedRecordError,
   LengthPrefixedRecordParser,
 } from "@glade/shared/lengthPrefixedRecords";
@@ -149,7 +148,7 @@ function readNumber(record: Record<string, unknown>, key: string, fallback: numb
  * is this module's, because a desynced stream here is a `DeviceHelperError`
  * the transport already knows how to drop a socket on.
  */
-export class DeviceFramePrefixParser {
+class DeviceFramePrefixParser {
   private readonly parser = new LengthPrefixedRecordParser();
 
   /** Returns every complete payload now available, in order. */
@@ -167,9 +166,6 @@ export class DeviceFramePrefixParser {
     }
   }
 }
-
-/** Frame the way the helper does. Used by the tests. */
-export const encodeFrameRecord = encodeLengthPrefixedRecord;
 
 /**
  * Owns one helper process: spawn, JSON-RPC over stdio, and the unix socket the

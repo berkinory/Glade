@@ -9,7 +9,7 @@ import {
   throwIfAborted,
 } from "./cdpRuntime";
 
-export const MAX_DIALOGS_PER_COMMAND = 20;
+const MAX_DIALOGS_PER_COMMAND = 20;
 const MAX_DIALOG_TEXT_BYTES = 4_096;
 const DIALOG_CLEANUP_TIMEOUT_MS = 1_000;
 

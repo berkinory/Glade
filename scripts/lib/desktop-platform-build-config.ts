@@ -12,25 +12,24 @@ import {
   preserveDependencyDiagnostics,
 } from "./desktop-bundle-files.ts";
 
-export const MICROPHONE_USAGE_DESCRIPTION =
+const MICROPHONE_USAGE_DESCRIPTION =
   "Glade needs microphone access so you can record voice notes and transcribe them into the chat composer.";
-export const MAC_ENTITLEMENTS_PATH = "apps/desktop/resources/entitlements.mac.plist";
-export const MAC_INHERITED_ENTITLEMENTS_PATH =
-  "apps/desktop/resources/entitlements.mac.inherit.plist";
+const MAC_ENTITLEMENTS_PATH = "apps/desktop/resources/entitlements.mac.plist";
+const MAC_INHERITED_ENTITLEMENTS_PATH = "apps/desktop/resources/entitlements.mac.inherit.plist";
 export const MAC_COMPUTER_HELPER_STAGE_PATH =
   "apps/desktop/native/computer/build/glade-computer-helper";
-export const MAC_COMPUTER_HELPER_ASAR_EXCLUSION = "!apps/desktop/native/computer/build/**";
-export const MAC_COMPUTER_HELPER_BUNDLE_PATH = "Contents/Helpers/glade-computer-helper";
-export const MAC_DEVICE_HELPER_STAGE_PATH = "apps/server/dist/device-helper";
+const MAC_COMPUTER_HELPER_ASAR_EXCLUSION = "!apps/desktop/native/computer/build/**";
+const MAC_COMPUTER_HELPER_BUNDLE_PATH = "Contents/Helpers/glade-computer-helper";
+const MAC_DEVICE_HELPER_STAGE_PATH = "apps/server/dist/device-helper";
 export const MAC_DEVICE_HELPER_RESOURCE_PATH = "Resources/device-helper";
-export const WINDOWS_INSTALLER_GUID = "5ae5e85a-0788-48c2-ab48-b8fd29cfc1e1";
+const WINDOWS_INSTALLER_GUID = "5ae5e85a-0788-48c2-ab48-b8fd29cfc1e1";
 // Asset catalog name of the compiled Icon Composer icon. macOS 26 reads
 // CFBundleIconName out of Assets.car and renders that layered icon with the
 // Liquid Glass material; older releases ignore it and keep using the ICNS.
 export const MAC_ICON_ASSET_NAME = "Glade";
 export const MAC_ICON_COMPOSER_DEPLOYMENT_TARGET = "26.0";
-export const MAC_ICON_ASSETS_CAR_STAGE_PATH = "apps/desktop/resources/Assets.car";
-export const MAC_ICON_ASSETS_CAR_BUNDLE_PATH = "Resources/Assets.car";
+const MAC_ICON_ASSETS_CAR_STAGE_PATH = "apps/desktop/resources/Assets.car";
+const MAC_ICON_ASSETS_CAR_BUNDLE_PATH = "Resources/Assets.car";
 const MAC_DMG_ICON_PATH = "icon.icns";
 const NODE_PTY_ASAR_UNPACK_GLOBS = ["node_modules/node-pty/**"] as const;
 

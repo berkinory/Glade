@@ -29,7 +29,7 @@ interface OperationRow {
 const mapSqlError = (operation: string) => (cause: unknown) =>
   new Error(`Agent gateway operation repository failed during ${operation}.`, { cause });
 
-export const makeAgentGatewayOperationRepository = Effect.gen(function* () {
+const makeAgentGatewayOperationRepository = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
   const completions = yield* makeCompletionRepository;
 

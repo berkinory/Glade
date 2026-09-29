@@ -3,7 +3,7 @@ import type { Effect } from "effect";
 
 import type { PersistenceSqlError } from "../Errors.ts";
 
-export type ManagedAttachmentState = "uploading" | "staged" | "claimed" | "deleting" | "deleted";
+type ManagedAttachmentState = "uploading" | "staged" | "claimed" | "deleting" | "deleted";
 
 export interface ManagedAttachmentBlob {
   readonly attachmentId: string;
@@ -58,16 +58,16 @@ export const DEFAULT_MANAGED_ATTACHMENT_LIMITS: ManagedAttachmentLimits = {
   principalStagingCount: 16,
 };
 
-export type ReserveManagedAttachmentResult =
+type ReserveManagedAttachmentResult =
   | { readonly status: "reserved"; readonly attachment: ManagedAttachmentBlob }
   | { readonly status: "quota-exceeded" }
   | { readonly status: "id-conflict" };
 
-export type FinalizeManagedAttachmentResult =
+type FinalizeManagedAttachmentResult =
   | { readonly status: "staged"; readonly attachment: ManagedAttachmentBlob }
   | { readonly status: "not-uploading" };
 
-export type CancelManagedAttachmentResult =
+type CancelManagedAttachmentResult =
   | { readonly status: "cancelled" }
   | { readonly status: "not-found" }
   | { readonly status: "already-claimed" };

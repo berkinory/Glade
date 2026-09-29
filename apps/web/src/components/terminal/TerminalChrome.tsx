@@ -18,7 +18,7 @@ import { XIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { selectRepresentativeTerminalVisualIdentity } from "~/terminalVisualIdentity";
 
-import { DOCK_HEADER_ICON_BUTTON_CLASS, SurfaceTabChip } from "../chat/chatHeaderControls";
+import { CHAT_HEADER_ICON_CONTROL_CLASS_NAME, SurfaceTabChip } from "../chat/chatHeaderControls";
 import type { ResolvedTerminalGroupLayout } from "./TerminalLayout";
 import TerminalActivityIndicator from "./TerminalActivityIndicator";
 import TerminalIdentityIcon from "./TerminalIdentityIcon";
@@ -37,7 +37,7 @@ function TerminalChromeActions(props: {
   const buttonClassName =
     props.variant === "sidebar"
       ? "!size-6 shrink-0 rounded-md [&_svg,&_[data-slot=central-icon]]:mx-0"
-      : DOCK_HEADER_ICON_BUTTON_CLASS;
+      : CHAT_HEADER_ICON_CONTROL_CLASS_NAME;
 
   return (
     <div className="inline-flex items-center gap-0.5">

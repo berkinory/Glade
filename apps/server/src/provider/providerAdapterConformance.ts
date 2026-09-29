@@ -32,7 +32,7 @@ type RequiredAdapterMethod =
   | "rollbackThread"
   | "stopAll";
 
-export interface ProviderAdapterConformanceIssue {
+interface ProviderAdapterConformanceIssue {
   readonly capability?: CapabilityFlag;
   readonly missingMethod: OptionalAdapterMethod | RequiredAdapterMethod;
 }
@@ -67,7 +67,7 @@ const CAPABILITY_METHOD_REQUIREMENTS: ReadonlyArray<{
   { capability: "supportsRuntimeModelList", methods: ["listModels"] },
 ];
 
-export function providerAdapterConformanceIssues(
+function providerAdapterConformanceIssues(
   adapter: ProviderAdapterShape<unknown>,
 ): ProviderAdapterConformanceIssue[] {
   const issues: ProviderAdapterConformanceIssue[] = [];

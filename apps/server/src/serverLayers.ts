@@ -52,9 +52,7 @@ import { PullRequestServiceLive } from "./pullRequests/Layers/PullRequestService
 import { ProviderHealthLive } from "./provider/Layers/ProviderHealth";
 import { makeServerProviderLayer } from "./provider/runtimeLayer";
 
-export { makeServerProviderLayer } from "./provider/runtimeLayer";
-
-export function provideThreadDeletionReactorDeviceService<
+function provideThreadDeletionReactorDeviceService<
   ReactorServices,
   ReactorError,
   ReactorRequirements,
@@ -67,7 +65,7 @@ export function provideThreadDeletionReactorDeviceService<
   return reactorLayer.pipe(Layer.provideMerge(deviceServiceLayer));
 }
 
-export function makeServerRuntimeServicesLayer(
+function makeServerRuntimeServicesLayer(
   options: {
     readonly agentGatewayCredentialsLayer?: typeof AgentGatewayCredentialsWithSecretsLive;
   } = {},

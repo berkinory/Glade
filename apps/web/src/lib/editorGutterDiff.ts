@@ -2,7 +2,7 @@ import type { FileDiffMetadata } from "@pierre/diffs/react";
 
 import { getRenderablePatch, resolveDiffEntryByPath, resolveFileDiffPath } from "./diffRendering";
 
-export type EditorGutterChangeKind = "added" | "modified" | "deleted";
+type EditorGutterChangeKind = "added" | "modified" | "deleted";
 
 export interface EditorGutterChangeRange {
   kind: EditorGutterChangeKind;

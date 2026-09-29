@@ -39,7 +39,7 @@ export interface FeedbackThreadContext {
   hasThreadError: boolean;
 }
 
-export type FeedbackDiagnostics = FeedbackThreadContext & {
+type FeedbackDiagnostics = FeedbackThreadContext & {
   appVersion: string;
   submittedAt: string;
   userAgent: string;
@@ -68,7 +68,7 @@ function formatStateFlags(diagnostics: FeedbackThreadContext): string {
  * Renders diagnostics as the report a maintainer reads first, since incoming
  * feedback arrives without any context about what the reporter was doing.
  */
-export function formatFeedbackSummary(input: {
+function formatFeedbackSummary(input: {
   category: FeedbackCategory | null;
   diagnostics: FeedbackDiagnostics;
 }): string {

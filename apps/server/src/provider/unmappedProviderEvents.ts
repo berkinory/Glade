@@ -2,7 +2,7 @@ import type { ProviderEvent } from "@glade/contracts";
 
 import { isProviderCredentialKey } from "../providerChildEnvironment.ts";
 
-export const MAX_UNMAPPED_PROVIDER_DATA_JSON_CHARS = 16_000;
+const MAX_UNMAPPED_PROVIDER_DATA_JSON_CHARS = 16_000;
 
 const MAX_UNMAPPED_PROVIDER_DETAIL_CHARS = 500;
 const MAX_UNMAPPED_PROVIDER_NATIVE_TYPE_CHARS = 200;

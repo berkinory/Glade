@@ -31,7 +31,7 @@ export interface ProfileTopProviderSelection {
   readonly unavailableProviders: ReadonlyArray<ProviderKind>;
 }
 
-export interface ProfileModelUsageEntry {
+interface ProfileModelUsageEntry {
   readonly provider: ProviderKind | "unknown";
   readonly model: string;
   readonly percent: number;

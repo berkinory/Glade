@@ -10,7 +10,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 
 export type RepoDiffScope = NonNullable<GitReadWorkingTreeDiffInput["scope"]>;
 
-export const DEFAULT_REPO_DIFF_SCOPE: RepoDiffScope = "workingTree";
+const DEFAULT_REPO_DIFF_SCOPE: RepoDiffScope = "workingTree";
 
 export const REPO_DIFF_SCOPE_LABELS: Record<RepoDiffScope, string> = {
   workingTree: "Working tree",
@@ -23,7 +23,7 @@ export const REPO_DIFF_SCOPE_LABELS: Record<RepoDiffScope, string> = {
 const COMPARE_REF_SHA_PATTERN = /^[0-9a-f]{7,40}$/i;
 const COMPARE_REF_MAX_LABEL_LENGTH = 24;
 
-export function formatCompareRefLabel(compareRef: string | null): string {
+function formatCompareRefLabel(compareRef: string | null): string {
   const trimmed = compareRef?.trim() ?? "";
   if (trimmed.length === 0) {
     return REPO_DIFF_SCOPE_LABELS.ref;
@@ -41,7 +41,7 @@ export function resolveRepoDiffScopeLabel(scope: RepoDiffScope, compareRef: stri
   return REPO_DIFF_SCOPE_LABELS[scope];
 }
 
-export function isRepoDiffScope(value: string): value is RepoDiffScope {
+function isRepoDiffScope(value: string): value is RepoDiffScope {
   return (
     value === "workingTree" ||
     value === "unstaged" ||
@@ -69,7 +69,7 @@ export interface RepoDiffScopeSelection {
 
 const REPO_DIFF_SCOPE_STORAGE_KEY = "glade:repo-diff-scope:v1";
 
-export function sanitizeRepoDiffCompareRefs(value: unknown): Record<string, string> {
+function sanitizeRepoDiffCompareRefs(value: unknown): Record<string, string> {
   if (typeof value !== "object" || value === null) {
     return {};
   }
@@ -86,7 +86,7 @@ export function sanitizeRepoDiffCompareRefs(value: unknown): Record<string, stri
  * The ref scope only makes sense with a ref for the repository being shown;
  * a repository without one falls back to the default scope.
  */
-export function resolveRepoDiffScopeSelection(
+function resolveRepoDiffScopeSelection(
   scope: RepoDiffScope,
   compareRef: string | null,
 ): RepoDiffScopeSelection {

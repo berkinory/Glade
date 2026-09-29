@@ -2,7 +2,7 @@ import type { AuthPairingLink, ServerAuthBootstrapMethod } from "@glade/contract
 import { Data, DateTime, Duration, ServiceMap } from "effect";
 import type { Effect, Stream } from "effect";
 
-export type BootstrapCredentialRole = "owner" | "client";
+type BootstrapCredentialRole = "owner" | "client";
 
 export interface BootstrapGrant {
   readonly method: ServerAuthBootstrapMethod;

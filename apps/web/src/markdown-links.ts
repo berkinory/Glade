@@ -223,7 +223,7 @@ function uniqueJoinAgainstKnownDirectories(
  * reference, return that path. Zero or several matches return null so the
  * caller can keep the workspace cwd join.
  */
-export function resolveUniqueAbsoluteSuffixTarget(
+function resolveUniqueAbsoluteSuffixTarget(
   reference: string,
   knownAbsolutePaths: ReadonlyArray<string>,
 ): string | null {

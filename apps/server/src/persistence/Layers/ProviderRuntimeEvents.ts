@@ -74,7 +74,7 @@ const JOURNAL_STRING_LEAF_BUDGET_BYTES = 64 * 1024;
  * budget, recursing through records and arrays. Non-string leaves are kept:
  * they are either small structural fields or values with no safe truncation.
  */
-export const shrinkRuntimeEventStrings = (value: unknown): unknown => {
+const shrinkRuntimeEventStrings = (value: unknown): unknown => {
   if (typeof value === "string") {
     return truncateUtf8ToBytes(value, JOURNAL_STRING_LEAF_BUDGET_BYTES);
   }

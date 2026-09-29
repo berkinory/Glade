@@ -41,7 +41,7 @@ import { ComposerPickerMenuPopup } from "./ComposerPickerMenuPopup";
 import {
   CHAT_SURFACE_HEADER_ROW_CLASS_NAME,
   CHAT_SURFACE_CONTROL_ACTIVE_CLASS_NAME,
-  DOCK_HEADER_ICON_BUTTON_CLASS,
+  CHAT_HEADER_ICON_CONTROL_CLASS_NAME,
   SurfaceChipIcon,
   SurfaceTabChip,
 } from "./chatHeaderControls";
@@ -54,7 +54,6 @@ import { useDesktopTopBarWindowControlsGutterClassName } from "~/hooks/useDeskto
 
 // Sizing defaults for the chat dock: a readable resize floor and a generous opening width.
 export const RIGHT_DOCK_MIN_WIDTH = 28 * 16;
-export const RIGHT_DOCK_DEFAULT_WIDTH = "max(28rem, calc(50vw - 8rem))";
 
 interface RightDockProps {
   state: RightDockThreadState;
@@ -313,7 +312,7 @@ export function RightDock(props: RightDockProps) {
                       title={label}
                       aria-pressed={activePane?.kind === kind}
                       className={cn(
-                        DOCK_HEADER_ICON_BUTTON_CLASS,
+                        CHAT_HEADER_ICON_CONTROL_CLASS_NAME,
                         activePane?.kind === kind && CHAT_SURFACE_CONTROL_ACTIVE_CLASS_NAME,
                       )}
                       onClick={() => props.onAddPane(kind)}
@@ -350,7 +349,7 @@ export function RightDock(props: RightDockProps) {
                       size="icon-xs"
                       aria-label="Add panel"
                       title="Add panel"
-                      className={DOCK_HEADER_ICON_BUTTON_CLASS}
+                      className={CHAT_HEADER_ICON_CONTROL_CLASS_NAME}
                     />
                   }
                 >
@@ -376,7 +375,7 @@ export function RightDock(props: RightDockProps) {
                 label={maximized ? "Restore panel" : "Maximize panel"}
                 tooltip={maximized ? "Restore panel" : "Maximize panel"}
                 aria-pressed={maximized}
-                className={DOCK_HEADER_ICON_BUTTON_CLASS}
+                className={CHAT_HEADER_ICON_CONTROL_CLASS_NAME}
                 onClick={() => setExpandedKey(maximized ? null : expansionKey)}
               >
                 {maximized ? <PanelCollapseIcon /> : <PanelExpandIcon />}
@@ -388,7 +387,7 @@ export function RightDock(props: RightDockProps) {
               label="Collapse panel"
               tooltip="Collapse panel"
               tooltipSide="bottom"
-              className={DOCK_HEADER_ICON_BUTTON_CLASS}
+              className={CHAT_HEADER_ICON_CONTROL_CLASS_NAME}
               onClick={props.onCollapse}
             >
               <PanelRightCloseIcon />
@@ -433,5 +432,3 @@ export function RightDock(props: RightDockProps) {
     </SidebarProvider>
   );
 }
-
-export default RightDock;

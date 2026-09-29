@@ -134,7 +134,7 @@ export function computerProvisionErrorToast(error: unknown): ComputerProvisionTo
   };
 }
 
-export function provisionErrorMessage(error: unknown): string {
+function provisionErrorMessage(error: unknown): string {
   return error instanceof Error && error.message.length > 0
     ? error.message
     : "The server gave no reason.";

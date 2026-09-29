@@ -2,7 +2,6 @@
 // Purpose: Owns graceful, forced, and verified teardown for provider/runtime process trees.
 // Layer: Server platform runtime
 
-import { Effect } from "effect";
 import { didProcessFailToSpawn } from "@glade/shared/processRuntime";
 
 import {
@@ -41,11 +40,6 @@ export interface ProcessExitHandle {
   readonly signalCode: NodeJS.Signals | null;
   once(event: "exit", listener: () => void): unknown;
   removeListener(event: "exit", listener: () => void): unknown;
-}
-
-export interface EffectProcessExitHandle {
-  readonly pid: number;
-  readonly exitCode: Effect.Effect<unknown, unknown>;
 }
 
 export interface SupervisedProcessTeardownResult {
@@ -128,16 +122,6 @@ export async function teardownChildProcessTree(
   return teardownProcessTree({
     rootPid: process.pid,
     rootExited: waitForOwnedProcessExit(process),
-  });
-}
-
-export function teardownEffectProcessTree(
-  process: EffectProcessExitHandle,
-  teardownProcessTree: typeof teardownProviderProcessTree = teardownProviderProcessTree,
-): Promise<SupervisedProcessTeardownResult> {
-  return teardownProcessTree({
-    rootPid: Number(process.pid),
-    rootExited: Effect.runPromise(Effect.exit(process.exitCode)),
   });
 }
 

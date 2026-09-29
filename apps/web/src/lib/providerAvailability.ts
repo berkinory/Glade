@@ -96,7 +96,7 @@ export function isProviderUsable(status: ServerProviderStatus | null | undefined
   return status.available && status.authStatus !== "unauthenticated";
 }
 
-export function providerUnavailableReason(status: ServerProviderStatus | null | undefined): string {
+function providerUnavailableReason(status: ServerProviderStatus | null | undefined): string {
   if (!status) {
     return "Provider status is still loading.";
   }
@@ -157,7 +157,7 @@ export function resolveAvailableProviderPreference(input: {
 }
 
 // Shared send gate used by chat, Kanban, shortcuts, and handoff flows.
-export function resolveProviderSendAvailability(input: {
+function resolveProviderSendAvailability(input: {
   readonly provider: ProviderKind;
   readonly statuses: readonly ServerProviderStatus[];
 }): ProviderSendAvailability {

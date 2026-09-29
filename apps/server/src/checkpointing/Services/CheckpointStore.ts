@@ -16,7 +16,7 @@ import type { Effect } from "effect";
 import type { CheckpointStoreError } from "../Errors.ts";
 import { CheckpointRef } from "@glade/contracts";
 
-export interface CaptureCheckpointInput {
+interface CaptureCheckpointInput {
   readonly cwd: string;
   readonly checkpointRef: CheckpointRef;
   /**
@@ -29,19 +29,19 @@ export interface CaptureCheckpointInput {
   readonly skipIfExists?: boolean;
 }
 
-export interface CopyCheckpointRefInput {
+interface CopyCheckpointRefInput {
   readonly cwd: string;
   readonly fromCheckpointRef: CheckpointRef;
   readonly toCheckpointRef: CheckpointRef;
 }
 
-export interface RestoreCheckpointInput {
+interface RestoreCheckpointInput {
   readonly cwd: string;
   readonly checkpointRef: CheckpointRef;
   readonly fallbackToHead?: boolean;
 }
 
-export interface DiffCheckpointsInput {
+interface DiffCheckpointsInput {
   readonly cwd: string;
   readonly fromCheckpointRef: CheckpointRef;
   readonly toCheckpointRef: CheckpointRef;
@@ -50,14 +50,14 @@ export interface DiffCheckpointsInput {
   readonly maxOutputBytes?: number;
 }
 
-export interface ReverseCheckpointDiffInput {
+interface ReverseCheckpointDiffInput {
   readonly cwd: string;
   readonly fromCheckpointRef: CheckpointRef;
   readonly toCheckpointRef: CheckpointRef;
   readonly maxOutputBytes?: number;
 }
 
-export interface DeleteCheckpointRefsInput {
+interface DeleteCheckpointRefsInput {
   readonly cwd: string;
   readonly checkpointRefs: ReadonlyArray<CheckpointRef>;
 }

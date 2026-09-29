@@ -12,33 +12,24 @@ import type {
   ModelSelection,
   OrchestrationCommand,
   OrchestrationEvent,
-  ProviderKind,
   ProviderForkThreadResult,
   ProviderRuntimeEvent,
   ProviderSession,
   ServerSettings,
 } from "@glade/contracts";
 import {
-  ApprovalRequestId,
   type ChatAttachment,
   CommandId,
-  DEFAULT_GIT_TEXT_GENERATION_MODEL,
   DEFAULT_PROVIDER_INTERACTION_MODE,
   EventId,
   MessageId,
-  PROVIDER_SEND_TURN_MAX_INPUT_CHARS,
   ProjectId,
   ThreadId,
   TurnId,
 } from "@glade/contracts";
-import {
-  formatProviderDeliveryBlockDetail,
-  PROVIDER_DELIVERY_BLOCK_SUMMARY,
-} from "@glade/shared/providerDeliveryBlock";
 import type { DeepPartial } from "@glade/shared/Struct";
 import {
   Duration,
-  Deferred,
   Effect,
   Exit,
   Layer,
@@ -70,13 +61,10 @@ import {
   ProviderAdapterProcessError,
   ProviderAdapterRequestError,
   ProviderAdapterValidationError,
-  ProviderSessionDirectoryPersistenceError,
-  ProviderValidationError,
 } from "../../provider/Errors.ts";
 import { OrchestrationEventStoreLive } from "../../persistence/Layers/OrchestrationEventStore.ts";
 import { OrchestrationCommandReceiptRepositoryLive } from "../../persistence/Layers/OrchestrationCommandReceipts.ts";
 import { OrchestrationEventDeliveryRepositoryLive } from "../../persistence/Layers/OrchestrationEventDeliveries.ts";
-import { PersistenceSqlError } from "../../persistence/Errors.ts";
 import {
   OrchestrationEventDeliveryRepository,
   PROVIDER_COMMAND_REACTOR_CONSUMER,
@@ -105,7 +93,6 @@ import { TurnCheckpointCoordinatorLive } from "./TurnCheckpointCoordinator.ts";
 import { OrchestrationProjectionPipelineLive } from "./ProjectionPipeline.ts";
 import { OrchestrationProjectionSnapshotQueryLive } from "./ProjectionSnapshotQuery.ts";
 import {
-  awaitInflightClaimSettlement,
   classifyProviderAttemptOutcome,
   isSafeLegacyProviderBlocker,
   makeProviderCommandReactorLive,
@@ -114,15 +101,10 @@ import {
   OrchestrationEngineService,
   type OrchestrationEngineShape,
 } from "../Services/OrchestrationEngine.ts";
-import {
-  OrchestrationCommandInternalError,
-  OrchestrationCommandInvariantError,
-  type OrchestrationDispatchError,
-} from "../Errors.ts";
+import { OrchestrationCommandInvariantError, type OrchestrationDispatchError } from "../Errors.ts";
 import { ProviderCommandReactor } from "../Services/ProviderCommandReactor.ts";
 import { attachmentRelativePath } from "../../attachmentStore.ts";
 import { resolveProviderAttachmentPath } from "../../provider/providerAttachmentPaths.ts";
-import { PROVIDER_DEBUG_MODE_PROMPT_PREFIX } from "../../provider/debugMode.ts";
 import { ServerSettingsService } from "../../serverSettings.ts";
 import { checkpointRefForThreadTurn } from "../../checkpointing/Utils.ts";
 import {
@@ -132,8 +114,6 @@ import {
 import * as NodeServices from "@effect/platform-node/NodeServices";
 
 const asProjectId = (value: string): ProjectId => ProjectId.makeUnsafe(value);
-const asApprovalRequestId = (value: string): ApprovalRequestId =>
-  ApprovalRequestId.makeUnsafe(value);
 const asEventId = (value: string): EventId => EventId.makeUnsafe(value);
 const asMessageId = (value: string): MessageId => MessageId.makeUnsafe(value);
 const asTurnId = (value: string): TurnId => TurnId.makeUnsafe(value);
@@ -993,37 +973,6 @@ describe("ProviderCommandReactor", () => {
     return readModel.threads.find((thread) => thread.id === threadId);
   }
 
-  async function seedRenameConversation(
-    harness: Awaited<ReturnType<typeof createHarness>>,
-    userText = "Fix the backend authentication callback race",
-  ) {
-    const createdAt = new Date().toISOString();
-    await Effect.runPromise(
-      harness.engine.dispatch({
-        type: "thread.messages.import",
-        commandId: CommandId.makeUnsafe(`cmd-rename-context-${crypto.randomUUID()}`),
-        threadId: ThreadId.makeUnsafe("thread-1"),
-        messages: [
-          {
-            messageId: asMessageId(`rename-user-${crypto.randomUUID()}`),
-            role: "user",
-            text: userText,
-            createdAt,
-            updatedAt: createdAt,
-          },
-          {
-            messageId: asMessageId(`rename-assistant-${crypto.randomUUID()}`),
-            role: "assistant",
-            text: "I found the race in the callback state transition.",
-            createdAt,
-            updatedAt: createdAt,
-          },
-        ],
-        createdAt,
-      }),
-    );
-  }
-
   async function dispatchHarnessUserTurn(
     harness: Awaited<ReturnType<typeof createHarness>>,
     input: {
@@ -1048,39 +997,6 @@ describe("ProviderCommandReactor", () => {
         runtimeMode: "approval-required",
         createdAt: input.createdAt,
       }),
-    );
-  }
-
-  async function emitHarnessTurnTerminal(
-    harness: Awaited<ReturnType<typeof createHarness>>,
-    input: {
-      readonly eventId: string;
-      readonly provider: ProviderKind;
-      readonly type: "completed" | "aborted" | "failed" | "cancelled";
-      readonly threadId?: ThreadId;
-      readonly turnId?: TurnId;
-    },
-  ) {
-    const eventBase = {
-      eventId: asEventId(input.eventId),
-      provider: input.provider,
-      threadId: input.threadId ?? ThreadId.makeUnsafe("thread-1"),
-      createdAt: new Date().toISOString(),
-      turnId: input.turnId ?? asTurnId("turn-1"),
-      providerRefs: {},
-    } as const;
-    await harness.emitRuntimeEvent(
-      input.type !== "aborted"
-        ? ({
-            ...eventBase,
-            type: "turn.completed",
-            payload: { state: input.type },
-          } as ProviderRuntimeEvent)
-        : ({
-            ...eventBase,
-            type: "turn.aborted",
-            payload: { reason: "prompt rejected after asynchronous submission" },
-          } as ProviderRuntimeEvent),
     );
   }
 

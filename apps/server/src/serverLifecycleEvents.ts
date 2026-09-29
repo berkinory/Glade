@@ -2,7 +2,7 @@ import { Effect, Layer, PubSub, Ref, ServiceMap, Stream } from "effect";
 
 import type { ProjectId, ThreadId } from "@glade/contracts";
 
-export interface ServerLifecycleWelcomePayload {
+interface ServerLifecycleWelcomePayload {
   readonly cwd: string;
   readonly homeDir: string;
   readonly chatWorkspaceRoot: string;
@@ -11,11 +11,11 @@ export interface ServerLifecycleWelcomePayload {
   readonly bootstrapThreadId?: ThreadId;
 }
 
-export interface ServerLifecycleReadyPayload {
+interface ServerLifecycleReadyPayload {
   readonly at: string;
 }
 
-export interface ServerLifecycleMaintenancePayload {
+interface ServerLifecycleMaintenancePayload {
   readonly task: "thread-retention";
   readonly state: "started" | "progress" | "completed" | "failed";
   readonly at: string;

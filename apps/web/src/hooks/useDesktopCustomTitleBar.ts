@@ -22,7 +22,7 @@ const DEFAULT_STATE: DesktopCustomTitleBarState = {
  * default (custom title bar on for Windows/Linux) so gutters and caption
  * buttons appear without a one-frame flash on the common path.
  */
-export function initialDesktopCustomTitleBarActive(): boolean {
+function initialDesktopCustomTitleBarActive(): boolean {
   if (!isElectron) return false;
   const platform = getNavigatorPlatform();
   return isWindowsPlatform(platform) || isLinuxPlatform(platform);

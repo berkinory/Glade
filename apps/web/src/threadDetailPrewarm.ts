@@ -8,8 +8,8 @@ import { useEffect, useRef } from "react";
 import { hasThreadDetailResumeCursor } from "./threadDetailResumeCursors";
 import { retainThreadDetailSubscription } from "./threadDetailSubscriptionRetention";
 
-export const THREAD_DETAIL_PREWARM_RELEASE_MS = 10_000;
-export const THREAD_DETAIL_PREWARM_LIMIT = 5;
+const THREAD_DETAIL_PREWARM_RELEASE_MS = 10_000;
+const THREAD_DETAIL_PREWARM_LIMIT = 5;
 
 type TimeoutHandle = ReturnType<typeof setTimeout>;
 type RetainThreadDetailSubscription = (threadId: ThreadId) => () => void;
@@ -30,7 +30,7 @@ export interface ThreadDetailPrewarmController {
   dispose(): void;
 }
 
-export interface ThreadDetailPrewarmControllerOptions {
+interface ThreadDetailPrewarmControllerOptions {
   retainThreadDetailSubscription?: RetainThreadDetailSubscription | undefined;
   canPrewarmThreadDetail?: ((threadId: ThreadId) => boolean) | undefined;
   releaseMs?: number | undefined;
@@ -70,7 +70,7 @@ function uniqueEligibleThreadIds(
   return nextThreadIds;
 }
 
-export function createThreadDetailPrewarmController(
+function createThreadDetailPrewarmController(
   options: ThreadDetailPrewarmControllerOptions = {},
 ): ThreadDetailPrewarmController {
   const retainThreadDetail =

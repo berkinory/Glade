@@ -5,7 +5,7 @@
 
 import { create } from "zustand";
 
-export type OnboardingOpenReason = "first-run" | "replay";
+type OnboardingOpenReason = "first-run" | "replay";
 
 interface OnboardingDialogStore {
   isOpen: boolean;

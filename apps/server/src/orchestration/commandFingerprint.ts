@@ -3,7 +3,7 @@ import * as Crypto from "node:crypto";
 import { OrchestrationCommand, type OrchestrationCommand as Command } from "@glade/contracts";
 import { Schema } from "effect";
 
-export const ORCHESTRATION_COMMAND_FINGERPRINT_VERSION = 1;
+const ORCHESTRATION_COMMAND_FINGERPRINT_VERSION = 1;
 
 export interface OrchestrationCommandFingerprint {
   readonly version: number;

@@ -66,7 +66,7 @@ import { buildModelSelection, type ProviderModelOption } from "../providerModelO
 
 export const LAST_INVOKED_SCRIPT_BY_PROJECT_KEY = "glade:last-invoked-script-by-project";
 export const DISMISSED_PROVIDER_HEALTH_BANNERS_KEY = "glade:dismissed-provider-health-banners";
-export const PROMPT_HISTORY_MAX_ENTRIES = 100;
+const PROMPT_HISTORY_MAX_ENTRIES = 100;
 
 export const LastInvokedScriptByProjectSchema = Schema.Record(ProjectId, Schema.String);
 export const DismissedProviderHealthBannersSchema = Schema.Array(Schema.String);
@@ -222,7 +222,7 @@ export function createRuntimeModePersistenceQueue(
   };
 }
 
-export function modelSelectionsEqual(left: ModelSelection, right: ModelSelection): boolean {
+function modelSelectionsEqual(left: ModelSelection, right: ModelSelection): boolean {
   return (
     left.provider === right.provider &&
     left.model === right.model &&
@@ -1025,13 +1025,13 @@ const WORKTREE_SETUP_STEP_LABELS: Record<WorktreeSetupStepId, string> = {
 // Creation phases mirror the server's real worktree setup progress events, so
 // each row completes on an actual boundary instead of one row spinning through
 // all of them.
-export const WORKTREE_SETUP_STEP_ID_BY_PHASE: Record<GitWorktreeSetupPhase, WorktreeSetupStepId> = {
+const WORKTREE_SETUP_STEP_ID_BY_PHASE: Record<GitWorktreeSetupPhase, WorktreeSetupStepId> = {
   branch: "create-branch",
   worktree: "create-worktree",
   "copy-changes": "copy-changes",
 };
 
-export interface WorktreeSetupSnapshotOptions {
+interface WorktreeSetupSnapshotOptions {
   setupScriptName?: string | null;
   copyLocalChanges?: boolean;
 }
@@ -1070,7 +1070,7 @@ function worktreeSetupStepDefinitions(
 // the error state can paint instead of being batched away with the reset.
 export const WORKTREE_SETUP_ERROR_HOLD_MS = 1200;
 
-export function createWorktreeSetupSnapshot(
+function createWorktreeSetupSnapshot(
   activeStepId: WorktreeSetupStepId,
   options?: WorktreeSetupSnapshotOptions,
 ): WorktreeSetupSnapshot {
@@ -1444,7 +1444,7 @@ export interface QueuedSteerGate {
 }
 
 /** Recovery bound: a healthy interrupt→steered-turn handoff takes ~1-2s. */
-export const QUEUED_STEER_GATE_TIMEOUT_MS = 15_000;
+const QUEUED_STEER_GATE_TIMEOUT_MS = 15_000;
 
 export type QueuedSteerGateTransition =
   | { kind: "clear" }

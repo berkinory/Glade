@@ -6,10 +6,8 @@ import {
 import { ComputerBackendError } from "./ComputerBackend.ts";
 
 export {
-  DESKTOP_OPERATION_QUEUE_LIMIT,
   assertDesktopOperationActive,
   desktopDeliveryMode,
-  desktopOperationContext,
   desktopOperationSignal,
   withDesktopDeliveryMode,
   withDesktopOperationSignal,

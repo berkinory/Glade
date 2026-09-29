@@ -5,7 +5,7 @@
 // Exports: BackendSupervisionPolicy, BackendOutputTailDetector, summarizeBackendFailureOutput
 
 /** First backoff step; doubles per consecutive failed start. */
-export const BACKEND_RESTART_BASE_DELAY_MS = 500;
+const BACKEND_RESTART_BASE_DELAY_MS = 500;
 export const BACKEND_RESTART_MAX_DELAY_MS = 10_000;
 
 /**
@@ -22,7 +22,7 @@ export const BACKEND_RESTART_MAX_DELAY_MS = 10_000;
 export const BACKEND_MAX_CONSECUTIVE_START_FAILURES = 5;
 
 /** Retained backend output used to explain a give-up; bounded so a chatty crash loop cannot grow it. */
-export const BACKEND_FAILURE_OUTPUT_TAIL_CHARS = 8_192;
+const BACKEND_FAILURE_OUTPUT_TAIL_CHARS = 8_192;
 const BACKEND_FAILURE_SUMMARY_MAX_LINES = 8;
 
 export function backendRestartDelayMs(attempt: number): number {

@@ -41,7 +41,7 @@ function normalizePromptForMatching(prompt: string): string {
   return prompt.toLowerCase().replace(/\s+/g, " ").trim();
 }
 
-export function promptLooksLikeInternalBrowserTask(prompt: string): boolean {
+function promptLooksLikeInternalBrowserTask(prompt: string): boolean {
   const normalized = normalizePromptForMatching(prompt);
   const mentionsInternalBrowser = INTERNAL_BROWSER_SCOPE_PATTERNS.some((pattern) =>
     normalized.includes(pattern),
@@ -52,7 +52,7 @@ export function promptLooksLikeInternalBrowserTask(prompt: string): boolean {
   return INTERNAL_BROWSER_ACTION_PATTERNS.some((pattern) => normalized.includes(pattern));
 }
 
-export function screenshotAttachmentName(input: BrowserCaptureScreenshotResult): string {
+function screenshotAttachmentName(input: BrowserCaptureScreenshotResult): string {
   return input.name.trim().length > 0 ? input.name : `browser-${Date.now()}.png`;
 }
 

@@ -12,7 +12,7 @@ export function automationProposalActivityId(automationId: AutomationDefinition[
   return EventId.makeUnsafe(`automation-proposal:${automationId}`);
 }
 
-export function automationCadenceLabel(schedule: AutomationSchedule): string {
+function automationCadenceLabel(schedule: AutomationSchedule): string {
   switch (schedule.type) {
     case "manual":
       return "Manual";

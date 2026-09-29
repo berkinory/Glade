@@ -182,9 +182,7 @@ type ProviderModelMenuItemsProps = {
 // Renders only the popup body of the provider/model picker. Designed to be
 // dropped into any shared picker popup or submenu so the same selection logic can
 // be reused by the standalone picker and the combined composer trait picker.
-export const ProviderModelMenuItems = function ProviderModelMenuItems(
-  props: ProviderModelMenuItemsProps,
-) {
+const ProviderModelMenuItems = function ProviderModelMenuItems(props: ProviderModelMenuItemsProps) {
   const { onAfterSelection } = props;
   const [modelSearchQuery, setModelSearchQuery] = useState("");
   const deferredModelSearchQuery = useDeferredValue(modelSearchQuery);

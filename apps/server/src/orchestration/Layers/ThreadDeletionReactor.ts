@@ -67,7 +67,7 @@ export const cleanupSucceededUnlessInterrupted = <R, E>({
     }),
   );
 
-export const detachThreadDevice = (threadId: ThreadId) =>
+const detachThreadDevice = (threadId: ThreadId) =>
   Effect.service(DeviceService).pipe(
     Effect.flatMap((service) =>
       Effect.promise(() => service.manager.handleThreadRemoved(threadId)).pipe(

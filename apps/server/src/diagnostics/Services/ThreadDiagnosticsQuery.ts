@@ -26,7 +26,7 @@ export interface OperationalDiagnostic {
   readonly occurredAt: string;
 }
 
-export interface DiagnosticPageInput {
+interface DiagnosticPageInput {
   readonly threadId: string;
   readonly throughSequenceInclusive?: number;
   readonly beforeSequenceExclusive?: number;

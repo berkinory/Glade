@@ -2,7 +2,7 @@ import { formatInlineTerminalContextLabel as formatInlineTerminalContextSelectio
 
 const TERMINAL_CONTEXT_HEADER_PATTERN = /^(.*?)\s+line(?:s)?\s+(\d+)(?:-(\d+))?$/i;
 
-export function buildInlineTerminalContextText(
+function buildInlineTerminalContextText(
   contexts: ReadonlyArray<{
     header: string;
   }>,
@@ -50,7 +50,7 @@ export function resolveUserMessageMarkdownText(
   return [prefix, visibleText].filter((part) => part.length > 0).join(" ");
 }
 
-export function textContainsInlineTerminalContextLabels(
+function textContainsInlineTerminalContextLabels(
   text: string,
   contexts: ReadonlyArray<{
     header: string;

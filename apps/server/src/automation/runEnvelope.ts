@@ -4,8 +4,8 @@
 import type { AutomationDefinition, AutomationRun } from "@glade/contracts";
 import { automationContinuesThread, automationOwnsItsThread } from "@glade/shared/automationMode";
 
-export const AUTOMATION_MEMORY_INJECTION_MAX_BYTES = 8 * 1_024;
-export const AUTOMATION_MEMORY_TRUNCATION_MARKER = "[... older automation memory truncated ...]\n";
+const AUTOMATION_MEMORY_INJECTION_MAX_BYTES = 8 * 1_024;
+const AUTOMATION_MEMORY_TRUNCATION_MARKER = "[... older automation memory truncated ...]\n";
 
 export function automationMemoryForEnvelope(content: string): string {
   const bytes = Buffer.from(content, "utf8");

@@ -14,11 +14,11 @@ import { WORKFLOW_PROMPT_PREVIEW_CHARS } from "./claudeWorkflowScript.ts";
 
 // Workflow transcripts and settled output files share one runaway-file limit;
 // transcript growth beyond the per-tick cap is caught up on later ticks.
-export const MAX_CLAUDE_WORKFLOW_FILE_BYTES = 5 * 1024 * 1024;
+const MAX_CLAUDE_WORKFLOW_FILE_BYTES = 5 * 1024 * 1024;
 const MAX_CHUNK_BYTES = 512 * 1024;
 const RECENT_TOOL_NAMES = 3;
 
-export interface ClaudeWorkflowAgentAccum {
+interface ClaudeWorkflowAgentAccum {
   readonly agentId: string;
   state: "running" | "completed";
   model: string | undefined;
@@ -82,7 +82,7 @@ function makeAgentAccum(agentId: string): ClaudeWorkflowAgentAccum {
 }
 
 // Journal lines: {"type":"started"|"result","key":"v2:<hash>","agentId":"..."}.
-export function applyClaudeWorkflowJournalLines(
+function applyClaudeWorkflowJournalLines(
   state: ClaudeWorkflowRuntimeState,
   lines: ReadonlyArray<string>,
 ): boolean {
@@ -112,7 +112,7 @@ export function applyClaudeWorkflowJournalLines(
 
 // Agent transcript lines (Claude session jsonl shape): the first plain-string
 // user line is the prompt; assistant lines carry model/usage/tool_use blocks.
-export function applyClaudeWorkflowAgentTranscriptLines(
+function applyClaudeWorkflowAgentTranscriptLines(
   agent: ClaudeWorkflowAgentAccum,
   lines: ReadonlyArray<string>,
 ): boolean {

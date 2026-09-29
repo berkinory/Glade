@@ -95,9 +95,6 @@ import { isClaudeAutoModeCliVersionSupported } from "../claudeCliVersion.ts";
 import { collectUint8StreamText } from "../../stream/collectUint8StreamText";
 import { buildCodexProcessEnv } from "../../codexProcessEnv.ts";
 
-export { parseClaudeAuthStatusFromOutput } from "../claudeAuthStatus";
-export type { CommandResult } from "../providerCliOutput";
-
 const DEFAULT_TIMEOUT_MS = 4_000;
 const CLAUDE_HEALTH_TIMEOUT_MS = 20_000;
 const CODEX_AUTH_STATUS_ARGS = ["-c", "mcp_servers={}", "login", "status"] as const;
@@ -121,7 +118,7 @@ const UPDATE_OUTPUT_MAX_BYTES = 10_000;
 const MAX_REFRESH_REVISION_RETRIES = 1;
 const REFRESH_REVISION_RESCHEDULE_DELAY_MS = 100;
 const PROVIDER_UPDATE_ENABLEMENT_POLL_MS = 100;
-export const PROVIDER_UPDATE_TIMEOUT_MS = 2 * 60_000;
+const PROVIDER_UPDATE_TIMEOUT_MS = 2 * 60_000;
 
 function formatProviderUpdateTimeout(timeoutMs: number): string {
   if (timeoutMs < 1_000) {
@@ -148,7 +145,7 @@ function isClaudeLatestHomebrewCommandPath(commandPath: string): boolean {
   return normalizeCommandPath(commandPath).includes("/caskroom/claude-code@latest/");
 }
 
-export const PACKAGE_MANAGED_PROVIDER_UPDATES: Partial<
+const PACKAGE_MANAGED_PROVIDER_UPDATES: Partial<
   Record<ProviderKind, PackageManagedProviderMaintenanceDefinition>
 > = {
   codex: {
@@ -404,7 +401,7 @@ const probeClaudeSubscription = () => {
   );
 };
 
-export function parseAuthStatusFromOutput(result: CommandResult): {
+function parseAuthStatusFromOutput(result: CommandResult): {
   readonly status: ServerProviderStatusState;
   readonly authStatus: ServerProviderAuthStatus;
   readonly voiceTranscriptionAvailable?: boolean;
@@ -585,7 +582,7 @@ async function makeCodexProbeEnv(homePath?: string): Promise<NodeJS.ProcessEnv> 
   });
 }
 
-export const readCodexConfigModelProviderForEnv = (env: NodeJS.ProcessEnv) =>
+const readCodexConfigModelProviderForEnv = (env: NodeJS.ProcessEnv) =>
   Effect.gen(function* () {
     const fileSystem = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
@@ -608,7 +605,7 @@ const hasCustomModelProviderForEnv = (env: NodeJS.ProcessEnv) =>
     (provider) => provider !== undefined && !OPENAI_AUTH_PROVIDERS.has(provider),
   );
 
-export const makeCheckCodexProviderStatus = (
+const makeCheckCodexProviderStatus = (
   binaryPath?: string,
   homePath?: string,
 ): Effect.Effect<
@@ -776,13 +773,11 @@ export const makeCheckCodexProviderStatus = (
   );
 };
 
-export const checkCodexProviderStatus = makeCheckCodexProviderStatus();
-
 // ── Claude Agent health check ───────────────────────────────────────
 
 const CLAUDE_AUTH_FALSE_NEGATIVE_RETRY_DELAY_MS = 1_000;
 
-export const makeCheckClaudeProviderStatus = (
+const makeCheckClaudeProviderStatus = (
   resolveSubscriptionType?: Effect.Effect<string | undefined>,
   binaryPath?: string,
   homeDir?: string,
@@ -972,8 +967,6 @@ export const makeCheckClaudeProviderStatus = (
   );
 };
 
-export const checkClaudeProviderStatus = makeCheckClaudeProviderStatus();
-
 function comparableProviderVersionAdvisory(
   advisory: ServerProviderStatus["versionAdvisory"] | undefined,
 ): Omit<NonNullable<ServerProviderStatus["versionAdvisory"]>, "checkedAt"> | null {
@@ -984,7 +977,7 @@ function comparableProviderVersionAdvisory(
   return comparableAdvisory;
 }
 
-export function providerStatusesEqual(
+function providerStatusesEqual(
   left: ReadonlyArray<ServerProviderStatus>,
   right: ReadonlyArray<ServerProviderStatus>,
 ): boolean {
@@ -1025,7 +1018,7 @@ function wasPreviouslyUsableProviderStatus(status: ServerProviderStatus): boolea
   return status.available && status.status === "ready";
 }
 
-export function stabilizeProviderStatusesAgainstTransientTimeouts(
+function stabilizeProviderStatusesAgainstTransientTimeouts(
   previousStatuses: ReadonlyArray<ServerProviderStatus>,
   nextStatuses: ReadonlyArray<ServerProviderStatus>,
 ): ReadonlyArray<ServerProviderStatus> {
@@ -1061,16 +1054,13 @@ export function stabilizeProviderStatusesAgainstTransientTimeouts(
   });
 }
 
-export function isProviderEnabledForSettings(
-  provider: ProviderKind,
-  settings: ServerSettings,
-): boolean {
+function isProviderEnabledForSettings(provider: ProviderKind, settings: ServerSettings): boolean {
   return (
     settings.providers[provider]?.enabled !== false && settings.providers[provider] !== undefined
   );
 }
 
-export function makeDisabledProviderStatus(
+function makeDisabledProviderStatus(
   provider: ProviderKind,
   checkedAt = new Date().toISOString(),
 ): ServerProviderStatus {
@@ -1126,7 +1116,7 @@ function suppressProviderVersionAdvisory(status: ServerProviderStatus): ServerPr
 
 // Disabled providers are a settings overlay, not a probe result. Keep the raw
 // cached/probed status intact so re-enabling a provider can reuse it immediately.
-export function projectProviderStatusesForSettings(
+function projectProviderStatusesForSettings(
   statuses: ReadonlyArray<ServerProviderStatus>,
   settings: ServerSettings,
   checkedAt = new Date().toISOString(),
@@ -1162,7 +1152,7 @@ export function projectProviderStatusesForSettings(
 
 // ── Layer ───────────────────────────────────────────────────────────
 
-export function makeProviderHealthLive(options?: { readonly providerUpdateTimeoutMs?: number }) {
+function makeProviderHealthLive(options?: { readonly providerUpdateTimeoutMs?: number }) {
   const providerUpdateTimeoutMs = options?.providerUpdateTimeoutMs ?? PROVIDER_UPDATE_TIMEOUT_MS;
   return Layer.effect(
     ProviderHealth,

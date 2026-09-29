@@ -41,7 +41,7 @@ export interface RecentViewDisplayEntry {
   terminalVisualIdentity?: ResolvedTerminalVisualIdentity | undefined;
 }
 
-export type RecentViewDisplayIcon =
+type RecentViewDisplayIcon =
   | { kind: "chat" }
   | { kind: "provider"; provider: ProviderKind }
   | { kind: "terminal"; iconKey: TerminalIconKey }

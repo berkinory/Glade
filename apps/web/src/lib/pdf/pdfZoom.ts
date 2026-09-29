@@ -9,8 +9,8 @@
 /** Horizontal/vertical breathing room (CSS px) around a page inside the scroll area. */
 export const PDF_PAGE_MARGIN_PX = 24;
 
-export const PDF_MIN_SCALE = 0.25;
-export const PDF_MAX_SCALE = 5;
+const PDF_MIN_SCALE = 0.25;
+const PDF_MAX_SCALE = 5;
 
 /** Discrete zoom stops used by the +/- buttons and the dropdown percentages. */
 export const PDF_ZOOM_PRESETS: readonly number[] = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4];

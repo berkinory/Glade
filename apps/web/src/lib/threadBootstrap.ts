@@ -42,19 +42,19 @@ interface ActiveThreadSnapshot {
   lastKnownPr?: OrchestrationThreadPullRequest | null;
 }
 
-export interface DraftReusePlanStored {
+interface DraftReusePlanStored {
   draftThread: DraftThreadState;
   kind: "stored";
   threadId: ThreadId;
 }
 
-export interface DraftReusePlanRoute {
+interface DraftReusePlanRoute {
   draftThread: DraftThreadState;
   kind: "route";
   threadId: ThreadId;
 }
 
-export interface DraftReusePlanFresh {
+interface DraftReusePlanFresh {
   kind: "fresh";
 }
 
@@ -165,7 +165,7 @@ export function buildDraftThreadContextPatch(options?: NewThreadOptions): {
 }
 
 // Reuse only when the active route draft already belongs to the target project.
-export function shouldReuseActiveDraftThread(input: {
+function shouldReuseActiveDraftThread(input: {
   draftThread: DraftThreadState | null;
   projectId: ProjectId;
   routeThreadId: ThreadId | null;

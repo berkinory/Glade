@@ -24,7 +24,7 @@ export interface ProviderRuntimeBinding {
   readonly runtimeMode?: RuntimeMode;
 }
 
-export type ProviderSessionDirectoryReadError = ProviderSessionDirectoryPersistenceError;
+type ProviderSessionDirectoryReadError = ProviderSessionDirectoryPersistenceError;
 
 export type ProviderSessionDirectoryWriteError =
   | ProviderValidationError

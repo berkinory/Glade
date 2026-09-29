@@ -15,13 +15,12 @@ import {
 import type { DeviceUdid } from "@glade/contracts";
 
 import {
-  binaryFrameSocketUrl,
   createBinaryFrameSource,
   type FrameSourceResetReason,
   type WebSocketLike,
 } from "./binaryFrameSource";
 
-export interface DeviceFrameSourceHandlers {
+interface DeviceFrameSourceHandlers {
   readonly onFrame: (frame: DeviceFrame) => void;
   readonly onReset: (reason: DeviceFrameSourceResetReason) => void;
 }
@@ -33,7 +32,7 @@ export type DeviceFrameSourceResetReason = FrameSourceResetReason;
  * VideoToolbox encoder), so resync requests are debounced to this window; see
  * `resyncCooldownMs` in binaryFrameSource for the mechanism.
  */
-export const DEVICE_FRAME_RESYNC_COOLDOWN_MS = 1_000;
+const DEVICE_FRAME_RESYNC_COOLDOWN_MS = 1_000;
 
 export interface DeviceFrameSource {
   readonly requestResync: () => boolean;
@@ -47,20 +46,6 @@ export interface DeviceFrameSourceOptions {
   readonly explicitUrl?: string | null;
   readonly now?: () => number;
   readonly resyncCooldownMs?: number;
-}
-
-export type { WebSocketLike };
-
-export function deviceFrameSocketUrl(input: {
-  readonly udid: DeviceUdid;
-  readonly explicitUrl?: string | null;
-}): string {
-  return binaryFrameSocketUrl({
-    streamId: input.udid,
-    streamIdParam: DEVICE_FRAME_WS_UDID_PARAM,
-    wsPath: DEVICE_FRAME_WS_PATH,
-    ...(input.explicitUrl !== undefined ? { explicitUrl: input.explicitUrl } : {}),
-  });
 }
 
 export function createDeviceFrameSource(options: DeviceFrameSourceOptions): DeviceFrameSource {

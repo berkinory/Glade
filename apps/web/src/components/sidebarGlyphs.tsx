@@ -1,7 +1,7 @@
 // FILE: sidebarGlyphs.tsx
 // Purpose: Shared sidebar icon size scale and glyph renderer.
 // Layer: Sidebar UI primitive
-// Exports: SIDEBAR_GLYPH, SidebarGlyph, sidebarGlyphClass, type SidebarGlyphVariant
+// Exports: SidebarGlyph, sidebarGlyphClass, type SidebarGlyphVariant
 // Why: The sidebar mixed size-3, size-3.5, size-[15px], and raw react-icons without a
 //      single optical scale. Tabler/Central vs react-icons/lu need different Tailwind
 //      sizes at the same semantic slot — this module is the one place to tune that.
@@ -10,7 +10,7 @@ import type { ComponentType } from "react";
 import { cn } from "~/lib/utils";
 
 /** Tailwind classes per semantic icon slot in the sidebar chrome. */
-export const SIDEBAR_GLYPH = {
+const SIDEBAR_GLYPH = {
   /** Primary nav + footer rows inside a `size-5` leading slot (New thread, Settings). */
   leading: "size-[15px] shrink-0",
   /** Square header/row icon buttons and thread identity glyphs (Tabler/Central). */

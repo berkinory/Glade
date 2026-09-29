@@ -32,10 +32,6 @@ import {
 } from "./lib/storage";
 
 export {
-  findSupersededComposerImageBlobAttachments,
-  isComposerImageBlobReferenced,
-} from "./composerDraftAttachments";
-export {
   captureComposerPromptHistorySavedDraft,
   COMPOSER_DRAFT_STORAGE_KEY,
   COMPOSER_DRAFT_STORAGE_VERSION,
@@ -43,11 +39,9 @@ export {
 } from "./composerDraftDomain";
 export type {
   ComposerAssistantSelectionAttachment,
-  ComposerAttachmentPersistenceResult,
   ComposerDraftStoreState,
   ComposerFileAttachment,
   ComposerImageAttachment,
-  ComposerPromptHistorySavedDraft,
   ComposerThreadDraftState,
   DraftThreadEnvMode,
   DraftThreadState,
@@ -57,10 +51,7 @@ export type {
   RestoredComposerSourceProposedPlan,
 } from "./composerDraftDomain";
 export type { BrowserAnnotationDraft } from "./lib/browserAnnotations";
-export {
-  deriveEffectiveComposerModelState,
-  resolvePreferredComposerModelSelection,
-} from "./composerDraftModels";
+export { resolvePreferredComposerModelSelection } from "./composerDraftModels";
 export type { EffectiveComposerModelState } from "./composerDraftModels";
 export { partializeComposerDraftStoreState } from "./composerDraftPersistence";
 

@@ -4,7 +4,7 @@
 //          descriptor, and the flattened chronological timeline event list.
 // Layer: Web domain helpers (no React)
 // Exports: pullRequestDetailInputKey, pullRequestPaneTabLabel, pullRequestDetailInputFromPane,
-//          describePullRequestState, stripHtmlComments, PullRequestTimelineEvent,
+//          describePullRequestState, PullRequestTimelineEvent,
 //          buildPullRequestTimelineEvents
 
 import type { PullRequestDetail, PullRequestDetailInput, PullRequestState } from "@glade/contracts";
@@ -54,7 +54,6 @@ export function describePullRequestState(state: PullRequestState, isDraft: boole
 }
 
 // stripHtmlComments now lives with the rest of the markdown preprocessing.
-export { stripHtmlComments } from "./pullRequestMarkdown.logic";
 
 export interface PullRequestTimelineEvent {
   id: string;

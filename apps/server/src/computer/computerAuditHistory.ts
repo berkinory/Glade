@@ -11,8 +11,8 @@ import { Schema } from "effect";
 import { computerAuditTailLines, readComputerAuditFileTail } from "./computerAuditFile.ts";
 
 /** One request never reads arbitrary paths or scans an unbounded legacy log. */
-export const COMPUTER_AUDIT_HISTORY_MAX_BYTES = 2 * 1024 * 1024;
-export const COMPUTER_AUDIT_HISTORY_MAX_ROWS = 10_000;
+const COMPUTER_AUDIT_HISTORY_MAX_BYTES = 2 * 1024 * 1024;
+const COMPUTER_AUDIT_HISTORY_MAX_ROWS = 10_000;
 const MAX_LINE_BYTES = 64 * 1024;
 const IDENTIFIER = /^[A-Za-z0-9_.:-]{1,128}$/;
 const FINGERPRINT = /^[a-f0-9]{64}$/;

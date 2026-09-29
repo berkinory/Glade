@@ -172,9 +172,3 @@ export async function resolveFavicon(host: string): Promise<CachedFavicon> {
   inFlight.set(host, promise);
   return promise;
 }
-
-/** Test/maintenance helper: clears all cached and in-flight favicon state. */
-export function clearSiteFaviconCache(): void {
-  cache.clear();
-  inFlight.clear();
-}

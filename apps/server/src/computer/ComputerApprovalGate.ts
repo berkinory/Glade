@@ -21,11 +21,11 @@ interface TaskApproval {
 }
 
 /** Rejection when no more consent prompts fit, global or for one chat. */
-export const COMPUTER_APPROVAL_QUEUE_FULL_CODE = "approval_queue_full";
-export const COMPUTER_APPROVAL_QUEUE_GLOBAL_LIMIT = 128;
-export const COMPUTER_APPROVAL_QUEUE_THREAD_LIMIT = 8;
+const COMPUTER_APPROVAL_QUEUE_FULL_CODE = "approval_queue_full";
+const COMPUTER_APPROVAL_QUEUE_GLOBAL_LIMIT = 128;
+const COMPUTER_APPROVAL_QUEUE_THREAD_LIMIT = 8;
 
-export class ComputerApprovalQueueFullError extends Error {
+class ComputerApprovalQueueFullError extends Error {
   readonly code = COMPUTER_APPROVAL_QUEUE_FULL_CODE;
   readonly retryable = true;
   constructor(scope: "thread" | "global") {

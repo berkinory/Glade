@@ -127,7 +127,7 @@ export const COMPUTER_CONTROL_CAPABILITY = "computer:control" as const;
  * in a turn. It names the switch the user owns, so a transcript that drove
  * the desktop always says so up front.
  */
-export const COMPUTER_CONTROL_FIRST_MUTATION_DISCLOSURE =
+const COMPUTER_CONTROL_FIRST_MUTATION_DISCLOSURE =
   "Computer control ON for this turn: the agent is driving the desktop and the user can switch it off in Settings.";
 
 const COMPUTER_TOOL_REFRESH_GUIDANCE =
@@ -163,7 +163,6 @@ function withLaunchGuidance(result: ComputerLaunchAppResult) {
  * once per family, and a provider added to one list and not the other was a
  * silent bypass.
  */
-export { PROVIDERS_WITHOUT_APPROVAL_GATE };
 
 export const COMPUTER_APPROVAL_REQUIRED_TOOLS = new Set([
   // The one read in this set on purpose: the clipboard is the human's, and it

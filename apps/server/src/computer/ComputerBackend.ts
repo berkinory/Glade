@@ -51,7 +51,7 @@ import {
  * scaled, and the real savings comes from the byte-identical dedupe
  * (`screenshotUnchanged`) that never resends an unchanged frame at all.
  */
-export const COMPUTER_AGENT_IMAGE_MAX_DIMENSION = MODEL_SCREEN_IMAGE_MAX_DIMENSION;
+const COMPUTER_AGENT_IMAGE_MAX_DIMENSION = MODEL_SCREEN_IMAGE_MAX_DIMENSION;
 /**
  * Longest screenshot side in pixels before a capture is downscaled. Identical
  * to the observation budget, and for the identical reason: both pictures are
@@ -60,8 +60,6 @@ export const COMPUTER_AGENT_IMAGE_MAX_DIMENSION = MODEL_SCREEN_IMAGE_MAX_DIMENSI
 export const DEFAULT_COMPUTER_CAPTURE_MAX_DIMENSION = COMPUTER_AGENT_IMAGE_MAX_DIMENSION;
 /** The budget a post-action observation spends. See the constant above. */
 export const COMPUTER_ACTION_OBSERVATION_MAX_DIMENSION = COMPUTER_AGENT_IMAGE_MAX_DIMENSION;
-/** Native per-side image limit enforced by the KWin capture path. */
-export const MAX_COMPUTER_CAPTURE_MAX_DIMENSION = 16_384;
 /**
  * Largest clipboard payload a backend moves in either direction. Clipboards
  * hold whole documents, so both directions need a ceiling: without one a read

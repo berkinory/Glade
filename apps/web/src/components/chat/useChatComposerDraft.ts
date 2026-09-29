@@ -27,7 +27,6 @@ import { deriveComposerSendState, type PromptHistoryNavigationState } from "../C
 import { type ComposerPromptEditorHandle } from "../ComposerPromptEditor";
 import { useComposerAttachmentPersistence } from "./useComposerAttachmentPersistence";
 
-export type ChatComposerDraftController = ReturnType<typeof useChatComposerDraft>;
 interface ChatComposerDraftInput {
   threadId: ThreadId;
 }

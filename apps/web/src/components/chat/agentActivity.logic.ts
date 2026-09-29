@@ -62,9 +62,7 @@ export function isAgentActivityWorkEntry(entry: WorkLogEntry): boolean {
 }
 
 // Unmapped provider events keep their native type as the title and a safe detail as preview.
-export function isUnmappedProviderEventWorkEntry(
-  entry: Pick<WorkLogEntry, "activityKind">,
-): boolean {
+function isUnmappedProviderEventWorkEntry(entry: Pick<WorkLogEntry, "activityKind">): boolean {
   return entry.activityKind === "provider.event.unmapped";
 }
 
@@ -101,7 +99,7 @@ export function formatAgentActivityEntryPreview(entry: WorkLogEntry): string | n
   return normalizeOptionalText(entry.preview) ?? normalizeOptionalText(entry.detail);
 }
 
-export function formatAgentActivityEntrySummary(entry: WorkLogEntry): string | null {
+function formatAgentActivityEntrySummary(entry: WorkLogEntry): string | null {
   if (isReasoningUpdateWorkEntry(entry)) {
     return formatAgentActivityEntryPreview(entry);
   }

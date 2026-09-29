@@ -12,7 +12,7 @@ import {
 
 const secretFileName = (name: string): string => `${name.replace(/[^a-zA-Z0-9_.-]/g, "_")}.bin`;
 
-export const makeServerSecretStore = Effect.gen(function* () {
+const makeServerSecretStore = Effect.gen(function* () {
   const fileSystem = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const serverConfig = yield* ServerConfig;

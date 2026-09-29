@@ -1,7 +1,7 @@
 // FILE: voiceUploadAdmission.ts
 // Purpose: Bounds voice uploads before request bodies are buffered in server memory.
 // Layer: Server transport utility
-// Exports: VoiceUploadAdmissionGate, voiceUploadAdmissionGate
+// Exports: voiceUploadAdmissionGate
 
 import { Effect } from "effect";
 
@@ -9,7 +9,7 @@ const MAX_CONCURRENT_VOICE_UPLOADS = 2;
 export const VOICE_UPLOAD_CAPACITY_ERROR_MESSAGE =
   "Too many voice uploads are already in progress. Try again shortly.";
 
-export class VoiceUploadAdmissionGate {
+class VoiceUploadAdmissionGate {
   private active = 0;
 
   constructor(private readonly maxConcurrent: number) {

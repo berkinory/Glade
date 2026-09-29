@@ -22,7 +22,7 @@ import { createProjectSelector, createThreadWorkspaceMetadataSelector } from "~/
 import { useTerminalStateStore } from "~/terminalStateStore";
 import ThreadTerminalDrawer from "../ThreadTerminalDrawer";
 
-export function DockTerminalPane(props: {
+function DockTerminalPane(props: {
   hostThreadId: ThreadId;
   projectId: ProjectId | null;
   // When false the pane stays mounted but hidden (another dock tab is active),

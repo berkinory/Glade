@@ -10,7 +10,7 @@ import { COMPOSER_ATTACHMENT_CHIP_CLASS_NAME } from "../composerInlineChip";
 import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
 import { BrowserAnnotationChip } from "./BrowserAnnotationChip";
 
-export const MAX_VISIBLE_BROWSER_ANNOTATIONS = 2;
+const MAX_VISIBLE_BROWSER_ANNOTATIONS = 2;
 
 interface BrowserAnnotationStripProps {
   annotations: ReadonlyArray<BrowserAnnotationDraft>;

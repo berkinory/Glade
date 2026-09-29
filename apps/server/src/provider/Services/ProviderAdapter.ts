@@ -46,7 +46,7 @@ import type {
 import type { Effect } from "effect";
 import type { Stream } from "effect";
 
-export type ProviderSessionModelSwitchMode = "in-session" | "restart-session" | "unsupported";
+type ProviderSessionModelSwitchMode = "in-session" | "restart-session" | "unsupported";
 
 /**
  * Per-adapter ingress budget. A bounded queue makes a slow durable consumer
@@ -60,7 +60,7 @@ export const PROVIDER_ADAPTER_RUNTIME_EVENT_BUFFER_CAPACITY = 2_048;
  * context fields so adapters can project attachments/skills/mentions into the
  * provider-native steering channel (which is typically text-only).
  */
-export interface ProviderSteerSubagentPayload {
+interface ProviderSteerSubagentPayload {
   readonly input: string;
   readonly attachments?: ProviderSendTurnInput["attachments"];
   readonly skills?: ProviderSendTurnInput["skills"];

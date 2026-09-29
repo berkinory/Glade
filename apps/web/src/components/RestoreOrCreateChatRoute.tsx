@@ -27,7 +27,7 @@ import { readNativeApi } from "../nativeApi";
 import { useSplitViewStore } from "../splitViewStore";
 import { EMPTY_THREAD_IDS, useStore } from "../store";
 
-export type RestoreRouteResolverInput = {
+type RestoreRouteResolverInput = {
   // Split views currently known to the client. Callers that support split-view restore should
   // filter their resolved route's `splitViewId` against this set.
   readonly availableSplitViewIds: ReadonlySet<string>;

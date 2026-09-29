@@ -3,7 +3,7 @@
 // Layer: Release/build helper
 // Exports: macOS zip symlink checks and latest-mac.yml update helpers.
 
-export const MAC_UPDATE_ZIP_FRAMEWORK_SYMLINK_SUFFIXES = [
+const MAC_UPDATE_ZIP_FRAMEWORK_SYMLINK_SUFFIXES = [
   "Contents/Frameworks/Electron Framework.framework/Electron Framework",
   "Contents/Frameworks/Electron Framework.framework/Helpers",
   "Contents/Frameworks/Electron Framework.framework/Libraries",
@@ -47,7 +47,7 @@ export function resolveMacUpdateManifestFileNames(
   return manifestFileNames;
 }
 
-export function parseZipInfoUnixAttributes(zipInfoOutput: string): string | null {
+function parseZipInfoUnixAttributes(zipInfoOutput: string): string | null {
   const match = zipInfoOutput.match(/Unix file attributes \([^)]+\):\s*([^\r\n]+)/);
   return match?.[1]?.trim() ?? null;
 }

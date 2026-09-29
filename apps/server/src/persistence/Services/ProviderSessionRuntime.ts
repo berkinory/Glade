@@ -24,11 +24,11 @@ export const ProviderSessionRuntime = Schema.Struct({
 });
 export type ProviderSessionRuntime = typeof ProviderSessionRuntime.Type;
 
-export const GetProviderSessionRuntimeInput = Schema.Struct({ threadId: ThreadId });
-export type GetProviderSessionRuntimeInput = typeof GetProviderSessionRuntimeInput.Type;
+const GetProviderSessionRuntimeInput = Schema.Struct({ threadId: ThreadId });
+type GetProviderSessionRuntimeInput = typeof GetProviderSessionRuntimeInput.Type;
 
-export const DeleteProviderSessionRuntimeInput = Schema.Struct({ threadId: ThreadId });
-export type DeleteProviderSessionRuntimeInput = typeof DeleteProviderSessionRuntimeInput.Type;
+const DeleteProviderSessionRuntimeInput = Schema.Struct({ threadId: ThreadId });
+type DeleteProviderSessionRuntimeInput = typeof DeleteProviderSessionRuntimeInput.Type;
 
 /**
  * ProviderSessionRuntimeRepositoryShape - Service API for provider runtime records.

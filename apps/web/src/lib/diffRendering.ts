@@ -8,7 +8,7 @@ import type { FileDiffMetadata } from "@pierre/diffs/react";
 
 export type FileDiffStat = { additions: number; deletions: number };
 
-export const DIFF_THEME_NAMES = {
+const DIFF_THEME_NAMES = {
   // Keep diff syntax highlighting on the bundled GitHub themes for better parity with git tooling.
   light: "github-light",
   dark: "github-dark",
@@ -204,7 +204,7 @@ export function fnv1a32(
   return hash >>> 0;
 }
 
-export function buildPatchCacheKey(patch: string, scope = "diff-panel"): string {
+function buildPatchCacheKey(patch: string, scope = "diff-panel"): string {
   const normalizedPatch = patch.trim();
   const primary = fnv1a32(normalizedPatch, FNV_OFFSET_BASIS_32, FNV_PRIME_32).toString(36);
   const secondary = fnv1a32(
@@ -215,7 +215,7 @@ export function buildPatchCacheKey(patch: string, scope = "diff-panel"): string 
   return `${scope}:${normalizedPatch.length}:${primary}:${secondary}`;
 }
 
-export const PARTIAL_DIFF_COPY_NOTICE =
+const PARTIAL_DIFF_COPY_NOTICE =
   "[Glade: partial diff. Output was truncated at the size limit; some files or changes may be missing.]";
 
 // Returns copyable source text for diff surfaces without depending on virtualized DOM rows.
@@ -245,7 +245,7 @@ export type RenderablePatch =
 
 const PATCH_FILE_BOUNDARY_PATTERN = /^diff --git /gm;
 
-export function splitPatchIntoFileSegments(patch: string): string[] {
+function splitPatchIntoFileSegments(patch: string): string[] {
   const boundaries: number[] = [];
   for (const match of patch.matchAll(PATCH_FILE_BOUNDARY_PATTERN)) {
     boundaries.push(match.index);
@@ -358,7 +358,7 @@ export function compareDiffPaths(left: string, right: string): number {
   return diffPathCollator.compare(left, right);
 }
 
-export function compareFileDiffByPath(left: FileDiffMetadata, right: FileDiffMetadata): number {
+function compareFileDiffByPath(left: FileDiffMetadata, right: FileDiffMetadata): number {
   return compareDiffPaths(resolveFileDiffPath(left), resolveFileDiffPath(right));
 }
 
@@ -390,13 +390,6 @@ export function summarizeRenderablePatchStats(
     return null;
   }
   return { ...summarizeFileDiffStats(renderable.files), fileCount: renderable.files.length };
-}
-
-export function summarizePatchTotals(
-  patch: string | undefined,
-): { additions: number; deletions: number; fileCount: number } | null {
-  const renderable = getRenderablePatch(patch, "diff-panel:stats");
-  return summarizeRenderablePatchStats(renderable);
 }
 
 // Per-file +N/-M parsed from a unified diff/patch, keyed by working-tree-relative

@@ -2,7 +2,7 @@
 // Purpose: Derive OpenUsage-style quota pace indicators from percent-used windows.
 // Used by Settings usage meters to show projected run-out timing.
 
-export type UsagePaceStatus = "ahead" | "on-track" | "behind";
+type UsagePaceStatus = "ahead" | "on-track" | "behind";
 
 export interface UsagePaceSummary {
   status: UsagePaceStatus;

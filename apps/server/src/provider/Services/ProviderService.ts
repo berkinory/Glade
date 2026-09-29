@@ -57,14 +57,14 @@ export interface ProviderRuntimeEventPumpHealth {
   readonly lastQuarantinedAt?: string;
 }
 
-export interface ProviderSessionStartOutcome {
+interface ProviderSessionStartOutcome {
   readonly session: ProviderSession;
   readonly nativeResumeAttempted: boolean;
   readonly nativeResumeSucceeded: boolean;
   readonly priorTranscriptBootstrapPending: boolean;
 }
 
-export interface ProviderSessionStartOutcomeOptions {
+interface ProviderSessionStartOutcomeOptions {
   /**
    * Persist a pending transcript bootstrap when this start cannot restore
    * provider-native context. The caller clears it only after the provider has

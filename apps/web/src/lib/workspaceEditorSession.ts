@@ -47,7 +47,7 @@ export function dirtyWorkspaceEditorPaths(client: QueryClient, cwd: string): Rea
 
 /** One buffer and one writer per file, shared by all editor surfaces. Failed
  * drafts survive panel unmounts; clean, unused sessions are released. */
-export class WorkspaceEditorSession {
+class WorkspaceEditorSession {
   private state = INITIAL_WORKSPACE_FILE_EDITOR_STATE;
   private listeners = new Set<() => void>();
   private writing: Promise<boolean> | undefined;

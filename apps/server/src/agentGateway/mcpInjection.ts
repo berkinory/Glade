@@ -15,8 +15,6 @@ import type { AgentGatewayMcpConnection } from "./Services/AgentGatewayCredentia
 
 export const GLADE_MCP_SERVER_NAME = "glade";
 export const GLADE_AGENT_GATEWAY_TOKEN_ENV = "GLADE_AGENT_GATEWAY_TOKEN";
-export const GLADE_AGENT_GATEWAY_BOOTSTRAP_TOKEN_ENV = "GLADE_AGENT_GATEWAY_BOOTSTRAP_TOKEN";
-export const GLADE_AGENT_GATEWAY_URL_ENV = "GLADE_AGENT_GATEWAY_URL";
 
 function authorizationHeader(connection: AgentGatewayMcpConnection): string {
   return `Bearer ${connection.bearerToken}`;

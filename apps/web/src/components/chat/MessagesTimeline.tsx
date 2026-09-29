@@ -445,7 +445,6 @@ interface MessagesTimelineProps {
   /** Stable source messages, before plans/tools reshape the presentation rows. */
   messageChangeSignal?: unknown;
   turnDiffSummaryByAssistantMessageId: Map<MessageId, TurnDiffSummary>;
-  nowIso?: string;
   expandedWorkGroups?: Record<string, boolean>;
   onToggleWorkGroup?: (groupId: string) => void;
   onOpenAgentActivity?: (activityId: string) => void;
@@ -536,7 +535,6 @@ export const MessagesTimeline = memo(function MessagesTimeline({
   timelineEntries,
   messageChangeSignal: messageChangeSignalProp,
   turnDiffSummaryByAssistantMessageId,
-  nowIso,
   expandedWorkGroups,
   onToggleWorkGroup,
   onOpenAgentActivity,

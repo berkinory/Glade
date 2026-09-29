@@ -5,7 +5,7 @@
 //          instead of an external editor.
 // Layer: Web UI helpers
 // Exports: WorkspaceFileOpenerContext, useWorkspaceFileOpener,
-//          resolveWorkspaceFileOpenTarget, resolveScratchPreviewFileOpenTarget,
+//          resolveWorkspaceFileOpenTarget,
 //          resolveDockFileOpenTarget,
 //          openWorkspaceFileReference, prefetchWorkspaceFile
 
@@ -142,7 +142,7 @@ export function resolveWorkspaceFileOpenTarget(
  * workspace-relative paths, so those references fall back to the external
  * editor.
  */
-export function resolveScratchPreviewFileOpenTarget(rawPath: string): string | null {
+function resolveScratchPreviewFileOpenTarget(rawPath: string): string | null {
   const withoutPosition = rawPath.trim().replace(FILE_POSITION_SUFFIX_PATTERN, "");
   if (!isScratchWorkspacePath(withoutPosition)) {
     return null;

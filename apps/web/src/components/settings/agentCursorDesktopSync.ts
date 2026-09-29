@@ -18,7 +18,7 @@ import {
  * swallowed: main already holds the last durable value, and a background
  * mirror failing must not surface as an error in the settings UI.
  */
-export function pushAgentCursorStyleToDesktop(style: DesktopAgentCursorStyle | null): void {
+function pushAgentCursorStyleToDesktop(style: DesktopAgentCursorStyle | null): void {
   if (typeof window === "undefined") return;
   const bridge = window.desktopBridge?.computer;
   if (!bridge?.setCursorStyle) return;

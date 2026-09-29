@@ -2,14 +2,14 @@ import { CheckpointRef, IsoDateTime, NonNegativeInt, ThreadId, TurnId } from "@g
 import { Schema, ServiceMap } from "effect";
 import type { Effect, Stream } from "effect";
 
-export const CheckpointBaselineCapturedReceipt = Schema.Struct({
+const CheckpointBaselineCapturedReceipt = Schema.Struct({
   type: Schema.Literal("checkpoint.baseline.captured"),
   threadId: ThreadId,
   checkpointTurnCount: NonNegativeInt,
   checkpointRef: CheckpointRef,
   createdAt: IsoDateTime,
 });
-export type CheckpointBaselineCapturedReceipt = typeof CheckpointBaselineCapturedReceipt.Type;
+type CheckpointBaselineCapturedReceipt = typeof CheckpointBaselineCapturedReceipt.Type;
 
 export const CheckpointDiffFinalizedReceipt = Schema.Struct({
   type: Schema.Literal("checkpoint.diff.finalized"),

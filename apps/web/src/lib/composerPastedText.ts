@@ -31,8 +31,8 @@ export interface ExtractedPastedTexts {
 
 // A paste only collapses once it is large enough that inlining it would flood the
 // composer. Either dimension trips the threshold.
-export const PASTED_TEXT_MIN_LINES = 25;
-export const PASTED_TEXT_MIN_CHARS = 4000;
+const PASTED_TEXT_MIN_LINES = 25;
+const PASTED_TEXT_MIN_CHARS = 4000;
 
 const TRAILING_PASTED_TEXT_BLOCK_PATTERN = /\n*<pasted_text>\n([\s\S]*?)\n<\/pasted_text>\s*$/;
 const PASTED_TEXT_ENTRY_PATTERN = /\[#(\d+)\]\n([\s\S]*?)\n\[\/#\1\]/g;
@@ -77,7 +77,7 @@ export function createPastedTextDraft(input: {
   };
 }
 
-export function hasPastedText(pasted: { text: string }): boolean {
+function hasPastedText(pasted: { text: string }): boolean {
   return normalizePastedTextContent(pasted.text).length > 0;
 }
 
@@ -111,7 +111,7 @@ export function pastedTextTitle(text: string): string {
 
 // --- Send-time serialization (cards -> trailing block)
 
-export function buildPastedTextBlock(pastedTexts: ReadonlyArray<{ text: string }>): string {
+function buildPastedTextBlock(pastedTexts: ReadonlyArray<{ text: string }>): string {
   const usable = filterPastedTextsWithText(pastedTexts);
   if (usable.length === 0) {
     return "";

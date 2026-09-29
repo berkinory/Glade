@@ -117,7 +117,7 @@ interface OutstandingWebSocketTicket {
 
 type OutstandingWebSocketTickets = ReadonlyMap<string, OutstandingWebSocketTicket>;
 
-export const makeSessionCredentialService = Effect.gen(function* () {
+const makeSessionCredentialService = Effect.gen(function* () {
   const serverConfig = yield* ServerConfig;
   const secretStore = yield* ServerSecretStore;
   const authSessions = yield* AuthSessionRepository;

@@ -38,7 +38,7 @@ export function computerPreviewCardCaps(size: ComputerPreviewCardSize): Computer
 }
 
 /** Viewport clearance kept around a detached floating card on every edge. */
-export const COMPUTER_PREVIEW_FLOAT_MARGIN_PX = 8;
+const COMPUTER_PREVIEW_FLOAT_MARGIN_PX = 8;
 
 /**
  * Clamp a detached card's top-left so the whole card stays on screen. When
@@ -68,7 +68,7 @@ export function clampComputerPreviewFloat(input: {
  * cap on any normal window: at 1:1 the detached card re-rendered at the exact
  * same rect, so the control read as dead.
  */
-export const COMPUTER_PREVIEW_FLOAT_EXPAND_SCALE = 1.5;
+const COMPUTER_PREVIEW_FLOAT_EXPAND_SCALE = 1.5;
 
 /**
  * Width a detached card takes. Leaving the rail is the expansion: the card
@@ -76,7 +76,7 @@ export const COMPUTER_PREVIEW_FLOAT_EXPAND_SCALE = 1.5;
  * is its only remaining bound — on both axes, so a tall portrait window
  * shrinks the card back instead of hanging off the bottom of the screen.
  */
-export function computerPreviewFloatWidthPx(input: {
+function computerPreviewFloatWidthPx(input: {
   readonly caps: ComputerPreviewCardCaps;
   readonly viewportWidthPx: number;
   readonly viewportHeightPx: number;

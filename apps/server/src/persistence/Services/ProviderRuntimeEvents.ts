@@ -13,7 +13,7 @@ export interface PersistedProviderRuntimeEvent {
   readonly event: ProviderRuntimeEvent;
 }
 
-export type ProviderRuntimeEventRepositoryError = PersistenceSqlError | PersistenceDecodeError;
+type ProviderRuntimeEventRepositoryError = PersistenceSqlError | PersistenceDecodeError;
 
 export interface ProviderRuntimeEventRepositoryShape {
   readonly append: (

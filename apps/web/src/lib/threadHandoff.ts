@@ -7,7 +7,6 @@ import {
   EventId,
   MessageId,
   type OrchestrationThreadActivity,
-  PROVIDER_DISPLAY_NAMES,
   ProviderKind,
   type ModelSelection,
   type ServerProviderStatus,
@@ -15,7 +14,6 @@ import {
   type ThreadHandoffImportedMessage,
 } from "@glade/contracts";
 import { getDefaultModel } from "@glade/shared/model";
-import { Schema } from "effect";
 import { type Thread } from "../types";
 import { DEFAULT_PROVIDER_ORDER } from "../providerOrdering";
 import { stripEmbeddedAssistantSelections } from "./assistantSelections";
@@ -72,15 +70,6 @@ export function resolveAvailableHandoffTargetProviders(input: {
       targetProviderStatus: findProviderStatus(input.providerStatuses, targetProvider),
     }),
   );
-}
-
-export function resolveThreadHandoffBadgeLabel(thread: Pick<Thread, "handoff">): string | null {
-  if (!thread.handoff) {
-    return null;
-  }
-  return Schema.is(ProviderKind)(thread.handoff.sourceProvider)
-    ? `Handoff from ${PROVIDER_DISPLAY_NAMES[thread.handoff.sourceProvider]}`
-    : "Handoff from a retired provider";
 }
 
 // Preserve the visible source thread name when creating the destination thread.
@@ -177,7 +166,7 @@ export function buildThreadHandoffImportedActivities(
     });
 }
 
-export function hasNativeThreadHandoffMessages(thread: Pick<Thread, "messages">): boolean {
+function hasNativeThreadHandoffMessages(thread: Pick<Thread, "messages">): boolean {
   return thread.messages.some(
     (message) =>
       isImportableThreadMessage(message) &&

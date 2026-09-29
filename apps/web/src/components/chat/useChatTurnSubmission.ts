@@ -163,7 +163,6 @@ export function useChatTurnSubmission({
   selectedPromptEffort,
   turnDispatchSettings,
   computerControlChangeSequence,
-  setComposerDraftComputerControlMode,
   pendingAutomationConversationRef,
   setPendingAutomationConversation,
   pendingAutomationConversation,
@@ -196,8 +195,6 @@ export function useChatTurnSubmission({
     runProjectScript,
     persistThreadSettingsForNextTurn,
     rememberCustomBinaryPathForDispatch,
-    computerControlChangeSequence,
-    setComposerDraftComputerControlMode,
     setSettledThreadBranchWarningDismissedThreadId,
     armLocalDispatchAckFallback,
     setQueuedSteerGate,
@@ -804,7 +801,6 @@ export function useChatTurnSubmission({
       const mentionedSkillsForSend = filterPromptSkillReferences(
         outgoingMessageText,
         selectedComposerSkillsForSend,
-        selectedProviderForSend,
       );
       const mentionedPluginMentionsForSend = filterPromptProviderMentionReferences(
         outgoingMessageText,

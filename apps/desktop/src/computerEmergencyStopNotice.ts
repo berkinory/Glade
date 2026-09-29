@@ -1,6 +1,6 @@
 import * as Http from "node:http";
 
-export const DESKTOP_COMPUTER_EMERGENCY_STOP_ROUTE_PATH = "/api/desktop/computer/emergency-stop";
+const DESKTOP_COMPUTER_EMERGENCY_STOP_ROUTE_PATH = "/api/desktop/computer/emergency-stop";
 
 const REQUEST_TIMEOUT_MS = 5_000;
 const RETRY_DELAYS_MS = [1_000, 3_000] as const;

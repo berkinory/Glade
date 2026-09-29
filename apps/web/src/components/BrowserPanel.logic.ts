@@ -50,7 +50,7 @@ export function resolveBrowserRuntimePresentation(input: {
 
 const BROWSER_SUGGESTION_LIMIT = 6;
 
-export interface BrowserRendererRecovery {
+interface BrowserRendererRecovery {
   readonly tabId: string;
   readonly generation: number;
 }

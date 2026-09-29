@@ -14,7 +14,7 @@ const SLOT_SIZE = {
   md: "size-5",
 } as const;
 
-export type SidebarLeadingIconSize = keyof typeof SLOT_SIZE;
+type SidebarLeadingIconSize = keyof typeof SLOT_SIZE;
 
 export type SidebarLeadingIconProps = HTMLAttributes<HTMLSpanElement> & {
   size?: SidebarLeadingIconSize;

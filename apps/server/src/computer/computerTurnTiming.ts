@@ -9,7 +9,7 @@ type TurnTiming = {
 };
 
 /** Opt-in local timing only: no screenshots, payloads, or model context. */
-export class ComputerTurnTimings {
+class ComputerTurnTimings {
   private readonly turns = new Map<string, TurnTiming>();
 
   constructor(

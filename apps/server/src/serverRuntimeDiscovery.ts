@@ -48,7 +48,7 @@ const WINDOWS_RUNTIME_ACL_ENCODED_COMMAND = Buffer.from(
   "utf16le",
 ).toString("base64");
 
-export function makeWindowsRuntimeAclPowerShellInvocation(targetPath: string) {
+function makeWindowsRuntimeAclPowerShellInvocation(targetPath: string) {
   return {
     args: ["-NoProfile", "-NonInteractive", "-EncodedCommand", WINDOWS_RUNTIME_ACL_ENCODED_COMMAND],
     options: {
@@ -61,7 +61,7 @@ export function makeWindowsRuntimeAclPowerShellInvocation(targetPath: string) {
   };
 }
 
-export interface WindowsRuntimeAclSnapshot {
+interface WindowsRuntimeAclSnapshot {
   readonly currentSid: string;
   readonly ownerSid: string;
   readonly hasDacl: boolean;
@@ -72,7 +72,7 @@ export interface WindowsRuntimeAclSnapshot {
   }>;
 }
 
-export function isOwnerPrivateWindowsRuntimeAcl(snapshot: WindowsRuntimeAclSnapshot): boolean {
+function isOwnerPrivateWindowsRuntimeAcl(snapshot: WindowsRuntimeAclSnapshot): boolean {
   if (!snapshot.hasDacl || snapshot.isReparsePoint || snapshot.ownerSid !== snapshot.currentSid) {
     return false;
   }
@@ -84,7 +84,7 @@ export function isOwnerPrivateWindowsRuntimeAcl(snapshot: WindowsRuntimeAclSnaps
   );
 }
 
-export class ServerRuntimeDiscoveryError extends Error {
+class ServerRuntimeDiscoveryError extends Error {
   constructor(message: string, options?: ErrorOptions) {
     super(message, options);
     this.name = "ServerRuntimeDiscoveryError";
@@ -301,7 +301,7 @@ export function discoverServerRuntime(baseDir: string): {
   return discoverRunningRuntime(baseDir, { requireLoopback: false });
 }
 
-export async function fetchServerRuntimeWithTimeout(
+async function fetchServerRuntimeWithTimeout(
   fetchImpl: ServerRuntimeFetch,
   url: URL,
   init: RequestInit,
@@ -341,7 +341,7 @@ export async function fetchServerRuntimeWithTimeout(
   }
 }
 
-export async function readServerRuntimeResponseText(
+async function readServerRuntimeResponseText(
   response: Response,
   timeoutMs = RUNTIME_CHALLENGE_TIMEOUT_MS,
 ): Promise<string> {

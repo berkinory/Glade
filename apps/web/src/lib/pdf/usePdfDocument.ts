@@ -11,7 +11,7 @@ import { useEffect, useState } from "react";
 import { loadPdfDocument, type PDFDocumentProxy } from "./pdfEngine";
 import type { PdfPageIntrinsicSize } from "./pdfZoom";
 
-export type PdfDocumentStatus = "loading" | "ready" | "error";
+type PdfDocumentStatus = "loading" | "ready" | "error";
 
 export interface PdfDocumentState {
   status: PdfDocumentStatus;

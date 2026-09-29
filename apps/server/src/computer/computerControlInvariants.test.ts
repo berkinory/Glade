@@ -41,8 +41,6 @@ function setup(backend = new FakeComputerBackend()) {
     Effect.runPromise(tools.get(name)!.handler(args, context()));
   return { manager, tools, call };
 }
-const PNG =
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
 describe("Production audit: desired invariants", () => {
   it("concurrent keyboard calls must preserve each named target", async () => {
     const entered = deferred(),

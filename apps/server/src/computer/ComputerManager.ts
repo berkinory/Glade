@@ -113,8 +113,8 @@ import {
 import { describeComputerUiTree } from "./uiTreeText.ts";
 import { clampTextToLength } from "./utf8Truncation.ts";
 
-export const COMPUTER_FRAME_QUEUE_LIMIT = 8;
-export const COMPUTER_FRAME_SOCKET_BUDGET_BYTES = 2 * 1024 * 1024;
+const COMPUTER_FRAME_QUEUE_LIMIT = 8;
+const COMPUTER_FRAME_SOCKET_BUDGET_BYTES = 2 * 1024 * 1024;
 
 /**
  * Crash backstop for the desktop lease, not the normal release path.
@@ -133,7 +133,7 @@ export const COMPUTER_FRAME_SOCKET_BUDGET_BYTES = 2 * 1024 * 1024;
  * turn is the failure this whole mechanism exists to prevent. Five minutes
  * leaves a long-running model's legitimate thinking time undisturbed.
  */
-export const COMPUTER_LEASE_IDLE_MS = 300_000;
+const COMPUTER_LEASE_IDLE_MS = 300_000;
 
 /**
  * How long the enable path waits for in-flight stops and the durable
@@ -150,7 +150,7 @@ export const COMPUTER_CONTROL_ENABLE_TIMEOUT_MS = 30_000;
  * to paint, short enough not to throttle the action loop the screenshot exists
  * to speed up.
  */
-export const COMPUTER_ACTION_SETTLE_MS = 300;
+const COMPUTER_ACTION_SETTLE_MS = 300;
 
 /**
  * The driver-observed settle that replaces the fixed wait when the backend
@@ -161,8 +161,7 @@ export const COMPUTER_ACTION_SETTLE_MS = 300;
  * settled verdict usually lands faster than the fixed budget; a busy surface
  * waits longer than it — both better than the blind sleep they replace.
  */
-export const COMPUTER_ACTION_OBSERVER_SETTLE_TIMEOUT_MS = 5_000;
-export const COMPUTER_ACTION_OBSERVER_SETTLE_QUIET_MS = COMPUTER_ACTION_SETTLE_MS;
+const COMPUTER_ACTION_OBSERVER_SETTLE_TIMEOUT_MS = 5_000;
 
 /**
  * How long paste waits before restoring the user's previous clipboard. The
@@ -172,7 +171,7 @@ export const COMPUTER_ACTION_OBSERVER_SETTLE_QUIET_MS = COMPUTER_ACTION_SETTLE_M
  * one above — long enough for the paste to land, short enough that a user who
  * reaches for their own clipboard next is not racing us.
  */
-export const COMPUTER_PASTE_RESTORE_MS = 250;
+const COMPUTER_PASTE_RESTORE_MS = 250;
 
 /**
  * Trailing-edge window on the republish that a backend window change triggers.
@@ -188,7 +187,7 @@ export const COMPUTER_PASTE_RESTORE_MS = 250;
  * The window list itself is not delayed by this: `computer.windows-changed` is
  * emitted immediately from the event, with no backend call at all.
  */
-export const COMPUTER_WINDOWS_PUBLISH_DEBOUNCE_MS = 250;
+const COMPUTER_WINDOWS_PUBLISH_DEBOUNCE_MS = 250;
 
 /**
  * The first vertical scroll into a window whose gearing is unknown is split:
@@ -198,14 +197,14 @@ export const COMPUTER_WINDOWS_PUBLISH_DEBOUNCE_MS = 250;
  * travel inside the correlator's measurable band, while staying above the
  * store's minimum learnable injection.
  */
-export const SCROLL_PROBE_PX = 48;
+const SCROLL_PROBE_PX = 48;
 /**
  * Requests at or below this skip the probe: they are already probe-sized, and
  * even a heavily geared client keeps their travel measurable. Anything larger
  * into an unmeasured window is split — a 90 px request at 7x already travels
  * past what a window-height capture pair can correlate.
  */
-export const SCROLL_PROBE_TRIGGER_PX = SCROLL_PROBE_PX;
+const SCROLL_PROBE_TRIGGER_PX = SCROLL_PROBE_PX;
 
 /**
  * How close a leg's measured travel must land to its predicted distance before
@@ -214,14 +213,14 @@ export const SCROLL_PROBE_TRIGGER_PX = SCROLL_PROBE_PX;
  * delivery residue on long legs, the floor covers the correlator's row
  * quantization on short ones.
  */
-export const SCROLL_SETTLE_ARRIVAL_TOLERANCE = 0.15;
-export const SCROLL_SETTLE_ARRIVAL_MIN_PX = 4;
+const SCROLL_SETTLE_ARRIVAL_TOLERANCE = 0.15;
+const SCROLL_SETTLE_ARRIVAL_MIN_PX = 4;
 
 /**
  * How long recordError waits before republishing the threads it touched, so an
  * outage that fails ten calls in a burst costs one publish, not ten.
  */
-export const COMPUTER_ERROR_REPUBLISH_DEBOUNCE_MS = 250;
+const COMPUTER_ERROR_REPUBLISH_DEBOUNCE_MS = 250;
 
 /**
  * How long the running-app inventory a denylist window check resolves pids
@@ -371,7 +370,7 @@ export class ComputerLeaseError extends ComputerBackendError {
 }
 
 /** Whether the window found frontmost before an activation was put back. */
-export type ForegroundRestoreStatus =
+type ForegroundRestoreStatus =
   | "restored"
   | "restore-missed"
   | "already-frontmost"
@@ -5534,7 +5533,7 @@ function hasSemanticFields(target: ComputerTarget): boolean {
   return hasLabelFields(target) || target.windowId !== undefined;
 }
 
-export function errorMessage(error: unknown): string {
+function errorMessage(error: unknown): string {
   if (error instanceof ComputerBackendError || error instanceof ComputerTargetError) {
     return error.message;
   }

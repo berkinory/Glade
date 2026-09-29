@@ -52,7 +52,6 @@ import {
 } from "./auth/Services/ServerAuth";
 import { SessionCredentialService } from "./auth/Services/SessionCredentialService";
 import { CheckpointDiffQuery } from "./checkpointing/Services/CheckpointDiffQuery";
-import { resolveThreadWorkspaceCwd } from "./checkpointing/Utils";
 import { ServerConfig, type ServerConfigShape } from "./config";
 import { realpathNearestExisting } from "./realpathNearestExisting";
 import { workspaceRootsEqual } from "@glade/shared/threadWorkspace";
@@ -299,7 +298,7 @@ function readDescendantProcesses(rootPid: number): Promise<ProcessTableRow[]> {
   });
 }
 
-export function toWsRpcError(cause: unknown, fallbackMessage: string) {
+function toWsRpcError(cause: unknown, fallbackMessage: string) {
   if (Schema.is(WsRpcError)(cause)) {
     return cause;
   }
@@ -2158,7 +2157,7 @@ const makeWsRpcHandlersLayer = () =>
     }),
   );
 
-export const makeWsRpcLayer = () =>
+const makeWsRpcLayer = () =>
   Layer.merge(makeWsRpcHandlersLayer(), wsRequestAdmissionMiddlewareLayer);
 
 const makeRpcWebSocketHttpEffect = RpcServer.toHttpEffectWebsocket(AdmittedWsFeatureRpcGroup, {
@@ -2241,7 +2240,7 @@ export function authorizeDeviceFrameWebSocketUpgrade(input: {
 }
 
 /** Computer still frames use the same trusted-origin and authentication policy. */
-export const authorizeComputerFrameWebSocketUpgrade = authorizeDeviceFrameWebSocketUpgrade;
+const authorizeComputerFrameWebSocketUpgrade = authorizeDeviceFrameWebSocketUpgrade;
 
 export function makeWebsocketRpcRouteLayer<R>(
   rpcWebSocketHttpEffectSource: Effect.Effect<

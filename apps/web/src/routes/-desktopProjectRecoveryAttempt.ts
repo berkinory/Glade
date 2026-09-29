@@ -1,4 +1,4 @@
-export interface DesktopProjectRecoveryAttempt {
+interface DesktopProjectRecoveryAttempt {
   readonly isCurrent: () => boolean;
   readonly complete: () => boolean;
   readonly release: () => void;

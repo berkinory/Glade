@@ -35,8 +35,8 @@ export interface ThreadFindHighlight {
 
 export type ThreadFindStepDirection = "next" | "previous";
 
-export const CHAT_FIND_MATCH_START_ATTRIBUTE = "data-chat-find-start";
-export const CHAT_FIND_MATCH_ATTRIBUTE = "data-chat-find-match";
+const CHAT_FIND_MATCH_START_ATTRIBUTE = "data-chat-find-start";
+const CHAT_FIND_MATCH_ATTRIBUTE = "data-chat-find-match";
 const CHAT_FIND_MATCH_CLASS = "chat-find-match";
 const CHAT_FIND_MATCH_ACTIVE_CLASS = "chat-find-match-active";
 
@@ -106,7 +106,7 @@ function messageHasVisibleMedia(message: ChatMessage): boolean {
   );
 }
 
-export function resolveThreadFindDocumentText(message: ChatMessage, text = message.text): string {
+function resolveThreadFindDocumentText(message: ChatMessage, text = message.text): string {
   if (message.role === "user") {
     const displayed = deriveDisplayedUserMessageState(text, {
       hideImageOnlyBootstrapPrompt: messageHasVisibleMedia(message),

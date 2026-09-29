@@ -26,7 +26,7 @@ const EFFECT_LABELS: Record<ComputerAuditHistoryEntry["effect"], string> = {
 
 type AuditPage = { readonly before?: string; readonly limit: number };
 
-export function nextComputerAuditHistoryPage(
+function nextComputerAuditHistoryPage(
   last: ComputerGetAuditHistoryResult,
   pages: readonly ComputerGetAuditHistoryResult[],
 ): AuditPage | undefined {
@@ -37,7 +37,7 @@ export function nextComputerAuditHistoryPage(
   return { before: last.nextCursor, limit: Math.min(PAGE_SIZE, remaining) };
 }
 
-export function computerAuditHistoryEntries(
+function computerAuditHistoryEntries(
   pages: readonly ComputerGetAuditHistoryResult[],
 ): readonly ComputerAuditHistoryEntry[] {
   return [
@@ -129,7 +129,7 @@ export function ComputerAuditHistorySection() {
   );
 }
 
-export function ComputerAuditHistoryList(props: {
+function ComputerAuditHistoryList(props: {
   readonly entries: readonly ComputerAuditHistoryEntry[];
   readonly status: ComputerGetAuditHistoryResult["status"];
   readonly truncated: boolean;

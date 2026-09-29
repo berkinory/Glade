@@ -1,13 +1,12 @@
 // FILE: threadUnblock.ts
 // Purpose: Abandons the provider delivery blockers that quarantine a thread.
 // Layer: Web orchestration helper
-// Exports: unblockThreadFromClient, isProviderDeliveryReconciliationConflict
+// Exports: unblockThreadFromClient
 
 import type { NativeApi, ThreadId } from "@glade/contracts";
 
 /** Code the server returns when a blocker no longer matches the requested state. */
-export const PROVIDER_DELIVERY_RECONCILIATION_CONFLICT_CODE =
-  "PROVIDER_DELIVERY_RECONCILIATION_CONFLICT";
+const PROVIDER_DELIVERY_RECONCILIATION_CONFLICT_CODE = "PROVIDER_DELIVERY_RECONCILIATION_CONFLICT";
 
 const UNBLOCK_NOTE = "Abandoned while resuming the thread; the command was never confirmed.";
 
@@ -20,7 +19,7 @@ type ThreadUnblockApi = Pick<
  * The reconciliation conflict is expected, not exceptional: two clients (or a
  * client and a server restart) can race to settle the same blocker.
  */
-export function isProviderDeliveryReconciliationConflict(error: unknown): boolean {
+function isProviderDeliveryReconciliationConflict(error: unknown): boolean {
   return (
     typeof error === "object" &&
     error !== null &&

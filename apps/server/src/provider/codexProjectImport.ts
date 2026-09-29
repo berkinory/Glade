@@ -25,7 +25,7 @@ interface ReadonlyDatabase {
   close: () => unknown;
 }
 
-export class CodexProjectImportError extends Error {
+class CodexProjectImportError extends Error {
   constructor(
     readonly code: "unsupported" | "unreadable",
     message: string,
@@ -103,7 +103,7 @@ async function findStateDatabase(sqliteHome: string): Promise<string | undefined
 
 async function openDatabase(dbPath: string): Promise<ReadonlyDatabase> {
   if (process.versions.bun !== undefined) {
-    // Keep Bun's runtime-only module out of the Node bundle, as providerUsage/sqlite does.
+    // Keep Bun's runtime-only module out of the Node bundle.
     const importRuntimeModule = Function("specifier", "return import(specifier)") as (
       specifier: string,
     ) => Promise<{

@@ -22,7 +22,7 @@ const APP_ICON_OPTIONS = {
 const MAC_DESKTOP_APP_ICONS = ["default", "icon", "dark"] as const;
 const OTHER_DESKTOP_APP_ICONS = ["default", "icon"] as const;
 
-export function desktopAppIconsForPlatform(platform: string): ReadonlyArray<DesktopAppIcon> {
+function desktopAppIconsForPlatform(platform: string): ReadonlyArray<DesktopAppIcon> {
   return isMacPlatform(platform) ? MAC_DESKTOP_APP_ICONS : OTHER_DESKTOP_APP_ICONS;
 }
 

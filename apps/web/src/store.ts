@@ -44,20 +44,6 @@ type ReadModelThread = OrchestrationReadModel["threads"][number];
 
 export type { AppState } from "./storeState";
 export { EMPTY_THREAD_IDS } from "./storeState";
-export {
-  applySpaceOrder,
-  applyShellEvent,
-  clearThreadDetailSyncFailureInClientState,
-  evictThreadDetailFromClientState,
-  markThreadDetailSyncFailedInClientState,
-  removeDeletedProjectFromClientState,
-  removeDeletedThreadFromClientState,
-  syncServerReadModel,
-  syncServerShellSnapshot,
-  syncServerThreadDetail,
-  syncServerThreadDetailHotPath,
-} from "./storeProjection";
-export { applyOrchestrationEvents, applyOrchestrationEventsHotPath } from "./storeEventReducer";
 
 const debouncedPersistState = new Debouncer(persistState, { wait: 500 });
 
@@ -65,11 +51,7 @@ export function persistAppStateNow(state: AppState = useStore.getState()): void 
   persistState(state);
 }
 
-export function markThreadVisited(
-  state: AppState,
-  threadId: ThreadId,
-  visitedAt?: string,
-): AppState {
+function markThreadVisited(state: AppState, threadId: ThreadId, visitedAt?: string): AppState {
   const at = visitedAt ?? new Date().toISOString();
   const visitedAtMs = Date.parse(at);
   return applyThreadUpdate(state, threadId, (thread) => {
@@ -85,7 +67,7 @@ export function markThreadVisited(
   });
 }
 
-export function markThreadUnread(state: AppState, threadId: ThreadId): AppState {
+function markThreadUnread(state: AppState, threadId: ThreadId): AppState {
   return applyThreadUpdate(state, threadId, (thread) => {
     if (!thread.latestTurn?.completedAt) return thread;
     const latestTurnCompletedAtMs = Date.parse(thread.latestTurn.completedAt);
@@ -96,14 +78,14 @@ export function markThreadUnread(state: AppState, threadId: ThreadId): AppState 
   });
 }
 
-export function toggleProject(state: AppState, projectId: Project["id"]): AppState {
+function toggleProject(state: AppState, projectId: Project["id"]): AppState {
   return {
     ...state,
     projects: state.projects.map((p) => (p.id === projectId ? { ...p, expanded: !p.expanded } : p)),
   };
 }
 
-export function setProjectExpanded(
+function setProjectExpanded(
   state: AppState,
   projectId: Project["id"],
   expanded: boolean,
@@ -117,7 +99,7 @@ export function setProjectExpanded(
   return changed ? { ...state, projects } : state;
 }
 
-export function setAllProjectsExpanded(state: AppState, expanded: boolean): AppState {
+function setAllProjectsExpanded(state: AppState, expanded: boolean): AppState {
   let changed = false;
   const projects = state.projects.map((project) => {
     if (project.expanded === expanded) return project;
@@ -127,10 +109,7 @@ export function setAllProjectsExpanded(state: AppState, expanded: boolean): AppS
   return changed ? { ...state, projects } : state;
 }
 
-export function collapseProjectsExcept(
-  state: AppState,
-  activeProjectId: Project["id"] | null,
-): AppState {
+function collapseProjectsExcept(state: AppState, activeProjectId: Project["id"] | null): AppState {
   let changed = false;
   const projects = state.projects.map((project) => {
     const nextExpanded = activeProjectId !== null && project.id === activeProjectId;
@@ -141,7 +120,7 @@ export function collapseProjectsExcept(
   return changed ? { ...state, projects } : state;
 }
 
-export function reorderProjects(
+function reorderProjects(
   state: AppState,
   draggedProjectId: Project["id"],
   targetProjectId: Project["id"],
@@ -157,7 +136,7 @@ export function reorderProjects(
   return { ...state, projects };
 }
 
-export function renameProjectLocally(
+function renameProjectLocally(
   state: AppState,
   projectId: Project["id"],
   name: string | null,
@@ -183,7 +162,7 @@ export function renameProjectLocally(
   return changed ? { ...state, projects } : state;
 }
 
-export function setProjectAppearanceLocally(
+function setProjectAppearanceLocally(
   state: AppState,
   projectId: Project["id"],
   appearance: ProjectAppearance | null,
@@ -199,14 +178,14 @@ export function setProjectAppearanceLocally(
   return changed ? { ...state, projects } : state;
 }
 
-export function setError(state: AppState, threadId: ThreadId, error: string | null): AppState {
+function setError(state: AppState, threadId: ThreadId, error: string | null): AppState {
   return applyThreadUpdate(state, threadId, (thread) => {
     if (thread.error === error) return thread;
     return { ...thread, error };
   });
 }
 
-export function setThreadWorkspace(
+function setThreadWorkspace(
   state: AppState,
   threadId: ThreadId,
   patch: ThreadWorkspacePatch,

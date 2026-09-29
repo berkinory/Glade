@@ -44,7 +44,7 @@ export interface ProviderUsageMenuModel {
   resetCredits?: ServerCodexResetCredits | undefined;
 }
 
-export function buildProviderUsageMenuModel(input: {
+function buildProviderUsageMenuModel(input: {
   provider: ProviderKind;
   providerSnapshot?: ServerGetProviderUsageSnapshotResult | undefined;
   usageSummary: ProviderUsageSummaryData & { readonly isLoading: boolean };

@@ -18,7 +18,7 @@ import { makePullRequestOperations } from "../pullRequestOperations";
 const GITHUB_REPOSITORY_CACHE_MAX_ENTRIES = 256;
 const PULL_REQUEST_MERGE_CAPABILITIES_CACHE_MAX_ENTRIES = 64;
 
-export interface PullRequestServiceDependencies {
+interface PullRequestServiceDependencies {
   readonly github: GitHubCliShape;
   readonly listProjects: () => Effect.Effect<ReadonlyArray<OrchestrationProject>, unknown>;
   readonly resolveRepositories: (
@@ -27,11 +27,11 @@ export interface PullRequestServiceDependencies {
 }
 
 /** The shell snapshot excludes deleted projects, so the omitted field is known to be null. */
-export function liveProjectFromShell(shell: OrchestrationProjectShell): OrchestrationProject {
+function liveProjectFromShell(shell: OrchestrationProjectShell): OrchestrationProject {
   return { ...shell, deletedAt: null };
 }
 
-export const makePullRequestService = (
+const makePullRequestService = (
   dependencies: PullRequestServiceDependencies,
 ): Effect.Effect<PullRequestServiceShape, never, Scope.Scope> =>
   Effect.gen(function* () {

@@ -42,23 +42,23 @@ import { stripProposedPlanBlocksFromText } from "./proposedPlan";
 
 import type { ChatMessage, ProposedPlan } from "./types";
 
-export type WorkLogRequestKind = ApprovalRequestKind;
+type WorkLogRequestKind = ApprovalRequestKind;
 
 // Mirrors CHECKPOINT_REVERT_FAILED_ACTIVITY_KIND in
 // apps/server/src/orchestration/commandInvariants.ts, which the web app cannot
 // import.
 const CHECKPOINT_REVERT_FAILED_ACTIVITY_KIND = "checkpoint.revert.failed";
-export const PROVIDER_CONTEXT_LIFECYCLE_ACTIVITY_KIND = "provider.context.changed";
+const PROVIDER_CONTEXT_LIFECYCLE_ACTIVITY_KIND = "provider.context.changed";
 const SESSION_CONTEXT_RECAP_PREVIEW_MAX_CHARS = 600;
 
-export type ProviderContextLifecycleReason =
+type ProviderContextLifecycleReason =
   | "conversation-rebuilt"
   | "fresh-session"
   | "interrupt-escalation"
   | "native-history-unavailable"
   | "native-resume-failed";
 
-export interface ProviderContextLifecycleInfo {
+interface ProviderContextLifecycleInfo {
   provider: ProviderKind;
   nativeHistory: "available" | "unavailable";
   restartReason: ProviderContextLifecycleReason;
@@ -69,7 +69,7 @@ export interface ProviderContextLifecycleInfo {
   recapPreviewTruncated: boolean;
 }
 
-export interface WorkLogComputerSetupRequired {
+interface WorkLogComputerSetupRequired {
   /**
    * The grants the OS is withholding, so the card can name them. Empty when the
    * backend refused without naming one — the card then says what it can.
@@ -129,7 +129,7 @@ export interface WorkLogEntry {
   nativeEventType?: string;
 }
 
-export type WorkLogLiveActivityState =
+type WorkLogLiveActivityState =
   | "starting"
   | "thinking"
   | "running_tool"
@@ -151,18 +151,18 @@ export interface WorkLogLiveActivity {
 
 // Created-automation rows render as a dedicated card (icon + name + cadence + Open)
 // instead of a plain tool-call line, so carry just the fields that card needs.
-export interface WorkLogAutomation {
+interface WorkLogAutomation {
   id: string;
   name: string;
   cadenceLabel: string;
   proposalState?: "pending" | "accepted" | "dismissed";
 }
 
-export interface WorkLogComputerControlDenied {
+interface WorkLogComputerControlDenied {
   toolName: string | null;
 }
 
-export interface WorkLogGladeCreatedThread {
+interface WorkLogGladeCreatedThread {
   threadId: string;
   title: string;
   provider: ProviderKind;
@@ -196,7 +196,7 @@ export interface WorkLogSubagent {
   isActive?: boolean | undefined;
 }
 
-export interface WorkLogSubagentAction {
+interface WorkLogSubagentAction {
   tool: string;
   status: string;
   summaryText: string;
@@ -299,7 +299,7 @@ export function orderedActivities(
 // subagent roster. The check runs on derived entries rather than raw activities
 // because providers stream the tool call first and attach receiver metadata on a
 // later lifecycle update that merges into the same entry.
-export function isRoutedSubagentWorkEntry(entry: Pick<WorkLogEntry, "itemType" | "subagents">) {
+function isRoutedSubagentWorkEntry(entry: Pick<WorkLogEntry, "itemType" | "subagents">) {
   return entry.itemType === "collab_agent_tool_call" && (entry.subagents?.length ?? 0) > 0;
 }
 

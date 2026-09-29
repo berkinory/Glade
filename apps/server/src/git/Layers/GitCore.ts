@@ -1,7 +1,7 @@
 // FILE: GitCore.ts
 // Purpose: Implements low-level Git operations used by server orchestration and UI status.
 // Layer: Server Git service
-// Exports: GitCoreLive plus makeGitCore test factory.
+// Exports: GitCoreLive.
 import {
   Cache,
   Data,
@@ -87,7 +87,7 @@ function statusUpstreamRefreshBackoffMapKey(key: StatusUpstreamRefreshCacheKeyFi
 }
 
 /** Failure state is scoped and bounded like the upstream refresh cache itself. */
-export function makeStatusUpstreamRefreshCacheTimeToLive() {
+function makeStatusUpstreamRefreshCacheTimeToLive() {
   const consecutiveFailures = new Map<string, number>();
   return {
     getFailureCount(key: StatusUpstreamRefreshCacheKeyFields): number {
@@ -675,12 +675,12 @@ const createTrace2Monitor = Effect.fn(function* (
   };
 });
 
-export interface CollectedGitOutput {
+interface CollectedGitOutput {
   readonly text: string;
   readonly truncated: boolean;
 }
 
-export const collectGitOutput = Effect.fn(function* <E>(
+const collectGitOutput = Effect.fn(function* <E>(
   input: Pick<ExecuteGitInput, "operation" | "cwd" | "args">,
   stream: Stream.Stream<Uint8Array, E>,
   maxOutputBytes: number,
@@ -776,7 +776,7 @@ export const collectGitOutput = Effect.fn(function* <E>(
   return { text, truncated };
 });
 
-export const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"] }) =>
+const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"] }) =>
   Effect.gen(function* () {
     const fileSystem = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;

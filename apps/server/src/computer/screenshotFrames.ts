@@ -49,7 +49,7 @@ export type ScreenshotFrameSource = Pick<
  * a handful is plenty; more would only keep stale pictures of a desktop that
  * has since changed.
  */
-export const SCREENSHOT_FRAMES_PER_THREAD = 8;
+const SCREENSHOT_FRAMES_PER_THREAD = 8;
 
 /** Threads remembered at once; the least recently pointed-into one goes first. */
 const SCREENSHOT_FRAME_THREADS = 256;

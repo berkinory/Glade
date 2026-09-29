@@ -6,7 +6,7 @@ import {
 } from "@glade/contracts";
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import { useCallback } from "react";
-import { formatComposerMentionToken, skillMentionPrefix } from "~/lib/composerMentions";
+import { formatComposerMentionToken, SKILL_MENTION_PREFIX } from "~/lib/composerMentions";
 import type { AppSettings } from "../../appSettings";
 import { resolveFollowUpDispatchMode } from "../../appSettings";
 import { collapseExpandedComposerCursor, detectComposerTrigger } from "../../composer-logic";
@@ -230,7 +230,7 @@ export function useChatComposerCommands({
         applyComposerTriggerReplacement({
           snapshot,
           trigger,
-          base: `${skillMentionPrefix(selectedProvider)}${item.skill.name} `,
+          base: `${SKILL_MENTION_PREFIX}${item.skill.name} `,
           onApplied: () => {
             updateSelectedComposerSkills((existing) => {
               const nextSkill = {

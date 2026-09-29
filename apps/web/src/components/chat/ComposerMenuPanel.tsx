@@ -33,7 +33,7 @@ export const COMPOSER_MENU_PANEL_GLYPH_CLASS_NAME = "size-3.5";
 const COMPOSER_MENU_PANEL_ICON_SLOT_CLASS_NAME =
   "flex size-4 shrink-0 items-center justify-center text-muted-foreground/60";
 
-export type ComposerMenuPanelRow = {
+type ComposerMenuPanelRow = {
   id: string;
   icon?: ReactNode;
   title: string;

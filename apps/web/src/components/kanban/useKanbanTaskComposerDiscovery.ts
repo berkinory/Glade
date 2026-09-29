@@ -11,7 +11,6 @@ import type {
   ProviderNativeCommandDescriptor,
   ProviderPluginDescriptor,
   ProviderSkillDescriptor,
-  ProviderStartOptions,
   ThreadId,
 } from "@glade/contracts";
 import { useQuery } from "@tanstack/react-query";
@@ -63,7 +62,6 @@ interface UseKanbanTaskComposerDiscoveryInput {
   readonly serverCwd: string | null;
   readonly serverHomeDir: string | null;
   readonly scratchThreadId: ThreadId;
-  readonly providerOptionsForDispatch: ProviderStartOptions | undefined;
   readonly hiddenProviders: readonly ProviderKind[];
   readonly providerOrder: readonly ProviderKind[];
 }
@@ -84,7 +82,6 @@ export function useKanbanTaskComposerDiscovery(input: UseKanbanTaskComposerDisco
     serverCwd,
     serverHomeDir,
     scratchThreadId,
-    providerOptionsForDispatch,
     hiddenProviders,
     providerOrder,
   } = input;

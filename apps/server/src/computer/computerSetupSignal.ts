@@ -46,7 +46,7 @@ import { ComputerBackendError } from "./ComputerBackend.ts";
  * withheld rather than printed against a guessed identifier that would reset a
  * different Glade's grants.
  */
-export function responsibleDesktopBundleId(
+function responsibleDesktopBundleId(
   env: Readonly<Record<string, string | undefined>> = process.env,
 ): string | undefined {
   const value = env[GLADE_DESKTOP_BUNDLE_ID_ENV]?.trim();
@@ -94,7 +94,7 @@ export interface ComputerSetupSignal {
  * misbehaving. Unwraps one level of `cause` so a failure that travelled inside
  * another error is still recognised.
  */
-export function computerFailureNeedsSetup(error: unknown): boolean {
+function computerFailureNeedsSetup(error: unknown): boolean {
   if (error instanceof ComputerBackendError) return error.setupRequired;
   const cause: unknown = (error as { readonly cause?: unknown } | null)?.cause;
   return cause instanceof ComputerBackendError && cause.setupRequired;

@@ -36,23 +36,12 @@ function earlierSummaryHeader(omittedCount: number): string {
     : "Earlier conversation summary:";
 }
 
-export function listImportedHandoffMessages(
+function listImportedHandoffMessages(
   thread: Pick<OrchestrationThread, "messages">,
 ): ReadonlyArray<OrchestrationMessage> {
   return thread.messages.filter(
     (message) =>
       message.source === "handoff-import" &&
-      (message.role === "user" || message.role === "assistant") &&
-      message.streaming === false,
-  );
-}
-
-export function listImportedForkMessages(
-  thread: Pick<OrchestrationThread, "messages">,
-): ReadonlyArray<OrchestrationMessage> {
-  return thread.messages.filter(
-    (message) =>
-      message.source === "fork-import" &&
       (message.role === "user" || message.role === "assistant") &&
       message.streaming === false,
   );
@@ -214,23 +203,6 @@ export function buildPriorTranscriptBootstrapText(
     importedMessages: priorMessages,
     intro:
       "This provider session may have been restarted without native conversation state. Use this prior Glade transcript as context for the latest user message.",
-    maxChars,
-  });
-}
-
-export function buildForkBootstrapText(
-  thread: Pick<OrchestrationThread, "title" | "branch" | "worktreePath" | "messages">,
-  maxChars = BOOTSTRAP_TRANSCRIPT_CHAR_BUDGET,
-): string | null {
-  const importedMessages = listImportedForkMessages(thread);
-  if (importedMessages.length === 0) {
-    return null;
-  }
-
-  return buildImportedMessagesBootstrapText({
-    thread,
-    importedMessages,
-    intro: "This conversation was forked from an earlier conversation.",
     maxChars,
   });
 }

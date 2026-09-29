@@ -55,7 +55,7 @@ export interface FakeGhScenario {
   mergeOutcome?: "merged" | "enqueued";
 }
 
-export type FakePullRequest = NonNullable<FakeGhScenario["pullRequest"]>;
+type FakePullRequest = NonNullable<FakeGhScenario["pullRequest"]>;
 
 function runGitSyncForFakeGh(cwd: string, args: readonly string[]): void {
   const result = spawnSync("git", args, {

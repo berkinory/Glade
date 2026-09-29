@@ -235,7 +235,7 @@ function readJson(path) {
   }
 }
 
-export function copyMacAppBundle(sourceAppBundlePath, targetAppBundlePath, runCommand = spawnSync) {
+function copyMacAppBundle(sourceAppBundlePath, targetAppBundlePath, runCommand = spawnSync) {
   const copyResult = runCommand("ditto", [sourceAppBundlePath, targetAppBundlePath], {
     encoding: "utf8",
   });
@@ -308,7 +308,7 @@ function resetStalePrivacyGrants(runCommand) {
   );
 }
 
-export function buildMacLauncher(
+function buildMacLauncher(
   electronBinaryPath,
   { desktopDirectory = desktopDir, runCommand = spawnSync } = {},
 ) {

@@ -18,7 +18,7 @@ export function isTerminalThreadSessionStatus(status: string): boolean {
  * assistant row is allowed to retire the fence. Buffered finals in the same
  * ingestion turn normally advance the sequence long before this elapses.
  */
-export const TERMINAL_FENCE_EMPTY_TURN_HOLD_MS = 1_500;
+const TERMINAL_FENCE_EMPTY_TURN_HOLD_MS = 1_500;
 
 /**
  * A terminal fence armed at `fenceSequence` (the session-set / shell upsert that

@@ -1,5 +1,3 @@
-import type { ProviderRuntimeEvent } from "@glade/contracts";
-
 /** Short, factual labels. Never display arguments, typed text, or model reasoning. */
 export function cursorToolActivity(tool: string): string {
   switch (tool) {
@@ -65,31 +63,6 @@ export function cursorToolActivity(tool: string): string {
       return "Running sequence";
     default:
       return "Working";
-  }
-}
-
-export function cursorRuntimeActivity(event: ProviderRuntimeEvent): string | undefined {
-  switch (event.type) {
-    case "user-input.requested":
-      return "Waiting for you";
-    case "request.opened":
-      return "Needs approval";
-    case "user-input.resolved":
-    case "request.resolved":
-    case "turn.started":
-    case "item.completed":
-      return "Thinking";
-    case "item.started":
-      return "Working";
-    case "content.delta":
-      if (event.payload.streamKind === "assistant_text") return "Responding";
-      if (
-        ["reasoning_text", "reasoning_summary_text", "plan_text"].includes(event.payload.streamKind)
-      )
-        return "Thinking";
-      return undefined;
-    default:
-      return undefined;
   }
 }
 

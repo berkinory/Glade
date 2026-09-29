@@ -9,7 +9,6 @@ import {
   TurnId,
   type OrchestrationEvent,
   type OrchestrationReadModel,
-  type OrchestrationShellSnapshot,
   type OrchestrationThreadActivity,
 } from "@glade/contracts";
 
@@ -195,79 +194,6 @@ export function makeReadModelThread(overrides: Partial<OrchestrationReadModel["t
     session: null,
     ...overrides,
   } satisfies OrchestrationReadModel["threads"][number];
-}
-
-export function makeReadModel(
-  thread: OrchestrationReadModel["threads"][number],
-): OrchestrationReadModel {
-  return {
-    snapshotSequence: 1,
-    updatedAt: "2026-02-27T00:00:00.000Z",
-    spaces: [],
-    projects: [
-      {
-        id: ProjectId.makeUnsafe("project-1"),
-        kind: "project",
-        title: "Project",
-        workspaceRoot: "/tmp/project",
-        defaultModelSelection: {
-          provider: "codex",
-          model: "gpt-5.3-codex",
-        },
-        createdAt: "2026-02-27T00:00:00.000Z",
-        updatedAt: "2026-02-27T00:00:00.000Z",
-        deletedAt: null,
-        scripts: [],
-        spaceId: null,
-      },
-    ],
-    threads: [thread],
-  };
-}
-
-export function makeShellSnapshot(thread: OrchestrationShellSnapshot["threads"][number]) {
-  return {
-    snapshotSequence: 2,
-    updatedAt: "2026-02-27T00:01:00.000Z",
-    spaces: [],
-    projects: [
-      {
-        id: ProjectId.makeUnsafe("project-1"),
-        title: "Project",
-        workspaceRoot: "/tmp/project",
-        defaultModelSelection: {
-          provider: "codex",
-          model: "gpt-5.3-codex",
-        },
-        createdAt: "2026-02-27T00:00:00.000Z",
-        updatedAt: "2026-02-27T00:00:00.000Z",
-        scripts: [],
-        spaceId: null,
-      },
-    ],
-    threads: [thread],
-  } satisfies OrchestrationShellSnapshot;
-}
-
-export function makeReadModelProject(
-  overrides: Partial<OrchestrationReadModel["projects"][number]>,
-): OrchestrationReadModel["projects"][number] {
-  return {
-    id: ProjectId.makeUnsafe("project-1"),
-    kind: "project",
-    title: "Project",
-    workspaceRoot: "/tmp/project",
-    defaultModelSelection: {
-      provider: "codex",
-      model: "gpt-5.3-codex",
-    },
-    createdAt: "2026-02-27T00:00:00.000Z",
-    updatedAt: "2026-02-27T00:00:00.000Z",
-    deletedAt: null,
-    scripts: [],
-    spaceId: null,
-    ...overrides,
-  };
 }
 
 export const threadsOf = getThreadsFromState;

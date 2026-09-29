@@ -21,12 +21,12 @@ export const AGENT_GATEWAY_MCP_MAX_BODY_BYTES = 1024 * 1024;
 
 const BODY_TOO_LARGE = Symbol("AgentGatewayMcpBodyTooLarge");
 
-export type McpBodyReadResult =
+type McpBodyReadResult =
   | { readonly kind: "ok"; readonly body: unknown }
   | { readonly kind: "invalid" }
   | { readonly kind: "too-large" };
 
-export function readMcpJsonBody(
+function readMcpJsonBody(
   request: HttpServerRequest.HttpServerRequest,
   maxBytes = AGENT_GATEWAY_MCP_MAX_BODY_BYTES,
 ): Effect.Effect<McpBodyReadResult> {

@@ -15,26 +15,26 @@ import { Deferred, Effect, Exit, Option } from "effect";
 import { ProviderAdapterRequestError } from "./Errors.ts";
 
 /** A successful catalog is served without touching the adapter for this long. */
-export const PROVIDER_MODEL_DISCOVERY_FRESH_TTL_MS = 30 * 60_000;
+const PROVIDER_MODEL_DISCOVERY_FRESH_TTL_MS = 30 * 60_000;
 /**
  * After the fresh window a catalog is still served immediately (marked
  * `cached: true`) while a background revalidation runs. Entries older than
  * this are dropped so a long-uninstalled CLI does not haunt the picker forever.
  */
-export const PROVIDER_MODEL_DISCOVERY_STALE_TTL_MS = 24 * 60 * 60_000;
+const PROVIDER_MODEL_DISCOVERY_STALE_TTL_MS = 24 * 60 * 60_000;
 /**
  * A failed or empty discovery is replayed for this long instead of re-spawning
  * the provider. This turns "retry 3 times with backoff" from four process
  * spawns into one.
  */
-export const PROVIDER_MODEL_DISCOVERY_FAILURE_TTL_MS = 30_000;
+const PROVIDER_MODEL_DISCOVERY_FAILURE_TTL_MS = 30_000;
 /**
  * Hard ceiling on a single discovery run. Some adapters have
  * no internal timeout; this keeps every provider under the 60s WebSocket RPC
  * timeout so the client sees a real error instead of a transport timeout.
  */
-export const PROVIDER_MODEL_DISCOVERY_TIMEOUT_MS = 45_000;
-export const PROVIDER_MODEL_DISCOVERY_CACHE_MAX_ENTRIES = 64;
+const PROVIDER_MODEL_DISCOVERY_TIMEOUT_MS = 45_000;
+const PROVIDER_MODEL_DISCOVERY_CACHE_MAX_ENTRIES = 64;
 
 export interface ProviderModelDiscoveryCacheKey {
   readonly provider: ProviderListModelsInput["provider"];
@@ -87,9 +87,8 @@ export function providerModelDiscoveryCacheKey(
  * persisted catalog snapshot (providerModelCatalogCache.ts), so field order
  * here is a file format, not an implementation detail.
  */
-export const serializeProviderModelDiscoveryCacheKey = (
-  key: ProviderModelDiscoveryCacheKey,
-): string => JSON.stringify([key.provider, key.binaryPath, key.apiEndpoint, key.cwd]);
+const serializeProviderModelDiscoveryCacheKey = (key: ProviderModelDiscoveryCacheKey): string =>
+  JSON.stringify([key.provider, key.binaryPath, key.apiEndpoint, key.cwd]);
 
 /**
  * Only a non-empty, error-free catalog is worth remembering as "good". Static

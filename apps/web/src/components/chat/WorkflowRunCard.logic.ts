@@ -38,7 +38,7 @@ export interface WorkflowAgentRow {
   lastToolName: string | null;
 }
 
-export interface WorkflowPhaseSummary {
+interface WorkflowPhaseSummary {
   title: string;
   detail: string | null;
   doneCount: number;

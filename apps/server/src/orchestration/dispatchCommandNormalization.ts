@@ -5,18 +5,6 @@ import { Effect, Schedule } from "effect";
 
 import { createAttachmentId } from "../attachmentStore";
 
-export interface DispatchCommandNormalizerResult<E> {
-  readonly command: OrchestrationCommand;
-  /**
-   * Deferred workspace-root scaffolding decided during normalization but NOT yet executed.
-   * Callers must run this only after the normalized command has been successfully accepted
-   * by the orchestration decider (e.g. after `orchestrationEngine.dispatch` resolves), so a
-   * rejected dispatch (for example a cross-kind workspace-root ownership conflict) never
-   * mutates the filesystem.
-   */
-  readonly prepareWorkspaceRoot: Effect.Effect<void, E> | null;
-}
-
 export interface DispatchCommandNormalizerOptions<E> {
   readonly attachmentsDir: string;
   readonly chatWorkspaceRoot?: string;

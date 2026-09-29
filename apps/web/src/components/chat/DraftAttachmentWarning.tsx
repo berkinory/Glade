@@ -4,7 +4,7 @@
 //   accessible label, and the explanatory copy. Keeps the wording and affordance from
 //   drifting between the two surfaces.
 // Layer: Chat attachment presentation
-// Exports: DraftAttachmentWarningIcon, DRAFT_ATTACHMENT_WARNING_LABEL,
+// Exports: DraftAttachmentWarningIcon,
 //   DRAFT_ATTACHMENT_WARNING_DESCRIPTION
 
 import { forwardRef, type ComponentPropsWithoutRef } from "react";
@@ -13,14 +13,14 @@ import { CircleAlertIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 
 /** Accessible label on the warning glyph. */
-export const DRAFT_ATTACHMENT_WARNING_LABEL = "Draft attachment may not persist";
+const DRAFT_ATTACHMENT_WARNING_LABEL = "Draft attachment may not persist";
 /** Explanatory copy shown in the hover tooltip / detail row. */
 export const DRAFT_ATTACHMENT_WARNING_DESCRIPTION =
   "Draft attachment is kept in memory and may be lost on navigation.";
 
 // `inline` sits in a card's detail row; `badge` floats over an image thumbnail
 // (opaque surface + shadow so it stays legible on any preview).
-export type DraftAttachmentWarningVariant = "inline" | "badge";
+type DraftAttachmentWarningVariant = "inline" | "badge";
 
 type DraftAttachmentWarningIconProps = ComponentPropsWithoutRef<"span"> & {
   variant?: DraftAttachmentWarningVariant;

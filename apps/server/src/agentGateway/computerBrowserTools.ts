@@ -99,10 +99,7 @@ export interface AgentGatewayComputerBrowserToolsOptions {
  * `computer_browser_dialog` is read-only only for `action: "inspect"` —
  * accept/dismiss are consequential actions the driver itself classifies R3.
  */
-export function computerBrowserToolRequiresApproval(
-  name: string,
-  args: Record<string, unknown>,
-): boolean {
+function computerBrowserToolRequiresApproval(name: string, args: Record<string, unknown>): boolean {
   if (name === "computer_browser_state") return false;
   if (name === "computer_browser_dialog" && args.action === "inspect") return false;
   return true;

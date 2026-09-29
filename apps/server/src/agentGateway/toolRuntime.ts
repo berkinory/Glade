@@ -24,15 +24,13 @@ export const WRITE_TOOL_ANNOTATIONS = {
   openWorldHint: false,
 } as const;
 
-export interface ProviderSessionPrincipal {
+interface ProviderSessionPrincipal {
   readonly kind: "provider-session";
   readonly sessionKey: string;
   readonly threadId: string;
   readonly provider: ProviderKind;
   readonly turnId: string | null;
 }
-
-export type AgentGatewayPrincipal = ProviderSessionPrincipal;
 
 export interface ToolContext {
   readonly principal: ProviderSessionPrincipal;
@@ -69,15 +67,6 @@ export interface ToolEntry {
    * permission: capability checks, approval and audit all apply unchanged.
    */
   readonly discoveryOnly?: boolean;
-}
-
-export interface McpToolEntry<Context, Capability extends string> {
-  readonly definition: McpToolDefinition;
-  readonly handler: (
-    args: Record<string, unknown>,
-    context: Context,
-  ) => Effect.Effect<McpToolCallResult>;
-  readonly requiredCapability: Capability;
 }
 
 /**
