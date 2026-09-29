@@ -2,8 +2,72 @@ import type { WhatsNewEntry } from "./logic";
 
 export const WHATS_NEW_ENTRIES: readonly WhatsNewEntry[] = [
   {
-    version: "0.0.5",
+    version: "0.0.6",
     date: "Unreleased",
+    features: [
+      {
+        id: "development-session-stop",
+        title: "Improved",
+        description: "Stop development sessions together with bun run dev:stop.",
+        commit: "b6978857c2a682bf85e05e191d6365bed0c955f1",
+      },
+      {
+        id: "file-search-and-chat-find",
+        title: "Improved",
+        description: "File search shows plain names, and chat find uses a compact, clickable row.",
+        commit: "3cc4791490acf77e2030a08df60cbbfb0fcd48b9",
+      },
+      {
+        id: "editor-appearance",
+        title: "Improved",
+        description:
+          "File editing has clearer line numbers, caret, active line, and selection. Choose the caret shape in Appearance, and redo edits with Cmd+Y on macOS.",
+        commit: "0440026018eb78b0a797d23c65c4cf42ada7c3a1",
+      },
+      {
+        id: "queued-message-actions",
+        title: "Improved",
+        description: "Queued messages have clear edit and delete actions.",
+        commit: "0cac2f02c1fbf2cd1e5f64b632ed2da5c4933e4a",
+      },
+      {
+        id: "project-chat-lists",
+        title: "Improved",
+        description:
+          "Project chat lists use Show more and reset when collapsed; Chats scrolls without paging controls.",
+        commit: "a0648f1f4477318f92e3e6bbc9afb0683d9370d3",
+      },
+      {
+        id: "unsaved-editor-drafts",
+        title: "Fixed",
+        description:
+          "Unsaved file edits stay available across navigation and are marked in Explorer.",
+        commit: "e114f536b27169e38c380a465a70a809003047e9",
+      },
+      {
+        id: "general-search-results",
+        title: "Fixed",
+        description:
+          "General search shows plain matches with clear chat and project labels, and keeps chat workspaces out of project results.",
+        commit: "21b19f418356ba91b240e29bc0d6058c71aa0110",
+      },
+      {
+        id: "editor-search-layout",
+        title: "Fixed",
+        description: "Code editor search controls stay steady as match counts change.",
+        commit: "b35d8a37e8a6da363a59e53ab8d4b843b4647100",
+      },
+      {
+        id: "sent-message-editing",
+        title: "Fixed",
+        description: "Editing a sent message sends with Enter and uses standard action buttons.",
+        commit: "08a7cc320a355f499d4f1486ae8b4d431a3a850a",
+      },
+    ],
+  },
+  {
+    version: "0.0.5",
+    date: "2026-09-29",
     features: [
       {
         id: "explorer-code-search",

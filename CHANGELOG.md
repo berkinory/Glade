@@ -4,13 +4,18 @@
 
 ### Improved
 
-- File search results show plain names, and chat find uses a compact, clickable row.
-- File editing keeps line numbers aligned and shows clearer caret, active line, and text selection. Caret shape is configurable in Appearance, and Cmd+Y redoes edits on macOS.
+- Development sessions can be stopped together with `bun run dev:stop`. ([b6978857c](https://github.com/berkinory/Glade/commit/b6978857c2a682bf85e05e191d6365bed0c955f1))
+- File search results show plain names, and chat find uses a compact, clickable row. ([21b19f418](https://github.com/berkinory/Glade/commit/21b19f418356ba91b240e29bc0d6058c71aa0110), [3cc479149](https://github.com/berkinory/Glade/commit/3cc4791490acf77e2030a08df60cbbfb0fcd48b9))
+- File editing keeps line numbers aligned and shows clearer caret, active line, and text selection. Caret shape is configurable in Appearance, and Cmd+Y redoes edits on macOS. ([044002601](https://github.com/berkinory/Glade/commit/0440026018eb78b0a797d23c65c4cf42ada7c3a1))
+- Queued messages have clear edit and delete actions. ([0cac2f02c](https://github.com/berkinory/Glade/commit/0cac2f02c1fbf2cd1e5f64b632ed2da5c4933e4a))
+- Project chat lists use Show more and reset when collapsed; Chats scrolls without paging controls. ([a0648f1f4](https://github.com/berkinory/Glade/commit/a0648f1f4477318f92e3e6bbc9afb0683d9370d3))
 
 ### Fixed
 
-- Unsaved file edits stay available across navigation and are marked in Explorer.
-- General search shows plain matches with clear chat and project labels, and keeps chat workspaces out of project results.
+- Unsaved file edits stay available across navigation and are marked in Explorer. ([e114f536b](https://github.com/berkinory/Glade/commit/e114f536b27169e38c380a465a70a809003047e9))
+- General search shows plain matches with clear chat and project labels, and keeps chat workspaces out of project results. ([21b19f418](https://github.com/berkinory/Glade/commit/21b19f418356ba91b240e29bc0d6058c71aa0110))
+- Search controls in the code editor stay steady as match counts change. ([b35d8a37e](https://github.com/berkinory/Glade/commit/b35d8a37e8a6da363a59e53ab8d4b843b4647100))
+- Editing a sent message now sends with Enter and uses standard action buttons. ([08a7cc320](https://github.com/berkinory/Glade/commit/08a7cc320a355f499d4f1486ae8b4d431a3a850a))
 
 ## 0.0.5 - 2026-09-29
 
@@ -29,13 +34,9 @@
 - Large files now use the full editor with in-file search; save edits explicitly with Cmd/Ctrl+S. ([12e24d1cd](https://github.com/berkinory/Glade/commit/12e24d1cd08d805508ad398b2550eac19245d90f), [893378876](https://github.com/berkinory/Glade/commit/893378876700e32cc81cd2921d1edc7a29152361))
 - Workspace tools share a resizable sidebar, with chat terminals alongside Explorer and Source Control. ([3a0a6c227](https://github.com/berkinory/Glade/commit/3a0a6c2279c0fcf394d6654ea647ebe849a2173c))
 - File and folder icons are consistent across workspace tools, attachments, and code blocks. ([eacb74af6](https://github.com/berkinory/Glade/commit/eacb74af620fe53b492da2d1d2bdda2d382906d0), [7c3b08f8f](https://github.com/berkinory/Glade/commit/7c3b08f8fbfa6f54c4e376bfc4d41f00c971f8f3))
-- Queued messages have clear edit and delete actions.
-- Project chat lists use Show more and reset when collapsed; Chats scrolls without paging controls.
 
 ### Fixed
 
-- Search controls in the code editor stay steady as match counts change.
-- Editing a sent message now sends with Enter and uses standard action buttons.
 - Editing messages preserves conversation history and staged changes without rewriting unchanged files. Stopped replies remain editable. ([655214630](https://github.com/berkinory/Glade/commit/65521463052bb8c3b383269eaa2173fe9d76ab10))
 - Provider reconnects keep the composer available, and previously blocked chats recover after restarting. ([655214630](https://github.com/berkinory/Glade/commit/65521463052bb8c3b383269eaa2173fe9d76ab10))
 - Replies stay in place as thinking turns into text, and delayed session updates no longer flicker the send controls. ([bb24cd2cc](https://github.com/berkinory/Glade/commit/bb24cd2cc3f3b2b2b0e0fa4e0b5c2b55328660e5))

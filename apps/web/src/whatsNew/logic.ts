@@ -86,6 +86,12 @@ export function sortEntriesByVersionDesc(
   return entries.toSorted((left, right) => compareVersions(right.version, left.version));
 }
 
+export function sortReleasedEntriesByVersionDesc(
+  entries: readonly WhatsNewEntry[],
+): readonly WhatsNewEntry[] {
+  return sortEntriesByVersionDesc(entries.filter((entry) => entry.date !== "Unreleased"));
+}
+
 /**
  * Inputs to `resolveWhatsNewState`. Kept as a plain object so the hook can
  * pass the same shape it already has — no parameter juggling.
@@ -169,7 +175,7 @@ export function resolveWhatsNewState(inputs: WhatsNewInputs): WhatsNewState {
   return {
     kind: "show",
     currentEntry,
-    allEntries: sortEntriesByVersionDesc(entries),
+    allEntries: sortReleasedEntriesByVersionDesc(entries),
     nextLastSeenVersion: currentVersion,
   };
 }

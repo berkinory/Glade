@@ -8,7 +8,7 @@
 
 import { ChangelogAccordion } from "../whatsNew/ChangelogAccordion";
 import { WHATS_NEW_ENTRIES } from "../whatsNew/entries";
-import { sortEntriesByVersionDesc, type WhatsNewEntry } from "../whatsNew/logic";
+import { sortReleasedEntriesByVersionDesc, type WhatsNewEntry } from "../whatsNew/logic";
 import { Button } from "./ui/button";
 import {
   Dialog,
@@ -45,7 +45,7 @@ export default function ReleaseHistoryDialog({
   const defaultExpandedVersion = defaultExpandedVersionProp ?? null;
   // Sort at render time so the source of truth (`entries.ts`) stays free of
   // ordering rules — authors can prepend, append, or reorder entries freely.
-  const sorted = sortEntriesByVersionDesc(entries);
+  const sorted = sortReleasedEntriesByVersionDesc(entries);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
