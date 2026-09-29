@@ -152,9 +152,7 @@ it.layer(TestLayer)("git integration", (it) => {
         expect(files.unstaged.map((file) => file.path)).toEqual(["generated.ts", "z-last.txt"]);
         expect(files.unstaged.map((file) => file.status)).toEqual(["M", "U"]);
         const stats = yield* core.readDiffStats(tmp, "unstaged", undefined, true);
-        expect(stats.untrackedFiles).toEqual([
-          { path: "z-last.txt", insertions: 1, deletions: 0 },
-        ]);
+        expect(stats.untrackedFiles).toEqual([{ path: "z-last.txt", insertions: 1, deletions: 0 }]);
         const selected = yield* core.readUnstagedPatch(tmp, "z-last.txt");
         expect(selected.truncated).toBe(false);
         expect(selected.patch).toContain("+visible even after a large diff");

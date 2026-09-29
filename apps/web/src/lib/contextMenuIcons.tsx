@@ -6,7 +6,7 @@
 //      other icon sets are rendered to SVG markup from the same components the app shows.
 
 import { renderToStaticMarkup } from "react-dom/server";
-import { IconFilePlus } from "@tabler/icons-react";
+import { IconFilePlus, IconFileOff } from "@tabler/icons-react";
 
 import { THREAD_ARCHIVE_ICON } from "~/components/ThreadArchiveActionButton";
 import {
@@ -49,6 +49,7 @@ export const FILE_CONTEXT_MENU_ICONS = {
 } as const;
 
 export const GIT_FILE_CONTEXT_MENU_ICONS = {
+  ignore: renderToStaticMarkup(<IconFileOff size={24} />),
   open: EYE_OPEN_ICON_NAME,
   stage: renderToStaticMarkup(<PlusIcon className="size-4" />),
   unstage: renderToStaticMarkup(<MinusIcon className="size-4" />),

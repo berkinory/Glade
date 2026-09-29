@@ -10,6 +10,7 @@ import type {
 } from "@glade/contracts";
 import { mutationOptions, queryOptions, type QueryClient } from "@tanstack/react-query";
 import { ensureNativeApi } from "../nativeApi";
+import { invalidateProjectFileQueriesForCwds } from "./projectReactQuery";
 import { EXPENSIVE_READ_RETRY_OPTIONS, isRpcCapacityExceededError } from "./expensiveReadRetry";
 import { preserveActivePullRequestActionGitFields } from "./pullRequestGitCache";
 import { capturePullRequestActionReadFence } from "./pullRequestMutationCoordinator";
@@ -1030,5 +1031,81 @@ export function gitHandoffThreadMutationOptions(input: {
     mutationKey: gitMutationKeys.handoffThread(input.cwd),
     unavailableMessage: "Git handoff is unavailable.",
     run: (api, cwd, request) => api.git.handoffThread({ cwd, ...request }),
+  });
+}
+
+export type SourceControlAction =
+  | { action: "commit"; message: string }
+  | { action: "fetch" | "pull" | "push" }
+  | { action: "ignore"; paths: string[] }
+  | {
+      action: "rebase";
+      rebase: { action: "start"; target: string } | { action: "continue" | "abort" };
+    };
+
+export function gitRebaseStateQueryOptions(cwd: string | null) {
+  return queryOptions({
+    queryKey: ["git", "rebase-state", cwd],
+    enabled: cwd !== null,
+    queryFn: () => ensureNativeApi().git.rebaseState({ cwd: cwd! }),
+    staleTime: 5_000,
+    refetchInterval: 10_000,
+  });
+}
+
+export function gitSourceControlActionMutationOptions(input: {
+  cwd: string | null;
+  queryClient: QueryClient;
+}) {
+  return makeGitMutationOptions<SourceControlAction, void>({
+    ...input,
+    mutationKey: ["git", "mutation", "source-control", input.cwd],
+    unavailableMessage: "Source control is unavailable.",
+    invalidate: "source-control",
+    run: async (api, cwd, request) => {
+      try {
+        switch (request.action) {
+          case "commit":
+            await api.git.commitStaged({ cwd, message: request.message });
+            break;
+          case "fetch":
+            await api.git.fetch({ cwd });
+            break;
+          case "pull":
+            await api.git.pull({ cwd });
+            break;
+          case "push":
+            await api.git.runStackedAction({
+              cwd,
+              action: "push",
+              actionId: crypto.randomUUID(),
+              allowDirtyWorkingTree: true,
+            });
+            break;
+          case "ignore":
+            await api.git.ignorePaths({ cwd, paths: request.paths });
+            break;
+          case "rebase": {
+            const rebase = request.rebase;
+            if (rebase.action === "start") {
+              if (!rebase.target) throw new Error("Select a branch to rebase onto.");
+              await api.git.rebase({ cwd, action: "start", target: rebase.target });
+            } else await api.git.rebase({ cwd, action: rebase.action });
+            break;
+          }
+        }
+      } finally {
+        if (
+          request.action === "ignore" ||
+          request.action === "pull" ||
+          request.action === "rebase"
+        ) {
+          void invalidateProjectFileQueriesForCwds(input.queryClient, [cwd]);
+        }
+        void input.queryClient.invalidateQueries({
+          queryKey: ["git", "rebase-state", cwd],
+        });
+      }
+    },
   });
 }

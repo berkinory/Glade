@@ -1,3 +1,5 @@
+import type { ThreadId } from "@glade/contracts";
+import { SourceControlToolbar } from "./SourceControlToolbar";
 // FILE: GitPanel.tsx
 // Purpose: Source-control staging pane for the right dock (staged/unstaged lists + per-file diff).
 // Layer: Chat right-dock UI
@@ -9,15 +11,15 @@
 // GitCore; on settle we invalidate the per-cwd git caches so both lists stay in sync.
 
 import { type FileDiffMetadata } from "@pierre/diffs/react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, type MouseEvent } from "react";
 
-import { showContextMenuFallback } from "~/contextMenuFallback";
+import { showGitFileContextMenu } from "./gitFileContextMenu";
 import { useTheme } from "~/hooks/useTheme";
-import { GIT_FILE_CONTEXT_MENU_ICONS } from "~/lib/contextMenuIcons";
 import { buildFileDiffRenderKey, getRenderablePatch } from "~/lib/diffRendering";
 import {
   gitQueryKeys,
+  gitSourceControlActionMutationOptions,
   gitRevertUnstagedFileMutationOptions,
   gitStageFilesMutationOptions,
   gitUnstageFilesMutationOptions,
@@ -44,7 +46,7 @@ import { IconButton } from "../ui/icon-button";
 import { Spinner } from "../ui/spinner";
 import { toastManager } from "../ui/toast";
 import { FileDiffCard, FileDiffSurface } from "./FileDiffView";
-import { canRevertFile, GitFileSection, type SourceFile } from "./GitFileList";
+import { GitFileSection, type SourceFile } from "./GitFileList";
 import { PanelStateMessage } from "./PanelStateMessage";
 import { selectGitFiles, type GitFileSelection, type GitFileSectionId } from "./gitFileSelection";
 
@@ -67,6 +69,7 @@ function SelectedFileDiff(props: { fileDiff: FileDiffMetadata; theme: "light" | 
 }
 
 export function GitPanel(props: {
+  threadId: ThreadId;
   workspaceRoot: string | null;
   onOpenFile: (path: string) => void;
 }) {
@@ -125,7 +128,12 @@ export function GitPanel(props: {
   const stageMutation = useMutation(gitStageFilesMutationOptions({ cwd, queryClient }));
   const unstageMutation = useMutation(gitUnstageFilesMutationOptions({ cwd, queryClient }));
   const revertMutation = useMutation(gitRevertUnstagedFileMutationOptions({ cwd, queryClient }));
-  const mutating = stageMutation.isPending || unstageMutation.isPending || revertMutation.isPending;
+  const ignoreMutation = useMutation(gitSourceControlActionMutationOptions({ cwd, queryClient }));
+  const mutating =
+    useIsMutating({
+      predicate: (mutation) =>
+        mutation.options.mutationKey?.[0] === "git" && mutation.options.mutationKey.includes(cwd),
+    }) > 0;
 
   const stage = (paths: string[]) => {
     if (!cwd || paths.length === 0) return;
@@ -163,6 +171,7 @@ export function GitPanel(props: {
     event: MouseEvent<HTMLDivElement>,
   ) => {
     event.preventDefault();
+    if (mutating) return;
     const files = section === "staged" ? stagedFiles : unstagedFiles;
     const selectedPaths =
       fileSelection?.section === section && fileSelection.paths.includes(file.path)
@@ -172,47 +181,49 @@ export function GitPanel(props: {
     if (selectedPaths.length === 1 || !fileSelection?.paths.includes(file.path)) {
       setFileSelection({ section, paths: [file.path], anchor: file.path });
     }
-    const count = targets.length;
-    const action = section === "staged" ? "Unstage" : "Stage";
-    const clicked = await showContextMenuFallback(
-      [
-        ...(file.status === "D"
-          ? []
-          : [
-              {
-                id: "open" as const,
-                label: "Open file",
-                icon: GIT_FILE_CONTEXT_MENU_ICONS.open,
-              },
-            ]),
-        {
-          id: "action" as const,
-          label: count === 1 ? action : `${action} ${count} files`,
-          icon:
-            section === "staged"
-              ? GIT_FILE_CONTEXT_MENU_ICONS.unstage
-              : GIT_FILE_CONTEXT_MENU_ICONS.stage,
-          separatorBefore: true,
-        },
-        ...(section === "unstaged" && targets.every(canRevertFile)
-          ? [
-              {
-                id: "revert" as const,
-                label: count === 1 ? "Revert changes" : `Revert ${count} files`,
-                icon: GIT_FILE_CONTEXT_MENU_ICONS.revert,
-                destructive: true,
-              },
-            ]
-          : []),
-      ],
-      { x: event.clientX, y: event.clientY },
-    );
+    const clicked = await showGitFileContextMenu(section, file, targets, {
+      x: event.clientX,
+      y: event.clientY,
+    });
     if (clicked === "open") props.onOpenFile(file.path);
     if (clicked === "action") {
       if (section === "staged") unstage(targets.map((target) => target.path));
       else stage(targets.map((target) => target.path));
     }
     if (clicked === "revert") setReverting(targets);
+    if (clicked === "ignore") {
+      if (!targets.every((target) => target.status === "U")) {
+        toastManager.add({
+          type: "info",
+          title: "Git already tracks these files",
+          description:
+            ".gitignore applies to untracked files. Existing tracked files are kept in the repository.",
+        });
+        return;
+      }
+      if (hasUnsavedWorkspaceEditors(queryClient, cwd)) {
+        toastManager.add({
+          type: "error",
+          title: "Save your open files before updating .gitignore.",
+        });
+        return;
+      }
+      ignoreMutation.mutate(
+        { action: "ignore", paths: targets.map((target) => target.path) },
+        {
+          onError: (error) =>
+            toastManager.add({
+              type: "error",
+              title: "Could not update .gitignore",
+              description: error.message,
+            }),
+          onSuccess: () => {
+            setFileSelection(null);
+            toastManager.add({ type: "success", title: "Added to .gitignore" });
+          },
+        },
+      );
+    }
   };
 
   const refresh = () => {
@@ -259,6 +270,13 @@ export function GitPanel(props: {
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col">
+      <SourceControlToolbar
+        key={cwd}
+        cwd={cwd}
+        threadId={props.threadId}
+        stagedCount={stagedFiles.length}
+        busy={mutating}
+      />
       <div
         className={cn(
           "flex min-h-0 flex-col gap-2 overflow-auto px-1.5 py-2",

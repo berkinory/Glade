@@ -83,7 +83,7 @@ import type { ThreadWorkspacePatch } from "../types";
  * `panel` makes the trigger a full-width Environment panel row and drops its menu
  * downward instead of upward.
  */
-export type BranchSelectorVariant = "toolbar" | "panel";
+export type BranchSelectorVariant = "toolbar" | "panel" | "compact";
 
 interface BranchToolbarBranchSelectorProps {
   activeProjectCwd: string;
@@ -861,9 +861,11 @@ export function BranchToolbarBranchSelector({
     >
       <ComboboxTrigger
         className={
-          isPanel
-            ? ENVIRONMENT_ROW_CLASS_NAME
-            : `${COMPOSER_TOOLBAR_PICKER_TRIGGER_CLASS_NAME} disabled:cursor-not-allowed disabled:opacity-50`
+          variant === "compact"
+            ? "inline-flex h-6 min-w-0 max-w-full items-center gap-1 rounded-md px-1.5 text-ui-xs text-muted-foreground hover:bg-sidebar-accent hover:text-foreground disabled:opacity-50"
+            : isPanel
+              ? ENVIRONMENT_ROW_CLASS_NAME
+              : `${COMPOSER_TOOLBAR_PICKER_TRIGGER_CLASS_NAME} disabled:cursor-not-allowed disabled:opacity-50`
         }
         disabled={(branchesQuery.isLoading && branches.length === 0) || isBranchActionPending}
       >
@@ -883,7 +885,7 @@ export function BranchToolbarBranchSelector({
       </ComboboxTrigger>
       <ComboboxPopup
         align="start"
-        side={isPanel ? "bottom" : "top"}
+        side={variant === "toolbar" ? "top" : "bottom"}
         sideOffset={6}
         surface="composer"
         className="w-64 min-w-0"

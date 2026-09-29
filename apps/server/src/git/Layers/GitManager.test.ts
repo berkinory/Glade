@@ -336,6 +336,39 @@ const GitManagerTestLayer = GitCoreLive.pipe(
 );
 
 it.layer(GitManagerTestLayer)("GitManager", (it) => {
+  it.effect("generates a message from the index without staging or committing anything", () =>
+    Effect.gen(function* () {
+      const cwd = yield* makeTempDir("glade-message-preview-");
+      yield* initRepo(cwd);
+      fs.writeFileSync(path.join(cwd, "README.md"), "staged content\n");
+      yield* runGit(cwd, ["add", "README.md"]);
+      fs.writeFileSync(path.join(cwd, "README.md"), "unstaged content\n");
+      fs.writeFileSync(path.join(cwd, "new.txt"), "untracked content\n");
+      const head = (yield* runGit(cwd, ["rev-parse", "HEAD"])).stdout;
+      const index = (yield* runGit(cwd, ["write-tree"])).stdout;
+      const status = (yield* runGit(cwd, ["status", "--porcelain"])).stdout;
+      const { manager } = yield* makeManager({
+        textGeneration: {
+          generateCommitMessage: (input) => {
+            expect(input.stagedPatch).toContain("+staged content");
+            expect(input.stagedPatch).not.toContain("unstaged content");
+            expect(input.stagedPatch).not.toContain("untracked content");
+            return Effect.succeed({
+              subject: "Update readme",
+              body: "Describe the staged change.",
+            });
+          },
+        },
+      });
+      expect(yield* manager.generateCommitMessage({ cwd })).toEqual({
+        message: "Update readme\n\nDescribe the staged change.",
+      });
+      expect((yield* runGit(cwd, ["rev-parse", "HEAD"])).stdout).toBe(head);
+      expect((yield* runGit(cwd, ["write-tree"])).stdout).toBe(index);
+      expect((yield* runGit(cwd, ["status", "--porcelain"])).stdout).toBe(status);
+      expect(fs.readFileSync(path.join(cwd, "README.md"), "utf8")).toBe("unstaged content\n");
+    }),
+  );
   it.effect("refuses to summarize a working-tree patch whose capture was truncated", () =>
     Effect.gen(function* () {
       const repoDir = yield* makeTempDir("glade-truncated-summary-");

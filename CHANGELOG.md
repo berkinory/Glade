@@ -2,7 +2,16 @@
 
 ## Unreleased
 
+### New
+
+- Source Control adds staged-only commits with Cmd/Ctrl+Enter, a compact branch picker, fetch, pull, push, and rebase with conflict continuation and abort.
+- Generate commit messages from staged changes using the configured Git writing AI, without staging files or committing.
+- Source Control file menus can add untracked paths to the root .gitignore, preserving existing rules and escaping filenames literally.
+- Outgoing and incoming commit counts appear beside Fetch for branches with an upstream.
+
 ### Improved
+
+- The compact commit input keeps its AI action, spinner, and commit button aligned with the first line without overlapping text. Rebase uses the shared tooltip.
 
 - Code-block file headers use the bundled Symbols file icons.
 

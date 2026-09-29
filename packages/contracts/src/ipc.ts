@@ -81,6 +81,12 @@ import type {
   GitStageFilesInput,
   GitStageFilesResult,
   GitRevertUnstagedFileInput,
+  GitCommitStagedInput,
+  GitFetchInput,
+  GitIgnorePathsInput,
+  GitRebaseInput,
+  GitRebaseStateInput,
+  GitRebaseStateResult,
   GitRevertUnstagedFileResult,
   GitStashAndCheckoutInput,
   GitStashDropInput,
@@ -89,6 +95,8 @@ import type {
   GitStatusInput,
   GitStatusResult,
   GitSummarizeDiffInput,
+  GitGenerateCommitMessageInput,
+  GitGenerateCommitMessageResult,
   GitSummarizeDiffResult,
   GitUnstageFilesInput,
   GitUnstageFilesResult,
@@ -825,6 +833,11 @@ export interface NativeApi {
     removeIndexLock: (input: GitRemoveIndexLockInput) => Promise<void>;
     init: (input: GitInitInput) => Promise<void>;
     stageFiles: (input: GitStageFilesInput) => Promise<GitStageFilesResult>;
+    commitStaged: (input: GitCommitStagedInput) => Promise<void>;
+    fetch: (input: GitFetchInput) => Promise<void>;
+    ignorePaths: (input: GitIgnorePathsInput) => Promise<void>;
+    rebase: (input: GitRebaseInput) => Promise<void>;
+    rebaseState: (input: GitRebaseStateInput) => Promise<GitRebaseStateResult>;
     revertUnstagedFile: (input: GitRevertUnstagedFileInput) => Promise<GitRevertUnstagedFileResult>;
     unstageFiles: (input: GitUnstageFilesInput) => Promise<GitUnstageFilesResult>;
     handoffThread: (input: GitHandoffThreadInput) => Promise<GitHandoffThreadResult>;
@@ -847,6 +860,9 @@ export interface NativeApi {
       input: GitReadWorkingTreeDiffInput,
     ) => Promise<GitWorkingTreeDiffStatsResult>;
     blameLine: (input: GitBlameLineInput) => Promise<GitBlameLineResult>;
+    generateCommitMessage: (
+      input: GitGenerateCommitMessageInput,
+    ) => Promise<GitGenerateCommitMessageResult>;
     summarizeDiff: (input: GitSummarizeDiffInput) => Promise<GitSummarizeDiffResult>;
     runStackedAction: (input: GitRunStackedActionInput) => Promise<GitRunStackedActionResult>;
     onActionProgress: (callback: (event: GitActionProgressEvent) => void) => () => void;

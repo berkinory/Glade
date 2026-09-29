@@ -107,6 +107,7 @@ export interface BranchToolbarProps {
   variant?: BranchSelectorVariant;
   // Keeps the Local/Worktree control visible while hiding Git-only branch UI for non-repo cwd.
   showBranchSelector?: boolean;
+  showEnvironment?: boolean;
 }
 
 export interface RuntimeUsageControlsProps {
@@ -238,6 +239,7 @@ export default function BranchToolbar({
   onComposerFocusRequest,
   variant: variantProp,
   showBranchSelector: showBranchSelectorProp,
+  showEnvironment = true,
 }: BranchToolbarProps) {
   const handoffBusy = handoffBusyProp ?? false;
   const variant = variantProp ?? "toolbar";
@@ -379,30 +381,32 @@ export default function BranchToolbar({
         className,
       )}
     >
-      <div className={isPanel ? "flex flex-col gap-0.5" : "flex items-center gap-2"}>
-        {showEnvPicker ? (
-          <ComposerEnvironmentPicker
-            environmentPresentation={environmentPresentation}
-            onEnvModeChange={onEnvModeChange}
-            canSwitchToWorktree={canSwitchToWorktree}
-            canHandoffToLocal={canHandoffToLocal}
-            onHandoffToLocal={onHandoffToLocal}
-            handoffBusy={handoffBusy}
-            isPanel={isPanel}
-          />
-        ) : isPanel ? (
-          <div className={cn(ENVIRONMENT_ROW_CLASS_NAME, "cursor-default hover:bg-transparent")}>
-            <EnvironmentRowBody
-              icon={<WorktreeGlyph className={ENVIRONMENT_ROW_ICON_CLASS_NAME} />}
-              label={environmentPresentation.shortLabel}
+      <div className={isPanel ? "flex flex-col gap-0.5" : "flex min-w-0 items-center gap-2"}>
+        {showEnvironment ? (
+          showEnvPicker ? (
+            <ComposerEnvironmentPicker
+              environmentPresentation={environmentPresentation}
+              onEnvModeChange={onEnvModeChange}
+              canSwitchToWorktree={canSwitchToWorktree}
+              canHandoffToLocal={canHandoffToLocal}
+              onHandoffToLocal={onHandoffToLocal}
+              handoffBusy={handoffBusy}
+              isPanel={isPanel}
             />
-          </div>
-        ) : (
-          <span className="inline-flex items-center gap-2 px-1.5 text-ui-sm font-normal text-[var(--color-text-foreground-secondary)]">
-            <WorktreeGlyph className="size-3.5" />
-            {environmentPresentation.shortLabel}
-          </span>
-        )}
+          ) : isPanel ? (
+            <div className={cn(ENVIRONMENT_ROW_CLASS_NAME, "cursor-default hover:bg-transparent")}>
+              <EnvironmentRowBody
+                icon={<WorktreeGlyph className={ENVIRONMENT_ROW_ICON_CLASS_NAME} />}
+                label={environmentPresentation.shortLabel}
+              />
+            </div>
+          ) : (
+            <span className="inline-flex items-center gap-2 px-1.5 text-ui-sm font-normal text-[var(--color-text-foreground-secondary)]">
+              <WorktreeGlyph className="size-3.5" />
+              {environmentPresentation.shortLabel}
+            </span>
+          )
+        ) : null}
 
         {showBranchSelector ? (
           /* ChatView stays mounted while the route switches threads. Reset the selector's

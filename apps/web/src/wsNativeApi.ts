@@ -593,6 +593,8 @@ export function createWsNativeApi(): NativeApi {
       readFileAtRev: (input) => transport.request(WS_METHODS.gitReadFileAtRev, input),
       workingTreeDiffStats: (input) => transport.request(WS_METHODS.gitWorkingTreeDiffStats, input),
       blameLine: (input) => transport.request(WS_METHODS.gitBlameLine, input),
+      generateCommitMessage: (input) =>
+        transport.request(WS_METHODS.gitGenerateCommitMessage, input, { timeoutMs: null }),
       summarizeDiff: (input) =>
         transport.request(WS_METHODS.gitSummarizeDiff, input, {
           timeoutMs: null,
@@ -619,6 +621,13 @@ export function createWsNativeApi(): NativeApi {
       removeIndexLock: (input) => transport.request(WS_METHODS.gitRemoveIndexLock, input),
       init: (input) => transport.request(WS_METHODS.gitInit, input),
       stageFiles: (input) => transport.request(WS_METHODS.gitStageFiles, input),
+      commitStaged: (input) =>
+        transport.request(WS_METHODS.gitCommitStaged, input, { timeoutMs: null }),
+      fetch: (input) => transport.request(WS_METHODS.gitFetch, input, { timeoutMs: null }),
+      ignorePaths: (input) =>
+        transport.request(WS_METHODS.gitIgnorePaths, input, { timeoutMs: null }),
+      rebase: (input) => transport.request(WS_METHODS.gitRebase, input, { timeoutMs: null }),
+      rebaseState: (input) => transport.request(WS_METHODS.gitRebaseState, input),
       revertUnstagedFile: (input) => transport.request(WS_METHODS.gitRevertUnstagedFile, input),
       unstageFiles: (input) => transport.request(WS_METHODS.gitUnstageFiles, input),
       handoffThread: (input) => transport.request(WS_METHODS.gitHandoffThread, input),

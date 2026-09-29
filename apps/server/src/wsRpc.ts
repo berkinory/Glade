@@ -1,3 +1,4 @@
+import { sourceControlActions } from "./git/sourceControlActions.ts";
 import { AgentGatewaySessionRegistry } from "./agentGateway/Services/AgentGatewaySessionRegistry";
 import { execFile } from "node:child_process";
 
@@ -1434,6 +1435,8 @@ const makeWsRpcHandlersLayer = () =>
             gitManager.readWorkingTreeDiffStats(input),
             "Failed to read working tree diff stats",
           ),
+        [WS_METHODS.gitGenerateCommitMessage]: (input) =>
+          rpcEffect(gitManager.generateCommitMessage(input), "Failed to generate commit message"),
         [WS_METHODS.gitSummarizeDiff]: (input) =>
           rpcEffect(gitManager.summarizeDiff(input), "Failed to summarize diff"),
         [WS_METHODS.gitPull]: (input) =>
@@ -1615,6 +1618,45 @@ const makeWsRpcHandlersLayer = () =>
           rpcEffect(
             refreshGitStatusAfter(input.cwd, git.withMutation(input.cwd, git.initRepo(input))),
             "Failed to initialize repository",
+          ),
+        [WS_METHODS.gitCommitStaged]: (input) =>
+          rpcEffect(
+            git
+              .withMutation(
+                input.cwd,
+                sourceControlActions(git).commitStaged(input.cwd, input.message),
+              )
+              .pipe(Effect.onExit(() => refreshGitStatusInBackground(input.cwd))),
+            "Failed to commit staged changes",
+          ),
+        [WS_METHODS.gitFetch]: (input) =>
+          rpcEffect(
+            git
+              .withMutation(input.cwd, sourceControlActions(git).fetch(input.cwd))
+              .pipe(Effect.onExit(() => refreshGitStatusInBackground(input.cwd))),
+            "Failed to fetch",
+          ),
+        [WS_METHODS.gitIgnorePaths]: (input) =>
+          rpcEffect(
+            git
+              .withMutation(
+                input.cwd,
+                sourceControlActions(git).ignorePaths(input.cwd, input.paths),
+              )
+              .pipe(Effect.onExit(() => refreshGitStatusInBackground(input.cwd))),
+            "Failed to update .gitignore",
+          ),
+        [WS_METHODS.gitRebase]: (input) =>
+          rpcEffect(
+            git
+              .withMutation(input.cwd, sourceControlActions(git).rebase(input))
+              .pipe(Effect.onExit(() => refreshGitStatusInBackground(input.cwd))),
+            "Failed to rebase",
+          ),
+        [WS_METHODS.gitRebaseState]: (input) =>
+          rpcEffect(
+            sourceControlActions(git).rebaseState(input.cwd),
+            "Failed to read rebase state",
           ),
         [WS_METHODS.gitStageFiles]: (input) =>
           rpcEffect(

@@ -1445,6 +1445,38 @@ export const makeGitManager = Effect.gen(function* () {
   );
 
   // Resolve the patch server-side so large repository data never makes a client→RPC round trip.
+  const generateCommitMessage: GitManagerShape["generateCommitMessage"] = Effect.fnUntraced(
+    function* (input) {
+      // prepareCommitContext can stage files. Message previews must only read the index.
+      const { patch, truncated } = yield* gitCore.readStagedPatch(input.cwd);
+      if (!patch.trim())
+        return yield* gitManagerError(
+          "generateCommitMessage",
+          "Stage changes before generating a commit message.",
+        );
+      if (truncated)
+        return yield* gitManagerError(
+          "generateCommitMessage",
+          "The staged diff is too large to generate a complete commit message.",
+        );
+      const branch = yield* gitCore.readBranchContext(input.cwd);
+      const summary = yield* gitCore.execute({
+        cwd: input.cwd,
+        operation: "generateCommitMessage",
+        args: ["diff", "--cached", "--stat"],
+      });
+      const generated = yield* textGeneration.generateCommitMessage({
+        cwd: input.cwd,
+        branch: branch.branch,
+        stagedPatch: limitContext(patch, 50_000),
+        stagedSummary: limitContext(summary.stdout, 8_000),
+        ...buildGitTextGenerationCallInput(input),
+      });
+      const message = sanitizeCommitMessage(generated);
+      return { message: formatCommitMessage(message.subject, message.body) };
+    },
+  );
+
   const summarizeDiff: GitManagerShape["summarizeDiff"] = Effect.fnUntraced(function* (input) {
     const { patch, truncated } = yield* readWorkingTreeDiff({
       cwd: input.cwd,
@@ -2513,6 +2545,7 @@ The local stash entry was kept for recovery.`,
     blameLine,
     readFileAtRev,
     summarizeDiff,
+    generateCommitMessage,
     resolvePullRequest,
     pullRequestSnapshot,
     preparePullRequestThread: (input) =>

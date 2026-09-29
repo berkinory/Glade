@@ -7,11 +7,18 @@ import type * as React from "react";
 import { cn } from "~/lib/utils";
 
 type TextareaProps = React.ComponentProps<"textarea"> & {
-  size?: "sm" | "default" | "lg" | number;
+  size?: "xs" | "sm" | "default" | "lg" | number;
   unstyled?: boolean;
+  trailingAction?: React.ReactNode;
 };
 
-function Textarea({ className, size: sizeProp, unstyled: unstyledProp, ...props }: TextareaProps) {
+function Textarea({
+  className,
+  size: sizeProp,
+  unstyled: unstyledProp,
+  trailingAction,
+  ...props
+}: TextareaProps) {
   const size = sizeProp ?? "default";
   const unstyled = unstyledProp ?? false;
   return (
@@ -31,6 +38,9 @@ function Textarea({ className, size: sizeProp, unstyled: unstyledProp, ...props 
           <textarea
             className={cn(
               "font-system-ui field-sizing-content min-h-17.5 w-full resize-none rounded-[inherit] px-[calc(--spacing(3)-1px)] py-[calc(--spacing(1.5)-1px)] outline-none max-sm:min-h-20.5",
+              trailingAction != null && "min-w-0 flex-1",
+              size === "xs" &&
+                "min-h-7 max-h-32 overflow-y-auto px-2 py-1 text-ui-sm max-sm:min-h-7",
               size === "sm" &&
                 "min-h-16.5 px-[calc(--spacing(2.5)-1px)] py-[calc(--spacing(1)-1px)] max-sm:min-h-19.5",
               size === "lg" && "min-h-18.5 py-[calc(--spacing(2)-1px)] max-sm:min-h-21.5",
@@ -40,6 +50,9 @@ function Textarea({ className, size: sizeProp, unstyled: unstyledProp, ...props 
           />
         )}
       />
+      {trailingAction != null ? (
+        <span className="shrink-0 self-start p-0.5">{trailingAction}</span>
+      ) : null}
     </span>
   );
 }

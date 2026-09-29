@@ -752,3 +752,42 @@ export const GitActionProgressEvent = Schema.Union([
   GitActionFailedEvent,
 ]);
 export type GitActionProgressEvent = typeof GitActionProgressEvent.Type;
+
+export const GitCommitStagedInput = Schema.Struct({
+  cwd: TrimmedNonEmptyStringSchema,
+  message: TrimmedNonEmptyStringSchema,
+});
+export type GitCommitStagedInput = typeof GitCommitStagedInput.Type;
+export const GitFetchInput = GitStatusInput;
+export type GitFetchInput = typeof GitFetchInput.Type;
+export const GitIgnorePathsInput = GitStageFilesInput;
+export type GitIgnorePathsInput = typeof GitIgnorePathsInput.Type;
+export const GitRebaseInput = Schema.Union([
+  Schema.Struct({
+    cwd: TrimmedNonEmptyStringSchema,
+    action: Schema.Literal("start"),
+    target: TrimmedNonEmptyStringSchema,
+  }),
+  Schema.Struct({
+    cwd: TrimmedNonEmptyStringSchema,
+    action: Schema.Literals(["continue", "abort"]),
+  }),
+]);
+export type GitRebaseInput = typeof GitRebaseInput.Type;
+export const GitRebaseStateInput = GitStatusInput;
+export type GitRebaseStateInput = typeof GitRebaseStateInput.Type;
+export const GitRebaseStateResult = Schema.Struct({ inProgress: Schema.Boolean });
+export type GitRebaseStateResult = typeof GitRebaseStateResult.Type;
+
+export const GitGenerateCommitMessageInput = Schema.Struct({
+  cwd: GitSummarizeDiffInput.fields.cwd,
+  codexHomePath: GitSummarizeDiffInput.fields.codexHomePath,
+  providerOptions: GitSummarizeDiffInput.fields.providerOptions,
+  textGenerationModel: GitSummarizeDiffInput.fields.textGenerationModel,
+  textGenerationModelSelection: GitSummarizeDiffInput.fields.textGenerationModelSelection,
+});
+export type GitGenerateCommitMessageInput = typeof GitGenerateCommitMessageInput.Type;
+export const GitGenerateCommitMessageResult = Schema.Struct({
+  message: TrimmedNonEmptyStringSchema,
+});
+export type GitGenerateCommitMessageResult = typeof GitGenerateCommitMessageResult.Type;

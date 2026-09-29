@@ -35,6 +35,18 @@ Computer Use. `computerPermissions.ts` owns permission state and guide lifecycle
 `computerHelperProtocol.ts` validates helper messages. These do not expose capture
 attachment APIs or a keyboard capture watcher.
 
+## Source Control
+
+Source Control shows outgoing and incoming commit counts to the left of Fetch when
+the branch has an upstream. Incoming counts reflect the last fetched remote state.
+
+The right dock supports staged-only commits with a workspace-scoped message draft
+and Cmd/Ctrl+Enter, AI message generation from staged changes without index or commit mutations, fetch across configured remotes, fast-forward-only pull, push of existing commits, and the
+shared branch picker. The commit button stays aligned with the first input line. Rebase lets users choose a target branch, resolve and stage
+conflicts, then continue or abort. Starting a rebase does not stash changes automatically.
+File menus add selected untracked files to the repository-root `.gitignore` using
+literal, rooted paths; tracked files remain tracked and existing ignore rules are preserved.
+
 ## Existing data
 
 Migration IDs 74–78 and 80 retain only their original ledger names and no-op entries,

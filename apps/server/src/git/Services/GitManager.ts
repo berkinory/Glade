@@ -30,6 +30,8 @@ import {
   GitStatusResult,
   GitSourceControlFilesResult,
   GitSummarizeDiffInput,
+  GitGenerateCommitMessageInput,
+  GitGenerateCommitMessageResult,
   GitSummarizeDiffResult,
 } from "@glade/contracts";
 import { ServiceMap } from "effect";
@@ -96,6 +98,10 @@ export interface GitManagerShape {
   /**
    * Generate a read-only markdown summary for an existing diff patch.
    */
+  readonly generateCommitMessage: (
+    input: GitGenerateCommitMessageInput,
+  ) => Effect.Effect<GitGenerateCommitMessageResult, GitManagerServiceError>;
+
   readonly summarizeDiff: (
     input: GitSummarizeDiffInput,
   ) => Effect.Effect<GitSummarizeDiffResult, GitManagerServiceError>;

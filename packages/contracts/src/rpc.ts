@@ -136,6 +136,12 @@ import {
   GitStageFilesInput,
   GitStageFilesResult,
   GitRevertUnstagedFileInput,
+  GitCommitStagedInput,
+  GitFetchInput,
+  GitIgnorePathsInput,
+  GitRebaseInput,
+  GitRebaseStateInput,
+  GitRebaseStateResult,
   GitRevertUnstagedFileResult,
   GitStashAndCheckoutInput,
   GitStashDropInput,
@@ -144,6 +150,8 @@ import {
   GitStatusInput,
   GitStatusResult,
   GitSummarizeDiffInput,
+  GitGenerateCommitMessageInput,
+  GitGenerateCommitMessageResult,
   GitSummarizeDiffResult,
   GitUnstageFilesInput,
   GitWorktreeSetupProgressEvent,
@@ -971,6 +979,12 @@ export const WsGitWorkingTreeDiffStatsRpc = Rpc.make(WS_METHODS.gitWorkingTreeDi
   error: WsRpcError,
 });
 
+export const WsGitGenerateCommitMessageRpc = Rpc.make(WS_METHODS.gitGenerateCommitMessage, {
+  payload: GitGenerateCommitMessageInput,
+  success: GitGenerateCommitMessageResult,
+  error: WsRpcError,
+});
+
 export const WsGitSummarizeDiffRpc = Rpc.make(WS_METHODS.gitSummarizeDiff, {
   payload: GitSummarizeDiffInput,
   success: GitSummarizeDiffResult,
@@ -1135,6 +1149,32 @@ export const WsGitInitRpc = Rpc.make(WS_METHODS.gitInit, {
 export const WsGitStageFilesRpc = Rpc.make(WS_METHODS.gitStageFiles, {
   payload: GitStageFilesInput,
   success: GitStageFilesResult,
+  error: WsRpcError,
+});
+
+export const WsGitCommitStagedRpc = Rpc.make(WS_METHODS.gitCommitStaged, {
+  payload: GitCommitStagedInput,
+  success: Schema.Void,
+  error: WsRpcError,
+});
+export const WsGitFetchRpc = Rpc.make(WS_METHODS.gitFetch, {
+  payload: GitFetchInput,
+  success: Schema.Void,
+  error: WsRpcError,
+});
+export const WsGitIgnorePathsRpc = Rpc.make(WS_METHODS.gitIgnorePaths, {
+  payload: GitIgnorePathsInput,
+  success: Schema.Void,
+  error: WsRpcError,
+});
+export const WsGitRebaseRpc = Rpc.make(WS_METHODS.gitRebase, {
+  payload: GitRebaseInput,
+  success: Schema.Void,
+  error: WsRpcError,
+});
+export const WsGitRebaseStateRpc = Rpc.make(WS_METHODS.gitRebaseState, {
+  payload: GitRebaseStateInput,
+  success: GitRebaseStateResult,
   error: WsRpcError,
 });
 
@@ -1539,6 +1579,7 @@ export const WsFeatureRpcGroup = RpcGroup.make(
   WsGitBlameLineRpc,
   WsGitReadFileAtRevRpc,
   WsGitWorkingTreeDiffStatsRpc,
+  WsGitGenerateCommitMessageRpc,
   WsGitSummarizeDiffRpc,
   WsGitPullRpc,
   WsGitRunStackedActionRpc,
@@ -1565,6 +1606,11 @@ export const WsFeatureRpcGroup = RpcGroup.make(
   WsGitRemoveIndexLockRpc,
   WsGitInitRpc,
   WsGitStageFilesRpc,
+  WsGitCommitStagedRpc,
+  WsGitFetchRpc,
+  WsGitIgnorePathsRpc,
+  WsGitRebaseRpc,
+  WsGitRebaseStateRpc,
   WsGitRevertUnstagedFileRpc,
   WsGitUnstageFilesRpc,
   WsGitHandoffThreadRpc,

@@ -55,7 +55,11 @@ export function SourceControlDockPane(props: {
       </div>
       <div className="min-h-0 flex-1">
         <div className={cn("h-full min-h-0", props.view !== "changes" && "hidden")}>
-          <GitPanel workspaceRoot={props.workspaceRoot} onOpenFile={props.onOpenFile} />
+          <GitPanel
+            threadId={props.threadId}
+            workspaceRoot={props.workspaceRoot}
+            onOpenFile={props.onOpenFile}
+          />
         </div>
         {reviewOpened || props.view === "review" ? (
           <div className={cn("h-full min-h-0", props.view !== "review" && "hidden")}>
