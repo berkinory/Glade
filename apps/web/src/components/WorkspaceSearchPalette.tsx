@@ -18,7 +18,6 @@ import { useDebouncedValue } from "@tanstack/react-pacer";
 import { Autocomplete as AutocompletePrimitive } from "@base-ui/react/autocomplete";
 import type { ProjectContentMatch, ProjectEntry } from "@glade/contracts";
 import { PROJECT_SEARCH_CONTENT_MIN_QUERY_LENGTH } from "@glade/contracts";
-import { normalizeWorkspaceEntrySearchQuery } from "@glade/shared/searchQuery";
 
 import {
   prewarmProjectSearchIndex,
@@ -26,7 +25,6 @@ import {
   projectSearchEntriesQueryOptions,
 } from "~/lib/projectReactQuery";
 import { ContentSearchMatchText } from "./ContentSearchMatchText";
-import { buildMatchSegments } from "~/lib/matchHighlight";
 import { cn } from "~/lib/utils";
 import {
   Command,
@@ -122,31 +120,6 @@ function splitPath(path: string): { base: string; dir: string } {
   return { base: path.slice(separatorIndex + 1), dir: path.slice(0, separatorIndex) };
 }
 
-// Minimal match emphasis: the matched characters read in the foreground color
-// while the rest of the text stays muted — including fuzzy subsequence hits,
-// where the matched runs are non-contiguous. When the query doesn't occur in
-// the text (e.g. it matched the directory instead), the whole text stays
-// readable instead of dimming.
-function FileNameText(props: { text: string; query: string }) {
-  const segments = buildMatchSegments(props.text, props.query);
-  if (!segments) {
-    return <span className="text-zinc-700 dark:text-zinc-300">{props.text}</span>;
-  }
-  return (
-    <span className={MUTED_TEXT_CLASS}>
-      {segments.map((segment) =>
-        segment.matched ? (
-          <span className="font-medium text-zinc-900 dark:text-zinc-50" key={segment.start}>
-            {segment.text}
-          </span>
-        ) : (
-          segment.text
-        ),
-      )}
-    </span>
-  );
-}
-
 // Parent directory, clipped at the head rather than the tail: the deepest
 // folder is what disambiguates two identically named files, so long paths read
 // as `…/public/central-icons-reversed` instead of `apps/web/public/central-…`.
@@ -174,7 +147,6 @@ function DirectoryText(props: { dir: string; className?: string }) {
 const FileResultRow = memo(function FileResultRow(props: {
   entry: ProjectEntry;
   index: number;
-  highlightQuery: string;
   onOpenFile: (relativePath: string) => void;
   onOpenDirectory: (relativePath: string) => void;
 }) {
@@ -191,9 +163,7 @@ const FileResultRow = memo(function FileResultRow(props: {
       }
     >
       <FileEntryIcon pathValue={props.entry.path} kind={props.entry.kind} className={ICON_CLASS} />
-      <span className="min-w-0 flex-1 truncate text-ui-lg">
-        <FileNameText text={base} query={props.highlightQuery} />
-      </span>
+      <span className="min-w-0 flex-1 truncate text-ui-lg">{base}</span>
       {dir ? <DirectoryText className="max-w-[45%] shrink-0" dir={dir} /> : null}
     </CommandItem>
   );
@@ -216,9 +186,7 @@ const SnippetResultRow = memo(function SnippetResultRow(props: {
       <FileEntryIcon pathValue={props.match.path} kind="file" className={`mt-0.5 ${ICON_CLASS}`} />
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
-          <span className="min-w-0 flex-1 truncate text-ui-lg">
-            <FileNameText text={base} query={props.highlightQuery} />
-          </span>
+          <span className="min-w-0 flex-1 truncate text-ui-lg">{base}</span>
           <DirectoryText
             className="max-w-[45%] shrink-0"
             dir={dir ? `${dir}:${props.match.lineNumber}` : `:${props.match.lineNumber}`}
@@ -322,13 +290,6 @@ function WorkspaceSearchPaletteContent(props: WorkspaceSearchPaletteProps) {
   const isSettled = trimmedQuery === debouncedQuery && !activeQuery.isFetching;
   const hasRows = fileEntries.length > 0 || snippetMatches.length > 0;
 
-  // The server matches file entries against a normalized query (leading @ ./
-  // stripped); highlighting must normalize the same way or rows that matched
-  // server-side render with no emphasis. Content search does not strip
-  // prefixes, so snippet rows highlight the raw trimmed query.
-  const highlightQuery =
-    props.mode === "files" ? normalizeWorkspaceEntrySearchQuery(debouncedQuery) : debouncedQuery;
-
   const { onOpenChange, onOpenFile, onOpenDirectory } = props;
   const handleOpenFile = useCallback(
     (relativePath: string) => {
@@ -395,7 +356,6 @@ function WorkspaceSearchPaletteContent(props: WorkspaceSearchPaletteProps) {
                 key={entry.path}
                 entry={entry}
                 index={index}
-                highlightQuery={highlightQuery}
                 onOpenFile={handleOpenFile}
                 onOpenDirectory={handleOpenDirectory}
               />
@@ -410,7 +370,7 @@ function WorkspaceSearchPaletteContent(props: WorkspaceSearchPaletteProps) {
                 key={`${match.path}:${match.lineNumber}`}
                 match={match}
                 index={index}
-                highlightQuery={highlightQuery}
+                highlightQuery={debouncedQuery}
                 onOpenFile={handleOpenFile}
               />
             ))}
