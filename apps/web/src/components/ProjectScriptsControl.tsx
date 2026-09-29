@@ -246,7 +246,7 @@ export default function ProjectScriptsControl({
             <span
               className={cn(
                 "max-w-32 truncate font-normal",
-                hideInlineLabel ? "sr-only" : "hidden sm:inline",
+                hideInlineLabel ? "sr-only" : "inline",
               )}
             >
               {primaryScript.name}
@@ -324,7 +324,7 @@ export default function ProjectScriptsControl({
           title="Add action"
         >
           <PlusIcon className="size-3.5" />
-          <span className={cn("font-normal", hideInlineLabel ? "sr-only" : "hidden sm:inline")}>
+          <span className={cn("font-normal", hideInlineLabel ? "sr-only" : "inline")}>
             Add action
           </span>
         </ChatHeaderButton>

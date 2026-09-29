@@ -13,7 +13,7 @@ import {
   type ThreadId,
 } from "@glade/contracts";
 import { isGenericChatThreadTitle } from "@glade/shared/chatThreads";
-import React, { type Dispatch, type SetStateAction, useEffect, useRef, useState } from "react";
+import React, { type Dispatch, type SetStateAction, useEffect, useState } from "react";
 import { FiGitBranch } from "react-icons/fi";
 import { HiMiniArrowsPointingOut } from "react-icons/hi2";
 import { TbExchange } from "react-icons/tb";
@@ -58,13 +58,6 @@ import type { RepoDiffTotals } from "~/hooks/useRepoDiffTotals";
 import { ProviderIcon } from "../ProviderIcon";
 import { ProviderUsageMenuControl } from "../ProviderUsageMenuControl";
 import { EnvironmentToggle, type EnvironmentToggleState } from "./environment/EnvironmentToggle";
-
-/**
- * Width (px) below which collapsible header controls drop their text labels and
- * fold into icon-only buttons. Measured on the header element itself, so it fires
- * for any layout that narrows the chat column (split chat, right dock, small window).
- */
-const HEADER_COMPACT_BREAKPOINT = 700;
 
 interface ChatHeaderProps {
   activeThreadId: ThreadId;
@@ -525,8 +518,6 @@ export function ChatHeader({
   const changeThreadAction = changeThreadActionProp ?? null;
   const editorChatControls = editorChatControlsProp ?? null;
   const { isMobile, state } = useSidebar();
-  const headerRef = useRef<HTMLDivElement>(null);
-  const [compact, setCompact] = useState(false);
   const {
     additions: diffAdditions,
     deletions: diffDeletions,
@@ -544,20 +535,11 @@ export function ChatHeader({
   });
 
   const isSplitPane = surfaceMode === "split";
+  const compact = isSplitPane;
   // Split-chat creation moved to a shortcut only; the header keeps just the inline
   // "maximize" affordance for an already-split focused pane.
   const inlineChatLayoutAction = chatLayoutAction?.kind === "maximize" ? chatLayoutAction : null;
   const showThreadProviderIcon = !isGenericChatThreadTitle(activeThreadTitle);
-
-  useEffect(() => {
-    const el = headerRef.current;
-    if (!el) return;
-    const measure = () => setCompact(isSplitPane || el.clientWidth < HEADER_COMPACT_BREAKPOINT);
-    measure();
-    const observer = new ResizeObserver(() => measure());
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [isSplitPane]);
 
   const renderProviderIcon = (provider: ProviderKind | null, className: string) => {
     return (
@@ -622,7 +604,7 @@ export function ChatHeader({
   ) : null;
 
   return (
-    <div ref={headerRef} className={cn("flex min-w-0 flex-1 items-center gap-2", className)}>
+    <div className={cn("flex min-w-0 flex-1 items-center gap-2", className)}>
       <div
         className={cn(
           "flex min-w-0 flex-1 items-center",
@@ -782,6 +764,7 @@ export function ChatHeader({
                 keybindings={keybindings}
                 availableEditors={availableEditors}
                 openInTarget={openInTarget}
+                labelMode={isSplitPane ? "responsive" : "always"}
               />
             ) : null}
 
