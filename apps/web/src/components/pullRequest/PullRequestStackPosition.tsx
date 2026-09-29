@@ -7,7 +7,7 @@ import type { PullRequestStack } from "@glade/contracts";
 
 import { Badge } from "~/components/ui/badge";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
-import { GitForkIcon } from "~/lib/icons";
+import { GitBranchIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 
 type StackPosition = Pick<PullRequestStack, "number" | "size" | "position" | "baseBranch">;
@@ -19,7 +19,7 @@ function stackPositionAriaLabel(stack: StackPosition): string {
 function StackPositionContents({ stack }: { stack: StackPosition }) {
   return (
     <>
-      <GitForkIcon className="size-3" aria-hidden />
+      <GitBranchIcon className="size-3" aria-hidden />
       <span className="tabular-nums">
         {stack.position}/{stack.size}
       </span>

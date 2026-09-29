@@ -67,9 +67,8 @@ const makeThreadEventReadMethods = (
 > => ({
   getThreadHighWaterSequence: (threadId) =>
     Effect.succeed(
-      events
-        .filter((event) => event.aggregateKind === "thread" && event.aggregateId === threadId)
-        .at(-1)?.sequence ?? 0,
+      events.findLast((event) => event.aggregateKind === "thread" && event.aggregateId === threadId)
+        ?.sequence ?? 0,
     ),
   getThreadTitleHighWaterSequence: () => Effect.succeed(0),
   readThreadEvents: (input) =>

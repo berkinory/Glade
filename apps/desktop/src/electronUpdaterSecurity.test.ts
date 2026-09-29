@@ -51,7 +51,7 @@ describe("electronUpdaterSecurity", () => {
   });
 
   it("validates a matching full distinguished name through the injected execFile seam", async () => {
-    const execFile = vi.fn((file, args, options, callback) => {
+    const execFile = vi.fn((_file, _args, _options, callback) => {
       callback(
         null,
         JSON.stringify({

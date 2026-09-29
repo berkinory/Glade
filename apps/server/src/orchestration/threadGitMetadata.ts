@@ -101,6 +101,6 @@ export function deriveThreadGitMetadataPatch(input: {
   return {
     ...(branchChanged ? { branch: input.observedBranch } : {}),
     ...(pullRequestChanged ? { lastKnownPr: nextPullRequest } : {}),
-    ...(associatedWorktreePatch ?? {}),
+    ...associatedWorktreePatch,
   };
 }

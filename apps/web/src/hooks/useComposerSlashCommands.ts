@@ -34,7 +34,7 @@ import { toastManager } from "../components/ui/toast";
 import type { ComposerCommandItem } from "../components/chat/ComposerCommandMenu";
 import { buildNextProviderOptions } from "../providerModelOptions";
 import { resolveForkThreadEnvironment } from "../lib/threadEnvironment";
-import { type SplitViewId } from "../splitViewStore";
+import { type SplitViewId } from "../splitViewModel";
 import { downloadUrlAsBlob } from "../lib/browserDownload";
 import { resolveWsHttpUrl } from "../lib/wsHttpUrl";
 import { useFeedbackDialogStore } from "../feedbackDialogStore";
@@ -924,7 +924,6 @@ export function useComposerSlashCommands(input: {
       openFeedbackDialog,
       openReviewTargetPicker,
       selectedProvider,
-      selectedModelSelection.provider,
       supportsTextNativeReviewCommand,
       runCodexReviewStart,
       runExportSlashCommand,

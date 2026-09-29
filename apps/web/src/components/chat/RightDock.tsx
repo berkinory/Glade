@@ -147,6 +147,8 @@ function useKeepMountedPaneIds(
 }
 
 export function RightDock(props: RightDockProps) {
+  const { onCollapse } = props;
+  const paneCount = props.state.panes.length;
   const activePane = resolveActivePane(props.state);
   const onSelectPane = props.onSelectPane;
   const activePaneRuntimeMode = props.activePaneRuntimeMode ?? "live";
@@ -169,11 +171,11 @@ export function RightDock(props: RightDockProps) {
   const maximized = !isMobile && props.state.open && expandedKey === expansionKey;
   const [expandedWidth, setExpandedWidth] = useState(0);
   useLayoutEffect(() => {
-    if (maximized && props.state.panes.length === 0) {
+    if (maximized && paneCount === 0) {
       setExpandedKey(null);
-      props.onCollapse();
+      onCollapse();
     }
-  }, [maximized, props.state.panes.length, props.onCollapse]);
+  }, [maximized, paneCount, onCollapse]);
   useLayoutEffect(() => {
     if (!maximized) return;
     const wrapper = contentRef.current?.closest<HTMLElement>("[data-slot='sidebar-wrapper']");

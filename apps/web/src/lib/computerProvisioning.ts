@@ -20,7 +20,7 @@ import type {
   DesktopBridge,
 } from "@glade/contracts";
 import {
-  COMPUTER_PERMISSION_KINDS,
+  COMPUTER_PERMISSIONS,
   listComputerPermissions,
   missingComputerPermissions,
 } from "@glade/shared/computerGrants";
@@ -62,11 +62,11 @@ export async function prepareComputerPermissionGuide(input: {
 }): Promise<boolean> {
   if (!input.getPermissionState || !input.startPermissionSetup) return input.isCurrent();
   if (!input.isCurrent()) return false;
-  const state = await input.getPermissionState(COMPUTER_PERMISSION_KINDS);
+  const state = await input.getPermissionState(COMPUTER_PERMISSIONS);
   if (!input.isCurrent()) return false;
   if (!computerPermissionSetupSupported(state)) return true;
   if (missingComputerPermissions(state).length === 0) return true;
-  await input.startPermissionSetup(COMPUTER_PERMISSION_KINDS);
+  await input.startPermissionSetup(COMPUTER_PERMISSIONS);
   return false; // Preserve the draft; granting access never auto-sends the task.
 }
 

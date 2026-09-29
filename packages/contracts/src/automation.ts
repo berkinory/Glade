@@ -13,7 +13,8 @@ import {
   TrimmedNonEmptyString,
   TurnId,
 } from "./baseSchemas";
-import { ModelSelection, ProviderKind, ProviderStartOptions, RuntimeMode } from "./orchestration";
+import { ModelSelection, ProviderStartOptions, RuntimeMode } from "./orchestration";
+import { ProviderKind } from "./baseSchemas";
 
 export const DEFAULT_AUTOMATION_RUNTIME_MODE: RuntimeMode = "approval-required";
 export const AutomationInteractionMode = Schema.Literals(["default", "plan"]);

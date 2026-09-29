@@ -50,7 +50,7 @@ import {
 } from "../lib/diffEditBaseRev";
 import { resolveDiffEnvironmentState } from "../lib/threadEnvironment";
 import { disclosureWidthClassName } from "../lib/disclosureMotion";
-import { useCopyToClipboard } from "../hooks/useCopyToClipboard";
+import { useCopyToClipboard } from "../lib/clipboard";
 import { type RepoDiffScope, useRepoDiffScope, useRepoDiffScopeStore } from "../repoDiffScopeStore";
 import { useStore } from "../store";
 import { createProjectSelector } from "../storeSelectors";
@@ -102,7 +102,7 @@ import { DiffPanelLoadingState, DiffPanelShell, type DiffPanelMode } from "./Dif
 import { IconButton } from "./ui/icon-button";
 import { REPO_DIFF_SCOPE_LABELS, resolveRepoDiffScopeLabel } from "../repoDiffScopeStore";
 import { PanelStateMessage } from "./chat/PanelStateMessage";
-import { type SplitViewPanePanelState } from "../splitViewStore";
+import { type SplitViewPanePanelState } from "../splitViewModel";
 
 const EMPTY_KEYBINDINGS: ResolvedKeybindingsConfig = [];
 const DiffRenderModeSchema = Schema.Literals(["stacked", "split"]);
@@ -288,7 +288,10 @@ export default function DiffPanel({
         ? "Failed to check git repository."
         : null;
   const isGitRepo = gitRepoStatus === true;
-  const turnDiffSummaries = activeThreadContext?.turnDiffSummaries ?? [];
+  const turnDiffSummaries = useMemo(
+    () => activeThreadContext?.turnDiffSummaries ?? [],
+    [activeThreadContext?.turnDiffSummaries],
+  );
   const inferredCheckpointTurnCountByTurnId = useMemo(
     () => inferCheckpointTurnCountByTurnId(turnDiffSummaries),
     [turnDiffSummaries],

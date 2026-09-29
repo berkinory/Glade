@@ -111,7 +111,7 @@ describe("cuaDriverProtocol tool boundary", () => {
   it("allowlists exactly the audited tool set", () => {
     // The two sets together are the complete server→host vocabulary — both
     // directions pinned so an allowlist edit is a deliberate audit event.
-    expect([...CUA_READ_TOOLS].sort()).toEqual(
+    expect([...CUA_READ_TOOLS].toSorted()).toEqual(
       [
         "check_input_ready",
         "check_permissions",
@@ -127,9 +127,9 @@ describe("cuaDriverProtocol tool boundary", () => {
         "verify_state",
         "wait_for_settle",
         "zoom",
-      ].sort(),
+      ].toSorted(),
     );
-    expect([...CUA_ACTION_TOOLS].sort()).toEqual(
+    expect([...CUA_ACTION_TOOLS].toSorted()).toEqual(
       [
         "bring_to_front",
         "click",
@@ -149,7 +149,7 @@ describe("cuaDriverProtocol tool boundary", () => {
         "set_window_minimized",
         "set_window_frame",
         "type_text",
-      ].sort(),
+      ].toSorted(),
     );
   });
 
@@ -157,7 +157,7 @@ describe("cuaDriverProtocol tool boundary", () => {
     // Every registered name not in the allowlists must stay out: the audit
     // classifies each one as host-internal or browser-owned, and this list
     // exists so a stray allowlist entry cannot quietly reopen them.
-    expect(AGENT_UNREACHABLE_TOOLS.sort()).toEqual(
+    expect(AGENT_UNREACHABLE_TOOLS.toSorted()).toEqual(
       [
         "double_click",
         "right_click",
@@ -194,7 +194,7 @@ describe("cuaDriverProtocol tool boundary", () => {
         "browser_set_input_files",
         "browser_download",
         "browser_pointer",
-      ].sort(),
+      ].toSorted(),
     );
   });
 
@@ -203,7 +203,7 @@ describe("cuaDriverProtocol tool boundary", () => {
     // never the desktop frame/pixel machinery — the family membership is
     // pinned so a stray entry cannot smuggle a browser name into the desktop
     // allowlists or an unregistered name into the family.
-    expect([...CUA_BROWSER_TOOLS].sort()).toEqual(
+    expect([...CUA_BROWSER_TOOLS].toSorted()).toEqual(
       [
         "get_browser_state",
         "browser_prepare",
@@ -214,10 +214,10 @@ describe("cuaDriverProtocol tool boundary", () => {
         "browser_set_input_files",
         "browser_download",
         "browser_pointer",
-      ].sort(),
+      ].toSorted(),
     );
-    expect([...CUA_BROWSER_MUTATION_TOOLS].sort()).toEqual(
-      [...CUA_BROWSER_TOOLS].filter((name) => name !== "get_browser_state").sort(),
+    expect([...CUA_BROWSER_MUTATION_TOOLS].toSorted()).toEqual(
+      [...CUA_BROWSER_TOOLS].filter((name) => name !== "get_browser_state").toSorted(),
     );
     for (const name of CUA_BROWSER_TOOLS) {
       expect(CUA_READ_TOOLS.has(name)).toBe(false);

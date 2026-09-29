@@ -1,6 +1,6 @@
 import { Schema } from "effect";
 import { TrimmedNonEmptyString } from "./baseSchemas";
-import type { ProviderKind } from "./orchestration";
+import type { ProviderKind } from "./baseSchemas";
 
 export const CODEX_REASONING_EFFORT_OPTIONS = ["low", "medium", "high", "xhigh"] as const;
 // Codex app-server can add model-specific efforts through runtime discovery.
@@ -488,17 +488,6 @@ export const MODEL_SLUG_ALIASES_BY_PROVIDER: Record<ProviderKind, Record<string,
 };
 
 // ── Agent mention aliases ─────────────────────────────────────────────
-// Re-exported from agentMentions.ts for backward compatibility
-export {
-  AGENT_MENTION_ALIASES,
-  getAgentMentionAutocompleteAliases,
-  getAgentMentionAliases,
-  resolveAgentAlias,
-  isValidAgentAlias,
-  getAgentAliasNames,
-  type AgentAliasDefinition,
-  type ResolvedAgentAlias,
-} from "./agentMentions";
 
 // ── Model capabilities index ──────────────────────────────────────────
 

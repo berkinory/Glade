@@ -5,7 +5,7 @@ import type {
   CapturedProcessTree,
   ProcessTreeKiller,
   TerminalKillSignal,
-} from "../terminal/processTreeKiller";
+} from "../platform/processTreeModel";
 import {
   ProviderProcessExitUnprovenError,
   teardownProviderProcessTree,

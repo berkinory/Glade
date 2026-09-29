@@ -1793,7 +1793,7 @@ export function makeAgentGatewayComputerTools(
         : Array.isArray(value)
           ? `[${value.map(stable).join(",")}]`
           : `{${Object.keys(value)
-              .sort()
+              .toSorted()
               .map(
                 (key) =>
                   `${JSON.stringify(key)}:${stable((value as Record<string, unknown>)[key])}`,
@@ -3969,9 +3969,7 @@ export function makeAgentGatewayComputerTools(
                   .map((name) => `## ${name}\n${sectionText(name)}`)
                   .join("\n\n")
               : undefined;
-          return {
-            ...(chapters !== undefined ? { chapters } : { topics: COMPUTER_HELP_INDEX }),
-          };
+          return chapters !== undefined ? { chapters } : { topics: COMPUTER_HELP_INDEX };
         }
         const section = sectionText(topic);
         if (section === undefined) {

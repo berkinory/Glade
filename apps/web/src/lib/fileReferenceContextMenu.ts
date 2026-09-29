@@ -5,7 +5,7 @@
 // Exports: showFileReferenceContextMenu
 
 import { formatSelectionLabel, type ChatFileReference } from "~/lib/chatReferences";
-import { copyTextToClipboard } from "~/hooks/useCopyToClipboard";
+import { copyTextToClipboard } from "./clipboard";
 import { getNavigatorPlatform, isMacPlatform, isWindowsPlatform } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
 import { toastManager } from "~/components/ui/toast";

@@ -215,7 +215,10 @@ describe("agent gateway computer tools", () => {
     const captureSchema = capture?.inputSchema as {
       properties: Record<string, unknown>;
     };
-    expect(Object.keys(captureSchema.properties).sort()).toEqual(["max_dimension", "window_id"]);
+    expect(Object.keys(captureSchema.properties).toSorted()).toEqual([
+      "max_dimension",
+      "window_id",
+    ]);
   });
 
   it("exposes the native batch fast path behind computer:control, with 15 specialist tools hidden", async () => {

@@ -10,7 +10,7 @@ import { Input } from "../ui/input";
 import { Spinner } from "../ui/spinner";
 import { toastManager } from "../ui/toast";
 import { useTheme } from "~/hooks/useTheme";
-import { copyTextToClipboard } from "~/hooks/useCopyToClipboard";
+import { copyTextToClipboard } from "../../lib/clipboard";
 import { showContextMenuFallback } from "~/contextMenuFallback";
 import { GIT_COMMIT_CONTEXT_MENU_ICONS } from "~/lib/contextMenuIcons";
 import { getRenderablePatch, resolveFileDiffPath } from "~/lib/diffRendering";
@@ -282,24 +282,26 @@ export function SourceControlHistory(props: { cwd: string | null }) {
   });
   const rows = virtualizer.getVirtualItems();
   const lastIndex = rows.at(-1)?.index ?? -1;
+  const { hasNextPage, isFetchingNextPage, isFetching, isFetchNextPageError, fetchNextPage } =
+    history;
   useEffect(() => {
     if (
       lastIndex >= commits.length &&
-      history.hasNextPage &&
-      !history.isFetchingNextPage &&
-      !history.isFetching &&
-      !history.isFetchNextPageError
+      hasNextPage &&
+      !isFetchingNextPage &&
+      !isFetching &&
+      !isFetchNextPageError
     ) {
-      void history.fetchNextPage();
+      void fetchNextPage();
     }
   }, [
     lastIndex,
     commits.length,
-    history.hasNextPage,
-    history.isFetchingNextPage,
-    history.isFetching,
-    history.isFetchNextPageError,
-    history.fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isFetching,
+    isFetchNextPageError,
+    fetchNextPage,
   ]);
 
   if (!props.cwd)

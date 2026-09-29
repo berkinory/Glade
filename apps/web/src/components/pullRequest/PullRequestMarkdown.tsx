@@ -75,7 +75,6 @@ export function PullRequestMarkdown({
         section.kind === "markdown" ? (
           <ChatMarkdown
             // Section order is stable for a given body; the body itself is the real key.
-            // oxlint-disable-next-line no-array-index-key
             key={index}
             text={section.text}
             cwd={cwd}
@@ -83,7 +82,6 @@ export function PullRequestMarkdown({
             className={cn("pull-request-prose", PR_BODY_TEXT_CLASS_NAME)}
           />
         ) : (
-          // oxlint-disable-next-line no-array-index-key
           <DetailsSection key={index} summary={section.summary} body={section.body} cwd={cwd} />
         ),
       )}

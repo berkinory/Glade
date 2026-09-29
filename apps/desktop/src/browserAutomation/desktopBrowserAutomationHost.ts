@@ -304,13 +304,13 @@ export class DesktopBrowserAutomationHost {
     if (this.disposal) return this.disposal;
     this.disposed = true;
     this.disposal = (async () => {
-      await Promise.allSettled([...this.activeOperations]);
+      await Promise.allSettled(this.activeOperations);
     })();
     return this.disposal;
   }
 
   async waitForIdle(): Promise<void> {
-    while (this.activeOperations.size > 0) await Promise.allSettled([...this.activeOperations]);
+    while (this.activeOperations.size > 0) await Promise.allSettled(this.activeOperations);
   }
 
   async executeTool(request: BrowserAutomationToolRequest): Promise<unknown> {
@@ -576,7 +576,7 @@ export class DesktopBrowserAutomationHost {
   }
 
   private async reconcileIdempotentReplay(
-    request: BrowserAutomationToolRequest,
+    _request: BrowserAutomationToolRequest,
     affinity: SessionAffinity,
     result: Promise<unknown>,
   ): Promise<unknown> {
@@ -1065,7 +1065,7 @@ export class DesktopBrowserAutomationHost {
   private async executeVisibleTool(
     request: BrowserAutomationToolRequest,
     input: Record<string, unknown>,
-    affinity: SessionAffinity,
+    _affinity: SessionAffinity,
     targetTabId: string,
     runtime: BrowserAutomationVisibleRuntime,
     windowOpen: WindowOpenObservation | null,
@@ -1428,7 +1428,7 @@ export class DesktopBrowserAutomationHost {
   private async resize(
     runtime: BrowserAutomationVisibleRuntime,
     input: BrowserResizeInput,
-    sessionId: string,
+    _sessionId: string,
     signal: AbortSignal,
   ): Promise<BrowserResizeOutput> {
     const page = await observePage(runtime, signal);

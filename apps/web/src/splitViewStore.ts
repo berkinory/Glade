@@ -3,11 +3,14 @@
 // Layer: UI state store
 // Exports: pane/split types, tree-aware selectors, and id-based mutation helpers used by sidebar and route surfaces
 
-import { type ProjectId, type ThreadId, type TurnId } from "@glade/contracts";
+// FILE: splitViewStore.ts
+// Purpose: Persists split chat surfaces as a recursive pane tree (depth-cap 2 = up to 2x2 grid).
+// Layer: UI state store
+// Exports: pane/split types, tree-aware selectors, and id-based mutation helpers used by sidebar and route surfaces
+import { type ProjectId, type ThreadId } from "@glade/contracts";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
-import { type ChatRightPanel } from "./diffRouteSearch";
 import { randomUUID } from "./lib/utils";
 import {
   canSubdividePane,
@@ -22,48 +25,17 @@ import {
   type LegacySplitViewLike,
 } from "./splitView.logic";
 
-export type SplitViewId = string;
-export type PaneId = string;
-export type SplitDirection = "horizontal" | "vertical";
-// "first" maps to the top/left side of a split; "second" maps to the bottom/right side.
-export type SplitDropSide = "first" | "second";
-
-export interface SplitViewPanePanelState {
-  panel: ChatRightPanel | null;
-  diffTurnId: TurnId | null;
-  diffFilePath: string | null;
-  hasOpenedPanel: boolean;
-  lastOpenPanel: ChatRightPanel;
-}
-
-export interface LeafPane {
-  kind: "leaf";
-  id: PaneId;
-  threadId: ThreadId | null;
-  panel: SplitViewPanePanelState;
-}
-
-export interface SplitNode {
-  kind: "split";
-  id: PaneId;
-  direction: SplitDirection;
-  // first = left (horizontal) | top (vertical); second = right | bottom.
-  first: Pane;
-  second: Pane;
-  ratio: number;
-}
-
-export type Pane = LeafPane | SplitNode;
-
-export interface SplitView {
-  id: SplitViewId;
-  sourceThreadId: ThreadId;
-  ownerProjectId: ProjectId;
-  root: Pane;
-  focusedPaneId: PaneId;
-  createdAt: string;
-  updatedAt: string;
-}
+import type {
+  SplitViewId,
+  PaneId,
+  SplitDirection,
+  SplitDropSide,
+  SplitViewPanePanelState,
+  LeafPane,
+  SplitNode,
+  Pane,
+  SplitView,
+} from "./splitViewModel";
 
 interface CreateFromThreadInput {
   sourceThreadId: ThreadId;

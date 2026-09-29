@@ -45,6 +45,9 @@ import {
   resolveSplitViewPaneIdForThread,
   resolveSplitViewThreadIds,
   selectSplitView,
+  useSplitViewStore,
+} from "../../splitViewStore";
+import {
   type LeafPane,
   type Pane,
   type PaneId,
@@ -53,8 +56,7 @@ import {
   type SplitView,
   type SplitViewId,
   type SplitViewPanePanelState,
-  useSplitViewStore,
-} from "../../splitViewStore";
+} from "../../splitViewModel";
 import { useStore } from "../../store";
 import { createThreadShellsSelector } from "../../storeSelectors";
 import {

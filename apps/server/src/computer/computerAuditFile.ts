@@ -28,7 +28,7 @@ export async function readComputerAuditFileTail(
     );
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
-    throw new Error("Could not read Computer activity history.");
+    throw new Error("Could not read Computer activity history.", { cause: error });
   }
   try {
     const stat = await file.stat();

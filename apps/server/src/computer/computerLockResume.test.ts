@@ -42,7 +42,7 @@ function lockableFixture(): {
   let clickGate: Promise<void> | undefined;
   let releaseClick = () => {};
   const request = vi.fn(async (_endpoint: string, req: Record<string, unknown>) => {
-    calls.push({ ...(typeof req.name === "string" ? { name: req.name } : {}) });
+    calls.push(typeof req.name === "string" ? { name: req.name } : {});
     const method = req.method as string | undefined;
     const state = () => ({
       // The simulated native host is macOS regardless of the CI runner OS.

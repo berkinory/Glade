@@ -192,13 +192,7 @@ export function useChatProviderModels({
       selectedModelOptionsForDispatch,
       selectedProvider === "claudeAgent" ? selectedRuntimeModel?.supportsAutoMode : undefined,
     );
-  }, [
-    draftModelSelectionForSelectedProvider,
-    selectedModel,
-    selectedModelOptionsForDispatch,
-    selectedProvider,
-    selectedRuntimeModel,
-  ]);
+  }, [selectedModel, selectedModelOptionsForDispatch, selectedProvider, selectedRuntimeModel]);
   const providerOptionsForDispatch = useMemo(() => getProviderStartOptions(settings), [settings]);
   const selectedModelForPicker =
     selectedModelSelection.provider === selectedProvider

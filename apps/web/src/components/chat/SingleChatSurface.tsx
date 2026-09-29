@@ -48,12 +48,12 @@ import {
   type RightDockPane,
   type RightDockPaneKind,
 } from "../../rightDockStore.logic";
+import { useSplitViewStore } from "../../splitViewStore";
 import {
   type SplitDirection,
   type SplitDropSide,
   type SplitViewPanePanelState,
-  useSplitViewStore,
-} from "../../splitViewStore";
+} from "../../splitViewModel";
 import { useStore } from "../../store";
 import { createProjectSelector, createThreadWorkspaceMetadataSelector } from "../../storeSelectors";
 import { ChatPaneDropOverlay } from "../chat-drop-overlay/ChatPaneDropOverlay";
@@ -326,41 +326,47 @@ export function SingleChatSurface(props: {
   // Hover warm-up shared by both surfaces' file openers: file contents land in
   // the React Query cache and the matching Shiki highlighter loads, so the
   // preview paints instantly on click.
-  const prefetchOpenerFile = (path: string) => {
-    if (!workspaceRoot || resolveWorkspaceDirectoryOpenTarget(path, workspaceRoot) !== null) {
-      return;
-    }
-    const relativePath = resolveWorkspaceFileOpenTarget(path, workspaceRoot);
-    if (relativePath) {
-      prefetchWorkspaceFile(queryClient, workspaceRoot, relativePath);
-    }
-  };
+  const prefetchOpenerFile = useCallback(
+    (path: string) => {
+      if (!workspaceRoot || resolveWorkspaceDirectoryOpenTarget(path, workspaceRoot) !== null) {
+        return;
+      }
+      const relativePath = resolveWorkspaceFileOpenTarget(path, workspaceRoot);
+      if (relativePath) {
+        prefetchWorkspaceFile(queryClient, workspaceRoot, relativePath);
+      }
+    },
+    [workspaceRoot, queryClient],
+  );
   // Chat surface: file references open in the right-dock file pane, while the
   // workspace root and explicit directory references open in Explorer.
   // Other references retain the existing dock file preview and external-editor
   // fallback behavior.
-  const dockFileOpener: WorkspaceFileOpener = {
-    openFile: (path) => {
-      const directoryPath = resolveWorkspaceDirectoryOpenTarget(path, workspaceRoot);
-      if (directoryPath !== null) {
-        requestImmediateDockHydration("explorer");
-        openPane(props.threadId, { kind: "explorer" });
-        requestExplorerReveal(props.threadId, directoryPath);
+  const dockFileOpener = useMemo<WorkspaceFileOpener>(
+    () => ({
+      openFile: (path) => {
+        const directoryPath = resolveWorkspaceDirectoryOpenTarget(path, workspaceRoot);
+        if (directoryPath !== null) {
+          requestImmediateDockHydration("explorer");
+          openPane(props.threadId, { kind: "explorer" });
+          requestExplorerReveal(props.threadId, directoryPath);
+          return true;
+        }
+        // In-workspace references map to relative paths for the file-read RPC;
+        // binary previews in a session's scratch workspace (outside the chat
+        // workspace) open by absolute path through the local-image route.
+        const targetPath = resolveDockFileOpenTarget(path, workspaceRoot);
+        if (!targetPath) {
+          return false;
+        }
+        requestImmediateDockHydration("file");
+        openPane(props.threadId, { kind: "file", filePath: targetPath });
         return true;
-      }
-      // In-workspace references map to relative paths for the file-read RPC;
-      // binary previews in a session's scratch workspace (outside the chat
-      // workspace) open by absolute path through the local-image route.
-      const targetPath = resolveDockFileOpenTarget(path, workspaceRoot);
-      if (!targetPath) {
-        return false;
-      }
-      requestImmediateDockHydration("file");
-      openPane(props.threadId, { kind: "file", filePath: targetPath });
-      return true;
-    },
-    prefetchFile: prefetchOpenerFile,
-  };
+      },
+      prefetchFile: prefetchOpenerFile,
+    }),
+    [workspaceRoot, requestImmediateDockHydration, openPane, props.threadId, prefetchOpenerFile],
+  );
   const handleSplitSurface = () => {
     if (!props.projectId) return;
     const splitViewId = createSplitView({
@@ -510,7 +516,13 @@ export function SingleChatSurface(props: {
       requestImmediateDockHydration("explorer");
       openPane(props.threadId, { kind: "explorer" });
     }
-  }, [dockState.activePaneId, dockState.open, openPane, props.threadId]);
+  }, [
+    dockState.activePaneId,
+    dockState.open,
+    openPane,
+    props.threadId,
+    requestImmediateDockHydration,
+  ]);
 
   useEffect(() => {
     if (!terminalPresentation) return;

@@ -3,7 +3,7 @@ import {
   buildProposedPlanMarkdownFilename,
   normalizePlanMarkdownForExport,
 } from "../../proposedPlan";
-import { useCopyToClipboard } from "~/hooks/useCopyToClipboard";
+import { useCopyToClipboard } from "../../lib/clipboard";
 import { ArrowDownIcon, ArrowUpIcon, CopyIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";

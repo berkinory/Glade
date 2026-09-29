@@ -871,7 +871,7 @@ const restoreSqliteMigrationBackup = (input: {
       // Rollback is valid only before the restored main database is installed.
       await fs.unlink(restoredTemporaryPath).catch(() => undefined);
       let rollbackSucceeded = true;
-      for (const [source, destination] of moved.reverse()) {
+      for (const [source, destination] of moved.toReversed()) {
         await fs.rename(destination, source).catch(() => {
           rollbackSucceeded = false;
         });

@@ -54,7 +54,7 @@ import {
   CircleAlertIcon,
   CircleCheckIcon,
   ClockIcon,
-  GitForkIcon,
+  GitBranchIcon,
   GoalIcon,
   LoaderIcon,
   type LucideIcon,
@@ -2468,7 +2468,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                         tooltip="Fork from here"
                         onClick={() => onForkFromMessage?.(row.message.id)}
                       >
-                        <GitForkIcon className={MESSAGE_ACTION_ICON_CLASS_NAME} />
+                        <GitBranchIcon className={MESSAGE_ACTION_ICON_CLASS_NAME} />
                       </MessageActionButton>
                     ) : null}
                     {showPinToggle ? (

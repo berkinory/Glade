@@ -8,12 +8,7 @@ import { existsSync, mkdtempSync, readdirSync, rmSync, statSync, symlinkSync } f
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-export interface MacDmgNotaryCredentials {
-  readonly keychainProfile?: string | undefined;
-  readonly appleApiKey: string | undefined;
-  readonly appleApiKeyId: string | undefined;
-  readonly appleApiIssuer: string | undefined;
-}
+import type { MacDmgNotaryCredentials } from "./mac-notary-credentials.ts";
 
 interface MacDmgCommand {
   readonly command: string;

@@ -577,9 +577,7 @@ const runClaudeCommand = (
 
 async function makeCodexProbeEnv(homePath?: string): Promise<NodeJS.ProcessEnv> {
   const normalizedHomePath = nonEmptyTrimmed(homePath);
-  return buildCodexProcessEnv({
-    ...(normalizedHomePath ? { homePath: normalizedHomePath } : {}),
-  });
+  return buildCodexProcessEnv(normalizedHomePath ? { homePath: normalizedHomePath } : {});
 }
 
 const readCodexConfigModelProviderForEnv = (env: NodeJS.ProcessEnv) =>

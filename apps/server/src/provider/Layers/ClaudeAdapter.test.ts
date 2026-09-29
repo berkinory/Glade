@@ -2683,7 +2683,7 @@ describe("ClaudeAdapterLive", () => {
         );
         const sessions = yield* adapter.listSessions();
         assert.equal(
-          (sessions[0]?.resumeCursor as { resume: string }).resume,
+          (sessions[0]!.resumeCursor as { resume: string }).resume,
           "24dbd86f-55d1-4de2-8138-7d7bd04563c5",
         );
         const turn = yield* adapter.sendTurn({ threadId: THREAD_ID, input: "edited prompt" });

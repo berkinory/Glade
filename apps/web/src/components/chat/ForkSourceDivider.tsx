@@ -5,7 +5,7 @@
 import { PROVIDER_DISPLAY_NAMES, type ProviderKind, type ThreadId } from "@glade/contracts";
 import { memo, type MouseEvent } from "react";
 
-import { GitForkIcon } from "~/lib/icons";
+import { GitBranchIcon } from "~/lib/icons";
 import { ProviderIcon } from "../ProviderIcon";
 
 export interface ForkSourceReference {
@@ -62,7 +62,7 @@ export const ForkSourceDivider = memo(function ForkSourceDivider({
           </>
         ) : (
           <>
-            <GitForkIcon className="size-4 shrink-0 text-muted-foreground/70" aria-hidden />
+            <GitBranchIcon className="size-4 shrink-0 text-muted-foreground/70" aria-hidden />
             <span className="truncate">Continued from chat</span>
           </>
         )}

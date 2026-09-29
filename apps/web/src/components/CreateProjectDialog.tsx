@@ -336,7 +336,7 @@ export function CreateProjectDialog(props: {
   // hand-editing the path afterwards puts the box back in its idle state.
   const pickedFolderName =
     pickedPath !== null && trimmedPath === pickedPath
-      ? (pickedPath.split(/[/\\]/).filter(Boolean).at(-1) ?? pickedPath)
+      ? (pickedPath.split(/[/\\]/).findLast(Boolean) ?? pickedPath)
       : null;
   const finalClonePath = joinProjectPath(trimmedDestinationParent, trimmedDirectoryName);
 

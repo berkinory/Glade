@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 // FILE: EnvironmentProjectInstructionsSection.tsx
 // Purpose: Environment-panel section for project-scoped instructions that seed thread notes.
 // Layer: Environment panel section
@@ -46,7 +47,7 @@ function useProjectInstructionsAutosave({
     onChangeRef.current = onChange;
   }, [onChange]);
 
-  const flush = () => {
+  const flush = useCallback(() => {
     if (debounceRef.current !== null) {
       window.clearTimeout(debounceRef.current);
       debounceRef.current = null;
@@ -60,7 +61,7 @@ function useProjectInstructionsAutosave({
     if (projectIdRef.current === pendingSave.projectId) {
       lastCommittedRef.current = pendingSave.value;
     }
-  };
+  }, []);
 
   useEffect(() => {
     const projectChanged = projectIdRef.current !== projectId;

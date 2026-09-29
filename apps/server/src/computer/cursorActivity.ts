@@ -113,7 +113,7 @@ export class CursorActivity {
     if (this.disposed || this.timer !== undefined) return;
     this.timer = setTimeout(() => {
       this.timer = undefined;
-      const active = [...this.pending.values()].filter((item) => item.thread === this.owner).at(-1);
+      const active = [...this.pending.values()].findLast((item) => item.thread === this.owner);
       const waiting = ["Waiting for you", "Needs approval"].includes(this.base);
       const text = this.owner === null ? null : waiting ? this.base : (active?.text ?? this.base);
       if (text === this.last) return;

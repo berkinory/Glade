@@ -3,12 +3,8 @@
 // Exports: split-aware activation resolvers shared by sidebar click, keyboard, and search flows.
 
 import type { ThreadId } from "@glade/contracts";
-import {
-  resolveSplitViewPaneIdForThread,
-  type PaneId,
-  type SplitView,
-  type SplitViewId,
-} from "./splitViewStore";
+import { resolveSplitViewPaneIdForThread } from "./splitViewStore";
+import { type PaneId, type SplitView, type SplitViewId } from "./splitViewModel";
 
 export type ThreadCommandActivation =
   | { kind: "ignore" }

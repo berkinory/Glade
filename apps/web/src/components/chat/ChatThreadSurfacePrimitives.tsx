@@ -10,7 +10,7 @@ import {
   type DiffPanelMode,
 } from "../DiffPanelShell";
 import type { DiffFileEditRequest } from "../../lib/diffEditBaseRev";
-import type { SplitViewPanePanelState } from "../../splitViewStore";
+import type { SplitViewPanePanelState } from "../../splitViewModel";
 import { CHAT_BACKGROUND_CLASS_NAME } from "./composerPickerStyles";
 import { Spinner } from "../ui/spinner";
 import { cn } from "~/lib/utils";

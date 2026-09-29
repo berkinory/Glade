@@ -631,11 +631,11 @@ export class FakeComputerBackend implements ComputerBackend {
         (app) => app.running && app.pid > 0 && (scopedPid === undefined || app.pid === scopedPid),
       )
       .map(
-        (app): ComputerAccessibilityTreeApp => ({
-          pid: app.pid,
-          name: app.name,
-          ...(app.bundleId ? { bundleId: app.bundleId } : {}),
-        }),
+        (app): ComputerAccessibilityTreeApp =>
+          Object.assign(
+            { pid: app.pid, name: app.name },
+            app.bundleId ? { bundleId: app.bundleId } : {},
+          ),
       )
       .slice(0, 1_024);
     const windows = this.currentWindows
@@ -648,15 +648,15 @@ export class FakeComputerBackend implements ComputerBackend {
           (scopedPid === undefined || window.pid === scopedPid),
       )
       .map(
-        (window): ComputerAccessibilityTreeWindow => ({
-          id: window.id,
-          pid: window.pid!,
-          ...(window.appName ? { appName: window.appName } : {}),
-          title: window.title,
-          ...(window.bounds ? { bounds: { ...window.bounds } } : {}),
-          onScreen: true,
-          ...(window.stackingIndex !== undefined ? { zIndex: window.stackingIndex } : {}),
-        }),
+        (window): ComputerAccessibilityTreeWindow =>
+          Object.assign(
+            { id: window.id, pid: window.pid! },
+            window.appName ? { appName: window.appName } : {},
+            { title: window.title },
+            window.bounds ? { bounds: { ...window.bounds } } : {},
+            { onScreen: true },
+            window.stackingIndex !== undefined ? { zIndex: window.stackingIndex } : {},
+          ),
       )
       .slice(0, 512);
     return { apps, windows, truncated: false };

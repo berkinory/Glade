@@ -110,7 +110,7 @@ export class DesktopOperationQueue {
     const result = this.tail.then(async () => {
       if (this.closed) throw new this.errorCtor("Computer manager is closed.");
       callerSignal?.throwIfAborted();
-      await Promise.all([...this.activeScoped]);
+      await Promise.all(this.activeScoped);
       if (this.closed) throw new this.errorCtor("Computer manager is closed.");
       callerSignal?.throwIfAborted();
       const controller = new AbortController();
@@ -262,6 +262,6 @@ export class DesktopOperationQueue {
     this.activeController?.abort();
     for (const controller of this.scopedControllers) controller.abort();
     await this.tail;
-    await Promise.all([...this.scopedTails.values()]);
+    await Promise.all(this.scopedTails.values());
   }
 }

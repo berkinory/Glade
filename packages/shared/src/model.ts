@@ -332,12 +332,13 @@ function legacyCapabilityDescriptors(
       id: reasoningDescriptorId(provider),
       label: "Reasoning",
       type: "select",
-      options: primaryOptions.map((option) => ({
-        id: option.value,
-        label: option.label,
-        ...(option.description ? { description: option.description } : {}),
-        ...(option.isDefault ? { isDefault: true as const } : {}),
-      })),
+      options: primaryOptions.map((option) =>
+        Object.assign(
+          { id: option.value, label: option.label },
+          option.description ? { description: option.description } : {},
+          option.isDefault ? { isDefault: true as const } : {},
+        ),
+      ),
       ...(defaultPrimaryOption ? { currentValue: defaultPrimaryOption.value } : {}),
       ...(caps.promptInjectedEffortLevels.length > 0
         ? { promptInjectedValues: [...caps.promptInjectedEffortLevels] }

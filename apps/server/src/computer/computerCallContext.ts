@@ -158,10 +158,12 @@ export class ComputerCallTiming {
     if (this.finished) return;
     this.finished = true;
     const parts = [`op=${this.operation ?? "computer_call"}`];
-    for (const [leg, ms] of [...this.legs.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    for (const [leg, ms] of [...this.legs.entries()].toSorted(([a], [b]) => a.localeCompare(b))) {
       parts.push(`${leg}_ms=${ms.toFixed(1)}`);
     }
-    for (const [name, count] of [...this.counts.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    for (const [name, count] of [...this.counts.entries()].toSorted(([a], [b]) =>
+      a.localeCompare(b),
+    )) {
       parts.push(`${name}=${count}`);
     }
     parts.push(`total_ms=${(this.now() - this.startedAt).toFixed(1)}`);

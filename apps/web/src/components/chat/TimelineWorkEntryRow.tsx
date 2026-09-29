@@ -40,7 +40,6 @@ import {
   SearchIcon,
   SkillCubeIcon,
   TerminalIcon,
-  WebSearchIcon,
   ZapIcon,
 } from "~/lib/icons";
 import { describeLinkChip } from "~/lib/linkChips";
@@ -263,7 +262,7 @@ function workEntryIcon(workEntry: TimelineWorkEntry): LucideIcon {
   if (workEntry.itemType === "file_change") {
     return PencilIcon;
   }
-  if (workEntry.itemType === "web_search") return WebSearchIcon;
+  if (workEntry.itemType === "web_search") return GlobeIcon;
   if (workEntry.itemType === "image_generation") return ZapIcon;
   if (workEntry.itemType === "image_view") return EyeIcon;
   if (isFileReadToolEntry(workEntry)) return SearchIcon;

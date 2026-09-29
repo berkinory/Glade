@@ -636,15 +636,18 @@ function ProviderUpdateNotifications({
   );
   const notificationKey = providerUpdateNotificationKey(outdatedProviders);
 
-  const updateAll = (providers: ReadonlyArray<ServerProviderStatus>) =>
-    runProviderUpdateAll({
-      providers,
-      queryClient,
-      activeToastRef,
-      isUpdatingAllRef,
-      progressToastDismissedRef,
-      setIsUpdatingAll,
-    });
+  const updateAll = useCallback(
+    (providers: ReadonlyArray<ServerProviderStatus>) =>
+      runProviderUpdateAll({
+        providers,
+        queryClient,
+        activeToastRef,
+        isUpdatingAllRef,
+        progressToastDismissedRef,
+        setIsUpdatingAll,
+      }),
+    [queryClient],
+  );
 
   useEffect(() => {
     const activeToast = activeToastRef.current;
@@ -1950,30 +1953,30 @@ function EventRouter() {
           if (threadProjectionReconcilePendingById.get(threadId) === subscriptionGeneration) {
             threadProjectionReconcilePendingById.delete(threadId);
             void reconcileThreadProjection(threadId).catch(() => undefined);
-            return;
-          }
-          if (projectionAttemptFailed) {
-            // A failed reconcile is not evidence of a quiet healthy stream.
-            // Retry it at the base cadence, while preserving backoff when the
-            // snapshot was merely superseded by newer live events.
-            resolveThreadCatchupBackoff(threadId).reconcileNoopStreak = 0;
-          }
-          // Never retire the fence on a still-running snapshot or one taken at
-          // the exact session-set sequence before buffered assistant finals land.
-          if (projectionConfirmed && projectionSatisfiesTerminalFence) {
-            clearThreadProjectionTerminalFence(threadId);
-          }
-          if (
-            threadProjectionTerminalFencePending.has(threadId) ||
-            shouldReconcileThreadProjection(threadId) ||
-            isDraftThreadAwaitingProjection(threadId)
-          ) {
-            nextThreadProjectionReconcileAtById.set(
-              threadId,
-              Date.now() + nextThreadProjectionReconcileDelayMs(threadId),
-            );
           } else {
-            nextThreadProjectionReconcileAtById.delete(threadId);
+            if (projectionAttemptFailed) {
+              // A failed reconcile is not evidence of a quiet healthy stream.
+              // Retry it at the base cadence, while preserving backoff when the
+              // snapshot was merely superseded by newer live events.
+              resolveThreadCatchupBackoff(threadId).reconcileNoopStreak = 0;
+            }
+            // Never retire the fence on a still-running snapshot or one taken at
+            // the exact session-set sequence before buffered assistant finals land.
+            if (projectionConfirmed && projectionSatisfiesTerminalFence) {
+              clearThreadProjectionTerminalFence(threadId);
+            }
+            if (
+              threadProjectionTerminalFencePending.has(threadId) ||
+              shouldReconcileThreadProjection(threadId) ||
+              isDraftThreadAwaitingProjection(threadId)
+            ) {
+              nextThreadProjectionReconcileAtById.set(
+                threadId,
+                Date.now() + nextThreadProjectionReconcileDelayMs(threadId),
+              );
+            } else {
+              nextThreadProjectionReconcileAtById.delete(threadId);
+            }
           }
         }
       }

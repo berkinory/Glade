@@ -29,18 +29,20 @@
     "build": "turbo run build",
     "build:desktop": "turbo run build --filter=@glade/desktop --filter=@glade/cli",
     "postinstall": "effect-tsgo patch --typescript --typescript-package @typescript/native",
-    "check": "oxfmt --check && oxlint --report-unused-disable-directives && effect-tsgo patch --typescript --typescript-package @typescript/native && turbo run typecheck",
-    "check:fix": "oxfmt && oxlint --fix --report-unused-disable-directives && bun run check",
+    "check": "oxfmt --check && oxlint --report-unused-disable-directives --deny-warnings && bun run check:architecture && effect-tsgo patch --typescript --typescript-package @typescript/native && turbo run typecheck",
+    "check:fix": "oxfmt && oxlint --fix --report-unused-disable-directives --deny-warnings && bun run check",
     "test": "turbo run test",
     "package:mac:arm64": "node scripts/build-desktop-artifact.ts --platform mac --target dmg --arch arm64",
     "package:mac:x64": "node scripts/build-desktop-artifact.ts --platform mac --target dmg --arch x64",
     "package:linux": "node scripts/build-desktop-artifact.ts --platform linux --target AppImage --arch x64",
-    "package:win": "node scripts/build-desktop-artifact.ts --platform win --target nsis --arch x64"
+    "package:win": "node scripts/build-desktop-artifact.ts --platform win --target nsis --arch x64",
+    "check:architecture": "bun scripts/checks/moduleBoundaries.ts && knip"
   },
   "devDependencies": {
     "@effect/tsgo": "0.41.0",
     "@types/node": "catalog:",
     "@typescript/native": "npm:typescript@7.0.2",
+    "knip": "6.38.0",
     "oxfmt": "^0.40.0",
     "oxlint": "^1.55.0",
     "turbo": "^2.9.14",
@@ -48,23 +50,7 @@
   },
   "overrides": {
     "@effect/platform-node-shared": "4.0.0-beta.25",
-    "axios": "^1.16.0",
-    "defu": "^6.1.5",
-    "fast-uri": "^3.1.2",
-    "follow-redirects": "^1.16.0",
-    "form-data": "^4.0.6",
-    "hono": "^4.12.25",
-    "ip-address": "^10.2.0",
-    "joi": "^18.2.1",
-    "lodash": "^4.18.1",
-    "postcss": "^8.5.10",
-    "protobufjs": "^7.6.3",
-    "qs": "^6.15.2",
-    "smol-toml": "^1.6.1",
-    "uuid": "^13.0.1",
-    "vite": "^8.1.4",
-    "ws": "^8.21.0",
-    "yaml": "^2.8.3"
+    "ip-address": "^10.7.1"
   },
   "engines": {
     "bun": "^1.4.2",
@@ -74,7 +60,6 @@
   "patchedDependencies": {
     "@legendapp/list@3.3.3": "patches/@legendapp%2Flist@3.3.3.patch",
     "@pierre/diffs@1.3.5": "patches/@pierre%2Fdiffs@1.3.5.patch",
-    "betterwright@2.7.3": "patches/betterwright@2.7.3.patch",
     "@effect/platform-node-shared@4.0.0-beta.25": "patches/@effect%2Fplatform-node-shared@4.0.0-beta.25.patch"
   }
 }

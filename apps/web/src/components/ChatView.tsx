@@ -175,7 +175,7 @@ import {
   isLatestTurnSettled,
   type ActiveTaskListState,
 } from "../session-logic";
-import { type SplitViewPanePanelState } from "../splitViewStore";
+import { type SplitViewPanePanelState } from "../splitViewModel";
 import { useStore } from "../store";
 import {
   createComposerThreadMentionSourcesSelector,
@@ -3329,7 +3329,6 @@ export default function ChatView({
       runtimeModelsByProvider,
       scheduleComposerFocus,
       setComposerDraftModelSelectionAndSticky,
-      setComposerDraftProviderModelOptions,
     ],
   );
 

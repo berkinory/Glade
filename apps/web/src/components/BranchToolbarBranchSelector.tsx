@@ -480,19 +480,19 @@ export function BranchToolbarBranchSelector({
     onSetThreadWorkspace,
   ]);
 
-  const runBranchAction = (
-    action: () => Promise<void>,
-    options?: { readonly refreshCwds?: readonly string[] },
-  ) => {
-    startBranchActionTransition(async () => {
-      await action().catch(() => undefined);
-      // Only the acted-on checkout gates re-enabling the selector; the remaining cached
-      // repos (checked-out markers in sibling worktrees) refresh in the background so a
-      // slow unrelated worktree cannot hold the selector disabled.
-      const awaitedCwds = options?.refreshCwds ?? (branchCwd ? [branchCwd] : []);
-      await refreshGitQueriesScoped(queryClient, awaitedCwds).catch(() => undefined);
-    });
-  };
+  const runBranchAction = useCallback(
+    (action: () => Promise<void>, options?: { readonly refreshCwds?: readonly string[] }) => {
+      startBranchActionTransition(async () => {
+        await action().catch(() => undefined);
+        // Only the acted-on checkout gates re-enabling the selector; the remaining cached
+        // repos (checked-out markers in sibling worktrees) refresh in the background so a
+        // slow unrelated worktree cannot hold the selector disabled.
+        const awaitedCwds = options?.refreshCwds ?? (branchCwd ? [branchCwd] : []);
+        await refreshGitQueriesScoped(queryClient, awaitedCwds).catch(() => undefined);
+      });
+    },
+    [branchCwd, queryClient],
+  );
 
   const openCreateBranchDialog = useCallback(() => {
     setCreateBranchName(canPrefillCreateBranch && !hasExactBranchMatch ? trimmedBranchQuery : "");

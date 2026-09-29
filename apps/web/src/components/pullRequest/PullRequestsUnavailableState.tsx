@@ -17,7 +17,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "~/components/ui/empty";
-import { copyTextToClipboard } from "~/hooks/useCopyToClipboard";
+import { copyTextToClipboard } from "../../lib/clipboard";
 import { CheckIcon, CopyIcon, GitPullRequestIcon, TriangleAlertIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { ensureNativeApi } from "~/nativeApi";

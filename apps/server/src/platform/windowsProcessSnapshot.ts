@@ -8,7 +8,7 @@ import path from "node:path";
 import { spawnProcess } from "@glade/shared/processRuntime";
 import { resolveWindowsSystemRoot } from "@glade/shared/windowsProcess";
 
-import type { ProcessChildrenMap } from "./processTreeController";
+import type { ProcessChildrenMap } from "./processTreeModel";
 
 const DEFAULT_PROBE_TIMEOUT_MS = 3_000;
 const DEFAULT_RETRY_BACKOFF_BASE_MS = 2_000;

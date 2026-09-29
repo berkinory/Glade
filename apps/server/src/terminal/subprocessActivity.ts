@@ -7,7 +7,8 @@ import path from "node:path";
 import { deriveTerminalProcessIdentity, type TerminalCliKind } from "@glade/shared/terminalThreads";
 
 import { runProcess } from "../processRunner";
-import { parseProcessChildrenMap, type ProcessChildrenMap } from "./processTreeKiller";
+import { parseProcessChildrenMap } from "./processTreeKiller";
+import { type ProcessChildrenMap } from "../platform/processTreeModel";
 import { captureWindowsProcessChildrenMap } from "./windowsProcessSnapshot";
 
 const POSIX_SUBPROCESS_TREE_WALK_MAX_VISITED = 256;

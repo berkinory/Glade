@@ -2652,7 +2652,7 @@ export class ComputerManager {
    * reply still leaves this side holding the release handle.
    */
   private async engageActivationShield(
-    threadId: string | undefined,
+    _threadId: string | undefined,
     target: ComputerWindow,
   ): Promise<string | undefined> {
     if (!cuaMaskedActivationEnabled()) return undefined;
@@ -4940,7 +4940,8 @@ export class ComputerManager {
     });
     try {
       return resolve(state.root);
-    } catch (error) {
+    } catch (caughtError) {
+      let error = caughtError;
       // A tree served from the recent cache can miss a control that only just
       // appeared. Pay for one fresh walk before declaring it absent; on a
       // genuinely-missing target the extra walk is a rare error-path cost.

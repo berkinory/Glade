@@ -82,7 +82,7 @@ jobs:
         run: bunx oxfmt --check
 
       - name: Lint
-        run: bunx oxlint --report-unused-disable-directives
+        run: bunx oxlint --report-unused-disable-directives --deny-warnings
 
   static-typecheck:
     name: Static Checks (typecheck)
@@ -96,6 +96,9 @@ jobs:
 
       - name: Setup workspace
         uses: ./.github/actions/setup-workspace
+
+      - name: Module boundaries and unused code
+        run: bun run check:architecture
 
       - name: Typecheck
         run: |

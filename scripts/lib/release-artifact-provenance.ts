@@ -142,7 +142,7 @@ async function collectReleaseArtifactDigests(
 ): Promise<ReadonlyArray<ReleaseArtifactDigest>> {
   const fileNames = (artifactFileNames ?? readdirSync(assetsDirectory))
     .filter((fileName) => !fileName.endsWith(".provenance.json"))
-    .sort((left, right) => left.localeCompare(right));
+    .toSorted((left, right) => left.localeCompare(right));
   if (new Set(fileNames).size !== fileNames.length) {
     throw new Error("Release artifact file names must be unique.");
   }

@@ -11,9 +11,9 @@ import { useDiffRouteSearch } from "./hooks/useDiffRouteSearch";
 import {
   resolveSplitViewFocusedPaneThreadId,
   selectSplitView,
-  type SplitView,
   useSplitViewStore,
 } from "./splitViewStore";
+import { type SplitView } from "./splitViewModel";
 import { useStore } from "./store";
 import { createProjectSelector, createThreadSelector } from "./storeSelectors";
 import type { Project, Thread } from "./types";

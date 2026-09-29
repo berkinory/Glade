@@ -1485,9 +1485,11 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       }
       // A post-exit snapshot can miss reparented children even when cleanup
       // succeeds. Only pre-exit capture can certify a safe startup rejection.
-      throw previousSessionStopped && (!context || context.teardownCapturedBeforeExit === true)
-        ? new CodexSessionStartError(message, { cause })
-        : new Error(message, { cause });
+      const rejectionError =
+        previousSessionStopped && (!context || context.teardownCapturedBeforeExit === true)
+          ? new CodexSessionStartError(message, { cause })
+          : new Error(message, { cause });
+      throw rejectionError;
     }
   }
 
@@ -2277,7 +2279,8 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       } else {
         gatewaySessionLease?.release();
       }
-      throw new Error(message, { cause });
+      const rejectionError = new Error(message, { cause });
+      throw rejectionError;
     }
   }
 
@@ -2311,7 +2314,9 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       const targetIndex = current.turns.length - numTurns;
       const target = current.turns[targetIndex];
       if (targetIndex < 0 || !target) {
-        throw new Error("The requested edit boundary is missing from the Codex conversation.");
+        throw new Error("The requested edit boundary is missing from the Codex conversation.", {
+          cause: error,
+        });
       }
       await this.sendRequest(context, "thread/revert", {
         threadId: providerThreadId,
@@ -3532,7 +3537,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     }
     const eventPayload = gatewayTurnAuthorityRetired
       ? {
-          ...(this.readObject(notification.params) ?? {}),
+          ...this.readObject(notification.params),
           [AGENT_GATEWAY_TURN_AUTHORITY_RETIRED]: true,
         }
       : notification.params;
@@ -4249,17 +4254,16 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       const turnIdRaw = this.readString(turn, "id") ?? `${threadIdRaw}:turn:${index + 1}`;
       const turnId = TurnId.makeUnsafe(turnIdRaw);
       const items = this.readArray(turn, "items") ?? [];
-      return {
-        id: turnId,
-        items,
-        ...(typeof turn.startedAt === "number" || typeof turn.startedAt === "string"
+      return Object.assign(
+        { id: turnId, items },
+        typeof turn.startedAt === `number` || typeof turn.startedAt === `string`
           ? { startedAt: turn.startedAt }
-          : {}),
-        ...(typeof turn.completedAt === "number" || typeof turn.completedAt === "string"
+          : {},
+        typeof turn.completedAt === `number` || typeof turn.completedAt === `string`
           ? { completedAt: turn.completedAt }
-          : {}),
-        ...(typeof turn.status === "string" ? { status: turn.status } : {}),
-      };
+          : {},
+        typeof turn.status === `string` ? { status: turn.status } : {},
+      );
     });
 
     return {
@@ -4560,7 +4564,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
 
   private findLatestReviewTurnId(snapshot: CodexThreadSnapshot): TurnId | undefined {
     const latestReviewTurn = [...snapshot.turns]
-      .reverse()
+      .toReversed()
       .find((turn) => this.turnHasReviewItem(turn, "entered"));
     return latestReviewTurn?.id;
   }
@@ -4714,9 +4718,7 @@ async function runCodexCliVersionGate(input: {
   readonly minimumVersion?: string;
   readonly minimumVersionRequirement?: string;
 }): Promise<{ fingerprint: CodexCliBinaryFingerprint | null; version: string | null }> {
-  const env = await buildCodexProcessEnv({
-    ...(input.homePath ? { homePath: input.homePath } : {}),
-  });
+  const env = await buildCodexProcessEnv(input.homePath ? { homePath: input.homePath } : {});
   // Resolved against the env the spawn below uses, never `process.env`. On macOS and Linux
   // `buildCodexProcessEnv` can replace PATH with the login shell's, so resolving through the
   // process environment could fingerprint a different `codex` than the one being probed — or

@@ -67,6 +67,8 @@ export class BetterwrightNetworkGuard {
     const owner: ProxyOwnership = { failed: false };
     this.owner = owner;
     await this.install(owner, proxyUrl, signal);
+    // The wrapper needs both its dynamic receiver and the guard that owns it.
+    // oxlint-disable-next-line typescript/no-this-alias
     const guard = this;
     let changing = Promise.resolve();
     let releasing: Promise<void> | undefined;
@@ -120,10 +122,12 @@ export class BetterwrightNetworkGuard {
       try {
         await this.restore(owner);
       } catch (rollbackError) {
-        throw new AggregateError(
+        const recoveryError = new AggregateError(
           [error, rollbackError],
           "Browser proxy setup and recovery failed.",
+          { cause: rollbackError },
         );
+        throw recoveryError;
       }
       throw error;
     }

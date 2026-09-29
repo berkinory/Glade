@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 // FILE: ChatPaneDropOverlay.tsx
 // Purpose: Renders the 4-quadrant drop-zone overlay used to split a chat surface by dragging a sidebar thread.
 // Layer: UI component (route surfaces wrap it around <ChatView /> or empty-state placeholders)
@@ -6,7 +7,7 @@
 import { useEffect, useRef, type DragEvent as ReactDragEvent, type ReactNode } from "react";
 import { type ThreadId } from "@glade/contracts";
 
-import { type SplitDirection, type SplitDropSide } from "../../splitViewStore";
+import { type SplitDirection, type SplitDropSide } from "../../splitViewModel";
 import {
   getActiveThreadDragId,
   isThreadDragTransfer,
@@ -158,11 +159,11 @@ export function ChatPaneDropOverlay(props: ChatPaneDropOverlayProps) {
     preview.className = nextClassName;
   };
 
-  const resetOverlayState = () => {
+  const resetOverlayState = useCallback(() => {
     rectRef.current = null;
     rectMeasuredAtRef.current = 0;
     setPreviewZone(null);
-  };
+  }, []);
 
   const getCurrentRect = () => {
     const wrapper = wrapperRef.current;

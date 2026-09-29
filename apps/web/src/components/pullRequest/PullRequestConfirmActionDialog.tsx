@@ -19,7 +19,7 @@ import {
 } from "~/components/ui/alert-dialog";
 import { Button } from "~/components/ui/button";
 import { toastManager } from "~/components/ui/toast";
-import { copyTextToClipboard } from "~/hooks/useCopyToClipboard";
+import { copyTextToClipboard } from "../../lib/clipboard";
 
 export type PullRequestConfirmAction =
   | { kind: "merge"; method: PullRequestMergeMethod }

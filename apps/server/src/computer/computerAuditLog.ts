@@ -278,7 +278,7 @@ export class ComputerAuditLog {
       kept.push(line);
       keptBytes += line.length;
     }
-    const content = Buffer.concat(kept.reverse(), keptBytes);
+    const content = Buffer.concat(kept.toReversed(), keptBytes);
     const temporaryPath = `${filePath}.tmp`;
     await writeFile(temporaryPath, content, { mode: 0o600 });
     await rename(temporaryPath, filePath);

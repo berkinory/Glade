@@ -277,7 +277,7 @@ export function buildNextProviderOptions(
 }
 
 export function buildProviderOptionPatch(
-  provider: ProviderKind,
+  _provider: ProviderKind,
   optionId: string,
   value: string | boolean,
 ): Record<string, unknown> {

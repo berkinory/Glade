@@ -1,3 +1,4 @@
+import { useMemo, useCallback } from "react";
 // FILE: MessageTrail.tsx
 // Purpose: Left-gutter message rail with macOS-Dock-style magnification. The tick
 //   nearest the pointer grows longest (Gaussian falloff on its neighbours) and a
@@ -100,7 +101,7 @@ export function MessageTrail({ items, activeStore, onSelect }: MessageTrailProps
   );
   const anchorIndex = items.findIndex((item) => item.id === trailSnapshot.currentId);
   const visibleIdSet = new Set(trailSnapshot.visibleIds);
-  const visibleIndexes: number[] = [];
+  const visibleIndexes: number[] = useMemo(() => [], []);
   items.forEach((item, index) => {
     if (visibleIdSet.has(item.id)) {
       visibleIndexes.push(index);
@@ -161,13 +162,13 @@ export function MessageTrail({ items, activeStore, onSelect }: MessageTrailProps
     }
   };
 
-  const hideTooltip = () => {
+  const hideTooltip = useCallback(() => {
     tooltipIndexRef.current = -1;
     const tip = tooltipRef.current;
     if (tip) {
       tip.style.visibility = "hidden";
     }
-  };
+  }, []);
 
   const showTooltip = (index: number, geometry: TrailGeometry) => {
     const tip = tooltipRef.current;
@@ -216,7 +217,7 @@ export function MessageTrail({ items, activeStore, onSelect }: MessageTrailProps
   };
 
   // Pointer/keyboard away: restore the resting rail (anchor tick highlighted).
-  const applyRest = () => {
+  const applyRest = useCallback(() => {
     const styles = computeRestStyles(
       itemsRef.current.length,
       anchorIndexRef.current,
@@ -227,11 +228,11 @@ export function MessageTrail({ items, activeStore, onSelect }: MessageTrailProps
     applyHighlightFloors(styles);
     writeStyles(styles);
     hideTooltip();
-  };
+  }, [hideTooltip]);
 
   // Position the ticks vertically in content space and reset to rest when idle.
   // Width changes never reflow this, so it only runs when the layout changes.
-  const layoutTicks = () => {
+  const layoutTicks = useCallback(() => {
     const geometryValue = geometryRef.current;
     if (!geometryValue) {
       return;
@@ -248,7 +249,7 @@ export function MessageTrail({ items, activeStore, onSelect }: MessageTrailProps
     if (latestPointerClientYRef.current === null && focusOverrideIndexRef.current === null) {
       applyRest();
     }
-  };
+  }, [applyRest]);
 
   // --- The magnification frame (single coalesced rAF) ------------------------
   const renderFrame = () => {
@@ -323,12 +324,12 @@ export function MessageTrail({ items, activeStore, onSelect }: MessageTrailProps
     }
   };
 
-  const cancelFrame = () => {
+  const cancelFrame = useCallback(() => {
     if (rafIdRef.current !== null) {
       cancelAnimationFrame(rafIdRef.current);
       rafIdRef.current = null;
     }
-  };
+  }, []);
 
   // --- Gutter visibility: rail only shows when the pane is wide enough --------
   // Width-only ResizeObserver; the tick layout is count-driven (see `geometry`),

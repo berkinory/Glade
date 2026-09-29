@@ -1,3 +1,4 @@
+import { useMemo, useCallback } from "react";
 // FILE: TerminalSearch.tsx
 // Purpose: Provides the in-terminal find bar and navigation controls.
 // Layer: Terminal presentation component
@@ -32,11 +33,14 @@ export function TerminalSearch({ searchAddon, isOpen, onClose }: TerminalSearchP
   const [hasResults, setHasResults] = useState<boolean | null>(null);
   const [caseSensitive, setCaseSensitive] = useState(false);
 
-  const searchOptions: ISearchOptions = {
-    caseSensitive,
-    regex: false,
-    decorations: SEARCH_DECORATIONS as NonNullable<ISearchOptions["decorations"]>,
-  };
+  const searchOptions: ISearchOptions = useMemo(
+    () => ({
+      caseSensitive,
+      regex: false,
+      decorations: SEARCH_DECORATIONS as NonNullable<ISearchOptions["decorations"]>,
+    }),
+    [caseSensitive],
+  );
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
@@ -64,11 +68,11 @@ export function TerminalSearch({ searchAddon, isOpen, onClose }: TerminalSearchP
     setHasResults(found);
   };
 
-  const clearSearchTimer = () => {
+  const clearSearchTimer = useCallback(() => {
     if (searchTimerRef.current === null) return;
     window.clearTimeout(searchTimerRef.current);
     searchTimerRef.current = null;
-  };
+  }, []);
 
   const scheduleSearch = (nextQuery: string) => {
     clearSearchTimer();

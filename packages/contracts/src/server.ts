@@ -9,7 +9,8 @@ import {
 } from "./baseSchemas";
 import { KeybindingRule, ResolvedKeybindingsConfig } from "./keybindings";
 import { EditorId } from "./editor";
-import { ModelSelection, ProviderKind, ProviderStartOptions } from "./orchestration";
+import { ModelSelection, ProviderStartOptions } from "./orchestration";
+import { ProviderKind } from "./baseSchemas";
 import { ServerSettingsPatch, ServerSettingsView } from "./settings";
 import { ExecutionEnvironmentDescriptor } from "./environment";
 import { AutomationCompletionPolicy, AutomationMode, AutomationSchedule } from "./automation";

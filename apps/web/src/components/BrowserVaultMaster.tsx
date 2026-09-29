@@ -26,8 +26,11 @@ export function BrowserVaultMaster({
   done.current = onDone;
 
   useEffect(() => {
+    const effectGeneration = generation;
+    const effectTimer = timer;
+
     const hide = () => {
-      generation.current++;
+      effectGeneration.current++;
       setPassword("");
       setConfirmation("");
       setRevealed(null);
@@ -39,8 +42,8 @@ export function BrowserVaultMaster({
     window.addEventListener("blur", hide);
     document.addEventListener("visibilitychange", visibility);
     return () => {
-      generation.current++;
-      clearTimeout(timer.current);
+      effectGeneration.current++;
+      clearTimeout(effectTimer.current);
       window.removeEventListener("blur", hide);
       document.removeEventListener("visibilitychange", visibility);
     };

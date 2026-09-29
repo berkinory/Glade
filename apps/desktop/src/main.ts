@@ -4,7 +4,7 @@ import { LinuxEscapeKillSwitchMonitor, linuxEscapeSession } from "./linuxEscapeK
 import { ComputerFrameTap } from "./computerFrameTap";
 import { ComputerShield } from "./computerShield";
 import { registerComputerDesktopLifecycle } from "./computerDesktopLifecycle";
-import { COMPUTER_PERMISSION_KINDS } from "@glade/shared/computerGrants";
+import { COMPUTER_PERMISSIONS } from "@glade/shared/computerGrants";
 import { CUA_HOST_SOCKET_ENV } from "@glade/shared/cuaDriverProtocol";
 import { MODEL_SCREEN_IMAGE_MAX_DIMENSION } from "@glade/shared/modelImageBudget";
 // FILE: main.ts
@@ -389,7 +389,7 @@ app.setPath("userData", userDataPath);
 // Monitor-only: observes uncaught exceptions for diagnostics without changing
 // Node's exit behavior — the POSIX EPIPE filter and the default crash path
 // stay exactly as before.
-process.on("uncaughtExceptionMonitor", (error: unknown) => {});
+process.on("uncaughtExceptionMonitor", (_error: unknown) => {});
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 const AUTO_UPDATE_STARTUP_DELAY_MS = 15_000;
@@ -3797,7 +3797,7 @@ async function startCuaHost(): Promise<void> {
       // starting it here keeps the CUA host working even when Computer itself is
       // still disabled.
       initializeDesktopComputer();
-      const state = await computerManager!.refreshState(COMPUTER_PERMISSION_KINDS, {
+      const state = await computerManager!.refreshState(COMPUTER_PERMISSIONS, {
         force: options?.force === true,
       });
       if (
@@ -3823,7 +3823,7 @@ async function startCuaHost(): Promise<void> {
     },
     setup: async () => {
       initializeDesktopComputer();
-      await computerManager!.startPermissionSetup(COMPUTER_PERMISSION_KINDS);
+      await computerManager!.startPermissionSetup(COMPUTER_PERMISSIONS);
     },
     releaseHeldInput: async () => {
       // Same lazily-started shared helper as the permission checks: the Computer

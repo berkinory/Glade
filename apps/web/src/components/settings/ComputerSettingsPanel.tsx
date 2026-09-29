@@ -15,7 +15,7 @@ import {
   type ComputerPermission,
 } from "@glade/contracts";
 import {
-  COMPUTER_PERMISSION_KINDS,
+  COMPUTER_PERMISSIONS,
   computerPermissionSetupMessage,
   missingComputerPermissions,
 } from "@glade/shared/computerGrants";
@@ -197,7 +197,7 @@ export function ComputerSettingsPanel({
     const bridge = readLocalComputerPermissionBridge();
     if (!bridge) return;
     void bridge
-      .getState(COMPUTER_PERMISSION_KINDS)
+      .getState(COMPUTER_PERMISSIONS)
       .then((next) => setComputerPermissionState(next))
       .catch(() => undefined);
   }, []);
@@ -215,7 +215,7 @@ export function ComputerSettingsPanel({
   // the surface is hidden, so a dismissed coach still clears the remembered
   // pane instead of resurrecting the guide on return.
   useComputerPermissionGuideBridge({
-    permissionKinds: COMPUTER_PERMISSION_KINDS,
+    permissionKinds: COMPUTER_PERMISSIONS,
     onStateChange: setComputerPermissionState,
     onGuidePaneChange: setGuidePane,
   });
@@ -228,7 +228,7 @@ export function ComputerSettingsPanel({
       if (!disposed) setComputerPermissionState(state);
     });
     void bridge
-      .getState(COMPUTER_PERMISSION_KINDS)
+      .getState(COMPUTER_PERMISSIONS)
       .then((next) => {
         if (!disposed) setComputerPermissionState(next);
       })
@@ -571,7 +571,7 @@ export function ComputerSettingsPanel({
               // panel's one check action.
               <ComputerPermissionSection
                 panes={COMPUTER_PERMISSION_PANES}
-                permissionKinds={COMPUTER_PERMISSION_KINDS}
+                permissionKinds={COMPUTER_PERMISSIONS}
                 feature="Computer control"
                 state={computerPermissionState}
                 onStateChange={setComputerPermissionState}

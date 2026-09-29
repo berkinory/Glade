@@ -4,20 +4,19 @@ import { hashFile } from "./file-digest.ts";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { startBuildStage, timeBuildStage } from "./build-timing.ts";
-import type { MacDmgNotaryCredentials } from "./mac-dmg-finalize.ts";
+import type { MacDmgNotaryCredentials } from "./mac-notary-credentials.ts";
 
 export interface NotarySubmission {
   payloadSha256: string;
   id: string;
   stapledSha256?: string;
 }
-export const payloadDigest = hashFile;
 export function appNotaryStateDirectory(app: string): string {
   // Bundle discovery treats a directory ending in .app as executable content.
   // Retained submission state must never masquerade as another app bundle.
   return join(dirname(app), `.app-notary-${basename(app)}-state`);
 }
-export function reusableSubmission(state: NotarySubmission, digest: string): boolean {
+function reusableSubmission(state: NotarySubmission, digest: string): boolean {
   return (
     /^[0-9a-f-]{36}$/i.test(state.id) &&
     (state.payloadSha256 === digest || state.stapledSha256 === digest)
@@ -73,7 +72,7 @@ export async function notarizeMacPayload(
     );
   mkdirSync(stateDir, { recursive: true });
   const statePath = join(stateDir, `${basename(payload)}.json`);
-  const digest = await payloadDigest(payload);
+  const digest = await hashFile(payload);
   let state = existsSync(statePath)
     ? (JSON.parse(readFileSync(statePath, "utf8")) as NotarySubmission)
     : undefined;
@@ -137,7 +136,7 @@ export async function recordStapledPayload(
 ): Promise<void> {
   writeFileSync(
     submission.statePath,
-    JSON.stringify({ ...submission.state, stapledSha256: await payloadDigest(payload) }) + "\n",
+    JSON.stringify({ ...submission.state, stapledSha256: await hashFile(payload) }) + "\n",
     { mode: 0o600 },
   );
 }

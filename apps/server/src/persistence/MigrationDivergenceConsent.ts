@@ -8,18 +8,18 @@ import {
   type MigrationDivergenceConsentChallenge,
 } from "@glade/shared/migrationRecovery";
 
-export interface MigrationLineageDivergence {
-  readonly firstDivergedId: number;
-  readonly expectedName: string;
-  readonly recordedName: string;
-  readonly highWaterMark: number;
-  readonly lineageFingerprint: string;
-}
-
 export interface MigrationDivergencePlan {
   readonly sourceVersion: string;
   readonly targetVersion: number;
-  readonly lineageDivergence?: MigrationLineageDivergence | undefined;
+  readonly lineageDivergence?:
+    | {
+        readonly firstDivergedId: number;
+        readonly expectedName: string;
+        readonly recordedName: string;
+        readonly highWaterMark: number;
+        readonly lineageFingerprint: string;
+      }
+    | undefined;
 }
 
 export class MigrationDivergenceConsentRequiredError extends Error {

@@ -5,7 +5,7 @@
 import type { useNavigate } from "@tanstack/react-router";
 import type { ThreadId } from "@glade/contracts";
 import type { LastThreadRoute } from "../chatRouteRestore";
-import { type PaneId, type SplitView, type SplitViewId } from "../splitViewStore";
+import { type PaneId, type SplitView, type SplitViewId } from "../splitViewModel";
 import { selectThreadTerminalState } from "../terminalStateStore";
 import type { SidebarThreadSummary } from "../types";
 import {

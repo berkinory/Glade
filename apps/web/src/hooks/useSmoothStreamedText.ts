@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 // FILE: useSmoothStreamedText.ts
 // Purpose: Reveal streamed assistant text at a steady, adaptive cadence so tokens appear
 //          fluidly instead of in the ~100ms network clumps that land in the store.
@@ -149,14 +150,14 @@ export function useSmoothStreamedText(text: string, isStreaming: boolean): strin
   const rafRef = useRef<number | null>(null);
   const tickRef = useRef<(now: number) => void>(() => undefined);
 
-  const cancelFrame = () => {
+  const cancelFrame = useCallback(() => {
     if (rafRef.current != null) {
       cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     }
-  };
+  }, []);
 
-  const scheduleFrame = () => {
+  const scheduleFrame = useCallback(() => {
     if (rafRef.current != null) {
       return;
     }
@@ -164,7 +165,7 @@ export function useSmoothStreamedText(text: string, isStreaming: boolean): strin
       rafRef.current = null;
       tickRef.current(now);
     });
-  };
+  }, []);
 
   // Installed in an effect (not during render — that write would make the
   // whole hook ineligible for React Compiler). The tick reads everything

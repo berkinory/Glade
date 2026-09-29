@@ -18,7 +18,7 @@ import {
 import { cn } from "~/lib/utils";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { APP_TOOLTIP_SURFACE_CLASS_NAME } from "~/components/chat/composerPickerStyles";
-import { useCopyToClipboard } from "~/hooks/useCopyToClipboard";
+import { useCopyToClipboard } from "../../lib/clipboard";
 import {
   buildVisibleToastLayout,
   DEFAULT_TOAST_TIMEOUT_MS,

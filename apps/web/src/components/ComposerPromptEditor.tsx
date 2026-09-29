@@ -949,7 +949,7 @@ function ComposerPromptEditorInner({
   onPaste,
   editorRef,
 }: ComposerPromptEditorInnerProps) {
-  const mentionReferences = mentionReferencesProp ?? [];
+  const mentionReferences = useMemo(() => mentionReferencesProp ?? [], [mentionReferencesProp]);
   const [editor] = useLexicalComposerContext();
   const onChangeRef = useRef(onChange);
   const initialCursor = clampCollapsedComposerCursor(value, cursor);

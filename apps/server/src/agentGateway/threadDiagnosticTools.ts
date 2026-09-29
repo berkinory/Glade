@@ -101,17 +101,21 @@ export function makeThreadDiagnosticTools(input: {
         return mcpToolResultJson({
           threadId,
           activities: page
-            .map((row) => ({
-              sequence: row.sequence,
-              activityId: row.activityId,
-              turnId: row.turnId,
-              tone: row.tone,
-              kind: row.kind,
-              summary: row.summary,
-              createdAt: row.createdAt,
-              ...(includeDetails ? { detail: sanitizeDiagnosticValue(row.payload) } : {}),
-            }))
-            .reverse(),
+            .map((row) =>
+              Object.assign(
+                {
+                  sequence: row.sequence,
+                  activityId: row.activityId,
+                  turnId: row.turnId,
+                  tone: row.tone,
+                  kind: row.kind,
+                  summary: row.summary,
+                  createdAt: row.createdAt,
+                },
+                includeDetails ? { detail: sanitizeDiagnosticValue(row.payload) } : {},
+              ),
+            )
+            .toReversed(),
           coverage: {
             source: "projection_thread_activities",
             highWaterSequence,
@@ -152,7 +156,7 @@ export function makeThreadDiagnosticTools(input: {
       },
       annotations: { title: "Diagnose a Glade thread", ...READ_ONLY_TOOL_ANNOTATIONS },
     },
-    handler: (args, context) =>
+    handler: (args, _context) =>
       Effect.gen(function* () {
         const threadId = readStringArg(args, "threadId", { required: true })!;
         yield* input.requireThreadShell(threadId);
@@ -235,7 +239,7 @@ export function makeThreadDiagnosticTools(input: {
               summary: activity.summary,
               createdAt: activity.createdAt,
             }))
-            .reverse(),
+            .toReversed(),
           recentEvents: shapeDiagnosticEvents(events, "summary"),
           recentRuntimeEvents: runtimeEvents
             .map(({ sequence, event }) => ({
@@ -248,7 +252,7 @@ export function makeThreadDiagnosticTools(input: {
               requestId: event.requestId ?? null,
               createdAt: event.createdAt,
             }))
-            .reverse(),
+            .toReversed(),
           providerDeliveryBlockers: blockers.map((blocker) => ({
             ...blocker,
             lastError: sanitizeDiagnosticValue(blocker.lastError),
@@ -467,18 +471,22 @@ export function makeThreadDiagnosticPageReaders(input: ThreadDiagnosticPageDepen
         return mcpToolResultJson({
           threadId,
           events: page
-            .map(({ sequence, event }) => ({
-              sequence,
-              eventId: event.eventId,
-              type: event.type,
-              provider: event.provider,
-              turnId: event.turnId ?? null,
-              itemId: event.itemId ?? null,
-              requestId: event.requestId ?? null,
-              createdAt: event.createdAt,
-              ...(includeDetails ? { detail: sanitizeDiagnosticValue(event) } : {}),
-            }))
-            .reverse(),
+            .map(({ sequence, event }) =>
+              Object.assign(
+                {
+                  sequence,
+                  eventId: event.eventId,
+                  type: event.type,
+                  provider: event.provider,
+                  turnId: event.turnId ?? null,
+                  itemId: event.itemId ?? null,
+                  requestId: event.requestId ?? null,
+                  createdAt: event.createdAt,
+                },
+                includeDetails ? { detail: sanitizeDiagnosticValue(event) } : {},
+              ),
+            )
+            .toReversed(),
           coverage: {
             source: "provider_runtime_events",
             highWaterSequence,

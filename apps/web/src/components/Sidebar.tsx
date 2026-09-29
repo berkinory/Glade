@@ -2397,13 +2397,7 @@ export default function Sidebar() {
         throw error;
       }
     },
-    [
-      appSettings.defaultThreadEnvMode,
-      currentProjectShortcutTargetId,
-      navigate,
-      projects,
-      queryClient,
-    ],
+    [appSettings.defaultThreadEnvMode, currentProjectShortcutTargetId, navigate, projects],
   );
 
   const commitRename = useCallback(
@@ -6409,7 +6403,9 @@ function SidebarSearchPaletteController(props: {
   const sidebarDisplayThreads = useStore(selectSidebarDisplayThreads);
   const importProviders: ReadonlyArray<ImportProviderKind> = (
     ["codex", "claudeAgent"] as const
-  ).filter((provider, index) => supportsThreadImport(importProviderCapabilityQueries[index]?.data));
+  ).filter((_provider, index) =>
+    supportsThreadImport(importProviderCapabilityQueries[index]?.data),
+  );
   // `threads` is rebuilt on every streamed store flush, so this projection is
   // cheap by construction (message text is cached per thread-messages array
   // below) and its result keeps the previous identity while nothing the

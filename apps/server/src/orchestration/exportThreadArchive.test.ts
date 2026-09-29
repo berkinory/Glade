@@ -107,7 +107,7 @@ describe("exportThreadArchive", () => {
       return acc;
     }, {});
 
-    expect(Object.keys(entries).sort()).toEqual(["thread.json", "transcript.md"]);
+    expect(Object.keys(entries).toSorted()).toEqual(["thread.json", "transcript.md"]);
 
     const threadJson = JSON.parse(entries["thread.json"]!.toString("utf8"));
     expect(threadJson.threadId).toBe("thread-abc");

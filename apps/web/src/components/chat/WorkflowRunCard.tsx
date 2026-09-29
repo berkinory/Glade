@@ -33,7 +33,7 @@ import {
   XIcon,
 } from "~/lib/icons";
 import { cn } from "~/lib/utils";
-import { useCopyToClipboard } from "~/hooks/useCopyToClipboard";
+import { useCopyToClipboard } from "../../lib/clipboard";
 import { useNowMs } from "~/hooks/useNowMs";
 import { formatClockDuration } from "../../session-logic";
 import { Button } from "../ui/button";

@@ -4,7 +4,8 @@
 // Exports: visible-thread resolver shared by toast containers and split-aware tests
 
 import type { ThreadId } from "@glade/contracts";
-import { resolveSplitViewThreadIds, type SplitView } from "../../splitViewStore";
+import { resolveSplitViewThreadIds } from "../../splitViewStore";
+import { type SplitView } from "../../splitViewModel";
 import type { RightDockThreadState } from "../../rightDockStore.logic";
 
 export function resolveVisibleToastThreadIds(input: {

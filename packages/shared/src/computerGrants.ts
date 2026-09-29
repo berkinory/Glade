@@ -10,10 +10,21 @@
  *
  * @module computerGrants
  */
+/**
+ * The macOS privacy grants desktop control needs, in the words the user reads.
+ *
+ * Three surfaces have to agree on this copy — the server backend's availability
+ * message, the desktop app's send-time preflight, and the web card and settings
+ * panel — and they used to spell it out separately, which is how "Screen
+ * Recording and Accessibility" and "Accessibility and Screen Recording" ended up
+ * describing the same state in the same session. One ordering, one label per
+ * grant, one place that knows what to say about a stale ad-hoc grant.
+ *
+ * @module computerGrants
+ */
 import type {
   ComputerBuildSignature,
   ComputerPermission,
-  DesktopComputerPermissionKind,
   DesktopComputerState,
 } from "@glade/contracts";
 
@@ -27,8 +38,6 @@ export const COMPUTER_PERMISSIONS: readonly ComputerPermission[] = [
 ];
 
 /** Shared grant names for the desktop Computer helper and permission UI. */
-export const COMPUTER_PERMISSION_KINDS: readonly DesktopComputerPermissionKind[] =
-  COMPUTER_PERMISSIONS;
 
 /** A grant snapshot is evidence; an idle backend's connectivity is not. */
 export function missingComputerPermissions(

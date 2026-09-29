@@ -3339,7 +3339,7 @@ const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"] }) =>
               { maxOutputBytes: WORKTREE_TRANSFER_MAX_OUTPUT_BYTES },
             ).pipe(Effect.map((result) => parseNullSeparatedPaths(result.stdout)))
           : [];
-        return [...new Set([...untracked, ...included])].sort();
+        return [...new Set([...untracked, ...included])].toSorted();
       });
 
     const readWorktreeStateHash = (cwd: string) =>

@@ -23,7 +23,7 @@ function deferred<T>() {
   return { promise, resolve };
 }
 afterEach(async () => {
-  for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
+  for (const cleanup of cleanups.splice(0).toReversed()) await cleanup();
 });
 async function fixture(
   authority = capability,

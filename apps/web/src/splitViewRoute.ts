@@ -5,12 +5,8 @@
 
 import { type ThreadId } from "@glade/contracts";
 import { type DiffRouteSearch } from "./diffRouteSearch";
-import {
-  resolveSplitViewFocusedThreadId,
-  resolveSplitViewPaneIdForThread,
-  type PaneId,
-  type SplitView,
-} from "./splitViewStore";
+import { resolveSplitViewFocusedThreadId, resolveSplitViewPaneIdForThread } from "./splitViewStore";
+import { type PaneId, type SplitView } from "./splitViewModel";
 
 export function resolveActiveSplitView(input: {
   splitView: SplitView | null;

@@ -82,7 +82,7 @@ process.stdin.on("end", () => process.exit(0));
 
 const cleanups: Array<() => Promise<unknown>> = [];
 afterEach(async () => {
-  for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
+  for (const cleanup of cleanups.splice(0).toReversed()) await cleanup();
 });
 
 const FRAME = { x: 100, y: 50, width: 400, height: 300 };

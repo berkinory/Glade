@@ -8,6 +8,7 @@
  *
  * @module agentGateway/Services/AgentGatewayCredentials
  */
+import type { NativeToolCallRegistry } from "../nativeToolCalls.ts";
 import type { ProviderKind, ThreadId } from "@glade/contracts";
 import { ServiceMap } from "effect";
 import type {
@@ -30,7 +31,7 @@ export interface AgentGatewayMcpConnection {
 
 export interface AgentGatewayCredentialsShape {
   /** Available when the host can correlate native events with MCP call metadata. */
-  readonly nativeToolCalls?: import("../nativeToolCalls.ts").NativeToolCallRegistry;
+  readonly nativeToolCalls?: NativeToolCallRegistry;
   /** Streamable-HTTP MCP endpoint served by this Glade instance. */
   readonly mcpEndpointUrl: string;
   /** Update the endpoint after the HTTP server resolves a dynamic listen port. */

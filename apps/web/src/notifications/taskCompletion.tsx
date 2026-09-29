@@ -332,6 +332,7 @@ export function TaskCompletionNotifications() {
     threads,
     threadsHydrated,
     visibleThreadIds,
+    runtimeStartedAtMs,
   ]);
 
   return null;

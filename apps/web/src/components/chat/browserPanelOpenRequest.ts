@@ -1,7 +1,7 @@
 import type { ThreadId } from "@glade/contracts";
 
 import { findLeafPaneById } from "../../splitView.logic";
-import type { PaneId, SplitView } from "../../splitViewStore";
+import type { PaneId, SplitView } from "../../splitViewModel";
 
 // The single-pane browser open request routes through
 // `routeSingleDockPaneOpenRequest` (dockPaneOpenRequest.ts) like every other

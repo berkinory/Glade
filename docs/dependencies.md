@@ -28,3 +28,41 @@ Keep all five Effect packages on the same exact beta when revisiting this pin.
 Compare executable output before changing the version, then run the workspace
 checks, tests, desktop build, Windows runtime boundary and migration lineage
 checks. A successful local build does not verify a signed release.
+
+## Overrides
+
+The original override set was checked against a fresh resolution. Axios, defu,
+fast-uri, follow-redirects, form-data, Hono, Joi, lodash, PostCSS, qs, UUID, Vite,
+ws and YAML now resolve naturally at or above their former security floors.
+The protobufjs override had no remaining consumer. Knip brings back smol-toml
+with a range above the old floor, so its override is also unnecessary.
+
+`ip-address >=10.7.1` remains forced because express-rate-limit pins `10.1.0`.
+It covers the upstream [address-family allowlist bypass](https://github.com/beaugunderson/ip-address/security/advisories/GHSA-j6r3-76f7-8jcv)
+and [unbounded IPv6 parse diagnostic](https://github.com/beaugunderson/ip-address/security/advisories/GHSA-h3mg-xc3c-68pw),
+as well as earlier classification and HTML escaping fixes. The installed
+version is `10.7.2`. The Effect override above prevents version skew rather
+than addressing a security advisory.
+
+## Patches
+
+- **BetterWright 2.7.3:** removed. It only modified cookie import for host-owned
+  sessions; Glade has no runtime caller of that retired feature. There is no
+  reason to carry its upstream customization into browser automation.
+- **Legend List 3.3.3:** retained. A deferred end-follow frame must recheck that
+  following is still enabled, and visible-content anchoring must include the
+  partially visible row. The installed release still lacks both changes.
+  The related upstream tracking issue is
+  [LegendApp/legend-list#492](https://github.com/LegendApp/legend-list/issues/492);
+  it is not an exact patch acceptance or release guarantee.
+- **Pierre Diffs 1.3.5:** retained. Structural file edits must publish cached rows
+  to the DOM and dirty the selection. The installed release still lacks the
+  rerender calls. Related upstream work includes
+  [pierrecomputer/pierre#1029](https://github.com/pierrecomputer/pierre/pull/1029)
+  and [#1072](https://github.com/pierrecomputer/pierre/pull/1072); a merged PR is
+  not evidence that this installed artifact contains the fix.
+- **Effect Platform Node Shared beta.25:** retained. The installed beta lacks
+  the Windows options and unsafe-PID guard described above. Related Windows
+  work is [Effect-TS/effect#7154](https://github.com/Effect-TS/effect/pull/7154),
+  merged after this beta. No matching upstream unsafe-PID PR was found during
+  the audit. Remove the patch only after comparing the replacement artifact.

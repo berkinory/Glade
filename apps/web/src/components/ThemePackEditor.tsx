@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 // FILE: ThemePackEditor.tsx
 // Purpose: Per-variant theme card matching the Codex appearance settings layout.
 // Layer: Web settings UI
@@ -23,7 +24,7 @@ import { Switch } from "./ui/switch";
 import { Textarea } from "./ui/textarea";
 import { toastManager } from "./ui/toast";
 import { SettingsCard, SettingsSelectPopup } from "./settings/SettingsPanelPrimitives";
-import { copyTextToClipboard } from "../hooks/useCopyToClipboard";
+import { copyTextToClipboard } from "../lib/clipboard";
 import { type ChromeTheme, type ThemeMode, type ThemeVariant, useTheme } from "../hooks/useTheme";
 import { cn } from "../lib/utils";
 import {
@@ -370,13 +371,13 @@ function ColorPill({
     colorRef.current = color;
   }, [color]);
 
-  const clearCommitTimer = () => {
+  const clearCommitTimer = useCallback(() => {
     if (commitTimerRef.current === null) {
       return;
     }
     window.clearTimeout(commitTimerRef.current);
     commitTimerRef.current = null;
-  };
+  }, []);
 
   // Explicit undefined check instead of a ref-reading default parameter,
   // which React Compiler does not support yet (it would skip this component).

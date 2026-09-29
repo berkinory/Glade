@@ -16,7 +16,6 @@ import {
   ProviderApprovalDecision,
   ProviderApprovalPolicy,
   ProviderInteractionMode,
-  ProviderKind,
   ProviderRequestKind,
   ProviderReviewTarget,
   ProviderSandboxMode,
@@ -24,6 +23,7 @@ import {
   ProviderUserInputAnswers,
   RuntimeMode,
 } from "./orchestration";
+import { ProviderKind } from "./baseSchemas";
 import { ProviderMentionReference, ProviderSkillReference } from "./providerDiscovery";
 
 const ProviderSessionStatus = Schema.Literals([

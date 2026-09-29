@@ -292,7 +292,7 @@ function SortableProviderVisibilityRow(props: {
       <Switch
         checked={isEnabled}
         disabled={isChecking || !isAvailable}
-        onCheckedChange={(checked) => props.onHiddenChange(!Boolean(checked))}
+        onCheckedChange={(checked) => props.onHiddenChange(!checked)}
         aria-label={
           isChecking
             ? `Checking ${props.option.title} CLI availability`
@@ -853,7 +853,7 @@ export function ProvidersSettingsPanel({
                             setProviderListMembership(
                               settings.disabledProviders,
                               option.provider,
-                              !Boolean(checked),
+                              !checked,
                             ),
                           )
                         }

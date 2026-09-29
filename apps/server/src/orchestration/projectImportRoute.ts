@@ -416,7 +416,7 @@ export function makeProjectImportHandlers(options: ProjectImportRouteOptions) {
         const providerOptions: ProviderStartOptions =
           source.provider === "codex"
             ? { codex: configuredOptions.codex }
-            : { claudeAgent: { ...(claudeBinaryPath ? { binaryPath: claudeBinaryPath } : {}) } };
+            : { claudeAgent: claudeBinaryPath ? { binaryPath: claudeBinaryPath } : {} };
         const runtimeCwd = workingDirectory ?? (directoryExists ? workspaceRoot : undefined);
         // The ledger and native binding survive failures. Retrying the same origin
         // resumes this frozen copy, while deterministic command IDs prevent replay.

@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 // FILE: KanbanView.tsx
 // Purpose: Kanban control-center page shell — header chrome plus the nested
 //          overview (all projects) / single-project board navigation.
@@ -91,16 +92,16 @@ export default function KanbanView({ projectId }: { projectId: string | null }) 
     projectId: ProjectId | null;
     sendAsDraft: boolean;
   } | null>(null);
-  const handleNewTask = (
-    targetProjectId: ProjectId | null,
-    options?: { sendAsDraft?: boolean },
-  ) => {
-    setNewTaskDialog({
-      key: Date.now(),
-      projectId: targetProjectId,
-      sendAsDraft: options?.sendAsDraft ?? false,
-    });
-  };
+  const handleNewTask = useCallback(
+    (targetProjectId: ProjectId | null, options?: { sendAsDraft?: boolean }) => {
+      setNewTaskDialog({
+        key: Date.now(),
+        projectId: targetProjectId,
+        sendAsDraft: options?.sendAsDraft ?? false,
+      });
+    },
+    [],
+  );
   const projectBoardId = projectBoard?.projectId ?? null;
   const handleNewTaskInProjectBoard = () => {
     handleNewTask(projectBoardId);

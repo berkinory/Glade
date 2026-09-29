@@ -40,6 +40,7 @@ export function PdfFilePreview(props: {
   onPreviewReady?: (() => void) | undefined;
   onPreviewError?: (() => void) | undefined;
 }) {
+  const { onPreviewReady, onPreviewError } = props;
   const previewUrl = buildLocalImageUrl({
     src: props.filePath,
     cwd: props.cwd ?? undefined,
@@ -51,11 +52,11 @@ export function PdfFilePreview(props: {
 
   useEffect(() => {
     if (doc.status === "ready") {
-      props.onPreviewReady?.();
+      onPreviewReady?.();
     } else if (doc.status === "error") {
-      props.onPreviewError?.();
+      onPreviewError?.();
     }
-  }, [doc.status, props.onPreviewError, props.onPreviewReady]);
+  }, [doc.status, onPreviewError, onPreviewReady]);
 
   const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null);
   const containerSize = useContainerSize(scrollRoot);

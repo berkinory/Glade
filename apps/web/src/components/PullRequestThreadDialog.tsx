@@ -94,7 +94,7 @@ function PullRequestThreadDialogContent({
     return () => {
       window.cancelAnimationFrame(frame);
     };
-  }, [open]);
+  }, []);
 
   const parsedReference = parsePullRequestReference(reference);
   const parsedDebouncedReference = parsePullRequestReference(debouncedReference);

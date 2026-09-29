@@ -266,7 +266,7 @@ export class DesktopComputerManager {
     }
     if (this.#disposed || generation !== this.#guideSessionGeneration) return this.getState();
     this.#guidePaneQueue = [...new Set(permissions)]
-      .sort(
+      .toSorted(
         (left, right) =>
           COMPUTER_PERMISSION_SETUP_ORDER.indexOf(left) -
           COMPUTER_PERMISSION_SETUP_ORDER.indexOf(right),

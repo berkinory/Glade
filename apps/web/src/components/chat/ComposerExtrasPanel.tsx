@@ -69,7 +69,6 @@ export function ComposerExtrasPanel(props: {
           icon: <PaperclipIcon className={GLYPH} />,
           title: "Files and folders",
         },
-        ...[],
         {
           id: ROW_GOAL,
           icon: <GoalIcon className={GLYPH} />,

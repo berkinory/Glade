@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 // FILE: useRecentViewSwitcher.ts
 // Purpose: Own the Ctrl+Tab recent-primary-view MRU wiring for the chat shell.
 // Layer: UI hook
@@ -162,7 +163,7 @@ export function useRecentViewSwitcher(input: UseRecentViewSwitcherInput) {
     activeDraftThreadRef.current = input.activeDraftThread;
   }, [input.activeDraftThread]);
 
-  const buildRecentViewAvailability = (): RecentViewAvailability => {
+  const buildRecentViewAvailability = useCallback((): RecentViewAvailability => {
     const sidebarThreadSummaryById = useStore.getState().sidebarThreadSummaryById;
     const draftThreadsByThreadId = useComposerDraftStore.getState().draftThreadsByThreadId;
     const splitViewsById = useSplitViewStore.getState().splitViewsById;
@@ -200,7 +201,7 @@ export function useRecentViewSwitcher(input: UseRecentViewSwitcherInput) {
       availableSplitViewIds,
       threadIdsBySplitViewId,
     };
-  };
+  }, []);
 
   useEffect(() => {
     if (!currentRecentView) return;
@@ -217,51 +218,60 @@ export function useRecentViewSwitcher(input: UseRecentViewSwitcherInput) {
     pruneRecentViewsStore(buildRecentViewAvailability());
   }, [buildRecentViewAvailability, pruneRecentViewsStore, threadsHydrated]);
 
-  const activateRecentView = (view: RecentView) => {
-    switch (view.kind) {
-      case "thread": {
-        if (!buildRecentViewAvailability().availableThreadIds.has(view.threadId)) {
+  const activateRecentView = useCallback(
+    (view: RecentView) => {
+      switch (view.kind) {
+        case "thread": {
+          if (!buildRecentViewAvailability().availableThreadIds.has(view.threadId)) {
+            return;
+          }
+          prewarmThreadDetail(view.threadId);
+          const splitActivation = resolveRecentThreadSplitActivation({
+            view,
+            splitViewsById: useSplitViewStore.getState().splitViewsById,
+          });
+          if (splitActivation) {
+            useSplitViewStore
+              .getState()
+              .setFocusedPane(splitActivation.splitViewId, splitActivation.paneId);
+          }
+          const terminalState = selectThreadTerminalState(
+            useTerminalStateStore.getState().terminalStateByThreadId,
+            view.threadId,
+          );
+          if (terminalState.entryPoint === "terminal") {
+            openTerminalThreadPage(view.threadId);
+          } else {
+            openChatThreadPage(view.threadId);
+          }
+          void navigate({
+            to: "/$threadId",
+            params: { threadId: view.threadId },
+            search: () => (splitActivation ? { splitViewId: splitActivation.splitViewId } : {}),
+          });
           return;
         }
-        prewarmThreadDetail(view.threadId);
-        const splitActivation = resolveRecentThreadSplitActivation({
-          view,
-          splitViewsById: useSplitViewStore.getState().splitViewsById,
-        });
-        if (splitActivation) {
-          useSplitViewStore
-            .getState()
-            .setFocusedPane(splitActivation.splitViewId, splitActivation.paneId);
-        }
-        const terminalState = selectThreadTerminalState(
-          useTerminalStateStore.getState().terminalStateByThreadId,
-          view.threadId,
-        );
-        if (terminalState.entryPoint === "terminal") {
-          openTerminalThreadPage(view.threadId);
-        } else {
-          openChatThreadPage(view.threadId);
-        }
-        void navigate({
-          to: "/$threadId",
-          params: { threadId: view.threadId },
-          search: () => (splitActivation ? { splitViewId: splitActivation.splitViewId } : {}),
-        });
-        return;
+        case "settings":
+          void navigate({
+            to: "/settings",
+            search: () => (view.section ? { section: view.section } : {}),
+          });
+          return;
+        case "plugins":
+          void navigate({ to: "/plugins" });
+          return;
       }
-      case "settings":
-        void navigate({
-          to: "/settings",
-          search: () => (view.section ? { section: view.section } : {}),
-        });
-        return;
-      case "plugins":
-        void navigate({ to: "/plugins" });
-        return;
-    }
-  };
+    },
+    [
+      buildRecentViewAvailability,
+      prewarmThreadDetail,
+      navigate,
+      openChatThreadPage,
+      openTerminalThreadPage,
+    ],
+  );
 
-  const commitRecentSwitcherSelection = () => {
+  const commitRecentSwitcherSelection = useCallback(() => {
     const state = recentSwitcherStateRef.current;
     if (!state) return;
     const views = recentViewsRef.current;
@@ -271,7 +281,7 @@ export function useRecentViewSwitcher(input: UseRecentViewSwitcherInput) {
     setRecentSwitcherState(null);
     if (!view) return;
     activateRecentView(view);
-  };
+  }, [activateRecentView]);
 
   const cancelRecentSwitcher = () => {
     setRecentSwitcherState(null);

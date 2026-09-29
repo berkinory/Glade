@@ -9,9 +9,8 @@ import {
   inspectProcessTree,
   parseProcessChildrenMap,
   signalOwnedChildProcess,
-  type CapturedProcess,
-  type ProcessChildrenMap,
 } from "./processTreeController";
+import { type CapturedProcess, type ProcessChildrenMap } from "./processTreeModel";
 
 function windowsTree(): ProcessChildrenMap {
   return new Map([

@@ -477,7 +477,7 @@ const makeAgentGateway = Effect.gen(function* () {
             return mcpToolResultJson({
               operationId: batch.operationId,
               requestId: batch.requestId,
-              ...(batch.threads?.[0] ?? {}),
+              ...batch.threads?.[0],
             });
           }),
         );
@@ -998,7 +998,7 @@ const makeAgentGateway = Effect.gen(function* () {
     // second, different gap discovered in the same turn — a run that lost
     // Accessibility after already reporting Screen Recording showed the user
     // one card naming the wrong permission and nothing about the other.
-    const missingKey = [...input.missing].sort().join(",");
+    const missingKey = [...input.missing].toSorted().join(",");
     const dedupeKey = `${callerThreadId}:${callerTurnId ?? "no-turn"}:${missingKey}`;
     if (surfacedComputerSetupPrompts.has(dedupeKey)) return Effect.void;
     // FIFO eviction, not a wholesale clear: clearing forgets every live turn's

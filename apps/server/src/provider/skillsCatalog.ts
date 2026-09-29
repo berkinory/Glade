@@ -203,7 +203,7 @@ async function collectSkillMarkdownPaths(
           )
             .filter((entry) => entry.isMarkdownFile)
             .map((entry) => nodePath.join(dir, entry.name))
-            .sort()
+            .toSorted()
         : [];
     const subdirNames = (
       await Promise.all(
@@ -219,7 +219,7 @@ async function collectSkillMarkdownPaths(
     )
       .filter((entry) => entry.isDirectory)
       .map((entry) => entry.name)
-      .sort();
+      .toSorted();
     const nested = await Promise.all(
       subdirNames.map((name) => visit(nodePath.join(dir, name), depth + 1)),
     );

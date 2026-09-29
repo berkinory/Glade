@@ -41,9 +41,9 @@ import { reconcileOptimisticPinState } from "../pinning.logic";
 import {
   resolveSplitViewFocusedThreadId,
   resolveSplitViewPaneIdForThread,
-  type SplitView,
   useSplitViewStore,
 } from "../splitViewStore";
+import { type SplitView } from "../splitViewModel";
 import { useStore } from "../store";
 import { getThreadFromState } from "../threadDerivation";
 import { useThreadSelectionStore } from "../threadSelectionStore";

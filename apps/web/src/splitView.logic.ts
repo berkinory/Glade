@@ -11,7 +11,7 @@ import type {
   SplitDirection,
   SplitNode,
   SplitViewPanePanelState,
-} from "./splitViewStore";
+} from "./splitViewModel";
 
 // --- pane lookup ---
 

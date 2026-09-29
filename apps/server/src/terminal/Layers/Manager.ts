@@ -58,11 +58,8 @@ import {
   type HistoryLimits,
 } from "../terminalHistory";
 import { createTerminalModeReplayTracker } from "../terminalModeReplay";
-import {
-  defaultProcessTreeKiller,
-  type ProcessTreeKiller,
-  type TerminalKillSignal,
-} from "../processTreeKiller";
+import { defaultProcessTreeKiller } from "../processTreeKiller";
+import { type ProcessTreeKiller, type TerminalKillSignal } from "../../platform/processTreeModel";
 import {
   captureProcessChildrenMap,
   defaultSubprocessChecker,
@@ -358,7 +355,7 @@ function isCsiFinalByte(codePoint: number): boolean {
   return codePoint >= 0x40 && codePoint <= 0x7e;
 }
 
-function shouldStripCsiSequence(body: string, finalByte: string): boolean {
+function shouldStripCsiSequence(_body: string, finalByte: string): boolean {
   // Persisted terminal history is replayed into a fresh xterm. Keep styling, but
   // strip cursor movement, erase, query/reply, and mode-control CSI sequences
   // that can move replayed prompt text off-screen or blank the pane.
@@ -942,8 +939,6 @@ class TerminalManagerRuntime extends EventEmitter<TerminalManagerEvents> {
           existing.terminalId,
           existing.history.toString(),
         );
-      } else if (runtimeEnvChanged) {
-        existing.runtimeEnv = nextRuntimeEnv;
       }
 
       if (!existing.process) {

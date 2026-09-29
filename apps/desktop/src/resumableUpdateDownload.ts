@@ -417,7 +417,7 @@ function runSingleAttempt(args: SingleAttemptArgs): Promise<AttemptResult> {
       const request = createRequest(buildRequestOptions(targetUrl, headers), onResponse);
       currentRequest = request;
       args.setActiveRequest(request);
-      request.on("redirect", (statusCode, _method, redirectUrl) => {
+      request.on("redirect", (_statusCode, _method, redirectUrl) => {
         if (superseded || settled) {
           return;
         }

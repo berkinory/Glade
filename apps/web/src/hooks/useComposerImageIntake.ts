@@ -112,7 +112,12 @@ export function useComposerImageIntake(input: {
   readonly commitImages: (images: ComposerImageAttachment[]) => number;
   readonly onError: (error: string | null) => void;
 }) {
-  const queue = useMemo(() => new ComposerImageIntakeQueue(), [input.threadId]);
+  const threadId = input.threadId;
+  const queue = useMemo(() => {
+    // A queue belongs to one thread; replacing it cancels that thread's pending preparation.
+    void threadId;
+    return new ComposerImageIntakeQueue();
+  }, [threadId]);
   useEffect(() => () => queue.dispose(), [queue]);
   const pendingCount = useSyncExternalStore(
     queue.subscribe,

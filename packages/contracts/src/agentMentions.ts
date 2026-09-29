@@ -4,7 +4,7 @@
  * Provides provider-aware alias metadata used by the composer UI and provider runtimes.
  */
 
-import type { ProviderKind } from "./orchestration";
+import type { ProviderKind } from "./baseSchemas";
 import type { ModelSlug } from "./model";
 
 type AgentAliasColor = "violet" | "fuchsia" | "teal" | "cyan" | "amber" | "orange";

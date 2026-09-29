@@ -33,6 +33,10 @@ For code changes, run the static checks before opening a pull request:
 bun run check
 ```
 
+`check` rejects lint warnings, unused code reported by knip, source dependency
+violations and import cycles, including type-only cycles. `check:architecture`
+runs the dependency checks separately.
+
 Use `bun run check:fix` to apply formatting and safe lint fixes, then review the resulting diff.
 Run the affected tests. Use `bun run test` for cross-package and lifecycle
 changes. Describe any relevant checks you did not run. Check UI changes in the

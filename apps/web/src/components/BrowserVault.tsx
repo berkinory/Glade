@@ -58,6 +58,8 @@ export function BrowserVaultDialog() {
   }, [api]);
 
   useEffect(() => {
+    const effectRevision = revision;
+
     mounted.current = true;
     const show = () => {
       setOpen(true);
@@ -70,7 +72,7 @@ export function BrowserVaultDialog() {
     void reload();
     return () => {
       mounted.current = false;
-      revision.current++;
+      effectRevision.current++;
       unsubscribe?.();
       window.removeEventListener(OPEN_EVENT, show);
     };

@@ -31,7 +31,7 @@ function guardFixture(): {
   let readinessRefusal: Record<string, unknown> | undefined;
   let inputRefusal: { code: string } | undefined;
   const respond = (req: Record<string, unknown>) => {
-    calls.push({ ...(typeof req.name === "string" ? { name: req.name } : {}) });
+    calls.push(typeof req.name === "string" ? { name: req.name } : {});
     const method = req.method as string | undefined;
     if (method === "probe" || method === "stop") return { ok: true };
     if (req.name === "check_permissions")

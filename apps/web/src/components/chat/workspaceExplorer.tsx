@@ -455,13 +455,13 @@ function WorkspaceFilesTreeBody(props: {
   );
   const getRevision = useCallback(() => dirtyWorkspaceEditorRevision(queryClient), [queryClient]);
   const dirtyRevision = useSyncExternalStore(subscribe, getRevision, getRevision);
-  const dirtyPaths = useMemo(
-    () =>
-      props.workspaceRoot
-        ? dirtyWorkspaceEditorPaths(queryClient, props.workspaceRoot)
-        : new Set<string>(),
-    [dirtyRevision, props.workspaceRoot, queryClient],
-  );
+  const dirtyPaths = useMemo(() => {
+    // The external store revision invalidates this cache even when the query client is stable.
+    void dirtyRevision;
+    return props.workspaceRoot
+      ? dirtyWorkspaceEditorPaths(queryClient, props.workspaceRoot)
+      : new Set<string>();
+  }, [dirtyRevision, props.workspaceRoot, queryClient]);
   useEffect(() => {
     const container = scrollRef.current;
     if (!container || !props.selectedFilePath) return;

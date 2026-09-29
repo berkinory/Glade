@@ -9,12 +9,14 @@ import {
   defaultProcessTreeKiller,
   inspectProcessTree,
   isProcessRunning,
+} from "./processTreeController";
+import {
   type CapturedProcess,
   type CapturedProcessTree,
   type CapturedProcessTreeInspection,
   type ProcessTreeKiller,
   type TerminalKillSignal,
-} from "./processTreeController";
+} from "./processTreeModel";
 import { createWindowsTeardownProcessSnapshotObserver } from "./windowsProcessSnapshot";
 
 const DEFAULT_TERM_GRACE_MS = 1_500;

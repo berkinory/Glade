@@ -669,7 +669,7 @@ export function automationTimezoneError(timezone: string): string | null {
   const trimmed = timezone.trim();
   if (!trimmed) return "Add a timezone";
   try {
-    new Intl.DateTimeFormat("en-US", { timeZone: trimmed });
+    void new Intl.DateTimeFormat("en-US", { timeZone: trimmed });
   } catch {
     return "Unknown timezone";
   }

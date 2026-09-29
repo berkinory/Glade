@@ -11,13 +11,34 @@
   ],
   "plugins": ["eslint", "oxc", "react", "unicorn", "typescript"],
   "categories": {
-    "correctness": "warn",
-    "suspicious": "warn",
-    "perf": "warn"
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "error"
   },
   "rules": {
+    // The automatic JSX runtime does not require a React binding.
     "react-in-jsx-scope": "off",
+    // Small domain scopes reuse event/input names without changing the enclosing binding.
     "eslint/no-shadow": "off",
-    "eslint/no-await-in-loop": "off"
+    // Process teardown, migrations and ordered event delivery require sequential awaits.
+    "eslint/no-await-in-loop": "off",
+    // Hoisting local functions is not a correctness requirement or a measured bottleneck.
+    "unicorn/consistent-function-scoping": "off",
+    // Bounded immutable state reductions intentionally create new objects.
+    "oxc/no-map-spread": "off",
+    // Input validation and terminal sanitization explicitly reject control characters.
+    "eslint/no-control-regex": "off",
+    // Sparse arrays and preallocated output buffers have deliberate hole/length semantics.
+    "unicorn/no-new-array": "off",
+    // Electron mocks must preserve the constructors exposed by the runtime.
+    "typescript/no-extraneous-class": "off",
+    // Dedicated workers use postMessage's transfer-list overload, not Window's origin overload.
+    "unicorn/require-post-message-target-origin": "off",
+    // Collection snapshots prevent callbacks from mutating the iteration currently in progress.
+    "unicorn/no-useless-spread": "off",
+    // Single-owner DOM handlers are replaced and cleared with their resource.
+    "unicorn/prefer-add-event-listener": "off",
+    // Stateless text fragments use their stable position within one rendered value as identity.
+    "react/no-array-index-key": "off"
   }
 }

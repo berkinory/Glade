@@ -11,6 +11,7 @@ import { AsyncUserInput, AsyncUserInputQuestions, AsyncUserInputResponse } from 
 import { ProjectKind } from "./project";
 import { ClaudeCacheObservation } from "./claudeCache";
 import {
+  ProviderKind,
   ApprovalRequestId,
   CheckpointRef,
   CommandId,
@@ -54,9 +55,6 @@ export const ORCHESTRATION_WS_CHANNELS = {
   shellEvent: "orchestration.shellEvent",
   threadEvent: "orchestration.threadEvent",
 } as const;
-
-export const ProviderKind = Schema.Literals(["codex", "claudeAgent"]);
-export type ProviderKind = typeof ProviderKind.Type;
 
 const RetiredProviderKind = Schema.Literals([
   "antigravity",

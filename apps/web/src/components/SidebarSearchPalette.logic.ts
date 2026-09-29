@@ -6,7 +6,7 @@ import type { ComponentType } from "react";
 import type { ProviderKind } from "@glade/contracts";
 import { basenameOfPath } from "../file-icons";
 import type { ProjectAppearance } from "../lib/projectAppearance";
-import type { ThemeMode, ThemeVariant } from "../theme/theme.logic";
+import type { ThemeMode, ThemeVariant } from "../theme/themeModel";
 
 export interface SidebarSearchAction {
   id: string;

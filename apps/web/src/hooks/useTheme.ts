@@ -8,11 +8,6 @@ import { isElectron } from "../env";
 import { isMacNavigatorPlatform } from "../lib/utils";
 import {
   DEFAULT_THEME_STATE,
-  type ChromeTheme,
-  type ThemeFonts,
-  type ThemeMode,
-  type ThemeState,
-  type ThemeVariant,
   areThemePacksEqual,
   buildThemeCssVariables,
   canParseThemeShareString,
@@ -27,6 +22,13 @@ import {
   updateChromeTheme,
   updateThemePackFromShareString,
 } from "../theme/theme.logic";
+import {
+  type ChromeTheme,
+  type ThemeFonts,
+  type ThemeMode,
+  type ThemeState,
+  type ThemeVariant,
+} from "../theme/themeModel";
 
 type ThemeSnapshot = {
   state: ThemeState;

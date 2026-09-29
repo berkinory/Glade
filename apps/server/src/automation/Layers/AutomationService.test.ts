@@ -2187,7 +2187,7 @@ layer("AutomationService", (it) => {
       const retryAt = deferredRuns
         .map((run) => run.deferredUntil)
         .filter((value): value is string => value !== null)
-        .sort()
+        .toSorted()
         .at(-1);
       assert.isDefined(retryAt);
       threadShell = Option.some(makeThreadShell({ id: targetThreadId }));

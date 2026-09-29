@@ -31,7 +31,7 @@ export interface ManagedTerminalWrapperState {
 }
 
 function shellQuote(value: string): string {
-  return `'${value.replaceAll("'", `'\"'\"'`)}'`;
+  return `'${value.replaceAll("'", `'"'"'`)}'`;
 }
 
 function buildHookOscSequence(eventType: TerminalAgentHookEventType): string {
@@ -48,7 +48,7 @@ else
 fi
 
 _glade_extract_event() {
-  printf '%s' "$_glade_hook_input" | sed -n "s/.*\\\"$1\\\"[[:space:]]*:[[:space:]]*\\\"\\([^\\\"]*\\)\\\".*/\\1/p" | head -n 1
+  printf '%s' "$_glade_hook_input" | sed -n "s/.*\\"$1\\"[[:space:]]*:[[:space:]]*\\"\\([^\\"]*\\)\\".*/\\1/p" | head -n 1
 }
 
 _glade_event="$(_glade_extract_event hook_event_name)"

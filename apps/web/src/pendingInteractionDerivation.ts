@@ -286,13 +286,10 @@ function parseUserInputQuestions(
           };
         })
         .filter((option): option is UserInputQuestion["options"][number] => option !== null);
-      return {
-        id: question.id,
-        header: question.header,
-        question: question.question,
-        options,
-        ...(question.multiSelect === true ? { multiSelect: true } : {}),
-      };
+      return Object.assign(
+        { id: question.id, header: question.header, question: question.question, options },
+        question.multiSelect === true ? { multiSelect: true } : {},
+      );
     })
     .filter((question): question is UserInputQuestion => question !== null);
   return parsed.length > 0 ? parsed : null;

@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 // FILE: ComposerLocalDirectoryMenu.tsx
 // Purpose: Render the inline composer popup used for browsing local files and folders after `@local`.
 // Layer: Chat composer UI
@@ -174,8 +175,11 @@ export function ComposerLocalDirectoryMenu(props: {
 
   const errorMessage =
     errorState !== null && errorState.dir === expandedDirectory ? errorState.message : null;
-  const setErrorMessage = (message: string | null) =>
-    setErrorState(message === null ? null : { dir: expandedDirectory, message });
+  const setErrorMessage = useCallback(
+    (message: string | null) =>
+      setErrorState(message === null ? null : { dir: expandedDirectory, message }),
+    [expandedDirectory],
+  );
 
   // Cache by the expanded absolute path so `~/Documents` and `/Users/me/Documents`
   // share one entry instead of double-listing.
@@ -220,7 +224,7 @@ export function ComposerLocalDirectoryMenu(props: {
       cancelled = true;
       window.clearTimeout(timeoutId);
     };
-  }, [entriesByPath, expandedDirectory, isAwaitingHomeDir, loadingPaths]);
+  }, [entriesByPath, expandedDirectory, isAwaitingHomeDir, loadingPaths, setErrorMessage]);
 
   const rawEntries = entriesByPath[expandedDirectory];
   const isLoading = loadingPaths.has(expandedDirectory);

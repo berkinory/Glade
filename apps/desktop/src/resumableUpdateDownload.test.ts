@@ -520,7 +520,7 @@ describe("installResumableUpdateDownloader (integration)", () => {
 
   it("rejects and re-downloads once when the checksum does not match", async () => {
     let requests = 0;
-    server = createServer((req, res) => {
+    server = createServer((_req, res) => {
       requests += 1;
       res.writeHead(200, {
         "Content-Type": "application/octet-stream",

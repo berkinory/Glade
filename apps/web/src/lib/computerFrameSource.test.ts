@@ -85,7 +85,7 @@ describe("createComputerFrameSource", () => {
     expect(onFrame).toHaveBeenCalledTimes(1);
     expect(onFrame.mock.calls[0]?.[0].header.computerId).toBe(COMPUTER_ID);
     expect(onFrame.mock.calls[0]?.[0].header.sequence).toBe(7);
-    expect([...onFrame.mock.calls[0]?.[0].payload]).toEqual([1, 2, 3]);
+    expect([...onFrame.mock.calls[0]![0].payload]).toEqual([1, 2, 3]);
   });
 
   it("defers a resync until the socket opens", () => {

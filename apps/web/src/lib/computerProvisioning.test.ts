@@ -9,7 +9,7 @@ import type {
   DesktopComputerState,
 } from "@glade/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { COMPUTER_PERMISSION_KINDS } from "@glade/shared/computerGrants";
+import { COMPUTER_PERMISSIONS } from "@glade/shared/computerGrants";
 
 import {
   computerProvisionErrorToast,
@@ -61,8 +61,8 @@ describe("prepareComputerPermissionGuide", () => {
         isCurrent: () => true,
       }),
     ).resolves.toBe(false);
-    expect(getPermissionState).toHaveBeenCalledExactlyOnceWith(COMPUTER_PERMISSION_KINDS);
-    expect(startPermissionSetup).toHaveBeenCalledExactlyOnceWith(COMPUTER_PERMISSION_KINDS);
+    expect(getPermissionState).toHaveBeenCalledExactlyOnceWith(COMPUTER_PERMISSIONS);
+    expect(startPermissionSetup).toHaveBeenCalledExactlyOnceWith(COMPUTER_PERMISSIONS);
     expect(getStatus).not.toHaveBeenCalled();
   });
   it("does not open setup after cancellation overtakes the grant check", async () => {

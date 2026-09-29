@@ -219,7 +219,7 @@ describe("agent gateway MCP injection", () => {
       requests.map((request) => request.authorization),
       [`Bearer ${connection.bearerToken}`, `Bearer ${connection.bearerToken}`],
     );
-    assert.deepEqual((requests[1]?.body as { readonly params: unknown }).params, {
+    assert.deepEqual((requests[1]!.body as { readonly params: unknown }).params, {
       name: "glade_list_threads",
       arguments: { limit: 2 },
     });

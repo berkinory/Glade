@@ -7,7 +7,7 @@ import type { LucideIcon } from "~/lib/icons";
 import {
   BotIcon,
   ClockIcon,
-  GitForkIcon,
+  GitBranchIcon,
   GitPullRequestIcon,
   GlobeIcon,
   KeyboardIcon,
@@ -49,7 +49,7 @@ export const TOUR_CARDS: ReadonlyArray<TourCard> = [
       "Each task owns one body of work: its conversation, provider session, working environment, tool activity, and Git changes. Run tasks in parallel on managed Git worktrees so two agents never edit the same checkout.",
     highlights: ["Managed worktrees", "Forks from any message", "Subagents and split views"],
     docsHref: `${GLADE_DOCS_URL}/core-concepts.md`,
-    icon: GitForkIcon,
+    icon: GitBranchIcon,
   },
   {
     id: "review",

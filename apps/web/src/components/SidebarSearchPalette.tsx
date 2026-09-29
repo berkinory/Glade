@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 /**
  * SidebarSearchPalette - Command-style palette for sidebar actions, threads, and projects.
  *
@@ -326,8 +327,11 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
     addProjectErrorState !== null && addProjectErrorState.query === query
       ? addProjectErrorState.message
       : null;
-  const setAddProjectError = (message: string | null) =>
-    setAddProjectErrorState(message === null ? null : { query, message });
+  const setAddProjectError = useCallback(
+    (message: string | null) =>
+      setAddProjectErrorState(message === null ? null : { query, message }),
+    [query],
+  );
 
   useEffect(() => {
     if (props.open) {
@@ -346,7 +350,7 @@ export function SidebarSearchPalette(props: SidebarSearchPaletteProps) {
       setIsAddingProject(false);
     }, 0);
     return () => window.clearTimeout(timeoutId);
-  }, [props.importProviders, props.open]);
+  }, [props.importProviders, props.open, setAddProjectError]);
 
   const platform = getNavigatorPlatform();
   const trimmedQuery = query.trim();

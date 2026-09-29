@@ -8,7 +8,7 @@
 
 import { Schema } from "effect";
 import { IsoDateTime, NonNegativeInt, TrimmedNonEmptyString } from "./baseSchemas";
-import { ProviderKind } from "./orchestration";
+import { ProviderKind } from "./baseSchemas";
 
 // ── Input ────────────────────────────────────────────────────────────
 
