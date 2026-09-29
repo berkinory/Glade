@@ -98,10 +98,21 @@ runs:
           export BUN_INSTALL_CACHE_DIR="$RUNNER_TEMP/bun-install-cache"
           echo "Bun install cache: $BUN_INSTALL_CACHE_DIR"
         fi
-        case "$WORKSPACE_SCOPE" in
-          full) bun install --frozen-lockfile ;;
-          static) bun install --frozen-lockfile --filter './' --filter '@glade/scripts' ;;
-        esac
+        for attempt in 1 2; do
+          case "$WORKSPACE_SCOPE" in
+            full) args=(--frozen-lockfile) ;;
+            static) args=(--frozen-lockfile --filter './' --filter '@glade/scripts') ;;
+          esac
+          if bun install "${args[@]}"; then
+            break
+          fi
+          if [ "$attempt" -eq 2 ]; then
+            echo "::error::Bun install failed twice."
+            exit 1
+          fi
+          echo "::warning::Bun install failed; retrying after dependency extraction settles."
+          sleep 5
+        done
 
     - name: Install Electron test runtime
       if: ${{ inputs.electron == 'true' }}
