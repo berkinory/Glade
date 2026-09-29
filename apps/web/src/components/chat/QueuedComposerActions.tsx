@@ -5,7 +5,7 @@
 // Layer: Chat composer UI primitive
 // Exports: QueuedComposerActions
 
-import { EllipsisIcon, SteerIcon, Trash2 } from "~/lib/icons";
+import { EllipsisIcon, NewThreadIcon, SteerIcon, Trash2 } from "~/lib/icons";
 
 import type { QueuedComposerTurn } from "../../composerDraftStore";
 
@@ -36,7 +36,7 @@ function QueuedComposerActions({
       <IconButton
         variant="ghost"
         size="icon-chip"
-        label="Delete queued follow-up"
+        label="Delete message"
         onClick={() => onRemove(queuedTurn.id)}
       >
         <Trash2 />
@@ -55,8 +55,14 @@ function QueuedComposerActions({
           <EllipsisIcon />
         </MenuTrigger>
         <ComposerPickerMenuPopup align="end" side="top" sideOffset={6}>
-          <MenuItem onClick={() => onEdit(queuedTurn)}>Edit queued prompt</MenuItem>
-          <MenuItem onClick={() => onRemove(queuedTurn.id)}>Delete queued prompt</MenuItem>
+          <MenuItem className="gap-2" onClick={() => onEdit(queuedTurn)}>
+            <NewThreadIcon className="size-3.5" aria-hidden />
+            <span>Edit message</span>
+          </MenuItem>
+          <MenuItem className="gap-2" onClick={() => onRemove(queuedTurn.id)}>
+            <Trash2 className="size-3.5" aria-hidden />
+            <span>Delete message</span>
+          </MenuItem>
         </ComposerPickerMenuPopup>
       </Menu>
     </div>
