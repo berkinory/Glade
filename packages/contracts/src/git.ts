@@ -484,10 +484,14 @@ export const GitReadWorkingTreeDiffResult = Schema.Struct({
 });
 export type GitReadWorkingTreeDiffResult = typeof GitReadWorkingTreeDiffResult.Type;
 
+export const GitSourceControlFileStatus = Schema.Literals(["M", "U", "A", "D", "R", "C", "T", "!"]);
+export type GitSourceControlFileStatus = typeof GitSourceControlFileStatus.Type;
+
 export const GitSourceControlFilesResult = Schema.Struct({
   staged: Schema.Array(
     Schema.Struct({
       path: TrimmedNonEmptyStringSchema,
+      status: GitSourceControlFileStatus,
       insertions: NonNegativeInt,
       deletions: NonNegativeInt,
     }),
@@ -495,6 +499,7 @@ export const GitSourceControlFilesResult = Schema.Struct({
   unstaged: Schema.Array(
     Schema.Struct({
       path: TrimmedNonEmptyStringSchema,
+      status: GitSourceControlFileStatus,
       insertions: NonNegativeInt,
       deletions: NonNegativeInt,
     }),

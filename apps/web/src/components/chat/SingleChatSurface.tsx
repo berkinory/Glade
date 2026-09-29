@@ -908,7 +908,13 @@ export function SingleChatSurface(props: {
         // mounted (offcanvas is CSS-only), so without this the off-screen terminal
         // would keep WebGL + resize observers alive for nothing.
         return (
-          <Suspense fallback={<PanelStateMessage>Loading terminal...</PanelStateMessage>}>
+          <Suspense
+            fallback={
+              <PanelStateMessage>
+                <Spinner className="size-5" aria-label="Loading terminal" />
+              </PanelStateMessage>
+            }
+          >
             <DockTerminalPane
               hostThreadId={props.threadId}
               projectId={props.projectId}

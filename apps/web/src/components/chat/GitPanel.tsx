@@ -9,7 +9,10 @@
 // GitCore; on settle we invalidate the per-cwd git caches so both lists stay in sync.
 
 import { type FileDiffMetadata } from "@pierre/diffs/react";
-import { type GitSourceControlFilesResult } from "@glade/contracts";
+import {
+  type GitSourceControlFilesResult,
+  type GitSourceControlFileStatus,
+} from "@glade/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
@@ -27,7 +30,7 @@ import {
   gitWorkingTreeDiffQueryOptions,
   gitSourceControlFilesQueryOptions,
 } from "~/lib/gitReactQuery";
-import { CircleCheckIcon, PlusIcon, RefreshCwIcon, ResetIcon } from "~/lib/icons";
+import { CircleCheckIcon, MinusIcon, PlusIcon, RefreshCwIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { Alert } from "../ui/alert";
 import { Button } from "../ui/button";
@@ -51,6 +54,17 @@ interface SelectedFile {
 
 type SourceFile = GitSourceControlFilesResult["staged"][number];
 
+const statusPresentation: Record<GitSourceControlFileStatus, { label: string; color: string }> = {
+  M: { label: "Modified", color: "text-warning" },
+  U: { label: "Untracked", color: "text-[var(--color-decoration-added)]" },
+  A: { label: "Added", color: "text-[var(--color-decoration-added)]" },
+  D: { label: "Deleted", color: "text-destructive" },
+  R: { label: "Renamed", color: "text-info" },
+  C: { label: "Copied", color: "text-info" },
+  T: { label: "Type changed", color: "text-warning" },
+  "!": { label: "Conflict", color: "text-destructive" },
+};
+
 function GitFileRow(props: {
   file: SourceFile;
   theme: "light" | "dark";
@@ -63,6 +77,7 @@ function GitFileRow(props: {
 }) {
   const filePath = props.file.path;
   const { dir, name } = splitRepoRelativePath(filePath);
+  const status = statusPresentation[props.file.status];
   return (
     <div
       className={cn(
@@ -82,26 +97,38 @@ function GitFileRow(props: {
           <span>{name}</span>
         </span>
       </button>
-      <DiffStat
-        additions={props.file.insertions}
-        deletions={props.file.deletions}
-        className="shrink-0 text-ui-sm"
-      />
-      <IconButton
-        size="icon-xs"
-        variant="ghost"
-        className="shrink-0 opacity-0 group-hover:opacity-100 data-[disabled]:opacity-40"
-        label={props.actionLabel}
-        tooltip={props.actionLabel}
-        disabled={props.actionDisabled}
-        onClick={() => props.onAction([filePath])}
-      >
-        {props.actionIcon === "stage" ? (
-          <PlusIcon className="size-3.5" />
-        ) : (
-          <ResetIcon className="size-3.5" />
-        )}
-      </IconButton>
+      <div className="relative flex shrink-0 items-center gap-1.5">
+        <DiffStat
+          additions={props.file.insertions}
+          deletions={props.file.deletions}
+          className="shrink-0 text-ui-sm group-hover:opacity-0 group-focus-within:opacity-0"
+        />
+        <span
+          className={cn(
+            "w-5 shrink-0 text-center text-ui-sm font-semibold group-hover:opacity-0 group-focus-within:opacity-0",
+            status.color,
+          )}
+          title={status.label}
+          aria-label={status.label}
+        >
+          {props.file.status}
+        </span>
+        <IconButton
+          size="icon-xs"
+          variant="ghost"
+          className="pointer-events-none absolute right-0 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
+          label={props.actionLabel}
+          tooltip={props.actionLabel}
+          disabled={props.actionDisabled}
+          onClick={() => props.onAction([filePath])}
+        >
+          {props.actionIcon === "stage" ? (
+            <PlusIcon className="size-3.5" />
+          ) : (
+            <MinusIcon className="size-3.5" />
+          )}
+        </IconButton>
+      </div>
     </div>
   );
 }

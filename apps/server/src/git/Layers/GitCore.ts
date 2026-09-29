@@ -32,6 +32,7 @@ import {
   GIT_READ_FILE_AT_REV_MAX_BYTES,
   type GitBlameLineResult,
   type GitRecentCommit,
+  type GitSourceControlFileStatus,
 } from "@glade/contracts";
 import { isTemporaryWorktreeBranch } from "@glade/shared/git";
 import { parseGitHubRepositoryNameWithOwnerFromRemoteUrl } from "@glade/shared/githubRepository";
@@ -2050,26 +2051,39 @@ export const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"
           ],
           { concurrency: "unbounded" },
         );
-        const staged = new Set<string>();
-        const unstaged = new Set<string>();
+        const staged = new Map<string, GitSourceControlFileStatus>();
+        const unstaged = new Map<string, GitSourceControlFileStatus>();
+        const statusLetter = (code: string): GitSourceControlFileStatus => {
+          if (code === "?" || code === "U") return "U";
+          if (code === "A" || code === "D" || code === "R" || code === "C" || code === "T") {
+            return code;
+          }
+          return "M";
+        };
         const records = status.stdout.split("\0");
         for (let index = 0; index < records.length; index += 1) {
           const record = records[index] ?? "";
           if (record.length < 4) continue;
           const code = record.slice(0, 2);
           const path = record.slice(3);
-          if (code[0] !== " " && code[0] !== "?") staged.add(path);
-          if (code[1] !== " " || code === "??") unstaged.add(path);
+          const conflicted = /^(AA|DD|AU|UA|DU|UD|UU)$/.test(code);
+          if (code[0] !== " " && code[0] !== "?") {
+            staged.set(path, conflicted ? "!" : statusLetter(code[0] ?? "M"));
+          }
+          if (code[1] !== " " || code === "??") {
+            unstaged.set(path, conflicted ? "!" : statusLetter(code[1] ?? "M"));
+          }
           if (code.includes("R") || code.includes("C")) index += 1;
         }
-        const toFiles = (paths: Set<string>, stdout: string) => {
+        const toFiles = (paths: Map<string, GitSourceControlFileStatus>, stdout: string) => {
           const stats = new Map(
             summarizeGitNumstatOutputs([stdout]).files.map((file) => [file.path, file]),
           );
           return [...paths]
-            .toSorted((a, b) => a.localeCompare(b))
-            .map((path) => ({
+            .toSorted(([a], [b]) => a.localeCompare(b))
+            .map(([path, status]) => ({
               path,
+              status,
               insertions: stats.get(path)?.insertions ?? 0,
               deletions: stats.get(path)?.deletions ?? 0,
             }));

@@ -150,12 +150,14 @@ it.layer(TestLayer)("git integration", (it) => {
         yield* writeTextFile(path.join(tmp, "z-last.txt"), "visible even after a large diff\n");
         const files = yield* core.readSourceControlFiles(tmp);
         expect(files.unstaged.map((file) => file.path)).toEqual(["generated.ts", "z-last.txt"]);
+        expect(files.unstaged.map((file) => file.status)).toEqual(["M", "U"]);
         const selected = yield* core.readUnstagedPatch(tmp, "z-last.txt");
         expect(selected.truncated).toBe(false);
         expect(selected.patch).toContain("+visible even after a large diff");
         yield* git(tmp, ["add", "z-last.txt"]);
         const stagedFiles = yield* core.readSourceControlFiles(tmp);
         expect(stagedFiles.staged.map((file) => file.path)).toEqual(["z-last.txt"]);
+        expect(stagedFiles.staged[0]?.status).toBe("A");
         expect((yield* core.readStagedPatch(tmp, "z-last.txt")).patch).toContain(
           "+visible even after a large diff",
         );
