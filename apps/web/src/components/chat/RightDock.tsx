@@ -296,7 +296,7 @@ export function RightDock(props: RightDockProps) {
           <div
             className={cn(
               CHAT_SURFACE_HEADER_ROW_CLASS_NAME,
-              "gap-1 px-1.5 [-webkit-app-region:no-drag]",
+              "gap-1 pl-1.5 pr-3 sm:pr-5 [-webkit-app-region:no-drag]",
               desktopTopBarWindowControlsGutterClassName,
             )}
           >
