@@ -12,7 +12,6 @@ import { useState, type ReactNode } from "react";
 import GitActionsControl from "~/components/GitActionsControl";
 import {
   ChangesIcon,
-  Columns2Icon,
   CopyIcon,
   DiffIcon,
   EllipsisIcon,
@@ -22,7 +21,6 @@ import {
   GitCommitIcon,
   ListChecksIcon,
   RefreshCwIcon,
-  Rows3Icon,
   XIcon,
 } from "~/lib/icons";
 import { cn } from "~/lib/utils";
@@ -49,6 +47,7 @@ import {
   type DiffPanelChangeNavigation,
 } from "./DiffPanelChangeNavigation";
 import { DiffPanelCompareRefMenuSection } from "./DiffPanelCompareRefMenuSection";
+import { DiffPanelViewToggle } from "./DiffPanelViewToggle";
 import { DiffPanelFileJumpMenu } from "./DiffPanelFileJumpMenu";
 import { ComposerPickerMenuPopup } from "./chat/ComposerPickerMenuPopup";
 import { EnvironmentRowBody, EnvironmentRowChevron } from "./chat/environment/EnvironmentRow";
@@ -325,6 +324,11 @@ export const DiffPanelToolbar = function DiffPanelToolbar(props: DiffPanelToolba
             <RefreshCwIcon className={cn("size-3.5", props.reloading && "animate-spin")} />
           </IconButton>
 
+          <DiffPanelViewToggle
+            mode={props.diffRenderMode}
+            onChange={props.onDiffRenderModeChange}
+          />
+
           <Menu>
             <MenuTrigger
               render={
@@ -347,23 +351,6 @@ export const DiffPanelToolbar = function DiffPanelToolbar(props: DiffPanelToolba
             >
               <MenuGroup>
                 <MenuGroupLabel>View</MenuGroupLabel>
-                <MenuRadioGroup
-                  value={props.diffRenderMode}
-                  onValueChange={(value) => {
-                    if (value === "stacked" || value === "split") {
-                      props.onDiffRenderModeChange(value);
-                    }
-                  }}
-                >
-                  <MenuRadioItem value="stacked">
-                    <Rows3Icon className={DIFF_PANEL_PICKER_ICON_CLASS_NAME} />
-                    <span>Stacked</span>
-                  </MenuRadioItem>
-                  <MenuRadioItem value="split">
-                    <Columns2Icon className={DIFF_PANEL_PICKER_ICON_CLASS_NAME} />
-                    <span>Split</span>
-                  </MenuRadioItem>
-                </MenuRadioGroup>
                 <MenuCheckboxItem
                   checked={props.diffIgnoreWhitespace}
                   variant="switch"

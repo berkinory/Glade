@@ -11,6 +11,8 @@
 
 ### Improved
 
+- Review panels switch between stacked and split diffs with one toolbar button.
+
 - Commit message AI enables supported fast mode and disables thinking when available, otherwise selecting the lowest supported effort, with a 90-second deadline.
 
 - The compact commit input keeps its AI action, spinner, and commit button aligned with the first line without overlapping text. Rebase uses the shared tooltip.

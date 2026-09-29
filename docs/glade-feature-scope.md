@@ -37,6 +37,8 @@ attachment APIs or a keyboard capture watcher.
 
 ## Source Control
 
+Review panels expose a toolbar button to switch between stacked and split diffs in one click.
+
 Source Control shows outgoing and incoming commit counts to the left of Fetch when
 the branch has an upstream. Incoming counts reflect the last fetched remote state.
 

@@ -7,7 +7,8 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 import { ThreadId, type ResolvedKeybindingsConfig, type TurnId } from "@glade/contracts";
 import type { FileDiffMetadata } from "@pierre/diffs/react";
 import * as Schema from "effect/Schema";
-import { Columns2Icon, CopyIcon, EllipsisIcon, FolderIcon, Rows3Icon, XIcon } from "~/lib/icons";
+import { CopyIcon, EllipsisIcon, FolderIcon, XIcon } from "~/lib/icons";
+import { DiffPanelViewToggle } from "./DiffPanelViewToggle";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   gitBranchesQueryOptions,
@@ -157,13 +158,11 @@ function EditorDiffOptionsMenu(props: {
   diffCopyLabel: string;
   allFilesCollapsed: boolean;
   changeMarkersEnabled: boolean;
-  diffRenderMode: DiffRenderMode;
   onSelectRepoScope: (scope: DiffPanelRepoScopeOption) => void;
   onSelectCompareRef: (ref: string) => void;
   onSelectAllTurns: () => void;
   onSelectLastTurn: () => void;
   onSelectTurn: (turnId: TurnId | null) => void;
-  onDiffRenderModeChange: (mode: DiffRenderMode) => void;
   onDiffWordWrapChange: (enabled: boolean) => void;
   onDiffIgnoreWhitespaceChange: (enabled: boolean) => void;
   onChangeMarkersEnabledChange: (enabled: boolean) => void;
@@ -273,23 +272,6 @@ function EditorDiffOptionsMenu(props: {
 
         <MenuGroup>
           <MenuGroupLabel>View</MenuGroupLabel>
-          <MenuRadioGroup
-            value={props.diffRenderMode}
-            onValueChange={(value) => {
-              if (value === "stacked" || value === "split") {
-                props.onDiffRenderModeChange(value);
-              }
-            }}
-          >
-            <MenuRadioItem value="stacked">
-              <Rows3Icon className={EDITOR_DIFF_OPTIONS_MENU_ICON_CLASS_NAME} />
-              <span>Stacked diff</span>
-            </MenuRadioItem>
-            <MenuRadioItem value="split">
-              <Columns2Icon className={EDITOR_DIFF_OPTIONS_MENU_ICON_CLASS_NAME} />
-              <span>Split diff</span>
-            </MenuRadioItem>
-          </MenuRadioGroup>
           <MenuCheckboxItem
             checked={props.diffIgnoreWhitespace}
             variant="switch"
@@ -380,6 +362,7 @@ function EditorDiffControls(props: {
         navigation={props.changeNavigation}
         className="text-muted-foreground hover:text-foreground"
       />
+      <DiffPanelViewToggle mode={props.diffRenderMode} onChange={props.onDiffRenderModeChange} />
       <EditorDiffOptionsMenu
         scopePickerValue={props.scopePickerValue}
         scopeFileCounts={props.scopeFileCounts}
@@ -397,13 +380,11 @@ function EditorDiffControls(props: {
         diffCopyLabel={props.diffCopyLabel}
         allFilesCollapsed={props.allFilesCollapsed}
         changeMarkersEnabled={props.changeMarkersEnabled}
-        diffRenderMode={props.diffRenderMode}
         onSelectRepoScope={props.onSelectRepoScope}
         onSelectCompareRef={props.onSelectCompareRef}
         onSelectAllTurns={props.onSelectAllTurns}
         onSelectLastTurn={props.onSelectLastTurn}
         onSelectTurn={props.onSelectTurn}
-        onDiffRenderModeChange={props.onDiffRenderModeChange}
         onDiffWordWrapChange={props.onDiffWordWrapChange}
         onDiffIgnoreWhitespaceChange={props.onDiffIgnoreWhitespaceChange}
         onChangeMarkersEnabledChange={props.onChangeMarkersEnabledChange}
