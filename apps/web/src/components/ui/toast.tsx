@@ -154,7 +154,7 @@ function useVisibleThreadIdsFromRoute(): ReadonlySet<ThreadId> {
   return resolveVisibleToastThreadIds({
     activeThreadId,
     splitView,
-    rightDockRendered: routeSearch.view !== "editor",
+    rightDockRendered: true,
     rightDockState,
   });
 }

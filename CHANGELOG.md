@@ -2,6 +2,10 @@
 
 ## 0.0.6 - Unreleased
 
+### Removed
+
+- Editor view and its separate workspace layout were removed; editing stays in Explorer.
+
 ### Improved
 
 - Development sessions can be stopped together with `bun run dev:stop`. ([b6978857c](https://github.com/berkinory/Glade/commit/b6978857c2a682bf85e05e191d6365bed0c955f1))

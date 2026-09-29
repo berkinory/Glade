@@ -1,8 +1,8 @@
 // FILE: workspaceExplorer.tsx
 // Purpose: Shared workspace file-tree explorer + file-search building blocks used
-//          by both the full editor view and the right-dock explorer pane.
+//          by the right-dock explorer pane.
 // Layer: Chat workspace-browsing UI primitives
-// Exports: WorkspaceFilesSidebar, WorkspaceSearchSidebar, WorkspaceExplorerSidebar,
+// Exports: WorkspaceExplorerSidebar,
 //          ExplorerActivityBarButton, useExplorerEntryPrefetch, setFileReferenceDragData.
 
 import type { ProjectEntry, ProjectFileSystemEntry } from "@glade/contracts";
@@ -523,59 +523,6 @@ function WorkspaceFilesTreeBody(props: {
   );
 }
 
-export function WorkspaceFilesSidebar(props: {
-  workspaceRoot: string | null;
-  selectedFilePath: string | null;
-  expandedDirectories: ReadonlySet<string>;
-  containerClassName?: string;
-  onSelectFile: (path: string) => void;
-  onToggleDirectory: (path: string) => void;
-  onReferenceInChat: ((reference: ChatFileReference) => void) | undefined;
-  onDeleted?: ((path: string) => void) | undefined;
-}) {
-  const prefetchEntry = useExplorerEntryPrefetch(props.workspaceRoot);
-  const actions = useWorkspaceExplorerActions(
-    props.workspaceRoot,
-    props.selectedFilePath,
-    props.onSelectFile,
-    props.expandedDirectories,
-    props.onToggleDirectory,
-    props.onDeleted,
-  );
-  const handleEntryContextMenu = useTreeEntryContextMenu(
-    props.workspaceRoot,
-    props.onReferenceInChat,
-    actions,
-  );
-  const handleListKeyDown = useExplorerListNavigation();
-  return (
-    <aside
-      className={props.containerClassName ?? EXPLORER_SIDEBAR_CONTAINER_CLASS}
-      onKeyDown={handleListKeyDown}
-    >
-      <div className="flex shrink-0 items-center justify-between border-b border-border/65 px-3 py-1 text-ui-sm">
-        <span>Files</span>
-        <ExplorerCreateButtons
-          disabled={!props.workspaceRoot}
-          onCreateFile={() => actions.create(actions.selectedDirectory, "file")}
-          onCreateFolder={() => actions.create(actions.selectedDirectory, "directory")}
-        />
-      </div>
-      <WorkspaceFilesTreeBody
-        actions={actions}
-        workspaceRoot={props.workspaceRoot}
-        selectedFilePath={props.selectedFilePath}
-        expandedDirectories={props.expandedDirectories}
-        onSelectFile={props.onSelectFile}
-        onToggleDirectory={props.onToggleDirectory}
-        onPrefetchEntry={prefetchEntry}
-        onEntryContextMenu={handleEntryContextMenu}
-      />
-      {actions.dialogs}
-    </aside>
-  );
-}
-
 function WorkspaceSearchResultRow(props: {
   entry: ProjectEntry;
   selected: boolean;
@@ -796,55 +743,6 @@ function WorkspaceSearchResultsBody(props: {
         </p>
       ) : null}
     </>
-  );
-}
-
-export function WorkspaceSearchSidebar(props: {
-  workspaceRoot: string | null;
-  query: string;
-  onQueryChange: (query: string) => void;
-  selectedFilePath: string | null;
-  containerClassName?: string;
-  onSelectFile: (path: string) => void;
-  onReferenceInChat: ((reference: ChatFileReference) => void) | undefined;
-}) {
-  const prefetchEntry = useExplorerEntryPrefetch(props.workspaceRoot);
-  const handleEntryContextMenu = useResultEntryContextMenu(
-    props.workspaceRoot,
-    props.onReferenceInChat,
-  );
-  const handleListKeyDown = useExplorerListNavigation();
-  const search = useWorkspaceFileSearch(props.workspaceRoot, props.query);
-
-  return (
-    <aside
-      className={props.containerClassName ?? EXPLORER_SIDEBAR_CONTAINER_CLASS}
-      onKeyDown={handleListKeyDown}
-    >
-      <WorkspaceSearchInputHeader
-        query={props.query}
-        search={search}
-        autoFocus
-        onQueryChange={props.onQueryChange}
-        onSelectFile={props.onSelectFile}
-      />
-      {search.inputQuery.length === 0 ? (
-        <div className="flex min-h-0 flex-1 flex-col px-1 py-1">
-          <PanelStateMessage density="compact" fill="flex">
-            <p>Search files by name or path.</p>
-          </PanelStateMessage>
-        </div>
-      ) : (
-        <WorkspaceSearchResultsBody
-          workspaceRoot={props.workspaceRoot}
-          search={search}
-          selectedFilePath={props.selectedFilePath}
-          onSelectFile={props.onSelectFile}
-          onPrefetchEntry={prefetchEntry}
-          onEntryContextMenu={handleEntryContextMenu}
-        />
-      )}
-    </aside>
   );
 }
 

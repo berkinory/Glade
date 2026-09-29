@@ -137,8 +137,6 @@ export interface EnvironmentPanelProps {
   onRenamePinnedMessage: (messageId: MessageId, label: string | null) => void;
   /** Persist updated notes for the given thread (bound per section instance, not the active thread). */
   onNotesChange: (threadId: ThreadId, notes: string) => Promise<void>;
-  /** Open the in-app editor workspace view (the Editor section's default first row). */
-  onOpenEditorView?: (() => void) | null;
   /** Dismiss the panel overlay — invoked after actions that open the dock. */
   onClose: () => void;
   /** Registers the panel's "Commit and Push" row as the target for the global shortcut. */
@@ -179,7 +177,6 @@ export function EnvironmentPanel({
   onUnpinMessage,
   onRenamePinnedMessage,
   onNotesChange,
-  onOpenEditorView: onOpenEditorViewProp,
   onClose,
   onRegisterCommitAndPushTrigger,
   railBottom,
@@ -187,7 +184,6 @@ export function EnvironmentPanel({
   const githubRepository = githubRepositoryProp ?? null;
   const githubRepositories = githubRepositoriesProp ?? [];
   const diffDisabledReason = diffDisabledReasonProp ?? null;
-  const onOpenEditorView = onOpenEditorViewProp ?? null;
   const navigate = useNavigate();
   const { settings } = useAppSettings();
   const { additions, deletions, hasChanges } = diffTotals;
@@ -298,14 +294,6 @@ export function EnvironmentPanel({
           keybindings={keybindings}
           availableEditors={availableEditors}
           openInTarget={openInTarget}
-          {...(onOpenEditorView
-            ? {
-                onOpenEditorView: () => {
-                  onOpenEditorView();
-                  onClose();
-                },
-              }
-            : {})}
         />
       ) : null}
 

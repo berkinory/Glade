@@ -5,11 +5,9 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { ThreadId, type ResolvedKeybindingsConfig, type TurnId } from "@glade/contracts";
-import type { FileDiffMetadata } from "@pierre/diffs/react";
 import * as Schema from "effect/Schema";
-import { CopyIcon, EllipsisIcon, FolderIcon, XIcon } from "~/lib/icons";
-import { DiffPanelViewToggle } from "./DiffPanelViewToggle";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { XIcon } from "~/lib/icons";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   gitBranchesQueryOptions,
   refreshGitAfterFileWrite,
@@ -57,13 +55,11 @@ import { type RepoDiffScope, useRepoDiffScope, useRepoDiffScopeStore } from "../
 import { useStore } from "../store";
 import { createProjectSelector } from "../storeSelectors";
 import { inferCheckpointTurnCountByTurnId } from "../session-logic";
-import { type TimestampFormat, useAppSettings } from "../appSettings";
+import { useAppSettings } from "../appSettings";
 import { useComposerDraftStore } from "../composerDraftStore";
-import { DOCK_HEADER_ICON_BUTTON_CLASS, type DiffRenderMode } from "./chat/chatHeaderControls";
+import { DOCK_HEADER_ICON_BUTTON_CLASS } from "./chat/chatHeaderControls";
 import {
   areAllRenderableFilesCollapsed,
-  DIFF_PANEL_PICKER_SCOPE_OPTIONS,
-  isDiffPanelRepoScopeOption,
   isStaleDiffTurnSelection,
   resolveConversationCacheScope,
   resolveDiffPanelGitStatusQueriesEnabled,
@@ -71,7 +67,6 @@ import {
   resolveDiffPanelScopeCountQueriesEnabled,
   resolveDiffPanelRepoLiveRefetchIntervalMs,
   resolveDiffPanelScopeFileCounts,
-  resolveDiffPanelScopePickerValue,
   resolveDiffPanelThread,
   resolveDiffPanelViewSource,
   resolveAdjacentDiffFilePath,
@@ -87,17 +82,12 @@ import {
 } from "./DiffPanel.logic";
 import { resolveDraftFallbackModelSelection } from "./ChatView.logic";
 import { DiffPanelChangeMarkers } from "./DiffPanelChangeMarkers";
-import {
-  DiffPanelChangeNavigationButtons,
-  type DiffPanelChangeNavigation,
-} from "./DiffPanelChangeNavigation";
+import { type DiffPanelChangeNavigation } from "./DiffPanelChangeNavigation";
 import { DiffLineBlamePopover, type DiffLineBlameTarget } from "./DiffLineBlamePopover";
-import { DiffPanelCompareRefMenuSection } from "./DiffPanelCompareRefMenuSection";
 import { DiffPanelPatchViewport } from "./DiffPanelPatchViewport";
 import { DiffPanelToolbar } from "./DiffPanelToolbar";
 import { DiffTruncationWarning } from "./DiffTruncationWarning";
 import { ReviewFileTreePanel } from "./ReviewFileTreePanel";
-import { ComposerPickerMenuPopup } from "./chat/ComposerPickerMenuPopup";
 import { closestThroughShadow } from "./chat/chatSelectionActions";
 import { TranscriptSelectionAction } from "./chat/TranscriptSelectionAction";
 import { useCodeSelectionAction } from "./chat/useCodeSelectionAction";
@@ -110,290 +100,12 @@ import {
 } from "./diffPanelSelectors";
 import { DiffPanelLoadingState, DiffPanelShell, type DiffPanelMode } from "./DiffPanelShell";
 import { IconButton } from "./ui/icon-button";
-import {
-  Menu,
-  MenuCheckboxItem,
-  MenuGroup,
-  MenuGroupLabel,
-  MenuItem,
-  MenuRadioGroup,
-  MenuRadioItem,
-  MenuTrigger,
-} from "./ui/menu";
 import { REPO_DIFF_SCOPE_LABELS, resolveRepoDiffScopeLabel } from "../repoDiffScopeStore";
 import { PanelStateMessage } from "./chat/PanelStateMessage";
 import { type SplitViewPanePanelState } from "../splitViewStore";
-import { formatShortTimestamp } from "../timestampFormat";
-import type { TurnDiffSummary } from "../types";
 
-const EDITOR_DIFF_OPTIONS_MENU_ICON_CLASS_NAME = "size-3.5 shrink-0 text-muted-foreground";
 const EMPTY_KEYBINDINGS: ResolvedKeybindingsConfig = [];
 const DiffRenderModeSchema = Schema.Literals(["stacked", "split"]);
-
-function EditorDiffOptionsCountBadge(props: { count: number | undefined }) {
-  if (typeof props.count !== "number" || props.count <= 0) {
-    return null;
-  }
-  return (
-    <span className="ml-auto rounded-full bg-muted px-1.5 text-ui-xs font-medium text-muted-foreground tabular-nums">
-      {props.count}
-    </span>
-  );
-}
-
-function EditorDiffOptionsMenu(props: {
-  scopePickerValue: string | null;
-  scopeFileCounts: Partial<Record<RepoDiffScope, number>>;
-  activeCwd: string | null;
-  compareRef: string | null;
-  scopeIsRef: boolean;
-  selectedTurnId: TurnId | null;
-  orderedTurnDiffSummaries: ReadonlyArray<TurnDiffSummary>;
-  inferredCheckpointTurnCountByTurnId: Record<string, number>;
-  timestampFormat: TimestampFormat;
-  renderableFiles: ReadonlyArray<FileDiffMetadata>;
-  diffWordWrap: boolean;
-  diffIgnoreWhitespace: boolean;
-  diffCopyText: string | null;
-  diffCopyLabel: string;
-  allFilesCollapsed: boolean;
-  changeMarkersEnabled: boolean;
-  onSelectRepoScope: (scope: DiffPanelRepoScopeOption) => void;
-  onSelectCompareRef: (ref: string) => void;
-  onSelectAllTurns: () => void;
-  onSelectLastTurn: () => void;
-  onSelectTurn: (turnId: TurnId | null) => void;
-  onDiffWordWrapChange: (enabled: boolean) => void;
-  onDiffIgnoreWhitespaceChange: (enabled: boolean) => void;
-  onChangeMarkersEnabledChange: (enabled: boolean) => void;
-  onCopyDiff: () => void;
-  onToggleCollapseAll: () => void;
-}) {
-  const [optionsOpen, setOptionsOpen] = useState(false);
-
-  return (
-    <Menu open={optionsOpen} onOpenChange={setOptionsOpen}>
-      <MenuTrigger
-        render={
-          <IconButton
-            variant="ghost"
-            size="icon-xs"
-            className="text-muted-foreground hover:text-foreground"
-            label="Diff options"
-            title="Diff options"
-            onClick={() => {
-              setOptionsOpen(true);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                setOptionsOpen(true);
-              }
-            }}
-            onPointerDown={() => {
-              setOptionsOpen(true);
-            }}
-          >
-            <EllipsisIcon className="size-3.5" />
-          </IconButton>
-        }
-      />
-      <ComposerPickerMenuPopup align="end" side="bottom" sideOffset={6} className="w-64 min-w-64">
-        <MenuGroup>
-          <MenuGroupLabel>Source</MenuGroupLabel>
-          <MenuRadioGroup
-            value={props.scopePickerValue ?? ""}
-            onValueChange={(value) => {
-              if (value === "allTurns") {
-                props.onSelectAllTurns();
-                return;
-              }
-              if (value === "lastTurn") {
-                props.onSelectLastTurn();
-                return;
-              }
-              if (isDiffPanelRepoScopeOption(value)) {
-                props.onSelectRepoScope(value);
-              }
-            }}
-          >
-            {DIFF_PANEL_PICKER_SCOPE_OPTIONS.map((scope) => (
-              <MenuRadioItem key={scope} value={scope}>
-                <span className="min-w-0 flex-1 truncate">{REPO_DIFF_SCOPE_LABELS[scope]}</span>
-                <EditorDiffOptionsCountBadge count={props.scopeFileCounts[scope]} />
-              </MenuRadioItem>
-            ))}
-            <MenuRadioItem value="allTurns">
-              <span className="min-w-0 flex-1 truncate">All turns</span>
-            </MenuRadioItem>
-            <MenuRadioItem value="lastTurn">
-              <span className="min-w-0 flex-1 truncate">Last turn</span>
-            </MenuRadioItem>
-          </MenuRadioGroup>
-        </MenuGroup>
-
-        <DiffPanelCompareRefMenuSection
-          cwd={props.activeCwd}
-          open={optionsOpen}
-          compareRef={props.compareRef}
-          scopeIsRef={props.scopeIsRef}
-          iconClassName={EDITOR_DIFF_OPTIONS_MENU_ICON_CLASS_NAME}
-          onSelectCompareRef={props.onSelectCompareRef}
-        />
-
-        {props.orderedTurnDiffSummaries.length > 0 ? (
-          <MenuGroup>
-            <MenuGroupLabel>Turns</MenuGroupLabel>
-            <MenuRadioGroup
-              value={props.selectedTurnId ?? "all-turns"}
-              onValueChange={(value) => {
-                props.onSelectTurn(value === "all-turns" ? null : (value as TurnId));
-              }}
-            >
-              <MenuRadioItem value="all-turns">
-                <span className="min-w-0 flex-1 truncate">All turns</span>
-              </MenuRadioItem>
-              {props.orderedTurnDiffSummaries.map((summary) => {
-                const turnNumber =
-                  summary.checkpointTurnCount ??
-                  props.inferredCheckpointTurnCountByTurnId[summary.turnId] ??
-                  "?";
-                return (
-                  <MenuRadioItem key={summary.turnId} value={summary.turnId}>
-                    <span className="min-w-0 flex-1 truncate">Turn {turnNumber}</span>
-                    <span className="shrink-0 text-ui-xs text-muted-foreground tabular-nums">
-                      {formatShortTimestamp(summary.completedAt, props.timestampFormat)}
-                    </span>
-                  </MenuRadioItem>
-                );
-              })}
-            </MenuRadioGroup>
-          </MenuGroup>
-        ) : null}
-
-        <MenuGroup>
-          <MenuGroupLabel>View</MenuGroupLabel>
-          <MenuCheckboxItem
-            checked={props.diffIgnoreWhitespace}
-            variant="switch"
-            onCheckedChange={(checked) => {
-              props.onDiffIgnoreWhitespaceChange(checked === true);
-            }}
-          >
-            Ignore whitespace-only changes
-          </MenuCheckboxItem>
-          <MenuCheckboxItem
-            checked={props.diffWordWrap}
-            variant="switch"
-            onCheckedChange={(checked) => {
-              props.onDiffWordWrapChange(checked === true);
-            }}
-          >
-            Wrap long lines
-          </MenuCheckboxItem>
-          <MenuCheckboxItem
-            checked={props.changeMarkersEnabled}
-            variant="switch"
-            onCheckedChange={(checked) => {
-              props.onChangeMarkersEnabledChange(checked === true);
-            }}
-          >
-            Change markers
-          </MenuCheckboxItem>
-          {props.diffCopyText ? (
-            <MenuItem
-              onClick={() => {
-                props.onCopyDiff();
-              }}
-            >
-              <CopyIcon className={EDITOR_DIFF_OPTIONS_MENU_ICON_CLASS_NAME} />
-              <span>{props.diffCopyLabel}</span>
-            </MenuItem>
-          ) : null}
-          {props.renderableFiles.length > 0 ? (
-            <MenuItem
-              onClick={() => {
-                props.onToggleCollapseAll();
-              }}
-            >
-              <FolderIcon className={EDITOR_DIFF_OPTIONS_MENU_ICON_CLASS_NAME} />
-              <span>{props.allFilesCollapsed ? "Expand all files" : "Collapse all files"}</span>
-            </MenuItem>
-          ) : null}
-        </MenuGroup>
-      </ComposerPickerMenuPopup>
-    </Menu>
-  );
-}
-
-function EditorDiffControls(props: {
-  scopePickerValue: string | null;
-  scopeFileCounts: Partial<Record<RepoDiffScope, number>>;
-  activeCwd: string | null;
-  compareRef: string | null;
-  scopeIsRef: boolean;
-  selectedTurnId: TurnId | null;
-  orderedTurnDiffSummaries: ReadonlyArray<TurnDiffSummary>;
-  inferredCheckpointTurnCountByTurnId: Record<string, number>;
-  timestampFormat: TimestampFormat;
-  renderableFiles: ReadonlyArray<FileDiffMetadata>;
-  diffRenderMode: DiffRenderMode;
-  diffWordWrap: boolean;
-  diffIgnoreWhitespace: boolean;
-  diffCopyText: string | null;
-  diffCopyLabel: string;
-  allFilesCollapsed: boolean;
-  changeMarkersEnabled: boolean;
-  changeNavigation: DiffPanelChangeNavigation;
-  onSelectRepoScope: (scope: DiffPanelRepoScopeOption) => void;
-  onSelectCompareRef: (ref: string) => void;
-  onSelectAllTurns: () => void;
-  onSelectLastTurn: () => void;
-  onSelectTurn: (turnId: TurnId | null) => void;
-  onDiffRenderModeChange: (mode: DiffRenderMode) => void;
-  onDiffWordWrapChange: (enabled: boolean) => void;
-  onDiffIgnoreWhitespaceChange: (enabled: boolean) => void;
-  onChangeMarkersEnabledChange: (enabled: boolean) => void;
-  onCopyDiff: () => void;
-  onToggleCollapseAll: () => void;
-}) {
-  return (
-    <div className="flex items-center gap-1">
-      <DiffPanelChangeNavigationButtons
-        navigation={props.changeNavigation}
-        className="text-muted-foreground hover:text-foreground"
-      />
-      <DiffPanelViewToggle mode={props.diffRenderMode} onChange={props.onDiffRenderModeChange} />
-      <EditorDiffOptionsMenu
-        scopePickerValue={props.scopePickerValue}
-        scopeFileCounts={props.scopeFileCounts}
-        activeCwd={props.activeCwd}
-        compareRef={props.compareRef}
-        scopeIsRef={props.scopeIsRef}
-        selectedTurnId={props.selectedTurnId}
-        orderedTurnDiffSummaries={props.orderedTurnDiffSummaries}
-        inferredCheckpointTurnCountByTurnId={props.inferredCheckpointTurnCountByTurnId}
-        timestampFormat={props.timestampFormat}
-        renderableFiles={props.renderableFiles}
-        diffWordWrap={props.diffWordWrap}
-        diffIgnoreWhitespace={props.diffIgnoreWhitespace}
-        diffCopyText={props.diffCopyText}
-        diffCopyLabel={props.diffCopyLabel}
-        allFilesCollapsed={props.allFilesCollapsed}
-        changeMarkersEnabled={props.changeMarkersEnabled}
-        onSelectRepoScope={props.onSelectRepoScope}
-        onSelectCompareRef={props.onSelectCompareRef}
-        onSelectAllTurns={props.onSelectAllTurns}
-        onSelectLastTurn={props.onSelectLastTurn}
-        onSelectTurn={props.onSelectTurn}
-        onDiffWordWrapChange={props.onDiffWordWrapChange}
-        onDiffIgnoreWhitespaceChange={props.onDiffIgnoreWhitespaceChange}
-        onChangeMarkersEnabledChange={props.onChangeMarkersEnabledChange}
-        onCopyDiff={props.onCopyDiff}
-        onToggleCollapseAll={props.onToggleCollapseAll}
-      />
-    </div>
-  );
-}
 
 interface DiffPanelProps {
   mode?: DiffPanelMode;
@@ -407,10 +119,6 @@ interface DiffPanelProps {
   liveRefreshEnabled?: boolean;
   /** When false, skip git/diff fetches (e.g. right dock collapsed or pane hidden). */
   queriesEnabled?: boolean;
-  hideHeader?: boolean;
-  onRenderableFilesChange?: (files: ReadonlyArray<FileDiffMetadata>, isLoading: boolean) => void;
-  onEditorDiffOptionsChange?: (control: ReactNode | null) => void;
-  onVisibleFileChange?: (filePath: string | null) => void;
   onEditFile?: (request: DiffFileEditRequest) => void;
 }
 
@@ -425,17 +133,12 @@ export default function DiffPanel({
   onClosePanel,
   liveRefreshEnabled: liveRefreshEnabledProp,
   queriesEnabled: queriesEnabledProp,
-  hideHeader: hideHeaderProp,
-  onRenderableFilesChange,
-  onEditorDiffOptionsChange,
-  onVisibleFileChange,
   onEditFile,
 }: DiffPanelProps) {
   const queryClient = useQueryClient();
   const mode = modeProp ?? "inline";
   const liveRefreshEnabled = liveRefreshEnabledProp ?? true;
   const queriesEnabled = queriesEnabledProp ?? true;
-  const hideHeader = hideHeaderProp ?? false;
   const navigate = useNavigate();
   const { resolvedTheme } = useTheme();
   const { settings } = useAppSettings();
@@ -831,9 +534,6 @@ export default function DiffPanel({
     enabled: diffQueriesEnabled && liveRefreshEnabled && watchedRepoFilePath !== null,
     onChange: handleWatchedRepoFileChange,
   });
-  useEffect(() => {
-    onRenderableFilesChange?.(renderableFiles, activeReviewIsLoading);
-  }, [activeReviewIsLoading, onRenderableFilesChange, renderableFiles]);
 
   // Virtualized shadow-DOM diffs only mount ~150 rows. Arm on Cmd/Ctrl+A inside
   // the viewport, then hijack the document `copy` event to write the full raw patch.
@@ -983,9 +683,6 @@ export default function DiffPanel({
   );
   const visibleFilePath = useVisibleDiffFilePath(patchViewportRef, renderableFiles);
   const activeFilePath = visibleFilePath ?? selectedFilePath;
-  useEffect(() => {
-    onVisibleFileChange?.(visibleFilePath);
-  }, [onVisibleFileChange, visibleFilePath]);
   const scrollToDiffFilePath = useCallback((filePath: string) => {
     scrollDiffFileIntoView(patchViewportRef.current, filePath, "start");
   }, []);
@@ -1248,95 +945,9 @@ export default function DiffPanel({
       copyDiffToClipboard(diffCopyText, undefined);
     }
   }, [copyDiffToClipboard, diffCopyText]);
-  const latestTurnId = orderedTurnDiffSummaries[0]?.turnId ?? null;
-  const scopePickerValue = useMemo(
-    () =>
-      resolveDiffPanelScopePickerValue({
-        viewSource,
-        latestTurnId,
-        turnScopeIntent,
-        compareRef: repoDiffCompareRef,
-      }),
-    [latestTurnId, repoDiffCompareRef, turnScopeIntent, viewSource],
-  );
-  const editorDiffOptionsControl = useMemo(
-    () =>
-      hideHeader ? (
-        <EditorDiffControls
-          scopePickerValue={scopePickerValue}
-          scopeFileCounts={scopeFileCounts}
-          activeCwd={activeCwd}
-          compareRef={repoDiffCompareRef}
-          scopeIsRef={viewSource.kind === "repo" && viewSource.scope === "ref"}
-          selectedTurnId={selectedTurnId}
-          orderedTurnDiffSummaries={orderedTurnDiffSummaries}
-          inferredCheckpointTurnCountByTurnId={inferredCheckpointTurnCountByTurnId}
-          timestampFormat={settings.timestampFormat}
-          renderableFiles={renderableFiles}
-          diffRenderMode={diffRenderMode}
-          diffWordWrap={diffWordWrap}
-          diffIgnoreWhitespace={diffIgnoreWhitespace}
-          diffCopyText={diffCopyText}
-          diffCopyLabel={diffCopyLabel}
-          allFilesCollapsed={allFilesCollapsed}
-          changeMarkersEnabled={changeMarkersEnabled}
-          changeNavigation={changeNavigation}
-          onSelectRepoScope={selectRepoScope}
-          onSelectCompareRef={selectCompareRef}
-          onSelectAllTurns={selectAllTurns}
-          onSelectLastTurn={selectLastTurn}
-          onSelectTurn={selectTurn}
-          onDiffRenderModeChange={setDiffRenderMode}
-          onDiffWordWrapChange={setDiffWordWrap}
-          onDiffIgnoreWhitespaceChange={setDiffIgnoreWhitespace}
-          onChangeMarkersEnabledChange={setChangeMarkersEnabled}
-          onCopyDiff={copyDiff}
-          onToggleCollapseAll={toggleCollapseAll}
-        />
-      ) : null,
-    [
-      activeCwd,
-      allFilesCollapsed,
-      changeMarkersEnabled,
-      changeNavigation,
-      copyDiff,
-      diffCopyText,
-      diffCopyLabel,
-      diffIgnoreWhitespace,
-      diffRenderMode,
-      diffWordWrap,
-      hideHeader,
-      inferredCheckpointTurnCountByTurnId,
-      orderedTurnDiffSummaries,
-      renderableFiles,
-      repoDiffCompareRef,
-      scopeFileCounts,
-      scopePickerValue,
-      selectAllTurns,
-      selectCompareRef,
-      selectLastTurn,
-      selectRepoScope,
-      selectTurn,
-      selectedTurnId,
-      setDiffRenderMode,
-      settings.timestampFormat,
-      toggleCollapseAll,
-      viewSource,
-    ],
-  );
-  useEffect(() => {
-    onEditorDiffOptionsChange?.(editorDiffOptionsControl);
-  }, [editorDiffOptionsControl, onEditorDiffOptionsChange]);
-  useEffect(
-    () => () => {
-      onEditorDiffOptionsChange?.(null);
-    },
-    [onEditorDiffOptionsChange],
-  );
-
   const shellHeader = useMemo(
     () =>
-      hideHeader ? null : showDiffToolbar ? (
+      showDiffToolbar ? (
         <DiffPanelToolbar
           // Remount per thread so per-thread view state (e.g. the expanded
           // turn-list page size) does not leak across thread navigations.
@@ -1421,7 +1032,6 @@ export default function DiffPanel({
       diffRenderMode,
       diffWordWrap,
       fileTreeOpen,
-      hideHeader,
       inferredCheckpointTurnCountByTurnId,
       handleScopePickerOpenChange,
       handleDiffReload,
@@ -1537,27 +1147,25 @@ export default function DiffPanel({
               />
             ) : null}
           </div>
-          {hideHeader ? null : (
-            <div
-              className={disclosureWidthClassName(fileTreeOpen, "w-[min(42%,28rem)]", "shrink-0")}
-              aria-hidden={!fileTreeOpen}
-              inert={!fileTreeOpen}
-            >
-              {/* Empty until first open: the wrapper stays mounted (free) so the
+          <div
+            className={disclosureWidthClassName(fileTreeOpen, "w-[min(42%,28rem)]", "shrink-0")}
+            aria-hidden={!fileTreeOpen}
+            inert={!fileTreeOpen}
+          >
+            {/* Empty until first open: the wrapper stays mounted (free) so the
                   width reveal animates, but the tree only filters/builds once the
                   user actually opens it. */}
-              {fileTreeMounted ? (
-                <ReviewFileTreePanel
-                  files={renderableFiles}
-                  selectedFilePath={activeFilePath}
-                  resolvedTheme={resolvedTheme}
-                  isLoading={activeReviewIsLoading}
-                  onSelectFile={selectFile}
-                  onClose={closeFileTree}
-                />
-              ) : null}
-            </div>
-          )}
+            {fileTreeMounted ? (
+              <ReviewFileTreePanel
+                files={renderableFiles}
+                selectedFilePath={activeFilePath}
+                resolvedTheme={resolvedTheme}
+                isLoading={activeReviewIsLoading}
+                onSelectFile={selectFile}
+                onClose={closeFileTree}
+              />
+            ) : null}
+          </div>
         </div>
       )}
     </DiffPanelShell>

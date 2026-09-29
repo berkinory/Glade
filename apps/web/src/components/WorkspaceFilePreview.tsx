@@ -78,7 +78,6 @@ import {
 import { cn } from "~/lib/utils";
 import { buildCodeEditorUnsafeCSS } from "./codeEditor/codeEditorAppearance";
 import { CODE_EDITOR_KEYMAP } from "./codeEditor/pierreEdit";
-import { resolveWorkspaceFileEditorReadOnlyReason } from "~/lib/workspaceFileEditor";
 import { readNativeApi } from "~/nativeApi";
 import ChatMarkdown from "./ChatMarkdown";
 import { DiffTruncationWarning } from "./DiffTruncationWarning";
@@ -508,7 +507,6 @@ export interface WorkspaceFilePreviewProps {
   onReferenceInChat?: ((reference: ChatFileReference) => void) | undefined;
   onAskWhyInChat?: ((reference: ChatFileReference) => void) | undefined;
   onCommentInChat?: ((comment: FileCommentSelection) => void) | undefined;
-  onEditFile?: ((filePath: string) => void) | undefined;
 }
 
 export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
@@ -954,20 +952,6 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
     fileQuery.data.lineEnding !== null &&
     fileQuery.data.lineEnding !== "mixed" &&
     (!editBufferDirty || (editor.canEdit && !editor.state.saveError && !editor.state.conflict));
-  const { onEditFile } = props;
-  // The editor writes the path back in place, so it is offered only for
-  // sources the shared editor rules consider writable (symlinks included).
-  const editFile =
-    onEditFile &&
-    canToggleTasks &&
-    !fileIsImage &&
-    !fileIsPdf &&
-    filePath !== null &&
-    fileQuery.data !== undefined &&
-    resolveWorkspaceFileEditorReadOnlyReason(fileQuery.data) === null
-      ? () => onEditFile(filePath)
-      : undefined;
-
   if (!props.workspaceRoot && !fileIsLocalAbsolute && !fileIsScratchBinaryPreview) {
     return (
       <PanelStateMessage density="compact" fill="flex">
@@ -1045,7 +1029,6 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
         onReferenceInChat={onReferenceInChat}
         contentsForCopy={fileIsImage || fileQuery.data === undefined ? null : displayedFileContents}
         truncated={fileQuery.data?.truncated ?? false}
-        onEditFile={editFile}
         dirty={editBufferDirty}
         readOnlyReason={readOnlyReason}
         reloading={fileIsImage || fileIsPdf ? binaryPreviewReloading : fileQuery.isFetching}

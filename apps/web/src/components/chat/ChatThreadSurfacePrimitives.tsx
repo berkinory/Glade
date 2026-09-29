@@ -1,6 +1,5 @@
-import type { FileDiffMetadata } from "@pierre/diffs/react";
 import type { ThreadId, TurnId } from "@glade/contracts";
-import { lazy, type ReactNode, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 
 import ChatView from "../ChatView";
 import { DiffWorkerPoolProvider } from "../DiffWorkerPoolProvider";
@@ -23,12 +22,9 @@ export const LazyDevicePanel = lazy(() => import("../DevicePanel"));
 
 export const noopChatSurfaceAction = () => {};
 
-function DiffLoadingFallback(props: { mode: DiffPanelMode; hideHeader?: boolean }) {
+function DiffLoadingFallback(props: { mode: DiffPanelMode }) {
   return (
-    <DiffPanelShell
-      mode={props.mode}
-      header={props.hideHeader ? null : <DiffPanelHeaderSkeleton />}
-    >
+    <DiffPanelShell mode={props.mode} header={<DiffPanelHeaderSkeleton />}>
       <DiffPanelLoadingState label="Loading diff viewer..." />
     </DiffPanelShell>
   );
@@ -45,22 +41,11 @@ export function LazyDiffPanel(props: {
   onClosePanel?: () => void;
   liveRefreshEnabled?: boolean;
   queriesEnabled?: boolean;
-  hideHeader?: boolean;
-  onRenderableFilesChange?: (files: ReadonlyArray<FileDiffMetadata>, isLoading: boolean) => void;
-  onEditorDiffOptionsChange?: (control: ReactNode | null) => void;
-  onVisibleFileChange?: (filePath: string | null) => void;
   onEditFile?: (request: DiffFileEditRequest) => void;
 }) {
   return (
     <DiffWorkerPoolProvider>
-      <Suspense
-        fallback={
-          <DiffLoadingFallback
-            mode={props.mode}
-            {...(props.hideHeader !== undefined ? { hideHeader: props.hideHeader } : {})}
-          />
-        }
-      >
+      <Suspense fallback={<DiffLoadingFallback mode={props.mode} />}>
         <DiffPanel
           mode={props.mode}
           {...(props.initialViewKind ? { initialViewKind: props.initialViewKind } : {})}
@@ -72,15 +57,7 @@ export function LazyDiffPanel(props: {
             ? { liveRefreshEnabled: props.liveRefreshEnabled }
             : {})}
           {...(props.queriesEnabled !== undefined ? { queriesEnabled: props.queriesEnabled } : {})}
-          {...(props.hideHeader !== undefined ? { hideHeader: props.hideHeader } : {})}
           {...(props.onEditFile ? { onEditFile: props.onEditFile } : {})}
-          {...(props.onRenderableFilesChange
-            ? { onRenderableFilesChange: props.onRenderableFilesChange }
-            : {})}
-          {...(props.onEditorDiffOptionsChange
-            ? { onEditorDiffOptionsChange: props.onEditorDiffOptionsChange }
-            : {})}
-          {...(props.onVisibleFileChange ? { onVisibleFileChange: props.onVisibleFileChange } : {})}
         />
       </Suspense>
     </DiffWorkerPoolProvider>
@@ -112,7 +89,6 @@ export function DeferredChatView(props: {
   paneScopeId: string;
   deferMount: boolean;
   surfaceMode: "single" | "split";
-  presentationMode?: "default" | "editor";
   isFocusedPane: boolean;
   panelState: SplitViewPanePanelState;
   onToggleDiff: () => void;
@@ -125,11 +101,6 @@ export function DeferredChatView(props: {
   onOpenTurnDiff: (turnId: TurnId, filePath?: string) => void;
   onSplitSurface?: () => void;
   onMaximize?: () => void;
-  viewModeAction?: {
-    label: string;
-    active: boolean;
-    onClick: () => void;
-  } | null;
   onChangeThread?: () => void;
   onMounted?: () => void;
 }) {
@@ -170,7 +141,6 @@ export function DeferredChatView(props: {
       hideHeader={props.hideHeader ?? false}
       paneScopeId={props.paneScopeId}
       surfaceMode={props.surfaceMode}
-      presentationMode={props.presentationMode ?? "default"}
       isFocusedPane={props.isFocusedPane}
       panelState={props.panelState}
       onToggleDiffPanel={props.onToggleDiff}
@@ -183,7 +153,6 @@ export function DeferredChatView(props: {
       onOpenTurnDiffPanel={props.onOpenTurnDiff}
       {...(props.onSplitSurface ? { onSplitSurface: props.onSplitSurface } : {})}
       {...(props.onMaximize ? { onMaximizeSurface: props.onMaximize } : {})}
-      {...(props.viewModeAction !== undefined ? { viewModeAction: props.viewModeAction } : {})}
       {...(props.onChangeThread ? { onChangeThreadInSplitPane: props.onChangeThread } : {})}
     />
   );

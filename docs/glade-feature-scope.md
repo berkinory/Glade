@@ -6,6 +6,8 @@ production artwork. Production updates come only from the Glade release reposito
 
 ## Removed features
 
+- Editor view: no separate chat rail, file tabs, or editor-specific route state.
+  Workspace editing remains in the regular Explorer pane.
 - Browser login import: no cookie extraction, browser profile enumeration or import IPC.
   Manual sign-in, existing browser sessions and the ordinary password vault remain.
 - AppSnap: no capture picker, global capture shortcut, composer capture cards,

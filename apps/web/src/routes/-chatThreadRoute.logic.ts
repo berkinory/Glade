@@ -74,26 +74,6 @@ export function normalizeSingleSearchFromPane(
   return {};
 }
 
-export function stripEditorViewSearchParams<T extends Record<string, unknown>>(
-  params: T,
-): Omit<T, "view" | "editorFilePath"> {
-  const { view: _view, editorFilePath: _editorFilePath, ...rest } = params;
-  return rest as Omit<T, "view" | "editorFilePath">;
-}
-
-export function collectParentDirectoryPaths(filePath: string): string[] {
-  const segments = filePath.split("/").filter(Boolean);
-  if (segments.length <= 1) {
-    return [];
-  }
-
-  const parents: string[] = [];
-  for (let index = 1; index < segments.length; index += 1) {
-    parents.push(segments.slice(0, index).join("/"));
-  }
-  return parents;
-}
-
 function createRoutePanelSearchKey(input: {
   scopeId: string;
   search: DiffRouteSearch;

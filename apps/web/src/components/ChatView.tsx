@@ -469,7 +469,6 @@ interface ChatViewProps {
   hideHeader?: boolean;
   paneScopeId?: string;
   surfaceMode?: "single" | "split";
-  presentationMode?: "default" | "editor";
   isFocusedPane?: boolean;
   panelState?: SplitViewPanePanelState;
   onToggleDiffPanel?: () => void;
@@ -482,17 +481,12 @@ interface ChatViewProps {
   onOpenTurnDiffPanel?: (turnId: TurnId, filePath?: string) => void;
   onSplitSurface?: () => void;
   onMaximizeSurface?: () => void;
-  viewModeAction?: {
-    label: string;
-    active: boolean;
-    onClick: () => void;
-  } | null;
   onChangeThreadInSplitPane?: () => void;
   /**
    * Enables the ambient computer preview rail for this chat: when provided,
    * a live computer session renders below the Environment card and the chat
    * reserves gutter space for it so it never covers the transcript. Absent
-   * in editor-rail views, which keep no preview.
+   * when no preview is needed.
    */
 }
 
@@ -505,7 +499,6 @@ export default function ChatView({
   hideHeader: hideHeaderProp,
   paneScopeId: paneScopeIdProp,
   surfaceMode: surfaceModeProp,
-  presentationMode: presentationModeProp,
   isFocusedPane: isFocusedPaneProp,
   panelState,
   onToggleDiffPanel,
@@ -518,7 +511,6 @@ export default function ChatView({
   onOpenTurnDiffPanel,
   onSplitSurface,
   onMaximizeSurface,
-  viewModeAction: viewModeActionProp,
   onChangeThreadInSplitPane,
 }: ChatViewProps) {
   // Prop defaults are resolved here instead of in the destructuring pattern: an
@@ -528,9 +520,7 @@ export default function ChatView({
   const paneScopeId = paneScopeIdProp ?? SINGLE_CHAT_PANE_SCOPE_ID;
   const hideHeader = hideHeaderProp ?? false;
   const surfaceMode = surfaceModeProp ?? "single";
-  const presentationMode = presentationModeProp ?? "default";
   const isFocusedPane = isFocusedPaneProp ?? true;
-  const viewModeAction = viewModeActionProp ?? null;
   const markThreadVisited = useStore((store) => store.markThreadVisited);
   const syncServerShellSnapshot = useStore((store) => store.syncServerShellSnapshot);
   const setStoreThreadError = useStore((store) => store.setError);
@@ -561,7 +551,6 @@ export default function ChatView({
   const createWorktreeMutation = useMutation(
     gitCreateDetachedWorktreeMutationOptions({ queryClient }),
   );
-  const isEditorRail = presentationMode === "editor";
   const isInactiveSplitPane = surfaceMode === "split" && !isFocusedPane;
   const {
     composerDraft,
@@ -973,13 +962,10 @@ export default function ChatView({
     terminalWorkspaceTerminalTabActive,
     terminalWorkspaceChatTabActive,
     setTerminalOpen,
-    setTerminalPresentationMode,
-    setTerminalWorkspaceLayout,
     setTerminalWorkspaceTab,
     setTerminalHeight,
     setTerminalMetadataInStore: storeSetTerminalMetadata,
     setTerminalActivityInStore: storeSetTerminalActivity,
-    openChatThreadPageInStore: storeOpenChatThreadPage,
     openTerminalThreadPageInStore: storeOpenTerminalThreadPage,
     closeTerminalGroupInStore: storeCloseTerminalGroup,
     resizeTerminalSplitInStore: storeResizeTerminalSplit,
@@ -1708,9 +1694,6 @@ export default function ChatView({
   // Stable identity: this element is forwarded to the memoized MessagesTimeline, so
   // building it inline in JSX would defeat its `memo()` on every keystroke.
   const transcriptEmptyStateContent = useMemo((): ReactNode => {
-    if (isEditorRail) {
-      return <span aria-hidden="true" />;
-    }
     if (threadDetailHydration !== "ready") {
       return (
         <ThreadDetailHydrationState
@@ -1720,7 +1703,7 @@ export default function ChatView({
       );
     }
     return hasPendingThreadWork ? <span aria-hidden="true" /> : undefined;
-  }, [handleRetryThreadDetailSync, hasPendingThreadWork, isEditorRail, threadDetailHydration]);
+  }, [handleRetryThreadDetailSync, hasPendingThreadWork, threadDetailHydration]);
   // Empty top-level threads render the centered landing composer instead of the transcript pane.
   // Home-scoped chats get the global "What should we work on?" copy plus the project picker,
   // while project-scoped drafts reuse the same centered layout with folder-specific copy.
@@ -1728,7 +1711,6 @@ export default function ChatView({
     timelineEntries.length === 0 &&
     !hasPendingThreadWork &&
     !activeThread?.parentThreadId &&
-    !isEditorRail &&
     threadDetailHydration === "ready";
   const isEmptyChatLanding =
     isCenteredEmptyLanding && Boolean(homeDir) && isContainerLandingProject;
@@ -2162,10 +2144,6 @@ export default function ChatView({
       }),
     [keybindings],
   );
-  const traitsPickerShortcutLabel = useMemo(
-    () => shortcutLabelForCommand(keybindings, "traitsPicker.toggle"),
-    [keybindings],
-  );
   const onToggleDiff = useCallback(() => {
     if (diffEnvironmentPending && !diffOpen) {
       return;
@@ -2554,7 +2532,7 @@ export default function ChatView({
   // or hides the side panel only when this thread already has a pane to show.
   const rightDockOpen = useRightDockStore((store) => selectRightDockState(threadId)(store).open);
   const isMobileViewport = useIsMobile();
-  const environmentEnabled = !isEditorRail && !hideHeader;
+  const environmentEnabled = !hideHeader;
   const environmentUsesFloatingOverlay =
     isTerminalEnvironmentContext || isMobileViewport || rightDockOpen || surfaceMode === "split";
   const environmentDefaultOpen = resolveDefaultEnvironmentPanelOpen({
@@ -4387,13 +4365,10 @@ export default function ChatView({
       void navigate({
         to: "/$threadId",
         params: { threadId: nextThreadId },
-        search: (previous) =>
-          isEditorRail
-            ? { ...stripDiffSearchParams(previous), view: "editor" }
-            : stripDiffSearchParams(previous),
+        search: (previous) => stripDiffSearchParams(previous),
       });
     },
-    [isEditorRail, navigate],
+    [navigate],
   );
   const onOpenAutomation = useCallback(
     (automationId: string) => {
@@ -4404,40 +4379,6 @@ export default function ChatView({
     },
     [navigate],
   );
-  const activeProjectIdForNewChat = activeProject?.id ?? null;
-  const onNewEditorChat = useCallback(() => {
-    if (!activeProjectIdForNewChat) {
-      return;
-    }
-    // Keep the editor workspace view (and any open file) across the new-thread
-    // navigation; the default new-thread flow clears all search params.
-    void handleNewThread(activeProjectIdForNewChat, undefined, {
-      search: (previous) => ({ ...stripDiffSearchParams(previous), view: "editor" }),
-    });
-  }, [activeProjectIdForNewChat, handleNewThread]);
-  const onOpenEditorChat = useCallback(
-    (nextThreadId: ThreadId) => {
-      storeOpenChatThreadPage(nextThreadId);
-      onNavigateToThread(nextThreadId);
-    },
-    [onNavigateToThread, storeOpenChatThreadPage],
-  );
-  const onOpenEditorTerminal = useCallback(() => {
-    if (!activeThreadId) return;
-    setTerminalPresentationMode("workspace");
-    setTerminalWorkspaceLayout("terminal-only");
-    setTerminalWorkspaceTab("terminal");
-    requestTerminalFocus();
-  }, [
-    activeThreadId,
-    requestTerminalFocus,
-    setTerminalPresentationMode,
-    setTerminalWorkspaceLayout,
-    setTerminalWorkspaceTab,
-  ]);
-  const onCloseEditorTerminal = useCallback(() => {
-    void closeTerminal(terminalState.activeTerminalId);
-  }, [closeTerminal, terminalState.activeTerminalId]);
   const onRunProjectScriptFromHeader = useCallback(
     (script: ProjectScript) => {
       void runProjectScript(script);
@@ -4778,7 +4719,6 @@ export default function ChatView({
     onUnpinMessage: handleUnpinMessage,
     onRenamePinnedMessage: handleRenamePinnedMessage,
     onNotesChange: handleNotesChange,
-    onOpenEditorView: viewModeAction?.onClick ?? null,
     onClose: closeEnvironmentPanelAfterAction,
     onRegisterCommitAndPushTrigger,
   };
@@ -5340,33 +5280,25 @@ export default function ChatView({
         hidden={hideHeader}
         className={cn(
           CHAT_SURFACE_HEADER_DIVIDER_CLASS_NAME,
-          !isEditorRail && CHAT_SURFACE_HEADER_PADDING_X_CLASS,
+          CHAT_SURFACE_HEADER_PADDING_X_CLASS,
           "flex items-center",
-          isEditorRail ? "h-10" : CHAT_SURFACE_HEADER_HEIGHT_CLASS,
+          CHAT_SURFACE_HEADER_HEIGHT_CLASS,
           isElectron && "drag-region",
-          // The editor-rail chat header sits in the editor's second row (inside the
-          // docked chat pane), not flush against the window edges — the editor's
-          // own top bar already reserves both desktop window-control gutters. Applying
-          // them here just leaves redundant empty space on the sides.
-          !isEditorRail && desktopTopBarTrafficLightGutterClassName,
-          !isEditorRail && desktopTopBarWindowControlsGutterClassName,
+          desktopTopBarTrafficLightGutterClassName,
+          desktopTopBarWindowControlsGutterClassName,
         )}
       >
         <ChatHeader
           activeThreadId={activeThread.id}
           activeThreadTitle={activeThreadDisplayTitle}
           activeProvider={activeThread.session?.provider ?? activeThread.modelSelection.provider}
-          activeProjectName={isEditorRail ? undefined : activeProjectDisplayName}
+          activeProjectName={activeProjectDisplayName}
           threadBreadcrumbs={threadBreadcrumbs}
-          {...(isEditorRail
-            ? { className: cn(CHAT_SURFACE_HEADER_PADDING_X_CLASS, "h-full") }
-            : {})}
-          hideSidebarControls={isEditorRail}
-          hideHandoffControls={terminalWorkspaceTerminalTabActive || isEditorRail}
+          hideHandoffControls={terminalWorkspaceTerminalTabActive}
           minimalChrome={isCenteredEmptyLanding}
           isGitRepo={isGitRepo}
           openInTarget={threadWorkspaceCwd}
-          activeProjectScripts={isEditorRail ? undefined : activeProjectScripts}
+          activeProjectScripts={activeProjectScripts}
           preferredScriptId={
             activeProject ? (lastInvokedScriptByProjectId[activeProject.id] ?? null) : null
           }
@@ -5375,13 +5307,12 @@ export default function ChatView({
           diffToggleShortcutLabel={diffPanelShortcutLabel}
           gitCwd={threadWorkspaceCwd}
           diffTotals={repoDiffTotals}
-          showGitActions={showGitActions && !isEditorRail}
-          showDiffToggle={!isEditorRail}
+          showGitActions={showGitActions}
           diffOpen={resolvedDiffOpen}
           diffDisabledReason={diffDisabledReason}
           rightDockOpen={rightDockOpen}
           {...(onToggleRightDock ? { onToggleRightDock } : {})}
-          environment={isEditorRail ? null : environmentHeaderState}
+          environment={environmentHeaderState}
           surfaceMode={surfaceMode}
           chatLayoutAction={
             surfaceMode === "single" && onSplitSurface
@@ -5399,21 +5330,6 @@ export default function ChatView({
                     onClick: onMaximizeSurface,
                   }
                 : null
-          }
-          editorChatControls={
-            isEditorRail && activeProject
-              ? {
-                  projectId: activeProject.id,
-                  activeSurface: terminalWorkspaceTerminalTabActive ? "terminal" : "chat",
-                  terminalAvailable: terminalState.terminalOpen,
-                  terminalHasRunningActivity: terminalState.runningTerminalIds.length > 0,
-                  onNewChat: onNewEditorChat,
-                  onNewTerminal: onOpenEditorTerminal,
-                  onOpenChat: onOpenEditorChat,
-                  onOpenTerminal: onOpenEditorTerminal,
-                  onCloseTerminal: onCloseEditorTerminal,
-                }
-              : null
           }
           changeThreadAction={
             surfaceMode === "split" && isFocusedPane && onChangeThreadInSplitPane
@@ -5444,7 +5360,7 @@ export default function ChatView({
           threadId={threadId}
           className={cn(
             terminalWorkspaceTerminalTabActive && "invisible",
-            !isEditorRail && desktopTopBarWindowControlsGutterClassName,
+            desktopTopBarWindowControlsGutterClassName,
           )}
           onClose={() => setThreadFindOpen(false)}
           onJump={handleThreadFindJump}
@@ -5485,7 +5401,7 @@ export default function ChatView({
         rateLimitStatus={visibleActiveRateLimitStatus}
         onDismiss={dismissActiveRateLimitBanner}
       />
-      {terminalWorkspaceOpen && !isEditorRail ? (
+      {terminalWorkspaceOpen ? (
         <TerminalWorkspaceTabs
           activeTab={terminalState.workspaceActiveTab}
           isWorking={isWorking}

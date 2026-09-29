@@ -171,7 +171,7 @@ export function TaskCompletionNotifications() {
   const visibleThreadIds = resolveVisibleToastThreadIds({
     activeThreadId,
     splitView,
-    rightDockRendered: routeSearch.view !== "editor",
+    rightDockRendered: true,
     rightDockState,
   });
   const previousThreadsRef = useRef<readonly Thread[]>([]);

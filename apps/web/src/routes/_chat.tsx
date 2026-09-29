@@ -1,7 +1,7 @@
 import type { ResolvedKeybindingsConfig } from "@glade/contracts";
 import { CHAT_SURFACE_HEADER_HEIGHT_PX } from "@glade/shared/desktopChrome";
 import { useQuery } from "@tanstack/react-query";
-import { Outlet, createFileRoute, useLocation, useNavigate } from "@tanstack/react-router";
+import { Outlet, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -514,19 +514,15 @@ const SIDEBAR_GAP_CLASS =
 const SIDEBAR_INNER_CLASS = "app-sidebar-surface";
 
 function ChatRouteLayout() {
-  const isEditorView = useLocation({
-    select: (location) => (location.search as { view?: unknown }).view === "editor",
-  });
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const isRailLayout = useSidebarLayout() === "rail";
-  // Rail layout: Kanban, Pull requests, and Automations take the full width; the panel
-  // (Home/Spaces lists) only shows for the items that own one. Forced closed like the
-  // editor view, so the route header takes over the toggle and traffic-light gutter.
+  // Rail layout: Kanban and Automations take the full width; the panel
+  // (Home/Spaces lists) only shows for the items that own one.
   const railActiveItem = useRailShellStore((store) => store.activeItem);
   const railPanelView = useRailShellStore((store) => store.panelView);
   const selectRailPanelItem = useRailShellStore((store) => store.selectPanelItem);
   const railHidesPanel = isRailLayout && !railItemShowsPanel(railActiveItem);
-  const resolvedSidebarOpen = isEditorView || railHidesPanel ? false : sidebarOpen;
+  const resolvedSidebarOpen = railHidesPanel ? false : sidebarOpen;
   // Toggling the panel open on a full-width route brings back the current panel item
   // (never true in the classic layout, where this is a plain setter).
   const handleSidebarOpenChange = useCallback(
@@ -578,11 +574,9 @@ function ChatRouteLayout() {
           <div aria-hidden className="app-rail-header-divider" />
         </>
       ) : null}
-      {isEditorView ? null : (
-        <SidebarInstanceProvider side="left" resizable={THREAD_SIDEBAR_RESIZABLE}>
-          <SidebarRail placement="content-seam" />
-        </SidebarInstanceProvider>
-      )}
+      <SidebarInstanceProvider side="left" resizable={THREAD_SIDEBAR_RESIZABLE}>
+        <SidebarRail placement="content-seam" />
+      </SidebarInstanceProvider>
       <Outlet />
     </div>
   );

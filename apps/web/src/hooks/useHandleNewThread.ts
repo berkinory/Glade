@@ -39,15 +39,6 @@ import { useSpacesUiStore } from "../spacesUiStore";
 import { useProjectEnvironmentStore } from "../projectEnvironmentStore";
 import { useTerminalStateStore } from "../terminalStateStore";
 
-export interface NewThreadNavigationOptions {
-  /**
-   * Search params applied when the hook navigates to the created thread.
-   * Lets callers keep view-level state (e.g. the editor workspace view)
-   * across the route change; default navigation clears all search params.
-   */
-  search?: (previous: Record<string, unknown>) => Record<string, unknown>;
-}
-
 export function useHandleNewThread() {
   const projects = useStore((store) => store.projects);
   const { settings, serverSettings } = useAppSettings();
@@ -66,7 +57,6 @@ export function useHandleNewThread() {
   const handleNewThread = (
     projectId: ProjectId,
     options?: NewThreadOptions,
-    navigation?: NewThreadNavigationOptions,
   ): Promise<ThreadId | null> => {
     // Project/thread targets are not authoritative until hydration completes. Read the
     // store at call time so a stale UI callback cannot mint a draft during hydration.
@@ -223,7 +213,6 @@ export function useHandleNewThread() {
         await navigate({
           to: "/$threadId",
           params: { threadId: bootstrapPlan.threadId },
-          ...(navigation?.search ? { search: navigation.search } : {}),
         });
         restoreComposerDraft(bootstrapPlan.threadId, preservedComposerDraft);
         return bootstrapPlan.threadId;
@@ -283,7 +272,6 @@ export function useHandleNewThread() {
               navigate({
                 to: "/$threadId",
                 params: { threadId },
-                ...(navigation?.search ? { search: navigation.search } : {}),
               }).then(resolve, reject);
             });
           }),

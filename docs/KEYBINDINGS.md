@@ -50,7 +50,7 @@ Invalid rules are ignored. Invalid config files are ignored. Warnings are logged
 
 ### Available Commands
 
-- `terminal.toggle`: open/close the terminal in the right sidebar (the full-width terminal workspace in split or editor views)
+- `terminal.toggle`: open/close the terminal in the right sidebar or full-width terminal workspace
 - `terminal.split`: split terminal (in focused terminal context by default)
 - `terminal.new`: create new terminal (in focused terminal context by default)
 - `terminal.close`: close/kill the focused terminal (in focused terminal context by default)
@@ -61,7 +61,7 @@ Invalid rules are ignored. Invalid config files are ignored. Warnings are logged
 - `composer.focus.toggle`: focus or blur the chat prompt composer
 - `thread.copyId`: copy the active thread's ID to the clipboard
 - `editor.openFavorite`: open current project/worktree in the last-used editor
-- `editor.file.save`: write the focused file editor's unsaved changes back to disk (editor view file and diff editors)
+- `editor.file.save`: write the focused file editor's unsaved changes back to disk
 - `script.{id}.run`: run a project script by id (for example `script.test.run`)
 
 ### Key Syntax
