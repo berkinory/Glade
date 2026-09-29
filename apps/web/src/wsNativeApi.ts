@@ -619,6 +619,7 @@ export function createWsNativeApi(): NativeApi {
       removeIndexLock: (input) => transport.request(WS_METHODS.gitRemoveIndexLock, input),
       init: (input) => transport.request(WS_METHODS.gitInit, input),
       stageFiles: (input) => transport.request(WS_METHODS.gitStageFiles, input),
+      revertUnstagedFile: (input) => transport.request(WS_METHODS.gitRevertUnstagedFile, input),
       unstageFiles: (input) => transport.request(WS_METHODS.gitUnstageFiles, input),
       handoffThread: (input) => transport.request(WS_METHODS.gitHandoffThread, input),
       resolvePullRequest: (input) => transport.request(WS_METHODS.gitResolvePullRequest, input),

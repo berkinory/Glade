@@ -281,6 +281,7 @@ export interface GitCoreShape {
     cwd: string,
     scope: GitDiffScope,
     ref?: string,
+    includeUntrackedFiles?: boolean,
   ) => Effect.Effect<GitWorkingTreeDiffStatsResult, GitCommandError>;
 
   /**
@@ -490,6 +491,7 @@ export interface GitCoreShape {
     cwd: string,
     paths: readonly string[],
   ) => Effect.Effect<void, GitCommandError>;
+  readonly revertUnstagedFile: (cwd: string, path: string) => Effect.Effect<void, GitCommandError>;
 
   /**
    * Unstage the provided paths from the index, handling the pre-initial-commit case.

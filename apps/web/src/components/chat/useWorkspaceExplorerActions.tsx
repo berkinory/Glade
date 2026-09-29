@@ -83,6 +83,9 @@ export function useWorkspaceExplorerActions(
       });
       setEdit(null);
       await queryClient.invalidateQueries({ queryKey: projectQueryKeys.all });
+      if (edit.action === "create" && edit.kind === "file") {
+        onSelectFile(result.relativePath);
+      }
       if (edit.action === "rename" && edit.entry) {
         const oldPath = edit.entry.path;
         if (selectedDirectory === oldPath || selectedDirectory.startsWith(`${oldPath}/`)) {

@@ -49,6 +49,7 @@ export const DockExplorerPane = function DockExplorerPane(props: {
   useEffect(() => {
     if (!revealRequest) return;
     setSearchQuery("");
+    if (revealRequest.filePath) setSelectedFilePath(revealRequest.filePath);
     const workspaceRoot = props.workspaceRoot;
     let cancelled = false;
     const expand = (paths: string[]) => {

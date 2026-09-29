@@ -10,6 +10,7 @@ import { LazyDiffPanel } from "./ChatThreadSurfacePrimitives";
 export function SourceControlDockPane(props: {
   threadId: ThreadId;
   workspaceRoot: string | null;
+  onOpenFile: (filePath: string) => void;
   view: SourceControlView;
   diffTurnId: TurnId | null;
   diffFilePath: string | null;
@@ -54,7 +55,7 @@ export function SourceControlDockPane(props: {
       </div>
       <div className="min-h-0 flex-1">
         <div className={cn("h-full min-h-0", props.view !== "changes" && "hidden")}>
-          <GitPanel workspaceRoot={props.workspaceRoot} />
+          <GitPanel workspaceRoot={props.workspaceRoot} onOpenFile={props.onOpenFile} />
         </div>
         {reviewOpened || props.view === "review" ? (
           <div className={cn("h-full min-h-0", props.view !== "review" && "hidden")}>

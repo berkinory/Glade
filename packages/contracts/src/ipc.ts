@@ -80,6 +80,8 @@ import type {
   GitRunStackedActionResult,
   GitStageFilesInput,
   GitStageFilesResult,
+  GitRevertUnstagedFileInput,
+  GitRevertUnstagedFileResult,
   GitStashAndCheckoutInput,
   GitStashDropInput,
   GitStashInfoInput,
@@ -823,6 +825,7 @@ export interface NativeApi {
     removeIndexLock: (input: GitRemoveIndexLockInput) => Promise<void>;
     init: (input: GitInitInput) => Promise<void>;
     stageFiles: (input: GitStageFilesInput) => Promise<GitStageFilesResult>;
+    revertUnstagedFile: (input: GitRevertUnstagedFileInput) => Promise<GitRevertUnstagedFileResult>;
     unstageFiles: (input: GitUnstageFilesInput) => Promise<GitUnstageFilesResult>;
     handoffThread: (input: GitHandoffThreadInput) => Promise<GitHandoffThreadResult>;
     resolvePullRequest: (input: GitPullRequestRefInput) => Promise<GitResolvePullRequestResult>;

@@ -4,6 +4,10 @@
 
 ### Improved
 
+- Source Control keeps file status letters visible without shifting rows during hover, opens files in Explorer, and can revert unstaged changes with confirmation while preserving staged content. Newly created Explorer files open in the editor.
+- Source Control file rows support Cmd/Ctrl and Shift selection with right-click actions for opening, staging, unstaging, and reverting selected files. Empty Staged sections stay hidden, and the diff pane uses 55% of the available height.
+- Changes header totals and untracked file rows include new-file line counts through a separate stats request, so the file list does not wait for content-based counting. Header totals remain visible while refreshing.
+- Source Control section headers use the same + and - actions as file rows. Stage and unstage refresh the file list first while broader Git status and diff refreshes finish in the background.
 - Source Control lists every changed file from Git metadata without loading the full patch. It uses the same workspace as Explorer, shows the checkout path when clean, and opens a larger diff preview only after selecting a file. Refresh sits beside Staged.
 - Explorer menus have action icons and file management controls. New file and folder buttons create under the selected folder, with inline naming and renaming. Deleting an open file closes its preview. Finder actions use the system icon, file breadcrumbs keep descenders visible, and file previews show concise errors. Workspace files save with Cmd/Ctrl+S.
 - Explorer folder menus open directories in the platform file manager, and expansion changes without height or chevron motion.

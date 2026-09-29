@@ -1618,18 +1618,26 @@ const makeWsRpcHandlersLayer = () =>
           ),
         [WS_METHODS.gitStageFiles]: (input) =>
           rpcEffect(
-            refreshGitStatusAfter(
-              input.cwd,
-              git.withMutation(input.cwd, git.stageFiles(input.cwd, input.paths)),
-            ).pipe(Effect.as({ ok: true })),
+            git.withMutation(input.cwd, git.stageFiles(input.cwd, input.paths)).pipe(
+              Effect.tap(() => refreshGitStatusInBackground(input.cwd)),
+              Effect.as({ ok: true }),
+            ),
             "Failed to stage files",
           ),
-        [WS_METHODS.gitUnstageFiles]: (input) =>
+        [WS_METHODS.gitRevertUnstagedFile]: (input) =>
           rpcEffect(
             refreshGitStatusAfter(
               input.cwd,
-              git.withMutation(input.cwd, git.unstageFiles(input.cwd, input.paths)),
+              git.withMutation(input.cwd, git.revertUnstagedFile(input.cwd, input.path)),
             ).pipe(Effect.as({ ok: true })),
+            "Failed to revert file",
+          ),
+        [WS_METHODS.gitUnstageFiles]: (input) =>
+          rpcEffect(
+            git.withMutation(input.cwd, git.unstageFiles(input.cwd, input.paths)).pipe(
+              Effect.tap(() => refreshGitStatusInBackground(input.cwd)),
+              Effect.as({ ok: true }),
+            ),
             "Failed to unstage files",
           ),
         [WS_METHODS.gitHandoffThread]: (input) =>

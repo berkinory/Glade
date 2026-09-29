@@ -61,7 +61,11 @@ export const gitQueryKeys = {
     cwd: string | null,
     scope: GitReadWorkingTreeDiffInput["scope"] = "workingTree",
     compareRef: string | null = null,
-  ) => ["git", "working-tree-diff", cwd, scope, compareRef, "stats"] as const,
+    includeUntrackedFiles = false,
+  ) =>
+    includeUntrackedFiles
+      ? (["git", "working-tree-diff", cwd, scope, compareRef, "stats", "untracked-files"] as const)
+      : (["git", "working-tree-diff", cwd, scope, compareRef, "stats"] as const),
   blameLine: (
     cwd: string | null,
     filePath: string | null,
@@ -104,6 +108,8 @@ export const gitMutationKeys = {
     ["git", "mutation", "prepare-pull-request-thread", cwd] as const,
   handoffThread: (cwd: string | null) => ["git", "mutation", "handoff-thread", cwd] as const,
   stageFiles: (cwd: string | null) => ["git", "mutation", "stage-files", cwd] as const,
+  revertUnstagedFile: (cwd: string | null) =>
+    ["git", "mutation", "revert-unstaged-file", cwd] as const,
   unstageFiles: (cwd: string | null) => ["git", "mutation", "unstage-files", cwd] as const,
 };
 
@@ -600,12 +606,18 @@ export function gitWorkingTreeDiffStatsQueryOptions(input: {
   compareRef?: string | null;
   enabled?: boolean;
   refetchInterval?: number | false;
+  includeUntrackedFiles?: boolean;
 }) {
   const scope = input.scope ?? "workingTree";
   const compareRef = resolveGitCompareRef(scope, input.compareRef);
   const refetchInterval = input.refetchInterval;
   return queryOptions({
-    queryKey: gitQueryKeys.workingTreeDiffStats(input.cwd, scope, compareRef),
+    queryKey: gitQueryKeys.workingTreeDiffStats(
+      input.cwd,
+      scope,
+      compareRef,
+      input.includeUntrackedFiles,
+    ),
     queryFn: async () => {
       const api = ensureNativeApi();
       if (!input.cwd) {
@@ -615,6 +627,7 @@ export function gitWorkingTreeDiffStatsQueryOptions(input: {
         cwd: input.cwd,
         scope,
         ...(compareRef ? { compareRef } : {}),
+        ...(input.includeUntrackedFiles ? { includeUntrackedFiles: true } : {}),
       });
     },
     enabled: (input.enabled ?? true) && input.cwd !== null && (scope !== "ref" || !!compareRef),
@@ -737,7 +750,7 @@ export function gitBlameLineQueryOptions(input: {
   });
 }
 
-type GitMutationInvalidation = "all" | "cwd";
+type GitMutationInvalidation = "all" | "cwd" | "source-control";
 type GitMutationInvalidateOn = "success" | "settled";
 
 // Shared scaffolding for cwd-bound git mutations: resolve the native API, guard a
@@ -757,6 +770,16 @@ function makeGitMutationOptions<TArgs, TResult>(config: {
   const invalidate = config.invalidate ?? "all";
   const invalidateOn = config.invalidateOn ?? "settled";
   const runInvalidation = async () => {
+    if (invalidate === "source-control") {
+      if (config.cwd) {
+        const cwd = config.cwd;
+        await config.queryClient
+          .invalidateQueries({ queryKey: gitQueryKeys.sourceControlFiles(cwd), exact: true })
+          .catch(() => undefined);
+        void invalidateGitQueriesForCwds(config.queryClient, [cwd]).catch(() => undefined);
+      }
+      return;
+    }
     if (invalidate === "cwd") {
       if (config.cwd) {
         await invalidateGitQueriesForCwds(config.queryClient, [config.cwd]);
@@ -805,11 +828,26 @@ export function gitStageFilesMutationOptions(input: {
     queryClient: input.queryClient,
     mutationKey: gitMutationKeys.stageFiles(input.cwd),
     unavailableMessage: "Staging is unavailable.",
-    invalidate: "cwd",
+    invalidate: "source-control",
+    invalidateOn: "success",
     run: (api, cwd, paths) => {
       if (paths.length === 0) throw new Error("No files selected to stage.");
       return api.git.stageFiles({ cwd, paths: [...paths] });
     },
+  });
+}
+
+export function gitRevertUnstagedFileMutationOptions(input: {
+  cwd: string | null;
+  queryClient: QueryClient;
+}) {
+  return makeGitMutationOptions<string, { ok: boolean }>({
+    cwd: input.cwd,
+    queryClient: input.queryClient,
+    mutationKey: gitMutationKeys.revertUnstagedFile(input.cwd),
+    unavailableMessage: "Reverting is unavailable.",
+    invalidate: "cwd",
+    run: (api, cwd, path) => api.git.revertUnstagedFile({ cwd, path }),
   });
 }
 
@@ -822,7 +860,8 @@ export function gitUnstageFilesMutationOptions(input: {
     queryClient: input.queryClient,
     mutationKey: gitMutationKeys.unstageFiles(input.cwd),
     unavailableMessage: "Unstaging is unavailable.",
-    invalidate: "cwd",
+    invalidate: "source-control",
+    invalidateOn: "success",
     run: (api, cwd, paths) => {
       if (paths.length === 0) throw new Error("No files selected to unstage.");
       return api.git.unstageFiles({ cwd, paths: [...paths] });

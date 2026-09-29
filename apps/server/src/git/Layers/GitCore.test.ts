@@ -151,6 +151,10 @@ it.layer(TestLayer)("git integration", (it) => {
         const files = yield* core.readSourceControlFiles(tmp);
         expect(files.unstaged.map((file) => file.path)).toEqual(["generated.ts", "z-last.txt"]);
         expect(files.unstaged.map((file) => file.status)).toEqual(["M", "U"]);
+        const stats = yield* core.readDiffStats(tmp, "unstaged", undefined, true);
+        expect(stats.untrackedFiles).toEqual([
+          { path: "z-last.txt", insertions: 1, deletions: 0 },
+        ]);
         const selected = yield* core.readUnstagedPatch(tmp, "z-last.txt");
         expect(selected.truncated).toBe(false);
         expect(selected.patch).toContain("+visible even after a large diff");
@@ -529,6 +533,28 @@ it.layer(TestLayer)("git integration", (it) => {
   // ── Full flow: checkout conflict ──
 
   describe("GitCore", () => {
+    it.effect("reverts only working-tree changes and removes an exact untracked file", () =>
+      Effect.gen(function* () {
+        const tmp = yield* makeTmpDir();
+        yield* initRepoWithCommit(tmp);
+        const core = yield* GitCore;
+        const trackedPath = path.join(tmp, "README.md");
+        yield* writeTextFile(trackedPath, "staged\n");
+        yield* git(tmp, ["add", "README.md"]);
+        yield* writeTextFile(trackedPath, "unstaged\n");
+        yield* core.revertUnstagedFile(tmp, "README.md");
+        expect(yield* readTextFile(trackedPath)).toBe("staged\n");
+        expect(yield* git(tmp, ["show", ":README.md"])).toBe("staged");
+
+        const untrackedPath = path.join(tmp, "test.test");
+        yield* writeTextFile(untrackedPath, "extra\n");
+        yield* core.revertUnstagedFile(tmp, "test.test");
+        expect(existsSync(untrackedPath)).toBe(false);
+        const traversal = yield* Effect.exit(core.revertUnstagedFile(tmp, "../outside.txt"));
+        expect(Exit.isFailure(traversal)).toBe(true);
+      }),
+    );
+
     it.effect("prepareCommitContext stages only selected files when filePaths provided", () =>
       Effect.gen(function* () {
         const tmp = yield* makeTmpDir();

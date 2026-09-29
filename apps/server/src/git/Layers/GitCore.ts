@@ -2548,7 +2548,7 @@ export const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"
         );
       });
 
-    const readDiffStats: GitCoreShape["readDiffStats"] = (cwd, scope, ref) =>
+    const readDiffStats: GitCoreShape["readDiffStats"] = (cwd, scope, ref, includeUntrackedFiles) =>
       Effect.gen(function* () {
         let trackedArgs: ReadonlyArray<string>;
         let includeUntracked = false;
@@ -2636,6 +2636,9 @@ export const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"
           additions: totals.insertions,
           deletions: totals.deletions,
           fileCount: totals.files.length,
+          ...(scope === "unstaged" && includeUntrackedFiles
+            ? { untrackedFiles: summarizeGitNumstatOutputs(untracked).files }
+            : {}),
         };
       });
 
@@ -4251,6 +4254,50 @@ export const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"
     const stageFiles: GitCoreShape["stageFiles"] = (cwd, paths) =>
       runGit("GitCore.stageFiles", cwd, ["add", "--", ...paths]);
 
+    const revertUnstagedFile: GitCoreShape["revertUnstagedFile"] = (cwd, filePath) =>
+      Effect.gen(function* () {
+        const operation = "GitCore.revertUnstagedFile";
+        if (!isWorkspaceRelativePathSafe(filePath) || filePath.includes("\0")) {
+          return yield* createGitCommandError(
+            operation,
+            cwd,
+            ["restore"],
+            "File path must be a workspace-relative file path.",
+          );
+        }
+        const pathspec = `:(literal)${filePath}`;
+        const status = yield* runGitStdout(operation, cwd, [
+          "status",
+          "--porcelain=v1",
+          "-z",
+          "--untracked-files=all",
+          "--",
+          pathspec,
+        ]);
+        const record = status.split("\0").find((entry) => entry.slice(3) === filePath);
+        const code = record?.slice(0, 2);
+        if (
+          !code ||
+          (code !== "??" && ![" M", " D", " T", "MM", "AM", "MD", "MT"].includes(code))
+        ) {
+          return yield* createGitCommandError(
+            operation,
+            cwd,
+            ["status", "--", pathspec],
+            "This file has no supported unstaged change to revert.",
+          );
+        }
+        if (code === "??") {
+          yield* Effect.tryPromise({
+            try: () => nodeFs.unlink(nodePath.join(cwd, filePath)),
+            catch: (cause) =>
+              createGitCommandError(operation, cwd, ["unlink", "--", filePath], String(cause)),
+          });
+        } else {
+          yield* runGit(operation, cwd, ["restore", "--worktree", "--", pathspec]);
+        }
+      });
+
     const unstageFiles: GitCoreShape["unstageFiles"] = (cwd, paths) =>
       Effect.gen(function* () {
         // `git reset` resolves against HEAD, which does not exist before the first
@@ -4319,6 +4366,7 @@ export const makeGitCore = (options?: { executeOverride?: GitCoreShape["execute"
       initRepo,
       listLocalBranchNames,
       stageFiles,
+      revertUnstagedFile,
       unstageFiles,
     } satisfies GitCoreShape;
   });

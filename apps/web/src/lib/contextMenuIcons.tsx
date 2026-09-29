@@ -16,6 +16,9 @@ import {
   HANDOFF_ICON_NAME,
   PENCIL_ICON_NAME,
   PIN_ICON_NAME,
+  PlusIcon,
+  MinusIcon,
+  RotateCcwIcon,
   TERMINAL_ICON_NAME,
   Trash2,
 } from "./icons";
@@ -43,4 +46,11 @@ export const FILE_CONTEXT_MENU_ICONS = {
   createFolder: "folder-add-left",
   rename: PENCIL_ICON_NAME,
   delete: renderToStaticMarkup(<Trash2 />),
+} as const;
+
+export const GIT_FILE_CONTEXT_MENU_ICONS = {
+  open: EYE_OPEN_ICON_NAME,
+  stage: renderToStaticMarkup(<PlusIcon className="size-4" />),
+  unstage: renderToStaticMarkup(<MinusIcon className="size-4" />),
+  revert: renderToStaticMarkup(<RotateCcwIcon className="size-4" />),
 } as const;

@@ -159,6 +159,8 @@ export const GitReadWorkingTreeDiffInput = Schema.Struct({
   compareRef: Schema.optional(GitRevisionArgumentSchema),
   /** Limit a workingTree, staged, or unstaged patch to one exact workspace-relative file. */
   filePath: Schema.optional(TrimmedNonEmptyStringSchema),
+  /** Return untracked per-file counts with unstaged totals for Source Control rows. */
+  includeUntrackedFiles: Schema.optional(Schema.Boolean),
 });
 export type GitReadWorkingTreeDiffInput = typeof GitReadWorkingTreeDiffInput.Type;
 
@@ -392,6 +394,12 @@ export const GitUnstageFilesInput = Schema.Struct({
 });
 export type GitUnstageFilesInput = typeof GitUnstageFilesInput.Type;
 
+export const GitRevertUnstagedFileInput = Schema.Struct({
+  cwd: TrimmedNonEmptyStringSchema,
+  path: TrimmedNonEmptyStringSchema,
+});
+export type GitRevertUnstagedFileInput = typeof GitRevertUnstagedFileInput.Type;
+
 // RPC Results
 
 const GitStatusPr = Schema.Struct({
@@ -530,6 +538,15 @@ export const GitWorkingTreeDiffStatsResult = Schema.Struct({
   additions: NonNegativeInt,
   deletions: NonNegativeInt,
   fileCount: NonNegativeInt,
+  untrackedFiles: Schema.optional(
+    Schema.Array(
+      Schema.Struct({
+        path: TrimmedNonEmptyStringSchema,
+        insertions: NonNegativeInt,
+        deletions: NonNegativeInt,
+      }),
+    ),
+  ),
 });
 export type GitWorkingTreeDiffStatsResult = typeof GitWorkingTreeDiffStatsResult.Type;
 
@@ -541,6 +558,9 @@ export type GitStageFilesResult = typeof GitStageFilesResult.Type;
 
 export const GitUnstageFilesResult = GitStageFilesResult;
 export type GitUnstageFilesResult = GitStageFilesResult;
+
+export const GitRevertUnstagedFileResult = GitStageFilesResult;
+export type GitRevertUnstagedFileResult = GitStageFilesResult;
 
 export const GitListBranchesResult = Schema.Struct({
   branches: Schema.Array(GitBranch),

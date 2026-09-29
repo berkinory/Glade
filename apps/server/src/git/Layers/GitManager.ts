@@ -1435,7 +1435,12 @@ export const makeGitManager = Effect.gen(function* () {
         }
         return yield* gitCore.readDiffStats(input.cwd, "ref", compareRef);
       }
-      return yield* gitCore.readDiffStats(input.cwd, input.scope ?? "workingTree");
+      return yield* gitCore.readDiffStats(
+        input.cwd,
+        input.scope ?? "workingTree",
+        undefined,
+        input.includeUntrackedFiles,
+      );
     },
   );
 

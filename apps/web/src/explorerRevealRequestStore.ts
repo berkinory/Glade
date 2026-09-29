@@ -12,22 +12,28 @@ import { create } from "zustand";
 export interface ExplorerRevealRequest {
   /** Workspace-relative directory path to expand in the tree. */
   path: string;
+  /** Optional file to select and preview after revealing its parent directory. */
+  filePath?: string;
   /** Monotonic per thread so re-revealing the same path still fires the effect. */
   nonce: number;
 }
 
 interface ExplorerRevealRequestState {
   requestsByThreadId: Record<string, ExplorerRevealRequest>;
-  requestReveal: (threadId: ThreadId, path: string) => void;
+  requestReveal: (threadId: ThreadId, path: string, filePath?: string) => void;
 }
 
 export const useExplorerRevealRequestStore = create<ExplorerRevealRequestState>((set) => ({
   requestsByThreadId: {},
-  requestReveal: (threadId, path) => {
+  requestReveal: (threadId, path, filePath) => {
     set((state) => ({
       requestsByThreadId: {
         ...state.requestsByThreadId,
-        [threadId]: { path, nonce: (state.requestsByThreadId[threadId]?.nonce ?? 0) + 1 },
+        [threadId]: {
+          path,
+          ...(filePath ? { filePath } : {}),
+          nonce: (state.requestsByThreadId[threadId]?.nonce ?? 0) + 1,
+        },
       },
     }));
   },
@@ -35,6 +41,11 @@ export const useExplorerRevealRequestStore = create<ExplorerRevealRequestState>(
 
 export function requestExplorerReveal(threadId: ThreadId, path: string): void {
   useExplorerRevealRequestStore.getState().requestReveal(threadId, path);
+}
+
+export function requestExplorerFileReveal(threadId: ThreadId, filePath: string): void {
+  const parent = filePath.includes("/") ? filePath.slice(0, filePath.lastIndexOf("/")) : "";
+  useExplorerRevealRequestStore.getState().requestReveal(threadId, parent, filePath);
 }
 
 /**

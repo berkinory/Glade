@@ -48,7 +48,7 @@ import {
   WorkspaceFileOpenerContext,
   type WorkspaceFileOpener,
 } from "../../lib/workspaceFileOpener";
-import { requestExplorerReveal } from "../../explorerRevealRequestStore";
+import { requestExplorerFileReveal, requestExplorerReveal } from "../../explorerRevealRequestStore";
 import { selectRightDockState, useRightDockStore } from "../../rightDockStore";
 import { useTerminalStateStore } from "../../terminalStateStore";
 import {
@@ -935,6 +935,11 @@ export function SingleChatSurface(props: {
             <SourceControlDockPane
               threadId={props.threadId}
               workspaceRoot={workspaceRoot}
+              onOpenFile={(filePath) => {
+                requestImmediateDockHydration("explorer");
+                openPane(props.threadId, { kind: "explorer" });
+                requestExplorerFileReveal(props.threadId, filePath);
+              }}
               view={pane.sourceControlView}
               diffTurnId={pane.diffTurnId}
               diffFilePath={pane.diffFilePath}
