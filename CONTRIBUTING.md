@@ -20,6 +20,9 @@ bun install --frozen-lockfile
 bun run dev
 ```
 
+Run `bun run dev:stop` to stop all local Glade development processes. Add `--dry-run` to preview
+which process trees it would stop.
+
 Keep changes focused and preserve unrelated work. Follow the existing code
 conventions, update documentation when behavior changes, and include tests only
 when they protect important behavior that is not already covered.

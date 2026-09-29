@@ -1,5 +1,7 @@
 #!/usr/bin/env bun
 
+process.title = "glade-dev-runner";
+
 import { homedir } from "node:os";
 import { delimiter as pathDelimiter, join as pathJoin } from "node:path";
 

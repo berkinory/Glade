@@ -106,9 +106,12 @@ bun install --frozen-lockfile
 bun run dev
 ```
 
-`bun run dev` starts the desktop app with hot reload. To run an isolated desktop instance, use
+`bun run dev` builds the current backend, then starts the desktop app with backend and UI watchers.
+To run an isolated desktop instance, use
 `GLADE_DEV_INSTANCE=feature-xyz bun run dev`. For the browser and server development stack without
 the desktop shell, use `bun scripts/dev-runner.ts dev`.
+Run `bun run dev:stop` to stop every Glade development app, watcher, and server on this machine.
+Use `bun run dev:stop --dry-run` to list the process trees it would stop.
 
 For a production-style local server run, use `bun run build` followed by `bun run start`. The
 platform packaging commands are `bun run package:mac:arm64` and `bun run package:mac:x64` (architecture-specific macOS DMGs and update ZIPs),
