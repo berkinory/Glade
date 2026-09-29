@@ -2284,6 +2284,13 @@ export default function ChatView({
     (images: ComposerImageAttachment[]) => addComposerImagesToDraft(images),
     [addComposerImagesToDraft],
   );
+  const reportChatActionFailure = useCallback(
+    (error: unknown) => {
+      setThreadError(threadId, error instanceof Error ? error.message : "The action failed.");
+    },
+    [setThreadError, threadId],
+  );
+
   const setComposerImagePreparationError = useCallback(
     (error: string | null) => setThreadError(threadId, error),
     [setThreadError, threadId],
@@ -4031,7 +4038,9 @@ export default function ChatView({
       modelOptions={selectedProviderModelOptions}
       prompt={prompt}
       onPromptChange={setPromptFromTraits}
-      onProviderModelChange={onProviderModelSelect}
+      onProviderModelChange={(...args: Parameters<typeof onProviderModelSelect>) => {
+        void onProviderModelSelect(...args).catch(reportChatActionFailure);
+      }}
       onSelectionCommitted={scheduleComposerFocus}
       open={isComposerModelEffortPickerOpen}
       onOpenChange={handleComposerModelEffortPickerOpenChange}
@@ -4789,7 +4798,9 @@ export default function ChatView({
       >
         <form
           ref={composerFormRef}
-          onSubmit={onSend}
+          onSubmit={(...args: Parameters<typeof onSend>) => {
+            void onSend(...args).catch(reportChatActionFailure);
+          }}
           className="relative z-10 w-full overflow-visible"
           data-chat-composer-form="true"
           data-chat-pane-scope={paneScopeId}
@@ -4815,9 +4826,15 @@ export default function ChatView({
                   compact={workflowRunCardCompact}
                   onCompactChange={setWorkflowRunCardCompact}
                   onOpenThread={onNavigateToThread}
-                  onStop={onStopWorkflowRun}
-                  onPause={onPauseWorkflowRun}
-                  onResume={onResumeWorkflowRun}
+                  onStop={(...args: Parameters<typeof onStopWorkflowRun>) => {
+                    void onStopWorkflowRun(...args).catch(reportChatActionFailure);
+                  }}
+                  onPause={(...args: Parameters<typeof onPauseWorkflowRun>) => {
+                    void onPauseWorkflowRun(...args).catch(reportChatActionFailure);
+                  }}
+                  onResume={(...args: Parameters<typeof onResumeWorkflowRun>) => {
+                    void onResumeWorkflowRun(...args).catch(reportChatActionFailure);
+                  }}
                   onDismiss={onDismissWorkflowRun}
                   attachedToPrevious={
                     showComposerLiveChangesHeader || showComposerActiveTaskListCard
@@ -4830,9 +4847,15 @@ export default function ChatView({
                   compact={subagentStripCompact}
                   onCompactChange={setSubagentStripCompact}
                   onOpenThread={onNavigateToThread}
-                  onBackgroundItem={onBackgroundSubagentStripItem}
-                  onStopItem={onStopSubagentStripItem}
-                  onStopAll={onStopAllSubagentStripItems}
+                  onBackgroundItem={(...args: Parameters<typeof onBackgroundSubagentStripItem>) => {
+                    void onBackgroundSubagentStripItem(...args).catch(reportChatActionFailure);
+                  }}
+                  onStopItem={(...args: Parameters<typeof onStopSubagentStripItem>) => {
+                    void onStopSubagentStripItem(...args).catch(reportChatActionFailure);
+                  }}
+                  onStopAll={(...args: Parameters<typeof onStopAllSubagentStripItems>) => {
+                    void onStopAllSubagentStripItems(...args).catch(reportChatActionFailure);
+                  }}
                   attachedToPrevious={
                     showComposerLiveChangesHeader ||
                     showComposerActiveTaskListCard ||
@@ -4842,7 +4865,9 @@ export default function ChatView({
               ) : null}
               <ComposerQueuedHeader
                 queuedTurns={queuedComposerTurns}
-                onSteer={onSteerQueuedComposerTurn}
+                onSteer={(...args: Parameters<typeof onSteerQueuedComposerTurn>) => {
+                  void onSteerQueuedComposerTurn(...args).catch(reportChatActionFailure);
+                }}
                 onRemove={removeQueuedComposerTurn}
                 onEdit={onEditQueuedComposerTurn}
                 cwd={threadWorkspaceCwd ?? undefined}
@@ -5195,7 +5220,9 @@ export default function ChatView({
                       durationLabel: voiceRecordingDurationLabel,
                       waveformLevels: voiceWaveformLevels,
                       onCancel: cancelComposerVoiceRecording,
-                      onSubmit: submitComposerVoiceRecording,
+                      onSubmit: (...args: Parameters<typeof submitComposerVoiceRecording>) => {
+                        void submitComposerVoiceRecording(...args).catch(reportChatActionFailure);
+                      },
                       onToggle: toggleComposerVoiceRecording,
                     }}
                     pendingInput={
@@ -5219,7 +5246,11 @@ export default function ChatView({
                       showPlanFollowUp: showPlanFollowUpPrompt,
                       hasPrompt: prompt.trim().length > 0,
                       onInterrupt: onInterruptFromStopControl,
-                      onImplementInNewThread: onImplementPlanInNewThread,
+                      onImplementInNewThread: (
+                        ...args: Parameters<typeof onImplementPlanInNewThread>
+                      ) => {
+                        void onImplementPlanInNewThread(...args).catch(reportChatActionFailure);
+                      },
                     }}
                   />
                 )}
@@ -5372,7 +5403,9 @@ export default function ChatView({
           onToggleWarning={toggleAutomationWarning}
           onOpenChange={setAutomationDraftDialogOpen}
           onFormChange={updateAutomationDraftForm}
-          onSubmit={submitAutomationDraft}
+          onSubmit={(...args: Parameters<typeof submitAutomationDraft>) => {
+            void submitAutomationDraft(...args).catch(reportChatActionFailure);
+          }}
           busy={isAutomationDraftSubmitting}
         />
       ) : null}
@@ -5533,7 +5566,9 @@ export default function ChatView({
                     onOpenAutomation={onOpenAutomation}
                     computerControlEnabled={enableComputerControl}
                     onEnableComputerControl={handleEnableComputerControlFromDenial}
-                    onUndoTurnFiles={onUndoTurnFiles}
+                    onUndoTurnFiles={(...args: Parameters<typeof onUndoTurnFiles>) => {
+                      void onUndoTurnFiles(...args).catch(reportChatActionFailure);
+                    }}
                     onEditUserMessage={onEditUserMessage}
                     onRespondToAsyncUserInput={onRespondToAsyncUserInput}
                     editableUserMessageId={editableUserMessageId}

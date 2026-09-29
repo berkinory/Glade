@@ -29,14 +29,15 @@
     "build": "turbo run build",
     "build:desktop": "turbo run build --filter=@glade/desktop --filter=@glade/cli",
     "postinstall": "effect-tsgo patch --typescript --typescript-package @typescript/native",
-    "check": "oxfmt --check && oxlint --report-unused-disable-directives --deny-warnings && bun run check:architecture && effect-tsgo patch --typescript --typescript-package @typescript/native && turbo run typecheck",
+    "check": "oxfmt --check && oxlint --report-unused-disable-directives --deny-warnings && bun run check:typed-lint && bun run check:architecture && effect-tsgo patch --typescript --typescript-package @typescript/native && turbo run typecheck",
     "check:fix": "oxfmt && oxlint --fix --report-unused-disable-directives --deny-warnings && bun run check",
     "test": "turbo run test",
     "package:mac:arm64": "node scripts/build-desktop-artifact.ts --platform mac --target dmg --arch arm64",
     "package:mac:x64": "node scripts/build-desktop-artifact.ts --platform mac --target dmg --arch x64",
     "package:linux": "node scripts/build-desktop-artifact.ts --platform linux --target AppImage --arch x64",
     "package:win": "node scripts/build-desktop-artifact.ts --platform win --target nsis --arch x64",
-    "check:architecture": "bun scripts/checks/moduleBoundaries.ts && knip"
+    "check:architecture": "bun scripts/checks/moduleBoundaries.ts && knip",
+    "check:typed-lint": "oxlint --type-aware -A all -D typescript/no-floating-promises -D typescript/no-misused-promises -D typescript/await-thenable -D typescript/no-implied-eval --deny-warnings"
   },
   "devDependencies": {
     "@effect/language-service": "catalog:",
@@ -46,6 +47,7 @@
     "knip": "6.38.0",
     "oxfmt": "^0.40.0",
     "oxlint": "^1.55.0",
+    "oxlint-tsgolint": "7.0.2003",
     "turbo": "^2.9.14",
     "vitest": "catalog:"
   },

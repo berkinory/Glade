@@ -706,48 +706,51 @@ export function ProvidersSettingsPanel({
     async (provider: ProviderKind) => {
       if (updatingProviders.has(provider)) return;
       setUpdatingProviders((current) => new Set(current).add(provider));
-      await withProviderUpdateTimeout({
-        provider,
-        request: ensureNativeApi().server.updateProvider({ provider }),
-      })
-        .then((result) => {
-          const refreshedProvider = result.providers.find((status) => status.provider === provider);
-          const failureMessage = providerUpdateFailureMessage(refreshedProvider);
-          if (failureMessage) {
-            const manualCommand = refreshedProvider?.versionAdvisory?.updateCommand?.trim();
+      try {
+        await withProviderUpdateTimeout({
+          provider,
+          request: ensureNativeApi().server.updateProvider({ provider }),
+        })
+          .then((result) => {
+            const refreshedProvider = result.providers.find(
+              (status) => status.provider === provider,
+            );
+            const failureMessage = providerUpdateFailureMessage(refreshedProvider);
+            if (failureMessage) {
+              const manualCommand = refreshedProvider?.versionAdvisory?.updateCommand?.trim();
+              toastManager.add({
+                type: "error",
+                title: `Could not update ${PROVIDER_DISPLAY_NAMES[provider]}`,
+                description: manualCommand
+                  ? `${failureMessage}\n\nCopy the command below to update manually in a terminal.`
+                  : failureMessage,
+                ...(manualCommand ? { data: { copyText: manualCommand } } : {}),
+              });
+              return;
+            }
+            toastManager.add({
+              type: "success",
+              title: `${PROVIDER_DISPLAY_NAMES[provider]} update finished`,
+              description: "New sessions will use the refreshed provider.",
+            });
+          })
+          .catch((error: unknown) => {
             toastManager.add({
               type: "error",
               title: `Could not update ${PROVIDER_DISPLAY_NAMES[provider]}`,
-              description: manualCommand
-                ? `${failureMessage}\n\nCopy the command below to update manually in a terminal.`
-                : failureMessage,
-              ...(manualCommand ? { data: { copyText: manualCommand } } : {}),
+              description: error instanceof Error ? error.message : "The provider update failed.",
             });
-            return;
-          }
-          toastManager.add({
-            type: "success",
-            title: `${PROVIDER_DISPLAY_NAMES[provider]} update finished`,
-            description: "New sessions will use the refreshed provider.",
           });
-        })
-        .catch((error: unknown) => {
-          toastManager.add({
-            type: "error",
-            title: `Could not update ${PROVIDER_DISPLAY_NAMES[provider]}`,
-            description: error instanceof Error ? error.message : "The provider update failed.",
-          });
-        })
-        .finally(async () => {
-          await queryClient
-            .invalidateQueries({ queryKey: serverQueryKeys.config() })
-            .catch(() => undefined);
-          setUpdatingProviders((current) => {
-            const next = new Set(current);
-            next.delete(provider);
-            return next;
-          });
+      } finally {
+        await queryClient
+          .invalidateQueries({ queryKey: serverQueryKeys.config() })
+          .catch(() => undefined);
+        setUpdatingProviders((current) => {
+          const next = new Set(current);
+          next.delete(provider);
+          return next;
         });
+      }
     },
     [queryClient, updatingProviders],
   );

@@ -297,7 +297,7 @@ export function useChatKeyboardShortcuts({
           direction,
         });
         if (!nextSlug) return;
-        onProviderModelSelect(selectedProvider, nextSlug as ModelSlug);
+        void onProviderModelSelect(selectedProvider, nextSlug as ModelSlug);
         return;
       }
 
@@ -376,7 +376,7 @@ export function useChatKeyboardShortcuts({
         event.preventDefault();
         event.stopPropagation();
         if (!terminalState.terminalOpen) return;
-        closeTerminal(terminalState.activeTerminalId);
+        void closeTerminal(terminalState.activeTerminalId);
         return;
       }
 

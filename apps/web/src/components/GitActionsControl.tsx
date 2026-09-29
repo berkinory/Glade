@@ -657,7 +657,7 @@ export default function GitActionsControl({
 
   const runSyncWithRemote = useCallback(() => {
     const promise = pullMutation.mutateAsync();
-    toastManager.promise(promise, {
+    void toastManager.promise(promise, {
       loading: { title: "Syncing with remote...", data: threadToastData },
       success: (result) => ({
         title: result.status === "pulled" ? "Remote synced" : "Already up to date",

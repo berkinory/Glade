@@ -194,7 +194,7 @@ export function deletePersistedComposerImageBlobs(
   // Several product flows copy composer state before the destination is ever
   // mounted. Those drafts temporarily share the source blob key, so ownership
   // must be checked after the current store mutation has committed.
-  Promise.resolve().then(() => {
+  void Promise.resolve().then(() => {
     const draftsByThreadId = getDraftsByThreadId();
     for (const blobKey of candidateBlobKeys) {
       if (isComposerImageBlobReferenced(draftsByThreadId, blobKey)) continue;

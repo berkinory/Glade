@@ -1378,9 +1378,9 @@ lifecycleLayer("CodexAdapterLive lifecycle", (it) => {
   );
 });
 
-afterAll(() => {
+afterAll(async () => {
   if (lifecycleManager.stopAllImpl.mock.calls.length === 0) {
-    lifecycleManager.stopAll();
+    await lifecycleManager.stopAll();
   }
   assert.ok(lifecycleManager.stopAllImpl.mock.calls.length >= 1);
 });

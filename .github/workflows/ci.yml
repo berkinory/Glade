@@ -100,6 +100,9 @@ jobs:
       - name: Module boundaries and unused code
         run: bun run check:architecture
 
+      - name: Type-aware promise and runtime checks
+        run: bun run check:typed-lint
+
       - name: Typecheck
         run: |
           bunx effect-tsgo patch --typescript --typescript-package @typescript/native

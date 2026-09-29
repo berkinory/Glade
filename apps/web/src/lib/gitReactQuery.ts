@@ -373,7 +373,7 @@ function refreshGitQueriesForCwd(
   entry.promise = entry.availability.then(() =>
     entry.depth === "active-details" ? refreshActiveGitDetails(queryClient, cwd) : undefined,
   );
-  trackGitRefresh(queryClient, cwd, entry);
+  void trackGitRefresh(queryClient, cwd, entry);
   return depth === "availability" ? entry.availability : entry.promise;
 }
 

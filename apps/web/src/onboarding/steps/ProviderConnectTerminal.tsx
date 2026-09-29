@@ -96,7 +96,11 @@ export function ProviderConnectTerminal(props: {
         onNewTerminalTab={terminal.createTerminalTab}
         onMoveTerminalToGroup={terminal.moveTerminalToNewGroup}
         onActiveTerminalChange={terminal.activateTerminal}
-        onCloseTerminal={terminal.closeTerminal}
+        onCloseTerminal={(...args: Parameters<typeof terminal.closeTerminal>) => {
+          void terminal
+            .closeTerminal(...args)
+            .catch((error: unknown) => console.error("[terminal] Could not close terminal", error));
+        }}
         onTerminalSessionExited={terminal.handleTerminalSessionExited}
         onCloseTerminalGroup={terminal.closeTerminalGroup}
         onHeightChange={terminal.setTerminalHeight}

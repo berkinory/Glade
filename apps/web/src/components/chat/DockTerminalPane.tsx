@@ -129,7 +129,11 @@ function DockTerminalPane(props: {
       onNewTerminalTab={terminal.createTerminalTab}
       onMoveTerminalToGroup={terminal.moveTerminalToNewGroup}
       onActiveTerminalChange={terminal.activateTerminal}
-      onCloseTerminal={onCloseTerminal}
+      onCloseTerminal={(...args: Parameters<typeof onCloseTerminal>) => {
+        void onCloseTerminal(...args).catch((error: unknown) =>
+          console.error("[terminal] Could not close terminal", error),
+        );
+      }}
       onTerminalSessionExited={onSessionExited}
       onCloseTerminalGroup={terminal.closeTerminalGroup}
       onHeightChange={terminal.setTerminalHeight}

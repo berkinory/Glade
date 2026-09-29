@@ -133,25 +133,27 @@ export function useWorkspaceExplorerActions(
           <Button
             variant="destructive"
             size="sm"
-            onClick={async () => {
-              if (!cwd || !deleting || blockDirtyMutation()) return;
-              try {
-                await ensureNativeApi().projects.manageEntry({
-                  cwd,
-                  action: "delete",
-                  kind: deleting.kind,
-                  relativePath: deleting.path,
-                });
-                onDeleted?.(deleting.path);
-                setDeleting(null);
-                await queryClient.invalidateQueries({ queryKey: projectQueryKeys.all });
-              } catch (error) {
-                toastManager.add({
-                  type: "error",
-                  title: "Could not delete entry",
-                  description: error instanceof Error ? error.message : "Try again.",
-                });
-              }
+            onClick={() => {
+              void (async () => {
+                if (!cwd || !deleting || blockDirtyMutation()) return;
+                try {
+                  await ensureNativeApi().projects.manageEntry({
+                    cwd,
+                    action: "delete",
+                    kind: deleting.kind,
+                    relativePath: deleting.path,
+                  });
+                  onDeleted?.(deleting.path);
+                  setDeleting(null);
+                  await queryClient.invalidateQueries({ queryKey: projectQueryKeys.all });
+                } catch (error) {
+                  toastManager.add({
+                    type: "error",
+                    title: "Could not delete entry",
+                    description: error instanceof Error ? error.message : "Try again.",
+                  });
+                }
+              })();
             }}
           >
             Delete

@@ -101,7 +101,7 @@ export function useChatTranscriptScroll({
   const scrollToEnd = useCallback(
     (animated = false) => {
       programmaticScrollUntilRef.current = performance.now() + 200;
-      legendListRef.current?.scrollToEnd?.({ animated });
+      void legendListRef.current?.scrollToEnd?.({ animated });
     },
     [legendListRef],
   );

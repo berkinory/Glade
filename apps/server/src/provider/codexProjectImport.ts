@@ -103,13 +103,7 @@ async function findStateDatabase(sqliteHome: string): Promise<string | undefined
 
 async function openDatabase(dbPath: string): Promise<ReadonlyDatabase> {
   if (process.versions.bun !== undefined) {
-    // Keep Bun's runtime-only module out of the Node bundle.
-    const importRuntimeModule = Function("specifier", "return import(specifier)") as (
-      specifier: string,
-    ) => Promise<{
-      Database: new (file: string, options: { readonly: boolean }) => ReadonlyDatabase;
-    }>;
-    const { Database } = await importRuntimeModule("bun:sqlite");
+    const { Database } = await import("bun:sqlite");
     return new Database(dbPath, { readonly: true });
   }
   const { DatabaseSync } = await import("node:sqlite");

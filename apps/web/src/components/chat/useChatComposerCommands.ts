@@ -265,7 +265,7 @@ export function useChatComposerCommands({
         return;
       }
       if (item.type === "model") {
-        onProviderModelSelect(item.provider, item.model);
+        void onProviderModelSelect(item.provider, item.model);
         applyComposerTriggerReplacement({ snapshot, trigger, base: "" });
         return;
       }

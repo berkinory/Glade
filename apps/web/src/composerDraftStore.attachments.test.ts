@@ -168,7 +168,7 @@ describe("composerDraftStore prompt history saved draft", () => {
     resetComposerDraftStore();
   });
 
-  it("moves composer attachments into the prompt-history snapshot while browsing", () => {
+  it("moves composer attachments into the prompt-history snapshot while browsing", async () => {
     const store = useComposerDraftStore.getState();
     const image = makeImage({ id: "img-history", previewUrl: "blob:history" });
     const file = makeFile({ id: "file-history" });
@@ -183,7 +183,7 @@ describe("composerDraftStore prompt history saved draft", () => {
     store.setPrompt(threadId, "draft with attachments");
     store.addImage(threadId, image);
     store.addFiles(threadId, [file]);
-    store.syncPersistedAttachments(threadId, [persistedAttachment]);
+    await store.syncPersistedAttachments(threadId, [persistedAttachment]);
     const draftBeforeBrowse = useComposerDraftStore.getState().draftsByThreadId[threadId]!;
 
     useComposerDraftStore.getState().setPromptHistorySavedDraft(
@@ -321,7 +321,7 @@ describe("composerDraftStore prompt history saved draft", () => {
     expect(restoredDraft.mentions).toEqual([selectedMention]);
   });
 
-  it("persists and hydrates prompt-history snapshot images and structured context", () => {
+  it("persists and hydrates prompt-history snapshot images and structured context", async () => {
     const store = useComposerDraftStore.getState();
     const image = makeImage({ id: "img-persist-history", previewUrl: "blob:persist-history" });
     const persistedAttachment = {
@@ -346,7 +346,7 @@ describe("composerDraftStore prompt history saved draft", () => {
 
     store.setPrompt(threadId, "persist me before history");
     store.addImage(threadId, image);
-    store.syncPersistedAttachments(threadId, [persistedAttachment]);
+    await store.syncPersistedAttachments(threadId, [persistedAttachment]);
     store.addTerminalContext(threadId, terminalContext);
     store.addPastedTexts(threadId, [pastedText]);
     store.setSkills(threadId, [selectedSkill]);

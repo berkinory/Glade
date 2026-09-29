@@ -1596,18 +1596,19 @@ export class WsTransport {
 
   private stopChannelStream(channel: WsPushChannel): void {
     if (isServerLifecyclePushChannel(channel)) {
-      if (!this.shouldKeepLifecycleStream()) this.stopStream("server.lifecycle");
-    } else if (channel === WS_CHANNELS.serverConfigUpdated) this.stopStream("server.config");
+      if (!this.shouldKeepLifecycleStream()) void this.stopStream("server.lifecycle");
+    } else if (channel === WS_CHANNELS.serverConfigUpdated) void this.stopStream("server.config");
     else if (channel === WS_CHANNELS.serverProviderStatusesUpdated)
-      this.stopStream("server.providers");
-    else if (channel === WS_CHANNELS.serverSettingsUpdated) this.stopStream("server.settings");
-    else if (channel === WS_CHANNELS.terminalEvent) this.stopStream("terminal.events");
-    else if (channel === WS_CHANNELS.projectDevServerEvent) this.stopStream("project.devServers");
-    else if (channel === WS_CHANNELS.automationEvent) this.stopStream("automation.events");
-    else if (channel === DEVICE_WS_CHANNELS.event) this.stopStream("device.events");
-    else if (channel === COMPUTER_WS_CHANNELS.event) this.stopStream("computer.events");
+      void this.stopStream("server.providers");
+    else if (channel === WS_CHANNELS.serverSettingsUpdated) void this.stopStream("server.settings");
+    else if (channel === WS_CHANNELS.terminalEvent) void this.stopStream("terminal.events");
+    else if (channel === WS_CHANNELS.projectDevServerEvent)
+      void this.stopStream("project.devServers");
+    else if (channel === WS_CHANNELS.automationEvent) void this.stopStream("automation.events");
+    else if (channel === DEVICE_WS_CHANNELS.event) void this.stopStream("device.events");
+    else if (channel === COMPUTER_WS_CHANNELS.event) void this.stopStream("computer.events");
     else if (channel === ORCHESTRATION_WS_CHANNELS.domainEvent)
-      this.stopStream("orchestration.domain");
+      void this.stopStream("orchestration.domain");
   }
 
   private shouldKeepLifecycleStream(): boolean {

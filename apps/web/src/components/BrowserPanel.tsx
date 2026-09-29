@@ -1336,7 +1336,10 @@ function BrowserPanel({
         // A navigation or closing tab can invalidate a frame; retry without
         // disturbing the live page or surfacing a transient capture error.
       } finally {
-        if (!cancelled) timer = setTimeout(capture, 500);
+        if (!cancelled)
+          timer = setTimeout(() => {
+            void capture();
+          }, 500);
       }
     };
     void capture();

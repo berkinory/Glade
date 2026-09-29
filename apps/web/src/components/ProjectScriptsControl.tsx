@@ -357,7 +357,13 @@ export default function ProjectScriptsControl({
             </DialogDescription>
           </DialogHeader>
           <DialogPanel>
-            <form id={addScriptFormId} className="space-y-4" onSubmit={submitAddScript}>
+            <form
+              id={addScriptFormId}
+              className="space-y-4"
+              onSubmit={(...args: Parameters<typeof submitAddScript>) => {
+                void submitAddScript(...args);
+              }}
+            >
               <div className="space-y-1.5">
                 <Label htmlFor="script-name">Name</Label>
                 <div className="flex items-center gap-2">

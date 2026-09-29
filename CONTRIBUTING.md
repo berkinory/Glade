@@ -35,7 +35,11 @@ bun run check
 
 `check` rejects lint warnings, unused code reported by knip, source dependency
 violations and import cycles, including type-only cycles. `check:architecture`
-runs the dependency checks separately. Effect language-service diagnostics use the
+runs the dependency checks separately. `check:typed-lint` adds type-aware checks
+for floating/misused promises, invalid awaits and dynamic evaluation. This is a
+separate focused lane; the primary lint invocation enforces all configured
+syntax categories first. CI runs typed lint after installing every workspace.
+Effect language-service diagnostics use the
 shared base configuration in every package. Editor suggestions stay in the editor;
 compiler checks enforce the configured diagnostics. Only SDK transport boundaries
 that necessarily accept opaque errors may bypass a diagnostic, with a reason.

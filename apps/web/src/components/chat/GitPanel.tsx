@@ -409,46 +409,48 @@ export function GitPanel(props: {
               variant="destructive"
               size="sm"
               disabled={mutating}
-              onClick={async () => {
-                if (!cwd || !reverting) return;
-                if (hasUnsavedWorkspaceEditors(queryClient, cwd)) {
-                  toastManager.add({
-                    type: "warning",
-                    title: "Save open files before reverting changes.",
-                  });
-                  return;
-                }
-                let completed = 0;
-                try {
-                  for (const file of reverting) {
-                    await revertMutation.mutateAsync(file.path);
-                    completed += 1;
+              onClick={() => {
+                void (async () => {
+                  if (!cwd || !reverting) return;
+                  if (hasUnsavedWorkspaceEditors(queryClient, cwd)) {
+                    toastManager.add({
+                      type: "warning",
+                      title: "Save open files before reverting changes.",
+                    });
+                    return;
                   }
-                  if (reverting.some((file) => file.status === "U")) {
-                    await queryClient.invalidateQueries({ queryKey: projectQueryKeys.all });
-                  }
-                  setFileSelection(null);
-                  setReverting(null);
-                } catch (error) {
-                  if (completed > 0) {
-                    await queryClient.invalidateQueries({ queryKey: projectQueryKeys.all });
+                  let completed = 0;
+                  try {
+                    for (const file of reverting) {
+                      await revertMutation.mutateAsync(file.path);
+                      completed += 1;
+                    }
+                    if (reverting.some((file) => file.status === "U")) {
+                      await queryClient.invalidateQueries({ queryKey: projectQueryKeys.all });
+                    }
                     setFileSelection(null);
                     setReverting(null);
+                  } catch (error) {
+                    if (completed > 0) {
+                      await queryClient.invalidateQueries({ queryKey: projectQueryKeys.all });
+                      setFileSelection(null);
+                      setReverting(null);
+                    }
+                    toastManager.add({
+                      type: "error",
+                      title:
+                        error &&
+                        typeof error === "object" &&
+                        "message" in error &&
+                        typeof error.message === "string"
+                          ? error.message
+                          : "Could not revert file.",
+                      ...(completed > 0
+                        ? { description: `${completed} of ${reverting.length} files reverted.` }
+                        : {}),
+                    });
                   }
-                  toastManager.add({
-                    type: "error",
-                    title:
-                      error &&
-                      typeof error === "object" &&
-                      "message" in error &&
-                      typeof error.message === "string"
-                        ? error.message
-                        : "Could not revert file.",
-                    ...(completed > 0
-                      ? { description: `${completed} of ${reverting.length} files reverted.` }
-                      : {}),
-                  });
-                }
+                })();
               }}
             >
               Revert

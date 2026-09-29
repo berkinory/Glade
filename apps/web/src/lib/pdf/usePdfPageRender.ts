@@ -132,7 +132,7 @@ export function usePdfPageRender(input: {
             },
       );
 
-    (async () => {
+    void (async () => {
       try {
         const cachedPage = pageProxyRef.current;
         const page =

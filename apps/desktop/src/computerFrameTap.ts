@@ -118,9 +118,13 @@ export class ComputerFrameTap implements ComputerFrameTapHost {
   private reconcile(): Promise<void> {
     if (this.reconciling) return this.reconciling;
     const work = Promise.resolve().then(() => this.run());
-    const tracked = work.finally(() => {
+    const settle = () => {
       if (this.reconciling === tracked) this.reconciling = undefined;
       if (!this.failure && this.appliedRevision !== this.revision) return this.reconcile();
+    };
+    const tracked = work.then(settle, async (error: unknown) => {
+      await settle();
+      throw error;
     });
     this.reconciling = tracked;
     return tracked;

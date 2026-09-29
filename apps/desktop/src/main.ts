@@ -953,6 +953,11 @@ let downloadedUpdateArtifact: {
   readonly identity: UpdateArtifactIdentity;
 } | null = null;
 let downloadedUpdateIdentityTask: Promise<void> | null = null;
+
+// Download callbacks may replace the task while the caller awaits the transfer.
+function pendingDownloadedUpdateIdentity(): Promise<void> | null {
+  return downloadedUpdateIdentityTask;
+}
 let activeUpdateInstallHandoff: UpdateInstallHandoffExpectation | null = null;
 const pendingUpdateCacheClearQueue = new PendingUpdateCacheClearQueue();
 
@@ -3218,7 +3223,7 @@ async function downloadAvailableUpdate(): Promise<{
 
   try {
     await Promise.race([updaterDownloadPromise, downloadStalled]);
-    const identityTask = downloadedUpdateIdentityTask;
+    const identityTask = pendingDownloadedUpdateIdentity();
     if (identityTask) {
       await identityTask;
     }
