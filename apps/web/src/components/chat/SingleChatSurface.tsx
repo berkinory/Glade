@@ -69,10 +69,7 @@ import {
   CHAT_MAIN_VIEWPORT_SHELL_CLASS_NAME,
 } from "./composerPickerStyles";
 import { routeSingleDockPaneOpenRequest } from "./dockPaneOpenRequest";
-import {
-  selectFloatingBrowserRequested,
-  useFloatingBrowserRequestStore,
-} from "./floatingBrowserRequestStore";
+import { selectFloatingBrowserRequested, useBrowserStateStore } from "../../browserStateStore";
 import { pullRequestDetailInputFromPane } from "../pullRequest/pullRequestDetail.logic";
 import { usePullRequestPaneStateIcon } from "../pullRequest/usePullRequestPaneStateIcon";
 import { RouteInsetSurface } from "../RouteInsetSurface";
@@ -192,11 +189,11 @@ export function SingleChatSurface(props: {
   const lastAppliedRoutePanelSearchKeyRef = useRef<string | null>(null);
   const [searchPaletteOpen, setSearchPaletteOpen] = useState(false);
   const [searchPaletteMode, setSearchPaletteMode] = useState<WorkspaceSearchPaletteMode>("files");
-  const floatingBrowserRequested = useFloatingBrowserRequestStore(
+  const floatingBrowserRequested = useBrowserStateStore(
     useMemo(() => selectFloatingBrowserRequested(props.threadId), [props.threadId]),
   );
-  const requestFloatingBrowser = useFloatingBrowserRequestStore((store) => store.request);
-  const dismissFloatingBrowserForThread = useFloatingBrowserRequestStore((store) => store.dismiss);
+  const requestFloatingBrowser = useBrowserStateStore((store) => store.requestFloating);
+  const dismissFloatingBrowserForThread = useBrowserStateStore((store) => store.dismissFloating);
   const dismissFloatingBrowser = useCallback(() => {
     dismissFloatingBrowserForThread(props.threadId);
   }, [dismissFloatingBrowserForThread, props.threadId]);

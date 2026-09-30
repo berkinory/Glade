@@ -24,8 +24,11 @@ export interface BrowserHistoryEntry {
 interface BrowserStateStore {
   threadStatesByThreadId: Record<string, ThreadBrowserState | undefined>;
   recentHistoryByThreadId: Record<string, BrowserHistoryEntry[] | undefined>;
+  floatingRequestedByThreadId: Record<string, true | undefined>;
   upsertThreadState: (state: ThreadBrowserState) => void;
   removeThreadState: (threadId: ThreadId) => void;
+  requestFloating: (threadId: ThreadId) => void;
+  dismissFloating: (threadId: ThreadId) => void;
 }
 
 function normalizeHistoryUrl(url: string): string {
@@ -132,6 +135,25 @@ export const useBrowserStateStore = create<BrowserStateStore>()(
     (set) => ({
       threadStatesByThreadId: {},
       recentHistoryByThreadId: {},
+      floatingRequestedByThreadId: {},
+      requestFloating: (threadId) =>
+        set((current) =>
+          current.floatingRequestedByThreadId[threadId]
+            ? current
+            : {
+                floatingRequestedByThreadId: {
+                  ...current.floatingRequestedByThreadId,
+                  [threadId]: true,
+                },
+              },
+        ),
+      dismissFloating: (threadId) =>
+        set((current) => {
+          if (!current.floatingRequestedByThreadId[threadId]) return current;
+          const floatingRequestedByThreadId = { ...current.floatingRequestedByThreadId };
+          delete floatingRequestedByThreadId[threadId];
+          return { floatingRequestedByThreadId };
+        }),
       upsertThreadState: (state) =>
         set((current) => {
           const previousState = current.threadStatesByThreadId[state.threadId];
@@ -216,4 +238,10 @@ export function selectThreadBrowserHistory(
   threadId: ThreadId,
 ): (store: BrowserStateStore) => BrowserHistoryEntry[] {
   return (store) => store.recentHistoryByThreadId[threadId] ?? EMPTY_BROWSER_HISTORY;
+}
+
+export function selectFloatingBrowserRequested(
+  threadId: ThreadId,
+): (store: BrowserStateStore) => boolean {
+  return (store) => store.floatingRequestedByThreadId[threadId] === true;
 }

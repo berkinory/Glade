@@ -23,7 +23,7 @@ import {
 } from "./ChatThreadSurfacePrimitives";
 import { FloatingBrowserPanel } from "./FloatingBrowserPanel";
 import { shouldRenderFloatingBrowserPanel } from "./floatingBrowserPanel.logic";
-import { useFloatingBrowserRequestStore } from "./floatingBrowserRequestStore";
+import { useBrowserStateStore } from "../../browserStateStore";
 import { useBrowserPanelDesktopBridge } from "../../hooks/useBrowserPanelDesktopBridge";
 import { useHandleNewChat } from "../../hooks/useHandleNewChat";
 import type { ChatRightPanel } from "../../diffRouteSearch";
@@ -460,10 +460,10 @@ export function SplitChatSurface(props: { splitViewId: SplitViewId; routeThreadI
   const dropThreadOnPane = useSplitViewStore((store) => store.dropThreadOnPane);
   const removeSplitView = useSplitViewStore((store) => store.removeSplitView);
   const [threadPickerPaneId, setThreadPickerPaneId] = useState<PaneId | null>(null);
-  const requestFloatingBrowser = useFloatingBrowserRequestStore((store) => store.request);
-  const dismissFloatingBrowserForThread = useFloatingBrowserRequestStore((store) => store.dismiss);
-  const floatingBrowserRequestedByThreadId = useFloatingBrowserRequestStore(
-    (store) => store.requestedByThreadId,
+  const requestFloatingBrowser = useBrowserStateStore((store) => store.requestFloating);
+  const dismissFloatingBrowserForThread = useBrowserStateStore((store) => store.dismissFloating);
+  const floatingBrowserRequestedByThreadId = useBrowserStateStore(
+    (store) => store.floatingRequestedByThreadId,
   );
   const { splitView: activeSplitView, routePaneId } = resolveActiveSplitView({
     splitView,
