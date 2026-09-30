@@ -1,14 +1,15 @@
+import type { BrowserTabId } from "@glade/contracts/browser/automation/browserAutomationIds";
+import type { BrowserLogsInput } from "@glade/contracts/browser/automation/browserAutomationToolInputs";
 import type {
   BrowserConsoleLogEntry,
   BrowserLogEntry,
   BrowserLogsOutput,
   BrowserNetworkLogEntry,
 } from "@glade/contracts/browser/automation/browserAutomationToolOutputs";
-import type { BrowserLogsInput } from "@glade/contracts/browser/automation/browserAutomationToolInputs";
-import type { BrowserTabId } from "@glade/contracts/browser/automation/browserAutomationIds";
 import type { WebContents } from "electron";
 
-import type { BrowserAutomationVisibleRuntime } from "../browserManager";
+import type { BrowserAutomationVisibleRuntime } from "../browserTabState";
+
 import { sendCdpCommand, throwIfAborted } from "./cdpRuntime";
 
 const MAX_CAPTURED_ENTRIES = 1_000;

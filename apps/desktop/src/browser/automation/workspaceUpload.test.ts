@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import { mkdtemp, mkdir, readFile, realpath, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, realpath, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, isAbsolute, join, relative } from "node:path";
 
@@ -7,10 +7,11 @@ import type { BrowserCssSelector } from "@glade/contracts/browser/automation/bro
 import type { WebContents } from "electron";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { BrowserAutomationVisibleRuntime } from "../browserManager";
+import type { BrowserAutomationVisibleRuntime } from "../browserTabState";
+
 import { runBetterwright } from "./betterwrightRuntime";
-vi.mock("./betterwrightRuntime", () => ({ runBetterwright: vi.fn() }));
 import { createWorkspaceUpload } from "./workspaceUpload";
+vi.mock("./betterwrightRuntime", () => ({ runBetterwright: vi.fn() }));
 
 const temporaryDirectories: string[] = [];
 

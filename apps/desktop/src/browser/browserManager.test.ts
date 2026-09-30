@@ -148,7 +148,7 @@ const THREAD_ID = ThreadId.makeUnsafe("thread-1");
 function asCharacterizationAccess(
   manager: DesktopBrowserManager,
 ): BrowserManagerCharacterizationAccess {
-  return manager as unknown as BrowserManagerCharacterizationAccess;
+  return (manager as unknown as { hostRuntime: BrowserManagerCharacterizationAccess }).hostRuntime;
 }
 
 describe("DesktopBrowserManager repeated workflow characterization", () => {

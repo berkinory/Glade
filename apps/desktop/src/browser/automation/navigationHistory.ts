@@ -1,11 +1,12 @@
+import type { BrowserTabId } from "@glade/contracts/browser/automation/browserAutomationIds";
 import type {
   BrowserBackInput,
   BrowserReloadInput,
 } from "@glade/contracts/browser/automation/browserAutomationToolInputs";
 import type { BrowserNavigateOutput } from "@glade/contracts/browser/automation/browserAutomationToolOutputs";
-import type { BrowserTabId } from "@glade/contracts/browser/automation/browserAutomationIds";
 
-import type { BrowserAutomationVisibleRuntime } from "../browserManager";
+import type { BrowserAutomationVisibleRuntime } from "../browserTabState";
+
 import { abortReason, sendCdpCommand, throwIfAborted } from "./cdpRuntime";
 import { browserHostError } from "./hostErrors";
 import { getBrowserNavigationTracker, stopBrowserNavigation } from "./navigationTracker";

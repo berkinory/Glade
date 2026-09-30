@@ -86,8 +86,8 @@ jobs:
 
       - name: Run host IPC and diagnostic regressions
         run: |
-          bun run --cwd apps/desktop test src/computer/cua/cuaDriverHost.test.ts
-          bun run --cwd packages/shared test src/cuaActionDiagnostics.test.ts
+          bun run --cwd apps/desktop test src/computer/cua
+          bun run --cwd packages/shared test src/computer/cuaActionDiagnostics.test.ts
 
       - name: Run computer lifecycle and delivery regressions
         run: >-

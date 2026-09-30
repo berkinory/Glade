@@ -1,9 +1,9 @@
+import type { WebContents } from "electron";
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
-import type { WebContents } from "electron";
 import { WebSocketServer } from "ws";
+import type { BrowserAutomationVisibleRuntime } from "../browserTabState";
 import { BetterwrightCdpTarget } from "./betterwrightCdp";
-import type { BrowserAutomationVisibleRuntime } from "../browserManager";
 
 export async function openBetterwrightConnection(
   contents: WebContents,

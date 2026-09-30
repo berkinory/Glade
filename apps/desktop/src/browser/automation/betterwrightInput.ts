@@ -1,4 +1,5 @@
-import type { BrowserAutomationExpectedInput } from "../browserManager";
+import type { BrowserAutomationExpectedInput } from "../browserTabState";
+
 import { normalizedKeyEventKey } from "./betterwrightKeyboardPolicy";
 
 export function betterwrightExpectedInputs(

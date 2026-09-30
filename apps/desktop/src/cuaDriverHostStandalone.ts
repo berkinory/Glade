@@ -7,7 +7,9 @@ import { randomBytes } from "node:crypto";
 import { access, readFile, stat, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 
-import { CuaDriverHost, sweepOrphanedCuaDrivers } from "./computer/cua/cuaDriverHost";
+import { CuaDriverHost } from "./computer/cua/cuaDriverHost";
+import { sweepOrphanedCuaDrivers } from "./computer/cua/cuaHostPolicy";
+
 import { clearStaleCuaHostSocket } from "./computer/cua/cuaHostSocket";
 
 function option(name: string): string | undefined {

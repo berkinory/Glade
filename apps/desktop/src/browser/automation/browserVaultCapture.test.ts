@@ -1,13 +1,14 @@
-import { EventEmitter } from "node:events";
 import type { BrowserVaultSnapshot } from "@glade/contracts/browser/browserVault";
-import type { CaptureContextShim } from "./browserVaultCapture";
+import { EventEmitter } from "node:events";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { BrowserAutomationVisibleRuntime } from "../browserManager";
+import type { BrowserAutomationVisibleRuntime } from "../browserTabState";
+import type { CaptureContextShim } from "./browserVaultCapture";
+
 import type { BrowserVault } from "./browserVault";
+import { BrowserVaultCapture } from "./browserVaultCapture";
 
 const mocks = vi.hoisted(() => ({ install: vi.fn(), dispose: vi.fn() }));
 vi.mock("betterwright/capture", () => ({ installVaultCapture: mocks.install }));
-import { BrowserVaultCapture } from "./browserVaultCapture";
 
 beforeEach(() => {
   vi.clearAllMocks();

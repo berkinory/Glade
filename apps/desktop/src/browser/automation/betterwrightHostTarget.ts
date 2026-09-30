@@ -1,8 +1,8 @@
-import type { WebContents } from "electron";
 import type { BetterWrightOptions } from "betterwright";
+import type { WebContents } from "electron";
+import type { BrowserAutomationVisibleRuntime } from "../browserTabState";
 import { openBetterwrightConnection } from "./betterwrightConnection";
 import { getBetterwrightNetworkGuard } from "./betterwrightNetworkGuard";
-import type { BrowserAutomationVisibleRuntime } from "../browserManager";
 
 type HostTarget = NonNullable<BetterWrightOptions["hostTarget"]>;
 

@@ -1,6 +1,7 @@
-import type { BrowserRunOutput } from "@glade/contracts/browser/automation/browserAutomationToolOutputs";
 import type { BrowserTabId } from "@glade/contracts/browser/automation/browserAutomationIds";
-import type { BrowserAutomationVisibleRuntime } from "../browserManager";
+import type { BrowserRunOutput } from "@glade/contracts/browser/automation/browserAutomationToolOutputs";
+import type { BrowserAutomationVisibleRuntime } from "../browserTabState";
+
 import { browserHostError } from "./hostErrors";
 import { getBrowserNavigationTracker, type BrowserNavigationMark } from "./navigationTracker";
 

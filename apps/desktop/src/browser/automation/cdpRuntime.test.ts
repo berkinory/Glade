@@ -2,7 +2,8 @@ import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { WebContents } from "electron";
 import { describe, expect, it, vi } from "vitest";
 
-import type { BrowserAutomationVisibleRuntime } from "../browserManager";
+import type { BrowserAutomationVisibleRuntime } from "../browserTabState";
+
 import { callFunctionOn, drainOnAbort, evaluateInContext } from "./cdpRuntime";
 
 const runtimeWithFailure = (): BrowserAutomationVisibleRuntime => ({

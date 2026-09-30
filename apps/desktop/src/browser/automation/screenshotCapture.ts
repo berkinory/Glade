@@ -1,8 +1,9 @@
-import type { BrowserScreenshotHostOutput } from "@glade/contracts/browser/automation/browserAutomationToolOutputs";
-import type { BrowserScreenshotInput } from "@glade/contracts/browser/automation/browserAutomationToolInputs";
 import type { BrowserTabId } from "@glade/contracts/browser/automation/browserAutomationIds";
+import type { BrowserScreenshotInput } from "@glade/contracts/browser/automation/browserAutomationToolInputs";
+import type { BrowserScreenshotHostOutput } from "@glade/contracts/browser/automation/browserAutomationToolOutputs";
 
-import type { BrowserAutomationVisibleRuntime } from "../browserManager";
+import type { BrowserAutomationVisibleRuntime } from "../browserTabState";
+
 import { drainOnAbort, sendCdpCommand, throwIfAborted } from "./cdpRuntime";
 import { browserHostError } from "./hostErrors";
 

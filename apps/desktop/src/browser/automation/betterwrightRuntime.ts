@@ -1,8 +1,9 @@
-import { BetterWright, NetworkPolicy, type CredentialVault } from "betterwright";
 import { BrowserAutomationErrorMessages } from "@glade/contracts/browser/automation/browserAutomationErrors";
+import { BetterWright, NetworkPolicy, type CredentialVault } from "betterwright";
 import type { WebContents } from "electron";
+import type { BrowserAutomationVisibleRuntime } from "../browserTabState";
 import { gladeHostTarget } from "./betterwrightHostTarget";
-import type { BrowserAutomationVisibleRuntime } from "../browserManager";
+
 import { BrowserAutomationHostError } from "./hostErrors";
 
 const UNAVAILABLE_SCRIPT_API_ERRORS = new Set([

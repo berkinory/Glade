@@ -9,10 +9,9 @@ import * as Path from "node:path";
 import type { BrowserToolName } from "@glade/contracts/browser/automation/browserAutomationToolCatalogue";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 
-import {
-  DesktopBrowserAutomationHost,
-  type BrowserAutomationToolRequest,
-} from "./automation/desktopBrowserAutomationHost";
+import { type BrowserAutomationToolRequest } from "./automation/automationHostPolicy";
+import { DesktopBrowserAutomationHost } from "./automation/desktopBrowserAutomationHost";
+
 import { BrowserAutomationHostError } from "./automation/hostErrors";
 import type { DesktopBrowserManager } from "./browserManager";
 

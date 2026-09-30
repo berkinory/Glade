@@ -1,9 +1,10 @@
-import { randomUUID } from "node:crypto";
 import { webContents, type WebContents } from "electron";
-import type { BrowserAutomationVisibleRuntime } from "../browserManager";
+import { randomUUID } from "node:crypto";
+import type { BrowserAutomationVisibleRuntime } from "../browserTabState";
+
+import { withRendererGuestFocus } from "./betterwrightFocus";
 import { betterwrightExpectedInputs } from "./betterwrightInput";
 import { BetterwrightKeyboardPolicy } from "./betterwrightKeyboardPolicy";
-import { withRendererGuestFocus } from "./betterwrightFocus";
 
 type Params = Record<string, unknown>;
 let nativeInputQueue: Promise<unknown> = Promise.resolve();

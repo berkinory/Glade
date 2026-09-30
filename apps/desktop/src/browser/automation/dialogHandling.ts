@@ -1,6 +1,7 @@
 import type { WebContents } from "electron";
 
-import type { BrowserAutomationVisibleRuntime } from "../browserManager";
+import type { BrowserAutomationVisibleRuntime } from "../browserTabState";
+
 import {
   drainOnAbort,
   ensureCdpAttached,

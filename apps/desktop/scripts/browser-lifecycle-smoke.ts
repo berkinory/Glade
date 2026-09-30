@@ -11,7 +11,7 @@ import { WebSocketServer } from "ws";
 import { gladeHostTarget } from "../src/browser/automation/betterwrightHostTarget";
 import { BrowserVaultCapture } from "../src/browser/automation/browserVaultCapture";
 import type { BrowserVault } from "../src/browser/automation/browserVault";
-import type { BrowserAutomationVisibleRuntime } from "../src/browser/browserManager";
+import type { BrowserAutomationVisibleRuntime } from "../src/browser/browserTabState";
 
 configureElectronNetwork();
 const home = await mkdtemp(join(tmpdir(), "glade-browser-lifecycle-"));

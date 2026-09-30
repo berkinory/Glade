@@ -7,11 +7,12 @@ import type { BrowserUploadInput } from "@glade/contracts/browser/automation/bro
 import type { BrowserUploadOutput } from "@glade/contracts/browser/automation/browserAutomationToolOutputs";
 import type { WebContents } from "electron";
 
-import type { BrowserAutomationVisibleRuntime } from "../browserManager";
+import type { BrowserAutomationVisibleRuntime } from "../browserTabState";
+
+import { betterwrightLocator } from "./betterwrightLocator";
+import { runBetterwright } from "./betterwrightRuntime";
 import { throwIfAborted } from "./cdpRuntime";
 import { browserHostError } from "./hostErrors";
-import { runBetterwright } from "./betterwrightRuntime";
-import { betterwrightLocator } from "./betterwrightLocator";
 
 const MAX_UPLOAD_FILE_BYTES = 2_147_483_647;
 const DEFAULT_MAX_UPLOAD_INVOCATION_BYTES = 256 * 1024 * 1024;
