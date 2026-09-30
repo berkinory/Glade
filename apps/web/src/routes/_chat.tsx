@@ -37,7 +37,7 @@ import { useSpacesUiStore } from "../spacesUiStore";
 import { railItemShowsPanel } from "../appRail.logic";
 import { useRailShellStore } from "../railShellStore";
 import { selectThreadTerminalState, useTerminalStateStore } from "../terminalStateStore";
-import { useThreadSelectionStore } from "../threadSelectionStore";
+import { useSidebarStateStore } from "../sidebarStateStore";
 import { onServerMaintenanceUpdated } from "../wsNativeApi";
 import { useWorkspacePathsStore } from "../workspacePathsStore";
 import { useProviderStatusesForLocalConfig } from "~/hooks/useProviderStatusesForLocalConfig";
@@ -206,8 +206,8 @@ function ChatRouteGlobalShortcuts() {
   const navigate = useNavigate();
   const { toggleSidebar } = useSidebar();
   const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
-  const clearSelection = useThreadSelectionStore((state) => state.clearSelection);
-  const selectedThreadIdsSize = useThreadSelectionStore((state) => state.selectedThreadIds.size);
+  const clearSelection = useSidebarStateStore((state) => state.clearSelection);
+  const selectedThreadIdsSize = useSidebarStateStore((state) => state.selectedThreadIds.size);
   const terminalStateByThreadId = useTerminalStateStore((state) => state.terminalStateByThreadId);
   const {
     activeContextThreadId,

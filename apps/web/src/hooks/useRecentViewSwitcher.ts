@@ -6,7 +6,7 @@ import { useLocation, useNavigate, useParams, useSearch } from "@tanstack/react-
 import { useEffect, useRef, useState } from "react";
 
 import { useComposerDraftStore } from "../composerDraftStore";
-import { usePinnedThreadsStore } from "../pinnedThreadsStore";
+import { useSidebarStateStore } from "../sidebarStateStore";
 import {
   buildRecentViewDisplayEntries,
   deriveCurrentRecentView,
@@ -19,7 +19,6 @@ import {
   type RecentViewThreadDraftSummary,
 } from "../recentViews.logic";
 import { resolveRecentThreadSplitActivation } from "../recentViewActivation.logic";
-import { useRecentViewsStore } from "../recentViewsStore";
 import { collectLeaves } from "../splitView.logic";
 import { useSplitViewStore } from "../splitViewStore";
 import { useStore } from "../store";
@@ -57,11 +56,11 @@ export function useRecentViewSwitcher(input: UseRecentViewSwitcherInput) {
   const [recentSwitcherState, setRecentSwitcherState] = useState<RecentViewSwitcherState | null>(
     null,
   );
-  const recentViews = useRecentViewsStore((state) => state.recentViews);
-  const recordRecentView = useRecentViewsStore((state) => state.recordRecentView);
-  const pruneRecentViewsStore = useRecentViewsStore((state) => state.pruneRecentViews);
+  const recentViews = useSidebarStateStore((state) => state.recentViews);
+  const recordRecentView = useSidebarStateStore((state) => state.recordRecentView);
+  const pruneRecentViewsStore = useSidebarStateStore((state) => state.pruneRecentViews);
   const { prewarmThreadDetail, prewarmThreadDetails } = useThreadDetailPrewarm();
-  const persistedPinnedThreadIds = usePinnedThreadsStore((state) => state.pinnedThreadIds);
+  const persistedPinnedThreadIds = useSidebarStateStore((state) => state.pinnedThreadIds);
   const draftThreadsByThreadId = useComposerDraftStore((state) => state.draftThreadsByThreadId);
   const sidebarThreadSummaryById = useStore((state) => state.sidebarThreadSummaryById);
   const terminalStateByThreadId = useTerminalStateStore((state) => state.terminalStateByThreadId);

@@ -294,7 +294,7 @@ import {
   SidebarMenuSubItem,
   SidebarTrigger,
 } from "./ui/sidebar";
-import { useThreadSelectionStore } from "../threadSelectionStore";
+import { useSidebarStateStore } from "../sidebarStateStore";
 import {
   buildProjectThreadTree,
   derivePinnedProjectIdsForSidebar,
@@ -375,7 +375,6 @@ import {
   useSidebarProjectRunController,
 } from "../hooks/useSidebarProjectRunController";
 import { useSidebarThreadActions } from "../hooks/useSidebarThreadActions";
-import { usePinnedProjectsStore } from "../pinnedProjectsStore";
 import { reconcileOptimisticPinState } from "../pinning.logic";
 import { useThreadDetailPrewarm } from "../threadDetailPrewarm";
 import { hasThreadDetailResumeCursor } from "../threadDetailResumeCursors";
@@ -1098,10 +1097,10 @@ export default function Sidebar() {
   const openTerminalThreadPage = useTerminalStateStore((state) => state.openTerminalThreadPage);
   const clearProjectDraftThreads = useComposerDraftStore((store) => store.clearProjectDraftThreads);
   const draftThreadsByThreadId = useComposerDraftStore((store) => store.draftThreadsByThreadId);
-  const persistedPinnedProjectIds = usePinnedProjectsStore((store) => store.pinnedProjectIds);
-  const pinProjectLocally = usePinnedProjectsStore((store) => store.pinProject);
-  const unpinProject = usePinnedProjectsStore((store) => store.unpinProject);
-  const prunePinnedProjects = usePinnedProjectsStore((store) => store.prunePinnedProjects);
+  const persistedPinnedProjectIds = useSidebarStateStore((store) => store.pinnedProjectIds);
+  const pinProjectLocally = useSidebarStateStore((store) => store.pinProject);
+  const unpinProject = useSidebarStateStore((store) => store.unpinProject);
+  const prunePinnedProjects = useSidebarStateStore((store) => store.prunePinnedProjects);
   const homeDir = useWorkspacePathsStore((store) => store.homeDir);
   const chatWorkspaceRoot = useWorkspacePathsStore((store) => store.chatWorkspaceRoot);
   const navigate = useNavigate();
@@ -1349,12 +1348,12 @@ export default function Sidebar() {
   >(() => new Map());
 
   const lastDesktopUpdateErrorToastSignatureRef = useRef<string | null>(null);
-  const selectedThreadIds = useThreadSelectionStore((s) => s.selectedThreadIds);
-  const toggleThreadSelection = useThreadSelectionStore((s) => s.toggleThread);
-  const rangeSelectTo = useThreadSelectionStore((s) => s.rangeSelectTo);
-  const clearSelection = useThreadSelectionStore((s) => s.clearSelection);
-  const removeFromSelection = useThreadSelectionStore((s) => s.removeFromSelection);
-  const setSelectionAnchor = useThreadSelectionStore((s) => s.setAnchor);
+  const selectedThreadIds = useSidebarStateStore((s) => s.selectedThreadIds);
+  const toggleThreadSelection = useSidebarStateStore((s) => s.toggleThread);
+  const rangeSelectTo = useSidebarStateStore((s) => s.rangeSelectTo);
+  const clearSelection = useSidebarStateStore((s) => s.clearSelection);
+  const removeFromSelection = useSidebarStateStore((s) => s.removeFromSelection);
+  const setSelectionAnchor = useSidebarStateStore((s) => s.setAnchor);
 
   const routeActiveSidebarThreadId = routeThreadId;
   const activeSidebarThreadId = optimisticActiveThreadId ?? routeActiveSidebarThreadId;
@@ -1707,7 +1706,7 @@ export default function Sidebar() {
   const toggleProjectPinned = useCallback(
     (projectId: ProjectId) => {
       const optimisticPinned = optimisticPinnedStateByProjectIdRef.current.get(projectId);
-      const locallyPinned = usePinnedProjectsStore.getState().pinnedProjectIds.includes(projectId);
+      const locallyPinned = useSidebarStateStore.getState().pinnedProjectIds.includes(projectId);
       const serverPinned = projectByIdRef.current.get(projectId)?.isPinned === true;
       const isPinned = optimisticPinned ?? (locallyPinned || serverPinned);
       void setProjectPinned(projectId, !isPinned).catch((error) => {

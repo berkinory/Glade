@@ -31,7 +31,7 @@ import {
 } from "../lib/threadSettle";
 import { newCommandId, randomUUID } from "../lib/utils";
 import { readNativeApi } from "../nativeApi";
-import { usePinnedThreadsStore } from "../pinnedThreadsStore";
+import { useSidebarStateStore } from "../sidebarStateStore";
 import { reconcileOptimisticPinState } from "../pinning.logic";
 import {
   resolveSplitViewFocusedThreadId,
@@ -41,7 +41,6 @@ import {
 import { type SplitView } from "../splitViewModel";
 import { useStore } from "../store";
 import { getThreadFromState } from "../threadDerivation";
-import { useThreadSelectionStore } from "../threadSelectionStore";
 import type { Project, SidebarThreadSummary } from "../types";
 
 const ARCHIVE_UNDO_TOAST_DURATION_MS = 8000;
@@ -108,12 +107,12 @@ export function useSidebarThreadActions(input: {
   const clearProjectDraftThreadById = useComposerDraftStore(
     (store) => store.clearProjectDraftThreadById,
   );
-  const persistedPinnedThreadIds = usePinnedThreadsStore((store) => store.pinnedThreadIds);
-  const pinThreadLocally = usePinnedThreadsStore((store) => store.pinThread);
-  const unpinThread = usePinnedThreadsStore((store) => store.unpinThread);
-  const prunePinnedThreads = usePinnedThreadsStore((store) => store.prunePinnedThreads);
+  const persistedPinnedThreadIds = useSidebarStateStore((store) => store.pinnedThreadIds);
+  const pinThreadLocally = useSidebarStateStore((store) => store.pinThread);
+  const unpinThread = useSidebarStateStore((store) => store.unpinThread);
+  const prunePinnedThreads = useSidebarStateStore((store) => store.prunePinnedThreads);
   const removeThreadFromSplitViews = useSplitViewStore((store) => store.removeThreadFromSplitViews);
-  const removeFromSelection = useThreadSelectionStore((store) => store.removeFromSelection);
+  const removeFromSelection = useSidebarStateStore((store) => store.removeFromSelection);
 
   const archivePendingThreadIdsRef = useRef<Set<ThreadId>>(new Set());
   const archiveUndoPendingThreadIdsRef = useRef<Set<ThreadId>>(new Set());
