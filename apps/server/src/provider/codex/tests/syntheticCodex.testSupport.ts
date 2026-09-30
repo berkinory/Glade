@@ -2,6 +2,8 @@ import { vi } from "vitest";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
+import type { AgentGatewaySessionLease } from "../../../agentGateway/sessionLease";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { CodexAppServerManager } from "../codexAppServerManager";
 
 type SyntheticCodexRequest = {
@@ -15,10 +17,13 @@ export function createSyntheticCodexAppServer(options?: {
 }) {
   const historySentinel = "SYNTHETIC_PRIVATE_HISTORY_SENTINEL";
   const requests: SyntheticCodexRequest[] = [];
+  const responses: { readonly id: string | number; readonly result: unknown }[] = [];
   const children: ChildProcessWithoutNullStreams[] = [];
+  const launches: { env: NodeJS.ProcessEnv; argv: readonly string[] }[] = [];
   let oversizedResponseCount = 0;
   let nextPid = 50_000;
   let nextTurn = 1;
+  let nextThread = 1;
 
   const threadOpenResponse = (request: SyntheticCodexRequest, providerThreadId: string) => {
     const cwd = String(request.params?.cwd ?? process.cwd());
@@ -62,7 +67,11 @@ export function createSyntheticCodexAppServer(options?: {
     );
   };
 
-  const spawnAppServer = (): ChildProcessWithoutNullStreams => {
+  const spawnAppServer = (input?: {
+    readonly env: NodeJS.ProcessEnv;
+    readonly argv?: readonly string[];
+  }): ChildProcessWithoutNullStreams => {
+    if (input) launches.push({ env: { ...input.env }, argv: input.argv ?? [] });
     const stdin = new PassThrough();
     const stdout = new PassThrough();
     const stderr = new PassThrough();
@@ -87,6 +96,10 @@ export function createSyntheticCodexAppServer(options?: {
         bufferedInput = bufferedInput.slice(newline + 1);
         if (!line) continue;
         const request = JSON.parse(line) as SyntheticCodexRequest;
+        if (request.method === undefined) {
+          responses.push(JSON.parse(line));
+          continue;
+        }
         requests.push(request);
         if (request.id === undefined) {
           if (request.method !== "initialized") {
@@ -119,7 +132,16 @@ export function createSyntheticCodexAppServer(options?: {
             respond(result);
           }
         } else if (request.method === "thread/start") {
-          respond(threadOpenResponse(request, "fresh-provider-thread"));
+          respond(
+            threadOpenResponse(
+              request,
+              nextThread++ === 1
+                ? "fresh-provider-thread"
+                : `fresh-provider-thread-${nextThread - 1}`,
+            ),
+          );
+        } else if (request.method === "thread/unsubscribe" || request.method === "turn/interrupt") {
+          respond({});
         } else if (request.method === "turn/start") {
           respond({
             turn: { id: `synthetic-turn-${nextTurn++}`, items: [], status: "inProgress" },
@@ -135,8 +157,10 @@ export function createSyntheticCodexAppServer(options?: {
 
   return {
     children,
+    launches,
     historySentinel,
     requests,
+    responses,
     spawnAppServer,
     get oversizedResponseCount() {
       return oversizedResponseCount;
@@ -144,13 +168,23 @@ export function createSyntheticCodexAppServer(options?: {
   };
 }
 
-export function createSyntheticCodexManager(fake: {
-  readonly spawnAppServer: () => ChildProcessWithoutNullStreams;
-}) {
+export function createSyntheticCodexManager(
+  fake: {
+    readonly spawnAppServer: (input?: {
+      readonly env: NodeJS.ProcessEnv;
+      readonly argv?: readonly string[];
+    }) => ChildProcessWithoutNullStreams;
+  },
+  agentGatewayMcp?: {
+    readonly endpointUrl: () => string;
+    readonly acquireSessionLease: (threadId: ThreadId) => AgentGatewaySessionLease;
+  },
+) {
   const teardownProcessTree = vi.fn(async () => ({ escalated: false, signalErrors: [] }));
   const manager = new CodexAppServerManager(undefined, {
     spawnAppServer: fake.spawnAppServer,
     teardownProcessTree,
+    ...(agentGatewayMcp ? { agentGatewayMcp } : {}),
   });
   const internals = manager as unknown as {
     assertSupportedCodexCliVersion: () => Promise<void>;

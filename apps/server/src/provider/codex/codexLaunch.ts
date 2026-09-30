@@ -75,7 +75,7 @@ export async function buildCodexAppServerArgs(input: {
   if (endpoint.protocol !== "http:" && endpoint.protocol !== "https:") {
     throw new Error("Glade gateway endpoint must use HTTP.");
   }
-  const server = `{url=${JSON.stringify(endpoint.toString())},bearer_token_env_var=${JSON.stringify(GLADE_AGENT_GATEWAY_TOKEN_ENV)}}`;
+  const server = `{url=${JSON.stringify(endpoint.toString())}}`;
   return [
     "-c",
     `mcp_servers.${GLADE_MCP_SERVER_NAME}=${server}`,
@@ -83,4 +83,26 @@ export async function buildCodexAppServerArgs(input: {
     `shell_environment_policy.exclude=${JSON.stringify([...excluded].toSorted())}`,
     "app-server",
   ];
+}
+
+export type CodexThreadGatewayConfig = Readonly<
+  Record<
+    string,
+    {
+      readonly url: string;
+      readonly http_headers: { readonly Authorization: string };
+    }
+  >
+>;
+
+export function buildCodexThreadGatewayConfig(connection: {
+  readonly url: string;
+  readonly bearerToken: string;
+}): CodexThreadGatewayConfig {
+  return {
+    [`mcp_servers.${GLADE_MCP_SERVER_NAME}`]: {
+      url: connection.url,
+      http_headers: { Authorization: `Bearer ${connection.bearerToken}` },
+    },
+  };
 }

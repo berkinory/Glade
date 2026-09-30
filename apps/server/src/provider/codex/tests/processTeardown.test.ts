@@ -3,11 +3,9 @@ import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { CodexAppServerManager } from "../codexAppServerManager";
-import {
-  CodexAppServerTransportError,
-  CodexJsonlFramer,
-  CodexJsonlWriter,
-} from "../codexAppServerTransport";
+import { CodexAppServerTransportError } from "../codexAppServerTransport";
+import type { ChildProcessWithoutNullStreams } from "node:child_process";
+import type { CodexProcessPool } from "../processPool/codexProcessPool";
 import {
   AGENT_GATEWAY_NO_CAPABILITIES,
   acquireAgentGatewaySessionLease,
@@ -26,7 +24,19 @@ class FakeCodexChild extends EventEmitter {
   }
 }
 
-function createTeardownContext(threadId: ThreadId, child: FakeCodexChild) {
+async function createTeardownContext(
+  threadId: ThreadId,
+  child: FakeCodexChild,
+  manager: CodexAppServerManager,
+) {
+  const processLease = await (
+    manager as unknown as { processPool: CodexProcessPool }
+  ).processPool.acquire({
+    binaryPath: "codex",
+    cwd: "/repo",
+    env: {},
+    argv: ["app-server"],
+  });
   return {
     session: {
       provider: "codex",
@@ -39,25 +49,27 @@ function createTeardownContext(threadId: ThreadId, child: FakeCodexChild) {
     },
     account: { type: "unknown", planType: null, sparkEnabled: true },
     child,
-    stdoutFramer: new CodexJsonlFramer(),
-    stdinWriter: new CodexJsonlWriter(child.stdin),
+    processLease,
+    stdinWriter: processLease.writer,
     pending: new Map(),
     pendingApprovals: new Map(),
     pendingUserInputs: new Map(),
     collabReceiverTurns: new Map(),
     collabReceiverParents: new Map(),
     reviewTurnIds: new Set(),
-    nextRequestId: 1,
     stopping: false,
   };
 }
 
 describe("Codex app-server teardown", () => {
-  it("keeps a live process routable when only the last turn status is error", () => {
+  it("keeps a live process routable when only the last turn status is error", async () => {
     const child = new FakeCodexChild(5050);
-    const manager = new CodexAppServerManager();
+    const manager = new CodexAppServerManager(undefined, {
+      spawnAppServer: () => child as unknown as ChildProcessWithoutNullStreams,
+      teardownProcessTree: async () => ({ escalated: false, signalErrors: [] }),
+    });
     const threadId = ThreadId.makeUnsafe("thread-codex-failed-turn");
-    const context = createTeardownContext(threadId, child);
+    const context = await createTeardownContext(threadId, child, manager);
     context.session.status = "error";
     context.session.lastError = "Turn failed";
     const internals = manager as unknown as {
@@ -90,7 +102,10 @@ describe("Codex app-server teardown", () => {
         return { escalated: false as const, signalErrors: [] };
       },
     );
-    const manager = new CodexAppServerManager(undefined, { teardownProcessTree });
+    const manager = new CodexAppServerManager(undefined, {
+      teardownProcessTree,
+      spawnAppServer: () => child as unknown as ChildProcessWithoutNullStreams,
+    });
     const threadId = ThreadId.makeUnsafe("thread-codex-exit-proof");
     const revokeSessionToken = vi.fn();
     const gatewaySessionLease = acquireAgentGatewaySessionLease(
@@ -105,7 +120,10 @@ describe("Codex app-server teardown", () => {
       "codex",
       AGENT_GATEWAY_NO_CAPABILITIES,
     );
-    const context = { ...createTeardownContext(threadId, child), gatewaySessionLease };
+    const context = {
+      ...(await createTeardownContext(threadId, child, manager)),
+      gatewaySessionLease,
+    };
     (
       manager as unknown as {
         sessions: Map<ThreadId, unknown>;
@@ -113,7 +131,7 @@ describe("Codex app-server teardown", () => {
     ).sessions.set(threadId, context);
 
     const stopping = manager.stopSession(threadId);
-    await Promise.resolve();
+    await vi.waitFor(() => expect(teardownProcessTree).toHaveBeenCalledTimes(1));
     expect(revokeSessionToken).toHaveBeenCalledOnce();
     expect(teardownProcessTree).toHaveBeenCalledTimes(1);
 
@@ -135,7 +153,10 @@ describe("Codex app-server teardown", () => {
       signalErrors: [],
       capturedBeforeRootExit: false,
     }));
-    const manager = new CodexAppServerManager(undefined, { teardownProcessTree });
+    const manager = new CodexAppServerManager(undefined, {
+      teardownProcessTree,
+      spawnAppServer: () => child as unknown as ChildProcessWithoutNullStreams,
+    });
     const threadId = ThreadId.makeUnsafe("thread-codex-spontaneous-exit");
     const revokeSessionToken = vi.fn();
     const gatewaySessionLease = acquireAgentGatewaySessionLease(
@@ -150,7 +171,10 @@ describe("Codex app-server teardown", () => {
       "codex",
       AGENT_GATEWAY_NO_CAPABILITIES,
     );
-    const context = { ...createTeardownContext(threadId, child), gatewaySessionLease };
+    const context = {
+      ...(await createTeardownContext(threadId, child, manager)),
+      gatewaySessionLease,
+    };
     const internals = manager as unknown as {
       sessions: Map<ThreadId, unknown>;
       attachProcessListeners: (context: unknown) => void;
@@ -218,7 +242,11 @@ describe("CodexAppServerManager discovery", () => {
 describe("CodexAppServerManager process teardown", () => {
   it("preserves the first transport failure and its pending operation through teardown", async () => {
     const teardownProcessTree = vi.fn(async () => ({ escalated: false, signalErrors: [] }));
-    const manager = new CodexAppServerManager(undefined, { teardownProcessTree });
+    const child = new FakeCodexChild(42_426);
+    const manager = new CodexAppServerManager(undefined, {
+      teardownProcessTree,
+      spawnAppServer: () => child as unknown as ChildProcessWithoutNullStreams,
+    });
     const threadId = ThreadId.makeUnsafe("thread-transport-root-cause");
     const rejected = vi.fn();
     const writerClose = vi.fn();
@@ -231,6 +259,7 @@ describe("CodexAppServerManager process teardown", () => {
       });
     });
     const context = {
+      ...(await createTeardownContext(threadId, child, manager)),
       session: {
         provider: "codex",
         status: "connecting",
@@ -240,13 +269,7 @@ describe("CodexAppServerManager process teardown", () => {
         updatedAt: "2026-09-08T08:03:37.000Z",
       },
       account: { type: "unknown", planType: null, sparkEnabled: true },
-      child: {
-        pid: 42_426,
-        exitCode: null,
-        signalCode: null,
-        once: vi.fn(),
-        removeListener: vi.fn(),
-      },
+      child,
       stdinWriter: { close: writerClose },
       pending: new Map([
         [
@@ -324,7 +347,11 @@ describe("CodexAppServerManager process teardown", () => {
       await exitProof;
       return { escalated: false, signalErrors: [] };
     });
-    const manager = new CodexAppServerManager(undefined, { teardownProcessTree });
+    const child = new FakeCodexChild(42_424);
+    const manager = new CodexAppServerManager(undefined, {
+      teardownProcessTree,
+      spawnAppServer: () => child as unknown as ChildProcessWithoutNullStreams,
+    });
     const threadId = ThreadId.makeUnsafe("thread-stop-proof");
     const closedEvents: string[] = [];
     manager.on("event", (event) => {
@@ -333,6 +360,7 @@ describe("CodexAppServerManager process teardown", () => {
       }
     });
     const context = {
+      ...(await createTeardownContext(threadId, child, manager)),
       session: {
         provider: "codex",
         status: "ready",
@@ -344,20 +372,13 @@ describe("CodexAppServerManager process teardown", () => {
         updatedAt: "2026-02-10T00:00:00.000Z",
       },
       account: { type: "unknown", planType: null, sparkEnabled: true },
-      child: {
-        pid: 42_424,
-        exitCode: null,
-        signalCode: null,
-        once: vi.fn(),
-        removeListener: vi.fn(),
-      },
+      child,
       pending: new Map(),
       pendingApprovals: new Map(),
       pendingUserInputs: new Map(),
       collabReceiverTurns: new Map(),
       collabReceiverParents: new Map(),
       reviewTurnIds: new Set(),
-      nextRequestId: 1,
       stopping: false,
     };
     (
@@ -369,7 +390,7 @@ describe("CodexAppServerManager process teardown", () => {
     const firstStop = manager.stopSession(threadId);
     const concurrentStop = manager.stopSession(threadId);
 
-    expect(teardownProcessTree).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(teardownProcessTree).toHaveBeenCalledTimes(1));
 
     expect(closedEvents).toEqual(["session/closed"]);
     expect(manager.hasSession(threadId)).toBe(false);
@@ -398,7 +419,11 @@ describe("CodexAppServerManager process teardown", () => {
         escalated: true,
         signalErrors: [],
       });
-    const manager = new CodexAppServerManager(undefined, { teardownProcessTree });
+    const child = new FakeCodexChild(42_425);
+    const manager = new CodexAppServerManager(undefined, {
+      teardownProcessTree,
+      spawnAppServer: () => child as unknown as ChildProcessWithoutNullStreams,
+    });
     const threadId = ThreadId.makeUnsafe("thread-stop-proof-retry");
     const closedEvents: string[] = [];
     manager.on("event", (event) => {
@@ -407,6 +432,7 @@ describe("CodexAppServerManager process teardown", () => {
       }
     });
     const context = {
+      ...(await createTeardownContext(threadId, child, manager)),
       session: {
         provider: "codex",
         status: "ready",
@@ -417,20 +443,13 @@ describe("CodexAppServerManager process teardown", () => {
         updatedAt: "2026-02-10T00:00:00.000Z",
       },
       account: { type: "unknown", planType: null, sparkEnabled: true },
-      child: {
-        pid: 42_425,
-        exitCode: null,
-        signalCode: null,
-        once: vi.fn(),
-        removeListener: vi.fn(),
-      },
+      child,
       pending: new Map(),
       pendingApprovals: new Map(),
       pendingUserInputs: new Map(),
       collabReceiverTurns: new Map(),
       collabReceiverParents: new Map(),
       reviewTurnIds: new Set(),
-      nextRequestId: 1,
       stopping: false,
     };
     (

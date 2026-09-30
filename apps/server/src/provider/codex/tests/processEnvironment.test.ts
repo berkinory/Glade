@@ -21,9 +21,7 @@ describe("Codex launch environment", () => {
       expect(args).toContain(
         'shell_environment_policy.exclude=["AWS_*","GLADE_AGENT_GATEWAY_TOKEN"]',
       );
-      expect(args).toContain(
-        'mcp_servers.glade={url="http://127.0.0.1:48123/mcp",bearer_token_env_var="GLADE_AGENT_GATEWAY_TOKEN"}',
-      );
+      expect(args).toContain('mcp_servers.glade={url="http://127.0.0.1:48123/mcp"}');
       expect(args).not.toContain("secret-token");
     } finally {
       rmSync(homePath, { recursive: true, force: true });

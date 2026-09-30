@@ -85,7 +85,13 @@ import {
 import { CodexSessionStartError } from "./codexErrorClassification.ts";
 import { buildCodexProcessEnv } from "./codexProcessEnv.ts";
 import { codexExtraSkillsRoots } from "./codexSkillsRoots.ts";
-import { buildCodexAppServerArgs } from "./codexLaunch.ts";
+import { CodexProcessPool } from "./processPool/codexProcessPool";
+import type { CodexProcessLease } from "./processPool/codexPooledProcess";
+import {
+  buildCodexThreadGatewayConfig,
+  type CodexThreadGatewayConfig,
+  buildCodexAppServerArgs,
+} from "./codexLaunch.ts";
 import { resolveCodexServiceTier } from "./codexServiceTier.ts";
 import {
   teardownChildProcessTree,
@@ -99,8 +105,6 @@ import { createLogger } from "../../diagnostics/logger";
 import { transcribeVoiceWithChatGptSession } from "../../voice/voiceTranscription.ts";
 import {
   CodexAppServerTransportError,
-  CodexJsonlFramer,
-  CodexJsonlWriter,
   type CodexAppServerTransportErrorReason,
 } from "./codexAppServerTransport.ts";
 import {
@@ -236,8 +240,8 @@ interface CodexSessionContext {
   lifecycleGeneration?: string;
   account: CodexAccountSnapshot;
   child: ChildProcessWithoutNullStreams;
-  stdoutFramer: CodexJsonlFramer;
-  stdinWriter: CodexJsonlWriter;
+  stdinWriter: CodexProcessLease["writer"];
+  processLease: CodexProcessLease;
   detachStdout?: () => void;
   pending: Map<PendingRequestKey, PendingRequest>;
   rpcRequests?: JsonRpcStdioRequestRegistry;
@@ -253,14 +257,13 @@ interface CodexSessionContext {
         readonly timeout: ReturnType<typeof setTimeout>;
       }
     | undefined;
-  nextRequestId: number;
   stopping: boolean;
   readonly sessionAttemptId: string;
   terminalFailure?: SessionTerminalCause;
   transportError?: Error;
   stopPromise?: Promise<void>;
   teardownError?: Error;
-  teardownCapturedBeforeExit?: boolean;
+  teardownAllowsRestart?: boolean;
   compacting?: boolean;
   discovery?: boolean;
   discoveryKey?: string;
@@ -552,6 +555,7 @@ function mapCodexRuntimeMode(runtimeMode: RuntimeMode): {
 
 interface CodexThreadSessionOverrides {
   readonly developerInstructions?: string;
+  readonly config?: CodexThreadGatewayConfig;
   readonly model: string | null;
   readonly serviceTier?: string;
   readonly cwd: string;
@@ -908,7 +912,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         ) => AgentGatewaySessionLease;
       }
     | undefined;
-  private readonly spawnAppServer: typeof spawnCodexAppServer;
+  private readonly processPool: CodexProcessPool;
   private readonly teardownProcessTree: typeof teardownProviderProcessTree;
   private readonly taskCompleteFallbackGraceMs: number;
   private readonly discoverySessionIdleMs: number;
@@ -933,8 +937,11 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     this.runPromise = services ? Effect.runPromiseWith(services) : Effect.runPromise;
     this.gladeSkillsDir = options?.gladeSkillsDir;
     this.agentGatewayMcp = options?.agentGatewayMcp;
-    this.spawnAppServer = options?.spawnAppServer ?? spawnCodexAppServer;
     this.teardownProcessTree = options?.teardownProcessTree ?? teardownProviderProcessTree;
+    this.processPool = new CodexProcessPool({
+      spawn: options?.spawnAppServer ?? spawnCodexAppServer,
+      teardown: (child) => teardownChildProcessTree(child, this.teardownProcessTree),
+    });
     this.taskCompleteFallbackGraceMs = Math.max(0, options?.taskCompleteFallbackGraceMs ?? 750);
     this.discoverySessionIdleMs = Math.max(
       0,
@@ -942,17 +949,20 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     );
   }
 
-  private async buildSessionProcessEnv(
-    homePath: string | undefined,
-    gatewayBearerToken: string | undefined,
-  ) {
+  private async buildSessionProcessEnv(homePath: string | undefined) {
     const env = await buildCodexProcessEnv({
       ...(homePath ? { homePath } : {}),
     });
-    if (gatewayBearerToken) {
-      env[GLADE_AGENT_GATEWAY_TOKEN_ENV] = gatewayBearerToken;
-    }
+    delete env[GLADE_AGENT_GATEWAY_TOKEN_ENV];
     return env;
+  }
+
+  private initializeProcess(context: CodexSessionContext): Promise<void> {
+    return context.processLease.initialize(async () => {
+      await this.sendRequest(context, "initialize", buildCodexInitializeParams());
+      await this.writeMessage(context, { method: "initialized" });
+      await this.registerGladeSkillsRoot(context);
+    });
   }
 
   private async registerGladeSkillsRoot(context: CodexSessionContext): Promise<void> {
@@ -972,7 +982,10 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     }
   }
 
-  async startSession(input: CodexAppServerStartSessionInput): Promise<ProviderSession> {
+  async startSession(
+    input: CodexAppServerStartSessionInput,
+    signal?: AbortSignal,
+  ): Promise<ProviderSession> {
     if (input.agentGatewayCapabilityInput === undefined) {
       throw new Error(
         "Codex session start requires an explicit agentGatewayCapabilityInput. Pass AGENT_GATEWAY_NO_CAPABILITIES when the session leases no gateway capabilities.",
@@ -985,6 +998,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     let previousSessionStopped = false;
 
     try {
+      signal?.throwIfAborted();
       const existing = this.sessions.get(threadId);
       if (existing) {
         await this.stopSession(threadId);
@@ -1018,21 +1032,28 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         ...input.agentGatewayCapabilityInput,
         nativeToolCallScope: true,
       });
-      const processEnv = await this.buildSessionProcessEnv(
-        codexHomePath,
-        gatewaySessionLease?.connection.bearerToken,
-      );
+      const processEnv = await this.buildSessionProcessEnv(codexHomePath);
       const argv = await buildCodexAppServerArgs({
         cwd: resolvedCwd,
         env: processEnv,
         ...(this.agentGatewayMcp ? { gatewayEndpointUrl: this.agentGatewayMcp.endpointUrl() } : {}),
       });
-      const child = this.spawnAppServer({
-        binaryPath: codexBinaryPath,
-        cwd: resolvedCwd,
-        env: processEnv,
-        argv,
-      });
+      signal?.throwIfAborted();
+      const processLease = await this.processPool.acquire(
+        {
+          binaryPath: codexBinaryPath,
+          cwd: resolvedCwd,
+          env: processEnv,
+          argv,
+          skillsRoots: codexExtraSkillsRoots({
+            cwd: resolvedCwd,
+            gladeSkillsDir: this.gladeSkillsDir,
+          }),
+        },
+        false,
+        signal,
+      );
+      const child = processLease.child;
 
       context = {
         enableComputerControl:
@@ -1049,28 +1070,26 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
           sparkEnabled: true,
         },
         child,
-        stdoutFramer: new CodexJsonlFramer(),
-        stdinWriter: new CodexJsonlWriter(child.stdin),
+        stdinWriter: processLease.writer,
+        processLease,
         pending: new Map(),
         pendingApprovals: new Map(),
         pendingUserInputs: new Map(),
         collabReceiverTurns: new Map(),
         collabReceiverParents: new Map(),
         reviewTurnIds: new Set(),
-        nextRequestId: 1,
         stopping: false,
         sessionAttemptId: randomUUID(),
       };
 
       this.sessions.set(threadId, context);
       this.attachProcessListeners(context);
+      signal?.throwIfAborted();
 
       this.emitLifecycleEvent(context, "session/connecting", "Starting codex app-server");
 
-      await this.sendRequest(context, "initialize", buildCodexInitializeParams());
-
-      await this.writeMessage(context, { method: "initialized" });
-      await this.registerGladeSkillsRoot(context);
+      await this.initializeProcess(context);
+      signal?.throwIfAborted();
       // Model discovery is lazy and cached by ProviderDiscoveryService. Keeping model/list out of this
       // serial cold-start path avoids an otherwise unused request with its own 20-second deadline.
       try {
@@ -1089,6 +1108,9 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
 
       const normalizedModel = normalizeCodexModelSlug(input.model);
       const sessionOverrides = {
+        ...(gatewaySessionLease
+          ? { config: buildCodexThreadGatewayConfig(gatewaySessionLease.connection) }
+          : {}),
         developerInstructions: buildCodexDeveloperInstructions({
           gatewayControlAvailable: gatewaySessionLease !== undefined,
           enableComputerControl: context.enableComputerControl === true,
@@ -1207,6 +1229,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         );
       }
 
+      signal?.throwIfAborted();
       const threadOpenRecord = this.readObject(threadOpenResponse);
       const threadIdRaw =
         this.readString(this.readObject(threadOpenRecord, "thread"), "id") ??
@@ -1269,7 +1292,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       }
 
       const rejectionError =
-        previousSessionStopped && (!context || context.teardownCapturedBeforeExit === true)
+        previousSessionStopped && (!context || context.teardownAllowsRestart === true)
           ? new CodexSessionStartError(message, { cause })
           : new Error(message, { cause });
       throw rejectionError;
@@ -1899,22 +1922,28 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         nativeToolCallScope: true,
         enableComputerControl: input.enableComputerControl === true,
       });
-      const processEnv = await this.buildSessionProcessEnv(
-        codexHomePath,
-        gatewaySessionLease?.connection.bearerToken,
-      );
+      const processEnv = await this.buildSessionProcessEnv(codexHomePath);
       const argv = await buildCodexAppServerArgs({
         cwd: resolvedCwd,
         env: processEnv,
         ...(this.agentGatewayMcp ? { gatewayEndpointUrl: this.agentGatewayMcp.endpointUrl() } : {}),
       });
       signal?.throwIfAborted();
-      const child = this.spawnAppServer({
-        binaryPath: codexBinaryPath,
-        cwd: resolvedCwd,
-        env: processEnv,
-        argv,
-      });
+      const processLease = await this.processPool.acquire(
+        {
+          binaryPath: codexBinaryPath,
+          cwd: resolvedCwd,
+          env: processEnv,
+          argv,
+          skillsRoots: codexExtraSkillsRoots({
+            cwd: resolvedCwd,
+            gladeSkillsDir: this.gladeSkillsDir,
+          }),
+        },
+        false,
+        signal,
+      );
+      const child = processLease.child;
 
       context = {
         ...(gatewaySessionLease ? { gatewaySessionLease } : {}),
@@ -1928,15 +1957,14 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
           sparkEnabled: true,
         },
         child,
-        stdoutFramer: new CodexJsonlFramer(),
-        stdinWriter: new CodexJsonlWriter(child.stdin),
+        stdinWriter: processLease.writer,
+        processLease,
         pending: new Map(),
         pendingApprovals: new Map(),
         pendingUserInputs: new Map(),
         collabReceiverTurns: new Map(),
         collabReceiverParents: new Map(),
         reviewTurnIds: new Set(),
-        nextRequestId: 1,
         stopping: false,
         sessionAttemptId: randomUUID(),
       };
@@ -1945,9 +1973,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       this.attachProcessListeners(context);
       this.emitLifecycleEvent(context, "session/connecting", "Starting codex app-server");
 
-      await this.sendRequest(context, "initialize", buildCodexInitializeParams());
-      await this.writeMessage(context, { method: "initialized" });
-      await this.registerGladeSkillsRoot(context);
+      await this.initializeProcess(context);
       try {
         const accountReadResponse = await this.sendRequest(context, "account/read", {});
         context.account = readCodexAccountSnapshot(accountReadResponse);
@@ -1983,6 +2009,9 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         lastTurnId ??= lastTurn?.id;
       }
       const forkParams = {
+        ...(gatewaySessionLease
+          ? { config: buildCodexThreadGatewayConfig(gatewaySessionLease.connection) }
+          : {}),
         threadId: sourceProviderThreadId,
         excludeTurns: true,
         deferGoalContinuation: true,
@@ -2389,13 +2418,37 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
 
   private async teardownContextProcess(context: CodexSessionContext): Promise<void> {
     try {
-      const result = await teardownChildProcessTree(context.child, this.teardownProcessTree);
-      context.teardownCapturedBeforeExit = result.capturedBeforeRootExit === true;
+      context.detachStdout?.();
+      const result = await context.processLease.release();
+      context.teardownAllowsRestart = result.retained || result.capturedBeforeRootExit === true;
     } catch (cause) {
       const detail = cause instanceof Error ? cause.message : String(cause);
       throw new Error(
         `Failed to prove Codex app-server process-tree exit for '${context.session.threadId}': ${detail}`,
         { cause },
+      );
+    }
+  }
+
+  private async stopNativeThread(context: CodexSessionContext): Promise<void> {
+    const threadId = readResumeCursorThreadId(context.session.resumeCursor);
+    if (!threadId || context.child.exitCode !== null || context.transportError) return;
+    try {
+      if (context.session.activeTurnId) {
+        await this.sendRequest(
+          context,
+          "turn/interrupt",
+          { threadId, turnId: context.session.activeTurnId },
+          5_000,
+        ).catch((cause: unknown) => {
+          if (!this.isTurnAlreadyIdleError(cause)) throw cause;
+        });
+      }
+      await this.sendRequest(context, "thread/unsubscribe", { threadId }, 5_000);
+    } catch (cause) {
+      // An unconfirmed cancellation must not leave background commands running in the shared process.
+      context.processLease.invalidate(
+        cause instanceof Error ? cause : new Error("Codex thread shutdown failed", { cause }),
       );
     }
   }
@@ -2435,14 +2488,12 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       if (this.hasPendingHumanRequests(context)) {
         settleBeforeTeardown = withCodexPendingSettleDeadline(
           this.settlePendingHumanRequests(context, "session stopped"),
-        ).finally(() => {
-          context.stdinWriter?.close(stopError);
-        });
-      } else {
-        context.stdinWriter?.close(stopError);
+        );
       }
-
-      context.detachStdout?.();
+      const settleHumans = settleBeforeTeardown ?? Promise.resolve();
+      settleBeforeTeardown = Promise.all([settleHumans, this.stopNativeThread(context)])
+        .then(() => undefined)
+        .finally(() => context.stdinWriter.close(stopError));
 
       // Otherwise a failed proof could let startSession spawn a second provider process for the same
       // thread.
@@ -3120,13 +3171,27 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       cwd: normalizedCwd,
       ...(providerOptions?.codex?.homePath ? { homePath: providerOptions.codex.homePath } : {}),
     });
-    const child = this.spawnAppServer({
-      binaryPath: providerOptions?.codex?.binaryPath ?? "codex",
+    const processEnv = await this.buildSessionProcessEnv(providerOptions?.codex?.homePath);
+    const argv = await buildCodexAppServerArgs({
       cwd: normalizedCwd,
-      env: await buildCodexProcessEnv(
-        providerOptions?.codex?.homePath ? { homePath: providerOptions.codex.homePath } : {},
-      ),
+      env: processEnv,
+      ...(this.agentGatewayMcp ? { gatewayEndpointUrl: this.agentGatewayMcp.endpointUrl() } : {}),
     });
+    const processLease = await this.processPool.acquire(
+      {
+        binaryPath: providerOptions?.codex?.binaryPath ?? "codex",
+        cwd: normalizedCwd,
+        env: processEnv,
+        argv,
+        skillsRoots: codexExtraSkillsRoots({
+          cwd: normalizedCwd,
+          gladeSkillsDir: this.gladeSkillsDir,
+        }),
+      },
+      true,
+    );
+    const child = processLease.child;
+
     const context: CodexSessionContext = {
       session: {
         provider: "codex",
@@ -3144,15 +3209,14 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         sparkEnabled: true,
       },
       child,
-      stdoutFramer: new CodexJsonlFramer(),
-      stdinWriter: new CodexJsonlWriter(child.stdin),
+      stdinWriter: processLease.writer,
+      processLease,
       pending: new Map(),
       pendingApprovals: new Map(),
       pendingUserInputs: new Map(),
       collabReceiverTurns: new Map(),
       collabReceiverParents: new Map(),
       reviewTurnIds: new Set(),
-      nextRequestId: 1,
       stopping: false,
       sessionAttemptId: randomUUID(),
       discovery: true,
@@ -3162,9 +3226,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     this.discoverySessions.set(discoveryKey, context);
     this.attachProcessListeners(context);
     try {
-      await this.sendRequest(context, "initialize", buildCodexInitializeParams());
-      await this.writeMessage(context, { method: "initialized" });
-      await this.registerGladeSkillsRoot(context);
+      await this.initializeProcess(context);
       try {
         const accountReadResponse = await this.sendRequest(context, "account/read", {});
         context.account = readCodexAccountSnapshot(accountReadResponse);
@@ -3263,86 +3325,46 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
 
   private attachProcessListeners(context: CodexSessionContext): void {
     this.requestRegistry(context).processStarted();
-    const onStdoutData = (chunk: Buffer) => {
-      if (context.stopping) return;
-      try {
-        for (const line of context.stdoutFramer.push(chunk)) {
-          this.handleStdoutLine(context, line);
-        }
-      } catch (cause) {
-        this.handleTransportFailure(context, cause);
-      }
-    };
-    const onStdoutEnd = () => {
-      if (context.stopping) return;
-      try {
-        context.stdoutFramer.finish();
-        this.handleTransportFailure(
-          context,
-          new CodexAppServerTransportError({
-            reason: "read-closed",
-            maxBytes: context.stdoutFramer.maxFrameBytes,
-            observedBytes: 0,
-          }),
-        );
-      } catch (cause) {
-        this.handleTransportFailure(context, cause);
-      }
-    };
-    context.child.stdout.on("data", onStdoutData);
-    context.child.stdout.once("end", onStdoutEnd);
-    context.detachStdout = () => {
-      context.child.stdout.off("data", onStdoutData);
-      context.child.stdout.off("end", onStdoutEnd);
-      context.stdoutFramer.close();
-      delete context.detachStdout;
-    };
-
     const stderrFramer = new JsonRpcStdioFramer(1024 * 1024, (error) => {
       log.warn("codex stderr line discarded", { reason: error.reason });
     });
-    const onStderrData = (chunk: Buffer) => {
-      if (context.stopping) {
-        return;
-      }
-      const lines = stderrFramer.push(chunk);
-      for (const rawLine of lines) {
-        const classified = classifyCodexStderrLine(rawLine);
-        if (!classified) {
-          continue;
+    const unsubscribe = context.processLease.subscribe({
+      line: (line) => {
+        try {
+          this.handleStdoutLine(context, line);
+        } catch (cause) {
+          context.processLease.invalidate(
+            cause instanceof Error ? cause : new Error("Codex protocol failed", { cause }),
+          );
         }
-
-        this.emitErrorEvent(context, "process/stderr", classified.message);
-      }
-    };
-    context.child.stderr.on("data", onStderrData);
-    context.child.stderr.once("end", () => {
-      if (stderrFramer.bufferedBytes > 0) onStderrData(Buffer.from("\n"));
+      },
+      stderr: (chunk) => {
+        if (context.stopping) return;
+        for (const line of stderrFramer.push(chunk)) {
+          const classified = classifyCodexStderrLine(line);
+          if (classified) this.emitErrorEvent(context, "process/stderr", classified.message);
+        }
+      },
+      failure: (error) => this.handleTransportFailure(context, error),
+      exit: (code, signal) => {
+        if (context.stopping) return;
+        const message = `codex app-server exited (code=${code ?? "null"}, signal=${signal ?? "null"}).`;
+        this.requestRegistry(context).processExited(new Error(message));
+        void this.settlePendingHumanRequests(context, "session exited");
+        this.updateSession(context, {
+          status: "closed",
+          activeTurnId: undefined,
+          lastError: code === 0 ? context.session.lastError : message,
+        });
+        this.emitLifecycleEvent(context, "session/exited", message);
+        this.stopFailedContext(context);
+      },
+    });
+    context.detachStdout = () => {
+      unsubscribe();
       stderrFramer.close();
-    });
-
-    context.child.on("error", (error) => this.handleTransportFailure(context, error));
-
-    context.child.on("exit", (code, signal) => {
-      if (context.stopping) {
-        return;
-      }
-
-      const message = `codex app-server exited (code=${code ?? "null"}, signal=${signal ?? "null"}).`;
-      const exitError = new Error(message);
-      context.stdinWriter.close(exitError);
-      this.requestRegistry(context).processExited(exitError);
-
-      void this.settlePendingHumanRequests(context, "session exited");
-      this.updateSession(context, {
-        status: "closed",
-        activeTurnId: undefined,
-        lastError: code === 0 ? context.session.lastError : message,
-      });
-      this.emitLifecycleEvent(context, "session/exited", message);
-
-      this.stopFailedContext(context);
-    });
+      delete context.detachStdout;
+    };
   }
 
   private handleTransportFailure(context: CodexSessionContext, cause: unknown): void {
@@ -3383,7 +3405,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
 
   private stopFailedContext(context: CodexSessionContext): void {
     const stopping = context.discovery
-      ? this.stopDiscoverySession(context.session.cwd ?? "")
+      ? this.stopDiscoverySession(context.discoveryKey ?? context.session.cwd ?? "")
       : this.stopSession(context.session.threadId);
     void stopping.catch((stopError) => {
       log.error("failed to stop Codex session after process or transport failure", {
@@ -3412,6 +3434,8 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       logIgnoredCodexStdout(rawLine, line, "valid JSON without a JSON-RPC envelope");
       return;
     }
+
+    if (context.stopping && !this.isResponse(parsed)) return;
 
     if (this.isServerRequest(parsed)) {
       if (decodeCodexServerRequest(parsed) === "unknown") {
@@ -3988,8 +4012,29 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     params: unknown,
     timeoutMs = 20_000,
   ): Promise<TResponse> {
-    const id = context.nextRequestId;
-    context.nextRequestId += 1;
+    const opensThread =
+      method === "thread/start" || method === "thread/resume" || method === "thread/fork";
+    if (opensThread) {
+      if (method === "thread/resume") {
+        const threadId = this.readString(params, "threadId");
+        if (threadId) context.processLease.bindThread(threadId);
+      }
+      return context.processLease.openThread(async () => {
+        const response = await this.sendProcessRequest(context, method, params, timeoutMs);
+        context.processLease.bindThread(this.readThreadIdFromResponse(method, response));
+        return response as TResponse;
+      });
+    }
+    return this.sendProcessRequest(context, method, params, timeoutMs);
+  }
+
+  private async sendProcessRequest<TResponse>(
+    context: CodexSessionContext,
+    method: string,
+    params: unknown,
+    timeoutMs: number,
+  ): Promise<TResponse> {
+    const id = context.processLease.allocateRequest();
 
     const result = await this.requestRegistry(context)
       .requestWithId(
@@ -4000,6 +4045,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         timeoutMs,
       )
       .finally(() => {
+        context.processLease.finishRequest(id);
         this.restartDiscoverySessionIdleTimer(context);
       });
 

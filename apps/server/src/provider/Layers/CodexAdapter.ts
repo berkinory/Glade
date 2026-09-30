@@ -2061,7 +2061,7 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
       };
 
       return Effect.tryPromise({
-        try: () => manager.startSession(managerInput),
+        try: (signal) => manager.startSession(managerInput, signal),
         catch: (cause) =>
           new ProviderAdapterProcessError({
             provider: PROVIDER,

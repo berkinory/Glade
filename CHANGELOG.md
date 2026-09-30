@@ -25,6 +25,8 @@
 
 ### Improved
 
+- Codex chats share one background process and use less memory.
+
 - Terminals open faster and load image support only when needed.
 
 - Streaming replies write far less to disk.
