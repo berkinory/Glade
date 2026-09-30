@@ -1,401 +1,112 @@
-import { asRecord } from "@glade/shared/transport/payloadValues";
+import {
+  Effect,
+  PubSub,
+  Scope,
+  Exit,
+  Cause,
+  Option,
+  Schema,
+  Duration,
+  Deferred,
+  Stream,
+  Layer,
+} from "effect";
+import { makeEventNdjsonLogger } from "./EventNdjsonLogger.ts";
+import { ProviderAdapterRegistry } from "../Services/ProviderAdapterRegistry.ts";
+import {
+  ProviderSessionDirectory,
+  type ProviderSessionDirectoryWriteError,
+  type ProviderRuntimeBinding,
+} from "../Services/ProviderSessionDirectory.ts";
+import { type ProviderKind, ThreadId, TurnId, EventId } from "@glade/contracts/core/baseSchemas";
+import { ProviderValidationError, type ProviderAdapterError } from "../core/Errors.ts";
+import { makeProviderLifecycleCoordinator } from "../core/providerLifecycleCoordinator.ts";
+import { type ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
+import {
+  type PersistedProviderRuntimeEvent,
+  ProviderRuntimeEventRepository,
+} from "../../persistence/Services/ProviderRuntimeEvents.ts";
 import type { TaggedFailure } from "../../platform/operationError.ts";
-
 import {
-  EventId,
-  TrimmedNonEmptyString,
-  NonNegativeInt,
-  ThreadId,
-  TurnId,
-  type ProviderKind,
-} from "@glade/contracts/core/baseSchemas";
-import {
-  ProviderCompactThreadInput,
+  type ProviderSession,
+  ProviderSessionStartInput,
   ProviderForkThreadInput,
+  ProviderSendTurnInput,
+  ProviderSteerTurnInput,
+  ProviderStartReviewInput,
   ProviderInterruptTurnInput,
   ProviderStopTaskInput,
   ProviderBackgroundTaskInput,
   ProviderSteerSubagentInput,
   ProviderRespondToRequestInput,
   ProviderRespondToUserInputInput,
-  ProviderSendTurnInput,
-  ProviderStartReviewInput,
-  ProviderSteerTurnInput,
-  ProviderSessionStartInput,
   ProviderStopSessionInput,
-  type ProviderSession,
+  ProviderCompactThreadInput,
 } from "@glade/contracts/provider/provider";
-import {
-  ModelSelection,
-  RuntimeMode,
-  ProviderStartOptions,
-} from "@glade/contracts/provider/sessionPolicy";
-import { type ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
-import {
-  providerSupportsAutoRuntimeMode,
-  unsupportedAutoRuntimeModeMessage,
-} from "@glade/shared/threads/runtimeMode";
-import { createHash, randomUUID } from "node:crypto";
-import {
-  Cause,
-  Deferred,
-  Duration,
-  Effect,
-  Exit,
-  Layer,
-  Option,
-  PubSub,
-  Schema,
-  SchemaIssue,
-  Scope,
-  Stream,
-} from "effect";
-import { nonEmptyTrimmed } from "@glade/shared/text/text";
-import { computerApprovalGate } from "../../computer/ComputerApprovalGate.ts";
-
-import { type ProviderAdapterError, ProviderValidationError } from "../core/Errors.ts";
-import type { ProviderAdapterShape } from "../Services/ProviderAdapter.ts";
-import { ProviderAdapterRegistry } from "../Services/ProviderAdapterRegistry.ts";
-import { ProviderService, type ProviderServiceShape } from "../Services/ProviderService.ts";
-import {
-  ProviderSessionDirectory,
-  type ProviderRuntimeBinding,
-  type ProviderSessionDirectoryWriteError,
-} from "../Services/ProviderSessionDirectory.ts";
-import { type EventNdjsonLogger, makeEventNdjsonLogger } from "./EventNdjsonLogger.ts";
-import { PersistenceDecodeError } from "../../persistence/Errors.ts";
-import {
-  ProviderRuntimeEventRepository,
-  type PersistedProviderRuntimeEvent,
-} from "../../persistence/Services/ProviderRuntimeEvents.ts";
-import {
-  classifyTerminalTurnApplicability,
-  isStartedTurnApplicable,
-} from "../core/terminalTurnApplicability.ts";
-import { makeProviderLifecycleCoordinator } from "../core/providerLifecycleCoordinator.ts";
 import { makeKeyedLock } from "../core/keyedLock.ts";
-import { carryProviderAttachmentPaths } from "../core/providerAttachmentPaths.ts";
 import {
-  observeProviderStartup,
-  ProviderStartupLifecycle,
-  startupPhaseDurations,
-} from "../core/providerStartupLifecycle.ts";
-import { settleConcurrentTeardowns } from "../core/settleConcurrentTeardowns.ts";
+  isStartedTurnApplicable,
+  classifyTerminalTurnApplicability,
+} from "../core/terminalTurnApplicability.ts";
+import { AGENT_GATEWAY_CREDENTIAL_ROTATION_REQUIRED } from "../../agentGateway/sessionLease.ts";
 import {
   makeProviderRuntimeEventPumpHealthRegistry,
   runProviderRuntimeEventPump,
 } from "../core/providerRuntimeEventPump.ts";
+import { asRecord } from "@glade/shared/transport/payloadValues";
+import { PersistenceDecodeError } from "../../persistence/Errors.ts";
+import { type ProviderServiceShape, ProviderService } from "../Services/ProviderService.ts";
+import type { ProviderAdapterShape } from "../Services/ProviderAdapter.ts";
 import {
-  AGENT_GATEWAY_CREDENTIAL_ROTATION_REQUIRED,
-  AGENT_GATEWAY_TURN_AUTHORITY_RETIRED,
-} from "../../agentGateway/sessionLease.ts";
-
-export interface ProviderServiceLiveOptions {
-  readonly canonicalEventLogPath?: string;
-  readonly canonicalEventLogger?: EventNdjsonLogger;
-  readonly runtimeIdleStopMs?: number;
-
-  readonly runtimeEventBufferCapacity?: number;
-
-  readonly persistRuntimeEvent?: (
-    event: ProviderRuntimeEvent,
-  ) => Effect.Effect<PersistedProviderRuntimeEvent, TaggedFailure>;
-
-  readonly quarantineRuntimeEvent?: (
-    event: ProviderRuntimeEvent,
-    cause: string,
-  ) => Effect.Effect<void, TaggedFailure>;
-
-  readonly runtimeEventRetryBaseDelayMs?: number;
-  readonly runtimeEventRetryMaxDelayMs?: number;
-
-  readonly providerIsEnabled?: (
-    provider: ProviderKind,
-  ) => Effect.Effect<boolean, ProviderValidationError>;
-}
-
-const DEFAULT_PROVIDER_RUNTIME_IDLE_STOP_MS = 10 * 60 * 1000;
-const PROVIDER_RUNTIME_EVENT_BUFFER_CAPACITY = 2_048;
-const PROVIDER_RUNTIME_QUARANTINE_CAUSE_MAX_BYTES = 16 * 1024;
-const configuredProviderRuntimeIdleStopMs = process.env.GLADE_PROVIDER_RUNTIME_IDLE_STOP_MS;
-const PROVIDER_RUNTIME_IDLE_STOP_MS = Number.isFinite(Number(configuredProviderRuntimeIdleStopMs))
-  ? Math.max(0, Number(configuredProviderRuntimeIdleStopMs))
-  : DEFAULT_PROVIDER_RUNTIME_IDLE_STOP_MS;
-const MAX_TARGETED_CHILD_INTERRUPT_TOMBSTONES = 16_384;
-
-function validateAutoRuntimeMode(
-  operation: string,
-  provider: ProviderSession["provider"],
-  runtimeMode: ProviderSession["runtimeMode"],
-) {
-  return runtimeMode !== "auto" || providerSupportsAutoRuntimeMode(provider)
-    ? Effect.void
-    : Effect.fail(
-        new ProviderValidationError({
-          operation,
-          issue: unsupportedAutoRuntimeModeMessage(provider),
-        }),
-      );
-}
-
-function summarizeProviderRuntimeQuarantineCause(cause: string): {
-  readonly cause: string;
-  readonly causeTruncated?: true;
-  readonly causeOriginalBytes?: number;
-  readonly causeSha256?: string;
-} {
-  const encoded = Buffer.from(cause, "utf8");
-  if (encoded.byteLength <= PROVIDER_RUNTIME_QUARANTINE_CAUSE_MAX_BYTES) {
-    return { cause };
-  }
-  let prefixEnd = PROVIDER_RUNTIME_QUARANTINE_CAUSE_MAX_BYTES;
-  while (prefixEnd > 0 && ((encoded[prefixEnd] ?? 0) & 0xc0) === 0x80) {
-    prefixEnd -= 1;
-  }
-  return {
-    cause: encoded.subarray(0, prefixEnd).toString("utf8"),
-    causeTruncated: true,
-    causeOriginalBytes: encoded.byteLength,
-    causeSha256: createHash("sha256").update(encoded).digest("hex"),
-  };
-}
-
-const ProviderRollbackConversationInput = Schema.Struct({
-  threadId: ThreadId,
-  numTurns: NonNegativeInt,
-});
-
-const ClearSessionResumeCursorInput = Schema.Struct({
-  threadId: ThreadId,
-  preserveActiveRuntime: Schema.optional(Schema.Boolean),
-});
-
-const CompletePriorTranscriptBootstrapInput = Schema.Struct({
-  threadId: ThreadId,
-});
-
-const ImportExternalThreadInput = Schema.Struct({
-  threadId: ThreadId,
-  provider: Schema.Literals(["codex", "claudeAgent"]),
-  externalThreadId: TrimmedNonEmptyString,
-  sourceCwd: TrimmedNonEmptyString,
-  cwd: Schema.optional(TrimmedNonEmptyString),
-  modelSelection: ModelSelection,
-  providerOptions: Schema.optional(ProviderStartOptions),
-  runtimeMode: RuntimeMode,
-});
-
-type StopRuntimeSession = NonNullable<ProviderServiceShape["stopRuntimeSession"]>;
-type StopRuntimeSessionInput = Parameters<StopRuntimeSession>[0];
-type StopRuntimeSessionEffect = ReturnType<StopRuntimeSession>;
-type ProviderInterruptionFence = {
-  readonly settled: Promise<void>;
-  readonly resolve: () => void;
-  failure: string | null;
-};
-type TargetedChildInterruptTombstone = {
-  readonly lifecycleGeneration: string | undefined;
-  readonly state: "uncertain" | "confirmed";
-};
-type InteractionResponse =
-  | { readonly kind: "approval"; readonly input: ProviderRespondToRequestInput }
-  | { readonly kind: "userInput"; readonly input: ProviderRespondToUserInputInput };
-
-const PROVIDER_START_SESSION_TIMEOUT = Duration.seconds(60);
-const PROVIDER_STOP_SESSION_TIMEOUT = Duration.seconds(10);
-const PRIOR_TRANSCRIPT_BOOTSTRAP_PENDING = "priorTranscriptBootstrapPending";
-
-function toValidationError(
-  operation: string,
-  issue: string,
-  cause?: unknown,
-): ProviderValidationError {
-  return new ProviderValidationError({
-    operation,
-    issue,
-    ...(cause !== undefined ? { cause } : {}),
-  });
-}
-
-const decodeInputOrValidationError = <S extends Schema.Top>(input: {
-  readonly operation: string;
-  readonly schema: S;
-  readonly payload: unknown;
-}) =>
-  Schema.decodeUnknownEffect(input.schema)(input.payload).pipe(
-    Effect.mapError(
-      (schemaError) =>
-        new ProviderValidationError({
-          operation: input.operation,
-          issue: SchemaIssue.makeFormatterDefault()(schemaError.issue),
-          cause: schemaError,
-        }),
-    ),
-  );
-
-function toRuntimeStatus(session: ProviderSession): "starting" | "running" | "stopped" | "error" {
-  if (session.status === "connecting") return "starting";
-  if (session.status === "closed") return "stopped";
-  return session.status === "error" ? "error" : "running";
-}
-
-function toRuntimePayloadFromSession(
-  session: ProviderSession,
-  extra?: {
-    readonly modelSelection?: unknown;
-    readonly providerOptions?: unknown;
-    readonly enableComputerControl?: boolean;
-    readonly lastRuntimeEvent?: string;
-    readonly lastRuntimeEventAt?: string;
-    readonly lifecycleGeneration?: string;
-  },
-): Record<string, unknown> {
-  return {
-    cwd: session.cwd ?? null,
-    model: session.model ?? null,
-    activeTurnId: nonEmptyTrimmed(session.activeTurnId) ?? null,
-
-    lastError: nonEmptyTrimmed(session.lastError) ?? null,
-    ...(extra?.modelSelection !== undefined ? { modelSelection: extra.modelSelection } : {}),
-    ...(extra?.providerOptions !== undefined ? { providerOptions: extra.providerOptions } : {}),
-    ...(extra?.enableComputerControl !== undefined
-      ? { enableComputerControl: extra.enableComputerControl }
-      : {}),
-    ...(extra?.lastRuntimeEvent !== undefined ? { lastRuntimeEvent: extra.lastRuntimeEvent } : {}),
-    ...(extra?.lastRuntimeEventAt !== undefined
-      ? { lastRuntimeEventAt: extra.lastRuntimeEventAt }
-      : {}),
-    ...(extra?.lifecycleGeneration !== undefined
-      ? { lifecycleGeneration: extra.lifecycleGeneration }
-      : {}),
-  };
-}
-
-function readPersistedModelSelection(
-  runtimePayload: ProviderRuntimeBinding["runtimePayload"],
-): ModelSelection | undefined {
-  const raw = (asRecord(runtimePayload) ?? {}).modelSelection;
-  return Schema.is(ModelSelection)(raw) ? raw : undefined;
-}
-
-function readPersistedProviderOptions(
-  runtimePayload: ProviderRuntimeBinding["runtimePayload"],
-): ProviderStartOptions | undefined {
-  const raw = (asRecord(runtimePayload) ?? {}).providerOptions;
-  return Option.getOrUndefined(Schema.decodeUnknownOption(ProviderStartOptions)(raw));
-}
-
-function readPersistedComputerControl(
-  runtimePayload: ProviderRuntimeBinding["runtimePayload"],
-): boolean {
-  return (asRecord(runtimePayload) ?? {}).enableComputerControl === true;
-}
-
-function readPersistedCwd(
-  runtimePayload: ProviderRuntimeBinding["runtimePayload"],
-): string | undefined {
-  const rawCwd = (asRecord(runtimePayload) ?? {}).cwd;
-  if (typeof rawCwd !== "string") return undefined;
-  const trimmed = rawCwd.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-}
-
-function runtimeEventRetiredGatewayTurnAuthority(event: ProviderRuntimeEvent): boolean {
-  return (asRecord(event.raw?.payload) ?? {})[AGENT_GATEWAY_TURN_AUTHORITY_RETIRED] === true;
-}
-
-function runtimeActiveTurnId(value: unknown): string | undefined {
-  const activeTurnId = (asRecord(value) ?? {}).activeTurnId;
-  return typeof activeTurnId === "string" ? activeTurnId : undefined;
-}
-
-function hasResumeCursor(value: unknown): boolean {
-  return value !== null && value !== undefined;
-}
-
-// Keep this predicate strictly about lifecycle: it also drives `runtimeStatusForEvent` and
-// resume-cursor decisions, so interaction resolutions must never be folded in here (see
-// `isStaleSettlingRuntimeEvent`).
-function isTerminalRuntimeEvent(event: ProviderRuntimeEvent): boolean {
-  return (
-    event.type === "turn.completed" ||
-    event.type === "turn.aborted" ||
-    event.type === "session.exited" ||
-    event.type === "runtime.error"
-  );
-}
-
-// True for events that settle a durable pending interaction (an approval or an AskUserQuestion
-// user-input request). These are not lifecycle events, but like terminal events they are the only
-// signal that can cleanly close a row the projection would otherwise leave `pending` forever.
-function isInteractionResolutionRuntimeEvent(event: ProviderRuntimeEvent): boolean {
-  return event.type === "user-input.resolved" || event.type === "request.resolved";
-}
-
-function isStaleSettlingRuntimeEvent(event: ProviderRuntimeEvent): boolean {
-  return isTerminalRuntimeEvent(event) || isInteractionResolutionRuntimeEvent(event);
-}
-
-function runtimeStatusForEvent(
-  event: ProviderRuntimeEvent,
-  activeTurnId?: unknown,
-): "running" | "stopped" | "error" {
-  switch (event.type) {
-    case "session.state.changed":
-      if (event.payload.state === "stopped") return "stopped";
-      return event.payload.state === "error" ? "error" : "running";
-    case "thread.state.changed":
-      if (event.payload.state === "error") return "error";
-      if (event.payload.state === "archived" || event.payload.state === "closed") return "stopped";
-      return event.payload.state === "compacted" &&
-        event.turnId === undefined &&
-        activeTurnId == null
-        ? "stopped"
-        : "running";
-    case "session.exited":
-    case "turn.completed":
-    case "turn.aborted":
-      // A completed turn can still carry a resume cursor, but it must not keep the desktop app treating
-      // the provider process as active after restart.
-      return "stopped";
-    case "runtime.error":
-      return "error";
-    default:
-      return "running";
-  }
-}
-
-function shouldRefreshResumeCursorForEvent(event: ProviderRuntimeEvent): boolean {
-  return (
-    event.type === "thread.started" ||
-    event.type === "model.rerouted" ||
-    (event.type === "thread.state.changed" &&
-      event.payload.state === "compacted" &&
-      event.turnId === undefined) ||
-    event.type === "turn.tasks.updated" ||
-    event.type === "turn.completed" ||
-    event.type === "turn.aborted"
-  );
-}
-
-function runtimeLastErrorForEvent(event: ProviderRuntimeEvent): string | null | undefined {
-  // A blank message must not degrade to `null`: null means "clear the error", which would erase the
-  // very failure being reported. Fall back to an honest constant instead.
-  if (event.type === "runtime.error")
-    return nonEmptyTrimmed(event.payload.message) ?? "Provider runtime reported an error.";
-  if (event.type === "session.state.changed")
-    return event.payload.state === "error"
-      ? (nonEmptyTrimmed(event.payload.reason) ?? "Session error")
-      : null;
-  if (event.type === "thread.state.changed")
-    return event.payload.state === "error" ? "Thread error" : null;
-  return event.type === "turn.started" ||
-    event.type === "turn.completed" ||
-    event.type === "turn.aborted" ||
-    event.type === "session.exited"
-    ? null
-    : undefined;
-}
+  ProviderStartupLifecycle,
+  observeProviderStartup,
+  startupPhaseDurations,
+} from "../core/providerStartupLifecycle.ts";
+import { carryProviderAttachmentPaths } from "../core/providerAttachmentPaths.ts";
+import { computerApprovalGate } from "../../computer/ComputerApprovalGate.ts";
+import { settleConcurrentTeardowns } from "../core/settleConcurrentTeardowns.ts";
+import { randomUUID } from "node:crypto";
+import {
+  ProviderServiceLiveOptions,
+  PROVIDER_RUNTIME_EVENT_BUFFER_CAPACITY,
+  PROVIDER_RUNTIME_IDLE_STOP_MS,
+  MAX_TARGETED_CHILD_INTERRUPT_TOMBSTONES,
+  PROVIDER_START_SESSION_TIMEOUT,
+  PROVIDER_STOP_SESSION_TIMEOUT,
+} from "../core/providerServiceConfiguration";
+import {
+  ProviderInterruptionFence,
+  TargetedChildInterruptTombstone,
+  toRuntimeStatus,
+  toRuntimePayloadFromSession,
+  shouldRefreshResumeCursorForEvent,
+  readPersistedComputerControl,
+  isTerminalRuntimeEvent,
+  runtimeActiveTurnId,
+  runtimeLastErrorForEvent,
+  runtimeStatusForEvent,
+  runtimeEventRetiredGatewayTurnAuthority,
+  isStaleSettlingRuntimeEvent,
+  hasResumeCursor,
+  readPersistedCwd,
+  readPersistedModelSelection,
+  readPersistedProviderOptions,
+  PRIOR_TRANSCRIPT_BOOTSTRAP_PENDING,
+  InteractionResponse,
+  StopRuntimeSessionInput,
+  StopRuntimeSessionEffect,
+  StopRuntimeSession,
+} from "../core/providerRuntimeBinding";
+import {
+  toValidationError,
+  validateAutoRuntimeMode,
+  decodeInputOrValidationError,
+  CompletePriorTranscriptBootstrapInput,
+  ImportExternalThreadInput,
+  ClearSessionResumeCursorInput,
+  ProviderRollbackConversationInput,
+  summarizeProviderRuntimeQuarantineCause,
+} from "../core/providerServiceValidation";
 
 const makeProviderService = (options?: ProviderServiceLiveOptions) =>
   Effect.gen(function* () {
