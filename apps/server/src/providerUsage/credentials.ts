@@ -1,12 +1,9 @@
-import { execFile } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import nodePath from "node:path";
-import { promisify } from "node:util";
+import { execProcessFileAsync } from "../processRunner";
 
 import { fetchJson } from "./http";
-
-const execFileAsync = promisify(execFile);
 
 const KEYCHAIN_TIMEOUT_MS = 5_000;
 const DEFAULT_OAUTH_REFRESH_TIMEOUT_MS = 15_000;
@@ -170,7 +167,9 @@ export async function readKeychainPassword(input: {
     args.push("-a", input.account);
   }
   try {
-    const { stdout } = await execFileAsync("security", args, { timeout: KEYCHAIN_TIMEOUT_MS });
+    const { stdout } = await execProcessFileAsync("security", args, {
+      timeout: KEYCHAIN_TIMEOUT_MS,
+    });
     const value = stdout.trim();
     return value.length > 0 ? value : null;
   } catch {

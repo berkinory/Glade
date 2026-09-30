@@ -40,3 +40,8 @@ finite, positive or numeric-string values. Callers retain their absence values.
 Argument readers that name a field and raise domain errors keep that validation
 policy with the owning API. A typed provider-string normalizer retains its strict
 input contract rather than accepting arbitrary payload values.
+
+Server subprocess execution belongs to `processRunner`: its callback bridge uses
+the shared executable planner while preserving Node output and error properties;
+its shell-command entry owns platform shell selection. Provider usage and worktree
+setup call those boundaries rather than selecting Windows launch policy themselves.

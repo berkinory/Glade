@@ -12,6 +12,8 @@
 
 ### Improved
 
+- Provider usage subprocesses use the shared executable boundary, and worktree setup uses the server's platform-owned shell execution policy. Timeouts, output limits and shell arguments retain their existing values.
+
 - Scalar payload readers share explicit string, numeric and array policies. Untrimmed text, whitespace checks, numeric-string coercion and caller absence values keep their existing semantics.
 
 - Shared payload validation has one domain path, `transport/payloadValues`, for direct boundary imports.

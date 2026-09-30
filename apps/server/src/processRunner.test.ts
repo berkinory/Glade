@@ -1,6 +1,36 @@
+import * as fs from "node:fs/promises";
+import * as os from "node:os";
+import * as path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { runProcess } from "./processRunner";
+import { execProcessFileAsync, runProcess } from "./processRunner";
+
+describe("provider executable callback bridge", () => {
+  it("preserves provider arguments and UTF-8 output through the real platform executable", async () => {
+    const directory = await fs.mkdtemp(path.join(os.tmpdir(), "glade provider shim "));
+    try {
+      let executable = process.execPath;
+      if (process.platform === "win32") {
+        executable = path.join(directory, "provider shim.cmd");
+        await fs.writeFile(executable, `@echo off\r\n"${process.execPath}" %*\r\n`);
+      }
+      const argumentsToPreserve = ["alpha space", "日本語", "literal&value"];
+      const result = await execProcessFileAsync(
+        executable,
+        [
+          "-e",
+          "process.stdout.write(JSON.stringify(process.argv.slice(-3)));process.stderr.write('diagnostic €')",
+          ...argumentsToPreserve,
+        ],
+        { timeout: 5_000, cwd: directory },
+      );
+      expect(JSON.parse(result.stdout)).toEqual(argumentsToPreserve);
+      expect(result.stderr).toBe("diagnostic €");
+    } finally {
+      await fs.rm(directory, { recursive: true, force: true });
+    }
+  });
+});
 
 describe("runProcess", () => {
   it("fails when output exceeds max buffer in default mode", async () => {

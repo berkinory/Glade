@@ -1,9 +1,8 @@
 import { asNumericValue } from "@glade/shared/transport/payloadValues";
 import { nonEmptyTrimmed } from "@glade/shared/text/text";
 import { asObjectRecord } from "@glade/shared/transport/payloadValues";
-import { execFile } from "node:child_process";
 import nodePath from "node:path";
-import { promisify } from "node:util";
+import { execProcessFileAsync } from "../../processRunner";
 
 import type {
   ServerProviderUsageLimit,
@@ -33,7 +32,6 @@ import {
 import { createRateLimitResilience } from "../rateLimitResilience";
 import type { ProviderUsageContext, ProviderUsageFetcher } from "../types";
 
-const execFileAsync = promisify(execFile);
 const log = createLogger("provider-usage:claude");
 
 const SOURCE = "claude-oauth-usage";
@@ -188,7 +186,7 @@ interface ClaudeAuthNudgeDeps {
 const defaultAuthNudgeDeps: ClaudeAuthNudgeDeps = {
   acquireLock: acquireClaudeAuthStatusLock,
   async runAuthStatus(input) {
-    await execFileAsync(input.binaryPath, ["auth", "status"], {
+    await execProcessFileAsync(input.binaryPath, ["auth", "status"], {
       timeout: AUTH_NUDGE_TIMEOUT_MS,
       env: buildClaudeProcessEnv({
         env: input.env,

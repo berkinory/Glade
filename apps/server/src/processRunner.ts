@@ -1,7 +1,11 @@
 import type { ChildProcess as ChildProcessHandle } from "node:child_process";
 import { StringDecoder } from "node:string_decoder";
 import { isCommandNotFoundExit } from "@glade/shared/platform/platformProcess";
-import { spawnProcess } from "@glade/shared/platform/processRuntime";
+import {
+  execProcessFile,
+  spawnProcess,
+  type RuntimeExecFileOptions,
+} from "@glade/shared/platform/processRuntime";
 
 import { signalOwnedChildProcess } from "./platform/processTreeController.ts";
 
@@ -26,6 +30,34 @@ export interface ProcessRunResult {
   timedOut: boolean;
   stdoutTruncated?: boolean | undefined;
   stderrTruncated?: boolean | undefined;
+}
+
+export function execProcessFileAsync(
+  command: string,
+  args: readonly string[],
+  options: RuntimeExecFileOptions,
+): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    execProcessFile(command, args, options, (error, stdout, stderr) => {
+      if (error) {
+        reject(Object.assign(error, { stdout, stderr }));
+      } else {
+        resolve({ stdout, stderr });
+      }
+    });
+  });
+}
+
+export function runShellCommand(
+  command: string,
+  options: ProcessRunOptions,
+): Promise<ProcessRunResult> {
+  const shell =
+    process.platform === "win32"
+      ? (process.env.ComSpec ?? "cmd.exe")
+      : (process.env.SHELL ?? "/bin/sh");
+  const args = process.platform === "win32" ? ["/d", "/s", "/c", command] : ["-lc", command];
+  return runProcess(shell, args, options);
 }
 
 function commandLabel(command: string, args: readonly string[]): string {

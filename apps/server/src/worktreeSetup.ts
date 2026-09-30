@@ -1,6 +1,6 @@
 import type { ProjectScript } from "@glade/contracts/orchestration/threadEntities";
 
-import { runProcess } from "./processRunner.ts";
+import { runShellCommand } from "./processRunner.ts";
 
 const WORKTREE_SETUP_TIMEOUT_MS = 10 * 60_000;
 
@@ -16,13 +16,7 @@ export async function runWorktreeSetupScript(
   const script = findWorktreeSetupScript(scripts);
   if (!script) return;
 
-  const shell =
-    process.platform === "win32"
-      ? (process.env.ComSpec ?? "cmd.exe")
-      : (process.env.SHELL ?? "/bin/sh");
-  const args =
-    process.platform === "win32" ? ["/d", "/s", "/c", script.command] : ["-lc", script.command];
-  await runProcess(shell, args, {
+  await runShellCommand(script.command, {
     cwd,
     timeoutMs: WORKTREE_SETUP_TIMEOUT_MS,
     maxBufferBytes: 8 * 1024 * 1024,
