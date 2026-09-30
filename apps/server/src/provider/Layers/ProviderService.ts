@@ -1,3 +1,4 @@
+import { Ref } from "effect";
 import {
   Effect,
   PubSub,
@@ -120,6 +121,9 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
 
     const registry = yield* ProviderAdapterRegistry;
     const directory = yield* ProviderSessionDirectory;
+    // Timer callbacks use the Layer runtime so tracing and service context survive the Promise boundary.
+    const callbackServices = yield* Effect.services<never>();
+
     const ensureProviderEnabled = (provider: ProviderKind, operation: string) =>
       options?.providerIsEnabled
         ? options.providerIsEnabled(provider).pipe(
@@ -166,9 +170,9 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
       0,
       options?.runtimeIdleStopMs ?? PROVIDER_RUNTIME_IDLE_STOP_MS,
     );
-    let stopIdleRuntimeSession:
-      | ((threadId: ThreadId, generation: symbol, cleanupStarted?: boolean) => void)
-      | null = null;
+    const stopIdleRuntimeSession = yield* Ref.make<
+      ((threadId: ThreadId, generation: symbol, cleanupStarted?: boolean) => void) | null
+    >(null);
 
     const invalidateRuntimeIdleGeneration = (threadId: ThreadId): symbol => {
       const generation = Symbol(String(threadId));
@@ -213,7 +217,7 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
       const generation = invalidateRuntimeIdleGeneration(threadId);
       const timer = setTimeout(() => {
         runtimeIdleTimers.delete(threadId);
-        stopIdleRuntimeSession?.(threadId, generation);
+        Ref.getUnsafe(stopIdleRuntimeSession)?.(threadId, generation);
       }, runtimeIdleStopMs);
       timer.unref();
       runtimeIdleTimers.set(threadId, timer);
@@ -525,8 +529,11 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
             ),
           );
 
-    let runtimeCursorWriteVersion = 0;
-    let shutdownStartedAt: string | undefined;
+    const runtimeWriteState = yield* Ref.make<{
+      readonly cursorWriteVersion: number;
+      readonly shutdownStartedAt?: string;
+    }>({ cursorWriteVersion: 0 });
+
     const latestRuntimeCursorWriteByThread = new Map<
       ThreadId,
       { readonly version: number; readonly resumeCursor: unknown }
@@ -930,7 +937,8 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
             const eventStatus = runtimeStatusForEvent(event, activeTurnId);
 
             const preserveShutdownStop =
-              shutdownStartedAt !== undefined && eventStatus === "running";
+              Ref.getUnsafe(runtimeWriteState).shutdownStartedAt !== undefined &&
+              eventStatus === "running";
 
             yield* directory.upsert({
               threadId: event.threadId,
@@ -945,7 +953,9 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
                   : {}),
                 activeTurnId: preserveShutdownStop ? null : activeTurnId,
                 lastRuntimeEvent: preserveShutdownStop ? "provider.stopAll" : event.type,
-                lastRuntimeEventAt: preserveShutdownStop ? shutdownStartedAt : event.createdAt,
+                lastRuntimeEventAt: preserveShutdownStop
+                  ? Ref.getUnsafe(runtimeWriteState).shutdownStartedAt
+                  : event.createdAt,
                 ...(lastError !== undefined ? { lastError } : {}),
                 ...(runtimeEventRetiredGatewayTurnAuthority(event)
                   ? { [AGENT_GATEWAY_CREDENTIAL_ROTATION_REQUIRED]: true }
@@ -953,7 +963,10 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
               },
             });
             if (liveResumeCursor !== undefined && liveResumeCursor !== null) {
-              runtimeCursorWriteVersion += 1;
+              const runtimeCursorWriteVersion = yield* Ref.modify(runtimeWriteState, (state) => {
+                const version = state.cursorWriteVersion + 1;
+                return [version, { ...state, cursorWriteVersion: version }];
+              });
               latestRuntimeCursorWriteByThread.set(event.threadId, {
                 version: runtimeCursorWriteVersion,
                 resumeCursor: liveResumeCursor,
@@ -989,9 +1002,9 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
       registry.getByProvider(provider),
     );
     const runtimeEventPumpHealth = makeProviderRuntimeEventPumpHealthRegistry(providers);
-    let scheduleRetiredGatewaySessionRecovery = (
-      _event: ProviderRuntimeEvent,
-    ): Effect.Effect<void> => Effect.void;
+    const scheduleRetiredGatewaySessionRecovery = yield* Ref.make<
+      (event: ProviderRuntimeEvent) => Effect.Effect<void>
+    >((_event: ProviderRuntimeEvent): Effect.Effect<void> => Effect.void);
     const processRuntimeEvent = (event: ProviderRuntimeEvent): Effect.Effect<void, TaggedFailure> =>
       Effect.uninterruptible(
         Effect.suspend(() => {
@@ -1005,7 +1018,9 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
                 }).pipe(
                   Effect.andThen(updateSessionBindingFromRuntimeEvent(acceptedEvent)),
                   Effect.andThen(publishRuntimeEvent(acceptedEvent, persisted)),
-                  Effect.andThen(scheduleRetiredGatewaySessionRecovery(acceptedEvent)),
+                  Effect.andThen(
+                    Ref.getUnsafe(scheduleRetiredGatewaySessionRecovery)(acceptedEvent),
+                  ),
                 ),
               ),
             );
@@ -1228,7 +1243,7 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
       });
 
     const retiredGatewaySessionRecoveries = new Set<ThreadId>();
-    scheduleRetiredGatewaySessionRecovery = (event) => {
+    yield* Ref.set(scheduleRetiredGatewaySessionRecovery, (event) => {
       if (
         (event.type !== "turn.completed" && event.type !== "turn.aborted") ||
         !runtimeEventRetiredGatewayTurnAuthority(event)
@@ -1267,7 +1282,7 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
           Effect.asVoid,
         );
       });
-    };
+    });
 
     yield* Effect.forEach(adapters, (adapter) =>
       runProviderRuntimeEventPump({
@@ -2583,7 +2598,7 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
     const hasLiveRuntimeTasks: NonNullable<ProviderServiceShape["hasLiveRuntimeTasks"]> = (input) =>
       Effect.sync(() => (liveRuntimeTaskIds.get(input.threadId)?.size ?? 0) > 0);
 
-    stopIdleRuntimeSession = (threadId, generation, cleanupStarted = false) => {
+    yield* Ref.set(stopIdleRuntimeSession, (threadId, generation, cleanupStarted = false) => {
       const stopEffect = Effect.gen(function* () {
         if (!isRuntimeIdleGenerationCurrent(threadId, generation)) {
           return;
@@ -2647,7 +2662,7 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
             const timer = setTimeout(
               () => {
                 runtimeIdleTimers.delete(threadId);
-                stopIdleRuntimeSession?.(threadId, generation, cleanupStarted);
+                Ref.getUnsafe(stopIdleRuntimeSession)?.(threadId, generation, cleanupStarted);
               },
               Math.max(1_000, Math.min(runtimeIdleStopMs, 30_000)),
             );
@@ -2660,13 +2675,13 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
           });
         }),
       );
-      const stopPromise = Effect.runPromise(stopEffect).finally(() => {
+      const stopPromise = Effect.runPromiseWith(callbackServices)(stopEffect).finally(() => {
         if (runtimeIdleStopsInFlight.get(threadId) === stopPromise) {
           runtimeIdleStopsInFlight.delete(threadId);
         }
       });
       runtimeIdleStopsInFlight.set(threadId, stopPromise);
-    };
+    });
 
     const clearSessionResumeCursor: NonNullable<
       ProviderServiceShape["clearSessionResumeCursor"]
@@ -2896,8 +2911,10 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
     const runStopAll = () =>
       Effect.gen(function* () {
         const stoppedAt = new Date().toISOString();
-        shutdownStartedAt = stoppedAt;
-        const runtimeCursorWriteBaseline = runtimeCursorWriteVersion;
+        const runtimeCursorWriteBaseline = yield* Ref.modify(runtimeWriteState, (state) => [
+          state.cursorWriteVersion,
+          { ...state, shutdownStartedAt: stoppedAt },
+        ]);
         const activeSessionByThreadId = new Map(
           (yield* Effect.forEach(adapters, (adapter) =>
             adapter
@@ -2986,8 +3003,8 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
           runtimeIdleGenerations.clear();
           runtimeIdleCleanupGenerations.clear();
           runtimeIdleStopsInFlight.clear();
-          stopIdleRuntimeSession = null;
         }).pipe(
+          Effect.andThen(Ref.set(stopIdleRuntimeSession, null)),
           Effect.andThen(
             runStopAll().pipe(
               Effect.catchCause((cause) =>
