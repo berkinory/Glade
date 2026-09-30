@@ -60,10 +60,6 @@
       "types": "./src/computer/modelImageBudget.ts",
       "import": "./src/computer/modelImageBudget.ts"
     },
-    "./computerKeyNames": {
-      "types": "./src/computerKeyNames.ts",
-      "import": "./src/computerKeyNames.ts"
-    },
     "./git/git": {
       "types": "./src/git/git.ts",
       "import": "./src/git/git.ts"
@@ -287,10 +283,6 @@
     "./workspace/workspaceFileWrite": {
       "types": "./src/workspace/workspaceFileWrite.ts",
       "import": "./src/workspace/workspaceFileWrite.ts"
-    },
-    "./wslBridge": {
-      "types": "./src/wslBridge.ts",
-      "import": "./src/wslBridge.ts"
     }
   },
   "scripts": {

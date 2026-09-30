@@ -74,6 +74,32 @@ for (const file of files) {
   graph.set(file, [...dependencies]);
 }
 
+const applicationConsumers = new Map<string, Set<string>>();
+const runtimeFiles = files.filter((file) => !/\.(?:test|integration)\./u.test(file));
+for (const workspace of workspaces.filter((workspace) => workspace.startsWith("apps/"))) {
+  const visited = new Set<string>();
+  const pending = runtimeFiles.filter((file) => file.startsWith(`${workspace}/src/`));
+  while (pending.length > 0) {
+    const file = pending.pop()!;
+    if (visited.has(file)) continue;
+    visited.add(file);
+    if (file.startsWith("packages/shared/src/")) {
+      const consumers = applicationConsumers.get(file) ?? new Set<string>();
+      consumers.add(workspace);
+      applicationConsumers.set(file, consumers);
+    }
+    for (const dependency of graph.get(file) ?? []) pending.push(dependency);
+  }
+}
+for (const file of runtimeFiles.filter((file) => file.startsWith("packages/shared/src/"))) {
+  const consumers = applicationConsumers.get(file) ?? new Set<string>();
+  if (consumers.size < 2) {
+    violations.push(
+      `${file} has ${consumers.size} application consumer(s): ${[...consumers].toSorted().join(", ") || "none"}`,
+    );
+  }
+}
+
 const indexes = new Map<string, number>();
 const lowLinks = new Map<string, number>();
 const active = new Set<string>();

@@ -4,11 +4,15 @@
 
 ### Removed
 
+- Unused computer key-name tables and the dormant WSL working-directory bridge were removed; active key handling, UNC parsing and process launch behavior remain in their owning modules.
+
 - Cursor, Grok, and OpenCode providers and their integrations were removed.
 - Standalone Pull Requests page and sidebar entry were removed.
 - Editor view and its separate workspace layout were removed; editing stays in Explorer.
 
 ### Improved
+
+- Dependency checks require every shared runtime module to have at least two application consumers, following transitive imports and excluding test-only use.
 
 - Runtime modules shared by multiple applications are grouped by domain. Single-application modules and their tests live with their owning application; native driver pins and CI paths follow the new layout.
 

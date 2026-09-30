@@ -82,7 +82,7 @@ Migration, backup, restore, and lifecycle-lock code may own their recovery proto
 
 Native Windows remains the default execution backend. A working directory under `\\wsl$` or `\\wsl.localhost` is translated by the shared WSL bridge into an explicit `wsl.exe --distribution ... --cd ... --exec ...` plan.
 
-WSL session discovery, distribution policy, and first-class settings remain follow-up work. New WSL behavior belongs behind `wslBridge`/`platformProcess`, not in providers.
+WSL session discovery, distribution policy, and first-class settings remain follow-up work. WSL launch behavior belongs in `@glade/shared/platform/platformProcess` and UNC parsing in `@glade/shared/platform/windowsProcess`.
 
 ## Adding a provider
 
