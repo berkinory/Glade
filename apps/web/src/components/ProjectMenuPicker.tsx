@@ -15,7 +15,7 @@ import {
 import { groupItemsBySpace, resolveActiveSpaceId, spaceDisplayName } from "~/lib/spaceGrouping";
 import { useSpacesUiStore } from "~/spacesUiStore";
 import { useStore } from "~/store";
-import { useVoidSpace } from "~/voidSpaceStore";
+import { useVoidSpace } from "~/spacesUiStore";
 import { SpaceIcon } from "./SpaceIcon";
 
 export interface ProjectMenuPickerOption {

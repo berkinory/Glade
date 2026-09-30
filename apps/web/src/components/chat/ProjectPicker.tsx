@@ -20,7 +20,7 @@ import { PlusIcon, XIcon } from "~/lib/icons";
 import { getLocalFoldersGroupLabel } from "~/lib/localFoldersGroupLabel";
 import type { ProjectAppearance } from "~/lib/projectAppearance";
 import { groupItemsBySpace, spaceDisplayName } from "~/lib/spaceGrouping";
-import { useVoidSpace } from "~/voidSpaceStore";
+import { useVoidSpace } from "~/spacesUiStore";
 import { cn } from "~/lib/utils";
 import { FolderClosed } from "../FolderClosed";
 import { ProjectSidebarIcon } from "../ProjectSidebarIcon";

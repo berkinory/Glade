@@ -7,7 +7,7 @@ import { groupItemsBySpace, spaceDisplayName } from "~/lib/spaceGrouping";
 import { isOrdinarySpaceProject } from "~/lib/spaces";
 import { cn } from "~/lib/utils";
 import { useSpacesUiStore } from "~/spacesUiStore";
-import { useVoidSpace } from "~/voidSpaceStore";
+import { useVoidSpace } from "~/spacesUiStore";
 import { useWorkspacePathsStore } from "~/workspacePathsStore";
 import { ProjectSidebarIcon } from "./ProjectSidebarIcon";
 import { SpaceIcon } from "./SpaceIcon";

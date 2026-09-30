@@ -1,10 +1,53 @@
 import type { ProjectId, SpaceId, ThreadId } from "@glade/contracts/core/baseSchemas";
+import { SPACE_NAME_MAX_LENGTH } from "@glade/contracts/orchestration/threadEntities";
 import { create } from "zustand";
 
-import { spaceKey } from "~/lib/spaceGrouping";
+import {
+  DEFAULT_VOID_SPACE,
+  isVoidSpaceIconName,
+  spaceKey,
+  type VoidSpacePresentation,
+} from "~/lib/spaceGrouping";
 
 const STORAGE_KEY = "glade:spaces-ui:v1";
 const CHAT_SPACE_STORAGE_KEY = "glade:chat-spaces:v1";
+const VOID_SPACE_STORAGE_KEY = "glade:void-space:v1";
+
+function normalizeVoidSpace(value: unknown): VoidSpacePresentation {
+  const record =
+    typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {};
+  const name =
+    typeof record.name === "string" ? record.name.trim().slice(0, SPACE_NAME_MAX_LENGTH) : "";
+  const icon =
+    typeof record.icon === "string" && isVoidSpaceIconName(record.icon)
+      ? record.icon
+      : DEFAULT_VOID_SPACE.icon;
+  return { name: name.length > 0 ? name : DEFAULT_VOID_SPACE.name, icon };
+}
+
+function readVoidSpace(): VoidSpacePresentation {
+  if (typeof window === "undefined") return DEFAULT_VOID_SPACE;
+  try {
+    const raw = window.localStorage.getItem(VOID_SPACE_STORAGE_KEY);
+    return raw ? normalizeVoidSpace(JSON.parse(raw)) : DEFAULT_VOID_SPACE;
+  } catch {
+    return DEFAULT_VOID_SPACE;
+  }
+}
+
+function persistVoidSpace(voidSpace: VoidSpacePresentation): void {
+  if (typeof window === "undefined") return;
+  try {
+    // An untouched Home follows a future product default.
+    if (voidSpace.name === DEFAULT_VOID_SPACE.name && voidSpace.icon === DEFAULT_VOID_SPACE.icon) {
+      window.localStorage.removeItem(VOID_SPACE_STORAGE_KEY);
+      return;
+    }
+    window.localStorage.setItem(VOID_SPACE_STORAGE_KEY, JSON.stringify(voidSpace));
+  } catch {
+    // A blocked storage API must not make renaming fail in this session.
+  }
+}
 
 function readChatSpaceAssignments(): Record<string, SpaceId> {
   if (typeof window === "undefined") return {};
@@ -101,6 +144,9 @@ function recordsEqual<T extends string>(
 }
 
 interface SpacesUiState extends PersistedSpacesUiState {
+  voidSpace: VoidSpacePresentation;
+  setVoidSpace: (patch: Partial<VoidSpacePresentation>) => void;
+  resetVoidSpace: () => void;
   chatSpaceByThreadId: Record<string, SpaceId>;
   assignChatThread: (threadId: ThreadId, spaceId: SpaceId | null) => void;
   getChatThreadSpaceId: (threadId: ThreadId) => SpaceId | null;
@@ -125,6 +171,22 @@ const persisted = readPersisted();
 
 export const useSpacesUiStore = create<SpacesUiState>((set, get) => ({
   ...persisted,
+  voidSpace: readVoidSpace(),
+  setVoidSpace: (patch) => {
+    const next = normalizeVoidSpace({ ...get().voidSpace, ...patch });
+    const current = get().voidSpace;
+    if (next.name === current.name && next.icon === current.icon) return;
+    set({ voidSpace: next });
+    persistVoidSpace(next);
+  },
+  resetVoidSpace: () => {
+    if (
+      get().voidSpace.name === DEFAULT_VOID_SPACE.name &&
+      get().voidSpace.icon === DEFAULT_VOID_SPACE.icon
+    ) return;
+    set({ voidSpace: DEFAULT_VOID_SPACE });
+    persistVoidSpace(DEFAULT_VOID_SPACE);
+  },
   chatSpaceByThreadId: readChatSpaceAssignments(),
   assignChatThread: (threadId, spaceId) => {
     const previous = get().chatSpaceByThreadId[threadId] ?? null;
@@ -253,4 +315,15 @@ export const useSpacesUiStore = create<SpacesUiState>((set, get) => ({
 
 export function readActiveSpaceId(): SpaceId | null {
   return useSpacesUiStore.getState().activeSpaceId;
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (event) => {
+    if (event.key !== null && event.key !== VOID_SPACE_STORAGE_KEY) return;
+    useSpacesUiStore.setState({ voidSpace: readVoidSpace() });
+  });
+}
+
+export function useVoidSpace(): VoidSpacePresentation {
+  return useSpacesUiStore((state) => state.voidSpace);
 }
