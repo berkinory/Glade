@@ -75,7 +75,7 @@ The HTTP/WebSocket layer also owns:
 
 `serverLayers.ts` assembles the long-lived service graph used by the server runtime.
 
-`orchestration/providerCommands` separates provider call deadlines, durable delivery claims, context lifecycle evidence, input budgets and interaction settlement policies from the command reactor. The reactor configuration tag lives in `orchestration/Services`. Its delivery reconciler and compaction recovery flag are Layer-owned references; the recovery flag and accepted startup turns settle in one atomic update.
+`orchestration/providerCommands` owns focused controllers for projected thread access, session configuration, human responses, queued turns, task control, conversation edits and naming, turn dispatch, context bootstrap, compaction, goal continuation and durable intent delivery. The reactor Layer composes these controllers and owns their maps, queues, references and delivery semaphore. Controllers receive the same resources and their actual dependencies explicitly. The delivery reconciler and compaction recovery flag use references; the recovery flag and accepted startup turns settle in one atomic update. The configuration tag lives in `orchestration/Services`.
 
 `provider/claude/adapter` owns Claude SDK message conversion, event emission, assistant text blocks, task tracking, human interaction settlement, turn completion, discovery, session startup and teardown. Controllers receive the session context and their actual dependencies explicitly. The Claude adapter Layer owns session maps, the event queue and finalization, captures the SDK callback runtime once, and composes the controllers in dependency order. SDK and harness contracts remain unchanged.
 

@@ -399,7 +399,24 @@
         "apps/server/src/orchestration/providerCommands/contextLifecycle.ts",
         "apps/server/src/orchestration/providerCommands/inputProjection.ts",
         "apps/server/src/orchestration/providerCommands/interactionPolicy.ts",
-        "apps/server/src/orchestration/Services/ProviderCommandReactorConfig.ts"
+        "apps/server/src/orchestration/Services/ProviderCommandReactorConfig.ts",
+        "apps/server/src/orchestration/providerCommands/projectionAccess.ts",
+        "apps/server/src/orchestration/providerCommands/threadProjection.ts",
+        "apps/server/src/orchestration/providerCommands/humanResponses.ts",
+        "apps/server/src/orchestration/providerCommands/runtimeState.ts",
+        "apps/server/src/orchestration/providerCommands/contextBootstrap.ts",
+        "apps/server/src/orchestration/providerCommands/sessionConfiguration.ts",
+        "apps/server/src/orchestration/providerCommands/queuedTurns.ts",
+        "apps/server/src/orchestration/providerCommands/conversationEdit.ts",
+        "apps/server/src/orchestration/providerCommands/taskControl.ts",
+        "apps/server/src/orchestration/providerCommands/turnDispatch.ts",
+        "apps/server/src/orchestration/providerCommands/conversationNaming.ts",
+        "apps/server/src/orchestration/providerCommands/turnStart.ts",
+        "apps/server/src/orchestration/providerCommands/deliveryAccess.ts",
+        "apps/server/src/orchestration/providerCommands/compaction.ts",
+        "apps/server/src/orchestration/providerCommands/goalContinuation.ts",
+        "apps/server/src/orchestration/providerCommands/domainEvents.ts",
+        "apps/server/src/orchestration/providerCommands/intentSource.ts"
       ]
     },
     {

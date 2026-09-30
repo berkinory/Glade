@@ -12,6 +12,8 @@
 
 ### Improved
 
+- Provider command handling has focused controllers for session setup, projected state, human responses, queued turns, task control, edits, naming, context lifecycle and durable delivery. The Layer owns shared resources and composes controllers; claim, lease, recovery and provider behavior remain unchanged.
+
 - Provider delivery reconciliation and Claude compaction recovery use Layer-owned references, so separated controllers observe current runtime state. Recovery flag and accepted startup turns settle atomically.
 
 - Provider command deadlines, delivery-claim observation, context budgets and interaction failure decisions have focused policy modules. Retry classifications and persisted delivery behavior remain unchanged.
