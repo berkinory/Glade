@@ -1,4 +1,4 @@
-import type { RuntimeTaskListItem } from "@glade/contracts/provider/providerRuntime";
+import type { RuntimeTaskListItem } from "@glade/contracts/provider/runtimePayloads";
 
 import {
   makeRuntimeTaskListItem,

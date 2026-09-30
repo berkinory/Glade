@@ -1,5 +1,5 @@
 import { Effect, FileSystem } from "effect";
-import type { WorkflowAgentRuntimeSnapshot } from "@glade/contracts/provider/providerRuntime";
+import type { WorkflowAgentRuntimeSnapshot } from "@glade/contracts/provider/runtimePayloads";
 
 import { WORKFLOW_PROMPT_PREVIEW_CHARS } from "./claudeWorkflowScript.ts";
 

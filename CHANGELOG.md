@@ -12,6 +12,8 @@
 
 ### Improved
 
+- Provider runtime contracts separate event metadata, payload schemas and the event union. Encoded fields, tags, defaults and type shapes are unchanged.
+
 - Provider runtime events use canonical event and status names; unused compatibility aliases were removed without changing the encoded event version or payload schemas.
 
 - Orchestration contracts separate provider policy, thread entities, snapshots, commands, events and RPC operations. Consumers use direct imports; persisted and wire schema definitions are unchanged.

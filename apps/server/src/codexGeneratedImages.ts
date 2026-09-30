@@ -3,8 +3,8 @@ import path from "node:path";
 import {
   CODEX_GENERATED_IMAGE_ARTIFACT_KIND,
   type CodexGeneratedImageArtifact,
-  type ProviderRuntimeEvent,
-} from "@glade/contracts/provider/providerRuntime";
+} from "@glade/contracts/provider/runtimePayloads";
+import { type ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { isSupportedLocalImagePath as isSupportedLocalImagePathShared } from "@glade/shared/browser/localPreviewFiles";
 

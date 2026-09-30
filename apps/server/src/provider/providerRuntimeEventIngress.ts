@@ -1,4 +1,4 @@
-import type { ProviderRuntimeEvent } from "@glade/contracts/provider/providerRuntime";
+import type { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 
 import { stripDiagnosticImages } from "./stripDiagnosticImages.ts";
 

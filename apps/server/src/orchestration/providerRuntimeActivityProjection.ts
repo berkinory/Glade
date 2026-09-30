@@ -1,8 +1,6 @@
 import { ApprovalRequestId, EventId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
-import {
-  isToolLifecycleItemType,
-  type ProviderRuntimeEvent,
-} from "@glade/contracts/provider/providerRuntime";
+import { isToolLifecycleItemType } from "@glade/contracts/provider/runtimeMetadata";
+import { type ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 import { type OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
 import { nonEmptyTrimmed } from "@glade/shared/text/text";
 

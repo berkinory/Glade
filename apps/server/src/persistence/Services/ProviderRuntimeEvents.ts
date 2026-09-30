@@ -1,4 +1,4 @@
-import type { ProviderRuntimeEvent } from "@glade/contracts/provider/providerRuntime";
+import type { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 import { ServiceMap } from "effect";
 import type { Effect } from "effect";
 

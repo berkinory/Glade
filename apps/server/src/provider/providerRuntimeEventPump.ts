@@ -1,7 +1,7 @@
 import type { TaggedFailure } from "../platform/operationError.ts";
 
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
-import type { ProviderRuntimeEvent } from "@glade/contracts/provider/providerRuntime";
+import type { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 import { Cause, Effect, Stream } from "effect";
 
 import type {

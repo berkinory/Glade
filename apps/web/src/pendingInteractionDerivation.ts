@@ -3,7 +3,7 @@ import {
   type OrchestrationPendingInteraction,
   type OrchestrationThreadActivity,
 } from "@glade/contracts/orchestration/threadEntities";
-import { type UserInputQuestion } from "@glade/contracts/provider/providerRuntime";
+import { type UserInputQuestion } from "@glade/contracts/provider/runtimePayloads";
 import {
   createStalePendingInteractionMatcher,
   isPendingInteractionResponseClaimable,

@@ -1,5 +1,5 @@
 import { CommandId, type ThreadId } from "@glade/contracts/core/baseSchemas";
-import { type ProviderRuntimeEvent } from "@glade/contracts/provider/providerRuntime";
+import { type ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 import {
   makeDrainableWorker,
   startDrainableWorkerProducers,

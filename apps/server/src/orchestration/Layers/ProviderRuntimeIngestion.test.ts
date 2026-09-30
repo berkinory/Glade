@@ -6,7 +6,7 @@ import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import type { OrchestrationReadModel } from "@glade/contracts/orchestration/snapshots";
 import type { OrchestrationThread } from "@glade/contracts/orchestration/threadEntities";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
-import type { ProviderRuntimeEvent } from "@glade/contracts/provider/providerRuntime";
+import type { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 import type { ProviderSession } from "@glade/contracts/provider/provider";
 import {
   ApprovalRequestId,

@@ -29,7 +29,7 @@ import {
   RuntimeMode,
   ProviderStartOptions,
 } from "@glade/contracts/provider/sessionPolicy";
-import { type ProviderRuntimeEvent } from "@glade/contracts/provider/providerRuntime";
+import { type ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 import {
   providerSupportsAutoRuntimeMode,
   unsupportedAutoRuntimeModeMessage,

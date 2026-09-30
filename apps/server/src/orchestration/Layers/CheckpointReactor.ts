@@ -13,7 +13,7 @@ import {
   type OrchestrationThread,
 } from "@glade/contracts/orchestration/threadEntities";
 import { type ProviderSession } from "@glade/contracts/provider/provider";
-import { type ProviderRuntimeEvent } from "@glade/contracts/provider/providerRuntime";
+import { type ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 import { Cause, Deferred, Effect, Fiber, Layer, Option, Schedule, Stream } from "effect";
 import {
   makeDrainableWorker,

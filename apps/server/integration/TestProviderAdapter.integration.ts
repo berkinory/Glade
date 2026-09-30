@@ -10,7 +10,7 @@ import {
   ProviderKind,
 } from "@glade/contracts/core/baseSchemas";
 import { ProviderApprovalDecision } from "@glade/contracts/provider/sessionPolicy";
-import { ProviderRuntimeEvent } from "@glade/contracts/provider/providerRuntime";
+import { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 import { ProviderSession, ProviderTurnStartResult } from "@glade/contracts/provider/provider";
 import { Effect, PubSub, Stream } from "effect";
 

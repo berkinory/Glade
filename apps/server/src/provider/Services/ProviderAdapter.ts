@@ -35,7 +35,7 @@ import type {
   ProviderSessionStartInput,
   ProviderTurnStartResult,
 } from "@glade/contracts/provider/provider";
-import type { ProviderRuntimeEvent } from "@glade/contracts/provider/providerRuntime";
+import type { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 import type {
   ServerVoicePrewarmInput,
   ServerVoicePrewarmResult,

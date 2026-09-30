@@ -36,7 +36,7 @@ import {
   type ProviderMentionReference,
   type ProviderSkillReference,
 } from "@glade/contracts/provider/providerDiscovery";
-import { type ProviderRuntimeEvent } from "@glade/contracts/provider/providerRuntime";
+import { type ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 import {
   type ProviderTurnStartResult,
   type ProviderSession,

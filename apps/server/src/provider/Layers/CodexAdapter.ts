@@ -8,9 +8,9 @@ import {
 import {
   type CanonicalItemType,
   type CanonicalRequestType,
-  type ProviderRuntimeEvent,
-  type ThreadTokenUsageSnapshot,
-} from "@glade/contracts/provider/providerRuntime";
+} from "@glade/contracts/provider/runtimeMetadata";
+import { type ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
+import { type ThreadTokenUsageSnapshot } from "@glade/contracts/provider/runtimePayloads";
 import {
   type ProviderComposerCapabilities,
   type ProviderListModelsResult,

@@ -7,7 +7,7 @@ import type { ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import type { ProviderForkThreadResult, ProviderSession } from "@glade/contracts/provider/provider";
-import type { ProviderRuntimeEvent } from "@glade/contracts/provider/providerRuntime";
+import type { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 import type { ServerSettings } from "@glade/contracts/settings/settings";
 import { type ChatAttachment } from "@glade/contracts/orchestration/threadEntities";
 import { DEFAULT_PROVIDER_INTERACTION_MODE } from "@glade/contracts/provider/sessionPolicy";

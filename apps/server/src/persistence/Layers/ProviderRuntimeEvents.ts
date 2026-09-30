@@ -1,5 +1,5 @@
 import { NonNegativeInt } from "@glade/contracts/core/baseSchemas";
-import { ProviderRuntimeEvent } from "@glade/contracts/provider/providerRuntime";
+import { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 import { Effect, Layer, Schema } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 

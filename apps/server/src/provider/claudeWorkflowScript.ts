@@ -2,7 +2,7 @@ import type {
   WorkflowAgentPlan,
   WorkflowAgentSnapshot,
   WorkflowPhase,
-} from "@glade/contracts/provider/providerRuntime";
+} from "@glade/contracts/provider/runtimePayloads";
 
 export interface ClaudeWorkflowScriptMeta {
   readonly name?: string;

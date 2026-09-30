@@ -1,4 +1,4 @@
-import type { UserInputQuestion } from "@glade/contracts/provider/providerRuntime";
+import type { UserInputQuestion } from "@glade/contracts/provider/runtimePayloads";
 import { useEffect, useEffectEvent, useRef, type ReactNode } from "react";
 import {
   derivePendingUserInputProgress,

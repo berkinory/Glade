@@ -182,10 +182,20 @@
       "import": "./src/provider/providerDiscovery.ts",
       "require": "./dist/provider/providerDiscovery.cjs"
     },
-    "./provider/providerRuntime": {
-      "types": "./src/provider/providerRuntime.ts",
-      "import": "./src/provider/providerRuntime.ts",
-      "require": "./dist/provider/providerRuntime.cjs"
+    "./provider/runtimeEvents": {
+      "types": "./src/provider/runtimeEvents.ts",
+      "import": "./src/provider/runtimeEvents.ts",
+      "require": "./dist/provider/runtimeEvents.cjs"
+    },
+    "./provider/runtimeMetadata": {
+      "types": "./src/provider/runtimeMetadata.ts",
+      "import": "./src/provider/runtimeMetadata.ts",
+      "require": "./dist/provider/runtimeMetadata.cjs"
+    },
+    "./provider/runtimePayloads": {
+      "types": "./src/provider/runtimePayloads.ts",
+      "import": "./src/provider/runtimePayloads.ts",
+      "require": "./dist/provider/runtimePayloads.cjs"
     },
     "./provider/sessionPolicy": {
       "types": "./src/provider/sessionPolicy.ts",

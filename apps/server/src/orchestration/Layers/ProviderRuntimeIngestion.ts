@@ -26,10 +26,8 @@ import {
   TurnId,
   type ProviderKind,
 } from "@glade/contracts/core/baseSchemas";
-import {
-  isToolLifecycleItemType,
-  type ProviderRuntimeEvent,
-} from "@glade/contracts/provider/providerRuntime";
+import { isToolLifecycleItemType } from "@glade/contracts/provider/runtimeMetadata";
+import { type ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 import {
   Cache,
   Cause,

@@ -43,7 +43,7 @@ import {
   type ServerVoiceTranscriptionInput,
   type ServerVoiceTranscriptionResult,
 } from "@glade/contracts/server/server";
-import { type UserInputQuestion } from "@glade/contracts/provider/providerRuntime";
+import { type UserInputQuestion } from "@glade/contracts/provider/runtimePayloads";
 import { prewarmChatGptVoiceTranscriptionConnection } from "@glade/shared/http/chatGptVoiceTranscription";
 import {
   BROWSER_SCRIPT_API_GUIDANCE,

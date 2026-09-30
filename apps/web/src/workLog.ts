@@ -7,7 +7,7 @@ import {
 import {
   isToolLifecycleItemType,
   type ToolLifecycleItemType,
-} from "@glade/contracts/provider/providerRuntime";
+} from "@glade/contracts/provider/runtimeMetadata";
 import {
   type OrchestrationLatestTurnState,
   type OrchestrationThreadActivity,

@@ -21,7 +21,7 @@ import {
   ThreadId,
   TurnId,
 } from "@glade/contracts/core/baseSchemas";
-import { ProviderRuntimeEvent } from "@glade/contracts/provider/providerRuntime";
+import { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 import { assert, describe, it } from "@effect/vitest";
 
 import { Effect, Exit, Fiber, Layer, Random, Stream } from "effect";
