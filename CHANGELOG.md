@@ -25,6 +25,8 @@
 
 ### Improved
 
+- Long code blocks stream more smoothly while preserving text selection.
+
 - Conversation compaction uses the same server checks for both providers; Claude accepts optional instructions.
 
 - Git status refreshes start fewer background commands.

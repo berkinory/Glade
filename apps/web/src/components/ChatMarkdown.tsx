@@ -93,6 +93,9 @@ import {
   FindAwareShikiHtml,
 } from "./ChatMarkdownFind";
 
+import { IncrementalShikiCodeBlock } from "./IncrementalShikiCodeBlock";
+import { createIncrementalMarkdownPlugin } from "../markdownIncremental";
+
 const EXTERNAL_HTTP_HREF_PATTERN = /^https?:\/\//i;
 
 const MARKDOWN_EXTERNAL_LINK_CLASS_NAME =
@@ -536,6 +539,19 @@ function LoadedShikiCodeBlock({
   isStreaming,
   sourceOffset,
 }: SuspenseShikiCodeBlockProps & { syntaxHighlighting: SyntaxHighlightingModule }) {
+  const [startedStreaming] = useState(isStreaming);
+  if (startedStreaming) {
+    return (
+      <IncrementalShikiCodeBlock
+        syntaxHighlighting={syntaxHighlighting}
+        language={language}
+        code={code}
+        themeName={themeName}
+        isStreaming={isStreaming}
+        sourceOffset={sourceOffset}
+      />
+    );
+  }
   const cacheKey = syntaxHighlighting.createSyntaxHighlightCacheKey(code, language, themeName);
   const cachedHighlightedHtml = !isStreaming
     ? syntaxHighlighting.getCachedSyntaxHighlightedHtml(cacheKey)
@@ -894,16 +910,18 @@ function ChatMarkdown({
         : null,
     [isUserVariant, mentionReferences, terminalContexts],
   );
+  const [incrementalMarkdownPlugin] = useState(createIncrementalMarkdownPlugin);
   const remarkPlugins = useMemo<MarkdownRemarkPlugins>(() => {
     if (composerChipsRemarkPlugin) {
       return [...USER_MARKDOWN_REMARK_PLUGINS, composerChipsRemarkPlugin, remarkFindableText];
     }
     return [
       ...MARKDOWN_REMARK_PLUGINS,
+      incrementalMarkdownPlugin,
       [remarkWikiLinks, { root: wikiLinkRoot ?? cwd }],
       remarkFindableText,
     ];
-  }, [composerChipsRemarkPlugin, wikiLinkRoot, cwd]);
+  }, [composerChipsRemarkPlugin, incrementalMarkdownPlugin, wikiLinkRoot, cwd]);
   const rehypePlugins = isUserVariant ? USER_MARKDOWN_REHYPE_PLUGINS : MARKDOWN_REHYPE_PLUGINS;
   const rootRef = useRef<HTMLDivElement | null>(null);
   useLayoutEffect(() => {
