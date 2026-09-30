@@ -75,6 +75,20 @@ describe("updateMachine", () => {
     expect(state.canRetry).toBe(true);
   });
 
+  it("does not offer a retry when a failed download has no available version", () => {
+    const state = reduceDesktopUpdateStateOnDownloadFailure(
+      {
+        ...createInitialDesktopUpdateState("1.0.0", runtimeInfo),
+        enabled: true,
+        status: "downloading",
+      },
+      "artifact unavailable",
+    );
+
+    expect(state.status).toBe("error");
+    expect(state.canRetry).toBe(false);
+  });
+
   it("transitions to downloaded and then preserves install retry state", () => {
     const downloaded = reduceDesktopUpdateStateOnDownloadComplete(
       {

@@ -20,21 +20,15 @@ describe("Glade desktop identity", () => {
     expect(resolveGladeDesktopFlavor({ isDevelopment: false })).toBe("production");
   });
 
-  it.each(["beta", "canary", "cua"])(
-    "rejects retired %s source and packaged identities",
-    (flavor) => {
-      expect(() =>
-        resolveGladeDesktopFlavor({ isDevelopment: true, requestedFlavor: flavor }),
-      ).toThrow("Unsupported Glade flavor");
-      expect(() =>
-        resolveGladeDesktopRuntimeFlavor({
-          isPackaged: true,
-          isDevelopment: false,
-          packagedFlavor: flavor,
-        }),
-      ).toThrow("invalid");
-    },
-  );
+  it("rejects an invalid packaged identity", () => {
+    expect(() =>
+      resolveGladeDesktopRuntimeFlavor({
+        isPackaged: true,
+        isDevelopment: false,
+        packagedFlavor: "invalid",
+      }),
+    ).toThrow("invalid");
+  });
 
   it("does not let inherited source environment change a production package", () => {
     expect(
@@ -42,14 +36,14 @@ describe("Glade desktop identity", () => {
         isPackaged: true,
         isDevelopment: false,
         packagedFlavor: "production",
-        requestedFlavor: "beta",
+        requestedFlavor: "development",
       }),
     ).toBe("production");
     expect(
       resolveGladeDesktopRuntimeFlavor({
         isPackaged: true,
         isDevelopment: false,
-        requestedFlavor: "beta",
+        requestedFlavor: "development",
       }),
     ).toBe("production");
     expect(

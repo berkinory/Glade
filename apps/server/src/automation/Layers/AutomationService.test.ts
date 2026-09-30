@@ -1813,22 +1813,39 @@ layer("AutomationService", (it) => {
       }),
   );
 
-  it.effect("rejects custom schedules faster than the configured minimum interval", () =>
-    Effect.gen(function* () {
-      resetHarness();
-      const service = yield* AutomationService;
-
-      const error = yield* service
-        .create({
-          ...createInput("local"),
-          schedule: { type: "cron", expression: "* * * * *", timezone: "UTC" },
-          minimumIntervalSeconds: 120,
-        })
-        .pipe(Effect.flip);
-
-      assert.match(error.message, /120 seconds apart/);
-    }),
-  );
+  for (const scenario of [
+    {
+      name: "custom schedules faster than the configured minimum interval",
+      input: {
+        ...createInput("local"),
+        schedule: { type: "cron" as const, expression: "* * * * *", timezone: "UTC" },
+        minimumIntervalSeconds: 120,
+      },
+      error: /120 seconds apart/,
+    },
+    {
+      name: "unacknowledged fast recurring intervals",
+      input: {
+        ...createInput("local"),
+        schedule: { type: "interval" as const, everySeconds: 15 },
+      },
+      error: /60 seconds apart/,
+    },
+    {
+      name: "unacknowledged full-access automations",
+      input: { ...createInput("worktree"), runtimeMode: "full-access" as const },
+      error: /full-access/,
+    },
+  ]) {
+    it.effect(`rejects ${scenario.name}`, () =>
+      Effect.gen(function* () {
+        resetHarness();
+        const service = yield* AutomationService;
+        const error = yield* service.create(scenario.input).pipe(Effect.flip);
+        assert.match(error.message, scenario.error);
+      }),
+    );
+  }
 
   it.effect("rejects updates that remove the hard cap from fast recurring intervals", () =>
     Effect.gen(function* () {
@@ -1846,38 +1863,6 @@ layer("AutomationService", (it) => {
         .pipe(Effect.flip);
 
       assert.match(error.message, /max iterations.*10 runs or fewer/);
-    }),
-  );
-
-  it.effect("rejects unacknowledged fast recurring intervals", () =>
-    Effect.gen(function* () {
-      resetHarness();
-      const service = yield* AutomationService;
-
-      const error = yield* service
-        .create({
-          ...createInput("local"),
-          schedule: { type: "interval", everySeconds: 15 },
-        })
-        .pipe(Effect.flip);
-
-      assert.match(error.message, /60 seconds apart/);
-    }),
-  );
-
-  it.effect("rejects unacknowledged full-access automations", () =>
-    Effect.gen(function* () {
-      resetHarness();
-      const service = yield* AutomationService;
-
-      const error = yield* service
-        .create({
-          ...createInput("worktree"),
-          runtimeMode: "full-access",
-        })
-        .pipe(Effect.flip);
-
-      assert.match(error.message, /full-access/);
     }),
   );
 

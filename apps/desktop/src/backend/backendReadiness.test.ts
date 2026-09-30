@@ -1,10 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import {
-  BackendReadinessAbortedError,
-  isBackendReadinessAborted,
-  waitForHttpReady,
-} from "./backendReadiness";
+import { BackendReadinessAbortedError, waitForHttpReady } from "./backendReadiness";
 
 describe("waitForHttpReady", () => {
   it("returns once the backend reports a successful readiness response", async () => {
@@ -150,10 +146,5 @@ describe("waitForHttpReady", () => {
     controller.abort();
 
     await expect(waitPromise).rejects.toBeInstanceOf(BackendReadinessAbortedError);
-  });
-
-  it("recognizes aborted readiness errors", () => {
-    expect(isBackendReadinessAborted(new BackendReadinessAbortedError())).toBe(true);
-    expect(isBackendReadinessAborted(new Error("nope"))).toBe(false);
   });
 });

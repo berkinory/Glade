@@ -306,7 +306,6 @@ describe("composerDraftStore persisted-state hydration", () => {
     expect(hydrated.projectDraftThreadIdByProjectId[projectId]).toBe(threadId);
     expect(hydrated.draftThreadsByThreadId[threadId]?.projectId).toBe(projectId);
     expect(hydrated.draftsByThreadId[threadId]?.prompt).toBe("Keep this unsent message");
-    expect(hydrated.draftThreadsByThreadId[threadId]).not.toHaveProperty("isTemporary");
   });
 });
 

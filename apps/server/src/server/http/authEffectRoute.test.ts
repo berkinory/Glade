@@ -262,39 +262,31 @@ describe("authEffectRouteLayer", () => {
     } as ServerConfigShape;
     await withAuthEffectServer(config, makeServerAuth(sideEffects), async (serverOrigin) => {
       for (const route of mutationRoutes) {
-        for (const origin of [
-          undefined,
-          "null",
-          "not a url",
-          "https://evil.example.test",
-          "https://cross-site.invalid",
-        ]) {
-          const response = await fetch(
-            `${serverOrigin}${route.path}`,
-            mutationRequest({
-              ...(origin === undefined ? {} : { origin }),
-              credential: "cookie",
-              ...(route.body === undefined ? {} : { body: route.body }),
-            }),
-          );
-          expect(response.status, `${route.path} with ${String(origin)}`).toBe(403);
-        }
-        for (const origin of [
-          "null",
-          "not a url",
-          "https://evil.example.test",
-          "https://cross-site.invalid",
-        ]) {
-          const response = await fetch(
-            `${serverOrigin}${route.path}`,
-            mutationRequest({
-              origin,
-              credential: "bearer",
-              ...(route.body === undefined ? {} : { body: route.body }),
-            }),
-          );
-          expect(response.status, `${route.path} bearer with ${origin}`).toBe(403);
-        }
+        const rejectedRequests = [
+          ...[
+            undefined,
+            "null",
+            "not a url",
+            "https://evil.example.test",
+            "https://cross-site.invalid",
+          ].map((origin) => ({ credential: "cookie" as const, origin })),
+          ...["null", "not a url", "https://evil.example.test", "https://cross-site.invalid"].map(
+            (origin) => ({ credential: "bearer" as const, origin }),
+          ),
+        ];
+        await Promise.all(
+          rejectedRequests.map(async ({ credential, origin }) => {
+            const response = await fetch(
+              `${serverOrigin}${route.path}`,
+              mutationRequest({
+                ...(origin === undefined ? {} : { origin }),
+                credential,
+                ...(route.body === undefined ? {} : { body: route.body }),
+              }),
+            );
+            expect(response.status, `${route.path} ${credential} with ${String(origin)}`).toBe(403);
+          }),
+        );
       }
       expect(sideEffects.count).toBe(0);
     });
@@ -463,6 +455,7 @@ describe("binaryUploadEffectRouteLayer", () => {
                 port: target.port,
                 path: `${target.pathname}${target.search}`,
                 method: "POST",
+                agent: false,
                 headers: {
                   Authorization: "Bearer bearer-token",
                   "Content-Length": String(10 * 1024 * 1024 + 1),

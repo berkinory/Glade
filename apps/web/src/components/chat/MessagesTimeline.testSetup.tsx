@@ -1,43 +1,4 @@
-import { MessageId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { beforeAll, vi } from "vitest";
-
-export const TOOLTIP_TRIGGER_MARKER = 'data-base-ui-tooltip-trigger=""';
-export const FORK_SOURCE = {
-  sourceThreadId: ThreadId.makeUnsafe("source-thread"),
-  sourceTitle: "ciao (2)",
-};
-
-export function makeForkImportedEntry() {
-  return {
-    id: "imported-entry",
-    kind: "message" as const,
-    createdAt: "2026-03-17T19:12:28.000Z",
-    message: {
-      id: MessageId.makeUnsafe("imported-message"),
-      role: "assistant" as const,
-      text: "Imported history",
-      createdAt: "2026-03-17T19:12:28.000Z",
-      streaming: false,
-      source: "fork-import" as const,
-    },
-  };
-}
-
-export function makeForkOwnedEntry() {
-  return {
-    id: "fork-entry",
-    kind: "message" as const,
-    createdAt: "2026-03-17T19:12:29.000Z",
-    message: {
-      id: MessageId.makeUnsafe("fork-message"),
-      role: "user" as const,
-      text: "Fork-only turn",
-      createdAt: "2026-03-17T19:12:29.000Z",
-      streaming: false,
-      source: "native" as const,
-    },
-  };
-}
 
 vi.mock("@legendapp/list/react", async () => {
   const React = await import("react");

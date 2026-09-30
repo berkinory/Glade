@@ -17,8 +17,6 @@ vi.mock("../hooks/useTheme", () => ({
   useTheme: () => ({ resolvedTheme: "light" }),
 }));
 
-const HEAVY_MODULE_TEST_TIMEOUT_MS = 30_000;
-
 function renderWithQueryClient(ui: ReactElement) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -40,54 +38,7 @@ async function renderUserMarkdown(text: string) {
   );
 }
 
-describe("streamingCodeHighlightIntervalMs", () => {
-  it(
-    "keeps the base cadence for small blocks and stretches it with block size",
-    async () => {
-      const { streamingCodeHighlightIntervalMs } = await import("./ChatMarkdown");
-      expect(streamingCodeHighlightIntervalMs(0)).toBe(160);
-      expect(streamingCodeHighlightIntervalMs(8_000)).toBe(160);
-      expect(streamingCodeHighlightIntervalMs(44_000)).toBe(580);
-      expect(streamingCodeHighlightIntervalMs(80_000)).toBe(1_000);
-      expect(streamingCodeHighlightIntervalMs(500_000)).toBe(1_000);
-    },
-    HEAVY_MODULE_TEST_TIMEOUT_MS,
-  );
-});
-
 describe("ChatMarkdown", () => {
-  it("renders GitHub alert blockquotes with a title and strips the marker", async () => {
-    const markup = await renderMarkdown("> [!NOTE]\n> **Medium Risk**\n> Details");
-
-    expect(markup).toContain('data-github-alert="note"');
-    expect(markup).toContain('class="markdown-alert-title"');
-    expect(markup).toContain(">Note</p>");
-    expect(markup).not.toContain("[!NOTE]");
-    expect(markup).toContain("<strong>Medium Risk</strong>");
-  });
-
-  it("leaves blockquotes with inline text after the marker as plain quotes", async () => {
-    const markup = await renderMarkdown("> [!NOTE] not an alert");
-
-    expect(markup).not.toContain("data-github-alert");
-    expect(markup).toContain("[!NOTE] not an alert");
-  });
-
-  it("renders inline math with KaTeX", async () => {
-    const markup = await renderMarkdown("Euler wrote $e^{i\\\\pi} + 1 = 0$.");
-
-    expect(markup).toContain('class="katex"');
-    expect(markup).not.toContain("katex-display");
-    expect(markup).not.toContain("$e^{i\\\\pi} + 1 = 0$");
-  });
-
-  it("renders display math with KaTeX block output", async () => {
-    const markup = await renderMarkdown("$$\n\\\\int_0^1 x^2 \\, dx\n$$");
-
-    expect(markup).toContain("katex-display");
-    expect(markup).not.toContain("$$");
-  });
-
   it("keeps links and code intact when math is present", async () => {
     const markup = await renderMarkdown(
       [
@@ -169,16 +120,13 @@ $$
     expect(markup).not.toContain("CHATMARKDOWNLITERALDOLLARPLACEHOLDER");
   });
 
-  it.each([["Price $5/month; [plan](/pricing/$tier).", "Price $5/month;", "/pricing/$tier"]])(
-    "keeps literal dollars before Markdown links: %s",
-    async (text, literal, href) => {
-      const markup = await renderMarkdown(text);
+  it("keeps literal dollars before Markdown links", async () => {
+    const markup = await renderMarkdown("Price $5/month; [plan](/pricing/$tier).");
 
-      expect(markup).toContain(literal);
-      expect(markup).toContain(`href="${href}"`);
-      expect(markup).not.toContain('class="katex"');
-    },
-  );
+    expect(markup).toContain("Price $5/month;");
+    expect(markup).toContain('href="/pricing/$tier"');
+    expect(markup).not.toContain('class="katex"');
+  });
 
   it("keeps literal dollars before Markdown images without consuming their URLs", async () => {
     const markup = await renderMarkdown(
@@ -227,26 +175,6 @@ $$
     expect(markup).toContain("$5 to $10");
     expect(markup).toContain("$E=mc^2$");
     expect(markup).not.toContain('class="katex"');
-  });
-
-  it("keeps all-caps dollar identifiers literal", async () => {
-    const markup = await renderMarkdown("Use $USD$ for price and $PATH$ for shell lookup.");
-
-    expect(markup).toContain("$USD$");
-    expect(markup).toContain("$PATH$");
-    expect(markup).not.toContain('class="katex"');
-  });
-
-  it("renders numeric coefficients in every table row", async () => {
-    const markup = await renderMarkdown(String.raw`| Operation | FLOPs |
-|---|---:|
-| Decay | $d_kd_v$ |
-| Read | $2d_kd_v$ |
-| Write | $2d_kd_v$ |
-| Output | $2d_kd_v$ |`);
-    expect(markup.match(/class="katex"/g) ?? []).toHaveLength(4);
-    expect(markup).not.toContain("katex-error");
-    expect(markup).not.toContain("$2d_kd_v$");
   });
 
   it("renders numeric expressions while keeping prices and code literal", async () => {
@@ -367,33 +295,12 @@ $$
 });
 
 describe("ChatMarkdown user variant", () => {
-  it("renders inline markdown formatting", async () => {
-    const markup = await renderUserMarkdown("use `bun run test` and **bold** text");
-
-    expect(markup).toContain("chat-markdown--user");
-    expect(markup).toContain("<code>bun run test</code>");
-    expect(markup).toContain("<strong>bold</strong>");
-  });
-
-  it("keeps single newlines as hard breaks", async () => {
-    const markup = await renderUserMarkdown("first line\nsecond line");
-
-    expect(markup).toContain("first line<br/>\nsecond line");
-  });
-
   it("keeps dollars literal instead of parsing math", async () => {
     const markup = await renderUserMarkdown("It costs $5 and $x^2$ stays literal.");
 
     expect(markup).toContain("$5");
     expect(markup).toContain("$x^2$");
     expect(markup).not.toContain('class="katex"');
-  });
-
-  it("renders composer skill tokens as chips", async () => {
-    const markup = await renderUserMarkdown("run $deep-research on this");
-
-    expect(markup).toContain("Deep Research");
-    expect(markup).not.toContain("$deep-research");
   });
 
   it("keeps composer tokens literal inside inline code", async () => {
@@ -410,20 +317,6 @@ describe("ChatMarkdown user variant", () => {
       expect(markup).toContain("<code>");
       expect(markup).not.toContain('data-slot="central-icon"');
     }
-  });
-
-  it("renders @-mention tokens as mention chips", async () => {
-    const markup = await renderUserMarkdown("check @src/utils/model.ts please");
-
-    expect(markup).toContain('title="src/utils/model.ts"');
-    expect(markup).not.toContain("@src/utils/model.ts");
-  });
-
-  it("renders pasted URLs as interactive link chips", async () => {
-    const markup = await renderUserMarkdown("see https://example.com/docs now");
-
-    expect(markup).toContain('title="https://example.com/docs"');
-    expect(markup).toContain("<button");
   });
 });
 

@@ -2487,63 +2487,46 @@ describe("AgentGateway", () => {
     }).pipe(Effect.provide(gatewayLayer));
   });
 
-  it.effect("rejects sends that would drive a higher-privileged thread", () => {
-    const { gatewayLayer, makeHarness } = makeHarnessLayer([
-      ...baseThreads,
-      makeThreadShell("thread-full-access", { runtimeMode: "full-access" }),
-    ]);
-    return Effect.gen(function* () {
-      const harness = yield* makeHarness;
-      const response = yield* harness.callTool({
-        token: "token-parent",
-        name: "glade_send_message",
-        args: { threadId: "thread-full-access", message: "run something dangerous" },
-      });
-      assert.isTrue(isToolError(response.result));
-      assert.include(toolErrorText(response.result), "full-access");
-      assert.equal(harness.dispatched.length, 0);
-    }).pipe(Effect.provide(gatewayLayer));
-  });
-
-  it.effect("rejects interrupts that would drive a higher-privileged thread", () => {
-    const { gatewayLayer, makeHarness } = makeHarnessLayer([
-      ...baseThreads,
-      makeThreadShell("thread-full-access", { runtimeMode: "full-access" }),
-    ]);
-    return Effect.gen(function* () {
-      const harness = yield* makeHarness;
-      const response = yield* harness.callTool({
-        token: "token-parent",
-        name: "glade_interrupt_thread",
-        args: { threadId: "thread-full-access" },
-      });
-      assert.isTrue(isToolError(response.result));
-      assert.include(toolErrorText(response.result), "full-access");
-      assert.equal(harness.dispatched.length, 0);
-    }).pipe(Effect.provide(gatewayLayer));
-  });
-
-  it.effect("rejects heartbeats that would target a higher-privileged thread", () => {
-    const { gatewayLayer, makeHarness } = makeHarnessLayer([
-      ...baseThreads,
-      makeThreadShell("thread-full-access", { runtimeMode: "full-access" }),
-    ]);
-    return Effect.gen(function* () {
-      const harness = yield* makeHarness;
-      const response = yield* harness.callTool({
-        token: "token-parent",
-        name: "glade_create_automation",
-        args: {
-          name: "escalate",
-          prompt: "keep running privileged work",
-          targetThreadId: "thread-full-access",
-        },
-      });
-      assert.isTrue(isToolError(response.result));
-      assert.include(toolErrorText(response.result), "full-access");
-      assert.equal(harness.automationCreates.length, 0);
-    }).pipe(Effect.provide(gatewayLayer));
-  });
+  for (const scenario of [
+    {
+      name: "send",
+      tool: "glade_send_message",
+      args: { threadId: "thread-full-access", message: "run something dangerous" },
+    },
+    {
+      name: "interrupt",
+      tool: "glade_interrupt_thread",
+      args: { threadId: "thread-full-access" },
+    },
+    {
+      name: "heartbeat",
+      tool: "glade_create_automation",
+      args: {
+        name: "escalate",
+        prompt: "keep running privileged work",
+        targetThreadId: "thread-full-access",
+      },
+    },
+  ]) {
+    it.effect(`rejects ${scenario.name} targeting a higher-privileged thread`, () => {
+      const { gatewayLayer, makeHarness } = makeHarnessLayer([
+        ...baseThreads,
+        makeThreadShell("thread-full-access", { runtimeMode: "full-access" }),
+      ]);
+      return Effect.gen(function* () {
+        const harness = yield* makeHarness;
+        const response = yield* harness.callTool({
+          token: "token-parent",
+          name: scenario.tool,
+          args: scenario.args,
+        });
+        assert.isTrue(isToolError(response.result));
+        assert.include(toolErrorText(response.result), "full-access");
+        assert.equal(harness.dispatched.length, 0);
+        assert.equal(harness.automationCreates.length, 0);
+      }).pipe(Effect.provide(gatewayLayer));
+    });
+  }
 
   it.effect("rejects sends from worktree-isolated callers to local-checkout threads", () => {
     const { gatewayLayer, makeHarness } = makeHarnessLayer([

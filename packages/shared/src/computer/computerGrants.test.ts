@@ -4,8 +4,6 @@ import {
   computerPermissionSetupMessage,
   computerGrantsBlockControl,
   computerStaleGrantAdvice,
-  listComputerPermissions,
-  sortComputerPermissions,
   missingComputerPermissions,
 } from "./computerGrants";
 
@@ -32,21 +30,6 @@ describe("computer permission copy", () => {
       }),
     ).toEqual([]);
   });
-  it("names grants in one fixed order whatever order they arrive in", () => {
-    expect(sortComputerPermissions(["screenRecording", "accessibility"])).toEqual([
-      "accessibility",
-      "screenRecording",
-    ]);
-    expect(listComputerPermissions(["screenRecording", "accessibility"])).toBe(
-      "Accessibility and Screen Recording",
-    );
-    expect(listComputerPermissions(["screenRecording"])).toBe("Screen Recording");
-    expect(listComputerPermissions([])).toBe("");
-    expect(listComputerPermissions(["inputMonitoring", "screenRecording", "accessibility"])).toBe(
-      "Accessibility, Screen Recording and Input Monitoring",
-    );
-  });
-
   it("explains a stale grant on an ad-hoc build, naming the right tccutil service", () => {
     const advice = computerStaleGrantAdvice(
       ["accessibility", "screenRecording"],
@@ -61,8 +44,8 @@ describe("computer permission copy", () => {
   });
 
   it("names the responsible app rather than assuming the released one", () => {
-    const advice = computerStaleGrantAdvice(["accessibility"], "adhoc", "com.example.glade.canary");
-    expect(advice).toContain("tccutil reset Accessibility com.example.glade.canary");
+    const advice = computerStaleGrantAdvice(["accessibility"], "adhoc", "com.example.localapp");
+    expect(advice).toContain("tccutil reset Accessibility com.example.localapp");
     expect(advice).not.toContain("com.agent.glade");
   });
 
@@ -82,12 +65,6 @@ describe("computer permission copy", () => {
     expect(message).toContain("Accessibility");
     expect(message).toContain("System Settings");
     expect(message).not.toContain("tccutil");
-  });
-
-  it("puts the stale-grant explanation into the ad-hoc setup message", () => {
-    const message = computerPermissionSetupMessage(["accessibility"], "adhoc", "com.agent.glade");
-    expect(message).toContain("System Settings");
-    expect(message).toContain("tccutil reset Accessibility com.agent.glade");
   });
 });
 
