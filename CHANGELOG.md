@@ -12,6 +12,8 @@
 
 ### Improved
 
+- Claude SDK callbacks and stream observers use the runtime captured by their adapter Layer, retaining its services and tracing context while keeping existing cancellation and teardown ownership.
+
 - Claude adapter pure logic has dedicated modules for SDK messages, tool presentation, model capability checks, resume cursors, process ownership and prompt policy. Session behavior and provider-visible policy text remain unchanged.
 
 - Read-model event projection uses focused workspace, thread, turn, message and history handlers. Snapshot sequencing, message retention and lifecycle settlement remain unchanged.

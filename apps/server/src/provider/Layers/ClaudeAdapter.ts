@@ -278,6 +278,11 @@ const CLAUDE_INTERRUPT_TIMEOUT = Duration.seconds(10);
 
 function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
   return Effect.gen(function* () {
+    // SDK hooks and stream observers enter from Promise callbacks; retain the Layer services and tracing.
+    const sdkServices = yield* Effect.services<never>();
+    const runSdkPromise = Effect.runPromiseWith(sdkServices);
+    const runSdkFork = Effect.runForkWith(sdkServices);
+    const runSdkSync = Effect.runSyncWith(sdkServices);
     const fileSystem = yield* FileSystem.FileSystem;
     const serverConfig = yield* ServerConfig;
 
@@ -2549,7 +2554,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           });
         }
       });
-      const fiber = Effect.runFork(loop);
+      const fiber = runSdkFork(loop);
       context.workflowRuntimePollers.set(taskId, fiber);
       fiber.addObserver(() => {
         if (context.workflowRuntimePollers.get(taskId) === fiber) {
@@ -3553,7 +3558,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
             input.lifecycleGeneration,
           );
           if (!nativeObservation) return {};
-          const current = Effect.runSync(Ref.get(contextRef));
+          const current = runSdkSync(Ref.get(contextRef));
           const previous = current ? current.cacheObservation : resumeState?.claudeCache;
           const observation: ClaudeCacheObservation = {
             ...(previous?.nativeSessionId === nativeObservation.nativeSessionId ? previous : {}),
@@ -3568,7 +3573,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           ) {
             current.cacheObservation = claudeCacheForModel(observation, current.currentApiModelId);
             syncClaudeCacheResumeCursor(current);
-            Effect.runFork(emitClaudeCacheObservation(current));
+            runSdkFork(emitClaudeCacheObservation(current));
           }
           return {};
         };
@@ -3660,7 +3665,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
             }
 
             const onAbort = () => {
-              Effect.runFork(
+              runSdkFork(
                 settlePendingUserInput(context, requestId, pendingInput, {
                   answers: {},
                   cancelled: true,
@@ -3700,7 +3705,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
           if (pendingSubagentSteers.size === 0 || typeof agentId !== "string") {
             return {};
           }
-          return Effect.runPromise(
+          return runSdkPromise(
             Effect.gen(function* () {
               const context = yield* Ref.get(contextRef);
               if (!context) {
@@ -3731,7 +3736,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         };
 
         const canUseTool: CanUseTool = (toolName, toolInput, callbackOptions) =>
-          Effect.runPromise(
+          runSdkPromise(
             Effect.gen(function* () {
               const context = yield* Ref.get(contextRef);
               if (!context) {
@@ -3865,9 +3870,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
               }
 
               const onAbort = () => {
-                Effect.runFork(
-                  settlePendingApproval(context, requestId, pendingApproval, "cancel"),
-                );
+                runSdkFork(settlePendingApproval(context, requestId, pendingApproval, "cancel"));
               };
 
               callbackOptions.signal.addEventListener("abort", onAbort, {
@@ -3980,7 +3983,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
             !hookInput.tool_name.startsWith("mcp__glade__")
           )
             return {};
-          const context = await Effect.runPromise(Ref.get(contextRef));
+          const context = await runSdkPromise(Ref.get(contextRef));
           if (!context) return {};
           const agentId = "agent_id" in hookInput ? hookInput.agent_id : undefined;
           const turnId =
@@ -4292,7 +4295,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
               providerRefs: {},
             });
 
-            const streamFiber = Effect.runFork(runSdkStream(context));
+            const streamFiber = runSdkFork(runSdkStream(context));
             context.streamFiber = streamFiber;
             streamFiber.addObserver((exit) => {
               if (context.stopped) {
@@ -4301,7 +4304,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
               if (context.streamFiber === streamFiber) {
                 context.streamFiber = undefined;
               }
-              Effect.runFork(handleStreamExit(context, exit));
+              runSdkFork(handleStreamExit(context, exit));
             });
           });
 
@@ -5219,7 +5222,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
     ): Promise<T> {
       // Never spawn another discovery process until every previously unproven process tree has been
       // reaped successfully.
-      await Effect.runPromise(teardownFailedDiscoveryProcesses());
+      await runSdkPromise(teardownFailedDiscoveryProcesses());
 
       const processOwner: ClaudeProcessOwner = {};
       let tempQuery: ClaudeQueryRuntime | undefined;
@@ -5250,7 +5253,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         try {
           tempQuery?.close();
         } finally {
-          await Effect.runPromise(teardownDiscoveryProcess(processOwner));
+          await runSdkPromise(teardownDiscoveryProcess(processOwner));
         }
       }
     }
