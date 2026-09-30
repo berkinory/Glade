@@ -74,7 +74,7 @@ import {
 } from "../../persistence/Services/ProjectionThreadMessages.ts";
 import { ProjectionThreadSession } from "../../persistence/Services/ProjectionThreadSessions.ts";
 import { ProjectionThread } from "../../persistence/Services/ProjectionThreads.ts";
-import { ORCHESTRATION_PROJECTOR_NAMES } from "./ProjectionPipeline.ts";
+import { ORCHESTRATION_PROJECTOR_NAMES } from "../projection/projectorRegistration.ts";
 import {
   ProjectionSnapshotQuery,
   type ProjectionFullThreadDiffContext,

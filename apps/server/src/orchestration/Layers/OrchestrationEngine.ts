@@ -71,7 +71,7 @@ import {
   OrchestrationProjectionPipeline,
   type ShellMetadataOrchestrationEvent,
 } from "../Services/ProjectionPipeline.ts";
-import { ORCHESTRATION_PROJECTOR_NAMES } from "./ProjectionPipeline.ts";
+import { ORCHESTRATION_PROJECTOR_NAMES } from "../projection/projectorRegistration.ts";
 import { ProjectionSnapshotQuery } from "../Services/ProjectionSnapshotQuery.ts";
 import { REQUIRED_SNAPSHOT_PROJECTORS } from "./ProjectionSnapshotQuery.ts";
 import {

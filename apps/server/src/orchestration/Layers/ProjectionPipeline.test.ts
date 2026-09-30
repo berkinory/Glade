@@ -29,10 +29,8 @@ import {
 } from "../../persistence/Services/OrchestrationEventStore.ts";
 import { ManagedAttachmentRepository } from "../../persistence/Services/ManagedAttachments.ts";
 import { OrchestrationEngineLive } from "./OrchestrationEngine.ts";
-import {
-  ORCHESTRATION_PROJECTOR_NAMES,
-  OrchestrationProjectionPipelineLive,
-} from "./ProjectionPipeline.ts";
+import { ORCHESTRATION_PROJECTOR_NAMES } from "../projection/projectorRegistration.ts";
+import { OrchestrationProjectionPipelineLive } from "./ProjectionPipeline.ts";
 import { OrchestrationProjectionSnapshotQueryLive } from "./ProjectionSnapshotQuery.ts";
 import { ProjectionSnapshotQuery } from "../Services/ProjectionSnapshotQuery.ts";
 import { OrchestrationEngineService } from "../Services/OrchestrationEngine.ts";
