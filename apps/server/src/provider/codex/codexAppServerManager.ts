@@ -1,3 +1,5 @@
+import { decodeCodexGuardianReview } from "./protocol/decode.ts";
+import { guardianDeniedEvent, type GuardianDeniedEvent } from "./codexGuardianReview.ts";
 import type { NativeThreadHistoryInput } from "../core/nativeThreadHistory.ts";
 import { discoverCodexProjects } from "./codexProjectImport.ts";
 import { codexUpdatedModelSelection } from "./codexStateNotifications.ts";
@@ -157,6 +159,7 @@ interface PendingApprovalRequest {
     | "item/fileRead/requestApproval"
     | "item/permissions/requestApproval"
     | typeof MCP_SERVER_ELICITATION_REQUEST_METHOD;
+  guardianEvent?: GuardianDeniedEvent;
   requestKind: ProviderRequestKind;
   threadId: ThreadId;
   turnId?: TurnId;
@@ -2327,6 +2330,17 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     pendingRequest: PendingApprovalRequest,
     decision: ProviderApprovalDecision,
   ): Promise<void> {
+    if (pendingRequest.guardianEvent) {
+      if (decision === "acceptForSession") {
+        throw new Error("Auto-review denials require approval for each action.");
+      }
+      if (decision === "accept") {
+        await this.sendRequest(context, "thread/approveGuardianDeniedAction", {
+          threadId: pendingRequest.providerThreadId,
+          event: pendingRequest.guardianEvent,
+        });
+      }
+    }
     const requestedPermissions = pendingRequest.requestedPermissions ?? {};
     const grantedPermissions = {
       ...(requestedPermissions.network !== null && requestedPermissions.network !== undefined
@@ -2356,10 +2370,9 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
               scope: decision === "acceptForSession" ? ("session" as const) : ("turn" as const),
             }
           : { decision };
-    await this.writeMessage(context, {
-      id: pendingRequest.jsonRpcId,
-      result,
-    });
+    if (!pendingRequest.guardianEvent) {
+      await this.writeMessage(context, { id: pendingRequest.jsonRpcId, result });
+    }
 
     this.emitEvent({
       id: EventId.makeUnsafe(randomUUID()),
@@ -2409,6 +2422,9 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       throw new Error(`Unknown pending approval request: ${requestId}`);
     }
 
+    if (pendingRequest.guardianEvent && decision === "acceptForSession") {
+      throw new Error("Auto-review denials require approval for each action.");
+    }
     context.pendingApprovals.delete(requestId);
     const isPermissionRequest = isPermissionApprovalRequest(pendingRequest);
 
@@ -2418,7 +2434,14 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     if (overridesSessionPolicy) {
       context.sessionApprovalOverride = CODEX_ALWAYS_ALLOW_SESSION_TURN_OVERRIDES;
     }
-    await this.resolveApprovalRequest(context, pendingRequest, decision);
+    try {
+      await this.resolveApprovalRequest(context, pendingRequest, decision);
+    } catch (error) {
+      if (pendingRequest.guardianEvent && !context.stopping) {
+        context.pendingApprovals.set(requestId, pendingRequest);
+      }
+      throw error;
+    }
     if (decision === "cancel" && (isPermissionRequest || pendingRequest.requestKind === "tool")) {
       await this.interruptTurn(threadId, pendingRequest.turnId, pendingRequest.providerThreadId);
     }
@@ -3688,6 +3711,47 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       textDelta,
       payload: eventPayload,
     });
+
+    if (notification.method === "item/autoApprovalReview/completed") {
+      const review = decodeCodexGuardianReview(notification.params);
+      if (review.review.status === "denied") {
+        const requestId = ApprovalRequestId.makeUnsafe(`guardian:${review.reviewId}`);
+        if (!context.pendingApprovals.has(requestId)) {
+          context.pendingApprovals.set(requestId, {
+            requestId,
+            jsonRpcId: review.reviewId,
+            method: MCP_SERVER_ELICITATION_REQUEST_METHOD,
+            requestKind: "tool",
+            threadId: context.session.threadId,
+            turnId: TurnId.makeUnsafe(review.turnId),
+            ...(childParentTurnId ? { parentTurnId: childParentTurnId } : {}),
+            providerThreadId: review.threadId,
+            guardianEvent: guardianDeniedEvent(review),
+          });
+          this.emitEvent({
+            id: EventId.makeUnsafe(randomUUID()),
+            kind: "request",
+            provider: "codex",
+            threadId: context.session.threadId,
+            createdAt: new Date().toISOString(),
+            ...(context.lifecycleGeneration
+              ? { lifecycleGeneration: context.lifecycleGeneration }
+              : {}),
+            method: MCP_SERVER_ELICITATION_REQUEST_METHOD,
+            requestId,
+            requestKind: "tool",
+            turnId: TurnId.makeUnsafe(review.turnId),
+            ...(childParentTurnId ? { parentTurnId: childParentTurnId } : {}),
+            providerThreadId: review.threadId,
+            payload: {
+              message: `Codex auto-review denied this action. Approve anyway? ${review.review.rationale ?? ""}`,
+              action: review.action,
+              sessionApprovalAvailable: false,
+            },
+          });
+        }
+      }
+    }
 
     if (notification.method === "thread/started") {
       const startedThreadId = normalizeProviderThreadId(

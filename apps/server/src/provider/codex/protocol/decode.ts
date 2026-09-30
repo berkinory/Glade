@@ -1,3 +1,6 @@
+import guardianReviewSchema from "./generated/schemas/v2/ItemGuardianApprovalReviewCompletedNotification.json";
+import type { ItemGuardianApprovalReviewCompletedNotification } from "./generated/types/v2/ItemGuardianApprovalReviewCompletedNotification";
+import guardianOverrideSchema from "./generated/schemas/v2/ThreadApproveGuardianDeniedActionResponse.json";
 import threadListSchema from "./generated/schemas/v2/ThreadListResponse.json";
 import projectListSchema from "./generated/schemas/v2/ProjectListResponse.json";
 import type { ThreadListResponse } from "./generated/types/v2/ThreadListResponse";
@@ -47,6 +50,7 @@ function fromPinnedSchema(value: unknown) {
 }
 
 const responseSchemas = {
+  "thread/approveGuardianDeniedAction": fromPinnedSchema(guardianOverrideSchema),
   "thread/list": fromPinnedSchema(threadListSchema),
   "project/list": fromPinnedSchema(projectListSchema),
   "model/list": fromPinnedSchema(modelListSchema),
@@ -151,4 +155,15 @@ export function decodeCodexRpcError(value: unknown): void {
 
 export function decodeCodexErrorParams(value: unknown): ErrorNotification {
   return decode(errorParamsSchema, value, "error", "notification");
+}
+
+export function decodeCodexGuardianReview(
+  value: unknown,
+): ItemGuardianApprovalReviewCompletedNotification {
+  return decode(
+    fromPinnedSchema(guardianReviewSchema),
+    value,
+    "item/autoApprovalReview/completed",
+    "notification",
+  );
 }

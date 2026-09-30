@@ -14,6 +14,9 @@ import { dirname, join, relative, resolve } from "node:path";
 
 const release = "0.158.0";
 const roots = [
+  "v2/ItemGuardianApprovalReviewCompletedNotification",
+  "v2/ThreadApproveGuardianDeniedActionParams",
+  "v2/ThreadApproveGuardianDeniedActionResponse",
   "v2/ThreadListParams",
   "v2/ThreadListResponse",
   "v2/ProjectListParams",
