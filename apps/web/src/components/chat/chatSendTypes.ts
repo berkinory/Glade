@@ -269,3 +269,153 @@ export interface ChatTurnSubmissionInput {
     typeof useChatRuntimeModes
   >["persistThreadSettingsForNextTurn"];
 }
+
+export type ChatTurnSubmissionControllerInput = {
+  props: Pick<ChatTurnSubmissionInput, "threadId">;
+  provider: Pick<
+    ChatTurnSubmissionInput,
+    | "hasLiveTurn"
+    | "isConnecting"
+    | "showPlanFollowUpPrompt"
+    | "activeProposedPlan"
+    | "hasQueueableLiveTurn"
+    | "isSendBusy"
+    | "worktreeSetupResolutionRef"
+    | "setWorktreeSetupPendingAction"
+    | "beginLocalDispatch"
+    | "clearLocalDispatchWorktreeSetup"
+    | "armLocalDispatchAckFallback"
+    | "failLocalDispatchWorktreeSetup"
+    | "scheduleFailedWorktreeSetupDispatchReset"
+    | "resetLocalDispatch"
+    | "activePendingProgress"
+    | "activePendingUserInputKey"
+    | "pendingUserInputAnswersByRequestIdRef"
+    | "setPendingUserInputAnswersByRequestId"
+    | "selectedComposerSkillsRef"
+    | "selectedComposerMentionsRef"
+    | "updateSelectedComposerSkills"
+    | "updateSelectedComposerMentions"
+    | "selectedProvider"
+    | "selectedModel"
+    | "selectedPromptEffort"
+    | "pendingAutomationConversationRef"
+    | "setPendingAutomationConversation"
+    | "pendingAutomationConversation"
+    | "activeThreadIdRef"
+    | "hasLiveTurnRef"
+    | "automationProjects"
+    | "setAutomationDraftWarningContext"
+    | "setAutomationDraftForm"
+    | "setAutomationDraftWarnings"
+    | "setAcknowledgedAutomationWarnings"
+    | "setAutomationDraftOpen"
+  >;
+  turn: Pick<ChatTurnSubmissionInput, "lateComposerSendHandlersRef" | "setQueuedSteerGate">;
+  session: Pick<
+    ChatTurnSubmissionInput,
+    | "activeThread"
+    | "sendPreflightInFlightRef"
+    | "sendInFlightRef"
+    | "syncServerShellSnapshot"
+    | "setStoreThreadError"
+    | "queryClient"
+    | "setComposerHighlightedItemId"
+    | "setStoreThreadWorkspace"
+    | "createWorktreeMutation"
+    | "planSidebarDismissedForTurnRef"
+    | "setPlanSidebarOpen"
+    | "settings"
+    | "composerEditorRef"
+    | "promptRef"
+    | "composerImages"
+    | "composerFiles"
+    | "composerAssistantSelections"
+    | "composerBrowserAnnotations"
+    | "composerFileComments"
+    | "composerTerminalContexts"
+    | "composerPastedTexts"
+    | "composerPullRequestContexts"
+    | "restoredQueuedSourceProposedPlanRef"
+    | "enqueueQueuedComposerTurn"
+    | "setComposerDraftPrompt"
+    | "setComposerTrigger"
+    | "clearProjectDraftThreadId"
+    | "setDraftThreadContext"
+    | "promptHistoryNavigationRef"
+    | "applyingPromptHistoryNavigationRef"
+    | "expectedPromptHistoryPromptRef"
+    | "clearComposerDraftContent"
+    | "setComposerDraftInteractionMode"
+    | "setComposerCursor"
+    | "setRestoredQueuedSourceProposedPlan"
+    | "composerImagesRef"
+    | "composerFilesRef"
+    | "composerAssistantSelectionsRef"
+    | "composerBrowserAnnotationsRef"
+    | "composerFileCommentsRef"
+    | "composerTerminalContextsRef"
+    | "composerPastedTextsRef"
+    | "composerPullRequestContextsRef"
+    | "setPrompt"
+    | "addComposerImagesToDraft"
+    | "addComposerFilesToDraft"
+    | "addComposerAssistantSelectionToDraft"
+    | "addComposerDraftBrowserAnnotations"
+    | "addComposerFileCommentToDraft"
+    | "addComposerTerminalContextsToDraft"
+    | "addComposerPastedTextsToDraft"
+    | "addComposerPullRequestContextsToDraft"
+  >;
+  environment: Pick<
+    ChatTurnSubmissionInput,
+    | "turnDispatchSettings"
+    | "setEnvironmentPanelPreferenceOpen"
+    | "environmentPanelPreferenceOpen"
+    | "armTranscriptAutoFollow"
+    | "tailAnchorScrollInFlightRef"
+    | "runProjectScript"
+    | "persistThreadSettingsForNextTurn"
+  >;
+  composer: Pick<
+    ChatTurnSubmissionInput,
+    | "computerControlChangeSequence"
+    | "scheduleComposerFocus"
+    | "setThreadError"
+    | "isVoiceTranscribing"
+    | "waitForPendingComposerImages"
+  >;
+  actions: Pick<
+    ChatTurnSubmissionInput,
+    "clearComposerInput" | "prepareAutomationFormForCreate" | "createAutomationFromForm"
+  >;
+  workspace: Pick<
+    ChatTurnSubmissionInput,
+    | "activeProject"
+    | "isServerThread"
+    | "chatWorkspaceRoot"
+    | "isHomeChatContainer"
+    | "resolvedThreadWorktreePath"
+    | "isContainerLandingProject"
+    | "isLocalDraftThread"
+    | "setSettledThreadBranchWarningDismissedThreadId"
+  >;
+  transcript: Pick<
+    ChatTurnSubmissionInput,
+    | "threadWorkspaceCwd"
+    | "activeRootBranch"
+    | "gitBranchSourceCwd"
+    | "isCenteredEmptyLanding"
+    | "setTailAnchor"
+    | "threadNotes"
+    | "setOptimisticUserMessages"
+  >;
+  discovery: Pick<
+    ChatTurnSubmissionInput,
+    | "refreshProviderStatuses"
+    | "hasNativeUserMessages"
+    | "currentActiveGitBranch"
+    | "providerStatuses"
+    | "rememberCustomBinaryPathForDispatch"
+  >;
+};

@@ -1,26 +1,7 @@
-import { THREAD_GOAL_MAX_CHARS } from "@glade/contracts/orchestration/threadEntities";
-import {
-  type ModelSelection,
-  type ProviderInteractionMode,
-  type RuntimeMode,
-} from "@glade/contracts/provider/sessionPolicy";
-import { type OrchestrationShellSnapshot } from "@glade/contracts/orchestration/snapshots";
-import {
-  type MessageId,
-  type ProviderKind,
-  type ThreadId,
-} from "@glade/contracts/core/baseSchemas";
-import { type ProviderNativeCommandDescriptor } from "@glade/contracts/provider/providerDiscovery";
-import { type ProviderModelOptions } from "@glade/contracts/provider/model";
-import { deriveAssociatedWorktreeMetadata } from "@glade/shared/threads/threadWorkspace";
 import { useCallback, useState } from "react";
-import { newCommandId, newMessageId, newThreadId } from "../lib/utils";
-import { readNativeApi } from "../nativeApi";
-import type { Project, Thread } from "../types";
-import type { ComposerTrigger } from "../composer-logic";
-import { extendReplacementRangeForTrailingSpace } from "../composerTriggerInsertion";
+import type { ComposerCommandItem } from "../components/chat/ComposerCommandMenu";
+import { toastManager } from "../components/ui/toast";
 import {
-  buildGoalSlashCommandPrompt,
   buildSlashReviewComposerPrompt,
   buildSubagentsPrompt,
   getAvailableComposerSlashCommands,
@@ -28,31 +9,16 @@ import {
   parseComposerSlashInvocationForCommands,
   parseFastSlashCommandAction,
   parseForkSlashCommandArgs,
-  parseGoalSlashCommandArgs,
-  type ForkSlashCommandTarget,
 } from "../composerSlashCommands";
-import { buildThreadHandoffImportedMessages } from "../lib/threadHandoff";
-import { toastManager } from "../components/ui/toast";
-import type { ComposerCommandItem } from "../components/chat/ComposerCommandMenu";
-import { buildNextProviderOptions } from "../providerModelOptions";
-import { resolveForkThreadEnvironment } from "../lib/threadEnvironment";
-import { type SplitViewId } from "../splitViewModel";
+import { extendReplacementRangeForTrailingSpace } from "../composerTriggerInsertion";
+import { useFeedbackDialogStore } from "../feedbackDialogStore";
 import { downloadUrlAsBlob } from "../lib/browserDownload";
 import { resolveWsHttpUrl } from "../lib/wsHttpUrl";
-import { useFeedbackDialogStore } from "../feedbackDialogStore";
-import { useComposerDraftStore } from "../composerDraftStore";
-import { dispatchThreadGoal, dispatchThreadGoalPaused } from "../threadGoal";
-import {
-  buildDraftThreadRenameCreateInput,
-  dispatchThreadRename,
-  dispatchThreadTitleRegeneration,
-} from "../lib/threadRename";
-
-type ComposerSnapshot = {
-  value: string;
-  cursor: number;
-  expandedCursor: number;
-};
+import { readNativeApi } from "../nativeApi";
+import { buildNextProviderOptions } from "../providerModelOptions";
+import type { ComposerSlashCommandInput } from "./composerSlashCommandTypes";
+import { useComposerForkCommands } from "./useComposerForkCommands";
+import { useComposerGoalCommands } from "./useComposerGoalCommands";
 
 type SlashCommandItem = Extract<ComposerCommandItem, { type: "slash-command" }>;
 
@@ -60,63 +26,20 @@ function wasPromptReplacementApplied(result: number | false): boolean {
   return result !== false;
 }
 
-export function useComposerSlashCommands(input: {
-  activeProject: Project | undefined;
-  activeThread: Thread | undefined;
-  activeRootBranch: string | null;
-  isServerThread: boolean;
-  isLocalDraftThread: boolean;
-  supportsFastSlashCommand: boolean;
-  canOfferCompactCommand: boolean;
-  canOfferExportCommand: boolean;
-  supportsTextNativeReviewCommand: boolean;
-  fastModeEnabled: boolean;
-  providerNativeCommands: readonly ProviderNativeCommandDescriptor[];
-  providerCommandDiscoveryCwd: string | null;
-  selectedProvider: ProviderKind;
-  currentProviderModelOptions: ProviderModelOptions[ProviderKind] | undefined;
-  selectedModelSelection: ModelSelection;
-  environmentMode: string | null;
-  runtimeMode: RuntimeMode;
-  interactionMode: ProviderInteractionMode;
-  threadId: ThreadId;
-  syncServerShellSnapshot: (snapshot: OrchestrationShellSnapshot) => void;
-  navigateToThread: (threadId: ThreadId, options?: { splitViewId?: SplitViewId }) => Promise<void>;
-  handleClearConversation: () => Promise<void> | void;
-  handleInteractionModeChange: (mode: ProviderInteractionMode) => Promise<void> | void;
-  openForkTargetPicker: () => void;
-  openReviewTargetPicker: () => void;
-  setComposerDraftProviderModelOptions: (
-    threadId: ThreadId,
-    provider: ProviderKind,
-    nextProviderOptions: ProviderModelOptions[ProviderKind],
-    options?: { persistSticky?: boolean },
-  ) => void;
-  editorActions: {
-    resolveActiveComposerTrigger: () => {
-      snapshot: ComposerSnapshot;
-      trigger: ComposerTrigger | null;
-    };
-    applyPromptReplacement: (
-      rangeStart: number,
-      rangeEnd: number,
-      replacement: string,
-      options?: { expectedText?: string; cursorOffset?: number },
-    ) => number | false;
-    clearComposerSlashDraft: () => void;
-    setComposerPromptValue: (nextPrompt: string) => void;
-    scheduleComposerFocus: () => void;
-    setComposerHighlightedItemId: (id: string | null) => void;
-  };
-}) {
+export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
   const [isSlashStatusDialogOpen, setIsSlashStatusDialogOpen] = useState(false);
   const openGlobalFeedbackDialog = useFeedbackDialogStore((state) => state.openDialog);
   const {
     activeProject,
     activeThread,
-    activeRootBranch,
     isServerThread,
-    isLocalDraftThread,
+    environmentMode,
+    runtimeMode,
+    interactionMode,
+    threadId,
+    handleClearConversation,
+  } = input.thread;
+  const {
     supportsFastSlashCommand,
     canOfferCompactCommand,
     canOfferExportCommand,
@@ -127,19 +50,14 @@ export function useComposerSlashCommands(input: {
     selectedProvider,
     currentProviderModelOptions,
     selectedModelSelection,
-    environmentMode,
-    runtimeMode,
-    interactionMode,
-    threadId,
-    syncServerShellSnapshot,
-    navigateToThread,
-    handleClearConversation,
+    setComposerDraftProviderModelOptions,
+  } = input.provider;
+  const {
     handleInteractionModeChange,
     openForkTargetPicker,
     openReviewTargetPicker,
-    setComposerDraftProviderModelOptions,
     editorActions,
-  } = input;
+  } = input.editor;
   const providerNativeCommandNames = providerNativeCommands.map((command) => command.name);
   const availableBuiltInSlashCommands = getAvailableComposerSlashCommands({
     provider: selectedProvider,
@@ -251,405 +169,16 @@ export function useComposerSlashCommands(input: {
     [fastModeEnabled, supportsFastSlashCommand, setFastModeFromSlashCommand],
   );
 
-  const persistThreadGoal = useCallback(
-    async (goal: string): Promise<boolean> => {
-      if (!isServerThread && activeThread) {
-        const draftStore = useComposerDraftStore.getState();
-        if (draftStore.getDraftThread(activeThread.id)) {
-          draftStore.setDraftThreadContext(activeThread.id, { goal });
-          return true;
-        }
-      }
-      if (!isServerThread || !activeThread) {
-        toastManager.add({
-          type: "warning",
-          title: "Thread goal is unavailable",
-          description: "Open a thread before setting a goal.",
-        });
-        return false;
-      }
+  const { runGoalSlashCommand, runRenameSlashCommand, clearThreadGoal, setThreadGoalPaused } =
+    useComposerGoalCommands(input);
 
-      try {
-        await dispatchThreadGoal(activeThread.id, goal);
-        return true;
-      } catch (error) {
-        toastManager.add({
-          type: "error",
-          title: "Could not update thread goal",
-          description:
-            error instanceof Error ? error.message : "An error occurred while updating the goal.",
-        });
-        return false;
-      }
-    },
-    [activeThread, isServerThread],
-  );
-
-  const clearThreadGoal = useCallback(async () => {
-    if (await persistThreadGoal("")) {
-      toastManager.add({ type: "success", title: "Thread goal cleared" });
-    }
-  }, [persistThreadGoal]);
-
-  const setThreadGoalPaused = useCallback(
-    async (paused: boolean): Promise<boolean> => {
-      if (!isServerThread || !activeThread) {
-        return false;
-      }
-      try {
-        await dispatchThreadGoalPaused(activeThread.id, paused);
-        return true;
-      } catch (error) {
-        toastManager.add({
-          type: "error",
-          title: paused ? "Could not pause the thread goal" : "Could not resume the thread goal",
-          description:
-            error instanceof Error ? error.message : "An error occurred while updating the goal.",
-        });
-        return false;
-      }
-    },
-    [activeThread, isServerThread],
-  );
-
-  const runGoalSlashCommand = useCallback(
-    async (args: string) => {
-      const action = parseGoalSlashCommandArgs(args);
-      if (action.action === "show") {
-        const currentGoal = activeThread?.goal?.trim();
-        toastManager.add(
-          currentGoal
-            ? { type: "info", title: "Thread goal", description: currentGoal }
-            : { type: "info", title: "No thread goal is set" },
-        );
-        return;
-      }
-      if (action.action === "too-long") {
-        toastManager.add({
-          type: "warning",
-          title: "Thread goal is too long",
-          description: `Keep the goal within ${THREAD_GOAL_MAX_CHARS.toLocaleString()} characters.`,
-        });
-        return;
-      }
-      if (action.action === "clear") {
-        await clearThreadGoal();
-        return;
-      }
-      if (action.action === "pause" || action.action === "resume") {
-        const paused = action.action === "pause";
-        if (await setThreadGoalPaused(paused)) {
-          toastManager.add({
-            type: "success",
-            title: `Thread goal ${paused ? "paused" : "resumed"}`,
-          });
-        }
-        return;
-      }
-      if (action.action === "edit") {
-        const currentGoal = activeThread?.goal?.trim() ?? "";
-        editorActions.setComposerPromptValue(buildGoalSlashCommandPrompt(currentGoal));
-        editorActions.scheduleComposerFocus();
-        return;
-      }
-      if (await persistThreadGoal(action.goal)) {
-        toastManager.add({ type: "success", title: "Thread goal updated" });
-      }
-    },
-    [activeThread?.goal, clearThreadGoal, editorActions, persistThreadGoal, setThreadGoalPaused],
-  );
-
-  const runRenameSlashCommand = useCallback(
-    async (args: string) => {
-      if (!activeThread) {
-        toastManager.add({
-          type: "warning",
-          title: "Rename is unavailable",
-          description: "Open a thread before renaming it.",
-        });
-        return;
-      }
-      if (args.length > 0) {
-        if (!isServerThread && !isLocalDraftThread) {
-          toastManager.add({ type: "warning", title: "Rename is unavailable" });
-          return;
-        }
-        const outcome = await dispatchThreadRename({
-          threadId: activeThread.id,
-          newTitle: args,
-          unchangedTitles: [],
-          createIfMissing: isLocalDraftThread
-            ? buildDraftThreadRenameCreateInput(activeThread)
-            : undefined,
-        });
-        if (outcome === "renamed") {
-          toastManager.add({ type: "success", title: "Thread renamed" });
-        } else if (outcome === "unavailable") {
-          toastManager.add({ type: "warning", title: "Rename is unavailable" });
-        } else {
-          toastManager.add({ type: "info", title: "Thread title is unchanged" });
-        }
-        return;
-      }
-
-      if (!isServerThread) {
-        toastManager.add({
-          type: "warning",
-          title: "Nothing to rename yet",
-          description: "Send a message before generating a thread title.",
-        });
-        return;
-      }
-
-      const outcome = await dispatchThreadTitleRegeneration(activeThread.id);
-      if (outcome.status === "renamed") {
-        toastManager.add({
-          type: "success",
-          title: "Thread renamed",
-          description: outcome.title,
-        });
-      } else if (outcome.status === "no-context") {
-        toastManager.add({
-          type: "warning",
-          title: "Nothing to rename yet",
-          description: "Send a message before generating a thread title.",
-        });
-      } else if (outcome.status === "stale") {
-        toastManager.add({
-          type: "info",
-          title: "Newer thread title kept",
-          description: "The generated title was discarded because the title changed.",
-        });
-      } else if (outcome.status === "unavailable") {
-        toastManager.add({ type: "warning", title: "Rename is unavailable" });
-      } else {
-        toastManager.add({ type: "info", title: "Thread title is unchanged" });
-      }
-    },
-    [activeThread, isLocalDraftThread, isServerThread],
-  );
-
-  const createForkThreadFromSlashCommand = useCallback(
-    async (inputOptions?: {
-      target?: ForkSlashCommandTarget;
-
-      throughMessageId?: MessageId | null;
-    }) => {
-      const api = readNativeApi();
-      if (!api || !activeProject || !activeThread || !isServerThread) {
-        toastManager.add({
-          type: "warning",
-          title: "Fork is unavailable",
-          description: "Only existing server-backed threads can be forked right now.",
-        });
-        return true;
-      }
-
-      const importedMessages = buildThreadHandoffImportedMessages(activeThread, {
-        throughMessageId: inputOptions?.throughMessageId ?? null,
-      });
-
-      const nextThreadId = newThreadId();
-      const createdAt = new Date().toISOString();
-
-      const resolvedTarget = resolveForkThreadEnvironment({
-        target: inputOptions?.target ?? "local",
-        activeRootBranch,
-        sourceThread: activeThread,
-      });
-
-      await api.orchestration.dispatchCommand({
-        type: "thread.fork.create",
-        commandId: newCommandId(),
-        threadId: nextThreadId,
-        sourceThreadId: activeThread.id,
-        projectId: activeProject.id,
-        title: activeThread.title,
-        modelSelection: selectedModelSelection,
-        runtimeMode,
-        interactionMode,
-        envMode: resolvedTarget.envMode,
-        branch: resolvedTarget.branch,
-        worktreePath: resolvedTarget.worktreePath,
-        workingDirectory: activeThread.workingDirectory ?? null,
-        associatedWorktreePath: resolvedTarget.associatedWorktreePath,
-        associatedWorktreeBranch: resolvedTarget.associatedWorktreeBranch,
-        associatedWorktreeRef: resolvedTarget.associatedWorktreeRef,
-        importedMessages: [...importedMessages],
-        createdAt,
-      });
-      const snapshot = await api.orchestration.getShellSnapshot();
-      syncServerShellSnapshot(snapshot);
-      await navigateToThread(nextThreadId);
-      return true;
-    },
-    [
-      activeProject,
-      activeRootBranch,
-      activeThread,
-      interactionMode,
-      isServerThread,
-      navigateToThread,
-      runtimeMode,
-      selectedModelSelection,
-      syncServerShellSnapshot,
-    ],
-  );
-
-  const runCodexReviewStart = useCallback(
-    async (target: "changes" | "base-branch") => {
-      const api = readNativeApi();
-      if (!api || !activeThread || !activeProject) {
-        toastManager.add({
-          type: "warning",
-          title: "Review is unavailable",
-          description: "Open a project thread before starting a native review.",
-        });
-        return false;
-      }
-
-      if (target === "base-branch" && !activeRootBranch) {
-        toastManager.add({
-          type: "warning",
-          title: "Base branch unavailable",
-          description: "Select or detect a base branch before starting this review.",
-        });
-        return false;
-      }
-
-      const messageText =
-        target === "base-branch" && activeRootBranch
-          ? `Review against base branch ${activeRootBranch}`
-          : "Review current changes";
-
-      const nextThreadId = newThreadId();
-      const createdAt = new Date().toISOString();
-      const nextThreadTitle =
-        target === "base-branch" ? `${activeThread.title} Review` : `${activeThread.title} Review`;
-      const associatedWorktree = deriveAssociatedWorktreeMetadata({
-        branch: activeThread.branch,
-        worktreePath: activeThread.worktreePath,
-        associatedWorktreePath: activeThread.associatedWorktreePath ?? null,
-        associatedWorktreeBranch: activeThread.associatedWorktreeBranch ?? null,
-        associatedWorktreeRef: activeThread.associatedWorktreeRef ?? null,
-      });
-
-      const nextEnvMode =
-        activeThread.envMode ?? (activeThread.worktreePath ? "worktree" : "local");
-      const nextWorkingDirectory = activeThread.workingDirectory ?? null;
-      const nextLastKnownPr = activeThread.lastKnownPr ?? null;
-      const reviewTarget =
-        target === "base-branch"
-          ? ({ type: "baseBranch", branch: activeRootBranch! } as const)
-          : ({ type: "uncommittedChanges" } as const);
-
-      try {
-        await api.orchestration.dispatchCommand({
-          type: "thread.create",
-          commandId: newCommandId(),
-          threadId: nextThreadId,
-          projectId: activeProject.id,
-          title: nextThreadTitle,
-          modelSelection: selectedModelSelection,
-          runtimeMode,
-          interactionMode: "default",
-          envMode: nextEnvMode,
-          branch: activeThread.branch,
-          worktreePath: activeThread.worktreePath,
-          workingDirectory: nextWorkingDirectory,
-          lastKnownPr: nextLastKnownPr,
-          ...associatedWorktree,
-          createdAt,
-        });
-        await api.orchestration.dispatchCommand({
-          type: "thread.turn.start",
-          commandId: newCommandId(),
-          threadId: nextThreadId,
-          message: {
-            messageId: newMessageId(),
-            role: "user",
-            text: messageText,
-            attachments: [],
-          },
-          modelSelection: selectedModelSelection,
-          reviewTarget,
-          dispatchMode: "queue",
-          runtimeMode,
-          interactionMode: "default",
-          createdAt,
-        });
-        const snapshot = await api.orchestration.getShellSnapshot();
-        syncServerShellSnapshot(snapshot);
-        await navigateToThread(nextThreadId);
-        return true;
-      } catch (error) {
-        toastManager.add({
-          type: "error",
-          title: "Could not start review",
-          description:
-            error instanceof Error ? error.message : "An error occurred while starting review.",
-        });
-        return false;
-      }
-    },
-    [
-      activeProject,
-      activeRootBranch,
-      activeThread,
-      navigateToThread,
-      runtimeMode,
-      selectedModelSelection,
-      syncServerShellSnapshot,
-    ],
-  );
-
-  const handleReviewTargetSelection = useCallback(
-    async (target: "changes" | "base-branch") => {
-      if (selectedProvider === "codex") {
-        await runCodexReviewStart(target);
-      } else {
-        const replacement = buildSlashReviewComposerPrompt(target === "base-branch" ? "base" : "");
-        editorActions.setComposerPromptValue(replacement);
-      }
-      editorActions.scheduleComposerFocus();
-    },
-    [editorActions, selectedProvider, runCodexReviewStart],
-  );
-
-  const runForkThread = useCallback(
-    async (inputOptions: {
-      target: ForkSlashCommandTarget;
-      throughMessageId?: MessageId | null;
-    }) => {
-      try {
-        await createForkThreadFromSlashCommand(inputOptions);
-      } catch (error) {
-        toastManager.add({
-          type: "error",
-          title: "Could not fork thread",
-          description:
-            error instanceof Error
-              ? error.message
-              : "An error occurred while creating the forked thread.",
-        });
-      }
-    },
-    [createForkThreadFromSlashCommand],
-  );
-
-  const handleForkTargetSelection = useCallback(
-    async (target: ForkSlashCommandTarget) => {
-      await runForkThread({ target });
-    },
-    [runForkThread],
-  );
-
-  const handleForkFromMessage = useCallback(
-    (messageId: MessageId) => {
-      void runForkThread({ target: "local", throughMessageId: messageId });
-    },
-    [runForkThread],
-  );
+  const {
+    createForkThreadFromSlashCommand,
+    runCodexReviewStart,
+    handleReviewTargetSelection,
+    handleForkTargetSelection,
+    handleForkFromMessage,
+  } = useComposerForkCommands(input);
 
   const checkClaudeFastSlashCommandAvailability = useCallback(async (): Promise<boolean> => {
     const api = readNativeApi();

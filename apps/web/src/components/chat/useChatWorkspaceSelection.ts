@@ -69,19 +69,34 @@ interface ChatWorkspaceSelectionInput {
   defaultProvider: ProviderKind;
 }
 
+type ChatWorkspaceSelectionControllerInput = {
+  props: Pick<ChatWorkspaceSelectionInput, "threadId">;
+  session: Pick<ChatWorkspaceSelectionInput, "activeThread" | "composerEditorRef">;
+  workspace: Pick<
+    ChatWorkspaceSelectionInput,
+    "activeProject" | "isServerThread" | "isLocalDraftThread" | "isHomeChatContainer"
+  >;
+  transcript: Pick<ChatWorkspaceSelectionInput, "activeRootBranch">;
+  discovery: Pick<ChatWorkspaceSelectionInput, "hasNativeUserMessages">;
+  composer: Pick<ChatWorkspaceSelectionInput, "scheduleComposerFocus">;
+  turn: Pick<ChatWorkspaceSelectionInput, "defaultProvider">;
+};
 export function useChatWorkspaceSelection({
-  threadId,
-  activeThread,
-  activeProject,
-  activeRootBranch,
-  isServerThread,
-  isLocalDraftThread,
-  isHomeChatContainer,
-  hasNativeUserMessages,
-  composerEditorRef,
-  scheduleComposerFocus,
-  defaultProvider,
-}: ChatWorkspaceSelectionInput) {
+  props,
+  session,
+  workspace,
+  transcript,
+  discovery,
+  composer,
+  turn,
+}: ChatWorkspaceSelectionControllerInput) {
+  const { threadId } = props;
+  const { activeThread, composerEditorRef } = session;
+  const { activeProject, isServerThread, isLocalDraftThread, isHomeChatContainer } = workspace;
+  const { activeRootBranch } = transcript;
+  const { hasNativeUserMessages } = discovery;
+  const { scheduleComposerFocus } = composer;
+  const { defaultProvider } = turn;
   const syncServerShellSnapshot = useStore((store) => store.syncServerShellSnapshot);
   const setStoreThreadWorkspace = useStore((store) => store.setThreadWorkspace);
   const setDraftThreadContext = useComposerDraftStore((store) => store.setDraftThreadContext);

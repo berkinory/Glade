@@ -102,46 +102,102 @@ interface ChatTurnFollowUpsInput {
   navigate: ReturnType<typeof useNavigate>;
 }
 
+type ChatTurnFollowUpsControllerInput = {
+  props: Pick<ChatTurnFollowUpsInput, "threadId">;
+  session: Pick<
+    ChatTurnFollowUpsInput,
+    | "activeThread"
+    | "sendInFlightRef"
+    | "setComposerDraftComputerControlMode"
+    | "planSidebarDismissedForTurnRef"
+    | "setPlanSidebarOpen"
+    | "isRevertingCheckpoint"
+    | "setIsRevertingCheckpoint"
+    | "setComposerDraftInteractionMode"
+    | "markWorkflowRunDismissed"
+    | "syncServerShellSnapshot"
+    | "planSidebarOpenOnNextThreadRef"
+    | "navigate"
+  >;
+  workspace: Pick<
+    ChatTurnFollowUpsInput,
+    "isServerThread" | "activeThreadId" | "activeProject" | "activeThreadAssociatedWorktree"
+  >;
+  provider: Pick<
+    ChatTurnFollowUpsInput,
+    | "isConnecting"
+    | "activeProposedPlan"
+    | "isSendBusy"
+    | "beginLocalDispatch"
+    | "armLocalDispatchAckFallback"
+    | "resetLocalDispatch"
+    | "selectedProvider"
+    | "selectedModel"
+    | "selectedPromptEffort"
+    | "workflowRunState"
+  >;
+  composer: Pick<ChatTurnFollowUpsInput, "setThreadError" | "computerControlChangeSequence">;
+  transcript: Pick<ChatTurnFollowUpsInput, "setTailAnchor" | "setOptimisticUserMessages">;
+  environment: Pick<
+    ChatTurnFollowUpsInput,
+    | "turnDispatchSettings"
+    | "armTranscriptAutoFollow"
+    | "tailAnchorScrollInFlightRef"
+    | "persistThreadSettingsForNextTurn"
+  >;
+  turn: Pick<ChatTurnFollowUpsInput, "setQueuedSteerGate" | "lateComposerSendHandlersRef">;
+  discovery: Pick<ChatTurnFollowUpsInput, "rememberCustomBinaryPathForDispatch">;
+};
 export function useChatTurnFollowUps({
-  threadId,
-  activeThread,
-  isServerThread,
-  isConnecting,
-  sendInFlightRef,
-  setThreadError,
-  setTailAnchor,
-  activeProposedPlan,
-  setQueuedSteerGate,
-  planSidebarDismissedForTurnRef,
-  setPlanSidebarOpen,
-  isRevertingCheckpoint,
-  setIsRevertingCheckpoint,
-  isSendBusy,
-  beginLocalDispatch,
-  armLocalDispatchAckFallback,
-  resetLocalDispatch,
-  selectedProvider,
-  selectedModel,
-  selectedPromptEffort,
-  turnDispatchSettings,
-  computerControlChangeSequence,
-  setComposerDraftComputerControlMode,
-  setOptimisticUserMessages,
-  armTranscriptAutoFollow,
-  tailAnchorScrollInFlightRef,
-  persistThreadSettingsForNextTurn,
-  setComposerDraftInteractionMode,
-  rememberCustomBinaryPathForDispatch,
-  workflowRunState,
-  lateComposerSendHandlersRef,
-  activeThreadId,
-  markWorkflowRunDismissed,
-  activeProject,
-  activeThreadAssociatedWorktree,
-  syncServerShellSnapshot,
-  planSidebarOpenOnNextThreadRef,
-  navigate,
-}: ChatTurnFollowUpsInput) {
+  props,
+  session,
+  workspace,
+  provider,
+  composer,
+  transcript,
+  environment,
+  turn,
+  discovery,
+}: ChatTurnFollowUpsControllerInput) {
+  const { threadId } = props;
+  const {
+    activeThread,
+    sendInFlightRef,
+    planSidebarDismissedForTurnRef,
+    setPlanSidebarOpen,
+    isRevertingCheckpoint,
+    setIsRevertingCheckpoint,
+    setComposerDraftComputerControlMode,
+    setComposerDraftInteractionMode,
+    markWorkflowRunDismissed,
+    syncServerShellSnapshot,
+    planSidebarOpenOnNextThreadRef,
+    navigate,
+  } = session;
+  const { isServerThread, activeThreadId, activeProject, activeThreadAssociatedWorktree } =
+    workspace;
+  const {
+    isConnecting,
+    activeProposedPlan,
+    isSendBusy,
+    beginLocalDispatch,
+    armLocalDispatchAckFallback,
+    resetLocalDispatch,
+    selectedProvider,
+    selectedModel,
+    selectedPromptEffort,
+    workflowRunState,
+  } = provider;
+  const { setThreadError, computerControlChangeSequence } = composer;
+  const { setTailAnchor, setOptimisticUserMessages } = transcript;
+  const {
+    turnDispatchSettings,
+    armTranscriptAutoFollow,
+    tailAnchorScrollInFlightRef,
+    persistThreadSettingsForNextTurn,
+  } = environment;
+  const { setQueuedSteerGate, lateComposerSendHandlersRef } = turn;
+  const { rememberCustomBinaryPathForDispatch } = discovery;
   async function onSubmitPlanFollowUp({
     text,
     interactionMode: nextInteractionMode,

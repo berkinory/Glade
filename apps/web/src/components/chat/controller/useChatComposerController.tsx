@@ -8,7 +8,6 @@ import {
   expandCollapsedComposerCursor,
 } from "~/composer-logic";
 import { useComposerDraftStore, type ComposerImageAttachment } from "~/composerDraftStore";
-import { useComposerFocusRequestStore } from "~/composerFocusRequestStore";
 import { useComposerImageIntake } from "~/hooks/useComposerImageIntake";
 import { useComputerControlModeChange } from "~/hooks/useComputerControlModeChange";
 import { createPastedTextDraft } from "~/lib/composerPastedText";
@@ -176,8 +175,8 @@ export function useChatComposerController({
       focusComposer: scheduleComposerFocus,
     });
 
-  const composerFocusRequestNonce = useComposerFocusRequestStore(
-    (store) => store.requestsByThreadId[threadId] ?? 0,
+  const composerFocusRequestNonce = useComposerDraftStore(
+    (store) => store.focusRequestsByThreadId[threadId] ?? 0,
   );
 
   useEffect(() => {

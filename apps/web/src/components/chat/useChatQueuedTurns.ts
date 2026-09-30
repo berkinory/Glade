@@ -91,47 +91,100 @@ interface ChatQueuedTurnsInput {
   sendPreflightInFlightRef: RefObject<boolean>;
 }
 
+type ChatQueuedTurnsControllerInput = {
+  props: Pick<ChatQueuedTurnsInput, "threadId">;
+  session: Pick<
+    ChatQueuedTurnsInput,
+    | "queuedComposerTurns"
+    | "activeThread"
+    | "promptRef"
+    | "clearComposerDraftContent"
+    | "setComposerDraftPrompt"
+    | "setDraftThreadContext"
+    | "addComposerImagesToDraft"
+    | "addComposerFilesToDraft"
+    | "addComposerAssistantSelectionToDraft"
+    | "addComposerDraftBrowserAnnotations"
+    | "addComposerFileCommentToDraft"
+    | "addComposerTerminalContextsToDraft"
+    | "addComposerPastedTextsToDraft"
+    | "addComposerPullRequestContextsToDraft"
+    | "setRestoredQueuedSourceProposedPlan"
+    | "setComposerDraftModelSelection"
+    | "setComposerDraftRuntimeMode"
+    | "setComposerDraftInteractionMode"
+    | "setComposerDraftComputerControlMode"
+    | "setComposerCursor"
+    | "setComposerTrigger"
+    | "removeQueuedComposerTurnFromDraft"
+    | "insertQueuedComposerTurn"
+    | "sendInFlightRef"
+    | "sendPreflightInFlightRef"
+  >;
+  provider: Pick<
+    ChatQueuedTurnsInput,
+    | "updateSelectedComposerSkills"
+    | "updateSelectedComposerMentions"
+    | "phase"
+    | "localDispatch"
+    | "isConnecting"
+    | "activePendingApproval"
+    | "activePendingProgress"
+    | "pendingUserInputs"
+  >;
+  composer: Pick<ChatQueuedTurnsInput, "scheduleComposerFocus">;
+  turn: Pick<ChatQueuedTurnsInput, "lateComposerSendHandlersRef" | "hasPendingCacheReview">;
+  workspace: Pick<ChatQueuedTurnsInput, "isLocalDraftThread" | "activeLatestTurn">;
+};
 export function useChatQueuedTurns({
-  threadId,
-  queuedComposerTurns,
-  activeThread,
-  promptRef,
-  clearComposerDraftContent,
-  setComposerDraftPrompt,
-  setDraftThreadContext,
-  addComposerImagesToDraft,
-  addComposerFilesToDraft,
-  addComposerAssistantSelectionToDraft,
-  addComposerDraftBrowserAnnotations,
-  addComposerFileCommentToDraft,
-  addComposerTerminalContextsToDraft,
-  addComposerPastedTextsToDraft,
-  addComposerPullRequestContextsToDraft,
-  updateSelectedComposerSkills,
-  updateSelectedComposerMentions,
-  setRestoredQueuedSourceProposedPlan,
-  setComposerDraftModelSelection,
-  setComposerDraftRuntimeMode,
-  setComposerDraftInteractionMode,
-  setComposerDraftComputerControlMode,
-  setComposerCursor,
-  setComposerTrigger,
-  scheduleComposerFocus,
-  removeQueuedComposerTurnFromDraft,
-  lateComposerSendHandlersRef,
-  insertQueuedComposerTurn,
-  phase,
-  localDispatch,
-  isLocalDraftThread,
-  activeLatestTurn,
-  isConnecting,
-  activePendingApproval,
-  hasPendingCacheReview: hasPendingCacheReviewInput,
-  activePendingProgress,
-  pendingUserInputs,
-  sendInFlightRef,
-  sendPreflightInFlightRef,
-}: ChatQueuedTurnsInput) {
+  props,
+  session,
+  provider,
+  composer,
+  turn,
+  workspace,
+}: ChatQueuedTurnsControllerInput) {
+  const { threadId } = props;
+  const {
+    queuedComposerTurns,
+    activeThread,
+    promptRef,
+    clearComposerDraftContent,
+    setComposerDraftPrompt,
+    setDraftThreadContext,
+    addComposerImagesToDraft,
+    addComposerFilesToDraft,
+    addComposerAssistantSelectionToDraft,
+    addComposerDraftBrowserAnnotations,
+    addComposerFileCommentToDraft,
+    addComposerTerminalContextsToDraft,
+    addComposerPastedTextsToDraft,
+    addComposerPullRequestContextsToDraft,
+    setRestoredQueuedSourceProposedPlan,
+    setComposerDraftModelSelection,
+    setComposerDraftRuntimeMode,
+    setComposerDraftInteractionMode,
+    setComposerDraftComputerControlMode,
+    setComposerCursor,
+    setComposerTrigger,
+    removeQueuedComposerTurnFromDraft,
+    insertQueuedComposerTurn,
+    sendInFlightRef,
+    sendPreflightInFlightRef,
+  } = session;
+  const {
+    updateSelectedComposerSkills,
+    updateSelectedComposerMentions,
+    phase,
+    localDispatch,
+    isConnecting,
+    activePendingApproval,
+    activePendingProgress,
+    pendingUserInputs,
+  } = provider;
+  const { scheduleComposerFocus } = composer;
+  const { lateComposerSendHandlersRef, hasPendingCacheReview: hasPendingCacheReviewInput } = turn;
+  const { isLocalDraftThread, activeLatestTurn } = workspace;
   const hasPendingCacheReview =
     hasPendingCacheReviewInput === true || activeThread?.claudeCacheReview != null;
   const queuedComposerTurnsRef = useRef<QueuedComposerTurn[]>([]);

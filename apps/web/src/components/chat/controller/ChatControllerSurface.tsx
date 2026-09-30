@@ -38,7 +38,7 @@ import { isElectron } from "~/env";
 import { startSelectionChat } from "~/lib/selectionChat";
 import { cn } from "~/lib/utils";
 import { ProjectImportLandingBanner } from "~/projectImport/ProjectImportLandingBanner";
-import { AutomationDialog } from "~/routes/-automations.shared";
+import { AutomationDialog } from "~/routes/-automationFormDialog";
 import { ChatComposerSurface } from "./ChatComposerSurface";
 import { createChatPresentation } from "./chatPresentation";
 import { ThreadTerminalDrawer } from "./chatViewSupport";

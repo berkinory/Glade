@@ -45,11 +45,11 @@ function canHandleComposerPickerShortcut(
   );
 }
 interface ChatKeyboardShortcutsInput {
-  onToggleTerminal: (() => void) | undefined;
-  onOpenTerminal: (() => void) | undefined;
+  onToggleTerminal?: () => void;
+  onOpenTerminal?: () => void;
   expandTerminalWorkspace: ReturnType<typeof useChatTerminalController>["expandTerminalWorkspace"];
-  onToggleDevicePanel: (() => void) | undefined;
-  onSplitSurface: (() => void) | undefined;
+  onToggleDevicePanel?: () => void;
+  onSplitSurface?: () => void;
   surfaceMode: "single" | "split";
   isFocusedPane: boolean;
   activeThreadId: ThreadId | null;
@@ -111,60 +111,150 @@ interface ChatKeyboardShortcutsInput {
   activeThread: Thread | undefined;
 }
 
+type ChatKeyboardShortcutsControllerInput = {
+  props: Pick<
+    ChatKeyboardShortcutsInput,
+    "onToggleTerminal" | "onOpenTerminal" | "onToggleDevicePanel" | "onSplitSurface"
+  >;
+  workspace: Pick<
+    ChatKeyboardShortcutsInput,
+    | "expandTerminalWorkspace"
+    | "activeThreadId"
+    | "terminalState"
+    | "terminalWorkspaceOpen"
+    | "terminalWorkspaceTerminalTabActive"
+    | "terminalWorkspaceChatTabActive"
+    | "toggleTerminalVisibility"
+    | "setTerminalOpen"
+    | "splitTerminalRight"
+    | "splitTerminalLeft"
+    | "splitTerminalDown"
+    | "splitTerminalUp"
+    | "closeTerminal"
+    | "createTerminalFromShortcut"
+    | "openNewFullWidthTerminal"
+    | "closeActiveWorkspaceView"
+    | "setTerminalWorkspaceTab"
+    | "activeProject"
+  >;
+  session: Pick<
+    ChatKeyboardShortcutsInput,
+    | "surfaceMode"
+    | "isFocusedPane"
+    | "composerFormRef"
+    | "setThreadFindOpen"
+    | "setThreadFindFocusNonce"
+    | "commitAndPushTriggerRef"
+    | "activeThread"
+  >;
+  provider: Pick<
+    ChatKeyboardShortcutsInput,
+    | "hasLiveTurn"
+    | "composerSubagentStripItems"
+    | "modelOptionsByProvider"
+    | "selectedProvider"
+    | "selectedModel"
+  >;
+  turn: Pick<
+    ChatKeyboardShortcutsInput,
+    | "onInterruptFromStopControl"
+    | "onBackgroundAllForegroundSubagentStripItems"
+    | "onProviderModelSelect"
+    | "copyThreadIdToClipboard"
+  >;
+  composer: Pick<
+    ChatKeyboardShortcutsInput,
+    | "isVoiceRecording"
+    | "isVoiceTranscribing"
+    | "toggleComposerFocus"
+    | "handleModelPickerOpenChange"
+    | "scheduleComposerFocus"
+    | "handleTraitsPickerOpenChange"
+  >;
+  transcript: Pick<ChatKeyboardShortcutsInput, "isComposerApprovalState">;
+  discovery: Pick<
+    ChatKeyboardShortcutsInput,
+    | "keybindings"
+    | "shouldRenderChatPaneContent"
+    | "onToggleDiff"
+    | "showGitActions"
+    | "isGitRepo"
+    | "onToggleBrowser"
+  >;
+  environment: Pick<ChatKeyboardShortcutsInput, "runProjectScript">;
+};
 export function useChatKeyboardShortcuts({
-  onToggleTerminal,
-  onOpenTerminal,
-  expandTerminalWorkspace,
-  onToggleDevicePanel,
-  onSplitSurface,
-  surfaceMode,
-  isFocusedPane,
-  activeThreadId,
-  hasLiveTurn,
-  composerFormRef,
-  onInterruptFromStopControl,
-  composerSubagentStripItems,
-  onBackgroundAllForegroundSubagentStripItems,
-  isVoiceRecording,
-  isVoiceTranscribing,
-  isComposerApprovalState,
-  terminalState,
-  terminalWorkspaceOpen,
-  terminalWorkspaceTerminalTabActive,
-  terminalWorkspaceChatTabActive,
-  keybindings,
-  toggleComposerFocus,
-  shouldRenderChatPaneContent,
-  setThreadFindOpen,
-  setThreadFindFocusNonce,
-  handleModelPickerOpenChange,
-  scheduleComposerFocus,
-  modelOptionsByProvider,
-  selectedProvider,
-  selectedModel,
-  onProviderModelSelect,
-  handleTraitsPickerOpenChange,
-  toggleTerminalVisibility,
-  setTerminalOpen,
-  splitTerminalRight,
-  splitTerminalLeft,
-  splitTerminalDown,
-  splitTerminalUp,
-  closeTerminal,
-  createTerminalFromShortcut,
-  openNewFullWidthTerminal,
-  closeActiveWorkspaceView,
-  setTerminalWorkspaceTab,
-  onToggleDiff,
-  commitAndPushTriggerRef,
-  showGitActions,
-  isGitRepo,
-  onToggleBrowser,
-  copyThreadIdToClipboard,
-  activeProject,
-  runProjectScript,
-  activeThread,
-}: ChatKeyboardShortcutsInput) {
+  props,
+  workspace,
+  session,
+  provider,
+  turn,
+  composer,
+  transcript,
+  discovery,
+  environment,
+}: ChatKeyboardShortcutsControllerInput) {
+  const { onToggleTerminal, onOpenTerminal, onToggleDevicePanel, onSplitSurface } = props;
+  const {
+    expandTerminalWorkspace,
+    activeThreadId,
+    terminalState,
+    terminalWorkspaceOpen,
+    terminalWorkspaceTerminalTabActive,
+    terminalWorkspaceChatTabActive,
+    toggleTerminalVisibility,
+    setTerminalOpen,
+    splitTerminalRight,
+    splitTerminalLeft,
+    splitTerminalDown,
+    splitTerminalUp,
+    closeTerminal,
+    createTerminalFromShortcut,
+    openNewFullWidthTerminal,
+    closeActiveWorkspaceView,
+    setTerminalWorkspaceTab,
+    activeProject,
+  } = workspace;
+  const {
+    surfaceMode,
+    isFocusedPane,
+    composerFormRef,
+    setThreadFindOpen,
+    setThreadFindFocusNonce,
+    commitAndPushTriggerRef,
+    activeThread,
+  } = session;
+  const {
+    hasLiveTurn,
+    composerSubagentStripItems,
+    modelOptionsByProvider,
+    selectedProvider,
+    selectedModel,
+  } = provider;
+  const {
+    onInterruptFromStopControl,
+    onBackgroundAllForegroundSubagentStripItems,
+    onProviderModelSelect,
+    copyThreadIdToClipboard,
+  } = turn;
+  const {
+    isVoiceRecording,
+    isVoiceTranscribing,
+    toggleComposerFocus,
+    handleModelPickerOpenChange,
+    scheduleComposerFocus,
+    handleTraitsPickerOpenChange,
+  } = composer;
+  const { isComposerApprovalState } = transcript;
+  const {
+    keybindings,
+    shouldRenderChatPaneContent,
+    onToggleDiff,
+    showGitActions,
+    isGitRepo,
+    onToggleBrowser,
+  } = discovery;
+  const { runProjectScript } = environment;
   useEffect(() => {
     const revealTerminal = () => {
       if (onOpenTerminal) {

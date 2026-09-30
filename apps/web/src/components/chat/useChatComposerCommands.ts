@@ -119,59 +119,141 @@ interface ChatComposerCommandsInput {
   composerDraft: ReturnType<typeof useChatComposerDraft>["composerDraft"];
 }
 
+type ChatComposerCommandsControllerInput = {
+  props: Pick<ChatComposerCommandsInput, "threadId">;
+  session: Pick<
+    ChatComposerCommandsInput,
+    | "composerSelectLockRef"
+    | "setComposerCommandPicker"
+    | "setComposerHighlightedItemId"
+    | "composerHighlightedItemId"
+    | "promptHistoryNavigationRef"
+    | "restoreComposerDraftPromptHistorySavedDraft"
+    | "promptRef"
+    | "setPrompt"
+    | "expectedPromptHistoryPromptRef"
+    | "setComposerDraftPromptHistorySavedDraft"
+    | "applyingPromptHistoryNavigationRef"
+    | "promptHistoryAppliedPromptRef"
+    | "restoredQueuedSourceProposedPlanRef"
+    | "setRestoredQueuedSourceProposedPlan"
+    | "composerCommandPicker"
+    | "composerTerminalContexts"
+    | "setComposerDraftTerminalContexts"
+    | "setComposerCursor"
+    | "setComposerTrigger"
+    | "composerMenuOpenRef"
+    | "settings"
+    | "localDirectoryMenuRef"
+    | "composerMenuItemsRef"
+    | "activeComposerMenuItemRef"
+    | "composerDraft"
+  >;
+  turn: Pick<
+    ChatComposerCommandsInput,
+    | "handleForkTargetSelection"
+    | "handleReviewTargetSelection"
+    | "resolveActiveComposerTrigger"
+    | "applyComposerTriggerReplacement"
+    | "handleNavigateLocalFolder"
+    | "handleSlashCommandSelection"
+    | "clearComposerSlashDraft"
+    | "onSend"
+  >;
+  transcript: Pick<
+    ChatComposerCommandsInput,
+    | "localFolderBrowseRootPath"
+    | "promptHistory"
+    | "isLocalFolderBrowserOpen"
+    | "isComposerApprovalState"
+  >;
+  provider: Pick<
+    ChatComposerCommandsInput,
+    | "selectedProvider"
+    | "updateSelectedComposerSkills"
+    | "updateSelectedComposerMentions"
+    | "activePendingQuestion"
+    | "activePendingUserInput"
+    | "onChangeActivePendingUserInputCustomAnswer"
+    | "hasLiveTurn"
+    | "activePendingProgress"
+    | "pendingUserInputs"
+  >;
+  composer: Pick<ChatComposerCommandsInput, "scheduleComposerFocus">;
+  actions: Pick<ChatComposerCommandsInput, "onProviderModelSelect">;
+  discovery: Pick<ChatComposerCommandsInput, "composerMenuItems">;
+  environment: Pick<ChatComposerCommandsInput, "toggleInteractionMode">;
+};
 export function useChatComposerCommands({
-  threadId,
-  composerSelectLockRef,
-  setComposerCommandPicker,
-  setComposerHighlightedItemId,
-  handleForkTargetSelection,
-  handleReviewTargetSelection,
-  resolveActiveComposerTrigger,
-  applyComposerTriggerReplacement,
-  handleNavigateLocalFolder,
-  localFolderBrowseRootPath,
-  handleSlashCommandSelection,
-  selectedProvider,
-  scheduleComposerFocus,
-  updateSelectedComposerSkills,
-  updateSelectedComposerMentions,
-  onProviderModelSelect,
-  composerMenuItems,
-  composerHighlightedItemId,
-  activePendingQuestion,
-  activePendingUserInput,
-  promptHistoryNavigationRef,
-  restoreComposerDraftPromptHistorySavedDraft,
-  promptRef,
-  setPrompt,
-  expectedPromptHistoryPromptRef,
-  onChangeActivePendingUserInputCustomAnswer,
-  setComposerDraftPromptHistorySavedDraft,
-  applyingPromptHistoryNavigationRef,
-  promptHistory,
-  promptHistoryAppliedPromptRef,
-  restoredQueuedSourceProposedPlanRef,
-  setRestoredQueuedSourceProposedPlan,
-  composerCommandPicker,
-  composerTerminalContexts,
-  setComposerDraftTerminalContexts,
-  setComposerCursor,
-  setComposerTrigger,
-  clearComposerSlashDraft,
-  toggleInteractionMode,
-  composerMenuOpenRef,
-  onSend,
-  settings,
-  hasLiveTurn,
-  isLocalFolderBrowserOpen,
-  localDirectoryMenuRef,
-  composerMenuItemsRef,
-  activeComposerMenuItemRef,
-  activePendingProgress,
-  isComposerApprovalState,
-  pendingUserInputs,
-  composerDraft,
-}: ChatComposerCommandsInput) {
+  props,
+  session,
+  turn,
+  transcript,
+  provider,
+  composer,
+  actions,
+  discovery,
+  environment,
+}: ChatComposerCommandsControllerInput) {
+  const { threadId } = props;
+  const {
+    composerSelectLockRef,
+    setComposerCommandPicker,
+    setComposerHighlightedItemId,
+    composerHighlightedItemId,
+    promptHistoryNavigationRef,
+    restoreComposerDraftPromptHistorySavedDraft,
+    promptRef,
+    setPrompt,
+    expectedPromptHistoryPromptRef,
+    setComposerDraftPromptHistorySavedDraft,
+    applyingPromptHistoryNavigationRef,
+    promptHistoryAppliedPromptRef,
+    restoredQueuedSourceProposedPlanRef,
+    setRestoredQueuedSourceProposedPlan,
+    composerCommandPicker,
+    composerTerminalContexts,
+    setComposerDraftTerminalContexts,
+    setComposerCursor,
+    setComposerTrigger,
+    composerMenuOpenRef,
+    settings,
+    localDirectoryMenuRef,
+    composerMenuItemsRef,
+    activeComposerMenuItemRef,
+    composerDraft,
+  } = session;
+  const {
+    handleForkTargetSelection,
+    handleReviewTargetSelection,
+    resolveActiveComposerTrigger,
+    applyComposerTriggerReplacement,
+    handleNavigateLocalFolder,
+    handleSlashCommandSelection,
+    clearComposerSlashDraft,
+    onSend,
+  } = turn;
+  const {
+    localFolderBrowseRootPath,
+    promptHistory,
+    isLocalFolderBrowserOpen,
+    isComposerApprovalState,
+  } = transcript;
+  const {
+    selectedProvider,
+    updateSelectedComposerSkills,
+    updateSelectedComposerMentions,
+    activePendingQuestion,
+    activePendingUserInput,
+    onChangeActivePendingUserInputCustomAnswer,
+    hasLiveTurn,
+    activePendingProgress,
+    pendingUserInputs,
+  } = provider;
+  const { scheduleComposerFocus } = composer;
+  const { onProviderModelSelect } = actions;
+  const { composerMenuItems } = discovery;
+  const { toggleInteractionMode } = environment;
   const onSelectComposerItem = useCallback(
     (item: ComposerCommandItem) => {
       if (composerSelectLockRef.current) return;

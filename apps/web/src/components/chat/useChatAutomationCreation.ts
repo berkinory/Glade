@@ -103,26 +103,60 @@ interface ChatAutomationCreationInput {
   >["acknowledgedAutomationWarnings"];
 }
 
+type ChatAutomationCreationControllerInput = {
+  props: Pick<ChatAutomationCreationInput, "threadId">;
+  workspace: Pick<
+    ChatAutomationCreationInput,
+    | "activeProject"
+    | "isServerThread"
+    | "activeThreadAssociatedWorktree"
+    | "runtimeMode"
+    | "interactionMode"
+  >;
+  provider: Pick<
+    ChatAutomationCreationInput,
+    | "automationDraftSubmittingRef"
+    | "providerOptionsForDispatch"
+    | "setIsAutomationDraftSubmitting"
+    | "resetAutomationDraftState"
+    | "selectedModelSelection"
+    | "automationDraftForm"
+    | "automationDraftWarnings"
+    | "acknowledgedAutomationWarnings"
+  >;
+  session: Pick<ChatAutomationCreationInput, "activeThread" | "queryClient">;
+  turn: Pick<ChatAutomationCreationInput, "clearComposerInput">;
+  transcript: Pick<ChatAutomationCreationInput, "threadNotes">;
+};
 export function useChatAutomationCreation({
-  threadId,
-  activeProject,
-  automationDraftSubmittingRef,
-  isServerThread,
-  activeThread,
-  providerOptionsForDispatch,
-  setIsAutomationDraftSubmitting,
-  queryClient,
-  clearComposerInput,
-  resetAutomationDraftState,
-  activeThreadAssociatedWorktree,
-  threadNotes,
-  selectedModelSelection,
-  runtimeMode,
-  interactionMode,
-  automationDraftForm,
-  automationDraftWarnings,
-  acknowledgedAutomationWarnings,
-}: ChatAutomationCreationInput) {
+  props,
+  workspace,
+  provider,
+  session,
+  turn,
+  transcript,
+}: ChatAutomationCreationControllerInput) {
+  const { threadId } = props;
+  const {
+    activeProject,
+    isServerThread,
+    activeThreadAssociatedWorktree,
+    runtimeMode,
+    interactionMode,
+  } = workspace;
+  const {
+    automationDraftSubmittingRef,
+    providerOptionsForDispatch,
+    setIsAutomationDraftSubmitting,
+    resetAutomationDraftState,
+    selectedModelSelection,
+    automationDraftForm,
+    automationDraftWarnings,
+    acknowledgedAutomationWarnings,
+  } = provider;
+  const { activeThread, queryClient } = session;
+  const { clearComposerInput } = turn;
+  const { threadNotes } = transcript;
   const createAutomationFromForm = useCallback(
     async (input: {
       readonly form: AutomationFormState;

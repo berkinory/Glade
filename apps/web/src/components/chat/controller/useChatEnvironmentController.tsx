@@ -58,7 +58,6 @@ export function useChatEnvironmentController({
     settings,
     updateSettings,
     activeThread,
-    serverThread,
     setPlanSidebarOpen,
     planSidebarDismissedForTurnRef,
     legendListRef,
@@ -102,7 +101,6 @@ export function useChatEnvironmentController({
     newTerminalShortcutLabel,
     closeTerminalShortcutLabel,
     closeWorkspaceShortcutLabel,
-    activeProviderStatus,
     composerMenuOpen,
     composerMenuItems,
   } = discovery;
@@ -137,7 +135,6 @@ export function useChatEnvironmentController({
     setTerminalOpen,
     isServerThread,
     activeThreadAssociatedWorktree,
-    isLocalDraftThread,
     runtimeMode,
     interactionMode,
     setRenameDialogOpen,
@@ -155,8 +152,6 @@ export function useChatEnvironmentController({
     focusComposer,
   } = composer;
   const {
-    selectedProvider,
-    selectedRuntimeModel,
     selectedModelSelection,
     activeTaskList,
     sidebarProposedPlan,
@@ -351,19 +346,7 @@ export function useChatEnvironmentController({
     toggleInteractionMode,
     resetInteractionMode,
     persistThreadSettingsForNextTurn,
-  } = useChatRuntimeModes({
-    threadId,
-    activeThread,
-    serverThread,
-    isLocalDraftThread,
-    runtimeMode,
-    interactionMode,
-    selectedProvider,
-    selectedRuntimeModel,
-    selectedModelSelection,
-    activeProviderStatus,
-    scheduleComposerFocus,
-  });
+  } = useChatRuntimeModes({ props, session, workspace, provider, discovery, composer });
 
   const togglePlanSidebar = useCallback(() => {
     setPlanSidebarOpen((open) => {

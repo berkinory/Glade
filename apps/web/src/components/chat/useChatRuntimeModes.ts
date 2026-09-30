@@ -32,19 +32,31 @@ interface ChatRuntimeModesInput {
   scheduleComposerFocus: () => void;
 }
 
+type ChatRuntimeModesControllerInput = {
+  props: Pick<ChatRuntimeModesInput, "threadId">;
+  session: Pick<ChatRuntimeModesInput, "activeThread" | "serverThread">;
+  workspace: Pick<ChatRuntimeModesInput, "isLocalDraftThread" | "runtimeMode" | "interactionMode">;
+  provider: Pick<
+    ChatRuntimeModesInput,
+    "selectedProvider" | "selectedRuntimeModel" | "selectedModelSelection"
+  >;
+  discovery: Pick<ChatRuntimeModesInput, "activeProviderStatus">;
+  composer: Pick<ChatRuntimeModesInput, "scheduleComposerFocus">;
+};
 export function useChatRuntimeModes({
-  threadId,
-  activeThread,
-  serverThread,
-  isLocalDraftThread,
-  runtimeMode,
-  interactionMode,
-  selectedProvider,
-  selectedRuntimeModel,
-  selectedModelSelection,
-  activeProviderStatus,
-  scheduleComposerFocus,
-}: ChatRuntimeModesInput) {
+  props,
+  session,
+  workspace,
+  provider,
+  discovery,
+  composer,
+}: ChatRuntimeModesControllerInput) {
+  const { threadId } = props;
+  const { activeThread, serverThread } = session;
+  const { isLocalDraftThread, runtimeMode, interactionMode } = workspace;
+  const { selectedProvider, selectedRuntimeModel, selectedModelSelection } = provider;
+  const { activeProviderStatus } = discovery;
+  const { scheduleComposerFocus } = composer;
   const setComposerDraftRuntimeMode = useComposerDraftStore((state) => state.setRuntimeMode);
   const setDraftThreadContext = useComposerDraftStore((state) => state.setDraftThreadContext);
   const setComposerDraftInteractionMode = useComposerDraftStore(

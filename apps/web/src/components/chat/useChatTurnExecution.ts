@@ -150,54 +150,120 @@ type ChatTurnExecutionInput = Pick<
   | "resetLocalDispatch"
 >;
 
+type ChatTurnExecutionControllerInput = {
+  workspace: Pick<
+    ChatTurnExecutionInput,
+    "isServerThread" | "isLocalDraftThread" | "setSettledThreadBranchWarningDismissedThreadId"
+  >;
+  session: Pick<
+    ChatTurnExecutionInput,
+    | "setStoreThreadWorkspace"
+    | "createWorktreeMutation"
+    | "planSidebarDismissedForTurnRef"
+    | "setPlanSidebarOpen"
+    | "setRestoredQueuedSourceProposedPlan"
+    | "promptRef"
+    | "composerImagesRef"
+    | "composerFilesRef"
+    | "composerAssistantSelectionsRef"
+    | "composerBrowserAnnotationsRef"
+    | "composerFileCommentsRef"
+    | "composerTerminalContextsRef"
+    | "composerPastedTextsRef"
+    | "composerPullRequestContextsRef"
+    | "setPrompt"
+    | "setComposerCursor"
+    | "addComposerImagesToDraft"
+    | "addComposerFilesToDraft"
+    | "addComposerAssistantSelectionToDraft"
+    | "addComposerDraftBrowserAnnotations"
+    | "addComposerFileCommentToDraft"
+    | "addComposerTerminalContextsToDraft"
+    | "addComposerPastedTextsToDraft"
+    | "addComposerPullRequestContextsToDraft"
+    | "setComposerTrigger"
+    | "sendInFlightRef"
+  >;
+  provider: Pick<
+    ChatTurnExecutionInput,
+    | "clearLocalDispatchWorktreeSetup"
+    | "beginLocalDispatch"
+    | "armLocalDispatchAckFallback"
+    | "failLocalDispatchWorktreeSetup"
+    | "updateSelectedComposerSkills"
+    | "updateSelectedComposerMentions"
+    | "worktreeSetupResolutionRef"
+    | "scheduleFailedWorktreeSetupDispatchReset"
+    | "resetLocalDispatch"
+  >;
+  transcript: Pick<ChatTurnExecutionInput, "threadNotes" | "setOptimisticUserMessages">;
+  environment: Pick<
+    ChatTurnExecutionInput,
+    "runProjectScript" | "persistThreadSettingsForNextTurn"
+  >;
+  discovery: Pick<ChatTurnExecutionInput, "rememberCustomBinaryPathForDispatch">;
+  turn: Pick<ChatTurnExecutionInput, "setQueuedSteerGate">;
+  props: Pick<ChatTurnExecutionInput, "threadId">;
+  composer: Pick<ChatTurnExecutionInput, "setThreadError">;
+};
 export function useChatTurnExecution({
-  isServerThread,
-  setStoreThreadWorkspace,
-  clearLocalDispatchWorktreeSetup,
-  createWorktreeMutation,
-  beginLocalDispatch,
-  isLocalDraftThread,
-  threadNotes,
-  runProjectScript,
-  persistThreadSettingsForNextTurn,
-  rememberCustomBinaryPathForDispatch,
-  setSettledThreadBranchWarningDismissedThreadId,
-  armLocalDispatchAckFallback,
-  setQueuedSteerGate,
-  threadId,
-  planSidebarDismissedForTurnRef,
-  setPlanSidebarOpen,
-  setRestoredQueuedSourceProposedPlan,
-  failLocalDispatchWorktreeSetup,
-  setOptimisticUserMessages,
-  promptRef,
-  composerImagesRef,
-  composerFilesRef,
-  composerAssistantSelectionsRef,
-  composerBrowserAnnotationsRef,
-  composerFileCommentsRef,
-  composerTerminalContextsRef,
-  composerPastedTextsRef,
-  composerPullRequestContextsRef,
-  setPrompt,
-  setComposerCursor,
-  addComposerImagesToDraft,
-  addComposerFilesToDraft,
-  addComposerAssistantSelectionToDraft,
-  addComposerDraftBrowserAnnotations,
-  addComposerFileCommentToDraft,
-  addComposerTerminalContextsToDraft,
-  addComposerPastedTextsToDraft,
-  addComposerPullRequestContextsToDraft,
-  updateSelectedComposerSkills,
-  updateSelectedComposerMentions,
-  setComposerTrigger,
-  setThreadError,
-  sendInFlightRef,
-  worktreeSetupResolutionRef,
-  scheduleFailedWorktreeSetupDispatchReset,
-  resetLocalDispatch,
-}: ChatTurnExecutionInput) {
+  workspace,
+  session,
+  provider,
+  transcript,
+  environment,
+  discovery,
+  turn,
+  props,
+  composer,
+}: ChatTurnExecutionControllerInput) {
+  const { isServerThread, isLocalDraftThread, setSettledThreadBranchWarningDismissedThreadId } =
+    workspace;
+  const {
+    setStoreThreadWorkspace,
+    createWorktreeMutation,
+    planSidebarDismissedForTurnRef,
+    setPlanSidebarOpen,
+    setRestoredQueuedSourceProposedPlan,
+    promptRef,
+    composerImagesRef,
+    composerFilesRef,
+    composerAssistantSelectionsRef,
+    composerBrowserAnnotationsRef,
+    composerFileCommentsRef,
+    composerTerminalContextsRef,
+    composerPastedTextsRef,
+    composerPullRequestContextsRef,
+    setPrompt,
+    setComposerCursor,
+    addComposerImagesToDraft,
+    addComposerFilesToDraft,
+    addComposerAssistantSelectionToDraft,
+    addComposerDraftBrowserAnnotations,
+    addComposerFileCommentToDraft,
+    addComposerTerminalContextsToDraft,
+    addComposerPastedTextsToDraft,
+    addComposerPullRequestContextsToDraft,
+    setComposerTrigger,
+    sendInFlightRef,
+  } = session;
+  const {
+    clearLocalDispatchWorktreeSetup,
+    beginLocalDispatch,
+    armLocalDispatchAckFallback,
+    failLocalDispatchWorktreeSetup,
+    updateSelectedComposerSkills,
+    updateSelectedComposerMentions,
+    worktreeSetupResolutionRef,
+    scheduleFailedWorktreeSetupDispatchReset,
+    resetLocalDispatch,
+  } = provider;
+  const { threadNotes, setOptimisticUserMessages } = transcript;
+  const { runProjectScript, persistThreadSettingsForNextTurn } = environment;
+  const { rememberCustomBinaryPathForDispatch } = discovery;
+  const { setQueuedSteerGate } = turn;
+  const { threadId } = props;
+  const { setThreadError } = composer;
   return useCallback(
     async (preparedTurn: PreparedChatTurn): Promise<boolean> => {
       let {
