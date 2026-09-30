@@ -8,7 +8,6 @@ import {
   ProviderItemId,
 } from "@glade/contracts/core/baseSchemas";
 import { type ProviderSendTurnInput } from "@glade/contracts/provider/provider";
-import { buildClaudeSubagentPrompt } from "../agentMentions";
 import { withProviderPlanModePrompt } from "../../core/planMode.ts";
 import type { SDKUserMessage, SDKResultMessage, SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import { FileSystem, Effect } from "effect";
@@ -81,7 +80,7 @@ function buildPromptText(
   nativeCommandNames?: ReadonlySet<string>,
 ): string {
   if (isClaudeNativeSlashCommand(input.input, nativeCommandNames)) return input.input!.trim();
-  const basePrompt = buildClaudeSubagentPrompt(input.input?.trim() ?? "").prompt;
+  const basePrompt = input.input?.trim() ?? "";
   return withProviderPlanModePrompt({
     text: basePrompt,
     interactionMode: input.interactionMode,

@@ -17,6 +17,8 @@
 
 ### Improved
 
+- Claude subagents use only your native agents, with progress and controls from the provider.
+
 - File changes appear live while an agent works, and model settings changed outside Glade stay in sync.
 
 - Model choices and options follow the connected provider, with explicit provider defaults and live Claude effort and speed changes. ([e8adbfda4](https://github.com/berkinory/Glade/commit/e8adbfda42ab44edc3ecce4038e19a4f7d433026))

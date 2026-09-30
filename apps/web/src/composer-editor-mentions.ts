@@ -15,7 +15,6 @@ import {
   normalizeComposerLinkUrl,
   trimTrailingLinkPunctuation,
 } from "./lib/linkChips";
-import { resolveAgentAlias } from "@glade/shared/provider/agentMentions";
 import type { ProviderMentionReference } from "@glade/contracts/provider/providerDiscovery";
 import { threadIdFromThreadMentionPath } from "@glade/shared/threads/threadMentions";
 
@@ -74,8 +73,6 @@ const DISPLAY_LINK_TOKEN_REGEX = new RegExp(LINK_TOKEN_DISPLAY_PATTERN, "g");
 const LINK_TOKEN_FIRST_REGEX = new RegExp(LINK_TOKEN_TYPING_PATTERN);
 const DISPLAY_LINK_TOKEN_FIRST_REGEX = new RegExp(LINK_TOKEN_DISPLAY_PATTERN);
 
-const AGENT_MENTION_TOKEN_REGEX = /(^|\s)@([a-zA-Z0-9._-]+)(?=\()/g;
-
 export function matchComposerLinkToken(
   text: string,
   options: { includeTrailingTokenAtEnd: boolean },
@@ -120,13 +117,6 @@ type InlineTokenMatch =
   | {
       kind: "slash-command";
       command: ComposerSlashCommand;
-      start: number;
-      end: number;
-    }
-  | {
-      kind: "agent-mention";
-      alias: string;
-      color: string;
       start: number;
       end: number;
     }
@@ -187,36 +177,6 @@ function collectInlineTokenMatches(
     matches.push({ kind: "link", url, start, end });
   }
 
-  const agentMentionRanges: Array<{ start: number; end: number }> = [];
-
-  for (const match of text.matchAll(AGENT_MENTION_TOKEN_REGEX)) {
-    const whitespace = match[1] ?? "";
-    const alias = match[2] ?? "";
-    const matchIndex = match.index ?? 0;
-    const start = matchIndex + whitespace.length;
-    const end = start + 1 + alias.length;
-
-    if (isReserved(start)) continue;
-
-    const resolved = resolveAgentAlias(alias);
-    if (!resolved) {
-      continue;
-    }
-
-    agentMentionRanges.push({ start, end });
-
-    matches.push({
-      kind: "agent-mention",
-      alias,
-      color: resolved.color,
-      start,
-      end,
-    });
-  }
-
-  const isInsideAgentMention = (pos: number): boolean =>
-    agentMentionRanges.some((range) => pos >= range.start && pos < range.end);
-
   for (const match of text.matchAll(mentionRegex)) {
     const fullMatch = match[0];
     const prefix = match[1] ?? "";
@@ -225,7 +185,7 @@ function collectInlineTokenMatches(
     const start = matchIndex + prefix.length;
     const end = start + fullMatch.length - prefix.length;
 
-    if (isInsideAgentMention(start) || isReserved(start)) continue;
+    if (isReserved(start)) continue;
 
     if (path.length > 0) {
       matches.push({ kind: "mention", value: path, start, end });
@@ -241,7 +201,7 @@ function collectInlineTokenMatches(
     const start = matchIndex + whitespace.length;
     const end = start + fullMatch.length - whitespace.length;
 
-    if (isInsideAgentMention(start) || isReserved(start)) continue;
+    if (isReserved(start)) continue;
 
     if (name.length === 0) {
       continue;
@@ -288,12 +248,6 @@ function splitTextIntoPromptSegments(
 
     if (match.kind === "link") {
       segments.push({ type: "link", url: match.url });
-    } else if (match.kind === "agent-mention") {
-      segments.push({
-        type: "agent-mention",
-        alias: match.alias,
-        color: match.color,
-      });
     } else if (match.kind === "mention") {
       const threadMention = findThreadProviderMentionReferenceForToken(
         match.value,

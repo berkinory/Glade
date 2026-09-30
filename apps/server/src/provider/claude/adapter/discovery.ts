@@ -5,7 +5,6 @@ import type { ClaudeProcessOwnershipShape } from "../../Services/ClaudeProcessOw
 import type {
   SDKUserMessage,
   ModelInfo,
-  AgentInfo,
   Options as ClaudeQueryOptions,
   PermissionMode,
 } from "@anthropic-ai/claude-agent-sdk";
@@ -60,8 +59,6 @@ export function makeClaudeDiscovery(input: {
     serverConfig,
   } = input;
   let cachedModels: ProviderListModelsResult | null = null;
-
-  let cachedAgents: ProviderListAgentsResult | null = null;
 
   const verifyClaudeAutoModelSupport = (input: {
     readonly queryRuntime: ClaudeQueryRuntime;
@@ -149,42 +146,6 @@ export function makeClaudeDiscovery(input: {
         .then((models) => {
           cachedModels = {
             models: models.map(mapClaudeModelInfo),
-            source: "sdk",
-            cached: false,
-          };
-        })
-        .catch(() => {});
-    }
-  };
-
-  const observeSessionAgents = (
-    queryRuntime: ClaudeQueryRuntime,
-    initializedAgents?: ReadonlyArray<AgentInfo>,
-  ): void => {
-    if (!cachedAgents) {
-      if (initializedAgents) {
-        cachedAgents = {
-          agents: initializedAgents.map((agent) => ({
-            name: agent.name,
-            displayName: agent.name,
-            ...(agent.description ? { description: agent.description } : {}),
-            ...(agent.model ? { model: agent.model } : {}),
-          })),
-          source: "sdk",
-          cached: false,
-        };
-        return;
-      }
-      queryRuntime
-        .supportedAgents()
-        .then((agents) => {
-          cachedAgents = {
-            agents: agents.map((a) => ({
-              name: a.name,
-              displayName: a.name,
-              ...(a.description ? { description: a.description } : {}),
-              ...(a.model ? { model: a.model } : {}),
-            })),
             source: "sdk",
             cached: false,
           };
@@ -425,32 +386,37 @@ export function makeClaudeDiscovery(input: {
       return result;
     });
 
-  const listAgents: NonNullable<ClaudeAdapterShape["listAgents"]> = (_input) =>
-    Effect.sync(() => {
-      if (cachedAgents) {
-        return { ...cachedAgents, cached: true };
-      }
-      for (const context of sessions.list()) {
-        if (!context.stopped && context.query) {
-          context.query
-            .supportedAgents()
-            .then((agents) => {
-              cachedAgents = {
-                agents: agents.map((a) => ({
-                  name: a.name,
-                  displayName: a.name,
-                  ...(a.description ? { description: a.description } : {}),
-                  ...(a.model ? { model: a.model } : {}),
-                })),
-                source: "sdk",
-                cached: false,
-              };
-            })
-            .catch(() => {});
-          break;
-        }
-      }
-      return { agents: [], source: "pending", cached: false };
+  const listAgents: NonNullable<ClaudeAdapterShape["listAgents"]> = (request) =>
+    Effect.gen(function* () {
+      const cwd = request.cwd ?? serverConfig.cwd;
+      const context = sessions
+        .list()
+        .find((candidate) => !candidate.stopped && candidate.startInput.cwd === cwd);
+      const env = yield* resolveClaudeSdkEnv;
+      const agents = yield* Effect.tryPromise({
+        try: () =>
+          context
+            ? context.query.supportedAgents()
+            : discoverViaTemporaryProcess(cwd, env, request.binaryPath ?? "claude", (query) =>
+                query.supportedAgents(),
+              ),
+        catch: (cause) =>
+          toRequestError(
+            context?.session.threadId ?? CLAUDE_DISCOVERY_THREAD_ID,
+            "listAgents",
+            cause,
+          ),
+      });
+      return {
+        agents: agents.map((agent) => ({
+          name: agent.name,
+          displayName: agent.name,
+          ...(agent.description ? { description: agent.description } : {}),
+          ...(agent.model ? { model: agent.model } : {}),
+        })),
+        source: "sdk",
+        cached: false,
+      } satisfies ProviderListAgentsResult;
     });
 
   const listSkills: NonNullable<ClaudeAdapterShape["listSkills"]> = (
@@ -539,7 +505,6 @@ export function makeClaudeDiscovery(input: {
   return {
     verifyClaudeAutoModelSupport,
     observeSessionModels,
-    observeSessionAgents,
     getComposerCapabilities,
     listCommands,
     listSkills,

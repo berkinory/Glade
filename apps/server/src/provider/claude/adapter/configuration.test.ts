@@ -122,8 +122,6 @@ describe("Claude configuration", () => {
       }
       assert.equal(systemPrompt.preset, "claude_code");
       assert.equal(systemPrompt.excludeDynamicSections, true);
-      assert.include(systemPrompt.append ?? "", "When spawning subagents");
-      assert.include(systemPrompt.append ?? "", "worker-<tier>");
       assert.include(systemPrompt.append ?? "", GLADE_HARNESS_POLICY_MARKER);
       assert.include(systemPrompt.append ?? "", "Glade is the host and harness");
 

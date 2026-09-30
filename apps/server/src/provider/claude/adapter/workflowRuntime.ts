@@ -54,6 +54,8 @@ export function makeClaudeWorkflowRuntime(input: {
     options?.workflowRuntimePollIntervalMs ?? DEFAULT_WORKFLOW_RUNTIME_POLL_INTERVAL_MS,
   );
 
+  // SDK task messages omit per-workflow-agent identity, model, tokens and recent tools.
+  // Keep private workflow reads behind this runtime until the SDK exposes those fields.
   const startWorkflowRuntimePoller = (
     context: ClaudeSessionContext,
     taskId: string,

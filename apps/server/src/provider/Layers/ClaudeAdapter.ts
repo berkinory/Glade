@@ -249,7 +249,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
     const {
       verifyClaudeAutoModelSupport,
       observeSessionModels,
-      observeSessionAgents,
       getComposerCapabilities,
       listCommands,
       listSkills,
@@ -318,7 +317,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       createQuery,
       verifyClaudeAutoModelSupport,
       observeSessionModels,
-      observeSessionAgents,
       runSdkStream,
       handleStreamExit,
       withSessionLifecycleLock,

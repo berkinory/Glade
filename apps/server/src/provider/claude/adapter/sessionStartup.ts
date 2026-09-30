@@ -34,11 +34,7 @@ import {
 } from "@glade/shared/provider/model";
 import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import { selectedClaudeModelInfo, toPermissionMode } from "./modelCapabilities";
-import {
-  buildClaudeSdkSubagents,
-  CLAUDE_SETTING_SOURCES,
-  buildEmbeddedClaudeSystemPromptAppend,
-} from "./promptPolicy";
+import { CLAUDE_SETTING_SOURCES, buildEmbeddedClaudeSystemPromptAppend } from "./promptPolicy";
 import { acquireAgentGatewaySessionLease } from "../../../agentGateway/sessionLease.ts";
 import { makeClaudeSdkHooks } from "./sdkHooks";
 import { withClaudeArtifactOptIn } from "../claudeProcessEnv.ts";
@@ -93,7 +89,6 @@ export function makeClaudeSessionStartup(input: {
     typeof makeClaudeDiscovery
   >["verifyClaudeAutoModelSupport"];
   readonly observeSessionModels: ReturnType<typeof makeClaudeDiscovery>["observeSessionModels"];
-  readonly observeSessionAgents: ReturnType<typeof makeClaudeDiscovery>["observeSessionAgents"];
   readonly runSdkStream: ReturnType<typeof makeClaudeSdkStream>["runSdkStream"];
   readonly handleStreamExit: ReturnType<typeof makeClaudeSdkStream>["handleStreamExit"];
   readonly withSessionLifecycleLock: ReturnType<typeof makeKeyedLock<ThreadId>>["withLock"];
@@ -120,7 +115,6 @@ export function makeClaudeSessionStartup(input: {
     createQuery,
     verifyClaudeAutoModelSupport,
     observeSessionModels,
-    observeSessionAgents,
     runSdkStream,
     handleStreamExit,
     withSessionLifecycleLock,
@@ -192,7 +186,6 @@ export function makeClaudeSessionStartup(input: {
         ...(fastMode !== undefined ? { fastMode } : {}),
         ...(ultracode !== undefined ? { ultracode } : {}),
       };
-      const claudeSubagents = buildClaudeSdkSubagents();
       const { claudeSdkEnv, binaryPath, snapshotSupported } =
         preflight ?? (yield* resolveClaudeStartPreflight(input));
       const disabledSkillNames = yield* getDisabledSkillNames.pipe(
@@ -282,7 +275,6 @@ export function makeClaudeSessionStartup(input: {
           excludeDynamicSections: true,
           ...(snapshotSupported ? { snapshot: true } : {}),
         },
-        ...(Object.keys(claudeSubagents).length > 0 ? { agents: claudeSubagents } : {}),
 
         ...(effectiveEffort === "max" ? { effort: "max" as const } : {}),
         ...(permissionMode ? { permissionMode } : {}),
@@ -371,7 +363,6 @@ export function makeClaudeSessionStartup(input: {
           });
         }
         observeSessionModels(queryRuntime, initialization.models);
-        observeSessionAgents(queryRuntime, initialization.agents);
         const selectedModelInfo = selectedClaudeModelInfo(
           initialization.models,
           effectiveClaudeModel,

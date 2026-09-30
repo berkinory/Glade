@@ -4,7 +4,6 @@ import {
 } from "@glade/contracts/provider/runtimeMetadata";
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import { ToolInFlight, ClaudeToolResultStreamKind } from "./sessionTypes";
-import { claudeWorkerEffortFromSubagentType } from "./promptPolicy";
 import { extractTextContent } from "./messageContent";
 
 export function classifyToolItemType(toolName: string): CanonicalItemType {
@@ -137,15 +136,12 @@ function subagentReceiverData(
     model,
     run_in_background: runInBackground,
   } = tool.input;
-  const effort =
-    typeof subagentType === "string" ? claudeWorkerEffortFromSubagentType(subagentType) : undefined;
   return {
     receiverThreadId: tool.itemId,
     ...(typeof subagentType === "string" ? { agentType: subagentType } : {}),
     ...(typeof description === "string" ? { nickname: description } : {}),
     ...(typeof prompt === "string" ? { prompt } : {}),
     ...(typeof model === "string" ? { model } : {}),
-    ...(effort ? { effort } : {}),
     ...(runInBackground === true ? { background: true } : {}),
   };
 }
