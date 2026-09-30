@@ -1,1916 +1,280 @@
-import { asPositiveFiniteNumber } from "@glade/shared/transport/payloadValues";
-import { asNonBlankString } from "@glade/shared/text/text";
-import { normalizeOperationError } from "../../platform/operationError.ts";
-import { readClaudeSessionParentUuid } from "../claude/claudeProjectImport.ts";
 import {
-  claudeTurnResultUsage,
-  type ClaudeResultUsageBaseline,
-} from "../claude/claudeResultUsage.ts";
-import { restoreClaudeImportedCopyDates } from "../claude/claudeImportedCopyDates.ts";
-
-import { execProcessFile, spawnProcess } from "@glade/shared/platform/processRuntime";
+  Duration,
+  Effect,
+  FileSystem,
+  Option,
+  Schema,
+  Queue,
+  DateTime,
+  Clock,
+  Random,
+  Deferred,
+  Exit,
+  Fiber,
+  Stream,
+  Cause,
+  Ref,
+  Layer,
+} from "effect";
+import { ServerConfig } from "../../server/config.ts";
+import { AgentGatewayCredentials } from "../../agentGateway/Services/AgentGatewayCredentials.ts";
+import { makeEventNdjsonLogger } from "./EventNdjsonLogger.ts";
 import type {
-  AgentInfo,
-  CanUseTool,
-  AgentDefinition,
-  HookInput,
-  HookJSONOutput,
-  Options as ClaudeQueryOptions,
-  ModelInfo,
-  PermissionMode,
-  PermissionResult,
-  PermissionUpdate,
-  SDKAssistantMessageError,
-  SDKMessage,
-  SDKResultMessage,
-  SDKControlGetContextUsageResponse,
-  Settings,
-  SettingSource,
   SDKUserMessage,
-  SlashCommand,
+  Options as ClaudeQueryOptions,
   SpawnOptions as ClaudeSpawnOptions,
   SpawnedProcess as ClaudeSpawnedProcess,
+  SDKMessage,
+  SDKControlGetContextUsageResponse,
+  SDKResultMessage,
+  HookInput,
+  HookJSONOutput,
+  CanUseTool,
+  PermissionResult,
+  PermissionMode,
   SessionMessage,
 } from "@anthropic-ai/claude-agent-sdk";
+import { loadClaudeAgentSdk } from "../claude/claudeAgentSdk.ts";
 import {
-  ApprovalRequestId,
+  teardownProviderProcessTree,
+  teardownChildProcessTree,
+} from "../../platform/supervisedProcessTeardown";
+import {
+  ThreadId,
   EventId,
   ProviderItemId,
-  RuntimeItemId,
-  RuntimeRequestId,
-  RuntimeTaskId,
-  ThreadId,
   TurnId,
+  ApprovalRequestId,
+  RuntimeTaskId,
 } from "@glade/contracts/core/baseSchemas";
+import { makeKeyedLock } from "../core/keyedLock.ts";
 import {
-  type CanonicalItemType,
-  type CanonicalRequestType,
-  type RuntimeTurnState,
-  type RuntimeContentStreamKind,
-  type RuntimeSessionState,
-} from "@glade/contracts/provider/runtimeMetadata";
+  type ProviderListModelsResult,
+  type ProviderListAgentsResult,
+  type ProviderListCommandsResult,
+  type ProviderListCommandsInput,
+  type ProviderListSkillsInput,
+  type ProviderListSkillsResult,
+  type ProviderComposerCapabilities,
+} from "@glade/contracts/provider/providerDiscovery";
+import {
+  ProviderAdapterValidationError,
+  ProviderAdapterProcessError,
+  type ProviderAdapterError,
+  ProviderAdapterSessionNotFoundError,
+  ProviderAdapterSessionClosedError,
+  ProviderAdapterRequestError,
+} from "../core/Errors.ts";
 import { type ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
+import { PROVIDER_ADAPTER_RUNTIME_EVENT_BUFFER_CAPACITY } from "../Services/ProviderAdapter.ts";
+import { buildClaudeProcessEnv, withClaudeArtifactOptIn } from "../claude/claudeProcessEnv.ts";
+import { stripDiagnosticImages } from "../core/stripDiagnosticImages.ts";
+import {
+  decideClaudeContextUsageWarnings,
+  maxClaudeContextWindowFromModelUsage,
+  resolveEffectiveClaudeContextWindow,
+  normalizeClaudeTokenUsage,
+  snapshotFromClaudeContextUsage,
+  mergeClaudeTokenUsageSnapshot,
+  resolveClaudeApiModelIdContextWindowMaxTokens,
+  resolveSelectedClaudeAutoCompactWindow,
+} from "../claude/claudeTokenUsage.ts";
+import { normalizeOperationError } from "../../platform/operationError.ts";
+import {
+  normalizeClaudeTodoTasks,
+  claudeTrackedTasksPayload,
+  applyClaudeTaskToolResult,
+  type ClaudeTrackedTask,
+  hasOnlyCompletedClaudeTasks,
+  hasUnfinishedClaudeTasks,
+} from "../claude/claudeTaskTracker.ts";
+import {
+  type ProviderApprovalDecision,
+  type ProviderInteractionMode,
+} from "@glade/contracts/provider/sessionPolicy";
+import { type RuntimeTurnState } from "@glade/contracts/provider/runtimeMetadata";
+import { claudeTurnResultUsage } from "../claude/claudeResultUsage.ts";
+import { asPositiveFiniteNumber } from "@glade/shared/transport/payloadValues";
 import {
   type ThreadTokenUsageSnapshot,
   type UserInputQuestion,
 } from "@glade/contracts/provider/runtimePayloads";
-import { type ClaudeApiEffort } from "@glade/contracts/provider/model";
-import { ClaudeCacheObservation } from "@glade/contracts/provider/claudeCache";
 import {
-  type ProviderApprovalDecision,
-  type ProviderInteractionMode,
-  type ProviderUserInputAnswers,
-} from "@glade/contracts/provider/sessionPolicy";
-import {
-  type ProviderSendTurnInput,
-  type ProviderSession,
-} from "@glade/contracts/provider/provider";
-import {
-  type ProviderComposerCapabilities,
-  type ProviderListCommandsInput,
-  type ProviderArtifactsState,
-  type ProviderListCommandsResult,
-  type ProviderListSkillsInput,
-  type ProviderListSkillsResult,
-  type ProviderListAgentsResult,
-  type ProviderListModelsResult,
-} from "@glade/contracts/provider/providerDiscovery";
-import { getAgentMentionAliases } from "@glade/contracts/provider/agentMentions";
-import {
-  applyClaudePromptEffortPrefix,
-  getClaudeContextWindowSuffix,
-  getDefaultModel,
-  getEffectiveClaudeCodeEffort,
-  getModelCapabilities,
-  getProviderOptionDescriptors,
-  hasEffortLevel,
-  normalizeClaudeModelOptions,
-  resolveApiModelId,
-  stripClaudeContextWindowSuffix,
-  trimOrNull,
-} from "@glade/shared/provider/model";
-import { buildClaudeSubagentPrompt } from "../claude/agentMentions";
-import { assessClaudeCache } from "@glade/shared/provider/claudeCache";
-import { approvalSessionGrantWidensSessionPolicy } from "@glade/shared/threads/approvalSessionGrant";
-import { approvalRequestKindFromRequestType } from "@glade/shared/threads/threadSummary";
-import {
-  claudeCacheContextTokens,
+  claudeCacheForModel,
   claudeCacheFromRequest,
   claudeCacheFromSessionStart,
-  claudeCacheForModel,
+  claudeCacheContextTokens,
 } from "../claude/claudeCacheObservation.ts";
-import { compareSemverVersions } from "../core/providerMaintenance.ts";
-import { redactSensitiveJsonFields } from "../../diagnostics/sensitiveKeys.ts";
 import {
-  Cause,
-  DateTime,
-  Clock,
-  Deferred,
-  Duration,
-  Effect,
-  Exit,
-  FileSystem,
-  Fiber,
-  Layer,
-  Option,
-  Queue,
-  Random,
-  Schema,
-  Ref,
-  Stream,
-} from "effect";
-
-import { buildClaudeMcpServers } from "../../agentGateway/mcpInjection.ts";
-import { renderGladeHarnessPolicy } from "../../agentGateway/harnessPolicy.ts";
-import { shouldAllowGladeComputerProviderTool } from "../../agentGateway/computerToolPermission.ts";
-import { AgentGatewayCredentials } from "../../agentGateway/Services/AgentGatewayCredentials.ts";
-import { PROVIDER_ADAPTER_RUNTIME_EVENT_BUFFER_CAPACITY } from "../Services/ProviderAdapter.ts";
-import {
-  acquireAgentGatewaySessionLease,
   cancelAgentGatewayTurn,
-  type AgentGatewaySessionLease,
+  acquireAgentGatewaySessionLease,
   withAgentGatewayTurnCancellation,
 } from "../../agentGateway/sessionLease.ts";
-import { resolveProviderAttachmentPath } from "../core/providerAttachmentPaths.ts";
-import { settleConcurrentTeardowns } from "../core/settleConcurrentTeardowns.ts";
-import { stripDiagnosticImages } from "../core/stripDiagnosticImages.ts";
-import { ServerConfig } from "../../server/config.ts";
-import { buildFileAttachmentsPromptBlock } from "../core/attachmentProjection.ts";
-import { loadClaudeAgentSdk } from "../claude/claudeAgentSdk.ts";
-import { buildClaudeProcessEnv, withClaudeArtifactOptIn } from "../claude/claudeProcessEnv.ts";
 import { ClaudeRequestUsage } from "../claude/claudeRequestUsage.ts";
 import {
-  CLAUDE_CONTEXT_WINDOW_MAX_TOKENS,
-  decideClaudeContextUsageWarnings,
-  maxClaudeContextWindowFromModelUsage,
-  mergeClaudeTokenUsageSnapshot,
-  normalizeClaudeTokenUsage,
-  resolveClaudeApiModelIdContextWindowMaxTokens,
-  resolveClaudeEffectiveContextBudget,
-  resolveEffectiveClaudeContextWindow,
-  resolveSelectedClaudeAutoCompactWindow,
-  snapshotFromClaudeContextUsage,
-} from "../claude/claudeTokenUsage.ts";
-import {
-  applyClaudeTaskToolResult,
-  claudeTrackedTasksPayload,
-  hasOnlyCompletedClaudeTasks,
-  hasUnfinishedClaudeTasks,
-  normalizeClaudeTodoTasks,
-  parseClaudeTrackedTasks,
-  type ClaudeTrackedTask,
-} from "../claude/claudeTaskTracker.ts";
-import {
-  extractClaudeWorkflowAgentPhases,
-  extractClaudeWorkflowAgentPlans,
   parseClaudeWorkflowLaunch,
   parseClaudeWorkflowLaunchFromText,
-  parseClaudeWorkflowProgressAgents,
   parseClaudeWorkflowScriptMeta,
+  extractClaudeWorkflowAgentPhases,
+  extractClaudeWorkflowAgentPlans,
+  parseClaudeWorkflowProgressAgents,
 } from "../claude/claudeWorkflowScript.ts";
+import { extractProposedPlanMarkdown } from "../core/planMode.ts";
 import {
-  claudeWorkflowRuntimeSnapshots,
-  collectClaudeWorkflowRuntime,
   makeClaudeWorkflowRuntimeState,
+  collectClaudeWorkflowRuntime,
+  claudeWorkflowRuntimeSnapshots,
   readClaudeWorkflowOutputText,
-  type ClaudeWorkflowRuntimeState,
 } from "../claude/claudeWorkflowRuntime.ts";
-
+import { type ClaudeAdapterShape, ClaudeAdapter } from "../Services/ClaudeAdapter.ts";
 import {
   isClaudeAutoModeCliVersionSupported,
   MINIMUM_CLAUDE_AUTO_MODE_CLI_VERSION,
 } from "../claude/claudeCliVersion.ts";
-import { parseGenericCliVersion } from "../core/providerMaintenance.ts";
-import { makeKeyedLock } from "../core/keyedLock.ts";
+import { compareSemverVersions } from "../core/providerMaintenance.ts";
+import { ClaudeCacheObservation } from "@glade/contracts/provider/claudeCache";
+import { shouldAllowGladeComputerProviderTool } from "../../agentGateway/computerToolPermission.ts";
+import { redactSensitiveJsonFields } from "../../diagnostics/sensitiveKeys.ts";
+import { approvalRequestKindFromRequestType } from "@glade/shared/threads/threadSummary";
+import { approvalSessionGrantWidensSessionPolicy } from "@glade/shared/threads/approvalSessionGrant";
 import {
-  ProviderAdapterProcessError,
-  ProviderAdapterRequestError,
-  ProviderAdapterSessionClosedError,
-  ProviderAdapterSessionNotFoundError,
-  ProviderAdapterValidationError,
-  type ProviderAdapterError,
-} from "../core/Errors.ts";
-import { extractProposedPlanMarkdown, withProviderPlanModePrompt } from "../core/planMode.ts";
-import { ClaudeAdapter, type ClaudeAdapterShape } from "../Services/ClaudeAdapter.ts";
-import { type EventNdjsonLogger, makeEventNdjsonLogger } from "./EventNdjsonLogger.ts";
+  trimOrNull,
+  normalizeClaudeModelOptions,
+  getDefaultModel,
+  getModelCapabilities,
+  resolveApiModelId,
+  hasEffortLevel,
+  getEffectiveClaudeCodeEffort,
+  stripClaudeContextWindowSuffix,
+} from "@glade/shared/provider/model";
+import { buildClaudeMcpServers } from "../../agentGateway/mcpInjection.ts";
 import {
-  teardownChildProcessTree,
-  teardownProviderProcessTree,
-  type ProcessExitHandle,
-} from "../../platform/supervisedProcessTeardown";
-
-const PROVIDER = "claudeAgent" as const;
-const CLAUDE_DISCOVERY_THREAD_ID = ThreadId.makeUnsafe("claude:discovery");
-type ClaudeTextStreamKind = Extract<RuntimeContentStreamKind, "assistant_text" | "reasoning_text">;
-type ClaudeToolResultStreamKind = Extract<
-  RuntimeContentStreamKind,
-  "command_output" | "file_change_output"
->;
-
-type PromptQueueItem =
-  | {
-      readonly type: "message";
-      readonly message: SDKUserMessage;
-    }
-  | {
-      readonly type: "terminate";
-    };
-
-interface ClaudeResumeState {
-  readonly claudeCache?: ClaudeCacheObservation;
-  readonly threadId?: ThreadId;
-  readonly resume?: string;
-  readonly resumeSessionAt?: string;
-  readonly turnCount?: number;
-  readonly trackedTasks?: ReadonlyArray<ClaudeTrackedTask>;
-  readonly processedTokenTotal?: number;
-  readonly tokenAccountingVersion?: 1;
-}
-
-interface ClaudeTurnState {
-  readonly turnId: TurnId;
-  readonly startedAt: string;
-  readonly interactionMode: ProviderInteractionMode;
-
-  readonly synthetic?: true;
-  readonly explicitCompaction?: { readonly nativeSessionId: string; boundaryObserved: boolean };
-
-  compactionInProgress?: boolean;
-  readonly items: Array<unknown>;
-  readonly assistantTextBlocks: Map<number, AssistantTextBlockState>;
-  readonly assistantTextBlockOrder: Array<AssistantTextBlockState>;
-  readonly capturedProposedPlanKeys: Set<string>;
-  readonly sawFileChange: boolean;
-  readonly assistantError?: {
-    readonly code: SDKAssistantMessageError;
-    readonly message: string;
-  };
-  nextSyntheticAssistantBlockIndex: number;
-
-  assistantMessageBlockBase: number;
-}
-
-interface AssistantTextBlockState {
-  readonly itemId: string;
-  readonly blockIndex: number;
-  emittedTextDelta: boolean;
-  fallbackText: string;
-  streamClosed: boolean;
-  completionEmitted: boolean;
-}
-
-interface PendingApproval {
-  readonly requestType: CanonicalRequestType;
-  readonly detail?: string;
-  readonly suggestions?: ReadonlyArray<PermissionUpdate>;
-  readonly decision: Deferred.Deferred<ProviderApprovalDecision>;
-  readonly settled: Deferred.Deferred<ProviderApprovalDecision>;
-  readonly turnId?: TurnId;
-  readonly providerItemId?: string;
-  readonly agentId?: string;
-  settlementStarted: boolean;
-}
-
-interface PendingUserInputResult {
-  readonly answers: ProviderUserInputAnswers;
-  readonly cancelled: boolean;
-}
-
-interface PendingUserInput {
-  readonly questions: ReadonlyArray<UserInputQuestion>;
-  readonly result: Deferred.Deferred<PendingUserInputResult>;
-  readonly settled: Deferred.Deferred<PendingUserInputResult>;
-  readonly turnId?: TurnId;
-  readonly providerItemId?: string;
-  readonly agentId?: string;
-  settlementStarted: boolean;
-}
-
-function coerceClaudeAnswerValue(value: unknown): string {
-  if (typeof value === "string") return value;
-  if (Array.isArray(value)) {
-    return value.filter((entry): entry is string => typeof entry === "string").join(", ");
-  }
-  return "";
-}
-
-function remapAnswersToClaudeQuestionText(
-  questions: ReadonlyArray<UserInputQuestion>,
-  answers: ProviderUserInputAnswers,
-): Record<string, string> {
-  const remapped: Record<string, string> = {};
-  for (const [key, value] of Object.entries(answers)) {
-    remapped[key] = coerceClaudeAnswerValue(value);
-  }
-
-  for (const question of questions) {
-    if (Object.hasOwn(remapped, question.question)) {
-      continue;
-    }
-
-    if (Object.hasOwn(remapped, question.id)) {
-      remapped[question.question] = remapped[question.id]!;
-      delete remapped[question.id];
-    }
-  }
-
-  return remapped;
-}
-
-interface ToolInFlight {
-  readonly itemId: string;
-  readonly itemType: CanonicalItemType;
-  readonly toolName: string;
-  readonly title: string;
-  readonly detail?: string;
-  readonly input: Record<string, unknown>;
-  readonly partialInputJson: string;
-  readonly lastEmittedInputFingerprint?: string;
-}
-
-interface ClaudeSubagentRun {
-  readonly gatewayParentTurnId: string | undefined;
-  readonly toolUseId: string;
-  taskId: string | undefined;
-  readonly context: ClaudeSessionContext;
-}
-
-type ClaudeTokenUsageState = "current" | "skip-compaction-call" | "awaiting-fresh-assistant";
-
-interface ClaudeSessionContext {
-  resultUsageBaseline?: ClaudeResultUsageBaseline;
-  readonly gatewaySessionLease?: AgentGatewaySessionLease;
-  session: ProviderSession;
-  readonly startInput: Parameters<ClaudeAdapterShape["startSession"]>[0];
-  readonly lifecycleGeneration?: string;
-  readonly promptQueue: Queue.Queue<PromptQueueItem>;
-  readonly query: ClaudeQueryRuntime;
-
-  readonly artifactsEnabled: boolean;
-
-  initToolNames?: ReadonlySet<string>;
-  readonly messageStream?: AsyncIterable<SDKMessage>;
-  readonly processOwner: ClaudeProcessOwner;
-  stopDeferred?: Deferred.Deferred<void, ProviderAdapterProcessError>;
-
-  pendingDispatches?: number;
-  streamFiber: Fiber.Fiber<void, Error> | undefined;
-  readonly startedAt: string;
-  readonly basePermissionMode: PermissionMode | undefined;
-
-  readonly spawnPermissionMode: PermissionMode;
-
-  firstTurnSpawnModeAuthoritative: boolean;
-  lastInteractionMode: ProviderInteractionMode | undefined;
-  currentApiModelId: string | undefined;
-  resumeSessionId: string | undefined;
-  readonly pendingApprovals: Map<ApprovalRequestId, PendingApproval>;
-
-  approvalsAlwaysAllowedForSession: boolean;
-  readonly pendingUserInputs: Map<ApprovalRequestId, PendingUserInput>;
-  readonly turns: Array<{
-    id: TurnId;
-    items: Array<unknown>;
-  }>;
-  readonly inFlightTools: Map<number, ToolInFlight>;
-  readonly trackedTasks: Map<string, ClaudeTrackedTask>;
-  turnState: ClaudeTurnState | undefined;
-
-  lastTurnId: TurnId | undefined;
-  interruptRequestedTurnId: TurnId | undefined;
-  lastKnownContextWindow: number | undefined;
-  currentAutoCompactWindow: number | undefined;
-  currentAlwaysThinkingEnabled: boolean | undefined;
-  currentEffort: ClaudeApiEffort | null;
-  currentUltracode: boolean;
-  currentFastMode: boolean;
-  lastKnownAutoCompactThreshold: number | undefined;
-  contextUsageControlEnabled: boolean;
-  lastKnownTokenUsage: ThreadTokenUsageSnapshot | undefined;
-  cacheObservation?: ClaudeCacheObservation | undefined;
-  cacheRequestStartedAt?: { messageId: string; at: string };
-  hasObservedCacheRequest?: boolean;
-  tokenUsageState: ClaudeTokenUsageState;
-  compactionMessageId: string | undefined;
-
-  processedTokenTotal: number;
-  processedTokenTurnBaseline: number;
-
-  processedTokenResultBaseline: number;
-  processedTokenBaselineKnown: boolean;
-  readonly requestUsage: ClaudeRequestUsage;
-  lastResultUuid: string | undefined;
-  lastAssistantUuid: string | undefined;
-  lastThreadStartedId: string | undefined;
-
-  rerouteOriginalApiModelId: string | undefined;
-
-  readonly emittedContextUsageWarnings: Set<string>;
-  stopped: boolean;
-
-  readonly warnedUnhandledSdkKinds: Set<string>;
-
-  readonly subagentRuns: Map<string, ClaudeSubagentRun>;
-
-  readonly pendingSubagentSteers: Map<string, Array<string>>;
-
-  readonly pendingSubagentStops: Set<string>;
-  // Last background-task ids from background_tasks_changed (REPLACE semantics); diffed so only newly
-  // backgrounded work gets announced. Foreground/terminal patches may evict ids, but background
-  // patches never seed the set because they can race the aggregate snapshot and suppress its "Moved
-  // to background" notice entirely.
-  readonly knownBackgroundTaskIds: Set<string>;
-  // Task ids with provider-terminal evidence. Agent-scoped human interactions are cancelled only on
-  // this evidence (or whole-session stop), never merely because their parent foreground turn
-  // completed.
-  readonly terminalTaskIds: Set<string>;
-  // Late messages still tagged with them must not resurrect a scoped run: the synthetic turn that
-  // would start on the settled child thread never completes and pins the strip row on "Running". The
-  // status also corrects the Task tool_result's error shape (a user stop returns an error result that
-  // would otherwise read "Failed").
-  readonly settledSubagentToolUseIds: Map<string, "completed" | "failed" | "stopped">;
-
-  readonly liveWorkflowTaskIds: Set<string>;
-
-  readonly knownWorkflowTaskIds: Set<string>;
-  readonly workflowTaskIdByMemberTaskId: Map<string, string>;
-
-  readonly workflowRuntimePollers: Map<string, Fiber.Fiber<void>>;
-  readonly workflowAgentLabels: Map<string, Array<string>>;
-
-  readonly workflowRuntimeStates: Map<string, ClaudeWorkflowRuntimeState>;
-
-  readonly subagentRefs?: {
-    readonly providerThreadId: string;
-    readonly providerParentThreadId: string;
-  };
-}
-
-interface ClaudeStopSessionOptions {
-  readonly emitExitEvent?: boolean;
-
-  readonly interruptStream?: boolean;
-}
-
-interface ClaudeQueryRuntime extends AsyncIterable<SDKMessage> {
-  readonly interrupt: () => Promise<void>;
-  readonly stopTask: (taskId: string) => Promise<void>;
-  readonly backgroundTasks: (toolUseId?: string) => Promise<boolean>;
-  readonly setModel: (model?: string) => Promise<void>;
-  readonly setPermissionMode: (mode: PermissionMode) => Promise<void>;
-  readonly setMaxThinkingTokens: (maxThinkingTokens: number | null) => Promise<void>;
-  readonly applyFlagSettings: (settings: {
-    [K in keyof Settings]?: Settings[K] | null;
-  }) => Promise<void>;
-  readonly getContextUsage: (options?: {
-    readonly detail?: "summary" | "full";
-  }) => Promise<SDKControlGetContextUsageResponse>;
-  readonly supportedCommands: () => Promise<SlashCommand[]>;
-  readonly supportedModels: () => Promise<ModelInfo[]>;
-  readonly supportedAgents: () => Promise<AgentInfo[]>;
-  readonly close: () => void;
-}
-
-function prestartClaudeMessageStream(queryRuntime: ClaudeQueryRuntime): AsyncIterable<SDKMessage> {
-  // SDK discovery waits for a handshake that only starts on the first iterator read. Keep that read
-  // for the real stream consumer, while making cancellation win the race so session teardown never
-  // waits on an unread first message.
-  const iterator = queryRuntime[Symbol.asyncIterator]();
-  const firstResult = iterator.next();
-  void firstResult.catch(() => undefined);
-  const doneResult: IteratorResult<SDKMessage> = { done: true, value: undefined };
-  let resolveClosed!: (result: IteratorResult<SDKMessage>) => void;
-  const closedResult = new Promise<IteratorResult<SDKMessage>>((resolve) => {
-    resolveClosed = resolve;
-  });
-  let firstResultPending = true;
-  let closed = false;
-
-  const raceWithClose = (
-    result: Promise<IteratorResult<SDKMessage>>,
-  ): Promise<IteratorResult<SDKMessage>> => {
-    void result.catch(() => undefined);
-    return Promise.race([result, closedResult]);
-  };
-
-  const messageIterator: AsyncIterableIterator<SDKMessage> = {
-    next: () => {
-      if (closed) {
-        return Promise.resolve(doneResult);
-      }
-      const result = firstResultPending ? firstResult : iterator.next();
-      firstResultPending = false;
-      return raceWithClose(result);
-    },
-    return: async () => {
-      if (!closed) {
-        closed = true;
-        resolveClosed(doneResult);
-        const returnResult = iterator.return?.();
-        if (returnResult) {
-          void returnResult.catch(() => undefined);
-        }
-      }
-      return doneResult;
-    },
-    [Symbol.asyncIterator]() {
-      return this;
-    },
-  };
-  return messageIterator;
-}
-
-export type ClaudeOwnedProcess = ClaudeSpawnedProcess & ProcessExitHandle;
-
-interface ClaudeProcessOwner {
-  process?: ClaudeOwnedProcess;
-}
-
-function spawnOwnedClaudeCodeProcess(options: ClaudeSpawnOptions): ClaudeOwnedProcess {
-  return spawnProcess(options.command, options.args, {
-    requireExecutable: true,
-    ...(options.cwd ? { cwd: options.cwd } : {}),
-    env: options.env,
-    signal: options.signal,
-    stdio: ["pipe", "pipe", "inherit"],
-  }) as unknown as ClaudeOwnedProcess;
-}
-
-async function readInstalledClaudeCliVersion(input: {
-  readonly binaryPath: string;
-  readonly cwd?: string;
-  readonly env: NodeJS.ProcessEnv;
-}): Promise<string | null> {
-  return new Promise((resolve, reject) => {
-    execProcessFile(
-      input.binaryPath,
-      ["--version"],
-      {
-        requireExecutable: true,
-        ...(input.cwd ? { cwd: input.cwd } : {}),
-        env: input.env,
-        timeout: 10_000,
-        maxBuffer: 64 * 1024,
-        encoding: "utf8",
-      },
-      (error, stdout, stderr) => {
-        if (error) {
-          reject(error);
-          return;
-        }
-        resolve(parseGenericCliVersion(`${stdout}\n${stderr}`));
-      },
-    );
-  });
-}
-
-export interface ClaudeAdapterLiveOptions {
-  // Async because the default implementation lazily imports the Claude Agent SDK; test doubles may
-  // still return a runtime synchronously.
-  readonly createQuery?: (input: {
-    readonly prompt: AsyncIterable<SDKUserMessage>;
-    readonly options: ClaudeQueryOptions;
-  }) => ClaudeQueryRuntime | Promise<ClaudeQueryRuntime>;
-  readonly forkNativeSession?: (
-    sessionId: string,
-    options?: { readonly dir?: string; readonly upToMessageId?: string },
-  ) => Promise<{ sessionId: string }>;
-  readonly readNativeSessionMessages?: (
-    sessionId: string,
-    options?: { readonly dir?: string },
-  ) => Promise<ReadonlyArray<SessionMessage>>;
-  readonly readNativeMessageParent?: typeof readClaudeSessionParentUuid;
-  readonly nativeEventLogPath?: string;
-  readonly nativeEventLogger?: EventNdjsonLogger;
-
-  readonly workflowRuntimePollIntervalMs?: number;
-  readonly spawnClaudeCodeProcess?: (options: ClaudeSpawnOptions) => ClaudeOwnedProcess;
-  readonly teardownProcessTree?: typeof teardownProviderProcessTree;
-  readonly readClaudeCliVersion?: (input: {
-    readonly binaryPath: string;
-    readonly cwd?: string;
-    readonly env: NodeJS.ProcessEnv;
-  }) => Promise<string | null>;
-}
+  type ProviderSession,
+  type ProviderSendTurnInput,
+} from "@glade/contracts/provider/provider";
+import { assessClaudeCache } from "@glade/shared/provider/claudeCache";
+import { type ClaudeApiEffort } from "@glade/contracts/provider/model";
+import { buildFileAttachmentsPromptBlock } from "../core/attachmentProjection.ts";
+import { readClaudeSessionParentUuid } from "../claude/claudeProjectImport.ts";
+import { restoreClaudeImportedCopyDates } from "../claude/claudeImportedCopyDates.ts";
+import { settleConcurrentTeardowns } from "../core/settleConcurrentTeardowns.ts";
+import {
+  ClaudeAdapterLiveOptions,
+  ClaudeQueryRuntime,
+  ClaudeProcessOwner,
+} from "../claude/adapter/adapterConfiguration";
+import {
+  spawnOwnedClaudeCodeProcess,
+  readInstalledClaudeCliVersion,
+  CLAUDE_DISCOVERY_THREAD_ID,
+  prestartClaudeMessageStream,
+  neverResolvingUserMessageStream,
+} from "../claude/adapter/sdkProcessRuntime";
+import {
+  ClaudeSessionContext,
+  PROVIDER,
+  AssistantTextBlockState,
+  PendingApproval,
+  PendingUserInput,
+  PendingUserInputResult,
+  ClaudeSubagentRun,
+  ToolInFlight,
+  ClaudeStopSessionOptions,
+  PromptQueueItem,
+  ClaudeTurnState,
+} from "../claude/adapter/sessionTypes";
+import {
+  toMessage,
+  toError,
+  claudeAssistantErrorMessage,
+  hasPendingUserInterrupt,
+  normalizeClaudeUserVisibleErrorMessage,
+  claudeAssistantErrorRequiresProcessRestart,
+  isClaudeInterruptedCause,
+  interruptionMessageFromClaudeCause,
+  isClaudeBenignTerminationCause,
+  messageFromClaudeStreamCause,
+  CLAUDE_BENIGN_TERMINATION_MESSAGE,
+  isClaudeMissingResumeConversationCause,
+  toRequestError,
+} from "../claude/adapter/streamErrors";
+import {
+  mapClaudeModelInfo,
+  resolveClaudeAutoModeModel,
+  claudeEffectiveContextBudget,
+  readClaudeModelRefusalFallback,
+  resolveSelectedClaudeThinkingToggle,
+  toPermissionMode,
+} from "../claude/adapter/modelCapabilities";
+import {
+  sdkNativeItemId,
+  sdkNativeMethod,
+  subagentRunForTask,
+  runtimeSessionStateFromClaudeTaskStatus,
+  readClaudeVcsStateChange,
+  claudeTaskTurnStatus,
+  recognizedSubagentParentToolUseId,
+} from "../claude/adapter/sdkMetadata";
+import {
+  asCanonicalTurnId,
+  asRuntimeItemId,
+  nativeProviderRefs,
+  extractAssistantTextBlocks,
+  exitPlanCaptureKey,
+  asRuntimeRequestId,
+  remapAnswersToClaudeQuestionText,
+  streamKindFromDeltaType,
+  extractContentBlockText,
+  extractExitPlanModePlan,
+  extractTextContent,
+  turnStatusFromResult,
+  buildUserMessageEffect,
+} from "../claude/adapter/messageContent";
+import {
+  hasDurableClaudeSessionId,
+  invalidateClaudeCache,
+  withoutProcessedTokenTotal,
+  hasActiveClaudeRuntimeWork,
+  readClaudeResumeState,
+  syncClaudeCacheResumeCursor,
+  hasActiveClaudeCompactionWork,
+} from "../claude/adapter/sessionResume";
+import {
+  toolLifecycleEventData,
+  classifyToolItemType,
+  toolInputFingerprint,
+  summarizeToolRequest,
+  titleForTool,
+  tryParseCompleteJsonRecord,
+  isClientSurfacedClaudeTool,
+  toolResultBlocksFromUserMessage,
+  toolResultStreamKind,
+  classifyRequestType,
+} from "../claude/adapter/toolPresentation";
+import {
+  isClaudeNativeSlashCommand,
+  isClaudeCompactionCommand,
+  mapSupportedCommands,
+  resolveClaudeArtifactsState,
+} from "../claude/adapter/commandPresentation";
+import {
+  claudeSubagentSteerContext,
+  buildClaudeSdkSubagents,
+  CLAUDE_SETTING_SOURCES,
+  buildEmbeddedClaudeSystemPromptAppend,
+} from "../claude/adapter/promptPolicy";
 
 const CLAUDE_NATIVE_COMMAND_LOOKUP_TIMEOUT_MS = 2_000;
-const CLAUDE_ARTIFACT_TOOL_NAME = "Artifact";
-
-const CLAUDE_ARTIFACT_PROBE_COMMAND = "slides";
-
-function resolveClaudeArtifactsState(input: {
-  readonly artifactsEnabled: boolean;
-  readonly commands: readonly SlashCommand[];
-  readonly initToolNames?: ReadonlySet<string> | undefined;
-}): ProviderArtifactsState {
-  if (!input.artifactsEnabled) return "disabled";
-  const available = input.initToolNames
-    ? input.initToolNames.has(CLAUDE_ARTIFACT_TOOL_NAME)
-    : input.commands.some((command) => command.name === CLAUDE_ARTIFACT_PROBE_COMMAND);
-  return available ? "available" : "unavailable";
-}
-
-const CLAUDE_ARTIFACT_COMMANDS = [
-  { name: "design", description: "Make a new Design artifact from a brief" },
-  { name: "slides", description: "Make a new Slides deck artifact from a brief" },
-] as const;
-
-function mapSupportedCommands(
-  commands: SlashCommand[],
-  artifacts: ProviderArtifactsState,
-): ProviderListCommandsResult {
-  const missingArtifactCommands =
-    artifacts === "available"
-      ? []
-      : CLAUDE_ARTIFACT_COMMANDS.filter(
-          (known) => !commands.some((command) => command.name === known.name),
-        );
-  return {
-    commands: [
-      ...commands.map((cmd) => ({
-        name: cmd.name,
-        description: cmd.description || undefined,
-      })),
-      ...missingArtifactCommands,
-    ],
-    artifacts,
-    source: "claudeAgent",
-    cached: false,
-  };
-}
-
-function neverResolvingUserMessageStream(): AsyncIterable<SDKUserMessage> {
-  return {
-    [Symbol.asyncIterator](): AsyncIterator<SDKUserMessage> {
-      return {
-        next: async () => new Promise<IteratorResult<SDKUserMessage>>(() => {}),
-      };
-    },
-  };
-}
-
-function isUuid(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
-
-function isSyntheticClaudeThreadId(value: string): boolean {
-  return value.startsWith("claude-thread-");
-}
-
-function hasDurableClaudeSessionId(message: SDKMessage): boolean {
-  if (message.type !== "system") {
-    return true;
-  }
-
-  return (
-    message.subtype !== "hook_started" &&
-    message.subtype !== "hook_progress" &&
-    message.subtype !== "hook_response"
-  );
-}
-
-function toMessage(cause: unknown, fallback: string): string {
-  if (cause instanceof Error && cause.message.length > 0) {
-    return cause.message;
-  }
-  return fallback;
-}
-
-type ClaudeAutoModeModelResolution =
-  | { readonly status: "matched"; readonly model: ModelInfo }
-  | { readonly status: "absent" }
-  | { readonly status: "conflicting" };
-
-function stripSupportedClaudeContextWindowQualifier(modelId: string): string {
-  const qualifier = getClaudeContextWindowSuffix(modelId);
-  return qualifier && Object.hasOwn(CLAUDE_CONTEXT_WINDOW_MAX_TOKENS, qualifier)
-    ? stripClaudeContextWindowSuffix(modelId)
-    : modelId;
-}
-
-function claudeModelIdentifiers(model: ModelInfo): ReadonlyArray<string> {
-  return model.resolvedModel === undefined ? [model.value] : [model.value, model.resolvedModel];
-}
-
-function resolveClaudeAutoModeModel(
-  discoveredModels: ReadonlyArray<ModelInfo>,
-  requestedModelIds: ReadonlySet<string>,
-): ClaudeAutoModeModelResolution {
-  const exactMatch = discoveredModels.find((model) =>
-    claudeModelIdentifiers(model).some((identifier) => requestedModelIds.has(identifier)),
-  );
-  if (exactMatch) {
-    return { status: "matched", model: exactMatch };
-  }
-
-  const unqualifiedRequestedModelIds = new Set(
-    [...requestedModelIds].filter(
-      (modelId) => stripSupportedClaudeContextWindowQualifier(modelId) === modelId,
-    ),
-  );
-  const normalizedMatches = discoveredModels.filter((model) =>
-    claudeModelIdentifiers(model).some((identifier) =>
-      unqualifiedRequestedModelIds.has(stripSupportedClaudeContextWindowQualifier(identifier)),
-    ),
-  );
-  const firstMatch = normalizedMatches[0];
-  if (!firstMatch) {
-    return { status: "absent" };
-  }
-  if (normalizedMatches.some((model) => model.supportsAutoMode !== firstMatch.supportsAutoMode)) {
-    return { status: "conflicting" };
-  }
-  return { status: "matched", model: firstMatch };
-}
-
-function toError(cause: unknown, fallback: string): Error {
-  return cause instanceof Error ? cause : new Error(toMessage(cause, fallback));
-}
-
-function normalizeClaudeStreamMessages(cause: Cause.Cause<Error>): ReadonlyArray<string> {
-  const errors = Cause.prettyErrors(cause)
-    .map((error) => error.message.trim())
-    .filter((message) => message.length > 0);
-  if (errors.length > 0) {
-    return errors;
-  }
-
-  const squashed = toMessage(Cause.squash(cause), "").trim();
-  return squashed.length > 0 ? [squashed] : [];
-}
-
-function isClaudeInterruptedMessage(message: string): boolean {
-  const normalized = message.toLowerCase();
-  return (
-    normalized.includes("all fibers interrupted without error") ||
-    normalized.includes("request was aborted") ||
-    normalized.includes("interrupted by user")
-  );
-}
-
-function isClaudeInterruptedCause(cause: Cause.Cause<Error>): boolean {
-  return (
-    Cause.hasInterruptsOnly(cause) ||
-    normalizeClaudeStreamMessages(cause).some(isClaudeInterruptedMessage)
-  );
-}
-
-function messageFromClaudeStreamCause(cause: Cause.Cause<Error>, fallback: string): string {
-  return normalizeClaudeStreamMessages(cause)[0] ?? fallback;
-}
-
-function interruptionMessageFromClaudeCause(cause: Cause.Cause<Error>): string {
-  const message = messageFromClaudeStreamCause(cause, "Claude runtime interrupted.");
-  return isClaudeInterruptedMessage(message) ? "Claude runtime interrupted." : message;
-}
-
-const CLAUDE_BENIGN_TERMINATION_EXIT_CODES = new Set([130, 143]);
-
-const CLAUDE_BENIGN_TERMINATION_MESSAGE =
-  "Claude runtime stopped and will resume on your next message.";
-
-function isClaudeBenignTerminationMessage(message: string): boolean {
-  const normalized = message.toLowerCase();
-  const exitCode = normalized.match(/exited with code (\d+)/)?.[1];
-  if (exitCode !== undefined) {
-    return CLAUDE_BENIGN_TERMINATION_EXIT_CODES.has(Number.parseInt(exitCode, 10));
-  }
-  return normalized.includes("signal sigterm") || normalized.includes("signal sigint");
-}
-
-function isClaudeBenignTerminationCause(cause: Cause.Cause<Error>): boolean {
-  return normalizeClaudeStreamMessages(cause).some(isClaudeBenignTerminationMessage);
-}
-
-function isClaudeMissingResumeConversationCause(cause: Cause.Cause<Error>): boolean {
-  return normalizeClaudeStreamMessages(cause).some((message) =>
-    message.toLowerCase().includes("no conversation found with session id"),
-  );
-}
-
-function resultErrorsText(result: SDKResultMessage): string {
-  return "errors" in result && Array.isArray(result.errors)
-    ? result.errors.join(" ").toLowerCase()
-    : "";
-}
-
-function isInterruptedResult(result: SDKResultMessage): boolean {
-  const errors = resultErrorsText(result);
-  if (errors.includes("interrupt")) {
-    return true;
-  }
-
-  return (
-    result.subtype === "error_during_execution" &&
-    result.is_error === false &&
-    (errors.includes("request was aborted") ||
-      errors.includes("interrupted by user") ||
-      errors.includes("aborted"))
-  );
-}
-
-function hasPendingUserInterrupt(context: ClaudeSessionContext): boolean {
-  const activeTurnId = context.turnState?.turnId;
-  return activeTurnId !== undefined && context.interruptRequestedTurnId === activeTurnId;
-}
-
-function asRuntimeItemId(value: string): RuntimeItemId {
-  return RuntimeItemId.makeUnsafe(value);
-}
-
-function claudeEffectiveContextBudget(context: ClaudeSessionContext): number | undefined {
-  return resolveClaudeEffectiveContextBudget(
-    context.lastKnownAutoCompactThreshold,
-    context.currentAutoCompactWindow,
-    context.lastKnownContextWindow,
-  );
-}
-
-interface ClaudeModelRefusalFallback {
-  readonly originalModel: string;
-  readonly fallbackModel: string;
-  readonly content?: string;
-}
-
-function readClaudeModelRefusalFallback(message: unknown): ClaudeModelRefusalFallback | undefined {
-  if (!message || typeof message !== "object") {
-    return undefined;
-  }
-  const record = message as {
-    type?: unknown;
-    subtype?: unknown;
-    original_model?: unknown;
-    fallback_model?: unknown;
-    originalModel?: unknown;
-    fallbackModel?: unknown;
-    content?: unknown;
-  };
-  if (record.type !== "system" || record.subtype !== "model_refusal_fallback") {
-    return undefined;
-  }
-
-  const originalModel =
-    asNonBlankString(record.original_model) ?? asNonBlankString(record.originalModel);
-  const fallbackModel =
-    asNonBlankString(record.fallback_model) ?? asNonBlankString(record.fallbackModel);
-  if (!originalModel || !fallbackModel) {
-    return undefined;
-  }
-  return {
-    originalModel,
-    fallbackModel,
-    ...(typeof record.content === "string" && record.content.trim().length > 0
-      ? { content: record.content }
-      : {}),
-  };
-}
-
-interface ClaudeVcsStateChange {
-  readonly kind?: string;
-  readonly cwd?: string;
-}
-
-function readClaudeVcsStateChange(message: unknown): ClaudeVcsStateChange | undefined {
-  if (!message || typeof message !== "object") {
-    return undefined;
-  }
-  const record = message as {
-    type?: unknown;
-    subtype?: unknown;
-    kind?: unknown;
-    cwd?: unknown;
-  };
-  if (record.type !== "system" || record.subtype !== "vcs_state_changed") {
-    return undefined;
-  }
-  const kind = asNonBlankString(record.kind);
-  const cwd = asNonBlankString(record.cwd);
-  return {
-    ...(kind !== undefined ? { kind } : {}),
-    ...(cwd !== undefined ? { cwd } : {}),
-  };
-}
 
 const DEFAULT_WORKFLOW_RUNTIME_POLL_INTERVAL_MS = 2_000;
 
 const WORKFLOW_AGENTS_PROGRESS_DESCRIPTION = "Workflow agents";
 
-function resolveSelectedClaudeThinkingToggle(
-  model: string | null | undefined,
-  selectedThinking: boolean | null | undefined,
-): boolean | undefined {
-  if (typeof selectedThinking !== "boolean") {
-    return undefined;
-  }
-  return getModelCapabilities("claudeAgent", model).supportsThinkingToggle
-    ? selectedThinking
-    : undefined;
-}
-
-function asCanonicalTurnId(value: TurnId): TurnId {
-  return value;
-}
-
-function asRuntimeRequestId(value: ApprovalRequestId): RuntimeRequestId {
-  return RuntimeRequestId.makeUnsafe(value);
-}
-
-function toPermissionMode(value: unknown): PermissionMode | undefined {
-  switch (value) {
-    case "default":
-    case "acceptEdits":
-    case "bypassPermissions":
-    case "plan":
-    case "dontAsk":
-      return value;
-    default:
-      return undefined;
-  }
-}
-
-function mapClaudeModelInfo(model: ModelInfo): ProviderListModelsResult["models"][number] {
-  const optionDescriptors = getProviderOptionDescriptors({
-    provider: PROVIDER,
-    caps: getModelCapabilities(PROVIDER, model.resolvedModel ?? model.value),
-  });
-  return {
-    slug: model.value,
-    ...(model.resolvedModel ? { resolvedModel: model.resolvedModel } : {}),
-    name: model.displayName,
-    ...(optionDescriptors.length > 0 ? { optionDescriptors } : {}),
-    ...(typeof model.supportsAutoMode === "boolean"
-      ? { supportsAutoMode: model.supportsAutoMode }
-      : {}),
-  };
-}
-
-function readClaudeResumeState(resumeCursor: unknown): ClaudeResumeState | undefined {
-  if (!resumeCursor || typeof resumeCursor !== "object") {
-    return undefined;
-  }
-  const cursor = resumeCursor as {
-    threadId?: unknown;
-    resume?: unknown;
-    sessionId?: unknown;
-    resumeSessionAt?: unknown;
-    turnCount?: unknown;
-    trackedTasks?: unknown;
-    processedTokenTotal?: unknown;
-    tokenAccountingVersion?: unknown;
-    claudeCache?: unknown;
-  };
-
-  const threadIdCandidate = typeof cursor.threadId === "string" ? cursor.threadId : undefined;
-  const threadId =
-    threadIdCandidate && !isSyntheticClaudeThreadId(threadIdCandidate)
-      ? ThreadId.makeUnsafe(threadIdCandidate)
-      : undefined;
-  const resumeCandidate =
-    typeof cursor.resume === "string"
-      ? cursor.resume
-      : typeof cursor.sessionId === "string"
-        ? cursor.sessionId
-        : undefined;
-  const resume = resumeCandidate && isUuid(resumeCandidate) ? resumeCandidate : undefined;
-  const resumeSessionAt =
-    typeof cursor.resumeSessionAt === "string" ? cursor.resumeSessionAt : undefined;
-  const turnCountValue = typeof cursor.turnCount === "number" ? cursor.turnCount : undefined;
-  const trackedTasks = parseClaudeTrackedTasks(cursor.trackedTasks);
-  const processedTokenTotal =
-    typeof cursor.processedTokenTotal === "number" &&
-    Number.isSafeInteger(cursor.processedTokenTotal) &&
-    cursor.processedTokenTotal >= 0
-      ? cursor.processedTokenTotal
-      : undefined;
-
-  return {
-    ...(Schema.is(ClaudeCacheObservation)(cursor.claudeCache) &&
-    cursor.claudeCache.nativeSessionId === resume
-      ? { claudeCache: cursor.claudeCache }
-      : {}),
-    ...(threadId ? { threadId } : {}),
-    ...(resume ? { resume } : {}),
-    ...(resumeSessionAt ? { resumeSessionAt } : {}),
-    ...(turnCountValue !== undefined && Number.isInteger(turnCountValue) && turnCountValue >= 0
-      ? { turnCount: turnCountValue }
-      : {}),
-    ...(trackedTasks.length > 0 ? { trackedTasks } : {}),
-    ...(processedTokenTotal !== undefined && cursor.tokenAccountingVersion === 1
-      ? { processedTokenTotal, tokenAccountingVersion: 1 as const }
-      : {}),
-  };
-}
-
-function withoutProcessedTokenTotal(snapshot: ThreadTokenUsageSnapshot): ThreadTokenUsageSnapshot {
-  const { totalProcessedTokens: _totalProcessedTokens, ...contextUsage } = snapshot;
-  return contextUsage;
-}
-
-function invalidateClaudeCache(context: ClaudeSessionContext): void {
-  delete context.cacheObservation;
-  delete context.cacheRequestStartedAt;
-  context.hasObservedCacheRequest = false;
-  if (context.lastKnownTokenUsage?.claudeCache) {
-    const { claudeCache: _claudeCache, ...usage } = context.lastKnownTokenUsage;
-    context.lastKnownTokenUsage = usage;
-  }
-}
-
-function syncClaudeCacheResumeCursor(context: ClaudeSessionContext): void {
-  const { claudeCache: _previous, ...resumeCursor } = context.session.resumeCursor as Record<
-    string,
-    unknown
-  >;
-
-  context.session = {
-    ...context.session,
-    resumeCursor: {
-      ...resumeCursor,
-      ...(context.cacheObservation ? { claudeCache: context.cacheObservation } : {}),
-    },
-  };
-}
-
-function hasActiveClaudeRuntimeWork(context: ClaudeSessionContext): boolean {
-  return (
-    context.turnState !== undefined ||
-    context.knownBackgroundTaskIds.size > 0 ||
-    context.liveWorkflowTaskIds.size > 0 ||
-    context.pendingApprovals.size > 0 ||
-    context.pendingUserInputs.size > 0 ||
-    Array.from(context.subagentRuns.values()).some((run) => run.context.turnState !== undefined)
-  );
-}
-
-function hasActiveClaudeCompactionWork(context: ClaudeSessionContext): boolean {
-  return hasActiveClaudeRuntimeWork(context) || hasUnfinishedClaudeTasks(context.trackedTasks);
-}
-
-function classifyToolItemType(toolName: string): CanonicalItemType {
-  const normalized = toolName.toLowerCase();
-  if (
-    normalized === "todowrite" ||
-    normalized.includes("todo") ||
-    normalized === "taskcreate" ||
-    normalized === "taskupdate" ||
-    normalized === "taskget" ||
-    normalized === "tasklist"
-  ) {
-    return "plan";
-  }
-  if (normalized.includes("agent")) {
-    return "collab_agent_tool_call";
-  }
-  if (
-    normalized === "task" ||
-    normalized === "agent" ||
-    normalized.includes("subagent") ||
-    normalized.includes("sub-agent")
-  ) {
-    return "collab_agent_tool_call";
-  }
-  if (
-    normalized.includes("bash") ||
-    normalized.includes("command") ||
-    normalized.includes("shell") ||
-    normalized.includes("terminal")
-  ) {
-    return "command_execution";
-  }
-  if (
-    normalized.includes("edit") ||
-    normalized.includes("write") ||
-    normalized.includes("file") ||
-    normalized.includes("patch") ||
-    normalized.includes("replace") ||
-    normalized.includes("create") ||
-    normalized.includes("delete")
-  ) {
-    return "file_change";
-  }
-  if (normalized.includes("mcp")) {
-    return "mcp_tool_call";
-  }
-  if (normalized.includes("websearch") || normalized.includes("web search")) {
-    return "web_search";
-  }
-  if (normalized.includes("image")) {
-    return "image_view";
-  }
-  return "dynamic_tool_call";
-}
-
-function isReadOnlyToolName(toolName: string): boolean {
-  const normalized = toolName.toLowerCase();
-  return (
-    normalized === "read" ||
-    normalized.includes("read file") ||
-    normalized.includes("view") ||
-    normalized.includes("grep") ||
-    normalized.includes("glob") ||
-    normalized.includes("search")
-  );
-}
-
-function classifyRequestType(toolName: string): CanonicalRequestType {
-  if (toolName.startsWith("mcp__")) {
-    return "tool_approval";
-  }
-  if (isReadOnlyToolName(toolName)) {
-    return "file_read_approval";
-  }
-  const itemType = classifyToolItemType(toolName);
-
-  return itemType === "command_execution"
-    ? "command_execution_approval"
-    : itemType === "file_change"
-      ? "file_change_approval"
-      : "tool_approval";
-}
-
-function summarizeToolRequest(
-  toolName: string,
-  input: Record<string, unknown>,
-  serializedInput = JSON.stringify(input),
-): string {
-  const commandValue = input.command ?? input.cmd;
-  const command = typeof commandValue === "string" ? commandValue : undefined;
-  if (command && command.trim().length > 0) {
-    return `${toolName}: ${command.trim().slice(0, 400).trimEnd()}`;
-  }
-  if (serializedInput.length <= 400) {
-    return `${toolName}: ${serializedInput}`;
-  }
-  return `${toolName}: ${serializedInput.slice(0, 397)}...`;
-}
-
-// Tools whose result is surfaced through a dedicated runtime channel — AskUserQuestion via the
-// user-input request flow, ExitPlanMode via the proposed-plan flow — must NOT also emit a generic
-// tool-call lifecycle item, or the timeline shows a redundant "ToolName: {json}" row alongside the
-// real interaction surface.
-function isClientSurfacedClaudeTool(toolName: string): boolean {
-  return toolName === "AskUserQuestion" || toolName === "ExitPlanMode";
-}
-
-function toolLifecycleEventData(
-  tool: Pick<ToolInFlight, "itemId" | "toolName" | "input">,
-  extra?: Record<string, unknown>,
-): Record<string, unknown> {
-  return {
-    toolCallId: tool.itemId,
-    callId: tool.itemId,
-    toolName: tool.toolName,
-    input: tool.input,
-    ...(tool.toolName === "Task" || tool.toolName === "Agent" ? subagentReceiverData(tool) : {}),
-    ...extra,
-  };
-}
-
-function subagentReceiverData(
-  tool: Pick<ToolInFlight, "itemId" | "input">,
-): Record<string, unknown> {
-  const {
-    subagent_type: subagentType,
-    description,
-    prompt,
-    model,
-    run_in_background: runInBackground,
-  } = tool.input;
-  const effort =
-    typeof subagentType === "string" ? claudeWorkerEffortFromSubagentType(subagentType) : undefined;
-  return {
-    receiverThreadId: tool.itemId,
-    ...(typeof subagentType === "string" ? { agentType: subagentType } : {}),
-    ...(typeof description === "string" ? { nickname: description } : {}),
-    ...(typeof prompt === "string" ? { prompt } : {}),
-    ...(typeof model === "string" ? { model } : {}),
-    ...(effort ? { effort } : {}),
-    ...(runInBackground === true ? { background: true } : {}),
-  };
-}
-
-function titleForTool(itemType: CanonicalItemType): string {
-  switch (itemType) {
-    case "plan":
-      return "Plan";
-    case "command_execution":
-      return "Command run";
-    case "file_change":
-      return "File change";
-    case "mcp_tool_call":
-      return "MCP tool call";
-    case "collab_agent_tool_call":
-      return "Subagent task";
-    case "web_search":
-      return "Web search";
-    case "image_view":
-      return "Image view";
-    case "dynamic_tool_call":
-      return "Tool call";
-    default:
-      return "Item";
-  }
-}
-
-const SUPPORTED_CLAUDE_IMAGE_MIME_TYPES = new Set([
-  "image/gif",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-]);
-const CLAUDE_SETTING_SOURCES = [
-  "user",
-  "project",
-  "local",
-] as const satisfies ReadonlyArray<SettingSource>;
 const CLAUDE_CONTEXT_USAGE_TIMEOUT_MS = 1_000;
+
 // The SDK's interrupt resolves only once the CLI acknowledges it; a wedged CLI would otherwise
 // stall the caller (and the provider command reactor) forever.
 const CLAUDE_INTERRUPT_TIMEOUT = Duration.seconds(10);
-export const buildEmbeddedClaudeSystemPromptAppend = (
-  gatewayControlAvailable: boolean,
-  enableComputerControl = false,
-) =>
-  [
-    "You are running inside Glade, a coding app that embeds the Claude Agent SDK.",
-    "Do not present the host app as Claude Code unless the user is explicitly asking about Claude Code.",
-    "Treat the current working directory as the active workspace for the task.",
-    "When the user asks about the current project, codebase, or repository, proactively inspect files in the current working directory before asking the user where to look.",
-    "When spawning subagents, set the Agent tool's `model` parameter and pick reasoning effort by choosing a worker-<tier> subagent type (worker-low, worker-medium, worker-high, worker-xhigh).",
-    "Honor explicit user instructions about a subagent's model or effort verbatim; otherwise match task complexity: mechanical work → haiku or worker-low, standard work → sonnet or worker-medium, hard reasoning → opus or fable with worker-high and above.",
-    renderGladeHarnessPolicy({
-      gatewayControlAvailable,
-      enableComputerControl,
-      automationAuthoring: "tool-descriptions",
-    }),
-  ].join("\n");
-
-const CLAUDE_WORKER_EFFORT_TIERS = ["low", "medium", "high", "xhigh"] as const;
-const CLAUDE_WORKER_PROMPT =
-  "You are a general-purpose worker agent. Complete the assigned task end to end with the available tools, then return a concise report covering what you did, key findings, and any remaining risks.";
-
-function claudeWorkerEffortFromSubagentType(subagentType: string): string | undefined {
-  return (CLAUDE_WORKER_EFFORT_TIERS as readonly string[]).find(
-    (tier) => subagentType === `worker-${tier}`,
-  );
-}
-
-function claudeSubagentSteerContext(message: string): string {
-  return `The user sent you a message mid-task: ${message}. Address it and adjust your work accordingly.`;
-}
-
-function buildClaudeSdkSubagents(): Record<string, AgentDefinition> {
-  const agents: Record<string, AgentDefinition> = {};
-
-  for (const alias of getAgentMentionAliases("claudeAgent")) {
-    if (alias.kind !== "claude-subagent" || agents[alias.agentName]) {
-      continue;
-    }
-
-    agents[alias.agentName] = {
-      description: alias.description,
-      prompt: alias.prompt,
-      ...(alias.tools ? { tools: [...alias.tools] } : {}),
-      ...(alias.disallowedTools ? { disallowedTools: [...alias.disallowedTools] } : {}),
-      ...(alias.model ? { model: alias.model } : {}),
-    };
-  }
-
-  for (const tier of CLAUDE_WORKER_EFFORT_TIERS) {
-    const agentName = `worker-${tier}`;
-    if (agents[agentName]) {
-      continue;
-    }
-    agents[agentName] = {
-      description: `General-purpose worker at ${tier} reasoning effort; choose per task complexity`,
-      prompt: CLAUDE_WORKER_PROMPT,
-      effort: tier,
-    };
-  }
-
-  return agents;
-}
-
-function isClaudeCompactionCommand(text: string | undefined): boolean {
-  return /^\/compact(?:\s|$)/.test(text?.trim() ?? "");
-}
-
-// When the session reported its commands, `/etc is odd` stays model input too; without that list
-// (startup race, discovery failure) the shape alone decides.
-function isClaudeNativeSlashCommand(
-  text: string | undefined,
-  nativeCommandNames?: ReadonlySet<string>,
-): boolean {
-  const name = /^\/([a-z][\w:-]*)(?:\s|$)/i.exec(text?.trim() ?? "")?.[1];
-  if (name === undefined) return false;
-  if (nativeCommandNames === undefined || nativeCommandNames.size === 0) return true;
-  return nativeCommandNames.has(name) || isClaudeCompactionCommand(text);
-}
-
-function buildPromptText(
-  input: ProviderSendTurnInput,
-  nativeCommandNames?: ReadonlySet<string>,
-): string {
-  if (isClaudeNativeSlashCommand(input.input, nativeCommandNames)) return input.input!.trim();
-  const basePrompt = buildClaudeSubagentPrompt(input.input?.trim() ?? "").prompt;
-  const rawEffort =
-    input.modelSelection?.provider === "claudeAgent" ? input.modelSelection.options?.effort : null;
-  const requestedEffort = trimOrNull(rawEffort);
-  const claudeModel =
-    input.modelSelection?.provider === "claudeAgent" ? input.modelSelection.model : undefined;
-  const caps = getModelCapabilities("claudeAgent", claudeModel);
-  const promptEffort =
-    requestedEffort === "ultrathink" && caps.promptInjectedEffortLevels.includes("ultrathink")
-      ? "ultrathink"
-      : requestedEffort && hasEffortLevel(caps, requestedEffort)
-        ? requestedEffort
-        : null;
-  return withProviderPlanModePrompt({
-    text: applyClaudePromptEffortPrefix(basePrompt, promptEffort),
-    interactionMode: input.interactionMode,
-  });
-}
-
-function buildUserMessage(input: {
-  readonly sdkContent: Array<Record<string, unknown>>;
-}): SDKUserMessage {
-  return {
-    type: "user",
-    session_id: "",
-    parent_tool_use_id: null,
-    message: {
-      role: "user",
-      content: input.sdkContent,
-    },
-  } as unknown as SDKUserMessage;
-}
-
-function buildClaudeImageContentBlock(input: {
-  readonly mimeType: string;
-  readonly bytes: Uint8Array;
-}): Record<string, unknown> {
-  return {
-    type: "image",
-    source: {
-      type: "base64",
-      media_type: input.mimeType,
-      data: Buffer.from(input.bytes).toString("base64"),
-    },
-  };
-}
-
-function buildUserMessageEffect(
-  input: ProviderSendTurnInput,
-  dependencies: {
-    readonly fileSystem: FileSystem.FileSystem;
-    readonly attachmentsDir: string;
-    readonly nativeCommandNames?: ReadonlySet<string> | undefined;
-  },
-): Effect.Effect<SDKUserMessage, ProviderAdapterRequestError> {
-  return Effect.gen(function* () {
-    const text = buildPromptText(input, dependencies.nativeCommandNames);
-    const sdkContent: Array<Record<string, unknown>> = [];
-
-    if (text.length > 0) {
-      sdkContent.push({ type: "text", text });
-    }
-
-    for (const attachment of input.attachments ?? []) {
-      if (attachment.type !== "image") {
-        continue;
-      }
-
-      if (!SUPPORTED_CLAUDE_IMAGE_MIME_TYPES.has(attachment.mimeType.toLowerCase())) {
-        continue;
-      }
-
-      const attachmentPath = resolveProviderAttachmentPath({
-        attachmentsDir: dependencies.attachmentsDir,
-        attachment,
-      });
-      if (!attachmentPath) {
-        return yield* new ProviderAdapterRequestError({
-          provider: PROVIDER,
-          method: "turn/start",
-          detail: `Invalid attachment id '${attachment.id}'.`,
-        });
-      }
-
-      const bytes = yield* dependencies.fileSystem.readFile(attachmentPath).pipe(
-        Effect.mapError(
-          (cause) =>
-            new ProviderAdapterRequestError({
-              provider: PROVIDER,
-              method: "turn/start",
-              detail: toMessage(cause, "Failed to read attachment file."),
-              cause,
-            }),
-        ),
-      );
-
-      sdkContent.push(
-        buildClaudeImageContentBlock({
-          mimeType: attachment.mimeType.toLowerCase(),
-          bytes,
-        }),
-      );
-    }
-
-    const fileBlock = buildFileAttachmentsPromptBlock({
-      attachments: input.attachments,
-      attachmentsDir: dependencies.attachmentsDir,
-      include: "all-files",
-      includeImage: (attachment) =>
-        !SUPPORTED_CLAUDE_IMAGE_MIME_TYPES.has(attachment.mimeType.toLowerCase()),
-    });
-    if (fileBlock) {
-      sdkContent.push({ type: "text", text: fileBlock });
-    }
-
-    return buildUserMessage({ sdkContent });
-  });
-}
-
-function turnStatusFromResult(result: SDKResultMessage): RuntimeTurnState {
-  if (result.subtype === "success") {
-    return "completed";
-  }
-
-  const errors = resultErrorsText(result);
-  if (isInterruptedResult(result)) {
-    return "interrupted";
-  }
-  if (errors.includes("cancel")) {
-    return "cancelled";
-  }
-  return "failed";
-}
-
-function streamKindFromDeltaType(deltaType: string): ClaudeTextStreamKind {
-  return deltaType.includes("thinking") ? "reasoning_text" : "assistant_text";
-}
-
-function nativeProviderRefs(
-  context: ClaudeSessionContext,
-  options?: {
-    readonly providerItemId?: string | undefined;
-  },
-): NonNullable<ProviderRuntimeEvent["providerRefs"]> {
-  return {
-    ...context.subagentRefs,
-    ...(options?.providerItemId
-      ? { providerItemId: ProviderItemId.makeUnsafe(options.providerItemId) }
-      : {}),
-  };
-}
-
-function extractAssistantTextBlocks(message: SDKMessage): Array<string> {
-  if (message.type !== "assistant") {
-    return [];
-  }
-
-  const content = (message.message as { content?: unknown } | undefined)?.content;
-  if (!Array.isArray(content)) {
-    return [];
-  }
-
-  const fragments: string[] = [];
-  for (const block of content) {
-    if (!block || typeof block !== "object") {
-      continue;
-    }
-    const candidate = block as { type?: unknown; text?: unknown };
-    const sanitizedText =
-      candidate.type === "text" && typeof candidate.text === "string"
-        ? sanitizeClaudeDisplayText(candidate.text)
-        : "";
-    if (candidate.type === "text" && sanitizedText.length > 0) {
-      fragments.push(sanitizedText);
-    }
-  }
-
-  return fragments;
-}
-
-function sanitizeClaudeDisplayText(text: string): string {
-  if (text.length === 0) {
-    return text;
-  }
-
-  const lines = text.split(/\r?\n/);
-  const filteredLines = lines.filter((line) => {
-    const normalized = line.trim().toLowerCase();
-    return !(
-      normalized.startsWith("[ede_diagnostic]") &&
-      normalized.includes("result_type=") &&
-      normalized.includes("stop_reason=")
-    );
-  });
-
-  if (
-    filteredLines.length === 0 &&
-    lines.some((line) => line.trim().toLowerCase().startsWith("[ede_diagnostic]"))
-  ) {
-    return "";
-  }
-
-  return filteredLines.join("\n");
-}
-
-function normalizeClaudeUserVisibleErrorMessage(
-  text: string | undefined,
-  status: RuntimeTurnState,
-): string | undefined {
-  if (typeof text !== "string") {
-    return undefined;
-  }
-
-  const sanitized = sanitizeClaudeDisplayText(text).trim();
-  if (sanitized.length === 0) {
-    return undefined;
-  }
-
-  if (sanitized === "User interrupted response.") {
-    return status === "interrupted" ? "Claude runtime interrupted." : undefined;
-  }
-
-  if (/^[\]})"'`.,;:!?_-]+$/.test(sanitized)) {
-    return status === "interrupted" ? "Claude runtime interrupted." : "Claude turn failed.";
-  }
-
-  return sanitized;
-}
-
-function claudeAssistantErrorMessage(error: SDKAssistantMessageError): string {
-  switch (error) {
-    case "authentication_failed":
-      return "Claude is not authenticated. Run `claude auth login --claudeai`, then retry.";
-    case "oauth_org_not_allowed":
-      return "Claude authentication succeeded, but this organization does not allow Claude Code.";
-    case "account_on_hold":
-      return "The active Claude account is on hold. Resolve the account issue, then retry.";
-    case "billing_error":
-      return "Claude billing or subscription access failed. Check the active Claude account, then retry.";
-    case "rate_limit":
-      return "Claude rate limit reached. Wait briefly, then retry.";
-    case "overloaded":
-      return "Claude is temporarily overloaded. Retry in a moment.";
-    case "invalid_request":
-      return "Claude rejected the request as invalid.";
-    case "model_not_found":
-      return "The selected Claude model is unavailable for this account.";
-    case "server_error":
-      return "Claude returned a server error. Retry in a moment.";
-    case "max_output_tokens":
-      return "Claude reached the maximum output length before completing the turn.";
-    case "unknown":
-      return "Claude failed to complete the turn.";
-  }
-}
-
-function claudeAssistantErrorRequiresProcessRestart(error: SDKAssistantMessageError): boolean {
-  return (
-    error === "authentication_failed" ||
-    error === "oauth_org_not_allowed" ||
-    error === "account_on_hold" ||
-    error === "billing_error"
-  );
-}
-
-function extractContentBlockText(block: unknown): string {
-  if (!block || typeof block !== "object") {
-    return "";
-  }
-
-  const candidate = block as { type?: unknown; text?: unknown };
-  return candidate.type === "text" && typeof candidate.text === "string"
-    ? sanitizeClaudeDisplayText(candidate.text)
-    : "";
-}
-
-function extractTextContent(value: unknown): string {
-  if (typeof value === "string") {
-    return sanitizeClaudeDisplayText(value);
-  }
-
-  if (Array.isArray(value)) {
-    return value.map((entry) => extractTextContent(entry)).join("");
-  }
-
-  if (!value || typeof value !== "object") {
-    return "";
-  }
-
-  const record = value as {
-    text?: unknown;
-    content?: unknown;
-  };
-
-  if (typeof record.text === "string") {
-    return sanitizeClaudeDisplayText(record.text);
-  }
-
-  return extractTextContent(record.content);
-}
-
-function extractExitPlanModePlan(value: unknown): string | undefined {
-  if (!value || typeof value !== "object") {
-    return undefined;
-  }
-
-  const record = value as {
-    plan?: unknown;
-  };
-  return typeof record.plan === "string" && record.plan.trim().length > 0
-    ? record.plan.trim()
-    : undefined;
-}
-
-function exitPlanCaptureKey(input: {
-  readonly toolUseId?: string | undefined;
-  readonly planMarkdown: string;
-}): string {
-  return input.toolUseId && input.toolUseId.length > 0
-    ? `tool:${input.toolUseId}`
-    : `plan:${input.planMarkdown}`;
-}
-
-interface ParsedJsonRecord {
-  readonly value: Record<string, unknown>;
-  readonly serialized: string;
-}
-
-function tryParseCompleteJsonRecord(value: string): ParsedJsonRecord | undefined {
-  if (!value.trimEnd().endsWith("}")) {
-    return undefined;
-  }
-  try {
-    const parsed = JSON.parse(value);
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      return undefined;
-    }
-    return {
-      value: parsed as Record<string, unknown>,
-      serialized: JSON.stringify(parsed),
-    };
-  } catch {
-    return undefined;
-  }
-}
-
-function toolInputFingerprint(input: Record<string, unknown>): string | undefined {
-  try {
-    return JSON.stringify(input);
-  } catch {
-    return undefined;
-  }
-}
-
-function toolResultStreamKind(itemType: CanonicalItemType): ClaudeToolResultStreamKind | undefined {
-  switch (itemType) {
-    case "command_execution":
-      return "command_output";
-    case "file_change":
-      return "file_change_output";
-    default:
-      return undefined;
-  }
-}
-
-function toolResultBlocksFromUserMessage(message: SDKMessage): Array<{
-  readonly toolUseId: string;
-  readonly block: Record<string, unknown>;
-  readonly text: string;
-  readonly isError: boolean;
-  readonly structuredResult: unknown;
-}> {
-  if (message.type !== "user") {
-    return [];
-  }
-
-  const content = (message.message as { content?: unknown } | undefined)?.content;
-  if (!Array.isArray(content)) {
-    return [];
-  }
-
-  const blocks: Array<{
-    readonly toolUseId: string;
-    readonly block: Record<string, unknown>;
-    readonly text: string;
-    readonly isError: boolean;
-    readonly structuredResult: unknown;
-  }> = [];
-
-  for (const entry of content) {
-    if (!entry || typeof entry !== "object") {
-      continue;
-    }
-
-    const block = entry as Record<string, unknown>;
-    if (block.type !== "tool_result") {
-      continue;
-    }
-
-    const toolUseId = typeof block.tool_use_id === "string" ? block.tool_use_id : undefined;
-    if (!toolUseId) {
-      continue;
-    }
-
-    blocks.push({
-      toolUseId,
-      block,
-      text: extractTextContent(block.content),
-      isError: block.is_error === true,
-      structuredResult: message.tool_use_result,
-    });
-  }
-
-  return blocks;
-}
-
-function toSessionError(
-  threadId: ThreadId,
-  cause: unknown,
-): ProviderAdapterSessionNotFoundError | ProviderAdapterSessionClosedError | undefined {
-  const normalized = toMessage(cause, "").toLowerCase();
-  if (normalized.includes("unknown session") || normalized.includes("not found")) {
-    return new ProviderAdapterSessionNotFoundError({
-      provider: PROVIDER,
-      threadId,
-      cause,
-    });
-  }
-  if (normalized.includes("closed")) {
-    return new ProviderAdapterSessionClosedError({
-      provider: PROVIDER,
-      threadId,
-      cause,
-    });
-  }
-  return undefined;
-}
-
-function toRequestError(threadId: ThreadId, method: string, cause: unknown): ProviderAdapterError {
-  const sessionError = toSessionError(threadId, cause);
-  if (sessionError) {
-    return sessionError;
-  }
-  return new ProviderAdapterRequestError({
-    provider: PROVIDER,
-    method,
-    detail: toMessage(cause, `${method} failed`),
-    cause,
-  });
-}
-
-function sdkMessageType(value: unknown): string | undefined {
-  if (!value || typeof value !== "object") {
-    return undefined;
-  }
-  const record = value as { type?: unknown };
-  return typeof record.type === "string" ? record.type : undefined;
-}
-
-function sdkMessageSubtype(value: unknown): string | undefined {
-  if (!value || typeof value !== "object") {
-    return undefined;
-  }
-  const record = value as { subtype?: unknown };
-  return typeof record.subtype === "string" ? record.subtype : undefined;
-}
-
-function sdkNativeMethod(message: SDKMessage): string {
-  const subtype = sdkMessageSubtype(message);
-  if (subtype) {
-    return `claude/${message.type}/${subtype}`;
-  }
-
-  if (message.type === "stream_event") {
-    const streamType = sdkMessageType(message.event);
-    if (streamType) {
-      const deltaType =
-        streamType === "content_block_delta"
-          ? sdkMessageType((message.event as { delta?: unknown }).delta)
-          : undefined;
-      if (deltaType) {
-        return `claude/${message.type}/${streamType}/${deltaType}`;
-      }
-      return `claude/${message.type}/${streamType}`;
-    }
-  }
-
-  return `claude/${message.type}`;
-}
-
-function sdkNativeItemId(message: SDKMessage): string | undefined {
-  if (message.type === "assistant") {
-    const maybeId = (message.message as { id?: unknown }).id;
-    if (typeof maybeId === "string") {
-      return maybeId;
-    }
-    return undefined;
-  }
-
-  if (message.type === "user") {
-    return toolResultBlocksFromUserMessage(message)[0]?.toolUseId;
-  }
-
-  if (message.type === "stream_event") {
-    const event = message.event as {
-      type?: unknown;
-      content_block?: { id?: unknown };
-    };
-    if (event.type === "content_block_start" && typeof event.content_block?.id === "string") {
-      return event.content_block.id;
-    }
-  }
-
-  return undefined;
-}
-
-function parentToolUseId(message: SDKMessage): string | undefined {
-  if (
-    message.type !== "assistant" &&
-    message.type !== "user" &&
-    message.type !== "stream_event" &&
-    message.type !== "tool_progress"
-  ) {
-    return undefined;
-  }
-  return typeof message.parent_tool_use_id === "string" && message.parent_tool_use_id.length > 0
-    ? message.parent_tool_use_id
-    : undefined;
-}
-
-function isRecognizedSubagentToolUseId(context: ClaudeSessionContext, toolUseId: string): boolean {
-  if (context.subagentRuns.has(toolUseId) || context.settledSubagentToolUseIds.has(toolUseId)) {
-    return true;
-  }
-  for (const tool of context.inFlightTools.values()) {
-    if (tool.itemId === toolUseId && tool.itemType === "collab_agent_tool_call") {
-      return true;
-    }
-  }
-  return false;
-}
-
-function recognizedSubagentParentToolUseId(
-  context: ClaudeSessionContext,
-  message: SDKMessage,
-): string | undefined {
-  const toolUseId = parentToolUseId(message);
-  return toolUseId && isRecognizedSubagentToolUseId(context, toolUseId) ? toolUseId : undefined;
-}
-
-function claudeTaskTurnStatus(status: "completed" | "failed" | "stopped"): RuntimeTurnState {
-  switch (status) {
-    case "completed":
-      return "completed";
-    case "failed":
-      return "failed";
-    case "stopped":
-      return "interrupted";
-  }
-}
-
-function runtimeSessionStateFromClaudeTaskStatus(
-  status: string | undefined,
-): RuntimeSessionState | undefined {
-  switch (status) {
-    case "pending":
-      return "starting";
-    case "running":
-      return "running";
-    case "paused":
-      return "waiting";
-    case "completed":
-      return "ready";
-    case "failed":
-      return "error";
-    case "killed":
-      return "stopped";
-    default:
-      return undefined;
-  }
-}
-
-function subagentRunForTask(
-  context: ClaudeSessionContext,
-  toolUseId: string | undefined,
-  taskId: string,
-): ClaudeSubagentRun | undefined {
-  const run = toolUseId ? context.subagentRuns.get(toolUseId) : undefined;
-  if (run) {
-    run.taskId ??= taskId;
-    return run;
-  }
-  for (const candidate of context.subagentRuns.values()) {
-    if (candidate.taskId === taskId) {
-      return candidate;
-    }
-  }
-  return undefined;
-}
 
 function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
   return Effect.gen(function* () {

@@ -39,12 +39,12 @@ import { MINIMUM_CLAUDE_AUTO_MODE_CLI_VERSION } from "../claude/claudeCliVersion
 
 import { ProviderAdapterRequestError, ProviderAdapterValidationError } from "../core/Errors.ts";
 import { ClaudeAdapter } from "../Services/ClaudeAdapter.ts";
+import { buildEmbeddedClaudeSystemPromptAppend } from "../claude/adapter/promptPolicy.ts";
+import { makeClaudeAdapterLive as makeClaudeAdapterLiveBase } from "./ClaudeAdapter.ts";
 import {
-  buildEmbeddedClaudeSystemPromptAppend,
-  makeClaudeAdapterLive as makeClaudeAdapterLiveBase,
   type ClaudeAdapterLiveOptions,
   type ClaudeOwnedProcess,
-} from "./ClaudeAdapter.ts";
+} from "../claude/adapter/adapterConfiguration.ts";
 
 vi.mock("effect", async (importOriginal) => {
   const actual = await importOriginal<typeof import("effect")>();

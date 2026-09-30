@@ -75,6 +75,8 @@ The HTTP/WebSocket layer also owns:
 
 `serverLayers.ts` assembles the long-lived service graph used by the server runtime.
 
+`provider/claude/adapter` owns Claude SDK message conversion, session data types, tool presentation, model capability checks, resume cursors and process boundaries. The Claude adapter Layer composes these modules without changing the SDK or harness surface.
+
 ### Orchestration
 
 The orchestration layer is provider-independent and durable.

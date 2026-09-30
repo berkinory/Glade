@@ -12,6 +12,8 @@
 
 ### Improved
 
+- Claude adapter pure logic has dedicated modules for SDK messages, tool presentation, model capability checks, resume cursors, process ownership and prompt policy. Session behavior and provider-visible policy text remain unchanged.
+
 - Read-model event projection uses focused workspace, thread, turn, message and history handlers. Snapshot sequencing, message retention and lifecycle settlement remain unchanged.
 
 - Provider activity projection separates bounded JSON payloads, context-window calculations and tool approval presentation. Credential redaction stays at the approval-display boundary.
