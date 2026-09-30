@@ -7,11 +7,11 @@ import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import { subagentRunForTask, sdkNativeMethod } from "./sdkMetadata";
 import { normalizeClaudeTokenUsage } from "../claudeTokenUsage.ts";
 import { claudeEffectiveContextBudget } from "./modelCapabilities";
-import { makeClaudeRuntimeEvents } from "./runtimeEvents";
+import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 
 export function makeClaudeTaskPresentation(input: {
   readonly makeEventStamp: () => Effect.Effect<{ eventId: EventId; createdAt: string }>;
-  readonly offerRuntimeEvent: ReturnType<typeof makeClaudeRuntimeEvents>["offerRuntimeEvent"];
+  readonly offerRuntimeEvent: ClaudeRuntimeEventsShape["offerRuntimeEvent"];
 }) {
   const { makeEventStamp, offerRuntimeEvent } = input;
   const emitProposedPlanCompleted = (

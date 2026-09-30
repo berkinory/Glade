@@ -144,37 +144,37 @@ export interface ClaudeSubagentRun {
 
 type ClaudeTokenUsageState = "current" | "skip-compaction-call" | "awaiting-fresh-assistant";
 
-export interface ClaudeSessionContext {
-  resultUsageBaseline?: ClaudeResultUsageBaseline;
+export interface ClaudeSessionIdentity {
   readonly gatewaySessionLease?: AgentGatewaySessionLease;
   session: ProviderSession;
   readonly startInput: Parameters<ClaudeAdapterShape["startSession"]>[0];
   readonly lifecycleGeneration?: string;
+  readonly startedAt: string;
+  resumeSessionId: string | undefined;
+  lastThreadStartedId: string | undefined;
+  stopped: boolean;
+}
+
+export interface ClaudeSessionQuery {
   readonly promptQueue: Queue.Queue<PromptQueueItem>;
   readonly query: ClaudeQueryRuntime;
-
   readonly artifactsEnabled: boolean;
-
   initToolNames?: ReadonlySet<string>;
   readonly messageStream?: AsyncIterable<SDKMessage>;
   readonly processOwner: ClaudeProcessOwner;
   stopDeferred?: Deferred.Deferred<void, ProviderAdapterProcessError>;
-
-  pendingDispatches?: number;
   streamFiber: Fiber.Fiber<void, Error> | undefined;
-  readonly startedAt: string;
   readonly basePermissionMode: PermissionMode | undefined;
-
   readonly spawnPermissionMode: PermissionMode;
-
   firstTurnSpawnModeAuthoritative: boolean;
-  lastInteractionMode: ProviderInteractionMode | undefined;
   currentApiModelId: string | undefined;
-  resumeSessionId: string | undefined;
-  readonly pendingApprovals: Map<ApprovalRequestId, PendingApproval>;
+  rerouteOriginalApiModelId: string | undefined;
+  readonly warnedUnhandledSdkKinds: Set<string>;
+}
 
-  approvalsAlwaysAllowedForSession: boolean;
-  readonly pendingUserInputs: Map<ApprovalRequestId, PendingUserInput>;
+export interface ClaudeSessionTurn {
+  pendingDispatches?: number;
+  lastInteractionMode: ProviderInteractionMode | undefined;
   readonly turns: Array<{
     id: TurnId;
     items: Array<unknown>;
@@ -182,9 +182,19 @@ export interface ClaudeSessionContext {
   readonly inFlightTools: Map<number, ToolInFlight>;
   readonly trackedTasks: Map<string, ClaudeTrackedTask>;
   turnState: ClaudeTurnState | undefined;
-
   lastTurnId: TurnId | undefined;
   interruptRequestedTurnId: TurnId | undefined;
+  compactionMessageId: string | undefined;
+}
+
+export interface ClaudeSessionPendingInteractions {
+  readonly pendingApprovals: Map<ApprovalRequestId, PendingApproval>;
+  approvalsAlwaysAllowedForSession: boolean;
+  readonly pendingUserInputs: Map<ApprovalRequestId, PendingUserInput>;
+}
+
+export interface ClaudeSessionUsageCache {
+  resultUsageBaseline?: ClaudeResultUsageBaseline;
   lastKnownContextWindow: number | undefined;
   currentAutoCompactWindow: number | undefined;
   currentAlwaysThinkingEnabled: boolean | undefined;
@@ -198,60 +208,46 @@ export interface ClaudeSessionContext {
   cacheRequestStartedAt?: { messageId: string; at: string };
   hasObservedCacheRequest?: boolean;
   tokenUsageState: ClaudeTokenUsageState;
-  compactionMessageId: string | undefined;
-
   processedTokenTotal: number;
   processedTokenTurnBaseline: number;
-
   processedTokenResultBaseline: number;
   processedTokenBaselineKnown: boolean;
   readonly requestUsage: ClaudeRequestUsage;
   lastResultUuid: string | undefined;
   lastAssistantUuid: string | undefined;
-  lastThreadStartedId: string | undefined;
-
-  rerouteOriginalApiModelId: string | undefined;
-
   readonly emittedContextUsageWarnings: Set<string>;
-  stopped: boolean;
+}
 
-  readonly warnedUnhandledSdkKinds: Set<string>;
-
+export interface ClaudeSessionSubagents {
   readonly subagentRuns: Map<string, ClaudeSubagentRun>;
-
   readonly pendingSubagentSteers: Map<string, Array<string>>;
-
   readonly pendingSubagentStops: Set<string>;
-  // Last background-task ids from background_tasks_changed (REPLACE semantics); diffed so only newly
-  // backgrounded work gets announced. Foreground/terminal patches may evict ids, but background
-  // patches never seed the set because they can race the aggregate snapshot and suppress its "Moved
-  // to background" notice entirely.
+  // Background task announcements use replacement snapshots; a partial background patch can race them.
   readonly knownBackgroundTaskIds: Set<string>;
-  // Task ids with provider-terminal evidence. Agent-scoped human interactions are cancelled only on
-  // this evidence (or whole-session stop), never merely because their parent foreground turn
-  // completed.
+  // Agent-scoped human interactions settle only on terminal task evidence or session stop.
   readonly terminalTaskIds: Set<string>;
-  // Late messages still tagged with them must not resurrect a scoped run: the synthetic turn that
-  // would start on the settled child thread never completes and pins the strip row on "Running". The
-  // status also corrects the Task tool_result's error shape (a user stop returns an error result that
-  // would otherwise read "Failed").
+  // Settled tool ids fence late child messages so stopped runs cannot reappear as running.
   readonly settledSubagentToolUseIds: Map<string, "completed" | "failed" | "stopped">;
-
   readonly liveWorkflowTaskIds: Set<string>;
-
   readonly knownWorkflowTaskIds: Set<string>;
   readonly workflowTaskIdByMemberTaskId: Map<string, string>;
-
   readonly workflowRuntimePollers: Map<string, Fiber.Fiber<void>>;
   readonly workflowAgentLabels: Map<string, Array<string>>;
-
   readonly workflowRuntimeStates: Map<string, ClaudeWorkflowRuntimeState>;
-
   readonly subagentRefs?: {
     readonly providerThreadId: string;
     readonly providerParentThreadId: string;
   };
 }
+
+export interface ClaudeSessionContext
+  extends
+    ClaudeSessionIdentity,
+    ClaudeSessionQuery,
+    ClaudeSessionTurn,
+    ClaudeSessionPendingInteractions,
+    ClaudeSessionUsageCache,
+    ClaudeSessionSubagents {}
 
 export interface ClaudeStopSessionOptions {
   readonly emitExitEvent?: boolean;

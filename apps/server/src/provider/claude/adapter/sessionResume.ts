@@ -4,7 +4,14 @@ import { parseClaudeTrackedTasks, hasUnfinishedClaudeTasks } from "../claudeTask
 import { Schema } from "effect";
 import { ClaudeCacheObservation } from "@glade/contracts/provider/claudeCache";
 import { type ThreadTokenUsageSnapshot } from "@glade/contracts/provider/runtimePayloads";
-import { ClaudeResumeState, ClaudeSessionContext } from "./sessionTypes";
+import {
+  type ClaudeResumeState,
+  type ClaudeSessionIdentity,
+  type ClaudeSessionPendingInteractions,
+  type ClaudeSessionSubagents,
+  type ClaudeSessionTurn,
+  type ClaudeSessionUsageCache,
+} from "./sessionTypes";
 
 function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
@@ -90,7 +97,12 @@ export function withoutProcessedTokenTotal(
   return contextUsage;
 }
 
-export function invalidateClaudeCache(context: ClaudeSessionContext): void {
+export function invalidateClaudeCache(
+  context: Pick<
+    ClaudeSessionUsageCache,
+    "cacheObservation" | "cacheRequestStartedAt" | "hasObservedCacheRequest" | "lastKnownTokenUsage"
+  >,
+): void {
   delete context.cacheObservation;
   delete context.cacheRequestStartedAt;
   context.hasObservedCacheRequest = false;
@@ -100,7 +112,10 @@ export function invalidateClaudeCache(context: ClaudeSessionContext): void {
   }
 }
 
-export function syncClaudeCacheResumeCursor(context: ClaudeSessionContext): void {
+export function syncClaudeCacheResumeCursor(
+  context: Pick<ClaudeSessionIdentity, "session"> &
+    Pick<ClaudeSessionUsageCache, "cacheObservation">,
+): void {
   const { claudeCache: _previous, ...resumeCursor } = context.session.resumeCursor as Record<
     string,
     unknown
@@ -115,7 +130,11 @@ export function syncClaudeCacheResumeCursor(context: ClaudeSessionContext): void
   };
 }
 
-export function hasActiveClaudeRuntimeWork(context: ClaudeSessionContext): boolean {
+export type ClaudeRuntimeWorkView = Pick<ClaudeSessionTurn, "turnState" | "trackedTasks"> &
+  Pick<ClaudeSessionPendingInteractions, "pendingApprovals" | "pendingUserInputs"> &
+  Pick<ClaudeSessionSubagents, "knownBackgroundTaskIds" | "liveWorkflowTaskIds" | "subagentRuns">;
+
+export function hasActiveClaudeRuntimeWork(context: ClaudeRuntimeWorkView): boolean {
   return (
     context.turnState !== undefined ||
     context.knownBackgroundTaskIds.size > 0 ||
@@ -126,6 +145,6 @@ export function hasActiveClaudeRuntimeWork(context: ClaudeSessionContext): boole
   );
 }
 
-export function hasActiveClaudeCompactionWork(context: ClaudeSessionContext): boolean {
+export function hasActiveClaudeCompactionWork(context: ClaudeRuntimeWorkView): boolean {
   return hasActiveClaudeRuntimeWork(context) || hasUnfinishedClaudeTasks(context.trackedTasks);
 }

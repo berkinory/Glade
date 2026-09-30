@@ -1,7 +1,7 @@
 import { Effect } from "effect";
 import { makeClaudeAssistantText } from "./assistantText";
 import { EventId, RuntimeTaskId } from "@glade/contracts/core/baseSchemas";
-import { makeClaudeRuntimeEvents } from "./runtimeEvents";
+import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 import { makeClaudeTaskPresentation } from "./taskPresentation";
 import { makeClaudeToolTracking } from "./toolTracking";
 import { makeClaudeWorkflowRuntime } from "./workflowRuntime";
@@ -49,7 +49,7 @@ export function makeClaudeContentMessages(input: {
     typeof makeClaudeAssistantText
   >["ensureAssistantTextBlock"];
   readonly makeEventStamp: () => Effect.Effect<{ eventId: EventId; createdAt: string }>;
-  readonly offerRuntimeEvent: ReturnType<typeof makeClaudeRuntimeEvents>["offerRuntimeEvent"];
+  readonly offerRuntimeEvent: ClaudeRuntimeEventsShape["offerRuntimeEvent"];
   readonly emitTodoTasksUpdated: ReturnType<
     typeof makeClaudeTaskPresentation
   >["emitTodoTasksUpdated"];
@@ -57,7 +57,7 @@ export function makeClaudeContentMessages(input: {
   readonly completeAssistantTextBlock: ReturnType<
     typeof makeClaudeAssistantText
   >["completeAssistantTextBlock"];
-  readonly updateResumeCursor: ReturnType<typeof makeClaudeRuntimeEvents>["updateResumeCursor"];
+  readonly updateResumeCursor: ClaudeRuntimeEventsShape["updateResumeCursor"];
   readonly emitTrackedTasksUpdated: ReturnType<
     typeof makeClaudeTaskPresentation
   >["emitTrackedTasksUpdated"];

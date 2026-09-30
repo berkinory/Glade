@@ -24,7 +24,7 @@ import { asRuntimeItemId, nativeProviderRefs, asCanonicalTurnId } from "./messag
 import { toolLifecycleEventData } from "./toolPresentation";
 import { makeClaudeInteractionSettlement } from "./interactionSettlement";
 import { makeClaudeContextUsage } from "./contextUsage";
-import { makeClaudeRuntimeEvents } from "./runtimeEvents";
+import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 import { makeClaudeAssistantText } from "./assistantText";
 
 export function makeClaudeTurnCompletion(input: {
@@ -35,11 +35,11 @@ export function makeClaudeTurnCompletion(input: {
     typeof makeClaudeContextUsage
   >["readClaudeContextUsage"];
   readonly makeEventStamp: () => Effect.Effect<{ eventId: EventId; createdAt: string }>;
-  readonly offerRuntimeEvent: ReturnType<typeof makeClaudeRuntimeEvents>["offerRuntimeEvent"];
+  readonly offerRuntimeEvent: ClaudeRuntimeEventsShape["offerRuntimeEvent"];
   readonly completeAssistantTextBlock: ReturnType<
     typeof makeClaudeAssistantText
   >["completeAssistantTextBlock"];
-  readonly updateResumeCursor: ReturnType<typeof makeClaudeRuntimeEvents>["updateResumeCursor"];
+  readonly updateResumeCursor: ClaudeRuntimeEventsShape["updateResumeCursor"];
 }) {
   const {
     settlePendingHumanInteractions,

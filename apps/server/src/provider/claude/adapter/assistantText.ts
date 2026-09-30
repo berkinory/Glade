@@ -3,11 +3,11 @@ import { EventId } from "@glade/contracts/core/baseSchemas";
 import { ClaudeSessionContext, AssistantTextBlockState, PROVIDER } from "./sessionTypes";
 import { asRuntimeItemId, nativeProviderRefs, extractAssistantTextBlocks } from "./messageContent";
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
-import { makeClaudeRuntimeEvents } from "./runtimeEvents";
+import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 
 export function makeClaudeAssistantText(input: {
   readonly makeEventStamp: () => Effect.Effect<{ eventId: EventId; createdAt: string }>;
-  readonly offerRuntimeEvent: ReturnType<typeof makeClaudeRuntimeEvents>["offerRuntimeEvent"];
+  readonly offerRuntimeEvent: ClaudeRuntimeEventsShape["offerRuntimeEvent"];
 }) {
   const { makeEventStamp, offerRuntimeEvent } = input;
   const ensureAssistantTextBlock = (

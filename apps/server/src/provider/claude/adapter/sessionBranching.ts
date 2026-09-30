@@ -1,10 +1,11 @@
+import type { ClaudeSessionRegistryShape } from "../../Services/ClaudeSessionRegistry.ts";
 import { makeKeyedLock } from "../../core/keyedLock.ts";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { ClaudeSessionContext, PROVIDER } from "./sessionTypes";
+import { PROVIDER } from "./sessionTypes";
 import { type ClaudeAdapterShape } from "../../Services/ClaudeAdapter.ts";
 import { Effect } from "effect";
 import { ClaudeAdapterLiveOptions } from "./adapterConfiguration";
-import { makeClaudeRuntimeEvents } from "./runtimeEvents";
+import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 import { ProviderAdapterValidationError, ProviderAdapterRequestError } from "../../core/Errors.ts";
 import { loadClaudeAgentSdk } from "../claudeAgentSdk.ts";
 import { readClaudeSessionParentUuid } from "../claudeProjectImport.ts";
@@ -12,32 +13,29 @@ import { toRequestError, toMessage } from "./streamErrors";
 import { readClaudeResumeState } from "./sessionResume";
 import type { SessionMessage } from "@anthropic-ai/claude-agent-sdk";
 import { restoreClaudeImportedCopyDates } from "../claudeImportedCopyDates.ts";
-import { makeClaudeSessionAccess } from "./sessionAccess";
+import type {
+  ClaudeSessionAccessShape,
+  ClaudeStartPreflight,
+} from "../../Services/ClaudeSessionAccess.ts";
 import { makeClaudeSessionTeardown } from "./sessionTeardown";
 
 export function makeClaudeSessionBranching(input: {
   readonly withSessionLifecycleLock: ReturnType<typeof makeKeyedLock<ThreadId>>["withLock"];
-  readonly sessions: Map<ThreadId, ClaudeSessionContext>;
-  readonly resolveClaudeStartPreflight: ReturnType<
-    typeof makeClaudeSessionAccess
-  >["resolveClaudeStartPreflight"];
-  readonly assertSessionReplaceable: ReturnType<
-    typeof makeClaudeSessionAccess
-  >["assertSessionReplaceable"];
+  readonly sessions: ClaudeSessionRegistryShape;
+  readonly resolveClaudeStartPreflight: ClaudeSessionAccessShape["resolveClaudeStartPreflight"];
+  readonly assertSessionReplaceable: ClaudeSessionAccessShape["assertSessionReplaceable"];
   readonly stopSessionInternal: ReturnType<typeof makeClaudeSessionTeardown>["stopSessionInternal"];
   readonly startSessionUnlocked: (
     input: Parameters<ClaudeAdapterShape["startSession"]>[0],
-    preflight?: Effect.Success<
-      ReturnType<ReturnType<typeof makeClaudeSessionAccess>["resolveClaudeStartPreflight"]>
-    >,
+    preflight?: ClaudeStartPreflight,
   ) => ReturnType<ClaudeAdapterShape["startSession"]>;
-  readonly requireSession: ReturnType<typeof makeClaudeSessionAccess>["requireSession"];
+  readonly requireSession: ClaudeSessionAccessShape["requireSession"];
   readonly options: ClaudeAdapterLiveOptions | undefined;
   readonly forkNativeSession: (
     sessionId: string,
     forkOptions?: { readonly dir?: string; readonly upToMessageId?: string },
   ) => Promise<{ sessionId: string }>;
-  readonly snapshotThread: ReturnType<typeof makeClaudeRuntimeEvents>["snapshotThread"];
+  readonly snapshotThread: ClaudeRuntimeEventsShape["snapshotThread"];
 }) {
   const {
     withSessionLifecycleLock,

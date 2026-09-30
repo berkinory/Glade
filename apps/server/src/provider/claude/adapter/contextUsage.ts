@@ -1,16 +1,20 @@
-import { ClaudeSessionContext } from "./sessionTypes";
+import {
+  type ClaudeSessionContext,
+  type ClaudeSessionQuery,
+  type ClaudeSessionUsageCache,
+} from "./sessionTypes";
 import { Effect, Option } from "effect";
 import { decideClaudeContextUsageWarnings } from "../claudeTokenUsage.ts";
 import { claudeEffectiveContextBudget } from "./modelCapabilities";
 import type { SDKControlGetContextUsageResponse } from "@anthropic-ai/claude-agent-sdk";
 import { normalizeOperationError } from "../../../platform/operationError.ts";
 import { toError } from "./streamErrors";
-import { makeClaudeRuntimeEvents } from "./runtimeEvents";
+import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 
 export const CLAUDE_CONTEXT_USAGE_TIMEOUT_MS = 1_000;
 
 export function makeClaudeContextUsage(input: {
-  readonly emitRuntimeWarning: ReturnType<typeof makeClaudeRuntimeEvents>["emitRuntimeWarning"];
+  readonly emitRuntimeWarning: ClaudeRuntimeEventsShape["emitRuntimeWarning"];
 }) {
   const { emitRuntimeWarning } = input;
   const maybeEmitContextUsageWarning = (
@@ -36,7 +40,8 @@ export function makeClaudeContextUsage(input: {
     });
 
   const readClaudeContextUsage = (
-    context: ClaudeSessionContext,
+    context: Pick<ClaudeSessionQuery, "query"> &
+      Pick<ClaudeSessionUsageCache, "contextUsageControlEnabled">,
   ): Effect.Effect<SDKControlGetContextUsageResponse | undefined> => {
     if (!context.contextUsageControlEnabled) {
       return Effect.succeed(undefined);

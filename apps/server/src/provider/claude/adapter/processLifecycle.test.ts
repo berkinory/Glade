@@ -1,5 +1,5 @@
 import { describe, it, assert } from "@effect/vitest";
-import { Effect, Stream, Fiber, Random, Layer, Exit } from "effect";
+import { Effect, Stream, Fiber, Random, Layer, Exit, ServiceMap } from "effect";
 import { ClaudeAdapter } from "../../Services/ClaudeAdapter.ts";
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
@@ -17,6 +17,49 @@ import {
 } from "./adapterTestFixtures";
 
 describe("Claude processLifecycle", () => {
+  it.effect("keeps separately built adapters isolated in one parent scope", () => {
+    const firstQuery = new FakeClaudeQuery();
+    const secondQuery = new FakeClaudeQuery();
+    const firstLayer = makeClaudeAdapterLive({ createQuery: () => firstQuery }).pipe(
+      Layer.provideMerge(ServerConfig.layerTest("/tmp/claude-adapter-test", "/tmp")),
+      Layer.provideMerge(NodeServices.layer),
+    );
+    const secondLayer = makeClaudeAdapterLive({ createQuery: () => secondQuery }).pipe(
+      Layer.provideMerge(ServerConfig.layerTest("/tmp/claude-adapter-test", "/tmp")),
+      Layer.provideMerge(NodeServices.layer),
+    );
+
+    return Effect.scoped(
+      Effect.gen(function* () {
+        const scope = yield* Effect.scope;
+        const first = ServiceMap.get(yield* Layer.buildWithScope(firstLayer, scope), ClaudeAdapter);
+        const second = ServiceMap.get(
+          yield* Layer.buildWithScope(secondLayer, scope),
+          ClaudeAdapter,
+        );
+
+        yield* first.startSession({
+          threadId: THREAD_ID,
+          provider: "claudeAgent",
+          runtimeMode: "full-access",
+        });
+        assert.equal(yield* first.hasSession(THREAD_ID), true);
+        assert.equal(yield* second.hasSession(THREAD_ID), false);
+
+        yield* second.startSession({
+          threadId: THREAD_ID,
+          provider: "claudeAgent",
+          runtimeMode: "full-access",
+        });
+        yield* first.stopAll();
+        assert.equal(yield* second.hasSession(THREAD_ID), true);
+        yield* second.stopAll();
+        assert.equal(firstQuery.closeCalls, 1);
+        assert.equal(secondQuery.closeCalls, 1);
+      }),
+    ).pipe(Effect.provideService(Random.Random, makeDeterministicRandomService()));
+  });
+
   it.effect("treats user-aborted Claude results as interrupted without a runtime error", () => {
     const harness = makeHarness();
     return Effect.gen(function* () {

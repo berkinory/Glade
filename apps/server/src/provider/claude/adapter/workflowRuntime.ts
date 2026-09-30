@@ -9,7 +9,7 @@ import {
   claudeWorkflowRuntimeSnapshots,
 } from "../claudeWorkflowRuntime.ts";
 import { asCanonicalTurnId, nativeProviderRefs } from "./messageContent";
-import { makeClaudeRuntimeEvents } from "./runtimeEvents";
+import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 
 const DEFAULT_WORKFLOW_RUNTIME_POLL_INTERVAL_MS = 2_000;
 
@@ -19,7 +19,7 @@ export function makeClaudeWorkflowRuntime(input: {
   readonly fileSystem: FileSystem.FileSystem;
   readonly options: ClaudeAdapterLiveOptions | undefined;
   readonly makeEventStamp: () => Effect.Effect<{ eventId: EventId; createdAt: string }>;
-  readonly offerRuntimeEvent: ReturnType<typeof makeClaudeRuntimeEvents>["offerRuntimeEvent"];
+  readonly offerRuntimeEvent: ClaudeRuntimeEventsShape["offerRuntimeEvent"];
   readonly runSdkFork: <A, E>(
     effect: Effect.Effect<A, E>,
     options?: Effect.RunOptions,

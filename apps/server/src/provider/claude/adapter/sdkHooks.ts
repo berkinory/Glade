@@ -1,3 +1,4 @@
+import type { ClaudeSessionRegistryShape } from "../../Services/ClaudeSessionRegistry.ts";
 import type { Fiber } from "effect";
 import { Clock, Effect, Ref, Random, Deferred } from "effect";
 import { type ClaudeAdapterShape } from "../../Services/ClaudeAdapter.ts";
@@ -11,7 +12,7 @@ import {
   ClaudeSubagentRun,
 } from "./sessionTypes";
 import { ThreadId, EventId, ApprovalRequestId } from "@glade/contracts/core/baseSchemas";
-import { makeClaudeRuntimeEvents } from "./runtimeEvents";
+import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 import { makeClaudeInteractionSettlement } from "./interactionSettlement";
 import { makeClaudeToolTracking } from "./toolTracking";
 import { makeClaudeTaskPresentation } from "./taskPresentation";
@@ -48,18 +49,16 @@ export function makeClaudeSdkHooks(dependencies: {
   readonly runSdkSync: <A, E>(effect: Effect.Effect<A, E>) => A;
   readonly contextRef: Ref.Ref<ClaudeSessionContext | undefined>;
   readonly resumeState: ClaudeResumeState | undefined;
-  readonly sessions: Map<ThreadId, ClaudeSessionContext>;
+  readonly sessions: ClaudeSessionRegistryShape;
   readonly threadId: ThreadId;
   readonly runSdkFork: <A, E>(
     effect: Effect.Effect<A, E>,
     options?: Effect.RunOptions,
   ) => Fiber.Fiber<A, E>;
-  readonly emitClaudeCacheObservation: ReturnType<
-    typeof makeClaudeRuntimeEvents
-  >["emitClaudeCacheObservation"];
+  readonly emitClaudeCacheObservation: ClaudeRuntimeEventsShape["emitClaudeCacheObservation"];
   readonly makeEventStamp: () => Effect.Effect<{ eventId: EventId; createdAt: string }>;
   readonly pendingUserInputs: Map<ApprovalRequestId, PendingUserInput>;
-  readonly offerRuntimeEvent: ReturnType<typeof makeClaudeRuntimeEvents>["offerRuntimeEvent"];
+  readonly offerRuntimeEvent: ClaudeRuntimeEventsShape["offerRuntimeEvent"];
   readonly settlePendingUserInput: ReturnType<
     typeof makeClaudeInteractionSettlement
   >["settlePendingUserInput"];
@@ -127,7 +126,7 @@ export function makeClaudeSdkHooks(dependencies: {
     if (!current) startupCacheObservation = observation;
     else if (
       !current.stopped &&
-      sessions.get(threadId) === current &&
+      sessions.isCurrent(threadId, current) &&
       current.resumeSessionId === observation.nativeSessionId &&
       !current.hasObservedCacheRequest
     ) {

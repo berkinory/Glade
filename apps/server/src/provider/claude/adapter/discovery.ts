@@ -1,6 +1,7 @@
+import type { ClaudeSessionRegistryShape } from "../../Services/ClaudeSessionRegistry.ts";
 import type { ServerConfigShape } from "../../../server/config.ts";
 import { Effect, Duration, Schema } from "effect";
-import { makeClaudeProcessOwnership } from "./processOwnership";
+import type { ClaudeProcessOwnershipShape } from "../../Services/ClaudeProcessOwnership.ts";
 import type {
   SDKUserMessage,
   Options as ClaudeQueryOptions,
@@ -8,7 +9,7 @@ import type {
 } from "@anthropic-ai/claude-agent-sdk";
 import { ClaudeQueryRuntime, ClaudeProcessOwner } from "./adapterConfiguration";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { ClaudeSessionContext, PROVIDER } from "./sessionTypes";
+import { PROVIDER } from "./sessionTypes";
 import {
   type ProviderListModelsResult,
   type ProviderListAgentsResult,
@@ -32,20 +33,14 @@ export function makeClaudeDiscovery(input: {
     effect: Effect.Effect<A, E>,
     options?: Effect.RunOptions,
   ) => Promise<A>;
-  readonly teardownFailedDiscoveryProcesses: ReturnType<
-    typeof makeClaudeProcessOwnership
-  >["teardownFailedDiscoveryProcesses"];
+  readonly teardownFailedDiscoveryProcesses: ClaudeProcessOwnershipShape["teardownFailedDiscoveryProcesses"];
   readonly createQuery: (input: {
     readonly prompt: AsyncIterable<SDKUserMessage>;
     readonly options: ClaudeQueryOptions;
   }) => Promise<ClaudeQueryRuntime>;
-  readonly bindClaudeProcessOwner: ReturnType<
-    typeof makeClaudeProcessOwnership
-  >["bindClaudeProcessOwner"];
-  readonly teardownDiscoveryProcess: ReturnType<
-    typeof makeClaudeProcessOwnership
-  >["teardownDiscoveryProcess"];
-  readonly sessions: Map<ThreadId, ClaudeSessionContext>;
+  readonly bindClaudeProcessOwner: ClaudeProcessOwnershipShape["bindClaudeProcessOwner"];
+  readonly teardownDiscoveryProcess: ClaudeProcessOwnershipShape["teardownDiscoveryProcess"];
+  readonly sessions: ClaudeSessionRegistryShape;
   readonly resolveClaudeSdkEnv: Effect.Effect<NodeJS.ProcessEnv>;
   readonly serverConfig: ServerConfigShape;
 }) {
@@ -260,7 +255,7 @@ export function makeClaudeDiscovery(input: {
           ? ownContext
           : input.threadId
             ? undefined
-            : [...sessions.values()].find(
+            : [...sessions.list()].find(
                 (s) => !s.stopped && s.artifactsEnabled === enableArtifacts,
               );
 
@@ -341,7 +336,7 @@ export function makeClaudeDiscovery(input: {
         return { ...cachedModels, cached: true };
       }
 
-      for (const [, context] of sessions) {
+      for (const context of sessions.list()) {
         if (!context.stopped && context.query) {
           const result = yield* Effect.tryPromise({
             try: async () => ({
@@ -397,7 +392,7 @@ export function makeClaudeDiscovery(input: {
       if (cachedAgents) {
         return { ...cachedAgents, cached: true };
       }
-      for (const [, context] of sessions) {
+      for (const context of sessions.list()) {
         if (!context.stopped && context.query) {
           context.query
             .supportedAgents()

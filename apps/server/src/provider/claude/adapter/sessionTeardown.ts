@@ -1,10 +1,11 @@
+import type { ClaudeSessionRegistryShape } from "../../Services/ClaudeSessionRegistry.ts";
 import { makeClaudeInteractionSettlement } from "./interactionSettlement";
 import { makeClaudeTurnCompletion } from "./turnCompletion";
 import { makeClaudeWorkflowRuntime } from "./workflowRuntime";
-import { makeClaudeRuntimeEvents } from "./runtimeEvents";
-import { makeClaudeProcessOwnership } from "./processOwnership";
+import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
+import type { ClaudeProcessOwnershipShape } from "../../Services/ClaudeProcessOwnership.ts";
 import { Effect, Queue, Fiber, Deferred, Exit } from "effect";
-import { EventId, ThreadId } from "@glade/contracts/core/baseSchemas";
+import { EventId } from "@glade/contracts/core/baseSchemas";
 import { ClaudeSessionContext, ClaudeStopSessionOptions, PROVIDER } from "./sessionTypes";
 import { ProviderAdapterProcessError } from "../../core/Errors.ts";
 import { cancelAgentGatewayTurn } from "../../../agentGateway/sessionLease.ts";
@@ -17,14 +18,12 @@ export function makeClaudeSessionTeardown(input: {
   readonly stopWorkflowRuntimePoller: ReturnType<
     typeof makeClaudeWorkflowRuntime
   >["stopWorkflowRuntimePoller"];
-  readonly emitRuntimeError: ReturnType<typeof makeClaudeRuntimeEvents>["emitRuntimeError"];
-  readonly teardownClaudeProcess: ReturnType<
-    typeof makeClaudeProcessOwnership
-  >["teardownClaudeProcess"];
+  readonly emitRuntimeError: ClaudeRuntimeEventsShape["emitRuntimeError"];
+  readonly teardownClaudeProcess: ClaudeProcessOwnershipShape["teardownClaudeProcess"];
   readonly nowIso: Effect.Effect<string>;
   readonly makeEventStamp: () => Effect.Effect<{ eventId: EventId; createdAt: string }>;
-  readonly offerRuntimeEvent: ReturnType<typeof makeClaudeRuntimeEvents>["offerRuntimeEvent"];
-  readonly sessions: Map<ThreadId, ClaudeSessionContext>;
+  readonly offerRuntimeEvent: ClaudeRuntimeEventsShape["offerRuntimeEvent"];
+  readonly sessions: ClaudeSessionRegistryShape;
 }) {
   const {
     settlePendingHumanInteractions,
@@ -112,8 +111,8 @@ export function makeClaudeSessionTeardown(input: {
         });
       }
 
-      if (sessions.get(context.session.threadId) === context) {
-        sessions.delete(context.session.threadId);
+      if (sessions.isCurrent(context.session.threadId, context)) {
+        yield* sessions.removeIfCurrent(context.session.threadId, context);
       }
     });
 

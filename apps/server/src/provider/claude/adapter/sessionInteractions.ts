@@ -1,8 +1,8 @@
+import type { ClaudeSessionRegistryShape } from "../../Services/ClaudeSessionRegistry.ts";
 import { Duration, Effect, Option } from "effect";
 import { makeClaudeContextUsage } from "./contextUsage";
-import { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { ClaudeSessionContext, PROVIDER, PendingUserInputResult } from "./sessionTypes";
-import { makeClaudeRuntimeEvents } from "./runtimeEvents";
+import { PROVIDER, PendingUserInputResult } from "./sessionTypes";
+import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 import { type ServerConfigShape } from "../../../server/config.ts";
 import { makeClaudeInteractionSettlement } from "./interactionSettlement";
 import { type ClaudeAdapterShape } from "../../Services/ClaudeAdapter.ts";
@@ -14,24 +14,22 @@ import { toRequestError } from "./streamErrors";
 import { withAgentGatewayTurnCancellation } from "../../../agentGateway/sessionLease.ts";
 import { ProviderAdapterRequestError } from "../../core/Errors.ts";
 import { buildFileAttachmentsPromptBlock } from "../../core/attachmentProjection.ts";
-import { makeClaudeSessionAccess } from "./sessionAccess";
+import type { ClaudeSessionAccessShape } from "../../Services/ClaudeSessionAccess.ts";
 
 // The SDK's interrupt resolves only once the CLI acknowledges it; a wedged CLI would otherwise
 // stall the caller (and the provider command reactor) forever.
 const CLAUDE_INTERRUPT_TIMEOUT = Duration.seconds(10);
 
 export function makeClaudeSessionInteractions(input: {
-  readonly requireSession: ReturnType<typeof makeClaudeSessionAccess>["requireSession"];
+  readonly requireSession: ClaudeSessionAccessShape["requireSession"];
   readonly readClaudeContextUsage: ReturnType<
     typeof makeClaudeContextUsage
   >["readClaudeContextUsage"];
-  readonly sessions: Map<ThreadId, ClaudeSessionContext>;
+  readonly sessions: ClaudeSessionRegistryShape;
   readonly nowIso: Effect.Effect<string>;
-  readonly emitClaudeCacheObservation: ReturnType<
-    typeof makeClaudeRuntimeEvents
-  >["emitClaudeCacheObservation"];
+  readonly emitClaudeCacheObservation: ClaudeRuntimeEventsShape["emitClaudeCacheObservation"];
   readonly serverConfig: ServerConfigShape;
-  readonly snapshotThread: ReturnType<typeof makeClaudeRuntimeEvents>["snapshotThread"];
+  readonly snapshotThread: ClaudeRuntimeEventsShape["snapshotThread"];
   readonly settlePendingApproval: ReturnType<
     typeof makeClaudeInteractionSettlement
   >["settlePendingApproval"];
@@ -66,7 +64,7 @@ export function makeClaudeSessionInteractions(input: {
       const context = yield* requireSession(threadId);
 
       const usage = yield* readClaudeContextUsage(context);
-      if (context.stopped || sessions.get(threadId) !== context) return undefined;
+      if (context.stopped || !sessions.isCurrent(threadId, context)) return undefined;
       const observedAt = yield* nowIso;
       const previous = claudeCacheForModel(context.cacheObservation, context.currentApiModelId);
       const contextTokens =

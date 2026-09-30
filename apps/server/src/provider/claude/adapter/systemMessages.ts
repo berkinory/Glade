@@ -2,7 +2,7 @@ import { makeClaudeInteractionSettlement } from "./interactionSettlement";
 import { makeClaudeWorkflowRuntime } from "./workflowRuntime";
 import { Effect, FileSystem } from "effect";
 import { EventId, RuntimeTaskId } from "@glade/contracts/core/baseSchemas";
-import { makeClaudeRuntimeEvents } from "./runtimeEvents";
+import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 import { makeClaudeTurnCompletion } from "./turnCompletion";
 import { makeClaudeToolTracking } from "./toolTracking";
 import { makeClaudeTaskPresentation } from "./taskPresentation";
@@ -36,15 +36,13 @@ export function makeClaudeSystemMessages(input: {
     typeof makeClaudeWorkflowRuntime
   >["stopWorkflowRuntimePoller"];
   readonly makeEventStamp: () => Effect.Effect<{ eventId: EventId; createdAt: string }>;
-  readonly offerRuntimeEvent: ReturnType<typeof makeClaudeRuntimeEvents>["offerRuntimeEvent"];
+  readonly offerRuntimeEvent: ClaudeRuntimeEventsShape["offerRuntimeEvent"];
   readonly completeTurn: ReturnType<typeof makeClaudeTurnCompletion>["completeTurn"];
-  readonly updateResumeCursor: ReturnType<typeof makeClaudeRuntimeEvents>["updateResumeCursor"];
-  readonly emitRuntimeWarning: ReturnType<typeof makeClaudeRuntimeEvents>["emitRuntimeWarning"];
-  readonly emitCompactionProgress: ReturnType<
-    typeof makeClaudeRuntimeEvents
-  >["emitCompactionProgress"];
+  readonly updateResumeCursor: ClaudeRuntimeEventsShape["updateResumeCursor"];
+  readonly emitRuntimeWarning: ClaudeRuntimeEventsShape["emitRuntimeWarning"];
+  readonly emitCompactionProgress: ClaudeRuntimeEventsShape["emitCompactionProgress"];
   readonly ensureSubagentRun: ReturnType<typeof makeClaudeToolTracking>["ensureSubagentRun"];
-  readonly emitRuntimeError: ReturnType<typeof makeClaudeRuntimeEvents>["emitRuntimeError"];
+  readonly emitRuntimeError: ClaudeRuntimeEventsShape["emitRuntimeError"];
   readonly resolveWorkflowScriptText: ReturnType<
     typeof makeClaudeWorkflowRuntime
   >["resolveWorkflowScriptText"];
@@ -52,7 +50,7 @@ export function makeClaudeSystemMessages(input: {
     typeof makeClaudeTaskPresentation
   >["emitTaskUsageSnapshot"];
   readonly fileSystem: FileSystem.FileSystem;
-  readonly warnUnhandledSdkKind: ReturnType<typeof makeClaudeRuntimeEvents>["warnUnhandledSdkKind"];
+  readonly warnUnhandledSdkKind: ClaudeRuntimeEventsShape["warnUnhandledSdkKind"];
 }) {
   const {
     settlePendingHumanInteractionsForAgent,

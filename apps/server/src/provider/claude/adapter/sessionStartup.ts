@@ -1,9 +1,10 @@
+import type { ClaudeSessionRegistryShape } from "../../Services/ClaudeSessionRegistry.ts";
 import type { Fiber } from "effect";
-import { makeClaudeSessionAccess } from "./sessionAccess";
+import type { ClaudeSessionAccessShape } from "../../Services/ClaudeSessionAccess.ts";
 import { Effect, Clock, Random, Queue, Stream, Cause, Ref, Exit } from "effect";
 import { ThreadId, EventId, ApprovalRequestId } from "@glade/contracts/core/baseSchemas";
 import { ClaudeProcessOwner, ClaudeQueryRuntime } from "./adapterConfiguration";
-import { makeClaudeProcessOwnership } from "./processOwnership";
+import type { ClaudeProcessOwnershipShape } from "../../Services/ClaudeProcessOwnership.ts";
 import {
   ClaudeSessionContext,
   PROVIDER,
@@ -14,7 +15,7 @@ import {
 } from "./sessionTypes";
 import { makeClaudeSessionTeardown } from "./sessionTeardown";
 import { type AgentGatewayCredentialsShape } from "../../../agentGateway/Services/AgentGatewayCredentials.ts";
-import { makeClaudeRuntimeEvents } from "./runtimeEvents";
+import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 import { makeClaudeInteractionSettlement } from "./interactionSettlement";
 import { makeClaudeToolTracking } from "./toolTracking";
 import { makeClaudeTaskPresentation } from "./taskPresentation";
@@ -56,18 +57,11 @@ import { ClaudeRequestUsage } from "../claudeRequestUsage.ts";
 import { makeClaudeDiscovery } from "./discovery";
 
 export function makeClaudeSessionStartup(input: {
-  readonly resolveClaudeStartPreflight: ReturnType<
-    typeof makeClaudeSessionAccess
-  >["resolveClaudeStartPreflight"];
+  readonly resolveClaudeStartPreflight: ClaudeSessionAccessShape["resolveClaudeStartPreflight"];
   readonly nowIso: Effect.Effect<string>;
-  readonly failedStartupProcessOwners: Map<ThreadId, ClaudeProcessOwner>;
-  readonly teardownFailedStartupProcess: ReturnType<
-    typeof makeClaudeProcessOwnership
-  >["teardownFailedStartupProcess"];
-  readonly sessions: Map<ThreadId, ClaudeSessionContext>;
-  readonly assertSessionReplaceable: ReturnType<
-    typeof makeClaudeSessionAccess
-  >["assertSessionReplaceable"];
+  readonly processOwnership: ClaudeProcessOwnershipShape;
+  readonly sessions: ClaudeSessionRegistryShape;
+  readonly assertSessionReplaceable: ClaudeSessionAccessShape["assertSessionReplaceable"];
   readonly stopSessionInternal: ReturnType<typeof makeClaudeSessionTeardown>["stopSessionInternal"];
   readonly agentGatewayCredentials: AgentGatewayCredentialsShape | undefined;
   readonly cacheClock: Clock.Clock;
@@ -76,11 +70,9 @@ export function makeClaudeSessionStartup(input: {
     effect: Effect.Effect<A, E>,
     options?: Effect.RunOptions,
   ) => Fiber.Fiber<A, E>;
-  readonly emitClaudeCacheObservation: ReturnType<
-    typeof makeClaudeRuntimeEvents
-  >["emitClaudeCacheObservation"];
+  readonly emitClaudeCacheObservation: ClaudeRuntimeEventsShape["emitClaudeCacheObservation"];
   readonly makeEventStamp: () => Effect.Effect<{ eventId: EventId; createdAt: string }>;
-  readonly offerRuntimeEvent: ReturnType<typeof makeClaudeRuntimeEvents>["offerRuntimeEvent"];
+  readonly offerRuntimeEvent: ClaudeRuntimeEventsShape["offerRuntimeEvent"];
   readonly settlePendingUserInput: ReturnType<
     typeof makeClaudeInteractionSettlement
   >["settlePendingUserInput"];
@@ -97,9 +89,7 @@ export function makeClaudeSessionStartup(input: {
   readonly settlePendingApproval: ReturnType<
     typeof makeClaudeInteractionSettlement
   >["settlePendingApproval"];
-  readonly bindClaudeProcessOwner: ReturnType<
-    typeof makeClaudeProcessOwnership
-  >["bindClaudeProcessOwner"];
+  readonly bindClaudeProcessOwner: ClaudeProcessOwnershipShape["bindClaudeProcessOwner"];
   readonly createQuery: (input: {
     readonly prompt: AsyncIterable<SDKUserMessage>;
     readonly options: ClaudeQueryOptions;
@@ -116,8 +106,7 @@ export function makeClaudeSessionStartup(input: {
   const {
     resolveClaudeStartPreflight,
     nowIso,
-    failedStartupProcessOwners,
-    teardownFailedStartupProcess,
+    processOwnership,
     sessions,
     assertSessionReplaceable,
     stopSessionInternal,
@@ -229,9 +218,9 @@ export function makeClaudeSessionStartup(input: {
       const claudeSubagents = buildClaudeSdkSubagents();
       const { claudeSdkEnv, snapshotSupported } =
         preflight ?? (yield* resolveClaudeStartPreflight(input));
-      const failedStartupProcessOwner = failedStartupProcessOwners.get(threadId);
+      const failedStartupProcessOwner = processOwnership.failedStartupOwner(threadId);
       if (failedStartupProcessOwner) {
-        yield* teardownFailedStartupProcess(threadId, failedStartupProcessOwner);
+        yield* processOwnership.teardownFailedStartupProcess(threadId, failedStartupProcessOwner);
       }
       const existing = sessions.get(threadId);
       if (existing) {
@@ -341,13 +330,9 @@ export function makeClaudeSessionStartup(input: {
       }).pipe(
         Effect.tapError(() =>
           Effect.all([
-            teardownFailedStartupProcess(threadId, processOwner).pipe(
+            processOwnership.teardownFailedStartupProcess(threadId, processOwner).pipe(
               Effect.catch((error) =>
-                Effect.sync(() => {
-                  if (processOwner.process) {
-                    failedStartupProcessOwners.set(threadId, processOwner);
-                  }
-                }).pipe(
+                processOwnership.rememberFailedStartupOwner(threadId, processOwner).pipe(
                   Effect.andThen(
                     Effect.logWarning("claude.session.failed_start_teardown_unproven", {
                       threadId,
@@ -496,7 +481,7 @@ export function makeClaudeSessionStartup(input: {
         installationContext = context;
         yield* Effect.gen(function* () {
           yield* Ref.set(contextRef, context);
-          sessions.set(threadId, context);
+          yield* sessions.register(threadId, context);
 
           const sessionStartedStamp = yield* makeEventStamp();
           yield* offerRuntimeEvent(context, {
@@ -586,7 +571,7 @@ export function makeClaudeSessionStartup(input: {
                   cause: Cause.pretty(closeExit.cause),
                 });
               }
-              yield* teardownFailedStartupProcess(threadId, processOwner);
+              yield* processOwnership.teardownFailedStartupProcess(threadId, processOwner);
             });
           }).pipe(Effect.ignore),
         ),

@@ -1,27 +1,24 @@
 import {
   ClaudeAdapterLiveOptions,
   ClaudeQueryRuntime,
-  ClaudeProcessOwner,
 } from "../claude/adapter/adapterConfiguration";
-import { Effect, FileSystem, Option, Queue, DateTime, Clock, Random, Stream, Layer } from "effect";
+import { Effect, FileSystem, Option, Clock, Layer } from "effect";
 import { ServerConfig } from "../../server/config.ts";
 import { AgentGatewayCredentials } from "../../agentGateway/Services/AgentGatewayCredentials.ts";
-import { makeEventNdjsonLogger } from "./EventNdjsonLogger.ts";
 import type { SDKUserMessage, Options as ClaudeQueryOptions } from "@anthropic-ai/claude-agent-sdk";
 import { loadClaudeAgentSdk } from "../claude/claudeAgentSdk.ts";
-import {
-  spawnOwnedClaudeCodeProcess,
-  readInstalledClaudeCliVersion,
-} from "../claude/adapter/sdkProcessRuntime";
-import { teardownProviderProcessTree } from "../../platform/supervisedProcessTeardown";
-import { ThreadId, EventId } from "@glade/contracts/core/baseSchemas";
-import { ClaudeSessionContext, PROVIDER } from "../claude/adapter/sessionTypes";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { PROVIDER } from "../claude/adapter/sessionTypes";
+import { ClaudeSessionRegistry } from "../Services/ClaudeSessionRegistry.ts";
+import { ClaudeSessionRegistryLive } from "./ClaudeSessionRegistry.ts";
+import { ClaudeSessionAccess } from "../Services/ClaudeSessionAccess.ts";
+import { makeClaudeSessionAccessLive } from "./ClaudeSessionAccess.ts";
+import { ClaudeRuntimeEvents } from "../Services/ClaudeRuntimeEvents.ts";
+import { makeClaudeRuntimeEventsLive } from "./ClaudeRuntimeEvents.ts";
 import { makeKeyedLock } from "../core/keyedLock.ts";
-import { type ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
-import { PROVIDER_ADAPTER_RUNTIME_EVENT_BUFFER_CAPACITY } from "../Services/ProviderAdapter.ts";
 import { buildClaudeProcessEnv } from "../claude/claudeProcessEnv.ts";
-import { makeClaudeProcessOwnership } from "../claude/adapter/processOwnership";
-import { makeClaudeRuntimeEvents } from "../claude/adapter/runtimeEvents";
+import { ClaudeProcessOwnership } from "../Services/ClaudeProcessOwnership.ts";
+import { makeClaudeProcessOwnershipLive } from "./ClaudeProcessOwnership.ts";
 import { makeClaudeAssistantText } from "../claude/adapter/assistantText";
 import { makeClaudeContextUsage } from "../claude/adapter/contextUsage";
 import { makeClaudeTaskPresentation } from "../claude/adapter/taskPresentation";
@@ -31,7 +28,6 @@ import { makeClaudeWorkflowRuntime } from "../claude/adapter/workflowRuntime";
 import { makeClaudeToolTracking } from "../claude/adapter/toolTracking";
 import { type ClaudeAdapterShape, ClaudeAdapter } from "../Services/ClaudeAdapter.ts";
 import { settleConcurrentTeardowns } from "../core/settleConcurrentTeardowns.ts";
-import { makeClaudeSessionAccess } from "../claude/adapter/sessionAccess";
 import { makeClaudeSessionTeardown } from "../claude/adapter/sessionTeardown";
 import { makeClaudeContentMessages } from "../claude/adapter/contentMessages";
 import { makeClaudeSystemMessages } from "../claude/adapter/systemMessages";
@@ -55,14 +51,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
     const agentGatewayCredentials = Option.getOrUndefined(
       yield* Effect.serviceOption(AgentGatewayCredentials),
     );
-    const nativeEventLogger =
-      options?.nativeEventLogger ??
-      (options?.nativeEventLogPath !== undefined
-        ? yield* makeEventNdjsonLogger(options.nativeEventLogPath, {
-            stream: "native",
-          })
-        : undefined);
-
     const createQuery = async (input: {
       readonly prompt: AsyncIterable<SDKUserMessage>;
       readonly options: ClaudeQueryOptions;
@@ -85,22 +73,14 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       const { forkSession } = await loadClaudeAgentSdk();
       return forkSession(sessionId, forkOptions);
     };
-    const spawnClaudeProcess = options?.spawnClaudeCodeProcess ?? spawnOwnedClaudeCodeProcess;
-    const teardownProcessTree = options?.teardownProcessTree ?? teardownProviderProcessTree;
-    const readClaudeCliVersion = options?.readClaudeCliVersion ?? readInstalledClaudeCliVersion;
-
-    const sessions = new Map<ThreadId, ClaudeSessionContext>();
-    const failedStartupProcessOwners = new Map<ThreadId, ClaudeProcessOwner>();
-    const failedDiscoveryProcessOwners = new Set<ClaudeProcessOwner>();
+    const sessions = yield* ClaudeSessionRegistry;
+    const processOwnership = yield* ClaudeProcessOwnership;
+    const sessionAccess = yield* ClaudeSessionAccess;
+    const runtimeEvents = yield* ClaudeRuntimeEvents;
     const sessionLifecycleLock = makeKeyedLock<ThreadId>();
-    const runtimeEventQueue = yield* Queue.bounded<ProviderRuntimeEvent>(
-      PROVIDER_ADAPTER_RUNTIME_EVENT_BUFFER_CAPACITY,
-    );
 
-    const nowIso = Effect.map(DateTime.now, DateTime.formatIso);
+    const { nowIso, makeEventStamp, streamEvents } = runtimeEvents;
     const cacheClock = yield* Clock.Clock;
-    const nextEventId = Effect.map(Random.nextUUIDv4, (id) => EventId.makeUnsafe(id));
-    const makeEventStamp = () => Effect.all({ eventId: nextEventId, createdAt: nowIso });
     const withSessionLifecycleLock = sessionLifecycleLock.withLock;
     const resolveClaudeSdkEnv = Effect.sync(() =>
       buildClaudeProcessEnv({ homeDir: serverConfig.homeDir }),
@@ -110,7 +90,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       withSessionLifecycleLock(
         threadId,
         Effect.gen(function* () {
-          const failedOwner = failedStartupProcessOwners.get(threadId);
+          const failedOwner = processOwnership.failedStartupOwner(threadId);
           if (failedOwner) yield* teardownFailedStartupProcess(threadId, failedOwner);
           const context = sessions.get(threadId);
           if (!context) {
@@ -123,7 +103,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       );
 
     const listSessions: ClaudeAdapterShape["listSessions"] = () =>
-      Effect.sync(() => Array.from(sessions.values(), ({ session }) => ({ ...session })));
+      Effect.sync(() => sessions.list().map(({ session }) => ({ ...session })));
 
     const hasSession: ClaudeAdapterShape["hasSession"] = (threadId) =>
       Effect.sync(() => {
@@ -134,10 +114,10 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
     const stopAll: ClaudeAdapterShape["stopAll"] = () =>
       settleConcurrentTeardowns(
         [
-          settleConcurrentTeardowns([...sessions.values()], (context) =>
+          settleConcurrentTeardowns(sessions.list(), (context) =>
             stopSessionInternal(context, { emitExitEvent: true }),
           ),
-          settleConcurrentTeardowns([...failedStartupProcessOwners], ([threadId, owner]) =>
+          settleConcurrentTeardowns(processOwnership.failedStartupOwners(), ([threadId, owner]) =>
             teardownFailedStartupProcess(threadId, owner),
           ),
           teardownFailedDiscoveryProcesses(),
@@ -151,12 +131,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       bindClaudeProcessOwner,
       teardownFailedDiscoveryProcesses,
       teardownDiscoveryProcess,
-    } = makeClaudeProcessOwnership({
-      spawnClaudeProcess,
-      teardownProcessTree,
-      failedStartupProcessOwners,
-      failedDiscoveryProcessOwners,
-    });
+    } = processOwnership;
     const {
       offerRuntimeEvent,
       emitRuntimeWarning,
@@ -168,13 +143,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       ensureThreadId,
       emitClaudeCacheObservation,
       snapshotThread,
-    } = makeClaudeRuntimeEvents({
-      runtimeEventQueue,
-      nativeEventLogger,
-      nowIso,
-      makeEventStamp,
-      sessions,
-    });
+    } = runtimeEvents;
     const {
       completeAssistantTextBlock,
       ensureAssistantTextBlock,
@@ -218,7 +187,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       assertSessionReplaceable,
       requireSession,
       resolveNativeCommandNames,
-    } = makeClaudeSessionAccess({ sessions, resolveClaudeSdkEnv, readClaudeCliVersion });
+    } = sessionAccess;
     const { stopSessionInternal } = makeClaudeSessionTeardown({
       settlePendingHumanInteractions,
       completeTurn,
@@ -337,8 +306,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
     const { startSessionUnlocked, startSession } = makeClaudeSessionStartup({
       resolveClaudeStartPreflight,
       nowIso,
-      failedStartupProcessOwners,
-      teardownFailedStartupProcess,
+      processOwnership,
       sessions,
       assertSessionReplaceable,
       stopSessionInternal,
@@ -379,16 +347,16 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
     yield* Effect.addFinalizer(() =>
       settleConcurrentTeardowns(
         [
-          settleConcurrentTeardowns([...sessions.values()], (context) =>
+          settleConcurrentTeardowns(sessions.list(), (context) =>
             stopSessionInternal(context, { emitExitEvent: false }),
           ),
-          settleConcurrentTeardowns([...failedStartupProcessOwners], ([threadId, owner]) =>
+          settleConcurrentTeardowns(processOwnership.failedStartupOwners(), ([threadId, owner]) =>
             teardownFailedStartupProcess(threadId, owner),
           ),
           teardownFailedDiscoveryProcesses(),
         ],
         (teardown) => teardown,
-      ).pipe(Effect.ignore, Effect.andThen(Queue.shutdown(runtimeEventQueue))),
+      ).pipe(Effect.ignore),
     );
 
     return {
@@ -427,11 +395,20 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       listSkills,
       listModels,
       listAgents,
-      streamEvents: Stream.fromQueue(runtimeEventQueue),
+      streamEvents,
     } satisfies ClaudeAdapterShape;
   });
 }
 
 export function makeClaudeAdapterLive(options?: ClaudeAdapterLiveOptions) {
-  return Layer.effect(ClaudeAdapter, makeClaudeAdapter(options));
+  const registry = ClaudeSessionRegistryLive;
+  const dependencies = Layer.mergeAll(
+    registry,
+    makeClaudeProcessOwnershipLive(options),
+    makeClaudeSessionAccessLive(options).pipe(Layer.provide(registry)),
+    makeClaudeRuntimeEventsLive(options).pipe(Layer.provide(registry)),
+  );
+  return Layer.effect(ClaudeAdapter, makeClaudeAdapter(options)).pipe(
+    Layer.provide(Layer.fresh(dependencies)),
+  );
 }

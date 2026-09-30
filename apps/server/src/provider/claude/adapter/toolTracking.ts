@@ -10,12 +10,12 @@ import {
   toolLifecycleEventData,
 } from "./toolPresentation";
 import { asCanonicalTurnId, asRuntimeItemId, nativeProviderRefs } from "./messageContent";
-import { makeClaudeRuntimeEvents } from "./runtimeEvents";
+import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 import { makeClaudeTaskPresentation } from "./taskPresentation";
 
 export function makeClaudeToolTracking(input: {
   readonly makeEventStamp: () => Effect.Effect<{ eventId: EventId; createdAt: string }>;
-  readonly offerRuntimeEvent: ReturnType<typeof makeClaudeRuntimeEvents>["offerRuntimeEvent"];
+  readonly offerRuntimeEvent: ClaudeRuntimeEventsShape["offerRuntimeEvent"];
   readonly emitTodoTasksUpdated: ReturnType<
     typeof makeClaudeTaskPresentation
   >["emitTodoTasksUpdated"];

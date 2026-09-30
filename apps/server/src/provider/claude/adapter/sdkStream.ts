@@ -1,4 +1,4 @@
-import { makeClaudeRuntimeEvents } from "./runtimeEvents";
+import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 import { makeClaudeTurnCompletion } from "./turnCompletion";
 import { makeClaudeToolTracking } from "./toolTracking";
 import { makeClaudeTaskPresentation } from "./taskPresentation";
@@ -27,10 +27,10 @@ import { makeClaudeContentMessages } from "./contentMessages";
 import { makeClaudeSystemMessages } from "./systemMessages";
 
 export function makeClaudeSdkStream(input: {
-  readonly emitRuntimeError: ReturnType<typeof makeClaudeRuntimeEvents>["emitRuntimeError"];
+  readonly emitRuntimeError: ClaudeRuntimeEventsShape["emitRuntimeError"];
   readonly completeTurn: ReturnType<typeof makeClaudeTurnCompletion>["completeTurn"];
   readonly stopSessionInternal: ReturnType<typeof makeClaudeSessionTeardown>["stopSessionInternal"];
-  readonly logNativeSdkMessage: ReturnType<typeof makeClaudeRuntimeEvents>["logNativeSdkMessage"];
+  readonly logNativeSdkMessage: ClaudeRuntimeEventsShape["logNativeSdkMessage"];
   readonly ensureSubagentRun: ReturnType<typeof makeClaudeToolTracking>["ensureSubagentRun"];
   readonly ensureSyntheticTurn: ReturnType<typeof makeClaudeToolTracking>["ensureSyntheticTurn"];
   readonly handleStreamEvent: ReturnType<typeof makeClaudeContentMessages>["handleStreamEvent"];
@@ -41,10 +41,10 @@ export function makeClaudeSdkStream(input: {
   readonly handleSdkTelemetryMessage: ReturnType<
     typeof makeClaudeSystemMessages
   >["handleSdkTelemetryMessage"];
-  readonly ensureThreadId: ReturnType<typeof makeClaudeRuntimeEvents>["ensureThreadId"];
-  readonly updateResumeCursor: ReturnType<typeof makeClaudeRuntimeEvents>["updateResumeCursor"];
+  readonly ensureThreadId: ClaudeRuntimeEventsShape["ensureThreadId"];
+  readonly updateResumeCursor: ClaudeRuntimeEventsShape["updateResumeCursor"];
   readonly handleSystemMessage: ReturnType<typeof makeClaudeSystemMessages>["handleSystemMessage"];
-  readonly warnUnhandledSdkKind: ReturnType<typeof makeClaudeRuntimeEvents>["warnUnhandledSdkKind"];
+  readonly warnUnhandledSdkKind: ClaudeRuntimeEventsShape["warnUnhandledSdkKind"];
   readonly emitTrackedTasksUpdated: ReturnType<
     typeof makeClaudeTaskPresentation
   >["emitTrackedTasksUpdated"];

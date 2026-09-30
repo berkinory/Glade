@@ -1,7 +1,8 @@
+import type { ClaudeSessionRegistryShape } from "../../Services/ClaudeSessionRegistry.ts";
 import { ThreadId, EventId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { ClaudeSessionContext, PROVIDER, ClaudeTurnState } from "./sessionTypes";
 import { makeClaudeTurnCompletion } from "./turnCompletion";
-import { makeClaudeRuntimeEvents } from "./runtimeEvents";
+import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 import { ClaudeQueryRuntime } from "./adapterConfiguration";
 import { Effect, FileSystem, Option, Random, Queue } from "effect";
 import { ProviderAdapterValidationError, type ProviderAdapterError } from "../../core/Errors.ts";
@@ -33,13 +34,13 @@ import { claudeCacheForModel } from "../claudeCacheObservation.ts";
 import { nativeProviderRefs, buildUserMessageEffect } from "./messageContent";
 import { resolveSelectedClaudeThinkingToggle } from "./modelCapabilities";
 import { type ClaudeApiEffort } from "@glade/contracts/provider/model";
-import { makeClaudeSessionAccess } from "./sessionAccess";
+import type { ClaudeSessionAccessShape } from "../../Services/ClaudeSessionAccess.ts";
 
 export function makeClaudeTurnDispatch(input: {
-  readonly requireSession: ReturnType<typeof makeClaudeSessionAccess>["requireSession"];
-  readonly sessions: Map<ThreadId, ClaudeSessionContext>;
+  readonly requireSession: ClaudeSessionAccessShape["requireSession"];
+  readonly sessions: ClaudeSessionRegistryShape;
   readonly completeTurn: ReturnType<typeof makeClaudeTurnCompletion>["completeTurn"];
-  readonly updateResumeCursor: ReturnType<typeof makeClaudeRuntimeEvents>["updateResumeCursor"];
+  readonly updateResumeCursor: ClaudeRuntimeEventsShape["updateResumeCursor"];
   readonly verifyClaudeAutoModelSupport: (input: {
     readonly queryRuntime: ClaudeQueryRuntime;
     readonly selectedModel: string | undefined;
@@ -47,19 +48,15 @@ export function makeClaudeTurnDispatch(input: {
     readonly operation: "startSession" | "sendTurn";
   }) => Effect.Effect<void, ProviderAdapterValidationError>;
   readonly makeEventStamp: () => Effect.Effect<{ eventId: EventId; createdAt: string }>;
-  readonly offerRuntimeEvent: ReturnType<typeof makeClaudeRuntimeEvents>["offerRuntimeEvent"];
+  readonly offerRuntimeEvent: ClaudeRuntimeEventsShape["offerRuntimeEvent"];
   readonly nowIso: Effect.Effect<string>;
-  readonly emitCompactionProgress: ReturnType<
-    typeof makeClaudeRuntimeEvents
-  >["emitCompactionProgress"];
+  readonly emitCompactionProgress: ClaudeRuntimeEventsShape["emitCompactionProgress"];
   readonly emitTrackedTasksUpdated: ReturnType<
     typeof makeClaudeTaskPresentation
   >["emitTrackedTasksUpdated"];
   readonly fileSystem: FileSystem.FileSystem;
   readonly serverConfig: ServerConfigShape;
-  readonly resolveNativeCommandNames: ReturnType<
-    typeof makeClaudeSessionAccess
-  >["resolveNativeCommandNames"];
+  readonly resolveNativeCommandNames: ClaudeSessionAccessShape["resolveNativeCommandNames"];
 }) {
   const {
     requireSession,
@@ -142,7 +139,7 @@ export function makeClaudeTurnDispatch(input: {
             issue: "Native context compaction is unavailable in this Claude runtime.",
           });
         }
-        if (context.stopped || sessions.get(input.threadId) !== context) {
+        if (context.stopped || !sessions.isCurrent(input.threadId, context)) {
           return yield* new ProviderAdapterValidationError({
             provider: PROVIDER,
             operation: "startClaudeCompaction",
@@ -315,7 +312,7 @@ export function makeClaudeTurnDispatch(input: {
       if (
         isCompaction &&
         (context.stopped ||
-          sessions.get(input.threadId) !== context ||
+          !sessions.isCurrent(input.threadId, context) ||
           hasActiveClaudeCompactionWork(context))
       ) {
         return yield* new ProviderAdapterValidationError({

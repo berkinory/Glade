@@ -13,11 +13,11 @@ import {
   nativeProviderRefs,
   remapAnswersToClaudeQuestionText,
 } from "./messageContent";
-import { makeClaudeRuntimeEvents } from "./runtimeEvents";
+import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 
 export function makeClaudeInteractionSettlement(input: {
   readonly makeEventStamp: () => Effect.Effect<{ eventId: EventId; createdAt: string }>;
-  readonly offerRuntimeEvent: ReturnType<typeof makeClaudeRuntimeEvents>["offerRuntimeEvent"];
+  readonly offerRuntimeEvent: ClaudeRuntimeEventsShape["offerRuntimeEvent"];
 }) {
   const { makeEventStamp, offerRuntimeEvent } = input;
   const settlePendingApproval = (

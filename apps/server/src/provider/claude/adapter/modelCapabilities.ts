@@ -11,7 +11,7 @@ import {
 } from "../claudeTokenUsage.ts";
 import { asNonBlankString } from "@glade/shared/text/text";
 import { type ProviderListModelsResult } from "@glade/contracts/provider/providerDiscovery";
-import { ClaudeSessionContext, PROVIDER } from "./sessionTypes";
+import { type ClaudeSessionUsageCache, PROVIDER } from "./sessionTypes";
 
 type ClaudeAutoModeModelResolution =
   | { readonly status: "matched"; readonly model: ModelInfo }
@@ -60,7 +60,12 @@ export function resolveClaudeAutoModeModel(
   return { status: "matched", model: firstMatch };
 }
 
-export function claudeEffectiveContextBudget(context: ClaudeSessionContext): number | undefined {
+export function claudeEffectiveContextBudget(
+  context: Pick<
+    ClaudeSessionUsageCache,
+    "lastKnownAutoCompactThreshold" | "currentAutoCompactWindow" | "lastKnownContextWindow"
+  >,
+): number | undefined {
   return resolveClaudeEffectiveContextBudget(
     context.lastKnownAutoCompactThreshold,
     context.currentAutoCompactWindow,
