@@ -1,3 +1,4 @@
+import { useRailShellStore } from "../railShellStore";
 import { useSidebarStateStore } from "../sidebarStateStore";
 import { spaceDisplayIcon, spaceDisplayName } from "../lib/spaceGrouping";
 import { resolveSidebarProjectRowLabel } from "./Sidebar.logic.statusTypes";
@@ -168,12 +169,6 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
     renderThreadRow,
     renderProjectItem,
     renderRailSpacesPanel,
-    railActiveItem,
-    railPanelView,
-    railSpacesProjectId,
-    selectRailPanelItem,
-    selectRailRouteItem,
-    openRailSpacesProject,
     setAllProjectsExpanded,
     collapseProjectsExcept,
     isOnKanban,
@@ -184,6 +179,13 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
     railShortcuts,
     railSpacesProject,
   } = context;
+  const railActiveItem = useRailShellStore((state) => state.activeItem);
+  const railPanelView = useRailShellStore((state) => state.panelView);
+  const railSpacesProjectId = useRailShellStore((state) => state.spacesProjectId);
+  const selectRailPanelItem = useRailShellStore((state) => state.selectPanelItem);
+  const selectRailRouteItem = useRailShellStore((state) => state.selectRouteItem);
+  const openRailSpacesProject = useRailShellStore((state) => state.openSpacesProject);
+
   const chatSectionExpanded = useSidebarStateStore((state) => state.chatSectionExpanded);
   const setChatSectionExpanded = useSidebarStateStore((state) => state.setChatSectionExpanded);
   const setThreadListExtraPagesByProjectCwd = useSidebarStateStore(

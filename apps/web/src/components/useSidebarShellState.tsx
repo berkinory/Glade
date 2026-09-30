@@ -105,20 +105,6 @@ export function useSidebarShellState() {
 
   const isRailLayout = useSidebarLayout() === "rail";
 
-  const railActiveItem = useRailShellStore((store) => store.activeItem);
-
-  const railPanelView = useRailShellStore((store) => store.panelView);
-
-  const railSpacesProjectId = useRailShellStore((store) => store.spacesProjectId);
-
-  const selectRailPanelItem = useRailShellStore((store) => store.selectPanelItem);
-
-  const selectRailRouteItem = useRailShellStore((store) => store.selectRouteItem);
-
-  const openRailSpacesProject = useRailShellStore((store) => store.openSpacesProject);
-
-  const closeRailSpacesProject = useRailShellStore((store) => store.closeSpacesProject);
-
   const reconcileRailShell = useRailShellStore((store) => store.reconcile);
 
   const sidebarThreadSummaryById = useStore((store) => store.sidebarThreadSummaryById);
@@ -731,13 +717,6 @@ export function useSidebarShellState() {
     activeSpaceId,
     threadsHydrated,
     isRailLayout,
-    railActiveItem,
-    railPanelView,
-    railSpacesProjectId,
-    selectRailPanelItem,
-    selectRailRouteItem,
-    openRailSpacesProject,
-    closeRailSpacesProject,
     sidebarThreadSummaryById,
     syncServerShellSnapshot,
     markThreadVisited,

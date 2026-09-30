@@ -1,3 +1,4 @@
+import { useRailShellStore } from "../railShellStore";
 import { useSidebarStateStore } from "../sidebarStateStore";
 import { ClockIcon, KanbanIcon, NewThreadIcon } from "~/lib/icons";
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
@@ -51,7 +52,6 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
     activeSpaceId,
     threadsHydrated,
     isRailLayout,
-    railSpacesProjectId,
     renameProjectLocally,
     setProjectAppearanceLocally,
     homeDir,
@@ -82,6 +82,8 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
     activateThreadFromSidebarIntent,
     voidSpace,
   } = context;
+  const railSpacesProjectId = useRailShellStore((state) => state.spacesProjectId);
+
   const persistedPinnedProjectIds = useSidebarStateStore((state) => state.pinnedProjectIds);
   const prunePinnedProjects = useSidebarStateStore((state) => state.prunePinnedProjects);
   const toggleThreadSelection = useSidebarStateStore((state) => state.toggleThread);
