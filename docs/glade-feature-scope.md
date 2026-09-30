@@ -33,8 +33,8 @@ These are physical removals, not dormant implementations behind feature flags.
 
 `apps/desktop/native/computer` provides the permission guide, permission checks,
 input release, Escape monitoring, activation shield and preview frame tap used by
-Computer Use. `computerPermissions.ts` owns permission state and guide lifecycle;
-`computerHelperProtocol.ts` validates helper messages. These do not expose capture
+Computer Use. `apps/desktop/src/computer/computerPermissions.ts` owns permission state and guide lifecycle;
+`apps/desktop/src/computer/computerHelperProtocol.ts` validates helper messages. These do not expose capture
 attachment APIs or a keyboard capture watcher.
 
 ## Workspace editing

@@ -7,7 +7,7 @@ import type {
 } from "@glade/contracts/ipc/ipc";
 
 import type { DesktopComputerManager } from "./computerPermissions";
-import { COMPUTER_PERMISSIONS_IPC_CHANNELS } from "./ipcChannels";
+import { COMPUTER_PERMISSIONS_IPC_CHANNELS } from "../main/ipc/ipcChannels";
 
 const MAX_PERMISSION_KINDS = 8;
 

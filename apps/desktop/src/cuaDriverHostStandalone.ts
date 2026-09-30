@@ -7,8 +7,8 @@ import { randomBytes } from "node:crypto";
 import { access, readFile, stat, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 
-import { CuaDriverHost, sweepOrphanedCuaDrivers } from "./cuaDriverHost";
-import { clearStaleCuaHostSocket } from "./cuaHostSocket";
+import { CuaDriverHost, sweepOrphanedCuaDrivers } from "./computer/cua/cuaDriverHost";
+import { clearStaleCuaHostSocket } from "./computer/cua/cuaHostSocket";
 
 function option(name: string): string | undefined {
   const index = process.argv.indexOf(name);

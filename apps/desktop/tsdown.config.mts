@@ -43,7 +43,7 @@ export default defineConfig([
   },
   {
     ...shared,
-    entry: ["src/browserAnnotations/guestPreload.ts"],
+    entry: ["src/browser/annotations/guestPreload.ts"],
   },
   {
     ...shared,

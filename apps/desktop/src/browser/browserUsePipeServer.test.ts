@@ -5,7 +5,7 @@ import { basename, dirname, join } from "node:path";
 
 import { describe, expect, it, vi } from "vitest";
 
-import { BrowserAutomationHostError } from "./browserAutomation/hostErrors";
+import { BrowserAutomationHostError } from "./automation/hostErrors";
 import {
   BrowserHostPipeServer,
   GLADE_BROWSER_HOST_CAPABILITY_FD_ENV,

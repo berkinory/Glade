@@ -21,7 +21,7 @@ import type {
 } from "@glade/contracts/browser/browserAnnotations";
 
 import type { DesktopBrowserManager } from "./browserManager";
-import { BROWSER_IPC_CHANNELS } from "./ipcChannels";
+import { BROWSER_IPC_CHANNELS } from "../main/ipc/ipcChannels";
 
 export function sendBrowserState(
   webContents: WebContents | null | undefined,

@@ -1,8 +1,8 @@
-import { parseComputerHelperMessage } from "./computerHelperProtocol";
+import { parseComputerHelperMessage } from "../computerHelperProtocol";
 import * as ChildProcess from "node:child_process";
 import * as Readline from "node:readline";
 
-import { type ComputerHelperMessage } from "./computerHelperProtocol";
+import { type ComputerHelperMessage } from "../computerHelperProtocol";
 
 const RESPAWN_BASE_DELAY_MS = 1_000;
 const RESPAWN_MAX_DELAY_MS = 30_000;

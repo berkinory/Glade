@@ -5,7 +5,7 @@ on:
     paths:
       - ".github/workflows/cua-native-check.yml"
       - "apps/desktop/patches/cua-driver/**"
-      - "apps/desktop/src/cuaDriverHost*"
+      - "apps/desktop/src/computer/cua/**"
       - "packages/shared/src/computer/cuaDriver*"
       - "packages/shared/src/computer/cuaActionDiagnostics*"
   push:
@@ -13,7 +13,7 @@ on:
     paths:
       - ".github/workflows/cua-native-check.yml"
       - "apps/desktop/patches/cua-driver/**"
-      - "apps/desktop/src/cuaDriverHost*"
+      - "apps/desktop/src/computer/cua/**"
       - "packages/shared/src/computer/cuaDriver*"
       - "packages/shared/src/computer/cuaActionDiagnostics*"
   workflow_dispatch:
@@ -86,7 +86,7 @@ jobs:
 
       - name: Run host IPC and diagnostic regressions
         run: |
-          bun run --cwd apps/desktop test src/cuaDriverHost.test.ts
+          bun run --cwd apps/desktop test src/computer/cua/cuaDriverHost.test.ts
           bun run --cwd packages/shared test src/cuaActionDiagnostics.test.ts
 
       - name: Run computer lifecycle and delivery regressions

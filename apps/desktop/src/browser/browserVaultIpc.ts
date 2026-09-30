@@ -2,8 +2,8 @@ import { BrowserVaultSettings } from "@glade/contracts/browser/browserVault";
 import type { IpcMain, IpcMainInvokeEvent } from "electron";
 import { Schema } from "effect";
 import type { DesktopBrowserManager } from "./browserManager";
-import type { BrowserVault } from "./browserAutomation/browserVault";
-import { BROWSER_IPC_CHANNELS } from "./ipcChannels";
+import type { BrowserVault } from "./automation/browserVault";
+import { BROWSER_IPC_CHANNELS } from "../main/ipc/ipcChannels";
 
 const Response = Schema.Struct({ id: Schema.String, save: Schema.Boolean });
 const Password = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(1024));

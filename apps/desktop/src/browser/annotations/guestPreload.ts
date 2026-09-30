@@ -10,7 +10,10 @@ import {
   sanitizeBrowserAnnotationUrl,
 } from "@glade/shared/browser/browserAnnotations";
 
-import { BROWSER_ANNOTATION_GUEST_COMMAND_CHANNEL, BROWSER_IPC_CHANNELS } from "../ipcChannels";
+import {
+  BROWSER_ANNOTATION_GUEST_COMMAND_CHANNEL,
+  BROWSER_IPC_CHANNELS,
+} from "../../main/ipc/ipcChannels";
 import {
   formatCssBorderRadius,
   formatElementSize,
@@ -31,7 +34,7 @@ import {
   GUEST_ANNOTATION_PROTOCOL_VERSION,
   isGuestAnnotationCommand,
 } from "./guestProtocol";
-import "../browserWebMcp/guestBridge";
+import "../webMcp/guestBridge";
 
 const HOST_ATTRIBUTE = "data-glade-browser-annotations";
 

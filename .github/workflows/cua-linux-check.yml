@@ -5,18 +5,18 @@ on:
     paths:
       - ".github/workflows/cua-linux-check.yml"
       - "apps/desktop/patches/cua-driver/**"
-      - "apps/desktop/src/cuaDriverHost*"
-      - "apps/desktop/src/linuxCua*"
-      - "apps/desktop/src/linuxEscapeKillSwitchMonitor*"
+      - "apps/desktop/src/computer/cua/**"
+      - "apps/desktop/src/computer/cua/linuxCua*"
+      - "apps/desktop/src/computer/cua/linuxEscapeKillSwitchMonitor*"
       - "packages/shared/src/computer/cuaDriver*"
   push:
     branches: [main]
     paths:
       - ".github/workflows/cua-linux-check.yml"
       - "apps/desktop/patches/cua-driver/**"
-      - "apps/desktop/src/cuaDriverHost*"
-      - "apps/desktop/src/linuxCua*"
-      - "apps/desktop/src/linuxEscapeKillSwitchMonitor*"
+      - "apps/desktop/src/computer/cua/**"
+      - "apps/desktop/src/computer/cua/linuxCua*"
+      - "apps/desktop/src/computer/cua/linuxEscapeKillSwitchMonitor*"
       - "packages/shared/src/computer/cuaDriver*"
   workflow_dispatch:
 
@@ -47,7 +47,7 @@ jobs:
 
       - name: Run Linux admission, host IPC and protocol regressions
         run: |
-          bun run --cwd apps/desktop test src/cuaDriverHost.test.ts src/linuxCuaDriverHost.test.ts src/linuxCuaAdmission.test.ts src/linuxEscapeKillSwitchMonitor.test.ts
+          bun run --cwd apps/desktop test src/computer/cua/cuaDriverHost.test.ts src/computer/cua/linuxCuaDriverHost.test.ts src/computer/cua/linuxCuaAdmission.test.ts src/computer/cua/linuxEscapeKillSwitchMonitor.test.ts
           bun run --cwd packages/shared test src/cuaDriverProtocol.test.ts src/cuaActionDiagnostics.test.ts
           bun run --cwd apps/server test src/browserAutomation/browserHostRpcClient.test.ts src/computer/ComputerManager.test.ts src/computer/CuaComputerBackend.test.ts
 

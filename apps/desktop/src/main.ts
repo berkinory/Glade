@@ -1,9 +1,12 @@
-import { CuaDriverHost, sweepOrphanedCuaDrivers } from "./cuaDriverHost";
-import { createLinuxCuaDriverHost } from "./linuxCuaDriverHost";
-import { LinuxEscapeKillSwitchMonitor, linuxEscapeSession } from "./linuxEscapeKillSwitchMonitor";
-import { ComputerFrameTap } from "./computerFrameTap";
-import { ComputerShield } from "./computerShield";
-import { registerComputerDesktopLifecycle } from "./computerDesktopLifecycle";
+import { CuaDriverHost, sweepOrphanedCuaDrivers } from "./computer/cua/cuaDriverHost";
+import { createLinuxCuaDriverHost } from "./computer/cua/linuxCuaDriverHost";
+import {
+  LinuxEscapeKillSwitchMonitor,
+  linuxEscapeSession,
+} from "./computer/cua/linuxEscapeKillSwitchMonitor";
+import { ComputerFrameTap } from "./computer/computerFrameTap";
+import { ComputerShield } from "./computer/computerShield";
+import { registerComputerDesktopLifecycle } from "./computer/computerDesktopLifecycle";
 import { COMPUTER_PERMISSIONS } from "@glade/shared/computer/computerGrants";
 import { CUA_HOST_SOCKET_ENV } from "@glade/shared/computer/cuaDriverProtocol";
 import { MODEL_SCREEN_IMAGE_MAX_DIMENSION } from "@glade/shared/computer/modelImageBudget";
@@ -79,8 +82,8 @@ import {
   type MigrationSchemaTooNewStartupBlock,
 } from "@glade/shared/platform/migrationRecovery";
 import { ensureStaticSnapshot, findAsarArchivePath } from "./storage/staticSnapshot";
-import { isBackendReadinessAborted, waitForHttpReady } from "./backendReadiness";
-import { resolveBackendNodeArgs } from "./backendNodeOptions";
+import { isBackendReadinessAborted, waitForHttpReady } from "./backend/backendReadiness";
+import { resolveBackendNodeArgs } from "./backend/backendNodeOptions";
 import {
   retainLiveBackendAfterShutdownFailure,
   requireWindowsBackendExit,
@@ -88,22 +91,22 @@ import {
   shouldDeferDesktopWindowClose,
   stopPosixBackendAndWait,
   stopWindowsBackendAndWait,
-} from "./backendShutdown";
+} from "./backend/backendShutdown";
 import {
   bundleSignatureFromStats,
   isBundleStable,
   isBundleSwapped,
   isWatchableBundlePath,
   type BundleSignature,
-} from "./bundleSwapDetection";
-import { waitForBackendStartupReady } from "./backendStartupReadiness";
-import { showDesktopConfirmDialog } from "./confirmDialog";
+} from "./main/protocol/bundleSwapDetection";
+import { waitForBackendStartupReady } from "./backend/backendStartupReadiness";
+import { showDesktopConfirmDialog } from "./main/window/confirmDialog";
 import {
   desktopAppIconResourceName,
   isDesktopAppIcon,
   shouldUpdateDesktopAppIcon,
   usesMacBundleAppIcon,
-} from "./desktopAppIcon";
+} from "./main/window/desktopAppIcon";
 import {
   applyWindowsTaskbarIcon,
   collectWindowsShortcutPaths,
@@ -112,27 +115,27 @@ import {
   syncWindowsShortcutIcons,
   windowsShellIconContentKey,
   windowsShellIconCachePath,
-} from "./windowsTaskbarIcon";
+} from "./windowsShell/windowsTaskbarIcon";
 import {
   applyWindowsShellAppUserModel,
   ensureWindowsShellAppUserModelHelper,
   nativeWindowHandleToHwnd,
-} from "./windowsShellAppUserModel";
-import { createExclusiveApplyQueue } from "./exclusiveApplyQueue";
-import { extractIcoPngImages, toWindowsShellIco } from "./windowsShellIco";
+} from "./windowsShell/windowsShellAppUserModel";
+import { createExclusiveApplyQueue } from "./main/updates/exclusiveApplyQueue";
+import { extractIcoPngImages, toWindowsShellIco } from "./windowsShell/windowsShellIco";
 import {
   makeUpdateInstallPreparationCoordinator,
   type UpdateInstallPreparationAttempt,
-} from "./updateInstallPreparation";
+} from "./main/updates/updateInstallPreparation";
 import {
   makeDeferredDesktopQuitIntentCoordinator,
   settleDeferredDesktopQuitAfterUpdaterFailure,
-} from "./desktopQuitIntent";
+} from "./main/lifecycle/desktopQuitIntent";
 import {
   makeRunningChatsQuitGuard,
   quitConfirmationPresentationForPlatform,
   shouldPromptForRunningChatsBeforeQuit,
-} from "./runningChatsQuitGuard";
+} from "./main/lifecycle/runningChatsQuitGuard";
 import {
   hasVerifiedDesktopMigrationRestore,
   hasPendingDesktopMigrationRecovery,
@@ -145,7 +148,7 @@ import {
   type DesktopMigrationRecoveryDecision,
   type DesktopMigrationRecoveryOutcome,
   type DesktopMigrationRecoveryPaths,
-} from "./desktopMigrationRecovery";
+} from "./storage/desktopMigrationRecovery";
 import {
   LSREGISTER_PATH,
   parseLastLaunchVersion,
@@ -153,37 +156,40 @@ import {
   resolveMacAppBundlePath,
   serializeLaunchVersionRecord,
   shouldRefreshIconCache,
-} from "./macIconCacheRefresh";
-import { persistMacAppIcon } from "./macAppIcon";
-import { collectMacUpdateDiagnostics } from "./macUpdateDiagnostics";
-import { openInitialBackendWindow } from "./initialBackendWindowOpen";
-import { isTrustedMediaPermissionRequest } from "./mediaPermissions";
-import { isClipboardWritePermission } from "./clipboardPermissions";
+} from "./main/window/macIconCacheRefresh";
+import { persistMacAppIcon } from "./main/window/macAppIcon";
+import { collectMacUpdateDiagnostics } from "./main/updates/macUpdateDiagnostics";
+import { openInitialBackendWindow } from "./backend/initialBackendWindowOpen";
+import { isTrustedMediaPermissionRequest } from "./main/window/mediaPermissions";
+import { isClipboardWritePermission } from "./main/window/clipboardPermissions";
 import {
   installResumableUpdateDownloader,
   type ResumableDownloaderTarget,
-} from "./resumableUpdateDownload";
-import { hardenElectronUpdater } from "./electronUpdaterSecurity";
-import { ServerListeningDetector } from "./serverListeningDetector";
-import { BackendStartupBlockDetector, type BackendStartupBlock } from "./backendStartupBlock";
+} from "./main/updates/resumableUpdateDownload";
+import { hardenElectronUpdater } from "./main/updates/electronUpdaterSecurity";
+import { ServerListeningDetector } from "./backend/serverListeningDetector";
+import {
+  BackendStartupBlockDetector,
+  type BackendStartupBlock,
+} from "./backend/backendStartupBlock";
 import {
   BACKEND_MAX_CONSECUTIVE_START_FAILURES,
   BackendOutputTailDetector,
   BackendSupervisionPolicy,
   summarizeBackendFailureOutput,
-} from "./backendSupervisionPolicy";
-import { captureBackendProcessOutput } from "./backendProcessOutput";
-import { syncShellEnvironment } from "./syncShellEnvironment";
+} from "./backend/backendSupervisionPolicy";
+import { captureBackendProcessOutput } from "./backend/backendProcessOutput";
+import { syncShellEnvironment } from "./main/lifecycle/syncShellEnvironment";
 import {
   embeddedDesktopMigrationRuntimeSourceDigest,
   inspectDesktopMigrationRuntimeIdentity,
-} from "./migrationBundleIdentity";
-import { MigrationConsentHandoff } from "./migrationConsentHandoff";
+} from "./storage/migrationBundleIdentity";
+import { MigrationConsentHandoff } from "./storage/migrationConsentHandoff";
 import {
   RENDERER_MAX_AUTOMATIC_RELOADS,
   RendererCrashPolicy,
   type RendererCrashResponse,
-} from "./rendererCrashRecovery";
+} from "./main/lifecycle/rendererCrashRecovery";
 import {
   type DownloadProgressSample,
   getAutoUpdateDisabledReason,
@@ -194,8 +200,8 @@ import {
   isUpdateVersionNewer,
   shouldBroadcastDownloadProgress,
   shouldCheckForUpdatesOnForeground,
-} from "./updateState";
-import { registerDesktopVoiceTranscriptionHandler } from "./voiceTranscription";
+} from "./main/updates/updateState";
+import { registerDesktopVoiceTranscriptionHandler } from "./main/ipc/voiceTranscription";
 import {
   applyDesktopPhysicalZoomAction,
   resolveDesktopMenuAccelerator,
@@ -203,7 +209,7 @@ import {
   resolveDesktopZoomShortcutAction,
   resolveKeyboardShortcutsMenuAccelerator,
   shouldUseNativeZoomMenuRoles,
-} from "./menuShortcuts";
+} from "./main/window/menuShortcuts";
 import {
   createInitialDesktopUpdateState,
   reduceDesktopUpdateStateOnCheckFailure,
@@ -217,13 +223,13 @@ import {
   reduceDesktopUpdateStateOnInstallStart,
   reduceDesktopUpdateStateOnNoUpdate,
   reduceDesktopUpdateStateOnUpdateAvailable,
-} from "./updateMachine";
+} from "./main/updates/updateMachine";
 import {
   PendingUpdateCacheClearQueue,
   resolveElectronUpdaterCacheDirName,
   resolveElectronUpdaterLegacyZipPath,
   resolveElectronUpdaterPendingCacheDir,
-} from "./updatePendingCache";
+} from "./main/updates/updatePendingCache";
 import {
   clearInstallMarker,
   createUpdateInstallMarker,
@@ -234,73 +240,79 @@ import {
   writeInstallMarker,
   type UpdateInstallHandoffExpectation,
   type UpdateInstallMarker,
-} from "./updateInstallMarker";
+} from "./main/updates/updateInstallMarker";
 import {
   fingerprintUpdateArtifact,
   verifyUpdateArtifactIdentity,
   type UpdateArtifactIdentity,
-} from "./updateArtifactIdentity";
-import { buildGitHubReleasesPageUrl, resolveGitHubUpdateSource } from "./githubUpdateFeed";
-import { isArm64HostRunningIntelBuild, resolveDesktopRuntimeInfo } from "./runtimeArch";
-import { BROWSER_SESSION_PARTITION, DesktopBrowserManager } from "./browserManager";
-import { BrowserSessionRestore } from "./browserAutomation/browserSessionRestore";
-import { createCookieSessionBackend } from "./browserAutomation/electronCookieSession";
-import { BrowserVault } from "./browserAutomation/browserVault";
-import { BrowserVaultCapture } from "./browserAutomation/browserVaultCapture";
-import { registerBrowserVaultIpc } from "./browserVaultIpc";
-import { shutdownBrowserServices } from "./browserAutomation/browserShutdown";
+} from "./main/updates/updateArtifactIdentity";
+import {
+  buildGitHubReleasesPageUrl,
+  resolveGitHubUpdateSource,
+} from "./main/updates/githubUpdateFeed";
+import {
+  isArm64HostRunningIntelBuild,
+  resolveDesktopRuntimeInfo,
+} from "./main/lifecycle/runtimeArch";
+import { BROWSER_SESSION_PARTITION, DesktopBrowserManager } from "./browser/browserManager";
+import { BrowserSessionRestore } from "./browser/automation/browserSessionRestore";
+import { createCookieSessionBackend } from "./browser/automation/electronCookieSession";
+import { BrowserVault } from "./browser/automation/browserVault";
+import { BrowserVaultCapture } from "./browser/automation/browserVaultCapture";
+import { registerBrowserVaultIpc } from "./browser/browserVaultIpc";
+import { shutdownBrowserServices } from "./browser/automation/browserShutdown";
 import {
   registerBrowserIpcHandlers,
   sendBrowserAnnotationEvent,
   sendBrowserCopyLink,
   sendBrowserState,
-} from "./browserIpc";
+} from "./browser/browserIpc";
 import {
   BrowserHostPipeServer,
   GLADE_BROWSER_HOST_PIPE_PATH,
   resolveBrowserHostPipeBackendEnv,
-} from "./browserUsePipeServer";
-import { normalizeDesktopWsUrl, resolveDesktopWsUrlFromEnv } from "./desktopWsBridge";
+} from "./browser/browserUsePipeServer";
+import { normalizeDesktopWsUrl, resolveDesktopWsUrlFromEnv } from "./main/ipc/desktopWsBridge";
 import {
   repairBrowserProfileFromBridgeManifest,
   resolveDesktopAppDataBase,
   resolveDesktopUserDataPath,
-} from "./desktopUserDataProfile";
-import { isBrokenPipeError } from "./desktopProcessErrors";
-import { createDesktopStaticProtocolResolver } from "./desktopStaticProtocol";
+} from "./storage/desktopUserDataProfile";
+import { isBrokenPipeError } from "./main/lifecycle/desktopProcessErrors";
+import { createDesktopStaticProtocolResolver } from "./main/protocol/desktopStaticProtocol";
 import {
   readCustomTitleBarPreference,
   resolveDesktopCustomTitleBarState,
   resolveDesktopTitleBarFrameOptions,
   writeCustomTitleBarPreference,
-} from "./desktopCustomTitleBar";
+} from "./main/window/desktopCustomTitleBar";
 import {
   normalizeAgentCursorStylePreference,
   readAgentCursorPreference,
   writeAgentCursorPreference,
-} from "./agentCursorPreference";
+} from "./computer/agentCursorPreference";
 import {
   readDesktopWindowState,
   resolveVisibleWindowBounds,
   writeDesktopWindowState,
-} from "./windowState";
+} from "./main/window/windowState";
 import {
   acknowledgeGladeStorageSnapshot,
   readGladeStorageSnapshot,
   resolveGladeStorageSnapshotPath,
-} from "./desktopStorageMigration";
-import { DESKTOP_IPC_CHANNELS } from "./ipcChannels";
-import { DesktopComputerManager } from "./computerPermissions";
-import { notifyBackendComputerEmergencyStop } from "./computerEmergencyStopNotice";
-import { EscapeKillSwitchMonitor } from "./escapeKillSwitchMonitor";
-import { hardenBrowserAnnotationWebviewPreferences } from "./browserAnnotations/webviewSecurity";
-import { LOCAL_HTML_PREVIEW_SCHEME } from "./localHtmlPreviewProtocol";
+} from "./storage/desktopStorageMigration";
+import { DESKTOP_IPC_CHANNELS } from "./main/ipc/ipcChannels";
+import { DesktopComputerManager } from "./computer/computerPermissions";
+import { notifyBackendComputerEmergencyStop } from "./computer/computerEmergencyStopNotice";
+import { EscapeKillSwitchMonitor } from "./computer/cua/escapeKillSwitchMonitor";
+import { hardenBrowserAnnotationWebviewPreferences } from "./browser/annotations/webviewSecurity";
+import { LOCAL_HTML_PREVIEW_SCHEME } from "./browser/localHtmlPreviewProtocol";
 import {
   COMPUTER_SETTINGS_PANE_URLS,
   registerComputerIpcHandlers,
   sendComputerPermissionGuideState,
   sendComputerState,
-} from "./computerPermissionsIpc";
+} from "./computer/computerPermissionsIpc";
 
 const requestedSourceBuildMarker = process.env.GLADE_SOURCE_DESKTOP_BUILD_MARKER;
 if (

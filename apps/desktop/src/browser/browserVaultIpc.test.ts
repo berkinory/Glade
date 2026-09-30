@@ -1,9 +1,9 @@
 import type { IpcMain, IpcMainInvokeEvent } from "electron";
 import { describe, expect, it, vi } from "vitest";
-import type { BrowserVault } from "./browserAutomation/browserVault";
+import type { BrowserVault } from "./automation/browserVault";
 import type { DesktopBrowserManager } from "./browserManager";
 import { registerBrowserVaultIpc } from "./browserVaultIpc";
-import { BROWSER_IPC_CHANNELS } from "./ipcChannels";
+import { BROWSER_IPC_CHANNELS } from "../main/ipc/ipcChannels";
 
 describe("browser vault IPC", () => {
   it("requires the trusted shell's main frame before invoking owner operations", async () => {

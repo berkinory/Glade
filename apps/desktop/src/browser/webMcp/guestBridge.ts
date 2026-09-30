@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 
-import { BROWSER_IPC_CHANNELS } from "../ipcChannels";
+import { BROWSER_IPC_CHANNELS } from "../../main/ipc/ipcChannels";
 
 export function installWebMcpBridgeInMainWorld(hostAllowsCompatibility = false): void {
   type JsonObject = Record<string, unknown>;

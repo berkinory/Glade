@@ -15,7 +15,7 @@ describe.skipIf(process.platform !== "darwin")("native macOS custom icon persist
     try {
       await FS.mkdir(bundlePath);
       const png = await FS.readFile(
-        Path.join(import.meta.dirname, "../resources/dock-icon-dark.png"),
+        Path.join(import.meta.dirname, "../../../resources/dock-icon-dark.png"),
       );
       await persistMacAppIcon({ bundlePath, cacheDirectory, png });
 

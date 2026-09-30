@@ -18,7 +18,7 @@ import {
   sanitizeBrowserAnnotationUrl,
 } from "@glade/shared/browser/browserAnnotations";
 
-import { BROWSER_ANNOTATION_GUEST_COMMAND_CHANNEL } from "../ipcChannels";
+import { BROWSER_ANNOTATION_GUEST_COMMAND_CHANNEL } from "../../main/ipc/ipcChannels";
 import {
   BROWSER_ANNOTATION_PROTOCOL_VERSION,
   parseAnnotationGuestMessage,

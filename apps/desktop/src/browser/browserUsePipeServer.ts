@@ -12,8 +12,8 @@ import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   DesktopBrowserAutomationHost,
   type BrowserAutomationToolRequest,
-} from "./browserAutomation/desktopBrowserAutomationHost";
-import { BrowserAutomationHostError } from "./browserAutomation/hostErrors";
+} from "./automation/desktopBrowserAutomationHost";
+import { BrowserAutomationHostError } from "./automation/hostErrors";
 import type { DesktopBrowserManager } from "./browserManager";
 
 const FRAME_HEADER_BYTES = 4;
@@ -54,8 +54,8 @@ interface PipeClient {
 }
 
 export interface BrowserHostPipeServerOptions {
-  readonly vault?: import("./browserAutomation/browserVault").BrowserVault;
-  readonly vaultCapture?: import("./browserAutomation/browserVaultCapture").BrowserVaultCapture;
+  readonly vault?: import("./automation/browserVault").BrowserVault;
+  readonly vaultCapture?: import("./automation/browserVaultCapture").BrowserVaultCapture;
   readonly pipePath?: string;
   readonly capability?: string;
   readonly platform?: NodeJS.Platform;

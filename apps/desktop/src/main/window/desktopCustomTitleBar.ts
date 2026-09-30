@@ -5,7 +5,7 @@ import {
   defaultCustomTitleBarPreference,
   resolveCustomTitleBarActive,
   supportsCustomTitleBar,
-} from "./main/window/desktopTitleBar";
+} from "./desktopTitleBar";
 
 interface PersistedCustomTitleBarPreference {
   readonly version: 1;

@@ -6,12 +6,12 @@ import type {
   DesktopBridge,
   DesktopComputerPreviewFrame,
 } from "@glade/contracts/ipc/ipc";
-import { normalizeDesktopWsUrl, resolveDesktopWsUrlFromEnv } from "./desktopWsBridge";
-import { DESKTOP_IPC_CHANNELS } from "./ipcChannels";
+import { normalizeDesktopWsUrl, resolveDesktopWsUrlFromEnv } from "./main/ipc/desktopWsBridge";
+import { DESKTOP_IPC_CHANNELS } from "./main/ipc/ipcChannels";
 import {
   parseQuitConfirmationRequest,
   parseQuitConfirmationResponse,
-} from "./runningChatsQuitGuard";
+} from "./main/lifecycle/runningChatsQuitGuard";
 
 const IPC = DESKTOP_IPC_CHANNELS;
 

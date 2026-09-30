@@ -51,7 +51,7 @@ import {
 import {
   BrowserAnnotationCoordinator,
   type BrowserAnnotationRuntime,
-} from "./browserAnnotations/coordinator";
+} from "./annotations/coordinator";
 import {
   isLocalFileUrl,
   isLocalHtmlPreviewUrl,

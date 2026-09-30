@@ -19,7 +19,7 @@ import {
   type StartDesktopBackendShutdownRequest,
 } from "./backendShutdown";
 
-const REPOSITORY_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
+const REPOSITORY_ROOT = fileURLToPath(new URL("../../../..", import.meta.url));
 const SERVER_DIRECTORY = Path.join(REPOSITORY_ROOT, "apps", "server");
 const RUNTIME_STATE_RELATIVE_PATH = Path.join("userdata", "server-runtime.json");
 const MAX_CAPTURED_CHILD_OUTPUT_BYTES = 64 * 1024;

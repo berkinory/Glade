@@ -10,7 +10,7 @@ import {
   type CuaComputerTask,
   type CuaPreviewTarget,
 } from "@glade/shared/computer/cuaDriverProtocol";
-import { DESKTOP_IPC_CHANNELS } from "./ipcChannels";
+import { DESKTOP_IPC_CHANNELS } from "../main/ipc/ipcChannels";
 import { stopNativeHelper } from "./stopNativeHelper";
 
 const COMPUTER_PREVIEW_FRAME_CHANNEL = DESKTOP_IPC_CHANNELS.computerPreviewFrame;

@@ -8,10 +8,10 @@ import { app, BrowserWindow, type WebContents } from "electron";
 import { BetterWright, NetworkPolicy } from "betterwright";
 import { configureElectronNetwork } from "betterwright/electron";
 import { WebSocketServer } from "ws";
-import { gladeHostTarget } from "../src/browserAutomation/betterwrightHostTarget";
-import { BrowserVaultCapture } from "../src/browserAutomation/browserVaultCapture";
-import type { BrowserVault } from "../src/browserAutomation/browserVault";
-import type { BrowserAutomationVisibleRuntime } from "../src/browserManager";
+import { gladeHostTarget } from "../src/browser/automation/betterwrightHostTarget";
+import { BrowserVaultCapture } from "../src/browser/automation/browserVaultCapture";
+import type { BrowserVault } from "../src/browser/automation/browserVault";
+import type { BrowserAutomationVisibleRuntime } from "../src/browser/browserManager";
 
 configureElectronNetwork();
 const home = await mkdtemp(join(tmpdir(), "glade-browser-lifecycle-"));

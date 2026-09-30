@@ -23,14 +23,14 @@ import {
   parseCuaShieldArgs,
   cuaComputerTaskKey,
 } from "@glade/shared/computer/cuaDriverProtocol";
-import type { ComputerFrameTapHost } from "./computerFrameTap";
+import type { ComputerFrameTapHost } from "../computerFrameTap";
 import { linuxBrowserCallIsReadOnly, linuxCuaAdmissionRefusal } from "./linuxCuaAdmission";
 import {
   cuaHostProcessIsAlive,
   markCuaRuntimeDirectory,
   sweepOwnedCuaRuntimeDirectories,
 } from "./cuaRuntimeOwnership";
-import type { ComputerShieldHost } from "./computerShield";
+import type { ComputerShieldHost } from "../computerShield";
 import type { ComputerInputMonitorState, PhysicalComputerInput } from "./escapeKillSwitchMonitor";
 import {
   cuaActionDiagnosticMessage,
