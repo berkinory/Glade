@@ -20,12 +20,6 @@ export type StopRuntimeSessionInput = Parameters<StopRuntimeSession>[0];
 
 export type StopRuntimeSessionEffect = ReturnType<StopRuntimeSession>;
 
-export type ProviderInterruptionFence = {
-  readonly settled: Promise<void>;
-  readonly resolve: () => void;
-  failure: string | null;
-};
-
 export type TargetedChildInterruptTombstone = {
   readonly lifecycleGeneration: string | undefined;
   readonly state: "uncertain" | "confirmed";
@@ -218,13 +212,4 @@ export interface StartedTurnPersistenceInput {
   readonly resumeCursor?: unknown;
   readonly modelSelection?: unknown;
   readonly lastRuntimeEvent: string;
-}
-
-export interface ThreadDispatchState {
-  nextGeneration: number;
-  latestGeneration: number;
-  ownerGeneration: number;
-  readonly inFlightGenerations: Set<number>;
-  readonly outstandingTurnIds: Set<string>;
-  readonly successfulResults: Map<number, StartedTurnPersistenceInput>;
 }

@@ -24,42 +24,8 @@ export interface ProviderRuntimeEventPumpOptions<R> {
     event: ProviderRuntimeEvent,
     cause: string,
   ) => Effect.Effect<void, TaggedFailure, R>;
-  readonly retryBaseDelayMs?: number;
-  readonly retryMaxDelayMs?: number;
+  readonly retry?: { readonly baseDelayMs?: number; readonly maxDelayMs?: number };
   readonly degradedHealAfterSuccesses?: number;
-}
-
-export function makeProviderRuntimeEventPumpHealthRegistry(
-  providers: ReadonlyArray<ProviderKind>,
-): {
-  readonly update: (health: ProviderRuntimeEventPumpHealth) => void;
-  readonly snapshot: () => ReadonlyArray<ProviderRuntimeEventPumpHealth>;
-} {
-  const healthByProvider = new Map<ProviderKind, ProviderRuntimeEventPumpHealth>(
-    providers.map((provider) => [
-      provider,
-      {
-        provider,
-        status: "starting",
-        consecutiveFailures: 0,
-        updatedAt: new Date().toISOString(),
-      },
-    ]),
-  );
-
-  return {
-    update: (health) => {
-      healthByProvider.set(health.provider, health);
-    },
-    snapshot: () =>
-      providers.map((provider) => {
-        const current = healthByProvider.get(provider);
-        if (!current) {
-          throw new Error(`Missing runtime-event pump health for provider '${provider}'.`);
-        }
-        return current;
-      }),
-  };
 }
 
 function retryDelayMs(attempt: number, baseDelayMs: number, maxDelayMs: number): number {
@@ -105,11 +71,11 @@ export function runProviderRuntimeEventPump<R>(
 ): Effect.Effect<void, never, R> {
   const retryBaseDelayMs = Math.max(
     1,
-    Math.floor(options.retryBaseDelayMs ?? DEFAULT_RETRY_BASE_DELAY_MS),
+    Math.floor(options.retry?.baseDelayMs ?? DEFAULT_RETRY_BASE_DELAY_MS),
   );
   const retryMaxDelayMs = Math.max(
     retryBaseDelayMs,
-    Math.floor(options.retryMaxDelayMs ?? DEFAULT_RETRY_MAX_DELAY_MS),
+    Math.floor(options.retry?.maxDelayMs ?? DEFAULT_RETRY_MAX_DELAY_MS),
   );
   const degradedHealAfterSuccesses = Math.max(
     1,

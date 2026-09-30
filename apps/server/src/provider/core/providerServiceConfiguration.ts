@@ -22,8 +22,7 @@ export interface ProviderServiceLiveOptions {
     cause: string,
   ) => Effect.Effect<void, TaggedFailure>;
 
-  readonly runtimeEventRetryBaseDelayMs?: number;
-  readonly runtimeEventRetryMaxDelayMs?: number;
+  readonly runtimeEventRetry?: { readonly baseDelayMs?: number; readonly maxDelayMs?: number };
 
   readonly providerIsEnabled?: (
     provider: ProviderKind,
@@ -49,3 +48,24 @@ export const MAX_TARGETED_CHILD_INTERRUPT_TOMBSTONES = 16_384;
 export const PROVIDER_START_SESSION_TIMEOUT = Duration.seconds(60);
 
 export const PROVIDER_STOP_SESSION_TIMEOUT = Duration.seconds(10);
+
+export function ensureProviderEnabled(
+  providerIsEnabled: ProviderServiceLiveOptions["providerIsEnabled"],
+  provider: ProviderKind,
+  operation: string,
+) {
+  return providerIsEnabled
+    ? providerIsEnabled(provider).pipe(
+        Effect.flatMap((enabled) =>
+          enabled
+            ? Effect.void
+            : Effect.fail(
+                new ProviderValidationError({
+                  operation,
+                  issue: `${provider} is disabled in Settings > Providers.`,
+                }),
+              ),
+        ),
+      )
+    : Effect.void;
+}

@@ -31,8 +31,7 @@ const rotationRetry = makeProviderServiceLayer({
       }
       return Effect.succeed({ sequence: attempts, event });
     }),
-  runtimeEventRetryBaseDelayMs: 1,
-  runtimeEventRetryMaxDelayMs: 1,
+  runtimeEventRetry: { baseDelayMs: 1, maxDelayMs: 1 },
 });
 
 rotationRetry.layer("ProviderServiceLive credential rotation event durability", (it) => {

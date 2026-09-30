@@ -229,8 +229,7 @@ routing.layer("Provider service sessionLifecycle", (it) => {
         staleSettlementPersistedEvents.set(String(event.eventId), event);
         return Effect.succeed({ sequence: staleSettlementPersistedEvents.size, event });
       }),
-    runtimeEventRetryBaseDelayMs: 1,
-    runtimeEventRetryMaxDelayMs: 1,
+    runtimeEventRetry: { baseDelayMs: 1, maxDelayMs: 1 },
   });
 
   staleSettlementRouting.layer("ProviderServiceLive stale-generation settlement", (it) => {
