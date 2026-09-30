@@ -35,6 +35,7 @@ import type {
 import type { GitCheckoutDirtyWorktreeError, GitCommandError } from "../Errors.ts";
 
 export interface ExecuteGitInput {
+  readonly priority?: "foreground" | "background";
   readonly operation: string;
   readonly cwd: string;
   readonly args: ReadonlyArray<string>;

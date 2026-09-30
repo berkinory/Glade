@@ -80,6 +80,7 @@ export interface GitHubPullRequestDetailData {
 
 export interface GitHubCliShape {
   readonly execute: (input: {
+    readonly priority?: "foreground" | "background";
     readonly cwd: string;
     readonly args: ReadonlyArray<string>;
     readonly timeoutMs?: number;

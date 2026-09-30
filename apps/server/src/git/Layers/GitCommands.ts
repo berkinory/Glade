@@ -15,6 +15,8 @@ import {
 import { ChildProcessSpawner } from "effect/unstable/process";
 import { makeEffectProcessCommand } from "../../platform/effectProcessRuntime.ts";
 import { decodeJsonResult } from "../../platform/schemaJson.ts";
+import { GitProcessQueue } from "../gitProcessQueue";
+import { makeKeyedSingleFlightCache } from "../../pullRequests/KeyedSingleFlightCache";
 import { GitCommandError } from "../Errors.ts";
 import type {
   ExecuteGitInput,
@@ -23,6 +25,19 @@ import type {
   GitCoreShape,
 } from "../Services/GitCore.ts";
 import { GitCommands, type ExecuteGitOptions } from "../Services/GitCommands.ts";
+
+const COALESCED_READ_COMMANDS = new Set([
+  "status",
+  "diff",
+  "rev-parse",
+  "rev-list",
+  "show-ref",
+  "symbolic-ref",
+  "for-each-ref",
+  "log",
+  "show",
+  "ls-files",
+]);
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
@@ -379,7 +394,16 @@ const makeGitCommands = Effect.gen(function* () {
   const fileSystem = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const commandSpawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-  const execute: GitCoreShape["execute"] = Effect.fnUntraced(function* (input) {
+  const queue = new GitProcessQueue(6);
+  const reads = yield* makeKeyedSingleFlightCache<ExecuteGitResult, GitCommandError>({
+    maxEntries: 512,
+    ttlMs: 0,
+  });
+  const withPermit = <A, E, R>(
+    effect: Effect.Effect<A, E, R>,
+    priority: "foreground" | "background" = "foreground",
+  ) => queue.run(effect, priority);
+  const executeProcess: GitCoreShape["execute"] = Effect.fnUntraced(function* (input) {
     const commandInput = {
       ...input,
       args: [...input.args],
@@ -477,6 +501,29 @@ const makeGitCommands = Effect.gen(function* () {
     );
   });
 
+  const execute: GitCoreShape["execute"] = (input) => {
+    const command = withPermit(executeProcess(input), input.priority);
+    if (
+      !COALESCED_READ_COMMANDS.has(input.args[0] ?? "") ||
+      input.env ||
+      input.progress ||
+      (input.args[0] === "symbolic-ref" &&
+        (input.args.includes("--delete") ||
+          input.args.includes("-d") ||
+          input.args.filter((arg) => !arg.startsWith("-")).length > 2))
+    )
+      return command;
+    const key = JSON.stringify([
+      input.cwd,
+      input.args,
+      input.allowNonZeroExit,
+      input.timeoutMs,
+      input.maxOutputBytes,
+      input.outputMode,
+    ]);
+    return reads.get(key, command);
+  };
+
   const executeGit = (
     operation: string,
     cwd: string,
@@ -487,6 +534,7 @@ const makeGitCommands = Effect.gen(function* () {
       operation,
       cwd,
       args,
+      ...(options.priority ? { priority: options.priority } : {}),
       allowNonZeroExit: true,
       ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
       ...(options.env ? { env: options.env } : {}),
@@ -535,7 +583,7 @@ const makeGitCommands = Effect.gen(function* () {
     executeGit(operation, cwd, args, { allowNonZeroExit }).pipe(
       Effect.map((result) => result.stdout),
     );
-  return { execute, executeGit, runGit, runGitStdout };
+  return { execute, executeGit, runGit, runGitStdout, withPermit };
 });
 
 export const GitCommandsLive = Layer.effect(GitCommands, makeGitCommands);

@@ -3,6 +3,7 @@ import type { GitCommandError } from "../Errors.ts";
 import type { ExecuteGitInput, ExecuteGitResult, GitCoreShape } from "./GitCore.ts";
 
 export interface ExecuteGitOptions {
+  priority?: "foreground" | "background" | undefined;
   timeoutMs?: number | undefined;
   allowNonZeroExit?: boolean | undefined;
   fallbackErrorMessage?: string | undefined;
@@ -13,6 +14,10 @@ export interface ExecuteGitOptions {
 }
 
 export interface GitCommandsShape {
+  readonly withPermit: <A, E, R>(
+    effect: Effect.Effect<A, E, R>,
+    priority?: "foreground" | "background",
+  ) => Effect.Effect<A, E, R>;
   readonly execute: GitCoreShape["execute"];
   readonly executeGit: (
     operation: string,

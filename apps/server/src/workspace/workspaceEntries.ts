@@ -3,7 +3,11 @@ import fs from "node:fs/promises";
 import type { Dirent } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { runProcess } from "../platform/processRunner";
+import type { ProcessRunOptions, ProcessRunResult } from "../platform/processRunner";
+
+export interface WorkspaceGitRunner {
+  (args: readonly string[], options: ProcessRunOptions): Promise<ProcessRunResult>;
+}
 
 import {
   FilesystemBrowseInput,
@@ -475,8 +479,8 @@ async function mapWithConcurrency<TInput, TOutput>(
   return results;
 }
 
-async function isInsideGitWorkTree(cwd: string): Promise<boolean> {
-  const insideWorkTree = await runProcess("git", ["rev-parse", "--is-inside-work-tree"], {
+async function isInsideGitWorkTree(cwd: string, runGit: WorkspaceGitRunner): Promise<boolean> {
+  const insideWorkTree = await runGit(["rev-parse", "--is-inside-work-tree"], {
     cwd,
     allowNonZeroExit: true,
     timeoutMs: 5_000,
@@ -487,7 +491,11 @@ async function isInsideGitWorkTree(cwd: string): Promise<boolean> {
   );
 }
 
-async function filterGitIgnoredPaths(cwd: string, relativePaths: string[]): Promise<string[]> {
+async function filterGitIgnoredPaths(
+  cwd: string,
+  relativePaths: string[],
+  runGit: WorkspaceGitRunner,
+): Promise<string[]> {
   if (relativePaths.length === 0) {
     return relativePaths;
   }
@@ -501,8 +509,7 @@ async function filterGitIgnoredPaths(cwd: string, relativePaths: string[]): Prom
       return true;
     }
 
-    const checkIgnore = await runProcess(
-      "git",
+    const checkIgnore = await runGit(
       [...WORKSPACE_GIT_HARDENED_CONFIG_ARGS, "check-ignore", "--no-index", "-z", "--stdin"],
       {
         cwd,
@@ -563,13 +570,15 @@ async function filterGitIgnoredPaths(cwd: string, relativePaths: string[]): Prom
   return relativePaths.filter((relativePath) => !ignoredPaths.has(relativePath));
 }
 
-async function buildWorkspaceIndexFromGit(cwd: string): Promise<WorkspaceIndex | null> {
-  if (!(await isInsideGitWorkTree(cwd))) {
+async function buildWorkspaceIndexFromGit(
+  cwd: string,
+  runGit: WorkspaceGitRunner,
+): Promise<WorkspaceIndex | null> {
+  if (!(await isInsideGitWorkTree(cwd, runGit))) {
     return null;
   }
 
-  const listedFiles = await runProcess(
-    "git",
+  const listedFiles = await runGit(
     [
       ...WORKSPACE_GIT_HARDENED_CONFIG_ARGS,
       "ls-files",
@@ -596,7 +605,7 @@ async function buildWorkspaceIndexFromGit(cwd: string): Promise<WorkspaceIndex |
   )
     .map((entry) => toPosixPath(entry))
     .filter((entry) => entry.length > 0 && !isPathInIgnoredDirectory(entry));
-  const filePaths = await filterGitIgnoredPaths(cwd, listedPaths);
+  const filePaths = await filterGitIgnoredPaths(cwd, listedPaths, runGit);
 
   const directorySet = new Set<string>();
   for (const filePath of filePaths) {
@@ -636,12 +645,15 @@ async function buildWorkspaceIndexFromGit(cwd: string): Promise<WorkspaceIndex |
   };
 }
 
-async function buildWorkspaceIndex(cwd: string): Promise<WorkspaceIndex> {
-  const gitIndexed = await buildWorkspaceIndexFromGit(cwd);
+async function buildWorkspaceIndex(
+  cwd: string,
+  runGit: WorkspaceGitRunner,
+): Promise<WorkspaceIndex> {
+  const gitIndexed = await buildWorkspaceIndexFromGit(cwd, runGit);
   if (gitIndexed) {
     return gitIndexed;
   }
-  const shouldFilterWithGitIgnore = await isInsideGitWorkTree(cwd);
+  const shouldFilterWithGitIgnore = await isInsideGitWorkTree(cwd, runGit);
 
   let pendingDirectories: string[] = [""];
   const entries: SearchableWorkspaceEntry[] = [];
@@ -702,7 +714,7 @@ async function buildWorkspaceIndex(cwd: string): Promise<WorkspaceIndex> {
       candidateEntries.map((entry) => entry.relativePath),
     );
     const allowedPathSet = shouldFilterWithGitIgnore
-      ? new Set(await filterGitIgnoredPaths(cwd, candidatePaths))
+      ? new Set(await filterGitIgnoredPaths(cwd, candidatePaths, runGit))
       : null;
 
     for (const candidateEntries of candidateEntriesByDirectory) {
@@ -743,7 +755,7 @@ async function buildWorkspaceIndex(cwd: string): Promise<WorkspaceIndex> {
 
 const workspaceIndexGenerations = new Map<string, number>();
 
-async function getWorkspaceIndex(cwd: string): Promise<WorkspaceIndex> {
+async function getWorkspaceIndex(cwd: string, runGit: WorkspaceGitRunner): Promise<WorkspaceIndex> {
   const cached = workspaceIndexCache.get(cwd);
   if (cached && Date.now() - cached.scannedAt < WORKSPACE_CACHE_TTL_MS) {
     return cached;
@@ -755,7 +767,7 @@ async function getWorkspaceIndex(cwd: string): Promise<WorkspaceIndex> {
   }
 
   const generation = workspaceIndexGenerations.get(cwd) ?? 0;
-  const nextPromise = buildWorkspaceIndex(cwd)
+  const nextPromise = buildWorkspaceIndex(cwd, runGit)
     .then((next) => {
       if ((workspaceIndexGenerations.get(cwd) ?? 0) === generation) {
         workspaceIndexCache.set(cwd, next);
@@ -784,8 +796,9 @@ export function clearWorkspaceIndexCache(cwd: string): void {
 
 export function prewarmWorkspaceSearchIndex(
   input: ProjectPrewarmSearchIndexInput,
+  runGit: WorkspaceGitRunner,
 ): ProjectPrewarmSearchIndexResult {
-  void getWorkspaceIndex(input.cwd).catch(() => undefined);
+  void getWorkspaceIndex(input.cwd, runGit).catch(() => undefined);
   return { started: true };
 }
 
@@ -847,8 +860,9 @@ export async function browseWorkspaceEntries(
 
 export async function searchWorkspaceEntries(
   input: ProjectSearchEntriesInput,
+  runGit: WorkspaceGitRunner,
 ): Promise<ProjectSearchEntriesResult> {
-  const index = await getWorkspaceIndex(input.cwd);
+  const index = await getWorkspaceIndex(input.cwd, runGit);
   const normalizedQuery = normalizeWorkspaceEntrySearchQuery(input.query);
   const limit = Math.max(0, Math.floor(input.limit));
   const rankedEntries: RankedWorkspaceEntry[] = [];
@@ -963,6 +977,7 @@ async function searchFileContent(
 
 export async function searchWorkspaceContent(
   input: ProjectSearchContentInput,
+  runGit: WorkspaceGitRunner,
 ): Promise<ProjectSearchContentResult> {
   const query = input.query.trim();
   if (query.length < CONTENT_SEARCH_MIN_QUERY_LENGTH) {
@@ -974,7 +989,7 @@ export async function searchWorkspaceContent(
     Math.min(input.limit ?? CONTENT_SEARCH_DEFAULT_LIMIT, CONTENT_SEARCH_MAX_LIMIT),
   );
 
-  const index = await getWorkspaceIndex(input.cwd);
+  const index = await getWorkspaceIndex(input.cwd, runGit);
 
   const filePaths = index.entries
     .filter((entry) => entry.kind === "file")
@@ -1102,8 +1117,9 @@ function resolveWorkspaceFileReferenceFromIndex(
 
 export async function resolveWorkspaceFileReferences(
   input: ProjectResolveWorkspaceFileReferencesInput,
+  runGit: WorkspaceGitRunner,
 ): Promise<ProjectResolveWorkspaceFileReferencesResult> {
-  const index = await getWorkspaceIndex(input.cwd);
+  const index = await getWorkspaceIndex(input.cwd, runGit);
   const pathsByBasename = filePathsByBasename(index);
   return {
     relativePaths: input.relativePaths.map((reference) =>
@@ -1112,14 +1128,20 @@ export async function resolveWorkspaceFileReferences(
   };
 }
 
-export async function resolveWorkspaceFileBySuffix(input: {
-  cwd: string;
-  relativePath: string;
-}): Promise<string | null> {
-  const result = await resolveWorkspaceFileReferences({
-    cwd: input.cwd,
-    relativePaths: [input.relativePath],
-  });
+export async function resolveWorkspaceFileBySuffix(
+  input: {
+    cwd: string;
+    relativePath: string;
+  },
+  runGit: WorkspaceGitRunner,
+): Promise<string | null> {
+  const result = await resolveWorkspaceFileReferences(
+    {
+      cwd: input.cwd,
+      relativePaths: [input.relativePath],
+    },
+    runGit,
+  );
   return result.relativePaths[0] ?? null;
 }
 

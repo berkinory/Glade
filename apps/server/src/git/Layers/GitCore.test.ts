@@ -88,6 +88,45 @@ function initRepoWithCommit(
 }
 
 it.layer(TestLayer)("git integration", (it) => {
+  it.effect("shares identical in-flight ref reads through one Git process", () =>
+    Effect.gen(function* () {
+      const core = yield* GitCore;
+      const cwd = yield* makeTmpDir();
+      yield* initRepoWithCommit(cwd);
+      const tracePath = path.join(cwd, "read-trace.json");
+      const results = yield* Effect.acquireUseRelease(
+        Effect.sync(() => {
+          const previous = process.env.GIT_TRACE2_EVENT;
+          process.env.GIT_TRACE2_EVENT = tracePath;
+          return previous;
+        }),
+        () =>
+          Effect.all(
+            Array.from({ length: 24 }, () =>
+              core.execute({
+                operation: "GitCore.test.sharedRead",
+                cwd,
+                args: ["rev-parse", "HEAD"],
+              }),
+            ),
+            { concurrency: "unbounded" },
+          ),
+        (previous) =>
+          Effect.sync(() => {
+            if (previous === undefined) delete process.env.GIT_TRACE2_EVENT;
+            else process.env.GIT_TRACE2_EVENT = previous;
+          }),
+      );
+      expect(results.every((result) => /^[a-f0-9]{40}\n$/.test(result.stdout))).toBe(true);
+      expect(new Set(results.map((result) => result.stdout)).size).toBe(1);
+      const trace = yield* readTextFile(tracePath);
+      const starts = trace
+        .split("\n")
+        .filter((line) => line && (JSON.parse(line) as { event?: string }).event === "start");
+      expect(starts).toHaveLength(1);
+    }),
+  );
+
   describe("bounded working-tree and ref reads", () => {
     it.effect("preserves a regular-file to gitlink type change against the ref", () =>
       Effect.gen(function* () {

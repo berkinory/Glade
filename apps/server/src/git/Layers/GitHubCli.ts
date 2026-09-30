@@ -21,8 +21,10 @@ import {
   parseGitHubRepositoryNameWithOwnerFromRemoteUrl,
 } from "@glade/shared/git/githubRepository";
 
-import { runProcess } from "../../platform/processRunner";
+import { runProcess, type ProcessRunResult } from "../../platform/processRunner";
 import { makeKeyedSingleFlightCache } from "../../pullRequests/KeyedSingleFlightCache";
+import { GitCommands } from "../Services/GitCommands";
+import { GitCommandsLive } from "./GitCommands";
 import { GitHubCliError } from "../Errors.ts";
 import {
   GitHubCli,
@@ -951,6 +953,7 @@ const PULL_REQUEST_LOOKUP_CACHE_TTL_MS = 20_000;
 const PULL_REQUEST_LOOKUP_CACHE_MAX_ENTRIES = 256;
 
 const makeGitHubCli = Effect.gen(function* () {
+  const { withPermit } = yield* GitCommands;
   const pullRequestLookupCache = yield* makeKeyedSingleFlightCache<
     GitHubPullRequestSummary,
     GitHubCliError
@@ -971,7 +974,7 @@ const makeGitHubCli = Effect.gen(function* () {
     { discard: true },
   );
 
-  const execute: GitHubCliShape["execute"] = (input) =>
+  const executeProcess: GitHubCliShape["execute"] = (input) =>
     Effect.tryPromise({
       try: (signal) =>
         runProcess("gh", input.args, {
@@ -990,7 +993,39 @@ const makeGitHubCli = Effect.gen(function* () {
           ...(input.onStderrChunk !== undefined ? { onStderrChunk: input.onStderrChunk } : {}),
         }),
       catch: (error) => normalizeGitHubCliError("execute", error),
-    });
+    }).pipe((effect) => withPermit(effect, input.priority));
+
+  const readFlights = yield* makeKeyedSingleFlightCache<ProcessRunResult, GitHubCliError>({
+    maxEntries: 256,
+    ttlMs: 0,
+  });
+  const execute: GitHubCliShape["execute"] = (input) => {
+    const execution = executeProcess(input);
+    const readOnly =
+      (input.args[0] === "pr" &&
+        ["list", "view", "diff", "checks"].includes(input.args[1] ?? "")) ||
+      (input.args[0] === "repo" && input.args[1] === "view");
+    if (
+      !readOnly ||
+      input.env ||
+      input.stdin !== undefined ||
+      input.onStdoutChunk ||
+      input.onStderrChunk ||
+      input.args.includes("--watch")
+    )
+      return execution;
+    return readFlights.get(
+      JSON.stringify([
+        input.cwd,
+        input.args,
+        input.timeoutMs,
+        input.maxBufferBytes,
+        input.outputMode,
+        input.allowNonZeroExit,
+      ]),
+      execution,
+    );
+  };
 
   const PULL_REQUEST_DIFF_TOO_LARGE_PATTERN = /exceeded the maximum number of files|too_large/i;
   const PULL_REQUEST_DIFF_MISSING_OBJECT_PATTERN =
@@ -1021,7 +1056,7 @@ const makeGitHubCli = Effect.gen(function* () {
           ...(gitInput.outputMode !== undefined ? { outputMode: gitInput.outputMode } : {}),
         }),
       catch: (error) => normalizeGitHubCliError("execute", error),
-    });
+    }).pipe((effect) => withPermit(effect));
 
   const repositoryFromConfiguredRemoteUrl = (remoteUrl: string): string | null => {
     const direct = parseGitHubRepositoryNameWithOwnerFromRemoteUrl(remoteUrl);
@@ -1755,4 +1790,6 @@ const makeGitHubCli = Effect.gen(function* () {
   } satisfies GitHubCliShape;
 });
 
-export const GitHubCliLive = Layer.effect(GitHubCli, makeGitHubCli);
+export const GitHubCliLive = Layer.effect(GitHubCli, makeGitHubCli).pipe(
+  Layer.provide(GitCommandsLive),
+);
