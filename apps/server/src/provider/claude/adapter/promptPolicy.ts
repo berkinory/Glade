@@ -1,6 +1,6 @@
 import type { SettingSource, AgentDefinition } from "@anthropic-ai/claude-agent-sdk";
 import { renderGladeHarnessPolicy } from "../../../agentGateway/harnessPolicy.ts";
-import { getAgentMentionAliases } from "@glade/contracts/provider/agentMentions";
+import { getAgentMentionAliases } from "@glade/shared/provider/agentMentions";
 
 export const CLAUDE_SETTING_SOURCES = [
   "user",

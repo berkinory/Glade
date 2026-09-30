@@ -15,7 +15,7 @@ import {
   normalizeComposerLinkUrl,
   trimTrailingLinkPunctuation,
 } from "./lib/linkChips";
-import { resolveAgentAlias } from "@glade/contracts/provider/agentMentions";
+import { resolveAgentAlias } from "@glade/shared/provider/agentMentions";
 import type { ProviderMentionReference } from "@glade/contracts/provider/providerDiscovery";
 import { threadIdFromThreadMentionPath } from "@glade/shared/threads/threadMentions";
 

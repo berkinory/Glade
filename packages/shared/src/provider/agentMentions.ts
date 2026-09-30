@@ -1,5 +1,5 @@
-import type { ProviderKind } from "../core/baseSchemas";
-import type { ModelSlug } from "./model";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
+import type { ModelSlug } from "@glade/contracts/provider/model";
 
 type AgentAliasColor = "violet" | "fuchsia" | "teal" | "cyan" | "amber" | "orange";
 

@@ -8,7 +8,7 @@ import type {
   ProviderSkillDescriptor,
 } from "@glade/contracts/provider/providerDiscovery";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
-import { getAgentMentionAutocompleteAliases } from "@glade/contracts/provider/agentMentions";
+import { getAgentMentionAutocompleteAliases } from "@glade/shared/provider/agentMentions";
 import {
   buildCommandSearchFields,
   buildPluginSearchFields,

@@ -2,7 +2,7 @@ import {
   resolveAgentAlias,
   type ClaudeSubagentAliasDefinition,
   type ResolvedAgentAlias,
-} from "@glade/contracts/provider/agentMentions";
+} from "@glade/shared/provider/agentMentions";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 
 export interface ParsedAgentMentionInvocation {
