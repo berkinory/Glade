@@ -80,66 +80,32 @@ export interface RemoveLeafResult {
   removedLeafIds: PaneId[];
 }
 
-export function removeLeafByThreadId(root: Pane, threadId: ThreadId): RemoveLeafResult {
+function removeLeaf(root: Pane, matches: (leaf: LeafPane) => boolean): RemoveLeafResult {
   if (root.kind === "leaf") {
-    if (root.threadId === threadId) {
-      return { nextRoot: null, removedLeafIds: [root.id] };
-    }
-    return { nextRoot: root, removedLeafIds: [] };
+    return matches(root)
+      ? { nextRoot: null, removedLeafIds: [root.id] }
+      : { nextRoot: root, removedLeafIds: [] };
   }
 
-  const firstResult = removeLeafByThreadId(root.first, threadId);
-  const secondResult = removeLeafByThreadId(root.second, threadId);
+  const firstResult = removeLeaf(root.first, matches);
+  const secondResult = removeLeaf(root.second, matches);
   const removedLeafIds = [...firstResult.removedLeafIds, ...secondResult.removedLeafIds];
-
-  if (removedLeafIds.length === 0) {
-    return { nextRoot: root, removedLeafIds };
-  }
-
+  if (removedLeafIds.length === 0) return { nextRoot: root, removedLeafIds };
   if (firstResult.nextRoot && secondResult.nextRoot) {
     return {
       nextRoot: { ...root, first: firstResult.nextRoot, second: secondResult.nextRoot },
       removedLeafIds,
     };
   }
-  if (firstResult.nextRoot) {
-    return { nextRoot: firstResult.nextRoot, removedLeafIds };
-  }
-  if (secondResult.nextRoot) {
-    return { nextRoot: secondResult.nextRoot, removedLeafIds };
-  }
-  return { nextRoot: null, removedLeafIds };
+  return { nextRoot: firstResult.nextRoot ?? secondResult.nextRoot, removedLeafIds };
+}
+
+export function removeLeafByThreadId(root: Pane, threadId: ThreadId): RemoveLeafResult {
+  return removeLeaf(root, (leaf) => leaf.threadId === threadId);
 }
 
 export function removeLeafByPaneId(root: Pane, paneId: PaneId): RemoveLeafResult {
-  if (root.kind === "leaf") {
-    if (root.id === paneId) {
-      return { nextRoot: null, removedLeafIds: [root.id] };
-    }
-    return { nextRoot: root, removedLeafIds: [] };
-  }
-
-  const firstResult = removeLeafByPaneId(root.first, paneId);
-  const secondResult = removeLeafByPaneId(root.second, paneId);
-  const removedLeafIds = [...firstResult.removedLeafIds, ...secondResult.removedLeafIds];
-
-  if (removedLeafIds.length === 0) {
-    return { nextRoot: root, removedLeafIds };
-  }
-
-  if (firstResult.nextRoot && secondResult.nextRoot) {
-    return {
-      nextRoot: { ...root, first: firstResult.nextRoot, second: secondResult.nextRoot },
-      removedLeafIds,
-    };
-  }
-  if (firstResult.nextRoot) {
-    return { nextRoot: firstResult.nextRoot, removedLeafIds };
-  }
-  if (secondResult.nextRoot) {
-    return { nextRoot: secondResult.nextRoot, removedLeafIds };
-  }
-  return { nextRoot: null, removedLeafIds };
+  return removeLeaf(root, (leaf) => leaf.id === paneId);
 }
 
 function canSubdivide(

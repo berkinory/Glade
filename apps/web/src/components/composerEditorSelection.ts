@@ -25,28 +25,17 @@ export function clampExpandedCursor(value: string, cursor: number): number {
   return Math.max(0, Math.min(value.length, Math.floor(cursor)));
 }
 
-function getComposerInlineTokenTextLength(_node: ComposerInlineTokenNode): 1 {
-  return 1;
-}
-
-function getComposerInlineTokenExpandedTextLength(node: ComposerInlineTokenNode): number {
-  return node.getTextContentSize();
+function getComposerInlineTokenTextLength(node: ComposerInlineTokenNode, expanded = false): number {
+  return expanded ? node.getTextContentSize() : 1;
 }
 
 function getAbsoluteOffsetForInlineTokenPoint(
   node: ComposerInlineTokenNode,
   absoluteOffset: number,
   pointOffset: number,
+  expanded: boolean,
 ): number {
-  return absoluteOffset + (pointOffset > 0 ? getComposerInlineTokenTextLength(node) : 0);
-}
-
-function getExpandedAbsoluteOffsetForInlineTokenPoint(
-  node: ComposerInlineTokenNode,
-  absoluteOffset: number,
-  pointOffset: number,
-): number {
-  return absoluteOffset + (pointOffset > 0 ? getComposerInlineTokenExpandedTextLength(node) : 0);
+  return absoluteOffset + (pointOffset > 0 ? getComposerInlineTokenTextLength(node, expanded) : 0);
 }
 
 function findSelectionPointForInlineToken(
@@ -74,63 +63,42 @@ function findSelectionPointForInlineToken(
   return null;
 }
 
-function getComposerNodeTextLength(node: LexicalNode): number {
+function getComposerNodeTextLength(node: LexicalNode, expanded = false): number {
   if (isComposerInlineTokenNode(node)) {
-    return getComposerInlineTokenTextLength(node);
+    return getComposerInlineTokenTextLength(node, expanded);
   }
-  if ($isTextNode(node)) {
-    return node.getTextContentSize();
-  }
-  if ($isLineBreakNode(node)) {
-    return 1;
-  }
-  if ($isElementNode(node)) {
-    return node.getChildren().reduce((total, child) => total + getComposerNodeTextLength(child), 0);
-  }
-  return 0;
-}
-
-function getComposerNodeExpandedTextLength(node: LexicalNode): number {
-  if (isComposerInlineTokenNode(node)) {
-    return getComposerInlineTokenExpandedTextLength(node);
-  }
-  if ($isTextNode(node)) {
-    return node.getTextContentSize();
-  }
-  if ($isLineBreakNode(node)) {
-    return 1;
-  }
+  if ($isTextNode(node)) return node.getTextContentSize();
+  if ($isLineBreakNode(node)) return 1;
   if ($isElementNode(node)) {
     return node
       .getChildren()
-      .reduce((total, child) => total + getComposerNodeExpandedTextLength(child), 0);
+      .reduce((total, child) => total + getComposerNodeTextLength(child, expanded), 0);
   }
   return 0;
 }
 
-export function getAbsoluteOffsetForPoint(node: LexicalNode, pointOffset: number): number {
+function getAbsoluteOffsetForPointInternal(
+  node: LexicalNode,
+  pointOffset: number,
+  expanded: boolean,
+): number {
   let offset = 0;
   let current: LexicalNode | null = node;
-
   while (current) {
     const nextParent = current.getParent() as LexicalNode | null;
-    if (!nextParent || !$isElementNode(nextParent)) {
-      break;
-    }
+    if (!nextParent || !$isElementNode(nextParent)) break;
     const siblings = nextParent.getChildren();
     const index = current.getIndexWithinParent();
     for (let i = 0; i < index; i += 1) {
       const sibling = siblings[i];
-      if (!sibling) continue;
-      offset += getComposerNodeTextLength(sibling);
+      if (sibling) offset += getComposerNodeTextLength(sibling, expanded);
     }
     current = nextParent;
   }
 
   if (node instanceof ComposerLinkNode || node instanceof ComposerTerminalContextNode) {
-    return getAbsoluteOffsetForInlineTokenPoint(node, offset, pointOffset);
+    return getAbsoluteOffsetForInlineTokenPoint(node, offset, pointOffset, expanded);
   }
-
   if ($isTextNode(node)) {
     if (
       node instanceof ComposerMentionNode ||
@@ -138,80 +106,28 @@ export function getAbsoluteOffsetForPoint(node: LexicalNode, pointOffset: number
       node instanceof ComposerSlashCommandNode ||
       node instanceof ComposerAgentMentionNode
     ) {
-      return getAbsoluteOffsetForInlineTokenPoint(node, offset, pointOffset);
+      return getAbsoluteOffsetForInlineTokenPoint(node, offset, pointOffset, expanded);
     }
     return offset + Math.min(pointOffset, node.getTextContentSize());
   }
-
-  if ($isLineBreakNode(node)) {
-    return offset + Math.min(pointOffset, 1);
-  }
-
+  if ($isLineBreakNode(node)) return offset + Math.min(pointOffset, 1);
   if ($isElementNode(node)) {
     const children = node.getChildren();
     const clampedOffset = Math.max(0, Math.min(pointOffset, children.length));
     for (let i = 0; i < clampedOffset; i += 1) {
       const child = children[i];
-      if (!child) continue;
-      offset += getComposerNodeTextLength(child);
+      if (child) offset += getComposerNodeTextLength(child, expanded);
     }
-    return offset;
   }
-
   return offset;
 }
 
+export function getAbsoluteOffsetForPoint(node: LexicalNode, pointOffset: number): number {
+  return getAbsoluteOffsetForPointInternal(node, pointOffset, false);
+}
+
 function getExpandedAbsoluteOffsetForPoint(node: LexicalNode, pointOffset: number): number {
-  let offset = 0;
-  let current: LexicalNode | null = node;
-
-  while (current) {
-    const nextParent = current.getParent() as LexicalNode | null;
-    if (!nextParent || !$isElementNode(nextParent)) {
-      break;
-    }
-    const siblings = nextParent.getChildren();
-    const index = current.getIndexWithinParent();
-    for (let i = 0; i < index; i += 1) {
-      const sibling = siblings[i];
-      if (!sibling) continue;
-      offset += getComposerNodeExpandedTextLength(sibling);
-    }
-    current = nextParent;
-  }
-
-  if (node instanceof ComposerLinkNode || node instanceof ComposerTerminalContextNode) {
-    return getExpandedAbsoluteOffsetForInlineTokenPoint(node, offset, pointOffset);
-  }
-
-  if ($isTextNode(node)) {
-    if (
-      node instanceof ComposerMentionNode ||
-      node instanceof ComposerSkillNode ||
-      node instanceof ComposerSlashCommandNode ||
-      node instanceof ComposerAgentMentionNode
-    ) {
-      return getExpandedAbsoluteOffsetForInlineTokenPoint(node, offset, pointOffset);
-    }
-    return offset + Math.min(pointOffset, node.getTextContentSize());
-  }
-
-  if ($isLineBreakNode(node)) {
-    return offset + Math.min(pointOffset, 1);
-  }
-
-  if ($isElementNode(node)) {
-    const children = node.getChildren();
-    const clampedOffset = Math.max(0, Math.min(pointOffset, children.length));
-    for (let i = 0; i < clampedOffset; i += 1) {
-      const child = children[i];
-      if (!child) continue;
-      offset += getComposerNodeExpandedTextLength(child);
-    }
-    return offset;
-  }
-
-  return offset;
+  return getAbsoluteOffsetForPointInternal(node, pointOffset, true);
 }
 
 function findSelectionPointAtOffset(
