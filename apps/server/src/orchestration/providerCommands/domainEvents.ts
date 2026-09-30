@@ -279,8 +279,6 @@ export function makeProviderDomainEvents(input: {
           });
           return;
         }
-        case "thread.interaction-mode-set":
-          return;
         case "thread.legacy-cache-abandoned":
           yield* drainQueuedTurnsForSession(event.payload.threadId);
           return;

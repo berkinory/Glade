@@ -48,7 +48,6 @@ export function decideThreadLifecycleCommand({
         | "thread.pinned-message.done.set"
         | "thread.pinned-message.label.set"
         | "thread.runtime-mode.set"
-        | "thread.interaction-mode.set"
         | "thread.session.stop"
         | "thread.session.set";
     }

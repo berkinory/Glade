@@ -35,7 +35,6 @@ const PROVIDER_INTENT_EVENT_TYPES = new Set<ProviderIntentEvent["type"]>([
   "thread.meta-updated",
   "thread.session-set",
   "thread.runtime-mode-set",
-  "thread.interaction-mode-set",
   "thread.turn-queued",
   "thread.legacy-cache-abandoned",
   "thread.turn-start-requested",

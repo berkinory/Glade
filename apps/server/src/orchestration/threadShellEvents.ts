@@ -18,7 +18,6 @@ export const THREAD_PROJECTION_EVENT_TYPES = new Set<OrchestrationEvent["type"]>
   "thread.pinned-message-done-set",
   "thread.pinned-message-label-set",
   "thread.runtime-mode-set",
-  "thread.interaction-mode-set",
   "thread.turn-start-requested",
   "thread.session-set",
   "thread.turn-diff-completed",
