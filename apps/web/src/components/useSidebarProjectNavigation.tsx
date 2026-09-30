@@ -1,3 +1,4 @@
+import { useStore } from "../store";
 import { useCallback, useEffect, startTransition, useMemo } from "react";
 import { MAX_PINNED_PROJECTS } from "@glade/contracts/orchestration/threadEntities";
 import { type OrchestrationShellSnapshot } from "@glade/contracts/orchestration/snapshots";
@@ -47,7 +48,6 @@ export function useSidebarProjectNavigation(context: ReturnType<typeof useSideba
     activeSpaceId,
     threadsHydrated,
     syncServerShellSnapshot,
-    setProjectExpanded,
     draftThreadsByThreadId,
     homeDir,
     chatWorkspaceRoot,
@@ -76,6 +76,8 @@ export function useSidebarProjectNavigation(context: ReturnType<typeof useSideba
     ordinarySpaceProjects,
     projectByIdRef,
   } = context;
+  const setProjectExpanded = useStore((state) => state.setProjectExpanded);
+
   const pinProjectLocally = useSidebarStateStore((state) => state.pinProject);
   const unpinProject = useSidebarStateStore((state) => state.unpinProject);
 

@@ -59,7 +59,6 @@ import { resolveThreadStatusPill } from "./Sidebar.logic.status";
 import { useDiffRouteSearch } from "../hooks/useDiffRouteSearch";
 import { normalizeSettingsSection } from "../settingsNavigation";
 import { selectSplitView, useSplitViewStore } from "../splitViewStore";
-import { useRightDockStore } from "../rightDockStore";
 import { useSidebarProjectRunController } from "../hooks/useSidebarProjectRunController";
 import { useSidebarThreadActions } from "../hooks/useSidebarThreadActions";
 import { useWorkspacePathsStore } from "../workspacePathsStore";
@@ -113,22 +112,6 @@ export function useSidebarShellState() {
 
   const markThreadVisited = useStore((store) => store.markThreadVisited);
 
-  const markThreadUnread = useStore((store) => store.markThreadUnread);
-
-  const toggleProject = useStore((store) => store.toggleProject);
-
-  const setProjectExpanded = useStore((store) => store.setProjectExpanded);
-
-  const setAllProjectsExpanded = useStore((store) => store.setAllProjectsExpanded);
-
-  const collapseProjectsExcept = useStore((store) => store.collapseProjectsExcept);
-
-  const reorderProjects = useStore((store) => store.reorderProjects);
-
-  const renameProjectLocally = useStore((store) => store.renameProjectLocally);
-
-  const setProjectAppearanceLocally = useStore((store) => store.setProjectAppearanceLocally);
-
   const removeDeletedProjectFromClientState = useStore(
     (store) => store.removeDeletedProjectFromClientState,
   );
@@ -136,12 +119,6 @@ export function useSidebarShellState() {
   const terminalStateByThreadId = useTerminalStateStore((state) => state.terminalStateByThreadId);
 
   const clearTerminalState = useTerminalStateStore((state) => state.clearTerminalState);
-
-  const openChatThreadPage = useTerminalStateStore((state) => state.openChatThreadPage);
-
-  const openTerminalThreadPage = useTerminalStateStore((state) => state.openTerminalThreadPage);
-
-  const clearProjectDraftThreads = useComposerDraftStore((store) => store.clearProjectDraftThreads);
 
   const draftThreadsByThreadId = useComposerDraftStore((store) => store.draftThreadsByThreadId);
 
@@ -295,10 +272,6 @@ export function useSidebarShellState() {
       }
     };
   }, []);
-
-  const setSplitFocusedPane = useSplitViewStore((store) => store.setFocusedPane);
-
-  const openRightDockPane = useRightDockStore((store) => store.openPane);
 
   const keybindingsQuery = useQuery({
     ...serverConfigQueryOptions(),
@@ -720,19 +693,8 @@ export function useSidebarShellState() {
     sidebarThreadSummaryById,
     syncServerShellSnapshot,
     markThreadVisited,
-    markThreadUnread,
-    toggleProject,
-    setProjectExpanded,
-    setAllProjectsExpanded,
-    collapseProjectsExcept,
-    reorderProjects,
-    renameProjectLocally,
-    setProjectAppearanceLocally,
     removeDeletedProjectFromClientState,
     terminalStateByThreadId,
-    openChatThreadPage,
-    openTerminalThreadPage,
-    clearProjectDraftThreads,
     draftThreadsByThreadId,
     homeDir,
     chatWorkspaceRoot,
@@ -755,8 +717,6 @@ export function useSidebarShellState() {
     activeSettingsSection,
     activeSplitView,
     splitViewsById,
-    setSplitFocusedPane,
-    openRightDockPane,
     keybindings,
     serverCwd,
     providerStatuses,

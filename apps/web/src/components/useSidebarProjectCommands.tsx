@@ -1,3 +1,5 @@
+import { useComposerDraftStore } from "../composerDraftStore";
+import { useStore } from "../store";
 import { useCallback } from "react";
 import {
   type DragCancelEvent,
@@ -37,9 +39,7 @@ export function useSidebarProjectCommands(context: ReturnType<typeof useSidebarT
     projects,
     activeSpaceId,
     syncServerShellSnapshot,
-    reorderProjects,
     removeDeletedProjectFromClientState,
-    clearProjectDraftThreads,
     homeDir,
     navigate,
     isOnKanban,
@@ -70,6 +70,9 @@ export function useSidebarProjectCommands(context: ReturnType<typeof useSidebarT
     activateThreadFromSidebarIntent,
     handleCloseProjectContextMenu,
   } = context;
+  const reorderProjects = useStore((state) => state.reorderProjects);
+  const clearProjectDraftThreads = useComposerDraftStore((state) => state.clearProjectDraftThreads);
+
   const {
     activeSpace,
     voidSpace,

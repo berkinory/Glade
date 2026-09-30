@@ -1,3 +1,5 @@
+import { useRightDockStore } from "../rightDockStore";
+import { useSplitViewStore } from "../splitViewStore";
 import { useSidebarStateStore } from "../sidebarStateStore";
 import { pinActionLabel } from "~/lib/pin";
 import { THREAD_CONTEXT_MENU_ICONS } from "~/lib/contextMenuIcons";
@@ -30,18 +32,13 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
   const {
     projects,
     sidebarThreadSummaryById,
-    markThreadUnread,
     terminalStateByThreadId,
-    openChatThreadPage,
-    openTerminalThreadPage,
     navigate,
     appSettings,
     routeThreadId,
     routeSearch,
     activeSplitView,
     splitViewsById,
-    setSplitFocusedPane,
-    openRightDockPane,
     setRenameDialogThreadId,
     setProjectContextMenuState,
     setOptimisticActiveThreadId,
@@ -59,6 +56,12 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
     projectCwdById,
     currentProjectShortcutTargetId,
   } = context;
+  const markThreadUnread = useStore((state) => state.markThreadUnread);
+  const openChatThreadPage = useTerminalStateStore((state) => state.openChatThreadPage);
+  const openTerminalThreadPage = useTerminalStateStore((state) => state.openTerminalThreadPage);
+  const setSplitFocusedPane = useSplitViewStore((state) => state.setFocusedPane);
+  const openRightDockPane = useRightDockStore((state) => state.openPane);
+
   const selectedThreadIds = useSidebarStateStore((state) => state.selectedThreadIds);
   const clearSelection = useSidebarStateStore((state) => state.clearSelection);
   const removeFromSelection = useSidebarStateStore((state) => state.removeFromSelection);

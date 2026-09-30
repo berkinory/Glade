@@ -1,3 +1,4 @@
+import { useStore } from "../store";
 import { useRailShellStore } from "../railShellStore";
 import { useSidebarStateStore } from "../sidebarStateStore";
 import { ClockIcon, KanbanIcon, NewThreadIcon } from "~/lib/icons";
@@ -52,8 +53,6 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
     activeSpaceId,
     threadsHydrated,
     isRailLayout,
-    renameProjectLocally,
-    setProjectAppearanceLocally,
     homeDir,
     chatWorkspaceRoot,
     navigate,
@@ -82,6 +81,9 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
     activateThreadFromSidebarIntent,
     voidSpace,
   } = context;
+  const renameProjectLocally = useStore((state) => state.renameProjectLocally);
+  const setProjectAppearanceLocally = useStore((state) => state.setProjectAppearanceLocally);
+
   const railSpacesProjectId = useRailShellStore((state) => state.spacesProjectId);
 
   const persistedPinnedProjectIds = useSidebarStateStore((state) => state.pinnedProjectIds);

@@ -1,3 +1,4 @@
+import { useStore } from "../store";
 import { useRailShellStore } from "../railShellStore";
 import { useSidebarStateStore } from "../sidebarStateStore";
 import { spaceDisplayIcon, spaceDisplayName } from "../lib/spaceGrouping";
@@ -169,8 +170,6 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
     renderThreadRow,
     renderProjectItem,
     renderRailSpacesPanel,
-    setAllProjectsExpanded,
-    collapseProjectsExcept,
     isOnKanban,
     isOnAutomations,
     openFeedbackDialog,
@@ -179,6 +178,9 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
     railShortcuts,
     railSpacesProject,
   } = context;
+  const setAllProjectsExpanded = useStore((state) => state.setAllProjectsExpanded);
+  const collapseProjectsExcept = useStore((state) => state.collapseProjectsExcept);
+
   const railActiveItem = useRailShellStore((state) => state.activeItem);
   const railPanelView = useRailShellStore((state) => state.panelView);
   const railSpacesProjectId = useRailShellStore((state) => state.spacesProjectId);

@@ -1,3 +1,4 @@
+import { useStore } from "../store";
 import { useSidebarStateStore } from "../sidebarStateStore";
 import { AddPlusIcon } from "~/lib/icons";
 import { useCallback, useEffect, useMemo } from "react";
@@ -52,7 +53,6 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
     projects,
     spaces,
     activeSpaceId,
-    toggleProject,
     homeDir,
     chatWorkspaceRoot,
     navigate,
@@ -92,6 +92,8 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
     setShowThreadJumpHints,
     showThreadJumpHintsRef,
   } = context;
+  const toggleProject = useStore((state) => state.toggleProject);
+
   const selectedThreadIds = useSidebarStateStore((state) => state.selectedThreadIds);
   const clearSelection = useSidebarStateStore((state) => state.clearSelection);
 
