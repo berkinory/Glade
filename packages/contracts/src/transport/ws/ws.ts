@@ -1,3 +1,8 @@
+import {
+  ProviderManagementContext,
+  ProviderManageMcpServerInput,
+  ProviderManagePluginInput,
+} from "../../provider/providerManagement";
 import { Schema, Struct } from "effect";
 import { ImportProjectInput, ListProjectImportsInput } from "../../workspace/projectImport";
 import { NonNegativeInt, ProjectId, ThreadId, TrimmedNonEmptyString } from "../../core/baseSchemas";
@@ -278,6 +283,11 @@ export const WS_METHODS = {
   providerListSkills: "provider.listSkills",
   providerListSkillsCatalog: "provider.listSkillsCatalog",
   providerListPlugins: "provider.listPlugins",
+  providerListMcpServers: "provider.listMcpServers",
+  providerManageMcpServer: "provider.manageMcpServer",
+  providerPluginInventory: "provider.pluginInventory",
+  providerManagePlugin: "provider.managePlugin",
+
   providerReadPlugin: "provider.readPlugin",
   providerListModels: "provider.listModels",
   providerListAgents: "provider.listAgents",
@@ -477,6 +487,11 @@ const WebSocketRequestBody = Schema.Union([
   tagRequestBody(WS_METHODS.providerListSkills, ProviderListSkillsInput),
   tagRequestBody(WS_METHODS.providerListSkillsCatalog, ProviderSkillsCatalogInput),
   tagRequestBody(WS_METHODS.providerListPlugins, ProviderListPluginsInput),
+  tagRequestBody(WS_METHODS.providerListMcpServers, ProviderManagementContext),
+  tagRequestBody(WS_METHODS.providerManageMcpServer, ProviderManageMcpServerInput),
+  tagRequestBody(WS_METHODS.providerPluginInventory, ProviderManagementContext),
+  tagRequestBody(WS_METHODS.providerManagePlugin, ProviderManagePluginInput),
+
   tagRequestBody(WS_METHODS.providerReadPlugin, ProviderReadPluginInput),
   tagRequestBody(WS_METHODS.providerListModels, ProviderListModelsInput),
   tagRequestBody(WS_METHODS.providerListAgents, ProviderListAgentsInput),

@@ -1,3 +1,9 @@
+import {
+  WsProviderListMcpServersRpc,
+  WsProviderManageMcpServerRpc,
+  WsProviderPluginInventoryRpc,
+  WsProviderManagePluginRpc,
+} from "./providerRpc";
 import * as RpcGroup from "effect/unstable/rpc/RpcGroup";
 import {
   WsOrchestrationDispatchCommandRpc,
@@ -265,6 +271,11 @@ export const WsFeatureRpcGroup = RpcGroup.make(
   WsProviderListSkillsRpc,
   WsProviderListSkillsCatalogRpc,
   WsProviderListPluginsRpc,
+  WsProviderListMcpServersRpc,
+  WsProviderManageMcpServerRpc,
+  WsProviderPluginInventoryRpc,
+  WsProviderManagePluginRpc,
+
   WsProviderReadPluginRpc,
   WsProviderListModelsRpc,
   WsProviderListAgentsRpc,

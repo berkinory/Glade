@@ -1,3 +1,11 @@
+import {
+  ProviderManagementContext,
+  ProviderListMcpServersResult,
+  ProviderManageMcpServerInput,
+  ProviderManagementResult,
+  ProviderPluginInventoryResult,
+  ProviderManagePluginInput,
+} from "../provider/providerManagement";
 import { Schema } from "effect";
 import type {
   ImportProjectInput,
@@ -879,6 +887,11 @@ export interface NativeApi {
     listSkills: (input: ProviderListSkillsInput) => Promise<ProviderListSkillsResult>;
     listSkillsCatalog: (input: ProviderSkillsCatalogInput) => Promise<ProviderSkillsCatalogResult>;
     listPlugins: (input: ProviderListPluginsInput) => Promise<ProviderListPluginsResult>;
+    listMcpServers: (input: ProviderManagementContext) => Promise<ProviderListMcpServersResult>;
+    manageMcpServer: (input: ProviderManageMcpServerInput) => Promise<ProviderManagementResult>;
+    pluginInventory: (input: ProviderManagementContext) => Promise<ProviderPluginInventoryResult>;
+    managePlugin: (input: ProviderManagePluginInput) => Promise<ProviderManagementResult>;
+
     readPlugin: (input: ProviderReadPluginInput) => Promise<ProviderReadPluginResult>;
     listModels: (input: ProviderListModelsInput) => Promise<ProviderListModelsResult>;
     listAgents: (input: ProviderListAgentsInput) => Promise<ProviderListAgentsResult>;

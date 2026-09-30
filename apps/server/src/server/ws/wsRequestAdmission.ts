@@ -64,6 +64,8 @@ const EXPENSIVE_READ_METHODS = new Set<string>([
   WS_METHODS.providerListSkills,
   WS_METHODS.providerListSkillsCatalog,
   WS_METHODS.providerListPlugins,
+  WS_METHODS.providerListMcpServers,
+  WS_METHODS.providerPluginInventory,
   WS_METHODS.providerReadPlugin,
   WS_METHODS.providerListModels,
   WS_METHODS.providerListAgents,

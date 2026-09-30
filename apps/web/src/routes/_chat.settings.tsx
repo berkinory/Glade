@@ -1,3 +1,5 @@
+import { McpSettingsPanel } from "~/components/settings/McpSettingsPanel";
+import { PluginsSettingsPanel } from "~/components/settings/PluginsSettingsPanel";
 import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
@@ -832,6 +834,10 @@ function SettingsRouteView() {
         return <KeyboardShortcutsSettingsPanel />;
       case "profile":
         return <ProfileSettingsPanel />;
+      case "mcp":
+        return <McpSettingsPanel />;
+      case "plugins":
+        return <PluginsSettingsPanel />;
       case "skills":
         return <SkillsSettingsPanel />;
       case "usage":

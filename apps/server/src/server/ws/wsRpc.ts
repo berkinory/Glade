@@ -1,3 +1,4 @@
+import { ProviderManagement } from "../../provider/Services/ProviderManagement.ts";
 import { sourceControlActions } from "../../git/sourceControlActions.ts";
 import { AgentGatewaySessionRegistry } from "../../agentGateway/Services/AgentGatewaySessionRegistry";
 import { execFile } from "node:child_process";
@@ -376,6 +377,7 @@ const makeWsRpcHandlersLayer = () =>
       const projectionReadModelQuery = yield* ProjectionSnapshotQuery;
       const providerAdapterRegistry = yield* ProviderAdapterRegistry;
       const providerDiscoveryService = yield* ProviderDiscoveryService;
+      const providerManagement = yield* ProviderManagement;
       const providerHealth = yield* ProviderHealth;
       const providerService = yield* ProviderService;
       const lifecycleEvents = yield* ServerLifecycleEvents;
@@ -2001,6 +2003,14 @@ const makeWsRpcHandlersLayer = () =>
             ),
             "Failed to list the skills catalog",
           ),
+        [WS_METHODS.providerListMcpServers]: (input) =>
+          rpcEffect(providerManagement.listMcpServers(input), "Provider management failed"),
+        [WS_METHODS.providerManageMcpServer]: (input) =>
+          rpcEffect(providerManagement.manageMcpServer(input), "Provider management failed"),
+        [WS_METHODS.providerPluginInventory]: (input) =>
+          rpcEffect(providerManagement.pluginInventory(input), "Provider management failed"),
+        [WS_METHODS.providerManagePlugin]: (input) =>
+          rpcEffect(providerManagement.managePlugin(input), "Provider management failed"),
         [WS_METHODS.providerListPlugins]: (input) =>
           rpcEffect(providerDiscoveryService.listPlugins(input), "Failed to list plugins"),
         [WS_METHODS.providerReadPlugin]: (input) =>

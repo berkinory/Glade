@@ -1,3 +1,11 @@
+import {
+  ProviderManagementContext,
+  ProviderListMcpServersResult,
+  ProviderManageMcpServerInput,
+  ProviderManagementResult,
+  ProviderPluginInventoryResult,
+  ProviderManagePluginInput,
+} from "../../provider/providerManagement";
 import * as Rpc from "effect/unstable/rpc/Rpc";
 import { WS_METHODS } from "./ws";
 import {
@@ -76,5 +84,29 @@ export const WsProviderListModelsRpc = Rpc.make(WS_METHODS.providerListModels, {
 export const WsProviderListAgentsRpc = Rpc.make(WS_METHODS.providerListAgents, {
   payload: ProviderListAgentsInput,
   success: ProviderListAgentsResult,
+  error: WsRpcError,
+});
+
+export const WsProviderListMcpServersRpc = Rpc.make(WS_METHODS.providerListMcpServers, {
+  payload: ProviderManagementContext,
+  success: ProviderListMcpServersResult,
+  error: WsRpcError,
+});
+
+export const WsProviderManageMcpServerRpc = Rpc.make(WS_METHODS.providerManageMcpServer, {
+  payload: ProviderManageMcpServerInput,
+  success: ProviderManagementResult,
+  error: WsRpcError,
+});
+
+export const WsProviderPluginInventoryRpc = Rpc.make(WS_METHODS.providerPluginInventory, {
+  payload: ProviderManagementContext,
+  success: ProviderPluginInventoryResult,
+  error: WsRpcError,
+});
+
+export const WsProviderManagePluginRpc = Rpc.make(WS_METHODS.providerManagePlugin, {
+  payload: ProviderManagePluginInput,
+  success: ProviderManagementResult,
   error: WsRpcError,
 });

@@ -11,6 +11,8 @@ const SETTINGS_SECTION_IDS = [
   "models",
   "providers",
   "skills",
+  "mcp",
+  "plugins",
   "usage",
   "advanced",
 ] as const;
@@ -134,6 +136,22 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = [
     description: "Review reusable workflows discovered across all configured providers.",
     icon: "building-blocks",
     eyebrow: "Reusable workflows",
+  },
+  {
+    id: "mcp",
+    group: "coding",
+    label: "MCP servers",
+    description: "Manage native tools, connections and authentication.",
+    icon: "puzzle",
+    eyebrow: "External tools",
+  },
+  {
+    id: "plugins",
+    group: "coding",
+    label: "Agent plugins",
+    description: "Manage native installed plugins and session loading.",
+    icon: "building-blocks",
+    eyebrow: "Provider extensions",
   },
   {
     id: "worktrees",

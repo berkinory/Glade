@@ -8,6 +8,7 @@ import { makeClaudeAdapterLive } from "../Layers/ClaudeAdapter";
 import { makeCodexAdapterLive } from "../Layers/CodexAdapter";
 import { makeEventNdjsonLogger } from "../Layers/EventNdjsonLogger";
 import { ProviderAdapterRegistryLive } from "../Layers/ProviderAdapterRegistry";
+import { ProviderManagementLive } from "../Layers/ProviderManagement.ts";
 import { ProviderDiscoveryServiceLive } from "../Layers/ProviderDiscoveryService";
 import { makeDurableProviderServiceLive } from "../Layers/ProviderService";
 import { ProviderSessionDirectoryLive } from "../Layers/ProviderSessionDirectory";
@@ -74,6 +75,7 @@ export function makeServerProviderLayer(
     return Layer.mergeAll(
       providerServiceLayer,
       providerDiscoveryLayer,
+      ProviderManagementLive.pipe(Layer.provide(adapterRegistryLayer)),
       adapterRegistryLayer,
       providerSessionDirectoryLayer,
     );
