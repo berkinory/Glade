@@ -7,11 +7,11 @@ import { type UserInputQuestion } from "@glade/contracts/provider/providerRuntim
 import {
   createStalePendingInteractionMatcher,
   isPendingInteractionResponseClaimable,
-} from "@glade/shared/pendingInteractions";
+} from "@glade/shared/threads/pendingInteractions";
 import {
   approvalRequestKindFromRequestType,
   pendingRequestInstanceKey,
-} from "@glade/shared/threadSummary";
+} from "@glade/shared/threads/threadSummary";
 
 import { orderedActivities } from "./workLog";
 

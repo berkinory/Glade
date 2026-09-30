@@ -4,7 +4,7 @@ Glade exposes Computer Use through the bundled Cua driver and the desktop host. 
 
 ## Supported releases
 
-The release workflow packages the pinned native driver for macOS arm64, macOS x64 and Linux x64. Windows ships without the Cua native driver; the rest of the desktop app remains available. The exact driver source revision, local patch checksums, Rust version, and protocol revision live in [`cuaDriverRelease.json`](../../packages/shared/src/cuaDriverRelease.json). Provisioning and packaged-build validation run through [`provision-cua-driver.mjs`](../../apps/desktop/scripts/provision-cua-driver.mjs).
+The release workflow packages the pinned native driver for macOS arm64, macOS x64 and Linux x64. Windows ships without the Cua native driver; the rest of the desktop app remains available. The exact driver source revision, local patch checksums, Rust version, and protocol revision live in [`cuaDriverRelease.json`](../../packages/shared/src/computer/cuaDriverRelease.json). Provisioning and packaged-build validation run through [`provision-cua-driver.mjs`](../../apps/desktop/scripts/provision-cua-driver.mjs).
 
 The local patches are in [`apps/desktop/patches/cua-driver`](../../apps/desktop/patches/cua-driver/README.md). The driver's redistributed license and attribution are preserved in [`CUA-LICENSE.txt`](./CUA-LICENSE.txt). [`import-provenance.json`](./import-provenance.json) is the historical import ledger; some recorded paths have since been retired.
 

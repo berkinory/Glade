@@ -1,4 +1,4 @@
-import { resolveThreadBranchSourceCwd } from "@glade/shared/threadEnvironment";
+import { resolveThreadBranchSourceCwd } from "@glade/shared/threads/threadEnvironment";
 import type {
   ProviderNativeCommandDescriptor,
   ProviderPluginDescriptor,

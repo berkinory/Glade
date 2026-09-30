@@ -5,7 +5,7 @@ import type {
   ServerCodexResetCredits,
   ServerConsumeCodexResetCreditInput,
 } from "@glade/contracts/server/server";
-import { spawnProcess } from "@glade/shared/processRuntime";
+import { spawnProcess } from "@glade/shared/platform/processRuntime";
 
 import { CodexJsonlFramer, CodexJsonlWriter } from "../codexAppServerTransport";
 import { createLogger } from "../logger";

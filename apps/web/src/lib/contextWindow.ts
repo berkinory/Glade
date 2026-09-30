@@ -2,7 +2,7 @@ import { ClaudeCacheObservation } from "@glade/contracts/provider/claudeCache";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { type OrchestrationThreadActivity } from "@glade/contracts/orchestration/orchestration";
 import { type ThreadTokenUsageSnapshot } from "@glade/contracts/provider/providerRuntime";
-import { normalizeModelSlug, stripClaudeContextWindowSuffix } from "@glade/shared/model";
+import { normalizeModelSlug, stripClaudeContextWindowSuffix } from "@glade/shared/provider/model";
 import { Schema } from "effect";
 
 const decodeClaudeCacheObservation = Schema.decodeUnknownOption(ClaudeCacheObservation);

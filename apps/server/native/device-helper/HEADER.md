@@ -89,7 +89,7 @@ u32 little-endian length, then that many bytes of envelope
 ```
 
 The envelope is the contract defined in `packages/contracts/src/device/device.ts` and
-decoded by `packages/shared/src/deviceFrame.ts`. Little-endian throughout:
+decoded by `packages/shared/src/workspace/deviceFrame.ts`. Little-endian throughout:
 
 ```
 0   u16  magic     0x5346

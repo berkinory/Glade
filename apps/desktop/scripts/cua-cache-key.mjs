@@ -38,7 +38,7 @@ export function collectCuaCacheInputs(root, env = process.env) {
       .digest("hex");
   const patchRoot = "apps/desktop/patches/cua-driver";
   const paths = [
-    "packages/shared/src/cuaDriverRelease.json",
+    "packages/shared/src/computer/cuaDriverRelease.json",
     "apps/desktop/scripts/provision-cua-driver.mjs",
     "apps/desktop/scripts/cua-artifact-provenance.mjs",
     "apps/desktop/scripts/cua-cache-key.mjs",

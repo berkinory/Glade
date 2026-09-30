@@ -22,11 +22,11 @@ import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   completionPolicyFromStopWhen,
   stopWhenFromCompletionPolicy,
-} from "@glade/shared/automationCompletionPolicy";
+} from "../features/automations/completionPolicy";
 import {
   automationContinuationThreadId,
   automationRequiresTargetThread,
-} from "@glade/shared/automationMode";
+} from "@glade/shared/threads/automationMode";
 import {
   acknowledgedRiskIdsForDraft,
   buildAutomationDraftWarnings,

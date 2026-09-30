@@ -11,7 +11,7 @@ import {
   COMPUTER_PERMISSIONS,
   listComputerPermissions,
   missingComputerPermissions,
-} from "@glade/shared/computerGrants";
+} from "@glade/shared/computer/computerGrants";
 
 import { computerStatusNeedsSetup } from "~/components/ComputerPanel.logic";
 import { isLoopbackHostname } from "~/components/Sidebar.logic";

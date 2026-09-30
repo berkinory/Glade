@@ -5,7 +5,7 @@ import {
 } from "@glade/contracts/automation/automation";
 import { ServerGenerateAutomationIntentResult } from "@glade/contracts/server/server";
 import { type ChatAttachment } from "@glade/contracts/orchestration/orchestration";
-import { MAX_CHAT_THREAD_TITLE_WORDS } from "@glade/shared/chatThreads";
+import { MAX_CHAT_THREAD_TITLE_WORDS } from "@glade/shared/threads/chatThreads";
 
 export function toJsonSchemaObject(schema: Schema.Top): unknown {
   const document = Schema.toJsonSchemaDocument(schema);

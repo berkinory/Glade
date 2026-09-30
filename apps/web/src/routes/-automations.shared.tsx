@@ -20,7 +20,7 @@ import {
   type ModelSelection,
   type RuntimeMode,
 } from "@glade/contracts/orchestration/orchestration";
-import { automationRequiresTargetThread } from "@glade/shared/automationMode";
+import { automationRequiresTargetThread } from "@glade/shared/threads/automationMode";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 

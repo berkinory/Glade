@@ -9,7 +9,7 @@ import {
   cuaComputerTaskKey,
   type CuaComputerTask,
   type CuaPreviewTarget,
-} from "@glade/shared/cuaDriverProtocol";
+} from "@glade/shared/computer/cuaDriverProtocol";
 import { DESKTOP_IPC_CHANNELS } from "./ipcChannels";
 import { stopNativeHelper } from "./stopNativeHelper";
 

@@ -19,12 +19,12 @@ import type { ProjectKind } from "@glade/contracts/workspace/project";
 import {
   APPROVAL_ALREADY_ANSWERED_INVARIANT_MARKER,
   THREAD_NOT_ARCHIVED_INVARIANT_MARKER,
-} from "@glade/shared/errorMessages";
+} from "@glade/shared/text/errorMessages";
 import {
   isLegacyHomeChatContainerRow as isSharedLegacyHomeChatContainerRow,
   isOrdinaryProjectRow as isSharedOrdinaryProjectRow,
-} from "@glade/shared/projectContainers";
-import { normalizeWorkspaceRootForComparison } from "@glade/shared/threadWorkspace";
+} from "@glade/shared/threads/projectContainers";
+import { normalizeWorkspaceRootForComparison } from "@glade/shared/threads/threadWorkspace";
 import { Effect } from "effect";
 
 import { OrchestrationCommandInvariantError } from "./Errors.ts";

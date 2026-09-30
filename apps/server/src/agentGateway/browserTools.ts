@@ -11,12 +11,12 @@ import {
   BROWSER_TOOL_DEFINITIONS_BY_NAME,
   stableJsonStringify,
   type BrowserToolDefinition,
-} from "@glade/shared/browserAutomationCatalogue";
+} from "@glade/shared/browser/browserAutomationCatalogue";
 import {
   browserInputErrorCode,
   makeBrowserAutomationError,
-} from "@glade/shared/browserAutomationErrors";
-import { encodeBrowserMcpToolError } from "@glade/shared/browserAutomationMcpError";
+} from "@glade/shared/browser/browserAutomationErrors";
+import { encodeBrowserMcpToolError } from "./browser/browserMcpError";
 import { Effect, Schema } from "effect";
 
 import type { BrowserAutomationHostShape } from "../browserAutomation/Services/BrowserAutomationHost.ts";

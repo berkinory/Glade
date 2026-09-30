@@ -6,7 +6,7 @@ import {
 import {
   deriveAssociatedWorktreeMetadata,
   workspaceRootsEqual,
-} from "@glade/shared/threadWorkspace";
+} from "@glade/shared/threads/threadWorkspace";
 import type { FileSystem, Path } from "effect";
 import { Data, Effect, Option } from "effect";
 

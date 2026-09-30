@@ -274,16 +274,16 @@ jobs:
       - name: Test Windows shared runtime and migration recovery
         run: >-
           bun run --cwd packages/shared test
-          src/windowsProcess.test.ts
-          src/platformProcess.test.ts
-          src/processRuntime.test.ts
-          src/filesystemPlatform.test.ts
-          src/platformEnvironment.test.ts
-          src/migrationRecovery.test.ts
+          src/platform/windowsProcess.test.ts
+          src/platform/platformProcess.test.ts
+          src/platform/processRuntime.test.ts
+          src/platform/platformEnvironment.test.ts
+          src/platform/migrationRecovery.test.ts
 
       - name: Test Windows server lifecycle and migration recovery
         run: >-
           bun run --cwd apps/server test
+          src/platform/filesystemPlatform.test.ts
           src/platform/processTreeController.test.ts
           src/platform/effectProcessSignals.test.ts
           src/provider/supervisedProcessTeardown.test.ts

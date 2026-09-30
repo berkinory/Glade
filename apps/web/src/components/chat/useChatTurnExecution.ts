@@ -12,9 +12,9 @@ import {
   type ModelSelection,
   type ProviderStartOptions,
 } from "@glade/contracts/orchestration/orchestration";
-import { buildTemporaryWorktreeBranchName } from "@glade/shared/git";
-import { getDefaultModel } from "@glade/shared/model";
-import { providerSupportsNativeTurnSteering } from "@glade/shared/providerMetadata";
+import { buildTemporaryWorktreeBranchName } from "@glade/shared/git/git";
+import { getDefaultModel } from "@glade/shared/provider/model";
+import { providerSupportsNativeTurnSteering } from "@glade/shared/provider/providerMetadata";
 import { useCallback } from "react";
 import { promoteThreadCreate } from "~/lib/threadCreatePromotion";
 import { newCommandId, randomUUID } from "~/lib/utils";

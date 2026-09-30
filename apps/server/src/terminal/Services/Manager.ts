@@ -10,7 +10,7 @@ import {
   TerminalSessionStatus,
   TerminalWriteInput,
 } from "@glade/contracts/terminal/terminal";
-import type { TerminalActivityState, TerminalCliKind } from "@glade/shared/terminalThreads";
+import type { TerminalActivityState, TerminalCliKind } from "@glade/shared/threads/terminalThreads";
 import { PtyProcess } from "./PTY";
 import { Effect, Schema, ServiceMap } from "effect";
 import type { TerminalModeReplayTracker } from "../terminalModeReplay";

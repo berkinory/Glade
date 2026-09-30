@@ -9,7 +9,7 @@ import {
   type LucideIcon,
 } from "~/lib/icons";
 import type { ProviderMentionReference } from "@glade/contracts/provider/providerDiscovery";
-import { isLocalAbsolutePath } from "@glade/shared/path";
+import { isLocalAbsolutePath } from "@glade/shared/platform/path";
 import "katex/dist/katex.min.css";
 import { matchWikiLinkAt, remarkWikiLinks } from "../lib/remarkWikiLinks";
 import { remarkGithubAlerts, type GithubAlertKind } from "../lib/remarkGithubAlerts";

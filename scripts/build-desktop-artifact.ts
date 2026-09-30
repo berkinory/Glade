@@ -28,7 +28,7 @@ import { stageDesktopRuntimeResources } from "./lib/desktop-runtime-resources.ts
 import {
   GLADE_PACKAGED_DESKTOP_FLAVORS,
   type GladePackagedDesktopFlavor,
-} from "@glade/shared/desktopIdentity";
+} from "@glade/shared/platform/desktopIdentity";
 import { createDesktopArtifactIdentity } from "./lib/desktop-artifact-identity.ts";
 import { parseBooleanEnvValue } from "./lib/env-bool.ts";
 import { finalizeSignedMacDmg, rebuildUnsignedMacDmg } from "./lib/mac-dmg-finalize.ts";

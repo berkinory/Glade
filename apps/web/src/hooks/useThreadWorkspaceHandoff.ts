@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { resolveWorktreeHandoffWorkspaceMetadata } from "@glade/shared/worktreeHandoff";
+import { resolveWorktreeHandoffWorkspaceMetadata } from "@glade/shared/threads/worktreeHandoff";
 import { useCallback } from "react";
 import { gitHandoffThreadMutationOptions } from "~/lib/gitReactQuery";
 import { toastManager } from "../components/ui/toast";

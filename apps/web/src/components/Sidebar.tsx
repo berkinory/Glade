@@ -76,10 +76,10 @@ import { type DesktopUpdateState } from "@glade/contracts/ipc/ipc";
 import { ProjectId, SpaceId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import { WS_GITHUB_PROJECT_PROVISIONING_CAPABILITY } from "@glade/contracts/transport/ws/wsCompatibility";
-import { parseGitHubRepositoryNameWithOwnerFromPullRequestUrl } from "@glade/shared/githubRepository";
-import { getDefaultModel } from "@glade/shared/model";
-import { pluralize } from "@glade/shared/text";
-import { resolveThreadWorkspaceCwd } from "@glade/shared/threadEnvironment";
+import { parseGitHubRepositoryNameWithOwnerFromPullRequestUrl } from "@glade/shared/git/githubRepository";
+import { getDefaultModel } from "@glade/shared/provider/model";
+import { pluralize } from "@glade/shared/text/text";
+import { resolveThreadWorkspaceCwd } from "@glade/shared/threads/threadEnvironment";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import {

@@ -1,4 +1,4 @@
-import { GLADE_DESKTOP_ORIGIN } from "@glade/shared/desktopIdentity";
+import { GLADE_DESKTOP_ORIGIN } from "@glade/shared/platform/desktopIdentity";
 
 import type { ServerConfigShape } from "./config";
 import { isLoopbackHost, isWildcardHost } from "./startupAccess";

@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import type { CuaComputerTask } from "@glade/shared/cuaDriverProtocol";
+import type { CuaComputerTask } from "@glade/shared/computer/cuaDriverProtocol";
 
 const tasks = new AsyncLocalStorage<{ task: CuaComputerTask; active: boolean }>();
 

@@ -2,7 +2,10 @@ import type {
   ProviderMentionReference,
   ProviderSkillReference,
 } from "@glade/contracts/provider/providerDiscovery";
-import { isThreadMentionPath, threadIdFromThreadMentionPath } from "@glade/shared/threadMentions";
+import {
+  isThreadMentionPath,
+  threadIdFromThreadMentionPath,
+} from "@glade/shared/threads/threadMentions";
 
 export const SKILL_MENTION_PREFIX = "/";
 

@@ -1,4 +1,4 @@
-import { pluralize } from "@glade/shared/text";
+import { pluralize } from "@glade/shared/text/text";
 
 import type { BrowserAnnotationDraft } from "~/lib/browserAnnotations";
 import { cn } from "~/lib/utils";

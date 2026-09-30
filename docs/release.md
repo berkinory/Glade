@@ -14,7 +14,7 @@ The release workflow hashes and checks all platform artifacts against their sour
 
 ## Local builds
 
-Install the versions in `.mise.toml`, Xcode, and the Rust toolchain pinned in `packages/shared/src/cuaDriverRelease.json`. Run `bun install --frozen-lockfile`. Build each platform on its matching host:
+Install the versions in `.mise.toml`, Xcode, and the Rust toolchain pinned in `packages/shared/src/computer/cuaDriverRelease.json`. Run `bun install --frozen-lockfile`. Build each platform on its matching host:
 
 ```sh
 CSC_IDENTITY_AUTO_DISCOVERY=false bun run package:mac:arm64

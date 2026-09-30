@@ -12,17 +12,17 @@ import {
   Stream,
 } from "effect";
 import { Command, Flag } from "effect/unstable/cli";
-import { NetService } from "@glade/shared/Net";
+import { NetService } from "@glade/shared/platform/Net";
 import {
   MIGRATION_DIVERGENCE_CONSENT_ENV,
   MIGRATION_RUNTIME_SOURCE_DIGEST_ENV,
-} from "@glade/shared/migrationRecovery";
+} from "@glade/shared/platform/migrationRecovery";
 import {
   optionalBooleanEnvironmentConfig,
   optionalBooleanFlag,
   resolveBooleanConfig,
   type BooleanFlagInput,
-} from "@glade/shared/cli";
+} from "./server/cliFlags";
 import {
   DEFAULT_PORT,
   deriveServerPaths,

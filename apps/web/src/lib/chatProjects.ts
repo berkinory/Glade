@@ -1,6 +1,6 @@
 import { type ProjectId } from "@glade/contracts/core/baseSchemas";
-import { matchesLegacyHomeChatWorkspaceRoot } from "@glade/shared/projectContainers";
-import { isWorkspaceRootWithin, workspaceRootsEqual } from "@glade/shared/threadWorkspace";
+import { matchesLegacyHomeChatWorkspaceRoot } from "@glade/shared/threads/projectContainers";
+import { isWorkspaceRootWithin, workspaceRootsEqual } from "@glade/shared/threads/threadWorkspace";
 import type { Project } from "../types";
 import { readNativeApi } from "../nativeApi";
 import { useStore } from "../store";

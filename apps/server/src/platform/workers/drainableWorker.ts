@@ -1,12 +1,10 @@
 import { Cause, Data, Deferred, Effect, Exit, Queue, Ref, Scope } from "effect";
 
-export const DEFAULT_DRAINABLE_WORKER_CAPACITY = 256;
+const DEFAULT_DRAINABLE_WORKER_CAPACITY = 256;
 
-export type DrainableWorkerPhase = "running" | "quiescing" | "draining" | "stopped";
+type DrainableWorkerPhase = "running" | "quiescing" | "draining" | "stopped";
 
-export class DrainableWorkerAdmissionError extends Data.TaggedError(
-  "DrainableWorkerAdmissionError",
-)<{
+class DrainableWorkerAdmissionError extends Data.TaggedError("DrainableWorkerAdmissionError")<{
   readonly reason: "overloaded" | "not-running";
   readonly phase: DrainableWorkerPhase;
   readonly capacity: number;
@@ -16,7 +14,7 @@ export interface DrainableWorkerOptions {
   readonly capacity?: number;
 }
 
-export interface DrainableWorkerStatus {
+interface DrainableWorkerStatus {
   readonly phase: DrainableWorkerPhase;
   readonly outstanding: number;
   readonly capacity: number;

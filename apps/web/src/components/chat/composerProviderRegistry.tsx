@@ -7,7 +7,7 @@ import {
   isClaudeUltrathinkPrompt,
   normalizeClaudeModelOptions,
   trimOrNull,
-} from "@glade/shared/model";
+} from "@glade/shared/provider/model";
 import { classifyCodexReasoningEffortSupport } from "../../lib/codexReasoningEffort";
 import { getRuntimeAwareModelCapabilities } from "./runtimeModelCapabilities";
 

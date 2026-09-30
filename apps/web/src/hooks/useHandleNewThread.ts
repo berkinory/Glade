@@ -1,5 +1,5 @@
 import { type ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
-import { getDefaultModel } from "@glade/shared/model";
+import { getDefaultModel } from "@glade/shared/provider/model";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { startTransition } from "react";

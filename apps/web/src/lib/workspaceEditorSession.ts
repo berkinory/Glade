@@ -1,5 +1,5 @@
 import type { ProjectReadFileResult } from "@glade/contracts/workspace/project";
-import { isWorkspaceFileWriteConflictError } from "@glade/shared/workspaceFileWrite";
+import { isWorkspaceFileWriteConflictError } from "@glade/shared/workspace/workspaceFileWrite";
 import type { QueryClient } from "@tanstack/react-query";
 
 import { ensureNativeApi } from "~/nativeApi";

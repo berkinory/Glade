@@ -1,5 +1,5 @@
 import type { DesktopUpdateState } from "@glade/contracts/ipc/ipc";
-import type { GladeDesktopFlavor } from "@glade/shared/desktopIdentity";
+import type { GladeDesktopFlavor } from "@glade/shared/platform/desktopIdentity";
 
 export type DownloadProgressSample = {
   readonly percent?: number | null;

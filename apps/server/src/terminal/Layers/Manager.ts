@@ -14,7 +14,7 @@ import {
   type TerminalEvent,
   type TerminalSessionSnapshot,
 } from "@glade/contracts/terminal/terminal";
-import { describeErrorMessage } from "@glade/shared/errorMessages";
+import { describeErrorMessage } from "@glade/shared/text/errorMessages";
 import {
   consumeTerminalIdentityInput,
   terminalCliKindFromValue,
@@ -23,7 +23,7 @@ import {
   type TerminalActivityState,
   type TerminalAgentHookEventType,
   type TerminalCliKind,
-} from "@glade/shared/terminalThreads";
+} from "@glade/shared/threads/terminalThreads";
 import { Effect, Encoding, Layer, Schema } from "effect";
 
 import { createLogger } from "../../logger";

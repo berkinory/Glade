@@ -5,7 +5,7 @@ import type { ServerProviderStatus } from "@glade/contracts/server/server";
 import {
   normalizeRuntimeModeForProvider,
   providerSupportsAutoRuntimeMode,
-} from "@glade/shared/runtimeMode";
+} from "@glade/shared/threads/runtimeMode";
 
 export { normalizeRuntimeModeForProvider, providerSupportsAutoRuntimeMode };
 

@@ -23,7 +23,7 @@ import {
   getModelOptions,
   normalizeModelSlug,
   resolveSelectableModel,
-} from "@glade/shared/model";
+} from "@glade/shared/provider/model";
 
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { EnvMode } from "./components/BranchToolbar.logic";

@@ -5,7 +5,7 @@ import {
   defaultCustomTitleBarPreference,
   resolveCustomTitleBarActive,
   supportsCustomTitleBar,
-} from "@glade/shared/desktopTitleBar";
+} from "./main/window/desktopTitleBar";
 
 interface PersistedCustomTitleBarPreference {
   readonly version: 1;

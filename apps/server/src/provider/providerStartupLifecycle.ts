@@ -1,4 +1,4 @@
-import { ExecutableNotFoundError } from "@glade/shared/platformProcess";
+import { ExecutableNotFoundError } from "@glade/shared/platform/platformProcess";
 import { Duration, Effect, Option } from "effect";
 
 export type ProviderStartupPhase =

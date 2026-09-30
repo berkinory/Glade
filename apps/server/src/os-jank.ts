@@ -5,9 +5,9 @@ import {
   mergePathEntries,
   readPathFromLaunchctl,
   readPathFromLoginShell,
-} from "@glade/shared/shell";
-import { createCachedLoginShellPathReader } from "@glade/shared/loginShellEnvironment";
-import { resolveGladeHomeDirectory } from "@glade/shared/gladeHome";
+} from "@glade/shared/platform/shell";
+import { createCachedLoginShellPathReader } from "@glade/shared/platform/loginShellEnvironment";
+import { resolveGladeHomeDirectory } from "@glade/shared/platform/gladeHome";
 
 function logPathHydrationWarning(message: string, error?: unknown): void {
   console.warn(`[server] ${message}`, error instanceof Error ? error.message : (error ?? ""));

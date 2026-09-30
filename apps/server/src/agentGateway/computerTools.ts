@@ -1,5 +1,5 @@
 import { normalizeOperationError } from "../platform/operationError.ts";
-import { parseCuaActionDiagnostics } from "@glade/shared/cuaActionDiagnostics";
+import { parseCuaActionDiagnostics } from "@glade/shared/computer/cuaActionDiagnostics";
 import { ComputerProgressGuard, type ComputerProgressAction } from "./computerProgressGuard.ts";
 import { beginComputerTurnCall } from "../computer/computerTurnTiming.ts";
 import {

@@ -1,5 +1,5 @@
 import { type ThreadId } from "@glade/contracts/core/baseSchemas";
-import { type TerminalCliKind } from "@glade/shared/terminalThreads";
+import { type TerminalCliKind } from "@glade/shared/threads/terminalThreads";
 import { useState } from "react";
 
 import { useAppSettings } from "~/appSettings";

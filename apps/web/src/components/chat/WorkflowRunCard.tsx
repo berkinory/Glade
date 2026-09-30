@@ -1,6 +1,6 @@
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { getModelCapabilities } from "@glade/shared/model";
-import { pluralize } from "@glade/shared/text";
+import { getModelCapabilities } from "@glade/shared/provider/model";
+import { pluralize } from "@glade/shared/text/text";
 import { useState } from "react";
 
 import { formatContextWindowTokens } from "~/lib/contextWindow";

@@ -1,4 +1,4 @@
-import { outboundHttp } from "@glade/shared/outboundHttp";
+import { outboundHttp } from "@glade/shared/http/outboundHttp";
 
 const FAVICON_CACHE_MAX = 500;
 const FAVICON_SUCCESS_TTL_MS = 24 * 60 * 60 * 1000;

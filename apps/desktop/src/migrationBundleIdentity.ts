@@ -5,7 +5,7 @@ import {
   MIGRATION_RUNTIME_SOURCE_RELATIVE_PATH,
   findMigrationRuntimeIdentityMismatch,
   type MigrationRuntimeIdentityMismatch,
-} from "@glade/shared/migrationRecovery";
+} from "@glade/shared/platform/migrationRecovery";
 
 declare const __GLADE_MIGRATION_RUNTIME_SOURCE_DIGEST__: string;
 

@@ -3,7 +3,7 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { Effect } from "effect";
 import type { GitRebaseInput } from "@glade/contracts/git/git";
-import { isWorkspaceRelativePathSafe } from "@glade/shared/path";
+import { isWorkspaceRelativePathSafe } from "@glade/shared/platform/path";
 import { GitCommandError } from "./Errors.ts";
 import type { GitCoreShape } from "./Services/GitCore.ts";
 

@@ -1,7 +1,7 @@
 import { type GitHubProjectProvisionProgressEvent } from "@glade/contracts/git/githubProjectProvisioning";
 import { type SpaceId } from "@glade/contracts/core/baseSchemas";
-import { parseGitHubRepositoryInput } from "@glade/shared/githubRepository";
-import { normalizeProjectDirectoryName } from "@glade/shared/projectDirectoryName";
+import { parseGitHubRepositoryInput } from "@glade/shared/git/githubRepository";
+import { normalizeProjectDirectoryName } from "@glade/shared/threads/projectDirectoryName";
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 
 import { isElectron } from "../env";

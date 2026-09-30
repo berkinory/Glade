@@ -36,10 +36,10 @@ import {
   automationContinuesThread,
   automationOwnsItsThread,
   automationRequiresTargetThread,
-} from "@glade/shared/automationMode";
-import { buildTemporaryWorktreeBranchName } from "@glade/shared/git";
-import { providerStartOptionsFromServerSettings } from "@glade/shared/serverSettings";
-import { autoRuntimeModeSelectionIssue } from "@glade/shared/runtimeMode";
+} from "@glade/shared/threads/automationMode";
+import { buildTemporaryWorktreeBranchName } from "@glade/shared/git/git";
+import { providerStartOptionsFromServerSettings } from "../../settings/settingsPatches";
+import { autoRuntimeModeSelectionIssue } from "@glade/shared/threads/runtimeMode";
 import { Cause, Effect, Layer, Option, PubSub, Queue, Stream } from "effect";
 
 import { GitCore } from "../../git/Services/GitCore.ts";

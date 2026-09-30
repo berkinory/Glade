@@ -11,10 +11,10 @@ import {
   type OrchestrationShellSnapshot,
   type OrchestrationThreadActivity,
 } from "@glade/contracts/orchestration/orchestration";
-import { resolveThreadBranchRegressionGuard } from "@glade/shared/git";
-import { mergeAsyncUserInput } from "@glade/shared/asyncUserInput";
-import { normalizeModelSlug } from "@glade/shared/model";
-import { deriveThreadSummaryMetadata } from "@glade/shared/threadSummary";
+import { resolveThreadBranchRegressionGuard } from "@glade/shared/git/git";
+import { mergeAsyncUserInput } from "@glade/shared/threads/asyncUserInput";
+import { normalizeModelSlug } from "@glade/shared/provider/model";
+import { deriveThreadSummaryMetadata } from "@glade/shared/threads/threadSummary";
 
 import { isStalePendingRequestFailureDetail } from "./lib/pendingInteraction";
 import { toAttachmentPreviewUrl } from "./lib/wsHttpUrl";

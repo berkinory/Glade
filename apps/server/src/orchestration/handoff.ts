@@ -2,7 +2,7 @@ import type {
   OrchestrationMessage,
   OrchestrationThread,
 } from "@glade/contracts/orchestration/orchestration";
-import { unicodeSafeEndOffset } from "@glade/shared/text";
+import { unicodeSafeEndOffset } from "@glade/shared/text/text";
 
 const RECENT_MESSAGE_COUNT = 6;
 const EARLIER_MESSAGE_CHAR_LIMIT = 320;

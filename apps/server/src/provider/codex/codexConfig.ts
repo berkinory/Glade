@@ -32,10 +32,7 @@ export function parseCodexConfigModelProvider(content: string): string | undefin
   return undefined;
 }
 
-export function parseCodexConfigProviderEnvKey(
-  content: string,
-  provider: string,
-): string | undefined {
+function parseCodexConfigProviderEnvKey(content: string, provider: string): string | undefined {
   let currentProviderSection: string | undefined;
 
   for (const line of content.split("\n")) {
@@ -56,7 +53,7 @@ export function parseCodexConfigProviderEnvKey(
   return undefined;
 }
 
-export function parseCodexConfigActiveProviderEnvKey(content: string): string | undefined {
+function parseCodexConfigActiveProviderEnvKey(content: string): string | undefined {
   const provider = parseCodexConfigModelProvider(content);
   if (!provider || provider === "openai") {
     return undefined;
@@ -70,7 +67,7 @@ export function resolveCodexHome(env: NodeJS.ProcessEnv = process.env): string {
   return configured && configured.length > 0 ? configured : join(OS.homedir(), ".codex");
 }
 
-export function readCodexConfigContent(env: NodeJS.ProcessEnv = process.env): string | undefined {
+function readCodexConfigContent(env: NodeJS.ProcessEnv = process.env): string | undefined {
   const configPath = join(resolveCodexHome(env), "config.toml");
   if (!existsSync(configPath)) {
     return undefined;

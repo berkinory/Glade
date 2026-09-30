@@ -7,7 +7,7 @@ import {
   migrationRecoveryMarkerPath,
   parseMigrationRecoveryResumeState,
   type MigrationSchemaTooNewStartupBlock,
-} from "@glade/shared/migrationRecovery";
+} from "@glade/shared/platform/migrationRecovery";
 
 const execFile = promisify(ChildProcess.execFile);
 const RECOVERY_OUTPUT_LIMIT_BYTES = 64 * 1024;

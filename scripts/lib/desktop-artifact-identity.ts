@@ -1,7 +1,7 @@
 import {
   gladeDesktopIdentity,
   type GladePackagedDesktopFlavor,
-} from "@glade/shared/desktopIdentity";
+} from "@glade/shared/platform/desktopIdentity";
 
 export function createDesktopArtifactIdentity(input: {
   readonly platform: "mac" | "linux" | "win";

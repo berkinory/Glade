@@ -3,19 +3,22 @@ import {
   type OrchestrationPendingInteraction,
 } from "@glade/contracts/orchestration/orchestration";
 import { type ThreadId } from "@glade/contracts/core/baseSchemas";
-import { resolveThreadBranchRegressionGuard } from "@glade/shared/git";
+import { resolveThreadBranchRegressionGuard } from "@glade/shared/git/git";
 import {
   clearRemovedAsyncUserInputResponses,
   mergeAsyncUserInput,
-} from "@glade/shared/asyncUserInput";
+} from "@glade/shared/threads/asyncUserInput";
 import {
   addPinnedMessage,
   removePinnedMessage,
   setPinnedMessageDone,
   setPinnedMessageLabel,
-} from "@glade/shared/pinnedMessages";
-import { deriveThreadSummaryMetadata, resolveHumanMessageAt } from "@glade/shared/threadSummary";
-import { isPendingInteractionResponseClaimable } from "@glade/shared/pendingInteractions";
+} from "@glade/shared/threads/pinnedMessages";
+import {
+  deriveThreadSummaryMetadata,
+  resolveHumanMessageAt,
+} from "@glade/shared/threads/threadSummary";
+import { isPendingInteractionResponseClaimable } from "@glade/shared/threads/pendingInteractions";
 
 import { isSessionRunningTurn } from "./session-logic";
 import {

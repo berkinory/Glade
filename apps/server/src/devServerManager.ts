@@ -10,7 +10,7 @@ import {
   type ProjectStopDevServerResult,
 } from "@glade/contracts/workspace/project";
 import { type ServerLocalServerProcess } from "@glade/contracts/server/server";
-import { localServerMatchesRun } from "@glade/shared/localServers";
+import { localServerMatchesRun } from "@glade/shared/browser/localServers";
 import { Effect, Layer, PubSub, Ref, ServiceMap, Stream } from "effect";
 
 import { TerminalManager, type TerminalError } from "./terminal/Services/Manager";

@@ -36,7 +36,7 @@ export class JsonRpcStdioTransportError extends Error {
   }
 }
 
-export class JsonRpcStdioRequestTimeoutError extends Error {
+class JsonRpcStdioRequestTimeoutError extends Error {
   readonly method: string;
 
   constructor(method: string) {

@@ -23,7 +23,7 @@ import {
   TurnId,
 } from "@glade/contracts/core/baseSchemas";
 import { DEFAULT_MODEL_BY_PROVIDER } from "@glade/contracts/provider/model";
-import { isTemporaryWorktreeBranch } from "@glade/shared/git";
+import { isTemporaryWorktreeBranch } from "@glade/shared/git/git";
 
 import { Cause, Deferred, Effect, Exit, Fiber, Layer, Option, Stream } from "effect";
 import { TestClock } from "effect/testing";

@@ -13,7 +13,7 @@ import {
   normalizeModelSlug,
   resolveModelSlugForProvider,
   resolveSelectableModel,
-} from "@glade/shared/model";
+} from "@glade/shared/provider/model";
 import { resolveAppModelSelection } from "./appSettings";
 import type { ComposerThreadDraftState } from "./composerDraftDomain";
 import { classifyProviderReasoningEffortSupport } from "./lib/codexReasoningEffort";

@@ -2,7 +2,7 @@ import {
   CUA_ACTION_TOOLS,
   CUA_BROWSER_TOOLS,
   type CuaReply,
-} from "@glade/shared/cuaDriverProtocol";
+} from "@glade/shared/computer/cuaDriverProtocol";
 
 const UNSUPPORTED_NATIVE_TOOLS = new Set([
   "select_text",

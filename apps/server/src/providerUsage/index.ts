@@ -10,7 +10,7 @@ import type {
 } from "@glade/contracts/server/server";
 import { Effect } from "effect";
 
-import { PROVIDER_USAGE_PROVIDERS } from "@glade/shared/providerUsage";
+import { PROVIDER_USAGE_PROVIDERS } from "@glade/shared/provider/providerUsage";
 
 import { ServerConfig } from "../config";
 import { consumeCodexResetCredit } from "./codexResetCredits";

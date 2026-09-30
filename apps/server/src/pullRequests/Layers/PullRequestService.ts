@@ -5,7 +5,7 @@ import type {
 } from "@glade/contracts/orchestration/orchestration";
 import type { ProjectId } from "@glade/contracts/core/baseSchemas";
 import type { PullRequestDetail } from "@glade/contracts/git/pullRequests";
-import { isValidGitHubRepositoryNameWithOwner } from "@glade/shared/githubRepository";
+import { isValidGitHubRepositoryNameWithOwner } from "@glade/shared/git/githubRepository";
 import { Effect, Layer, Scope, Semaphore } from "effect";
 
 import { GitCore } from "../../git/Services/GitCore";

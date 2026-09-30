@@ -17,9 +17,9 @@ import {
   ATTACHMENT_CANCEL_ROUTE_PATH,
   ATTACHMENT_UPLOAD_ROUTE_PATH,
   VOICE_TRANSCRIPTION_UPLOAD_ROUTE_PATH,
-} from "@glade/shared/binaryTransfer";
-import { EDITOR_ICON_ROUTE_PATH } from "@glade/shared/editorIcons";
-import { threadExportBlockedReason } from "@glade/shared/threadExport";
+} from "@glade/shared/transport/binaryTransfer";
+import { EDITOR_ICON_ROUTE_PATH } from "@glade/shared/workspace/editorIcons";
+import { threadExportBlockedReason } from "@glade/shared/threads/threadExport";
 import { Cause, DateTime, Effect, FileSystem, Layer, Option, Path, Schema, Stream } from "effect";
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http";
 

@@ -4,7 +4,7 @@ import {
   resolveUiTreeTarget,
   uiTreeActivationPoint,
   type UiTreeTargetSpec,
-} from "@glade/shared/uiTreeTargeting";
+} from "../platform/input/uiTreeTargeting";
 
 export interface DeviceUiTarget {
   readonly label: string;

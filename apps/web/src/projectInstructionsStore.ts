@@ -1,5 +1,5 @@
 import type { ProjectId } from "@glade/contracts/core/baseSchemas";
-import { clampThreadNotes } from "@glade/shared/pinnedMessages";
+import { clampThreadNotes } from "@glade/shared/threads/pinnedMessages";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 

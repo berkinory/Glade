@@ -1,5 +1,5 @@
 import type { ComputerId } from "@glade/contracts/computer/computer";
-import type { ComputerFrame } from "@glade/shared/computerFrame";
+import type { ComputerFrame } from "@glade/shared/computer/computerFrame";
 import { useEffect, useRef, useState } from "react";
 
 import {

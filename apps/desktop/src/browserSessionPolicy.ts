@@ -12,7 +12,7 @@ import {
   buildAcceptLanguageHeader,
   buildChromeClientHints,
   deriveChromeUserAgent,
-} from "@glade/shared/browserSession";
+} from "@glade/shared/browser/browserSession";
 import { LOCAL_HTML_PREVIEW_SCHEME, LocalHtmlPreviewRegistry } from "./localHtmlPreviewProtocol";
 
 export const BROWSER_SESSION_PARTITION = "persist:glade-browser";

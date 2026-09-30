@@ -5,7 +5,7 @@ import {
   type OrchestrationReadModel,
   type OrchestrationShellSnapshot,
 } from "@glade/contracts/orchestration/orchestration";
-import { automationContinuationThreadId } from "@glade/shared/automationMode";
+import { automationContinuationThreadId } from "@glade/shared/threads/automationMode";
 import { Effect } from "effect";
 import { randomUUID } from "node:crypto";
 

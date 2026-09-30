@@ -18,14 +18,17 @@ import {
   extractSubagentIdentityHints,
   decodeSubagentReceiverAgents,
   decodeSubagentReceiverThreadIds,
-} from "@glade/shared/subagents";
+} from "@glade/shared/threads/subagents";
 import {
   approvalRequestKindFromRequestType,
   type ApprovalRequestKind,
-} from "@glade/shared/threadSummary";
-import { stripTrailingToolExitCode, summarizeToolRawOutput } from "@glade/shared/toolOutputSummary";
-import { pluralize, stripTerminalControlSequences } from "@glade/shared/text";
-import { PROVIDER_DESCRIPTORS } from "@glade/shared/providerMetadata";
+} from "@glade/shared/threads/threadSummary";
+import {
+  stripTrailingToolExitCode,
+  summarizeToolRawOutput,
+} from "./features/chat/timeline/toolOutputSummary";
+import { pluralize, stripTerminalControlSequences } from "@glade/shared/text/text";
+import { PROVIDER_DESCRIPTORS } from "@glade/shared/provider/providerMetadata";
 import {
   deriveReadableToolTitle,
   deriveGladeMcpToolTitle,

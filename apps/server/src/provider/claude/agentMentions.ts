@@ -48,7 +48,7 @@ function readBalancedTask(
   return null;
 }
 
-export function parseAgentMentionInvocations(
+function parseAgentMentionInvocations(
   text: string,
   provider: ProviderKind,
 ): ReadonlyArray<ParsedAgentMentionInvocation> {

@@ -16,7 +16,7 @@ import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   browserAnnotationDocumentIdentityUrl,
   sanitizeBrowserAnnotationUrl,
-} from "@glade/shared/browserAnnotations";
+} from "@glade/shared/browser/browserAnnotations";
 
 import { BROWSER_ANNOTATION_GUEST_COMMAND_CHANNEL } from "../ipcChannels";
 import {

@@ -7,7 +7,7 @@ import {
 } from "@glade/contracts/orchestration/orchestration";
 import { type SpaceId, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { Debouncer } from "@tanstack/react-pacer";
-import { resolveThreadBranchRegressionGuard } from "@glade/shared/git";
+import { resolveThreadBranchRegressionGuard } from "@glade/shared/git/git";
 import { create } from "zustand";
 
 import {

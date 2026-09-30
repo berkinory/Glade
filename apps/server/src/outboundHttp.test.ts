@@ -2,13 +2,13 @@ import {
   encodeOutboundMultipart,
   invokePinnedDnsLookup,
   OutboundHttpError,
-} from "@glade/shared/outboundHttp";
+} from "@glade/shared/http/outboundHttp";
 import {
   assertJsonWithinLimits,
   assertOutboundUrlAllowed,
   isPublicIpAddress,
   OutboundPolicyError,
-} from "@glade/shared/outboundHttpPolicy";
+} from "@glade/shared/http/outboundHttpPolicy";
 import { describe, expect, it } from "vitest";
 
 describe("outbound HTTP policy", () => {

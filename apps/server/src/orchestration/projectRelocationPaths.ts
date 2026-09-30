@@ -2,7 +2,7 @@ import { posix, win32 } from "node:path";
 import {
   normalizeWorkspaceRootForComparison,
   workspaceRootsEqual,
-} from "@glade/shared/threadWorkspace";
+} from "@glade/shared/threads/threadWorkspace";
 
 export function relocateProjectPath(
   value: string | null | undefined,

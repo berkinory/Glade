@@ -8,7 +8,10 @@ import {
   TriangleAlertIcon,
 } from "~/lib/icons";
 import { type ThreadId } from "@glade/contracts/core/baseSchemas";
-import { type TerminalActivityState, type TerminalCliKind } from "@glade/shared/terminalThreads";
+import {
+  type TerminalActivityState,
+  type TerminalCliKind,
+} from "@glade/shared/threads/terminalThreads";
 import { Terminal } from "@xterm/xterm";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { type TerminalContextSelection } from "~/lib/terminalContext";

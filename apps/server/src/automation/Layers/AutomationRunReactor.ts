@@ -1,6 +1,9 @@
 import type { OrchestrationEvent } from "@glade/contracts/orchestration/orchestration";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { makeDrainableWorker, startDrainableWorkerProducers } from "@glade/shared/DrainableWorker";
+import {
+  makeDrainableWorker,
+  startDrainableWorkerProducers,
+} from "../../platform/workers/drainableWorker";
 import { Cause, Effect, Layer, Stream } from "effect";
 
 import { OrchestrationEngineService } from "../../orchestration/Services/OrchestrationEngine.ts";

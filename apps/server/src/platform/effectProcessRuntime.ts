@@ -1,4 +1,4 @@
-import { prepareProcess, type ProcessLaunchInput } from "@glade/shared/platformProcess";
+import { prepareProcess, type ProcessLaunchInput } from "@glade/shared/platform/platformProcess";
 import { ChildProcess } from "effect/unstable/process";
 
 type ProcessPlanningOptions = Pick<ProcessLaunchInput, "platform">;

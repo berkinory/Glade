@@ -1,7 +1,7 @@
 import { ThreadId, type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { type ModelSelection } from "@glade/contracts/orchestration/orchestration";
 import { type ServerProviderStatus } from "@glade/contracts/server/server";
-import { normalizeModelSlug } from "@glade/shared/model";
+import { normalizeModelSlug } from "@glade/shared/provider/model";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useProviderStatusesForLocalConfig } from "~/hooks/useProviderStatusesForLocalConfig";

@@ -5,7 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { configureMacLauncher, resolveElectronPath } from "./electron-launcher.mjs";
 
-import { GLADE_DESKTOP_SMOKE_USER_DATA_ENV } from "@glade/shared/desktopIdentity";
+import { GLADE_DESKTOP_SMOKE_USER_DATA_ENV } from "@glade/shared/platform/desktopIdentity";
 import { spawnSourceDesktop } from "./source-desktop-launch.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

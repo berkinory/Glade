@@ -28,7 +28,7 @@ import {
   DEVICE_HELPER_SOURCE_DIR_ENV,
   deviceHelperCacheKey,
   readDeviceHelperSourceRevision,
-} from "@glade/shared/deviceHelperCache";
+} from "@glade/shared/workspace/deviceHelperCache";
 
 import { runProcess, type ProcessRunResult } from "../processRunner.ts";
 import {

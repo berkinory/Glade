@@ -1,7 +1,7 @@
 import path from "node:path";
 
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { RotatingFileSink } from "@glade/shared/logging";
+import { RotatingFileSink } from "@glade/shared/platform/logging";
 import { Effect, Exit, Logger, Scope } from "effect";
 
 import { stripDiagnosticImages } from "../stripDiagnosticImages.ts";

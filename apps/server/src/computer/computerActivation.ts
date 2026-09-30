@@ -1,5 +1,5 @@
 import type { ComputerControlMode } from "@glade/contracts/orchestration/orchestration";
-import { resolveComputerInvocationMode } from "@glade/shared/computerInvocation";
+import { resolveComputerInvocationMode } from "@glade/shared/computer/computerInvocation";
 
 export function computerActivationMetadata(input: {
   readonly enableComputerControl?: boolean | undefined;

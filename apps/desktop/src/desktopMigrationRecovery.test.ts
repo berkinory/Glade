@@ -4,7 +4,7 @@ import * as Path from "node:path";
 
 import { describe, expect, it, vi } from "vitest";
 
-import { MIGRATION_RECOVERY_MAX_RESUME_ATTEMPTS } from "@glade/shared/migrationRecovery";
+import { MIGRATION_RECOVERY_MAX_RESUME_ATTEMPTS } from "@glade/shared/platform/migrationRecovery";
 
 import {
   hasVerifiedDesktopMigrationRestore,

@@ -1,4 +1,7 @@
-import { isWorkspaceRelativePathSafe, joinWorkspaceRelativePath } from "@glade/shared/path";
+import {
+  isWorkspaceRelativePathSafe,
+  joinWorkspaceRelativePath,
+} from "@glade/shared/platform/path";
 import { Fragment, useLayoutEffect, useRef, useState } from "react";
 
 import { useCopyFileContentsToClipboard, useCopyPathToClipboard } from "~/hooks/useCopyToClipboard";

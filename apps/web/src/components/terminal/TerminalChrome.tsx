@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import type { ResolvedTerminalVisualIdentity } from "@glade/shared/terminalThreads";
+import type { ResolvedTerminalVisualIdentity } from "@glade/shared/threads/terminalThreads";
 
 import { IconButton } from "~/components/ui/icon-button";
 import { Popover, PopoverPopup, PopoverTrigger } from "~/components/ui/popover";

@@ -1,4 +1,7 @@
-import { type TerminalActivityState, type TerminalCliKind } from "@glade/shared/terminalThreads";
+import {
+  type TerminalActivityState,
+  type TerminalCliKind,
+} from "@glade/shared/threads/terminalThreads";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";

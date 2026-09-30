@@ -1,6 +1,6 @@
 import type { TaggedFailure } from "../../platform/operationError.ts";
 import { computerActivationMetadata } from "../../computer/computerActivation.ts";
-import { parseComputerInvocation } from "@glade/shared/computerInvocation";
+import { parseComputerInvocation } from "@glade/shared/computer/computerInvocation";
 import { AgentGatewaySessionRegistry } from "../../agentGateway/Services/AgentGatewaySessionRegistry";
 import { ComputerService } from "../../computer/Services/ComputerService";
 import { providerWorkspaceChanged } from "../projectRelocationPaths.ts";
@@ -60,22 +60,22 @@ import {
   buildThreadTitleConversationContext,
   isGenericChatThreadTitle,
   isUsableGeneratedThreadTitle,
-} from "@glade/shared/chatThreads";
+} from "@glade/shared/threads/chatThreads";
 import {
   collectTailTurnIds,
   resolveTailUserMessageEditTarget,
-} from "@glade/shared/conversationEdit";
-import { isTemporaryWorktreeBranch, WORKTREE_BRANCH_PREFIX } from "@glade/shared/git";
-import { claudeSelectionRequiresRestart, resolveApiModelId } from "@glade/shared/model";
-import { assessClaudeCache } from "@glade/shared/claudeCache";
+} from "@glade/shared/threads/conversationEdit";
+import { isTemporaryWorktreeBranch, WORKTREE_BRANCH_PREFIX } from "@glade/shared/git/git";
+import { claudeSelectionRequiresRestart, resolveApiModelId } from "@glade/shared/provider/model";
+import { assessClaudeCache } from "@glade/shared/provider/claudeCache";
 import { claudeCacheForModel } from "../../provider/claudeCacheObservation.ts";
-import { providerSupportsNativeTurnSteering } from "@glade/shared/providerMetadata";
+import { providerSupportsNativeTurnSteering } from "@glade/shared/provider/providerMetadata";
 import {
   formatProviderDeliveryBlockDetail,
   PROVIDER_DELIVERY_BLOCK_SUMMARY,
-} from "@glade/shared/providerDeliveryBlock";
-import { buildStalePendingRequestFailureDetail } from "@glade/shared/threadSummary";
-import { resolveThreadWorkspaceState } from "@glade/shared/threadEnvironment";
+} from "@glade/shared/provider/providerDeliveryBlock";
+import { buildStalePendingRequestFailureDetail } from "@glade/shared/threads/threadSummary";
+import { resolveThreadWorkspaceState } from "@glade/shared/threads/threadEnvironment";
 
 import {
   checkpointRefForThreadMessageStart,
@@ -136,7 +136,7 @@ import { QueuedTurnPromotionRepository } from "../../persistence/Services/Queued
 import { ManagedAttachmentRepository } from "../../persistence/Services/ManagedAttachments.ts";
 import { ServerConfig } from "../../config.ts";
 import { ServerSettingsService } from "../../serverSettings.ts";
-import { providerStartOptionsFromServerSettings } from "@glade/shared/serverSettings";
+import { providerStartOptionsFromServerSettings } from "../../settings/settingsPatches";
 import { clearWorkspaceIndexCache } from "../../workspaceEntries.ts";
 import {
   buildPriorTranscriptBootstrapText,

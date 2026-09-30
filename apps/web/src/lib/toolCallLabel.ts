@@ -1,5 +1,5 @@
 import type { ToolLifecycleItemType } from "@glade/contracts/provider/providerRuntime";
-import { BROWSER_TOOL_TITLES } from "@glade/shared/browserAutomationPresentation";
+import { BROWSER_TOOL_TITLES } from "@glade/shared/browser/browserAutomationPresentation";
 import {
   COMPUTER_TOOL_TITLES,
   computerToolName,

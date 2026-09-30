@@ -13,17 +13,17 @@ import {
   migrationRecoveryMarkerPath,
   parseMigrationRecoveryResumeState,
   type MigrationSchemaTooNewRecovery,
-} from "@glade/shared/migrationRecovery";
+} from "@glade/shared/platform/migrationRecovery";
 export {
   migrationBackupDirectory,
   migrationRecoveryMarkerPath,
-} from "@glade/shared/migrationRecovery";
+} from "@glade/shared/platform/migrationRecovery";
 
 import {
   sameFileIdentity,
   syncDirectoryEntry,
   syncRegularFile,
-} from "@glade/shared/filesystemPlatform";
+} from "../platform/filesystemPlatform";
 import { ensurePrivateDirectorySync, repairPrivateFile } from "../privatePathPermissions.ts";
 import { withDatabaseLifecycleLock } from "./DatabaseLifecycleLock.ts";
 import {

@@ -1,6 +1,6 @@
 import type { ModelSlug } from "@glade/contracts/provider/model";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
-import { getDefaultModel } from "@glade/shared/model";
+import { getDefaultModel } from "@glade/shared/provider/model";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {

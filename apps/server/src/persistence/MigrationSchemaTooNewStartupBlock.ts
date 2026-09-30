@@ -1,7 +1,7 @@
 import {
   serializeMigrationSchemaTooNewStartupBlock,
   type MigrationSchemaTooNewStartupBlock,
-} from "@glade/shared/migrationRecovery";
+} from "@glade/shared/platform/migrationRecovery";
 
 import { MigrationSchemaTooNewError } from "./Errors.ts";
 import { inspectCompletedMigrationBackupForSchemaTooNew } from "./MigrationBackup.ts";

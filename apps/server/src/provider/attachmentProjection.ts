@@ -3,7 +3,7 @@ import type {
   ChatFileAttachment,
   ChatImageAttachment,
 } from "@glade/contracts/orchestration/orchestration";
-import { formatBytes } from "@glade/shared/formatBytes";
+import { formatBytes } from "@glade/shared/text/formatBytes";
 
 import { resolveProviderAttachmentPath } from "./providerAttachmentPaths.ts";
 

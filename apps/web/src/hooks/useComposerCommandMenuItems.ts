@@ -29,7 +29,7 @@ import {
   getProviderNativeSlashCommandSearchTerms,
   shouldHideProviderNativeCommandFromComposerMenu,
 } from "../composerSlashCommands";
-import { threadMentionPathForThreadId } from "@glade/shared/threadMentions";
+import { threadMentionPathForThreadId } from "@glade/shared/threads/threadMentions";
 
 import type { ComposerCommandItem } from "../components/chat/ComposerCommandMenu";
 import type { ProviderModelOption } from "../providerModelOptions";

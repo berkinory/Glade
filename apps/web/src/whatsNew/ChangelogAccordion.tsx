@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { pluralize } from "@glade/shared/text";
+import { pluralize } from "@glade/shared/text/text";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "~/components/ui/collapsible";
 import { DisclosureChevron } from "~/components/ui/DisclosureChevron";
 import { cn } from "~/lib/utils";

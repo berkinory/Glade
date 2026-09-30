@@ -1,5 +1,5 @@
 import type { ChildProcess } from "node:child_process";
-import { spawnProcess } from "@glade/shared/processRuntime";
+import { spawnProcess } from "@glade/shared/platform/processRuntime";
 import {
   compareCodexCliVersions,
   formatCodexCliUpgradeMessage,
@@ -8,7 +8,7 @@ import {
 } from "../codexCliVersion";
 import { buildCodexProcessEnv } from "../../codexProcessEnv.ts";
 import { assertCodexWorkingDirectoryExists } from "../../codexWorkingDirectory.ts";
-import { executableIdentity, resolveExecutable } from "@glade/shared/executable";
+import { executableIdentity, resolveExecutable } from "@glade/shared/platform/executable";
 
 const CODEX_VERSION_CHECK_TIMEOUT_MS = 4_000;
 

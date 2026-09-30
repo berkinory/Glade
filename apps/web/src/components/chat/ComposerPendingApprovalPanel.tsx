@@ -1,6 +1,6 @@
 import { type ApprovalRequestId } from "@glade/contracts/core/baseSchemas";
 import { type ProviderApprovalDecision } from "@glade/contracts/orchestration/orchestration";
-import { pendingRequestInstanceKey } from "@glade/shared/threadSummary";
+import { pendingRequestInstanceKey } from "@glade/shared/threads/threadSummary";
 import { type KeyboardEvent, useRef } from "react";
 import { type PendingApproval } from "../../session-logic";
 import { cn } from "~/lib/utils";

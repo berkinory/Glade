@@ -3,7 +3,7 @@ import { dirname } from "node:path";
 import {
   parseCuaActionDiagnostics,
   type CuaActionDiagnostics,
-} from "@glade/shared/cuaActionDiagnostics";
+} from "@glade/shared/computer/cuaActionDiagnostics";
 import type {
   ComputerAuditEffect,
   ComputerGetAuditHistoryInput,

@@ -10,7 +10,7 @@ import type {
   StatsGetProfileTokenStatsInput,
 } from "@glade/contracts/server/stats";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
-import { isBuiltInComposerSlashCommandName } from "@glade/shared/composerSlashCommands";
+import { isBuiltInComposerSlashCommandName } from "@glade/shared/threads/composerSlashCommands";
 import { Effect, Layer, ServiceMap } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 

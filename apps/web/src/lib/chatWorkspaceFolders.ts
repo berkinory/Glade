@@ -1,4 +1,4 @@
-import { workspaceRootsEqual } from "@glade/shared/threadWorkspace";
+import { workspaceRootsEqual } from "@glade/shared/threads/threadWorkspace";
 
 const FALLBACK_CHAT_WORKSPACE_SLUG = "new-thread";
 const MAX_CHAT_WORKSPACE_SLUG_LENGTH = 72;

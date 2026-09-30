@@ -1,11 +1,14 @@
 import type { ExecFileException } from "node:child_process";
 import * as Path from "node:path";
 
-import { matchesDistinguishedName, parseDistinguishedName } from "@glade/shared/windowsCertificate";
-import { execProcessFile, spawnProcessSync } from "@glade/shared/processRuntime";
-import { resolveWindowsPowerShellExecutable } from "@glade/shared/platformEnvironment";
+import {
+  matchesDistinguishedName,
+  parseDistinguishedName,
+} from "./main/updates/windowsCertificate";
+import { execProcessFile, spawnProcessSync } from "@glade/shared/platform/processRuntime";
+import { resolveWindowsPowerShellExecutable } from "@glade/shared/platform/platformEnvironment";
 
-export { parseDistinguishedName } from "@glade/shared/windowsCertificate";
+export { parseDistinguishedName } from "./main/updates/windowsCertificate";
 
 type Logger = {
   info?(message: string): void;

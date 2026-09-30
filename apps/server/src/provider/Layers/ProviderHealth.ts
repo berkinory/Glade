@@ -8,8 +8,8 @@ import type {
   ServerProviderUpdateState,
 } from "@glade/contracts/server/server";
 import { ServerProviderUpdateError } from "@glade/contracts/server/server";
-import { parseCodexConfigModelProvider } from "@glade/shared/codexConfig";
-import { decodeJsonResult } from "@glade/shared/schemaJson";
+import { parseCodexConfigModelProvider } from "../codex/codexConfig";
+import { decodeJsonResult } from "../../platform/schemaJson";
 import type { SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
 import {
   Array,

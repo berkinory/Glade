@@ -7,8 +7,8 @@ import {
   LOCAL_IMAGE_ROUTE_PATH,
   isSupportedLocalImagePath,
   isSupportedLocalPreviewFilePath,
-} from "@glade/shared/localPreviewFiles";
-import { SCRATCH_WORKSPACES_DIRNAME } from "@glade/shared/threadWorkspace";
+} from "@glade/shared/browser/localPreviewFiles";
+import { SCRATCH_WORKSPACES_DIRNAME } from "@glade/shared/threads/threadWorkspace";
 
 import { resolveCodexGeneratedImagesRoots } from "./codexGeneratedImages.ts";
 

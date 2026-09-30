@@ -1,6 +1,6 @@
 import type { ModelSlug } from "@glade/contracts/provider/model";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
-import { resolveSelectableModel } from "@glade/shared/model";
+import { resolveSelectableModel } from "@glade/shared/provider/model";
 
 import { type StarredModel, starredModelKey } from "~/lib/starredModels";
 import {

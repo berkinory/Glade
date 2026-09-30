@@ -9,7 +9,7 @@ import {
   isBuiltInComposerSlashCommandName,
   normalizeComposerSlashCommandName,
   type BuiltInComposerSlashCommand,
-} from "@glade/shared/composerSlashCommands";
+} from "@glade/shared/threads/composerSlashCommands";
 import { rankProviderDiscoveryItems } from "./lib/providerDiscovery";
 
 export type ComposerSlashCommand = BuiltInComposerSlashCommand;

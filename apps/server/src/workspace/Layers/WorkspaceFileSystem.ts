@@ -4,8 +4,8 @@ import { constants as NodeFsConstants, type BigIntStats } from "node:fs";
 import * as NodeFs from "node:fs/promises";
 import * as NodePath from "node:path";
 
-import { isLocalAbsolutePath } from "@glade/shared/path";
-import { normalizeLineEndings } from "@glade/shared/text";
+import { isLocalAbsolutePath } from "@glade/shared/platform/path";
+import { normalizeLineEndings } from "@glade/shared/text/text";
 import { Effect, Layer, Path } from "effect";
 
 import { resolveLocalPreviewGrantRealPath } from "../../localImageFiles";

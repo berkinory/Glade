@@ -6,7 +6,7 @@ import {
   type ProviderRuntimeEvent,
 } from "@glade/contracts/provider/providerRuntime";
 import { type ThreadId } from "@glade/contracts/core/baseSchemas";
-import { isSupportedLocalImagePath as isSupportedLocalImagePathShared } from "@glade/shared/localPreviewFiles";
+import { isSupportedLocalImagePath as isSupportedLocalImagePathShared } from "@glade/shared/browser/localPreviewFiles";
 
 import {
   resolveActiveCodexHomeWritePath,

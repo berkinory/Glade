@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest";
 
-import { BROWSER_TOOL_CATALOGUE } from "@glade/shared/browserAutomationCatalogue";
+import { BROWSER_TOOL_CATALOGUE } from "@glade/shared/browser/browserAutomationCatalogue";
 import { BrowserWebMcpCallInput } from "@glade/contracts/browser/automation/browserAutomationToolInputs";
 import { Schema } from "effect";
 

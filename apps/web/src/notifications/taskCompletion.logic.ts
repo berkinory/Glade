@@ -2,8 +2,8 @@ import {
   defaultTerminalTitleForCliKind,
   type TerminalCliKind,
   type TerminalVisualState,
-} from "@glade/shared/terminalThreads";
-import { pendingRequestInstanceKey } from "@glade/shared/threadSummary";
+} from "@glade/shared/threads/terminalThreads";
+import { pendingRequestInstanceKey } from "@glade/shared/threads/threadSummary";
 import type { Thread, ThreadSession } from "../types";
 import {
   derivePendingApprovals,

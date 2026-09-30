@@ -8,7 +8,7 @@ import {
   JsonRpcStdioRequestRegistry,
   JsonRpcStdioTransportError,
   JsonRpcStdioWriter,
-} from "./jsonrpc-stdio";
+} from "./jsonRpcStdio";
 
 describe("shared JSON-RPC stdio transport", () => {
   it("frames split UTF-8 and reports framing failures", () => {

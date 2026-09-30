@@ -2,8 +2,8 @@ import {
   DEVICE_FRAME_RESYNC_MESSAGE,
   DEVICE_FRAME_WS_PATH,
   DEVICE_FRAME_WS_UDID_PARAM,
-} from "@glade/shared/deviceFrame";
-import { decodeFrameResyncRequest, makeFrameSink } from "@glade/shared/frameTransport";
+} from "@glade/shared/workspace/deviceFrame";
+import { decodeFrameResyncRequest, makeFrameSink } from "@glade/shared/transport/frameTransport";
 import { Effect, Layer } from "effect";
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http";
 

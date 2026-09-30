@@ -5,7 +5,7 @@ import {
   COMPUTER_FRAME_WS_PATH,
   decodeComputerFrame,
   type ComputerFrame,
-} from "@glade/shared/computerFrame";
+} from "@glade/shared/computer/computerFrame";
 
 import {
   createBinaryFrameSource,

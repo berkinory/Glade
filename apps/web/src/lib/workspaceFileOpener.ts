@@ -1,11 +1,11 @@
-import { isSupportedLocalPreviewFilePath } from "@glade/shared/localPreviewFiles";
+import { isSupportedLocalPreviewFilePath } from "@glade/shared/browser/localPreviewFiles";
 import {
   isLocalAbsolutePath,
   isWorkspaceRelativePathSafe,
   localPathsEqual,
   workspaceRelativePathOf,
-} from "@glade/shared/path";
-import { isScratchWorkspacePath } from "@glade/shared/threadWorkspace";
+} from "@glade/shared/platform/path";
+import { isScratchWorkspacePath } from "@glade/shared/threads/threadWorkspace";
 import type { QueryClient } from "@tanstack/react-query";
 import { createContext, useContext } from "react";
 

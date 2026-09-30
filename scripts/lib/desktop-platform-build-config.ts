@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 
-import type { GladePackagedDesktopFlavor } from "@glade/shared/desktopIdentity";
+import type { GladePackagedDesktopFlavor } from "@glade/shared/platform/desktopIdentity";
 
 import {
   createDesktopBundleFilePatterns,

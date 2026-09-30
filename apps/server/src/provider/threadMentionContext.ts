@@ -1,6 +1,9 @@
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type ProviderMentionReference } from "@glade/contracts/provider/providerDiscovery";
-import { isThreadMentionPath, threadIdFromThreadMentionPath } from "@glade/shared/threadMentions";
+import {
+  isThreadMentionPath,
+  threadIdFromThreadMentionPath,
+} from "@glade/shared/threads/threadMentions";
 import { Effect, Option } from "effect";
 
 import { paginateThreadMessages } from "../agentGateway/threadSummary.ts";

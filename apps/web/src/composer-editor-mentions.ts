@@ -17,7 +17,7 @@ import {
 } from "./lib/linkChips";
 import { resolveAgentAlias } from "@glade/contracts/provider/agentMentions";
 import type { ProviderMentionReference } from "@glade/contracts/provider/providerDiscovery";
-import { threadIdFromThreadMentionPath } from "@glade/shared/threadMentions";
+import { threadIdFromThreadMentionPath } from "@glade/shared/threads/threadMentions";
 
 export type ComposerPromptSegment =
   | {

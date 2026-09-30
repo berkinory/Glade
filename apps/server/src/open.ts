@@ -1,11 +1,14 @@
-import { createBatchExecutableResolver, resolveExecutable } from "@glade/shared/executable";
-import { spawnProcess } from "@glade/shared/processRuntime";
+import {
+  createBatchExecutableResolver,
+  resolveExecutable,
+} from "@glade/shared/platform/executable";
+import { spawnProcess } from "@glade/shared/platform/processRuntime";
 import { statSync } from "node:fs";
 import { dirname, extname } from "node:path";
 import pathWin32 from "node:path/win32";
 
 import { EDITORS, type EditorId } from "@glade/contracts/settings/editor";
-import { resolveWindowsSystemRoot } from "@glade/shared/platformEnvironment";
+import { resolveWindowsSystemRoot } from "@glade/shared/platform/platformEnvironment";
 import { ServiceMap, Schema, Effect, Layer } from "effect";
 import {
   getEditorMacApplications,

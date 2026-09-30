@@ -3,7 +3,7 @@ on:
   push:
     branches: [main]
     paths:
-      - packages/shared/src/cuaDriverRelease.json
+      - packages/shared/src/computer/cuaDriverRelease.json
       - apps/desktop/patches/cua-driver/**
       - apps/desktop/scripts/provision-cua-driver.mjs
       - apps/desktop/scripts/cua-artifact-provenance.mjs

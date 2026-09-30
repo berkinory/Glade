@@ -1,7 +1,7 @@
 import { MAX_PINNED_PROJECTS } from "@glade/contracts/orchestration/orchestration";
 import { type ProjectId, type ThreadId } from "@glade/contracts/core/baseSchemas";
-import { resolveThreadEnvironmentMode } from "@glade/shared/threadEnvironment";
-import { isWorkspaceRootWithin, workspaceRootsEqual } from "@glade/shared/threadWorkspace";
+import { resolveThreadEnvironmentMode } from "@glade/shared/threads/threadEnvironment";
+import { isWorkspaceRootWithin, workspaceRootsEqual } from "@glade/shared/threads/threadWorkspace";
 import type { SidebarProjectSortOrder, SidebarThreadSortOrder } from "../appSettings";
 import { resolveRestorableThreadRoute, type LastThreadRoute } from "../chatRouteRestore";
 import type { ChatMessage, Project, SidebarThreadSummary, Thread } from "../types";

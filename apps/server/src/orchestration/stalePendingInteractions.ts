@@ -4,7 +4,7 @@ import { EventId } from "@glade/contracts/core/baseSchemas";
 import {
   buildStalePendingRequestFailureDetail,
   type PendingThreadRequestKind,
-} from "@glade/shared/threadSummary";
+} from "@glade/shared/threads/threadSummary";
 
 import type { ProjectionPendingInteraction } from "../persistence/Services/ProjectionPendingInteractions.ts";
 

@@ -5,8 +5,8 @@ import type {
   ServerVoiceTranscriptionResult,
 } from "@glade/contracts/server/server";
 import { SERVER_VOICE_TRANSCRIPTION_MAX_AUDIO_BYTES } from "@glade/contracts/server/server";
-import { requestChatGptVoiceTranscription } from "@glade/shared/chatGptVoiceTranscription";
-import { decodeOutboundJson, type OutboundHttpResponse } from "@glade/shared/outboundHttp";
+import { requestChatGptVoiceTranscription } from "@glade/shared/http/chatGptVoiceTranscription";
+import { decodeOutboundJson, type OutboundHttpResponse } from "@glade/shared/http/outboundHttp";
 
 const MAX_DURATION_MS = 120_000;
 

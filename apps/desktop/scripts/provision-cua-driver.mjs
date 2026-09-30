@@ -15,7 +15,7 @@ import {
 } from "./cua-artifact-provenance.mjs";
 const release = JSON.parse(
   await readFile(
-    new URL("../../../packages/shared/src/cuaDriverRelease.json", import.meta.url),
+    new URL("../../../packages/shared/src/computer/cuaDriverRelease.json", import.meta.url),
     "utf8",
   ),
 );

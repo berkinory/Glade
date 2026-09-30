@@ -52,7 +52,7 @@ import {
   COMPUTER_WS_METHODS,
   type ComputerEvent,
 } from "@glade/contracts/computer/computer";
-import { VOICE_TRANSCRIPTION_UPLOAD_ROUTE_PATH } from "@glade/shared/binaryTransfer";
+import { VOICE_TRANSCRIPTION_UPLOAD_ROUTE_PATH } from "@glade/shared/transport/binaryTransfer";
 
 import { showConfirmDialogFallback } from "./confirmDialogFallback";
 import { showContextMenuFallback } from "./contextMenuFallback";

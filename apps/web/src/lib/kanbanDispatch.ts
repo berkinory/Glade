@@ -4,8 +4,8 @@ import type {
   ThreadEnvironmentMode,
 } from "@glade/contracts/orchestration/orchestration";
 import type { ProjectId, ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
-import { buildPromptThreadTitleFallback } from "@glade/shared/chatThreads";
-import { isPendingThreadWorktree } from "@glade/shared/threadEnvironment";
+import { buildPromptThreadTitleFallback } from "@glade/shared/threads/chatThreads";
+import { isPendingThreadWorktree } from "@glade/shared/threads/threadEnvironment";
 import {
   buildKanbanComposerDraftSnapshot,
   resolveKanbanDraftOpenThreadReason,

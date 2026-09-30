@@ -2,7 +2,7 @@ import { type LegendListRef } from "@legendapp/list/react";
 import {
   parseComputerInvocation,
   resolveComputerInvocationMode,
-} from "@glade/shared/computerInvocation";
+} from "@glade/shared/computer/computerInvocation";
 import { MessageId, ThreadId, ProviderKind, type TurnId } from "@glade/contracts/core/baseSchemas";
 import {
   OrchestrationThreadActivity,
@@ -18,16 +18,16 @@ import { type AutomationDefinition } from "@glade/contracts/automation/automatio
 import { type EditorId } from "@glade/contracts/settings/editor";
 import { type ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import { type ServerProviderStatus } from "@glade/contracts/server/server";
-import { resolveLatestTailUserMessageEditTarget } from "@glade/shared/conversationEdit";
-import { getModelCapabilities } from "@glade/shared/model";
+import { resolveLatestTailUserMessageEditTarget } from "@glade/shared/threads/conversationEdit";
+import { getModelCapabilities } from "@glade/shared/provider/model";
 import {
   resolveThreadWorkspaceCwd as resolveSharedThreadWorkspaceCwd,
   resolveThreadBranchSourceCwd,
   resolveThreadWorkspaceState,
-} from "@glade/shared/threadEnvironment";
-import { threadExportBlockedReason } from "@glade/shared/threadExport";
-import { pendingRequestInstanceKey } from "@glade/shared/threadSummary";
-import { deriveAssociatedWorktreeMetadata } from "@glade/shared/threadWorkspace";
+} from "@glade/shared/threads/threadEnvironment";
+import { threadExportBlockedReason } from "@glade/shared/threads/threadExport";
+import { pendingRequestInstanceKey } from "@glade/shared/threads/threadSummary";
+import { deriveAssociatedWorktreeMetadata } from "@glade/shared/threads/threadWorkspace";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Schema } from "effect";
 import { useNavigate } from "@tanstack/react-router";

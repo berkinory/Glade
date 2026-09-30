@@ -1,4 +1,4 @@
-import { MODEL_SCREEN_IMAGE_MAX_DIMENSION } from "@glade/shared/modelImageBudget";
+import { MODEL_SCREEN_IMAGE_MAX_DIMENSION } from "@glade/shared/computer/modelImageBudget";
 
 import {
   PROVIDER_SEND_TURN_MAX_IMAGE_BYTES,

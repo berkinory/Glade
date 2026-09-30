@@ -1,5 +1,5 @@
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { pluralize } from "@glade/shared/text";
+import { pluralize } from "@glade/shared/text/text";
 
 import {
   BackgroundTrayIcon,

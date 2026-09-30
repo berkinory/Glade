@@ -1,6 +1,6 @@
 import type { GitBranch, GitStashInfoResult, GitStatusResult } from "@glade/contracts/git/git";
 import type { NativeApi } from "@glade/contracts/ipc/ipc";
-import { pluralize } from "@glade/shared/text";
+import { pluralize } from "@glade/shared/text/text";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ChevronDownIcon, PlusIcon, SearchIcon } from "~/lib/icons";

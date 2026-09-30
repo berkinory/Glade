@@ -41,14 +41,17 @@ import {
   Stream,
 } from "effect";
 import * as Semaphore from "effect/Semaphore";
-import { makeDrainableWorker, startDrainableWorkerProducers } from "@glade/shared/DrainableWorker";
-import { providerSupportsNativeTurnSteering } from "@glade/shared/providerMetadata";
+import {
+  makeDrainableWorker,
+  startDrainableWorkerProducers,
+} from "../../platform/workers/drainableWorker";
+import { providerSupportsNativeTurnSteering } from "@glade/shared/provider/providerMetadata";
 import {
   buildSubagentIdentityDirectory,
   collectSubagentProviderThreadIds,
   extractSubagentIdentityHints,
   resolveSubagentIdentityFromDirectory,
-} from "@glade/shared/subagents";
+} from "@glade/shared/threads/subagents";
 
 import {
   generatedImageMarkdown,

@@ -1,6 +1,6 @@
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { pluralize } from "@glade/shared/text";
-import { collectSubagentDescendants } from "@glade/shared/threadHierarchy";
+import { pluralize } from "@glade/shared/text/text";
+import { collectSubagentDescendants } from "@glade/shared/threads/threadHierarchy";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 

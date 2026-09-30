@@ -1,5 +1,5 @@
 import type { TurnId } from "@glade/contracts/core/baseSchemas";
-import { PROVIDER_DESCRIPTORS } from "@glade/shared/providerMetadata";
+import { PROVIDER_DESCRIPTORS } from "@glade/shared/provider/providerMetadata";
 import {
   createElement,
   memo,

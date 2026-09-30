@@ -1,5 +1,5 @@
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
-import { PROVIDER_DESCRIPTORS } from "@glade/shared/providerMetadata";
+import { PROVIDER_DESCRIPTORS } from "@glade/shared/provider/providerMetadata";
 import { isPlainObject } from "./persistedRecord";
 
 const STORAGE_KEY = "glade:confirmed-custom-binary-paths:v1";

@@ -4,17 +4,17 @@ import { createServer, type Server, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import * as path from "node:path";
 
-import { decodeDeviceFrame } from "@glade/shared/deviceFrame";
+import { decodeDeviceFrame } from "@glade/shared/workspace/deviceFrame";
 import {
   LengthPrefixedRecordError,
   LengthPrefixedRecordParser,
-} from "@glade/shared/lengthPrefixedRecords";
+} from "../platform/transport/lengthPrefixedRecords";
 import {
   JsonRpcStdioFramer,
   JsonRpcStdioRequestRegistry,
   JsonRpcStdioTransportError,
   JsonRpcStdioWriter,
-} from "@glade/shared/jsonrpc-stdio";
+} from "../platform/transport/jsonRpcStdio";
 
 import type { DeviceStreamFrame } from "./DeviceBackend.ts";
 import { describeSandboxSuspicion, type HelperSandboxCommand } from "./helperSandbox.ts";
@@ -104,9 +104,7 @@ function readNumber(record: Record<string, unknown>, key: string, fallback: numb
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
-// The splitting itself lives in `@glade/shared/lengthPrefixedRecords` so any other helper framing
-// payloads the same way reuses it; only the failure type is this module's, because a desynced
-// stream here is a `DeviceHelperError` the transport already knows how to drop a socket on.
+// Map framing failures to DeviceHelperError so the transport rejects desynchronized streams.
 class DeviceFramePrefixParser {
   private readonly parser = new LengthPrefixedRecordParser();
 

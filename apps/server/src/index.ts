@@ -9,7 +9,7 @@ import { OpenLive } from "./open";
 import { Command } from "effect/unstable/cli";
 import { version } from "../package.json" with { type: "json" };
 import { ServerLive } from "./effectServer";
-import { NetService } from "@glade/shared/Net";
+import { NetService } from "@glade/shared/platform/Net";
 import { FetchHttpClient } from "effect/unstable/http";
 import { consumeDesktopParentInput, withDesktopParentLifetime } from "./desktopParentLifetime";
 

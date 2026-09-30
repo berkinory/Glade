@@ -9,7 +9,7 @@ import {
   type ComputerWindow,
   type ThreadComputerState,
 } from "@glade/contracts/computer/computer";
-import { listComputerPermissions } from "@glade/shared/computerGrants";
+import { listComputerPermissions } from "@glade/shared/computer/computerGrants";
 import { COMPUTER_TOOL_TITLES, computerToolName } from "../lib/computerToolPresentation";
 
 export interface ComputerFrameGateState {

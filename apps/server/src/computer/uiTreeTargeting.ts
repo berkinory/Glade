@@ -11,7 +11,7 @@ import {
   resolveUiTreeTarget,
   uiTreeActivationPoint,
   type UiTreeTargetSpec,
-} from "@glade/shared/uiTreeTargeting";
+} from "../platform/input/uiTreeTargeting";
 import { clampTextToLength } from "./utf8Truncation.ts";
 import { retainComputerElementRef } from "./computerElementIdentity.ts";
 

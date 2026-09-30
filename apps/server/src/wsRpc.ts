@@ -60,12 +60,12 @@ import { SessionCredentialService } from "./auth/Services/SessionCredentialServi
 import { CheckpointDiffQuery } from "./checkpointing/Services/CheckpointDiffQuery";
 import { ServerConfig, type ServerConfigShape } from "./config";
 import { realpathNearestExisting } from "./realpathNearestExisting";
-import { workspaceRootsEqual } from "@glade/shared/threadWorkspace";
-import { WORKSPACE_FILE_WRITE_CONFLICT_CODE } from "@glade/shared/workspaceFileWrite";
+import { workspaceRootsEqual } from "@glade/shared/threads/threadWorkspace";
+import { WORKSPACE_FILE_WRITE_CONFLICT_CODE } from "@glade/shared/workspace/workspaceFileWrite";
 import {
   isThreadDetailEventFor,
   THREAD_DETAIL_EVENT_TYPES,
-} from "@glade/shared/threadDetailEvents";
+} from "@glade/shared/threads/threadDetailEvents";
 import { DevServerManager, findProjectDevServerForLocalServer } from "./devServerManager";
 import { DeviceService } from "./device/Services/DeviceService";
 import { makeWsDeviceHandlers } from "./device/wsDeviceHandlers";

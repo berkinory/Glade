@@ -4,7 +4,7 @@ import type {
 } from "@glade/contracts/computer/computer";
 import type { DesktopComputerState } from "@glade/contracts/ipc/ipc";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { COMPUTER_PERMISSIONS } from "@glade/shared/computerGrants";
+import { COMPUTER_PERMISSIONS } from "@glade/shared/computer/computerGrants";
 
 import {
   computerProvisionErrorToast,

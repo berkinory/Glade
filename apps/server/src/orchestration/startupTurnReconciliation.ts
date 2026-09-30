@@ -7,11 +7,11 @@ import type {
 } from "@glade/contracts/orchestration/orchestration";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { CommandId, EventId } from "@glade/contracts/core/baseSchemas";
-import { createStalePendingInteractionMatcher } from "@glade/shared/pendingInteractions";
+import { createStalePendingInteractionMatcher } from "@glade/shared/threads/pendingInteractions";
 import {
   derivePendingThreadRequestIds,
   type PendingThreadRequestKind,
-} from "@glade/shared/threadSummary";
+} from "@glade/shared/threads/threadSummary";
 import { Array as Arr, Effect, Option } from "effect";
 import type { ProjectionPendingInteraction } from "../persistence/Services/ProjectionPendingInteractions.ts";
 import { ProjectionPendingInteractionRepository } from "../persistence/Services/ProjectionPendingInteractions.ts";

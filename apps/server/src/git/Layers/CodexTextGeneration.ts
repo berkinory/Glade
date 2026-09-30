@@ -8,9 +8,9 @@ import {
   DEFAULT_GIT_TEXT_GENERATION_MODEL,
   DEFAULT_GIT_TEXT_GENERATION_REASONING_EFFORT,
 } from "@glade/contracts/provider/model";
-import { sanitizeGeneratedThreadTitle } from "@glade/shared/chatThreads";
-import { resolveCodexHome } from "@glade/shared/codexConfig";
-import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@glade/shared/git";
+import { sanitizeGeneratedThreadTitle } from "@glade/shared/threads/chatThreads";
+import { resolveCodexHome } from "../../provider/codex/codexConfig";
+import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@glade/shared/git/git";
 
 import { resolveProviderAttachmentPath } from "../../provider/providerAttachmentPaths.ts";
 import { buildCodexProcessEnv } from "../../codexProcessEnv.ts";

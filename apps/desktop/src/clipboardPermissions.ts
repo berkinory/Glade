@@ -1,5 +1,5 @@
 import type { WebContents } from "electron";
-import { GLADE_DESKTOP_SCHEME } from "@glade/shared/desktopIdentity";
+import { GLADE_DESKTOP_SCHEME } from "@glade/shared/platform/desktopIdentity";
 
 export function isClipboardWritePermission(
   requester: Pick<WebContents, "isDestroyed" | "getURL"> | null,

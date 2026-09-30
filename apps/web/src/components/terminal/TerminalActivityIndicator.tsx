@@ -1,4 +1,4 @@
-import type { TerminalVisualState } from "@glade/shared/terminalThreads";
+import type { TerminalVisualState } from "@glade/shared/threads/terminalThreads";
 
 import { cn } from "~/lib/utils";
 

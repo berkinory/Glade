@@ -1,6 +1,6 @@
 import type { ServerLocalServerProcess } from "@glade/contracts/server/server";
 
-import { isWorkspaceRootWithin } from "./threadWorkspace";
+import { isWorkspaceRootWithin } from "../threads/threadWorkspace";
 
 export interface LocalServerRunIdentity {
   readonly pid: number | null;

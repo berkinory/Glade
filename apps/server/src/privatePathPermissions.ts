@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { supportsPosixPermissions } from "@glade/shared/filesystemPlatform";
-export { supportsPosixPermissions, syncDirectoryEntry } from "@glade/shared/filesystemPlatform";
+import { supportsPosixPermissions } from "./platform/filesystemPlatform";
+export { supportsPosixPermissions, syncDirectoryEntry } from "./platform/filesystemPlatform";
 
 export const PRIVATE_DIRECTORY_MODE = 0o700;
 export const PRIVATE_FILE_MODE = 0o600;

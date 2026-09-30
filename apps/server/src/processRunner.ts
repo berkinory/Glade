@@ -1,7 +1,7 @@
 import type { ChildProcess as ChildProcessHandle } from "node:child_process";
 import { StringDecoder } from "node:string_decoder";
-import { isCommandNotFoundExit } from "@glade/shared/platformProcess";
-import { spawnProcess } from "@glade/shared/processRuntime";
+import { isCommandNotFoundExit } from "@glade/shared/platform/platformProcess";
+import { spawnProcess } from "@glade/shared/platform/processRuntime";
 
 import { signalOwnedChildProcess } from "./platform/processTreeController.ts";
 

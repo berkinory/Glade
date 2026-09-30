@@ -1,4 +1,7 @@
-import { createContentSearchPattern, type ContentSearchOptions } from "@glade/shared/searchQuery";
+import {
+  createContentSearchPattern,
+  type ContentSearchOptions,
+} from "@glade/shared/text/searchQuery";
 
 export function ContentSearchMatchText(
   props: { text: string; query: string } & ContentSearchOptions,

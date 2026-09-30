@@ -9,7 +9,7 @@ import type { ProjectKind } from "@glade/contracts/workspace/project";
 import {
   ASYNC_USER_INPUT_ALREADY_ANSWERED,
   formatAsyncUserInputResponse,
-} from "@glade/shared/asyncUserInput";
+} from "@glade/shared/threads/asyncUserInput";
 import { EventId, TurnId } from "@glade/contracts/core/baseSchemas";
 import {
   MAX_PINNED_PROJECTS,
@@ -23,14 +23,14 @@ import {
   deriveAssociatedWorktreeMetadata,
   deriveAssociatedWorktreeMetadataPatch,
   workspaceRootsEqual,
-} from "@glade/shared/threadWorkspace";
-import { collectSubagentDescendants } from "@glade/shared/threadHierarchy";
-import { autoRuntimeModeSelectionIssue } from "@glade/shared/runtimeMode";
-import { providerSupportsNativeTurnSteering } from "@glade/shared/providerMetadata";
+} from "@glade/shared/threads/threadWorkspace";
+import { collectSubagentDescendants } from "@glade/shared/threads/threadHierarchy";
+import { autoRuntimeModeSelectionIssue } from "@glade/shared/threads/runtimeMode";
+import { providerSupportsNativeTurnSteering } from "@glade/shared/provider/providerMetadata";
 import {
   collectTailTurnIds,
   resolveTailUserMessageEditTarget,
-} from "@glade/shared/conversationEdit";
+} from "@glade/shared/threads/conversationEdit";
 import { Effect } from "effect";
 
 import { computerActivationMetadata } from "../computer/computerActivation.ts";

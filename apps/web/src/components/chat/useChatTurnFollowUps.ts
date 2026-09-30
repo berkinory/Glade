@@ -1,7 +1,7 @@
 import { MessageId, ThreadId, type ProviderKind } from "@glade/contracts/core/baseSchemas";
-import { resolveTailUserMessageEditTarget } from "@glade/shared/conversationEdit";
-import { providerSupportsNativeTurnSteering } from "@glade/shared/providerMetadata";
-import { deriveAssociatedWorktreeMetadata } from "@glade/shared/threadWorkspace";
+import { resolveTailUserMessageEditTarget } from "@glade/shared/threads/conversationEdit";
+import { providerSupportsNativeTurnSteering } from "@glade/shared/provider/providerMetadata";
+import { deriveAssociatedWorktreeMetadata } from "@glade/shared/threads/threadWorkspace";
 import { useNavigate } from "@tanstack/react-router";
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import { useCallback } from "react";

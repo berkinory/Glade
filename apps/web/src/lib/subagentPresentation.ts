@@ -3,8 +3,8 @@ import {
   extractSubagentIdentityHints as extractParsedSubagentIdentityHints,
   isWorkerTierSubagentRole,
   resolveSubagentIdentityFromDirectory,
-} from "@glade/shared/subagents";
-import { formatModelDisplayName } from "@glade/shared/model";
+} from "@glade/shared/threads/subagents";
+import { formatModelDisplayName } from "@glade/shared/provider/model";
 
 const SUBAGENT_ACCENT_PALETTE = [
   "#b84e44",

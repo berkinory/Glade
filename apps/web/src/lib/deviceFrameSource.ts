@@ -4,7 +4,7 @@ import {
   DEVICE_FRAME_WS_UDID_PARAM,
   decodeDeviceFrame,
   type DeviceFrame,
-} from "@glade/shared/deviceFrame";
+} from "@glade/shared/workspace/deviceFrame";
 import type { DeviceUdid } from "@glade/contracts/device/device";
 
 import {

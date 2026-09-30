@@ -23,9 +23,9 @@ import {
   type GitWorktreeSetupProgressEvent,
 } from "@glade/contracts/git/git";
 import { type ServerProviderAuthStatus } from "@glade/contracts/server/server";
-import { getDefaultModel, normalizeModelSlug } from "@glade/shared/model";
-import { approvalSessionGrantWidensSessionPolicy } from "@glade/shared/approvalSessionGrant";
-import { isGenericChatThreadTitle } from "@glade/shared/chatThreads";
+import { getDefaultModel, normalizeModelSlug } from "@glade/shared/provider/model";
+import { approvalSessionGrantWidensSessionPolicy } from "@glade/shared/threads/approvalSessionGrant";
+import { isGenericChatThreadTitle } from "@glade/shared/threads/chatThreads";
 import {
   type ChatMessage,
   type SessionPhase,

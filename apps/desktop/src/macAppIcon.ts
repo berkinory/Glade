@@ -2,7 +2,7 @@ import * as Crypto from "node:crypto";
 import * as FS from "node:fs/promises";
 import * as Path from "node:path";
 
-import { execProcessFile } from "@glade/shared/processRuntime";
+import { execProcessFile } from "@glade/shared/platform/processRuntime";
 
 // NSWorkspace writes custom-icon metadata outside the signed Contents tree. Passing nil restores
 // the bundle's appearance-aware icon. Arguments are data, never interpolated into this script. This

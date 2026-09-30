@@ -19,7 +19,7 @@ import {
 import {
   automationContinuesThread,
   automationRequiresTargetThread,
-} from "@glade/shared/automationMode";
+} from "@glade/shared/threads/automationMode";
 import { Effect, Option, Schema } from "effect";
 
 import type { AutomationServiceShape } from "../automation/Services/AutomationService.ts";

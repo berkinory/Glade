@@ -1,6 +1,6 @@
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ServerCodexResetCredits } from "@glade/contracts/server/server";
-import { providerUsageLabel } from "@glade/shared/providerUsage";
+import { providerUsageLabel } from "@glade/shared/provider/providerUsage";
 
 import { ExternalLinkIcon, TriangleAlertIcon } from "~/lib/icons";
 import type { OpenUsageUsageLine } from "~/lib/openUsageRateLimits";

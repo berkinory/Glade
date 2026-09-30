@@ -1,6 +1,9 @@
 import path from "node:path";
 
-import { deriveTerminalProcessIdentity, type TerminalCliKind } from "@glade/shared/terminalThreads";
+import {
+  deriveTerminalProcessIdentity,
+  type TerminalCliKind,
+} from "@glade/shared/threads/terminalThreads";
 
 import { runProcess } from "../processRunner";
 import { parseProcessChildrenMap } from "../platform/processTreeController";

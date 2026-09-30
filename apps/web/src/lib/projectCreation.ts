@@ -1,7 +1,7 @@
 import { type NativeApi } from "@glade/contracts/ipc/ipc";
 import { type OrchestrationShellSnapshot } from "@glade/contracts/orchestration/orchestration";
 import { type ProjectId, type ProviderKind, type SpaceId } from "@glade/contracts/core/baseSchemas";
-import { getDefaultModel } from "@glade/shared/model";
+import { getDefaultModel } from "@glade/shared/provider/model";
 
 import { readActiveSpaceId } from "../spacesUiStore";
 import {

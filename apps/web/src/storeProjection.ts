@@ -5,7 +5,7 @@ import {
   type OrchestrationShellStreamEvent,
   type OrchestrationSpaceShell,
 } from "@glade/contracts/orchestration/orchestration";
-import { deriveThreadSummaryMetadata } from "@glade/shared/threadSummary";
+import { deriveThreadSummaryMetadata } from "@glade/shared/threads/threadSummary";
 
 import {
   clearThreadDetailResumeCursor,

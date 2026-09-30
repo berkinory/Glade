@@ -5,9 +5,9 @@
 
 import { ByteAccumulator } from "./byteAccumulator";
 
-export const LENGTH_PREFIX_BYTES = 4;
+const LENGTH_PREFIX_BYTES = 4;
 
-export const DEFAULT_MAX_RECORD_BYTES = 8 * 1024 * 1024;
+const DEFAULT_MAX_RECORD_BYTES = 8 * 1024 * 1024;
 
 export class LengthPrefixedRecordError extends Error {
   readonly declaredBytes: number;

@@ -4,7 +4,7 @@ import {
   type OrchestrationProject,
   type OrchestrationReadModel,
 } from "@glade/contracts/orchestration/orchestration";
-import { workspaceRootsEqual } from "@glade/shared/threadWorkspace";
+import { workspaceRootsEqual } from "@glade/shared/threads/threadWorkspace";
 import { Effect } from "effect";
 
 import { OrchestrationCommandInvariantError } from "./Errors.ts";

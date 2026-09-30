@@ -2,7 +2,7 @@ import type { GitBranch } from "@glade/contracts/git/git";
 import {
   deriveAssociatedWorktreeMetadata,
   type AssociatedWorktreeMetadata,
-} from "@glade/shared/threadWorkspace";
+} from "@glade/shared/threads/threadWorkspace";
 import { Schema } from "effect";
 
 export const EnvMode = Schema.Literals(["local", "worktree"]);

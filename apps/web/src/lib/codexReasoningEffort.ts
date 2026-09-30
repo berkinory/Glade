@@ -1,6 +1,6 @@
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
-import { getModelCapabilities, hasEffortLevel, trimOrNull } from "@glade/shared/model";
+import { getModelCapabilities, hasEffortLevel, trimOrNull } from "@glade/shared/provider/model";
 
 export type CodexReasoningEffortSupport = "supported" | "unsupported" | "unknown";
 

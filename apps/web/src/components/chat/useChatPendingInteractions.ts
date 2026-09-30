@@ -9,9 +9,9 @@ import {
   APPROVAL_ALREADY_ANSWERED_INVARIANT_MARKER,
   collectErrorMessages,
   describeErrorMessage,
-} from "@glade/shared/errorMessages";
-import { respondingInteractionReclaimAt } from "@glade/shared/pendingInteractions";
-import { pendingRequestInstanceKey } from "@glade/shared/threadSummary";
+} from "@glade/shared/text/errorMessages";
+import { respondingInteractionReclaimAt } from "@glade/shared/threads/pendingInteractions";
+import { pendingRequestInstanceKey } from "@glade/shared/threads/threadSummary";
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { newCommandId } from "~/lib/utils";

@@ -44,20 +44,20 @@ import {
   type ServerVoiceTranscriptionResult,
 } from "@glade/contracts/server/server";
 import { type UserInputQuestion } from "@glade/contracts/provider/providerRuntime";
-import { prewarmChatGptVoiceTranscriptionConnection } from "@glade/shared/chatGptVoiceTranscription";
+import { prewarmChatGptVoiceTranscriptionConnection } from "@glade/shared/http/chatGptVoiceTranscription";
 import {
   BROWSER_SCRIPT_API_GUIDANCE,
   BROWSER_SCRIPT_BATCH_GUIDANCE,
-} from "@glade/shared/browserAutomationCatalogue";
-import { normalizeModelSlug } from "@glade/shared/model";
-import { approvalSessionGrantWidensSessionPolicy } from "@glade/shared/approvalSessionGrant";
+} from "@glade/shared/browser/browserAutomationCatalogue";
+import { normalizeModelSlug } from "@glade/shared/provider/model";
+import { approvalSessionGrantWidensSessionPolicy } from "@glade/shared/threads/approvalSessionGrant";
 import {
   JsonRpcStdioRequestRegistry,
   JsonRpcStdioFramer,
   type JsonRpcPendingRequest,
-} from "@glade/shared/jsonrpc-stdio";
-import { decodeSubagentReceiverThreadIds } from "@glade/shared/subagents";
-import { spawnProcess } from "@glade/shared/processRuntime";
+} from "./platform/transport/jsonRpcStdio";
+import { decodeSubagentReceiverThreadIds } from "@glade/shared/threads/subagents";
+import { spawnProcess } from "@glade/shared/platform/processRuntime";
 import { Effect, ServiceMap } from "effect";
 
 import {

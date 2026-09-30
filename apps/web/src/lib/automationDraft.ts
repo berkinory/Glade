@@ -5,7 +5,7 @@ import type {
   AutomationWorktreeMode,
 } from "@glade/contracts/automation/automation";
 import type { RuntimeMode } from "@glade/contracts/orchestration/orchestration";
-import { automationRequiresTargetThread } from "@glade/shared/automationMode";
+import { automationRequiresTargetThread } from "@glade/shared/threads/automationMode";
 
 import type { ChatAutomationExecutionScope } from "./automationIntent";
 

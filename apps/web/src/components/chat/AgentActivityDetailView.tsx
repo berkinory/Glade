@@ -1,4 +1,4 @@
-import { pluralize } from "@glade/shared/text";
+import { pluralize } from "@glade/shared/text/text";
 import { type CSSProperties, type ReactNode } from "react";
 import { BotIcon, ChevronLeftIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";

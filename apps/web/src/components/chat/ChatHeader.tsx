@@ -3,7 +3,7 @@ import { type ProjectScript } from "@glade/contracts/orchestration/orchestration
 import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
-import { isGenericChatThreadTitle } from "@glade/shared/chatThreads";
+import { isGenericChatThreadTitle } from "@glade/shared/threads/chatThreads";
 import React from "react";
 import { FiGitBranch } from "react-icons/fi";
 import { HiMiniArrowsPointingOut } from "react-icons/hi2";

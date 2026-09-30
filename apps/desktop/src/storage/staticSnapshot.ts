@@ -12,7 +12,7 @@ export function findAsarArchivePath(candidatePath: string): string | null {
   return segments.slice(0, archiveIndex + 1).join(path.sep);
 }
 
-export function snapshotDirectoryName(signature: string): string {
+function snapshotDirectoryName(signature: string): string {
   return signature.replace(/[^a-zA-Z0-9._-]/g, "_");
 }
 

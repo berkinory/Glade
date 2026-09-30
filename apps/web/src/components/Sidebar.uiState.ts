@@ -1,4 +1,4 @@
-import { normalizeWorkspaceRootForComparison } from "@glade/shared/threadWorkspace";
+import { normalizeWorkspaceRootForComparison } from "@glade/shared/threads/threadWorkspace";
 import type { LastThreadRoute } from "../chatRouteRestore";
 
 const SIDEBAR_UI_STATE_STORAGE_KEY = "glade:sidebar-ui:v1";

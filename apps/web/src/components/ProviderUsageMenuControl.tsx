@@ -4,7 +4,7 @@ import {
   type ServerCodexResetCredits,
   type ServerGetProviderUsageSnapshotResult,
 } from "@glade/contracts/server/server";
-import { providerUsageNeedsAuthDetail } from "@glade/shared/providerUsage";
+import { providerUsageNeedsAuthDetail } from "@glade/shared/provider/providerUsage";
 import { type ReactNode } from "react";
 
 import { useAppSettings } from "~/appSettings";

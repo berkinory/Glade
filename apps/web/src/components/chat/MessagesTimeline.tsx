@@ -3,8 +3,8 @@ import { type MessageId, ThreadId, type TurnId } from "@glade/contracts/core/bas
 import { type ProviderMentionReference } from "@glade/contracts/provider/providerDiscovery";
 import { type ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import { type ThreadGoalAchievement } from "@glade/contracts/orchestration/orchestration";
-import { isLocalAbsolutePath } from "@glade/shared/path";
-import { pluralize } from "@glade/shared/text";
+import { isLocalAbsolutePath } from "@glade/shared/platform/path";
+import { pluralize } from "@glade/shared/text/text";
 import { LegendList, type LegendListRef } from "@legendapp/list/react";
 import {
   memo,

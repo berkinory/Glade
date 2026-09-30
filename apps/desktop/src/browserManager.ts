@@ -32,7 +32,7 @@ import type {
   ThreadBrowserState,
 } from "@glade/contracts/ipc/ipc";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { isBrowserCopyLinkChord } from "@glade/shared/browserShortcuts";
+import { isBrowserCopyLinkChord } from "@glade/shared/browser/browserShortcuts";
 import {
   BROWSER_BLANK_URL as ABOUT_BLANK_URL,
   BROWSER_AUTOMATION_VIEWPORT_HEIGHT,
@@ -42,7 +42,7 @@ import {
   normalizeBrowserPageZoomFactor,
   normalizeBrowserUrlInput as normalizeUrlInput,
   resolveCopyableBrowserTabUrl,
-} from "@glade/shared/browserSession";
+} from "@glade/shared/browser/browserSession";
 import {
   BROWSER_SESSION_PARTITION,
   BrowserSessionPolicy,

@@ -10,7 +10,7 @@ import type {
   ProjectSearchLocalEntriesResult,
 } from "@glade/contracts/workspace/project";
 import { PROJECT_SEARCH_CONTENT_MIN_QUERY_LENGTH } from "@glade/contracts/workspace/project";
-import { isLocalAbsolutePath } from "@glade/shared/path";
+import { isLocalAbsolutePath } from "@glade/shared/platform/path";
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { ensureNativeApi } from "~/nativeApi";
 import {

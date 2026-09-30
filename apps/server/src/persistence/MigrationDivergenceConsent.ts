@@ -6,7 +6,7 @@ import {
   migrationBackupDirectory,
   serializeMigrationDivergenceConsentChallenge,
   type MigrationDivergenceConsentChallenge,
-} from "@glade/shared/migrationRecovery";
+} from "@glade/shared/platform/migrationRecovery";
 
 export interface MigrationDivergencePlan {
   readonly sourceVersion: string;

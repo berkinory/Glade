@@ -8,8 +8,8 @@ import { WebglAddon } from "@xterm/addon-webgl";
 import {
   defaultTerminalTitleForCliKind,
   consumeTerminalIdentityInput,
-} from "@glade/shared/terminalThreads";
-import { describeErrorMessage } from "@glade/shared/errorMessages";
+} from "@glade/shared/threads/terminalThreads";
+import { describeErrorMessage } from "@glade/shared/text/errorMessages";
 import {
   TERMINAL_MAX_COLS,
   TERMINAL_MAX_ROWS,

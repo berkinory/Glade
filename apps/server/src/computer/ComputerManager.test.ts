@@ -15,7 +15,7 @@ import {
 import { COMPUTER_CONTROL_ENABLE_TIMEOUT_MS, ComputerManager } from "./ComputerManager.ts";
 
 import { FakeComputerBackend } from "./FakeComputerBackend.ts";
-import type { FrameSink } from "@glade/shared/frameTransport";
+import type { FrameSink } from "@glade/shared/transport/frameTransport";
 
 class RecordingSink implements FrameSink {
   readonly received: Uint8Array[] = [];

@@ -1,5 +1,5 @@
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { PROVIDER_DELIVERY_BLOCK_SUMMARY } from "@glade/shared/providerDeliveryBlock";
+import { PROVIDER_DELIVERY_BLOCK_SUMMARY } from "@glade/shared/provider/providerDeliveryBlock";
 import { useEffect, useRef, type RefObject } from "react";
 
 import { toastManager } from "../ui/toast";

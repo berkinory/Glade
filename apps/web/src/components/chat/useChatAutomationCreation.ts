@@ -6,12 +6,12 @@ import {
   type ProviderStartOptions,
 } from "@glade/contracts/orchestration/orchestration";
 import { type AutomationSchedule } from "@glade/contracts/automation/automation";
-import { automationRequiresTargetThread } from "@glade/shared/automationMode";
+import { automationRequiresTargetThread } from "@glade/shared/threads/automationMode";
 import {
   GENERIC_CHAT_THREAD_TITLE,
   buildPromptThreadTitleFallback,
-} from "@glade/shared/chatThreads";
-import { deriveAssociatedWorktreeMetadata } from "@glade/shared/threadWorkspace";
+} from "@glade/shared/threads/chatThreads";
+import { deriveAssociatedWorktreeMetadata } from "@glade/shared/threads/threadWorkspace";
 import type { QueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { promoteThreadCreate } from "~/lib/threadCreatePromotion";

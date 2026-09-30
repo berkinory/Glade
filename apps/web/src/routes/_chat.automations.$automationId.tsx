@@ -10,12 +10,12 @@ import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   automationContinuationThreadId,
   automationRequiresTargetThread,
-} from "@glade/shared/automationMode";
+} from "@glade/shared/threads/automationMode";
 import {
   getModelCapabilities,
   getProviderOptionCurrentValue,
   getProviderOptionDescriptors,
-} from "@glade/shared/model";
+} from "@glade/shared/provider/model";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useRef, useState } from "react";
@@ -61,7 +61,7 @@ import { automationCronExpressionError, automationTimezoneError } from "~/lib/au
 import {
   completionPolicyFromStopWhen,
   stopWhenFromCompletionPolicy,
-} from "@glade/shared/automationCompletionPolicy";
+} from "../features/automations/completionPolicy";
 import { automationLifecycleState, canPauseAutomation } from "~/lib/automationStatus";
 import {
   useDesktopTopBarTrafficLightGutterClassName,

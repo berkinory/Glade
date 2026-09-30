@@ -6,8 +6,8 @@ import {
   resolveGladeDesktopFlavor,
   GLADE_SOURCE_DESKTOP_BUILD_MARKER,
   gladeDesktopIdentity,
-} from "@glade/shared/desktopIdentity";
-import { readWindowsPersistentEnvironment } from "@glade/shared/shell";
+} from "@glade/shared/platform/desktopIdentity";
+import { readWindowsPersistentEnvironment } from "@glade/shared/platform/shell";
 
 function environmentValue(environment, name, caseInsensitive) {
   const exactValue = environment[name];

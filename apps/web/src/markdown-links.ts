@@ -3,7 +3,7 @@ import {
   isWorkspaceRelativePathSafe,
   localPathsEqual,
   workspaceRelativePathOf,
-} from "@glade/shared/path";
+} from "@glade/shared/platform/path";
 
 import { resolvePathLinkTarget } from "./terminal-links";
 

@@ -3,7 +3,7 @@ import {
   type BrowserAutomationErrorInput,
   type BrowserMcpToolErrorEnvelope,
 } from "@glade/contracts/browser/automation/browserAutomationErrors";
-import { makeBrowserMcpToolErrorEnvelope } from "@glade/shared/browserAutomationErrors";
+import { makeBrowserMcpToolErrorEnvelope } from "@glade/shared/browser/browserAutomationErrors";
 
 export class BrowserAutomationHostError extends Error {
   readonly envelope: BrowserMcpToolErrorEnvelope;

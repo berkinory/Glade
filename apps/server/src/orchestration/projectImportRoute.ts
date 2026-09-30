@@ -10,8 +10,8 @@ import {
   type ProjectImportProvider,
 } from "@glade/contracts/workspace/projectImport";
 import { type ProviderStartOptions } from "@glade/contracts/orchestration/orchestration";
-import { isWorkspaceRootWithin, workspaceRootsEqual } from "@glade/shared/threadWorkspace";
-import { providerStartOptionsFromServerSettings } from "@glade/shared/serverSettings";
+import { isWorkspaceRootWithin, workspaceRootsEqual } from "@glade/shared/threads/threadWorkspace";
+import { providerStartOptionsFromServerSettings } from "../settings/settingsPatches";
 import { Effect } from "effect";
 import type {
   ProjectImportRepository,

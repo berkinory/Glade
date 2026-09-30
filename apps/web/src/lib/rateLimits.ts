@@ -1,5 +1,5 @@
 import type { OrchestrationThread } from "@glade/contracts/orchestration/orchestration";
-import { providerUsageLearnMoreHref } from "@glade/shared/providerUsage";
+import { providerUsageLearnMoreHref } from "@glade/shared/provider/providerUsage";
 
 export interface RateLimitWindow {
   window: string;

@@ -45,8 +45,12 @@ import {
   type ComputerGetAuditHistoryInput,
   type ComputerGetAuditHistoryResult,
 } from "@glade/contracts/computer/computerAudit";
-import { encodeComputerFrame } from "@glade/shared/computerFrame";
-import { classifyByFrameFlags, FrameTransport, type FrameSink } from "@glade/shared/frameTransport";
+import { encodeComputerFrame } from "@glade/shared/computer/computerFrame";
+import {
+  classifyByFrameFlags,
+  FrameTransport,
+  type FrameSink,
+} from "@glade/shared/transport/frameTransport";
 
 import {
   DesktopOperationQueue,

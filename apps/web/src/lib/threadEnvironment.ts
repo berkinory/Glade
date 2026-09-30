@@ -5,8 +5,8 @@ import {
   resolveThreadWorkspaceCwd,
   resolveThreadWorkspaceState,
   type ResolvedThreadWorkspaceState,
-} from "@glade/shared/threadEnvironment";
-import { deriveAssociatedWorktreeMetadata } from "@glade/shared/threadWorkspace";
+} from "@glade/shared/threads/threadEnvironment";
+import { deriveAssociatedWorktreeMetadata } from "@glade/shared/threads/threadWorkspace";
 import type { Thread } from "../types";
 
 export type ForkThreadTarget = "local" | "worktree";
@@ -21,7 +21,7 @@ export interface ResolvedForkThreadEnvironment {
   associatedWorktreeRef: string | null;
 }
 
-export { resolveThreadEnvironmentMode } from "@glade/shared/threadEnvironment";
+export { resolveThreadEnvironmentMode } from "@glade/shared/threads/threadEnvironment";
 
 export interface ThreadEnvironmentPresentation {
   mode: ThreadEnvironmentMode;

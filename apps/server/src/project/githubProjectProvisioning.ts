@@ -8,8 +8,8 @@ import type {
 import {
   parseGitHubRepositoryInput,
   parseGitHubRepositoryNameWithOwnerFromRemoteUrl,
-} from "@glade/shared/githubRepository";
-import { normalizeProjectDirectoryName } from "@glade/shared/projectDirectoryName";
+} from "@glade/shared/git/githubRepository";
+import { normalizeProjectDirectoryName } from "@glade/shared/threads/projectDirectoryName";
 import { Effect, FileSystem, Path, PlatformError, Schema, Semaphore } from "effect";
 
 import { GitCommandError, GitHubCliError } from "../git/Errors";

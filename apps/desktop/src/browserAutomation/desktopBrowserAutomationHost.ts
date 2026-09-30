@@ -30,9 +30,9 @@ import { join } from "node:path";
 import {
   BROWSER_TOOL_DEFINITIONS_BY_NAME,
   stableJsonStringify,
-} from "@glade/shared/browserAutomationCatalogue";
+} from "@glade/shared/browser/browserAutomationCatalogue";
 import { Schema } from "effect";
-import { browserInputErrorCode } from "@glade/shared/browserAutomationErrors";
+import { browserInputErrorCode } from "@glade/shared/browser/browserAutomationErrors";
 
 import type {
   BrowserAutomationWindowOpenEvent,

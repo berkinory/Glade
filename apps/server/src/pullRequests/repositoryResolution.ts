@@ -1,4 +1,4 @@
-import { parseGitHubRepositoryNameWithOwnerFromRemoteUrl } from "@glade/shared/githubRepository";
+import { parseGitHubRepositoryNameWithOwnerFromRemoteUrl } from "@glade/shared/git/githubRepository";
 import { Effect } from "effect";
 
 import type { GitCoreShape } from "../git/Services/GitCore";

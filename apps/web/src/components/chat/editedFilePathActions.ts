@@ -3,7 +3,7 @@ import {
   isWorkspaceRelativePathSafe,
   joinWorkspaceRelativePath,
   workspaceRelativePathOf,
-} from "@glade/shared/path";
+} from "@glade/shared/platform/path";
 
 export interface EditedFilePathTargets {
   absolutePath: string | null;

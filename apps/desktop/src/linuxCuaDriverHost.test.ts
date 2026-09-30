@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cuaRequest, type CuaReply } from "@glade/shared/cuaDriverProtocol";
+import { cuaRequest, type CuaReply } from "@glade/shared/computer/cuaDriverProtocol";
 
 import type { CuaDriverHost } from "./cuaDriverHost";
 import { createLinuxCuaDriverHost } from "./linuxCuaDriverHost";

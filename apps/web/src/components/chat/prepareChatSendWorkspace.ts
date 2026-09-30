@@ -4,8 +4,8 @@ import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   GENERIC_CHAT_THREAD_TITLE,
   buildPromptThreadTitleFallback,
-} from "@glade/shared/chatThreads";
-import { getDefaultModel } from "@glade/shared/model";
+} from "@glade/shared/threads/chatThreads";
+import { getDefaultModel } from "@glade/shared/provider/model";
 import type { QueryClient } from "@tanstack/react-query";
 import { gitStatusQueryOptions } from "~/lib/gitReactQuery";
 import { newCommandId, newProjectId } from "~/lib/utils";

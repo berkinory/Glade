@@ -3,7 +3,7 @@ import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   collectErrorMessages,
   THREAD_NOT_ARCHIVED_INVARIANT_MARKER,
-} from "@glade/shared/errorMessages";
+} from "@glade/shared/text/errorMessages";
 
 import { newCommandId } from "./utils";
 

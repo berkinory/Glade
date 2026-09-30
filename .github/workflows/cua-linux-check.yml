@@ -8,7 +8,7 @@ on:
       - "apps/desktop/src/cuaDriverHost*"
       - "apps/desktop/src/linuxCua*"
       - "apps/desktop/src/linuxEscapeKillSwitchMonitor*"
-      - "packages/shared/src/cuaDriver*"
+      - "packages/shared/src/computer/cuaDriver*"
   push:
     branches: [main]
     paths:
@@ -17,7 +17,7 @@ on:
       - "apps/desktop/src/cuaDriverHost*"
       - "apps/desktop/src/linuxCua*"
       - "apps/desktop/src/linuxEscapeKillSwitchMonitor*"
-      - "packages/shared/src/cuaDriver*"
+      - "packages/shared/src/computer/cuaDriver*"
   workflow_dispatch:
 
 permissions:
@@ -60,7 +60,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          release=packages/shared/src/cuaDriverRelease.json
+          release=packages/shared/src/computer/cuaDriverRelease.json
           source_commit=$(jq -r .source "$release")
           rust_version=$(jq -r .rustVersion "$release")
           native_patch="$GITHUB_WORKSPACE/apps/desktop/patches/cua-driver/0001-glade-native.patch"

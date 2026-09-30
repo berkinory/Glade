@@ -1,6 +1,6 @@
 import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { ThreadEnvironmentMode } from "@glade/contracts/orchestration/orchestration";
-import { isAutomationRunThread } from "@glade/shared/automationMode";
+import { isAutomationRunThread } from "@glade/shared/threads/automationMode";
 
 import type { AppState } from "./storeState";
 import { ACCOUNT_RATE_LIMIT_ACTIVITY_KINDS } from "./lib/rateLimits";

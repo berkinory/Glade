@@ -2,7 +2,7 @@ import type { FileDiffMetadata } from "@pierre/diffs/react";
 import {
   isSupportedLocalImagePath,
   isSupportedLocalPreviewFilePath,
-} from "@glade/shared/localPreviewFiles";
+} from "@glade/shared/browser/localPreviewFiles";
 import { type MouseEvent as ReactMouseEvent } from "react";
 import { useCopyPathToClipboard } from "~/hooks/useCopyToClipboard";
 import {

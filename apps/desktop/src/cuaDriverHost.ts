@@ -22,7 +22,7 @@ import {
   parseCuaComputerTask,
   parseCuaShieldArgs,
   cuaComputerTaskKey,
-} from "@glade/shared/cuaDriverProtocol";
+} from "@glade/shared/computer/cuaDriverProtocol";
 import type { ComputerFrameTapHost } from "./computerFrameTap";
 import { linuxBrowserCallIsReadOnly, linuxCuaAdmissionRefusal } from "./linuxCuaAdmission";
 import {
@@ -35,7 +35,7 @@ import type { ComputerInputMonitorState, PhysicalComputerInput } from "./escapeK
 import {
   cuaActionDiagnosticMessage,
   parseCuaActionDiagnostics,
-} from "@glade/shared/cuaActionDiagnostics";
+} from "@glade/shared/computer/cuaActionDiagnostics";
 
 interface TaskCursor {
   task: CuaComputerTask;

@@ -8,9 +8,9 @@ import {
   GLADE_TERMINAL_CLI_KIND_ENV_KEY,
   type TerminalAgentHookEventType,
   type ManagedTerminalCliKind,
-} from "@glade/shared/terminalThreads";
+} from "@glade/shared/threads/terminalThreads";
 
-import { envPathKeyFor, resolveExecutable } from "@glade/shared/executable";
+import { envPathKeyFor, resolveExecutable } from "@glade/shared/platform/executable";
 import {
   ensurePrivateDirectorySync,
   PRIVATE_EXECUTABLE_FILE_MODE,

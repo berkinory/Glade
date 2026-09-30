@@ -1,4 +1,4 @@
-import { MODEL_SCREEN_IMAGE_MAX_DIMENSION } from "@glade/shared/modelImageBudget";
+import { MODEL_SCREEN_IMAGE_MAX_DIMENSION } from "@glade/shared/computer/modelImageBudget";
 import {
   COMPUTER_DELIVERY_PATH_MAX_LENGTH,
   COMPUTER_MESSAGE_MAX_LENGTH,

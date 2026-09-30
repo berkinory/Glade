@@ -3,7 +3,7 @@ import {
   BROWSER_SEARCH_URL_PREFIX,
   normalizeBrowserUrlInput,
   resolveFloatingBrowserGuestLayout,
-} from "@glade/shared/browserSession";
+} from "@glade/shared/browser/browserSession";
 import type {
   BrowserAnnotationEvent,
   BrowserAnnotationMarker,
@@ -13,7 +13,7 @@ import type { BrowserTabState } from "@glade/contracts/ipc/ipc";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { BrowserHistoryEntry } from "../browserStateStore";
 import type { BrowserAnnotationDraft } from "../lib/browserAnnotations";
-import { resolveDesktopDipRectFromCssRect } from "@glade/shared/desktopChrome";
+import { resolveDesktopDipRectFromCssRect } from "@glade/shared/platform/desktopChrome";
 
 export function resolveBrowserRuntimePresentation(input: {
   native: boolean;

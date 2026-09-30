@@ -3,7 +3,7 @@ import {
   resolveTerminalVisualIdentity,
   type TerminalCliKind,
   type TerminalVisualState,
-} from "@glade/shared/terminalThreads";
+} from "@glade/shared/threads/terminalThreads";
 
 export interface RepresentativeTerminalVisualIdentity {
   terminalId: string;

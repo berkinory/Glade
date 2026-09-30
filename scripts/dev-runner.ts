@@ -7,15 +7,18 @@ import { delimiter as pathDelimiter, join as pathJoin } from "node:path";
 
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { NetService } from "@glade/shared/Net";
+import { NetService } from "@glade/shared/platform/Net";
 import {
   getBooleanFlagValue,
   optionalBooleanEnvironmentConfig,
   optionalBooleanFlag,
   type BooleanFlagInput,
-} from "@glade/shared/cli";
-import { resolveGladeDesktopFlavor, gladeDesktopIdentity } from "@glade/shared/desktopIdentity";
-import { applyShellEnvironmentHydrationMarker } from "@glade/shared/shell";
+} from "../apps/server/src/server/cliFlags";
+import {
+  resolveGladeDesktopFlavor,
+  gladeDesktopIdentity,
+} from "@glade/shared/platform/desktopIdentity";
+import { applyShellEnvironmentHydrationMarker } from "@glade/shared/platform/shell";
 import { Config, Data, Effect, Hash, Layer, Logger, Option, Path, Schema } from "effect";
 import * as ConfigProvider from "effect/ConfigProvider";
 import { Argument, Command, Flag } from "effect/unstable/cli";

@@ -10,7 +10,7 @@ import { MessageCircleIcon, PluginIcon } from "~/lib/icons";
 import { COMPOSER_INLINE_CHIP_INLINE_ICON_CLASS_NAME } from "../composerInlineChip";
 import { FileEntryIcon } from "./FileEntryIcon";
 import type { ProviderMentionReference } from "@glade/contracts/provider/providerDiscovery";
-import { threadIdFromThreadMentionPath } from "@glade/shared/threadMentions";
+import { threadIdFromThreadMentionPath } from "@glade/shared/threads/threadMentions";
 import { useStore } from "~/store";
 import { resolveThreadDisplayProvider } from "~/lib/threadDisplayProvider";
 import { ProviderIcon } from "../ProviderIcon";

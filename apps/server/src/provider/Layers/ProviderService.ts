@@ -33,7 +33,7 @@ import { type ProviderRuntimeEvent } from "@glade/contracts/provider/providerRun
 import {
   providerSupportsAutoRuntimeMode,
   unsupportedAutoRuntimeModeMessage,
-} from "@glade/shared/runtimeMode";
+} from "@glade/shared/threads/runtimeMode";
 import { createHash, randomUUID } from "node:crypto";
 import {
   Cause,
@@ -49,7 +49,7 @@ import {
   Scope,
   Stream,
 } from "effect";
-import { nonEmptyTrimmed } from "@glade/shared/text";
+import { nonEmptyTrimmed } from "@glade/shared/text/text";
 import { computerApprovalGate } from "../../computer/ComputerApprovalGate.ts";
 
 import { type ProviderAdapterError, ProviderValidationError } from "../Errors.ts";

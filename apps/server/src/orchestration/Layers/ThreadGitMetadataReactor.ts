@@ -1,6 +1,9 @@
 import { CommandId, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type ProviderRuntimeEvent } from "@glade/contracts/provider/providerRuntime";
-import { makeDrainableWorker, startDrainableWorkerProducers } from "@glade/shared/DrainableWorker";
+import {
+  makeDrainableWorker,
+  startDrainableWorkerProducers,
+} from "../../platform/workers/drainableWorker";
 import { Cause, Effect, Layer, Option, Stream } from "effect";
 
 import { resolveThreadWorkspaceCwd } from "../../checkpointing/Utils.ts";

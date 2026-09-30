@@ -1,9 +1,9 @@
-import { collectErrorMessages } from "@glade/shared/errorMessages";
+import { collectErrorMessages } from "@glade/shared/text/errorMessages";
 import { MessageId, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   ASYNC_USER_INPUT_ALREADY_ANSWERED,
   formatAsyncUserInputResponse,
-} from "@glade/shared/asyncUserInput";
+} from "@glade/shared/threads/asyncUserInput";
 import { useCallback } from "react";
 import { newCommandId, randomUUID } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";

@@ -10,7 +10,10 @@ import {
   type ProviderModelDescriptor,
 } from "@glade/contracts/provider/providerDiscovery";
 import { type ServerProviderAuthStatus } from "@glade/contracts/server/server";
-import { getClaudeContextWindowSuffix, stripClaudeContextWindowSuffix } from "@glade/shared/model";
+import {
+  getClaudeContextWindowSuffix,
+  stripClaudeContextWindowSuffix,
+} from "@glade/shared/provider/model";
 import { Effect } from "effect";
 
 import type { ProviderDiscoveryServiceShape } from "../provider/Services/ProviderDiscoveryService.ts";

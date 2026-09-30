@@ -4,7 +4,7 @@ import {
   type OrchestrationThreadActivity,
 } from "@glade/contracts/orchestration/orchestration";
 import { type ProviderKind, type ThreadId, type TurnId } from "@glade/contracts/core/baseSchemas";
-import { PROVIDER_DESCRIPTORS as VISIBLE_PROVIDER_DESCRIPTORS } from "@glade/shared/providerMetadata";
+import { PROVIDER_DESCRIPTORS as VISIBLE_PROVIDER_DESCRIPTORS } from "@glade/shared/provider/providerMetadata";
 
 import { orderedActivities, parseTaskListTasks } from "./workLog";
 

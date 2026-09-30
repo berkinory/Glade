@@ -1,5 +1,5 @@
 import { type ProjectId, type ThreadId } from "@glade/contracts/core/baseSchemas";
-import { resolveThreadWorkspaceCwd } from "@glade/shared/threadEnvironment";
+import { resolveThreadWorkspaceCwd } from "@glade/shared/threads/threadEnvironment";
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 
 import { useTerminalSurfaceController } from "~/hooks/useTerminalSurfaceController";

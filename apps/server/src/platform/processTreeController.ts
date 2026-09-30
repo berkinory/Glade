@@ -1,4 +1,4 @@
-import { spawnProcessSync } from "@glade/shared/processRuntime";
+import { spawnProcessSync } from "@glade/shared/platform/processRuntime";
 import treeKill from "tree-kill";
 
 import { captureWindowsProcessChildrenMap } from "./windowsProcessSnapshot";

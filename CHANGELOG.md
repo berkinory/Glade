@@ -10,6 +10,8 @@
 
 ### Improved
 
+- Runtime modules shared by multiple applications are grouped by domain. Single-application modules and their tests live with their owning application; native driver pins and CI paths follow the new layout.
+
 - Contract consumers import their owning modules directly; the root barrel and root package export were removed. CommonJS build entries preserve the same domain paths.
 
 - Shared contracts are grouped by domain, with their existing schema names, field shapes and event tags preserved.

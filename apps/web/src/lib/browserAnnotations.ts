@@ -16,7 +16,7 @@ import { type MessageId } from "@glade/contracts/core/baseSchemas";
 import {
   sanitizeBrowserAnnotationPageTitle,
   sanitizeBrowserAnnotationUrl,
-} from "@glade/shared/browserAnnotations";
+} from "@glade/shared/browser/browserAnnotations";
 
 const BROWSER_ANNOTATIONS_VERSION = 2 as const;
 export const BROWSER_ANNOTATION_MAX_COUNT = 32;

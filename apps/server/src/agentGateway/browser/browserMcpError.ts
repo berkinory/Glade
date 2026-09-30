@@ -2,7 +2,7 @@ import { BrowserAutomationError } from "@glade/contracts/browser/automation/brow
 import { utf8ByteLength } from "@glade/contracts/browser/automation/browserAutomationBounds";
 import { Schema } from "effect";
 
-import { stableJsonStringify } from "./browserAutomationCatalogue";
+import { stableJsonStringify } from "@glade/shared/browser/browserAutomationCatalogue";
 
 const MAX_ERROR_TEXT_BYTES = 8 * 1024;
 

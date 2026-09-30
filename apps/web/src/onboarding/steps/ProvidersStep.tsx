@@ -1,6 +1,6 @@
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ServerProviderStatus } from "@glade/contracts/server/server";
-import { PROVIDER_DESCRIPTORS as VISIBLE_PROVIDER_DESCRIPTORS } from "@glade/shared/providerMetadata";
+import { PROVIDER_DESCRIPTORS as VISIBLE_PROVIDER_DESCRIPTORS } from "@glade/shared/provider/providerMetadata";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 

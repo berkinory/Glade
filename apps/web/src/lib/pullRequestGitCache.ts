@@ -1,6 +1,6 @@
 import type { GitPullRequestSnapshotResult, GitStatusResult } from "@glade/contracts/git/git";
 import type { PullRequestDetailInput } from "@glade/contracts/git/pullRequests";
-import { parseGitHubRepositoryNameWithOwnerFromPullRequestUrl } from "@glade/shared/githubRepository";
+import { parseGitHubRepositoryNameWithOwnerFromPullRequestUrl } from "@glade/shared/git/githubRepository";
 import type { QueryClient, QueryFilters, QueryKey } from "@tanstack/react-query";
 
 import {

@@ -5,8 +5,8 @@ import type {
 } from "@glade/contracts/automation/automation";
 import type { ServerGenerateAutomationIntentResult } from "@glade/contracts/server/server";
 
-import { completionPolicyFromStopWhen } from "@glade/shared/automationCompletionPolicy";
-import { automationRequiresTargetThread } from "@glade/shared/automationMode";
+import { completionPolicyFromStopWhen } from "../features/automations/completionPolicy";
+import { automationRequiresTargetThread } from "@glade/shared/threads/automationMode";
 
 export interface ChatAutomationIntent {
   readonly name: string;

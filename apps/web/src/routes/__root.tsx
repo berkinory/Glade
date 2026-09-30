@@ -9,9 +9,9 @@ import {
 import { type ServerConfig, type ServerProviderStatus } from "@glade/contracts/server/server";
 import { type ServerSettingsView } from "@glade/contracts/settings/settings";
 import { type WsCompatibilityError } from "@glade/contracts/transport/ws/wsCompatibility";
-import { defaultTerminalTitleForCliKind } from "@glade/shared/terminalThreads";
+import { defaultTerminalTitleForCliKind } from "@glade/shared/threads/terminalThreads";
 import { BrowserVaultDialog } from "~/components/BrowserVault";
-import { isThreadDetailEventFor } from "@glade/shared/threadDetailEvents";
+import { isThreadDetailEventFor } from "@glade/shared/threads/threadDetailEvents";
 import {
   Outlet,
   createRootRouteWithContext,

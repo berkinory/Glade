@@ -4,7 +4,7 @@ import {
   type OrchestrationThreadShell,
 } from "@glade/contracts/orchestration/orchestration";
 import { type ProviderSession } from "@glade/contracts/provider/provider";
-import { nonEmptyTrimmed } from "@glade/shared/text";
+import { nonEmptyTrimmed } from "@glade/shared/text/text";
 
 import type { ProviderRuntimeEventPumpHealth } from "./Services/ProviderService.ts";
 import type { ProviderRuntimeBinding } from "./Services/ProviderSessionDirectory.ts";

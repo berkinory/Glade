@@ -11,7 +11,7 @@ import {
 
 import type { OrchestrationThreadPullRequest } from "@glade/contracts/orchestration/orchestration";
 import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
-import { resolveThreadEnvironmentMode } from "@glade/shared/threadEnvironment";
+import { resolveThreadEnvironmentMode } from "@glade/shared/threads/threadEnvironment";
 
 import {
   AddPlusIcon,

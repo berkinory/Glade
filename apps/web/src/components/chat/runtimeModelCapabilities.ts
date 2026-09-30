@@ -7,7 +7,7 @@ import {
   getModelCapabilities,
   normalizeModelSlug,
   trimOrNull,
-} from "@glade/shared/model";
+} from "@glade/shared/provider/model";
 import { normalizeClaudeModelOptionSlug } from "../../providerModelOptions";
 
 function runtimeEffortLabel(value: string): string {

@@ -123,11 +123,6 @@ export const ComputerWindowId = TrimmedNonEmptyString.check(
 );
 export type ComputerWindowId = typeof ComputerWindowId.Type;
 
-// Named rather than described so every surface says the same words: the chat's setup card, the
-// settings panel, and the tool result the agent reads all key off these identifiers, and their
-// user-facing labels live in one place (`@glade/shared/computerGrants`). There is no fourth surface
-// — the Electron-side permission preflight that used to be one was deleted, because the prompt has
-// to come from the process that actually needs the grant.
 export const ComputerPermission = Schema.Literals([
   "accessibility",
   "screenRecording",

@@ -12,12 +12,12 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
-import { decodeDeviceFrame } from "@glade/shared/deviceFrame";
+import { decodeDeviceFrame } from "@glade/shared/workspace/deviceFrame";
 import {
   DEVICE_HELPER_CACHE_SEGMENTS,
   deviceHelperCacheKey,
   readDeviceHelperSourceRevision,
-} from "@glade/shared/deviceHelperCache";
+} from "@glade/shared/workspace/deviceHelperCache";
 import { sandboxedHelperCommand } from "../apps/server/src/device/helperSandbox.ts";
 
 const execFileAsync = promisify(execFile);

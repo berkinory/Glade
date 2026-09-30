@@ -12,7 +12,7 @@ import {
   COMPUTER_PERMISSIONS,
   computerPermissionSetupMessage,
   missingComputerPermissions,
-} from "@glade/shared/computerGrants";
+} from "@glade/shared/computer/computerGrants";
 import {
   computerPermissionSetupSupported,
   readLocalComputerPermissionBridge,

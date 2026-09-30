@@ -6,7 +6,7 @@ import {
 } from "@glade/contracts/orchestration/orchestration";
 import { type ServerProviderStatus } from "@glade/contracts/server/server";
 import { type ServerSettingsView } from "@glade/contracts/settings/settings";
-import { getDefaultModel } from "@glade/shared/model";
+import { getDefaultModel } from "@glade/shared/provider/model";
 import { type Thread } from "../types";
 import { DEFAULT_PROVIDER_ORDER } from "../providerOrdering";
 import { stripEmbeddedAssistantSelections } from "./assistantSelections";

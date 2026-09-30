@@ -10,8 +10,8 @@ import {
   type ServerSettingsView,
 } from "@glade/contracts/settings/settings";
 import { type ModelSelection } from "@glade/contracts/orchestration/orchestration";
-import { deepMerge, type DeepPartial } from "@glade/shared/Struct";
-import { applyServerSettingsPatch } from "@glade/shared/serverSettings";
+import { deepMerge, type DeepPartial } from "./settings/settingsMerge";
+import { applyServerSettingsPatch } from "./settings/settingsPatches";
 import {
   Cause,
   Deferred,

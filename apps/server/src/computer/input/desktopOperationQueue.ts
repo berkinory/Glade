@@ -42,7 +42,7 @@ export const desktopDeliveryMode = () => delivery.getStore() ?? "background";
 export const withDesktopDeliveryMode = <A>(mode: "background" | "foreground", action: () => A): A =>
   delivery.run(mode, action);
 
-export const DESKTOP_OPERATION_QUEUE_LIMIT = 64;
+const DESKTOP_OPERATION_QUEUE_LIMIT = 64;
 
 export type DesktopOperationErrorCtor = new (
   message: string,

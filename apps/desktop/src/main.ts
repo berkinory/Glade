@@ -4,9 +4,9 @@ import { LinuxEscapeKillSwitchMonitor, linuxEscapeSession } from "./linuxEscapeK
 import { ComputerFrameTap } from "./computerFrameTap";
 import { ComputerShield } from "./computerShield";
 import { registerComputerDesktopLifecycle } from "./computerDesktopLifecycle";
-import { COMPUTER_PERMISSIONS } from "@glade/shared/computerGrants";
-import { CUA_HOST_SOCKET_ENV } from "@glade/shared/cuaDriverProtocol";
-import { MODEL_SCREEN_IMAGE_MAX_DIMENSION } from "@glade/shared/modelImageBudget";
+import { COMPUTER_PERMISSIONS } from "@glade/shared/computer/computerGrants";
+import { CUA_HOST_SOCKET_ENV } from "@glade/shared/computer/cuaDriverProtocol";
+import { MODEL_SCREEN_IMAGE_MAX_DIMENSION } from "@glade/shared/computer/modelImageBudget";
 
 import * as ChildProcess from "node:child_process";
 import * as Crypto from "node:crypto";
@@ -57,9 +57,9 @@ import {
 } from "electron-updater";
 
 import type { DesktopContextMenuItem } from "@glade/contracts/ipc/ipc";
-import { isKeyboardShortcutsHelpChord } from "@glade/shared/browserShortcuts";
-import { getMacTrafficLightPosition } from "@glade/shared/desktopChrome";
-import { DEVICE_HELPER_SOURCE_DIR_ENV } from "@glade/shared/deviceHelperCache";
+import { isKeyboardShortcutsHelpChord } from "@glade/shared/browser/browserShortcuts";
+import { getMacTrafficLightPosition } from "@glade/shared/platform/desktopChrome";
+import { DEVICE_HELPER_SOURCE_DIR_ENV } from "@glade/shared/workspace/deviceHelperCache";
 import {
   desktopUpdateChannel,
   GLADE_DESKTOP_SMOKE_USER_DATA_ENV,
@@ -68,17 +68,17 @@ import {
   canOverrideDesktopSmokeUserData,
   resolveGladeDesktopRuntimeFlavor,
   gladeDesktopIdentity,
-} from "@glade/shared/desktopIdentity";
-import { NetService } from "@glade/shared/Net";
-import { applyShellEnvironmentHydrationMarker } from "@glade/shared/shell";
-import { RotatingFileSink } from "@glade/shared/logging";
+} from "@glade/shared/platform/desktopIdentity";
+import { NetService } from "@glade/shared/platform/Net";
+import { applyShellEnvironmentHydrationMarker } from "@glade/shared/platform/shell";
+import { RotatingFileSink } from "@glade/shared/platform/logging";
 import {
   MIGRATION_DIVERGENCE_CONSENT_ENV,
   MIGRATION_RUNTIME_SOURCE_DIGEST_ENV,
   type MigrationRuntimeIdentityMismatch,
   type MigrationSchemaTooNewStartupBlock,
-} from "@glade/shared/migrationRecovery";
-import { ensureStaticSnapshot, findAsarArchivePath } from "@glade/shared/staticSnapshot";
+} from "@glade/shared/platform/migrationRecovery";
+import { ensureStaticSnapshot, findAsarArchivePath } from "./storage/staticSnapshot";
 import { isBackendReadinessAborted, waitForHttpReady } from "./backendReadiness";
 import { resolveBackendNodeArgs } from "./backendNodeOptions";
 import {

@@ -1,7 +1,7 @@
 import {
   DesktopOperationQueue as SharedDesktopOperationQueue,
   desktopOperationContext,
-} from "@glade/shared/desktopOperationQueue";
+} from "./input/desktopOperationQueue";
 
 import { ComputerBackendError } from "./ComputerBackend.ts";
 
@@ -12,7 +12,7 @@ export {
   withDesktopDeliveryMode,
   withDesktopOperationSignal,
   withoutDesktopCancellation,
-} from "@glade/shared/desktopOperationQueue";
+} from "./input/desktopOperationQueue";
 
 // A detached continuation cannot turn a completed call into fresh input authority.
 export function assertDesktopOperationAdmission(): void {

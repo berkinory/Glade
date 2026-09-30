@@ -3,7 +3,7 @@ import { readClaudeSessionParentUuid } from "../claudeProjectImport.ts";
 import { claudeTurnResultUsage, type ClaudeResultUsageBaseline } from "../claudeResultUsage.ts";
 import { restoreClaudeImportedCopyDates } from "../claudeImportedCopyDates.ts";
 
-import { execProcessFile, spawnProcess } from "@glade/shared/processRuntime";
+import { execProcessFile, spawnProcess } from "@glade/shared/platform/processRuntime";
 import type {
   AgentInfo,
   CanUseTool,
@@ -81,11 +81,11 @@ import {
   resolveApiModelId,
   stripClaudeContextWindowSuffix,
   trimOrNull,
-} from "@glade/shared/model";
-import { buildClaudeSubagentPrompt } from "@glade/shared/agentMentions";
-import { assessClaudeCache } from "@glade/shared/claudeCache";
-import { approvalSessionGrantWidensSessionPolicy } from "@glade/shared/approvalSessionGrant";
-import { approvalRequestKindFromRequestType } from "@glade/shared/threadSummary";
+} from "@glade/shared/provider/model";
+import { buildClaudeSubagentPrompt } from "../claude/agentMentions";
+import { assessClaudeCache } from "@glade/shared/provider/claudeCache";
+import { approvalSessionGrantWidensSessionPolicy } from "@glade/shared/threads/approvalSessionGrant";
+import { approvalRequestKindFromRequestType } from "@glade/shared/threads/threadSummary";
 import {
   claudeCacheContextTokens,
   claudeCacheFromRequest,

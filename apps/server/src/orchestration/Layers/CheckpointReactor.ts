@@ -15,7 +15,10 @@ import {
 import { type ProviderSession } from "@glade/contracts/provider/provider";
 import { type ProviderRuntimeEvent } from "@glade/contracts/provider/providerRuntime";
 import { Cause, Deferred, Effect, Fiber, Layer, Option, Schedule, Stream } from "effect";
-import { makeDrainableWorker, startDrainableWorkerProducers } from "@glade/shared/DrainableWorker";
+import {
+  makeDrainableWorker,
+  startDrainableWorkerProducers,
+} from "../../platform/workers/drainableWorker";
 
 import { parseCheckpointFilesFromUnifiedDiff } from "../../checkpointing/Diffs.ts";
 import {

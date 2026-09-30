@@ -1,6 +1,6 @@
 import { forwardRef, type ComponentProps, type ReactNode } from "react";
 
-import { CHAT_SURFACE_HEADER_HEIGHT_PX } from "@glade/shared/desktopChrome";
+import { CHAT_SURFACE_HEADER_HEIGHT_PX } from "@glade/shared/platform/desktopChrome";
 
 import { CentralIcon } from "~/lib/central-icons";
 import { type LucideIcon } from "~/lib/icons";

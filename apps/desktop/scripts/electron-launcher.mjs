@@ -15,8 +15,11 @@ import {
   writeFileSync,
 } from "node:fs";
 import { createRequire } from "node:module";
-import { TCC_SERVICE_NAMES } from "@glade/shared/computerGrants";
-import { resolveGladeDesktopFlavor, gladeDesktopIdentity } from "@glade/shared/desktopIdentity";
+import { TCC_SERVICE_NAMES } from "@glade/shared/computer/computerGrants";
+import {
+  resolveGladeDesktopFlavor,
+  gladeDesktopIdentity,
+} from "@glade/shared/platform/desktopIdentity";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createSourceDesktopEnvironment } from "./source-desktop-launch.mjs";

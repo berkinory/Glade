@@ -7,7 +7,7 @@ import type {
   GitStatusResult,
   GitStatusStreamEvent,
 } from "@glade/contracts/git/git";
-import { mergeGitStatusParts } from "@glade/shared/git";
+import { mergeGitStatusParts } from "@glade/shared/git/git";
 
 import { GitCore } from "../Services/GitCore";
 import { GitManager } from "../Services/GitManager";

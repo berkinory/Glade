@@ -4,7 +4,7 @@ import {
   type ProviderStartOptions,
 } from "@glade/contracts/orchestration/orchestration";
 import { type ServerSettings, type ServerSettingsPatch } from "@glade/contracts/settings/settings";
-import { deepMerge, type DeepPartial } from "./Struct";
+import { deepMerge, type DeepPartial } from "./settingsMerge";
 
 function shouldReplaceTextGenerationModelSelection(
   patch: ServerSettingsPatch["textGenerationModelSelection"] | undefined,

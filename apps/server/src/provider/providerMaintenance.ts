@@ -7,7 +7,7 @@ import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 
-import { executableCandidates, hasPathSeparator } from "@glade/shared/executable";
+import { executableCandidates, hasPathSeparator } from "@glade/shared/platform/executable";
 import {
   CLI_VERSION_PATTERN,
   compareParsedCliVersions,

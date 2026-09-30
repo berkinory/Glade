@@ -1,4 +1,4 @@
-import { parseWindowsWslUncPath } from "./windowsProcess";
+import { parseWindowsWslUncPath } from "./platform/windowsProcess";
 
 export interface WslWorkspace {
   readonly distribution: string;

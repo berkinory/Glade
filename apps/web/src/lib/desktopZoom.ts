@@ -1,4 +1,4 @@
-import { normalizeDesktopZoomFactor } from "@glade/shared/desktopChrome";
+import { normalizeDesktopZoomFactor } from "@glade/shared/platform/desktopChrome";
 
 export function readDesktopZoomFactor(): number {
   const bridge = window.desktopBridge;

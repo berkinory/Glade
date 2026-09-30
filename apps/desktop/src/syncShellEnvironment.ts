@@ -6,11 +6,11 @@ import {
   readWindowsPersistentEnvironment,
   type ShellEnvironmentReader,
   type WindowsEnvironmentReader,
-} from "@glade/shared/shell";
+} from "@glade/shared/platform/shell";
 import {
   createCachedLoginShellEnvironmentReader,
   LOGIN_SHELL_ENVIRONMENT_NAMES,
-} from "@glade/shared/loginShellEnvironment";
+} from "@glade/shared/platform/loginShellEnvironment";
 
 function logShellEnvironmentWarning(message: string, error?: unknown): void {
   console.warn(`[desktop] ${message}`, error instanceof Error ? error.message : (error ?? ""));

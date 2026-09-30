@@ -3,7 +3,7 @@ import {
   normalizeModelDisplayName,
   normalizeModelSlug,
   resolveNewestKnownClaudeFamilyModel,
-} from "@glade/shared/model";
+} from "@glade/shared/provider/model";
 import {
   MODEL_OPTIONS_BY_PROVIDER,
   type ClaudeModelOptions,

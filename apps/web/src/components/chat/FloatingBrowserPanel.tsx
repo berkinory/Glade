@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { CHAT_SURFACE_HEADER_HEIGHT_PX } from "@glade/shared/desktopChrome";
+import { CHAT_SURFACE_HEADER_HEIGHT_PX } from "@glade/shared/platform/desktopChrome";
 
 import { EllipsisIcon, PanelRightCloseIcon, XIcon } from "../../lib/icons";
 import { requestBrowserPanelBoundsSync } from "../../lib/browserPanelBoundsSync";

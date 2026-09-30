@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import type { ServerLocalServerProcess } from "@glade/contracts/server/server";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { localServerPrimaryLabel } from "@glade/shared/localServers";
+import { localServerPrimaryLabel } from "@glade/shared/browser/localServers";
 
 import { LocalServerIdentity } from "../../LocalServerIdentity";
 import { ComposerPickerMenuPopup } from "../ComposerPickerMenuPopup";

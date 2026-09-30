@@ -1,4 +1,4 @@
-import { pluralize } from "@glade/shared/text";
+import { pluralize } from "@glade/shared/text/text";
 import { isFileChangeWorkLogEntry, type WorkLogEntry } from "../../session-logic";
 import { deriveReadableCommandDisplay } from "../../lib/toolCallLabel";
 

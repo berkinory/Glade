@@ -2,7 +2,7 @@ import type {
   ClientOrchestrationCommand,
   OrchestrationCommand,
 } from "@glade/contracts/orchestration/orchestration";
-import { isWorkspaceRootWithin, workspaceRootsEqual } from "@glade/shared/threadWorkspace";
+import { isWorkspaceRootWithin, workspaceRootsEqual } from "@glade/shared/threads/threadWorkspace";
 import type { FileSystem, Path } from "effect";
 import { Effect, Schedule } from "effect";
 

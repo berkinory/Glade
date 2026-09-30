@@ -2,7 +2,7 @@ import type { ProjectId, ProviderKind, ThreadId } from "@glade/contracts/core/ba
 import type {
   ResolvedTerminalVisualIdentity,
   TerminalIconKey,
-} from "@glade/shared/terminalThreads";
+} from "@glade/shared/threads/terminalThreads";
 import type { Project, SidebarThreadSummary } from "./types";
 
 export const MAX_RECENT_VIEWS = 5;

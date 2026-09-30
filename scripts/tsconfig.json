@@ -7,12 +7,12 @@
     "noEmit": true,
     "allowImportingTsExtensions": true
   },
-  // device-helper-smoke.ts spawns the helper through the server's sandbox
-  // wrapper so the smoke run exercises the same confinement the app applies.
-  // Duplicating that logic here is what would let the two drift.
+  // Tooling imports production boundaries so checks exercise the actual runtime policy.
   "include": [
     "**/*.ts",
     "../apps/server/src/device/helperSandbox.ts",
+    "../apps/server/src/server/cliFlags.ts",
+    "../apps/desktop/src/main/updates/windowsCertificate.ts",
     "../apps/desktop/src/desktopAppIcon.ts",
     "../apps/web/src/assets/gladeMark.ts"
   ]

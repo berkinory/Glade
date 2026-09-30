@@ -1,7 +1,10 @@
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type OrchestrationEvent } from "@glade/contracts/orchestration/orchestration";
-import { makeDrainableWorker, startDrainableWorkerProducers } from "@glade/shared/DrainableWorker";
-import { terminalScopeIdsForThread } from "@glade/shared/terminalThreads";
+import {
+  makeDrainableWorker,
+  startDrainableWorkerProducers,
+} from "../../platform/workers/drainableWorker";
+import { terminalScopeIdsForThread } from "@glade/shared/threads/terminalThreads";
 import { Cause, Effect, Layer, Option, Stream } from "effect";
 
 import { ServerConfig } from "../../config";

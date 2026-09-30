@@ -1,4 +1,4 @@
-import { pluralize } from "@glade/shared/text";
+import { pluralize } from "@glade/shared/text/text";
 import {
   PiArrowsInSimple,
   PiArrowsOutSimple,

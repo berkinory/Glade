@@ -11,7 +11,10 @@ import type {
   ComputerPermission,
   ComputerStatusResult,
 } from "@glade/contracts/computer/computer";
-import { computerStaleGrantAdvice, listComputerPermissions } from "@glade/shared/computerGrants";
+import {
+  computerStaleGrantAdvice,
+  listComputerPermissions,
+} from "@glade/shared/computer/computerGrants";
 
 import { ComputerActionCard } from "./ComputerActionCard";
 

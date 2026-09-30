@@ -1,8 +1,8 @@
 import { ApprovalRequestId } from "@glade/contracts/core/baseSchemas";
 import { UserInputQuestion } from "@glade/contracts/provider/providerRuntime";
 import { type OrchestrationThreadActivity } from "@glade/contracts/orchestration/orchestration";
-import { createStalePendingInteractionMatcher } from "@glade/shared/pendingInteractions";
-import { pendingRequestInstanceKey } from "@glade/shared/threadSummary";
+import { createStalePendingInteractionMatcher } from "@glade/shared/threads/pendingInteractions";
+import { pendingRequestInstanceKey } from "@glade/shared/threads/threadSummary";
 import { Schema } from "effect";
 import type { PendingUserInput } from "./pendingInteractionDerivation";
 import {

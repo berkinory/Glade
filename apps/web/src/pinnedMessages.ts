@@ -12,7 +12,7 @@ import {
   setPinnedMessageDone,
   setPinnedMessageLabel,
   togglePinnedMessageDone,
-} from "@glade/shared/pinnedMessages";
+} from "@glade/shared/threads/pinnedMessages";
 
 import { newCommandId } from "./lib/utils";
 import { readNativeApi } from "./nativeApi";

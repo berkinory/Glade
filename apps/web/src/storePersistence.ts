@@ -1,4 +1,4 @@
-import { normalizeWorkspaceRootForComparison } from "@glade/shared/threadWorkspace";
+import { normalizeWorkspaceRootForComparison } from "@glade/shared/threads/threadWorkspace";
 
 import { parseProjectAppearance, type ProjectAppearance } from "./lib/projectAppearance";
 import type { AppState } from "./storeState";

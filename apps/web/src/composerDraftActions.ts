@@ -5,7 +5,7 @@ import {
   RuntimeMode,
 } from "@glade/contracts/orchestration/orchestration";
 import { type ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
-import { getDefaultModel, normalizeModelSlug } from "@glade/shared/model";
+import { getDefaultModel, normalizeModelSlug } from "@glade/shared/provider/model";
 import * as Equal from "effect/Equal";
 import * as Schema from "effect/Schema";
 import type { StateCreator } from "zustand";

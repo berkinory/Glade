@@ -11,9 +11,9 @@ import { type ClaudeCodeEffort } from "@glade/contracts/provider/model";
 import {
   ATTACHMENT_CANCEL_ROUTE_PATH,
   ATTACHMENT_UPLOAD_ROUTE_PATH,
-} from "@glade/shared/binaryTransfer";
-import { applyClaudePromptEffortPrefix, getModelCapabilities } from "@glade/shared/model";
-import { parseComputerInvocation } from "@glade/shared/computerInvocation";
+} from "@glade/shared/transport/binaryTransfer";
+import { applyClaudePromptEffortPrefix, getModelCapabilities } from "@glade/shared/provider/model";
+import { parseComputerInvocation } from "@glade/shared/computer/computerInvocation";
 
 import {
   cloneComposerImageAttachment,

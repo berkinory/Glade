@@ -1,4 +1,4 @@
-import { execProcessFile } from "@glade/shared/processRuntime";
+import { execProcessFile } from "@glade/shared/platform/processRuntime";
 import { promisify } from "node:util";
 
 import { acquireClaudeAuthStatusLock } from "./claudeAuthStatusLock";

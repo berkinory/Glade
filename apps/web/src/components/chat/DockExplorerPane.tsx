@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { isNormalizedWindowsAbsolutePath } from "@glade/shared/path";
+import { isNormalizedWindowsAbsolutePath } from "@glade/shared/platform/path";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { directoryChain, useExplorerRevealRequestStore } from "~/explorerRevealRequestStore";

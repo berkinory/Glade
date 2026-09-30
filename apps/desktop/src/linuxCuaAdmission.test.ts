@@ -4,7 +4,7 @@ import {
   CUA_ACTION_TOOLS,
   CUA_BROWSER_TOOLS,
   CUA_READ_TOOLS,
-} from "@glade/shared/cuaDriverProtocol";
+} from "@glade/shared/computer/cuaDriverProtocol";
 
 import { linuxBrowserCallIsReadOnly, linuxCuaAdmissionRefusal } from "./linuxCuaAdmission";
 

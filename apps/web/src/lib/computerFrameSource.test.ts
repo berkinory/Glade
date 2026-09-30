@@ -1,5 +1,5 @@
 import type { ComputerId } from "@glade/contracts/computer/computer";
-import { encodeComputerFrame } from "@glade/shared/computerFrame";
+import { encodeComputerFrame } from "@glade/shared/computer/computerFrame";
 import { describe, expect, it, vi } from "vitest";
 
 import { createComputerFrameSource, type WebSocketLike } from "./computerFrameSource";

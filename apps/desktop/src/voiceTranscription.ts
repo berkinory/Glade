@@ -1,4 +1,4 @@
-import { spawnProcess } from "@glade/shared/processRuntime";
+import { spawnProcess } from "@glade/shared/platform/processRuntime";
 
 import { app, ipcMain } from "electron";
 import type {
@@ -9,12 +9,12 @@ import { SERVER_VOICE_TRANSCRIPTION_MAX_AUDIO_BYTES } from "@glade/contracts/ser
 import {
   CHATGPT_VOICE_TRANSCRIPTION_URL,
   requestChatGptVoiceTranscription,
-} from "@glade/shared/chatGptVoiceTranscription";
+} from "@glade/shared/http/chatGptVoiceTranscription";
 import {
   decodeOutboundJson,
   decodeOutboundText,
   type OutboundHttpResponse,
-} from "@glade/shared/outboundHttp";
+} from "@glade/shared/http/outboundHttp";
 import { SERVER_TRANSCRIBE_VOICE_CHANNEL } from "./ipcChannels";
 
 const MAX_VOICE_DURATION_MS = 120_000;

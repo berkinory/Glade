@@ -1,4 +1,4 @@
-import { resolveChatContainerWorkspaceRoot } from "@glade/shared/projectContainers";
+import { resolveChatContainerWorkspaceRoot } from "@glade/shared/threads/projectContainers";
 
 export interface ServerWorkspacePaths {
   readonly homeDir: string | null | undefined;

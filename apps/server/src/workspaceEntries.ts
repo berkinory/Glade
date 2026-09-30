@@ -1,4 +1,4 @@
-import { createContentSearchPattern } from "@glade/shared/searchQuery";
+import { createContentSearchPattern } from "@glade/shared/text/searchQuery";
 import fs from "node:fs/promises";
 import type { Dirent } from "node:fs";
 import os from "node:os";
@@ -37,8 +37,8 @@ import {
   isExplicitRelativePath,
   isWindowsAbsolutePath,
   isWorkspaceRelativePathSafe,
-} from "@glade/shared/path";
-import { normalizeWorkspaceEntrySearchQuery } from "@glade/shared/searchQuery";
+} from "@glade/shared/platform/path";
+import { normalizeWorkspaceEntrySearchQuery } from "@glade/shared/text/searchQuery";
 import { resolveRealPathWithinRoot } from "./workspace/realPathContainment";
 
 const WORKSPACE_CACHE_TTL_MS = 15_000;

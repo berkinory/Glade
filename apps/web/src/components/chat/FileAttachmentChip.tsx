@@ -1,4 +1,4 @@
-import { formatBytes } from "@glade/shared/formatBytes";
+import { formatBytes } from "@glade/shared/text/formatBytes";
 
 import { basenameOfPath } from "~/file-icons";
 import { FileIcon } from "~/lib/icons";

@@ -3,7 +3,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
-import { migrationRuntimeSourceDigest } from "@glade/shared/migrationRecovery";
+import { migrationRuntimeSourceDigest } from "@glade/shared/platform/migrationRecovery";
 
 import { inspectDesktopMigrationRuntimeIdentity } from "./migrationBundleIdentity";
 

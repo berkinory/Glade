@@ -14,13 +14,13 @@ import {
   isSupportedLocalImagePath,
   isSupportedLocalPdfPath,
   lowerCaseExtensionOf,
-} from "@glade/shared/localPreviewFiles";
+} from "@glade/shared/browser/localPreviewFiles";
 import {
   isLocalAbsolutePath,
   isWorkspaceRelativePathSafe,
   joinWorkspaceRelativePath,
-} from "@glade/shared/path";
-import { isScratchWorkspacePath } from "@glade/shared/threadWorkspace";
+} from "@glade/shared/platform/path";
+import { isScratchWorkspacePath } from "@glade/shared/threads/threadWorkspace";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Component,

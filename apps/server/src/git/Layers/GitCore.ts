@@ -30,10 +30,10 @@ import {
   type GitRecentCommit,
   type GitSourceControlFileStatus,
 } from "@glade/contracts/git/git";
-import { isTemporaryWorktreeBranch } from "@glade/shared/git";
-import { parseGitHubRepositoryNameWithOwnerFromRemoteUrl } from "@glade/shared/githubRepository";
-import { isWorkspaceRelativePathSafe } from "@glade/shared/path";
-import { decodeJsonResult } from "@glade/shared/schemaJson";
+import { isTemporaryWorktreeBranch } from "@glade/shared/git/git";
+import { parseGitHubRepositoryNameWithOwnerFromRemoteUrl } from "@glade/shared/git/githubRepository";
+import { isWorkspaceRelativePathSafe } from "@glade/shared/platform/path";
+import { decodeJsonResult } from "../../platform/schemaJson";
 
 import { GitCheckoutDirtyWorktreeError, GitCommandError } from "../Errors.ts";
 import { parseGitBlamePorcelain } from "../gitBlameParsing.ts";

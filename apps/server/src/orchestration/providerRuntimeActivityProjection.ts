@@ -4,7 +4,7 @@ import {
   type ProviderRuntimeEvent,
 } from "@glade/contracts/provider/providerRuntime";
 import { type OrchestrationThreadActivity } from "@glade/contracts/orchestration/orchestration";
-import { nonEmptyTrimmed } from "@glade/shared/text";
+import { nonEmptyTrimmed } from "@glade/shared/text/text";
 
 import {
   isSensitiveKey,

@@ -1,4 +1,4 @@
-import { decodeOutboundJson, outboundHttp } from "@glade/shared/outboundHttp";
+import { decodeOutboundJson, outboundHttp } from "@glade/shared/http/outboundHttp";
 
 export interface FetchJsonResult {
   readonly status: number;

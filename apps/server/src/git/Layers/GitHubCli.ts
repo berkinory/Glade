@@ -15,11 +15,11 @@ import {
   type PullRequestMergeCapabilities,
   type PullRequestStack,
 } from "@glade/contracts/git/pullRequests";
-import { githubAvatarUrlForLogin } from "@glade/shared/githubAvatar";
+import { githubAvatarUrlForLogin } from "@glade/shared/git/githubAvatar";
 import {
   isValidGitHubRepositoryNameWithOwner,
   parseGitHubRepositoryNameWithOwnerFromRemoteUrl,
-} from "@glade/shared/githubRepository";
+} from "@glade/shared/git/githubRepository";
 
 import { runProcess } from "../../processRunner";
 import { makeKeyedSingleFlightCache } from "../../pullRequests/KeyedSingleFlightCache";

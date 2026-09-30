@@ -1,5 +1,5 @@
 import type { OrchestrationReadModel } from "@glade/contracts/orchestration/orchestration";
-import { workspaceRootsEqual } from "@glade/shared/threadWorkspace";
+import { workspaceRootsEqual } from "@glade/shared/threads/threadWorkspace";
 
 const DUPLICATE_PROJECT_CREATE_ERROR_PREFIX =
   "Orchestration command invariant failed (project.create): Project '";

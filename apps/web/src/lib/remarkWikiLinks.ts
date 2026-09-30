@@ -1,4 +1,4 @@
-import { isLocalAbsolutePath, joinWorkspaceRelativePath } from "@glade/shared/path";
+import { isLocalAbsolutePath, joinWorkspaceRelativePath } from "@glade/shared/platform/path";
 import type { Root, RootContent, Text } from "mdast";
 import { decodeString } from "micromark-util-decode-string";
 

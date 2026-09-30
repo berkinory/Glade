@@ -3,7 +3,7 @@ import { ServerConfig } from "../../config.ts";
 import { Effect, Layer, Option } from "effect";
 import type { ComputerAvailability } from "@glade/contracts/computer/computer";
 
-import { CUA_HOST_SOCKET_ENV } from "@glade/shared/cuaDriverProtocol";
+import { CUA_HOST_SOCKET_ENV } from "@glade/shared/computer/cuaDriverProtocol";
 import { ComputerManager } from "../ComputerManager.ts";
 import { CuaComputerBackend } from "../CuaComputerBackend.ts";
 import { FakeComputerBackend } from "../FakeComputerBackend.ts";

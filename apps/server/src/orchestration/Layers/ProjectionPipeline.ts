@@ -4,15 +4,15 @@ import {
 } from "../../persistence/messageTextChunks.ts";
 import { ApprovalRequestId, CommandId } from "@glade/contracts/core/baseSchemas";
 import { type OrchestrationEvent } from "@glade/contracts/orchestration/orchestration";
-import { resolveHumanMessageAt } from "@glade/shared/threadSummary";
-import { clearRemovedAsyncUserInputResponses } from "@glade/shared/asyncUserInput";
+import { resolveHumanMessageAt } from "@glade/shared/threads/threadSummary";
+import { clearRemovedAsyncUserInputResponses } from "@glade/shared/threads/asyncUserInput";
 import {
   addPinnedMessage,
   removePinnedMessage,
   setPinnedMessageDone,
   setPinnedMessageLabel,
-} from "@glade/shared/pinnedMessages";
-import { createStalePendingInteractionMatcher } from "@glade/shared/pendingInteractions";
+} from "@glade/shared/threads/pinnedMessages";
+import { createStalePendingInteractionMatcher } from "@glade/shared/threads/pendingInteractions";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { Effect, FileSystem, Layer, Option, Path, Stream } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";

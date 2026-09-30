@@ -1,7 +1,7 @@
 import { Effect, Fiber, Option } from "effect";
 import { describe, expect, it } from "vitest";
 
-import { ExecutableNotFoundError } from "@glade/shared/platformProcess";
+import { ExecutableNotFoundError } from "@glade/shared/platform/platformProcess";
 import {
   classifyProviderStartupFailure,
   observeProviderStartup,

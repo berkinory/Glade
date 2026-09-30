@@ -3,8 +3,11 @@ import type {
   ComputerBuildSignature,
   ComputerPermission,
 } from "@glade/contracts/computer/computer";
-import { computerGrantsBlockControl, listComputerPermissions } from "@glade/shared/computerGrants";
-import { GLADE_DESKTOP_BUNDLE_ID_ENV } from "@glade/shared/desktopIdentity";
+import {
+  computerGrantsBlockControl,
+  listComputerPermissions,
+} from "@glade/shared/computer/computerGrants";
+import { GLADE_DESKTOP_BUNDLE_ID_ENV } from "@glade/shared/platform/desktopIdentity";
 
 import { ComputerBackendError } from "./ComputerBackend.ts";
 

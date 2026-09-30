@@ -12,7 +12,7 @@ import {
 } from "@glade/contracts/automation/automation";
 import { ModelSelection, ProviderStartOptions } from "@glade/contracts/orchestration/orchestration";
 import { NonNegativeInt, ProjectId, TurnId } from "@glade/contracts/core/baseSchemas";
-import { automationRequiresTargetThread } from "@glade/shared/automationMode";
+import { automationRequiresTargetThread } from "@glade/shared/threads/automationMode";
 import { Effect, Layer, Option, Schema } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import * as SqlSchema from "effect/unstable/sql/SqlSchema";

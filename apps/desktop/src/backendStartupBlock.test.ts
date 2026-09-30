@@ -5,7 +5,7 @@ import {
   serializeMigrationSchemaTooNewStartupBlock,
   type MigrationDivergenceConsentChallenge,
   type MigrationSchemaTooNewStartupBlock,
-} from "@glade/shared/migrationRecovery";
+} from "@glade/shared/platform/migrationRecovery";
 
 import { BackendStartupBlockDetector } from "./backendStartupBlock";
 

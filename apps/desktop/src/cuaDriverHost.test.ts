@@ -10,7 +10,7 @@ import {
   CUA_DRIVER_VERSION,
   CUA_NATIVE_REVISION,
   type CuaReply,
-} from "@glade/shared/cuaDriverProtocol";
+} from "@glade/shared/computer/cuaDriverProtocol";
 const capability = "isolated-fixture-authority-00000000000000";
 const cuaRequest: typeof rawCuaRequest = (path, request, options) =>
   rawCuaRequest(path, { ...(request as object), capability }, options);

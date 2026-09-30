@@ -13,7 +13,7 @@ import {
   migrationBackupProvenancePath,
   migrationRecoveryMarkerPath,
   parseMigrationSchemaTooNewStartupBlock,
-} from "@glade/shared/migrationRecovery";
+} from "@glade/shared/platform/migrationRecovery";
 
 import {
   inspectCompletedMigrationBackupForSchemaTooNew,

@@ -3,7 +3,7 @@ import type {
   OrchestrationThread,
   OrchestrationThreadShell,
 } from "@glade/contracts/orchestration/orchestration";
-import { splitsSurrogatePair, unicodeSafeEndOffset } from "@glade/shared/text";
+import { splitsSurrogatePair, unicodeSafeEndOffset } from "@glade/shared/text/text";
 
 export type AgentThreadStatus =
   | "working"

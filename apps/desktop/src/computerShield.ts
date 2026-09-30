@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { createInterface, type Interface } from "node:readline";
-import { cuaComputerTaskKey, type CuaComputerTask } from "@glade/shared/cuaDriverProtocol";
+import { cuaComputerTaskKey, type CuaComputerTask } from "@glade/shared/computer/cuaDriverProtocol";
 import { stopNativeHelper } from "./stopNativeHelper";
 
 export interface ComputerShieldEngagement {

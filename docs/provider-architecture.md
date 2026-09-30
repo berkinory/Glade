@@ -82,4 +82,4 @@ Prefer capability-driven behavior and existing shared protocol helpers. Do not a
 - `apps/server/src/orchestration/Layers/ProviderCommandReactor.ts` — orchestration intent to provider calls
 - `apps/server/src/orchestration/Layers/ProviderRuntimeIngestion.ts` — provider events to durable orchestration
 - `packages/contracts/src/orchestration/orchestration.ts` — provider kinds, runtime modes, session/turn contracts
-- `packages/shared/src/providerMetadata.ts` — shared provider metadata
+- `packages/shared/src/provider/providerMetadata.ts` — shared provider metadata

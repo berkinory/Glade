@@ -20,16 +20,16 @@ import {
   XIcon,
 } from "~/lib/icons";
 
-import { localServerPrimaryLabel } from "@glade/shared/localServers";
+import { localServerPrimaryLabel } from "@glade/shared/browser/localServers";
 import {
   BROWSER_BLANK_URL,
   isBlankBrowserTabUrl,
   resolveCopyableBrowserTabUrl,
-} from "@glade/shared/browserSession";
+} from "@glade/shared/browser/browserSession";
 import {
   BROWSER_COPY_LINK_TOAST_TITLE,
   isBrowserCopyLinkChord,
-} from "@glade/shared/browserShortcuts";
+} from "@glade/shared/browser/browserShortcuts";
 
 import { isElectron } from "~/env";
 import { CentralIcon } from "~/lib/central-icons";

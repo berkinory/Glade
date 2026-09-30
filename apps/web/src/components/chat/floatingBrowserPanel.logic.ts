@@ -2,7 +2,7 @@ import {
   BROWSER_AUTOMATION_VIEWPORT_HEIGHT,
   BROWSER_AUTOMATION_VIEWPORT_WIDTH,
   BROWSER_FLOATING_PANEL_MARGIN_PX,
-} from "@glade/shared/browserSession";
+} from "@glade/shared/browser/browserSession";
 
 export interface FloatingBrowserPanelRect {
   left: number;

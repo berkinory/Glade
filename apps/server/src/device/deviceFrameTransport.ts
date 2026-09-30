@@ -1,5 +1,9 @@
-import { encodeDeviceFrame } from "@glade/shared/deviceFrame";
-import { classifyByFrameFlags, FrameTransport, type FrameSink } from "@glade/shared/frameTransport";
+import { encodeDeviceFrame } from "@glade/shared/workspace/deviceFrame";
+import {
+  classifyByFrameFlags,
+  FrameTransport,
+  type FrameSink,
+} from "@glade/shared/transport/frameTransport";
 
 import type { DeviceStreamFrame } from "./DeviceBackend.ts";
 

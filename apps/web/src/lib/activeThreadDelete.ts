@@ -1,6 +1,6 @@
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { terminalScopeIdsForThread } from "@glade/shared/terminalThreads";
-import { collectSubagentDescendants } from "@glade/shared/threadHierarchy";
+import { terminalScopeIdsForThread } from "@glade/shared/threads/terminalThreads";
+import { collectSubagentDescendants } from "@glade/shared/threads/threadHierarchy";
 
 import { toastManager } from "../components/ui/toast";
 import { readNativeApi } from "../nativeApi";

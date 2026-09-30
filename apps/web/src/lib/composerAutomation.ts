@@ -14,8 +14,8 @@ import {
   isFormSubmittable,
   type AutomationFormState,
 } from "./automationForm";
-import { stopWhenFromCompletionPolicy } from "@glade/shared/automationCompletionPolicy";
-import { automationRequiresTargetThread } from "@glade/shared/automationMode";
+import { stopWhenFromCompletionPolicy } from "../features/automations/completionPolicy";
+import { automationRequiresTargetThread } from "@glade/shared/threads/automationMode";
 import {
   acknowledgedWarningIdsForAutomaticChatAutomation,
   buildAutomationDraftWarnings,

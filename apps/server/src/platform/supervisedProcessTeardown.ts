@@ -1,4 +1,4 @@
-import { didProcessFailToSpawn } from "@glade/shared/processRuntime";
+import { didProcessFailToSpawn } from "@glade/shared/platform/processRuntime";
 
 import {
   captureProcessTree,

@@ -1,6 +1,6 @@
 import type { GitPullRequestCheck, GitPullRequestComment } from "@glade/contracts/git/git";
 import type { PullRequestCheck, PullRequestComment } from "@glade/contracts/git/pullRequests";
-import { pluralize } from "@glade/shared/text";
+import { pluralize } from "@glade/shared/text/text";
 
 import {
   type PullRequestContextDraft,

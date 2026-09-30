@@ -12,13 +12,13 @@ import {
   ThreadClaudeCacheSetPayload,
   type OrchestrationMessageTextSegment,
 } from "@glade/contracts/orchestration/orchestration";
-import { clearRemovedAsyncUserInputResponses } from "@glade/shared/asyncUserInput";
+import { clearRemovedAsyncUserInputResponses } from "@glade/shared/threads/asyncUserInput";
 import {
   addPinnedMessage,
   removePinnedMessage,
   setPinnedMessageDone,
   setPinnedMessageLabel,
-} from "@glade/shared/pinnedMessages";
+} from "@glade/shared/threads/pinnedMessages";
 import { Effect, Schema } from "effect";
 
 import { toProjectorDecodeError, type OrchestrationProjectorDecodeError } from "./Errors.ts";

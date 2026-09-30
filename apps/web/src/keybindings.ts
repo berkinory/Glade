@@ -9,7 +9,7 @@ import {
   THREAD_JUMP_KEYBINDING_COMMANDS,
   type ThreadJumpKeybindingCommand,
 } from "@glade/contracts/settings/keybindings";
-import { isKeyboardShortcutsHelpChord } from "@glade/shared/browserShortcuts";
+import { isKeyboardShortcutsHelpChord } from "@glade/shared/browser/browserShortcuts";
 import { isMacPlatform, isWindowsPlatform } from "./lib/utils";
 
 export interface ShortcutEventLike {

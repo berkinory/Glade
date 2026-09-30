@@ -1,12 +1,12 @@
 import * as fs from "node:fs/promises";
 import path from "node:path";
 
-import { readActiveCodexProviderEnvKey } from "@glade/shared/codexConfig";
+import { readActiveCodexProviderEnvKey } from "./provider/codex/codexConfig";
 import {
   readEnvironmentFromLoginShell,
   resolveLoginShell,
   type ShellEnvironmentReader,
-} from "@glade/shared/shell";
+} from "@glade/shared/platform/shell";
 
 import { resolveBaseCodexHomePath, resolveGladeCodexHomeOverlayPath } from "./codexHomePaths.ts";
 import {

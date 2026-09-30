@@ -2,7 +2,7 @@ import { cuaSpaceInventory } from "./cuaSpaceInventory.ts";
 import {
   parseCuaActionDiagnostics,
   type CuaActionDiagnostics,
-} from "@glade/shared/cuaActionDiagnostics";
+} from "@glade/shared/computer/cuaActionDiagnostics";
 import { ComputerSpaceError } from "./ComputerSpaceBroker.ts";
 import { COMPUTER_WINDOW_LIST_MAX_LENGTH } from "@glade/contracts/computer/computer";
 import type {
@@ -31,7 +31,7 @@ import type {
 import {
   computerPermissionSetupMessage,
   listComputerPermissions,
-} from "@glade/shared/computerGrants";
+} from "@glade/shared/computer/computerGrants";
 import {
   cuaRequest,
   CUA_HOST_SOCKET_ENV,
@@ -42,7 +42,7 @@ import {
   type CuaEffect,
   type CuaComputerTask,
   cuaComputerTaskKey,
-} from "@glade/shared/cuaDriverProtocol";
+} from "@glade/shared/computer/cuaDriverProtocol";
 import {
   ComputerBackendError,
   DEFAULT_COMPUTER_ID,

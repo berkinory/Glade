@@ -1,7 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 
-import { isWorkspaceRelativePathSafe } from "@glade/shared/path";
+import { isWorkspaceRelativePathSafe } from "@glade/shared/platform/path";
 
 import { isContainedPath } from "./realPathContainment";
 

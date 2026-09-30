@@ -12,7 +12,7 @@ import {
 } from "@glade/contracts/core/baseSchemas";
 import { type ProviderNativeCommandDescriptor } from "@glade/contracts/provider/providerDiscovery";
 import { type ProviderModelOptions } from "@glade/contracts/provider/model";
-import { deriveAssociatedWorktreeMetadata } from "@glade/shared/threadWorkspace";
+import { deriveAssociatedWorktreeMetadata } from "@glade/shared/threads/threadWorkspace";
 import { useCallback, useState } from "react";
 import { newCommandId, newMessageId, newThreadId } from "../lib/utils";
 import { readNativeApi } from "../nativeApi";

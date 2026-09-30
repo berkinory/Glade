@@ -1,4 +1,4 @@
-import type { GladePackagedDesktopFlavor } from "@glade/shared/desktopIdentity";
+import type { GladePackagedDesktopFlavor } from "@glade/shared/platform/desktopIdentity";
 
 export const BRAND_ASSET_PATHS = {
   productionMacIconPng: "assets/prod/black-macos-1024.png",

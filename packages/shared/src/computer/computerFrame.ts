@@ -1,4 +1,8 @@
-import { decodeFrameEnvelope, encodeFrameEnvelope, FrameEncodeError } from "./frameTransport";
+import {
+  decodeFrameEnvelope,
+  encodeFrameEnvelope,
+  FrameEncodeError,
+} from "../transport/frameTransport";
 import {
   COMPUTER_FRAME_MAGIC,
   COMPUTER_FRAME_MAX_COMPUTER_ID_BYTES,

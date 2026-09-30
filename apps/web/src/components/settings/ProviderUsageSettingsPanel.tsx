@@ -4,7 +4,7 @@ import {
   providerUsageDisplayName,
   providerUsageNeedsAuthDetail,
   selectVisibleProviderUsageSnapshots,
-} from "@glade/shared/providerUsage";
+} from "@glade/shared/provider/providerUsage";
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 

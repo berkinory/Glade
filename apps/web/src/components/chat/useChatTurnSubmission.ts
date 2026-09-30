@@ -1,5 +1,5 @@
 import { hasUnsavedWorkspaceEditors } from "~/lib/workspaceEditorSession";
-import { resolveComputerInvocationMode } from "@glade/shared/computerInvocation";
+import { resolveComputerInvocationMode } from "@glade/shared/computer/computerInvocation";
 import {
   prepareComputerPermissionGuide,
   readLocalComputerPermissionBridge,

@@ -3,7 +3,7 @@ import { setImmediate } from "node:timers/promises";
 
 import type { ProjectId } from "@glade/contracts/core/baseSchemas";
 import type { ProjectImportProvider } from "@glade/contracts/workspace/projectImport";
-import { isWorkspaceRootWithin } from "@glade/shared/threadWorkspace";
+import { isWorkspaceRootWithin } from "@glade/shared/threads/threadWorkspace";
 
 import type {
   NativeImportSession,

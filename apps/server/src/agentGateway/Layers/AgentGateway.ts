@@ -28,7 +28,7 @@ import {
   type TurnDispatchMode,
 } from "@glade/contracts/orchestration/orchestration";
 import { type ServerProviderStatus } from "@glade/contracts/server/server";
-import { runtimeModeEscalatesPrivilege } from "@glade/shared/runtimeMode";
+import { runtimeModeEscalatesPrivilege } from "@glade/shared/threads/runtimeMode";
 import { Effect, Layer, Option } from "effect";
 
 import { GitCore } from "../../git/Services/GitCore.ts";

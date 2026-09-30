@@ -4,7 +4,7 @@ import { lstatSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } 
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-import { matchesDistinguishedName } from "@glade/shared/windowsCertificate";
+import { matchesDistinguishedName } from "../../apps/desktop/src/main/updates/windowsCertificate";
 
 export type ReleaseArtifactPlatform = "linux" | "mac" | "win";
 

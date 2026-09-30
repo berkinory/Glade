@@ -20,10 +20,10 @@ import {
   type GladeCreateThreadsInput,
   type GladeCreateThreadsResult,
 } from "@glade/contracts/provider/agentGateway";
-import { buildPromptThreadTitleFallback } from "@glade/shared/chatThreads";
-import { WORKTREE_BRANCH_PREFIX } from "@glade/shared/git";
-import { parseGitHubRepositoryNameWithOwnerFromPullRequestUrl } from "@glade/shared/githubRepository";
-import { runtimeModeEscalatesPrivilege } from "@glade/shared/runtimeMode";
+import { buildPromptThreadTitleFallback } from "@glade/shared/threads/chatThreads";
+import { WORKTREE_BRANCH_PREFIX } from "@glade/shared/git/git";
+import { parseGitHubRepositoryNameWithOwnerFromPullRequestUrl } from "@glade/shared/git/githubRepository";
+import { runtimeModeEscalatesPrivilege } from "@glade/shared/threads/runtimeMode";
 import { Cause, Effect, Option, Semaphore } from "effect";
 
 import type { ServerConfigShape } from "../config.ts";

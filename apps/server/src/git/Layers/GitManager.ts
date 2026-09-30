@@ -15,8 +15,8 @@ import {
   resolveAutoFeatureBranchName,
   sanitizeBranchFragment,
   sanitizeFeatureBranchName,
-} from "@glade/shared/git";
-import { parseGitHubRepositoryNameWithOwnerFromRemoteUrl } from "@glade/shared/githubRepository";
+} from "@glade/shared/git/git";
+import { parseGitHubRepositoryNameWithOwnerFromRemoteUrl } from "@glade/shared/git/githubRepository";
 
 import { GitManagerError } from "../Errors.ts";
 import {

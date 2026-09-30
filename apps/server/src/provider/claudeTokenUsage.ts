@@ -11,7 +11,7 @@ import {
   hasAutoCompactWindowOption,
   stripClaudeContextWindowSuffix,
   trimOrNull,
-} from "@glade/shared/model";
+} from "@glade/shared/provider/model";
 
 import { positiveFiniteNumber } from "./tokenUsage.ts";
 

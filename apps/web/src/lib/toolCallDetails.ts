@@ -1,5 +1,5 @@
 import type { ToolLifecycleItemType } from "@glade/contracts/provider/providerRuntime";
-import { stripTrailingToolExitCode as stripTrailingExitCode } from "@glade/shared/toolOutputSummary";
+import { stripTrailingToolExitCode as stripTrailingExitCode } from "../features/chat/timeline/toolOutputSummary";
 
 type WorkLogRequestKind = "command" | "file-read" | "file-change" | "permissions" | "tool";
 

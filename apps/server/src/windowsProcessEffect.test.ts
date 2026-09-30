@@ -1,5 +1,5 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { prepareWindowsSafeProcess } from "@glade/shared/windowsProcess";
+import { prepareWindowsSafeProcess } from "@glade/shared/platform/windowsProcess";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import * as Path from "node:path";

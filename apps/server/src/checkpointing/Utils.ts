@@ -7,7 +7,7 @@ import {
   TurnId,
 } from "@glade/contracts/core/baseSchemas";
 import { type ProjectKind } from "@glade/contracts/workspace/project";
-import { resolveThreadWorkspaceCwd as resolveSharedThreadWorkspaceCwd } from "@glade/shared/threadEnvironment";
+import { resolveThreadWorkspaceCwd as resolveSharedThreadWorkspaceCwd } from "@glade/shared/threads/threadEnvironment";
 
 const CHECKPOINT_REFS_PREFIX = "refs/glade/checkpoints";
 

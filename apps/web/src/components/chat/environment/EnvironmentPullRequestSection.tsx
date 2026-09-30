@@ -5,8 +5,8 @@ import type {
   PullRequestDetailInput,
   PullRequestMergeMethod,
 } from "@glade/contracts/git/pullRequests";
-import { githubAvatarUrlForLogin } from "@glade/shared/githubAvatar";
-import { parseGitHubRepositoryNameWithOwnerFromPullRequestUrl } from "@glade/shared/githubRepository";
+import { githubAvatarUrlForLogin } from "@glade/shared/git/githubAvatar";
+import { parseGitHubRepositoryNameWithOwnerFromPullRequestUrl } from "@glade/shared/git/githubRepository";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 

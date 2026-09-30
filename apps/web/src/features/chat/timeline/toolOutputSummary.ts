@@ -1,4 +1,4 @@
-import { pluralize } from "./text";
+import { pluralize } from "@glade/shared/text/text";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -28,7 +28,7 @@ export function stripTrailingToolExitCode(value: string): {
   };
 }
 
-export function countTextLines(content: string): number {
+function countTextLines(content: string): number {
   if (content.length === 0) {
     return 0;
   }

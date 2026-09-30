@@ -1,5 +1,5 @@
 import type { ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
-import { CHAT_SURFACE_HEADER_HEIGHT_PX } from "@glade/shared/desktopChrome";
+import { CHAT_SURFACE_HEADER_HEIGHT_PX } from "@glade/shared/platform/desktopChrome";
 import { useQuery } from "@tanstack/react-query";
 import { Outlet, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";

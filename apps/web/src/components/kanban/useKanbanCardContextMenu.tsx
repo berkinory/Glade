@@ -1,5 +1,5 @@
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { resolveThreadWorkspaceCwd } from "@glade/shared/threadEnvironment";
+import { resolveThreadWorkspaceCwd } from "@glade/shared/threads/threadEnvironment";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { type MouseEvent, useState } from "react";
 

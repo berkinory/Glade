@@ -23,7 +23,7 @@ import {
   ThreadId,
   TurnId,
 } from "@glade/contracts/core/baseSchemas";
-import type { DeepPartial } from "@glade/shared/Struct";
+import type { DeepPartial } from "../../settings/settingsMerge";
 import {
   Duration,
   Effect,
