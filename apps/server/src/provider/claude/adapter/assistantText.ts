@@ -1,0 +1,218 @@
+import { Effect, Random } from "effect";
+import { EventId } from "@glade/contracts/core/baseSchemas";
+import { ClaudeSessionContext, AssistantTextBlockState, PROVIDER } from "./sessionTypes";
+import { asRuntimeItemId, nativeProviderRefs, extractAssistantTextBlocks } from "./messageContent";
+import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
+import { makeClaudeRuntimeEvents } from "./runtimeEvents";
+
+export function makeClaudeAssistantText(input: {
+  readonly makeEventStamp: () => Effect.Effect<{ eventId: EventId; createdAt: string }>;
+  readonly offerRuntimeEvent: ReturnType<typeof makeClaudeRuntimeEvents>["offerRuntimeEvent"];
+}) {
+  const { makeEventStamp, offerRuntimeEvent } = input;
+  const ensureAssistantTextBlock = (
+    context: ClaudeSessionContext,
+    blockIndex: number,
+    options?: {
+      readonly fallbackText?: string;
+      readonly streamClosed?: boolean;
+    },
+  ): Effect.Effect<
+    | {
+        readonly blockIndex: number;
+        readonly block: AssistantTextBlockState;
+      }
+    | undefined
+  > =>
+    Effect.gen(function* () {
+      const turnState = context.turnState;
+      if (!turnState) {
+        return undefined;
+      }
+
+      const existing = turnState.assistantTextBlocks.get(blockIndex);
+      if (existing && !existing.completionEmitted) {
+        if (existing.fallbackText.length === 0 && options?.fallbackText) {
+          existing.fallbackText = options.fallbackText;
+        }
+        if (options?.streamClosed) {
+          existing.streamClosed = true;
+        }
+        return { blockIndex, block: existing };
+      }
+
+      const block: AssistantTextBlockState = {
+        itemId: yield* Random.nextUUIDv4,
+        blockIndex,
+        emittedTextDelta: false,
+        fallbackText: options?.fallbackText ?? "",
+        streamClosed: options?.streamClosed ?? false,
+        completionEmitted: false,
+      };
+      turnState.assistantTextBlocks.set(blockIndex, block);
+      turnState.assistantTextBlockOrder.push(block);
+      return { blockIndex, block };
+    });
+
+  const createSyntheticAssistantTextBlock = (
+    context: ClaudeSessionContext,
+    fallbackText: string,
+  ): Effect.Effect<
+    | {
+        readonly blockIndex: number;
+        readonly block: AssistantTextBlockState;
+      }
+    | undefined
+  > =>
+    Effect.gen(function* () {
+      const turnState = context.turnState;
+      if (!turnState) {
+        return undefined;
+      }
+
+      const blockIndex = turnState.nextSyntheticAssistantBlockIndex;
+      turnState.nextSyntheticAssistantBlockIndex -= 1;
+      return yield* ensureAssistantTextBlock(context, blockIndex, {
+        fallbackText,
+        streamClosed: true,
+      });
+    });
+
+  const completeAssistantTextBlock = (
+    context: ClaudeSessionContext,
+    block: AssistantTextBlockState,
+    options?: {
+      readonly force?: boolean;
+      readonly rawMethod?: string;
+      readonly rawPayload?: unknown;
+    },
+  ): Effect.Effect<void> =>
+    Effect.gen(function* () {
+      const turnState = context.turnState;
+      if (!turnState || block.completionEmitted) {
+        return;
+      }
+
+      if (!options?.force && !block.streamClosed) {
+        return;
+      }
+
+      if (!block.emittedTextDelta && block.fallbackText.length > 0) {
+        const deltaStamp = yield* makeEventStamp();
+        yield* offerRuntimeEvent(context, {
+          type: "content.delta",
+          eventId: deltaStamp.eventId,
+          provider: PROVIDER,
+          createdAt: deltaStamp.createdAt,
+          threadId: context.session.threadId,
+          turnId: turnState.turnId,
+          itemId: asRuntimeItemId(block.itemId),
+          payload: {
+            streamKind: "assistant_text",
+            delta: block.fallbackText,
+          },
+          providerRefs: nativeProviderRefs(context),
+          ...(options?.rawMethod || options?.rawPayload
+            ? {
+                raw: {
+                  source: "claude.sdk.message" as const,
+                  ...(options.rawMethod ? { method: options.rawMethod } : {}),
+                  payload: {},
+                },
+              }
+            : {}),
+        });
+      }
+
+      block.completionEmitted = true;
+      if (turnState.assistantTextBlocks.get(block.blockIndex) === block) {
+        turnState.assistantTextBlocks.delete(block.blockIndex);
+      }
+
+      const stamp = yield* makeEventStamp();
+      yield* offerRuntimeEvent(context, {
+        type: "item.completed",
+        eventId: stamp.eventId,
+        provider: PROVIDER,
+        createdAt: stamp.createdAt,
+        itemId: asRuntimeItemId(block.itemId),
+        threadId: context.session.threadId,
+        turnId: turnState.turnId,
+        payload: {
+          itemType: "assistant_message",
+          status: "completed",
+          title: "Assistant message",
+          ...(block.fallbackText.length > 0 ? { detail: block.fallbackText } : {}),
+        },
+        providerRefs: nativeProviderRefs(context),
+        ...(options?.rawMethod || options?.rawPayload
+          ? {
+              raw: {
+                source: "claude.sdk.message" as const,
+                ...(options.rawMethod ? { method: options.rawMethod } : {}),
+                payload: options?.rawPayload,
+              },
+            }
+          : {}),
+      });
+    });
+
+  const backfillAssistantTextBlocksFromSnapshot = (
+    context: ClaudeSessionContext,
+    message: SDKMessage,
+  ): Effect.Effect<void> =>
+    Effect.gen(function* () {
+      const turnState = context.turnState;
+      if (!turnState) {
+        return;
+      }
+
+      const snapshotTextBlocks = extractAssistantTextBlocks(message);
+      if (snapshotTextBlocks.length === 0) {
+        return;
+      }
+
+      const orderedBlocks = turnState.assistantTextBlockOrder
+        .slice(turnState.assistantMessageBlockBase)
+        .map((block) => ({
+          blockIndex: block.blockIndex,
+          block,
+        }));
+
+      for (const [position, text] of snapshotTextBlocks.entries()) {
+        const existingEntry = orderedBlocks[position];
+        const entry =
+          existingEntry ??
+          (yield* createSyntheticAssistantTextBlock(context, text).pipe(
+            Effect.map((created) => {
+              if (!created) {
+                return undefined;
+              }
+              orderedBlocks.push(created);
+              return created;
+            }),
+          ));
+        if (!entry) {
+          continue;
+        }
+
+        if (entry.block.fallbackText.length === 0) {
+          entry.block.fallbackText = text;
+        }
+
+        if (entry.block.streamClosed && !entry.block.completionEmitted) {
+          yield* completeAssistantTextBlock(context, entry.block, {
+            rawMethod: "claude/assistant",
+            rawPayload: message,
+          });
+        }
+      }
+
+      turnState.assistantMessageBlockBase = turnState.assistantTextBlockOrder.length;
+    });
+  return {
+    completeAssistantTextBlock,
+    ensureAssistantTextBlock,
+    backfillAssistantTextBlocksFromSnapshot,
+  };
+}

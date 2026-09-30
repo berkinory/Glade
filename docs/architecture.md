@@ -75,7 +75,7 @@ The HTTP/WebSocket layer also owns:
 
 `serverLayers.ts` assembles the long-lived service graph used by the server runtime.
 
-`provider/claude/adapter` owns Claude SDK message conversion, session data types, tool presentation, model capability checks, resume cursors and process boundaries. The Claude adapter Layer composes these modules without changing the SDK or harness surface.
+`provider/claude/adapter` owns Claude SDK message conversion, event emission, assistant text blocks, task tracking, human interaction settlement, turn completion, discovery, session startup and teardown. Controllers receive the session context and their actual dependencies explicitly. The Claude adapter Layer owns session maps, the event queue and finalization, captures the SDK callback runtime once, and composes the controllers in dependency order. SDK and harness contracts remain unchanged.
 
 ### Orchestration
 
