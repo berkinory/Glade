@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { fullAccessTurnOverrides, createRequestHarness } from "./requestHarness.testSupport";
+import { handleServerNotificationForTest } from "./notificationHarness.testSupport";
 
 const approvalRequiredTurnOverrides = {
   approvalPolicy: "untrusted",
@@ -15,6 +16,29 @@ const autoTurnOverrides = {
 } as const;
 
 describe("sendTurn", () => {
+  it("allows the next turn after native compaction completes without a legacy notification", async () => {
+    const { manager, context, sendRequest } = createRequestHarness();
+    sendRequest.mockImplementation(async (_context, method) => {
+      if (method === "thread/compact/start") return {};
+      if (method === "turn/start") return { turn: { id: "next-turn" } };
+      throw new Error(`Unexpected Codex request: ${method}`);
+    });
+    const threadId = ThreadId.makeUnsafe("thread_1");
+    await manager.compactThread(threadId);
+    await expect(manager.sendTurn({ threadId, input: "Continue" })).rejects.toThrow(
+      "Wait for context compaction to finish.",
+    );
+
+    handleServerNotificationForTest(manager, context, {
+      method: "turn/completed",
+      params: { threadId: "thread_1", turn: { id: "compact-turn", status: "completed" } },
+    });
+
+    await expect(manager.sendTurn({ threadId, input: "Continue" })).resolves.toMatchObject({
+      turnId: "next-turn",
+    });
+  });
+
   it("clears stale collaboration receiver routing before a new turn", async () => {
     const { manager, context } = createRequestHarness();
     context.collabReceiverTurns.set("reused-child", "old-turn");

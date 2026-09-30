@@ -3476,12 +3476,12 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         : undefined;
     const terminalErrorWillRetry = nativeError?.willRetry === true;
     const isTerminalError = notification.method === "error" && !terminalErrorWillRetry;
-    if (isTerminalError && !isChildConversation) context.compacting = false;
     const isTerminalParentTurn =
       !isChildConversation &&
       (notification.method === "turn/completed" ||
         notification.method === "turn/aborted" ||
         isTerminalError);
+    if (isTerminalParentTurn) context.compacting = false;
     const terminalGatewayTurnId = isTerminalParentTurn
       ? (rawRoute.turnId ?? context.session.activeTurnId)
       : undefined;
