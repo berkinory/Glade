@@ -117,6 +117,12 @@ projectionSnapshotLayer("Projection snapshot messageReads", (it) => {
         )
       `;
 
+      yield* sql`
+        INSERT INTO orchestration_events (event_id, aggregate_kind, stream_id, stream_version, event_type, occurred_at, actor_kind, payload_json, metadata_json)
+        VALUES ('native-message-reference', 'thread', ${threadId}, 1, 'thread.message-sent', ${humanAt}, 'provider', ${JSON.stringify({ messageId: "message-2004", providerMessageId: "native-assistant-uuid" })}, '{}'),
+          ('other-native-reference', 'thread', 'other-segment-owner', 1, 'thread.message-sent', ${humanAt}, 'provider', ${JSON.stringify({ messageId: "message-2004", providerMessageId: "another-thread-uuid" })}, '{}')
+      `;
+
       const cappedDetail = yield* snapshotQuery.getThreadDetailById(threadId);
       const exportDetail = yield* snapshotQuery.getThreadDetailForExportById(threadId);
       const bulk = yield* snapshotQuery.getSnapshot();
@@ -137,11 +143,15 @@ projectionSnapshotLayer("Projection snapshot messageReads", (it) => {
       assert.equal(cappedMessages.at(-1)?.textSegments?.[0]?.text, "segment 2004");
       assert.equal(exportMessages[0]?.textSegments?.[0]?.text, "segment 0");
       assert.equal(exportMessages.at(-1)?.textSegments?.[0]?.text, "segment 2004");
+      assert.equal(cappedMessages.at(-1)?.providerMessageId, "native-assistant-uuid");
+      assert.equal(exportMessages.at(-1)?.providerMessageId, "native-assistant-uuid");
+      assert.equal(bulk.threads[0]?.messages.at(-1)?.providerMessageId, "native-assistant-uuid");
       assert.equal(cappedMessages.at(-1)?.textSegments?.length, 1);
       assert.equal(bulk.threads[0]?.messages.length, 2_000);
       assert.equal(bulk.threads[0]?.messages.at(-1)?.textSegments?.[0]?.text, "segment 2004");
       assert.equal(bulk.threads[0]?.messages.at(-1)?.textSegments?.length, 1);
       yield* sql`DELETE FROM message_text_segments`;
+      yield* sql`DELETE FROM orchestration_events WHERE event_id IN ('native-message-reference', 'other-native-reference')`;
     }),
   );
 

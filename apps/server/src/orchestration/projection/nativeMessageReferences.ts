@@ -16,11 +16,11 @@ export function readNativeMessageReferences<
     if (!rows.length) return rows;
     // Native identifiers are durable event data; existing databases need no new projection column.
     const references = yield* sql`
-      SELECT aggregate_id AS "threadId", json_extract(payload_json, '$.messageId') AS "messageId",
+      SELECT stream_id AS "threadId", json_extract(payload_json, '$.messageId') AS "messageId",
         json_extract(payload_json, '$.providerMessageId') AS "providerMessageId"
       FROM orchestration_events
       WHERE event_type = 'thread.message-sent'
-        AND aggregate_id IN (SELECT value FROM json_each(${JSON.stringify([...new Set(rows.map((row) => row.threadId))])}))
+        AND stream_id IN (SELECT value FROM json_each(${JSON.stringify([...new Set(rows.map((row) => row.threadId))])}))
         AND json_extract(payload_json, '$.messageId') IN (SELECT value FROM json_each(${JSON.stringify(rows.map((row) => row.messageId))}))
         AND json_extract(payload_json, '$.providerMessageId') IS NOT NULL
       ORDER BY sequence ASC
