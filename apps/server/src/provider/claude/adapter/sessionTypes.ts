@@ -179,6 +179,8 @@ export interface ClaudeSessionQuery {
 }
 
 export interface ClaudeSessionTurn {
+  nativeSessionState?: "ready" | "running" | "waiting";
+  workerShutdownReason?: string;
   pendingDispatches?: number;
   lastInteractionMode: ProviderInteractionMode | undefined;
   readonly turns: Array<{

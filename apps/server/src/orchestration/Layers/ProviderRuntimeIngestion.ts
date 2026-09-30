@@ -2070,7 +2070,9 @@ const make = Effect.gen(function* () {
               if (turnState === "interrupted" || turnState === "cancelled") {
                 return "interrupted";
               }
-              return "ready";
+              return event.payload.sessionState === "waiting"
+                ? "running"
+                : (event.payload.sessionState ?? "ready");
             }
             case "turn.aborted":
               return "interrupted";
@@ -2552,12 +2554,16 @@ const make = Effect.gen(function* () {
         }
       }
 
-      if (event.type === "thread.metadata.updated" && event.payload.name) {
+      if (
+        event.type === "thread.metadata.updated" &&
+        (event.payload.name || event.payload.modelSelection)
+      ) {
         yield* orchestrationEngine.dispatch({
           type: "thread.meta.update",
           commandId: providerCommandId(event, "thread-meta-update", thread.id),
           threadId: thread.id,
-          title: event.payload.name,
+          ...(event.payload.name ? { title: event.payload.name } : {}),
+          ...(event.payload.modelSelection ? { modelSelection: event.payload.modelSelection } : {}),
         });
       }
 

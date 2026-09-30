@@ -1,3 +1,4 @@
+import { codexUpdatedModelSelection } from "./codexStateNotifications.ts";
 import { asString } from "@glade/shared/text/text";
 import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import { createCodexCliVersionGate } from "./codexCliVersionGate";
@@ -3625,6 +3626,10 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         context.gatewaySessionLease?.registerNativeToolCall?.({ callId, toolName, turnId });
       }
     }
+    if (notification.method === "thread/settings/updated" && !isChildConversation) {
+      const selection = codexUpdatedModelSelection(notification.params);
+      this.updateSession(context, { model: selection.model });
+    }
     const eventPayload = gatewayTurnAuthorityRetired
       ? {
           ...this.readObject(notification.params),
@@ -4518,6 +4523,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       method === "thread/closed" ||
       method === "thread/compacted" ||
       method === "thread/name/updated" ||
+      method === "thread/settings/updated" ||
       method === "thread/tokenUsage/updated" ||
       method === "turn/started" ||
       method === "turn/completed" ||

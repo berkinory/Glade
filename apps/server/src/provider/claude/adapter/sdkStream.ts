@@ -123,6 +123,7 @@ export function makeClaudeSdkStream(input: {
     message: SDKMessage,
   ): Effect.Effect<void, ProviderAdapterProcessError> =>
     Effect.gen(function* () {
+      delete context.workerShutdownReason;
       yield* logNativeSdkMessage(context, message);
 
       const subagentToolUseId = recognizedSubagentParentToolUseId(context, message);
@@ -208,7 +209,18 @@ export function makeClaudeSdkStream(input: {
         return;
       }
 
-      if (Exit.isFailure(exit)) {
+      if (context.workerShutdownReason !== undefined) {
+        const message = `Claude worker shut down: ${context.workerShutdownReason}.`;
+        yield* emitRuntimeError(context, message, undefined, {
+          kind: "connection_lost",
+          retry: { state: "none" },
+          action: "retry",
+          resetsAt: null,
+          httpStatus: null,
+          message,
+        });
+        if (context.turnState) yield* completeTurn(context, "failed", message);
+      } else if (Exit.isFailure(exit)) {
         if (hasPendingUserInterrupt(context) || isClaudeInterruptedCause(exit.cause)) {
           if (context.turnState) {
             yield* completeTurn(

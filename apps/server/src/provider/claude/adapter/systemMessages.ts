@@ -212,6 +212,40 @@ export function makeClaudeSystemMessages(input: {
       }
 
       switch (message.subtype) {
+        case "session_state_changed": {
+          const state =
+            message.state === "idle"
+              ? "ready"
+              : message.state === "requires_action"
+                ? "waiting"
+                : "running";
+          context.nativeSessionState = state;
+          context.session = {
+            ...context.session,
+            status: state === "waiting" ? "running" : state,
+            ...(state === "ready" ? { activeTurnId: undefined } : {}),
+            updatedAt: base.createdAt,
+          };
+          yield* offerRuntimeEvent(context, {
+            ...base,
+            type: "session.state.changed",
+            payload: { state, reason: `session_state:${message.state}` },
+          });
+          return;
+        }
+        case "worker_shutting_down":
+          context.workerShutdownReason = message.reason;
+          return;
+        case "model_refusal_no_fallback":
+          yield* emitRuntimeError(context, message.content, message, {
+            kind: "access_denied",
+            action: null,
+            retry: { state: "none" },
+            resetsAt: null,
+            httpStatus: null,
+            message: message.content,
+          });
+          return;
         case "local_command_output":
           yield* offerRuntimeEvent(context, {
             ...base,

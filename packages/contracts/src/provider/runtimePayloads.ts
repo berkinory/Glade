@@ -1,6 +1,7 @@
 import { Schema, Option } from "effect";
 import { NonNegativeInt, PositiveInt, RuntimeTaskId } from "../core/baseSchemas";
 import { AsyncUserInputQuestions } from "../orchestration/asyncUserInput";
+import { ModelSelection } from "./sessionPolicy";
 import { ProviderFailure } from "./providerFailure";
 import {
   TrimmedNonEmptyStringSchema,
@@ -60,6 +61,7 @@ export const ThreadStateChangedPayload = Schema.Struct({
 export type ThreadStateChangedPayload = typeof ThreadStateChangedPayload.Type;
 
 export const ThreadMetadataUpdatedPayload = Schema.Struct({
+  modelSelection: Schema.optional(ModelSelection),
   name: Schema.optional(TrimmedNonEmptyStringSchema),
   metadata: Schema.optional(UnknownRecordSchema),
 });
@@ -143,6 +145,7 @@ export const TurnStartedPayload = Schema.Struct({
 export type TurnStartedPayload = typeof TurnStartedPayload.Type;
 
 export const TurnCompletedPayload = Schema.Struct({
+  sessionState: Schema.optional(RuntimeSessionState),
   state: RuntimeTurnState,
 
   contextCompacted: Schema.optional(Schema.Boolean),

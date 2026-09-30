@@ -17,6 +17,8 @@
 
 ### Improved
 
+- File changes appear live while an agent works, and model settings changed outside Glade stay in sync.
+
 - Model choices and options follow the connected provider, with explicit provider defaults and live Claude effort and speed changes. ([e8adbfda4](https://github.com/berkinory/Glade/commit/e8adbfda42ab44edc3ecce4038e19a4f7d433026))
 - Shared skills load natively with their bundled resources. ([e8adbfda4](https://github.com/berkinory/Glade/commit/e8adbfda42ab44edc3ecce4038e19a4f7d433026))
 - Codex uses your existing configuration directly. ([e8adbfda4](https://github.com/berkinory/Glade/commit/e8adbfda42ab44edc3ecce4038e19a4f7d433026))

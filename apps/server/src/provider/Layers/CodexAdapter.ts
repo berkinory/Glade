@@ -68,6 +68,11 @@ import {
 } from "../codex/codexGeneratedImages.ts";
 import { CodexSessionStartError } from "../codex/codexErrorClassification.ts";
 import { decodeCodexErrorParams } from "../codex/protocol/decode.ts";
+import {
+  codexUpdatedModelSelection,
+  decodeCodexFilePatch,
+  decodeCodexApprovalReview,
+} from "../codex/codexStateNotifications.ts";
 import { normalizeCodexFailure } from "../codex/codexFailures.ts";
 import { ServerConfig } from "../../server/config.ts";
 import { resolveCodexServiceTier } from "../codex/codexServiceTier.ts";
@@ -1139,17 +1144,69 @@ function mapToRuntimeEvents(
     ];
   }
 
+  if (event.method === "thread/settings/updated") {
+    return [
+      {
+        ...runtimeEventBase(event, canonicalThreadId),
+        type: "thread.metadata.updated",
+        payload: { modelSelection: codexUpdatedModelSelection(event.payload) },
+      },
+    ];
+  }
+
+  if (event.method === "item/fileChange/patchUpdated") {
+    const patch = decodeCodexFilePatch(event.payload);
+    return [
+      {
+        ...runtimeEventBase(event, canonicalThreadId),
+        itemId: RuntimeItemId.makeUnsafe(patch.itemId),
+        type: "item.updated",
+        payload: {
+          itemType: "file_change",
+          status: "inProgress",
+          title: "File change",
+          data: { item: { type: "fileChange", id: patch.itemId, changes: patch.changes } },
+        },
+      },
+    ];
+  }
+
+  if (event.method === "item/autoApprovalReview/started") {
+    const review = decodeCodexApprovalReview(event.payload);
+    return [
+      {
+        ...runtimeEventBase(event, canonicalThreadId),
+        itemId: RuntimeItemId.makeUnsafe(review.reviewId),
+        type: "item.started",
+        payload: {
+          itemType: "dynamic_tool_call",
+          status: "inProgress",
+          title: "Automatic approval review",
+        },
+      },
+    ];
+  }
+
   if (event.method === "item/autoApprovalReview/completed") {
     const review = asObjectRecord(payload?.review) ?? payload;
     const status = asString(review?.status);
-    if (status !== "denied" && status !== "aborted") {
-      return [];
-    }
+    const completedReview: ProviderRuntimeEvent = {
+      ...runtimeEventBase(event, canonicalThreadId),
+      itemId: RuntimeItemId.makeUnsafe(decodeCodexApprovalReview(event.payload).reviewId),
+      type: "item.completed",
+      payload: {
+        itemType: "dynamic_tool_call",
+        status: status === "denied" ? "declined" : status === "aborted" ? "failed" : "completed",
+        title: "Automatic approval review",
+      },
+    };
+    if (status !== "denied" && status !== "aborted") return [completedReview];
     const rationale =
       asString(review?.rationale) ??
       asString(review?.reason) ??
       `Automatic approval review ${status} this action.`;
     return [
+      completedReview,
       {
         ...runtimeEventBase(event, canonicalThreadId),
         type: "runtime.warning",

@@ -192,6 +192,7 @@ export function makeClaudeTurnCompletion(input: {
           ...(settledTurnId !== undefined ? { turnId: settledTurnId } : {}),
           payload: {
             state: status,
+            ...(context.nativeSessionState ? { sessionState: context.nativeSessionState } : {}),
             ...(result?.stop_reason !== undefined ? { stopReason: result.stop_reason } : {}),
             ...(result?.usage ? { usage: result.usage } : {}),
             ...(turnResultUsage ? { modelUsage: turnResultUsage.modelUsage } : {}),
@@ -325,7 +326,10 @@ export function makeClaudeTurnCompletion(input: {
       context.turnState = undefined;
       context.session = {
         ...context.session,
-        status: "ready",
+        status:
+          context.nativeSessionState === "running" || context.nativeSessionState === "waiting"
+            ? "running"
+            : "ready",
         activeTurnId: undefined,
         updatedAt: stamp.createdAt,
         ...(status === "failed" && errorMessage ? { lastError: errorMessage } : {}),
@@ -341,6 +345,7 @@ export function makeClaudeTurnCompletion(input: {
         turnId: turnState.turnId,
         payload: {
           state: status,
+          ...(context.nativeSessionState ? { sessionState: context.nativeSessionState } : {}),
           ...(turnState.explicitCompaction
             ? {
                 contextCompacted:
