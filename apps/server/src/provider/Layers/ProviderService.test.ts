@@ -80,14 +80,7 @@ function asRuntimePayloadRecord(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object" ? (value as Record<string, unknown>) : {};
 }
 
-function makeFakeCodexAdapter(
-  provider: ProviderKind = "codex",
-  options?: {
-    readonly didResumeSession?: NonNullable<
-      ProviderAdapterShape<ProviderAdapterError>["didResumeSession"]
-    >;
-  },
-) {
+function makeFakeCodexAdapter(provider: ProviderKind = "codex") {
   const sessions = new Map<ThreadId, ProviderSession>();
   const runtimeEventPubSub = Effect.runSync(PubSub.unbounded<ProviderRuntimeEvent>());
 
@@ -239,12 +232,10 @@ function makeFakeCodexAdapter(
   const adapter: ProviderAdapterShape<ProviderAdapterError> = {
     provider,
     capabilities: {
-      sessionModelSwitch: "in-session",
       supportsTurnSteering: true,
     },
     startSession,
     ...(provider === "claudeAgent" ? { prepareSessionReplacement } : {}),
-    ...(options?.didResumeSession ? { didResumeSession: options.didResumeSession } : {}),
     sendTurn,
     steerTurn,
     startReview,
@@ -346,18 +337,8 @@ const waitUntilEffect = <E = never, R = never>(
     }
   });
 
-function makeProviderServiceLayer(
-  options?: Parameters<typeof makeProviderServiceLive>[0],
-  providers?: {
-    readonly codexDidResumeSession?: NonNullable<
-      ProviderAdapterShape<ProviderAdapterError>["didResumeSession"]
-    >;
-  },
-) {
-  const codex = makeFakeCodexAdapter(
-    "codex",
-    providers?.codexDidResumeSession ? { didResumeSession: providers.codexDidResumeSession } : {},
-  );
+function makeProviderServiceLayer(options?: Parameters<typeof makeProviderServiceLive>[0]) {
+  const codex = makeFakeCodexAdapter("codex");
   const claude = makeFakeCodexAdapter("claudeAgent");
   const registry: typeof ProviderAdapterRegistry.Service = {
     getByProvider: (provider) =>

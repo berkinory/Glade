@@ -7141,7 +7141,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
     return {
       provider: PROVIDER,
       capabilities: {
-        sessionModelSwitch: "in-session",
         supportsSkillMentions: false,
         supportsSkillDiscovery: false,
         supportsNativeSlashCommandDiscovery: true,

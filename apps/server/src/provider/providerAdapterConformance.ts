@@ -5,10 +5,7 @@ import type {
 
 type CapabilityFlag = Exclude<
   keyof ProviderAdapterCapabilities,
-  | "sessionModelSwitch"
-  | "supportsSkillMentions"
-  | "supportsPluginMentions"
-  | "supportsLiveTurnDiffPatch"
+  "supportsSkillMentions" | "supportsPluginMentions" | "supportsLiveTurnDiffPatch"
 >;
 
 type OptionalAdapterMethod =

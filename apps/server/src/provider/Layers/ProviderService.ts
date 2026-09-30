@@ -1815,9 +1815,7 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
                 startupLifecycle.transition("ready");
                 replacementStarted = true;
                 const nativeResumeAttempted = hasResumeCursor(effectiveResumeCursor);
-                const nativeResumeSucceeded = nativeResumeAttempted
-                  ? (adapter.didResumeSession?.(resolvedAdapterStartInput, session) ?? true)
-                  : false;
+                const nativeResumeSucceeded = nativeResumeAttempted;
                 const priorTranscriptBootstrapPending =
                   persistedPriorTranscriptBootstrapPending ||
                   (outcomeOptions?.registerPriorTranscriptBootstrapOnFreshStart === true &&

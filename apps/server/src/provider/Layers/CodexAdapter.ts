@@ -2488,7 +2488,6 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
     return {
       provider: PROVIDER,
       capabilities: {
-        sessionModelSwitch: "in-session",
         supportsSkillMentions: true,
         supportsSkillDiscovery: true,
         supportsNativeSlashCommandDiscovery: false,

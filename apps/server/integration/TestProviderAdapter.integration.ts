@@ -507,9 +507,7 @@ export const makeTestProviderAdapterHarness = (options?: MakeTestProviderAdapter
 
     const adapter: ProviderAdapterShape<ProviderAdapterError> = {
       provider,
-      capabilities: {
-        sessionModelSwitch: "in-session",
-      },
+      capabilities: {},
       startSession,
       sendTurn,
       interruptTurn,

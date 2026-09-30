@@ -99,7 +99,6 @@ function createProviderServiceHarness(options?: { readonly persistedStream?: boo
     listSessions: () => Effect.succeed([...runtimeSessions]),
     getCapabilities: (provider) =>
       Effect.succeed({
-        sessionModelSwitch: "in-session",
         supportsLiveTurnDiffPatch: provider === "codex",
       }),
     rollbackConversation: () => unsupported(),

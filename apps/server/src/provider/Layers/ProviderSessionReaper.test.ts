@@ -128,7 +128,7 @@ function makeFakeAdapter(provider: ProviderKind) {
 
   const adapter: ProviderAdapterShape<never> = {
     provider,
-    capabilities: { sessionModelSwitch: "in-session" },
+    capabilities: {},
     startSession,
     sendTurn: () => unsupported(),
     interruptTurn: () => Effect.void,

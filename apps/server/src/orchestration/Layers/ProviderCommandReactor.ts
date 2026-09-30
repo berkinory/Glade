@@ -1695,14 +1695,9 @@ const make = Effect.gen(function* () {
       const providerChanged =
         requestedModelSelection !== undefined &&
         requestedModelSelection.provider !== currentProvider;
-      const sessionModelSwitch =
-        currentProvider === undefined
-          ? "in-session"
-          : (yield* providerService.getCapabilities(currentProvider)).sessionModelSwitch;
       const modelChanged =
         requestedModelSelection !== undefined &&
         requestedModelSelection.model !== activeSessionBeforeEnsure?.model;
-      const shouldRestartForModelChange = modelChanged && sessionModelSwitch === "restart-session";
       const previousModelSelection = threadSessionModelSelections.get(threadId);
       // When the dispatch cache has no entry (the session was started by a turn without a selection),
       // compare against the projected thread selection the session was actually spawned from so
@@ -1728,7 +1723,6 @@ const make = Effect.gen(function* () {
         !runtimeModeChanged &&
         !providerChanged &&
         !workspaceChanged &&
-        !shouldRestartForModelChange &&
         !shouldRestartForModelSelectionChange &&
         !computerControlChanged
       ) {
@@ -1753,7 +1747,6 @@ const make = Effect.gen(function* () {
         !runtimeModeChanged &&
         !providerChanged &&
         !workspaceChanged &&
-        !shouldRestartForModelChange &&
         !shouldRestartForModelSelectionChange &&
         (yield* hasLiveProviderTurn(threadId))
       ) {
@@ -1777,7 +1770,7 @@ const make = Effect.gen(function* () {
       }
 
       const resumeCursor =
-        providerChanged || shouldRestartForModelChange || runtimeModeChanged
+        providerChanged || runtimeModeChanged
           ? undefined
           : (activeSessionBeforeEnsure?.resumeCursor ?? undefined);
       yield* Effect.logInfo("provider command reactor restarting provider session", {
@@ -1791,7 +1784,6 @@ const make = Effect.gen(function* () {
         providerChanged,
         workspaceChanged,
         modelChanged,
-        shouldRestartForModelChange,
         shouldRestartForModelSelectionChange,
         computerControlChanged,
         hasResumeCursor: resumeCursor !== undefined,
@@ -2440,24 +2432,13 @@ const make = Effect.gen(function* () {
       provider: selectedProvider as ProviderKind,
       operation: "thread.turn.start",
     });
-    const sessionModelSwitch = (yield* providerService.getCapabilities(activeSession.provider))
-      .sessionModelSwitch;
     const requestedModelSelection = input.modelSelection ?? thread.modelSelection;
-    const modelForTurn =
-      sessionModelSwitch === "unsupported"
-        ? activeSession.model !== undefined
-          ? {
-              ...requestedModelSelection,
-              model: activeSession.model,
-            }
-          : requestedModelSelection
-        : requestedModelSelection;
     const providerTurnInput = {
       threadId: input.threadId,
       ...(normalizedAttachments.length > 0 ? { attachments: normalizedAttachments } : {}),
       ...(input.skills !== undefined ? { skills: input.skills } : {}),
       ...(providerMentions !== undefined ? { mentions: providerMentions } : {}),
-      ...(modelForTurn !== undefined ? { modelSelection: modelForTurn } : {}),
+      ...(requestedModelSelection !== undefined ? { modelSelection: requestedModelSelection } : {}),
       ...(input.interactionMode !== undefined ? { interactionMode: input.interactionMode } : {}),
     };
     const sendQueuedProviderTurn = (messageText: string | undefined) =>

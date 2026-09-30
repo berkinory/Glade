@@ -10,6 +10,8 @@
 
 ### Improved
 
+- Provider adapters expose their implemented capabilities without dormant resume callbacks or unused model-switch modes.
+
 - Process, provider metadata and updater policy imports point to their owning modules; redundant forwarding modules and policy re-exports were removed. The dependency check follows workspace symlinks and handles pending file deletions.
 
 - Composer queue drains use independent state owners and cancel scheduled work when their watcher stops, preserving queued messages for the next owner.

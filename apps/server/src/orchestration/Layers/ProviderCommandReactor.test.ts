@@ -226,7 +226,6 @@ describe("ProviderCommandReactor", () => {
   async function createHarness(input?: {
     readonly baseDir?: string;
     readonly threadModelSelection?: ModelSelection;
-    readonly sessionModelSwitch?: "unsupported" | "in-session" | "restart-session";
     readonly checkpointStore?: Partial<CheckpointStoreShape>;
     readonly forkThreadResult?: ProviderForkThreadResult | null;
     readonly startReactor?: boolean;
@@ -559,10 +558,7 @@ describe("ProviderCommandReactor", () => {
           }),
       clearSessionResumeCursor,
       listSessions,
-      getCapabilities: (_provider) =>
-        Effect.succeed({
-          sessionModelSwitch: input?.sessionModelSwitch ?? "in-session",
-        }),
+      getCapabilities: (_provider) => Effect.succeed({}),
       rollbackConversation,
       compactThread: () => unsupported(),
       ...(input?.getClaudeCacheObservation

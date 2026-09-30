@@ -37,8 +37,6 @@ import type {
 import type { Effect } from "effect";
 import type { Stream } from "effect";
 
-type ProviderSessionModelSwitchMode = "in-session" | "restart-session" | "unsupported";
-
 export const PROVIDER_ADAPTER_RUNTIME_EVENT_BUFFER_CAPACITY = 2_048;
 
 interface ProviderSteerSubagentPayload {
@@ -49,7 +47,6 @@ interface ProviderSteerSubagentPayload {
 }
 
 export interface ProviderAdapterCapabilities {
-  readonly sessionModelSwitch: ProviderSessionModelSwitchMode;
   readonly supportsSkillMentions?: boolean;
   readonly supportsSkillDiscovery?: boolean;
   readonly supportsNativeSlashCommandDiscovery?: boolean;
@@ -82,11 +79,6 @@ export interface ProviderAdapterShape<TError> {
   readonly startSession: (
     input: ProviderSessionStartInput,
   ) => Effect.Effect<ProviderSession, TError>;
-
-  readonly didResumeSession?: (
-    input: ProviderSessionStartInput,
-    session: ProviderSession,
-  ) => boolean;
 
   readonly sendTurn: (
     input: ProviderSendTurnInput,
