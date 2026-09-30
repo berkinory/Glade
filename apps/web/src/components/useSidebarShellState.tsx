@@ -32,7 +32,7 @@ import { serverConfigQueryOptions } from "../lib/serverReactQuery";
 import { readNativeApi } from "../nativeApi";
 import { isHomeChatContainerProject } from "../lib/chatProjects";
 import { useComposerDraftStore } from "../composerDraftStore";
-import { useLatestProjectStore } from "../latestProjectStore";
+import { useProjectPreferencesStore } from "../projectPreferencesStore";
 import { type SidebarThreadSummary } from "../types";
 import {
   applyAutomationEvent,
@@ -365,7 +365,7 @@ export function useSidebarShellState() {
 
   const { activeProjectId: focusedProjectId } = useFocusedChatContext();
 
-  const latestProjectId = useLatestProjectStore((state) => state.latestProjectId);
+  const latestProjectId = useProjectPreferencesStore((state) => state.latestProjectId);
 
   const [createProjectDialogOpen, setCreateProjectDialogOpen] = useState(false);
 

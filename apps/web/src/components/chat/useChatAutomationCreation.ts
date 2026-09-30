@@ -20,8 +20,8 @@ import { readNativeApi } from "~/nativeApi";
 import { dispatchThreadNotes } from "~/pinnedMessages";
 import {
   mergeProjectInstructionsIntoThreadNotes,
-  useProjectInstructionsStore,
-} from "~/projectInstructionsStore";
+  useProjectPreferencesStore,
+} from "~/projectPreferencesStore";
 import {
   acknowledgedRiskIdsForDraft,
   hasBlockingAutomationDraftWarnings,
@@ -324,7 +324,7 @@ export function useChatAutomationCreation({
         }
 
         const inheritedProjectInstructions =
-          useProjectInstructionsStore.getState().instructionsByProjectId[activeProject.id] ?? "";
+          useProjectPreferencesStore.getState().instructionsByProjectId[activeProject.id] ?? "";
         const inheritedThreadNotes = mergeProjectInstructionsIntoThreadNotes({
           threadNotes,
           projectInstructions: inheritedProjectInstructions,

@@ -13,7 +13,7 @@ import { prefetchModelsForNewThread } from "../lib/providerModelPrefetch";
 import { hasReconciledServerProviderStatuses } from "../lib/serverReactQuery";
 import { readNativeApi } from "../nativeApi";
 import { isHomeChatContainerProject, prewarmHomeChatProject } from "../lib/chatProjects";
-import { useProjectEnvironmentStore } from "../projectEnvironmentStore";
+import { useProjectPreferencesStore } from "../projectPreferencesStore";
 import { useComposerDraftStore } from "../composerDraftStore";
 import { type SidebarThreadSummary } from "../types";
 import { toastManager } from "./ui/toast";
@@ -680,7 +680,7 @@ export function useSidebarProjectNavigation(context: ReturnType<typeof useSideba
 
         envMode:
           draftThread?.envMode ??
-          useProjectEnvironmentStore.getState().envModeByProjectId[projectId] ??
+          useProjectPreferencesStore.getState().envModeByProjectId[projectId] ??
           appSettings.defaultThreadEnvMode,
         providerStatuses,
         statusesReconciled: hasReconciledServerProviderStatuses(queryClient),

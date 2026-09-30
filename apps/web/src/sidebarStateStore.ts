@@ -1,6 +1,7 @@
 import { MAX_PINNED_PROJECTS } from "@glade/contracts/orchestration/threadEntities";
 import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { create } from "zustand";
+import { readPersistedStoreField, writePersistedStoreField } from "./persistedStoreFields";
 import { normalizePinnedIds, pinId, prunePinnedIds, unpinId } from "./pinning.logic";
 import {
   type RecentView,
@@ -41,22 +42,20 @@ interface SidebarState {
 }
 
 function readStoredField(key: string, field: string): unknown {
-  if (typeof localStorage === "undefined") return undefined;
-  try {
-    const envelope: unknown = JSON.parse(localStorage.getItem(key) ?? "null");
-    if (!envelope || typeof envelope !== "object" || !("state" in envelope)) return undefined;
-    const state: unknown = envelope.state;
-    return state && typeof state === "object" && field in state
-      ? (state as Record<string, unknown>)[field]
-      : undefined;
-  } catch {
-    return undefined;
-  }
+  return readPersistedStoreField(
+    typeof localStorage === "undefined" ? null : localStorage,
+    key,
+    field,
+  );
 }
 
 function writeStoredField(key: string, field: string, value: unknown): void {
-  if (typeof localStorage === "undefined") return;
-  localStorage.setItem(key, JSON.stringify({ state: { [field]: value }, version: 0 }));
+  writePersistedStoreField(
+    typeof localStorage === "undefined" ? null : localStorage,
+    key,
+    field,
+    value,
+  );
 }
 
 function readPinnedIds<TId extends string>(key: string, field: string, maxCount?: number): TId[] {
