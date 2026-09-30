@@ -18,7 +18,6 @@ import { DEFAULT_THREAD_TERMINAL_ID, type SidebarThreadSummary } from "../types"
 import { type ImportProviderKind } from "./SidebarSearchPalette";
 import { selectThreadTerminalState, useTerminalStateStore } from "../terminalStateStore";
 import { toastManager } from "./ui/toast";
-import { persistSidebarUiState } from "./Sidebar.uiState";
 import { resolveSidebarNewThreadEnvMode } from "./Sidebar.logic.statusTypes";
 import type { LastThreadRoute } from "../chatRouteRestore";
 import { useCopyPathToClipboard, useCopyThreadIdToClipboard } from "~/hooks/useCopyToClipboard";
@@ -44,11 +43,7 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
     openRightDockPane,
     setRenameDialogThreadId,
     setProjectContextMenuState,
-    threadListExtraPagesByProjectCwd,
-    chatSectionExpanded,
-    dismissedThreadStatusKeyByThreadId,
     setLastThreadRoute,
-    activityViewEnabled,
     setOptimisticActiveThreadId,
     lastThreadRenameTapRef,
     selectedThreadIds,
@@ -559,21 +554,8 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
   const rememberLastThreadRouteNow = useCallback(
     (nextLastThreadRoute: LastThreadRoute) => {
       setLastThreadRoute(nextLastThreadRoute);
-      persistSidebarUiState({
-        chatSectionExpanded,
-        projectThreadListExtraPagesByCwd: Object.fromEntries(threadListExtraPagesByProjectCwd),
-        dismissedThreadStatusKeyByThreadId,
-        lastThreadRoute: nextLastThreadRoute,
-        activityViewEnabled,
-      });
     },
-    [
-      activityViewEnabled,
-      chatSectionExpanded,
-      dismissedThreadStatusKeyByThreadId,
-      threadListExtraPagesByProjectCwd,
-      setLastThreadRoute,
-    ],
+    [setLastThreadRoute],
   );
 
   const { activateThreadFromSidebarIntent } = useThreadActivationController({

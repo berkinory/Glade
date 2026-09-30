@@ -49,7 +49,6 @@ import { useProviderStatusesForLocalConfig } from "../hooks/useProviderStatusesF
 import { useFeedbackDialogStore } from "../feedbackDialogStore";
 import { selectThreadTerminalState, useTerminalStateStore } from "../terminalStateStore";
 import { toastManager } from "./ui/toast";
-import { readSidebarUiState, subscribeSidebarUiState } from "./Sidebar.uiState";
 import { useSidebarStateStore } from "../sidebarStateStore";
 import { getPinnedThreadsForSidebar } from "./Sidebar.logic.preview";
 import {
@@ -391,25 +390,24 @@ export function useSidebarShellState() {
   const [projectContextMenuState, setProjectContextMenuState] =
     useState<ProjectContextMenuState | null>(null);
 
-  const [threadListExtraPagesByProjectCwd, setThreadListExtraPagesByProjectCwd] = useState<
-    ReadonlyMap<string, number>
-  >(() => new Map(Object.entries(readSidebarUiState().projectThreadListExtraPagesByCwd)));
-
-  const [chatSectionExpanded, setChatSectionExpanded] = useState(
-    () => readSidebarUiState().chatSectionExpanded,
+  const threadListExtraPagesByProjectCwd = useSidebarStateStore(
+    (state) => state.threadListExtraPagesByProjectCwd,
   );
-
-  const [dismissedThreadStatusKeyByThreadId, setDismissedThreadStatusKeyByThreadId] = useState<
-    Record<string, string>
-  >(() => readSidebarUiState().dismissedThreadStatusKeyByThreadId);
-
-  const [lastThreadRoute, setLastThreadRoute] = useState(
-    () => readSidebarUiState().lastThreadRoute,
+  const setThreadListExtraPagesByProjectCwd = useSidebarStateStore(
+    (state) => state.setThreadListExtraPagesByProjectCwd,
   );
-
-  const [activityViewEnabled, setActivityViewEnabled] = useState(
-    () => readSidebarUiState().activityViewEnabled,
+  const chatSectionExpanded = useSidebarStateStore((state) => state.chatSectionExpanded);
+  const setChatSectionExpanded = useSidebarStateStore((state) => state.setChatSectionExpanded);
+  const dismissedThreadStatusKeyByThreadId = useSidebarStateStore(
+    (state) => state.dismissedThreadStatusKeyByThreadId,
   );
+  const setDismissedThreadStatusKeyByThreadId = useSidebarStateStore(
+    (state) => state.setDismissedThreadStatusKeyByThreadId,
+  );
+  const lastThreadRoute = useSidebarStateStore((state) => state.lastThreadRoute);
+  const setLastThreadRoute = useSidebarStateStore((state) => state.setLastThreadRoute);
+  const activityViewEnabled = useSidebarStateStore((state) => state.activityViewEnabled);
+  const setActivityViewEnabled = useSidebarStateStore((state) => state.setActivityViewEnabled);
 
   const [activityVisibleThreadIds, setActivityVisibleThreadIds] = useState<readonly ThreadId[]>([]);
 
@@ -425,25 +423,14 @@ export function useSidebarShellState() {
     });
   }, []);
 
-  useEffect(
-    () =>
-      subscribeSidebarUiState((state) => {
-        setChatSectionExpanded(state.chatSectionExpanded);
-        setThreadListExtraPagesByProjectCwd(
-          new Map(Object.entries(state.projectThreadListExtraPagesByCwd)),
-        );
-        setDismissedThreadStatusKeyByThreadId(state.dismissedThreadStatusKeyByThreadId);
-        setLastThreadRoute(state.lastThreadRoute);
-        setActivityViewEnabled(state.activityViewEnabled);
-      }),
-    [],
+  const setActivityViewEnabledSmoothly = useCallback(
+    (enabled: boolean) => {
+      startTransition(() => {
+        setActivityViewEnabled(enabled);
+      });
+    },
+    [setActivityViewEnabled],
   );
-
-  const setActivityViewEnabledSmoothly = useCallback((enabled: boolean) => {
-    startTransition(() => {
-      setActivityViewEnabled(enabled);
-    });
-  }, []);
 
   const [optimisticActiveThreadId, setOptimisticActiveThreadId] = useState<ThreadId | null>(null);
 
@@ -552,19 +539,22 @@ export function useSidebarShellState() {
         };
       });
     },
-    [],
+    [setDismissedThreadStatusKeyByThreadId],
   );
 
-  const clearDismissedThreadStatus = useCallback((threadId: ThreadId) => {
-    setDismissedThreadStatusKeyByThreadId((current) => {
-      if (!(threadId in current)) {
-        return current;
-      }
-      const next = { ...current };
-      delete next[threadId];
-      return next;
-    });
-  }, []);
+  const clearDismissedThreadStatus = useCallback(
+    (threadId: ThreadId) => {
+      setDismissedThreadStatusKeyByThreadId((current) => {
+        if (!(threadId in current)) {
+          return current;
+        }
+        const next = { ...current };
+        delete next[threadId];
+        return next;
+      });
+    },
+    [setDismissedThreadStatusKeyByThreadId],
+  );
 
   const resolveThreadStatusForSidebar = useCallback(
     (thread: SidebarThreadSummary) =>

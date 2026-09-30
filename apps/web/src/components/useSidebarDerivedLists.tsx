@@ -10,7 +10,7 @@ import { useThreadPullRequests } from "../hooks/useThreadPullRequests";
 import { isHomeChatContainerProject } from "../lib/chatProjects";
 import { type SidebarThreadSummary } from "../types";
 import { type EditProjectValue } from "./EditProjectDialog";
-import { normalizeSidebarProjectThreadListCwd, persistSidebarUiState } from "./Sidebar.uiState";
+import { normalizeSidebarProjectThreadListCwd } from "./Sidebar.uiState";
 import {
   buildProjectThreadTree,
   resolveProjectStatusIndicator,
@@ -68,9 +68,7 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
     threadListExtraPagesByProjectCwd,
     setThreadListExtraPagesByProjectCwd,
     chatSectionExpanded,
-    dismissedThreadStatusKeyByThreadId,
     setDismissedThreadStatusKeyByThreadId,
-    lastThreadRoute,
     setLastThreadRoute,
     activityViewEnabled,
     activityVisibleThreadIds,
@@ -403,22 +401,6 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
     }, 0);
     return () => window.clearTimeout(settle);
   }, [sidebarThreads, setDismissedThreadStatusKeyByThreadId]);
-
-  useEffect(() => {
-    persistSidebarUiState({
-      chatSectionExpanded,
-      projectThreadListExtraPagesByCwd: Object.fromEntries(threadListExtraPagesByProjectCwd),
-      dismissedThreadStatusKeyByThreadId,
-      lastThreadRoute,
-      activityViewEnabled,
-    });
-  }, [
-    activityViewEnabled,
-    chatSectionExpanded,
-    dismissedThreadStatusKeyByThreadId,
-    threadListExtraPagesByProjectCwd,
-    lastThreadRoute,
-  ]);
 
   useEffect(() => {
     if (isOnSettings || routeThreadId === null) {

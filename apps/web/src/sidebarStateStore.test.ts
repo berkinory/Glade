@@ -51,3 +51,38 @@ it("hydrates existing sidebar keys and persists each feature under its original 
     version: 0,
   });
 });
+
+it("keeps the legacy sidebar UI document when state changes", async () => {
+  const values = new Map([
+    [
+      "glade:sidebar-ui:v1",
+      JSON.stringify({
+        chatSectionExpanded: true,
+        projectThreadListExtraPagesByCwd: { "/repo": 2 },
+        dismissedThreadStatusKeyByThreadId: { "thread-a": "done" },
+        lastThreadRoute: { threadId: "thread-a" },
+        activityViewEnabled: false,
+      }),
+    ],
+  ]);
+  vi.stubGlobal("window", {
+    localStorage: {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+    },
+    addEventListener: vi.fn(),
+  });
+  vi.resetModules();
+  const { useSidebarStateStore } = await import("./sidebarStateStore");
+  const state = useSidebarStateStore.getState();
+  expect(state.chatSectionExpanded).toBe(true);
+  expect(state.threadListExtraPagesByProjectCwd.get("/repo")).toBe(2);
+  state.setActivityViewEnabled(true);
+  expect(JSON.parse(values.get("glade:sidebar-ui:v1") ?? "null")).toEqual({
+    chatSectionExpanded: true,
+    projectThreadListExtraPagesByCwd: { "/repo": 2 },
+    dismissedThreadStatusKeyByThreadId: { "thread-a": "done" },
+    lastThreadRoute: { threadId: "thread-a" },
+    activityViewEnabled: true,
+  });
+});

@@ -1,6 +1,13 @@
 import { MAX_PINNED_PROJECTS } from "@glade/contracts/orchestration/threadEntities";
 import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { create } from "zustand";
+import type { LastThreadRoute } from "./chatRouteRestore";
+import {
+  persistSidebarUiState,
+  readSidebarUiState,
+  subscribeSidebarUiState,
+  type SidebarUiState,
+} from "./components/Sidebar.uiState";
 import { readPersistedStoreField, writePersistedStoreField } from "./persistedStoreFields";
 import { normalizePinnedIds, pinId, prunePinnedIds, unpinId } from "./pinning.logic";
 import {
@@ -19,6 +26,22 @@ const PINNED_PROJECTS_OPTIONS = { maxCount: MAX_PINNED_PROJECTS } as const;
 const EMPTY_SELECTION = new Set<ThreadId>();
 
 interface SidebarState {
+  chatSectionExpanded: boolean;
+  threadListExtraPagesByProjectCwd: ReadonlyMap<string, number>;
+  dismissedThreadStatusKeyByThreadId: Record<string, string>;
+  lastThreadRoute: LastThreadRoute | null;
+  activityViewEnabled: boolean;
+  setChatSectionExpanded: (update: boolean | ((current: boolean) => boolean)) => void;
+  setThreadListExtraPagesByProjectCwd: (
+    update: (current: ReadonlyMap<string, number>) => ReadonlyMap<string, number>,
+  ) => void;
+  setDismissedThreadStatusKeyByThreadId: (
+    update: (current: Record<string, string>) => Record<string, string>,
+  ) => void;
+  setLastThreadRoute: (
+    update: LastThreadRoute | ((current: LastThreadRoute | null) => LastThreadRoute | null),
+  ) => void;
+  setActivityViewEnabled: (value: boolean) => void;
   pinnedProjectIds: ProjectId[];
   pinnedThreadIds: ThreadId[];
   recentViews: RecentView[];
@@ -119,6 +142,25 @@ function sameViews(left: readonly RecentView[], right: readonly RecentView[]): b
 }
 
 export const useSidebarStateStore = create<SidebarState>((set, get) => ({
+  ...sidebarUiFields(readSidebarUiState()),
+  setChatSectionExpanded: (update) =>
+    commitSidebarUi({
+      chatSectionExpanded:
+        typeof update === "function" ? update(get().chatSectionExpanded) : update,
+    }),
+  setThreadListExtraPagesByProjectCwd: (update) =>
+    commitSidebarUi({
+      threadListExtraPagesByProjectCwd: update(get().threadListExtraPagesByProjectCwd),
+    }),
+  setDismissedThreadStatusKeyByThreadId: (update) =>
+    commitSidebarUi({
+      dismissedThreadStatusKeyByThreadId: update(get().dismissedThreadStatusKeyByThreadId),
+    }),
+  setLastThreadRoute: (update) =>
+    commitSidebarUi({
+      lastThreadRoute: typeof update === "function" ? update(get().lastThreadRoute) : update,
+    }),
+  setActivityViewEnabled: (activityViewEnabled) => commitSidebarUi({ activityViewEnabled }),
   pinnedProjectIds: readPinnedIds<ProjectId>(
     PINNED_PROJECTS_KEY,
     "pinnedProjectIds",
@@ -268,3 +310,38 @@ export const useSidebarStateStore = create<SidebarState>((set, get) => ({
   },
   hasSelection: () => get().selectedThreadIds.size > 0,
 }));
+
+function sidebarUiFields(
+  state: SidebarUiState,
+): Pick<
+  SidebarState,
+  | "chatSectionExpanded"
+  | "threadListExtraPagesByProjectCwd"
+  | "dismissedThreadStatusKeyByThreadId"
+  | "lastThreadRoute"
+  | "activityViewEnabled"
+> {
+  return {
+    chatSectionExpanded: state.chatSectionExpanded,
+    threadListExtraPagesByProjectCwd: new Map(
+      Object.entries(state.projectThreadListExtraPagesByCwd),
+    ),
+    dismissedThreadStatusKeyByThreadId: state.dismissedThreadStatusKeyByThreadId,
+    lastThreadRoute: state.lastThreadRoute,
+    activityViewEnabled: state.activityViewEnabled,
+  };
+}
+
+function commitSidebarUi(patch: Partial<ReturnType<typeof sidebarUiFields>>): void {
+  const state = { ...useSidebarStateStore.getState(), ...patch };
+  useSidebarStateStore.setState(patch);
+  persistSidebarUiState({
+    chatSectionExpanded: state.chatSectionExpanded,
+    projectThreadListExtraPagesByCwd: Object.fromEntries(state.threadListExtraPagesByProjectCwd),
+    dismissedThreadStatusKeyByThreadId: state.dismissedThreadStatusKeyByThreadId,
+    lastThreadRoute: state.lastThreadRoute,
+    activityViewEnabled: state.activityViewEnabled,
+  });
+}
+
+subscribeSidebarUiState((state) => useSidebarStateStore.setState(sidebarUiFields(state)));
