@@ -1,29 +1,38 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useParams } from "@tanstack/react-router";
 import { ThreadId, type TurnId } from "@glade/contracts/core/baseSchemas";
 import { type ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
-import * as Schema from "effect/Schema";
-import { XIcon } from "~/lib/icons";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   gitBranchesQueryOptions,
-  refreshGitAfterFileWrite,
   gitStatusQueryOptions,
   gitWorkingTreeDiffQueryOptions,
   gitWorkingTreeDiffStatsQueryOptions,
 } from "~/lib/gitReactQuery";
+import { XIcon } from "~/lib/icons";
 import {
   checkpointDiffQueryOptions,
   resolveCheckpointDiffQueryDisplayState,
 } from "~/lib/providerReactQuery";
+import { useAppSettings } from "../appSettings";
 import { stripDiffSearchParams } from "../diffRouteSearch";
-import { useTheme } from "../hooks/useTheme";
-import { useDiffRouteSearch } from "../hooks/useDiffRouteSearch";
 import { useDiffChangeNavigationShortcuts } from "../hooks/useDiffChangeNavigationShortcuts";
+import { useTheme } from "../hooks/useTheme";
 import { useVisibleDiffFilePath } from "../hooks/useVisibleDiffFilePath";
-import { serverConfigQueryOptions } from "../lib/serverReactQuery";
 import { shortcutLabelForCommand } from "../keybindings";
-import { useLocalStorage } from "../hooks/useLocalStorage";
+import {
+  appendChatFileReference,
+  appendComposerPromptText,
+  buildDiffSelectionReference,
+  buildWhyChangedPrompt,
+  normalizeSelectionSnippet,
+} from "../lib/chatReferences";
+import { useCopyToClipboard } from "../lib/clipboard";
+import {
+  resolveDiffEditBaseRev,
+  resolveDiffFileEditMode,
+  type DiffFileEditRequest,
+} from "../lib/diffEditBaseRev";
 import {
   buildFileDiffRenderKey,
   getRenderablePatch,
@@ -33,76 +42,52 @@ import {
   summarizeRenderablePatchStats,
 } from "../lib/diffRendering";
 import { scrollDiffFileIntoView } from "../lib/diffScrollSurface";
-import {
-  appendChatFileReference,
-  appendComposerPromptText,
-  buildDiffSelectionReference,
-  buildWhyChangedPrompt,
-  normalizeSelectionSnippet,
-} from "../lib/chatReferences";
-import {
-  resolveDiffEditBaseRev,
-  resolveDiffFileEditMode,
-  type DiffFileEditRequest,
-} from "../lib/diffEditBaseRev";
-import { resolveDiffEnvironmentState } from "../lib/threadEnvironment";
 import { disclosureWidthClassName } from "../lib/disclosureMotion";
-import { useCopyToClipboard } from "../lib/clipboard";
-import { type RepoDiffScope, useRepoDiffScope, useRepoDiffScopeStore } from "../repoDiffScopeStore";
-import { useStore } from "../store";
-import { createProjectSelector } from "../storeSelectors";
+import { serverConfigQueryOptions } from "../lib/serverReactQuery";
+import {
+  REPO_DIFF_SCOPE_LABELS,
+  resolveRepoDiffScopeLabel,
+  useRepoDiffScopeStore,
+  type RepoDiffScope,
+} from "../repoDiffScopeStore";
 import { inferCheckpointTurnCountByTurnId } from "../session-logic";
-import { useAppSettings } from "../appSettings";
-import { useComposerDraftStore } from "../composerDraftStore";
+import { type SplitViewPanePanelState } from "../splitViewModel";
 import { CHAT_HEADER_ICON_CONTROL_CLASS_NAME } from "./chat/chatHeaderControls";
+import { closestThroughShadow } from "./chat/chatSelectionActions";
+import { PanelStateMessage } from "./chat/PanelStateMessage";
+import { TranscriptSelectionAction } from "./chat/TranscriptSelectionAction";
+import { useCodeSelectionAction } from "./chat/useCodeSelectionAction";
+import { DiffLineBlamePopover, type DiffLineBlameTarget } from "./DiffLineBlamePopover";
 import {
   areAllRenderableFilesCollapsed,
   isStaleDiffTurnSelection,
+  resolveAdjacentDiffFilePath,
   resolveConversationCacheScope,
   resolveDiffPanelGitStatusQueriesEnabled,
-  resolveDiffPanelQueriesEnabled,
-  resolveDiffPanelScopeCountQueriesEnabled,
   resolveDiffPanelRepoLiveRefetchIntervalMs,
   resolveDiffPanelScopeFileCounts,
-  resolveDiffPanelThread,
   resolveDiffPanelViewSource,
-  resolveAdjacentDiffFilePath,
-  resolveDiffSelectAllArmed,
-  resolveDiffSelectAllWithinViewport,
   resolveInitialDiffViewKind,
   resolveSelectedTurnSummary,
-  resolveWatchedDiffFilePath,
   type DiffChangeNavigationDirection,
   type DiffPanelRepoScopeOption,
   type DiffPanelTurnScopeIntent,
   type DiffViewKind,
 } from "./DiffPanel.logic";
-import { resolveDraftFallbackModelSelection } from "./ChatView.logic";
 import { DiffPanelChangeMarkers } from "./DiffPanelChangeMarkers";
 import { type DiffPanelChangeNavigation } from "./DiffPanelChangeNavigation";
-import { DiffLineBlamePopover, type DiffLineBlameTarget } from "./DiffLineBlamePopover";
 import { DiffPanelPatchViewport } from "./DiffPanelPatchViewport";
+import { DiffPanelLoadingState, DiffPanelShell, type DiffPanelMode } from "./DiffPanelShell";
 import { DiffPanelToolbar } from "./DiffPanelToolbar";
 import { DiffTruncationWarning } from "./DiffTruncationWarning";
 import { ReviewFileTreePanel } from "./ReviewFileTreePanel";
-import { closestThroughShadow } from "./chat/chatSelectionActions";
-import { TranscriptSelectionAction } from "./chat/TranscriptSelectionAction";
-import { useCodeSelectionAction } from "./chat/useCodeSelectionAction";
-import { useProjectFileChangeSubscription } from "../hooks/useProjectFileChangeSubscription";
-import {
-  createDiffPanelRepoLiveRefreshSelector,
-  createDiffPanelThreadCatalogSelector,
-  toDiffPanelThreadCatalog,
-  type DiffPanelThreadCatalog,
-} from "./diffPanelSelectors";
-import { DiffPanelLoadingState, DiffPanelShell, type DiffPanelMode } from "./DiffPanelShell";
 import { IconButton } from "./ui/icon-button";
-import { REPO_DIFF_SCOPE_LABELS, resolveRepoDiffScopeLabel } from "../repoDiffScopeStore";
-import { PanelStateMessage } from "./chat/PanelStateMessage";
-import { type SplitViewPanePanelState } from "../splitViewModel";
+import { useDiffPanelContext } from "./useDiffPanelContext";
+import { useDiffPanelCopyShortcut } from "./useDiffPanelCopyShortcut";
+import { useDiffPanelViewState } from "./useDiffPanelViewState";
+import { useWatchedDiffFileRefresh } from "./useWatchedDiffFileRefresh";
 
 const EMPTY_KEYBINDINGS: ResolvedKeybindingsConfig = [];
-const DiffRenderModeSchema = Schema.Literals(["stacked", "split"]);
 
 interface DiffPanelProps {
   mode?: DiffPanelMode;
@@ -137,118 +122,49 @@ export default function DiffPanel({
   const navigate = useNavigate();
   const { resolvedTheme } = useTheme();
   const { settings } = useAppSettings();
-  const [diffRenderMode, setDiffRenderMode] = useLocalStorage(
-    "glade:diff-render-mode:v1",
-    "split",
-    DiffRenderModeSchema,
-  );
-  const [diffWordWrap, setDiffWordWrap] = useState(settings.diffWordWrap);
-  const [diffIgnoreWhitespace, setDiffIgnoreWhitespace] = useState(true);
-  const [changeMarkersEnabled, setChangeMarkersEnabled] = useState(true);
-  const [scopePickerOpen, setScopePickerOpen] = useState(false);
-  const handleScopePickerOpenChange = useCallback((open: boolean) => {
-    setScopePickerOpen((previous) => (previous === open ? previous : open));
-  }, []);
+  const {
+    diffRenderMode,
+    setDiffRenderMode,
+    diffWordWrap,
+    setDiffWordWrap,
+    diffIgnoreWhitespace,
+    setDiffIgnoreWhitespace,
+    changeMarkersEnabled,
+    setChangeMarkersEnabled,
+    scopePickerOpen,
+    handleScopePickerOpenChange,
+    collapsedFiles,
+    setCollapsedFiles,
+    fileTreeOpen,
+    fileTreeMounted,
+    toggleFileTree,
+    closeFileTree,
+  } = useDiffPanelViewState(settings.diffWordWrap);
   const setRepoDiffScope = useRepoDiffScopeStore((store) => store.setScope);
   const setRepoDiffCompareRef = useRepoDiffScopeStore((store) => store.setCompareRef);
-  const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(() => new Set());
-  const [fileTreeOpen, setFileTreeOpen] = useState(false);
-
-  const [fileTreeMounted, setFileTreeMounted] = useState(false);
-  const toggleFileTree = useCallback(() => {
-    setFileTreeOpen((previous) => !previous);
-    setFileTreeMounted(true);
-  }, []);
-  const closeFileTree = useCallback(() => {
-    setFileTreeOpen(false);
-  }, []);
   const patchViewportRef = useRef<HTMLDivElement>(null);
-  const diffSelectAllArmedRef = useRef(false);
 
-  const lastPointerInDiffViewportRef = useRef(false);
   const previousDiffOpenRef = useRef(false);
-  const routeThreadId = useParams({
-    strict: false,
-    select: (params) => (params.threadId ? ThreadId.makeUnsafe(params.threadId) : null),
-  });
-  const diffSearch = useDiffRouteSearch();
-  const diffOpen = panelState ? panelState.panel === "diff" : diffSearch.diff === "1";
-  const diffQueriesEnabled = useMemo(
-    () =>
-      resolveDiffPanelQueriesEnabled({
-        diffOpen,
-        queriesEnabled,
-      }),
-    [diffOpen, queriesEnabled],
-  );
-  const scopeCountQueriesEnabled = useMemo(
-    () =>
-      resolveDiffPanelScopeCountQueriesEnabled({
-        queriesEnabled: diffQueriesEnabled,
-        scopePickerOpen,
-      }),
-    [diffQueriesEnabled, scopePickerOpen],
-  );
-  const activeThreadId = controlledThreadId ?? routeThreadId;
-  const serverThreadCatalog = useStore(
-    useMemo(() => createDiffPanelThreadCatalogSelector(activeThreadId), [activeThreadId]),
-  );
-  const shouldPollRepoDiff = useStore(
-    useMemo(() => createDiffPanelRepoLiveRefreshSelector(activeThreadId), [activeThreadId]),
-  );
-  const draftThread = useComposerDraftStore((store) =>
-    activeThreadId ? (store.draftThreadsByThreadId[activeThreadId] ?? null) : null,
-  );
-  const fallbackDraftProjectId = draftThread?.projectId ?? null;
-  const fallbackDraftProject = useStore(
-    useMemo(() => createProjectSelector(fallbackDraftProjectId), [fallbackDraftProjectId]),
-  );
-
-  const activeThreadContext = useMemo((): DiffPanelThreadCatalog | undefined => {
-    if (serverThreadCatalog) {
-      return serverThreadCatalog;
-    }
-    const draftBackedThread = resolveDiffPanelThread({
-      threadId: activeThreadId,
-      serverThread: undefined,
-      draftThread,
-      fallbackModelSelection: resolveDraftFallbackModelSelection({
-        projectDefault: fallbackDraftProject?.defaultModelSelection,
-        settingsDefaultProvider: settings.defaultProvider,
-      }),
-    });
-    return draftBackedThread ? toDiffPanelThreadCatalog(draftBackedThread) : undefined;
-  }, [
+  const {
+    diffSearch,
+    diffOpen,
+    diffQueriesEnabled,
+    scopeCountQueriesEnabled,
     activeThreadId,
-    draftThread,
-    fallbackDraftProject?.defaultModelSelection,
-    serverThreadCatalog,
-    settings.defaultProvider,
-  ]);
-  const activeProjectId = activeThreadContext?.projectId ?? draftThread?.projectId ?? null;
-  const activeProject = useStore(
-    useMemo(() => createProjectSelector(activeProjectId), [activeProjectId]),
-  );
-  const resolvedThreadEnvMode =
-    serverThreadCatalog?.envMode ?? draftThread?.envMode ?? activeThreadContext?.envMode;
-  const resolvedThreadWorktreePath =
-    serverThreadCatalog?.worktreePath ??
-    draftThread?.worktreePath ??
-    activeThreadContext?.worktreePath ??
-    null;
-  const diffEnvironmentState = resolveDiffEnvironmentState({
-    projectCwd: activeProject?.cwd ?? null,
-    envMode: resolvedThreadEnvMode,
-    worktreePath: resolvedThreadWorktreePath,
+    shouldPollRepoDiff,
+    activeThreadContext,
+    diffEnvironmentPending,
+    activeCwd,
+    repoDiffScope,
+    repoDiffCompareRef,
+    selectedTurnId,
+  } = useDiffPanelContext({
+    controlledThreadId,
+    panelState,
+    queriesEnabled,
+    scopePickerOpen,
+    settingsDefaultProvider: settings.defaultProvider,
   });
-  const diffEnvironmentPending = diffEnvironmentState.pending;
-  const activeCwd = diffEnvironmentState.cwd;
-  const { scope: repoDiffScope, compareRef: repoDiffCompareRef } = useRepoDiffScope(
-    activeCwd ?? null,
-  );
-  const selectedTurnId = panelState
-    ? (panelState.diffTurnId ?? null)
-    : (diffSearch.diffTurnId ?? null);
   const [diffViewKind, setDiffViewKind] = useState<DiffViewKind>(
     () => initialViewKind ?? resolveInitialDiffViewKind(selectedTurnId),
   );
@@ -508,82 +424,17 @@ export default function DiffPanel({
     }
     return sortFileDiffsByPath(renderablePatch.files);
   }, [renderablePatch]);
-  const watchedRepoFilePath =
-    diffViewKind === "repo" ? resolveWatchedDiffFilePath(selectedFilePath, renderableFiles) : null;
-  const handleWatchedRepoFileChange = useCallback(() => {
-    if (!activeCwd) {
-      return;
-    }
-    void refreshGitAfterFileWrite(queryClient, activeCwd);
-  }, [activeCwd, queryClient]);
-  useProjectFileChangeSubscription({
-    cwd: activeCwd,
-    relativePath: watchedRepoFilePath,
-    enabled: diffQueriesEnabled && liveRefreshEnabled && watchedRepoFilePath !== null,
-    onChange: handleWatchedRepoFileChange,
+  useWatchedDiffFileRefresh({
+    diffViewKind,
+    selectedFilePath,
+    renderableFiles,
+    activeCwd,
+    queryClient,
+    diffQueriesEnabled,
+    liveRefreshEnabled,
   });
 
-  useEffect(() => {
-    const isEventWithinDiffViewport = (event: Event) => {
-      const viewport = patchViewportRef.current;
-      return viewport ? event.composedPath().includes(viewport) : false;
-    };
-    const isTextEditingEvent = (event: Event) =>
-      event
-        .composedPath()
-        .some(
-          (target) =>
-            target instanceof HTMLInputElement ||
-            target instanceof HTMLTextAreaElement ||
-            (target instanceof HTMLElement &&
-              (target.isContentEditable || target.getAttribute("role") === "textbox")),
-        );
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const isWithinDiffViewport = resolveDiffSelectAllWithinViewport(
-        isEventWithinDiffViewport(event),
-        lastPointerInDiffViewportRef.current,
-        isTextEditingEvent(event),
-      );
-      diffSelectAllArmedRef.current = resolveDiffSelectAllArmed(
-        diffSelectAllArmedRef.current,
-        event,
-        isWithinDiffViewport,
-      );
-    };
-    const handlePointerDown = (event: PointerEvent) => {
-      lastPointerInDiffViewportRef.current = isEventWithinDiffViewport(event);
-      diffSelectAllArmedRef.current = false;
-    };
-    const handleFocusIn = (event: FocusEvent) => {
-      if (isEventWithinDiffViewport(event)) {
-        return;
-      }
-      lastPointerInDiffViewportRef.current = false;
-      diffSelectAllArmedRef.current = false;
-    };
-    const handleCopy = (event: ClipboardEvent) => {
-      if (!diffSelectAllArmedRef.current) {
-        return;
-      }
-      diffSelectAllArmedRef.current = false;
-      if (!diffCopyText || !event.clipboardData) {
-        return;
-      }
-      event.preventDefault();
-      event.clipboardData.setData("text/plain", diffCopyText);
-    };
-
-    document.addEventListener("keydown", handleKeyDown, true);
-    document.addEventListener("pointerdown", handlePointerDown, true);
-    document.addEventListener("focusin", handleFocusIn, true);
-    document.addEventListener("copy", handleCopy, true);
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown, true);
-      document.removeEventListener("pointerdown", handlePointerDown, true);
-      document.removeEventListener("focusin", handleFocusIn, true);
-      document.removeEventListener("copy", handleCopy, true);
-    };
-  }, [diffCopyText]);
+  useDiffPanelCopyShortcut(patchViewportRef, diffCopyText);
 
   const activePatchStat = useMemo(
     () => summarizeRenderablePatchStats(renderablePatch),
@@ -642,7 +493,7 @@ export default function DiffPanel({
       setDiffViewKind(initialViewKind ?? resolveInitialDiffViewKind(selectedTurnId));
     }, 0);
     return () => window.clearTimeout(timeoutId);
-  }, [diffOpen, initialViewKind, selectedTurnId, settings.diffWordWrap]);
+  }, [diffOpen, initialViewKind, selectedTurnId, settings.diffWordWrap, setDiffWordWrap]);
 
   useEffect(() => {
     if (selectedTurnId === null) {
@@ -707,14 +558,17 @@ export default function DiffPanel({
     [activeFilePath, diffFilePaths, goToNextChange, goToPreviousChange, keybindings],
   );
 
-  const toggleFileCollapsed = useCallback((fileKey: string) => {
-    setCollapsedFiles((prev) => {
-      const next = new Set(prev);
-      if (next.has(fileKey)) next.delete(fileKey);
-      else next.add(fileKey);
-      return next;
-    });
-  }, []);
+  const toggleFileCollapsed = useCallback(
+    (fileKey: string) => {
+      setCollapsedFiles((prev) => {
+        const next = new Set(prev);
+        if (next.has(fileKey)) next.delete(fileKey);
+        else next.add(fileKey);
+        return next;
+      });
+    },
+    [setCollapsedFiles],
+  );
 
   const openFileInEditor = useMemo(
     () =>
@@ -909,7 +763,7 @@ export default function DiffPanel({
       }
       return new Set(renderableFiles.map((fileDiff) => buildFileDiffRenderKey(fileDiff)));
     });
-  }, [renderableFiles]);
+  }, [renderableFiles, setCollapsedFiles]);
   const selectFile = useCallback(
     (filePath: string) => {
       updateDiffSelection({ turnId: selectedTurnId, filePath });
@@ -1026,6 +880,9 @@ export default function DiffPanel({
       activeFilePath,
       selectedTurnId,
       setDiffRenderMode,
+      setDiffWordWrap,
+      setDiffIgnoreWhitespace,
+      setChangeMarkersEnabled,
       settings.timestampFormat,
       showDiffToolbar,
       toggleCollapseAll,
