@@ -34,7 +34,12 @@ See the full schema for more details: [`packages/contracts/src/settings/keybindi
 ]
 ```
 
-For most up to date defaults, see [`DEFAULT_KEYBINDINGS` in `apps/server/src/settings/keybindings.ts`](../apps/server/src/settings/keybindings.ts)
+For most up to date defaults, see [`DEFAULT_KEYBINDINGS` in `apps/server/src/settings/defaultKeybindings.ts`](../apps/server/src/settings/defaultKeybindings.ts)
+
+The server's shortcut and condition compiler lives in `settings/keybindingCompiler.ts`;
+configuration normalization lives in `settings/keybindingConfig.ts`. The `Keybindings`
+service tag is under `settings/Services`, and its file-backed implementation is under
+`settings/Layers`.
 
 ## Configuration
 

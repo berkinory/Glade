@@ -21,7 +21,7 @@ import { remoteAccessPolicyError, ServerConfig } from "../config";
 import { resolveListeningPort } from "./startupAccess";
 import { patchBunWebSocketCloseEventCompatibility } from "../ws/bunWebSocketCompatibility";
 import { makeEffectHttpRouteLayer } from "./http";
-import { Keybindings } from "../../settings/keybindings";
+import { Keybindings } from "../../settings/Services/Keybindings";
 import {
   ManagedAttachmentCleanup,
   type ManagedAttachmentCleanupShape,

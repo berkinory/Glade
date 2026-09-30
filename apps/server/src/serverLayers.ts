@@ -24,7 +24,7 @@ import { DevServerManagerLive } from "./workspace/devServers/devServerManager";
 import { DeviceServiceLive } from "./device/Layers/DeviceService";
 import type { DeviceService } from "./device/Services/DeviceService";
 import { ComputerServiceLive } from "./computer/Layers/ComputerService";
-import { KeybindingsLive } from "./settings/keybindings";
+import { KeybindingsLive } from "./settings/Layers/Keybindings";
 import { GitCoreLive } from "./git/Layers/GitCore";
 import { GitLayerLive, TextGenerationLayerLive } from "./git/runtimeLayer";
 import { TerminalLayerLive } from "./terminal/runtimeLayer";

@@ -88,7 +88,7 @@ import {
   gitHandoffMetadataCommand,
   recordGitHandoffResult,
 } from "../../git/gitHandoffOperations";
-import { Keybindings } from "../../settings/keybindings";
+import { Keybindings } from "../../settings/Services/Keybindings";
 import { createLocalPreviewGrant } from "../../attachments/localImageFiles";
 import { listLocalServers, stopLocalServer } from "../../workspace/devServers/localServerMonitor";
 import {
