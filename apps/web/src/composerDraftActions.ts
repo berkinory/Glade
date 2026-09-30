@@ -119,6 +119,14 @@ function removeDraftThreadIfUnmapped(input: {
 export const createComposerDraftStoreState =
   (flushPersistStorage: () => void): StateCreator<ComposerDraftStoreState> =>
   (set, get) => ({
+    focusRequestsByThreadId: {},
+    requestFocus: (threadId) =>
+      set((state) => ({
+        focusRequestsByThreadId: {
+          ...state.focusRequestsByThreadId,
+          [threadId]: (state.focusRequestsByThreadId[threadId] ?? 0) + 1,
+        },
+      })),
     draftsByThreadId: {},
     draftThreadsByThreadId: {},
     projectDraftThreadIdByProjectId: {},

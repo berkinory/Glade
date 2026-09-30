@@ -1,8 +1,7 @@
 import { CHAT_ASSISTANT_SELECTION_TEXT_MAX_CHARS } from "@glade/contracts/orchestration/threadEntities";
 import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 
-import { useComposerDraftStore } from "../composerDraftStore";
-import { requestComposerFocus } from "../composerFocusRequestStore";
+import { requestComposerFocus, useComposerDraftStore } from "../composerDraftStore";
 import { formatComposerMentionToken } from "./composerMentions";
 import { createFileCommentDraft, type FileCommentSelection } from "./fileComments";
 import { type PullRequestContextDraft } from "./pullRequestContext";

@@ -214,6 +214,8 @@ type ProjectDraftThread = DraftThreadState & {
 };
 
 export interface ComposerDraftStoreState {
+  focusRequestsByThreadId: Record<string, number>;
+  requestFocus: (threadId: ThreadId) => void;
   setPendingUserInputDrafts: (
     threadId: ThreadId,
     drafts: Record<string, PendingUserInputRecoveryDraft>,

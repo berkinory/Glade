@@ -99,6 +99,10 @@ export function useComposerThreadDraft(threadId: ThreadId): ComposerThreadDraftS
   return useComposerDraftStore((state) => selectComposerThreadDraft(state, threadId));
 }
 
+export function requestComposerFocus(threadId: ThreadId): void {
+  useComposerDraftStore.getState().requestFocus(threadId);
+}
+
 export function useEffectiveComposerModelState(input: {
   threadId: ThreadId;
   selectedProvider: ProviderKind;

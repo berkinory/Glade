@@ -1,8 +1,7 @@
 import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { ThreadEnvironmentMode } from "@glade/contracts/orchestration/threadEntities";
 
-import { useComposerDraftStore, type QueuedComposerChatTurn } from "../composerDraftStore";
-import { requestComposerFocus } from "../composerFocusRequestStore";
+import { requestComposerFocus, useComposerDraftStore, type QueuedComposerChatTurn } from "../composerDraftStore";
 import { ensureNativeApi } from "../nativeApi";
 import { useProjectEnvironmentStore } from "../projectEnvironmentStore";
 import { createAssistantSelectionAttachment } from "./assistantSelections";
