@@ -44,6 +44,16 @@ Discovery follows a parallel read path: RPC handlers delegate provider model, ag
 
 This separation is important: orchestration does not consume arbitrary native protocol frames. Provider-native information crosses the adapter boundary only through controlled canonical fields such as `providerRefs`, opaque resume cursors, selected thread identifiers, and the sanitized/raw diagnostic envelope carried by runtime events. Those fields exist where orchestration or recovery needs native identity while the rest of the protocol and subprocess behavior remains adapter-owned.
 
+## Native boundaries
+
+Codex protocol artifacts come from the pinned 0.158.0 CLI. `bun run --filter @glade/cli generate:codex-protocol -- --check` verifies reproducible generation. JSON Schema validates known native responses, notifications and server requests at ingress; unknown notifications are skipped, while unknown requests receive a method-not-found response. Model and MCP discovery follow native cursors.
+
+`provider/core/compatibility.ts` owns the admission baseline. Claude uses the configured executable resolved against its child environment, with no bundled CLI fallback. Codex launch passes managed MCP and shell-secret exclusions as native arguments while leaving the user's provider home and configuration files authoritative.
+
+The explicit `provider-default` selection is an internal contract marker. Adapters omit the model override for it. Native descriptors own model options; shared code retains legacy selections without guessing model-family capabilities. Claude applies acknowledged live flags, and native context usage replaces Glade budget overrides. Historical cache-review records remain readable only for explicit held-message recovery.
+
+`ProviderManagement` owns validation and protects managed gateway configuration before routing native MCP/plugin actions to adapters. Its contracts keep session-only actions distinct from persistent changes. Native failures retain their kind and retry state; an upstream retry without an attempt count does not acquire an invented counter. Codex account limits come from native account APIs instead of an undocumented HTTP endpoint or credential refresh implementation.
+
 ## Provider-specific state
 
 Provider configuration is split across typed server settings, discovery/health services, and adapter start options. A provider integration may contribute:

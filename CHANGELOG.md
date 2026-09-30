@@ -2,14 +2,22 @@
 
 ## 0.0.6 - Unreleased
 
+### New
+
+- Manage native MCP servers and installed provider plugins from Settings. ([748d6d5cf](https://github.com/berkinory/Glade/commit/748d6d5cfe806e3b423f8bac4128cf7594d34637))
+
 ### Removed
 
+- Claude cache-review prompts, context overrides, and the Ultrathink picker were removed; context management stays with Claude Code. ([e8adbfda4](https://github.com/berkinory/Glade/commit/e8adbfda42ab44edc3ecce4038e19a4f7d433026))
 - Cursor, Grok, and OpenCode providers and their integrations were removed.
 - Standalone Pull Requests page and sidebar entry were removed.
 - Editor view and its separate workspace layout were removed; editing stays in Explorer.
 
 ### Improved
 
+- Model choices and options follow the connected provider, with explicit provider defaults and live Claude effort and speed changes. ([e8adbfda4](https://github.com/berkinory/Glade/commit/e8adbfda42ab44edc3ecce4038e19a4f7d433026))
+- Shared skills load natively with their bundled resources. ([e8adbfda4](https://github.com/berkinory/Glade/commit/e8adbfda42ab44edc3ecce4038e19a4f7d433026))
+- Codex uses your existing configuration directly. ([e8adbfda4](https://github.com/berkinory/Glade/commit/e8adbfda42ab44edc3ecce4038e19a4f7d433026))
 - Development installs use published Effect beta packages with the existing process safety fixes.
 - Effect diagnostics now check every package with the same severity. Provider, persistence and gateway failures retain tagged error channels and explicit layer dependencies.
 - Development sessions can be stopped together with `bun run dev:stop`. ([b6978857c](https://github.com/berkinory/Glade/commit/b6978857c2a682bf85e05e191d6365bed0c955f1))
@@ -19,6 +27,7 @@
 
 ### Fixed
 
+- Messages held by the retired Claude cache-review flow remain visible and can be released explicitly. ([e8adbfda4](https://github.com/berkinory/Glade/commit/e8adbfda42ab44edc3ecce4038e19a4f7d433026))
 - Route chunk warm-up avoids synthetic thread loader matches that can be evicted during startup navigation.
 - Projection recovery preserves the original failure when another catch-up is queued; packaged startup checks report cleanup failures without hiding the startup failure.
 - Unsaved file edits stay available across navigation and are marked in Explorer. ([e114f536b](https://github.com/berkinory/Glade/commit/e114f536b27169e38c380a465a70a809003047e9))
