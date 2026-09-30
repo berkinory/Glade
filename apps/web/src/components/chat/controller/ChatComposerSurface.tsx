@@ -610,7 +610,9 @@ export function ChatComposerSurface({
                           ? "Type your answer to continue"
                           : "Type your own answer, or leave this blank to use the selected option"
                         : activeThread?.parentThreadId
-                          ? "Message this subagent while it works"
+                          ? activeThread.modelSelection.provider === "claudeAgent"
+                            ? "Message arrives at this subagent’s next tool call"
+                            : "Message this subagent while it works"
                           : hasLiveTurn
                             ? "Ask for follow-up changes"
                             : phase === "disconnected"
