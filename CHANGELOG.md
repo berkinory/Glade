@@ -12,6 +12,8 @@
 
 ### Improved
 
+- Orchestration command decisions use domain handlers for spaces, projects, thread lifecycle, turns, conversation edits and transcript updates. Invariant checks and emitted event ordering retain their existing behavior.
+
 - Profile statistics separate SQL row projection, activity calculations and skill extraction from the query service. Query text, archived totals and response shapes remain unchanged.
 
 - Keybindings use separate compiler, defaults, configuration and service modules. Custom shortcut rules retain their order, conditional siblings and on-disk format across service restarts.

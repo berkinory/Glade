@@ -60,7 +60,7 @@ Examples include `thread.created`, `thread.message-sent`, and `thread.turn-diff-
 
 #### Decider
 
-The pure orchestration logic that turns commands plus current state into events. The core implementation is in [decider.ts][8], with preconditions in [commandInvariants.ts][9].
+The pure orchestration logic that turns commands plus current state into events. [decider.ts][8] dispatches to focused handlers under `orchestration/commandDecisions` for spaces, projects, thread lifecycle, turns, conversation edits and transcript updates. Preconditions remain in [commandInvariants.ts][9].
 
 #### Projection
 
