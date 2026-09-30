@@ -11,7 +11,6 @@ import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { readLocalComputerPermissionBridge } from "~/lib/computerProvisioning";
 import { serverQueryKeys } from "~/lib/serverReactQuery";
 import { ensureNativeApi } from "~/nativeApi";
-import { useComputerPreviewStore } from "../computerPreviewStore";
 import { useComputerStateStore } from "../computerStateStore";
 
 export function subscribeComputerPermissionStatus(
@@ -55,7 +54,7 @@ export function useComputerEventBridge(): void {
     }
     const unsubscribe = api.computer.onEvent((event) => {
       const store = useComputerStateStore.getState();
-      const preview = useComputerPreviewStore.getState();
+      const preview = useComputerStateStore.getState();
       switch (event.type) {
         case "computer.thread-state":
           store.upsertThreadState(event.state);
@@ -96,10 +95,10 @@ export function useComputerEventBridge(): void {
       if (nextStates === previous.threadStatesByThreadId) {
         return;
       }
-      const preview = useComputerPreviewStore.getState();
+      const preview = useComputerStateStore.getState();
       if (Object.keys(nextStates).length === 0) {
         if (Object.keys(previous.threadStatesByThreadId).length > 0) {
-          preview.clear();
+          preview.clearPreview();
         }
         return;
       }

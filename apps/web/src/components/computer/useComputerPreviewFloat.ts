@@ -3,9 +3,9 @@ import { type PointerEvent, type RefObject, useMemo, useRef } from "react";
 
 import {
   selectThreadComputerPreviewFloating,
-  useComputerPreviewStore,
+  useComputerStateStore,
   type ComputerPreviewFloatingPosition,
-} from "../../computerPreviewStore";
+} from "../../computerStateStore";
 import { clampComputerPreviewFloat } from "../chat/ComputerPreviewPopover.logic";
 
 export interface ComputerPreviewFloat {
@@ -27,9 +27,9 @@ export function useComputerPreviewFloat(input: {
   readonly cardHeightPx: number;
 }): ComputerPreviewFloat {
   const { threadId, cardRef } = input;
-  const floating = useComputerPreviewStore(selectThreadComputerPreviewFloating(threadId));
-  const setPreviewFloating = useComputerPreviewStore((store) => store.setPreviewFloating);
-  const movePreviewFloating = useComputerPreviewStore((store) => store.movePreviewFloating);
+  const floating = useComputerStateStore(selectThreadComputerPreviewFloating(threadId));
+  const setPreviewFloating = useComputerStateStore((store) => store.setPreviewFloating);
+  const movePreviewFloating = useComputerStateStore((store) => store.movePreviewFloating);
   const dragRef = useRef<{ pointerId: number; offsetX: number; offsetY: number } | null>(null);
 
   const position = useMemo(

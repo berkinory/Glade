@@ -6,9 +6,9 @@ import { useAppSettings } from "../../appSettings";
 import {
   selectThreadComputerPreviewFloating,
   selectThreadComputerPreviewSession,
-  useComputerPreviewStore,
-} from "../../computerPreviewStore";
-import { selectThreadComputerState, useComputerStateStore } from "../../computerStateStore";
+  selectThreadComputerState,
+  useComputerStateStore,
+} from "../../computerStateStore";
 import { useComputerDesktopControl } from "../../hooks/useComputerDesktopControl";
 import { useThreadComputerStateSeed } from "../../hooks/useThreadComputerStateSeed";
 import { disclosurePopClassName } from "../../lib/disclosureMotion";
@@ -43,7 +43,7 @@ export function ComputerPreviewPopover(props: {
 
   readonly size?: ComputerPreviewCardSize | undefined;
 }) {
-  const session = useComputerPreviewStore(selectThreadComputerPreviewSession(props.threadId));
+  const session = useComputerStateStore(selectThreadComputerPreviewSession(props.threadId));
 
   const { settings } = useAppSettings();
   if (!settings.autoOpenComputerPane || session === undefined) {
@@ -72,9 +72,9 @@ function ComputerPreviewPopoverCard(props: {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const threadState = useComputerStateStore(selectThreadComputerState(threadId));
-  const markPreviewLive = useComputerPreviewStore((store) => store.markPreviewLive);
-  const notePreviewLayout = useComputerPreviewStore((store) => store.notePreviewLayout);
-  const floating = useComputerPreviewStore(selectThreadComputerPreviewFloating(threadId));
+  const markPreviewLive = useComputerStateStore((store) => store.markPreviewLive);
+  const notePreviewLayout = useComputerStateStore((store) => store.notePreviewLayout);
+  const floating = useComputerStateStore(selectThreadComputerPreviewFloating(threadId));
   const desktopControl = useComputerDesktopControl(threadId);
   const inputStopped = useComputerStateStore((store) => store.inputStopped);
   const statusLabel = computerPreviewStatusLabel({
@@ -333,7 +333,7 @@ function ComputerPreviewViewport(props: {
 }
 
 function ComputerPreviewHideButton(props: { readonly threadId: ThreadId }) {
-  const hidePreviewForTask = useComputerPreviewStore((store) => store.hidePreviewForTask);
+  const hidePreviewForTask = useComputerStateStore((store) => store.hidePreviewForTask);
   return (
     <button
       type="button"
