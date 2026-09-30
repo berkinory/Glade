@@ -75,8 +75,6 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
     installingDesktopUpdate,
     setInstallingDesktopUpdate,
     lastDesktopUpdateErrorToastSignatureRef,
-    selectedThreadIds,
-    clearSelection,
     activeSidebarThreadId,
     projectById,
     handleBackToThreads,
@@ -94,6 +92,9 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
     setShowThreadJumpHints,
     showThreadJumpHintsRef,
   } = context;
+  const selectedThreadIds = useSidebarStateStore((state) => state.selectedThreadIds);
+  const clearSelection = useSidebarStateStore((state) => state.clearSelection);
+
   const setThreadListExtraPagesByProjectCwd = useSidebarStateStore(
     (state) => state.setThreadListExtraPagesByProjectCwd,
   );

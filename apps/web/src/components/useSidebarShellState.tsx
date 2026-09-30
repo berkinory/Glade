@@ -159,14 +159,6 @@ export function useSidebarShellState() {
 
   const draftThreadsByThreadId = useComposerDraftStore((store) => store.draftThreadsByThreadId);
 
-  const persistedPinnedProjectIds = useSidebarStateStore((store) => store.pinnedProjectIds);
-
-  const pinProjectLocally = useSidebarStateStore((store) => store.pinProject);
-
-  const unpinProject = useSidebarStateStore((store) => store.unpinProject);
-
-  const prunePinnedProjects = useSidebarStateStore((store) => store.prunePinnedProjects);
-
   const homeDir = useWorkspacePathsStore((store) => store.homeDir);
 
   const chatWorkspaceRoot = useWorkspacePathsStore((store) => store.chatWorkspaceRoot);
@@ -445,18 +437,6 @@ export function useSidebarShellState() {
   >(() => new Map());
 
   const lastDesktopUpdateErrorToastSignatureRef = useRef<string | null>(null);
-
-  const selectedThreadIds = useSidebarStateStore((s) => s.selectedThreadIds);
-
-  const toggleThreadSelection = useSidebarStateStore((s) => s.toggleThread);
-
-  const rangeSelectTo = useSidebarStateStore((s) => s.rangeSelectTo);
-
-  const clearSelection = useSidebarStateStore((s) => s.clearSelection);
-
-  const removeFromSelection = useSidebarStateStore((s) => s.removeFromSelection);
-
-  const setSelectionAnchor = useSidebarStateStore((s) => s.setAnchor);
 
   const routeActiveSidebarThreadId = routeThreadId;
 
@@ -775,10 +755,6 @@ export function useSidebarShellState() {
     openTerminalThreadPage,
     clearProjectDraftThreads,
     draftThreadsByThreadId,
-    persistedPinnedProjectIds,
-    pinProjectLocally,
-    unpinProject,
-    prunePinnedProjects,
     homeDir,
     chatWorkspaceRoot,
     navigate,
@@ -848,12 +824,6 @@ export function useSidebarShellState() {
     optimisticPinnedStateByProjectId,
     setOptimisticPinnedStateByProjectId,
     lastDesktopUpdateErrorToastSignatureRef,
-    selectedThreadIds,
-    toggleThreadSelection,
-    rangeSelectTo,
-    clearSelection,
-    removeFromSelection,
-    setSelectionAnchor,
     activeSidebarThreadId,
     visualActiveSidebarThreadId,
     hideAutomationRunThreads,

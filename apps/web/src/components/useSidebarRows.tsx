@@ -1,3 +1,4 @@
+import { useSidebarStateStore } from "../sidebarStateStore";
 import { AddPlusIcon, NewThreadIcon } from "~/lib/icons";
 import { ThreadPrStatusBadge } from "~/components/pullRequest/ThreadPrStatusBadge";
 import { PinStatusIcon, pinActionLabel } from "~/lib/pin";
@@ -96,8 +97,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
     newThreadShortcutLabel,
     setCreateProjectDialogOpen,
     setCreateProjectSpaceId,
-    selectedThreadIds,
-    clearSelection,
     visualActiveSidebarThreadId,
     projectById,
     resolveThreadStatusForSidebar,
@@ -136,6 +135,9 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
     handleProjectTitleKeyDown,
     showMoreThreadsForProject,
   } = context;
+  const selectedThreadIds = useSidebarStateStore((state) => state.selectedThreadIds);
+  const clearSelection = useSidebarStateStore((state) => state.clearSelection);
+
   function resolvePinnedThreadProjectLabel(projectId: ProjectId): string {
     return resolveThreadProjectLabel(projectById.get(projectId));
   }

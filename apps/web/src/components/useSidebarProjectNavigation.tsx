@@ -49,8 +49,6 @@ export function useSidebarProjectNavigation(context: ReturnType<typeof useSideba
     syncServerShellSnapshot,
     setProjectExpanded,
     draftThreadsByThreadId,
-    pinProjectLocally,
-    unpinProject,
     homeDir,
     chatWorkspaceRoot,
     navigate,
@@ -78,6 +76,9 @@ export function useSidebarProjectNavigation(context: ReturnType<typeof useSideba
     ordinarySpaceProjects,
     projectByIdRef,
   } = context;
+  const pinProjectLocally = useSidebarStateStore((state) => state.pinProject);
+  const unpinProject = useSidebarStateStore((state) => state.unpinProject);
+
   const lastThreadRoute = useSidebarStateStore((state) => state.lastThreadRoute);
 
   const setOptimisticProjectPinned = useCallback(

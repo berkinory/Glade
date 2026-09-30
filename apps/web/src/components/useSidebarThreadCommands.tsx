@@ -46,10 +46,6 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
     setProjectContextMenuState,
     setOptimisticActiveThreadId,
     lastThreadRenameTapRef,
-    selectedThreadIds,
-    clearSelection,
-    removeFromSelection,
-    setSelectionAnchor,
     clearDismissedThreadStatus,
     resolveThreadStatusForSidebar,
     clearThreadNotification,
@@ -63,6 +59,11 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
     projectCwdById,
     currentProjectShortcutTargetId,
   } = context;
+  const selectedThreadIds = useSidebarStateStore((state) => state.selectedThreadIds);
+  const clearSelection = useSidebarStateStore((state) => state.clearSelection);
+  const removeFromSelection = useSidebarStateStore((state) => state.removeFromSelection);
+  const setSelectionAnchor = useSidebarStateStore((state) => state.setAnchor);
+
   const setLastThreadRoute = useSidebarStateStore((state) => state.setLastThreadRoute);
 
   const handleImportThread = useCallback(

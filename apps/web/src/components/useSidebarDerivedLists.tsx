@@ -54,8 +54,6 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
     railSpacesProjectId,
     renameProjectLocally,
     setProjectAppearanceLocally,
-    persistedPinnedProjectIds,
-    prunePinnedProjects,
     homeDir,
     chatWorkspaceRoot,
     navigate,
@@ -69,8 +67,6 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
     activityVisibleThreadIds,
     suppressProjectClickAfterDragRef,
     optimisticPinnedStateByProjectId,
-    toggleThreadSelection,
-    rangeSelectTo,
     activeSidebarThreadId,
     sidebarThreads,
     sidebarTreeThreads,
@@ -86,6 +82,11 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
     activateThreadFromSidebarIntent,
     voidSpace,
   } = context;
+  const persistedPinnedProjectIds = useSidebarStateStore((state) => state.pinnedProjectIds);
+  const prunePinnedProjects = useSidebarStateStore((state) => state.prunePinnedProjects);
+  const toggleThreadSelection = useSidebarStateStore((state) => state.toggleThread);
+  const rangeSelectTo = useSidebarStateStore((state) => state.rangeSelectTo);
+
   const chatSectionExpanded = useSidebarStateStore((state) => state.chatSectionExpanded);
   const threadListExtraPagesByProjectCwd = useSidebarStateStore(
     (state) => state.threadListExtraPagesByProjectCwd,
