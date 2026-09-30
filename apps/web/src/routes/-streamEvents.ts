@@ -19,7 +19,11 @@ import {
   serverSettingsQueryOptions,
 } from "../lib/serverReactQuery";
 import { hasPendingTurnDispatch } from "../pendingTurnDispatch";
-import { useProjectRunStore } from "../projectRunStore";
+import {
+  projectQueryKeys,
+  upsertProjectDevServer,
+  removeProjectDevServer,
+} from "../lib/projectReactQuery";
 import { useStore } from "../store";
 import { terminalActivityFromEvent } from "../terminalActivity";
 import { selectThreadTerminalState, useTerminalStateStore } from "../terminalStateStore";
@@ -281,14 +285,14 @@ export function subscribeStreamEvents(
     void context.queryClient.invalidateQueries({ queryKey: serverQueryKeys.localServers() });
   };
 
+  context.queryClient.setQueryDefaults(projectQueryKeys.devServers(), { gcTime: Infinity });
   const unsubDevServerEvent = context.api.projects.onDevServerEvent((event) => {
-    const store = useProjectRunStore.getState();
     if (event.type === "snapshot") {
-      store.replaceAll(event.servers);
+      context.queryClient.setQueryData(projectQueryKeys.devServers(), { servers: event.servers });
     } else if (event.type === "upserted") {
-      store.upsertRun(event.server);
+      upsertProjectDevServer(context.queryClient, event.server);
     } else {
-      store.removeRun(event.projectId);
+      removeProjectDevServer(context.queryClient, event.projectId);
     }
     invalidateLocalServers();
   });
@@ -299,7 +303,7 @@ export function subscribeStreamEvents(
       if (state.disposed) {
         return;
       }
-      useProjectRunStore.getState().replaceAll(servers);
+      context.queryClient.setQueryData(projectQueryKeys.devServers(), { servers });
       invalidateLocalServers();
     })
     .catch(() => undefined);

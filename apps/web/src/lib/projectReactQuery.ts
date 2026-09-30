@@ -1,5 +1,8 @@
+import type { ProjectId } from "@glade/contracts/core/baseSchemas";
 import type {
   ProjectCreateLocalFilePreviewGrantResult,
+  ProjectDevServer,
+  ProjectListDevServersResult,
   ProjectEntry,
   ProjectListDirectoriesResult,
   ProjectReadFileResult,
@@ -21,6 +24,7 @@ import { resolveWorkspaceFileReferenceBatched } from "./workspaceFileReferenceBa
 
 export const projectQueryKeys = {
   all: ["projects"] as const,
+  devServers: () => ["projects", "dev-servers"] as const,
   listDirectories: (cwd: string | null, relativePath: string | null, includeFiles: boolean) =>
     ["projects", "list-directories", cwd, relativePath, includeFiles] as const,
   readFile: (cwd: string | null, relativePath: string | null) =>
@@ -460,4 +464,41 @@ export function projectSearchContentQueryOptions(input: {
     placeholderData: (previous) => previous ?? EMPTY_SEARCH_CONTENT_RESULT,
     ...EXPENSIVE_READ_RETRY_OPTIONS,
   });
+}
+
+export function projectDevServersQueryOptions() {
+  return queryOptions({
+    queryKey: projectQueryKeys.devServers(),
+    queryFn: () => ensureNativeApi().projects.listDevServers(),
+    staleTime: Infinity,
+    gcTime: Infinity,
+    enabled: false,
+  });
+}
+
+export function upsertProjectDevServer(queryClient: QueryClient, server: ProjectDevServer): void {
+  queryClient.setQueryData<ProjectListDevServersResult>(
+    projectQueryKeys.devServers(),
+    (current) => {
+      const servers = current?.servers ?? [];
+      const exists = servers.some((candidate) => candidate.projectId === server.projectId);
+      return {
+        servers: exists
+          ? servers.map((candidate) =>
+              candidate.projectId === server.projectId ? server : candidate,
+            )
+          : [...servers, server],
+      };
+    },
+  );
+}
+
+export function removeProjectDevServer(queryClient: QueryClient, projectId: ProjectId): void {
+  queryClient.setQueryData<ProjectListDevServersResult>(
+    projectQueryKeys.devServers(),
+    (current) => {
+      if (!current?.servers.some((server) => server.projectId === projectId)) return current;
+      return { servers: current.servers.filter((server) => server.projectId !== projectId) };
+    },
+  );
 }
