@@ -1,4 +1,4 @@
-import { isRecord } from "@glade/shared/transport/recordValues";
+import { isRecord } from "@glade/shared/transport/payloadValues";
 import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { resolveThreadWorkspaceCwd } from "@glade/shared/threads/threadEnvironment";

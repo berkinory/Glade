@@ -1,4 +1,4 @@
-import { isRecord } from "@glade/shared/transport/recordValues";
+import { isRecord } from "@glade/shared/transport/payloadValues";
 import {
   BROWSER_ANNOTATION_MAX_COMMENT_LENGTH,
   BROWSER_ANNOTATION_MAX_DOCUMENT_KEY_LENGTH,

@@ -84,6 +84,10 @@
       "types": "./src/http/outboundHttpPolicy.ts",
       "import": "./src/http/outboundHttpPolicy.ts"
     },
+    "./platform/Net": {
+      "types": "./src/platform/Net.ts",
+      "import": "./src/platform/Net.ts"
+    },
     "./platform/desktopChrome": {
       "types": "./src/platform/desktopChrome.ts",
       "import": "./src/platform/desktopChrome.ts"
@@ -111,10 +115,6 @@
     "./platform/migrationRecovery": {
       "types": "./src/platform/migrationRecovery.ts",
       "import": "./src/platform/migrationRecovery.ts"
-    },
-    "./platform/Net": {
-      "types": "./src/platform/Net.ts",
-      "import": "./src/platform/Net.ts"
     },
     "./platform/path": {
       "types": "./src/platform/path.ts",
@@ -268,9 +268,9 @@
       "types": "./src/transport/frameTransport.ts",
       "import": "./src/transport/frameTransport.ts"
     },
-    "./transport/recordValues": {
-      "types": "./src/transport/recordValues.ts",
-      "import": "./src/transport/recordValues.ts"
+    "./transport/payloadValues": {
+      "types": "./src/transport/payloadValues.ts",
+      "import": "./src/transport/payloadValues.ts"
     },
     "./workspace/deviceFrame": {
       "types": "./src/workspace/deviceFrame.ts",

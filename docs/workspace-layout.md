@@ -21,7 +21,7 @@ See [architecture.md](./architecture.md) for the runtime/data-flow overview and 
 
 ## Boundary validation
 
-`packages/shared/src/transport/recordValues.ts` owns unknown-object guards and conversions
+`packages/shared/src/transport/payloadValues.ts` owns unknown-object guards and conversions
 used at provider, RPC, browser annotation and UI payload boundaries. `isRecord` and
 `asRecord` reject arrays; `isObjectRecord` and `asObjectRecord` preserve the object
 semantics required by existing payload readers, including arrays. Callers retain their

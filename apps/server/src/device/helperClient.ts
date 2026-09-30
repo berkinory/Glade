@@ -1,4 +1,4 @@
-import { asObjectRecord } from "@glade/shared/transport/recordValues";
+import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { createServer, type Server, type Socket } from "node:net";

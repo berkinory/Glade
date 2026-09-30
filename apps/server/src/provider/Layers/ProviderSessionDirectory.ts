@@ -1,4 +1,4 @@
-import { isRecord } from "@glade/shared/transport/recordValues";
+import { isRecord } from "@glade/shared/transport/payloadValues";
 import { ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { Effect, Layer, Option, Schema } from "effect";
 

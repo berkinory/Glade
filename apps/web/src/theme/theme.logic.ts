@@ -1,4 +1,4 @@
-import { isRecord } from "@glade/shared/transport/recordValues";
+import { isRecord } from "@glade/shared/transport/payloadValues";
 import { THEME_SEED_CATALOG } from "./theme.seed.generated";
 import {
   normalizeFontFamilyCssValue,

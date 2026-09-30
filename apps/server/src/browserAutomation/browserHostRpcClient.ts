@@ -1,4 +1,4 @@
-import { asRecord } from "@glade/shared/transport/recordValues";
+import { asRecord } from "@glade/shared/transport/payloadValues";
 import * as FS from "node:fs";
 import * as Net from "node:net";
 import * as OS from "node:os";

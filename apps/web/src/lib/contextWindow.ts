@@ -1,4 +1,4 @@
-import { asObjectRecord } from "@glade/shared/transport/recordValues";
+import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import { ClaudeCacheObservation } from "@glade/contracts/provider/claudeCache";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { type OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";

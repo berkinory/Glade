@@ -1,4 +1,4 @@
-import { isRecord } from "@glade/shared/transport/recordValues";
+import { isRecord } from "@glade/shared/transport/payloadValues";
 
 // Keys that must never be copied from untrusted persisted input: assigning `__proto__` (and
 // friends) via bracket notation can mutate the object prototype instead of creating a data key

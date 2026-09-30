@@ -1,4 +1,4 @@
-import { isRecord } from "../transport/recordValues";
+import { isRecord } from "../transport/payloadValues";
 import {
   BrowserBackInput,
   BrowserCloseInput,

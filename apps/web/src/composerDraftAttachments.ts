@@ -1,4 +1,4 @@
-import { asRecord } from "@glade/shared/transport/recordValues";
+import { asRecord } from "@glade/shared/transport/payloadValues";
 import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 import * as Schema from "effect/Schema";
 

@@ -1,4 +1,4 @@
-import { isRecord } from "@glade/shared/transport/recordValues";
+import { isRecord } from "@glade/shared/transport/payloadValues";
 import type { AgentGatewayMcpConnection } from "./Services/AgentGatewayCredentials.ts";
 
 export const GLADE_MCP_SERVER_NAME = "glade";

@@ -1,4 +1,4 @@
-import { asObjectRecord } from "@glade/shared/transport/recordValues";
+import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import { cuaSpaceInventory } from "./cuaSpaceInventory.ts";
 import {
   parseCuaActionDiagnostics,

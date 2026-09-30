@@ -1,4 +1,4 @@
-import { isRecord } from "@glade/shared/transport/recordValues";
+import { isRecord } from "@glade/shared/transport/payloadValues";
 import { makeNativeToolCallRegistry } from "./nativeToolCalls.ts";
 import { assert, describe, it } from "@effect/vitest";
 import { ProjectId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";

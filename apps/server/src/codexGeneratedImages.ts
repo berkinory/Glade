@@ -1,4 +1,4 @@
-import { asRecord } from "@glade/shared/transport/recordValues";
+import { asRecord } from "@glade/shared/transport/payloadValues";
 import path from "node:path";
 
 import {

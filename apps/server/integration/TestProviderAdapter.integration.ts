@@ -1,4 +1,4 @@
-import { isObjectRecord } from "@glade/shared/transport/recordValues";
+import { isObjectRecord } from "@glade/shared/transport/payloadValues";
 import { randomUUID } from "node:crypto";
 
 import {

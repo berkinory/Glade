@@ -1,4 +1,4 @@
-import { isRecord } from "@glade/shared/transport/recordValues";
+import { isRecord } from "@glade/shared/transport/payloadValues";
 import { assert, describe, it } from "@effect/vitest";
 
 import { BROWSER_TOOL_CATALOGUE } from "@glade/shared/browser/browserAutomationCatalogue";

@@ -1,4 +1,4 @@
-import { asRecord } from "@glade/shared/transport/recordValues";
+import { asRecord } from "@glade/shared/transport/payloadValues";
 import { readFileSync } from "node:fs";
 import OS from "node:os";
 import nodePath from "node:path";

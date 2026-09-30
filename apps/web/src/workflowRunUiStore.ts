@@ -1,4 +1,4 @@
-import { isRecord } from "@glade/shared/transport/recordValues";
+import { isRecord } from "@glade/shared/transport/payloadValues";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";

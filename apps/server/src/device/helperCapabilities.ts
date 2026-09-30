@@ -1,4 +1,4 @@
-import { asRecord } from "@glade/shared/transport/recordValues";
+import { asRecord } from "@glade/shared/transport/payloadValues";
 import {
   DEVICE_CAPABILITY_LABELS,
   type DeviceAvailability,

@@ -1,4 +1,4 @@
-import { asRecord } from "@glade/shared/transport/recordValues";
+import { asRecord } from "@glade/shared/transport/payloadValues";
 import { Effect, FileSystem } from "effect";
 import type { WorkflowAgentRuntimeSnapshot } from "@glade/contracts/provider/runtimePayloads";
 

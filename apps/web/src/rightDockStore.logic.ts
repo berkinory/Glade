@@ -1,4 +1,4 @@
-import { isRecord } from "@glade/shared/transport/recordValues";
+import { isRecord } from "@glade/shared/transport/payloadValues";
 import type { ProjectId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { sanitizeStringKeyedRecord } from "./persistedRecord";
 

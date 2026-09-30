@@ -1,4 +1,4 @@
-import { asObjectRecord } from "@glade/shared/transport/recordValues";
+import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import { AsyncUserInputQuestions } from "@glade/contracts/orchestration/asyncUserInput";
 import { type ChatAttachment } from "@glade/contracts/orchestration/threadEntities";
 import {

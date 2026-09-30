@@ -1,4 +1,4 @@
-import { isRecord } from "@glade/shared/transport/recordValues";
+import { isRecord } from "@glade/shared/transport/payloadValues";
 import type { ProjectId } from "@glade/contracts/core/baseSchemas";
 import type { ThreadEnvironmentMode } from "@glade/contracts/orchestration/threadEntities";
 import { create } from "zustand";

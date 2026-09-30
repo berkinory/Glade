@@ -1,4 +1,4 @@
-import { asObjectRecord } from "@glade/shared/transport/recordValues";
+import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import { createReadStream, type Dirent, type Stats } from "node:fs";
 import fs from "node:fs/promises";
 import nodePath from "node:path";

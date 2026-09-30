@@ -1,4 +1,4 @@
-import { isRecord } from "@glade/shared/transport/recordValues";
+import { isRecord } from "@glade/shared/transport/payloadValues";
 import { describe, expect, it } from "vitest";
 
 import { sanitizeStringKeyedRecord } from "./persistedRecord";

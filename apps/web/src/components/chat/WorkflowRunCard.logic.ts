@@ -1,4 +1,4 @@
-import { asObjectRecord } from "@glade/shared/transport/recordValues";
+import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
 

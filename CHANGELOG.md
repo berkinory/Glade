@@ -12,6 +12,8 @@
 
 ### Improved
 
+- Shared payload validation has one domain path, `transport/payloadValues`, for direct boundary imports.
+
 - Record validation and conversion use shared boundary helpers. Array acceptance and caller-specific absent-value policies are preserved; generic error conversion is shared while redaction and UI fallback policies remain local.
 
 - WebSocket RPC registrations are grouped by domain, with direct imports for bootstrap, orchestration, workspace, device, computer, Git, terminal, server, provider and automation operations. Method names and schemas are unchanged.

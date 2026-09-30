@@ -1,4 +1,4 @@
-import { isRecord } from "@glade/shared/transport/recordValues";
+import { isRecord } from "@glade/shared/transport/payloadValues";
 export type DeepPartial<T> = T extends readonly (infer Item)[]
   ? readonly DeepPartial<Item>[]
   : T extends object

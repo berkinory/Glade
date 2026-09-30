@@ -1,4 +1,4 @@
-import { isRecord } from "@glade/shared/transport/recordValues";
+import { isRecord } from "@glade/shared/transport/payloadValues";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { PROVIDER_DESCRIPTORS } from "@glade/shared/provider/providerMetadata";
 

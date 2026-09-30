@@ -1,4 +1,4 @@
-import { asRecord } from "@glade/shared/transport/recordValues";
+import { asRecord } from "@glade/shared/transport/payloadValues";
 import type { ToolLifecycleItemType } from "@glade/contracts/provider/runtimeMetadata";
 import { stripTrailingToolExitCode as stripTrailingExitCode } from "../features/chat/timeline/toolOutputSummary";
 

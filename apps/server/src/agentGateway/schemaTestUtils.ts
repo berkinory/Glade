@@ -1,4 +1,4 @@
-import { isRecord } from "@glade/shared/transport/recordValues";
+import { isRecord } from "@glade/shared/transport/payloadValues";
 
 export const countSchemaKeyOccurrences = (node: unknown, key: string): number => {
   if (Array.isArray(node)) {

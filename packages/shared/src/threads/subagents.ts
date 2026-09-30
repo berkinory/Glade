@@ -1,4 +1,4 @@
-import { asRecord } from "../transport/recordValues";
+import { asRecord } from "../transport/payloadValues";
 export interface ParsedSubagentReceiverAgent {
   providerThreadId: string;
   agentId?: string | undefined;

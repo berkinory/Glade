@@ -1,4 +1,4 @@
-import { asRecord, isRecord } from "@glade/shared/transport/recordValues";
+import { asRecord, isRecord } from "@glade/shared/transport/payloadValues";
 import { Schema } from "effect";
 import type { TaggedFailure } from "../../platform/operationError.ts";
 import {

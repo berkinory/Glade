@@ -1,4 +1,4 @@
-import { asRecord } from "@glade/shared/transport/recordValues";
+import { asRecord } from "@glade/shared/transport/payloadValues";
 import type { ComputerBrowserToolName } from "@glade/contracts/computer/computerBrowser";
 
 import type { ComputerBrowserCallResult } from "../computer/ComputerBackend.ts";

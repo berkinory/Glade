@@ -1,4 +1,4 @@
-import { asRecord } from "../transport/recordValues";
+import { asRecord } from "../transport/payloadValues";
 const DELIVERY_PATHS = ["ax", "pixel", "semantic", "keyboard", "menu"] as const;
 const ACTUATORS = [
   "ax_press",

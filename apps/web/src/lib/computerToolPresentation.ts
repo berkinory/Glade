@@ -1,4 +1,4 @@
-import { asRecord } from "@glade/shared/transport/recordValues";
+import { asRecord } from "@glade/shared/transport/payloadValues";
 import type { ComputerWindow } from "@glade/contracts/computer/computer";
 
 export const COMPUTER_TOOL_TITLES = {

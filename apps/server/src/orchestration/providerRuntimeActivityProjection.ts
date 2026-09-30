@@ -1,4 +1,4 @@
-import { asRecord, isRecord } from "@glade/shared/transport/recordValues";
+import { asRecord, isRecord } from "@glade/shared/transport/payloadValues";
 import { ApprovalRequestId, EventId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { isToolLifecycleItemType } from "@glade/contracts/provider/runtimeMetadata";
 import { type ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";

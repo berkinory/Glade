@@ -1,4 +1,4 @@
-import { isRecord } from "@glade/shared/transport/recordValues";
+import { isRecord } from "@glade/shared/transport/payloadValues";
 import * as fs from "node:fs/promises";
 import * as nodePath from "node:path";
 

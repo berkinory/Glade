@@ -1,4 +1,4 @@
-import { asObjectRecord } from "@glade/shared/transport/recordValues";
+import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import { execFile } from "node:child_process";
 import nodePath from "node:path";
 import { promisify } from "node:util";

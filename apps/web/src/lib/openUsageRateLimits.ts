@@ -1,4 +1,4 @@
-import { asObjectRecord } from "@glade/shared/transport/recordValues";
+import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 
 import type { ProviderRateLimit, RateLimitWindow } from "~/lib/rateLimits";

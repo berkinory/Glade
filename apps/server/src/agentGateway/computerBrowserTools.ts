@@ -1,4 +1,4 @@
-import { isRecord } from "@glade/shared/transport/recordValues";
+import { isRecord } from "@glade/shared/transport/payloadValues";
 import { normalizeOperationError } from "../platform/operationError.ts";
 // Driver browser tools and integrated browser tools have separate session capabilities. The host
 // injects lifecycle fields; opaque target/tab refs cannot become desktop window IDs. Driver

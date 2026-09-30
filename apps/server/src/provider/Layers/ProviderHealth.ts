@@ -1,4 +1,4 @@
-import { asRecord } from "@glade/shared/transport/recordValues";
+import { asRecord } from "@glade/shared/transport/payloadValues";
 import * as OS from "node:os";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ServerSettings } from "@glade/contracts/settings/settings";

@@ -1,4 +1,4 @@
-import { asObjectRecord } from "@glade/shared/transport/recordValues";
+import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import type { OrchestrationThread } from "@glade/contracts/orchestration/threadEntities";
 import { providerUsageLearnMoreHref } from "@glade/shared/provider/providerUsage";
 

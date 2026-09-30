@@ -1,4 +1,4 @@
-import { isRecord } from "@glade/shared/transport/recordValues";
+import { isRecord } from "@glade/shared/transport/payloadValues";
 import type { BrowserAnnotationMarker } from "@glade/contracts/browser/browserAnnotations";
 
 import type { AnnotationGuestCommand } from "./protocol";
