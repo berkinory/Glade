@@ -28,6 +28,8 @@
 
 ### Fixed
 
+- Profile statistics report query failures instead of returning empty results for an incomplete database schema.
+
 - Route chunk warm-up avoids synthetic thread loader matches that can be evicted during startup navigation.
 - Projection recovery preserves the original failure when another catch-up is queued; packaged startup checks report cleanup failures without hiding the startup failure.
 - Unsaved file edits stay available across navigation and are marked in Explorer. ([e114f536b](https://github.com/berkinory/Glade/commit/e114f536b27169e38c380a465a70a809003047e9))

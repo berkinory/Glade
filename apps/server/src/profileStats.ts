@@ -588,31 +588,8 @@ const makeProfileStatsQuery = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
   const config = yield* ServerConfig;
 
-  function profileStatsErrorMessage(error: unknown): string {
-    return error instanceof Error ? error.message : String(error);
-  }
-
-  function isMissingLegacyColumnError(error: unknown): boolean {
-    return /\bno such column\b/iu.test(profileStatsErrorMessage(error));
-  }
-
-  const legacyCompatibleQuery = <T>(
-    operation: string,
-    query: Effect.Effect<ReadonlyArray<T>, TaggedFailure>,
-  ) =>
-    query.pipe(
-      Effect.catchIf(isMissingLegacyColumnError, (error) =>
-        Effect.logWarning("profile stats query skipped due to missing legacy column", {
-          error: profileStatsErrorMessage(error),
-          operation,
-        }).pipe(Effect.as([] as ReadonlyArray<T>)),
-      ),
-    );
-
   const queryPromptActivity = (tz: string) =>
-    legacyCompatibleQuery(
-      "profileStats.promptActivity",
-      sql<PromptActivityRow>`
+    sql<PromptActivityRow>`
         WITH prompt_events AS (
           -- The thread join (no deleted_at filter) keeps archived and not-yet-
           -- purged rows counting while excluding orphan message rows of purged
@@ -634,13 +611,10 @@ const makeProfileStatsQuery = Effect.gen(function* () {
         FROM prompt_events
         GROUP BY day, hour
         ORDER BY day ASC, hour ASC
-      `,
-    );
+      `;
 
   const queryTokenActivity = (tz: string) =>
-    legacyCompatibleQuery(
-      "profileStats.tokenActivity",
-      sql<TokenDayRow>`
+    sql<TokenDayRow>`
         WITH turn_model AS (
           ${turnModelSelectionCte(sql)}
         ),
@@ -837,23 +811,17 @@ const makeProfileStatsQuery = Effect.gen(function* () {
         SELECT day, provider, model, SUM(d) AS tokens
         FROM all_tokens
         GROUP BY day, provider, model
-      `,
-    );
+      `;
 
   const queryTotalThreads = () =>
-    legacyCompatibleQuery(
-      "profileStats.totalThreads",
-      sql<CountRow>`
+    sql<CountRow>`
         SELECT
           (SELECT COUNT(*) FROM projection_threads)
           + (SELECT COUNT(*) FROM profile_stats_deleted_threads) AS count
-      `,
-    );
+      `;
 
   const queryTurnInsights = () =>
-    legacyCompatibleQuery(
-      "profileStats.turnInsights",
-      sql<TurnInsightRow>`
+    sql<TurnInsightRow>`
         WITH per_turn AS (
           SELECT
             CASE
@@ -907,8 +875,7 @@ const makeProfileStatsQuery = Effect.gen(function* () {
         FROM turn_counts
         GROUP BY provider, model, reasoning
         ORDER BY count DESC, provider ASC, model ASC, reasoning ASC
-      `,
-    );
+      `;
 
   const querySkillUsageMessages = () =>
     sql<SkillUsageMessageRow>`
@@ -934,46 +901,16 @@ const makeProfileStatsQuery = Effect.gen(function* () {
           OR m.text GLOB '*/[A-Za-z0-9]*'
         )
       ORDER BY m.created_at ASC, m.message_id ASC
-    `.pipe(
-      Effect.catchIf(isMissingLegacyColumnError, (error) =>
-        Effect.logWarning("profile stats skill usage fell back to text-only legacy scan", {
-          error: profileStatsErrorMessage(error),
-          operation: "profileStats.skillUsage",
-        }).pipe(
-          Effect.flatMap(
-            () => sql<SkillUsageMessageRow>`
-              SELECT
-                m.message_id AS messageId,
-                m.text AS text,
-                NULL AS skillsJson,
-                NULL AS mentionsJson
-              FROM projection_thread_messages m
-              JOIN projection_threads t ON t.thread_id = m.thread_id
-              WHERE m.role = 'user'
-                AND (
-                  m.text GLOB '*$[A-Za-z0-9]*'
-                  OR m.text GLOB '*/[A-Za-z0-9]*'
-                )
-              ORDER BY m.created_at ASC, m.message_id ASC
-            `,
-          ),
-        ),
-      ),
-    );
+    `;
 
   const queryArchivedSkillUsage = () =>
-    legacyCompatibleQuery(
-      "profileStats.archivedSkillUsage",
-      sql<ArchivedSkillUsageRow>`
+    sql<ArchivedSkillUsageRow>`
         SELECT name, kind, run_count AS runCount
         FROM profile_stats_deleted_skills
-      `,
-    );
+      `;
 
   const queryMostWorkedProject = (tz: string) =>
-    legacyCompatibleQuery(
-      "profileStats.mostWorkedProject",
-      sql<MostWorkedProjectRow>`
+    sql<MostWorkedProjectRow>`
         WITH project_prompts AS (
           SELECT
             t.project_id AS project_id,
@@ -1008,8 +945,7 @@ const makeProfileStatsQuery = Effect.gen(function* () {
           lastWorkedAt DESC,
           p.title ASC
         LIMIT 1
-      `,
-    );
+      `;
 
   const getProfileStats = (
     input: StatsGetProfileStatsInput,
