@@ -65,13 +65,10 @@ import { ensureNativeApi } from "~/nativeApi";
 import { useStore } from "~/store";
 import { createSidebarThreadSummariesSelector } from "~/storeSelectors";
 import {
-  AutomationApprovalBanner,
-  AutomationModelPicker,
   automationIntervalPresetOptions,
   automationTargetThreads,
   datetimeLocalFromIso,
   isoFromDatetimeLocal,
-  maxIterationOptions,
   providerOptionsForAutomationModelSelection,
   SCHEDULE_KIND_OPTIONS,
   scheduleFromKind,
@@ -83,6 +80,11 @@ import {
 } from "./-automations.shared";
 import { resolveThreadPickerTitle } from "./-chatThreadRoute.logic";
 import { ModelOptionRows, RunRow } from "./-automationDetailRows";
+import {
+  AutomationApprovalBanner,
+  AutomationModelPicker,
+  maxIterationOptions,
+} from "./-automationFormDialog";
 import {
   lastFinishedRun,
   formatRunTimestamp,

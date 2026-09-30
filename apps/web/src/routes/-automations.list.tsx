@@ -25,7 +25,6 @@ import { useStore } from "~/store";
 import { createSidebarThreadSummariesSelector } from "~/storeSelectors";
 import {
   type AutomationFormState,
-  AutomationDialog,
   acknowledgedRiskIdsForFormWarnings,
   automationAttentionLabel,
   buildAutomationFormWarnings,
@@ -40,6 +39,8 @@ import {
   projectModelSelection,
   runStatusLabel,
 } from "./-automations.shared";
+
+import { AutomationDialog } from "./-automationFormDialog";
 
 const selectAllThreads = createSidebarThreadSummariesSelector();
 
