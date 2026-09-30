@@ -1,7 +1,7 @@
 import { makeClaudeInteractionSettlement } from "./interactionSettlement";
 import { makeClaudeWorkflowRuntime } from "./workflowRuntime";
 import { Effect, FileSystem } from "effect";
-import { EventId, RuntimeTaskId } from "@glade/contracts/core/baseSchemas";
+import { EventId, RuntimeTaskId, RuntimeItemId } from "@glade/contracts/core/baseSchemas";
 import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 import { makeClaudeTurnCompletion } from "./turnCompletion";
 import { makeClaudeToolTracking } from "./toolTracking";
@@ -212,6 +212,34 @@ export function makeClaudeSystemMessages(input: {
       }
 
       switch (message.subtype) {
+        case "local_command_output":
+          yield* offerRuntimeEvent(context, {
+            ...base,
+            type: "item.completed",
+            itemId: RuntimeItemId.makeUnsafe(message.uuid),
+            payload: {
+              itemType: "command_execution",
+              status: "completed",
+              title: "Claude command output",
+              ...(context.turnState?.commandText ? { detail: context.turnState.commandText } : {}),
+              data: {
+                ...(context.turnState?.commandText
+                  ? { command: context.turnState.commandText }
+                  : {}),
+                output: message.content,
+              },
+            },
+            providerRefs: nativeProviderRefs(context, { providerItemId: message.uuid }),
+          });
+          return;
+        case "informational":
+        case "notification":
+          yield* emitRuntimeWarning(
+            context,
+            message.subtype === "informational" ? message.content : message.text,
+            message,
+          );
+          return;
         case "commands_changed":
           return;
         case "init":

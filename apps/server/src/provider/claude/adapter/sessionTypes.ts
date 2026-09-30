@@ -71,6 +71,7 @@ export interface ClaudeTurnState {
   readonly interactionMode: ProviderInteractionMode;
 
   readonly synthetic?: true;
+  readonly commandText?: string;
   readonly explicitCompaction?: { readonly nativeSessionId: string; boundaryObserved: boolean };
 
   compactionInProgress?: boolean;

@@ -333,6 +333,7 @@ export function makeClaudeTurnDispatch(input: {
         turnId,
         startedAt: yield* nowIso,
         interactionMode: effectiveInteractionMode,
+        ...(slashName ? { commandText: input.input!.trim() } : {}),
         ...(isCompaction
           ? {
               explicitCompaction: {

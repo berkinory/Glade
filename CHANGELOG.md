@@ -27,6 +27,8 @@
 
 ### Fixed
 
+- Built-in Claude commands such as /cost and /context now show their output.
+
 - Messages held by the retired Claude cache-review flow remain visible and can be released explicitly. ([e8adbfda4](https://github.com/berkinory/Glade/commit/e8adbfda42ab44edc3ecce4038e19a4f7d433026))
 - Route chunk warm-up avoids synthetic thread loader matches that can be evicted during startup navigation.
 - Projection recovery preserves the original failure when another catch-up is queued; packaged startup checks report cleanup failures without hiding the startup failure.

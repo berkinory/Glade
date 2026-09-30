@@ -200,7 +200,11 @@ export function projectProviderRuntimeActivities(
           createdAt: event.createdAt,
           tone: "info",
           kind: "runtime.warning",
-          summary: isBackgroundMove ? "Moved to background" : "Runtime warning",
+          summary: isBackgroundMove
+            ? "Moved to background"
+            : detailSubtype === "informational" || detailSubtype === "notification"
+              ? "Claude notice"
+              : "Runtime warning",
 
           payload: toActivityPayload({
             message,
