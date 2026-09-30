@@ -4,6 +4,7 @@
   // Host tools and Electron's built-in filesystem are not npm dependencies.
   "ignoreBinaries": ["rustc", "xcode-select", "pkill", "pgrep", "mkfifo"],
   "ignoreDependencies": ["original-fs"],
+  "ignore": ["apps/server/src/provider/codex/protocol/generated/**"],
   "ignoreIssues": {
     // The vendored UI kit retains its reusable public component surface.
     "apps/web/src/components/ui/**": ["exports", "types"],

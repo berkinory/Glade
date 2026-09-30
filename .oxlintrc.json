@@ -7,6 +7,7 @@
     "bun.lock",
     "*.tsbuildinfo",
     "**/routeTree.gen.ts",
+    "apps/server/src/provider/codex/protocol/generated/**",
     ".glade-*"
   ],
   "plugins": ["eslint", "oxc", "react", "unicorn", "typescript"],

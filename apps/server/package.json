@@ -21,6 +21,7 @@
     "build": "node scripts/cli.ts build",
     "start": "bun dist/index.mjs",
     "prepare": "effect-language-service patch",
+    "generate:codex-protocol": "bun scripts/generate-codex-protocol.ts",
     "typecheck": "bun ../../node_modules/@typescript/native/bin/tsc --noEmit --tsBuildInfoFile node_modules/.cache/typescript-native.tsbuildinfo",
     "test": "vitest run --maxWorkers=1 --no-file-parallelism"
   },
@@ -34,6 +35,7 @@
     "effect": "catalog:",
     "node-pty": "^1.1.0",
     "open": "^10.1.0",
+    "toml": "3.0.0",
     "tree-kill": "^1.2.2",
     "ws": "^8.21.0",
     "zod": "4.3.6"
