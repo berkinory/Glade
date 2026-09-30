@@ -1128,7 +1128,7 @@ const ProviderRuntimeErrorEvent = Schema.Struct({
 });
 export type ProviderRuntimeErrorEvent = typeof ProviderRuntimeErrorEvent.Type;
 
-export const ProviderRuntimeEventV2 = Schema.Union([
+export const ProviderRuntimeEvent = Schema.Union([
   ProviderRuntimeSessionStartedEvent,
   ProviderRuntimeSessionConfiguredEvent,
   ProviderRuntimeSessionStateChangedEvent,
@@ -1181,26 +1181,4 @@ export const ProviderRuntimeEventV2 = Schema.Union([
   ProviderRuntimeErrorEvent,
   ProviderRuntimeEventUnmappedEvent,
 ]);
-export type ProviderRuntimeEventV2 = typeof ProviderRuntimeEventV2.Type;
-
-export const ProviderRuntimeEvent = ProviderRuntimeEventV2;
-export type ProviderRuntimeEvent = ProviderRuntimeEventV2;
-
-const ProviderRuntimeMessageDeltaEvent = ProviderRuntimeContentDeltaEvent;
-export type ProviderRuntimeMessageDeltaEvent = ProviderRuntimeContentDeltaEvent;
-const ProviderRuntimeMessageCompletedEvent = ProviderRuntimeItemCompletedEvent;
-export type ProviderRuntimeMessageCompletedEvent = ProviderRuntimeItemCompletedEvent;
-const ProviderRuntimeToolStartedEvent = ProviderRuntimeItemStartedEvent;
-export type ProviderRuntimeToolStartedEvent = ProviderRuntimeItemStartedEvent;
-const ProviderRuntimeToolCompletedEvent = ProviderRuntimeItemCompletedEvent;
-export type ProviderRuntimeToolCompletedEvent = ProviderRuntimeItemCompletedEvent;
-const ProviderRuntimeApprovalRequestedEvent = ProviderRuntimeRequestOpenedEvent;
-export type ProviderRuntimeApprovalRequestedEvent = ProviderRuntimeRequestOpenedEvent;
-const ProviderRuntimeApprovalResolvedEvent = ProviderRuntimeRequestResolvedEvent;
-export type ProviderRuntimeApprovalResolvedEvent = ProviderRuntimeRequestResolvedEvent;
-
-const ProviderRuntimeToolKind = Schema.Literals(["command", "file-read", "file-change", "other"]);
-export type ProviderRuntimeToolKind = typeof ProviderRuntimeToolKind.Type;
-
-export const ProviderRuntimeTurnStatus = RuntimeTurnState;
-export type ProviderRuntimeTurnStatus = RuntimeTurnState;
+export type ProviderRuntimeEvent = typeof ProviderRuntimeEvent.Type;
