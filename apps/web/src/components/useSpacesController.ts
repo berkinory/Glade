@@ -19,7 +19,8 @@ import {
 import { readNativeApi } from "../nativeApi";
 import { useSpacesUiStore } from "../spacesUiStore";
 import { useStore } from "../store";
-import type { Project, SidebarThreadSummary, Space } from "../types";
+import { createSidebarThreadSummariesSelector } from "../storeSelectors";
+import type { Space } from "../types";
 import { useWorkspacePathsStore } from "../workspacePathsStore";
 import { sortThreadsForSidebar } from "./Sidebar.logic.projectData";
 import type { SpaceEditorMode, SpaceEditorValue } from "./SpaceEditorDialog";
@@ -43,15 +44,10 @@ function spaceOrderMatches(
 }
 
 export function useSpacesController(input: {
-  // Ordinary (space-assignable) projects; computed by Sidebar because its own memos need it too.
-  ordinarySpaceProjects: readonly Project[];
-  projectById: ReadonlyMap<ProjectId, Project>;
-  sidebarThreads: readonly SidebarThreadSummary[];
   sidebarThreadSortOrder: SidebarThreadSortOrder;
   routeThreadId: ThreadId | null;
   routeProjectId: ProjectId | null;
   isOnKanban: boolean;
-  activeRouteProject: Project | null;
   activeRouteProjectId: ProjectId | null;
   activateThreadFromSidebarIntent: (threadId: ThreadId) => void;
 
@@ -59,19 +55,18 @@ export function useSpacesController(input: {
 }) {
   const {
     activateThreadFromSidebarIntent,
-    activeRouteProject,
     activeRouteProjectId,
     isOnKanban,
     onCloseProjectContextMenu,
-    ordinarySpaceProjects,
-    projectById,
     routeProjectId,
     routeThreadId,
     sidebarThreadSortOrder,
-    sidebarThreads,
   } = input;
 
   const navigate = useNavigate();
+  const projects = useStore((store) => store.projects);
+  const selectSidebarThreads = useMemo(() => createSidebarThreadSummariesSelector(), []);
+  const sidebarThreads = useStore(selectSidebarThreads);
   const spaces = useStore((store) => store.spaces);
   const reorderSpacesLocally = useStore((store) => store.reorderSpacesLocally);
   const threadsHydrated = useStore((store) => store.threadsHydrated);
@@ -96,6 +91,17 @@ export function useSpacesController(input: {
     () => ({ homeDir, chatWorkspaceRoot }),
     [chatWorkspaceRoot, homeDir],
   );
+  const projectById = useMemo(
+    () => new Map(projects.map((project) => [project.id, project] as const)),
+    [projects],
+  );
+  const ordinarySpaceProjects = useMemo(
+    () => projects.filter((project) => isOrdinarySpaceProject(project, workspacePaths)),
+    [projects, workspacePaths],
+  );
+  const activeRouteProject = activeRouteProjectId
+    ? (projectById.get(activeRouteProjectId) ?? null)
+    : null;
 
   const routeSpaceProject =
     isOnKanban && routeProjectId ? (projectById.get(routeProjectId) ?? null) : activeRouteProject;
