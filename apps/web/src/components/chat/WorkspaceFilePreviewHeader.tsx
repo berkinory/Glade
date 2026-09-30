@@ -27,26 +27,22 @@ import {
 } from "./workspaceFilePreviewBreadcrumb";
 
 interface WorkspaceFilePreviewHeaderProps {
-  workspaceRoot: string | null;
-  filePath: string;
-
-  isMarkdown: boolean;
-
-  markdownPreviewEnabled: boolean;
-  onMarkdownPreviewChange: (rendered: boolean) => void;
-
+  file: {
+    path: string;
+    workspaceRoot: string | null;
+    contentsForCopy?: string | null;
+    truncated?: boolean;
+    dirty?: boolean;
+    readOnlyReason?: string | null;
+  };
+  markdownView?:
+    | {
+        enabled: boolean;
+        onChange: (rendered: boolean) => void;
+      }
+    | undefined;
+  reload?: { onClick: () => void; pending: boolean } | undefined;
   onReferenceInChat?: ((reference: ChatFileReference) => void) | undefined;
-
-  contentsForCopy?: string | null;
-
-  truncated?: boolean;
-
-  dirty?: boolean;
-
-  readOnlyReason?: string | null;
-
-  onReload?: (() => void) | undefined;
-  reloading?: boolean;
 }
 
 const MARKDOWN_VIEW_SEGMENTS = [
@@ -206,32 +202,25 @@ function CollapsingPathBreadcrumb(props: {
 export const WorkspaceFilePreviewHeader = function WorkspaceFilePreviewHeader(
   props: WorkspaceFilePreviewHeaderProps,
 ) {
-  const { filePath, workspaceRoot } = props;
-
-  const fileIsOutsideWorkspace = !isWorkspaceRelativePathSafe(filePath);
+  const { path: filePath, workspaceRoot, contentsForCopy } = props.file;
+  const { markdownView } = props;
 
   const relativeSegments = filePath
     .replace(/\\/g, "/")
     .split("/")
     .filter((segment) => segment.length > 0);
-  const segments = relativeSegments;
-
-  const prefixSegments = segments.slice(0, -1).map((name, index) => ({
+  const prefixSegments = relativeSegments.slice(0, -1).map((name, index) => ({
     name,
-    key: segments.slice(0, index + 1).join("/"),
+    key: relativeSegments.slice(0, index + 1).join("/"),
   }));
-  const fileSegment = segments.at(-1) ?? filePath;
+  const fileSegment = relativeSegments.at(-1) ?? filePath;
 
-  const { onReferenceInChat, contentsForCopy } = props;
-  const referenceWholeFile = () => {
-    onReferenceInChat?.({ path: filePath });
-  };
+  const { onReferenceInChat } = props;
   const copyFileContents = useCopyFileContentsToClipboard();
   const copyPathToClipboard = useCopyPathToClipboard();
 
-  const canCopyContents = contentsForCopy != null;
   const openInTarget =
-    fileIsOutsideWorkspace || !workspaceRoot
+    !isWorkspaceRelativePathSafe(filePath) || !workspaceRoot
       ? filePath
       : joinWorkspaceRelativePath(workspaceRoot, filePath);
 
@@ -246,31 +235,31 @@ export const WorkspaceFilePreviewHeader = function WorkspaceFilePreviewHeader(
         prefixSegments={prefixSegments}
         fileSegment={fileSegment}
         filePath={filePath}
-        dirty={props.dirty ?? false}
+        dirty={props.file.dirty ?? false}
       />
 
-      {props.truncated ? (
+      {props.file.truncated ? (
         <span className="hidden shrink-0 text-ui-xs text-muted-foreground/70 @sm/header-actions:inline">
           Shown partially
         </span>
-      ) : props.readOnlyReason ? (
+      ) : props.file.readOnlyReason ? (
         <span
           className="hidden max-w-32 shrink-0 truncate text-ui-xs text-muted-foreground/70 @sm/header-actions:inline"
-          title={props.readOnlyReason}
+          title={props.file.readOnlyReason}
         >
           Read-only
         </span>
       ) : null}
 
       <div className="flex shrink-0 items-center gap-1.5">
-        {props.isMarkdown ? (
+        {markdownView ? (
           <div
             role="radiogroup"
             aria-label="Markdown view"
             className="flex h-7 shrink-0 items-center rounded-lg bg-[var(--color-background-elevated-secondary)] p-0.5"
           >
             {MARKDOWN_VIEW_SEGMENTS.map((segment) => {
-              const selected = segment.rendered === props.markdownPreviewEnabled;
+              const selected = segment.rendered === markdownView.enabled;
               return (
                 <button
                   key={segment.label}
@@ -284,7 +273,7 @@ export const WorkspaceFilePreviewHeader = function WorkspaceFilePreviewHeader(
                       ? "bg-[var(--color-background-button-secondary)] text-[var(--color-text-foreground)]"
                       : "text-muted-foreground hover:text-foreground",
                   )}
-                  onClick={() => props.onMarkdownPreviewChange(segment.rendered)}
+                  onClick={() => markdownView.onChange(segment.rendered)}
                 >
                   <segment.Icon className="size-3.5 shrink-0" />
                   <span className="sr-only">{segment.label}</span>
@@ -294,16 +283,16 @@ export const WorkspaceFilePreviewHeader = function WorkspaceFilePreviewHeader(
           </div>
         ) : null}
 
-        {props.onReload ? (
+        {props.reload ? (
           <ChatHeaderIconButton
             label="Reload file from disk"
             title="Reload file from disk"
             tone="plain"
-            onClick={props.onReload}
+            onClick={props.reload.onClick}
           >
             <RefreshCwIcon
               aria-hidden="true"
-              className={cn("size-3.5", props.reloading && "animate-spin")}
+              className={cn("size-3.5", props.reload.pending && "animate-spin")}
             />
           </ChatHeaderIconButton>
         ) : null}
@@ -317,11 +306,11 @@ export const WorkspaceFilePreviewHeader = function WorkspaceFilePreviewHeader(
               <CopyIcon className="size-3.5 shrink-0 text-muted-foreground" />
               <span>Copy path</span>
             </MenuItem>
-            {canCopyContents ? (
+            {contentsForCopy != null ? (
               <MenuItem
                 onClick={() =>
                   copyFileContents(contentsForCopy ?? "", fileSegment, {
-                    partial: props.truncated ?? false,
+                    partial: props.file.truncated ?? false,
                   })
                 }
               >
@@ -330,7 +319,7 @@ export const WorkspaceFilePreviewHeader = function WorkspaceFilePreviewHeader(
               </MenuItem>
             ) : null}
             {onReferenceInChat ? (
-              <MenuItem onClick={referenceWholeFile}>
+              <MenuItem onClick={() => onReferenceInChat({ path: filePath })}>
                 <MessageCircleIcon className="size-3.5 shrink-0 text-muted-foreground" />
                 Reference in chat
               </MenuItem>
@@ -338,7 +327,6 @@ export const WorkspaceFilePreviewHeader = function WorkspaceFilePreviewHeader(
           </ComposerPickerMenuPopup>
         </Menu>
 
-        {}
         <OpenInPicker openInTarget={openInTarget} />
       </div>
     </div>

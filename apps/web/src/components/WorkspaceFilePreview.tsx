@@ -590,18 +590,29 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-[var(--color-background-surface)]">
       <WorkspaceFilePreviewHeader
-        workspaceRoot={props.workspaceRoot}
-        filePath={filePath}
-        isMarkdown={fileIsMarkdown}
-        markdownPreviewEnabled={showMarkdownPreview}
-        onMarkdownPreviewChange={handleMarkdownPreviewChange}
+        file={{
+          path: filePath,
+          workspaceRoot: props.workspaceRoot,
+          contentsForCopy:
+            fileIsImage || fileQuery.data === undefined ? null : displayedFileContents,
+          truncated: fileQuery.data?.truncated ?? false,
+          dirty: editBufferDirty,
+          readOnlyReason,
+        }}
+        markdownView={
+          fileIsMarkdown
+            ? { enabled: showMarkdownPreview, onChange: handleMarkdownPreviewChange }
+            : undefined
+        }
         onReferenceInChat={onReferenceInChat}
-        contentsForCopy={fileIsImage || fileQuery.data === undefined ? null : displayedFileContents}
-        truncated={fileQuery.data?.truncated ?? false}
-        dirty={editBufferDirty}
-        readOnlyReason={readOnlyReason}
-        reloading={fileIsImage || fileIsPdf ? binaryPreviewReloading : fileQuery.isFetching}
-        onReload={workspaceRoot && filePath ? handleFileReload : undefined}
+        reload={
+          workspaceRoot && filePath
+            ? {
+                onClick: handleFileReload,
+                pending: fileIsImage || fileIsPdf ? binaryPreviewReloading : fileQuery.isFetching,
+              }
+            : undefined
+        }
       />
       {activeEditBuffer?.error ? (
         <div

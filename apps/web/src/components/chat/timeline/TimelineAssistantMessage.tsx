@@ -620,16 +620,16 @@ export function renderTimelineAssistantMessage(
               return (
                 <EditedFileRow
                   key={file.path}
-                  filePath={file.path}
-                  fileKind={fileKind}
-                  additions={additions}
-                  deletions={deletions}
-                  workspaceRoot={workspaceRoot}
-                  keybindings={editorKeybindings}
-                  availableEditors={installedEditors}
-                  resolvedTheme={resolvedTheme}
-                  fontSize={chatTypographyStyle.fontSize}
-                  withFirstReset={withFirstReset}
+                  file={{ path: file.path, kind: fileKind, additions, deletions, workspaceRoot }}
+                  editorConfig={{
+                    keybindings: editorKeybindings,
+                    availableEditors: installedEditors,
+                  }}
+                  appearance={{
+                    theme: resolvedTheme,
+                    fontSize: chatTypographyStyle.fontSize,
+                    withFirstReset,
+                  }}
                   onReview={() => onOpenTurnDiff(turnSummary.turnId, file.path)}
                 />
               );

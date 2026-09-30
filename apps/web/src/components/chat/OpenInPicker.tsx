@@ -47,11 +47,12 @@ interface OpenInPickerProps {
 
   primaryAction?: OpenInPickerPrimaryAction;
 
-  additionalMenuItems?: ReactNode;
-
-  menuEditorOrder?: ReadonlyArray<EditorId>;
-  groupLabel?: string;
-  menuLabel?: string;
+  menuOptions?: {
+    additionalItems?: ReactNode;
+    editorOrder?: ReadonlyArray<EditorId>;
+    groupLabel?: string;
+    label?: string;
+  };
 }
 
 type OpenInPickerContentProps = OpenInPickerProps & {
@@ -60,28 +61,25 @@ type OpenInPickerContentProps = OpenInPickerProps & {
 };
 
 export function OpenInPicker(props: OpenInPickerProps) {
-  if (props.keybindings !== undefined && props.availableEditors !== undefined) {
-    return (
-      <OpenInPickerContent
-        {...props}
-        keybindings={props.keybindings}
-        availableEditors={props.availableEditors}
-      />
-    );
-  }
-  return <OpenInPickerWithConfig {...props} />;
+  return props.keybindings !== undefined && props.availableEditors !== undefined ? (
+    <OpenInPickerContent
+      {...props}
+      keybindings={props.keybindings}
+      availableEditors={props.availableEditors}
+    />
+  ) : (
+    <OpenInPickerWithConfig {...props} />
+  );
 }
 
 function OpenInPickerWithConfig(props: OpenInPickerProps) {
-  const serverConfigQuery = useQuery(serverConfigQueryOptions());
+  const config = useQuery(serverConfigQueryOptions()).data;
   return (
     <OpenInPickerContent
       {...props}
-      keybindings={props.keybindings ?? serverConfigQuery.data?.keybindings ?? EMPTY_KEYBINDINGS}
+      keybindings={props.keybindings ?? config?.keybindings ?? EMPTY_KEYBINDINGS}
       availableEditors={
-        props.availableEditors ??
-        serverConfigQuery.data?.availableEditors ??
-        EMPTY_AVAILABLE_EDITORS
+        props.availableEditors ?? config?.availableEditors ?? EMPTY_AVAILABLE_EDITORS
       }
     />
   );
@@ -189,8 +187,8 @@ function EditorActionOpenInPicker(props: OpenInPickerContentProps) {
     <OpenInPickerFrame
       labelMode={props.labelMode ?? "responsive"}
       variant={props.variant ?? "split"}
-      groupLabel={props.groupLabel ?? "Open in editor"}
-      menuLabel={props.menuLabel ?? "Editor options"}
+      groupLabel={props.menuOptions?.groupLabel ?? "Open in editor"}
+      menuLabel={props.menuOptions?.label ?? "Editor options"}
       primaryAction={{
         disabled: !launchers.preferredEditor || !props.openInTarget,
         icon: PrimaryIcon ? <PrimaryIcon aria-hidden="true" className="size-3.5" /> : null,
@@ -200,8 +198,8 @@ function EditorActionOpenInPicker(props: OpenInPickerContentProps) {
         <OpenInPickerMenuPopup
           launchers={launchers}
           openInTarget={props.openInTarget}
-          additionalMenuItems={props.additionalMenuItems}
-          menuEditorOrder={props.menuEditorOrder}
+          additionalMenuItems={props.menuOptions?.additionalItems}
+          menuEditorOrder={props.menuOptions?.editorOrder}
         />
       }
     />
@@ -219,8 +217,8 @@ function PrimaryActionOpenInPicker({ primaryAction, ...props }: PrimaryActionOpe
     <OpenInPickerFrame
       labelMode={props.labelMode ?? "responsive"}
       variant={props.variant ?? "split"}
-      groupLabel={props.groupLabel ?? "Open in editor"}
-      menuLabel={props.menuLabel ?? "Editor options"}
+      groupLabel={props.menuOptions?.groupLabel ?? "Open in editor"}
+      menuLabel={props.menuOptions?.label ?? "Editor options"}
       primaryAction={primaryAction}
       onMenuOpenChange={(open) => {
         if (open) setLauncherMenuMounted(true);
@@ -236,8 +234,8 @@ function OpenInPickerMenuWithLaunchers(props: OpenInPickerContentProps) {
     <OpenInPickerMenuPopup
       launchers={launchers}
       openInTarget={props.openInTarget}
-      additionalMenuItems={props.additionalMenuItems}
-      menuEditorOrder={props.menuEditorOrder}
+      additionalMenuItems={props.menuOptions?.additionalItems}
+      menuEditorOrder={props.menuOptions?.editorOrder}
     />
   );
 }

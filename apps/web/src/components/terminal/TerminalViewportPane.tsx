@@ -31,21 +31,25 @@ interface TerminalViewportPaneProps {
   layout: ThreadTerminalLayoutNode;
   resolvedActiveTerminalId: string;
   terminalVisualIdentityById: ReadonlyMap<string, ResolvedTerminalVisualIdentity>;
-  onActiveTerminalChange: (terminalId: string) => void;
-  onResizeSplit: (groupId: string, splitId: string, weights: number[]) => void;
   renderViewport: (
     terminalId: string,
     options: { autoFocus: boolean; isVisible: boolean },
   ) => ReactNode;
-  onSplitTerminalRight?: ((terminalId: string) => void) | undefined;
-  onSplitTerminalDown?: ((terminalId: string) => void) | undefined;
-  onNewTerminalTab?: ((terminalId: string) => void) | undefined;
-  onMoveTerminalToGroup?: ((terminalId: string) => void) | undefined;
-  onCloseTerminal?: ((terminalId: string) => void) | undefined;
-  presentationMode: ThreadTerminalPresentationMode;
-  onTogglePresentationMode?: (() => void) | undefined;
-  onTogglePanel?: (() => void) | undefined;
-  isPanelOpen?: boolean | undefined;
+  terminalActions: {
+    onActiveTerminalChange: (terminalId: string) => void;
+    onResizeSplit: (groupId: string, splitId: string, weights: number[]) => void;
+    onSplitTerminalRight?: ((terminalId: string) => void) | undefined;
+    onSplitTerminalDown?: ((terminalId: string) => void) | undefined;
+    onNewTerminalTab?: ((terminalId: string) => void) | undefined;
+    onMoveTerminalToGroup?: ((terminalId: string) => void) | undefined;
+    onCloseTerminal?: ((terminalId: string) => void) | undefined;
+  };
+  panelActions: {
+    presentationMode: ThreadTerminalPresentationMode;
+    onTogglePresentationMode?: (() => void) | undefined;
+    onTogglePanel?: (() => void) | undefined;
+    isPanelOpen?: boolean | undefined;
+  };
 }
 
 function normalizeWeights(weights: number[]): number[] {
@@ -95,18 +99,17 @@ export default function TerminalViewportPane({
   layout,
   resolvedActiveTerminalId,
   terminalVisualIdentityById,
-  onActiveTerminalChange,
-  onResizeSplit,
   renderViewport,
-  onSplitTerminalRight,
-  onSplitTerminalDown,
-  onNewTerminalTab,
-  onMoveTerminalToGroup,
-  onCloseTerminal,
-  presentationMode,
-  onTogglePresentationMode,
-  onTogglePanel,
-  isPanelOpen,
+  terminalActions: {
+    onActiveTerminalChange,
+    onResizeSplit,
+    onSplitTerminalRight,
+    onSplitTerminalDown,
+    onNewTerminalTab,
+    onMoveTerminalToGroup,
+    onCloseTerminal,
+  },
+  panelActions: { presentationMode, onTogglePresentationMode, onTogglePanel, isPanelOpen },
 }: TerminalViewportPaneProps) {
   const renderNode = (node: ThreadTerminalLayoutNode): ReactNode => {
     if (node.type === "terminal") {
