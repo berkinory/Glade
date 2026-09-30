@@ -7,11 +7,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AppSettings } from "../appSettings";
 import { useComposerDraftStore } from "../composerDraftStore";
 import { showConfirmDialogFallback } from "../confirmDialogFallback";
-import {
-  getFallbackThreadIdAfterDelete,
-  derivePinnedThreadIdsForSidebar,
-  isLatestPinnedThreadMutation,
-} from "../components/Sidebar.logic";
+import { getFallbackThreadIdAfterDelete } from "../components/Sidebar.logic.projectData";
+import { derivePinnedThreadIdsForSidebar, isLatestPinnedThreadMutation } from "../components/Sidebar.logic.preview";
 import { toastManager } from "../components/ui/toast";
 import { deleteActiveThreadFromClient } from "../lib/activeThreadDelete";
 import { releaseOrphanedWorktreeAfterArchive } from "../lib/archiveThreadWorktreeCleanup";
@@ -61,7 +58,7 @@ async function unarchiveThreadIgnoringAlreadyRestored(threadId: ThreadId): Promi
   }
 }
 
-interface DeleteProjectThreadsOptions {
+export interface DeleteProjectThreadsOptions {
   readonly confirmMessage?: string | null;
   readonly showEmptyToast?: boolean;
   readonly showResultToast?: boolean;
