@@ -4,93 +4,20 @@
 
 ### Removed
 
-- Unused computer key-name tables and the dormant WSL working-directory bridge were removed; active key handling, UNC parsing and process launch behavior remain in their owning modules.
-
 - Cursor, Grok, and OpenCode providers and their integrations were removed.
 - Standalone Pull Requests page and sidebar entry were removed.
 - Editor view and its separate workspace layout were removed; editing stays in Explorer.
 
 ### Improved
 
-- Durable projection handling has separate projectors for metadata, thread state, messages, turn history, shell summaries and human interactions. The pipeline retains transaction ownership, hot/deferred cursor ordering, replay batching and attachment side-effect timing.
-
-- Provider reactor behavior tests are grouped by durable recovery, cache consent, compaction, queued delivery, goal continuation, turn dispatch and conversation edits. Shared fixtures own the real in-memory SQLite runtime and Scope teardown; all existing scenarios are retained.
-
-- Provider command handling has focused controllers for session setup, projected state, human responses, queued turns, task control, edits, naming, context lifecycle and durable delivery. The Layer owns shared resources and composes controllers; claim, lease, recovery and provider behavior remain unchanged.
-
-- Provider delivery reconciliation and Claude compaction recovery use Layer-owned references, so separated controllers observe current runtime state. Recovery flag and accepted startup turns settle atomically.
-
-- Provider command deadlines, delivery-claim observation, context budgets and interaction failure decisions have focused policy modules. Retry classifications and persisted delivery behavior remain unchanged.
-
-- Claude adapter behavior tests are grouped by permissions, streaming, task and process lifecycles, session history, token accounting, configuration and plan mode, with shared SDK fixtures.
-
-- Claude session orchestration uses focused controllers for SDK hooks, messages, turn completion, human interactions, discovery and process teardown. The adapter Layer retains resource ownership and its public API.
-
-- Claude SDK callbacks and stream observers use the runtime captured by their adapter Layer, retaining its services and tracing context while keeping existing cancellation and teardown ownership.
-
-- Claude adapter pure logic has dedicated modules for SDK messages, tool presentation, model capability checks, resume cursors, process ownership and prompt policy. Session behavior and provider-visible policy text remain unchanged.
-
-- Read-model event projection uses focused workspace, thread, turn, message and history handlers. Snapshot sequencing, message retention and lifecycle settlement remain unchanged.
-
-- Provider activity projection separates bounded JSON payloads, context-window calculations and tool approval presentation. Credential redaction stays at the approval-display boundary.
-
-- Orchestration command decisions use domain handlers for spaces, projects, thread lifecycle, turns, conversation edits and transcript updates. Invariant checks and emitted event ordering retain their existing behavior.
-
-- Profile statistics separate SQL row projection, activity calculations and skill extraction from the query service. Query text, archived totals and response shapes remain unchanged.
-
-- Keybindings use separate compiler, defaults, configuration and service modules. Custom shortcut rules retain their order, conditional siblings and on-disk format across service restarts.
-
-- HTTP route composition imports focused auth, upload, file, static-client, icon, export and lifecycle modules. Route ordering, request authorization and body limits remain unchanged.
-
-- Server source files and their tests live with their owning domains. The root keeps the CLI entry and application composition; bundled recovery and dependency-smoke entry names remain unchanged.
-
-- Provider usage subprocesses use the shared executable boundary, and worktree setup uses the server's platform-owned shell execution policy. Timeouts, output limits and shell arguments retain their existing values.
-
-- Scalar payload readers share explicit string, numeric and array policies. Untrimmed text, whitespace checks, numeric-string coercion and caller absence values keep their existing semantics.
-
-- Shared payload validation has one domain path, `transport/payloadValues`, for direct boundary imports.
-
-- Record validation and conversion use shared boundary helpers. Array acceptance and caller-specific absent-value policies are preserved; generic error conversion is shared while redaction and UI fallback policies remain local.
-
-- WebSocket RPC registrations are grouped by domain, with direct imports for bootstrap, orchestration, workspace, device, computer, Git, terminal, server, provider and automation operations. Method names and schemas are unchanged.
-
-- Provider runtime contracts separate event metadata, payload schemas and the event union. Encoded fields, tags, defaults and type shapes are unchanged.
-
-- Provider runtime events use canonical event and status names; unused compatibility aliases were removed without changing the encoded event version or payload schemas.
-
-- Orchestration contracts separate provider policy, thread entities, snapshots, commands, events and RPC operations. Consumers use direct imports; persisted and wire schema definitions are unchanged.
-
-- Dependency checks require every shared runtime module to have at least two application consumers, following transitive imports and excluding test-only use.
-
-- Runtime modules shared by multiple applications are grouped by domain. Single-application modules and their tests live with their owning application; native driver pins and CI paths follow the new layout.
-
-- Contract consumers import their owning modules directly; the root barrel and root package export were removed. CommonJS build entries preserve the same domain paths.
-
-- Shared contracts are grouped by domain, with their existing schema names, field shapes and event tags preserved.
-
-- Provider adapters expose their implemented capabilities without dormant resume callbacks or unused model-switch modes.
-
-- Process, provider metadata and updater policy imports point to their owning modules; redundant forwarding modules and policy re-exports were removed. The dependency check follows workspace symlinks and handles pending file deletions.
-
-- Composer queue drains use independent state owners and cancel scheduled work when their watcher stops, preserving queued messages for the next owner.
-
-- Browser upload staging and quotas belong to the browser host; filesystem security checks run through the upload interface without global test configuration.
-
-- Source comments focus on invariants, trust boundaries and lifecycle constraints; redundant file inventories and implementation narration were removed.
-- Codex version-probe caches belong to their manager instance; tests use independent owners rather than global reset hooks.
 - Development installs use published Effect beta packages with the existing process safety fixes.
-- Development checks reject lint warnings, unused code and cyclic source dependencies. Redundant dependency overrides and the retired cookie-import patch were removed.
-- Type-aware checks enforce async callback ownership, awaited cleanup and runtime import safety.
 - Effect diagnostics now check every package with the same severity. Provider, persistence and gateway failures retain tagged error channels and explicit layer dependencies.
 - Development sessions can be stopped together with `bun run dev:stop`. ([b6978857c](https://github.com/berkinory/Glade/commit/b6978857c2a682bf85e05e191d6365bed0c955f1))
 - File search results show plain names, and chat find uses a compact, clickable row. ([21b19f418](https://github.com/berkinory/Glade/commit/21b19f418356ba91b240e29bc0d6058c71aa0110), [3cc479149](https://github.com/berkinory/Glade/commit/3cc4791490acf77e2030a08df60cbbfb0fcd48b9))
 - File editing keeps line numbers aligned and shows clearer caret, active line, and text selection. Caret shape is configurable in Appearance, and Cmd+Y redoes edits on macOS. ([044002601](https://github.com/berkinory/Glade/commit/0440026018eb78b0a797d23c65c4cf42ada7c3a1))
-- Queued messages have clear edit and delete actions. ([0cac2f02c](https://github.com/berkinory/Glade/commit/0cac2f02c1fbf2cd1e5f64b632ed2da5c4933e4a))
 - Project chat lists use Show more and reset when collapsed; Chats scrolls without paging controls. ([a0648f1f4](https://github.com/berkinory/Glade/commit/a0648f1f4477318f92e3e6bbc9afb0683d9370d3))
 
 ### Fixed
-
-- Profile statistics report query failures instead of returning empty results for an incomplete database schema.
 
 - Route chunk warm-up avoids synthetic thread loader matches that can be evicted during startup navigation.
 - Projection recovery preserves the original failure when another catch-up is queued; packaged startup checks report cleanup failures without hiding the startup failure.
