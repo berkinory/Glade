@@ -36,7 +36,7 @@ function makeThread(threadId: string): OrchestrationThreadShell {
     title: threadId,
     modelSelection: { provider: "codex", model: "gpt-5.6-sol" },
     runtimeMode: "full-access",
-    interactionMode: "default",
+
     envMode: "local",
     branch: null,
     worktreePath: null,

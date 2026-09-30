@@ -242,8 +242,7 @@ export function ChatComposerSurface({
     if (isVoiceRecording) void submitComposerVoiceRecording();
     else void controller.composer.startComposerVoiceRecording();
   };
-  const { isServerThread, interactionMode, activeCumulativeCostUsd, activeThreadId } =
-    controller.workspace;
+  const { isServerThread, activeCumulativeCostUsd, activeThreadId } = controller.workspace;
   const onPauseWorkflowRun = async () => {
     if (!workflowRunState || !activeThreadId) return;
     markWorkflowRunPaused(activeThreadId, workflowRunState.workflowTaskId);
@@ -254,7 +253,6 @@ export function ChatComposerSurface({
       markWorkflowRunDismissed(activeThreadId, workflowRunState.workflowTaskId);
     }
   };
-  const { handleInteractionModeChange, resetInteractionMode } = controller.environment;
   const {
     showComposerLiveChangesHeader,
     renderActiveTaskListCard,
@@ -503,13 +501,11 @@ export function ChatComposerSurface({
                     {composerExtrasPanelOpen ? (
                       <ComposerExtrasPanel
                         panelId={COMPOSER_EXTRAS_PANEL_ID}
-                        interactionMode={interactionMode}
                         supportsFastMode={composerTraitSelection.caps.supportsFastMode}
                         fastModeEnabled={composerTraitSelection.fastModeEnabled}
                         threadId={threadId}
                         onAddAttachments={addComposerAttachments}
                         onToggleFastMode={toggleFastMode}
-                        onInteractionModeChange={handleInteractionModeChange}
                         onClose={() => {
                           setIsComposerExtrasPanelOpen(false);
                           scheduleComposerFocus();
@@ -669,8 +665,6 @@ export function ChatComposerSurface({
                       />
                     ) : null
                   }
-                  interactionMode={interactionMode}
-                  resetInteractionMode={resetInteractionMode}
                   sidebarAction={
                     activeTaskList || taskListSidebarOpen
                       ? {

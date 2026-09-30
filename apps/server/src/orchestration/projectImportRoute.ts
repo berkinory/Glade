@@ -393,7 +393,7 @@ export function makeProjectImportHandlers(options: ProjectImportRouteOptions) {
             title: source.title,
             modelSelection,
             runtimeMode: "approval-required",
-            interactionMode: "default",
+
             envMode: worktreePath ? "worktree" : "local",
             branch: null,
             worktreePath,

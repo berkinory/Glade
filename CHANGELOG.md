@@ -10,6 +10,8 @@
 
 ### Removed
 
+- Debug mode was removed.
+
 - Plan mode and proposed plans were removed.
 
 - Thread goals were removed.

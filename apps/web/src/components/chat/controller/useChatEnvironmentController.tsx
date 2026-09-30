@@ -134,7 +134,7 @@ export function useChatEnvironmentController({
     isServerThread,
     activeThreadAssociatedWorktree,
     runtimeMode,
-    interactionMode,
+
     setRenameDialogOpen,
     resolvedThreadEnvMode,
     resolvedThreadWorktreePath,
@@ -330,9 +330,7 @@ export function useChatEnvironmentController({
   const {
     persistRuntimeModeChange,
     handleRuntimeModeChange,
-    handleInteractionModeChange,
-    toggleInteractionMode,
-    resetInteractionMode,
+
     persistThreadSettingsForNextTurn,
   } = useChatRuntimeModes({ session, workspace, provider, discovery, composer });
 
@@ -664,7 +662,7 @@ export function useChatEnvironmentController({
     computerControlGeneration,
     assistantDeliveryMode,
     runtimeMode,
-    interactionMode,
+
     envMode,
   };
 
@@ -753,9 +751,7 @@ export function useChatEnvironmentController({
     onHandoffToLocal,
     persistRuntimeModeChange,
     handleRuntimeModeChange,
-    handleInteractionModeChange,
-    toggleInteractionMode,
-    resetInteractionMode,
+
     persistThreadSettingsForNextTurn,
 
     showScrollToBottom,

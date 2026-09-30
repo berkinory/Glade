@@ -5,7 +5,7 @@ import { type OrchestrationThreadActivity } from "@glade/contracts/orchestration
 
 import { getThreadsFromState } from "./threadDerivation";
 import type { AppState } from "./storeState";
-import { DEFAULT_INTERACTION_MODE, DEFAULT_RUNTIME_MODE, type Thread } from "./types";
+import { DEFAULT_RUNTIME_MODE, type Thread } from "./types";
 import { vi, type Mock } from "vitest";
 
 export function makeThread(overrides: Partial<Thread> = {}): Thread {
@@ -19,7 +19,7 @@ export function makeThread(overrides: Partial<Thread> = {}): Thread {
       model: "gpt-5-codex",
     },
     runtimeMode: DEFAULT_RUNTIME_MODE,
-    interactionMode: DEFAULT_INTERACTION_MODE,
+
     session: null,
     messages: [],
     turnDiffSummaries: [],
@@ -165,7 +165,7 @@ export function makeReadModelThread(overrides: Partial<OrchestrationReadModel["t
       model: "gpt-5.3-codex",
     },
     runtimeMode: DEFAULT_RUNTIME_MODE,
-    interactionMode: DEFAULT_INTERACTION_MODE,
+
     envMode: "local",
     branch: null,
     worktreePath: null,

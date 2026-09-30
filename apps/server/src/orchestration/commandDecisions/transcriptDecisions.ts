@@ -25,7 +25,6 @@ export function decideTranscriptCommand({
         | "thread.message.assistant.complete"
         | "thread.message.user.bind-turn"
         | "thread.message.user.set-turn-boundary"
-        | "thread.proposed-plan.upsert"
         | "thread.turn.diff.complete"
         | "thread.activity.append";
     }

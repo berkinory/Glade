@@ -102,15 +102,9 @@ export function useChatSubmissionController({
     reportChatActionFailure,
     handleComputerControlModeChange,
   } = composer;
-  const {
-    isLocalDraftThread,
-    activeProject,
-    isServerThread,
-    activeContextWindow,
-    runtimeMode,
-    interactionMode,
-  } = workspace;
-  const { envMode, handleInteractionModeChange } = environment;
+  const { isLocalDraftThread, activeProject, isServerThread, activeContextWindow, runtimeMode } =
+    workspace;
+  const { envMode } = environment;
   const { onProviderModelSelect } = actions;
   const {
     activeRootBranch,
@@ -365,7 +359,7 @@ export function useChatSubmissionController({
       isLocalDraftThread,
       environmentMode: envMode ?? null,
       runtimeMode,
-      interactionMode,
+
       threadId,
       syncServerShellSnapshot,
       navigateToThread: (nextThreadId, options) =>
@@ -404,7 +398,6 @@ export function useChatSubmissionController({
       setComposerDraftProviderModelOptions,
     },
     editor: {
-      handleInteractionModeChange,
       openForkTargetPicker: () => {
         setComposerCommandPicker("fork-target");
         setComposerHighlightedItemId("fork-target:worktree");
@@ -448,7 +441,6 @@ export function useChatSubmissionController({
     composer,
     actions,
     discovery,
-    environment,
   });
   return {
     removeQueuedComposerTurn,

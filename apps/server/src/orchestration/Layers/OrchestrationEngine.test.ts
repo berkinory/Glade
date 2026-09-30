@@ -7,7 +7,7 @@ import {
   ThreadId,
   TurnId,
 } from "@glade/contracts/core/baseSchemas";
-import { DEFAULT_PROVIDER_INTERACTION_MODE } from "@glade/contracts/provider/sessionPolicy";
+
 import { type OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import { Effect, Layer, ManagedRuntime, Option, Stream } from "effect";
@@ -173,7 +173,7 @@ describe("OrchestrationEngine", () => {
             projectId,
             title: "Async input",
             modelSelection: { provider: "codex", model: "gpt-5-codex" },
-            interactionMode: "default",
+
             runtimeMode: "approval-required",
             branch: null,
             worktreePath: null,
@@ -240,7 +240,7 @@ describe("OrchestrationEngine", () => {
             asyncUserInputResponse: { messageId: questionId, answers },
             dispatchMode: "queue",
             runtimeMode: "full-access",
-            interactionMode: "default",
+
             createdAt: new Date(Date.parse(createdAt) + 60_000).toISOString(),
           });
         await expect(system.run(answer("invalid", ["Only one answer"]))).rejects.toThrow(
@@ -273,7 +273,7 @@ describe("OrchestrationEngine", () => {
           startsNewTurn: !running,
         });
         expect(after.runtimeMode).toBe("approval-required");
-        expect(after.interactionMode).toBe("default");
+
         expect(after.session?.status).toBe(running ? "running" : "starting");
       } finally {
         await system.dispose();
@@ -339,7 +339,7 @@ describe("OrchestrationEngine", () => {
           projectId,
           title: "Checkpoint sequence",
           modelSelection: { provider: "codex", model: "gpt-5-codex" },
-          interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
           runtimeMode: "full-access",
           branch: null,
           worktreePath: null,
@@ -372,7 +372,7 @@ describe("OrchestrationEngine", () => {
               text: "Continue",
               attachments: [],
             },
-            interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
             runtimeMode: "full-access",
             createdAt,
           }),
@@ -410,7 +410,7 @@ describe("OrchestrationEngine", () => {
           projectId: asProjectId("large-project"),
           title: "Large response",
           modelSelection: { provider: "codex", model: "gpt-5-codex" },
-          interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
           runtimeMode: "approval-required",
           branch: null,
           worktreePath: null,
@@ -490,7 +490,7 @@ describe("OrchestrationEngine", () => {
           provider: "codex",
           model: "gpt-5-codex",
         },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         branch: null,
         worktreePath: null,
@@ -543,7 +543,7 @@ describe("OrchestrationEngine", () => {
             text: "Rejected after quiesce",
             attachments: [],
           },
-          interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
           runtimeMode: "approval-required",
           createdAt,
         }),
@@ -657,7 +657,7 @@ describe("OrchestrationEngine", () => {
         projectId: asProjectId("project-managed-attachment"),
         title: "Managed attachment thread",
         modelSelection: { provider: "codex", model: "gpt-5-codex" },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         branch: null,
         worktreePath: null,
@@ -718,7 +718,7 @@ describe("OrchestrationEngine", () => {
           },
         ],
       },
-      interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
       runtimeMode: "approval-required" as const,
       createdAt,
     };
@@ -836,7 +836,7 @@ describe("OrchestrationEngine", () => {
           provider: "codex",
           model: "gpt-5-codex",
         },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         branch: null,
         worktreePath: null,
@@ -956,7 +956,7 @@ describe("OrchestrationEngine", () => {
             provider: "codex",
             model: "gpt-5-codex",
           },
-          interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
           runtimeMode: "approval-required",
           branch: null,
           worktreePath: null,
@@ -976,7 +976,7 @@ describe("OrchestrationEngine", () => {
           provider: "codex",
           model: "gpt-5-codex",
         },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         branch: null,
         worktreePath: null,
@@ -1053,7 +1053,7 @@ describe("OrchestrationEngine", () => {
           provider: "codex",
           model: "gpt-5-codex",
         },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         branch: null,
         worktreePath: null,
@@ -1071,7 +1071,7 @@ describe("OrchestrationEngine", () => {
         text: "hello",
         attachments: [],
       },
-      interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
       runtimeMode: "approval-required" as const,
       createdAt,
     };
@@ -1318,7 +1318,7 @@ describe("OrchestrationEngine", () => {
           provider: "codex",
           model: "gpt-5-codex",
         },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         branch: null,
         worktreePath: null,
@@ -1451,7 +1451,7 @@ describe("OrchestrationEngine", () => {
           provider: "codex",
           model: "gpt-5-codex",
         },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         branch: null,
         worktreePath: null,
@@ -1470,7 +1470,7 @@ describe("OrchestrationEngine", () => {
           text: "hello",
           attachments: [],
         },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         createdAt,
       }),
@@ -1673,7 +1673,7 @@ describe("OrchestrationEngine", () => {
           provider: "codex",
           model: "gpt-5-codex",
         },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         branch: null,
         worktreePath: null,
@@ -1732,7 +1732,7 @@ describe("OrchestrationEngine", () => {
           provider: "codex",
           model: "gpt-5-codex",
         },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         branch: null,
         worktreePath: null,
@@ -1752,7 +1752,7 @@ describe("OrchestrationEngine", () => {
             provider: "codex",
             model: "gpt-5-codex",
           },
-          interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
           runtimeMode: "approval-required",
           branch: null,
           worktreePath: null,

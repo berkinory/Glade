@@ -82,7 +82,7 @@ it("preserves an empty existing project and refuses turns until the native impor
         title: "Importing",
         modelSelection: { provider: "codex", model: "gpt-5-codex" },
         runtimeMode: "approval-required",
-        interactionMode: "default",
+
         branch: null,
         worktreePath: null,
         createdAt,
@@ -93,7 +93,7 @@ it("preserves an empty existing project and refuses turns until the native impor
         type: "thread.turn.start",
         commandId: commandId(),
         threadId,
-        interactionMode: "default",
+
         runtimeMode: "approval-required",
         message: {
           messageId: MessageId.makeUnsafe(crypto.randomUUID()),

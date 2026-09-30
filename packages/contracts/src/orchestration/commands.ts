@@ -42,8 +42,6 @@ import {
 import {
   ModelSelection,
   RuntimeMode,
-  ProviderInteractionMode,
-  DEFAULT_PROVIDER_INTERACTION_MODE,
   ThreadCreationSource,
   ProviderStartOptions,
   ProviderReviewTarget,
@@ -145,9 +143,7 @@ const ThreadCreateCommand = Schema.Struct({
   title: TrimmedNonEmptyString,
   modelSelection: ModelSelection,
   runtimeMode: RuntimeMode,
-  interactionMode: ProviderInteractionMode.pipe(
-    Schema.withDecodingDefault(() => DEFAULT_PROVIDER_INTERACTION_MODE),
-  ),
+
   envMode: Schema.optional(ThreadEnvironmentMode).pipe(Schema.withDecodingDefault(() => "local")),
   branch: Schema.NullOr(TrimmedNonEmptyString),
   worktreePath: Schema.NullOr(TrimmedNonEmptyString),
@@ -202,9 +198,7 @@ const ThreadHandoffCreateCommand = Schema.Struct({
   title: TrimmedNonEmptyString,
   modelSelection: ModelSelection,
   runtimeMode: RuntimeMode,
-  interactionMode: ProviderInteractionMode.pipe(
-    Schema.withDecodingDefault(() => DEFAULT_PROVIDER_INTERACTION_MODE),
-  ),
+
   envMode: Schema.optional(ThreadEnvironmentMode).pipe(Schema.withDecodingDefault(() => "local")),
   branch: Schema.NullOr(TrimmedNonEmptyString),
   worktreePath: Schema.NullOr(TrimmedNonEmptyString),
@@ -228,9 +222,7 @@ const ThreadForkCreateCommand = Schema.Struct({
   title: TrimmedNonEmptyString,
   modelSelection: ModelSelection,
   runtimeMode: RuntimeMode,
-  interactionMode: ProviderInteractionMode.pipe(
-    Schema.withDecodingDefault(() => DEFAULT_PROVIDER_INTERACTION_MODE),
-  ),
+
   envMode: Schema.optional(ThreadEnvironmentMode).pipe(Schema.withDecodingDefault(() => "local")),
   branch: Schema.NullOr(TrimmedNonEmptyString),
   worktreePath: Schema.NullOr(TrimmedNonEmptyString),
@@ -331,14 +323,6 @@ const ThreadRuntimeModeSetCommand = Schema.Struct({
   createdAt: IsoDateTime,
 });
 
-const ThreadInteractionModeSetCommand = Schema.Struct({
-  type: Schema.Literal("thread.interaction-mode.set"),
-  commandId: CommandId,
-  threadId: ThreadId,
-  interactionMode: ProviderInteractionMode,
-  createdAt: IsoDateTime,
-});
-
 export const ThreadTurnStartCommand = Schema.Struct({
   type: Schema.Literal("thread.turn.start"),
   asyncUserInputResponse: Schema.optional(AsyncUserInputResponse),
@@ -366,9 +350,6 @@ export const ThreadTurnStartCommand = Schema.Struct({
   // ClientThreadTurnStartCommand omits the field, so decoding strips any spoofed value.
   dispatchOrigin: Schema.optional(MessageDispatchOrigin),
   runtimeMode: RuntimeMode.pipe(Schema.withDecodingDefault(() => DEFAULT_RUNTIME_MODE)),
-  interactionMode: ProviderInteractionMode.pipe(
-    Schema.withDecodingDefault(() => DEFAULT_PROVIDER_INTERACTION_MODE),
-  ),
 
   // Clients cannot set it: ClientThreadTurnStartCommand omits the field, so decoding strips a spoofed
   // value.
@@ -405,7 +386,6 @@ const ClientThreadTurnStartCommand = Schema.Struct({
     Schema.withDecodingDefault(() => DEFAULT_TURN_DISPATCH_MODE),
   ),
   runtimeMode: RuntimeMode,
-  interactionMode: ProviderInteractionMode,
 
   createdAt: IsoDateTime,
 });
@@ -467,9 +447,6 @@ const ThreadDispatchQueuedTurnCommand = Schema.Struct({
   ),
   dispatchOrigin: Schema.optional(MessageDispatchOrigin),
   runtimeMode: RuntimeMode.pipe(Schema.withDecodingDefault(() => DEFAULT_RUNTIME_MODE)),
-  interactionMode: ProviderInteractionMode.pipe(
-    Schema.withDecodingDefault(() => DEFAULT_PROVIDER_INTERACTION_MODE),
-  ),
 
   createdAt: IsoDateTime,
 });
@@ -525,7 +502,7 @@ const ThreadMessageEditAndResendCommand = Schema.Struct({
   computerControlGeneration: Schema.optional(NonNegativeInt),
   assistantDeliveryMode: Schema.optional(AssistantDeliveryMode),
   runtimeMode: RuntimeMode,
-  interactionMode: ProviderInteractionMode,
+
   createdAt: IsoDateTime,
 });
 
@@ -566,7 +543,7 @@ const DispatchableClientOrchestrationCommand = Schema.Union([
   ThreadPinnedMessageDoneSetCommand,
   ThreadPinnedMessageLabelSetCommand,
   ThreadRuntimeModeSetCommand,
-  ThreadInteractionModeSetCommand,
+
   ThreadTurnStartCommand,
   ThreadLegacyCacheAbandonCommand,
   ThreadCompactCommand,
@@ -605,7 +582,7 @@ export const ClientOrchestrationCommand = Schema.Union([
   ThreadPinnedMessageDoneSetCommand,
   ThreadPinnedMessageLabelSetCommand,
   ThreadRuntimeModeSetCommand,
-  ThreadInteractionModeSetCommand,
+
   ClientThreadTurnStartCommand,
   ThreadLegacyCacheAbandonCommand,
   ThreadCompactCommand,

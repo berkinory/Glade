@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { Effect, Option, Duration } from "effect";
 import { CommandId, ThreadId } from "@glade/contracts/core/baseSchemas";
-import { DEFAULT_PROVIDER_INTERACTION_MODE } from "@glade/contracts/provider/sessionPolicy";
+
 import { resolveProviderAttachmentPath } from "../../provider/core/providerAttachmentPaths.ts";
 import path from "node:path";
 import { type CheckpointStoreShape } from "../../checkpointing/Services/CheckpointStore.ts";
@@ -46,7 +46,7 @@ describe("Provider reactor turnDispatch", () => {
           attachments: [imageAttachment],
         },
         runtimeMode: "approval-required",
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         createdAt: now,
       }),
     );
@@ -79,7 +79,7 @@ describe("Provider reactor turnDispatch", () => {
           text: "hello reactor",
           attachments: [],
         },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         createdAt: now,
       }),
@@ -134,7 +134,7 @@ describe("Provider reactor turnDispatch", () => {
           text: "hello despite slow git",
           attachments: [],
         },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         createdAt: now,
       }),
@@ -178,7 +178,7 @@ describe("Provider reactor turnDispatch", () => {
           text: "hello reactor",
           attachments: [],
         },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         createdAt: now,
       }),
@@ -234,7 +234,7 @@ describe("Provider reactor turnDispatch", () => {
           text: "hello stalled provider",
           attachments: [],
         },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         createdAt: now,
       }),
@@ -271,7 +271,7 @@ describe("Provider reactor turnDispatch", () => {
           commandId: CommandId.makeUnsafe(id),
           threadId,
           message: { messageId: asMessageId(id), role: "user", text: "continue", attachments: [] },
-          interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
           runtimeMode,
           createdAt,
         });

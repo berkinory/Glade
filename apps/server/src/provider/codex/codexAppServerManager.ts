@@ -48,7 +48,6 @@ import {
   type ProviderUserInputAnswers,
   type ProviderApprovalDecision,
   RuntimeMode,
-  ProviderInteractionMode,
 } from "@glade/contracts/provider/sessionPolicy";
 import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import {
@@ -232,7 +231,7 @@ interface CodexSessionContext {
   readonly gatewaySessionLease?: AgentGatewaySessionLease;
 
   gatewayCredentialRetired?: boolean;
-  activeInteractionMode?: ProviderInteractionMode | undefined;
+
   session: ProviderSession;
   lifecycleGeneration?: string;
   account: CodexAccountSnapshot;
@@ -350,7 +349,6 @@ export interface CodexAppServerSendTurnInput {
   readonly model?: string;
   readonly serviceTier?: string | null;
   readonly effort?: string;
-  readonly interactionMode?: ProviderInteractionMode;
 }
 
 type CodexAppServerReviewTarget = ProviderStartReviewInput["target"];
@@ -1326,7 +1324,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     if (input.effort) {
       turnStartParams.effort = input.effort;
     }
-    context.activeInteractionMode = input.interactionMode ?? "default";
+
     const response = await this.sendRequest(context, "turn/start", turnStartParams);
     const turnIdRaw = this.readString(this.readObject(this.readObject(response), "turn"), "id");
     if (!turnIdRaw) {
@@ -3780,7 +3778,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       context.gatewaySessionLease !== undefined &&
       context.gatewayCredentialRetired !== true &&
       !context.stopping &&
-      context.activeInteractionMode === "default" &&
       shouldAllowGladeComputerProviderTool({
         computerControlEnabled: context.enableComputerControl === true,
         activeTurn:
@@ -3788,7 +3785,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
           rawRoute.turnId !== undefined &&
           rawRoute.turnId === context.session.activeTurnId &&
           providerThreadId === readResumeCursorThreadId(context.session.resumeCursor),
-        interactionMode: context.activeInteractionMode,
+
         runtimeMode: context.session.runtimeMode,
         permission: {
           name: this.readGladeMcpApprovalToolName(request.params),
@@ -4225,9 +4222,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       ...updates,
       updatedAt: new Date().toISOString(),
     };
-    if (context.session.activeTurnId === undefined || context.session.status !== "running") {
-      context.activeInteractionMode = undefined;
-    }
   }
 
   private requestKindForMethod(method: string): ProviderRequestKind | undefined {

@@ -54,7 +54,7 @@ export async function startSelectionChat(
   const drafts = useComposerDraftStore.getState();
   drafts.setModelSelection(threadId, input.modelSelection);
   drafts.setRuntimeMode(threadId, input.runtimeMode);
-  drafts.setInteractionMode(threadId, "default");
+
   useProjectPreferencesStore.getState().setProjectEnvMode(input.projectId, input.envMode);
   if (input.intent === "compose") {
     drafts.setPrompt(threadId, input.prompt);
@@ -87,7 +87,7 @@ export async function startSelectionChat(
       ? { providerOptionsForDispatch: input.providerOptionsForDispatch }
       : {}),
     runtimeMode: input.runtimeMode,
-    interactionMode: "default",
+
     envMode: input.envMode,
   });
 }

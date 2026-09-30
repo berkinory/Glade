@@ -6,7 +6,6 @@ import { ThreadId, type ThreadId as ThreadIdType } from "@glade/contracts/core/b
 import type {
   AssistantDeliveryMode,
   ModelSelection,
-  ProviderInteractionMode,
   ProviderStartOptions,
   RuntimeMode,
 } from "@glade/contracts/provider/sessionPolicy";
@@ -30,7 +29,7 @@ export interface TurnDispatchSettings {
   readonly computerControlGeneration?: number | undefined;
   readonly assistantDeliveryMode: AssistantDeliveryMode;
   readonly runtimeMode: RuntimeMode;
-  readonly interactionMode: ProviderInteractionMode;
+
   readonly envMode: DraftThreadEnvMode;
 }
 
@@ -65,7 +64,6 @@ export function resolveQueuedTurnDispatchSettings(
     computerControlGeneration: queuedTurn.computerControlGeneration ?? 0,
     computerControlMode,
     runtimeMode: queuedTurn.runtimeMode ?? settings.runtimeMode,
-    interactionMode: queuedTurn.interactionMode ?? settings.interactionMode,
 
     envMode: (queuedTurn.kind === "chat" ? queuedTurn.envMode : undefined) ?? settings.envMode,
   };
@@ -88,7 +86,6 @@ function turnDispatchIdentityFields(settings: TurnDispatchSettings) {
 function turnDispatchModeFields(settings: TurnDispatchSettings) {
   return {
     runtimeMode: settings.runtimeMode,
-    interactionMode: settings.interactionMode,
   };
 }
 

@@ -50,7 +50,7 @@ export function makeThreadProjector(input: {
             title: event.payload.title,
             modelSelection: event.payload.modelSelection,
             runtimeMode: event.payload.runtimeMode,
-            interactionMode: event.payload.interactionMode,
+
             envMode: event.payload.envMode ?? "local",
             branch: event.payload.branch,
             worktreePath: event.payload.worktreePath,
@@ -205,13 +205,6 @@ export function makeThreadProjector(input: {
             updatedAt: event.payload.updatedAt,
           }));
 
-        case "thread.interaction-mode-set":
-          return yield* updateThreadProjection(event.payload.threadId, (thread) => ({
-            ...thread,
-            interactionMode: event.payload.interactionMode,
-            updatedAt: event.payload.updatedAt,
-          }));
-
         case "thread.turn-start-requested": {
           const existingRow = yield* projectionThreadRepository.getById({
             threadId: event.payload.threadId,
@@ -254,7 +247,6 @@ export function makeThreadProjector(input: {
             ...(adoptTurnModes
               ? {
                   runtimeMode: event.payload.runtimeMode,
-                  interactionMode: event.payload.interactionMode,
                 }
               : {}),
             updatedAt: event.payload.createdAt,

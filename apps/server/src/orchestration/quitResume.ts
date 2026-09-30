@@ -79,14 +79,7 @@ export type QuitResumeRecordableThread = Pick<
 
 type QuitResumeThread = Pick<
   OrchestrationThread,
-  | "id"
-  | "projectId"
-  | "deletedAt"
-  | "archivedAt"
-  | "latestTurn"
-  | "session"
-  | "runtimeMode"
-  | "interactionMode"
+  "id" | "projectId" | "deletedAt" | "archivedAt" | "latestTurn" | "session" | "runtimeMode"
 >;
 type QuitResumeProject = Pick<OrchestrationProject, "id" | "deletedAt">;
 
@@ -208,7 +201,7 @@ function planQuitResumeTurns(input: {
       dispatchMode: "queue",
       dispatchOrigin: "automation",
       runtimeMode: thread.runtimeMode,
-      interactionMode: thread.interactionMode,
+
       resumePrecondition,
       createdAt: input.now,
     });

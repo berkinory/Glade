@@ -1,6 +1,5 @@
 import type {
   ModelSelection,
-  ProviderInteractionMode,
   RuntimeMode,
   ThreadCreationSource,
 } from "@glade/contracts/provider/sessionPolicy";
@@ -43,7 +42,6 @@ type MutableContractFields<T> = {
 export type SessionPhase = "disconnected" | "connecting" | "ready" | "running";
 export const DEFAULT_RUNTIME_MODE: RuntimeMode = "full-access";
 
-export const DEFAULT_INTERACTION_MODE: ProviderInteractionMode = "default";
 export const DEFAULT_THREAD_TERMINAL_HEIGHT = 280;
 export const DEFAULT_THREAD_TERMINAL_ID = "default";
 export const MAX_TERMINALS_PER_GROUP = 6;
@@ -180,14 +178,7 @@ export interface Thread
     MutableContractFields<
       Pick<
         OrchestrationThread,
-        | "id"
-        | "projectId"
-        | "title"
-        | "modelSelection"
-        | "runtimeMode"
-        | "interactionMode"
-        | "createdAt"
-        | "latestTurn"
+        "id" | "projectId" | "title" | "modelSelection" | "runtimeMode" | "createdAt" | "latestTurn"
       >
     > {
   codexThreadId: string | null;
@@ -239,7 +230,7 @@ export interface SidebarThreadSummary {
   projectId: ProjectId;
   title: string;
   modelSelection: ModelSelection;
-  interactionMode: ProviderInteractionMode;
+
   envMode?: ThreadEnvironmentMode | undefined;
   branch: string | null;
   worktreePath: string | null;

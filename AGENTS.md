@@ -152,3 +152,4 @@ Tests exist to catch regressions that would really hurt. Fewer, stronger tests a
 - The device simulator and its agent controls are retired. Computer Use remains supported.
 - Thread goals are retired; do not adopt native provider goals or reintroduce automatic goal continuation.
 - Plan mode and proposed plans are retired; do not adopt native provider plan modes.
+- Debug mode and interaction modes are retired; provider runtime permission modes remain supported.

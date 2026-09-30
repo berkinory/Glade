@@ -117,7 +117,7 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
         title,
         modelSelection,
         runtimeMode: "full-access",
-        interactionMode: "default",
+
         envMode: resolveSidebarNewThreadEnvMode({
           defaultEnvMode: appSettings.defaultThreadEnvMode,
         }),

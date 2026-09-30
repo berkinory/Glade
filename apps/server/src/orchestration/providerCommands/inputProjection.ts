@@ -4,11 +4,6 @@ import {
   type ChatAttachment,
   PROVIDER_SEND_TURN_MAX_INPUT_CHARS,
 } from "@glade/contracts/orchestration/threadEntities";
-import { type ProviderInteractionMode } from "@glade/contracts/provider/sessionPolicy";
-import {
-  PROVIDER_DEBUG_MODE_PROMPT_PREFIX,
-  withProviderDebugModePrompt,
-} from "../../provider/core/debugMode.ts";
 
 export function toNonEmptyProviderInput(value: string | undefined): string | undefined {
   const normalized = value?.trim();
@@ -94,19 +89,6 @@ export function availableThreadMentionContextChars(messageText: string, reserved
   );
 }
 
-export function debugModePromptOverheadChars(
-  interactionMode: ProviderInteractionMode | undefined,
-): number {
-  return interactionMode === "debug" ? PROVIDER_DEBUG_MODE_PROMPT_PREFIX.length + 2 : 0;
-}
-
-export function withProviderThreadStatePrompts(input: {
-  readonly text: string;
-  readonly interactionMode?: ProviderInteractionMode | undefined;
-}): string {
-  return withProviderDebugModePrompt(input);
-}
-
 export function providerPromptOverflowIssue(): string {
-  return "The latest message is too long to include Glade Debug mode instructions. Shorten the message and retry.";
+  return "The latest message is too long. Shorten the message and retry.";
 }

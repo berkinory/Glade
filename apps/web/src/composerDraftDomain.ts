@@ -3,7 +3,6 @@ import type { ComposerComputerControlMode } from "./computerControlMode";
 
 import {
   type ModelSelection,
-  type ProviderInteractionMode,
   type ProviderStartOptions,
   type RuntimeMode,
 } from "@glade/contracts/provider/sessionPolicy";
@@ -43,7 +42,6 @@ import {
   type ChatAssistantSelectionAttachment,
   type ChatFileAttachment,
   type ChatImageAttachment,
-  DEFAULT_INTERACTION_MODE,
   DEFAULT_RUNTIME_MODE,
 } from "./types";
 
@@ -117,7 +115,7 @@ export interface QueuedComposerChatTurn {
   computerControlGeneration?: number | undefined;
 
   runtimeMode: RuntimeMode;
-  interactionMode: ProviderInteractionMode;
+
   envMode: DraftThreadEnvMode;
 }
 
@@ -145,7 +143,7 @@ export interface ComposerThreadDraftState {
   modelSelectionByProvider: Partial<Record<ProviderKind, ModelSelection>>;
   activeProvider: ProviderKind | null;
   runtimeMode: RuntimeMode | null;
-  interactionMode: ProviderInteractionMode | null;
+
   enableComputerControl?: boolean | undefined;
   computerControlMode?: ComposerComputerControlMode | undefined;
   computerControlGeneration?: number | undefined;
@@ -155,7 +153,7 @@ export interface DraftThreadState {
   projectId: ProjectId;
   createdAt: string;
   runtimeMode: RuntimeMode;
-  interactionMode: ProviderInteractionMode;
+
   branch: string | null;
   worktreePath: string | null;
   workingDirectory?: string | null;
@@ -174,7 +172,6 @@ export interface DraftThreadMutationOptions {
 
   envMode?: DraftThreadEnvMode | undefined;
   runtimeMode?: RuntimeMode;
-  interactionMode?: ProviderInteractionMode;
 }
 
 type DraftThreadCreatedAtMode = "accept-empty" | "preserve-existing-on-empty";
@@ -214,7 +211,6 @@ export interface ComposerDraftStoreState {
       workingDirectory?: string | null;
       envMode?: DraftThreadEnvMode;
       runtimeMode?: RuntimeMode;
-      interactionMode?: ProviderInteractionMode;
     },
   ) => void;
   setDraftThreadContext: (
@@ -271,10 +267,7 @@ export interface ComposerDraftStoreState {
     },
   ) => void;
   setRuntimeMode: (threadId: ThreadId, runtimeMode: RuntimeMode | null | undefined) => void;
-  setInteractionMode: (
-    threadId: ThreadId,
-    interactionMode: ProviderInteractionMode | null | undefined,
-  ) => void;
+
   setComputerControlMode: (
     threadId: ThreadId,
     mode: ComposerComputerControlMode,
@@ -372,8 +365,7 @@ export function buildDraftThreadState(input: {
       mode: input.createdAtMode,
     }),
     runtimeMode: options?.runtimeMode ?? existingThread?.runtimeMode ?? DEFAULT_RUNTIME_MODE,
-    interactionMode:
-      options?.interactionMode ?? existingThread?.interactionMode ?? DEFAULT_INTERACTION_MODE,
+
     branch:
       options?.branch === undefined ? (existingThread?.branch ?? null) : (options.branch ?? null),
     worktreePath: nextWorktreePath,
@@ -404,7 +396,6 @@ export function draftThreadStatesEqual(
     left.projectId === right.projectId &&
     left.createdAt === right.createdAt &&
     left.runtimeMode === right.runtimeMode &&
-    left.interactionMode === right.interactionMode &&
     left.branch === right.branch &&
     left.worktreePath === right.worktreePath &&
     (left.workingDirectory ?? null) === (right.workingDirectory ?? null) &&
@@ -452,7 +443,6 @@ export function createEmptyThreadDraft(): ComposerThreadDraftState {
     modelSelectionByProvider: {},
     activeProvider: null,
     runtimeMode: null,
-    interactionMode: null,
 
     enableComputerControl: undefined,
   };
@@ -759,7 +749,6 @@ export function shouldRemoveDraft(draft: ComposerThreadDraftState): boolean {
     Object.keys(draft.modelSelectionByProvider).length === 0 &&
     draft.activeProvider === null &&
     draft.runtimeMode === null &&
-    draft.interactionMode === null &&
     draft.enableComputerControl === undefined &&
     draft.computerControlMode === undefined
   );
@@ -821,7 +810,7 @@ const EMPTY_THREAD_DRAFT = Object.freeze<ComposerThreadDraftState>({
   modelSelectionByProvider: EMPTY_MODEL_SELECTION_BY_PROVIDER,
   activeProvider: null,
   runtimeMode: null,
-  interactionMode: null,
+
   enableComputerControl: undefined,
 });
 

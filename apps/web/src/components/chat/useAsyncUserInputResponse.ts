@@ -37,7 +37,7 @@ export function useAsyncUserInputResponse(threadId: ThreadId) {
           asyncUserInputResponse: { messageId, answers: [...answers] },
           dispatchMode: "steer",
           runtimeMode: thread.runtimeMode,
-          interactionMode: thread.interactionMode,
+
           createdAt: new Date().toISOString(),
         });
       } catch (error) {

@@ -1,4 +1,4 @@
-import type { ProviderInteractionMode, RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
+import type { RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
 
 export const GLADE_COMPUTER_TOOL_NAMES = [
   "computer_activate_window",
@@ -122,7 +122,7 @@ export function computerToolNameFromProviderPermission(input: {
 export function shouldAllowGladeComputerProviderTool(input: {
   readonly computerControlEnabled: boolean;
   readonly activeTurn: boolean;
-  readonly interactionMode: ProviderInteractionMode | undefined;
+
   readonly runtimeMode: RuntimeMode;
   readonly permission: Parameters<typeof computerToolNameFromProviderPermission>[0];
 }): boolean {
@@ -130,7 +130,6 @@ export function shouldAllowGladeComputerProviderTool(input: {
     input.computerControlEnabled &&
     input.activeTurn &&
     input.runtimeMode === "approval-required" &&
-    input.interactionMode === "default" &&
     computerToolNameFromProviderPermission(input.permission) !== undefined
   );
 }

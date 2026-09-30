@@ -112,7 +112,6 @@ export async function dispatchQueuedComposerTurnHeadless(input: {
         assistantDeliveryMode: input.assistantDeliveryMode,
         dispatchMode: input.dispatchMode,
         runtimeMode: queuedTurn.runtimeMode,
-        interactionMode: queuedTurn.interactionMode,
 
         createdAt,
       }),
@@ -155,14 +154,4 @@ async function persistQueuedTurnThreadSettings(input: {
         createdAt: input.createdAt,
       }),
   });
-
-  if (input.queuedTurn.interactionMode !== input.thread.interactionMode) {
-    await input.api.orchestration.dispatchCommand({
-      type: "thread.interaction-mode.set",
-      commandId: newCommandId(),
-      threadId: input.thread.id,
-      interactionMode: input.queuedTurn.interactionMode,
-      createdAt: input.createdAt,
-    });
-  }
 }

@@ -26,7 +26,7 @@ import { type ComposerLocalDirectoryMenuHandle } from "./ComposerLocalDirectoryM
 import { useChatComposerDraft } from "./useChatComposerDraft";
 import { useChatComposerEditing } from "./useChatComposerEditing";
 import { useChatPendingInteractions } from "./useChatPendingInteractions";
-import { useChatRuntimeModes } from "./useChatRuntimeModes";
+
 import { useComposerDiscovery } from "./useComposerDiscovery";
 import { useComposerReferences } from "./useComposerReferences";
 
@@ -96,7 +96,7 @@ interface ChatComposerCommandsInput {
   setComposerCursor: ReturnType<typeof useChatComposerDraft>["setComposerCursor"];
   setComposerTrigger: ReturnType<typeof useChatComposerDraft>["setComposerTrigger"];
   clearComposerSlashDraft: ReturnType<typeof useChatComposerEditing>["clearComposerSlashDraft"];
-  toggleInteractionMode: ReturnType<typeof useChatRuntimeModes>["toggleInteractionMode"];
+
   composerMenuOpenRef: RefObject<boolean>;
   onSend: (
     e?: { preventDefault: () => void },
@@ -175,7 +175,6 @@ type ChatComposerCommandsControllerInput = {
   composer: Pick<ChatComposerCommandsInput, "scheduleComposerFocus">;
   actions: Pick<ChatComposerCommandsInput, "onProviderModelSelect">;
   discovery: Pick<ChatComposerCommandsInput, "composerMenuItems">;
-  environment: Pick<ChatComposerCommandsInput, "toggleInteractionMode">;
 };
 export function useChatComposerCommands({
   session,
@@ -185,7 +184,6 @@ export function useChatComposerCommands({
   composer,
   actions,
   discovery,
-  environment,
 }: ChatComposerCommandsControllerInput) {
   const { threadId } = useChatThreadContext();
   const {
@@ -244,7 +242,6 @@ export function useChatComposerCommands({
   const { scheduleComposerFocus } = composer;
   const { onProviderModelSelect } = actions;
   const { composerMenuItems } = discovery;
-  const { toggleInteractionMode } = environment;
   const onSelectComposerItem = useCallback(
     (item: ComposerCommandItem) => {
       if (composerSelectLockRef.current) return;
@@ -507,7 +504,6 @@ export function useChatComposerCommands({
     }
 
     if (key === "Tab" && event.shiftKey) {
-      toggleInteractionMode();
       return true;
     }
 

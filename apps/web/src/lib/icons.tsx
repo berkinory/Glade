@@ -47,9 +47,6 @@ import {
   IconMinus,
   IconDeviceDesktop,
   IconDeviceLaptop,
-  IconDeviceMobileRotated,
-  IconPlugOff,
-  IconPower,
   IconMessageCircle,
   IconMoon,
   IconPaperclip,
@@ -194,16 +191,6 @@ export const UsersIcon: LucideIcon = centralIconWrapper("user-group");
 
 export const GlobeIcon: LucideIcon = centralIconWrapper("globe");
 
-export const DeviceMobileIcon: LucideIcon = centralIconWrapper("phone");
-
-export const DeviceHomeIcon: LucideIcon = centralIconWrapper("home");
-export const DeviceShutterIcon: LucideIcon = centralIconWrapper("camera-1");
-
-export const DeviceRecordIcon: LucideIcon = centralIconWrapper("record");
-export const DeviceRecordStopIcon: LucideIcon = centralIconWrapper("stop", "fill");
-export const DeviceRotateIcon = adaptIcon(IconDeviceMobileRotated);
-export const DevicePowerIcon = adaptIcon(IconPower);
-export const DeviceDetachIcon = adaptIcon(IconPlugOff);
 export const McpIcon: LucideIcon = (props) => (
   <VscMcp className={props.className} style={props.style} />
 );
@@ -237,11 +224,6 @@ export const PinIcon: LucideIcon = centralIconWrapper(PIN_ICON_NAME);
 export const PinFilledIcon: LucideIcon = centralIconWrapper("pin", "fill");
 export const PauseIcon: LucideIcon = centralIconWrapper("pause", "fill");
 export const PlayIcon: LucideIcon = centralIconWrapper("play", "fill");
-
-export const PauseOutlineIcon: LucideIcon = centralIconWrapper("pause");
-export const PlayOutlineIcon: LucideIcon = centralIconWrapper("play");
-
-export const TrashCanIcon: LucideIcon = centralIconWrapper("trash-can");
 
 export const Plus = adaptIcon(IconPlus);
 export const PlusIcon = adaptIcon(IconPlus);

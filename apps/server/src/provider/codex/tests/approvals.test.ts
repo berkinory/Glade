@@ -252,7 +252,7 @@ describe("MCP tool call elicitation approvals", () => {
     const harness = createCollabNotificationHarness();
     const context = Object.assign(harness.context, {
       enableComputerControl: true,
-      activeInteractionMode: "default",
+
       gatewaySessionLease: { release: vi.fn() } as { release: () => void } | undefined,
     });
     context.session.runtimeMode = "approval-required";
@@ -288,7 +288,6 @@ describe("MCP tool call elicitation approvals", () => {
     "inactive",
     "stale-turn",
     "child-thread",
-    "plan",
   ])("preserves provider approval for %s requests", async (condition) => {
     const { manager, context, emitEvent, writeMessage } = computerApprovalHarness();
     const params = approvalParams();
@@ -316,9 +315,6 @@ describe("MCP tool call elicitation approvals", () => {
         break;
       case "child-thread":
         params.threadId = "provider_child";
-        break;
-      case "plan":
-        context.activeInteractionMode = "plan";
         break;
     }
     await handleServerRequestForTest(manager, context, {

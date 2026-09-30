@@ -1,9 +1,5 @@
 import { useCallback } from "react";
-import {
-  ProviderInteractionMode,
-  RuntimeMode,
-  type ModelSelection,
-} from "@glade/contracts/provider/sessionPolicy";
+import { RuntimeMode, type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { ThreadId, type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { type ServerProviderStatus } from "@glade/contracts/server/server";
 import { useEffect, useRef } from "react";
@@ -25,7 +21,7 @@ interface ChatRuntimeModesInput {
   serverThread: Thread | undefined;
   isLocalDraftThread: boolean;
   runtimeMode: RuntimeMode;
-  interactionMode: ProviderInteractionMode;
+
   selectedProvider: ProviderKind;
   selectedRuntimeModel: ReturnType<typeof resolveRuntimeModelDescriptor>;
   selectedModelSelection: ModelSelection;
@@ -35,7 +31,7 @@ interface ChatRuntimeModesInput {
 
 type ChatRuntimeModesControllerInput = {
   session: Pick<ChatRuntimeModesInput, "activeThread" | "serverThread">;
-  workspace: Pick<ChatRuntimeModesInput, "isLocalDraftThread" | "runtimeMode" | "interactionMode">;
+  workspace: Pick<ChatRuntimeModesInput, "isLocalDraftThread" | "runtimeMode">;
   provider: Pick<
     ChatRuntimeModesInput,
     "selectedProvider" | "selectedRuntimeModel" | "selectedModelSelection"
@@ -52,15 +48,13 @@ export function useChatRuntimeModes({
 }: ChatRuntimeModesControllerInput) {
   const { threadId } = useChatThreadContext();
   const { activeThread, serverThread } = session;
-  const { isLocalDraftThread, runtimeMode, interactionMode } = workspace;
+  const { isLocalDraftThread, runtimeMode } = workspace;
   const { selectedProvider, selectedRuntimeModel, selectedModelSelection } = provider;
   const { activeProviderStatus } = discovery;
   const { scheduleComposerFocus } = composer;
   const setComposerDraftRuntimeMode = useComposerDraftStore((state) => state.setRuntimeMode);
   const setDraftThreadContext = useComposerDraftStore((state) => state.setDraftThreadContext);
-  const setComposerDraftInteractionMode = useComposerDraftStore(
-    (state) => state.setInteractionMode,
-  );
+
   const runtimeModePersistenceQueuesRef = useRef(
     new Map<ThreadId, ReturnType<typeof createRuntimeModePersistenceQueue>>(),
   );
@@ -173,47 +167,11 @@ export function useChatRuntimeModes({
     selectedRuntimeModel,
   ]);
 
-  const handleInteractionModeChange = (mode: ProviderInteractionMode) => {
-    if (mode === interactionMode) return;
-    setComposerDraftInteractionMode(threadId, mode);
-    if (isLocalDraftThread) {
-      setDraftThreadContext(threadId, { interactionMode: mode });
-    }
-    if (serverThread) {
-      const api = readNativeApi();
-      if (api) {
-        void api.orchestration
-          .dispatchCommand({
-            type: "thread.interaction-mode.set",
-            commandId: newCommandId(),
-            threadId,
-            interactionMode: mode,
-            createdAt: new Date().toISOString(),
-          })
-          .catch((error) => {
-            toastManager.add({
-              type: "error",
-              title: "Could not update interaction mode",
-              description: error instanceof Error ? error.message : "An unexpected error occurred.",
-            });
-          });
-      }
-    }
-    scheduleComposerFocus();
-  };
-  const toggleInteractionMode = () => {
-    handleInteractionModeChange(interactionMode === "debug" ? "default" : "debug");
-  };
-  const resetInteractionMode = () => {
-    handleInteractionModeChange("default");
-  };
-
   const persistThreadSettingsForNextTurn = async (input: {
     threadId: ThreadId;
     createdAt: string;
     modelSelection?: ModelSelection;
     runtimeMode: RuntimeMode;
-    interactionMode: ProviderInteractionMode;
   }) => {
     if (!serverThread) {
       return;
@@ -244,23 +202,11 @@ export function useChatRuntimeModes({
           createdAt: input.createdAt,
         }),
     });
-
-    if (input.interactionMode !== serverThread.interactionMode) {
-      await api.orchestration.dispatchCommand({
-        type: "thread.interaction-mode.set",
-        commandId: newCommandId(),
-        threadId: input.threadId,
-        interactionMode: input.interactionMode,
-        createdAt: input.createdAt,
-      });
-    }
   };
   return {
     persistRuntimeModeChange,
     handleRuntimeModeChange,
-    handleInteractionModeChange,
-    toggleInteractionMode,
-    resetInteractionMode,
+
     persistThreadSettingsForNextTurn,
   };
 }

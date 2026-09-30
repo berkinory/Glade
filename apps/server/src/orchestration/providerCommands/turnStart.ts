@@ -328,7 +328,7 @@ export function makeProviderTurnStart(input: {
         ...(event.payload.reviewTarget !== undefined
           ? { reviewTarget: event.payload.reviewTarget }
           : {}),
-        interactionMode: event.payload.interactionMode,
+
         dispatchMode: immediateDispatchMode,
         createdAt: event.payload.createdAt,
       }).pipe(

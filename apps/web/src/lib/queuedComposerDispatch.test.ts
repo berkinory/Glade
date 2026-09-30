@@ -47,7 +47,7 @@ function makeQueuedChatTurn(): QueuedComposerTurn {
       model: "gpt-5",
     },
     runtimeMode: "full-access",
-    interactionMode: "default",
+
     envMode: "local",
   };
 }
@@ -83,7 +83,7 @@ describe("dispatchQueuedComposerTurnHeadless", () => {
         type: "thread.turn.start",
         threadId: THREAD_ID,
         dispatchMode: "queue",
-        interactionMode: "default",
+
         runtimeMode: "full-access",
         assistantDeliveryMode: "streaming",
         message: expect.objectContaining({

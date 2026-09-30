@@ -350,7 +350,7 @@ export function makeClaudeTurnCompletion(input: {
       if (context.interruptRequestedTurnId === turnState.turnId) {
         context.interruptRequestedTurnId = undefined;
       }
-      context.lastInteractionMode = turnState.interactionMode;
+
       context.turnState = undefined;
       context.session = {
         ...context.session,

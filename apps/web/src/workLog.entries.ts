@@ -19,7 +19,6 @@ import {
   type GladeMcpToolStatus,
 } from "./lib/toolCallLabel.descriptors";
 import { normalizeToolTextForComparison } from "./lib/toolCallLabel.presentations";
-import { toolArgumentSummaryToolName } from "./lib/toolArgumentSummary";
 import { deriveWorkLogToolDetails } from "./lib/toolCallDetails";
 import { compareActivitiesByOrder } from "./workLog.ordering";
 import {
@@ -133,8 +132,7 @@ export function deriveWorkLogEntries(
         activity.kind !== "account.rate-limits.updated" &&
         activity.kind !== "context-window.updated" &&
         activity.kind !== "context-window.configured" &&
-        activity.summary !== "Checkpoint captured" &&
-        !isPlanBoundaryToolActivity(activity),
+        activity.summary !== "Checkpoint captured",
     )
     .map(toDerivedWorkLogEntry);
 
@@ -203,21 +201,6 @@ function isQuietTurnLifecycleActivity(activity: OrchestrationThreadActivity): bo
 
 function isUninformativeCommandStartEntry(entry: DerivedWorkLogEntry): boolean {
   return entry.activityKind === "tool.started" && entry.suppressStandaloneCommandStart === true;
-}
-
-function isPlanBoundaryToolActivity(activity: OrchestrationThreadActivity): boolean {
-  if (activity.kind !== "tool.updated" && activity.kind !== "tool.completed") {
-    return false;
-  }
-
-  const payload =
-    activity.payload && typeof activity.payload === "object"
-      ? (activity.payload as Record<string, unknown>)
-      : null;
-  return (
-    typeof payload?.detail === "string" &&
-    toolArgumentSummaryToolName(payload.detail) === "ExitPlanMode"
-  );
 }
 
 function extractWorkLogAutomation(

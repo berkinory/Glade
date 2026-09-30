@@ -71,9 +71,7 @@ interface ChatTurnFollowUpsInput {
   persistThreadSettingsForNextTurn: ReturnType<
     typeof useChatRuntimeModes
   >["persistThreadSettingsForNextTurn"];
-  setComposerDraftInteractionMode: ReturnType<
-    typeof useChatComposerDraft
-  >["setComposerDraftInteractionMode"];
+
   rememberCustomBinaryPathForDispatch: ReturnType<
     typeof useChatProviderStatus
   >["rememberCustomBinaryPathForDispatch"];
@@ -96,7 +94,6 @@ type ChatTurnFollowUpsControllerInput = {
     | "setComposerDraftComputerControlMode"
     | "isRevertingCheckpoint"
     | "setIsRevertingCheckpoint"
-    | "setComposerDraftInteractionMode"
     | "markWorkflowRunDismissed"
     | "syncServerShellSnapshot"
     | "navigate"

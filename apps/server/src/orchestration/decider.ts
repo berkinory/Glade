@@ -47,7 +47,6 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
     case "thread.pinned-message.done.set":
     case "thread.pinned-message.label.set":
     case "thread.runtime-mode.set":
-    case "thread.interaction-mode.set":
     case "thread.session.stop":
 
     case "thread.session.set":
@@ -73,7 +72,7 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
     case "thread.message.assistant.complete":
     case "thread.message.user.bind-turn":
     case "thread.message.user.set-turn-boundary":
-    case "thread.proposed-plan.upsert":
+
     case "thread.turn.diff.complete":
     case "thread.activity.append":
       return yield* decideTranscriptCommand({ command, readModel, workspacePaths });

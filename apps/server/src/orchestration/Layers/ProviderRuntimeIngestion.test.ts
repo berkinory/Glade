@@ -18,7 +18,7 @@ import {
   ThreadId,
   TurnId,
 } from "@glade/contracts/core/baseSchemas";
-import { DEFAULT_PROVIDER_INTERACTION_MODE } from "@glade/contracts/provider/sessionPolicy";
+
 import { Effect, Exit, Layer, ManagedRuntime, Option, PubSub, Scope, Stream } from "effect";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -398,7 +398,7 @@ describe("ProviderRuntimeIngestion", () => {
           provider: "codex",
           model: "gpt-5-codex",
         },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         branch: null,
         worktreePath: null,
@@ -563,7 +563,7 @@ describe("ProviderRuntimeIngestion", () => {
           provider: "codex",
           model: "cursor-default",
         },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         branch: null,
         worktreePath: null,
@@ -1231,7 +1231,7 @@ describe("ProviderRuntimeIngestion", () => {
           attachments: [],
         },
         assistantDeliveryMode: "buffered",
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         createdAt: now,
       }),
@@ -1248,7 +1248,7 @@ describe("ProviderRuntimeIngestion", () => {
           attachments: [],
         },
         assistantDeliveryMode: "streaming",
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         createdAt: now,
       }),
@@ -1343,7 +1343,7 @@ describe("ProviderRuntimeIngestion", () => {
         projectId: asProjectId("project-1"),
         title: "Buffered Thread",
         modelSelection: { provider: "codex", model: "gpt-5-codex" },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         branch: null,
         worktreePath: null,
@@ -1380,7 +1380,7 @@ describe("ProviderRuntimeIngestion", () => {
           attachments: [],
         },
         assistantDeliveryMode: "streaming",
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         createdAt: now,
       }),
@@ -1397,7 +1397,7 @@ describe("ProviderRuntimeIngestion", () => {
           attachments: [],
         },
         assistantDeliveryMode: "buffered",
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         createdAt: now,
       }),
@@ -2046,7 +2046,7 @@ describe("ProviderRuntimeIngestion", () => {
           projectId: asProjectId("project-1"),
           title: "Duplicate",
           modelSelection: { provider: "codex", model: "gpt-5-codex" },
-          interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
           runtimeMode: "approval-required",
           branch: null,
           worktreePath: null,

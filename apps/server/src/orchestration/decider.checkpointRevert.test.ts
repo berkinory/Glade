@@ -6,7 +6,7 @@ import {
   ThreadId,
   TurnId,
 } from "@glade/contracts/core/baseSchemas";
-import { DEFAULT_PROVIDER_INTERACTION_MODE } from "@glade/contracts/provider/sessionPolicy";
+
 import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import {
   type OrchestrationLatestTurn,
@@ -45,7 +45,7 @@ function makeReadModel(input: {
           provider: "codex",
           model: "gpt-5-codex",
         },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "full-access",
         branch: null,
         worktreePath: null,
@@ -118,7 +118,7 @@ describe("checkpoint revert decider", () => {
             text: "start work",
             attachments: [],
           },
-          interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
           runtimeMode: "full-access",
           createdAt: NOW,
         },
@@ -186,7 +186,7 @@ describe("checkpoint revert decider", () => {
               text: "race the revert",
               attachments: [],
             },
-            interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
             runtimeMode: "full-access",
             createdAt: NOW,
           },
@@ -249,7 +249,7 @@ describe("checkpoint revert decider", () => {
               text: "must remain blocked",
               attachments: [],
             },
-            interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
             runtimeMode: "full-access",
             createdAt: NOW,
           },
@@ -290,7 +290,7 @@ describe("checkpoint revert decider", () => {
             threadId: THREAD_ID,
             messageId: MessageId.makeUnsafe("message-during-revert"),
             text: "edited",
-            interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
             runtimeMode: "full-access",
             createdAt: NOW,
           },
@@ -362,7 +362,7 @@ describe("checkpoint revert decider", () => {
             text: "original",
             attachments: [],
           },
-          interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
           runtimeMode: "full-access",
           createdAt: NOW,
         },
@@ -394,7 +394,7 @@ describe("checkpoint revert decider", () => {
           threadId: THREAD_ID,
           messageId: MessageId.makeUnsafe("message-to-edit"),
           text: "edited",
-          interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
           runtimeMode: "full-access",
           createdAt: NOW,
         },

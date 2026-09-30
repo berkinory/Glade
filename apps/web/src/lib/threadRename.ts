@@ -1,8 +1,4 @@
-import {
-  type ModelSelection,
-  type ProviderInteractionMode,
-  type RuntimeMode,
-} from "@glade/contracts/provider/sessionPolicy";
+import { type ModelSelection, type RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
 import { type OrchestrationThreadPullRequest } from "@glade/contracts/orchestration/threadEntities";
 import { type ProjectId, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { DraftThreadEnvMode } from "../composerDraftDomain";
@@ -17,7 +13,6 @@ type DraftThreadRenameSource = Pick<
   | "projectId"
   | "modelSelection"
   | "runtimeMode"
-  | "interactionMode"
   | "envMode"
   | "branch"
   | "worktreePath"
@@ -31,7 +26,7 @@ export function buildDraftThreadRenameCreateInput(thread: DraftThreadRenameSourc
     projectId: thread.projectId,
     modelSelection: thread.modelSelection,
     runtimeMode: thread.runtimeMode,
-    interactionMode: thread.interactionMode,
+
     envMode: thread.envMode ?? "local",
     branch: thread.branch,
     worktreePath: thread.worktreePath,
@@ -42,7 +37,7 @@ export function buildDraftThreadRenameCreateInput(thread: DraftThreadRenameSourc
     projectId: ProjectId;
     modelSelection: ModelSelection;
     runtimeMode: RuntimeMode;
-    interactionMode: ProviderInteractionMode;
+
     envMode: DraftThreadEnvMode;
     branch: string | null;
     worktreePath: string | null;
@@ -61,7 +56,7 @@ export async function dispatchThreadRename(input: {
         projectId: ProjectId;
         modelSelection: ModelSelection;
         runtimeMode: RuntimeMode;
-        interactionMode: ProviderInteractionMode;
+
         envMode: DraftThreadEnvMode;
         branch: string | null;
         worktreePath: string | null;
@@ -94,7 +89,7 @@ export async function dispatchThreadRename(input: {
         title: trimmed,
         modelSelection: input.createIfMissing.modelSelection,
         runtimeMode: input.createIfMissing.runtimeMode,
-        interactionMode: input.createIfMissing.interactionMode,
+
         envMode: input.createIfMissing.envMode,
         branch: input.createIfMissing.branch,
         worktreePath: input.createIfMissing.worktreePath,

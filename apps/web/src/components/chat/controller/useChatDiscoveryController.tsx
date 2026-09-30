@@ -64,7 +64,7 @@ export function useChatDiscoveryController({
     resolvedThreadWorktreePath,
     settledThreadBranchAtActivation,
     isServerThread,
-    interactionMode,
+
     isContainerLandingProject,
     repoDiffBadgeRefreshIntervalMs,
     activeLatestTurn,
@@ -171,7 +171,6 @@ export function useChatDiscoveryController({
       terminalContextCount: composerTerminalContexts.length,
       selectedSkillCount: selectedComposerSkills.length,
       selectedMentionCount: selectedComposerMentions.length,
-      interactionMode,
     });
 
   const canOfferExportCommand =

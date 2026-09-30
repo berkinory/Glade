@@ -4,10 +4,6 @@ export function isPrefixedToolArgumentSummary(detail: string): boolean {
   return PREFIXED_SUMMARY_PATTERN.test(detail.trim());
 }
 
-export function toolArgumentSummaryToolName(detail: string): string | null {
-  return /^([\w.-]+):/.exec(detail.trim())?.[1] ?? null;
-}
-
 interface ToolArgumentSummary {
   readonly toolName: string | null;
 

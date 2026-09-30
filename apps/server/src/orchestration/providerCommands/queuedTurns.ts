@@ -111,7 +111,6 @@ export function makeProviderQueuedTurns(input: {
             ? { dispatchOrigin: nextQueuedTurn.dispatchOrigin }
             : {}),
           runtimeMode: nextQueuedTurn.runtimeMode,
-          interactionMode: nextQueuedTurn.interactionMode,
 
           createdAt: nextQueuedTurn.createdAt,
         });

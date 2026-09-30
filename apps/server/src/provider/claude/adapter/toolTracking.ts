@@ -51,7 +51,7 @@ export function makeClaudeToolTracking(input: {
         spawnPermissionMode: context.spawnPermissionMode,
 
         firstTurnSpawnModeAuthoritative: false,
-        lastInteractionMode: undefined,
+
         currentApiModelId: undefined,
         availableModels: context.availableModels,
         fastModeState: context.fastModeState,
@@ -188,7 +188,7 @@ export function makeClaudeToolTracking(input: {
       context.turnState = {
         turnId,
         startedAt,
-        interactionMode: "default",
+
         synthetic: true,
         items: [],
         assistantTextBlocks: new Map(),

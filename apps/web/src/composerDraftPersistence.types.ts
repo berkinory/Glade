@@ -1,7 +1,6 @@
 import * as Schema from "effect/Schema";
 import {
   ModelSelection,
-  ProviderInteractionMode,
   ProviderStartOptions,
   RuntimeMode,
 } from "@glade/contracts/provider/sessionPolicy";
@@ -157,7 +156,7 @@ const PersistedQueuedComposerChatTurn = Schema.Struct({
   computerControlGeneration: Schema.optionalKey(Schema.Number),
 
   runtimeMode: RuntimeMode,
-  interactionMode: ProviderInteractionMode,
+
   envMode: DraftThreadEnvModeSchema,
 });
 
@@ -215,7 +214,7 @@ const PersistedComposerThreadDraftState = Schema.Struct({
   ),
   activeProvider: Schema.optionalKey(Schema.NullOr(ProviderKind)),
   runtimeMode: Schema.optionalKey(RuntimeMode),
-  interactionMode: Schema.optionalKey(ProviderInteractionMode),
+
   enableComputerControl: Schema.optionalKey(Schema.Boolean),
   computerControlMode: Schema.optionalKey(Schema.Literals(["off", "request", "chat"])),
   computerControlGeneration: Schema.optionalKey(Schema.Number),
@@ -262,7 +261,7 @@ const PersistedDraftThreadState = Schema.Struct({
   projectId: ProjectId,
   createdAt: Schema.String,
   runtimeMode: RuntimeMode,
-  interactionMode: ProviderInteractionMode,
+
   branch: Schema.NullOr(Schema.String),
   worktreePath: Schema.NullOr(Schema.String),
   workingDirectory: Schema.optionalKey(Schema.NullOr(Schema.String)),

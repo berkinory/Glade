@@ -5,7 +5,7 @@ import {
   ThreadId,
   TurnId,
 } from "@glade/contracts/core/baseSchemas";
-import { DEFAULT_PROVIDER_INTERACTION_MODE } from "@glade/contracts/provider/sessionPolicy";
+
 import {
   type OrchestrationMessage,
   type OrchestrationSession,
@@ -55,7 +55,7 @@ function makeReadModel(
           provider: "claudeAgent",
           model: "claude-opus-4-6",
         },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "full-access",
         branch: null,
         worktreePath: null,
@@ -115,7 +115,7 @@ function turnStartCommand(enableComputerControl?: boolean) {
       text: "launch the calculator",
       attachments: [],
     },
-    interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
     runtimeMode: "full-access" as const,
     createdAt: NOW,
     ...(enableComputerControl !== undefined ? { enableComputerControl } : {}),
@@ -128,7 +128,7 @@ function dispatchQueuedCommand(enableComputerControl?: boolean) {
     commandId: CommandId.makeUnsafe("cmd-dispatch-queued-computer-control"),
     threadId: THREAD_ID,
     messageId: MESSAGE_ID,
-    interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
     runtimeMode: "full-access" as const,
     createdAt: NOW,
     ...(enableComputerControl !== undefined ? { enableComputerControl } : {}),
@@ -142,7 +142,7 @@ function editAndResendCommand(enableComputerControl?: boolean) {
     threadId: THREAD_ID,
     messageId: MESSAGE_ID,
     text: "launch the calculator instead",
-    interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
     runtimeMode: "full-access" as const,
     createdAt: NOW,
     ...(enableComputerControl !== undefined ? { enableComputerControl } : {}),

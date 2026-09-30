@@ -1,7 +1,6 @@
 import { useChatThreadContext } from "./ChatThreadContext";
 import { EventId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
-  ProviderInteractionMode,
   RuntimeMode,
   type ModelSelection,
   type ProviderStartOptions,
@@ -96,7 +95,7 @@ interface ChatAutomationCreationInput {
   threadNotes: string;
   selectedModelSelection: ModelSelection;
   runtimeMode: RuntimeMode;
-  interactionMode: ProviderInteractionMode;
+
   automationDraftForm: ReturnType<typeof useChatAutomationSetup>["automationDraftForm"];
   automationDraftWarnings: ReturnType<typeof useChatAutomationSetup>["automationDraftWarnings"];
   acknowledgedAutomationWarnings: ReturnType<
@@ -107,11 +106,7 @@ interface ChatAutomationCreationInput {
 type ChatAutomationCreationControllerInput = {
   workspace: Pick<
     ChatAutomationCreationInput,
-    | "activeProject"
-    | "isServerThread"
-    | "activeThreadAssociatedWorktree"
-    | "runtimeMode"
-    | "interactionMode"
+    "activeProject" | "isServerThread" | "activeThreadAssociatedWorktree" | "runtimeMode"
   >;
   provider: Pick<
     ChatAutomationCreationInput,
@@ -136,13 +131,7 @@ export function useChatAutomationCreation({
   transcript,
 }: ChatAutomationCreationControllerInput) {
   const { threadId } = useChatThreadContext();
-  const {
-    activeProject,
-    isServerThread,
-    activeThreadAssociatedWorktree,
-    runtimeMode,
-    interactionMode,
-  } = workspace;
+  const { activeProject, isServerThread, activeThreadAssociatedWorktree, runtimeMode } = workspace;
   const {
     automationDraftSubmittingRef,
     providerOptionsForDispatch,
@@ -272,7 +261,6 @@ export function useChatAutomationCreation({
       readonly titleSeed: string;
       readonly threadModelSelection: ModelSelection;
       readonly threadRuntimeMode: RuntimeMode;
-      readonly threadInteractionMode: ProviderInteractionMode;
     }): Promise<ThreadId | null> => {
       const api = readNativeApi();
       if (!api || !activeProject || !activeThread) {
@@ -299,7 +287,7 @@ export function useChatAutomationCreation({
             title,
             modelSelection: input.threadModelSelection,
             runtimeMode: input.threadRuntimeMode,
-            interactionMode: input.threadInteractionMode,
+
             envMode: activeThread.envMode ?? (activeThread.worktreePath ? "worktree" : "local"),
             branch: activeThread.branch ?? null,
             worktreePath: activeThread.worktreePath ?? null,
@@ -371,7 +359,6 @@ export function useChatAutomationCreation({
         titleSeed: form.prompt || form.name,
         threadModelSelection: selectedModelSelection,
         threadRuntimeMode: runtimeMode,
-        threadInteractionMode: interactionMode,
       });
       if (!targetThreadId) {
         return null;
@@ -384,7 +371,7 @@ export function useChatAutomationCreation({
     [
       activeThread,
       ensureAutomationTargetThread,
-      interactionMode,
+
       isServerThread,
       runtimeMode,
       selectedModelSelection,

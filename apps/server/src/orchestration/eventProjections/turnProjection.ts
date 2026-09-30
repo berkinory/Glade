@@ -105,7 +105,7 @@ export function projectTurnEvent(
               ...modelSelectionPatch,
               ...(turnStartSession !== null ? { session: turnStartSession } : {}),
               runtimeMode: payload.runtimeMode,
-              interactionMode: payload.interactionMode,
+
               updatedAt: payload.createdAt,
             }),
           };

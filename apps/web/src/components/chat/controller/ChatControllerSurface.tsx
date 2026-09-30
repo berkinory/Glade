@@ -123,7 +123,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     closePullRequestDialog,
     handlePreparedPullRequestThread,
     collapseTerminalWorkspace,
-    interactionMode,
+
     activeContextWindow,
     activeCumulativeCostUsd,
     activeRateLimitStatus,
@@ -859,7 +859,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
         selectedModel={selectedModel}
         fastModeEnabled={fastModeEnabled}
         selectedPromptEffort={selectedPromptEffort}
-        interactionMode={interactionMode}
         envMode={envMode}
         envState={envState}
         branch={activeThread?.branch ?? activeRootBranch}

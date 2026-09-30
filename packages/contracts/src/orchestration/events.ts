@@ -1,4 +1,4 @@
-import { Schema, SchemaGetter } from "effect";
+import { Schema } from "effect";
 import {
   SpaceId,
   NonNegativeInt,
@@ -44,8 +44,6 @@ import {
   ModelSelection,
   RuntimeMode,
   DEFAULT_RUNTIME_MODE,
-  ProviderInteractionMode,
-  DEFAULT_PROVIDER_INTERACTION_MODE,
   ThreadCreationSource,
   TurnDispatchMode,
   MessageDispatchOrigin,
@@ -56,13 +54,6 @@ import {
   ProviderApprovalDecision,
   ProviderUserInputAnswers,
 } from "../provider/sessionPolicy";
-
-const LegacyProviderInteractionMode = Schema.Literals(["default", "plan", "debug"]).pipe(
-  Schema.decodeTo(ProviderInteractionMode, {
-    decode: SchemaGetter.transform((mode) => (mode === "plan" ? "default" : mode)),
-    encode: SchemaGetter.transform((mode) => mode),
-  }),
-);
 
 export const OrchestrationEventType = Schema.Literals([
   "space.created",
@@ -181,9 +172,7 @@ export const ThreadCreatedPayload = Schema.Struct({
   title: TrimmedNonEmptyString,
   modelSelection: ModelSelection,
   runtimeMode: RuntimeMode.pipe(Schema.withDecodingDefault(() => DEFAULT_RUNTIME_MODE)),
-  interactionMode: LegacyProviderInteractionMode.pipe(
-    Schema.withDecodingDefault(() => DEFAULT_PROVIDER_INTERACTION_MODE),
-  ),
+
   envMode: Schema.optional(ThreadEnvironmentMode).pipe(Schema.withDecodingDefault(() => "local")),
   branch: Schema.NullOr(TrimmedNonEmptyString),
   worktreePath: Schema.NullOr(TrimmedNonEmptyString),
@@ -310,15 +299,6 @@ export const ThreadRuntimeModeSetPayload = Schema.Struct({
   updatedAt: IsoDateTime,
 });
 
-export const ThreadInteractionModeSetPayload = Schema.Struct({
-  threadId: ThreadId,
-  previousInteractionMode: Schema.optional(LegacyProviderInteractionMode),
-  interactionMode: LegacyProviderInteractionMode.pipe(
-    Schema.withDecodingDefault(() => DEFAULT_PROVIDER_INTERACTION_MODE),
-  ),
-  updatedAt: IsoDateTime,
-});
-
 export const ThreadMessageSentPayload = Schema.Struct({
   asyncUserInput: Schema.optional(AsyncUserInput),
   threadId: ThreadId,
@@ -379,9 +359,6 @@ export const ThreadTurnStartRequestedPayload = Schema.Struct({
   dispatchMode: TurnDispatchMode.pipe(Schema.withDecodingDefault(() => DEFAULT_TURN_DISPATCH_MODE)),
   dispatchOrigin: Schema.optional(MessageDispatchOrigin),
   runtimeMode: RuntimeMode.pipe(Schema.withDecodingDefault(() => DEFAULT_RUNTIME_MODE)),
-  interactionMode: LegacyProviderInteractionMode.pipe(
-    Schema.withDecodingDefault(() => DEFAULT_PROVIDER_INTERACTION_MODE),
-  ),
 
   createdAt: IsoDateTime,
 });
@@ -470,7 +447,7 @@ export const ThreadMessageEditResendRequestedPayload = Schema.Struct({
   computerControlGeneration: Schema.optional(NonNegativeInt),
   assistantDeliveryMode: Schema.optional(AssistantDeliveryMode),
   runtimeMode: RuntimeMode,
-  interactionMode: LegacyProviderInteractionMode,
+
   createdAt: IsoDateTime,
 });
 
@@ -612,7 +589,7 @@ export const OrchestrationEvent = Schema.Union([
   Schema.Struct({
     ...EventBaseFields,
     type: Schema.Literal("thread.interaction-mode-set"),
-    payload: ThreadInteractionModeSetPayload,
+    payload: Schema.Struct({ threadId: ThreadId, updatedAt: IsoDateTime }),
   }),
   Schema.Struct({
     ...EventBaseFields,

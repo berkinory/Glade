@@ -26,7 +26,7 @@ function makeCodexThread(): OrchestrationThread {
     title: "Imported thread",
     modelSelection: { provider: "codex", model: "gpt-5.5" },
     runtimeMode: "full-access",
-    interactionMode: "default",
+
     envMode: "local",
     branch: null,
     worktreePath: null,

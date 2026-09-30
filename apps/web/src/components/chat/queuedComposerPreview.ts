@@ -69,29 +69,3 @@ export function formatPastedTextTitleSeed(
     ? pastedTextTitle(firstPastedText.text)
     : `${pastedTexts.length} pasted texts`;
 }
-
-function normalizeRestoredQueuedPrompt(value: string): string {
-  return value.trim().replace(/\s+/g, " ");
-}
-
-export function composerPromptStillMatchesRestoredQueuedDraft(
-  restoredPrompt: string,
-  nextPrompt: string,
-): boolean {
-  const restored = normalizeRestoredQueuedPrompt(restoredPrompt);
-  const next = normalizeRestoredQueuedPrompt(nextPrompt);
-  if (next.length === 0) {
-    return false;
-  }
-  if (restored.length === 0) {
-    return true;
-  }
-  if (next.includes(restored)) {
-    return true;
-  }
-  if (next.length >= Math.min(16, restored.length) && restored.includes(next)) {
-    return true;
-  }
-  const probe = restored.slice(0, Math.min(48, restored.length));
-  return probe.length >= 16 && next.includes(probe);
-}

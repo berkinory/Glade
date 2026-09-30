@@ -5,10 +5,7 @@ import {
   ProjectId,
   ThreadId,
 } from "@glade/contracts/core/baseSchemas";
-import {
-  DEFAULT_PROVIDER_INTERACTION_MODE,
-  DEFAULT_RUNTIME_MODE,
-} from "@glade/contracts/provider/sessionPolicy";
+import { DEFAULT_RUNTIME_MODE } from "@glade/contracts/provider/sessionPolicy";
 import type { OrchestrationReadModel } from "@glade/contracts/orchestration/snapshots";
 import { describe, expect, it } from "vitest";
 import { Effect } from "effect";
@@ -68,7 +65,7 @@ async function createThreadReadModel(now: string): Promise<OrchestrationReadMode
           provider: "codex",
           model: "gpt-5-codex",
         },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: DEFAULT_RUNTIME_MODE,
         envMode: "local",
         branch: null,

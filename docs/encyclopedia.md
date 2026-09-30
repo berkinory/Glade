@@ -103,10 +103,6 @@ The live provider-backed runtime attached to a thread. Session shape is in [the 
 
 The safety/access mode for a thread or session. In [the contracts][1], the values are `approval-required`, `auto`, and `full-access`. Auto uses a native AI approval reviewer for Codex and Claude Code; Full access bypasses approval entirely. See [runtime-modes.md][18].
 
-#### Interaction mode
-
-The agent interaction style for a thread. In [the contracts][1], the main values are `default` and `plan`. See [runtime-modes.md][18].
-
 #### Assistant delivery mode
 
 Controls how assistant text reaches the thread timeline. In [the contracts][1], `streaming` updates incrementally and `buffered` delivers a completed result. See [ProviderService.ts][14].

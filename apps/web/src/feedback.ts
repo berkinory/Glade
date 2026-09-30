@@ -20,7 +20,7 @@ export interface FeedbackThreadContext {
   projectKind: string | null;
   environmentMode: string | null;
   runtimeMode: string | null;
-  interactionMode: string | null;
+
   sessionStatus: string | null;
   latestTurnState: string | null;
   messageCount: number;
@@ -76,7 +76,6 @@ function formatFeedbackSummary(input: {
     ["Project kind", diagnostics.projectKind],
     ["Environment mode", diagnostics.environmentMode],
     ["Runtime mode", diagnostics.runtimeMode],
-    ["Interaction mode", diagnostics.interactionMode],
     ["Session status", diagnostics.sessionStatus],
     ["Latest turn state", diagnostics.latestTurnState],
     [

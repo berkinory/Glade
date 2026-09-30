@@ -11,10 +11,7 @@ import {
   TurnId,
   type ProviderKind,
 } from "@glade/contracts/core/baseSchemas";
-import {
-  type ModelSelection,
-  type ProviderInteractionMode,
-} from "@glade/contracts/provider/sessionPolicy";
+
 import { type OrchestrationThreadShell } from "@glade/contracts/orchestration/threadEntities";
 import {
   type GladeCreateThreadsInput,
@@ -56,10 +53,6 @@ class CreationCoordinatorError extends Error {
 }
 
 const CREATION_REPLAY_WAIT_MS = 60_000;
-
-function interactionModeForGatewayTarget(_target: ModelSelection): ProviderInteractionMode {
-  return "default";
-}
 
 interface PullRequestSelector {
   readonly number: number;
@@ -919,7 +912,6 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
                     associatedWorktreeRef = created.worktree.ref;
                   }
 
-                  const interactionMode = interactionModeForGatewayTarget(entry.target);
                   yield* context.assertAuthority();
                   yield* orchestrationEngine
                     .dispatch({
@@ -930,7 +922,7 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
                       title: entry.title,
                       modelSelection: entry.target,
                       runtimeMode: entry.runtimeMode,
-                      interactionMode,
+
                       envMode: entry.environment,
                       branch,
                       worktreePath,
@@ -968,7 +960,7 @@ export const makeCreateThreadsHandler = Effect.fn(function* (
                     dispatchMode: "queue",
                     dispatchOrigin: "agent",
                     runtimeMode: entry.runtimeMode,
-                    interactionMode,
+
                     ...(entry.spec.enableComputerControl === true
                       ? {
                           enableComputerControl: true,

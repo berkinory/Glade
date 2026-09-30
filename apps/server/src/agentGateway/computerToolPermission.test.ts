@@ -86,15 +86,6 @@ describe("Glade Computer provider permission", () => {
       }),
     ).toBeUndefined();
     expect(isGladeComputerToolFamilyName("Please approve computer_click")).toBe(false);
-    expect(
-      shouldAllowGladeComputerProviderTool({
-        computerControlEnabled: true,
-        activeTurn: true,
-        interactionMode: "default",
-        runtimeMode: "approval-required",
-        permission: { title: "Please approve computer_click" },
-      }),
-    ).toBe(false);
   });
 
   it("matches the Computer family in any namespace spelling for the denial hook", () => {
@@ -113,12 +104,12 @@ describe("Glade Computer provider permission", () => {
     expect(isGladeComputerToolFamilyName(42)).toBe(false);
   });
 
-  it("requires current capability, active turn and non-Plan interaction", () => {
+  it("requires current capability and an active turn", () => {
     const permission = { name: "mcp__glade__computer_click" };
     const allowed = {
       computerControlEnabled: true,
       activeTurn: true,
-      interactionMode: "default" as const,
+
       runtimeMode: "approval-required" as const,
       permission,
     };

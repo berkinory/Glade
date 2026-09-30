@@ -68,7 +68,7 @@ export function createFreshDraftThreadSeed(input: {
   createdAt: string;
   options: NewThreadOptions | undefined;
   defaultEnvMode?: DraftThreadEnvMode;
-}): Omit<DraftThreadState, "projectId" | "interactionMode"> {
+}): Omit<DraftThreadState, "projectId"> {
   return {
     createdAt: input.createdAt,
     branch: input.options?.branch ?? null,

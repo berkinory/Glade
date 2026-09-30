@@ -215,7 +215,7 @@ export function decideConversationCommand({
               ? { assistantDeliveryMode: command.assistantDeliveryMode }
               : {}),
             runtimeMode: command.runtimeMode,
-            interactionMode: command.interactionMode,
+
             createdAt: command.createdAt,
           },
         };

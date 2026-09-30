@@ -328,6 +328,16 @@ layer("OrchestrationEventStore", (it) => {
           "thread.proposed-plan-upserted",
           { threadId, proposedPlan: { id: "old-plan", planMarkdown: "Retired plan" } },
         ],
+        [
+          4,
+          "thread.interaction-mode-set",
+          {
+            threadId,
+            interactionMode: "debug",
+            previousInteractionMode: "default",
+            updatedAt: now,
+          },
+        ],
       ] as const) {
         yield* sql`INSERT INTO orchestration_events
           (event_id, aggregate_kind, stream_id, stream_version, event_type, occurred_at,
@@ -338,17 +348,18 @@ layer("OrchestrationEventStore", (it) => {
       const replayed = Array.from(
         yield* Stream.runCollect(eventStore.readFromSequence(startSequence, 10)),
       );
-      assert.equal(replayed.length, 4);
+      assert.equal(replayed.length, 5);
       assert.equal(replayed[0]?.type, "thread.meta-updated");
       assert.deepEqual(replayed[0]?.payload, { threadId, title: "Kept title", updatedAt: now });
       assert.equal(replayed[1]?.type, "thread.goal-continuation-requested");
       assert.deepEqual(replayed[1]?.payload, { threadId, createdAt: now });
       assert.deepEqual(replayed[2]?.payload, {
         threadId,
-        interactionMode: "default",
+
         updatedAt: now,
       });
       assert.deepEqual(replayed[3]?.payload, { threadId });
+      assert.deepEqual(replayed[4]?.payload, { threadId, updatedAt: now });
     }),
   );
 

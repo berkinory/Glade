@@ -254,7 +254,7 @@ export const THREAD_STATUS_PRIORITY: Record<ThreadStatusPill["label"], number> =
 
 export type ThreadStatusInput = Pick<
   Thread,
-  "interactionMode" | "latestTurn" | "lastVisitedAt" | "session" | "updatedAt"
+  "latestTurn" | "lastVisitedAt" | "session" | "updatedAt"
 > & {
   hasLiveTailWork?: boolean | undefined;
   dismissedStatusKey?: string | undefined;

@@ -58,7 +58,3 @@ export function renderGladeHarnessPolicy(capabilities: GladeHarnessCapabilities)
       : []),
   ].join("\n");
 }
-
-export const GLADE_GATEWAY_HARNESS_POLICY = renderGladeHarnessPolicy({
-  gatewayControlAvailable: true,
-});

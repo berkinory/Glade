@@ -1,10 +1,6 @@
 import * as Schema from "effect/Schema";
 import { normalizePendingUserInputDrafts } from "./pendingUserInputRecovery";
-import {
-  ModelSelection,
-  ProviderInteractionMode,
-  RuntimeMode,
-} from "@glade/contracts/provider/sessionPolicy";
+import { ModelSelection, RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
 import { OrchestrationThreadPullRequest } from "@glade/contracts/orchestration/threadEntities";
 import { ProjectId, ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
@@ -24,7 +20,7 @@ import {
 } from "./composerDraftModels";
 import { normalizeBrowserAnnotations } from "./lib/browserAnnotations";
 import { ensureInlineTerminalContextPlaceholders } from "./lib/terminalContext";
-import { DEFAULT_INTERACTION_MODE, DEFAULT_RUNTIME_MODE } from "./types";
+import { DEFAULT_RUNTIME_MODE } from "./types";
 import {
   LEGACY_TERMINAL_DRAFT_MAPPING_SUFFIX,
   normalizePersistedModelSelectionMap,
@@ -111,9 +107,7 @@ export function normalizePersistedDraftThreads(
         runtimeMode: Schema.is(RuntimeMode)(candidateDraftThread.runtimeMode)
           ? candidateDraftThread.runtimeMode
           : DEFAULT_RUNTIME_MODE,
-        interactionMode: Schema.is(ProviderInteractionMode)(candidateDraftThread.interactionMode)
-          ? candidateDraftThread.interactionMode
-          : DEFAULT_INTERACTION_MODE,
+
         branch: typeof branch === "string" ? branch : null,
         worktreePath: normalizedWorktreePath,
         workingDirectory: typeof workingDirectory === "string" ? workingDirectory : null,
@@ -156,7 +150,7 @@ export function normalizePersistedDraftThreads(
             projectId: projectId as ProjectId,
             createdAt: new Date().toISOString(),
             runtimeMode: DEFAULT_RUNTIME_MODE,
-            interactionMode: DEFAULT_INTERACTION_MODE,
+
             branch: null,
             worktreePath: null,
             workingDirectory: null,
@@ -248,9 +242,6 @@ export function normalizePersistedDraftsByThreadId(
     const runtimeMode = Schema.is(RuntimeMode)(draftCandidate.runtimeMode)
       ? draftCandidate.runtimeMode
       : null;
-    const interactionMode = Schema.is(ProviderInteractionMode)(draftCandidate.interactionMode)
-      ? draftCandidate.interactionMode
-      : null;
 
     const enableComputerControl =
       typeof draftCandidate.enableComputerControl === "boolean"
@@ -337,7 +328,6 @@ export function normalizePersistedDraftsByThreadId(
       !hasQueuedTurns &&
       !hasModelData &&
       !runtimeMode &&
-      !interactionMode &&
       enableComputerControl === undefined &&
       computerControlMode === undefined
     ) {
@@ -360,7 +350,7 @@ export function normalizePersistedDraftsByThreadId(
 
       ...(hasModelData ? { modelSelectionByProvider, activeProvider } : {}),
       ...(runtimeMode ? { runtimeMode } : {}),
-      ...(interactionMode ? { interactionMode } : {}),
+
       ...(enableComputerControl !== undefined ? { enableComputerControl } : {}),
       ...(computerControlMode !== undefined ? { computerControlMode } : {}),
       ...(computerControlGeneration !== undefined ? { computerControlGeneration } : {}),

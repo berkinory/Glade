@@ -98,7 +98,7 @@ function makeThreadShell(
     title: `Thread ${id}`,
     modelSelection: { provider: "codex", model: "gpt-5.5" },
     runtimeMode: "approval-required",
-    interactionMode: "default",
+
     envMode: "local",
     branch: null,
     worktreePath: null,
@@ -255,7 +255,7 @@ function makeAutomationDefinition(
     nextRunAt: NOW,
     modelSelection: { provider: "codex", model: "gpt-5.5" },
     runtimeMode: "approval-required",
-    interactionMode: "default",
+
     worktreeMode: "local",
     mode: "heartbeat",
     targetThreadId: ThreadId.makeUnsafe("thread-parent"),

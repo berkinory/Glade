@@ -2027,9 +2027,7 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
           ...(input.skills !== undefined ? { skills: input.skills } : {}),
           ...(input.mentions !== undefined ? { mentions: input.mentions } : {}),
           ...codexModelSelectionOverrides(input.modelSelection),
-          ...(input.interactionMode !== undefined
-            ? { interactionMode: input.interactionMode }
-            : {}),
+
           ...(nativeCodexAttachments.length > 0 ? { attachments: nativeCodexAttachments } : {}),
         } satisfies CodexAppServerSendTurnInput;
       });

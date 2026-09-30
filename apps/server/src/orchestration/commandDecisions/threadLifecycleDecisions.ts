@@ -87,7 +87,7 @@ export function decideThreadLifecycleCommand({
             title: command.title,
             modelSelection: command.modelSelection,
             runtimeMode: command.runtimeMode,
-            interactionMode: command.interactionMode,
+
             ...resolveCreatedThreadWorkspaceMetadata(command),
             createBranchFlowCompleted: command.createBranchFlowCompleted,
             isPinned: command.isPinned,
@@ -162,7 +162,7 @@ export function decideThreadLifecycleCommand({
             title: command.title,
             modelSelection: command.modelSelection,
             runtimeMode: command.runtimeMode,
-            interactionMode: command.interactionMode,
+
             ...resolveCreatedThreadWorkspaceMetadata(command),
             createBranchFlowCompleted: command.createBranchFlowCompleted,
             isPinned: false,
@@ -254,7 +254,7 @@ export function decideThreadLifecycleCommand({
             ),
             modelSelection: command.modelSelection,
             runtimeMode: command.runtimeMode,
-            interactionMode: command.interactionMode,
+
             ...resolveCreatedThreadWorkspaceMetadata(command),
             createBranchFlowCompleted: command.createBranchFlowCompleted,
             isPinned: false,
@@ -560,29 +560,7 @@ export function decideThreadLifecycleCommand({
           },
         };
       }
-      case "thread.interaction-mode.set": {
-        const thread = yield* requireThread({
-          readModel,
-          command,
-          threadId: command.threadId,
-        });
-        const occurredAt = nowIso();
-        return {
-          ...withEventBase({
-            aggregateKind: "thread",
-            aggregateId: command.threadId,
-            occurredAt,
-            commandId: command.commandId,
-          }),
-          type: "thread.interaction-mode-set",
-          payload: {
-            threadId: command.threadId,
-            previousInteractionMode: thread.interactionMode,
-            interactionMode: command.interactionMode,
-            updatedAt: occurredAt,
-          },
-        };
-      }
+
       case "thread.session.stop": {
         yield* requireThread({
           readModel,

@@ -133,7 +133,7 @@ export function toHydratedThreadDraft(
     modelSelectionByProvider,
     activeProvider,
     runtimeMode: persistedDraft.runtimeMode ?? null,
-    interactionMode: persistedDraft.interactionMode ?? null,
+
     computerControlMode: persistedDraft.computerControlMode,
     computerControlGeneration: persistedDraft.computerControlGeneration,
     enableComputerControl:

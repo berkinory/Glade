@@ -61,9 +61,7 @@ interface ChatQueuedTurnsInput {
   setComposerDraftRuntimeMode: ReturnType<
     typeof useChatComposerDraft
   >["setComposerDraftRuntimeMode"];
-  setComposerDraftInteractionMode: ReturnType<
-    typeof useChatComposerDraft
-  >["setComposerDraftInteractionMode"];
+
   setComposerDraftComputerControlMode: ReturnType<
     typeof useChatComposerDraft
   >["setComposerDraftComputerControlMode"];
@@ -106,7 +104,6 @@ type ChatQueuedTurnsControllerInput = {
     | "addComposerPullRequestContextsToDraft"
     | "setComposerDraftModelSelection"
     | "setComposerDraftRuntimeMode"
-    | "setComposerDraftInteractionMode"
     | "setComposerDraftComputerControlMode"
     | "setComposerCursor"
     | "setComposerTrigger"
@@ -156,7 +153,7 @@ export function useChatQueuedTurns({
 
     setComposerDraftModelSelection,
     setComposerDraftRuntimeMode,
-    setComposerDraftInteractionMode,
+
     setComposerDraftComputerControlMode,
     setComposerCursor,
     setComposerTrigger,
@@ -224,7 +221,7 @@ export function useChatQueuedTurns({
 
       setDraftThreadContext(activeThread.id, {
         runtimeMode: queuedTurn.runtimeMode,
-        interactionMode: queuedTurn.interactionMode,
+
         ...(queuedTurn.kind === "chat" ? { envMode: queuedTurn.envMode } : {}),
       });
       if (queuedTurn.kind === "chat") {
@@ -259,7 +256,6 @@ export function useChatQueuedTurns({
 
       setComposerDraftModelSelection(activeThread.id, queuedTurn.modelSelection);
       setComposerDraftRuntimeMode(activeThread.id, queuedTurn.runtimeMode);
-      setComposerDraftInteractionMode(activeThread.id, queuedTurn.interactionMode);
 
       const restoredComputerMode = resolveComputerControlMode(
         queuedTurn.computerControlMode,
@@ -289,7 +285,6 @@ export function useChatQueuedTurns({
       scheduleComposerFocus,
       setDraftThreadContext,
 
-      setComposerDraftInteractionMode,
       setComposerDraftComputerControlMode,
       setComposerDraftModelSelection,
       setComposerDraftPrompt,

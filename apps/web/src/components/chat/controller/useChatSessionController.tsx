@@ -139,7 +139,7 @@ export function useChatSessionController(props: ChatViewProps) {
     setComposerDraftModelSelection,
     setComposerDraftProviderModelOptions,
     setComposerDraftRuntimeMode,
-    setComposerDraftInteractionMode,
+
     setComposerDraftComputerControlMode,
     enqueueQueuedComposerTurn,
     insertQueuedComposerTurn,
@@ -494,7 +494,7 @@ export function useChatSessionController(props: ChatViewProps) {
     setComposerDraftModelSelection,
     setComposerDraftProviderModelOptions,
     setComposerDraftRuntimeMode,
-    setComposerDraftInteractionMode,
+
     setComposerDraftComputerControlMode,
     enqueueQueuedComposerTurn,
     insertQueuedComposerTurn,

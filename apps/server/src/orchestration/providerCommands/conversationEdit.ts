@@ -353,7 +353,7 @@ export function makeProviderConversationEdit(input: {
         : {}),
       dispatchMode: "queue",
       runtimeMode: payload.runtimeMode,
-      interactionMode: payload.interactionMode,
+
       createdAt: payload.createdAt,
     });
   });

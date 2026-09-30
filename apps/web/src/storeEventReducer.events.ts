@@ -531,15 +531,11 @@ export function applyOrchestrationEvent(
           // stays put.
           const adoptTurnModes = event.payload.dispatchOrigin !== "automation";
           const runtimeMode = adoptTurnModes ? event.payload.runtimeMode : thread.runtimeMode;
-          const interactionMode = adoptTurnModes
-            ? event.payload.interactionMode
-            : thread.interactionMode;
 
           return {
             ...thread,
             modelSelection,
             runtimeMode,
-            interactionMode,
 
             updatedAt:
               (thread.updatedAt ?? thread.createdAt) > event.payload.createdAt

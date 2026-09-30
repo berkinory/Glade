@@ -155,9 +155,7 @@ export interface ChatTurnSubmissionInput {
     typeof useChatComposerDraft
   >["expectedPromptHistoryPromptRef"];
   clearComposerDraftContent: ReturnType<typeof useChatComposerDraft>["clearComposerDraftContent"];
-  setComposerDraftInteractionMode: ReturnType<
-    typeof useChatComposerDraft
-  >["setComposerDraftInteractionMode"];
+
   setComposerCursor: ReturnType<typeof useChatComposerDraft>["setComposerCursor"];
 
   composerImagesRef: ReturnType<typeof useChatComposerDraft>["composerImagesRef"];
@@ -329,7 +327,6 @@ export type ChatTurnSubmissionControllerInput = {
     | "applyingPromptHistoryNavigationRef"
     | "expectedPromptHistoryPromptRef"
     | "clearComposerDraftContent"
-    | "setComposerDraftInteractionMode"
     | "setComposerCursor"
     | "composerImagesRef"
     | "composerFilesRef"

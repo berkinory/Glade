@@ -318,7 +318,7 @@ export function toProjectedThreadShellFromStoredSummary(input: {
     title: threadRow.title,
     modelSelection: threadRow.modelSelection,
     runtimeMode: threadRow.runtimeMode,
-    interactionMode: threadRow.interactionMode,
+
     envMode: threadRow.envMode,
     branch: threadRow.branch,
     worktreePath: threadRow.worktreePath,
@@ -376,7 +376,7 @@ export function toProjectedThread(input: {
     title: threadRow.title,
     modelSelection: threadRow.modelSelection,
     runtimeMode: threadRow.runtimeMode,
-    interactionMode: threadRow.interactionMode,
+
     envMode: threadRow.envMode,
     branch: threadRow.branch,
     worktreePath: threadRow.worktreePath,

@@ -429,7 +429,7 @@ projectionSnapshotLayer("Projection snapshot snapshotHydration", (it) => {
             provider: "codex",
             model: "gpt-5-codex",
           },
-          interactionMode: "default",
+
           runtimeMode: "full-access",
           envMode: "local",
           branch: null,

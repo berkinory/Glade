@@ -8,15 +8,10 @@ import {
   ProjectCreateCommand,
   ThreadTurnStartCommand,
 } from "./commands";
-import { DEFAULT_PROVIDER_INTERACTION_MODE, DEFAULT_RUNTIME_MODE } from "../provider/sessionPolicy";
+import { DEFAULT_RUNTIME_MODE } from "../provider/sessionPolicy";
 import { OrchestrationGetTurnDiffInput } from "./rpc";
 import { OrchestrationReadModel } from "./snapshots";
-import {
-  ProjectCreatedPayload,
-  ThreadMetaUpdatedPayload,
-  ThreadCreatedPayload,
-  ThreadTurnStartRequestedPayload,
-} from "./events";
+import { ProjectCreatedPayload, ThreadMetaUpdatedPayload, ThreadCreatedPayload } from "./events";
 import {
   OrchestrationSession,
   OrchestrationThreadPullRequest,
@@ -31,10 +26,6 @@ const decodeThreadTurnDiff = Schema.decodeUnknownEffect(ThreadTurnDiff);
 const decodeProjectCreateCommand = Schema.decodeUnknownEffect(ProjectCreateCommand);
 const decodeProjectCreatedPayload = Schema.decodeUnknownEffect(ProjectCreatedPayload);
 const decodeThreadTurnStartCommand = Schema.decodeUnknownEffect(ThreadTurnStartCommand);
-
-const decodeThreadTurnStartRequestedPayload = Schema.decodeUnknownEffect(
-  ThreadTurnStartRequestedPayload,
-);
 
 const decodeOrchestrationSession = Schema.decodeUnknownEffect(OrchestrationSession);
 const decodeThreadCreatedPayload = Schema.decodeUnknownEffect(ThreadCreatedPayload);
@@ -94,7 +85,7 @@ it.effect("preserves thread activity payloads through the RPC JSON codec", () =>
             provider: "codex",
             model: "gpt-5.5",
           },
-          interactionMode: "default",
+
           runtimeMode: "full-access",
           envMode: "local",
           branch: null,
@@ -279,7 +270,7 @@ it.effect("decodes thread.turn.start defaults for provider, runtime mode, and di
     });
     assert.strictEqual(parsed.modelSelection, undefined);
     assert.strictEqual(parsed.runtimeMode, DEFAULT_RUNTIME_MODE);
-    assert.strictEqual(parsed.interactionMode, DEFAULT_PROVIDER_INTERACTION_MODE);
+
     assert.strictEqual(parsed.dispatchMode, "queue");
   }),
 );
@@ -341,37 +332,6 @@ it.effect("bounds initial turn text while preserving attachment-only turns", () 
   }),
 );
 
-it.effect("preserves debug mode in thread turns and interaction-mode commands", () =>
-  Effect.gen(function* () {
-    const turn = yield* decodeThreadTurnStartCommand({
-      type: "thread.turn.start",
-      commandId: "cmd-debug-turn",
-      threadId: "thread-1",
-      message: {
-        messageId: "msg-debug-turn",
-        role: "user",
-        text: "debug the failing request",
-        attachments: [],
-      },
-      interactionMode: "debug",
-      createdAt: "2026-08-11T00:00:00.000Z",
-    });
-    const modeChange = yield* decodeClientOrchestrationCommand({
-      type: "thread.interaction-mode.set",
-      commandId: "cmd-debug-mode",
-      threadId: "thread-1",
-      interactionMode: "debug",
-      createdAt: "2026-08-11T00:00:00.000Z",
-    });
-
-    assert.strictEqual(turn.interactionMode, "debug");
-    assert.strictEqual(modeChange.type, "thread.interaction-mode.set");
-    if (modeChange.type === "thread.interaction-mode.set") {
-      assert.strictEqual(modeChange.interactionMode, "debug");
-    }
-  }),
-);
-
 it.effect("decodes thread.created runtime mode for historical events", () =>
   Effect.gen(function* () {
     const parsed = yield* decodeThreadCreatedPayload({
@@ -382,7 +342,7 @@ it.effect("decodes thread.created runtime mode for historical events", () =>
         provider: "codex",
         model: "gpt-5.4",
       },
-      interactionMode: "default",
+
       branch: null,
       worktreePath: null,
       createdAt: "2026-01-01T00:00:00.000Z",
@@ -412,7 +372,7 @@ it.effect("strips client-sent dispatchOrigin from thread.turn.start commands", (
       dispatchMode: "queue",
       dispatchOrigin: "automation",
       runtimeMode: "full-access",
-      interactionMode: "default",
+
       createdAt: "2026-01-01T00:00:00.000Z",
     });
     assert.strictEqual(command.type, "thread.turn.start");
@@ -437,7 +397,7 @@ it.effect("strips client-sent agent dispatchOrigin from thread.turn.start comman
       dispatchMode: "queue",
       dispatchOrigin: "agent",
       runtimeMode: "full-access",
-      interactionMode: "default",
+
       createdAt: "2026-01-01T00:00:00.000Z",
     });
     assert.strictEqual(command.type, "thread.turn.start");
@@ -509,7 +469,7 @@ it.effect("rejects client thread.turn.start commands with too many upload attach
         })),
       },
       runtimeMode: "full-access",
-      interactionMode: "default",
+
       createdAt: "2026-01-01T00:00:00.000Z",
     }).pipe(
       Effect.match({
@@ -519,23 +479,6 @@ it.effect("rejects client thread.turn.start commands with too many upload attach
     );
     assert.strictEqual(failed, true);
   }),
-);
-
-it.effect(
-  "decodes thread.turn-start-requested defaults for provider, runtime mode, and interaction mode",
-  () =>
-    Effect.gen(function* () {
-      const parsed = yield* decodeThreadTurnStartRequestedPayload({
-        threadId: "thread-1",
-        messageId: "msg-1",
-        createdAt: "2026-01-01T00:00:00.000Z",
-      });
-      assert.strictEqual(parsed.modelSelection, undefined);
-      assert.strictEqual(parsed.runtimeMode, DEFAULT_RUNTIME_MODE);
-      assert.strictEqual(parsed.interactionMode, DEFAULT_PROVIDER_INTERACTION_MODE);
-      assert.strictEqual(parsed.dispatchMode, "queue");
-      assert.strictEqual(parsed.sourceProposedPlan, undefined);
-    }),
 );
 
 it.effect("decodes orchestration session runtime mode defaults", () =>

@@ -89,7 +89,7 @@ CREATE TABLE projection_threads (
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       deleted_at TEXT
-    , runtime_mode TEXT NOT NULL DEFAULT 'full-access', interaction_mode TEXT NOT NULL DEFAULT 'default', model_selection_json TEXT, handoff_json TEXT, env_mode TEXT NOT NULL DEFAULT 'local', fork_source_thread_id TEXT, associated_worktree_path TEXT, associated_worktree_branch TEXT, associated_worktree_ref TEXT, archived_at TEXT, parent_thread_id TEXT, subagent_agent_id TEXT, subagent_nickname TEXT, subagent_role TEXT, latest_user_message_at TEXT, pending_approval_count INTEGER NOT NULL DEFAULT 0, pending_user_input_count INTEGER NOT NULL DEFAULT 0, last_known_pr_json TEXT, create_branch_flow_completed INTEGER NOT NULL DEFAULT 0, is_pinned INTEGER NOT NULL DEFAULT 0, pinned_messages_json TEXT, notes TEXT, creation_source TEXT, source_thread_id TEXT, source_turn_id TEXT, gateway_operation_id TEXT, gateway_operation_index INTEGER, working_directory TEXT, settled_at TEXT, claude_cache_review_json TEXT, latest_human_message_at TEXT)
+    , runtime_mode TEXT NOT NULL DEFAULT 'full-access', model_selection_json TEXT, handoff_json TEXT, env_mode TEXT NOT NULL DEFAULT 'local', fork_source_thread_id TEXT, associated_worktree_path TEXT, associated_worktree_branch TEXT, associated_worktree_ref TEXT, archived_at TEXT, parent_thread_id TEXT, subagent_agent_id TEXT, subagent_nickname TEXT, subagent_role TEXT, latest_user_message_at TEXT, pending_approval_count INTEGER NOT NULL DEFAULT 0, pending_user_input_count INTEGER NOT NULL DEFAULT 0, last_known_pr_json TEXT, create_branch_flow_completed INTEGER NOT NULL DEFAULT 0, is_pinned INTEGER NOT NULL DEFAULT 0, pinned_messages_json TEXT, notes TEXT, creation_source TEXT, source_thread_id TEXT, source_turn_id TEXT, gateway_operation_id TEXT, gateway_operation_index INTEGER, working_directory TEXT, settled_at TEXT, claude_cache_review_json TEXT, latest_human_message_at TEXT)
   `);
 
   yield* sql.unsafe(`
@@ -193,7 +193,6 @@ CREATE TABLE automation_definitions (
       model_selection_json TEXT NOT NULL,
       provider_options_json TEXT,
       runtime_mode TEXT NOT NULL,
-      interaction_mode TEXT NOT NULL,
       worktree_mode TEXT NOT NULL,
       mode TEXT NOT NULL,
       target_thread_id TEXT,

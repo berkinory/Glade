@@ -76,7 +76,7 @@ export function GlobalFeedbackDialog() {
     projectKind: activeProject?.kind ?? null,
     environmentMode: activeThread?.envMode ?? null,
     runtimeMode: activeThread?.runtimeMode ?? null,
-    interactionMode: activeThread?.interactionMode ?? null,
+
     sessionStatus: activeThread?.session?.status ?? null,
     latestTurnState: activeThread?.latestTurn?.state ?? null,
     messageCount: activeThread?.messages.length ?? 0,

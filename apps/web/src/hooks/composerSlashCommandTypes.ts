@@ -2,11 +2,7 @@ import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSche
 import { type OrchestrationShellSnapshot } from "@glade/contracts/orchestration/snapshots";
 import { type ProviderModelOptions } from "@glade/contracts/provider/model";
 import { type ProviderNativeCommandDescriptor } from "@glade/contracts/provider/providerDiscovery";
-import {
-  type ModelSelection,
-  type ProviderInteractionMode,
-  type RuntimeMode,
-} from "@glade/contracts/provider/sessionPolicy";
+import { type ModelSelection, type RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
 import type { ComposerTrigger } from "../composer-logic";
 import { type SplitViewId } from "../splitViewModel";
 import type { Project, Thread } from "../types";
@@ -20,7 +16,7 @@ export type ComposerSlashCommandInput = {
     isLocalDraftThread: boolean;
     environmentMode: string | null;
     runtimeMode: RuntimeMode;
-    interactionMode: ProviderInteractionMode;
+
     threadId: ThreadId;
     syncServerShellSnapshot: (snapshot: OrchestrationShellSnapshot) => void;
     navigateToThread: (
@@ -48,7 +44,6 @@ export type ComposerSlashCommandInput = {
     ) => void;
   };
   editor: {
-    handleInteractionModeChange: (mode: ProviderInteractionMode) => Promise<void> | void;
     openForkTargetPicker: () => void;
     openReviewTargetPicker: () => void;
     editorActions: {

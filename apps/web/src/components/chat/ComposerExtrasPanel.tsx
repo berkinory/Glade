@@ -1,8 +1,7 @@
-import type { ProviderInteractionMode } from "@glade/contracts/provider/sessionPolicy";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useEffect, useId, useRef, useState, type ChangeEvent } from "react";
 
-import { BugIcon, CheckIcon, FastModeIcon, PaperclipIcon } from "~/lib/icons";
+import { CheckIcon, FastModeIcon, PaperclipIcon } from "~/lib/icons";
 
 import {
   COMPOSER_MENU_PANEL_GLYPH_CLASS_NAME,
@@ -16,7 +15,6 @@ const GLYPH = COMPOSER_MENU_PANEL_GLYPH_CLASS_NAME;
 
 const ROW_FILES = "extras:files";
 
-const ROW_DEBUG = "extras:mode:debug";
 const ROW_FAST = "extras:fast";
 
 const CHECK = <CheckIcon className="size-3.5 text-foreground/70" />;
@@ -26,13 +24,11 @@ function toggleSecondary(label: string, enabled: boolean): string {
 }
 
 export function ComposerExtrasPanel(props: {
-  interactionMode: ProviderInteractionMode;
   supportsFastMode: boolean;
   fastModeEnabled: boolean;
   threadId?: ThreadId;
   onAddAttachments: (files: File[]) => void;
   onToggleFastMode: () => void;
-  onInteractionModeChange: (mode: ProviderInteractionMode) => void;
 
   onClose: () => void;
   panelId: string;
@@ -53,13 +49,6 @@ export function ComposerExtrasPanel(props: {
           title: "Files and folders",
         },
 
-        {
-          id: ROW_DEBUG,
-          icon: <BugIcon className={GLYPH} />,
-          title: "Debug mode",
-          secondary: toggleSecondary("debug mode", props.interactionMode === "debug"),
-          trailing: props.interactionMode === "debug" ? CHECK : null,
-        },
         ...(props.supportsFastMode
           ? [
               {
@@ -90,12 +79,6 @@ export function ComposerExtrasPanel(props: {
       return;
     }
 
-    if (rowId === ROW_DEBUG) {
-      const mode: ProviderInteractionMode = "debug";
-      props.onInteractionModeChange(props.interactionMode === mode ? "default" : mode);
-      props.onClose();
-      return;
-    }
     if (rowId === ROW_FAST) {
       props.onToggleFastMode();
       props.onClose();

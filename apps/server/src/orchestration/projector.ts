@@ -48,7 +48,6 @@ export function projectEvent(
     case "thread.pinned-message-done-set":
     case "thread.pinned-message-label-set":
     case "thread.runtime-mode-set":
-    case "thread.interaction-mode-set":
       return projectThreadEvent(nextBase, event);
     case "thread.claude-cache-set":
     case "thread.turn-start-requested":
@@ -56,8 +55,10 @@ export function projectEvent(
       return projectTurnEvent(nextBase, event);
     case "thread.async-user-input-answered":
     case "thread.message-sent":
-    case "thread.proposed-plan-upserted":
       return projectMessageEvent(nextBase, event);
+    case "thread.interaction-mode-set":
+    case "thread.proposed-plan-upserted":
+      return Effect.succeed(nextBase);
     case "thread.turn-diff-completed":
     case "thread.reverted":
     case "thread.conversation-rolled-back":

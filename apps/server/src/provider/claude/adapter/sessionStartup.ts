@@ -443,7 +443,7 @@ export function makeClaudeSessionStartup(input: {
           // "default" mode (queryOptions omits it).
           spawnPermissionMode: permissionMode ?? "default",
           firstTurnSpawnModeAuthoritative: true,
-          lastInteractionMode: undefined,
+
           currentApiModelId: apiModelId,
           resumeSessionId: sessionId,
           pendingApprovals,

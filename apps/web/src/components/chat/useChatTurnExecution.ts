@@ -8,7 +8,6 @@ import type {
 import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import { MessageId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
-  ProviderInteractionMode,
   RuntimeMode,
   type ModelSelection,
   type ProviderStartOptions,
@@ -69,7 +68,7 @@ interface PreparedChatTurn {
   targetProjectIdForSend: ProjectId;
   title: string;
   nextRuntimeModeForSend: RuntimeMode;
-  interactionModeForSend: ProviderInteractionMode;
+
   nextThreadWorkingDirectory: string | null;
   activeThread: Thread;
   targetProjectKindForSend: "project" | "chat";
@@ -276,7 +275,7 @@ export function useChatTurnExecution({
         targetProjectIdForSend,
         title,
         nextRuntimeModeForSend,
-        interactionModeForSend,
+
         nextThreadWorkingDirectory,
         activeThread,
         targetProjectKindForSend,
@@ -471,7 +470,7 @@ export function useChatTurnExecution({
               title,
               modelSelection: threadCreateModelSelection,
               runtimeMode: nextRuntimeModeForSend,
-              interactionMode: interactionModeForSend,
+
               envMode: nextThreadEnvMode,
               branch: nextThreadBranch,
               worktreePath: nextThreadWorktreePath,

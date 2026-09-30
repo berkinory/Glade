@@ -17,8 +17,6 @@ import { ModelSelection, ProviderStartOptions, RuntimeMode } from "../provider/s
 import { ProviderKind } from "../core/baseSchemas";
 
 export const DEFAULT_AUTOMATION_RUNTIME_MODE: RuntimeMode = "approval-required";
-export const AutomationInteractionMode = Schema.Literals(["default"]);
-export type AutomationInteractionMode = typeof AutomationInteractionMode.Type;
 
 const AutomationIsoDateTime = IsoDateTime.check(
   Schema.isPattern(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/),
@@ -152,7 +150,7 @@ export const AutomationPermissionSnapshot = Schema.Struct({
 
   iterationNumber: Schema.optional(PositiveInt),
   runtimeMode: RuntimeMode,
-  interactionMode: AutomationInteractionMode,
+
   worktreeMode: AutomationWorktreeMode,
   allowedCapabilities: Schema.Array(AutomationAllowedCapability),
   createdAt: AutomationIsoDateTime,
@@ -222,7 +220,7 @@ export const AutomationDefinition = Schema.Struct({
   modelSelection: ModelSelection,
   providerOptions: Schema.optional(ProviderStartOptions),
   runtimeMode: RuntimeMode,
-  interactionMode: AutomationInteractionMode,
+
   worktreeMode: AutomationWorktreeMode,
   mode: AutomationMode,
 
@@ -295,9 +293,7 @@ const AutomationDefinitionConfig = Schema.Struct({
   runtimeMode: Schema.optional(RuntimeMode).pipe(
     Schema.withDecodingDefault(() => DEFAULT_AUTOMATION_RUNTIME_MODE),
   ),
-  interactionMode: Schema.optional(AutomationInteractionMode).pipe(
-    Schema.withDecodingDefault(() => "default" as const),
-  ),
+
   worktreeMode: Schema.optional(AutomationWorktreeMode).pipe(
     Schema.withDecodingDefault(() => "auto" as const),
   ),
@@ -360,7 +356,7 @@ export const AutomationUpdateInput = Schema.Struct({
   modelSelection: Schema.optional(ModelSelection),
   providerOptions: Schema.optional(ProviderStartOptions),
   runtimeMode: Schema.optional(RuntimeMode),
-  interactionMode: Schema.optional(AutomationInteractionMode),
+
   worktreeMode: Schema.optional(AutomationWorktreeMode),
   mode: Schema.optional(AutomationMode),
   targetThreadId: Schema.optional(Schema.NullOr(ThreadId)),

@@ -429,28 +429,6 @@ export function emitSuccessResult(
   } as unknown as SDKMessage);
 }
 
-export async function readFirstPromptText(
-  input:
-    | {
-        readonly prompt: AsyncIterable<SDKUserMessage>;
-      }
-    | undefined,
-): Promise<string | undefined> {
-  const iterator = input?.prompt[Symbol.asyncIterator]();
-  if (!iterator) {
-    return undefined;
-  }
-  const next = await iterator.next();
-  if (next.done) {
-    return undefined;
-  }
-  const content = next.value.message.content[0];
-  if (!content || typeof content === "string" || content.type !== "text") {
-    return undefined;
-  }
-  return content.text;
-}
-
 export async function readFirstPromptMessage(
   input:
     | {

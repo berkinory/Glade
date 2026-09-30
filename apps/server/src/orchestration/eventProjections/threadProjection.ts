@@ -12,7 +12,6 @@ import {
   ThreadPinnedMessageDoneSetPayload,
   ThreadPinnedMessageLabelSetPayload,
   ThreadRuntimeModeSetPayload,
-  ThreadInteractionModeSetPayload,
 } from "../Schemas.ts";
 import { OrchestrationThread } from "@glade/contracts/orchestration/threadEntities";
 import {
@@ -60,7 +59,7 @@ export function projectThreadEvent(
             title: payload.title,
             modelSelection: payload.modelSelection,
             runtimeMode: payload.runtimeMode,
-            interactionMode: payload.interactionMode,
+
             envMode: payload.envMode,
             branch: payload.branch,
             worktreePath: payload.worktreePath,
@@ -300,20 +299,8 @@ export function projectThreadEvent(
           }),
         })),
       );
+
     case "thread.interaction-mode-set":
-      return decodeForEvent(
-        ThreadInteractionModeSetPayload,
-        event.payload,
-        event.type,
-        "payload",
-      ).pipe(
-        Effect.map((payload) => ({
-          ...nextBase,
-          threads: updateThread(nextBase.threads, payload.threadId, {
-            interactionMode: payload.interactionMode,
-            updatedAt: payload.updatedAt,
-          }),
-        })),
-      );
+      return Effect.succeed(nextBase);
   }
 }

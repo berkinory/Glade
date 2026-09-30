@@ -42,7 +42,7 @@ function makeThread(
       model: "gpt-5.3-codex",
     },
     runtimeMode: "approval-required",
-    interactionMode: "default",
+
     envMode: "local",
     branch: null,
     worktreePath: null,
@@ -113,7 +113,7 @@ function makeShellSnapshot(
         title: thread.title,
         modelSelection: thread.modelSelection,
         runtimeMode: thread.runtimeMode,
-        interactionMode: thread.interactionMode,
+
         envMode: thread.envMode,
         branch: thread.branch,
         worktreePath: thread.worktreePath,

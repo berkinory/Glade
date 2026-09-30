@@ -332,7 +332,7 @@ function makePermissionSnapshot(
     completionPolicyVersion: completionPolicyVersionForDefinition(definition),
     iterationNumber: definition.iterationCount + 1,
     runtimeMode: definition.runtimeMode,
-    interactionMode: definition.interactionMode,
+
     worktreeMode: definition.worktreeMode,
     allowedCapabilities: allowedCapabilitiesFor(definition),
     createdAt: now,
@@ -536,7 +536,7 @@ function mergeDefinitionUpdate(
     nextRunAt,
     modelSelection: input.modelSelection ?? current.modelSelection,
     runtimeMode: input.runtimeMode ?? current.runtimeMode,
-    interactionMode: input.interactionMode ?? current.interactionMode,
+
     worktreeMode: input.worktreeMode ?? current.worktreeMode,
     mode,
     targetThreadId,
@@ -1124,7 +1124,7 @@ export const AutomationServiceLive = Layer.effect(
               dispatchMode: "queue",
               dispatchOrigin: "automation",
               runtimeMode: definition.runtimeMode,
-              interactionMode: definition.interactionMode,
+
               createdAt: now,
             })
             .pipe(Effect.mapError(toServiceError("Failed to continue automation thread.")));
@@ -1199,7 +1199,7 @@ export const AutomationServiceLive = Layer.effect(
               : { creationSource: "automation_run" as const }),
             modelSelection: definition.modelSelection,
             runtimeMode: definition.runtimeMode,
-            interactionMode: definition.interactionMode,
+
             envMode: environment.envMode,
             branch: environment.branch,
             worktreePath: environment.worktreePath,
@@ -1253,7 +1253,7 @@ export const AutomationServiceLive = Layer.effect(
             dispatchMode: "queue",
             dispatchOrigin: "automation",
             runtimeMode: definition.runtimeMode,
-            interactionMode: definition.interactionMode,
+
             createdAt: now,
           })
           .pipe(Effect.mapError(toServiceError("Failed to start automation turn.")));

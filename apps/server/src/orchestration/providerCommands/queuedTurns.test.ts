@@ -4,7 +4,7 @@ import { FakeComputerBackend } from "../../computer/FakeComputerBackend.ts";
 import { makeAgentGatewaySessionRegistry } from "../../agentGateway/Layers/AgentGatewaySessionRegistry.ts";
 import { ThreadId, CommandId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { Effect, Option, Duration } from "effect";
-import { DEFAULT_PROVIDER_INTERACTION_MODE } from "@glade/contracts/provider/sessionPolicy";
+
 import type { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 import { OrchestrationCommandInvariantError } from "../Errors.ts";
 import fs from "node:fs";
@@ -73,7 +73,7 @@ describe("Provider reactor queuedTurns", () => {
           enableComputerControl: true,
           computerControlGeneration: 0,
           runtimeMode: "approval-required",
-          interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
           createdAt,
         }),
       );
@@ -380,7 +380,7 @@ describe("Provider reactor queuedTurns", () => {
             attachments: [],
           },
           runtimeMode: "approval-required",
-          interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
           createdAt: now,
         }),
       );
@@ -474,7 +474,7 @@ describe("Provider reactor queuedTurns", () => {
         parentThreadId: ThreadId.makeUnsafe("thread-1"),
         title: "Child",
         modelSelection: { provider: "codex", model: "gpt-5-codex" },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         branch: null,
         worktreePath: null,
@@ -501,7 +501,7 @@ describe("Provider reactor queuedTurns", () => {
           attachments: [],
         },
         runtimeMode: "approval-required",
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         createdAt: now,
       }),
     );

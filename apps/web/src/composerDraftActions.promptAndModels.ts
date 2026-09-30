@@ -1,11 +1,7 @@
 import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import type { StateCreator } from "zustand";
 import type { ComposerDraftStoreState } from "./composerDraftDomain";
-import {
-  type ModelSelection,
-  ProviderInteractionMode,
-  RuntimeMode,
-} from "@glade/contracts/provider/sessionPolicy";
+import { type ModelSelection, RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { normalizeModelSlug } from "@glade/shared/provider/model";
 import * as Equal from "effect/Equal";
@@ -71,7 +67,6 @@ export function createPromptAndModelsActions(
   | "setModelOptions"
   | "setProviderModelOptions"
   | "setRuntimeMode"
-  | "setInteractionMode"
   | "setComputerControlMode"
   | "setEnableComputerControl"
 > {
@@ -541,32 +536,7 @@ export function createPromptAndModelsActions(
         return putComposerDraft(state, threadId, nextDraft);
       });
     },
-    setInteractionMode: (threadId, interactionMode) => {
-      if (threadId.length === 0) {
-        return;
-      }
-      const nextInteractionMode =
-        interactionMode !== null &&
-        interactionMode !== undefined &&
-        Schema.is(ProviderInteractionMode)(interactionMode)
-          ? interactionMode
-          : null;
-      set((state) => {
-        const existing = state.draftsByThreadId[threadId];
-        if (!existing && nextInteractionMode === null) {
-          return state;
-        }
-        const base = existing ?? createEmptyThreadDraft();
-        if (base.interactionMode === nextInteractionMode) {
-          return state;
-        }
-        const nextDraft: ComposerThreadDraftState = {
-          ...base,
-          interactionMode: nextInteractionMode,
-        };
-        return putComposerDraft(state, threadId, nextDraft);
-      });
-    },
+
     setComputerControlMode: (threadId, mode, options) => {
       if (threadId.length === 0) return;
 

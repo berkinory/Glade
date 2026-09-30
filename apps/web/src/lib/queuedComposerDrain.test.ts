@@ -41,7 +41,7 @@ function makeQueuedChatTurn(id: string): QueuedComposerTurn {
       model: "gpt-5",
     },
     runtimeMode: "full-access",
-    interactionMode: "default",
+
     envMode: "local",
   };
 }

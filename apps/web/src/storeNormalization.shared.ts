@@ -129,7 +129,6 @@ export function threadShellsEqual(left: ThreadShell | undefined, right: ThreadSh
     left.title === right.title &&
     left.modelSelection === right.modelSelection &&
     left.runtimeMode === right.runtimeMode &&
-    left.interactionMode === right.interactionMode &&
     left.error === right.error &&
     left.createdAt === right.createdAt &&
     (left.archivedAt ?? null) === (right.archivedAt ?? null) &&

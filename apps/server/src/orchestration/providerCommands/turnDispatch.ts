@@ -11,7 +11,6 @@ import {
   type ProviderStartOptions,
   type ProviderReviewTarget,
   type RuntimeMode,
-  type ProviderInteractionMode,
 } from "@glade/contracts/provider/sessionPolicy";
 import { AgentGatewayOperationRepository } from "../../agentGateway/Services/AgentGatewayOperationRepository.ts";
 import { CheckpointStore } from "../../checkpointing/Services/CheckpointStore.ts";
@@ -27,10 +26,8 @@ import {
 } from "@glade/contracts/provider/providerDiscovery";
 import { type ProviderIntentEvent } from "../providerIntentClassification.ts";
 import {
-  debugModePromptOverheadChars,
   availableThreadMentionContextChars,
   PROVIDER_INPUT_SAFETY_MARGIN_CHARS,
-  withProviderThreadStatePrompts,
   normalizeSkillMentionTextForProvider,
   providerPromptOverflowIssue,
   toNonEmptyProviderInput,
@@ -154,7 +151,7 @@ export function makeProviderTurnDispatch(input: {
     readonly computerControlMode?: "off" | "request" | "chat";
     readonly computerControlGeneration?: number;
     readonly runtimeMode?: RuntimeMode;
-    readonly interactionMode?: ProviderInteractionMode;
+
     readonly dispatchMode?: "queue" | "steer";
 
     readonly createdAt: string;
@@ -164,9 +161,6 @@ export function makeProviderTurnDispatch(input: {
     if (!thread || thread.claudeCacheReview) {
       return;
     }
-    const debugPromptOverheadChars = debugModePromptOverheadChars(input.interactionMode);
-
-    const providerPromptOverheadChars = debugPromptOverheadChars;
     const computerInvocation =
       input.dispatchOrigin === undefined || input.dispatchOrigin === "user"
         ? parseComputerInvocation(input.messageText)
@@ -178,10 +172,7 @@ export function makeProviderTurnDispatch(input: {
     const threadMentionProjection = yield* resolveThreadMentionPromptProjection({
       mentions: input.mentions,
       snapshotQuery: projectionSnapshotQuery,
-      maxTotalContextChars: availableThreadMentionContextChars(
-        authoredMessageText,
-        providerPromptOverheadChars,
-      ),
+      maxTotalContextChars: availableThreadMentionContextChars(authoredMessageText),
     });
     const messageText = appendThreadMentionContextBlocks({
       text: authoredMessageText,
@@ -200,19 +191,12 @@ export function makeProviderTurnDispatch(input: {
     if (providerThread && subagentProviderThreadId) {
       const steerProvider = (providerThread.session?.providerName ??
         providerThread.modelSelection.provider) as ProviderKind;
-      const composedSteerInput = withProviderThreadStatePrompts({
-        interactionMode: input.interactionMode,
-
-        text: normalizeSkillMentionTextForProvider({
-          provider: steerProvider,
-          messageText,
-          ...(input.skills !== undefined ? { skills: input.skills } : {}),
-        }),
+      const composedSteerInput = normalizeSkillMentionTextForProvider({
+        provider: steerProvider,
+        messageText,
+        ...(input.skills !== undefined ? { skills: input.skills } : {}),
       });
-      if (
-        providerPromptOverheadChars > 0 &&
-        composedSteerInput.length > PROVIDER_SEND_TURN_MAX_INPUT_CHARS
-      ) {
+      if (composedSteerInput.length > PROVIDER_SEND_TURN_MAX_INPUT_CHARS) {
         return yield* new ProviderAdapterValidationError({
           provider: steerProvider,
           operation: "thread.turn.start",
@@ -312,7 +296,6 @@ export function makeProviderTurnDispatch(input: {
                 PROVIDER_SEND_TURN_MAX_INPUT_CHARS -
                   input.messageText.length -
                   mentionContextSuffix.length -
-                  providerPromptOverheadChars -
                   PROVIDER_INPUT_SAFETY_MARGIN_CHARS,
               ),
             ),
@@ -331,7 +314,6 @@ export function makeProviderTurnDispatch(input: {
       tag: "handoff_context",
       messageText: bootstrapBudgetMessageText,
       wrapLatestUserMessage: true,
-      reservedChars: providerPromptOverheadChars,
     });
     const handoffBootstrapText =
       shouldBootstrapHandoff && handoffBootstrapAvailableChars > 0
@@ -358,7 +340,6 @@ export function makeProviderTurnDispatch(input: {
       tag: "thread_context",
       messageText: bootstrapBudgetMessageText,
       wrapLatestUserMessage: true,
-      reservedChars: providerPromptOverheadChars,
     });
     if (
       input.reviewTarget === undefined &&
@@ -434,14 +415,10 @@ export function makeProviderTurnDispatch(input: {
       }
       const withMentionContext = `${composeProviderInput(bootstrap)}${mentionContextSuffix}`;
       return toNonEmptyProviderInput(
-        withProviderThreadStatePrompts({
-          interactionMode: input.interactionMode,
-
-          text: normalizeSkillMentionTextForProvider({
-            provider: selectedProvider as ProviderKind,
-            messageText: withMentionContext,
-            ...(input.skills !== undefined ? { skills: input.skills } : {}),
-          }),
+        normalizeSkillMentionTextForProvider({
+          provider: selectedProvider as ProviderKind,
+          messageText: withMentionContext,
+          ...(input.skills !== undefined ? { skills: input.skills } : {}),
         }),
       );
     };
@@ -462,7 +439,6 @@ export function makeProviderTurnDispatch(input: {
       ...(input.skills !== undefined ? { skills: input.skills } : {}),
       ...(providerMentions !== undefined ? { mentions: providerMentions } : {}),
       ...(requestedModelSelection !== undefined ? { modelSelection: requestedModelSelection } : {}),
-      ...(input.interactionMode !== undefined ? { interactionMode: input.interactionMode } : {}),
     };
     const sendQueuedProviderTurn = (messageText: string | undefined) =>
       providerService.sendTurn({

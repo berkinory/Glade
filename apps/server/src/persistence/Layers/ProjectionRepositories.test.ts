@@ -150,7 +150,7 @@ projectionRepositoriesLayer("Projection repositories", (it) => {
           model: "claude-opus-4-6",
         },
         runtimeMode: "full-access",
-        interactionMode: "default",
+
         envMode: "local",
         branch: null,
         worktreePath: null,
@@ -238,7 +238,7 @@ projectionRepositoriesLayer("Projection repositories", (it) => {
         title: threadId,
         modelSelection: { provider: "codex" as const, model: "gpt-5.5" },
         runtimeMode: "approval-required" as const,
-        interactionMode: "default" as const,
+
         envMode: "local" as const,
         branch: null,
         worktreePath: null,

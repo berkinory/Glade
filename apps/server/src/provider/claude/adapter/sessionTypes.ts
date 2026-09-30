@@ -16,7 +16,6 @@ import type {
 import { ThreadId, TurnId, ApprovalRequestId } from "@glade/contracts/core/baseSchemas";
 import { type ClaudeTrackedTask } from "../claudeTaskTracker.ts";
 import {
-  type ProviderInteractionMode,
   type ProviderApprovalDecision,
   type ProviderUserInputAnswers,
 } from "@glade/contracts/provider/sessionPolicy";
@@ -69,7 +68,6 @@ export interface ClaudeResumeState {
 export interface ClaudeTurnState {
   readonly turnId: TurnId;
   readonly startedAt: string;
-  readonly interactionMode: ProviderInteractionMode;
 
   readonly synthetic?: true;
   readonly commandText?: string;
@@ -184,7 +182,7 @@ export interface ClaudeSessionTurn {
   nativeSessionState?: "ready" | "running" | "waiting";
   workerShutdownReason?: string;
   pendingDispatches?: number;
-  lastInteractionMode: ProviderInteractionMode | undefined;
+
   readonly turns: Array<{
     id: TurnId;
     items: Array<unknown>;

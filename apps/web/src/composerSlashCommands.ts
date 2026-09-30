@@ -1,4 +1,3 @@
-import { type ProviderInteractionMode } from "@glade/contracts/provider/sessionPolicy";
 import { type GitBranch } from "@glade/contracts/git/git";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import {
@@ -76,8 +75,6 @@ function shouldKeepBuiltInSlashCommandDespiteNativeCollision(
   command: ComposerSlashCommand,
 ): boolean {
   return (
-    command === "debug" ||
-    command === "default" ||
     command === "automation" ||
     command === "computer-use" ||
     command === "export" ||
@@ -150,18 +147,6 @@ const COMPOSER_SLASH_COMMAND_DEFINITIONS: Record<
     label: "/model",
     description: "Switch response model for this thread",
     source: "shared",
-  },
-  debug: {
-    command: "debug",
-    label: "/debug",
-    description: "Switch this thread into evidence-first debug mode",
-    source: "app",
-  },
-  default: {
-    command: "default",
-    label: "/default",
-    description: "Switch this thread back to normal chat mode",
-    source: "app",
   },
   review: {
     command: "review",
@@ -278,15 +263,13 @@ export function canOfferForkSlashCommand(input: {
   terminalContextCount: number;
   selectedSkillCount: number;
   selectedMentionCount: number;
-  interactionMode: ProviderInteractionMode;
 }): boolean {
   return (
     !hasMeaningfulComposerText(input.prompt) &&
     input.imageCount === 0 &&
     input.terminalContextCount === 0 &&
     input.selectedSkillCount === 0 &&
-    input.selectedMentionCount === 0 &&
-    input.interactionMode === "default"
+    input.selectedMentionCount === 0
   );
 }
 
@@ -389,8 +372,6 @@ export function getAvailableComposerSlashCommands(input: {
           ...(input.canOfferCompactCommand ? (["compact"] as const) : []),
           "model",
           ...(input.supportsFastSlashCommand ? (["fast"] as const) : []),
-          "debug",
-          "default",
           ...(input.canOfferReviewCommand ? (["review"] as const) : []),
           ...(input.canOfferForkCommand ? (["fork"] as const) : []),
           "status",
@@ -405,9 +386,7 @@ export function getAvailableComposerSlashCommands(input: {
           ...(input.canOfferForkCommand ? (["fork"] as const) : []),
           ...(input.canOfferExportCommand ? (["export"] as const) : []),
           "rename",
-          "debug",
           "computer-use",
-          "default",
           "feedback",
           "automation",
         ];

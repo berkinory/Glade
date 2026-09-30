@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Effect } from "effect";
 import { CommandId, ThreadId } from "@glade/contracts/core/baseSchemas";
-import { DEFAULT_PROVIDER_INTERACTION_MODE } from "@glade/contracts/provider/sessionPolicy";
+
 import type { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 import path from "node:path";
 import { attachmentRelativePath } from "../../attachments/attachmentStore.ts";
@@ -103,7 +103,7 @@ describe("Provider reactor conversationEdits", () => {
           mentions: [mention],
         },
         runtimeMode: "approval-required",
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         createdAt: now,
       }),
     );
@@ -136,7 +136,7 @@ describe("Provider reactor conversationEdits", () => {
         messageId: asMessageId("user-message-edit"),
         text: "edited prompt",
         runtimeMode: "approval-required",
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         createdAt: now,
       }),
     );
@@ -202,7 +202,7 @@ describe("Provider reactor conversationEdits", () => {
           attachments: [],
         },
         runtimeMode: "approval-required",
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         createdAt: now,
       }),
     );
@@ -219,7 +219,7 @@ describe("Provider reactor conversationEdits", () => {
         messageId: asMessageId("msg-queued-before-edit"),
         text: "edited queued prompt",
         runtimeMode: "approval-required",
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         createdAt: now,
       }),
     );
@@ -281,7 +281,7 @@ describe("Provider reactor conversationEdits", () => {
           attachments: [imageAttachment],
         },
         runtimeMode: "approval-required",
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         createdAt: now,
       }),
     );
@@ -316,7 +316,7 @@ describe("Provider reactor conversationEdits", () => {
         messageId: asMessageId("msg-image-edit"),
         text: "edited image prompt",
         runtimeMode: "approval-required",
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         createdAt: now,
       }),
     );
@@ -363,7 +363,7 @@ describe("Provider reactor conversationEdits", () => {
         messageId: asMessageId("user-message-checkpoint-edit"),
         text: "edited checkpoint prompt",
         runtimeMode: "approval-required",
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         createdAt: now,
       }),
     );
@@ -392,7 +392,7 @@ describe("Provider reactor conversationEdits", () => {
         messageId: asMessageId("user-message-restart-edit"),
         text: "edited after stop",
         runtimeMode: "approval-required",
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         createdAt: now,
       }),
     );
@@ -455,7 +455,7 @@ describe("Provider reactor conversationEdits", () => {
         messageId,
         text: "edited prompt",
         runtimeMode: "approval-required",
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         createdAt: now,
       }),
     );
@@ -491,7 +491,7 @@ describe("Provider reactor conversationEdits", () => {
         messageId: asMessageId("user-message-stale"),
         text: "corrected prompt",
         runtimeMode: "approval-required",
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         createdAt: now,
       }),
     );

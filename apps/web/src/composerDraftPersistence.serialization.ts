@@ -131,7 +131,7 @@ export function partializeComposerDraftStoreState(
           ),
 
           runtimeMode: queuedTurn.runtimeMode,
-          interactionMode: queuedTurn.interactionMode,
+
           envMode: queuedTurn.envMode,
         });
         continue;
@@ -156,7 +156,6 @@ export function partializeComposerDraftStoreState(
       !hasQueuedTurns &&
       !hasModelData &&
       draft.runtimeMode === null &&
-      draft.interactionMode === null &&
       draft.enableComputerControl === undefined &&
       draft.computerControlMode === undefined
     ) {
@@ -270,7 +269,7 @@ export function partializeComposerDraftStoreState(
           }
         : {}),
       ...(draft.runtimeMode ? { runtimeMode: draft.runtimeMode } : {}),
-      ...(draft.interactionMode ? { interactionMode: draft.interactionMode } : {}),
+
       ...(draft.computerControlGeneration !== undefined
         ? { computerControlGeneration: draft.computerControlGeneration }
         : {}),

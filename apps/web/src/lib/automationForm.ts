@@ -564,7 +564,7 @@ export function createInputFromForm(
     enabled: form.enabled,
     modelSelection: form.modelSelection,
     runtimeMode: form.runtimeMode,
-    interactionMode: "default",
+
     worktreeMode: form.worktreeMode,
     ...(providerOptions ? { providerOptions } : {}),
     mode: form.mode,

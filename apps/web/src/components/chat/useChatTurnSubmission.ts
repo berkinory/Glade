@@ -316,7 +316,7 @@ export function useChatTurnSubmission({
       const selectedModelSelectionForSend = dispatchSettings.modelSelection;
       const providerOptionsForDispatchForSend = dispatchSettings.providerOptions;
       const runtimeModeForSend = dispatchSettings.runtimeMode;
-      let interactionModeForSend = dispatchSettings.interactionMode;
+
       const envModeForSend = dispatchSettings.envMode;
       const {
         trimmedPrompt: trimmed,
@@ -760,7 +760,7 @@ export function useChatTurnSubmission({
         targetProjectIdForSend,
         title,
         nextRuntimeModeForSend,
-        interactionModeForSend,
+
         nextThreadWorkingDirectory,
         activeThread,
         targetProjectKindForSend,

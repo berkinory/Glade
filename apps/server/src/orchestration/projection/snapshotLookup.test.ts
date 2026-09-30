@@ -60,7 +60,6 @@ projectionSnapshotLayer("Projection snapshot snapshotLookup", (it) => {
           title,
           model_selection_json,
           runtime_mode,
-          interaction_mode,
           env_mode,
           branch,
           worktree_path,
@@ -70,15 +69,13 @@ projectionSnapshotLayer("Projection snapshot snapshotLookup", (it) => {
           updated_at,
           archived_at,
           deleted_at
-        )
-        VALUES
+        ) VALUES
           (
             'thread-first',
             'project-active',
             'First Thread',
             '{"provider":"codex","model":"gpt-5-codex"}',
             'full-access',
-            'default',
             'local',
             NULL,
             NULL,
@@ -95,7 +92,6 @@ projectionSnapshotLayer("Projection snapshot snapshotLookup", (it) => {
             'Second Thread',
             '{"provider":"codex","model":"gpt-5-codex"}',
             'full-access',
-            'default',
             'local',
             NULL,
             NULL,
@@ -112,7 +108,6 @@ projectionSnapshotLayer("Projection snapshot snapshotLookup", (it) => {
             'Deleted Thread',
             '{"provider":"codex","model":"gpt-5-codex"}',
             'full-access',
-            'default',
             'local',
             NULL,
             NULL,
@@ -190,7 +185,6 @@ projectionSnapshotLayer("Projection snapshot snapshotLookup", (it) => {
           title,
           model_selection_json,
           runtime_mode,
-          interaction_mode,
           env_mode,
           branch,
           worktree_path,
@@ -200,14 +194,12 @@ projectionSnapshotLayer("Projection snapshot snapshotLookup", (it) => {
           updated_at,
           archived_at,
           deleted_at
-        )
-        VALUES (
+        ) VALUES (
           'thread-context',
           'project-context',
           'Context Thread',
           '{"provider":"codex","model":"gpt-5-codex"}',
           'full-access',
-          'default',
           'local',
           'feature/perf',
           '/tmp/context-worktree',

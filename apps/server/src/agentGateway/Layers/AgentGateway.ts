@@ -492,7 +492,7 @@ const makeAgentGateway = Effect.gen(function* () {
             dispatchMode,
             dispatchOrigin: "agent",
             runtimeMode: target.runtimeMode,
-            interactionMode: target.interactionMode,
+
             createdAt: isoNow(),
           })
           .pipe(Effect.mapError((error) => new ToolInputError(errorText(error))));

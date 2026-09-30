@@ -17,7 +17,6 @@ import {
   ModelSelection,
   ProviderApprovalDecision,
   ProviderApprovalPolicy,
-  ProviderInteractionMode,
   ProviderRequestKind,
   ProviderReviewTarget,
   ProviderSandboxMode,
@@ -79,7 +78,6 @@ export const ProviderSendTurnInput = Schema.Struct({
   skills: Schema.optional(Schema.Array(ProviderSkillReference)),
   mentions: Schema.optional(Schema.Array(ProviderMentionReference)),
   modelSelection: Schema.optional(ModelSelection),
-  interactionMode: Schema.optional(ProviderInteractionMode),
 });
 export type ProviderSendTurnInput = typeof ProviderSendTurnInput.Type;
 export const ProviderSteerTurnInput = ProviderSendTurnInput;

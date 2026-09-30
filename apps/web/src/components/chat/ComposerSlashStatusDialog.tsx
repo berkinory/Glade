@@ -1,5 +1,5 @@
 import type { ResolvedThreadWorkspaceState } from "@glade/shared/threads/threadEnvironment";
-import type { ProviderInteractionMode } from "@glade/contracts/provider/sessionPolicy";
+
 import type { DraftThreadEnvMode } from "../../composerDraftDomain";
 import {
   type ContextWindowSnapshot,
@@ -49,7 +49,7 @@ export function ComposerSlashStatusDialog(props: {
   selectedModel: string | null | undefined;
   fastModeEnabled: boolean;
   selectedPromptEffort: string | null;
-  interactionMode: ProviderInteractionMode;
+
   envMode: DraftThreadEnvMode;
   envState: ResolvedThreadWorkspaceState;
   branch: string | null;
@@ -65,7 +65,7 @@ export function ComposerSlashStatusDialog(props: {
     selectedModel,
     fastModeEnabled,
     selectedPromptEffort,
-    interactionMode,
+
     envMode,
     envState,
     branch,
@@ -98,12 +98,6 @@ export function ComposerSlashStatusDialog(props: {
             <div className="space-y-1">
               <p className="text-ui leading-snug text-muted-foreground">Reasoning</p>
               <p className="font-medium text-foreground">{selectedPromptEffort ?? "Default"}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-ui leading-snug text-muted-foreground">Mode</p>
-              <p className="font-medium text-foreground">
-                {interactionMode === "debug" ? "Debug" : "Default"}
-              </p>
             </div>
             <div className="space-y-1">
               <p className="text-ui leading-snug text-muted-foreground">Environment</p>

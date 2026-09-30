@@ -2,7 +2,7 @@
   "$schema": "https://unpkg.com/knip@6.38.0/schema.json",
   "cycles": { "dynamicImports": true },
   // Host tools and Electron's built-in filesystem are not npm dependencies.
-  "ignoreBinaries": ["rustc", "xcode-select", "pkill", "pgrep", "mkfifo"],
+  "ignoreBinaries": ["rustc", "pkill", "pgrep", "mkfifo"],
   "ignoreDependencies": ["original-fs"],
   "ignore": ["apps/server/src/provider/codex/protocol/generated/**"],
   "ignoreIssues": {

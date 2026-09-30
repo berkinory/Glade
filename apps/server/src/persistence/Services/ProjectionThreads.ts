@@ -7,7 +7,6 @@ import {
 } from "@glade/contracts/core/baseSchemas";
 import {
   ModelSelection,
-  ProviderInteractionMode,
   RuntimeMode,
   ThreadCreationSource,
 } from "@glade/contracts/provider/sessionPolicy";
@@ -30,7 +29,7 @@ export const ProjectionThread = Schema.Struct({
   title: Schema.String,
   modelSelection: ModelSelection,
   runtimeMode: RuntimeMode,
-  interactionMode: ProviderInteractionMode,
+
   envMode: ThreadEnvironmentMode,
   branch: Schema.NullOr(Schema.String),
   worktreePath: Schema.NullOr(Schema.String),

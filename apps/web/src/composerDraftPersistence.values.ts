@@ -1,11 +1,7 @@
 import * as Schema from "effect/Schema";
 import * as Option from "effect/Option";
 import { resolveComputerControlMode } from "./computerControlMode";
-import {
-  ProviderInteractionMode,
-  ProviderStartOptions,
-  RuntimeMode,
-} from "@glade/contracts/provider/sessionPolicy";
+import { ProviderStartOptions, RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   ProviderMentionReference,
@@ -362,14 +358,12 @@ export function normalizePersistedQueuedTurns(
       const mentions = Array.isArray(candidate.mentions)
         ? candidate.mentions.filter(Schema.is(ProviderMentionReference))
         : [];
-      const interactionMode = Schema.is(ProviderInteractionMode)(candidate.interactionMode)
-        ? candidate.interactionMode
-        : null;
+
       const envMode =
         candidate.envMode === "local" || candidate.envMode === "worktree"
           ? candidate.envMode
           : null;
-      if (interactionMode === null || envMode === null) {
+      if (envMode === null) {
         continue;
       }
       normalizedTurns.push({
@@ -397,7 +391,7 @@ export function normalizePersistedQueuedTurns(
         ...(computerControlGeneration !== undefined ? { computerControlGeneration } : {}),
 
         runtimeMode,
-        interactionMode,
+
         envMode,
       });
       seenIds.add(id);

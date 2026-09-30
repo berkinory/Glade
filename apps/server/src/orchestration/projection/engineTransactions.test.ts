@@ -180,7 +180,7 @@ engineLayer("OrchestrationProjectionPipeline via engine dispatch", (it) => {
         projectId,
         title: "Routed telemetry",
         modelSelection: { provider: "codex", model: "gpt-5-codex" },
-        interactionMode: "default",
+
         runtimeMode: "full-access",
         branch: null,
         worktreePath: null,

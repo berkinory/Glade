@@ -28,7 +28,6 @@ export const THREAD_PROJECTION_EVENT_TYPES = new Set<OrchestrationEvent["type"]>
 ]);
 
 const OTHER_THREAD_SHELL_EVENT_TYPES = new Set<OrchestrationEvent["type"]>([
-  "thread.proposed-plan-upserted",
   "thread.approval-response-requested",
   "thread.user-input-response-requested",
   "thread.reverted",
@@ -39,7 +38,6 @@ const OTHER_THREAD_SHELL_EVENT_TYPES = new Set<OrchestrationEvent["type"]>([
 
 export const DEFERRED_THREAD_SHELL_SUMMARY_EVENT_TYPES = new Set<OrchestrationEvent["type"]>([
   "thread.message-sent",
-  "thread.proposed-plan-upserted",
   "thread.reverted",
   "thread.conversation-rolled-back",
   "thread.session-set",

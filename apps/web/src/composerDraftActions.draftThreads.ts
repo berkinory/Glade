@@ -10,7 +10,7 @@ import {
   draftThreadStatesEqual,
   removeProjectDraftMappingsForThread,
 } from "./composerDraftDomain";
-import { DEFAULT_INTERACTION_MODE, DEFAULT_RUNTIME_MODE } from "./types";
+import { DEFAULT_RUNTIME_MODE } from "./types";
 
 type DraftSet = Parameters<StateCreator<ComposerDraftStoreState>>[0];
 type DraftGet = Parameters<StateCreator<ComposerDraftStoreState>>[1];
@@ -180,7 +180,7 @@ export function createDraftThreadsActions(
           projectId: options.projectId,
           createdAt: options.createdAt ?? new Date().toISOString(),
           runtimeMode: options.runtimeMode ?? DEFAULT_RUNTIME_MODE,
-          interactionMode: options.interactionMode ?? DEFAULT_INTERACTION_MODE,
+
           branch: options.branch ?? null,
           worktreePath,
           workingDirectory: options.workingDirectory ?? null,

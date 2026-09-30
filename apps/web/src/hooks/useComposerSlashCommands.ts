@@ -36,7 +36,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
     activeThread,
     environmentMode,
     runtimeMode,
-    interactionMode,
+
     threadId,
     handleClearConversation,
   } = input.thread;
@@ -53,12 +53,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
     selectedModelSelection,
     setComposerDraftProviderModelOptions,
   } = input.provider;
-  const {
-    handleInteractionModeChange,
-    openForkTargetPicker,
-    openReviewTargetPicker,
-    editorActions,
-  } = input.editor;
+  const { openForkTargetPicker, openReviewTargetPicker, editorActions } = input.editor;
   const providerNativeCommandNames = providerNativeCommands.map((command) => command.name);
   const availableBuiltInSlashCommands = getAvailableComposerSlashCommands({
     provider: selectedProvider,
@@ -216,7 +211,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
       projectKind: activeProject?.kind ?? null,
       environmentMode,
       runtimeMode,
-      interactionMode,
+
       sessionStatus: activeThread?.session?.status ?? null,
       latestTurnState: activeThread?.latestTurn?.state ?? null,
       messageCount: activeThread?.messages.length ?? 0,
@@ -229,7 +224,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
     activeProject?.kind,
     activeThread,
     environmentMode,
-    interactionMode,
+
     openGlobalFeedbackDialog,
     runtimeMode,
     selectedModelSelection.model,
@@ -271,11 +266,6 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
       if (slashInvocation.command === "compact") {
         editorActions.clearComposerSlashDraft();
         await compactProviderThread(slashInvocation.args || undefined);
-        return true;
-      }
-      if (slashInvocation.command === "debug" || slashInvocation.command === "default") {
-        await handleInteractionModeChange(slashInvocation.command);
-        editorActions.clearComposerSlashDraft();
         return true;
       }
       if (slashInvocation.command === "status") {
@@ -391,7 +381,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
       createForkThreadFromSlashCommand,
       editorActions,
       handleClearConversation,
-      handleInteractionModeChange,
+
       openForkTargetPicker,
       openFeedbackDialog,
       openReviewTargetPicker,
@@ -456,15 +446,6 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
         editorActions.setComposerHighlightedItemId(null);
         void compactProviderThread();
         editorActions.scheduleComposerFocus();
-        return;
-      }
-
-      if (item.command === "debug" || item.command === "default") {
-        void handleInteractionModeChange(item.command);
-        const applied = clearSlashCommandFromComposer();
-        if (wasPromptReplacementApplied(applied)) {
-          editorActions.setComposerHighlightedItemId(null);
-        }
         return;
       }
 
@@ -593,7 +574,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
       compactProviderThread,
       editorActions,
       handleClearConversation,
-      handleInteractionModeChange,
+
       openForkTargetPicker,
       openFeedbackDialog,
       openReviewTargetPicker,

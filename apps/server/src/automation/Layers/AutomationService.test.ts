@@ -1342,7 +1342,7 @@ layer("AutomationService", (it) => {
           provider: "codex",
           modelSelection: { provider: "codex", model: "gpt-5-codex" },
           runtimeMode: "approval-required",
-          interactionMode: "default",
+
           worktreeMode: "local",
           allowedCapabilities: ["send-turn"],
           createdAt: "2000-01-01T00:00:00.000Z",
@@ -1407,7 +1407,7 @@ layer("AutomationService", (it) => {
           provider: "codex",
           modelSelection: { provider: "codex", model: "gpt-5-codex" },
           runtimeMode: "approval-required",
-          interactionMode: "default",
+
           worktreeMode: "local",
           allowedCapabilities: ["send-turn"],
           createdAt: "2000-01-01T00:00:00.000Z",
@@ -2254,7 +2254,7 @@ layer("AutomationService", (it) => {
             provider: "codex",
             modelSelection: { provider: "codex", model: "gpt-5-codex" },
             runtimeMode: "approval-required",
-            interactionMode: "default",
+
             worktreeMode: "local",
             allowedCapabilities: ["send-turn"],
             createdAt: scheduledFor,

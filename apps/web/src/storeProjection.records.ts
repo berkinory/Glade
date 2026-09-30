@@ -31,7 +31,7 @@ export function toThreadShell(thread: Thread): ThreadShell {
     title: thread.title,
     modelSelection: thread.modelSelection,
     runtimeMode: thread.runtimeMode,
-    interactionMode: thread.interactionMode,
+
     error: thread.error,
     createdAt: thread.createdAt,
     archivedAt: thread.archivedAt ?? null,
@@ -260,7 +260,6 @@ function sidebarThreadSummariesEqual(
     left.projectId === right.projectId &&
     left.title === right.title &&
     left.modelSelection === right.modelSelection &&
-    left.interactionMode === right.interactionMode &&
     left.envMode === right.envMode &&
     left.branch === right.branch &&
     left.worktreePath === right.worktreePath &&
@@ -302,7 +301,7 @@ export function buildSidebarThreadSummary(
     projectId: thread.projectId,
     title: thread.title,
     modelSelection: thread.modelSelection,
-    interactionMode: thread.interactionMode,
+
     envMode: thread.envMode,
     branch: thread.branch,
     worktreePath: thread.worktreePath,

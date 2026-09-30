@@ -201,7 +201,7 @@ export function normalizeThreadFromReadModel(
     title: incoming.title,
     modelSelection,
     runtimeMode: incoming.runtimeMode,
-    interactionMode: incoming.interactionMode,
+
     session,
     messages,
 
@@ -302,7 +302,7 @@ export function normalizeThreadShellSnapshot(
     title: incoming.title,
     modelSelection,
     runtimeMode: incoming.runtimeMode,
-    interactionMode: incoming.interactionMode,
+
     error,
     createdAt: incoming.createdAt,
     archivedAt: incoming.archivedAt ?? null,

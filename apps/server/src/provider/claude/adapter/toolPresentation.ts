@@ -104,12 +104,8 @@ export function summarizeToolRequest(
   return `${toolName}: ${serializedInput.slice(0, 397)}...`;
 }
 
-export // Tools whose result is surfaced through a dedicated runtime channel — AskUserQuestion via the
-// user-input request flow, ExitPlanMode via the proposed-plan flow — must NOT also emit a generic
-// tool-call lifecycle item, or the timeline shows a redundant "ToolName: {json}" row alongside the
-// real interaction surface.
-function isClientSurfacedClaudeTool(toolName: string): boolean {
-  return toolName === "AskUserQuestion" || toolName === "ExitPlanMode";
+export function isClientSurfacedClaudeTool(toolName: string): boolean {
+  return toolName === "AskUserQuestion";
 }
 
 export function toolLifecycleEventData(

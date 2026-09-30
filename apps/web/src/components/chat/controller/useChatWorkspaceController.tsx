@@ -41,7 +41,7 @@ import { hasLiveTurnTailWork, isLatestTurnSettled } from "~/session-logic";
 import { useStore } from "~/store";
 import { useTerminalStateStore } from "~/terminalStateStore";
 import { createProjectSelector } from "~/storeSelectors";
-import { DEFAULT_INTERACTION_MODE, DEFAULT_RUNTIME_MODE, type Thread } from "~/types";
+import { DEFAULT_RUNTIME_MODE, type Thread } from "~/types";
 import { useWorkspacePathsStore } from "~/workspacePathsStore";
 import {
   ChatViewProps,
@@ -143,9 +143,6 @@ export function useChatWorkspaceController({
 
   const runtimeMode =
     composerDraft.runtimeMode ?? activeThread?.runtimeMode ?? DEFAULT_RUNTIME_MODE;
-
-  const interactionMode =
-    composerDraft.interactionMode ?? activeThread?.interactionMode ?? DEFAULT_INTERACTION_MODE;
 
   const isServerThread = serverThread !== undefined;
 
@@ -407,7 +404,6 @@ export function useChatWorkspaceController({
       ...draftThreadContext,
       createdAt: new Date().toISOString(),
       runtimeMode: DEFAULT_RUNTIME_MODE,
-      interactionMode: DEFAULT_INTERACTION_MODE,
     });
     await navigate({
       to: "/$threadId",
@@ -452,7 +448,7 @@ export function useChatWorkspaceController({
     setSettledThreadBranchWarningDismissedThreadId,
     settledThreadBranchAtActivation,
     runtimeMode,
-    interactionMode,
+
     isServerThread,
     isLocalDraftThread,
     canCheckoutPullRequestIntoThread,

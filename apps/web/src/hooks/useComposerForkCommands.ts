@@ -19,7 +19,6 @@ export function useComposerForkCommands(input: {
     | "activeRootBranch"
     | "isServerThread"
     | "runtimeMode"
-    | "interactionMode"
     | "syncServerShellSnapshot"
     | "navigateToThread"
   >;
@@ -35,7 +34,7 @@ export function useComposerForkCommands(input: {
     activeRootBranch,
     isServerThread,
     runtimeMode,
-    interactionMode,
+
     syncServerShellSnapshot,
     navigateToThread,
   } = input.thread;
@@ -79,7 +78,7 @@ export function useComposerForkCommands(input: {
         title: activeThread.title,
         modelSelection: selectedModelSelection,
         runtimeMode,
-        interactionMode,
+
         envMode: resolvedTarget.envMode,
         branch: resolvedTarget.branch,
         worktreePath: resolvedTarget.worktreePath,
@@ -99,7 +98,7 @@ export function useComposerForkCommands(input: {
       activeProject,
       activeRootBranch,
       activeThread,
-      interactionMode,
+
       isServerThread,
       navigateToThread,
       runtimeMode,
@@ -164,7 +163,7 @@ export function useComposerForkCommands(input: {
           title: nextThreadTitle,
           modelSelection: selectedModelSelection,
           runtimeMode,
-          interactionMode: "default",
+
           envMode: nextEnvMode,
           branch: activeThread.branch,
           worktreePath: activeThread.worktreePath,
@@ -187,7 +186,7 @@ export function useComposerForkCommands(input: {
           reviewTarget,
           dispatchMode: "queue",
           runtimeMode,
-          interactionMode: "default",
+
           createdAt,
         });
         const snapshot = await api.orchestration.getShellSnapshot();

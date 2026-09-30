@@ -138,7 +138,7 @@ export function makeQueuedChatTurn(
     },
 
     runtimeMode: "full-access",
-    interactionMode: "default",
+
     envMode: "local",
   };
 }

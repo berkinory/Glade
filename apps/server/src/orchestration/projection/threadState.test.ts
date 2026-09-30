@@ -213,7 +213,7 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
             model: "gpt-5.5",
           },
           runtimeMode: "approval-required",
-          interactionMode: "debug",
+
           createdAt: turnRequestedAt,
         },
       });
@@ -223,13 +223,12 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
       const rows = yield* sql<{
         readonly modelSelectionJson: string;
         readonly runtimeMode: string;
-        readonly interactionMode: string;
+
         readonly updatedAt: string;
       }>`
         SELECT
           model_selection_json AS "modelSelectionJson",
           runtime_mode AS "runtimeMode",
-          interaction_mode AS "interactionMode",
           updated_at AS "updatedAt"
         FROM projection_threads
         WHERE thread_id = 'thread-turn-settings'
@@ -241,7 +240,7 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
         model: "gpt-5.5",
       });
       assert.equal(rows[0]!.runtimeMode, "approval-required");
-      assert.equal(rows[0]!.interactionMode, "debug");
+
       assert.equal(rows[0]!.updatedAt, turnRequestedAt);
 
       const sessionRows = yield* sql<{
@@ -339,7 +338,7 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
           messageId: MessageId.makeUnsafe("message-turn-settings-cross-provider"),
           modelSelection: { provider: "claudeAgent", model: "claude-sonnet-4-6" },
           runtimeMode: "full-access",
-          interactionMode: "debug",
+
           createdAt: crossProviderRequestedAt,
         },
       });
@@ -381,7 +380,7 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
           messageId: MessageId.makeUnsafe("message-turn-settings-automation"),
           dispatchOrigin: "automation",
           runtimeMode: "approval-required",
-          interactionMode: "default",
+
           createdAt: automationRequestedAt,
         },
       });
@@ -389,16 +388,13 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
 
       const automationRows = yield* sql<{
         readonly runtimeMode: string;
-        readonly interactionMode: string;
       }>`
         SELECT
-          runtime_mode AS "runtimeMode",
-          interaction_mode AS "interactionMode"
+          runtime_mode AS "runtimeMode"
         FROM projection_threads
         WHERE thread_id = 'thread-turn-settings'
       `;
       assert.equal(automationRows[0]!.runtimeMode, "full-access");
-      assert.equal(automationRows[0]!.interactionMode, "debug");
     }),
   );
 
@@ -472,7 +468,7 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
           messageId: MessageId.makeUnsafe("message-retained-error"),
           modelSelection: { provider: "codex", model: "gpt-5.6-sol" },
           runtimeMode: "full-access",
-          interactionMode: "default",
+
           dispatchMode: "queue",
           createdAt: requestedAt,
         },
@@ -637,7 +633,7 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
           messageId: MessageId.makeUnsafe("message-stale-session"),
           modelSelection,
           runtimeMode: "full-access",
-          interactionMode: "default",
+
           dispatchMode: "queue",
           createdAt: requestedAt,
         },

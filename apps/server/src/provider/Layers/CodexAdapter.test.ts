@@ -367,7 +367,6 @@ turnPreparationLayer("CodexAdapterLive turn input preparation", (it) => {
             fastMode: true,
           },
         },
-        interactionMode: "default" as const,
       };
 
       yield* adapter.sendTurn(input);
@@ -393,7 +392,7 @@ turnPreparationLayer("CodexAdapterLive turn input preparation", (it) => {
         model: "gpt-5.3-codex",
         effort: "high",
         serviceTier: "fast",
-        interactionMode: "default",
+
         attachments: [
           {
             type: "localImage",

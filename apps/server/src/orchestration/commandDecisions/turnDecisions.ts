@@ -135,10 +135,7 @@ export function decideTurnCommand({
           command.resumePrecondition === undefined && !questionResponse
             ? command.runtimeMode
             : targetThread.runtimeMode;
-        const interactionMode =
-          command.resumePrecondition === undefined && !questionResponse
-            ? command.interactionMode
-            : targetThread.interactionMode;
+
         yield* validateAutoRuntimeMode(
           command,
           command.modelSelection ?? targetThread.modelSelection,
@@ -205,7 +202,6 @@ export function decideTurnCommand({
           dispatchMode,
           dispatchOrigin: command.dispatchOrigin ?? "user",
           runtimeMode,
-          interactionMode,
 
           createdAt: command.createdAt,
         } as const;
@@ -336,7 +332,6 @@ export function decideTurnCommand({
             dispatchMode: command.dispatchMode ?? "queue",
             dispatchOrigin: command.dispatchOrigin ?? "user",
             runtimeMode: command.runtimeMode,
-            interactionMode: command.interactionMode,
 
             createdAt: command.createdAt,
           },

@@ -30,6 +30,7 @@ import {
   remapAnswersToClaudeQuestionText,
 } from "./messageContent";
 import { claudeSubagentSteerContext } from "./promptPolicy";
+
 import { shouldAllowGladeComputerProviderTool } from "../../../agentGateway/computerToolPermission.ts";
 import { classifyRequestType, summarizeToolRequest } from "./toolPresentation";
 import { redactSensitiveJsonFields } from "../../../diagnostics/sensitiveKeys.ts";
@@ -275,12 +276,12 @@ export function makeClaudeSdkHooks(dependencies: {
         const interactionTurnId =
           context.turnState?.turnId ??
           (callbackOptions.agentID !== undefined ? context.lastTurnId : undefined);
+
         if (
           shouldAllowGladeComputerProviderTool({
             computerControlEnabled:
               input.enableComputerControl === true && context.gatewaySessionLease !== undefined,
             activeTurn: context.turnState !== undefined && interactionTurnId !== undefined,
-            interactionMode: context.turnState?.interactionMode,
             runtimeMode,
             permission: { name: toolName },
           })

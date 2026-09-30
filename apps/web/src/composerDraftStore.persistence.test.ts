@@ -167,7 +167,6 @@ describe("composerDraftStore persisted-state hydration", () => {
     expect(hydrated.draftThreadsByThreadId[threadId]).toMatchObject({
       projectId,
       runtimeMode: "full-access",
-      interactionMode: "default",
     });
     expect(hydrated.draftsByThreadId[threadId]?.assistantSelections).toEqual([
       {
@@ -225,7 +224,7 @@ describe("composerDraftStore persisted-state hydration", () => {
           projectId,
           createdAt: "2026-07-25T00:00:00.000Z",
           runtimeMode: "auto",
-          interactionMode: "default",
+
           branch: null,
           worktreePath: null,
           workingDirectory: null,
@@ -251,7 +250,7 @@ describe("composerDraftStore persisted-state hydration", () => {
           projectId,
           createdAt: "2026-08-13T00:00:00.000Z",
           runtimeMode: "full-access",
-          interactionMode: "default",
+
           branch: null,
           worktreePath: null,
           workingDirectory: null,
@@ -611,7 +610,6 @@ describe("composerDraftStore queued follow-ups", () => {
     }
     store.enqueueQueuedTurn(threadId, {
       ...queuedChatTurn,
-      interactionMode: "debug",
     });
 
     const persistApi = useComposerDraftStore.persist as unknown as {
@@ -643,7 +641,6 @@ describe("composerDraftStore queued follow-ups", () => {
         images: [{ name: "queued.png" }],
 
         terminalContexts: [{ text: "git status\nOn branch main" }],
-        interactionMode: "debug",
       },
     ]);
   });

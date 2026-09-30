@@ -1,7 +1,6 @@
-import { ProviderInteractionMode } from "@glade/contracts/provider/sessionPolicy";
 import { type ReactNode } from "react";
 
-import { BugIcon, ComposerSendArrowIcon, LayoutSidebarIcon } from "~/lib/icons";
+import { ComposerSendArrowIcon, LayoutSidebarIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import type { derivePendingUserInputProgress } from "../../pendingUserInput";
 import type { SessionPhase } from "../../types";
@@ -15,8 +14,7 @@ interface ChatComposerFooterProps {
   leadingControls: ReactNode;
   composerPickerControls: ReactNode;
   contextMeter: ReactNode;
-  interactionMode: ProviderInteractionMode;
-  resetInteractionMode: () => void;
+
   sidebarAction: { title: string; label: string; onClick: () => void } | null;
   voice: {
     enabled: boolean;
@@ -51,8 +49,7 @@ export function ChatComposerFooter({
   leadingControls,
   composerPickerControls,
   contextMeter,
-  interactionMode,
-  resetInteractionMode,
+
   sidebarAction,
   voice,
   pendingInput,
@@ -82,20 +79,6 @@ export function ChatComposerFooter({
 
         {!voice.recording && !voice.transcribing ? (
           <>
-            {interactionMode !== "default" ? (
-              <Button
-                variant="ghost"
-                className="shrink-0 whitespace-nowrap px-2 text-ui-sm sm:text-ui-sm font-normal text-[var(--color-text-foreground-secondary)] hover:bg-[var(--color-background-button-secondary-hover)] hover:text-[var(--color-text-foreground)] sm:px-3"
-                size="sm"
-                type="button"
-                onClick={resetInteractionMode}
-                title={"Debug mode: click to return to normal mode"}
-              >
-                <BugIcon className="size-3.5" />
-                <span className="sr-only sm:not-sr-only">Debug</span>
-              </Button>
-            ) : null}
-
             {sidebarAction ? (
               <Button
                 variant="ghost"

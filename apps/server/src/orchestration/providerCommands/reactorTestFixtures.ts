@@ -68,7 +68,7 @@ import { ManagedAttachmentRepository } from "../../persistence/Services/ManagedA
 import { ProjectionPendingInteractionRepository } from "../../persistence/Services/ProjectionPendingInteractions.ts";
 import { ProviderRuntimeEventRepository } from "../../persistence/Services/ProviderRuntimeEvents.ts";
 import { AgentGatewayOperationRepository } from "../../agentGateway/Services/AgentGatewayOperationRepository.ts";
-import { DEFAULT_PROVIDER_INTERACTION_MODE } from "@glade/contracts/provider/sessionPolicy";
+
 import { attachmentRelativePath } from "../../attachments/attachmentStore.ts";
 import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import { type ChatAttachment } from "@glade/contracts/orchestration/threadEntities";
@@ -593,7 +593,7 @@ export function makeReactorTestHarness() {
         projectId: asProjectId("project-1"),
         title: "Thread",
         modelSelection: modelSelection,
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         branch: null,
         worktreePath: null,
@@ -870,7 +870,7 @@ export function makeReactorTestHarness() {
           text: input.text,
           attachments: input.attachments ?? [],
         },
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         runtimeMode: "approval-required",
         createdAt: input.createdAt,
       }),
@@ -929,7 +929,7 @@ export function makeReactorTestHarness() {
           attachments: [...(input.attachments ?? [])],
         },
         runtimeMode: "approval-required",
-        interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
+
         createdAt: now,
       }),
     );

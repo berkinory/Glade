@@ -5,12 +5,11 @@ import { makeClaudeTurnCompletion } from "./turnCompletion";
 import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 import { ClaudeQueryRuntime } from "./adapterConfiguration";
 import { Effect, FileSystem, Option, Random, Queue } from "effect";
-import { ProviderAdapterValidationError, type ProviderAdapterError } from "../../core/Errors.ts";
+import { ProviderAdapterValidationError } from "../../core/Errors.ts";
 import { makeClaudeTaskPresentation } from "./taskPresentation";
 import { type ServerConfigShape } from "../../../server/config.ts";
 import { type ProviderSendTurnInput } from "@glade/contracts/provider/provider";
-import { type ProviderInteractionMode } from "@glade/contracts/provider/sessionPolicy";
-import type { PermissionMode } from "@anthropic-ai/claude-agent-sdk";
+
 import { toRequestError, toMessage } from "./streamErrors";
 import { type ClaudeAdapterShape } from "../../Services/ClaudeAdapter.ts";
 import { isClaudeCompactionCommand } from "./commandPresentation";
@@ -68,26 +67,20 @@ export function makeClaudeTurnDispatch(input: {
     getDisabledSkillNames,
     resolveNativeCommandNames,
   } = input;
-  // Restore the runtime permission policy before each turn; native tools may change SDK state.
-  const applyInteractionModePermission = (
-    context: ClaudeSessionContext,
-    threadId: ThreadId,
-    interactionMode: ProviderSendTurnInput["interactionMode"],
-  ): Effect.Effect<ProviderInteractionMode, ProviderAdapterError> =>
+
+  // Native tools may change SDK state, so restore the runtime permission policy before each turn.
+  const applyRuntimePermission = (context: ClaudeSessionContext, threadId: ThreadId) =>
     Effect.gen(function* () {
-      const effectiveInteractionMode = interactionMode ?? "default";
-      const desiredPermissionMode: PermissionMode | undefined =
-        context.basePermissionMode ?? "default";
-      const canSkipRedundantSpawnModeRequest =
+      const desiredPermissionMode = context.basePermissionMode ?? "default";
+      if (
         context.firstTurnSpawnModeAuthoritative &&
-        desiredPermissionMode === context.spawnPermissionMode;
-      if (desiredPermissionMode !== undefined && !canSkipRedundantSpawnModeRequest) {
-        yield* Effect.tryPromise({
-          try: () => context.query.setPermissionMode(desiredPermissionMode),
-          catch: (cause) => toRequestError(threadId, "turn/setPermissionMode", cause),
-        });
-      }
-      return effectiveInteractionMode;
+        desiredPermissionMode === context.spawnPermissionMode
+      )
+        return;
+      yield* Effect.tryPromise({
+        try: () => context.query.setPermissionMode(desiredPermissionMode),
+        catch: (cause) => toRequestError(threadId, "turn/setPermissionMode", cause),
+      });
     });
 
   const sendTurnCore = (input: ProviderSendTurnInput): ReturnType<ClaudeAdapterShape["sendTurn"]> =>
@@ -315,16 +308,13 @@ export function makeClaudeTurnDispatch(input: {
         }
       }
 
-      const effectiveInteractionMode = isCompaction
-        ? (context.lastInteractionMode ?? "default")
-        : yield* applyInteractionModePermission(context, input.threadId, input.interactionMode);
-
+      if (!isCompaction) yield* applyRuntimePermission(context, input.threadId);
       const turnId = TurnId.makeUnsafe(yield* Random.nextUUIDv4);
       context.processedTokenTurnBaseline = context.processedTokenTotal;
       const turnState: ClaudeTurnState = {
         turnId,
         startedAt: yield* nowIso,
-        interactionMode: effectiveInteractionMode,
+
         ...(slashName ? { commandText: input.input!.trim() } : {}),
         ...(isCompaction
           ? {
@@ -445,18 +435,7 @@ export function makeClaudeTurnDispatch(input: {
           return yield* sendTurn(input);
         }
 
-        const effectiveInteractionMode = yield* applyInteractionModePermission(
-          context,
-          input.threadId,
-          input.interactionMode,
-        );
-        if (effectiveInteractionMode !== liveTurnState.interactionMode) {
-          context.turnState = {
-            ...liveTurnState,
-            interactionMode: effectiveInteractionMode,
-          };
-        }
-
+        yield* applyRuntimePermission(context, input.threadId);
         const message = yield* buildUserMessageEffect(input, {
           fileSystem,
           attachmentsDir: serverConfig.attachmentsDir,
