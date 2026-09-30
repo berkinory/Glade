@@ -81,6 +81,8 @@ The HTTP/WebSocket layer also owns:
 
 `provider/claude/adapter` owns Claude SDK message conversion, event emission, assistant text blocks, task tracking, human interaction settlement, turn completion, discovery, session startup and teardown. Controllers receive the session context and their actual dependencies explicitly. The Claude adapter Layer owns session maps, the event queue and finalization, captures the SDK callback runtime once, and composes the controllers in dependency order. SDK and harness contracts remain unchanged.
 
+`provider/sessionRuntime` owns provider-neutral session setup, recovery, branching, turn dispatch, human interactions, runtime binding and idle lifecycle controllers. The ProviderService Layer owns maps, references, the producer Scope, event-pump subscriptions and finalization. Idle timers use the runtime captured at Layer construction; callback installation order and the atomic shutdown/cursor fence remain explicit.
+
 ### Orchestration
 
 The orchestration layer is provider-independent and durable.

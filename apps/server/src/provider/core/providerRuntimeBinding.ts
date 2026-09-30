@@ -1,3 +1,5 @@
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
+import type { PersistedProviderRuntimeEvent } from "../../persistence/Services/ProviderRuntimeEvents.ts";
 import { type ProviderServiceShape } from "../Services/ProviderService.ts";
 import {
   ProviderRespondToRequestInput,
@@ -199,4 +201,30 @@ export function runtimeLastErrorForEvent(event: ProviderRuntimeEvent): string | 
     event.type === "session.exited"
     ? null
     : undefined;
+}
+
+export type PublishedRuntimeEvent = {
+  readonly event: ProviderRuntimeEvent;
+  readonly persisted?: PersistedProviderRuntimeEvent;
+};
+
+export interface StartedTurnPersistenceInput {
+  readonly threadId: ThreadId;
+  readonly provider: ProviderRuntimeBinding["provider"];
+  readonly turnId: string;
+  readonly generation: number;
+
+  readonly lifecycleGeneration?: string;
+  readonly resumeCursor?: unknown;
+  readonly modelSelection?: unknown;
+  readonly lastRuntimeEvent: string;
+}
+
+export interface ThreadDispatchState {
+  nextGeneration: number;
+  latestGeneration: number;
+  ownerGeneration: number;
+  readonly inFlightGenerations: Set<number>;
+  readonly outstandingTurnIds: Set<string>;
+  readonly successfulResults: Map<number, StartedTurnPersistenceInput>;
 }
