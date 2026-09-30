@@ -10,13 +10,15 @@ import { useTheme } from "~/hooks/useTheme";
 import { buildFileDiffRenderKey, getRenderablePatch } from "~/lib/diffRendering";
 import {
   gitQueryKeys,
+  gitWorkingTreeDiffQueryOptions,
+  gitWorkingTreeDiffStatsQueryOptions,
+  gitSourceControlFilesQueryOptions,
+} from "../../lib/gitQueryOptions";
+import {
   gitSourceControlActionMutationOptions,
   gitRevertUnstagedFileMutationOptions,
   gitStageFilesMutationOptions,
   gitUnstageFilesMutationOptions,
-  gitWorkingTreeDiffQueryOptions,
-  gitWorkingTreeDiffStatsQueryOptions,
-  gitSourceControlFilesQueryOptions,
 } from "~/lib/gitReactQuery";
 import { CircleCheckIcon, RefreshCwIcon } from "~/lib/icons";
 import { projectQueryKeys } from "~/lib/projectReactQuery";

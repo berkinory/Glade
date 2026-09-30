@@ -1,9 +1,10 @@
 import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { ThreadEnvironmentMode } from "@glade/contracts/orchestration/threadEntities";
 
-import { requestComposerFocus, useComposerDraftStore, type QueuedComposerChatTurn } from "../composerDraftStore";
+import { requestComposerFocus, useComposerDraftStore } from "../composerDraftStore";
+import type { QueuedComposerChatTurn } from "../composerDraftDomain";
 import { ensureNativeApi } from "../nativeApi";
-import { useProjectEnvironmentStore } from "../projectEnvironmentStore";
+import { useProjectPreferencesStore } from "../projectPreferencesStore";
 import { createAssistantSelectionAttachment } from "./assistantSelections";
 import type { NewThreadOptions } from "./threadBootstrap";
 import { randomUUID } from "./utils";
@@ -54,7 +55,7 @@ export async function startSelectionChat(
   drafts.setModelSelection(threadId, input.modelSelection);
   drafts.setRuntimeMode(threadId, input.runtimeMode);
   drafts.setInteractionMode(threadId, "default");
-  useProjectEnvironmentStore.getState().setProjectEnvMode(input.projectId, input.envMode);
+  useProjectPreferencesStore.getState().setProjectEnvMode(input.projectId, input.envMode);
   if (input.intent === "compose") {
     drafts.setPrompt(threadId, input.prompt);
     drafts.addAssistantSelection(threadId, attachment);

@@ -1,8 +1,8 @@
 import { MessageId, ThreadId, TurnId, CheckpointRef } from "@glade/contracts/core/baseSchemas";
 import { it, expect } from "vitest";
-import { applyOrchestrationEvents } from "./storeEventReducer";
+import { applyOrchestrationEvents } from "./storeEventReducer.batch";
 import { makeState, makeThread, makeDomainEvent, threadsOf } from "./storeTestFixtures";
-import { normalizeChatMessage } from "./storeNormalization";
+import { normalizeChatMessage } from "./storeNormalization.messages";
 
 it("answer metadata preserves the originating turn's final message and completion time", () => {
   const turnId = TurnId.makeUnsafe("old-turn");

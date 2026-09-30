@@ -14,7 +14,7 @@ import { copyTextToClipboard } from "../../lib/clipboard";
 import { showContextMenuFallback } from "~/contextMenuFallback";
 import { GIT_COMMIT_CONTEXT_MENU_ICONS } from "~/lib/contextMenuIcons";
 import { getRenderablePatch, resolveFileDiffPath } from "~/lib/diffRendering";
-import { gitStatusQueryOptions } from "~/lib/gitReactQuery";
+import { gitStatusQueryOptions } from "../../lib/gitQueryOptions";
 import {
   ArrowUpIcon,
   ChevronDownIcon,

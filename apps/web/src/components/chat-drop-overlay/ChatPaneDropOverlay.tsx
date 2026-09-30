@@ -13,8 +13,6 @@ import {
 } from "../../lib/threadDrag";
 import { cn } from "../../lib/utils";
 
-export { type ThreadDragPayload } from "../../lib/threadDrag";
-
 export type DropZone = "top" | "bottom" | "left" | "right";
 
 interface ThreadDropRules {

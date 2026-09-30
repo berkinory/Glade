@@ -7,7 +7,8 @@ import type {
 } from "@glade/contracts/provider/sessionPolicy";
 import type { ProjectId, ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 
-import { useComposerDraftStore, type DraftThreadEnvMode } from "../composerDraftStore";
+import { useComposerDraftStore } from "../composerDraftStore";
+import type { DraftThreadEnvMode } from "../composerDraftDomain";
 import { dispatchKanbanDraftThread, type KanbanDraftDispatchResult } from "./kanbanDispatch";
 import { newThreadId } from "./utils";
 

@@ -2,7 +2,7 @@ import { PROVIDER_DESCRIPTORS } from "@glade/shared/provider/providerMetadata";
 import { useCallback, useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 
 import type { TimestampFormat } from "../../appSettings";
-import type { WorkLogEntry } from "../../session-logic";
+import type { WorkLogEntry } from "../../workLog.types";
 import { DISCLOSURE_CLEANUP_BUFFER_MS, DISCLOSURE_TRANSITION_MS } from "~/lib/disclosureMotion";
 import { cn } from "~/lib/utils";
 import { ToolCallDetailsContent } from "./ToolCallDetailsDialog";
@@ -12,7 +12,7 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 
 type TimelineWorkEntry = WorkLogEntry;
 
-export function ToolRowTooltip(props: { content: ReactNode; children: ReactElement }) {
+function ToolRowTooltip(props: { content: ReactNode; children: ReactElement }) {
   if (!props.content) {
     return props.children;
   }

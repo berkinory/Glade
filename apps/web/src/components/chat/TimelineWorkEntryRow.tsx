@@ -35,7 +35,7 @@ import { describeLinkChip } from "~/lib/linkChips";
 import { computerToolName, describeComputerToolCall } from "~/lib/computerToolPresentation";
 import { cn } from "~/lib/utils";
 
-import { isFileChangeWorkLogEntry, type WorkLogEntry } from "../../session-logic";
+import { isFileChangeWorkLogEntry, type WorkLogEntry } from "../../workLog.types";
 import {
   formatAgentActivityEntryPreview,
   isAgentActivityWorkEntry,
@@ -50,7 +50,7 @@ import ChatMarkdown from "../ChatMarkdown";
 import { DiffStatLabel } from "./DiffStatLabel";
 import { type ExpandedImagePreview } from "./ExpandedImagePreview";
 import { LinkChipIcon } from "../LinkChipIcon";
-import { normalizeCompactToolLabel } from "./MessagesTimeline.logic";
+import { normalizeCompactToolLabel } from "./MessagesTimeline.logic.rowTypes";
 import { GladeLogo } from "../GladeLogo";
 import { fileDiffStatsByPath, resolveFileDiffStatByChangedPath } from "~/lib/diffRendering";
 import {
@@ -59,15 +59,19 @@ import {
 } from "../../lib/toolArgumentSummary";
 import {
   deriveFriendlyCommandTarget,
+  resolveCommandVisualKind,
+} from "../../lib/toolCallLabel.commands";
+import {
   deriveGladeMcpToolTitle,
-  extractWebFetchUrl,
   isGenericToolTitle,
   isGladeBrowserToolCall,
-  normalizeToolTextForComparison,
-  resolveCommandVisualKind,
   sanitizeGladeMcpToolPreview,
   type GladeMcpToolStatus,
-} from "../../lib/toolCallLabel";
+} from "../../lib/toolCallLabel.descriptors";
+import {
+  extractWebFetchUrl,
+  normalizeToolTextForComparison,
+} from "../../lib/toolCallLabel.presentations";
 import { formatLiveActivityMeta, useLiveActivityNow } from "../../lib/liveActivityPresentation";
 import { openWorkspaceFileReference, useWorkspaceFileOpener } from "../../lib/workspaceFileOpener";
 import { MUTED_LABEL_TEXT_CLASS_NAME, MUTED_LABEL_TEXT_COLOR } from "~/surfaceStyles";

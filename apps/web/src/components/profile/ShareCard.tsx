@@ -118,9 +118,7 @@ export const ShareCard = forwardRef<HTMLDivElement, ShareCardProps>(function Sha
       {}
       <ActivityHeatmap
         cells={heatmapCells}
-        cellSize={22}
-        gap={4}
-        radius={5}
+        layout={{ cellSize: 22, gap: 4, radius: 5 }}
         intensityClasses={CARD_HEATMAP_INTENSITY_CLASSES}
       />
 

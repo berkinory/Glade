@@ -1,5 +1,5 @@
 import { cn } from "~/lib/utils";
-import type { ThreadStatusPill } from "./Sidebar.logic";
+import type { ThreadStatusPill } from "./Sidebar.logic.statusTypes";
 import { ThreadRunningSpinner } from "./ThreadRunningSpinner";
 
 function SidebarUnreadCompletionGlyph({ className }: { className?: string }) {

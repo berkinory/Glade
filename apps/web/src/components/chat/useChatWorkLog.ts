@@ -1,17 +1,17 @@
 import { OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
 import { ThreadId, type TurnId } from "@glade/contracts/core/baseSchemas";
 import { useEffect, useMemo } from "react";
-import {
-  deriveWorkLogEntries,
-  isLatestTurnSettled,
-  omitRoutedSubagentWorkEntries,
-} from "../../session-logic";
+import { deriveWorkLogEntries, omitRoutedSubagentWorkEntries } from "../../workLog.entries";
+import { isLatestTurnSettled } from "../../session-logic";
 import { useStore } from "../../store";
 import { createThreadSelector } from "../../storeSelectors";
 import { retainThreadDetailSubscription } from "../../threadDetailSubscriptionRetention";
 import type { Thread } from "../../types";
 import { useWorkflowRunUiThreadState } from "../../workflowRunUiStore";
-import { enrichSubagentWorkEntries, resolveComposerStripWorkLogEntries } from "../ChatView.logic";
+import {
+  enrichSubagentWorkEntries,
+  resolveComposerStripWorkLogEntries,
+} from "../ChatView.logic.subagents";
 import { createRelevantWorkLogThreadsSelector } from "../ChatView.selectors";
 import { deriveComposerSubagentStripItems } from "./ComposerSubagentStrip.logic";
 import { deriveWorkflowRunState, type WorkflowSubagentThreadRef } from "./WorkflowRunCard.logic";

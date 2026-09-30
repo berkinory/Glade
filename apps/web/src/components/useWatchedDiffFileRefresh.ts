@@ -1,7 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { useProjectFileChangeSubscription } from "../hooks/useProjectFileChangeSubscription";
-import { refreshGitAfterFileWrite } from "../lib/gitReactQuery";
+import { refreshGitAfterFileWrite } from "../lib/gitQueryOptions";
 import { resolveWatchedDiffFilePath, type DiffViewKind } from "./DiffPanel.logic";
 
 export function useWatchedDiffFileRefresh(input: {

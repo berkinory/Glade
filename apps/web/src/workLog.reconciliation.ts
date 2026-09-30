@@ -3,11 +3,11 @@ import type {
   OrchestrationThreadActivity,
 } from "@glade/contracts/orchestration/threadEntities";
 import type { TurnId } from "@glade/contracts/core/baseSchemas";
+import { isGenericToolTitle } from "./lib/toolCallLabel.descriptors";
 import {
-  isGenericToolTitle,
   normalizeCompactToolLabel,
   normalizeToolTextForComparison,
-} from "./lib/toolCallLabel";
+} from "./lib/toolCallLabel.presentations";
 import { mergeWorkLogToolDetails } from "./lib/toolCallDetails";
 import type {
   DerivedWorkLogEntry,

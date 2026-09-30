@@ -16,7 +16,7 @@ import { useTheme } from "~/hooks/useTheme";
 import { CheckIcon } from "~/lib/icons";
 import { findProviderStatus } from "~/lib/providerAvailability";
 import { cn } from "~/lib/utils";
-import { CODE_THEME_OPTIONS } from "~/theme/theme.logic";
+import { CODE_THEME_OPTIONS } from "../theme/theme.logic.shared";
 import { ONBOARDING_INSET_CLASS_NAME } from "./layout";
 import {
   classifyProviderSetup,

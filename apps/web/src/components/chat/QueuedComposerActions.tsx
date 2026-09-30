@@ -1,6 +1,6 @@
 import { EllipsisIcon, NewThreadIcon, SteerIcon, Trash2 } from "~/lib/icons";
 
-import type { QueuedComposerTurn } from "../../composerDraftStore";
+import type { QueuedComposerTurn } from "../../composerDraftDomain";
 
 import { Button } from "../ui/button";
 import { IconButton } from "../ui/icon-button";

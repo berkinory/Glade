@@ -3,7 +3,7 @@ import { isWorkspaceFileWriteConflictError } from "@glade/shared/workspace/works
 import type { QueryClient } from "@tanstack/react-query";
 
 import { ensureNativeApi } from "~/nativeApi";
-import { refreshGitAfterFileWrite } from "./gitReactQuery";
+import { refreshGitAfterFileWrite } from "./gitQueryOptions";
 import { projectQueryKeys, projectReadFileQueryOptions } from "./projectReactQuery";
 import {
   INITIAL_WORKSPACE_FILE_EDITOR_STATE,

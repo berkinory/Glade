@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, type ReactNode } from "react";
 
 import type { TimestampFormat } from "~/appSettings";
-import { gitBlameLineQueryOptions } from "~/lib/gitReactQuery";
+import { gitBlameLineQueryOptions } from "../lib/gitQueryOptions";
 import { CopyIcon, MessageCircleIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { ELEVATED_HOVER_SURFACE_RAISED_TEXT_CLASS_NAME } from "~/surfaceStyles";

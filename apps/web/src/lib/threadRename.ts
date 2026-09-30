@@ -6,7 +6,7 @@ import {
 import { type OrchestrationThreadPullRequest } from "@glade/contracts/orchestration/threadEntities";
 import { type OrchestrationRegenerateThreadTitleResult } from "@glade/contracts/orchestration/rpc";
 import { type ProjectId, type ThreadId } from "@glade/contracts/core/baseSchemas";
-import { type DraftThreadEnvMode } from "../composerDraftStore";
+import type { DraftThreadEnvMode } from "../composerDraftDomain";
 import { readNativeApi } from "../nativeApi";
 import type { Thread } from "../types";
 import { promoteThreadCreate } from "./threadCreatePromotion";

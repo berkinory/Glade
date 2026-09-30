@@ -12,7 +12,7 @@ import { isEditableEventTarget } from "../../lib/editableEventTarget";
 import { isTerminalFocused } from "../../lib/terminalFocus";
 import type { Project } from "../../types";
 import { type Thread } from "../../types";
-import { resolveCycledModelSlug } from "../ChatView.logic";
+import { resolveCycledModelSlug } from "../ChatView.logic.worktree";
 import { collectForegroundRunningSubagentStripItems } from "./ComposerSubagentStrip.logic";
 import { eventTargetsInAppBrowser, shouldCaptureChatFindShortcut } from "./threadFind.logic";
 import { useChatProjectScripts } from "./useChatProjectScripts";

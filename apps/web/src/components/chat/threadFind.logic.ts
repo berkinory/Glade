@@ -1,7 +1,7 @@
 import { type MessageId } from "@glade/contracts/core/baseSchemas";
 import { repairMarkdownTableDelimiters } from "../../lib/markdownTableRepair";
 import { deriveDisplayedUserMessageState } from "../../lib/terminalContext";
-import { type TimelineEntry } from "../../session-logic";
+import type { TimelineEntry } from "../../workLog.types";
 import type { ChatMessage } from "../../types";
 import { resolveUserMessageMarkdownText } from "./userMessageTerminalContexts";
 

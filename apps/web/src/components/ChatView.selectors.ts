@@ -16,7 +16,7 @@ import type {
   ThreadTurnState,
   TurnDiffSummary,
 } from "../types";
-import type { WorkLogEntry } from "../session-logic";
+import type { WorkLogEntry } from "../workLog.types";
 
 const EMPTY_LINEAGE_ACTIVITIES: Thread["activities"] = [];
 

@@ -15,30 +15,34 @@ import {
   projectAppearanceEquals,
   type ProjectAppearance,
 } from "./lib/projectAppearance";
-import { resolveCreateBranchFlowCompletedMerge } from "./storeNormalization";
+import { resolveCreateBranchFlowCompletedMerge } from "./storeNormalization.shared";
+import { applySpaceOrder } from "./storeProjection.records";
 import {
-  applySpaceOrder,
   applyShellEvent,
-  applyThreadUpdate,
-  clearThreadDetailSyncFailureInClientState,
-  evictThreadDetailFromClientState,
-  markThreadDetailSyncFailedInClientState,
-  removeDeletedProjectFromClientState,
-  removeDeletedThreadFromClientState,
   syncServerReadModel,
   syncServerShellSnapshot,
   syncServerThreadDetail,
   syncServerThreadDetailHotPath,
-} from "./storeProjection";
-import { applyOrchestrationEvents, applyOrchestrationEventsHotPath } from "./storeEventReducer";
+} from "./storeProjection.synchronization";
+import {
+  applyThreadUpdate,
+  removeDeletedProjectFromClientState,
+  removeDeletedThreadFromClientState,
+} from "./storeProjection.mutations";
+import {
+  clearThreadDetailSyncFailureInClientState,
+  evictThreadDetailFromClientState,
+  markThreadDetailSyncFailedInClientState,
+} from "./storeProjection.threadState";
+import {
+  applyOrchestrationEvents,
+  applyOrchestrationEventsHotPath,
+} from "./storeEventReducer.batch";
 import { persistState, readPersistedState, rememberProjectState } from "./storePersistence";
 import { initialState, type AppState } from "./storeState";
 import type { Project, ThreadWorkspacePatch } from "./types";
 
 type ReadModelThread = OrchestrationReadModel["threads"][number];
-
-export type { AppState } from "./storeState";
-export { EMPTY_THREAD_IDS } from "./storeState";
 
 const debouncedPersistState = new Debouncer(persistState, { wait: 500 });
 

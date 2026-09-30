@@ -8,7 +8,7 @@ import { useDiffRouteSearch } from "../hooks/useDiffRouteSearch";
 import { readNativeApi } from "../nativeApi";
 import { resolveSplitViewThreadIds, selectSplitView, useSplitViewStore } from "../splitViewStore";
 import { useStore } from "../store";
-import { arraysShallowEqual } from "../storeNormalization";
+import { arraysShallowEqual } from "../storeNormalization.shared";
 import { EMPTY_THREAD_IDS } from "../storeState";
 import { useTerminalStateStore } from "../terminalStateStore";
 import {

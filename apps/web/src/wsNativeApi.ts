@@ -1,38 +1,33 @@
-import {
-  type AuthBearerBootstrapResult,
-  type AuthBootstrapInput,
-  type AuthBootstrapResult,
-  type AuthClientSession,
-  type AuthCreatePairingCredentialInput,
-  type AuthLogoutResult,
-  type AuthPairingCredentialResult,
-  type AuthPairingLink,
-  type AuthRevokeClientSessionInput,
-  type AuthRevokePairingLinkInput,
-  type AuthSessionState,
-  type AuthWebSocketTokenResult,
+import type {
+  AuthBearerBootstrapResult,
+  AuthBootstrapInput,
+  AuthBootstrapResult,
+  AuthClientSession,
+  AuthCreatePairingCredentialInput,
+  AuthLogoutResult,
+  AuthPairingCredentialResult,
+  AuthPairingLink,
+  AuthRevokeClientSessionInput,
+  AuthRevokePairingLinkInput,
+  AuthSessionState,
+  AuthWebSocketTokenResult,
 } from "@glade/contracts/transport/auth/auth";
-import { type ThreadId } from "@glade/contracts/core/baseSchemas";
-import {
-  type ThreadBrowserState,
-  type ContextMenuItem,
-  type NativeApi,
-} from "@glade/contracts/ipc/ipc";
-import {
-  type GitActionProgressEvent,
-  type GitWorktreeSetupProgressEvent,
+import type { ContextMenuItem, NativeApi } from "@glade/contracts/ipc/ipc";
+import type {
+  GitActionProgressEvent,
+  GitWorktreeSetupProgressEvent,
 } from "@glade/contracts/git/git";
-import { type GitHubProjectProvisionProgressEvent } from "@glade/contracts/git/githubProjectProvisioning";
-import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
-import {
-  type OrchestrationShellStreamItem,
-  type OrchestrationThreadStreamItem,
+import type { GitHubProjectProvisionProgressEvent } from "@glade/contracts/git/githubProjectProvisioning";
+import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
+import type {
+  OrchestrationShellStreamItem,
+  OrchestrationThreadStreamItem,
 } from "@glade/contracts/orchestration/snapshots";
 import {
   ORCHESTRATION_WS_CHANNELS,
   ORCHESTRATION_WS_METHODS,
 } from "@glade/contracts/orchestration/rpc";
-import { type ProjectDevServerEvent } from "@glade/contracts/workspace/project";
+import type { ProjectDevServerEvent } from "@glade/contracts/workspace/project";
 import {
   type ServerProviderStatusesUpdatedPayload,
   type ServerLifecycleStreamEvent,
@@ -40,10 +35,10 @@ import {
   type ServerVoiceTranscriptionResult,
   ServerConfigUpdatedPayload,
 } from "@glade/contracts/server/server";
-import { type TerminalEvent } from "@glade/contracts/terminal/terminal";
+import type { TerminalEvent } from "@glade/contracts/terminal/terminal";
 import { WS_CHANNELS, WS_METHODS, type WsWelcomePayload } from "@glade/contracts/transport/ws/ws";
-import { type WsBootstrapNegotiateResult } from "@glade/contracts/transport/ws/wsCompatibility";
-import { type AutomationStreamEvent } from "@glade/contracts/automation/automation";
+import type { WsBootstrapNegotiateResult } from "@glade/contracts/transport/ws/wsCompatibility";
+import type { AutomationStreamEvent } from "@glade/contracts/automation/automation";
 import {
   DEVICE_WS_CHANNELS,
   DEVICE_WS_METHODS,
@@ -55,18 +50,27 @@ import {
   type ComputerEvent,
 } from "@glade/contracts/computer/computer";
 import { VOICE_TRANSCRIPTION_UPLOAD_ROUTE_PATH } from "@glade/shared/transport/binaryTransfer";
-
 import { showConfirmDialogFallback } from "./confirmDialogFallback";
 import { showContextMenuFallback } from "./contextMenuFallback";
 import { requireHttpExternalUrl } from "./lib/externalUrl";
 import { withNativeMenuIcons } from "./lib/nativeMenuIcons";
 import { isMacNavigatorPlatform } from "./lib/utils";
-import { WsTransport, type WsThreadStreamFailure } from "./wsTransport";
+import { WsTransport } from "./wsTransport.implementation";
+import type { WsThreadStreamFailure } from "./wsTransport.support";
 import { emitWsCompatibilityIssue, emitWsTransportState } from "./wsTransportEvents";
 import { resolveWsHttpUrl } from "./lib/wsHttpUrl";
-
-export type { WsThreadStreamFailure } from "./wsTransport";
-
+import {
+  createListenerRegistry,
+  fallbackBrowserStateListeners,
+  defaultBrowserTitle,
+  createFallbackTab,
+  cloneBrowserState,
+  getFallbackBrowserState,
+  emitFallbackBrowserState,
+  markFallbackBrowserStateChanged,
+  ensureFallbackBrowserWorkspace,
+  resolveFallbackBrowserTab,
+} from "./wsNativeApiBrowser";
 let instance: { api: NativeApi; transport: WsTransport } | null = null;
 
 export function readWsServerCapabilities(): ReadonlyArray<string> | null {
@@ -88,31 +92,6 @@ export function onWsServerCapabilitiesChange(
       listener(compatibility?.capabilities ?? null),
     options,
   );
-}
-
-function createListenerRegistry<T>() {
-  const listeners = new Set<(payload: T) => void>();
-  return {
-    get size() {
-      return listeners.size;
-    },
-    subscribe(listener: (payload: T) => void) {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
-    emit(payload: T) {
-      for (const listener of listeners) {
-        try {
-          listener(payload);
-        } catch {
-          // A listener must not prevent delivery to the remaining subscribers.
-        }
-      }
-    },
-    clear() {
-      listeners.clear();
-    },
-  };
 }
 
 function subscribeWithReplay<T>(input: {
@@ -167,8 +146,6 @@ const orchestrationDomainEventListeners = createListenerRegistry<OrchestrationEv
 const orchestrationShellEventListeners = createListenerRegistry<OrchestrationShellStreamItem>();
 const orchestrationThreadEventListeners = createListenerRegistry<OrchestrationThreadStreamItem>();
 const threadStreamFailureListeners = createListenerRegistry<WsThreadStreamFailure>();
-const fallbackBrowserStateListeners = createListenerRegistry<ThreadBrowserState>();
-const fallbackBrowserStates = new Map<ThreadId, ThreadBrowserState>();
 
 function clearWsNativeApiListeners(): void {
   welcomeListeners.clear();
@@ -189,28 +166,6 @@ function clearWsNativeApiListeners(): void {
   orchestrationThreadEventListeners.clear();
   threadStreamFailureListeners.clear();
   fallbackBrowserStateListeners.clear();
-}
-
-function defaultBrowserState(threadId: ThreadId): ThreadBrowserState {
-  return {
-    threadId,
-    version: 0,
-    open: false,
-    activeTabId: null,
-    tabs: [],
-    lastError: null,
-  };
-}
-
-function defaultBrowserTitle(url: string): string {
-  if (url === "about:blank") {
-    return "New tab";
-  }
-  try {
-    return new URL(url).hostname || url;
-  } catch {
-    return url;
-  }
 }
 
 async function requestAuthJson<T>(
@@ -283,74 +238,6 @@ async function requestVoiceTranscriptionUpload(
 }
 
 class VoiceUploadRouteUnavailableError extends Error {}
-
-function createFallbackTab(url = "about:blank") {
-  return {
-    id: crypto.randomUUID(),
-    url,
-    title: defaultBrowserTitle(url),
-    status: "live" as const,
-    isLoading: false,
-    canGoBack: false,
-    canGoForward: false,
-    faviconUrl: null,
-    lastCommittedUrl: url,
-    lastError: null,
-  };
-}
-
-function cloneBrowserState(state: ThreadBrowserState): ThreadBrowserState {
-  return {
-    ...state,
-    tabs: state.tabs.map((tab) => ({ ...tab })),
-  };
-}
-
-function getFallbackBrowserState(threadId: ThreadId): ThreadBrowserState {
-  const existing = fallbackBrowserStates.get(threadId);
-  if (existing) {
-    return existing;
-  }
-  const initial = defaultBrowserState(threadId);
-  fallbackBrowserStates.set(threadId, initial);
-  return initial;
-}
-
-function emitFallbackBrowserState(threadId: ThreadId): ThreadBrowserState {
-  const state = cloneBrowserState(getFallbackBrowserState(threadId));
-  fallbackBrowserStateListeners.emit(state);
-  return state;
-}
-
-function markFallbackBrowserStateChanged(state: ThreadBrowserState): void {
-  state.version += 1;
-}
-
-function ensureFallbackBrowserWorkspace(threadId: ThreadId): ThreadBrowserState {
-  const state = getFallbackBrowserState(threadId);
-  if (state.tabs.length === 0) {
-    const tab = createFallbackTab();
-    state.tabs = [tab];
-    state.activeTabId = tab.id;
-  }
-  state.open = true;
-  return state;
-}
-
-function resolveFallbackBrowserTab(state: ThreadBrowserState, tabId?: string) {
-  const existing =
-    (tabId ? state.tabs.find((tab) => tab.id === tabId) : undefined) ??
-    (state.activeTabId ? state.tabs.find((tab) => tab.id === state.activeTabId) : undefined) ??
-    state.tabs[0];
-  if (existing) {
-    return existing;
-  }
-  const tab = createFallbackTab();
-  state.tabs = [tab];
-  state.activeTabId = tab.id;
-  state.open = true;
-  return tab;
-}
 
 // If a welcome was already received before this call, the listener fires synchronously with the
 // cached payload. This avoids the race between WebSocket connect and React effect registration.

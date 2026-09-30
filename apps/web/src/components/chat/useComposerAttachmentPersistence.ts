@@ -1,10 +1,10 @@
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useEffect } from "react";
-import {
-  type ComposerImageAttachment,
-  type PersistedComposerImageAttachment,
-  useComposerDraftStore,
-} from "../../composerDraftStore";
+import type {
+  ComposerImageAttachment,
+  PersistedComposerImageAttachment,
+} from "../../composerDraftDomain";
+import { useComposerDraftStore } from "../../composerDraftStore";
 
 import { readFileAsDataUrl } from "../../lib/composerSend";
 

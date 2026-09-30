@@ -41,7 +41,10 @@ import {
   pullRequestMergeBlocker,
 } from "../../pullRequest/pullRequestStack.logic";
 import { addChatPullRequestContext } from "~/lib/chatReferences";
-import { gitPullRequestSnapshotQueryOptions, gitStatusQueryOptions } from "~/lib/gitReactQuery";
+import {
+  gitPullRequestSnapshotQueryOptions,
+  gitStatusQueryOptions,
+} from "../../../lib/gitQueryOptions";
 import {
   ChatBubbleIcon,
   ChatBubblePlusIcon,
@@ -60,10 +63,8 @@ import {
   PageTextIcon,
   RefreshCwIcon,
 } from "~/lib/icons";
-import {
-  pullRequestActionMutationOptions,
-  pullRequestDetailQueryOptions,
-} from "~/lib/pullRequestReactQuery";
+import { pullRequestActionMutationOptions } from "../../../lib/pullRequestMutationOptions";
+import { pullRequestDetailQueryOptions } from "../../../lib/pullRequestQueryOptions";
 import { type PullRequestContextScope } from "~/lib/pullRequestContext";
 import { formatRelativeTime } from "~/lib/relativeTime";
 import { cn } from "~/lib/utils";

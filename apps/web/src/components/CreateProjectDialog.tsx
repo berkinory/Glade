@@ -12,7 +12,7 @@ import { readNativeApi } from "../nativeApi";
 import { randomUUID } from "../lib/utils";
 import { joinProjectPath } from "../lib/projectPaths";
 import type { Space } from "../types";
-import { useVoidSpace } from "../voidSpaceStore";
+import { useVoidSpace } from "../spacesUiStore";
 import { cn } from "~/lib/utils";
 
 import { FolderClosed } from "./FolderClosed";
@@ -21,7 +21,7 @@ import {
   PROJECT_DIALOG_FIELD_CONTROL_CLASS_NAME,
 } from "./CreateGitHubProjectFields";
 import { ProjectSourceSegmentedPicker } from "./ProjectSourceSegmentedPicker";
-import { describeAddProjectError } from "./Sidebar.logic";
+import { describeAddProjectError } from "./Sidebar.logic.status";
 import { SpaceEditorDialog, type SpaceEditorValue } from "./SpaceEditorDialog";
 import { SpaceIcon } from "./SpaceIcon";
 import { Button } from "./ui/button";

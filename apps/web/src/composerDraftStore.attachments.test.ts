@@ -10,10 +10,10 @@ import {
   captureComposerPromptHistorySavedDraft,
   COMPOSER_DRAFT_STORAGE_KEY,
   COMPOSER_DRAFT_STORAGE_VERSION,
-  partializeComposerDraftStoreState,
-  useComposerDraftStore,
   type ComposerImageAttachment,
-} from "./composerDraftStore";
+} from "./composerDraftDomain";
+import { partializeComposerDraftStoreState } from "./composerDraftPersistence.serialization";
+import { useComposerDraftStore } from "./composerDraftStore";
 import {
   makeFile,
   makeImage,

@@ -5,11 +5,8 @@ import {
 } from "@glade/shared/threads/terminalThreads";
 import { pendingRequestInstanceKey } from "@glade/shared/threads/threadSummary";
 import type { Thread, ThreadSession } from "../types";
-import {
-  derivePendingApprovals,
-  derivePendingUserInputs,
-  hasLiveLatestTurn,
-} from "../session-logic";
+import { derivePendingApprovals, derivePendingUserInputs } from "../pendingInteractionDerivation";
+import { hasLiveLatestTurn } from "../session-logic";
 
 export interface CompletedThreadCandidate {
   threadId: Thread["id"];

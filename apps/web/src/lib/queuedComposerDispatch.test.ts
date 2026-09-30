@@ -1,7 +1,7 @@
 import { MessageId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { QueuedComposerTurn } from "../composerDraftStore";
+import type { QueuedComposerTurn } from "../composerDraftDomain";
 import { resetComposerDraftStore } from "../composerDraftStoreTestFixtures";
 import { useStore } from "../store";
 import { initialState } from "../storeState";

@@ -20,9 +20,8 @@ import { readNativeApi } from "../nativeApi";
 import { useSpacesUiStore } from "../spacesUiStore";
 import { useStore } from "../store";
 import type { Project, SidebarThreadSummary, Space } from "../types";
-import { useVoidSpaceStore } from "../voidSpaceStore";
 import { useWorkspacePathsStore } from "../workspacePathsStore";
-import { sortThreadsForSidebar } from "./Sidebar.logic";
+import { sortThreadsForSidebar } from "./Sidebar.logic.projectData";
 import type { SpaceEditorMode, SpaceEditorValue } from "./SpaceEditorDialog";
 import { useRouteSpaceSync } from "./useRouteSpaceSync";
 import { toastManager } from "./ui/toast";
@@ -88,9 +87,9 @@ export function useSpacesController(input: {
   const getLastSpaceDraftThreadId = useSpacesUiStore((store) => store.getLastDraftThreadId);
   const getLastSpaceProjectId = useSpacesUiStore((store) => store.getLastProjectId);
   const reconcileSpacesUi = useSpacesUiStore((store) => store.reconcile);
-  const voidSpace = useVoidSpaceStore((store) => store.voidSpace);
-  const setVoidSpace = useVoidSpaceStore((store) => store.setVoidSpace);
-  const resetVoidSpace = useVoidSpaceStore((store) => store.resetVoidSpace);
+  const voidSpace = useSpacesUiStore((store) => store.voidSpace);
+  const setVoidSpace = useSpacesUiStore((store) => store.setVoidSpace);
+  const resetVoidSpace = useSpacesUiStore((store) => store.resetVoidSpace);
   const homeDir = useWorkspacePathsStore((store) => store.homeDir);
   const chatWorkspaceRoot = useWorkspacePathsStore((store) => store.chatWorkspaceRoot);
   const workspacePaths = useMemo(

@@ -3,10 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { useEffect, useRef, useState } from "react";
 
-import {
-  gitPreparePullRequestThreadMutationOptions,
-  gitResolvePullRequestQueryOptions,
-} from "~/lib/gitReactQuery";
+import { gitPreparePullRequestThreadMutationOptions } from "~/lib/gitReactQuery";
+import { gitResolvePullRequestQueryOptions } from "../lib/gitQueryOptions";
 import { cn } from "~/lib/utils";
 import { parsePullRequestReference } from "~/pullRequestReference";
 import { Button } from "./ui/button";

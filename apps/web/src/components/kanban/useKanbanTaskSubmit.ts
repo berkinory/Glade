@@ -11,7 +11,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 
 import { toastManager } from "~/components/ui/toast";
-import type { DraftThreadEnvMode } from "~/composerDraftStore";
+import type { DraftThreadEnvMode } from "../../composerDraftDomain";
 import { useComposerDraftStore } from "~/composerDraftStore";
 import { useRefreshProviderStatusesNow } from "~/hooks/useProviderStatusRefresh";
 import { createAndSendKanbanTask, createKanbanDraftTask } from "~/lib/kanbanTaskCreate";

@@ -3,7 +3,7 @@ import { createMarkdownCodeFence, formatShellTranscript } from "~/lib/toolCallDe
 import { cn } from "~/lib/utils";
 import type { TimestampFormat } from "../../appSettings";
 import type { WorkLogToolDetails, WorkLogToolOutputDetails } from "../../lib/toolCallDetails";
-import type { WorkLogLiveActivity } from "../../workLog";
+import type { WorkLogLiveActivity } from "../../workLog.types";
 import {
   formatLiveActivityElapsed,
   formatLiveActivityProgress,

@@ -13,7 +13,7 @@ import {
   pendingRequestInstanceKey,
 } from "@glade/shared/threads/threadSummary";
 
-import { orderedActivities } from "./workLog";
+import { orderedActivities } from "./workLog.entries";
 
 export interface PendingApproval {
   requestId: ApprovalRequestId;

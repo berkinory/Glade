@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { gitBranchesQueryOptions, gitRecentCommitsQueryOptions } from "~/lib/gitReactQuery";
+import { gitBranchesQueryOptions, gitRecentCommitsQueryOptions } from "../lib/gitQueryOptions";
 import { GitBranchIcon, GitCommitIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { buildDiffPanelCompareRefValue, parseDiffPanelCompareRefValue } from "./DiffPanel.logic";

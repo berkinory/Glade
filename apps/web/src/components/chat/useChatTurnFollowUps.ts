@@ -7,7 +7,8 @@ import type { Dispatch, RefObject, SetStateAction } from "react";
 import { useCallback } from "react";
 import { newCommandId, newMessageId, newThreadId, randomUUID } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
-import { useComposerDraftStore, type QueuedComposerPlanFollowUp } from "../../composerDraftStore";
+import { useComposerDraftStore } from "../../composerDraftStore";
+import type { QueuedComposerPlanFollowUp } from "../../composerDraftDomain";
 import { formatOutgoingComposerPrompt } from "../../lib/composerSend";
 import { reconcileDeletedThreadFromClient } from "../../lib/deletedThreadClientReconciliation";
 import { unblockThreadFromClient } from "../../lib/threadUnblock";
@@ -32,9 +33,9 @@ import {
   resolveQueuedTurnDispatchSettings,
   threadSettingsDispatchFields,
   turnStartDispatchFields,
-  type QueuedSteerGate,
   type TurnDispatchSettings,
-} from "../ChatView.logic";
+} from "../ChatView.logic.subagents";
+import type { QueuedSteerGate } from "../ChatView.logic.dispatch";
 import { buildWorkflowResumePrompt } from "./WorkflowRunCard.logic";
 import { useChatComposerDraft } from "./useChatComposerDraft";
 import { useChatLocalDispatch } from "./useChatLocalDispatch";

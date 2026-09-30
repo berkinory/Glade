@@ -1,4 +1,4 @@
-import type { PendingUserInput } from "../../session-logic";
+import type { PendingUserInput } from "../../pendingInteractionDerivation";
 import type { PendingUserInputDraftAnswer } from "../../pendingUserInput";
 import { UserInputQuestionForm } from "./UserInputQuestionForm";
 

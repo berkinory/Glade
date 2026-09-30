@@ -13,9 +13,9 @@ import {
   resolveNextLocalDispatchSnapshot,
   worktreeSetupHasError,
   type LocalDispatchSnapshot,
-  type WorktreeSetupDispatchOptions,
   type WorktreeSetupResolution,
-} from "../ChatView.logic";
+} from "../ChatView.logic.dispatch";
+import type { WorktreeSetupDispatchOptions } from "../ChatView.logic.worktree";
 import { useChatPendingInteractions } from "./useChatPendingInteractions";
 const EMPTY_MESSAGES: ChatMessage[] = [];
 interface ChatLocalDispatchInput {

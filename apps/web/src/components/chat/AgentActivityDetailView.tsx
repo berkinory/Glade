@@ -2,7 +2,7 @@ import { pluralize } from "@glade/shared/text/text";
 import { type CSSProperties, type ReactNode } from "react";
 import { BotIcon, ChevronLeftIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
-import type { WorkLogEntry } from "../../session-logic";
+import type { WorkLogEntry } from "../../workLog.types";
 import { formatShortTimestamp } from "../../timestampFormat";
 import type { TimestampFormat } from "../../appSettings";
 import ChatMarkdown from "../ChatMarkdown";

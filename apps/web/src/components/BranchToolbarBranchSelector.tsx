@@ -21,7 +21,7 @@ import {
   gitQueryKeys,
   gitStatusQueryOptions,
   refreshGitQueriesScoped,
-} from "../lib/gitReactQuery";
+} from "../lib/gitQueryOptions";
 import { readNativeApi } from "../nativeApi";
 import { parsePullRequestReference } from "../pullRequestReference";
 import {
@@ -76,17 +76,23 @@ import type { ThreadWorkspacePatch } from "../types";
 export type BranchSelectorVariant = "toolbar" | "panel" | "compact";
 
 interface BranchToolbarBranchSelectorProps {
-  activeProjectCwd: string;
-  activeThreadBranch: string | null;
-  activeWorktreePath: string | null;
-  branchCwd: string | null;
-  effectiveEnvMode: EnvMode;
-  envLocked: boolean;
-  hasServerThread: boolean;
-  isThreadSettled: boolean;
-  onSetThreadWorkspace: (patch: ThreadWorkspacePatch) => void;
-  onCheckoutPullRequestRequest?: (reference: string) => void;
-  onComposerFocusRequest?: () => void;
+  workspace: {
+    activeProjectCwd: string;
+    activeThreadBranch: string | null;
+    activeWorktreePath: string | null;
+    branchCwd: string | null;
+    effectiveEnvMode: EnvMode;
+  };
+  thread: {
+    envLocked: boolean;
+    hasServerThread: boolean;
+    isThreadSettled: boolean;
+  };
+  actions: {
+    onSetThreadWorkspace: (patch: ThreadWorkspacePatch) => void;
+    onCheckoutPullRequestRequest?: (reference: string) => void;
+    onComposerFocusRequest?: () => void;
+  };
   variant?: BranchSelectorVariant;
 }
 
@@ -131,17 +137,15 @@ function getCurrentBranchChangeSummary(
 }
 
 export function BranchToolbarBranchSelector({
-  activeProjectCwd,
-  activeThreadBranch,
-  activeWorktreePath,
-  branchCwd,
-  effectiveEnvMode,
-  envLocked,
-  hasServerThread,
-  isThreadSettled,
-  onSetThreadWorkspace,
-  onCheckoutPullRequestRequest,
-  onComposerFocusRequest,
+  workspace: {
+    activeProjectCwd,
+    activeThreadBranch,
+    activeWorktreePath,
+    branchCwd,
+    effectiveEnvMode,
+  },
+  thread: { envLocked, hasServerThread, isThreadSettled },
+  actions: { onSetThreadWorkspace, onCheckoutPullRequestRequest, onComposerFocusRequest },
   variant: variantProp,
 }: BranchToolbarBranchSelectorProps) {
   const variant = variantProp ?? "toolbar";

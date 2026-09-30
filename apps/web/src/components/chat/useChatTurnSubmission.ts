@@ -13,7 +13,8 @@ import { resolveProviderSendAvailabilityWithRefresh } from "~/lib/providerAvaila
 import { newMessageId, randomUUID } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
 import { resolveFollowUpDispatchMode } from "../../appSettings";
-import { useComposerDraftStore, type QueuedComposerChatTurn } from "../../composerDraftStore";
+import { useComposerDraftStore } from "../../composerDraftStore";
+import type { QueuedComposerChatTurn } from "../../composerDraftDomain";
 import { appendAssistantSelectionsToPrompt } from "../../lib/assistantSelections";
 import { appendBrowserAnnotationsToPrompt } from "../../lib/browserAnnotations";
 import { appendPastedTextsToPrompt } from "../../lib/composerPastedText";
@@ -36,13 +37,12 @@ import { resolvePlanFollowUpSubmission } from "../../proposedPlan";
 import { buildSourceProposedPlanReference } from "../../session-logic";
 import {
   buildExpiredTerminalContextToastCopy,
-  createWorktreeSetupResolution,
-  deriveComposerSendState,
   queuedChatTurnDispatchFields,
   queuedPlanFollowUpDispatchFields,
-  resolveEnvironmentPanelPreferenceAfterFirstSend,
   resolveQueuedTurnDispatchSettings,
-} from "../ChatView.logic";
+} from "../ChatView.logic.subagents";
+import { createWorktreeSetupResolution, deriveComposerSendState } from "../ChatView.logic.dispatch";
+import { resolveEnvironmentPanelPreferenceAfterFirstSend } from "../ChatView.logic.worktree";
 import { toastManager } from "../ui/toast";
 import type { ChatTurnSubmissionControllerInput } from "./chatSendTypes";
 import { handleChatAutomationSend } from "./handleChatAutomationSend";

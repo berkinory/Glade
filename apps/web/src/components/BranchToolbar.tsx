@@ -404,18 +404,24 @@ export default function BranchToolbar({
           // workspace query is resolving.
           <BranchToolbarBranchSelector
             key={threadId}
-            activeProjectCwd={branchProjectCwd ?? activeProject.cwd}
-            activeThreadBranch={activeThreadBranch}
-            activeWorktreePath={activeWorktreePath}
-            branchCwd={branchCwd}
-            effectiveEnvMode={effectiveEnvMode}
-            envLocked={envLocked}
-            hasServerThread={hasServerThread}
-            isThreadSettled={serverThread?.settledAt != null || !threadDetailReady}
-            onSetThreadWorkspace={setThreadWorkspace}
+            workspace={{
+              activeProjectCwd: branchProjectCwd ?? activeProject.cwd,
+              activeThreadBranch,
+              activeWorktreePath,
+              branchCwd,
+              effectiveEnvMode,
+            }}
+            thread={{
+              envLocked,
+              hasServerThread,
+              isThreadSettled: serverThread?.settledAt != null || !threadDetailReady,
+            }}
+            actions={{
+              onSetThreadWorkspace: setThreadWorkspace,
+              ...(onCheckoutPullRequestRequest ? { onCheckoutPullRequestRequest } : {}),
+              ...(onComposerFocusRequest ? { onComposerFocusRequest } : {}),
+            }}
             variant={variant}
-            {...(onCheckoutPullRequestRequest ? { onCheckoutPullRequestRequest } : {})}
-            {...(onComposerFocusRequest ? { onComposerFocusRequest } : {})}
           />
         ) : null}
       </div>

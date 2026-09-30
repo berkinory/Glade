@@ -291,12 +291,16 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
         <ThreadHoverCardContent
           title={thread.title}
           timeLabel={formatRelativeTime(thread.updatedAt ?? thread.createdAt)}
-          projectName={hoverMetadata.projectName}
-          projectCwd={hoverMetadata.projectCwd}
-          projectAppearance={hoverProject?.appearance ?? null}
-          sourceProjectName={hoverMetadata.sourceProjectName}
-          branch={hoverMetadata.branch}
-          worktreeName={hoverMetadata.worktreeName}
+          project={{
+            name: hoverMetadata.projectName,
+            cwd: hoverMetadata.projectCwd,
+            appearance: hoverProject?.appearance ?? null,
+            sourceName: hoverMetadata.sourceProjectName,
+          }}
+          workspace={{
+            branch: hoverMetadata.branch,
+            worktreeName: hoverMetadata.worktreeName,
+          }}
           pullRequest={prByThreadId.get(thread.id) ?? null}
           onOpenPullRequest={openPrLink}
           model={resolveThreadModelSummary(thread.modelSelection)}

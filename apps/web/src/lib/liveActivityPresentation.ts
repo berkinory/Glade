@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 
-import type { WorkLogLiveActivity } from "../workLog";
+import type { WorkLogLiveActivity } from "../workLog.types";
 import { formatClockDuration } from "../session-logic";
 import { startVisibleInterval } from "./visibleInterval";
 

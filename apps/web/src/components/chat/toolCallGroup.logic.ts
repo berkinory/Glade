@@ -1,6 +1,6 @@
 import { pluralize } from "@glade/shared/text/text";
-import { isFileChangeWorkLogEntry, type WorkLogEntry } from "../../session-logic";
-import { deriveReadableCommandDisplay } from "../../lib/toolCallLabel";
+import { isFileChangeWorkLogEntry, type WorkLogEntry } from "../../workLog.types";
+import { deriveReadableCommandDisplay } from "../../lib/toolCallLabel.commands";
 
 export const MIN_COLLAPSIBLE_TOOL_GROUP_SIZE = 2;
 

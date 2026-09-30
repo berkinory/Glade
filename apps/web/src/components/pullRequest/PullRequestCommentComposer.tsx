@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 
 import { toastManager } from "~/components/ui/toast";
 import { ArrowUpIcon, GitHubIcon } from "~/lib/icons";
-import { pullRequestCommentMutationOptions } from "~/lib/pullRequestReactQuery";
+import { pullRequestCommentMutationOptions } from "../../lib/pullRequestMutationOptions";
 import { PR_BODY_TEXT_CLASS_NAME } from "./pullRequestText";
 import { cn } from "~/lib/utils";
 

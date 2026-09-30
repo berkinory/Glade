@@ -2,7 +2,7 @@ import type { ProjectId, ProviderKind, ThreadId } from "@glade/contracts/core/ba
 import type { ThreadEnvironmentMode } from "@glade/contracts/orchestration/threadEntities";
 import { buildPromptThreadTitleFallback } from "@glade/shared/threads/chatThreads";
 import { isPendingThreadWorktree } from "@glade/shared/threads/threadEnvironment";
-import type { ComposerThreadDraftState } from "../../composerDraftStore";
+import type { ComposerThreadDraftState } from "../../composerDraftDomain";
 import {
   canSessionAnswerPendingRequests,
   deriveActiveWorkStartedAt,

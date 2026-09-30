@@ -11,7 +11,7 @@ import {
   sortFileDiffsByPath,
   summarizeRenderablePatchStats,
 } from "~/lib/diffRendering";
-import { pullRequestDiffQueryOptions } from "~/lib/pullRequestReactQuery";
+import { pullRequestDiffQueryOptions } from "../../lib/pullRequestQueryOptions";
 import { cn } from "~/lib/utils";
 import { PullRequestDiffStat } from "./PullRequestDiffStat";
 import { PullRequestMetaLine } from "./PullRequestMetaLine";

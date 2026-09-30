@@ -8,7 +8,10 @@ import type { AppSettings } from "../appSettings";
 import { useComposerDraftStore } from "../composerDraftStore";
 import { showConfirmDialogFallback } from "../confirmDialogFallback";
 import { getFallbackThreadIdAfterDelete } from "../components/Sidebar.logic.projectData";
-import { derivePinnedThreadIdsForSidebar, isLatestPinnedThreadMutation } from "../components/Sidebar.logic.preview";
+import {
+  derivePinnedThreadIdsForSidebar,
+  isLatestPinnedThreadMutation,
+} from "../components/Sidebar.logic.preview";
 import { toastManager } from "../components/ui/toast";
 import { deleteActiveThreadFromClient } from "../lib/activeThreadDelete";
 import { releaseOrphanedWorktreeAfterArchive } from "../lib/archiveThreadWorktreeCleanup";

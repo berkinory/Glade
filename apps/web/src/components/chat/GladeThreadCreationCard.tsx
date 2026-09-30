@@ -2,7 +2,7 @@ import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { formatModelDisplayName } from "@glade/shared/provider/model";
 import { memo } from "react";
 
-import type { WorkLogGladeThreadCreation } from "../../session-logic";
+import type { WorkLogGladeThreadCreation } from "../../workLog.types";
 import { ProviderIcon } from "../ProviderIcon";
 import { GladeLogo } from "../GladeLogo";
 import { Button } from "../ui/button";

@@ -16,7 +16,7 @@ import {
 } from "~/components/ui/menu";
 import { CentralIcon } from "~/lib/central-icons";
 import { BugIcon, ListTodoIcon, MessageCircleIcon, PlusIcon, WorktreeIcon } from "~/lib/icons";
-import type { DraftThreadEnvMode } from "../../composerDraftStore";
+import type { DraftThreadEnvMode } from "../../composerDraftDomain";
 
 interface KanbanTaskExtrasMenuProps {
   readonly interactionMode: ProviderInteractionMode;

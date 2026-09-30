@@ -14,7 +14,6 @@ import {
   invalidateGitQueries,
   invalidateGitQueriesForCwds,
 } from "./gitQueryOptions";
-export * from "./gitQueryOptions";
 
 type GitMutationInvalidation = "all" | "cwd" | "source-control";
 type GitMutationInvalidateOn = "success" | "settled";

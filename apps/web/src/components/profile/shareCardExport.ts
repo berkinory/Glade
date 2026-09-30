@@ -2,8 +2,6 @@ import { toBlob } from "html-to-image";
 import { copyPngBlobToDesktopClipboard } from "~/lib/desktopClipboard";
 import { readNativeApi } from "~/nativeApi";
 
-export { downloadBlob } from "~/lib/browserDownload";
-
 const SHARE_BRAND_HANDLE = "Glade";
 const SHARE_TWEET_TEXT = `Just checking my ${SHARE_BRAND_HANDLE} dev stats. Absolute masterpiece of an IDE.`;
 const SHARE_URL = "https://github.com/berkinory/Glade";

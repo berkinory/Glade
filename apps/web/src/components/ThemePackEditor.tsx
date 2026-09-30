@@ -32,11 +32,11 @@ import { ELEVATED_HOVER_SURFACE_RAISED_TEXT_CLASS_NAME } from "../surfaceStyles"
 import {
   CODE_THEME_OPTIONS,
   DEFAULT_THEME_STATE,
-  buildThemeCssVariables,
   getAvailableCodeThemes,
   getCodeThemeSeed,
-  resolveThemePack,
-} from "../theme/theme.logic";
+} from "../theme/theme.logic.shared";
+import { buildThemeCssVariables } from "../theme/theme.logic.css";
+import { resolveThemePack } from "../theme/theme.logic.state";
 
 type ThemePackEditorProps = {
   isActive?: boolean;

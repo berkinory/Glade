@@ -28,9 +28,8 @@ import {
   IconArrowUp,
   IconArrowDown,
 } from "@tabler/icons-react";
+import { gitBranchesQueryOptions, gitStatusQueryOptions } from "../../lib/gitQueryOptions";
 import {
-  gitBranchesQueryOptions,
-  gitStatusQueryOptions,
   gitRebaseStateQueryOptions,
   gitSourceControlActionMutationOptions,
   type SourceControlAction,

@@ -1,11 +1,10 @@
 import { OrchestrationProposedPlanId } from "@glade/contracts/orchestration/threadEntities";
 import { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { partializeComposerDraftStoreState, useComposerDraftStore } from "./composerDraftStore";
-import {
-  normalizeCurrentPersistedComposerDraftStoreState,
-  toHydratedThreadDraft,
-} from "./composerDraftPersistence";
+import { partializeComposerDraftStoreState } from "./composerDraftPersistence.serialization";
+import { useComposerDraftStore } from "./composerDraftStore";
+import { normalizeCurrentPersistedComposerDraftStoreState } from "./composerDraftPersistence.serialization";
+import { toHydratedThreadDraft } from "./composerDraftPersistence.hydration";
 import {
   makeImage,
   makeQueuedChatTurn,

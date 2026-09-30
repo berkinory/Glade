@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
 import { CHAT_SURFACE_CHIP_GLYPH_CLASS_NAME } from "~/components/chat/chatHeaderControls";
-import { pullRequestDetailQueryOptions } from "~/lib/pullRequestReactQuery";
+import { pullRequestDetailQueryOptions } from "../../lib/pullRequestQueryOptions";
 import { PullRequestStateGlyph } from "./PullRequestStateGlyph";
 
 export function usePullRequestPaneStateIcon(

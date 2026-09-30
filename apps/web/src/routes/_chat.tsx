@@ -13,14 +13,14 @@ import { AppRailSlotProvider } from "../components/AppRail";
 import { AppShellTopStrip } from "../components/AppShellTopStrip";
 import ShortcutsDialog from "../components/ShortcutsDialog";
 import { RecentViewSwitcher } from "../components/RecentViewSwitcher";
-import { shouldRenderTerminalWorkspace } from "../components/ChatView.logic";
+import { shouldRenderTerminalWorkspace } from "../components/ChatView.logic.subagents";
 import ThreadSidebar from "../components/Sidebar";
 import { isElectron } from "../env";
 import { useHandleNewChat } from "../hooks/useHandleNewChat";
 import { useHandleNewThread } from "../hooks/useHandleNewThread";
 import { useRecentViewSwitcher } from "../hooks/useRecentViewSwitcher";
 import { useSidebarLayout } from "../hooks/useSidebarLayout";
-import { useLatestProjectStore } from "../latestProjectStore";
+import { useProjectPreferencesStore } from "../projectPreferencesStore";
 import {
   resolveCurrentProjectTargetId,
   resolveLatestProjectTargetId,
@@ -231,9 +231,9 @@ function ChatRouteGlobalShortcuts() {
   const { handleNewChat } = useHandleNewChat();
   const homeDir = useWorkspacePathsStore((state) => state.homeDir);
   const chatWorkspaceRoot = useWorkspacePathsStore((state) => state.chatWorkspaceRoot);
-  const latestProjectId = useLatestProjectStore((state) => state.latestProjectId);
-  const setLatestProjectId = useLatestProjectStore((state) => state.setLatestProjectId);
-  const clearLatestProjectId = useLatestProjectStore((state) => state.clearLatestProjectId);
+  const latestProjectId = useProjectPreferencesStore((state) => state.latestProjectId);
+  const setLatestProjectId = useProjectPreferencesStore((state) => state.setLatestProjectId);
+  const clearLatestProjectId = useProjectPreferencesStore((state) => state.clearLatestProjectId);
   const threadsHydrated = useStore((state) => state.threadsHydrated);
   const selectProjectLastActivityAt = useMemo(() => createProjectLastActivityAtSelector(), []);
   const projectLastActivityAt = useStore(selectProjectLastActivityAt);

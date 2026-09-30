@@ -34,10 +34,8 @@ import {
   shouldHandleTerminalSelectionMouseUp,
   terminalSelectionActionDelayForClickCount,
 } from "./terminal/terminalSelectionActions";
-import {
-  buildTerminalRuntimeKey,
-  terminalRuntimeRegistry,
-} from "./terminal/terminalRuntimeRegistry";
+import { buildTerminalRuntimeKey } from "./terminal/terminalRuntimeTypes";
+import { terminalRuntimeRegistry } from "./terminal/terminalRuntimeRegistry";
 import type {
   TerminalRuntimeConfig,
   TerminalRuntimeStatus,

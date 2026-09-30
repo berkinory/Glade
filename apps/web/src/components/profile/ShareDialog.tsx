@@ -8,12 +8,12 @@ import { cn } from "~/lib/utils";
 import { SHARE_CARD_HEIGHT, SHARE_CARD_WIDTH, ShareCard } from "./ShareCard";
 import {
   copyImageToClipboard,
-  downloadBlob,
   openExternalUrl,
   renderNodeToPngBlob,
   type ShareTarget,
   shareIntentUrl,
 } from "./shareCardExport";
+import { downloadBlob } from "../../lib/browserDownload";
 
 const PREVIEW_WIDTH = 480;
 const CARD_EXPORT_SIZE = { width: SHARE_CARD_WIDTH, height: SHARE_CARD_HEIGHT } as const;

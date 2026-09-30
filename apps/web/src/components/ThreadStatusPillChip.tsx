@@ -1,5 +1,5 @@
 import { cn } from "~/lib/utils";
-import type { ThreadStatusPill } from "./Sidebar.logic";
+import type { ThreadStatusPill } from "./Sidebar.logic.statusTypes";
 
 export function ThreadStatusPillChip({
   pill,

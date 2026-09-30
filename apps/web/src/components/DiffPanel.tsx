@@ -8,7 +8,7 @@ import {
   gitStatusQueryOptions,
   gitWorkingTreeDiffQueryOptions,
   gitWorkingTreeDiffStatsQueryOptions,
-} from "~/lib/gitReactQuery";
+} from "../lib/gitQueryOptions";
 import { XIcon } from "~/lib/icons";
 import {
   checkpointDiffQueryOptions,

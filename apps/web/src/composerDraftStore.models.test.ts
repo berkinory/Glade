@@ -1,10 +1,8 @@
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { beforeEach, describe, expect, it } from "vitest";
-import {
-  resolvePreferredComposerModelSelection,
-  useComposerDraftStore,
-} from "./composerDraftStore";
+import { resolvePreferredComposerModelSelection } from "./composerDraftModels";
+import { useComposerDraftStore } from "./composerDraftStore";
 import { normalizeModelSelection } from "./composerDraftModels";
 import {
   modelSelection,

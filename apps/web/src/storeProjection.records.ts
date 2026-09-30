@@ -4,11 +4,10 @@ import type { OrchestrationSpaceShell } from "@glade/contracts/orchestration/thr
 import {
   arraysShallowEqual,
   deepEqualJson,
-  normalizeProject,
-  normalizeSpace,
-  resolveThreadSidebarMetadata,
   type ProjectNormalizationInput,
-} from "./storeNormalization";
+} from "./storeNormalization.shared";
+import { normalizeProject, normalizeSpace } from "./storeNormalization.messages";
+import { resolveThreadSidebarMetadata } from "./storeNormalization.threads";
 import { projectCwdKey } from "./storePersistence";
 import type { AppState } from "./storeState";
 import type {

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { ComposerImageAttachment } from "../composerDraftStore";
+import type { ComposerImageAttachment } from "../composerDraftDomain";
 import { ComposerImageIntakeQueue } from "./useComposerImageIntake";
 
 function preparedImage(id: string): ComposerImageAttachment {

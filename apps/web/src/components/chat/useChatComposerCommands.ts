@@ -10,7 +10,7 @@ import { collapseExpandedComposerCursor, detectComposerTrigger } from "../../com
 import {
   captureComposerPromptHistorySavedDraft,
   type QueuedComposerChatTurn,
-} from "../../composerDraftStore";
+} from "../../composerDraftDomain";
 import { useComposerSlashCommands } from "../../hooks/useComposerSlashCommands";
 import { extractChatAutomationInvocation } from "../../lib/automationIntent";
 import { syncTerminalContextsByIds, terminalContextIdListsEqual } from "../../lib/terminalContext";
@@ -18,7 +18,7 @@ import {
   promptStillMatchesActiveHistoryBrowse,
   resolvePromptHistoryNavigation,
   shouldHandlePromptHistoryNavigationKey,
-} from "../ChatView.logic";
+} from "../ChatView.logic.session";
 import { ComposerCommandItem } from "./ComposerCommandMenu";
 import { type ComposerLocalDirectoryMenuHandle } from "./ComposerLocalDirectoryMenu";
 import { composerPromptStillMatchesRestoredQueuedDraft } from "./queuedComposerPreview";

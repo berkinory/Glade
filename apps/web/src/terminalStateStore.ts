@@ -46,7 +46,6 @@ import {
   closeThreadWorkspaceChat,
   setThreadTerminalActivity,
 } from "./terminalStateTransitions";
-export type { ThreadTerminalState } from "./terminalStateNormalization";
 const TERMINAL_STATE_STORAGE_KEY = "glade:terminal-state:v1";
 export function selectThreadTerminalState(
   terminalStateByThreadId: Record<ThreadId, ThreadTerminalState>,

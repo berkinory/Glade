@@ -8,7 +8,7 @@ import {
   type LocalDispatchSnapshot,
   resolveQueuedComposerAutoDispatchHold,
   shouldHoldQueuedComposerAutoDispatch,
-} from "./ChatView.logic";
+} from "./ChatView.logic.dispatch";
 
 const localDispatch: LocalDispatchSnapshot = {
   startedAt: "2026-04-13T00:00:00.000Z",

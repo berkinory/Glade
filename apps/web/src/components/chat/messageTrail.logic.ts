@@ -1,5 +1,5 @@
 import { type MessageId } from "@glade/contracts/core/baseSchemas";
-import { type TimelineEntry } from "../../session-logic";
+import type { TimelineEntry } from "../../workLog.types";
 
 export interface MessageTrailItem {
   id: MessageId;

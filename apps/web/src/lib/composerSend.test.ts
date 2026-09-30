@@ -4,21 +4,21 @@ import {
 } from "@glade/contracts/orchestration/threadEntities";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type {
-  ComposerImageAttachment,
+import {
+  type ComposerImageAttachment,
   PersistedComposerImageAttachment,
-} from "../composerDraftStore";
+} from "../composerDraftDomain";
 import * as composerImageBlobStore from "./composerImageBlobStore";
 import {
   buildComposerFileAttachmentsFromFiles,
   stageUploadComposerAttachments,
-  effectiveComposerAttachmentCount,
   findPendingBlobComposerAttachments,
   hydratePendingBlobComposerAttachments,
   readFileAsDataUrl,
   prepareComposerImageAttachmentsFromFiles,
   formatOutgoingComposerPrompt,
 } from "./composerSend";
+import { effectiveComposerAttachmentCount } from "./composerAttachmentCapacity";
 
 describe("Computer command with provider prompt formatting", () => {
   it("keeps the Glade command first when Claude uses a prompt-injected effort", () => {

@@ -15,7 +15,7 @@ import {
   ComposerStackedPanelRowLabel,
   ComposerStackedPanelRowMain,
 } from "./ComposerStackedPanelContent";
-import { COMPOSER_STACKED_PANEL_DIVIDER_CLASS_NAME } from "./ComposerStackedPanel";
+import { COMPOSER_STACKED_PANEL_DIVIDER_CLASS_NAME } from "./composerStackedPanelStyles";
 import {
   COMPOSER_STACKED_PANEL_BODY_PADDING_CLASS_NAME,
   COMPOSER_STACKED_PANEL_FOOTER_ROW_CLASS_NAME,

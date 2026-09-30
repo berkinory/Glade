@@ -10,12 +10,9 @@ import {
   hasReconciledServerProviderStatuses,
   serverConfigQueryOptions,
 } from "../lib/serverReactQuery";
-import {
-  type ComposerThreadDraftState,
-  type DraftThreadState,
-  resolvePreferredComposerModelSelection,
-  useComposerDraftStore,
-} from "../composerDraftStore";
+import type { ComposerThreadDraftState, DraftThreadState } from "../composerDraftDomain";
+import { resolvePreferredComposerModelSelection } from "../composerDraftModels";
+import { useComposerDraftStore } from "../composerDraftStore";
 import {
   findProviderStatus,
   isProviderUsable,
@@ -36,7 +33,7 @@ import { newThreadId } from "../lib/utils";
 import { useFocusedChatContext } from "../focusedChatContext";
 import { useStore } from "../store";
 import { useSpacesUiStore } from "../spacesUiStore";
-import { useProjectEnvironmentStore } from "../projectEnvironmentStore";
+import { useProjectPreferencesStore } from "../projectPreferencesStore";
 import { useTerminalStateStore } from "../terminalStateStore";
 
 export function useHandleNewThread() {
@@ -65,7 +62,7 @@ export function useHandleNewThread() {
     }
 
     const defaultEnvMode =
-      useProjectEnvironmentStore.getState().envModeByProjectId[projectId] ??
+      useProjectPreferencesStore.getState().envModeByProjectId[projectId] ??
       settings.defaultThreadEnvMode;
     const draftStore = useComposerDraftStore.getState();
     const draftThread = draftStore.getDraftThreadByProjectId(projectId);

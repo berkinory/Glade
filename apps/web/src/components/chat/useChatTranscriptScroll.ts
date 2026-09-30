@@ -15,8 +15,8 @@ import {
 import { flushSync } from "react-dom";
 import { isScrollContainerNearBottom } from "../../chat-scroll";
 import { isEditableEventTarget } from "../../lib/editableEventTarget";
-import type { TimelineEntry } from "../../session-logic";
-import { buildTranscriptAutoFollowSignal, buildTranscriptTailKey } from "../ChatView.logic";
+import type { TimelineEntry } from "../../workLog.types";
+import { buildTranscriptAutoFollowSignal, buildTranscriptTailKey } from "../ChatView.logic.session";
 import {
   scrollTranscriptToSettledEnd,
   stopTranscriptScrollAtCurrentOffset,

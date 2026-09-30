@@ -55,7 +55,7 @@ const subscribeMock = vi.fn<
   };
 });
 
-vi.mock("./wsTransport", () => {
+vi.mock("./wsTransport.implementation", () => {
   return {
     WsTransport: class MockWsTransport {
       request = requestMock;

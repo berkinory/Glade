@@ -1,8 +1,5 @@
-import {
-  type BrowserAnnotationDraft,
-  type ComposerFileAttachment,
-  type ComposerImageAttachment,
-} from "../../composerDraftStore";
+import type { BrowserAnnotationDraft } from "../../lib/browserAnnotations";
+import type { ComposerFileAttachment, ComposerImageAttachment } from "../../composerDraftDomain";
 import { formatAssistantSelectionQueuePreview } from "../../lib/assistantSelections";
 import { formatBrowserAnnotationLabel } from "../../lib/browserAnnotations";
 import { pastedTextTitle, type PastedTextDraft } from "../../lib/composerPastedText";

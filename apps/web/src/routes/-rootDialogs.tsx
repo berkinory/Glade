@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Suspense, lazy, useEffect, useState } from "react";
-import { shouldRenderTerminalWorkspace } from "../components/ChatView.logic";
+import { shouldRenderTerminalWorkspace } from "../components/ChatView.logic.subagents";
 import { FeedbackDialog } from "../components/FeedbackDialog";
 import ShortcutsDialog from "../components/ShortcutsDialog";
 import WhatsNewDialog from "../components/WhatsNewDialog";

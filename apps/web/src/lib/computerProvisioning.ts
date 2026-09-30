@@ -14,7 +14,7 @@ import {
 } from "@glade/shared/computer/computerGrants";
 
 import { computerStatusNeedsSetup } from "~/components/ComputerPanel.logic";
-import { isLoopbackHostname } from "~/components/Sidebar.logic";
+import { isLoopbackHostname } from "../components/Sidebar.logic.statusTypes";
 
 export function readLocalComputerPermissionBridge(): DesktopBridge["computerPermissions"] | null {
   if (globalThis.window?.nativeApi) return null;

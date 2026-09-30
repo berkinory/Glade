@@ -18,8 +18,6 @@ import type {
 } from "./terminalRuntimeTypes";
 import { buildTerminalRuntimeKey } from "./terminalRuntimeTypes";
 
-export { buildTerminalRuntimeKey } from "./terminalRuntimeTypes";
-
 class TerminalRuntimeRegistry {
   private entries = new Map<string, TerminalRuntimeEntry>();
 

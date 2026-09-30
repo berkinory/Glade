@@ -45,7 +45,7 @@ import {
   matchSidebarSearchThreads,
 } from "./SidebarSearchPalette.logic";
 import { useTheme } from "../hooks/useTheme";
-import { getAvailableCodeThemes, getCodeThemeSeed } from "../theme/theme.logic";
+import { getAvailableCodeThemes, getCodeThemeSeed } from "../theme/theme.logic.shared";
 import {
   Command,
   CommandDialog,

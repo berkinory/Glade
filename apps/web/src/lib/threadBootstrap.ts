@@ -13,12 +13,12 @@ import {
   type ProviderKind,
   type ThreadId,
 } from "@glade/contracts/core/baseSchemas";
-import {
-  type ComposerThreadDraftState,
-  type DraftThreadEnvMode,
-  type DraftThreadState,
-  resolvePreferredComposerModelSelection,
-} from "../composerDraftStore";
+import type {
+  ComposerThreadDraftState,
+  DraftThreadEnvMode,
+  DraftThreadState,
+} from "../composerDraftDomain";
+import { resolvePreferredComposerModelSelection } from "../composerDraftModels";
 import { DEFAULT_INTERACTION_MODE } from "../types";
 
 export interface NewThreadOptions {

@@ -22,11 +22,11 @@ import { readNativeApi } from "~/nativeApi";
 import { dispatchThreadNotes } from "~/pinnedMessages";
 import {
   mergeProjectInstructionsIntoThreadNotes,
-  useProjectInstructionsStore,
-} from "~/projectInstructionsStore";
+  useProjectPreferencesStore,
+} from "~/projectPreferencesStore";
 import { dispatchThreadGoal } from "~/threadGoal";
 import { collapseExpandedComposerCursor, detectComposerTrigger } from "../../composer-logic";
-import { type DraftThreadEnvMode, type QueuedComposerChatTurn } from "../../composerDraftStore";
+import type { DraftThreadEnvMode, QueuedComposerChatTurn } from "../../composerDraftDomain";
 import {
   cloneComposerImageAttachment,
   stageUploadComposerAttachments,
@@ -40,13 +40,15 @@ import { type Thread } from "../../types";
 import {
   WorktreeSetupCancelledError,
   createWorktreeSetupResolution,
-  resolveQueuedTurnDispatchSettings,
-  revokeUserMessagePreviewUrls,
   runWorktreeCreationFlow,
+} from "../ChatView.logic.dispatch";
+import {
+  resolveQueuedTurnDispatchSettings,
   threadSettingsDispatchFields,
   turnStartDispatchFields,
   type TurnDispatchSettings,
-} from "../ChatView.logic";
+} from "../ChatView.logic.subagents";
+import { revokeUserMessagePreviewUrls } from "../ChatView.logic.worktree";
 import type { ChatTurnSubmissionInput } from "./chatSendTypes";
 import { waitForSetupScriptTerminalActivity } from "./projectScriptRuntime";
 interface PreparedChatTurn {
@@ -466,9 +468,8 @@ export function useChatTurnExecution({
 
         if (isLocalDraftThread) {
           const inheritedProjectInstructions =
-            useProjectInstructionsStore.getState().instructionsByProjectId[
-              targetProjectIdForSend
-            ] ?? "";
+            useProjectPreferencesStore.getState().instructionsByProjectId[targetProjectIdForSend] ??
+            "";
           const inheritedThreadNotes = mergeProjectInstructionsIntoThreadNotes({
             threadNotes,
             projectInstructions: inheritedProjectInstructions,

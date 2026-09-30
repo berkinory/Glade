@@ -40,12 +40,12 @@ import { ProviderIcon } from "./ProviderIcon";
 import { PrStateChip } from "./pullRequest/PrStateChip";
 import {
   createSidebarThreadHoverAnchorId,
-  resolveSidebarThreadListPaging,
   resolveThreadDisplayBranch,
   resolveThreadProjectLabel,
   resolveThreadStatusTrailingIndicator,
   type ThreadStatusPill,
-} from "./Sidebar.logic";
+} from "./Sidebar.logic.statusTypes";
+import { resolveSidebarThreadListPaging } from "./Sidebar.logic.status";
 import {
   buildActivityViewModel,
   collectActivityScopeOptions,

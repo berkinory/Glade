@@ -4,8 +4,6 @@ import { cn } from "~/lib/utils";
 import { ComposerStackedHeaderFrame } from "./ComposerColumnFrame";
 import { COMPOSER_STACKED_PANEL_CHROME_CLASS_NAME } from "./composerStackedPanelStyles";
 
-export { COMPOSER_STACKED_PANEL_DIVIDER_CLASS_NAME } from "./composerStackedPanelStyles";
-
 interface ComposerStackedPanelProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
   ref?: Ref<HTMLDivElement>;

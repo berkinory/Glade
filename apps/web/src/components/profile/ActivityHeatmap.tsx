@@ -37,22 +37,24 @@ const MONTH_LABELS = [
 
 interface ActivityHeatmapProps {
   readonly cells: ReadonlyArray<ProfileHeatmapCell>;
-  readonly cellSize?: number;
-  readonly gap?: number;
-  readonly radius?: number;
   readonly intensityClasses?: readonly string[];
-  readonly showMonths?: boolean;
-  readonly monthsPosition?: "top" | "bottom";
-  readonly monthLabelClassName?: string;
-
-  readonly fill?: boolean;
-
-  readonly maxCellSize?: number;
-
-  readonly tooltip?: boolean;
-
-  readonly tooltipUnit?: string;
   readonly className?: string;
+  readonly layout?: {
+    readonly cellSize?: number;
+    readonly gap?: number;
+    readonly radius?: number;
+    readonly fill?: boolean;
+    readonly maxCellSize?: number;
+  };
+  readonly months?: {
+    readonly show?: boolean;
+    readonly position?: "top" | "bottom";
+    readonly labelClassName?: string;
+  };
+  readonly tooltip?: {
+    readonly show?: boolean;
+    readonly unit?: string;
+  };
 }
 
 function heatmapTooltipText(cell: ProfileHeatmapCell, unit: string): string {
@@ -75,28 +77,23 @@ interface Column {
 
 export function ActivityHeatmap({
   cells,
-  cellSize: cellSizeProp,
-  gap: gapProp,
-  radius: radiusProp,
   intensityClasses: intensityClassesProp,
-  showMonths: showMonthsProp,
-  monthsPosition: monthsPositionProp,
-  monthLabelClassName,
-  fill: fillProp,
-  maxCellSize,
-  tooltip: tooltipProp,
-  tooltipUnit: tooltipUnitProp,
   className,
+  layout,
+  months,
+  tooltip: tooltipOptions,
 }: ActivityHeatmapProps) {
-  const cellSize = cellSizeProp ?? 13;
-  const gap = gapProp ?? 3;
-  const radius = radiusProp ?? 4;
+  const cellSize = layout?.cellSize ?? 13;
+  const gap = layout?.gap ?? 3;
+  const radius = layout?.radius ?? 4;
   const intensityClasses = intensityClassesProp ?? APP_HEATMAP_INTENSITY_CLASSES;
-  const showMonths = showMonthsProp ?? false;
-  const monthsPosition = monthsPositionProp ?? "top";
-  const fill = fillProp ?? false;
-  const tooltip = tooltipProp ?? false;
-  const tooltipUnit = tooltipUnitProp ?? "prompts";
+  const showMonths = months?.show ?? false;
+  const monthsPosition = months?.position ?? "top";
+  const monthLabelClassName = months?.labelClassName;
+  const fill = layout?.fill ?? false;
+  const maxCellSize = layout?.maxCellSize;
+  const tooltip = tooltipOptions?.show ?? false;
+  const tooltipUnit = tooltipOptions?.unit ?? "prompts";
   const columns: Column[] = [];
   if (cells.length > 0) {
     const slots: Slot[] = [];

@@ -1,5 +1,5 @@
-import { normalizeCompactToolLabel } from "../../lib/toolCallLabel";
-import type { WorkLogEntry } from "../../session-logic";
+import { normalizeCompactToolLabel } from "../../lib/toolCallLabel.presentations";
+import type { WorkLogEntry } from "../../workLog.types";
 
 export interface AgentActivityDetail {
   id: string;

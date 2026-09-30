@@ -10,7 +10,7 @@ import {
 import type { ComposerTrigger } from "../composer-logic";
 import { type SplitViewId } from "../splitViewModel";
 import type { Project, Thread } from "../types";
-export type ComposerSnapshot = { value: string; cursor: number; expandedCursor: number };
+type ComposerSnapshot = { value: string; cursor: number; expandedCursor: number };
 export type ComposerSlashCommandInput = {
   thread: {
     activeProject: Project | undefined;

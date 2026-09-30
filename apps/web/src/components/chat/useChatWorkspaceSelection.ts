@@ -6,14 +6,15 @@ import type { RefObject } from "react";
 import { useCallback } from "react";
 import { newCommandId } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
-import { type DraftThreadEnvMode, useComposerDraftStore } from "../../composerDraftStore";
+import type { DraftThreadEnvMode } from "../../composerDraftDomain";
+import { useComposerDraftStore } from "../../composerDraftStore";
 import { ensureHomeChatProject } from "../../lib/chatProjects";
 import {
   PROJECT_CREATE_EXISTING_SYNC_ERROR,
   PROJECT_CREATE_SYNC_ERROR,
   createOrRecoverProjectFromPath,
 } from "../../lib/projectCreation";
-import { useProjectEnvironmentStore } from "../../projectEnvironmentStore";
+import { useProjectPreferencesStore } from "../../projectPreferencesStore";
 import { useStore } from "../../store";
 import type { Project, Thread } from "../../types";
 import { useWorkspacePathsStore } from "../../workspacePathsStore";
@@ -109,7 +110,7 @@ export function useChatWorkspaceSelection({
   const onEnvModeChange = useCallback(
     (mode: DraftThreadEnvMode) => {
       if (activeProject) {
-        useProjectEnvironmentStore.getState().setProjectEnvMode(activeProject.id, mode);
+        useProjectPreferencesStore.getState().setProjectEnvMode(activeProject.id, mode);
       }
       const nextBranch =
         mode === "worktree"

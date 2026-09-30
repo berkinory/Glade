@@ -11,7 +11,7 @@ import {
   PR_STATE_PRESENTATION_ICONS,
   resolvePrStatePresentation,
 } from "./pullRequest/pullRequestStatePresentation";
-import type { ThreadStatusPill } from "./Sidebar.logic";
+import type { ThreadStatusPill } from "./Sidebar.logic.statusTypes";
 import { SidebarStatusTrailingGlyph } from "./SidebarStatusTrailingGlyph";
 import {
   SIDEBAR_HOVER_CARD_CONTAINER_PADDING_CLASS_NAME,
@@ -20,23 +20,20 @@ import {
 
 export type ThreadHoverCardContentProps = {
   title: string;
-
   timeLabel: string | null;
-  projectName: string | null;
-
-  projectCwd: string | null;
-  projectAppearance: ProjectAppearance | null;
-
-  sourceProjectName: string | null;
-  branch: string | null;
-
-  worktreeName: string | null;
-
+  project: {
+    name: string | null;
+    cwd: string | null;
+    appearance: ProjectAppearance | null;
+    sourceName: string | null;
+  };
+  workspace: {
+    branch: string | null;
+    worktreeName: string | null;
+  };
   pullRequest: OrchestrationThreadPullRequest | null;
   onOpenPullRequest: (event: MouseEvent<HTMLElement>, prUrl: string) => void;
-
   model: ThreadModelSummary | null;
-
   status: ThreadStatusPill | null;
 };
 
@@ -70,17 +67,20 @@ function ModelRow({ model }: { model: ThreadModelSummary }) {
 export function ThreadHoverCardContent({
   title,
   timeLabel,
-  projectName,
-  projectCwd,
-  projectAppearance,
-  sourceProjectName,
-  branch,
-  worktreeName,
+  project,
+  workspace,
   pullRequest,
   onOpenPullRequest,
   model,
   status,
 }: ThreadHoverCardContentProps) {
+  const {
+    name: projectName,
+    cwd: projectCwd,
+    appearance: projectAppearance,
+    sourceName: sourceProjectName,
+  } = project;
+  const { branch, worktreeName } = workspace;
   const hasMeta =
     Boolean(projectName) ||
     Boolean(sourceProjectName) ||

@@ -1,8 +1,9 @@
 import type { AssistantDeliveryMode } from "@glade/contracts/provider/sessionPolicy";
 import type { MessageId, ThreadId } from "@glade/contracts/core/baseSchemas";
 
-import { persistModelSelectionBeforeRuntimeMode } from "../components/ChatView.logic";
-import { useComposerDraftStore, type QueuedComposerTurn } from "../composerDraftStore";
+import { persistModelSelectionBeforeRuntimeMode } from "../components/ChatView.logic.session";
+import { useComposerDraftStore } from "../composerDraftStore";
+import type { QueuedComposerTurn } from "../composerDraftDomain";
 import { readNativeApi } from "../nativeApi";
 import { clearPendingTurnDispatch, markPendingTurnDispatch } from "../pendingTurnDispatch";
 import {

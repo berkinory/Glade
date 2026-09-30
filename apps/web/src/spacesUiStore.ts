@@ -183,7 +183,8 @@ export const useSpacesUiStore = create<SpacesUiState>((set, get) => ({
     if (
       get().voidSpace.name === DEFAULT_VOID_SPACE.name &&
       get().voidSpace.icon === DEFAULT_VOID_SPACE.icon
-    ) return;
+    )
+      return;
     set({ voidSpace: DEFAULT_VOID_SPACE });
     persistVoidSpace(DEFAULT_VOID_SPACE);
   },

@@ -3,7 +3,7 @@ import type { RefObject } from "react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { collapseExpandedComposerCursor, detectComposerTrigger } from "../../composer-logic";
 import { resolveComputerControlMode } from "../../computerControlMode";
-import { type QueuedComposerTurn } from "../../composerDraftStore";
+import type { QueuedComposerTurn } from "../../composerDraftDomain";
 import { cloneComposerImageAttachment } from "../../lib/composerSend";
 import { queuedComposerDrain } from "../../lib/queuedComposerDrain";
 import { derivePhase } from "../../session-logic";
@@ -14,7 +14,7 @@ import {
   resolveQueuedComposerAutoDispatchHold,
   resolveQueuedSteerGateTransition,
   type QueuedSteerGate,
-} from "../ChatView.logic";
+} from "../ChatView.logic.dispatch";
 import { useChatComposerDraft } from "./useChatComposerDraft";
 import { useChatLocalDispatch } from "./useChatLocalDispatch";
 import { useChatPendingInteractions } from "./useChatPendingInteractions";

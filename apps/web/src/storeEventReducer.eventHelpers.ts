@@ -9,10 +9,10 @@ import { isSessionRunningTurn } from "./session-logic";
 import {
   MAX_THREAD_MESSAGES,
   arraysShallowEqual,
-  normalizeChatMessage,
-  normalizeTurnDiffFiles,
   providerReferenceArraysEqual,
-} from "./storeNormalization";
+} from "./storeNormalization.shared";
+import { normalizeChatMessage } from "./storeNormalization.messages";
+import { normalizeTurnDiffFiles } from "./storeNormalization.activity";
 import type { ChatMessage, Thread } from "./types";
 
 type ThreadMessageSentEvent = Extract<OrchestrationEvent, { type: "thread.message-sent" }>;

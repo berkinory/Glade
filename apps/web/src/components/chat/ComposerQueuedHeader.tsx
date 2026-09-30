@@ -1,4 +1,4 @@
-import type { QueuedComposerTurn } from "../../composerDraftStore";
+import type { QueuedComposerTurn } from "../../composerDraftDomain";
 import { SteerIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import ChatMarkdown from "../ChatMarkdown";
@@ -6,10 +6,8 @@ import {
   ComposerStackedPanelRow,
   ComposerStackedPanelRowMain,
 } from "./ComposerStackedPanelContent";
-import {
-  COMPOSER_STACKED_PANEL_DIVIDER_CLASS_NAME,
-  ComposerStackedPanel,
-} from "./ComposerStackedPanel";
+import { COMPOSER_STACKED_PANEL_DIVIDER_CLASS_NAME } from "./composerStackedPanelStyles";
+import { ComposerStackedPanel } from "./ComposerStackedPanel";
 import {
   COMPOSER_STACKED_PANEL_ICON_CLASS_NAME,
   COMPOSER_STACKED_PANEL_PREVIEW_MARKDOWN_CLASS_NAME,

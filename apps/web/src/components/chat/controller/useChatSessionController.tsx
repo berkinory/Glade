@@ -19,7 +19,7 @@ import {
 import { ComposerCommandItem } from "~/components/chat/ComposerCommandMenu";
 import { type ComposerLocalDirectoryMenuHandle } from "~/components/chat/ComposerLocalDirectoryMenu";
 import { ExpandedImagePreview } from "~/components/chat/ExpandedImagePreview";
-import type { MessagesTimelineController } from "~/components/chat/MessagesTimeline";
+import type { MessagesTimelineController } from "~/components/chat/timeline/timelineSupport";
 import {
   composerTranscriptBottomInsetPx,
   useComposerOverlayHeight,

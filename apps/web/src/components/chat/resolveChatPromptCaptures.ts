@@ -1,10 +1,10 @@
 import { PROVIDER_SEND_TURN_MAX_ATTACHMENTS } from "@glade/contracts/orchestration/threadEntities";
 import { readNativeApi } from "~/nativeApi";
-import {
-  type ComposerAssistantSelectionAttachment,
-  type ComposerFileAttachment,
-  type ComposerImageAttachment,
-} from "../../composerDraftStore";
+import type {
+  ComposerAssistantSelectionAttachment,
+  ComposerFileAttachment,
+  ComposerImageAttachment,
+} from "../../composerDraftDomain";
 import {
   maybeResolveBrowserPromptAttachment,
   type BrowserPromptAttachmentResolution,

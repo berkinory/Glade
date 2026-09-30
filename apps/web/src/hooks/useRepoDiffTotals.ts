@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { gitWorkingTreeDiffStatsQueryOptions } from "~/lib/gitReactQuery";
+import { gitWorkingTreeDiffStatsQueryOptions } from "../lib/gitQueryOptions";
 import { useRepoDiffScope } from "~/repoDiffScopeStore";
 
 export interface RepoDiffTotals {

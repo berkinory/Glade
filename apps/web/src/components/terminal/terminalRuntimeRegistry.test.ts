@@ -20,7 +20,8 @@ vi.mock("./terminalRuntime", () => ({
 }));
 
 import { removeOrphanedTerminalRuntimes } from "../../lib/terminalStateCleanup";
-import { buildTerminalRuntimeKey, terminalRuntimeRegistry } from "./terminalRuntimeRegistry";
+import { buildTerminalRuntimeKey } from "./terminalRuntimeTypes";
+import { terminalRuntimeRegistry } from "./terminalRuntimeRegistry";
 
 function attach(threadId: string) {
   const runtimeKey = buildTerminalRuntimeKey(threadId, "terminal-1");

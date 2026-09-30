@@ -2,7 +2,7 @@ import { ThemeModePicker } from "~/components/settings/ThemeModePicker";
 import { useRadioGroupKeyboardNav } from "~/hooks/useRadioGroupKeyboardNav";
 import { useTheme } from "~/hooks/useTheme";
 import { cn } from "~/lib/utils";
-import { CODE_THEME_OPTIONS, getCodeThemeSeed } from "~/theme/theme.logic";
+import { CODE_THEME_OPTIONS, getCodeThemeSeed } from "../../theme/theme.logic.shared";
 import { type ThemeVariant } from "../../theme/themeModel";
 
 const ONBOARDING_THEME_PACKS = CODE_THEME_OPTIONS.filter(

@@ -49,11 +49,11 @@ import {
   XIcon,
 } from "~/lib/icons";
 import { gitPreparePullRequestThreadMutationOptions } from "~/lib/gitReactQuery";
+import { pullRequestActionMutationOptions } from "../../lib/pullRequestMutationOptions";
 import {
-  pullRequestActionMutationOptions,
   pullRequestDetailQueryOptions,
   pullRequestQueryErrorState,
-} from "~/lib/pullRequestReactQuery";
+} from "../../lib/pullRequestQueryOptions";
 import { type PullRequestContextDraft } from "~/lib/pullRequestContext";
 import { cn } from "~/lib/utils";
 import { ensureNativeApi } from "~/nativeApi";

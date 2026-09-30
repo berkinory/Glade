@@ -13,7 +13,7 @@ import {
   saveConfirmedCustomBinaryPaths,
 } from "../../confirmedCustomBinaryPathStore";
 import { type Thread } from "../../types";
-import { shouldConsumePendingCustomBinaryConfirmation } from "../ChatView.logic";
+import { shouldConsumePendingCustomBinaryConfirmation } from "../ChatView.logic.worktree";
 const EMPTY_PROVIDER_STATUSES: ServerProviderStatus[] = [];
 function getThreadProviderCustomBinaryPathKey(threadId: Thread["id"], provider: ProviderKind) {
   return `${threadId}:${provider}`;

@@ -1,10 +1,9 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { isElectron } from "../env";
 import { isMacNavigatorPlatform } from "../lib/utils";
+import { DEFAULT_THEME_STATE } from "../theme/theme.logic.shared";
 import {
-  DEFAULT_THEME_STATE,
   areThemePacksEqual,
-  buildThemeCssVariables,
   canParseThemeShareString,
   createThemeShareString,
   parseStoredThemeState,
@@ -16,7 +15,8 @@ import {
   setThemeFonts,
   updateChromeTheme,
   updateThemePackFromShareString,
-} from "../theme/theme.logic";
+} from "../theme/theme.logic.state";
+import { buildThemeCssVariables } from "../theme/theme.logic.css";
 import {
   type ChromeTheme,
   type ThemeFonts,

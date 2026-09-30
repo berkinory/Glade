@@ -19,38 +19,14 @@ import {
   migratePersistedComposerDraftStoreState,
   normalizeCurrentPersistedComposerDraftStoreState,
   partializeComposerDraftStoreState,
-  toHydratedThreadDraft,
-  type PersistedComposerDraftStoreState,
-} from "./composerDraftPersistence";
+} from "./composerDraftPersistence.serialization";
+import { toHydratedThreadDraft } from "./composerDraftPersistence.hydration";
+import type { PersistedComposerDraftStoreState } from "./composerDraftPersistence.types";
 import {
   appStorage,
   createDeferredPersistStorage,
   flushStorageBeforePageHide,
 } from "./lib/storage";
-
-export {
-  captureComposerPromptHistorySavedDraft,
-  COMPOSER_DRAFT_STORAGE_KEY,
-  COMPOSER_DRAFT_STORAGE_VERSION,
-  PersistedComposerImageAttachment,
-} from "./composerDraftDomain";
-export type {
-  ComposerAssistantSelectionAttachment,
-  ComposerDraftStoreState,
-  ComposerFileAttachment,
-  ComposerImageAttachment,
-  ComposerThreadDraftState,
-  DraftThreadEnvMode,
-  DraftThreadState,
-  QueuedComposerChatTurn,
-  QueuedComposerPlanFollowUp,
-  QueuedComposerTurn,
-  RestoredComposerSourceProposedPlan,
-} from "./composerDraftDomain";
-export type { BrowserAnnotationDraft } from "./lib/browserAnnotations";
-export { resolvePreferredComposerModelSelection } from "./composerDraftModels";
-export type { EffectiveComposerModelState } from "./composerDraftModels";
-export { partializeComposerDraftStoreState } from "./composerDraftPersistence";
 
 const COMPOSER_PERSIST_DEBOUNCE_MS = 300;
 const composerPersistStorage = createDeferredPersistStorage<

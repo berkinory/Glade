@@ -8,10 +8,13 @@ import {
   type LocalDispatchSnapshot,
   type QueuedSteerGate,
   resolveQueuedSteerGateTransition,
-} from "../components/ChatView.logic";
-import { useComposerDraftStore, type QueuedComposerTurn } from "../composerDraftStore";
-import { derivePendingApprovals, derivePendingUserInputs, derivePhase } from "../session-logic";
-import { useStore, type AppState } from "../store";
+} from "../components/ChatView.logic.dispatch";
+import { useComposerDraftStore } from "../composerDraftStore";
+import type { QueuedComposerTurn } from "../composerDraftDomain";
+import { derivePendingApprovals, derivePendingUserInputs } from "../pendingInteractionDerivation";
+import { derivePhase } from "../session-logic";
+import { useStore } from "../store";
+import type { AppState } from "../storeState";
 import { getThreadFromState } from "../threadDerivation";
 import type { SessionPhase } from "../types";
 import { dispatchQueuedComposerTurnHeadless } from "./queuedComposerDispatch";

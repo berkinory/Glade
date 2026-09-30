@@ -1,6 +1,6 @@
 import type { ResolvedThreadWorkspaceState } from "@glade/shared/threads/threadEnvironment";
 import type { ProviderInteractionMode } from "@glade/contracts/provider/sessionPolicy";
-import type { DraftThreadEnvMode } from "../../composerDraftStore";
+import type { DraftThreadEnvMode } from "../../composerDraftDomain";
 import {
   type ContextWindowSnapshot,
   formatContextWindowTokens,

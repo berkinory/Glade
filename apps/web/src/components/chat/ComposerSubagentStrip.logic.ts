@@ -1,6 +1,6 @@
 import { ThreadId, type TurnId } from "@glade/contracts/core/baseSchemas";
 
-import type { WorkLogEntry, WorkLogSubagent } from "../../session-logic";
+import type { WorkLogEntry, WorkLogSubagent } from "../../workLog.types";
 import {
   formatSubagentModelLabel,
   humanizeSubagentStatus,

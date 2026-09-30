@@ -33,14 +33,17 @@ import {
   type PendingUserInputDraftAnswer,
 } from "../../pendingUserInput";
 import { expiredUserInputDrafts } from "../../pendingUserInputRecovery";
-import { derivePendingApprovals, derivePendingUserInputs } from "../../session-logic";
+import {
+  derivePendingApprovals,
+  derivePendingUserInputs,
+} from "../../pendingInteractionDerivation";
 import { useStore } from "../../store";
 import {
   buildThreadSubscribeInput,
   clearThreadDetailResumeCursor,
 } from "../../threadDetailResumeCursors";
 import { type Thread } from "../../types";
-import { resolveRuntimeModeAfterApprovalDecision } from "../ChatView.logic";
+import { resolveRuntimeModeAfterApprovalDecision } from "../ChatView.logic.session";
 import { usePendingUserInputDrafts } from "./usePendingUserInputDrafts";
 const EMPTY_ACTIVITIES: Thread["activities"] = [];
 const EMPTY_PENDING_USER_INPUT_ANSWERS: Record<string, PendingUserInputDraftAnswer> = {};

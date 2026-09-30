@@ -6,7 +6,7 @@ import {
   collectUserMessageBlobPreviewUrls,
   revokeBlobPreviewUrl,
   revokeUserMessagePreviewUrls,
-} from "../ChatView.logic";
+} from "../ChatView.logic.worktree";
 import type { PendingAutomationConversation } from "./useChatAutomationSetup";
 const ATTACHMENT_PREVIEW_HANDOFF_TTL_MS = 5000;
 function revokeBlobPreviewUrlsAfterPaint(previewUrls: readonly string[]): void {

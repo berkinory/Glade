@@ -11,7 +11,7 @@ import {
   SIDEBAR_ROW_IDLE_TEXT_CLASS_NAME,
 } from "~/sidebarRowStyles";
 import { ProjectSidebarIcon } from "./ProjectSidebarIcon";
-import type { SidebarActionBadge } from "./Sidebar.logic";
+import type { SidebarActionBadge } from "./Sidebar.logic.statusTypes";
 import { SidebarIconButton } from "./SidebarIconButton";
 
 type RailGlyph = ComponentType<{ className?: string }>;

@@ -9,14 +9,11 @@ import {
   providerMentionReferencesEqual,
   providerSkillReferencesEqual,
 } from "~/lib/composerMentions";
-import { effectiveComposerAttachmentCount } from "~/lib/composerSend";
+import { effectiveComposerAttachmentCount } from "../../lib/composerAttachmentCapacity";
 import { useComposerImageIntake } from "~/hooks/useComposerImageIntake";
 import { newThreadId } from "~/lib/utils";
-import {
-  type ComposerImageAttachment,
-  useComposerDraftStore,
-  useComposerThreadDraft,
-} from "../../composerDraftStore";
+import type { ComposerImageAttachment } from "../../composerDraftDomain";
+import { useComposerDraftStore, useComposerThreadDraft } from "../../composerDraftStore";
 import { buildModelSelection, type ProviderOptions } from "../../providerModelOptions";
 import { toastManager } from "../ui/toast";
 

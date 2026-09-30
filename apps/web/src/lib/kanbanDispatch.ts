@@ -13,10 +13,8 @@ import {
   type KanbanCard,
   type KanbanDraftOpenThreadReason,
 } from "../components/kanban/kanban.logic";
-import {
-  resolvePreferredComposerModelSelection,
-  useComposerDraftStore,
-} from "../composerDraftStore";
+import { resolvePreferredComposerModelSelection } from "../composerDraftModels";
+import { useComposerDraftStore } from "../composerDraftStore";
 import { useKanbanUiStore } from "../kanbanUiStore";
 import { readNativeApi } from "../nativeApi";
 import { useStore } from "../store";

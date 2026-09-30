@@ -5,9 +5,9 @@ import { DisclosureRegion } from "../ui/DisclosureRegion";
 import { DISCLOSURE_CLEANUP_BUFFER_MS, DISCLOSURE_TRANSITION_MS } from "~/lib/disclosureMotion";
 import { cn } from "~/lib/utils";
 import { MUTED_LABEL_TEXT_CLASS_NAME } from "~/surfaceStyles";
-import { extractWebFetchUrl } from "../../lib/toolCallLabel";
+import { extractWebFetchUrl } from "../../lib/toolCallLabel.presentations";
 import { LinkChipIcon } from "../LinkChipIcon";
-import type { WorkLogEntry } from "../../session-logic";
+import type { WorkLogEntry } from "../../workLog.types";
 import { multiFileEditLabel, type ToolCallGroupSummary } from "./toolCallGroup.logic";
 import {
   renderWorkEntryIcon,

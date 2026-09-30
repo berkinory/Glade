@@ -5,8 +5,8 @@ import { resolveThreadWorkspaceCwd } from "@glade/shared/threads/threadEnvironme
 import { useQueries } from "@tanstack/react-query";
 import { useMemo } from "react";
 
-import { resolveSidebarThreadPullRequest } from "../components/Sidebar.logic";
-import { gitResolvePullRequestQueryOptions, gitStatusQueryOptions } from "../lib/gitReactQuery";
+import { resolveSidebarThreadPullRequest } from "../components/Sidebar.logic.statusTypes";
+import { gitResolvePullRequestQueryOptions, gitStatusQueryOptions } from "../lib/gitQueryOptions";
 import type { SidebarThreadSummary } from "../types";
 
 export type ThreadPullRequest = GitStatusResult["pr"];

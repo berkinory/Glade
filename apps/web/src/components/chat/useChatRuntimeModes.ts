@@ -14,7 +14,7 @@ import { type Thread } from "../../types";
 import {
   createRuntimeModePersistenceQueue,
   persistModelSelectionBeforeRuntimeMode,
-} from "../ChatView.logic";
+} from "../ChatView.logic.session";
 import { resolveRuntimeModelDescriptor } from "./runtimeModelCapabilities";
 import { toastManager } from "../ui/toast";
 

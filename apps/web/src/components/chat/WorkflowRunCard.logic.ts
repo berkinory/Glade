@@ -4,7 +4,7 @@ import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
 
-import { orderedActivities } from "../../session-logic";
+import { orderedActivities } from "../../workLog.entries";
 import { formatSubagentModelLabel, type SubagentStatusKind } from "../../lib/subagentPresentation";
 
 export interface WorkflowAgentRow {

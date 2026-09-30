@@ -7,15 +7,14 @@ import {
   expandCollapsedComposerCursor,
   type ComposerTrigger,
 } from "../../composer-logic";
-import {
-  useComposerDraftStore,
-  useComposerThreadDraft,
-  type BrowserAnnotationDraft,
-  type ComposerAssistantSelectionAttachment,
-  type ComposerFileAttachment,
-  type ComposerImageAttachment,
-  type RestoredComposerSourceProposedPlan,
-} from "../../composerDraftStore";
+import { useComposerDraftStore, useComposerThreadDraft } from "../../composerDraftStore";
+import type { BrowserAnnotationDraft } from "../../lib/browserAnnotations";
+import type {
+  ComposerAssistantSelectionAttachment,
+  ComposerFileAttachment,
+  ComposerImageAttachment,
+  RestoredComposerSourceProposedPlan,
+} from "../../composerDraftDomain";
 import { type PastedTextDraft } from "../../lib/composerPastedText";
 import { type FileCommentDraft } from "../../lib/fileComments";
 import { type PullRequestContextDraft } from "../../lib/pullRequestContext";
@@ -23,7 +22,8 @@ import {
   removeInlineTerminalContextPlaceholder,
   type TerminalContextDraft,
 } from "../../lib/terminalContext";
-import { deriveComposerSendState, type PromptHistoryNavigationState } from "../ChatView.logic";
+import { deriveComposerSendState } from "../ChatView.logic.dispatch";
+import type { PromptHistoryNavigationState } from "../ChatView.logic.session";
 import { type ComposerPromptEditorHandle } from "../ComposerPromptEditor";
 import { useComposerAttachmentPersistence } from "./useComposerAttachmentPersistence";
 

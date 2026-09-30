@@ -12,13 +12,13 @@ import type { TurnId } from "@glade/contracts/core/baseSchemas";
 import { summarizeToolRawOutput } from "./features/chat/timeline/toolOutputSummary";
 import { pluralize, stripTerminalControlSequences } from "@glade/shared/text/text";
 import { PROVIDER_DESCRIPTORS } from "@glade/shared/provider/providerMetadata";
+import { deriveReadableToolTitle } from "./lib/toolCallLabel.commands";
 import {
-  deriveReadableToolTitle,
   deriveGladeMcpToolTitle,
   isGenericToolTitle,
-  normalizeToolTextForComparison,
   type GladeMcpToolStatus,
-} from "./lib/toolCallLabel";
+} from "./lib/toolCallLabel.descriptors";
+import { normalizeToolTextForComparison } from "./lib/toolCallLabel.presentations";
 import { toolArgumentSummaryToolName } from "./lib/toolArgumentSummary";
 import { deriveWorkLogToolDetails } from "./lib/toolCallDetails";
 import { compareActivitiesByOrder } from "./workLog.ordering";

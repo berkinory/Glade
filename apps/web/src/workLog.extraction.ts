@@ -15,7 +15,8 @@ import {
 import { approvalRequestKindFromRequestType } from "@glade/shared/threads/threadSummary";
 import { stripTrailingToolExitCode } from "./features/chat/timeline/toolOutputSummary";
 import { pluralize } from "@glade/shared/text/text";
-import { isGenericToolTitle, normalizeCompactToolLabel } from "./lib/toolCallLabel";
+import { isGenericToolTitle } from "./lib/toolCallLabel.descriptors";
+import { normalizeCompactToolLabel } from "./lib/toolCallLabel.presentations";
 import { computerToolName, describeComputerToolCall } from "./lib/computerToolPresentation";
 import type { WorkLogEntry, WorkLogSubagent, WorkLogSubagentAction } from "./workLog.types";
 

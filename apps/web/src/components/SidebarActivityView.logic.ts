@@ -1,6 +1,7 @@
 import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { SidebarThreadSummary } from "../types";
-import { hasUnseenCompletion, isThreadActivelyWorking } from "./Sidebar.logic";
+import { hasUnseenCompletion } from "./Sidebar.logic.statusTypes";
+import { isThreadActivelyWorking } from "./Sidebar.logic.status";
 
 function isThreadRunningForActivity(
   thread: Pick<SidebarThreadSummary, "hasLiveTailWork" | "session" | "latestTurn">,

@@ -1,7 +1,8 @@
 import { ThreadId, type ThreadId as ThreadIdType } from "@glade/contracts/core/baseSchemas";
 import { useMemo } from "react";
 import { useParams } from "@tanstack/react-router";
-import { type DraftThreadState, useComposerDraftStore } from "./composerDraftStore";
+import type { DraftThreadState } from "./composerDraftDomain";
+import { useComposerDraftStore } from "./composerDraftStore";
 import { useDiffRouteSearch } from "./hooks/useDiffRouteSearch";
 import {
   resolveSplitViewFocusedPaneThreadId,

@@ -16,15 +16,15 @@ import {
 } from "~/projectScripts";
 import { runProjectCommandInTerminal } from "~/projectTerminalRunner";
 import { isElectron } from "../../env";
-import type { ThreadTerminalState } from "../../terminalStateStore";
+import type { ThreadTerminalState } from "../../terminalStateNormalization";
 import { useTerminalStateStore } from "../../terminalStateStore";
 import type { Project, Thread } from "../../types";
 import { DEFAULT_THREAD_TERMINAL_ID } from "../../types";
 import {
   LAST_INVOKED_SCRIPT_BY_PROJECT_KEY,
   LastInvokedScriptByProjectSchema,
-  resolveProjectScriptTerminalTarget,
-} from "../ChatView.logic";
+} from "../ChatView.logic.session";
+import { resolveProjectScriptTerminalTarget } from "../ChatView.logic.subagents";
 import { type NewProjectScriptInput } from "../ProjectScriptsControl";
 import { randomTerminalId } from "../terminal/terminalIds";
 import { toastManager } from "../ui/toast";

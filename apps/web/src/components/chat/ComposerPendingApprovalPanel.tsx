@@ -2,7 +2,7 @@ import { type ApprovalRequestId } from "@glade/contracts/core/baseSchemas";
 import { type ProviderApprovalDecision } from "@glade/contracts/provider/sessionPolicy";
 import { pendingRequestInstanceKey } from "@glade/shared/threads/threadSummary";
 import { type KeyboardEvent, useRef } from "react";
-import { type PendingApproval } from "../../session-logic";
+import type { PendingApproval } from "../../pendingInteractionDerivation";
 import { cn } from "~/lib/utils";
 import { ComposerChoiceRow, type ComposerChoiceTone } from "./ComposerChoiceRow";
 import { COMPOSER_INPUT_SURFACE_CLASS_NAME } from "./composerPickerStyles";

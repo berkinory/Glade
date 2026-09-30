@@ -6,7 +6,7 @@ import {
   type ThreadPullRequest,
 } from "~/hooks/useThreadPullRequests";
 import { PrStateChip } from "../pullRequest/PrStateChip";
-import { resolveThreadStatusPill } from "../Sidebar.logic";
+import { resolveThreadStatusPill } from "../Sidebar.logic.status";
 import { ThreadStatusPillChip } from "../ThreadStatusPillChip";
 import { ProviderIcon } from "../ProviderIcon";
 import { GitBranchIcon, LoaderIcon, PaperclipIcon, PinFilledIcon, WorktreeIcon } from "~/lib/icons";

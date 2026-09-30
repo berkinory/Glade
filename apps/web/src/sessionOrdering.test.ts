@@ -1,7 +1,7 @@
 import { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { expect, it } from "vitest";
-import { applyOrchestrationEvents } from "./storeEventReducer";
-import { applyShellEvent, syncServerThreadDetailHotPath } from "./storeProjection";
+import { applyOrchestrationEvents } from "./storeEventReducer.batch";
+import { applyShellEvent, syncServerThreadDetailHotPath } from "./storeProjection.synchronization";
 import {
   makeDomainEvent,
   makeReadModelThread,

@@ -152,13 +152,9 @@ function ProfileContent({
         ) : (
           <ActivityHeatmap
             cells={heatmap.cells}
-            fill
-            radius={5}
-            gap={3}
-            tooltip
-            tooltipUnit={heatmap.unit}
-            showMonths
-            monthsPosition="bottom"
+            layout={{ fill: true, radius: 5, gap: 3 }}
+            tooltip={{ show: true, unit: heatmap.unit }}
+            months={{ show: true, position: "bottom" }}
           />
         )}
       </section>

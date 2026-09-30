@@ -22,7 +22,7 @@ import { type Thread } from "../../types";
 import {
   shouldShowComposerModelBootstrapSkeleton,
   threadHasProviderLockingActivity,
-} from "../ChatView.logic";
+} from "../ChatView.logic.worktree";
 import { AVAILABLE_PROVIDER_OPTIONS } from "./ProviderModelPicker";
 import { getComposerProviderState } from "./composerProviderRegistry";
 import { resolveRuntimeModelDescriptor } from "./runtimeModelCapabilities";

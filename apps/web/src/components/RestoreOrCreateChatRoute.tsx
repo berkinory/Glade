@@ -17,7 +17,8 @@ import {
 import type { StartContainerChatResult } from "../lib/startContainerChat";
 import { readNativeApi } from "../nativeApi";
 import { useSplitViewStore } from "../splitViewStore";
-import { EMPTY_THREAD_IDS, useStore } from "../store";
+import { EMPTY_THREAD_IDS } from "../storeState";
+import { useStore } from "../store";
 
 type RestoreRouteResolverInput = {
   readonly availableSplitViewIds: ReadonlySet<string>;

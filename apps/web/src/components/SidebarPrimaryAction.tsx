@@ -7,7 +7,7 @@ import {
   SIDEBAR_ROW_HOVER_CLASS_NAME,
   SIDEBAR_ROW_IDLE_TEXT_CLASS_NAME,
 } from "~/sidebarRowStyles";
-import type { SidebarActionBadge } from "./Sidebar.logic";
+import type { SidebarActionBadge } from "./Sidebar.logic.statusTypes";
 import { SidebarGlyph } from "./sidebarGlyphs";
 import { SidebarLeadingIcon } from "./SidebarLeadingIcon";
 import { ShortcutKbd } from "./ui/shortcut-kbd";

@@ -10,7 +10,7 @@ import { isHomeChatContainerProject } from "../../lib/chatProjects";
 import { useStore } from "../../store";
 import { createSidebarDisplayThreadsSelector } from "../../storeSelectors";
 import { useWorkspacePathsStore } from "../../workspacePathsStore";
-import { sortProjectsForSidebar } from "../Sidebar.logic";
+import { sortProjectsForSidebar } from "../Sidebar.logic.projectData";
 import {
   areKanbanComposerDraftSnapshotsEqual,
   buildKanbanBoard,

@@ -34,7 +34,6 @@ const ATTACHMENT_CANCEL_CONCURRENCY = 2;
 const ATTACHMENT_CANCEL_BODY_MAX_BYTES = 512;
 
 export { cloneComposerImageAttachment };
-export { effectiveComposerAttachmentCount } from "./composerAttachmentCapacity";
 
 export const FILE_SIZE_LIMIT_LABEL = `${Math.round(
   PROVIDER_SEND_TURN_MAX_FILE_BYTES / (1024 * 1024),

@@ -1,12 +1,12 @@
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { type ProviderModelOptions } from "@glade/contracts/provider/model";
-import {
-  useComposerDraftStore,
-  type ComposerFileAttachment,
-  type ComposerImageAttachment,
-  type QueuedComposerTurn,
-} from "./composerDraftStore";
+import { useComposerDraftStore } from "./composerDraftStore";
+import type {
+  ComposerFileAttachment,
+  ComposerImageAttachment,
+  QueuedComposerTurn,
+} from "./composerDraftDomain";
 import type { TerminalContextDraft } from "./lib/terminalContext";
 import type { BrowserAnnotationDraft } from "./lib/browserAnnotations";
 

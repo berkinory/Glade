@@ -1,4 +1,4 @@
-import { makeSocketUrl } from "../wsTransport";
+import { makeSocketUrl } from "../wsTransport.support";
 
 export type FrameSourceResetReason = "closed" | "error" | "decode-failed";
 

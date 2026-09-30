@@ -5,12 +5,14 @@ import { getThreadFromState } from "./threadDerivation";
 import {
   capThreadActivities,
   dedupeActivitiesByIdAfterAppend,
-  normalizeThreadShellSnapshot,
+} from "./storeNormalization.activity";
+import { normalizeThreadShellSnapshot } from "./storeNormalization.threads";
+import {
   recordsShallowEqual,
   threadSessionsEqual,
   threadShellsEqual,
   threadTurnStatesEqual,
-} from "./storeNormalization";
+} from "./storeNormalization.shared";
 import {
   EMPTY_ACTIVITY_BY_THREAD,
   EMPTY_ACTIVITY_IDS_BY_THREAD,

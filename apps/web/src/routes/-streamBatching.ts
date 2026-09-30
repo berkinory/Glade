@@ -1,6 +1,6 @@
 import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import { Throttler } from "@tanstack/react-pacer";
-import { invalidateGitQueries, invalidateGitQueriesForCwds } from "../lib/gitReactQuery";
+import { invalidateGitQueries, invalidateGitQueriesForCwds } from "../lib/gitQueryOptions";
 import { invalidateProjectFileQueriesForCwds, projectQueryKeys } from "../lib/projectReactQuery";
 import { providerQueryKeys } from "../lib/providerReactQuery";
 import { coalesceOrchestrationUiEvents } from "../orchestrationEventCoalescing";

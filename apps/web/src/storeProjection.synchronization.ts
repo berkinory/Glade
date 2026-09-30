@@ -10,12 +10,14 @@ import {
 import { getThreadFromState, getThreadsFromState } from "./threadDerivation";
 import {
   mapProjects,
-  mapSpaces,
-  mergeReadModelThreadDetailWithLiveHotPath,
   normalizeThreadFromReadModel,
   normalizeThreadShellSnapshot,
-  recordsShallowEqual,
-} from "./storeNormalization";
+} from "./storeNormalization.threads";
+import {
+  mapSpaces,
+  mergeReadModelThreadDetailWithLiveHotPath,
+} from "./storeNormalization.messages";
+import { recordsShallowEqual } from "./storeNormalization.shared";
 import {
   projectCwdKey,
   rememberProjectState,

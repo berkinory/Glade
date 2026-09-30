@@ -2,7 +2,7 @@ import { PROVIDER_SEND_TURN_MAX_ATTACHMENTS } from "@glade/contracts/orchestrati
 import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 
-import type { ComposerImageAttachment } from "../composerDraftStore";
+import type { ComposerImageAttachment } from "../composerDraftDomain";
 import {
   prepareComposerImageAttachmentsFromFiles,
   type ComposerImageBuildResult,

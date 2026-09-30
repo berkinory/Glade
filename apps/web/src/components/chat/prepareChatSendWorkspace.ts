@@ -7,18 +7,18 @@ import {
 } from "@glade/shared/threads/chatThreads";
 import { getDefaultModel } from "@glade/shared/provider/model";
 import type { QueryClient } from "@tanstack/react-query";
-import { gitStatusQueryOptions } from "~/lib/gitReactQuery";
+import { gitStatusQueryOptions } from "../../lib/gitQueryOptions";
 import { newCommandId, newProjectId } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
 import { setupProjectScript } from "~/projectScripts";
-import {
-  useComposerDraftStore,
-  type BrowserAnnotationDraft,
-  type ComposerAssistantSelectionAttachment,
-  type ComposerFileAttachment,
-  type ComposerImageAttachment,
-  type DraftThreadEnvMode,
-} from "../../composerDraftStore";
+import { useComposerDraftStore } from "../../composerDraftStore";
+import type { BrowserAnnotationDraft } from "../../lib/browserAnnotations";
+import type {
+  ComposerAssistantSelectionAttachment,
+  ComposerFileAttachment,
+  ComposerImageAttachment,
+  DraftThreadEnvMode,
+} from "../../composerDraftDomain";
 import { formatAssistantSelectionTitleSeed } from "../../lib/assistantSelections";
 import { formatBrowserAnnotationLabel } from "../../lib/browserAnnotations";
 import { resolveFirstSendTarget } from "../../lib/chatFirstSend";

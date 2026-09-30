@@ -5,7 +5,7 @@ import { DisclosureRegion } from "../ui/DisclosureRegion";
 import { ArrowDownIcon, ArrowUpIcon, SearchIcon, XIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { MUTED_LABEL_TEXT_CLASS_NAME } from "~/surfaceStyles";
-import { type TimelineEntry } from "../../session-logic";
+import type { TimelineEntry } from "../../workLog.types";
 import {
   collectThreadFindDocuments,
   createThreadFindDocumentTextCache,

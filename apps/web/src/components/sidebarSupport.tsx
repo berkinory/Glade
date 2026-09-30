@@ -40,7 +40,11 @@ import {
   MenuTrigger,
 } from "./ui/menu";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
-import { DEBUG_FEATURE_FLAGS_MENU_STORAGE_KEY, type SidebarActionBadge, shouldShowDebugFeatureFlagsMenu } from "./Sidebar.logic.statusTypes";
+import {
+  DEBUG_FEATURE_FLAGS_MENU_STORAGE_KEY,
+  type SidebarActionBadge,
+  shouldShowDebugFeatureFlagsMenu,
+} from "./Sidebar.logic.statusTypes";
 import { cn } from "~/lib/utils";
 import { sidebarHoverRevealHideClassName, SIDEBAR_ROW_FOCUS_CLASS_NAME } from "../sidebarRowStyles";
 import { ComposerPickerMenuPopup } from "./chat/ComposerPickerMenuPopup";

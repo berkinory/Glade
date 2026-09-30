@@ -2,11 +2,11 @@ import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { type ThreadId, type TurnId } from "@glade/contracts/core/baseSchemas";
 import type { FileDiffMetadata } from "@pierre/diffs/react";
 
-import type { DraftThreadState } from "../composerDraftStore";
+import type { DraftThreadState } from "../composerDraftDomain";
 import type { RepoDiffScope } from "../repoDiffScopeStore";
 import { REPO_DIFF_SCOPE_LABELS, resolveRepoDiffScopeLabel } from "../repoDiffScopeStore";
 import { hasLiveTurnTailWork, isLatestTurnSettled } from "../session-logic";
-import { buildLocalDraftThread } from "./ChatView.logic";
+import { buildLocalDraftThread } from "./ChatView.logic.worktree";
 import { buildFileDiffRenderKey, resolveFileDiffPath } from "../lib/diffRendering";
 import type { ChatMessage, Thread } from "../types";
 

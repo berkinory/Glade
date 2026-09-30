@@ -39,7 +39,7 @@ import { resolveDiffThemeName } from "~/lib/diffRendering";
 import { extractEditorGutterChanges } from "~/lib/editorGutterDiff";
 import { formatFileCommentRange, type FileCommentSelection } from "~/lib/fileComments";
 import { showFileReferenceContextMenu } from "~/lib/fileReferenceContextMenu";
-import { gitWorkingTreeDiffQueryOptions } from "~/lib/gitReactQuery";
+import { gitWorkingTreeDiffQueryOptions } from "../lib/gitQueryOptions";
 import { PlusIcon } from "~/lib/icons";
 import { toggleMarkdownTaskMarker } from "~/lib/markdownTaskList";
 import { isRpcCapacityExceededError } from "~/lib/expensiveReadRetry";
@@ -50,7 +50,7 @@ import {
   refetchFreshProjectFileQuery,
   projectResolveOutOfRootFileReferenceQueryOptions,
 } from "~/lib/projectReactQuery";
-import { refreshGitAfterFileWrite } from "~/lib/gitReactQuery";
+import { refreshGitAfterFileWrite } from "../lib/gitQueryOptions";
 import { cn } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
 import ChatMarkdown from "./ChatMarkdown";

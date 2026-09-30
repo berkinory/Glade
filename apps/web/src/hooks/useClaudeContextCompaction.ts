@@ -6,11 +6,8 @@ import { useClaudeCompactionRequests } from "../lib/claudeCompactionRequests";
 import { readNativeApi } from "../nativeApi";
 import { useStore } from "../store";
 import { getThreadFromState } from "../threadDerivation";
-import {
-  deriveActiveBackgroundTasksState,
-  derivePendingApprovals,
-  derivePendingUserInputs,
-} from "../session-logic";
+import { deriveActiveBackgroundTasksState } from "../session-logic";
+import { derivePendingApprovals, derivePendingUserInputs } from "../pendingInteractionDerivation";
 
 export function useClaudeContextCompaction({
   threadId,
