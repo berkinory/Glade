@@ -154,7 +154,7 @@ The file patch and changed-file summary for one turn. It is usually computed in 
 - [runtime-modes.md][18]
 - [workspace-layout.md][2]
 
-[1]: ../packages/contracts/src/orchestration.ts
+[1]: ../packages/contracts/src/orchestration/orchestration.ts
 [2]: ./workspace-layout.md
 [3]: ../apps/server/src/git/Layers/GitCore.ts
 [4]: ../apps/server/src/orchestration/projector.ts

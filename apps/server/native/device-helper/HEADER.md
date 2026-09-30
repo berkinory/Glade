@@ -88,7 +88,7 @@ Frames are written to the Unix socket given to `stream.start`, each as:
 u32 little-endian length, then that many bytes of envelope
 ```
 
-The envelope is the contract defined in `packages/contracts/src/device.ts` and
+The envelope is the contract defined in `packages/contracts/src/device/device.ts` and
 decoded by `packages/shared/src/deviceFrame.ts`. Little-endian throughout:
 
 ```

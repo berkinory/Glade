@@ -14,7 +14,7 @@ import Foundation
 import IOSurface
 import VideoToolbox
 
-/// Wire-format constants, mirrored from `packages/contracts/src/device.ts`.
+/// Wire-format constants, mirrored from `packages/contracts/src/device/device.ts`.
 /// These MUST stay in agreement with the TypeScript decoder.
 enum FrameEnvelope {
   static let magic: UInt16 = 0x5346
