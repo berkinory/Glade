@@ -1,4 +1,4 @@
-import { Layer, Scope, Cause, Schema, Stream, Exit } from "effect";
+import { Layer, Scope, Cause, Schema, Stream, Exit, Deferred, Fiber } from "effect";
 import { ProviderRuntimeEvents } from "../Services/ProviderRuntimeEvents";
 import type {
   ProviderServiceShape,
@@ -46,6 +46,8 @@ export function ProviderRuntimeEventsLive(options?: ProviderServiceLiveOptions) 
       );
       const runtimeEventPubSub = yield* PubSub.bounded<PublishedRuntimeEvent>(capacity);
       const runtimeEventProducerScope = yield* Scope.make("sequential");
+      const stopPumps = yield* Deferred.make<void>();
+      const pumpFibers: Array<Fiber.Fiber<void>> = [];
       const providers = yield* registry.listProviders();
       const adapters = yield* Effect.forEach(providers, (provider) =>
         registry.getByProvider(provider),
@@ -65,13 +67,18 @@ export function ProviderRuntimeEventsLive(options?: ProviderServiceLiveOptions) 
       );
       const recoveries = yield* Ref.make(new Set<ThreadId>());
       const retiredGatewaySessionRecoveries = Ref.getUnsafe(recoveries);
+      const persistedBatchEvents = new Map<string, PersistedProviderRuntimeEvent>();
       const persistCanonicalRuntimeEvent = (
         event: ProviderRuntimeEvent,
       ): Effect.Effect<PersistedProviderRuntimeEvent | undefined, TaggedFailure> => {
+        const batched = persistedBatchEvents.get(event.eventId);
+        persistedBatchEvents.delete(event.eventId);
         const persistence: Effect.Effect<PersistedProviderRuntimeEvent | undefined, TaggedFailure> =
-          options?.persistRuntimeEvent
-            ? options.persistRuntimeEvent(event)
-            : Effect.succeed(undefined);
+          batched !== undefined
+            ? Effect.succeed(batched)
+            : options?.persistRuntimeEvent
+              ? options.persistRuntimeEvent(event)
+              : Effect.succeed(undefined);
 
         return Effect.uninterruptible(
           persistence.pipe(
@@ -164,6 +171,49 @@ export function ProviderRuntimeEventsLive(options?: ProviderServiceLiveOptions) 
             return journalAndPublish(canonicalEvent);
           }),
         );
+      const processRuntimeEventBatch = (
+        events: ReadonlyArray<ProviderRuntimeEvent>,
+        processEvent: (event: ProviderRuntimeEvent) => Effect.Effect<void>,
+      ): Effect.Effect<void> =>
+        Effect.gen(function* () {
+          for (let index = 0; index < events.length; ) {
+            const event = events[index]!;
+            if (event.type !== "content.delta") {
+              yield* processEvent(event);
+              index++;
+              continue;
+            }
+            const deltas: ProviderRuntimeEvent[] = [];
+            while (index < events.length && events[index]!.type === "content.delta") {
+              deltas.push(events[index++]!);
+            }
+            // Deltas do not mutate session bindings. Lifecycle events remain sequential barriers.
+            const accepted = deltas.filter(
+              (delta) =>
+                delta.lifecycleGeneration === undefined ||
+                lifecycle.currentGeneration(delta.threadId) === delta.lifecycleGeneration,
+            );
+            if (accepted.length > 1 && options?.persistRuntimeEventBatch) {
+              yield* options.persistRuntimeEventBatch(accepted).pipe(
+                Effect.tap((stored) =>
+                  Effect.sync(() => {
+                    for (const row of stored) persistedBatchEvents.set(row.event.eventId, row);
+                  }),
+                ),
+                // Preserve per-event retry/quarantine on a bad row or failed transaction.
+                Effect.catch(() => Effect.void),
+              );
+            }
+            yield* Effect.forEach(deltas, processEvent, { discard: true }).pipe(
+              Effect.ensuring(
+                Effect.sync(() => {
+                  for (const delta of deltas) persistedBatchEvents.delete(delta.eventId);
+                }),
+              ),
+            );
+          }
+        });
+
       const scheduleRetiredGatewaySessionRecovery = (
         event: ProviderRuntimeEvent,
       ): Effect.Effect<void> => {
@@ -219,8 +269,12 @@ export function ProviderRuntimeEventsLive(options?: ProviderServiceLiveOptions) 
         startPumps: Effect.forEach(adapters, (adapter) =>
           runProviderRuntimeEventPump({
             provider: adapter.provider,
-            stream: adapter.streamEvents,
+            stream: adapter.streamEvents.pipe(Stream.interruptWhen(Deferred.await(stopPumps))),
+            isStopping: Deferred.isDone(stopPumps),
             processEvent: processRuntimeEvent,
+            ...(options?.persistRuntimeEventBatch
+              ? { processBatch: processRuntimeEventBatch }
+              : {}),
             updateHealth: (health) => Ref.getUnsafe(healthState).set(health.provider, health),
             isPermanentFailure: (cause) =>
               Option.match(Cause.findErrorOption(cause), {
@@ -234,8 +288,13 @@ export function ProviderRuntimeEventsLive(options?: ProviderServiceLiveOptions) 
               ? { retry: options.runtimeEventRetry }
               : {}),
           }).pipe(Effect.forkIn(runtimeEventProducerScope)),
-        ).pipe(Effect.asVoid),
-        shutdown: Scope.close(runtimeEventProducerScope, Exit.void).pipe(
+        ).pipe(
+          Effect.tap((fibers) => Effect.sync(() => pumpFibers.push(...fibers))),
+          Effect.asVoid,
+        ),
+        shutdown: Deferred.succeed(stopPumps, undefined).pipe(
+          Effect.andThen(Effect.forEach(pumpFibers, Fiber.join, { discard: true })),
+          Effect.andThen(Scope.close(runtimeEventProducerScope, Exit.void)),
           Effect.andThen(awaitRuntimeEventFanoutDrained),
           Effect.andThen(PubSub.shutdown(runtimeEventPubSub)),
         ),

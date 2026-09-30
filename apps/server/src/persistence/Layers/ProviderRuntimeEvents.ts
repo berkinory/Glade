@@ -110,15 +110,13 @@ const encodePersistableEvent = (event: ProviderRuntimeEvent) =>
 const make = Effect.gen(function* () {
   const sql = yield* SqlClient.SqlClient;
 
-  const append: ProviderRuntimeEventRepositoryShape["append"] = (event) =>
+  const appendOne: ProviderRuntimeEventRepositoryShape["append"] = (event) =>
     Effect.gen(function* () {
       const persistable = yield* encodePersistableEvent(event);
       const persistedEvent = persistable.event;
       const eventJson = persistable.eventJson;
-      const appendResult = yield* sql
-        .withTransaction(
-          Effect.gen(function* () {
-            const inserted = yield* sql<Record<string, unknown>>`
+      const appendResult = yield* Effect.gen(function* () {
+        const inserted = yield* sql<Record<string, unknown>>`
             INSERT INTO provider_runtime_events (
               event_id, thread_id, turn_id, lifecycle_generation, event_type,
               event_json, persisted_at
@@ -130,19 +128,17 @@ const make = Effect.gen(function* () {
             ON CONFLICT(event_id) DO NOTHING
             RETURNING sequence
             `;
-            if (inserted[0] !== undefined) {
-              return { inserted: true as const, row: inserted[0] };
-            }
+        if (inserted[0] !== undefined) {
+          return { inserted: true as const, row: inserted[0] };
+        }
 
-            const existing = yield* sql<Record<string, unknown>>`
+        const existing = yield* sql<Record<string, unknown>>`
               SELECT sequence, event_json AS "eventJson"
               FROM provider_runtime_events
               WHERE event_id = ${event.eventId}
           `;
-            return { inserted: false as const, row: existing[0] };
-          }),
-        )
-        .pipe(Effect.mapError(toPersistenceSqlError("ProviderRuntimeEvent.append")));
+        return { inserted: false as const, row: existing[0] };
+      }).pipe(Effect.mapError(toPersistenceSqlError("ProviderRuntimeEvent.append")));
       const persisted = appendResult.inserted
         ? yield* decodeSequenceRow(appendResult.row).pipe(
             Effect.map((row) => ({ sequence: row.sequence, eventJson })),
@@ -162,6 +158,27 @@ const make = Effect.gen(function* () {
         event: persistedEvent,
       } satisfies PersistedProviderRuntimeEvent;
     });
+
+  const append: ProviderRuntimeEventRepositoryShape["append"] = (event) =>
+    sql
+      .withTransaction(appendOne(event))
+      .pipe(
+        Effect.mapError((error) =>
+          Schema.is(PersistenceDecodeError)(error)
+            ? error
+            : toPersistenceSqlError("ProviderRuntimeEvent.append")(error),
+        ),
+      );
+  const appendBatch: ProviderRuntimeEventRepositoryShape["appendBatch"] = (events) =>
+    sql
+      .withTransaction(Effect.forEach(events, appendOne))
+      .pipe(
+        Effect.mapError((error) =>
+          Schema.is(PersistenceDecodeError)(error)
+            ? error
+            : toPersistenceSqlError("ProviderRuntimeEvent.appendBatch")(error),
+        ),
+      );
 
   const getHighWaterSequence = sql<{ readonly highWaterSequence: number }>`
     SELECT COALESCE(MAX(sequence), 0) AS "highWaterSequence"
@@ -608,6 +625,7 @@ const make = Effect.gen(function* () {
 
   return {
     append,
+    appendBatch,
     getHighWaterSequence,
     readAfter,
     getThreadCoverage,

@@ -206,6 +206,7 @@ export function makeDurableProviderServiceLive(options?: ProviderServiceLiveOpti
       return makeProviderServiceLive({
         ...options,
         persistRuntimeEvent: (event) => runtimeEvents.append(event),
+        persistRuntimeEventBatch: (events) => runtimeEvents.appendBatch(events),
         quarantineRuntimeEvent: (event, cause) =>
           runtimeEvents
             .append({

@@ -17,6 +17,10 @@ export interface ProviderServiceLiveOptions {
     event: ProviderRuntimeEvent,
   ) => Effect.Effect<PersistedProviderRuntimeEvent, TaggedFailure>;
 
+  readonly persistRuntimeEventBatch?: (
+    events: ReadonlyArray<ProviderRuntimeEvent>,
+  ) => Effect.Effect<ReadonlyArray<PersistedProviderRuntimeEvent>, TaggedFailure>;
+
   readonly quarantineRuntimeEvent?: (
     event: ProviderRuntimeEvent,
     cause: string,

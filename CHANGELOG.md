@@ -25,6 +25,8 @@
 
 ### Improved
 
+- Streaming replies write far less to disk.
+
 - Long code blocks stream more smoothly while preserving text selection.
 
 - Conversation compaction uses the same server checks for both providers; Claude accepts optional instructions.

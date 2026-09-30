@@ -18,6 +18,11 @@ export interface ProviderRuntimeEventPumpOptions<R> {
   readonly provider: ProviderKind;
   readonly stream: Stream.Stream<ProviderRuntimeEvent>;
   readonly processEvent: (event: ProviderRuntimeEvent) => Effect.Effect<void, TaggedFailure, R>;
+  readonly processBatch?: (
+    events: ReadonlyArray<ProviderRuntimeEvent>,
+    processEvent: (event: ProviderRuntimeEvent) => Effect.Effect<void, never, R>,
+  ) => Effect.Effect<void, never, R>;
+  readonly isStopping?: Effect.Effect<boolean>;
   readonly updateHealth: (health: ProviderRuntimeEventPumpHealth) => void;
   readonly isPermanentFailure?: (cause: Cause.Cause<unknown>) => boolean;
   readonly quarantineEvent?: (
@@ -222,7 +227,39 @@ export function runProviderRuntimeEventPump<R>(
       ),
     );
 
-  const runStreamOnce = () => Stream.runForEach(options.stream, processEventReliably);
+  const runStreamOnce = () => {
+    const processBatch = options.processBatch;
+    if (!processBatch) return Stream.runForEach(options.stream, processEventReliably);
+    const pending: ProviderRuntimeEvent[] = [];
+    const processPending = (event: ProviderRuntimeEvent) =>
+      processEventReliably(event).pipe(
+        Effect.tap(() =>
+          Effect.sync(() => {
+            const index = pending.indexOf(event);
+            if (index !== -1) pending.splice(index, 1);
+          }),
+        ),
+      );
+    return Stream.runForEach(
+      options.stream.pipe(
+        Stream.tap((event) =>
+          Effect.sync(() => {
+            pending.push(event);
+          }),
+        ),
+        Stream.groupedWithin(256, "100 millis"),
+      ),
+      (events) => processBatch(events, processPending),
+    ).pipe(
+      // Stream aggregation discards its unfinished group when upstream stops. Own that tail
+      // until publication succeeds so shutdown and adapter failures cannot lose partial text.
+      Effect.ensuring(
+        Effect.suspend(() =>
+          pending.length > 0 ? processBatch([...pending], processPending) : Effect.void,
+        ),
+      ),
+    );
+  };
 
   const supervise = (restartAttempt = 0): Effect.Effect<void, never, R> =>
     setHealth(restartAttempt === 0 ? "healthy" : "recovering", restartAttempt).pipe(
@@ -248,22 +285,26 @@ export function runProviderRuntimeEventPump<R>(
             Effect.andThen(supervise(attempt)),
           );
         },
-        onSuccess: () => {
-          const attempt = restartAttempt + 1;
-          const delayMs = retryDelayMs(attempt, retryBaseDelayMs, retryMaxDelayMs);
-          const detail = "Adapter runtime event stream ended unexpectedly.";
-          return setHealth("recovering", attempt, detail).pipe(
-            Effect.andThen(
-              Effect.logWarning("provider.runtime_event_pump.stream_ended", {
-                provider: options.provider,
-                attempt,
-                delayMs,
-              }),
-            ),
-            Effect.andThen(Effect.sleep(delayMs)),
-            Effect.andThen(supervise(attempt)),
-          );
-        },
+        onSuccess: () =>
+          (options.isStopping ?? Effect.succeed(false)).pipe(
+            Effect.flatMap((stopping) => {
+              if (stopping) return Effect.void;
+              const attempt = restartAttempt + 1;
+              const delayMs = retryDelayMs(attempt, retryBaseDelayMs, retryMaxDelayMs);
+              const detail = "Adapter runtime event stream ended unexpectedly.";
+              return setHealth("recovering", attempt, detail).pipe(
+                Effect.andThen(
+                  Effect.logWarning("provider.runtime_event_pump.stream_ended", {
+                    provider: options.provider,
+                    attempt,
+                    delayMs,
+                  }),
+                ),
+                Effect.andThen(Effect.sleep(delayMs)),
+                Effect.andThen(supervise(attempt)),
+              );
+            }),
+          ),
       }),
     );
 

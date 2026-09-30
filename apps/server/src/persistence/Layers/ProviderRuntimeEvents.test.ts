@@ -101,12 +101,48 @@ it.effect("journals image metadata and replays it without the model image body",
 );
 
 layer("ProviderRuntimeEventRepository", (it) => {
+  it.effect("rolls back a streamed batch if a reused event ID changes its content", () =>
+    Effect.gen(function* () {
+      const repository = yield* ProviderRuntimeEventRepository;
+      const original = yield* repository.append(runtimeEvent("batch-conflict", "original"));
+      const failed = yield* Effect.exit(
+        repository.appendBatch([
+          runtimeEvent("batch-prefix", "must roll back"),
+          runtimeEvent("batch-conflict", "changed"),
+        ]),
+      );
+      assert.equal(failed._tag, "Failure");
+      assert.equal(yield* repository.getHighWaterSequence, original.sequence);
+      const replay = yield* repository.readAfter({
+        sequenceExclusive: 0,
+        throughSequenceInclusive: original.sequence + 10,
+        limit: 10,
+      });
+      assert.deepEqual(
+        replay.map((row) => row.event.eventId),
+        ["batch-conflict"],
+      );
+    }).pipe(
+      Effect.provide(
+        Layer.fresh(
+          ProviderRuntimeEventRepositoryLive.pipe(
+            Layer.provideMerge(Layer.fresh(SqlitePersistenceMemory)),
+          ),
+        ),
+      ),
+    ),
+  );
+
   it.effect("journals exact events and advances its consumer cursor contiguously", () =>
     Effect.gen(function* () {
       const repository = yield* ProviderRuntimeEventRepository;
-      const first = yield* repository.append(runtimeEvent("runtime-event-1", "hello"));
+      const batch = yield* repository.appendBatch([
+        runtimeEvent("runtime-event-1", "hello"),
+        runtimeEvent("runtime-event-2", " world"),
+      ]);
+      const first = batch[0]!;
+      const second = batch[1]!;
       const duplicate = yield* repository.append(runtimeEvent("runtime-event-1", "hello"));
-      const second = yield* repository.append(runtimeEvent("runtime-event-2", " world"));
 
       assert.strictEqual(duplicate.sequence, first.sequence);
       assert.isAbove(second.sequence, first.sequence);
