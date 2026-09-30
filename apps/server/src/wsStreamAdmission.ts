@@ -1,7 +1,7 @@
 import * as Crypto from "node:crypto";
 
 import { WS_STREAM_LIMITS } from "@glade/contracts/transport/ws/wsCompatibility";
-import { WsRpcError } from "@glade/contracts/transport/ws/rpc";
+import { WsRpcError } from "@glade/contracts/transport/ws/rpcErrors";
 import { Deferred, Effect, Ref, Stream } from "effect";
 
 export const MAX_STREAMS_PER_RPC_CLIENT = WS_STREAM_LIMITS.totalPerClient;

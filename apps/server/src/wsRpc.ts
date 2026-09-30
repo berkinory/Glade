@@ -22,13 +22,11 @@ import {
   WsCompatibilityError,
 } from "@glade/contracts/transport/ws/wsCompatibility";
 import { WS_METHODS } from "@glade/contracts/transport/ws/ws";
-import {
-  WsBootstrapRpcGroup,
-  WsComputerRpcGroup,
-  WsDeviceRpcGroup,
-  WsFeatureRpcGroup,
-  WsRpcError,
-} from "@glade/contracts/transport/ws/rpc";
+import { WsBootstrapRpcGroup } from "@glade/contracts/transport/ws/bootstrapRpc";
+import { WsComputerRpcGroup } from "@glade/contracts/transport/ws/computerRpc";
+import { WsDeviceRpcGroup } from "@glade/contracts/transport/ws/deviceRpc";
+import { WsFeatureRpcGroup } from "@glade/contracts/transport/ws/rpc";
+import { WsRpcError } from "@glade/contracts/transport/ws/rpcErrors";
 import { PullRequestsUnavailableError } from "@glade/contracts/git/pullRequests";
 import {
   type GitActionProgressEvent,

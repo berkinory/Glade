@@ -31,7 +31,7 @@ import {
   type ThreadDeviceState,
 } from "@glade/contracts/device/device";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { WsRpcError } from "@glade/contracts/transport/ws/rpc";
+import { WsRpcError } from "@glade/contracts/transport/ws/rpcErrors";
 import { Effect } from "effect";
 
 import type { DeviceServiceShape } from "./Services/DeviceService.ts";

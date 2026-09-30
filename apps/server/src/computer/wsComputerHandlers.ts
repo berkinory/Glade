@@ -39,7 +39,7 @@ import {
   type ComputerGetAuditHistoryInput,
   type ComputerGetAuditHistoryResult,
 } from "@glade/contracts/computer/computerAudit";
-import { WsRpcError } from "@glade/contracts/transport/ws/rpc";
+import { WsRpcError } from "@glade/contracts/transport/ws/rpcErrors";
 import { Effect } from "effect";
 
 import { NO_COMPUTER_CAPABILITIES } from "./ComputerBackend.ts";

@@ -2,7 +2,7 @@ import { Exit, Schema } from "effect";
 import { Rpc } from "effect/unstable/rpc";
 import { describe, expect, it } from "vitest";
 
-import { WsServerReadThreadDiagnosticsRpc } from "./rpc";
+import { WsServerReadThreadDiagnosticsRpc } from "./serverRpc";
 
 const exitCodec = Schema.toCodecJson(Rpc.exitSchema(WsServerReadThreadDiagnosticsRpc));
 const encode = Schema.encodeUnknownSync(exitCodec);

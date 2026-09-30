@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { WsBootstrapRpcGroup, WsFeatureRpcGroup, WsComputerRpcGroup } from "./rpc";
+import { WsBootstrapRpcGroup } from "./bootstrapRpc";
+import { WsFeatureRpcGroup } from "./rpc";
+import { WsComputerRpcGroup } from "./computerRpc";
 import { COMPUTER_WS_METHODS } from "../../computer/computer";
 import { ORCHESTRATION_WS_METHODS } from "../../orchestration/rpc";
 

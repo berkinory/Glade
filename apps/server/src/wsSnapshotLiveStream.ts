@@ -1,4 +1,4 @@
-import { WsRpcError } from "@glade/contracts/transport/ws/rpc";
+import { WsRpcError } from "@glade/contracts/transport/ws/rpcErrors";
 import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import { Cause, Effect, Queue, Scope, Stream } from "effect";
 

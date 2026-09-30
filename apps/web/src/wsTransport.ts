@@ -39,12 +39,10 @@ import {
   COMPUTER_WS_METHODS,
   type ComputerEvent,
 } from "@glade/contracts/computer/computer";
-import {
-  WsBootstrapRpcGroup,
-  WsDeviceRpcGroup,
-  WsComputerRpcGroup,
-  WsFeatureRpcGroup,
-} from "@glade/contracts/transport/ws/rpc";
+import { WsBootstrapRpcGroup } from "@glade/contracts/transport/ws/bootstrapRpc";
+import { WsDeviceRpcGroup } from "@glade/contracts/transport/ws/deviceRpc";
+import { WsComputerRpcGroup } from "@glade/contracts/transport/ws/computerRpc";
+import { WsFeatureRpcGroup } from "@glade/contracts/transport/ws/rpc";
 import { type AutomationStreamEvent } from "@glade/contracts/automation/automation";
 import {
   type GitActionProgressEvent,

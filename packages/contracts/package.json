@@ -237,10 +237,65 @@
       "import": "./src/transport/auth/auth.ts",
       "require": "./dist/transport/auth/auth.cjs"
     },
+    "./transport/ws/automationRpc": {
+      "types": "./src/transport/ws/automationRpc.ts",
+      "import": "./src/transport/ws/automationRpc.ts",
+      "require": "./dist/transport/ws/automationRpc.cjs"
+    },
+    "./transport/ws/bootstrapRpc": {
+      "types": "./src/transport/ws/bootstrapRpc.ts",
+      "import": "./src/transport/ws/bootstrapRpc.ts",
+      "require": "./dist/transport/ws/bootstrapRpc.cjs"
+    },
+    "./transport/ws/computerRpc": {
+      "types": "./src/transport/ws/computerRpc.ts",
+      "import": "./src/transport/ws/computerRpc.ts",
+      "require": "./dist/transport/ws/computerRpc.cjs"
+    },
+    "./transport/ws/deviceRpc": {
+      "types": "./src/transport/ws/deviceRpc.ts",
+      "import": "./src/transport/ws/deviceRpc.ts",
+      "require": "./dist/transport/ws/deviceRpc.cjs"
+    },
+    "./transport/ws/gitRpc": {
+      "types": "./src/transport/ws/gitRpc.ts",
+      "import": "./src/transport/ws/gitRpc.ts",
+      "require": "./dist/transport/ws/gitRpc.cjs"
+    },
+    "./transport/ws/orchestrationRpc": {
+      "types": "./src/transport/ws/orchestrationRpc.ts",
+      "import": "./src/transport/ws/orchestrationRpc.ts",
+      "require": "./dist/transport/ws/orchestrationRpc.cjs"
+    },
+    "./transport/ws/providerRpc": {
+      "types": "./src/transport/ws/providerRpc.ts",
+      "import": "./src/transport/ws/providerRpc.ts",
+      "require": "./dist/transport/ws/providerRpc.cjs"
+    },
     "./transport/ws/rpc": {
       "types": "./src/transport/ws/rpc.ts",
       "import": "./src/transport/ws/rpc.ts",
       "require": "./dist/transport/ws/rpc.cjs"
+    },
+    "./transport/ws/rpcErrors": {
+      "types": "./src/transport/ws/rpcErrors.ts",
+      "import": "./src/transport/ws/rpcErrors.ts",
+      "require": "./dist/transport/ws/rpcErrors.cjs"
+    },
+    "./transport/ws/serverRpc": {
+      "types": "./src/transport/ws/serverRpc.ts",
+      "import": "./src/transport/ws/serverRpc.ts",
+      "require": "./dist/transport/ws/serverRpc.cjs"
+    },
+    "./transport/ws/terminalRpc": {
+      "types": "./src/transport/ws/terminalRpc.ts",
+      "import": "./src/transport/ws/terminalRpc.ts",
+      "require": "./dist/transport/ws/terminalRpc.cjs"
+    },
+    "./transport/ws/workspaceRpc": {
+      "types": "./src/transport/ws/workspaceRpc.ts",
+      "import": "./src/transport/ws/workspaceRpc.ts",
+      "require": "./dist/transport/ws/workspaceRpc.cjs"
     },
     "./transport/ws/ws": {
       "types": "./src/transport/ws/ws.ts",

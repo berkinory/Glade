@@ -12,6 +12,8 @@
 
 ### Improved
 
+- WebSocket RPC registrations are grouped by domain, with direct imports for bootstrap, orchestration, workspace, device, computer, Git, terminal, server, provider and automation operations. Method names and schemas are unchanged.
+
 - Provider runtime contracts separate event metadata, payload schemas and the event union. Encoded fields, tags, defaults and type shapes are unchanged.
 
 - Provider runtime events use canonical event and status names; unused compatibility aliases were removed without changing the encoded event version or payload schemas.
