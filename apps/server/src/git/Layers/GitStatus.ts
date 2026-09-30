@@ -9,8 +9,10 @@ import {
 } from "../gitStatusParsing.ts";
 import { GitCommandError } from "../Errors.ts";
 import type { GitCoreShape } from "../Services/GitCore.ts";
-import { GitCommands } from "../Services/GitCommands.ts";
+import { GitCommands, type GitCommandsShape } from "../Services/GitCommands.ts";
 import { GitStatus } from "../Services/GitStatus.ts";
+import { GitRepositoryMetadata } from "../Services/GitRepositoryMetadata";
+import { GitRepositoryMetadataLive } from "./GitRepositoryMetadata";
 import { commandLabel, createGitCommandError, isMissingGitCwdError } from "./GitCommands.ts";
 
 const DEFAULT_BASE_BRANCH_CANDIDATES = ["main", "master"] as const;
@@ -26,7 +28,10 @@ const STATUS_UPSTREAM_REFRESH_TIMEOUT = Duration.seconds(15);
 
 const STATUS_UPSTREAM_REFRESH_CACHE_CAPACITY = 2_048;
 
-type StatusUpstreamRefreshResult = "refreshed" | "failed";
+type StatusUpstreamRefreshResult = {
+  readonly status: "refreshed" | "failed";
+  readonly completedAt: number;
+};
 
 interface StatusUpstreamRefreshCacheKeyFields {
   readonly cwd: string;
@@ -50,7 +55,7 @@ function makeStatusUpstreamRefreshCacheTimeToLive() {
       key: StatusUpstreamRefreshCacheKeyFields,
     ): Duration.Duration {
       const mapKey = statusUpstreamRefreshBackoffMapKey(key);
-      if (Exit.isSuccess(exit) && exit.value === "refreshed") {
+      if (Exit.isSuccess(exit) && exit.value.status === "refreshed") {
         consecutiveFailures.delete(mapKey);
         return STATUS_UPSTREAM_REFRESH_INTERVAL;
       }
@@ -111,19 +116,22 @@ export function parseRemoteNames(stdout: string): ReadonlyArray<string> {
     .toSorted((a, b) => b.length - a.length);
 }
 
-function parseDefaultBranchFromRemoteHeadRef(value: string, remoteName: string): string | null {
-  const trimmed = value.trim();
-  const prefix = `refs/remotes/${remoteName}/`;
-  if (!trimmed.startsWith(prefix)) {
-    return null;
-  }
-  const branch = trimmed.slice(prefix.length).trim();
-  return branch.length > 0 ? branch : null;
-}
-
 const makeGitStatus = Effect.gen(function* () {
   const fileSystem = yield* FileSystem.FileSystem;
-  const { executeGit, runGit, runGitStdout } = yield* GitCommands;
+  const commands = yield* GitCommands;
+  const runGit = commands.runGit;
+  const executeGit: GitCommandsShape["executeGit"] = (operation, cwd, args, options) =>
+    commands.executeGit(operation, cwd, args, { priority: "background", ...options });
+  const runGitStdout: GitCommandsShape["runGitStdout"] = (
+    operation,
+    cwd,
+    args,
+    allowNonZeroExit = false,
+  ) =>
+    executeGit(operation, cwd, args, { allowNonZeroExit }).pipe(
+      Effect.map((result) => result.stdout),
+    );
+  const metadata = yield* GitRepositoryMetadata;
   const statusRefreshScope = yield* Effect.acquireRelease(Scope.make(), (scope) =>
     Scope.close(scope, Exit.void),
   );
@@ -268,7 +276,7 @@ const makeGitStatus = Effect.gen(function* () {
         remoteName: cacheKey.remoteName,
         upstreamBranch: cacheKey.upstreamBranch,
       }).pipe(
-        Effect.as("refreshed" as const),
+        Effect.map(() => ({ status: "refreshed" as const, completedAt: performance.now() })),
         Effect.catch((cause) => {
           const failures = upstreamRefreshPolicy.getFailureCount(cacheKey);
           const logFields = {
@@ -284,26 +292,38 @@ const makeGitStatus = Effect.gen(function* () {
                   logFields,
                 )
               : Effect.logDebug("Git status upstream refresh failed again; backing off", logFields);
-          return log.pipe(Effect.as("failed" as const));
+          return log.pipe(
+            Effect.map(() => ({ status: "failed" as const, completedAt: performance.now() })),
+          );
         }),
       ),
 
     timeToLive: upstreamRefreshPolicy.timeToLive,
   });
 
-  const refreshStatusUpstreamIfStale = (cwd: string): Effect.Effect<void, GitCommandError> =>
+  const refreshStatusUpstreamIfStale = (
+    cwd: string,
+    upstreamRef?: string,
+  ): Effect.Effect<boolean, GitCommandError> =>
     Effect.gen(function* () {
-      const upstream = yield* resolveCurrentUpstream(cwd);
-      if (!upstream) return;
-      yield* Cache.get(
+      const startedAt = performance.now();
+      const separator = upstreamRef?.indexOf("/") ?? -1;
+      const upstream =
+        upstreamRef !== undefined
+          ? separator > 0
+            ? {
+                upstreamRef,
+                remoteName: upstreamRef.slice(0, separator),
+                upstreamBranch: upstreamRef.slice(separator + 1),
+              }
+            : null
+          : yield* resolveCurrentUpstream(cwd);
+      if (!upstream) return false;
+      const refreshed = yield* Cache.get(
         statusUpstreamRefreshCache,
-        new StatusUpstreamRefreshCacheKey({
-          cwd,
-          upstreamRef: upstream.upstreamRef,
-          remoteName: upstream.remoteName,
-          upstreamBranch: upstream.upstreamBranch,
-        }),
+        new StatusUpstreamRefreshCacheKey({ cwd, ...upstream }),
       );
+      return refreshed.status === "refreshed" && refreshed.completedAt >= startedAt;
     });
 
   const refreshCheckedOutBranchUpstream = (cwd: string): Effect.Effect<void, GitCommandError> =>
@@ -312,24 +332,6 @@ const makeGitStatus = Effect.gen(function* () {
       if (!upstream) return;
       yield* fetchUpstreamRef(cwd, upstream);
     });
-
-  const resolveDefaultBranchName = (
-    cwd: string,
-    remoteName: string,
-  ): Effect.Effect<string | null, GitCommandError> =>
-    executeGit(
-      "GitCore.resolveDefaultBranchName",
-      cwd,
-      ["symbolic-ref", `refs/remotes/${remoteName}/HEAD`],
-      { allowNonZeroExit: true },
-    ).pipe(
-      Effect.map((result) => {
-        if (result.code !== 0) {
-          return null;
-        }
-        return parseDefaultBranchFromRemoteHeadRef(result.stdout, remoteName);
-      }),
-    );
 
   const remoteBranchExists = (
     cwd: string,
@@ -378,18 +380,11 @@ const makeGitStatus = Effect.gen(function* () {
     branch: string,
   ): Effect.Effect<string | null, GitCommandError> =>
     Effect.gen(function* () {
-      const configuredBaseBranch = yield* runGitStdout(
-        "GitCore.resolveBaseBranchForNoUpstream.config",
-        cwd,
-        ["config", "--get", `branch.${branch}.gh-merge-base`],
-        true,
-      ).pipe(Effect.map((stdout) => stdout.trim()));
-
-      const primaryRemoteName = yield* resolvePrimaryRemoteName(cwd).pipe(
-        Effect.catch(() => Effect.succeed(null)),
-      );
-      const defaultBranch =
-        primaryRemoteName === null ? null : yield* resolveDefaultBranchName(cwd, primaryRemoteName);
+      const repoConfig = yield* metadata.read(cwd);
+      const configuredBaseBranch =
+        repoConfig.configValue(`branch.${branch}.gh-merge-base`)?.trim() ?? "";
+      const primaryRemoteName = repoConfig.primaryRemote;
+      const defaultBranch = repoConfig.defaultBranch;
       const candidates = [
         configuredBaseBranch.length > 0 ? configuredBaseBranch : null,
         defaultBranch,
@@ -412,13 +407,13 @@ const makeGitStatus = Effect.gen(function* () {
           continue;
         }
 
-        if (yield* branchExists(cwd, normalizedCandidate)) {
+        if (repoConfig.hasRef(`refs/heads/${normalizedCandidate}`)) {
           return normalizedCandidate;
         }
 
         if (
           primaryRemoteName &&
-          (yield* remoteBranchExists(cwd, primaryRemoteName, normalizedCandidate))
+          repoConfig.hasRef(`refs/remotes/${primaryRemoteName}/${normalizedCandidate}`)
         ) {
           return `${primaryRemoteName}/${normalizedCandidate}`;
         }
@@ -453,49 +448,29 @@ const makeGitStatus = Effect.gen(function* () {
 
   const readStatusDetails = (cwd: string, refreshUpstream: boolean) =>
     Effect.gen(function* () {
-      const operation = "GitCore.statusDetails.isInsideWorkTree";
-      const args = ["rev-parse", "--is-inside-work-tree"] as const;
-      const isInsideWorkTree = yield* executeGit(operation, cwd, args, {
+      const operation = "GitCore.statusDetails.status";
+      const args = ["status", "--porcelain=v2", "--branch", "-z"] as const;
+      const statusResult = yield* executeGit(operation, cwd, args, {
         allowNonZeroExit: true,
         timeoutMs: 5_000,
-      }).pipe(
-        Effect.flatMap((result) => {
-          if (result.code === 0) {
-            return Effect.succeed(result.stdout.trim() === "true");
-          }
-          if (result.code === 128 && result.stderr.toLowerCase().includes("not a git repository")) {
-            return Effect.succeed(false);
-          }
-          return Effect.fail(
-            createGitCommandError(
-              operation,
-              cwd,
-              args,
-              result.stderr.trim() || `${commandLabel(args)} failed: code=${result.code}`,
-            ),
-          );
-        }),
-        Effect.catchIf(isMissingGitCwdError, () => Effect.succeed(false)),
-      );
-      if (!isInsideWorkTree) {
+      }).pipe(Effect.catchIf(isMissingGitCwdError, () => Effect.succeed(null)));
+      if (
+        statusResult === null ||
+        (statusResult.code === 128 &&
+          /not a git repository|must be run in a work tree/i.test(statusResult.stderr))
+      ) {
         return NON_REPOSITORY_STATUS_DETAILS;
       }
-
-      if (refreshUpstream) {
-        yield* refreshStatusUpstreamIfStale(cwd).pipe(
-          Effect.catchIf(isMissingGitCwdError, () => Effect.void),
-          Effect.ignoreCause({ log: true }),
+      if (statusResult.code !== 0) {
+        return yield* createGitCommandError(operation, cwd, args, statusResult.stderr.trim());
+      }
+      let statusStdout = statusResult.stdout;
+      const initialUpstream = parseGitStatusPorcelain(statusStdout).upstreamRef;
+      if (refreshUpstream && initialUpstream) {
+        const refreshed = yield* refreshStatusUpstreamIfStale(cwd, initialUpstream).pipe(
+          Effect.catch(() => Effect.succeed(false)),
         );
-      }
-
-      const statusStdout = yield* runGitStdout("GitCore.statusDetails.status", cwd, [
-        "status",
-        "--porcelain=2",
-        "--branch",
-        "-z",
-      ]).pipe(Effect.catchIf(isMissingGitCwdError, () => Effect.succeed(null)));
-      if (statusStdout === null) {
-        return NON_REPOSITORY_STATUS_DETAILS;
+        if (refreshed) statusStdout = yield* runGitStdout(operation, cwd, args);
       }
 
       const parsedStatus = parseGitStatusPorcelain(statusStdout);
@@ -512,29 +487,14 @@ const makeGitStatus = Effect.gen(function* () {
         untrackedFilesWithoutNumstat,
       } = parsedStatus;
 
+      const repoConfig = yield* metadata.read(cwd);
       if (branch && upstreamRef) {
-        upstreamBranch = yield* runGitStdout(
-          "GitCore.statusDetails.upstreamMergeBranch",
-          cwd,
-          ["config", "--get", `branch.${branch}.merge`],
-          true,
-        ).pipe(
-          Effect.map(normalizeConfiguredMergeBranch),
-          Effect.catch(() => Effect.succeed(null)),
+        upstreamBranch = normalizeConfiguredMergeBranch(
+          repoConfig.configValue(`branch.${branch}.merge`) ?? "",
         );
       }
-
       const configuredPrBaseBranch = branch
-        ? yield* runGitStdout(
-            "GitCore.statusDetails.configuredPrBaseBranch",
-            cwd,
-            ["config", "--get", `branch.${branch}.gh-merge-base`],
-            true,
-          ).pipe(
-            Effect.map((stdout) => stdout.trim()),
-            Effect.map((trimmed) => (trimmed.length > 0 ? trimmed : null)),
-            Effect.catch(() => Effect.succeed(null)),
-          )
+        ? repoConfig.configValue(`branch.${branch}.gh-merge-base`)?.trim() || null
         : null;
 
       if (!upstreamRef && branch) {
@@ -544,19 +504,8 @@ const makeGitStatus = Effect.gen(function* () {
         behindCount = 0;
       }
 
-      // Resolved from the same helpers `listGitBranches` uses so the two stay consistent; each lookup
-      // degrades to a safe default on failure so it never breaks the status read.
-      // `resolvePrimaryRemoteName` returns "origin" only when that remote exists, so it doubles as the
-      // origin check.
-      const primaryRemoteName = yield* resolvePrimaryRemoteName(cwd).pipe(
-        Effect.catch(() => Effect.succeed(null)),
-      );
-      const defaultBranchName =
-        primaryRemoteName === null
-          ? null
-          : yield* resolveDefaultBranchName(cwd, primaryRemoteName).pipe(
-              Effect.catch(() => Effect.succeed(null)),
-            );
+      const primaryRemoteName = repoConfig.primaryRemote;
+      const defaultBranchName = repoConfig.defaultBranch;
       const repoMetadata = {
         isRepo: true,
         hasOriginRemote: primaryRemoteName === "origin",
@@ -585,24 +534,32 @@ const makeGitStatus = Effect.gen(function* () {
         };
       }
 
-      const numstatOutputs = yield* Effect.all(
-        [
-          runGitStdout("GitCore.statusDetails.unstagedNumstat", cwd, ["diff", "--numstat", "-z"]),
-          runGitStdout("GitCore.statusDetails.stagedNumstat", cwd, [
-            "diff",
-            "--cached",
-            "--numstat",
-            "-z",
-          ]),
-        ],
-        { concurrency: "unbounded" },
+      const numstatResult = yield* executeGit(
+        "GitCore.statusDetails.numstat",
+        cwd,
+        ["diff", "HEAD", "--numstat", "-z"],
+        { allowNonZeroExit: true },
       ).pipe(Effect.catchIf(isMissingGitCwdError, () => Effect.succeed(null)));
-      if (numstatOutputs === null) {
-        return NON_REPOSITORY_STATUS_DETAILS;
+      if (numstatResult === null) return NON_REPOSITORY_STATUS_DETAILS;
+      if (numstatResult.code !== 0 && !statusStdout.startsWith("# branch.oid (initial)")) {
+        return yield* createGitCommandError(
+          "GitCore.statusDetails.numstat",
+          cwd,
+          ["diff", "HEAD", "--numstat", "-z"],
+          numstatResult.stderr.trim(),
+        );
       }
-
-      const [unstagedNumstatStdout, stagedNumstatStdout] = numstatOutputs;
-      const workingTree = summarizeGitNumstatOutputs([stagedNumstatStdout, unstagedNumstatStdout]);
+      // Unborn branches have no HEAD; their index is the complete tracked working tree.
+      const numstatStdout =
+        numstatResult.code === 0
+          ? numstatResult.stdout
+          : yield* runGitStdout("GitCore.statusDetails.unbornNumstat", cwd, [
+              "diff",
+              "--cached",
+              "--numstat",
+              "-z",
+            ]);
+      const workingTree = summarizeGitNumstatOutputs([numstatStdout]);
       const files = [...workingTree.files];
       const numstatFilePaths = new Set(files.map((file) => file.path));
       const filePathsWithStats = new Set(numstatFilePaths);
@@ -694,7 +651,7 @@ const makeGitStatus = Effect.gen(function* () {
     Effect.gen(function* () {
       const details = yield* readStatusDetails(input.cwd, false);
       if (details.hasUpstream) {
-        yield* refreshStatusUpstreamIfStale(input.cwd).pipe(
+        yield* refreshStatusUpstreamIfStale(input.cwd, details.upstreamRef ?? undefined).pipe(
           Effect.catchIf(isMissingGitCwdError, () => Effect.void),
           Effect.ignoreCause({ log: true }),
           Effect.forkIn(statusRefreshScope),
@@ -724,4 +681,6 @@ const makeGitStatus = Effect.gen(function* () {
   };
 });
 
-export const GitStatusLive = Layer.effect(GitStatus, makeGitStatus);
+export const GitStatusLive = Layer.effect(GitStatus, makeGitStatus).pipe(
+  Layer.provide(GitRepositoryMetadataLive),
+);
