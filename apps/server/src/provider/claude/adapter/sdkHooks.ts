@@ -1,3 +1,4 @@
+import { makeClaudeElicitation } from "./elicitation.ts";
 import type { Fiber } from "effect";
 import { Effect, Ref, Random, Deferred } from "effect";
 import { type ClaudeAdapterShape } from "../../Services/ClaudeAdapter.ts";
@@ -430,9 +431,18 @@ export function makeClaudeSdkHooks(dependencies: {
       });
     return {};
   };
+  const onElicitation = makeClaudeElicitation({
+    getContext: () => Ref.get(contextRef),
+    runSdkPromise,
+    runSdkFork,
+    makeEventStamp,
+    offerRuntimeEvent,
+    settlePendingUserInput,
+  });
   return {
     subagentSteerHook,
     canUseTool,
+    onElicitation,
     gatewayToolHook,
   };
 }

@@ -505,7 +505,17 @@ export function useChatPendingInteractions({
         activePendingUserInput.questions,
         pendingDraftAnswers,
       );
-      if (activePendingProgress.isLastQuestion) {
+      const progress = derivePendingUserInputProgress(
+        activePendingUserInput.questions,
+        pendingDraftAnswers,
+        activePendingProgress.questionIndex,
+      );
+      if (
+        progress.isLastQuestion ||
+        (activePendingUserInput.questions[0]?.elicitation &&
+          (resolvedAnswers?.[activePendingUserInput.questions[0].id] === "Decline" ||
+            resolvedAnswers?.[activePendingUserInput.questions[0].id] === "Cancel"))
+      ) {
         if (resolvedAnswers) {
           void onRespondToUserInput(
             activePendingUserInput.requestId,

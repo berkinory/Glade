@@ -266,6 +266,9 @@ export function makeClaudeSystemMessages(input: {
             providerRefs: nativeProviderRefs(context, { providerItemId: message.uuid }),
           });
           return;
+        case "elicitation_complete":
+          yield* emitRuntimeWarning(context, "MCP input request completed.", message);
+          return;
         case "informational":
         case "notification":
           yield* emitRuntimeWarning(

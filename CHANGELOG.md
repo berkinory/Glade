@@ -49,6 +49,8 @@
 
 ### Fixed
 
+- MCP servers can request forms and browser input in both Codex and Claude without stalling.
+
 - Computer Use and gateway rules now reliably reach Codex sessions.
 
 - Built-in Claude commands such as /cost and /context now show their output.

@@ -190,6 +190,19 @@ export function makeClaudeSessionInteractions(input: {
         });
       }
 
+      const elicitation = pending.elicitation;
+      if (elicitation) {
+        yield* Effect.try({
+          try: () => elicitation.respond(answers),
+          catch: (cause) =>
+            new ProviderAdapterRequestError({
+              provider: PROVIDER,
+              method: "mcp/elicitation/respond",
+              detail: cause instanceof Error ? cause.message : "Invalid MCP input.",
+              cause,
+            }),
+        });
+      }
       const submittedResult: PendingUserInputResult = {
         answers,
         cancelled: false,

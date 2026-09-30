@@ -255,6 +255,8 @@ const UserInputQuestionOption = Schema.Struct({
 export type UserInputQuestionOption = typeof UserInputQuestionOption.Type;
 
 export const UserInputQuestion = Schema.Struct({
+  required: Schema.optional(Schema.Boolean),
+  elicitation: Schema.optional(Schema.Struct({ url: Schema.optional(Schema.String) })),
   id: TrimmedNonEmptyStringSchema,
   header: TrimmedNonEmptyStringSchema,
   question: TrimmedNonEmptyStringSchema,

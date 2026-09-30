@@ -1,3 +1,4 @@
+import type { McpElicitationForm } from "../../core/mcpElicitation.ts";
 import {
   type RuntimeContentStreamKind,
   type CanonicalRequestType,
@@ -116,6 +117,7 @@ export interface PendingUserInputResult {
 }
 
 export interface PendingUserInput {
+  readonly elicitation?: McpElicitationForm;
   readonly questions: ReadonlyArray<UserInputQuestion>;
   readonly result: Deferred.Deferred<PendingUserInputResult>;
   readonly settled: Deferred.Deferred<PendingUserInputResult>;

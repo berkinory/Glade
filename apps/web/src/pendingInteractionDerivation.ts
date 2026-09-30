@@ -1,9 +1,10 @@
+import { Schema, Option } from "effect";
 import { ApprovalRequestId, type TurnId } from "@glade/contracts/core/baseSchemas";
 import {
   type OrchestrationPendingInteraction,
   type OrchestrationThreadActivity,
 } from "@glade/contracts/orchestration/threadEntities";
-import { type UserInputQuestion } from "@glade/contracts/provider/runtimePayloads";
+import { UserInputQuestion } from "@glade/contracts/provider/runtimePayloads";
 import {
   createStalePendingInteractionMatcher,
   isPendingInteractionResponseClaimable,
@@ -249,6 +250,12 @@ function parseUserInputQuestions(
   }
   const parsed = questions
     .map<UserInputQuestion | null>((entry) => {
+      const decoded = Schema.decodeUnknownOption(UserInputQuestion)(entry);
+      if (
+        Option.isSome(decoded) &&
+        (decoded.value.elicitation || decoded.value.required !== undefined)
+      )
+        return decoded.value;
       if (!entry || typeof entry !== "object") return null;
       const question = entry as Record<string, unknown>;
       if (

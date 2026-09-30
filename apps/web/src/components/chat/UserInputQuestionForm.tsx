@@ -125,6 +125,17 @@ export function UserInputQuestionForm({
       <div className="flex items-start justify-between gap-3">
         <p className="min-w-0 text-ui-lg font-medium leading-snug text-foreground/90">
           {activeQuestion.question}
+          {activeQuestion.elicitation?.url &&
+          /^https?:\/\//u.test(activeQuestion.elicitation.url) ? (
+            <a
+              href={activeQuestion.elicitation.url}
+              target="_blank"
+              rel="noreferrer"
+              className="block text-ui text-primary underline"
+            >
+              Open MCP request
+            </a>
+          ) : null}
         </p>
         {showNavigation ? (
           <div className="flex shrink-0 items-center gap-0.5 pt-px text-muted-foreground/70">

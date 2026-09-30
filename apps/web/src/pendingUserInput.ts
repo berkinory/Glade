@@ -103,11 +103,17 @@ export function buildPendingUserInputAnswers(
   questions: ReadonlyArray<UserInputQuestion>,
   draftAnswers: Record<string, PendingUserInputDraftAnswer>,
 ): Record<string, string | string[]> | null {
+  const decision = questions.find((question) => question.elicitation !== undefined);
+  if (decision) {
+    const answer = resolvePendingUserInputAnswer(decision, draftAnswers[decision.id]);
+    if (answer === "Decline" || answer === "Cancel") return { [decision.id]: answer };
+  }
   const answers: Record<string, string | string[]> = {};
 
   for (const question of questions) {
     const answer = resolvePendingUserInputAnswer(question, draftAnswers[question.id]);
     if (!answer) {
+      if (question.required === false) continue;
       return null;
     }
     answers[question.id] = answer;
@@ -180,6 +186,6 @@ export function derivePendingUserInputProgress(
     answeredQuestionCount,
     isLastQuestion,
     isComplete: buildPendingUserInputAnswers(questions, draftAnswers) !== null,
-    canAdvance: Boolean(resolvedAnswer),
+    canAdvance: Boolean(resolvedAnswer) || activeQuestion?.required === false,
   };
 }

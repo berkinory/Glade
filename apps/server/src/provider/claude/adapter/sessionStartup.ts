@@ -215,7 +215,7 @@ export function makeClaudeSessionStartup(input: {
         PROVIDER,
         { ...input, nativeToolCallScope: true },
       );
-      const { subagentSteerHook, canUseTool, gatewayToolHook } = makeClaudeSdkHooks({
+      const { subagentSteerHook, canUseTool, onElicitation, gatewayToolHook } = makeClaudeSdkHooks({
         input,
         contextRef,
         runSdkFork,
@@ -292,6 +292,7 @@ export function makeClaudeSessionStartup(input: {
           PreToolUse: [{ hooks: [subagentSteerHook, gatewayToolHook] }],
         },
         canUseTool,
+        onElicitation,
         env: withClaudeArtifactOptIn(claudeSdkEnv, providerOptions?.enableArtifacts),
         spawnClaudeCodeProcess: bindClaudeProcessOwner(processOwner),
         ...(input.cwd ? { additionalDirectories: [input.cwd] } : {}),

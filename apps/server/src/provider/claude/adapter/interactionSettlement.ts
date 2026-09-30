@@ -93,7 +93,9 @@ export function makeClaudeInteractionSettlement(input: {
           return yield* Deferred.await(pending.settled);
         }
 
-        const answers = remapAnswersToClaudeQuestionText(pending.questions, result.answers);
+        const answers = pending.elicitation
+          ? result.answers
+          : remapAnswersToClaudeQuestionText(pending.questions, result.answers);
         const stamp = yield* makeEventStamp();
         yield* offerRuntimeEvent(context, {
           type: "user-input.resolved",
@@ -109,7 +111,9 @@ export function makeClaudeInteractionSettlement(input: {
           }),
           raw: {
             source: "claude.sdk.permission",
-            method: "canUseTool/AskUserQuestion/resolved",
+            method: pending.elicitation
+              ? "onElicitation/resolved"
+              : "canUseTool/AskUserQuestion/resolved",
             payload: { answers, cancelled: result.cancelled },
           },
         });

@@ -1,3 +1,8 @@
+import {
+  prepareMcpElicitation,
+  decodeMcpElicitationRequest,
+  type McpElicitationForm,
+} from "../core/mcpElicitation.ts";
 import { decodeCodexGuardianReview } from "./protocol/decode.ts";
 import { guardianDeniedEvent, type GuardianDeniedEvent } from "./codexGuardianReview.ts";
 import type { NativeThreadHistoryInput } from "../core/nativeThreadHistory.ts";
@@ -50,7 +55,7 @@ import {
   type ServerVoiceTranscriptionInput,
   type ServerVoiceTranscriptionResult,
 } from "@glade/contracts/server/server";
-import { type UserInputQuestion } from "@glade/contracts/provider/runtimePayloads";
+import { UserInputQuestion } from "@glade/contracts/provider/runtimePayloads";
 import { prewarmChatGptVoiceTranscriptionConnection } from "@glade/shared/http/chatGptVoiceTranscription";
 import {
   BROWSER_SCRIPT_API_GUIDANCE,
@@ -65,7 +70,7 @@ import {
 } from "../../platform/transport/jsonRpcStdio";
 import { decodeSubagentReceiverThreadIds } from "@glade/shared/threads/subagents";
 import { spawnProcess } from "@glade/shared/platform/processRuntime";
-import { Effect, ServiceMap } from "effect";
+import { Effect, ServiceMap, Schema, Option } from "effect";
 
 import {
   GLADE_AGENT_GATEWAY_TOKEN_ENV,
@@ -173,6 +178,8 @@ function isPermissionApprovalRequest(request: PendingApprovalRequest): boolean {
 }
 
 interface PendingUserInputRequest {
+  elicitation?: McpElicitationForm;
+  timeout?: ReturnType<typeof setTimeout>;
   requestId: ApprovalRequestId;
   jsonRpcId: string | number;
   threadId: ThreadId;
@@ -738,6 +745,12 @@ export function parseCodexUserInputQuestions(
   }
 
   const parsedQuestions = questions.flatMap((entry): UserInputQuestion[] => {
+    const decoded = Schema.decodeUnknownOption(UserInputQuestion)(entry);
+    if (
+      Option.isSome(decoded) &&
+      (decoded.value.elicitation || decoded.value.required !== undefined)
+    )
+      return [decoded.value];
     const question = asObjectRecord(entry) ?? undefined;
     if (!question) {
       return [];
@@ -2279,13 +2292,15 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     answers: ProviderUserInputAnswers,
   ): Promise<void> {
     const codexAnswers = toCodexUserInputAnswers(answers);
+    const elicitationResponse = pendingRequest.elicitation?.respond(answers);
 
     await this.writeMessage(context, {
       id: pendingRequest.jsonRpcId,
-      result: {
-        answers: codexAnswers,
-      },
+      result: elicitationResponse
+        ? { ...elicitationResponse, content: elicitationResponse.content ?? null, _meta: null }
+        : { answers: codexAnswers },
     });
+    clearTimeout(pendingRequest.timeout);
     context.pendingUserInputs.delete(pendingRequest.requestId);
 
     this.emitEvent({
@@ -2366,6 +2381,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
           error: error instanceof Error ? error.message : String(error),
         });
       } finally {
+        clearTimeout(pendingRequest.timeout);
         context.pendingUserInputs.delete(pendingRequest.requestId);
       }
     }
@@ -3788,19 +3804,58 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       return;
     }
     if (request.method === MCP_SERVER_ELICITATION_REQUEST_METHOD && !isMcpToolCallApproval) {
-      await this.writeMessage(context, {
-        id: request.id,
-        result: {
-          action: "cancel",
-          content: null,
-          _meta: null,
-        },
-      });
-      this.emitErrorEvent(
-        context,
-        "mcpServer/elicitation/request/unrenderable",
-        "Glade declined an MCP elicitation it cannot render yet.",
-      );
+      try {
+        const elicitation = prepareMcpElicitation(decodeMcpElicitationRequest(request.params));
+        const requestId = ApprovalRequestId.makeUnsafe(randomUUID());
+        const pending: PendingUserInputRequest = {
+          requestId,
+          jsonRpcId: request.id,
+          threadId: context.session.threadId,
+          ...(rawRoute.turnId ? { turnId: rawRoute.turnId } : {}),
+          ...(childParentTurnId ? { parentTurnId: childParentTurnId } : {}),
+          ...(providerThreadId ? { providerThreadId } : {}),
+          ...(providerParentThreadId ? { providerParentThreadId } : {}),
+          elicitation,
+        };
+        context.pendingUserInputs.set(requestId, pending);
+        pending.timeout = setTimeout(() => {
+          if (context.pendingUserInputs.get(requestId) === pending) {
+            void this.resolveUserInputRequest(context, pending, {}).catch((error) =>
+              this.emitErrorEvent(context, "mcpServer/elicitation/timeout", String(error)),
+            );
+          }
+        }, 300_000);
+        pending.timeout.unref();
+        this.emitEvent({
+          id: EventId.makeUnsafe(randomUUID()),
+          kind: "request",
+          provider: "codex",
+          threadId: context.session.threadId,
+          createdAt: new Date().toISOString(),
+          ...(context.lifecycleGeneration
+            ? { lifecycleGeneration: context.lifecycleGeneration }
+            : {}),
+          method: "item/tool/requestUserInput",
+          requestId,
+          ...(pending.turnId ? { turnId: pending.turnId } : {}),
+          ...(pending.parentTurnId ? { parentTurnId: pending.parentTurnId } : {}),
+          ...(pending.providerThreadId ? { providerThreadId: pending.providerThreadId } : {}),
+          ...(pending.providerParentThreadId
+            ? { providerParentThreadId: pending.providerParentThreadId }
+            : {}),
+          payload: { questions: elicitation.questions },
+        });
+      } catch (error) {
+        await this.writeMessage(context, {
+          id: request.id,
+          result: { action: "cancel", content: null, _meta: null },
+        });
+        this.emitErrorEvent(
+          context,
+          "mcpServer/elicitation/request/invalid",
+          `Could not display MCP input request: ${String(error)}`,
+        );
+      }
       return;
     }
     const requestKind = isMcpToolCallApproval ? "tool" : this.requestKindForMethod(request.method);
