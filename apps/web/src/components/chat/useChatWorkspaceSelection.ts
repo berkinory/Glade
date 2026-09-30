@@ -1,3 +1,4 @@
+import { useChatThreadContext } from "./ChatThreadContext";
 import { type NativeApi } from "@glade/contracts/ipc/ipc";
 import { type OrchestrationShellSnapshot } from "@glade/contracts/orchestration/snapshots";
 import { type ProjectId, type ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
@@ -71,7 +72,6 @@ interface ChatWorkspaceSelectionInput {
 }
 
 type ChatWorkspaceSelectionControllerInput = {
-  props: Pick<ChatWorkspaceSelectionInput, "threadId">;
   session: Pick<ChatWorkspaceSelectionInput, "activeThread" | "composerEditorRef">;
   workspace: Pick<
     ChatWorkspaceSelectionInput,
@@ -83,7 +83,6 @@ type ChatWorkspaceSelectionControllerInput = {
   turn: Pick<ChatWorkspaceSelectionInput, "defaultProvider">;
 };
 export function useChatWorkspaceSelection({
-  props,
   session,
   workspace,
   transcript,
@@ -91,7 +90,7 @@ export function useChatWorkspaceSelection({
   composer,
   turn,
 }: ChatWorkspaceSelectionControllerInput) {
-  const { threadId } = props;
+  const { threadId } = useChatThreadContext();
   const { activeThread, composerEditorRef } = session;
   const { activeProject, isServerThread, isLocalDraftThread, isHomeChatContainer } = workspace;
   const { activeRootBranch } = transcript;

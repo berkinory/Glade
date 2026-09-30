@@ -710,37 +710,31 @@ export default function ThreadTerminalDrawer({
               layout={activeGroupLayout}
               resolvedActiveTerminalId={resolvedActiveTerminalId}
               terminalVisualIdentityById={terminalVisualIdentityById}
-              onActiveTerminalChange={onActiveTerminalChange}
-              onResizeSplit={onResizeTerminalSplit}
-              onSplitTerminalRight={
-                hasReachedSplitLimit
+              terminalActions={{
+                onActiveTerminalChange,
+                onResizeSplit: onResizeTerminalSplit,
+                onSplitTerminalRight: hasReachedSplitLimit
                   ? undefined
                   : (terminalId) => {
                       onActiveTerminalChange(terminalId);
                       onSplitTerminal();
-                    }
-              }
-              onSplitTerminalDown={
-                hasReachedSplitLimit
+                    },
+                onSplitTerminalDown: hasReachedSplitLimit
                   ? undefined
                   : (terminalId) => {
                       onActiveTerminalChange(terminalId);
                       onSplitTerminalDown();
-                    }
-              }
-              onNewTerminalTab={
-                hasReachedSplitLimit
-                  ? undefined
-                  : (terminalId) => {
-                      onNewTerminalTab(terminalId);
-                    }
-              }
-              onMoveTerminalToGroup={isWorkspaceMode ? onMoveTerminalToGroup : undefined}
-              onCloseTerminal={onCloseTerminal}
-              presentationMode={presentationMode}
-              onTogglePresentationMode={onTogglePresentationMode}
-              onTogglePanel={onTogglePanel}
-              isPanelOpen={isPanelOpen}
+                    },
+                onNewTerminalTab: hasReachedSplitLimit ? undefined : onNewTerminalTab,
+                onMoveTerminalToGroup: isWorkspaceMode ? onMoveTerminalToGroup : undefined,
+                onCloseTerminal,
+              }}
+              panelActions={{
+                presentationMode,
+                onTogglePresentationMode,
+                onTogglePanel,
+                isPanelOpen,
+              }}
               renderViewport={(terminalId, options) => (
                 <TerminalViewport
                   key={terminalId}

@@ -1,3 +1,4 @@
+import { useChatThreadContext } from "./ChatThreadContext";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback } from "react";
@@ -45,7 +46,6 @@ interface ChatComposerEditingInput {
 }
 
 type ChatComposerEditingControllerInput = {
-  props: Pick<ChatComposerEditingInput, "threadId">;
   session: Pick<
     ChatComposerEditingInput,
     | "promptRef"
@@ -69,12 +69,11 @@ type ChatComposerEditingControllerInput = {
   composer: Pick<ChatComposerEditingInput, "scheduleComposerFocus">;
 };
 export function useChatComposerEditing({
-  props,
   session,
   provider,
   composer,
 }: ChatComposerEditingControllerInput) {
-  const { threadId } = props;
+  const { threadId } = useChatThreadContext();
   const {
     promptRef,
     setPrompt,

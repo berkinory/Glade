@@ -141,7 +141,6 @@ export function useChatSubmissionController({
     onSteerQueuedComposerTurn,
     onEditQueuedComposerTurn,
   } = useChatQueuedTurns({
-    props,
     session,
     provider,
     composer,
@@ -171,7 +170,6 @@ export function useChatSubmissionController({
     onResumeWorkflowRun,
     onImplementPlanInNewThread,
   } = useChatTurnFollowUps({
-    props,
     session,
     workspace,
     provider,
@@ -366,7 +364,6 @@ export function useChatSubmissionController({
     handleSelectProjectForEmptyDraft,
     handleCreateProjectFromPickerPath,
   } = useChatWorkspaceSelection({
-    props,
     session,
     workspace,
     transcript,
@@ -383,7 +380,7 @@ export function useChatSubmissionController({
     handleNavigateLocalFolder,
     setComposerPromptValue,
     clearComposerSlashDraft,
-  } = useChatComposerEditing({ props, session, provider, composer });
+  } = useChatComposerEditing({ session, provider, composer });
 
   const handleEnableComputerControlFromDenial = useCallback(() => {
     const currentPrompt = composerEditorRef.current?.readSnapshot()?.value ?? promptRef.current;
@@ -529,7 +526,6 @@ export function useChatSubmissionController({
     onPromptChange,
     onComposerCommandKey,
   } = useChatComposerCommands({
-    props,
     session,
     turn: {
       handleForkTargetSelection,

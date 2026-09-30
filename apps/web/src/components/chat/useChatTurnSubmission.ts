@@ -178,7 +178,6 @@ export function useChatTurnSubmission({
     environment,
     discovery,
     turn: { setQueuedSteerGate },
-    props,
     composer,
   });
 

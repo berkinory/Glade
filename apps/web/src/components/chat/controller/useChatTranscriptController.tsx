@@ -39,12 +39,12 @@ import { deriveTimelineEntries } from "../../../workLog.timeline";
 import { useStore } from "~/store";
 import { buildThreadSubscribeInput } from "~/threadDetailResumeCursors";
 import {
-  ChatViewProps,
   EMPTY_GOAL_ACHIEVEMENTS,
   EMPTY_MESSAGES,
   EMPTY_PINNED_MESSAGES,
   EMPTY_PINNED_TEXT,
 } from "./chatViewSupport";
+import { useChatThreadContext } from "../ChatThreadContext";
 import type { useChatProviderController } from "./useChatProviderController";
 import type { useChatSessionController } from "./useChatSessionController";
 import type { useChatWorkspaceController } from "./useChatWorkspaceController";
@@ -52,12 +52,10 @@ export function useChatTranscriptController({
   provider,
   workspace,
   session,
-  props,
 }: {
   provider: ReturnType<typeof useChatProviderController>;
   workspace: ReturnType<typeof useChatWorkspaceController>;
   session: ReturnType<typeof useChatSessionController>;
-  props: ChatViewProps;
 }) {
   const {
     activeTurnLayoutLive,
@@ -101,7 +99,7 @@ export function useChatTranscriptController({
     composerTrigger,
     composerCommandPicker,
   } = session;
-  const { threadId } = props;
+  const { threadId } = useChatThreadContext();
 
   const [keepSettledActiveTurnLayout, setKeepSettledActiveTurnLayout] = useState(false);
 

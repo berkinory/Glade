@@ -24,19 +24,17 @@ import {
 } from "~/session-logic";
 import { useStore } from "~/store";
 import { createThreadSelector } from "~/storeSelectors";
-import { ChatViewProps } from "./chatViewSupport";
+import { useChatThreadContext } from "../ChatThreadContext";
 import type { useChatSessionController } from "./useChatSessionController";
 import type { useChatWorkspaceController } from "./useChatWorkspaceController";
 export function useChatProviderController({
-  props,
   session,
   workspace,
 }: {
-  props: ChatViewProps;
   session: ReturnType<typeof useChatSessionController>;
   workspace: ReturnType<typeof useChatWorkspaceController>;
 }) {
-  const { threadId } = props;
+  const { threadId } = useChatThreadContext();
   const {
     activeThread,
     composerDraft,

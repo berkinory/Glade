@@ -1,3 +1,4 @@
+import { useChatThreadContext } from "./ChatThreadContext";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { RefObject } from "react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -92,7 +93,6 @@ interface ChatQueuedTurnsInput {
 }
 
 type ChatQueuedTurnsControllerInput = {
-  props: Pick<ChatQueuedTurnsInput, "threadId">;
   session: Pick<
     ChatQueuedTurnsInput,
     | "queuedComposerTurns"
@@ -137,14 +137,13 @@ type ChatQueuedTurnsControllerInput = {
   workspace: Pick<ChatQueuedTurnsInput, "isLocalDraftThread" | "activeLatestTurn">;
 };
 export function useChatQueuedTurns({
-  props,
   session,
   provider,
   composer,
   turn,
   workspace,
 }: ChatQueuedTurnsControllerInput) {
-  const { threadId } = props;
+  const { threadId } = useChatThreadContext();
   const {
     queuedComposerTurns,
     activeThread,

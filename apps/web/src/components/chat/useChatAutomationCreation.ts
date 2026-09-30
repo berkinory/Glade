@@ -1,3 +1,4 @@
+import { useChatThreadContext } from "./ChatThreadContext";
 import { EventId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   ProviderInteractionMode,
@@ -104,7 +105,6 @@ interface ChatAutomationCreationInput {
 }
 
 type ChatAutomationCreationControllerInput = {
-  props: Pick<ChatAutomationCreationInput, "threadId">;
   workspace: Pick<
     ChatAutomationCreationInput,
     | "activeProject"
@@ -129,14 +129,13 @@ type ChatAutomationCreationControllerInput = {
   transcript: Pick<ChatAutomationCreationInput, "threadNotes">;
 };
 export function useChatAutomationCreation({
-  props,
   workspace,
   provider,
   session,
   turn,
   transcript,
 }: ChatAutomationCreationControllerInput) {
-  const { threadId } = props;
+  const { threadId } = useChatThreadContext();
   const {
     activeProject,
     isServerThread,

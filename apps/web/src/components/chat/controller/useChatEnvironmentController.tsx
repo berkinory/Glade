@@ -27,7 +27,7 @@ import { newCommandId } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
 import { useProjectPreferencesStore } from "~/projectPreferencesStore";
 import { selectRightDockState, useRightDockStore } from "~/rightDockStore";
-import { ChatViewProps } from "./chatViewSupport";
+import { useChatThreadContext } from "../ChatThreadContext";
 import type { useChatComposerController } from "./useChatComposerController";
 import type { useChatDiscoveryController } from "./useChatDiscoveryController";
 import type { useChatProviderController } from "./useChatProviderController";
@@ -35,7 +35,6 @@ import type { useChatSessionController } from "./useChatSessionController";
 import type { useChatTranscriptController } from "./useChatTranscriptController";
 import type { useChatWorkspaceController } from "./useChatWorkspaceController";
 export function useChatEnvironmentController({
-  props,
   session,
   discovery,
   transcript,
@@ -43,7 +42,6 @@ export function useChatEnvironmentController({
   composer,
   provider,
 }: {
-  props: ChatViewProps;
   session: ReturnType<typeof useChatSessionController>;
   discovery: ReturnType<typeof useChatDiscoveryController>;
   transcript: ReturnType<typeof useChatTranscriptController>;
@@ -51,7 +49,7 @@ export function useChatEnvironmentController({
   composer: ReturnType<typeof useChatComposerController>;
   provider: ReturnType<typeof useChatProviderController>;
 }) {
-  const { threadId } = props;
+  const { threadId } = useChatThreadContext();
   const {
     hideHeader,
     surfaceMode,
@@ -346,7 +344,7 @@ export function useChatEnvironmentController({
     toggleInteractionMode,
     resetInteractionMode,
     persistThreadSettingsForNextTurn,
-  } = useChatRuntimeModes({ props, session, workspace, provider, discovery, composer });
+  } = useChatRuntimeModes({ session, workspace, provider, discovery, composer });
 
   const togglePlanSidebar = useCallback(() => {
     setPlanSidebarOpen((open) => {

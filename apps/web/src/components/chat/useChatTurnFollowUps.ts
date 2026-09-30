@@ -1,3 +1,4 @@
+import { useChatThreadContext } from "./ChatThreadContext";
 import { MessageId, ThreadId, type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { resolveTailUserMessageEditTarget } from "@glade/shared/threads/conversationEdit";
 import { providerSupportsNativeTurnSteering } from "@glade/shared/provider/providerMetadata";
@@ -104,7 +105,6 @@ interface ChatTurnFollowUpsInput {
 }
 
 type ChatTurnFollowUpsControllerInput = {
-  props: Pick<ChatTurnFollowUpsInput, "threadId">;
   session: Pick<
     ChatTurnFollowUpsInput,
     | "activeThread"
@@ -150,7 +150,6 @@ type ChatTurnFollowUpsControllerInput = {
   discovery: Pick<ChatTurnFollowUpsInput, "rememberCustomBinaryPathForDispatch">;
 };
 export function useChatTurnFollowUps({
-  props,
   session,
   workspace,
   provider,
@@ -160,7 +159,7 @@ export function useChatTurnFollowUps({
   turn,
   discovery,
 }: ChatTurnFollowUpsControllerInput) {
-  const { threadId } = props;
+  const { threadId } = useChatThreadContext();
   const {
     activeThread,
     sendInFlightRef,

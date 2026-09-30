@@ -17,9 +17,9 @@ import {
 } from "../ChatView.logic.session";
 import { resolveRuntimeModelDescriptor } from "./runtimeModelCapabilities";
 import { toastManager } from "../ui/toast";
+import { useChatThreadContext } from "./ChatThreadContext";
 
 interface ChatRuntimeModesInput {
-  threadId: ThreadId;
   activeThread: Thread | undefined;
   serverThread: Thread | undefined;
   isLocalDraftThread: boolean;
@@ -33,7 +33,6 @@ interface ChatRuntimeModesInput {
 }
 
 type ChatRuntimeModesControllerInput = {
-  props: Pick<ChatRuntimeModesInput, "threadId">;
   session: Pick<ChatRuntimeModesInput, "activeThread" | "serverThread">;
   workspace: Pick<ChatRuntimeModesInput, "isLocalDraftThread" | "runtimeMode" | "interactionMode">;
   provider: Pick<
@@ -44,14 +43,13 @@ type ChatRuntimeModesControllerInput = {
   composer: Pick<ChatRuntimeModesInput, "scheduleComposerFocus">;
 };
 export function useChatRuntimeModes({
-  props,
   session,
   workspace,
   provider,
   discovery,
   composer,
 }: ChatRuntimeModesControllerInput) {
-  const { threadId } = props;
+  const { threadId } = useChatThreadContext();
   const { activeThread, serverThread } = session;
   const { isLocalDraftThread, runtimeMode, interactionMode } = workspace;
   const { selectedProvider, selectedRuntimeModel, selectedModelSelection } = provider;

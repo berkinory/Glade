@@ -12,19 +12,17 @@ import { useChatWorkspaceController } from "./useChatWorkspaceController";
 export function useChatController(props: ChatViewProps) {
   const session = useChatSessionController(props);
   const workspace = useChatWorkspaceController({ props, session });
-  const provider = useChatProviderController({ props, session, workspace });
-  const transcript = useChatTranscriptController({ provider, workspace, session, props });
+  const provider = useChatProviderController({ session, workspace });
+  const transcript = useChatTranscriptController({ provider, workspace, session });
   const discovery = useChatDiscoveryController({ transcript, workspace, session, provider, props });
   const composer = useChatComposerController({
     session,
-    props,
     discovery,
     transcript,
     workspace,
     provider,
   });
   const environment = useChatEnvironmentController({
-    props,
     session,
     discovery,
     transcript,

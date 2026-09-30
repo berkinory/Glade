@@ -1,3 +1,4 @@
+import { useChatThreadContext } from "./ChatThreadContext";
 import type { ProjectId } from "@glade/contracts/core/baseSchemas";
 import type { ProjectScript } from "@glade/contracts/orchestration/threadEntities";
 import type {
@@ -205,7 +206,6 @@ type ChatTurnExecutionControllerInput = {
   >;
   discovery: Pick<ChatTurnExecutionInput, "rememberCustomBinaryPathForDispatch">;
   turn: Pick<ChatTurnExecutionInput, "setQueuedSteerGate">;
-  props: Pick<ChatTurnExecutionInput, "threadId">;
   composer: Pick<ChatTurnExecutionInput, "setThreadError">;
 };
 export function useChatTurnExecution({
@@ -216,7 +216,6 @@ export function useChatTurnExecution({
   environment,
   discovery,
   turn,
-  props,
   composer,
 }: ChatTurnExecutionControllerInput) {
   const { isServerThread, isLocalDraftThread, setSettledThreadBranchWarningDismissedThreadId } =
@@ -264,7 +263,7 @@ export function useChatTurnExecution({
   const { runProjectScript, persistThreadSettingsForNextTurn } = environment;
   const { rememberCustomBinaryPathForDispatch } = discovery;
   const { setQueuedSteerGate } = turn;
-  const { threadId } = props;
+  const { threadId } = useChatThreadContext();
   const { setThreadError } = composer;
   return useCallback(
     async (preparedTurn: PreparedChatTurn): Promise<boolean> => {

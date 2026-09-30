@@ -22,11 +22,8 @@ import { registerTerminalContextComposerTarget } from "~/lib/terminalContextComp
 import { randomUUID } from "~/lib/utils";
 import { useStore } from "~/store";
 import { getThreadFromState } from "~/threadDerivation";
-import {
-  ChatViewProps,
-  VOICE_RECORDER_ACTION_ARM_DELAY_MS,
-  warnVoiceGuard,
-} from "./chatViewSupport";
+import { VOICE_RECORDER_ACTION_ARM_DELAY_MS, warnVoiceGuard } from "./chatViewSupport";
+import { useChatThreadContext } from "../ChatThreadContext";
 import type { useChatDiscoveryController } from "./useChatDiscoveryController";
 import type { useChatProviderController } from "./useChatProviderController";
 import type { useChatSessionController } from "./useChatSessionController";
@@ -34,14 +31,12 @@ import type { useChatTranscriptController } from "./useChatTranscriptController"
 import type { useChatWorkspaceController } from "./useChatWorkspaceController";
 export function useChatComposerController({
   session,
-  props,
   discovery,
   transcript,
   workspace,
   provider,
 }: {
   session: ReturnType<typeof useChatSessionController>;
-  props: ChatViewProps;
   discovery: ReturnType<typeof useChatDiscoveryController>;
   transcript: ReturnType<typeof useChatTranscriptController>;
   workspace: ReturnType<typeof useChatWorkspaceController>;
@@ -68,7 +63,7 @@ export function useChatComposerController({
     paneScopeId,
     addComposerDraftPastedTexts,
   } = session;
-  const { threadId } = props;
+  const { threadId } = useChatThreadContext();
   const {
     secondaryChromeReady,
     secondaryChromeThreadId,

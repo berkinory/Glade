@@ -1,3 +1,4 @@
+import { useChatThreadContext } from "./ChatThreadContext";
 import { ThreadId, type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { type ModelSlug } from "@glade/contracts/provider/model";
 import { type ProviderSkillReference } from "@glade/contracts/provider/providerDiscovery";
@@ -120,7 +121,6 @@ interface ChatComposerCommandsInput {
 }
 
 type ChatComposerCommandsControllerInput = {
-  props: Pick<ChatComposerCommandsInput, "threadId">;
   session: Pick<
     ChatComposerCommandsInput,
     | "composerSelectLockRef"
@@ -185,7 +185,6 @@ type ChatComposerCommandsControllerInput = {
   environment: Pick<ChatComposerCommandsInput, "toggleInteractionMode">;
 };
 export function useChatComposerCommands({
-  props,
   session,
   turn,
   transcript,
@@ -195,7 +194,7 @@ export function useChatComposerCommands({
   discovery,
   environment,
 }: ChatComposerCommandsControllerInput) {
-  const { threadId } = props;
+  const { threadId } = useChatThreadContext();
   const {
     composerSelectLockRef,
     setComposerCommandPicker,

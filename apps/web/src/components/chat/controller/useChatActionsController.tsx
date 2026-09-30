@@ -6,13 +6,8 @@ import { useCallback, useState } from "react";
 import { resolveAppModelSelection } from "~/appSettings";
 import { commitAfterRuntimeModePersistence } from "../../ChatView.logic.session";
 import { resolveCommittedProviderModel } from "../../ChatView.logic.worktree";
-import { localSubagentThreadId } from "~/components/ChatView.selectors";
 import { type ComposerModelSelectionOptions } from "~/components/chat/ComposerModelPicker";
-import {
-  collectForegroundRunningSubagentStripItems,
-  collectRunningSubagentStripItems,
-  type ComposerSubagentStripItem,
-} from "~/components/chat/ComposerSubagentStrip.logic";
+import { collectForegroundRunningSubagentStripItems } from "~/components/chat/ComposerSubagentStrip.logic";
 import { resolveRuntimeModelDescriptor } from "~/components/chat/runtimeModelCapabilities";
 import { useChatAutomationCreation } from "~/components/chat/useChatAutomationCreation";
 import { useChatKeyboardShortcuts } from "~/components/chat/useChatKeyboardShortcuts";
@@ -35,6 +30,7 @@ import { newCommandId } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
 import { buildModelSelection } from "~/providerModelOptions";
 import { type Thread } from "~/types";
+import { backgroundSubagent, interruptThreadTurn, stopWorkflowTask } from "../chatTaskActions";
 import { ChatViewProps } from "./chatViewSupport";
 import type { useChatComposerController } from "./useChatComposerController";
 import type { useChatDiscoveryController } from "./useChatDiscoveryController";
@@ -119,19 +115,9 @@ export function useChatActionsController({
   } = composer;
   const { threadId } = props;
 
-  const onInterrupt = useCallback(async () => {
-    const api = readNativeApi();
-    if (!api || !activeThread) return;
-    await api.orchestration.dispatchCommand({
-      type: "thread.turn.interrupt",
-      commandId: newCommandId(),
-      threadId: activeThread.id,
-      createdAt: new Date().toISOString(),
-    });
-  }, [activeThread]);
-
   const onInterruptFromStopControl = useCallback(() => {
-    void onInterrupt().catch((error: unknown) => {
+    if (!activeThread) return;
+    void interruptThreadTurn(activeThread.id).catch((error: unknown) => {
       toastManager.add({
         type: "error",
         title: "Could not stop the current response",
@@ -141,66 +127,22 @@ export function useChatActionsController({
             : "The interrupt request failed. Try again in a moment.",
       });
     });
-  }, [onInterrupt]);
-
-  const onStopWorkflowRun = useCallback(async () => {
-    const api = readNativeApi();
-    if (!api || !activeThread || !workflowRunState) return;
-    await api.orchestration.dispatchCommand({
-      type: "thread.task.stop",
-      commandId: newCommandId(),
-      threadId: activeThread.id,
-      taskId: workflowRunState.workflowTaskId,
-      createdAt: new Date().toISOString(),
-    });
-  }, [activeThread, workflowRunState]);
-
-  const onBackgroundSubagentStripItem = useCallback(
-    async (item: ComposerSubagentStripItem) => {
-      const api = readNativeApi();
-
-      if (!api || !stripSourceThreadId) return;
-      await api.orchestration.dispatchCommand({
-        type: "thread.task.background",
-        commandId: newCommandId(),
-        threadId: stripSourceThreadId,
-        toolUseId: item.providerThreadId,
-        createdAt: new Date().toISOString(),
-      });
-    },
-    [stripSourceThreadId],
-  );
-
-  const onStopSubagentStripItem = useCallback(
-    async (item: ComposerSubagentStripItem) => {
-      const api = readNativeApi();
-      if (!api || !stripSourceThreadId) return;
-      await api.orchestration.dispatchCommand({
-        type: "thread.turn.interrupt",
-        commandId: newCommandId(),
-        threadId: localSubagentThreadId(stripSourceThreadId, item.providerThreadId),
-        createdAt: new Date().toISOString(),
-      });
-    },
-    [stripSourceThreadId],
-  );
-
-  const onStopAllSubagentStripItems = useCallback(async () => {
-    const running = collectRunningSubagentStripItems(composerSubagentStripItems);
-    await Promise.all(running.map((item) => onStopSubagentStripItem(item)));
-  }, [composerSubagentStripItems, onStopSubagentStripItem]);
+  }, [activeThread]);
 
   const onBackgroundAllForegroundSubagentStripItems = useCallback(async () => {
     const foreground = collectForegroundRunningSubagentStripItems(composerSubagentStripItems);
-    await Promise.all(foreground.map((item) => onBackgroundSubagentStripItem(item)));
-  }, [composerSubagentStripItems, onBackgroundSubagentStripItem]);
+    if (!stripSourceThreadId) return;
+    await Promise.all(
+      foreground.map((item) => backgroundSubagent(stripSourceThreadId, item.providerThreadId)),
+    );
+  }, [composerSubagentStripItems, stripSourceThreadId]);
 
   const onPauseWorkflowRun = useCallback(async () => {
     if (!workflowRunState || !activeThreadId) return;
     const { workflowTaskId } = workflowRunState;
     markWorkflowRunPaused(activeThreadId, workflowTaskId);
-    await onStopWorkflowRun();
-  }, [activeThreadId, markWorkflowRunPaused, onStopWorkflowRun, workflowRunState]);
+    if (activeThread) await stopWorkflowTask(activeThread.id, workflowTaskId);
+  }, [activeThread, activeThreadId, markWorkflowRunPaused, workflowRunState]);
 
   const onDismissWorkflowRun = useCallback(() => {
     if (!workflowRunState || !activeThreadId) return;
@@ -569,7 +511,6 @@ export function useChatActionsController({
 
   const { createAutomationFromForm, prepareAutomationFormForCreate, submitAutomationDraft } =
     useChatAutomationCreation({
-      props,
       workspace,
       provider,
       session,
@@ -578,10 +519,6 @@ export function useChatActionsController({
     });
   return {
     onInterruptFromStopControl,
-    onStopWorkflowRun,
-    onBackgroundSubagentStripItem,
-    onStopSubagentStripItem,
-    onStopAllSubagentStripItems,
     onPauseWorkflowRun,
     onDismissWorkflowRun,
     pendingProviderHandoff,

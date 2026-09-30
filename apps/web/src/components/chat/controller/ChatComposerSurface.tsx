@@ -20,6 +20,7 @@ import { ComposerPendingUserInputPanel } from "~/components/chat/ComposerPending
 import { ComposerQueuedHeader } from "~/components/chat/ComposerQueuedHeader";
 import { ComposerReferenceAttachments } from "~/components/chat/ComposerReferenceAttachments";
 import { ComposerSubagentStrip } from "~/components/chat/ComposerSubagentStrip";
+import { collectRunningSubagentStripItems } from "~/components/chat/ComposerSubagentStrip.logic";
 import { ContextWindowMeter } from "~/components/chat/ContextWindowMeter";
 import { WorkflowRunCard } from "~/components/chat/WorkflowRunCard";
 import {
@@ -33,6 +34,7 @@ import { collapseExpandedComposerCursor } from "~/composer-logic";
 import { LoaderCircleIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { proposedPlanTitle } from "~/proposedPlan";
+import { backgroundSubagent, stopSubagent, stopWorkflowTask } from "../chatTaskActions";
 import type { createChatPresentation } from "./chatPresentation";
 import { COMPOSER_EXTRAS_PANEL_ID } from "./chatViewSupport";
 import type { ChatController } from "./useChatController";
@@ -185,6 +187,7 @@ export function ChatComposerSurface({
     phase,
     selectedProvider,
     activeTaskList,
+    stripSourceThreadId,
     sidebarProposedPlan,
     planSidebarToggleTitle,
     planSidebarToggleLabel,
@@ -194,12 +197,8 @@ export function ChatComposerSurface({
     isPreparingWorktree,
   } = controller.provider;
   const {
-    onStopWorkflowRun,
     onPauseWorkflowRun,
     onDismissWorkflowRun,
-    onBackgroundSubagentStripItem,
-    onStopSubagentStripItem,
-    onStopAllSubagentStripItems,
     isThreadDragOverComposer,
     threadMentionDropzoneProps,
     addComposerAttachments,
@@ -258,8 +257,12 @@ export function ChatComposerSurface({
                 compact={workflowRunCardCompact}
                 onCompactChange={setWorkflowRunCardCompact}
                 onOpenThread={onNavigateToThread}
-                onStop={(...args: Parameters<typeof onStopWorkflowRun>) => {
-                  void onStopWorkflowRun(...args).catch(reportChatActionFailure);
+                onStop={() => {
+                  if (activeThread) {
+                    void stopWorkflowTask(activeThread.id, workflowRunState.workflowTaskId).catch(
+                      reportChatActionFailure,
+                    );
+                  }
                 }}
                 onPause={(...args: Parameters<typeof onPauseWorkflowRun>) => {
                   void onPauseWorkflowRun(...args).catch(reportChatActionFailure);
@@ -277,14 +280,28 @@ export function ChatComposerSurface({
                 compact={subagentStripCompact}
                 onCompactChange={setSubagentStripCompact}
                 onOpenThread={onNavigateToThread}
-                onBackgroundItem={(...args: Parameters<typeof onBackgroundSubagentStripItem>) => {
-                  void onBackgroundSubagentStripItem(...args).catch(reportChatActionFailure);
+                onBackgroundItem={(item) => {
+                  if (stripSourceThreadId) {
+                    void backgroundSubagent(stripSourceThreadId, item.providerThreadId).catch(
+                      reportChatActionFailure,
+                    );
+                  }
                 }}
-                onStopItem={(...args: Parameters<typeof onStopSubagentStripItem>) => {
-                  void onStopSubagentStripItem(...args).catch(reportChatActionFailure);
+                onStopItem={(item) => {
+                  if (stripSourceThreadId) {
+                    void stopSubagent(stripSourceThreadId, item.providerThreadId).catch(
+                      reportChatActionFailure,
+                    );
+                  }
                 }}
-                onStopAll={(...args: Parameters<typeof onStopAllSubagentStripItems>) => {
-                  void onStopAllSubagentStripItems(...args).catch(reportChatActionFailure);
+                onStopAll={() => {
+                  if (stripSourceThreadId) {
+                    void Promise.all(
+                      collectRunningSubagentStripItems(composerSubagentStripItems).map((item) =>
+                        stopSubagent(stripSourceThreadId, item.providerThreadId),
+                      ),
+                    ).catch(reportChatActionFailure);
+                  }
                 }}
                 attachedToPrevious={
                   showComposerLiveChangesHeader ||
