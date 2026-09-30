@@ -1,6 +1,7 @@
 import { type WsCompatibilityError } from "@glade/contracts/transport/ws/wsCompatibility";
 import { Outlet } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { DiffWorkerPoolProvider } from "../components/DiffWorkerPoolProvider";
 import { BrowserVaultDialog } from "~/components/BrowserVault";
 import { APP_DISPLAY_NAME, APP_VERSION } from "../branding";
 import { DesktopWindowControls } from "../components/DesktopWindowControls";
@@ -101,22 +102,24 @@ export function RootRouteView() {
     <>
       <ToastProvider position="top-center">
         <AnchoredToastProvider>
-          <GitProgressToastPreviewDev />
-          <EventRouter />
-          <ProviderStatusRefreshCoordinator />
-          <GlobalShortcutsDialog />
-          <BrowserVaultDialog />
-          <GlobalFeedbackDialog />
-          <GlobalWhatsNewSurface />
-          <TaskCompletionNotifications />
-          <QueuedComposerDrainCoordinator />
+          <DiffWorkerPoolProvider>
+            <GitProgressToastPreviewDev />
+            <EventRouter />
+            <ProviderStatusRefreshCoordinator />
+            <GlobalShortcutsDialog />
+            <BrowserVaultDialog />
+            <GlobalFeedbackDialog />
+            <GlobalWhatsNewSurface />
+            <TaskCompletionNotifications />
+            <QueuedComposerDrainCoordinator />
 
-          <GlobalOnboardingDialog />
-          <ProjectImportAnnouncementDialog />
-          <GlobalProjectImportDialog />
+            <GlobalOnboardingDialog />
+            <ProjectImportAnnouncementDialog />
+            <GlobalProjectImportDialog />
 
-          <DesktopProjectBootstrap />
-          <Outlet />
+            <DesktopProjectBootstrap />
+            <Outlet />
+          </DiffWorkerPoolProvider>
         </AnchoredToastProvider>
       </ToastProvider>
       {desktopChrome}

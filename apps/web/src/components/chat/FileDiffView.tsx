@@ -8,6 +8,7 @@ import { type ReactNode } from "react";
 
 import { buildDiffPanelUnsafeCSS, resolveDiffThemeName } from "~/lib/diffRendering";
 import { cn } from "~/lib/utils";
+import { useActivateDiffWorkers } from "../DiffWorkerPoolProvider";
 import { FileDiffHeader } from "./FileDiffHeader";
 
 const DIFF_VIRTUALIZER_CONFIG = {
@@ -19,6 +20,7 @@ const DIFF_VIRTUALIZER_CONFIG = {
 // lists. Callers own the inner per-file wrapper markup because it differs (collapse click capture,
 // data-diff-file-path scroll anchors, etc.).
 export function FileDiffSurface(props: { className?: string; children: ReactNode }) {
+  useActivateDiffWorkers();
   return (
     <Virtualizer
       className={cn("diff-render-surface", props.className)}

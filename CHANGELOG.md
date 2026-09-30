@@ -27,6 +27,8 @@
 
 - Streaming replies write far less to disk.
 
+- Diffs open faster and stay responsive in large changes.
+
 - Long code blocks stream more smoothly while preserving text selection.
 
 - Conversation compaction uses the same server checks for both providers; Claude accepts optional instructions.

@@ -491,7 +491,7 @@ const STREAMING_CODE_HIGHLIGHT_MAX_INTERVAL_MS = 1_000;
 const STREAMING_CODE_HIGHLIGHT_BASE_CHARS = 8_000;
 const STREAMING_CODE_HIGHLIGHT_SLOW_CHARS = 80_000;
 
-export function streamingCodeHighlightIntervalMs(codeLength: number): number {
+function streamingCodeHighlightIntervalMs(codeLength: number): number {
   if (codeLength <= STREAMING_CODE_HIGHLIGHT_BASE_CHARS) {
     return STREAMING_CODE_HIGHLIGHT_INTERVAL_MS;
   }

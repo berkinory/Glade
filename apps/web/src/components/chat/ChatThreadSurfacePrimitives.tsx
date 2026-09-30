@@ -2,7 +2,6 @@ import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { lazy, Suspense, useEffect, useState } from "react";
 
 import ChatView from "../ChatView";
-import { DiffWorkerPoolProvider } from "../DiffWorkerPoolProvider";
 import {
   DiffPanelHeaderSkeleton,
   DiffPanelLoadingState,
@@ -43,23 +42,21 @@ export function LazyDiffPanel(props: {
   onEditFile?: (request: DiffFileEditRequest) => void;
 }) {
   return (
-    <DiffWorkerPoolProvider>
-      <Suspense fallback={<DiffLoadingFallback mode={props.mode} />}>
-        <DiffPanel
-          mode={props.mode}
-          {...(props.initialViewKind ? { initialViewKind: props.initialViewKind } : {})}
-          {...(props.threadId !== undefined ? { threadId: props.threadId } : {})}
-          {...(props.panelState ? { panelState: props.panelState } : {})}
-          {...(props.onUpdatePanelState ? { onUpdatePanelState: props.onUpdatePanelState } : {})}
-          {...(props.onClosePanel ? { onClosePanel: props.onClosePanel } : {})}
-          {...(props.liveRefreshEnabled !== undefined
-            ? { liveRefreshEnabled: props.liveRefreshEnabled }
-            : {})}
-          {...(props.queriesEnabled !== undefined ? { queriesEnabled: props.queriesEnabled } : {})}
-          {...(props.onEditFile ? { onEditFile: props.onEditFile } : {})}
-        />
-      </Suspense>
-    </DiffWorkerPoolProvider>
+    <Suspense fallback={<DiffLoadingFallback mode={props.mode} />}>
+      <DiffPanel
+        mode={props.mode}
+        {...(props.initialViewKind ? { initialViewKind: props.initialViewKind } : {})}
+        {...(props.threadId !== undefined ? { threadId: props.threadId } : {})}
+        {...(props.panelState ? { panelState: props.panelState } : {})}
+        {...(props.onUpdatePanelState ? { onUpdatePanelState: props.onUpdatePanelState } : {})}
+        {...(props.onClosePanel ? { onClosePanel: props.onClosePanel } : {})}
+        {...(props.liveRefreshEnabled !== undefined
+          ? { liveRefreshEnabled: props.liveRefreshEnabled }
+          : {})}
+        {...(props.queriesEnabled !== undefined ? { queriesEnabled: props.queriesEnabled } : {})}
+        {...(props.onEditFile ? { onEditFile: props.onEditFile } : {})}
+      />
+    </Suspense>
   );
 }
 
