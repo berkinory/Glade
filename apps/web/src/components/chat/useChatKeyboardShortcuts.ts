@@ -17,7 +17,7 @@ import { collectForegroundRunningSubagentStripItems } from "./ComposerSubagentSt
 import { eventTargetsInAppBrowser, shouldCaptureChatFindShortcut } from "./threadFind.logic";
 import { useChatProjectScripts } from "./useChatProjectScripts";
 import { useChatProviderModels } from "./useChatProviderModels";
-import { useChatTerminalController } from "./useChatTerminalController";
+import type { ThreadTerminalState } from "~/terminalStateNormalization";
 import { useChatWorkLog } from "./useChatWorkLog";
 import { useComposerVoiceController } from "./useComposerVoiceController";
 import { toastManager } from "../ui/toast";
@@ -47,7 +47,7 @@ function canHandleComposerPickerShortcut(
 interface ChatKeyboardShortcutsInput {
   onToggleTerminal?: () => void;
   onOpenTerminal?: () => void;
-  expandTerminalWorkspace: ReturnType<typeof useChatTerminalController>["expandTerminalWorkspace"];
+  expandTerminalWorkspace: () => void;
   onToggleDevicePanel?: () => void;
   onSplitSurface?: () => void;
   surfaceMode: "single" | "split";
@@ -61,14 +61,10 @@ interface ChatKeyboardShortcutsInput {
   isVoiceRecording: ReturnType<typeof useComposerVoiceController>["isVoiceRecording"];
   isVoiceTranscribing: ReturnType<typeof useComposerVoiceController>["isVoiceTranscribing"];
   isComposerApprovalState: boolean;
-  terminalState: ReturnType<typeof useChatTerminalController>["terminalState"];
-  terminalWorkspaceOpen: ReturnType<typeof useChatTerminalController>["terminalWorkspaceOpen"];
-  terminalWorkspaceTerminalTabActive: ReturnType<
-    typeof useChatTerminalController
-  >["terminalWorkspaceTerminalTabActive"];
-  terminalWorkspaceChatTabActive: ReturnType<
-    typeof useChatTerminalController
-  >["terminalWorkspaceChatTabActive"];
+  terminalState: ThreadTerminalState;
+  terminalWorkspaceOpen: boolean;
+  terminalWorkspaceTerminalTabActive: boolean;
+  terminalWorkspaceChatTabActive: boolean;
   keybindings: ResolvedKeybindingsConfig;
   toggleComposerFocus: () => void;
   shouldRenderChatPaneContent: boolean;
@@ -81,25 +77,17 @@ interface ChatKeyboardShortcutsInput {
   selectedModel: string;
   onProviderModelSelect: (provider: ProviderKind, model: ModelSlug) => Promise<void>;
   handleTraitsPickerOpenChange: (open: boolean) => void;
-  toggleTerminalVisibility: ReturnType<
-    typeof useChatTerminalController
-  >["toggleTerminalVisibility"];
-  setTerminalOpen: ReturnType<typeof useChatTerminalController>["setTerminalOpen"];
-  splitTerminalRight: ReturnType<typeof useChatTerminalController>["splitTerminalRight"];
-  splitTerminalLeft: ReturnType<typeof useChatTerminalController>["splitTerminalLeft"];
-  splitTerminalDown: ReturnType<typeof useChatTerminalController>["splitTerminalDown"];
-  splitTerminalUp: ReturnType<typeof useChatTerminalController>["splitTerminalUp"];
-  closeTerminal: ReturnType<typeof useChatTerminalController>["closeTerminal"];
-  createTerminalFromShortcut: ReturnType<
-    typeof useChatTerminalController
-  >["createTerminalFromShortcut"];
-  openNewFullWidthTerminal: ReturnType<
-    typeof useChatTerminalController
-  >["openNewFullWidthTerminal"];
-  closeActiveWorkspaceView: ReturnType<
-    typeof useChatTerminalController
-  >["closeActiveWorkspaceView"];
-  setTerminalWorkspaceTab: ReturnType<typeof useChatTerminalController>["setTerminalWorkspaceTab"];
+  toggleTerminalVisibility: () => void;
+  setTerminalOpen: (open: boolean) => void;
+  splitTerminalRight: () => void;
+  splitTerminalLeft: () => void;
+  splitTerminalDown: () => void;
+  splitTerminalUp: () => void;
+  closeTerminal: (terminalId: string) => Promise<void>;
+  createTerminalFromShortcut: () => void;
+  openNewFullWidthTerminal: () => void;
+  closeActiveWorkspaceView: () => void;
+  setTerminalWorkspaceTab: (tab: "terminal" | "chat") => void;
   onToggleDiff: () => void;
   commitAndPushTriggerRef: RefObject<(() => void) | null>;
   showGitActions: boolean;
