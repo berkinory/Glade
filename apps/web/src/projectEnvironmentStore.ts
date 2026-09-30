@@ -1,10 +1,11 @@
+import { isRecord } from "@glade/shared/transport/recordValues";
 import type { ProjectId } from "@glade/contracts/core/baseSchemas";
 import type { ThreadEnvironmentMode } from "@glade/contracts/orchestration/threadEntities";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
 import { createMemoryStorage } from "./lib/storage";
-import { isPlainObject, sanitizeStringKeyedRecord } from "./persistedRecord";
+import { sanitizeStringKeyedRecord } from "./persistedRecord";
 
 interface ProjectEnvironmentStoreState {
   envModeByProjectId: Partial<Record<ProjectId, ThreadEnvironmentMode>>;
@@ -31,7 +32,7 @@ export const useProjectEnvironmentStore = create<ProjectEnvironmentStoreState>()
       merge: (persisted, current) => ({
         ...current,
         envModeByProjectId: sanitizeStringKeyedRecord(
-          isPlainObject(persisted) ? persisted.envModeByProjectId : undefined,
+          isRecord(persisted) ? persisted.envModeByProjectId : undefined,
           (value) => (value === "local" || value === "worktree" ? value : null),
         ),
       }),

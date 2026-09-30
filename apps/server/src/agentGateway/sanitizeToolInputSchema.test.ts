@@ -1,3 +1,4 @@
+import { isRecord } from "@glade/shared/transport/recordValues";
 import { assert, describe, it } from "@effect/vitest";
 
 import { BROWSER_TOOL_CATALOGUE } from "@glade/shared/browser/browserAutomationCatalogue";
@@ -5,12 +6,12 @@ import { BrowserWebMcpCallInput } from "@glade/contracts/browser/automation/brow
 import { Schema } from "effect";
 
 import { FALLBACK_OBJECT_DESCRIPTION, sanitizeToolInputSchema } from "./sanitizeToolInputSchema.ts";
-import { countSchemaKeyOccurrences, isJsonRecord } from "./schemaTestUtils.ts";
+import { countSchemaKeyOccurrences } from "./schemaTestUtils.ts";
 
 const cloneJson = (value: unknown): unknown => JSON.parse(JSON.stringify(value));
 
 const asJsonRecord = (node: unknown, label: string): Record<string, unknown> => {
-  if (isJsonRecord(node)) return node;
+  if (isRecord(node)) return node;
   throw new Error(`Expected ${label} to be an object schema.`);
 };
 

@@ -1,3 +1,4 @@
+import { asRecord } from "@glade/shared/transport/recordValues";
 import { readFileSync } from "node:fs";
 import OS from "node:os";
 import nodePath from "node:path";
@@ -35,15 +36,9 @@ function readNonEmptyString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
 }
 
-function readRecord(value: unknown): Record<string, unknown> | undefined {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : undefined;
-}
-
 function tryParseJsonRecord(content: string): Record<string, unknown> | undefined {
   try {
-    return readRecord(JSON.parse(content));
+    return asRecord(JSON.parse(content)) ?? undefined;
   } catch {
     return undefined;
   }
@@ -74,7 +69,7 @@ function readClaudeCliCredentialsContentSummary(
   nowMs = Date.now(),
 ): ClaudeCliCredentialsSummary {
   const root = tryParseJsonRecord(content);
-  const oauth = readRecord(root?.claudeAiOauth);
+  const oauth = asRecord(root?.claudeAiOauth) ?? undefined;
   const accessToken = readNonEmptyString(oauth?.accessToken);
   const refreshToken = readNonEmptyString(oauth?.refreshToken);
   if (!accessToken && !refreshToken) {

@@ -1,3 +1,4 @@
+import { asObjectRecord } from "@glade/shared/transport/recordValues";
 import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import { type OrchestrationPendingInteraction } from "@glade/contracts/orchestration/threadEntities";
 import { type ThreadId } from "@glade/contracts/core/baseSchemas";
@@ -22,7 +23,6 @@ import { isSessionRunningTurn } from "./session-logic";
 import {
   MAX_THREAD_MESSAGES,
   arraysShallowEqual,
-  asActivityRecord,
   createThreadActivityAccumulator,
   deepEqualJson,
   normalizeActivities,
@@ -150,7 +150,7 @@ function reconcilePendingInteractionsFromActivity(
   if (interactionKind === null) {
     return pendingInteractions;
   }
-  const payload = asActivityRecord(activity.payload);
+  const payload = asObjectRecord(activity.payload);
   const requestId = payload?.requestId;
   if (typeof requestId !== "string" || requestId.length === 0) {
     return pendingInteractions;

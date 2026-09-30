@@ -1,3 +1,4 @@
+import { asRecord } from "@glade/shared/transport/recordValues";
 import type { ComputerWindow } from "@glade/contracts/computer/computer";
 
 export const COMPUTER_TOOL_TITLES = {
@@ -90,7 +91,7 @@ export function describeComputerToolCall(input: {
     ) {
       const description = describeComputerToolCall({
         toolName: selectedTool,
-        args: readRecord(args.arguments) ?? undefined,
+        args: asRecord(args.arguments) ?? undefined,
         windows: input.windows,
       })!;
       return {
@@ -213,8 +214,8 @@ function describeDragTarget(
   args: Readonly<Record<string, unknown>>,
   windows: readonly ComputerWindow[] | undefined,
 ): string {
-  const from = readRecord(args.from);
-  const to = readRecord(args.to);
+  const from = asRecord(args.from);
+  const to = asRecord(args.to);
   if (!from || !to) return "";
   const fromTarget = describeTarget(from, windows).replace(/^on /, "");
   const toTarget = describeTarget(to, windows).replace(/^on /, "");
@@ -465,7 +466,7 @@ function describeParams(
 
   if (tool === "computer_run" && Array.isArray(args.steps)) {
     const kinds = args.steps
-      .map((step) => readString(readRecord(step)?.type))
+      .map((step) => readString(asRecord(step)?.type))
       .filter((kind): kind is string => kind !== null);
     rows.push({
       name: "Steps",
@@ -511,12 +512,6 @@ function readStringArray(value: unknown): readonly string[] {
   return Array.isArray(value)
     ? value.filter((entry): entry is string => typeof entry === "string")
     : [];
-}
-
-function readRecord(value: unknown): Readonly<Record<string, unknown>> | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Readonly<Record<string, unknown>>)
-    : null;
 }
 
 function truncate(value: string, max: number): string {

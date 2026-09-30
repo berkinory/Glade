@@ -1,3 +1,4 @@
+import { asObjectRecord } from "@glade/shared/transport/recordValues";
 import { cuaSpaceInventory } from "./cuaSpaceInventory.ts";
 import {
   parseCuaActionDiagnostics,
@@ -99,8 +100,6 @@ export class CuaActionError extends ComputerBackendError {
     });
   }
 }
-const record = (value: unknown): Record<string, unknown> =>
-  value && typeof value === "object" ? (value as Record<string, unknown>) : {};
 const text = (value: unknown, max = 1024): string =>
   typeof value === "string" ? value.slice(0, max) : "";
 const number = (value: unknown): number =>
@@ -131,7 +130,7 @@ function missingComputerPermissions(
   return missing;
 }
 function optionalRect(value: unknown): ComputerRect | undefined {
-  const r = record(value);
+  const r = asObjectRecord(value) ?? {};
   const out = {
     x: number(r.x),
     y: number(r.y),
@@ -159,14 +158,14 @@ function confirmedValueReadback(data: Record<string, unknown>): boolean {
   return (
     data.effect === "confirmed" &&
     Array.isArray(data.evidence) &&
-    data.evidence.some((item) => text(record(item).kind) === "value_readback")
+    data.evidence.some((item) => text((asObjectRecord(item) ?? {}).kind) === "value_readback")
   );
 }
 
 function resolvableStillTab(value: unknown): string | undefined {
   if (!Array.isArray(value)) return undefined;
   const tabs = value.flatMap((entry) => {
-    const tab = record(entry);
+    const tab = asObjectRecord(entry) ?? {};
     const id = text(tab.tab_id);
     return id ? [{ id, active: tab.active === true }] : [];
   });
@@ -503,7 +502,7 @@ export class CuaComputerBackend implements ComputerBackend {
         structured.effect === "refused" ||
         structured.effect === "not-dispatched" ||
         (structured.effect === undefined && structured.status === "refused");
-      const refusal = record(structured.refusal);
+      const refusal = asObjectRecord(structured.refusal) ?? {};
       let message =
         (result.content ?? [])
           .map((c) => c.text ?? "")
@@ -672,7 +671,7 @@ export class CuaComputerBackend implements ComputerBackend {
       // alone must not erase a capture failure.
       if (hostPlatform !== "linux" && permission.screen_recording === true)
         this.captureFailed = false;
-      const bundleId = text(record(permission.source).host_bundle_id, 256);
+      const bundleId = text((asObjectRecord(permission.source) ?? {}).host_bundle_id, 256);
       const signature = this.buildSignature();
       const monitorUnavailable =
         hostPlatform === "darwin" &&
@@ -754,7 +753,7 @@ export class CuaComputerBackend implements ComputerBackend {
       ).structuredContent ?? {};
     if (!Array.isArray(data.windows)) throw new Error("Invalid Cua window list.");
     const rows = data.windows
-      .map(record)
+      .map((value: unknown) => asObjectRecord(value) ?? {})
       .toSorted((a, b) => (number(b.z_index) || 0) - (number(a.z_index) || 0));
     this.windows = rows
       .flatMap((w, i): ComputerWindow[] => {
@@ -1129,7 +1128,7 @@ export class CuaComputerBackend implements ComputerBackend {
     const children: ComputerUiNode[] = [];
     if (Array.isArray(data.elements))
       for (const value of data.elements.slice(0, 1024)) {
-        const element = record(value);
+        const element = asObjectRecord(value) ?? {};
         if (!element.frame) continue;
         const frame = optionalRect(element.frame);
         if (!frame) continue;
@@ -1509,9 +1508,9 @@ export class CuaComputerBackend implements ComputerBackend {
       data.effect === "confirmed" &&
       Array.isArray(data.evidence) &&
       data.evidence.some((item) =>
-        ["value_readback", "window_change"].includes(text(record(item).kind)),
+        ["value_readback", "window_change"].includes(text((asObjectRecord(item) ?? {}).kind)),
       );
-    const mode = text(record(data.delivery).mode, 32) || "unknown";
+    const mode = text((asObjectRecord(data.delivery) ?? {}).mode, 32) || "unknown";
 
     const route = text(data.route, 64) || text(data.path, 64);
     return {
@@ -1812,7 +1811,7 @@ export class CuaComputerBackend implements ComputerBackend {
     if (!Array.isArray(elements)) return undefined;
     let match: { token: string; index: number; value: string | null } | undefined;
     for (const value of elements) {
-      const element = record(value);
+      const element = asObjectRecord(value) ?? {};
       if (element.in_web_content !== true) continue;
       if (text(element.role, 128) !== node.role) continue;
       if ((text(element.label) || null) !== node.label) continue;
@@ -2040,7 +2039,7 @@ export class CuaComputerBackend implements ComputerBackend {
       );
     const apps: ComputerApp[] = [];
     for (const value of rows) {
-      const row = record(value);
+      const row = asObjectRecord(value) ?? {};
       // pid is 0 for installed-but-not-running apps — those rows are the "is X installed?" half of the
       // tool and must not be dropped.
       const pid = number(row.pid);
@@ -2107,7 +2106,7 @@ export class CuaComputerBackend implements ComputerBackend {
     this.snapshotAt = 0;
     return {
       windowId: window.id,
-      deliveryPath: `cua-${text(data.route, 64) || "window_frame"}-${text(record(data.delivery).mode, 32) || "background"}`,
+      deliveryPath: `cua-${text(data.route, 64) || "window_frame"}-${text((asObjectRecord(data.delivery) ?? {}).mode, 32) || "background"}`,
       verified: confirmed ? "confirmed" : "unconfirmed",
       effect: confirmed ? "verified" : "dispatched-unknown",
     };
@@ -2150,7 +2149,7 @@ export class CuaComputerBackend implements ComputerBackend {
     this.snapshotAt = 0;
     return {
       ...(windowId !== undefined ? { windowId } : {}),
-      deliveryPath: `cua-${text(data.route, 64) || "menu"}-${text(record(data.delivery).mode, 32) || "background"}`,
+      deliveryPath: `cua-${text(data.route, 64) || "menu"}-${text((asObjectRecord(data.delivery) ?? {}).mode, 32) || "background"}`,
       verified: confirmed
         ? "confirmed"
         : data.effect === "unconfirmed"
@@ -2179,7 +2178,7 @@ export class CuaComputerBackend implements ComputerBackend {
     this.snapshotAt = 0;
     return {
       windowId: window.id,
-      deliveryPath: `cua-${text(data.route, 64) || "window_minimized"}-${text(record(data.delivery).mode, 32) || "background"}`,
+      deliveryPath: `cua-${text(data.route, 64) || "window_minimized"}-${text((asObjectRecord(data.delivery) ?? {}).mode, 32) || "background"}`,
       verified: confirmed
         ? "confirmed"
         : data.effect === "unconfirmed" || data.effect === "suspected_noop"
@@ -2200,7 +2199,7 @@ export class CuaComputerBackend implements ComputerBackend {
     const confirmed = confirmedValueReadback(data);
     this.snapshotAt = 0;
     return {
-      deliveryPath: `cua-${text(data.route, 64) || "app_visibility"}-${text(record(data.delivery).mode, 32) || "background"}`,
+      deliveryPath: `cua-${text(data.route, 64) || "app_visibility"}-${text((asObjectRecord(data.delivery) ?? {}).mode, 32) || "background"}`,
       verified: confirmed
         ? "confirmed"
         : data.effect === "unconfirmed" || data.effect === "suspected_noop"
@@ -2379,7 +2378,7 @@ export class CuaComputerBackend implements ComputerBackend {
       );
     const apps: ComputerAccessibilityTreeApp[] = [];
     for (const value of data.apps) {
-      const row = record(value);
+      const row = asObjectRecord(value) ?? {};
       const pid = number(row.pid);
       const name = text(row.name);
 
@@ -2390,7 +2389,7 @@ export class CuaComputerBackend implements ComputerBackend {
     }
     const windows: ComputerAccessibilityTreeWindow[] = [];
     for (const value of data.windows) {
-      const row = record(value);
+      const row = asObjectRecord(value) ?? {};
       const pid = number(row.pid);
       const wid = number(row.window_id);
 

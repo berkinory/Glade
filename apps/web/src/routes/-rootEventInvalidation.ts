@@ -1,3 +1,4 @@
+import { isRecord } from "@glade/shared/transport/recordValues";
 import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { resolveThreadWorkspaceCwd } from "@glade/shared/threads/threadEnvironment";
@@ -32,10 +33,6 @@ export function shouldInvalidateGitQueriesForEvent(event: OrchestrationEvent): b
     event.payload.associatedWorktreeBranch !== undefined ||
     event.payload.associatedWorktreeRef !== undefined
   );
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function activityItemType(event: OrchestrationEvent): unknown {

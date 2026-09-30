@@ -1,3 +1,4 @@
+import { asRecord } from "@glade/shared/transport/recordValues";
 import type { ToolLifecycleItemType } from "@glade/contracts/provider/runtimeMetadata";
 import { stripTrailingToolExitCode as stripTrailingExitCode } from "../features/chat/timeline/toolOutputSummary";
 
@@ -38,12 +39,6 @@ export interface DeriveWorkLogToolDetailsInput {
   changedFiles?: ReadonlyArray<string> | undefined;
   label: string;
   toolTitle?: string | undefined;
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value !== null && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
 }
 
 function asTrimmedString(value: unknown): string | null {

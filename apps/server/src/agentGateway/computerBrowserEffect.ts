@@ -1,3 +1,4 @@
+import { asRecord } from "@glade/shared/transport/recordValues";
 import type { ComputerBrowserToolName } from "@glade/contracts/computer/computerBrowser";
 
 import type { ComputerBrowserCallResult } from "../computer/ComputerBackend.ts";
@@ -8,20 +9,14 @@ interface BrowserEffectProof {
   readonly code?: string;
 }
 
-function record(value: unknown): Record<string, unknown> | undefined {
-  return value !== null && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : undefined;
-}
-
 export function computerBrowserEffect(
   name: ComputerBrowserToolName,
   args: Record<string, unknown>,
   result: ComputerBrowserCallResult,
 ): BrowserEffectProof {
-  const structured = record(result.structuredContent);
-  const refusal = record(structured?.refusal);
-  const detail = record(refusal?.detail);
+  const structured = asRecord(result.structuredContent) ?? undefined;
+  const refusal = asRecord(structured?.refusal) ?? undefined;
+  const detail = asRecord(refusal?.detail) ?? undefined;
   if (
     structured?.effect === "partial" ||
     (structured?.status === "refused" &&
@@ -59,7 +54,7 @@ export function computerBrowserEffect(
   ) {
     return { effect: "verified" };
   }
-  const verification = record(structured?.verification);
+  const verification = asRecord(structured?.verification) ?? undefined;
   if (
     name === "computer_browser_navigate" &&
     structured?.status === "ok" &&
@@ -84,7 +79,7 @@ export function computerBrowserFieldReadback(
   args: Record<string, unknown>,
   result: ComputerBrowserCallResult,
 ): boolean {
-  const structured = record(result.structuredContent);
+  const structured = asRecord(result.structuredContent) ?? undefined;
   return (
     name === "computer_browser_type" &&
     typeof args.text === "string" &&
@@ -95,6 +90,6 @@ export function computerBrowserFieldReadback(
     structured?.effect === "unverifiable" &&
     structured.route === "dom" &&
     Array.isArray(structured.evidence) &&
-    structured.evidence.some((item) => record(item)?.kind === "value_readback")
+    structured.evidence.some((item) => (asRecord(item) ?? undefined)?.kind === "value_readback")
   );
 }

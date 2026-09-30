@@ -1,6 +1,6 @@
+import { isRecord } from "@glade/shared/transport/recordValues";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { PROVIDER_DESCRIPTORS } from "@glade/shared/provider/providerMetadata";
-import { isPlainObject } from "./persistedRecord";
 
 const STORAGE_KEY = "glade:confirmed-custom-binary-paths:v1";
 
@@ -31,7 +31,7 @@ export function loadConfirmedCustomBinaryPaths(): Partial<Record<ProviderKind, s
   } catch {
     return {};
   }
-  if (!isPlainObject(parsed)) {
+  if (!isRecord(parsed)) {
     return {};
   }
   // Validating keys against the known provider set also blocks prototype pollution (e.g. "__proto__")

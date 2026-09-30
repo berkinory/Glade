@@ -1,8 +1,5 @@
+import { isRecord } from "@glade/shared/transport/recordValues";
 import { pluralize } from "@glade/shared/text/text";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function firstTextLine(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;

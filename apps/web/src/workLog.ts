@@ -1,3 +1,4 @@
+import { asObjectRecord } from "@glade/shared/transport/recordValues";
 import {
   type ComputerPermission,
   type ComputerBuildSignature,
@@ -441,7 +442,7 @@ function extractWorkLogGladeThreadCreation(
     return null;
   }
   const threads = rawThreads.flatMap((value): WorkLogGladeCreatedThread[] => {
-    const thread = asRecord(value);
+    const thread = asObjectRecord(value);
     const threadId = asTrimmedString(thread?.threadId);
     const title = asTrimmedString(thread?.title);
     const provider = asTrimmedString(thread?.provider);
@@ -828,9 +829,9 @@ function deriveWorkLogLiveActivity(
     return undefined;
   }
 
-  const data = asRecord(payload?.data);
-  const stateRecord = asRecord(data?.state);
-  const rawOutput = asRecord(data?.rawOutput);
+  const data = asObjectRecord(payload?.data);
+  const stateRecord = asObjectRecord(data?.state);
+  const rawOutput = asObjectRecord(data?.rawOutput);
   const rawStatus = [payload?.status, data?.status, stateRecord?.status, rawOutput?.status].find(
     (value): value is string => typeof value === "string" && value.trim().length > 0,
   );
@@ -879,9 +880,9 @@ function deriveWorkLogLiveActivityProgress(
 }
 
 function isFailedToolLifecyclePayload(payload: Record<string, unknown> | null): boolean {
-  const data = asRecord(payload?.data);
-  const state = asRecord(data?.state);
-  const rawOutput = asRecord(data?.rawOutput);
+  const data = asObjectRecord(payload?.data);
+  const state = asObjectRecord(data?.state);
+  const rawOutput = asObjectRecord(data?.rawOutput);
   const statuses = [payload?.status, data?.status, state?.status, rawOutput?.status];
   if (
     statuses.some(
@@ -902,9 +903,9 @@ function isFailedToolLifecyclePayload(payload: Record<string, unknown> | null): 
 }
 
 function isCancelledToolLifecyclePayload(payload: Record<string, unknown> | null): boolean {
-  const data = asRecord(payload?.data);
-  const state = asRecord(data?.state);
-  const rawOutput = asRecord(data?.rawOutput);
+  const data = asObjectRecord(payload?.data);
+  const state = asObjectRecord(data?.state);
+  const rawOutput = asObjectRecord(data?.rawOutput);
   return [payload?.status, data?.status, state?.status, rawOutput?.status].some(
     (status) =>
       typeof status === "string" &&
@@ -915,7 +916,7 @@ function isCancelledToolLifecyclePayload(payload: Record<string, unknown> | null
 }
 
 function summarizeToolPayloadOutput(payload: Record<string, unknown> | null): string | null {
-  const data = asRecord(payload?.data);
+  const data = asObjectRecord(payload?.data);
   return summarizeToolRawOutput(data?.rawOutput) ?? null;
 }
 
@@ -923,9 +924,9 @@ function extractCollabTaskOutputDetail(payload: Record<string, unknown> | null):
   if (extractWorkLogItemType(payload) !== "collab_agent_tool_call") {
     return null;
   }
-  const data = asRecord(payload?.data);
+  const data = asObjectRecord(payload?.data);
   const item = collabPayloadItem(payload);
-  const state = asRecord(data?.state) ?? asRecord(item?.state);
+  const state = asObjectRecord(data?.state) ?? asObjectRecord(item?.state);
   const candidates = [
     state?.output,
     data?.output,
@@ -948,8 +949,8 @@ function extractCollabActionTitle(payload: Record<string, unknown> | null): stri
     return null;
   }
   const item = collabPayloadItem(payload);
-  const input = asRecord(item?.input);
-  const state = asRecord(item?.state);
+  const input = asObjectRecord(item?.input);
+  const state = asObjectRecord(item?.state);
   const candidates = [
     state?.title,
     item?.title,
@@ -977,7 +978,7 @@ function extractCollabTaskText(value: unknown): string | null {
   if (direct) {
     return direct;
   }
-  const record = asRecord(value);
+  const record = asObjectRecord(value);
   if (!record) {
     return null;
   }
@@ -1554,10 +1555,6 @@ function areToolLifecycleChangedFilesCompatible(
   return previous.some((path) => nextSet.has(path));
 }
 
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
-}
-
 function asComputerPermissions(value: unknown): readonly ComputerPermission[] {
   if (!Array.isArray(value)) return [];
   return value.filter(
@@ -1594,8 +1591,8 @@ function normalizeCollabIdentifier(value: string | null | undefined): string | n
 function collabPayloadItem(
   payload: Record<string, unknown> | null,
 ): Record<string, unknown> | null {
-  const data = asRecord(payload?.data);
-  return asRecord(data?.item) ?? data;
+  const data = asObjectRecord(payload?.data);
+  return asObjectRecord(data?.item) ?? data;
 }
 
 function inferSubagentActionTool(item: Record<string, unknown> | null): string | null {
@@ -1647,7 +1644,7 @@ function extractCollabAction(
   }
 
   const item = collabPayloadItem(payload);
-  const itemInput = asRecord(item?.input);
+  const itemInput = asObjectRecord(item?.input);
   const tool = inferSubagentActionTool(item);
   const status = asTrimmedString(item?.status ?? payload?.status) ?? "in_progress";
   const model = asTrimmedString(
@@ -1819,7 +1816,7 @@ function normalizeCommandValue(value: unknown): string | null {
 }
 
 function asCommandArgumentRecord(value: unknown): Record<string, unknown> | null {
-  const direct = asRecord(value);
+  const direct = asObjectRecord(value);
   if (direct) {
     return direct;
   }
@@ -1828,7 +1825,7 @@ function asCommandArgumentRecord(value: unknown): Record<string, unknown> | null
     return null;
   }
   try {
-    return asRecord(JSON.parse(text));
+    return asObjectRecord(JSON.parse(text));
   } catch {
     return null;
   }
@@ -1874,14 +1871,14 @@ function extractToolCommand(
   payload: Record<string, unknown> | null,
   commandAction: CommandAction | null = extractPrimaryCommandAction(payload),
 ): { command: string | null; rawCommand: string | null } {
-  const data = asRecord(payload?.data);
-  const item = asRecord(data?.item);
-  const itemResult = asRecord(item?.result);
-  const itemInput = asRecord(item?.input);
+  const data = asObjectRecord(payload?.data);
+  const item = asObjectRecord(data?.item);
+  const itemResult = asObjectRecord(item?.result);
+  const itemInput = asObjectRecord(item?.input);
   const itemArguments = asCommandArgumentRecord(item?.arguments ?? item?.args ?? item?.params);
-  const itemCall = asRecord(item?.call);
-  const itemFunction = asRecord(item?.function);
-  const dataInput = asRecord(data?.input);
+  const itemCall = asObjectRecord(item?.call);
+  const itemFunction = asObjectRecord(item?.function);
+  const dataInput = asObjectRecord(data?.input);
   const dataArguments = asCommandArgumentRecord(data?.arguments ?? data?.args ?? data?.params);
   const rawInput = asCommandArgumentRecord(data?.rawInput);
   const detailCommand =
@@ -1935,11 +1932,11 @@ function extractToolTitle(payload: Record<string, unknown> | null): string | nul
 function extractPrimaryCommandAction(
   payload: Record<string, unknown> | null,
 ): CommandAction | null {
-  const data = asRecord(payload?.data);
-  const item = asRecord(data?.item);
+  const data = asObjectRecord(payload?.data);
+  const item = asObjectRecord(data?.item);
   const actions = collectCommandActions(payload, data, item);
   for (const action of actions) {
-    const actionRecord = asRecord(action);
+    const actionRecord = asObjectRecord(action);
     if (!actionRecord) {
       continue;
     }
@@ -2059,11 +2056,11 @@ function compactWorkLogPath(value: string | undefined): string | null {
 }
 
 function extractToolName(payload: Record<string, unknown> | null): string | null {
-  const data = asRecord(payload?.data);
-  const item = asRecord(data?.item);
-  const itemInput = asRecord(item?.input);
-  const dataInvocation = asRecord(data?.invocation);
-  const itemInvocation = asRecord(item?.invocation);
+  const data = asObjectRecord(payload?.data);
+  const item = asObjectRecord(data?.item);
+  const itemInput = asObjectRecord(item?.input);
+  const dataInvocation = asObjectRecord(data?.invocation);
+  const itemInvocation = asObjectRecord(item?.invocation);
   const candidates = [
     payload?.toolName,
     data?.toolName,
@@ -2152,12 +2149,12 @@ function extractComputerToolArgs(
   if (!payload) {
     return null;
   }
-  const data = asRecord(payload.data);
-  const item = asRecord(data?.item);
-  const dataInvocation = asRecord(data?.invocation);
-  const itemInvocation = asRecord(item?.invocation);
-  const dataInput = asRecord(data?.input);
-  const itemInput = asRecord(item?.input);
+  const data = asObjectRecord(payload.data);
+  const item = asObjectRecord(data?.item);
+  const dataInvocation = asObjectRecord(data?.invocation);
+  const itemInvocation = asObjectRecord(item?.invocation);
+  const dataInput = asObjectRecord(data?.input);
+  const itemInput = asObjectRecord(item?.input);
   const candidates = [
     item?.arguments,
     itemInput?.arguments,
@@ -2207,7 +2204,7 @@ function parseHistoricalToolParamsDisplay(value: unknown): Record<string, unknow
   }
   const result: Record<string, unknown> = {};
   for (const entry of value) {
-    const row = asRecord(entry);
+    const row = asObjectRecord(entry);
     const name = asTrimmedString(row?.name ?? row?.display_name ?? row?.displayName);
     if (name) {
       result[name] = row?.value;
@@ -2217,8 +2214,8 @@ function parseHistoricalToolParamsDisplay(value: unknown): Record<string, unknow
 }
 
 function extractToolCallId(payload: Record<string, unknown> | null): string | null {
-  const data = asRecord(payload?.data);
-  const item = asRecord(data?.item);
+  const data = asObjectRecord(payload?.data);
+  const item = asObjectRecord(data?.item);
   return asTrimmedString(
     data?.toolCallId ?? data?.toolUseId ?? data?.callID ?? data?.callId ?? item?.id,
   );
@@ -2254,8 +2251,8 @@ function extractWorkLogItemType(
     return topLevel;
   }
 
-  const data = asRecord(payload?.data);
-  const item = asRecord(data?.item);
+  const data = asObjectRecord(payload?.data);
+  const item = asObjectRecord(data?.item);
   const nested = data?.itemType ?? item?.type ?? item?.kind ?? payload?.type ?? payload?.kind;
   if (typeof nested === "string" && isToolLifecycleItemType(nested)) {
     return nested;
@@ -2317,7 +2314,7 @@ function collectChangedFiles(value: unknown, target: string[], seen: Set<string>
     return;
   }
 
-  const record = asRecord(value);
+  const record = asObjectRecord(value);
   if (!record) {
     return;
   }
@@ -2362,7 +2359,7 @@ function collectChangedFiles(value: unknown, target: string[], seen: Set<string>
 function extractChangedFiles(payload: Record<string, unknown> | null): string[] {
   const changedFiles: string[] = [];
   const seen = new Set<string>();
-  collectChangedFiles(asRecord(payload?.data), changedFiles, seen, 0);
+  collectChangedFiles(asObjectRecord(payload?.data), changedFiles, seen, 0);
   return changedFiles;
 }
 

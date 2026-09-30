@@ -1,3 +1,4 @@
+import { isRecord } from "@glade/shared/transport/recordValues";
 import type { AgentGatewayMcpConnection } from "./Services/AgentGatewayCredentials.ts";
 
 export const GLADE_MCP_SERVER_NAME = "glade";
@@ -40,10 +41,6 @@ export type AgentGatewayMcpFetch = (
   input: string | URL | Request,
   init?: RequestInit,
 ) => Promise<Response>;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
 
 async function postAgentGatewayJsonRpc(input: {
   readonly connection: AgentGatewayMcpConnection;

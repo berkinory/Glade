@@ -1,3 +1,4 @@
+import { isObjectRecord } from "@glade/shared/transport/recordValues";
 import { randomUUID } from "node:crypto";
 
 import {
@@ -59,10 +60,6 @@ interface SessionState {
   deferredCompletionEvents: Array<ProviderRuntimeEvent>;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
 function normalizeTurnState(value: unknown): "completed" | "failed" | "interrupted" | "cancelled" {
   if (
     value === "completed" ||
@@ -104,13 +101,13 @@ function normalizeFixtureEvent(rawEvent: Record<string, unknown>): ProviderRunti
       return {
         ...rawEvent,
         type: "turn.started",
-        payload: isRecord(rawEvent.payload) ? rawEvent.payload : {},
+        payload: isObjectRecord(rawEvent.payload) ? rawEvent.payload : {},
       } as ProviderRuntimeEvent;
     case "turn.completed":
       return {
         ...rawEvent,
         type: "turn.completed",
-        payload: isRecord(rawEvent.payload)
+        payload: isObjectRecord(rawEvent.payload)
           ? rawEvent.payload
           : {
               state: normalizeTurnState(rawEvent.status),

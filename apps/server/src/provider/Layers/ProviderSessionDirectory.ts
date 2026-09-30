@@ -1,3 +1,4 @@
+import { isRecord } from "@glade/shared/transport/recordValues";
 import { ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { Effect, Layer, Option, Schema } from "effect";
 
@@ -31,10 +32,6 @@ function decodeProviderKind(
       detail: `Unknown persisted provider '${providerName}'.`,
     }),
   );
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 function mergeRuntimePayload(

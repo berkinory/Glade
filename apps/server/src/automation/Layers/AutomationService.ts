@@ -154,7 +154,7 @@ function redactSecrets(text: string): string {
     );
 }
 
-function errorMessage(cause: unknown): string {
+function formatAutomationError(cause: unknown): string {
   const raw =
     cause instanceof Error && cause.message.trim().length > 0 ? cause.message : String(cause);
   return redactSecrets(raw).slice(0, AUTOMATION_ERROR_MAX_CHARS);
@@ -174,7 +174,7 @@ function recoveryErrorMessage(error: unknown): string {
     }
     current = cause;
   }
-  return errorMessage(current);
+  return formatAutomationError(current);
 }
 
 function resultSummary(value: string | null | undefined, fallback?: string): string | null {
@@ -182,7 +182,9 @@ function resultSummary(value: string | null | undefined, fallback?: string): str
 }
 
 function completionFailureReason(error: unknown): string {
-  const message = Schema.is(AutomationServiceError)(error) ? error.message : errorMessage(error);
+  const message = Schema.is(AutomationServiceError)(error)
+    ? error.message
+    : formatAutomationError(error);
   return normalizeAutomationCompletionReason(`Stop check failed: ${message}`);
 }
 
@@ -668,7 +670,7 @@ export const AutomationServiceLive = Layer.effect(
             Effect.logWarning("automation proposal activity could not be updated", {
               automationId: definition.id,
               proposalState,
-              error: errorMessage(error),
+              error: formatAutomationError(error),
             }),
           ),
           Effect.asVoid,
@@ -700,7 +702,7 @@ export const AutomationServiceLive = Layer.effect(
               runId: input.run.id,
               path,
               reason: input.reason,
-              error: errorMessage(error),
+              error: formatAutomationError(error),
             }),
           ),
           Effect.asVoid,
@@ -812,7 +814,7 @@ export const AutomationServiceLive = Layer.effect(
         },
         catch: (cause) =>
           new AutomationServiceError({
-            message: errorMessage(cause),
+            message: formatAutomationError(cause),
             cause,
           }),
       }).pipe(Effect.asVoid);
@@ -862,7 +864,8 @@ export const AutomationServiceLive = Layer.effect(
     }) =>
       Effect.try({
         try: () => fastIntervalPolicyError(input),
-        catch: (cause) => new AutomationServiceError({ message: errorMessage(cause), cause }),
+        catch: (cause) =>
+          new AutomationServiceError({ message: formatAutomationError(cause), cause }),
       }).pipe(
         Effect.flatMap((message) =>
           message ? Effect.fail(new AutomationServiceError({ message })) : Effect.void,
@@ -1164,7 +1167,7 @@ export const AutomationServiceLive = Layer.effect(
               runWorktreeSetupScript(project.scripts, environment.worktreePath!, signal),
             catch: (cause) =>
               new AutomationServiceError({
-                message: `Automation worktree setup failed: ${errorMessage(cause)}`,
+                message: `Automation worktree setup failed: ${formatAutomationError(cause)}`,
                 cause,
               }),
           }).pipe(
@@ -1260,7 +1263,7 @@ export const AutomationServiceLive = Layer.effect(
         Effect.catch((error) =>
           Effect.gen(function* () {
             const failedAt = isoNow();
-            const summary = errorMessage(error);
+            const summary = formatAutomationError(error);
             const failedResult = yield* automationRepository
               .markRunFailed({
                 id: run.id,
@@ -1706,7 +1709,7 @@ export const AutomationServiceLive = Layer.effect(
                   {
                     automationId: definition.id,
                     runId: run.id,
-                    error: errorMessage(settingsError),
+                    error: formatAutomationError(settingsError),
                   },
                 ).pipe(Effect.as(null)),
               ),
@@ -1718,7 +1721,7 @@ export const AutomationServiceLive = Layer.effect(
             yield* Effect.logWarning("automation completion evaluation failed", {
               automationId: definition.id,
               runId: run.id,
-              error: errorMessage(error),
+              error: formatAutomationError(error),
             });
 
             yield* recordCompletionEvaluation({
@@ -1734,7 +1737,7 @@ export const AutomationServiceLive = Layer.effect(
                   {
                     automationId: definition.id,
                     runId: run.id,
-                    error: errorMessage(recordError),
+                    error: formatAutomationError(recordError),
                   },
                 ),
               ),
@@ -1865,7 +1868,7 @@ export const AutomationServiceLive = Layer.effect(
           enqueuePendingCompletionEvaluations().pipe(
             Effect.catch((error) =>
               Effect.logWarning("automation pending stop evaluations could not be requeued", {
-                error: errorMessage(error),
+                error: formatAutomationError(error),
               }),
             ),
           ),
@@ -1882,7 +1885,7 @@ export const AutomationServiceLive = Layer.effect(
     yield* enqueuePendingCompletionEvaluations().pipe(
       Effect.catch((error) =>
         Effect.logWarning("automation pending stop evaluations could not be queued", {
-          error: errorMessage(error),
+          error: formatAutomationError(error),
         }),
       ),
     );
@@ -1893,7 +1896,7 @@ export const AutomationServiceLive = Layer.effect(
           Effect.catch((error) =>
             Effect.logWarning(
               "automation pending stop evaluations could not be reconciled after settings changed",
-              { error: errorMessage(error) },
+              { error: formatAutomationError(error) },
             ),
           ),
         ),
@@ -2220,7 +2223,9 @@ export const AutomationServiceLive = Layer.effect(
           );
           return;
         } else if (turn.state === "error") {
-          const summary = errorMessage(shell.session?.lastError ?? "Automation turn failed.");
+          const summary = formatAutomationError(
+            shell.session?.lastError ?? "Automation turn failed.",
+          );
           const failedResult = yield* automationRepository
             .markRunFailed({
               id: run.id,
@@ -2777,7 +2782,7 @@ export const AutomationServiceLive = Layer.effect(
             Effect.logWarning("automation run interrupt failed", {
               runId: run.id,
               threadId: run.threadId,
-              error: errorMessage(error),
+              error: formatAutomationError(error),
             }),
           ),
           Effect.asVoid,
@@ -3473,7 +3478,7 @@ export const AutomationServiceLive = Layer.effect(
                 Effect.logWarning("automation deferred run failed", {
                   automationId: run.automationId,
                   runId: run.id,
-                  error: errorMessage(error),
+                  error: formatAutomationError(error),
                 }).pipe(Effect.as(Option.none<AutomationRunNowResult>())),
               ),
             ),
@@ -3496,7 +3501,7 @@ export const AutomationServiceLive = Layer.effect(
               Effect.catch((error) =>
                 Effect.logWarning("automation scheduled run failed", {
                   automationId: definition.id,
-                  error: errorMessage(error),
+                  error: formatAutomationError(error),
                 }).pipe(Effect.as(Option.none<AutomationRunNowResult>())),
               ),
             ),

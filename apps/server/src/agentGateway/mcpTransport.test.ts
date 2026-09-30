@@ -1,3 +1,4 @@
+import { isRecord } from "@glade/shared/transport/recordValues";
 import { makeNativeToolCallRegistry } from "./nativeToolCalls.ts";
 import { assert, describe, it } from "@effect/vitest";
 import { ProjectId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
@@ -12,7 +13,7 @@ import type { AgentGatewayCredentialsShape } from "./Services/AgentGatewayCreden
 import { makeAgentGatewayInFlightRequestRegistry } from "./inFlightRequestRegistry.ts";
 import { makeAgentGatewayMcpTransport } from "./mcpTransport.ts";
 import { FALLBACK_OBJECT_DESCRIPTION } from "./sanitizeToolInputSchema.ts";
-import { countSchemaKeyOccurrences, isJsonRecord } from "./schemaTestUtils.ts";
+import { countSchemaKeyOccurrences } from "./schemaTestUtils.ts";
 import {
   acquireAgentGatewaySessionLease,
   AGENT_GATEWAY_NO_CAPABILITIES,
@@ -508,8 +509,8 @@ describe("makeAgentGatewayMcpTransport cancellation", () => {
 });
 
 const findToolOrThrow = (tools: ReadonlyArray<unknown>, name: string): Record<string, unknown> => {
-  const found = tools.find((candidate) => isJsonRecord(candidate) && candidate.name === name);
-  if (!isJsonRecord(found)) {
+  const found = tools.find((candidate) => isRecord(candidate) && candidate.name === name);
+  if (!isRecord(found)) {
     throw new Error(`Expected tools/list to serve ${name}.`);
   }
   return found;
@@ -548,7 +549,7 @@ describe("makeAgentGatewayMcpTransport tools/list schema sanitization", () => {
         method: "tools/list",
       });
       assert.equal(response.status, 200);
-      if (!isJsonRecord(response.body) || !isJsonRecord(response.body.result)) {
+      if (!isRecord(response.body) || !isRecord(response.body.result)) {
         throw new Error("Expected tools/list to answer with a result object.");
       }
       if (!Array.isArray(response.body.result.tools)) {

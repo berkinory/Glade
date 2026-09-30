@@ -1,3 +1,4 @@
+import { asRecord } from "@glade/shared/transport/recordValues";
 import * as Crypto from "node:crypto";
 import * as FS from "node:fs";
 import * as Net from "node:net";
@@ -63,13 +64,6 @@ export interface BrowserHostPipeServerOptions {
   readonly maxQueuedOutputBytes?: number;
 }
 
-function asObject(value: unknown): Record<string, unknown> | null {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
-    return null;
-  }
-  return value as Record<string, unknown>;
-}
-
 function asString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
 }
@@ -90,7 +84,7 @@ function asWorkspaceRoot(value: unknown): string | undefined {
 
 function parseRpcRequest(raw: string): RpcRequest | null {
   try {
-    return asObject(JSON.parse(raw)) as RpcRequest | null;
+    return asRecord(JSON.parse(raw)) as RpcRequest | null;
   } catch {
     return null;
   }
@@ -435,7 +429,7 @@ export class BrowserHostPipeServer {
   }
 
   private getInfo(client: PipeClient, params: unknown): unknown {
-    const request = asObject(params);
+    const request = asRecord(params);
     const sessionId = asString(request?.session_id);
     if (!sessionId) throw new Error("getInfo requires session_id");
     const suppliedCapability = asString(request?.capability);
@@ -470,7 +464,7 @@ export class BrowserHostPipeServer {
   }
 
   private executeTool(client: PipeClient, params: unknown, signal: AbortSignal): Promise<unknown> {
-    const request = asObject(params);
+    const request = asRecord(params);
     const sessionId = asString(request?.session_id);
     const provider = asString(request?.provider);
     const threadId = asString(request?.thread_id);
@@ -507,7 +501,7 @@ export class BrowserHostPipeServer {
       socket.destroy();
       return "overflow";
     }
-    const isResponse = asObject(message)?.id !== undefined;
+    const isResponse = asRecord(message)?.id !== undefined;
     if (!isResponse && socket.writableLength + frame.length > this.maxQueuedOutputBytes) {
       return "overflow";
     }

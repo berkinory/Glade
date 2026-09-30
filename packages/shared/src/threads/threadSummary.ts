@@ -1,3 +1,4 @@
+import { asObjectRecord } from "../transport/recordValues";
 import type {
   OrchestrationLatestTurn,
   OrchestrationMessage,
@@ -80,10 +81,6 @@ function orderedActivities<TActivity extends OrderableActivity>(
     : [...activities].toSorted(compareActivitiesByOrder);
   orderedActivitiesCache.set(activities, ordered);
   return ordered;
-}
-
-function toPayloadRecord(payload: unknown): Record<string, unknown> | null {
-  return payload && typeof payload === "object" ? (payload as Record<string, unknown>) : null;
 }
 
 export function approvalRequestKindFromRequestType(
@@ -262,7 +259,7 @@ export function derivePendingThreadRequestIds(input: {
   const openApprovals = new Map<string, string>();
   const openUserInputs = new Map<string, string>();
   for (const activity of orderedActivities(input.activities)) {
-    const payload = toPayloadRecord(activity.payload);
+    const payload = asObjectRecord(activity.payload);
     const requestId = typeof payload?.requestId === "string" ? payload.requestId : null;
     const detail = typeof payload?.detail === "string" ? payload.detail : undefined;
     const lifecycleGeneration = lifecycleGenerationFromPayload(payload);

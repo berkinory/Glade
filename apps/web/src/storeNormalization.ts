@@ -1,3 +1,4 @@
+import { asObjectRecord } from "@glade/shared/transport/recordValues";
 import {
   MessageId,
   type ProviderKind,
@@ -1299,7 +1300,7 @@ export function capThreadActivities<TActivity extends Thread["activities"][numbe
 }
 
 function activityRequestId(activity: Thread["activities"][number]): string | null {
-  const payload = asActivityRecord(activity.payload);
+  const payload = asObjectRecord(activity.payload);
   const requestId = payload?.requestId;
   return typeof requestId === "string" && requestId.trim().length > 0 ? requestId : null;
 }
@@ -1324,7 +1325,7 @@ function pendingInteractionRequestIds(
     if (
       (activity.kind === "provider.approval.respond.failed" ||
         activity.kind === "provider.user-input.respond.failed") &&
-      isStalePendingRequestFailureDetail(asActivityRecord(activity.payload)?.detail)
+      isStalePendingRequestFailureDetail(asObjectRecord(activity.payload)?.detail)
     ) {
       pendingRequestIds.delete(requestId);
     }
@@ -1406,9 +1407,9 @@ function activitiesEqual(
 }
 
 function activityPayloadDetailScore(activity: Thread["activities"][number]): number {
-  const payload = asActivityRecord(activity.payload);
-  const data = asActivityRecord(payload?.data);
-  const item = asActivityRecord(data?.item);
+  const payload = asObjectRecord(activity.payload);
+  const data = asObjectRecord(payload?.data);
+  const item = asObjectRecord(data?.item);
   const commandActions = item?.commandActions ?? data?.commandActions ?? payload?.commandActions;
   let score = 0;
   if (payload?.itemType) score += 4;
@@ -1419,10 +1420,6 @@ function activityPayloadDetailScore(activity: Thread["activities"][number]): num
   if (normalizeActivityCommandValue(item?.command ?? data?.command ?? payload?.command)) score += 8;
   if (Array.isArray(commandActions) && commandActions.length > 0) score += 8;
   return score;
-}
-
-export function asActivityRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
 }
 
 function normalizeActivityCommandValue(value: unknown): string | null {

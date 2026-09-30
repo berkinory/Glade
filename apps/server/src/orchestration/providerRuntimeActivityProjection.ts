@@ -1,3 +1,4 @@
+import { asRecord, isRecord } from "@glade/shared/transport/recordValues";
 import { ApprovalRequestId, EventId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { isToolLifecycleItemType } from "@glade/contracts/provider/runtimeMetadata";
 import { type ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
@@ -158,10 +159,6 @@ function truncateJsonString(value: string, limit: number): string {
   return value.length > limit ? `${value.slice(0, Math.max(0, limit - 15))}... [truncated]` : value;
 }
 
-function isJsonObject(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
 function activityPayloadKeyRank(key: string): number {
   const ranks: Record<string, number> = {
     itemType: 0,
@@ -230,7 +227,7 @@ function truncateJsonValue(
     seen.add(value);
   }
   if (options.depth <= 0) {
-    return isJsonObject(value) || Array.isArray(value)
+    return isRecord(value) || Array.isArray(value)
       ? {
           [ACTIVITY_DATA_TRUNCATION_MARKER]: true,
         }
@@ -248,7 +245,7 @@ function truncateJsonValue(
     }
     return retained;
   }
-  if (!isJsonObject(value)) {
+  if (!isRecord(value)) {
     return String(value);
   }
 
@@ -279,7 +276,7 @@ function boundActivityData(value: unknown): unknown {
       [ACTIVITY_DATA_TRUNCATION_MARKER]: true,
       originalJsonChars: serialized.length,
     };
-    return isJsonObject(bounded) ? { ...bounded, ...metadata } : { ...metadata, value: bounded };
+    return isRecord(bounded) ? { ...bounded, ...metadata } : { ...metadata, value: bounded };
   };
   const hardFallback = (): Record<string, unknown> => ({
     [ACTIVITY_DATA_TRUNCATION_MARKER]: true,
@@ -342,10 +339,6 @@ function asString(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
-function asObject(value: unknown): Record<string, unknown> | undefined {
-  return isJsonObject(value) ? value : undefined;
-}
-
 function buildContextWindowActivityPayload(
   event: ProviderRuntimeEvent,
 ): ActivityPayload | undefined {
@@ -396,7 +389,7 @@ function compactTurnModelUsage(
   }
   const compact: Record<string, CompactModelUsage> = {};
   for (const [model, value] of Object.entries(modelUsage)) {
-    const usage = asObject(value);
+    const usage = asRecord(value) ?? undefined;
     if (!usage) {
       continue;
     }
@@ -437,7 +430,7 @@ function buildConfiguredContextWindowPayload(
   if (event.type !== "session.configured") {
     return undefined;
   }
-  const config = asObject(event.payload.config);
+  const config = asRecord(event.payload.config) ?? undefined;
   const autoCompactWindow = config?.autoCompactWindow;
   const legacyContextWindow = config?.contextWindow;
   const configuredWindowValue = autoCompactWindow ?? legacyContextWindow;
@@ -495,8 +488,8 @@ function requestedPermissionProfile(
   if (event.payload.requestType !== "permissions_approval") {
     return undefined;
   }
-  const args = asObject(event.payload.args);
-  const permissions = asObject(args?.permissions);
+  const args = asRecord(event.payload.args) ?? undefined;
+  const permissions = asRecord(args?.permissions) ?? undefined;
   return permissions && Object.keys(permissions).length > 0
     ? (boundActivityData(permissions) as Record<string, unknown>)
     : undefined;
@@ -505,7 +498,7 @@ function requestedPermissionProfile(
 function sessionApprovalAvailable(
   event: Extract<ProviderRuntimeEvent, { type: "request.opened" }>,
 ): boolean | undefined {
-  const args = asObject(event.payload.args);
+  const args = asRecord(event.payload.args) ?? undefined;
   return typeof args?.sessionApprovalAvailable === "boolean"
     ? args.sessionApprovalAvailable
     : undefined;
@@ -574,17 +567,17 @@ function requestedMcpToolCallPresentation(
   ) {
     return {};
   }
-  const args = asObject(event.payload.args);
+  const args = asRecord(event.payload.args) ?? undefined;
 
-  const metadata = asObject(args?._meta);
+  const metadata = asRecord(args?._meta) ?? undefined;
   const title = asString(metadata?.tool_title);
   const toolName = asString(metadata?.tool_name) ?? asString(args?.toolName);
   const rawParams = Array.isArray(metadata?.tool_params_display)
     ? metadata.tool_params_display
-    : toolParamsDisplayFromToolInput(asObject(args?.input));
+    : toolParamsDisplayFromToolInput(asRecord(args?.input) ?? undefined);
 
   const toolParamsDisplay = rawParams?.slice(0, 12).map((entry) => {
-    const row = asObject(entry);
+    const row = asRecord(entry) ?? undefined;
     const name = asString(row?.name);
     const displayName = asString(row?.display_name);
     return {
@@ -739,10 +732,10 @@ export function projectProviderRuntimeActivities(
     }
 
     case "runtime.warning": {
-      const raw = asObject((event as { raw?: unknown }).raw);
-      const nativeType = asString(asObject(raw?.payload)?.type);
+      const raw = asRecord((event as { raw?: unknown }).raw) ?? undefined;
+      const nativeType = asString((asRecord(raw?.payload) ?? undefined)?.type);
 
-      const detailSubtype = asString(asObject(event.payload.detail)?.subtype);
+      const detailSubtype = asString((asRecord(event.payload.detail) ?? undefined)?.subtype);
       const isBackgroundMove = detailSubtype === "background_tasks_changed";
       const message = truncateDetail(event.payload.message);
       return [
@@ -1343,7 +1336,7 @@ export function providerActivityUpdateDedupeKey(
     return prefix;
   }
 
-  const payload = asObject(activity.payload);
+  const payload = asRecord(activity.payload) ?? undefined;
   if (activity.kind === "task.progress") {
     const taskId = asString(payload?.taskId);
     return taskId ? `${prefix}:${taskId}` : undefined;
@@ -1352,7 +1345,7 @@ export function providerActivityUpdateDedupeKey(
     return undefined;
   }
 
-  const data = asObject(payload?.data);
+  const data = asRecord(payload?.data) ?? undefined;
   const toolUpdateId =
     event.itemId ??
     asString(data?.toolUseId) ??

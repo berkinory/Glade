@@ -1,3 +1,4 @@
+import { errorMessage } from "@glade/shared/text/errorMessages";
 import * as Crypto from "node:crypto";
 import * as FS from "node:fs";
 import * as Path from "node:path";
@@ -96,10 +97,6 @@ function isUpdateInstallMarker(value: unknown): value is UpdateInstallMarker {
   );
 }
 
-function formatReadError(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
 export function createUpdateInstallMarker(args: {
   readonly fromVersion: string;
   readonly toVersion: string;
@@ -130,7 +127,7 @@ export function readInstallMarker(filePath: string): InstallMarkerReadResult {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return { status: "missing" };
     }
-    return { status: "invalid", error: formatReadError(error) };
+    return { status: "invalid", error: errorMessage(error) };
   }
 
   try {
@@ -140,7 +137,7 @@ export function readInstallMarker(filePath: string): InstallMarkerReadResult {
     }
     return { status: "valid", marker: parsed };
   } catch (error) {
-    return { status: "invalid", error: formatReadError(error) };
+    return { status: "invalid", error: errorMessage(error) };
   }
 }
 

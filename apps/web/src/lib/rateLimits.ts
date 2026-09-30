@@ -1,3 +1,4 @@
+import { asObjectRecord } from "@glade/shared/transport/recordValues";
 import type { OrchestrationThread } from "@glade/contracts/orchestration/threadEntities";
 import { providerUsageLearnMoreHref } from "@glade/shared/provider/providerUsage";
 
@@ -43,10 +44,6 @@ const WINDOW_ORDER = new Map([
   ["Usage credits", 6],
   ["Current", 7],
 ]);
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
-}
 
 function clampPercent(value: number | undefined): number | undefined {
   if (value === undefined || !Number.isFinite(value)) return undefined;
@@ -178,14 +175,14 @@ function normalizeLimitWindow(
 }
 
 function extractLimitsFromById(payload: Record<string, unknown>): RateLimitWindow[] | undefined {
-  const rateLimitsByLimitId = asRecord(payload.rateLimitsByLimitId);
+  const rateLimitsByLimitId = asObjectRecord(payload.rateLimitsByLimitId);
   if (!rateLimitsByLimitId) return undefined;
 
   const limits = Object.values(rateLimitsByLimitId)
-    .map((entry) => asRecord(entry))
+    .map((entry) => asObjectRecord(entry))
     .flatMap((entry) => {
       if (!entry) return [];
-      const primary = asRecord(entry.primary);
+      const primary = asObjectRecord(entry.primary);
       if (!primary) return [];
       const label =
         typeof entry.label === "string"
@@ -204,7 +201,7 @@ function extractLimitsFromArray(payload: Record<string, unknown>): RateLimitWind
   if (!Array.isArray(payload.limits)) return undefined;
 
   const limits = payload.limits
-    .map((entry) => asRecord(entry))
+    .map((entry) => asObjectRecord(entry))
     .flatMap((entry) => {
       if (!entry || typeof entry.window !== "string") return [];
       const normalized = normalizeLimitWindow(entry.window, entry);
@@ -217,15 +214,15 @@ function extractLimitsFromArray(payload: Record<string, unknown>): RateLimitWind
 function extractLimitsFromCodexPayload(
   payload: Record<string, unknown>,
 ): RateLimitWindow[] | undefined {
-  const rateLimitsRoot = asRecord(payload.rateLimits);
+  const rateLimitsRoot = asObjectRecord(payload.rateLimits);
   const nestedRateLimits =
-    rateLimitsRoot && asRecord(rateLimitsRoot.rateLimits)
-      ? asRecord(rateLimitsRoot.rateLimits)
+    rateLimitsRoot && asObjectRecord(rateLimitsRoot.rateLimits)
+      ? asObjectRecord(rateLimitsRoot.rateLimits)
       : (rateLimitsRoot ?? payload);
   if (!nestedRateLimits) return undefined;
 
-  const primary = asRecord(nestedRateLimits.primary);
-  const secondary = asRecord(nestedRateLimits.secondary);
+  const primary = asObjectRecord(nestedRateLimits.primary);
+  const secondary = asObjectRecord(nestedRateLimits.secondary);
   const limits: RateLimitWindow[] = [];
 
   if (primary) {
@@ -252,7 +249,7 @@ function extractLimitsFromCodexPayload(
 function extractLimitsFromClaudePayload(
   payload: Record<string, unknown>,
 ): { limits?: RateLimitWindow[]; status?: string } | undefined {
-  const info = asRecord(payload.rate_limit_info);
+  const info = asObjectRecord(payload.rate_limit_info);
   if (!info) return undefined;
 
   const rateLimitType = typeof info.rateLimitType === "string" ? info.rateLimitType : undefined;
@@ -305,7 +302,7 @@ export function deriveAccountRateLimits(
         continue;
       }
 
-      const payload = asRecord(activity.payload);
+      const payload = asObjectRecord(activity.payload);
       if (!payload) continue;
 
       const provider = typeof payload.provider === "string" ? payload.provider : "unknown";

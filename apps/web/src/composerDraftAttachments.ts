@@ -1,3 +1,4 @@
+import { asRecord } from "@glade/shared/transport/recordValues";
 import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 import * as Schema from "effect/Schema";
 
@@ -291,19 +292,11 @@ type PersistedAttachmentIdsRead =
   | { available: true; attachmentIds: string[] }
   | { available: false };
 
-function asUnknownRecord(value: unknown): Record<string, unknown> | null {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
-}
-
 function readPersistedComposerDraftsRecord(): Record<string, unknown> | null {
-  const persisted = asUnknownRecord(
-    getLocalStorageItem(COMPOSER_DRAFT_STORAGE_KEY, Schema.Unknown),
-  );
+  const persisted = asRecord(getLocalStorageItem(COMPOSER_DRAFT_STORAGE_KEY, Schema.Unknown));
   if (!persisted || persisted.version !== COMPOSER_DRAFT_STORAGE_VERSION) return null;
-  const state = asUnknownRecord(persisted.state);
-  return state ? asUnknownRecord(state.draftsByThreadId) : null;
+  const state = asRecord(persisted.state);
+  return state ? asRecord(state.draftsByThreadId) : null;
 }
 
 function decodePersistedAttachmentIds(value: unknown): string[] | null {
@@ -369,7 +362,7 @@ export const PROMPT_HISTORY_ATTACHMENT_SLOT: ComposerAttachmentSlot = {
       ? { ...draft, promptHistorySavedDraft: { ...draft.promptHistorySavedDraft, ...updates } }
       : draft,
   readStoredAttachmentIds: (storedDraft) => {
-    const savedDraft = asUnknownRecord(storedDraft.promptHistorySavedDraft);
+    const savedDraft = asRecord(storedDraft.promptHistorySavedDraft);
     if (!savedDraft) return null;
     return decodePersistedAttachmentIds(savedDraft.attachments ?? []);
   },
@@ -385,7 +378,7 @@ function readPersistedAttachmentIdsFromStorage(
     return { available: false };
   }
   try {
-    const draft = asUnknownRecord(readPersistedComposerDraftsRecord()?.[threadId]);
+    const draft = asRecord(readPersistedComposerDraftsRecord()?.[threadId]);
     if (!draft) return { available: false };
     const attachmentIds = slot.readStoredAttachmentIds(draft);
     if (!attachmentIds) return { available: false };

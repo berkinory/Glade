@@ -1,3 +1,4 @@
+import { errorMessage } from "@glade/shared/text/errorMessages";
 import { normalizeOperationError, type TaggedFailure } from "./platform/operationError.ts";
 import { createHash } from "node:crypto";
 import type { Dirent } from "node:fs";
@@ -444,8 +445,6 @@ export function pruneProjectedArchivedManagedWorktrees(input: {
     });
   });
 }
-
-const errorMessage = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause));
 
 const isMissingPathError = (cause: unknown) =>
   (cause as NodeJS.ErrnoException | undefined)?.code === "ENOENT";

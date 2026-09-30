@@ -1,3 +1,4 @@
+import { errorMessage } from "@glade/shared/text/errorMessages";
 import {
   NULL_BOOT_OWNERSHIP,
   orphanedBootUdids,
@@ -825,10 +826,4 @@ export class DeviceManager {
       }
     }
   }
-}
-
-function errorMessage(error: unknown): string {
-  if (error instanceof DeviceBackendError) return error.message;
-  if (error instanceof Error) return error.message;
-  return String(error);
 }

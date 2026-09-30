@@ -1,3 +1,4 @@
+import { asRecord } from "@glade/shared/transport/recordValues";
 import fs from "node:fs/promises";
 import path from "node:path";
 
@@ -32,16 +33,12 @@ class CodexProjectImportError extends Error {
   }
 }
 
-function object(value: unknown): Row {
-  return value !== null && typeof value === "object" && !Array.isArray(value) ? (value as Row) : {};
-}
-
 function text(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value : undefined;
 }
 
 function isMissing(error: unknown): boolean {
-  return object(error).code === "ENOENT";
+  return (asRecord(error) ?? {}).code === "ENOENT";
 }
 
 async function realpathIfPresent(value: string): Promise<string> {
@@ -69,8 +66,10 @@ export async function resolveCodexProjectImportHome(
 
 async function readDesktopState(home: string): Promise<Row> {
   try {
-    return object(
-      JSON.parse(await fs.readFile(path.join(home, ".codex-global-state.json"), "utf8")),
+    return (
+      asRecord(
+        JSON.parse(await fs.readFile(path.join(home, ".codex-global-state.json"), "utf8")),
+      ) ?? {}
     );
   } catch (error) {
     if (isMissing(error)) return {};
@@ -153,10 +152,10 @@ function mergeLegacyProjects(
 ): { projects: NativeImportProject[]; legacyIds: Map<string, string> } {
   const projects = new Map(modern.map((project) => [project.id, project]));
   const legacyIds = new Map<string, string>();
-  const mappings = object(state["app-server-project-id-by-legacy-project-id-by-host"]);
-  const hostMappings = homes.map((home) => object(mappings[`local:${home}`]));
-  for (const [key, value] of Object.entries(object(state["local-projects"]))) {
-    const legacy = object(value);
+  const mappings = asRecord(state["app-server-project-id-by-legacy-project-id-by-host"]) ?? {};
+  const hostMappings = homes.map((home) => asRecord(mappings[`local:${home}`]) ?? {});
+  for (const [key, value] of Object.entries(asRecord(state["local-projects"]) ?? {})) {
+    const legacy = asRecord(value) ?? {};
     const legacyId = text(legacy.id) ?? key;
     const mappedId = hostMappings
       .map((mapping) => text(mapping[legacyId]))
@@ -179,7 +178,7 @@ function isInternalThread(row: Row, children: Set<unknown>): boolean {
   if (/^sub_?agent/i.test(source) || /^(sub_?agent|guardian)/i.test(threadSource)) return true;
   if (!source.startsWith("{")) return false;
   try {
-    return object(JSON.parse(source)).subagent !== undefined;
+    return (asRecord(JSON.parse(source)) ?? {}).subagent !== undefined;
   } catch {
     return false;
   }
@@ -239,7 +238,7 @@ function readDatabaseSessions(
       : [],
   );
   const projectIds = new Set(projects.map((project) => project.id));
-  const assignments = object(state["thread-project-assignments"]);
+  const assignments = asRecord(state["thread-project-assignments"]) ?? {};
   const projectless = new Set(
     Array.isArray(state["projectless-thread-ids"]) ? state["projectless-thread-ids"] : [],
   );
@@ -247,7 +246,7 @@ function readDatabaseSessions(
     const id = text(row.id);
     const cwd = text(row.cwd);
     if (!id || !cwd || isInternalThread(row, children)) return [];
-    const assignment = object(assignments[id]);
+    const assignment = asRecord(assignments[id]) ?? {};
     const legacyId =
       !projectless.has(id) && assignment.projectKind === "local"
         ? text(assignment.projectId)

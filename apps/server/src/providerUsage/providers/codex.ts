@@ -1,3 +1,4 @@
+import { asObjectRecord } from "@glade/shared/transport/recordValues";
 import nodePath from "node:path";
 
 import type {
@@ -20,7 +21,6 @@ import {
 import { fetchJson, isAuthFailureStatus } from "../http";
 import {
   asFiniteNumber,
-  asRecord,
   asString,
   buildSnapshot,
   clampPercent,
@@ -87,7 +87,7 @@ function readCodexAuthRecord(
   if (!record) {
     return null;
   }
-  const tokens = asRecord(record.tokens);
+  const tokens = asObjectRecord(record.tokens);
   const accessToken = asString(tokens?.access_token);
   if (accessToken) {
     return {
@@ -108,8 +108,8 @@ async function reloadCodexAuth(
 ): Promise<CodexOAuthState | null> {
   const record =
     source.kind === "file"
-      ? asRecord(await readJsonFile(source.path))
-      : asRecord(
+      ? asObjectRecord(await readJsonFile(source.path))
+      : asObjectRecord(
           decodeKeychainJson(
             (await readKeychainPassword({ service: KEYCHAIN_SERVICE, platform: ctx.platform })) ??
               "",
@@ -123,7 +123,10 @@ async function resolveCodexAuth(ctx: ProviderUsageContext): Promise<CodexAuth | 
   let sawApiKeyOnly = false;
 
   for (const path of authFilePaths(ctx)) {
-    const parsed = readCodexAuthRecord(asRecord(await readJsonFile(path)), { kind: "file", path });
+    const parsed = readCodexAuthRecord(asObjectRecord(await readJsonFile(path)), {
+      kind: "file",
+      path,
+    });
     if (parsed && parsed !== "api-key-only") {
       return parsed;
     }
@@ -137,7 +140,7 @@ async function resolveCodexAuth(ctx: ProviderUsageContext): Promise<CodexAuth | 
     platform: ctx.platform,
   });
   if (keychain) {
-    const parsed = readCodexAuthRecord(asRecord(decodeKeychainJson(keychain)), {
+    const parsed = readCodexAuthRecord(asObjectRecord(decodeKeychainJson(keychain)), {
       kind: "keychain",
     });
     if (parsed && parsed !== "api-key-only") {
@@ -194,7 +197,7 @@ async function persistRotatedCodexAuth(
   nowMs: number,
 ): Promise<CodexOAuthState> {
   const tokens: Record<string, unknown> = {
-    ...asRecord(state.record.tokens),
+    ...asObjectRecord(state.record.tokens),
     access_token: refreshed.accessToken,
   };
   if (refreshed.refreshToken) {
@@ -318,9 +321,9 @@ function parseCodexUsage(input: {
   headers?: Record<string, string>;
   nowMs: number;
 }) {
-  const root = asRecord(input.json);
+  const root = asObjectRecord(input.json);
   const headers = input.headers ?? {};
-  const rateLimit = asRecord(root?.rate_limit);
+  const rateLimit = asObjectRecord(root?.rate_limit);
   const limits: ServerProviderUsageLimit[] = [];
   const usageLines: ServerProviderUsageLine[] = [];
 
@@ -330,7 +333,7 @@ function parseCodexUsage(input: {
     headerName: string,
     fallbackDurationMins: number,
   ): void => {
-    const window = asRecord(windowValue);
+    const window = asObjectRecord(windowValue);
     if (!window) {
       return;
     }
@@ -355,7 +358,7 @@ function parseCodexUsage(input: {
   pushWindow("5h", rateLimit?.primary_window, "x-codex-primary-used-percent", 300);
   pushWindow("Weekly", rateLimit?.secondary_window, "x-codex-secondary-used-percent", 10_080);
 
-  const credits = asRecord(root?.credits);
+  const credits = asObjectRecord(root?.credits);
   const balance =
     asFiniteNumber(headers["x-codex-credits-balance"]) ?? asFiniteNumber(credits?.balance);
   if (balance !== undefined && (credits?.has_credits !== false || balance > 0)) {

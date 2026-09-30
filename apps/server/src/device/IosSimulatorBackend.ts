@@ -1,3 +1,4 @@
+import { errorMessage } from "@glade/shared/text/errorMessages";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { constants as fsConstants, existsSync } from "node:fs";
 import { access, mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
@@ -711,7 +712,7 @@ export class IosSimulatorBackend implements DeviceBackend {
       ]);
     } catch (cause) {
       this.reservedRecordingPaths.delete(outputPath);
-      throw new DeviceBackendError(`Could not start simulator recording: ${errorText(cause)}`, {
+      throw new DeviceBackendError(`Could not start simulator recording: ${errorMessage(cause)}`, {
         cause,
       });
     }
@@ -747,7 +748,7 @@ export class IosSimulatorBackend implements DeviceBackend {
       this.reservedRecordingPaths.delete(outputPath);
       await rm(outputPath, { force: true }).catch(() => undefined);
       if (cause instanceof DeviceBackendError) throw cause;
-      throw new DeviceBackendError(`Could not start simulator recording: ${errorText(cause)}`, {
+      throw new DeviceBackendError(`Could not start simulator recording: ${errorMessage(cause)}`, {
         cause,
       });
     }
@@ -796,7 +797,7 @@ export class IosSimulatorBackend implements DeviceBackend {
       const onError = (cause: Error): void => {
         finish({
           error: new DeviceBackendError(
-            `Could not start simulator recording: ${errorText(cause)}`,
+            `Could not start simulator recording: ${errorMessage(cause)}`,
             { cause },
           ),
         });
@@ -1204,10 +1205,6 @@ function slugDeviceName(name: string): string {
       .replace(/[^a-z0-9]+/gu, "-")
       .replace(/^-+|-+$/gu, "") || "device"
   );
-}
-
-function errorText(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 function isMissingPathError(error: unknown): boolean {

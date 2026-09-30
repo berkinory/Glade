@@ -1,3 +1,4 @@
+import { asObjectRecord } from "@glade/shared/transport/recordValues";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { createServer, type Server, type Socket } from "node:net";
@@ -73,10 +74,6 @@ export interface HelperClientOptions {
 
 function disposedError(): DeviceHelperError {
   return new DeviceHelperError("helper_disposed", "Device helper was shut down");
-}
-
-function asRecord(value: unknown): Record<string, unknown> {
-  return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {};
 }
 
 // The error names both the offending value and the valid range, because the overwhelmingly common
@@ -244,8 +241,8 @@ export class HelperClient {
     // Cleared before the request: a failed re-attach must not leave the caller believing the previous,
     // now-dead attachment is still good.
     this.attachment = null;
-    const result = asRecord(await this.request(HELPER_METHODS.attach, { udid }));
-    const capabilities = asRecord(result.capabilities);
+    const result = asObjectRecord(await this.request(HELPER_METHODS.attach, { udid })) ?? {};
+    const capabilities = asObjectRecord(result.capabilities) ?? {};
     const pixelWidth = readNumber(result, "pixelWidth", 0);
     const pixelHeight = readNumber(result, "pixelHeight", 0);
     const scale = readNumber(result, "scale", 3);
@@ -418,11 +415,13 @@ export class HelperClient {
     } catch {
       return;
     }
-    const record = asRecord(message);
+    const record = asObjectRecord(message) ?? {};
 
     if (typeof record.id !== "number") return;
     const error =
-      record.error === undefined || record.error === null ? undefined : asRecord(record.error);
+      record.error === undefined || record.error === null
+        ? undefined
+        : (asObjectRecord(record.error) ?? {});
     this.requestRegistry?.handleResponse({
       id: record.id,
       result: record.result ?? null,

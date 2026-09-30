@@ -1,3 +1,4 @@
+import { asRecord } from "../transport/recordValues";
 const DELIVERY_PATHS = ["ax", "pixel", "semantic", "keyboard", "menu"] as const;
 const ACTUATORS = [
   "ax_press",
@@ -39,11 +40,6 @@ export interface CuaActionDiagnostics {
   readonly prior_window_id?: number;
 }
 
-const record = (value: unknown): Record<string, unknown> | undefined =>
-  value !== null && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : undefined;
-
 const member = <T extends string>(value: unknown, allowed: readonly T[]): T | undefined =>
   typeof value === "string" && allowed.includes(value as T) ? (value as T) : undefined;
 
@@ -53,7 +49,7 @@ const integer = (value: unknown, min: number, max: number): number | undefined =
     : undefined;
 
 export function parseCuaActionDiagnostics(value: unknown): CuaActionDiagnostics | undefined {
-  const source = record(record(value)?.diagnostics);
+  const source = asRecord((asRecord(value) ?? undefined)?.diagnostics) ?? undefined;
   if (!source) return undefined;
   const fields = {
     delivery_path: member(source.delivery_path, DELIVERY_PATHS),

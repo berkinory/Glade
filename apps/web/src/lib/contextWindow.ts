@@ -1,3 +1,4 @@
+import { asObjectRecord } from "@glade/shared/transport/recordValues";
 import { ClaudeCacheObservation } from "@glade/contracts/provider/claudeCache";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { type OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
@@ -10,10 +11,6 @@ const decodeClaudeCacheObservation = Schema.decodeUnknownOption(ClaudeCacheObser
 function readClaudeCacheObservation(value: unknown): ClaudeCacheObservation | null {
   const decoded = decodeClaudeCacheObservation(value);
   return decoded._tag === "Some" ? decoded.value : null;
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
 }
 
 function asFiniteNumber(value: unknown): number | null {
@@ -74,7 +71,7 @@ export function isCompletedContextCompaction(activity: OrchestrationThreadActivi
   if (activity.kind !== "context-compaction") {
     return false;
   }
-  const payload = asRecord(activity.payload);
+  const payload = asObjectRecord(activity.payload);
   return payload?.state === "compacted" || payload?.status === "completed";
 }
 
@@ -97,7 +94,7 @@ export function deriveLatestContextWindowState(
       continue;
     }
 
-    const payload = asRecord(activity.payload);
+    const payload = asObjectRecord(activity.payload);
     const rawUsedTokens = asFiniteNumber(payload?.usedTokens);
     const usedTokens = rawUsedTokens ?? 0;
     const payloadUsedPercent = asContextWindowPercent(payload?.usedPercent);
@@ -158,7 +155,7 @@ export function deriveAppliedContextWindowSelection(
   activities: ReadonlyArray<OrchestrationThreadActivity>,
 ): string | null {
   const activity = activities.findLast((item) => item.kind === "context-window.configured");
-  const payload = asRecord(activity?.payload);
+  const payload = asObjectRecord(activity?.payload);
   if (payload?.cleared === true) return "auto";
   const maxTokens = asFiniteNumber(payload?.maxTokens);
   return (
@@ -208,7 +205,7 @@ export function deriveCumulativeCostUsd(
   let foundTurnDelta = false;
   for (const activity of activities) {
     if (activity.kind !== "turn.completed") continue;
-    const payload = asRecord(activity.payload);
+    const payload = asObjectRecord(activity.payload);
     const cumulativeCost = asFiniteNumber(payload?.cumulativeCostUsd);
     if (cumulativeCost !== null) {
       latestCumulative = cumulativeCost;

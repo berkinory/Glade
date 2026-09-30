@@ -1,5 +1,6 @@
+import { isRecord } from "@glade/shared/transport/recordValues";
 import type { ProjectId, TurnId } from "@glade/contracts/core/baseSchemas";
-import { isPlainObject, sanitizeStringKeyedRecord } from "./persistedRecord";
+import { sanitizeStringKeyedRecord } from "./persistedRecord";
 
 const RIGHT_DOCK_PANE_KINDS = [
   "browser",
@@ -61,7 +62,7 @@ function isRightDockPaneKind(value: unknown): value is RightDockPaneKind {
 }
 
 function sanitizePersistedPane(value: unknown): RightDockPane | null {
-  if (!isPlainObject(value)) {
+  if (!isRecord(value)) {
     return null;
   }
   const candidate = value;
@@ -105,7 +106,7 @@ function sanitizePersistedPane(value: unknown): RightDockPane | null {
 }
 
 function sanitizeRightDockThreadState(value: unknown): RightDockThreadState {
-  if (!isPlainObject(value)) {
+  if (!isRecord(value)) {
     return createDefaultRightDockState();
   }
   const candidate = value;

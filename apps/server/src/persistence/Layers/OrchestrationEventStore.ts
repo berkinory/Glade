@@ -1,3 +1,4 @@
+import { isRecord } from "@glade/shared/transport/recordValues";
 import {
   CommandId,
   EventId,
@@ -106,10 +107,6 @@ type ParsedPersistedEventRow = Omit<RawPersistedEventRow, "payloadJson" | "metad
   readonly payload: unknown;
   readonly metadata: unknown;
 };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function readTrimmedString(record: Record<string, unknown>, key: string): string | undefined {
   const value = record[key];

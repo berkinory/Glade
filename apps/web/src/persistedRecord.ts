@@ -1,6 +1,4 @@
-export function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
+import { isRecord } from "@glade/shared/transport/recordValues";
 
 // Keys that must never be copied from untrusted persisted input: assigning `__proto__` (and
 // friends) via bracket notation can mutate the object prototype instead of creating a data key
@@ -15,7 +13,7 @@ export function sanitizeStringKeyedRecord<T>(
   value: unknown,
   sanitizeEntry: (rawEntry: unknown) => T | null,
 ): Record<string, T> {
-  if (!isPlainObject(value)) {
+  if (!isRecord(value)) {
     return {};
   }
 

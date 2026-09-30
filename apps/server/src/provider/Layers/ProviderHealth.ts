@@ -1,3 +1,4 @@
+import { asRecord } from "@glade/shared/transport/recordValues";
 import * as OS from "node:os";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ServerSettings } from "@glade/contracts/settings/settings";
@@ -201,16 +202,11 @@ const AUTH_METHOD_CONTAINER_KEYS = ["auth", "account", "session"] as const;
 const asNonEmptyString = (v: unknown): Option.Option<string> =>
   typeof v === "string" && v.length > 0 ? Option.some(v) : Option.none();
 
-const asRecord = (v: unknown): Option.Option<Record<string, unknown>> =>
-  typeof v === "object" && v !== null && !Array.isArray(v)
-    ? Option.some(v as Record<string, unknown>)
-    : Option.none();
-
 function findSubscriptionType(value: unknown): Option.Option<string> {
   if (Array.isArray(value)) {
     return Option.firstSomeOf(value.map(findSubscriptionType));
   }
-  return asRecord(value).pipe(
+  return Option.fromNullishOr(asRecord(value)).pipe(
     Option.flatMap((record) => {
       const direct = Option.firstSomeOf(
         SUBSCRIPTION_TYPE_KEYS.map((key) => asNonEmptyString(record[key])),
@@ -218,7 +214,7 @@ function findSubscriptionType(value: unknown): Option.Option<string> {
       if (Option.isSome(direct)) return direct;
       return Option.firstSomeOf(
         SUBSCRIPTION_CONTAINER_KEYS.map((key) =>
-          asRecord(record[key]).pipe(Option.flatMap(findSubscriptionType)),
+          Option.fromNullishOr(asRecord(record[key])).pipe(Option.flatMap(findSubscriptionType)),
         ),
       );
     }),
@@ -229,7 +225,7 @@ function findAuthMethodDeep(value: unknown): Option.Option<string> {
   if (Array.isArray(value)) {
     return Option.firstSomeOf(value.map(findAuthMethodDeep));
   }
-  return asRecord(value).pipe(
+  return Option.fromNullishOr(asRecord(value)).pipe(
     Option.flatMap((record) => {
       const direct = Option.firstSomeOf(
         AUTH_METHOD_KEYS.map((key) => asNonEmptyString(record[key])),
@@ -237,7 +233,7 @@ function findAuthMethodDeep(value: unknown): Option.Option<string> {
       if (Option.isSome(direct)) return direct;
       return Option.firstSomeOf(
         AUTH_METHOD_CONTAINER_KEYS.map((key) =>
-          asRecord(record[key]).pipe(Option.flatMap(findAuthMethodDeep)),
+          Option.fromNullishOr(asRecord(record[key])).pipe(Option.flatMap(findAuthMethodDeep)),
         ),
       );
     }),
@@ -314,7 +310,7 @@ function extractCodexAccountTypeFromOutput(result: CommandResult): string | unde
       }
       return undefined;
     }
-    const record = Option.getOrUndefined(asRecord(value));
+    const record = Option.getOrUndefined(Option.fromNullishOr(asRecord(value)));
     if (!record) return undefined;
     const direct = Option.getOrUndefined(
       Option.firstSomeOf(["type", "accountType"].map((key) => asNonEmptyString(record[key]))),

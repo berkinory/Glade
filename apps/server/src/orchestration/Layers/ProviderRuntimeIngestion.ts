@@ -1,3 +1,4 @@
+import { asRecord, isRecord } from "@glade/shared/transport/recordValues";
 import { Schema } from "effect";
 import type { TaggedFailure } from "../../platform/operationError.ts";
 import {
@@ -385,8 +386,8 @@ function mergeBufferedToolOutputData(
   data: unknown,
   bufferedOutput: BufferedToolOutput,
 ): Record<string, unknown> {
-  const baseData = isJsonObject(data) ? data : {};
-  const existingRawOutput = isJsonObject(baseData.rawOutput)
+  const baseData = isRecord(data) ? data : {};
+  const existingRawOutput = isRecord(baseData.rawOutput)
     ? baseData.rawOutput
     : typeof baseData.rawOutput === "string" && baseData.rawOutput.trim().length > 0
       ? { output: baseData.rawOutput }
@@ -427,10 +428,6 @@ function withBufferedToolOutputData(
   } as ProviderRuntimeEvent;
 }
 
-function isJsonObject(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
 function normalizeNonEmptyString(value: string | undefined): string | undefined {
   return value?.trim() || undefined;
 }
@@ -458,10 +455,6 @@ function asString(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
-function asObject(value: unknown): Record<string, unknown> | undefined {
-  return isJsonObject(value) ? value : undefined;
-}
-
 function collectPersistedGeneratedImagePaths(
   records: ReadonlyArray<ProjectionGeneratedImageActivityRecord>,
 ): string[] {
@@ -478,7 +471,7 @@ function collectPersistedGeneratedImagePaths(
     if (record.kind !== "tool.completed") {
       continue;
     }
-    const payload = asObject(record.payload);
+    const payload = asRecord(record.payload) ?? undefined;
     if (payload?.itemType !== "image_generation") {
       continue;
     }
@@ -503,7 +496,7 @@ interface SubagentIdentity {
 
 function extractCollabPayload(event: ProviderRuntimeEvent): Record<string, unknown> | undefined {
   const payload = runtimePayloadRecord(event);
-  return asObject(payload?.data);
+  return asRecord(payload?.data) ?? undefined;
 }
 
 function extractSubagentIdentity(
@@ -511,7 +504,7 @@ function extractSubagentIdentity(
   providerThreadId: string,
 ): SubagentIdentity | undefined {
   const collabPayload = extractCollabPayload(event);
-  const item = asObject(collabPayload?.item) ?? collabPayload;
+  const item = asRecord(collabPayload?.item) ?? collabPayload;
   if (!item) {
     return undefined;
   }
@@ -1914,7 +1907,7 @@ const make = Effect.gen(function* () {
         });
 
       const collabPayload = extractCollabPayload(event);
-      const collabItem = asObject(collabPayload?.item) ?? collabPayload;
+      const collabItem = asRecord(collabPayload?.item) ?? collabPayload;
       const isCollabToolEvent =
         (event.type === "item.started" ||
           event.type === "item.updated" ||

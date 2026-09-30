@@ -1,3 +1,4 @@
+import { asObjectRecord } from "@glade/shared/transport/recordValues";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 
 import type { ProviderRateLimit, RateLimitWindow } from "~/lib/rateLimits";
@@ -29,10 +30,6 @@ export interface OpenUsageUsageLine {
   label: string;
   value: string;
   subtitle?: string;
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
 }
 
 function asFiniteNumber(value: unknown): number | undefined {
@@ -106,7 +103,7 @@ export function normalizeOpenUsageSnapshot(
   snapshot: unknown,
   preferredProvider?: ProviderKind | null,
 ): ProviderRateLimit | null {
-  const parsed = asRecord(snapshot) as OpenUsageSnapshot | null;
+  const parsed = asObjectRecord(snapshot) as OpenUsageSnapshot | null;
   if (!parsed) return null;
 
   const provider =
@@ -116,7 +113,7 @@ export function normalizeOpenUsageSnapshot(
 
   const lines = Array.isArray(parsed.lines) ? parsed.lines : [];
   const limits = lines
-    .map((line) => normalizeProgressLine(asRecord(line) ?? {}))
+    .map((line) => normalizeProgressLine(asObjectRecord(line) ?? {}))
     .filter((line): line is RateLimitWindow => line !== null);
 
   if (limits.length === 0) return null;
@@ -129,11 +126,11 @@ export function normalizeOpenUsageSnapshot(
 }
 
 export function normalizeOpenUsageUsageLines(snapshot: unknown): OpenUsageUsageLine[] {
-  const parsed = asRecord(snapshot) as OpenUsageSnapshot | null;
+  const parsed = asObjectRecord(snapshot) as OpenUsageSnapshot | null;
   if (!parsed) return [];
 
   const lines = Array.isArray(parsed.lines) ? parsed.lines : [];
   return lines
-    .map((line) => normalizeTextLine(asRecord(line) ?? {}))
+    .map((line) => normalizeTextLine(asObjectRecord(line) ?? {}))
     .filter((line): line is OpenUsageUsageLine => line !== null);
 }

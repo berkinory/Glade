@@ -1,3 +1,4 @@
+import { asObjectRecord } from "@glade/shared/transport/recordValues";
 import {
   makeMessageTextChunks,
   encodeMessageTextFallback,
@@ -126,26 +127,20 @@ interface AttachmentSideEffects {
   readonly prunedThreadRelativePaths: Map<string, Set<string>>;
 }
 
-function payloadRecord(payload: unknown): Record<string, unknown> | undefined {
-  return typeof payload === "object" && payload !== null
-    ? (payload as Record<string, unknown>)
-    : undefined;
-}
-
 function payloadNonEmptyString(payload: unknown, key: string): string | null {
-  const value = payloadRecord(payload)?.[key];
+  const value = (asObjectRecord(payload) ?? undefined)?.[key];
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
 function extractActivityRequestId(payload: unknown): ApprovalRequestId | null {
-  const requestId = payloadRecord(payload)?.requestId;
+  const requestId = (asObjectRecord(payload) ?? undefined)?.requestId;
   return typeof requestId === "string" ? ApprovalRequestId.makeUnsafe(requestId) : null;
 }
 
 function extractApprovalFailureSettlementStatus(
   payload: unknown,
 ): "retryable" | "uncertain" | null {
-  const status = payloadRecord(payload)?.settlementStatus;
+  const status = (asObjectRecord(payload) ?? undefined)?.settlementStatus;
   return status === "retryable" || status === "uncertain" ? status : null;
 }
 
@@ -1662,7 +1657,9 @@ const makeOrchestrationProjectionPipeline = Effect.gen(function* () {
               return;
             }
             const resolvedDecisionRaw =
-              interactionKind === "approval" ? payloadRecord(activity.payload)?.decision : null;
+              interactionKind === "approval"
+                ? (asObjectRecord(activity.payload) ?? undefined)?.decision
+                : null;
             nextRow = {
               interactionKind,
               requestId,

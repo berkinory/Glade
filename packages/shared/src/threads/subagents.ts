@@ -1,3 +1,4 @@
+import { asRecord } from "../transport/recordValues";
 export interface ParsedSubagentReceiverAgent {
   providerThreadId: string;
   agentId?: string | undefined;
@@ -50,12 +51,6 @@ export function isWorkerTierSubagentRole(role: string | null | undefined): boole
 
 function sanitizeSubagentRole(role: string | undefined): string | undefined {
   return role !== undefined && isWorkerTierSubagentRole(role) ? undefined : role;
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
 }
 
 function asArray(value: unknown): unknown[] | null {

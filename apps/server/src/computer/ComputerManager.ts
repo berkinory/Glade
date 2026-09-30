@@ -1,3 +1,4 @@
+import { errorMessage } from "@glade/shared/text/errorMessages";
 import { dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { ComputerSpaceBroker, ComputerSpaceError } from "./ComputerSpaceBroker.ts";
@@ -4495,13 +4496,6 @@ function hasLabelFields(target: ComputerTarget): boolean {
 
 function hasSemanticFields(target: ComputerTarget): boolean {
   return hasLabelFields(target) || target.windowId !== undefined;
-}
-
-function errorMessage(error: unknown): string {
-  if (error instanceof ComputerBackendError || error instanceof ComputerTargetError) {
-    return error.message;
-  }
-  return error instanceof Error ? error.message : String(error);
 }
 
 function withControlEnableTimeout<A>(action: Promise<A> | undefined): Promise<A | undefined> {

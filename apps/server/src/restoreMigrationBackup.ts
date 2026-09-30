@@ -1,3 +1,4 @@
+import { errorMessage } from "@glade/shared/text/errorMessages";
 import * as path from "node:path";
 
 import { Effect } from "effect";
@@ -14,10 +15,6 @@ const STOP_PROCESSES_WARNING =
   "WARNING: Stop every Glade process before restoring a migration backup.";
 
 type RestoreMigrationBackupOutput = Pick<Console, "error" | "log" | "warn">;
-
-function errorMessage(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
-}
 
 export async function runRestoreMigrationBackupCli(
   args: ReadonlyArray<string>,

@@ -1,3 +1,4 @@
+import { asRecord } from "@glade/shared/transport/recordValues";
 import {
   DEVICE_CAPABILITY_LABELS,
   type DeviceAvailability,
@@ -20,11 +21,6 @@ export interface HelperProbeResult {
 
   readonly error: string | undefined;
 }
-
-const asRecord = (value: unknown): Record<string, unknown> | null =>
-  typeof value === "object" && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
 
 const asNonEmptyString = (value: unknown): string | undefined =>
   typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;

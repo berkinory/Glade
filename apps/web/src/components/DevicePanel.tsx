@@ -72,7 +72,7 @@ import { toastManager } from "./ui/toast";
 
 const DEVICE_SETUP_POLL_INTERVAL_MS = 5_000;
 
-function errorMessage(error: unknown, fallback: string): string {
+function describeDeviceError(error: unknown, fallback: string): string {
   return error instanceof Error && error.message.length > 0 ? error.message : fallback;
 }
 
@@ -181,7 +181,7 @@ export default function DevicePanel(props: {
       toastManager.add({
         type: "error",
         title: failureTitle,
-        description: errorMessage(error, "The simulator did not respond."),
+        description: describeDeviceError(error, "The simulator did not respond."),
       });
     } finally {
       setBusy(false);
@@ -313,7 +313,7 @@ export default function DevicePanel(props: {
           toastManager.add({
             type: "error",
             title: "Could not start recording",
-            description: errorMessage(error, "The simulator did not start recording."),
+            description: describeDeviceError(error, "The simulator did not start recording."),
           });
         });
       return;
@@ -336,7 +336,7 @@ export default function DevicePanel(props: {
         toastManager.add({
           type: "error",
           title: "Could not stop recording",
-          description: errorMessage(error, "The recording may be incomplete."),
+          description: describeDeviceError(error, "The recording may be incomplete."),
         });
       });
   }, [attachedDevice, recording]);
@@ -471,7 +471,7 @@ export default function DevicePanel(props: {
         toastManager.add({
           type: "error",
           title: "The simulator did not accept that input",
-          description: errorMessage(error, "The input could not be delivered."),
+          description: describeDeviceError(error, "The input could not be delivered."),
         });
       });
     },

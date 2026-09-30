@@ -8,10 +8,6 @@ import type {
 } from "@glade/contracts/server/server";
 import { providerUsageNeedsAuthDetail } from "@glade/shared/provider/providerUsage";
 
-export function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
-}
-
 export function asFiniteNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;

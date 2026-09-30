@@ -1,3 +1,4 @@
+import { asObjectRecord } from "@glade/shared/transport/recordValues";
 import { execFile } from "node:child_process";
 import nodePath from "node:path";
 import { promisify } from "node:util";
@@ -20,7 +21,6 @@ import {
 import { fetchJson, isAuthFailureStatus, isRateLimitStatus, parseRetryAfterMs } from "../http";
 import {
   asFiniteNumber,
-  asRecord,
   asString,
   buildSnapshot,
   clampPercent,
@@ -76,7 +76,7 @@ function readClaudeCreds(
   record: Record<string, unknown> | null,
   source: ClaudeCredSource,
 ): ClaudeCreds | null {
-  const oauth = asRecord(record?.claudeAiOauth);
+  const oauth = asObjectRecord(record?.claudeAiOauth);
   const accessToken = asString(oauth?.accessToken);
   if (!accessToken) {
     return null;
@@ -101,7 +101,7 @@ async function resolveClaudeCredCandidates(ctx: ProviderUsageContext): Promise<C
   paths.push(nodePath.join(ctx.homeDir, ".claude", ".credentials.json"));
 
   for (const path of paths) {
-    const record = asRecord(await readJsonFile(path));
+    const record = asObjectRecord(await readJsonFile(path));
     const creds = readClaudeCreds(record, { kind: "file", path });
     if (creds) {
       candidates.push(creds);
@@ -124,7 +124,9 @@ async function resolveClaudeCredCandidates(ctx: ProviderUsageContext): Promise<C
       platform: ctx.platform,
     }));
   if (keychain) {
-    const creds = readClaudeCreds(asRecord(decodeKeychainJson(keychain)), { kind: "keychain" });
+    const creds = readClaudeCreds(asObjectRecord(decodeKeychainJson(keychain)), {
+      kind: "keychain",
+    });
     if (creds) {
       candidates.push(creds);
     }
@@ -229,7 +231,7 @@ async function nudgeClaudeCliAuthRefresh(ctx: ProviderUsageContext): Promise<boo
 }
 
 function parseClaudeUsage(input: { json: unknown; nowMs: number; planName?: string }) {
-  const root = asRecord(input.json);
+  const root = asObjectRecord(input.json);
   const limits: ServerProviderUsageLimit[] = [];
   const usageLines: ServerProviderUsageLine[] = [];
 
@@ -253,7 +255,7 @@ function parseClaudeUsage(input: { json: unknown; nowMs: number; planName?: stri
   };
 
   const pushWindow = (label: string, windowValue: unknown, windowDurationMins: number): void => {
-    const window = asRecord(windowValue);
+    const window = asObjectRecord(windowValue);
     if (!window) {
       return;
     }
@@ -265,11 +267,13 @@ function parseClaudeUsage(input: { json: unknown; nowMs: number; planName?: stri
 
   const scopedLabels = new Set<string>();
   for (const entry of Array.isArray(root?.limits) ? root.limits : []) {
-    const scoped = asRecord(entry);
+    const scoped = asObjectRecord(entry);
     if (scoped?.kind !== "weekly_scoped") {
       continue;
     }
-    const label = asString(asRecord(asRecord(scoped.scope)?.model)?.display_name)?.trim();
+    const label = asString(
+      asObjectRecord(asObjectRecord(scoped.scope)?.model)?.display_name,
+    )?.trim();
     if (!label || scopedLabels.has(label)) {
       continue;
     }
@@ -282,7 +286,7 @@ function parseClaudeUsage(input: { json: unknown; nowMs: number; planName?: stri
     }
   }
 
-  const extra = asRecord(root?.extra_usage);
+  const extra = asObjectRecord(root?.extra_usage);
   if (extra && extra.is_enabled !== false) {
     const usedCredits = asFiniteNumber(extra.used_credits);
     const monthlyLimit = asFiniteNumber(extra.monthly_limit);

@@ -1,3 +1,4 @@
+import { asObjectRecord } from "@glade/shared/transport/recordValues";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
 
@@ -127,10 +128,6 @@ interface TaskSnapshot {
   finalAgents: WorkflowFinalAgent[] | null;
 }
 
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
-}
-
 function asString(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
@@ -139,7 +136,7 @@ function readUsage(payload: Record<string, unknown>): {
   totalTokens: number | null;
   durationMs: number | null;
 } {
-  const usage = asRecord(payload.usage);
+  const usage = asObjectRecord(payload.usage);
   return {
     totalTokens: usage && typeof usage.total_tokens === "number" ? usage.total_tokens : null,
     durationMs: usage && typeof usage.duration_ms === "number" ? usage.duration_ms : null,
@@ -151,7 +148,7 @@ function readPhases(value: unknown): TaskSnapshot["phases"] {
     return null;
   }
   const phases = value.flatMap((entry) => {
-    const record = asRecord(entry);
+    const record = asObjectRecord(entry);
     const title = record ? asString(record.title) : null;
     return record && title ? [{ title, detail: asString(record.detail) }] : [];
   });
@@ -159,7 +156,7 @@ function readPhases(value: unknown): TaskSnapshot["phases"] {
 }
 
 function readAgentPhases(value: unknown): Record<string, string> | null {
-  const record = asRecord(value);
+  const record = asObjectRecord(value);
   if (!record) {
     return null;
   }
@@ -174,13 +171,13 @@ function asFiniteNumber(value: unknown): number | null {
 }
 
 function readAgentPlans(value: unknown): Record<string, WorkflowAgentPlanEntry> | null {
-  const record = asRecord(value);
+  const record = asObjectRecord(value);
   if (!record) {
     return null;
   }
   const entries = Object.entries(record).flatMap(
     ([label, plan]): Array<[string, WorkflowAgentPlanEntry]> => {
-      const planRecord = asRecord(plan);
+      const planRecord = asObjectRecord(plan);
       if (!planRecord) {
         return [];
       }
@@ -200,7 +197,7 @@ function readFinalAgents(value: unknown): WorkflowFinalAgent[] | null {
     return null;
   }
   const agents = value.flatMap((entry) => {
-    const record = asRecord(entry);
+    const record = asObjectRecord(entry);
     const label = record ? asString(record.label) : null;
     if (!record || !label) {
       return [];
@@ -229,7 +226,7 @@ function readLiveAgents(value: unknown): WorkflowLiveAgent[] | null {
     return null;
   }
   const agents = value.flatMap((entry): Array<WorkflowLiveAgent> => {
-    const record = asRecord(entry);
+    const record = asObjectRecord(entry);
     const agentId = record ? asString(record.agentId) : null;
     if (!record || !agentId) {
       return [];
@@ -282,7 +279,7 @@ function collectTaskSnapshots(
     ) {
       continue;
     }
-    const payload = asRecord(activity.payload);
+    const payload = asObjectRecord(activity.payload);
     const taskId = payload ? asString(payload.taskId) : null;
     if (!payload || !taskId) {
       continue;

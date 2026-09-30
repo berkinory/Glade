@@ -1,7 +1,8 @@
+import { isRecord } from "@glade/shared/transport/recordValues";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { isPlainObject, sanitizeStringKeyedRecord } from "./persistedRecord";
+import { sanitizeStringKeyedRecord } from "./persistedRecord";
 
 export interface WorkflowRunUiThreadState {
   pausedByUser: readonly string[];
@@ -65,7 +66,7 @@ function sanitizeIdList(value: unknown): string[] {
 }
 
 function sanitizeWorkflowRunUiThreadState(rawState: unknown): WorkflowRunUiThreadState | null {
-  if (!isPlainObject(rawState)) {
+  if (!isRecord(rawState)) {
     return null;
   }
   const pausedByUser = sanitizeIdList(rawState.pausedByUser);

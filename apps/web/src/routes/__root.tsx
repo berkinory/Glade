@@ -853,7 +853,7 @@ function GlobalWhatsNewSurface() {
 
 function RootRouteErrorView({ error, reset }: ErrorComponentProps) {
   const message = import.meta.env.DEV
-    ? errorMessage(error)
+    ? describeRouterError(error)
     : "Glade could not display this screen. Try again or reload the app.";
 
   return (
@@ -898,7 +898,7 @@ function RootRouteErrorView({ error, reset }: ErrorComponentProps) {
   );
 }
 
-function errorMessage(error: unknown): string {
+function describeRouterError(error: unknown): string {
   if (error instanceof Error && error.message.trim().length > 0) {
     return error.message;
   }

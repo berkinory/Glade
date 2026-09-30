@@ -18,3 +18,18 @@ Glade is a Bun/Turbo monorepo. Runtime ownership is split across the app workspa
 - Repository-level build/release/developer automation belongs in `/scripts`; app-specific automation stays in the owning workspace when it relies on local dependencies or package tasks.
 
 See [architecture.md](./architecture.md) for the runtime/data-flow overview and [provider-architecture.md](./provider-architecture.md) for provider integration boundaries.
+
+## Boundary validation
+
+`packages/shared/src/transport/recordValues.ts` owns unknown-object guards and conversions
+used at provider, RPC, browser annotation and UI payload boundaries. `isRecord` and
+`asRecord` reject arrays; `isObjectRecord` and `asObjectRecord` preserve the object
+semantics required by existing payload readers, including arrays. Callers retain their
+`null`, `undefined`, `Option` or empty-object absence policy. This small module is a
+shared validation boundary with its own contract.
+
+Historical migration validators stay with their released migration. Changing those
+validators would change the interpretation of persisted data during migration.
+Generic error-to-string conversion lives in `text/errorMessages`; automation redaction
+and router/device fallback messages remain domain policies rather than a generic
+formatter with switches.

@@ -1,3 +1,4 @@
+import { asRecord } from "@glade/shared/transport/recordValues";
 import { createHash } from "node:crypto";
 
 import {
@@ -29,12 +30,6 @@ import { ToolGuidanceCadence } from "./toolGuidanceCadence.ts";
 
 const BROWSER_TOOL_REFRESH_GUIDANCE =
   "Browser routing reminder: use browser_* for Glade's integrated browser and Computer Use for native apps or OS surfaces. Prefer WebMCP, WebAgents, site requests, and structured DOM reads before screenshots. For long or virtualized histories, scan in bounded batches, deduplicate stable item identities, preserve text/link/media order, return progress and a resumable checkpoint, and state when the true boundary cannot be proven.";
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value !== null && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
-}
 
 function hasOwn(value: Record<string, unknown>, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(value, key);

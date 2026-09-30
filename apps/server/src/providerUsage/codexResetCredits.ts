@@ -1,3 +1,4 @@
+import { asObjectRecord } from "@glade/shared/transport/recordValues";
 import type {
   CodexResetCreditOutcome,
   ServerCodexResetCredit,
@@ -10,7 +11,7 @@ import { spawnProcess } from "@glade/shared/platform/processRuntime";
 import { CodexJsonlFramer, CodexJsonlWriter } from "../codexAppServerTransport";
 import { createLogger } from "../logger";
 import { signalOwnedChildProcess } from "../platform/processTreeController";
-import { asRecord, asString, isoFromUnixMillis, isoFromUnixSeconds } from "./parse";
+import { asString, isoFromUnixMillis, isoFromUnixSeconds } from "./parse";
 
 const log = createLogger("provider-usage:codex-resets");
 const APP_SERVER_TIMEOUT_MS = 20_000;
@@ -36,12 +37,12 @@ function epochToIso(value: unknown): string | undefined {
 }
 
 function parseCodexResetCredits(json: unknown): ServerCodexResetCredits | undefined {
-  const root = asRecord(json);
+  const root = asObjectRecord(json);
   const raw =
     root?.rateLimitResetCredits ??
     root?.rate_limit_reset_credits ??
     (root?.rateLimits ? null : json);
-  const rec = asRecord(raw);
+  const rec = asObjectRecord(raw);
   if (!rec) return undefined;
   const count =
     typeof rec.availableCount === "number" && Number.isFinite(rec.availableCount)
@@ -55,7 +56,7 @@ function parseCodexResetCredits(json: unknown): ServerCodexResetCredits | undefi
     return { availableCount: count };
   }
   const credits: ServerCodexResetCredit[] = creditsRaw.flatMap((entry) => {
-    const credit = asRecord(entry);
+    const credit = asObjectRecord(entry);
     const id = asString(credit?.id);
     if (!credit || !id) return [];
     const statusRaw = asString(credit.status);
@@ -84,10 +85,10 @@ function parseCodexResetCredits(json: unknown): ServerCodexResetCredits | undefi
 }
 
 function canUseCodexResetCredit(json: unknown): boolean | undefined {
-  const root = asRecord(json);
-  const buckets = asRecord(root?.rateLimitsByLimitId);
-  const core = buckets ? asRecord(buckets.codex) : asRecord(root?.rateLimits);
-  const windows = [asRecord(core?.primary), asRecord(core?.secondary)]
+  const root = asObjectRecord(json);
+  const buckets = asObjectRecord(root?.rateLimitsByLimitId);
+  const core = buckets ? asObjectRecord(buckets.codex) : asObjectRecord(root?.rateLimits);
+  const windows = [asObjectRecord(core?.primary), asObjectRecord(core?.secondary)]
     .map((window) => window?.usedPercent)
     .filter((used): used is number => typeof used === "number" && Number.isFinite(used));
   return windows.length === 0 ? undefined : windows.some((used) => used >= 90);
@@ -137,7 +138,7 @@ async function withAppServer<T>(
     try {
       for (const line of framer.push(chunk)) {
         if (!line.trim()) continue;
-        const message = asRecord(JSON.parse(line));
+        const message = asObjectRecord(JSON.parse(line));
         if (!message) continue;
         if (typeof message.method === "string" && message.id !== undefined) {
           void writer
@@ -210,7 +211,7 @@ export async function fetchCodexResetCredits(
   try {
     return await withAppServer(input, async (request) => {
       const response = await request("account/rateLimits/read", {});
-      const accountId = asString(asRecord(response)?.accountId);
+      const accountId = asString(asObjectRecord(response)?.accountId);
       if (accountId !== input.expectedAccountId) return undefined;
       const credits = parseCodexResetCredits(response);
       return credits
@@ -244,7 +245,7 @@ export async function consumeCodexResetCredit(
   }
   const promise = withAppServer(input, async (request) => {
     const usage = await request("account/rateLimits/read", {});
-    if (asString(asRecord(usage)?.accountId) !== input.accountId) {
+    if (asString(asObjectRecord(usage)?.accountId) !== input.accountId) {
       throw new Error("The Codex account changed. Refresh usage before using a reset.");
     }
     const canUse = canUseCodexResetCredit(usage);
@@ -257,7 +258,7 @@ export async function consumeCodexResetCredit(
       idempotencyKey: input.idempotencyKey,
       ...(input.creditId ? { creditId: input.creditId } : {}),
     });
-    const outcome = asRecord(result)?.outcome;
+    const outcome = asObjectRecord(result)?.outcome;
     if (typeof outcome === "string" && RESET_OUTCOMES.has(outcome))
       return outcome as CodexResetCreditOutcome;
     throw new Error("Codex returned an unknown reset result. Retry the same attempt.");

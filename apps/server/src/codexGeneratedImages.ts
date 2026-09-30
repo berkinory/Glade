@@ -1,3 +1,4 @@
+import { asRecord } from "@glade/shared/transport/recordValues";
 import path from "node:path";
 
 import {
@@ -25,12 +26,6 @@ const IMAGE_CALL_ID_KEYS = ["call_id", "callId", "itemId", "item_id", "id"] as c
 export interface CodexGeneratedImageReference {
   readonly path: string;
   readonly callId?: string;
-}
-
-function asObject(value: unknown): Record<string, unknown> | undefined {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : undefined;
 }
 
 function asString(value: unknown): string | undefined {
@@ -113,7 +108,7 @@ function annotateCodexGeneratedImagePayload(input: {
   readonly threadId: ThreadId | string | undefined;
   readonly codexHomePath?: string;
 }): unknown {
-  const item = asObject(input.value);
+  const item = asRecord(input.value) ?? undefined;
   if (!item || !isCodexGeneratedImageItemType(item.type ?? item.kind)) {
     return input.value;
   }
@@ -149,7 +144,7 @@ export function sanitizeNestedCodexGeneratedImagePayloads(input: {
   readonly codexHomePath?: string;
 }): unknown {
   const annotated = annotateCodexGeneratedImagePayload(input);
-  const record = asObject(annotated);
+  const record = asRecord(annotated) ?? undefined;
   if (!record) {
     return annotated;
   }
@@ -158,7 +153,7 @@ export function sanitizeNestedCodexGeneratedImagePayloads(input: {
   let hasOverrides = false;
   for (const key of NESTED_PAYLOAD_KEYS) {
     const nested = record[key];
-    if (!asObject(nested)) {
+    if (!(asRecord(nested) ?? undefined)) {
       continue;
     }
     const sanitized = sanitizeNestedCodexGeneratedImagePayloads({
@@ -185,7 +180,7 @@ export function extractCodexGeneratedImageReference(input: {
   readonly threadId: ThreadId | string | undefined;
   readonly codexHomePath?: string;
 }): CodexGeneratedImageReference | undefined {
-  const item = asObject(input.value);
+  const item = asRecord(input.value) ?? undefined;
   if (!item || !isCodexGeneratedImageItemType(item.type ?? item.kind)) {
     return undefined;
   }
@@ -219,7 +214,7 @@ export function codexGeneratedImageArtifact(
 export function isCodexGeneratedImageArtifact(
   value: unknown,
 ): value is CodexGeneratedImageArtifact {
-  const record = asObject(value);
+  const record = asRecord(value) ?? undefined;
   return (
     record?.kind === CODEX_GENERATED_IMAGE_ARTIFACT_KIND &&
     typeof record.path === "string" &&

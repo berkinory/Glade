@@ -1,3 +1,4 @@
+import { asObjectRecord } from "@glade/shared/transport/recordValues";
 import { createCodexCliVersionGate } from "./provider/codex/codexCliVersionGate";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { randomUUID } from "node:crypto";
@@ -380,13 +381,6 @@ function withCodexPendingSettleDeadline(settle: Promise<unknown>): Promise<void>
   ]);
 }
 
-function asObject(value: unknown): Record<string, unknown> | undefined {
-  if (!value || typeof value !== "object") {
-    return undefined;
-  }
-  return value as Record<string, unknown>;
-}
-
 function asString(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
@@ -439,8 +433,8 @@ function normalizeCodexUserVisibleErrorMessage(rawMessage: string): string {
 }
 
 function readCodexAccountSnapshot(response: unknown): CodexAccountSnapshot {
-  const record = asObject(response);
-  const account = asObject(record?.account) ?? record;
+  const record = asObjectRecord(response) ?? undefined;
+  const account = asObjectRecord(record?.account) ?? record;
   const accountType = asString(account?.type);
 
   if (accountType === "apiKey") {
@@ -912,7 +906,7 @@ export function parseCodexUserInputQuestions(
   }
 
   const parsedQuestions = questions.flatMap((entry): UserInputQuestion[] => {
-    const question = asObject(entry);
+    const question = asObjectRecord(entry) ?? undefined;
     if (!question) {
       return [];
     }
@@ -924,7 +918,7 @@ export function parseCodexUserInputQuestions(
     }
     const options = (Array.isArray(question.options) ? question.options : []).flatMap(
       (option): Array<{ label: string; description: string }> => {
-        const optionRecord = asObject(option);
+        const optionRecord = asObjectRecord(option) ?? undefined;
         const label = asString(optionRecord?.label)?.trim();
         if (!label) {
           return [];
@@ -955,8 +949,8 @@ function classifyCodexStderrLine(rawLine: string): { message: string } | null {
 
   if (line.startsWith("{")) {
     try {
-      const record = asObject(JSON.parse(line));
-      const fields = asObject(record?.fields);
+      const record = asObjectRecord(JSON.parse(line)) ?? undefined;
+      const fields = asObjectRecord(record?.fields) ?? undefined;
       const message = asString(fields?.message);
       if (message && typeof record?.level === "string") {
         if (message === "MCP server startup failed") {
@@ -3334,7 +3328,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       return;
     }
 
-    const protocolEnvelope = asObject(parsed);
+    const protocolEnvelope = asObjectRecord(parsed) ?? undefined;
     if (!protocolEnvelope || !isCodexProtocolEnvelope(protocolEnvelope)) {
       logIgnoredCodexStdout(rawLine, line, "valid JSON without a JSON-RPC envelope");
       return;
@@ -3748,7 +3742,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     // Parsed up front: a request whose questions cannot be rendered must never become a pending entry,
     // because nothing would ever answer its JSON-RPC id.
     const userInputQuestions = isUserInputRequest
-      ? parseCodexUserInputQuestions(asObject(request.params))
+      ? parseCodexUserInputQuestions(asObjectRecord(request.params) ?? undefined)
       : undefined;
     if (isUserInputRequest && userInputQuestions) {
       requestId = ApprovalRequestId.makeUnsafe(randomUUID());
@@ -3785,7 +3779,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       // not advertise session persistence cannot honor it.
       payload:
         isMcpToolCallApproval && mcpSessionPersistenceAdvertised !== true
-          ? { ...asObject(request.params), sessionApprovalAvailable: false }
+          ? { ...(asObjectRecord(request.params) ?? undefined), sessionApprovalAvailable: false }
           : request.params,
     });
 

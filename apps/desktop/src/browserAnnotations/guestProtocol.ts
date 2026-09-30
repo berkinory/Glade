@@ -1,3 +1,4 @@
+import { isRecord } from "@glade/shared/transport/recordValues";
 import type { BrowserAnnotationMarker } from "@glade/contracts/browser/browserAnnotations";
 
 import type { AnnotationGuestCommand } from "./protocol";
@@ -12,10 +13,6 @@ export const GUEST_ANNOTATION_MAX_TAG_NAME_LENGTH = 64;
 export const GUEST_ANNOTATION_MAX_TEXT_LENGTH = 280;
 export const GUEST_ANNOTATION_MAX_URL_LENGTH = 2_048;
 const GUEST_ANNOTATION_MAX_MARKERS = 32;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function validIdentifier(value: unknown): value is string {
   return (

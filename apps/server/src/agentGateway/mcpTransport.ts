@@ -1,3 +1,4 @@
+import { asRecord } from "@glade/shared/transport/recordValues";
 import type { TaggedFailure } from "../platform/operationError.ts";
 import { nativeMcpCallId } from "./nativeToolCalls.ts";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
@@ -42,12 +43,6 @@ type McpResponseSlot =
       readonly fiber: Fiber.Fiber<McpJsonRpcResponse, never>;
     }
   | { readonly kind: "none" };
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value !== null && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
-}
 
 function invalidRequestResponse(
   status: number,

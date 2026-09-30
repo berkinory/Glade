@@ -1,3 +1,4 @@
+import { isRecord } from "@glade/shared/transport/recordValues";
 import { THEME_SEED_CATALOG } from "./theme.seed.generated";
 import {
   normalizeFontFamilyCssValue,
@@ -1256,10 +1257,6 @@ function normalizeFontSelection(value: unknown): string | null {
   }
   const trimmedValue = value.trim();
   return trimmedValue.length > 0 ? trimmedValue : null;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function parseHexColor(value: string): RgbColor {

@@ -1,3 +1,4 @@
+import { asObjectRecord } from "@glade/shared/transport/recordValues";
 import type { OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
 import { Alert, AlertAction, AlertDescription } from "../ui/alert";
 import { IconButton } from "../ui/icon-button";
@@ -10,10 +11,6 @@ export type RateLimitStatus = {
   utilization?: number;
 };
 
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
-}
-
 export function deriveLatestRateLimitStatus(
   activities: ReadonlyArray<OrchestrationThreadActivity>,
 ): RateLimitStatus | null {
@@ -21,7 +18,7 @@ export function deriveLatestRateLimitStatus(
   for (let i = activities.length - 1; i >= 0; i--) {
     const activity = activities[i];
     if (!activity || activity.kind !== "account.rate-limited") continue;
-    const payload = asRecord(activity.payload);
+    const payload = asObjectRecord(activity.payload);
     if (!payload) continue;
     const status = payload.status;
     if (status !== "rejected" && status !== "allowed_warning") continue;

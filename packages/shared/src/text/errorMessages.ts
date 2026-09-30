@@ -50,3 +50,7 @@ export function describeErrorMessage(error: unknown, fallbackMessage: string): s
   if (uniqueMessages.length === 0) return fallbackMessage;
   return uniqueMessages.join(": ");
 }
+
+export function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}

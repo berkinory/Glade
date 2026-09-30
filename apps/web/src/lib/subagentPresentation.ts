@@ -1,3 +1,4 @@
+import { asRecord } from "@glade/shared/transport/recordValues";
 import {
   buildSubagentIdentityDirectory,
   extractSubagentIdentityHints as extractParsedSubagentIdentityHints,
@@ -127,12 +128,6 @@ function capitalizeRoleLabel(role: string | null): string | null {
     return null;
   }
   return role.charAt(0).toUpperCase() + role.slice(1);
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
 }
 
 function providerThreadIdForThread(input: {

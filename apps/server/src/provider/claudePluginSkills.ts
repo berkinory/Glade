@@ -1,3 +1,4 @@
+import { isRecord } from "@glade/shared/transport/recordValues";
 import * as fs from "node:fs/promises";
 import * as nodePath from "node:path";
 
@@ -25,10 +26,6 @@ const CLAUDE_SCOPE_PRECEDENCE = {
   project: 2,
   user: 3,
 } as const satisfies Record<ClaudePluginInstall["scope"], number>;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function parseInstall(value: unknown): ClaudePluginInstall | null {
   if (!isRecord(value)) {

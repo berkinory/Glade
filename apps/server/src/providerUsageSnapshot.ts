@@ -1,3 +1,4 @@
+import { asObjectRecord } from "@glade/shared/transport/recordValues";
 import { createReadStream, type Dirent, type Stats } from "node:fs";
 import fs from "node:fs/promises";
 import nodePath from "node:path";
@@ -47,10 +48,6 @@ interface ClaudeUsageSample {
 }
 
 const usageSnapshotCache = new Map<string, CachedUsageSnapshot>();
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
-}
 
 function asFiniteNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
@@ -197,7 +194,7 @@ function buildUsageLines(input: {
 }
 
 function normalizeCodexUsageLimits(value: unknown): ReadonlyArray<ServerProviderUsageLimit> {
-  const rateLimits = asRecord(value);
+  const rateLimits = asObjectRecord(value);
   if (!rateLimits) {
     return [];
   }
@@ -227,21 +224,21 @@ function normalizeCodexUsageLimits(value: unknown): ReadonlyArray<ServerProvider
     };
   };
 
-  const primary = parseLimit("5h", asRecord(rateLimits.primary));
-  const secondary = parseLimit("Weekly", asRecord(rateLimits.secondary));
+  const primary = parseLimit("5h", asObjectRecord(rateLimits.primary));
+  const secondary = parseLimit("Weekly", asObjectRecord(rateLimits.secondary));
 
   return [primary, secondary].filter((limit): limit is ServerProviderUsageLimit => limit !== null);
 }
 
 function readCodexTotalTokens(payload: Record<string, unknown>): number {
-  const info = asRecord(payload.info);
+  const info = asObjectRecord(payload.info);
   const totalUsage =
-    asRecord(info?.total_token_usage) ??
-    asRecord(info?.totalTokenUsage) ??
-    asRecord(info?.total) ??
-    asRecord(payload.total_token_usage) ??
-    asRecord(payload.totalTokenUsage) ??
-    asRecord(payload.total);
+    asObjectRecord(info?.total_token_usage) ??
+    asObjectRecord(info?.totalTokenUsage) ??
+    asObjectRecord(info?.total) ??
+    asObjectRecord(payload.total_token_usage) ??
+    asObjectRecord(payload.totalTokenUsage) ??
+    asObjectRecord(payload.total);
 
   return (
     asNonNegativeNumber(totalUsage?.total_tokens) ??
@@ -307,12 +304,12 @@ function parseCodexSessionSummaryLine(line: string): CodexSessionSummary | null 
     return null;
   }
 
-  const record = asRecord(parsed);
+  const record = asObjectRecord(parsed);
   if (!record || record.type !== "event_msg") {
     return null;
   }
 
-  const payload = asRecord(record.payload);
+  const payload = asObjectRecord(record.payload);
   if (!payload || payload.type !== "token_count") {
     return null;
   }
@@ -398,7 +395,7 @@ async function readCodexSessionSummary(path: string): Promise<CodexSessionSummar
 }
 
 function readClaudeTotalTokens(value: unknown): number {
-  const usage = asRecord(value);
+  const usage = asObjectRecord(value);
   if (!usage) {
     return 0;
   }
@@ -419,8 +416,8 @@ function readClaudeAssistantSample(input: {
     return null;
   }
 
-  const message = asRecord(input.record.message);
-  const usage = asRecord(message?.usage);
+  const message = asObjectRecord(input.record.message);
+  const usage = asObjectRecord(message?.usage);
   const totalTokens = readClaudeTotalTokens(usage);
   const timestampMs = parseTimestampMs(input.record.timestamp);
   if (!usage || totalTokens <= 0 || timestampMs === null) {
@@ -451,8 +448,8 @@ function readClaudeToolResultSample(input: {
   record: Record<string, unknown>;
   fallbackKey: string;
 }): { dedupeKey: string; sample: ClaudeUsageSample } | null {
-  const toolUseResult = asRecord(input.record.toolUseResult);
-  const usage = asRecord(toolUseResult?.usage);
+  const toolUseResult = asObjectRecord(input.record.toolUseResult);
+  const usage = asObjectRecord(toolUseResult?.usage);
   const totalTokens = readClaudeTotalTokens(usage);
   const timestampMs = parseTimestampMs(input.record.timestamp);
   if (!toolUseResult || !usage || totalTokens <= 0 || timestampMs === null) {
@@ -536,7 +533,7 @@ async function readClaudeUsageSamples(path: string): Promise<ReadonlyArray<Claud
       return;
     }
 
-    const record = asRecord(parsed);
+    const record = asObjectRecord(parsed);
     if (!record) {
       return;
     }

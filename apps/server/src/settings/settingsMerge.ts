@@ -1,3 +1,4 @@
+import { isRecord } from "@glade/shared/transport/recordValues";
 export type DeepPartial<T> = T extends readonly (infer Item)[]
   ? readonly DeepPartial<Item>[]
   : T extends object
@@ -6,12 +7,8 @@ export type DeepPartial<T> = T extends readonly (infer Item)[]
 
 const PROTOTYPE_MUTATION_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 
-function isPlainRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
 export function deepMerge<T>(base: T, patch: DeepPartial<T>): T {
-  if (!isPlainRecord(base) || !isPlainRecord(patch)) {
+  if (!isRecord(base) || !isRecord(patch)) {
     return patch as T;
   }
 
@@ -21,7 +18,7 @@ export function deepMerge<T>(base: T, patch: DeepPartial<T>): T {
       continue;
     }
     const current = next[key];
-    next[key] = isPlainRecord(current) && isPlainRecord(value) ? deepMerge(current, value) : value;
+    next[key] = isRecord(current) && isRecord(value) ? deepMerge(current, value) : value;
   }
   return next as T;
 }

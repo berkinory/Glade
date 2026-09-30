@@ -1,8 +1,9 @@
+import { isRecord } from "@glade/shared/transport/recordValues";
 import type { ThreadBrowserState } from "@glade/contracts/ipc/ipc";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { isPlainObject, sanitizeStringKeyedRecord } from "./persistedRecord";
+import { sanitizeStringKeyedRecord } from "./persistedRecord";
 
 const BROWSER_STATE_STORAGE_KEY = "glade:browser-state:v1";
 const BROWSER_HISTORY_LIMIT = 12;
@@ -77,7 +78,7 @@ function sameBrowserHistoryEntries(
 }
 
 function sanitizeBrowserHistoryEntry(rawEntry: unknown): BrowserHistoryEntry | null {
-  if (!isPlainObject(rawEntry)) {
+  if (!isRecord(rawEntry)) {
     return null;
   }
   const { url, title, tabId } = rawEntry;

@@ -1,3 +1,4 @@
+import { isRecord } from "../transport/recordValues";
 import {
   BrowserBackInput,
   BrowserCloseInput,
@@ -341,13 +342,9 @@ function closeObjectSchemas(value: unknown): unknown {
 
 const TOOL_INPUT_DOCUMENTATION_KEYS = new Set(["examples", "title"]);
 
-function isJsonObject(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
 function flattenNestedAnyOf(branches: readonly unknown[]): unknown[] {
   return branches.flatMap((branch) =>
-    isJsonObject(branch) && Object.keys(branch).length === 1 && Array.isArray(branch.anyOf)
+    isRecord(branch) && Object.keys(branch).length === 1 && Array.isArray(branch.anyOf)
       ? branch.anyOf
       : [branch],
   );
@@ -359,7 +356,7 @@ function mergeLiteralUnionBranches(branches: readonly unknown[]): unknown[] {
 
   for (const branch of branches) {
     if (
-      !isJsonObject(branch) ||
+      !isRecord(branch) ||
       typeof branch.type !== "string" ||
       !Array.isArray(branch.enum) ||
       !Object.keys(branch).every((key) => key === "enum" || key === "type")
@@ -381,7 +378,7 @@ function mergeLiteralUnionBranches(branches: readonly unknown[]): unknown[] {
 function unwrapSingleAllOf(schema: Record<string, unknown>): Record<string, unknown> {
   if (!Array.isArray(schema.allOf) || schema.allOf.length !== 1) return schema;
   const [onlyBranch] = schema.allOf;
-  if (!isJsonObject(onlyBranch)) return schema;
+  if (!isRecord(onlyBranch)) return schema;
 
   const objectKeywords = [
     "properties",
@@ -398,7 +395,7 @@ function unwrapSingleAllOf(schema: Record<string, unknown>): Record<string, unkn
 
 export function compactToolInputSchema(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(compactToolInputSchema);
-  if (!isJsonObject(value)) return value;
+  if (!isRecord(value)) return value;
 
   const compactedEntries = Object.entries(value)
     .filter(([key]) => !TOOL_INPUT_DOCUMENTATION_KEYS.has(key))
@@ -407,7 +404,7 @@ export function compactToolInputSchema(value: unknown): unknown {
 
       ["properties", "patternProperties", "$defs", "definitions", "dependentSchemas"].includes(
         key,
-      ) && isJsonObject(child)
+      ) && isRecord(child)
         ? Object.fromEntries(
             Object.entries(child).map(([name, schema]) => [name, compactToolInputSchema(schema)]),
           )

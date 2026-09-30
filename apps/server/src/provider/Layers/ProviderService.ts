@@ -1,3 +1,4 @@
+import { asRecord } from "@glade/shared/transport/recordValues";
 import type { TaggedFailure } from "../../platform/operationError.ts";
 
 import {
@@ -273,44 +274,38 @@ function toRuntimePayloadFromSession(
 function readPersistedModelSelection(
   runtimePayload: ProviderRuntimeBinding["runtimePayload"],
 ): ModelSelection | undefined {
-  const raw = runtimePayloadRecord(runtimePayload).modelSelection;
+  const raw = (asRecord(runtimePayload) ?? {}).modelSelection;
   return Schema.is(ModelSelection)(raw) ? raw : undefined;
 }
 
 function readPersistedProviderOptions(
   runtimePayload: ProviderRuntimeBinding["runtimePayload"],
 ): ProviderStartOptions | undefined {
-  const raw = runtimePayloadRecord(runtimePayload).providerOptions;
+  const raw = (asRecord(runtimePayload) ?? {}).providerOptions;
   return Option.getOrUndefined(Schema.decodeUnknownOption(ProviderStartOptions)(raw));
 }
 
 function readPersistedComputerControl(
   runtimePayload: ProviderRuntimeBinding["runtimePayload"],
 ): boolean {
-  return runtimePayloadRecord(runtimePayload).enableComputerControl === true;
+  return (asRecord(runtimePayload) ?? {}).enableComputerControl === true;
 }
 
 function readPersistedCwd(
   runtimePayload: ProviderRuntimeBinding["runtimePayload"],
 ): string | undefined {
-  const rawCwd = runtimePayloadRecord(runtimePayload).cwd;
+  const rawCwd = (asRecord(runtimePayload) ?? {}).cwd;
   if (typeof rawCwd !== "string") return undefined;
   const trimmed = rawCwd.trim();
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
-function runtimePayloadRecord(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
-}
-
 function runtimeEventRetiredGatewayTurnAuthority(event: ProviderRuntimeEvent): boolean {
-  return runtimePayloadRecord(event.raw?.payload)[AGENT_GATEWAY_TURN_AUTHORITY_RETIRED] === true;
+  return (asRecord(event.raw?.payload) ?? {})[AGENT_GATEWAY_TURN_AUTHORITY_RETIRED] === true;
 }
 
 function runtimeActiveTurnId(value: unknown): string | undefined {
-  const activeTurnId = runtimePayloadRecord(value).activeTurnId;
+  const activeTurnId = (asRecord(value) ?? {}).activeTurnId;
   return typeof activeTurnId === "string" ? activeTurnId : undefined;
 }
 
@@ -1385,7 +1380,7 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
           Effect.gen(function* () {
             let binding = yield* getCurrentBinding();
             const requiresCredentialRotation =
-              runtimePayloadRecord(binding.runtimePayload)[
+              (asRecord(binding.runtimePayload) ?? {})[
                 AGENT_GATEWAY_CREDENTIAL_ROTATION_REQUIRED
               ] === true;
             if (!requiresCredentialRotation) {
@@ -1401,7 +1396,7 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
 
             binding = yield* getCurrentBinding();
             if (
-              runtimePayloadRecord(binding.runtimePayload)[
+              (asRecord(binding.runtimePayload) ?? {})[
                 AGENT_GATEWAY_CREDENTIAL_ROTATION_REQUIRED
               ] !== true
             ) {
@@ -1435,7 +1430,7 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
             const adapter = yield* registry.getByProvider(binding.provider);
             const hasPersistedResumeCursor = hasResumeCursor(binding.resumeCursor);
             const requiresCredentialRotation =
-              runtimePayloadRecord(binding.runtimePayload)[
+              (asRecord(binding.runtimePayload) ?? {})[
                 AGENT_GATEWAY_CREDENTIAL_ROTATION_REQUIRED
               ] === true;
             const hasActiveSession = yield* adapter.hasSession(threadId);
@@ -1632,9 +1627,8 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
 
         const hasActiveSession = yield* adapter.hasSession(input.threadId);
         const requiresCredentialRotation =
-          runtimePayloadRecord(binding.runtimePayload)[
-            AGENT_GATEWAY_CREDENTIAL_ROTATION_REQUIRED
-          ] === true;
+          (asRecord(binding.runtimePayload) ?? {})[AGENT_GATEWAY_CREDENTIAL_ROTATION_REQUIRED] ===
+          true;
         // A live adapter session whose persisted generation no longer matches the thread's current
         // generation is a zombie: its runtime events are rejected by the stale-generation gate, so a turn
         // routed into it can produce no visible output and the thread appears wedged.
@@ -1737,7 +1731,7 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
                       : undefined));
               const persistedPriorTranscriptBootstrapPending =
                 persistedBinding?.provider === input.provider &&
-                runtimePayloadRecord(persistedBinding.runtimePayload)[
+                (asRecord(persistedBinding.runtimePayload) ?? {})[
                   PRIOR_TRANSCRIPT_BOOTSTRAP_PENDING
                 ] === true;
               const { resumeCursor: _inputResumeCursor, ...adapterStartInput } = input;
@@ -1987,7 +1981,7 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
           yield* directory.getBinding(input.threadId),
         );
         if (existingTargetBinding) {
-          const existingTargetPayload = runtimePayloadRecord(existingTargetBinding.runtimePayload);
+          const existingTargetPayload = asRecord(existingTargetBinding.runtimePayload) ?? {};
           if (
             existingTargetPayload.lastRuntimeEvent === "provider.thread.forked" &&
             hasResumeCursor(existingTargetBinding.resumeCursor)
@@ -2132,7 +2126,7 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
           Effect.gen(function* () {
             const binding = Option.getOrUndefined(yield* directory.getBinding(input.threadId));
             if (binding) {
-              const payload = runtimePayloadRecord(binding.runtimePayload);
+              const payload = asRecord(binding.runtimePayload) ?? {};
               if (
                 binding.provider === input.provider &&
                 payload.importExternalThreadId === input.externalThreadId &&
@@ -2182,7 +2176,7 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
                 );
               }
               const forked = forkedOption.value;
-              const nativeCopyId = runtimePayloadRecord(forked.resumeCursor)[
+              const nativeCopyId = (asRecord(forked.resumeCursor) ?? {})[
                 input.provider === "codex" ? "threadId" : "resume"
               ];
               if (
@@ -2852,7 +2846,7 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
                 lifecycleGeneration: lease.generation,
                 resumeCursor,
                 runtimePayload: {
-                  ...runtimePayloadRecord(binding.runtimePayload),
+                  ...asRecord(binding.runtimePayload),
                   activeTurnId: null,
                   lastRuntimeEvent:
                     options?.requireAgentGatewayCredentialRotation === true
@@ -2889,7 +2883,7 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
           return;
         }
 
-        const bindingRuntimePayload = runtimePayloadRecord(binding.runtimePayload);
+        const bindingRuntimePayload = asRecord(binding.runtimePayload) ?? {};
         if (
           (bindingRuntimePayload.activeTurnId !== null &&
             bindingRuntimePayload.activeTurnId !== undefined) ||
@@ -3007,7 +3001,7 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
                 lifecycleGeneration: effectiveGeneration,
                 resumeCursor: null,
                 runtimePayload: {
-                  ...runtimePayloadRecord(binding.runtimePayload),
+                  ...asRecord(binding.runtimePayload),
                   ...(preserveActive ? {} : { activeTurnId: null }),
                   lifecycleGeneration: effectiveGeneration,
                 },
@@ -3132,7 +3126,7 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
                 resumeCursor: session.resumeCursor,
                 status: "stopped",
                 runtimePayload: {
-                  ...runtimePayloadRecord(binding.runtimePayload),
+                  ...asRecord(binding.runtimePayload),
                   activeTurnId: null,
                   lastRuntimeEvent: "provider.rollbackConversation",
                   lastRuntimeEventAt: new Date().toISOString(),
@@ -3176,7 +3170,7 @@ const makeProviderService = (options?: ProviderServiceLiveOptions) =>
                 status: "stopped",
                 resumeCursor: binding.resumeCursor,
                 runtimePayload: {
-                  ...runtimePayloadRecord(binding.runtimePayload),
+                  ...asRecord(binding.runtimePayload),
                   activeTurnId: null,
                   lastRuntimeEvent: "provider.compactThread",
                   lastRuntimeEventAt: new Date().toISOString(),

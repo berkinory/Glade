@@ -1,3 +1,4 @@
+import { asObjectRecord } from "@glade/shared/transport/recordValues";
 import { AsyncUserInputQuestions } from "@glade/contracts/orchestration/asyncUserInput";
 import { type ChatAttachment } from "@glade/contracts/orchestration/threadEntities";
 import {
@@ -232,13 +233,6 @@ function toRequestError(threadId: ThreadId, method: string, cause: unknown): Pro
   });
 }
 
-function asObject(value: unknown): Record<string, unknown> | undefined {
-  if (!value || typeof value !== "object") {
-    return undefined;
-  }
-  return value as Record<string, unknown>;
-}
-
 function asString(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
@@ -268,9 +262,9 @@ function providerErrorMapsToWarning(event: ProviderEvent): boolean {
 }
 
 function normalizeCodexTokenUsage(value: unknown): ThreadTokenUsageSnapshot | undefined {
-  const usage = asObject(value);
-  const totalUsage = asObject(usage?.total_token_usage ?? usage?.total);
-  const lastUsage = asObject(usage?.last_token_usage ?? usage?.last);
+  const usage = asObjectRecord(value) ?? undefined;
+  const totalUsage = asObjectRecord(usage?.total_token_usage ?? usage?.total) ?? undefined;
+  const lastUsage = asObjectRecord(usage?.last_token_usage ?? usage?.last) ?? undefined;
 
   const totalProcessedTokens =
     asNumber(totalUsage?.total_tokens) ?? asNumber(totalUsage?.totalTokens);
@@ -380,7 +374,7 @@ function toCanonicalItemType(raw: unknown): CanonicalItemType {
 
 function toolItemTitle(item: Record<string, unknown> | undefined): string | undefined {
   if (!item) return undefined;
-  const appContext = asObject(item.appContext);
+  const appContext = asObjectRecord(item.appContext) ?? undefined;
   const action =
     asTrimmedString(appContext?.actionName) ??
     asTrimmedString(item.title) ??
@@ -434,7 +428,7 @@ function joinedTextParts(value: unknown): string | undefined {
   const parts = value
     .map((entry) => {
       if (typeof entry === "string") return entry;
-      const object = asObject(entry);
+      const object = asObjectRecord(entry) ?? undefined;
       return asString(object?.text) ?? asString(object?.summary);
     })
     .filter((entry): entry is string => typeof entry === "string")
@@ -451,7 +445,7 @@ function itemDetail(
   item: Record<string, unknown>,
   payload: Record<string, unknown>,
 ): string | undefined {
-  const nestedResult = asObject(item.result);
+  const nestedResult = asObjectRecord(item.result) ?? undefined;
   const candidates = [
     asString(item.command),
     asString(item.title),
@@ -539,7 +533,7 @@ function toRequestTypeFromKind(kind: unknown): CanonicalRequestType {
 function toRequestTypeFromResolvedPayload(
   payload: Record<string, unknown> | undefined,
 ): CanonicalRequestType {
-  const request = asObject(payload?.request);
+  const request = asObjectRecord(payload?.request) ?? undefined;
   const method = asString(request?.method) ?? asString(payload?.method);
   if (method) {
     return toRequestTypeFromMethod(method);
@@ -571,7 +565,7 @@ function toCanonicalUserInputAnswers(
       continue;
     }
 
-    const nestedAnswers = asArray(asObject(value)?.answers);
+    const nestedAnswers = asArray((asObjectRecord(value) ?? undefined)?.answers);
     if (nestedAnswers) {
       const normalized = nestedAnswers.filter(
         (entry): entry is string => typeof entry === "string",
@@ -643,14 +637,14 @@ function asRuntimeTaskId(taskId: string): RuntimeTaskId {
 function codexEventMessage(
   payload: Record<string, unknown> | undefined,
 ): Record<string, unknown> | undefined {
-  return asObject(payload?.msg);
+  return asObjectRecord(payload?.msg) ?? undefined;
 }
 
 function codexEventBase(
   event: ProviderEvent,
   canonicalThreadId: ThreadId,
 ): Omit<ProviderRuntimeEvent, "type" | "payload"> {
-  const payload = asObject(event.payload);
+  const payload = asObjectRecord(event.payload) ?? undefined;
   const msg = codexEventMessage(payload);
   const turnId = event.turnId ?? toTurnId(asString(msg?.turn_id) ?? asString(msg?.turnId));
   const itemId = event.itemId ?? toProviderItemId(asString(msg?.item_id) ?? asString(msg?.itemId));
@@ -683,7 +677,7 @@ function codexGeneratedImageThreadId(
   payload: Record<string, unknown> | undefined,
 ): string | undefined {
   const msg = codexEventMessage(payload);
-  const nestedEvent = asObject(payload?.event);
+  const nestedEvent = asObjectRecord(payload?.event) ?? undefined;
   return (
     firstStringValue(msg, ["thread_id", "threadId", "threadID", "thread"]) ??
     firstStringValue(nestedEvent, ["thread_id", "threadId", "threadID", "thread"]) ??
@@ -694,7 +688,7 @@ function codexGeneratedImageThreadId(
 }
 
 function sanitizeGeneratedImagePayload(event: ProviderEvent, canonicalThreadId: ThreadId): unknown {
-  const payload = asObject(event.payload);
+  const payload = asObjectRecord(event.payload) ?? undefined;
   return sanitizeNestedCodexGeneratedImagePayloads({
     value: event.payload ?? {},
     threadId: codexGeneratedImageThreadId(event, payload) ?? canonicalThreadId,
@@ -717,10 +711,10 @@ function withSanitizedGeneratedImageRaw(
 }
 
 function generatedImageEventCandidate(event: ProviderEvent): Record<string, unknown> | undefined {
-  const payload = asObject(event.payload);
+  const payload = asObjectRecord(event.payload) ?? undefined;
   const msg = codexEventMessage(payload);
-  const item = asObject(payload?.item);
-  const nestedEvent = asObject(payload?.event);
+  const item = asObjectRecord(payload?.item) ?? undefined;
+  const nestedEvent = asObjectRecord(payload?.event) ?? undefined;
   if (item) {
     return item;
   }
@@ -755,7 +749,7 @@ function mapGeneratedImageEndEvent(
   ) {
     return undefined;
   }
-  const payload = asObject(event.payload);
+  const payload = asObjectRecord(event.payload) ?? undefined;
   const candidate = generatedImageEventCandidate(event);
   const reference = extractCodexGeneratedImageReference({
     value: candidate,
@@ -885,8 +879,8 @@ function mapItemLifecycle(
   canonicalThreadId: ThreadId,
   lifecycle: "item.started" | "item.updated" | "item.completed",
 ): ProviderRuntimeEvent | undefined {
-  const payload = asObject(event.payload);
-  const item = asObject(payload?.item);
+  const payload = asObjectRecord(event.payload) ?? undefined;
+  const item = asObjectRecord(payload?.item) ?? undefined;
   const source = item ?? payload;
   if (!source) {
     return undefined;
@@ -924,7 +918,7 @@ function mapItemLifecycle(
     itemType === "assistant_message" && Array.isArray(source.questions)
       ? Schema.decodeUnknownOption(AsyncUserInputQuestions)(
           source.questions.map((value: unknown) => {
-            const question = asObject(value);
+            const question = asObjectRecord(value) ?? undefined;
             return question
               ? question.options == null
                 ? { title: question.title }
@@ -982,7 +976,7 @@ function hookRunOutput(run: Record<string, unknown>): string | undefined {
   }
   const output = run.entries
     .flatMap((entry) => {
-      const record = asObject(entry);
+      const record = asObjectRecord(entry) ?? undefined;
       const text = asTrimmedString(record?.text);
       if (!text) return [];
       const kind = asTrimmedString(record?.kind);
@@ -1013,7 +1007,7 @@ function mapCodexHookEvent(
   if (event.method !== "hook/started" && event.method !== "hook/completed") {
     return undefined;
   }
-  const run = asObject(asObject(event.payload)?.run);
+  const run = asObjectRecord((asObjectRecord(event.payload) ?? undefined)?.run) ?? undefined;
   const hookId = asTrimmedString(run?.id);
   const hookEvent = asTrimmedString(run?.eventName);
   if (!run || !hookId || !hookEvent) {
@@ -1074,7 +1068,7 @@ function mapUnmappedCodexEvent(
   event: ProviderEvent,
   canonicalThreadId: ThreadId,
 ): ProviderRuntimeEvent {
-  const payload = asObject(event.payload);
+  const payload = asObjectRecord(event.payload) ?? undefined;
   const msg = codexEventMessage(payload);
   const nativeType = sanitizeUnmappedProviderNativeType(event.method);
   const detail = sanitizeUnmappedProviderDetail(
@@ -1106,8 +1100,8 @@ function mapToRuntimeEvents(
   event: ProviderEvent,
   canonicalThreadId: ThreadId,
 ): ReadonlyArray<ProviderRuntimeEvent> {
-  const payload = asObject(event.payload);
-  const turn = asObject(payload?.turn);
+  const payload = asObjectRecord(event.payload) ?? undefined;
+  const turn = asObjectRecord(payload?.turn) ?? undefined;
   const generatedImageEndEvent = mapGeneratedImageEndEvent(event, canonicalThreadId);
   if (generatedImageEndEvent) {
     return [generatedImageEndEvent];
@@ -1190,7 +1184,7 @@ function mapToRuntimeEvents(
   }
 
   if (event.method === "item/autoApprovalReview/completed") {
-    const review = asObject(payload?.review) ?? payload;
+    const review = asObjectRecord(payload?.review) ?? payload;
     const status = asString(review?.status);
     if (status !== "denied" && status !== "aborted") {
       return [];
@@ -1264,7 +1258,7 @@ function mapToRuntimeEvents(
   }
 
   if (event.method === "thread/started") {
-    const payloadThreadId = asString(asObject(payload?.thread)?.id);
+    const payloadThreadId = asString((asObjectRecord(payload?.thread) ?? undefined)?.id);
     const providerThreadId = payloadThreadId ?? asString(payload?.threadId);
     if (!providerThreadId) {
       return [];
@@ -1315,7 +1309,9 @@ function mapToRuntimeEvents(
                 ? "closed"
                 : event.method === "thread/compacted"
                   ? "compacted"
-                  : toThreadState(asObject(payload?.thread)?.state ?? payload?.state),
+                  : toThreadState(
+                      (asObjectRecord(payload?.thread) ?? undefined)?.state ?? payload?.state,
+                    ),
           ...(event.payload !== undefined ? { detail: event.payload } : {}),
         },
       },
@@ -1329,14 +1325,16 @@ function mapToRuntimeEvents(
         ...runtimeEventBase(event, canonicalThreadId),
         payload: {
           ...(asString(payload?.threadName) ? { name: asString(payload?.threadName) } : {}),
-          ...(event.payload !== undefined ? { metadata: asObject(event.payload) } : {}),
+          ...(event.payload !== undefined
+            ? { metadata: asObjectRecord(event.payload) ?? undefined }
+            : {}),
         },
       },
     ];
   }
 
   if (event.method === "thread/tokenUsage/updated") {
-    const tokenUsage = asObject(payload?.tokenUsage);
+    const tokenUsage = asObjectRecord(payload?.tokenUsage) ?? undefined;
     const normalizedUsage = normalizeCodexTokenUsage(tokenUsage ?? event.payload);
     if (!normalizedUsage) {
       return [];
@@ -1371,7 +1369,7 @@ function mapToRuntimeEvents(
   }
 
   if (event.method === "turn/completed") {
-    const errorMessage = asString(asObject(turn?.error)?.message);
+    const errorMessage = asString((asObjectRecord(turn?.error) ?? undefined)?.message);
     return [
       {
         ...runtimeEventBase(event, canonicalThreadId),
@@ -1380,7 +1378,9 @@ function mapToRuntimeEvents(
           state: toTurnStatus(turn?.status),
           ...(asString(turn?.stopReason) ? { stopReason: asString(turn?.stopReason) } : {}),
           ...(turn?.usage !== undefined ? { usage: turn.usage } : {}),
-          ...(asObject(turn?.modelUsage) ? { modelUsage: asObject(turn?.modelUsage) } : {}),
+          ...((asObjectRecord(turn?.modelUsage) ?? undefined)
+            ? { modelUsage: asObjectRecord(turn?.modelUsage) ?? undefined }
+            : {}),
           ...(asNumber(turn?.totalCostUsd) !== undefined
             ? { totalCostUsd: asNumber(turn?.totalCostUsd) }
             : {}),
@@ -1413,7 +1413,7 @@ function mapToRuntimeEvents(
             ? { explanation: asString(payload?.explanation) }
             : {}),
           tasks: steps.flatMap((entry) => {
-            const taskEntry = asObject(entry);
+            const taskEntry = asObjectRecord(entry) ?? undefined;
             if (!taskEntry) {
               return [];
             }
@@ -1450,8 +1450,8 @@ function mapToRuntimeEvents(
   }
 
   if (event.method === "item/completed") {
-    const payload = asObject(event.payload);
-    const item = asObject(payload?.item);
+    const payload = asObjectRecord(event.payload) ?? undefined;
+    const item = asObjectRecord(payload?.item) ?? undefined;
     const source = item ?? payload;
     if (!source) {
       return [];
@@ -1489,7 +1489,7 @@ function mapToRuntimeEvents(
       event.textDelta ??
       asString(payload?.delta) ??
       asString(payload?.text) ??
-      asString(asObject(payload?.content)?.text);
+      asString((asObjectRecord(payload?.content) ?? undefined)?.text);
     if (!delta || delta.length === 0) {
       return [];
     }
@@ -1515,7 +1515,7 @@ function mapToRuntimeEvents(
       event.textDelta ??
       asString(payload?.delta) ??
       asString(payload?.text) ??
-      asString(asObject(payload?.content)?.text);
+      asString((asObjectRecord(payload?.content) ?? undefined)?.text);
     if (!delta || delta.length === 0) {
       return [];
     }
@@ -1582,7 +1582,9 @@ function mapToRuntimeEvents(
         type: "user-input.resolved",
         payload: {
           answers: toCanonicalUserInputAnswers(
-            asObject(event.payload)?.answers as ProviderUserInputAnswers | undefined,
+            (asObjectRecord(event.payload) ?? undefined)?.answers as
+              | ProviderUserInputAnswers
+              | undefined,
           ),
         },
       },
@@ -1842,7 +1844,9 @@ function mapToRuntimeEvents(
 
   if (event.method === "error") {
     const message =
-      asString(asObject(payload?.error)?.message) ?? event.message ?? "Provider runtime error";
+      asString((asObjectRecord(payload?.error) ?? undefined)?.message) ??
+      event.message ??
+      "Provider runtime error";
     const willRetry = payload?.willRetry === true;
     const treatAsWarning = willRetry || isNonFatalCodexErrorMessage(message);
     return [
@@ -1872,7 +1876,7 @@ function mapToRuntimeEvents(
   }
 
   if (event.method === "windowsSandbox/setupCompleted") {
-    const payloadRecord = asObject(event.payload);
+    const payloadRecord = asObjectRecord(event.payload) ?? undefined;
     const success = payloadRecord?.success;
     const successMessage = event.message ?? "Windows sandbox setup completed";
     const failureMessage = event.message ?? "Windows sandbox setup failed";

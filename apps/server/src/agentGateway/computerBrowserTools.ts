@@ -1,3 +1,4 @@
+import { isRecord } from "@glade/shared/transport/recordValues";
 import { normalizeOperationError } from "../platform/operationError.ts";
 // Driver browser tools and integrated browser tools have separate session capabilities. The host
 // injects lifecycle fields; opaque target/tab refs cannot become desktop window IDs. Driver
@@ -197,10 +198,6 @@ const MAX_LISTED_TABS = 10;
 const MAX_REMEMBERED_TABS = 100;
 const KNOWN_TARGETS_PER_THREAD = 4;
 const KNOWN_THREADS_MAX = 32;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function browserTabsFrom(
   structured: Record<string, unknown> | undefined,

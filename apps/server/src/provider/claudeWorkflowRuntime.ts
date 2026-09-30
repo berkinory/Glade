@@ -1,3 +1,4 @@
+import { asRecord } from "@glade/shared/transport/recordValues";
 import { Effect, FileSystem } from "effect";
 import type { WorkflowAgentRuntimeSnapshot } from "@glade/contracts/provider/runtimePayloads";
 
@@ -34,19 +35,13 @@ export function makeClaudeWorkflowRuntimeState(): ClaudeWorkflowRuntimeState {
   return { journalOffset: 0, journalSkipped: false, agents: new Map() };
 }
 
-function asRecord(value: unknown): Record<string, unknown> | undefined {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : undefined;
-}
-
 function parseJsonLine(line: string): Record<string, unknown> | undefined {
   const trimmed = line.trim();
   if (trimmed.length === 0) {
     return undefined;
   }
   try {
-    return asRecord(JSON.parse(trimmed));
+    return asRecord(JSON.parse(trimmed)) ?? undefined;
   } catch {
     return undefined;
   }
@@ -116,7 +111,7 @@ function applyClaudeWorkflowAgentTranscriptLines(
         changed = true;
       }
     }
-    const message = asRecord(record.message);
+    const message = asRecord(record.message) ?? undefined;
     if (!message) {
       continue;
     }
@@ -145,7 +140,7 @@ function applyClaudeWorkflowAgentTranscriptLines(
         changed = true;
       }
     }
-    const usage = asRecord(message.usage);
+    const usage = asRecord(message.usage) ?? undefined;
     if (usage) {
       const total =
         (typeof usage.input_tokens === "number" ? usage.input_tokens : 0) +
@@ -161,7 +156,7 @@ function applyClaudeWorkflowAgentTranscriptLines(
     }
     if (Array.isArray(message.content)) {
       for (const block of message.content) {
-        const blockRecord = asRecord(block);
+        const blockRecord = asRecord(block) ?? undefined;
         if (blockRecord?.type !== "tool_use") {
           continue;
         }
