@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
 import ts from "typescript";
 
@@ -32,6 +32,7 @@ const files = execFileSync(
 )
   .split("\0")
   .filter((file) => /\.(?:ts|tsx|mts|cts|mjs|cjs)$/.test(file))
+  .filter((file) => existsSync(path.join(root, file)))
   .filter((file) => workspaces.some((workspace) => file.startsWith(`${workspace}/`)));
 const fileSet = new Set(files.map((file) => path.join(root, file)));
 const graph = new Map<string, string[]>();
@@ -55,11 +56,12 @@ for (const file of files) {
       options,
       ts.sys,
     ).resolvedModule;
-    if (!resolved || !fileSet.has(path.resolve(resolved.resolvedFileName))) continue;
-    const target = path.relative(root, resolved.resolvedFileName).split(path.sep).join("/");
-    dependencies.add(target);
+    if (!resolved) continue;
+    const resolvedFile = realpathSync(resolved.resolvedFileName);
+    const target = path.relative(root, resolvedFile).split(path.sep).join("/");
+    if (fileSet.has(resolvedFile)) dependencies.add(target);
     const owner = sourceWorkspace(file);
-    const targetOwner = sourceWorkspace(target);
+    const targetOwner = workspaces.find((workspace) => target.startsWith(`${workspace}/`));
     if (!owner || !targetOwner || owner === targetOwner) continue;
     if (
       owner === "packages/contracts" ||

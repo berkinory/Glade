@@ -3,9 +3,9 @@ import path from "node:path";
 import { deriveTerminalProcessIdentity, type TerminalCliKind } from "@glade/shared/terminalThreads";
 
 import { runProcess } from "../processRunner";
-import { parseProcessChildrenMap } from "./processTreeKiller";
+import { parseProcessChildrenMap } from "../platform/processTreeController";
 import { type ProcessChildrenMap } from "../platform/processTreeModel";
-import { captureWindowsProcessChildrenMap } from "./windowsProcessSnapshot";
+import { captureWindowsProcessChildrenMap } from "../platform/windowsProcessSnapshot";
 
 const POSIX_SUBPROCESS_TREE_WALK_MAX_VISITED = 256;
 

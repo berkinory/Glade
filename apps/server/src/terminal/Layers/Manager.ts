@@ -54,7 +54,7 @@ import {
   type HistoryLimits,
 } from "../terminalHistory";
 import { createTerminalModeReplayTracker } from "../terminalModeReplay";
-import { defaultProcessTreeKiller } from "../processTreeKiller";
+import { defaultProcessTreeKiller } from "../../platform/processTreeController";
 import { type ProcessTreeKiller, type TerminalKillSignal } from "../../platform/processTreeModel";
 import {
   captureProcessChildrenMap,
@@ -65,7 +65,7 @@ import {
 import {
   createWindowsProcessSnapshotObserver,
   type ProcessChildrenSnapshotObserver,
-} from "../windowsProcessSnapshot";
+} from "../../platform/windowsProcessSnapshot";
 
 const DEFAULT_HISTORY_LINE_LIMIT = 5_000;
 const DEFAULT_PERSIST_DEBOUNCE_MS = 250;

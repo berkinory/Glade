@@ -12,14 +12,16 @@ import {
   computeProgressInfo,
   computeRetryDelayMs,
   DEFAULT_RESUMABLE_DOWNLOAD_CONFIG,
-  installIdleTimeout,
-  installResumableUpdateDownloader,
   isCrossOrigin,
   parseContentRangeTotal,
-  type ResumableDownloaderTarget,
-  type UpdaterHttpExecutorLike,
   selectSha512Encoding,
   shouldGiveUp,
+} from "./resumableUpdateDownloadPolicy";
+import {
+  installIdleTimeout,
+  installResumableUpdateDownloader,
+  type ResumableDownloaderTarget,
+  type UpdaterHttpExecutorLike,
 } from "./resumableUpdateDownload";
 
 describe("computeProgressInfo", () => {

@@ -9,7 +9,7 @@ import type {
 import {
   ProviderProcessExitUnprovenError,
   teardownProviderProcessTree,
-} from "./supervisedProcessTeardown";
+} from "../platform/supervisedProcessTeardown";
 
 function deterministicClock() {
   let now = 0;

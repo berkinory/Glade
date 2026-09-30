@@ -182,7 +182,7 @@ import {
   teardownChildProcessTree,
   teardownProviderProcessTree,
   type ProcessExitHandle,
-} from "../supervisedProcessTeardown.ts";
+} from "../../platform/supervisedProcessTeardown";
 
 const PROVIDER = "claudeAgent" as const;
 const CLAUDE_DISCOVERY_THREAD_ID = ThreadId.makeUnsafe("claude:discovery");

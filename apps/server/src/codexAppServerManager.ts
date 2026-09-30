@@ -79,7 +79,7 @@ import { resolveCodexServiceTier } from "./codexServiceTier.ts";
 import {
   teardownChildProcessTree,
   teardownProviderProcessTree,
-} from "./provider/supervisedProcessTeardown.ts";
+} from "./platform/supervisedProcessTeardown";
 import { ensureIsolatedScratchWorkspace, resolveScratchWorkspaceCwd } from "./scratchWorkspaces.ts";
 import { createLogger } from "./logger";
 import { transcribeVoiceWithChatGptSession } from "./voiceTranscription.ts";

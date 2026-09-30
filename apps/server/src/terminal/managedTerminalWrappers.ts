@@ -10,7 +10,7 @@ import {
   type ManagedTerminalCliKind,
 } from "@glade/shared/terminalThreads";
 
-import { envPathKeyFor, resolveExecutable } from "../executableLookup.ts";
+import { envPathKeyFor, resolveExecutable } from "@glade/shared/executable";
 import {
   ensurePrivateDirectorySync,
   PRIVATE_EXECUTABLE_FILE_MODE,

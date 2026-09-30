@@ -1,4 +1,4 @@
-import { VISIBLE_PROVIDER_DESCRIPTORS } from "../providerCatalog";
+import { PROVIDER_DESCRIPTORS as VISIBLE_PROVIDER_DESCRIPTORS } from "@glade/shared/providerMetadata";
 import { useEffect, useState } from "react";
 
 import { useAppSettings } from "~/appSettings";

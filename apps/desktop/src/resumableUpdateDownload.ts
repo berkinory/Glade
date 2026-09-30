@@ -20,19 +20,6 @@ import {
   type ResumableProgressInfo,
 } from "./resumableUpdateDownloadPolicy";
 
-export {
-  buildDownloadHeaders,
-  classifyDownloadResponse,
-  computeProgressInfo,
-  computeRetryDelayMs,
-  DEFAULT_RESUMABLE_DOWNLOAD_CONFIG,
-  isCrossOrigin,
-  parseContentRangeTotal,
-  selectSha512Encoding,
-  shouldGiveUp,
-  type ResumableDownloadConfig,
-} from "./resumableUpdateDownloadPolicy";
-
 export interface ResumableDownloadLogger {
   info?(message: string): void;
   warn?(message: string): void;

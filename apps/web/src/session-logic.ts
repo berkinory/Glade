@@ -6,7 +6,7 @@ import {
   type ThreadId,
   type TurnId,
 } from "@glade/contracts";
-import { VISIBLE_PROVIDER_DESCRIPTORS } from "./providerCatalog";
+import { PROVIDER_DESCRIPTORS as VISIBLE_PROVIDER_DESCRIPTORS } from "@glade/shared/providerMetadata";
 
 import { orderedActivities, parseTaskListTasks } from "./workLog";
 

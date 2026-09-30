@@ -4,7 +4,7 @@ import {
   type ServerProviderStatus,
   type ServerSettings,
 } from "@glade/contracts";
-import { VISIBLE_PROVIDER_DESCRIPTORS } from "../../providerCatalog";
+import { PROVIDER_DESCRIPTORS as VISIBLE_PROVIDER_DESCRIPTORS } from "@glade/shared/providerMetadata";
 import { pluralize } from "@glade/shared/text";
 import {
   closestCenter,
