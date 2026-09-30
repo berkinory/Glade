@@ -1,4 +1,5 @@
-import { ThreadId, type DesktopComputerState } from "@glade/contracts";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { type DesktopComputerState } from "@glade/contracts/ipc/ipc";
 import { COMPUTER_PERMISSIONS } from "@glade/shared/computerGrants";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";

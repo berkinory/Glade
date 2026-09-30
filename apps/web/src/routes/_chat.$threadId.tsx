@@ -1,4 +1,4 @@
-import { type ProjectId, ThreadId } from "@glade/contracts";
+import { type ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 

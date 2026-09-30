@@ -2,7 +2,7 @@ import type {
   GitRunStackedActionResult,
   GitStackedAction,
   GitStatusResult,
-} from "@glade/contracts";
+} from "@glade/contracts/git/git";
 import { isTemporaryWorktreeBranch, resolveUniqueGladeBranchName } from "@glade/shared/git";
 
 type GitActionIconName = "commit" | "push" | "pr";

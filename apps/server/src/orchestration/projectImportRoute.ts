@@ -1,17 +1,15 @@
 import { homedir } from "node:os";
 import nodePath from "node:path";
+import { CommandId, ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
+import { DEFAULT_MODEL_BY_PROVIDER } from "@glade/contracts/provider/model";
 import {
-  CommandId,
-  DEFAULT_MODEL_BY_PROVIDER,
-  ProjectId,
-  ThreadId,
   type ImportProjectInput,
   type ImportProjectResult,
   type ListProjectImportsInput,
   type ListProjectImportsResult,
   type ProjectImportProvider,
-  type ProviderStartOptions,
-} from "@glade/contracts";
+} from "@glade/contracts/workspace/projectImport";
+import { type ProviderStartOptions } from "@glade/contracts/orchestration/orchestration";
 import { isWorkspaceRootWithin, workspaceRootsEqual } from "@glade/shared/threadWorkspace";
 import { providerStartOptionsFromServerSettings } from "@glade/shared/serverSettings";
 import { Effect } from "effect";

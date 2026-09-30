@@ -5,7 +5,7 @@ import type {
   ProviderPluginDescriptor,
   ProviderPluginDetail,
   ProviderSkillDescriptor,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/providerDiscovery";
 
 function readObject(value: unknown, key?: string): Record<string, unknown> | undefined {
   const target =

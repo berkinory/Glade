@@ -1,4 +1,4 @@
-import { ThreadId } from "@glade/contracts";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   clampCollapsedComposerCursor,

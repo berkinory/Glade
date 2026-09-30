@@ -1,11 +1,10 @@
 import type { TaggedFailure } from "./platform/operationError.ts";
 
+import { CommandId, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
-  CommandId,
   type OrchestrationReadModel,
   type OrchestrationShellSnapshot,
-  type ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
 import { automationContinuationThreadId } from "@glade/shared/automationMode";
 import { Effect } from "effect";
 import { randomUUID } from "node:crypto";

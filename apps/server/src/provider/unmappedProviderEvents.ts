@@ -1,4 +1,4 @@
-import type { ProviderEvent } from "@glade/contracts";
+import type { ProviderEvent } from "@glade/contracts/provider/provider";
 
 import { isProviderCredentialKey } from "../providerChildEnvironment.ts";
 

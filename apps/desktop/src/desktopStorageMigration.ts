@@ -1,7 +1,7 @@
 import * as FS from "node:fs";
 import * as Path from "node:path";
 
-import type { GladeStorageSnapshot } from "@glade/contracts";
+import type { GladeStorageSnapshot } from "@glade/contracts/ipc/ipc";
 
 const GLADE_STORAGE_SNAPSHOT_FILE_NAME = "glade-storage-origin-v1.json";
 export const GLADE_STORAGE_SNAPSHOT_MAX_BYTES = 16 * 1024 * 1024;

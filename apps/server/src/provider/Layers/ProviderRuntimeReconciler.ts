@@ -1,9 +1,8 @@
+import { CommandId, EventId } from "@glade/contracts/core/baseSchemas";
 import {
-  CommandId,
-  EventId,
   type OrchestrationSession,
   type OrchestrationThreadShell,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
 import { Cause, Duration, Effect, Layer, Schedule } from "effect";
 
 import { OrchestrationEngineService } from "../../orchestration/Services/OrchestrationEngine.ts";

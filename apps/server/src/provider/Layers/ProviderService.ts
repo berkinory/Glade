@@ -2,13 +2,15 @@ import type { TaggedFailure } from "../../platform/operationError.ts";
 
 import {
   EventId,
-  ProviderCompactThreadInput,
-  ProviderForkThreadInput,
-  ModelSelection,
-  RuntimeMode,
   TrimmedNonEmptyString,
   NonNegativeInt,
   ThreadId,
+  TurnId,
+  type ProviderKind,
+} from "@glade/contracts/core/baseSchemas";
+import {
+  ProviderCompactThreadInput,
+  ProviderForkThreadInput,
   ProviderInterruptTurnInput,
   ProviderStopTaskInput,
   ProviderBackgroundTaskInput,
@@ -20,12 +22,14 @@ import {
   ProviderSteerTurnInput,
   ProviderSessionStartInput,
   ProviderStopSessionInput,
-  ProviderStartOptions,
-  TurnId,
-  type ProviderRuntimeEvent,
-  type ProviderKind,
   type ProviderSession,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/provider";
+import {
+  ModelSelection,
+  RuntimeMode,
+  ProviderStartOptions,
+} from "@glade/contracts/orchestration/orchestration";
+import { type ProviderRuntimeEvent } from "@glade/contracts/provider/providerRuntime";
 import {
   providerSupportsAutoRuntimeMode,
   unsupportedAutoRuntimeModeMessage,

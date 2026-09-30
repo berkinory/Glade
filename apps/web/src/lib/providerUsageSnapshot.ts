@@ -1,4 +1,4 @@
-import type { ServerGetProviderUsageSnapshotResult } from "@glade/contracts";
+import type { ServerGetProviderUsageSnapshotResult } from "@glade/contracts/server/server";
 
 import type { OpenUsageUsageLine } from "./openUsageRateLimits";
 import type { ProviderRateLimit } from "./rateLimits";

@@ -1,4 +1,4 @@
-import { ThreadId } from "@glade/contracts";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { APP_DISPLAY_NAME } from "~/branding";

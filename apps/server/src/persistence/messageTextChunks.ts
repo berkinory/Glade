@@ -1,4 +1,4 @@
-import type { OrchestrationEvent } from "@glade/contracts";
+import type { OrchestrationEvent } from "@glade/contracts/orchestration/orchestration";
 import { Effect } from "effect";
 import type * as SqlClient from "effect/unstable/sql/SqlClient";
 import { toPersistenceSqlError } from "./Errors.ts";

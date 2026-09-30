@@ -2,7 +2,7 @@ import {
   type AutomationCreateInput,
   type AutomationDefinition,
   type AutomationRun,
-} from "@glade/contracts";
+} from "@glade/contracts/automation/automation";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { getProviderStartOptions, useAppSettings } from "~/appSettings";

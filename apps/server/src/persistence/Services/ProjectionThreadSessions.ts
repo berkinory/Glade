@@ -1,10 +1,8 @@
 import {
   RuntimeMode,
-  IsoDateTime,
   OrchestrationSessionStatus,
-  ThreadId,
-  TurnId,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import { IsoDateTime, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { Option, Schema, ServiceMap } from "effect";
 import type { Effect } from "effect";
 

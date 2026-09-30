@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 
-import { ThreadId } from "@glade/contracts";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { WebContents } from "electron";
 import { describe, expect, it, vi } from "vitest";
 

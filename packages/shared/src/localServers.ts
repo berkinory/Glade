@@ -1,4 +1,4 @@
-import type { ServerLocalServerProcess } from "@glade/contracts";
+import type { ServerLocalServerProcess } from "@glade/contracts/server/server";
 
 import { isWorkspaceRootWithin } from "./threadWorkspace";
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { type ProfileStats, type ProfileTokenStats, type ProviderKind } from "@glade/contracts";
+import { type ProfileStats, type ProfileTokenStats } from "@glade/contracts/server/stats";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import {
   serverProfileStatsQueryOptions,
   serverProfileTokenStatsQueryOptions,

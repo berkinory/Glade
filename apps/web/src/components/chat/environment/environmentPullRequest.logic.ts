@@ -1,9 +1,5 @@
-import type {
-  GitPullRequestCheck,
-  GitPullRequestComment,
-  PullRequestCheck,
-  PullRequestComment,
-} from "@glade/contracts";
+import type { GitPullRequestCheck, GitPullRequestComment } from "@glade/contracts/git/git";
+import type { PullRequestCheck, PullRequestComment } from "@glade/contracts/git/pullRequests";
 import { pluralize } from "@glade/shared/text";
 
 import {

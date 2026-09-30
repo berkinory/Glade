@@ -1,4 +1,4 @@
-import type { OrchestrationMessage } from "@glade/contracts";
+import type { OrchestrationMessage } from "@glade/contracts/orchestration/orchestration";
 
 // The never-raise default is the containment the Helium incident demanded: a task that said "use
 // Helium" was never asked to *show* Helium, yet the run raised it, then ran twenty-one foreground

@@ -8,7 +8,7 @@ import {
   type SpaceJumpKeybindingCommand,
   THREAD_JUMP_KEYBINDING_COMMANDS,
   type ThreadJumpKeybindingCommand,
-} from "@glade/contracts";
+} from "@glade/contracts/settings/keybindings";
 import { isKeyboardShortcutsHelpChord } from "@glade/shared/browserShortcuts";
 import { isMacPlatform, isWindowsPlatform } from "./lib/utils";
 

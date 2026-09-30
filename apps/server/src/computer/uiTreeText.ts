@@ -1,4 +1,4 @@
-import type { ComputerUiNode } from "@glade/contracts";
+import type { ComputerUiNode } from "@glade/contracts/computer/computer";
 
 export function describeComputerUiTree(root: ComputerUiNode): string {
   const lines: string[] = [];

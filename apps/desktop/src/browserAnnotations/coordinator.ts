@@ -11,8 +11,8 @@ import type {
   BrowserAnnotationDocument,
   BrowserAnnotationSource,
   BrowserAnnotationTheme,
-  ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/browser/browserAnnotations";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   browserAnnotationDocumentIdentityUrl,
   sanitizeBrowserAnnotationUrl,

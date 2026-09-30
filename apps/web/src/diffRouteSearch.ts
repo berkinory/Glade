@@ -1,4 +1,4 @@
-import { TurnId } from "@glade/contracts";
+import { TurnId } from "@glade/contracts/core/baseSchemas";
 
 export type ChatRightPanel = "browser" | "diff";
 

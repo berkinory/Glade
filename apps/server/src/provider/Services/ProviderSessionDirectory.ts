@@ -1,9 +1,8 @@
+import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import type {
-  ProviderKind,
   ProviderSessionRuntimeStatus,
   RuntimeMode,
-  ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
 import { Option, ServiceMap } from "effect";
 import type { Effect } from "effect";
 

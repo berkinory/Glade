@@ -1,4 +1,4 @@
-import type { ComputerControlMode } from "@glade/contracts";
+import type { ComputerControlMode } from "@glade/contracts/orchestration/orchestration";
 
 export const COMPUTER_USE_SLASH_COMMAND = "computer-use";
 

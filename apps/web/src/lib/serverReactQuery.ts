@@ -1,12 +1,12 @@
+import type { ComputerProvisionResult } from "@glade/contracts/computer/computer";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type {
-  ComputerProvisionResult,
-  ProviderKind,
   ServerConfig,
   ServerConsumeCodexResetCreditInput,
   ServerListProviderUsageInput,
   ServerProviderStatus,
   ServerStopLocalServerInput,
-} from "@glade/contracts";
+} from "@glade/contracts/server/server";
 import { mutationOptions, queryOptions, type QueryClient } from "@tanstack/react-query";
 import { ensureNativeApi } from "~/nativeApi";
 

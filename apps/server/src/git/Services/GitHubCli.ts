@@ -1,8 +1,7 @@
 import { ServiceMap } from "effect";
 import type { Effect } from "effect";
+import type { GitPullRequestCheck, GitPullRequestComment } from "@glade/contracts/git/git";
 import type {
-  GitPullRequestCheck,
-  GitPullRequestComment,
   PullRequestActor,
   PullRequestCheck,
   PullRequestComment,
@@ -12,7 +11,7 @@ import type {
   PullRequestMergeMethod,
   PullRequestStack,
   PullRequestState,
-} from "@glade/contracts";
+} from "@glade/contracts/git/pullRequests";
 
 import type { ProcessRunResult } from "../../processRunner";
 import type { GitHubCliError } from "../Errors.ts";

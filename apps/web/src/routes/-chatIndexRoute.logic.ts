@@ -1,4 +1,4 @@
-import type { ProjectId, SpaceId, ThreadId } from "@glade/contracts";
+import type { ProjectId, SpaceId, ThreadId } from "@glade/contracts/core/baseSchemas";
 
 import { resolveRestorableThreadRoute, type LastThreadRoute } from "../chatRouteRestore";
 import type { ServerWorkspacePaths } from "../lib/serverWorkspacePaths";

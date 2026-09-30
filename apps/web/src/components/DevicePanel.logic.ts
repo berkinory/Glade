@@ -12,9 +12,9 @@ import type {
   DeviceToolchain,
   DeviceUdid,
   ThreadDeviceState,
-} from "@glade/contracts";
+} from "@glade/contracts/device/device";
 
-import { DEVICE_CAPABILITY_LABELS } from "@glade/contracts";
+import { DEVICE_CAPABILITY_LABELS } from "@glade/contracts/device/device";
 
 type DeviceFrameGatePhase = "awaiting-config" | "awaiting-keyframe" | "streaming";
 

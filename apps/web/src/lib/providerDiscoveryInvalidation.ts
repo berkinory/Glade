@@ -1,4 +1,4 @@
-import type { ServerProviderStatus } from "@glade/contracts";
+import type { ServerProviderStatus } from "@glade/contracts/server/server";
 
 type ProviderModelDiscoveryFingerprintEntry = readonly [
   provider: ServerProviderStatus["provider"],

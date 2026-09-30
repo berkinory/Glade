@@ -1,18 +1,17 @@
+import type { ProjectId } from "@glade/contracts/core/baseSchemas";
+import type { ProjectScript } from "@glade/contracts/orchestration/orchestration";
 import type {
-  ProjectId,
-  ProjectScript,
   ProviderMentionReference,
   ProviderSkillReference,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/providerDiscovery";
+import { DEFAULT_MODEL_BY_PROVIDER } from "@glade/contracts/provider/model";
+import { MessageId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
-  DEFAULT_MODEL_BY_PROVIDER,
-  MessageId,
   ProviderInteractionMode,
   RuntimeMode,
-  ThreadId,
   type ModelSelection,
   type ProviderStartOptions,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
 import { buildTemporaryWorktreeBranchName } from "@glade/shared/git";
 import { getDefaultModel } from "@glade/shared/model";
 import { providerSupportsNativeTurnSteering } from "@glade/shared/providerMetadata";

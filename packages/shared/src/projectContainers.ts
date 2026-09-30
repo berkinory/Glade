@@ -1,4 +1,4 @@
-import type { ProjectKind } from "@glade/contracts";
+import type { ProjectKind } from "@glade/contracts/workspace/project";
 
 import {
   workspaceRootsEqual,

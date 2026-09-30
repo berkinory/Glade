@@ -7,7 +7,7 @@ import {
   Trash2,
   TriangleAlertIcon,
 } from "~/lib/icons";
-import { type ThreadId } from "@glade/contracts";
+import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type TerminalActivityState, type TerminalCliKind } from "@glade/shared/terminalThreads";
 import { Terminal } from "@xterm/xterm";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";

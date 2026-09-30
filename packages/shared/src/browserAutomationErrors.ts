@@ -2,10 +2,10 @@ import {
   BrowserAutomationError,
   BrowserAutomationErrorMessages,
   BrowserFixedAutomationErrorInvariants,
-  BrowserTimeoutMs,
   type BrowserAutomationErrorInput,
   type BrowserMcpToolErrorEnvelope,
-} from "@glade/contracts";
+} from "@glade/contracts/browser/automation/browserAutomationErrors";
+import { BrowserTimeoutMs } from "@glade/contracts/browser/automation/browserAutomationToolInputs";
 import { Schema } from "effect";
 
 export const browserInputErrorCode = (argumentsValue: unknown) => {

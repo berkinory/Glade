@@ -8,9 +8,9 @@ import type {
   BrowserAnnotationEvent,
   BrowserAnnotationMarker,
   BrowserAnnotationTheme,
-  BrowserTabState,
-  ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/browser/browserAnnotations";
+import type { BrowserTabState } from "@glade/contracts/ipc/ipc";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { BrowserHistoryEntry } from "../browserStateStore";
 import type { BrowserAnnotationDraft } from "../lib/browserAnnotations";
 import { resolveDesktopDipRectFromCssRect } from "@glade/shared/desktopChrome";

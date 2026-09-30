@@ -1,4 +1,7 @@
-import type { OrchestrationReadModel, OrchestrationShellSnapshot } from "@glade/contracts";
+import type {
+  OrchestrationReadModel,
+  OrchestrationShellSnapshot,
+} from "@glade/contracts/orchestration/orchestration";
 
 type ProjectRecoverySnapshot = OrchestrationReadModel | OrchestrationShellSnapshot;
 

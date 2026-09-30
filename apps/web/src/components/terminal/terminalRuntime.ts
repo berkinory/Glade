@@ -15,8 +15,8 @@ import {
   TERMINAL_MAX_ROWS,
   TERMINAL_MIN_COLS,
   TERMINAL_MIN_ROWS,
-} from "@glade/contracts";
-import type { TerminalSessionSnapshot } from "@glade/contracts";
+} from "@glade/contracts/terminal/terminal";
+import type { TerminalSessionSnapshot } from "@glade/contracts/terminal/terminal";
 import { Terminal } from "@xterm/xterm";
 
 import { readNativeApi } from "~/nativeApi";

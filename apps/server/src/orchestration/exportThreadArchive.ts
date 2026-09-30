@@ -1,6 +1,9 @@
 import zlib from "node:zlib";
 
-import type { OrchestrationMessage, OrchestrationThread } from "@glade/contracts";
+import type {
+  OrchestrationMessage,
+  OrchestrationThread,
+} from "@glade/contracts/orchestration/orchestration";
 
 interface ThreadArchiveEntry {
   readonly name: string;

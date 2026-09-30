@@ -1,7 +1,8 @@
 import path from "node:path";
 import { setImmediate } from "node:timers/promises";
 
-import type { ProjectId, ProjectImportProvider } from "@glade/contracts";
+import type { ProjectId } from "@glade/contracts/core/baseSchemas";
+import type { ProjectImportProvider } from "@glade/contracts/workspace/projectImport";
 import { isWorkspaceRootWithin } from "@glade/shared/threadWorkspace";
 
 import type {

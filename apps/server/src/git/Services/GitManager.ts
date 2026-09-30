@@ -25,7 +25,7 @@ import {
   GitGenerateCommitMessageInput,
   GitGenerateCommitMessageResult,
   GitSummarizeDiffResult,
-} from "@glade/contracts";
+} from "@glade/contracts/git/git";
 import { ServiceMap } from "effect";
 import type { Effect } from "effect";
 import type { GitManagerServiceError } from "../Errors.ts";

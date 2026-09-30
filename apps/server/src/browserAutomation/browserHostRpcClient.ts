@@ -2,7 +2,8 @@ import * as FS from "node:fs";
 import * as Net from "node:net";
 import * as OS from "node:os";
 
-import type { BrowserToolName, ProviderKind, ThreadId } from "@glade/contracts";
+import type { BrowserToolName } from "@glade/contracts/browser/automation/browserAutomationToolCatalogue";
+import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 
 const FRAME_HEADER_BYTES = 4;
 

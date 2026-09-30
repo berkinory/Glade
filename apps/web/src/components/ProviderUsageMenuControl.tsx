@@ -1,9 +1,9 @@
+import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import {
-  PROVIDER_DISPLAY_NAMES,
-  type ProviderKind,
   type ServerCodexResetCredits,
   type ServerGetProviderUsageSnapshotResult,
-} from "@glade/contracts";
+} from "@glade/contracts/server/server";
 import { providerUsageNeedsAuthDetail } from "@glade/shared/providerUsage";
 import { type ReactNode } from "react";
 

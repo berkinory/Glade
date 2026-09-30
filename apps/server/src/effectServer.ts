@@ -2,7 +2,7 @@ import { serverRuntimeRouteLayer } from "./serverRuntimeRoute";
 import { ProjectionPendingInteractionRepositoryLive } from "./persistence/Layers/ProjectionPendingInteractions";
 import http from "node:http";
 
-import type { ServerSettingsError } from "@glade/contracts";
+import type { ServerSettingsError } from "@glade/contracts/settings/settings";
 import { Effect, Exit, FileSystem, Layer, Path, Schema, Scope, ServiceMap } from "effect";
 import { HttpRouter } from "effect/unstable/http";
 import * as SqlClient from "effect/unstable/sql/SqlClient";

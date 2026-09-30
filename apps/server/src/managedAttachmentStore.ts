@@ -2,7 +2,10 @@ import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import type { ChatFileAttachment, ChatImageAttachment } from "@glade/contracts";
+import type {
+  ChatFileAttachment,
+  ChatImageAttachment,
+} from "@glade/contracts/orchestration/orchestration";
 import { Effect } from "effect";
 
 import { resolveAttachmentRelativePath } from "./attachmentPaths";

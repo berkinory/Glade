@@ -1,6 +1,6 @@
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
 
-import type { ThreadId } from "@glade/contracts";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 
 export type SidebarRowContextMenuPosition = { x: number; y: number };
 

@@ -1,4 +1,5 @@
-import { OrchestrationCheckpointFile, ThreadId, TurnId } from "@glade/contracts";
+import { OrchestrationCheckpointFile } from "@glade/contracts/orchestration/orchestration";
+import { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import * as SqlSchema from "effect/unstable/sql/SqlSchema";
 import { Effect, Layer, Option, Schema, Struct } from "effect";

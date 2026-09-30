@@ -1,7 +1,8 @@
 import * as fs from "node:fs/promises";
 import * as nodePath from "node:path";
 
-import type { ProviderKind, ProviderSkillDescriptor } from "@glade/contracts";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
+import type { ProviderSkillDescriptor } from "@glade/contracts/provider/providerDiscovery";
 import { discoverClaudePluginSkillRoots } from "./claudePluginSkills.ts";
 
 type FrontmatterValue = string | boolean;

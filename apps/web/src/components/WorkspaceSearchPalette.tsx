@@ -2,8 +2,8 @@ import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { Autocomplete as AutocompletePrimitive } from "@base-ui/react/autocomplete";
-import type { ProjectContentMatch, ProjectEntry } from "@glade/contracts";
-import { PROJECT_SEARCH_CONTENT_MIN_QUERY_LENGTH } from "@glade/contracts";
+import type { ProjectContentMatch, ProjectEntry } from "@glade/contracts/workspace/project";
+import { PROJECT_SEARCH_CONTENT_MIN_QUERY_LENGTH } from "@glade/contracts/workspace/project";
 
 import {
   prewarmProjectSearchIndex,

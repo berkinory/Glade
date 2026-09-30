@@ -2,7 +2,7 @@ import type {
   GitStatusLocalResult,
   GitStatusRemoteResult,
   GitStatusResult,
-} from "@glade/contracts";
+} from "@glade/contracts/git/git";
 
 import type { GitStatusDetails } from "./Services/GitCore";
 

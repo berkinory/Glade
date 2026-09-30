@@ -1,22 +1,21 @@
 import type { TaggedFailure } from "../platform/operationError.ts";
+import { AutomationId, ProjectId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import {
-  AutomationId,
   AutomationSchedule,
   DEFAULT_AUTOMATION_FAST_INTERVAL_MAX_ITERATIONS,
   DEFAULT_AUTOMATION_HEARTBEAT_COOLDOWN_SECONDS,
   DEFAULT_AUTOMATION_STOP_AFTER_CONSECUTIVE_FAILURES,
   DEFAULT_AUTOMATION_STOP_CONFIDENCE_THRESHOLD,
-  ProjectId,
-  ThreadId,
-  TurnId,
   type AutomationCompletionPolicy,
   type AutomationDefinition,
   type AutomationNotificationPolicy,
   type AutomationSchedule as AutomationScheduleType,
   type AutomationWorktreeMode,
+} from "@glade/contracts/automation/automation";
+import {
   type ModelSelection,
   type OrchestrationThreadShell,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
 import {
   automationContinuesThread,
   automationRequiresTargetThread,

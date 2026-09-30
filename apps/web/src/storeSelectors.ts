@@ -1,4 +1,5 @@
-import type { ProjectId, ThreadEnvironmentMode, ThreadId } from "@glade/contracts";
+import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
+import type { ThreadEnvironmentMode } from "@glade/contracts/orchestration/orchestration";
 import { isAutomationRunThread } from "@glade/shared/automationMode";
 
 import type { AppState } from "./storeState";

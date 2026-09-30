@@ -1,6 +1,9 @@
 import nodePath from "node:path";
 
-import type { ServerProviderUsageLimit, ServerProviderUsageLine } from "@glade/contracts";
+import type {
+  ServerProviderUsageLimit,
+  ServerProviderUsageLine,
+} from "@glade/contracts/server/server";
 
 import { createLogger } from "../../logger";
 import { fetchCodexResetCredits } from "../codexResetCredits";

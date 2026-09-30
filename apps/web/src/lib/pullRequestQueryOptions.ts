@@ -1,4 +1,4 @@
-import type { PullRequestDetailInput } from "@glade/contracts";
+import type { PullRequestDetailInput } from "@glade/contracts/git/pullRequests";
 import { queryOptions } from "@tanstack/react-query";
 
 import { ensureNativeApi } from "~/nativeApi";

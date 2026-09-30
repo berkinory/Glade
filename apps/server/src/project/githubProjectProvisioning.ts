@@ -4,7 +4,7 @@ import type {
   GitHubProjectProvisionInput,
   GitHubProjectProvisionPhase,
   GitHubProjectProvisionProgressEvent,
-} from "@glade/contracts";
+} from "@glade/contracts/git/githubProjectProvisioning";
 import {
   parseGitHubRepositoryInput,
   parseGitHubRepositoryNameWithOwnerFromRemoteUrl,

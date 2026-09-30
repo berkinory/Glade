@@ -1,11 +1,9 @@
+import { ProjectId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import {
-  ProjectId,
-  ThreadId,
-  TurnId,
   type OrchestrationCommand,
   type OrchestrationShellSnapshot,
-  type ProviderSession,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import { type ProviderSession } from "@glade/contracts/provider/provider";
 import { Effect, Layer, Option } from "effect";
 import { describe, expect, it, vi } from "vitest";
 

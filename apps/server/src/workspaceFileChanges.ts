@@ -2,7 +2,10 @@ import { watch as watchNodeFileSystem } from "node:fs";
 import * as NodeFileSystem from "node:fs/promises";
 import * as NodePath from "node:path";
 
-import type { ProjectFileChangeEvent, ProjectWatchFileInput } from "@glade/contracts";
+import type {
+  ProjectFileChangeEvent,
+  ProjectWatchFileInput,
+} from "@glade/contracts/workspace/project";
 import { Cause, Duration, Effect, Queue, Stream } from "effect";
 
 import { WorkspacePathOutsideRootError } from "./workspace/Services/WorkspacePaths";

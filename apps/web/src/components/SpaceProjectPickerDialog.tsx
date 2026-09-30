@@ -1,4 +1,4 @@
-import type { ProjectId } from "@glade/contracts";
+import type { ProjectId } from "@glade/contracts/core/baseSchemas";
 import { useEffect, useMemo, useState } from "react";
 
 import type { Project, Space } from "~/types";

@@ -1,8 +1,8 @@
 import type {
   ProviderAgentDescriptor,
-  ProviderKind,
   ProviderModelDescriptor,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/providerDiscovery";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
 

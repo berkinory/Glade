@@ -1,13 +1,11 @@
 import type {
   AssistantDeliveryMode,
   ModelSelection,
-  ProjectId,
   ProviderInteractionMode,
-  ProviderKind,
   ProviderStartOptions,
   RuntimeMode,
-  ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import type { ProjectId, ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 
 import { useComposerDraftStore, type DraftThreadEnvMode } from "../composerDraftStore";
 import { dispatchKanbanDraftThread, type KanbanDraftDispatchResult } from "./kanbanDispatch";

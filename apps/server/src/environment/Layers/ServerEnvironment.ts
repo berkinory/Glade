@@ -1,4 +1,5 @@
-import { EnvironmentId, type ExecutionEnvironmentDescriptor } from "@glade/contracts";
+import { EnvironmentId } from "@glade/contracts/core/baseSchemas";
+import { type ExecutionEnvironmentDescriptor } from "@glade/contracts/workspace/environment";
 import { Effect, FileSystem, Layer, Path, Random } from "effect";
 
 import packageJson from "../../../package.json" with { type: "json" };

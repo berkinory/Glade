@@ -8,6 +8,8 @@ import { runProcess } from "./processRunner";
 import {
   FilesystemBrowseInput,
   FilesystemBrowseResult,
+} from "@glade/contracts/workspace/filesystem";
+import {
   ProjectDiscoverScriptsInput,
   ProjectDiscoverScriptsResult,
   ProjectDirectoryEntry,
@@ -30,7 +32,7 @@ import {
   PROJECT_SEARCH_CONTENT_MAX_LIMIT,
   PROJECT_SEARCH_CONTENT_MAX_LINE_LENGTH,
   PROJECT_SEARCH_CONTENT_MIN_QUERY_LENGTH,
-} from "@glade/contracts";
+} from "@glade/contracts/workspace/project";
 import {
   isExplicitRelativePath,
   isWindowsAbsolutePath,

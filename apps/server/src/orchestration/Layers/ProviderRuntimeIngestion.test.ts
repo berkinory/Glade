@@ -6,21 +6,21 @@ import type {
   OrchestrationEvent,
   OrchestrationReadModel,
   OrchestrationThread,
-  ProviderKind,
-  ProviderRuntimeEvent,
-  ProviderSession,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
+import type { ProviderRuntimeEvent } from "@glade/contracts/provider/providerRuntime";
+import type { ProviderSession } from "@glade/contracts/provider/provider";
 import {
   ApprovalRequestId,
   CommandId,
-  DEFAULT_PROVIDER_INTERACTION_MODE,
   EventId,
   MessageId,
   ProjectId,
   RuntimeItemId,
   ThreadId,
   TurnId,
-} from "@glade/contracts";
+} from "@glade/contracts/core/baseSchemas";
+import { DEFAULT_PROVIDER_INTERACTION_MODE } from "@glade/contracts/orchestration/orchestration";
 import { Effect, Exit, Layer, ManagedRuntime, Option, PubSub, Scope, Stream } from "effect";
 import { afterEach, describe, expect, it } from "vitest";
 

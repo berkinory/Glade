@@ -1,5 +1,5 @@
 import { setTimeout as delay } from "node:timers/promises";
-import type { ComputerLaunchAppResult, ComputerWindow } from "@glade/contracts";
+import type { ComputerLaunchAppResult, ComputerWindow } from "@glade/contracts/computer/computer";
 import { withDesktopOperationSignal } from "./DesktopOperationQueue.ts";
 
 const unavailable = (windowReason: NonNullable<ComputerLaunchAppResult["windowReason"]>) => ({

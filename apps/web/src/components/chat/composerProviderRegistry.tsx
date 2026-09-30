@@ -1,9 +1,6 @@
-import {
-  type ModelSlug,
-  type ProviderKind,
-  type ProviderModelDescriptor,
-  type ProviderModelOptions,
-} from "@glade/contracts";
+import { type ModelSlug, type ProviderModelOptions } from "@glade/contracts/provider/model";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { type ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
 import {
   getDefaultEffort,
   hasEffortLevel,

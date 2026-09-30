@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import type { DesktopCustomTitleBarState } from "@glade/contracts";
+import type { DesktopCustomTitleBarState } from "@glade/contracts/ipc/ipc";
 
 import { isElectron } from "~/env";
 import { getNavigatorPlatform, isLinuxPlatform, isWindowsPlatform } from "~/lib/utils";

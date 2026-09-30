@@ -1,4 +1,4 @@
-import type { MessageId, ThreadId } from "@glade/contracts";
+import type { MessageId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toastManager } from "../components/ui/toast";
 import { newCommandId, newMessageId } from "../lib/utils";

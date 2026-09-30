@@ -25,7 +25,7 @@ import {
   ThreadActivityAppendedPayload as ContractsThreadActivityAppendedPayloadSchema,
   ThreadTurnStartRequestedPayload as ContractsThreadTurnStartRequestedPayloadSchema,
   ThreadConversationRolledBackPayload as ContractsThreadConversationRolledBackPayloadSchema,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
 
 export const SpaceCreatedPayload = ContractsSpaceCreatedPayloadSchema;
 export const SpaceMetaUpdatedPayload = ContractsSpaceMetaUpdatedPayloadSchema;

@@ -8,8 +8,8 @@ import {
   MAX_WHEN_EXPRESSION_DEPTH,
   ResolvedKeybindingRule,
   ResolvedKeybindingsConfig,
-  type ServerConfigIssue,
-} from "@glade/contracts";
+} from "@glade/contracts/settings/keybindings";
+import { type ServerConfigIssue } from "@glade/contracts/server/server";
 import { Mutable } from "effect/Types";
 import {
   Array,

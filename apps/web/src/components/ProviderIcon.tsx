@@ -1,4 +1,4 @@
-import { type ProviderKind } from "@glade/contracts";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ReactNode, SVGProps } from "react";
 
 import { cn } from "~/lib/utils";

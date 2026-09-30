@@ -13,18 +13,14 @@ import {
   ComputerScreenSize,
   COMPUTER_PROVISION_SUMMARY_MAX_LENGTH,
   COMPUTER_TEXT_MAX_LENGTH,
-  ThreadId,
   type ComputerAccessibilityTreeResult,
   type ComputerActionResult,
   type ComputerApp,
-  type ComputerControlMode,
   type ComputerAvailability,
   type ComputerBuildSignature,
   type ComputerCapabilities,
   type ComputerCursorPosition,
   type ComputerEvent,
-  type ComputerGetAuditHistoryInput,
-  type ComputerGetAuditHistoryResult,
   type ComputerHealth,
   type ComputerInputModifier,
   type ComputerRect,
@@ -42,7 +38,13 @@ import {
   type ComputerWindow,
   type ComputerZoomResult,
   type ThreadComputerState,
-} from "@glade/contracts";
+} from "@glade/contracts/computer/computer";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { type ComputerControlMode } from "@glade/contracts/orchestration/orchestration";
+import {
+  type ComputerGetAuditHistoryInput,
+  type ComputerGetAuditHistoryResult,
+} from "@glade/contracts/computer/computerAudit";
 import { encodeComputerFrame } from "@glade/shared/computerFrame";
 import { classifyByFrameFlags, FrameTransport, type FrameSink } from "@glade/shared/frameTransport";
 

@@ -1,4 +1,4 @@
-import { SERVER_VOICE_TRANSCRIPTION_MAX_AUDIO_BYTES } from "@glade/contracts";
+import { SERVER_VOICE_TRANSCRIPTION_MAX_AUDIO_BYTES } from "@glade/contracts/server/server";
 
 import { encodeOutboundMultipart, outboundHttp, type OutboundHttpResponse } from "./outboundHttp";
 

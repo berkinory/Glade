@@ -1,4 +1,4 @@
-import { MessageId } from "@glade/contracts";
+import { MessageId } from "@glade/contracts/core/baseSchemas";
 import { expect, it } from "vitest";
 import { clearRemovedAsyncUserInputResponses, mergeAsyncUserInput } from "./asyncUserInput";
 

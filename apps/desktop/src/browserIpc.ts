@@ -2,10 +2,6 @@ import type { IpcMain, WebContents } from "electron";
 
 import type {
   BrowserAttachWebviewInput,
-  BrowserAnnotationCancelInput,
-  BrowserAnnotationEvent,
-  BrowserAnnotationStartInput,
-  BrowserAnnotationSyncMarkersInput,
   BrowserCaptureScreenshotResult,
   BrowserCopyLinkEvent,
   BrowserDetachWebviewInput,
@@ -16,7 +12,13 @@ import type {
   BrowserTabInput,
   BrowserThreadInput,
   ThreadBrowserState,
-} from "@glade/contracts";
+} from "@glade/contracts/ipc/ipc";
+import type {
+  BrowserAnnotationCancelInput,
+  BrowserAnnotationEvent,
+  BrowserAnnotationStartInput,
+  BrowserAnnotationSyncMarkersInput,
+} from "@glade/contracts/browser/browserAnnotations";
 
 import type { DesktopBrowserManager } from "./browserManager";
 import { BROWSER_IPC_CHANNELS } from "./ipcChannels";

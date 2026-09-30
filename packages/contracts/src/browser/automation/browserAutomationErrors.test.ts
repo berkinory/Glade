@@ -1,15 +1,15 @@
 import { Schema } from "effect";
 import { describe, expect, it } from "vitest";
 
-import * as BrowserContracts from "../../index";
+import * as BrowserContracts from "./browserAutomationErrors";
 import {
   BrowserAutomationError,
   BrowserAutomationErrorMessages,
   BrowserErrorCode,
   BrowserFixedAutomationErrorInvariants,
   BrowserMcpToolErrorEnvelope,
-  utf8ByteLength,
-} from "../../index";
+} from "./browserAutomationErrors";
+import { utf8ByteLength } from "./browserAutomationBounds";
 
 const browserErrorCodes = [
   "BrowserUnauthorized",

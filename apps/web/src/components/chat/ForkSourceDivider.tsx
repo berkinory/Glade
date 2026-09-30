@@ -1,4 +1,5 @@
-import { PROVIDER_DISPLAY_NAMES, type ProviderKind, type ThreadId } from "@glade/contracts";
+import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
+import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { memo, type MouseEvent } from "react";
 
 import { GitBranchIcon } from "~/lib/icons";

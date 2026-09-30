@@ -1,4 +1,10 @@
-import { CheckpointRef, IsoDateTime, NonNegativeInt, ThreadId, TurnId } from "@glade/contracts";
+import {
+  CheckpointRef,
+  IsoDateTime,
+  NonNegativeInt,
+  ThreadId,
+  TurnId,
+} from "@glade/contracts/core/baseSchemas";
 import { Schema, ServiceMap } from "effect";
 import type { Effect, Stream } from "effect";
 

@@ -3,8 +3,8 @@ import type {
   ComputerSpaceErrorCode,
   ComputerSpaceInventory,
   ComputerSpaceReservation,
-  ComputerWindow,
-} from "@glade/contracts";
+} from "@glade/contracts/computer/computerSpaces";
+import type { ComputerWindow } from "@glade/contracts/computer/computer";
 
 import { ComputerTargetError } from "./uiTreeTargeting.ts";
 

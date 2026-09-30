@@ -1,4 +1,5 @@
-import { CommandId, type NativeApi, type ProjectId } from "@glade/contracts";
+import { CommandId, type ProjectId } from "@glade/contracts/core/baseSchemas";
+import { type NativeApi } from "@glade/contracts/ipc/ipc";
 
 type ProjectRelocationApi = Pick<
   NativeApi["orchestration"],

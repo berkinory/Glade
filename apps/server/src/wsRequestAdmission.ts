@@ -1,6 +1,8 @@
 import * as Crypto from "node:crypto";
 
-import { ORCHESTRATION_WS_METHODS, WS_METHODS, WsRpcError } from "@glade/contracts";
+import { ORCHESTRATION_WS_METHODS } from "@glade/contracts/orchestration/orchestration";
+import { WS_METHODS } from "@glade/contracts/transport/ws/ws";
+import { WsRpcError } from "@glade/contracts/transport/ws/rpc";
 import { Effect, Ref } from "effect";
 
 export type WsRequestClass = "control" | "standard" | "expensive-read";

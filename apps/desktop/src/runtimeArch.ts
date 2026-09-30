@@ -1,4 +1,4 @@
-import type { DesktopRuntimeArch, DesktopRuntimeInfo } from "@glade/contracts";
+import type { DesktopRuntimeArch, DesktopRuntimeInfo } from "@glade/contracts/ipc/ipc";
 
 interface ResolveDesktopRuntimeInfoInput {
   readonly platform: NodeJS.Platform;

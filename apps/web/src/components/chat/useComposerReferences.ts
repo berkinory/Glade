@@ -1,9 +1,8 @@
+import { type ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
-  type ProviderKind,
   type ProviderMentionReference,
   type ProviderSkillReference,
-  ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/providerDiscovery";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   filterPromptProviderMentionReferences,

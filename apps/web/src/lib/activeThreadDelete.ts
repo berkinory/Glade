@@ -1,4 +1,4 @@
-import type { ThreadId } from "@glade/contracts";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { terminalScopeIdsForThread } from "@glade/shared/terminalThreads";
 import { collectSubagentDescendants } from "@glade/shared/threadHierarchy";
 

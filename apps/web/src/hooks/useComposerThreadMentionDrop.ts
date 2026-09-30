@@ -1,5 +1,5 @@
 import { useEffect, useState, type DragEvent } from "react";
-import { type ThreadId } from "@glade/contracts";
+import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 
 import { isComposerDropzoneInternalDragTransition } from "./useComposerDropzone";
 import {

@@ -1,4 +1,4 @@
-import type { KeybindingShortcut } from "@glade/contracts";
+import type { KeybindingShortcut } from "@glade/contracts/settings/keybindings";
 
 import { getNavigatorPlatform, isMacPlatform } from "~/lib/utils";
 

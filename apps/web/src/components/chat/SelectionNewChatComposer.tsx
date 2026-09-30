@@ -1,4 +1,4 @@
-import type { ThreadEnvironmentMode } from "@glade/contracts";
+import type { ThreadEnvironmentMode } from "@glade/contracts/orchestration/orchestration";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { ArrowUpRightIcon, ComposerSendArrowIcon, LoaderCircleIcon, XIcon } from "~/lib/icons";

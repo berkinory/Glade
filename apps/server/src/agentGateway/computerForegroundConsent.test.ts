@@ -1,4 +1,4 @@
-import type { OrchestrationMessage } from "@glade/contracts";
+import type { OrchestrationMessage } from "@glade/contracts/orchestration/orchestration";
 import { Effect } from "effect";
 import { describe, expect, it, vi } from "vitest";
 

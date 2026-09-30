@@ -1,4 +1,4 @@
-import { type ProjectId, type ThreadId } from "@glade/contracts";
+import { type ProjectId, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { resolveThreadWorkspaceCwd } from "@glade/shared/threadEnvironment";
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 

@@ -10,6 +10,8 @@
 
 ### Improved
 
+- Contract consumers import their owning modules directly; the root barrel and root package export were removed. CommonJS build entries preserve the same domain paths.
+
 - Shared contracts are grouped by domain, with their existing schema names, field shapes and event tags preserved.
 
 - Provider adapters expose their implemented capabilities without dormant resume callbacks or unused model-switch modes.

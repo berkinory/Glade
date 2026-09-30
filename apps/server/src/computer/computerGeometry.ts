@@ -1,4 +1,8 @@
-import type { ComputerPoint, ComputerRect, ComputerWindow } from "@glade/contracts";
+import type {
+  ComputerPoint,
+  ComputerRect,
+  ComputerWindow,
+} from "@glade/contracts/computer/computer";
 
 import { ComputerBackendError } from "./ComputerBackend.ts";
 

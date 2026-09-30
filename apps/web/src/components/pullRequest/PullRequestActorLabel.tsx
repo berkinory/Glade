@@ -1,4 +1,4 @@
-import type { PullRequestActor } from "@glade/contracts";
+import type { PullRequestActor } from "@glade/contracts/git/pullRequests";
 
 import { cn } from "~/lib/utils";
 import { AuthorAvatar } from "../AuthorAvatar";

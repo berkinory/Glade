@@ -2,7 +2,7 @@ import type {
   PullRequestActionInput,
   PullRequestCommentInput,
   PullRequestState,
-} from "@glade/contracts";
+} from "@glade/contracts/git/pullRequests";
 import { mutationOptions, type QueryClient } from "@tanstack/react-query";
 
 import { ensureNativeApi } from "~/nativeApi";

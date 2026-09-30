@@ -1,4 +1,4 @@
-import type { ThreadEnvironmentMode } from "@glade/contracts";
+import type { ThreadEnvironmentMode } from "@glade/contracts/orchestration/orchestration";
 import type { ReactNode } from "react";
 import { CheckIcon, ChevronDownIcon, HandoffIcon, WorktreeIcon } from "~/lib/icons";
 import { CentralIcon } from "~/lib/central-icons";

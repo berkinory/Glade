@@ -1,4 +1,4 @@
-import { type MessageId, type TurnId } from "@glade/contracts";
+import { type MessageId, type TurnId } from "@glade/contracts/core/baseSchemas";
 import { type TimelineEntry, type WorkLogEntry, formatElapsed } from "../../session-logic";
 import { normalizeCompactToolLabel as normalizeCompactToolLabelValue } from "../../lib/toolCallLabel";
 import { isCodexActivityStatusWorkEntry } from "./agentActivity.logic";

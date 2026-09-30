@@ -1,4 +1,8 @@
-import type { PullRequestDetail, PullRequestStack, PullRequestStackEntry } from "@glade/contracts";
+import type {
+  PullRequestDetail,
+  PullRequestStack,
+  PullRequestStackEntry,
+} from "@glade/contracts/git/pullRequests";
 
 export type PullRequestStackAssessment = {
   readonly label:

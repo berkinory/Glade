@@ -2,8 +2,8 @@ import type {
   ProfileHeatmapCell,
   ProfileStats,
   ProfileTokenStats,
-  ProviderKind,
-} from "@glade/contracts";
+} from "@glade/contracts/server/stats";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 
 export interface ProfileHeatmapSelection {
   readonly cells: ReadonlyArray<ProfileHeatmapCell>;

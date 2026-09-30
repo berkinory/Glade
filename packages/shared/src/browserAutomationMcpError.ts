@@ -1,4 +1,5 @@
-import { BrowserAutomationError, utf8ByteLength } from "@glade/contracts";
+import { BrowserAutomationError } from "@glade/contracts/browser/automation/browserAutomationErrors";
+import { utf8ByteLength } from "@glade/contracts/browser/automation/browserAutomationBounds";
 import { Schema } from "effect";
 
 import { stableJsonStringify } from "./browserAutomationCatalogue";

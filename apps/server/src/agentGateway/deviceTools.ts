@@ -7,7 +7,7 @@ import {
   DEVICE_SWIPE_DURATION_MIN_MS,
   type DeviceHardwareButton,
   type DeviceOpenPaneReason,
-} from "@glade/contracts";
+} from "@glade/contracts/device/device";
 import { Effect } from "effect";
 
 import type { DeviceManager } from "../device/DeviceManager.ts";

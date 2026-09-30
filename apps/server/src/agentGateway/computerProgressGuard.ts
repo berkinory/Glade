@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import type { ComputerAuditEffect } from "@glade/contracts";
+import type { ComputerAuditEffect } from "@glade/contracts/computer/computerAudit";
 
 export interface ComputerProgressScope {
   readonly threadId: string;

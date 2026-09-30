@@ -1,4 +1,4 @@
-import type { ThreadEnvironmentMode } from "@glade/contracts";
+import type { ThreadEnvironmentMode } from "@glade/contracts/orchestration/orchestration";
 import { useState } from "react";
 import { createPortal } from "react-dom";
 

@@ -1,7 +1,13 @@
 // Decides authenticated/unauthenticated/unknown from the CLI's JSON or text output, detects the
 // structured false negatives produced by refresh-token rotation races, and derives subscription
 // metadata labels.
-import type { ServerProviderAuthStatus, ServerProviderStatusState } from "@glade/contracts";
+// Decides authenticated/unauthenticated/unknown from the CLI's JSON or text output, detects the
+// structured false negatives produced by refresh-token rotation races, and derives subscription
+// metadata labels.
+import type {
+  ServerProviderAuthStatus,
+  ServerProviderStatusState,
+} from "@glade/contracts/server/server";
 
 import {
   detailFromResult,

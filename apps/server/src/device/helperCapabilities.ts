@@ -4,7 +4,7 @@ import {
   type DeviceCapabilityId,
   type DeviceCapabilityStatus,
   type DeviceToolchain,
-} from "@glade/contracts";
+} from "@glade/contracts/device/device";
 
 const DEVICE_CAPABILITY_IDS = [
   "framebuffer",

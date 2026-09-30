@@ -1,10 +1,9 @@
 import { Cause, Effect, Exit, Stream } from "effect";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ORCHESTRATION_WS_METHODS } from "@glade/contracts/orchestration/orchestration";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { WS_CHANNELS, WS_METHODS } from "@glade/contracts/transport/ws/ws";
 import {
-  ORCHESTRATION_WS_METHODS,
-  ThreadId,
-  WS_CHANNELS,
-  WS_METHODS,
   WS_COMPATIBILITY_QUERY,
   WS_NEGOTIATE_QUERY,
   WS_PROTOCOL_EPOCH,
@@ -13,7 +12,7 @@ import {
   WS_PROJECT_FILE_WATCH_CAPABILITY,
   WsCompatibilityError,
   type WsBootstrapNegotiateResult,
-} from "@glade/contracts";
+} from "@glade/contracts/transport/ws/wsCompatibility";
 
 import {
   shouldKeepServerLifecycleStream,

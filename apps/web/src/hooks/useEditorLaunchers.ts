@@ -1,4 +1,5 @@
-import type { EditorId, ResolvedKeybindingsConfig } from "@glade/contracts";
+import type { EditorId } from "@glade/contracts/settings/editor";
+import type { ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 
 import {
   type EditorOption,

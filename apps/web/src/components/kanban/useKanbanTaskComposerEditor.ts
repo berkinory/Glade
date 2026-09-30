@@ -1,11 +1,10 @@
+import type { ModelSlug } from "@glade/contracts/provider/model";
+import type { ProviderInteractionMode } from "@glade/contracts/orchestration/orchestration";
+import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import type {
-  ModelSlug,
-  ProviderInteractionMode,
-  ProviderKind,
   ProviderMentionReference,
   ProviderSkillReference,
-  ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/providerDiscovery";
 import { type Dispatch, type MutableRefObject, type RefObject, type SetStateAction } from "react";
 
 import type { ComposerPromptEditorHandle } from "~/components/ComposerPromptEditor";

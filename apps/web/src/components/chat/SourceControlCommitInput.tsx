@@ -1,4 +1,4 @@
-import { DEFAULT_GIT_TEXT_GENERATION_MODEL } from "@glade/contracts";
+import { DEFAULT_GIT_TEXT_GENERATION_MODEL } from "@glade/contracts/provider/model";
 import { useMutation } from "@tanstack/react-query";
 import { IconSparkles } from "@tabler/icons-react";
 import { getProviderStartOptions, useAppSettings } from "~/appSettings";

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { BrowserVaultMethods } from "@glade/contracts";
+import type { BrowserVaultMethods } from "@glade/contracts/browser/browserVault";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 

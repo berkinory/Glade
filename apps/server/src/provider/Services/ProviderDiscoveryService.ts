@@ -13,7 +13,7 @@ import type {
   ProviderListSkillsResult,
   ProviderReadPluginInput,
   ProviderReadPluginResult,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/providerDiscovery";
 import { ServiceMap } from "effect";
 import type { Effect } from "effect";
 

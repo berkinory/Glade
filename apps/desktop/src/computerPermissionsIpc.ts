@@ -4,7 +4,7 @@ import type {
   DesktopComputerPermissionKind,
   DesktopComputerSettingsPane,
   DesktopComputerState,
-} from "@glade/contracts";
+} from "@glade/contracts/ipc/ipc";
 
 import type { DesktopComputerManager } from "./computerPermissions";
 import { COMPUTER_PERMISSIONS_IPC_CHANNELS } from "./ipcChannels";

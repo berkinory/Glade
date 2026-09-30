@@ -1,4 +1,4 @@
-import type { ProviderKind } from "@glade/contracts";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { useEffect, useRef } from "react";
 
 import ThreadTerminalDrawer from "~/components/ThreadTerminalDrawer";

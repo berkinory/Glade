@@ -1,4 +1,4 @@
-import type { OrchestrationCheckpointFile } from "@glade/contracts";
+import type { OrchestrationCheckpointFile } from "@glade/contracts/orchestration/orchestration";
 import { Effect } from "effect";
 
 import { lazyModule } from "../lazyModule.ts";

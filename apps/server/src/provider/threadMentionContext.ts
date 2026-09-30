@@ -1,4 +1,5 @@
-import { ThreadId, type ProviderMentionReference } from "@glade/contracts";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { type ProviderMentionReference } from "@glade/contracts/provider/providerDiscovery";
 import { isThreadMentionPath, threadIdFromThreadMentionPath } from "@glade/shared/threadMentions";
 import { Effect, Option } from "effect";
 

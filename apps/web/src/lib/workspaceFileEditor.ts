@@ -1,4 +1,7 @@
-import type { ProjectFileEncoding, ProjectFileLineEnding } from "@glade/contracts";
+import type {
+  ProjectFileEncoding,
+  ProjectFileLineEnding,
+} from "@glade/contracts/workspace/project";
 
 export interface WorkspaceFileEditorFormat {
   expectedVersion: string;

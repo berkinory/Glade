@@ -1,4 +1,7 @@
-import type { ProviderMentionReference, ProviderSkillReference } from "@glade/contracts";
+import type {
+  ProviderMentionReference,
+  ProviderSkillReference,
+} from "@glade/contracts/provider/providerDiscovery";
 
 export type CodexImageInputItem =
   | { readonly type: "image"; readonly url: string }

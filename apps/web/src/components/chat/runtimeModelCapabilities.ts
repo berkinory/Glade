@@ -1,9 +1,6 @@
-import type {
-  EffortOption,
-  ModelCapabilities,
-  ProviderKind,
-  ProviderModelDescriptor,
-} from "@glade/contracts";
+import type { EffortOption, ModelCapabilities } from "@glade/contracts/provider/model";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
+import type { ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
 import {
   getClaudeContextWindowSuffix,
   getDefaultEffort,

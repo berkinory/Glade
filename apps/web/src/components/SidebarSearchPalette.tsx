@@ -16,11 +16,9 @@ import {
   SunIcon,
   UsageGaugeIcon,
 } from "~/lib/icons";
-import {
-  type FilesystemBrowseResult,
-  type ProjectImportProvider,
-  type ProviderKind,
-} from "@glade/contracts";
+import { type FilesystemBrowseResult } from "@glade/contracts/workspace/filesystem";
+import { type ProjectImportProvider } from "@glade/contracts/workspace/projectImport";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { isGenericChatThreadTitle } from "@glade/shared/chatThreads";
 import { Autocomplete as AutocompletePrimitive } from "@base-ui/react/autocomplete";
 import { LuArrowLeft, LuCornerLeftUp } from "react-icons/lu";

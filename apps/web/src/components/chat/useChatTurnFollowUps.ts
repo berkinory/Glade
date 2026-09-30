@@ -1,4 +1,4 @@
-import { MessageId, ThreadId, type ProviderKind } from "@glade/contracts";
+import { MessageId, ThreadId, type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { resolveTailUserMessageEditTarget } from "@glade/shared/conversationEdit";
 import { providerSupportsNativeTurnSteering } from "@glade/shared/providerMetadata";
 import { deriveAssociatedWorktreeMetadata } from "@glade/shared/threadWorkspace";

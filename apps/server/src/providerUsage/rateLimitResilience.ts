@@ -1,4 +1,5 @@
-import type { ProviderKind, ServerProviderUsageSnapshot } from "@glade/contracts";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
+import type { ServerProviderUsageSnapshot } from "@glade/contracts/server/server";
 
 import { errorSnapshot } from "./parse";
 

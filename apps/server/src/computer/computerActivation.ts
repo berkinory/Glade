@@ -1,4 +1,4 @@
-import type { ComputerControlMode } from "@glade/contracts";
+import type { ComputerControlMode } from "@glade/contracts/orchestration/orchestration";
 import { resolveComputerInvocationMode } from "@glade/shared/computerInvocation";
 
 export function computerActivationMetadata(input: {

@@ -1,11 +1,11 @@
+import { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import {
-  ProviderKind,
   type ClaudeCodeEffort,
   type CodexReasoningEffort,
-  type ModelSelection,
   type ModelSlug,
   type ProviderModelOptions,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/model";
+import { type ModelSelection } from "@glade/contracts/orchestration/orchestration";
 import * as Schema from "effect/Schema";
 
 import {

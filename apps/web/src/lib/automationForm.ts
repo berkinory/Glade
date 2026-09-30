@@ -3,7 +3,7 @@ import {
   AUTOMATION_PROMPT_MAX_LENGTH,
   DEFAULT_AUTOMATION_FAST_INTERVAL_MAX_ITERATIONS,
   DEFAULT_AUTOMATION_MINIMUM_INTERVAL_SECONDS,
-} from "@glade/contracts";
+} from "@glade/contracts/automation/automation";
 import type {
   AutomationCreateInput,
   AutomationDefinition,
@@ -11,12 +11,13 @@ import type {
   AutomationNotificationPolicy,
   AutomationSchedule,
   AutomationWorktreeMode,
+} from "@glade/contracts/automation/automation";
+import type {
   ModelSelection,
-  ProjectId,
   ProviderStartOptions,
   RuntimeMode,
-  ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 
 import {
   completionPolicyFromStopWhen,

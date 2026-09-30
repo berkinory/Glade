@@ -8,7 +8,7 @@ import {
   type SerializedTextNode,
   type Spread,
 } from "lexical";
-import type { ProviderKind } from "@glade/contracts";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 

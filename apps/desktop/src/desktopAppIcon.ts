@@ -1,4 +1,4 @@
-import { DesktopAppIcon } from "@glade/contracts";
+import { DesktopAppIcon } from "@glade/contracts/ipc/ipc";
 import { Schema } from "effect";
 
 type DesktopPlatform = "darwin" | "linux" | "win32";

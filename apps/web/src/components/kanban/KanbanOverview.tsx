@@ -1,4 +1,4 @@
-import type { ProjectId } from "@glade/contracts";
+import type { ProjectId } from "@glade/contracts/core/baseSchemas";
 import { Button } from "~/components/ui/button";
 import { ChevronRightIcon, PlusIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";

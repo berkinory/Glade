@@ -6,24 +6,28 @@ import {
 } from "../../computer/computerTurnTiming.ts";
 import {
   type AssistantDeliveryMode,
-  CommandId,
-  EventId,
-  isToolLifecycleItemType,
-  MessageId,
   type OrchestrationCheckpointFile,
   type OrchestrationEvent,
   type OrchestrationProjectShell,
   type OrchestrationProposedPlanId,
-  CheckpointRef,
-  ThreadId,
-  TurnId,
   type OrchestrationThreadActivity,
   type OrchestrationThread,
   type OrchestrationThreadShell,
-  type ProviderKind,
-  type ProviderRuntimeEvent,
   type RuntimeMode,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import {
+  CommandId,
+  EventId,
+  MessageId,
+  CheckpointRef,
+  ThreadId,
+  TurnId,
+  type ProviderKind,
+} from "@glade/contracts/core/baseSchemas";
+import {
+  isToolLifecycleItemType,
+  type ProviderRuntimeEvent,
+} from "@glade/contracts/provider/providerRuntime";
 import {
   Cache,
   Cause,
@@ -1348,7 +1352,7 @@ const make = Effect.gen(function* () {
     commandTag: string;
     finalDeltaCommandTag: string;
     fallbackText?: string;
-    asyncQuestions?: import("@glade/contracts").AsyncUserInputQuestions;
+    asyncQuestions?: import("@glade/contracts/orchestration/asyncUserInput").AsyncUserInputQuestions;
   }) =>
     Effect.gen(function* () {
       const bufferedText = yield* getBufferedAssistantText(input.messageId);

@@ -1,15 +1,14 @@
+import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
-  PROVIDER_DISPLAY_NAMES,
-  ThreadId,
   type OrchestrationEvent,
   type OrchestrationShellSnapshot,
   type OrchestrationShellStreamEvent,
   type OrchestrationThread,
-  type ServerConfig,
-  type ServerProviderStatus,
-  type ServerSettingsView,
-  type WsCompatibilityError,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import { type ServerConfig, type ServerProviderStatus } from "@glade/contracts/server/server";
+import { type ServerSettingsView } from "@glade/contracts/settings/settings";
+import { type WsCompatibilityError } from "@glade/contracts/transport/ws/wsCompatibility";
 import { defaultTerminalTitleForCliKind } from "@glade/shared/terminalThreads";
 import { BrowserVaultDialog } from "~/components/BrowserVault";
 import { isThreadDetailEventFor } from "@glade/shared/threadDetailEvents";

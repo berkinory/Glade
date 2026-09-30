@@ -1,8 +1,8 @@
 import { Schema } from "effect";
 import { describe, expect, it } from "vitest";
 
+import { BoundedUtf8String, utf8ByteLength } from "./browserAutomationBounds";
 import {
-  BoundedUtf8String,
   BrowserAssignmentVersion,
   BrowserAuthorizationEpoch,
   BrowserAuthorizationRequestId,
@@ -24,8 +24,7 @@ import {
   BrowserTabId,
   BrowserTabRecordVersion,
   BrowserThreadId,
-  utf8ByteLength,
-} from "../../index";
+} from "./browserAutomationIds";
 
 describe("browser automation identities", () => {
   it("brands UUID tab ids and rejects blank ids", () => {

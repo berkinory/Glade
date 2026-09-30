@@ -1,4 +1,8 @@
-import type { ProjectScript, ProjectScriptIcon, ResolvedKeybindingsConfig } from "@glade/contracts";
+import type {
+  ProjectScript,
+  ProjectScriptIcon,
+} from "@glade/contracts/orchestration/orchestration";
+import type { ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import {
   BugIcon,
   ChevronDownIcon,

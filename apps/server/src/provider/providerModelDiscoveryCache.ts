@@ -1,4 +1,7 @@
-import type { ProviderListModelsInput, ProviderListModelsResult } from "@glade/contracts";
+import type {
+  ProviderListModelsInput,
+  ProviderListModelsResult,
+} from "@glade/contracts/provider/providerDiscovery";
 import { Deferred, Effect, Exit, Option } from "effect";
 
 import { ProviderAdapterRequestError } from "./Errors.ts";

@@ -1,4 +1,5 @@
-import { MessageId, type OrchestrationMessage, ThreadId } from "@glade/contracts";
+import { MessageId, ThreadId } from "@glade/contracts/core/baseSchemas";
+import { type OrchestrationMessage } from "@glade/contracts/orchestration/orchestration";
 import { describe, expect, it } from "vitest";
 
 import {

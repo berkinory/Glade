@@ -1,4 +1,4 @@
-import { ProjectId } from "@glade/contracts";
+import { ProjectId } from "@glade/contracts/core/baseSchemas";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { makeFakeWindow, makeProject } from "./storeTestFixtures";

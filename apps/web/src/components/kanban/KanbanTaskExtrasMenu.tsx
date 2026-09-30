@@ -1,4 +1,4 @@
-import type { ProviderInteractionMode } from "@glade/contracts";
+import type { ProviderInteractionMode } from "@glade/contracts/orchestration/orchestration";
 
 import {
   ComposerPickerMenuPopup,

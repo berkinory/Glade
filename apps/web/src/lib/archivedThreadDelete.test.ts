@@ -1,4 +1,4 @@
-import { ThreadId } from "@glade/contracts";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { describe, expect, it, vi } from "vitest";
 
 import { deleteArchivedThreadsFromClient } from "./archivedThreadDelete";

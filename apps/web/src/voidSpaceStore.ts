@@ -1,4 +1,4 @@
-import { SPACE_NAME_MAX_LENGTH } from "@glade/contracts";
+import { SPACE_NAME_MAX_LENGTH } from "@glade/contracts/orchestration/orchestration";
 import { create } from "zustand";
 
 import {

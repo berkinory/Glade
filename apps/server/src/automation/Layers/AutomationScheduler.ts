@@ -1,4 +1,4 @@
-import { type AutomationStreamEvent } from "@glade/contracts";
+import { type AutomationStreamEvent } from "@glade/contracts/automation/automation";
 import { Cause, Duration, Effect, Layer, Queue, Stream } from "effect";
 
 import { AutomationRepository } from "../../persistence/Services/AutomationRepository.ts";

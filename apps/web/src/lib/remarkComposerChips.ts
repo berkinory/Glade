@@ -1,4 +1,4 @@
-import type { ProviderMentionReference } from "@glade/contracts";
+import type { ProviderMentionReference } from "@glade/contracts/provider/providerDiscovery";
 import {
   splitPromptIntoDisplaySegments,
   type ComposerPromptSegment,

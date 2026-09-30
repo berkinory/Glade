@@ -1,6 +1,6 @@
 import { HiOutlineArchiveBox } from "react-icons/hi2";
 
-import type { ThreadId } from "@glade/contracts";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 
 import { cn } from "~/lib/utils";
 import { SIDEBAR_TRAILING_ICON_CLASS, sidebarGlyphClass } from "./sidebarGlyphs";

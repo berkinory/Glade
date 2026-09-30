@@ -5,37 +5,45 @@ import { EventEmitter } from "node:events";
 
 import {
   ApprovalRequestId,
-  BROWSER_TOOL_NAMES,
   EventId,
-  type ProviderComposerCapabilities,
   ProviderItemId,
+  ThreadId,
+  TurnId,
+} from "@glade/contracts/core/baseSchemas";
+import { BROWSER_TOOL_NAMES } from "@glade/contracts/browser/automation/browserAutomationToolCatalogue";
+import {
+  type ProviderComposerCapabilities,
   type ProviderListModelsResult,
   type ProviderListPluginsResult,
   type ProviderMentionReference,
-  type ProviderForkThreadInput,
   type ProviderReadPluginResult,
-  type ProviderForkThreadResult,
   type ProviderListSkillsResult,
   type ProviderListPluginsInput,
   type ProviderReadPluginInput,
-  type ProviderStartReviewInput,
   type ProviderSkillReference,
-  ProviderRequestKind,
-  type ProviderUserInputAnswers,
-  DEFAULT_MODEL_BY_PROVIDER,
-  ThreadId,
-  TurnId,
-  type ProviderApprovalDecision,
+} from "@glade/contracts/provider/providerDiscovery";
+import {
+  type ProviderForkThreadInput,
+  type ProviderForkThreadResult,
+  type ProviderStartReviewInput,
   type ProviderEvent,
   type ProviderSession,
   type ProviderSessionStartInput,
   type ProviderTurnStartResult,
+} from "@glade/contracts/provider/provider";
+import {
+  ProviderRequestKind,
+  type ProviderUserInputAnswers,
+  type ProviderApprovalDecision,
   RuntimeMode,
   ProviderInteractionMode,
+} from "@glade/contracts/orchestration/orchestration";
+import { DEFAULT_MODEL_BY_PROVIDER } from "@glade/contracts/provider/model";
+import {
   type ServerVoiceTranscriptionInput,
   type ServerVoiceTranscriptionResult,
-  type UserInputQuestion,
-} from "@glade/contracts";
+} from "@glade/contracts/server/server";
+import { type UserInputQuestion } from "@glade/contracts/provider/providerRuntime";
 import { prewarmChatGptVoiceTranscriptionConnection } from "@glade/shared/chatGptVoiceTranscription";
 import {
   BROWSER_SCRIPT_API_GUIDANCE,

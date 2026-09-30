@@ -1,10 +1,9 @@
+import { DEFAULT_MODEL_BY_PROVIDER } from "@glade/contracts/provider/model";
 import {
-  DEFAULT_MODEL_BY_PROVIDER,
   type ModelSelection,
   type ProviderStartOptions,
-  type ServerSettings,
-  type ServerSettingsPatch,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import { type ServerSettings, type ServerSettingsPatch } from "@glade/contracts/settings/settings";
 import { deepMerge, type DeepPartial } from "./Struct";
 
 function shouldReplaceTextGenerationModelSelection(

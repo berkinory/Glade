@@ -29,28 +29,36 @@ import type {
 } from "@anthropic-ai/claude-agent-sdk";
 import {
   ApprovalRequestId,
-  type CanonicalItemType,
-  type ClaudeApiEffort,
-  ClaudeCacheObservation,
-  type CanonicalRequestType,
   EventId,
-  type ProviderApprovalDecision,
-  type ProviderInteractionMode,
   ProviderItemId,
-  type ProviderRuntimeEvent,
-  type ProviderRuntimeTurnStatus,
-  type ProviderSendTurnInput,
-  type ProviderSession,
-  type ThreadTokenUsageSnapshot,
-  type ProviderUserInputAnswers,
-  type RuntimeContentStreamKind,
-  type RuntimeSessionState,
   RuntimeItemId,
   RuntimeRequestId,
   RuntimeTaskId,
   ThreadId,
   TurnId,
+} from "@glade/contracts/core/baseSchemas";
+import {
+  type CanonicalItemType,
+  type CanonicalRequestType,
+  type ProviderRuntimeEvent,
+  type ProviderRuntimeTurnStatus,
+  type ThreadTokenUsageSnapshot,
+  type RuntimeContentStreamKind,
+  type RuntimeSessionState,
   type UserInputQuestion,
+} from "@glade/contracts/provider/providerRuntime";
+import { type ClaudeApiEffort } from "@glade/contracts/provider/model";
+import { ClaudeCacheObservation } from "@glade/contracts/provider/claudeCache";
+import {
+  type ProviderApprovalDecision,
+  type ProviderInteractionMode,
+  type ProviderUserInputAnswers,
+} from "@glade/contracts/orchestration/orchestration";
+import {
+  type ProviderSendTurnInput,
+  type ProviderSession,
+} from "@glade/contracts/provider/provider";
+import {
   type ProviderComposerCapabilities,
   type ProviderListCommandsInput,
   type ProviderArtifactsState,
@@ -59,8 +67,8 @@ import {
   type ProviderListSkillsResult,
   type ProviderListAgentsResult,
   type ProviderListModelsResult,
-  getAgentMentionAliases,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/providerDiscovery";
+import { getAgentMentionAliases } from "@glade/contracts/provider/agentMentions";
 import {
   applyClaudePromptEffortPrefix,
   getClaudeContextWindowSuffix,

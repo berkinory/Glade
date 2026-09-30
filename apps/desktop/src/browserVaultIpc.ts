@@ -1,4 +1,4 @@
-import { BrowserVaultSettings } from "@glade/contracts";
+import { BrowserVaultSettings } from "@glade/contracts/browser/browserVault";
 import type { IpcMain, IpcMainInvokeEvent } from "electron";
 import { Schema } from "effect";
 import type { DesktopBrowserManager } from "./browserManager";

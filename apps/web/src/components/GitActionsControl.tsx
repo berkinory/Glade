@@ -1,12 +1,12 @@
-import { DEFAULT_GIT_TEXT_GENERATION_MODEL } from "@glade/contracts";
+import { DEFAULT_GIT_TEXT_GENERATION_MODEL } from "@glade/contracts/provider/model";
 import type {
   GitActionProgressEvent,
   GitRunStackedActionResult,
   GitStackedAction,
   GitStatusResult,
-  ModelSelection,
-  ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/git/git";
+import type { ModelSelection } from "@glade/contracts/orchestration/orchestration";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { ChevronDownIcon, InfoIcon } from "~/lib/icons";

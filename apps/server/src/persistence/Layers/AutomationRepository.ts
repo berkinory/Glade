@@ -9,12 +9,9 @@ import {
   AutomationSchedule,
   DEFAULT_AUTOMATION_STOP_AFTER_CONSECUTIVE_FAILURES,
   DEFAULT_AUTOMATION_RUNTIME_MODE,
-  ModelSelection,
-  NonNegativeInt,
-  ProviderStartOptions,
-  ProjectId,
-  TurnId,
-} from "@glade/contracts";
+} from "@glade/contracts/automation/automation";
+import { ModelSelection, ProviderStartOptions } from "@glade/contracts/orchestration/orchestration";
+import { NonNegativeInt, ProjectId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { automationRequiresTargetThread } from "@glade/shared/automationMode";
 import { Effect, Layer, Option, Schema } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";

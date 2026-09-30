@@ -1,4 +1,4 @@
-import type { NativeApi } from "@glade/contracts";
+import type { NativeApi } from "@glade/contracts/ipc/ipc";
 
 import { EMPTY_ROUTE_RESTORE_FALLBACK_DELAY_MS } from "./chatRouteRestore";
 import { requestEmptyRouteRestoreRefresh } from "./routeRestoreRefreshCoordinator";

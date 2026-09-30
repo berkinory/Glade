@@ -1,12 +1,10 @@
+import { type MessageId, type ThreadId, type TurnId } from "@glade/contracts/core/baseSchemas";
 import {
-  type MessageId,
   type OrchestrationReadModel,
   type OrchestrationShellSnapshot,
   type OrchestrationShellStreamEvent,
   type OrchestrationSpaceShell,
-  type ThreadId,
-  type TurnId,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
 import { deriveThreadSummaryMetadata } from "@glade/shared/threadSummary";
 
 import {

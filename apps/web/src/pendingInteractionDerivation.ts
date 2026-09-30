@@ -1,10 +1,9 @@
+import { ApprovalRequestId, type TurnId } from "@glade/contracts/core/baseSchemas";
 import {
-  ApprovalRequestId,
   type OrchestrationPendingInteraction,
   type OrchestrationThreadActivity,
-  type TurnId,
-  type UserInputQuestion,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import { type UserInputQuestion } from "@glade/contracts/provider/providerRuntime";
 import {
   createStalePendingInteractionMatcher,
   isPendingInteractionResponseClaimable,

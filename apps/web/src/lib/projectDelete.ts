@@ -1,4 +1,5 @@
-import type { NativeApi, ProjectId } from "@glade/contracts";
+import type { NativeApi } from "@glade/contracts/ipc/ipc";
+import type { ProjectId } from "@glade/contracts/core/baseSchemas";
 
 import { newCommandId } from "./utils";
 

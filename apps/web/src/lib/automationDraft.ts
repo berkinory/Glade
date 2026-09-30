@@ -1,10 +1,10 @@
-import { DEFAULT_AUTOMATION_FAST_INTERVAL_MAX_ITERATIONS } from "@glade/contracts";
+import { DEFAULT_AUTOMATION_FAST_INTERVAL_MAX_ITERATIONS } from "@glade/contracts/automation/automation";
 import type {
   AutomationMode,
   AutomationSchedule,
   AutomationWorktreeMode,
-  RuntimeMode,
-} from "@glade/contracts";
+} from "@glade/contracts/automation/automation";
+import type { RuntimeMode } from "@glade/contracts/orchestration/orchestration";
 import { automationRequiresTargetThread } from "@glade/shared/automationMode";
 
 import type { ChatAutomationExecutionScope } from "./automationIntent";

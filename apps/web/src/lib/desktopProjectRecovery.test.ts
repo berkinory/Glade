@@ -1,9 +1,8 @@
+import { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
-  ProjectId,
-  ThreadId,
   type OrchestrationReadModel,
   type OrchestrationShellSnapshot,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
 import { describe, expect, it } from "vitest";
 
 import {

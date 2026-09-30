@@ -1,4 +1,4 @@
-import { type ProjectId } from "@glade/contracts";
+import { type ProjectId } from "@glade/contracts/core/baseSchemas";
 import { matchesLegacyHomeChatWorkspaceRoot } from "@glade/shared/projectContainers";
 import { isWorkspaceRootWithin, workspaceRootsEqual } from "@glade/shared/threadWorkspace";
 import type { Project } from "../types";

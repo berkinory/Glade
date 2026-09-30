@@ -1,9 +1,6 @@
-import {
-  ThreadId,
-  type ModelSlug,
-  type ProviderKind,
-  type ProviderSkillReference,
-} from "@glade/contracts";
+import { ThreadId, type ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { type ModelSlug } from "@glade/contracts/provider/model";
+import { type ProviderSkillReference } from "@glade/contracts/provider/providerDiscovery";
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import { useCallback } from "react";
 import { formatComposerMentionToken, SKILL_MENTION_PREFIX } from "~/lib/composerMentions";

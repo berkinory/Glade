@@ -1,13 +1,15 @@
-import { DEFAULT_GIT_RECENT_COMMIT_LIMIT } from "@glade/contracts";
+import { DEFAULT_GIT_RECENT_COMMIT_LIMIT } from "@glade/contracts/git/git";
 import type {
   GitHandoffThreadInput,
   GitReadWorkingTreeDiffInput,
   GitRemoveWorktreeInput,
   GitStackedAction,
+} from "@glade/contracts/git/git";
+import type {
   ModelSelection,
-  NativeApi,
   ProviderStartOptions,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import type { NativeApi } from "@glade/contracts/ipc/ipc";
 import { mutationOptions, queryOptions, type QueryClient } from "@tanstack/react-query";
 import { ensureNativeApi } from "../nativeApi";
 import { invalidateProjectFileQueriesForCwds } from "./projectReactQuery";

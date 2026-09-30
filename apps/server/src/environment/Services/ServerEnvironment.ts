@@ -1,4 +1,4 @@
-import type { ExecutionEnvironmentDescriptor } from "@glade/contracts";
+import type { ExecutionEnvironmentDescriptor } from "@glade/contracts/workspace/environment";
 import { Effect, ServiceMap } from "effect";
 
 export interface ServerEnvironmentShape {

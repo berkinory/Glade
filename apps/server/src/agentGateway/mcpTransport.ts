@@ -1,6 +1,7 @@
 import type { TaggedFailure } from "../platform/operationError.ts";
 import { nativeMcpCallId } from "./nativeToolCalls.ts";
-import { ThreadId, type OrchestrationThreadShell } from "@glade/contracts";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { type OrchestrationThreadShell } from "@glade/contracts/orchestration/orchestration";
 import { Cause, Deferred, Effect, Exit, Fiber, Option } from "effect";
 
 import type { ProjectionSnapshotQueryShape } from "../orchestration/Services/ProjectionSnapshotQuery.ts";

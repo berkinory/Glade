@@ -1,4 +1,4 @@
-import type { DesktopComputerPermissionGuideState } from "@glade/contracts";
+import type { DesktopComputerPermissionGuideState } from "@glade/contracts/ipc/ipc";
 export type ComputerHelperMessage =
   | {
       type: "permissions";

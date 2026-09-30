@@ -1,4 +1,4 @@
-import type { ComputerTarget, ComputerUiNode } from "@glade/contracts";
+import type { ComputerTarget, ComputerUiNode } from "@glade/contracts/computer/computer";
 
 const nativeIdentities = new WeakMap<ComputerUiNode, string>();
 const observedRefs = new WeakMap<object, ComputerUiNode>();

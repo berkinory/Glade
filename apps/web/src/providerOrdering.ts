@@ -1,4 +1,4 @@
-import type { ProviderKind } from "@glade/contracts";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { PROVIDER_DESCRIPTORS } from "@glade/shared/providerMetadata";
 
 export const DEFAULT_PROVIDER_ORDER: readonly ProviderKind[] = PROVIDER_DESCRIPTORS.map(

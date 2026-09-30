@@ -1,4 +1,4 @@
-import { type ThreadId } from "@glade/contracts";
+import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 
 const THREAD_DRAG_MIME = "application/x-glade-thread";
 

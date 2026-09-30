@@ -3,7 +3,7 @@ import type {
   ProviderNativeCommandDescriptor,
   ProviderPluginDescriptor,
   ProviderSkillDescriptor,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/providerDiscovery";
 
 export function resolveProviderDiscoveryCwd(options: {
   activeThreadWorktreePath: string | null;

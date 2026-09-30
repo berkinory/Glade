@@ -1,4 +1,5 @@
-import type { ProviderUserInputAnswers, UserInputQuestion } from "@glade/contracts";
+import type { ProviderUserInputAnswers } from "@glade/contracts/orchestration/orchestration";
+import type { UserInputQuestion } from "@glade/contracts/provider/providerRuntime";
 
 export interface PendingUserInputDraftAnswer {
   selectedOptionLabels?: string[];

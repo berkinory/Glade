@@ -1,4 +1,4 @@
-import type { ComputerId } from "@glade/contracts";
+import type { ComputerId } from "@glade/contracts/computer/computer";
 import { encodeComputerFrame } from "@glade/shared/computerFrame";
 import { describe, expect, it, vi } from "vitest";
 

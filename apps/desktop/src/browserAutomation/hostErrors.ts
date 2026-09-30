@@ -2,7 +2,7 @@ import {
   type BrowserAutomationError,
   type BrowserAutomationErrorInput,
   type BrowserMcpToolErrorEnvelope,
-} from "@glade/contracts";
+} from "@glade/contracts/browser/automation/browserAutomationErrors";
 import { makeBrowserMcpToolErrorEnvelope } from "@glade/shared/browserAutomationErrors";
 
 export class BrowserAutomationHostError extends Error {

@@ -1,4 +1,4 @@
-import type { DeviceFamily, DeviceHardwareButton } from "@glade/contracts";
+import type { DeviceFamily, DeviceHardwareButton } from "@glade/contracts/device/device";
 import { memo, useId, useMemo, type CSSProperties, type ReactNode } from "react";
 
 import { cn } from "~/lib/utils";

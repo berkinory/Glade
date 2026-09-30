@@ -1,9 +1,9 @@
 import type {
   BrowserBackInput,
-  BrowserNavigateOutput,
   BrowserReloadInput,
-  BrowserTabId,
-} from "@glade/contracts";
+} from "@glade/contracts/browser/automation/browserAutomationToolInputs";
+import type { BrowserNavigateOutput } from "@glade/contracts/browser/automation/browserAutomationToolOutputs";
+import type { BrowserTabId } from "@glade/contracts/browser/automation/browserAutomationIds";
 
 import type { BrowserAutomationVisibleRuntime } from "../browserManager";
 import { abortReason, sendCdpCommand, throwIfAborted } from "./cdpRuntime";

@@ -1,12 +1,11 @@
+import type { ModelSlug } from "@glade/contracts/provider/model";
 import type {
-  ModelSlug,
   ProviderAgentDescriptor,
-  ProviderInteractionMode,
-  ProviderKind,
   ProviderMentionReference,
   ProviderSkillReference,
-  ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/providerDiscovery";
+import type { ProviderInteractionMode } from "@glade/contracts/orchestration/orchestration";
+import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   useEffect,
   useState,

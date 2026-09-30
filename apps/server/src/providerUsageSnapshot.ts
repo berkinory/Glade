@@ -2,13 +2,13 @@ import { createReadStream, type Dirent, type Stats } from "node:fs";
 import fs from "node:fs/promises";
 import nodePath from "node:path";
 
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type {
-  ProviderKind,
   ServerGetProviderUsageSnapshotInput,
   ServerGetProviderUsageSnapshotResult,
   ServerProviderUsageLimit,
   ServerProviderUsageLine,
-} from "@glade/contracts";
+} from "@glade/contracts/server/server";
 import { Effect } from "effect";
 
 import { ServerConfig } from "./config";

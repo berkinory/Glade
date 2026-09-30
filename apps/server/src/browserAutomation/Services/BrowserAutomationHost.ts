@@ -1,4 +1,5 @@
-import type { BrowserToolName, ProviderKind, ThreadId } from "@glade/contracts";
+import type { BrowserToolName } from "@glade/contracts/browser/automation/browserAutomationToolCatalogue";
+import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { ServiceMap, type Effect } from "effect";
 
 import type { BrowserHostRpcError } from "../browserHostRpcClient.ts";

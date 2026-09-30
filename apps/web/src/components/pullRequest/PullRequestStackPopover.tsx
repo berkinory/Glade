@@ -1,4 +1,4 @@
-import type { PullRequestStack } from "@glade/contracts";
+import type { PullRequestStack } from "@glade/contracts/git/pullRequests";
 import { useState } from "react";
 
 import { CHAT_HEADER_CONTROL_CLASS_NAME } from "~/components/chat/chatHeaderControls";

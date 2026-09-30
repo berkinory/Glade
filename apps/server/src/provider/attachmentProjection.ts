@@ -1,4 +1,8 @@
-import type { ChatAttachment, ChatFileAttachment, ChatImageAttachment } from "@glade/contracts";
+import type {
+  ChatAttachment,
+  ChatFileAttachment,
+  ChatImageAttachment,
+} from "@glade/contracts/orchestration/orchestration";
 import { formatBytes } from "@glade/shared/formatBytes";
 
 import { resolveProviderAttachmentPath } from "./providerAttachmentPaths.ts";

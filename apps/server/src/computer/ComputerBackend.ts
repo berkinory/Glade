@@ -20,7 +20,6 @@ import {
   type ComputerPoint,
   type ComputerRect,
   type ComputerScreenSize,
-  type ComputerSpaceInventory,
   type ComputerScreenshot,
   type ComputerState,
   type ComputerTarget,
@@ -28,7 +27,8 @@ import {
   type ComputerVerifyStateResult,
   type ComputerWindow,
   type ComputerZoomResult,
-} from "@glade/contracts";
+} from "@glade/contracts/computer/computer";
+import { type ComputerSpaceInventory } from "@glade/contracts/computer/computerSpaces";
 
 // Downscale before delivery so model coordinates refer to the exact recorded image, never an
 // API-resized image. The 1536 bound keeps dense controls legible while avoiding the provider's

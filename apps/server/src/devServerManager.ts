@@ -1,6 +1,6 @@
+import { DEFAULT_TERMINAL_ID } from "@glade/contracts/terminal/terminal";
+import { ProjectId } from "@glade/contracts/core/baseSchemas";
 import {
-  DEFAULT_TERMINAL_ID,
-  ProjectId,
   type ProjectDevServer,
   type ProjectDevServerEvent,
   type ProjectListDevServersResult,
@@ -8,8 +8,8 @@ import {
   type ProjectRunDevServerResult,
   type ProjectStopDevServerInput,
   type ProjectStopDevServerResult,
-  type ServerLocalServerProcess,
-} from "@glade/contracts";
+} from "@glade/contracts/workspace/project";
+import { type ServerLocalServerProcess } from "@glade/contracts/server/server";
 import { localServerMatchesRun } from "@glade/shared/localServers";
 import { Effect, Layer, PubSub, Ref, ServiceMap, Stream } from "effect";
 

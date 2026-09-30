@@ -3,7 +3,7 @@ import * as fs from "node:fs/promises";
 import { tmpdir } from "node:os";
 import * as path from "node:path";
 
-import type { OrchestrationThread } from "@glade/contracts";
+import type { OrchestrationThread } from "@glade/contracts/orchestration/orchestration";
 import { Effect } from "effect";
 import { afterEach, describe, expect, it } from "vitest";
 

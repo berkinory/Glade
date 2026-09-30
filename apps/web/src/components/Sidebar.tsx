@@ -66,16 +66,16 @@ import { CSS } from "@dnd-kit/utilities";
 import {
   type AutomationDefinition,
   type AutomationListResult,
+} from "@glade/contracts/automation/automation";
+import {
   MAX_PINNED_PROJECTS,
-  type DesktopUpdateState,
   type OrchestrationShellSnapshot,
   type OrchestrationThreadPullRequest,
-  ProjectId,
-  SpaceId,
-  ThreadId,
-  type ResolvedKeybindingsConfig,
-  WS_GITHUB_PROJECT_PROVISIONING_CAPABILITY,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import { type DesktopUpdateState } from "@glade/contracts/ipc/ipc";
+import { ProjectId, SpaceId, ThreadId } from "@glade/contracts/core/baseSchemas";
+import { type ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
+import { WS_GITHUB_PROJECT_PROVISIONING_CAPABILITY } from "@glade/contracts/transport/ws/wsCompatibility";
 import { parseGitHubRepositoryNameWithOwnerFromPullRequestUrl } from "@glade/shared/githubRepository";
 import { getDefaultModel } from "@glade/shared/model";
 import { pluralize } from "@glade/shared/text";

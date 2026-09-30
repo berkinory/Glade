@@ -1,4 +1,4 @@
-import type { ServerAuthDescriptor } from "@glade/contracts";
+import type { ServerAuthDescriptor } from "@glade/contracts/transport/auth/auth";
 import { Effect, Layer } from "effect";
 
 import { ServerConfig } from "../../config";

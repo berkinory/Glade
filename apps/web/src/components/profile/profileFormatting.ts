@@ -1,4 +1,4 @@
-import type { ProviderKind } from "@glade/contracts";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 
 export function formatCompact(value: number | null | undefined): string {
   if (value === null || value === undefined || !Number.isFinite(value)) {

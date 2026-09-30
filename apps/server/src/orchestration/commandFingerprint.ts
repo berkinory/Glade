@@ -1,6 +1,9 @@
 import * as Crypto from "node:crypto";
 
-import { OrchestrationCommand, type OrchestrationCommand as Command } from "@glade/contracts";
+import {
+  OrchestrationCommand,
+  type OrchestrationCommand as Command,
+} from "@glade/contracts/orchestration/orchestration";
 import { Schema } from "effect";
 
 const ORCHESTRATION_COMMAND_FINGERPRINT_VERSION = 1;

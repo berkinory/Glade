@@ -1,15 +1,17 @@
 import {
   THREAD_GOAL_MAX_CHARS,
-  type MessageId,
   type ModelSelection,
   type OrchestrationShellSnapshot,
   type ProviderInteractionMode,
-  type ProviderKind,
-  type ProviderNativeCommandDescriptor,
-  type ProviderModelOptions,
   type RuntimeMode,
+} from "@glade/contracts/orchestration/orchestration";
+import {
+  type MessageId,
+  type ProviderKind,
   type ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/core/baseSchemas";
+import { type ProviderNativeCommandDescriptor } from "@glade/contracts/provider/providerDiscovery";
+import { type ProviderModelOptions } from "@glade/contracts/provider/model";
 import { deriveAssociatedWorktreeMetadata } from "@glade/shared/threadWorkspace";
 import { useCallback, useState } from "react";
 import { newCommandId, newMessageId, newThreadId } from "../lib/utils";

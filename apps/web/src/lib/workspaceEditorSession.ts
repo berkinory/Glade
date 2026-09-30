@@ -1,4 +1,4 @@
-import type { ProjectReadFileResult } from "@glade/contracts";
+import type { ProjectReadFileResult } from "@glade/contracts/workspace/project";
 import { isWorkspaceFileWriteConflictError } from "@glade/shared/workspaceFileWrite";
 import type { QueryClient } from "@tanstack/react-query";
 

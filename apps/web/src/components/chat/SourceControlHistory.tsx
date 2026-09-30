@@ -1,4 +1,4 @@
-import type { GitRecentCommit } from "@glade/contracts";
+import type { GitRecentCommit } from "@glade/contracts/git/git";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { IconTag } from "@tabler/icons-react";

@@ -3,7 +3,7 @@ import type {
   NonNullableUsage,
   SDKControlGetContextUsageResponse,
 } from "@anthropic-ai/claude-agent-sdk";
-import type { ThreadTokenUsageSnapshot } from "@glade/contracts";
+import type { ThreadTokenUsageSnapshot } from "@glade/contracts/provider/providerRuntime";
 import {
   getClaudeContextWindowSuffix,
   getDefaultAutoCompactWindow,

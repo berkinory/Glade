@@ -1,4 +1,4 @@
-import type { ServerProviderUsageSnapshot } from "@glade/contracts";
+import type { ServerProviderUsageSnapshot } from "@glade/contracts/server/server";
 import {
   PROVIDER_USAGE_PROVIDERS,
   providerUsageDisplayName,

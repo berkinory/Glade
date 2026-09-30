@@ -1,5 +1,5 @@
 import { type MouseEvent, type ReactNode } from "react";
-import type { ProviderMentionReference } from "@glade/contracts";
+import type { ProviderMentionReference } from "@glade/contracts/provider/providerDiscovery";
 import { basenameOfPath, pathLooksLikeKnownFile } from "~/file-icons";
 import { openWorkspaceFileReference, useWorkspaceFileOpener } from "~/lib/workspaceFileOpener";
 import {

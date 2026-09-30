@@ -1,4 +1,4 @@
-import type { KeybindingShortcut } from "@glade/contracts";
+import type { KeybindingShortcut } from "@glade/contracts/settings/keybindings";
 
 import { formatShortcutLabel } from "../keybindings";
 import {

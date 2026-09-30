@@ -1,7 +1,8 @@
 import * as fs from "node:fs/promises";
 import * as nodePath from "node:path";
 
-import type { ProviderKind, ProviderSkillReference } from "@glade/contracts";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
+import type { ProviderSkillReference } from "@glade/contracts/provider/providerDiscovery";
 
 const MAX_INLINE_SKILL_CONTENT_CHARS = 24_000;
 

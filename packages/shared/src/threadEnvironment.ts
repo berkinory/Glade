@@ -1,4 +1,4 @@
-import type { ThreadEnvironmentMode } from "@glade/contracts";
+import type { ThreadEnvironmentMode } from "@glade/contracts/orchestration/orchestration";
 import { isWorkspaceRootWithin } from "./threadWorkspace";
 
 export type ResolvedThreadWorkspaceState = "local" | "worktree-pending" | "worktree-ready";

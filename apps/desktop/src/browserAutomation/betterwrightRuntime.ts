@@ -1,5 +1,5 @@
 import { BetterWright, NetworkPolicy, type CredentialVault } from "betterwright";
-import { BrowserAutomationErrorMessages } from "@glade/contracts";
+import { BrowserAutomationErrorMessages } from "@glade/contracts/browser/automation/browserAutomationErrors";
 import type { WebContents } from "electron";
 import { gladeHostTarget } from "./betterwrightHostTarget";
 import type { BrowserAutomationVisibleRuntime } from "../browserManager";

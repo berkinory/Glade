@@ -1,4 +1,4 @@
-import { type ProviderModelDescriptor } from "@glade/contracts";
+import { type ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
 
 import { type StarredModel, starredModelSlotKey } from "~/lib/starredModels";
 import { cn } from "~/lib/utils";

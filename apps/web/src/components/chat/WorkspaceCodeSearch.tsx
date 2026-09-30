@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useDebouncedValue } from "@tanstack/react-pacer";
-import type { ProjectContentMatch } from "@glade/contracts";
+import type { ProjectContentMatch } from "@glade/contracts/workspace/project";
 import { projectSearchContentQueryOptions } from "~/lib/projectReactQuery";
 import { ContentSearchMatchText } from "../ContentSearchMatchText";
 import { SearchInput } from "../ui/search-input";

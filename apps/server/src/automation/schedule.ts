@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
-import type { AutomationId, AutomationSchedule } from "@glade/contracts";
+import type { AutomationId } from "@glade/contracts/core/baseSchemas";
+import type { AutomationSchedule } from "@glade/contracts/automation/automation";
 
 const MINUTE_MS = 60 * 1000;
 const DAY_MS = 24 * 60 * MINUTE_MS;

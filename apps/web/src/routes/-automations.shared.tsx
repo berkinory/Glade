@@ -1,7 +1,6 @@
 import {
   type AutomationCreateInput,
   type AutomationDefinition,
-  type AutomationId,
   type AutomationListResult,
   type AutomationMemory,
   type AutomationMode,
@@ -11,11 +10,16 @@ import {
   type AutomationStreamEvent,
   type AutomationUpdateInput,
   type AutomationWorktreeMode,
-  type ModelSelection,
+} from "@glade/contracts/automation/automation";
+import {
+  type AutomationId,
   type ProviderKind,
-  type RuntimeMode,
   type ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/core/baseSchemas";
+import {
+  type ModelSelection,
+  type RuntimeMode,
+} from "@glade/contracts/orchestration/orchestration";
 import { automationRequiresTargetThread } from "@glade/shared/automationMode";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";

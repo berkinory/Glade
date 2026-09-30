@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { CuaComputerBackend } from "./CuaComputerBackend.ts";
-import { ComputerScreenshot } from "@glade/contracts";
+import { ComputerScreenshot } from "@glade/contracts/computer/computer";
 import { Effect, Schema } from "effect";
 import { CuaTransportError, type cuaRequest } from "@glade/shared/cuaDriverProtocol";
 import { ComputerManager } from "./ComputerManager.ts";

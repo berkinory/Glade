@@ -3,12 +3,14 @@ import {
   IsoDateTime,
   MessageId,
   NonNegativeInt,
+  ThreadId,
+  TurnId,
+} from "@glade/contracts/core/baseSchemas";
+import {
   OrchestrationProposedPlanId,
   OrchestrationCheckpointFile,
   OrchestrationCheckpointStatus,
-  ThreadId,
-  TurnId,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
 import { Option, Schema, ServiceMap } from "effect";
 import type { Effect } from "effect";
 

@@ -1,4 +1,4 @@
-import type { ThreadId } from "@glade/contracts";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 
 export function canApplyThreadSnapshot(input: {
   readonly threadId: ThreadId;

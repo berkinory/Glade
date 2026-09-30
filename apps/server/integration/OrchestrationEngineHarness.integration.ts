@@ -1,13 +1,11 @@
 import { execFileSync } from "node:child_process";
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
+import { ApprovalRequestId, ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
-  ApprovalRequestId,
-  ProviderKind,
-  ThreadId,
   type OrchestrationEvent,
   type OrchestrationThread,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
 import {
   Effect,
   Exit,

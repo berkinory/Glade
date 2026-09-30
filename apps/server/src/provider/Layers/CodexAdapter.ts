@@ -1,29 +1,34 @@
+import { AsyncUserInputQuestions } from "@glade/contracts/orchestration/asyncUserInput";
 import {
-  AsyncUserInputQuestions,
   type ChatAttachment,
+  type ModelSelection,
+  type ProviderUserInputAnswers,
+  ProviderApprovalDecision,
+} from "@glade/contracts/orchestration/orchestration";
+import {
   type CanonicalItemType,
   type CanonicalRequestType,
-  type ModelSelection,
+  type ProviderRuntimeEvent,
+  type ThreadTokenUsageSnapshot,
+} from "@glade/contracts/provider/providerRuntime";
+import {
   type ProviderComposerCapabilities,
-  type ProviderEvent,
   type ProviderListModelsResult,
   type ProviderListPluginsResult,
   type ProviderReadPluginResult,
-  type ProviderSendTurnInput,
   type ProviderListSkillsResult,
-  type ProviderRuntimeEvent,
-  type ServerVoiceTranscriptionResult,
-  type ThreadTokenUsageSnapshot,
-  type ProviderUserInputAnswers,
+} from "@glade/contracts/provider/providerDiscovery";
+import { type ProviderEvent, type ProviderSendTurnInput } from "@glade/contracts/provider/provider";
+import { type ServerVoiceTranscriptionResult } from "@glade/contracts/server/server";
+import {
   EventId,
   RuntimeItemId,
   RuntimeRequestId,
   RuntimeTaskId,
-  ProviderApprovalDecision,
   ProviderItemId,
   ThreadId,
   TurnId,
-} from "@glade/contracts";
+} from "@glade/contracts/core/baseSchemas";
 import { Cause, Effect, Layer, Option, Queue, Schema, ServiceMap, Stream } from "effect";
 
 import {

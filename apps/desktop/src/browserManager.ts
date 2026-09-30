@@ -15,6 +15,8 @@ import type {
   BrowserAnnotationSession,
   BrowserAnnotationStartInput,
   BrowserAnnotationSyncMarkersInput,
+} from "@glade/contracts/browser/browserAnnotations";
+import type {
   BrowserAttachWebviewInput,
   BrowserCaptureScreenshotResult,
   BrowserCopyLinkEvent,
@@ -28,8 +30,8 @@ import type {
   BrowserTabState,
   BrowserThreadInput,
   ThreadBrowserState,
-  ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/ipc/ipc";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { isBrowserCopyLinkChord } from "@glade/shared/browserShortcuts";
 import {
   BROWSER_BLANK_URL as ABOUT_BLANK_URL,

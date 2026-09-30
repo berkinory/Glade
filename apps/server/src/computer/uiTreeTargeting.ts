@@ -2,10 +2,10 @@ import type {
   ComputerPoint,
   ComputerRect,
   ComputerScreenSize,
-  ComputerSpaceErrorCode,
   ComputerTarget,
   ComputerUiNode,
-} from "@glade/contracts";
+} from "@glade/contracts/computer/computer";
+import type { ComputerSpaceErrorCode } from "@glade/contracts/computer/computerSpaces";
 import {
   flattenUiTree,
   resolveUiTreeTarget,

@@ -1,5 +1,5 @@
 import { normalizeOperationError } from "../platform/operationError.ts";
-import type { ProviderKind, ThreadId } from "@glade/contracts";
+import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { Effect, Exit } from "effect";
 
 import type {

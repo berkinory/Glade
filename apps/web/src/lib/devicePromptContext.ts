@@ -1,9 +1,6 @@
-import type {
-  DeviceScreenshotResult,
-  NativeApi,
-  ThreadDeviceState,
-  ThreadId,
-} from "@glade/contracts";
+import type { DeviceScreenshotResult, ThreadDeviceState } from "@glade/contracts/device/device";
+import type { NativeApi } from "@glade/contracts/ipc/ipc";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 
 import type { ComposerImageAttachment } from "../composerDraftStore";
 import { prepareComposerImageAttachmentsFromFiles } from "./composerSend";

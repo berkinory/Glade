@@ -1,4 +1,5 @@
-import type { OrchestrationPendingInteraction, ThreadId } from "@glade/contracts";
+import type { OrchestrationPendingInteraction } from "@glade/contracts/orchestration/orchestration";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { pendingRequestInstanceKey } from "@glade/shared/threadSummary";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useComposerDraftStore, useComposerThreadDraft } from "../../composerDraftStore";

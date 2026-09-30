@@ -1,6 +1,6 @@
 import zlib from "node:zlib";
 
-import type { OrchestrationThread } from "@glade/contracts";
+import type { OrchestrationThread } from "@glade/contracts/orchestration/orchestration";
 import { describe, expect, it } from "@effect/vitest";
 
 import { threadArchiveChunks, threadArchiveFileName } from "./exportThreadArchive.ts";

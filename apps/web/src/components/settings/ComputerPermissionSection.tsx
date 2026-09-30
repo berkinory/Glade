@@ -3,7 +3,7 @@ import {
   type DesktopComputerPermissionKind,
   type DesktopComputerSettingsPane,
   type DesktopComputerState,
-} from "@glade/contracts";
+} from "@glade/contracts/ipc/ipc";
 import { useEffect, useRef, useState } from "react";
 
 function createLatestPermissionRequestGuard() {

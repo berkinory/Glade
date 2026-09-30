@@ -1,4 +1,4 @@
-import type { AuthClientSession, AuthPairingLink } from "@glade/contracts";
+import type { AuthClientSession, AuthPairingLink } from "@glade/contracts/transport/auth/auth";
 import { DateTime, Effect, Layer } from "effect";
 
 import { BootstrapCredentialService } from "../Services/BootstrapCredentialService";

@@ -1,4 +1,5 @@
-import type { ProjectId, ThreadEnvironmentMode } from "@glade/contracts";
+import type { ProjectId } from "@glade/contracts/core/baseSchemas";
+import type { ThreadEnvironmentMode } from "@glade/contracts/orchestration/orchestration";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 

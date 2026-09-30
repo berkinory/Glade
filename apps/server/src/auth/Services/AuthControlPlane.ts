@@ -2,8 +2,8 @@ import type {
   AuthClientMetadata,
   AuthClientSession,
   AuthPairingLink,
-  AuthSessionId,
-} from "@glade/contracts";
+} from "@glade/contracts/transport/auth/auth";
+import type { AuthSessionId } from "@glade/contracts/core/baseSchemas";
 import { Data, DateTime, Duration, Effect, ServiceMap } from "effect";
 import type { SessionRole } from "./SessionCredentialService";
 

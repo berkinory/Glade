@@ -1,4 +1,5 @@
-import type { BrowserCaptureScreenshotResult, NativeApi, ThreadId } from "@glade/contracts";
+import type { BrowserCaptureScreenshotResult, NativeApi } from "@glade/contracts/ipc/ipc";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 
 import type { ComposerImageAttachment } from "../composerDraftStore";
 import { prepareComposerImageAttachmentsFromFiles } from "./composerSend";

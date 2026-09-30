@@ -11,7 +11,7 @@ import type {
   DeviceScreenshotResult,
   DeviceStartRecordingResult,
   DeviceStopRecordingResult,
-} from "@glade/contracts";
+} from "@glade/contracts/device/device";
 
 export interface DeviceStreamFrame {
   readonly sequence: number;

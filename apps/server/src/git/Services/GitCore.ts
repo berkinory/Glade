@@ -30,7 +30,7 @@ import type {
   GitStatusResult,
   GitSourceControlFilesResult,
   GitWorkingTreeDiffStatsResult,
-} from "@glade/contracts";
+} from "@glade/contracts/git/git";
 
 import type { GitCheckoutDirtyWorktreeError, GitCommandError } from "../Errors.ts";
 

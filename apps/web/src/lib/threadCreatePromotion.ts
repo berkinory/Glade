@@ -1,4 +1,6 @@
-import type { ClientOrchestrationCommand, NativeApi, ThreadId } from "@glade/contracts";
+import type { ClientOrchestrationCommand } from "@glade/contracts/orchestration/orchestration";
+import type { NativeApi } from "@glade/contracts/ipc/ipc";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { markPromotedDraftThreads } from "../composerDraftStore";
 import { readNativeApi } from "../nativeApi";
 import { useStore } from "../store";

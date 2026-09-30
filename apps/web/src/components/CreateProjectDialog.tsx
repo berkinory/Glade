@@ -1,4 +1,5 @@
-import { type GitHubProjectProvisionProgressEvent, type SpaceId } from "@glade/contracts";
+import { type GitHubProjectProvisionProgressEvent } from "@glade/contracts/git/githubProjectProvisioning";
+import { type SpaceId } from "@glade/contracts/core/baseSchemas";
 import { parseGitHubRepositoryInput } from "@glade/shared/githubRepository";
 import { normalizeProjectDirectoryName } from "@glade/shared/projectDirectoryName";
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";

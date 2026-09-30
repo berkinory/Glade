@@ -1,14 +1,16 @@
 import {
   CommandId,
-  DEFAULT_PROVIDER_INTERACTION_MODE,
   MessageId,
   ProjectId,
   ThreadId,
   TurnId,
+} from "@glade/contracts/core/baseSchemas";
+import {
+  DEFAULT_PROVIDER_INTERACTION_MODE,
   type OrchestrationMessage,
   type OrchestrationReadModel,
   type OrchestrationSession,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 

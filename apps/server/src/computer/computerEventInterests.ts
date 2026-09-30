@@ -1,4 +1,4 @@
-import type { ComputerEvent } from "@glade/contracts";
+import type { ComputerEvent } from "@glade/contracts/computer/computer";
 
 const MAX_COMPUTER_THREAD_INTERESTS_PER_CONNECTION = 64;
 

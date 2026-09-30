@@ -2,10 +2,10 @@ import { createHash } from "node:crypto";
 
 import {
   BrowserMcpToolErrorEnvelope,
-  ThreadId,
   type BrowserAutomationError,
-  type BrowserToolName,
-} from "@glade/contracts";
+} from "@glade/contracts/browser/automation/browserAutomationErrors";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { type BrowserToolName } from "@glade/contracts/browser/automation/browserAutomationToolCatalogue";
 import {
   BROWSER_TOOL_CATALOGUE,
   BROWSER_TOOL_DEFINITIONS_BY_NAME,

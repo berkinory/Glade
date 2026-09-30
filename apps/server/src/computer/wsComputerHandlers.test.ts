@@ -1,4 +1,4 @@
-import { COMPUTER_WS_METHODS } from "@glade/contracts";
+import { COMPUTER_WS_METHODS } from "@glade/contracts/computer/computer";
 import { Effect, Exit, Fiber } from "effect";
 import { describe, expect, it } from "vitest";
 

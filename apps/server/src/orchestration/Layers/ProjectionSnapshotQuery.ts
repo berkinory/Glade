@@ -8,6 +8,12 @@ import {
   IsoDateTime,
   MessageId,
   NonNegativeInt,
+  ProjectId,
+  SpaceId,
+  ThreadId,
+  TurnId,
+} from "@glade/contracts/core/baseSchemas";
+import {
   OrchestrationPendingInteraction,
   OrchestrationCheckpointFile,
   OrchestrationProjectShell,
@@ -21,12 +27,7 @@ import {
   ThreadPinnedMessages,
   ThreadGoalAchievements,
   ProjectScript,
-  ProjectId,
-  ProjectKind,
-  SpaceId,
-  ThreadId,
   ThreadEnvironmentMode,
-  TurnId,
   type OrchestrationCheckpointSummary,
   type OrchestrationLatestTurn,
   type OrchestrationMessage,
@@ -38,7 +39,8 @@ import {
   type OrchestrationThreadActivity,
   ThreadHandoff,
   ModelSelection,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import { ProjectKind } from "@glade/contracts/workspace/project";
 import { Effect, Layer, Option, Schema, Struct } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import * as SqlSchema from "effect/unstable/sql/SqlSchema";

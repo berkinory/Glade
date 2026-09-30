@@ -1,18 +1,22 @@
+import { AsyncUserInput } from "@glade/contracts/orchestration/asyncUserInput";
 import {
-  AsyncUserInput,
   ChatAttachment,
   MessageDispatchOrigin,
   OrchestrationMessageRole,
   OrchestrationMessageSource,
   TurnDispatchMode,
+} from "@glade/contracts/orchestration/orchestration";
+import {
   MessageId,
-  ProviderMentionReference,
-  ProviderSkillReference,
   ThreadId,
   TurnId,
   IsoDateTime,
   NonNegativeInt,
-} from "@glade/contracts";
+} from "@glade/contracts/core/baseSchemas";
+import {
+  ProviderMentionReference,
+  ProviderSkillReference,
+} from "@glade/contracts/provider/providerDiscovery";
 import { Schema, ServiceMap } from "effect";
 import type { Effect, Option } from "effect";
 

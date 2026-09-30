@@ -1,7 +1,5 @@
 import {
   DEVICE_WS_METHODS,
-  ThreadId,
-  WsRpcError,
   type DeviceAttachInput,
   type DeviceBootInput,
   type DeviceBootResult,
@@ -31,7 +29,9 @@ import {
   type DeviceThreadInput,
   type DeviceTypeTextInput,
   type ThreadDeviceState,
-} from "@glade/contracts";
+} from "@glade/contracts/device/device";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { WsRpcError } from "@glade/contracts/transport/ws/rpc";
 import { Effect } from "effect";
 
 import type { DeviceServiceShape } from "./Services/DeviceService.ts";

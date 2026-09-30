@@ -1,4 +1,4 @@
-import type { ProjectId, ThreadId, TurnId } from "@glade/contracts";
+import type { ProjectId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import type { ChatRightPanel } from "./diffRouteSearch";
 
 export type SplitViewId = string;

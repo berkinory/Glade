@@ -4,14 +4,18 @@ import {
   ApprovalRequestId,
   EventId,
   ProviderItemId,
+  ThreadId,
+  TurnId,
+} from "@glade/contracts/core/baseSchemas";
+import {
   type ProviderApprovalDecision,
+  type ProviderUserInputAnswers,
+} from "@glade/contracts/orchestration/orchestration";
+import {
   type ProviderEvent,
   type ProviderSession,
   type ProviderTurnStartResult,
-  type ProviderUserInputAnswers,
-  ThreadId,
-  TurnId,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/provider";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { afterAll, it, vi } from "@effect/vitest";
 

@@ -1,4 +1,4 @@
-import type { OrchestrationEvent } from "@glade/contracts";
+import type { OrchestrationEvent } from "@glade/contracts/orchestration/orchestration";
 import { Effect, Option } from "effect";
 
 import type { ProjectionRepositoryError } from "../persistence/Errors.ts";

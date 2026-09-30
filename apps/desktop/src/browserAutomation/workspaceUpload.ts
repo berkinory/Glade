@@ -2,7 +2,9 @@ import { constants, type Stats } from "node:fs";
 import { chmod, lstat, mkdir, mkdtemp, open, realpath, rm, stat } from "node:fs/promises";
 import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
 
-import type { BrowserTabId, BrowserUploadInput, BrowserUploadOutput } from "@glade/contracts";
+import type { BrowserTabId } from "@glade/contracts/browser/automation/browserAutomationIds";
+import type { BrowserUploadInput } from "@glade/contracts/browser/automation/browserAutomationToolInputs";
+import type { BrowserUploadOutput } from "@glade/contracts/browser/automation/browserAutomationToolOutputs";
 import type { WebContents } from "electron";
 
 import type { BrowserAutomationVisibleRuntime } from "../browserManager";

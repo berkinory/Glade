@@ -2,9 +2,9 @@ import type { TaggedFailure } from "../../platform/operationError.ts";
 import type {
   OrchestrationProject,
   OrchestrationProjectShell,
-  ProjectId,
-  PullRequestDetail,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import type { ProjectId } from "@glade/contracts/core/baseSchemas";
+import type { PullRequestDetail } from "@glade/contracts/git/pullRequests";
 import { isValidGitHubRepositoryNameWithOwner } from "@glade/shared/githubRepository";
 import { Effect, Layer, Scope, Semaphore } from "effect";
 

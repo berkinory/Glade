@@ -1,4 +1,7 @@
-import type { ChatAttachment, ChatImageAttachment } from "@glade/contracts";
+import type {
+  ChatAttachment,
+  ChatImageAttachment,
+} from "@glade/contracts/orchestration/orchestration";
 
 export function filterProviderPromptImageAttachments(
   attachments: ReadonlyArray<ChatAttachment> | undefined,

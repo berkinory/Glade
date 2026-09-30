@@ -1,4 +1,5 @@
-import type { ProviderKind, ServerProviderStatus } from "@glade/contracts";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
+import type { ServerProviderStatus } from "@glade/contracts/server/server";
 
 export const ONBOARDING_STEPS = [
   "welcome",

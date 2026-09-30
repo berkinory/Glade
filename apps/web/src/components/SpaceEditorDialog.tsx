@@ -1,4 +1,4 @@
-import { SPACE_NAME_MAX_LENGTH } from "@glade/contracts";
+import { SPACE_NAME_MAX_LENGTH } from "@glade/contracts/orchestration/orchestration";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { handleRadioGridKeyDown } from "~/lib/radioGridKeyboard";

@@ -1,15 +1,17 @@
 import {
   CheckpointRef,
   CommandId,
-  DEFAULT_PROVIDER_INTERACTION_MODE,
   EventId,
   MessageId,
   ProjectId,
   ThreadId,
   TurnId,
+} from "@glade/contracts/core/baseSchemas";
+import {
+  DEFAULT_PROVIDER_INTERACTION_MODE,
   type OrchestrationCommand,
   type OrchestrationEvent,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
 import { Effect, Layer, ManagedRuntime, Option, Stream } from "effect";
 import { describe, expect, it, vi } from "vitest";
 

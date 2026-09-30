@@ -1,4 +1,4 @@
-import type { DeviceUdid } from "@glade/contracts";
+import type { DeviceUdid } from "@glade/contracts/device/device";
 import type { DeviceFrame } from "@glade/shared/deviceFrame";
 import { useEffect, useRef, useState } from "react";
 

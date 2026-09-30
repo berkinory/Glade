@@ -1,5 +1,6 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { CommandId, DEFAULT_SERVER_SETTINGS, MessageId } from "@glade/contracts";
+import { CommandId, MessageId } from "@glade/contracts/core/baseSchemas";
+import { DEFAULT_SERVER_SETTINGS } from "@glade/contracts/settings/settings";
 import { Effect, Layer, ManagedRuntime } from "effect";
 import { expect, it, vi } from "vitest";
 import { ServerConfig } from "../config";

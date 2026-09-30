@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, readFile, realpath, rm, stat, symlink, writeFile } from
 import { tmpdir } from "node:os";
 import { basename, isAbsolute, join, relative } from "node:path";
 
-import type { BrowserCssSelector } from "@glade/contracts";
+import type { BrowserCssSelector } from "@glade/contracts/browser/automation/browserAutomationCssSelector";
 import type { WebContents } from "electron";
 import { afterEach, describe, expect, it, vi } from "vitest";
 

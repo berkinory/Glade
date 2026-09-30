@@ -1,4 +1,5 @@
-import type { OrchestrationEvent, ThreadId } from "@glade/contracts";
+import type { OrchestrationEvent } from "@glade/contracts/orchestration/orchestration";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { makeDrainableWorker, startDrainableWorkerProducers } from "@glade/shared/DrainableWorker";
 import { Cause, Effect, Layer, Stream } from "effect";
 

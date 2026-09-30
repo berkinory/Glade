@@ -1,8 +1,6 @@
-import {
-  type ProjectDiscoveredScriptTarget,
-  type ProjectId,
-  type ServerLocalServerProcess,
-} from "@glade/contracts";
+import { type ProjectDiscoveredScriptTarget } from "@glade/contracts/workspace/project";
+import { type ProjectId } from "@glade/contracts/core/baseSchemas";
+import { type ServerLocalServerProcess } from "@glade/contracts/server/server";
 import { localServerAddressLabel, localServerMatchesRun } from "@glade/shared/localServers";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";

@@ -1,12 +1,7 @@
 import type { TaggedFailure } from "./platform/operationError.ts";
 
-import {
-  CheckpointRef,
-  MessageId,
-  ThreadId,
-  TurnId,
-  type ThreadEnvironmentMode,
-} from "@glade/contracts";
+import { CheckpointRef, MessageId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
+import { type ThreadEnvironmentMode } from "@glade/contracts/orchestration/orchestration";
 import { resolveThreadWorkspaceCwd } from "@glade/shared/threadEnvironment";
 import { Cause, Effect, Layer, ServiceMap } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";

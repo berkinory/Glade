@@ -8,7 +8,7 @@ import {
   type ComputerStatusResult,
   type ComputerWindow,
   type ThreadComputerState,
-} from "@glade/contracts";
+} from "@glade/contracts/computer/computer";
 import { listComputerPermissions } from "@glade/shared/computerGrants";
 import { COMPUTER_TOOL_TITLES, computerToolName } from "../lib/computerToolPresentation";
 

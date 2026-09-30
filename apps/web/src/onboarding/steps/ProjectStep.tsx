@@ -1,4 +1,4 @@
-import type { ProjectId } from "@glade/contracts";
+import type { ProjectId } from "@glade/contracts/core/baseSchemas";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { ProjectImportPanel } from "~/projectImport/ProjectImportPanel";

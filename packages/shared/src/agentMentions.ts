@@ -1,9 +1,9 @@
 import {
   resolveAgentAlias,
   type ClaudeSubagentAliasDefinition,
-  type ProviderKind,
   type ResolvedAgentAlias,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/agentMentions";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 
 export interface ParsedAgentMentionInvocation {
   readonly alias: string;

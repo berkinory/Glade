@@ -15,7 +15,7 @@ import {
   type DesktopComputerPlatform,
   type DesktopComputerSettingsPane,
   type DesktopComputerState,
-} from "@glade/contracts";
+} from "@glade/contracts/ipc/ipc";
 
 const MAX_HELPER_STDERR_CHARS = 4_096;
 

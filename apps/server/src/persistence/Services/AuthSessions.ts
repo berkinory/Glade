@@ -1,4 +1,5 @@
-import { AuthClientMetadataDeviceType, AuthSessionId } from "@glade/contracts";
+import { AuthClientMetadataDeviceType } from "@glade/contracts/transport/auth/auth";
+import { AuthSessionId } from "@glade/contracts/core/baseSchemas";
 import { Option, Schema, ServiceMap } from "effect";
 import type { Effect } from "effect";
 

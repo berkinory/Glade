@@ -1,4 +1,5 @@
-import { MAX_PINNED_PROJECTS, type ProjectId, type ThreadId } from "@glade/contracts";
+import { MAX_PINNED_PROJECTS } from "@glade/contracts/orchestration/orchestration";
+import { type ProjectId, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { resolveThreadEnvironmentMode } from "@glade/shared/threadEnvironment";
 import { isWorkspaceRootWithin, workspaceRootsEqual } from "@glade/shared/threadWorkspace";
 import type { SidebarProjectSortOrder, SidebarThreadSortOrder } from "../appSettings";

@@ -1,4 +1,4 @@
-import { ThreadId } from "@glade/contracts";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   advanceThreadDetailResumeCursor,

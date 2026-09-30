@@ -1,4 +1,4 @@
-import { type MessageId } from "@glade/contracts";
+import { type MessageId } from "@glade/contracts/core/baseSchemas";
 import { type TimelineEntry } from "../../session-logic";
 
 export interface MessageTrailItem {

@@ -1,4 +1,4 @@
-import type { ResolvedKeybindingsConfig } from "@glade/contracts";
+import type { ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 

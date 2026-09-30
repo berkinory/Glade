@@ -7,12 +7,12 @@ import {
   type ClaudeModelOptions,
   type ClaudeCodeEffort,
   type ModelCapabilities,
-  type ModelSelection,
   type ModelSlug,
   type ProviderOptionDescriptor,
   type ProviderOptionSelection,
-  type ProviderKind,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/model";
+import { type ModelSelection } from "@glade/contracts/orchestration/orchestration";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 
 const MODEL_SLUG_SET_BY_PROVIDER: Record<ProviderKind, ReadonlySet<ModelSlug>> = {
   claudeAgent: new Set(MODEL_OPTIONS_BY_PROVIDER.claudeAgent.map((option) => option.slug)),

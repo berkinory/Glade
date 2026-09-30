@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import type { ThreadId } from "@glade/contracts";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { ComposerComputerControlMode } from "~/computerControlMode";
 import { readNativeApi } from "~/nativeApi";
 import { toastManager } from "~/components/ui/toast";

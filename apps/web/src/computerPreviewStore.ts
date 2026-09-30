@@ -1,4 +1,5 @@
-import type { ThreadComputerState, ThreadId } from "@glade/contracts";
+import type { ThreadComputerState } from "@glade/contracts/computer/computer";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { create } from "zustand";
 
 import {

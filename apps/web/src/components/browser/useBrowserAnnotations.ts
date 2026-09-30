@@ -3,8 +3,8 @@ import type {
   BrowserAnnotationEvent,
   BrowserAnnotationMethods,
   BrowserAnnotationSession,
-  ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/browser/browserAnnotations";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 
 import type { BrowserAnnotationDraft } from "../../lib/browserAnnotations";
 import {

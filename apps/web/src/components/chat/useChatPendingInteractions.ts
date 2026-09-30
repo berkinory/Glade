@@ -1,11 +1,10 @@
 import {
   RuntimeMode,
-  ThreadId,
-  type ApprovalRequestId,
   type ProviderApprovalDecision,
   type ProviderRequestKind,
   type ProviderUserInputAnswers,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import { ThreadId, type ApprovalRequestId } from "@glade/contracts/core/baseSchemas";
 import {
   APPROVAL_ALREADY_ANSWERED_INVARIANT_MARKER,
   collectErrorMessages,

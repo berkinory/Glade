@@ -1,4 +1,5 @@
-import { PROVIDER_DISPLAY_NAMES, type ProviderKind } from "@glade/contracts";
+import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { Button } from "../ui/button";
 import {
   Dialog,

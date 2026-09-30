@@ -1,5 +1,5 @@
 import { setTimeout as delay } from "node:timers/promises";
-import type { ComputerState, ComputerTarget } from "@glade/contracts";
+import type { ComputerState, ComputerTarget } from "@glade/contracts/computer/computer";
 import { ComputerTargetError, resolveComputerSemanticTarget } from "./uiTreeTargeting.ts";
 
 export interface ComputerControlReadiness {

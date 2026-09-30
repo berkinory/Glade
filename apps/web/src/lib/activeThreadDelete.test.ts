@@ -1,4 +1,4 @@
-import { ProjectId, ThreadId } from "@glade/contracts";
+import { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const harness = vi.hoisted(() => ({

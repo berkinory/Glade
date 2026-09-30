@@ -1,4 +1,5 @@
-import { PROVIDER_DISPLAY_NAMES, type ServerProviderStatus } from "@glade/contracts";
+import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
+import { type ServerProviderStatus } from "@glade/contracts/server/server";
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "../ui/alert";
 import { IconButton } from "../ui/icon-button";
 import {

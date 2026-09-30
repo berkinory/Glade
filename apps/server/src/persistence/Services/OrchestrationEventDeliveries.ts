@@ -1,4 +1,4 @@
-import { EventId, IsoDateTime, NonNegativeInt, ThreadId } from "@glade/contracts";
+import { EventId, IsoDateTime, NonNegativeInt, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { Option, Schema, ServiceMap } from "effect";
 import type { Effect } from "effect";
 

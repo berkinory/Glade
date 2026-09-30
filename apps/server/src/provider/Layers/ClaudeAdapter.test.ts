@@ -18,10 +18,10 @@ import type {
 import {
   ApprovalRequestId,
   ProviderItemId,
-  ProviderRuntimeEvent,
   ThreadId,
   TurnId,
-} from "@glade/contracts";
+} from "@glade/contracts/core/baseSchemas";
+import { ProviderRuntimeEvent } from "@glade/contracts/provider/providerRuntime";
 import { assert, describe, it } from "@effect/vitest";
 
 import { Effect, Exit, Fiber, Layer, Random, Stream } from "effect";

@@ -1,5 +1,5 @@
 import type { NativeToolCallRegistry } from "../nativeToolCalls.ts";
-import type { ProviderKind, ThreadId } from "@glade/contracts";
+import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { ServiceMap } from "effect";
 import type {
   AgentGatewaySessionIdentity,

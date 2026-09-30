@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
-import type { ServerProviderStatus } from "@glade/contracts";
+import type { ServerProviderStatus } from "@glade/contracts/server/server";
 import { toastManager } from "../components/ui/toast";
 import { readNativeApi } from "../nativeApi";
 import { reconcileServerProviderStatuses } from "../lib/serverReactQuery";

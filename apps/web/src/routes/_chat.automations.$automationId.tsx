@@ -3,10 +3,10 @@ import {
   type AutomationRun,
   type AutomationUpdateInput,
   type AutomationWorktreeMode,
-  type ModelSelection,
-  type ProviderOptionDescriptor,
-  type ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/automation/automation";
+import { type ModelSelection } from "@glade/contracts/orchestration/orchestration";
+import { type ProviderOptionDescriptor } from "@glade/contracts/provider/model";
+import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   automationContinuationThreadId,
   automationRequiresTargetThread,

@@ -2,7 +2,7 @@ import type {
   ImportProjectResult,
   ListProjectImportsResult,
   ProjectImportProvider,
-} from "@glade/contracts";
+} from "@glade/contracts/workspace/projectImport";
 import { useEffect, useRef, useState } from "react";
 
 import { ProviderIcon } from "~/components/ProviderIcon";

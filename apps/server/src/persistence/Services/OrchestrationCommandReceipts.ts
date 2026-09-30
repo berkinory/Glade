@@ -2,13 +2,15 @@ import {
   CommandId,
   IsoDateTime,
   NonNegativeInt,
-  OrchestrationAggregateKind,
-  OrchestrationCommandReceiptStatus,
   PositiveInt,
   ProjectId,
   SpaceId,
   ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/core/baseSchemas";
+import {
+  OrchestrationAggregateKind,
+  OrchestrationCommandReceiptStatus,
+} from "@glade/contracts/orchestration/orchestration";
 import { Option, Schema, ServiceMap } from "effect";
 import type { Effect } from "effect";
 

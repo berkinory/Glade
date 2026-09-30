@@ -2,7 +2,11 @@
 // per thread so concurrent agents cannot resolve coordinates against another thread's view.
 import { createHash } from "node:crypto";
 
-import type { ComputerPoint, ComputerRect, ComputerScreenshot } from "@glade/contracts";
+import type {
+  ComputerPoint,
+  ComputerRect,
+  ComputerScreenshot,
+} from "@glade/contracts/computer/computer";
 
 import { ComputerTargetError } from "./uiTreeTargeting.ts";
 

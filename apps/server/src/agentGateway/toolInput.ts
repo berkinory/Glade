@@ -1,10 +1,10 @@
+import { DEFAULT_MODEL_BY_PROVIDER } from "@glade/contracts/provider/model";
 import {
-  DEFAULT_MODEL_BY_PROVIDER,
   GladeCreateThreadsInput,
   GladeWaitForThreadsInput,
-  type ModelSelection,
-  type ProviderKind,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/agentGateway";
+import { type ModelSelection } from "@glade/contracts/orchestration/orchestration";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { Schema } from "effect";
 
 import { AGENT_GATEWAY_TARGET_OPTIONS_DESCRIPTION } from "./targetResolver.ts";

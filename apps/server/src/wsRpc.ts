@@ -2,40 +2,46 @@ import { sourceControlActions } from "./git/sourceControlActions.ts";
 import { AgentGatewaySessionRegistry } from "./agentGateway/Services/AgentGatewaySessionRegistry";
 import { execFile } from "node:child_process";
 
+import { COMPUTER_WS_METHODS, type ComputerEvent } from "@glade/contracts/computer/computer";
+import { DEVICE_WS_METHODS, type DeviceEvent } from "@glade/contracts/device/device";
 import {
-  COMPUTER_WS_METHODS,
-  DEVICE_WS_METHODS,
   ORCHESTRATION_WS_METHODS,
-  ThreadId,
-  WS_BOOTSTRAP_METHOD,
-  WS_BOOTSTRAP_PATH,
-  WS_FEATURE_PATH,
-  WS_NEGOTIATE_HTTP_PATH,
-  WS_METHODS,
-  WsBootstrapRpcGroup,
-  WsCompatibilityError,
-  WsComputerRpcGroup,
-  WsDeviceRpcGroup,
-  WsFeatureRpcGroup,
-  WsRpcError,
-  PullRequestsUnavailableError,
-  type DeviceEvent,
-  type ComputerEvent,
-  type GitActionProgressEvent,
-  type GitRemoveWorktreeInput,
-  type GitHubProjectProvisionProgressEvent,
-  type GitWorktreeSetupProgressEvent,
   type OrchestrationCommand,
   type OrchestrationEvent,
-  type ProjectDevServerEvent,
   type OrchestrationShellStreamEvent,
   type OrchestrationShellStreamItem,
   type OrchestrationThreadDetailSnapshot,
   type OrchestrationThreadStreamItem,
+} from "@glade/contracts/orchestration/orchestration";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
+import {
+  WS_BOOTSTRAP_METHOD,
+  WS_BOOTSTRAP_PATH,
+  WS_FEATURE_PATH,
+  WS_NEGOTIATE_HTTP_PATH,
+  WsCompatibilityError,
+} from "@glade/contracts/transport/ws/wsCompatibility";
+import { WS_METHODS } from "@glade/contracts/transport/ws/ws";
+import {
+  WsBootstrapRpcGroup,
+  WsComputerRpcGroup,
+  WsDeviceRpcGroup,
+  WsFeatureRpcGroup,
+  WsRpcError,
+} from "@glade/contracts/transport/ws/rpc";
+import { PullRequestsUnavailableError } from "@glade/contracts/git/pullRequests";
+import {
+  type GitActionProgressEvent,
+  type GitRemoveWorktreeInput,
+  type GitWorktreeSetupProgressEvent,
+} from "@glade/contracts/git/git";
+import { type GitHubProjectProvisionProgressEvent } from "@glade/contracts/git/githubProjectProvisioning";
+import { type ProjectDevServerEvent } from "@glade/contracts/workspace/project";
+import {
   type ServerConfigStreamEvent,
   type ServerDiagnosticsResult,
   type ServerLifecycleStreamEvent,
-} from "@glade/contracts";
+} from "@glade/contracts/server/server";
 import { clamp } from "effect/Number";
 import { Effect, FileSystem, Layer, Option, Path, Queue, Schema, Scope, Stream } from "effect";
 import { Headers, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http";

@@ -1,4 +1,4 @@
-import type { BrowserAnnotationMarker } from "@glade/contracts";
+import type { BrowserAnnotationMarker } from "@glade/contracts/browser/browserAnnotations";
 
 import type { AnnotationGuestCommand } from "./protocol";
 

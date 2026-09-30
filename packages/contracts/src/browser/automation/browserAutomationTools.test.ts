@@ -1,21 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { Schema } from "effect";
 
+import { BROWSER_TOOL_NAMES } from "./browserAutomationToolCatalogue";
 import {
-  BROWSER_TOOL_NAMES,
   BrowserClickInput,
-  BrowserClickOutput,
   BrowserDragInput,
   BrowserEvaluateInput,
   BrowserRunInput,
-  BrowserRunOutput,
   BrowserLogsInput,
-  BrowserLogsOutput,
-  BrowserPressOutput,
   BrowserScreenshotInput,
   BrowserSelectInput,
   BrowserSnapshotInput,
-  BrowserSnapshotOutput,
   BrowserStatusInput,
   BrowserTabsInput,
   BrowserToolNavigateInput,
@@ -24,10 +19,17 @@ import {
   BrowserUploadInput,
   BrowserWaitInput,
   BrowserWebMcpCallInput,
-  BrowserWebMcpCallOutput,
   BrowserWebMcpToolsInput,
+} from "./browserAutomationToolInputs";
+import {
+  BrowserClickOutput,
+  BrowserRunOutput,
+  BrowserLogsOutput,
+  BrowserPressOutput,
+  BrowserSnapshotOutput,
+  BrowserWebMcpCallOutput,
   BrowserWebMcpToolsOutput,
-} from "../../index";
+} from "./browserAutomationToolOutputs";
 
 const KEY = "01J00000000000000000000000";
 const TAB_ID = "00000000-0000-4000-8000-000000000001";

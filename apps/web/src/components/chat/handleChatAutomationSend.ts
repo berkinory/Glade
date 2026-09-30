@@ -1,4 +1,8 @@
-import { ThreadId, type ModelSelection, type ProviderStartOptions } from "@glade/contracts";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
+import {
+  type ModelSelection,
+  type ProviderStartOptions,
+} from "@glade/contracts/orchestration/orchestration";
 import { readNativeApi } from "~/nativeApi";
 import {
   automationClarificationPrompt,

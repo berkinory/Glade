@@ -3,12 +3,14 @@ import {
   CommandId,
   IsoDateTime,
   NonNegativeInt,
+  ThreadId,
+  TurnId,
+} from "@glade/contracts/core/baseSchemas";
+import {
   ProjectionPendingInteractionDecision,
   ProjectionPendingInteractionKind,
   ProjectionPendingInteractionStatus,
-  ThreadId,
-  TurnId,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
 import { Option, Schema, ServiceMap } from "effect";
 import type { Effect } from "effect";
 

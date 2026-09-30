@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { BrowserVaultSettings, BrowserVaultSnapshot } from "@glade/contracts";
+import type {
+  BrowserVaultSettings,
+  BrowserVaultSnapshot,
+} from "@glade/contracts/browser/browserVault";
 import { CentralIcon } from "~/lib/central-icons";
 import { readNativeApi } from "~/nativeApi";
 import { Button } from "./ui/button";

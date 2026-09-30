@@ -8,8 +8,8 @@ import type {
   ProjectSearchContentResult,
   ProjectSearchEntriesResult,
   ProjectSearchLocalEntriesResult,
-} from "@glade/contracts";
-import { PROJECT_SEARCH_CONTENT_MIN_QUERY_LENGTH } from "@glade/contracts";
+} from "@glade/contracts/workspace/project";
+import { PROJECT_SEARCH_CONTENT_MIN_QUERY_LENGTH } from "@glade/contracts/workspace/project";
 import { isLocalAbsolutePath } from "@glade/shared/path";
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { ensureNativeApi } from "~/nativeApi";

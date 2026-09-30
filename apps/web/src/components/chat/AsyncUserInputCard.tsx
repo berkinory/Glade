@@ -1,4 +1,6 @@
-import type { AsyncUserInput, MessageId, UserInputQuestion } from "@glade/contracts";
+import type { AsyncUserInput } from "@glade/contracts/orchestration/asyncUserInput";
+import type { MessageId } from "@glade/contracts/core/baseSchemas";
+import type { UserInputQuestion } from "@glade/contracts/provider/providerRuntime";
 import { useMemo, useRef, useState } from "react";
 import { CircleQuestionIcon, CheckIcon } from "~/lib/icons";
 import {

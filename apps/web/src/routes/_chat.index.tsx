@@ -1,4 +1,4 @@
-import { SpaceId, type ProjectId } from "@glade/contracts";
+import { SpaceId, type ProjectId } from "@glade/contracts/core/baseSchemas";
 import { createFileRoute } from "@tanstack/react-router";
 
 import {

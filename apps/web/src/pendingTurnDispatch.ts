@@ -1,4 +1,4 @@
-import type { ThreadId } from "@glade/contracts";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 
 // The catch-up watchdog otherwise re-syncs only threads the store already believes are busy. A lost
 // `thread.session-set(running)` event corrupts exactly that belief, so the watchdog needs a signal

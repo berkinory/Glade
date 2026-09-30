@@ -1,4 +1,4 @@
-import type { ClaudeCacheObservation } from "@glade/contracts";
+import type { ClaudeCacheObservation } from "@glade/contracts/provider/claudeCache";
 
 function tokenCount(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) && value >= 0

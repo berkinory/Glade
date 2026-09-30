@@ -3,14 +3,16 @@ import {
   EventId,
   IsoDateTime,
   NonNegativeInt,
+  ProjectId,
+  SpaceId,
+  ThreadId,
+} from "@glade/contracts/core/baseSchemas";
+import {
   OrchestrationActorKind,
   OrchestrationAggregateKind,
   OrchestrationEvent,
   OrchestrationEventType,
-  ProjectId,
-  SpaceId,
-  ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import * as SqlSchema from "effect/unstable/sql/SqlSchema";
 import { Effect, Layer, Option, Schema, Stream } from "effect";

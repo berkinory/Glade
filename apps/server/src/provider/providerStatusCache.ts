@@ -1,4 +1,4 @@
-import { ServerProviderStatus } from "@glade/contracts";
+import { ServerProviderStatus } from "@glade/contracts/server/server";
 import { Cause, Effect, FileSystem, Schema } from "effect";
 import { writeFileStringAtomically } from "../atomicWrite";
 

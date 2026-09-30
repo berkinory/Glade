@@ -1,4 +1,4 @@
-import type { PullRequestDetail } from "@glade/contracts";
+import type { PullRequestDetail } from "@glade/contracts/git/pullRequests";
 import { formatRelativeTime } from "~/lib/relativeTime";
 import { buildPullRequestTimelineEvents } from "./pullRequestDetail.logic";
 import { PR_BODY_TEXT_CLASS_NAME, PR_META_TEXT_CLASS_NAME } from "./pullRequestText";

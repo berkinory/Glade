@@ -1,13 +1,13 @@
 import { normalizeOperationError } from "../platform/operationError.ts";
 
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type {
-  ProviderKind,
   ServerConsumeCodexResetCreditInput,
   ServerConsumeCodexResetCreditResult,
   ServerListProviderUsageInput,
   ServerListProviderUsageResult,
   ServerProviderUsageSnapshot,
-} from "@glade/contracts";
+} from "@glade/contracts/server/server";
 import { Effect } from "effect";
 
 import { PROVIDER_USAGE_PROVIDERS } from "@glade/shared/providerUsage";

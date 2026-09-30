@@ -1,6 +1,7 @@
 import { makeNativeToolCallRegistry } from "./nativeToolCalls.ts";
 import { assert, describe, it } from "@effect/vitest";
-import { ProjectId, ThreadId, TurnId, type OrchestrationThreadShell } from "@glade/contracts";
+import { ProjectId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
+import { type OrchestrationThreadShell } from "@glade/contracts/orchestration/orchestration";
 import { Deferred, Effect, Fiber, Option } from "effect";
 
 import type { ProjectionSnapshotQueryShape } from "../orchestration/Services/ProjectionSnapshotQuery.ts";

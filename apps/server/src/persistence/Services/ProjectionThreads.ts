@@ -1,7 +1,12 @@
 import {
   IsoDateTime,
-  ModelSelection,
   NonNegativeInt,
+  ProjectId,
+  ThreadId,
+  TurnId,
+} from "@glade/contracts/core/baseSchemas";
+import {
+  ModelSelection,
   OrchestrationThreadPullRequest,
   PendingClaudeCacheReview,
   ThreadNotes,
@@ -9,14 +14,11 @@ import {
   ThreadGoalAchievements,
   ThreadPinnedMessages,
   ThreadHandoff,
-  ProjectId,
   ProviderInteractionMode,
   RuntimeMode,
   ThreadCreationSource,
   ThreadEnvironmentMode,
-  ThreadId,
-  TurnId,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
 import { Option, Schema, ServiceMap } from "effect";
 import type { Effect } from "effect";
 

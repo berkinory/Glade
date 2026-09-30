@@ -2,12 +2,12 @@ import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { BrowserAutomationErrorMessages } from "@glade/contracts/browser/automation/browserAutomationErrors";
 import {
-  BrowserAutomationErrorMessages,
   BrowserVaultSettings,
   type BrowserVaultSavePrompt,
   type BrowserVaultSnapshot,
-} from "@glade/contracts";
+} from "@glade/contracts/browser/browserVault";
 import {
   createLocalCredentialVault,
   type CredentialVault,

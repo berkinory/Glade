@@ -1,4 +1,4 @@
-import type { ProviderRequestKind } from "@glade/contracts";
+import type { ProviderRequestKind } from "@glade/contracts/orchestration/orchestration";
 
 // Whether "Always allow this session" (`acceptForSession`) on a request of this kind widens the
 // whole session, so later command and file prompts are auto-approved. Server adapters enforce it

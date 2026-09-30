@@ -1,4 +1,4 @@
-import type { PullRequestCheck, PullRequestCheckStatus } from "@glade/contracts";
+import type { PullRequestCheck, PullRequestCheckStatus } from "@glade/contracts/git/pullRequests";
 
 import { cn } from "~/lib/utils";
 

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { ProviderKind } from "@glade/contracts";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { cn } from "~/lib/utils";
 import {
   resolveModelGroupDefaultOpen,

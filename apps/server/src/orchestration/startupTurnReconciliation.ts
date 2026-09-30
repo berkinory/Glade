@@ -4,9 +4,9 @@ import type {
   OrchestrationThreadActivity,
   OrchestrationSession,
   RuntimeMode,
-  ThreadId,
-} from "@glade/contracts";
-import { CommandId, EventId } from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { CommandId, EventId } from "@glade/contracts/core/baseSchemas";
 import { createStalePendingInteractionMatcher } from "@glade/shared/pendingInteractions";
 import {
   derivePendingThreadRequestIds,

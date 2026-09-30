@@ -1,4 +1,4 @@
-import { WsRpcError } from "@glade/contracts";
+import { WsRpcError } from "@glade/contracts/transport/ws/rpc";
 import { Effect } from "effect";
 
 import { CurrentWsSessionRole } from "./wsConnectionSessions";

@@ -1,4 +1,5 @@
-import type { ProviderKind, RuntimeMode } from "@glade/contracts";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
+import type { RuntimeMode } from "@glade/contracts/orchestration/orchestration";
 
 const AUTO_RUNTIME_MODE_PROVIDERS = new Set<ProviderKind>(["codex", "claudeAgent"]);
 const RUNTIME_MODE_PRIVILEGE = {

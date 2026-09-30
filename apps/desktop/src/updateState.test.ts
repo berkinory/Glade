@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { DesktopUpdateState } from "@glade/contracts";
+import type { DesktopUpdateState } from "@glade/contracts/ipc/ipc";
 
 import {
   getCanRetryAfterDownloadFailure,

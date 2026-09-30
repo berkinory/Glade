@@ -5,8 +5,11 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { it } from "@effect/vitest";
 import { Effect, FileSystem, Layer, PlatformError, Scope } from "effect";
 import { expect } from "vitest";
-import type { GitActionProgressEvent } from "@glade/contracts";
-import type { ModelSelection, ProviderStartOptions } from "@glade/contracts";
+import type { GitActionProgressEvent } from "@glade/contracts/git/git";
+import type {
+  ModelSelection,
+  ProviderStartOptions,
+} from "@glade/contracts/orchestration/orchestration";
 
 import { GitCommandError, TextGenerationError } from "../Errors.ts";
 import { type GitManagerShape } from "../Services/GitManager.ts";

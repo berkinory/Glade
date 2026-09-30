@@ -1,14 +1,14 @@
+import type { ProjectEntry } from "@glade/contracts/workspace/project";
 import type {
-  ProjectEntry,
   ProviderAgentDescriptor,
   ProviderArtifactsState,
   ProviderNativeCommandDescriptor,
-  ProviderKind,
   ProviderMentionReference,
   ProviderPluginDescriptor,
   ProviderSkillDescriptor,
-} from "@glade/contracts";
-import { getAgentMentionAutocompleteAliases } from "@glade/contracts";
+} from "@glade/contracts/provider/providerDiscovery";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { getAgentMentionAutocompleteAliases } from "@glade/contracts/provider/agentMentions";
 import {
   buildCommandSearchFields,
   buildPluginSearchFields,

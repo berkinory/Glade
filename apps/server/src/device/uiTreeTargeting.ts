@@ -1,4 +1,4 @@
-import type { DeviceUiNode, DeviceUiPoint } from "@glade/contracts";
+import type { DeviceUiNode, DeviceUiPoint } from "@glade/contracts/device/device";
 import {
   flattenUiTree,
   resolveUiTreeTarget,

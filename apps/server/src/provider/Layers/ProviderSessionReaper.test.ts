@@ -1,12 +1,10 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
+import { type ProviderKind, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import {
-  type ProviderKind,
   type ProviderSession,
   type ProviderSessionStartInput,
-  ThreadId,
-  TurnId,
-  type OrchestrationThreadShell,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/provider";
+import { type OrchestrationThreadShell } from "@glade/contracts/orchestration/orchestration";
 import { Effect, Exit, Layer, Option, Scope, Stream } from "effect";
 import { describe, expect, it, vi } from "vitest";
 

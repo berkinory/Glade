@@ -1,4 +1,4 @@
-import type { GitBranch } from "@glade/contracts";
+import type { GitBranch } from "@glade/contracts/git/git";
 import {
   deriveAssociatedWorktreeMetadata,
   type AssociatedWorktreeMetadata,

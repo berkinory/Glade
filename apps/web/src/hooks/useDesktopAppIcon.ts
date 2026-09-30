@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-import type { DesktopAppIcon } from "@glade/contracts";
+import type { DesktopAppIcon } from "@glade/contracts/ipc/ipc";
 import { useAppSettings } from "~/appSettings";
 
 interface DesktopAppIconSynchronizerInput {

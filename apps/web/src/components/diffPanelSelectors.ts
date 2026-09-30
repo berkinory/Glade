@@ -1,4 +1,4 @@
-import type { MessageId, ThreadId, TurnId } from "@glade/contracts";
+import type { MessageId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 
 import type { AppState } from "../storeState";
 import { collectByIds } from "../threadDerivation";

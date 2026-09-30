@@ -1,9 +1,7 @@
-import {
-  PROVIDER_DISPLAY_NAMES,
-  type ProviderKind,
-  type ServerProviderStatus,
-  type ServerSettings,
-} from "@glade/contracts";
+import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { type ServerProviderStatus } from "@glade/contracts/server/server";
+import { type ServerSettings } from "@glade/contracts/settings/settings";
 import { PROVIDER_DESCRIPTORS as VISIBLE_PROVIDER_DESCRIPTORS } from "@glade/shared/providerMetadata";
 import { pluralize } from "@glade/shared/text";
 import {

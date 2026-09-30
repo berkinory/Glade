@@ -1,5 +1,11 @@
 import type {
   ApprovalRequestId,
+  ProjectId,
+  SpaceId,
+  ThreadId,
+  TurnId,
+} from "@glade/contracts/core/baseSchemas";
+import type {
   OrchestrationCommand,
   OrchestrationLatestTurn,
   OrchestrationProject,
@@ -8,12 +14,8 @@ import type {
   OrchestrationSession,
   OrchestrationThread,
   OrchestrationThreadActivity,
-  ProjectKind,
-  ProjectId,
-  SpaceId,
-  ThreadId,
-  TurnId,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import type { ProjectKind } from "@glade/contracts/workspace/project";
 import {
   APPROVAL_ALREADY_ANSWERED_INVARIANT_MARKER,
   THREAD_NOT_ARCHIVED_INVARIANT_MARKER,

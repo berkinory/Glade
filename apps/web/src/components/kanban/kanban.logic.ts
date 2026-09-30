@@ -1,4 +1,5 @@
-import type { ProjectId, ProviderKind, ThreadEnvironmentMode, ThreadId } from "@glade/contracts";
+import type { ProjectId, ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
+import type { ThreadEnvironmentMode } from "@glade/contracts/orchestration/orchestration";
 import { buildPromptThreadTitleFallback } from "@glade/shared/chatThreads";
 import { isPendingThreadWorktree } from "@glade/shared/threadEnvironment";
 import type { ComposerThreadDraftState } from "../../composerDraftStore";

@@ -1,4 +1,4 @@
-import type { PullRequestDetailInput, PullRequestState } from "@glade/contracts";
+import type { PullRequestDetailInput, PullRequestState } from "@glade/contracts/git/pullRequests";
 import type { QueryClient } from "@tanstack/react-query";
 
 export type PullRequestActionPatch = { state?: PullRequestState; isDraft?: boolean };

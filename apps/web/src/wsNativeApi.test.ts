@@ -1,21 +1,25 @@
 import {
   ApprovalRequestId,
   CommandId,
-  type ContextMenuItem,
   EventId,
+  ProjectId,
+  ThreadId,
+} from "@glade/contracts/core/baseSchemas";
+import { type ContextMenuItem } from "@glade/contracts/ipc/ipc";
+import {
   ORCHESTRATION_WS_CHANNELS,
   ORCHESTRATION_WS_METHODS,
   type OrchestrationEvent,
-  ProjectId,
-  ThreadId,
+} from "@glade/contracts/orchestration/orchestration";
+import {
   type WsPushChannel,
   type WsPushData,
   type WsPushMessage,
   WS_CHANNELS,
   WS_METHODS,
   type WsPush,
-  type ServerProviderStatus,
-} from "@glade/contracts";
+} from "@glade/contracts/transport/ws/ws";
+import { type ServerProviderStatus } from "@glade/contracts/server/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const requestMock = vi.fn<(...args: Array<unknown>) => Promise<unknown>>();

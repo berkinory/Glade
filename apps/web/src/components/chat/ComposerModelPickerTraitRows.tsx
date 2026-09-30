@@ -1,4 +1,5 @@
-import { type ProviderKind, type ProviderModelDescriptor, type ThreadId } from "@glade/contracts";
+import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
+import { type ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
 import { useState, type ReactNode } from "react";
 
 import { cn } from "~/lib/utils";

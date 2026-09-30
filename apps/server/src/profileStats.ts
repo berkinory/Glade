@@ -6,10 +6,10 @@ import type {
   ProfileQuota,
   ProfileStats,
   ProfileTokenStats,
-  ProviderKind,
   StatsGetProfileStatsInput,
   StatsGetProfileTokenStatsInput,
-} from "@glade/contracts";
+} from "@glade/contracts/server/stats";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { isBuiltInComposerSlashCommandName } from "@glade/shared/composerSlashCommands";
 import { Effect, Layer, ServiceMap } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";

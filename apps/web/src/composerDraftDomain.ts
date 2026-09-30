@@ -5,16 +5,20 @@ import {
   type ModelSelection,
   type OrchestrationLatestTurn,
   type OrchestrationThreadPullRequest,
-  type ProjectId,
   type ProviderInteractionMode,
-  type ProviderKind,
-  type ProviderMentionReference,
-  type ProviderModelOptions,
-  type ProviderSkillReference,
   type ProviderStartOptions,
   type RuntimeMode,
+} from "@glade/contracts/orchestration/orchestration";
+import {
+  type ProjectId,
+  type ProviderKind,
   type ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/core/baseSchemas";
+import {
+  type ProviderMentionReference,
+  type ProviderSkillReference,
+} from "@glade/contracts/provider/providerDiscovery";
+import { type ProviderModelOptions } from "@glade/contracts/provider/model";
 import * as Equal from "effect/Equal";
 import * as Schema from "effect/Schema";
 

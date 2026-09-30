@@ -1,4 +1,5 @@
-import { type ThreadGoalStartBehavior, type ThreadId } from "@glade/contracts";
+import { type ThreadGoalStartBehavior } from "@glade/contracts/orchestration/orchestration";
+import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 
 import { newCommandId } from "./lib/utils";
 import { readNativeApi } from "./nativeApi";

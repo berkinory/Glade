@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ComputerSpaceInventory, ComputerWindow } from "@glade/contracts";
+import type { ComputerSpaceInventory } from "@glade/contracts/computer/computerSpaces";
+import type { ComputerWindow } from "@glade/contracts/computer/computer";
 
 import { ComputerManager } from "./ComputerManager.ts";
 import { FakeComputerBackend } from "./FakeComputerBackend.ts";

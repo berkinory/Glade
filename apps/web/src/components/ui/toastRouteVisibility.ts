@@ -1,4 +1,4 @@
-import type { ThreadId } from "@glade/contracts";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { resolveSplitViewThreadIds } from "../../splitViewStore";
 import { type SplitView } from "../../splitViewModel";
 import type { RightDockThreadState } from "../../rightDockStore.logic";

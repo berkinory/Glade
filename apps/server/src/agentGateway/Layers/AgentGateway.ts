@@ -6,24 +6,28 @@ import { randomUUID } from "node:crypto";
 import {
   COMPUTER_SETUP_REQUIRED_ACTIVITY_KIND,
   COMPUTER_CONTROL_DENIED_ACTIVITY_KIND,
-  CommandId,
-  EventId,
-  GLADE_GATEWAY_MAX_THREADS_PER_OPERATION,
-  MessageId,
-  THREAD_GOAL_MAX_CHARS,
-  ThreadId,
-  TurnId,
   type ComputerBuildSignature,
   type ComputerPermission,
   type ComputerSetupRequiredPayload,
-  type ModelSelection,
+} from "@glade/contracts/computer/computer";
+import {
+  CommandId,
+  EventId,
+  MessageId,
+  ThreadId,
+  TurnId,
   type ProjectId,
-  type ProviderApprovalDecision,
   type ProviderKind,
+} from "@glade/contracts/core/baseSchemas";
+import { GLADE_GATEWAY_MAX_THREADS_PER_OPERATION } from "@glade/contracts/provider/agentGateway";
+import {
+  THREAD_GOAL_MAX_CHARS,
+  type ModelSelection,
+  type ProviderApprovalDecision,
   type RuntimeMode,
-  type ServerProviderStatus,
   type TurnDispatchMode,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import { type ServerProviderStatus } from "@glade/contracts/server/server";
 import { runtimeModeEscalatesPrivilege } from "@glade/shared/runtimeMode";
 import { Effect, Layer, Option } from "effect";
 

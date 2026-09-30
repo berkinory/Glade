@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 
-import { ThreadId } from "@glade/contracts";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { ResolvedTerminalVisualIdentity } from "@glade/shared/terminalThreads";
 import { useLocation, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";

@@ -1,4 +1,4 @@
-import type { OrchestrationThread } from "@glade/contracts";
+import type { OrchestrationThread } from "@glade/contracts/orchestration/orchestration";
 import { providerUsageLearnMoreHref } from "@glade/shared/providerUsage";
 
 export interface RateLimitWindow {

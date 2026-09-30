@@ -1,4 +1,4 @@
-import type { ProjectId, SpaceId } from "@glade/contracts";
+import type { ProjectId, SpaceId } from "@glade/contracts/core/baseSchemas";
 
 import {
   groupItemsBySpace,

@@ -1,12 +1,11 @@
 import assert from "node:assert/strict";
+import { DEFAULT_SERVER_SETTINGS } from "@glade/contracts/settings/settings";
 import {
-  DEFAULT_SERVER_SETTINGS,
   type OrchestrationCommand,
   type OrchestrationThread,
-  ProjectId,
-  type ProviderSession,
-  ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
+import { type ProviderSession } from "@glade/contracts/provider/provider";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { it, vi } from "@effect/vitest";
 import { Effect, FileSystem, Option, Path } from "effect";

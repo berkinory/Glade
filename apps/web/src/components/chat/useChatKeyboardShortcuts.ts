@@ -1,9 +1,6 @@
-import {
-  ThreadId,
-  type ModelSlug,
-  type ProviderKind,
-  type ResolvedKeybindingsConfig,
-} from "@glade/contracts";
+import { ThreadId, type ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { type ModelSlug } from "@glade/contracts/provider/model";
+import { type ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import { useEffect } from "react";
 import { readStarredModelSlugs } from "~/lib/starredModels";

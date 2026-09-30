@@ -1,4 +1,4 @@
-import { ProviderListModelsResult } from "@glade/contracts";
+import { ProviderListModelsResult } from "@glade/contracts/provider/providerDiscovery";
 import { Cause, Effect, FileSystem, Schema } from "effect";
 import * as path from "node:path";
 

@@ -1,4 +1,4 @@
-import type { ThreadId } from "@glade/contracts";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 
 type TerminalRuntimeCleanup = (activeThreadIds: ReadonlySet<string>) => void;
 let cleanupRuntimes: TerminalRuntimeCleanup | undefined;

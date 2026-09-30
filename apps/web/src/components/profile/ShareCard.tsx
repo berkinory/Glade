@@ -1,5 +1,5 @@
 import { forwardRef, type ReactNode } from "react";
-import type { ProfileStats, ProfileTokenStats } from "@glade/contracts";
+import type { ProfileStats, ProfileTokenStats } from "@glade/contracts/server/stats";
 import { ProviderIcon } from "~/components/ProviderIcon";
 import { GladeLogo } from "~/components/GladeLogo";
 import { ActivityHeatmap, CARD_HEATMAP_INTENSITY_CLASSES } from "./ActivityHeatmap";

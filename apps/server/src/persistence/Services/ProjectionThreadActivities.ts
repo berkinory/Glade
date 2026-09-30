@@ -2,10 +2,10 @@ import {
   EventId,
   IsoDateTime,
   NonNegativeInt,
-  OrchestrationThreadActivityTone,
   ThreadId,
   TurnId,
-} from "@glade/contracts";
+} from "@glade/contracts/core/baseSchemas";
+import { OrchestrationThreadActivityTone } from "@glade/contracts/orchestration/orchestration";
 import { Schema, ServiceMap } from "effect";
 import type { Effect } from "effect";
 

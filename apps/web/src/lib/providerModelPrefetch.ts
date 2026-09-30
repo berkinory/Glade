@@ -1,4 +1,6 @@
-import type { ProviderKind, ServerProviderStatus, ServerSettings } from "@glade/contracts";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
+import type { ServerProviderStatus } from "@glade/contracts/server/server";
+import type { ServerSettings } from "@glade/contracts/settings/settings";
 import type { QueryClient } from "@tanstack/react-query";
 
 import type { AppSettings } from "../appSettings";

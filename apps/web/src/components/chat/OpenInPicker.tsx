@@ -1,4 +1,5 @@
-import { type EditorId, type ResolvedKeybindingsConfig } from "@glade/contracts";
+import { type EditorId } from "@glade/contracts/settings/editor";
+import { type ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import { useQuery } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { useEditorLaunchers, type EditorLaunchers } from "~/hooks/useEditorLaunchers";

@@ -1,4 +1,10 @@
-import { CommandId, MessageId, ProjectId, SpaceId, ThreadId } from "@glade/contracts";
+import {
+  CommandId,
+  MessageId,
+  ProjectId,
+  SpaceId,
+  ThreadId,
+} from "@glade/contracts/core/baseSchemas";
 import { type CxOptions, cx } from "class-variance-authority";
 import { extendTailwindMerge } from "tailwind-merge";
 import * as Random from "effect/Random";

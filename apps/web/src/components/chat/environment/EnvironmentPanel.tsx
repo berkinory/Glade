@@ -1,13 +1,13 @@
+import type { AutomationDefinition } from "@glade/contracts/automation/automation";
+import type { EditorId } from "@glade/contracts/settings/editor";
 import type {
-  AutomationDefinition,
-  EditorId,
   MessageId,
-  PinnedMessage,
   ProjectId,
   ProviderKind,
-  ResolvedKeybindingsConfig,
   ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/core/baseSchemas";
+import type { PinnedMessage } from "@glade/contracts/orchestration/orchestration";
+import type { ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import { useNavigate } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 

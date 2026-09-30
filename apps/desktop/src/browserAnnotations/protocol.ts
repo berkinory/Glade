@@ -15,7 +15,7 @@ import {
   type BrowserAnnotationMarker,
   type BrowserAnnotationSource,
   type BrowserAnnotationTheme,
-} from "@glade/contracts";
+} from "@glade/contracts/browser/browserAnnotations";
 import { sanitizeBrowserAnnotationPageTitle } from "@glade/shared/browserAnnotations";
 
 export const BROWSER_ANNOTATION_PROTOCOL_VERSION = 1 as const;

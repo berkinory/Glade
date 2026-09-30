@@ -1,7 +1,7 @@
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { ProjectId } from "@glade/contracts";
+import type { ProjectId } from "@glade/contracts/core/baseSchemas";
 import { memo, useMemo, useState } from "react";
 
 import { Button } from "~/components/ui/button";

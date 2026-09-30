@@ -1,4 +1,4 @@
-import type { ResolvedKeybindingsConfig } from "@glade/contracts";
+import type { ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import { useEffect, useRef, useState } from "react";
 import {
   Dialog,

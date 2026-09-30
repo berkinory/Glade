@@ -1,13 +1,15 @@
 import {
   DEFAULT_GIT_TEXT_GENERATION_MODEL,
   DEFAULT_MODEL_BY_PROVIDER,
+} from "@glade/contracts/provider/model";
+import {
   DEFAULT_SERVER_SETTINGS,
-  type ModelSelection,
   ServerSettings,
   ServerSettingsError,
   type ServerSettingsPatch,
   type ServerSettingsView,
-} from "@glade/contracts";
+} from "@glade/contracts/settings/settings";
+import { type ModelSelection } from "@glade/contracts/orchestration/orchestration";
 import { deepMerge, type DeepPartial } from "@glade/shared/Struct";
 import { applyServerSettingsPatch } from "@glade/shared/serverSettings";
 import {

@@ -1,5 +1,5 @@
 import { type CSSProperties } from "react";
-import type { ProfileHeatmapCell } from "@glade/contracts";
+import type { ProfileHeatmapCell } from "@glade/contracts/server/stats";
 import { cn } from "~/lib/utils";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { formatCompact, formatShortDate } from "./profileFormatting";

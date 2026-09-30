@@ -1,4 +1,4 @@
-import type { ServerProviderStatus } from "@glade/contracts";
+import type { ServerProviderStatus } from "@glade/contracts/server/server";
 import { useQuery } from "@tanstack/react-query";
 
 import { getCustomBinaryPathForProvider, useAppSettings } from "../appSettings";

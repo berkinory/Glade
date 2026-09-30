@@ -1,5 +1,5 @@
+import { DEFAULT_SERVER_SETTINGS } from "@glade/contracts/settings/settings";
 import {
-  DEFAULT_SERVER_SETTINGS,
   type ProviderComposerCapabilities,
   ProviderGetComposerCapabilitiesInput,
   ProviderListAgentsInput,
@@ -12,7 +12,7 @@ import {
   type ProviderListSkillsResult,
   ProviderReadPluginInput,
   type ProviderSkillDescriptor,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/providerDiscovery";
 import { Effect, Exit, Layer, Option, Queue, Schema, SchemaIssue } from "effect";
 
 import { ServerConfig } from "../../config.ts";

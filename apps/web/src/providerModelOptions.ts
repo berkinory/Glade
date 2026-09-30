@@ -7,13 +7,15 @@ import {
 import {
   MODEL_OPTIONS_BY_PROVIDER,
   type ClaudeModelOptions,
-  type ClaudeModelSelection,
   type CodexModelOptions,
+  type ProviderModelOptions,
+} from "@glade/contracts/provider/model";
+import {
+  type ClaudeModelSelection,
   type CodexModelSelection,
   type ModelSelection,
-  type ProviderKind,
-  type ProviderModelOptions,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 
 export type ProviderOptions = ProviderModelOptions[ProviderKind];
 

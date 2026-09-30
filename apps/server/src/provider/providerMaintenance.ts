@@ -1,8 +1,8 @@
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type {
-  ProviderKind,
   ServerProviderStatus,
   ServerProviderVersionAdvisory,
-} from "@glade/contracts";
+} from "@glade/contracts/server/server";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";

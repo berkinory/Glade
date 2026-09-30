@@ -1,6 +1,7 @@
 import { statSync } from "node:fs";
 
-import type { ChatAttachment, ProviderKind, ThreadId } from "@glade/contracts";
+import type { ChatAttachment } from "@glade/contracts/orchestration/orchestration";
+import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { Effect, Option } from "effect";
 
 import { resolveAttachmentRelativePath } from "../attachmentPaths.ts";

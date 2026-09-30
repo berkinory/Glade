@@ -29,7 +29,7 @@ import {
   type GitBlameLineResult,
   type GitRecentCommit,
   type GitSourceControlFileStatus,
-} from "@glade/contracts";
+} from "@glade/contracts/git/git";
 import { isTemporaryWorktreeBranch } from "@glade/shared/git";
 import { parseGitHubRepositoryNameWithOwnerFromRemoteUrl } from "@glade/shared/githubRepository";
 import { isWorkspaceRelativePathSafe } from "@glade/shared/path";

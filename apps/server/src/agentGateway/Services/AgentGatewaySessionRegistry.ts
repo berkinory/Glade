@@ -1,4 +1,4 @@
-import type { ProviderKind, ThreadId } from "@glade/contracts";
+import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { ServiceMap } from "effect";
 
 export type AgentGatewayCapability =

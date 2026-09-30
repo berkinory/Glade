@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEventHandler } from "react";
-import type { ThreadId } from "@glade/contracts";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 
 const DEFAULT_NOTES_AUTOSAVE_DEBOUNCE_MS = 500;
 

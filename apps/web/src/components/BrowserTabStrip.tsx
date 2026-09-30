@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef } from "react";
-import type { BrowserTabState } from "@glade/contracts";
+import type { BrowserTabState } from "@glade/contracts/ipc/ipc";
 import { isBlankBrowserTabUrl } from "@glade/shared/browserSession";
 
 import { GlobeIcon, PlusIcon, XIcon } from "~/lib/icons";

@@ -1,6 +1,9 @@
 import { useCallback } from "react";
 
-import type { ProjectFileSystemEntry, ProjectLocalSearchEntry } from "@glade/contracts";
+import type {
+  ProjectFileSystemEntry,
+  ProjectLocalSearchEntry,
+} from "@glade/contracts/workspace/project";
 import type { Ref } from "react";
 import { useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";

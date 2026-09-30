@@ -1,4 +1,4 @@
-import type { OrchestrationEvent } from "@glade/contracts";
+import type { OrchestrationEvent } from "@glade/contracts/orchestration/orchestration";
 
 export type ProviderIntentEvent = Extract<
   OrchestrationEvent,

@@ -11,37 +11,47 @@ import {
   type AuthRevokePairingLinkInput,
   type AuthSessionState,
   type AuthWebSocketTokenResult,
-  type ThreadId,
+} from "@glade/contracts/transport/auth/auth";
+import { type ThreadId } from "@glade/contracts/core/baseSchemas";
+import {
   type ThreadBrowserState,
+  type ContextMenuItem,
+  type NativeApi,
+} from "@glade/contracts/ipc/ipc";
+import {
   type GitActionProgressEvent,
   type GitWorktreeSetupProgressEvent,
-  type GitHubProjectProvisionProgressEvent,
+} from "@glade/contracts/git/git";
+import { type GitHubProjectProvisionProgressEvent } from "@glade/contracts/git/githubProjectProvisioning";
+import {
   type OrchestrationEvent,
   type OrchestrationShellStreamItem,
   type OrchestrationThreadStreamItem,
-  type ProjectDevServerEvent,
+  ORCHESTRATION_WS_CHANNELS,
+  ORCHESTRATION_WS_METHODS,
+} from "@glade/contracts/orchestration/orchestration";
+import { type ProjectDevServerEvent } from "@glade/contracts/workspace/project";
+import {
   type ServerProviderStatusesUpdatedPayload,
   type ServerLifecycleStreamEvent,
   type ServerSettingsUpdatedPayload,
   type ServerVoiceTranscriptionResult,
-  type TerminalEvent,
-  ORCHESTRATION_WS_CHANNELS,
-  ORCHESTRATION_WS_METHODS,
-  type ContextMenuItem,
-  type NativeApi,
   ServerConfigUpdatedPayload,
-  WS_CHANNELS,
-  WS_METHODS,
-  type WsWelcomePayload,
-  type WsBootstrapNegotiateResult,
-  type AutomationStreamEvent,
+} from "@glade/contracts/server/server";
+import { type TerminalEvent } from "@glade/contracts/terminal/terminal";
+import { WS_CHANNELS, WS_METHODS, type WsWelcomePayload } from "@glade/contracts/transport/ws/ws";
+import { type WsBootstrapNegotiateResult } from "@glade/contracts/transport/ws/wsCompatibility";
+import { type AutomationStreamEvent } from "@glade/contracts/automation/automation";
+import {
   DEVICE_WS_CHANNELS,
   DEVICE_WS_METHODS,
   type DeviceEvent,
+} from "@glade/contracts/device/device";
+import {
   COMPUTER_WS_CHANNELS,
   COMPUTER_WS_METHODS,
   type ComputerEvent,
-} from "@glade/contracts";
+} from "@glade/contracts/computer/computer";
 import { VOICE_TRANSCRIPTION_UPLOAD_ROUTE_PATH } from "@glade/shared/binaryTransfer";
 
 import { showConfirmDialogFallback } from "./confirmDialogFallback";

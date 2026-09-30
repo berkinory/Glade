@@ -1,11 +1,12 @@
 import type {
   ApprovalRequestId,
-  ClaudeCacheObservation,
-  ProviderComposerCapabilities,
-  ProviderApprovalDecision,
-  ProviderForkThreadInput,
-  ProviderForkThreadResult,
   ProviderKind,
+  ThreadId,
+  TurnId,
+} from "@glade/contracts/core/baseSchemas";
+import type { ClaudeCacheObservation } from "@glade/contracts/provider/claudeCache";
+import type {
+  ProviderComposerCapabilities,
   ProviderListAgentsInput,
   ProviderListAgentsResult,
   ProviderListCommandsInput,
@@ -18,22 +19,29 @@ import type {
   ProviderReadPluginResult,
   ProviderListSkillsResult,
   ProviderListSkillsInput,
-  ProviderStartReviewInput,
+} from "@glade/contracts/provider/providerDiscovery";
+import type {
+  ProviderApprovalDecision,
   ProviderUserInputAnswers,
-  ProviderRuntimeEvent,
+  ProviderStartOptions,
+} from "@glade/contracts/orchestration/orchestration";
+import type {
+  ProviderForkThreadInput,
+  ProviderForkThreadResult,
+  ProviderStartReviewInput,
   ProviderSendTurnInput,
   ProviderSteerTurnInput,
   ProviderSession,
   ProviderSessionStartInput,
-  ProviderStartOptions,
+  ProviderTurnStartResult,
+} from "@glade/contracts/provider/provider";
+import type { ProviderRuntimeEvent } from "@glade/contracts/provider/providerRuntime";
+import type {
   ServerVoicePrewarmInput,
   ServerVoicePrewarmResult,
   ServerVoiceTranscriptionInput,
   ServerVoiceTranscriptionResult,
-  ThreadId,
-  ProviderTurnStartResult,
-  TurnId,
-} from "@glade/contracts";
+} from "@glade/contracts/server/server";
 import type { Effect } from "effect";
 import type { Stream } from "effect";
 

@@ -6,7 +6,8 @@ import {
   changedThreadComputerStates,
   removedThreadComputerStateIds,
 } from "~/components/chat/ComputerPreviewPopover.logic";
-import { type DesktopBridge, ThreadId } from "@glade/contracts";
+import { type DesktopBridge } from "@glade/contracts/ipc/ipc";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { readLocalComputerPermissionBridge } from "~/lib/computerProvisioning";
 import { serverQueryKeys } from "~/lib/serverReactQuery";
 import { ensureNativeApi } from "~/nativeApi";

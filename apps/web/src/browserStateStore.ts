@@ -1,4 +1,5 @@
-import type { ThreadBrowserState, ThreadId } from "@glade/contracts";
+import type { ThreadBrowserState } from "@glade/contracts/ipc/ipc";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { isPlainObject, sanitizeStringKeyedRecord } from "./persistedRecord";

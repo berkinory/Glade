@@ -4,9 +4,8 @@ import {
   type OrchestrationReadModel,
   type OrchestrationShellSnapshot,
   type OrchestrationShellStreamEvent,
-  type SpaceId,
-  type ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import { type SpaceId, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { Debouncer } from "@tanstack/react-pacer";
 import { resolveThreadBranchRegressionGuard } from "@glade/shared/git";
 import { create } from "zustand";

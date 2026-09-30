@@ -1,4 +1,4 @@
-import type { ProjectId, ProviderKind, ThreadId } from "@glade/contracts";
+import type { ProjectId, ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import type {
   ResolvedTerminalVisualIdentity,
   TerminalIconKey,

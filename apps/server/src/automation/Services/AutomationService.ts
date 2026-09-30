@@ -17,9 +17,8 @@ import {
   AutomationRunNowResult,
   AutomationStreamEvent,
   AutomationUpdateInput,
-  ThreadId,
-  TurnId,
-} from "@glade/contracts";
+} from "@glade/contracts/automation/automation";
+import { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { ServiceMap } from "effect";
 import type { Effect, Option, Stream } from "effect";
 

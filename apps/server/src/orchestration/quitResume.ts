@@ -6,17 +6,19 @@ import type {
   OrchestrationPrepareQuitResumeResult,
   OrchestrationProject,
   OrchestrationThread,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
 import {
   CommandId,
   IsoDateTime,
   MessageId,
-  QUIT_RESUME_MAX_PROMPT_CHARS,
-  QUIT_RESUME_MAX_THREADS,
   ThreadId,
   TrimmedNonEmptyString,
   TurnId,
-} from "@glade/contracts";
+} from "@glade/contracts/core/baseSchemas";
+import {
+  QUIT_RESUME_MAX_PROMPT_CHARS,
+  QUIT_RESUME_MAX_THREADS,
+} from "@glade/contracts/orchestration/orchestration";
 import { Duration, Effect, FileSystem, Schema } from "effect";
 import { randomUUID } from "node:crypto";
 

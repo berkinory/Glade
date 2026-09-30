@@ -2,12 +2,14 @@ import {
   CLAUDE_CODE_EFFORT_OPTIONS,
   CODEX_REASONING_EFFORT_OPTIONS,
   DEFAULT_MODEL_BY_PROVIDER,
-  type ModelSelection,
-  type ProviderKind,
+} from "@glade/contracts/provider/model";
+import { type ModelSelection } from "@glade/contracts/orchestration/orchestration";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
+import {
   type ProviderListModelsResult,
   type ProviderModelDescriptor,
-  type ServerProviderAuthStatus,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/providerDiscovery";
+import { type ServerProviderAuthStatus } from "@glade/contracts/server/server";
 import { getClaudeContextWindowSuffix, stripClaudeContextWindowSuffix } from "@glade/shared/model";
 import { Effect } from "effect";
 

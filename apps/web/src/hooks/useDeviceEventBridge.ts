@@ -1,4 +1,4 @@
-import type { DeviceOpenPaneRequestedEvent } from "@glade/contracts";
+import type { DeviceOpenPaneRequestedEvent } from "@glade/contracts/device/device";
 import { useEffect, useEffectEvent } from "react";
 
 import { ensureNativeApi } from "~/nativeApi";

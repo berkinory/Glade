@@ -1,4 +1,4 @@
-import type { ProjectEntry, ProjectFileSystemEntry } from "@glade/contracts";
+import type { ProjectEntry, ProjectFileSystemEntry } from "@glade/contracts/workspace/project";
 import { isWorkspaceRelativePathSafe, joinWorkspaceRelativePath } from "@glade/shared/path";
 import { IconFilePlus, IconFolderPlus } from "@tabler/icons-react";
 import { ExplorerInlineName } from "./ExplorerInlineName";

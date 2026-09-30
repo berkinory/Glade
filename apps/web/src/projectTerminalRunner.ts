@@ -1,4 +1,6 @@
-import type { NativeApi, TerminalSessionSnapshot, ThreadId } from "@glade/contracts";
+import type { NativeApi } from "@glade/contracts/ipc/ipc";
+import type { TerminalSessionSnapshot } from "@glade/contracts/terminal/terminal";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { deriveTerminalCommandIdentity, type TerminalCliKind } from "@glade/shared/terminalThreads";
 
 import { projectScriptRuntimeEnv } from "./projectScripts";

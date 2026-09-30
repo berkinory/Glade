@@ -1,13 +1,11 @@
+import { EventId, MessageId, ProviderKind } from "@glade/contracts/core/baseSchemas";
 import {
-  EventId,
-  MessageId,
   type OrchestrationThreadActivity,
-  ProviderKind,
   type ModelSelection,
-  type ServerProviderStatus,
-  type ServerSettingsView,
   type ThreadHandoffImportedMessage,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import { type ServerProviderStatus } from "@glade/contracts/server/server";
+import { type ServerSettingsView } from "@glade/contracts/settings/settings";
 import { getDefaultModel } from "@glade/shared/model";
 import { type Thread } from "../types";
 import { DEFAULT_PROVIDER_ORDER } from "../providerOrdering";

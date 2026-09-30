@@ -3,8 +3,8 @@ import { Buffer } from "node:buffer";
 import type {
   ServerVoiceTranscriptionInput,
   ServerVoiceTranscriptionResult,
-} from "@glade/contracts";
-import { SERVER_VOICE_TRANSCRIPTION_MAX_AUDIO_BYTES } from "@glade/contracts";
+} from "@glade/contracts/server/server";
+import { SERVER_VOICE_TRANSCRIPTION_MAX_AUDIO_BYTES } from "@glade/contracts/server/server";
 import { requestChatGptVoiceTranscription } from "@glade/shared/chatGptVoiceTranscription";
 import { decodeOutboundJson, type OutboundHttpResponse } from "@glade/shared/outboundHttp";
 

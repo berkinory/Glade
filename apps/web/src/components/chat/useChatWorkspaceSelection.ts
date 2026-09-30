@@ -1,10 +1,6 @@
-import {
-  type NativeApi,
-  type OrchestrationShellSnapshot,
-  type ProjectId,
-  type ProviderKind,
-  ThreadId,
-} from "@glade/contracts";
+import { type NativeApi } from "@glade/contracts/ipc/ipc";
+import { type OrchestrationShellSnapshot } from "@glade/contracts/orchestration/orchestration";
+import { type ProjectId, type ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { workspaceRootsEqual } from "@glade/shared/threadWorkspace";
 import type { RefObject } from "react";
 import { useCallback } from "react";

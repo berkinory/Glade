@@ -1,4 +1,5 @@
-import type { NativeApi, ThreadId } from "@glade/contracts";
+import type { NativeApi } from "@glade/contracts/ipc/ipc";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 
 import { reconcileDeletedThreadsFromClient } from "./deletedThreadClientReconciliation";
 import { newCommandId } from "./utils";

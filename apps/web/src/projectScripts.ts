@@ -2,8 +2,8 @@ import {
   MAX_SCRIPT_ID_LENGTH,
   SCRIPT_RUN_COMMAND_PATTERN,
   type KeybindingCommand,
-  type ProjectScript,
-} from "@glade/contracts";
+} from "@glade/contracts/settings/keybindings";
+import { type ProjectScript } from "@glade/contracts/orchestration/orchestration";
 import { Schema } from "effect";
 
 function normalizeScriptId(value: string): string {

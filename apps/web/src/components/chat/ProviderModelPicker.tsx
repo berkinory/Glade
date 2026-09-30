@@ -1,4 +1,6 @@
-import { type ModelSlug, type ProviderKind, type ServerProviderStatus } from "@glade/contracts";
+import { type ModelSlug } from "@glade/contracts/provider/model";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { type ServerProviderStatus } from "@glade/contracts/server/server";
 import { resolveSelectableModel } from "@glade/shared/model";
 import { useDeferredValue, useEffect, useRef, useState } from "react";
 import { type ProviderPickerKind, PROVIDER_OPTIONS } from "../../session-logic";

@@ -1,4 +1,4 @@
-import { MessageId, ThreadId, TurnId, CheckpointRef } from "@glade/contracts";
+import { MessageId, ThreadId, TurnId, CheckpointRef } from "@glade/contracts/core/baseSchemas";
 import { it, expect } from "vitest";
 import { applyOrchestrationEvents } from "./storeEventReducer";
 import { makeState, makeThread, makeDomainEvent, threadsOf } from "./storeTestFixtures";

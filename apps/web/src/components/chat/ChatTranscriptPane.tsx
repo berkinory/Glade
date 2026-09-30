@@ -1,4 +1,4 @@
-import { type MessageId, type ThreadId, type TurnId } from "@glade/contracts";
+import { type MessageId, type ThreadId, type TurnId } from "@glade/contracts/core/baseSchemas";
 import { type LegendListRef } from "@legendapp/list/react";
 import {
   useEffect,

@@ -1,8 +1,6 @@
-import {
-  PROVIDER_DISPLAY_NAMES,
-  type ProviderKind,
-  type ServerProviderStatus,
-} from "@glade/contracts";
+import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { type ServerProviderStatus } from "@glade/contracts/server/server";
 
 export interface ProviderSendAvailability {
   readonly provider: ProviderKind;

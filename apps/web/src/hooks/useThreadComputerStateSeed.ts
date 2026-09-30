@@ -1,4 +1,4 @@
-import type { ThreadId } from "@glade/contracts";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useEffect } from "react";
 
 import { ensureNativeApi } from "~/nativeApi";

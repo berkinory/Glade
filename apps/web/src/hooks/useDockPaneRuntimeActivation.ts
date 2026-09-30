@@ -1,4 +1,4 @@
-import type { ThreadId } from "@glade/contracts";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import {

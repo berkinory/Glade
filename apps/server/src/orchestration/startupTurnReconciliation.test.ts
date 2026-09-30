@@ -2,7 +2,7 @@ import { Effect, Option } from "effect";
 import { OrchestrationEngineService } from "./Services/OrchestrationEngine.ts";
 import { ProjectionSnapshotQuery } from "./Services/ProjectionSnapshotQuery.ts";
 import { ProjectionPendingInteractionRepository } from "../persistence/Services/ProjectionPendingInteractions.ts";
-import { ApprovalRequestId, EventId, ThreadId, TurnId } from "@glade/contracts";
+import { ApprovalRequestId, EventId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { describe, expect, it, vi } from "vitest";
 
 import {

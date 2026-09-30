@@ -1,11 +1,6 @@
-import {
-  IsoDateTime,
-  ModelSelection,
-  ProjectId,
-  ProjectKind,
-  ProjectScript,
-  SpaceId,
-} from "@glade/contracts";
+import { IsoDateTime, ProjectId, SpaceId } from "@glade/contracts/core/baseSchemas";
+import { ModelSelection, ProjectScript } from "@glade/contracts/orchestration/orchestration";
+import { ProjectKind } from "@glade/contracts/workspace/project";
 import { Option, Schema, ServiceMap } from "effect";
 import type { Effect } from "effect";
 

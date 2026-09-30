@@ -1,4 +1,5 @@
-import { type ProviderKind, type ServerProviderStatus, type ThreadId } from "@glade/contracts";
+import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
+import { type ServerProviderStatus } from "@glade/contracts/server/server";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import type { Project } from "../../types";

@@ -1,4 +1,4 @@
-import type { ProviderKind, ThreadId } from "@glade/contracts";
+import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useCallback } from "react";
 
 import { useComposerDraftStore } from "../../composerDraftStore";

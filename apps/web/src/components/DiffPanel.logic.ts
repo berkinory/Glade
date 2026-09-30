@@ -1,4 +1,5 @@
-import { type ModelSelection, type ThreadId, type TurnId } from "@glade/contracts";
+import { type ModelSelection } from "@glade/contracts/orchestration/orchestration";
+import { type ThreadId, type TurnId } from "@glade/contracts/core/baseSchemas";
 import type { FileDiffMetadata } from "@pierre/diffs/react";
 
 import type { DraftThreadState } from "../composerDraftStore";

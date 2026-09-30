@@ -1,4 +1,4 @@
-import type { ProjectId, ThreadId } from "@glade/contracts";
+import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useEffect, useMemo, useRef } from "react";
 
 import { useAppSettings } from "~/appSettings";

@@ -1,4 +1,6 @@
-import type { AutomationMode, ThreadCreationSource, ThreadId } from "@glade/contracts";
+import type { AutomationMode } from "@glade/contracts/automation/automation";
+import type { ThreadCreationSource } from "@glade/contracts/orchestration/orchestration";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 
 export function automationContinuesThread(mode: AutomationMode): boolean {
   return mode === "heartbeat" || mode === "dedicated";

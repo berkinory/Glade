@@ -1,4 +1,4 @@
-import { CommandId, EventId, ThreadId } from "@glade/contracts";
+import { CommandId, EventId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { Effect, Option } from "effect";
 import type { OrchestrationEngineShape } from "../orchestration/Services/OrchestrationEngine.ts";
 import type { ProjectionSnapshotQueryShape } from "../orchestration/Services/ProjectionSnapshotQuery.ts";

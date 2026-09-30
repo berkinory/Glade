@@ -4,13 +4,13 @@ import {
   ApprovalRequestId,
   CheckpointRef,
   CommandId,
-  CorrelationId,
   EventId,
   MessageId,
   ProjectId,
   ThreadId,
   TurnId,
-} from "@glade/contracts";
+} from "@glade/contracts/core/baseSchemas";
+import { CorrelationId } from "@glade/contracts/orchestration/orchestration";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it } from "@effect/vitest";
 import { Effect, FileSystem, Layer, Option, Path, Stream } from "effect";

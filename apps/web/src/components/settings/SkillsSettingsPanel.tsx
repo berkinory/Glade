@@ -1,4 +1,5 @@
-import type { ProviderKind, ServerSettings } from "@glade/contracts";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
+import type { ServerSettings } from "@glade/contracts/settings/settings";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 

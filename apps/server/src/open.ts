@@ -4,7 +4,7 @@ import { statSync } from "node:fs";
 import { dirname, extname } from "node:path";
 import pathWin32 from "node:path/win32";
 
-import { EDITORS, type EditorId } from "@glade/contracts";
+import { EDITORS, type EditorId } from "@glade/contracts/settings/editor";
 import { resolveWindowsSystemRoot } from "@glade/shared/platformEnvironment";
 import { ServiceMap, Schema, Effect, Layer } from "effect";
 import {

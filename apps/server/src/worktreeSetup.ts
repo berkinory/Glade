@@ -1,4 +1,4 @@
-import type { ProjectScript } from "@glade/contracts";
+import type { ProjectScript } from "@glade/contracts/orchestration/orchestration";
 
 import { runProcess } from "./processRunner.ts";
 

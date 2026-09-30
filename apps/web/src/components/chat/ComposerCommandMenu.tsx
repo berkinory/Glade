@@ -1,12 +1,12 @@
+import { type ProjectEntry } from "@glade/contracts/workspace/project";
+import { type ModelSlug } from "@glade/contracts/provider/model";
 import {
-  type ProjectEntry,
-  type ModelSlug,
   type ProviderNativeCommandDescriptor,
   type ProviderMentionReference,
-  type ProviderKind,
   type ProviderPluginDescriptor,
   type ProviderSkillDescriptor,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/providerDiscovery";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { type ReactNode } from "react";
 import { type ComposerTriggerKind } from "../../composer-logic";
 import { type ComposerSlashCommand } from "../../composerSlashCommands";

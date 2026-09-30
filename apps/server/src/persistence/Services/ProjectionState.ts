@@ -1,4 +1,4 @@
-import { IsoDateTime, NonNegativeInt } from "@glade/contracts";
+import { IsoDateTime, NonNegativeInt } from "@glade/contracts/core/baseSchemas";
 import { Option, Schema, ServiceMap } from "effect";
 import type { Effect } from "effect";
 

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import type { ServerLocalServerProcess } from "@glade/contracts";
+import type { ServerLocalServerProcess } from "@glade/contracts/server/server";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { localServerPrimaryLabel } from "@glade/shared/localServers";
 

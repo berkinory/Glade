@@ -1,4 +1,4 @@
-import type { DesktopRuntimeInfo, DesktopUpdateState } from "@glade/contracts";
+import type { DesktopRuntimeInfo, DesktopUpdateState } from "@glade/contracts/ipc/ipc";
 
 import { getCanRetryAfterDownloadFailure, nextStatusAfterDownloadFailure } from "./updateState";
 

@@ -4,24 +4,25 @@ import type {
   AutomationCreateInput,
   AutomationDefinition,
   AutomationUpdateInput,
+} from "@glade/contracts/automation/automation";
+import type {
   OrchestrationCommand,
   OrchestrationEvent,
   OrchestrationProjectShell,
   OrchestrationThread,
   OrchestrationThreadShell,
-  ProviderKind,
-  ProviderModelDescriptor,
-  ServerProviderStatus,
-  ThreadId as ThreadIdType,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import type { ProviderKind, ThreadId as ThreadIdType } from "@glade/contracts/core/baseSchemas";
+import type { ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
+import type { ServerProviderStatus } from "@glade/contracts/server/server";
 import {
   AutomationId,
-  DEFAULT_MODEL_BY_PROVIDER,
   MessageId,
   ProjectId,
   ThreadId,
   TurnId,
-} from "@glade/contracts";
+} from "@glade/contracts/core/baseSchemas";
+import { DEFAULT_MODEL_BY_PROVIDER } from "@glade/contracts/provider/model";
 import { isTemporaryWorktreeBranch } from "@glade/shared/git";
 
 import { Cause, Deferred, Effect, Exit, Fiber, Layer, Option, Stream } from "effect";

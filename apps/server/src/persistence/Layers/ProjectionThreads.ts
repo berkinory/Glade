@@ -19,7 +19,7 @@ import {
   ThreadPinnedMessages,
   ThreadHandoff,
   ThreadGoalAchievements,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
 
 const SqliteBoolean = Schema.Number.pipe(
   Schema.decodeTo(Schema.Boolean, {

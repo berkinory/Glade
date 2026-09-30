@@ -1,4 +1,4 @@
-import type { PullRequestDetailInput } from "@glade/contracts";
+import type { PullRequestDetailInput } from "@glade/contracts/git/pullRequests";
 import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 

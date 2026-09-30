@@ -3,10 +3,10 @@ import {
   CheckpointRef,
   MessageId,
   ProjectId,
-  type ProjectKind,
   type ThreadId,
   TurnId,
-} from "@glade/contracts";
+} from "@glade/contracts/core/baseSchemas";
+import { type ProjectKind } from "@glade/contracts/workspace/project";
 import { resolveThreadWorkspaceCwd as resolveSharedThreadWorkspaceCwd } from "@glade/shared/threadEnvironment";
 
 const CHECKPOINT_REFS_PREFIX = "refs/glade/checkpoints";

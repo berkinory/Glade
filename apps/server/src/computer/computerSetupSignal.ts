@@ -2,7 +2,7 @@ import type {
   ComputerAvailability,
   ComputerBuildSignature,
   ComputerPermission,
-} from "@glade/contracts";
+} from "@glade/contracts/computer/computer";
 import { computerGrantsBlockControl, listComputerPermissions } from "@glade/shared/computerGrants";
 import { GLADE_DESKTOP_BUNDLE_ID_ENV } from "@glade/shared/desktopIdentity";
 

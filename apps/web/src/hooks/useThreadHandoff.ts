@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { type ModelSelection, type ProviderKind } from "@glade/contracts";
+import { type ModelSelection } from "@glade/contracts/orchestration/orchestration";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { useComposerDraftStore } from "../composerDraftStore";
 import { useProviderStatusesForLocalConfig } from "./useProviderStatusesForLocalConfig";
 import { useRefreshProviderStatusesNow } from "./useProviderStatusRefresh";

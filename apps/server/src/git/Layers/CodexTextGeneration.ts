@@ -7,7 +7,7 @@ import { makeEffectProcessCommand } from "../../platform/effectProcessRuntime.ts
 import {
   DEFAULT_GIT_TEXT_GENERATION_MODEL,
   DEFAULT_GIT_TEXT_GENERATION_REASONING_EFFORT,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/model";
 import { sanitizeGeneratedThreadTitle } from "@glade/shared/chatThreads";
 import { resolveCodexHome } from "@glade/shared/codexConfig";
 import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@glade/shared/git";

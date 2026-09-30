@@ -1,4 +1,4 @@
-import type { ThreadId, TurnId } from "@glade/contracts";
+import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { lazy, Suspense, useEffect, useState } from "react";
 
 import ChatView from "../ChatView";

@@ -3,7 +3,7 @@ import type {
   DesktopQuitConfirmationPresentation,
   DesktopQuitConfirmationRequest,
   DesktopQuitConfirmationResponse,
-} from "@glade/contracts";
+} from "@glade/contracts/ipc/ipc";
 
 const DEFAULT_READY_TIMEOUT_MS = 3000;
 

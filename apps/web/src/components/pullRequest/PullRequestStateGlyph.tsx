@@ -1,4 +1,5 @@
-import type { GitPullRequestMergeability, PullRequestState } from "@glade/contracts";
+import type { GitPullRequestMergeability } from "@glade/contracts/git/git";
+import type { PullRequestState } from "@glade/contracts/git/pullRequests";
 
 import { cn } from "~/lib/utils";
 import {

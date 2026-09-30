@@ -1,5 +1,6 @@
-import type { ProviderKind, ProviderSkillDescriptor } from "@glade/contracts";
-import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
+import type { ProviderSkillDescriptor } from "@glade/contracts/provider/providerDiscovery";
+import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { DEFAULT_PROVIDER_ORDER } from "~/providerOrdering";
 
 interface SkillOriginInfo {

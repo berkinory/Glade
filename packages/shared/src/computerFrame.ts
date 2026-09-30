@@ -5,7 +5,7 @@ import {
   COMPUTER_FRAME_VERSION,
   type ComputerFrameDecodeErrorReason,
   type ComputerFrameHeader,
-} from "@glade/contracts";
+} from "@glade/contracts/computer/computer";
 
 export const COMPUTER_FRAME_WS_PATH = "/ws/computer-frames";
 export const COMPUTER_FRAME_WS_COMPUTER_ID_PARAM = "computerId";

@@ -1,14 +1,12 @@
 import type {
   AssistantDeliveryMode,
-  ModelSlug,
-  ProjectId,
   ProviderInteractionMode,
-  ProviderKind,
   ProviderStartOptions,
   RuntimeMode,
-  ServerProviderStatus,
-  ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import type { ModelSlug } from "@glade/contracts/provider/model";
+import type { ProjectId, ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
+import type { ServerProviderStatus } from "@glade/contracts/server/server";
 import { useNavigate } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 

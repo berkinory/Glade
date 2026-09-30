@@ -1,4 +1,5 @@
-import type { OrchestrationEvent, ThreadId } from "@glade/contracts";
+import type { OrchestrationEvent } from "@glade/contracts/orchestration/orchestration";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 
 export const THREAD_DETAIL_EVENT_TYPES = [
   "thread.message-sent",

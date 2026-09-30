@@ -1,4 +1,5 @@
-import { DEFAULT_MODEL_BY_PROVIDER, type ModelSelection } from "@glade/contracts";
+import { DEFAULT_MODEL_BY_PROVIDER } from "@glade/contracts/provider/model";
+import { type ModelSelection } from "@glade/contracts/orchestration/orchestration";
 import { workspaceRootsEqual } from "@glade/shared/threadWorkspace";
 
 import type { Project } from "../types";

@@ -1,12 +1,11 @@
+import { EventId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
-  EventId,
   ProviderInteractionMode,
   RuntimeMode,
-  ThreadId,
-  type AutomationSchedule,
   type ModelSelection,
   type ProviderStartOptions,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import { type AutomationSchedule } from "@glade/contracts/automation/automation";
 import { automationRequiresTargetThread } from "@glade/shared/automationMode";
 import {
   GENERIC_CHAT_THREAD_TITLE,

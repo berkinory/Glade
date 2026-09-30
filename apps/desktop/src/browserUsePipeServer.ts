@@ -4,7 +4,8 @@ import * as Net from "node:net";
 import * as OS from "node:os";
 import * as Path from "node:path";
 
-import type { BrowserToolName, ThreadId } from "@glade/contracts";
+import type { BrowserToolName } from "@glade/contracts/browser/automation/browserAutomationToolCatalogue";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 
 import {
   DesktopBrowserAutomationHost,

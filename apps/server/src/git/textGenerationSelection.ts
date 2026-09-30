@@ -1,10 +1,12 @@
 import {
   GIT_TEXT_GENERATION_PROVIDERS,
   type GitTextGenerationProvider,
+} from "@glade/contracts/provider/model";
+import {
   type ModelSelection,
-  type ProviderKind,
   type ProviderStartOptions,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 
 export const GIT_TEXT_GENERATION_PROVIDER_ORDER = GIT_TEXT_GENERATION_PROVIDERS;
 export type { GitTextGenerationProvider };

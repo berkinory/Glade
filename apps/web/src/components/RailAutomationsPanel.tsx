@@ -1,4 +1,4 @@
-import type { AutomationDefinition } from "@glade/contracts";
+import type { AutomationDefinition } from "@glade/contracts/automation/automation";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 

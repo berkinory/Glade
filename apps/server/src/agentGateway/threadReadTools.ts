@@ -1,11 +1,7 @@
 import type { TaggedFailure } from "../platform/operationError.ts";
-import {
-  GLADE_GATEWAY_MAX_THREADS_PER_OPERATION,
-  ThreadId,
-  TurnId,
-  type OrchestrationThreadShell,
-  type ProviderKind,
-} from "@glade/contracts";
+import { GLADE_GATEWAY_MAX_THREADS_PER_OPERATION } from "@glade/contracts/provider/agentGateway";
+import { ThreadId, TurnId, type ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { type OrchestrationThreadShell } from "@glade/contracts/orchestration/orchestration";
 import { Effect, Option } from "effect";
 
 import {

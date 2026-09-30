@@ -1,11 +1,11 @@
 import type {
   BrowserConsoleLogEntry,
   BrowserLogEntry,
-  BrowserLogsInput,
   BrowserLogsOutput,
   BrowserNetworkLogEntry,
-  BrowserTabId,
-} from "@glade/contracts";
+} from "@glade/contracts/browser/automation/browserAutomationToolOutputs";
+import type { BrowserLogsInput } from "@glade/contracts/browser/automation/browserAutomationToolInputs";
+import type { BrowserTabId } from "@glade/contracts/browser/automation/browserAutomationIds";
 import type { WebContents } from "electron";
 
 import type { BrowserAutomationVisibleRuntime } from "../browserManager";

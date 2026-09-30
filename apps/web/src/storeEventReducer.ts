@@ -1,8 +1,8 @@
 import {
   type OrchestrationEvent,
   type OrchestrationPendingInteraction,
-  type ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { resolveThreadBranchRegressionGuard } from "@glade/shared/git";
 import {
   clearRemovedAsyncUserInputResponses,
@@ -64,7 +64,8 @@ export type ApplyOrchestrationEventOptions = {
   updateSidebarSummary?: boolean;
 };
 
-type ReadModelThread = import("@glade/contracts").OrchestrationReadModel["threads"][number];
+type ReadModelThread =
+  import("@glade/contracts/orchestration/orchestration").OrchestrationReadModel["threads"][number];
 
 const THREAD_SUMMARY_ACTIVITY_KINDS = new Set([
   "approval.requested",

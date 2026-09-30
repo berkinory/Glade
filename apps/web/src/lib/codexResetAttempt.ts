@@ -1,4 +1,4 @@
-import type { ServerConsumeCodexResetCreditInput } from "@glade/contracts";
+import type { ServerConsumeCodexResetCreditInput } from "@glade/contracts/server/server";
 
 const storageKey = (accountId: string) => `glade:codex-reset-attempt:${accountId}`;
 

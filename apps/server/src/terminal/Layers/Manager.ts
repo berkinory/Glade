@@ -13,7 +13,7 @@ import {
   TerminalWriteInput,
   type TerminalEvent,
   type TerminalSessionSnapshot,
-} from "@glade/contracts";
+} from "@glade/contracts/terminal/terminal";
 import { describeErrorMessage } from "@glade/shared/errorMessages";
 import {
   consumeTerminalIdentityInput,

@@ -1,4 +1,7 @@
-import type { AuthPairingLink, ServerAuthBootstrapMethod } from "@glade/contracts";
+import type {
+  AuthPairingLink,
+  ServerAuthBootstrapMethod,
+} from "@glade/contracts/transport/auth/auth";
 import { Data, DateTime, Duration, ServiceMap } from "effect";
 import type { Effect, Stream } from "effect";
 

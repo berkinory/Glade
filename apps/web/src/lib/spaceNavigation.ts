@@ -1,4 +1,4 @@
-import type { ProjectId, SpaceId, ThreadId } from "@glade/contracts";
+import type { ProjectId, SpaceId, ThreadId } from "@glade/contracts/core/baseSchemas";
 
 import type { ServerWorkspacePaths } from "~/lib/serverWorkspacePaths";
 import { isOrdinarySpaceProject } from "~/lib/spaces";

@@ -1,10 +1,12 @@
 import type {
   ComputerPermission,
   ComputerProvisionResult,
+} from "@glade/contracts/computer/computer";
+import type {
   DesktopComputerPermissionKind,
   DesktopComputerState,
   DesktopBridge,
-} from "@glade/contracts";
+} from "@glade/contracts/ipc/ipc";
 import {
   COMPUTER_PERMISSIONS,
   listComputerPermissions,

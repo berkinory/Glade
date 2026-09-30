@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 
-import type { ProviderKind } from "@glade/contracts";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { basenameOfPath } from "../file-icons";
 import type { ProjectAppearance } from "../lib/projectAppearance";
 import type { ThemeMode, ThemeVariant } from "../theme/themeModel";

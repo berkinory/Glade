@@ -1,4 +1,4 @@
-import type { DesktopAgentCursorStyle } from "@glade/contracts";
+import type { DesktopAgentCursorStyle } from "@glade/contracts/ipc/ipc";
 import { useEffect } from "react";
 
 import {

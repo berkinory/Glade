@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import type { BrowserVaultSnapshot } from "@glade/contracts";
+import type { BrowserVaultSnapshot } from "@glade/contracts/browser/browserVault";
 import type { CaptureContextShim } from "./browserVaultCapture";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BrowserAutomationVisibleRuntime } from "../browserManager";

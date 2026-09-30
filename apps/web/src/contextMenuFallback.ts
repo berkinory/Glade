@@ -1,4 +1,4 @@
-import type { ContextMenuItem } from "@glade/contracts";
+import type { ContextMenuItem } from "@glade/contracts/ipc/ipc";
 import { createCentralIconElement } from "./lib/central-icons";
 import { isInlineSvgMenuIcon } from "./lib/nativeMenuIcons";
 

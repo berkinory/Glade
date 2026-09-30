@@ -1,6 +1,6 @@
 import { useMemo, useCallback } from "react";
 
-import { type MessageId } from "@glade/contracts";
+import { type MessageId } from "@glade/contracts/core/baseSchemas";
 import {
   useEffect,
   useId,

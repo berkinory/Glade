@@ -1,4 +1,4 @@
-import type { ProviderKind } from "@glade/contracts";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { Schema } from "effect";
 
 import { isProviderKind } from "../providerOrdering";

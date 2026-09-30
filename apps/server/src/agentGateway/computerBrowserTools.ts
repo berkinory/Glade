@@ -6,8 +6,8 @@ import { realpath } from "node:fs/promises";
 import { isAbsolute, sep } from "node:path";
 import { Effect } from "effect";
 
-import type { ComputerBrowserToolName } from "@glade/contracts";
-import { COMPUTER_BROWSER_DRIVER_NAMES } from "@glade/contracts";
+import type { ComputerBrowserToolName } from "@glade/contracts/computer/computerBrowser";
+import { COMPUTER_BROWSER_DRIVER_NAMES } from "@glade/contracts/computer/computerBrowser";
 
 import {
   ComputerBackendError,

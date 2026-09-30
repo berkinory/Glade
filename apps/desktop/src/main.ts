@@ -48,7 +48,7 @@ import type {
   DesktopTheme,
   DesktopUpdateActionResult,
   DesktopUpdateState,
-} from "@glade/contracts";
+} from "@glade/contracts/ipc/ipc";
 import {
   autoUpdater,
   BaseUpdater,
@@ -56,7 +56,7 @@ import {
   type UpdateDownloadedEvent,
 } from "electron-updater";
 
-import type { DesktopContextMenuItem } from "@glade/contracts";
+import type { DesktopContextMenuItem } from "@glade/contracts/ipc/ipc";
 import { isKeyboardShortcutsHelpChord } from "@glade/shared/browserShortcuts";
 import { getMacTrafficLightPosition } from "@glade/shared/desktopChrome";
 import { DEVICE_HELPER_SOURCE_DIR_ENV } from "@glade/shared/deviceHelperCache";

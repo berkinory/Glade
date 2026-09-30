@@ -9,10 +9,10 @@ import {
   WS_PROTOCOL_EPOCH,
   WS_PROTOCOL_MAX_REVISION,
   WS_PROTOCOL_MIN_REVISION,
-  type AuthSessionId,
-  type ComputerEvent,
   type WsBootstrapNegotiateResult,
-} from "@glade/contracts";
+} from "@glade/contracts/transport/ws/wsCompatibility";
+import { type AuthSessionId } from "@glade/contracts/core/baseSchemas";
+import { type ComputerEvent } from "@glade/contracts/computer/computer";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { Duration, Effect, Exit, Layer, Schema, Scope } from "effect";
 import { HttpRouter, HttpServerRequest } from "effect/unstable/http";

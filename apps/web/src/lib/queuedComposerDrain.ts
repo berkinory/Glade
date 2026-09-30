@@ -1,4 +1,5 @@
-import type { AssistantDeliveryMode, MessageId, ThreadId } from "@glade/contracts";
+import type { AssistantDeliveryMode } from "@glade/contracts/orchestration/orchestration";
+import type { MessageId, ThreadId } from "@glade/contracts/core/baseSchemas";
 
 import {
   createLocalDispatchSnapshot,

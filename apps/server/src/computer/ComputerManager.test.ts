@@ -5,7 +5,7 @@ import type {
   ComputerUiNode,
   ComputerWindow,
   ThreadComputerState,
-} from "@glade/contracts";
+} from "@glade/contracts/computer/computer";
 
 import {
   COMPUTER_ACTION_OBSERVATION_MAX_DIMENSION,

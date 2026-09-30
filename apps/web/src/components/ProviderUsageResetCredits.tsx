@@ -3,7 +3,7 @@ import type {
   ServerCodexResetCredit,
   ServerCodexResetCredits,
   ServerConsumeCodexResetCreditInput,
-} from "@glade/contracts";
+} from "@glade/contracts/server/server";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 

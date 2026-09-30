@@ -8,14 +8,16 @@ import type {
   OrchestrationThreadDetailSnapshot,
   OrchestrationThread,
   OrchestrationThreadShell,
+  ThreadEnvironmentMode,
+} from "@glade/contracts/orchestration/orchestration";
+import type {
   CheckpointRef,
   ProjectId,
-  ProjectKind,
   SpaceId,
   ThreadId,
-  ThreadEnvironmentMode,
   TurnId,
-} from "@glade/contracts";
+} from "@glade/contracts/core/baseSchemas";
+import type { ProjectKind } from "@glade/contracts/workspace/project";
 import { ServiceMap } from "effect";
 import type { Effect, Option } from "effect";
 

@@ -1,10 +1,7 @@
-import type {
-  ProviderKind,
-  ProviderModelDescriptor,
-  ServerProviderStatus,
-  ThreadId,
-  RuntimeMode,
-} from "@glade/contracts";
+import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
+import type { ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
+import type { ServerProviderStatus } from "@glade/contracts/server/server";
+import type { RuntimeMode } from "@glade/contracts/orchestration/orchestration";
 import { ChevronDownIcon, WorktreeIcon } from "~/lib/icons";
 import { HiOutlineHandRaised } from "react-icons/hi2";
 import { CentralIcon } from "~/lib/central-icons";

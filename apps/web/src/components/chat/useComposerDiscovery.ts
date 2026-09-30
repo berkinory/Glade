@@ -1,12 +1,11 @@
+import { type ProjectEntry } from "@glade/contracts/workspace/project";
+import { type ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
-  type ProjectEntry,
-  type ProviderKind,
   type ProviderMentionReference,
   type ProviderNativeCommandDescriptor,
   type ProviderPluginDescriptor,
   type ProviderSkillDescriptor,
-  ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/providerDiscovery";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";

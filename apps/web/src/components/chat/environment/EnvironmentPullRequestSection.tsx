@@ -1,12 +1,10 @@
+import type { GitPullRequestCheck, GitPullRequestComment } from "@glade/contracts/git/git";
+import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import type {
-  GitPullRequestCheck,
-  GitPullRequestComment,
-  ProjectId,
   PullRequestAction,
   PullRequestDetailInput,
   PullRequestMergeMethod,
-  ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/git/pullRequests";
 import { githubAvatarUrlForLogin } from "@glade/shared/githubAvatar";
 import { parseGitHubRepositoryNameWithOwnerFromPullRequestUrl } from "@glade/shared/githubRepository";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";

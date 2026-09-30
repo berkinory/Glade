@@ -10,8 +10,6 @@ import {
   type ComputerGetScreenSizeInput,
   type ComputerGetScreenSizeResult,
   type ComputerGetStateInput,
-  type ComputerGetAuditHistoryInput,
-  type ComputerGetAuditHistoryResult,
   type ComputerGetStatusInput,
   type ComputerHotkeyInput,
   type ComputerInputClickInput,
@@ -36,8 +34,12 @@ import {
   type ComputerSetControlEnabledInput,
   type ComputerTypeTextInput,
   type ThreadComputerState,
-  WsRpcError,
-} from "@glade/contracts";
+} from "@glade/contracts/computer/computer";
+import {
+  type ComputerGetAuditHistoryInput,
+  type ComputerGetAuditHistoryResult,
+} from "@glade/contracts/computer/computerAudit";
+import { WsRpcError } from "@glade/contracts/transport/ws/rpc";
 import { Effect } from "effect";
 
 import { NO_COMPUTER_CAPABILITIES } from "./ComputerBackend.ts";

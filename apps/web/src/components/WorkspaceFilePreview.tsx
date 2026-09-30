@@ -1,6 +1,9 @@
 import { formatWorkspaceFileError } from "~/lib/workspaceFileError";
 
-import type { ProjectFileChangeEvent, ProjectReadFileResult } from "@glade/contracts";
+import type {
+  ProjectFileChangeEvent,
+  ProjectReadFileResult,
+} from "@glade/contracts/workspace/project";
 import type { FileContents as PierreFileContents } from "@pierre/diffs";
 import {
   Editor as PierreEditor,

@@ -1,4 +1,4 @@
-import type { ProjectImportProvider } from "@glade/contracts";
+import type { ProjectImportProvider } from "@glade/contracts/workspace/projectImport";
 import { create } from "zustand";
 
 export const useProjectImportDialogStore = create<{

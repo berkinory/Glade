@@ -1,4 +1,4 @@
-import type { AutomationDefinition, AutomationRun } from "@glade/contracts";
+import type { AutomationDefinition, AutomationRun } from "@glade/contracts/automation/automation";
 import { automationContinuesThread, automationOwnsItsThread } from "@glade/shared/automationMode";
 
 const AUTOMATION_MEMORY_INJECTION_MAX_BYTES = 8 * 1_024;

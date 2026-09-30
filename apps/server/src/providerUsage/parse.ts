@@ -1,11 +1,11 @@
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type {
-  ProviderKind,
   ProviderUsageStatus,
   ServerCodexResetCredits,
   ServerProviderUsageLimit,
   ServerProviderUsageLine,
   ServerProviderUsageSnapshot,
-} from "@glade/contracts";
+} from "@glade/contracts/server/server";
 import { providerUsageNeedsAuthDetail } from "@glade/shared/providerUsage";
 
 export function asRecord(value: unknown): Record<string, unknown> | null {

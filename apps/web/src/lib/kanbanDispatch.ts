@@ -1,11 +1,9 @@
 import type {
   AssistantDeliveryMode,
-  ProjectId,
-  ProviderKind,
   ProviderStartOptions,
   ThreadEnvironmentMode,
-  ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import type { ProjectId, ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { buildPromptThreadTitleFallback } from "@glade/shared/chatThreads";
 import { isPendingThreadWorktree } from "@glade/shared/threadEnvironment";
 import {

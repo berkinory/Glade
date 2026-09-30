@@ -7,7 +7,7 @@ import type {
   ServerLocalServerProcess,
   ServerStopLocalServerInput,
   ServerStopLocalServerResult,
-} from "@glade/contracts";
+} from "@glade/contracts/server/server";
 
 import { redactSensitiveProcessArgs } from "./processArgumentRedaction";
 

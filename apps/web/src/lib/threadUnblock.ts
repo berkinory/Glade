@@ -1,4 +1,5 @@
-import type { NativeApi, ThreadId } from "@glade/contracts";
+import type { NativeApi } from "@glade/contracts/ipc/ipc";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 
 const PROVIDER_DELIVERY_RECONCILIATION_CONFLICT_CODE = "PROVIDER_DELIVERY_RECONCILIATION_CONFLICT";
 

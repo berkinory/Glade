@@ -1,4 +1,5 @@
-import type { ProviderInteractionMode, ThreadId } from "@glade/contracts";
+import type { ProviderInteractionMode } from "@glade/contracts/orchestration/orchestration";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useEffect, useId, useRef, useState, type ChangeEvent } from "react";
 
 import {

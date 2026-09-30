@@ -2,7 +2,7 @@ import type {
   PullRequestAction,
   PullRequestDetailInput,
   PullRequestMergeMethod,
-} from "@glade/contracts";
+} from "@glade/contracts/git/pullRequests";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense, useRef, useState } from "react";
 

@@ -3,7 +3,7 @@ import {
   ThreadId,
   type ThreadId as ThreadIdType,
   type TurnId,
-} from "@glade/contracts";
+} from "@glade/contracts/core/baseSchemas";
 
 import type { AppState } from "../storeState";
 import { collectByIds, getThreadFromState } from "../threadDerivation";

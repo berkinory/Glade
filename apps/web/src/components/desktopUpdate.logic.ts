@@ -1,4 +1,4 @@
-import type { DesktopUpdateActionResult, DesktopUpdateState } from "@glade/contracts";
+import type { DesktopUpdateActionResult, DesktopUpdateState } from "@glade/contracts/ipc/ipc";
 
 export type DesktopUpdateButtonAction = "check" | "download" | "install" | "none";
 

@@ -1,4 +1,4 @@
-import type { GitBlameLineResult } from "@glade/contracts";
+import type { GitBlameLineResult } from "@glade/contracts/git/git";
 
 const BLAME_HEADER_PATTERN = /^([0-9a-f]{40,64}) \d+ \d+(?: \d+)?$/;
 const UNCOMMITTED_SHA_PATTERN = /^0{40,64}$/;

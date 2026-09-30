@@ -1,4 +1,5 @@
-import type { ProviderKind, ProviderModelDescriptor, ThreadId } from "@glade/contracts";
+import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
+import type { ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
 
 import { ResetIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";

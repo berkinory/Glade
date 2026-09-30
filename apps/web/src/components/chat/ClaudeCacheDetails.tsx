@@ -1,4 +1,4 @@
-import type { ClaudeCacheObservation } from "@glade/contracts";
+import type { ClaudeCacheObservation } from "@glade/contracts/provider/claudeCache";
 import { assessClaudeCache } from "@glade/shared/claudeCache";
 import { formatContextWindowTokens } from "~/lib/contextWindow";
 

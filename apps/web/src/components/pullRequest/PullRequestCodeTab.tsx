@@ -1,4 +1,4 @@
-import type { PullRequestDetail, PullRequestDetailInput } from "@glade/contracts";
+import type { PullRequestDetail, PullRequestDetailInput } from "@glade/contracts/git/pullRequests";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 

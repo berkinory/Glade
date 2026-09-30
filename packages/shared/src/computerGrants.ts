@@ -1,8 +1,8 @@
 import type {
   ComputerBuildSignature,
   ComputerPermission,
-  DesktopComputerState,
-} from "@glade/contracts";
+} from "@glade/contracts/computer/computer";
+import type { DesktopComputerState } from "@glade/contracts/ipc/ipc";
 
 export const COMPUTER_PERMISSIONS: readonly ComputerPermission[] = [
   "accessibility",

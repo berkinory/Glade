@@ -2,7 +2,7 @@ import type {
   KeybindingCommand,
   KeybindingRule,
   ResolvedKeybindingsConfig,
-} from "@glade/contracts";
+} from "@glade/contracts/settings/keybindings";
 import { useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 

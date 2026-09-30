@@ -1,4 +1,4 @@
-import type { ProjectId, SpaceId } from "@glade/contracts";
+import type { ProjectId, SpaceId } from "@glade/contracts/core/baseSchemas";
 import { Fragment, type ReactElement, type ReactNode, useMemo, useState } from "react";
 
 import { ComposerPickerMenuPopup } from "~/components/chat/ComposerPickerMenuPopup";

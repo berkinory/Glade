@@ -1,4 +1,4 @@
-import type { ComputerEvent } from "@glade/contracts";
+import type { ComputerEvent } from "@glade/contracts/computer/computer";
 import { describe, expect, it, vi } from "vitest";
 
 import { ComputerManager } from "./ComputerManager.ts";

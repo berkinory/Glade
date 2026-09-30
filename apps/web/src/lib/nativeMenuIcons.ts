@@ -1,4 +1,4 @@
-import type { ContextMenuItem, DesktopContextMenuItem } from "@glade/contracts";
+import type { ContextMenuItem, DesktopContextMenuItem } from "@glade/contracts/ipc/ipc";
 import { getCentralIconUrl } from "./central-icons";
 
 const NATIVE_MENU_ICON_POINTS = 16;

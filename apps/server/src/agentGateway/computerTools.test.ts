@@ -4,8 +4,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   COMPUTER_SELECT_TEXT_RANGE_MAX,
   type ComputerPermission,
-  type ProviderKind,
-} from "@glade/contracts";
+} from "@glade/contracts/computer/computer";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 
 import {
   COMPUTER_ACTION_OBSERVATION_MAX_DIMENSION,

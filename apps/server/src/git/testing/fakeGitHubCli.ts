@@ -1,12 +1,11 @@
 import { spawnSync } from "node:child_process";
 
 import { Effect } from "effect";
+import type { GitPullRequestCheck, GitPullRequestComment } from "@glade/contracts/git/git";
 import type {
-  GitPullRequestCheck,
-  GitPullRequestComment,
   PullRequestMergeCapabilities,
   PullRequestStack,
-} from "@glade/contracts";
+} from "@glade/contracts/git/pullRequests";
 
 import { GitHubCliError } from "../Errors.ts";
 import { decodePullRequestListJson } from "../Layers/GitHubCli.ts";

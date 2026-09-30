@@ -1,4 +1,4 @@
-import type { GladeStorageSnapshot } from "@glade/contracts";
+import type { GladeStorageSnapshot } from "@glade/contracts/ipc/ipc";
 
 const MAX_SNAPSHOT_ENTRIES = 2_048;
 const MAX_SNAPSHOT_KEY_LENGTH = 512;

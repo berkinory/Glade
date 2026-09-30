@@ -2,7 +2,17 @@
 // pane chrome needs (device list, attachment, agent activity, availability) so a thread switch
 // renders instantly and a late push can never roll the pane back to an older generation.
 
-import type { DeviceOpenPaneRequestedEvent, ThreadDeviceState, ThreadId } from "@glade/contracts";
+// The live simulator surface is a canvas fed by binary frames; this store keeps the metadata the
+// pane chrome needs (device list, attachment, agent activity, availability) so a thread switch
+// renders instantly and a late push can never roll the pane back to an older generation.
+import type {
+  DeviceOpenPaneRequestedEvent,
+  ThreadDeviceState,
+} from "@glade/contracts/device/device";
+// The live simulator surface is a canvas fed by binary frames; this store keeps the metadata the
+// pane chrome needs (device list, attachment, agent activity, availability) so a thread switch
+// renders instantly and a late push can never roll the pane back to an older generation.
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { create } from "zustand";
 
 interface DeviceStateStore {

@@ -6,7 +6,7 @@ import type {
   GitStatusRemoteResult,
   GitStatusResult,
   GitStatusStreamEvent,
-} from "@glade/contracts";
+} from "@glade/contracts/git/git";
 import { mergeGitStatusParts } from "@glade/shared/git";
 
 import { GitCore } from "../Services/GitCore";

@@ -7,7 +7,7 @@ import {
   COMPUTER_RELEASE_HOTKEY_BACKENDS,
   type ComputerCapabilities,
   type ComputerPermission,
-} from "@glade/contracts";
+} from "@glade/contracts/computer/computer";
 import {
   COMPUTER_PERMISSIONS,
   computerPermissionSetupMessage,
@@ -27,7 +27,7 @@ import {
   type AppSettingsBinding,
   type ComputerPreviewSize,
 } from "~/appSettings";
-import type { DesktopComputerSettingsPane, DesktopComputerState } from "@glade/contracts";
+import type { DesktopComputerSettingsPane, DesktopComputerState } from "@glade/contracts/ipc/ipc";
 import {
   computerReconnectsNote,
   computerStatusNeedsSetup,

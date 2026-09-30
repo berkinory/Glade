@@ -1,4 +1,4 @@
-import type { ProjectId, SpaceId, ThreadId } from "@glade/contracts";
+import type { ProjectId, SpaceId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useEffect } from "react";
 
 import { useSpacesUiStore } from "../spacesUiStore";

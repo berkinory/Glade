@@ -3,6 +3,8 @@ import { Data, Effect, ServiceMap } from "effect";
 import type {
   FilesystemBrowseInput,
   FilesystemBrowseResult,
+} from "@glade/contracts/workspace/filesystem";
+import type {
   ProjectDiscoverScriptsInput,
   ProjectDiscoverScriptsResult,
   ProjectListDirectoriesInput,
@@ -17,7 +19,7 @@ import type {
   ProjectSearchEntriesResult,
   ProjectSearchLocalEntriesInput,
   ProjectSearchLocalEntriesResult,
-} from "@glade/contracts";
+} from "@glade/contracts/workspace/project";
 
 export interface WorkspaceEntriesShape {
   readonly browse: (

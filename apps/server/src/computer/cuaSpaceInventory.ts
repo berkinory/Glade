@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { ComputerSpaceInventory } from "@glade/contracts";
+import { ComputerSpaceInventory } from "@glade/contracts/computer/computerSpaces";
 
 import { ComputerSpaceError } from "./ComputerSpaceBroker.ts";
 

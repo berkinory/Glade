@@ -1,11 +1,7 @@
-import {
-  type ModelSlug,
-  type ProviderKind,
-  type ProviderModelDescriptor,
-  type ProviderModelOptions,
-  type ServerProviderStatus,
-  type ThreadId,
-} from "@glade/contracts";
+import { type ModelSlug, type ProviderModelOptions } from "@glade/contracts/provider/model";
+import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
+import { type ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
+import { type ServerProviderStatus } from "@glade/contracts/server/server";
 import {
   useDeferredValue,
   useEffect,

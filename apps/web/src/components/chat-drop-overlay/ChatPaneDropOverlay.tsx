@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 
 import { useEffect, useRef, type DragEvent as ReactDragEvent, type ReactNode } from "react";
-import { type ThreadId } from "@glade/contracts";
+import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 
 import { type SplitDirection, type SplitDropSide } from "../../splitViewModel";
 import {

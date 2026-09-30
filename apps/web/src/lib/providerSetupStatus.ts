@@ -1,4 +1,4 @@
-import type { ServerProviderStatus } from "@glade/contracts";
+import type { ServerProviderStatus } from "@glade/contracts/server/server";
 
 export function providerSetupStatusLabel(input: {
   readonly status: ServerProviderStatus | undefined;

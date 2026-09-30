@@ -4,8 +4,8 @@ import {
   CODEX_GENERATED_IMAGE_ARTIFACT_KIND,
   type CodexGeneratedImageArtifact,
   type ProviderRuntimeEvent,
-  type ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/providerRuntime";
+import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { isSupportedLocalImagePath as isSupportedLocalImagePathShared } from "@glade/shared/localPreviewFiles";
 
 import {

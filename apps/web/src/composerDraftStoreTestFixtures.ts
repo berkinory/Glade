@@ -1,4 +1,6 @@
-import { ThreadId, type ModelSelection, type ProviderModelOptions } from "@glade/contracts";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { type ModelSelection } from "@glade/contracts/orchestration/orchestration";
+import { type ProviderModelOptions } from "@glade/contracts/provider/model";
 import {
   useComposerDraftStore,
   type ComposerFileAttachment,

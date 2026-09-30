@@ -2,7 +2,7 @@ import { constants } from "node:fs";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { Effect } from "effect";
-import type { GitRebaseInput } from "@glade/contracts";
+import type { GitRebaseInput } from "@glade/contracts/git/git";
 import { isWorkspaceRelativePathSafe } from "@glade/shared/path";
 import { GitCommandError } from "./Errors.ts";
 import type { GitCoreShape } from "./Services/GitCore.ts";

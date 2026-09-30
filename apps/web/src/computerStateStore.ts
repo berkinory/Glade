@@ -2,8 +2,8 @@ import type {
   ComputerEvent,
   ComputerWindow,
   ThreadComputerState,
-  ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/computer/computer";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { create } from "zustand";
 import { useShallow } from "zustand/react/shallow";
 

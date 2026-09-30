@@ -1,4 +1,7 @@
-import type { AutomationMode, AutomationWorktreeMode } from "@glade/contracts";
+import type {
+  AutomationMode,
+  AutomationWorktreeMode,
+} from "@glade/contracts/automation/automation";
 
 import { CentralIcon } from "~/lib/central-icons";
 import { useCommitDraft, useCommitDraftBlurHandlers } from "~/lib/automationInlineDraft";

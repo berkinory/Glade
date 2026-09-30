@@ -2,7 +2,7 @@ import type {
   OrchestrationCommand,
   OrchestrationEvent,
   OrchestrationReadModel,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
 import { ServiceMap } from "effect";
 import type { Effect, Scope, Stream } from "effect";
 

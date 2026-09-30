@@ -1,9 +1,9 @@
+import type { ProjectImportProvider } from "@glade/contracts/workspace/projectImport";
 import type {
-  ProjectImportProvider,
   ProviderStartOptions,
   ThreadHandoffImportedMessage,
-  ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { ProviderAdapterError, ProviderUnsupportedError } from "../provider/Errors.ts";
 import { Data, Effect } from "effect";
 import { loadClaudeAgentSdk } from "../provider/claudeAgentSdk";

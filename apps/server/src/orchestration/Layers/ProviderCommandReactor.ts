@@ -7,32 +7,38 @@ import { providerWorkspaceChanged } from "../projectRelocationPaths.ts";
 
 import {
   type ChatAttachment,
-  type ClaudeCacheObservation,
   type PendingClaudeCacheReview,
-  type CheckpointRef,
-  CommandId,
-  EventId,
   type ModelSelection,
-  MessageId,
   type OrchestrationEvent,
   type OrchestrationRegenerateThreadTitleResult,
   PROVIDER_SEND_TURN_MAX_INPUT_CHARS,
-  type ProviderMentionReference,
   type ProviderInteractionMode,
-  type ProviderRuntimeEvent,
-  ProviderKind,
   type ProviderReviewTarget,
   type ProviderStartOptions,
-  type ProviderSkillReference,
-  type ProviderTurnStartResult,
   type OrchestrationSession,
   type OrchestrationProjectShell,
   type OrchestrationThread,
-  ThreadId,
-  type ProviderSession,
   type RuntimeMode,
+} from "@glade/contracts/orchestration/orchestration";
+import { type ClaudeCacheObservation } from "@glade/contracts/provider/claudeCache";
+import {
+  type CheckpointRef,
+  CommandId,
+  EventId,
+  MessageId,
+  ProviderKind,
+  ThreadId,
   TurnId,
-} from "@glade/contracts";
+} from "@glade/contracts/core/baseSchemas";
+import {
+  type ProviderMentionReference,
+  type ProviderSkillReference,
+} from "@glade/contracts/provider/providerDiscovery";
+import { type ProviderRuntimeEvent } from "@glade/contracts/provider/providerRuntime";
+import {
+  type ProviderTurnStartResult,
+  type ProviderSession,
+} from "@glade/contracts/provider/provider";
 import {
   Cache,
   Cause,

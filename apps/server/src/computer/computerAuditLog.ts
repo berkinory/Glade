@@ -8,7 +8,7 @@ import type {
   ComputerAuditEffect,
   ComputerGetAuditHistoryInput,
   ComputerGetAuditHistoryResult,
-} from "@glade/contracts";
+} from "@glade/contracts/computer/computerAudit";
 import { readComputerAuditHistory } from "./computerAuditHistory.ts";
 import { computerAuditTailLines, readComputerAuditFileTail } from "./computerAuditFile.ts";
 
@@ -29,7 +29,7 @@ export const COMPUTER_AUDIT_MAX_BYTES = 2 * 1024 * 1024;
 const COMPUTER_AUDIT_COMPACT_TO = Math.floor(COMPUTER_AUDIT_MAX_ENTRIES / 2);
 const COMPUTER_AUDIT_COMPACT_BYTES = Math.floor(COMPUTER_AUDIT_MAX_BYTES / 2);
 
-export type { ComputerAuditEffect } from "@glade/contracts";
+export type { ComputerAuditEffect } from "@glade/contracts/computer/computerAudit";
 
 export interface ComputerAuditEntry {
   readonly ts: string;

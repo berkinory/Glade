@@ -20,7 +20,7 @@ import type {
   ComputerVerifyStateResult,
   ComputerWindow,
   ComputerZoomResult,
-} from "@glade/contracts";
+} from "@glade/contracts/computer/computer";
 
 import {
   ComputerBackendError,

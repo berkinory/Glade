@@ -1,4 +1,4 @@
-import { ProjectId, ThreadId } from "@glade/contracts";
+import { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { selectComposerThreadDraft } from "./composerDraftDomain";
 import {

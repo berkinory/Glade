@@ -1,9 +1,8 @@
 import {
   PINNED_MESSAGES_MAX_COUNT,
-  type MessageId,
   type PinnedMessage,
-  type ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import { type MessageId, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useEffect, useRef } from "react";
 
 import { toastManager } from "~/components/ui/toast";

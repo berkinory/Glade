@@ -2,8 +2,8 @@ import type {
   AutomationCompletionPolicy,
   AutomationMode,
   AutomationSchedule,
-  ServerGenerateAutomationIntentResult,
-} from "@glade/contracts";
+} from "@glade/contracts/automation/automation";
+import type { ServerGenerateAutomationIntentResult } from "@glade/contracts/server/server";
 
 import { completionPolicyFromStopWhen } from "@glade/shared/automationCompletionPolicy";
 import { automationRequiresTargetThread } from "@glade/shared/automationMode";

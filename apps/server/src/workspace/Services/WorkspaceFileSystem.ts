@@ -7,7 +7,7 @@ import type {
   ProjectWriteFileResult,
   ProjectManageEntryInput,
   ProjectManageEntryResult,
-} from "@glade/contracts";
+} from "@glade/contracts/workspace/project";
 import { WorkspacePathOutsideRootError } from "./WorkspacePaths";
 
 export class WorkspaceFileSystemError extends Schema.TaggedErrorClass<WorkspaceFileSystemError>()(

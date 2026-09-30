@@ -1,4 +1,4 @@
-import { type MessageId, type ThreadId } from "@glade/contracts";
+import { type MessageId, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   type MutableRefObject,
   useCallback,

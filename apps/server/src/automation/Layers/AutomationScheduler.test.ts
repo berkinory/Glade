@@ -1,9 +1,9 @@
 import { assert, it } from "@effect/vitest";
+import { AutomationId } from "@glade/contracts/core/baseSchemas";
 import {
-  AutomationId,
   type AutomationDefinition,
   type AutomationStreamEvent,
-} from "@glade/contracts";
+} from "@glade/contracts/automation/automation";
 import { Effect, Layer, PubSub, Stream } from "effect";
 
 import { AutomationRepository } from "../../persistence/Services/AutomationRepository.ts";

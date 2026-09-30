@@ -1,10 +1,10 @@
 import {
   IsoDateTime,
-  OrchestrationProposedPlanId,
   ThreadId,
   TrimmedNonEmptyString,
   TurnId,
-} from "@glade/contracts";
+} from "@glade/contracts/core/baseSchemas";
+import { OrchestrationProposedPlanId } from "@glade/contracts/orchestration/orchestration";
 import { Option, Schema, ServiceMap } from "effect";
 import type { Effect } from "effect";
 

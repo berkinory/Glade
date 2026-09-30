@@ -1,9 +1,13 @@
 import {
   ORCHESTRATION_WS_CHANNELS,
   ORCHESTRATION_WS_METHODS,
+  type OrchestrationEvent,
+  type OrchestrationShellStreamItem,
+  type OrchestrationThreadStreamItem,
+} from "@glade/contracts/orchestration/orchestration";
+import {
   WS_BOOTSTRAP_METHOD,
   WS_BOOTSTRAP_PATH,
-  WS_CHANNELS,
   WS_CLIENT_REQUIRED_CAPABILITIES,
   WS_COMPATIBILITY_QUERY,
   WS_FEATURE_PATH,
@@ -13,42 +17,56 @@ import {
   WS_PROTOCOL_MAX_REVISION,
   WS_PROTOCOL_MIN_REVISION,
   WS_PROJECT_FILE_WATCH_CAPABILITY,
+  WsBootstrapNegotiateResult,
+  WsCompatibilityError,
+} from "@glade/contracts/transport/ws/wsCompatibility";
+import {
+  WS_CHANNELS,
+  WS_METHODS,
+  type WsPush,
+  type WsPushChannel,
+  type WsPushMessage,
+} from "@glade/contracts/transport/ws/ws";
+import {
   DEVICE_WS_CHANNELS,
   DEVICE_WS_METHODS,
+  type DeviceEvent,
+} from "@glade/contracts/device/device";
+import {
   COMPUTER_WS_CHANNELS,
   COMPUTER_WS_METHODS,
-  WsBootstrapNegotiateResult,
+  type ComputerEvent,
+} from "@glade/contracts/computer/computer";
+import {
   WsBootstrapRpcGroup,
   WsDeviceRpcGroup,
   WsComputerRpcGroup,
-  WS_METHODS,
-  WsCompatibilityError,
   WsFeatureRpcGroup,
-  type AutomationStreamEvent,
+} from "@glade/contracts/transport/ws/rpc";
+import { type AutomationStreamEvent } from "@glade/contracts/automation/automation";
+import {
   type GitActionProgressEvent,
   type GitCreateDetachedWorktreeResult,
   type GitRunStackedActionResult,
   type GitWorktreeSetupProgressEvent,
+} from "@glade/contracts/git/git";
+import {
   type GitHubProjectProvisionProgressEvent,
   type GitHubProjectProvisionResult,
-  type OrchestrationEvent,
-  type OrchestrationShellStreamItem,
-  type OrchestrationThreadStreamItem,
+} from "@glade/contracts/git/githubProjectProvisioning";
+import {
   type ProjectDevServerEvent,
   type ProjectFileChangeEvent,
   type ProjectWatchFileInput,
+} from "@glade/contracts/workspace/project";
+import {
   type ServerConfigStreamEvent,
   type ServerLifecycleStreamEvent,
   type ServerProviderStatusesUpdatedPayload,
   type ServerSettingsUpdatedPayload,
-  type DeviceEvent,
-  type ComputerEvent,
-  type TerminalEvent,
-  type WsPush,
-  type WsPushChannel,
-  type WsPushMessage,
-  ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/server/server";
+import { type TerminalEvent } from "@glade/contracts/terminal/terminal";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   Cause,
   Data,

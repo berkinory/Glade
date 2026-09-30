@@ -1,4 +1,4 @@
-import { type MessageId } from "@glade/contracts";
+import { type MessageId } from "@glade/contracts/core/baseSchemas";
 import { type LegendListRef } from "@legendapp/list/react";
 import { useLayoutEffect, useRef, type RefObject } from "react";
 

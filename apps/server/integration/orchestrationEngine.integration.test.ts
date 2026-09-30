@@ -4,15 +4,17 @@ import path from "node:path";
 import {
   ApprovalRequestId,
   CommandId,
-  DEFAULT_PROVIDER_INTERACTION_MODE,
-  DEFAULT_MODEL_BY_PROVIDER,
   EventId,
   MessageId,
   ProjectId,
   ProviderKind,
   ThreadId,
+} from "@glade/contracts/core/baseSchemas";
+import {
+  DEFAULT_PROVIDER_INTERACTION_MODE,
   ModelSelection,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import { DEFAULT_MODEL_BY_PROVIDER } from "@glade/contracts/provider/model";
 import { assert, it } from "@effect/vitest";
 import { Effect, Option, Schema } from "effect";
 

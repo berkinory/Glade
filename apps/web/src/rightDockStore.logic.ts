@@ -1,4 +1,4 @@
-import type { ProjectId, TurnId } from "@glade/contracts";
+import type { ProjectId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { isPlainObject, sanitizeStringKeyedRecord } from "./persistedRecord";
 
 const RIGHT_DOCK_PANE_KINDS = [

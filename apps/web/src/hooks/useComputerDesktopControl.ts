@@ -1,4 +1,4 @@
-import type { ThreadId } from "@glade/contracts";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useMutation } from "@tanstack/react-query";
 
 import { interruptThreadTurn } from "~/lib/threadTurnInterrupt";

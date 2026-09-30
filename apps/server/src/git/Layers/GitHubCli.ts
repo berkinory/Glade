@@ -1,10 +1,11 @@
 import { Effect, Layer, Schema } from "effect";
+import { PositiveInt, TrimmedNonEmptyString } from "@glade/contracts/core/baseSchemas";
 import {
-  PositiveInt,
-  TrimmedNonEmptyString,
   type GitPullRequestCheck,
   type GitPullRequestCheckStatus,
   type GitPullRequestComment,
+} from "@glade/contracts/git/git";
+import {
   type PullRequestActor,
   type PullRequestCheck,
   type PullRequestComment,
@@ -13,7 +14,7 @@ import {
   type PullRequestLabel,
   type PullRequestMergeCapabilities,
   type PullRequestStack,
-} from "@glade/contracts";
+} from "@glade/contracts/git/pullRequests";
 import { githubAvatarUrlForLogin } from "@glade/shared/githubAvatar";
 import {
   isValidGitHubRepositoryNameWithOwner,

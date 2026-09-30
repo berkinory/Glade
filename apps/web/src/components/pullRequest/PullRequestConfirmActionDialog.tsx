@@ -1,4 +1,4 @@
-import type { PullRequestMergeMethod, PullRequestStack } from "@glade/contracts";
+import type { PullRequestMergeMethod, PullRequestStack } from "@glade/contracts/git/pullRequests";
 import { useState } from "react";
 
 import {

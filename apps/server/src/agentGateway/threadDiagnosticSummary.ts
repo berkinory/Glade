@@ -1,4 +1,4 @@
-import type { OrchestrationEvent } from "@glade/contracts";
+import type { OrchestrationEvent } from "@glade/contracts/orchestration/orchestration";
 
 import { sanitizeDiagnosticValue } from "./diagnosticSanitizer.ts";
 import { readNumberArg } from "./toolInput.ts";

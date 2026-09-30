@@ -1,6 +1,6 @@
 import * as path from "node:path";
 
-import type { DeviceFamily, DeviceGeometry } from "@glade/contracts";
+import type { DeviceFamily, DeviceGeometry } from "@glade/contracts/device/device";
 
 import type { runProcess } from "../processRunner.ts";
 

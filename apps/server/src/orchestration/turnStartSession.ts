@@ -1,4 +1,9 @@
-import type { ModelSelection, OrchestrationSession, RuntimeMode, ThreadId } from "@glade/contracts";
+import type {
+  ModelSelection,
+  OrchestrationSession,
+  RuntimeMode,
+} from "@glade/contracts/orchestration/orchestration";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 
 export function deriveTurnStartModelSelection(input: {
   readonly currentModelSelection: ModelSelection;

@@ -1,4 +1,4 @@
-import type { TerminalEvent } from "@glade/contracts";
+import type { TerminalEvent } from "@glade/contracts/terminal/terminal";
 import type { TerminalActivityState } from "@glade/shared/terminalThreads";
 
 export interface TerminalActivityUpdate {

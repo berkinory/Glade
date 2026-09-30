@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { ProviderApprovalDecision } from "@glade/contracts";
+import type { ProviderApprovalDecision } from "@glade/contracts/orchestration/orchestration";
 
 interface PendingApproval {
   readonly threadId: string;

@@ -1,4 +1,4 @@
-import type { ThreadId } from "@glade/contracts";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type PointerEvent, type RefObject, useMemo, useRef } from "react";
 
 import {

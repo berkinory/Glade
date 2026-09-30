@@ -1,4 +1,4 @@
-import { type ProviderKind, type ThreadId } from "@glade/contracts";
+import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { memo, type ReactNode } from "react";
 
 import { GladeLogo } from "../GladeLogo";

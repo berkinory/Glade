@@ -1,4 +1,4 @@
-import type { OrchestrationThreadPullRequest } from "@glade/contracts";
+import type { OrchestrationThreadPullRequest } from "@glade/contracts/orchestration/orchestration";
 import { resolveThreadBranchRegressionGuard } from "@glade/shared/git";
 
 export type ThreadPullRequestLookup =

@@ -3,8 +3,8 @@ import {
   GIT_TEXT_GENERATION_PROVIDERS,
   PROVIDER_DISPLAY_NAMES,
   type GitTextGenerationProvider,
-  type ProviderKind,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/model";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";

@@ -1,4 +1,5 @@
-import type { ProviderArtifactsState, ProviderKind } from "@glade/contracts";
+import type { ProviderArtifactsState } from "@glade/contracts/provider/providerDiscovery";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 
 const CLAUDE_ARTIFACT_COMMANDS = new Set(["design", "slides"]);
 

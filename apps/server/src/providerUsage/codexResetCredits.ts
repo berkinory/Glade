@@ -4,7 +4,7 @@ import type {
   ServerCodexResetCreditStatus,
   ServerCodexResetCredits,
   ServerConsumeCodexResetCreditInput,
-} from "@glade/contracts";
+} from "@glade/contracts/server/server";
 import { spawnProcess } from "@glade/shared/processRuntime";
 
 import { CodexJsonlFramer, CodexJsonlWriter } from "../codexAppServerTransport";

@@ -1,4 +1,4 @@
-import type { ThreadId } from "@glade/contracts";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 
 import { findLeafPaneById } from "../../splitView.logic";
 import type { PaneId, SplitView } from "../../splitViewModel";

@@ -3,13 +3,16 @@ import {
   type ComputerBuildSignature,
   COMPUTER_CONTROL_DENIED_ACTIVITY_KIND,
   COMPUTER_SETUP_REQUIRED_ACTIVITY_KIND,
+} from "@glade/contracts/computer/computer";
+import {
   isToolLifecycleItemType,
+  type ToolLifecycleItemType,
+} from "@glade/contracts/provider/providerRuntime";
+import {
   type OrchestrationLatestTurnState,
   type OrchestrationThreadActivity,
-  type ProviderKind,
-  type ToolLifecycleItemType,
-  type TurnId,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import { type ProviderKind, type TurnId } from "@glade/contracts/core/baseSchemas";
 import {
   decodeSubagentAgentStates,
   extractSubagentIdentityHints,

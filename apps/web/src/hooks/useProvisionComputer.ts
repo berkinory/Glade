@@ -1,4 +1,7 @@
-import type { ComputerPermission, ComputerProvisionResult } from "@glade/contracts";
+import type {
+  ComputerPermission,
+  ComputerProvisionResult,
+} from "@glade/contracts/computer/computer";
 import { useIsMutating, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { toastManager } from "~/components/ui/toast";

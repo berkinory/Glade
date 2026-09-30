@@ -2,8 +2,8 @@ import type {
   DeviceDescriptor,
   DeviceHardwareButton,
   DeviceUdid,
-  ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/device/device";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ensureNativeApi } from "~/nativeApi";

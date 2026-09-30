@@ -1,11 +1,10 @@
 import {
   type ModelSelection,
-  type ProviderKind,
   PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
   ProviderInteractionMode,
   RuntimeMode,
-  ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import { type ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { getDefaultModel, normalizeModelSlug } from "@glade/shared/model";
 import * as Equal from "effect/Equal";
 import * as Schema from "effect/Schema";

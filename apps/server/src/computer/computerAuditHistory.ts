@@ -6,7 +6,7 @@ import {
   type ComputerAuditHistoryEntry,
   type ComputerGetAuditHistoryInput,
   type ComputerGetAuditHistoryResult,
-} from "@glade/contracts";
+} from "@glade/contracts/computer/computerAudit";
 import { Schema } from "effect";
 import { computerAuditTailLines, readComputerAuditFileTail } from "./computerAuditFile.ts";
 

@@ -1,5 +1,9 @@
 import type { TaggedFailure } from "../platform/operationError.ts";
-import { ThreadId, type OrchestrationEvent, type OrchestrationThreadShell } from "@glade/contracts";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
+import {
+  type OrchestrationEvent,
+  type OrchestrationThreadShell,
+} from "@glade/contracts/orchestration/orchestration";
 import { Effect, Option } from "effect";
 
 import type { ProjectionSnapshotQueryShape } from "../orchestration/Services/ProjectionSnapshotQuery.ts";

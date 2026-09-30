@@ -1,13 +1,15 @@
+import { AsyncUserInput } from "@glade/contracts/orchestration/asyncUserInput";
 import {
-  AsyncUserInput,
   ChatAttachment,
   MessageDispatchOrigin,
-  NonNegativeInt,
-  ProviderMentionReference,
-  ProviderSkillReference,
   TurnDispatchMode,
   type OrchestrationMessage,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import { NonNegativeInt } from "@glade/contracts/core/baseSchemas";
+import {
+  ProviderMentionReference,
+  ProviderSkillReference,
+} from "@glade/contracts/provider/providerDiscovery";
 import { Schema, Struct } from "effect";
 import { joinMessageTextChunks } from "./messageTextChunks.ts";
 

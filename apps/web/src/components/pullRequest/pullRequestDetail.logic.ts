@@ -1,4 +1,8 @@
-import type { PullRequestDetail, PullRequestDetailInput, PullRequestState } from "@glade/contracts";
+import type {
+  PullRequestDetail,
+  PullRequestDetailInput,
+  PullRequestState,
+} from "@glade/contracts/git/pullRequests";
 
 import type { RightDockPane } from "~/rightDockStore.logic";
 

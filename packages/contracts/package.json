@@ -6,19 +6,241 @@
     "dist"
   ],
   "type": "module",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
-  "types": "./src/index.ts",
   "exports": {
-    ".": {
-      "types": "./src/index.ts",
-      "import": "./src/index.ts",
-      "require": "./dist/index.cjs"
+    "./automation/automation": {
+      "types": "./src/automation/automation.ts",
+      "import": "./src/automation/automation.ts",
+      "require": "./dist/automation/automation.cjs"
+    },
+    "./browser/automation/browserAutomationBounds": {
+      "types": "./src/browser/automation/browserAutomationBounds.ts",
+      "import": "./src/browser/automation/browserAutomationBounds.ts",
+      "require": "./dist/browser/automation/browserAutomationBounds.cjs"
+    },
+    "./browser/automation/browserAutomationCssSelector": {
+      "types": "./src/browser/automation/browserAutomationCssSelector.ts",
+      "import": "./src/browser/automation/browserAutomationCssSelector.ts",
+      "require": "./dist/browser/automation/browserAutomationCssSelector.cjs"
+    },
+    "./browser/automation/browserAutomationErrors": {
+      "types": "./src/browser/automation/browserAutomationErrors.ts",
+      "import": "./src/browser/automation/browserAutomationErrors.ts",
+      "require": "./dist/browser/automation/browserAutomationErrors.cjs"
+    },
+    "./browser/automation/browserAutomationIds": {
+      "types": "./src/browser/automation/browserAutomationIds.ts",
+      "import": "./src/browser/automation/browserAutomationIds.ts",
+      "require": "./dist/browser/automation/browserAutomationIds.cjs"
+    },
+    "./browser/automation/browserAutomationJson": {
+      "types": "./src/browser/automation/browserAutomationJson.ts",
+      "import": "./src/browser/automation/browserAutomationJson.ts",
+      "require": "./dist/browser/automation/browserAutomationJson.cjs"
+    },
+    "./browser/automation/browserAutomationTargets": {
+      "types": "./src/browser/automation/browserAutomationTargets.ts",
+      "import": "./src/browser/automation/browserAutomationTargets.ts",
+      "require": "./dist/browser/automation/browserAutomationTargets.cjs"
+    },
+    "./browser/automation/browserAutomationToolCatalogue": {
+      "types": "./src/browser/automation/browserAutomationToolCatalogue.ts",
+      "import": "./src/browser/automation/browserAutomationToolCatalogue.ts",
+      "require": "./dist/browser/automation/browserAutomationToolCatalogue.cjs"
+    },
+    "./browser/automation/browserAutomationToolCommon": {
+      "types": "./src/browser/automation/browserAutomationToolCommon.ts",
+      "import": "./src/browser/automation/browserAutomationToolCommon.ts",
+      "require": "./dist/browser/automation/browserAutomationToolCommon.cjs"
+    },
+    "./browser/automation/browserAutomationToolInputs": {
+      "types": "./src/browser/automation/browserAutomationToolInputs.ts",
+      "import": "./src/browser/automation/browserAutomationToolInputs.ts",
+      "require": "./dist/browser/automation/browserAutomationToolInputs.cjs"
+    },
+    "./browser/automation/browserAutomationToolOutputs": {
+      "types": "./src/browser/automation/browserAutomationToolOutputs.ts",
+      "import": "./src/browser/automation/browserAutomationToolOutputs.ts",
+      "require": "./dist/browser/automation/browserAutomationToolOutputs.cjs"
+    },
+    "./browser/browserAnnotations": {
+      "types": "./src/browser/browserAnnotations.ts",
+      "import": "./src/browser/browserAnnotations.ts",
+      "require": "./dist/browser/browserAnnotations.cjs"
+    },
+    "./browser/browserVault": {
+      "types": "./src/browser/browserVault.ts",
+      "import": "./src/browser/browserVault.ts",
+      "require": "./dist/browser/browserVault.cjs"
+    },
+    "./computer/computer": {
+      "types": "./src/computer/computer.ts",
+      "import": "./src/computer/computer.ts",
+      "require": "./dist/computer/computer.cjs"
+    },
+    "./computer/computerAudit": {
+      "types": "./src/computer/computerAudit.ts",
+      "import": "./src/computer/computerAudit.ts",
+      "require": "./dist/computer/computerAudit.cjs"
+    },
+    "./computer/computerBrowser": {
+      "types": "./src/computer/computerBrowser.ts",
+      "import": "./src/computer/computerBrowser.ts",
+      "require": "./dist/computer/computerBrowser.cjs"
+    },
+    "./computer/computerSpaces": {
+      "types": "./src/computer/computerSpaces.ts",
+      "import": "./src/computer/computerSpaces.ts",
+      "require": "./dist/computer/computerSpaces.cjs"
+    },
+    "./core/baseSchemas": {
+      "types": "./src/core/baseSchemas.ts",
+      "import": "./src/core/baseSchemas.ts",
+      "require": "./dist/core/baseSchemas.cjs"
+    },
+    "./device/device": {
+      "types": "./src/device/device.ts",
+      "import": "./src/device/device.ts",
+      "require": "./dist/device/device.cjs"
+    },
+    "./git/git": {
+      "types": "./src/git/git.ts",
+      "import": "./src/git/git.ts",
+      "require": "./dist/git/git.cjs"
+    },
+    "./git/githubProjectProvisioning": {
+      "types": "./src/git/githubProjectProvisioning.ts",
+      "import": "./src/git/githubProjectProvisioning.ts",
+      "require": "./dist/git/githubProjectProvisioning.cjs"
+    },
+    "./git/pullRequests": {
+      "types": "./src/git/pullRequests.ts",
+      "import": "./src/git/pullRequests.ts",
+      "require": "./dist/git/pullRequests.cjs"
+    },
+    "./ipc/ipc": {
+      "types": "./src/ipc/ipc.ts",
+      "import": "./src/ipc/ipc.ts",
+      "require": "./dist/ipc/ipc.cjs"
+    },
+    "./orchestration/asyncUserInput": {
+      "types": "./src/orchestration/asyncUserInput.ts",
+      "import": "./src/orchestration/asyncUserInput.ts",
+      "require": "./dist/orchestration/asyncUserInput.cjs"
+    },
+    "./orchestration/orchestration": {
+      "types": "./src/orchestration/orchestration.ts",
+      "import": "./src/orchestration/orchestration.ts",
+      "require": "./dist/orchestration/orchestration.cjs"
+    },
+    "./provider/agentGateway": {
+      "types": "./src/provider/agentGateway.ts",
+      "import": "./src/provider/agentGateway.ts",
+      "require": "./dist/provider/agentGateway.cjs"
+    },
+    "./provider/agentMentions": {
+      "types": "./src/provider/agentMentions.ts",
+      "import": "./src/provider/agentMentions.ts",
+      "require": "./dist/provider/agentMentions.cjs"
+    },
+    "./provider/claudeCache": {
+      "types": "./src/provider/claudeCache.ts",
+      "import": "./src/provider/claudeCache.ts",
+      "require": "./dist/provider/claudeCache.cjs"
+    },
+    "./provider/model": {
+      "types": "./src/provider/model.ts",
+      "import": "./src/provider/model.ts",
+      "require": "./dist/provider/model.cjs"
+    },
+    "./provider/provider": {
+      "types": "./src/provider/provider.ts",
+      "import": "./src/provider/provider.ts",
+      "require": "./dist/provider/provider.cjs"
+    },
+    "./provider/providerDiscovery": {
+      "types": "./src/provider/providerDiscovery.ts",
+      "import": "./src/provider/providerDiscovery.ts",
+      "require": "./dist/provider/providerDiscovery.cjs"
+    },
+    "./provider/providerRuntime": {
+      "types": "./src/provider/providerRuntime.ts",
+      "import": "./src/provider/providerRuntime.ts",
+      "require": "./dist/provider/providerRuntime.cjs"
+    },
+    "./server/server": {
+      "types": "./src/server/server.ts",
+      "import": "./src/server/server.ts",
+      "require": "./dist/server/server.cjs"
+    },
+    "./server/stats": {
+      "types": "./src/server/stats.ts",
+      "import": "./src/server/stats.ts",
+      "require": "./dist/server/stats.cjs"
+    },
+    "./settings/editor": {
+      "types": "./src/settings/editor.ts",
+      "import": "./src/settings/editor.ts",
+      "require": "./dist/settings/editor.cjs"
+    },
+    "./settings/keybindings": {
+      "types": "./src/settings/keybindings.ts",
+      "import": "./src/settings/keybindings.ts",
+      "require": "./dist/settings/keybindings.cjs"
+    },
+    "./settings/settings": {
+      "types": "./src/settings/settings.ts",
+      "import": "./src/settings/settings.ts",
+      "require": "./dist/settings/settings.cjs"
+    },
+    "./terminal/terminal": {
+      "types": "./src/terminal/terminal.ts",
+      "import": "./src/terminal/terminal.ts",
+      "require": "./dist/terminal/terminal.cjs"
+    },
+    "./transport/auth/auth": {
+      "types": "./src/transport/auth/auth.ts",
+      "import": "./src/transport/auth/auth.ts",
+      "require": "./dist/transport/auth/auth.cjs"
+    },
+    "./transport/ws/rpc": {
+      "types": "./src/transport/ws/rpc.ts",
+      "import": "./src/transport/ws/rpc.ts",
+      "require": "./dist/transport/ws/rpc.cjs"
+    },
+    "./transport/ws/ws": {
+      "types": "./src/transport/ws/ws.ts",
+      "import": "./src/transport/ws/ws.ts",
+      "require": "./dist/transport/ws/ws.cjs"
+    },
+    "./transport/ws/wsCompatibility": {
+      "types": "./src/transport/ws/wsCompatibility.ts",
+      "import": "./src/transport/ws/wsCompatibility.ts",
+      "require": "./dist/transport/ws/wsCompatibility.cjs"
+    },
+    "./workspace/environment": {
+      "types": "./src/workspace/environment.ts",
+      "import": "./src/workspace/environment.ts",
+      "require": "./dist/workspace/environment.cjs"
+    },
+    "./workspace/filesystem": {
+      "types": "./src/workspace/filesystem.ts",
+      "import": "./src/workspace/filesystem.ts",
+      "require": "./dist/workspace/filesystem.cjs"
+    },
+    "./workspace/project": {
+      "types": "./src/workspace/project.ts",
+      "import": "./src/workspace/project.ts",
+      "require": "./dist/workspace/project.cjs"
+    },
+    "./workspace/projectImport": {
+      "types": "./src/workspace/projectImport.ts",
+      "import": "./src/workspace/projectImport.ts",
+      "require": "./dist/workspace/projectImport.cjs"
     }
   },
   "scripts": {
-    "dev": "tsdown src/index.ts --format cjs --watch --clean",
-    "build": "tsdown src/index.ts --format esm,cjs --dts --clean",
+    "dev": "tsdown --format cjs --no-dts --watch",
+    "build": "tsdown",
     "prepare": "effect-language-service patch",
     "typecheck": "bun ../../node_modules/@typescript/native/bin/tsc --noEmit",
     "test": "vitest run"

@@ -1,4 +1,4 @@
-import type { ProviderKind, ThreadId } from "@glade/contracts";
+import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 
 const ONBOARDING_TERMINAL_SCOPE_PREFIX = "onboarding-terminal:";
 

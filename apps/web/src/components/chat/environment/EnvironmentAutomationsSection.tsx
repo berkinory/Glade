@@ -1,4 +1,4 @@
-import type { AutomationDefinition } from "@glade/contracts";
+import type { AutomationDefinition } from "@glade/contracts/automation/automation";
 
 import { formatCadence } from "~/routes/-automations.shared";
 import { ClockIcon } from "~/lib/icons";

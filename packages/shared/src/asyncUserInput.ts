@@ -1,4 +1,7 @@
-import type { AsyncUserInput, AsyncUserInputQuestions } from "@glade/contracts";
+import type {
+  AsyncUserInput,
+  AsyncUserInputQuestions,
+} from "@glade/contracts/orchestration/asyncUserInput";
 
 export const ASYNC_USER_INPUT_ALREADY_ANSWERED =
   "This asynchronous question has already been answered.";

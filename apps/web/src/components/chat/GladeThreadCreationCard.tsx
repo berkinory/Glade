@@ -1,4 +1,4 @@
-import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts";
+import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { formatModelDisplayName } from "@glade/shared/model";
 import { memo } from "react";
 

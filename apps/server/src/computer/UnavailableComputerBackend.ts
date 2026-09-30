@@ -1,6 +1,9 @@
 // So the failure is the backend. `availability()` reports it, `health()` reports it as the last
 // failure, `capabilities()` is empty because nothing is possible, and every action rejects with the
 // same words.
+// So the failure is the backend. `availability()` reports it, `health()` reports it as the last
+// failure, `capabilities()` is empty because nothing is possible, and every action rejects with the
+// same words.
 import type {
   ComputerAccessibilityTreeApp,
   ComputerAccessibilityTreeWindow,
@@ -17,7 +20,7 @@ import type {
   ComputerVerifyStateResult,
   ComputerWindow,
   ComputerZoomResult,
-} from "@glade/contracts";
+} from "@glade/contracts/computer/computer";
 
 import {
   clampComputerMessage,

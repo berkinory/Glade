@@ -1,4 +1,4 @@
-import { type ClaudeModelOptions } from "@glade/contracts";
+import { type ClaudeModelOptions } from "@glade/contracts/provider/model";
 import { describe, expect, it } from "vitest";
 
 import { buildNextProviderOptions, type ProviderOptions } from "../../providerModelOptions";

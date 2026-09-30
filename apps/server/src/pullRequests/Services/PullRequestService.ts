@@ -6,7 +6,7 @@ import type {
   PullRequestDetail,
   PullRequestDetailInput,
   PullRequestDiffResult,
-} from "@glade/contracts";
+} from "@glade/contracts/git/pullRequests";
 import { ServiceMap } from "effect";
 import type { Effect } from "effect";
 

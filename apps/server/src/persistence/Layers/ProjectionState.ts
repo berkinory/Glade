@@ -1,4 +1,4 @@
-import { NonNegativeInt } from "@glade/contracts";
+import { NonNegativeInt } from "@glade/contracts/core/baseSchemas";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import * as SqlSchema from "effect/unstable/sql/SqlSchema";
 import { Effect, Layer, Schema } from "effect";

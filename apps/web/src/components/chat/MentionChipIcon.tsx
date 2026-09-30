@@ -9,7 +9,7 @@ import { createCentralIconElement } from "~/lib/central-icons";
 import { MessageCircleIcon, PluginIcon } from "~/lib/icons";
 import { COMPOSER_INLINE_CHIP_INLINE_ICON_CLASS_NAME } from "../composerInlineChip";
 import { FileEntryIcon } from "./FileEntryIcon";
-import type { ProviderMentionReference } from "@glade/contracts";
+import type { ProviderMentionReference } from "@glade/contracts/provider/providerDiscovery";
 import { threadIdFromThreadMentionPath } from "@glade/shared/threadMentions";
 import { useStore } from "~/store";
 import { resolveThreadDisplayProvider } from "~/lib/threadDisplayProvider";

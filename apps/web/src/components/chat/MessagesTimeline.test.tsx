@@ -1,4 +1,4 @@
-import { CheckpointRef, MessageId, ThreadId, TurnId } from "@glade/contracts";
+import { CheckpointRef, MessageId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { formatShortTimestamp } from "../../timestampFormat";

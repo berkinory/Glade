@@ -1,4 +1,7 @@
-import type { AutomationDefinition, AutomationSchedule } from "@glade/contracts";
+import type {
+  AutomationDefinition,
+  AutomationSchedule,
+} from "@glade/contracts/automation/automation";
 
 export type AutomationLifecycleState = "active" | "paused" | "scheduled" | "done";
 

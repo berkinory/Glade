@@ -1,4 +1,4 @@
-import type { PullRequestComment } from "@glade/contracts";
+import type { PullRequestComment } from "@glade/contracts/git/pullRequests";
 import { useState } from "react";
 
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "~/components/ui/collapsible";

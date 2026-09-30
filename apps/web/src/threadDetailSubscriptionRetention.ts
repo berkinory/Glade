@@ -1,4 +1,5 @@
-import { WS_STREAM_LIMITS, type ThreadId } from "@glade/contracts";
+import { WS_STREAM_LIMITS } from "@glade/contracts/transport/ws/wsCompatibility";
+import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useSyncExternalStore } from "react";
 import { useStore } from "./store";
 import type { AppState } from "./storeState";

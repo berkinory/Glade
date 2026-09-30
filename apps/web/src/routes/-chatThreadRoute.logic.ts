@@ -1,4 +1,5 @@
-import type { ProjectId, ThreadEnvironmentMode, ThreadId, TurnId } from "@glade/contracts";
+import type { ProjectId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
+import type { ThreadEnvironmentMode } from "@glade/contracts/orchestration/orchestration";
 import { resolveThreadWorkspaceCwd } from "@glade/shared/threadEnvironment";
 
 import type { ChatRightPanel, DiffRouteSearch } from "../diffRouteSearch";

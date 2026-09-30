@@ -1,4 +1,5 @@
-import { OrchestrationThreadActivity, ThreadId, type TurnId } from "@glade/contracts";
+import { OrchestrationThreadActivity } from "@glade/contracts/orchestration/orchestration";
+import { ThreadId, type TurnId } from "@glade/contracts/core/baseSchemas";
 import { useEffect, useMemo } from "react";
 import {
   deriveWorkLogEntries,

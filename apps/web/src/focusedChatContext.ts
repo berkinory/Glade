@@ -1,4 +1,4 @@
-import { ThreadId, type ThreadId as ThreadIdType } from "@glade/contracts";
+import { ThreadId, type ThreadId as ThreadIdType } from "@glade/contracts/core/baseSchemas";
 import { useMemo } from "react";
 import { useParams } from "@tanstack/react-router";
 import { type DraftThreadState, useComposerDraftStore } from "./composerDraftStore";

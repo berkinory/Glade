@@ -1,9 +1,9 @@
 import {
   PINNED_MESSAGE_LABEL_MAX_CHARS,
   THREAD_NOTES_MAX_CHARS,
-  type MessageId,
   type PinnedMessage,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import { type MessageId } from "@glade/contracts/core/baseSchemas";
 
 function keepExistingPins(pins: readonly PinnedMessage[]): PinnedMessage[] {
   return pins as PinnedMessage[];

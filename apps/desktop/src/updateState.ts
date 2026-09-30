@@ -1,4 +1,4 @@
-import type { DesktopUpdateState } from "@glade/contracts";
+import type { DesktopUpdateState } from "@glade/contracts/ipc/ipc";
 import type { GladeDesktopFlavor } from "@glade/shared/desktopIdentity";
 
 export type DownloadProgressSample = {

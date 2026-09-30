@@ -1,4 +1,4 @@
-import type { ProjectId, ThreadId } from "@glade/contracts";
+import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { SidebarThreadSummary } from "../types";
 import { hasUnseenCompletion, isThreadActivelyWorking } from "./Sidebar.logic";
 

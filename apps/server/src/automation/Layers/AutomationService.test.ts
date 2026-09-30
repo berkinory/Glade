@@ -1,22 +1,28 @@
 import { assert, it } from "@effect/vitest";
 import {
   AutomationId,
-  type AutomationListResult,
   AutomationRunId,
   CommandId,
-  DEFAULT_AUTOMATION_STOP_CONFIDENCE_THRESHOLD,
   MessageId,
   ProjectId,
   ThreadId,
   TurnId,
+} from "@glade/contracts/core/baseSchemas";
+import {
+  type AutomationListResult,
+  DEFAULT_AUTOMATION_STOP_CONFIDENCE_THRESHOLD,
   type AutomationCreateInput,
   type AutomationRun,
+} from "@glade/contracts/automation/automation";
+import {
   type GitCreateDetachedWorktreeInput,
   type GitRemoveWorktreeInput,
+} from "@glade/contracts/git/git";
+import {
   type OrchestrationCommand,
   type OrchestrationProjectShell,
   type OrchestrationThreadShell,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
 
 import { Duration, Effect, Layer, Option, Stream } from "effect";
 import { TestClock } from "effect/testing";

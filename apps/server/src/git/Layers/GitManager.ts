@@ -6,9 +6,11 @@ import type {
   GitActionProgressEvent,
   GitActionProgressPhase,
   GitStackedAction,
+} from "@glade/contracts/git/git";
+import type {
   ModelSelection,
   ProviderStartOptions,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
 import {
   resolveAutoFeatureBranchName,
   sanitizeBranchFragment,

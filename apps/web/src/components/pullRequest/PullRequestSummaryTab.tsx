@@ -1,4 +1,4 @@
-import type { PullRequestDetail } from "@glade/contracts";
+import type { PullRequestDetail } from "@glade/contracts/git/pullRequests";
 import { useState, type ReactNode } from "react";
 
 import {

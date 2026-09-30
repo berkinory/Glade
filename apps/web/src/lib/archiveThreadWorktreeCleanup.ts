@@ -1,4 +1,5 @@
-import type { GitRemoveWorktreeInput, ThreadId } from "@glade/contracts";
+import type { GitRemoveWorktreeInput } from "@glade/contracts/git/git";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 
 import { toastManager } from "../components/ui/toast";
 import { useStore } from "../store";

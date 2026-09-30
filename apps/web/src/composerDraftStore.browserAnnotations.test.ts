@@ -1,4 +1,4 @@
-import { ThreadId } from "@glade/contracts";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { partializeComposerDraftStoreState, useComposerDraftStore } from "./composerDraftStore";

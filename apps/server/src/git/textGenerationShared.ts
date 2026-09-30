@@ -1,10 +1,10 @@
 import { Schema } from "effect";
 import {
   DEFAULT_AUTOMATION_STOP_CONFIDENCE_THRESHOLD,
-  ServerGenerateAutomationIntentResult,
   type AutomationMode,
-  type ChatAttachment,
-} from "@glade/contracts";
+} from "@glade/contracts/automation/automation";
+import { ServerGenerateAutomationIntentResult } from "@glade/contracts/server/server";
+import { type ChatAttachment } from "@glade/contracts/orchestration/orchestration";
 import { MAX_CHAT_THREAD_TITLE_WORDS } from "@glade/shared/chatThreads";
 
 export function toJsonSchemaObject(schema: Schema.Top): unknown {

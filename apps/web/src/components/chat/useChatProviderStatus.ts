@@ -1,8 +1,6 @@
-import {
-  type ProviderKind,
-  type ProviderStartOptions,
-  type ServerProviderStatus,
-} from "@glade/contracts";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { type ProviderStartOptions } from "@glade/contracts/orchestration/orchestration";
+import { type ServerProviderStatus } from "@glade/contracts/server/server";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   normalizeCustomBinaryPath,

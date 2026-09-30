@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import type { DesktopAppIcon } from "@glade/contracts";
+import type { DesktopAppIcon } from "@glade/contracts/ipc/ipc";
 import { Spinner } from "~/components/ui/spinner";
 import { cn, isMacPlatform } from "~/lib/utils";
 

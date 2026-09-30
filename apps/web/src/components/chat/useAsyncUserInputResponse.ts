@@ -1,5 +1,5 @@
 import { collectErrorMessages } from "@glade/shared/errorMessages";
-import { MessageId, type ThreadId } from "@glade/contracts";
+import { MessageId, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   ASYNC_USER_INPUT_ALREADY_ANSWERED,
   formatAsyncUserInputResponse,

@@ -1,4 +1,4 @@
-import type { ProviderKind } from "@glade/contracts";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 
 export function resolveThreadDisplayProvider(thread: {
   readonly session?: { readonly provider: ProviderKind } | null;

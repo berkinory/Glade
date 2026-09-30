@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-  PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
-  type ServerLocalServerProcess,
-  type ThreadBrowserState,
-  type ThreadId,
-} from "@glade/contracts";
+import { PROVIDER_SEND_TURN_MAX_ATTACHMENTS } from "@glade/contracts/orchestration/orchestration";
+import { type ServerLocalServerProcess } from "@glade/contracts/server/server";
+import { type ThreadBrowserState } from "@glade/contracts/ipc/ipc";
+import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   ArrowLeftIcon,
   ArrowRightIcon,

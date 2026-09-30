@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import type { ThreadId } from "@glade/contracts";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { RotatingFileSink } from "@glade/shared/logging";
 import { Effect, Exit, Logger, Scope } from "effect";
 

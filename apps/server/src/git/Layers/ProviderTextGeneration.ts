@@ -1,9 +1,9 @@
 import {
   DEFAULT_GIT_TEXT_GENERATION_MODEL,
   PROVIDER_DISPLAY_NAMES,
-  type ModelSelection,
-  type ProviderKind,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/model";
+import { type ModelSelection } from "@glade/contracts/orchestration/orchestration";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { Effect, Layer } from "effect";
 
 import { providerDisabledSettingsMessage } from "../../provider/enabledProviderAdapter.ts";

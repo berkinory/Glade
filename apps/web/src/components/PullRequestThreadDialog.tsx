@@ -1,4 +1,4 @@
-import type { GitResolvePullRequestResult } from "@glade/contracts";
+import type { GitResolvePullRequestResult } from "@glade/contracts/git/git";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { useEffect, useRef, useState } from "react";

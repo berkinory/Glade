@@ -1,4 +1,4 @@
-import type { ProviderKind } from "@glade/contracts";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { providerUsageDisplayName } from "@glade/shared/providerUsage";
 import { useQuery } from "@tanstack/react-query";
 

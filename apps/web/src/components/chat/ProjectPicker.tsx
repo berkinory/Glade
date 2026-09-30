@@ -10,7 +10,8 @@ import {
   type ComponentProps,
   type ReactElement,
 } from "react";
-import { type ProjectDirectoryEntry, type ProjectId, type SpaceId } from "@glade/contracts";
+import { type ProjectDirectoryEntry } from "@glade/contracts/workspace/project";
+import { type ProjectId, type SpaceId } from "@glade/contracts/core/baseSchemas";
 import { useAppSettings } from "../../appSettings";
 import { readNativeApi } from "../../nativeApi";
 import { useStore } from "../../store";

@@ -1,5 +1,5 @@
 import type { FileDiffMetadata } from "@pierre/diffs/react";
-import type { ThreadId, TurnId } from "@glade/contracts";
+import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { FaPlusMinus } from "react-icons/fa6";
 import { useState, type ReactNode } from "react";
 

@@ -1,4 +1,5 @@
-import { WS_PROJECT_FILE_WATCH_CAPABILITY, type ProjectFileChangeEvent } from "@glade/contracts";
+import { WS_PROJECT_FILE_WATCH_CAPABILITY } from "@glade/contracts/transport/ws/wsCompatibility";
+import { type ProjectFileChangeEvent } from "@glade/contracts/workspace/project";
 import { useEffect, useSyncExternalStore } from "react";
 
 import {

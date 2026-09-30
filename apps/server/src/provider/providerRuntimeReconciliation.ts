@@ -1,10 +1,9 @@
+import { TurnId, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
-  TurnId,
   type OrchestrationSession,
   type OrchestrationThreadShell,
-  type ProviderSession,
-  type ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import { type ProviderSession } from "@glade/contracts/provider/provider";
 import { nonEmptyTrimmed } from "@glade/shared/text";
 
 import type { ProviderRuntimeEventPumpHealth } from "./Services/ProviderService.ts";

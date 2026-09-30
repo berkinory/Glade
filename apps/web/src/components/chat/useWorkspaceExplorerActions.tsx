@@ -1,4 +1,4 @@
-import type { ProjectFileSystemEntry } from "@glade/contracts";
+import type { ProjectFileSystemEntry } from "@glade/contracts/workspace/project";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 

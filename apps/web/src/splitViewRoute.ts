@@ -1,4 +1,4 @@
-import { type ThreadId } from "@glade/contracts";
+import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type DiffRouteSearch } from "./diffRouteSearch";
 import { resolveSplitViewFocusedThreadId, resolveSplitViewPaneIdForThread } from "./splitViewStore";
 import { type PaneId, type SplitView } from "./splitViewModel";

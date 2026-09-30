@@ -11,8 +11,8 @@ import {
   BROWSER_ANNOTATION_MAX_TEXT_LENGTH,
   BROWSER_ANNOTATION_MAX_URL_LENGTH,
   type BrowserAnnotation,
-  type MessageId,
-} from "@glade/contracts";
+} from "@glade/contracts/browser/browserAnnotations";
+import { type MessageId } from "@glade/contracts/core/baseSchemas";
 import {
   sanitizeBrowserAnnotationPageTitle,
   sanitizeBrowserAnnotationUrl,

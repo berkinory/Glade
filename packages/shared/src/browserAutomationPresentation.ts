@@ -1,4 +1,4 @@
-import type { BrowserToolName } from "@glade/contracts";
+import type { BrowserToolName } from "@glade/contracts/browser/automation/browserAutomationToolCatalogue";
 
 export const BROWSER_TOOL_TITLES = {
   browser_status: "Check browser status",

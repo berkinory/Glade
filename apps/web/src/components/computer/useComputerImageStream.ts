@@ -1,4 +1,4 @@
-import type { ComputerId } from "@glade/contracts";
+import type { ComputerId } from "@glade/contracts/computer/computer";
 import type { ComputerFrame } from "@glade/shared/computerFrame";
 import { useEffect, useRef, useState } from "react";
 

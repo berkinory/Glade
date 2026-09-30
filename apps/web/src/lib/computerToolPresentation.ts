@@ -1,4 +1,4 @@
-import type { ComputerWindow } from "@glade/contracts";
+import type { ComputerWindow } from "@glade/contracts/computer/computer";
 
 export const COMPUTER_TOOL_TITLES = {
   computer_screenshot: "Take a screenshot",

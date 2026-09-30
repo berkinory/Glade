@@ -1,4 +1,4 @@
-import type { ThreadId } from "@glade/contracts";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 
 import { ensureNativeApi } from "~/nativeApi";
 import { newCommandId } from "./utils";

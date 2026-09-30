@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { CommandId, MessageId, ThreadId } from "@glade/contracts";
+import { CommandId, MessageId, ThreadId } from "@glade/contracts/core/baseSchemas";
 
 export function gatewayIsoNow(): string {
   return new Date().toISOString();

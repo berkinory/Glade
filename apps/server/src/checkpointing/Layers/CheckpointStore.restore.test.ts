@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { CheckpointRef } from "@glade/contracts";
+import { CheckpointRef } from "@glade/contracts/core/baseSchemas";
 import { Effect, Layer, ManagedRuntime } from "effect";
 import { expect, it } from "vitest";
 

@@ -1,4 +1,4 @@
-import type { AutomationRunResult } from "@glade/contracts";
+import type { AutomationRunResult } from "@glade/contracts/automation/automation";
 
 const AUTOMATION_RUN_RESULT_SUMMARY_MAX_CHARS = 2_000;
 const AUTOMATION_COMPLETION_REASON_MAX_CHARS = 1_000;

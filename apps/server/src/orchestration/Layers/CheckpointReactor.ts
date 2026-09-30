@@ -6,12 +6,14 @@ import {
   type ProjectId,
   ThreadId,
   TurnId,
+} from "@glade/contracts/core/baseSchemas";
+import {
   type OrchestrationEvent,
   type OrchestrationProjectShell,
   type OrchestrationThread,
-  type ProviderSession,
-  type ProviderRuntimeEvent,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import { type ProviderSession } from "@glade/contracts/provider/provider";
+import { type ProviderRuntimeEvent } from "@glade/contracts/provider/providerRuntime";
 import { Cause, Deferred, Effect, Fiber, Layer, Option, Schedule, Stream } from "effect";
 import { makeDrainableWorker, startDrainableWorkerProducers } from "@glade/shared/DrainableWorker";
 

@@ -1,4 +1,9 @@
-import { type ProjectId, type ProviderKind, type ThreadId, type TurnId } from "@glade/contracts";
+import {
+  type ProjectId,
+  type ProviderKind,
+  type ThreadId,
+  type TurnId,
+} from "@glade/contracts/core/baseSchemas";
 import { useNavigate } from "@tanstack/react-router";
 import {
   type CSSProperties,

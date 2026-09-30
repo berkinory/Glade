@@ -1,4 +1,5 @@
-import { type ModelSelection, type ProviderKind, type ThreadId } from "@glade/contracts";
+import { type ModelSelection } from "@glade/contracts/orchestration/orchestration";
+import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 

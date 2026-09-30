@@ -1,4 +1,8 @@
-import type { WorkflowAgentPlan, WorkflowAgentSnapshot, WorkflowPhase } from "@glade/contracts";
+import type {
+  WorkflowAgentPlan,
+  WorkflowAgentSnapshot,
+  WorkflowPhase,
+} from "@glade/contracts/provider/providerRuntime";
 
 export interface ClaudeWorkflowScriptMeta {
   readonly name?: string;

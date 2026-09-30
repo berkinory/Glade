@@ -1,4 +1,7 @@
-import type { AuthClientMetadata, AuthClientMetadataDeviceType } from "@glade/contracts";
+import type {
+  AuthClientMetadata,
+  AuthClientMetadataDeviceType,
+} from "@glade/contracts/transport/auth/auth";
 import * as Crypto from "node:crypto";
 
 const SESSION_COOKIE_NAME = "glade_session";

@@ -15,8 +15,8 @@ import {
   normalizeComposerLinkUrl,
   trimTrailingLinkPunctuation,
 } from "./lib/linkChips";
-import { resolveAgentAlias } from "@glade/contracts";
-import type { ProviderMentionReference } from "@glade/contracts";
+import { resolveAgentAlias } from "@glade/contracts/provider/agentMentions";
+import type { ProviderMentionReference } from "@glade/contracts/provider/providerDiscovery";
 import { threadIdFromThreadMentionPath } from "@glade/shared/threadMentions";
 
 export type ComposerPromptSegment =

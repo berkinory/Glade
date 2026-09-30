@@ -1,4 +1,5 @@
-import type { ModelSelection, ProviderKind } from "@glade/contracts";
+import type { ModelSelection } from "@glade/contracts/orchestration/orchestration";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 
 import {
   getComposerTraitSelection,

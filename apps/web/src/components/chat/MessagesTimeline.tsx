@@ -1,12 +1,8 @@
-import {
-  type EditorId,
-  type MessageId,
-  type ProviderMentionReference,
-  type ResolvedKeybindingsConfig,
-  ThreadId,
-  type ThreadGoalAchievement,
-  type TurnId,
-} from "@glade/contracts";
+import { type EditorId } from "@glade/contracts/settings/editor";
+import { type MessageId, ThreadId, type TurnId } from "@glade/contracts/core/baseSchemas";
+import { type ProviderMentionReference } from "@glade/contracts/provider/providerDiscovery";
+import { type ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
+import { type ThreadGoalAchievement } from "@glade/contracts/orchestration/orchestration";
 import { isLocalAbsolutePath } from "@glade/shared/path";
 import { pluralize } from "@glade/shared/text";
 import { LegendList, type LegendListRef } from "@legendapp/list/react";

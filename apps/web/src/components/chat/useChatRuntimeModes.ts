@@ -1,11 +1,10 @@
 import {
   ProviderInteractionMode,
   RuntimeMode,
-  ThreadId,
   type ModelSelection,
-  type ProviderKind,
-  type ServerProviderStatus,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import { ThreadId, type ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { type ServerProviderStatus } from "@glade/contracts/server/server";
 import { useCallback, useEffect, useRef } from "react";
 import { newCommandId } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";

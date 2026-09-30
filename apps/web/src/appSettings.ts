@@ -3,18 +3,21 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Option, Schema, SchemaTransformation } from "effect";
 import {
   type AssistantDeliveryMode,
-  DesktopAppIcon,
+  type ProviderStartOptions,
+} from "@glade/contracts/orchestration/orchestration";
+import { DesktopAppIcon } from "@glade/contracts/ipc/ipc";
+import {
   DEFAULT_GIT_TEXT_GENERATION_MODEL,
+  GIT_TEXT_GENERATION_PROVIDERS,
+  type GitTextGenerationProvider,
+} from "@glade/contracts/provider/model";
+import {
   DEFAULT_SERVER_SETTINGS,
   DEFAULT_SERVER_SETTINGS_VIEW,
-  GIT_TEXT_GENERATION_PROVIDERS,
-  TrimmedNonEmptyString,
-  ProviderKind,
-  type GitTextGenerationProvider,
-  type ProviderStartOptions,
   type ServerSettingsView,
   type ServerSettingsPatch,
-} from "@glade/contracts";
+} from "@glade/contracts/settings/settings";
+import { TrimmedNonEmptyString, ProviderKind } from "@glade/contracts/core/baseSchemas";
 import {
   getDefaultModel,
   getModelOptions,

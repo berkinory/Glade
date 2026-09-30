@@ -1,11 +1,11 @@
 import { contextBridge, ipcRenderer, webUtils } from "electron";
+import type { BrowserAnnotationEvent } from "@glade/contracts/browser/browserAnnotations";
 import type {
-  BrowserAnnotationEvent,
   BrowserUseOpenPanelRequest,
   DesktopAgentCursorStyle,
   DesktopBridge,
   DesktopComputerPreviewFrame,
-} from "@glade/contracts";
+} from "@glade/contracts/ipc/ipc";
 import { normalizeDesktopWsUrl, resolveDesktopWsUrlFromEnv } from "./desktopWsBridge";
 import { DESKTOP_IPC_CHANNELS } from "./ipcChannels";
 import {

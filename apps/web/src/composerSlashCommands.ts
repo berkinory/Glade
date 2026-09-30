@@ -1,9 +1,9 @@
 import {
   THREAD_GOAL_MAX_CHARS,
-  type GitBranch,
   type ProviderInteractionMode,
-  type ProviderKind,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import { type GitBranch } from "@glade/contracts/git/git";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import {
   BUILT_IN_COMPOSER_SLASH_COMMANDS,
   isBuiltInComposerSlashCommandName,

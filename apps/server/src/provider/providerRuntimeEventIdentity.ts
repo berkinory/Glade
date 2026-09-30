@@ -1,4 +1,5 @@
-import { EventId, type ProviderRuntimeEvent } from "@glade/contracts";
+import { EventId } from "@glade/contracts/core/baseSchemas";
+import { type ProviderRuntimeEvent } from "@glade/contracts/provider/providerRuntime";
 
 export function assignDerivedProviderRuntimeEventIds(
   events: ReadonlyArray<ProviderRuntimeEvent>,

@@ -1,4 +1,4 @@
-import { MessageId, ThreadId } from "@glade/contracts";
+import { MessageId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Thread } from "../../types";
 import { type ChatMessage } from "../../types";

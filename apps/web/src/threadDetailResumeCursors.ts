@@ -1,4 +1,5 @@
-import type { OrchestrationSubscribeThreadInput, ThreadId } from "@glade/contracts";
+import type { OrchestrationSubscribeThreadInput } from "@glade/contracts/orchestration/orchestration";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 
 // Invariant: a cursor exists for a thread only while the store's cached detail is coherent up to
 // that sequence. The store projection layer enforces this structurally — every transition that

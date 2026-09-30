@@ -1,4 +1,7 @@
-import type { GitSourceControlFileStatus, GitSourceControlFilesResult } from "@glade/contracts";
+import type {
+  GitSourceControlFileStatus,
+  GitSourceControlFilesResult,
+} from "@glade/contracts/git/git";
 import type { MouseEvent } from "react";
 
 import { useTheme } from "~/hooks/useTheme";

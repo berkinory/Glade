@@ -1,4 +1,7 @@
-import type { ProviderInteractionMode, RuntimeMode } from "@glade/contracts";
+import type {
+  ProviderInteractionMode,
+  RuntimeMode,
+} from "@glade/contracts/orchestration/orchestration";
 
 export const GLADE_COMPUTER_TOOL_NAMES = [
   "computer_activate_window",

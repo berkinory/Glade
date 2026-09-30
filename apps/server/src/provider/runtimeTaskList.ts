@@ -1,4 +1,7 @@
-import type { RuntimeTaskListItem, RuntimeTaskStatus } from "@glade/contracts";
+import type {
+  RuntimeTaskListItem,
+  RuntimeTaskStatus,
+} from "@glade/contracts/provider/providerRuntime";
 
 export function normalizeRuntimeTaskStatus(value: unknown): RuntimeTaskStatus {
   if (value === "completed") {

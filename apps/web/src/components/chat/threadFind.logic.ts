@@ -1,4 +1,4 @@
-import { type MessageId } from "@glade/contracts";
+import { type MessageId } from "@glade/contracts/core/baseSchemas";
 import { repairMarkdownTableDelimiters } from "../../lib/markdownTableRepair";
 import { deriveDisplayedUserMessageState } from "../../lib/terminalContext";
 import { type TimelineEntry } from "../../session-logic";

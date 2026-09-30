@@ -1,4 +1,4 @@
-import { type NativeApi } from "@glade/contracts";
+import { type NativeApi } from "@glade/contracts/ipc/ipc";
 
 async function disposeTerminalRuntime(threadId: string, terminalId: string): Promise<void> {
   try {

@@ -9,13 +9,17 @@ import {
   ProjectId,
   ThreadId,
   TurnId,
+  type ProviderKind,
+} from "@glade/contracts/core/baseSchemas";
+import {
   type ModelSelection,
   type OrchestrationThreadShell,
   type ProviderInteractionMode,
-  type ProviderKind,
+} from "@glade/contracts/orchestration/orchestration";
+import {
   type GladeCreateThreadsInput,
   type GladeCreateThreadsResult,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/agentGateway";
 import { buildPromptThreadTitleFallback } from "@glade/shared/chatThreads";
 import { WORKTREE_BRANCH_PREFIX } from "@glade/shared/git";
 import { parseGitHubRepositoryNameWithOwnerFromPullRequestUrl } from "@glade/shared/githubRepository";

@@ -1,4 +1,4 @@
-import { type ThreadId } from "@glade/contracts";
+import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 import * as Schema from "effect/Schema";
 
 import {

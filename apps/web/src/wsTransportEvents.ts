@@ -1,4 +1,4 @@
-import type { WsCompatibilityError } from "@glade/contracts";
+import type { WsCompatibilityError } from "@glade/contracts/transport/ws/wsCompatibility";
 
 export type WsTransportState = "connecting" | "open" | "closed" | "incompatible" | "disposed";
 

@@ -1,4 +1,4 @@
-import { CommandId, ThreadId } from "@glade/contracts";
+import { CommandId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { assert, it } from "@effect/vitest";
 import { Effect } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";

@@ -1,6 +1,6 @@
 import { ServiceMap } from "effect";
 
-import type { ComputerAvailability } from "@glade/contracts";
+import type { ComputerAvailability } from "@glade/contracts/computer/computer";
 import type { ComputerManager } from "../ComputerManager.ts";
 
 export interface ComputerServiceShape {

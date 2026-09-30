@@ -1,4 +1,5 @@
-import { type ProviderKind, type ProviderModelDescriptor, type ThreadId } from "@glade/contracts";
+import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
+import { type ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronDownIcon, FastModeIcon, FastModeOutlineIcon, SettingsIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";

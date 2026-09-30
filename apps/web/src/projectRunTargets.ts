@@ -1,4 +1,5 @@
-import type { ProjectDiscoveredScriptTarget, ProjectScript } from "@glade/contracts";
+import type { ProjectDiscoveredScriptTarget } from "@glade/contracts/workspace/project";
+import type { ProjectScript } from "@glade/contracts/orchestration/orchestration";
 
 import { nextProjectScriptId, primaryProjectScript } from "./projectScripts";
 

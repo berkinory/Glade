@@ -1,4 +1,4 @@
-import { EDITORS, type EditorId } from "@glade/contracts";
+import { EDITORS, type EditorId } from "@glade/contracts/settings/editor";
 import { EDITOR_ICON_ROUTE_PATH } from "@glade/shared/editorIcons";
 import { createElement, useEffect, useState } from "react";
 import type { Icon } from "./components/Icons";

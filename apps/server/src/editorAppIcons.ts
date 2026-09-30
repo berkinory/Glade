@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 
-import { EDITORS, type EditorId } from "@glade/contracts";
+import { EDITORS, type EditorId } from "@glade/contracts/settings/editor";
 
 import {
   getEditorMacApplications,

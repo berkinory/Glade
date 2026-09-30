@@ -1,4 +1,7 @@
-import { type AutomationDefinition, type AutomationRun } from "@glade/contracts";
+import {
+  type AutomationDefinition,
+  type AutomationRun,
+} from "@glade/contracts/automation/automation";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 

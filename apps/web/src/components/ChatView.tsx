@@ -3,25 +3,21 @@ import {
   parseComputerInvocation,
   resolveComputerInvocationMode,
 } from "@glade/shared/computerInvocation";
+import { MessageId, ThreadId, ProviderKind, type TurnId } from "@glade/contracts/core/baseSchemas";
 import {
-  MessageId,
   OrchestrationThreadActivity,
-  PROVIDER_DISPLAY_NAMES,
   PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
-  ThreadId,
-  type AutomationDefinition,
-  type EditorId,
   type ModelSelection,
-  type ModelSlug,
   type PinnedMessage,
   type PendingClaudeCacheReview,
   type ProjectScript,
-  ProviderKind,
-  type ResolvedKeybindingsConfig,
-  type ServerProviderStatus,
   type ThreadGoalAchievement,
-  type TurnId,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import { PROVIDER_DISPLAY_NAMES, type ModelSlug } from "@glade/contracts/provider/model";
+import { type AutomationDefinition } from "@glade/contracts/automation/automation";
+import { type EditorId } from "@glade/contracts/settings/editor";
+import { type ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
+import { type ServerProviderStatus } from "@glade/contracts/server/server";
 import { resolveLatestTailUserMessageEditTarget } from "@glade/shared/conversationEdit";
 import { getModelCapabilities } from "@glade/shared/model";
 import {

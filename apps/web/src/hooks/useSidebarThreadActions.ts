@@ -1,4 +1,4 @@
-import { type ProjectId, ThreadId } from "@glade/contracts";
+import { type ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { pluralize } from "@glade/shared/text";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";

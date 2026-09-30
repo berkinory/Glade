@@ -15,7 +15,8 @@ import {
 import os from "node:os";
 import path from "node:path";
 import { PassThrough } from "node:stream";
-import { ApprovalRequestId, ThreadId, TurnId, type RuntimeMode } from "@glade/contracts";
+import { ApprovalRequestId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
+import { type RuntimeMode } from "@glade/contracts/orchestration/orchestration";
 
 import { buildCodexProcessEnv } from "./codexProcessEnv";
 import {

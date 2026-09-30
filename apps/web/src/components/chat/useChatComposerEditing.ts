@@ -1,4 +1,4 @@
-import { ThreadId } from "@glade/contracts";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback } from "react";
 import {

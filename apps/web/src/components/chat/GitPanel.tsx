@@ -1,4 +1,4 @@
-import type { ThreadId } from "@glade/contracts";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { SourceControlToolbar } from "./SourceControlToolbar";
 
 import { type FileDiffMetadata } from "@pierre/diffs/react";

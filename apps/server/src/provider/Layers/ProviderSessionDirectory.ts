@@ -1,4 +1,4 @@
-import { ProviderKind, type ThreadId } from "@glade/contracts";
+import { ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { Effect, Layer, Option, Schema } from "effect";
 
 import { ProviderSessionRuntimeRepository } from "../../persistence/Services/ProviderSessionRuntime.ts";

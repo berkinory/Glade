@@ -1,4 +1,4 @@
-import type { PullRequestCheckStatus } from "@glade/contracts";
+import type { PullRequestCheckStatus } from "@glade/contracts/git/pullRequests";
 
 import { CentralIcon } from "~/lib/central-icons";
 import { Loader2Icon } from "~/lib/icons";

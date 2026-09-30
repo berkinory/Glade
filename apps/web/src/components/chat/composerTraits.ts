@@ -1,8 +1,6 @@
-import {
-  type ProviderOptionDescriptor,
-  type ProviderKind,
-  type ProviderModelDescriptor,
-} from "@glade/contracts";
+import { type ProviderOptionDescriptor } from "@glade/contracts/provider/model";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { type ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
 import {
   applyClaudePromptEffortPrefix,
   getProviderOptionCurrentValue,

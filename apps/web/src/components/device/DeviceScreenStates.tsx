@@ -1,4 +1,4 @@
-import type { DeviceSetupStep } from "@glade/contracts";
+import type { DeviceSetupStep } from "@glade/contracts/device/device";
 
 import { CheckIcon, LoaderCircleIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";

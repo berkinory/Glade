@@ -1,13 +1,13 @@
 import * as OS from "node:os";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
+import type { ServerSettings } from "@glade/contracts/settings/settings";
 import type {
-  ProviderKind,
-  ServerSettings,
   ServerProviderAuthStatus,
   ServerProviderStatus,
   ServerProviderStatusState,
   ServerProviderUpdateState,
-} from "@glade/contracts";
-import { ServerProviderUpdateError } from "@glade/contracts";
+} from "@glade/contracts/server/server";
+import { ServerProviderUpdateError } from "@glade/contracts/server/server";
 import { parseCodexConfigModelProvider } from "@glade/shared/codexConfig";
 import { decodeJsonResult } from "@glade/shared/schemaJson";
 import type { SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";

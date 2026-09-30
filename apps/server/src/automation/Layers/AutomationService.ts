@@ -5,12 +5,15 @@ import {
   AutomationId,
   AutomationRunId,
   CommandId,
+  MessageId,
+  ThreadId,
+  type TurnId,
+} from "@glade/contracts/core/baseSchemas";
+import {
   DEFAULT_AUTOMATION_FAST_INTERVAL_MAX_ITERATIONS,
   DEFAULT_AUTOMATION_HEARTBEAT_COOLDOWN_SECONDS,
   DEFAULT_AUTOMATION_MINIMUM_INTERVAL_SECONDS,
   DEFAULT_AUTOMATION_STOP_AFTER_CONSECUTIVE_FAILURES,
-  MessageId,
-  ThreadId,
   type AutomationAllowedCapability,
   type AutomationCompletionPolicy,
   type AutomationCreateInput,
@@ -21,12 +24,13 @@ import {
   type AutomationRunStatus,
   type AutomationStreamEvent,
   type AutomationUpdateInput,
+} from "@glade/contracts/automation/automation";
+import {
   type OrchestrationProjectShell,
   type OrchestrationThreadShell,
   type ProviderStartOptions,
   type ThreadEnvironmentMode,
-  type TurnId,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
 import {
   automationContinuationThreadId,
   automationContinuesThread,

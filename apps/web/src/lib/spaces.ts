@@ -1,10 +1,9 @@
 import {
   SPACE_PROJECTS_ASSIGN_MAX_COUNT,
-  type NativeApi,
-  type ProjectId,
   type SpaceIconName,
-  type SpaceId,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import { type NativeApi } from "@glade/contracts/ipc/ipc";
+import { type ProjectId, type SpaceId } from "@glade/contracts/core/baseSchemas";
 
 import type { Project } from "~/types";
 import { isHomeChatContainerProject } from "~/lib/chatProjects";

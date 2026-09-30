@@ -9,7 +9,7 @@ import {
   TerminalSessionSnapshot,
   TerminalSessionStatus,
   TerminalWriteInput,
-} from "@glade/contracts";
+} from "@glade/contracts/terminal/terminal";
 import type { TerminalActivityState, TerminalCliKind } from "@glade/shared/terminalThreads";
 import { PtyProcess } from "./PTY";
 import { Effect, Schema, ServiceMap } from "effect";

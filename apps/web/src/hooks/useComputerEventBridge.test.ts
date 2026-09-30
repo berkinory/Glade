@@ -1,4 +1,4 @@
-import type { DesktopComputerState } from "@glade/contracts";
+import type { DesktopComputerState } from "@glade/contracts/ipc/ipc";
 import { QueryClient, QueryObserver, focusManager } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 

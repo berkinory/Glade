@@ -14,22 +14,26 @@ import type {
   OrchestrationThreadActivity,
   ThreadHandoff,
   ProjectScript as ContractProjectScript,
-  ThreadId,
-  ProjectId,
-  SpaceId,
   SpaceIconName,
-  TurnId,
-  MessageId,
-  ProviderMentionReference,
-  ProviderSkillReference,
-  ProviderKind,
-  CheckpointRef,
   ProviderInteractionMode,
-  ProjectKind,
   RuntimeMode,
   ThreadCreationSource,
   ThreadEnvironmentMode,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import type {
+  ThreadId,
+  ProjectId,
+  SpaceId,
+  TurnId,
+  MessageId,
+  ProviderKind,
+  CheckpointRef,
+} from "@glade/contracts/core/baseSchemas";
+import type {
+  ProviderMentionReference,
+  ProviderSkillReference,
+} from "@glade/contracts/provider/providerDiscovery";
+import type { ProjectKind } from "@glade/contracts/workspace/project";
 import type { ProjectAppearance } from "./lib/projectAppearance";
 
 export type SessionPhase = "disconnected" | "connecting" | "ready" | "running";
@@ -100,7 +104,8 @@ export type ChatAttachment =
   | ChatFileAttachment
   | ChatAssistantSelectionAttachment;
 
-type OrchestrationMessageTextSegment = import("@glade/contracts").OrchestrationMessageTextSegment;
+type OrchestrationMessageTextSegment =
+  import("@glade/contracts/orchestration/orchestration").OrchestrationMessageTextSegment;
 
 export interface ChatMessage {
   id: MessageId;
@@ -108,7 +113,7 @@ export interface ChatMessage {
   text: string;
 
   textSegments?: OrchestrationMessageTextSegment[];
-  asyncUserInput?: import("@glade/contracts").AsyncUserInput;
+  asyncUserInput?: import("@glade/contracts/orchestration/asyncUserInput").AsyncUserInput;
   attachments?: ChatAttachment[];
   skills?: ProviderSkillReference[];
   mentions?: ProviderMentionReference[];

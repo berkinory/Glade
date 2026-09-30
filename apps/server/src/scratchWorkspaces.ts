@@ -3,7 +3,7 @@ import { closeSync, constants, fchmodSync, fstatSync, lstatSync, openSync } from
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 
-import type { ThreadId } from "@glade/contracts";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { SCRATCH_WORKSPACES_DIRNAME } from "@glade/shared/threadWorkspace";
 import { ensurePrivateDirectorySync } from "./privatePathPermissions";
 

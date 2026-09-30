@@ -1,4 +1,4 @@
-import type { DesktopComputerSettingsPane } from "@glade/contracts";
+import type { DesktopComputerSettingsPane } from "@glade/contracts/ipc/ipc";
 
 import { Button } from "~/components/ui/button";
 import { Spinner } from "~/components/ui/spinner";

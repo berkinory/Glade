@@ -1,14 +1,16 @@
 import {
   MessageId,
+  type ProviderKind,
+  ThreadId,
+  type TurnId,
+} from "@glade/contracts/core/baseSchemas";
+import {
   type OrchestrationReadModel,
   type OrchestrationSpaceShell,
   type OrchestrationSessionStatus,
   type OrchestrationShellSnapshot,
   type OrchestrationThreadActivity,
-  type ProviderKind,
-  ThreadId,
-  type TurnId,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
 import { resolveThreadBranchRegressionGuard } from "@glade/shared/git";
 import { mergeAsyncUserInput } from "@glade/shared/asyncUserInput";
 import { normalizeModelSlug } from "@glade/shared/model";

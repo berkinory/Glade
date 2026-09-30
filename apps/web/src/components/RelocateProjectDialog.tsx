@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { ProjectId } from "@glade/contracts";
+import type { ProjectId } from "@glade/contracts/core/baseSchemas";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { ensureNativeApi } from "../nativeApi";

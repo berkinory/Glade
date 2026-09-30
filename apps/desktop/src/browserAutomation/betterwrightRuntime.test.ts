@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { WebContents } from "electron";
-import { BrowserAutomationErrorMessages } from "@glade/contracts";
+import { BrowserAutomationErrorMessages } from "@glade/contracts/browser/automation/browserAutomationErrors";
 import { runBetterwright } from "./betterwrightRuntime";
 
 const mocks = vi.hoisted(() => ({

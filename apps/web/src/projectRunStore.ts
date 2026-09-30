@@ -1,4 +1,5 @@
-import type { ProjectDevServer, ProjectId } from "@glade/contracts";
+import type { ProjectDevServer } from "@glade/contracts/workspace/project";
+import type { ProjectId } from "@glade/contracts/core/baseSchemas";
 
 // A tracked dev server as projected from the server. This mirrors the `ProjectDevServer` contract
 // exactly — the client no longer owns thread or terminal identifiers, because dev servers are

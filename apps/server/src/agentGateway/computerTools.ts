@@ -36,7 +36,7 @@ import {
   type ComputerRect,
   type ComputerScreenshot,
   type ComputerTarget,
-} from "@glade/contracts";
+} from "@glade/contracts/computer/computer";
 
 import {
   actionableElements,

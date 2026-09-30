@@ -2,25 +2,25 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
+import type { ProviderApprovalDecision } from "@glade/contracts/orchestration/orchestration";
 import type {
-  ProviderApprovalDecision,
   ProviderForkThreadInput,
   ProviderForkThreadResult,
-  ProviderRuntimeEvent,
   ProviderSendTurnInput,
   ProviderSession,
   ProviderStartReviewInput,
   ProviderSteerTurnInput,
   ProviderTurnStartResult,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/provider";
+import type { ProviderRuntimeEvent } from "@glade/contracts/provider/providerRuntime";
 import {
   ApprovalRequestId,
   EventId,
   type ProviderKind,
-  ProviderSessionStartInput,
   ThreadId,
   TurnId,
-} from "@glade/contracts";
+} from "@glade/contracts/core/baseSchemas";
+import { ProviderSessionStartInput } from "@glade/contracts/provider/provider";
 import { it, assert, vi } from "@effect/vitest";
 import { assertFailure } from "@effect/vitest/utils";
 

@@ -1,4 +1,4 @@
-import type { BrowserTabId } from "@glade/contracts";
+import type { BrowserTabId } from "@glade/contracts/browser/automation/browserAutomationIds";
 import type { WebContents } from "electron";
 
 import type { BrowserAutomationVisibleRuntime } from "../browserManager";

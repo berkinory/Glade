@@ -1,4 +1,5 @@
-import { DEFAULT_MODEL_BY_PROVIDER, type ProjectId } from "@glade/contracts";
+import { DEFAULT_MODEL_BY_PROVIDER } from "@glade/contracts/provider/model";
+import { type ProjectId } from "@glade/contracts/core/baseSchemas";
 import { describe, expect, it } from "vitest";
 
 import type { Project } from "../types";

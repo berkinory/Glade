@@ -1,4 +1,5 @@
-import { type OrchestrationEvent, type ThreadId } from "@glade/contracts";
+import { type OrchestrationEvent } from "@glade/contracts/orchestration/orchestration";
+import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { resolveThreadWorkspaceCwd } from "@glade/shared/threadEnvironment";
 
 import type { AppState } from "../storeState";

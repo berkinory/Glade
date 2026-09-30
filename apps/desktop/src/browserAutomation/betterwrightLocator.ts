@@ -1,4 +1,4 @@
-import type { BrowserUploadTarget } from "@glade/contracts";
+import type { BrowserUploadTarget } from "@glade/contracts/browser/automation/browserAutomationToolInputs";
 
 export function betterwrightLocator(target: BrowserUploadTarget): string {
   if ("selector" in target) return `page.locator(${JSON.stringify(target.selector)})`;

@@ -5,7 +5,7 @@ import {
   DEVICE_FRAME_VERSION,
   type DeviceFrameDecodeErrorReason,
   type DeviceFrameHeader,
-} from "@glade/contracts";
+} from "@glade/contracts/device/device";
 
 export const DEVICE_FRAME_WS_PATH = "/ws/device-frames";
 export const DEVICE_FRAME_WS_UDID_PARAM = "udid";

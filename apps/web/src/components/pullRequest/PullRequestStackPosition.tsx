@@ -1,4 +1,4 @@
-import type { PullRequestStack } from "@glade/contracts";
+import type { PullRequestStack } from "@glade/contracts/git/pullRequests";
 
 import { Badge } from "~/components/ui/badge";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";

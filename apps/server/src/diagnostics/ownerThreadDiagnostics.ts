@@ -1,7 +1,7 @@
 import {
   ServerReadThreadDiagnosticsResult,
   type ServerReadThreadDiagnosticsInput,
-} from "@glade/contracts";
+} from "@glade/contracts/server/server";
 import { Effect, Schema } from "effect";
 import {
   makeThreadDiagnosticPageReaders,

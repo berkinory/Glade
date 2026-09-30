@@ -1,13 +1,13 @@
 import type {
   ProviderComposerCapabilities,
-  ProviderKind,
   ProviderListAgentsResult,
   ProviderListCommandsResult,
   ProviderListModelsResult,
   ProviderListPluginsResult,
   ProviderListSkillsResult,
   ProviderSkillsCatalogResult,
-} from "@glade/contracts";
+} from "@glade/contracts/provider/providerDiscovery";
+import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { queryOptions } from "@tanstack/react-query";
 import { ensureNativeApi } from "~/nativeApi";
 

@@ -1,4 +1,5 @@
-import { ThreadId, type ModelSelection } from "@glade/contracts";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { type ModelSelection } from "@glade/contracts/orchestration/orchestration";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   resolvePreferredComposerModelSelection,

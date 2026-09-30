@@ -1,4 +1,7 @@
-import type { OrchestrationMessage, ProviderApprovalDecision } from "@glade/contracts";
+import type {
+  OrchestrationMessage,
+  ProviderApprovalDecision,
+} from "@glade/contracts/orchestration/orchestration";
 import { Effect } from "effect";
 
 import type { ComputerApprovalGate } from "../computer/ComputerApprovalGate.ts";

@@ -1,4 +1,4 @@
-import type { NativeApi } from "@glade/contracts";
+import type { NativeApi } from "@glade/contracts/ipc/ipc";
 
 function formatTerminalCloseSubject(terminalTitle: string | null | undefined): string {
   const trimmedTitle = terminalTitle?.trim();

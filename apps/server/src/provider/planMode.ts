@@ -1,4 +1,4 @@
-import type { ProviderInteractionMode } from "@glade/contracts";
+import type { ProviderInteractionMode } from "@glade/contracts/orchestration/orchestration";
 
 const PROVIDER_PLAN_MODE_PROMPT_PREFIX = [
   "Glade plan mode is active.",

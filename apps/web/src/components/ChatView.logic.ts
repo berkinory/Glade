@@ -2,24 +2,27 @@ import {
   resolveComputerControlMode,
   type ComposerComputerControlMode,
 } from "../computerControlMode";
+import { DEFAULT_MODEL_BY_PROVIDER, type ModelSlug } from "@glade/contracts/provider/model";
 import {
-  DEFAULT_MODEL_BY_PROVIDER,
   ProjectId,
   ThreadId,
+  type ProviderKind,
+  type ThreadId as ThreadIdType,
+} from "@glade/contracts/core/baseSchemas";
+import {
   type AssistantDeliveryMode,
-  type GitWorktreeSetupPhase,
-  type GitWorktreeSetupProgressEvent,
   type ModelSelection,
-  type ModelSlug,
   type ProviderApprovalDecision,
   type ProviderInteractionMode,
-  type ProviderKind,
   type ProviderRequestKind,
   type ProviderStartOptions,
   type RuntimeMode,
-  type ServerProviderAuthStatus,
-  type ThreadId as ThreadIdType,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import {
+  type GitWorktreeSetupPhase,
+  type GitWorktreeSetupProgressEvent,
+} from "@glade/contracts/git/git";
+import { type ServerProviderAuthStatus } from "@glade/contracts/server/server";
 import { getDefaultModel, normalizeModelSlug } from "@glade/shared/model";
 import { approvalSessionGrantWidensSessionPolicy } from "@glade/shared/approvalSessionGrant";
 import { isGenericChatThreadTitle } from "@glade/shared/chatThreads";

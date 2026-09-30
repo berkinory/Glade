@@ -10,7 +10,7 @@ import type {
   ComputerBuildSignature,
   ComputerPermission,
   ComputerStatusResult,
-} from "@glade/contracts";
+} from "@glade/contracts/computer/computer";
 import { computerStaleGrantAdvice, listComputerPermissions } from "@glade/shared/computerGrants";
 
 import { ComputerActionCard } from "./ComputerActionCard";

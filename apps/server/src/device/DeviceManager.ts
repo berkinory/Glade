@@ -6,7 +6,6 @@ import {
 } from "./bootOwnership.ts";
 import {
   DEVICE_GLADE_BOOT_LIMIT,
-  ThreadId,
   type DeviceAttachPhase,
   type DeviceAvailability,
   type DeviceBootResult,
@@ -23,7 +22,8 @@ import {
   type DeviceStopRecordingResult,
   type DeviceUiNode,
   type ThreadDeviceState,
-} from "@glade/contracts";
+} from "@glade/contracts/device/device";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
 
 import {
   DeviceBackendError,

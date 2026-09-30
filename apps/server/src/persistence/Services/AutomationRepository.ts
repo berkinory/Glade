@@ -4,7 +4,6 @@ import {
   AutomationCreateInput,
   AutomationDefinition,
   AutomationDisabledReason,
-  AutomationId,
   AutomationListInput,
   AutomationListResult,
   AutomationMarkRunReadInput,
@@ -12,15 +11,18 @@ import {
   AutomationPermissionSnapshot,
   AutomationRun,
   AutomationRunResult,
-  AutomationRunId,
   AutomationTrigger,
+} from "@glade/contracts/automation/automation";
+import {
+  AutomationId,
+  AutomationRunId,
   CommandId,
   MessageId,
   NonNegativeInt,
   ProjectId,
   ThreadId,
   TurnId,
-} from "@glade/contracts";
+} from "@glade/contracts/core/baseSchemas";
 import { Option, Schema, ServiceMap } from "effect";
 import type { Effect } from "effect";
 

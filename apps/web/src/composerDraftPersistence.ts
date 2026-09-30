@@ -5,16 +5,16 @@ import {
   ModelSelection,
   OrchestrationProposedPlanId,
   OrchestrationThreadPullRequest,
-  ProjectId,
   ProviderInteractionMode,
-  ProviderKind,
-  ProviderMentionReference,
-  ProviderModelOptions,
-  ProviderSkillReference,
   ProviderStartOptions,
   RuntimeMode,
-  ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
+import { ProjectId, ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
+import {
+  ProviderMentionReference,
+  ProviderSkillReference,
+} from "@glade/contracts/provider/providerDiscovery";
+import { ProviderModelOptions } from "@glade/contracts/provider/model";
 import * as Schema from "effect/Schema";
 import type { DeepMutable } from "effect/Types";
 

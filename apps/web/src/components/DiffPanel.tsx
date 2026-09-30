@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { ThreadId, type ResolvedKeybindingsConfig, type TurnId } from "@glade/contracts";
+import { ThreadId, type TurnId } from "@glade/contracts/core/baseSchemas";
+import { type ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import * as Schema from "effect/Schema";
 import { XIcon } from "~/lib/icons";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";

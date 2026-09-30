@@ -3,7 +3,7 @@ import type {
   ServerProviderUpdateInput,
   ServerProviderUpdateResult,
   ServerProviderUpdateError,
-} from "@glade/contracts";
+} from "@glade/contracts/server/server";
 import { ServiceMap } from "effect";
 import type { Effect, Stream } from "effect";
 

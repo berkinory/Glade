@@ -20,7 +20,7 @@ import type {
   DeviceStopRecordingResult,
   DeviceUiNode,
   DeviceUiPoint,
-} from "@glade/contracts";
+} from "@glade/contracts/device/device";
 
 import {
   DEVICE_HELPER_BINARY_NAME,

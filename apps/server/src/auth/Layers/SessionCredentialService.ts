@@ -1,4 +1,8 @@
-import { AuthSessionId, type AuthClientMetadata, type AuthClientSession } from "@glade/contracts";
+import { AuthSessionId } from "@glade/contracts/core/baseSchemas";
+import {
+  type AuthClientMetadata,
+  type AuthClientSession,
+} from "@glade/contracts/transport/auth/auth";
 import * as Crypto from "node:crypto";
 import {
   Clock,

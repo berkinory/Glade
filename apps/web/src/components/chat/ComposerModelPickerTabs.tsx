@@ -1,4 +1,5 @@
-import { type ProviderKind, type ServerProviderStatus } from "@glade/contracts";
+import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { type ServerProviderStatus } from "@glade/contracts/server/server";
 import { type ReactNode } from "react";
 
 import { PlusIcon, StarFilledIcon } from "~/lib/icons";

@@ -1,4 +1,8 @@
-import type { OrchestrationEvent, OrchestrationReadModel, ThreadId } from "@glade/contracts";
+import type {
+  OrchestrationEvent,
+  OrchestrationReadModel,
+} from "@glade/contracts/orchestration/orchestration";
+import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   OrchestrationCheckpointSummary,
   OrchestrationMessage,
@@ -7,7 +11,7 @@ import {
   ThreadAsyncUserInputAnsweredPayload,
   ThreadClaudeCacheSetPayload,
   type OrchestrationMessageTextSegment,
-} from "@glade/contracts";
+} from "@glade/contracts/orchestration/orchestration";
 import { clearRemovedAsyncUserInputResponses } from "@glade/shared/asyncUserInput";
 import {
   addPinnedMessage,

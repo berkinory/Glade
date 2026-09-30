@@ -1,33 +1,35 @@
 import {
   BrowserBackInput,
-  BrowserBackOutput,
   BrowserCloseInput,
-  BrowserCloseOutput,
   BrowserRunInput,
-  BrowserRunOutput,
   BrowserForwardInput,
-  BrowserForwardOutput,
   BrowserLogsInput,
-  BrowserLogsOutput,
-  BrowserNavigateOutput,
-  BrowserOpenOutput,
   BrowserReloadInput,
-  BrowserReloadOutput,
   BrowserResizeInput,
-  BrowserResizeOutput,
-  BrowserScreenshotHostOutput,
   BrowserScreenshotInput,
-  BrowserScreenshotOutput,
   BrowserStatusInput,
-  BrowserStatusOutput,
   BrowserTabsInput,
-  BrowserTabsOutput,
   BrowserToolNavigateInput,
   BrowserToolOpenInput,
   BrowserUploadInput,
+} from "@glade/contracts/browser/automation/browserAutomationToolInputs";
+import {
+  BrowserBackOutput,
+  BrowserCloseOutput,
+  BrowserRunOutput,
+  BrowserForwardOutput,
+  BrowserLogsOutput,
+  BrowserNavigateOutput,
+  BrowserOpenOutput,
+  BrowserReloadOutput,
+  BrowserResizeOutput,
+  BrowserScreenshotHostOutput,
+  BrowserScreenshotOutput,
+  BrowserStatusOutput,
+  BrowserTabsOutput,
   BrowserUploadOutput,
-  type BrowserToolName,
-} from "@glade/contracts";
+} from "@glade/contracts/browser/automation/browserAutomationToolOutputs";
+import { type BrowserToolName } from "@glade/contracts/browser/automation/browserAutomationToolCatalogue";
 import { Schema } from "effect";
 
 import { BROWSER_TOOL_TITLES } from "./browserAutomationPresentation";

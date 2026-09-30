@@ -4,7 +4,7 @@ import {
   type CuaActionDiagnostics,
 } from "@glade/shared/cuaActionDiagnostics";
 import { ComputerSpaceError } from "./ComputerSpaceBroker.ts";
-import { COMPUTER_WINDOW_LIST_MAX_LENGTH } from "@glade/contracts";
+import { COMPUTER_WINDOW_LIST_MAX_LENGTH } from "@glade/contracts/computer/computer";
 import type {
   ComputerAccessibilityTreeApp,
   ComputerAccessibilityTreeWindow,
@@ -27,7 +27,7 @@ import type {
   ComputerInputPause,
   ComputerPermission,
   ComputerLaunchAppResult,
-} from "@glade/contracts";
+} from "@glade/contracts/computer/computer";
 import {
   computerPermissionSetupMessage,
   listComputerPermissions,

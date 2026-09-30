@@ -1,26 +1,30 @@
 import {
   BROWSER_TOOL_NAMES,
+  type BrowserToolName,
+} from "@glade/contracts/browser/automation/browserAutomationToolCatalogue";
+import {
   type BrowserBackInput,
-  type BrowserCloseOutput,
   type BrowserRunInput,
   type BrowserForwardInput,
   type BrowserLogsInput,
-  type BrowserNavigateOutput,
-  type BrowserOpenOutput,
   type BrowserReloadInput,
   type BrowserResizeInput,
-  type BrowserResizeOutput,
   type BrowserScreenshotInput,
-  type BrowserStatusOutput,
-  type BrowserTabId,
-  type BrowserTabsOutput,
-  type BrowserToolName,
   type BrowserToolNavigateInput,
   type BrowserToolOpenInput,
   type BrowserUploadInput,
-  type ThreadBrowserState,
-  type ThreadId,
-} from "@glade/contracts";
+} from "@glade/contracts/browser/automation/browserAutomationToolInputs";
+import {
+  type BrowserCloseOutput,
+  type BrowserNavigateOutput,
+  type BrowserOpenOutput,
+  type BrowserResizeOutput,
+  type BrowserStatusOutput,
+  type BrowserTabsOutput,
+} from "@glade/contracts/browser/automation/browserAutomationToolOutputs";
+import { type BrowserTabId } from "@glade/contracts/browser/automation/browserAutomationIds";
+import { type ThreadBrowserState } from "@glade/contracts/ipc/ipc";
+import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { app } from "electron";
 import { join } from "node:path";
 import {
