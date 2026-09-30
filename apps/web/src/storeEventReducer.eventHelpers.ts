@@ -659,6 +659,7 @@ export function applyThreadMessageSentEvent(thread: Thread, event: ThreadMessage
       dispatchMode: payload.dispatchMode,
       dispatchOrigin: payload.dispatchOrigin,
       startsNewTurn: payload.startsNewTurn,
+      ...(payload.providerMessageId ? { providerMessageId: payload.providerMessageId } : {}),
       turnId: payload.turnId,
       attachments: payload.attachments ?? [],
       ...(payload.skills !== undefined ? { skills: payload.skills } : {}),

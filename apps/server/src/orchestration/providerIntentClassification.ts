@@ -67,7 +67,7 @@ export const isReplaySafeClaimedProviderIntent = (event: ProviderIntentEvent): b
   event.type === "thread.turn-queued";
 
 export const isProviderSideEffectIntent = (event: ProviderIntentEvent): boolean =>
-  event.type !== "thread.created" &&
+  (event.type !== "thread.created" || event.payload.forkPoint !== undefined) &&
   event.type !== "thread.deleted" &&
   event.type !== "thread.session-set" &&
   event.type !== "thread.turn-queued";

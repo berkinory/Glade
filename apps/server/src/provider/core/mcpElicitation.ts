@@ -23,7 +23,7 @@ const Form = Schema.Struct({
   properties: Schema.Record(Schema.String, Schema.Unknown),
   required: Schema.optional(Schema.NullOr(Schema.Array(Schema.String))),
 });
-export const McpElicitationRequest = Schema.Struct({
+const McpElicitationRequest = Schema.Struct({
   message: Schema.String,
   mode: Schema.optional(Schema.Literals(["form", "url"])),
   url: Schema.optional(Schema.String),
@@ -31,7 +31,7 @@ export const McpElicitationRequest = Schema.Struct({
 });
 export const decodeMcpElicitationRequest = Schema.decodeUnknownSync(McpElicitationRequest);
 export type McpElicitationInput = typeof McpElicitationRequest.Type;
-export type McpElicitationResult = {
+type McpElicitationResult = {
   action: "accept" | "decline" | "cancel";
   content?: Record<string, string | number | boolean | string[]>;
 };

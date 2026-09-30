@@ -150,7 +150,14 @@ export function renderTimelineAssistantMessage(
       messageCanPin && Boolean(onTogglePinMessage) && (assistantCopyState.visible || messagePinned);
 
     const showForkAction =
-      messageCanPin && Boolean(onForkFromMessage) && assistantCopyState.visible;
+      messageCanPin &&
+      Boolean(onForkFromMessage) &&
+      assistantCopyState.visible &&
+      Boolean(
+        controller.props.forkProvider === "codex"
+          ? row.message.turnId
+          : row.message.providerMessageId,
+      );
     const turnSummary = row.assistantTurnDiffSummary;
     const fileDiffStatByPath = new Map(
       (turnSummary?.files ?? []).map((file) => [

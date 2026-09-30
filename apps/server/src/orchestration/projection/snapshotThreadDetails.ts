@@ -1,3 +1,4 @@
+import { readNativeMessageReferences } from "./nativeMessageReferences";
 import { Schema, Effect, Option } from "effect";
 import { OrchestrationThread } from "@glade/contracts/orchestration/threadEntities";
 import { OrchestrationThreadDetailSnapshot } from "@glade/contracts/orchestration/snapshots";
@@ -166,6 +167,7 @@ export function makeSnapshotThreadDetails(input: {
         ),
       ]);
 
+      const messagesWithNativeReferences = yield* readNativeMessageReferences(sql, messageRows);
       const segmentRows = yield* loadMessageSegments(messageRows, options.tracePrefix);
       const thread = toProjectedThread({
         threadRow: threadRow.value,
@@ -173,7 +175,7 @@ export function makeSnapshotThreadDetails(input: {
           onNone: () => null,
           onSome: (row) => toProjectedLatestTurn(row),
         }),
-        messages: attachThreadMessageSegments(messageRows, segmentRows).map(
+        messages: attachThreadMessageSegments(messagesWithNativeReferences, segmentRows).map(
           orchestrationMessageFromProjectionRow,
         ),
 
@@ -252,12 +254,13 @@ export function makeSnapshotThreadDetails(input: {
               ),
             ),
           ]);
+          const messagesWithNativeReferences = yield* readNativeMessageReferences(sql, messageRows);
           const segmentRows = yield* loadMessageSegments(messageRows, tracePrefix);
           return Option.some<OrchestrationThreadMentionContext>({
             id: threadRow.value.threadId,
             title: threadRow.value.title,
             modelSelection: threadRow.value.modelSelection,
-            messages: attachThreadMessageSegments(messageRows, segmentRows).map(
+            messages: attachThreadMessageSegments(messagesWithNativeReferences, segmentRows).map(
               orchestrationMessageFromProjectionRow,
             ),
             totalMessageCount: Math.min(messageCount.count, MAX_THREAD_MESSAGES),

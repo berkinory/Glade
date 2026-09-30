@@ -83,11 +83,9 @@ export interface ProviderServiceShape {
     input: ProviderStartReviewInput,
   ) => Effect.Effect<ProviderTurnStartResult, ProviderServiceError>;
 
-  // Returns a persisted provider-native fork binding when available, otherwise `null` so callers can
-  // fall back to orchestration-only history.
   readonly forkThread?: (
     input: ProviderForkThreadInput,
-  ) => Effect.Effect<ProviderForkThreadResult | null, ProviderServiceError>;
+  ) => Effect.Effect<ProviderForkThreadResult, ProviderServiceError>;
 
   readonly importExternalThread?: (input: {
     readonly threadId: ThreadId;

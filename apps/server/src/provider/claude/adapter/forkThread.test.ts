@@ -39,7 +39,7 @@ describe("ClaudeAdapterLive forkThread", () => {
     );
   }
 
-  it.effect("forks natively from the persisted cursor and drops source uuid pins", () => {
+  it.effect("forks at the selected native message instead of the later persisted cursor", () => {
     const forkCalls: Array<{
       readonly sessionId: string;
       readonly options: { readonly dir?: string; readonly upToMessageId?: string } | undefined;
@@ -53,6 +53,7 @@ describe("ClaudeAdapterLive forkThread", () => {
       const adapter = yield* ClaudeAdapter;
       const result = yield* adapter.forkThread!({
         sourceThreadId: THREAD_ID,
+        forkPoint: { provider: "claudeAgent", messageId: "chosen-assistant-uuid-2" },
         threadId: RESUME_THREAD_ID,
         runtimeMode: "full-access",
         sourceCwd: "/repo/source",
@@ -67,7 +68,7 @@ describe("ClaudeAdapterLive forkThread", () => {
       assert.deepEqual(forkCalls, [
         {
           sessionId: SOURCE_SESSION_ID,
-          options: { dir: "/repo/source", upToMessageId: "assistant-uuid-9" },
+          options: { dir: "/repo/source", upToMessageId: "chosen-assistant-uuid-2" },
         },
       ]);
 

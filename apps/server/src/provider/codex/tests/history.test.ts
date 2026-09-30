@@ -172,6 +172,7 @@ describe("thread checkpoint control", () => {
           threadId: ThreadId.makeUnsafe("thread_2"),
           lifecycleGeneration: "import-generation",
           requireCompletedSource,
+          forkPoint: { provider: "codex", turnId: TurnId.makeUnsafe("chosen-earlier-turn") },
           cwd: homePath,
           providerOptions: { codex: { binaryPath: process.execPath, homePath } },
           modelSelection: {
@@ -196,10 +197,11 @@ describe("thread checkpoint control", () => {
           approvalPolicy: "never",
           sandbox: "danger-full-access",
         });
+        expect(forkRequest?.[2]).toMatchObject({ lastTurnId: "chosen-earlier-turn" });
         expect(forkRequest?.[2]).toMatchObject(
           requireCompletedSource
             ? {
-                ...(sourceStatus === "empty" ? {} : { lastTurnId: "completed-source-turn" }),
+                lastTurnId: "chosen-earlier-turn",
                 excludeTurns: true,
               }
             : {},

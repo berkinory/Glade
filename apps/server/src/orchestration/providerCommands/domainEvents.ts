@@ -160,6 +160,18 @@ export function makeProviderDomainEvents(input: {
             event.payload.threadId,
             event.payload.modelSelection,
           );
+          if (event.payload.forkPoint) {
+            yield* ensureSessionForThread(event.payload.threadId, event.payload.createdAt).pipe(
+              Effect.catchCause((cause) =>
+                setThreadSessionError({
+                  threadId: event.payload.threadId,
+                  runtimeMode: event.payload.runtimeMode,
+                  createdAt: event.payload.createdAt,
+                  detail: providerFailureMessage(cause),
+                }).pipe(Effect.andThen(Effect.failCause(cause))),
+              ),
+            );
+          }
           return;
         case "thread.deleted":
           if (Option.isSome(computerService))

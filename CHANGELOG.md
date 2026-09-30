@@ -53,6 +53,8 @@
 
 ### Fixed
 
+- Forking from a message no longer carries later conversation into the new chat.
+
 - MCP servers can request forms and browser input in both Codex and Claude without stalling.
 
 - Computer Use and gateway rules now reliably reach Codex sessions.

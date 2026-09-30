@@ -138,7 +138,7 @@ export function makeReactorTestHarness() {
     readonly baseDir?: string;
     readonly threadModelSelection?: ModelSelection;
     readonly checkpointStore?: Partial<CheckpointStoreShape>;
-    readonly forkThreadResult?: ProviderForkThreadResult | null;
+    readonly forkThreadResult?: ProviderForkThreadResult;
     readonly startReactor?: boolean;
     readonly interruptTurn?: ProviderServiceShape["interruptTurn"];
     readonly commandEventTimeout?: Duration.Duration;
@@ -301,8 +301,10 @@ export function makeReactorTestHarness() {
       }),
     );
     const forkThread = vi.fn<NonNullable<ProviderServiceShape["forkThread"]>>((forkInput) =>
-      Effect.sync(() => {
-        const result = input?.forkThreadResult ?? null;
+      Effect.gen(function* () {
+        const result = input?.forkThreadResult;
+        if (!result)
+          return yield* Effect.die(new Error("Native fork result is required in this test"));
         const forkModelSelection = forkInput.modelSelection ?? modelSelection;
         if (result && !runtimeSessions.some((session) => session.threadId === forkInput.threadId)) {
           runtimeSessions.push({

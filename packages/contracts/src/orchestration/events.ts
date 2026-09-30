@@ -1,3 +1,4 @@
+import { ProviderForkPoint } from "../provider/provider";
 import { Schema } from "effect";
 import {
   SpaceId,
@@ -167,6 +168,7 @@ export const ProjectDeletedPayload = Schema.Struct({
 });
 
 export const ThreadCreatedPayload = Schema.Struct({
+  forkPoint: Schema.optional(ProviderForkPoint),
   threadId: ThreadId,
   projectId: ProjectId,
   title: TrimmedNonEmptyString,
@@ -300,6 +302,7 @@ export const ThreadRuntimeModeSetPayload = Schema.Struct({
 });
 
 export const ThreadMessageSentPayload = Schema.Struct({
+  providerMessageId: Schema.optional(TrimmedNonEmptyString),
   asyncUserInput: Schema.optional(AsyncUserInput),
   threadId: ThreadId,
   messageId: MessageId,

@@ -1,3 +1,4 @@
+import { readNativeMessageReferences } from "./nativeMessageReferences";
 import { Schema, Effect } from "effect";
 import {
   OrchestrationReadModel,
@@ -216,12 +217,13 @@ export function makeSnapshotReadModels(input: {
             ),
           ]);
 
+          const messagesWithNativeReferences = yield* readNativeMessageReferences(sql, messageRows);
           const segmentRows = yield* loadMessageSegments(
             messageRows,
             "ProjectionSnapshotQuery.getSnapshot",
           );
           const messages = collectProjectedMessages(
-            attachThreadMessageSegments(messageRows, segmentRows),
+            attachThreadMessageSegments(messagesWithNativeReferences, segmentRows),
           );
 
           const activities = collectProjectedActivities(activityRows);

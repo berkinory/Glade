@@ -673,6 +673,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                     canPinMessage={canPinMessage}
                     onTogglePinMessage={handleTogglePinMessageGuarded}
                     onForkFromMessage={handleForkFromMessage}
+                    forkProvider={activeThread.modelSelection.provider}
                     enteringUserMessageIds={enteringUserMessageIds}
                     tailAnchorMessageId={
                       tailAnchor !== null && tailAnchor.threadId === activeThread.id

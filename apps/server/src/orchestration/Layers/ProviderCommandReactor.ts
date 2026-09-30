@@ -168,6 +168,7 @@ const make = Effect.gen(function* () {
   });
   const { ensureSessionForThread, clearStaleProviderResumeState, clearThreadRuntimeCaches } =
     makeProviderSessionConfiguration({
+      orchestrationEngine,
       projectionAccess,
       threadSessionSettings,
       deliveryGate,

@@ -112,6 +112,12 @@ export function decideTranscriptCommand({
           payload: {
             threadId: command.threadId,
             messageId: command.messageId,
+            ...((command.providerMessageId ?? existingMessage?.providerMessageId)
+              ? {
+                  providerMessageId:
+                    command.providerMessageId ?? existingMessage?.providerMessageId,
+                }
+              : {}),
             role: "assistant",
             text: existingMessage?.text ?? "",
             ...(command.asyncQuestions

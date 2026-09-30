@@ -206,6 +206,24 @@ export function makeClaudeAssistantText(input: {
             rawPayload: message,
           });
         }
+        if (message.type === "assistant") {
+          const stamp = yield* makeEventStamp();
+          yield* offerRuntimeEvent(context, {
+            type: "item.updated",
+            eventId: stamp.eventId,
+            provider: PROVIDER,
+            threadId: context.session.threadId,
+            turnId: turnState.turnId,
+            createdAt: stamp.createdAt,
+            itemId: asRuntimeItemId(entry.block.itemId),
+            payload: {
+              itemType: "assistant_message",
+              status: "completed",
+              data: { nativeMessageId: message.uuid },
+            },
+            providerRefs: nativeProviderRefs(context, { providerItemId: message.uuid }),
+          });
+        }
       }
 
       turnState.assistantMessageBlockBase = turnState.assistantTextBlockOrder.length;

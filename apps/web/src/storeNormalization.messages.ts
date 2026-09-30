@@ -214,6 +214,7 @@ export function normalizeChatMessage(
     previous.dispatchOrigin === incoming.dispatchOrigin &&
     previous.startsNewTurn === incoming.startsNewTurn &&
     previous.turnId === incoming.turnId &&
+    previous.providerMessageId === incoming.providerMessageId &&
     previous.createdAt === incoming.createdAt &&
     previous.updatedAt === incoming.updatedAt &&
     previous.streaming === incoming.streaming &&
@@ -238,6 +239,7 @@ export function normalizeChatMessage(
     ...(incoming.dispatchMode ? { dispatchMode: incoming.dispatchMode } : {}),
     ...(incoming.dispatchOrigin ? { dispatchOrigin: incoming.dispatchOrigin } : {}),
     ...(incoming.startsNewTurn !== undefined ? { startsNewTurn: incoming.startsNewTurn } : {}),
+    ...(incoming.providerMessageId ? { providerMessageId: incoming.providerMessageId } : {}),
     turnId: incoming.turnId,
     createdAt: incoming.createdAt,
     updatedAt: incoming.updatedAt,
@@ -303,6 +305,7 @@ function readModelMessageFromChatMessage(
     ...(message.dispatchMode ? { dispatchMode: message.dispatchMode } : {}),
     ...(message.dispatchOrigin ? { dispatchOrigin: message.dispatchOrigin } : {}),
     ...(message.startsNewTurn !== undefined ? { startsNewTurn: message.startsNewTurn } : {}),
+    ...(message.providerMessageId ? { providerMessageId: message.providerMessageId } : {}),
     turnId: message.turnId ?? null,
     streaming: message.streaming,
     source: message.source ?? "native",

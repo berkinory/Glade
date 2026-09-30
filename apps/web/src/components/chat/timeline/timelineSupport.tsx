@@ -234,6 +234,7 @@ export interface MessagesTimelineProps {
   onTogglePinMessage?: (messageId: MessageId) => void;
 
   onForkFromMessage?: (messageId: MessageId) => void;
+  forkProvider?: "codex" | "claudeAgent";
 
   enteringUserMessageIds?: ReadonlySet<MessageId>;
 

@@ -83,7 +83,14 @@ export type ProviderSendTurnInput = typeof ProviderSendTurnInput.Type;
 export const ProviderSteerTurnInput = ProviderSendTurnInput;
 export type ProviderSteerTurnInput = typeof ProviderSteerTurnInput.Type;
 
+export const ProviderForkPoint = Schema.Union([
+  Schema.Struct({ provider: Schema.Literal("codex"), turnId: TurnId }),
+  Schema.Struct({ provider: Schema.Literal("claudeAgent"), messageId: TrimmedNonEmptyString }),
+]);
+export type ProviderForkPoint = typeof ProviderForkPoint.Type;
+
 export const ProviderForkThreadInput = Schema.Struct({
+  forkPoint: Schema.optional(ProviderForkPoint),
   sourceThreadId: ThreadId,
   threadId: ThreadId,
   lifecycleGeneration: Schema.optional(TrimmedNonEmptyString),

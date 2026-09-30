@@ -1,3 +1,5 @@
+import type { OrchestrationEngineShape } from "../Services/OrchestrationEngine.ts";
+import { Stream } from "effect";
 import type { ServiceMap } from "effect";
 import {
   type ModelSelection,
@@ -29,6 +31,7 @@ import { ProviderDeliveryGate } from "../Services/ProviderDeliveryGate.ts";
 
 export function makeProviderSessionConfiguration(input: {
   readonly projectionAccess: ProviderProjectionAccessShape;
+  readonly orchestrationEngine: Pick<OrchestrationEngineShape, "readThreadEvents">;
   readonly threadSessionSettings: ServiceMap.Service.Shape<typeof ThreadSessionSettings>;
   readonly deliveryGate: ServiceMap.Service.Shape<typeof ProviderDeliveryGate>;
 
@@ -65,6 +68,7 @@ export function makeProviderSessionConfiguration(input: {
     computerService,
     freshSessionContextBootstrapThreadIds,
     projectionAccess,
+    orchestrationEngine,
   } = input;
 
   const { resolveThread, resolveProjectedThreadWorkspaceCwd, hasLiveProviderTurn } =
@@ -373,8 +377,13 @@ export function makeProviderSessionConfiguration(input: {
       };
     }
 
-    let bootstrapTranscriptIfResumeFails = false;
-    if (providerService.forkThread && thread.forkSourceThreadId) {
+    if (thread.forkSourceThreadId) {
+      if (!providerService.forkThread)
+        return yield* new ProviderAdapterValidationError({
+          provider: preferredProvider ?? thread.modelSelection.provider,
+          operation: "forkThread",
+          issue: "Native conversation forking is unavailable.",
+        });
       const parentCanContinueChatControl =
         Option.isSome(computerService) &&
         computerService.value.manager.canContinueChatControl(thread.forkSourceThreadId);
@@ -387,9 +396,33 @@ export function makeProviderSessionConfiguration(input: {
             ),
           )
         : (options?.enableComputerControl ?? false);
+      const creation = yield* Stream.runHead(
+        orchestrationEngine.readThreadEvents(threadId, 0, ["thread.created"]),
+      ).pipe(
+        Effect.mapError(
+          (cause) =>
+            new ProviderAdapterValidationError({
+              provider: preferredProvider ?? thread.modelSelection.provider,
+              operation: "forkThread",
+              issue: "Could not read the durable native fork point.",
+              cause,
+            }),
+        ),
+      );
+      const forkPoint =
+        Option.isSome(creation) && creation.value.type === "thread.created"
+          ? creation.value.payload.forkPoint
+          : undefined;
+      if (!forkPoint)
+        return yield* new ProviderAdapterValidationError({
+          provider: preferredProvider ?? thread.modelSelection.provider,
+          operation: "forkThread",
+          issue: "The conversation has no recorded native fork point.",
+        });
       const forked = yield* providerService.forkThread({
         ...providerSessionOptions,
         sourceThreadId: thread.forkSourceThreadId,
+        forkPoint,
         enableComputerControl: forkComputerControl,
       });
       if (forked) {
@@ -420,8 +453,6 @@ export function makeProviderSessionConfiguration(input: {
           forkComputerControl,
         };
       }
-
-      bootstrapTranscriptIfResumeFails = shouldRegisterContextBootstrap;
     }
 
     const registerPriorTranscriptBootstrapOnFreshStart =
@@ -436,9 +467,6 @@ export function makeProviderSessionConfiguration(input: {
         nativeResumeFailed: outcome.nativeResumeAttempted && !outcome.nativeResumeSucceeded,
       })),
     );
-    if (bootstrapTranscriptIfResumeFails && !startOutcome.nativeResumeSucceeded) {
-      freshSessionContextBootstrapThreadIds.add(threadId);
-    }
     if (startOutcome.priorTranscriptBootstrapPending) {
       if (shouldRegisterContextBootstrap) {
         freshSessionContextBootstrapThreadIds.add(threadId);

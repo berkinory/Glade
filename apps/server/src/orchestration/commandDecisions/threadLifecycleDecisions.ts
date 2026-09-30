@@ -1,3 +1,4 @@
+import { MessageId } from "@glade/contracts/core/baseSchemas";
 import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import { Effect } from "effect";
 import {
@@ -236,6 +237,46 @@ export function decideThreadLifecycleCommand({
           });
         }
 
+        const forkIndex = sourceThread.messages.findIndex(
+          (message) => message.id === command.forkMessageId,
+        );
+        const forkMessage = sourceThread.messages[forkIndex];
+        if (
+          !forkMessage ||
+          forkMessage.streaming ||
+          forkMessage.role !== "assistant" ||
+          command.modelSelection.provider !== sourceThread.modelSelection.provider
+        ) {
+          return yield* new OrchestrationCommandInvariantError({
+            commandType: command.type,
+            detail: "Choose a completed native assistant message from the same provider.",
+          });
+        }
+        const forkPoint =
+          sourceThread.modelSelection.provider === "codex" && forkMessage.turnId
+            ? { provider: "codex" as const, turnId: forkMessage.turnId }
+            : sourceThread.modelSelection.provider === "claudeAgent" &&
+                forkMessage.providerMessageId
+              ? { provider: "claudeAgent" as const, messageId: forkMessage.providerMessageId }
+              : undefined;
+        if (!forkPoint)
+          return yield* new OrchestrationCommandInvariantError({
+            commandType: command.type,
+            detail: "This message has no recorded native fork identifier.",
+          });
+        const laterNativeMessage = sourceThread.messages
+          .slice(forkIndex + 1)
+          .some((message) =>
+            forkPoint.provider === "codex"
+              ? message.turnId === forkPoint.turnId
+              : message.providerMessageId === forkPoint.messageId,
+          );
+        if (laterNativeMessage)
+          return yield* new OrchestrationCommandInvariantError({
+            commandType: command.type,
+            detail: "Choose the final message at this native fork boundary.",
+          });
+        const retainedMessages = sourceThread.messages.slice(0, forkIndex + 1);
         const createdEvent: Omit<OrchestrationEvent, "sequence"> = {
           ...withEventBase({
             aggregateKind: "thread",
@@ -262,6 +303,7 @@ export function decideThreadLifecycleCommand({
             subagentNickname: null,
             subagentRole: null,
             forkSourceThreadId: command.sourceThreadId,
+            forkPoint,
             handoff: null,
             createdAt: command.createdAt,
             updatedAt: command.createdAt,
@@ -269,7 +311,7 @@ export function decideThreadLifecycleCommand({
         };
 
         const importedMessageEvents: ReadonlyArray<Omit<OrchestrationEvent, "sequence">> =
-          command.importedMessages.map((message) => ({
+          retainedMessages.map((message) => ({
             ...withEventBase({
               aggregateKind: "thread",
               aggregateId: command.threadId,
@@ -279,11 +321,14 @@ export function decideThreadLifecycleCommand({
             type: "thread.message-sent",
             payload: {
               threadId: command.threadId,
-              messageId: message.messageId,
+              messageId: MessageId.makeUnsafe(`${command.threadId}:${message.id}`),
+              ...(message.providerMessageId
+                ? { providerMessageId: message.providerMessageId }
+                : {}),
               role: message.role,
               text: message.text,
               ...(message.attachments !== undefined ? { attachments: message.attachments } : {}),
-              turnId: null,
+              turnId: message.turnId,
               streaming: false,
               source: "fork-import",
               createdAt: message.createdAt,

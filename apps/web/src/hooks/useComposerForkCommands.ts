@@ -7,7 +7,6 @@ import {
   type ForkSlashCommandTarget,
 } from "../composerSlashCommands";
 import { resolveForkThreadEnvironment } from "../lib/threadEnvironment";
-import { buildThreadHandoffImportedMessages } from "../lib/threadHandoff";
 import { newCommandId, newMessageId, newThreadId } from "../lib/utils";
 import { readNativeApi } from "../nativeApi";
 import type { ComposerSlashCommandInput } from "./composerSlashCommandTypes";
@@ -56,10 +55,22 @@ export function useComposerForkCommands(input: {
         return true;
       }
 
-      const importedMessages = buildThreadHandoffImportedMessages(activeThread, {
-        throughMessageId: inputOptions?.throughMessageId ?? null,
-      });
-
+      const forkMessage = inputOptions?.throughMessageId
+        ? activeThread.messages.find((message) => message.id === inputOptions.throughMessageId)
+        : activeThread.messages.findLast(
+            (message) =>
+              message.role === "assistant" &&
+              !message.streaming &&
+              (selectedProvider === "codex" ? message.turnId : message.providerMessageId),
+          );
+      if (
+        !forkMessage ||
+        selectedProvider !== activeThread.modelSelection.provider ||
+        (selectedProvider === "codex" ? !forkMessage.turnId : !forkMessage.providerMessageId)
+      ) {
+        toastManager.add({ type: "warning", title: "This message has no native fork point" });
+        return false;
+      }
       const nextThreadId = newThreadId();
       const createdAt = new Date().toISOString();
 
@@ -86,7 +97,7 @@ export function useComposerForkCommands(input: {
         associatedWorktreePath: resolvedTarget.associatedWorktreePath,
         associatedWorktreeBranch: resolvedTarget.associatedWorktreeBranch,
         associatedWorktreeRef: resolvedTarget.associatedWorktreeRef,
-        importedMessages: [...importedMessages],
+        forkMessageId: forkMessage.id,
         createdAt,
       });
       const snapshot = await api.orchestration.getShellSnapshot();
@@ -103,6 +114,7 @@ export function useComposerForkCommands(input: {
       navigateToThread,
       runtimeMode,
       selectedModelSelection,
+      selectedProvider,
       syncServerShellSnapshot,
     ],
   );

@@ -1301,6 +1301,7 @@ const make = Effect.gen(function* () {
     finalDeltaCommandTag: string;
     fallbackText?: string;
     asyncQuestions?: import("@glade/contracts/orchestration/asyncUserInput").AsyncUserInputQuestions;
+    providerMessageId?: string;
   }) =>
     Effect.gen(function* () {
       const bufferedText = yield* getBufferedAssistantText(input.messageId);
@@ -1333,6 +1334,7 @@ const make = Effect.gen(function* () {
         threadId: input.threadId,
         messageId: input.messageId,
         ...(input.asyncQuestions ? { asyncQuestions: input.asyncQuestions } : {}),
+        ...(input.providerMessageId ? { providerMessageId: input.providerMessageId } : {}),
         ...(input.turnId ? { turnId: input.turnId } : {}),
         createdAt: input.createdAt,
       });
@@ -2092,8 +2094,18 @@ const make = Effect.gen(function* () {
         }
       }
 
+      const nativeAssistantMessage =
+        event.provider === "claudeAgent" &&
+        event.type === "item.updated" &&
+        event.payload.itemType === "assistant_message"
+          ? Schema.decodeUnknownSync(Schema.Struct({ nativeMessageId: Schema.String }))(
+              event.payload.data,
+            )
+          : undefined;
       const assistantCompletion =
-        event.type === "item.completed" && event.payload.itemType === "assistant_message"
+        (event.type === "item.completed" || nativeAssistantMessage !== undefined) &&
+        (event.type === "item.completed" || event.type === "item.updated") &&
+        event.payload.itemType === "assistant_message"
           ? {
               fallbackText: event.payload.detail,
               asyncQuestions:
@@ -2127,6 +2139,9 @@ const make = Effect.gen(function* () {
           ...(turnId ? { turnId } : {}),
           createdAt: now,
           commandTag: "assistant-complete",
+          ...(nativeAssistantMessage
+            ? { providerMessageId: nativeAssistantMessage.nativeMessageId }
+            : {}),
           finalDeltaCommandTag: "assistant-delta-finalize",
           ...(assistantCompletion.asyncQuestions
             ? { asyncQuestions: assistantCompletion.asyncQuestions }

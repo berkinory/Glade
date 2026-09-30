@@ -1,4 +1,4 @@
-export interface NativeImportProject {
+interface NativeImportProject {
   readonly id: string;
   readonly title: string;
   readonly roots: ReadonlyArray<string>;

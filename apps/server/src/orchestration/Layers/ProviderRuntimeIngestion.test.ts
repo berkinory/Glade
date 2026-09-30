@@ -86,7 +86,7 @@ function createProviderServiceHarness(options?: { readonly persistedStream?: boo
     sendTurn: () => unsupported(),
     steerTurn: () => unsupported(),
     startReview: () => unsupported(),
-    forkThread: () => Effect.succeed(null),
+    forkThread: () => unsupported(),
     interruptTurn: () => unsupported(),
     stopTask: () => unsupported(),
     backgroundTask: () => unsupported(),

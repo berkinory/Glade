@@ -1959,7 +1959,9 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
           : undefined;
       const serviceTier = resolveCodexServiceTier(input.modelSelection);
       signal?.throwIfAborted();
-      let lastTurnId: TurnId | undefined;
+      let lastTurnId = input.forkPoint?.provider === "codex" ? input.forkPoint.turnId : undefined;
+      if (input.forkPoint && input.forkPoint.provider !== "codex")
+        throw new Error("Invalid Codex fork point provider.");
       if (input.requireCompletedSource) {
         const source = await this.readThreadSnapshot(context, sourceProviderThreadId);
         const lastTurn = source.turns.at(-1);
@@ -1978,7 +1980,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
             "Wait for the source Codex conversation to finish its turn before importing it.",
           );
         }
-        lastTurnId = lastTurn?.id;
+        lastTurnId ??= lastTurn?.id;
       }
       const forkParams = {
         threadId: sourceProviderThreadId,

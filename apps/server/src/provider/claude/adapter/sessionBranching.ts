@@ -144,7 +144,7 @@ export function makeClaudeSessionBranching(input: {
           provider: PROVIDER,
           operation: "forkThread",
           issue:
-            "The source Claude session has a turn in flight; Glade will rebuild the fork from its retained transcript.",
+            "The source Claude session has a turn in flight; wait for it to finish before forking.",
         });
       }
       const sourceState = readClaudeResumeState(input.sourceResumeCursor);
@@ -156,7 +156,17 @@ export function makeClaudeSessionBranching(input: {
           issue: "The source Claude session has no resumable native cursor.",
         });
       }
-      let upToMessageId = liveSource?.lastAssistantUuid ?? sourceState?.resumeSessionAt;
+      if (input.forkPoint && input.forkPoint.provider !== "claudeAgent") {
+        return yield* new ProviderAdapterValidationError({
+          provider: PROVIDER,
+          operation: "forkThread",
+          issue: "Invalid Claude fork point provider.",
+        });
+      }
+      let upToMessageId =
+        input.forkPoint?.provider === "claudeAgent"
+          ? input.forkPoint.messageId
+          : (liveSource?.lastAssistantUuid ?? sourceState?.resumeSessionAt);
       const sourceCwd = liveSource?.session.cwd ?? input.sourceCwd;
       let importedSourceMessages: ReadonlyArray<SessionMessage> | undefined;
       if (input.requireCompletedSource) {
@@ -210,7 +220,7 @@ export function makeClaudeSessionBranching(input: {
         }
         // Freeze the boundary before the SDK copies the file: new messages appended concurrently by Claude
         // must not enter the imported copy.
-        upToMessageId = lastMessage.uuid;
+        upToMessageId ??= lastMessage.uuid;
         importedSourceMessages = messages;
       }
       const forked = yield* Effect.tryPromise({

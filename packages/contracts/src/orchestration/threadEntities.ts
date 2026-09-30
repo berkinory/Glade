@@ -279,6 +279,7 @@ export const OrchestrationMessageTextSegment = Schema.Struct({
 export type OrchestrationMessageTextSegment = typeof OrchestrationMessageTextSegment.Type;
 
 export const OrchestrationMessage = Schema.Struct({
+  providerMessageId: Schema.optional(TrimmedNonEmptyString),
   id: MessageId,
   role: OrchestrationMessageRole,
   text: Schema.String,

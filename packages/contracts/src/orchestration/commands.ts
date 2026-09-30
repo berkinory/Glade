@@ -233,7 +233,7 @@ const ThreadForkCreateCommand = Schema.Struct({
   createBranchFlowCompleted: Schema.optional(Schema.Boolean).pipe(
     Schema.withDecodingDefault(() => false),
   ),
-  importedMessages: Schema.Array(ThreadHandoffImportedMessage),
+  forkMessageId: MessageId,
   createdAt: IsoDateTime,
 });
 
@@ -631,6 +631,7 @@ const ThreadMessageAssistantDeltaCommand = Schema.Struct({
 });
 
 const ThreadMessageAssistantCompleteCommand = Schema.Struct({
+  providerMessageId: Schema.optional(TrimmedNonEmptyString),
   asyncQuestions: Schema.optional(AsyncUserInputQuestions),
   type: Schema.Literal("thread.message.assistant.complete"),
   commandId: CommandId,

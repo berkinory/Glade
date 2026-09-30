@@ -146,6 +146,7 @@ export function projectMessageEvent(
             ...(payload.startsNewTurn !== undefined
               ? { startsNewTurn: payload.startsNewTurn }
               : {}),
+            ...(payload.providerMessageId ? { providerMessageId: payload.providerMessageId } : {}),
             turnId: payload.turnId,
             streaming: payload.streaming,
             source: payload.source,
@@ -184,6 +185,7 @@ export function projectMessageEvent(
           delete entryWithoutTextSegments.textSegments;
           nextMessages[existingIndex] = {
             ...entryWithoutTextSegments,
+            ...(message.providerMessageId ? { providerMessageId: message.providerMessageId } : {}),
             ...(message.asyncUserInput ? { asyncUserInput: message.asyncUserInput } : {}),
             text: resolvedText,
             ...(nextSegments !== undefined ? { textSegments: nextSegments } : {}),

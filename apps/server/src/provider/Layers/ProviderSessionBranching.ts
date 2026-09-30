@@ -62,14 +62,20 @@ export const ProviderSessionBranchingLive = Layer.effect(
               resumeCursor: existingTargetBinding.resumeCursor,
             };
           }
-          return null;
+          return yield* toValidationError(
+            "ProviderService.forkThread",
+            "The target already has a different provider binding.",
+          );
         }
 
         const sourceBinding = Option.getOrUndefined(
           yield* directory.getBinding(input.sourceThreadId),
         );
         if (!sourceBinding) {
-          return null;
+          return yield* toValidationError(
+            "ProviderService.forkThread",
+            "The source has no owned native session binding.",
+          );
         }
 
         const effectiveProviderOptions =
@@ -82,43 +88,47 @@ export const ProviderSessionBranchingLive = Layer.effect(
           input.runtimeMode,
         );
 
+        if (input.forkPoint && input.forkPoint.provider !== sourceBinding.provider)
+          return yield* toValidationError(
+            "ProviderService.forkThread",
+            "The fork point belongs to another provider.",
+          );
         const adapter = yield* registry.getByProvider(sourceBinding.provider);
         if (!adapter.forkThread) {
-          return null;
+          return yield* toValidationError(
+            "ProviderService.forkThread",
+            "This provider does not expose native forking.",
+          );
         }
 
         if (
           input.modelSelection !== undefined &&
           input.modelSelection.provider !== adapter.provider
         ) {
-          return null;
+          return yield* toValidationError(
+            "ProviderService.forkThread",
+            "Native forks must keep the source provider.",
+          );
         }
 
-        const forked = yield* adapter
-          .forkThread({
-            ...input,
-            threadId: input.threadId,
-            sourceThreadId: input.sourceThreadId,
-            ...(effectiveProviderOptions !== undefined
-              ? { providerOptions: effectiveProviderOptions }
-              : {}),
-            ...(sourceBinding.resumeCursor !== null && sourceBinding.resumeCursor !== undefined
-              ? { sourceResumeCursor: sourceBinding.resumeCursor }
-              : {}),
-            ...(sourceCwd ? { sourceCwd } : {}),
-            runtimeMode: input.runtimeMode,
-          })
-          .pipe(
-            Effect.catch((error) =>
-              Effect.logWarning("provider native fork failed; falling back", {
-                sourceThreadId: input.sourceThreadId,
-                targetThreadId: input.threadId,
-                cause: error instanceof Error ? error.message : String(error),
-              }).pipe(Effect.as(null)),
-            ),
-          );
+        const forked = yield* adapter.forkThread({
+          ...input,
+          threadId: input.threadId,
+          sourceThreadId: input.sourceThreadId,
+          ...(effectiveProviderOptions !== undefined
+            ? { providerOptions: effectiveProviderOptions }
+            : {}),
+          ...(sourceBinding.resumeCursor !== null && sourceBinding.resumeCursor !== undefined
+            ? { sourceResumeCursor: sourceBinding.resumeCursor }
+            : {}),
+          ...(sourceCwd ? { sourceCwd } : {}),
+          runtimeMode: input.runtimeMode,
+        });
         if (!forked) {
-          return null;
+          return yield* toValidationError(
+            "ProviderService.forkThread",
+            "The provider did not return a native fork.",
+          );
         }
 
         const forkedSession = (yield* adapter.listSessions()).find(
