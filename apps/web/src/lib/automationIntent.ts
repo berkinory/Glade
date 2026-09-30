@@ -517,82 +517,43 @@ function parseCronSchedule(searchText: string): ParsedSchedule | null {
   };
 }
 
-function parseDailySchedule(searchText: string): ParsedSchedule | null {
-  const timedDailyMatch =
-    searchText.match(new RegExp(`\\b(?:daily|every day)\\s+at\\s+${TIME_PATTERN}\\b`)) ??
-    searchText.match(
-      new RegExp(`\\b(?:ogni giorno|tutti i giorni)\\s+(?:alle|a)\\s+${TIME_PATTERN}\\b`),
-    );
-  if (timedDailyMatch) {
-    const timeOfDay = parseTimeOfDay(timedDailyMatch[1]);
-    return timeOfDay
-      ? {
-          schedule: { type: "daily", timeOfDay },
-          cadenceLabel: `Daily at ${timeOfDay}`,
-        }
-      : null;
-  }
-
+function parseSimpleRecurringTime(
+  searchText: string,
+  english: string,
+  italian: string,
+): string | null {
+  const timedMatch =
+    searchText.match(new RegExp(`\\b(?:${english})\\s+at\\s+${TIME_PATTERN}\\b`)) ??
+    searchText.match(new RegExp(`\\b(?:${italian})\\s+(?:alle|a)\\s+${TIME_PATTERN}\\b`));
+  if (timedMatch) return parseTimeOfDay(timedMatch[1]);
   if (
-    /\b(?:daily|every day)\s+at\b/.test(searchText) ||
-    /\b(?:ogni giorno|tutti i giorni)\s+(?:alle|a)\b/.test(searchText)
-  ) {
+    new RegExp(`\\b(?:${english})\\s+at\\b`).test(searchText) ||
+    new RegExp(`\\b(?:${italian})\\s+(?:alle|a)\\b`).test(searchText)
+  )
     return null;
-  }
+  return new RegExp(`\\b(?:${english}|${italian})\\b`).test(searchText) ? DEFAULT_DAILY_TIME : null;
+}
 
-  const dailyMatch =
-    searchText.match(/\b(?:daily|every day)\b/) ??
-    searchText.match(/\b(?:ogni giorno|tutti i giorni)\b/);
-  if (!dailyMatch) {
-    return null;
-  }
-
-  const timeOfDay = DEFAULT_DAILY_TIME;
-  return {
-    schedule: { type: "daily", timeOfDay },
-    cadenceLabel: `Daily at ${timeOfDay}`,
-  };
+function parseDailySchedule(searchText: string): ParsedSchedule | null {
+  const timeOfDay = parseSimpleRecurringTime(
+    searchText,
+    "daily|every day",
+    "ogni giorno|tutti i giorni",
+  );
+  return timeOfDay
+    ? { schedule: { type: "daily", timeOfDay }, cadenceLabel: `Daily at ${timeOfDay}` }
+    : null;
 }
 
 function parseWeekdaysSchedule(searchText: string): ParsedSchedule | null {
-  const timedWeekdaysMatch =
-    searchText.match(
-      new RegExp(`\\b(?:weekdays|every weekday|workdays)\\s+at\\s+${TIME_PATTERN}\\b`),
-    ) ??
-    searchText.match(
-      new RegExp(
-        `\\b(?:giorni lavorativi|ogni giorno lavorativo)\\s+(?:alle|a)\\s+${TIME_PATTERN}\\b`,
-      ),
-    );
-  if (timedWeekdaysMatch) {
-    const timeOfDay = parseTimeOfDay(timedWeekdaysMatch[1]);
-    return timeOfDay
-      ? {
-          schedule: { type: "weekdays", timeOfDay },
-          cadenceLabel: `Weekdays at ${timeOfDay}`,
-        }
-      : null;
-  }
-
-  if (
-    /\b(?:weekdays|every weekday|workdays)\s+at\b/.test(searchText) ||
-    /\b(?:giorni lavorativi|ogni giorno lavorativo)\s+(?:alle|a)\b/.test(searchText)
-  ) {
-    return null;
-  }
-
-  const weekdaysMatch =
-    searchText.match(/\b(?:weekdays|every weekday|workdays)\b/) ??
-    searchText.match(/\b(?:giorni lavorativi|ogni giorno lavorativo)\b/);
-  if (!weekdaysMatch) {
-    return null;
-  }
-
-  const timeOfDay = DEFAULT_DAILY_TIME;
-  return {
-    schedule: { type: "weekdays", timeOfDay },
-    cadenceLabel: `Weekdays at ${timeOfDay}`,
-  };
+  const timeOfDay = parseSimpleRecurringTime(
+    searchText,
+    "weekdays|every weekday|workdays",
+    "giorni lavorativi|ogni giorno lavorativo",
+  );
+  return timeOfDay
+    ? { schedule: { type: "weekdays", timeOfDay }, cadenceLabel: `Weekdays at ${timeOfDay}` }
+    : null;
 }
 
 function parseWeeklySchedule(searchText: string): ParsedSchedule | null {
