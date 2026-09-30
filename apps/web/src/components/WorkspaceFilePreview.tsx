@@ -1,5 +1,3 @@
-import { formatWorkspaceFileError } from "~/lib/workspaceFileError";
-
 import type {
   ProjectFileChangeEvent,
   ProjectReadFileResult,
@@ -41,7 +39,6 @@ import { formatFileCommentRange, type FileCommentSelection } from "~/lib/fileCom
 import { showFileReferenceContextMenu } from "~/lib/fileReferenceContextMenu";
 import { gitWorkingTreeDiffQueryOptions } from "../lib/gitQueryOptions";
 import { PlusIcon } from "~/lib/icons";
-import { toggleMarkdownTaskMarker } from "~/lib/markdownTaskList";
 import { isRpcCapacityExceededError } from "~/lib/expensiveReadRetry";
 import {
   isLocalPreviewGrantUsable,
@@ -813,4 +810,41 @@ export function WorkspaceFilePreview(props: WorkspaceFilePreviewProps) {
       )}
     </div>
   );
+}
+
+function formatWorkspaceFileError(error: unknown): string {
+  if (!(error instanceof Error)) return "Could not read file.";
+  const detail = error.message.replace(/^workspaceFileSystem\.[\w]+ failed for .*?:\s*/u, "");
+  if (/file appears to be binary/i.test(detail))
+    return "This is a binary file. Open it in another app to view it.";
+  if (/EISDIR|is a directory/i.test(detail))
+    return "This is a folder. Select a file to preview it.";
+  if (/ENOENT|no such file|not found/i.test(detail))
+    return "This file no longer exists. Refresh Explorer to update the list.";
+  if (/EACCES|EPERM|permission denied/i.test(detail))
+    return "Glade doesn't have permission to read this file.";
+  if (/too large|exceeds.*size|size limit/i.test(detail))
+    return "This file is too large to preview.";
+  return detail || "Could not read file.";
+}
+
+const TASK_MARKER_PATTERN = /^((?:\s*>)*\s*(?:[-*+]|\d+[.)])\s+\[)[ xX](\])/;
+
+function toggleMarkdownTaskMarker(
+  contents: string,
+  sourceLine: number,
+  checked: boolean,
+): string | null {
+  const lines = contents.split("\n");
+  const index = sourceLine - 1;
+  const line = lines[index];
+  if (line === undefined) {
+    return null;
+  }
+  const match = TASK_MARKER_PATTERN.exec(line);
+  if (!match) {
+    return null;
+  }
+  lines[index] = `${match[1]}${checked ? "x" : " "}${match[2]}${line.slice(match[0].length)}`;
+  return lines.join("\n");
 }

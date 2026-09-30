@@ -1,5 +1,4 @@
 import { SINGLE_CHAT_PANE_SCOPE_ID } from "./chatPaneScope";
-import { findNearestMeasurableAncestor } from "./domLayout";
 import { notifyNativeSurfaceOcclusionChange } from "./nativeSurfaceOcclusion";
 
 const COMPOSER_COMPACT_MIN_LEFT_CONTROLS_WIDTH_PX = 160;
@@ -109,4 +108,16 @@ export function attachPanelPointerOverlaySession(
     window.removeEventListener("blur", onAbort);
     document.removeEventListener("mouseleave", onAbort);
   };
+}
+
+function findNearestMeasurableAncestor(element: HTMLElement): HTMLElement | null {
+  let candidate = element.parentElement;
+  while (candidate !== null) {
+    const display = window.getComputedStyle(candidate).display;
+    if (display !== "contents" && display !== "inline") {
+      return candidate;
+    }
+    candidate = candidate.parentElement;
+  }
+  return null;
 }

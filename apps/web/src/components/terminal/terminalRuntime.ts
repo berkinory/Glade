@@ -16,7 +16,6 @@ import type { TerminalSessionSnapshot } from "@glade/contracts/terminal/terminal
 import { Terminal } from "@xterm/xterm";
 
 import { readNativeApi } from "~/nativeApi";
-import { suppressQueryResponses } from "~/lib/suppressQueryResponses";
 
 import { extractTerminalLinks } from "../../terminal-links";
 import { addWsTransportStateListener } from "../../wsTransportEvents";
@@ -952,4 +951,20 @@ export function disposeRuntimeEntry(entry: TerminalRuntimeEntry): void {
   disposeWebglAddon(entry);
   entry.terminal.dispose();
   entry.wrapper.remove();
+}
+
+// Suppress only response sequences whose final byte differs from their query so real commands
+// cannot be consumed.
+function suppressQueryResponses(terminal: Terminal): () => void {
+  const disposables: { dispose(): void }[] = [];
+  const p = terminal.parser;
+
+  disposables.push(p.registerCsiHandler({ final: "R" }, () => true));
+  disposables.push(p.registerCsiHandler({ final: "I" }, () => true));
+  disposables.push(p.registerCsiHandler({ final: "O" }, () => true));
+  disposables.push(p.registerCsiHandler({ intermediates: "$", final: "y" }, () => true));
+
+  return () => {
+    for (const d of disposables) d.dispose();
+  };
 }

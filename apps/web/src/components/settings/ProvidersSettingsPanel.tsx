@@ -27,7 +27,6 @@ import { useProviderStatusesForLocalConfig } from "~/hooks/useProviderStatusesFo
 import { useRefreshProviderStatusesNow } from "~/hooks/useProviderStatusRefresh";
 import { CentralIcon } from "~/lib/central-icons";
 import { DownloadIcon, ExternalLinkIcon, Loader2Icon } from "~/lib/icons";
-import { providerSetupStatusLabel } from "~/lib/providerSetupStatus";
 import {
   hasReconciledServerProviderStatuses,
   serverConfigQueryOptions,
@@ -77,6 +76,21 @@ import {
   setProviderListMembership,
   isProviderPickerProviderEnabled,
 } from "./providerInstallationModel";
+
+function providerSetupStatusLabel(input: {
+  readonly status: ServerProviderStatus | undefined;
+  readonly reconciled: boolean;
+  readonly disabled: boolean;
+}): string {
+  if (input.disabled) return "Disabled · enable to check setup";
+  if (!input.reconciled || !input.status) return "Checking setup";
+  const status = input.status;
+  if (!status.available) return "Unavailable";
+  if (status.authStatus === "unauthenticated") return "Needs sign-in";
+  if (status.status !== "ready") return "Needs attention";
+  if (status.authStatus === "unknown") return "Installed · sign-in not verified";
+  return "Connected";
+}
 
 function SortableProviderVisibilityRow(props: {
   option: { provider: ProviderKind; title: string };
