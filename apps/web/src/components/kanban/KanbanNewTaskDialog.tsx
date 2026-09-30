@@ -56,11 +56,8 @@ import {
 } from "~/lib/runtimeMode";
 import { serverConfigQueryOptions } from "~/lib/serverReactQuery";
 import { cn } from "~/lib/utils";
-import {
-  type ComposerFileAttachment,
-  type DraftThreadEnvMode,
-  useComposerDraftStore,
-} from "../../composerDraftStore";
+import type { ComposerFileAttachment, DraftThreadEnvMode } from "../../composerDraftDomain";
+import { useComposerDraftStore } from "../../composerDraftStore";
 import { buildModelSelection, type ProviderOptions } from "../../providerModelOptions";
 import { type ExpandedImagePreview } from "../chat/ExpandedImagePreview";
 import { ExpandedImageOverlay } from "../chat/ExpandedImageOverlay";
@@ -341,14 +338,18 @@ export function KanbanNewTaskDialog({
     [setPromptAtEnd],
   );
   const voice = useComposerVoiceController({
-    activeProject: selectedProject ?? undefined,
-    activeThreadId: null,
-    threadId: scratchThreadId,
-    selectedProvider,
-    activeProviderStatus: voiceProviderStatus,
-    pendingUserInputCount: 0,
-    onTranscriptReady: handleTranscriptReady,
-    refreshVoiceStatus: refreshProviderStatuses,
+    thread: {
+      activeProject: selectedProject ?? undefined,
+      activeThreadId: null,
+      threadId: scratchThreadId,
+      pendingUserInputCount: 0,
+    },
+    provider: {
+      selectedProvider,
+      activeProviderStatus: voiceProviderStatus,
+      refreshVoiceStatus: refreshProviderStatuses,
+    },
+    recording: { onTranscriptReady: handleTranscriptReady },
   });
 
   useEffect(() => {

@@ -1,6 +1,6 @@
 import { type AutomationDefinition } from "@glade/contracts/automation/automation";
 import BranchToolbar, { RuntimeUsageControls } from "~/components/BranchToolbar";
-import { resolveActiveThreadTitle } from "~/components/ChatView.logic";
+import { resolveActiveThreadTitle } from "../../ChatView.logic.worktree";
 import { FolderClosed } from "~/components/FolderClosed";
 import { ComposerActiveTaskListCard } from "~/components/chat/ComposerActiveTaskListCard";
 import { ComposerExtrasTrigger } from "~/components/chat/ComposerExtrasTrigger";

@@ -9,11 +9,13 @@ import { resolveAssistantDeliveryMode, useAppSettings } from "~/appSettings";
 import {
   DISMISSED_PROVIDER_HEALTH_BANNERS_KEY,
   DismissedProviderHealthBannersSchema,
-  PullRequestDialogState,
+  type PendingFileUndo,
+} from "../../ChatView.logic.session";
+import {
+  type PullRequestDialogState,
   buildLocalDraftThread,
   resolveDraftFallbackModelSelection,
-  type PendingFileUndo,
-} from "~/components/ChatView.logic";
+} from "../../ChatView.logic.worktree";
 import { ComposerCommandItem } from "~/components/chat/ComposerCommandMenu";
 import { type ComposerLocalDirectoryMenuHandle } from "~/components/chat/ComposerLocalDirectoryMenu";
 import { ExpandedImagePreview } from "~/components/chat/ExpandedImagePreview";

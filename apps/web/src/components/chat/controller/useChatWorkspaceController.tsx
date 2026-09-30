@@ -1,12 +1,13 @@
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { deriveAssociatedWorktreeMetadata } from "@glade/shared/threads/threadWorkspace";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { buildThreadBreadcrumbs, hasFileUndoSettled } from "~/components/ChatView.logic";
+import { buildThreadBreadcrumbs } from "../../ChatView.logic.subagents";
+import { hasFileUndoSettled } from "../../ChatView.logic.session";
 import { createThreadLineageSelector } from "~/components/ChatView.selectors";
 import { deriveLatestRateLimitStatus } from "~/components/chat/RateLimitBanner";
 import { useAsyncUserInputResponse } from "~/components/chat/useAsyncUserInputResponse";
 import { useChatTerminalController } from "~/components/chat/useChatTerminalController";
-import { type DraftThreadEnvMode } from "~/composerDraftStore";
+import type { DraftThreadEnvMode } from "../../../composerDraftDomain";
 import {
   useThreadComputerAvailability,
   useThreadComputerControlGeneration,
@@ -14,10 +15,10 @@ import {
 import { useThreadComputerStateSeed } from "~/hooks/useThreadComputerStateSeed";
 import { isHomeChatContainerProject } from "~/lib/chatProjects";
 import { deriveCumulativeCostUsd, deriveLatestContextWindowState } from "~/lib/contextWindow";
-import { GIT_WORKING_TREE_DIFF_LIVE_REFETCH_INTERVAL_MS } from "~/lib/gitReactQuery";
+import { GIT_WORKING_TREE_DIFF_LIVE_REFETCH_INTERVAL_MS } from "../../../lib/gitQueryOptions";
 import { resolveDiffEnvironmentState } from "~/lib/threadEnvironment";
 import { newThreadId } from "~/lib/utils";
-import { useProjectInstructionsStore } from "~/projectInstructionsStore";
+import { useProjectPreferencesStore } from "~/projectPreferencesStore";
 import { hasLiveTurnTailWork, isLatestTurnSettled } from "~/session-logic";
 import { useStore } from "~/store";
 import { createProjectSelector } from "~/storeSelectors";
@@ -243,11 +244,11 @@ export function useChatWorkspaceController({
     confirmTerminalClose: settings.confirmTerminalTabClose,
   });
 
-  const projectInstructions = useProjectInstructionsStore((state) =>
+  const projectInstructions = useProjectPreferencesStore((state) =>
     activeProjectId ? (state.instructionsByProjectId[activeProjectId] ?? "") : "",
   );
 
-  const setProjectInstructions = useProjectInstructionsStore((state) => state.setInstructions);
+  const setProjectInstructions = useProjectPreferencesStore((state) => state.setInstructions);
 
   const homeDir = useWorkspacePathsStore((state) => state.homeDir);
 

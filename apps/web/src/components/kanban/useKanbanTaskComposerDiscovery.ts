@@ -174,21 +174,25 @@ export function useKanbanTaskComposerDiscovery(input: UseKanbanTaskComposerDisco
       : { name: agent.name, displayName: agent.displayName },
   );
   const rawComposerMenuItems = useComposerCommandMenuItems({
-    composerTrigger,
-    provider: selectedProvider,
-    providerPlugins,
-    providerNativeCommands,
-    providerSkills,
-    workspaceEntries,
-    searchableModelOptions,
-    supportsFastSlashCommand: false,
-    canOfferCompactCommand: false,
-    canOfferReviewCommand: false,
-    canOfferForkCommand: false,
-    canOfferExportCommand: false,
-    surfaceAppSlashCommands: KANBAN_SUPPORTED_APP_SLASH_COMMANDS,
-    providerArtifacts: providerCommandsQuery.data?.artifacts,
-    dynamicAgents,
+    trigger: { composerTrigger },
+    catalog: {
+      provider: selectedProvider,
+      providerPlugins,
+      providerNativeCommands,
+      providerSkills,
+      searchableModelOptions,
+      providerArtifacts: providerCommandsQuery.data?.artifacts,
+      dynamicAgents,
+    },
+    references: { workspaceEntries },
+    commands: {
+      supportsFastSlashCommand: false,
+      canOfferCompactCommand: false,
+      canOfferReviewCommand: false,
+      canOfferForkCommand: false,
+      canOfferExportCommand: false,
+      surfaceAppSlashCommands: KANBAN_SUPPORTED_APP_SLASH_COMMANDS,
+    },
   });
   const composerMenuItems = rawComposerMenuItems.filter(
     (item) =>

@@ -2,13 +2,13 @@ import { MessageId } from "@glade/contracts/core/baseSchemas";
 import { resolveThreadWorkspaceState } from "@glade/shared/threads/threadEnvironment";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { resolveDefaultEnvironmentPanelOpen } from "../../ChatView.logic.session";
 import {
-  resolveDefaultEnvironmentPanelOpen,
   resolveEnvironmentPanelOpen,
   resolveEnvironmentPanelPreferenceUpdate,
   resolveEnvironmentPanelVisible,
-  type TurnDispatchSettings,
-} from "~/components/ChatView.logic";
+} from "../../ChatView.logic.worktree";
+import type { TurnDispatchSettings } from "../../ChatView.logic.subagents";
 import { useChatProjectScripts } from "~/components/chat/useChatProjectScripts";
 import { useChatRuntimeModes } from "~/components/chat/useChatRuntimeModes";
 import { useChatTranscriptScroll } from "~/components/chat/useChatTranscriptScroll";
@@ -18,14 +18,14 @@ import {
   shouldUseCompactComposerFooter,
 } from "~/components/composerFooterLayout";
 import { collapseExpandedComposerCursor, detectComposerTrigger } from "~/composer-logic";
-import { type DraftThreadEnvMode } from "~/composerDraftStore";
+import type { DraftThreadEnvMode } from "../../../composerDraftDomain";
 import { useIsMobile } from "~/hooks/useMediaQuery";
 import { useThreadWorkspaceHandoff } from "~/hooks/useThreadWorkspaceHandoff";
-import { gitGithubRepositoryQueryOptions } from "~/lib/gitReactQuery";
-import { resolveThreadEnvironmentMode } from "~/lib/threadEnvironment";
+import { gitGithubRepositoryQueryOptions } from "../../../lib/gitQueryOptions";
+import { resolveThreadEnvironmentMode } from "@glade/shared/threads/threadEnvironment";
 import { newCommandId } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
-import { useProjectEnvironmentStore } from "~/projectEnvironmentStore";
+import { useProjectPreferencesStore } from "~/projectPreferencesStore";
 import { selectRightDockState, useRightDockStore } from "~/rightDockStore";
 import { ChatViewProps } from "./chatViewSupport";
 import type { useChatComposerController } from "./useChatComposerController";
@@ -391,7 +391,7 @@ export function useChatEnvironmentController({
     isInactiveSplitPane,
   });
 
-  const selectionChatEnvMode = useProjectEnvironmentStore((state) =>
+  const selectionChatEnvMode = useProjectPreferencesStore((state) =>
     activeProject ? state.envModeByProjectId[activeProject.id] : undefined,
   );
 
@@ -410,28 +410,34 @@ export function useChatEnvironmentController({
     onMessagesTouchStart,
     onMessagesWheel,
   } = useTranscriptAssistantSelectionAction({
-    threadId,
-    enabled:
-      Boolean(activeThread) &&
-      !isInactiveSplitPane &&
-      pendingUserInputs.length === 0 &&
-      !isComposerApprovalState,
-    composerImagesRef,
-    composerFilesRef,
-    composerAssistantSelectionsRef,
-    addComposerAssistantSelectionToDraft,
-    canReferenceAssistantSelection: (selection) =>
-      !isPendingSetupBubbleId(MessageId.makeUnsafe(selection.assistantMessageId)),
-    scheduleComposerFocus,
-    onMessagesClickCaptureBase,
-    onMessagesPointerCancelBase,
-    onMessagesPointerDownBase,
-    onMessagesPointerUpBase,
-    onMessagesScrollBase,
-    onMessagesTouchEndBase,
-    onMessagesTouchMoveBase,
-    onMessagesTouchStartBase,
-    onMessagesWheelBase,
+    scope: {
+      threadId,
+      enabled:
+        Boolean(activeThread) &&
+        !isInactiveSplitPane &&
+        pendingUserInputs.length === 0 &&
+        !isComposerApprovalState,
+    },
+    composer: {
+      composerImagesRef,
+      composerFilesRef,
+      composerAssistantSelectionsRef,
+      addComposerAssistantSelectionToDraft,
+      canReferenceAssistantSelection: (selection) =>
+        !isPendingSetupBubbleId(MessageId.makeUnsafe(selection.assistantMessageId)),
+      scheduleComposerFocus,
+    },
+    events: {
+      onMessagesClickCaptureBase,
+      onMessagesPointerCancelBase,
+      onMessagesPointerDownBase,
+      onMessagesPointerUpBase,
+      onMessagesScrollBase,
+      onMessagesTouchEndBase,
+      onMessagesTouchMoveBase,
+      onMessagesTouchStartBase,
+      onMessagesWheelBase,
+    },
   });
 
   useLayoutEffect(() => {

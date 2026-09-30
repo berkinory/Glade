@@ -259,46 +259,52 @@ export function buildSearchableModelOptions(input: {
 }
 
 export function useComposerCommandMenuItems(input: {
-  composerTrigger: ComposerTrigger | null;
-  provider: ProviderKind;
-  providerPlugins: readonly ComposerPluginSuggestion[];
-  providerNativeCommands: readonly ProviderNativeCommandDescriptor[];
-  providerSkills: readonly ProviderSkillDescriptor[];
-  workspaceEntries: readonly ProjectEntry[];
-  searchableModelOptions: readonly SearchableModelOption[];
-  supportsFastSlashCommand: boolean;
-  canOfferCompactCommand: boolean;
-  canOfferReviewCommand: boolean;
-  canOfferForkCommand: boolean;
-  canOfferExportCommand: boolean;
-  surfaceAppSlashCommands?: ReadonlySet<string>;
-
-  providerArtifacts?: ProviderArtifactsState | undefined;
-  dynamicAgents: readonly ProviderAgentDescriptor[];
-  threadMentionSources?: {
-    readonly threads: readonly ComposerThreadMentionSource[];
-    readonly projects: readonly Project[];
-    readonly currentThreadId: string | null;
+  trigger: { composerTrigger: ComposerTrigger | null };
+  catalog: {
+    provider: ProviderKind;
+    providerPlugins: readonly ComposerPluginSuggestion[];
+    providerNativeCommands: readonly ProviderNativeCommandDescriptor[];
+    providerSkills: readonly ProviderSkillDescriptor[];
+    searchableModelOptions: readonly SearchableModelOption[];
+    providerArtifacts?: ProviderArtifactsState | undefined;
+    dynamicAgents: readonly ProviderAgentDescriptor[];
+  };
+  references: {
+    workspaceEntries: readonly ProjectEntry[];
+    threadMentionSources?: {
+      readonly threads: readonly ComposerThreadMentionSource[];
+      readonly projects: readonly Project[];
+      readonly currentThreadId: string | null;
+    };
+  };
+  commands: {
+    supportsFastSlashCommand: boolean;
+    canOfferCompactCommand: boolean;
+    canOfferReviewCommand: boolean;
+    canOfferForkCommand: boolean;
+    canOfferExportCommand: boolean;
+    surfaceAppSlashCommands?: ReadonlySet<string>;
   };
 }): ComposerCommandItem[] {
+  const { composerTrigger } = input.trigger;
   const {
-    composerTrigger,
     provider,
     providerPlugins,
     providerNativeCommands,
     providerSkills,
-    workspaceEntries,
     searchableModelOptions,
+    providerArtifacts,
+    dynamicAgents,
+  } = input.catalog;
+  const { workspaceEntries, threadMentionSources } = input.references;
+  const {
     supportsFastSlashCommand,
     canOfferCompactCommand,
     canOfferReviewCommand,
     canOfferForkCommand,
     canOfferExportCommand,
     surfaceAppSlashCommands,
-    providerArtifacts,
-    dynamicAgents,
-    threadMentionSources,
-  } = input;
+  } = input.commands;
 
   if (!composerTrigger) return [];
 

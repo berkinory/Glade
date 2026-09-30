@@ -1,17 +1,19 @@
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
-import { appendVoiceTranscriptToPrompt, canApplyComposerFocus } from "~/components/ChatView.logic";
+import { appendVoiceTranscriptToPrompt } from "../../ChatView.logic.worktree";
+import { canApplyComposerFocus } from "../../ChatView.logic.session";
 import { useComposerVoiceController } from "~/components/chat/useComposerVoiceController";
 import {
   collapseExpandedComposerCursor,
   detectComposerTrigger,
   expandCollapsedComposerCursor,
 } from "~/composer-logic";
-import { useComposerDraftStore, type ComposerImageAttachment } from "~/composerDraftStore";
+import { useComposerDraftStore } from "~/composerDraftStore";
+import type { ComposerImageAttachment } from "../../../composerDraftDomain";
 import { useComposerImageIntake } from "~/hooks/useComposerImageIntake";
 import { useComputerControlModeChange } from "~/hooks/useComputerControlModeChange";
 import { createPastedTextDraft } from "~/lib/composerPastedText";
-import { effectiveComposerAttachmentCount } from "~/lib/composerSend";
+import { effectiveComposerAttachmentCount } from "../../../lib/composerAttachmentCapacity";
 import {
   insertInlineTerminalContextPlaceholder,
   type TerminalContextSelection,
@@ -254,19 +256,25 @@ export function useChatComposerController({
     submitComposerVoiceRecording,
     cancelComposerVoiceRecording,
   } = useComposerVoiceController({
-    activeProject,
-    activeThreadId: activeThread?.id ?? null,
-    threadId,
-    selectedProvider,
-    activeProviderStatus: voiceProviderStatus,
-    pendingUserInputCount: pendingUserInputs.length,
-    onTranscriptReady: appendVoiceTranscriptToComposer,
-    refreshVoiceStatus: refreshProviderStatuses,
-    actionArmDelayMs: VOICE_RECORDER_ACTION_ARM_DELAY_MS,
-    failureCopy: {
-      transcriptionFailedTitle: "Couldn't transcribe voice note",
+    thread: {
+      activeProject,
+      activeThreadId: activeThread?.id ?? null,
+      threadId,
+      pendingUserInputCount: pendingUserInputs.length,
     },
-    onGuardWarning: warnVoiceGuard,
+    provider: {
+      selectedProvider,
+      activeProviderStatus: voiceProviderStatus,
+      refreshVoiceStatus: refreshProviderStatuses,
+    },
+    recording: {
+      onTranscriptReady: appendVoiceTranscriptToComposer,
+      actionArmDelayMs: VOICE_RECORDER_ACTION_ARM_DELAY_MS,
+      failureCopy: {
+        transcriptionFailedTitle: "Couldn't transcribe voice note",
+      },
+      onGuardWarning: warnVoiceGuard,
+    },
   });
 
   const addTerminalContextToDraft = useCallback(

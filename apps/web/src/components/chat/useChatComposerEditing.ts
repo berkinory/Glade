@@ -44,24 +44,56 @@ interface ChatComposerEditingInput {
   scheduleComposerFocus: () => void;
 }
 
+type ChatComposerEditingControllerInput = {
+  props: Pick<ChatComposerEditingInput, "threadId">;
+  session: Pick<
+    ChatComposerEditingInput,
+    | "promptRef"
+    | "setPrompt"
+    | "setComposerCursor"
+    | "setComposerTrigger"
+    | "composerEditorRef"
+    | "composerCursor"
+    | "composerTerminalContexts"
+    | "setComposerHighlightedItemId"
+    | "setRestoredQueuedSourceProposedPlan"
+    | "clearComposerDraftContent"
+  >;
+  provider: Pick<
+    ChatComposerEditingInput,
+    | "activePendingProgress"
+    | "activePendingUserInputKey"
+    | "pendingUserInputAnswersByRequestIdRef"
+    | "setPendingUserInputAnswersByRequestId"
+  >;
+  composer: Pick<ChatComposerEditingInput, "scheduleComposerFocus">;
+};
 export function useChatComposerEditing({
-  threadId,
-  promptRef,
-  activePendingProgress,
-  activePendingUserInputKey,
-  pendingUserInputAnswersByRequestIdRef,
-  setPendingUserInputAnswersByRequestId,
-  setPrompt,
-  setComposerCursor,
-  setComposerTrigger,
-  composerEditorRef,
-  composerCursor,
-  composerTerminalContexts,
-  setComposerHighlightedItemId,
-  setRestoredQueuedSourceProposedPlan,
-  clearComposerDraftContent,
-  scheduleComposerFocus,
-}: ChatComposerEditingInput) {
+  props,
+  session,
+  provider,
+  composer,
+}: ChatComposerEditingControllerInput) {
+  const { threadId } = props;
+  const {
+    promptRef,
+    setPrompt,
+    setComposerCursor,
+    setComposerTrigger,
+    composerEditorRef,
+    composerCursor,
+    composerTerminalContexts,
+    setComposerHighlightedItemId,
+    setRestoredQueuedSourceProposedPlan,
+    clearComposerDraftContent,
+  } = session;
+  const {
+    activePendingProgress,
+    activePendingUserInputKey,
+    pendingUserInputAnswersByRequestIdRef,
+    setPendingUserInputAnswersByRequestId,
+  } = provider;
+  const { scheduleComposerFocus } = composer;
   const applyPromptReplacement = useCallback(
     (
       rangeStart: number,

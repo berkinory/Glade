@@ -4,10 +4,8 @@ import { type ModelSlug } from "@glade/contracts/provider/model";
 import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { useCallback, useState } from "react";
 import { resolveAppModelSelection } from "~/appSettings";
-import {
-  commitAfterRuntimeModePersistence,
-  resolveCommittedProviderModel,
-} from "~/components/ChatView.logic";
+import { commitAfterRuntimeModePersistence } from "../../ChatView.logic.session";
+import { resolveCommittedProviderModel } from "../../ChatView.logic.worktree";
 import { localSubagentThreadId } from "~/components/ChatView.selectors";
 import { type ComposerModelSelectionOptions } from "~/components/chat/ComposerModelPicker";
 import {
@@ -26,10 +24,8 @@ import { useComposerThreadMentionDrop } from "~/hooks/useComposerThreadMentionDr
 import { useCopyThreadIdToClipboard } from "~/hooks/useCopyToClipboard";
 import { appendComposerPromptText } from "~/lib/chatReferences";
 import { formatComposerMentionToken } from "~/lib/composerMentions";
-import {
-  buildComposerFileAttachmentsFromFiles,
-  effectiveComposerAttachmentCount,
-} from "~/lib/composerSend";
+import { buildComposerFileAttachmentsFromFiles } from "~/lib/composerSend";
+import { effectiveComposerAttachmentCount } from "../../../lib/composerAttachmentCapacity";
 import { findProviderStatus } from "~/lib/providerAvailability";
 import {
   normalizeRuntimeModeForProvider,

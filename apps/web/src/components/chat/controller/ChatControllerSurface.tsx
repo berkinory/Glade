@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import BranchToolbar from "~/components/BranchToolbar";
-import { resolveWorkingLabel } from "~/components/ChatView.logic";
+import { resolveWorkingLabel } from "../../ChatView.logic.dispatch";
 import { GladeLogo } from "~/components/GladeLogo";
 import PlanSidebar from "~/components/PlanSidebar";
 import { PullRequestThreadDialog } from "~/components/PullRequestThreadDialog";

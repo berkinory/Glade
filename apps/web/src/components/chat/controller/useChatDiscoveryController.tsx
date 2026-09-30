@@ -5,8 +5,8 @@ import {
   resolveActiveTurnLiveDiffState,
   resolveGitRepoUiState,
   resolveSettledThreadBranchMismatch,
-  shouldRenderProviderHealthBanner,
-} from "~/components/ChatView.logic";
+} from "../../ChatView.logic.worktree";
+import { shouldRenderProviderHealthBanner } from "../../ChatView.logic.session";
 import { useChatProviderStatus } from "~/components/chat/useChatProviderStatus";
 import { toastManager } from "~/components/ui/toast";
 import { stripComposerTriggerText } from "~/composer-logic";
@@ -179,28 +179,34 @@ export function useChatDiscoveryController({
     threadExportBlockedReason(activeThread) === null;
 
   const normalComposerMenuItems = useComposerCommandMenuItems({
-    composerTrigger: effectiveComposerTrigger,
-    provider: selectedProvider,
-    providerPlugins,
-    providerNativeCommands,
-    providerSkills,
-    workspaceEntries,
-    searchableModelOptions,
-    supportsFastSlashCommand,
-    canOfferCompactCommand:
-      canCompactThread &&
-      isServerThread &&
-      activeThread?.session !== null &&
-      activeThread?.session?.status !== "closed",
-    canOfferReviewCommand,
-    canOfferForkCommand,
-    canOfferExportCommand,
-    providerArtifacts,
-    dynamicAgents,
-    threadMentionSources: {
-      threads: composerThreadSummaries,
-      projects: composerThreadProjects,
-      currentThreadId: threadId,
+    trigger: { composerTrigger: effectiveComposerTrigger },
+    catalog: {
+      provider: selectedProvider,
+      providerPlugins,
+      providerNativeCommands,
+      providerSkills,
+      searchableModelOptions,
+      providerArtifacts,
+      dynamicAgents,
+    },
+    references: {
+      workspaceEntries,
+      threadMentionSources: {
+        threads: composerThreadSummaries,
+        projects: composerThreadProjects,
+        currentThreadId: threadId,
+      },
+    },
+    commands: {
+      supportsFastSlashCommand,
+      canOfferCompactCommand:
+        canCompactThread &&
+        isServerThread &&
+        activeThread?.session !== null &&
+        activeThread?.session?.status !== "closed",
+      canOfferReviewCommand,
+      canOfferForkCommand,
+      canOfferExportCommand,
     },
   });
 

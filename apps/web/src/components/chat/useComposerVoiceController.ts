@@ -16,7 +16,7 @@ import {
   describeVoiceRecordingStartError,
   isVoiceAuthExpiredMessage,
   sanitizeVoiceErrorMessage,
-} from "../ChatView.logic";
+} from "../ChatView.logic.worktree";
 
 interface ComposerVoiceFailureCopy {
   transcriptionFailedTitle: string;
@@ -31,17 +31,23 @@ interface ComposerVoiceGuardDetails {
 }
 
 export interface UseComposerVoiceControllerOptions {
-  activeProject: Project | undefined;
-  activeThreadId: ThreadId | null;
-  threadId: ThreadId;
-  selectedProvider: ProviderKind;
-  activeProviderStatus: ServerProviderStatus | null;
-  pendingUserInputCount: number;
-  onTranscriptReady: (transcript: string) => void;
-  refreshVoiceStatus: RefreshProviderStatusesNow;
-  actionArmDelayMs?: number;
-  failureCopy?: Partial<ComposerVoiceFailureCopy>;
-  onGuardWarning?: (message: string, details: ComposerVoiceGuardDetails) => void;
+  thread: {
+    activeProject: Project | undefined;
+    activeThreadId: ThreadId | null;
+    threadId: ThreadId;
+    pendingUserInputCount: number;
+  };
+  provider: {
+    selectedProvider: ProviderKind;
+    activeProviderStatus: ServerProviderStatus | null;
+    refreshVoiceStatus: RefreshProviderStatusesNow;
+  };
+  recording: {
+    onTranscriptReady: (transcript: string) => void;
+    actionArmDelayMs?: number;
+    failureCopy?: Partial<ComposerVoiceFailureCopy>;
+    onGuardWarning?: (message: string, details: ComposerVoiceGuardDetails) => void;
+  };
 }
 
 export interface UseComposerVoiceControllerResult {
@@ -67,19 +73,14 @@ const DEFAULT_FAILURE_COPY: ComposerVoiceFailureCopy = {
 export function useComposerVoiceController(
   options: UseComposerVoiceControllerOptions,
 ): UseComposerVoiceControllerResult {
+  const { activeProject, activeThreadId, threadId, pendingUserInputCount } = options.thread;
+  const { selectedProvider, activeProviderStatus, refreshVoiceStatus } = options.provider;
   const {
-    activeProject,
-    activeThreadId,
-    threadId,
-    selectedProvider,
-    activeProviderStatus,
-    pendingUserInputCount,
     onTranscriptReady,
-    refreshVoiceStatus,
     actionArmDelayMs: actionArmDelayMsProp,
     failureCopy: failureCopyOverrides,
     onGuardWarning,
-  } = options;
+  } = options.recording;
   const actionArmDelayMs = actionArmDelayMsProp ?? 0;
   const {
     isRecording: isVoiceRecording,

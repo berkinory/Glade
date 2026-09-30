@@ -8,14 +8,16 @@ import { useQuery } from "@tanstack/react-query";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ACTIVE_TURN_LAYOUT_SETTLE_DELAY_MS,
+  shouldStartActiveTurnLayoutGrace,
+} from "../../ChatView.logic.dispatch";
+import {
   derivePromptHistoryFromMessages,
   resolveThreadArtifactWorkspaceRoot,
-  resolveThreadDetailHydration,
   shouldEnableComposerPastedTextCollapse,
-  shouldStartActiveTurnLayoutGrace,
-} from "~/components/ChatView.logic";
+} from "../../ChatView.logic.session";
+import { resolveThreadDetailHydration } from "../../ChatView.logic.worktree";
 import { type ClaudeCacheReviewDecision } from "~/components/chat/ComposerClaudeCacheReviewPanel";
-import { buildTurnDiffSummaryByAssistantMessageId } from "~/components/chat/MessagesTimeline.logic";
+import { buildTurnDiffSummaryByAssistantMessageId } from "../MessagesTimeline.logic.rowTypes";
 import { ThreadDetailHydrationState } from "~/components/chat/ThreadDetailHydrationState";
 import { usePinnedMessageActions } from "~/components/chat/environment/usePinnedMessageActions";
 import { useChatTimelineMessages } from "~/components/chat/useChatTimelineMessages";
@@ -27,13 +29,13 @@ import {
 } from "~/composerSlashCommands";
 import { useClaudeContextCompaction } from "~/hooks/useClaudeContextCompaction";
 import { useTurnDiffSummaries } from "~/hooks/useTurnDiffSummaries";
-import { gitBranchesQueryOptions, gitStatusQueryOptions } from "~/lib/gitReactQuery";
+import { gitBranchesQueryOptions, gitStatusQueryOptions } from "../../../lib/gitQueryOptions";
 import { getLocalFolderBrowseRootPath } from "~/lib/localFolderMentions";
 import { canCreateThreadHandoff } from "~/lib/threadHandoff";
 import { isMacNavigatorPlatform, newCommandId } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
-import { mergeProjectInstructionsIntoThreadNotes } from "~/projectInstructionsStore";
-import { deriveTimelineEntries } from "~/session-logic";
+import { mergeProjectInstructionsIntoThreadNotes } from "~/projectPreferencesStore";
+import { deriveTimelineEntries } from "../../../workLog.timeline";
 import { useStore } from "~/store";
 import { buildThreadSubscribeInput } from "~/threadDetailResumeCursors";
 import {

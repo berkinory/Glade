@@ -10,7 +10,7 @@ import {
   type WheelEventHandler,
 } from "react";
 import { toastManager } from "../ui/toast";
-import { type ComposerAssistantSelectionAttachment } from "../../composerDraftStore";
+import type { ComposerAssistantSelectionAttachment } from "../../composerDraftDomain";
 import {
   createAssistantSelectionAttachment,
   getAssistantSelectionValidationError,
@@ -29,41 +29,45 @@ export interface PendingTranscriptSelectionAction {
 }
 
 interface UseTranscriptAssistantSelectionActionOptions {
-  threadId: string;
-  enabled: boolean;
-  composerImagesRef: MutableRefObject<ReadonlyArray<unknown>>;
-  composerFilesRef: MutableRefObject<ReadonlyArray<unknown>>;
-  composerAssistantSelectionsRef: MutableRefObject<
-    ReadonlyArray<ComposerAssistantSelectionAttachment>
-  >;
-  addComposerAssistantSelectionToDraft: (
-    selection: ComposerAssistantSelectionAttachment,
-  ) => boolean;
-  canReferenceAssistantSelection?: (selection: TranscriptAssistantSelection) => boolean;
-  scheduleComposerFocus: () => void;
-  onMessagesClickCaptureBase: MouseEventHandler<HTMLDivElement>;
-  onMessagesPointerDownBase: PointerEventHandler<HTMLDivElement>;
-  onMessagesPointerUpBase: PointerEventHandler<HTMLDivElement>;
-  onMessagesPointerCancelBase: PointerEventHandler<HTMLDivElement>;
-  onMessagesScrollBase: () => void;
-  onMessagesWheelBase: WheelEventHandler<HTMLDivElement>;
-  onMessagesTouchStartBase: TouchEventHandler<HTMLDivElement>;
-  onMessagesTouchMoveBase: TouchEventHandler<HTMLDivElement>;
-  onMessagesTouchEndBase: TouchEventHandler<HTMLDivElement>;
+  scope: { threadId: string; enabled: boolean };
+  composer: {
+    composerImagesRef: MutableRefObject<ReadonlyArray<unknown>>;
+    composerFilesRef: MutableRefObject<ReadonlyArray<unknown>>;
+    composerAssistantSelectionsRef: MutableRefObject<
+      ReadonlyArray<ComposerAssistantSelectionAttachment>
+    >;
+    addComposerAssistantSelectionToDraft: (
+      selection: ComposerAssistantSelectionAttachment,
+    ) => boolean;
+    canReferenceAssistantSelection?: (selection: TranscriptAssistantSelection) => boolean;
+    scheduleComposerFocus: () => void;
+  };
+  events: {
+    onMessagesClickCaptureBase: MouseEventHandler<HTMLDivElement>;
+    onMessagesPointerDownBase: PointerEventHandler<HTMLDivElement>;
+    onMessagesPointerUpBase: PointerEventHandler<HTMLDivElement>;
+    onMessagesPointerCancelBase: PointerEventHandler<HTMLDivElement>;
+    onMessagesScrollBase: () => void;
+    onMessagesWheelBase: WheelEventHandler<HTMLDivElement>;
+    onMessagesTouchStartBase: TouchEventHandler<HTMLDivElement>;
+    onMessagesTouchMoveBase: TouchEventHandler<HTMLDivElement>;
+    onMessagesTouchEndBase: TouchEventHandler<HTMLDivElement>;
+  };
 }
 
 export function useTranscriptAssistantSelectionAction(
   options: UseTranscriptAssistantSelectionActionOptions,
 ) {
+  const { threadId, enabled } = options.scope;
   const {
-    threadId,
-    enabled,
     composerImagesRef,
     composerFilesRef,
     composerAssistantSelectionsRef,
     addComposerAssistantSelectionToDraft,
     canReferenceAssistantSelection,
     scheduleComposerFocus,
+  } = options.composer;
+  const {
     onMessagesClickCaptureBase,
     onMessagesPointerDownBase,
     onMessagesPointerUpBase,
@@ -73,7 +77,7 @@ export function useTranscriptAssistantSelectionAction(
     onMessagesTouchStartBase,
     onMessagesTouchMoveBase,
     onMessagesTouchEndBase,
-  } = options;
+  } = options.events;
   // Pending action keyed to its thread: a thread switch or disable derives straight back to null with
   // no state-resetting effects. The setter reads the current thread from a ref so empty-deps
   // callbacks never go stale.

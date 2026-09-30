@@ -62,14 +62,12 @@ export function useChatSubmissionController({
     promptRef,
     clearComposerDraftContent,
     setComposerDraftPrompt,
-    setRestoredQueuedSourceProposedPlan,
     setComposerCursor,
     setComposerTrigger,
     syncServerShellSnapshot,
     setComposerHighlightedItemId,
     settings,
     composerEditorRef,
-    composerTerminalContexts,
     setPrompt,
     navigate,
     prompt,
@@ -83,15 +81,10 @@ export function useChatSubmissionController({
     setIsTraitsPickerOpen,
     isComposerModelEffortPickerOpen,
     setComposerDraftProviderModelOptions,
-    composerCursor,
     handleNewThread,
     setComposerCommandPicker,
   } = session;
   const {
-    activePendingProgress,
-    activePendingUserInputKey,
-    pendingUserInputAnswersByRequestIdRef,
-    setPendingUserInputAnswersByRequestId,
     selectedProvider,
     selectedModel,
     composerModelOptions,
@@ -390,24 +383,7 @@ export function useChatSubmissionController({
     handleNavigateLocalFolder,
     setComposerPromptValue,
     clearComposerSlashDraft,
-  } = useChatComposerEditing({
-    threadId,
-    promptRef,
-    activePendingProgress,
-    activePendingUserInputKey,
-    pendingUserInputAnswersByRequestIdRef,
-    setPendingUserInputAnswersByRequestId,
-    setPrompt,
-    setComposerCursor,
-    setComposerTrigger,
-    composerEditorRef,
-    composerCursor,
-    composerTerminalContexts,
-    setComposerHighlightedItemId,
-    setRestoredQueuedSourceProposedPlan,
-    clearComposerDraftContent,
-    scheduleComposerFocus,
-  });
+  } = useChatComposerEditing({ props, session, provider, composer });
 
   const handleEnableComputerControlFromDenial = useCallback(() => {
     const currentPrompt = composerEditorRef.current?.readSnapshot()?.value ?? promptRef.current;
