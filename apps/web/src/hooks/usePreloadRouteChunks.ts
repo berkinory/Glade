@@ -1,21 +1,19 @@
 import { useEffect } from "react";
 import { useRouter } from "@tanstack/react-router";
 
-// Settings and thread routes are reached through programmatic `navigate()` calls (sidebar gear,
-// keyboard shortcut, the "New thread" button), so the router's intent-based preloading never fires
-// for them — without this, the first open pays the chunk download/parse cost. For a brand-new
-// thread that cost lands right on the draft-landing paint, so warming the thread chunk is the
-// largest single lever for new-chat startup time.
+// Programmatic navigation bypasses intent preloading. Warm chunks directly: a synthetic thread
+// preload creates loader matches that navigation can evict while they are still loading.
 export function usePreloadRouteChunks() {
   const router = useRouter();
 
   useEffect(() => {
-    router
-      .preloadRoute({ to: "/$threadId", params: { threadId: "chunk-preload" } })
-      .catch(() => {});
+    const reportPreloadFailure = (error: unknown) => {
+      console.warn("[router] Route chunk preload failed", error);
+    };
+    void router.loadRouteChunk(router.routesById["/_chat/$threadId"])?.catch(reportPreloadFailure);
 
     const preloadSettings = () => {
-      router.preloadRoute({ to: "/settings" }).catch(() => {});
+      void router.loadRouteChunk(router.routesById["/_chat/settings"])?.catch(reportPreloadFailure);
     };
 
     if (typeof requestIdleCallback === "function") {
