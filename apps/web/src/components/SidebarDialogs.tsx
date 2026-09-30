@@ -1,3 +1,4 @@
+import { useStore } from "../store";
 import { firstLocalServerUrl } from "../hooks/useSidebarProjectRunController";
 import { createClientPointMenuAnchor } from "~/lib/clientPointMenuAnchor";
 import { useMemo } from "react";
@@ -64,7 +65,6 @@ export function SidebarDialogs({ context }: { context: ReturnType<typeof useSide
     githubProvisioningAvailable,
     spaces,
     activeSpaceId,
-    sidebarThreadSummaryById,
     homeDir,
     navigate,
     createProjectDialogOpen,
@@ -123,6 +123,8 @@ export function SidebarDialogs({ context }: { context: ReturnType<typeof useSide
     projectRunsByProjectId,
     projectRunServerByProjectId,
   } = context;
+  const sidebarThreadSummaryById = useStore((state) => state.sidebarThreadSummaryById);
+
   const relocateProjectDialogProject = relocateProjectDialogId
     ? (projectById.get(relocateProjectDialogId) ?? null)
     : null;

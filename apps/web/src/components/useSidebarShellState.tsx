@@ -110,8 +110,6 @@ export function useSidebarShellState() {
 
   const syncServerShellSnapshot = useStore((store) => store.syncServerShellSnapshot);
 
-  const markThreadVisited = useStore((store) => store.markThreadVisited);
-
   const removeDeletedProjectFromClientState = useStore(
     (store) => store.removeDeletedProjectFromClientState,
   );
@@ -199,8 +197,6 @@ export function useSidebarShellState() {
   const activeSplitView = useSplitViewStore(
     useMemo(() => selectSplitView(routeSearch.splitViewId ?? null), [routeSearch.splitViewId]),
   );
-
-  const splitViewsById = useSplitViewStore((store) => store.splitViewsById);
 
   useEffect(() => {
     const api = readNativeApi();
@@ -529,17 +525,14 @@ export function useSidebarShellState() {
         return;
       }
       if (threadStatus.label === "Completed") {
-        markThreadVisited(threadId, thread.latestTurn?.completedAt ?? undefined);
+        useStore
+          .getState()
+          .markThreadVisited(threadId, thread.latestTurn?.completedAt ?? undefined);
         return;
       }
       dismissThreadStatus(threadId, threadStatus.dismissalKey);
     },
-    [
-      dismissThreadStatus,
-      markThreadVisited,
-      resolveThreadStatusForSidebar,
-      sidebarThreadSummaryById,
-    ],
+    [dismissThreadStatus, resolveThreadStatusForSidebar, sidebarThreadSummaryById],
   );
 
   const routeTerminalState = routeThreadId
@@ -690,12 +683,8 @@ export function useSidebarShellState() {
     activeSpaceId,
     threadsHydrated,
     isRailLayout,
-    sidebarThreadSummaryById,
     syncServerShellSnapshot,
-    markThreadVisited,
     removeDeletedProjectFromClientState,
-    terminalStateByThreadId,
-    draftThreadsByThreadId,
     homeDir,
     chatWorkspaceRoot,
     navigate,
@@ -716,7 +705,6 @@ export function useSidebarShellState() {
     routeSearch,
     activeSettingsSection,
     activeSplitView,
-    splitViewsById,
     keybindings,
     serverCwd,
     providerStatuses,

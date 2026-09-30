@@ -31,14 +31,11 @@ import type { useSidebarProjectNavigation } from "./useSidebarProjectNavigation"
 export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarProjectNavigation>) {
   const {
     projects,
-    sidebarThreadSummaryById,
-    terminalStateByThreadId,
     navigate,
     appSettings,
     routeThreadId,
     routeSearch,
     activeSplitView,
-    splitViewsById,
     setRenameDialogThreadId,
     setProjectContextMenuState,
     setOptimisticActiveThreadId,
@@ -56,6 +53,10 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
     projectCwdById,
     currentProjectShortcutTargetId,
   } = context;
+  const terminalStateByThreadId = useTerminalStateStore((state) => state.terminalStateByThreadId);
+  const splitViewsById = useSplitViewStore((state) => state.splitViewsById);
+  const sidebarThreadSummaryById = useStore((state) => state.sidebarThreadSummaryById);
+
   const markThreadUnread = useStore((state) => state.markThreadUnread);
   const openChatThreadPage = useTerminalStateStore((state) => state.openChatThreadPage);
   const openTerminalThreadPage = useTerminalStateStore((state) => state.openTerminalThreadPage);

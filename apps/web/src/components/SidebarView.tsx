@@ -91,7 +91,6 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
     activeSpaceId,
     threadsHydrated,
     isRailLayout,
-    markThreadVisited,
     navigate,
     isOnSettings,
     appSettings,
@@ -178,6 +177,8 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
     railShortcuts,
     railSpacesProject,
   } = context;
+  const markThreadVisited = useStore((state) => state.markThreadVisited);
+
   const setAllProjectsExpanded = useStore((state) => state.setAllProjectsExpanded);
   const collapseProjectsExcept = useStore((state) => state.collapseProjectsExcept);
 

@@ -1,3 +1,4 @@
+import { useTerminalStateStore } from "../terminalStateStore";
 import { useRailShellStore } from "../railShellStore";
 import { useSidebarStateStore } from "../sidebarStateStore";
 import { AddPlusIcon, NewThreadIcon } from "~/lib/icons";
@@ -89,7 +90,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
   const {
     spaces,
     threadsHydrated,
-    terminalStateByThreadId,
     homeDir,
     automationsByThreadId,
     handleNewThread,
@@ -134,6 +134,8 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
     handleProjectTitleKeyDown,
     showMoreThreadsForProject,
   } = context;
+  const terminalStateByThreadId = useTerminalStateStore((state) => state.terminalStateByThreadId);
+
   const openRailSpacesProject = useRailShellStore((state) => state.openSpacesProject);
   const closeRailSpacesProject = useRailShellStore((state) => state.closeSpacesProject);
 

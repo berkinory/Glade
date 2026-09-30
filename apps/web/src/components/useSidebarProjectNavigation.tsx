@@ -1,3 +1,4 @@
+import { useSplitViewStore } from "../splitViewStore";
 import { useStore } from "../store";
 import { useCallback, useEffect, startTransition, useMemo } from "react";
 import { MAX_PINNED_PROJECTS } from "@glade/contracts/orchestration/threadEntities";
@@ -48,7 +49,6 @@ export function useSidebarProjectNavigation(context: ReturnType<typeof useSideba
     activeSpaceId,
     threadsHydrated,
     syncServerShellSnapshot,
-    draftThreadsByThreadId,
     homeDir,
     chatWorkspaceRoot,
     navigate,
@@ -57,7 +57,6 @@ export function useSidebarProjectNavigation(context: ReturnType<typeof useSideba
     serverSettings,
     handleNewThread,
     handleNewChat,
-    splitViewsById,
     serverCwd,
     providerStatuses,
     focusedProjectId,
@@ -76,6 +75,9 @@ export function useSidebarProjectNavigation(context: ReturnType<typeof useSideba
     ordinarySpaceProjects,
     projectByIdRef,
   } = context;
+  const draftThreadsByThreadId = useComposerDraftStore((state) => state.draftThreadsByThreadId);
+  const splitViewsById = useSplitViewStore((state) => state.splitViewsById);
+
   const setProjectExpanded = useStore((state) => state.setProjectExpanded);
 
   const pinProjectLocally = useSidebarStateStore((state) => state.pinProject);
