@@ -112,16 +112,11 @@ function normalizeLatestTurn(
   };
 }
 
-export function normalizeThreadFromReadModel(
-  incoming: ReadModelThread,
+function normalizeThreadSharedMetadata(
+  incoming: ReadModelThread | ShellSnapshotThread,
   previous: Thread | undefined,
-  snapshotSequence?: number,
-): Thread {
-  const modelSelection = normalizeModelSelection(incoming.modelSelection, previous?.modelSelection);
-  const session = normalizeThreadSession(incoming.session, previous?.session);
-  const messages = normalizeChatMessages(incoming.messages, previous?.messages);
-  const proposedPlans = normalizeProposedPlans(incoming.proposedPlans, previous?.proposedPlans);
-  const latestTurn = normalizeLatestTurn(incoming.latestTurn, previous?.latestTurn);
+  snapshotSequence: number | undefined,
+) {
   const handoff =
     previous?.handoff && incoming.handoff && deepEqualJson(previous.handoff, incoming.handoff)
       ? previous.handoff
@@ -145,6 +140,21 @@ export function normalizeThreadFromReadModel(
     deepEqualJson(previous.lastKnownPr, incoming.lastKnownPr)
       ? previous.lastKnownPr
       : (incoming.lastKnownPr ?? null);
+  return { handoff, claudeCacheReviewSequence, claudeCacheReview, lastKnownPr };
+}
+
+export function normalizeThreadFromReadModel(
+  incoming: ReadModelThread,
+  previous: Thread | undefined,
+  snapshotSequence?: number,
+): Thread {
+  const modelSelection = normalizeModelSelection(incoming.modelSelection, previous?.modelSelection);
+  const session = normalizeThreadSession(incoming.session, previous?.session);
+  const messages = normalizeChatMessages(incoming.messages, previous?.messages);
+  const proposedPlans = normalizeProposedPlans(incoming.proposedPlans, previous?.proposedPlans);
+  const latestTurn = normalizeLatestTurn(incoming.latestTurn, previous?.latestTurn);
+  const { handoff, claudeCacheReviewSequence, claudeCacheReview, lastKnownPr } =
+    normalizeThreadSharedMetadata(incoming, previous, snapshotSequence);
   const pinnedMessages =
     previous?.pinnedMessages &&
     deepEqualJson(previous.pinnedMessages, incoming.pinnedMessages ?? null)
@@ -350,29 +360,8 @@ export function normalizeThreadShellSnapshot(
   const modelSelection = normalizeModelSelection(incoming.modelSelection, previous?.modelSelection);
   const session = normalizeThreadSession(incoming.session, previous?.session);
   const latestTurn = normalizeLatestTurn(incoming.latestTurn, previous?.latestTurn);
-  const handoff =
-    previous?.handoff && incoming.handoff && deepEqualJson(previous.handoff, incoming.handoff)
-      ? previous.handoff
-      : (incoming.handoff ?? null);
-  const incomingClaudeCacheReview =
-    snapshotSequence !== undefined && snapshotSequence < (previous?.claudeCacheReviewSequence ?? 0)
-      ? previous?.claudeCacheReview
-      : incoming.claudeCacheReview;
-  const claudeCacheReviewSequence =
-    snapshotSequence === undefined
-      ? previous?.claudeCacheReviewSequence
-      : Math.max(snapshotSequence, previous?.claudeCacheReviewSequence ?? 0);
-  const claudeCacheReview =
-    previous?.claudeCacheReview &&
-    deepEqualJson(previous.claudeCacheReview, incomingClaudeCacheReview ?? null)
-      ? previous.claudeCacheReview
-      : (incomingClaudeCacheReview ?? null);
-  const lastKnownPr =
-    previous?.lastKnownPr &&
-    incoming.lastKnownPr &&
-    deepEqualJson(previous.lastKnownPr, incoming.lastKnownPr)
-      ? previous.lastKnownPr
-      : (incoming.lastKnownPr ?? null);
+  const { handoff, claudeCacheReviewSequence, claudeCacheReview, lastKnownPr } =
+    normalizeThreadSharedMetadata(incoming, previous, snapshotSequence);
   const error = normalizeThreadErrorMessage(session?.lastError);
   const lastVisitedAt = previous?.lastVisitedAt ?? incoming.updatedAt;
   const nextWorktreePath = incoming.worktreePath;
