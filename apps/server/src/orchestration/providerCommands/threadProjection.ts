@@ -10,13 +10,14 @@ import { type RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
 import { DEFAULT_RUNTIME_MODE } from "./contextLifecycle";
 import { activeThreadGoal } from "../../provider/core/goalMode.ts";
 import { type ProviderIntentEvent } from "../providerIntentClassification.ts";
-import { makeProviderProjectionAccess } from "./projectionAccess";
+import type { ProviderProjectionAccessShape } from "../Services/ProviderProjectionAccess.ts";
 
 export function makeProviderThreadProjection(input: {
+  readonly projectionAccess: ProviderProjectionAccessShape;
   readonly orchestrationEngine: ServiceMap.Service.Shape<typeof OrchestrationEngineService>;
-  readonly resolveThread: ReturnType<typeof makeProviderProjectionAccess>["resolveThread"];
 }) {
-  const { orchestrationEngine, resolveThread } = input;
+  const { orchestrationEngine, projectionAccess } = input;
+  const { resolveThread } = projectionAccess;
   const appendProviderFailureActivity = (input: {
     readonly threadId: ThreadId;
     readonly kind:

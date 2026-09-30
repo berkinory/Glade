@@ -1,5 +1,6 @@
 import type { ServiceMap } from "effect";
-import { makeProviderProjectionAccess } from "./projectionAccess";
+import { ThreadSessionSettings } from "../Services/ThreadSessionSettings.ts";
+import type { ProviderProjectionAccessShape } from "../Services/ProviderProjectionAccess.ts";
 import { makeProviderThreadProjection } from "./threadProjection";
 import { Option, Effect, Cause, Schema, Exit } from "effect";
 import { ComputerService } from "../../computer/Services/ComputerService";
@@ -19,29 +20,25 @@ import { DEFAULT_RUNTIME_MODE } from "./contextLifecycle";
 import { resolveProviderDispatchAttachments } from "../../provider/core/providerAttachmentPaths.ts";
 import { ProviderAdapterValidationError } from "../../provider/core/Errors.ts";
 import { providerFailureMessage } from "./providerCallPolicy";
-import { PendingQueuedDispatch } from "./runtimeState";
+import {
+  QueuedDispatchState,
+  type QueuedDispatchReservation,
+} from "../Services/QueuedDispatchState.ts";
 import { makeProviderQueuedTurns } from "./queuedTurns";
 import { makeProviderTaskControl } from "./taskControl";
 import { makeProviderConversationNaming } from "./conversationNaming";
-import { makeProviderSessionConfiguration } from "./sessionConfiguration";
 import { makeProviderTurnDispatch } from "./turnDispatch";
 
 export function makeProviderTurnStart(input: {
-  readonly resolveProviderSessionThread: ReturnType<
-    typeof makeProviderProjectionAccess
-  >["resolveProviderSessionThread"];
-  readonly pendingQueuedDispatchBySessionThread: Map<string, PendingQueuedDispatch>;
+  readonly projectionAccess: ProviderProjectionAccessShape;
+  readonly queuedDispatchState: ServiceMap.Service.Shape<typeof QueuedDispatchState>;
   readonly drainQueuedTurnsForSession: ReturnType<
     typeof makeProviderQueuedTurns
   >["drainQueuedTurnsForSession"];
   readonly hasQueuedTurnStart: ReturnType<typeof makeProviderQueuedTurns>["hasQueuedTurnStart"];
-  readonly resolveLiveProviderTurnId: ReturnType<
-    typeof makeProviderProjectionAccess
-  >["resolveLiveProviderTurnId"];
   readonly hasHandledTurnStartRecently: ReturnType<
     typeof makeProviderQueuedTurns
   >["hasHandledTurnStartRecently"];
-  readonly resolveThread: ReturnType<typeof makeProviderProjectionAccess>["resolveThread"];
   readonly enqueueQueuedTurnStart: ReturnType<
     typeof makeProviderQueuedTurns
   >["enqueueQueuedTurnStart"];
@@ -52,7 +49,7 @@ export function makeProviderTurnStart(input: {
   readonly gatewaySessions: Option.Option<
     ServiceMap.Service.Shape<typeof AgentGatewaySessionRegistry>
   >;
-  readonly threadSessionComputerControl: Map<string, boolean>;
+  readonly threadSessionSettings: ServiceMap.Service.Shape<typeof ThreadSessionSettings>;
   readonly orchestrationEngine: ServiceMap.Service.Shape<typeof OrchestrationEngineService>;
   readonly interruptProviderTurn: ReturnType<
     typeof makeProviderTaskControl
@@ -66,9 +63,6 @@ export function makeProviderTurnStart(input: {
   readonly maybeGenerateAndRenameThreadTitleForFirstTurn: ReturnType<
     typeof makeProviderConversationNaming
   >["maybeGenerateAndRenameThreadTitleForFirstTurn"];
-  readonly editResendTurnStartKey: ReturnType<
-    typeof makeProviderSessionConfiguration
-  >["editResendTurnStartKey"];
   readonly dispatchTurnForThread: ReturnType<
     typeof makeProviderTurnDispatch
   >["dispatchTurnForThread"];
@@ -76,27 +70,20 @@ export function makeProviderTurnStart(input: {
   readonly setThreadSessionError: ReturnType<
     typeof makeProviderThreadProjection
   >["setThreadSessionError"];
-  readonly editResendTurnStartKeys: Set<string>;
   readonly setClaudeCacheReview: ReturnType<
     typeof makeProviderThreadProjection
   >["setClaudeCacheReview"];
-  readonly withProviderSessionLease: ReturnType<
-    typeof makeProviderProjectionAccess
-  >["withProviderSessionLease"];
 }) {
   const {
-    resolveProviderSessionThread,
-    pendingQueuedDispatchBySessionThread,
+    queuedDispatchState,
     drainQueuedTurnsForSession,
     hasQueuedTurnStart,
-    resolveLiveProviderTurnId,
     hasHandledTurnStartRecently,
-    resolveThread,
     enqueueQueuedTurnStart,
     appendProviderFailureActivity,
     computerService,
     gatewaySessions,
-    threadSessionComputerControl,
+    threadSessionSettings,
     orchestrationEngine,
     interruptProviderTurn,
     setThreadSession,
@@ -104,14 +91,18 @@ export function makeProviderTurnStart(input: {
     managedAttachments,
     maybeGenerateAndRenameWorktreeBranchForFirstTurn,
     maybeGenerateAndRenameThreadTitleForFirstTurn,
-    editResendTurnStartKey,
     dispatchTurnForThread,
     providerService,
     setThreadSessionError,
-    editResendTurnStartKeys,
     setClaudeCacheReview,
-    withProviderSessionLease,
+    projectionAccess,
   } = input;
+  const {
+    resolveProviderSessionThread,
+    resolveLiveProviderTurnId,
+    resolveThread,
+    withProviderSessionLease,
+  } = projectionAccess;
   const processTurnStartRequestedWithoutLease = Effect.fnUntraced(function* (
     event: Extract<ProviderIntentEvent, { type: "thread.turn-start-requested" }>,
     acceptedCacheReview?: PendingClaudeCacheReview,
@@ -119,28 +110,32 @@ export function makeProviderTurnStart(input: {
   ) {
     const sessionThreadId =
       (yield* resolveProviderSessionThread(event.payload.threadId))?.id ?? event.payload.threadId;
-    const matchesEvent = (entry: PendingQueuedDispatch | undefined) =>
+    const matchesEvent = (entry: QueuedDispatchReservation | undefined) =>
       entry?.queuedThreadId === (event.payload.threadId as string) &&
       entry.messageId === event.payload.messageId;
-    const reservationAtStart = pendingQueuedDispatchBySessionThread.get(sessionThreadId);
+    const reservationAtStart = queuedDispatchState.getReservation(sessionThreadId);
     const isPendingQueuedDispatch = matchesEvent(reservationAtStart);
-    const ownsReservation = (entry: PendingQueuedDispatch | undefined) =>
-      isPendingQueuedDispatch && entry === reservationAtStart;
+    const ownsReservation = (entry: QueuedDispatchReservation | undefined) =>
+      isPendingQueuedDispatch && entry?.id === reservationAtStart?.id;
     const clearPendingQueuedDispatch = Effect.sync(() => {
-      if (ownsReservation(pendingQueuedDispatchBySessionThread.get(sessionThreadId))) {
-        pendingQueuedDispatchBySessionThread.delete(sessionThreadId);
+      if (
+        reservationAtStart &&
+        ownsReservation(queuedDispatchState.getReservation(sessionThreadId))
+      ) {
+        queuedDispatchState.clearIfOwned(sessionThreadId, reservationAtStart.id);
       }
     });
     const bindPendingQueuedDispatchToTurn = Effect.fnUntraced(function* (turnId: TurnId) {
-      const reservation = pendingQueuedDispatchBySessionThread.get(sessionThreadId);
+      const reservation = queuedDispatchState.getReservation(sessionThreadId);
       if (reservation === undefined || !ownsReservation(reservation)) {
         return;
       }
-      reservation.releaseOnTurnId = turnId;
-      const completedBeforeBinding = reservation.pendingTerminalTurnIds?.has(turnId);
-      delete reservation.pendingTerminalTurnIds;
+      const completedBeforeBinding = queuedDispatchState.bindToTurn(
+        sessionThreadId,
+        reservation.id,
+        turnId,
+      );
       if (completedBeforeBinding) {
-        pendingQueuedDispatchBySessionThread.delete(sessionThreadId);
         yield* drainQueuedTurnsForSession(event.payload.threadId);
       }
     });
@@ -154,7 +149,7 @@ export function makeProviderTurnStart(input: {
     // exactly as the `finally` did.
     const releaseOrphanedQueuedDispatchReservation = (redrain: boolean) =>
       Effect.gen(function* () {
-        const reservation = pendingQueuedDispatchBySessionThread.get(sessionThreadId);
+        const reservation = queuedDispatchState.getReservation(sessionThreadId);
         if (
           !isPendingQueuedDispatch ||
           reservation === undefined ||
@@ -230,7 +225,7 @@ export function makeProviderTurnStart(input: {
               event.payload.threadId,
               providerName as ProviderKind,
             )
-          : (threadSessionComputerControl.get(event.payload.threadId) ?? false));
+          : (threadSessionSettings.getComputerControl(event.payload.threadId) ?? false));
       // Installing a new catalog requires a turn boundary; a live steer cannot gain tools merely because
       // the composer consumed its activation chip.
       const isNativeSteer =
@@ -323,7 +318,6 @@ export function makeProviderTurnStart(input: {
         event.payload.dispatchMode === "steer" && !isNativeSteer
           ? "queue"
           : event.payload.dispatchMode;
-      const editResendKey = editResendTurnStartKey(event.payload.threadId, event.payload.messageId);
 
       const startedTurn = yield* dispatchTurnForThread({
         cacheReviewSource: event,
@@ -425,7 +419,14 @@ export function makeProviderTurnStart(input: {
                 return yield* Effect.failCause(cause);
               }),
         ),
-        Effect.ensuring(Effect.sync(() => editResendTurnStartKeys.delete(editResendKey))),
+        Effect.ensuring(
+          Effect.sync(() =>
+            threadSessionSettings.clearEditResendStart(
+              event.payload.threadId,
+              event.payload.messageId,
+            ),
+          ),
+        ),
       );
       // Persist the user/turn boundary as soon as the provider accepts a new turn. A turn that stops
       // before assistant text arrives otherwise leaves the user message without turn metadata, making

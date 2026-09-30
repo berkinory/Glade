@@ -5,9 +5,9 @@ import {
   PROVIDER_COMMAND_REACTOR_CONSUMER,
   type ProviderBlockingDeliveryEvidence,
 } from "../../persistence/Services/OrchestrationEventDeliveries.ts";
-import { makeProviderProjectionAccess } from "./projectionAccess";
+import type { ProviderProjectionAccessShape } from "../Services/ProviderProjectionAccess.ts";
 import { makeProviderThreadProjection } from "./threadProjection";
-import { Duration, Ref, Semaphore, Effect, Queue, Cause, Stream, Option } from "effect";
+import { Duration, Effect, Queue, Cause, Stream, Option } from "effect";
 import { AgentGatewayOperationRepository } from "../../agentGateway/Services/AgentGatewayOperationRepository.ts";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
@@ -15,7 +15,7 @@ import {
   awaitInflightClaimSettlement,
   PROVIDER_COMMAND_CLAIM_LEASE_MS,
 } from "./deliveryClaims";
-import { type ProviderCommandReactorShape } from "../Services/ProviderCommandReactor.ts";
+import { ProviderDeliveryGate } from "../Services/ProviderDeliveryGate.ts";
 import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import {
   type ProviderIntentEvent,
@@ -42,13 +42,12 @@ import { makeProviderDomainEvents } from "./domainEvents";
 import { makeProviderQueuedTurns } from "./queuedTurns";
 
 export function makeProviderIntentSource(input: {
+  readonly projectionAccess: ProviderProjectionAccessShape;
   readonly orchestrationEngine: ServiceMap.Service.Shape<typeof OrchestrationEngineService>;
   readonly deliveryRepository: ServiceMap.Service.Shape<
     typeof OrchestrationEventDeliveryRepository
   >;
-  readonly quarantinedThreads: Set<string>;
-  readonly acceptedCompletionContexts: Set<number>;
-  readonly resolveThread: ReturnType<typeof makeProviderProjectionAccess>["resolveThread"];
+  readonly deliveryGate: ServiceMap.Service.Shape<typeof ProviderDeliveryGate>;
   readonly setClaudeCacheReview: ReturnType<
     typeof makeProviderThreadProjection
   >["setClaudeCacheReview"];
@@ -86,18 +85,12 @@ export function makeProviderIntentSource(input: {
   readonly readOrchestrationEventAtSequence: ReturnType<
     typeof makeProviderQueuedTurns
   >["readOrchestrationEventAtSequence"];
-  readonly deliveryReconciler: Ref.Ref<
-    ProviderCommandReactorShape["reconcileDelivery"] | undefined
-  >;
-  readonly deliverySourceLock: Semaphore.Semaphore;
   readonly setThreadSession: ReturnType<typeof makeProviderThreadProjection>["setThreadSession"];
 }) {
   const {
     orchestrationEngine,
     deliveryRepository,
-    quarantinedThreads,
-    acceptedCompletionContexts,
-    resolveThread,
+    deliveryGate,
     setClaudeCacheReview,
     appendProviderFailureActivity,
     setThreadSessionError,
@@ -113,10 +106,10 @@ export function makeProviderIntentSource(input: {
     readClaudeCompactionAttempt,
     processClaudeCompactionTerminal,
     readOrchestrationEventAtSequence,
-    deliveryReconciler,
-    deliverySourceLock,
     setThreadSession,
+    projectionAccess,
   } = input;
+  const { resolveThread } = projectionAccess;
   const startProviderIntentSource = Effect.gen(function* () {
     const liveEventSource = yield* orchestrationEngine.subscribeDomainEvents;
     // Preserve the source/consumer handoff without retaining an unbounded event mirror while startup or
@@ -161,13 +154,13 @@ export function makeProviderIntentSource(input: {
     });
 
     const isThreadQuarantined = Effect.fnUntraced(function* (threadId: string) {
-      if (quarantinedThreads.has(threadId)) return true;
+      if (deliveryGate.isQuarantined(threadId)) return true;
       const blocker = yield* deliveryRepository.firstBlockingDeliveryForThread({
         consumerName: PROVIDER_COMMAND_REACTOR_CONSUMER,
         threadId,
       });
       if (Option.isNone(blocker)) return false;
-      quarantinedThreads.add(threadId);
+      deliveryGate.quarantine(threadId);
       return true;
     });
 
@@ -177,7 +170,7 @@ export function makeProviderIntentSource(input: {
       readonly state: "dead" | "uncertain";
       readonly detail: string;
     }) {
-      acceptedCompletionContexts.delete(input.event.sequence);
+      deliveryGate.clearCompletionContext(input.event.sequence);
       yield* Effect.logError("provider command delivery entered terminal failure", {
         eventType: input.event.type,
         eventSequence: input.event.sequence,
@@ -200,7 +193,7 @@ export function makeProviderIntentSource(input: {
           ),
         );
       }
-      quarantinedThreads.add(input.event.payload.threadId);
+      deliveryGate.quarantine(input.event.payload.threadId);
       if (input.event.type === "thread.claude-cache-response-requested") {
         const review = (yield* resolveThread(input.event.payload.threadId))?.claudeCacheReview;
         if (review?.reviewId === input.event.payload.review.reviewId) {
@@ -282,7 +275,7 @@ export function makeProviderIntentSource(input: {
           return;
         }
         if (existing.value.state === "dead" || existing.value.state === "uncertain") {
-          quarantinedThreads.add(threadId);
+          deliveryGate.quarantine(threadId);
           yield* requireCursorAdvance(event);
           return;
         }
@@ -468,7 +461,7 @@ export function makeProviderIntentSource(input: {
             }
             const completed = yield* gatewayOperations.completions.settleContext(
               event.sequence,
-              acceptedCompletionContexts.has(event.sequence),
+              deliveryGate.hasCompletionContext(event.sequence),
               deliveryRepository.complete({
                 consumerName: PROVIDER_COMMAND_REACTOR_CONSUMER,
                 eventSequence: event.sequence,
@@ -481,7 +474,7 @@ export function makeProviderIntentSource(input: {
                 new Error(`Provider command delivery ${event.sequence} lost settlement ownership`),
               );
             }
-            acceptedCompletionContexts.delete(event.sequence);
+            deliveryGate.clearCompletionContext(event.sequence);
             yield* refreshCursor;
             return;
           }
@@ -622,7 +615,7 @@ export function makeProviderIntentSource(input: {
       readonly eventSequence: number;
       readonly threadId: string;
     }) {
-      quarantinedThreads.delete(input.threadId);
+      deliveryGate.releaseQuarantine(input.threadId);
       const event = yield* readProviderIntentEvent(input.eventSequence);
       if (!isClaimedProviderIntent(event)) {
         return yield* Effect.die(
@@ -637,7 +630,7 @@ export function makeProviderIntentSource(input: {
         eventSequence: input.eventSequence,
       });
       if (Option.isSome(delivery) && delivery.value.state === "succeeded") {
-        quarantinedThreads.delete(input.threadId);
+        deliveryGate.releaseQuarantine(input.threadId);
         yield* replayQuarantinedThreadSideEffects({
           threadId: input.threadId,
           afterSequence: input.eventSequence,
@@ -645,9 +638,9 @@ export function makeProviderIntentSource(input: {
       }
     });
 
-    yield* Ref.set(deliveryReconciler, (input) =>
+    yield* deliveryGate.setReconciler((input) =>
       Effect.scoped(
-        deliverySourceLock.withPermits(1)(
+        deliveryGate.withSourceLock(
           Effect.gen(function* () {
             const reconciledAt = new Date().toISOString();
             const delivery = yield* deliveryRepository.getDelivery({
@@ -717,7 +710,7 @@ export function makeProviderIntentSource(input: {
             if (input.outcome === "safe_retry") {
               yield* resumeRetryableDelivery(input);
             } else {
-              quarantinedThreads.delete(input.threadId);
+              deliveryGate.releaseQuarantine(input.threadId);
               const currentReview = (yield* resolveThread(input.threadId))?.claudeCacheReview;
               const revokedCompaction =
                 reconciledEvent.type === "thread.claude-cache-response-requested" &&
@@ -849,7 +842,7 @@ export function makeProviderIntentSource(input: {
           });
           if (Option.isNone(reconciled)) continue;
 
-          quarantinedThreads.delete(blocker.threadId);
+          deliveryGate.releaseQuarantine(blocker.threadId);
           if (settledQuit) {
             const remaining = yield* deliveryRepository.firstBlockingDeliveryForThread({
               consumerName: PROVIDER_COMMAND_REACTOR_CONSUMER,
@@ -912,12 +905,12 @@ export function makeProviderIntentSource(input: {
     const retryableDeliveries = yield* deliveryRepository.listRetryableDeliveries(
       PROVIDER_COMMAND_REACTOR_CONSUMER,
     );
-    yield* deliverySourceLock.withPermits(1)(
+    yield* deliveryGate.withSourceLock(
       Effect.forEach(retryableDeliveries, resumeRetryableDelivery, { discard: true }),
     );
 
     const processOrderedEventSerially = (event: OrchestrationEvent) =>
-      deliverySourceLock.withPermits(1)(processOrderedEvent(event));
+      deliveryGate.withSourceLock(processOrderedEvent(event));
 
     const replayThrough = yield* orchestrationEngine.getEventHighWaterSequence;
     yield* Stream.runForEach(

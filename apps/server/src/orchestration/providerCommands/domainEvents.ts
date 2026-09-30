@@ -1,9 +1,6 @@
 import type { ServiceMap } from "effect";
-import { makeProviderProjectionAccess } from "./projectionAccess";
-import {
-  type ModelSelection,
-  type ProviderStartOptions,
-} from "@glade/contracts/provider/sessionPolicy";
+import { ThreadSessionSettings } from "../Services/ThreadSessionSettings.ts";
+import type { ProviderProjectionAccessShape } from "../Services/ProviderProjectionAccess.ts";
 import { Option, Duration, Effect, Cause } from "effect";
 import { ComputerService } from "../../computer/Services/ComputerService";
 import { QueuedTurnPromotionRepository } from "../../persistence/Services/QueuedTurnPromotions.ts";
@@ -15,13 +12,13 @@ import {
   PROVIDER_COMMAND_REACTOR_CONSUMER,
 } from "../../persistence/Services/OrchestrationEventDeliveries.ts";
 import { ProviderQueueDrainEvent } from "./deliveryClaims";
-import { TurnId, CommandId } from "@glade/contracts/core/baseSchemas";
+import { CommandId } from "@glade/contracts/core/baseSchemas";
 import { type ProviderIntentEvent } from "../providerIntentClassification.ts";
 import { activeThreadGoal } from "../../provider/core/goalMode.ts";
 import { providerFailureMessage } from "./providerCallPolicy";
 import { makeProviderCompaction } from "./compaction";
 import { makeProviderContextBootstrap } from "./contextBootstrap";
-import { PendingQueuedDispatch } from "./runtimeState";
+import { QueuedDispatchState } from "../Services/QueuedDispatchState.ts";
 import { makeProviderQueuedTurns } from "./queuedTurns";
 import { makeProviderSessionConfiguration } from "./sessionConfiguration";
 import { makeProviderTaskControl } from "./taskControl";
@@ -30,24 +27,18 @@ import { makeProviderGoalContinuation } from "./goalContinuation";
 import { makeProviderConversationEdit } from "./conversationEdit";
 
 export function makeProviderDomainEvents(input: {
+  readonly projectionAccess: ProviderProjectionAccessShape;
   readonly processClaudeCompactionTerminal: ReturnType<
     typeof makeProviderCompaction
   >["processClaudeCompactionTerminal"];
   readonly observePendingContextBootstrapTerminalEvent: ReturnType<
     typeof makeProviderContextBootstrap
   >["observePendingContextBootstrapTerminalEvent"];
-  readonly resolveProviderSessionThread: ReturnType<
-    typeof makeProviderProjectionAccess
-  >["resolveProviderSessionThread"];
-  readonly pendingQueuedDispatchBySessionThread: Map<string, PendingQueuedDispatch>;
-  readonly hasLiveProviderTurn: ReturnType<
-    typeof makeProviderProjectionAccess
-  >["hasLiveProviderTurn"];
+  readonly queuedDispatchState: ServiceMap.Service.Shape<typeof QueuedDispatchState>;
   readonly drainQueuedTurnsForSession: ReturnType<
     typeof makeProviderQueuedTurns
   >["drainQueuedTurnsForSession"];
-  readonly resolveThread: ReturnType<typeof makeProviderProjectionAccess>["resolveThread"];
-  readonly threadSessionModelSelections: Map<string, ModelSelection>;
+  readonly threadSessionSettings: ServiceMap.Service.Shape<typeof ThreadSessionSettings>;
   readonly computerService: Option.Option<ServiceMap.Service.Shape<typeof ComputerService>>;
   readonly queuedTurnPromotions: ServiceMap.Service.Shape<typeof QueuedTurnPromotionRepository>;
   readonly clearThreadRuntimeCaches: ReturnType<
@@ -57,7 +48,6 @@ export function makeProviderDomainEvents(input: {
     typeof makeProviderTaskControl
   >["processThreadSessionStop"];
   readonly orchestrationEngine: ServiceMap.Service.Shape<typeof OrchestrationEngineService>;
-  readonly threadProviderOptions: Map<string, ProviderStartOptions>;
   readonly ensureSessionForThread: ReturnType<
     typeof makeProviderSessionConfiguration
   >["ensureSessionForThread"];
@@ -109,18 +99,14 @@ export function makeProviderDomainEvents(input: {
   const {
     processClaudeCompactionTerminal,
     observePendingContextBootstrapTerminalEvent,
-    resolveProviderSessionThread,
-    pendingQueuedDispatchBySessionThread,
-    hasLiveProviderTurn,
+    queuedDispatchState,
     drainQueuedTurnsForSession,
-    resolveThread,
-    threadSessionModelSelections,
+    threadSessionSettings,
     computerService,
     queuedTurnPromotions,
     clearThreadRuntimeCaches,
     processThreadSessionStop,
     orchestrationEngine,
-    threadProviderOptions,
     ensureSessionForThread,
     processTurnQueued,
     processTurnStartRequested,
@@ -138,30 +124,24 @@ export function makeProviderDomainEvents(input: {
     commandEventTimeout,
     deliveryRepository,
     recoverQueuedTurnPromotionsForThread,
+    projectionAccess,
   } = input;
+  const { resolveProviderSessionThread, hasLiveProviderTurn, resolveThread } = projectionAccess;
   const processQueueDrainEvent = Effect.fnUntraced(function* (event: ProviderQueueDrainEvent) {
     yield* processClaudeCompactionTerminal(event);
     yield* observePendingContextBootstrapTerminalEvent(event);
     const sessionThreadId =
       (yield* resolveProviderSessionThread(event.threadId))?.id ?? event.threadId;
-    const reservation = pendingQueuedDispatchBySessionThread.get(sessionThreadId);
-    if (reservation) {
+    if (queuedDispatchState.hasReservation(sessionThreadId)) {
       if (event.turnId === undefined) {
         // Keep the reservation while a turn is genuinely live; otherwise release it so queued work cannot
         // remain stranded behind an id-less terminal event.
         if (yield* hasLiveProviderTurn(event.threadId)) {
           return;
         }
-        pendingQueuedDispatchBySessionThread.delete(sessionThreadId);
-      } else if (reservation.releaseOnTurnId === undefined) {
-        const terminalTurnIds = reservation.pendingTerminalTurnIds ?? new Set<TurnId>();
-        terminalTurnIds.add(event.turnId);
-        reservation.pendingTerminalTurnIds = terminalTurnIds;
-        return;
-      } else if (reservation.releaseOnTurnId !== event.turnId) {
-        return;
+        queuedDispatchState.clearReservation(sessionThreadId);
       } else {
-        pendingQueuedDispatchBySessionThread.delete(sessionThreadId);
+        if (queuedDispatchState.recordTerminalTurn(sessionThreadId, event.turnId)) return;
       }
     }
 
@@ -176,14 +156,17 @@ export function makeProviderDomainEvents(input: {
           if (
             thread &&
             event.payload.session.status !== "stopped" &&
-            !threadSessionModelSelections.has(event.payload.threadId)
+            !threadSessionSettings.hasModelSelection(event.payload.threadId)
           ) {
-            threadSessionModelSelections.set(event.payload.threadId, thread.modelSelection);
+            threadSessionSettings.setModelSelection(event.payload.threadId, thread.modelSelection);
           }
           return;
         }
         case "thread.created":
-          threadSessionModelSelections.set(event.payload.threadId, event.payload.modelSelection);
+          threadSessionSettings.setModelSelection(
+            event.payload.threadId,
+            event.payload.modelSelection,
+          );
           return;
         case "thread.deleted":
           if (Option.isSome(computerService))
@@ -238,7 +221,10 @@ export function makeProviderDomainEvents(input: {
           }
 
           if (!thread?.session || thread.session.status === "stopped") {
-            threadSessionModelSelections.set(event.payload.threadId, event.payload.modelSelection);
+            threadSessionSettings.setModelSelection(
+              event.payload.threadId,
+              event.payload.modelSelection,
+            );
             return;
           }
 
@@ -246,14 +232,19 @@ export function makeProviderDomainEvents(input: {
             return;
           }
 
-          const cachedProviderOptions = threadProviderOptions.get(event.payload.threadId);
+          const cachedProviderOptions = threadSessionSettings.getProviderOptions(
+            event.payload.threadId,
+          );
           yield* ensureSessionForThread(event.payload.threadId, event.occurredAt, {
             modelSelection: event.payload.modelSelection,
             ...(cachedProviderOptions !== undefined
               ? { providerOptions: cachedProviderOptions }
               : {}),
           });
-          threadSessionModelSelections.set(event.payload.threadId, event.payload.modelSelection);
+          threadSessionSettings.setModelSelection(
+            event.payload.threadId,
+            event.payload.modelSelection,
+          );
           return;
         }
         case "thread.runtime-mode-set": {
@@ -264,7 +255,9 @@ export function makeProviderDomainEvents(input: {
           if (thread.session.activeTurnId !== null) {
             return;
           }
-          const cachedProviderOptions = threadProviderOptions.get(event.payload.threadId);
+          const cachedProviderOptions = threadSessionSettings.getProviderOptions(
+            event.payload.threadId,
+          );
           yield* ensureSessionForThread(event.payload.threadId, event.occurredAt, {
             ...(cachedProviderOptions !== undefined
               ? { providerOptions: cachedProviderOptions }

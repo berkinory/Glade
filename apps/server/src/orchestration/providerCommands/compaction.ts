@@ -8,11 +8,11 @@ import {
   OrchestrationEventDeliveryRepository,
   PROVIDER_COMMAND_REACTOR_CONSUMER,
 } from "../../persistence/Services/OrchestrationEventDeliveries.ts";
-import { makeProviderProjectionAccess } from "./projectionAccess";
+import type { ProviderProjectionAccessShape } from "../Services/ProviderProjectionAccess.ts";
 import { ThreadId, TurnId, CommandId } from "@glade/contracts/core/baseSchemas";
 import { makeProviderThreadProjection } from "./threadProjection";
 import { Ref, Effect, Stream, Option, Scope, Duration, Cause, Exit, Schema } from "effect";
-import { type ProviderCommandReactorShape } from "../Services/ProviderCommandReactor.ts";
+import { ProviderDeliveryGate } from "../Services/ProviderDeliveryGate.ts";
 import { ProviderQueueDrainEvent } from "./deliveryClaims";
 import { ProviderService } from "../../provider/Services/ProviderService.ts";
 import { ProjectionPendingInteractionRepository } from "../../persistence/Services/ProjectionPendingInteractions.ts";
@@ -29,6 +29,7 @@ import { makeProviderSessionConfiguration } from "./sessionConfiguration";
 import { makeProviderTurnStart } from "./turnStart";
 
 export function makeProviderCompaction(input: {
+  readonly projectionAccess: ProviderProjectionAccessShape;
   readonly runtimeEventRepository: ServiceMap.Service.Shape<typeof ProviderRuntimeEventRepository>;
   readonly readOrchestrationEventAtSequence: ReturnType<
     typeof makeProviderQueuedTurns
@@ -37,25 +38,16 @@ export function makeProviderCompaction(input: {
   readonly deliveryRepository: ServiceMap.Service.Shape<
     typeof OrchestrationEventDeliveryRepository
   >;
-  readonly resolveThread: ReturnType<typeof makeProviderProjectionAccess>["resolveThread"];
   readonly pendingClaudeCompactionIngestion: Set<ThreadId>;
   readonly setClaudeCacheReview: ReturnType<
     typeof makeProviderThreadProjection
   >["setClaudeCacheReview"];
-  readonly deliveryReconciler: Ref.Ref<
-    ProviderCommandReactorShape["reconcileDelivery"] | undefined
-  >;
+  readonly deliveryGate: ServiceMap.Service.Shape<typeof ProviderDeliveryGate>;
   readonly earlyClaudeCompactionTerminals: Map<ThreadId, ProviderQueueDrainEvent>;
   readonly reconcileDelivery: ReturnType<typeof makeProviderDeliveryAccess>["reconcileDelivery"];
-  readonly withProviderSessionLease: ReturnType<
-    typeof makeProviderProjectionAccess
-  >["withProviderSessionLease"];
   readonly drainQueuedTurnsForSession: ReturnType<
     typeof makeProviderQueuedTurns
   >["drainQueuedTurnsForSession"];
-  readonly hasLiveProviderTurn: ReturnType<
-    typeof makeProviderProjectionAccess
-  >["hasLiveProviderTurn"];
   readonly providerService: ServiceMap.Service.Shape<typeof ProviderService>;
   readonly pendingInteractions: ServiceMap.Service.Shape<
     typeof ProjectionPendingInteractionRepository
@@ -71,24 +63,18 @@ export function makeProviderCompaction(input: {
   readonly processTurnStartRequestedWithoutLease: ReturnType<
     typeof makeProviderTurnStart
   >["processTurnStartRequestedWithoutLease"];
-  readonly resolveLiveProviderTurnId: ReturnType<
-    typeof makeProviderProjectionAccess
-  >["resolveLiveProviderTurnId"];
 }) {
   const {
     runtimeEventRepository,
     readOrchestrationEventAtSequence,
     orchestrationEngine,
     deliveryRepository,
-    resolveThread,
     pendingClaudeCompactionIngestion,
     setClaudeCacheReview,
-    deliveryReconciler,
+    deliveryGate,
     earlyClaudeCompactionTerminals,
     reconcileDelivery,
-    withProviderSessionLease,
     drainQueuedTurnsForSession,
-    hasLiveProviderTurn,
     providerService,
     pendingInteractions,
     ensureSessionForThread,
@@ -96,8 +82,14 @@ export function makeProviderCompaction(input: {
     recoveringClaudeCompactions,
     startupClaudeCompactionTurns,
     processTurnStartRequestedWithoutLease,
-    resolveLiveProviderTurnId,
+    projectionAccess,
   } = input;
+  const {
+    resolveThread,
+    withProviderSessionLease,
+    hasLiveProviderTurn,
+    resolveLiveProviderTurnId,
+  } = projectionAccess;
   const readClaudeCompactionTerminal = Effect.fnUntraced(function* (
     threadId: ThreadId,
     turnId: TurnId,
@@ -232,10 +224,7 @@ export function makeProviderCompaction(input: {
       }
       return;
     }
-    if (
-      attempt.compactionResponseEventSequence !== undefined &&
-      Ref.getUnsafe(deliveryReconciler)
-    ) {
+    if (attempt.compactionResponseEventSequence !== undefined && deliveryGate.getReconciler()) {
       const delivery = yield* deliveryRepository.getDelivery({
         consumerName: PROVIDER_COMMAND_REACTOR_CONSUMER,
         eventSequence: attempt.compactionResponseEventSequence,
@@ -573,10 +562,7 @@ export function makeProviderCompaction(input: {
         (yield* resolveLiveProviderTurnId(thread.id)) === review.compactionTurnId
       )
         continue;
-      if (
-        review.compactionResponseEventSequence !== undefined &&
-        Ref.getUnsafe(deliveryReconciler)
-      ) {
+      if (review.compactionResponseEventSequence !== undefined && deliveryGate.getReconciler()) {
         const delivery = yield* deliveryRepository.getDelivery({
           consumerName: PROVIDER_COMMAND_REACTOR_CONSUMER,
           eventSequence: review.compactionResponseEventSequence,

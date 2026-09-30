@@ -2,39 +2,30 @@ import type { ServiceMap } from "effect";
 import { Cache, Effect, Option, Stream } from "effect";
 import { QueuedTurnPromotionRepository } from "../../persistence/Services/QueuedTurnPromotions.ts";
 import { OrchestrationEngineService } from "../Services/OrchestrationEngine.ts";
-import { makeProviderProjectionAccess } from "./projectionAccess";
+import type { ProviderProjectionAccessShape } from "../Services/ProviderProjectionAccess.ts";
 import { QueuedTurnSourceEvent, PROVIDER_COMMAND_CLAIM_LEASE_MS } from "./deliveryClaims";
 import { ThreadId, CommandId } from "@glade/contracts/core/baseSchemas";
 import { ProviderCommandExecutionError } from "./providerCallPolicy";
 import { computerActivationMetadata } from "../../computer/computerActivation.ts";
-import { PendingQueuedDispatch } from "./runtimeState";
+import { QueuedDispatchState } from "../Services/QueuedDispatchState.ts";
 
 export function makeProviderQueuedTurns(input: {
+  readonly projectionAccess: ProviderProjectionAccessShape;
   readonly handledTurnStartKeys: Cache.Cache<string, true, never, never>;
   readonly queuedTurnPromotions: ServiceMap.Service.Shape<typeof QueuedTurnPromotionRepository>;
   readonly orchestrationEngine: ServiceMap.Service.Shape<typeof OrchestrationEngineService>;
-  readonly resolveProviderSessionThread: ReturnType<
-    typeof makeProviderProjectionAccess
-  >["resolveProviderSessionThread"];
-  readonly resolveThread: ReturnType<typeof makeProviderProjectionAccess>["resolveThread"];
-  readonly drainingQueuedTurns: Set<string>;
-  readonly pendingQueuedDispatchBySessionThread: Map<string, PendingQueuedDispatch>;
+  readonly queuedDispatchState: ServiceMap.Service.Shape<typeof QueuedDispatchState>;
   readonly queuedTurnPromotionOwner: string;
-  readonly hasLiveProviderTurn: ReturnType<
-    typeof makeProviderProjectionAccess
-  >["hasLiveProviderTurn"];
 }) {
   const {
     handledTurnStartKeys,
     queuedTurnPromotions,
     orchestrationEngine,
-    resolveProviderSessionThread,
-    resolveThread,
-    drainingQueuedTurns,
-    pendingQueuedDispatchBySessionThread,
+    queuedDispatchState,
     queuedTurnPromotionOwner,
-    hasLiveProviderTurn,
+    projectionAccess,
   } = input;
+  const { resolveProviderSessionThread, resolveThread, hasLiveProviderTurn } = projectionAccess;
   const hasHandledTurnStartRecently = (key: string) =>
     Cache.getOption(handledTurnStartKeys, key).pipe(
       Effect.flatMap((cached) =>
@@ -62,13 +53,7 @@ export function makeProviderQueuedTurns(input: {
   const drainQueuedTurnsForThread = Effect.fnUntraced(function* (threadId: ThreadId) {
     const sessionThreadId = (yield* resolveProviderSessionThread(threadId))?.id ?? threadId;
     if ((yield* resolveThread(sessionThreadId))?.claudeCacheReview) return;
-    if (
-      drainingQueuedTurns.has(threadId) ||
-      pendingQueuedDispatchBySessionThread.has(sessionThreadId)
-    ) {
-      return;
-    }
-    drainingQueuedTurns.add(threadId);
+    if (!queuedDispatchState.beginDrain(threadId, sessionThreadId)) return;
     // `Effect.ensuring`, never a JS `finally`: a generator driven by `Effect.fnUntraced` does not
     // resume to run `finally` blocks when a yielded effect fails, so a failed promotion dispatch would
     // leak this in-flight guard and silently disable every later drain for the thread.
@@ -97,7 +82,7 @@ export function makeProviderQueuedTurns(input: {
           );
         }
         const nextQueuedTurn = sourceEvent.payload;
-        pendingQueuedDispatchBySessionThread.set(sessionThreadId, {
+        queuedDispatchState.reserve(sessionThreadId, {
           queuedThreadId: threadId,
           messageId: nextQueuedTurn.messageId,
         });
@@ -147,7 +132,7 @@ export function makeProviderQueuedTurns(input: {
       }).pipe(
         Effect.onError(() =>
           Effect.all([
-            Effect.sync(() => pendingQueuedDispatchBySessionThread.delete(sessionThreadId)),
+            Effect.sync(() => queuedDispatchState.clearReservation(sessionThreadId)),
             queuedTurnPromotions
               .releaseClaim({
                 queuedEventSequence: promotion.queuedEventSequence,
@@ -158,7 +143,7 @@ export function makeProviderQueuedTurns(input: {
           ]).pipe(Effect.asVoid),
         ),
       );
-    }).pipe(Effect.ensuring(Effect.sync(() => drainingQueuedTurns.delete(threadId))));
+    }).pipe(Effect.ensuring(Effect.sync(() => queuedDispatchState.endDrain(threadId))));
   });
 
   const drainQueuedTurnsForSession = Effect.fnUntraced(function* (threadId: ThreadId) {
@@ -179,7 +164,7 @@ export function makeProviderQueuedTurns(input: {
 
   const hasPendingQueuedTurnForSession = Effect.fnUntraced(function* (threadId: ThreadId) {
     const sessionThreadId = (yield* resolveProviderSessionThread(threadId))?.id ?? threadId;
-    if (pendingQueuedDispatchBySessionThread.has(sessionThreadId)) {
+    if (queuedDispatchState.hasReservation(sessionThreadId)) {
       return true;
     }
     for (const queuedThreadId of yield* queuedTurnPromotions.listPendingThreadIds) {

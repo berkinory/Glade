@@ -1,12 +1,12 @@
 import type { ServiceMap } from "effect";
 import {
-  type ProviderStartOptions,
   type ModelSelection,
+  type ProviderStartOptions,
   type RuntimeMode,
 } from "@glade/contracts/provider/sessionPolicy";
 import { ProviderContextLifecycleActivityRecord } from "./contextLifecycle";
 import { ProviderService } from "../../provider/Services/ProviderService.ts";
-import { makeProviderProjectionAccess } from "./projectionAccess";
+import type { ProviderProjectionAccessShape } from "../Services/ProviderProjectionAccess.ts";
 import { ServerSettingsService } from "../../settings/serverSettings.ts";
 import { makeProviderThreadProjection } from "./threadProjection";
 import { Option, Effect, Schema } from "effect";
@@ -25,13 +25,13 @@ import { providerWorkspaceChanged } from "../projectRelocationPaths.ts";
 import { claudeSelectionRequiresRestart } from "@glade/shared/provider/model";
 import { BlockedGoalContinuation, PendingInterruptEscalation } from "./runtimeState";
 import { makeProviderContextBootstrap } from "./contextBootstrap";
+import { ThreadSessionSettings } from "../Services/ThreadSessionSettings.ts";
+import { ProviderDeliveryGate } from "../Services/ProviderDeliveryGate.ts";
 
 export function makeProviderSessionConfiguration(input: {
-  readonly editResendTurnStartKeys: Set<string>;
-  readonly threadProviderOptions: Map<string, ProviderStartOptions>;
-  readonly threadSessionModelSelections: Map<string, ModelSelection>;
-  readonly threadSessionComputerControl: Map<string, boolean>;
-  readonly quarantinedThreads: Set<string>;
+  readonly projectionAccess: ProviderProjectionAccessShape;
+  readonly threadSessionSettings: ServiceMap.Service.Shape<typeof ThreadSessionSettings>;
+  readonly deliveryGate: ServiceMap.Service.Shape<typeof ProviderDeliveryGate>;
   readonly blockedGoalContinuations: Map<string, BlockedGoalContinuation>;
   readonly queuedGoalContinuationRetries: Set<string>;
   readonly suppressContextBootstrapOnNextStartThreadIds: Set<string>;
@@ -44,27 +44,17 @@ export function makeProviderSessionConfiguration(input: {
     ProviderContextLifecycleActivityRecord
   >;
   readonly providerService: ServiceMap.Service.Shape<typeof ProviderService>;
-  readonly resolveThread: ReturnType<typeof makeProviderProjectionAccess>["resolveThread"];
   readonly serverSettings: ServiceMap.Service.Shape<typeof ServerSettingsService>;
-  readonly resolveProjectedThreadWorkspaceCwd: ReturnType<
-    typeof makeProviderProjectionAccess
-  >["resolveProjectedThreadWorkspaceCwd"];
   readonly setThreadSession: ReturnType<typeof makeProviderThreadProjection>["setThreadSession"];
   readonly gatewaySessions: Option.Option<
     ServiceMap.Service.Shape<typeof AgentGatewaySessionRegistry>
   >;
-  readonly hasLiveProviderTurn: ReturnType<
-    typeof makeProviderProjectionAccess
-  >["hasLiveProviderTurn"];
   readonly computerService: Option.Option<ServiceMap.Service.Shape<typeof ComputerService>>;
   readonly freshSessionContextBootstrapThreadIds: Set<string>;
 }) {
   const {
-    editResendTurnStartKeys,
-    threadProviderOptions,
-    threadSessionModelSelections,
-    threadSessionComputerControl,
-    quarantinedThreads,
+    threadSessionSettings,
+    deliveryGate,
     blockedGoalContinuations,
     queuedGoalContinuationRetries,
     suppressContextBootstrapOnNextStartThreadIds,
@@ -72,40 +62,19 @@ export function makeProviderSessionConfiguration(input: {
     pendingInterruptEscalations,
     pendingProviderContextLifecycleActivities,
     providerService,
-    resolveThread,
     serverSettings,
-    resolveProjectedThreadWorkspaceCwd,
     setThreadSession,
     gatewaySessions,
-    hasLiveProviderTurn,
     computerService,
     freshSessionContextBootstrapThreadIds,
+    projectionAccess,
   } = input;
-  const editResendTurnStartKey = (threadId: ThreadId, messageId: string) =>
-    `${threadId}:${messageId}`;
-
-  const clearEditResendTurnStartKeysForThread = (threadId: ThreadId) =>
-    Effect.sync(() => {
-      const prefix = `${threadId}:`;
-      for (const key of editResendTurnStartKeys) {
-        if (key.startsWith(prefix)) {
-          editResendTurnStartKeys.delete(key);
-        }
-      }
-    });
-
+  const { resolveThread, resolveProjectedThreadWorkspaceCwd, hasLiveProviderTurn } =
+    projectionAccess;
   const clearThreadRuntimeCaches = (threadId: ThreadId) =>
     Effect.sync(() => {
-      threadProviderOptions.delete(threadId);
-      threadSessionModelSelections.delete(threadId);
-      threadSessionComputerControl.delete(threadId);
-      const editResendPrefix = `${threadId}:`;
-      for (const key of editResendTurnStartKeys) {
-        if (key.startsWith(editResendPrefix)) {
-          editResendTurnStartKeys.delete(key);
-        }
-      }
-      quarantinedThreads.delete(threadId);
+      threadSessionSettings.clearThread(threadId);
+      deliveryGate.releaseQuarantine(threadId);
       blockedGoalContinuations.delete(threadId);
       queuedGoalContinuationRetries.delete(threadId);
 
@@ -306,7 +275,7 @@ export function makeProviderSessionConfiguration(input: {
       const modelChanged =
         requestedModelSelection !== undefined &&
         requestedModelSelection.model !== activeSessionBeforeEnsure?.model;
-      const previousModelSelection = threadSessionModelSelections.get(threadId);
+      const previousModelSelection = threadSessionSettings.getModelSelection(threadId);
       // When the dispatch cache has no entry (the session was started by a turn without a selection),
       // compare against the projected thread selection the session was actually spawned from so
       // spawn-fixed changes still restart.
@@ -322,7 +291,7 @@ export function makeProviderSessionConfiguration(input: {
       const previousComputerControl =
         Option.isSome(gatewaySessions) && gatewaySessions.value.computerControlProvisioned
           ? gatewaySessions.value.computerControlProvisioned(threadId, reusableSession.provider)
-          : (threadSessionComputerControl.get(threadId) ?? false);
+          : (threadSessionSettings.getComputerControl(threadId) ?? false);
       const computerControlChanged =
         requestedComputerControl !== undefined &&
         requestedComputerControl !== previousComputerControl;
@@ -402,9 +371,9 @@ export function makeProviderSessionConfiguration(input: {
         workspaceChanged && shouldRegisterContextBootstrap,
       );
       const restartedSession = restartedOutcome.session;
-      threadSessionModelSelections.set(threadId, desiredModelSelection);
+      threadSessionSettings.setModelSelection(threadId, desiredModelSelection);
       if (options?.enableComputerControl !== undefined) {
-        threadSessionComputerControl.set(threadId, options.enableComputerControl);
+        threadSessionSettings.setComputerControl(threadId, options.enableComputerControl);
       }
       yield* Effect.logInfo("provider command reactor restarted provider session", {
         threadId,
@@ -447,8 +416,8 @@ export function makeProviderSessionConfiguration(input: {
         enableComputerControl: forkComputerControl,
       });
       if (forked) {
-        threadSessionModelSelections.set(threadId, desiredModelSelection);
-        threadSessionComputerControl.set(threadId, forkComputerControl);
+        threadSessionSettings.setModelSelection(threadId, desiredModelSelection);
+        threadSessionSettings.setComputerControl(threadId, forkComputerControl);
         const forkedSession =
           (yield* resolveActiveSession(threadId)) ??
           ({
@@ -500,9 +469,9 @@ export function makeProviderSessionConfiguration(input: {
     }
     const startedSession = startOutcome.session;
 
-    threadSessionModelSelections.set(threadId, desiredModelSelection);
+    threadSessionSettings.setModelSelection(threadId, desiredModelSelection);
     if (options?.enableComputerControl !== undefined) {
-      threadSessionComputerControl.set(threadId, options.enableComputerControl);
+      threadSessionSettings.setComputerControl(threadId, options.enableComputerControl);
     }
     yield* bindSessionToThread(startedSession);
     suppressContextBootstrapOnNextStartThreadIds.delete(threadId);
@@ -519,8 +488,6 @@ export function makeProviderSessionConfiguration(input: {
   return {
     ensureSessionForThread,
     clearStaleProviderResumeState,
-    editResendTurnStartKey,
-    clearEditResendTurnStartKeysForThread,
     clearThreadRuntimeCaches,
   };
 }

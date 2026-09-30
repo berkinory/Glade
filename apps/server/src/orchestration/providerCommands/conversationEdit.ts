@@ -1,6 +1,6 @@
 import type { ServiceMap } from "effect";
 import { ProviderService } from "../../provider/Services/ProviderService.ts";
-import { makeProviderProjectionAccess } from "./projectionAccess";
+import type { ProviderProjectionAccessShape } from "../Services/ProviderProjectionAccess.ts";
 import { CheckpointStore } from "../../checkpointing/Services/CheckpointStore.ts";
 import { OrchestrationEngineService } from "../Services/OrchestrationEngine.ts";
 import { QueuedTurnPromotionRepository } from "../../persistence/Services/QueuedTurnPromotions.ts";
@@ -19,51 +19,34 @@ import {
 } from "@glade/shared/threads/conversationEdit";
 import { serverCommandId } from "./deliveryClaims";
 import { computerActivationMetadata } from "../../computer/computerActivation.ts";
-import { makeProviderSessionConfiguration } from "./sessionConfiguration";
+import { ThreadSessionSettings } from "../Services/ThreadSessionSettings.ts";
 import { EditReplayWorkspaceRestorePlan } from "./runtimeState";
 
 export function makeProviderConversationEdit(input: {
+  readonly projectionAccess: ProviderProjectionAccessShape;
   readonly providerService: ServiceMap.Service.Shape<typeof ProviderService>;
-  readonly resolveThread: ReturnType<typeof makeProviderProjectionAccess>["resolveThread"];
-  readonly resolveProjectedThreadWorkspaceCwd: ReturnType<
-    typeof makeProviderProjectionAccess
-  >["resolveProjectedThreadWorkspaceCwd"];
   readonly checkpointStore: ServiceMap.Service.Shape<typeof CheckpointStore>;
-  readonly resolveProviderSessionThread: ReturnType<
-    typeof makeProviderProjectionAccess
-  >["resolveProviderSessionThread"];
-  readonly resolveSubagentProviderThreadId: ReturnType<
-    typeof makeProviderProjectionAccess
-  >["resolveSubagentProviderThreadId"];
   readonly orchestrationEngine: ServiceMap.Service.Shape<typeof OrchestrationEngineService>;
-  readonly withProviderSessionLease: ReturnType<
-    typeof makeProviderProjectionAccess
-  >["withProviderSessionLease"];
   readonly queuedTurnPromotions: ServiceMap.Service.Shape<typeof QueuedTurnPromotionRepository>;
-  readonly clearEditResendTurnStartKeysForThread: ReturnType<
-    typeof makeProviderSessionConfiguration
-  >["clearEditResendTurnStartKeysForThread"];
+  readonly threadSessionSettings: ServiceMap.Service.Shape<typeof ThreadSessionSettings>;
   readonly setThreadSession: ReturnType<typeof makeProviderThreadProjection>["setThreadSession"];
-  readonly editResendTurnStartKeys: Set<string>;
-  readonly editResendTurnStartKey: ReturnType<
-    typeof makeProviderSessionConfiguration
-  >["editResendTurnStartKey"];
 }) {
   const {
     providerService,
+    checkpointStore,
+    orchestrationEngine,
+    queuedTurnPromotions,
+    threadSessionSettings,
+    setThreadSession,
+    projectionAccess,
+  } = input;
+  const {
     resolveThread,
     resolveProjectedThreadWorkspaceCwd,
-    checkpointStore,
     resolveProviderSessionThread,
     resolveSubagentProviderThreadId,
-    orchestrationEngine,
     withProviderSessionLease,
-    queuedTurnPromotions,
-    clearEditResendTurnStartKeysForThread,
-    setThreadSession,
-    editResendTurnStartKeys,
-    editResendTurnStartKey,
-  } = input;
+  } = projectionAccess;
   const rollbackProviderConversationForEdit = Effect.fnUntraced(function* (input: {
     readonly threadId: ThreadId;
     readonly numTurns: number;
@@ -257,7 +240,7 @@ export function makeProviderConversationEdit(input: {
         threadId: payload.threadId,
         updatedAt: payload.createdAt,
       });
-      yield* clearEditResendTurnStartKeysForThread(payload.threadId);
+      threadSessionSettings.clearEditResendStartsForThread(payload.threadId);
     } else {
       yield* queuedTurnPromotions.cancelMessage({
         threadId: payload.threadId,
@@ -347,7 +330,7 @@ export function makeProviderConversationEdit(input: {
       });
     }
 
-    editResendTurnStartKeys.add(editResendTurnStartKey(payload.threadId, payload.messageId));
+    threadSessionSettings.markEditResendStart(payload.threadId, payload.messageId);
     yield* orchestrationEngine.dispatch({
       type: "thread.turn.start",
       commandId: serverCommandId("message-edit-resend-turn-start"),

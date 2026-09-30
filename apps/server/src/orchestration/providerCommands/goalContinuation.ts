@@ -1,7 +1,7 @@
 import type { ServiceMap } from "effect";
 import { Queue, Effect, Cause, Stream, Duration } from "effect";
 import { ThreadId, MessageId } from "@glade/contracts/core/baseSchemas";
-import { makeProviderProjectionAccess } from "./projectionAccess";
+import type { ProviderProjectionAccessShape } from "../Services/ProviderProjectionAccess.ts";
 import { ProjectionPendingInteractionRepository } from "../../persistence/Services/ProjectionPendingInteractions.ts";
 import { OrchestrationEngineService } from "../Services/OrchestrationEngine.ts";
 import { makeProviderThreadProjection } from "./threadProjection";
@@ -16,16 +16,13 @@ import { makeProviderTurnDispatch } from "./turnDispatch";
 import { makeProviderTaskControl } from "./taskControl";
 
 export function makeProviderGoalContinuation(input: {
+  readonly projectionAccess: ProviderProjectionAccessShape;
   readonly queuedGoalContinuationRetries: Set<string>;
   readonly goalContinuationRetryQueue: Queue.Queue<ThreadId>;
   readonly blockedGoalContinuations: Map<string, BlockedGoalContinuation>;
-  readonly resolveThread: ReturnType<typeof makeProviderProjectionAccess>["resolveThread"];
   readonly pendingInteractions: ServiceMap.Service.Shape<
     typeof ProjectionPendingInteractionRepository
   >;
-  readonly hasLiveProviderTurn: ReturnType<
-    typeof makeProviderProjectionAccess
-  >["hasLiveProviderTurn"];
   readonly drainQueuedTurnsForSession: ReturnType<
     typeof makeProviderQueuedTurns
   >["drainQueuedTurnsForSession"];
@@ -33,9 +30,6 @@ export function makeProviderGoalContinuation(input: {
     typeof makeProviderQueuedTurns
   >["hasPendingQueuedTurnForSession"];
   readonly orchestrationEngine: ServiceMap.Service.Shape<typeof OrchestrationEngineService>;
-  readonly withProviderSessionLease: ReturnType<
-    typeof makeProviderProjectionAccess
-  >["withProviderSessionLease"];
   readonly setThreadSession: ReturnType<typeof makeProviderThreadProjection>["setThreadSession"];
   readonly dispatchTurnForThread: ReturnType<
     typeof makeProviderTurnDispatch
@@ -57,20 +51,19 @@ export function makeProviderGoalContinuation(input: {
     queuedGoalContinuationRetries,
     goalContinuationRetryQueue,
     blockedGoalContinuations,
-    resolveThread,
     pendingInteractions,
-    hasLiveProviderTurn,
     drainQueuedTurnsForSession,
     hasPendingQueuedTurnForSession,
     orchestrationEngine,
-    withProviderSessionLease,
     setThreadSession,
     dispatchTurnForThread,
     appendProviderFailureActivity,
     setThreadSessionError,
     pauseActiveThreadGoal,
     interruptProviderTurn,
+    projectionAccess,
   } = input;
+  const { resolveThread, hasLiveProviderTurn, withProviderSessionLease } = projectionAccess;
   const scheduleBlockedGoalContinuationRetry = Effect.fnUntraced(function* (threadId: ThreadId) {
     if (queuedGoalContinuationRetries.has(threadId)) {
       return;

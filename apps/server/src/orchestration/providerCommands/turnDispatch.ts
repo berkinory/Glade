@@ -1,5 +1,5 @@
 import type { ServiceMap } from "effect";
-import { makeProviderProjectionAccess } from "./projectionAccess";
+import type { ProviderProjectionAccessShape } from "../Services/ProviderProjectionAccess.ts";
 import { ProjectionSnapshotQuery } from "../Services/ProjectionSnapshotQuery.ts";
 import { ServerConfig } from "../../server/config.ts";
 import { ManagedAttachmentRepository } from "../../persistence/Services/ManagedAttachments.ts";
@@ -75,21 +75,17 @@ import { serverCommandId } from "./deliveryClaims";
 import { makeProviderSessionConfiguration } from "./sessionConfiguration";
 import { PendingInterruptEscalation, PendingContextBootstrapAttempt } from "./runtimeState";
 import { makeProviderContextBootstrap } from "./contextBootstrap";
+import { ThreadSessionSettings } from "../Services/ThreadSessionSettings.ts";
+import { ProviderDeliveryGate } from "../Services/ProviderDeliveryGate.ts";
 
 export function makeProviderTurnDispatch(input: {
-  readonly resolveThread: ReturnType<typeof makeProviderProjectionAccess>["resolveThread"];
+  readonly projectionAccess: ProviderProjectionAccessShape;
   readonly projectionSnapshotQuery: ServiceMap.Service.Shape<typeof ProjectionSnapshotQuery>;
-  readonly resolveProviderSessionThread: ReturnType<
-    typeof makeProviderProjectionAccess
-  >["resolveProviderSessionThread"];
-  readonly resolveSubagentProviderThreadId: ReturnType<
-    typeof makeProviderProjectionAccess
-  >["resolveSubagentProviderThreadId"];
   readonly serverConfig: ServiceMap.Service.Shape<typeof ServerConfig>;
   readonly managedAttachments: ServiceMap.Service.Shape<typeof ManagedAttachmentRepository>;
   readonly providerService: ServiceMap.Service.Shape<typeof ProviderService>;
   readonly computerService: Option.Option<ServiceMap.Service.Shape<typeof ComputerService>>;
-  readonly threadSessionModelSelections: Map<string, ModelSelection>;
+  readonly threadSessionSettings: ServiceMap.Service.Shape<typeof ThreadSessionSettings>;
   readonly ensureSessionForThread: ReturnType<
     typeof makeProviderSessionConfiguration
   >["ensureSessionForThread"];
@@ -105,20 +101,15 @@ export function makeProviderTurnDispatch(input: {
   readonly appendProviderFailureActivity: ReturnType<
     typeof makeProviderThreadProjection
   >["appendProviderFailureActivity"];
-  readonly threadProviderOptions: Map<string, ProviderStartOptions>;
-  readonly threadSessionComputerControl: Map<string, boolean>;
   readonly gatewayOperations: ServiceMap.Service.Shape<typeof AgentGatewayOperationRepository>;
   readonly pendingInterruptEscalations: Map<string, PendingInterruptEscalation>;
   readonly freshSessionContextBootstrapThreadIds: Set<string>;
-  readonly resolveProjectedThreadWorkspaceCwd: ReturnType<
-    typeof makeProviderProjectionAccess
-  >["resolveProjectedThreadWorkspaceCwd"];
   readonly checkpointStore: ServiceMap.Service.Shape<typeof CheckpointStore>;
   readonly pendingContextBootstrapAttempts: Map<string, PendingContextBootstrapAttempt>;
   readonly clearStaleProviderResumeState: ReturnType<
     typeof makeProviderSessionConfiguration
   >["clearStaleProviderResumeState"];
-  readonly acceptedCompletionContexts: Set<number>;
+  readonly deliveryGate: ServiceMap.Service.Shape<typeof ProviderDeliveryGate>;
   readonly completeInterruptEscalation: ReturnType<
     typeof makeProviderContextBootstrap
   >["completeInterruptEscalation"];
@@ -137,37 +128,38 @@ export function makeProviderTurnDispatch(input: {
   >["persistPriorTranscriptBootstrapCompletion"];
 }) {
   const {
-    resolveThread,
     projectionSnapshotQuery,
-    resolveProviderSessionThread,
-    resolveSubagentProviderThreadId,
     serverConfig,
     managedAttachments,
     providerService,
     computerService,
-    threadSessionModelSelections,
+    threadSessionSettings,
     ensureSessionForThread,
     isClaudeReviewAuthorized,
     setClaudeCacheReview,
     pauseActiveThreadGoal,
     appendProviderFailureActivity,
-    threadProviderOptions,
-    threadSessionComputerControl,
     gatewayOperations,
     pendingInterruptEscalations,
     freshSessionContextBootstrapThreadIds,
-    resolveProjectedThreadWorkspaceCwd,
     checkpointStore,
     pendingContextBootstrapAttempts,
     clearStaleProviderResumeState,
-    acceptedCompletionContexts,
+    deliveryGate,
     completeInterruptEscalation,
     completePendingContextBootstrapAttempt,
     retainAndAppendProviderContextLifecycleActivity,
     toProviderContextLifecycleActivityRecord,
     orchestrationEngine,
     persistPriorTranscriptBootstrapCompletion,
+    projectionAccess,
   } = input;
+  const {
+    resolveThread,
+    resolveProviderSessionThread,
+    resolveSubagentProviderThreadId,
+    resolveProjectedThreadWorkspaceCwd,
+  } = projectionAccess;
   const dispatchTurnForThread = Effect.fnUntraced(function* (input: {
     readonly threadId: ThreadId;
     readonly sourceEventSequence: number;
@@ -330,7 +322,7 @@ export function makeProviderTurnDispatch(input: {
       input.turnKind === "goal-continuation" ? undefined : input.messageId;
     const selectedProvider =
       input.modelSelection?.provider ??
-      threadSessionModelSelections.get(input.threadId)?.provider ??
+      threadSessionSettings.getModelSelection(input.threadId)?.provider ??
       thread.session?.providerName ??
       thread.modelSelection.provider;
     const {
@@ -431,16 +423,16 @@ export function makeProviderTurnDispatch(input: {
       }
     }
     if (input.providerOptions !== undefined) {
-      threadProviderOptions.set(input.threadId, input.providerOptions);
+      threadSessionSettings.setProviderOptions(input.threadId, input.providerOptions);
     }
     if (input.modelSelection !== undefined) {
-      threadSessionModelSelections.set(input.threadId, input.modelSelection);
+      threadSessionSettings.setModelSelection(input.threadId, input.modelSelection);
     }
     if (input.dispatchMode !== "steer" && computerControlRestartDeferred !== true) {
       // A fork provisions the parent-derived flag, not this turn's resolved value; a deferred
       // control-only restart provisions nothing yet. In both cases the resolved value must not overwrite
       // the authoritative cache.
-      threadSessionComputerControl.set(
+      threadSessionSettings.setComputerControl(
         input.threadId,
         forkComputerControl ?? enableComputerControl,
       );
@@ -872,7 +864,9 @@ export function makeProviderTurnDispatch(input: {
       );
       startedTurn = sentTurn;
       if (completionContext)
-        acceptedCompletionContexts.add(input.completionEventSequence ?? input.sourceEventSequence);
+        deliveryGate.markCompletionContext(
+          input.completionEventSequence ?? input.sourceEventSequence,
+        );
       if (!pendingContextBootstrapAttempt) {
         completeInterruptEscalation(input.threadId, interruptEscalation);
       }

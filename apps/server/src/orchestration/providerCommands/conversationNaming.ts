@@ -3,7 +3,7 @@ import { Duration, Deferred, Effect, Option, Cause } from "effect";
 import { WORKTREE_BRANCH_PREFIX, isTemporaryWorktreeBranch } from "@glade/shared/git/git";
 import { AgentGatewayOperationRepository } from "../../agentGateway/Services/AgentGatewayOperationRepository.ts";
 import { ServerSettingsService } from "../../settings/serverSettings.ts";
-import { makeProviderProjectionAccess } from "./projectionAccess";
+import type { ProviderProjectionAccessShape } from "../Services/ProviderProjectionAccess.ts";
 import {
   type ModelSelection,
   type ProviderStartOptions,
@@ -33,6 +33,7 @@ import { attachmentTitleSeed } from "./inputProjection";
 import { type ProviderCommandReactorShape } from "../Services/ProviderCommandReactor.ts";
 import { ProviderCommandExecutionError } from "./providerCallPolicy";
 import { TextGenerationError } from "../../git/Errors.ts";
+import { ThreadSessionSettings } from "../Services/ThreadSessionSettings.ts";
 
 const GATEWAY_OPERATION_COMPLETION_WAIT_TIMEOUT = Duration.seconds(120);
 
@@ -58,18 +59,14 @@ function buildGeneratedWorktreeBranchName(raw: string): string {
 }
 
 export function makeProviderConversationNaming(input: {
+  readonly projectionAccess: ProviderProjectionAccessShape;
   readonly gatewayOperations: ServiceMap.Service.Shape<typeof AgentGatewayOperationRepository>;
   readonly serverSettings: ServiceMap.Service.Shape<typeof ServerSettingsService>;
-  readonly resolveThread: ReturnType<typeof makeProviderProjectionAccess>["resolveThread"];
-  readonly threadSessionModelSelections: Map<string, ModelSelection>;
-  readonly threadProviderOptions: Map<string, ProviderStartOptions>;
+  readonly threadSessionSettings: ServiceMap.Service.Shape<typeof ThreadSessionSettings>;
   readonly providerHealth: ServiceMap.Service.Shape<typeof ProviderHealth>;
   readonly git: ServiceMap.Service.Shape<typeof GitCore>;
   readonly orchestrationEngine: ServiceMap.Service.Shape<typeof OrchestrationEngineService>;
   readonly textGeneration: ServiceMap.Service.Shape<typeof TextGeneration>;
-  readonly resolveProjectedThreadWorkspaceCwd: ReturnType<
-    typeof makeProviderProjectionAccess
-  >["resolveProjectedThreadWorkspaceCwd"];
   readonly pendingTitleGenerations: Map<
     ThreadId,
     Deferred.Deferred<OrchestrationRegenerateThreadTitleResult, TaggedFailure>
@@ -78,16 +75,15 @@ export function makeProviderConversationNaming(input: {
   const {
     gatewayOperations,
     serverSettings,
-    resolveThread,
-    threadSessionModelSelections,
-    threadProviderOptions,
+    threadSessionSettings,
     providerHealth,
     git,
     orchestrationEngine,
     textGeneration,
-    resolveProjectedThreadWorkspaceCwd,
     pendingTitleGenerations,
+    projectionAccess,
   } = input;
+  const { resolveThread, resolveProjectedThreadWorkspaceCwd } = projectionAccess;
   const waitForGatewayOperationCompletion = Effect.fnUntraced(function* (operationId: string) {
     const completed = yield* Effect.gen(function* () {
       while (true) {
@@ -141,8 +137,9 @@ export function makeProviderConversationNaming(input: {
     const modelSelection =
       input.modelSelection ??
       thread?.modelSelection ??
-      threadSessionModelSelections.get(input.threadId);
-    const providerOptions = input.providerOptions ?? threadProviderOptions.get(input.threadId);
+      threadSessionSettings.getModelSelection(input.threadId);
+    const providerOptions =
+      input.providerOptions ?? threadSessionSettings.getProviderOptions(input.threadId);
     const threadTextGenerationInput = resolveTextGenerationInputForSelection(
       modelSelection,
       providerOptions,

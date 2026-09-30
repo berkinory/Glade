@@ -1,5 +1,5 @@
 import type { ServiceMap } from "effect";
-import { makeProviderProjectionAccess } from "./projectionAccess";
+import type { ProviderProjectionAccessShape } from "../Services/ProviderProjectionAccess.ts";
 import { Option, Effect, Cause } from "effect";
 import { ComputerService } from "../../computer/Services/ComputerService";
 import { makeProviderThreadProjection } from "./threadProjection";
@@ -13,41 +13,27 @@ import {
 } from "./providerCallPolicy";
 import { type ProviderIntentEvent } from "../providerIntentClassification.ts";
 import { DEFAULT_RUNTIME_MODE } from "./contextLifecycle";
-import { makeProviderSessionConfiguration } from "./sessionConfiguration";
-import { PendingQueuedDispatch, PendingInterruptEscalation } from "./runtimeState";
+import { ThreadSessionSettings } from "../Services/ThreadSessionSettings.ts";
+import { PendingInterruptEscalation } from "./runtimeState";
+import { QueuedDispatchState } from "../Services/QueuedDispatchState.ts";
 import { makeProviderContextBootstrap } from "./contextBootstrap";
 
 export function makeProviderTaskControl(input: {
-  readonly resolveThread: ReturnType<typeof makeProviderProjectionAccess>["resolveThread"];
-  readonly resolveProviderSessionThread: ReturnType<
-    typeof makeProviderProjectionAccess
-  >["resolveProviderSessionThread"];
+  readonly projectionAccess: ProviderProjectionAccessShape;
   readonly computerService: Option.Option<ServiceMap.Service.Shape<typeof ComputerService>>;
-  readonly hasLiveProviderTurn: ReturnType<
-    typeof makeProviderProjectionAccess
-  >["hasLiveProviderTurn"];
   readonly appendProviderFailureActivity: ReturnType<
     typeof makeProviderThreadProjection
   >["appendProviderFailureActivity"];
   readonly settleInterruptedProviderTurn: ReturnType<
     typeof makeProviderThreadProjection
   >["settleInterruptedProviderTurn"];
-  readonly resolveSubagentProviderThreadId: ReturnType<
-    typeof makeProviderProjectionAccess
-  >["resolveSubagentProviderThreadId"];
-  readonly resolveLiveProviderTurnId: ReturnType<
-    typeof makeProviderProjectionAccess
-  >["resolveLiveProviderTurnId"];
   readonly providerService: ServiceMap.Service.Shape<typeof ProviderService>;
   readonly queuedTurnPromotions: ServiceMap.Service.Shape<typeof QueuedTurnPromotionRepository>;
   readonly setClaudeCacheReview: ReturnType<
     typeof makeProviderThreadProjection
   >["setClaudeCacheReview"];
-  readonly clearEditResendTurnStartKeysForThread: ReturnType<
-    typeof makeProviderSessionConfiguration
-  >["clearEditResendTurnStartKeysForThread"];
-  readonly drainingQueuedTurns: Set<string>;
-  readonly pendingQueuedDispatchBySessionThread: Map<string, PendingQueuedDispatch>;
+  readonly threadSessionSettings: ServiceMap.Service.Shape<typeof ThreadSessionSettings>;
+  readonly queuedDispatchState: ServiceMap.Service.Shape<typeof QueuedDispatchState>;
   readonly clearPendingContextBootstraps: ReturnType<
     typeof makeProviderContextBootstrap
   >["clearPendingContextBootstraps"];
@@ -59,26 +45,28 @@ export function makeProviderTaskControl(input: {
   >["pauseActiveThreadGoal"];
 }) {
   const {
-    resolveThread,
-    resolveProviderSessionThread,
     computerService,
-    hasLiveProviderTurn,
     appendProviderFailureActivity,
     settleInterruptedProviderTurn,
-    resolveSubagentProviderThreadId,
-    resolveLiveProviderTurnId,
     providerService,
     queuedTurnPromotions,
     setClaudeCacheReview,
-    clearEditResendTurnStartKeysForThread,
-    drainingQueuedTurns,
-    pendingQueuedDispatchBySessionThread,
+    threadSessionSettings,
+    queuedDispatchState,
     clearPendingContextBootstraps,
     pendingInterruptEscalations,
     suppressContextBootstrapOnNextStartThreadIds,
     setThreadSession,
     pauseActiveThreadGoal,
+    projectionAccess,
   } = input;
+  const {
+    resolveThread,
+    resolveProviderSessionThread,
+    hasLiveProviderTurn,
+    resolveSubagentProviderThreadId,
+    resolveLiveProviderTurnId,
+  } = projectionAccess;
   const interruptProviderTurn = Effect.fnUntraced(function* (input: {
     readonly threadId: ThreadId;
     readonly turnId?: TurnId | undefined;
@@ -326,18 +314,15 @@ export function makeProviderTaskControl(input: {
         threadId: queuedThreadId,
         updatedAt: input.createdAt,
       });
-      yield* clearEditResendTurnStartKeysForThread(queuedThreadId);
-      drainingQueuedTurns.delete(queuedThreadId);
+      threadSessionSettings.clearEditResendStartsForThread(queuedThreadId);
+      queuedDispatchState.endDrain(queuedThreadId);
     }
 
-    for (const [sessionThreadId, reservation] of pendingQueuedDispatchBySessionThread) {
-      if (
-        (stopsProviderSession && sessionThreadId === stoppedSessionThreadId) ||
-        clearedQueuedThreadIds.has(ThreadId.makeUnsafe(reservation.queuedThreadId))
-      ) {
-        pendingQueuedDispatchBySessionThread.delete(sessionThreadId);
-      }
-    }
+    queuedDispatchState.clearStopped(
+      stoppedSessionThreadId,
+      stopsProviderSession,
+      Array.from(clearedQueuedThreadIds),
+    );
     clearPendingContextBootstraps(thread.id);
     if (input.interruptEscalated) {
       pendingInterruptEscalations.set(thread.id, { evidence: null });

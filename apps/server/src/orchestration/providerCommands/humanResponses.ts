@@ -12,26 +12,21 @@ import { type OrchestrationDispatchError } from "../Errors.ts";
 import { buildStalePendingRequestFailureDetail } from "@glade/shared/threads/threadSummary";
 import { type ProviderIntentEvent } from "../providerIntentClassification.ts";
 import { makeProviderThreadProjection } from "./threadProjection";
-import { makeProviderProjectionAccess } from "./projectionAccess";
+import type { ProviderProjectionAccessShape } from "../Services/ProviderProjectionAccess.ts";
 
 export function makeProviderHumanResponses(input: {
+  readonly projectionAccess: ProviderProjectionAccessShape;
   readonly appendProviderFailureActivity: ReturnType<
     typeof makeProviderThreadProjection
   >["appendProviderFailureActivity"];
   readonly pendingInteractions: ServiceMap.Service.Shape<
     typeof ProjectionPendingInteractionRepository
   >;
-  readonly resolveProviderSessionThread: ReturnType<
-    typeof makeProviderProjectionAccess
-  >["resolveProviderSessionThread"];
   readonly providerService: ServiceMap.Service.Shape<typeof ProviderService>;
 }) {
-  const {
-    appendProviderFailureActivity,
-    pendingInteractions,
-    resolveProviderSessionThread,
-    providerService,
-  } = input;
+  const { appendProviderFailureActivity, pendingInteractions, providerService, projectionAccess } =
+    input;
+  const { resolveProviderSessionThread } = projectionAccess;
   const appendInteractionResponseFailure = (
     event: InteractionResponseEvent,
     input: {

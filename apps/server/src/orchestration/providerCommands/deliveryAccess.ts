@@ -4,8 +4,9 @@ import {
   OrchestrationEventDeliveryRepository,
   PROVIDER_COMMAND_REACTOR_CONSUMER,
 } from "../../persistence/Services/OrchestrationEventDeliveries.ts";
-import { Ref, Effect, Option, Duration } from "effect";
+import { Effect, Option, Duration } from "effect";
 import { type ProviderCommandReactorShape } from "../Services/ProviderCommandReactor.ts";
+import { ProviderDeliveryGate } from "../Services/ProviderDeliveryGate.ts";
 import { ProviderCommandExecutionError } from "./providerCallPolicy";
 
 export function makeProviderDeliveryAccess(input: {
@@ -13,11 +14,9 @@ export function makeProviderDeliveryAccess(input: {
   readonly deliveryRepository: ServiceMap.Service.Shape<
     typeof OrchestrationEventDeliveryRepository
   >;
-  readonly deliveryReconciler: Ref.Ref<
-    ProviderCommandReactorShape["reconcileDelivery"] | undefined
-  >;
+  readonly deliveryGate: ServiceMap.Service.Shape<typeof ProviderDeliveryGate>;
 }): Pick<ProviderCommandReactorShape, "reconcileDelivery" | "drain" | "listBlockingDeliveries"> {
-  const { orchestrationEngine, deliveryRepository, deliveryReconciler } = input;
+  const { orchestrationEngine, deliveryRepository, deliveryGate } = input;
   const drain: ProviderCommandReactorShape["drain"] = Effect.gen(function* () {
     const targetSequence = yield* orchestrationEngine.getEventHighWaterSequence;
     while (true) {
@@ -39,7 +38,7 @@ export function makeProviderDeliveryAccess(input: {
     });
 
   const reconcileDelivery: ProviderCommandReactorShape["reconcileDelivery"] = (input) =>
-    Effect.flatMap(Ref.get(deliveryReconciler), (runtime) =>
+    Effect.flatMap(Effect.sync(deliveryGate.getReconciler), (runtime) =>
       runtime === undefined
         ? Effect.fail(
             new ProviderCommandExecutionError("Provider delivery reconciliation is not ready"),

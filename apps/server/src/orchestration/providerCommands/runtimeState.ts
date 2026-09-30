@@ -8,13 +8,6 @@ export type BlockedGoalContinuation = Pick<
   "goalStartedAt" | "trigger" | "sourceTurnId"
 >;
 
-export type PendingQueuedDispatch = {
-  readonly queuedThreadId: string;
-  readonly messageId: string;
-  releaseOnTurnId?: TurnId;
-  pendingTerminalTurnIds?: Set<TurnId>;
-};
-
 export type PendingInterruptEscalation = { evidence: ProviderContextLifecycleEvidence | null };
 
 export type PendingContextBootstrapAttempt = {
