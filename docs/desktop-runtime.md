@@ -10,7 +10,7 @@ source directory depth does not change runtime resource or preload paths.
 - `main/window` owns window creation, appearance, native menus, notifications,
   application icons and permission handlers.
 - `main/lifecycle` owns startup, logging, quit coordination, bundle replacement
-  detection and renderer crash recovery.
+  detection. Renderer crash handling lives with its window owner.
 - `main/updates` owns updater configuration, check/download activity, pending
   artifacts, durable install handoff and recovery.
 - `main/ipc` owns the channel catalogue, payload validation and handler registration.
@@ -28,20 +28,24 @@ source directory depth does not change runtime resource or preload paths.
 
 ## Instance state and startup
 
-The application runtime owns mutable window, backend, browser and updater state.
-Domain factories receive typed subsets of that runtime and publish their callable
-operations. Functions used only within a domain keep direct local calls. The
-composition installs operations before `initializeDesktopState` evaluates startup
-state, preserving the original function-hoisting and initialization order.
-Only after initialization does `registerDesktopLifecycle` attach the application
-ready/quit, foreground and process-error handlers.
+`createDesktopRuntime` connects the application domains and installs the Electron
+lifecycle handlers. Backend process/readiness state, update activity/install state,
+window/menu/notification state, protocol caches, storage recovery and computer host
+resources each belong to their domain constructor. The composition sees operations,
+not an application-wide mutable state object. Immutable identity, paths and timing
+configuration come from `main/desktopEnvironment.ts`; IPC names come directly from
+`main/ipc/ipcChannels.ts`.
 
-`DesktopBrowserManager`, `DesktopBrowserAutomationHost` and `CuaDriverHost` remain
-small public facades. Each constructs its own runtime; maps, queues, ownership
-fences and cancellation state belong to that instance. Their domain factories
-capture the instance instead of relying on module-level mutable singletons.
-Factories must not execute operations during assembly: fields and owned resources
-are initialized before callbacks are allowed to use them.
+The packaged bundle identity is captured before shell environment hydration. The
+Electron user-data path and single-instance lock are established before browser
+services are constructed. Profile repair and privileged protocol registration run
+before `app.whenReady()`. Constructors must not call dependencies while composition
+is still being assembled; callbacks become usable after all domains are connected.
+
+Browser and Cua owners retain internal runtime composition while their maps,
+transport resources, admission state and cancellation fences are progressively
+encapsulated. Some of these factories still have broad operation dependencies; the
+strict eight-field input target and pre-composition source-size target remain open.
 
 IPC channel values, preload methods, environment variables, stored paths and data
 formats are unchanged. Moving a source file does not authorize changing one of

@@ -1,10 +1,58 @@
 import { webContents, type WebContents } from "electron";
 import { randomUUID } from "node:crypto";
-import type { BrowserAutomationVisibleRuntime } from "../browserTabState";
+import type {
+  BrowserAutomationExpectedInput,
+  BrowserAutomationVisibleRuntime,
+} from "../browserTabState";
 
 import { withRendererGuestFocus } from "./betterwrightFocus";
-import { betterwrightExpectedInputs } from "./betterwrightInput";
-import { BetterwrightKeyboardPolicy } from "./betterwrightKeyboardPolicy";
+import { BetterwrightKeyboardPolicy, normalizedKeyEventKey } from "./betterwrightKeyboardPolicy";
+
+function betterwrightExpectedInputs(
+  method: string,
+  params: Record<string, unknown>,
+): BrowserAutomationExpectedInput[] {
+  if (
+    method === "Input.dispatchKeyEvent" &&
+    ["keyDown", "rawKeyDown"].includes(String(params.type))
+  ) {
+    const key = normalizedKeyEventKey(params);
+    if (!key) return [];
+    const modifiers = typeof params.modifiers === "number" ? params.modifiers : 0;
+    return [
+      {
+        kind: "key",
+        key,
+        alt: Boolean(modifiers & 1),
+        control: Boolean(modifiers & 2),
+        meta: Boolean(modifiers & 4),
+        shift: Boolean(modifiers & 8),
+      },
+    ];
+  }
+  if (
+    method !== "Input.dispatchMouseEvent" ||
+    typeof params.x !== "number" ||
+    typeof params.y !== "number"
+  )
+    return [];
+  if (params.type !== "mousePressed" && params.type !== "mouseWheel") return [];
+  const button =
+    params.button === "left" || params.button === "right" || params.button === "middle"
+      ? params.button
+      : undefined;
+  const point: { x: number; y: number; button?: "left" | "right" | "middle" } = {
+    x: params.x,
+    y: params.y,
+    ...(button ? { button } : {}),
+  };
+  return [
+    { kind: "mouse", type: params.type === "mouseWheel" ? "mouseWheel" : "mouseDown", ...point },
+    ...(button === "right" && params.type === "mousePressed"
+      ? [{ kind: "mouse" as const, type: "contextMenu" as const, ...point }]
+      : []),
+  ];
+}
 
 type Params = Record<string, unknown>;
 let nativeInputQueue: Promise<unknown> = Promise.resolve();

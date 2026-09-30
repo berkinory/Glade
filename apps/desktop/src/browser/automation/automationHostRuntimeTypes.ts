@@ -18,21 +18,18 @@ import type { BrowserAutomationVisibleRuntime } from "../browserTabState";
 import {
   BrowserAutomationToolRequest,
   DesktopBrowserAutomationHostOptions,
-  IdempotencyEntry,
-  IdempotencyTombstone,
   SessionAffinity,
   TabToolExecution,
   WindowOpenObservation,
 } from "./automationHostPolicy";
 import { BrowserDiagnosticsStore } from "./browserDiagnostics";
+import type { AutomationSessionRegistry } from "./automationSessionAffinity";
 import { BrowserAutomationHostError } from "./hostErrors";
 
 export interface BrowserAutomationHostRuntime {
   readonly options: DesktopBrowserAutomationHostOptions;
   readonly browserManager: DesktopBrowserManager;
-  readonly affinities: Map<string, SessionAffinity>;
-  readonly idempotency: Map<string, IdempotencyEntry>;
-  readonly idempotencyTombstones: Map<string, IdempotencyTombstone>;
+  readonly sessionRegistry: AutomationSessionRegistry;
   readonly lockTails: Map<string, Promise<void>>;
   readonly activeOperations: Set<Promise<unknown>>;
   readonly diagnostics: BrowserDiagnosticsStore;
@@ -48,13 +45,6 @@ export interface BrowserAutomationHostRuntime {
   dispose: () => Promise<void>;
   waitForIdle: () => Promise<void>;
   executeTool: (request: BrowserAutomationToolRequest) => Promise<unknown>;
-  trimIdempotencyCache: () => void;
-  reconcileIdempotentReplay: (
-    _request: BrowserAutomationToolRequest,
-    affinity: SessionAffinity,
-    result: Promise<unknown>,
-  ) => Promise<unknown>;
-  bindSession: (request: BrowserAutomationToolRequest) => SessionAffinity;
   withLock: <T>(
     key: string,
     action: () => Promise<T>,

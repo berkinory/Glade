@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createExclusiveApplyQueue } from "./exclusiveApplyQueue";
+import { createExclusiveApplyQueue } from "../window/desktopAppIcon";
 
 describe("createExclusiveApplyQueue", () => {
   it("applies values in order when they do not overlap", async () => {

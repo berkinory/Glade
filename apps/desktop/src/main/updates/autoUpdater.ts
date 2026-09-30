@@ -1,10 +1,22 @@
+import type { DesktopRuntimeInfo, DesktopUpdateState } from "@glade/contracts/ipc/ipc";
 import { desktopUpdateChannel } from "@glade/shared/platform/desktopIdentity";
 import { app } from "electron";
-import { autoUpdater, BaseUpdater } from "electron-updater";
-import { type DesktopRuntime } from "../desktopRuntimeTypes";
+import { autoUpdater, BaseUpdater, type UpdateDownloadedEvent } from "electron-updater";
+import {
+  desktopFlavor,
+  DESKTOP_UPDATE_ALLOW_PRERELEASE,
+  AUTO_UPDATE_STARTUP_DELAY_MS,
+} from "../desktopEnvironment";
+import { formatErrorMessage } from "../lifecycle/desktopLogging";
+import type {
+  UpdateStatus,
+  UpdateActivityState,
+  UpdateDownloadState,
+  UpdateInstallState,
+} from "./updateDomainState";
+import type { UpdateInstallHandoffExpectation } from "./updateInstallMarker";
 import { isArm64HostRunningIntelBuild } from "../lifecycle/runtimeArch";
 import { hardenElectronUpdater } from "./electronUpdaterSecurity";
-import { buildGitHubReleasesPageUrl, resolveGitHubUpdateSource } from "./githubUpdateFeed";
 import {
   installResumableUpdateDownloader,
   type ResumableDownloaderTarget,
@@ -17,96 +29,103 @@ import {
 } from "./updateMachine";
 import { resolveElectronUpdaterCacheDirName } from "./updatePendingCache";
 import {
+  buildGitHubReleasesPageUrl,
+  resolveGitHubUpdateSource,
   isExpectedStalledDownloadCancellationError,
   shouldBroadcastDownloadProgress,
+  type DownloadProgressSample,
 } from "./updateState";
 
-export function createAutoUpdater(
-  desktopRuntime: Pick<
-    DesktopRuntime,
-    | "readAppUpdateYml"
-    | "configuredUpdaterCacheDirName"
-    | "shouldEnableAutoUpdates"
-    | "setUpdateState"
-    | "desktopRuntimeInfo"
-    | "desktopFlavor"
-    | "processInstallMarkerOnStartup"
-    | "updaterConfigured"
-    | "resolveEmbeddedWindowsPublisherSubjects"
-    | "DESKTOP_UPDATE_ALLOW_PRERELEASE"
-    | "clearUpdateCheckTimeoutTimer"
-    | "downloadedUpdateArtifact"
-    | "isAcceptableUpdateVersion"
-    | "clearPendingUpdateCache"
-    | "describeRejectedUpdateVersion"
-    | "updateState"
-    | "prepareAvailableUpdateInBackground"
-    | "formatErrorMessage"
-    | "resolveUpdaterErrorContext"
-    | "isStalledDownloadCancellationSuppressionArmed"
-    | "consumeStalledDownloadCancellationSuppression"
-    | "activeUpdateInstallHandoff"
-    | "clearUpdaterInstallInFlightAfterError"
-    | "recordInstallMarkerFailure"
-    | "updateCheckInFlight"
-    | "updateDownloadInFlight"
-    | "recoverDesktopAfterUpdaterInstallFailure"
-    | "updateDownloadStallTimerOnProgress"
-    | "recordDownloadedUpdateIdentity"
-    | "downloadedUpdateIdentityTask"
-    | "clearUpdatePollTimer"
-    | "automaticUpdateActivitySuppressed"
-    | "updateStartupTimer"
-    | "checkForUpdates"
-    | "AUTO_UPDATE_STARTUP_DELAY_MS"
-    | "scheduleUpdatePoll"
-  >,
-) {
+export function createAutoUpdater(input: {
+  status: UpdateStatus;
+  activityState: UpdateActivityState;
+  download: UpdateDownloadState;
+  install: UpdateInstallState;
+  resources: {
+    readAppUpdateYml: () => Record<string, string> | null;
+    resolveEmbeddedWindowsPublisherSubjects: () => string[];
+    processInstallMarkerOnStartup: () => void;
+    shouldEnableAutoUpdates: () => boolean;
+    desktopRuntimeInfo: DesktopRuntimeInfo;
+  };
+  activity: {
+    setUpdateState: (patch: Partial<DesktopUpdateState>) => void;
+    clearUpdateCheckTimeoutTimer: () => void;
+    isAcceptableUpdateVersion: (version: string | null | undefined) => boolean;
+    describeRejectedUpdateVersion: (version: string) => string;
+    clearPendingUpdateCache: (reason: string) => Promise<void>;
+    clearUpdatePollTimer: () => void;
+    scheduleUpdatePoll: () => void;
+    checkForUpdates: (reason: string) => Promise<void>;
+  };
+  downloadActions: {
+    prepareAvailableUpdateInBackground: (reason: string) => void;
+    recordDownloadedUpdateIdentity: (info: UpdateDownloadedEvent) => Promise<void>;
+    updateDownloadStallTimerOnProgress: (progress: DownloadProgressSample) => void;
+  };
+  recovery: {
+    resolveUpdaterErrorContext: () => DesktopUpdateState["errorContext"];
+    isStalledDownloadCancellationSuppressionArmed: () => boolean;
+    consumeStalledDownloadCancellationSuppression: () => void;
+    clearUpdaterInstallInFlightAfterError: (input?: {
+      preservePendingPreparation?: boolean;
+    }) => boolean;
+    recordInstallMarkerFailure: (
+      nowIso: string,
+      expected: UpdateInstallHandoffExpectation | null,
+    ) => number;
+    recoverDesktopAfterUpdaterInstallFailure: () => void;
+  };
+}) {
+  const {
+    status,
+    activityState,
+    download,
+    install,
+    resources,
+    activity,
+    downloadActions,
+    recovery,
+  } = input;
   function configureAutoUpdater(): void {
-    const appUpdateYml = desktopRuntime.readAppUpdateYml();
-    desktopRuntime.configuredUpdaterCacheDirName = resolveElectronUpdaterCacheDirName(
-      appUpdateYml,
-      app.getName(),
-    );
+    const appUpdateYml = resources.readAppUpdateYml();
+    status.cacheDirectoryName = resolveElectronUpdaterCacheDirName(appUpdateYml, app.getName());
     const githubUpdateSource = resolveGitHubUpdateSource(appUpdateYml);
     const releaseUrl =
       githubUpdateSource === null ? null : buildGitHubReleasesPageUrl(githubUpdateSource);
-    const enabled = desktopRuntime.shouldEnableAutoUpdates();
-    desktopRuntime.setUpdateState({
+    const enabled = resources.shouldEnableAutoUpdates();
+    activity.setUpdateState({
       ...createInitialDesktopUpdateState(
         app.getVersion(),
-        desktopRuntime.desktopRuntimeInfo,
-        desktopRuntime.desktopFlavor === "development"
-          ? "production"
-          : desktopRuntime.desktopFlavor,
+        resources.desktopRuntimeInfo,
+        desktopFlavor === "development" ? "production" : desktopFlavor,
       ),
       enabled,
       status: enabled ? "idle" : "disabled",
       releaseUrl,
     });
-    desktopRuntime.processInstallMarkerOnStartup();
+    resources.processInstallMarkerOnStartup();
     if (!enabled) {
-      desktopRuntime.configuredUpdaterCacheDirName = null;
+      status.cacheDirectoryName = null;
       return;
     }
-    desktopRuntime.updaterConfigured = true;
+    status.configured = true;
     hardenElectronUpdater(
       { BaseUpdater },
       autoUpdater,
       process.platform,
-      app.isPackaged ? desktopRuntime.resolveEmbeddedWindowsPublisherSubjects() : null,
+      app.isPackaged ? resources.resolveEmbeddedWindowsPublisherSubjects() : null,
     );
 
     autoUpdater.autoDownload = false;
     autoUpdater.autoInstallOnAppQuit = false;
 
-    autoUpdater.channel = desktopUpdateChannel(desktopRuntime.desktopFlavor);
-    autoUpdater.allowPrerelease = desktopRuntime.DESKTOP_UPDATE_ALLOW_PRERELEASE;
+    autoUpdater.channel = desktopUpdateChannel(desktopFlavor);
+    autoUpdater.allowPrerelease = DESKTOP_UPDATE_ALLOW_PRERELEASE;
     autoUpdater.allowDowngrade = false;
 
     autoUpdater.disableDifferentialDownload =
-      process.platform === "darwin" ||
-      isArm64HostRunningIntelBuild(desktopRuntime.desktopRuntimeInfo);
+      process.platform === "darwin" || isArm64HostRunningIntelBuild(resources.desktopRuntimeInfo);
     // electron-updater has no working idle timeout on macOS (its socket timeout is wired to a `socket`
     // event Electron's net.request never emits) and never resumes from a byte offset, so a stalled CDN
     // transfer hangs for minutes until TCP recovers on its own. installResumableUpdateDownloader
@@ -120,7 +139,7 @@ export function createAutoUpdater(
     }
     let lastLoggedDownloadMilestone = -1;
 
-    if (isArm64HostRunningIntelBuild(desktopRuntime.desktopRuntimeInfo)) {
+    if (isArm64HostRunningIntelBuild(resources.desktopRuntimeInfo)) {
       console.info(
         "[desktop-updater] Apple Silicon host detected while running Intel build; updates will switch to arm64 packages.",
       );
@@ -130,95 +149,94 @@ export function createAutoUpdater(
       console.info("[desktop-updater] Looking for updates...");
     });
     autoUpdater.on("update-available", (info) => {
-      desktopRuntime.clearUpdateCheckTimeoutTimer();
-      desktopRuntime.downloadedUpdateArtifact = null;
-      if (!desktopRuntime.isAcceptableUpdateVersion(info.version)) {
-        void desktopRuntime.clearPendingUpdateCache(
-          `available update rejected: ${desktopRuntime.describeRejectedUpdateVersion(info.version)}`,
+      activity.clearUpdateCheckTimeoutTimer();
+      download.artifact = null;
+      if (!activity.isAcceptableUpdateVersion(info.version)) {
+        void activity.clearPendingUpdateCache(
+          `available update rejected: ${activity.describeRejectedUpdateVersion(info.version)}`,
         );
-        desktopRuntime.setUpdateState(
-          reduceDesktopUpdateStateOnNoUpdate(desktopRuntime.updateState, new Date().toISOString()),
+        activity.setUpdateState(
+          reduceDesktopUpdateStateOnNoUpdate(status.state, new Date().toISOString()),
         );
         lastLoggedDownloadMilestone = -1;
         console.info(
-          `[desktop-updater] Ignoring available update: ${desktopRuntime.describeRejectedUpdateVersion(info.version)}.`,
+          `[desktop-updater] Ignoring available update: ${activity.describeRejectedUpdateVersion(info.version)}.`,
         );
         return;
       }
-      desktopRuntime.setUpdateState(
+      activity.setUpdateState(
         reduceDesktopUpdateStateOnUpdateAvailable(
-          desktopRuntime.updateState,
+          status.state,
           info.version,
           new Date().toISOString(),
         ),
       );
       lastLoggedDownloadMilestone = -1;
       console.info(`[desktop-updater] Update available: ${info.version}`);
-      desktopRuntime.prepareAvailableUpdateInBackground(`available ${info.version}`);
+      downloadActions.prepareAvailableUpdateInBackground(`available ${info.version}`);
     });
     autoUpdater.on("update-not-available", () => {
-      desktopRuntime.clearUpdateCheckTimeoutTimer();
-      desktopRuntime.downloadedUpdateArtifact = null;
-      void desktopRuntime.clearPendingUpdateCache("no newer update available");
-      desktopRuntime.setUpdateState(
-        reduceDesktopUpdateStateOnNoUpdate(desktopRuntime.updateState, new Date().toISOString()),
+      activity.clearUpdateCheckTimeoutTimer();
+      download.artifact = null;
+      void activity.clearPendingUpdateCache("no newer update available");
+      activity.setUpdateState(
+        reduceDesktopUpdateStateOnNoUpdate(status.state, new Date().toISOString()),
       );
       lastLoggedDownloadMilestone = -1;
       console.info("[desktop-updater] No updates available.");
     });
     autoUpdater.on("error", (error) => {
-      desktopRuntime.clearUpdateCheckTimeoutTimer();
-      const message = desktopRuntime.formatErrorMessage(error);
-      const errorContext = desktopRuntime.resolveUpdaterErrorContext();
+      activity.clearUpdateCheckTimeoutTimer();
+      const message = formatErrorMessage(error);
+      const errorContext = recovery.resolveUpdaterErrorContext();
       if (
         isExpectedStalledDownloadCancellationError({
-          suppressionArmed: desktopRuntime.isStalledDownloadCancellationSuppressionArmed(),
+          suppressionArmed: recovery.isStalledDownloadCancellationSuppressionArmed(),
           errorContext,
           message,
         })
       ) {
-        desktopRuntime.consumeStalledDownloadCancellationSuppression();
+        recovery.consumeStalledDownloadCancellationSuppression();
         console.warn("[desktop-updater] Ignored expected cancellation after stalled download.");
         return;
       }
-      const failedHandoff = desktopRuntime.activeUpdateInstallHandoff;
-      const installPreparationPending = desktopRuntime.clearUpdaterInstallInFlightAfterError({
+      const failedHandoff = install.activeHandoff;
+      const installPreparationPending = recovery.clearUpdaterInstallInFlightAfterError({
         preservePendingPreparation: true,
       });
       if (errorContext === "download") {
-        desktopRuntime.downloadedUpdateArtifact = null;
+        download.artifact = null;
       }
       const installFailureCount =
         errorContext === "install"
-          ? desktopRuntime.recordInstallMarkerFailure(new Date().toISOString(), failedHandoff)
-          : desktopRuntime.updateState.installFailureCount;
-      if (!desktopRuntime.updateCheckInFlight && !desktopRuntime.updateDownloadInFlight) {
-        desktopRuntime.setUpdateState({
+          ? recovery.recordInstallMarkerFailure(new Date().toISOString(), failedHandoff)
+          : status.state.installFailureCount;
+      if (!status.checkInFlight && !download.inFlight) {
+        activity.setUpdateState({
           status: "error",
           message,
           checkedAt: new Date().toISOString(),
           downloadPercent: null,
           errorContext,
           canRetry:
-            desktopRuntime.updateState.availableVersion !== null ||
-            desktopRuntime.updateState.downloadedVersion !== null,
+            status.state.availableVersion !== null || status.state.downloadedVersion !== null,
           installFailureCount,
         });
       }
       console.error(`[desktop-updater] Updater error: ${message}`);
       if (errorContext === "install" && !installPreparationPending) {
-        desktopRuntime.recoverDesktopAfterUpdaterInstallFailure();
+        recovery.recoverDesktopAfterUpdaterInstallFailure();
       }
     });
     autoUpdater.on("download-progress", (progress) => {
       const percent = Math.floor(progress.percent);
-      desktopRuntime.updateDownloadStallTimerOnProgress(progress);
+      downloadActions.updateDownloadStallTimerOnProgress(progress);
       if (
-        shouldBroadcastDownloadProgress(desktopRuntime.updateState, progress.percent) ||
-        desktopRuntime.updateState.message !== null
+        shouldBroadcastDownloadProgress(status.state, progress.percent) ||
+        status.state.message !== null
       ) {
-        desktopRuntime.setUpdateState(
-          reduceDesktopUpdateStateOnDownloadProgress(desktopRuntime.updateState, progress.percent),
+        activity.setUpdateState(
+          reduceDesktopUpdateStateOnDownloadProgress(status.state, progress.percent),
         );
       }
       const milestone = percent - (percent % 10);
@@ -228,31 +246,30 @@ export function createAutoUpdater(
       }
     });
     autoUpdater.on("update-downloaded", (info) => {
-      const task = desktopRuntime.recordDownloadedUpdateIdentity(info);
-      desktopRuntime.downloadedUpdateIdentityTask = task;
+      const task = downloadActions.recordDownloadedUpdateIdentity(info);
+      download.identityTask = task;
       const clearTask = () => {
-        if (desktopRuntime.downloadedUpdateIdentityTask === task)
-          desktopRuntime.downloadedUpdateIdentityTask = null;
+        if (download.identityTask === task) download.identityTask = null;
       };
       void task.then(clearTask, clearTask);
     });
 
-    desktopRuntime.clearUpdatePollTimer();
+    activity.clearUpdatePollTimer();
 
-    if (desktopRuntime.automaticUpdateActivitySuppressed) {
+    if (status.automaticActivitySuppressed) {
       console.info(
         "[desktop-updater] Startup and periodic update checks suppressed after failed install verification.",
       );
       return;
     }
 
-    desktopRuntime.updateStartupTimer = setTimeout(() => {
-      desktopRuntime.updateStartupTimer = null;
-      void desktopRuntime.checkForUpdates("startup");
-    }, desktopRuntime.AUTO_UPDATE_STARTUP_DELAY_MS);
-    desktopRuntime.updateStartupTimer.unref();
+    activityState.startupTimer = setTimeout(() => {
+      activityState.startupTimer = null;
+      void activity.checkForUpdates("startup");
+    }, AUTO_UPDATE_STARTUP_DELAY_MS);
+    activityState.startupTimer.unref();
 
-    desktopRuntime.scheduleUpdatePoll();
+    activity.scheduleUpdatePoll();
   }
   return { configureAutoUpdater };
 }

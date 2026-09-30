@@ -24,15 +24,17 @@ describe("DesktopBrowserManager automation runtime boundary", () => {
       ownsWebContents: false as const,
       listenerDisposers: [] as Array<() => void>,
     };
-    const access = (
-      manager as unknown as {
-        hostRuntime: {
-          runtimes: Map<string, typeof runtime>;
-          configureRuntimeWebContents(value: typeof runtime): void;
-        };
-      }
-    ).hostRuntime;
-    access.runtimes.set(runtime.key, runtime);
+    const access = manager as unknown as {
+      live: { runtimes: Map<string, unknown> };
+      tabs: { states: Map<unknown, unknown> };
+      popup: {
+        pendingWindowOpenTasksByRuntimeKey: Map<string, unknown>;
+        pendingAutomationWindowOpenCommitsByRuntimeKey: Map<string, unknown>;
+      };
+      runtimes: Map<string, typeof runtime>;
+      configureRuntimeWebContents(value: typeof runtime): void;
+    };
+    access.live.runtimes.set(runtime.key, runtime);
     access.configureRuntimeWebContents(runtime);
     const visible = manager.getVisibleAutomationRuntime({
       threadId: THREAD_ID,
@@ -133,15 +135,17 @@ describe("DesktopBrowserManager automation runtime boundary", () => {
         ownsWebContents: false as const,
         listenerDisposers: [] as Array<() => void>,
       };
-      const access = (
-        manager as unknown as {
-          hostRuntime: {
-            runtimes: Map<string, typeof runtime>;
-            configureRuntimeWebContents(value: typeof runtime): void;
-          };
-        }
-      ).hostRuntime;
-      access.runtimes.set(runtime.key, runtime);
+      const access = manager as unknown as {
+        live: { runtimes: Map<string, unknown> };
+        tabs: { states: Map<unknown, unknown> };
+        popup: {
+          pendingWindowOpenTasksByRuntimeKey: Map<string, unknown>;
+          pendingAutomationWindowOpenCommitsByRuntimeKey: Map<string, unknown>;
+        };
+        runtimes: Map<string, typeof runtime>;
+        configureRuntimeWebContents(value: typeof runtime): void;
+      };
+      access.live.runtimes.set(runtime.key, runtime);
       access.configureRuntimeWebContents(runtime);
       const observed = vi.fn();
       const release = manager.trackAutomationWindowOpen(
@@ -264,18 +268,20 @@ describe("DesktopBrowserManager automation runtime boundary", () => {
         ownsWebContents: false as const,
         listenerDisposers: [] as Array<() => void>,
       };
-      const access = (
-        manager as unknown as {
-          hostRuntime: {
-            runtimes: Map<string, typeof runtime>;
-            pendingWindowOpenTasksByRuntimeKey: Map<string, unknown>;
-            pendingAutomationWindowOpenCommitsByRuntimeKey: Map<string, unknown>;
-            states: Map<typeof THREAD_ID, unknown>;
-            configureRuntimeWebContents(value: typeof runtime): void;
-          };
-        }
-      ).hostRuntime;
-      access.runtimes.set(runtime.key, runtime);
+      const access = manager as unknown as {
+        live: { runtimes: Map<string, unknown> };
+        tabs: { states: Map<unknown, unknown> };
+        popup: {
+          pendingWindowOpenTasksByRuntimeKey: Map<string, unknown>;
+          pendingAutomationWindowOpenCommitsByRuntimeKey: Map<string, unknown>;
+        };
+        runtimes: Map<string, typeof runtime>;
+        pendingWindowOpenTasksByRuntimeKey: Map<string, unknown>;
+        pendingAutomationWindowOpenCommitsByRuntimeKey: Map<string, unknown>;
+        states: Map<typeof THREAD_ID, unknown>;
+        configureRuntimeWebContents(value: typeof runtime): void;
+      };
+      access.live.runtimes.set(runtime.key, runtime);
       access.configureRuntimeWebContents(runtime);
       const opened = vi.fn();
       const releaseTracking = manager.trackAutomationWindowOpen(
@@ -289,25 +295,25 @@ describe("DesktopBrowserManager automation runtime boundary", () => {
         features: "",
         disposition: "foreground-tab",
       });
-      expect(access.pendingWindowOpenTasksByRuntimeKey.size).toBe(1);
+      expect(access.popup.pendingWindowOpenTasksByRuntimeKey.size).toBe(1);
       await new Promise<void>((resolve) => setImmediate(resolve));
-      expect(access.pendingWindowOpenTasksByRuntimeKey.size).toBe(0);
-      expect(access.pendingAutomationWindowOpenCommitsByRuntimeKey.size).toBe(1);
+      expect(access.popup.pendingWindowOpenTasksByRuntimeKey.size).toBe(0);
+      expect(access.popup.pendingAutomationWindowOpenCommitsByRuntimeKey.size).toBe(1);
       expect(manager.getState({ threadId: THREAD_ID }).tabs).toHaveLength(1);
       if (teardown === "tab") {
         manager.closeAutomationTab({ threadId: THREAD_ID, tabId: sourceTabId });
       } else {
         manager.dispose();
       }
-      expect(access.pendingWindowOpenTasksByRuntimeKey.size).toBe(0);
-      expect(access.pendingAutomationWindowOpenCommitsByRuntimeKey.size).toBe(0);
+      expect(access.popup.pendingWindowOpenTasksByRuntimeKey.size).toBe(0);
+      expect(access.popup.pendingAutomationWindowOpenCommitsByRuntimeKey.size).toBe(0);
 
       await new Promise<void>((resolve) => setImmediate(resolve));
       expect(opened).toHaveBeenCalledOnce();
       if (teardown === "tab") {
         expect(manager.getState({ threadId: THREAD_ID }).tabs).toHaveLength(0);
       } else {
-        expect(access.states.size).toBe(0);
+        expect(access.tabs.states.size).toBe(0);
       }
       releaseTracking();
     }

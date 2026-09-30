@@ -1,3 +1,3 @@
-import { startDesktopApplication } from "./main/createDesktopRuntime";
+import { createDesktopRuntime } from "./main/createDesktopRuntime";
 
-startDesktopApplication();
+createDesktopRuntime();

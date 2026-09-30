@@ -26,14 +26,15 @@ import {
 export function createBrowserPanel(
   hostRuntime: Pick<
     BrowserRuntime,
-    | "states"
+    | "services"
+    | "budget"
+    | "live"
+    | "tabs"
+    | "view"
     | "getActiveTab"
     | "markHumanControl"
     | "ensureWorkspace"
     | "navigate"
-    | "activeBounds"
-    | "activeBoundsThreadId"
-    | "activeThreadId"
     | "markThreadStateChanged"
     | "emitState"
     | "snapshotThreadState"
@@ -41,35 +42,22 @@ export function createBrowserPanel(
     | "detachAttachedRuntime"
     | "closePopupWindowsForThread"
     | "destroyThreadRuntimes"
-    | "annotations"
-    | "rendererOnlyRuntimeKeys"
-    | "automationRuntimeKeys"
     | "getOrCreateState"
-    | "lastEmittedVersionByThreadId"
     | "scheduleThreadSuspend"
     | "enforceBackgroundAutomationRuntimeBudget"
-    | "perfCounters"
-    | "previewThreadIds"
-    | "attachedBoundsSignature"
-    | "runtimes"
     | "destroyRuntime"
     | "getTab"
-    | "attachedRuntimeKey"
     | "updatePopupWindowsForThread"
     | "attachRuntime"
     | "attachActiveTab"
     | "setRuntimeViewHidden"
-    | "activePageZoomThreadId"
-    | "activePageZoomFactor"
-    | "runtimePageZoomFactors"
     | "suspendInactiveTabs"
     | "ensureLiveRuntime"
     | "loadTab"
-    | "sessionPolicy"
   >,
 ) {
   function open(input: BrowserOpenInput): ThreadBrowserState {
-    const previousState = hostRuntime.states.get(input.threadId);
+    const previousState = hostRuntime.tabs.states.get(input.threadId);
     const nextInitialUrl = input.initialUrl ? normalizeUrlInput(input.initialUrl) : null;
     const previousActiveTab = previousState ? hostRuntime.getActiveTab(previousState) : null;
     const willNavigateExistingTab =
@@ -95,13 +83,14 @@ export function createBrowserPanel(
     const nextDidChange = syncThreadLastError(state) || didChange;
 
     if (
-      hostRuntime.activeBounds &&
-      hostRuntime.activeBoundsThreadId === input.threadId &&
-      (hostRuntime.activeThreadId === null || hostRuntime.activeThreadId === input.threadId)
+      hostRuntime.view.activeBounds &&
+      hostRuntime.view.activeBoundsThreadId === input.threadId &&
+      (hostRuntime.view.activeThreadId === null ||
+        hostRuntime.view.activeThreadId === input.threadId)
     ) {
       const visibleTab = hostRuntime.getActiveTab(state);
       if (!isBlankBrowserTabUrl(visibleTab)) {
-        activateThread(input.threadId, hostRuntime.activeBounds);
+        activateThread(input.threadId, hostRuntime.view.activeBounds);
       }
     }
 
@@ -117,19 +106,19 @@ export function createBrowserPanel(
     hostRuntime.clearSuspendTimer(input.threadId);
     resetRuntimePageZoomForThread(input.threadId);
 
-    if (hostRuntime.activeThreadId === input.threadId) {
+    if (hostRuntime.view.activeThreadId === input.threadId) {
       hostRuntime.detachAttachedRuntime();
-      hostRuntime.activeThreadId = null;
+      hostRuntime.view.activeThreadId = null;
     }
     clearActiveBoundsForThread(input.threadId);
     hostRuntime.closePopupWindowsForThread(input.threadId);
 
-    const existingState = hostRuntime.states.get(input.threadId);
+    const existingState = hostRuntime.tabs.states.get(input.threadId);
     hostRuntime.destroyThreadRuntimes(input.threadId);
     for (const tab of existingState?.tabs ?? []) {
-      hostRuntime.annotations.clearProjection(input.threadId, tab.id);
-      hostRuntime.rendererOnlyRuntimeKeys.delete(buildRuntimeKey(input.threadId, tab.id));
-      hostRuntime.automationRuntimeKeys.delete(buildRuntimeKey(input.threadId, tab.id));
+      hostRuntime.services.annotations.clearProjection(input.threadId, tab.id);
+      hostRuntime.live.rendererOnlyRuntimeKeys.delete(buildRuntimeKey(input.threadId, tab.id));
+      hostRuntime.live.automationRuntimeKeys.delete(buildRuntimeKey(input.threadId, tab.id));
     }
 
     const state = hostRuntime.getOrCreateState(input.threadId);
@@ -138,17 +127,17 @@ export function createBrowserPanel(
     state.tabs = [];
     state.lastError = null;
     hostRuntime.markThreadStateChanged(input.threadId);
-    hostRuntime.lastEmittedVersionByThreadId.delete(input.threadId);
+    hostRuntime.tabs.lastEmittedVersionByThreadId.delete(input.threadId);
     hostRuntime.emitState(input.threadId);
     return hostRuntime.snapshotThreadState(input.threadId, state);
   }
 
   function hide(input: BrowserThreadInput): void {
-    const state = hostRuntime.states.get(input.threadId);
+    const state = hostRuntime.tabs.states.get(input.threadId);
     const activeTab = state ? hostRuntime.getActiveTab(state) : null;
     const keepsAgentRuntimeAlive = Boolean(
       activeTab &&
-      hostRuntime.automationRuntimeKeys.has(buildRuntimeKey(input.threadId, activeTab.id)),
+      hostRuntime.live.automationRuntimeKeys.has(buildRuntimeKey(input.threadId, activeTab.id)),
     );
     if (!keepsAgentRuntimeAlive) {
       hostRuntime.markHumanControl(input.threadId);
@@ -156,9 +145,9 @@ export function createBrowserPanel(
     // A hidden browser must never leave the miniature presentation zoom on a runtime that automation or
     // a later screenshot can reacquire.
     resetRuntimePageZoomForThread(input.threadId);
-    if (hostRuntime.activeThreadId === input.threadId) {
+    if (hostRuntime.view.activeThreadId === input.threadId) {
       hostRuntime.detachAttachedRuntime();
-      hostRuntime.activeThreadId = null;
+      hostRuntime.view.activeThreadId = null;
     }
 
     if (!state?.open) {
@@ -174,12 +163,12 @@ export function createBrowserPanel(
   }
 
   function setPanelBounds(input: BrowserSetPanelBoundsInput): void {
-    hostRuntime.perfCounters.setPanelBoundsCalls += 1;
+    hostRuntime.budget.perfCounters.setPanelBoundsCalls += 1;
     const previewChanged =
-      hostRuntime.previewThreadIds.has(input.threadId) !== (input.preview === true);
-    if (input.preview) hostRuntime.previewThreadIds.add(input.threadId);
-    else hostRuntime.previewThreadIds.delete(input.threadId);
-    if (previewChanged) hostRuntime.attachedBoundsSignature = null;
+      hostRuntime.tabs.previewThreadIds.has(input.threadId) !== (input.preview === true);
+    if (input.preview) hostRuntime.tabs.previewThreadIds.add(input.threadId);
+    else hostRuntime.tabs.previewThreadIds.delete(input.threadId);
+    if (previewChanged) hostRuntime.view.attachedBoundsSignature = null;
     const state = hostRuntime.getOrCreateState(input.threadId);
     const nextBounds = normalizeBounds(input.bounds);
     const nextPageZoomFactor = nextBounds
@@ -188,14 +177,14 @@ export function createBrowserPanel(
     const nextBoundsSignature = browserPresentationSignature(nextBounds, nextPageZoomFactor);
     const activeTabId = hostRuntime.getActiveTab(state)?.id ?? null;
     const activeRuntimeKey = activeTabId ? buildRuntimeKey(input.threadId, activeTabId) : null;
-    const activeRuntime = activeRuntimeKey ? hostRuntime.runtimes.get(activeRuntimeKey) : null;
+    const activeRuntime = activeRuntimeKey ? hostRuntime.live.runtimes.get(activeRuntimeKey) : null;
     const surface =
       activeTabId && isNativeAutomationTab(input.threadId, activeTabId) ? "native" : input.surface;
     if (surface === "native" && activeRuntimeKey) {
-      hostRuntime.rendererOnlyRuntimeKeys.delete(activeRuntimeKey);
+      hostRuntime.live.rendererOnlyRuntimeKeys.delete(activeRuntimeKey);
     }
     const requiresRenderer = activeRuntimeKey
-      ? hostRuntime.rendererOnlyRuntimeKeys.has(activeRuntimeKey)
+      ? hostRuntime.live.rendererOnlyRuntimeKeys.has(activeRuntimeKey)
       : false;
 
     if (
@@ -205,7 +194,7 @@ export function createBrowserPanel(
       activeRuntime &&
       !activeRuntime.ownsWebContents
     ) {
-      hostRuntime.perfCounters.setPanelBoundsNoopSkips += 1;
+      hostRuntime.budget.perfCounters.setPanelBoundsNoopSkips += 1;
       return;
     }
     const previousBounds = getVisibleBoundsForThread(input.threadId);
@@ -225,9 +214,9 @@ export function createBrowserPanel(
 
     if (!state.open || nextBounds === null) {
       resetRuntimePageZoomForThread(input.threadId);
-      if (hostRuntime.activeThreadId === input.threadId) {
+      if (hostRuntime.view.activeThreadId === input.threadId) {
         hostRuntime.detachAttachedRuntime();
-        hostRuntime.activeThreadId = null;
+        hostRuntime.view.activeThreadId = null;
         if (state.open && input.occluded === true) {
           hostRuntime.clearSuspendTimer(input.threadId);
         } else {
@@ -262,32 +251,32 @@ export function createBrowserPanel(
         suspendTabState(activeTab);
         hostRuntime.markThreadStateChanged(input.threadId);
       }
-      hostRuntime.attachedRuntimeKey = null;
-      hostRuntime.attachedBoundsSignature = null;
+      hostRuntime.view.attachedRuntimeKey = null;
+      hostRuntime.view.attachedBoundsSignature = null;
     }
 
     if ((surface === "renderer" || requiresRenderer) && activeTabId && !activeRuntime) {
-      if (activeRuntimeKey) hostRuntime.rendererOnlyRuntimeKeys.add(activeRuntimeKey);
+      if (activeRuntimeKey) hostRuntime.live.rendererOnlyRuntimeKeys.add(activeRuntimeKey);
       activateThreadForPendingRenderer(input.threadId, nextBounds, nextPageZoomFactor);
       return;
     }
 
     if (
-      hostRuntime.activeThreadId === input.threadId &&
-      hostRuntime.attachedRuntimeKey === activeRuntimeKey &&
-      hostRuntime.attachedBoundsSignature === nextBoundsSignature
+      hostRuntime.view.activeThreadId === input.threadId &&
+      hostRuntime.view.attachedRuntimeKey === activeRuntimeKey &&
+      hostRuntime.view.attachedBoundsSignature === nextBoundsSignature
     ) {
-      hostRuntime.perfCounters.setPanelBoundsNoopSkips += 1;
+      hostRuntime.budget.perfCounters.setPanelBoundsNoopSkips += 1;
       return;
     }
 
     hostRuntime.updatePopupWindowsForThread(input.threadId);
 
-    if (hostRuntime.activeThreadId === input.threadId) {
-      if (activeRuntimeKey && hostRuntime.attachedRuntimeKey === activeRuntimeKey) {
-        const runtime = hostRuntime.runtimes.get(activeRuntimeKey);
+    if (hostRuntime.view.activeThreadId === input.threadId) {
+      if (activeRuntimeKey && hostRuntime.view.attachedRuntimeKey === activeRuntimeKey) {
+        const runtime = hostRuntime.live.runtimes.get(activeRuntimeKey);
         if (runtime) {
-          hostRuntime.perfCounters.setPanelBoundsViewportUpdates += 1;
+          hostRuntime.budget.perfCounters.setPanelBoundsViewportUpdates += 1;
           hostRuntime.attachRuntime(runtime, nextBounds, nextPageZoomFactor);
           return;
         }
@@ -306,15 +295,15 @@ export function createBrowserPanel(
     bounds: BrowserPanelBounds,
     pageZoomFactor = getVisiblePageZoomFactor(threadId),
   ): void {
-    const previousThreadId = hostRuntime.activeThreadId;
-    if (hostRuntime.activeThreadId && hostRuntime.activeThreadId !== threadId) {
-      resetRuntimePageZoomForThread(hostRuntime.activeThreadId);
-      hostRuntime.scheduleThreadSuspend(hostRuntime.activeThreadId);
+    const previousThreadId = hostRuntime.view.activeThreadId;
+    if (hostRuntime.view.activeThreadId && hostRuntime.view.activeThreadId !== threadId) {
+      resetRuntimePageZoomForThread(hostRuntime.view.activeThreadId);
+      hostRuntime.scheduleThreadSuspend(hostRuntime.view.activeThreadId);
     }
 
-    hostRuntime.activeThreadId = threadId;
-    hostRuntime.activeBounds = bounds;
-    hostRuntime.activeBoundsThreadId = threadId;
+    hostRuntime.view.activeThreadId = threadId;
+    hostRuntime.view.activeBounds = bounds;
+    hostRuntime.view.activeBoundsThreadId = threadId;
     setActivePageZoomFactor(threadId, pageZoomFactor);
     if (previousThreadId && previousThreadId !== threadId) {
       hostRuntime.updatePopupWindowsForThread(previousThreadId);
@@ -325,9 +314,9 @@ export function createBrowserPanel(
   }
 
   function isNativeAutomationTab(threadId: ThreadId, tabId: string): boolean {
-    const state = hostRuntime.states.get(threadId);
+    const state = hostRuntime.tabs.states.get(threadId);
     return (
-      hostRuntime.automationRuntimeKeys.has(buildRuntimeKey(threadId, tabId)) &&
+      hostRuntime.live.automationRuntimeKeys.has(buildRuntimeKey(threadId, tabId)) &&
       state !== undefined &&
       hostRuntime.getTab(state, tabId)?.runtimeSurface === "native"
     );
@@ -335,16 +324,16 @@ export function createBrowserPanel(
 
   function promoteTabToRendererSurface(threadId: ThreadId, tabId: string): void {
     const key = buildRuntimeKey(threadId, tabId);
-    const runtime = hostRuntime.runtimes.get(key);
+    const runtime = hostRuntime.live.runtimes.get(key);
     if (runtime?.ownsWebContents && runtime.view) {
       hostRuntime.setRuntimeViewHidden(runtime, true);
     }
-    if (hostRuntime.attachedRuntimeKey === key) {
-      hostRuntime.attachedRuntimeKey = null;
-      hostRuntime.attachedBoundsSignature = null;
+    if (hostRuntime.view.attachedRuntimeKey === key) {
+      hostRuntime.view.attachedRuntimeKey = null;
+      hostRuntime.view.attachedBoundsSignature = null;
     }
-    hostRuntime.rendererOnlyRuntimeKeys.add(key);
-    const state = hostRuntime.states.get(threadId);
+    hostRuntime.live.rendererOnlyRuntimeKeys.add(key);
+    const state = hostRuntime.tabs.states.get(threadId);
     const tab = state ? hostRuntime.getTab(state, tabId) : null;
     if (tab && tab.runtimeSurface !== "renderer") {
       tab.runtimeSurface = "renderer";
@@ -358,15 +347,15 @@ export function createBrowserPanel(
     bounds: BrowserPanelBounds,
     pageZoomFactor = getVisiblePageZoomFactor(threadId),
   ): void {
-    const previousThreadId = hostRuntime.activeThreadId;
+    const previousThreadId = hostRuntime.view.activeThreadId;
     if (previousThreadId && previousThreadId !== threadId) {
       resetRuntimePageZoomForThread(previousThreadId);
       hostRuntime.scheduleThreadSuspend(previousThreadId);
       hostRuntime.updatePopupWindowsForThread(previousThreadId);
     }
-    hostRuntime.activeThreadId = threadId;
-    hostRuntime.activeBounds = bounds;
-    hostRuntime.activeBoundsThreadId = threadId;
+    hostRuntime.view.activeThreadId = threadId;
+    hostRuntime.view.activeBounds = bounds;
+    hostRuntime.view.activeBoundsThreadId = threadId;
     setActivePageZoomFactor(threadId, pageZoomFactor);
     hostRuntime.clearSuspendTimer(threadId);
     hostRuntime.updatePopupWindowsForThread(threadId);
@@ -377,50 +366,54 @@ export function createBrowserPanel(
       clearActiveBoundsForThread(threadId);
       return;
     }
-    hostRuntime.activeBounds = bounds;
-    hostRuntime.activeBoundsThreadId = threadId;
+    hostRuntime.view.activeBounds = bounds;
+    hostRuntime.view.activeBoundsThreadId = threadId;
   }
 
   function clearActiveBoundsForThread(threadId: ThreadId): void {
-    if (hostRuntime.activeBoundsThreadId !== threadId) {
+    if (hostRuntime.view.activeBoundsThreadId !== threadId) {
       return;
     }
-    hostRuntime.activeBounds = null;
-    hostRuntime.activeBoundsThreadId = null;
+    hostRuntime.view.activeBounds = null;
+    hostRuntime.view.activeBoundsThreadId = null;
     clearActivePageZoomForThread(threadId);
   }
 
   function getVisibleBoundsForThread(threadId: ThreadId): BrowserPanelBounds | null {
-    return hostRuntime.activeBoundsThreadId === threadId ? hostRuntime.activeBounds : null;
+    return hostRuntime.view.activeBoundsThreadId === threadId
+      ? hostRuntime.view.activeBounds
+      : null;
   }
 
   function setActivePageZoomFactor(threadId: ThreadId, pageZoomFactor: number): void {
-    hostRuntime.activePageZoomThreadId = threadId;
-    hostRuntime.activePageZoomFactor = normalizeBrowserPageZoomFactor(pageZoomFactor);
+    hostRuntime.view.activePageZoomThreadId = threadId;
+    hostRuntime.view.activePageZoomFactor = normalizeBrowserPageZoomFactor(pageZoomFactor);
   }
 
   function clearActivePageZoomForThread(threadId: ThreadId): void {
-    if (hostRuntime.activePageZoomThreadId !== threadId) {
+    if (hostRuntime.view.activePageZoomThreadId !== threadId) {
       return;
     }
-    hostRuntime.activePageZoomThreadId = null;
-    hostRuntime.activePageZoomFactor = 1;
+    hostRuntime.view.activePageZoomThreadId = null;
+    hostRuntime.view.activePageZoomFactor = 1;
   }
 
   function getVisiblePageZoomFactor(threadId: ThreadId): number {
-    return hostRuntime.activePageZoomThreadId === threadId ? hostRuntime.activePageZoomFactor : 1;
+    return hostRuntime.view.activePageZoomThreadId === threadId
+      ? hostRuntime.view.activePageZoomFactor
+      : 1;
   }
 
   function setRuntimePageZoomFactor(runtime: LiveTabRuntime, pageZoomFactor: number): void {
     const nextPageZoomFactor = normalizeBrowserPageZoomFactor(pageZoomFactor);
-    if (hostRuntime.runtimePageZoomFactors.get(runtime.key) === nextPageZoomFactor) {
+    if (hostRuntime.live.runtimePageZoomFactors.get(runtime.key) === nextPageZoomFactor) {
       return;
     }
 
     try {
       runtime.webContents.setZoomFactor(nextPageZoomFactor);
     } catch {}
-    hostRuntime.runtimePageZoomFactors.set(runtime.key, nextPageZoomFactor);
+    hostRuntime.live.runtimePageZoomFactors.set(runtime.key, nextPageZoomFactor);
   }
 
   function clearRuntimeViewportOverride(runtime: LiveTabRuntime): void {
@@ -431,13 +424,13 @@ export function createBrowserPanel(
   }
 
   function resetRuntimePageZoomForThread(threadId: ThreadId): void {
-    for (const runtime of hostRuntime.runtimes.values()) {
+    for (const runtime of hostRuntime.live.runtimes.values()) {
       if (runtime.threadId === threadId) {
         setRuntimePageZoomFactor(runtime, 1);
       }
     }
-    if (hostRuntime.activePageZoomThreadId === threadId) {
-      hostRuntime.activePageZoomFactor = 1;
+    if (hostRuntime.view.activePageZoomThreadId === threadId) {
+      hostRuntime.view.activePageZoomFactor = 1;
     }
   }
 
@@ -456,8 +449,8 @@ export function createBrowserPanel(
         continue;
       }
       const runtimeKey = buildRuntimeKey(threadId, tab.id);
-      if (hostRuntime.rendererOnlyRuntimeKeys.has(runtimeKey)) {
-        const rendererRuntime = hostRuntime.runtimes.get(runtimeKey);
+      if (hostRuntime.live.rendererOnlyRuntimeKeys.has(runtimeKey)) {
+        const rendererRuntime = hostRuntime.live.runtimes.get(runtimeKey);
         if (!rendererRuntime || rendererRuntime.ownsWebContents) {
           if (rendererRuntime?.ownsWebContents) hostRuntime.destroyRuntime(threadId, tab.id);
           continue;
@@ -465,12 +458,12 @@ export function createBrowserPanel(
       }
       const wasSuspended = tab.status === SUSPENDED_TAB_STATUS;
       const runtime = hostRuntime.ensureLiveRuntime(threadId, tab.id);
-      if (wasSuspended && !hostRuntime.automationRuntimeKeys.has(runtimeKey)) {
+      if (wasSuspended && !hostRuntime.live.automationRuntimeKeys.has(runtimeKey)) {
         void hostRuntime.loadTab(threadId, tab.id, { force: true, runtime });
       } else {
         didChange =
           syncTabStateFromRuntime(state, tab, runtime.webContents, (url) =>
-            hostRuntime.sessionPolicy.resolveDisplayUrl(url),
+            hostRuntime.services.sessionPolicy.resolveDisplayUrl(url),
           ) || didChange;
       }
     }

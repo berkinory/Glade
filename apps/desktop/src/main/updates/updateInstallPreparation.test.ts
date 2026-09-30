@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   makeUpdateInstallPreparationCoordinator,
   UpdateInstallPreparationCancelledError,
-} from "./updateInstallPreparation";
+} from "./updateDomainState";
 
 describe("update install preparation coordination", () => {
   it("invalidates pending work and reports whether recovery must wait for it", () => {

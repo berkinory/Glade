@@ -24,32 +24,28 @@ import {
 export function createBrowserPopupRuntime(
   hostRuntime: Pick<
     BrowserRuntime,
+    | "lifecycle"
+    | "services"
+    | "popup"
+    | "live"
+    | "tabs"
+    | "view"
     | "isAutomationGestureActive"
     | "emitAutomationWindowOpen"
-    | "sessionPolicy"
-    | "window"
     | "ensureWorkspace"
     | "createLiveRuntime"
-    | "runtimes"
     | "clearTabSuspendTimer"
-    | "disposed"
     | "markThreadStateChanged"
     | "getVisibleBoundsForThread"
-    | "activeThreadId"
     | "attachRuntime"
     | "emitState"
-    | "states"
     | "closeAutomationTab"
-    | "popupRuntimes"
     | "getAutomationHumanControlEpoch"
-    | "automationSideEffectProvenanceByRuntimeKey"
+    | "getAutomationSideEffectProvenance"
+    | "inheritAutomationSideEffectProvenance"
     | "emitAutomationDownload"
-    | "pendingWindowOpenTasksByRuntimeKey"
-    | "pendingAutomationWindowOpenCommitsByRuntimeKey"
     | "newTab"
     | "attachActiveTab"
-    | "automationRuntimeKeys"
-    | "pendingStatePublicationsByKey"
     | "markHumanControl"
   >,
 ) {
@@ -121,9 +117,10 @@ export function createBrowserPopupRuntime(
 
         return {
           action: "allow",
-          overrideBrowserWindowOptions: hostRuntime.sessionPolicy.buildOAuthPopupWindowOptions(
-            hostRuntime.window,
-          ),
+          overrideBrowserWindowOptions:
+            hostRuntime.services.sessionPolicy.buildOAuthPopupWindowOptions(
+              hostRuntime.view.window,
+            ),
           createWindow: (options) => createEmbeddedPopup({ threadId, tabId }, options, url),
         };
       }
@@ -160,7 +157,7 @@ export function createBrowserPopupRuntime(
     const runtime = hostRuntime.createLiveRuntime(opener.threadId, tab.id, options);
     state.tabs.push(tab);
     runtime.popupOpenerTabId = opener.tabId;
-    hostRuntime.runtimes.set(runtime.key, runtime);
+    hostRuntime.live.runtimes.set(runtime.key, runtime);
     inheritAutomationDownloadProvenance(opener, runtime.key);
     hostRuntime.clearTabSuspendTimer(opener.threadId, opener.tabId);
     const close = (event: Electron.Event) => {
@@ -172,11 +169,12 @@ export function createBrowserPopupRuntime(
     runtime.listenerDisposers.push(() => popupEvents.removeListener("close", close));
 
     setImmediate(() => {
-      if (hostRuntime.disposed || hostRuntime.runtimes.get(runtime.key) !== runtime) return;
+      if (hostRuntime.lifecycle.disposed || hostRuntime.live.runtimes.get(runtime.key) !== runtime)
+        return;
       state.activeTabId = tab.id;
       hostRuntime.markThreadStateChanged(opener.threadId);
       const bounds = hostRuntime.getVisibleBoundsForThread(opener.threadId);
-      if (hostRuntime.activeThreadId === opener.threadId && bounds)
+      if (hostRuntime.view.activeThreadId === opener.threadId && bounds)
         hostRuntime.attachRuntime(runtime, bounds);
       hostRuntime.emitState(opener.threadId);
 
@@ -188,8 +186,8 @@ export function createBrowserPopupRuntime(
   }
 
   function closeEmbeddedPopup(runtime: LiveTabRuntime): void {
-    if (hostRuntime.runtimes.get(runtime.key) !== runtime) return;
-    const state = hostRuntime.states.get(runtime.threadId);
+    if (hostRuntime.live.runtimes.get(runtime.key) !== runtime) return;
+    const state = hostRuntime.tabs.states.get(runtime.threadId);
     if (!state?.tabs.some((tab) => tab.id === runtime.tabId)) return;
     if (
       state.activeTabId === runtime.tabId &&
@@ -201,25 +199,25 @@ export function createBrowserPopupRuntime(
   }
 
   function hasEmbeddedPopup(threadId: ThreadId, tabId: string): boolean {
-    return [...hostRuntime.runtimes.values()].some(
+    return [...hostRuntime.live.runtimes.values()].some(
       (runtime) => runtime.threadId === threadId && runtime.popupOpenerTabId === tabId,
     );
   }
 
   function isEmbeddedPopupFamily(threadId: ThreadId, tabId: string): boolean {
     return (
-      Boolean(hostRuntime.runtimes.get(buildRuntimeKey(threadId, tabId))?.popupOpenerTabId) ||
+      Boolean(hostRuntime.live.runtimes.get(buildRuntimeKey(threadId, tabId))?.popupOpenerTabId) ||
       hasEmbeddedPopup(threadId, tabId)
     );
   }
 
   function findRuntimeContext(webContents: WebContents): OAuthPopupContext | null {
-    for (const runtime of hostRuntime.runtimes.values()) {
+    for (const runtime of hostRuntime.live.runtimes.values()) {
       if (runtime.webContents === webContents) {
         return { threadId: runtime.threadId, tabId: runtime.tabId };
       }
     }
-    for (const popup of hostRuntime.popupRuntimes.values()) {
+    for (const popup of hostRuntime.live.popupRuntimes.values()) {
       if (!popup.window.isDestroyed() && popup.window.webContents === webContents) {
         return { threadId: popup.threadId, tabId: popup.tabId };
       }
@@ -228,14 +226,14 @@ export function createBrowserPopupRuntime(
   }
 
   function handleSessionDownload(input: BrowserSessionDownloadEvent): void {
-    if (hostRuntime.disposed) return;
+    if (hostRuntime.lifecycle.disposed) return;
     const context = findRuntimeContext(input.webContents);
     if (!context) {
       return;
     }
     const runtimeKey = buildRuntimeKey(context.threadId, context.tabId);
     const currentHumanEpoch = hostRuntime.getAutomationHumanControlEpoch(context.threadId);
-    const provenance = hostRuntime.automationSideEffectProvenanceByRuntimeKey.get(runtimeKey);
+    const provenance = hostRuntime.getAutomationSideEffectProvenance(runtimeKey);
     if (!provenance || provenance.humanControlEpoch !== currentHumanEpoch) {
       return;
     }
@@ -251,14 +249,11 @@ export function createBrowserPopupRuntime(
   }
 
   function inheritAutomationDownloadProvenance(opener: OAuthPopupContext, childKey: string): void {
-    const provenance = hostRuntime.automationSideEffectProvenanceByRuntimeKey.get(
+    hostRuntime.inheritAutomationSideEffectProvenance(
       buildRuntimeKey(opener.threadId, opener.tabId),
+      childKey,
+      hostRuntime.getAutomationHumanControlEpoch(opener.threadId),
     );
-    if (
-      provenance?.humanControlEpoch === hostRuntime.getAutomationHumanControlEpoch(opener.threadId)
-    ) {
-      hostRuntime.automationSideEffectProvenanceByRuntimeKey.set(childKey, { ...provenance });
-    }
   }
 
   function scheduleWindowOpenTab(input: {
@@ -268,27 +263,27 @@ export function createBrowserPopupRuntime(
     readonly url: string;
     readonly automationGestureActive: boolean;
   }): void {
-    if (hostRuntime.disposed) return;
+    if (hostRuntime.lifecycle.disposed) return;
     const key = buildRuntimeKey(input.threadId, input.sourceTabId);
 
     if (
-      hostRuntime.pendingWindowOpenTasksByRuntimeKey.has(key) ||
-      hostRuntime.pendingAutomationWindowOpenCommitsByRuntimeKey.has(key)
+      hostRuntime.popup.pendingWindowOpenTasksByRuntimeKey.has(key) ||
+      hostRuntime.popup.pendingAutomationWindowOpenCommitsByRuntimeKey.has(key)
     )
       return;
 
     const handle = setImmediate(() => {
-      const pending = hostRuntime.pendingWindowOpenTasksByRuntimeKey.get(key);
+      const pending = hostRuntime.popup.pendingWindowOpenTasksByRuntimeKey.get(key);
       if (!pending || pending.handle !== handle) return;
-      hostRuntime.pendingWindowOpenTasksByRuntimeKey.delete(key);
+      hostRuntime.popup.pendingWindowOpenTasksByRuntimeKey.delete(key);
       if (
-        hostRuntime.disposed ||
+        hostRuntime.lifecycle.disposed ||
         input.sourceWebContents.isDestroyed() ||
         !isCurrentWindowOpenSource(input.threadId, input.sourceTabId, input.sourceWebContents)
       ) {
         return;
       }
-      const sourceState = hostRuntime.states.get(input.threadId);
+      const sourceState = hostRuntime.tabs.states.get(input.threadId);
       if (!sourceState?.open || !sourceState.tabs.some((tab) => tab.id === input.sourceTabId)) {
         return;
       }
@@ -299,7 +294,7 @@ export function createBrowserPopupRuntime(
           commitPendingAutomationWindowOpen(key);
         }, BROWSER_AUTOMATION_WINDOW_OPEN_FALLBACK_MS);
         fallbackTimer.unref?.();
-        hostRuntime.pendingAutomationWindowOpenCommitsByRuntimeKey.set(key, {
+        hostRuntime.popup.pendingAutomationWindowOpenCommitsByRuntimeKey.set(key, {
           threadId: input.threadId,
           sourceTabId: input.sourceTabId,
           sourceWebContents: input.sourceWebContents,
@@ -321,13 +316,13 @@ export function createBrowserPopupRuntime(
       }
       if (!input.automationGestureActive) {
         const bounds = hostRuntime.getVisibleBoundsForThread(input.threadId);
-        if (hostRuntime.activeThreadId === input.threadId && bounds) {
+        if (hostRuntime.view.activeThreadId === input.threadId && bounds) {
           hostRuntime.attachActiveTab(input.threadId, bounds);
         }
       }
     });
     handle.unref?.();
-    hostRuntime.pendingWindowOpenTasksByRuntimeKey.set(key, {
+    hostRuntime.popup.pendingWindowOpenTasksByRuntimeKey.set(key, {
       handle,
       sourceWebContents: input.sourceWebContents,
     });
@@ -338,9 +333,9 @@ export function createBrowserPopupRuntime(
     tabId: string,
     webContents: WebContents,
   ): boolean {
-    const runtime = hostRuntime.runtimes.get(buildRuntimeKey(threadId, tabId));
+    const runtime = hostRuntime.live.runtimes.get(buildRuntimeKey(threadId, tabId));
     if (runtime?.webContents === webContents) return true;
-    for (const popup of hostRuntime.popupRuntimes.values()) {
+    for (const popup of hostRuntime.live.popupRuntimes.values()) {
       if (
         popup.threadId === threadId &&
         popup.tabId === tabId &&
@@ -353,18 +348,18 @@ export function createBrowserPopupRuntime(
   }
 
   function commitPendingAutomationWindowOpen(key: string): void {
-    const pending = hostRuntime.pendingAutomationWindowOpenCommitsByRuntimeKey.get(key);
+    const pending = hostRuntime.popup.pendingAutomationWindowOpenCommitsByRuntimeKey.get(key);
     if (!pending) return;
-    hostRuntime.pendingAutomationWindowOpenCommitsByRuntimeKey.delete(key);
+    hostRuntime.popup.pendingAutomationWindowOpenCommitsByRuntimeKey.delete(key);
     clearTimeout(pending.fallbackTimer);
     if (
-      hostRuntime.disposed ||
+      hostRuntime.lifecycle.disposed ||
       pending.sourceWebContents.isDestroyed() ||
       !isCurrentWindowOpenSource(pending.threadId, pending.sourceTabId, pending.sourceWebContents)
     ) {
       return;
     }
-    const state = hostRuntime.states.get(pending.threadId);
+    const state = hostRuntime.tabs.states.get(pending.threadId);
     if (
       !state?.open ||
       !state.tabs.some((tab) => tab.id === pending.sourceTabId) ||
@@ -377,7 +372,7 @@ export function createBrowserPopupRuntime(
     state.activeTabId = pending.tab.id;
     pending.tab.runtimeSurface = "native";
     const openedRuntimeKey = buildRuntimeKey(pending.threadId, pending.tab.id);
-    hostRuntime.automationRuntimeKeys.add(openedRuntimeKey);
+    hostRuntime.live.automationRuntimeKeys.add(openedRuntimeKey);
     inheritAutomationDownloadProvenance(
       { threadId: pending.threadId, tabId: pending.sourceTabId },
       openedRuntimeKey,
@@ -397,12 +392,13 @@ export function createBrowserPopupRuntime(
     rendererGuestToReset?: WebContents,
     initialNavigationTabId?: string,
   ): void {
-    if (hostRuntime.disposed || hostRuntime.pendingStatePublicationsByKey.has(key)) return;
+    if (hostRuntime.lifecycle.disposed || hostRuntime.tabs.pendingStatePublicationsByKey.has(key))
+      return;
     const handle = setTimeout(() => {
-      const pending = hostRuntime.pendingStatePublicationsByKey.get(key);
+      const pending = hostRuntime.tabs.pendingStatePublicationsByKey.get(key);
       if (!pending || pending.handle !== handle) return;
-      hostRuntime.pendingStatePublicationsByKey.delete(key);
-      if (hostRuntime.disposed || !hostRuntime.states.has(threadId)) return;
+      hostRuntime.tabs.pendingStatePublicationsByKey.delete(key);
+      if (hostRuntime.lifecycle.disposed || !hostRuntime.tabs.states.has(threadId)) return;
       if (pending.rendererGuestToReset && !pending.rendererGuestToReset.isDestroyed()) {
         void pending.rendererGuestToReset.loadURL(ABOUT_BLANK_URL).catch(() => {});
       }
@@ -410,17 +406,19 @@ export function createBrowserPopupRuntime(
       const bounds = pending.reattachActiveTab
         ? hostRuntime.getVisibleBoundsForThread(threadId)
         : null;
-      if (pending.reattachActiveTab && hostRuntime.activeThreadId === threadId && bounds) {
+      if (pending.reattachActiveTab && hostRuntime.view.activeThreadId === threadId && bounds) {
         const initialTabId = pending.initialNavigationTabId;
         const needsInitialNavigation =
           initialTabId !== undefined &&
-          hostRuntime.states.get(threadId)?.activeTabId === initialTabId &&
-          !hostRuntime.runtimes.get(buildRuntimeKey(threadId, initialTabId))?.webContents.getURL();
+          hostRuntime.tabs.states.get(threadId)?.activeTabId === initialTabId &&
+          !hostRuntime.live.runtimes
+            .get(buildRuntimeKey(threadId, initialTabId))
+            ?.webContents.getURL();
         hostRuntime.attachActiveTab(threadId, bounds, { forceLoad: needsInitialNavigation });
       }
     }, BROWSER_DEFERRED_PUBLICATION_DELAY_MS);
 
-    hostRuntime.pendingStatePublicationsByKey.set(key, {
+    hostRuntime.tabs.pendingStatePublicationsByKey.set(key, {
       handle,
       threadId,
       reattachActiveTab,
@@ -430,44 +428,44 @@ export function createBrowserPopupRuntime(
   }
 
   function discardPendingAutomationWindowOpen(key: string): void {
-    const pending = hostRuntime.pendingAutomationWindowOpenCommitsByRuntimeKey.get(key);
+    const pending = hostRuntime.popup.pendingAutomationWindowOpenCommitsByRuntimeKey.get(key);
     if (!pending) return;
     clearTimeout(pending.fallbackTimer);
-    hostRuntime.pendingAutomationWindowOpenCommitsByRuntimeKey.delete(key);
+    hostRuntime.popup.pendingAutomationWindowOpenCommitsByRuntimeKey.delete(key);
   }
 
   function clearPendingWindowOpenTask(threadId: ThreadId, tabId: string): void {
     const key = buildRuntimeKey(threadId, tabId);
-    const pending = hostRuntime.pendingWindowOpenTasksByRuntimeKey.get(key);
+    const pending = hostRuntime.popup.pendingWindowOpenTasksByRuntimeKey.get(key);
     if (pending) {
       clearImmediate(pending.handle);
-      hostRuntime.pendingWindowOpenTasksByRuntimeKey.delete(key);
+      hostRuntime.popup.pendingWindowOpenTasksByRuntimeKey.delete(key);
     }
     discardPendingAutomationWindowOpen(key);
-    const publication = hostRuntime.pendingStatePublicationsByKey.get(key);
+    const publication = hostRuntime.tabs.pendingStatePublicationsByKey.get(key);
     if (publication) {
       clearTimeout(publication.handle);
-      hostRuntime.pendingStatePublicationsByKey.delete(key);
+      hostRuntime.tabs.pendingStatePublicationsByKey.delete(key);
     }
   }
 
   function clearAllPendingWindowOpenTasks(): void {
-    for (const pending of hostRuntime.pendingWindowOpenTasksByRuntimeKey.values()) {
+    for (const pending of hostRuntime.popup.pendingWindowOpenTasksByRuntimeKey.values()) {
       clearImmediate(pending.handle);
     }
-    hostRuntime.pendingWindowOpenTasksByRuntimeKey.clear();
-    for (const pending of hostRuntime.pendingAutomationWindowOpenCommitsByRuntimeKey.values()) {
+    hostRuntime.popup.pendingWindowOpenTasksByRuntimeKey.clear();
+    for (const pending of hostRuntime.popup.pendingAutomationWindowOpenCommitsByRuntimeKey.values()) {
       clearTimeout(pending.fallbackTimer);
     }
-    hostRuntime.pendingAutomationWindowOpenCommitsByRuntimeKey.clear();
-    for (const pending of hostRuntime.pendingStatePublicationsByKey.values()) {
+    hostRuntime.popup.pendingAutomationWindowOpenCommitsByRuntimeKey.clear();
+    for (const pending of hostRuntime.tabs.pendingStatePublicationsByKey.values()) {
       clearTimeout(pending.handle);
     }
-    hostRuntime.pendingStatePublicationsByKey.clear();
+    hostRuntime.tabs.pendingStatePublicationsByKey.clear();
   }
 
   function registerOAuthPopupWindow(popup: BrowserWindow, context: OAuthPopupContext): void {
-    if (hostRuntime.popupRuntimes.has(popup)) {
+    if (hostRuntime.live.popupRuntimes.has(popup)) {
       return;
     }
     const runtime: OAuthPopupRuntime = {
@@ -475,7 +473,7 @@ export function createBrowserPopupRuntime(
       window: popup,
       listenerDisposers: [],
     };
-    hostRuntime.popupRuntimes.set(popup, runtime);
+    hostRuntime.live.popupRuntimes.set(popup, runtime);
     popup.setMenuBarVisibility(false);
     configureOAuthPopupRuntime(runtime);
     centerPopupWindow(runtime);
@@ -484,7 +482,7 @@ export function createBrowserPopupRuntime(
   function configureOAuthPopupRuntime(runtime: OAuthPopupRuntime): void {
     const { window: popup } = runtime;
     const { webContents } = popup;
-    hostRuntime.sessionPolicy.applyUserAgent(webContents);
+    hostRuntime.services.sessionPolicy.applyUserAgent(webContents);
     const closeOnInput = (event: Electron.Event, input: Electron.Input) => {
       if (input.type !== "keyDown") {
         return;
@@ -527,13 +525,13 @@ export function createBrowserPopupRuntime(
   }
 
   function removePopupRuntime(runtime: OAuthPopupRuntime): void {
-    if (hostRuntime.popupRuntimes.get(runtime.window) !== runtime) {
+    if (hostRuntime.live.popupRuntimes.get(runtime.window) !== runtime) {
       return;
     }
     for (const dispose of runtime.listenerDisposers.splice(0)) {
       dispose();
     }
-    hostRuntime.popupRuntimes.delete(runtime.window);
+    hostRuntime.live.popupRuntimes.delete(runtime.window);
   }
 
   function closePopupRuntime(runtime: OAuthPopupRuntime): void {
@@ -544,7 +542,7 @@ export function createBrowserPopupRuntime(
   }
 
   function centerPopupWindow(runtime: OAuthPopupRuntime): void {
-    const parent = hostRuntime.window;
+    const parent = hostRuntime.view.window;
     const popup = runtime.window;
     if (!parent || parent.isDestroyed() || popup.isDestroyed()) {
       return;
@@ -569,7 +567,7 @@ export function createBrowserPopupRuntime(
   }
 
   function updatePopupWindowsForThread(threadId: ThreadId): void {
-    for (const runtime of hostRuntime.popupRuntimes.values()) {
+    for (const runtime of hostRuntime.live.popupRuntimes.values()) {
       if (runtime.threadId === threadId) {
         centerPopupWindow(runtime);
       }
@@ -577,7 +575,7 @@ export function createBrowserPopupRuntime(
   }
 
   function closePopupWindowsWhere(shouldClose: (runtime: OAuthPopupRuntime) => boolean): void {
-    for (const runtime of [...hostRuntime.popupRuntimes.values()]) {
+    for (const runtime of [...hostRuntime.live.popupRuntimes.values()]) {
       if (shouldClose(runtime)) {
         closePopupRuntime(runtime);
       }

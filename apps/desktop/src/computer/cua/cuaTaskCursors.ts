@@ -4,7 +4,13 @@ import {
   type CuaComputerTask,
   type CuaReply,
 } from "@glade/shared/computer/cuaDriverProtocol";
-import { CuaCursorStyle, Generation, log, normalizeCuaCursorStyle } from "./cuaHostPolicy";
+import {
+  CuaCursorStyle,
+  Generation,
+  browserSessionLabel,
+  log,
+  normalizeCuaCursorStyle,
+} from "./cuaHostPolicy";
 import { type CuaHostRuntime } from "./cuaHostRuntimeTypes";
 
 export function createCuaTaskCursors(
@@ -20,12 +26,67 @@ export function createCuaTaskCursors(
     | "inputMonitorArmed"
     | "options"
     | "rememberTask"
-    | "endedFrameTasks"
-    | "frameTapTask"
     | "closed"
-    | "cursorStyleUpdates"
+    | "browserTargets"
+    | "stopping"
   >,
 ) {
+  const endedFrameTasks = new Set<string>();
+  let frameTapTask: CuaComputerTask | undefined;
+  let cursorStyleUpdates = Promise.resolve();
+
+  function setFrameTapTask(task: CuaComputerTask): void {
+    frameTapTask = task;
+  }
+
+  function isFrameTaskEnded(task: CuaComputerTask): boolean {
+    return endedFrameTasks.has(cuaComputerTaskKey(task));
+  }
+
+  async function endBrowserThread(task: CuaComputerTask): Promise<void> {
+    for (const [key, target] of hostRuntime.browserTargets) {
+      if (target.threadId === task.threadId) hostRuntime.browserTargets.delete(key);
+    }
+    const previousEnd = hostRuntime.operations;
+    const endOperation = (async () => {
+      await previousEnd;
+      await hostRuntime.stopping;
+      const generation = hostRuntime.generation;
+      const label = browserSessionLabel(task.threadId);
+      if (
+        hostRuntime.closed ||
+        !generation ||
+        generation.retired ||
+        generation.didExit ||
+        !generation.controlSocket ||
+        generation.controlSocket.destroyed ||
+        (!generation.liveBrowserSessions.has(label) && !generation.endedBrowserSessions.has(label))
+      )
+        return;
+      try {
+        await cuaRequest<CuaReply>(
+          generation.socket,
+          {
+            method: "call",
+            name: "end_session",
+            args: { session: label },
+            session_id: generation.controlSession,
+          },
+          { timeoutMs: 5_000 },
+        );
+      } catch {
+        // Session cleanup remains terminal if the driver already closed its control socket.
+      }
+      generation.liveBrowserSessions.delete(label);
+      generation.endedBrowserSessions.add(label);
+    })();
+    hostRuntime.operations = endOperation.then(
+      () => undefined,
+      () => undefined,
+    );
+    await endOperation;
+  }
+
   async function logCursorState(
     generation: Generation,
     label: string,
@@ -152,13 +213,13 @@ export function createCuaTaskCursors(
       hostRuntime.inputMonitorArmed = false;
       hostRuntime.options.onInputMonitorArmedChange?.(false);
     }
-    hostRuntime.rememberTask(hostRuntime.endedFrameTasks, task);
+    hostRuntime.rememberTask(endedFrameTasks, task);
     if (
-      hostRuntime.frameTapTask?.threadId === task.threadId &&
-      (allTurns || task.turnId === hostRuntime.frameTapTask.turnId)
+      frameTapTask?.threadId === task.threadId &&
+      (allTurns || task.turnId === frameTapTask.turnId)
     ) {
-      hostRuntime.rememberTask(hostRuntime.endedFrameTasks, hostRuntime.frameTapTask);
-      hostRuntime.frameTapTask = undefined;
+      hostRuntime.rememberTask(endedFrameTasks, frameTapTask);
+      frameTapTask = undefined;
     }
     // Preview/shield authority ends immediately. Cosmetic cursor cleanup stays on the native queue, but
     // task Stop must not wait for another task's long-running native action merely to hide this task's
@@ -212,8 +273,8 @@ export function createCuaTaskCursors(
         log(`live cursor style push failed: ${String(error)}`);
       }
     };
-    hostRuntime.cursorStyleUpdates = hostRuntime.cursorStyleUpdates.then(apply, apply);
-    return hostRuntime.cursorStyleUpdates;
+    cursorStyleUpdates = cursorStyleUpdates.then(apply, apply);
+    return cursorStyleUpdates;
   }
 
   async function applyCursorStyleForSession(
@@ -254,6 +315,9 @@ export function createCuaTaskCursors(
   }
 
   return {
+    setFrameTapTask,
+    isFrameTaskEnded,
+    endBrowserThread,
     logCursorState,
     endCursorSession,
     setTaskCursorEnabled,

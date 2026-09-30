@@ -7,19 +7,18 @@ import { buildRuntimeKey, screenshotFileNameForUrl, SUSPENDED_TAB_STATUS } from 
 export function createBrowserCapture(
   hostRuntime: Pick<
     BrowserRuntime,
+    | "services"
+    | "live"
+    | "tabs"
     | "ensureWorkspace"
     | "resolveTab"
     | "activateTab"
     | "resumeThread"
     | "ensureLiveRuntime"
-    | "sessionPolicy"
     | "getVisibleBoundsForThread"
     | "attachActiveTab"
     | "loadTab"
     | "queueRuntimeStateSync"
-    | "states"
-    | "runtimes"
-    | "previewThreadIds"
     | "copyTabLink"
   >,
 ) {
@@ -36,7 +35,7 @@ export function createBrowserCapture(
     const runtime = hostRuntime.ensureLiveRuntime(input.threadId, tab.id);
     const webContents = runtime.webContents;
     const expectedUrl = normalizeUrlInput(tab.lastCommittedUrl ?? tab.url);
-    const currentUrl = hostRuntime.sessionPolicy.resolveDisplayUrl(webContents.getURL());
+    const currentUrl = hostRuntime.services.sessionPolicy.resolveDisplayUrl(webContents.getURL());
     const bounds = hostRuntime.getVisibleBoundsForThread(input.threadId);
     if (bounds) {
       hostRuntime.attachActiveTab(input.threadId, bounds);
@@ -73,10 +72,10 @@ export function createBrowserCapture(
   }
 
   async function capturePreview(input: BrowserTabInput): Promise<string | null> {
-    const state = hostRuntime.states.get(input.threadId);
-    const runtime = hostRuntime.runtimes.get(buildRuntimeKey(input.threadId, input.tabId));
+    const state = hostRuntime.tabs.states.get(input.threadId);
+    const runtime = hostRuntime.live.runtimes.get(buildRuntimeKey(input.threadId, input.tabId));
     if (
-      !hostRuntime.previewThreadIds.has(input.threadId) ||
+      !hostRuntime.tabs.previewThreadIds.has(input.threadId) ||
       !state?.open ||
       state.activeTabId !== input.tabId ||
       !runtime ||
@@ -87,8 +86,8 @@ export function createBrowserCapture(
       .capturePage(undefined, { stayHidden: true, stayAwake: true })
       .catch(() => null);
     if (
-      hostRuntime.runtimes.get(runtime.key) !== runtime ||
-      !hostRuntime.previewThreadIds.has(input.threadId) ||
+      hostRuntime.live.runtimes.get(runtime.key) !== runtime ||
+      !hostRuntime.tabs.previewThreadIds.has(input.threadId) ||
       state.activeTabId !== input.tabId ||
       !image ||
       image.isEmpty()

@@ -1,4 +1,8 @@
 import {
+  CUA_ACTION_TOOLS,
+  CUA_BROWSER_MUTATION_TOOLS,
+  CUA_BROWSER_TOOLS,
+  CUA_READ_TOOLS,
   cuaComputerTaskKey,
   cuaRequest,
   type CuaComputerTask,
@@ -13,6 +17,8 @@ import {
 } from "./cuaHostPolicy";
 import { type CuaHostRuntime } from "./cuaHostRuntimeTypes";
 import type { ComputerInputMonitorState, PhysicalComputerInput } from "./escapeKillSwitchMonitor";
+import { linuxBrowserCallIsReadOnly } from "./linuxCuaAdmission";
+import type { Socket } from "node:net";
 
 export function createCuaInputInterruption(
   hostRuntime: Pick<
@@ -26,8 +32,7 @@ export function createCuaInputInterruption(
     | "browserRecoveryObservations"
     | "monitoredTasks"
     | "epoch"
-    | "desktopEpoch"
-    | "pendingPermissionChecks"
+    | "cancelPermissionChecks"
     | "operations"
     | "stopping"
     | "generation"
@@ -37,20 +42,89 @@ export function createCuaInputInterruption(
     | "inFlightInputInterrupts"
     | "nativeInputCleanupPending"
     | "closed"
-    | "desktopObservationRequired"
-    | "browserObservationRequired"
+    | "suspended"
     | "inputInterruptCooldownUntil"
     | "activeForegroundInput"
     | "activeInputTaskKey"
     | "inputMonitorEpochChanges"
     | "rememberTask"
     | "userStoppedTasks"
-    | "knownTasks"
-    | "admittedTaskRequests"
+    | "stopMatchingTasks"
     | "activeTaskCalls"
     | "endTask"
+    | "inputMonitorUnavailableReply"
+    | "admissionState"
+    | "advanceDesktopEpoch"
+    | "requireFreshObservation"
   >,
 ) {
+  function beginInputTeardown() {
+    hostRuntime.epoch += 1;
+    // Reads admitted before teardown must fail the freshness check after it.
+    hostRuntime.advanceDesktopEpoch();
+    hostRuntime.cancelPermissionChecks();
+    const admitted = hostRuntime.operations;
+    const frameTapStopped = hostRuntime.options.frameTap?.stop();
+    const shieldStopped = hostRuntime.options.shield?.stop();
+    void frameTapStopped?.catch(() => undefined);
+    void shieldStopped?.catch(() => undefined);
+    return { admitted, frameTapStopped, shieldStopped };
+  }
+
+  async function activateInputMonitor(
+    request: Record<string, unknown>,
+    connection: Socket,
+    task: CuaComputerTask | undefined,
+    taskStopped: () => boolean | undefined,
+  ): Promise<CuaReply | undefined> {
+    const activeComputerWork =
+      request.method === "call" &&
+      typeof request.name === "string" &&
+      request.name !== "check_permissions" &&
+      (process.platform !== "linux" || task !== undefined) &&
+      (CUA_ACTION_TOOLS.has(request.name) ||
+        (CUA_BROWSER_MUTATION_TOOLS.has(request.name) &&
+          (process.platform !== "linux" ||
+            !linuxBrowserCallIsReadOnly(request.name, request.args))) ||
+        (task !== undefined &&
+          request.modelObservation === true &&
+          (CUA_READ_TOOLS.has(request.name) || CUA_BROWSER_TOOLS.has(request.name))));
+    if (!activeComputerWork) return;
+    hostRuntime.inputMonitorRequested = true;
+    const activationEpoch = hostRuntime.epoch;
+    const activationMonitorEpochChanges = hostRuntime.inputMonitorEpochChanges;
+    await hostRuntime.options.activateInputMonitor?.();
+    if (
+      activationEpoch !== hostRuntime.epoch ||
+      connection.destroyed ||
+      hostRuntime.closed ||
+      hostRuntime.suspended ||
+      taskStopped()
+    ) {
+      const monitor = hostRuntime.options.inputMonitorState?.();
+      if (
+        !connection.destroyed &&
+        !hostRuntime.closed &&
+        !hostRuntime.suspended &&
+        monitor?.ready === false &&
+        hostRuntime.epoch - activationEpoch ===
+          hostRuntime.inputMonitorEpochChanges - activationMonitorEpochChanges
+      )
+        return hostRuntime.inputMonitorUnavailableReply(monitor);
+      return {
+        ok: false,
+        error: "Cancelled before listener activation completed.",
+        effect: "not-dispatched",
+      };
+    }
+    if (hostRuntime.options.activateInputMonitor) hostRuntime.inputMonitorArmed = true;
+    if (task) {
+      hostRuntime.monitoredTasks.set(cuaComputerTaskKey(task), task.threadId);
+      while (hostRuntime.monitoredTasks.size > 256)
+        hostRuntime.monitoredTasks.delete(hostRuntime.monitoredTasks.keys().next().value!);
+    }
+  }
+
   function stop(): Promise<void> {
     hostRuntime.inputMonitorRequested = false;
     if (hostRuntime.inputMonitorArmed) {
@@ -62,18 +136,7 @@ export function createCuaInputInterruption(
     hostRuntime.browserTargets.clear();
     hostRuntime.browserRecoveryObservations.clear();
     hostRuntime.monitoredTasks.clear();
-    hostRuntime.epoch += 1;
-    // A read dispatched before a stop must not be admitted as a fresh observation afterwards: bumping
-    // the desktop epoch turns that silent clear-void into a visible stale-read refusal.
-    hostRuntime.desktopEpoch += 1;
-    for (const cancel of hostRuntime.pendingPermissionChecks.keys()) cancel();
-    const admitted = hostRuntime.operations;
-    const frameTapStopped = hostRuntime.options.frameTap?.stop();
-
-    const shieldStopped = hostRuntime.options.shield?.stop();
-
-    void frameTapStopped?.catch(() => undefined);
-    void shieldStopped?.catch(() => undefined);
+    const { admitted, frameTapStopped, shieldStopped } = beginInputTeardown();
     const stopping = hostRuntime.stopping.then(async () => {
       if (hostRuntime.generation) await hostRuntime.retire(hostRuntime.generation);
       await hostRuntime.starting?.catch(() => undefined);
@@ -93,15 +156,7 @@ export function createCuaInputInterruption(
   }
 
   function interruptInput(): Promise<void> {
-    hostRuntime.epoch += 1;
-    hostRuntime.desktopEpoch += 1;
-    for (const cancel of hostRuntime.pendingPermissionChecks.keys()) cancel();
-    const admitted = hostRuntime.operations;
-    const frameTapStopped = hostRuntime.options.frameTap?.stop();
-    const shieldStopped = hostRuntime.options.shield?.stop();
-
-    void frameTapStopped?.catch(() => undefined);
-    void shieldStopped?.catch(() => undefined);
+    const { admitted, frameTapStopped, shieldStopped } = beginInputTeardown();
     for (const interrupt of hostRuntime.inFlightInputInterrupts) interrupt.abort();
     const interrupting = hostRuntime.stopping.then(async () => {
       await hostRuntime.starting?.catch(() => undefined);
@@ -171,8 +226,7 @@ export function createCuaInputInterruption(
     if (hostRuntime.closed) return false;
     if (hostRuntime.generation === undefined && hostRuntime.starting === undefined) return false;
     log("physical Escape: interrupting computer input");
-    hostRuntime.desktopObservationRequired = true;
-    hostRuntime.browserObservationRequired = true;
+    hostRuntime.requireFreshObservation();
     hostRuntime.inputInterruptCooldownUntil = Date.now() + ESCAPE_INPUT_COOLDOWN_MS;
     void interruptInput().catch((error: unknown) => {
       log(`emergency input interrupt failed: ${String(error)}`);
@@ -185,7 +239,7 @@ export function createCuaInputInterruption(
       return false;
     if (
       !hostRuntime.activeForegroundInput &&
-      !hostRuntime.desktopObservationRequired &&
+      !hostRuntime.admissionState().desktopObservationRequired &&
       hostRuntime.takeoverTargets.size === 0
     )
       return false;
@@ -193,8 +247,8 @@ export function createCuaInputInterruption(
       ([key]) => hostRuntime.activeForegroundInput && key === hostRuntime.activeInputTaskKey,
     );
     const alreadyPaused =
-      hostRuntime.desktopObservationRequired ||
-      hostRuntime.browserObservationRequired ||
+      hostRuntime.admissionState().desktopObservationRequired ||
+      hostRuntime.admissionState().browserObservationRequired ||
       hostRuntime.takeoverTargets.size > 0;
     if (!alreadyPaused) {
       log(
@@ -214,8 +268,7 @@ export function createCuaInputInterruption(
     }
     for (const [key, target] of affected) hostRuntime.takeoverTargets.set(key, { ...target });
     if (hostRuntime.activeForegroundInput && affected.length === 0) {
-      hostRuntime.desktopObservationRequired = true;
-      hostRuntime.browserObservationRequired = true;
+      hostRuntime.requireFreshObservation();
     }
     const affectedInputInFlight =
       hostRuntime.activeForegroundInput &&
@@ -225,7 +278,7 @@ export function createCuaInputInterruption(
       // Repeated typing keeps observations stale without sending one native cancellation RPC per key. No
       // new mutation can enter this paused gate.
       hostRuntime.epoch += 1;
-      hostRuntime.desktopEpoch += 1;
+      hostRuntime.advanceDesktopEpoch();
       return true;
     }
     void interruptInput().catch((error: unknown) =>
@@ -244,8 +297,7 @@ export function createCuaInputInterruption(
       hostRuntime.generation.retired
     )
       return;
-    hostRuntime.desktopObservationRequired = true;
-    hostRuntime.browserObservationRequired = true;
+    hostRuntime.requireFreshObservation();
     hostRuntime.inputMonitorEpochChanges += 1;
     void interruptInput().catch((error: unknown) =>
       log(`input listener interruption failed: ${String(error)}`),
@@ -282,20 +334,11 @@ export function createCuaInputInterruption(
       (task.turnId === undefined || candidate.turnId === task.turnId);
     const stoppedKeys = new Set([key]);
     hostRuntime.rememberTask(hostRuntime.userStoppedTasks, task);
-    for (const known of hostRuntime.knownTasks.values()) {
-      if (!matches(known)) continue;
-      stoppedKeys.add(cuaComputerTaskKey(known));
-      hostRuntime.rememberTask(hostRuntime.userStoppedTasks, known);
+    for (const matched of hostRuntime.stopMatchingTasks(task)) {
+      stoppedKeys.add(cuaComputerTaskKey(matched));
+      hostRuntime.rememberTask(hostRuntime.userStoppedTasks, matched);
     }
-    for (const admitted of hostRuntime.admittedTaskRequests) {
-      if (!matches(admitted.task)) continue;
-      admitted.stopped = true;
-      stoppedKeys.add(cuaComputerTaskKey(admitted.task));
-      hostRuntime.rememberTask(hostRuntime.userStoppedTasks, admitted.task);
-    }
-    for (const [cancel, owner] of hostRuntime.pendingPermissionChecks) {
-      if (owner !== undefined && stoppedKeys.has(owner)) cancel();
-    }
+    hostRuntime.cancelPermissionChecks(stoppedKeys);
     for (const [cancel, owner] of hostRuntime.activeTaskCalls) {
       if (stoppedKeys.has(owner)) cancel.abort();
     }
@@ -322,6 +365,7 @@ export function createCuaInputInterruption(
   }
 
   return {
+    activateInputMonitor,
     stop,
     interruptInput,
     interruptNativeInput,

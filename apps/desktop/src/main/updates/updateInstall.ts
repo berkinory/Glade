@@ -1,6 +1,12 @@
 import { app } from "electron";
 import { autoUpdater } from "electron-updater";
-import { type DesktopRuntime } from "../desktopRuntimeTypes";
+import type { DesktopUpdateState } from "@glade/contracts/ipc/ipc";
+import {
+  AUTO_UPDATE_INSTALL_WATCHDOG_MS,
+  UPDATE_CHECK_REASON_MIGRATION_RECOVERY,
+} from "../desktopEnvironment";
+import { formatErrorMessage } from "../lifecycle/desktopLogging";
+import type { UpdateStatus, UpdateDownloadState, UpdateInstallState } from "./updateDomainState";
 import { verifyUpdateArtifactIdentity } from "./updateArtifactIdentity";
 import {
   createUpdateInstallMarker,
@@ -9,7 +15,7 @@ import {
   writeInstallMarker,
   type UpdateInstallHandoffExpectation,
 } from "./updateInstallMarker";
-import { type UpdateInstallPreparationAttempt } from "./updateInstallPreparation";
+import { type UpdateInstallPreparationAttempt } from "./updateDomainState";
 import {
   reduceDesktopUpdateStateOnDownloadFailure,
   reduceDesktopUpdateStateOnInstallFailure,
@@ -17,72 +23,72 @@ import {
   reduceDesktopUpdateStateOnNoUpdate,
 } from "./updateMachine";
 
-export function createUpdateInstall(
-  desktopRuntime: Pick<
-    DesktopRuntime,
-    | "updaterConfigured"
-    | "updateState"
-    | "resolveAutoUpdateDisabledReason"
-    | "activeUpdateCheck"
-    | "checkForUpdates"
-    | "UPDATE_CHECK_REASON_MIGRATION_RECOVERY"
-    | "activeUpdatePreparation"
-    | "downloadAvailableUpdate"
-    | "isUpdaterQuitAndInstallInFlight"
-    | "AUTO_UPDATE_INSTALL_WATCHDOG_MS"
-    | "isAcceptableUpdateVersion"
-    | "describeRejectedUpdateVersion"
-    | "clearPendingUpdateCache"
-    | "setUpdateState"
-    | "downloadedUpdateArtifact"
-    | "updateInstallPreparation"
-    | "getUpdateInstallMarkerPath"
-    | "isQuitting"
-    | "clearUpdatePollTimer"
-    | "stopBackendAndWaitForExit"
-    | "logMacUpdateDiagnostics"
-    | "activeUpdateInstallHandoff"
-    | "armInstallWatchdog"
-    | "formatErrorMessage"
-    | "clearUpdaterInstallInFlightAfterError"
-    | "recordInstallMarkerFailure"
-    | "recoverDesktopAfterUpdaterInstallFailure"
-    | "isUpdaterInstallPreparing"
-    | "replayDeferredDesktopQuitAfterUpdaterSettles"
-  >,
-) {
+export function createUpdateInstall(input: {
+  status: UpdateStatus;
+  download: UpdateDownloadState;
+  install: UpdateInstallState;
+  activity: {
+    activeCheck: () => Promise<void> | null;
+    checkForUpdates: (reason: string) => Promise<void>;
+    downloadAvailableUpdate: () => Promise<{ accepted: boolean; completed: boolean }>;
+    setUpdateState: (patch: Partial<DesktopUpdateState>) => void;
+    clearUpdatePollTimer: () => void;
+  };
+  cache: { clearPendingUpdateCache: (reason: string) => Promise<void> };
+  recovery: {
+    getUpdateInstallMarkerPath: () => string;
+    logMacUpdateDiagnostics: (context: string) => Promise<void>;
+    armInstallWatchdog: () => void;
+    clearUpdaterInstallInFlightAfterError: () => boolean;
+    recordInstallMarkerFailure: (
+      nowIso: string,
+      expected: UpdateInstallHandoffExpectation | null,
+    ) => number;
+    recoverDesktopAfterUpdaterInstallFailure: () => void;
+    replayDeferredDesktopQuitAfterUpdaterSettles: () => boolean;
+  };
+  lifecycle: {
+    isQuitting: () => boolean;
+    setQuitting: (value: boolean) => void;
+    stopBackendAndWaitForExit: () => Promise<void>;
+    resolveAutoUpdateDisabledReason: () => string | null;
+  };
+  version: {
+    isAcceptableUpdateVersion: (version: string | null | undefined) => boolean;
+    describeRejectedUpdateVersion: (version: string) => string;
+  };
+}) {
+  const { status, download, install, activity, cache, recovery, lifecycle, version } = input;
   function canInstallUpdateFromRecovery(): boolean {
-    return desktopRuntime.updaterConfigured && desktopRuntime.updateState.status !== "up-to-date";
+    return status.configured && status.state.status !== "up-to-date";
   }
 
   async function installLatestUpdateForMigrationRecovery(): Promise<string | null> {
-    if (!desktopRuntime.updaterConfigured) {
-      return (
-        desktopRuntime.resolveAutoUpdateDisabledReason() ?? "Automatic updates are not available."
-      );
+    if (!status.configured) {
+      return lifecycle.resolveAutoUpdateDisabledReason() ?? "Automatic updates are not available.";
     }
 
-    if (desktopRuntime.updateState.status !== "downloaded") {
-      const inFlightCheck = desktopRuntime.activeUpdateCheck;
+    if (status.state.status !== "downloaded") {
+      const inFlightCheck = activity.activeCheck();
       if (inFlightCheck === null) {
-        await desktopRuntime.checkForUpdates(desktopRuntime.UPDATE_CHECK_REASON_MIGRATION_RECOVERY);
+        await activity.checkForUpdates(UPDATE_CHECK_REASON_MIGRATION_RECOVERY);
       } else {
         await inFlightCheck;
       }
 
-      const preparation = desktopRuntime.activeUpdatePreparation;
+      const preparation = download.activePreparation;
       if (preparation !== null) {
         await preparation;
-      } else if (desktopRuntime.updateState.status === "available") {
-        await desktopRuntime.downloadAvailableUpdate();
+      } else if (status.state.status === "available") {
+        await activity.downloadAvailableUpdate();
       }
     }
 
-    if (desktopRuntime.updateState.status === "up-to-date") {
+    if (status.state.status === "up-to-date") {
       return `Glade ${app.getVersion()} is already the newest release, so updating cannot repair this database.`;
     }
-    if (desktopRuntime.updateState.status !== "downloaded") {
-      return desktopRuntime.updateState.message ?? "The update could not be downloaded.";
+    if (status.state.status !== "downloaded") {
+      return status.state.message ?? "The update could not be downloaded.";
     }
 
     await installDownloadedUpdate();
@@ -90,16 +96,16 @@ export function createUpdateInstall(
     // cleared by the install watchdog instead, and waiting for that verdict is what keeps a failed
     // install from leaving a live app with no window and no way back to this prompt.
     await waitForMigrationRecoveryInstallHandoff();
-    if (desktopRuntime.isUpdaterQuitAndInstallInFlight) {
+    if (install.handoffInFlight) {
       return null;
     }
-    return desktopRuntime.updateState.message ?? "The downloaded update could not be installed.";
+    return status.state.message ?? "The downloaded update could not be installed.";
   }
 
   async function waitForMigrationRecoveryInstallHandoff(): Promise<void> {
-    if (!desktopRuntime.isUpdaterQuitAndInstallInFlight) return;
+    if (!install.handoffInFlight) return;
     await new Promise<void>((resolve) => {
-      setTimeout(resolve, desktopRuntime.AUTO_UPDATE_INSTALL_WATCHDOG_MS + 2_000).unref();
+      setTimeout(resolve, AUTO_UPDATE_INSTALL_WATCHDOG_MS + 2_000).unref();
     });
   }
 
@@ -109,39 +115,32 @@ export function createUpdateInstall(
     accepted: boolean;
     completed: boolean;
   }> {
-    const versionToInstall =
-      desktopRuntime.updateState.downloadedVersion ?? desktopRuntime.updateState.availableVersion;
-    if (!versionToInstall || !desktopRuntime.isAcceptableUpdateVersion(versionToInstall)) {
+    const versionToInstall = status.state.downloadedVersion ?? status.state.availableVersion;
+    if (!versionToInstall || !version.isAcceptableUpdateVersion(versionToInstall)) {
       const rejected = versionToInstall
-        ? desktopRuntime.describeRejectedUpdateVersion(versionToInstall)
+        ? version.describeRejectedUpdateVersion(versionToInstall)
         : "no update version recorded";
-      await desktopRuntime.clearPendingUpdateCache(`downloaded update rejected: ${rejected}`);
-      desktopRuntime.setUpdateState(
-        reduceDesktopUpdateStateOnNoUpdate(desktopRuntime.updateState, new Date().toISOString()),
+      await cache.clearPendingUpdateCache(`downloaded update rejected: ${rejected}`);
+      activity.setUpdateState(
+        reduceDesktopUpdateStateOnNoUpdate(status.state, new Date().toISOString()),
       );
       console.info(`[desktop-updater] Ignoring stale downloaded update: ${rejected}.`);
       return { accepted: false, completed: false };
     }
 
     const artifact =
-      desktopRuntime.downloadedUpdateArtifact?.version === versionToInstall
-        ? desktopRuntime.downloadedUpdateArtifact.identity
-        : null;
+      download.artifact?.version === versionToInstall ? download.artifact.identity : null;
     if (!artifact || !(await verifyUpdateArtifactIdentity(artifact))) {
-      desktopRuntime.downloadedUpdateArtifact = null;
-      await desktopRuntime.clearPendingUpdateCache(
-        "downloaded artifact identity is missing or changed",
-      );
+      download.artifact = null;
+      await cache.clearPendingUpdateCache("downloaded artifact identity is missing or changed");
       const message = "The downloaded update could not be reverified. Download it again.";
-      desktopRuntime.setUpdateState(
-        reduceDesktopUpdateStateOnDownloadFailure(desktopRuntime.updateState, message),
-      );
+      activity.setUpdateState(reduceDesktopUpdateStateOnDownloadFailure(status.state, message));
       console.error(`[desktop-updater] Refusing install handoff: ${message}`);
       return { accepted: false, completed: false };
     }
-    desktopRuntime.updateInstallPreparation.requireActive(preparationAttempt);
+    install.preparation.requireActive(preparationAttempt);
 
-    const markerPath = desktopRuntime.getUpdateInstallMarkerPath();
+    const markerPath = recovery.getUpdateInstallMarkerPath();
     const existingMarkerResult = readInstallMarker(markerPath);
     const existingMarker =
       existingMarkerResult.status === "valid" &&
@@ -163,48 +162,48 @@ export function createUpdateInstall(
     let markerWritten = false;
     let artifactInvalidated = false;
     try {
-      desktopRuntime.isQuitting = true;
-      desktopRuntime.clearUpdatePollTimer();
-      await desktopRuntime.stopBackendAndWaitForExit();
-      desktopRuntime.updateInstallPreparation.requireActive(preparationAttempt);
-      await desktopRuntime.logMacUpdateDiagnostics("before install handoff");
-      desktopRuntime.updateInstallPreparation.requireActive(preparationAttempt);
+      lifecycle.setQuitting(true);
+      activity.clearUpdatePollTimer();
+      await lifecycle.stopBackendAndWaitForExit();
+      install.preparation.requireActive(preparationAttempt);
+      await recovery.logMacUpdateDiagnostics("before install handoff");
+      install.preparation.requireActive(preparationAttempt);
       if (!(await verifyUpdateArtifactIdentity(artifact))) {
         artifactInvalidated = true;
-        desktopRuntime.downloadedUpdateArtifact = null;
-        await desktopRuntime.clearPendingUpdateCache(
+        download.artifact = null;
+        await cache.clearPendingUpdateCache(
           "downloaded artifact changed during install preparation",
         );
         throw new Error(
           "The downloaded update changed during install preparation. Download it again.",
         );
       }
-      desktopRuntime.updateInstallPreparation.requireActive(preparationAttempt);
+      install.preparation.requireActive(preparationAttempt);
       writeInstallMarker(markerPath, marker);
       markerWritten = true;
       if (!markInstallHandoffSync(markerPath, handoffExpectation)) {
         throw new Error("Durable update install marker changed before install handoff.");
       }
-      desktopRuntime.activeUpdateInstallHandoff = handoffExpectation;
-      desktopRuntime.isUpdaterQuitAndInstallInFlight = true;
+      install.activeHandoff = handoffExpectation;
+      install.handoffInFlight = true;
       autoUpdater.quitAndInstall();
-      desktopRuntime.updateInstallPreparation.requireActive(preparationAttempt);
-      desktopRuntime.armInstallWatchdog();
+      install.preparation.requireActive(preparationAttempt);
+      recovery.armInstallWatchdog();
       return { accepted: true, completed: false };
     } catch (error: unknown) {
-      const message = desktopRuntime.formatErrorMessage(error);
-      desktopRuntime.clearUpdaterInstallInFlightAfterError();
+      const message = formatErrorMessage(error);
+      recovery.clearUpdaterInstallInFlightAfterError();
       const consecutiveFailures = markerWritten
-        ? desktopRuntime.recordInstallMarkerFailure(new Date().toISOString(), handoffExpectation)
-        : desktopRuntime.updateState.installFailureCount;
-      desktopRuntime.setUpdateState({
+        ? recovery.recordInstallMarkerFailure(new Date().toISOString(), handoffExpectation)
+        : status.state.installFailureCount;
+      activity.setUpdateState({
         ...(artifactInvalidated
-          ? reduceDesktopUpdateStateOnDownloadFailure(desktopRuntime.updateState, message)
-          : reduceDesktopUpdateStateOnInstallFailure(desktopRuntime.updateState, message)),
+          ? reduceDesktopUpdateStateOnDownloadFailure(status.state, message)
+          : reduceDesktopUpdateStateOnInstallFailure(status.state, message)),
         installFailureCount: consecutiveFailures,
       });
       console.error(`[desktop-updater] Failed to install update: ${message}`);
-      desktopRuntime.recoverDesktopAfterUpdaterInstallFailure();
+      recovery.recoverDesktopAfterUpdaterInstallFailure();
       return { accepted: true, completed: false };
     }
   }
@@ -213,34 +212,25 @@ export function createUpdateInstall(
     accepted: boolean;
     completed: boolean;
   }> {
-    if (
-      desktopRuntime.isQuitting ||
-      !desktopRuntime.updaterConfigured ||
-      desktopRuntime.updateState.status !== "downloaded"
-    ) {
+    if (lifecycle.isQuitting() || !status.configured || status.state.status !== "downloaded") {
       return { accepted: false, completed: false };
     }
-    const preparationAttempt = desktopRuntime.updateInstallPreparation.begin();
+    const preparationAttempt = install.preparation.begin();
     if (preparationAttempt === null) {
       return { accepted: false, completed: false };
     }
-    desktopRuntime.isUpdaterInstallPreparing = true;
+    install.preparing = true;
     try {
       // A retry must not retain the last failure while the new handoff is pending.
-      desktopRuntime.setUpdateState(
-        reduceDesktopUpdateStateOnInstallStart(desktopRuntime.updateState),
-      );
+      activity.setUpdateState(reduceDesktopUpdateStateOnInstallStart(status.state));
       return await runDownloadedUpdateInstall(preparationAttempt);
     } finally {
-      if (
-        !desktopRuntime.isUpdaterQuitAndInstallInFlight &&
-        desktopRuntime.isUpdaterInstallPreparing
-      ) {
-        desktopRuntime.clearUpdaterInstallInFlightAfterError();
+      if (!install.handoffInFlight && install.preparing) {
+        recovery.clearUpdaterInstallInFlightAfterError();
 
-        desktopRuntime.replayDeferredDesktopQuitAfterUpdaterSettles();
+        recovery.replayDeferredDesktopQuitAfterUpdaterSettles();
       }
-      desktopRuntime.updateInstallPreparation.release(preparationAttempt);
+      install.preparation.release(preparationAttempt);
     }
   }
   return {

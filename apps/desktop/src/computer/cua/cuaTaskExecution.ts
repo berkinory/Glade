@@ -18,21 +18,19 @@ import {
   isDriverSessionDeath,
   log,
 } from "./cuaHostPolicy";
-import { type CuaHostRuntime } from "./cuaHostRuntimeTypes";
+import { type CuaHostRuntime, type CuaPermissionCheckInput } from "./cuaHostRuntimeTypes";
 import { linuxCuaAdmissionRefusal } from "./linuxCuaAdmission";
+import { permissionsChanged } from "./cuaHostPolicy";
 
 export function createCuaTaskExecution(
   hostRuntime: Pick<
     CuaHostRuntime,
-    | "pendingPermissionChecks"
     | "epoch"
-    | "desktopEpoch"
     | "inFlightInputInterrupts"
     | "activeTaskCalls"
-    | "repliedConnections"
+    | "hasReplied"
     | "interruptInput"
     | "ensureStarted"
-    | "desktopPauses"
     | "ensureControlSession"
     | "applyCursorStyleForSession"
     | "setTaskCursorEnabled"
@@ -45,7 +43,6 @@ export function createCuaTaskExecution(
     | "options"
     | "nativeInputCleanupPending"
     | "retire"
-    | "desktopObservationRequired"
     | "takeoverTargets"
     | "desktopPauseReply"
     | "rememberBrowserTarget"
@@ -56,8 +53,21 @@ export function createCuaTaskExecution(
     | "observationMatchesTarget"
     | "logCursorState"
     | "endCursorSession"
+    | "admissionState"
+    | "advanceDesktopEpoch"
+    | "clearDesktopObservation"
+    | "requireDesktopObservation"
   >,
 ) {
+  const pendingPermissionChecks = new Map<() => void, string | undefined>();
+  let currentPermissions: HostPermissions | undefined;
+
+  function cancelPermissionChecks(stoppedKeys?: ReadonlySet<string>): void {
+    for (const [cancel, owner] of pendingPermissionChecks) {
+      if (!stoppedKeys || (owner !== undefined && stoppedKeys.has(owner))) cancel();
+    }
+  }
+
   function checkPermissions(
     connection: Socket,
     check: (options?: { readonly force: boolean }) => Promise<HostPermissions>,
@@ -66,14 +76,14 @@ export function createCuaTaskExecution(
   ): Promise<HostPermissions | undefined> {
     return new Promise((resolve, reject) => {
       const cleanup = () => {
-        hostRuntime.pendingPermissionChecks.delete(cancel);
+        pendingPermissionChecks.delete(cancel);
         connection.removeListener("close", cancel);
       };
       const cancel = () => {
         cleanup();
         resolve(undefined);
       };
-      hostRuntime.pendingPermissionChecks.set(cancel, task ? cuaComputerTaskKey(task) : undefined);
+      pendingPermissionChecks.set(cancel, task ? cuaComputerTaskKey(task) : undefined);
       connection.once("close", cancel);
       void Promise.resolve()
         .then(() => check({ force }))
@@ -90,6 +100,61 @@ export function createCuaTaskExecution(
     });
   }
 
+  async function checkCurrentPermissions(input: CuaPermissionCheckInput): Promise<CuaReply> {
+    const check = hostRuntime.options.checkPermissions;
+    if (!check) throw new Error("Computer permission check is unavailable.");
+    let permissions = await checkPermissions(input.connection, check, false, input.task);
+    if (!permissions || input.cancelled())
+      return {
+        ok: false,
+        error: "Cancelled before permission check completed.",
+        effect: "not-dispatched",
+      };
+    if (currentPermissions && permissionsChanged(currentPermissions, permissions)) {
+      const confirmed = await checkPermissions(input.connection, check, true, input.task);
+      if (!confirmed || input.cancelled())
+        return {
+          ok: false,
+          error: "Cancelled before permission check completed.",
+          effect: "not-dispatched",
+        };
+      permissions = confirmed;
+    }
+    if (currentPermissions && permissionsChanged(currentPermissions, permissions))
+      await input.onChange(currentPermissions, permissions);
+    currentPermissions = permissions;
+    if (
+      permissions.accessibility &&
+      permissions.screenRecording &&
+      permissions.inputMonitoring !== false
+    )
+      input.warm();
+    const monitor = input.monitorState();
+    return {
+      ok: true,
+      result: {
+        structuredContent: {
+          accessibility: permissions.accessibility,
+          screen_recording: permissions.screenRecording,
+          ...(permissions.inputMonitoring !== undefined
+            ? { input_monitoring: permissions.inputMonitoring }
+            : {}),
+          ...(monitor
+            ? {
+                input_monitor_ready: monitor.ready,
+                ...(monitor.error ? { input_monitor_error: monitor.error } : {}),
+              }
+            : {}),
+          source: {
+            attribution: "host",
+            host_bundle_id: input.bundleId,
+            probe: "computer-helper-permission-helper",
+          },
+        },
+      },
+    };
+  }
+
   async function call(
     name: string,
     input: unknown,
@@ -102,7 +167,7 @@ export function createCuaTaskExecution(
     let dispatched = false;
     let cursorEnabled: boolean | undefined;
     const admittedEpoch = hostRuntime.epoch;
-    const admittedDesktopEpoch = hostRuntime.desktopEpoch;
+    const admittedDesktopEpoch = hostRuntime.admissionState().epoch;
     const isBrowser = CUA_BROWSER_TOOLS.has(name);
     const mutation = isBrowser ? CUA_BROWSER_MUTATION_TOOLS.has(name) : CUA_ACTION_TOOLS.has(name);
 
@@ -114,7 +179,7 @@ export function createCuaTaskExecution(
     if (mutation) hostRuntime.inFlightInputInterrupts.add(callCancel);
     if (task) hostRuntime.activeTaskCalls.set(callCancel, cuaComputerTaskKey(task));
     const abort = () => {
-      if (hostRuntime.repliedConnections.has(connection)) return;
+      if (hostRuntime.hasReplied(connection)) return;
       const alreadyInterrupted = callCancel.signal.aborted;
       callCancel.abort();
       if (mutation && dispatched && !alreadyInterrupted) {
@@ -134,7 +199,7 @@ export function createCuaTaskExecution(
           connection.destroyed ||
           generation.retired ||
           admittedEpoch !== hostRuntime.epoch ||
-          hostRuntime.desktopPauses.size > 0 ||
+          hostRuntime.admissionState().paused ||
           callCancel.signal.aborted
         ) {
           cancelledBeforeDispatch = !dispatched;
@@ -289,19 +354,19 @@ export function createCuaTaskExecution(
           parseCuaActionDiagnostics(reply.result?.structuredContent)?.error_code ===
             "focus_restore_failed")
       ) {
-        hostRuntime.desktopObservationRequired = true;
+        hostRuntime.requireDesktopObservation();
         hostRuntime.epoch += 1;
-        hostRuntime.desktopEpoch += 1;
+        hostRuntime.advanceDesktopEpoch();
         const key = task ? cuaComputerTaskKey(task) : "anonymous";
         const target = hostRuntime.controlledTargets.get(key);
         if (target) hostRuntime.takeoverTargets.set(key, { ...target });
       }
       if (
-        admittedDesktopEpoch !== hostRuntime.desktopEpoch &&
+        admittedDesktopEpoch !== hostRuntime.admissionState().epoch &&
         (CUA_READ_TOOLS.has(name) || name === "get_browser_state")
       ) {
         log(
-          `refused stale ${name} read (desktop epoch ${admittedDesktopEpoch} -> ${hostRuntime.desktopEpoch})`,
+          `refused stale ${name} read (desktop epoch ${admittedDesktopEpoch} -> ${hostRuntime.admissionState().epoch})`,
         );
         return hostRuntime.desktopPauseReply();
       }
@@ -316,7 +381,7 @@ export function createCuaTaskExecution(
         !generation.retired &&
         !generation.didExit &&
         admittedEpoch === hostRuntime.epoch &&
-        hostRuntime.desktopPauses.size === 0 &&
+        !hostRuntime.admissionState().paused &&
         reply.ok &&
         !reply.result?.isError &&
         reply.result !== undefined
@@ -329,10 +394,11 @@ export function createCuaTaskExecution(
         const browserObservation =
           name === "get_browser_state" && hostRuntime.isBrowserSnapshot(input, reply.result);
         if (nativeObservation || browserObservation) {
-          if (nativeObservation) hostRuntime.desktopObservationRequired = false;
+          if (nativeObservation) hostRuntime.clearDesktopObservation();
           if (browserObservation) {
             const key = hostRuntime.browserRecoveryKey(input, task);
-            if (key) hostRuntime.browserRecoveryObservations.set(key, hostRuntime.desktopEpoch);
+            if (key)
+              hostRuntime.browserRecoveryObservations.set(key, hostRuntime.admissionState().epoch);
             while (hostRuntime.browserRecoveryObservations.size > 256)
               hostRuntime.browserRecoveryObservations.delete(
                 hostRuntime.browserRecoveryObservations.keys().next().value!,
@@ -403,5 +469,5 @@ export function createCuaTaskExecution(
     }
   }
 
-  return { checkPermissions, call };
+  return { checkPermissions, checkCurrentPermissions, cancelPermissionChecks, call };
 }

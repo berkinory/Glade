@@ -5,13 +5,7 @@ import {
 } from "@glade/shared/browser/browserAutomationCatalogue";
 import { browserInputErrorCode } from "@glade/shared/browser/browserAutomationErrors";
 import { Schema } from "effect";
-import {
-  BrowserAutomationToolRequest,
-  IDEMPOTENCY_TTL_MS,
-  IdempotencyEntry,
-  isToolName,
-  raceWithAbort,
-} from "./automationHostPolicy";
+import { BrowserAutomationToolRequest, isToolName, raceWithAbort } from "./automationHostPolicy";
 import { type BrowserAutomationHostRuntime } from "./automationHostRuntimeTypes";
 import { BrowserAutomationHostError, browserHostError } from "./hostErrors";
 
@@ -20,16 +14,12 @@ export function createAutomationToolRequests(
     BrowserAutomationHostRuntime,
     | "disposal"
     | "disposed"
+    | "options"
     | "activeOperations"
     | "browserManager"
-    | "bindSession"
     | "withLock"
     | "dispatch"
-    | "trimIdempotencyCache"
-    | "idempotency"
-    | "reconcileIdempotentReplay"
-    | "idempotencyTombstones"
-    | "options"
+    | "sessionRegistry"
   >,
 ) {
   function dispose(): Promise<void> {
@@ -83,7 +73,7 @@ export function createAutomationToolRequests(
     } catch {
       browserHostError({ code: browserInputErrorCode(request.arguments) });
     }
-    const affinity = hostRuntime.bindSession(request);
+    const affinity = hostRuntime.sessionRegistry.bindSession(request);
     const timeoutMs =
       typeof input.timeoutMs === "number" ? input.timeoutMs : definition.defaultTimeoutMs;
     const queuedTimeoutError = new BrowserAutomationHostError({
@@ -177,71 +167,15 @@ export function createAutomationToolRequests(
       threadId: request.threadId,
       arguments: intentionArguments,
     });
-    let operation: Promise<unknown>;
-    if (idempotencyKey) {
-      const cacheKey = `${request.sessionId}:${idempotencyKey}`;
-      hostRuntime.trimIdempotencyCache();
-      const existing = hostRuntime.idempotency.get(cacheKey);
-      if (existing) {
-        if (existing.fingerprint !== fingerprint) {
-          browserHostError({
-            code: "BrowserRequestConflict",
-            retryable: false,
-            phase: "queue",
-            effectMayHaveCommitted: false,
-          });
-        }
-        hostRuntime.idempotency.delete(cacheKey);
-        hostRuntime.idempotency.set(cacheKey, existing);
-        operation = hostRuntime.reconcileIdempotentReplay(request, affinity, existing.result);
-      } else {
-        const tombstone = hostRuntime.idempotencyTombstones.get(cacheKey);
-        if (tombstone) {
-          if (tombstone.fingerprint !== fingerprint) {
-            browserHostError({
-              code: "BrowserRequestConflict",
-              retryable: false,
-              phase: "queue",
-              effectMayHaveCommitted: false,
-            });
-          }
-          browserHostError({ code: "BrowserAmbiguousResult" });
-        }
-        operation = run();
-        const entry: IdempotencyEntry = {
+    const operation = idempotencyKey
+      ? hostRuntime.sessionRegistry.runIdempotent(
+          `${request.sessionId}:${idempotencyKey}`,
           fingerprint,
-          result: operation,
-          settled: false,
-          expiresAt: Number.POSITIVE_INFINITY,
-          effecting: !definition.annotations.readOnlyHint,
-        };
-        hostRuntime.idempotency.set(cacheKey, entry);
-        void operation.then(
-          () => {
-            entry.settled = true;
-            entry.expiresAt = performance.now() + IDEMPOTENCY_TTL_MS;
-            hostRuntime.trimIdempotencyCache();
-          },
-          (error: unknown) => {
-            entry.settled = true;
-            entry.expiresAt = performance.now() + IDEMPOTENCY_TTL_MS;
-            // A confirmed pre-effect failure is safe to execute again with the same intention.
-            // Ambiguous/effecting failures remain cached so a retry cannot accidentally duplicate the action.
-            if (
-              error instanceof BrowserAutomationHostError &&
-              !error.browserError.effectMayHaveCommitted &&
-              hostRuntime.idempotency.get(cacheKey) === entry
-            ) {
-              hostRuntime.idempotency.delete(cacheKey);
-            }
-            hostRuntime.trimIdempotencyCache();
-          },
-        );
-        hostRuntime.trimIdempotencyCache();
-      }
-    } else {
-      operation = run();
-    }
+          !definition.annotations.readOnlyHint,
+          affinity,
+          run,
+        )
+      : run();
 
     const timer = setTimeout(abortForTimeout, timeoutMs);
     try {

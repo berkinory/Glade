@@ -6,11 +6,12 @@ import {
   CUA_ACTION_TOOLS,
   cuaComputerTaskKey,
   parseCuaComputerTask,
+  type CuaComputerTask,
   type CuaReply,
 } from "@glade/shared/computer/cuaDriverProtocol";
 import { randomUUID, timingSafeEqual } from "node:crypto";
-import { chmod, mkdtemp } from "node:fs/promises";
-import { createServer, type Socket } from "node:net";
+import { chmod, mkdtemp, rm } from "node:fs/promises";
+import { createServer, type Server, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { LOGGABLE_CUA_CODES, log, safeNativeId } from "./cuaHostPolicy";
@@ -18,42 +19,38 @@ import { type CuaHostRuntime } from "./cuaHostRuntimeTypes";
 import { markCuaRuntimeDirectory } from "./cuaRuntimeOwnership";
 
 export function createCuaHostTransport(
-  hostRuntime: Pick<
-    CuaHostRuntime,
-    | "directory"
-    | "options"
-    | "server"
-    | "connections"
-    | "repliedConnections"
-    | "desktopState"
-    | "admittedTaskRequests"
-    | "knownTasks"
-    | "handleAuthenticatedRequest"
-  >,
+  hostRuntime: Pick<CuaHostRuntime, "options" | "desktopState" | "handleAuthenticatedRequest">,
 ) {
+  let directory = "";
+  let server: Server | undefined;
+  const connections = new Set<Socket>();
+  const repliedConnections = new WeakSet<Socket>();
+  const admittedTaskRequests = new Set<{ task: CuaComputerTask; stopped: boolean }>();
+  const knownTasks = new Map<string, CuaComputerTask>();
+
   async function listen(): Promise<string> {
-    hostRuntime.directory = await mkdtemp(join(tmpdir(), "glade-cua-"));
-    await chmod(hostRuntime.directory, 0o700);
-    await markCuaRuntimeDirectory(hostRuntime.directory);
+    directory = await mkdtemp(join(tmpdir(), "glade-cua-"));
+    await chmod(directory, 0o700);
+    await markCuaRuntimeDirectory(directory);
 
     const endpoint =
       hostRuntime.options.hostEndpoint ??
       (process.platform === "win32"
         ? `\\\\.\\pipe\\glade-cua-host-${randomUUID().slice(0, 8)}`
-        : join(hostRuntime.directory, "host.sock"));
-    const server = createServer((socket) => accept(socket));
-    hostRuntime.server = server;
+        : join(directory, "host.sock"));
+    const listener = createServer((socket) => accept(socket));
+    server = listener;
     await new Promise<void>((resolve, reject) => {
-      server.once("error", reject);
-      server.listen(endpoint, resolve);
+      listener.once("error", reject);
+      listener.listen(endpoint, resolve);
     });
     if (process.platform !== "win32") await chmod(endpoint, 0o600);
     return endpoint;
   }
 
   function accept(socket: Socket): void {
-    hostRuntime.connections.add(socket);
-    socket.once("close", () => hostRuntime.connections.delete(socket));
+    connections.add(socket);
+    socket.once("close", () => connections.delete(socket));
     socket.on("error", () => undefined);
     const chunks: Buffer[] = [];
     let bytes = 0;
@@ -78,11 +75,11 @@ export function createCuaHostTransport(
       }
       void handle(request, socket).then(
         (result) => {
-          hostRuntime.repliedConnections.add(socket);
+          repliedConnections.add(socket);
           socket.end(JSON.stringify({ ...result, ...hostRuntime.desktopState() }) + "\n");
         },
         (error) => {
-          hostRuntime.repliedConnections.add(socket);
+          repliedConnections.add(socket);
           socket.end(
             JSON.stringify({
               ok: false,
@@ -163,19 +160,46 @@ export function createCuaHostTransport(
     if (request.task !== undefined && !task) throw new Error("Invalid computer task attribution.");
     const admitted = request.method === "call" && task ? { task, stopped: false } : undefined;
     if (admitted) {
-      hostRuntime.admittedTaskRequests.add(admitted);
+      admittedTaskRequests.add(admitted);
       const key = cuaComputerTaskKey(admitted.task);
-      hostRuntime.knownTasks.delete(key);
-      hostRuntime.knownTasks.set(key, admitted.task);
-      while (hostRuntime.knownTasks.size > 256)
-        hostRuntime.knownTasks.delete(hostRuntime.knownTasks.keys().next().value!);
+      knownTasks.delete(key);
+      knownTasks.set(key, admitted.task);
+      while (knownTasks.size > 256) knownTasks.delete(knownTasks.keys().next().value!);
     }
     try {
       return await hostRuntime.handleAuthenticatedRequest(request, connection, task, admitted);
     } finally {
-      if (admitted) hostRuntime.admittedTaskRequests.delete(admitted);
+      if (admitted) admittedTaskRequests.delete(admitted);
     }
   }
 
-  return { listen };
+  function stopMatchingTasks(task: CuaComputerTask): CuaComputerTask[] {
+    const matches = (candidate: CuaComputerTask) =>
+      candidate.threadId === task.threadId &&
+      (task.turnId === undefined || candidate.turnId === task.turnId);
+    const matched = [...knownTasks.values()].filter(matches);
+    for (const admitted of admittedTaskRequests) {
+      if (!matches(admitted.task)) continue;
+      admitted.stopped = true;
+      matched.push(admitted.task);
+    }
+    return matched;
+  }
+
+  async function close(hasGeneration: boolean): Promise<void> {
+    for (const socket of connections) socket.destroy();
+    await new Promise<void>((resolve) => {
+      if (server) server.close(() => resolve());
+      else resolve();
+    });
+    if (directory && !hasGeneration) await rm(directory, { recursive: true, force: true });
+  }
+
+  return {
+    listen,
+    runtimeDirectory: () => directory,
+    hasReplied: (socket: Socket) => repliedConnections.has(socket),
+    stopMatchingTasks,
+    closeTransport: close,
+  };
 }

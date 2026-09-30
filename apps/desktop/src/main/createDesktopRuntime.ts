@@ -1,61 +1,368 @@
-import { createBackendReadinessCoordinator } from "../backend/backendReadinessCoordinator";
+import { configureElectronNetwork } from "betterwright/electron";
+import { app, BrowserWindow, protocol } from "electron";
+import * as Path from "node:path";
+import { isBackendReadinessAborted } from "../backend/backendReadiness";
 import { createBackendSupervisor } from "../backend/backendSupervisor";
 import { createDesktopBrowserServices } from "../browser/desktopBrowserServices";
+import { LOCAL_HTML_PREVIEW_SCHEME } from "../browser/localHtmlPreviewProtocol";
 import { createDesktopComputerSetup } from "../computer/desktopComputerSetup";
-import { getSafeExternalUrl, getSafeTheme, isSaveFileInput } from "../main/ipc/ipcValidation";
-import { createRegisterDesktopIpc } from "../main/ipc/registerDesktopIpc";
-import { createBundleSwapWatcher } from "../main/lifecycle/bundleSwapWatcher";
-import { createDesktopBootstrap } from "../main/lifecycle/desktopBootstrap";
-import { createDesktopLogging } from "../main/lifecycle/desktopLogging";
-import { createDesktopResources } from "../main/lifecycle/desktopResources";
-import { createDesktopShutdown } from "../main/lifecycle/desktopShutdown";
-import { createRendererRecovery } from "../main/lifecycle/rendererRecovery";
-import { createAutoUpdater } from "../main/updates/autoUpdater";
-import { createInstallRecovery } from "../main/updates/installRecovery";
-import { createUpdateActivity } from "../main/updates/updateActivity";
-import { createUpdateCache } from "../main/updates/updateCache";
-import { createUpdateDownload } from "../main/updates/updateDownload";
-import { createUpdateInstall } from "../main/updates/updateInstall";
-import { createAppIdentity } from "../main/window/appIdentity";
-import { createApplicationMenu } from "../main/window/applicationMenu";
-import { createContextMenuIcons } from "../main/window/contextMenuIcons";
-import { createDesktopNotifications } from "../main/window/desktopNotifications";
-import { createMainWindow } from "../main/window/mainWindow";
-import { createMediaPermissionHandlers } from "../main/window/mediaPermissionHandlers";
 import { createDesktopRecoveryCoordinator } from "../storage/desktopRecoveryCoordinator";
-import { createSchemaRecovery } from "../storage/schemaRecovery";
-import type { DesktopRuntime } from "./desktopRuntimeTypes";
-import { initializeDesktopState } from "./initializeDesktopState";
-import { registerDesktopLifecycle } from "./lifecycle/registerDesktopLifecycle";
-export function startDesktopApplication(): void {
-  // Install callable services before evaluating state, preserving main's function hoisting.
-  const desktopRuntime = {} as DesktopRuntime;
-  Object.assign(desktopRuntime, createDesktopBrowserServices(desktopRuntime));
-  Object.assign(desktopRuntime, createDesktopLogging(desktopRuntime));
-  Object.assign(desktopRuntime, { getSafeExternalUrl, getSafeTheme, isSaveFileInput });
-  Object.assign(desktopRuntime, createBackendReadinessCoordinator(desktopRuntime));
-  Object.assign(desktopRuntime, createContextMenuIcons(desktopRuntime));
-  Object.assign(desktopRuntime, createInstallRecovery(desktopRuntime));
-  Object.assign(desktopRuntime, createDesktopResources(desktopRuntime));
-  Object.assign(desktopRuntime, createDesktopRecoveryCoordinator(desktopRuntime));
-  Object.assign(desktopRuntime, createApplicationMenu(desktopRuntime));
-  Object.assign(desktopRuntime, createDesktopComputerSetup(desktopRuntime));
-  Object.assign(desktopRuntime, createDesktopNotifications(desktopRuntime));
-  Object.assign(desktopRuntime, createAppIdentity(desktopRuntime));
-  Object.assign(desktopRuntime, createBundleSwapWatcher(desktopRuntime));
-  Object.assign(desktopRuntime, createUpdateCache(desktopRuntime));
-  Object.assign(desktopRuntime, createUpdateActivity(desktopRuntime));
-  Object.assign(desktopRuntime, createUpdateDownload(desktopRuntime));
-  Object.assign(desktopRuntime, createUpdateInstall(desktopRuntime));
-  Object.assign(desktopRuntime, createAutoUpdater(desktopRuntime));
-  Object.assign(desktopRuntime, createBackendSupervisor(desktopRuntime));
-  Object.assign(desktopRuntime, createSchemaRecovery(desktopRuntime));
-  Object.assign(desktopRuntime, createDesktopShutdown(desktopRuntime));
-  Object.assign(desktopRuntime, createRegisterDesktopIpc(desktopRuntime));
-  Object.assign(desktopRuntime, createMainWindow(desktopRuntime));
-  Object.assign(desktopRuntime, createRendererRecovery(desktopRuntime));
-  Object.assign(desktopRuntime, createMediaPermissionHandlers(desktopRuntime));
-  Object.assign(desktopRuntime, createDesktopBootstrap(desktopRuntime));
-  initializeDesktopState(desktopRuntime);
-  registerDesktopLifecycle(desktopRuntime);
+import { ensureWindowsShellAppUserModelHelper } from "../windowsShell/windowsShellAppUserModel";
+import { DESKTOP_SCHEME, isDevelopment, STATE_DIR, userDataPath } from "./desktopEnvironment";
+import { createRegisterDesktopIpc } from "./ipc/registerDesktopIpc";
+import {
+  createDesktopLogging,
+  formatErrorMessage,
+  safeConsoleError,
+  sanitizeLogValue,
+} from "./lifecycle/desktopLogging";
+import { isBrokenPipeError } from "./lifecycle/desktopProcessErrors";
+import {
+  BundleChangedDuringStartupError,
+  createDesktopResources,
+} from "./lifecycle/desktopResources";
+import { createDesktopShutdown } from "./lifecycle/desktopShutdown";
+import { createUpdates } from "./updates/createUpdates";
+import { createAppIdentity } from "./window/appIdentity";
+import { configureMediaPermissions } from "./window/mediaPermissionHandlers";
+import { createMainWindow } from "./window/mainWindow";
+
+export function createDesktopRuntime(): void {
+  const log = createDesktopLogging();
+  const resources = createDesktopResources(log, {
+    isQuitting: () => lifecycle.isQuitting(),
+    markQuitting: () => lifecycle.markQuitting(),
+    isInstallPreparing: () => updates.isInstallPreparing(),
+    requestGracefulAppQuit: (reason) => lifecycle.requestGracefulAppQuit(reason),
+  });
+  app.setPath("userData", userDataPath);
+  const hasSingleInstanceLock = app.requestSingleInstanceLock();
+  const identity = createAppIdentity(resources, () => windows.getMainWindow());
+  const browser = createDesktopBrowserServices(
+    { getMainWindow: () => windows.getMainWindow() },
+    {
+      dispatchMenuAction: (action) => windows.dispatchMenuAction(action),
+      resolveMenuTargetWindow: () => windows.resolveMenuTargetWindow(),
+      handleDesktopPhysicalZoomShortcut: (event, input, target) =>
+        windows.handleDesktopPhysicalZoomShortcut(event, input, target),
+      handleDesktopZoomShortcut: (event, input, target) =>
+        windows.handleDesktopZoomShortcut(event, input, target),
+    },
+  );
+  const computer = createDesktopComputerSetup(
+    resources,
+    () => windows.getMainWindow(),
+    () => backend.getHttpUrl(),
+  );
+  const backend = createBackendSupervisor({
+    log,
+    resources,
+    lifecycle: {
+      isQuitting: () => lifecycle.isQuitting(),
+      requestGracefulAppQuit: (reason) => lifecycle.requestGracefulAppQuit(reason),
+    },
+    recovery: {
+      takeMigrationConsent: () => recovery.takeMigrationConsent(),
+      approveMigrationConsent: (token) => recovery.approveMigrationConsent(token),
+      blockStartup: () => recovery.blockStartup(),
+      isStartupBlocked: () => recovery.isStartupBlocked(),
+      isDesktopMigrationRecoveryPending: () => recovery.isDesktopMigrationRecoveryPending(),
+      handleDesktopMigrationRecovery: () => recovery.handleDesktopMigrationRecovery(),
+      handleDesktopSchemaTooNewRecovery: (block) =>
+        recovery.handleDesktopSchemaTooNewRecovery(block),
+    },
+    updates: {
+      getState: () => updates.getState(),
+      canInstallUpdateFromRecovery: () => updates.canInstallUpdateFromRecovery(),
+      installLatestUpdateForMigrationRecovery: () =>
+        updates.installLatestUpdateForMigrationRecovery(),
+    },
+    windows: {
+      getMainWindow: () => windows.getMainWindow(),
+      createWindow: () => windows.createWindow(),
+    },
+    browser,
+    computer,
+  });
+  const recovery = createDesktopRecoveryCoordinator(
+    resources,
+    backend,
+    {
+      getState: () => updates.getState(),
+      canInstallUpdateFromRecovery: () => updates.canInstallUpdateFromRecovery(),
+      installLatestUpdateForMigrationRecovery: () =>
+        updates.installLatestUpdateForMigrationRecovery(),
+    },
+    (reason) => lifecycle.requestGracefulAppQuit(reason),
+    log,
+  );
+  const updates = createUpdates({
+    resources: {
+      readAppUpdateYml: resources.readAppUpdateYml,
+      resolveEmbeddedWindowsPublisherSubjects: resources.resolveEmbeddedWindowsPublisherSubjects,
+    },
+    lifecycle: {
+      isQuitting: () => lifecycle.isQuitting(),
+      setQuitting: (value) => lifecycle.setQuitting(value),
+      hasShutdownStarted: () => lifecycle.shutdownInFlight(),
+      startBackend: backend.startBackend,
+      stopBackendAndWaitForExit: backend.stopBackendAndWaitForExit,
+      requestGracefulAppQuit: (reason) => lifecycle.requestGracefulAppQuit(reason),
+      writeDesktopLogHeader: log.writeDesktopLogHeader,
+    },
+    notifications: { clearUnreadNotificationBadge: () => windows.clearUnreadNotificationBadge() },
+  });
+  const windows = createMainWindow({
+    identity,
+    resources,
+    browser: {
+      setWindow: (window) => browser.getManager().setWindow(window),
+      getGuestPreloadPath: browser.getGuestPreloadPath,
+    },
+    updates,
+    lifecycle: {
+      shutdownComplete: () => lifecycle.shutdownComplete(),
+      isQuitting: () => lifecycle.isQuitting(),
+      confirmRunningChatsThenQuit: (reason) => lifecycle.confirmRunningChatsThenQuit(reason),
+      requestGracefulAppQuit: (reason) => lifecycle.requestGracefulAppQuit(reason),
+      cancelPending: () => lifecycle.cancelPending(),
+      hasPendingAsk: () => lifecycle.hasPendingAsk(),
+      allowPending: () => lifecycle.allowPending(),
+    },
+    log,
+    openDesktopLogDirectory: backend.openDesktopLogDirectory,
+  });
+  const lifecycle = createDesktopShutdown({
+    backend,
+    getMainWindow: windows.getMainWindow,
+    computer,
+    browser,
+    updates,
+    log,
+    resources,
+    identity,
+  });
+  const ipc = createRegisterDesktopIpc({
+    windows,
+    identity,
+    contextMenu: windows,
+    browser,
+    computer,
+    updates,
+    control: {
+      getWsUrl: backend.getWsUrl,
+      resolveQuitConfirmation: lifecycle.resolveQuitConfirmation,
+      requestGracefulAppQuit: lifecycle.requestGracefulAppQuit,
+      isQuitting: lifecycle.isQuitting,
+    },
+  });
+  protocol.registerSchemesAsPrivileged([
+    {
+      scheme: DESKTOP_SCHEME,
+      privileges: {
+        standard: true,
+        secure: true,
+        supportFetchAPI: true,
+        corsEnabled: true,
+        codeCache: true,
+      },
+    },
+    {
+      scheme: LOCAL_HTML_PREVIEW_SCHEME,
+      privileges: { standard: true, secure: true, supportFetchAPI: true },
+    },
+  ]);
+  if (hasSingleInstanceLock) identity.repairBrowserProfileBeforeElectronReady(userDataPath);
+  identity.configureAppIdentity();
+  configureElectronNetwork();
+  const browserEngineFeatures = new Set([
+    ...app.commandLine.getSwitchValue("enable-features").split(",").filter(Boolean),
+    "WebMCPTesting",
+    "DevToolsWebMCPSupport",
+  ]);
+  app.commandLine.appendSwitch("enable-features", [...browserEngineFeatures].join(","));
+  if (!hasSingleInstanceLock) app.quit();
+  else app.on("second-instance", () => windows.focusMainWindow());
+  async function bootstrap(): Promise<void> {
+    log.writeDesktopLogHeader("bootstrap start");
+    if (!(await recovery.requireCurrentDesktopMigrationBundle())) {
+      return;
+    }
+
+    updates.configure();
+
+    const migrationRecoveryOutcome = await recovery.handleDesktopMigrationRecovery();
+    if (migrationRecoveryOutcome !== "continue") {
+      return;
+    }
+
+    await backend.reserveBackendEndpoint("bootstrap");
+    await browser.restoreSessions();
+
+    ipc.registerIpcHandlers();
+    log.writeDesktopLogHeader("bootstrap ipc handlers registered");
+    try {
+      await browser.ensureBrowserHostPipeServer();
+    } catch (error) {
+      console.warn("[Glade browser] Failed to start browser host pipe", error);
+    }
+    await computer.startCuaHost();
+    backend.startBackend();
+    log.writeDesktopLogHeader("bootstrap backend start requested");
+
+    if (isDevelopment) {
+      void backend
+        .waitForBackendWindowReady(backend.getHttpUrl())
+        .then((source) => {
+          log.writeDesktopLogHeader(`bootstrap backend ready source=${source}`);
+          if (!windows.getMainWindow()) {
+            windows.createWindow();
+            log.writeDesktopLogHeader("bootstrap main window created");
+          }
+        })
+        .catch((error) => {
+          if (isBackendReadinessAborted(error)) {
+            return;
+          }
+          log.writeDesktopLogHeader(
+            `bootstrap backend readiness warning message=${formatErrorMessage(error)}`,
+          );
+          console.warn("[desktop] backend readiness check timed out during dev bootstrap", error);
+          if (!windows.getMainWindow()) {
+            windows.createWindow();
+            log.writeDesktopLogHeader("bootstrap main window created after readiness warning");
+          }
+        });
+      return;
+    }
+
+    backend.ensureInitialBackendWindowOpen(backend.getHttpUrl());
+  }
+  app.on("before-quit", (event) => {
+    log.writeDesktopLogHeader("before-quit received");
+    if (lifecycle.shutdownComplete()) {
+      return;
+    }
+
+    if (updates.beforeQuit(event)) return;
+    event.preventDefault();
+    void lifecycle.confirmRunningChatsThenQuit("before-quit");
+  });
+  if (hasSingleInstanceLock) {
+    app
+      .whenReady()
+      .then(() => {
+        log.writeDesktopLogHeader("app ready");
+        identity.configureAppIdentity();
+        if (process.platform === "win32") {
+          try {
+            ensureWindowsShellAppUserModelHelper(Path.join(STATE_DIR, "taskbar-icons"));
+          } catch (error) {
+            console.warn(
+              `[desktop] Failed to prepare Windows shell icon helper: ${formatErrorMessage(error)}`,
+            );
+          }
+        }
+        identity.applyInitialMacDockIcon();
+        identity.registerMacAppearanceIconSync();
+        identity.refreshMacIconCacheOnVersionChange();
+        configureMediaPermissions(windows.getMainWindow);
+        computer.initializeDesktopComputer();
+        windows.configureApplicationMenu();
+        try {
+          resources.registerDesktopProtocol();
+        } catch (error) {
+          if (error instanceof BundleChangedDuringStartupError) {
+            resources.restartAfterStartupBundleSwap(error);
+            return;
+          }
+          throw error;
+        }
+        resources.startBundleSwapWatcher();
+        void bootstrap().catch((error) => {
+          resources.handleFatalStartupError("bootstrap", error);
+        });
+
+        app.on("browser-window-blur", () => {
+          updates.markDesktopAppBackgrounded();
+        });
+
+        app.on("browser-window-focus", () => {
+          updates.handleDesktopAppForegrounded();
+        });
+
+        app.on("activate", () => {
+          if (recovery.isStartupBlocked() || lifecycle.isQuitting()) {
+            return;
+          }
+          updates.handleDesktopAppForegrounded();
+          if (BrowserWindow.getAllWindows().length === 0) {
+            if (!isDevelopment) {
+              backend.ensureInitialBackendWindowOpen(backend.getHttpUrl());
+              return;
+            }
+            void backend
+              .waitForBackendWindowReady(backend.getHttpUrl())
+              .catch((error) => {
+                if (isBackendReadinessAborted(error)) {
+                  return;
+                }
+                console.warn(
+                  "[desktop] backend readiness check timed out during dev activate",
+                  error,
+                );
+              })
+              .finally(() => {
+                if (!windows.getMainWindow()) {
+                  windows.createWindow();
+                }
+              });
+            return;
+          }
+          windows.focusMainWindow();
+        });
+      })
+      .catch((error) => {
+        resources.handleFatalStartupError("whenReady", error);
+      });
+  }
+  app.on("child-process-gone", (_event, details) => {
+    if (details.reason === "clean-exit") return;
+    const attributes = [
+      `type=${details.type}`,
+      `reason=${details.reason}`,
+      `exitCode=${details.exitCode}`,
+      ...(details.serviceName ? [`service=${details.serviceName}`] : []),
+      ...(details.name ? [`name=${sanitizeLogValue(details.name)}`] : []),
+    ].join(" ");
+    log.writeDesktopLogHeader(`child process gone ${attributes}`);
+    safeConsoleError(`[desktop] child process gone (${attributes})`);
+  });
+  app.on("window-all-closed", () => {
+    if (process.platform !== "darwin") {
+      app.quit();
+    }
+  });
+  if (process.platform !== "win32") {
+    process.on("uncaughtException", (error: unknown) => {
+      if (!isBrokenPipeError(error)) {
+        throw error;
+      }
+      if (lifecycle.shutdownInFlight()) return;
+      log.writeDesktopLogHeader("EPIPE received");
+      lifecycle.requestGracefulAppQuit("EPIPE");
+    });
+
+    process.on("SIGINT", () => {
+      if (lifecycle.shutdownInFlight()) return;
+      log.writeDesktopLogHeader("SIGINT received");
+      lifecycle.requestGracefulAppQuit("SIGINT");
+    });
+
+    process.on("SIGTERM", () => {
+      if (lifecycle.shutdownInFlight()) return;
+      log.writeDesktopLogHeader("SIGTERM received");
+      lifecycle.requestGracefulAppQuit("SIGTERM");
+    });
+  }
 }

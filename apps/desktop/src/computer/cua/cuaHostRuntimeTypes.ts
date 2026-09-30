@@ -4,7 +4,7 @@ import {
   type CuaReply,
   type CuaToolResult,
 } from "@glade/shared/computer/cuaDriverProtocol";
-import { type Server, type Socket } from "node:net";
+import { type Socket } from "node:net";
 import type { ComputerFrameTapHost } from "../computerFrameTap";
 import type { ComputerShieldHost } from "../computerShield";
 import {
@@ -46,10 +46,18 @@ export type CuaDriverHostOptions = {
   cursorStyle?: () => CuaCursorStyle | null | undefined;
 };
 
+export interface CuaPermissionCheckInput {
+  connection: Socket;
+  task: CuaComputerTask | undefined;
+  cancelled: () => boolean | undefined;
+  onChange: (previous: HostPermissions, next: HostPermissions) => Promise<void>;
+  warm: () => void;
+  monitorState: () => ComputerInputMonitorState | undefined;
+  bundleId: string;
+}
+
 export interface CuaHostRuntime {
   readonly options: CuaDriverHostOptions;
-  directory: string;
-  server: Server | undefined;
   generation: Generation | undefined;
   starting: Promise<Generation> | undefined;
   retiring: Promise<void>;
@@ -62,34 +70,33 @@ export interface CuaHostRuntime {
   readonly controlledTargets: Map<string, ControlledTarget>;
   readonly takeoverTargets: Map<string, ControlledTarget>;
   readonly browserTargets: Map<string, ControlledTarget>;
-  readonly repliedConnections: WeakSet<Socket>;
   activeInputTaskKey: string | undefined;
   readonly monitoredTasks: Map<string, string>;
   inputInterruptCooldownUntil: number;
   readonly inFlightInputInterrupts: Set<AbortController>;
   readonly activeTaskCalls: Map<AbortController, string>;
-  readonly desktopPauses: Set<string>;
-  desktopObservationRequired: boolean;
-  browserObservationRequired: boolean;
   readonly browserRecoveryObservations: Map<string, number>;
-  desktopEpoch: number;
-  desktopInterruptionCount: number;
   observedNativeRevision: number | undefined;
   operations: Promise<void>;
   stopping: Promise<void>;
-  cursorStyleUpdates: Promise<void>;
   epoch: number;
   inputMonitorEpochChanges: number;
-  readonly connections: Set<Socket>;
-  permissions: HostPermissions | undefined;
-  readonly pendingPermissionChecks: Map<() => void, string | undefined>;
   readonly userStoppedTasks: Set<string>;
-  readonly admittedTaskRequests: Set<TaskRequest>;
-  readonly knownTasks: Map<string, CuaComputerTask>;
-  readonly endedFrameTasks: Set<string>;
-  frameTapTask: CuaComputerTask | undefined;
-  warmAttempted: boolean;
   listen: () => Promise<string>;
+  admissionState: () => {
+    epoch: number;
+    paused: boolean;
+    desktopObservationRequired: boolean;
+    browserObservationRequired: boolean;
+  };
+  advanceDesktopEpoch: () => void;
+  requireFreshObservation: () => void;
+  requireDesktopObservation: () => void;
+  clearDesktopObservation: () => void;
+  runtimeDirectory: () => string;
+  hasReplied: (socket: Socket) => boolean;
+  stopMatchingTasks: (task: CuaComputerTask) => CuaComputerTask[];
+  closeTransport: (hasGeneration: boolean) => Promise<void>;
   handleAuthenticatedRequest: (
     request: Record<string, unknown>,
     connection: Socket,
@@ -102,6 +109,8 @@ export interface CuaHostRuntime {
     force?: boolean,
     task?: CuaComputerTask,
   ) => Promise<HostPermissions | undefined>;
+  checkCurrentPermissions: (input: CuaPermissionCheckInput) => Promise<CuaReply>;
+  cancelPermissionChecks: (stoppedKeys?: ReadonlySet<string>) => void;
   call: (
     name: string,
     input: unknown,
@@ -123,6 +132,9 @@ export interface CuaHostRuntime {
     enabled: boolean,
   ) => Promise<boolean>;
   endTask: (task: CuaComputerTask, allTurns: boolean, waitForCursor?: boolean) => Promise<void>;
+  setFrameTapTask: (task: CuaComputerTask) => void;
+  isFrameTaskEnded: (task: CuaComputerTask) => boolean;
+  endBrowserThread: (task: CuaComputerTask) => Promise<void>;
   warm: () => void;
   ensureControlSession: (generation: Generation) => Promise<void>;
   ensureSpawned: () => Promise<Generation>;
@@ -132,6 +144,12 @@ export interface CuaHostRuntime {
   applyCursorStyleForSession: (generation: Generation, session: string) => Promise<void>;
   stop: () => Promise<void>;
   interruptInput: () => Promise<void>;
+  activateInputMonitor: (
+    request: Record<string, unknown>,
+    connection: Socket,
+    task: CuaComputerTask | undefined,
+    taskStopped: () => boolean | undefined,
+  ) => Promise<CuaReply | undefined>;
   interruptNativeInput: (generation: Generation) => Promise<void>;
   emergencyStopInput: () => boolean;
   physicalInput: (event: PhysicalComputerInput) => boolean;

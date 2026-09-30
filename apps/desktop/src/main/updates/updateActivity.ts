@@ -1,6 +1,22 @@
 import type { DesktopUpdateState } from "@glade/contracts/ipc/ipc";
 import { app, BrowserWindow } from "electron";
-import { type DesktopRuntime } from "../desktopRuntimeTypes";
+import {
+  desktopFlavor,
+  AUTO_UPDATE_POLL_INTERVAL_MS,
+  UPDATE_CHECK_REASON_MIGRATION_RECOVERY,
+  AUTO_UPDATE_CHECK_TIMEOUT_MS,
+  AUTO_UPDATE_STALLED_DOWNLOAD_CANCELLATION_SUPPRESSION_MS,
+  AUTO_UPDATE_DOWNLOAD_STALL_TIMEOUT_MS,
+  AUTO_UPDATE_FOREGROUND_RECHECK_MIN_BACKGROUND_MS,
+  AUTO_UPDATE_FOREGROUND_RECHECK_MIN_INTERVAL_MS,
+} from "../desktopEnvironment";
+import { DESKTOP_IPC_CHANNELS } from "../ipc/ipcChannels";
+import type {
+  UpdateStatus,
+  UpdateActivityState,
+  UpdateDownloadState,
+  UpdateCancellationState,
+} from "./updateDomainState";
 import { reduceDesktopUpdateStateOnCheckFailure } from "./updateMachine";
 import {
   getDownloadStallTimeoutMessage,
@@ -11,160 +27,144 @@ import {
   type DownloadProgressSample,
 } from "./updateState";
 
-export function createUpdateActivity(
-  desktopRuntime: Pick<
-    DesktopRuntime,
-    | "updateStartupTimer"
-    | "updatePollTimer"
-    | "automaticUpdateActivitySuppressed"
-    | "checkForUpdates"
-    | "AUTO_UPDATE_POLL_INTERVAL_MS"
-    | "UPDATE_CHECK_REASON_MIGRATION_RECOVERY"
-    | "IPC"
-    | "updateState"
-    | "resolveAutoUpdateDisabledReason"
-    | "desktopFlavor"
-    | "updateBackgroundBlurTimer"
-    | "updateCheckTimeoutTimer"
-    | "updateCheckInFlight"
-    | "settleActiveUpdateCheck"
-    | "AUTO_UPDATE_CHECK_TIMEOUT_MS"
-    | "updateDownloadStallTimer"
-    | "stalledDownloadCancellationSuppressionsRemaining"
-    | "stalledDownloadCancellationSuppressionExpiresAtMs"
-    | "AUTO_UPDATE_STALLED_DOWNLOAD_CANCELLATION_SUPPRESSION_MS"
-    | "updateDownloadInFlight"
-    | "AUTO_UPDATE_DOWNLOAD_STALL_TIMEOUT_MS"
-    | "rejectUpdateDownloadStall"
-    | "updateDownloadCancellationToken"
-    | "lastUpdateDownloadProgressSample"
-    | "updateBackgroundedAtMs"
-    | "clearUnreadNotificationBadge"
-    | "AUTO_UPDATE_FOREGROUND_RECHECK_MIN_BACKGROUND_MS"
-    | "AUTO_UPDATE_FOREGROUND_RECHECK_MIN_INTERVAL_MS"
-    | "activeUpdateCheck"
-  >,
-) {
+export function createUpdateActivity(input: {
+  status: UpdateStatus;
+  activity: UpdateActivityState;
+  download: UpdateDownloadState;
+  cancellation: UpdateCancellationState;
+  checkForUpdates: (reason: string) => Promise<void>;
+  resolveAutoUpdateDisabledReason: () => string | null;
+  clearUnreadNotificationBadge: () => void;
+}) {
+  const {
+    status,
+    activity,
+    download,
+    cancellation,
+    checkForUpdates,
+    resolveAutoUpdateDisabledReason,
+    clearUnreadNotificationBadge,
+  } = input;
   function clearUpdatePollTimer(): void {
-    if (desktopRuntime.updateStartupTimer) {
-      clearTimeout(desktopRuntime.updateStartupTimer);
-      desktopRuntime.updateStartupTimer = null;
+    if (activity.startupTimer) {
+      clearTimeout(activity.startupTimer);
+      activity.startupTimer = null;
     }
-    if (desktopRuntime.updatePollTimer) {
-      clearInterval(desktopRuntime.updatePollTimer);
-      desktopRuntime.updatePollTimer = null;
+    if (activity.pollTimer) {
+      clearInterval(activity.pollTimer);
+      activity.pollTimer = null;
     }
   }
 
   function scheduleUpdatePoll(): void {
-    if (desktopRuntime.updatePollTimer || desktopRuntime.automaticUpdateActivitySuppressed) {
+    if (activity.pollTimer || status.automaticActivitySuppressed) {
       return;
     }
-    desktopRuntime.updatePollTimer = setInterval(() => {
-      void desktopRuntime.checkForUpdates("poll");
-    }, desktopRuntime.AUTO_UPDATE_POLL_INTERVAL_MS);
-    desktopRuntime.updatePollTimer.unref();
+    activity.pollTimer = setInterval(() => {
+      void checkForUpdates("poll");
+    }, AUTO_UPDATE_POLL_INTERVAL_MS);
+    activity.pollTimer.unref();
   }
 
   function isExplicitUpdateCheckReason(reason: string): boolean {
     return (
       reason === "menu" ||
       reason === "renderer" ||
-      reason === desktopRuntime.UPDATE_CHECK_REASON_MIGRATION_RECOVERY
+      reason === UPDATE_CHECK_REASON_MIGRATION_RECOVERY
     );
   }
 
   function emitUpdateState(): void {
     for (const window of BrowserWindow.getAllWindows()) {
       if (window.isDestroyed()) continue;
-      window.webContents.send(desktopRuntime.IPC.updateState, desktopRuntime.updateState);
+      window.webContents.send(DESKTOP_IPC_CHANNELS.updateState, status.state);
     }
   }
 
   function setUpdateState(patch: Partial<DesktopUpdateState>): void {
-    desktopRuntime.updateState = { ...desktopRuntime.updateState, ...patch };
+    status.state = { ...status.state, ...patch };
     emitUpdateState();
   }
 
   function shouldEnableAutoUpdates(): boolean {
-    return desktopRuntime.resolveAutoUpdateDisabledReason() === null;
+    return resolveAutoUpdateDisabledReason() === null;
   }
 
   function isAcceptableUpdateVersion(version: string | null | undefined): boolean {
     return (
       typeof version === "string" &&
-      isUpdateVersionAllowedForFlavor(version, desktopRuntime.desktopFlavor) &&
+      isUpdateVersionAllowedForFlavor(version, desktopFlavor) &&
       isUpdateVersionNewer(app.getVersion(), version)
     );
   }
 
   function describeRejectedUpdateVersion(version: string): string {
-    if (!isUpdateVersionAllowedForFlavor(version, desktopRuntime.desktopFlavor)) {
-      return `version ${version} is not on the "${desktopRuntime.desktopFlavor}" flavor's update lane`;
+    if (!isUpdateVersionAllowedForFlavor(version, desktopFlavor)) {
+      return `version ${version} is not on the "${desktopFlavor}" flavor's update lane`;
     }
     return `version ${version} is not newer than current ${app.getVersion()}`;
   }
 
   function clearUpdateBackgroundBlurTimer(): void {
-    if (desktopRuntime.updateBackgroundBlurTimer) {
-      clearTimeout(desktopRuntime.updateBackgroundBlurTimer);
-      desktopRuntime.updateBackgroundBlurTimer = null;
+    if (activity.backgroundBlurTimer) {
+      clearTimeout(activity.backgroundBlurTimer);
+      activity.backgroundBlurTimer = null;
     }
   }
 
   function clearUpdateCheckTimeoutTimer(): void {
-    if (desktopRuntime.updateCheckTimeoutTimer) {
-      clearTimeout(desktopRuntime.updateCheckTimeoutTimer);
-      desktopRuntime.updateCheckTimeoutTimer = null;
+    if (activity.checkTimeoutTimer) {
+      clearTimeout(activity.checkTimeoutTimer);
+      activity.checkTimeoutTimer = null;
     }
   }
 
   function armUpdateCheckTimeout(reason: string): void {
     clearUpdateCheckTimeoutTimer();
-    desktopRuntime.updateCheckTimeoutTimer = setTimeout(() => {
-      desktopRuntime.updateCheckTimeoutTimer = null;
-      if (desktopRuntime.updateState.status !== "checking") {
+    activity.checkTimeoutTimer = setTimeout(() => {
+      activity.checkTimeoutTimer = null;
+      if (status.state.status !== "checking") {
         return;
       }
-      desktopRuntime.updateCheckInFlight = false;
+      status.checkInFlight = false;
       // electron-updater may never settle its own promise, so this is also where anyone awaiting the
       // check has to be released.
-      desktopRuntime.settleActiveUpdateCheck?.();
+      activity.settleActiveCheck?.();
       setUpdateState(
         reduceDesktopUpdateStateOnCheckFailure(
-          desktopRuntime.updateState,
+          status.state,
           "Timed out while checking for updates. Try again.",
           new Date().toISOString(),
         ),
       );
       console.error(`[desktop-updater] Update check timed out (${reason}).`);
-    }, desktopRuntime.AUTO_UPDATE_CHECK_TIMEOUT_MS);
-    desktopRuntime.updateCheckTimeoutTimer.unref();
+    }, AUTO_UPDATE_CHECK_TIMEOUT_MS);
+    activity.checkTimeoutTimer.unref();
   }
 
   function clearUpdateDownloadStallTimer(): void {
-    if (desktopRuntime.updateDownloadStallTimer) {
-      clearTimeout(desktopRuntime.updateDownloadStallTimer);
-      desktopRuntime.updateDownloadStallTimer = null;
+    if (download.stallTimer) {
+      clearTimeout(download.stallTimer);
+      download.stallTimer = null;
     }
   }
 
   function clearStalledDownloadCancellationSuppression(): void {
-    desktopRuntime.stalledDownloadCancellationSuppressionsRemaining = 0;
-    desktopRuntime.stalledDownloadCancellationSuppressionExpiresAtMs = 0;
+    cancellation.suppressionsRemaining = 0;
+    cancellation.suppressionExpiresAtMs = 0;
   }
 
   function armStalledDownloadCancellationSuppression(): void {
-    desktopRuntime.stalledDownloadCancellationSuppressionsRemaining += 1;
-    desktopRuntime.stalledDownloadCancellationSuppressionExpiresAtMs =
-      Date.now() + desktopRuntime.AUTO_UPDATE_STALLED_DOWNLOAD_CANCELLATION_SUPPRESSION_MS;
+    cancellation.suppressionsRemaining += 1;
+    cancellation.suppressionExpiresAtMs =
+      Date.now() + AUTO_UPDATE_STALLED_DOWNLOAD_CANCELLATION_SUPPRESSION_MS;
   }
 
   function isStalledDownloadCancellationSuppressionArmed(): boolean {
-    if (desktopRuntime.stalledDownloadCancellationSuppressionsRemaining <= 0) {
+    if (cancellation.suppressionsRemaining <= 0) {
       return false;
     }
-    if (Date.now() <= desktopRuntime.stalledDownloadCancellationSuppressionExpiresAtMs) {
+    if (Date.now() <= cancellation.suppressionExpiresAtMs) {
       return true;
     }
     clearStalledDownloadCancellationSuppression();
@@ -172,45 +172,39 @@ export function createUpdateActivity(
   }
 
   function consumeStalledDownloadCancellationSuppression(): void {
-    desktopRuntime.stalledDownloadCancellationSuppressionsRemaining = Math.max(
-      0,
-      desktopRuntime.stalledDownloadCancellationSuppressionsRemaining - 1,
-    );
-    if (desktopRuntime.stalledDownloadCancellationSuppressionsRemaining === 0) {
-      desktopRuntime.stalledDownloadCancellationSuppressionExpiresAtMs = 0;
+    cancellation.suppressionsRemaining = Math.max(0, cancellation.suppressionsRemaining - 1);
+    if (cancellation.suppressionsRemaining === 0) {
+      cancellation.suppressionExpiresAtMs = 0;
     }
   }
 
   function armUpdateDownloadStallTimer(reason: string): void {
     clearUpdateDownloadStallTimer();
-    desktopRuntime.updateDownloadStallTimer = setTimeout(() => {
-      desktopRuntime.updateDownloadStallTimer = null;
-      if (
-        !desktopRuntime.updateDownloadInFlight ||
-        desktopRuntime.updateState.status !== "downloading"
-      ) {
+    download.stallTimer = setTimeout(() => {
+      download.stallTimer = null;
+      if (!download.inFlight || status.state.status !== "downloading") {
         return;
       }
 
       const error = new Error(
-        getDownloadStallTimeoutMessage(desktopRuntime.AUTO_UPDATE_DOWNLOAD_STALL_TIMEOUT_MS),
+        getDownloadStallTimeoutMessage(AUTO_UPDATE_DOWNLOAD_STALL_TIMEOUT_MS),
       );
       console.error(`[desktop-updater] ${error.message} (${reason}).`);
       armStalledDownloadCancellationSuppression();
-      desktopRuntime.rejectUpdateDownloadStall?.(error);
-      desktopRuntime.updateDownloadCancellationToken?.cancel();
-    }, desktopRuntime.AUTO_UPDATE_DOWNLOAD_STALL_TIMEOUT_MS);
-    desktopRuntime.updateDownloadStallTimer.unref();
+      download.rejectStall?.(error);
+      download.cancellationToken?.cancel();
+    }, AUTO_UPDATE_DOWNLOAD_STALL_TIMEOUT_MS);
+    download.stallTimer.unref();
   }
 
   function updateDownloadStallTimerOnProgress(progress: DownloadProgressSample): void {
-    if (!desktopRuntime.updateDownloadInFlight) {
+    if (!download.inFlight) {
       return;
     }
-    if (!hasDownloadProgressAdvanced(desktopRuntime.lastUpdateDownloadProgressSample, progress)) {
+    if (!hasDownloadProgressAdvanced(download.lastProgressSample, progress)) {
       return;
     }
-    desktopRuntime.lastUpdateDownloadProgressSample = {
+    download.lastProgressSample = {
       percent: progress.percent ?? null,
       transferred: progress.transferred ?? null,
     };
@@ -225,32 +219,32 @@ export function createUpdateActivity(
 
   function markDesktopAppBackgrounded(): void {
     clearUpdateBackgroundBlurTimer();
-    desktopRuntime.updateBackgroundBlurTimer = setTimeout(() => {
-      desktopRuntime.updateBackgroundBlurTimer = null;
+    activity.backgroundBlurTimer = setTimeout(() => {
+      activity.backgroundBlurTimer = null;
       if (isDesktopAppForegrounded()) {
         return;
       }
-      desktopRuntime.updateBackgroundedAtMs = Date.now();
+      activity.backgroundedAtMs = Date.now();
     }, 0);
   }
 
   function handleDesktopAppForegrounded(): void {
     clearUpdateBackgroundBlurTimer();
-    desktopRuntime.clearUnreadNotificationBadge();
+    clearUnreadNotificationBadge();
     const foregroundedAtMs = Date.now();
-    const backgroundedAtMs = desktopRuntime.updateBackgroundedAtMs;
-    desktopRuntime.updateBackgroundedAtMs = null;
+    const backgroundedAtMs = activity.backgroundedAtMs;
+    activity.backgroundedAtMs = null;
     const shouldCheck = shouldCheckForUpdatesOnForeground({
-      checkedAt: desktopRuntime.updateState.checkedAt,
+      checkedAt: status.state.checkedAt,
       backgroundedAtMs,
       foregroundedAtMs,
-      minBackgroundDurationMs: desktopRuntime.AUTO_UPDATE_FOREGROUND_RECHECK_MIN_BACKGROUND_MS,
-      minIntervalMs: desktopRuntime.AUTO_UPDATE_FOREGROUND_RECHECK_MIN_INTERVAL_MS,
+      minBackgroundDurationMs: AUTO_UPDATE_FOREGROUND_RECHECK_MIN_BACKGROUND_MS,
+      minIntervalMs: AUTO_UPDATE_FOREGROUND_RECHECK_MIN_INTERVAL_MS,
     });
     if (!shouldCheck) {
       return;
     }
-    void desktopRuntime.checkForUpdates("foreground");
+    void checkForUpdates("foreground");
   }
 
   function beginActiveUpdateCheck(): () => void {
@@ -260,13 +254,13 @@ export function createUpdateActivity(
     });
     const finish = (): void => {
       settle();
-      if (desktopRuntime.activeUpdateCheck === check) {
-        desktopRuntime.activeUpdateCheck = null;
-        desktopRuntime.settleActiveUpdateCheck = null;
+      if (activity.activeCheck === check) {
+        activity.activeCheck = null;
+        activity.settleActiveCheck = null;
       }
     };
-    desktopRuntime.activeUpdateCheck = check;
-    desktopRuntime.settleActiveUpdateCheck = finish;
+    activity.activeCheck = check;
+    activity.settleActiveCheck = finish;
     return finish;
   }
   return {

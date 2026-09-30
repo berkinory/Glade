@@ -1,7 +1,9 @@
 import { app } from "electron";
 import * as FS from "node:fs";
 import * as OS from "node:os";
-import { type DesktopRuntime } from "../desktopRuntimeTypes";
+import type { DesktopUpdateState } from "@glade/contracts/ipc/ipc";
+import { formatErrorMessage } from "../lifecycle/desktopLogging";
+import type { UpdateStatus, UpdateCacheState, UpdateDownloadState } from "./updateDomainState";
 import {
   clearInstallMarker,
   readInstallMarker,
@@ -15,20 +17,22 @@ import {
   resolveElectronUpdaterPendingCacheDir,
 } from "./updatePendingCache";
 
-export function createUpdateCache(
-  desktopRuntime: Pick<
-    DesktopRuntime,
-    | "configuredUpdaterCacheDirName"
-    | "formatErrorMessage"
-    | "getUpdateInstallMarkerPath"
-    | "automaticUpdateActivitySuppressed"
-    | "setUpdateState"
-    | "updateState"
-    | "logMacUpdateDiagnostics"
-    | "updateDownloadInFlight"
-    | "pendingUpdateCacheClearQueue"
-  >,
-) {
+export function createUpdateCache(input: {
+  status: UpdateStatus;
+  cache: UpdateCacheState;
+  download: UpdateDownloadState;
+  getUpdateInstallMarkerPath: () => string;
+  setUpdateState: (patch: Partial<DesktopUpdateState>) => void;
+  logMacUpdateDiagnostics: (context: string) => Promise<void>;
+}) {
+  const {
+    status,
+    cache,
+    download,
+    getUpdateInstallMarkerPath,
+    setUpdateState,
+    logMacUpdateDiagnostics,
+  } = input;
   function getUpdaterCachePathArgs(): {
     cacheDirName: string | null;
     platform: NodeJS.Platform;
@@ -37,7 +41,7 @@ export function createUpdateCache(
     xdgCacheHome: string | null;
   } {
     return {
-      cacheDirName: desktopRuntime.configuredUpdaterCacheDirName,
+      cacheDirName: status.cacheDirectoryName,
       platform: process.platform,
       homeDir: OS.homedir(),
       localAppData: process.env.LOCALAPPDATA ?? null,
@@ -59,7 +63,7 @@ export function createUpdateCache(
       console.info("[desktop-updater] Cleared legacy top-level update.zip after verified install.");
     } catch (error) {
       console.warn(
-        `[desktop-updater] Failed to clear legacy top-level update.zip: ${desktopRuntime.formatErrorMessage(error)}`,
+        `[desktop-updater] Failed to clear legacy top-level update.zip: ${formatErrorMessage(error)}`,
       );
     }
   }
@@ -67,16 +71,16 @@ export function createUpdateCache(
   function quarantineInstallMarker(reason: string): void {
     console.warn(`[desktop-updater] Discarding update install marker (${reason}).`);
     try {
-      clearInstallMarker(desktopRuntime.getUpdateInstallMarkerPath());
+      clearInstallMarker(getUpdateInstallMarkerPath());
     } catch (error) {
       console.warn(
-        `[desktop-updater] Failed to delete quarantined update install marker: ${desktopRuntime.formatErrorMessage(error)}`,
+        `[desktop-updater] Failed to delete quarantined update install marker: ${formatErrorMessage(error)}`,
       );
     }
   }
 
   function processInstallMarkerOnStartup(): void {
-    const filePath = desktopRuntime.getUpdateInstallMarkerPath();
+    const filePath = getUpdateInstallMarkerPath();
     const readResult = readInstallMarker(filePath);
     if (readResult.status === "missing") {
       return;
@@ -97,7 +101,7 @@ export function createUpdateCache(
         clearInstallMarker(filePath);
       } catch (error) {
         console.warn(
-          `[desktop-updater] Failed to clear successful update install marker: ${desktopRuntime.formatErrorMessage(error)}`,
+          `[desktop-updater] Failed to clear successful update install marker: ${formatErrorMessage(error)}`,
         );
       }
       clearLegacyUpdaterZipAfterVerifiedInstall();
@@ -121,16 +125,16 @@ export function createUpdateCache(
         writeInstallMarker(filePath, failedMarker);
       } catch (error) {
         console.error(
-          `[desktop-updater] Failed to persist restart install failure: ${desktopRuntime.formatErrorMessage(error)}`,
+          `[desktop-updater] Failed to persist restart install failure: ${formatErrorMessage(error)}`,
         );
       }
     }
 
-    desktopRuntime.automaticUpdateActivitySuppressed = true;
+    status.automaticActivitySuppressed = true;
     const message = `Glade restarted, but update ${marker.toVersion} was not installed. Try again.`;
-    desktopRuntime.setUpdateState(
+    setUpdateState(
       reduceDesktopUpdateStateOnInstallRestartFailure(
-        desktopRuntime.updateState,
+        status.state,
         marker.toVersion,
         consecutiveFailures,
         message,
@@ -139,12 +143,12 @@ export function createUpdateCache(
     console.error(
       `[desktop-updater] UPDATE INSTALL FAILED: still running ${app.getVersion()} after attempting ${marker.toVersion}; consecutive failures=${consecutiveFailures}. Automatic update checks are suppressed until the user retries.`,
     );
-    void desktopRuntime.logMacUpdateDiagnostics("startup install verification failure");
+    void logMacUpdateDiagnostics("startup install verification failure");
   }
 
   async function clearPendingUpdateCache(reason: string): Promise<void> {
     const pendingDir = getPendingUpdateCacheDir();
-    if (!pendingDir || desktopRuntime.updateDownloadInFlight) {
+    if (!pendingDir || download.inFlight) {
       return;
     }
     try {
@@ -152,19 +156,15 @@ export function createUpdateCache(
       console.info(`[desktop-updater] Cleared pending update cache (${reason}).`);
     } catch (error) {
       console.warn(
-        `[desktop-updater] Failed to clear pending update cache (${reason}): ${desktopRuntime.formatErrorMessage(error)}`,
+        `[desktop-updater] Failed to clear pending update cache (${reason}): ${formatErrorMessage(error)}`,
       );
     }
   }
 
   function clearPendingUpdateCacheWhenSafe(reason: string): void {
-    desktopRuntime.pendingUpdateCacheClearQueue.request(
-      reason,
-      desktopRuntime.updateDownloadInFlight,
-      (safeReason) => {
-        void clearPendingUpdateCache(safeReason);
-      },
-    );
+    cache.pendingClear.request(reason, download.inFlight, (safeReason) => {
+      void clearPendingUpdateCache(safeReason);
+    });
   }
   return {
     processInstallMarkerOnStartup,

@@ -28,13 +28,15 @@ import {
 export function createBrowserTabNavigation(
   hostRuntime: Pick<
     BrowserRuntime,
+    | "services"
+    | "budget"
+    | "live"
+    | "tabs"
+    | "view"
     | "markHumanControl"
     | "markThreadStateChanged"
-    | "runtimes"
     | "getVisibleBoundsForThread"
     | "attachRuntime"
-    | "activeThreadId"
-    | "rendererOnlyRuntimeKeys"
     | "ensureLiveRuntime"
     | "clearSuspendTimer"
     | "snapshotThreadState"
@@ -43,17 +45,9 @@ export function createBrowserTabNavigation(
     | "attachActiveTab"
     | "closePopupWindowsForTab"
     | "destroyRuntime"
-    | "annotations"
-    | "automationRuntimeKeys"
     | "close"
-    | "sessionPolicy"
     | "queueRuntimeStateSync"
-    | "perfCounters"
-    | "states"
     | "getOrCreateState"
-    | "copyLinkListeners"
-    | "lastEmittedVersionByThreadId"
-    | "listeners"
   >,
 ) {
   function navigate(input: BrowserNavigateInput): ThreadBrowserState {
@@ -68,7 +62,7 @@ export function createBrowserTabNavigation(
     syncThreadLastError(state);
     hostRuntime.markThreadStateChanged(input.threadId);
 
-    const runtime = hostRuntime.runtimes.get(buildRuntimeKey(input.threadId, tab.id));
+    const runtime = hostRuntime.live.runtimes.get(buildRuntimeKey(input.threadId, tab.id));
     if (runtime) {
       const bounds = hostRuntime.getVisibleBoundsForThread(input.threadId);
       if (state.activeTabId === tab.id && bounds) {
@@ -76,8 +70,8 @@ export function createBrowserTabNavigation(
       }
       void loadTab(input.threadId, tab.id, { force: true, runtime });
     } else if (
-      hostRuntime.activeThreadId === input.threadId &&
-      !hostRuntime.rendererOnlyRuntimeKeys.has(buildRuntimeKey(input.threadId, tab.id))
+      hostRuntime.view.activeThreadId === input.threadId &&
+      !hostRuntime.live.rendererOnlyRuntimeKeys.has(buildRuntimeKey(input.threadId, tab.id))
     ) {
       const nextRuntime = hostRuntime.ensureLiveRuntime(input.threadId, tab.id);
       hostRuntime.clearSuspendTimer(input.threadId);
@@ -96,10 +90,10 @@ export function createBrowserTabNavigation(
     hostRuntime.markHumanControl(input.threadId);
     const state = ensureWorkspace(input.threadId);
     const tab = resolveTab(state, input.tabId);
-    const runtime = hostRuntime.runtimes.get(buildRuntimeKey(input.threadId, tab.id));
+    const runtime = hostRuntime.live.runtimes.get(buildRuntimeKey(input.threadId, tab.id));
     if (runtime) {
       runtime.webContents.reload();
-    } else if (hostRuntime.activeThreadId === input.threadId) {
+    } else if (hostRuntime.view.activeThreadId === input.threadId) {
       hostRuntime.resumeThread(input.threadId);
       void loadTab(input.threadId, tab.id, { force: true });
     }
@@ -108,7 +102,7 @@ export function createBrowserTabNavigation(
 
   function goBack(input: BrowserTabInput): ThreadBrowserState {
     hostRuntime.markHumanControl(input.threadId);
-    const runtime = hostRuntime.runtimes.get(buildRuntimeKey(input.threadId, input.tabId));
+    const runtime = hostRuntime.live.runtimes.get(buildRuntimeKey(input.threadId, input.tabId));
     if (runtime && canWebContentsGoBack(runtime.webContents)) {
       runtime.webContents.goBack();
     }
@@ -117,7 +111,7 @@ export function createBrowserTabNavigation(
 
   function goForward(input: BrowserTabInput): ThreadBrowserState {
     hostRuntime.markHumanControl(input.threadId);
-    const runtime = hostRuntime.runtimes.get(buildRuntimeKey(input.threadId, input.tabId));
+    const runtime = hostRuntime.live.runtimes.get(buildRuntimeKey(input.threadId, input.tabId));
     if (runtime && canWebContentsGoForward(runtime.webContents)) {
       runtime.webContents.goForward();
     }
@@ -133,7 +127,7 @@ export function createBrowserTabNavigation(
       state.activeTabId = tab.id;
     }
 
-    if (hostRuntime.activeThreadId === input.threadId) {
+    if (hostRuntime.view.activeThreadId === input.threadId) {
       hostRuntime.resumeThread(input.threadId);
       const bounds = hostRuntime.getVisibleBoundsForThread(input.threadId);
       if (state.activeTabId === tab.id && bounds) {
@@ -159,9 +153,9 @@ export function createBrowserTabNavigation(
 
     hostRuntime.closePopupWindowsForTab(input.threadId, input.tabId);
     hostRuntime.destroyRuntime(input.threadId, input.tabId);
-    hostRuntime.annotations.clearProjection(input.threadId, input.tabId);
-    hostRuntime.rendererOnlyRuntimeKeys.delete(buildRuntimeKey(input.threadId, input.tabId));
-    hostRuntime.automationRuntimeKeys.delete(buildRuntimeKey(input.threadId, input.tabId));
+    hostRuntime.services.annotations.clearProjection(input.threadId, input.tabId);
+    hostRuntime.live.rendererOnlyRuntimeKeys.delete(buildRuntimeKey(input.threadId, input.tabId));
+    hostRuntime.live.automationRuntimeKeys.delete(buildRuntimeKey(input.threadId, input.tabId));
     state.tabs = state.tabs.filter((tab) => tab.id !== input.tabId);
 
     nextTabs = state.tabs;
@@ -175,7 +169,7 @@ export function createBrowserTabNavigation(
     }
 
     const bounds = hostRuntime.getVisibleBoundsForThread(input.threadId);
-    if (hostRuntime.activeThreadId === input.threadId && bounds) {
+    if (hostRuntime.view.activeThreadId === input.threadId && bounds) {
       hostRuntime.attachActiveTab(input.threadId, bounds);
     }
 
@@ -191,7 +185,7 @@ export function createBrowserTabNavigation(
     const tab = resolveTab(state, input.tabId);
     activateTab(input.threadId, state, tab);
 
-    if (hostRuntime.activeThreadId === input.threadId) {
+    if (hostRuntime.view.activeThreadId === input.threadId) {
       hostRuntime.resumeThread(input.threadId);
       const bounds = hostRuntime.getVisibleBoundsForThread(input.threadId);
       if (bounds) {
@@ -233,7 +227,7 @@ export function createBrowserTabNavigation(
     const nextUrl = normalizeUrlInput(
       options.force === true ? tab.url : (tab.lastCommittedUrl ?? tab.url),
     );
-    const currentUrl = hostRuntime.sessionPolicy.resolveDisplayUrl(webContents.getURL());
+    const currentUrl = hostRuntime.services.sessionPolicy.resolveDisplayUrl(webContents.getURL());
     const shouldLoad = options.force === true || currentUrl !== nextUrl || currentUrl.length === 0;
 
     if (!shouldLoad) {
@@ -250,7 +244,7 @@ export function createBrowserTabNavigation(
     emitState(threadId);
 
     try {
-      await webContents.loadURL(hostRuntime.sessionPolicy.resolveRuntimeUrl(nextUrl));
+      await webContents.loadURL(hostRuntime.services.sessionPolicy.resolveRuntimeUrl(nextUrl));
       hostRuntime.queueRuntimeStateSync(threadId, tabId);
     } catch (error) {
       if (isAbortedNavigationError(error)) {
@@ -267,10 +261,10 @@ export function createBrowserTabNavigation(
   }
 
   function syncRuntimeState(threadId: ThreadId, tabId: string, faviconUrls?: string[]): void {
-    hostRuntime.perfCounters.syncRuntimeStateCalls += 1;
-    const state = hostRuntime.states.get(threadId);
+    hostRuntime.budget.perfCounters.syncRuntimeStateCalls += 1;
+    const state = hostRuntime.tabs.states.get(threadId);
     const tab = state ? getTab(state, tabId) : null;
-    const runtime = hostRuntime.runtimes.get(buildRuntimeKey(threadId, tabId));
+    const runtime = hostRuntime.live.runtimes.get(buildRuntimeKey(threadId, tabId));
     if (!state || !tab || !runtime) {
       return;
     }
@@ -279,7 +273,7 @@ export function createBrowserTabNavigation(
       state,
       tab,
       runtime.webContents,
-      (url) => hostRuntime.sessionPolicy.resolveDisplayUrl(url),
+      (url) => hostRuntime.services.sessionPolicy.resolveDisplayUrl(url),
       faviconUrls,
     );
     const nextDidChange = syncThreadLastError(state) || didChange;
@@ -290,7 +284,7 @@ export function createBrowserTabNavigation(
   }
 
   function ensureWorkspace(threadId: ThreadId, initialUrl?: string): ThreadBrowserState {
-    hostRuntime.sessionPolicy.ensureConfigured();
+    hostRuntime.services.sessionPolicy.ensureConfigured();
     const state = hostRuntime.getOrCreateState(threadId);
     if (state.tabs.length === 0) {
       const initialTab = createBrowserTab(normalizeUrlInput(initialUrl));
@@ -347,7 +341,7 @@ export function createBrowserTabNavigation(
     tabId: string,
     runtime: LiveTabRuntime | undefined,
   ): string | null {
-    const state = hostRuntime.states.get(threadId);
+    const state = hostRuntime.tabs.states.get(threadId);
     const tab = state ? getTab(state, tabId) : null;
     const liveUrl =
       runtime && !runtime.webContents.isDestroyed() ? runtime.webContents.getURL() : null;
@@ -355,29 +349,29 @@ export function createBrowserTabNavigation(
   }
 
   function copyTabLink(threadId: ThreadId, tabId: string): void {
-    const runtime = hostRuntime.runtimes.get(buildRuntimeKey(threadId, tabId));
+    const runtime = hostRuntime.live.runtimes.get(buildRuntimeKey(threadId, tabId));
     const url = resolveCopyableTabUrl(threadId, tabId, runtime);
     if (!url) {
       return;
     }
     clipboard.writeText(url);
     const event: BrowserCopyLinkEvent = { threadId, url };
-    for (const listener of hostRuntime.copyLinkListeners) {
+    for (const listener of hostRuntime.tabs.copyLinkListeners) {
       listener(event);
     }
   }
 
   function emitState(threadId: ThreadId): void {
-    hostRuntime.perfCounters.stateEmitCalls += 1;
+    hostRuntime.budget.perfCounters.stateEmitCalls += 1;
     const state = hostRuntime.getOrCreateState(threadId);
     const nextVersion = state.version;
-    if (hostRuntime.lastEmittedVersionByThreadId.get(threadId) === nextVersion) {
-      hostRuntime.perfCounters.stateEmitSkips += 1;
+    if (hostRuntime.tabs.lastEmittedVersionByThreadId.get(threadId) === nextVersion) {
+      hostRuntime.budget.perfCounters.stateEmitSkips += 1;
       return;
     }
-    hostRuntime.lastEmittedVersionByThreadId.set(threadId, nextVersion);
+    hostRuntime.tabs.lastEmittedVersionByThreadId.set(threadId, nextVersion);
     const snapshot = hostRuntime.snapshotThreadState(threadId, state);
-    for (const listener of hostRuntime.listeners) {
+    for (const listener of hostRuntime.tabs.listeners) {
       listener(snapshot);
     }
   }

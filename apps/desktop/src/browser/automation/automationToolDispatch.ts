@@ -42,6 +42,7 @@ export function createAutomationToolDispatch(
     BrowserAutomationHostRuntime,
     | "open"
     | "browserManager"
+    | "options"
     | "resolveTabId"
     | "withLock"
     | "withVisibilityLock"
@@ -52,7 +53,6 @@ export function createAutomationToolDispatch(
     | "withDialogs"
     | "navigate"
     | "observeWindowOpen"
-    | "options"
     | "resize"
     | "diagnostics"
     | "uploadBrowserFiles"

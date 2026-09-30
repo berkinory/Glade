@@ -324,20 +324,7 @@ export class DesktopComputerManager {
         // Recheck before advancing so a pane the user already flipped while the last coach was up never
         // shows a stale guide of its own. A failed recheck ends the session rather than advancing on stale
         // fields.
-        const sessionKinds = this.#guideSessionKinds;
-        const generation = this.#guideSessionGeneration;
-        void this.#runPermissionCommand("--check-permissions", sessionKinds)
-          .then((ok) => {
-            if (generation !== this.#guideSessionGeneration || this.#disposed) return;
-            if (ok) {
-              this.#advancePermissionGuide();
-              return;
-            }
-            this.#finishGuideSession(false);
-          })
-          .catch(() => {
-            if (generation === this.#guideSessionGeneration) this.#finishGuideSession(false);
-          });
+        this.#recheckGuideSession();
       });
     } catch {}
   }
@@ -454,6 +441,10 @@ export class DesktopComputerManager {
     this.#options.onPermissionGuideState("granted");
     this.#stopGuideProcess();
     if (this.#guidePaneQueue.length === 0) return;
+    this.#recheckGuideSession();
+  }
+
+  #recheckGuideSession(): void {
     const sessionKinds = this.#guideSessionKinds;
     const generation = this.#guideSessionGeneration;
     void this.#runPermissionCommand("--check-permissions", sessionKinds)

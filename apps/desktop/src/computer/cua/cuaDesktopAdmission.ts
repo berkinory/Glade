@@ -1,5 +1,4 @@
 import { type CuaReply } from "@glade/shared/computer/cuaDriverProtocol";
-import { rm } from "node:fs/promises";
 import { log } from "./cuaHostPolicy";
 import { type CuaHostRuntime } from "./cuaHostRuntimeTypes";
 
@@ -9,21 +8,46 @@ export function createCuaDesktopAdmission(
     | "suspended"
     | "stop"
     | "closed"
-    | "desktopEpoch"
-    | "desktopPauses"
-    | "desktopInterruptionCount"
     | "observedNativeRevision"
     | "generation"
-    | "desktopObservationRequired"
-    | "browserObservationRequired"
     | "options"
     | "inputInterruptCooldownUntil"
     | "updateInputMonitorArmed"
-    | "connections"
-    | "server"
-    | "directory"
+    | "closeTransport"
   >,
 ) {
+  const desktopPauses = new Set<string>();
+  let desktopEpoch = 0;
+  let desktopInterruptionCount = 0;
+  let desktopObservationRequired = false;
+  let browserObservationRequired = false;
+
+  function admissionState() {
+    return {
+      epoch: desktopEpoch,
+      paused: desktopPauses.size > 0,
+      desktopObservationRequired,
+      browserObservationRequired,
+    };
+  }
+
+  function advanceDesktopEpoch(): void {
+    desktopEpoch += 1;
+  }
+
+  function requireFreshObservation(): void {
+    desktopObservationRequired = true;
+    browserObservationRequired = true;
+  }
+
+  function requireDesktopObservation(): void {
+    desktopObservationRequired = true;
+  }
+
+  function clearDesktopObservation(): void {
+    desktopObservationRequired = false;
+  }
+
   function suspend(): Promise<void> {
     hostRuntime.suspended = true;
     return hostRuntime.stop();
@@ -43,9 +67,9 @@ export function createCuaDesktopAdmission(
     | "hostPlatform"
   > {
     return {
-      desktopEpoch: hostRuntime.desktopEpoch,
-      desktopPauses: [...hostRuntime.desktopPauses].toSorted(),
-      desktopInterruptions: hostRuntime.desktopInterruptionCount,
+      desktopEpoch,
+      desktopPauses: [...desktopPauses].toSorted(),
+      desktopInterruptions: desktopInterruptionCount,
       hostPlatform: process.platform,
       ...(hostRuntime.observedNativeRevision !== undefined
         ? { driverNativeRevision: hostRuntime.observedNativeRevision }
@@ -62,22 +86,21 @@ export function createCuaDesktopAdmission(
   }
 
   function pauseDesktop(reason: string): Promise<void> {
-    hostRuntime.desktopPauses.add(reason);
-    hostRuntime.desktopInterruptionCount += 1;
-    hostRuntime.desktopObservationRequired = true;
-    hostRuntime.browserObservationRequired = true;
+    desktopPauses.add(reason);
+    desktopInterruptionCount += 1;
+    requireFreshObservation();
     log(`desktop input paused (${reason}); requiring fresh desktop observation`);
     return hostRuntime.stop();
   }
 
   function resumeDesktop(reason: string): void {
-    if (hostRuntime.desktopPauses.delete(reason))
-      log(`desktop pause "${reason}" lifted; ${hostRuntime.desktopPauses.size} pause(s) remain`);
+    if (desktopPauses.delete(reason))
+      log(`desktop pause "${reason}" lifted; ${desktopPauses.size} pause(s) remain`);
   }
 
   function desktopPauseReply(): CuaReply {
     const message =
-      hostRuntime.desktopPauses.size > 0
+      desktopPauses.size > 0
         ? "Computer input is paused because the desktop is locked, asleep or inactive. Return to the desktop, then read fresh state before continuing."
         : "Computer input was interrupted or the user changed the controlled window. Read fresh computer state and inspect it before continuing; do not replay an uncertain action.";
     return {
@@ -150,17 +173,16 @@ export function createCuaDesktopAdmission(
     } finally {
       await hostRuntime.options.frameTap?.dispose().catch(() => undefined);
       await hostRuntime.options.shield?.dispose().catch(() => undefined);
-      for (const socket of hostRuntime.connections) socket.destroy();
-      await new Promise<void>((resolve) => {
-        if (hostRuntime.server) hostRuntime.server.close(() => resolve());
-        else resolve();
-      });
-      if (hostRuntime.directory && !hostRuntime.generation)
-        await rm(hostRuntime.directory, { recursive: true, force: true });
+      await hostRuntime.closeTransport(hostRuntime.generation !== undefined);
     }
   }
 
   return {
+    admissionState,
+    advanceDesktopEpoch,
+    requireFreshObservation,
+    requireDesktopObservation,
+    clearDesktopObservation,
     suspend,
     resume,
     desktopState,

@@ -17,13 +17,13 @@ export function createCuaTargetObservation(
     CuaHostRuntime,
     | "options"
     | "browserRecoveryObservations"
-    | "desktopEpoch"
     | "browserTargets"
     | "controlledTargets"
     | "call"
     | "epoch"
-    | "endedFrameTasks"
+    | "isFrameTaskEnded"
     | "userStoppedTasks"
+    | "admissionState"
   >,
 ) {
   function taskStoppedReply(): CuaReply {
@@ -98,7 +98,7 @@ export function createCuaTargetObservation(
     const key = browserRecoveryKey(input, task);
     return (
       key !== undefined &&
-      hostRuntime.browserRecoveryObservations.get(key) === hostRuntime.desktopEpoch
+      hostRuntime.browserRecoveryObservations.get(key) === hostRuntime.admissionState().epoch
     );
   }
 
@@ -240,7 +240,7 @@ export function createCuaTargetObservation(
     const reply = await hostRuntime.call("list_windows", {}, connection, false);
     if (
       epoch !== hostRuntime.epoch ||
-      hostRuntime.endedFrameTasks.has(cuaComputerTaskKey(task)) ||
+      hostRuntime.isFrameTaskEnded(task) ||
       hostRuntime.userStoppedTasks.has(cuaComputerTaskKey(task)) ||
       !reply.ok ||
       reply.result?.isError
@@ -281,7 +281,7 @@ export function createCuaTargetObservation(
     }
     if (
       epoch !== hostRuntime.epoch ||
-      hostRuntime.endedFrameTasks.has(cuaComputerTaskKey(task)) ||
+      hostRuntime.isFrameTaskEnded(task) ||
       hostRuntime.userStoppedTasks.has(cuaComputerTaskKey(task))
     )
       return;

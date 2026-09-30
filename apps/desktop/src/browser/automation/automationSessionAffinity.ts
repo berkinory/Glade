@@ -2,53 +2,49 @@ import { type BrowserTabId } from "@glade/contracts/browser/automation/browserAu
 import {
   BrowserAutomationToolRequest,
   IDEMPOTENCY_TOMBSTONE_TTL_MS,
+  IDEMPOTENCY_TTL_MS,
   IdempotencyEntry,
+  IdempotencyTombstone,
   MAX_IDEMPOTENCY_ENTRIES,
   MAX_IDEMPOTENCY_TOMBSTONES,
   SessionAffinity,
 } from "./automationHostPolicy";
-import { type BrowserAutomationHostRuntime } from "./automationHostRuntimeTypes";
 import { BrowserAutomationHostError, browserHostError } from "./hostErrors";
 
-export function createAutomationSessionAffinity(
-  hostRuntime: Pick<
-    BrowserAutomationHostRuntime,
-    "idempotency" | "idempotencyTombstones" | "affinities"
-  >,
-) {
-  function trimIdempotencyCache(): void {
-    const now = performance.now();
-    for (const [key, entry] of hostRuntime.idempotency) {
-      if (entry.settled && entry.expiresAt <= now) evictIdempotencyEntry(key, entry, now);
-    }
-    for (const [key, tombstone] of hostRuntime.idempotencyTombstones) {
-      if (tombstone.expiresAt <= now) hostRuntime.idempotencyTombstones.delete(key);
-    }
-    while (hostRuntime.idempotency.size > MAX_IDEMPOTENCY_ENTRIES) {
-      const settled = [...hostRuntime.idempotency].find(([, entry]) => entry.settled);
+export class AutomationSessionRegistry {
+  private readonly affinities = new Map<string, SessionAffinity>();
+  private readonly idempotency = new Map<string, IdempotencyEntry>();
+  private readonly idempotencyTombstones = new Map<string, IdempotencyTombstone>();
 
-      if (!settled) break;
-      evictIdempotencyEntry(settled[0], settled[1], now);
+  trimIdempotencyCache(): void {
+    const now = performance.now();
+    for (const [key, entry] of this.idempotency) {
+      if (entry.settled && entry.expiresAt <= now) this.evictIdempotencyEntry(key, entry, now);
     }
-    while (hostRuntime.idempotencyTombstones.size > MAX_IDEMPOTENCY_TOMBSTONES) {
-      hostRuntime.idempotencyTombstones.delete(
-        hostRuntime.idempotencyTombstones.keys().next().value as string,
-      );
+    for (const [key, tombstone] of this.idempotencyTombstones) {
+      if (tombstone.expiresAt <= now) this.idempotencyTombstones.delete(key);
+    }
+    while (this.idempotency.size > MAX_IDEMPOTENCY_ENTRIES) {
+      const settled = [...this.idempotency].find(([, entry]) => entry.settled);
+      if (!settled) break;
+      this.evictIdempotencyEntry(settled[0], settled[1], now);
+    }
+    while (this.idempotencyTombstones.size > MAX_IDEMPOTENCY_TOMBSTONES) {
+      this.idempotencyTombstones.delete(this.idempotencyTombstones.keys().next().value as string);
     }
   }
 
-  function evictIdempotencyEntry(key: string, entry: IdempotencyEntry, now: number): void {
-    hostRuntime.idempotency.delete(key);
+  private evictIdempotencyEntry(key: string, entry: IdempotencyEntry, now: number): void {
+    this.idempotency.delete(key);
     if (!entry.effecting) return;
-    hostRuntime.idempotencyTombstones.delete(key);
-    hostRuntime.idempotencyTombstones.set(key, {
+    this.idempotencyTombstones.delete(key);
+    this.idempotencyTombstones.set(key, {
       fingerprint: entry.fingerprint,
       expiresAt: now + IDEMPOTENCY_TOMBSTONE_TTL_MS,
     });
   }
 
-  async function reconcileIdempotentReplay(
-    _request: BrowserAutomationToolRequest,
+  async reconcileIdempotentReplay(
     affinity: SessionAffinity,
     result: Promise<unknown>,
   ): Promise<unknown> {
@@ -65,8 +61,8 @@ export function createAutomationSessionAffinity(
     return output;
   }
 
-  function bindSession(request: BrowserAutomationToolRequest): SessionAffinity {
-    const existing = hostRuntime.affinities.get(request.sessionId);
+  bindSession(request: BrowserAutomationToolRequest): SessionAffinity {
+    const existing = this.affinities.get(request.sessionId);
     if (existing) {
       if (existing.provider !== request.provider) {
         browserHostError({
@@ -91,10 +87,74 @@ export function createAutomationSessionAffinity(
       threadId: request.threadId,
       tabId: null,
     };
-
-    hostRuntime.affinities.set(request.sessionId, affinity);
+    this.affinities.set(request.sessionId, affinity);
     return affinity;
   }
 
-  return { trimIdempotencyCache, reconcileIdempotentReplay, bindSession };
+  runIdempotent(
+    cacheKey: string,
+    fingerprint: string,
+    effecting: boolean,
+    affinity: SessionAffinity,
+    run: () => Promise<unknown>,
+  ): Promise<unknown> {
+    this.trimIdempotencyCache();
+    const existing = this.idempotency.get(cacheKey);
+    if (existing) {
+      if (existing.fingerprint !== fingerprint) {
+        browserHostError({
+          code: "BrowserRequestConflict",
+          retryable: false,
+          phase: "queue",
+          effectMayHaveCommitted: false,
+        });
+      }
+      this.idempotency.delete(cacheKey);
+      this.idempotency.set(cacheKey, existing);
+      return this.reconcileIdempotentReplay(affinity, existing.result);
+    }
+    const tombstone = this.idempotencyTombstones.get(cacheKey);
+    if (tombstone) {
+      if (tombstone.fingerprint !== fingerprint) {
+        browserHostError({
+          code: "BrowserRequestConflict",
+          retryable: false,
+          phase: "queue",
+          effectMayHaveCommitted: false,
+        });
+      }
+      browserHostError({ code: "BrowserAmbiguousResult" });
+    }
+    const operation = run();
+    const entry: IdempotencyEntry = {
+      fingerprint,
+      result: operation,
+      settled: false,
+      expiresAt: Number.POSITIVE_INFINITY,
+      effecting,
+    };
+    this.idempotency.set(cacheKey, entry);
+    void operation.then(
+      () => {
+        entry.settled = true;
+        entry.expiresAt = performance.now() + IDEMPOTENCY_TTL_MS;
+        this.trimIdempotencyCache();
+      },
+      (error: unknown) => {
+        entry.settled = true;
+        entry.expiresAt = performance.now() + IDEMPOTENCY_TTL_MS;
+        // A confirmed pre-effect failure can be retried without repeating a committed action.
+        if (
+          error instanceof BrowserAutomationHostError &&
+          !error.browserError.effectMayHaveCommitted &&
+          this.idempotency.get(cacheKey) === entry
+        ) {
+          this.idempotency.delete(cacheKey);
+        }
+        this.trimIdempotencyCache();
+      },
+    );
+    this.trimIdempotencyCache();
+    return operation;
+  }
 }

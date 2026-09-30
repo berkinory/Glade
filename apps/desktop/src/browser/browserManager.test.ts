@@ -105,6 +105,7 @@ class FakePopupWindow extends EventEmitter {
 }
 
 interface BrowserManagerCharacterizationAccess {
+  live: Pick<BrowserManagerCharacterizationAccess, "runtimes" | "popupRuntimes">;
   runtimes: Map<
     string,
     {
@@ -148,7 +149,7 @@ const THREAD_ID = ThreadId.makeUnsafe("thread-1");
 function asCharacterizationAccess(
   manager: DesktopBrowserManager,
 ): BrowserManagerCharacterizationAccess {
-  return (manager as unknown as { hostRuntime: BrowserManagerCharacterizationAccess }).hostRuntime;
+  return manager as unknown as BrowserManagerCharacterizationAccess;
 }
 
 describe("DesktopBrowserManager repeated workflow characterization", () => {
@@ -260,7 +261,7 @@ describe("DesktopBrowserManager repeated workflow characterization", () => {
       ownsWebContents: false as const,
       listenerDisposers: [],
     };
-    access.runtimes.set(tabRuntime.key, tabRuntime);
+    access.live.runtimes.set(tabRuntime.key, tabRuntime);
     access.configureRuntimeWebContents(tabRuntime);
     const popupRuntime = {
       threadId: THREAD_ID,
@@ -268,7 +269,7 @@ describe("DesktopBrowserManager repeated workflow characterization", () => {
       window: popup as unknown as BrowserWindow,
       listenerDisposers: [],
     };
-    access.popupRuntimes.set(popupRuntime.window, popupRuntime);
+    access.live.popupRuntimes.set(popupRuntime.window, popupRuntime);
     access.configureOAuthPopupRuntime(popupRuntime);
 
     const handlers = [tabContents.windowOpenHandler, popup.webContents.windowOpenHandler];

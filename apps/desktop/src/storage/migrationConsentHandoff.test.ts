@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { MigrationConsentHandoff } from "./migrationConsentHandoff";
+import { MigrationConsentHandoff } from "./desktopMigrationRecovery";
 
 describe("MigrationConsentHandoff", () => {
   it("authorizes exactly the next backend spawn", () => {

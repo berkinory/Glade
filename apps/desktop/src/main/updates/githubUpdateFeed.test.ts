@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildGitHubReleasesPageUrl, resolveGitHubUpdateSource } from "./githubUpdateFeed";
+import { buildGitHubReleasesPageUrl, resolveGitHubUpdateSource } from "./updateState";
 
 describe("resolveGitHubUpdateSource", () => {
   it("returns null for non-github providers", () => {

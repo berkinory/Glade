@@ -6,22 +6,15 @@ import {
   CUA_READ_TOOLS,
   CUA_SETUP_TIMEOUT_MS,
   cuaComputerTaskKey,
-  cuaRequest,
   parseCuaShieldArgs,
   type CuaComputerTask,
   type CuaReply,
 } from "@glade/shared/computer/cuaDriverProtocol";
 import { access } from "node:fs/promises";
 import { type Socket } from "node:net";
-import {
-  CUA_DRIVER_MISSING_MESSAGE,
-  TaskRequest,
-  browserSessionLabel,
-  log,
-  permissionsChanged,
-} from "./cuaHostPolicy";
+import { CUA_DRIVER_MISSING_MESSAGE, TaskRequest, log } from "./cuaHostPolicy";
 import { type CuaHostRuntime } from "./cuaHostRuntimeTypes";
-import { linuxBrowserCallIsReadOnly, linuxCuaAdmissionRefusal } from "./linuxCuaAdmission";
+import { linuxCuaAdmissionRefusal } from "./linuxCuaAdmission";
 
 export function createCuaHostDispatch(
   hostRuntime: Pick<
@@ -33,21 +26,17 @@ export function createCuaHostDispatch(
     | "stop"
     | "interruptInput"
     | "endTask"
-    | "browserTargets"
+    | "endBrowserThread"
     | "operations"
     | "stopping"
     | "generation"
     | "taskStoppedReply"
     | "inputMonitorRequested"
     | "epoch"
-    | "inputMonitorEpochChanges"
     | "options"
     | "inputMonitorUnavailableReply"
-    | "inputMonitorArmed"
-    | "monitoredTasks"
     | "warm"
     | "ownPids"
-    | "desktopPauses"
     | "desktopPauseReply"
     | "ensureSpawned"
     | "inputMonitorAvailable"
@@ -55,20 +44,20 @@ export function createCuaHostDispatch(
     | "interruptNativeInput"
     | "inputInterruptCooldownUntil"
     | "inputInterruptedReply"
-    | "checkPermissions"
-    | "permissions"
-    | "desktopEpoch"
-    | "desktopObservationRequired"
-    | "browserObservationRequired"
+    | "checkCurrentPermissions"
     | "retire"
     | "isIsolatedBrowserSetup"
     | "hasBrowserRecoveryObservation"
     | "takeoverTargets"
-    | "frameTapTask"
+    | "setFrameTapTask"
     | "call"
-    | "endedFrameTasks"
+    | "isFrameTaskEnded"
     | "frameTapTarget"
     | "primeTapAfterLaunch"
+    | "activateInputMonitor"
+    | "admissionState"
+    | "advanceDesktopEpoch"
+    | "requireFreshObservation"
   >,
 ) {
   async function handleAuthenticatedRequest(
@@ -108,105 +97,20 @@ export function createCuaHostDispatch(
       // — ending a session under a dispatching call would turn a known-alive capability into a mid-flight
       // session death.
       if (!task) throw new Error("Computer task attribution is required.");
-      for (const [key, target] of hostRuntime.browserTargets) {
-        if (target.threadId === task.threadId) hostRuntime.browserTargets.delete(key);
-      }
-      const endTask = task;
-      const previousEnd = hostRuntime.operations;
-      const endOperation = (async () => {
-        await previousEnd;
-        await hostRuntime.stopping;
-        const generation = hostRuntime.generation;
-        const label = browserSessionLabel(endTask.threadId);
-        if (
-          hostRuntime.closed ||
-          !generation ||
-          generation.retired ||
-          generation.didExit ||
-          !generation.controlSocket ||
-          generation.controlSocket.destroyed ||
-          (!generation.liveBrowserSessions.has(label) &&
-            !generation.endedBrowserSessions.has(label))
-        )
-          return;
-        try {
-          await cuaRequest<CuaReply>(
-            generation.socket,
-            {
-              method: "call",
-              name: "end_session",
-              args: { session: label },
-              session_id: generation.controlSession,
-            },
-            { timeoutMs: 5_000 },
-          );
-
-          generation.liveBrowserSessions.delete(label);
-          generation.endedBrowserSessions.add(label);
-        } catch {
-          generation.liveBrowserSessions.delete(label);
-          generation.endedBrowserSessions.add(label);
-        }
-      })();
-      hostRuntime.operations = endOperation.then(
-        () => undefined,
-        () => undefined,
-      );
-      await endOperation;
+      await hostRuntime.endBrowserThread(task);
       return { ok: true };
     }
     if (hostRuntime.closed) throw new Error("Computer host is closed.");
     if (hostRuntime.suspended)
       throw new Error("Computer host is suspended while the backend is stopping.");
     if (taskStopped()) return hostRuntime.taskStoppedReply();
-    const activeComputerWork =
-      request.method === "call" &&
-      typeof request.name === "string" &&
-      request.name !== "check_permissions" &&
-      (process.platform !== "linux" || task !== undefined) &&
-      (CUA_ACTION_TOOLS.has(request.name) ||
-        (CUA_BROWSER_MUTATION_TOOLS.has(request.name) &&
-          (process.platform !== "linux" ||
-            !linuxBrowserCallIsReadOnly(request.name, request.args))) ||
-        (task !== undefined &&
-          request.modelObservation === true &&
-          (CUA_READ_TOOLS.has(request.name) || CUA_BROWSER_TOOLS.has(request.name))));
-    if (activeComputerWork) {
-      hostRuntime.inputMonitorRequested = true;
-      const activationEpoch = hostRuntime.epoch;
-      const activationMonitorEpochChanges = hostRuntime.inputMonitorEpochChanges;
-      await hostRuntime.options.activateInputMonitor?.();
-      if (
-        activationEpoch !== hostRuntime.epoch ||
-        connection.destroyed ||
-        hostRuntime.closed ||
-        hostRuntime.suspended ||
-        taskStopped()
-      ) {
-        const monitor = hostRuntime.options.inputMonitorState?.();
-
-        if (
-          !connection.destroyed &&
-          !hostRuntime.closed &&
-          !hostRuntime.suspended &&
-          monitor?.ready === false &&
-          hostRuntime.epoch - activationEpoch ===
-            hostRuntime.inputMonitorEpochChanges - activationMonitorEpochChanges
-        )
-          return hostRuntime.inputMonitorUnavailableReply(monitor);
-        return {
-          ok: false,
-          error: "Cancelled before listener activation completed.",
-          effect: "not-dispatched",
-        };
-      }
-      if (hostRuntime.options.activateInputMonitor) hostRuntime.inputMonitorArmed = true;
-      if (task) {
-        hostRuntime.monitoredTasks.set(cuaComputerTaskKey(task), task.threadId);
-        while (hostRuntime.monitoredTasks.size > 256)
-          hostRuntime.monitoredTasks.delete(hostRuntime.monitoredTasks.keys().next().value!);
-      }
-    }
+    const monitorRefusal = await hostRuntime.activateInputMonitor(
+      request,
+      connection,
+      task,
+      taskStopped,
+    );
+    if (monitorRefusal) return monitorRefusal;
     // Hosts without a permission bridge can warm on first touch. On macOS, wait for the first granted
     // snapshot below so the daemon cannot cache a denied TCC result before setup completes.
     if (
@@ -274,7 +178,7 @@ export function createCuaHostDispatch(
         };
       }
     }
-    if (hostRuntime.desktopPauses.size > 0) return hostRuntime.desktopPauseReply();
+    if (hostRuntime.admissionState().paused) return hostRuntime.desktopPauseReply();
     // Observations and input share one native session. A pane capture must not race input or turn a
     // harmless concurrent read into a driver restart.
     const previous = hostRuntime.operations;
@@ -294,7 +198,7 @@ export function createCuaHostDispatch(
           error: "Cancelled before dispatch.",
           effect: "not-dispatched",
         } as const;
-      if (hostRuntime.desktopPauses.size > 0) return hostRuntime.desktopPauseReply();
+      if (hostRuntime.admissionState().paused) return hostRuntime.desktopPauseReply();
       if (process.platform === "linux" && CUA_BROWSER_TOOLS.has(name)) {
         // Capability comes only from the embedded child handshake. A cold browser call must not trust model
         // arguments or a configured path as evidence that this Linux artifact implements input
@@ -341,75 +245,32 @@ export function createCuaHostDispatch(
         return hostRuntime.taskStoppedReply();
       }
       if (name === "check_permissions" && hostRuntime.options.checkPermissions) {
-        const check = hostRuntime.options.checkPermissions;
-        const cancelled = () =>
-          hostRuntime.closed ||
-          hostRuntime.suspended ||
-          connection.destroyed ||
-          epoch !== hostRuntime.epoch ||
-          taskStopped();
-        let permissions = await hostRuntime.checkPermissions(connection, check, false, task);
-        if (!permissions || cancelled())
-          return {
-            ok: false,
-            error: "Cancelled before permission check completed.",
-            effect: "not-dispatched",
-          } as const;
-        if (hostRuntime.permissions && permissionsChanged(hostRuntime.permissions, permissions)) {
-          const confirmed = await hostRuntime.checkPermissions(connection, check, true, task);
-          if (!confirmed || cancelled())
-            return {
-              ok: false,
-              error: "Cancelled before permission check completed.",
-              effect: "not-dispatched",
-            } as const;
-          permissions = confirmed;
-        }
-        if (hostRuntime.permissions && permissionsChanged(hostRuntime.permissions, permissions)) {
-          hostRuntime.epoch += 1;
-          hostRuntime.desktopEpoch += 1;
-          hostRuntime.desktopObservationRequired = true;
-          hostRuntime.browserObservationRequired = true;
-          log(
-            `permission state changed accessibility ${hostRuntime.permissions.accessibility} -> ${permissions.accessibility}, ` +
-              `screen_recording ${hostRuntime.permissions.screenRecording} -> ${permissions.screenRecording}; requiring fresh desktop observation`,
-          );
-
-          if (hostRuntime.generation) await hostRuntime.retire(hostRuntime.generation);
-        }
-        hostRuntime.permissions = permissions;
-        if (
-          permissions.accessibility &&
-          permissions.screenRecording &&
-          permissions.inputMonitoring !== false
-        )
-          hostRuntime.warm();
-        const monitor = hostRuntime.inputMonitorRequested
-          ? hostRuntime.options.inputMonitorState?.()
-          : undefined;
-        return {
-          ok: true,
-          result: {
-            structuredContent: {
-              accessibility: permissions.accessibility,
-              screen_recording: permissions.screenRecording,
-              ...(permissions.inputMonitoring !== undefined
-                ? { input_monitoring: permissions.inputMonitoring }
-                : {}),
-              ...(monitor
-                ? {
-                    input_monitor_ready: monitor.ready,
-                    ...(monitor.error ? { input_monitor_error: monitor.error } : {}),
-                  }
-                : {}),
-              source: {
-                attribution: "host",
-                host_bundle_id: hostRuntime.options.bundleId,
-                probe: "computer-helper-permission-helper",
-              },
-            },
+        return hostRuntime.checkCurrentPermissions({
+          connection,
+          task,
+          cancelled: () =>
+            hostRuntime.closed ||
+            hostRuntime.suspended ||
+            connection.destroyed ||
+            epoch !== hostRuntime.epoch ||
+            taskStopped(),
+          onChange: async (previous, next) => {
+            hostRuntime.epoch += 1;
+            hostRuntime.advanceDesktopEpoch();
+            hostRuntime.requireFreshObservation();
+            log(
+              `permission state changed accessibility ${previous.accessibility} -> ${next.accessibility}, ` +
+                `screen_recording ${previous.screenRecording} -> ${next.screenRecording}; requiring fresh desktop observation`,
+            );
+            if (hostRuntime.generation) await hostRuntime.retire(hostRuntime.generation);
           },
-        };
+          warm: hostRuntime.warm,
+          monitorState: () =>
+            hostRuntime.inputMonitorRequested
+              ? hostRuntime.options.inputMonitorState?.()
+              : undefined,
+          bundleId: hostRuntime.options.bundleId,
+        });
       }
       const browserRecoverySetup = hostRuntime.isIsolatedBrowserSetup(name, request.args);
       const browserRecoveryObserved = hostRuntime.hasBrowserRecoveryObservation(request.args, task);
@@ -417,10 +278,10 @@ export function createCuaHostDispatch(
       // left a task that starts by opening an app stuck after every lock or sleep: the app had no window
       // to observe.
       if (
-        (hostRuntime.desktopObservationRequired &&
+        (hostRuntime.admissionState().desktopObservationRequired &&
           ((CUA_ACTION_TOOLS.has(name) && name !== "launch_app") ||
             name === "check_input_ready")) ||
-        (hostRuntime.browserObservationRequired &&
+        (hostRuntime.admissionState().browserObservationRequired &&
           CUA_BROWSER_MUTATION_TOOLS.has(name) &&
           !browserRecoverySetup &&
           !browserRecoveryObserved) ||
@@ -441,7 +302,7 @@ export function createCuaHostDispatch(
           CUA_ACTION_TOOLS.has(name) ||
           CUA_BROWSER_TOOLS.has(name))
       )
-        hostRuntime.frameTapTask = task;
+        hostRuntime.setFrameTapTask(task);
       const reply = await hostRuntime.call(
         name,
         request.args,
@@ -453,7 +314,7 @@ export function createCuaHostDispatch(
 
       if (
         task &&
-        !hostRuntime.endedFrameTasks.has(cuaComputerTaskKey(task)) &&
+        !hostRuntime.isFrameTaskEnded(task) &&
         !taskStopped() &&
         epoch === hostRuntime.epoch &&
         !connection.destroyed &&
@@ -506,7 +367,7 @@ export function createCuaHostDispatch(
           effect: "not-dispatched",
         };
       }
-      if (hostRuntime.desktopPauses.size > 0) {
+      if (hostRuntime.admissionState().paused) {
         return {
           ok: false,
           error:

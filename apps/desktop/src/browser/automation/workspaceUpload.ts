@@ -3,16 +3,37 @@ import { chmod, lstat, mkdir, mkdtemp, open, realpath, rm, stat } from "node:fs/
 import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
 
 import type { BrowserTabId } from "@glade/contracts/browser/automation/browserAutomationIds";
-import type { BrowserUploadInput } from "@glade/contracts/browser/automation/browserAutomationToolInputs";
+import type {
+  BrowserUploadInput,
+  BrowserUploadTarget,
+} from "@glade/contracts/browser/automation/browserAutomationToolInputs";
 import type { BrowserUploadOutput } from "@glade/contracts/browser/automation/browserAutomationToolOutputs";
 import type { WebContents } from "electron";
 
 import type { BrowserAutomationVisibleRuntime } from "../browserTabState";
 
-import { betterwrightLocator } from "./betterwrightLocator";
 import { runBetterwright } from "./betterwrightRuntime";
 import { throwIfAborted } from "./cdpRuntime";
 import { browserHostError } from "./hostErrors";
+
+function betterwrightLocator(target: BrowserUploadTarget): string {
+  if ("selector" in target) return `page.locator(${JSON.stringify(target.selector)})`;
+  const locator = target.locator;
+  switch (locator.kind) {
+    case "role":
+      return `page.getByRole(${JSON.stringify(locator.role)},${JSON.stringify({ name: locator.name, exact: locator.exact ?? true })})`;
+    case "testId":
+      return `page.getByTestId(${JSON.stringify(locator.value)})`;
+    case "text":
+    case "label":
+    case "placeholder": {
+      const method = { text: "getByText", label: "getByLabel", placeholder: "getByPlaceholder" }[
+        locator.kind
+      ];
+      return `page.${method}(${JSON.stringify(locator.text)},${JSON.stringify({ exact: locator.exact ?? true })})`;
+    }
+  }
+}
 
 const MAX_UPLOAD_FILE_BYTES = 2_147_483_647;
 const DEFAULT_MAX_UPLOAD_INVOCATION_BYTES = 256 * 1024 * 1024;

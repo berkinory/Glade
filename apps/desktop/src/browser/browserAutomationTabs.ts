@@ -6,11 +6,20 @@ import {
 } from "@glade/shared/browser/browserSession";
 import { type BrowserRuntime } from "./browserRuntimeTypes";
 import {
+  BROWSER_AUTOMATION_INPUT_RELEASE_GRACE_MS,
+  BrowserAutomationDownloadEvent,
+  BrowserAutomationDownloadLease,
+  BrowserAutomationDownloadListener,
+  BrowserAutomationExpectedInput,
+  BrowserAutomationSideEffectProvenance,
+  browserAutomationInputMatches,
+  BrowserAutomationWindowOpenEvent,
+  BrowserAutomationWindowOpenListener,
+  BrowserHumanControlListener,
+  PendingBrowserAutomationInput,
   BrowserAutomationPrepareNavigationInput,
   BrowserAutomationPrepareTabInput,
   BrowserAutomationVisibleRuntime,
-  BrowserHumanControlListener,
-  BrowserPerformanceSnapshot,
   buildRuntimeKey,
   createBrowserTab,
   defaultTitleForUrl,
@@ -20,49 +29,12 @@ import {
 export function createBrowserAutomationTabs(
   hostRuntime: Pick<
     BrowserRuntime,
-    | "disposed"
-    | "annotations"
-    | "sessionPolicy"
-    | "clearAllPendingWindowOpenTasks"
-    | "suspendTimers"
-    | "tabSuspendTimers"
-    | "backgroundAutomationEvictionTimer"
-    | "detachAttachedRuntime"
-    | "destroyAllRuntimes"
-    | "closeAllPopupWindows"
-    | "pendingRuntimeSyncs"
-    | "runtimeLastActiveAtByKey"
-    | "rendererOnlyRuntimeKeys"
-    | "automationRuntimeKeys"
-    | "automationRuntimeProtectedUntilByKey"
-    | "listeners"
-    | "copyLinkListeners"
-    | "states"
-    | "previewThreadIds"
-    | "threadVersionById"
-    | "snapshotCacheByThreadId"
-    | "lastEmittedVersionByThreadId"
-    | "humanControlEpochByThreadId"
-    | "humanControlListenersByThreadId"
-    | "expectedAutomationInputsByRuntimeKey"
-    | "automationGestureDepthByRuntimeKey"
-    | "automationWindowOpenListenersByRuntimeKey"
-    | "automationDownloadListenersByRuntimeKey"
-    | "automationSideEffectProvenanceByRuntimeKey"
-    | "runtimePageZoomFactors"
-    | "window"
-    | "activeThreadId"
-    | "activeBounds"
-    | "activeBoundsThreadId"
-    | "activePageZoomFactor"
-    | "activePageZoomThreadId"
-    | "attachedBoundsSignature"
-    | "runtimeSyncFlushScheduled"
-    | "perfCounters"
-    | "countWarmInactiveRuntimes"
-    | "getTrackedProcessIds"
-    | "humanBrowserOperations"
-    | "markHumanControl"
+    | "services"
+    | "commitPendingAutomationWindowOpen"
+    | "budget"
+    | "live"
+    | "tabs"
+    | "view"
     | "ensureWorkspace"
     | "getActiveTab"
     | "claimAutomationTab"
@@ -70,10 +42,7 @@ export function createBrowserAutomationTabs(
     | "emitState"
     | "snapshotThreadState"
     | "getTab"
-    | "runtimes"
-    | "attachedRuntimeKey"
     | "getVisibleBoundsForThread"
-    | "expectAutomationInput"
     | "clearSuspendTimer"
     | "ensureLiveRuntime"
     | "loadTab"
@@ -85,80 +54,43 @@ export function createBrowserAutomationTabs(
     | "attachActiveTab"
   >,
 ) {
-  function dispose(): void {
-    hostRuntime.disposed = true;
-    hostRuntime.annotations.dispose();
-    hostRuntime.sessionPolicy.dispose();
-    hostRuntime.clearAllPendingWindowOpenTasks();
-    for (const timer of hostRuntime.suspendTimers.values()) {
-      clearTimeout(timer);
-    }
-    hostRuntime.suspendTimers.clear();
-    for (const timer of hostRuntime.tabSuspendTimers.values()) {
-      clearTimeout(timer);
-    }
-    hostRuntime.tabSuspendTimers.clear();
-    if (hostRuntime.backgroundAutomationEvictionTimer !== null) {
-      clearTimeout(hostRuntime.backgroundAutomationEvictionTimer);
-      hostRuntime.backgroundAutomationEvictionTimer = null;
-    }
-    hostRuntime.detachAttachedRuntime();
-    hostRuntime.destroyAllRuntimes();
-    hostRuntime.closeAllPopupWindows();
-    hostRuntime.pendingRuntimeSyncs.clear();
-    hostRuntime.runtimeLastActiveAtByKey.clear();
-    hostRuntime.rendererOnlyRuntimeKeys.clear();
-    hostRuntime.automationRuntimeKeys.clear();
-    hostRuntime.automationRuntimeProtectedUntilByKey.clear();
-    hostRuntime.listeners.clear();
-    hostRuntime.copyLinkListeners.clear();
-    hostRuntime.states.clear();
-    hostRuntime.previewThreadIds.clear();
-    hostRuntime.threadVersionById.clear();
-    hostRuntime.snapshotCacheByThreadId.clear();
-    hostRuntime.lastEmittedVersionByThreadId.clear();
-    hostRuntime.humanControlEpochByThreadId.clear();
-    hostRuntime.humanControlListenersByThreadId.clear();
-    hostRuntime.expectedAutomationInputsByRuntimeKey.clear();
-    hostRuntime.automationGestureDepthByRuntimeKey.clear();
-    hostRuntime.automationWindowOpenListenersByRuntimeKey.clear();
-    hostRuntime.automationDownloadListenersByRuntimeKey.clear();
-    hostRuntime.automationSideEffectProvenanceByRuntimeKey.clear();
-    hostRuntime.runtimePageZoomFactors.clear();
-    hostRuntime.window = null;
-    hostRuntime.activeThreadId = null;
-    hostRuntime.activeBounds = null;
-    hostRuntime.activeBoundsThreadId = null;
-    hostRuntime.activePageZoomFactor = 1;
-    hostRuntime.activePageZoomThreadId = null;
-    hostRuntime.attachedBoundsSignature = null;
-    hostRuntime.runtimeSyncFlushScheduled = false;
-  }
-
-  function getPerformanceSnapshot(): BrowserPerformanceSnapshot {
-    hostRuntime.perfCounters.warmInactiveRuntimeCount = hostRuntime.countWarmInactiveRuntimes();
-    return {
-      counters: { ...hostRuntime.perfCounters },
-      trackedProcessIds: hostRuntime.getTrackedProcessIds(),
-    };
-  }
+  const automationWindowOpenListenersByRuntimeKey = new Map<
+    string,
+    Set<BrowserAutomationWindowOpenListener>
+  >();
+  const automationDownloadListenersByRuntimeKey = new Map<
+    string,
+    Set<BrowserAutomationDownloadLease>
+  >();
+  const automationSideEffectProvenanceByRuntimeKey = new Map<
+    string,
+    BrowserAutomationSideEffectProvenance
+  >();
+  const automationGestureDepthByRuntimeKey = new Map<string, number>();
+  const humanControlEpochByThreadId = new Map<ThreadId, number>();
+  const humanControlListenersByThreadId = new Map<ThreadId, Set<BrowserHumanControlListener>>();
+  const expectedAutomationInputsByRuntimeKey = new Map<
+    string,
+    readonly PendingBrowserAutomationInput[]
+  >();
+  let humanBrowserOperations = 0;
 
   function getAutomationHumanControlEpoch(threadId: ThreadId): number {
-    return hostRuntime.humanControlEpochByThreadId.get(threadId) ?? 0;
+    return humanControlEpochByThreadId.get(threadId) ?? 0;
   }
 
   function isHumanBrowserOperationActive(): boolean {
-    return hostRuntime.humanBrowserOperations > 0;
+    return humanBrowserOperations > 0;
   }
 
   function beginHumanBrowserOperation(): () => void {
-    hostRuntime.humanBrowserOperations += 1;
-    for (const threadId of hostRuntime.states.keys()) hostRuntime.markHumanControl(threadId);
+    humanBrowserOperations += 1;
+    for (const threadId of hostRuntime.tabs.states.keys()) markHumanControl(threadId);
     let released = false;
     return () => {
       if (released) return;
       released = true;
-      hostRuntime.humanBrowserOperations -= 1;
+      humanBrowserOperations -= 1;
     };
   }
 
@@ -166,20 +98,248 @@ export function createBrowserAutomationTabs(
     threadId: ThreadId,
     listener: BrowserHumanControlListener,
   ): () => void {
-    let listeners = hostRuntime.humanControlListenersByThreadId.get(threadId);
+    let listeners = humanControlListenersByThreadId.get(threadId);
     if (!listeners) {
       listeners = new Set();
-      hostRuntime.humanControlListenersByThreadId.set(threadId, listeners);
+      humanControlListenersByThreadId.set(threadId, listeners);
     }
     listeners.add(listener);
     return () => {
       listeners?.delete(listener);
-      if (listeners?.size === 0) hostRuntime.humanControlListenersByThreadId.delete(threadId);
+      if (listeners?.size === 0) humanControlListenersByThreadId.delete(threadId);
     };
   }
 
+  function trackAutomationWindowOpen(
+    input: BrowserTabInput,
+    listener: BrowserAutomationWindowOpenListener,
+  ): () => void {
+    const key = buildRuntimeKey(input.threadId, input.tabId);
+    const listeners = automationWindowOpenListenersByRuntimeKey.get(key) ?? new Set();
+    listeners.add(listener);
+    automationWindowOpenListenersByRuntimeKey.set(key, listeners);
+    beginAutomationGesture(key);
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      listeners.delete(listener);
+      if (listeners.size === 0) automationWindowOpenListenersByRuntimeKey.delete(key);
+      endAutomationGesture(key);
+      if (listeners.size === 0) hostRuntime.commitPendingAutomationWindowOpen(key);
+    };
+  }
+
+  function trackAutomationDownload(
+    input: BrowserTabInput,
+    listener: BrowserAutomationDownloadListener,
+  ): () => void {
+    const key = buildRuntimeKey(input.threadId, input.tabId);
+    const listeners = automationDownloadListenersByRuntimeKey.get(key) ?? new Set();
+    const humanControlEpoch = getAutomationHumanControlEpoch(input.threadId);
+    const lease: BrowserAutomationDownloadLease = {
+      listener,
+      humanControlEpoch,
+    };
+    listeners.add(lease);
+    automationDownloadListenersByRuntimeKey.set(key, listeners);
+
+    automationSideEffectProvenanceByRuntimeKey.set(key, {
+      threadId: input.threadId,
+      humanControlEpoch,
+    });
+    beginAutomationGesture(key);
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      listeners.delete(lease);
+      if (listeners.size === 0) automationDownloadListenersByRuntimeKey.delete(key);
+      endAutomationGesture(key);
+    };
+  }
+
+  function beginAutomationGesture(key: string): void {
+    automationGestureDepthByRuntimeKey.set(
+      key,
+      (automationGestureDepthByRuntimeKey.get(key) ?? 0) + 1,
+    );
+  }
+
+  function endAutomationGesture(key: string): void {
+    const nextDepth = Math.max(0, (automationGestureDepthByRuntimeKey.get(key) ?? 1) - 1);
+    if (nextDepth === 0) {
+      automationGestureDepthByRuntimeKey.delete(key);
+      return;
+    }
+    automationGestureDepthByRuntimeKey.set(key, nextDepth);
+  }
+
+  function markHumanControl(threadId: ThreadId): void {
+    hostRuntime.services.options.onHumanControl?.(threadId);
+    const state = hostRuntime.tabs.states.get(threadId);
+    const activeTab = state ? hostRuntime.getActiveTab(state) : null;
+    if (activeTab) {
+      hostRuntime.budget.runtimeLastActiveAtByKey.set(
+        buildRuntimeKey(threadId, activeTab.id),
+        Date.now(),
+      );
+    }
+    humanControlEpochByThreadId.set(threadId, (humanControlEpochByThreadId.get(threadId) ?? 0) + 1);
+    for (const [key, provenance] of automationSideEffectProvenanceByRuntimeKey) {
+      if (provenance.threadId === threadId) {
+        automationSideEffectProvenanceByRuntimeKey.delete(key);
+      }
+    }
+    for (const listener of [...(humanControlListenersByThreadId.get(threadId) ?? [])]) {
+      try {
+        listener();
+      } catch {
+        // Input delivery must never be disrupted by an automation observer.
+      }
+    }
+  }
+
+  function expectAutomationInput(
+    threadId: ThreadId,
+    tabId: string,
+    signal: BrowserAutomationExpectedInput,
+  ): () => void {
+    const key = buildRuntimeKey(threadId, tabId);
+    const now = Date.now();
+
+    const zoom = hostRuntime.live.runtimes.get(key)?.webContents.getZoomFactor() ?? 1;
+    const pending: PendingBrowserAutomationInput = {
+      signal:
+        signal.kind === "mouse" ? { ...signal, x: signal.x * zoom, y: signal.y * zoom } : signal,
+      expiresAt: now + 1_000,
+    };
+    const current = (expectedAutomationInputsByRuntimeKey.get(key) ?? [])
+      .filter((entry) => entry.expiresAt > now)
+      .slice(-63);
+    expectedAutomationInputsByRuntimeKey.set(key, [...current, pending]);
+    beginAutomationGesture(key);
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      const releaseTime = Date.now();
+      const remaining = (expectedAutomationInputsByRuntimeKey.get(key) ?? []).filter(
+        (entry) => entry.expiresAt > releaseTime,
+      );
+      if (remaining.includes(pending)) {
+        // Gesture/window-open correlation still ends immediately below, so unrelated agent attribution
+        // cannot leak.
+        pending.expiresAt = Math.min(
+          pending.expiresAt,
+          releaseTime + BROWSER_AUTOMATION_INPUT_RELEASE_GRACE_MS,
+        );
+      }
+      if (remaining.length === 0) expectedAutomationInputsByRuntimeKey.delete(key);
+      else expectedAutomationInputsByRuntimeKey.set(key, remaining);
+      endAutomationGesture(key);
+    };
+  }
+
+  function isAutomationGestureActive(threadId: ThreadId, tabId: string): boolean {
+    return (automationGestureDepthByRuntimeKey.get(buildRuntimeKey(threadId, tabId)) ?? 0) > 0;
+  }
+
+  function emitAutomationWindowOpen(event: BrowserAutomationWindowOpenEvent): void {
+    const key = buildRuntimeKey(event.threadId, event.sourceTabId);
+    for (const listener of [...(automationWindowOpenListenersByRuntimeKey.get(key) ?? [])]) {
+      try {
+        listener(event);
+      } catch {
+        // Window creation must not be disrupted by an automation observer.
+      }
+    }
+  }
+
+  function emitAutomationDownload(event: BrowserAutomationDownloadEvent): void {
+    const key = buildRuntimeKey(event.threadId, event.sourceTabId);
+    const humanControlEpoch = getAutomationHumanControlEpoch(event.threadId);
+    for (const lease of [...(automationDownloadListenersByRuntimeKey.get(key) ?? [])]) {
+      if (lease.humanControlEpoch !== humanControlEpoch) continue;
+      try {
+        lease.listener(event);
+      } catch {
+        // The download was already prevented. Observer failures must never destabilize the shared browser
+        // session or re-enable the side effect.
+      }
+    }
+  }
+
+  function consumeExpectedAutomationInput(
+    threadId: ThreadId,
+    tabId: string,
+    signal: BrowserAutomationExpectedInput,
+  ): boolean {
+    const key = buildRuntimeKey(threadId, tabId);
+    const now = Date.now();
+    const pending = (expectedAutomationInputsByRuntimeKey.get(key) ?? []).filter(
+      (entry) => entry.expiresAt > now,
+    );
+    const matchedIndex = pending.findIndex((entry) =>
+      browserAutomationInputMatches(entry.signal, signal),
+    );
+    if (matchedIndex < 0) {
+      if (pending.length === 0) expectedAutomationInputsByRuntimeKey.delete(key);
+      else expectedAutomationInputsByRuntimeKey.set(key, pending);
+      return false;
+    }
+    pending.splice(matchedIndex, 1);
+    if (pending.length === 0) expectedAutomationInputsByRuntimeKey.delete(key);
+    else expectedAutomationInputsByRuntimeKey.set(key, pending);
+    return true;
+  }
+
+  function clearAutomationState(): void {
+    humanControlEpochByThreadId.clear();
+    humanControlListenersByThreadId.clear();
+    expectedAutomationInputsByRuntimeKey.clear();
+    automationGestureDepthByRuntimeKey.clear();
+    automationWindowOpenListenersByRuntimeKey.clear();
+    automationDownloadListenersByRuntimeKey.clear();
+    automationSideEffectProvenanceByRuntimeKey.clear();
+    humanBrowserOperations = 0;
+  }
+
+  function clearAutomationRuntimeTracking(key: string, preserveDownloadTracking: boolean): void {
+    expectedAutomationInputsByRuntimeKey.delete(key);
+    automationWindowOpenListenersByRuntimeKey.delete(key);
+    if (preserveDownloadTracking) return;
+    automationGestureDepthByRuntimeKey.delete(key);
+    automationDownloadListenersByRuntimeKey.delete(key);
+    automationSideEffectProvenanceByRuntimeKey.delete(key);
+  }
+
+  function hasAutomationDownloadTracking(key: string): boolean {
+    return (
+      automationDownloadListenersByRuntimeKey.has(key) ||
+      automationSideEffectProvenanceByRuntimeKey.has(key)
+    );
+  }
+
+  function getAutomationSideEffectProvenance(
+    key: string,
+  ): BrowserAutomationSideEffectProvenance | undefined {
+    return automationSideEffectProvenanceByRuntimeKey.get(key);
+  }
+
+  function inheritAutomationSideEffectProvenance(
+    sourceKey: string,
+    childKey: string,
+    epoch: number,
+  ): void {
+    const provenance = automationSideEffectProvenanceByRuntimeKey.get(sourceKey);
+    if (provenance?.humanControlEpoch === epoch) {
+      automationSideEffectProvenanceByRuntimeKey.set(childKey, { ...provenance });
+    }
+  }
+
   function prepareAutomationTab(input: BrowserAutomationPrepareTabInput): ThreadBrowserState {
-    const hadExistingTab = (hostRuntime.states.get(input.threadId)?.tabs.length ?? 0) > 0;
+    const hadExistingTab = (hostRuntime.tabs.states.get(input.threadId)?.tabs.length ?? 0) > 0;
     const state = hostRuntime.ensureWorkspace(input.threadId, input.url);
     let tab = input.reuse || !hadExistingTab ? hostRuntime.getActiveTab(state) : null;
     if (!tab) {
@@ -205,7 +365,7 @@ export function createBrowserAutomationTabs(
   }
 
   function selectAutomationTab(input: BrowserTabInput): ThreadBrowserState {
-    const state = hostRuntime.states.get(input.threadId);
+    const state = hostRuntime.tabs.states.get(input.threadId);
     const tab = state ? hostRuntime.getTab(state, input.tabId) : null;
     if (!state?.open || !tab) {
       throw new Error("The requested browser tab is not available in this thread.");
@@ -228,7 +388,7 @@ export function createBrowserAutomationTabs(
   function prepareAutomationNavigation(
     input: BrowserAutomationPrepareNavigationInput,
   ): ThreadBrowserState {
-    const state = hostRuntime.states.get(input.threadId);
+    const state = hostRuntime.tabs.states.get(input.threadId);
     const tab = state ? hostRuntime.getTab(state, input.tabId) : null;
     if (!state?.open || !tab) {
       throw new Error("The requested browser tab is not available in this thread.");
@@ -247,7 +407,7 @@ export function createBrowserAutomationTabs(
   }
 
   function getVisibleAutomationRuntime(input: BrowserTabInput): BrowserAutomationVisibleRuntime {
-    const state = hostRuntime.states.get(input.threadId);
+    const state = hostRuntime.tabs.states.get(input.threadId);
     const tab = state ? hostRuntime.getTab(state, input.tabId) : null;
     if (!state?.open || !tab) {
       throw new Error("The requested browser tab is not available in this thread.");
@@ -256,16 +416,16 @@ export function createBrowserAutomationTabs(
       throw new Error("The requested browser tab is not the visible tab for this thread.");
     }
 
-    const runtime = hostRuntime.runtimes.get(buildRuntimeKey(input.threadId, tab.id));
+    const runtime = hostRuntime.live.runtimes.get(buildRuntimeKey(input.threadId, tab.id));
     if (!runtime || runtime.webContents.isDestroyed()) {
       throw new Error("The visible browser page is not ready yet.");
     }
     if (runtime.ownsWebContents) {
       if (
         !runtime.view ||
-        !hostRuntime.window ||
-        hostRuntime.activeThreadId !== input.threadId ||
-        hostRuntime.attachedRuntimeKey !== runtime.key ||
+        !hostRuntime.view.window ||
+        hostRuntime.view.activeThreadId !== input.threadId ||
+        hostRuntime.view.attachedRuntimeKey !== runtime.key ||
         hostRuntime.getVisibleBoundsForThread(input.threadId) === null
       ) {
         throw new Error("The requested native browser page is not currently visible.");
@@ -274,17 +434,16 @@ export function createBrowserAutomationTabs(
         threadId: input.threadId,
         tabId: tab.id,
         webContents: runtime.webContents,
-        expectAgentInput: (signal) =>
-          hostRuntime.expectAutomationInput(input.threadId, tab.id, signal),
+        expectAgentInput: (signal) => expectAutomationInput(input.threadId, tab.id, signal),
       };
     }
 
     if (
-      hostRuntime.window &&
-      (hostRuntime.activeThreadId !== input.threadId ||
-        hostRuntime.attachedRuntimeKey !== runtime.key ||
+      hostRuntime.view.window &&
+      (hostRuntime.view.activeThreadId !== input.threadId ||
+        hostRuntime.view.attachedRuntimeKey !== runtime.key ||
         hostRuntime.getVisibleBoundsForThread(input.threadId) === null ||
-        runtime.webContents.hostWebContents?.id !== hostRuntime.window.webContents.id)
+        runtime.webContents.hostWebContents?.id !== hostRuntime.view.window.webContents.id)
     ) {
       throw new Error("The requested browser webview is not currently visible.");
     }
@@ -292,15 +451,14 @@ export function createBrowserAutomationTabs(
       threadId: input.threadId,
       tabId: tab.id,
       webContents: runtime.webContents,
-      expectAgentInput: (signal) =>
-        hostRuntime.expectAutomationInput(input.threadId, tab.id, signal),
+      expectAgentInput: (signal) => expectAutomationInput(input.threadId, tab.id, signal),
     };
   }
 
   async function getCookieImportRuntime(
     input: BrowserTabInput,
   ): Promise<BrowserAutomationVisibleRuntime> {
-    const state = hostRuntime.states.get(input.threadId);
+    const state = hostRuntime.tabs.states.get(input.threadId);
     const tab = state ? hostRuntime.getTab(state, input.tabId) : null;
     if (!state?.open || !tab || state.activeTabId !== tab.id) {
       throw new Error("The cookie import tab is no longer selected.");
@@ -313,8 +471,7 @@ export function createBrowserAutomationTabs(
       threadId: input.threadId,
       tabId: tab.id,
       webContents: runtime.webContents,
-      expectAgentInput: (signal) =>
-        hostRuntime.expectAutomationInput(input.threadId, tab.id, signal),
+      expectAgentInput: (signal) => expectAutomationInput(input.threadId, tab.id, signal),
     };
   }
 
@@ -322,7 +479,7 @@ export function createBrowserAutomationTabs(
     input: BrowserTabInput,
     options: { readonly restore?: boolean } = {},
   ): Promise<BrowserAutomationVisibleRuntime> {
-    const state = hostRuntime.states.get(input.threadId);
+    const state = hostRuntime.tabs.states.get(input.threadId);
     const tab = state ? hostRuntime.getTab(state, input.tabId) : null;
     if (!state?.open || !tab) {
       throw new Error("The requested browser tab is not available in this thread.");
@@ -335,7 +492,9 @@ export function createBrowserAutomationTabs(
     const runtime = hostRuntime.ensureLiveRuntime(input.threadId, tab.id);
     hostRuntime.noteAutomationRuntimeUse(runtime.key);
     const expectedUrl = normalizeUrlInput(tab.lastCommittedUrl ?? tab.url);
-    const currentUrl = hostRuntime.sessionPolicy.resolveDisplayUrl(runtime.webContents.getURL());
+    const currentUrl = hostRuntime.services.sessionPolicy.resolveDisplayUrl(
+      runtime.webContents.getURL(),
+    );
     if ((options.restore ?? true) && (currentUrl.length === 0 || currentUrl !== expectedUrl)) {
       await hostRuntime.loadTab(input.threadId, tab.id, { force: true, runtime });
     } else if (!(options.restore ?? true) && currentUrl.length === 0) {
@@ -355,20 +514,19 @@ export function createBrowserAutomationTabs(
       threadId: input.threadId,
       tabId: tab.id,
       webContents: runtime.webContents,
-      expectAgentInput: (signal) =>
-        hostRuntime.expectAutomationInput(input.threadId, tab.id, signal),
+      expectAgentInput: (signal) => expectAutomationInput(input.threadId, tab.id, signal),
     };
   }
 
   function closeAutomationTab(input: BrowserTabInput): ThreadBrowserState {
-    const state = hostRuntime.states.get(input.threadId);
+    const state = hostRuntime.tabs.states.get(input.threadId);
     const tab = state ? hostRuntime.getTab(state, input.tabId) : null;
     if (!state?.open || !tab) {
       throw new Error("The requested browser tab is not available in this thread.");
     }
 
     hostRuntime.closePopupWindowsForTab(input.threadId, input.tabId);
-    const runtime = hostRuntime.runtimes.get(buildRuntimeKey(input.threadId, input.tabId));
+    const runtime = hostRuntime.live.runtimes.get(buildRuntimeKey(input.threadId, input.tabId));
     const preservesRendererGuest = Boolean(
       runtime &&
       !runtime.ownsWebContents &&
@@ -380,9 +538,9 @@ export function createBrowserAutomationTabs(
     hostRuntime.destroyRuntime(input.threadId, input.tabId, {
       preserveRendererDebugger: preservesRendererGuest,
     });
-    hostRuntime.annotations.clearProjection(input.threadId, input.tabId);
-    hostRuntime.rendererOnlyRuntimeKeys.delete(buildRuntimeKey(input.threadId, input.tabId));
-    hostRuntime.automationRuntimeKeys.delete(buildRuntimeKey(input.threadId, input.tabId));
+    hostRuntime.services.annotations.clearProjection(input.threadId, input.tabId);
+    hostRuntime.live.rendererOnlyRuntimeKeys.delete(buildRuntimeKey(input.threadId, input.tabId));
+    hostRuntime.live.automationRuntimeKeys.delete(buildRuntimeKey(input.threadId, input.tabId));
     state.tabs = state.tabs.filter((candidate) => candidate.id !== input.tabId);
     if (state.activeTabId === input.tabId) {
       state.activeTabId = state.tabs.at(-1)?.id ?? null;
@@ -401,7 +559,7 @@ export function createBrowserAutomationTabs(
       );
     } else {
       const bounds = hostRuntime.getVisibleBoundsForThread(input.threadId);
-      if (hostRuntime.activeThreadId === input.threadId && state.activeTabId && bounds) {
+      if (hostRuntime.view.activeThreadId === input.threadId && state.activeTabId && bounds) {
         hostRuntime.attachActiveTab(input.threadId, bounds);
       }
       hostRuntime.emitState(input.threadId);
@@ -410,12 +568,23 @@ export function createBrowserAutomationTabs(
   }
 
   return {
-    dispose,
-    getPerformanceSnapshot,
+    clearAutomationState,
+    clearAutomationRuntimeTracking,
+    hasAutomationDownloadTracking,
+    getAutomationSideEffectProvenance,
+    inheritAutomationSideEffectProvenance,
     getAutomationHumanControlEpoch,
     isHumanBrowserOperationActive,
     beginHumanBrowserOperation,
     subscribeAutomationHumanControl,
+    trackAutomationWindowOpen,
+    trackAutomationDownload,
+    markHumanControl,
+    expectAutomationInput,
+    isAutomationGestureActive,
+    emitAutomationWindowOpen,
+    emitAutomationDownload,
+    consumeExpectedAutomationInput,
     prepareAutomationTab,
     selectAutomationTab,
     prepareAutomationNavigation,

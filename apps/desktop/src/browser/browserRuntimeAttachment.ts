@@ -15,23 +15,19 @@ import {
 export function createBrowserRuntimeAttachment(
   hostRuntime: Pick<
     BrowserRuntime,
+    | "budget"
+    | "live"
+    | "tabs"
+    | "view"
     | "ensureWorkspace"
     | "getActiveTab"
     | "suspendInactiveTabs"
-    | "rendererOnlyRuntimeKeys"
-    | "runtimes"
     | "destroyRuntime"
     | "activateThreadForPendingRenderer"
     | "getVisiblePageZoomFactor"
-    | "automationRuntimeKeys"
     | "loadTab"
     | "syncRuntimeState"
-    | "window"
     | "setRuntimePageZoomFactor"
-    | "previewThreadIds"
-    | "attachedRuntimeKey"
-    | "attachedBoundsSignature"
-    | "runtimeLastActiveAtByKey"
     | "updatePopupWindowsForThread"
     | "enforceBackgroundAutomationRuntimeBudget"
     | "clearTabSuspendTimer"
@@ -53,8 +49,8 @@ export function createBrowserRuntimeAttachment(
 
     hostRuntime.suspendInactiveTabs(threadId, activeTab.id);
     const runtimeKey = buildRuntimeKey(threadId, activeTab.id);
-    if (hostRuntime.rendererOnlyRuntimeKeys.has(runtimeKey)) {
-      const rendererRuntime = hostRuntime.runtimes.get(runtimeKey);
+    if (hostRuntime.live.rendererOnlyRuntimeKeys.has(runtimeKey)) {
+      const rendererRuntime = hostRuntime.live.runtimes.get(runtimeKey);
       if (!rendererRuntime || rendererRuntime.ownsWebContents) {
         if (rendererRuntime?.ownsWebContents) hostRuntime.destroyRuntime(threadId, activeTab.id);
         hostRuntime.activateThreadForPendingRenderer(
@@ -73,7 +69,8 @@ export function createBrowserRuntimeAttachment(
       options.pageZoomFactor ?? hostRuntime.getVisiblePageZoomFactor(threadId),
     );
     const shouldLoadProjectedUrl =
-      options.forceLoad || (wasSuspended && !hostRuntime.automationRuntimeKeys.has(runtimeKey));
+      options.forceLoad ||
+      (wasSuspended && !hostRuntime.live.automationRuntimeKeys.has(runtimeKey));
     if (shouldLoadProjectedUrl) {
       void hostRuntime.loadTab(threadId, activeTab.id, {
         force: true,
@@ -89,49 +86,55 @@ export function createBrowserRuntimeAttachment(
     bounds: BrowserPanelBounds,
     pageZoomFactor = hostRuntime.getVisiblePageZoomFactor(runtime.threadId),
   ): void {
-    const window = hostRuntime.window;
+    const window = hostRuntime.view.window;
     hostRuntime.setRuntimePageZoomFactor(runtime, pageZoomFactor);
     if (!window) {
       return;
     }
 
-    if (hostRuntime.previewThreadIds.has(runtime.threadId) && runtime.view) {
-      if (hostRuntime.attachedRuntimeKey !== runtime.key) detachAttachedRuntime();
+    if (hostRuntime.tabs.previewThreadIds.has(runtime.threadId) && runtime.view) {
+      if (hostRuntime.view.attachedRuntimeKey !== runtime.key) detachAttachedRuntime();
       parkHiddenRuntime(runtime, bounds);
-      hostRuntime.attachedRuntimeKey = runtime.key;
-      hostRuntime.attachedBoundsSignature = browserPresentationSignature(bounds, pageZoomFactor);
+      hostRuntime.view.attachedRuntimeKey = runtime.key;
+      hostRuntime.view.attachedBoundsSignature = browserPresentationSignature(
+        bounds,
+        pageZoomFactor,
+      );
       return;
     }
 
     const nextBoundsSignature = browserPresentationSignature(bounds, pageZoomFactor);
-    hostRuntime.runtimeLastActiveAtByKey.set(runtime.key, Date.now());
+    hostRuntime.budget.runtimeLastActiveAtByKey.set(runtime.key, Date.now());
 
     if (!runtime.ownsWebContents) {
-      if (hostRuntime.attachedRuntimeKey && hostRuntime.attachedRuntimeKey !== runtime.key) {
+      if (
+        hostRuntime.view.attachedRuntimeKey &&
+        hostRuntime.view.attachedRuntimeKey !== runtime.key
+      ) {
         detachAttachedRuntime();
       }
-      hostRuntime.attachedRuntimeKey = runtime.key;
-      hostRuntime.attachedBoundsSignature = nextBoundsSignature;
+      hostRuntime.view.attachedRuntimeKey = runtime.key;
+      hostRuntime.view.attachedBoundsSignature = nextBoundsSignature;
       hostRuntime.updatePopupWindowsForThread(runtime.threadId);
       hostRuntime.enforceBackgroundAutomationRuntimeBudget();
       return;
     }
     if (!runtime.view) {
-      hostRuntime.attachedRuntimeKey = runtime.key;
-      hostRuntime.attachedBoundsSignature = nextBoundsSignature;
+      hostRuntime.view.attachedRuntimeKey = runtime.key;
+      hostRuntime.view.attachedBoundsSignature = nextBoundsSignature;
       hostRuntime.updatePopupWindowsForThread(runtime.threadId);
       hostRuntime.enforceBackgroundAutomationRuntimeBudget();
       return;
     }
     runtime.view.setBorderRadius(0);
-    if (hostRuntime.attachedRuntimeKey === runtime.key) {
+    if (hostRuntime.view.attachedRuntimeKey === runtime.key) {
       setRuntimeViewHidden(runtime, false);
       bringRuntimeViewToFront(runtime);
-      if (hostRuntime.attachedBoundsSignature === nextBoundsSignature) {
+      if (hostRuntime.view.attachedBoundsSignature === nextBoundsSignature) {
         return;
       }
       runtime.view.setBounds(bounds);
-      hostRuntime.attachedBoundsSignature = nextBoundsSignature;
+      hostRuntime.view.attachedBoundsSignature = nextBoundsSignature;
       hostRuntime.updatePopupWindowsForThread(runtime.threadId);
       return;
     }
@@ -140,14 +143,14 @@ export function createBrowserRuntimeAttachment(
     setRuntimeViewHidden(runtime, false);
     bringRuntimeViewToFront(runtime);
     runtime.view.setBounds(bounds);
-    hostRuntime.attachedRuntimeKey = runtime.key;
-    hostRuntime.attachedBoundsSignature = nextBoundsSignature;
+    hostRuntime.view.attachedRuntimeKey = runtime.key;
+    hostRuntime.view.attachedBoundsSignature = nextBoundsSignature;
     hostRuntime.updatePopupWindowsForThread(runtime.threadId);
     hostRuntime.enforceBackgroundAutomationRuntimeBudget();
   }
 
   function bringRuntimeViewToFront(runtime: LiveTabRuntime): void {
-    const window = hostRuntime.window;
+    const window = hostRuntime.view.window;
     if (!window || !runtime.view) {
       return;
     }
@@ -159,28 +162,29 @@ export function createBrowserRuntimeAttachment(
   }
 
   function detachAttachedRuntime(): void {
-    if (!hostRuntime.window || !hostRuntime.attachedRuntimeKey) {
-      hostRuntime.attachedRuntimeKey = null;
-      hostRuntime.attachedBoundsSignature = null;
+    if (!hostRuntime.view.window || !hostRuntime.view.attachedRuntimeKey) {
+      hostRuntime.view.attachedRuntimeKey = null;
+      hostRuntime.view.attachedBoundsSignature = null;
       return;
     }
 
-    const runtime = hostRuntime.runtimes.get(hostRuntime.attachedRuntimeKey);
+    const runtime = hostRuntime.live.runtimes.get(hostRuntime.view.attachedRuntimeKey);
     if (runtime?.view) {
       setRuntimeViewHidden(runtime, true);
-      if (!hostRuntime.automationRuntimeKeys.has(runtime.key)) {
-        hostRuntime.window.contentView.removeChildView(runtime.view);
+      if (!hostRuntime.live.automationRuntimeKeys.has(runtime.key)) {
+        hostRuntime.view.window.contentView.removeChildView(runtime.view);
       }
     }
-    hostRuntime.attachedRuntimeKey = null;
-    hostRuntime.attachedBoundsSignature = null;
+    hostRuntime.view.attachedRuntimeKey = null;
+    hostRuntime.view.attachedBoundsSignature = null;
   }
 
   function setRuntimeViewHidden(runtime: LiveTabRuntime, hidden: boolean): void {
     if (!runtime.view) {
       return;
     }
-    const keepRenderingInBackground = hidden && hostRuntime.automationRuntimeKeys.has(runtime.key);
+    const keepRenderingInBackground =
+      hidden && hostRuntime.live.automationRuntimeKeys.has(runtime.key);
     if (keepRenderingInBackground) {
       parkHiddenRuntime(runtime, BACKGROUND_AUTOMATION_BOUNDS);
       return;
@@ -193,7 +197,7 @@ export function createBrowserRuntimeAttachment(
   }
 
   function parkHiddenRuntime(runtime: LiveTabRuntime, bounds: BrowserPanelBounds): void {
-    const window = hostRuntime.window;
+    const window = hostRuntime.view.window;
     if (!window || !runtime.view) return;
 
     runtime.view.setVisible(false);
@@ -205,7 +209,7 @@ export function createBrowserRuntimeAttachment(
   function ensureLiveRuntime(threadId: ThreadId, tabId: string): LiveTabRuntime {
     const key = buildRuntimeKey(threadId, tabId);
     hostRuntime.clearTabSuspendTimer(threadId, tabId);
-    const existing = hostRuntime.runtimes.get(key);
+    const existing = hostRuntime.live.runtimes.get(key);
     if (existing) {
       if (existing.webContents.isDestroyed()) {
         hostRuntime.destroyRuntime(threadId, tabId);
@@ -214,12 +218,12 @@ export function createBrowserRuntimeAttachment(
       }
     }
 
-    if (hostRuntime.rendererOnlyRuntimeKeys.has(key)) {
+    if (hostRuntime.live.rendererOnlyRuntimeKeys.has(key)) {
       throw new Error("This tab requires its renderer-owned browser webview.");
     }
 
     const runtime = hostRuntime.createLiveRuntime(threadId, tabId);
-    hostRuntime.runtimes.set(key, runtime);
+    hostRuntime.live.runtimes.set(key, runtime);
     const state = hostRuntime.ensureWorkspace(threadId);
     const tab = hostRuntime.getTab(state, tabId);
     if (tab) {
@@ -236,9 +240,9 @@ export function createBrowserRuntimeAttachment(
 
   function claimAutomationTab(threadId: ThreadId, tab: BrowserTabState): boolean {
     const key = buildRuntimeKey(threadId, tab.id);
-    hostRuntime.automationRuntimeKeys.add(key);
+    hostRuntime.live.automationRuntimeKeys.add(key);
 
-    const runtime = hostRuntime.runtimes.get(key);
+    const runtime = hostRuntime.live.runtimes.get(key);
     const rendererGuestAlive = Boolean(
       runtime && !runtime.ownsWebContents && !runtime.webContents.isDestroyed(),
     );
@@ -253,7 +257,7 @@ export function createBrowserRuntimeAttachment(
       return false;
     }
 
-    hostRuntime.rendererOnlyRuntimeKeys.delete(key);
+    hostRuntime.live.rendererOnlyRuntimeKeys.delete(key);
     let didChange = false;
     if (tab.runtimeSurface !== "native") {
       tab.runtimeSurface = "native";

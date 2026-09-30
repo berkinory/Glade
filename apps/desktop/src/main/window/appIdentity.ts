@@ -1,33 +1,31 @@
 import type { DesktopAppIcon } from "@glade/contracts/ipc/ipc";
-import {
-  canOverrideDesktopSmokeUserData,
-  GLADE_DESKTOP_SMOKE_USER_DATA_ENV,
-} from "@glade/shared/platform/desktopIdentity";
 import { app, BrowserWindow, nativeImage, nativeTheme, shell } from "electron";
 import * as ChildProcess from "node:child_process";
 import * as FS from "node:fs";
 import * as OS from "node:os";
 import * as Path from "node:path";
-import {
-  repairBrowserProfileFromBridgeManifest,
-  resolveDesktopAppDataBase,
-  resolveDesktopUserDataPath,
-} from "../../storage/desktopUserDataProfile";
+import { repairBrowserProfileFromBridgeManifest } from "../../storage/desktopUserDataProfile";
 import {
   applyWindowsShellAppUserModel,
   nativeWindowHandleToHwnd,
 } from "../../windowsShell/windowsShellAppUserModel";
 import { extractIcoPngImages, toWindowsShellIco } from "../../windowsShell/windowsShellIco";
 import {
-  applyWindowsTaskbarIcon,
   collectWindowsShortcutPaths,
-  nextWindowsShellIconCacheKey,
+  createWindowsTaskbarIconController,
   resolveWindowsShellIconCacheDirectory,
   syncWindowsShortcutIcons,
   windowsShellIconCachePath,
   windowsShellIconContentKey,
 } from "../../windowsShell/windowsTaskbarIcon";
-import { type DesktopRuntime } from "../desktopRuntimeTypes";
+import {
+  APP_DISPLAY_NAME,
+  APP_USER_MODEL_ID,
+  DESKTOP_APP_ICON_PATH,
+  desktopFlavor,
+  STATE_DIR,
+} from "../desktopEnvironment";
+import { formatErrorMessage } from "../lifecycle/desktopLogging";
 import {
   desktopAppIconResourceName,
   isDesktopAppIcon,
@@ -42,42 +40,20 @@ import {
   serializeLaunchVersionRecord,
   shouldRefreshIconCache,
 } from "./macIconCacheRefresh";
-
+export interface IdentityResources {
+  resolveAboutCommitHash(): string | null;
+  resolveResourcePath(filename: string): string | null;
+}
 export function createAppIdentity(
-  desktopRuntime: Pick<
-    DesktopRuntime,
-    | "desktopIdentity"
-    | "packagedDesktopFlavor"
-    | "requestedSourceBuildMarker"
-    | "APP_DISPLAY_NAME"
-    | "resolveAboutCommitHash"
-    | "APP_USER_MODEL_ID"
-    | "DESKTOP_APP_ICON_PATH"
-    | "STATE_DIR"
-    | "windowsTaskbarIcoBytesCache"
-    | "lastPersistedMacAppIcon"
-    | "windowsShellStampTimer"
-    | "windowsShellStampResolve"
-    | "formatErrorMessage"
-    | "mainWindow"
-    | "desktopAppIconApplyTail"
-    | "desktopFlavor"
-    | "resolveResourcePath"
-  >,
+  resources: IdentityResources,
+  getMainWindow: () => BrowserWindow | null,
 ) {
-  function resolveUserDataPath(): string {
-    const appDataBase = resolveDesktopAppDataBase();
-    return resolveDesktopUserDataPath({
-      appDataBase,
-      userDataDirectoryName: desktopRuntime.desktopIdentity.userDataDirectoryName,
-      testOverridePath: canOverrideDesktopSmokeUserData({
-        packagedFlavor: desktopRuntime.packagedDesktopFlavor,
-        sourceBuildMarker: desktopRuntime.requestedSourceBuildMarker,
-      })
-        ? process.env[GLADE_DESKTOP_SMOKE_USER_DATA_ENV]
-        : undefined,
-    });
-  }
+  const windowsIcon = createWindowsTaskbarIconController();
+  const windowsTaskbarIcoBytesCache = new Map<string, Buffer>();
+  let lastPersistedMacAppIcon: DesktopAppIcon | null = null;
+  let windowsShellStampTimer: NodeJS.Immediate | null = null;
+  let windowsShellStampResolve: (() => void) | null = null;
+  let desktopAppIconApplyTail = Promise.resolve();
 
   function repairBrowserProfileBeforeElectronReady(userDataPath: string): void {
     const browserProfileRepair = repairBrowserProfileFromBridgeManifest(userDataPath);
@@ -97,17 +73,17 @@ export function createAppIdentity(
   }
 
   function configureAppIdentity(): void {
-    app.setName(desktopRuntime.APP_DISPLAY_NAME);
-    const commitHash = desktopRuntime.resolveAboutCommitHash();
+    app.setName(APP_DISPLAY_NAME);
+    const commitHash = resources.resolveAboutCommitHash();
     app.setAboutPanelOptions({
-      applicationName: desktopRuntime.APP_DISPLAY_NAME,
+      applicationName: APP_DISPLAY_NAME,
       applicationVersion: app.getVersion(),
       version: commitHash ?? "unknown",
       copyright: `© ${new Date().getFullYear()} Emanuele Di Pietro`,
     });
 
     if (process.platform === "win32") {
-      app.setAppUserModelId(desktopRuntime.APP_USER_MODEL_ID);
+      app.setAppUserModelId(APP_USER_MODEL_ID);
     }
   }
 
@@ -119,7 +95,7 @@ export function createAppIdentity(
 
   function readDesktopAppIcon(): DesktopAppIcon {
     try {
-      const storedIcon = FS.readFileSync(desktopRuntime.DESKTOP_APP_ICON_PATH, "utf8").trim();
+      const storedIcon = FS.readFileSync(DESKTOP_APP_ICON_PATH, "utf8").trim();
       return isDesktopAppIcon(storedIcon) ? storedIcon : "default";
     } catch {
       return "default";
@@ -127,8 +103,8 @@ export function createAppIdentity(
   }
 
   function persistDesktopAppIcon(icon: DesktopAppIcon): void {
-    FS.mkdirSync(Path.dirname(desktopRuntime.DESKTOP_APP_ICON_PATH), { recursive: true });
-    FS.writeFileSync(desktopRuntime.DESKTOP_APP_ICON_PATH, icon, "utf8");
+    FS.mkdirSync(Path.dirname(DESKTOP_APP_ICON_PATH), { recursive: true });
+    FS.writeFileSync(DESKTOP_APP_ICON_PATH, icon, "utf8");
   }
 
   function windowsShortcutSearchDirectories(): string[] {
@@ -172,7 +148,7 @@ export function createAppIdentity(
     const { matched } = syncWindowsShortcutIcons({
       iconPath: shortcutIconPath,
       iconIndex: 0,
-      appId: desktopRuntime.APP_USER_MODEL_ID,
+      appId: APP_USER_MODEL_ID,
       executablePath: process.execPath,
       shortcutPaths,
       readShortcut: (shortcutPath) => {
@@ -189,7 +165,7 @@ export function createAppIdentity(
             ...current,
             icon: iconPath,
             iconIndex,
-            appUserModelId: desktopRuntime.APP_USER_MODEL_ID,
+            appUserModelId: APP_USER_MODEL_ID,
           });
         } catch {
           return false;
@@ -202,8 +178,8 @@ export function createAppIdentity(
   function materializeWindowsShellIcon(icon: DesktopAppIcon, sourcePath: string): string {
     const bytes = toWindowsTaskbarIcoBytes(sourcePath);
     const contentKey = windowsShellIconContentKey(icon, bytes);
-    const cacheKey = nextWindowsShellIconCacheKey(contentKey);
-    const fallbackDirectory = Path.join(desktopRuntime.STATE_DIR, "taskbar-icons");
+    const cacheKey = windowsIcon.nextCacheKey(contentKey);
+    const fallbackDirectory = Path.join(STATE_DIR, "taskbar-icons");
     const directories = [
       ...new Set([
         resolveWindowsShellIconCacheDirectory({
@@ -235,12 +211,12 @@ export function createAppIdentity(
   }
 
   function toWindowsTaskbarIcoBytes(sourcePath: string): Buffer {
-    const cached = desktopRuntime.windowsTaskbarIcoBytesCache.get(sourcePath);
+    const cached = windowsTaskbarIcoBytesCache.get(sourcePath);
     if (cached) return cached;
     const sourceBytes = FS.readFileSync(sourcePath);
     try {
       if (extractIcoPngImages(sourceBytes).length === 0) {
-        desktopRuntime.windowsTaskbarIcoBytesCache.set(sourcePath, sourceBytes);
+        windowsTaskbarIcoBytesCache.set(sourcePath, sourceBytes);
         return sourceBytes;
       }
       const converted = toWindowsShellIco(sourceBytes, (png, size) => {
@@ -251,7 +227,7 @@ export function createAppIdentity(
         if (bgra.length !== size * size * 4) return null;
         return { width: size, height: size, bgra };
       });
-      desktopRuntime.windowsTaskbarIcoBytesCache.set(sourcePath, converted);
+      windowsTaskbarIcoBytesCache.set(sourcePath, converted);
       return converted;
     } catch {
       return sourceBytes;
@@ -262,23 +238,23 @@ export function createAppIdentity(
     icon: DesktopAppIcon,
     image: Electron.NativeImage | null,
   ): Promise<void> {
-    if (!app.isPackaged || desktopRuntime.lastPersistedMacAppIcon === icon) return;
+    if (!app.isPackaged || lastPersistedMacAppIcon === icon) return;
     const bundlePath = resolveMacAppBundlePath(process.execPath, process.platform);
     if (!bundlePath) return;
     await persistMacAppIcon({
       bundlePath,
-      cacheDirectory: Path.join(desktopRuntime.STATE_DIR, "mac-app-icons"),
+      cacheDirectory: Path.join(STATE_DIR, "mac-app-icons"),
       png: icon === "default" ? null : (image?.toPNG() ?? null),
     });
-    desktopRuntime.lastPersistedMacAppIcon = icon;
+    lastPersistedMacAppIcon = icon;
   }
 
   function cancelDeferredWindowsShellStamp(): void {
-    if (desktopRuntime.windowsShellStampTimer === null) return;
-    clearImmediate(desktopRuntime.windowsShellStampTimer);
-    desktopRuntime.windowsShellStampTimer = null;
-    const resolve = desktopRuntime.windowsShellStampResolve;
-    desktopRuntime.windowsShellStampResolve = null;
+    if (windowsShellStampTimer === null) return;
+    clearImmediate(windowsShellStampTimer);
+    windowsShellStampTimer = null;
+    const resolve = windowsShellStampResolve;
+    windowsShellStampResolve = null;
     resolve?.();
   }
 
@@ -289,14 +265,10 @@ export function createAppIdentity(
     },
   ): void {
     try {
-      applyWindowsShellAppUserModel(
-        input,
-        Path.join(desktopRuntime.STATE_DIR, "taskbar-icons"),
-        options,
-      );
+      applyWindowsShellAppUserModel(input, Path.join(STATE_DIR, "taskbar-icons"), options);
     } catch (error) {
       console.warn(
-        `[desktop] Failed to stamp Windows AppUserModel icon properties: ${desktopRuntime.formatErrorMessage(error)}`,
+        `[desktop] Failed to stamp Windows AppUserModel icon properties: ${formatErrorMessage(error)}`,
       );
     }
   }
@@ -314,10 +286,10 @@ export function createAppIdentity(
       return Promise.resolve();
     }
     return new Promise((resolve) => {
-      desktopRuntime.windowsShellStampResolve = resolve;
-      desktopRuntime.windowsShellStampTimer = setImmediate(() => {
-        desktopRuntime.windowsShellStampTimer = null;
-        desktopRuntime.windowsShellStampResolve = null;
+      windowsShellStampResolve = resolve;
+      windowsShellStampTimer = setImmediate(() => {
+        windowsShellStampTimer = null;
+        windowsShellStampResolve = null;
         stampWindowsShellAppUserModel(input, options);
         resolve();
       });
@@ -326,14 +298,14 @@ export function createAppIdentity(
 
   async function applyDesktopAppIcon(
     icon: DesktopAppIcon,
-    window: BrowserWindow | null = desktopRuntime.mainWindow,
+    window: BrowserWindow | null = getMainWindow(),
     options?: { reregisterTaskbarButton?: boolean; flushShellIconCache?: boolean },
   ): Promise<void> {
     return enqueueDesktopAppIconJob(() => applyDesktopAppIconUnlocked(icon, window, options));
   }
 
   function applyPersistedDesktopAppIcon(
-    window: BrowserWindow | null = desktopRuntime.mainWindow,
+    window: BrowserWindow | null = getMainWindow(),
     options?: { reregisterTaskbarButton?: boolean; flushShellIconCache?: boolean },
   ): Promise<void> {
     return enqueueDesktopAppIconJob(() =>
@@ -342,8 +314,8 @@ export function createAppIdentity(
   }
 
   function enqueueDesktopAppIconJob(job: () => Promise<void>): Promise<void> {
-    const run = desktopRuntime.desktopAppIconApplyTail.then(job, job);
-    desktopRuntime.desktopAppIconApplyTail = run.then(
+    const run = desktopAppIconApplyTail.then(job, job);
+    desktopAppIconApplyTail = run.then(
       () => undefined,
       () => undefined,
     );
@@ -352,7 +324,7 @@ export function createAppIdentity(
 
   async function applyDesktopAppIconUnlocked(
     icon: DesktopAppIcon,
-    window: BrowserWindow | null = desktopRuntime.mainWindow,
+    window: BrowserWindow | null = getMainWindow(),
     options?: { reregisterTaskbarButton?: boolean; flushShellIconCache?: boolean },
   ): Promise<void> {
     if (
@@ -382,7 +354,7 @@ export function createAppIdentity(
       isDarkAppearance: process.platform === "darwin" && nativeTheme.shouldUseDarkColors,
     });
     const iconPath =
-      desktopRuntime.desktopFlavor === "development"
+      desktopFlavor === "development"
         ? Path.resolve(
             import.meta.dirname,
             "../../../assets/dev",
@@ -392,7 +364,7 @@ export function createAppIdentity(
                 ? "blueprint-macos-1024.png"
                 : "blueprint-universal-1024.png",
           )
-        : desktopRuntime.resolveResourcePath(resourceName);
+        : resources.resolveResourcePath(resourceName);
     if (!iconPath) return;
 
     const image = nativeImage.createFromPath(iconPath);
@@ -409,7 +381,7 @@ export function createAppIdentity(
         shellIconPath = materializeWindowsShellIcon(icon, iconPath);
       } catch (error) {
         console.warn(
-          `[desktop] Failed to materialize Windows taskbar icon: ${desktopRuntime.formatErrorMessage(error)}`,
+          `[desktop] Failed to materialize Windows taskbar icon: ${formatErrorMessage(error)}`,
         );
       }
       let matchedShortcuts: string[] = [];
@@ -417,7 +389,7 @@ export function createAppIdentity(
         matchedShortcuts = syncWindowsTaskbarShortcuts(shellIconPath);
       } catch (error) {
         console.warn(
-          `[desktop] Failed to sync Windows shortcut icons: ${desktopRuntime.formatErrorMessage(error)}`,
+          `[desktop] Failed to sync Windows shortcut icons: ${formatErrorMessage(error)}`,
         );
       }
       let hwnd: bigint | null = null;
@@ -431,35 +403,35 @@ export function createAppIdentity(
       // icon message while Electron waited in spawnSync — deadlock, no window. Stamp properties on the
       // next turn.
       try {
-        applyWindowsTaskbarIcon({
+        windowsIcon.apply({
           window,
           iconPath: shellIconPath,
           identity: {
-            appId: desktopRuntime.APP_USER_MODEL_ID,
+            appId: APP_USER_MODEL_ID,
             relaunchCommand: `"${process.execPath}"`,
-            relaunchDisplayName: desktopRuntime.APP_DISPLAY_NAME,
+            relaunchDisplayName: APP_DISPLAY_NAME,
           },
           reregisterTaskbarButton: false,
         });
       } catch (error) {
         console.warn(
-          `[desktop] Failed to apply Windows taskbar icon: ${desktopRuntime.formatErrorMessage(error)}`,
+          `[desktop] Failed to apply Windows taskbar icon: ${formatErrorMessage(error)}`,
         );
         try {
           window?.setIcon(shellIconPath);
         } catch (iconError) {
           console.warn(
-            `[desktop] Failed to set Windows window icon: ${desktopRuntime.formatErrorMessage(iconError)}`,
+            `[desktop] Failed to set Windows window icon: ${formatErrorMessage(iconError)}`,
           );
         }
       }
 
       await queueWindowsShellAppUserModelStamp(
         {
-          appId: desktopRuntime.APP_USER_MODEL_ID,
+          appId: APP_USER_MODEL_ID,
           iconPath: shellIconPath,
           relaunchCommand: `"${process.execPath}"`,
-          displayName: desktopRuntime.APP_DISPLAY_NAME,
+          displayName: APP_DISPLAY_NAME,
           shortcutPaths: matchedShortcuts,
           hwnd,
         },
@@ -547,7 +519,6 @@ export function createAppIdentity(
     });
   }
   return {
-    resolveUserDataPath,
     repairBrowserProfileBeforeElectronReady,
     configureAppIdentity,
     readDesktopAppIcon,
@@ -558,5 +529,12 @@ export function createAppIdentity(
     applyInitialMacDockIcon,
     registerMacAppearanceIconSync,
     refreshMacIconCacheOnVersionChange,
+    dispose: () => {
+      windowsIcon.dispose();
+      if (windowsShellStampTimer) clearImmediate(windowsShellStampTimer);
+      windowsShellStampTimer = null;
+      windowsShellStampResolve?.();
+      windowsShellStampResolve = null;
+    },
   };
 }

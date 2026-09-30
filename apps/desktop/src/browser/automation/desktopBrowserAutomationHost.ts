@@ -1,25 +1,17 @@
 import type { DesktopBrowserManager } from "../browserManager";
-import {
-  BrowserAutomationToolRequest,
-  DesktopBrowserAutomationHostOptions,
-} from "./automationHostPolicy";
-import { type BrowserAutomationHostRuntime } from "./automationHostRuntimeTypes";
+import type { DesktopBrowserAutomationHostOptions } from "./automationHostPolicy";
+import type { BrowserAutomationHostRuntime } from "./automationHostRuntimeTypes";
 import { createBrowserAutomationHostRuntime } from "./createBrowserAutomationHostRuntime";
+
 export class DesktopBrowserAutomationHost {
-  private readonly hostRuntime: BrowserAutomationHostRuntime;
+  declare readonly dispose: BrowserAutomationHostRuntime["dispose"];
+  declare readonly waitForIdle: BrowserAutomationHostRuntime["waitForIdle"];
+  declare readonly executeTool: BrowserAutomationHostRuntime["executeTool"];
+
   constructor(
     browserManager: DesktopBrowserManager,
     options: DesktopBrowserAutomationHostOptions = {},
   ) {
-    this.hostRuntime = createBrowserAutomationHostRuntime(browserManager, options);
-  }
-  dispose(): Promise<void> {
-    return this.hostRuntime.dispose();
-  }
-  waitForIdle(): Promise<void> {
-    return this.hostRuntime.waitForIdle();
-  }
-  executeTool(request: BrowserAutomationToolRequest): Promise<unknown> {
-    return this.hostRuntime.executeTool(request);
+    Object.assign(this, createBrowserAutomationHostRuntime(browserManager, options));
   }
 }

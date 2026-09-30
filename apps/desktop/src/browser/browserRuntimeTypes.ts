@@ -29,7 +29,6 @@ import {
 import { BrowserSessionPolicy, type BrowserSessionDownloadEvent } from "./browserSessionPolicy";
 import {
   BrowserAutomationDownloadEvent,
-  BrowserAutomationDownloadLease,
   BrowserAutomationDownloadListener,
   BrowserAutomationExpectedInput,
   BrowserAutomationPrepareNavigationInput,
@@ -48,16 +47,12 @@ import {
   OAuthPopupContext,
   OAuthPopupRuntime,
   PendingAutomationWindowOpenCommit,
-  PendingBrowserAutomationInput,
   PendingRuntimeSync,
   PendingStatePublication,
   PendingWindowOpenTask,
 } from "./browserTabState";
 
-export interface BrowserRuntime {
-  configureRuntimeWebContents: (runtime: LiveTabRuntime) => void;
-  configureOAuthPopupRuntime: (runtime: OAuthPopupRuntime) => void;
-  readonly options: DesktopBrowserManagerOptions;
+interface BrowserViewState {
   window: BrowserWindow | null;
   activeThreadId: ThreadId | null;
   activeBounds: BrowserPanelBounds | null;
@@ -66,71 +61,63 @@ export interface BrowserRuntime {
   activePageZoomThreadId: ThreadId | null;
   attachedRuntimeKey: string | null;
   attachedBoundsSignature: string | null;
-  readonly states: Map<ThreadId, ThreadBrowserState>;
-  readonly threadVersionById: Map<ThreadId, number>;
-  readonly snapshotCacheByThreadId: Map<
-    ThreadId,
-    { version: number; snapshot: ThreadBrowserState }
-  >;
-  readonly lastEmittedVersionByThreadId: Map<ThreadId, number>;
-  readonly humanControlEpochByThreadId: Map<ThreadId, number>;
-  readonly humanControlListenersByThreadId: Map<ThreadId, Set<BrowserHumanControlListener>>;
-  readonly expectedAutomationInputsByRuntimeKey: Map<
-    string,
-    readonly PendingBrowserAutomationInput[]
-  >;
-  readonly automationGestureDepthByRuntimeKey: Map<string, number>;
-  readonly automationWindowOpenListenersByRuntimeKey: Map<
-    string,
-    Set<BrowserAutomationWindowOpenListener>
-  >;
-  readonly automationDownloadListenersByRuntimeKey: Map<
-    string,
-    Set<BrowserAutomationDownloadLease>
-  >;
-  readonly automationSideEffectProvenanceByRuntimeKey: Map<
-    string,
-    BrowserAutomationSideEffectProvenance
-  >;
-  readonly pendingWindowOpenTasksByRuntimeKey: Map<string, PendingWindowOpenTask>;
-  readonly pendingAutomationWindowOpenCommitsByRuntimeKey: Map<
-    string,
-    PendingAutomationWindowOpenCommit
-  >;
-  readonly pendingStatePublicationsByKey: Map<string, PendingStatePublication>;
-  readonly runtimes: Map<string, LiveTabRuntime>;
-  readonly runtimePageZoomFactors: Map<string, number>;
-  readonly rendererOnlyRuntimeKeys: Set<string>;
-  readonly automationRuntimeKeys: Set<string>;
-  readonly automationRuntimeProtectedUntilByKey: Map<string, number>;
-  readonly runtimeLastActiveAtByKey: Map<string, number>;
-  readonly pendingRuntimeSyncs: Map<string, PendingRuntimeSync>;
-  readonly listeners: Set<BrowserStateListener>;
-  readonly copyLinkListeners: Set<BrowserCopyLinkListener>;
-  readonly annotations: BrowserAnnotationCoordinator;
-  readonly popupRuntimes: Map<BrowserWindow, OAuthPopupRuntime>;
-  readonly previewThreadIds: Set<ThreadId>;
-  readonly sessionPolicy: BrowserSessionPolicy;
-  readonly tabSuspendTimers: Map<string, NodeJS.Timeout>;
-  readonly suspendTimers: Map<ThreadId, NodeJS.Timeout>;
-  backgroundAutomationEvictionTimer: NodeJS.Timeout | null;
+}
+
+interface BrowserTabsState {
+  states: Map<ThreadId, ThreadBrowserState>;
+  threadVersionById: Map<ThreadId, number>;
+  snapshotCacheByThreadId: Map<ThreadId, { version: number; snapshot: ThreadBrowserState }>;
+  lastEmittedVersionByThreadId: Map<ThreadId, number>;
+  pendingStatePublicationsByKey: Map<string, PendingStatePublication>;
+  listeners: Set<BrowserStateListener>;
+  copyLinkListeners: Set<BrowserCopyLinkListener>;
+  previewThreadIds: Set<ThreadId>;
+}
+
+interface BrowserLiveState {
+  runtimes: Map<string, LiveTabRuntime>;
+  runtimePageZoomFactors: Map<string, number>;
+  rendererOnlyRuntimeKeys: Set<string>;
+  automationRuntimeKeys: Set<string>;
+  pendingRuntimeSyncs: Map<string, PendingRuntimeSync>;
   runtimeSyncFlushScheduled: boolean;
+  popupRuntimes: Map<BrowserWindow, OAuthPopupRuntime>;
+}
+
+interface BrowserBudgetState {
+  automationRuntimeProtectedUntilByKey: Map<string, number>;
+  runtimeLastActiveAtByKey: Map<string, number>;
+  tabSuspendTimers: Map<string, NodeJS.Timeout>;
+  suspendTimers: Map<ThreadId, NodeJS.Timeout>;
+  backgroundAutomationEvictionTimer: NodeJS.Timeout | null;
+  perfCounters: BrowserPerformanceSnapshot["counters"];
+}
+
+interface BrowserPopupState {
+  pendingWindowOpenTasksByRuntimeKey: Map<string, PendingWindowOpenTask>;
+  pendingAutomationWindowOpenCommitsByRuntimeKey: Map<string, PendingAutomationWindowOpenCommit>;
+}
+
+interface BrowserServicesState {
+  options: DesktopBrowserManagerOptions;
+  annotations: BrowserAnnotationCoordinator;
+  sessionPolicy: BrowserSessionPolicy;
+}
+
+interface BrowserLifecycleState {
   disposed: boolean;
-  readonly perfCounters: {
-    setPanelBoundsCalls: number;
-    setPanelBoundsNoopSkips: number;
-    setPanelBoundsViewportUpdates: number;
-    stateEmitCalls: number;
-    stateEmitSkips: number;
-    stateCloneCount: number;
-    runtimeSyncQueueFlushes: number;
-    syncRuntimeStateCalls: number;
-    inactiveTabSuspendScheduled: number;
-    inactiveTabSuspendCancelled: number;
-    inactiveTabBudgetEvictions: number;
-    warmInactiveRuntimeCount: number;
-  };
-  humanBrowserOperations: number;
+}
+
+export interface BrowserRuntime {
+  configureRuntimeWebContents: (runtime: LiveTabRuntime) => void;
+  configureOAuthPopupRuntime: (runtime: OAuthPopupRuntime) => void;
+  readonly view: BrowserViewState;
+  readonly tabs: BrowserTabsState;
+  readonly live: BrowserLiveState;
+  readonly budget: BrowserBudgetState;
+  readonly popup: BrowserPopupState;
+  readonly services: BrowserServicesState;
+  readonly lifecycle: BrowserLifecycleState;
   setWindow: (window: BrowserWindow | null) => void;
   isWebMcpCompatibilityAllowed: (webContentsId: number) => boolean;
   subscribe: (listener: BrowserStateListener) => () => void;
@@ -179,6 +166,17 @@ export interface BrowserRuntime {
   closeAllPopupWindows: () => void;
   dispose: () => void;
   getPerformanceSnapshot: () => BrowserPerformanceSnapshot;
+  clearAutomationState: () => void;
+  clearAutomationRuntimeTracking: (key: string, preserveDownloadTracking: boolean) => void;
+  hasAutomationDownloadTracking: (key: string) => boolean;
+  getAutomationSideEffectProvenance: (
+    key: string,
+  ) => BrowserAutomationSideEffectProvenance | undefined;
+  inheritAutomationSideEffectProvenance: (
+    sourceKey: string,
+    childKey: string,
+    epoch: number,
+  ) => void;
   getAutomationHumanControlEpoch: (threadId: ThreadId) => number;
   isHumanBrowserOperationActive: () => boolean;
   beginHumanBrowserOperation: () => () => void;

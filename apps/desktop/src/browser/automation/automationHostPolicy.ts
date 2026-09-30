@@ -93,10 +93,14 @@ export const sleep = (milliseconds: number, signal: AbortSignal): Promise<void> 
   });
 };
 
-export const raceWithSignal = <T>(operation: Promise<T>, signal: AbortSignal): Promise<T> => {
-  if (signal.aborted) return Promise.reject(abortReason(signal));
+const raceWithCancellation = <T>(
+  operation: Promise<T>,
+  signal: AbortSignal,
+  reason: () => unknown,
+): Promise<T> => {
+  if (signal.aborted) return Promise.reject(reason());
   return new Promise<T>((resolve, reject) => {
-    const onAbort = () => reject(abortReason(signal));
+    const onAbort = () => reject(reason());
     signal.addEventListener("abort", onAbort, { once: true });
     operation.then(
       (value) => {
@@ -110,6 +114,9 @@ export const raceWithSignal = <T>(operation: Promise<T>, signal: AbortSignal): P
     );
   });
 };
+
+export const raceWithSignal = <T>(operation: Promise<T>, signal: AbortSignal): Promise<T> =>
+  raceWithCancellation(operation, signal, () => abortReason(signal));
 
 export const waitForWindowOpenEvent = (
   operation: Promise<BrowserAutomationWindowOpenEvent>,
@@ -145,32 +152,8 @@ export const waitForWindowOpenEvent = (
 export const waitOneTurnForWindowOpenEvent = (
   operation: Promise<BrowserAutomationWindowOpenEvent>,
   signal: AbortSignal,
-): Promise<BrowserAutomationWindowOpenEvent | null> => {
-  throwIfAborted(signal);
-  return new Promise((resolve, reject) => {
-    let settled = false;
-    const finish = (value: BrowserAutomationWindowOpenEvent | null) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      signal.removeEventListener("abort", onAbort);
-      resolve(value);
-    };
-    const fail = (error: unknown) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      signal.removeEventListener("abort", onAbort);
-      reject(error);
-    };
-    const onAbort = () => {
-      fail(abortReason(signal));
-    };
-    const timer = setTimeout(() => finish(null), WINDOW_OPEN_EVENT_LOOP_GRACE_MS);
-    signal.addEventListener("abort", onAbort, { once: true });
-    operation.then((event) => finish(event), fail);
-  });
-};
+): Promise<BrowserAutomationWindowOpenEvent | null> =>
+  waitForWindowOpenEvent(operation, WINDOW_OPEN_EVENT_LOOP_GRACE_MS, signal);
 
 export interface WindowOpenObservation {
   reconcile(
@@ -226,20 +209,4 @@ export const raceWithAbort = <T>(
   operation: Promise<T>,
   signal: AbortSignal,
   abortError: BrowserAutomationHostError,
-): Promise<T> => {
-  if (signal.aborted) return Promise.reject(abortHostError(signal, abortError));
-  return new Promise<T>((resolve, reject) => {
-    const onAbort = () => reject(abortHostError(signal, abortError));
-    signal.addEventListener("abort", onAbort, { once: true });
-    operation.then(
-      (value) => {
-        signal.removeEventListener("abort", onAbort);
-        resolve(value);
-      },
-      (error) => {
-        signal.removeEventListener("abort", onAbort);
-        reject(error);
-      },
-    );
-  });
-};
+): Promise<T> => raceWithCancellation(operation, signal, () => abortHostError(signal, abortError));

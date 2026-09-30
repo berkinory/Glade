@@ -1,5 +1,9 @@
 import { autoUpdater, CancellationToken, type UpdateDownloadedEvent } from "electron-updater";
-import { type DesktopRuntime } from "../desktopRuntimeTypes";
+import type { DesktopUpdateState } from "@glade/contracts/ipc/ipc";
+import { AUTO_UPDATE_DOWNLOAD_SETTLE_TIMEOUT_MS } from "../desktopEnvironment";
+import { formatErrorMessage } from "../lifecycle/desktopLogging";
+import type { UpdateStatus, UpdateDownloadState, UpdateInstallState } from "./updateDomainState";
+import type { PendingUpdateCacheClearQueue } from "./updatePendingCache";
 import { fingerprintUpdateArtifact } from "./updateArtifactIdentity";
 import {
   reduceDesktopUpdateStateOnCheckFailure,
@@ -10,96 +14,87 @@ import {
   reduceDesktopUpdateStateOnNoUpdate,
 } from "./updateMachine";
 
-export function createUpdateDownload(
-  desktopRuntime: Pick<
-    DesktopRuntime,
-    | "isQuitting"
-    | "isUpdaterInstallPreparing"
-    | "updaterConfigured"
-    | "updateCheckInFlight"
-    | "automaticUpdateActivitySuppressed"
-    | "isExplicitUpdateCheckReason"
-    | "scheduleUpdatePoll"
-    | "updateState"
-    | "beginActiveUpdateCheck"
-    | "setUpdateState"
-    | "armUpdateCheckTimeout"
-    | "clearUpdateCheckTimeoutTimer"
-    | "updateDownloadInFlight"
-    | "isAcceptableUpdateVersion"
-    | "describeRejectedUpdateVersion"
-    | "clearPendingUpdateCache"
-    | "downloadedUpdateArtifact"
-    | "downloadedUpdateIdentityTask"
-    | "lastUpdateDownloadProgressSample"
-    | "updateDownloadCancellationToken"
-    | "rejectUpdateDownloadStall"
-    | "armUpdateDownloadStallTimer"
-    | "pendingDownloadedUpdateIdentity"
-    | "clearUpdateDownloadStallTimer"
-    | "AUTO_UPDATE_DOWNLOAD_SETTLE_TIMEOUT_MS"
-    | "pendingUpdateCacheClearQueue"
-    | "formatErrorMessage"
-    | "activeUpdatePreparation"
-    | "clearPendingUpdateCacheWhenSafe"
-  >,
-) {
+export function createUpdateDownload(input: {
+  status: UpdateStatus;
+  download: UpdateDownloadState;
+  install: UpdateInstallState;
+  lifecycle: { isQuitting: () => boolean };
+  activity: {
+    isExplicitUpdateCheckReason: (reason: string) => boolean;
+    scheduleUpdatePoll: () => void;
+    beginActiveUpdateCheck: () => () => void;
+    setUpdateState: (patch: Partial<DesktopUpdateState>) => void;
+    clearUpdateCheckTimeoutTimer: () => void;
+  };
+  timing: {
+    armUpdateCheckTimeout: (reason: string) => void;
+    armUpdateDownloadStallTimer: (reason: string) => void;
+    clearUpdateDownloadStallTimer: () => void;
+  };
+  version: {
+    isAcceptableUpdateVersion: (version: string | null | undefined) => boolean;
+    describeRejectedUpdateVersion: (version: string) => string;
+  };
+  cache: {
+    clearPendingUpdateCache: (reason: string) => Promise<void>;
+    clearPendingUpdateCacheWhenSafe: (reason: string) => void;
+    pendingClear: PendingUpdateCacheClearQueue;
+  };
+}) {
+  const { status, download, install, lifecycle, activity, timing, version, cache } = input;
   async function checkForUpdates(reason: string): Promise<void> {
-    if (
-      desktopRuntime.isQuitting ||
-      desktopRuntime.isUpdaterInstallPreparing ||
-      !desktopRuntime.updaterConfigured ||
-      desktopRuntime.updateCheckInFlight
-    )
+    if (lifecycle.isQuitting() || install.preparing || !status.configured || status.checkInFlight)
       return;
-    if (desktopRuntime.automaticUpdateActivitySuppressed) {
-      if (!desktopRuntime.isExplicitUpdateCheckReason(reason)) {
+    if (status.automaticActivitySuppressed) {
+      if (!activity.isExplicitUpdateCheckReason(reason)) {
         console.info(
           `[desktop-updater] Skipping automatic update check (${reason}) after an unverified install failure.`,
         );
         return;
       }
-      desktopRuntime.automaticUpdateActivitySuppressed = false;
+      status.automaticActivitySuppressed = false;
       console.info(
         `[desktop-updater] User requested update recovery (${reason}); automatic checks are enabled for this session.`,
       );
-      desktopRuntime.scheduleUpdatePoll();
+      activity.scheduleUpdatePoll();
     }
     if (
-      desktopRuntime.updateState.status === "checking" ||
-      desktopRuntime.updateState.status === "downloading" ||
-      desktopRuntime.updateState.status === "downloaded"
+      status.state.status === "checking" ||
+      status.state.status === "downloading" ||
+      status.state.status === "downloaded"
     ) {
       console.info(
-        `[desktop-updater] Skipping update check (${reason}) while status=${desktopRuntime.updateState.status}.`,
+        `[desktop-updater] Skipping update check (${reason}) while status=${status.state.status}.`,
       );
       return;
     }
-    desktopRuntime.updateCheckInFlight = true;
-    const finishCheck = desktopRuntime.beginActiveUpdateCheck();
-    desktopRuntime.setUpdateState(
-      reduceDesktopUpdateStateOnCheckStart(desktopRuntime.updateState, new Date().toISOString()),
+    status.checkInFlight = true;
+    const finishCheck = activity.beginActiveUpdateCheck();
+    activity.setUpdateState(
+      reduceDesktopUpdateStateOnCheckStart(status.state, new Date().toISOString()),
     );
-    desktopRuntime.armUpdateCheckTimeout(reason);
+    timing.armUpdateCheckTimeout(reason);
     console.info(`[desktop-updater] Checking for updates (${reason})...`);
 
     try {
       await autoUpdater.checkForUpdates();
     } catch (error: unknown) {
-      desktopRuntime.clearUpdateCheckTimeoutTimer();
+      activity.clearUpdateCheckTimeoutTimer();
       const message = error instanceof Error ? error.message : String(error);
-      desktopRuntime.setUpdateState(
-        reduceDesktopUpdateStateOnCheckFailure(
-          desktopRuntime.updateState,
-          message,
-          new Date().toISOString(),
-        ),
+      activity.setUpdateState(
+        reduceDesktopUpdateStateOnCheckFailure(status.state, message, new Date().toISOString()),
       );
       console.error(`[desktop-updater] Failed to check for updates: ${message}`);
     } finally {
-      desktopRuntime.updateCheckInFlight = false;
+      status.checkInFlight = false;
       finishCheck();
     }
+  }
+
+  // Updater events publish the task across an await; a fresh read must not retain
+  // TypeScript's synchronous narrowing from the earlier reset to null.
+  function pendingDownloadedUpdateIdentity(): Promise<void> | null {
+    return download.identityTask;
   }
 
   async function downloadAvailableUpdate(): Promise<{
@@ -107,50 +102,42 @@ export function createUpdateDownload(
     completed: boolean;
   }> {
     if (
-      desktopRuntime.updaterConfigured &&
-      desktopRuntime.updateState.status === "error" &&
-      desktopRuntime.updateState.errorContext === "install" &&
-      desktopRuntime.updateState.downloadedVersion === null &&
-      desktopRuntime.updateState.availableVersion !== null
+      status.configured &&
+      status.state.status === "error" &&
+      status.state.errorContext === "install" &&
+      status.state.downloadedVersion === null &&
+      status.state.availableVersion !== null
     ) {
       await checkForUpdates("renderer");
       return { accepted: true, completed: false };
     }
-    if (
-      !desktopRuntime.updaterConfigured ||
-      desktopRuntime.updateDownloadInFlight ||
-      desktopRuntime.updateState.status !== "available"
-    ) {
+    if (!status.configured || download.inFlight || status.state.status !== "available") {
       return { accepted: false, completed: false };
     }
-    if (!desktopRuntime.isAcceptableUpdateVersion(desktopRuntime.updateState.availableVersion)) {
+    if (!version.isAcceptableUpdateVersion(status.state.availableVersion)) {
       const rejected =
-        typeof desktopRuntime.updateState.availableVersion === "string"
-          ? desktopRuntime.describeRejectedUpdateVersion(
-              desktopRuntime.updateState.availableVersion,
-            )
+        typeof status.state.availableVersion === "string"
+          ? version.describeRejectedUpdateVersion(status.state.availableVersion)
           : "no acceptable update version recorded";
-      await desktopRuntime.clearPendingUpdateCache(`staged update rejected: ${rejected}`);
-      desktopRuntime.setUpdateState(
-        reduceDesktopUpdateStateOnNoUpdate(desktopRuntime.updateState, new Date().toISOString()),
+      await cache.clearPendingUpdateCache(`staged update rejected: ${rejected}`);
+      activity.setUpdateState(
+        reduceDesktopUpdateStateOnNoUpdate(status.state, new Date().toISOString()),
       );
       console.info(`[desktop-updater] Ignoring stale available update: ${rejected}.`);
       return { accepted: false, completed: false };
     }
-    desktopRuntime.updateDownloadInFlight = true;
-    desktopRuntime.downloadedUpdateArtifact = null;
-    desktopRuntime.downloadedUpdateIdentityTask = null;
-    desktopRuntime.setUpdateState(
-      reduceDesktopUpdateStateOnDownloadStart(desktopRuntime.updateState),
-    );
+    download.inFlight = true;
+    download.artifact = null;
+    download.identityTask = null;
+    activity.setUpdateState(reduceDesktopUpdateStateOnDownloadStart(status.state));
 
-    desktopRuntime.lastUpdateDownloadProgressSample = null;
+    download.lastProgressSample = null;
     const cancellationToken = new CancellationToken();
-    desktopRuntime.updateDownloadCancellationToken = cancellationToken;
+    download.cancellationToken = cancellationToken;
     const downloadStalled = new Promise<never>((_, reject) => {
-      desktopRuntime.rejectUpdateDownloadStall = reject;
+      download.rejectStall = reject;
     });
-    desktopRuntime.armUpdateDownloadStallTimer("download start");
+    timing.armUpdateDownloadStallTimer("download start");
     console.info("[desktop-updater] Downloading update...");
 
     // Track electron-updater's own download promise separately from the stall race. When the stall
@@ -170,23 +157,21 @@ export function createUpdateDownload(
 
     try {
       await Promise.race([updaterDownloadPromise, downloadStalled]);
-      const identityTask = desktopRuntime.pendingDownloadedUpdateIdentity();
+      const identityTask = pendingDownloadedUpdateIdentity();
       if (identityTask) {
         await identityTask;
       }
       return {
         accepted: true,
-        completed: desktopRuntime.downloadedUpdateArtifact !== null,
+        completed: download.artifact !== null,
       };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
-      desktopRuntime.setUpdateState(
-        reduceDesktopUpdateStateOnDownloadFailure(desktopRuntime.updateState, message),
-      );
+      activity.setUpdateState(reduceDesktopUpdateStateOnDownloadFailure(status.state, message));
       console.error(`[desktop-updater] Failed to download update: ${message}`);
       return { accepted: true, completed: false };
     } finally {
-      desktopRuntime.clearUpdateDownloadStallTimer();
+      timing.clearUpdateDownloadStallTimer();
       // Hold the in-flight flag until the updater download actually settles, so an immediate retry can't
       // grab the still-cancelling promise (which would reject as "cancelled"). Bounded so a stuck updater
       // promise can't wedge updates.
@@ -194,29 +179,25 @@ export function createUpdateDownload(
         await Promise.race([
           updaterDownloadSettledPromise,
           new Promise<void>((resolve) => {
-            setTimeout(resolve, desktopRuntime.AUTO_UPDATE_DOWNLOAD_SETTLE_TIMEOUT_MS).unref();
+            setTimeout(resolve, AUTO_UPDATE_DOWNLOAD_SETTLE_TIMEOUT_MS).unref();
           }),
         ]);
       }
-      if (desktopRuntime.updateDownloadCancellationToken === cancellationToken) {
-        desktopRuntime.updateDownloadCancellationToken = null;
+      if (download.cancellationToken === cancellationToken) {
+        download.cancellationToken = null;
       }
-      desktopRuntime.rejectUpdateDownloadStall = null;
-      desktopRuntime.lastUpdateDownloadProgressSample = null;
-      desktopRuntime.updateDownloadInFlight = false;
-      const pendingCacheClearReason =
-        desktopRuntime.pendingUpdateCacheClearQueue.consumeAfterDownload();
+      download.rejectStall = null;
+      download.lastProgressSample = null;
+      download.inFlight = false;
+      const pendingCacheClearReason = cache.pendingClear.consumeAfterDownload();
       if (pendingCacheClearReason) {
-        await desktopRuntime.clearPendingUpdateCache(pendingCacheClearReason);
+        await cache.clearPendingUpdateCache(pendingCacheClearReason);
       }
     }
   }
 
   function prepareAvailableUpdateInBackground(reason: string): void {
-    if (
-      desktopRuntime.updateDownloadInFlight ||
-      desktopRuntime.updateState.status !== "available"
-    ) {
+    if (download.inFlight || status.state.status !== "available") {
       return;
     }
     const preparation = downloadAvailableUpdate()
@@ -227,61 +208,59 @@ export function createUpdateDownload(
       })
       .catch((error) => {
         console.error(
-          `[desktop-updater] Background update download crashed (${reason}): ${desktopRuntime.formatErrorMessage(error)}`,
+          `[desktop-updater] Background update download crashed (${reason}): ${formatErrorMessage(error)}`,
         );
       })
       .finally(() => {
-        if (desktopRuntime.activeUpdatePreparation === preparation) {
-          desktopRuntime.activeUpdatePreparation = null;
+        if (download.activePreparation === preparation) {
+          download.activePreparation = null;
         }
       });
     // Published so a caller that needs the download finished — migration recovery — can await this one
     // instead of racing a second download against it.
-    desktopRuntime.activeUpdatePreparation = preparation;
+    download.activePreparation = preparation;
   }
 
   async function recordDownloadedUpdateIdentity(info: UpdateDownloadedEvent): Promise<void> {
-    desktopRuntime.clearUpdateDownloadStallTimer();
-    if (!desktopRuntime.isAcceptableUpdateVersion(info.version)) {
-      desktopRuntime.downloadedUpdateArtifact = null;
-      desktopRuntime.clearPendingUpdateCacheWhenSafe(
-        `downloaded update rejected: ${desktopRuntime.describeRejectedUpdateVersion(info.version)}`,
+    timing.clearUpdateDownloadStallTimer();
+    if (!version.isAcceptableUpdateVersion(info.version)) {
+      download.artifact = null;
+      cache.clearPendingUpdateCacheWhenSafe(
+        `downloaded update rejected: ${version.describeRejectedUpdateVersion(info.version)}`,
       );
-      desktopRuntime.setUpdateState(
-        reduceDesktopUpdateStateOnNoUpdate(desktopRuntime.updateState, new Date().toISOString()),
+      activity.setUpdateState(
+        reduceDesktopUpdateStateOnNoUpdate(status.state, new Date().toISOString()),
       );
       console.info(
-        `[desktop-updater] Ignoring downloaded update: ${desktopRuntime.describeRejectedUpdateVersion(info.version)}.`,
+        `[desktop-updater] Ignoring downloaded update: ${version.describeRejectedUpdateVersion(info.version)}.`,
       );
       return;
     }
 
     try {
       const identity = await fingerprintUpdateArtifact(info.downloadedFile);
-      if (!desktopRuntime.isAcceptableUpdateVersion(info.version)) {
-        desktopRuntime.downloadedUpdateArtifact = null;
-        desktopRuntime.clearPendingUpdateCacheWhenSafe(
-          `downloaded update rejected after fingerprinting: ${desktopRuntime.describeRejectedUpdateVersion(info.version)}`,
+      if (!version.isAcceptableUpdateVersion(info.version)) {
+        download.artifact = null;
+        cache.clearPendingUpdateCacheWhenSafe(
+          `downloaded update rejected after fingerprinting: ${version.describeRejectedUpdateVersion(info.version)}`,
         );
-        desktopRuntime.setUpdateState(
-          reduceDesktopUpdateStateOnNoUpdate(desktopRuntime.updateState, new Date().toISOString()),
+        activity.setUpdateState(
+          reduceDesktopUpdateStateOnNoUpdate(status.state, new Date().toISOString()),
         );
         return;
       }
-      desktopRuntime.downloadedUpdateArtifact = { version: info.version, identity };
-      desktopRuntime.setUpdateState(
-        reduceDesktopUpdateStateOnDownloadComplete(desktopRuntime.updateState, info.version),
+      download.artifact = { version: info.version, identity };
+      activity.setUpdateState(
+        reduceDesktopUpdateStateOnDownloadComplete(status.state, info.version),
       );
       console.info(
         `[desktop-updater] Update downloaded and fingerprinted: ${info.version} (${identity.size} bytes, sha512=${identity.sha512.slice(0, 16)}…).`,
       );
     } catch (error) {
-      desktopRuntime.downloadedUpdateArtifact = null;
-      desktopRuntime.clearPendingUpdateCacheWhenSafe("downloaded artifact fingerprint failed");
-      const message = `The downloaded update could not be verified: ${desktopRuntime.formatErrorMessage(error)}`;
-      desktopRuntime.setUpdateState(
-        reduceDesktopUpdateStateOnDownloadFailure(desktopRuntime.updateState, message),
-      );
+      download.artifact = null;
+      cache.clearPendingUpdateCacheWhenSafe("downloaded artifact fingerprint failed");
+      const message = `The downloaded update could not be verified: ${formatErrorMessage(error)}`;
+      activity.setUpdateState(reduceDesktopUpdateStateOnDownloadFailure(status.state, message));
       console.error(`[desktop-updater] ${message}`);
     }
   }

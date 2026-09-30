@@ -30,32 +30,28 @@ import { isLocalFileUrl } from "./localHtmlPreviewProtocol";
 export function createBrowserWebviewRuntime(
   hostRuntime: Pick<
     BrowserRuntime,
-    | "states"
+    | "services"
+    | "live"
+    | "tabs"
+    | "view"
     | "getTab"
-    | "window"
     | "isNativeAutomationTab"
     | "snapshotThreadState"
     | "promoteTabToRendererSurface"
     | "findRendererRuntimeByWebContentsId"
     | "destroyRuntime"
-    | "runtimes"
-    | "rendererOnlyRuntimeKeys"
     | "getVisibleBoundsForThread"
     | "attachRuntime"
-    | "sessionPolicy"
     | "loadTab"
     | "markThreadStateChanged"
     | "queueRuntimeStateSync"
     | "emitState"
-    | "options"
     | "parkHiddenRuntime"
     | "configureWindowOpenHandling"
     | "consumeExpectedAutomationInput"
     | "markHumanControl"
     | "copyTabLink"
-    | "annotations"
     | "closeEmbeddedPopup"
-    | "activeThreadId"
     | "attachActiveTab"
   >,
 ) {
@@ -63,7 +59,7 @@ export function createBrowserWebviewRuntime(
     input: BrowserAttachWebviewInput,
     hostWebContentsId: number,
   ): ThreadBrowserState {
-    const state = hostRuntime.states.get(input.threadId);
+    const state = hostRuntime.tabs.states.get(input.threadId);
     const tab = state ? hostRuntime.getTab(state, input.tabId) : null;
     if (!state?.open || !tab) {
       throw new Error("The requested browser tab is not available in this thread.");
@@ -78,7 +74,8 @@ export function createBrowserWebviewRuntime(
     if (
       webContents.getType() !== "webview" ||
       webContents.hostWebContents?.id !== hostWebContentsId ||
-      (hostRuntime.window !== null && hostWebContentsId !== hostRuntime.window.webContents.id) ||
+      (hostRuntime.view.window !== null &&
+        hostWebContentsId !== hostRuntime.view.window.webContents.id) ||
       webContents.session !== electronSession.fromPartition(BROWSER_SESSION_PARTITION)
     ) {
       throw new Error("The browser webview does not belong to this Glade window and partition.");
@@ -99,7 +96,7 @@ export function createBrowserWebviewRuntime(
       });
     }
 
-    const existing = hostRuntime.runtimes.get(key);
+    const existing = hostRuntime.live.runtimes.get(key);
     if (existing?.webContents.id !== webContents.id) {
       if (existing) {
         if (!existing.ownsWebContents && !existing.webContents.isDestroyed()) {
@@ -120,12 +117,12 @@ export function createBrowserWebviewRuntime(
         listenerDisposers: [],
       };
       configureRuntimeWebContents(runtime);
-      hostRuntime.runtimes.set(key, runtime);
+      hostRuntime.live.runtimes.set(key, runtime);
     }
-    hostRuntime.rendererOnlyRuntimeKeys.add(key);
+    hostRuntime.live.rendererOnlyRuntimeKeys.add(key);
 
     const bounds = hostRuntime.getVisibleBoundsForThread(input.threadId);
-    const runtime = hostRuntime.runtimes.get(key);
+    const runtime = hostRuntime.live.runtimes.get(key);
     if (runtime && bounds) {
       hostRuntime.attachRuntime(runtime, bounds);
     }
@@ -133,7 +130,7 @@ export function createBrowserWebviewRuntime(
     const expectedUrl = normalizeUrlInput(tab.lastCommittedUrl ?? tab.url);
     const requiresLocalPreviewBootstrap =
       isLocalFileUrl(expectedUrl) &&
-      hostRuntime.sessionPolicy.resolveDisplayUrl(webContents.getURL()) !== expectedUrl;
+      hostRuntime.services.sessionPolicy.resolveDisplayUrl(webContents.getURL()) !== expectedUrl;
     if (requiresLocalPreviewBootstrap) {
       void hostRuntime.loadTab(input.threadId, tab.id, {
         force: true,
@@ -159,19 +156,19 @@ export function createBrowserWebviewRuntime(
   }
 
   function detachWebview(input: BrowserDetachWebviewInput): void {
-    const state = hostRuntime.states.get(input.threadId);
+    const state = hostRuntime.tabs.states.get(input.threadId);
     const tab = state ? hostRuntime.getTab(state, input.tabId) : null;
     if (!state || !tab) {
       return;
     }
 
-    const runtime = hostRuntime.runtimes.get(buildRuntimeKey(input.threadId, input.tabId));
+    const runtime = hostRuntime.live.runtimes.get(buildRuntimeKey(input.threadId, input.tabId));
     if (!runtime || runtime.ownsWebContents || runtime.webContents.id !== input.webContentsId) {
       return;
     }
 
     hostRuntime.destroyRuntime(input.threadId, input.tabId);
-    hostRuntime.rendererOnlyRuntimeKeys.delete(buildRuntimeKey(input.threadId, input.tabId));
+    hostRuntime.live.rendererOnlyRuntimeKeys.delete(buildRuntimeKey(input.threadId, input.tabId));
     const didChange = suspendTabState(tab) || syncThreadLastError(state);
     if (didChange) {
       hostRuntime.markThreadStateChanged(input.threadId);
@@ -192,8 +189,8 @@ export function createBrowserWebviewRuntime(
         contextIsolation: true,
         nodeIntegration: false,
         sandbox: true,
-        ...(hostRuntime.options.annotationPreloadPath
-          ? { preload: hostRuntime.options.annotationPreloadPath }
+        ...(hostRuntime.services.options.annotationPreloadPath
+          ? { preload: hostRuntime.services.options.annotationPreloadPath }
           : {}),
       },
     });
@@ -206,13 +203,13 @@ export function createBrowserWebviewRuntime(
       ownsWebContents: true,
       listenerDisposers: [],
     };
-    if (hostRuntime.window && !popupOptions?.webContents) {
+    if (hostRuntime.view.window && !popupOptions?.webContents) {
       // Size the new blank view before hiding it; initially hidden Electron views otherwise keep a
       // zero-sized renderer. No site has loaded yet.
-      hostRuntime.window.contentView.addChildView(view);
+      hostRuntime.view.window.contentView.addChildView(view);
       view.setBounds({ ...BACKGROUND_AUTOMATION_BOUNDS });
     }
-    if (hostRuntime.window) {
+    if (hostRuntime.view.window) {
       hostRuntime.parkHiddenRuntime(runtime, BACKGROUND_AUTOMATION_BOUNDS);
     }
     configureRuntimeWebContents(runtime);
@@ -221,15 +218,19 @@ export function createBrowserWebviewRuntime(
 
   function configureRuntimeWebContents(runtime: LiveTabRuntime): void {
     const { threadId, tabId, webContents } = runtime;
-    const releaseObserver = hostRuntime.options.onRuntimeReady?.({ threadId, tabId, webContents });
+    const releaseObserver = hostRuntime.services.options.onRuntimeReady?.({
+      threadId,
+      tabId,
+      webContents,
+    });
     if (releaseObserver) runtime.listenerDisposers.push(releaseObserver);
 
-    hostRuntime.sessionPolicy.applyUserAgent(webContents);
+    hostRuntime.services.sessionPolicy.applyUserAgent(webContents);
 
     hostRuntime.configureWindowOpenHandling(webContents, runtime, runtime.listenerDisposers);
 
     const beforeInputEvent = (event: Electron.Event, input: Electron.Input) => {
-      if (hostRuntime.options.beforeInputEvent?.(event, input)) {
+      if (hostRuntime.services.options.beforeInputEvent?.(event, input)) {
         return;
       }
       if (input.type !== "keyDown") {
@@ -321,7 +322,7 @@ export function createBrowserWebviewRuntime(
 
     const didStopLoading = () => {
       hostRuntime.queueRuntimeStateSync(threadId, tabId);
-      hostRuntime.annotations.recoverNavigation(threadId, tabId, webContents.id);
+      hostRuntime.services.annotations.recoverNavigation(threadId, tabId, webContents.id);
     };
     webContents.on("did-stop-loading", didStopLoading);
     runtime.listenerDisposers.push(() => {
@@ -329,7 +330,7 @@ export function createBrowserWebviewRuntime(
     });
 
     const didNavigate = () => {
-      const state = hostRuntime.states.get(threadId);
+      const state = hostRuntime.tabs.states.get(threadId);
       const tab = state ? hostRuntime.getTab(state, tabId) : null;
       if (state && tab && tab.lastError !== null) {
         tab.lastError = null;
@@ -351,7 +352,7 @@ export function createBrowserWebviewRuntime(
       isMainFrame: boolean,
     ) => {
       if (isMainFrame && !_isInPlace) {
-        hostRuntime.annotations.handleNavigation(threadId, tabId, webContents.id);
+        hostRuntime.services.annotations.handleNavigation(threadId, tabId, webContents.id);
       }
     };
     webContents.on("did-start-navigation", didStartNavigation);
@@ -361,7 +362,7 @@ export function createBrowserWebviewRuntime(
 
     const didNavigateInPage = () => {
       hostRuntime.queueRuntimeStateSync(threadId, tabId);
-      hostRuntime.annotations.handleInPageNavigation(threadId, tabId, webContents.id);
+      hostRuntime.services.annotations.handleInPageNavigation(threadId, tabId, webContents.id);
     };
     webContents.on("did-navigate-in-page", didNavigateInPage);
     runtime.listenerDisposers.push(() => {
@@ -378,16 +379,18 @@ export function createBrowserWebviewRuntime(
       if (!isMainFrame) {
         return;
       }
-      hostRuntime.annotations.recoverNavigation(threadId, tabId, webContents.id);
+      hostRuntime.services.annotations.recoverNavigation(threadId, tabId, webContents.id);
       if (errorCode === BROWSER_ERROR_ABORTED) return;
 
-      const state = hostRuntime.states.get(threadId);
+      const state = hostRuntime.tabs.states.get(threadId);
       const tab = state ? hostRuntime.getTab(state, tabId) : null;
       if (!state || !tab) {
         return;
       }
 
-      tab.url = validatedURL ? hostRuntime.sessionPolicy.resolveDisplayUrl(validatedURL) : tab.url;
+      tab.url = validatedURL
+        ? hostRuntime.services.sessionPolicy.resolveDisplayUrl(validatedURL)
+        : tab.url;
       tab.title = defaultTitleForUrl(tab.url);
       tab.isLoading = false;
       tab.lastError = mapBrowserLoadError(errorCode);
@@ -404,7 +407,7 @@ export function createBrowserWebviewRuntime(
     const handleRuntimeLoss = () => {
       // Only the runtime that installed this handler may invalidate the logical tab; a late event from an
       // old guest must not tear down a replacement already stored under the same runtime key.
-      if (runtimeLossHandled || hostRuntime.runtimes.get(runtime.key) !== runtime) {
+      if (runtimeLossHandled || hostRuntime.live.runtimes.get(runtime.key) !== runtime) {
         return;
       }
       runtimeLossHandled = true;
@@ -412,7 +415,7 @@ export function createBrowserWebviewRuntime(
         hostRuntime.closeEmbeddedPopup(runtime);
         return;
       }
-      const state = hostRuntime.states.get(threadId);
+      const state = hostRuntime.tabs.states.get(threadId);
       const tab = state ? hostRuntime.getTab(state, tabId) : null;
       hostRuntime.destroyRuntime(threadId, tabId);
       if (state && tab) {
@@ -424,7 +427,7 @@ export function createBrowserWebviewRuntime(
         hostRuntime.emitState(threadId);
       }
       const bounds = hostRuntime.getVisibleBoundsForThread(threadId);
-      if (hostRuntime.activeThreadId === threadId && bounds) {
+      if (hostRuntime.view.activeThreadId === threadId && bounds) {
         hostRuntime.attachActiveTab(threadId, bounds);
       }
     };

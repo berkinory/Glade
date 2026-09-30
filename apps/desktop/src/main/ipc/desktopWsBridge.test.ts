@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeDesktopWsUrl, resolveDesktopWsUrlFromEnv } from "./desktopWsBridge";
+import { normalizeDesktopWsUrl, resolveDesktopWsUrlFromEnv } from "./ipcValidation";
 
 describe("desktopWsBridge", () => {
   it("normalizes non-empty WebSocket URL strings", () => {

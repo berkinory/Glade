@@ -18,11 +18,6 @@ export interface ApplyWindowsTaskbarIconInput {
   readonly reregisterTaskbarButton?: boolean;
 }
 
-let taskbarReregisterTimer: ReturnType<typeof setTimeout> | null = null;
-
-let windowsShellIconGeneration = 0;
-let lastMaterializedIconKey: string | null = null;
-
 export function windowsShellIconCachePath(cacheDirectory: string, iconKey: string): string {
   return Path.join(cacheDirectory, `taskbar-${iconKey}.ico`);
 }
@@ -40,14 +35,6 @@ export function resolveWindowsShellIconCacheDirectory(input: {
     return input.fallbackDirectory;
   }
   return Path.dirname(input.executablePath);
-}
-
-export function nextWindowsShellIconCacheKey(iconKey: string): string {
-  if (lastMaterializedIconKey !== iconKey) {
-    windowsShellIconGeneration += 1;
-    lastMaterializedIconKey = iconKey;
-  }
-  return `${iconKey}-${windowsShellIconGeneration}`;
 }
 
 export interface WindowsShortcutDetails {
@@ -128,12 +115,6 @@ export function syncWindowsShortcutIcons(input: {
   return { matched, updated };
 }
 
-function clearWindowsTaskbarIconRefresh(): void {
-  if (taskbarReregisterTimer === null) return;
-  clearTimeout(taskbarReregisterTimer);
-  taskbarReregisterTimer = null;
-}
-
 function windowsTaskbarIconPropertyUpdates(input: {
   readonly iconPath: string;
   readonly identity: WindowsTaskbarIconIdentity;
@@ -167,17 +148,6 @@ function windowsTaskbarIconPropertyUpdates(input: {
   };
 }
 
-export function applyWindowsTaskbarIcon(input: ApplyWindowsTaskbarIconInput): void {
-  const { window } = input;
-  if (!window || window.isDestroyed()) return;
-
-  bindWindowsTaskbarIcon(window, input);
-  if (input.reregisterTaskbarButton !== true) return;
-  if (!window.isVisible()) return;
-
-  scheduleWindowsTaskbarReregister(window, input);
-}
-
 function bindWindowsTaskbarIcon(window: BrowserWindow, input: ApplyWindowsTaskbarIconInput): void {
   window.setIcon(input.iconPath);
   const updates = windowsTaskbarIconPropertyUpdates(input);
@@ -189,20 +159,42 @@ function bindWindowsTaskbarIcon(window: BrowserWindow, input: ApplyWindowsTaskba
   } catch {}
 }
 
-function scheduleWindowsTaskbarReregister(
-  window: BrowserWindow,
-  input: ApplyWindowsTaskbarIconInput,
-): void {
-  clearWindowsTaskbarIconRefresh();
-  window.setSkipTaskbar(true);
-  taskbarReregisterTimer = setTimeout(() => {
-    taskbarReregisterTimer = null;
-    if (window.isDestroyed()) return;
-    bindWindowsTaskbarIcon(window, input);
+export function createWindowsTaskbarIconController() {
+  let taskbarReregisterTimer: ReturnType<typeof setTimeout> | null = null;
+  let windowsShellIconGeneration = 0;
+  let lastMaterializedIconKey: string | null = null;
 
-    window.setSkipTaskbar(!window.isVisible());
-    if (window.isVisible()) {
-      bindWindowsTaskbarIcon(window, input);
+  function nextCacheKey(iconKey: string): string {
+    if (lastMaterializedIconKey !== iconKey) {
+      windowsShellIconGeneration += 1;
+      lastMaterializedIconKey = iconKey;
     }
-  }, WINDOWS_TASKBAR_ICON_REFRESH_DELAY_MS);
+    return `${iconKey}-${windowsShellIconGeneration}`;
+  }
+
+  function apply(input: ApplyWindowsTaskbarIconInput): void {
+    const { window } = input;
+    if (!window || window.isDestroyed()) return;
+
+    bindWindowsTaskbarIcon(window, input);
+    if (input.reregisterTaskbarButton !== true || !window.isVisible()) return;
+
+    if (taskbarReregisterTimer !== null) clearTimeout(taskbarReregisterTimer);
+    window.setSkipTaskbar(true);
+    taskbarReregisterTimer = setTimeout(() => {
+      taskbarReregisterTimer = null;
+      if (window.isDestroyed()) return;
+      bindWindowsTaskbarIcon(window, input);
+
+      window.setSkipTaskbar(!window.isVisible());
+      if (window.isVisible()) bindWindowsTaskbarIcon(window, input);
+    }, WINDOWS_TASKBAR_ICON_REFRESH_DELAY_MS);
+  }
+
+  function dispose(): void {
+    if (taskbarReregisterTimer !== null) clearTimeout(taskbarReregisterTimer);
+    taskbarReregisterTimer = null;
+  }
+
+  return { nextCacheKey, apply, dispose };
 }

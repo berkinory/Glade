@@ -1,7 +1,18 @@
 import { app } from "electron";
 import * as Path from "node:path";
-import { DesktopUpdateErrorContext, type DesktopRuntime } from "../desktopRuntimeTypes";
-import { settleDeferredDesktopQuitAfterUpdaterFailure } from "../lifecycle/desktopQuitIntent";
+import type { DesktopUpdateState } from "@glade/contracts/ipc/ipc";
+import {
+  APP_USER_MODEL_ID,
+  AUTO_UPDATE_DIAGNOSTICS_TIMEOUT_MS,
+  AUTO_UPDATE_INSTALL_WATCHDOG_MS,
+  UPDATE_INSTALL_MARKER_FILE_NAME,
+} from "../desktopEnvironment";
+import { formatErrorMessage } from "../lifecycle/desktopLogging";
+import {
+  settleDeferredDesktopQuitAfterUpdaterFailure,
+  type DeferredDesktopQuitIntentCoordinator,
+} from "../lifecycle/desktopQuitIntent";
+import type { UpdateStatus, UpdateDownloadState, UpdateInstallState } from "./updateDomainState";
 import { collectMacUpdateDiagnostics } from "./macUpdateDiagnostics";
 import {
   recordInstallMarkerFailureSync,
@@ -9,68 +20,54 @@ import {
 } from "./updateInstallMarker";
 import { reduceDesktopUpdateStateOnInstallFailure } from "./updateMachine";
 
-export function createInstallRecovery(
-  desktopRuntime: Pick<
-    DesktopRuntime,
-    | "downloadedUpdateIdentityTask"
-    | "isUpdaterInstallPreparing"
-    | "isUpdaterQuitAndInstallInFlight"
-    | "updateDownloadInFlight"
-    | "updateCheckInFlight"
-    | "updateState"
-    | "updateInstallPreparation"
-    | "activeUpdateInstallHandoff"
-    | "isQuitting"
-    | "deferredDesktopQuitIntent"
-    | "writeDesktopLogHeader"
-    | "requestGracefulAppQuit"
-    | "desktopShutdownPromise"
-    | "startBackend"
-    | "scheduleUpdatePoll"
-    | "updateInstallWatchdogTimer"
-    | "UPDATE_INSTALL_MARKER_FILE_NAME"
-    | "formatErrorMessage"
-    | "APP_USER_MODEL_ID"
-    | "AUTO_UPDATE_DIAGNOSTICS_TIMEOUT_MS"
-    | "setUpdateState"
-    | "AUTO_UPDATE_INSTALL_WATCHDOG_MS"
-  >,
-) {
-  function pendingDownloadedUpdateIdentity(): Promise<void> | null {
-    return desktopRuntime.downloadedUpdateIdentityTask;
-  }
+type DesktopUpdateErrorContext = DesktopUpdateState["errorContext"];
 
+export function createInstallRecovery(input: {
+  status: UpdateStatus;
+  download: UpdateDownloadState;
+  install: UpdateInstallState;
+  activity: {
+    setUpdateState: (patch: Partial<DesktopUpdateState>) => void;
+    scheduleUpdatePoll: () => void;
+  };
+  lifecycle: {
+    isQuitting: () => boolean;
+    setQuitting: (value: boolean) => void;
+    hasShutdownStarted: () => boolean;
+    startBackend: () => void;
+    requestGracefulAppQuit: (reason: string) => void;
+    writeDesktopLogHeader: (message: string) => void;
+  };
+  deferredQuit: DeferredDesktopQuitIntentCoordinator;
+}) {
+  const { status, download, install, activity, lifecycle, deferredQuit } = input;
   function resolveUpdaterErrorContext(): DesktopUpdateErrorContext {
-    if (desktopRuntime.isUpdaterInstallPreparing || desktopRuntime.isUpdaterQuitAndInstallInFlight)
-      return "install";
-    if (desktopRuntime.updateDownloadInFlight) return "download";
-    if (desktopRuntime.updateCheckInFlight) return "check";
-    return desktopRuntime.updateState.errorContext;
+    if (install.preparing || install.handoffInFlight) return "install";
+    if (download.inFlight) return "download";
+    if (status.checkInFlight) return "check";
+    return status.state.errorContext;
   }
 
   function clearUpdaterInstallInFlightAfterError(input?: {
     readonly preservePendingPreparation?: boolean;
   }): boolean {
-    const preparationCancelled = desktopRuntime.updateInstallPreparation.cancel();
+    const preparationCancelled = install.preparation.cancel();
     if (preparationCancelled && input?.preservePendingPreparation) {
       return true;
     }
-    if (
-      !desktopRuntime.isUpdaterInstallPreparing &&
-      !desktopRuntime.isUpdaterQuitAndInstallInFlight
-    ) {
+    if (!install.preparing && !install.handoffInFlight) {
       return preparationCancelled;
     }
-    desktopRuntime.isUpdaterInstallPreparing = false;
-    desktopRuntime.isUpdaterQuitAndInstallInFlight = false;
-    desktopRuntime.activeUpdateInstallHandoff = null;
-    desktopRuntime.isQuitting = false;
+    install.preparing = false;
+    install.handoffInFlight = false;
+    install.activeHandoff = null;
+    lifecycle.setQuitting(false);
     return preparationCancelled;
   }
 
   function deferDesktopQuitUntilUpdaterSettles(reason: string): void {
-    const deferred = desktopRuntime.deferredDesktopQuitIntent.defer(reason);
-    desktopRuntime.writeDesktopLogHeader(
+    const deferred = deferredQuit.defer(reason);
+    lifecycle.writeDesktopLogHeader(
       deferred
         ? `${reason} deferred until updater install preparation settles`
         : `${reason} waiting for previously deferred quit after updater install preparation`,
@@ -78,19 +75,16 @@ export function createInstallRecovery(
   }
 
   function replayDeferredDesktopQuitAfterUpdaterSettles(): boolean {
-    const outcome = settleDeferredDesktopQuitAfterUpdaterFailure(
-      desktopRuntime.deferredDesktopQuitIntent,
-      {
-        replayQuit: (intent) => {
-          desktopRuntime.writeDesktopLogHeader(
-            `${intent.reason} replaying deferred quit after updater settled`,
-          );
-          desktopRuntime.requestGracefulAppQuit(intent.reason);
-        },
-
-        resumeApp: () => undefined,
+    const outcome = settleDeferredDesktopQuitAfterUpdaterFailure(deferredQuit, {
+      replayQuit: (intent) => {
+        lifecycle.writeDesktopLogHeader(
+          `${intent.reason} replaying deferred quit after updater settled`,
+        );
+        lifecycle.requestGracefulAppQuit(intent.reason);
       },
-    );
+
+      resumeApp: () => undefined,
+    });
     return outcome !== "resumed-app";
   }
 
@@ -99,23 +93,23 @@ export function createInstallRecovery(
 
     // A second updater failure signal can race the replay above (for example, before-quit handoff
     // validation followed by the cancelled preparation).
-    if (desktopRuntime.desktopShutdownPromise !== null || desktopRuntime.isQuitting) {
+    if (lifecycle.hasShutdownStarted() || lifecycle.isQuitting()) {
       return;
     }
 
-    desktopRuntime.startBackend();
-    desktopRuntime.scheduleUpdatePoll();
+    lifecycle.startBackend();
+    activity.scheduleUpdatePoll();
   }
 
   function clearUpdateInstallWatchdogTimer(): void {
-    if (desktopRuntime.updateInstallWatchdogTimer) {
-      clearTimeout(desktopRuntime.updateInstallWatchdogTimer);
-      desktopRuntime.updateInstallWatchdogTimer = null;
+    if (install.watchdogTimer) {
+      clearTimeout(install.watchdogTimer);
+      install.watchdogTimer = null;
     }
   }
 
   function getUpdateInstallMarkerPath(): string {
-    return Path.join(app.getPath("userData"), desktopRuntime.UPDATE_INSTALL_MARKER_FILE_NAME);
+    return Path.join(app.getPath("userData"), UPDATE_INSTALL_MARKER_FILE_NAME);
   }
 
   function recordInstallMarkerFailure(
@@ -126,24 +120,24 @@ export function createInstallRecovery(
       console.error(
         "[desktop-updater] Could not record durable install failure without an exact active attempt.",
       );
-      return Math.max(1, desktopRuntime.updateState.installFailureCount + 1);
+      return Math.max(1, status.state.installFailureCount + 1);
     }
     const result = recordInstallMarkerFailureSync(getUpdateInstallMarkerPath(), expected, nowIso);
     if (result.status === "missing" || result.status === "invalid") {
       console.error(
         `[desktop-updater] Could not record durable install failure: marker is ${result.status}${result.status === "invalid" ? ` (${result.error})` : ""}.`,
       );
-      return Math.max(1, desktopRuntime.updateState.installFailureCount + 1);
+      return Math.max(1, status.state.installFailureCount + 1);
     }
     if (result.status === "mismatch") {
       console.error(
         "[desktop-updater] Refusing to record install failure against a different durable attempt.",
       );
-      return Math.max(1, desktopRuntime.updateState.installFailureCount + 1);
+      return Math.max(1, status.state.installFailureCount + 1);
     }
     if (result.status === "write-failed") {
       console.error(
-        `[desktop-updater] Failed to persist install failure marker: ${desktopRuntime.formatErrorMessage(result.error)}`,
+        `[desktop-updater] Failed to persist install failure marker: ${formatErrorMessage(result.error)}`,
       );
     }
     return result.marker.consecutiveFailures;
@@ -153,11 +147,11 @@ export function createInstallRecovery(
     let timeout: ReturnType<typeof setTimeout> | null = null;
     try {
       const diagnostics = await Promise.race([
-        collectMacUpdateDiagnostics(desktopRuntime.APP_USER_MODEL_ID),
+        collectMacUpdateDiagnostics(APP_USER_MODEL_ID),
         new Promise<string>((resolve) => {
           timeout = setTimeout(
             () => resolve("Diagnostic collection timed out."),
-            desktopRuntime.AUTO_UPDATE_DIAGNOSTICS_TIMEOUT_MS,
+            AUTO_UPDATE_DIAGNOSTICS_TIMEOUT_MS,
           );
         }),
       ]);
@@ -166,7 +160,7 @@ export function createInstallRecovery(
       }
     } catch (error) {
       console.info(
-        `[desktop-updater] diagnostics (${context}) unavailable: ${desktopRuntime.formatErrorMessage(error)}`,
+        `[desktop-updater] diagnostics (${context}) unavailable: ${formatErrorMessage(error)}`,
       );
     } finally {
       if (timeout) {
@@ -177,20 +171,20 @@ export function createInstallRecovery(
 
   function armInstallWatchdog(): void {
     clearUpdateInstallWatchdogTimer();
-    desktopRuntime.updateInstallWatchdogTimer = setTimeout(() => {
-      desktopRuntime.updateInstallWatchdogTimer = null;
-      if (!desktopRuntime.isUpdaterQuitAndInstallInFlight) {
+    install.watchdogTimer = setTimeout(() => {
+      install.watchdogTimer = null;
+      if (!install.handoffInFlight) {
         return;
       }
-      const failedHandoff = desktopRuntime.activeUpdateInstallHandoff;
+      const failedHandoff = install.activeHandoff;
       clearUpdaterInstallInFlightAfterError();
       const consecutiveFailures = recordInstallMarkerFailure(
         new Date().toISOString(),
         failedHandoff,
       );
-      desktopRuntime.setUpdateState({
+      activity.setUpdateState({
         ...reduceDesktopUpdateStateOnInstallFailure(
-          desktopRuntime.updateState,
+          status.state,
           "The update couldn’t be installed automatically.",
         ),
         installFailureCount: consecutiveFailures,
@@ -199,10 +193,9 @@ export function createInstallRecovery(
         "[desktop-updater] quitAndInstall did not exit the app within the watchdog window; surfacing manual-download fallback.",
       );
       recoverDesktopAfterUpdaterInstallFailure();
-    }, desktopRuntime.AUTO_UPDATE_INSTALL_WATCHDOG_MS);
+    }, AUTO_UPDATE_INSTALL_WATCHDOG_MS);
   }
   return {
-    pendingDownloadedUpdateIdentity,
     resolveUpdaterErrorContext,
     clearUpdaterInstallInFlightAfterError,
     deferDesktopQuitUntilUpdaterSettles,

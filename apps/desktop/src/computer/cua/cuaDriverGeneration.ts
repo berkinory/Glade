@@ -24,14 +24,13 @@ import { type CuaHostRuntime } from "./cuaHostRuntimeTypes";
 export function createCuaDriverGeneration(
   hostRuntime: Pick<
     CuaHostRuntime,
-    | "warmAttempted"
     | "closed"
     | "suspended"
     | "starting"
     | "retiring"
     | "generation"
     | "options"
-    | "directory"
+    | "runtimeDirectory"
     | "updateInputMonitorArmed"
     | "observedNativeRevision"
     | "browserTargets"
@@ -39,11 +38,13 @@ export function createCuaDriverGeneration(
     | "nativeInputCleanupPending"
   >,
 ) {
+  let warmAttempted = false;
+
   function warm(): void {
-    if (hostRuntime.warmAttempted || hostRuntime.closed || hostRuntime.suspended) return;
+    if (warmAttempted || hostRuntime.closed || hostRuntime.suspended) return;
     const raw = process.env.GLADE_CUA_WARM_ON_FIRST_TOUCH?.trim().toLowerCase();
     if (raw !== "1" && raw !== "true" && raw !== "on" && raw !== "yes") return;
-    hostRuntime.warmAttempted = true;
+    warmAttempted = true;
     void ensureSpawned().catch((error: unknown) => {
       log(`driver warm-up failed: ${String(error)}`);
     });
@@ -117,7 +118,7 @@ export function createCuaDriverGeneration(
       const endpoint =
         process.platform === "win32"
           ? `\\\\.\\pipe\\glade-cua-driver-${randomUUID().slice(0, 8)}`
-          : join(hostRuntime.directory, `driver-${randomUUID().slice(0, 8)}.sock`);
+          : join(hostRuntime.runtimeDirectory(), `driver-${randomUUID().slice(0, 8)}.sock`);
       // Park the compact cursor between actions until end_task removes it, with a one-minute native
       // expiry if cleanup cannot be acknowledged. Idle compact cursors sleep without repainting; model
       // latency must not make the only agent indicator disappear. Upstream cannot parse these flags.
@@ -149,7 +150,7 @@ export function createCuaDriverGeneration(
             GLADE_CUA_BACKGROUND_OBSERVATION_MS: "350",
             CUA_DRIVER_PARENT_LIVENESS_STDIN: "1",
             CUA_DRIVER_EMBEDDED_HOST_PID: String(process.pid),
-            CUA_DRIVER_RS_HOME: join(hostRuntime.directory, "state"),
+            CUA_DRIVER_RS_HOME: join(hostRuntime.runtimeDirectory(), "state"),
           },
         },
       );

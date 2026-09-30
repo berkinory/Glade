@@ -14,77 +14,73 @@ import { BrowserCopyLinkListener, BrowserStateListener } from "./browserTabState
 export function createBrowserAnnotations(
   hostRuntime: Pick<
     BrowserRuntime,
-    | "window"
+    | "services"
+    | "tabs"
+    | "view"
     | "detachAttachedRuntime"
     | "destroyAllRuntimes"
     | "closeAllPopupWindows"
-    | "activeThreadId"
     | "getVisibleBoundsForThread"
     | "attachActiveTab"
-    | "sessionPolicy"
-    | "listeners"
-    | "copyLinkListeners"
-    | "annotations"
-    | "states"
   >,
 ) {
   function setWindow(window: BrowserWindow | null): void {
-    const previousWindow = hostRuntime.window;
+    const previousWindow = hostRuntime.view.window;
     if (previousWindow && previousWindow !== window) {
       hostRuntime.detachAttachedRuntime();
       hostRuntime.destroyAllRuntimes();
       hostRuntime.closeAllPopupWindows();
     }
-    hostRuntime.window = window;
+    hostRuntime.view.window = window;
     if (window) {
-      const bounds = hostRuntime.activeThreadId
-        ? hostRuntime.getVisibleBoundsForThread(hostRuntime.activeThreadId)
+      const bounds = hostRuntime.view.activeThreadId
+        ? hostRuntime.getVisibleBoundsForThread(hostRuntime.view.activeThreadId)
         : null;
-      if (hostRuntime.activeThreadId && bounds) {
-        hostRuntime.attachActiveTab(hostRuntime.activeThreadId, bounds);
+      if (hostRuntime.view.activeThreadId && bounds) {
+        hostRuntime.attachActiveTab(hostRuntime.view.activeThreadId, bounds);
       }
       return;
     }
   }
 
   function isWebMcpCompatibilityAllowed(webContentsId: number): boolean {
-    return hostRuntime.sessionPolicy.isWebMcpCompatibilityAllowed(webContentsId);
+    return hostRuntime.services.sessionPolicy.isWebMcpCompatibilityAllowed(webContentsId);
   }
 
   function subscribe(listener: BrowserStateListener): () => void {
-    hostRuntime.listeners.add(listener);
+    hostRuntime.tabs.listeners.add(listener);
     return () => {
-      hostRuntime.listeners.delete(listener);
+      hostRuntime.tabs.listeners.delete(listener);
     };
   }
 
   function subscribeCopyLink(listener: BrowserCopyLinkListener): () => void {
-    hostRuntime.copyLinkListeners.add(listener);
+    hostRuntime.tabs.copyLinkListeners.add(listener);
     return () => {
-      hostRuntime.copyLinkListeners.delete(listener);
+      hostRuntime.tabs.copyLinkListeners.delete(listener);
     };
   }
 
   function subscribeAnnotationEvents(
     listener: (event: BrowserAnnotationEvent) => void,
   ): () => void {
-    return hostRuntime.annotations.subscribe(listener);
+    return hostRuntime.services.annotations.subscribe(listener);
   }
 
   function startAnnotation(input: BrowserAnnotationStartInput): BrowserAnnotationSession {
-    return hostRuntime.annotations.start(input);
+    return hostRuntime.services.annotations.start(input);
   }
 
   function cancelAnnotation(input: BrowserAnnotationCancelInput): void {
-    hostRuntime.annotations.cancel(input);
+    hostRuntime.services.annotations.cancel(input);
   }
 
   function syncAnnotationMarkers(input: BrowserAnnotationSyncMarkersInput): void {
-    const state = hostRuntime.states.get(input.threadId);
+    const state = hostRuntime.tabs.states.get(input.threadId);
     if (!state?.tabs.some((tab) => tab.id === input.tabId)) {
       throw new Error("The requested browser tab is not available in this thread.");
     }
-    hostRuntime.annotations.syncMarkers(input);
+    hostRuntime.services.annotations.syncMarkers(input);
   }
 
   function resolveAnnotationNavigationTarget(input: {
@@ -92,11 +88,11 @@ export function createBrowserAnnotations(
     tabId?: string;
     annotationId: string;
   }): { readonly tabId: string; readonly url: string } | null {
-    const state = hostRuntime.states.get(input.threadId);
+    const state = hostRuntime.tabs.states.get(input.threadId);
     if (!state) {
       return null;
     }
-    const target = hostRuntime.annotations.resolveNavigationTarget(
+    const target = hostRuntime.services.annotations.resolveNavigationTarget(
       input.threadId,
       input.annotationId,
       input.tabId,
@@ -108,18 +104,18 @@ export function createBrowserAnnotations(
   }
 
   function handleAnnotationGuestMessage(sender: WebContents, payload: unknown): void {
-    hostRuntime.annotations.handleGuestMessage(sender, payload);
+    hostRuntime.services.annotations.handleGuestMessage(sender, payload);
   }
 
   function isAnnotationInteractive(threadId: ThreadId): boolean {
-    return hostRuntime.annotations.isInteractive(threadId);
+    return hostRuntime.services.annotations.isInteractive(threadId);
   }
 
   function isTrustedRenderer(webContentsId: number): boolean {
     return Boolean(
-      hostRuntime.window &&
-      !hostRuntime.window.isDestroyed() &&
-      hostRuntime.window.webContents.id === webContentsId,
+      hostRuntime.view.window &&
+      !hostRuntime.view.window.isDestroyed() &&
+      hostRuntime.view.window.webContents.id === webContentsId,
     );
   }
 

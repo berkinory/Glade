@@ -1,65 +1,62 @@
 import { RotatingFileSink } from "@glade/shared/platform/logging";
 import { app } from "electron";
 import * as Path from "node:path";
-import { type DesktopRuntime } from "../desktopRuntimeTypes";
+import {
+  APP_RUN_ID,
+  BACKEND_LOG_FILE_NAME,
+  DESKTOP_LOG_FILE_NAME,
+  LOG_DIR,
+  LOG_FILE_MAX_BYTES,
+  LOG_FILE_MAX_FILES,
+} from "../desktopEnvironment";
 import { isBrokenPipeError } from "./desktopProcessErrors";
-
-export function createDesktopLogging(
-  desktopRuntime: Pick<
-    DesktopRuntime,
-    | "APP_RUN_ID"
-    | "desktopLogSink"
-    | "backendLogSink"
-    | "restoreStdIoCapture"
-    | "LOG_DIR"
-    | "DESKTOP_LOG_FILE_NAME"
-    | "LOG_FILE_MAX_BYTES"
-    | "LOG_FILE_MAX_FILES"
-    | "BACKEND_LOG_FILE_NAME"
-  >,
-) {
+export function sanitizeLogValue(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+export function safeConsoleError(...args: Parameters<typeof console.error>): void {
+  try {
+    console.error(...args);
+  } catch (error: unknown) {
+    if (!isBrokenPipeError(error)) {
+      throw error;
+    }
+  }
+}
+export function formatErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}
+export interface DesktopLog {
+  writeDesktopLogHeader(message: string): void;
+  writeBackendSessionBoundary(phase: "START" | "END", details: string): void;
+  writeBackendOutput(chunk: Buffer): void;
+  dispose(): void;
+}
+export function createDesktopLogging(): DesktopLog {
+  let desktopLogSink: RotatingFileSink | null = null;
+  let backendLogSink: RotatingFileSink | null = null;
+  let restoreStdIoCapture: (() => void) | null = null;
   function logTimestamp(): string {
     return new Date().toISOString();
   }
 
   function logScope(scope: string): string {
-    return `${scope} run=${desktopRuntime.APP_RUN_ID}`;
-  }
-
-  function sanitizeLogValue(value: string): string {
-    return value.replace(/\s+/g, " ").trim();
+    return `${scope} run=${APP_RUN_ID}`;
   }
 
   function writeDesktopLogHeader(message: string): void {
-    if (!desktopRuntime.desktopLogSink) return;
-    desktopRuntime.desktopLogSink.write(
-      `[${logTimestamp()}] [${logScope("desktop")}] ${message}\n`,
-    );
+    if (!desktopLogSink) return;
+    desktopLogSink.write(`[${logTimestamp()}] [${logScope("desktop")}] ${message}\n`);
   }
 
   function writeBackendSessionBoundary(phase: "START" | "END", details: string): void {
-    if (!desktopRuntime.backendLogSink) return;
+    if (!backendLogSink) return;
     const normalizedDetails = sanitizeLogValue(details);
-    desktopRuntime.backendLogSink.write(
-      `[${logTimestamp()}] ---- APP SESSION ${phase} run=${desktopRuntime.APP_RUN_ID} ${normalizedDetails} ----\n`,
+    backendLogSink.write(
+      `[${logTimestamp()}] ---- APP SESSION ${phase} run=${APP_RUN_ID} ${normalizedDetails} ----\n`,
     );
-  }
-
-  function safeConsoleError(...args: Parameters<typeof console.error>): void {
-    try {
-      console.error(...args);
-    } catch (error: unknown) {
-      if (!isBrokenPipeError(error)) {
-        throw error;
-      }
-    }
-  }
-
-  function formatErrorMessage(error: unknown): string {
-    if (error instanceof Error) {
-      return error.message;
-    }
-    return String(error);
   }
 
   function writeDesktopStreamChunk(
@@ -67,23 +64,19 @@ export function createDesktopLogging(
     chunk: unknown,
     encoding: BufferEncoding | undefined,
   ): void {
-    if (!desktopRuntime.desktopLogSink) return;
+    if (!desktopLogSink) return;
     const buffer = Buffer.isBuffer(chunk)
       ? chunk
       : Buffer.from(String(chunk), typeof chunk === "string" ? encoding : undefined);
-    desktopRuntime.desktopLogSink.write(`[${logTimestamp()}] [${logScope(streamName)}] `);
-    desktopRuntime.desktopLogSink.write(buffer);
+    desktopLogSink.write(`[${logTimestamp()}] [${logScope(streamName)}] `);
+    desktopLogSink.write(buffer);
     if (buffer.length === 0 || buffer[buffer.length - 1] !== 0x0a) {
-      desktopRuntime.desktopLogSink.write("\n");
+      desktopLogSink.write("\n");
     }
   }
 
   function installStdIoCapture(): void {
-    if (
-      !app.isPackaged ||
-      desktopRuntime.desktopLogSink === null ||
-      desktopRuntime.restoreStdIoCapture !== null
-    ) {
+    if (!app.isPackaged || desktopLogSink === null || restoreStdIoCapture !== null) {
       return;
     }
 
@@ -114,38 +107,39 @@ export function createDesktopLogging(
     process.stdout.write = patchWrite("stdout", originalStdoutWrite);
     process.stderr.write = patchWrite("stderr", originalStderrWrite);
 
-    desktopRuntime.restoreStdIoCapture = () => {
+    restoreStdIoCapture = () => {
       process.stdout.write = originalStdoutWrite;
       process.stderr.write = originalStderrWrite;
-      desktopRuntime.restoreStdIoCapture = null;
+      restoreStdIoCapture = null;
     };
   }
 
   function initializePackagedLogging(): void {
     if (!app.isPackaged) return;
     try {
-      desktopRuntime.desktopLogSink = new RotatingFileSink({
-        filePath: Path.join(desktopRuntime.LOG_DIR, desktopRuntime.DESKTOP_LOG_FILE_NAME),
-        maxBytes: desktopRuntime.LOG_FILE_MAX_BYTES,
-        maxFiles: desktopRuntime.LOG_FILE_MAX_FILES,
+      desktopLogSink = new RotatingFileSink({
+        filePath: Path.join(LOG_DIR, DESKTOP_LOG_FILE_NAME),
+        maxBytes: LOG_FILE_MAX_BYTES,
+        maxFiles: LOG_FILE_MAX_FILES,
       });
-      desktopRuntime.backendLogSink = new RotatingFileSink({
-        filePath: Path.join(desktopRuntime.LOG_DIR, desktopRuntime.BACKEND_LOG_FILE_NAME),
-        maxBytes: desktopRuntime.LOG_FILE_MAX_BYTES,
-        maxFiles: desktopRuntime.LOG_FILE_MAX_FILES,
+      backendLogSink = new RotatingFileSink({
+        filePath: Path.join(LOG_DIR, BACKEND_LOG_FILE_NAME),
+        maxBytes: LOG_FILE_MAX_BYTES,
+        maxFiles: LOG_FILE_MAX_FILES,
       });
       installStdIoCapture();
-      writeDesktopLogHeader(`runtime log capture enabled logDir=${desktopRuntime.LOG_DIR}`);
+      writeDesktopLogHeader(`runtime log capture enabled logDir=${LOG_DIR}`);
     } catch (error) {
       console.error("[desktop] failed to initialize packaged logging", error);
     }
   }
+  initializePackagedLogging();
   return {
-    sanitizeLogValue,
     writeDesktopLogHeader,
     writeBackendSessionBoundary,
-    safeConsoleError,
-    formatErrorMessage,
-    initializePackagedLogging,
+    writeBackendOutput: (chunk) => {
+      backendLogSink?.write(chunk);
+    },
+    dispose: () => restoreStdIoCapture?.(),
   };
 }

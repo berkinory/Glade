@@ -20,26 +20,28 @@ describe("DesktopBrowserManager automation runtime boundary", () => {
     if (!tabId) return;
 
     const webContents = new FakeWebContents();
-    const access = (
-      manager as unknown as {
-        hostRuntime: {
-          runtimes: Map<
-            string,
-            {
-              key: string;
-              threadId: typeof THREAD_ID;
-              tabId: string;
-              webContents: WebContents;
-              view: object | null;
-              ownsWebContents: boolean;
-              listenerDisposers: Array<() => void>;
-            }
-          >;
-        };
-      }
-    ).hostRuntime;
+    const access = manager as unknown as {
+      live: { runtimes: Map<string, unknown> };
+      tabs: { states: Map<unknown, unknown> };
+      popup: {
+        pendingWindowOpenTasksByRuntimeKey: Map<string, unknown>;
+        pendingAutomationWindowOpenCommitsByRuntimeKey: Map<string, unknown>;
+      };
+      runtimes: Map<
+        string,
+        {
+          key: string;
+          threadId: typeof THREAD_ID;
+          tabId: string;
+          webContents: WebContents;
+          view: object | null;
+          ownsWebContents: boolean;
+          listenerDisposers: Array<() => void>;
+        }
+      >;
+    };
     const key = `${THREAD_ID}:${tabId}`;
-    access.runtimes.set(key, {
+    access.live.runtimes.set(key, {
       key,
       threadId: THREAD_ID,
       tabId,
@@ -53,7 +55,7 @@ describe("DesktopBrowserManager automation runtime boundary", () => {
       /not currently visible/i,
     );
 
-    access.runtimes.set(key, {
+    access.live.runtimes.set(key, {
       key,
       threadId: THREAD_ID,
       tabId,

@@ -1,15 +1,10 @@
 import { app } from "electron";
 import type { DesktopBrowserManager } from "../browserManager";
-import {
-  DesktopBrowserAutomationHostOptions,
-  IdempotencyEntry,
-  IdempotencyTombstone,
-  SessionAffinity,
-} from "./automationHostPolicy";
+import { DesktopBrowserAutomationHostOptions } from "./automationHostPolicy";
 import { type BrowserAutomationHostRuntime } from "./automationHostRuntimeTypes";
 import { createAutomationNavigation } from "./automationNavigation";
 import { createAutomationOperationGuards } from "./automationOperationGuards";
-import { createAutomationSessionAffinity } from "./automationSessionAffinity";
+import { AutomationSessionRegistry } from "./automationSessionAffinity";
 import { createAutomationToolDispatch } from "./automationToolDispatch";
 import { createAutomationToolRequests } from "./automationToolRequests";
 import { createAutomationWindowOpen } from "./automationWindowOpen";
@@ -25,14 +20,11 @@ export function createBrowserAutomationHostRuntime(
     -readonly [Key in keyof BrowserAutomationHostRuntime]: BrowserAutomationHostRuntime[Key];
   };
   Object.assign(hostRuntime, createAutomationToolRequests(hostRuntime));
-  Object.assign(hostRuntime, createAutomationSessionAffinity(hostRuntime));
   Object.assign(hostRuntime, createAutomationOperationGuards(hostRuntime));
   Object.assign(hostRuntime, createAutomationWindowOpen(hostRuntime));
   Object.assign(hostRuntime, createAutomationToolDispatch(hostRuntime));
   Object.assign(hostRuntime, createAutomationNavigation(hostRuntime));
-  hostRuntime.affinities = new Map<string, SessionAffinity>();
-  hostRuntime.idempotency = new Map<string, IdempotencyEntry>();
-  hostRuntime.idempotencyTombstones = new Map<string, IdempotencyTombstone>();
+  hostRuntime.sessionRegistry = new AutomationSessionRegistry();
   hostRuntime.lockTails = new Map<string, Promise<void>>();
   hostRuntime.activeOperations = new Set<Promise<unknown>>();
   hostRuntime.diagnostics = new BrowserDiagnosticsStore();
