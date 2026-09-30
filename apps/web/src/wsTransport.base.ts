@@ -125,6 +125,26 @@ export abstract class WsTransportBase {
     (failure: WsThreadStreamFailure) => void
   >();
   protected readonly latestPushByChannel = new Map<string, WsPush>();
+  protected terminalOutputReady = false;
+  private readonly terminalOutputWaiters = new Set<() => void>();
+  protected markTerminalOutputReady(): void {
+    this.terminalOutputReady = true;
+    for (const resolve of this.terminalOutputWaiters) resolve();
+    this.terminalOutputWaiters.clear();
+  }
+  private async waitForTerminalOutput(signal: AbortSignal | undefined): Promise<void> {
+    if (this.terminalOutputReady) return;
+    let resolveReady!: () => void;
+    const ready = new Promise<void>((resolve) => {
+      resolveReady = resolve;
+    });
+    this.terminalOutputWaiters.add(resolveReady);
+    try {
+      await awaitWithAbort(awaitWithAbort(ready, this.lifetime.signal), signal);
+    } finally {
+      this.terminalOutputWaiters.delete(resolveReady);
+    }
+  }
   protected sequence = 0;
   protected sessionVersion = 0;
   protected state: WsTransportState = "connecting";
@@ -233,6 +253,10 @@ export abstract class WsTransportBase {
       }
       if (method === WS_METHODS.projectsProvisionFromGitHub) {
         return (await this.runProjectProvisionStream(client, params, abortScope.signal)) as T;
+      }
+
+      if (method === WS_METHODS.terminalOpen) {
+        await this.waitForTerminalOutput(abortScope.signal);
       }
 
       const rpcInput =
@@ -598,6 +622,7 @@ export abstract class WsTransportBase {
   protected reconnect(): Promise<RpcClientInstance> {
     if (this.reconnectPromise) return this.reconnectPromise;
 
+    this.terminalOutputReady = false;
     const oldResources = this.takeCurrentRuntime();
     this.resetAllStreamCapacityRetries();
     this.resetAllStreamCompletionRetries();

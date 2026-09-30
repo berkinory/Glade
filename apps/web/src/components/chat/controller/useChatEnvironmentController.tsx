@@ -1,4 +1,5 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
+import { prepareTerminalSession } from "../../terminal/terminalStartup";
 import { MessageId } from "@glade/contracts/core/baseSchemas";
 import { resolveThreadWorkspaceState } from "@glade/shared/threads/threadEnvironment";
 import { useQuery } from "@tanstack/react-query";
@@ -219,11 +220,38 @@ export function useChatEnvironmentController({
     setRightDockOpen(threadId, !rightDockOpen);
   };
 
+  const startedTerminalIds = useRef(new Set<string>());
+  const terminalCwd = gitCwd ?? activeProject?.cwd ?? "";
+  useEffect(() => {
+    if (!terminalState.terminalOpen || !terminalCwd) return;
+    const api = readNativeApi();
+    if (!api) return;
+    for (const terminalId of terminalState.terminalIds) {
+      const key = `${threadId}:${terminalId}`;
+      if (startedTerminalIds.current.has(key)) continue;
+      startedTerminalIds.current.add(key);
+      prepareTerminalSession(api, {
+        threadId,
+        terminalId,
+        cwd: terminalCwd,
+        cols: 80,
+        rows: 24,
+        ...(threadTerminalRuntimeEnv ? { env: threadTerminalRuntimeEnv } : {}),
+      });
+    }
+  }, [
+    threadId,
+    terminalState.terminalOpen,
+    terminalState.terminalIds,
+    terminalCwd,
+    threadTerminalRuntimeEnv,
+  ]);
+
   const terminalDrawerProps = {
     threadId,
     onTogglePanel: hasRightDockPanes ? toggleRightDock : undefined,
     isPanelOpen: hasRightDockPanes ? rightDockOpen : undefined,
-    cwd: gitCwd ?? activeProject?.cwd ?? "",
+    cwd: terminalCwd,
     runtimeEnv: threadTerminalRuntimeEnv,
     height: terminalState.terminalHeight,
     terminalIds: terminalState.terminalIds,

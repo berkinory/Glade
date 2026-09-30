@@ -827,6 +827,7 @@ class TerminalManagerRuntime extends EventEmitter<TerminalManagerEvents> {
           runtimeEnv: normalizedRuntimeEnv(input.env),
           pendingInputBuffer: "",
           modeReplayTracker: null,
+          outputSequence: 0,
           pendingOutputChunks: [],
           pendingOutputLength: 0,
           outputFlushTimer: null,
@@ -1029,6 +1030,7 @@ class TerminalManagerRuntime extends EventEmitter<TerminalManagerEvents> {
           runtimeEnv: normalizedRuntimeEnv(input.env),
           pendingInputBuffer: "",
           modeReplayTracker: null,
+          outputSequence: 0,
           pendingOutputChunks: [],
           pendingOutputLength: 0,
           outputFlushTimer: null,
@@ -1385,6 +1387,7 @@ class TerminalManagerRuntime extends EventEmitter<TerminalManagerEvents> {
     session.outputBufferPauseRequested = false;
 
     this.processOutputBatch(session, data);
+    session.outputSequence += 1;
 
     if (session.streamOutput) {
       this.emitEvent({
@@ -1393,6 +1396,7 @@ class TerminalManagerRuntime extends EventEmitter<TerminalManagerEvents> {
         terminalId: session.terminalId,
         createdAt: new Date().toISOString(),
         data,
+        outputSequence: session.outputSequence,
         byteLength,
       });
     }
@@ -2171,6 +2175,7 @@ class TerminalManagerRuntime extends EventEmitter<TerminalManagerEvents> {
       status: session.status,
       pid: session.pid,
       history: session.history.toString(),
+      outputSequence: session.outputSequence,
       ...(replayPreamble.length > 0 ? { replayPreamble } : {}),
       exitCode: session.exitCode,
       exitSignal: session.exitSignal,

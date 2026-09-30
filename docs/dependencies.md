@@ -66,3 +66,11 @@ than addressing a security advisory.
   work is [Effect-TS/effect#7154](https://github.com/Effect-TS/effect/pull/7154),
   merged after this beta. No matching upstream unsafe-PID PR was found during
   the audit. Remove the patch only after comparing the replacement artifact.
+
+## Terminal image decoder
+
+`@xterm/addon-image@0.9.0` registers its sixel handler before the WASM decoder
+is ready. Lazy activation can therefore silently discard the first image. The
+patch exposes `ImageAddon.ready` after activation; Glade holds the first image
+chunk until that promise resolves. Source, both executable bundles and typings
+are patched. Remove this patch when upstream exposes equivalent readiness.

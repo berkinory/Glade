@@ -73,3 +73,10 @@ Cursor state also gates sidebar prewarming: a speculative prewarm subscription i
 [2]: ../apps/server/src/server/ws/wsCompatibility.ts
 [3]: ../apps/server/src/server/http/staticAssets.ts
 [4]: ../apps/web/src/threadDetailResumeCursors.ts
+
+Terminal event streams emit `ready` after the server registers the output
+subscriber. The client waits for this barrier before `terminal.open`; reconnects
+reset it. Terminal snapshots and output chunks include a monotonically increasing
+`outputSequence` for the running session. While opening, the client buffers live
+chunks and replays only chunks newer than the snapshot, preserving output when
+a PTY starts before its viewport mounts. This contract requires protocol revision 3.

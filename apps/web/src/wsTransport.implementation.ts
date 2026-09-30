@@ -36,7 +36,7 @@ import type {
   ServerProviderStatusesUpdatedPayload,
   ServerSettingsUpdatedPayload,
 } from "@glade/contracts/server/server";
-import type { TerminalEvent } from "@glade/contracts/terminal/terminal";
+import type { TerminalStreamItem } from "@glade/contracts/transport/ws/terminalRpc";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { Cause, Effect, Exit, Stream } from "effect";
 import {
@@ -122,7 +122,10 @@ export class WsTransport extends WsTransportBase {
             client,
             "terminal.events",
             client[WS_METHODS.subscribeTerminalEvents]({}),
-            (event: TerminalEvent) => this.emit(WS_CHANNELS.terminalEvent, event),
+            (event: TerminalStreamItem) => {
+              if (event.type === "ready") this.markTerminalOutputReady();
+              else this.emit(WS_CHANNELS.terminalEvent, event);
+            },
             restartChannel,
           );
         } else if (channel === WS_CHANNELS.projectDevServerEvent) {
@@ -385,6 +388,7 @@ export class WsTransport extends WsTransportBase {
             this.streamCleanups.delete(key);
             this.activeThreadStreamInputs.delete(key);
           }
+          if (!wasReplacedOrStopped && key === "terminal.events") this.terminalOutputReady = false;
           if (wasReplacedOrStopped || this.disposed) {
             return;
           }
@@ -519,6 +523,7 @@ export class WsTransport extends WsTransportBase {
     key: string,
     options?: { readonly resetCapacityRetry?: boolean },
   ): Promise<void> {
+    if (key === "terminal.events") this.terminalOutputReady = false;
     this.clearStreamCapacityRetryTimer(key);
     this.clearStreamCompletionRetryTimer(key);
     if (options?.resetCapacityRetry !== false) {

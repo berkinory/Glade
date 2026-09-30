@@ -1,4 +1,4 @@
-import type { TerminalSessionSnapshot } from "@glade/contracts/terminal/terminal";
+import type { TerminalEvent, TerminalSessionSnapshot } from "@glade/contracts/terminal/terminal";
 import { defaultTerminalTitleForCliKind } from "@glade/shared/threads/terminalThreads";
 import { writeSystemMessage } from "./terminalRuntimeAppearance";
 import { terminalEventDispatcher } from "./terminalEventDispatcher";
@@ -23,22 +23,37 @@ export function registerTerminalEventHandler(
   operations: TerminalEventOperations,
 ): void {
   const terminal = entry.terminal;
+  const bufferedOutputs: Array<Extract<TerminalEvent, { type: "output" }>> = [];
+  const writeOutput = (event: Extract<TerminalEvent, { type: "output" }>) => {
+    operations.setStatus(entry, "ready");
+    entry.outputEventVersion += 1;
+    operations.scheduleWrite(
+      entry,
+      event.data,
+      event.byteLength ?? operations.byteLength(event.data),
+    );
+  };
+  entry.applyOpenSnapshot = (snapshot) => {
+    entry.awaitingOpenSnapshot = false;
+    if (snapshot)
+      operations.replaySnapshot(entry, snapshot, () => operations.setStatus(entry, "ready"));
+    for (const event of bufferedOutputs.splice(0)) {
+      // The snapshot already contains earlier chunks. Later output stays ordered after its replay.
+      if (!snapshot || event.outputSequence > snapshot.outputSequence) writeOutput(event);
+    }
+  };
   entry.unsubscribeTerminalEvents = terminalEventDispatcher.subscribe(
     entry.threadId,
     entry.terminalId,
     (event) => {
       if (event.type === "output") {
-        operations.setStatus(entry, "ready");
-        entry.outputEventVersion += 1;
-        operations.scheduleWrite(
-          entry,
-          event.data,
-          event.byteLength ?? operations.byteLength(event.data),
-        );
+        if (entry.awaitingOpenSnapshot) bufferedOutputs.push(event);
+        else writeOutput(event);
         return;
       }
 
       if (event.type === "started" || event.type === "restarted") {
+        if (entry.awaitingOpenSnapshot) return;
         entry.hasHandledExit = false;
         const shouldReplaySnapshot =
           event.type === "restarted" || operations.hasReplayPayload(event.snapshot);
@@ -57,7 +72,7 @@ export function registerTerminalEventHandler(
         entry.linkMatchCache.clear();
         operations.clearPendingWrites(entry);
         terminal.clear();
-        terminal.write("\u001bc");
+        entry.output.write("\u001bc");
         return;
       }
 
@@ -78,7 +93,7 @@ export function registerTerminalEventHandler(
 
       if (event.type === "error") {
         operations.setStatus(entry, "error");
-        writeSystemMessage(terminal, event.message);
+        writeSystemMessage(entry.output, event.message);
         return;
       }
 
@@ -96,7 +111,7 @@ export function registerTerminalEventHandler(
           .filter((value): value is string => value !== null)
           .join(", ");
         writeSystemMessage(
-          terminal,
+          entry.output,
           details.length > 0 ? `Process exited (${details})` : "Process exited",
         );
         if (entry.hasHandledExit) {

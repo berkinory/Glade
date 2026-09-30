@@ -322,6 +322,7 @@ describe("wsNativeApi", () => {
       createdAt: "2026-02-24T00:00:00.000Z",
       type: "output",
       data: "hello",
+      outputSequence: 1,
     } as const;
     emitPush(WS_CHANNELS.terminalEvent, terminalEvent);
 

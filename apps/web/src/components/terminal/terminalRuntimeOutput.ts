@@ -61,7 +61,7 @@ export function flushPendingWrites(entry: TerminalRuntimeEntry): void {
   entry.pendingWrites.length = 0;
   entry.pendingWriteLength = 0;
   entry.pendingWriteBytes = 0;
-  entry.terminal.write(combined, () => {
+  entry.output.write(combined, () => {
     acknowledgeParsedOutput(entry, byteLength);
     observeTerminalWriteParsed({
       runtimeKey: entry.runtimeKey,

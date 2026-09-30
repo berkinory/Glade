@@ -1,6 +1,5 @@
 import { ClipboardAddon } from "@xterm/addon-clipboard";
 import { FitAddon } from "@xterm/addon-fit";
-import { ImageAddon } from "@xterm/addon-image";
 import { LigaturesAddon } from "@xterm/addon-ligatures";
 import { SearchAddon } from "@xterm/addon-search";
 import { Unicode11Addon } from "@xterm/addon-unicode11";
@@ -14,6 +13,8 @@ import {
 } from "@glade/contracts/terminal/terminal";
 import type { TerminalSessionSnapshot } from "@glade/contracts/terminal/terminal";
 import { Terminal } from "@xterm/xterm";
+
+import { awaitTerminalStartup } from "./terminalStartup";
 
 import { readNativeApi } from "~/nativeApi";
 
@@ -42,11 +43,12 @@ import {
   scheduleWrite,
 } from "./terminalRuntimeOutput";
 
+import { createTerminalImageWriter } from "./terminalImageWriter";
+
 const ENABLE_TERMINAL_WEBGL = true;
 const VISUAL_RESIZE_MIN_INTERVAL_MS = 64;
 const BACKEND_RESIZE_DEBOUNCE_MS = 120;
 const LINK_MATCH_CACHE_LIMIT = 512;
-const OPEN_SNAPSHOT_RECONCILE_DELAY_MS = 250;
 const OPEN_RETRY_DELAY_MS = 2_000;
 const TERMINAL_PARKING_CONTAINER_ID = "glade-terminal-parking";
 
@@ -113,7 +115,7 @@ function resetForSnapshotReplay(entry: TerminalRuntimeEntry): void {
   entry.titleInputBuffer = "";
   entry.linkMatchCache.clear();
   clearPendingWrites(entry);
-  entry.terminal.write("\u001bc");
+  entry.output.write("\u001bc");
 }
 
 function snapshotReplayPayload(snapshot: TerminalSessionSnapshot): string {
@@ -157,7 +159,7 @@ function replaySnapshot(
   const payload = snapshotReplayPayload(snapshot);
   if (payload.length > 0) {
     setRuntimeStatus(entry, "replaying");
-    entry.terminal.write(payload, onParsed);
+    entry.output.write(payload, onParsed);
     return;
   }
   onParsed?.();
@@ -560,7 +562,7 @@ async function sendTerminalInput(
   try {
     await api.terminal.write({ threadId: entry.threadId, terminalId: entry.terminalId, data });
   } catch (error) {
-    writeSystemMessage(entry.terminal, describeErrorMessage(error, fallbackError));
+    writeSystemMessage(entry.output, describeErrorMessage(error, fallbackError));
   }
 }
 
@@ -636,7 +638,6 @@ export function createRuntimeEntry(config: TerminalRuntimeConfig): TerminalRunti
 
   const fitAddon = new FitAddon();
   const clipboardAddon = new ClipboardAddon();
-  const imageAddon = new ImageAddon();
   const searchAddon = new SearchAddon();
   const unicode11Addon = new Unicode11Addon();
   const terminalOptions: GladeTerminalOptions = {
@@ -661,7 +662,6 @@ export function createRuntimeEntry(config: TerminalRuntimeConfig): TerminalRunti
   const terminal = new Terminal(terminalOptions);
   terminal.loadAddon(fitAddon);
   terminal.loadAddon(clipboardAddon);
-  terminal.loadAddon(imageAddon);
   terminal.loadAddon(searchAddon);
   terminal.loadAddon(unicode11Addon);
   terminal.unicode.activeVersion = "11";
@@ -681,6 +681,7 @@ export function createRuntimeEntry(config: TerminalRuntimeConfig): TerminalRunti
     wrapper,
     container: null,
     terminal,
+    output: createTerminalImageWriter(terminal),
     fitAddon,
     searchAddon,
     webglAddon: null,
@@ -704,6 +705,8 @@ export function createRuntimeEntry(config: TerminalRuntimeConfig): TerminalRunti
     pendingWriteBytes: 0,
     linkMatchCache: new Map(),
     outputEventVersion: 0,
+    awaitingOpenSnapshot: false,
+    applyOpenSnapshot: () => undefined,
     snapshotReconcileRequestId: 0,
     webglLoadFrame: null,
     themeRefreshFrame: 0,
@@ -801,43 +804,14 @@ function openTerminal(entry: TerminalRuntimeEntry): void {
   entry.lastSentResize = null;
   entry.opened = true;
   setRuntimeStatus(entry, "connecting");
-  const outputEventVersionAtOpen = entry.outputEventVersion;
+  entry.awaitingOpenSnapshot = true;
   const openInput = buildOpenInput(entry);
 
-  void api.terminal
-    .open(openInput)
+  void awaitTerminalStartup(entry.threadId, entry.terminalId)
+    .then(() => (entry.disposed ? undefined : api.terminal.open(openInput)))
     .then((snapshot) => {
-      if (entry.disposed) return;
-      if (
-        snapshotHasReplayPayload(snapshot) &&
-        entry.outputEventVersion === outputEventVersionAtOpen
-      ) {
-        replaySnapshot(entry, snapshot, () => setRuntimeStatus(entry, "ready"));
-      } else if (entry.outputEventVersion === outputEventVersionAtOpen) {
-        setRuntimeStatus(entry, "ready");
-        window.setTimeout(() => {
-          if (
-            entry.disposed ||
-            !entry.opened ||
-            entry.outputEventVersion !== outputEventVersionAtOpen
-          ) {
-            return;
-          }
-          void api.terminal
-            .open(openInput)
-            .then((nextSnapshot) => {
-              if (
-                entry.disposed ||
-                entry.outputEventVersion !== outputEventVersionAtOpen ||
-                !snapshotHasReplayPayload(nextSnapshot)
-              ) {
-                return;
-              }
-              replaySnapshot(entry, nextSnapshot, () => setRuntimeStatus(entry, "ready"));
-            })
-            .catch(() => {});
-        }, OPEN_SNAPSHOT_RECONCILE_DELAY_MS);
-      }
+      if (entry.disposed || !snapshot) return;
+      entry.applyOpenSnapshot(snapshot);
       if (entry.viewState.autoFocus) {
         window.requestAnimationFrame(() => {
           entry.terminal.focus();
@@ -847,6 +821,7 @@ function openTerminal(entry: TerminalRuntimeEntry): void {
     .catch((error) => {
       if (entry.disposed) return;
       entry.opened = false;
+      entry.applyOpenSnapshot(null);
       if (
         /SocketOpenError.*timeout waiting for ["']open["']/i.test(describeErrorMessage(error, ""))
       ) {
@@ -858,7 +833,7 @@ function openTerminal(entry: TerminalRuntimeEntry): void {
         return;
       }
       setRuntimeStatus(entry, "error");
-      writeSystemMessage(entry.terminal, describeErrorMessage(error, "Failed to open terminal"));
+      writeSystemMessage(entry.output, describeErrorMessage(error, "Failed to open terminal"));
     });
 }
 
@@ -928,6 +903,7 @@ export function detachRuntimeFromContainer(entry: TerminalRuntimeEntry): void {
 export function disposeRuntimeEntry(entry: TerminalRuntimeEntry): void {
   detachRuntimeFromContainer(entry);
   entry.disposed = true;
+  entry.output.dispose();
 
   clearPendingWrites(entry);
   entry.unsubscribeTerminalEvents?.();

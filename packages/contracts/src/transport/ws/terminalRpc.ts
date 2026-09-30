@@ -56,9 +56,15 @@ export const WsTerminalCloseRpc = Rpc.make(WS_METHODS.terminalClose, {
   error: WsRpcError,
 });
 
+export const TerminalStreamItem = Schema.Union([
+  Schema.Struct({ type: Schema.Literal("ready") }),
+  TerminalEvent,
+]);
+export type TerminalStreamItem = typeof TerminalStreamItem.Type;
+
 export const WsSubscribeTerminalEventsRpc = Rpc.make(WS_METHODS.subscribeTerminalEvents, {
   payload: Schema.Struct({}),
-  success: TerminalEvent,
+  success: TerminalStreamItem,
   error: WsRpcError,
   stream: true,
 });

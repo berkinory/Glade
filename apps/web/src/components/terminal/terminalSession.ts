@@ -1,3 +1,4 @@
+import { awaitTerminalStartup } from "./terminalStartup";
 import { type NativeApi } from "@glade/contracts/ipc/ipc";
 
 async function disposeTerminalRuntime(threadId: string, terminalId: string): Promise<void> {
@@ -28,6 +29,7 @@ export function disposeAndCloseTerminalSession(input: {
   };
 
   void (async () => {
+    await awaitTerminalStartup(threadId, terminalId);
     await disposeTerminalRuntime(threadId, terminalId);
 
     if (api && "close" in api.terminal && typeof api.terminal.close === "function") {

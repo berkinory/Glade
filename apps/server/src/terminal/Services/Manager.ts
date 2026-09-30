@@ -22,6 +22,7 @@ export class TerminalError extends Schema.TaggedErrorClass<TerminalError>()("Ter
 }) {}
 
 export interface TerminalSessionState {
+  outputSequence: number;
   threadId: string;
   terminalId: string;
   cwd: string;

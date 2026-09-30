@@ -13,6 +13,7 @@ export function usePreloadRouteChunks() {
     void router.loadRouteChunk(router.routesById["/_chat/$threadId"])?.catch(reportPreloadFailure);
 
     const preloadSettings = () => {
+      void import("../components/ThreadTerminalDrawer").catch(reportPreloadFailure);
       void router.loadRouteChunk(router.routesById["/_chat/settings"])?.catch(reportPreloadFailure);
     };
 

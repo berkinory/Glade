@@ -1,4 +1,5 @@
-import { Terminal, type ITheme } from "@xterm/xterm";
+import type { TerminalOutputWriter } from "./terminalImageWriter";
+import type { ITheme } from "@xterm/xterm";
 
 const FALLBACK_MONO_FONT_FAMILY =
   '"JetBrains Mono", "JetBrainsMono NFM", "JetBrainsMono NF", monospace';
@@ -275,6 +276,6 @@ export function terminalThemeFromApp(): ITheme {
   };
 }
 
-export function writeSystemMessage(terminal: Terminal, message: string): void {
+export function writeSystemMessage(terminal: TerminalOutputWriter, message: string): void {
   terminal.write(`\r\n[terminal] ${message}\r\n`);
 }

@@ -1719,6 +1719,7 @@ const makeWsRpcHandlersLayer = () =>
                 const unsubscribe = yield* terminalManager.subscribe((event) => {
                   Effect.runFork(Queue.offer(queue, event).pipe(Effect.asVoid));
                 });
+                yield* Queue.offer(queue, { type: "ready" as const });
                 yield* Effect.addFinalizer(() => Effect.sync(unsubscribe));
               }),
             ),

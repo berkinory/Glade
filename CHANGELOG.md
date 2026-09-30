@@ -25,6 +25,8 @@
 
 ### Improved
 
+- Terminals open faster and load image support only when needed.
+
 - Streaming replies write far less to disk.
 
 - Diffs open faster and stay responsive in large changes.

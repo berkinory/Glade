@@ -1,3 +1,4 @@
+import type { TerminalSessionSnapshot } from "@glade/contracts/terminal/terminal";
 import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
 import { WebglAddon } from "@xterm/addon-webgl";
@@ -7,6 +8,8 @@ import {
 } from "@glade/shared/threads/terminalThreads";
 import { Terminal, type IDisposable } from "@xterm/xterm";
 import type { TerminalLinkMatch } from "../../terminal-links";
+
+import type { TerminalOutputWriter } from "./terminalImageWriter";
 
 interface TerminalRuntimeCallbacks {
   onSessionExited: () => void;
@@ -61,6 +64,7 @@ export interface TerminalRuntimeEntry {
   wrapper: HTMLDivElement;
   container: HTMLDivElement | null;
   terminal: Terminal;
+  output: TerminalOutputWriter & { dispose: () => void };
   fitAddon: FitAddon;
   searchAddon: SearchAddon;
   webglAddon: WebglAddon | null;
@@ -84,6 +88,8 @@ export interface TerminalRuntimeEntry {
   pendingWriteBytes: number;
   linkMatchCache: Map<string, TerminalLinkMatch[]>;
   outputEventVersion: number;
+  awaitingOpenSnapshot: boolean;
+  applyOpenSnapshot: (snapshot: TerminalSessionSnapshot | null) => void;
   snapshotReconcileRequestId: number;
   webglLoadFrame: number | null;
   themeRefreshFrame: number;
