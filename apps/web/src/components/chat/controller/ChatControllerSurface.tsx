@@ -1,4 +1,6 @@
-import { Suspense } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import BranchToolbar from "~/components/BranchToolbar";
 import { resolveWorkingLabel } from "../../ChatView.logic.dispatch";
 import { GladeLogo } from "~/components/GladeLogo";
@@ -19,6 +21,7 @@ import { ProviderHandoffDialog } from "~/components/chat/ProviderHandoffDialog";
 import { ProviderHealthBanner } from "~/components/chat/ProviderHealthBanner";
 import { RateLimitBanner } from "~/components/chat/RateLimitBanner";
 import { ChatThreadFindHost } from "~/components/chat/ThreadFindBar";
+import { useThreadErrorToast } from "~/components/chat/useThreadErrorToast";
 import { TranscriptSelectionActionLayer } from "~/components/chat/TranscriptSelectionActionLayer";
 import {
   CHAT_SURFACE_HEADER_DIVIDER_CLASS_NAME,
@@ -35,6 +38,12 @@ import {
 import { EnvironmentPanel } from "~/components/chat/environment/EnvironmentPanel";
 import { SidebarHeaderTrigger } from "~/components/ui/sidebar";
 import { isElectron } from "~/env";
+import {
+  selectThreadComputerPreviewLayout,
+  selectThreadComputerPreviewSession,
+  useComputerStateStore,
+} from "~/computerStateStore";
+import { stripDiffSearchParams } from "~/diffRouteSearch";
 import { startSelectionChat } from "~/lib/selectionChat";
 import { cn } from "~/lib/utils";
 import { ProjectImportLandingBanner } from "~/projectImport/ProjectImportLandingBanner";
@@ -42,6 +51,7 @@ import { AutomationDialog } from "~/routes/-automationFormDialog";
 import { ChatComposerSurface } from "./ChatComposerSurface";
 import { createChatPresentation } from "./chatPresentation";
 import { ThreadTerminalDrawer } from "./chatViewSupport";
+import { MAX_DISMISSED_PROVIDER_HEALTH_BANNERS } from "./chatViewSupport";
 import type { ChatController } from "./useChatController";
 export function ChatControllerSurface({ controller }: { controller: ChatController }) {
   const {
@@ -78,6 +88,9 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     isInactiveSplitPane,
     handleNewThread,
     expandedImage,
+    setExpandedImage,
+    setDismissedProviderHealthBannerKeys,
+    setDismissedRateLimitBannerKey,
   } = controller.session;
   const {
     onComposerDragEnter,
@@ -115,6 +128,8 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     activeRateLimitStatus,
     isContainerLandingProject,
     runtimeMode,
+    diffEnvironmentPending,
+    activeRateLimitBannerDismissalKey,
   } = controller.workspace;
   const {
     isCenteredEmptyLanding,
@@ -148,6 +163,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     visibleActiveProviderStatus,
     secondaryChromeReady,
     fastModeEnabled,
+    activeProviderHealthBannerDismissalKey,
   } = controller.discovery;
   const {
     lastInvokedScriptByProjectId,
@@ -182,25 +198,98 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     commitTranscriptAssistantSelection,
     closeExpandedImage,
     navigateExpandedImage,
+    runProjectScript,
   } = controller.environment;
   const {
     onToggleRightDock,
     onSplitSurface,
     onMaximizeSurface,
     onChangeThreadInSplitPane,
+    onOpenTurnDiffPanel,
     threadId,
   } = controller.props;
-  const {
-    onRunProjectScriptFromHeader,
-    onNavigateToThread,
-    dismissActiveProviderHealthBanner,
-    dismissActiveRateLimitBanner,
-    mainContentRef,
-    onOpenTurnDiff,
-    onOpenAutomation,
-    onExpandTimelineImage,
-    previewSession,
-  } = controller.surface;
+  const { setThreadError } = controller.composer;
+  const navigate = useNavigate();
+  const previewSession = useComputerStateStore(selectThreadComputerPreviewSession(threadId));
+  const previewLayout = useComputerStateStore(selectThreadComputerPreviewLayout(threadId));
+  const mainContentRef = useRef<HTMLDivElement | null>(null);
+  const [mainContentWidth, setMainContentWidth] = useState(1600);
+
+  useEffect(() => {
+    const element = mainContentRef.current;
+    if (!element) return;
+    const update = () => {
+      const width = element.clientWidth;
+      setMainContentWidth((previous) => (previous === width ? previous : width));
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  const onOpenTurnDiff = useCallback(
+    (turnId: TurnId, filePath?: string) => {
+      if (diffEnvironmentPending) return;
+      if (onOpenTurnDiffPanel) {
+        onOpenTurnDiffPanel(turnId, filePath);
+        return;
+      }
+      void navigate({
+        to: "/$threadId",
+        params: { threadId },
+        search: (previous) => {
+          const rest = stripDiffSearchParams(previous);
+          return filePath
+            ? { ...rest, panel: "diff", diff: "1", diffTurnId: turnId, diffFilePath: filePath }
+            : { ...rest, panel: "diff", diff: "1", diffTurnId: turnId };
+        },
+      });
+    },
+    [diffEnvironmentPending, navigate, onOpenTurnDiffPanel, threadId],
+  );
+
+  const onNavigateToThread = useCallback(
+    (nextThreadId: ThreadId) => {
+      void navigate({
+        to: "/$threadId",
+        params: { threadId: nextThreadId },
+        search: (previous) => stripDiffSearchParams(previous),
+      });
+    },
+    [navigate],
+  );
+
+  const onOpenAutomation = useCallback(
+    (automationId: string) => {
+      void navigate({ to: "/automations/$automationId", params: { automationId } });
+    },
+    [navigate],
+  );
+
+  useThreadErrorToast({
+    threadId: activeThread?.id ?? null,
+    error: activeThread?.error ?? null,
+    onDismiss: () => {
+      if (activeThread) setThreadError(activeThread.id, null);
+    },
+  });
+
+  const dismissActiveProviderHealthBanner = () => {
+    if (!activeProviderHealthBannerDismissalKey) return;
+    setDismissedProviderHealthBannerKeys((current) =>
+      current.includes(activeProviderHealthBannerDismissalKey)
+        ? current
+        : [activeProviderHealthBannerDismissalKey, ...current].slice(
+            0,
+            MAX_DISMISSED_PROVIDER_HEALTH_BANNERS,
+          ),
+    );
+  };
+  const dismissActiveRateLimitBanner = () => {
+    if (activeRateLimitBannerDismissalKey)
+      setDismissedRateLimitBannerKey(activeRateLimitBannerDismissalKey);
+  };
   const {
     automationDraftForm,
     automationDraftOpen,
@@ -286,7 +375,12 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
       </div>
     );
   }
-  const presentation = createChatPresentation(controller, activeThread);
+  const presentation = createChatPresentation(controller, activeThread, {
+    onOpenAutomation,
+    mainContentWidth,
+    previewSession,
+    previewLayout,
+  });
   const {
     activeThreadDisplayTitle,
     environmentHeaderState,
@@ -301,7 +395,12 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     previewBudgetPx,
   } = presentation;
   const composerSection = (
-    <ChatComposerSurface controller={controller} presentation={presentation} />
+    <ChatComposerSurface
+      controller={controller}
+      presentation={presentation}
+      onNavigateToThread={onNavigateToThread}
+      onOpenTurnDiff={onOpenTurnDiff}
+    />
   );
   return (
     <div
@@ -386,7 +485,9 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                 }
               : null
           }
-          onRunProjectScript={onRunProjectScriptFromHeader}
+          onRunProjectScript={(script) => {
+            void runProjectScript(script);
+          }}
           onAddProjectScript={saveProjectScript}
           onUpdateProjectScript={updateProjectScript}
           onDeleteProjectScript={deleteProjectScript}
@@ -597,7 +698,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                     onRespondToAsyncUserInput={onRespondToAsyncUserInput}
                     editableUserMessageId={editableUserMessageId}
                     isRevertingCheckpoint={isRevertingCheckpoint}
-                    onExpandTimelineImage={onExpandTimelineImage}
+                    onExpandTimelineImage={setExpandedImage}
                     followLiveOutput={hasStreamingAssistantText && !isUserScrollDetached}
                     onIsAtEndChange={onIsAtEndChange}
                     onNavigate={onTranscriptNavigate}

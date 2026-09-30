@@ -6,7 +6,6 @@ import { useChatEnvironmentController } from "./useChatEnvironmentController";
 import { useChatProviderController } from "./useChatProviderController";
 import { useChatSessionController } from "./useChatSessionController";
 import { useChatSubmissionController } from "./useChatSubmissionController";
-import { useChatSurfaceController } from "./useChatSurfaceController";
 import { useChatTranscriptController } from "./useChatTranscriptController";
 import { useChatWorkspaceController } from "./useChatWorkspaceController";
 export function useChatController(props: ChatViewProps) {
@@ -51,16 +50,6 @@ export function useChatController(props: ChatViewProps) {
     transcript,
     discovery,
   });
-  const surface = useChatSurfaceController({
-    session,
-    workspace,
-    props,
-    discovery,
-    environment,
-    composer,
-    submission,
-    provider,
-  });
   return {
     props,
     session,
@@ -72,7 +61,6 @@ export function useChatController(props: ChatViewProps) {
     environment,
     actions,
     submission,
-    surface,
   };
 }
 export type ChatController = ReturnType<typeof useChatController>;

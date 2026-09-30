@@ -1,4 +1,6 @@
 import { pendingRequestInstanceKey } from "@glade/shared/threads/threadSummary";
+import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
+import { useCallback } from "react";
 import { ComposerPromptEditor } from "~/components/ComposerPromptEditor";
 import { ChatComposerFooter } from "~/components/chat/ChatComposerFooter";
 import { ComposerBranchMismatchBanner } from "~/components/chat/ComposerBranchMismatchBanner";
@@ -22,6 +24,7 @@ import { ComposerReferenceAttachments } from "~/components/chat/ComposerReferenc
 import { ComposerSubagentStrip } from "~/components/chat/ComposerSubagentStrip";
 import { collectRunningSubagentStripItems } from "~/components/chat/ComposerSubagentStrip.logic";
 import { ContextWindowMeter } from "~/components/chat/ContextWindowMeter";
+import { COMPUTER_CONTROL_HINT_EFFORT } from "~/components/chat/composerComputerControlHint";
 import { WorkflowRunCard } from "~/components/chat/WorkflowRunCard";
 import {
   CHAT_COLUMN_FRAME_CLASS_NAME,
@@ -34,17 +37,24 @@ import { collapseExpandedComposerCursor } from "~/composer-logic";
 import { LoaderCircleIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { proposedPlanTitle } from "~/proposedPlan";
+import { buildNextProviderOptions } from "~/providerModelOptions";
 import { backgroundSubagent, stopSubagent, stopWorkflowTask } from "../chatTaskActions";
+import { useChatThreadContext } from "../ChatThreadContext";
 import type { createChatPresentation } from "./chatPresentation";
 import { COMPOSER_EXTRAS_PANEL_ID } from "./chatViewSupport";
 import type { ChatController } from "./useChatController";
 export function ChatComposerSurface({
   controller,
   presentation,
+  onNavigateToThread,
+  onOpenTurnDiff,
 }: {
   controller: ChatController;
   presentation: ReturnType<typeof createChatPresentation>;
+  onNavigateToThread: (threadId: ThreadId) => void;
+  onOpenTurnDiff: (turnId: TurnId, filePath?: string) => void;
 }) {
+  const { threadId } = useChatThreadContext();
   const {
     secondaryChromeReady,
     shouldRenderChatPaneContent,
@@ -113,6 +123,8 @@ export function ChatComposerSurface({
     planSidebarOpen,
     composerSendState,
     secondaryChromePlaceholderHeight,
+    setComposerDraftProviderModelOptions,
+    updateSettings,
   } = controller.session;
   const {
     onSend,
@@ -124,6 +136,7 @@ export function ChatComposerSurface({
     setThreadGoalPaused,
     clearThreadGoal,
     composerTraitSelection,
+    selectedProviderModelOptions,
     toggleFastMode,
     insertGoalSlashCommandInComposer,
     handleSelectLocalDirectoryMention,
@@ -152,12 +165,33 @@ export function ChatComposerSurface({
     cancelComposerVoiceRecording,
     submitComposerVoiceRecording,
   } = controller.composer;
-  const {
-    onReviewComposerLiveChanges,
-    onNavigateToThread,
-    applyComputerControlEffortHint,
-    dismissComputerControlEffortHint,
-  } = controller.surface;
+  const composerEffortOptionId = composerTraitSelection.primarySelectDescriptor?.id ?? "effort";
+  const { selectedProvider, selectedModelForPickerWithCustomFallback } = controller.provider;
+  const applyComputerControlEffortHint = useCallback(() => {
+    setComposerDraftProviderModelOptions(
+      threadId,
+      selectedProvider,
+      buildNextProviderOptions(selectedProvider, selectedProviderModelOptions, {
+        [composerEffortOptionId]: COMPUTER_CONTROL_HINT_EFFORT,
+      }),
+      { model: selectedModelForPickerWithCustomFallback, persistSticky: true },
+    );
+    updateSettings({ dismissedComputerControlEffortHint: true });
+    scheduleComposerFocus();
+  }, [
+    composerEffortOptionId,
+    scheduleComposerFocus,
+    selectedModelForPickerWithCustomFallback,
+    selectedProvider,
+    selectedProviderModelOptions,
+    setComposerDraftProviderModelOptions,
+    threadId,
+    updateSettings,
+  ]);
+  const dismissComputerControlEffortHint = useCallback(() => {
+    updateSettings({ dismissedComputerControlEffortHint: true });
+    scheduleComposerFocus();
+  }, [scheduleComposerFocus, updateSettings]);
   const {
     workflowRunState,
     composerSubagentStripItems,
@@ -185,7 +219,6 @@ export function ChatComposerSurface({
     selectedComposerMentions,
     hasLiveTurn,
     phase,
-    selectedProvider,
     activeTaskList,
     stripSourceThreadId,
     sidebarProposedPlan,
@@ -209,7 +242,6 @@ export function ChatComposerSurface({
     onInterruptFromStopControl,
   } = controller.actions;
   const { isServerThread, interactionMode, activeCumulativeCostUsd } = controller.workspace;
-  const { threadId } = controller.props;
   const { handleInteractionModeChange, resetInteractionMode, togglePlanSidebar } =
     controller.environment;
   const {
@@ -247,7 +279,11 @@ export function ChatComposerSurface({
                 fileCount={activeTurnLiveDiffState.fileCount}
                 additions={activeTurnLiveDiffState.additions}
                 deletions={activeTurnLiveDiffState.deletions}
-                onReview={activeTurnLiveDiffState.turnId ? onReviewComposerLiveChanges : undefined}
+                onReview={
+                  activeTurnLiveDiffState.turnId
+                    ? () => onOpenTurnDiff(activeTurnLiveDiffState.turnId as TurnId)
+                    : undefined
+                }
               />
             ) : null}
             {renderActiveTaskListCard(showComposerLiveChangesHeader)}

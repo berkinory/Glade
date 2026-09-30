@@ -7,7 +7,9 @@ import { ComposerExtrasTrigger } from "~/components/chat/ComposerExtrasTrigger";
 import {
   computerPreviewBudgetPx,
   computerPreviewCardCaps,
+  type ComputerPreviewSession,
 } from "~/components/chat/ComputerPreviewPopover.logic";
+import type { ComputerPreviewLayout } from "~/computerStateStore";
 import { ProjectPicker } from "~/components/chat/ProjectPicker";
 import { shouldShowComputerControlEffortHint } from "~/components/chat/composerComputerControlHint";
 import {
@@ -28,6 +30,12 @@ import type { ChatController } from "./useChatController";
 export function createChatPresentation(
   controller: ChatController,
   activeThread: NonNullable<ChatController["session"]["activeThread"]>,
+  surface: {
+    onOpenAutomation: (automationId: string) => void;
+    mainContentWidth: number;
+    previewSession: ComputerPreviewSession | undefined;
+    previewLayout: ComputerPreviewLayout | undefined;
+  },
 ) {
   const {
     isComposerExtrasPanelOpen,
@@ -120,7 +128,7 @@ export function createChatPresentation(
     composerTraitSelection,
   } = controller.submission;
   const { scheduleComposerFocus, isVoiceRecording, isVoiceTranscribing } = controller.composer;
-  const { onOpenAutomation, mainContentWidth, previewSession, previewLayout } = controller.surface;
+  const { onOpenAutomation, mainContentWidth, previewSession, previewLayout } = surface;
 
   const activeThreadDisplayTitle = resolveActiveThreadTitle({
     title: activeThread.title,
