@@ -129,7 +129,7 @@ import { ProviderHealth } from "../../provider/Services/ProviderHealth";
 import { ProviderService } from "../../provider/Services/ProviderService";
 import { consumeCodexResetCreditEffect, listProviderUsage } from "../../provider/usage/index";
 import { getProviderUsageSnapshot } from "../../provider/usage/providerUsageSnapshot";
-import { ProfileStatsQuery } from "../../diagnostics/profileStats";
+import { ProfileStatsQuery } from "../../diagnostics/Services/ProfileStatsQuery";
 import { redactSensitiveProcessArgs } from "../../platform/processArgumentRedaction";
 import { ServerEnvironment } from "../../environment/Services/ServerEnvironment";
 import { ServerLifecycleEvents } from "../lifecycle/serverLifecycleEvents";

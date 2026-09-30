@@ -15,7 +15,8 @@ import {
   isManagedCheckpointRefForThread,
   resolveProjectCwdForKind,
 } from "../checkpointing/Utils";
-import { aggregateProfileSkillUsageRows, turnModelSelectionCte } from "./profileStats";
+import { aggregateProfileSkillUsageRows } from "./profileSkillUsage";
+import { turnModelSelectionCte } from "./profileQueryValues";
 import { PROVIDER_COMMAND_REACTOR_CONSUMER } from "../persistence/Services/OrchestrationEventDeliveries";
 import { isProviderIntentEventType } from "../orchestration/providerIntentClassification";
 import { THREAD_RETENTION_COMMAND_ID_PREFIX } from "../orchestration/threadRetention";

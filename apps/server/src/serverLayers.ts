@@ -34,7 +34,7 @@ import { ServerAuthLive } from "./auth/Layers/ServerAuth";
 import { ServerAuthPolicyLive } from "./auth/Layers/ServerAuthPolicy";
 import { ServerSecretStoreLive } from "./auth/Layers/ServerSecretStore";
 import { SessionCredentialServiceLive } from "./auth/Layers/SessionCredentialService";
-import { ProfileStatsQueryLive } from "./diagnostics/profileStats";
+import { ProfileStatsQueryLive } from "./diagnostics/Layers/ProfileStatsQuery";
 import { ProfileStatsArchiveLive } from "./diagnostics/profileStatsArchive";
 import { ServerLifecycleEventsLive } from "./server/lifecycle/serverLifecycleEvents";
 import { ServerRuntimeStartupLive } from "./server/runtime/serverRuntimeStartup";

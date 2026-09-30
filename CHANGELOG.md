@@ -12,6 +12,8 @@
 
 ### Improved
 
+- Profile statistics separate SQL row projection, activity calculations and skill extraction from the query service. Query text, archived totals and response shapes remain unchanged.
+
 - Keybindings use separate compiler, defaults, configuration and service modules. Custom shortcut rules retain their order, conditional siblings and on-disk format across service restarts.
 
 - HTTP route composition imports focused auth, upload, file, static-client, icon, export and lifecycle modules. Route ordering, request authorization and body limits remain unchanged.
