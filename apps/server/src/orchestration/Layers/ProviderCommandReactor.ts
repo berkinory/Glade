@@ -1,673 +1,221 @@
-import type { TaggedFailure } from "../../platform/operationError.ts";
-import { computerActivationMetadata } from "../../computer/computerActivation.ts";
-import { parseComputerInvocation } from "@glade/shared/computer/computerInvocation";
-import { AgentGatewaySessionRegistry } from "../../agentGateway/Services/AgentGatewaySessionRegistry";
-import { ComputerService } from "../../computer/Services/ComputerService";
-import { providerWorkspaceChanged } from "../projectRelocationPaths.ts";
-
 import {
-  type ChatAttachment,
-  type PendingClaudeCacheReview,
-  PROVIDER_SEND_TURN_MAX_INPUT_CHARS,
-  type OrchestrationSession,
-  type OrchestrationProjectShell,
-  type OrchestrationThread,
-} from "@glade/contracts/orchestration/threadEntities";
-import {
-  type ModelSelection,
-  type ProviderInteractionMode,
-  type ProviderReviewTarget,
-  type ProviderStartOptions,
-  type RuntimeMode,
-} from "@glade/contracts/provider/sessionPolicy";
-import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
-import { type OrchestrationRegenerateThreadTitleResult } from "@glade/contracts/orchestration/rpc";
-import { type ClaudeCacheObservation } from "@glade/contracts/provider/claudeCache";
-import {
-  type CheckpointRef,
-  CommandId,
-  EventId,
-  MessageId,
-  ProviderKind,
-  ThreadId,
-  TurnId,
-} from "@glade/contracts/core/baseSchemas";
-import {
-  type ProviderMentionReference,
-  type ProviderSkillReference,
-} from "@glade/contracts/provider/providerDiscovery";
-import { type ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
-import {
-  type ProviderTurnStartResult,
-  type ProviderSession,
-} from "@glade/contracts/provider/provider";
-import {
-  Cache,
-  Cause,
   Duration,
-  Deferred,
   Effect,
-  Exit,
-  Layer,
   Option,
-  Queue,
-  Schema,
-  Scope,
+  Cache,
   Semaphore,
-  ServiceMap,
+  Queue,
+  Cause,
   Stream,
+  Schema,
+  Exit,
+  Scope,
+  Deferred,
+  Layer,
 } from "effect";
-import {
-  buildPromptThreadTitleFallback,
-  buildThreadTitleConversationContext,
-  isGenericChatThreadTitle,
-  isUsableGeneratedThreadTitle,
-} from "@glade/shared/threads/chatThreads";
-import {
-  collectTailTurnIds,
-  resolveTailUserMessageEditTarget,
-} from "@glade/shared/threads/conversationEdit";
-import { isTemporaryWorktreeBranch, WORKTREE_BRANCH_PREFIX } from "@glade/shared/git/git";
-import { claudeSelectionRequiresRestart, resolveApiModelId } from "@glade/shared/provider/model";
-import { assessClaudeCache } from "@glade/shared/provider/claudeCache";
-import { claudeCacheForModel } from "../../provider/claude/claudeCacheObservation.ts";
-import { providerSupportsNativeTurnSteering } from "@glade/shared/provider/providerMetadata";
-import {
-  formatProviderDeliveryBlockDetail,
-  PROVIDER_DELIVERY_BLOCK_SUMMARY,
-} from "@glade/shared/provider/providerDeliveryBlock";
-import { buildStalePendingRequestFailureDetail } from "@glade/shared/threads/threadSummary";
-import { resolveThreadWorkspaceState } from "@glade/shared/threads/threadEnvironment";
-
-import {
-  checkpointRefForThreadMessageStart,
-  checkpointRefForThreadTurn,
-  resolveThreadWorkspaceCwd,
-} from "../../checkpointing/Utils.ts";
-import { CheckpointStore } from "../../checkpointing/Services/CheckpointStore.ts";
-import { AgentGatewayOperationRepository } from "../../agentGateway/Services/AgentGatewayOperationRepository.ts";
-import { GitCore } from "../../git/Services/GitCore.ts";
-import {
-  ProviderAdapterProcessError,
-  ProviderAdapterRequestError,
-  ProviderAdapterValidationError,
-  ProviderServiceError,
-} from "../../provider/core/Errors.ts";
-import { buildInlineSkillInstructions } from "../../provider/core/skillPromptInjection.ts";
-import {
-  PROVIDER_DEBUG_MODE_PROMPT_PREFIX,
-  withProviderDebugModePrompt,
-} from "../../provider/core/debugMode.ts";
-import {
-  activeThreadGoal,
-  buildGoalContinuationInput,
-  providerGoalPromptOverheadChars,
-  withProviderGoalPrompt,
-} from "../../provider/core/goalMode.ts";
-import {
-  appendThreadMentionContextBlocks,
-  resolveThreadMentionPromptProjection,
-  threadMentionContextSuffix,
-} from "../../provider/core/threadMentionContext.ts";
-import {
-  TextGeneration,
-  type BranchNameGenerationInput,
-  type ThreadTitleGenerationInput,
-} from "../../git/Services/TextGeneration.ts";
-import { TextGenerationError } from "../../git/Errors.ts";
-import { resolveTextGenerationInputForSelection } from "../../git/textGenerationSelection.ts";
-import { ProviderService } from "../../provider/Services/ProviderService.ts";
-import { ProviderHealth } from "../../provider/Services/ProviderHealth.ts";
-import { providerDisabledSettingsMessage } from "../../provider/core/enabledProviderAdapter.ts";
-import { resolveProviderDispatchAttachments } from "../../provider/core/providerAttachmentPaths.ts";
-import { OrchestrationEventDeliveryRepositoryLive } from "../../persistence/Layers/OrchestrationEventDeliveries.ts";
-import { ProjectionPendingInteractionRepositoryLive } from "../../persistence/Layers/ProjectionPendingInteractions.ts";
-import { ProviderRuntimeEventRepositoryLive } from "../../persistence/Layers/ProviderRuntimeEvents.ts";
-import {
-  ProviderRuntimeEventRepository,
-  PROVIDER_RUNTIME_INGESTION_CONSUMER,
-} from "../../persistence/Services/ProviderRuntimeEvents.ts";
-import { QueuedTurnPromotionRepositoryLive } from "../../persistence/Layers/QueuedTurnPromotions.ts";
-import { ProjectionPendingInteractionRepository } from "../../persistence/Services/ProjectionPendingInteractions.ts";
+import { WORKTREE_BRANCH_PREFIX, isTemporaryWorktreeBranch } from "@glade/shared/git/git";
+import { OrchestrationEngineService } from "../Services/OrchestrationEngine.ts";
 import {
   OrchestrationEventDeliveryRepository,
   PROVIDER_COMMAND_REACTOR_CONSUMER,
   type ProviderBlockingDeliveryEvidence,
 } from "../../persistence/Services/OrchestrationEventDeliveries.ts";
+import { TurnCheckpointCoordinator } from "../Services/TurnCheckpointCoordinator.ts";
 import { QueuedTurnPromotionRepository } from "../../persistence/Services/QueuedTurnPromotions.ts";
+import { ProjectionSnapshotQuery } from "../Services/ProjectionSnapshotQuery.ts";
+import { ProviderService } from "../../provider/Services/ProviderService.ts";
+import { ComputerService } from "../../computer/Services/ComputerService";
+import { AgentGatewaySessionRegistry } from "../../agentGateway/Services/AgentGatewaySessionRegistry";
+import { ProviderHealth } from "../../provider/Services/ProviderHealth.ts";
+import { ProjectionPendingInteractionRepository } from "../../persistence/Services/ProjectionPendingInteractions.ts";
+import {
+  ProviderRuntimeEventRepository,
+  PROVIDER_RUNTIME_INGESTION_CONSUMER,
+} from "../../persistence/Services/ProviderRuntimeEvents.ts";
+import { CheckpointStore } from "../../checkpointing/Services/CheckpointStore.ts";
+import { GitCore } from "../../git/Services/GitCore.ts";
+import { AgentGatewayOperationRepository } from "../../agentGateway/Services/AgentGatewayOperationRepository.ts";
+import {
+  TextGeneration,
+  type BranchNameGenerationInput,
+  type ThreadTitleGenerationInput,
+} from "../../git/Services/TextGeneration.ts";
+import { ServerSettingsService } from "../../settings/serverSettings.ts";
 import { ManagedAttachmentRepository } from "../../persistence/Services/ManagedAttachments.ts";
 import { ServerConfig } from "../../server/config.ts";
-import { ServerSettingsService } from "../../settings/serverSettings.ts";
-import { providerStartOptionsFromServerSettings } from "../../settings/settingsPatches";
-import { clearWorkspaceIndexCache } from "../../workspace/workspaceEntries.ts";
 import {
-  buildPriorTranscriptBootstrapText,
-  buildHandoffBootstrapText,
-  hasNativeAssistantMessagesBefore,
-  listPriorTranscriptMessages,
-} from "../handoff.ts";
-import { OrchestrationCommandInvariantError, type OrchestrationDispatchError } from "../Errors.ts";
-import { OrchestrationEngineService } from "../Services/OrchestrationEngine.ts";
-import { ProjectionSnapshotQuery } from "../Services/ProjectionSnapshotQuery.ts";
-import {
-  ProviderCommandReactor,
   type ProviderCommandReactorShape,
+  ProviderCommandReactor,
 } from "../Services/ProviderCommandReactor.ts";
 import {
-  isClaimedProviderIntent,
-  isProviderIntentEvent,
+  type ProviderStartOptions,
+  type ModelSelection,
+  type RuntimeMode,
+  type ProviderReviewTarget,
+  type ProviderInteractionMode,
+} from "@glade/contracts/provider/sessionPolicy";
+import {
+  type OrchestrationThread,
+  type OrchestrationProjectShell,
+  type OrchestrationSession,
+  type PendingClaudeCacheReview,
+  type ChatAttachment,
+  PROVIDER_SEND_TURN_MAX_INPUT_CHARS,
+} from "@glade/contracts/orchestration/threadEntities";
+import {
+  resolveThreadWorkspaceCwd,
+  checkpointRefForThreadTurn,
+  checkpointRefForThreadMessageStart,
+} from "../../checkpointing/Utils.ts";
+import {
+  type ProviderIntentEvent,
   isProviderSideEffectIntent,
   isQuarantineExemptProviderIntent,
   isReplaySafeClaimedProviderIntent,
-  type ProviderIntentEvent,
+  isProviderIntentEvent,
+  isClaimedProviderIntent,
 } from "../providerIntentClassification.ts";
-import { deriveTurnStartSession } from "../turnStartSession.ts";
-import { TurnCheckpointCoordinator } from "../Services/TurnCheckpointCoordinator.ts";
+import {
+  ThreadId,
+  TurnId,
+  CommandId,
+  EventId,
+  ProviderKind,
+  type CheckpointRef,
+  MessageId,
+} from "@glade/contracts/core/baseSchemas";
+import { resolveTextGenerationInputForSelection } from "../../git/textGenerationSelection.ts";
+import { providerStartOptionsFromServerSettings } from "../../settings/settingsPatches";
 import { resolveProviderSessionThread as resolveProviderSessionThreadFromProjection } from "../providerSessionThread.ts";
+import {
+  ProviderServiceError,
+  ProviderAdapterValidationError,
+} from "../../provider/core/Errors.ts";
+import { clearWorkspaceIndexCache } from "../../workspace/workspaceEntries.ts";
+import { providerDisabledSettingsMessage } from "../../provider/core/enabledProviderAdapter.ts";
+import { resolveThreadWorkspaceState } from "@glade/shared/threads/threadEnvironment";
+import {
+  type ProviderSession,
+  type ProviderTurnStartResult,
+} from "@glade/contracts/provider/provider";
+import { providerWorkspaceChanged } from "../projectRelocationPaths.ts";
+import { claudeSelectionRequiresRestart, resolveApiModelId } from "@glade/shared/provider/model";
+import {
+  type ProviderSkillReference,
+  type ProviderMentionReference,
+} from "@glade/contracts/provider/providerDiscovery";
+import {
+  providerGoalPromptOverheadChars,
+  activeThreadGoal,
+  buildGoalContinuationInput,
+} from "../../provider/core/goalMode.ts";
+import { parseComputerInvocation } from "@glade/shared/computer/computerInvocation";
+import {
+  resolveThreadMentionPromptProjection,
+  appendThreadMentionContextBlocks,
+  threadMentionContextSuffix,
+} from "../../provider/core/threadMentionContext.ts";
+import { buildInlineSkillInstructions } from "../../provider/core/skillPromptInjection.ts";
+import { resolveProviderDispatchAttachments } from "../../provider/core/providerAttachmentPaths.ts";
+import { computerActivationMetadata } from "../../computer/computerActivation.ts";
+import { claudeCacheForModel } from "../../provider/claude/claudeCacheObservation.ts";
+import { assessClaudeCache } from "@glade/shared/provider/claudeCache";
+import {
+  hasNativeAssistantMessagesBefore,
+  buildHandoffBootstrapText,
+  listPriorTranscriptMessages,
+  buildPriorTranscriptBootstrapText,
+} from "../handoff.ts";
+import {
+  buildPromptThreadTitleFallback,
+  isGenericChatThreadTitle,
+  buildThreadTitleConversationContext,
+  isUsableGeneratedThreadTitle,
+} from "@glade/shared/threads/chatThreads";
+import { providerSupportsNativeTurnSteering } from "@glade/shared/provider/providerMetadata";
+import { deriveTurnStartSession } from "../turnStartSession.ts";
+import type { TaggedFailure } from "../../platform/operationError.ts";
+import { type OrchestrationDispatchError, OrchestrationCommandInvariantError } from "../Errors.ts";
+import { buildStalePendingRequestFailureDetail } from "@glade/shared/threads/threadSummary";
+import {
+  collectTailTurnIds,
+  resolveTailUserMessageEditTarget,
+} from "@glade/shared/threads/conversationEdit";
+import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
+import {
+  PROVIDER_DELIVERY_BLOCK_SUMMARY,
+  formatProviderDeliveryBlockDetail,
+} from "@glade/shared/provider/providerDeliveryBlock";
+import { TextGenerationError } from "../../git/Errors.ts";
+import { type OrchestrationRegenerateThreadTitleResult } from "@glade/contracts/orchestration/rpc";
+import { OrchestrationEventDeliveryRepositoryLive } from "../../persistence/Layers/OrchestrationEventDeliveries.ts";
+import { QueuedTurnPromotionRepositoryLive } from "../../persistence/Layers/QueuedTurnPromotions.ts";
+import { ProjectionPendingInteractionRepositoryLive } from "../../persistence/Layers/ProjectionPendingInteractions.ts";
+import { ProviderRuntimeEventRepositoryLive } from "../../persistence/Layers/ProviderRuntimeEvents.ts";
+import {
+  ProviderCommandReactorConfig,
+  ProviderCommandReactorLiveOptions,
+} from "../Services/ProviderCommandReactorConfig";
+import {
+  HANDLED_TURN_START_KEY_MAX,
+  HANDLED_TURN_START_KEY_TTL,
+  ProviderQueueDrainEvent,
+  serverCommandId,
+  QueuedTurnSourceEvent,
+  turnStartKeyForEvent,
+  PROVIDER_COMMAND_CLAIM_LEASE_MS,
+  awaitInflightClaimSettlement,
+} from "../providerCommands/deliveryClaims";
+import {
+  ProviderContextLifecycleEvidence,
+  ProviderContextLifecycleActivityRecord,
+  ProviderContextLifecycleActivityInput,
+  recapTailPreview,
+  providerContextLifecycleSummary,
+  PROVIDER_CONTEXT_LIFECYCLE_ACTIVITY_KIND,
+  DEFAULT_RUNTIME_MODE,
+  claudeCacheReviewCoversObservation,
+  ProviderContextLifecycleReason,
+  sameClaudeCacheContext,
+  LOST_CLAUDE_COMPACTION_ERROR,
+} from "../providerCommands/contextLifecycle";
+import {
+  isRollbackStillInProgressError,
+  isStaleClaudeResumeError,
+  InteractionResponseEvent,
+  isUnavailableInteractionRuntime,
+  isUnknownPendingApprovalRequestError,
+  interactionFailureSettlementStatus,
+  isUnknownPendingUserInputRequestError,
+} from "../providerCommands/interactionPolicy";
+import {
+  ProviderCommandExecutionError,
+  providerFailureMessage,
+  classifyProviderAttemptOutcome,
+  runBoundedProviderCall,
+  PROVIDER_COMMAND_INTERRUPT_TIMEOUT,
+  PROVIDER_COMMAND_STOP_TIMEOUT,
+  ProviderAttemptOutcome,
+  PROVIDER_COMMAND_SAFE_RETRY_LIMIT,
+  PROVIDER_COMMAND_SAFE_RETRY_DELAY,
+  isSafeLegacyProviderBlocker,
+  PROVIDER_COMMAND_EVENT_TIMEOUT,
+} from "../providerCommands/providerCallPolicy";
+import {
+  debugModePromptOverheadChars,
+  availableThreadMentionContextChars,
+  PROVIDER_INPUT_SAFETY_MARGIN_CHARS,
+  withProviderThreadStatePrompts,
+  normalizeSkillMentionTextForProvider,
+  providerPromptOverflowIssue,
+  toNonEmptyProviderInput,
+  availableProviderContextChars,
+  BootstrapContextSelection,
+  wrapProviderContext,
+  attachmentTitleSeed,
+} from "../providerCommands/inputProjection";
 
-class ProviderCommandExecutionError extends Error {
-  readonly _tag = "ProviderCommandExecutionError";
-}
-
-type ProviderQueueDrainEvent = Extract<
-  ProviderRuntimeEvent,
-  {
-    type: "turn.completed" | "turn.aborted";
-  }
->;
-
-type QueuedTurnSourceEvent =
-  | Extract<ProviderIntentEvent, { type: "thread.turn-queued" }>
-  | Extract<ProviderIntentEvent, { type: "thread.turn-start-requested" }>;
-
-type InteractionResponseEvent = Extract<
-  ProviderIntentEvent,
-  {
-    type: "thread.approval-response-requested" | "thread.user-input-response-requested";
-  }
->;
-
-type ProviderAttemptOutcome =
-  | { readonly _tag: "accepted" }
-  | { readonly _tag: "rejected"; readonly detail: string }
-  | { readonly _tag: "safe_retry"; readonly detail: string }
-  | { readonly _tag: "uncertain"; readonly detail: string };
-
-export function classifyProviderAttemptOutcome(
-  exit: Exit.Exit<void, unknown>,
-): ProviderAttemptOutcome {
-  if (Exit.isSuccess(exit)) return { _tag: "accepted" };
-  const detail = Cause.pretty(exit.cause);
-
-  if (exit.cause.reasons.length !== 1) return { _tag: "uncertain", detail };
-  const failure = Cause.findErrorOption(exit.cause);
-  if (Option.isNone(failure)) return { _tag: "uncertain", detail };
-
-  const tag = (failure.value as { readonly _tag?: string })._tag;
-  switch (tag) {
-    case "ProviderAdapterValidationError":
-    case "ProviderAdapterSessionNotFoundError":
-    case "ProviderAdapterSessionClosedError":
-    case "ProviderValidationError":
-    case "ProviderUnsupportedError":
-    case "ProviderSessionNotFoundError":
-      return { _tag: "rejected", detail };
-    case "ProviderAdapterProcessError":
-      return (failure.value as ProviderAdapterProcessError).reason === "startup-failed"
-        ? { _tag: "rejected", detail }
-        : { _tag: "uncertain", detail };
-    case "PersistenceSqlError":
-    case "PersistenceDecodeError":
-      return { _tag: "safe_retry", detail };
-    default:
-      return { _tag: "uncertain", detail };
-  }
-}
-
-function providerFailureMessage(cause: Cause.Cause<unknown>): string {
-  const failure = Option.getOrUndefined(Cause.findErrorOption(cause));
-  const message =
-    Schema.is(ProviderAdapterProcessError)(failure) && failure.detail.trim()
-      ? failure.detail
-      : failure instanceof Error && failure.message.trim()
-        ? failure.message
-        : Cause.pretty(cause);
-  return message.split(/\r?\n/u, 1)[0]?.trim() || "Provider request failed.";
-}
-
-type BoundedProviderCallResult<E> =
-  | { readonly _tag: "ok" }
-  | { readonly _tag: "timeout"; readonly detail: string }
-  | {
-      readonly _tag: "failed";
-      readonly outcome: Exclude<ProviderAttemptOutcome, { readonly _tag: "accepted" }>;
-      readonly cause: Cause.Cause<E>;
-    };
-
-// Runs a provider call under a hard deadline and reduces it to a decision. A call that never
-// returns cannot simply be awaited here: the caller holds the reactor's single delivery permit, so
-// waiting forever stalls every thread. Interruption is re-raised untouched so shutdown still
-// cancels cleanly.
-const runBoundedProviderCall = <E, R>(input: {
-  readonly label: string;
-  readonly timeout: Duration.Duration;
-  readonly call: Effect.Effect<unknown, E, R>;
-}): Effect.Effect<BoundedProviderCallResult<E>, E, R> =>
-  Effect.suspend(() => {
-    let timedOut = false;
-    return input.call.pipe(
-      Effect.timeoutOption(input.timeout),
-      Effect.flatMap((result) =>
-        Effect.sync(() => {
-          timedOut = Option.isNone(result);
-        }),
-      ),
-      Effect.exit,
-      Effect.flatMap(
-        (exit): Effect.Effect<BoundedProviderCallResult<E>, E> =>
-          Exit.isSuccess(exit)
-            ? Effect.succeed(
-                timedOut
-                  ? {
-                      _tag: "timeout",
-                      detail: `${input.label} did not respond within ${Duration.toMillis(input.timeout)}ms.`,
-                    }
-                  : { _tag: "ok" },
-              )
-            : Cause.hasInterruptsOnly(exit.cause)
-              ? Effect.failCause(exit.cause)
-              : Effect.sync((): BoundedProviderCallResult<E> => {
-                  const outcome = classifyProviderAttemptOutcome(exit);
-                  return {
-                    _tag: "failed",
-
-                    outcome:
-                      outcome._tag === "accepted"
-                        ? { _tag: "uncertain", detail: Cause.pretty(exit.cause) }
-                        : outcome,
-                    cause: exit.cause,
-                  };
-                }),
-      ),
-    );
-  });
-
-export function isSafeLegacyProviderBlocker(lastError: string | null): boolean {
-  const normalized = lastError?.toLowerCase() ?? "";
-  return (
-    normalized.includes("stdin closed before the frame was written") ||
-    (normalized.includes("thread/rollback") && normalized.includes("unknown variant"))
-  );
-}
-
-function toNonEmptyProviderInput(value: string | undefined): string | undefined {
-  const normalized = value?.trim();
-  return normalized && normalized.length > 0 ? normalized : undefined;
-}
-
-function normalizeSkillMentionTextForProvider(input: {
-  readonly provider: ProviderKind;
-  readonly messageText: string;
-  readonly skills?: ReadonlyArray<ProviderSkillReference>;
-}): string {
-  if (input.provider !== "codex" || !input.skills || input.skills.length === 0) {
-    return input.messageText;
-  }
-
-  let nextText = input.messageText;
-  for (const skill of input.skills) {
-    const escapedName = skill.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    nextText = nextText.replace(
-      new RegExp(`(^|\\s)/${escapedName}(?=\\s|$)`, "gi"),
-      `$1$${skill.name}`,
-    );
-  }
-  return nextText;
-}
-
-function attachmentTitleSeed(attachment: ChatAttachment | undefined): string {
-  if (!attachment) {
-    return "";
-  }
-  if (attachment.type === "image" || attachment.type === "file") {
-    return attachment.name;
-  }
-  return attachment.text.trim();
-}
-
-const serverCommandId = (tag: string): CommandId =>
-  CommandId.makeUnsafe(`server:${tag}:${crypto.randomUUID()}`);
-
-const PROVIDER_CONTEXT_LIFECYCLE_ACTIVITY_KIND = "provider.context.changed";
-const SESSION_CONTEXT_RECAP_PREVIEW_MAX_CHARS = 600;
-
-type ProviderContextLifecycleReason =
-  | "fresh-session"
-  | "interrupt-escalation"
-  | "native-history-unavailable"
-  | "native-resume-failed";
-
-interface ProviderContextLifecycleEvidence {
-  readonly nativeHistory: "available" | "unavailable";
-  readonly recapText: string | null;
-  readonly reason: ProviderContextLifecycleReason;
-  readonly sessionRestarted: boolean;
-}
-
-interface ProviderContextLifecycleActivityInput {
-  readonly threadId: ThreadId;
-  readonly turnId: TurnId;
-  readonly provider: ProviderKind;
-  readonly evidence: ProviderContextLifecycleEvidence;
-  readonly createdAt: string;
-  readonly completeDurablePriorTranscript?: boolean;
-}
-
-interface ProviderContextLifecycleActivityRecord {
-  readonly threadId: ThreadId;
-  readonly turnId: TurnId;
-  readonly provider: ProviderKind;
-  readonly nativeHistory: "available" | "unavailable";
-  readonly sessionRestarted: boolean;
-  readonly restartReason: ProviderContextLifecycleReason;
-  readonly recapInjected: boolean;
-  readonly recapCharacters: number;
-  readonly recapPreview: string | null;
-  readonly recapPreviewTruncated: boolean;
-  readonly summary: string;
-  readonly createdAt: string;
-  readonly completeDurablePriorTranscript: boolean;
-}
-
-function recapTailPreview(recapText: string): string {
-  const normalized = recapText.trim();
-  if (normalized.length <= SESSION_CONTEXT_RECAP_PREVIEW_MAX_CHARS) {
-    return normalized;
-  }
-  return `…${normalized.slice(-(SESSION_CONTEXT_RECAP_PREVIEW_MAX_CHARS - 1)).trimStart()}`;
-}
-
-function providerContextLifecycleSummary(evidence: ProviderContextLifecycleEvidence): string {
-  if (evidence.reason === "interrupt-escalation") {
-    return evidence.recapText !== null
-      ? "The turn could not be stopped cleanly, so the session was restarted and your message included a summary."
-      : "The turn could not be stopped cleanly, so the session was restarted.";
-  }
-  if (evidence.recapText !== null && evidence.nativeHistory === "unavailable") {
-    return "The session's history was lost, so the model continues from a summary.";
-  }
-  if (evidence.recapText !== null && evidence.sessionRestarted) {
-    return "The session was restarted, so your message included a summary.";
-  }
-  if (evidence.recapText !== null) {
-    return "Your message included a summary while the session recovered its context.";
-  }
-  return evidence.sessionRestarted
-    ? "The session restarted without its previous history."
-    : "The session's history was unavailable for this turn.";
-}
-
-const turnStartKeyForEvent = (event: ProviderIntentEvent): string =>
-  event.commandId !== null ? `command:${event.commandId}` : `event:${event.eventId}`;
-
-const sameClaudeCacheContext = (
-  left: ClaudeCacheObservation,
-  right: ClaudeCacheObservation,
-): boolean =>
-  // A newer local observation does not revoke consent. Changed size or native response evidence can
-  // change the expense the user agreed to and must match.
-  left.nativeSessionId === right.nativeSessionId &&
-  left.lifecycleGeneration === right.lifecycleGeneration &&
-  left.model === right.model &&
-  left.contextTokens === right.contextTokens &&
-  left.lastResponseAt === right.lastResponseAt;
-
-const claudeCacheReviewCoversObservation = (
-  review: PendingClaudeCacheReview,
-  observation: ClaudeCacheObservation,
-): boolean => {
-  if (sameClaudeCacheContext(review.assessment, observation)) return true;
-
-  return (
-    (review.status === "compacting" || review.status === "uncertain") &&
-    review.compactionTurnId !== undefined &&
-    review.assessment.nativeSessionId === observation.nativeSessionId &&
-    review.assessment.lifecycleGeneration === observation.lifecycleGeneration &&
-    review.assessment.model === observation.model &&
-    review.assessment.contextTokens !== undefined &&
-    observation.contextTokens !== undefined &&
-    observation.contextTokens <= review.assessment.contextTokens
-  );
-};
-
-const LOST_CLAUDE_COMPACTION_ERROR =
-  "Compaction completion was not recorded. The saved message remains held; compaction was not retried.";
-
-const HANDLED_TURN_START_KEY_MAX = 10_000;
-const HANDLED_TURN_START_KEY_TTL = Duration.minutes(30);
-const PROVIDER_COMMAND_CLAIM_LEASE_MS = 30_000;
-
-const PROVIDER_COMMAND_CLAIM_SETTLEMENT_POLL_MS = 1_000;
-
-interface ProviderCommandClaimSnapshot {
-  readonly state: string;
-  readonly claimOwner?: string | null;
-  readonly claimExpiresAt?: string | null;
-}
-
-// The wait never exceeds the caller's deadline and never steals work: it only observes, returning
-// the latest snapshot for the caller to handle through the existing settled/ expired paths. Failed
-// reads keep waiting on the last known snapshot so a transient store error degrades to today's
-// full-lease wait, not a wrong turn.
-function awaitInflightClaimSettlement<TClaim extends ProviderCommandClaimSnapshot>(input: {
-  readonly readClaim: () => Effect.Effect<TClaim | undefined, never>;
-  readonly deadlineMs: number;
-  readonly pollIntervalMs?: number;
-}): Effect.Effect<TClaim | undefined> {
-  const pollIntervalMs = Math.max(
-    0,
-    input.pollIntervalMs ?? PROVIDER_COMMAND_CLAIM_SETTLEMENT_POLL_MS,
-  );
-  const startedAt = Date.now();
-  const check = (): Effect.Effect<TClaim | undefined> =>
-    Effect.flatMap(input.readClaim(), (snapshot) => {
-      if (!snapshot || snapshot.state !== "inflight") {
-        return Effect.succeed(snapshot);
-      }
-      const expiresAt = Date.parse(snapshot.claimExpiresAt ?? "");
-      const recordRemainingMs = Number.isFinite(expiresAt) ? expiresAt - Date.now() : 0;
-      const budgetRemainingMs = input.deadlineMs - (Date.now() - startedAt);
-      const remainingMs = Math.min(Math.max(0, recordRemainingMs), Math.max(0, budgetRemainingMs));
-      if (remainingMs <= 0) {
-        return Effect.succeed(snapshot);
-      }
-      return Effect.flatMap(
-        Effect.sleep(Duration.millis(Math.min(remainingMs, pollIntervalMs))),
-        () => check(),
-      );
-    });
-  return check();
-}
-const PROVIDER_COMMAND_SAFE_RETRY_LIMIT = 3;
-const PROVIDER_COMMAND_SAFE_RETRY_DELAY = Duration.millis(50);
-// Every provider intent runs under a single process-wide delivery lock, so an unbounded provider
-// call does not stall one thread — it stalls the reactor, which back-pressures the orchestration
-// event PubSub and eventually times out every dispatched command. These deadlines make "hung"
-// degrade into a normal terminal delivery failure instead of a process-wide deadlock.
-const PROVIDER_COMMAND_INTERRUPT_TIMEOUT = Duration.seconds(10);
-const PROVIDER_COMMAND_STOP_TIMEOUT = Duration.seconds(15);
-const PROVIDER_COMMAND_EVENT_TIMEOUT = Duration.seconds(120);
 const GATEWAY_OPERATION_COMPLETION_WAIT_TIMEOUT = Duration.seconds(120);
-const PROVIDER_INPUT_SAFETY_MARGIN_CHARS = 1_000;
-const THREAD_MENTION_CONTEXT_SUFFIX_PREFIX_CHARS = 2;
-const DEFAULT_RUNTIME_MODE: RuntimeMode = "full-access";
-type ProviderContextTag = "handoff_context" | "thread_context";
-
-interface BootstrapContextSelection {
-  readonly tag: ProviderContextTag;
-  readonly contextText: string;
-  readonly wrapLatestUserMessage: boolean;
-}
-
-function wrapProviderContext(input: {
-  readonly tag: ProviderContextTag;
-  readonly contextText: string;
-  readonly messageText: string;
-  readonly wrapLatestUserMessage: boolean;
-}): string {
-  const messageSection = input.wrapLatestUserMessage
-    ? `<latest_user_message>\n${input.messageText}\n</latest_user_message>`
-    : input.messageText;
-  return `<${input.tag}>\n${input.contextText}\n</${input.tag}>\n\n${messageSection}`;
-}
-
-function availableProviderContextChars(input: {
-  readonly tag: ProviderContextTag;
-  readonly messageText: string;
-  readonly wrapLatestUserMessage: boolean;
-  readonly reservedChars?: number;
-}): number {
-  return Math.max(
-    0,
-    PROVIDER_SEND_TURN_MAX_INPUT_CHARS -
-      wrapProviderContext({ ...input, contextText: "" }).length -
-      (input.reservedChars ?? 0),
-  );
-}
-
-function availableThreadMentionContextChars(messageText: string, reservedChars = 0): number {
-  return Math.max(
-    0,
-    PROVIDER_SEND_TURN_MAX_INPUT_CHARS -
-      messageText.length -
-      PROVIDER_INPUT_SAFETY_MARGIN_CHARS -
-      THREAD_MENTION_CONTEXT_SUFFIX_PREFIX_CHARS -
-      reservedChars,
-  );
-}
-
-function debugModePromptOverheadChars(
-  interactionMode: ProviderInteractionMode | undefined,
-): number {
-  return interactionMode === "debug" ? PROVIDER_DEBUG_MODE_PROMPT_PREFIX.length + 2 : 0;
-}
-
-function withProviderThreadStatePrompts(input: {
-  readonly text: string;
-  readonly interactionMode?: ProviderInteractionMode | undefined;
-  readonly goal?: string | undefined;
-}): string {
-  return withProviderGoalPrompt({
-    goal: input.goal,
-    text: withProviderDebugModePrompt({
-      interactionMode: input.interactionMode,
-      text: input.text,
-    }),
-  });
-}
-
-function providerPromptOverflowIssue(goalPromptOverheadChars: number): string {
-  return goalPromptOverheadChars > 0
-    ? "The latest message is too long to include the persistent thread goal. Shorten the message and retry."
-    : "The latest message is too long to include Glade Debug mode instructions. Shorten the message and retry.";
-}
-
-function isUnavailableInteractionRuntime(cause: Cause.Cause<ProviderServiceError>): boolean {
-  return Option.match(Cause.findErrorOption(cause), {
-    onNone: () => false,
-    onSome: (error) =>
-      (error._tag === "ProviderValidationError" && error.reason !== undefined) ||
-      error._tag === "ProviderAdapterSessionNotFoundError" ||
-      error._tag === "ProviderAdapterSessionClosedError",
-  });
-}
-
-function isUnknownPendingApprovalRequestError(cause: Cause.Cause<ProviderServiceError>): boolean {
-  const error = Cause.squash(cause);
-  if (Schema.is(ProviderAdapterRequestError)(error)) {
-    const detail = error.detail.toLowerCase();
-    return (
-      detail.includes("unknown pending approval request") ||
-      detail.includes("unknown pending permission request")
-    );
-  }
-  const message = Cause.pretty(cause);
-  return (
-    message.includes("unknown pending approval request") ||
-    message.includes("unknown pending permission request")
-  );
-}
-
-function isUnknownPendingUserInputRequestError(cause: Cause.Cause<ProviderServiceError>): boolean {
-  const error = Cause.squash(cause);
-  if (Schema.is(ProviderAdapterRequestError)(error)) {
-    return error.detail.toLowerCase().includes("unknown pending user-input request");
-  }
-  return Cause.pretty(cause).toLowerCase().includes("unknown pending user-input request");
-}
-
-function isClaudeContextWindowUserInputRejection(error: ProviderServiceError): boolean {
-  if (
-    error._tag !== "ProviderAdapterRequestError" ||
-    error.provider !== "claudeAgent" ||
-    error.method !== "item/tool/respondToUserInput"
-  ) {
-    return false;
-  }
-  const detail = error.detail.toLowerCase();
-  return (
-    detail.includes("context window") ||
-    detail.includes("context limit") ||
-    detail.includes("context length") ||
-    detail.includes("context_length_exceeded") ||
-    detail.includes("prompt is too long") ||
-    detail.includes("input_length and max_tokens")
-  );
-}
-
-function interactionFailureSettlementStatus(
-  cause: Cause.Cause<ProviderServiceError>,
-  isUnknownPendingRequest: boolean,
-): "retryable" | "uncertain" {
-  return Option.match(Cause.findErrorOption(cause), {
-    onNone: () => "uncertain" as const,
-    onSome: (error) => {
-      if (
-        (error._tag === "ProviderAdapterRequestError" &&
-          error.method === "permission.reply.acknowledge") ||
-        isClaudeContextWindowUserInputRejection(error)
-      ) {
-        return "retryable" as const;
-      }
-      return isUnknownPendingRequest ||
-        error._tag === "ProviderAdapterRequestError" ||
-        error._tag === "ProviderAdapterProcessError"
-        ? ("uncertain" as const)
-        : ("retryable" as const);
-    },
-  });
-}
-
-function isStaleClaudeResumeError(error: unknown): boolean {
-  if (Schema.is(ProviderAdapterRequestError)(error)) {
-    return (
-      error.provider === "claudeAgent" &&
-      error.detail.toLowerCase().includes("no conversation found with session id")
-    );
-  }
-  return String(error).toLowerCase().includes("no conversation found with session id");
-}
-
-function isRollbackStillInProgressError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  const normalized = message.toLowerCase();
-  return (
-    (normalized.includes("rollback") || normalized.includes("revert")) &&
-    (normalized.includes("turn is in progress") ||
-      normalized.includes("turn in progress") ||
-      normalized.includes("active turn"))
-  );
-}
 
 function buildGeneratedWorktreeBranchName(raw: string): string {
   const normalized = raw
@@ -689,19 +237,6 @@ function buildGeneratedWorktreeBranchName(raw: string): string {
   const safeFragment = branchFragment.length > 0 ? branchFragment : "update";
   return `${WORKTREE_BRANCH_PREFIX}/${safeFragment}`;
 }
-
-export interface ProviderCommandReactorLiveOptions {
-  readonly commandEventTimeout?: Duration.Duration;
-}
-
-interface ProviderCommandReactorConfigShape {
-  readonly commandEventTimeout: Duration.Duration;
-}
-
-class ProviderCommandReactorConfig extends ServiceMap.Service<
-  ProviderCommandReactorConfig,
-  ProviderCommandReactorConfigShape
->()("glade/orchestration/Layers/ProviderCommandReactorConfig") {}
 
 const make = Effect.gen(function* () {
   const { commandEventTimeout } = yield* ProviderCommandReactorConfig;

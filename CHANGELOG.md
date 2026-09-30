@@ -12,6 +12,8 @@
 
 ### Improved
 
+- Provider command deadlines, delivery-claim observation, context budgets and interaction failure decisions have focused policy modules. Retry classifications and persisted delivery behavior remain unchanged.
+
 - Claude adapter behavior tests are grouped by permissions, streaming, task and process lifecycles, session history, token accounting, configuration and plan mode, with shared SDK fixtures.
 
 - Claude session orchestration uses focused controllers for SDK hooks, messages, turn completion, human interactions, discovery and process teardown. The adapter Layer retains resource ownership and its public API.

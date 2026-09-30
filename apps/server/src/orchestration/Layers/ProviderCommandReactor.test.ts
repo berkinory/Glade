@@ -87,8 +87,8 @@ import { OrchestrationProjectionSnapshotQueryLive } from "./ProjectionSnapshotQu
 import {
   classifyProviderAttemptOutcome,
   isSafeLegacyProviderBlocker,
-  makeProviderCommandReactorLive,
-} from "./ProviderCommandReactor.ts";
+} from "../providerCommands/providerCallPolicy.ts";
+import { makeProviderCommandReactorLive } from "./ProviderCommandReactor.ts";
 import {
   OrchestrationEngineService,
   type OrchestrationEngineShape,
