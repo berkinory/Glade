@@ -284,13 +284,20 @@ export default function DiffPanel({
         : resolveConversationCacheScope(conversationCheckpointTurnCount),
     [conversationCheckpointTurnCount, orderedTurnDiffSummaries.length, selectedTurn],
   );
+  const liveDiffSummary = selectedTurn ?? orderedTurnDiffSummaries[0];
+  const isLiveCheckpointDiff = liveDiffSummary?.status === "missing";
   const activeCheckpointDiffQuery = useQuery(
     checkpointDiffQueryOptions({
       threadId: activeThreadId,
       fromTurnCount: activeCheckpointRange?.fromTurnCount ?? null,
       toTurnCount: activeCheckpointRange?.toTurnCount ?? null,
       ignoreWhitespace: diffIgnoreWhitespace,
-      cacheScope: selectedTurn ? `turn:${selectedTurn.turnId}` : conversationCacheScope,
+      cacheScope: selectedTurn
+        ? `turn:${selectedTurn.turnId}:${selectedTurn.status === "missing" ? selectedTurn.completedAt : "settled"}`
+        : isLiveCheckpointDiff
+          ? `${conversationCacheScope}:${liveDiffSummary.completedAt}`
+          : conversationCacheScope,
+      live: isLiveCheckpointDiff,
       enabled:
         diffQueriesEnabled && isGitRepo && !diffEnvironmentPending && diffViewKind === "turn",
     }),

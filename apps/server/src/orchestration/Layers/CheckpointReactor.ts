@@ -646,13 +646,24 @@ const make = Effect.gen(function* () {
       createdAt: event.createdAt,
       workspaceInitializedDuringTurn,
     });
+    yield* checkpointStore
+      .deleteCheckpointRefs({
+        cwd: checkpointCwd,
+        checkpointRefs: [checkpointRefForThreadTurnLive(event.threadId, turnId)],
+      })
+      .pipe(
+        Effect.catch((error) =>
+          Effect.logWarning("live checkpoint cleanup failed", {
+            threadId: event.threadId,
+            detail: error.message,
+          }),
+        ),
+      );
   });
 
-  // Snapshots the working tree into a throwaway ref (isolated temp index — the real index/worktree
-  // are untouched), diffs it against the turn-start baseline, and dispatches a provider-diff
-  // placeholder so the "files changed" strip shows live +N/-M.
+  // Live snapshots use an isolated index and remain readable until the settled checkpoint replaces them.
   const captureLiveTurnDiff = Effect.fnUntraced(function* (
-    event: Extract<ProviderRuntimeEvent, { type: "item.completed" }>,
+    event: Extract<ProviderRuntimeEvent, { type: "item.completed" | "item.updated" }>,
   ) {
     const turnId = toTurnId(event.turnId);
     if (!turnId) {
@@ -709,14 +720,8 @@ const make = Effect.gen(function* () {
         ignoreWhitespace: false,
       })
       .pipe(Effect.catch(() => Effect.succeed("")));
-    yield* checkpointStore
-      .deleteCheckpointRefs({ cwd: checkpointCwd, checkpointRefs: [liveCheckpointRef] })
-      .pipe(Effect.catch(() => Effect.void));
 
     const files = yield* parseCheckpointFilesFromUnifiedDiff(diff);
-    if (files.length === 0) {
-      return;
-    }
 
     const maxTurnCount = thread.checkpoints.reduce(
       (max, checkpoint) => Math.max(max, checkpoint.checkpointTurnCount),
@@ -726,19 +731,20 @@ const make = Effect.gen(function* () {
       ? existingForTurn.checkpointTurnCount
       : maxTurnCount + 1;
 
+    const capturedAt = new Date().toISOString();
     yield* orchestrationEngine.dispatch({
       type: "thread.turn.diff.complete",
       commandId: serverCommandId("checkpoint-live-turn-diff"),
       threadId: thread.id,
       turnId,
-      completedAt: event.createdAt,
+      completedAt: capturedAt,
 
-      checkpointRef: CheckpointRef.makeUnsafe(`provider-diff:${event.eventId}`),
+      checkpointRef: liveCheckpointRef,
       status: "missing",
       files,
       assistantMessageId: undefined,
       checkpointTurnCount,
-      createdAt: event.createdAt,
+      createdAt: capturedAt,
     });
   });
 
@@ -1423,7 +1429,7 @@ const make = Effect.gen(function* () {
       return;
     }
 
-    if (event.type === "item.completed") {
+    if (event.type === "item.completed" || event.type === "item.updated") {
       liveDiffScheduledThreads.delete(event.threadId);
       yield* captureLiveTurnDiff(event);
       return;
@@ -1490,13 +1496,19 @@ const make = Effect.gen(function* () {
           if (event.type === "turn.started" || event.type === "turn.completed") {
             return worker.enqueue({ source: "runtime", event });
           }
-          if (event.type === "item.completed" && event.payload.itemType === "file_change") {
+          if (
+            (event.type === "item.completed" || event.type === "item.updated") &&
+            event.payload.itemType === "file_change"
+          ) {
             return Effect.gen(function* () {
               if (liveDiffScheduledThreads.has(event.threadId)) {
                 return;
               }
 
-              if (yield* supportsLiveTurnDiffPatch(event.provider)) {
+              if (
+                event.type === "item.completed" &&
+                (yield* supportsLiveTurnDiffPatch(event.provider))
+              ) {
                 return;
               }
               liveDiffScheduledThreads.add(event.threadId);

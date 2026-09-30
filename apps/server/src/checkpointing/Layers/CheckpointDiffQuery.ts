@@ -14,6 +14,7 @@ import {
   checkpointRefForThreadTurn,
   checkpointRefForThreadTurnInManagedFamily,
   checkpointRefForThreadTurnStart,
+  checkpointRefForThreadTurnLive,
   checkpointRefForThreadTurnStartInManagedFamily,
   resolveThreadWorkspaceCwd,
 } from "../Utils.ts";
@@ -200,7 +201,11 @@ const make = Effect.gen(function* () {
       }
 
       const toCheckpointRef = toCheckpoint.checkpointRef;
-      if (toCheckpoint.status === "missing") {
+      if (
+        toCheckpoint.status === "missing" &&
+        toCheckpoint.checkpointRef !==
+          checkpointRefForThreadTurnLive(input.threadId, toCheckpoint.turnId)
+      ) {
         return yield* new CheckpointUnavailableError({
           threadId: input.threadId,
           turnCount: input.toTurnCount,
