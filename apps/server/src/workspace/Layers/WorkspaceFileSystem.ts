@@ -89,7 +89,13 @@ async function readCurrentFileVersion(
   });
   try {
     const beforeReadStat = await handle.stat({ bigint: true });
-    const buffer = Buffer.alloc(DEFAULT_READ_FILE_MAX_BYTES + 1);
+    const buffer = Buffer.allocUnsafe(
+      Number(
+        beforeReadStat.size < BigInt(DEFAULT_READ_FILE_MAX_BYTES)
+          ? beforeReadStat.size
+          : BigInt(DEFAULT_READ_FILE_MAX_BYTES),
+      ) + 1,
+    );
     const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
     const afterReadStat = await handle.stat({ bigint: true });
     const pathStat = await NodeFs.stat(filePath, { bigint: true }).catch((cause: unknown) => {
@@ -383,7 +389,7 @@ const makeWorkspaceFileSystem = Effect.gen(function* () {
             if (readLength === 0) {
               return { bytes: Buffer.alloc(0), fileSize: fileInfo.size };
             }
-            const buffer = Buffer.alloc(readLength);
+            const buffer = Buffer.allocUnsafe(readLength);
             const { bytesRead } = await handle.read(buffer, 0, readLength, 0);
             return { bytes: buffer.subarray(0, bytesRead), fileSize: fileInfo.size };
           } finally {
