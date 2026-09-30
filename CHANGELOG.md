@@ -12,6 +12,8 @@
 
 ### Improved
 
+- Provider activity projection separates bounded JSON payloads, context-window calculations and tool approval presentation. Credential redaction stays at the approval-display boundary.
+
 - Orchestration command decisions use domain handlers for spaces, projects, thread lifecycle, turns, conversation edits and transcript updates. Invariant checks and emitted event ordering retain their existing behavior.
 
 - Profile statistics separate SQL row projection, activity calculations and skill extraction from the query service. Query text, archived totals and response shapes remain unchanged.

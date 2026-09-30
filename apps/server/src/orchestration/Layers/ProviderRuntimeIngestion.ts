@@ -108,9 +108,9 @@ import {
   providerActivityUpdateDedupeKey,
   providerActivityUpdateFingerprint,
   readableReasoningDetail,
-  runtimePayloadRecord,
   runtimeTurnState,
-} from "../providerRuntimeActivityProjection.ts";
+} from "../runtimeActivities/runtimeActivityProjection.ts";
+import { runtimePayloadRecord } from "../runtimeActivities/activityPayloads.ts";
 
 const providerTurnKey = (threadId: ThreadId, turnId: TurnId) => `${threadId}:${turnId}`;
 const providerCommandId = (event: ProviderRuntimeEvent, tag: string, target = "event"): CommandId =>

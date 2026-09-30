@@ -421,7 +421,13 @@
     {
       "status": "M",
       "file": "apps/server/src/orchestration/providerRuntimeActivityProjection.ts",
-      "source": "d9c1bdab0a5f0cdd51ade75adc62a0c44c473a5a"
+      "source": "d9c1bdab0a5f0cdd51ade75adc62a0c44c473a5a",
+      "currentFiles": [
+        "apps/server/src/orchestration/runtimeActivities/activityPayloads.ts",
+        "apps/server/src/orchestration/runtimeActivities/contextWindowPayloads.ts",
+        "apps/server/src/orchestration/runtimeActivities/toolActivityPayloads.ts",
+        "apps/server/src/orchestration/runtimeActivities/runtimeActivityProjection.ts"
+      ]
     },
     {
       "status": "A",
