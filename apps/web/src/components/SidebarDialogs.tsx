@@ -58,9 +58,13 @@ import {
   ProjectContextMenuIcon,
 } from "./sidebarSupport";
 import { SidebarSearchPaletteController } from "./SidebarSearchPaletteController";
-import type { useSidebarRows } from "./useSidebarRows";
+import type { useSidebarPanelEffects } from "./useSidebarPanelEffects";
 
-export function SidebarDialogs({ context }: { context: ReturnType<typeof useSidebarRows> }) {
+export function SidebarDialogs({
+  context,
+}: {
+  context: ReturnType<typeof useSidebarPanelEffects>;
+}) {
   const {
     githubProvisioningAvailable,
     spaces,

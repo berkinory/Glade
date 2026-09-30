@@ -957,7 +957,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
     );
   }
   return {
-    ...context,
     renderListSectionHeader,
     renderPinnedThreadsSection,
     renderThreadHoverCardPopup,

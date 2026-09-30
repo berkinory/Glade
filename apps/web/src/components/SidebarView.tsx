@@ -72,7 +72,8 @@ import { SettingsSidebarNav } from "./SettingsSidebarNav";
 import { SidebarVirtualChatList } from "./SidebarVirtualChatList";
 import { SpaceEmptyState } from "./SpaceEmptyState";
 import { SpaceSwitcher } from "./SpaceSwitcher";
-import type { useSidebarRows } from "./useSidebarRows";
+import type { useSidebarPanelEffects } from "./useSidebarPanelEffects";
+import { useSidebarRows } from "./useSidebarRows";
 import {
   ExpandAllIcon,
   CollapseAllIcon,
@@ -84,7 +85,7 @@ import {
   SidebarActivityBellButton,
 } from "./sidebarSupport";
 
-export function SidebarView({ context }: { context: ReturnType<typeof useSidebarRows> }) {
+export function SidebarView({ context }: { context: ReturnType<typeof useSidebarPanelEffects> }) {
   const {
     showDebugFeatureFlagsMenu,
     spaces,
@@ -163,12 +164,6 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
     desktopUpdateDownloadPercent,
     desktopUpdateRowButtonClasses,
     handleDesktopUpdateButtonClick,
-    renderListSectionHeader,
-    renderPinnedThreadsSection,
-    renderThreadHoverCardPopup,
-    renderThreadRow,
-    renderProjectItem,
-    renderRailSpacesPanel,
     isOnKanban,
     isOnAutomations,
     openFeedbackDialog,
@@ -177,6 +172,14 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
     railShortcuts,
     railSpacesProject,
   } = context;
+  const {
+    renderListSectionHeader,
+    renderPinnedThreadsSection,
+    renderThreadHoverCardPopup,
+    renderThreadRow,
+    renderProjectItem,
+    renderRailSpacesPanel,
+  } = useSidebarRows(context);
   const markThreadVisited = useStore((state) => state.markThreadVisited);
 
   const setAllProjectsExpanded = useStore((state) => state.setAllProjectsExpanded);

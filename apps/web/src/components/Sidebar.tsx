@@ -4,7 +4,6 @@ import { useSidebarThreadCommands } from "./useSidebarThreadCommands";
 import { useSidebarProjectCommands } from "./useSidebarProjectCommands";
 import { useSidebarDerivedLists } from "./useSidebarDerivedLists";
 import { useSidebarPanelEffects } from "./useSidebarPanelEffects";
-import { useSidebarRows } from "./useSidebarRows";
 import { SidebarView } from "./SidebarView";
 
 export default function Sidebar() {
@@ -14,6 +13,5 @@ export default function Sidebar() {
   const context4 = useSidebarProjectCommands(context3);
   const context5 = useSidebarDerivedLists(context4);
   const context6 = useSidebarPanelEffects(context5);
-  const context7 = useSidebarRows(context6);
-  return <SidebarView context={context7} />;
+  return <SidebarView context={context6} />;
 }
