@@ -1294,83 +1294,89 @@ describe("DesktopBrowserManager automation runtime boundary", () => {
   it.each([0.5, 1, 1.25, 2])(
     "correlates delayed CDP clicks with native coordinates at zoom %s",
     async (zoom) => {
-      const manager = new DesktopBrowserManager();
-      const prepared = manager.prepareAutomationTab({ threadId: THREAD_ID, reuse: true });
-      const tabId = prepared.activeTabId!;
-      const webContents = new FakeWebContents();
-      webContents.getZoomFactor = () => zoom;
-      const sendCommand = vi.fn(async (method: string, params: Record<string, unknown>) => {
-        if (method === "Input.dispatchMouseEvent" && params.type === "mousePressed") {
-          setImmediate(() => {
-            webContents.emit(
-              "before-mouse-event",
-              {},
-              {
-                type: "mouseDown",
-                button: params.button,
-                x: Number(params.x) * zoom,
-                y: Number(params.y) * zoom,
-              },
-            );
-          });
-        }
-        return {};
-      });
-      Object.assign(webContents, {
-        debugger: Object.assign(new EventEmitter(), {
-          isAttached: () => true,
-          detach: vi.fn(),
-          sendCommand,
-        }),
-      });
-      const runtime = {
-        key: `${THREAD_ID}:${tabId}`,
-        threadId: THREAD_ID,
-        tabId,
-        webContents: webContents as unknown as WebContents,
-        view: null,
-        ownsWebContents: false as const,
-        listenerDisposers: [] as Array<() => void>,
-      };
-      const access = manager as unknown as {
-        runtimes: Map<string, typeof runtime>;
-        configureRuntimeWebContents(value: typeof runtime): void;
-      };
-      access.runtimes.set(runtime.key, runtime);
-      access.configureRuntimeWebContents(runtime);
-      const visible = manager.getVisibleAutomationRuntime({ threadId: THREAD_ID, tabId });
+      // Event-loop contention must not turn this coordinate test into a grace-period expiry test.
+      const clock = vi.spyOn(Date, "now").mockReturnValue(10_000);
+      try {
+        const manager = new DesktopBrowserManager();
+        const prepared = manager.prepareAutomationTab({ threadId: THREAD_ID, reuse: true });
+        const tabId = prepared.activeTabId!;
+        const webContents = new FakeWebContents();
+        webContents.getZoomFactor = () => zoom;
+        const sendCommand = vi.fn(async (method: string, params: Record<string, unknown>) => {
+          if (method === "Input.dispatchMouseEvent" && params.type === "mousePressed") {
+            setImmediate(() => {
+              webContents.emit(
+                "before-mouse-event",
+                {},
+                {
+                  type: "mouseDown",
+                  button: params.button,
+                  x: Number(params.x) * zoom,
+                  y: Number(params.y) * zoom,
+                },
+              );
+            });
+          }
+          return {};
+        });
+        Object.assign(webContents, {
+          debugger: Object.assign(new EventEmitter(), {
+            isAttached: () => true,
+            detach: vi.fn(),
+            sendCommand,
+          }),
+        });
+        const runtime = {
+          key: `${THREAD_ID}:${tabId}`,
+          threadId: THREAD_ID,
+          tabId,
+          webContents: webContents as unknown as WebContents,
+          view: null,
+          ownsWebContents: false as const,
+          listenerDisposers: [] as Array<() => void>,
+        };
+        const access = manager as unknown as {
+          runtimes: Map<string, typeof runtime>;
+          configureRuntimeWebContents(value: typeof runtime): void;
+        };
+        access.runtimes.set(runtime.key, runtime);
+        access.configureRuntimeWebContents(runtime);
+        const visible = manager.getVisibleAutomationRuntime({ threadId: THREAD_ID, tabId });
 
-      const release = visible.expectAgentInput?.({
-        kind: "mouse",
-        type: "mouseDown",
-        button: "left",
-        x: 320,
-        y: 48,
-      });
-      await visible.webContents.debugger.sendCommand("Input.dispatchMouseEvent", {
-        type: "mousePressed",
-        button: "left",
-        x: 320,
-        y: 48,
-      });
-      release?.();
-      await new Promise((resolve) => setImmediate(resolve));
-
-      expect(manager.getAutomationHumanControlEpoch(THREAD_ID)).toBe(0);
-
-      // The expected native signal is one-shot. A second otherwise identical click is genuine human input
-      // and must still interrupt automation.
-      webContents.emit(
-        "before-mouse-event",
-        {},
-        {
+        const release = visible.expectAgentInput?.({
+          kind: "mouse",
           type: "mouseDown",
           button: "left",
-          x: 320 * zoom,
-          y: 48 * zoom,
-        },
-      );
-      expect(manager.getAutomationHumanControlEpoch(THREAD_ID)).toBe(1);
+          x: 320,
+          y: 48,
+        });
+        await visible.webContents.debugger.sendCommand("Input.dispatchMouseEvent", {
+          type: "mousePressed",
+          button: "left",
+          x: 320,
+          y: 48,
+        });
+        release?.();
+        await new Promise((resolve) => setImmediate(resolve));
+
+        expect(manager.getAutomationHumanControlEpoch(THREAD_ID)).toBe(0);
+
+        // The expected native signal is one-shot. A second otherwise identical click is genuine human input
+        // and must still interrupt automation.
+        webContents.emit(
+          "before-mouse-event",
+          {},
+          {
+            type: "mouseDown",
+            button: "left",
+            x: 320 * zoom,
+            y: 48 * zoom,
+          },
+        );
+        expect(manager.getAutomationHumanControlEpoch(THREAD_ID)).toBe(1);
+      } finally {
+        clock.mockRestore();
+      }
     },
   );
 
