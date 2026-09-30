@@ -5,11 +5,6 @@ export default defineConfig({
   resolve: {
     alias: [
       {
-        find: /^@glade\/contracts$/,
-        replacement: path.resolve(import.meta.dirname, "./packages/contracts/src/index.ts"),
-      },
-
-      {
         find: /^~\//,
         replacement: `${path.resolve(import.meta.dirname, "./apps/web/src")}/`,
       },

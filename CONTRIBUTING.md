@@ -50,6 +50,12 @@ changes. Describe any relevant checks you did not run. Check UI changes in the
 running app; include before/after screenshots when they help reviewers, and a
 short recording for motion or interaction changes.
 
+`@glade/contracts` and `@glade/shared` export domain modules directly through
+`./*` source patterns; new modules need no per-file export entry. Contracts hold
+schemas and transport definitions; runtime helpers belong in shared only when
+at least two applications use them, including transitive imports. The desktop
+build bundles these workspace imports, so contracts need no separate CJS output.
+
 ## Open a pull request
 
 Target the `main` branch. Explain the problem, the change, and how you verified
