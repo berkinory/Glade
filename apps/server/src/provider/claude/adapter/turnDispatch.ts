@@ -68,11 +68,7 @@ export function makeClaudeTurnDispatch(input: {
     getDisabledSkillNames,
     resolveNativeCommandNames,
   } = input;
-  // Apply interaction mode on every turn so sticky SDK permission state cannot leak plan mode across
-  // service/recovery paths that omit it. In every other case we send unconditionally, because once
-  // any prompt has run the CLI's mode is opaque (`canUseTool` is shadowed under bypassPermissions, so
-  // a future mode-changing tool could diverge from anything we tracked); only the pre-first-prompt
-  // state is provable.
+  // Restore the runtime permission policy before each turn; native tools may change SDK state.
   const applyInteractionModePermission = (
     context: ClaudeSessionContext,
     threadId: ThreadId,
@@ -81,11 +77,7 @@ export function makeClaudeTurnDispatch(input: {
     Effect.gen(function* () {
       const effectiveInteractionMode = interactionMode ?? "default";
       const desiredPermissionMode: PermissionMode | undefined =
-        effectiveInteractionMode === "plan"
-          ? "plan"
-          : context.basePermissionMode !== undefined || context.lastInteractionMode === "plan"
-            ? (context.basePermissionMode ?? "default")
-            : undefined;
+        context.basePermissionMode ?? "default";
       const canSkipRedundantSpawnModeRequest =
         context.firstTurnSpawnModeAuthoritative &&
         desiredPermissionMode === context.spawnPermissionMode;
@@ -345,7 +337,7 @@ export function makeClaudeTurnDispatch(input: {
         items: [],
         assistantTextBlocks: new Map(),
         assistantTextBlockOrder: [],
-        capturedProposedPlanKeys: new Set(),
+
         sawFileChange: false,
         nextSyntheticAssistantBlockIndex: -1,
         assistantMessageBlockBase: 0,

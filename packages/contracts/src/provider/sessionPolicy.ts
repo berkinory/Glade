@@ -65,7 +65,7 @@ export type RuntimeMode = typeof RuntimeMode.Type;
 
 export const DEFAULT_RUNTIME_MODE: RuntimeMode = "full-access";
 
-export const ProviderInteractionMode = Schema.Literals(["default", "plan", "debug"]);
+export const ProviderInteractionMode = Schema.Literals(["default", "debug"]);
 
 export type ProviderInteractionMode = typeof ProviderInteractionMode.Type;
 

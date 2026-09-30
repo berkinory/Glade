@@ -74,9 +74,7 @@ export function toThreadShell(thread: Thread): ThreadShell {
     ...(thread.hasPendingUserInput !== undefined
       ? { hasPendingUserInput: thread.hasPendingUserInput }
       : {}),
-    ...(thread.hasActionableProposedPlan !== undefined
-      ? { hasActionableProposedPlan: thread.hasActionableProposedPlan }
-      : {}),
+
     ...(thread.pendingInteractions !== undefined
       ? { pendingInteractions: thread.pendingInteractions }
       : {}),
@@ -87,9 +85,6 @@ export function toThreadShell(thread: Thread): ThreadShell {
 export function toThreadTurnState(thread: Thread): ThreadTurnState {
   return {
     latestTurn: thread.latestTurn,
-    ...(thread.pendingSourceProposedPlan
-      ? { pendingSourceProposedPlan: thread.pendingSourceProposedPlan }
-      : {}),
   };
 }
 
@@ -155,8 +150,6 @@ export function buildNormalizedSlice<TId extends string, TValue>(
 export const messageId = (message: ChatMessage): MessageId => message.id;
 
 export const activityId = (activity: Thread["activities"][number]): string => activity.id;
-
-export const proposedPlanId = (plan: Thread["proposedPlans"][number]): string => plan.id;
 
 export const turnDiffId = (summary: Thread["turnDiffSummaries"][number]): TurnId => summary.turnId;
 
@@ -292,7 +285,6 @@ function sidebarThreadSummariesEqual(
     left.latestHumanMessageAt === right.latestHumanMessageAt &&
     left.hasPendingApprovals === right.hasPendingApprovals &&
     left.hasPendingUserInput === right.hasPendingUserInput &&
-    left.hasActionableProposedPlan === right.hasActionableProposedPlan &&
     left.hasLiveTailWork === right.hasLiveTailWork &&
     (left.forkSourceThreadId ?? null) === (right.forkSourceThreadId ?? null) &&
     deepEqualJson(left.lastKnownPr ?? null, right.lastKnownPr ?? null) &&
@@ -335,7 +327,7 @@ export function buildSidebarThreadSummary(
     latestHumanMessageAt: metadata.latestHumanMessageAt ?? null,
     hasPendingApprovals: metadata.hasPendingApprovals,
     hasPendingUserInput: metadata.hasPendingUserInput,
-    hasActionableProposedPlan: metadata.hasActionableProposedPlan,
+
     hasLiveTailWork: metadata.hasLiveTailWork,
     forkSourceThreadId: thread.forkSourceThreadId ?? null,
     lastKnownPr: thread.lastKnownPr ?? null,

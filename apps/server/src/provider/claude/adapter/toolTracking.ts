@@ -193,7 +193,7 @@ export function makeClaudeToolTracking(input: {
         items: [],
         assistantTextBlocks: new Map(),
         assistantTextBlockOrder: [],
-        capturedProposedPlanKeys: new Set(),
+
         sawFileChange: false,
         nextSyntheticAssistantBlockIndex: -1,
         assistantMessageBlockBase: 0,

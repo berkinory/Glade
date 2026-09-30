@@ -250,7 +250,6 @@ export function buildLocalDraftThread(
     handoff: null,
     turnDiffSummaries: [],
     activities: [],
-    proposedPlans: [],
   };
 }
 

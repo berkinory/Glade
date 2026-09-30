@@ -92,15 +92,6 @@ function retainThreadActivitiesAfterRevert(
   );
 }
 
-function retainThreadProposedPlansAfterRevert(
-  proposedPlans: ReadonlyArray<OrchestrationThread["proposedPlans"][number]>,
-  retainedTurnIds: ReadonlySet<string>,
-): ReadonlyArray<OrchestrationThread["proposedPlans"][number]> {
-  return proposedPlans.filter(
-    (proposedPlan) => proposedPlan.turnId === null || retainedTurnIds.has(proposedPlan.turnId),
-  );
-}
-
 function rollbackThreadMessagesFromMessage(
   messages: ReadonlyArray<OrchestrationMessage>,
   messageId: string,
@@ -240,10 +231,7 @@ export function projectHistoryEvent(
             new Set(retainedMessages.map((message) => message.id)),
             event.sequence,
           ).slice(-MAX_THREAD_MESSAGES);
-          const proposedPlans = retainThreadProposedPlansAfterRevert(
-            thread.proposedPlans,
-            retainedTurnIds,
-          ).slice(-200);
+
           const activities = retainThreadActivitiesAfterRevert(thread.activities, retainedTurnIds);
 
           const latestCheckpoint = checkpoints.at(-1) ?? null;
@@ -264,7 +252,7 @@ export function projectHistoryEvent(
             threads: updateThread(nextBase.threads, payload.threadId, {
               checkpoints,
               messages,
-              proposedPlans,
+
               activities,
               latestTurn,
               updatedAt: event.occurredAt,
@@ -312,9 +300,7 @@ export function projectHistoryEvent(
             .filter((checkpoint) => !rollback.removedTurnIds.has(checkpoint.turnId))
             .toSorted((left, right) => left.checkpointTurnCount - right.checkpointTurnCount)
             .slice(-MAX_THREAD_CHECKPOINTS);
-          const proposedPlans = thread.proposedPlans
-            .filter((plan) => plan.turnId === null || !rollback.removedTurnIds.has(plan.turnId))
-            .slice(-200);
+
           const activities = thread.activities.filter(
             (activity) => activity.turnId === null || !rollback.removedTurnIds.has(activity.turnId),
           );
@@ -329,7 +315,7 @@ export function projectHistoryEvent(
                 new Set(messages.map((message) => message.id)),
                 event.sequence,
               ).slice(-MAX_THREAD_MESSAGES),
-              proposedPlans,
+
               activities,
               latestTurn:
                 latestCheckpoint === null

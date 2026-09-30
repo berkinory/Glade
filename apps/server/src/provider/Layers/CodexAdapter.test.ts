@@ -367,7 +367,7 @@ turnPreparationLayer("CodexAdapterLive turn input preparation", (it) => {
             fastMode: true,
           },
         },
-        interactionMode: "plan" as const,
+        interactionMode: "default" as const,
       };
 
       yield* adapter.sendTurn(input);
@@ -393,7 +393,7 @@ turnPreparationLayer("CodexAdapterLive turn input preparation", (it) => {
         model: "gpt-5.3-codex",
         effort: "high",
         serviceTier: "fast",
-        interactionMode: "plan",
+        interactionMode: "default",
         attachments: [
           {
             type: "localImage",
@@ -756,45 +756,6 @@ lifecycleLayer("CodexAdapterLive lifecycle", (it) => {
       assert.equal(firstEvent.value.turnId, "turn-review");
       assert.equal(firstEvent.value.payload.itemType, "assistant_message");
       assert.equal(firstEvent.value.payload.detail, "Working tree is clean.");
-    }),
-  );
-
-  it.effect("maps completed plan items to canonical proposed-plan completion events", () =>
-    Effect.gen(function* () {
-      const adapter = yield* CodexAdapter;
-      const firstEventFiber = yield* Stream.runHead(adapter.streamEvents).pipe(Effect.forkChild);
-
-      const event: ProviderEvent = {
-        id: asEventId("evt-plan-complete"),
-        kind: "notification",
-        provider: "codex",
-        createdAt: new Date().toISOString(),
-        method: "item/completed",
-        threadId: asThreadId("thread-1"),
-        turnId: asTurnId("turn-1"),
-        itemId: asItemId("plan_1"),
-        payload: {
-          item: {
-            type: "Plan",
-            id: "plan_1",
-            text: "## Final plan\n\n- one\n- two",
-          },
-        },
-      };
-
-      lifecycleManager.emit("event", event);
-      const firstEvent = yield* Fiber.join(firstEventFiber);
-
-      assert.equal(firstEvent._tag, "Some");
-      if (firstEvent._tag !== "Some") {
-        return;
-      }
-      assert.equal(firstEvent.value.type, "turn.proposed.completed");
-      if (firstEvent.value.type !== "turn.proposed.completed") {
-        return;
-      }
-      assert.equal(firstEvent.value.turnId, "turn-1");
-      assert.equal(firstEvent.value.payload.planMarkdown, "## Final plan\n\n- one\n- two");
     }),
   );
 

@@ -57,8 +57,7 @@ export function useChatEnvironmentController({
     settings,
     updateSettings,
     activeThread,
-    setPlanSidebarOpen,
-    planSidebarDismissedForTurnRef,
+
     legendListRef,
     composerTranscriptInsetPx,
     isInactiveSplitPane,
@@ -74,7 +73,7 @@ export function useChatEnvironmentController({
     composerFooterLayoutSyncRef,
     composerFormHeightRef,
     setSecondaryChromePlaceholderHeight,
-    planSidebarOpenOnNextThreadRef,
+
     setPullRequestDialogState,
     setComposerHighlightedItemId,
     setIsRevertingCheckpoint,
@@ -152,8 +151,7 @@ export function useChatEnvironmentController({
   } = composer;
   const {
     selectedModelSelection,
-    activeTaskList,
-    sidebarProposedPlan,
+
     hasStreamingAssistantText,
     pendingUserInputs,
     isPendingSetupBubbleId,
@@ -338,18 +336,6 @@ export function useChatEnvironmentController({
     persistThreadSettingsForNextTurn,
   } = useChatRuntimeModes({ session, workspace, provider, discovery, composer });
 
-  const togglePlanSidebar = () => {
-    setPlanSidebarOpen((open) => {
-      if (open) {
-        planSidebarDismissedForTurnRef.current =
-          activeTaskList?.turnId ?? sidebarProposedPlan?.turnId ?? "__dismissed__";
-      } else {
-        planSidebarDismissedForTurnRef.current = null;
-      }
-      return !open;
-    });
-  };
-
   const {
     showScrollToBottom,
     isUserScrollDetached,
@@ -506,24 +492,12 @@ export function useChatEnvironmentController({
   ]);
 
   useEffect(() => {
-    const openPlanSidebar = planSidebarOpenOnNextThreadRef.current;
-    planSidebarOpenOnNextThreadRef.current = false;
-    planSidebarDismissedForTurnRef.current = null;
     const settle = window.setTimeout(() => {
       setPullRequestDialogState(null);
       setRenameDialogOpen(false);
-
-      setPlanSidebarOpen(openPlanSidebar);
     }, 0);
     return () => window.clearTimeout(settle);
-  }, [
-    setPlanSidebarOpen,
-    planSidebarDismissedForTurnRef,
-    planSidebarOpenOnNextThreadRef,
-    setPullRequestDialogState,
-    setRenameDialogOpen,
-    activeThread?.id,
-  ]);
+  }, [setPullRequestDialogState, setRenameDialogOpen, activeThread?.id]);
 
   useEffect(() => {
     if (!composerMenuOpen) {
@@ -633,6 +607,14 @@ export function useChatEnvironmentController({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [closeExpandedImage, expandedImage, navigateExpandedImage]);
+
+  useEffect(() => {
+    const settle = window.setTimeout(() => {
+      setPullRequestDialogState(null);
+      setRenameDialogOpen(false);
+    }, 0);
+    return () => window.clearTimeout(settle);
+  }, [setPullRequestDialogState, setRenameDialogOpen, activeThread?.id]);
 
   useEffect(() => {
     if (!composerMenuOpen) {
@@ -775,7 +757,7 @@ export function useChatEnvironmentController({
     toggleInteractionMode,
     resetInteractionMode,
     persistThreadSettingsForNextTurn,
-    togglePlanSidebar,
+
     showScrollToBottom,
     isUserScrollDetached,
     tailAnchorScrollInFlightRef,

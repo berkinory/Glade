@@ -156,8 +156,10 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
     const { readClaudeContextUsage, maybeEmitContextUsageWarning } = makeClaudeContextUsage({
       emitRuntimeWarning,
     });
-    const { emitTodoTasksUpdated, emitTrackedTasksUpdated, emitProposedPlanCompleted } =
-      makeClaudeTaskPresentation({ makeEventStamp, offerRuntimeEvent });
+    const { emitTodoTasksUpdated, emitTrackedTasksUpdated } = makeClaudeTaskPresentation({
+      makeEventStamp,
+      offerRuntimeEvent,
+    });
     const {
       settlePendingHumanInteractions,
       settlePendingHumanInteractionsForAgent,
@@ -211,7 +213,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         emitTrackedTasksUpdated,
         startWorkflowRuntimePoller,
         ensureSyntheticTurn,
-        emitProposedPlanCompleted,
+
         backfillAssistantTextBlocksFromSnapshot,
         maybeEmitContextUsageWarning,
       });
@@ -312,7 +314,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       settlePendingUserInput,
       runSdkPromise,
       emitSubagentSteerDelivered,
-      emitProposedPlanCompleted,
+
       settlePendingApproval,
       bindClaudeProcessOwner,
       createQuery,

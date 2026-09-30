@@ -2,15 +2,10 @@ import type { AssistantDeliveryMode } from "@glade/contracts/provider/sessionPol
 import type { MessageId, ThreadId } from "@glade/contracts/core/baseSchemas";
 
 import { persistModelSelectionBeforeRuntimeMode } from "../components/ChatView.logic.session";
-import { useComposerDraftStore } from "../composerDraftStore";
 import type { QueuedComposerTurn } from "../composerDraftDomain";
 import { readNativeApi } from "../nativeApi";
 import { clearPendingTurnDispatch, markPendingTurnDispatch } from "../pendingTurnDispatch";
-import {
-  buildSourceProposedPlanReference,
-  findLatestProposedPlan,
-  hasActionableProposedPlan,
-} from "../session-logic";
+
 import { useStore } from "../store";
 import { getThreadFromState } from "../threadDerivation";
 import { appendAssistantSelectionsToPrompt } from "./assistantSelections";
@@ -50,63 +45,6 @@ export async function dispatchQueuedComposerTurnHeadless(input: {
   const createdAt = new Date().toISOString();
   const messageId = input.messageId ?? newMessageId();
   const queuedTurn = input.queuedTurn;
-
-  if (queuedTurn.kind === "plan-follow-up") {
-    const trimmed = queuedTurn.text.trim();
-    if (!trimmed) {
-      return false;
-    }
-    const outgoingMessageText = trimmed;
-    const latestProposedPlan = findLatestProposedPlan(
-      thread.proposedPlans,
-      thread.latestTurn?.turnId,
-    );
-    const sourceProposedPlan =
-      queuedTurn.interactionMode === "default"
-        ? buildSourceProposedPlanReference({
-            threadId: input.threadId,
-            proposedPlan: hasActionableProposedPlan(latestProposedPlan) ? latestProposedPlan : null,
-          })
-        : undefined;
-
-    markPendingTurnDispatch(input.threadId);
-    try {
-      await persistQueuedTurnThreadSettings({
-        api,
-        thread,
-        queuedTurn,
-        createdAt,
-      });
-      useComposerDraftStore
-        .getState()
-        .setInteractionMode(input.threadId, queuedTurn.interactionMode);
-      await api.orchestration.dispatchCommand({
-        type: "thread.turn.start",
-        commandId: newCommandId(),
-        threadId: input.threadId,
-        message: {
-          messageId,
-          role: "user",
-          text: outgoingMessageText,
-          attachments: [],
-        },
-        modelSelection: queuedTurn.modelSelection,
-        ...(queuedTurn.providerOptionsForDispatch
-          ? { providerOptions: queuedTurn.providerOptionsForDispatch }
-          : {}),
-        assistantDeliveryMode: input.assistantDeliveryMode,
-        dispatchMode: input.dispatchMode,
-        runtimeMode: queuedTurn.runtimeMode,
-        interactionMode: queuedTurn.interactionMode,
-        ...(sourceProposedPlan ? { sourceProposedPlan } : {}),
-        createdAt,
-      });
-      return true;
-    } catch {
-      clearPendingTurnDispatch(input.threadId);
-      return false;
-    }
-  }
 
   const sendableTerminalContexts = filterTerminalContextsWithText(queuedTurn.terminalContexts);
   const sendablePastedTexts = filterPastedTextsWithText(queuedTurn.pastedTexts);
@@ -175,9 +113,7 @@ export async function dispatchQueuedComposerTurnHeadless(input: {
         dispatchMode: input.dispatchMode,
         runtimeMode: queuedTurn.runtimeMode,
         interactionMode: queuedTurn.interactionMode,
-        ...(queuedTurn.sourceProposedPlan
-          ? { sourceProposedPlan: queuedTurn.sourceProposedPlan }
-          : {}),
+
         createdAt,
       }),
     );

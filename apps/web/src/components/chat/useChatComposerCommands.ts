@@ -22,7 +22,7 @@ import {
 } from "../ChatView.logic.session";
 import { ComposerCommandItem } from "./ComposerCommandMenu";
 import { type ComposerLocalDirectoryMenuHandle } from "./ComposerLocalDirectoryMenu";
-import { composerPromptStillMatchesRestoredQueuedDraft } from "./queuedComposerPreview";
+
 import { useChatComposerDraft } from "./useChatComposerDraft";
 import { useChatComposerEditing } from "./useChatComposerEditing";
 import { useChatPendingInteractions } from "./useChatPendingInteractions";
@@ -87,12 +87,7 @@ interface ChatComposerCommandsInput {
   promptHistoryAppliedPromptRef: ReturnType<
     typeof useChatComposerDraft
   >["promptHistoryAppliedPromptRef"];
-  restoredQueuedSourceProposedPlanRef: ReturnType<
-    typeof useChatComposerDraft
-  >["restoredQueuedSourceProposedPlanRef"];
-  setRestoredQueuedSourceProposedPlan: ReturnType<
-    typeof useChatComposerDraft
-  >["setRestoredQueuedSourceProposedPlan"];
+
   composerCommandPicker: "fork-target" | "review-target" | null;
   composerTerminalContexts: ReturnType<typeof useChatComposerDraft>["composerTerminalContexts"];
   setComposerDraftTerminalContexts: ReturnType<
@@ -135,8 +130,6 @@ type ChatComposerCommandsControllerInput = {
     | "setComposerDraftPromptHistorySavedDraft"
     | "applyingPromptHistoryNavigationRef"
     | "promptHistoryAppliedPromptRef"
-    | "restoredQueuedSourceProposedPlanRef"
-    | "setRestoredQueuedSourceProposedPlan"
     | "composerCommandPicker"
     | "composerTerminalContexts"
     | "setComposerDraftTerminalContexts"
@@ -208,8 +201,7 @@ export function useChatComposerCommands({
     setComposerDraftPromptHistorySavedDraft,
     applyingPromptHistoryNavigationRef,
     promptHistoryAppliedPromptRef,
-    restoredQueuedSourceProposedPlanRef,
-    setRestoredQueuedSourceProposedPlan,
+
     composerCommandPicker,
     composerTerminalContexts,
     setComposerDraftTerminalContexts,
@@ -451,16 +443,7 @@ export function useChatComposerCommands({
           setComposerDraftPromptHistorySavedDraft(threadId, null);
         }
       }
-      const restoredQueuedSource = restoredQueuedSourceProposedPlanRef.current;
-      if (
-        restoredQueuedSource?.threadId === threadId &&
-        !composerPromptStillMatchesRestoredQueuedDraft(
-          restoredQueuedSource.restoredPrompt,
-          nextPrompt,
-        )
-      ) {
-        setRestoredQueuedSourceProposedPlan(threadId, null);
-      }
+
       promptRef.current = nextPrompt;
       setPrompt(nextPrompt);
       if (composerCommandPicker !== null && nextPrompt.trim().length > 0) {
@@ -483,7 +466,7 @@ export function useChatComposerCommands({
       expectedPromptHistoryPromptRef,
       applyingPromptHistoryNavigationRef,
       promptHistoryAppliedPromptRef,
-      restoredQueuedSourceProposedPlanRef,
+
       setComposerCursor,
       setComposerTrigger,
       activePendingQuestion,
@@ -497,7 +480,7 @@ export function useChatComposerCommands({
       setComposerDraftPromptHistorySavedDraft,
       setComposerDraftTerminalContexts,
       setComposerCommandPicker,
-      setRestoredQueuedSourceProposedPlan,
+
       threadId,
     ],
   );

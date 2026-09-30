@@ -55,7 +55,7 @@ function makeCodexThread(): OrchestrationThread {
     deletedAt: null,
     handoff: null,
     messages: [],
-    proposedPlans: [],
+
     activities: [],
     checkpoints: [],
     session: null,

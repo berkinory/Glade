@@ -4,9 +4,13 @@
 
 ### New
 
+- You can approve an action that Codex auto-review denied.
+
 - Manage native MCP servers and installed provider plugins from Settings. ([748d6d5cf](https://github.com/berkinory/Glade/commit/748d6d5cfe806e3b423f8bac4128cf7594d34637))
 
 ### Removed
+
+- Plan mode and proposed plans were removed.
 
 - Thread goals were removed.
 
@@ -22,6 +26,8 @@
 - Git status refreshes start fewer background commands.
 
 - The file explorer and change lists stay fast and light in large repositories.
+
+- Chat titles come from Codex and Claude directly, and renames carry over to their own session lists.
 
 - Deleting a chat also deletes its native session history; Codex chats archive and unarchive in Codex too.
 

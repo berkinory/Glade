@@ -173,8 +173,7 @@ export function useChatSessionController(props: ChatViewProps) {
     promptHistoryAppliedPromptRef,
     composerImagesRef,
     composerFilesRef,
-    restoredQueuedSourceProposedPlanRef,
-    setRestoredQueuedSourceProposedPlan,
+
     setPrompt,
     discardPromptHistoryNavigationForComposerMutation,
     addComposerImagesToDraft,
@@ -306,7 +305,7 @@ export function useChatSessionController(props: ChatViewProps) {
 
   const [pendingFileUndo, setPendingFileUndo] = useState<PendingFileUndo | null>(null);
 
-  const [planSidebarOpen, setPlanSidebarOpen] = useState(false);
+  const [taskListSidebarOpen, setTaskListSidebarOpen] = useState(false);
 
   const [activeTaskListCompact, setActiveTaskListCompact] = useState(false);
 
@@ -333,10 +332,6 @@ export function useChatSessionController(props: ChatViewProps) {
   const [isComposerExtrasPanelOpen, setIsComposerExtrasPanelOpen] = useState(false);
 
   const [secondaryChromePlaceholderHeight, setSecondaryChromePlaceholderHeight] = useState(88);
-
-  const planSidebarDismissedForTurnRef = useRef<string | null>(null);
-
-  const planSidebarOpenOnNextThreadRef = useRef(false);
 
   const [composerHighlightedItemId, setComposerHighlightedItemId] = useState<string | null>(null);
 
@@ -447,7 +442,10 @@ export function useChatSessionController(props: ChatViewProps) {
   );
 
   const activeThread = serverThread ?? localDraftThread;
+
   return {
+    taskListSidebarOpen,
+    setTaskListSidebarOpen,
     paneScopeId,
     hideHeader,
     surfaceMode,
@@ -530,8 +528,7 @@ export function useChatSessionController(props: ChatViewProps) {
     promptHistoryAppliedPromptRef,
     composerImagesRef,
     composerFilesRef,
-    restoredQueuedSourceProposedPlanRef,
-    setRestoredQueuedSourceProposedPlan,
+
     setPrompt,
     discardPromptHistoryNavigationForComposerMutation,
     addComposerImagesToDraft,
@@ -568,8 +565,7 @@ export function useChatSessionController(props: ChatViewProps) {
     setIsRevertingCheckpoint,
     pendingFileUndo,
     setPendingFileUndo,
-    planSidebarOpen,
-    setPlanSidebarOpen,
+
     activeTaskListCompact,
     setActiveTaskListCompact,
     subagentStripCompact,
@@ -589,8 +585,7 @@ export function useChatSessionController(props: ChatViewProps) {
     setIsComposerExtrasPanelOpen,
     secondaryChromePlaceholderHeight,
     setSecondaryChromePlaceholderHeight,
-    planSidebarDismissedForTurnRef,
-    planSidebarOpenOnNextThreadRef,
+
     composerHighlightedItemId,
     setComposerHighlightedItemId,
     pullRequestDialogState,

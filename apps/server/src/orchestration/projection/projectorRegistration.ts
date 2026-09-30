@@ -8,7 +8,7 @@ export const ORCHESTRATION_PROJECTOR_NAMES = {
   threads: "projection.threads",
   threadShellSummaries: "projection.thread-shell-summaries",
   threadMessages: "projection.thread-messages",
-  threadProposedPlans: "projection.thread-proposed-plans",
+
   threadActivities: "projection.thread-activities",
   threadSessions: "projection.thread-sessions",
   threadTurns: "projection.thread-turns",
@@ -52,12 +52,6 @@ export const PROJECT_EVENT_TYPES = new Set<OrchestrationEvent["type"]>([
 export const THREAD_MESSAGE_PROJECTION_EVENT_TYPES = new Set<OrchestrationEvent["type"]>([
   "thread.message-sent",
   "thread.async-user-input-answered",
-  "thread.reverted",
-  "thread.conversation-rolled-back",
-]);
-
-export const THREAD_PROPOSED_PLAN_PROJECTION_EVENT_TYPES = new Set<OrchestrationEvent["type"]>([
-  "thread.proposed-plan-upserted",
   "thread.reverted",
   "thread.conversation-rolled-back",
 ]);

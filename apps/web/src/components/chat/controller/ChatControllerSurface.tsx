@@ -4,7 +4,7 @@ import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import BranchToolbar from "~/components/BranchToolbar";
 import { resolveWorkingLabel } from "../../ChatView.logic.dispatch";
 import { GladeLogo } from "~/components/GladeLogo";
-import PlanSidebar from "~/components/PlanSidebar";
+import TaskListSidebar from "~/components/TaskListSidebar";
 import { PullRequestThreadDialog } from "~/components/PullRequestThreadDialog";
 import { RenameThreadDialog } from "~/components/RenameThreadDialog";
 import { SidebarHeaderNavigationControls } from "~/components/SidebarHeaderNavigationControls";
@@ -85,9 +85,8 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     composerOverlayBottomClearancePx,
     composerOverlayRef,
     pullRequestDialogState,
-    planSidebarOpen,
-    setPlanSidebarOpen,
-    planSidebarDismissedForTurnRef,
+    taskListSidebarOpen,
+    setTaskListSidebarOpen,
     isInactiveSplitPane,
     handleNewThread,
     expandedImage,
@@ -319,7 +318,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     hasStreamingAssistantText,
     setOpenAgentActivityId,
     activeTaskList,
-    sidebarProposedPlan,
     selectedModel,
     selectedPromptEffort,
     selectedModelSelection,
@@ -845,21 +843,11 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
         {}
 
         {}
-        {planSidebarOpen ? (
-          <PlanSidebar
+        {taskListSidebarOpen ? (
+          <TaskListSidebar
             activeTaskList={activeTaskList}
-            activeProposedPlan={sidebarProposedPlan}
-            markdownCwd={threadWorkspaceCwd ?? undefined}
-            workspaceRoot={threadArtifactWorkspaceRoot ?? undefined}
             timestampFormat={timestampFormat}
-            onClose={() => {
-              setPlanSidebarOpen(false);
-
-              const turnKey = activeTaskList?.turnId ?? sidebarProposedPlan?.turnId ?? null;
-              if (turnKey) {
-                planSidebarDismissedForTurnRef.current = turnKey;
-              }
-            }}
+            onClose={() => setTaskListSidebarOpen(false)}
           />
         ) : null}
       </div>

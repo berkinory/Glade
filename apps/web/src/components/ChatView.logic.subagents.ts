@@ -11,11 +11,7 @@ import type {
   RuntimeMode,
 } from "@glade/contracts/provider/sessionPolicy";
 import type { Thread } from "../types";
-import type {
-  DraftThreadEnvMode,
-  QueuedComposerChatTurn,
-  QueuedComposerTurn,
-} from "../composerDraftDomain";
+import type { DraftThreadEnvMode, QueuedComposerTurn } from "../composerDraftDomain";
 import {
   humanizeSubagentStatus,
   normalizeSubagentStatusKind,
@@ -114,10 +110,7 @@ export function editAndResendDispatchFields(settings: TurnDispatchSettings) {
   };
 }
 
-export function queuedChatTurnDispatchFields(
-  settings: TurnDispatchSettings,
-  sourceProposedPlan: QueuedComposerChatTurn["sourceProposedPlan"],
-) {
+export function queuedChatTurnDispatchFields(settings: TurnDispatchSettings) {
   return {
     modelSelection: settings.modelSelection,
     ...(settings.providerOptions ? { providerOptionsForDispatch: settings.providerOptions } : {}),
@@ -127,30 +120,10 @@ export function queuedChatTurnDispatchFields(
       settings.computerControlMode,
       settings.enableComputerControl,
     ),
-    ...(sourceProposedPlan ? { sourceProposedPlan } : {}),
+
     ...turnDispatchModeFields(settings),
     envMode: settings.envMode,
   };
-}
-
-export function queuedPlanFollowUpDispatchFields(settings: TurnDispatchSettings) {
-  return {
-    modelSelection: settings.modelSelection,
-    ...(settings.providerOptions ? { providerOptionsForDispatch: settings.providerOptions } : {}),
-    enableComputerControl: settings.enableComputerControl,
-    computerControlGeneration: settings.computerControlGeneration ?? 0,
-    computerControlMode: resolveComputerControlMode(
-      settings.computerControlMode,
-      settings.enableComputerControl,
-    ),
-    runtimeMode: settings.runtimeMode,
-  };
-}
-
-export function planImplementationDispatchSettings(
-  settings: TurnDispatchSettings,
-): TurnDispatchSettings {
-  return { ...settings, interactionMode: "default", computerControlGeneration: 0 };
 }
 
 export function threadSettingsDispatchFields(settings: TurnDispatchSettings) {

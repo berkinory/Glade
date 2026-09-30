@@ -611,12 +611,6 @@ function mergeReadModelLatestTurnWithLiveHotPath(
         completedAt: null,
         assistantMessageId:
           previousLatestTurn.assistantMessageId ?? incomingLatestTurn?.assistantMessageId ?? null,
-        ...((incomingLatestTurn?.sourceProposedPlan ?? previousLatestTurn.sourceProposedPlan)
-          ? {
-              sourceProposedPlan:
-                incomingLatestTurn?.sourceProposedPlan ?? previousLatestTurn.sourceProposedPlan,
-            }
-          : {}),
       };
     }
     return incomingLatestTurn;

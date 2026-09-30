@@ -225,8 +225,6 @@ projectionSnapshotLayer("Projection snapshot snapshotLookup", (it) => {
           thread_id,
           turn_id,
           pending_message_id,
-          source_proposed_plan_thread_id,
-          source_proposed_plan_id,
           assistant_message_id,
           state,
           requested_at,
@@ -236,13 +234,10 @@ projectionSnapshotLayer("Projection snapshot snapshotLookup", (it) => {
           checkpoint_ref,
           checkpoint_status,
           checkpoint_files_json
-        )
-        VALUES
+        ) VALUES
           (
             'thread-context',
             'turn-1',
-            NULL,
-            NULL,
             NULL,
             NULL,
             'completed',
@@ -259,8 +254,6 @@ projectionSnapshotLayer("Projection snapshot snapshotLookup", (it) => {
             'turn-placeholder',
             NULL,
             NULL,
-            NULL,
-            NULL,
             'running',
             '2026-03-02T00:00:04.500Z',
             '2026-03-02T00:00:04.500Z',
@@ -273,8 +266,6 @@ projectionSnapshotLayer("Projection snapshot snapshotLookup", (it) => {
           (
             'thread-context',
             'turn-2',
-            NULL,
-            NULL,
             NULL,
             NULL,
             'completed',

@@ -1,21 +1,13 @@
 import {
   type OrchestrationLatestTurn,
-  type OrchestrationProposedPlanId,
   type OrchestrationThreadActivity,
 } from "@glade/contracts/orchestration/threadEntities";
-import { type ProviderKind, type ThreadId, type TurnId } from "@glade/contracts/core/baseSchemas";
+import { type ProviderKind, type TurnId } from "@glade/contracts/core/baseSchemas";
 import { PROVIDER_DESCRIPTORS as VISIBLE_PROVIDER_DESCRIPTORS } from "@glade/shared/provider/providerMetadata";
 
 import { orderedActivities, parseTaskListTasks } from "./workLog.entries";
 
-import type {
-  ChatMessage,
-  ProposedPlan,
-  SessionPhase,
-  Thread,
-  ThreadSession,
-  TurnDiffSummary,
-} from "./types";
+import type { ChatMessage, SessionPhase, ThreadSession, TurnDiffSummary } from "./types";
 
 export type ProviderPickerKind = ProviderKind;
 
@@ -42,16 +34,6 @@ export interface ActiveTaskListState {
 export interface ActiveBackgroundTasksState {
   activeCount: number;
   taskIds: string[];
-}
-
-export interface LatestProposedPlanState {
-  id: OrchestrationProposedPlanId;
-  createdAt: string;
-  updatedAt: string;
-  turnId: TurnId | null;
-  planMarkdown: string;
-  implementedAt: string | null;
-  implementationThreadId: ThreadId | null;
 }
 
 function formatDuration(durationMs: number): string {
@@ -292,94 +274,6 @@ export function hasLiveTurnTailWork(input: {
   }
 
   return false;
-}
-
-export function findLatestProposedPlan(
-  proposedPlans: ReadonlyArray<ProposedPlan>,
-  latestTurnId: TurnId | string | null | undefined,
-): LatestProposedPlanState | null {
-  if (latestTurnId) {
-    const matchingTurnPlan = [...proposedPlans]
-      .filter((proposedPlan) => proposedPlan.turnId === latestTurnId)
-      .toSorted(
-        (left, right) =>
-          left.updatedAt.localeCompare(right.updatedAt) || left.id.localeCompare(right.id),
-      )
-      .at(-1);
-    if (matchingTurnPlan) {
-      return toLatestProposedPlanState(matchingTurnPlan);
-    }
-  }
-
-  const latestPlan = [...proposedPlans]
-    .toSorted(
-      (left, right) =>
-        left.updatedAt.localeCompare(right.updatedAt) || left.id.localeCompare(right.id),
-    )
-    .at(-1);
-  if (!latestPlan) {
-    return null;
-  }
-
-  return toLatestProposedPlanState(latestPlan);
-}
-
-export function findSidebarProposedPlan(input: {
-  threads: ReadonlyArray<Pick<Thread, "id" | "proposedPlans">>;
-  latestTurn: Pick<OrchestrationLatestTurn, "turnId" | "sourceProposedPlan"> | null;
-  latestTurnSettled: boolean;
-  threadId: ThreadId | string | null | undefined;
-}): LatestProposedPlanState | null {
-  const activeThreadPlans =
-    input.threads.find((thread) => thread.id === input.threadId)?.proposedPlans ?? [];
-
-  if (!input.latestTurnSettled) {
-    const sourceProposedPlan = input.latestTurn?.sourceProposedPlan;
-    if (sourceProposedPlan) {
-      const sourcePlan = input.threads
-        .find((thread) => thread.id === sourceProposedPlan.threadId)
-        ?.proposedPlans.find((plan) => plan.id === sourceProposedPlan.planId);
-      if (sourcePlan) {
-        return toLatestProposedPlanState(sourcePlan);
-      }
-    }
-  }
-
-  return findLatestProposedPlan(
-    activeThreadPlans.filter((plan) => plan.implementedAt === null),
-    input.latestTurn?.turnId ?? null,
-  );
-}
-
-export function hasActionableProposedPlan(
-  proposedPlan: LatestProposedPlanState | Pick<ProposedPlan, "implementedAt"> | null,
-): boolean {
-  return proposedPlan !== null && proposedPlan.implementedAt === null;
-}
-
-export function buildSourceProposedPlanReference(input: {
-  threadId: ThreadId;
-  proposedPlan: Pick<ProposedPlan, "id"> | null | undefined;
-}): OrchestrationLatestTurn["sourceProposedPlan"] | undefined {
-  if (!input.proposedPlan) {
-    return undefined;
-  }
-  return {
-    threadId: input.threadId,
-    planId: input.proposedPlan.id,
-  };
-}
-
-function toLatestProposedPlanState(proposedPlan: ProposedPlan): LatestProposedPlanState {
-  return {
-    id: proposedPlan.id,
-    createdAt: proposedPlan.createdAt,
-    updatedAt: proposedPlan.updatedAt,
-    turnId: proposedPlan.turnId,
-    planMarkdown: proposedPlan.planMarkdown,
-    implementedAt: proposedPlan.implementedAt,
-    implementationThreadId: proposedPlan.implementationThreadId,
-  };
 }
 
 export function inferCheckpointTurnCountByTurnId(

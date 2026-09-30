@@ -1,3 +1,4 @@
+import { decodeCodexGuardianReview } from "../codex/protocol/decode.ts";
 import { asArray, asFiniteNumber } from "@glade/shared/transport/payloadValues";
 import { asString, nonEmptyTrimmed } from "@glade/shared/text/text";
 import { asObjectRecord } from "@glade/shared/transport/payloadValues";
@@ -77,7 +78,7 @@ import { normalizeCodexFailure } from "../codex/codexFailures.ts";
 import { ServerConfig } from "../../server/config.ts";
 import { resolveCodexServiceTier } from "../codex/codexServiceTier.ts";
 import { makeRuntimeTaskListItem } from "../core/runtimeTaskList.ts";
-import { extractProposedPlanMarkdown } from "../core/planMode.ts";
+
 import { appendFileAttachmentsPromptBlock } from "../core/attachmentProjection.ts";
 import { gladeSkillsDir } from "../core/skillsCatalog.ts";
 import { makeBoundedCallbackIngress } from "../core/boundedCallbackIngress.ts";
@@ -1188,8 +1189,9 @@ function mapToRuntimeEvents(
   }
 
   if (event.method === "item/autoApprovalReview/completed") {
-    const review = asObjectRecord(payload?.review) ?? payload;
-    const status = asString(review?.status);
+    const nativeReview = decodeCodexGuardianReview(event.payload);
+    const review = nativeReview.review;
+    const status = review.status;
     const completedReview: ProviderRuntimeEvent = {
       ...runtimeEventBase(event, canonicalThreadId),
       itemId: RuntimeItemId.makeUnsafe(decodeCodexApprovalReview(event.payload).reviewId),
@@ -1201,10 +1203,7 @@ function mapToRuntimeEvents(
       },
     };
     if (status !== "denied" && status !== "aborted") return [completedReview];
-    const rationale =
-      asString(review?.rationale) ??
-      asString(review?.reason) ??
-      `Automatic approval review ${status} this action.`;
+    const rationale = review.rationale ?? `Automatic approval review ${status} this action.`;
     return [
       completedReview,
       {
@@ -1470,21 +1469,7 @@ function mapToRuntimeEvents(
       return [];
     }
     const itemType = source ? toCanonicalItemType(source.type ?? source.kind) : "unknown";
-    if (itemType === "plan") {
-      const detail = itemDetail(source, payload ?? {});
-      if (!detail) {
-        return [];
-      }
-      return [
-        {
-          ...runtimeEventBase(event, canonicalThreadId),
-          type: "turn.proposed.completed",
-          payload: {
-            planMarkdown: detail,
-          },
-        },
-      ];
-    }
+    if (itemType === "plan") return [];
     const completed = mapItemLifecycle(event, canonicalThreadId, "item.completed");
     return completed ? [completed] : [];
   }
@@ -1497,25 +1482,7 @@ function mapToRuntimeEvents(
     return updated ? [updated] : [];
   }
 
-  if (event.method === "item/plan/delta") {
-    const delta =
-      event.textDelta ??
-      asString(payload?.delta) ??
-      asString(payload?.text) ??
-      asString((asObjectRecord(payload?.content) ?? undefined)?.text);
-    if (!delta || delta.length === 0) {
-      return [];
-    }
-    return [
-      {
-        ...runtimeDeltaEventBase(event, canonicalThreadId),
-        type: "turn.proposed.delta",
-        payload: {
-          delta,
-        },
-      },
-    ];
-  }
+  if (event.method === "item/plan/delta") return [];
 
   if (
     event.method === "item/agentMessage/delta" ||
@@ -1627,21 +1594,8 @@ function mapToRuntimeEvents(
   if (event.method === "codex/event/task_complete") {
     const msg = codexEventMessage(payload);
     const taskId = asString(payload?.id) ?? asString(msg?.turn_id);
-    const proposedPlanMarkdown = extractProposedPlanMarkdown(asString(msg?.last_agent_message));
-    if (!taskId) {
-      if (!proposedPlanMarkdown) {
-        return [];
-      }
-      return [
-        {
-          ...codexEventBase(event, canonicalThreadId),
-          type: "turn.proposed.completed",
-          payload: {
-            planMarkdown: proposedPlanMarkdown,
-          },
-        },
-      ];
-    }
+
+    if (!taskId) return [];
     const events: ProviderRuntimeEvent[] = [
       {
         ...codexEventBase(event, canonicalThreadId),
@@ -1655,15 +1609,7 @@ function mapToRuntimeEvents(
         },
       },
     ];
-    if (proposedPlanMarkdown) {
-      events.push({
-        ...codexEventBase(event, canonicalThreadId),
-        type: "turn.proposed.completed",
-        payload: {
-          planMarkdown: proposedPlanMarkdown,
-        },
-      });
-    }
+
     return events;
   }
 

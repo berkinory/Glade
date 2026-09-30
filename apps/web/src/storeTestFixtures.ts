@@ -24,7 +24,7 @@ export function makeThread(overrides: Partial<Thread> = {}): Thread {
     messages: [],
     turnDiffSummaries: [],
     activities: [],
-    proposedPlans: [],
+
     error: null,
     createdAt: "2026-02-13T00:00:00.000Z",
     latestTurn: null,
@@ -32,7 +32,7 @@ export function makeThread(overrides: Partial<Thread> = {}): Thread {
     latestHumanMessageAt: null,
     hasPendingApprovals: false,
     hasPendingUserInput: false,
-    hasActionableProposedPlan: false,
+
     envMode: "local",
     branch: null,
     worktreePath: null,
@@ -99,10 +99,10 @@ export function makeState(thread: Thread): AppState {
   const {
     session,
     latestTurn,
-    pendingSourceProposedPlan,
+
     messages,
     activities,
-    proposedPlans,
+
     turnDiffSummaries,
     ...shell
   } = thread;
@@ -114,7 +114,7 @@ export function makeState(thread: Thread): AppState {
     threadIds: [thread.id],
     threadShellById: { [thread.id]: shell },
     threadSessionById: { [thread.id]: session },
-    threadTurnStateById: { [thread.id]: { latestTurn, pendingSourceProposedPlan } },
+    threadTurnStateById: { [thread.id]: { latestTurn } },
     messageIdsByThreadId: { [thread.id]: messages.map((message) => message.id) },
     messageByThreadId: {
       [thread.id]: Object.fromEntries(messages.map((message) => [message.id, message])),
@@ -123,10 +123,7 @@ export function makeState(thread: Thread): AppState {
     activityByThreadId: {
       [thread.id]: Object.fromEntries(activities.map((activity) => [activity.id, activity])),
     },
-    proposedPlanIdsByThreadId: { [thread.id]: proposedPlans.map((plan) => plan.id) },
-    proposedPlanByThreadId: {
-      [thread.id]: Object.fromEntries(proposedPlans.map((plan) => [plan.id, plan])),
-    },
+
     turnDiffIdsByThreadId: { [thread.id]: turnDiffSummaries.map((summary) => summary.turnId) },
     turnDiffSummaryByThreadId: {
       [thread.id]: Object.fromEntries(
@@ -180,7 +177,7 @@ export function makeReadModelThread(overrides: Partial<OrchestrationReadModel["t
     handoff: null,
     messages: [],
     activities: [],
-    proposedPlans: [],
+
     checkpoints: [],
     session: null,
     ...overrides,

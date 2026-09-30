@@ -1,4 +1,4 @@
-import { Schema } from "effect";
+import { Schema, SchemaGetter } from "effect";
 import {
   SpaceId,
   NonNegativeInt,
@@ -34,10 +34,8 @@ import {
   OrchestrationMessageSource,
   PendingClaudeCacheReview,
   ComputerControlMode,
-  SourceProposedPlanReference,
   PROVIDER_SEND_TURN_MAX_INPUT_CHARS,
   OrchestrationSession,
-  OrchestrationProposedPlan,
   OrchestrationCheckpointStatus,
   OrchestrationCheckpointFile,
   OrchestrationThreadActivity,
@@ -58,6 +56,13 @@ import {
   ProviderApprovalDecision,
   ProviderUserInputAnswers,
 } from "../provider/sessionPolicy";
+
+const LegacyProviderInteractionMode = Schema.Literals(["default", "plan", "debug"]).pipe(
+  Schema.decodeTo(ProviderInteractionMode, {
+    decode: SchemaGetter.transform((mode) => (mode === "plan" ? "default" : mode)),
+    encode: SchemaGetter.transform((mode) => mode),
+  }),
+);
 
 export const OrchestrationEventType = Schema.Literals([
   "space.created",
@@ -175,7 +180,7 @@ export const ThreadCreatedPayload = Schema.Struct({
   title: TrimmedNonEmptyString,
   modelSelection: ModelSelection,
   runtimeMode: RuntimeMode.pipe(Schema.withDecodingDefault(() => DEFAULT_RUNTIME_MODE)),
-  interactionMode: ProviderInteractionMode.pipe(
+  interactionMode: LegacyProviderInteractionMode.pipe(
     Schema.withDecodingDefault(() => DEFAULT_PROVIDER_INTERACTION_MODE),
   ),
   envMode: Schema.optional(ThreadEnvironmentMode).pipe(Schema.withDecodingDefault(() => "local")),
@@ -306,8 +311,8 @@ export const ThreadRuntimeModeSetPayload = Schema.Struct({
 
 export const ThreadInteractionModeSetPayload = Schema.Struct({
   threadId: ThreadId,
-  previousInteractionMode: Schema.optional(ProviderInteractionMode),
-  interactionMode: ProviderInteractionMode.pipe(
+  previousInteractionMode: Schema.optional(LegacyProviderInteractionMode),
+  interactionMode: LegacyProviderInteractionMode.pipe(
     Schema.withDecodingDefault(() => DEFAULT_PROVIDER_INTERACTION_MODE),
   ),
   updatedAt: IsoDateTime,
@@ -373,10 +378,10 @@ export const ThreadTurnStartRequestedPayload = Schema.Struct({
   dispatchMode: TurnDispatchMode.pipe(Schema.withDecodingDefault(() => DEFAULT_TURN_DISPATCH_MODE)),
   dispatchOrigin: Schema.optional(MessageDispatchOrigin),
   runtimeMode: RuntimeMode.pipe(Schema.withDecodingDefault(() => DEFAULT_RUNTIME_MODE)),
-  interactionMode: ProviderInteractionMode.pipe(
+  interactionMode: LegacyProviderInteractionMode.pipe(
     Schema.withDecodingDefault(() => DEFAULT_PROVIDER_INTERACTION_MODE),
   ),
-  sourceProposedPlan: Schema.optional(SourceProposedPlanReference),
+
   createdAt: IsoDateTime,
 });
 
@@ -464,7 +469,7 @@ export const ThreadMessageEditResendRequestedPayload = Schema.Struct({
   computerControlGeneration: Schema.optional(NonNegativeInt),
   assistantDeliveryMode: Schema.optional(AssistantDeliveryMode),
   runtimeMode: RuntimeMode,
-  interactionMode: ProviderInteractionMode,
+  interactionMode: LegacyProviderInteractionMode,
   createdAt: IsoDateTime,
 });
 
@@ -476,11 +481,6 @@ export const ThreadSessionStopRequestedPayload = Schema.Struct({
 export const ThreadSessionSetPayload = Schema.Struct({
   threadId: ThreadId,
   session: OrchestrationSession,
-});
-
-export const ThreadProposedPlanUpsertedPayload = Schema.Struct({
-  threadId: ThreadId,
-  proposedPlan: OrchestrationProposedPlan,
 });
 
 export const ThreadTurnDiffCompletedPayload = Schema.Struct({
@@ -713,10 +713,11 @@ export const OrchestrationEvent = Schema.Union([
     type: Schema.Literal("thread.session-set"),
     payload: ThreadSessionSetPayload,
   }),
+
   Schema.Struct({
     ...EventBaseFields,
     type: Schema.Literal("thread.proposed-plan-upserted"),
-    payload: ThreadProposedPlanUpsertedPayload,
+    payload: Schema.Struct({ threadId: ThreadId }),
   }),
   Schema.Struct({
     ...EventBaseFields,

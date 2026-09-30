@@ -9,7 +9,7 @@ import {
   workEntryRowCount,
   type ToolCallGroupSummary,
 } from "./toolCallGroup.logic";
-import type { ChatMessage, ProposedPlan, TurnDiffSummary, WorktreeSetupStep } from "../../types";
+import type { ChatMessage, TurnDiffSummary, WorktreeSetupStep } from "../../types";
 
 export const MAX_VISIBLE_WORK_LOG_ENTRIES = 6;
 
@@ -253,12 +253,6 @@ export type MessagesTimelineRow =
       createdAt: string;
       message: ChatMessage;
       segmentIndex: number;
-    }
-  | {
-      kind: "proposed-plan";
-      id: string;
-      createdAt: string;
-      proposedPlan: ProposedPlan;
     }
   | { kind: "working"; id: string }
   | {

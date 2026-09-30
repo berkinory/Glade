@@ -202,7 +202,7 @@ export function useChatRuntimeModes({
     scheduleComposerFocus();
   };
   const toggleInteractionMode = () => {
-    handleInteractionModeChange(interactionMode === "plan" ? "default" : "plan");
+    handleInteractionModeChange(interactionMode === "debug" ? "default" : "debug");
   };
   const resetInteractionMode = () => {
     handleInteractionModeChange("default");

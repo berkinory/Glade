@@ -1,5 +1,4 @@
 import {
-  type OrchestrationProposedPlan,
   type OrchestrationThreadActivity,
   type OrchestrationCheckpointSummary,
   type OrchestrationLatestTurn,
@@ -22,7 +21,6 @@ import {
 import { joinMessageTextChunks } from "../../persistence/messageTextChunks.ts";
 import { deriveThreadSummaryMetadata } from "@glade/shared/threads/threadSummary";
 import {
-  ProjectionThreadProposedPlanDbRow,
   ProjectionThreadActivityDbRow,
   ProjectionCheckpointDbRow,
   ProjectionLatestTurnDbRow,
@@ -56,20 +54,6 @@ function pushGrouped<T>(map: Map<string, T[]>, threadId: string, value: T): void
     return;
   }
   map.set(threadId, [value]);
-}
-
-export function toProjectedProposedPlan(
-  row: ProjectionThreadProposedPlanDbRow,
-): OrchestrationProposedPlan {
-  return {
-    id: row.planId,
-    turnId: row.turnId,
-    planMarkdown: row.planMarkdown,
-    implementedAt: row.implementedAt,
-    implementationThreadId: row.implementationThreadId,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-  };
 }
 
 export function toProjectedActivity(
@@ -116,14 +100,6 @@ export function toProjectedLatestTurn(row: ProjectionLatestTurnDbRow): Orchestra
     startedAt: row.startedAt,
     completedAt: row.completedAt,
     assistantMessageId: row.assistantMessageId,
-    ...(row.sourceProposedPlanThreadId !== null && row.sourceProposedPlanId !== null
-      ? {
-          sourceProposedPlan: {
-            threadId: row.sourceProposedPlanThreadId,
-            planId: row.sourceProposedPlanId,
-          },
-        }
-      : {}),
   };
 }
 
@@ -240,21 +216,6 @@ export function attachThreadMessageSegments(
     const rowSegments = segmentsByMessage.get(JSON.stringify([row.threadId, row.messageId]));
     return rowSegments ? { ...row, textSegments: rowSegments } : row;
   });
-}
-
-export function collectProjectedProposedPlans(
-  rows: ReadonlyArray<ProjectionThreadProposedPlanDbRow>,
-): {
-  readonly byThread: Map<string, Array<OrchestrationProposedPlan>>;
-  readonly updatedAt: string | null;
-} {
-  const byThread = new Map<string, Array<OrchestrationProposedPlan>>();
-  let updatedAt: string | null = null;
-  for (const row of rows) {
-    updatedAt = maxIso(updatedAt, row.updatedAt);
-    pushGrouped(byThread, row.threadId, toProjectedProposedPlan(row));
-  }
-  return { byThread, updatedAt };
 }
 
 export function collectProjectedActivities(rows: ReadonlyArray<ProjectionThreadActivityDbRow>): {
@@ -383,7 +344,7 @@ export function toProjectedThreadShellFromStoredSummary(input: {
     latestHumanMessageAt: threadRow.latestHumanMessageAt ?? null,
     hasPendingApprovals: threadRow.pendingApprovalCount > 0,
     hasPendingUserInput: threadRow.pendingUserInputCount > 0,
-    hasActionableProposedPlan: threadRow.hasActionableProposedPlan > 0,
+
     createdAt: threadRow.createdAt,
     updatedAt: threadRow.updatedAt,
     archivedAt: threadRow.archivedAt ?? null,
@@ -401,7 +362,7 @@ export function toProjectedThread(input: {
   readonly threadRow: ProjectionThreadDbRow;
   readonly latestTurn: OrchestrationLatestTurn | null;
   readonly messages: ReadonlyArray<OrchestrationMessage>;
-  readonly proposedPlans: ReadonlyArray<OrchestrationProposedPlan>;
+
   readonly activities: ReadonlyArray<OrchestrationThreadActivity>;
   readonly pendingInteractions: ReadonlyArray<PendingInteractionRow>;
   readonly checkpoints: ReadonlyArray<OrchestrationCheckpointSummary>;
@@ -451,9 +412,9 @@ export function toProjectedThread(input: {
     latestHumanMessageAt: threadRow.latestHumanMessageAt ?? null,
     hasPendingApprovals: summary.hasPendingApprovals,
     hasPendingUserInput: summary.hasPendingUserInput,
-    hasActionableProposedPlan: summary.hasActionableProposedPlan,
+
     messages: input.messages,
-    proposedPlans: input.proposedPlans,
+
     activities: input.activities,
     pendingInteractions: input.pendingInteractions,
     checkpoints: input.checkpoints,

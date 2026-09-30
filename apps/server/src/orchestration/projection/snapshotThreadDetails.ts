@@ -24,7 +24,6 @@ import {
   toProjectedThread,
   toProjectedLatestTurn,
   attachThreadMessageSegments,
-  toProjectedProposedPlan,
   toProjectedActivity,
   toProjectedCheckpoint,
   toProjectedSession,
@@ -40,9 +39,7 @@ export function makeSnapshotThreadDetails(input: {
   readonly listThreadMessageRowsByThread: ReturnType<
     typeof makeSnapshotMessageQueries
   >["listThreadMessageRowsByThread"];
-  readonly listThreadProposedPlanRowsByThread: ReturnType<
-    typeof makeSnapshotHistoryQueries
-  >["listThreadProposedPlanRowsByThread"];
+
   readonly listThreadActivityRowsByThread: ReturnType<
     typeof makeSnapshotHistoryQueries
   >["listThreadActivityRowsByThread"];
@@ -72,7 +69,7 @@ export function makeSnapshotThreadDetails(input: {
   const {
     getThreadRowById,
     listThreadMessageRowsByThread,
-    listThreadProposedPlanRowsByThread,
+
     listThreadActivityRowsByThread,
     listPendingInteractionRowsByThread,
     listCheckpointRowsByThread,
@@ -111,7 +108,7 @@ export function makeSnapshotThreadDetails(input: {
 
       const [
         messageRows,
-        proposedPlanRows,
+
         activityRows,
         pendingInteractionRows,
         checkpointRows,
@@ -126,14 +123,7 @@ export function makeSnapshotThreadDetails(input: {
             ),
           ),
         ),
-        listThreadProposedPlanRowsByThread({ threadId }).pipe(
-          Effect.mapError(
-            toPersistenceSqlOrDecodeError(
-              `${options.tracePrefix}:listPlans:query`,
-              `${options.tracePrefix}:listPlans:decodeRows`,
-            ),
-          ),
-        ),
+
         listThreadActivityRowsByThread({ threadId }).pipe(
           Effect.mapError(
             toPersistenceSqlOrDecodeError(
@@ -186,7 +176,7 @@ export function makeSnapshotThreadDetails(input: {
         messages: attachThreadMessageSegments(messageRows, segmentRows).map(
           orchestrationMessageFromProjectionRow,
         ),
-        proposedPlans: proposedPlanRows.map((row) => toProjectedProposedPlan(row)),
+
         activities: activityRows.map((row) => toProjectedActivity(row)),
         pendingInteractions: pendingInteractionRows,
         checkpoints: checkpointRows.map((row) => toProjectedCheckpoint(row)),

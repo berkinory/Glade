@@ -151,12 +151,6 @@ const COMPOSER_SLASH_COMMAND_DEFINITIONS: Record<
     description: "Switch response model for this thread",
     source: "shared",
   },
-  plan: {
-    command: "plan",
-    label: "/plan",
-    description: "Switch this thread into plan mode",
-    source: "app",
-  },
   debug: {
     command: "debug",
     label: "/debug",
@@ -395,7 +389,6 @@ export function getAvailableComposerSlashCommands(input: {
           ...(input.canOfferCompactCommand ? (["compact"] as const) : []),
           "model",
           ...(input.supportsFastSlashCommand ? (["fast"] as const) : []),
-          "plan",
           "debug",
           "default",
           ...(input.canOfferReviewCommand ? (["review"] as const) : []),

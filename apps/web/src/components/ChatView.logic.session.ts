@@ -205,11 +205,8 @@ export function shouldRenderProviderHealthBanner(input: {
 export function shouldEnableComposerPastedTextCollapse(input: {
   isComposerApprovalState: boolean;
   hasPendingUserInput: boolean;
-  showPlanFollowUpPrompt: boolean;
 }): boolean {
-  return (
-    !input.isComposerApprovalState && !input.hasPendingUserInput && !input.showPlanFollowUpPrompt
-  );
+  return !input.isComposerApprovalState && !input.hasPendingUserInput;
 }
 
 export function buildTranscriptAutoFollowSignal(input: {

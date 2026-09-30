@@ -256,8 +256,6 @@ export type ThreadStatusInput = Pick<
   Thread,
   "interactionMode" | "latestTurn" | "lastVisitedAt" | "session" | "updatedAt"
 > & {
-  proposedPlans?: Thread["proposedPlans"] | undefined;
-  hasActionableProposedPlan?: boolean | undefined;
   hasLiveTailWork?: boolean | undefined;
   dismissedStatusKey?: string | undefined;
 };

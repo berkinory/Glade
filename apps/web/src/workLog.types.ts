@@ -8,7 +8,7 @@ import type { ProviderKind, TurnId } from "@glade/contracts/core/baseSchemas";
 import type { ApprovalRequestKind } from "@glade/shared/threads/threadSummary";
 import type { GladeMcpToolStatus } from "./lib/toolCallLabel.descriptors";
 import type { WorkLogToolDetails } from "./lib/toolCallDetails";
-import type { ChatMessage, ProposedPlan } from "./types";
+import type { ChatMessage } from "./types";
 
 type WorkLogRequestKind = ApprovalRequestKind;
 
@@ -195,12 +195,6 @@ export type TimelineEntry =
       sequence: number;
       message: ChatMessage;
       segmentIndex: number;
-    }
-  | {
-      id: string;
-      kind: "proposed-plan";
-      createdAt: string;
-      proposedPlan: ProposedPlan;
     }
   | {
       id: string;

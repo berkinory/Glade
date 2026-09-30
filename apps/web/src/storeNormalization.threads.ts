@@ -27,7 +27,6 @@ import type {
 import {
   isNonFatalThreadErrorMessage,
   normalizeActivities,
-  normalizeProposedPlans,
   normalizeThreadErrorMessage,
   normalizeTurnDiffSummaries,
 } from "./storeNormalization.activity";
@@ -72,13 +71,6 @@ function normalizeLatestTurn(
   if (!incoming) {
     return null;
   }
-  const nextSourceProposedPlan = incoming.sourceProposedPlan
-    ? previous?.sourceProposedPlan &&
-      previous.sourceProposedPlan.threadId === incoming.sourceProposedPlan.threadId &&
-      previous.sourceProposedPlan.planId === incoming.sourceProposedPlan.planId
-      ? previous.sourceProposedPlan
-      : incoming.sourceProposedPlan
-    : undefined;
 
   if (
     previous &&
@@ -87,12 +79,10 @@ function normalizeLatestTurn(
     previous.requestedAt === incoming.requestedAt &&
     previous.startedAt === incoming.startedAt &&
     previous.completedAt === incoming.completedAt &&
-    previous.assistantMessageId === incoming.assistantMessageId &&
-    previous.sourceProposedPlan === nextSourceProposedPlan
+    previous.assistantMessageId === incoming.assistantMessageId
   ) {
     return previous;
   }
-
   return {
     turnId: incoming.turnId,
     state: incoming.state,
@@ -100,7 +90,6 @@ function normalizeLatestTurn(
     startedAt: incoming.startedAt,
     completedAt: incoming.completedAt,
     assistantMessageId: incoming.assistantMessageId,
-    ...(nextSourceProposedPlan ? { sourceProposedPlan: nextSourceProposedPlan } : {}),
   };
 }
 
@@ -143,7 +132,7 @@ export function normalizeThreadFromReadModel(
   const modelSelection = normalizeModelSelection(incoming.modelSelection, previous?.modelSelection);
   const session = normalizeThreadSession(incoming.session, previous?.session);
   const messages = normalizeChatMessages(incoming.messages, previous?.messages);
-  const proposedPlans = normalizeProposedPlans(incoming.proposedPlans, previous?.proposedPlans);
+
   const latestTurn = normalizeLatestTurn(incoming.latestTurn, previous?.latestTurn);
   const { handoff, claudeCacheReviewSequence, claudeCacheReview, lastKnownPr } =
     normalizeThreadSharedMetadata(incoming, previous, snapshotSequence);
@@ -180,10 +169,7 @@ export function normalizeThreadFromReadModel(
     typeof incoming.hasPendingApprovals === "boolean" ? incoming.hasPendingApprovals : undefined;
   const resolvedHasPendingUserInput =
     typeof incoming.hasPendingUserInput === "boolean" ? incoming.hasPendingUserInput : undefined;
-  const resolvedHasActionableProposedPlan =
-    typeof incoming.hasActionableProposedPlan === "boolean"
-      ? incoming.hasActionableProposedPlan
-      : undefined;
+
   const nextWorktreePath = incoming.worktreePath;
   const nextWorkingDirectory = incoming.workingDirectory ?? null;
   const nextAssociatedWorktreePath = incoming.associatedWorktreePath ?? null;
@@ -207,61 +193,6 @@ export function normalizeThreadFromReadModel(
     currentCreateBranchFlowCompleted: previous?.createBranchFlowCompleted,
     nextCreateBranchFlowCompleted: incoming.createBranchFlowCompleted,
   });
-  const pendingSourceProposedPlan =
-    latestTurn?.sourceProposedPlan ??
-    (incoming.session?.status === "running" ? previous?.pendingSourceProposedPlan : undefined);
-
-  if (
-    previous &&
-    previous.projectId === incoming.projectId &&
-    previous.title === incoming.title &&
-    previous.modelSelection === modelSelection &&
-    previous.runtimeMode === incoming.runtimeMode &&
-    previous.interactionMode === incoming.interactionMode &&
-    previous.session === session &&
-    previous.messages === messages &&
-    previous.proposedPlans === proposedPlans &&
-    previous.error === error &&
-    previous.createdAt === incoming.createdAt &&
-    (previous.archivedAt ?? null) === (incoming.archivedAt ?? null) &&
-    (previous.settledAt ?? null) === (incoming.settledAt ?? null) &&
-    previous.updatedAt === incoming.updatedAt &&
-    (previous.isPinned ?? false) === (incoming.isPinned ?? false) &&
-    previous.latestTurn === latestTurn &&
-    previous.pendingSourceProposedPlan === pendingSourceProposedPlan &&
-    previous.lastVisitedAt === lastVisitedAt &&
-    (previous.parentThreadId ?? null) === (incoming.parentThreadId ?? null) &&
-    (previous.creationSource ?? null) === (incoming.creationSource ?? null) &&
-    (previous.sourceThreadId ?? null) === (incoming.sourceThreadId ?? null) &&
-    (previous.subagentAgentId ?? null) === (incoming.subagentAgentId ?? null) &&
-    (previous.subagentNickname ?? null) === (incoming.subagentNickname ?? null) &&
-    (previous.subagentRole ?? null) === (incoming.subagentRole ?? null) &&
-    previous.envMode === (incoming.envMode ?? "local") &&
-    previous.branch === resolvedBranch &&
-    previous.worktreePath === nextWorktreePath &&
-    (previous.workingDirectory ?? null) === nextWorkingDirectory &&
-    (previous.associatedWorktreePath ?? null) === nextAssociatedWorktreePath &&
-    (previous.associatedWorktreeBranch ?? null) === nextAssociatedWorktreeBranch &&
-    (previous.associatedWorktreeRef ?? null) === nextAssociatedWorktreeRef &&
-    (previous.createBranchFlowCompleted ?? false) === resolvedCreateBranchFlowCompleted &&
-    previous.latestUserMessageAt === resolvedLatestUserMessageAt &&
-    previous.latestHumanMessageAt === resolvedLatestHumanMessageAt &&
-    previous.hasPendingApprovals === resolvedHasPendingApprovals &&
-    previous.hasPendingUserInput === resolvedHasPendingUserInput &&
-    previous.hasActionableProposedPlan === resolvedHasActionableProposedPlan &&
-    (previous.forkSourceThreadId ?? null) === (incoming.forkSourceThreadId ?? null) &&
-    deepEqualJson(previous.lastKnownPr ?? null, lastKnownPr) &&
-    (previous.handoff ?? null) === handoff &&
-    (previous.claudeCacheReview ?? null) === claudeCacheReview &&
-    previous.claudeCacheReviewSequence === claudeCacheReviewSequence &&
-    previous.pinnedMessages === pinnedMessages &&
-    previous.notes === notes &&
-    previous.turnDiffSummaries === turnDiffSummaries &&
-    previous.activities === activities &&
-    previous.pendingInteractions === pendingInteractions
-  ) {
-    return previous;
-  }
 
   return {
     id: incoming.id,
@@ -273,7 +204,7 @@ export function normalizeThreadFromReadModel(
     interactionMode: incoming.interactionMode,
     session,
     messages,
-    proposedPlans,
+
     error,
     createdAt: incoming.createdAt,
     archivedAt: incoming.archivedAt ?? null,
@@ -281,7 +212,7 @@ export function normalizeThreadFromReadModel(
     updatedAt: incoming.updatedAt,
     isPinned: incoming.isPinned ?? false,
     latestTurn,
-    ...(pendingSourceProposedPlan ? { pendingSourceProposedPlan } : {}),
+
     lastVisitedAt,
     parentThreadId: incoming.parentThreadId ?? null,
     creationSource: incoming.creationSource ?? null,
@@ -317,9 +248,7 @@ export function normalizeThreadFromReadModel(
     ...(resolvedHasPendingUserInput !== undefined
       ? { hasPendingUserInput: resolvedHasPendingUserInput }
       : {}),
-    ...(resolvedHasActionableProposedPlan !== undefined
-      ? { hasActionableProposedPlan: resolvedHasActionableProposedPlan }
-      : {}),
+
     turnDiffSummaries,
     activities,
     ...(pendingInteractions !== undefined ? { pendingInteractions } : {}),
@@ -415,9 +344,7 @@ export function normalizeThreadShellSnapshot(
     ...(incoming.hasPendingUserInput !== undefined
       ? { hasPendingUserInput: incoming.hasPendingUserInput }
       : {}),
-    ...(incoming.hasActionableProposedPlan !== undefined
-      ? { hasActionableProposedPlan: incoming.hasActionableProposedPlan }
-      : {}),
+
     ...(previous?.pendingInteractions !== undefined
       ? { pendingInteractions: previous.pendingInteractions }
       : {}),
@@ -428,9 +355,6 @@ export function normalizeThreadShellSnapshot(
     session,
     turnState: {
       latestTurn,
-      ...(latestTurn?.sourceProposedPlan
-        ? { pendingSourceProposedPlan: latestTurn.sourceProposedPlan }
-        : {}),
     },
   };
 }
@@ -510,20 +434,18 @@ export function resolveThreadSidebarMetadata(
   | "latestHumanMessageAt"
   | "hasPendingApprovals"
   | "hasPendingUserInput"
-  | "hasActionableProposedPlan"
   | "hasLiveTailWork"
 > {
   const needsDerivedMetadata =
     thread.latestUserMessageAt === undefined ||
     thread.latestHumanMessageAt === undefined ||
     thread.hasPendingApprovals === undefined ||
-    thread.hasPendingUserInput === undefined ||
-    thread.hasActionableProposedPlan === undefined;
+    thread.hasPendingUserInput === undefined;
   const derivedMetadata = needsDerivedMetadata
     ? deriveThreadSummaryMetadata({
         messages: thread.messages,
         activities: thread.activities,
-        proposedPlans: thread.proposedPlans,
+
         latestTurn: thread.latestTurn,
       })
     : null;
@@ -538,8 +460,7 @@ export function resolveThreadSidebarMetadata(
       thread.hasPendingApprovals ?? derivedMetadata?.hasPendingApprovals ?? false,
     hasPendingUserInput:
       thread.hasPendingUserInput ?? derivedMetadata?.hasPendingUserInput ?? false,
-    hasActionableProposedPlan:
-      thread.hasActionableProposedPlan ?? derivedMetadata?.hasActionableProposedPlan ?? false,
+
     hasLiveTailWork: Boolean(
       hasLiveTurnTailWork({
         latestTurn: thread.latestTurn,

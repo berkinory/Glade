@@ -78,7 +78,7 @@ export function decideTurnCommand({
             detail: checkpointRevertInProgressDetail(command.threadId),
           });
         }
-        const sourceProposedPlan = command.sourceProposedPlan;
+
         const questionResponse = command.asyncUserInputResponse;
         const questionMessage = questionResponse
           ? targetThread.messages.find((message) => message.id === questionResponse.messageId)
@@ -142,30 +142,8 @@ export function decideTurnCommand({
           command.modelSelection ?? targetThread.modelSelection,
           runtimeMode,
         );
-        const sourceThread = sourceProposedPlan
-          ? yield* requireThread({
-              readModel,
-              command,
-              threadId: sourceProposedPlan.threadId,
-            })
-          : null;
-        const sourcePlan =
-          sourceProposedPlan && sourceThread
-            ? sourceThread.proposedPlans.find((entry) => entry.id === sourceProposedPlan.planId)
-            : null;
         const dispatchMode = questionResponse ? "steer" : (command.dispatchMode ?? "queue");
-        if (sourceProposedPlan && !sourcePlan) {
-          return yield* new OrchestrationCommandInvariantError({
-            commandType: command.type,
-            detail: `Proposed plan '${sourceProposedPlan.planId}' does not exist on thread '${sourceProposedPlan.threadId}'.`,
-          });
-        }
-        if (sourceThread && sourceThread.projectId !== targetThread.projectId) {
-          return yield* new OrchestrationCommandInvariantError({
-            commandType: command.type,
-            detail: `Proposed plan '${sourceProposedPlan?.planId}' belongs to thread '${sourceThread.id}' in a different project.`,
-          });
-        }
+
         const activeProvider =
           targetThread.session?.providerName ?? targetThread.modelSelection.provider;
         const isThreadRunning =
@@ -226,7 +204,7 @@ export function decideTurnCommand({
           dispatchOrigin: command.dispatchOrigin ?? "user",
           runtimeMode,
           interactionMode,
-          ...(sourceProposedPlan !== undefined ? { sourceProposedPlan } : {}),
+
           createdAt: command.createdAt,
         } as const;
         const queuedEvent: Omit<OrchestrationEvent, "sequence"> = {
@@ -357,9 +335,7 @@ export function decideTurnCommand({
             dispatchOrigin: command.dispatchOrigin ?? "user",
             runtimeMode: command.runtimeMode,
             interactionMode: command.interactionMode,
-            ...(command.sourceProposedPlan !== undefined
-              ? { sourceProposedPlan: command.sourceProposedPlan }
-              : {}),
+
             createdAt: command.createdAt,
           },
         };

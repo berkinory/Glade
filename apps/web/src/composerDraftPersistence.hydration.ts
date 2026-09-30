@@ -28,25 +28,22 @@ function hydrateQueuedTurnsFromPersisted(
     return [];
   }
   return queuedTurns.map((queuedTurn) => {
-    if (queuedTurn.kind === "chat") {
-      return {
-        ...queuedTurn,
-        images: hydrateImagesFromPersisted(queuedTurn.images),
-        files: [],
-        assistantSelections: normalizeAssistantSelections(queuedTurn.assistantSelections ?? []),
-        browserAnnotations: normalizeBrowserAnnotations(queuedTurn.browserAnnotations ?? []),
-        terminalContexts: normalizeTerminalContextsForThread(
-          threadId,
-          queuedTurn.terminalContexts.map((context) => ({ ...context, threadId })),
-        ),
-        fileComments: normalizeFileComments(queuedTurn.fileComments ?? []),
-        pastedTexts: hydratePastedTextsFromPersisted(queuedTurn.pastedTexts),
-        pullRequestContexts: normalizePullRequestContexts(queuedTurn.pullRequestContexts ?? []),
-        skills: [...queuedTurn.skills],
-        mentions: [...queuedTurn.mentions],
-      };
-    }
-    return { ...queuedTurn };
+    return {
+      ...queuedTurn,
+      images: hydrateImagesFromPersisted(queuedTurn.images),
+      files: [],
+      assistantSelections: normalizeAssistantSelections(queuedTurn.assistantSelections ?? []),
+      browserAnnotations: normalizeBrowserAnnotations(queuedTurn.browserAnnotations ?? []),
+      terminalContexts: normalizeTerminalContextsForThread(
+        threadId,
+        queuedTurn.terminalContexts.map((context) => ({ ...context, threadId })),
+      ),
+      fileComments: normalizeFileComments(queuedTurn.fileComments ?? []),
+      pastedTexts: hydratePastedTextsFromPersisted(queuedTurn.pastedTexts),
+      pullRequestContexts: normalizePullRequestContexts(queuedTurn.pullRequestContexts ?? []),
+      skills: [...queuedTurn.skills],
+      mentions: [...queuedTurn.mentions],
+    };
   });
 }
 
@@ -132,7 +129,7 @@ export function toHydratedThreadDraft(
     skills: [...(persistedDraft.skills ?? [])],
     mentions: [...(persistedDraft.mentions ?? [])],
     queuedTurns: hydrateQueuedTurnsFromPersisted(threadId, persistedDraft.queuedTurns),
-    restoredSourceProposedPlan: persistedDraft.restoredSourceProposedPlan ?? null,
+
     modelSelectionByProvider,
     activeProvider,
     runtimeMode: persistedDraft.runtimeMode ?? null,

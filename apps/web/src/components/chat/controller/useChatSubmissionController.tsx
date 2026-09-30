@@ -157,12 +157,7 @@ export function useChatSubmissionController({
     discovery,
   });
 
-  const {
-    onSubmitPlanFollowUp,
-    onEditUserMessage,
-    onResumeWorkflowRun,
-    onImplementPlanInNewThread,
-  } = useChatTurnFollowUps({
+  const { onEditUserMessage, onResumeWorkflowRun } = useChatTurnFollowUps({
     session,
     workspace,
     provider,
@@ -425,7 +420,7 @@ export function useChatSubmissionController({
   useLayoutEffect(() => {
     lateComposerSendHandlersRef.current = {
       send: onSend,
-      submitPlanFollowUp: onSubmitPlanFollowUp,
+
       advanceActivePendingUserInput: onAdvanceActivePendingUserInput,
       handleStandaloneSlashCommand,
     };
@@ -462,7 +457,7 @@ export function useChatSubmissionController({
     onSend,
     onEditUserMessage,
     onResumeWorkflowRun,
-    onImplementPlanInNewThread,
+
     selectedProviderModelOptions,
     composerTraitSelection,
     runtimeUsageContextWindow,

@@ -13,7 +13,6 @@ import type {
   OrchestrationPendingInteraction,
   OrchestrationLatestTurn,
   OrchestrationThreadPullRequest,
-  OrchestrationProposedPlan,
   PinnedMessage,
   PendingClaudeCacheReview,
   OrchestrationSessionStatus,
@@ -100,8 +99,6 @@ export type ChatMessage = MutableContractFields<
     attachments?: ChatAttachment[];
     completedAt?: string | undefined;
   };
-
-export type ProposedPlan = OrchestrationProposedPlan;
 
 interface TurnDiffFileChange {
   path: string;
@@ -196,7 +193,7 @@ export interface Thread
   codexThreadId: string | null;
   session: ThreadSession | null;
   messages: ChatMessage[];
-  proposedPlans: ProposedPlan[];
+
   error: string | null;
   archivedAt?: string | null;
   settledAt?: string | null;
@@ -205,7 +202,6 @@ export interface Thread
   pinnedMessages?: PinnedMessage[];
   notes?: string;
 
-  pendingSourceProposedPlan?: OrchestrationLatestTurn["sourceProposedPlan"];
   lastVisitedAt?: string | undefined;
   parentThreadId?: ThreadId | null;
   creationSource?: ThreadCreationSource | null;
@@ -223,7 +219,7 @@ export interface Thread
   latestHumanMessageAt?: string | null;
   hasPendingApprovals?: boolean;
   hasPendingUserInput?: boolean;
-  hasActionableProposedPlan?: boolean;
+
   pendingInteractions?: OrchestrationPendingInteraction[];
   turnDiffSummaries: TurnDiffSummary[];
   activities: OrchestrationThreadActivity[];
@@ -231,18 +227,11 @@ export interface Thread
 
 export type ThreadShell = Omit<
   Thread,
-  | "session"
-  | "messages"
-  | "proposedPlans"
-  | "latestTurn"
-  | "pendingSourceProposedPlan"
-  | "turnDiffSummaries"
-  | "activities"
+  "session" | "messages" | "latestTurn" | "turnDiffSummaries" | "activities"
 >;
 
 export interface ThreadTurnState {
   latestTurn: OrchestrationLatestTurn | null;
-  pendingSourceProposedPlan?: OrchestrationLatestTurn["sourceProposedPlan"];
 }
 
 export interface SidebarThreadSummary {
@@ -275,7 +264,7 @@ export interface SidebarThreadSummary {
   latestHumanMessageAt?: string | null;
   hasPendingApprovals: boolean;
   hasPendingUserInput: boolean;
-  hasActionableProposedPlan: boolean;
+
   hasLiveTailWork: boolean;
   forkSourceThreadId?: ThreadId | null;
   handoff?: ThreadHandoff | null;

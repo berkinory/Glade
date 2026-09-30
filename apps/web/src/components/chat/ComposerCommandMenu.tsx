@@ -57,7 +57,6 @@ function commandMenuTitle(
       return "Model";
     case "fast":
       return "Fast Mode";
-    case "plan":
       return "Plan Mode";
     case "debug":
       return "Debug Mode";

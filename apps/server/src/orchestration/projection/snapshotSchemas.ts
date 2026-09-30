@@ -8,10 +8,9 @@ import {
   ThreadPinnedMessages,
   OrchestrationPendingInteraction,
   OrchestrationCheckpointFile,
-  OrchestrationProposedPlanId,
   ThreadEnvironmentMode,
 } from "@glade/contracts/orchestration/threadEntities";
-import { ProjectionThreadProposedPlan } from "../../persistence/Services/ProjectionThreadProposedPlans.ts";
+
 import { ProjectionThread } from "../../persistence/Services/ProjectionThreads.ts";
 import { ProjectionThreadActivity } from "../../persistence/Services/ProjectionThreadActivities.ts";
 import {
@@ -48,8 +47,6 @@ export const ProjectionProjectDbRowSchema = ProjectionProject.mapFields(
     isPinned: Schema.Number,
   }),
 );
-
-export const ProjectionThreadProposedPlanDbRowSchema = ProjectionThreadProposedPlan;
 
 export const ProjectionThreadDbRowSchema = ProjectionThread.mapFields(
   Struct.assign({
@@ -126,8 +123,7 @@ export const ProjectionLatestTurnDbRowSchema = Schema.Struct({
   startedAt: Schema.NullOr(IsoDateTime),
   completedAt: Schema.NullOr(IsoDateTime),
   assistantMessageId: Schema.NullOr(MessageId),
-  sourceProposedPlanThreadId: Schema.NullOr(ThreadId),
-  sourceProposedPlanId: Schema.NullOr(OrchestrationProposedPlanId),
+
   historyUpdatedAt: Schema.optional(Schema.NullOr(IsoDateTime)),
 });
 
@@ -230,10 +226,6 @@ export type ProjectionThreadShellDbRow = Omit<ProjectionThreadShellDbRowRaw, "mo
 export type ProjectionProjectDbRow = Omit<ProjectionProjectDbRowRaw, "defaultModelSelection"> & {
   readonly defaultModelSelection: typeof ModelSelection.Type | null;
 };
-
-export type ProjectionThreadProposedPlanDbRow = Schema.Schema.Type<
-  typeof ProjectionThreadProposedPlanDbRowSchema
->;
 
 export type ProjectionThreadActivityDbRow = Schema.Schema.Type<
   typeof ProjectionThreadActivityDbRowSchema

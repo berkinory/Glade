@@ -33,7 +33,7 @@ import {
 import { collapseExpandedComposerCursor } from "~/composer-logic";
 import { LoaderCircleIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
-import { proposedPlanTitle } from "~/proposedPlan";
+
 import { buildNextProviderOptions } from "~/providerModelOptions";
 import { backgroundSubagent, stopSubagent, stopWorkflowTask } from "../chatTaskActions";
 import { useChatThreadContext } from "../ChatThreadContext";
@@ -84,6 +84,8 @@ export function ChatComposerSurface({
   const {
     composerFormRef,
     paneScopeId,
+    taskListSidebarOpen,
+    setTaskListSidebarOpen,
     workflowRunCardCompact,
     setWorkflowRunCardCompact,
     subagentStripCompact,
@@ -116,7 +118,7 @@ export function ChatComposerSurface({
     composerTerminalContexts,
     removeComposerTerminalContextFromDraft,
     isComposerFooterCompact,
-    planSidebarOpen,
+
     composerSendState,
     secondaryChromePlaceholderHeight,
     setComposerDraftProviderModelOptions,
@@ -148,7 +150,6 @@ export function ChatComposerSurface({
     runtimeUsageContextWindow,
     composerFooterControlsPlan,
     contextWindowSelectionStatus,
-    onImplementPlanInNewThread,
   } = controller.submission;
   const {
     reportChatActionFailure,
@@ -209,8 +210,7 @@ export function ChatComposerSurface({
     onCancelActivePendingUserInput,
     expiredQuestionDrafts,
     composerProviderState,
-    showPlanFollowUpPrompt,
-    activeProposedPlan,
+
     pendingAutomationConversation,
     cancelAutomationConversation,
     serverConfigQuery,
@@ -220,9 +220,7 @@ export function ChatComposerSurface({
     phase,
     activeTaskList,
     stripSourceThreadId,
-    sidebarProposedPlan,
-    planSidebarToggleTitle,
-    planSidebarToggleLabel,
+
     activePendingResolvedAnswers,
     isSendBusy,
     isConnecting,
@@ -256,8 +254,7 @@ export function ChatComposerSurface({
       markWorkflowRunDismissed(activeThreadId, workflowRunState.workflowTaskId);
     }
   };
-  const { handleInteractionModeChange, resetInteractionMode, togglePlanSidebar } =
-    controller.environment;
+  const { handleInteractionModeChange, resetInteractionMode } = controller.environment;
   const {
     showComposerLiveChangesHeader,
     renderActiveTaskListCard,
@@ -486,17 +483,6 @@ export function ChatComposerSurface({
             >
               <ComposerInputBanners
                 roundedTopReset={false}
-                planFollowUp={
-                  !activePendingApproval &&
-                  pendingUserInputs.length === 0 &&
-                  showPlanFollowUpPrompt &&
-                  activeProposedPlan
-                    ? {
-                        id: activeProposedPlan.id,
-                        title: proposedPlanTitle(activeProposedPlan.planMarkdown) ?? null,
-                      }
-                    : null
-                }
                 automationSetup={
                   !activePendingApproval &&
                   pendingUserInputs.length === 0 &&
@@ -627,15 +613,13 @@ export function ChatComposerSurface({
                         ? activePendingProgress.activeQuestion?.options.length === 0
                           ? "Type your answer to continue"
                           : "Type your own answer, or leave this blank to use the selected option"
-                        : showPlanFollowUpPrompt && activeProposedPlan
-                          ? "Add feedback to refine the plan, or leave this blank to implement it"
-                          : activeThread?.parentThreadId
-                            ? "Message this subagent while it works"
-                            : hasLiveTurn
-                              ? "Ask for follow-up changes"
-                              : phase === "disconnected"
-                                ? "Ask for follow-up changes or attach images"
-                                : "Ask anything, @tag files/folders, or use / to show available commands"
+                        : activeThread?.parentThreadId
+                          ? "Message this subagent while it works"
+                          : hasLiveTurn
+                            ? "Ask for follow-up changes"
+                            : phase === "disconnected"
+                              ? "Ask for follow-up changes or attach images"
+                              : "Ask anything, @tag files/folders, or use / to show available commands"
                   }
                   disabled={isComposerEditorDisabled}
                 />
@@ -688,11 +672,11 @@ export function ChatComposerSurface({
                   interactionMode={interactionMode}
                   resetInteractionMode={resetInteractionMode}
                   sidebarAction={
-                    activeTaskList || sidebarProposedPlan || planSidebarOpen
+                    activeTaskList || taskListSidebarOpen
                       ? {
-                          title: planSidebarToggleTitle,
-                          label: planSidebarToggleLabel,
-                          onClick: togglePlanSidebar,
+                          title: taskListSidebarOpen ? "Close task list" : "Open task list",
+                          label: "Tasks",
+                          onClick: () => setTaskListSidebarOpen(!taskListSidebarOpen),
                         }
                       : null
                   }
@@ -725,14 +709,8 @@ export function ChatComposerSurface({
                     preparingWorktree: isPreparingWorktree,
                     hasContent: composerSendState.hasSendableContent,
                     hasPendingUserInputs: pendingUserInputs.length > 0,
-                    showPlanFollowUp: showPlanFollowUpPrompt,
-                    hasPrompt: prompt.trim().length > 0,
+
                     onInterrupt: onInterruptFromStopControl,
-                    onImplementInNewThread: (
-                      ...args: Parameters<typeof onImplementPlanInNewThread>
-                    ) => {
-                      void onImplementPlanInNewThread(...args).catch(reportChatActionFailure);
-                    },
                   }}
                 />
               )}

@@ -15,7 +15,6 @@ projectionSnapshotLayer("Projection snapshot threadShell", (it) => {
       yield* sql`DELETE FROM projection_projects`;
       yield* sql`DELETE FROM projection_threads`;
       yield* sql`DELETE FROM projection_thread_messages`;
-      yield* sql`DELETE FROM projection_thread_proposed_plans`;
       yield* sql`DELETE FROM projection_thread_activities`;
       yield* sql`DELETE FROM projection_thread_sessions`;
       yield* sql`DELETE FROM projection_turns`;
@@ -60,13 +59,11 @@ projectionSnapshotLayer("Projection snapshot threadShell", (it) => {
           latest_user_message_at,
           pending_approval_count,
           pending_user_input_count,
-          has_actionable_proposed_plan,
           created_at,
           updated_at,
           archived_at,
           deleted_at
-        )
-        VALUES (
+        ) VALUES (
           'thread-shell',
           'project-shell',
           'Shell Thread',
@@ -80,7 +77,6 @@ projectionSnapshotLayer("Projection snapshot threadShell", (it) => {
           NULL,
           '2026-03-03T00:00:02.500Z',
           2,
-          1,
           1,
           '2026-03-03T00:00:02.000Z',
           '2026-03-03T00:00:03.000Z',
@@ -119,8 +115,6 @@ projectionSnapshotLayer("Projection snapshot threadShell", (it) => {
           thread_id,
           turn_id,
           pending_message_id,
-          source_proposed_plan_thread_id,
-          source_proposed_plan_id,
           assistant_message_id,
           state,
           requested_at,
@@ -130,12 +124,9 @@ projectionSnapshotLayer("Projection snapshot threadShell", (it) => {
           checkpoint_ref,
           checkpoint_status,
           checkpoint_files_json
-        )
-        VALUES (
+        ) VALUES (
           'thread-shell',
           'turn-shell',
-          NULL,
-          NULL,
           NULL,
           NULL,
           'completed',
@@ -211,7 +202,7 @@ projectionSnapshotLayer("Projection snapshot threadShell", (it) => {
           latestHumanMessageAt: null,
           hasPendingApprovals: true,
           hasPendingUserInput: true,
-          hasActionableProposedPlan: true,
+
           createdAt: "2026-03-03T00:00:02.000Z",
           updatedAt: "2026-03-03T00:00:03.000Z",
           archivedAt: null,

@@ -30,7 +30,6 @@ import {
 import {
   collectProjectedMessages,
   attachThreadMessageSegments,
-  collectProjectedProposedPlans,
   collectProjectedActivities,
   collectPendingInteractions,
   collectProjectedCheckpoints,
@@ -59,9 +58,7 @@ export function makeSnapshotReadModels(input: {
   readonly listThreadMessageRows: ReturnType<
     typeof makeSnapshotMessageQueries
   >["listThreadMessageRows"];
-  readonly listThreadProposedPlanRows: ReturnType<
-    typeof makeSnapshotHistoryQueries
-  >["listThreadProposedPlanRows"];
+
   readonly listThreadActivityRows: ReturnType<
     typeof makeSnapshotHistoryQueries
   >["listThreadActivityRows"];
@@ -94,7 +91,7 @@ export function makeSnapshotReadModels(input: {
     listProjectRows,
     listThreadRows,
     listThreadMessageRows,
-    listThreadProposedPlanRows,
+
     listThreadActivityRows,
     listPendingInteractionRows,
     listThreadSessionRows,
@@ -116,7 +113,7 @@ export function makeSnapshotReadModels(input: {
             projectRows,
             threadRows,
             messageRows,
-            proposedPlanRows,
+
             activityRows,
             pendingInteractionRows,
             sessionRows,
@@ -168,14 +165,7 @@ export function makeSnapshotReadModels(input: {
                 ),
               ),
             ),
-            listThreadProposedPlanRows(undefined).pipe(
-              Effect.mapError(
-                toPersistenceSqlOrDecodeError(
-                  "ProjectionSnapshotQuery.getSnapshot:listThreadProposedPlans:query",
-                  "ProjectionSnapshotQuery.getSnapshot:listThreadProposedPlans:decodeRows",
-                ),
-              ),
-            ),
+
             listThreadActivityRows(undefined).pipe(
               Effect.mapError(
                 toPersistenceSqlOrDecodeError(
@@ -233,7 +223,7 @@ export function makeSnapshotReadModels(input: {
           const messages = collectProjectedMessages(
             attachThreadMessageSegments(messageRows, segmentRows),
           );
-          const proposedPlans = collectProjectedProposedPlans(proposedPlanRows);
+
           const activities = collectProjectedActivities(activityRows);
           const pendingInteractions = collectPendingInteractions(pendingInteractionRows);
           const checkpoints = collectProjectedCheckpoints(checkpointRows);
@@ -242,7 +232,7 @@ export function makeSnapshotReadModels(input: {
 
           let updatedAt = collectBaseUpdatedAt({ spaceRows, projectRows, threadRows, stateRows });
           updatedAt = maxOptionalIso(updatedAt, messages.updatedAt);
-          updatedAt = maxOptionalIso(updatedAt, proposedPlans.updatedAt);
+
           updatedAt = maxOptionalIso(updatedAt, activities.updatedAt);
           updatedAt = maxOptionalIso(updatedAt, pendingInteractions.updatedAt);
           updatedAt = maxOptionalIso(updatedAt, checkpoints.updatedAt);
@@ -256,7 +246,7 @@ export function makeSnapshotReadModels(input: {
               threadRow: row,
               latestTurn: latestTurns.byThread.get(row.threadId) ?? null,
               messages: messages.byThread.get(row.threadId) ?? [],
-              proposedPlans: proposedPlans.byThread.get(row.threadId) ?? [],
+
               activities: activities.byThread.get(row.threadId) ?? [],
               pendingInteractions: pendingInteractions.byThread.get(row.threadId) ?? [],
               checkpoints: checkpoints.byThread.get(row.threadId) ?? [],
@@ -296,7 +286,7 @@ export function makeSnapshotReadModels(input: {
             spaceRows,
             projectRows,
             threadRows,
-            proposedPlanRows,
+
             checkpointRevertActivityRows,
             sessionRows,
             latestTurnRows,
@@ -338,14 +328,7 @@ export function makeSnapshotReadModels(input: {
                 ),
               ),
             ),
-            listThreadProposedPlanRows(undefined).pipe(
-              Effect.mapError(
-                toPersistenceSqlOrDecodeError(
-                  "ProjectionSnapshotQuery.getCommandReadModel:listThreadProposedPlans:query",
-                  "ProjectionSnapshotQuery.getCommandReadModel:listThreadProposedPlans:decodeRows",
-                ),
-              ),
-            ),
+
             listCheckpointRevertLifecycleActivityRows(undefined).pipe(
               Effect.mapError(
                 toPersistenceSqlOrDecodeError(
@@ -380,7 +363,6 @@ export function makeSnapshotReadModels(input: {
             ),
           ]);
 
-          const proposedPlans = collectProjectedProposedPlans(proposedPlanRows);
           const checkpointRevertActivities = collectProjectedActivities(
             checkpointRevertActivityRows,
           );
@@ -388,7 +370,7 @@ export function makeSnapshotReadModels(input: {
           const latestTurns = collectProjectedLatestTurns(latestTurnRows);
 
           let updatedAt = collectBaseUpdatedAt({ spaceRows, projectRows, threadRows, stateRows });
-          updatedAt = maxOptionalIso(updatedAt, proposedPlans.updatedAt);
+
           updatedAt = maxOptionalIso(updatedAt, checkpointRevertActivities.updatedAt);
           updatedAt = maxOptionalIso(updatedAt, sessions.updatedAt);
           updatedAt = maxOptionalIso(updatedAt, latestTurns.updatedAt);
@@ -400,7 +382,7 @@ export function makeSnapshotReadModels(input: {
               threadRow: row,
               latestTurn: latestTurns.byThread.get(row.threadId) ?? null,
               messages: [],
-              proposedPlans: proposedPlans.byThread.get(row.threadId) ?? [],
+
               activities: checkpointRevertActivities.byThread.get(row.threadId) ?? [],
               pendingInteractions: [],
               checkpoints: [],

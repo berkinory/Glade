@@ -86,11 +86,7 @@ export function syncServerShellSnapshot(
     messageByThreadId: retainThreadScopedRecord(state.messageByThreadId, nextThreadIds),
     activityIdsByThreadId: retainThreadScopedRecord(state.activityIdsByThreadId, nextThreadIds),
     activityByThreadId: retainThreadScopedRecord(state.activityByThreadId, nextThreadIds),
-    proposedPlanIdsByThreadId: retainThreadScopedRecord(
-      state.proposedPlanIdsByThreadId,
-      nextThreadIds,
-    ),
-    proposedPlanByThreadId: retainThreadScopedRecord(state.proposedPlanByThreadId, nextThreadIds),
+
     turnDiffIdsByThreadId: retainThreadScopedRecord(state.turnDiffIdsByThreadId, nextThreadIds),
     turnDiffSummaryByThreadId: retainThreadScopedRecord(
       state.turnDiffSummaryByThreadId,
@@ -265,11 +261,7 @@ export function syncServerReadModel(state: AppState, readModel: OrchestrationRea
     messageByThreadId: retainThreadScopedRecord(state.messageByThreadId, nextThreadIds),
     activityIdsByThreadId: retainThreadScopedRecord(state.activityIdsByThreadId, nextThreadIds),
     activityByThreadId: retainThreadScopedRecord(state.activityByThreadId, nextThreadIds),
-    proposedPlanIdsByThreadId: retainThreadScopedRecord(
-      state.proposedPlanIdsByThreadId,
-      nextThreadIds,
-    ),
-    proposedPlanByThreadId: retainThreadScopedRecord(state.proposedPlanByThreadId, nextThreadIds),
+
     turnDiffIdsByThreadId: retainThreadScopedRecord(state.turnDiffIdsByThreadId, nextThreadIds),
     turnDiffSummaryByThreadId: retainThreadScopedRecord(
       state.turnDiffSummaryByThreadId,
@@ -297,6 +289,7 @@ export function syncServerReadModel(state: AppState, readModel: OrchestrationRea
   )
     ? state.sidebarThreadSummaryById
     : nextSidebarThreadSummaryById;
+
   if (
     spaces === state.spaces &&
     projects === state.projects &&
@@ -309,8 +302,6 @@ export function syncServerReadModel(state: AppState, readModel: OrchestrationRea
     normalizedState.messageByThreadId === state.messageByThreadId &&
     normalizedState.activityIdsByThreadId === state.activityIdsByThreadId &&
     normalizedState.activityByThreadId === state.activityByThreadId &&
-    normalizedState.proposedPlanIdsByThreadId === state.proposedPlanIdsByThreadId &&
-    normalizedState.proposedPlanByThreadId === state.proposedPlanByThreadId &&
     normalizedState.turnDiffIdsByThreadId === state.turnDiffIdsByThreadId &&
     normalizedState.turnDiffSummaryByThreadId === state.turnDiffSummaryByThreadId &&
     normalizedState.threadDetailSyncById === state.threadDetailSyncById &&

@@ -261,8 +261,7 @@ function completeAutomationRun(input: {
       threadId: input.threadId,
       turnId: input.turnId,
       pendingMessageId: messageId,
-      sourceProposedPlanThreadId: null,
-      sourceProposedPlanId: null,
+
       assistantMessageId: null,
       state: "completed",
       requestedAt: now,
@@ -1216,8 +1215,7 @@ layer("AutomationService", (it) => {
         threadId: targetThreadId,
         turnId: automationTurnId,
         pendingMessageId: run.messageId,
-        sourceProposedPlanThreadId: null,
-        sourceProposedPlanId: null,
+
         assistantMessageId: null,
         state: "running",
         requestedAt: now,
@@ -1277,8 +1275,7 @@ layer("AutomationService", (it) => {
         threadId: targetThreadId,
         turnId: automationTurnId,
         pendingMessageId: run.messageId,
-        sourceProposedPlanThreadId: null,
-        sourceProposedPlanId: null,
+
         assistantMessageId: null,
         state: "pending",
         requestedAt: now,
@@ -1514,8 +1511,7 @@ layer("AutomationService", (it) => {
         threadId: targetThreadId,
         turnId: automationTurnId,
         pendingMessageId: run.messageId,
-        sourceProposedPlanThreadId: null,
-        sourceProposedPlanId: null,
+
         assistantMessageId: null,
         state: "completed",
         requestedAt: now,
@@ -2100,8 +2096,7 @@ layer("AutomationService", (it) => {
         threadId: targetThreadId,
         turnId: TurnId.makeUnsafe("turn-in-flight-complete"),
         pendingMessageId: activeRun.messageId,
-        sourceProposedPlanThreadId: null,
-        sourceProposedPlanId: null,
+
         assistantMessageId: null,
         state: "completed",
         requestedAt: now,

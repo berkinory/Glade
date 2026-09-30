@@ -1,13 +1,12 @@
 import { ProviderInteractionMode } from "@glade/contracts/provider/sessionPolicy";
 import { type ReactNode } from "react";
-import { GoTasklist } from "react-icons/go";
-import { BugIcon, ChevronDownIcon, ComposerSendArrowIcon, LayoutSidebarIcon } from "~/lib/icons";
+
+import { BugIcon, ComposerSendArrowIcon, LayoutSidebarIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import type { derivePendingUserInputProgress } from "../../pendingUserInput";
 import type { SessionPhase } from "../../types";
 import { Button } from "../ui/button";
-import { Menu, MenuItem, MenuTrigger } from "../ui/menu";
-import { ComposerPickerMenuPopup } from "./ComposerPickerMenuPopup";
+
 import { ComposerVoiceButton } from "./ComposerVoiceButton";
 import { ComposerVoiceRecorderBar } from "./ComposerVoiceRecorderBar";
 import { COMPOSER_FOOTER_ROW_CLASS_NAME } from "./composerPickerStyles";
@@ -42,10 +41,8 @@ interface ChatComposerFooterProps {
     preparingWorktree: boolean;
     hasContent: boolean;
     hasPendingUserInputs: boolean;
-    showPlanFollowUp: boolean;
-    hasPrompt: boolean;
+
     onInterrupt: () => void;
-    onImplementInNewThread: () => void;
   };
 }
 
@@ -92,16 +89,10 @@ export function ChatComposerFooter({
                 size="sm"
                 type="button"
                 onClick={resetInteractionMode}
-                title={`${interactionMode === "plan" ? "Plan" : "Debug"} mode — click to return to normal build mode`}
+                title={"Debug mode: click to return to normal mode"}
               >
-                {interactionMode === "plan" ? (
-                  <GoTasklist className="size-3.5" />
-                ) : (
-                  <BugIcon className="size-3.5" />
-                )}
-                <span className="sr-only sm:not-sr-only">
-                  {interactionMode === "plan" ? "Plan" : "Debug"}
-                </span>
+                <BugIcon className="size-3.5" />
+                <span className="sr-only sm:not-sr-only">Debug</span>
               </Button>
             ) : null}
 
@@ -176,116 +167,69 @@ export function ChatComposerFooter({
             <span aria-hidden="true" className="block size-2 rounded-[1px] bg-current" />
           </Button>
         ) : !submission.hasPendingUserInputs && !voice.recording && !voice.transcribing ? (
-          submission.showPlanFollowUp ? (
-            submission.hasPrompt ? (
-              <Button
-                type="submit"
-                size="sm"
-                className="h-9 rounded-full px-4 sm:h-8"
-                disabled={submission.busy || submission.connecting}
-              >
-                {submission.connecting || submission.busy ? "Sending..." : "Refine"}
-              </Button>
-            ) : (
-              <div className="flex items-center">
-                <Button
-                  type="submit"
-                  size="sm"
-                  className="h-9 rounded-l-full rounded-r-none px-4 sm:h-8"
-                  disabled={submission.busy || submission.connecting}
+          <>
+            {voice.enabled ? (
+              <ComposerVoiceButton
+                disabled={submission.connecting || submission.busy}
+                isRecording={voice.recording}
+                isTranscribing={voice.transcribing}
+                durationLabel={voice.durationLabel}
+                onClick={voice.onToggle}
+              />
+            ) : null}
+            <Button
+              type="submit"
+              variant="prominent"
+              size="icon-xs"
+              className="size-7 rounded-full sm:size-7"
+              disabled={
+                submission.busy ||
+                submission.connecting ||
+                voice.transcribing ||
+                submission.preparingImages ||
+                !submission.hasContent
+              }
+              aria-label={
+                submission.connecting
+                  ? "Connecting"
+                  : voice.transcribing
+                    ? "Transcribing voice note"
+                    : submission.preparingImages
+                      ? "Optimizing image"
+                      : submission.preparingWorktree
+                        ? "Preparing worktree"
+                        : submission.busy
+                          ? "Sending"
+                          : "Send message"
+              }
+            >
+              {submission.connecting || submission.busy || submission.preparingImages ? (
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 14 14"
+                  fill="none"
+                  className="animate-spin"
+                  aria-hidden="true"
                 >
-                  {submission.connecting || submission.busy ? "Sending..." : "Implement"}
-                </Button>
-                <Menu>
-                  <MenuTrigger
-                    render={
-                      <Button
-                        size="sm"
-                        variant="default"
-                        className="h-9 rounded-l-none rounded-r-full border-l-white/12 px-2 sm:h-8"
-                        aria-label="Implementation actions"
-                        disabled={submission.busy || submission.connecting}
-                      />
-                    }
-                  >
-                    <ChevronDownIcon className="size-3.5" />
-                  </MenuTrigger>
-                  <ComposerPickerMenuPopup align="end" side="top">
-                    <MenuItem
-                      disabled={submission.busy || submission.connecting}
-                      onClick={() => void submission.onImplementInNewThread()}
-                    >
-                      Implement in a new thread
-                    </MenuItem>
-                  </ComposerPickerMenuPopup>
-                </Menu>
-              </div>
-            )
-          ) : (
-            <>
-              {voice.enabled ? (
-                <ComposerVoiceButton
-                  disabled={submission.connecting || submission.busy}
-                  isRecording={voice.recording}
-                  isTranscribing={voice.transcribing}
-                  durationLabel={voice.durationLabel}
-                  onClick={voice.onToggle}
-                />
-              ) : null}
-              <Button
-                type="submit"
-                variant="prominent"
-                size="icon-xs"
-                className="size-7 rounded-full sm:size-7"
-                disabled={
-                  submission.busy ||
-                  submission.connecting ||
-                  voice.transcribing ||
-                  submission.preparingImages ||
-                  !submission.hasContent
-                }
-                aria-label={
-                  submission.connecting
-                    ? "Connecting"
-                    : voice.transcribing
-                      ? "Transcribing voice note"
-                      : submission.preparingImages
-                        ? "Optimizing image"
-                        : submission.preparingWorktree
-                          ? "Preparing worktree"
-                          : submission.busy
-                            ? "Sending"
-                            : "Send message"
-                }
-              >
-                {submission.connecting || submission.busy || submission.preparingImages ? (
-                  <svg
-                    width="12"
-                    height="12"
-                    viewBox="0 0 14 14"
-                    fill="none"
-                    className="animate-spin"
-                    aria-hidden="true"
-                  >
-                    <circle
-                      cx="7"
-                      cy="7"
-                      r="5.5"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeDasharray="20 12"
-                    />
-                  </svg>
-                ) : (
-                  <ComposerSendArrowIcon
-                    aria-hidden="true"
-                    className="size-5 shrink-0 translate-y-px"
+                  <circle
+                    cx="7"
+                    cy="7"
+                    r="5.5"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeDasharray="20 12"
                   />
-                )}
-              </Button>
-            </>
-          )
+                </svg>
+              ) : (
+                <ComposerSendArrowIcon
+                  aria-hidden="true"
+                  className="size-5 shrink-0 translate-y-px"
+                />
+              )}
+            </Button>
+          </>
         ) : null}
       </div>
     </div>

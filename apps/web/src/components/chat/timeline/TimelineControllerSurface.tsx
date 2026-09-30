@@ -12,7 +12,7 @@ import {
   resolveWorkEntryChunkFold,
   type MessagesTimelineRow,
 } from "~/components/chat/MessagesTimeline.logic.rowTypes";
-import { ProposedPlanCard } from "~/components/chat/ProposedPlanCard";
+
 import { threadFindMarkdownProps } from "~/components/chat/threadFind.logic";
 import {
   prefersCompactWorkEntryRow,
@@ -70,7 +70,7 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
     onEnableComputerControl,
     activeTurnInProgress,
     isWorking,
-    workspaceRoot,
+
     onResolveWorktreeSetup,
     hasMessages,
     emptyStateContent,
@@ -272,17 +272,6 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
       {row.kind === "message" &&
         row.message.role === "assistant" &&
         renderTimelineAssistantMessage(controller, row)}
-
-      {row.kind === "proposed-plan" && (
-        <div className="min-w-0 py-0.5">
-          <ProposedPlanCard
-            planMarkdown={row.proposedPlan.planMarkdown}
-            cwd={markdownCwd}
-            workspaceRoot={workspaceRoot}
-            chatTypographyStyle={chatTypographyStyle}
-          />
-        </div>
-      )}
 
       {row.kind === "working" && (
         <div

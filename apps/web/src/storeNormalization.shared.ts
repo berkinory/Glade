@@ -53,15 +53,6 @@ export function basenameOfPath(value: string): string | null {
   return segments.at(-1) ?? null;
 }
 
-function sourceProposedPlansEqual(
-  left: Thread["pendingSourceProposedPlan"],
-  right: Thread["pendingSourceProposedPlan"],
-): boolean {
-  if (left === right) return true;
-  if (left === undefined || right === undefined) return false;
-  return left.threadId === right.threadId && left.planId === right.planId;
-}
-
 function latestTurnsEqual(left: Thread["latestTurn"], right: Thread["latestTurn"]): boolean {
   if (left === right) return true;
   if (left == null || right == null) return false;
@@ -71,8 +62,7 @@ function latestTurnsEqual(left: Thread["latestTurn"], right: Thread["latestTurn"
     left.requestedAt === right.requestedAt &&
     left.startedAt === right.startedAt &&
     left.completedAt === right.completedAt &&
-    left.assistantMessageId === right.assistantMessageId &&
-    sourceProposedPlansEqual(left.sourceProposedPlan, right.sourceProposedPlan)
+    left.assistantMessageId === right.assistantMessageId
   );
 }
 
@@ -171,7 +161,6 @@ export function threadShellsEqual(left: ThreadShell | undefined, right: ThreadSh
     left.latestHumanMessageAt === right.latestHumanMessageAt &&
     left.hasPendingApprovals === right.hasPendingApprovals &&
     left.hasPendingUserInput === right.hasPendingUserInput &&
-    left.hasActionableProposedPlan === right.hasActionableProposedPlan &&
     left.pendingInteractions === right.pendingInteractions &&
     left.lastVisitedAt === right.lastVisitedAt
   );
@@ -181,11 +170,7 @@ export function threadTurnStatesEqual(
   left: ThreadTurnState | undefined,
   right: ThreadTurnState,
 ): boolean {
-  return (
-    left !== undefined &&
-    latestTurnsEqual(left.latestTurn, right.latestTurn) &&
-    sourceProposedPlansEqual(left.pendingSourceProposedPlan, right.pendingSourceProposedPlan)
-  );
+  return left !== undefined && latestTurnsEqual(left.latestTurn, right.latestTurn);
 }
 
 export function arraysShallowEqual<T>(

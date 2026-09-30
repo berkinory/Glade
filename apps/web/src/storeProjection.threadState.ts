@@ -18,8 +18,6 @@ import {
   EMPTY_ACTIVITY_IDS_BY_THREAD,
   EMPTY_MESSAGE_BY_THREAD,
   EMPTY_MESSAGE_IDS_BY_THREAD,
-  EMPTY_PROPOSED_PLAN_BY_THREAD,
-  EMPTY_PROPOSED_PLAN_IDS_BY_THREAD,
   EMPTY_THREAD_IDS,
   EMPTY_THREAD_SESSION_BY_ID,
   EMPTY_THREAD_SHELL_BY_ID,
@@ -34,7 +32,6 @@ import {
   activityId,
   buildNormalizedSlice,
   messageId,
-  proposedPlanId,
   toThreadShell,
   toThreadTurnState,
   turnDiffId,
@@ -353,36 +350,6 @@ export function writeThreadState(
     }
   }
 
-  if (previousThread?.proposedPlans !== nextThread.proposedPlans) {
-    const previousIds = nextState.proposedPlanIdsByThreadId?.[nextThread.id];
-    const previousById = nextState.proposedPlanByThreadId?.[nextThread.id];
-    const slice = buildNormalizedSlice(
-      nextThread.proposedPlans,
-      proposedPlanId,
-      previousThread?.proposedPlans,
-      previousIds,
-      previousById,
-    );
-    if (slice.ids !== previousIds) {
-      nextState = {
-        ...nextState,
-        proposedPlanIdsByThreadId: {
-          ...(nextState.proposedPlanIdsByThreadId ?? EMPTY_PROPOSED_PLAN_IDS_BY_THREAD),
-          [nextThread.id]: slice.ids,
-        },
-      };
-    }
-    if (slice.byId !== previousById) {
-      nextState = {
-        ...nextState,
-        proposedPlanByThreadId: {
-          ...(nextState.proposedPlanByThreadId ?? EMPTY_PROPOSED_PLAN_BY_THREAD),
-          [nextThread.id]: slice.byId,
-        },
-      };
-    }
-  }
-
   if (previousThread?.turnDiffSummaries !== nextThread.turnDiffSummaries) {
     const previousIds = nextState.turnDiffIdsByThreadId?.[nextThread.id];
     const previousById = nextState.turnDiffSummaryByThreadId?.[nextThread.id];
@@ -431,10 +398,6 @@ export function removeThreadState(state: AppState, threadId: ThreadId): AppState
     state.activityIdsByThreadId ?? EMPTY_ACTIVITY_IDS_BY_THREAD;
   const { [threadId]: _removedActivities, ...activityByThreadId } =
     state.activityByThreadId ?? EMPTY_ACTIVITY_BY_THREAD;
-  const { [threadId]: _removedPlanIds, ...proposedPlanIdsByThreadId } =
-    state.proposedPlanIdsByThreadId ?? EMPTY_PROPOSED_PLAN_IDS_BY_THREAD;
-  const { [threadId]: _removedPlans, ...proposedPlanByThreadId } =
-    state.proposedPlanByThreadId ?? EMPTY_PROPOSED_PLAN_BY_THREAD;
   const { [threadId]: _removedDiffIds, ...turnDiffIdsByThreadId } =
     state.turnDiffIdsByThreadId ?? EMPTY_TURN_DIFF_IDS_BY_THREAD;
   const { [threadId]: _removedDiffs, ...turnDiffSummaryByThreadId } =
@@ -461,8 +424,7 @@ export function removeThreadState(state: AppState, threadId: ThreadId): AppState
       messageByThreadId,
       activityIdsByThreadId,
       activityByThreadId,
-      proposedPlanIdsByThreadId,
-      proposedPlanByThreadId,
+
       turnDiffIdsByThreadId,
       turnDiffSummaryByThreadId,
       sidebarThreadSummaryById,
@@ -477,8 +439,7 @@ export function evictThreadDetailFromClientState(state: AppState, threadId: Thre
     state.messageByThreadId,
     state.activityIdsByThreadId,
     state.activityByThreadId,
-    state.proposedPlanIdsByThreadId,
-    state.proposedPlanByThreadId,
+
     state.turnDiffIdsByThreadId,
     state.turnDiffSummaryByThreadId,
   ];
@@ -498,10 +459,6 @@ export function evictThreadDetailFromClientState(state: AppState, threadId: Thre
     state.activityIdsByThreadId ?? EMPTY_ACTIVITY_IDS_BY_THREAD;
   const { [threadId]: _removedActivities, ...activityByThreadId } =
     state.activityByThreadId ?? EMPTY_ACTIVITY_BY_THREAD;
-  const { [threadId]: _removedPlanIds, ...proposedPlanIdsByThreadId } =
-    state.proposedPlanIdsByThreadId ?? EMPTY_PROPOSED_PLAN_IDS_BY_THREAD;
-  const { [threadId]: _removedPlans, ...proposedPlanByThreadId } =
-    state.proposedPlanByThreadId ?? EMPTY_PROPOSED_PLAN_BY_THREAD;
   const { [threadId]: _removedDiffIds, ...turnDiffIdsByThreadId } =
     state.turnDiffIdsByThreadId ?? EMPTY_TURN_DIFF_IDS_BY_THREAD;
   const { [threadId]: _removedDiffs, ...turnDiffSummaryByThreadId } =
@@ -514,8 +471,7 @@ export function evictThreadDetailFromClientState(state: AppState, threadId: Thre
       messageByThreadId,
       activityIdsByThreadId,
       activityByThreadId,
-      proposedPlanIdsByThreadId,
-      proposedPlanByThreadId,
+
       turnDiffIdsByThreadId,
       turnDiffSummaryByThreadId,
     },

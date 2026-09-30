@@ -37,9 +37,7 @@ interface ChatComposerEditingInput {
   composerCursor: ReturnType<typeof useChatComposerDraft>["composerCursor"];
   composerTerminalContexts: ReturnType<typeof useChatComposerDraft>["composerTerminalContexts"];
   setComposerHighlightedItemId: Dispatch<SetStateAction<string | null>>;
-  setRestoredQueuedSourceProposedPlan: ReturnType<
-    typeof useChatComposerDraft
-  >["setRestoredQueuedSourceProposedPlan"];
+
   clearComposerDraftContent: ReturnType<typeof useChatComposerDraft>["clearComposerDraftContent"];
   scheduleComposerFocus: () => void;
 }
@@ -55,7 +53,6 @@ type ChatComposerEditingControllerInput = {
     | "composerCursor"
     | "composerTerminalContexts"
     | "setComposerHighlightedItemId"
-    | "setRestoredQueuedSourceProposedPlan"
     | "clearComposerDraftContent"
   >;
   provider: Pick<
@@ -82,7 +79,7 @@ export function useChatComposerEditing({
     composerCursor,
     composerTerminalContexts,
     setComposerHighlightedItemId,
-    setRestoredQueuedSourceProposedPlan,
+
     clearComposerDraftContent,
   } = session;
   const {
@@ -215,7 +212,6 @@ export function useChatComposerEditing({
   };
 
   const setComposerPromptValue = (nextPrompt: string) => {
-    setRestoredQueuedSourceProposedPlan(threadId, null);
     promptRef.current = nextPrompt;
     setPrompt(nextPrompt);
     const nextCursor = collapseExpandedComposerCursor(nextPrompt, nextPrompt.length);
@@ -229,7 +225,7 @@ export function useChatComposerEditing({
 
   const clearComposerSlashDraft = () => {
     promptRef.current = "";
-    setRestoredQueuedSourceProposedPlan(threadId, null);
+
     clearComposerDraftContent(threadId);
     setComposerHighlightedItemId(null);
     setComposerCursor(0);

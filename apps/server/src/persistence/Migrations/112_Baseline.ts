@@ -89,7 +89,7 @@ CREATE TABLE projection_threads (
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       deleted_at TEXT
-    , runtime_mode TEXT NOT NULL DEFAULT 'full-access', interaction_mode TEXT NOT NULL DEFAULT 'default', model_selection_json TEXT, handoff_json TEXT, env_mode TEXT NOT NULL DEFAULT 'local', fork_source_thread_id TEXT, associated_worktree_path TEXT, associated_worktree_branch TEXT, associated_worktree_ref TEXT, archived_at TEXT, parent_thread_id TEXT, subagent_agent_id TEXT, subagent_nickname TEXT, subagent_role TEXT, latest_user_message_at TEXT, pending_approval_count INTEGER NOT NULL DEFAULT 0, pending_user_input_count INTEGER NOT NULL DEFAULT 0, has_actionable_proposed_plan INTEGER NOT NULL DEFAULT 0, last_known_pr_json TEXT, create_branch_flow_completed INTEGER NOT NULL DEFAULT 0, is_pinned INTEGER NOT NULL DEFAULT 0, pinned_messages_json TEXT, notes TEXT, creation_source TEXT, source_thread_id TEXT, source_turn_id TEXT, gateway_operation_id TEXT, gateway_operation_index INTEGER, working_directory TEXT, settled_at TEXT, claude_cache_review_json TEXT, latest_human_message_at TEXT)
+    , runtime_mode TEXT NOT NULL DEFAULT 'full-access', interaction_mode TEXT NOT NULL DEFAULT 'default', model_selection_json TEXT, handoff_json TEXT, env_mode TEXT NOT NULL DEFAULT 'local', fork_source_thread_id TEXT, associated_worktree_path TEXT, associated_worktree_branch TEXT, associated_worktree_ref TEXT, archived_at TEXT, parent_thread_id TEXT, subagent_agent_id TEXT, subagent_nickname TEXT, subagent_role TEXT, latest_user_message_at TEXT, pending_approval_count INTEGER NOT NULL DEFAULT 0, pending_user_input_count INTEGER NOT NULL DEFAULT 0, last_known_pr_json TEXT, create_branch_flow_completed INTEGER NOT NULL DEFAULT 0, is_pinned INTEGER NOT NULL DEFAULT 0, pinned_messages_json TEXT, notes TEXT, creation_source TEXT, source_thread_id TEXT, source_turn_id TEXT, gateway_operation_id TEXT, gateway_operation_index INTEGER, working_directory TEXT, settled_at TEXT, claude_cache_review_json TEXT, latest_human_message_at TEXT)
   `);
 
   yield* sql.unsafe(`
@@ -132,7 +132,7 @@ CREATE TABLE projection_turns (
       checkpoint_turn_count INTEGER,
       checkpoint_ref TEXT,
       checkpoint_status TEXT,
-      checkpoint_files_json TEXT NOT NULL, source_proposed_plan_thread_id TEXT, source_proposed_plan_id TEXT,
+      checkpoint_files_json TEXT NOT NULL,
       UNIQUE (thread_id, turn_id),
       UNIQUE (thread_id, checkpoint_turn_count)
     )
@@ -144,17 +144,6 @@ CREATE TABLE projection_state (
       last_applied_sequence INTEGER NOT NULL,
       updated_at TEXT NOT NULL
     )
-  `);
-
-  yield* sql.unsafe(`
-CREATE TABLE projection_thread_proposed_plans (
-      plan_id TEXT PRIMARY KEY,
-      thread_id TEXT NOT NULL,
-      turn_id TEXT,
-      plan_markdown TEXT NOT NULL,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    , implemented_at TEXT, implementation_thread_id TEXT)
   `);
 
   yield* sql.unsafe(`
@@ -766,12 +755,6 @@ CREATE INDEX idx_projection_turns_thread_checkpoint_completed
   yield* sql.unsafe(`
 CREATE INDEX idx_projection_thread_activities_thread_sequence
     ON projection_thread_activities(thread_id, sequence)
-
-  `);
-
-  yield* sql.unsafe(`
-CREATE INDEX idx_projection_thread_proposed_plans_thread_created
-    ON projection_thread_proposed_plans(thread_id, created_at)
 
   `);
 

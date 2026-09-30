@@ -37,7 +37,6 @@ const gapLatestTurn: Thread["latestTurn"] = {
   startedAt: null,
   completedAt: null,
   assistantMessageId: null,
-  sourceProposedPlan: undefined,
 };
 
 const gapSession: Thread["session"] = {

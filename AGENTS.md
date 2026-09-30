@@ -151,3 +151,4 @@ Tests exist to catch regressions that would really hurt. Fewer, stronger tests a
 - Kanban is retired; do not reintroduce its board, routes or task composer.
 - The device simulator and its agent controls are retired. Computer Use remains supported.
 - Thread goals are retired; do not adopt native provider goals or reintroduce automatic goal continuation.
+- Plan mode and proposed plans are retired; do not adopt native provider plan modes.

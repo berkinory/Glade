@@ -13,14 +13,12 @@ import {
 import { deriveThreadSummaryMetadata } from "@glade/shared/threads/threadSummary";
 import {
   MAX_THREAD_MESSAGES,
-  arraysShallowEqual,
   deepEqualJson,
   normalizeModelSelection,
   resolveCreateBranchFlowCompletedMerge,
 } from "./storeNormalization.shared";
 import {
   normalizeActivities,
-  normalizeProposedPlans,
   normalizeThreadErrorMessage,
   withOrchestrationEventSequence,
 } from "./storeNormalization.activity";
@@ -49,7 +47,6 @@ import {
   resolveEventUpdatedAt,
   retainThreadActivitiesAfterRevert,
   retainThreadMessagesAfterRevert,
-  retainThreadProposedPlansAfterRevert,
   rollbackThreadMessagesFromMessage,
   threadActivityUpdatesSummary,
   threadMessageUpdatesSidebarSummary,
@@ -537,21 +534,13 @@ export function applyOrchestrationEvent(
           const interactionMode = adoptTurnModes
             ? event.payload.interactionMode
             : thread.interactionMode;
-          if (
-            modelSelection === thread.modelSelection &&
-            thread.runtimeMode === runtimeMode &&
-            thread.interactionMode === interactionMode &&
-            thread.pendingSourceProposedPlan === event.payload.sourceProposedPlan &&
-            (thread.updatedAt ?? thread.createdAt) >= event.payload.createdAt
-          ) {
-            return thread;
-          }
+
           return {
             ...thread,
             modelSelection,
             runtimeMode,
             interactionMode,
-            pendingSourceProposedPlan: event.payload.sourceProposedPlan,
+
             updatedAt:
               (thread.updatedAt ?? thread.createdAt) > event.payload.createdAt
                 ? thread.updatedAt
@@ -628,45 +617,6 @@ export function applyOrchestrationEvent(
         },
       );
 
-    case "thread.proposed-plan-upserted":
-      return applyThreadUpdate(
-        state,
-        event.payload.threadId,
-        (thread) => {
-          const previousPlanIndex = thread.proposedPlans.findIndex(
-            (plan) => plan.id === event.payload.proposedPlan.id,
-          );
-          const nextPlan = normalizeProposedPlans(
-            [event.payload.proposedPlan],
-            previousPlanIndex >= 0 ? [thread.proposedPlans[previousPlanIndex]!] : undefined,
-          )[0];
-          if (!nextPlan) {
-            return thread;
-          }
-          const proposedPlans =
-            previousPlanIndex >= 0
-              ? thread.proposedPlans.map((plan, index) =>
-                  index === previousPlanIndex ? nextPlan : plan,
-                )
-              : [...thread.proposedPlans, nextPlan];
-          if (arraysShallowEqual(thread.proposedPlans, proposedPlans)) {
-            return thread;
-          }
-          return {
-            ...thread,
-            proposedPlans,
-            updatedAt:
-              (thread.updatedAt ?? thread.createdAt) > event.payload.proposedPlan.updatedAt
-                ? thread.updatedAt
-                : event.payload.proposedPlan.updatedAt,
-          };
-        },
-        {
-          ...options,
-          updateSidebarSummary: true,
-        },
-      );
-
     case "thread.turn-diff-completed":
       return applyThreadUpdate(
         state,
@@ -719,10 +669,7 @@ export function applyOrchestrationEvent(
             new Set(retainedMessages.map((message) => message.id)),
             event.sequence,
           ).slice(-MAX_THREAD_MESSAGES);
-          const proposedPlans = retainThreadProposedPlansAfterRevert(
-            thread.proposedPlans,
-            retainedTurnIds,
-          );
+
           const activities = retainThreadActivitiesAfterRevert(thread.activities, retainedTurnIds);
           const latestCheckpoint = turnDiffSummaries.at(-1) ?? null;
 
@@ -730,9 +677,9 @@ export function applyOrchestrationEvent(
             ...thread,
             turnDiffSummaries,
             messages,
-            proposedPlans,
+
             activities,
-            pendingSourceProposedPlan: undefined,
+
             latestHumanMessageAt: deriveThreadSummaryMetadata({ ...thread, messages })
               .latestHumanMessageAt,
             latestTurn:
@@ -806,9 +753,7 @@ export function applyOrchestrationEvent(
                 (left.checkpointTurnCount ?? Number.MAX_SAFE_INTEGER) -
                 (right.checkpointTurnCount ?? Number.MAX_SAFE_INTEGER),
             );
-          const proposedPlans = thread.proposedPlans.filter(
-            (plan) => plan.turnId === null || !removedTurnIds.has(plan.turnId),
-          );
+
           const activities = thread.activities.filter(
             (activity) => activity.turnId === null || !removedTurnIds.has(activity.turnId),
           );
@@ -822,9 +767,9 @@ export function applyOrchestrationEvent(
               new Set(messages.map((message) => message.id)),
               event.sequence,
             ).slice(-MAX_THREAD_MESSAGES),
-            proposedPlans,
+
             activities,
-            pendingSourceProposedPlan: undefined,
+
             latestHumanMessageAt: deriveThreadSummaryMetadata({
               ...thread,
               messages,

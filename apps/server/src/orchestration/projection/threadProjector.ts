@@ -80,7 +80,7 @@ export function makeThreadProjector(input: {
             latestHumanMessageAt: null,
             pendingApprovalCount: 0,
             pendingUserInputCount: 0,
-            hasActionableProposedPlan: 0,
+
             createdAt: event.payload.createdAt,
             updatedAt: event.payload.updatedAt,
             archivedAt: null,

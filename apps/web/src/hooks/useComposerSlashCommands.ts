@@ -315,11 +315,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
         await compactProviderThread();
         return true;
       }
-      if (
-        slashInvocation.command === "plan" ||
-        slashInvocation.command === "debug" ||
-        slashInvocation.command === "default"
-      ) {
+      if (slashInvocation.command === "debug" || slashInvocation.command === "default") {
         await handleInteractionModeChange(slashInvocation.command);
         editorActions.clearComposerSlashDraft();
         return true;
@@ -505,7 +501,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
         return;
       }
 
-      if (item.command === "plan" || item.command === "debug" || item.command === "default") {
+      if (item.command === "debug" || item.command === "default") {
         void handleInteractionModeChange(item.command);
         const applied = clearSlashCommandFromComposer();
         if (wasPromptReplacementApplied(applied)) {

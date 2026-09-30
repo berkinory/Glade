@@ -38,7 +38,7 @@ export function mapSupportedCommands(
   return {
     commands: [
       ...commands
-        .filter((command) => command.name !== "goal")
+        .filter((command) => command.name !== "goal" && command.name !== "plan")
         .map((cmd) => ({
           name: cmd.name,
           description: cmd.description || undefined,

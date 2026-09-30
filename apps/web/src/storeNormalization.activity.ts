@@ -10,29 +10,6 @@ import {
 } from "./storeNormalization.shared";
 import type { ReadModelThread } from "./storeNormalization.shared";
 
-export function normalizeProposedPlans(
-  incoming: ReadModelThread["proposedPlans"],
-  previous: Thread["proposedPlans"] | undefined,
-): Thread["proposedPlans"] {
-  const previousById = new Map(previous?.map((plan) => [plan.id, plan] as const));
-  const nextPlans = incoming.map((plan) => {
-    const existing = previousById.get(plan.id);
-    if (
-      existing &&
-      existing.turnId === plan.turnId &&
-      existing.planMarkdown === plan.planMarkdown &&
-      existing.implementedAt === plan.implementedAt &&
-      existing.implementationThreadId === plan.implementationThreadId &&
-      existing.createdAt === plan.createdAt &&
-      existing.updatedAt === plan.updatedAt
-    ) {
-      return existing;
-    }
-    return plan;
-  });
-  return arraysShallowEqual(previous, nextPlans) ? previous : nextPlans;
-}
-
 export function normalizeTurnDiffFiles(
   incoming: ReadonlyArray<Thread["turnDiffSummaries"][number]["files"][number]>,
   previous: Thread["turnDiffSummaries"][number]["files"] | undefined,

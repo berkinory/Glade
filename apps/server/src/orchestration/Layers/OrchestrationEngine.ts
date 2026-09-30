@@ -555,13 +555,7 @@ const makeOrchestrationEngine = Effect.gen(function* () {
               }),
             );
         }
-        return command.sourceProposedPlan
-          ? loadThreadDetailForDecider(
-              command,
-              commandReadModel,
-              command.sourceProposedPlan.threadId,
-            )
-          : Effect.succeed(commandReadModel);
+        return Effect.succeed(commandReadModel);
       case "thread.conversation.rollback":
       case "thread.message.edit-and-resend":
       case "thread.approval.respond":

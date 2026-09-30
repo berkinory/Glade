@@ -3,7 +3,7 @@ import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { resolveComputerInvocationMode } from "@glade/shared/computer/computerInvocation";
 import { resolveLatestTailUserMessageEditTarget } from "@glade/shared/threads/conversationEdit";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { deriveAgentActivityTimelineState } from "~/components/chat/agentActivity.logic";
 import { useChatAutomationSetup } from "~/components/chat/useChatAutomationSetup";
 import { useChatLocalDispatch } from "~/components/chat/useChatLocalDispatch";
@@ -17,13 +17,9 @@ import {
   deriveActiveBackgroundTasksState,
   deriveActiveTaskListState,
   derivePhase,
-  findLatestProposedPlan,
-  findSidebarProposedPlan,
-  hasActionableProposedPlan,
   type ActiveTaskListState,
 } from "~/session-logic";
-import { useStore } from "~/store";
-import { createThreadSelector } from "~/storeSelectors";
+
 import { useChatThreadContext } from "../ChatThreadContext";
 import type { useChatSessionController } from "./useChatSessionController";
 import type { useChatWorkspaceController } from "./useChatWorkspaceController";
@@ -48,7 +44,7 @@ export function useChatProviderController({
     setComposerCursor,
     setComposerTrigger,
     setComposerHighlightedItemId,
-    planSidebarOpen,
+
     setComposerDraftPrompt,
     isRevertingCheckpoint,
   } = session;
@@ -60,7 +56,7 @@ export function useChatProviderController({
     latestTurnLive,
     runtimeMode,
     threadActivities,
-    interactionMode,
+
     activeLatestTurnId,
     isServerThread,
   } = workspace;
@@ -200,63 +196,6 @@ export function useChatProviderController({
     setComposerHighlightedItemId,
   });
 
-  const activeProposedPlan = (() => {
-    if (!latestTurnSettled) {
-      return null;
-    }
-    return findLatestProposedPlan(
-      activeThread?.proposedPlans ?? [],
-      activeLatestTurn?.turnId ?? null,
-    );
-  })();
-
-  const sidebarPlanSourceThreadId = !latestTurnSettled
-    ? (activeLatestTurn?.sourceProposedPlan?.threadId ?? null)
-    : null;
-
-  const sidebarPlanSourceThread = useStore(
-    useMemo(() => createThreadSelector(sidebarPlanSourceThreadId), [sidebarPlanSourceThreadId]),
-  );
-
-  const activeThreadPlanThreadId = activeThread?.id ?? null;
-
-  const activeThreadPlanProposedPlans = activeThread?.proposedPlans;
-
-  const sidebarPlanSourceThreadPlanId = sidebarPlanSourceThread?.id ?? null;
-
-  const sidebarPlanSourceThreadProposedPlans = sidebarPlanSourceThread?.proposedPlans;
-
-  const sidebarProposedPlan = findSidebarProposedPlan({
-    threads: [
-      ...(activeThreadPlanThreadId
-        ? [
-            {
-              id: activeThreadPlanThreadId,
-              proposedPlans: activeThreadPlanProposedPlans ?? [],
-            },
-          ]
-        : []),
-      ...(sidebarPlanSourceThreadPlanId &&
-      sidebarPlanSourceThreadPlanId !== activeThreadPlanThreadId
-        ? [
-            {
-              id: sidebarPlanSourceThreadPlanId,
-              proposedPlans: sidebarPlanSourceThreadProposedPlans ?? [],
-            },
-          ]
-        : []),
-    ],
-    latestTurn: activeLatestTurn,
-    latestTurnSettled,
-    threadId: activeThreadPlanThreadId,
-  });
-
-  const planSidebarLabel = sidebarProposedPlan ? "Plan details" : "Tasks";
-
-  const planSidebarToggleLabel = planSidebarOpen ? `Hide ${planSidebarLabel}` : planSidebarLabel;
-
-  const planSidebarToggleTitle = `${planSidebarOpen ? "Hide" : "Show"} ${planSidebarLabel.toLowerCase()} sidebar`;
-
   const activeTaskList = ((): ActiveTaskListState | null => {
     if (showDebugTaskBanner) {
       return {
@@ -291,12 +230,6 @@ export function useChatProviderController({
   const activeBackgroundTasks = latestTurnSettled
     ? null
     : deriveActiveBackgroundTasksState(threadActivities, activeLatestTurn?.turnId ?? undefined);
-
-  const showPlanFollowUpPrompt =
-    pendingUserInputs.length === 0 &&
-    interactionMode === "plan" &&
-    latestTurnSettled &&
-    hasActionableProposedPlan(activeProposedPlan);
 
   const {
     localDispatch,
@@ -452,13 +385,10 @@ export function useChatProviderController({
     onChangeActivePendingUserInputCustomAnswer,
     onAdvanceActivePendingUserInput,
     onPreviousActivePendingUserInputQuestion,
-    activeProposedPlan,
-    sidebarProposedPlan,
-    planSidebarToggleLabel,
-    planSidebarToggleTitle,
+
     activeTaskList,
     activeBackgroundTasks,
-    showPlanFollowUpPrompt,
+
     localDispatch,
     setLocalDispatch,
     worktreeSetupResolutionRef,

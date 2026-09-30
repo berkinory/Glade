@@ -1,7 +1,7 @@
 import { Effect } from "effect";
 import { EventId } from "@glade/contracts/core/baseSchemas";
 import { ClaudeSessionContext, PROVIDER } from "./sessionTypes";
-import { exitPlanCaptureKey, nativeProviderRefs } from "./messageContent";
+import { nativeProviderRefs } from "./messageContent";
 import { normalizeClaudeTodoTasks, claudeTrackedTasksPayload } from "../claudeTaskTracker.ts";
 import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 
@@ -10,53 +10,6 @@ export function makeClaudeTaskPresentation(input: {
   readonly offerRuntimeEvent: ClaudeRuntimeEventsShape["offerRuntimeEvent"];
 }) {
   const { makeEventStamp, offerRuntimeEvent } = input;
-  const emitProposedPlanCompleted = (
-    context: ClaudeSessionContext,
-    input: {
-      readonly planMarkdown: string;
-      readonly toolUseId?: string | undefined;
-      readonly rawSource: "claude.sdk.message" | "claude.sdk.permission";
-      readonly rawMethod: string;
-      readonly rawPayload: unknown;
-    },
-  ): Effect.Effect<void> =>
-    Effect.gen(function* () {
-      const turnState = context.turnState;
-      const planMarkdown = input.planMarkdown.trim();
-      if (!turnState || planMarkdown.length === 0) {
-        return;
-      }
-
-      const captureKey = exitPlanCaptureKey({
-        toolUseId: input.toolUseId,
-        planMarkdown,
-      });
-      if (turnState.capturedProposedPlanKeys.has(captureKey)) {
-        return;
-      }
-      turnState.capturedProposedPlanKeys.add(captureKey);
-
-      const stamp = yield* makeEventStamp();
-      yield* offerRuntimeEvent(context, {
-        type: "turn.proposed.completed",
-        eventId: stamp.eventId,
-        provider: PROVIDER,
-        createdAt: stamp.createdAt,
-        threadId: context.session.threadId,
-        turnId: turnState.turnId,
-        payload: {
-          planMarkdown,
-        },
-        providerRefs: nativeProviderRefs(context, {
-          providerItemId: input.toolUseId,
-        }),
-        raw: {
-          source: input.rawSource,
-          method: input.rawMethod,
-          payload: input.rawPayload,
-        },
-      });
-    });
 
   const emitTodoTasksUpdated = (
     context: ClaudeSessionContext,
@@ -134,6 +87,5 @@ export function makeClaudeTaskPresentation(input: {
   return {
     emitTodoTasksUpdated,
     emitTrackedTasksUpdated,
-    emitProposedPlanCompleted,
   };
 }

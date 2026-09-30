@@ -17,7 +17,7 @@ import { ModelSelection, ProviderStartOptions, RuntimeMode } from "../provider/s
 import { ProviderKind } from "../core/baseSchemas";
 
 export const DEFAULT_AUTOMATION_RUNTIME_MODE: RuntimeMode = "approval-required";
-export const AutomationInteractionMode = Schema.Literals(["default", "plan"]);
+export const AutomationInteractionMode = Schema.Literals(["default"]);
 export type AutomationInteractionMode = typeof AutomationInteractionMode.Type;
 
 const AutomationIsoDateTime = IsoDateTime.check(

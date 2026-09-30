@@ -187,7 +187,7 @@ export function makeClaudeDiscovery(input: {
           cwd,
           pathToClaudeCodeExecutable: binaryPath,
           settingSources: [...CLAUDE_SETTING_SOURCES],
-          permissionMode: "plan" as PermissionMode,
+          permissionMode: "default" as PermissionMode,
           persistSession: false,
           env,
           spawnClaudeCodeProcess: bindClaudeProcessOwner(processOwner),

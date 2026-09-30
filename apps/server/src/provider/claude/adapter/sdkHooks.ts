@@ -13,7 +13,7 @@ import { EventId, ApprovalRequestId } from "@glade/contracts/core/baseSchemas";
 import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 import { makeClaudeInteractionSettlement } from "./interactionSettlement";
 import { makeClaudeToolTracking } from "./toolTracking";
-import { makeClaudeTaskPresentation } from "./taskPresentation";
+
 import { acquireAgentGatewaySessionLease } from "../../../agentGateway/sessionLease.ts";
 import type {
   HookInput,
@@ -27,7 +27,6 @@ import {
   asRuntimeRequestId,
   nativeProviderRefs,
   remapAnswersToClaudeQuestionText,
-  extractExitPlanModePlan,
 } from "./messageContent";
 import { claudeSubagentSteerContext } from "./promptPolicy";
 import { shouldAllowGladeComputerProviderTool } from "../../../agentGateway/computerToolPermission.ts";
@@ -60,9 +59,7 @@ export function makeClaudeSdkHooks(dependencies: {
   readonly emitSubagentSteerDelivered: ReturnType<
     typeof makeClaudeToolTracking
   >["emitSubagentSteerDelivered"];
-  readonly emitProposedPlanCompleted: ReturnType<
-    typeof makeClaudeTaskPresentation
-  >["emitProposedPlanCompleted"];
+
   readonly pendingApprovals: Map<ApprovalRequestId, PendingApproval>;
   readonly settlePendingApproval: ReturnType<
     typeof makeClaudeInteractionSettlement
@@ -81,7 +78,7 @@ export function makeClaudeSdkHooks(dependencies: {
     pendingSubagentSteers,
     runSdkPromise,
     emitSubagentSteerDelivered,
-    emitProposedPlanCompleted,
+
     pendingApprovals,
     settlePendingApproval,
     gatewaySessionLease,
@@ -255,28 +252,6 @@ export function makeClaudeSdkHooks(dependencies: {
 
         if (toolName === "AskUserQuestion") {
           return yield* handleAskUserQuestion(context, toolInput, callbackOptions);
-        }
-
-        if (toolName === "ExitPlanMode") {
-          const planMarkdown = extractExitPlanModePlan(toolInput);
-          if (planMarkdown) {
-            yield* emitProposedPlanCompleted(context, {
-              planMarkdown,
-              toolUseId: callbackOptions.toolUseID,
-              rawSource: "claude.sdk.permission",
-              rawMethod: "canUseTool/ExitPlanMode",
-              rawPayload: {
-                toolName,
-                input: toolInput,
-              },
-            });
-          }
-
-          return {
-            behavior: "deny",
-            message:
-              "The client captured your proposed plan. Stop here and wait for the user's feedback or implementation request in a later turn.",
-          } satisfies PermissionResult;
         }
 
         if (toolName === "Skill") {

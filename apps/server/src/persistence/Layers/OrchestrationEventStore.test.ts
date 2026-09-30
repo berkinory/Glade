@@ -295,7 +295,7 @@ layer("OrchestrationEventStore", (it) => {
     }),
   );
 
-  it.effect("replays retired goal events and strips goal state from metadata updates", () =>
+  it.effect("replays retired feature events and preserves supported metadata", () =>
     Effect.gen(function* () {
       const eventStore = yield* OrchestrationEventStore;
       const sql = yield* SqlClient.SqlClient;
@@ -322,6 +322,12 @@ layer("OrchestrationEventStore", (it) => {
           "thread.goal-continuation-requested",
           { threadId, goalStartedAt: now, trigger: "turn-completed", createdAt: now },
         ],
+        [2, "thread.interaction-mode-set", { threadId, interactionMode: "plan", updatedAt: now }],
+        [
+          3,
+          "thread.proposed-plan-upserted",
+          { threadId, proposedPlan: { id: "old-plan", planMarkdown: "Retired plan" } },
+        ],
       ] as const) {
         yield* sql`INSERT INTO orchestration_events
           (event_id, aggregate_kind, stream_id, stream_version, event_type, occurred_at,
@@ -332,11 +338,17 @@ layer("OrchestrationEventStore", (it) => {
       const replayed = Array.from(
         yield* Stream.runCollect(eventStore.readFromSequence(startSequence, 10)),
       );
-      assert.equal(replayed.length, 2);
+      assert.equal(replayed.length, 4);
       assert.equal(replayed[0]?.type, "thread.meta-updated");
       assert.deepEqual(replayed[0]?.payload, { threadId, title: "Kept title", updatedAt: now });
       assert.equal(replayed[1]?.type, "thread.goal-continuation-requested");
       assert.deepEqual(replayed[1]?.payload, { threadId, createdAt: now });
+      assert.deepEqual(replayed[2]?.payload, {
+        threadId,
+        interactionMode: "default",
+        updatedAt: now,
+      });
+      assert.deepEqual(replayed[3]?.payload, { threadId });
     }),
   );
 

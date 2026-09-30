@@ -140,7 +140,7 @@ function makeThreadDetail(shell: OrchestrationThreadShell): OrchestrationThread 
     deletedAt: null,
     pinnedMessages: [],
     messages: [],
-    proposedPlans: [],
+
     activities: [],
     checkpoints: [],
   };
@@ -1103,8 +1103,7 @@ function makeHarnessLayer(
         threadId: ThreadId.makeUnsafe(pinned.threadId),
         turnId: TurnId.makeUnsafe(pinned.turnId),
         pendingMessageId: null,
-        sourceProposedPlanThreadId: null,
-        sourceProposedPlanId: null,
+
         assistantMessageId:
           pinned.assistantMessageId === null
             ? null
@@ -1129,8 +1128,7 @@ function makeHarnessLayer(
           threadId: ThreadId.makeUnsafe(threadId),
           turnId: TurnId.makeUnsafe(turnId),
           pendingMessageId: null,
-          sourceProposedPlanThreadId: null,
-          sourceProposedPlanId: null,
+
           assistantMessageId: turn.assistantMessageId,
           state: turn.state,
           requestedAt: turn.requestedAt,

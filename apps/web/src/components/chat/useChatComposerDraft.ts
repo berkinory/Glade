@@ -13,7 +13,6 @@ import type {
   ComposerAssistantSelectionAttachment,
   ComposerFileAttachment,
   ComposerImageAttachment,
-  RestoredComposerSourceProposedPlan,
 } from "../../composerDraftDomain";
 import { type PastedTextDraft } from "../../lib/composerPastedText";
 import { type FileCommentDraft } from "../../lib/fileComments";
@@ -47,7 +46,7 @@ export function useChatComposerDraft({ threadId }: ChatComposerDraftInput) {
   const composerSkills = composerDraft.skills;
   const composerMentions = composerDraft.mentions;
   const queuedComposerTurns = composerDraft.queuedTurns;
-  const restoredSourceProposedPlan = composerDraft.restoredSourceProposedPlan;
+
   const composerSendState = useMemo(
     () =>
       deriveComposerSendState({
@@ -139,9 +138,7 @@ export function useChatComposerDraft({ threadId }: ChatComposerDraftInput) {
   const setComposerDraftTerminalContexts = useComposerDraftStore(
     (store) => store.setTerminalContexts,
   );
-  const setComposerDraftRestoredSourceProposedPlan = useComposerDraftStore(
-    (store) => store.setRestoredSourceProposedPlan,
-  );
+
   const clearComposerDraftContent = useComposerDraftStore((store) => store.clearComposerContent);
   const setDraftThreadContext = useComposerDraftStore((store) => store.setDraftThreadContext);
   const getDraftThreadByProjectId = useComposerDraftStore(
@@ -185,10 +182,6 @@ export function useChatComposerDraft({ threadId }: ChatComposerDraftInput) {
   const composerImagesRef = useRef<ComposerImageAttachment[]>([]);
   const composerFilesRef = useRef<ComposerFileAttachment[]>([]);
 
-  const restoredQueuedSourceProposedPlanRef = useRef<RestoredComposerSourceProposedPlan | null>(
-    restoredSourceProposedPlan ?? null,
-  );
-
   useEffect(() => {
     promptHistoryNavigationRef.current = null;
     applyingPromptHistoryNavigationRef.current = false;
@@ -208,16 +201,6 @@ export function useChatComposerDraft({ threadId }: ChatComposerDraftInput) {
       ),
     );
   }, [composerPromptHistorySavedDraft, restoreComposerDraftPromptHistorySavedDraft, threadId]);
-  const setRestoredQueuedSourceProposedPlan = useCallback(
-    (targetThreadId: ThreadId, source: RestoredComposerSourceProposedPlan | null) => {
-      restoredQueuedSourceProposedPlanRef.current = source;
-      setComposerDraftRestoredSourceProposedPlan(targetThreadId, source);
-    },
-    [setComposerDraftRestoredSourceProposedPlan],
-  );
-  useEffect(() => {
-    restoredQueuedSourceProposedPlanRef.current = restoredSourceProposedPlan ?? null;
-  }, [restoredSourceProposedPlan]);
 
   const setPrompt = useCallback(
     (nextPrompt: string) => {
@@ -512,8 +495,7 @@ export function useChatComposerDraft({ threadId }: ChatComposerDraftInput) {
     promptHistoryAppliedPromptRef,
     composerImagesRef,
     composerFilesRef,
-    restoredQueuedSourceProposedPlanRef,
-    setRestoredQueuedSourceProposedPlan,
+
     setPrompt,
     discardPromptHistoryNavigationForComposerMutation,
     addComposerImagesToDraft,

@@ -64,13 +64,11 @@ projectionSnapshotLayer("Projection snapshot threadReconciliation", (it) => {
       `;
       yield* sql`
         INSERT INTO projection_turns (
-          thread_id, turn_id, pending_message_id, source_proposed_plan_thread_id,
-          source_proposed_plan_id, assistant_message_id, state, requested_at,
+          thread_id, turn_id, pending_message_id, assistant_message_id, state, requested_at,
           started_at, completed_at, checkpoint_turn_count, checkpoint_ref,
           checkpoint_status, checkpoint_files_json
         ) VALUES (
-          'thread-queued-oldest', 'turn-queued', NULL, NULL,
-          NULL, NULL, 'pending', '2026-07-21T00:00:00.000Z',
+          'thread-queued-oldest', 'turn-queued', NULL, NULL, 'pending', '2026-07-21T00:00:00.000Z',
           NULL, NULL, 0, NULL, 'missing', '[]'
         )
       `;

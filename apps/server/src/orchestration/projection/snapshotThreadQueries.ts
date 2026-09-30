@@ -215,7 +215,6 @@ export function makeSnapshotThreadQueries(input: { readonly sql: SqlClient.SqlCl
           latest_human_message_at AS "latestHumanMessageAt",
           pending_approval_count AS "pendingApprovalCount",
           pending_user_input_count AS "pendingUserInputCount",
-          has_actionable_proposed_plan AS "hasActionableProposedPlan",
           created_at AS "createdAt",
           updated_at AS "updatedAt",
           archived_at AS "archivedAt",
@@ -269,7 +268,6 @@ export function makeSnapshotThreadQueries(input: { readonly sql: SqlClient.SqlCl
           latest_human_message_at AS "latestHumanMessageAt",
           pending_approval_count AS "pendingApprovalCount",
           pending_user_input_count AS "pendingUserInputCount",
-          has_actionable_proposed_plan AS "hasActionableProposedPlan",
           created_at AS "createdAt",
           updated_at AS "updatedAt",
           archived_at AS "archivedAt",
@@ -326,7 +324,6 @@ export function makeSnapshotThreadQueries(input: { readonly sql: SqlClient.SqlCl
           latest_human_message_at AS "latestHumanMessageAt",
           pending_approval_count AS "pendingApprovalCount",
           pending_user_input_count AS "pendingUserInputCount",
-          has_actionable_proposed_plan AS "hasActionableProposedPlan",
           created_at AS "createdAt",
           updated_at AS "updatedAt",
           archived_at AS "archivedAt",
@@ -372,9 +369,7 @@ export function makeSnapshotThreadQueries(input: { readonly sql: SqlClient.SqlCl
           requested_at AS "requestedAt",
           started_at AS "startedAt",
           completed_at AS "completedAt",
-          assistant_message_id AS "assistantMessageId",
-          source_proposed_plan_thread_id AS "sourceProposedPlanThreadId",
-          source_proposed_plan_id AS "sourceProposedPlanId"
+          assistant_message_id AS "assistantMessageId"
         FROM (
           SELECT
             *,

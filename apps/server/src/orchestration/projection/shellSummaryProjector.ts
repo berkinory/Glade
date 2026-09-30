@@ -7,10 +7,7 @@ import {
   type ProjectionThreadMessageRepositoryShape,
   ProjectionThreadMessageRepository,
 } from "../../persistence/Services/ProjectionThreadMessages.ts";
-import {
-  type ProjectionThreadProposedPlanRepositoryShape,
-  ProjectionThreadProposedPlanRepository,
-} from "../../persistence/Services/ProjectionThreadProposedPlans.ts";
+
 import {
   type ProjectionPendingInteractionRepositoryShape,
   ProjectionPendingInteractionRepository,
@@ -25,20 +22,17 @@ import { ProjectorDefinition } from "./projectorRegistration";
 const withRebuiltThreadShellSummary = Effect.fn(function* (input: {
   readonly thread: ProjectionThread;
   readonly projectionThreadMessageRepository: ProjectionThreadMessageRepositoryShape;
-  readonly projectionThreadProposedPlanRepository: ProjectionThreadProposedPlanRepositoryShape;
+
   readonly projectionPendingInteractionRepository: ProjectionPendingInteractionRepositoryShape;
 }) {
-  const [latestUserMessageAt, latestHumanMessageAt, latestPlan, pendingCounts] = yield* Effect.all([
+  const [latestUserMessageAt, latestHumanMessageAt, pendingCounts] = yield* Effect.all([
     input.projectionThreadMessageRepository.getLatestUserMessageAt({
       threadId: input.thread.threadId,
     }),
     input.projectionThreadMessageRepository.getLatestHumanMessageAt({
       threadId: input.thread.threadId,
     }),
-    input.projectionThreadProposedPlanRepository.getLatestSummaryByThreadId({
-      threadId: input.thread.threadId,
-      preferredTurnId: input.thread.latestTurnId,
-    }),
+
     input.projectionPendingInteractionRepository.getPendingCountsByThreadId({
       threadId: input.thread.threadId,
     }),
@@ -50,34 +44,13 @@ const withRebuiltThreadShellSummary = Effect.fn(function* (input: {
     latestHumanMessageAt,
     pendingApprovalCount: pendingCounts.pendingApprovalCount,
     pendingUserInputCount: pendingCounts.pendingUserInputCount,
-    hasActionableProposedPlan:
-      Option.isSome(latestPlan) && latestPlan.value.implementedAt === null ? 1 : 0,
-  } satisfies ProjectionThread;
-});
-
-const withRefreshedActionablePlanSummary = Effect.fn(function* (input: {
-  readonly thread: ProjectionThread;
-  readonly projectionThreadProposedPlanRepository: ProjectionThreadProposedPlanRepositoryShape;
-}) {
-  const latestPlan = yield* input.projectionThreadProposedPlanRepository.getLatestSummaryByThreadId(
-    {
-      threadId: input.thread.threadId,
-      preferredTurnId: input.thread.latestTurnId,
-    },
-  );
-  return {
-    ...input.thread,
-    hasActionableProposedPlan:
-      Option.isSome(latestPlan) && latestPlan.value.implementedAt === null ? 1 : 0,
   } satisfies ProjectionThread;
 });
 
 export function makeShellSummaryProjector(input: {
   readonly updateThreadProjection: ReturnType<typeof makeThreadProjector>["updateThreadProjection"];
   readonly projectionThreadRepository: ServiceMap.Service.Shape<typeof ProjectionThreadRepository>;
-  readonly projectionThreadProposedPlanRepository: ServiceMap.Service.Shape<
-    typeof ProjectionThreadProposedPlanRepository
-  >;
+
   readonly projectionThreadMessageRepository: ServiceMap.Service.Shape<
     typeof ProjectionThreadMessageRepository
   >;
@@ -88,7 +61,7 @@ export function makeShellSummaryProjector(input: {
   const {
     updateThreadProjection,
     projectionThreadRepository,
-    projectionThreadProposedPlanRepository,
+
     projectionThreadMessageRepository,
     projectionPendingInteractionRepository,
   } = input;
@@ -111,24 +84,6 @@ export function makeShellSummaryProjector(input: {
           }));
         }
 
-        case "thread.proposed-plan-upserted": {
-          const existingRow = yield* projectionThreadRepository.getById({
-            threadId: event.payload.threadId,
-          });
-          if (Option.isNone(existingRow)) {
-            return;
-          }
-          const nextRow = yield* withRefreshedActionablePlanSummary({
-            thread: {
-              ...existingRow.value,
-              updatedAt: event.occurredAt,
-            },
-            projectionThreadProposedPlanRepository,
-          });
-          yield* projectionThreadRepository.upsert(nextRow);
-          return;
-        }
-
         case "thread.reverted":
         case "thread.conversation-rolled-back": {
           const existingRow = yield* projectionThreadRepository.getById({
@@ -144,7 +99,7 @@ export function makeShellSummaryProjector(input: {
               updatedAt: event.occurredAt,
             },
             projectionThreadMessageRepository,
-            projectionThreadProposedPlanRepository,
+
             projectionPendingInteractionRepository,
           });
           yield* projectionThreadRepository.upsert(nextRow);
@@ -159,19 +114,16 @@ export function makeShellSummaryProjector(input: {
           if (Option.isNone(existingRow)) {
             return;
           }
-          const nextRow = yield* withRefreshedActionablePlanSummary({
-            thread: {
-              ...existingRow.value,
-              latestTurnId:
-                event.type === "thread.session-set"
-                  ? event.payload.session.activeTurnId
-                  : event.payload.preserveLatestTurn
-                    ? existingRow.value.latestTurnId
-                    : event.payload.turnId,
-              updatedAt: maxIso(existingRow.value.updatedAt, event.occurredAt),
-            },
-            projectionThreadProposedPlanRepository,
-          });
+          const nextRow = {
+            ...existingRow.value,
+            latestTurnId:
+              event.type === "thread.session-set"
+                ? event.payload.session.activeTurnId
+                : event.payload.preserveLatestTurn
+                  ? existingRow.value.latestTurnId
+                  : event.payload.turnId,
+            updatedAt: maxIso(existingRow.value.updatedAt, event.occurredAt),
+          };
           yield* projectionThreadRepository.upsert(nextRow);
           return;
         }

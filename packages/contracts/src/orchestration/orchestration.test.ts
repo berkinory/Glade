@@ -18,7 +18,6 @@ import {
   ThreadTurnStartRequestedPayload,
 } from "./events";
 import {
-  OrchestrationProposedPlan,
   OrchestrationSession,
   OrchestrationThreadPullRequest,
   PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
@@ -36,7 +35,7 @@ const decodeThreadTurnStartCommand = Schema.decodeUnknownEffect(ThreadTurnStartC
 const decodeThreadTurnStartRequestedPayload = Schema.decodeUnknownEffect(
   ThreadTurnStartRequestedPayload,
 );
-const decodeOrchestrationProposedPlan = Schema.decodeUnknownEffect(OrchestrationProposedPlan);
+
 const decodeOrchestrationSession = Schema.decodeUnknownEffect(OrchestrationSession);
 const decodeThreadCreatedPayload = Schema.decodeUnknownEffect(ThreadCreatedPayload);
 const decodeThreadMetaUpdatedPayload = Schema.decodeUnknownEffect(ThreadMetaUpdatedPayload);
@@ -117,7 +116,7 @@ it.effect("preserves thread activity payloads through the RPC JSON codec", () =>
           archivedAt: null,
           deletedAt: null,
           messages: [],
-          proposedPlans: [],
+
           activities: [
             {
               id: "activity-1",
@@ -552,20 +551,6 @@ it.effect("decodes orchestration session runtime mode defaults", () =>
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
     assert.strictEqual(parsed.runtimeMode, DEFAULT_RUNTIME_MODE);
-  }),
-);
-
-it.effect("defaults proposed plan implementation metadata for historical rows", () =>
-  Effect.gen(function* () {
-    const parsed = yield* decodeOrchestrationProposedPlan({
-      id: "plan-1",
-      turnId: "turn-1",
-      planMarkdown: "# Plan",
-      createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z",
-    });
-    assert.strictEqual(parsed.implementedAt, null);
-    assert.strictEqual(parsed.implementationThreadId, null);
   }),
 );
 

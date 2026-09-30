@@ -2,7 +2,6 @@ import type { MessageId, ThreadId, TurnId } from "@glade/contracts/core/baseSche
 import type { AppState } from "./storeState";
 import type {
   ChatMessage,
-  ProposedPlan,
   Thread,
   ThreadSession,
   ThreadShell,
@@ -12,11 +11,11 @@ import type {
 
 const EMPTY_MESSAGES: ChatMessage[] = [];
 const EMPTY_ACTIVITIES: Thread["activities"] = [];
-const EMPTY_PROPOSED_PLANS: ProposedPlan[] = [];
+
 const EMPTY_TURN_DIFF_SUMMARIES: TurnDiffSummary[] = [];
 const EMPTY_MESSAGE_MAP: Record<MessageId, ChatMessage> = {};
 const EMPTY_ACTIVITY_MAP: Record<string, Thread["activities"][number]> = {};
-const EMPTY_PROPOSED_PLAN_MAP: Record<string, ProposedPlan> = {};
+
 const EMPTY_TURN_DIFF_MAP: Record<TurnId, TurnDiffSummary> = {};
 const EMPTY_THREAD_IDS: ThreadId[] = [];
 const EMPTY_THREAD_SHELL_MAP: Record<ThreadId, ThreadShell> = {};
@@ -24,7 +23,7 @@ const EMPTY_THREAD_SESSION_MAP: Record<ThreadId, ThreadSession | null> = {};
 const EMPTY_THREAD_TURN_STATE_MAP: Record<ThreadId, ThreadTurnState> = {};
 const EMPTY_MESSAGE_IDS_BY_THREAD: Record<ThreadId, MessageId[]> = {};
 const EMPTY_ACTIVITY_IDS_BY_THREAD: Record<ThreadId, string[]> = {};
-const EMPTY_PROPOSED_PLAN_IDS_BY_THREAD: Record<ThreadId, string[]> = {};
+
 const EMPTY_TURN_DIFF_IDS_BY_THREAD: Record<ThreadId, TurnId[]> = {};
 
 const collectedByIdsCache = new WeakMap<readonly string[], WeakMap<object, readonly unknown[]>>();
@@ -35,7 +34,7 @@ const threadCache = new WeakMap<
     turnState: ThreadTurnState | undefined;
     messages: Thread["messages"];
     activities: Thread["activities"];
-    proposedPlans: Thread["proposedPlans"];
+
     turnDiffSummaries: Thread["turnDiffSummaries"];
     thread: Thread;
   }
@@ -84,14 +83,6 @@ function selectThreadActivities(state: AppState, threadId: ThreadId): Thread["ac
   );
 }
 
-function selectThreadProposedPlans(state: AppState, threadId: ThreadId): Thread["proposedPlans"] {
-  return collectByIds(
-    state.proposedPlanIdsByThreadId?.[threadId] ?? EMPTY_PROPOSED_PLAN_IDS_BY_THREAD[threadId],
-    state.proposedPlanByThreadId?.[threadId] ?? EMPTY_PROPOSED_PLAN_MAP,
-    EMPTY_PROPOSED_PLANS,
-  );
-}
-
 function selectThreadTurnDiffSummaries(
   state: AppState,
   threadId: ThreadId,
@@ -113,17 +104,15 @@ export function getThreadFromState(state: AppState, threadId: ThreadId): Thread 
   const turnState = state.threadTurnStateById?.[threadId] ?? EMPTY_THREAD_TURN_STATE_MAP[threadId];
   const messages = selectThreadMessages(state, threadId);
   const activities = selectThreadActivities(state, threadId);
-  const proposedPlans = selectThreadProposedPlans(state, threadId);
+
   const turnDiffSummaries = selectThreadTurnDiffSummaries(state, threadId);
   const cached = threadCache.get(shell);
-
   if (
     cached &&
     cached.session === session &&
     cached.turnState === turnState &&
     cached.messages === messages &&
     cached.activities === activities &&
-    cached.proposedPlans === proposedPlans &&
     cached.turnDiffSummaries === turnDiffSummaries
   ) {
     return cached.thread;
@@ -133,10 +122,10 @@ export function getThreadFromState(state: AppState, threadId: ThreadId): Thread 
     ...shell,
     session,
     latestTurn: turnState?.latestTurn ?? null,
-    pendingSourceProposedPlan: turnState?.pendingSourceProposedPlan,
+
     messages,
     activities,
-    proposedPlans,
+
     turnDiffSummaries,
   };
 
@@ -145,7 +134,7 @@ export function getThreadFromState(state: AppState, threadId: ThreadId): Thread 
     turnState,
     messages,
     activities,
-    proposedPlans,
+
     turnDiffSummaries,
     thread,
   });

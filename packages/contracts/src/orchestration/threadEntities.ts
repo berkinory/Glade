@@ -310,27 +310,6 @@ export const ThreadHandoff = Schema.Struct({
 
 export type ThreadHandoff = typeof ThreadHandoff.Type;
 
-export const OrchestrationProposedPlanId = TrimmedNonEmptyString;
-
-export type OrchestrationProposedPlanId = typeof OrchestrationProposedPlanId.Type;
-
-export const OrchestrationProposedPlan = Schema.Struct({
-  id: OrchestrationProposedPlanId,
-  turnId: Schema.NullOr(TurnId),
-  planMarkdown: TrimmedNonEmptyString,
-  implementedAt: Schema.NullOr(IsoDateTime).pipe(Schema.withDecodingDefault(() => null)),
-  implementationThreadId: Schema.NullOr(ThreadId).pipe(Schema.withDecodingDefault(() => null)),
-  createdAt: IsoDateTime,
-  updatedAt: IsoDateTime,
-});
-
-export type OrchestrationProposedPlan = typeof OrchestrationProposedPlan.Type;
-
-export const SourceProposedPlanReference = Schema.Struct({
-  threadId: ThreadId,
-  planId: OrchestrationProposedPlanId,
-});
-
 export const OrchestrationSessionStatus = Schema.Literals([
   "idle",
   "starting",
@@ -418,7 +397,6 @@ export const OrchestrationLatestTurn = Schema.Struct({
   startedAt: Schema.NullOr(IsoDateTime),
   completedAt: Schema.NullOr(IsoDateTime),
   assistantMessageId: Schema.NullOr(MessageId),
-  sourceProposedPlan: Schema.optional(SourceProposedPlanReference),
 });
 
 export type OrchestrationLatestTurn = typeof OrchestrationLatestTurn.Type;
@@ -509,7 +487,7 @@ export const PendingClaudeCacheReview = Schema.Struct({
   status: Schema.Literals(["pending", "responding", "compacting", "failed", "uncertain"]),
   compactionTurnId: Schema.optional(TurnId),
   compactionResponseEventSequence: Schema.optional(PositiveInt),
-  sourceProposedPlan: Schema.optional(SourceProposedPlanReference),
+
   requestedAt: Schema.optional(IsoDateTime),
   error: Schema.optional(Schema.String),
   createdAt: IsoDateTime,
@@ -582,7 +560,7 @@ export const OrchestrationThread = Schema.Struct({
   latestHumanMessageAt: Schema.optional(Schema.NullOr(IsoDateTime)),
   hasPendingApprovals: Schema.optional(Schema.Boolean),
   hasPendingUserInput: Schema.optional(Schema.Boolean),
-  hasActionableProposedPlan: Schema.optional(Schema.Boolean),
+
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
   archivedAt: Schema.optional(Schema.NullOr(IsoDateTime)).pipe(
@@ -597,7 +575,7 @@ export const OrchestrationThread = Schema.Struct({
   notes: Schema.optional(ThreadNotes),
 
   messages: Schema.Array(OrchestrationMessage),
-  proposedPlans: Schema.Array(OrchestrationProposedPlan).pipe(Schema.withDecodingDefault(() => [])),
+
   activities: Schema.Array(OrchestrationThreadActivity),
   pendingInteractions: Schema.optional(Schema.Array(OrchestrationPendingInteraction)),
   checkpoints: Schema.Array(OrchestrationCheckpointSummary),
@@ -671,7 +649,7 @@ export const OrchestrationThreadShell = Schema.Struct({
   latestHumanMessageAt: Schema.optional(Schema.NullOr(IsoDateTime)),
   hasPendingApprovals: Schema.optional(Schema.Boolean),
   hasPendingUserInput: Schema.optional(Schema.Boolean),
-  hasActionableProposedPlan: Schema.optional(Schema.Boolean),
+
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
   archivedAt: Schema.optional(Schema.NullOr(IsoDateTime)).pipe(

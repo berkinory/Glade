@@ -95,17 +95,6 @@ export function deriveMessagesTimelineRows(input: {
       continue;
     }
 
-    if (timelineEntry.kind === "proposed-plan") {
-      flushPendingWorkGroup({ attachToPreviousAssistant: false });
-      nextRows.push({
-        kind: "proposed-plan",
-        id: timelineEntry.id,
-        createdAt: timelineEntry.createdAt,
-        proposedPlan: timelineEntry.proposedPlan,
-      });
-      continue;
-    }
-
     if (timelineEntry.kind === "message-segment") {
       flushPendingWorkGroup({ attachToPreviousAssistant: false });
       nextRows.push({
@@ -271,9 +260,7 @@ function collapseSettledTurns(
         foldIndices.push(scan);
         continue;
       }
-      if (prev.kind === "proposed-plan") {
-        continue;
-      }
+
       break;
     }
     foldIndices.reverse();

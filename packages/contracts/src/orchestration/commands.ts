@@ -32,12 +32,10 @@ import {
   ChatAttachmentList,
   TurnMessageContentCheck,
   ComputerControlMode,
-  SourceProposedPlanReference,
   UploadChatAttachmentList,
   OrchestrationSession,
   OrchestrationThreadActivity,
   OrchestrationSessionStatus,
-  OrchestrationProposedPlan,
   OrchestrationCheckpointStatus,
   OrchestrationCheckpointFile,
 } from "./threadEntities";
@@ -371,7 +369,7 @@ export const ThreadTurnStartCommand = Schema.Struct({
   interactionMode: ProviderInteractionMode.pipe(
     Schema.withDecodingDefault(() => DEFAULT_PROVIDER_INTERACTION_MODE),
   ),
-  sourceProposedPlan: Schema.optional(SourceProposedPlanReference),
+
   // Clients cannot set it: ClientThreadTurnStartCommand omits the field, so decoding strips a spoofed
   // value.
   resumePrecondition: Schema.optional(
@@ -408,7 +406,7 @@ const ClientThreadTurnStartCommand = Schema.Struct({
   ),
   runtimeMode: RuntimeMode,
   interactionMode: ProviderInteractionMode,
-  sourceProposedPlan: Schema.optional(SourceProposedPlanReference),
+
   createdAt: IsoDateTime,
 });
 
@@ -464,7 +462,7 @@ const ThreadDispatchQueuedTurnCommand = Schema.Struct({
   interactionMode: ProviderInteractionMode.pipe(
     Schema.withDecodingDefault(() => DEFAULT_PROVIDER_INTERACTION_MODE),
   ),
-  sourceProposedPlan: Schema.optional(SourceProposedPlanReference),
+
   createdAt: IsoDateTime,
 });
 
@@ -673,14 +671,6 @@ const ThreadMessageUserSetTurnBoundaryCommand = Schema.Struct({
   createdAt: IsoDateTime,
 });
 
-const ThreadProposedPlanUpsertCommand = Schema.Struct({
-  type: Schema.Literal("thread.proposed-plan.upsert"),
-  commandId: CommandId,
-  threadId: ThreadId,
-  proposedPlan: OrchestrationProposedPlan,
-  createdAt: IsoDateTime,
-});
-
 const ThreadTurnDiffCompleteCommand = Schema.Struct({
   type: Schema.Literal("thread.turn.diff.complete"),
   commandId: CommandId,
@@ -725,7 +715,7 @@ const InternalOrchestrationCommand = Schema.Union([
   ThreadMessageAssistantCompleteCommand,
   ThreadMessageUserBindTurnCommand,
   ThreadMessageUserSetTurnBoundaryCommand,
-  ThreadProposedPlanUpsertCommand,
+
   ThreadTurnDiffCompleteCommand,
   ThreadActivityAppendCommand,
   ThreadRevertCompleteCommand,

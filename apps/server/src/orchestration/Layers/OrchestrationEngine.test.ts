@@ -240,7 +240,7 @@ describe("OrchestrationEngine", () => {
             asyncUserInputResponse: { messageId: questionId, answers },
             dispatchMode: "queue",
             runtimeMode: "full-access",
-            interactionMode: "plan",
+            interactionMode: "default",
             createdAt: new Date(Date.parse(createdAt) + 60_000).toISOString(),
           });
         await expect(system.run(answer("invalid", ["Only one answer"]))).rejects.toThrow(

@@ -9,13 +9,7 @@ import {
   SIDEBAR_THREAD_ROW_BASE_CLASS_NAME,
 } from "../sidebarRowStyles";
 import { isDuplicateProjectCreateError } from "../lib/projectCreateRecovery";
-import {
-  canSessionAnswerPendingRequests,
-  hasLiveLatestTurn,
-  findLatestProposedPlan,
-  hasActionableProposedPlan,
-  isLatestTurnSettled,
-} from "../session-logic";
+import { canSessionAnswerPendingRequests, hasLiveLatestTurn } from "../session-logic";
 import {
   THREAD_STATUS_PRIORITY,
   createCompletedDismissalKey,
@@ -144,30 +138,6 @@ export function resolveThreadStatusPill(input: {
       dotClass: "bg-sky-500 dark:bg-sky-300/80",
       pulse: true,
       dismissible: false,
-    };
-  }
-
-  const hasPlanReadyPrompt =
-    !hasPendingUserInput &&
-    !thread.hasLiveTailWork &&
-    thread.interactionMode === "plan" &&
-    isLatestTurnSettled(thread.latestTurn, thread.session) &&
-    (thread.hasActionableProposedPlan ??
-      hasActionableProposedPlan(
-        findLatestProposedPlan(thread.proposedPlans ?? [], thread.latestTurn?.turnId ?? null),
-      ));
-  if (hasPlanReadyPrompt) {
-    const dismissalKey = createThreadStatusDismissalKey("Plan Ready", thread);
-    if (thread.dismissedStatusKey === dismissalKey) {
-      return null;
-    }
-    return {
-      label: "Plan Ready",
-      colorClass: "text-violet-600 dark:text-violet-300/90",
-      dotClass: "bg-violet-500 dark:bg-violet-300/90",
-      pulse: false,
-      dismissible: true,
-      dismissalKey,
     };
   }
 

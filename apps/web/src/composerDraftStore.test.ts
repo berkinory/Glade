@@ -475,7 +475,7 @@ describe("composerDraftStore runtime and interaction settings", () => {
     const store = useComposerDraftStore.getState();
 
     store.setRuntimeMode(threadId, "approval-required");
-    store.setInteractionMode(threadId, "plan");
+    store.setInteractionMode(threadId, "debug");
     store.setRuntimeMode(threadId, null);
     store.setInteractionMode(threadId, null);
 

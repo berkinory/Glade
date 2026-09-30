@@ -23,7 +23,6 @@ import { normalizeTerminalContextText } from "./lib/terminalContext";
 import {
   PersistedAssistantSelectionDraft,
   PersistedFileCommentDraft,
-  PersistedSourceProposedPlanReference,
 } from "./composerDraftPersistence.types";
 import type {
   PersistedComposerPromptHistorySavedDraft,
@@ -286,11 +285,7 @@ export function normalizePersistedQueuedTurns(
     )
       ? candidate.providerOptionsForDispatch
       : undefined;
-    const sourceProposedPlan = Schema.is(PersistedSourceProposedPlanReference)(
-      candidate.sourceProposedPlan,
-    )
-      ? candidate.sourceProposedPlan
-      : undefined;
+
     const runtimeMode = Schema.is(RuntimeMode)(candidate.runtimeMode)
       ? candidate.runtimeMode
       : null;
@@ -400,41 +395,13 @@ export function normalizePersistedQueuedTurns(
         enableComputerControl,
         computerControlMode,
         ...(computerControlGeneration !== undefined ? { computerControlGeneration } : {}),
-        ...(sourceProposedPlan ? { sourceProposedPlan } : {}),
+
         runtimeMode,
         interactionMode,
         envMode,
       });
       seenIds.add(id);
       continue;
-    }
-    if (kind === "plan-follow-up") {
-      const text = typeof candidate.text === "string" ? candidate.text : "";
-      const interactionMode =
-        candidate.interactionMode === "default" || candidate.interactionMode === "plan"
-          ? candidate.interactionMode
-          : null;
-      if (interactionMode === null) {
-        continue;
-      }
-      normalizedTurns.push({
-        id,
-        kind: "plan-follow-up",
-        createdAt,
-        previewText,
-        text,
-        interactionMode,
-        selectedProvider,
-        selectedModel,
-        selectedPromptEffort,
-        modelSelection,
-        ...(providerOptionsForDispatch ? { providerOptionsForDispatch } : {}),
-        enableComputerControl,
-        computerControlMode,
-        ...(computerControlGeneration !== undefined ? { computerControlGeneration } : {}),
-        runtimeMode,
-      });
-      seenIds.add(id);
     }
   }
   return normalizedTurns.length > 0 ? normalizedTurns : undefined;

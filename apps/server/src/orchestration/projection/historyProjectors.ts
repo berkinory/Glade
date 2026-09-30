@@ -1,5 +1,5 @@
 import type { ServiceMap } from "effect";
-import { ProjectionThreadProposedPlanRepository } from "../../persistence/Services/ProjectionThreadProposedPlans.ts";
+
 import { ProjectionTurnRepository } from "../../persistence/Services/ProjectionTurns.ts";
 import { ProjectionThreadActivityRepository } from "../../persistence/Services/ProjectionThreadActivities.ts";
 import { ProjectionThreadSessionRepository } from "../../persistence/Services/ProjectionThreadSessions.ts";
@@ -13,9 +13,6 @@ import {
 } from "./historyPruning";
 
 export function makeHistoryProjectors(input: {
-  readonly projectionThreadProposedPlanRepository: ServiceMap.Service.Shape<
-    typeof ProjectionThreadProposedPlanRepository
-  >;
   readonly projectionTurnRepository: ServiceMap.Service.Shape<typeof ProjectionTurnRepository>;
   readonly projectionThreadActivityRepository: ServiceMap.Service.Shape<
     typeof ProjectionThreadActivityRepository
@@ -26,66 +23,11 @@ export function makeHistoryProjectors(input: {
   readonly projectionThreadRepository: ServiceMap.Service.Shape<typeof ProjectionThreadRepository>;
 }) {
   const {
-    projectionThreadProposedPlanRepository,
     projectionTurnRepository,
     projectionThreadActivityRepository,
     projectionThreadSessionRepository,
     projectionThreadRepository,
   } = input;
-  const applyThreadProposedPlansProjection: ProjectorDefinition["apply"] = (
-    event,
-    _attachmentSideEffects,
-  ) =>
-    Effect.gen(function* () {
-      switch (event.type) {
-        case "thread.proposed-plan-upserted":
-          yield* projectionThreadProposedPlanRepository.upsert({
-            planId: event.payload.proposedPlan.id,
-            threadId: event.payload.threadId,
-            turnId: event.payload.proposedPlan.turnId,
-            planMarkdown: event.payload.proposedPlan.planMarkdown,
-            implementedAt: event.payload.proposedPlan.implementedAt,
-            implementationThreadId: event.payload.proposedPlan.implementationThreadId,
-            createdAt: event.payload.proposedPlan.createdAt,
-            updatedAt: event.payload.proposedPlan.updatedAt,
-          });
-          return;
-
-        case "thread.reverted":
-        case "thread.conversation-rolled-back": {
-          const existingRows = yield* projectionThreadProposedPlanRepository.listByThreadId({
-            threadId: event.payload.threadId,
-          });
-          if (existingRows.length === 0) {
-            return;
-          }
-          const keptRows =
-            event.type === "thread.reverted"
-              ? retainTurnScopedProjectionRowsAfterRevert(
-                  existingRows,
-                  yield* projectionTurnRepository.listByThreadId({
-                    threadId: event.payload.threadId,
-                  }),
-                  event.payload.turnCount,
-                )
-              : retainTurnScopedProjectionRowsAfterConversationRollback(
-                  existingRows,
-                  new Set(event.payload.removedTurnIds ?? []),
-                );
-          if (keptRows.length === existingRows.length) {
-            return;
-          }
-          yield* projectionThreadProposedPlanRepository.deleteByThreadId({
-            threadId: event.payload.threadId,
-          });
-          yield* Effect.forEach(keptRows, projectionThreadProposedPlanRepository.upsert);
-          return;
-        }
-
-        default:
-          return;
-      }
-    });
 
   const applyThreadActivitiesProjection: ProjectorDefinition["apply"] = (
     event,
@@ -191,7 +133,6 @@ export function makeHistoryProjectors(input: {
       }
     });
   return {
-    applyThreadProposedPlansProjection,
     applyThreadActivitiesProjection,
     applyThreadSessionsProjection,
   };

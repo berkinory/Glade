@@ -72,8 +72,7 @@ export function createAllThreadsSelector(): (state: AppState) => readonly Thread
   let previousMessageByThreadId = {} as AppState["messageByThreadId"];
   let previousActivityIdsByThreadId = {} as AppState["activityIdsByThreadId"];
   let previousActivityByThreadId = {} as AppState["activityByThreadId"];
-  let previousProposedPlanIdsByThreadId = {} as AppState["proposedPlanIdsByThreadId"];
-  let previousProposedPlanByThreadId = {} as AppState["proposedPlanByThreadId"];
+
   let previousTurnDiffIdsByThreadId = {} as AppState["turnDiffIdsByThreadId"];
   let previousTurnDiffSummaryByThreadId = {} as AppState["turnDiffSummaryByThreadId"];
   let previousThreads: readonly Thread[] = [];
@@ -88,14 +87,11 @@ export function createAllThreadsSelector(): (state: AppState) => readonly Thread
       previousMessageByThreadId === state.messageByThreadId &&
       previousActivityIdsByThreadId === state.activityIdsByThreadId &&
       previousActivityByThreadId === state.activityByThreadId &&
-      previousProposedPlanIdsByThreadId === state.proposedPlanIdsByThreadId &&
-      previousProposedPlanByThreadId === state.proposedPlanByThreadId &&
       previousTurnDiffIdsByThreadId === state.turnDiffIdsByThreadId &&
       previousTurnDiffSummaryByThreadId === state.turnDiffSummaryByThreadId
     ) {
       return previousThreads;
     }
-
     previousThreadIds = state.threadIds;
     previousThreadShellById = state.threadShellById;
     previousThreadSessionById = state.threadSessionById;
@@ -104,8 +100,7 @@ export function createAllThreadsSelector(): (state: AppState) => readonly Thread
     previousMessageByThreadId = state.messageByThreadId;
     previousActivityIdsByThreadId = state.activityIdsByThreadId;
     previousActivityByThreadId = state.activityByThreadId;
-    previousProposedPlanIdsByThreadId = state.proposedPlanIdsByThreadId;
-    previousProposedPlanByThreadId = state.proposedPlanByThreadId;
+
     previousTurnDiffIdsByThreadId = state.turnDiffIdsByThreadId;
     previousTurnDiffSummaryByThreadId = state.turnDiffSummaryByThreadId;
     previousThreads = getThreadsFromState(state);

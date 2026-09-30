@@ -112,9 +112,7 @@ export function makeProviderQueuedTurns(input: {
             : {}),
           runtimeMode: nextQueuedTurn.runtimeMode,
           interactionMode: nextQueuedTurn.interactionMode,
-          ...(nextQueuedTurn.sourceProposedPlan !== undefined
-            ? { sourceProposedPlan: nextQueuedTurn.sourceProposedPlan }
-            : {}),
+
           createdAt: nextQueuedTurn.createdAt,
         });
         const promoted = yield* queuedTurnPromotions.markPromoted({

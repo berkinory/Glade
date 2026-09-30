@@ -129,43 +129,13 @@ export function partializeComposerDraftStoreState(
             queuedTurn.computerControlMode,
             queuedTurn.enableComputerControl,
           ),
-          ...(queuedTurn.sourceProposedPlan
-            ? { sourceProposedPlan: queuedTurn.sourceProposedPlan }
-            : {}),
+
           runtimeMode: queuedTurn.runtimeMode,
           interactionMode: queuedTurn.interactionMode,
           envMode: queuedTurn.envMode,
         });
         continue;
       }
-      persistedQueuedTurns.push({
-        id: queuedTurn.id,
-        kind: "plan-follow-up",
-        createdAt: queuedTurn.createdAt,
-        previewText: queuedTurn.previewText,
-        text: queuedTurn.text,
-        interactionMode: queuedTurn.interactionMode,
-        selectedProvider: queuedTurn.selectedProvider,
-        selectedModel: queuedTurn.selectedModel,
-        selectedPromptEffort: queuedTurn.selectedPromptEffort,
-        modelSelection: queuedTurn.modelSelection,
-        ...(queuedTurn.providerOptionsForDispatch
-          ? { providerOptionsForDispatch: queuedTurn.providerOptionsForDispatch }
-          : {}),
-        enableComputerControl:
-          resolveComputerControlMode(
-            queuedTurn.computerControlMode,
-            queuedTurn.enableComputerControl,
-          ) !== "off",
-        ...(queuedTurn.computerControlGeneration !== undefined
-          ? { computerControlGeneration: queuedTurn.computerControlGeneration }
-          : {}),
-        computerControlMode: resolveComputerControlMode(
-          queuedTurn.computerControlMode,
-          queuedTurn.enableComputerControl,
-        ),
-        runtimeMode: queuedTurn.runtimeMode,
-      });
     }
     const hasModelData =
       Object.keys(draft.modelSelectionByProvider).length > 0 || draft.activeProvider !== null;
@@ -184,7 +154,6 @@ export function partializeComposerDraftStoreState(
       draft.pullRequestContexts.length === 0 &&
       !hasReferenceData &&
       !hasQueuedTurns &&
-      draft.restoredSourceProposedPlan == null &&
       !hasModelData &&
       draft.runtimeMode === null &&
       draft.interactionMode === null &&
@@ -293,9 +262,7 @@ export function partializeComposerDraftStoreState(
       ...(draft.skills.length > 0 ? { skills: [...draft.skills] } : {}),
       ...(draft.mentions.length > 0 ? { mentions: [...draft.mentions] } : {}),
       ...(hasQueuedTurns ? { queuedTurns: persistedQueuedTurns } : {}),
-      ...(draft.restoredSourceProposedPlan
-        ? { restoredSourceProposedPlan: draft.restoredSourceProposedPlan }
-        : {}),
+
       ...(hasModelData
         ? {
             modelSelectionByProvider: draft.modelSelectionByProvider,

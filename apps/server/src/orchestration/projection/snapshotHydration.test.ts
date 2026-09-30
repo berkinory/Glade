@@ -27,7 +27,6 @@ projectionSnapshotLayer("Projection snapshot snapshotHydration", (it) => {
         yield* sql`DELETE FROM projection_thread_sessions`;
         yield* sql`DELETE FROM projection_thread_messages`;
         yield* sql`DELETE FROM projection_thread_activities`;
-        yield* sql`DELETE FROM projection_thread_proposed_plans`;
         yield* sql`
         INSERT INTO projection_projects (
           project_id, title, workspace_root, scripts_json, created_at, updated_at
@@ -174,7 +173,6 @@ projectionSnapshotLayer("Projection snapshot snapshotHydration", (it) => {
 
       yield* sql`DELETE FROM projection_projects`;
       yield* sql`DELETE FROM projection_state`;
-      yield* sql`DELETE FROM projection_thread_proposed_plans`;
       yield* sql`DELETE FROM projection_turns`;
 
       yield* sql`
@@ -260,28 +258,6 @@ projectionSnapshotLayer("Projection snapshot snapshotHydration", (it) => {
             '2026-02-24T00:00:05.000Z'
           )
       `;
-      yield* sql`
-        INSERT INTO projection_thread_proposed_plans (
-          plan_id,
-          thread_id,
-          turn_id,
-          plan_markdown,
-          implemented_at,
-          implementation_thread_id,
-          created_at,
-          updated_at
-        )
-        VALUES (
-          'plan-1',
-          'thread-1',
-          'turn-1',
-          '# Ship it',
-          NULL,
-          NULL,
-          '2026-02-24T00:00:05.000Z',
-          '2026-02-24T00:00:05.500Z'
-        )
-      `;
 
       yield* sql`
         INSERT INTO projection_thread_activities (
@@ -357,8 +333,6 @@ projectionSnapshotLayer("Projection snapshot snapshotHydration", (it) => {
           thread_id,
           turn_id,
           pending_message_id,
-          source_proposed_plan_thread_id,
-          source_proposed_plan_id,
           assistant_message_id,
           state,
           requested_at,
@@ -368,14 +342,11 @@ projectionSnapshotLayer("Projection snapshot snapshotHydration", (it) => {
           checkpoint_ref,
           checkpoint_status,
           checkpoint_files_json
-        )
-        VALUES
+        ) VALUES
           (
             'thread-1',
             'turn-1',
             NULL,
-            'thread-1',
-            'plan-1',
             'message-1',
             'completed',
             '2026-02-24T00:00:08.000Z',
@@ -389,8 +360,6 @@ projectionSnapshotLayer("Projection snapshot snapshotHydration", (it) => {
           (
             'thread-1',
             'turn-placeholder',
-            NULL,
-            NULL,
             NULL,
             NULL,
             'running',
@@ -488,7 +457,7 @@ projectionSnapshotLayer("Projection snapshot snapshotHydration", (it) => {
           // must not resurrect stale prompts.
           hasPendingApprovals: false,
           hasPendingUserInput: false,
-          hasActionableProposedPlan: true,
+
           latestTurn: {
             turnId: asTurnId("turn-1"),
             state: "completed",
@@ -496,10 +465,6 @@ projectionSnapshotLayer("Projection snapshot snapshotHydration", (it) => {
             startedAt: "2026-02-24T00:00:08.000Z",
             completedAt: "2026-02-24T00:00:08.000Z",
             assistantMessageId: asMessageId("message-1"),
-            sourceProposedPlan: {
-              threadId: ThreadId.makeUnsafe("thread-1"),
-              planId: "plan-1",
-            },
           },
           createdAt: "2026-02-24T00:00:02.000Z",
           updatedAt: "2026-02-24T00:00:03.000Z",
@@ -529,17 +494,7 @@ projectionSnapshotLayer("Projection snapshot snapshotHydration", (it) => {
               updatedAt: "2026-02-24T00:00:05.000Z",
             },
           ],
-          proposedPlans: [
-            {
-              id: "plan-1",
-              turnId: asTurnId("turn-1"),
-              planMarkdown: "# Ship it",
-              implementedAt: null,
-              implementationThreadId: null,
-              createdAt: "2026-02-24T00:00:05.000Z",
-              updatedAt: "2026-02-24T00:00:05.500Z",
-            },
-          ],
+
           activities: [
             {
               id: asEventId("activity-1"),

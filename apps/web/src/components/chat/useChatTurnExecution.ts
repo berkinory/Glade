@@ -82,7 +82,7 @@ interface PreparedChatTurn {
   mentionedSkillsForSend: ProviderSkillReference[];
   mentionedPluginMentionsForSend: ProviderMentionReference[];
   dispatchMode: "queue" | "steer";
-  sourceProposedPlanForSend: QueuedComposerChatTurn["sourceProposedPlan"];
+
   shouldResumeSettledLocalThread: boolean;
   currentActiveGitBranchForSend: string | null;
   queuedChatTurn: QueuedComposerChatTurn | null;
@@ -116,9 +116,6 @@ type ChatTurnExecutionInput = Pick<
   | "armLocalDispatchAckFallback"
   | "setQueuedSteerGate"
   | "threadId"
-  | "planSidebarDismissedForTurnRef"
-  | "setPlanSidebarOpen"
-  | "setRestoredQueuedSourceProposedPlan"
   | "failLocalDispatchWorktreeSetup"
   | "setOptimisticUserMessages"
   | "promptRef"
@@ -159,9 +156,6 @@ type ChatTurnExecutionControllerInput = {
     ChatTurnExecutionInput,
     | "setStoreThreadWorkspace"
     | "createWorktreeMutation"
-    | "planSidebarDismissedForTurnRef"
-    | "setPlanSidebarOpen"
-    | "setRestoredQueuedSourceProposedPlan"
     | "promptRef"
     | "composerImagesRef"
     | "composerFilesRef"
@@ -220,9 +214,7 @@ export function useChatTurnExecution({
   const {
     setStoreThreadWorkspace,
     createWorktreeMutation,
-    planSidebarDismissedForTurnRef,
-    setPlanSidebarOpen,
-    setRestoredQueuedSourceProposedPlan,
+
     promptRef,
     composerImagesRef,
     composerFilesRef,
@@ -296,7 +288,7 @@ export function useChatTurnExecution({
         mentionedSkillsForSend,
         mentionedPluginMentionsForSend,
         dispatchMode,
-        sourceProposedPlanForSend,
+
         shouldResumeSettledLocalThread,
         currentActiveGitBranchForSend,
         queuedChatTurn,
@@ -629,7 +621,7 @@ export function useChatTurnExecution({
                 : {}),
             },
             ...turnStartDispatchFields(dispatchSettings, dispatchMode),
-            ...(sourceProposedPlanForSend ? { sourceProposedPlan: sourceProposedPlanForSend } : {}),
+
             createdAt: messageCreatedAt,
           });
         });
@@ -660,12 +652,8 @@ export function useChatTurnExecution({
           setQueuedSteerGate(nextSteerGate);
           queuedComposerDrain.armQueuedComposerSteerGate(threadId, nextSteerGate);
         }
-        if (sourceProposedPlanForSend) {
-          planSidebarDismissedForTurnRef.current = null;
-          setPlanSidebarOpen(true);
-        }
+
         if (queuedChatTurn === null) {
-          setRestoredQueuedSourceProposedPlan(threadIdForSend, null);
         }
       })().catch(async (err: unknown) => {
         const setupCancelled = err instanceof WorktreeSetupCancelledError;
@@ -783,13 +771,7 @@ export function useChatTurnExecution({
           });
           promptRef.current = promptForSend;
           setPrompt(promptForSend);
-          if (sourceProposedPlanForSend) {
-            setRestoredQueuedSourceProposedPlan(threadIdForSend, {
-              threadId: threadIdForSend,
-              restoredPrompt: promptForSend,
-              sourceProposedPlan: sourceProposedPlanForSend,
-            });
-          }
+
           setComposerCursor(collapseExpandedComposerCursor(promptForSend, promptForSend.length));
           addComposerImagesToDraft(composerImagesSnapshot.map(cloneComposerImageAttachment));
           addComposerFilesToDraft(composerFilesSnapshot);
@@ -840,9 +822,7 @@ export function useChatTurnExecution({
       armLocalDispatchAckFallback,
       setQueuedSteerGate,
       threadId,
-      planSidebarDismissedForTurnRef,
-      setPlanSidebarOpen,
-      setRestoredQueuedSourceProposedPlan,
+
       failLocalDispatchWorktreeSetup,
       setOptimisticUserMessages,
       promptRef,

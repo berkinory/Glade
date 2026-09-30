@@ -44,8 +44,7 @@ export function makeTurnProjector(input: {
             yield* projectionTurnRepository.replacePendingTurnStart({
               threadId: event.payload.threadId,
               messageId: event.payload.review.messageId,
-              sourceProposedPlanThreadId: event.payload.review.sourceProposedPlan?.threadId ?? null,
-              sourceProposedPlanId: event.payload.review.sourceProposedPlan?.planId ?? null,
+
               requestedAt: event.payload.review.requestedAt ?? event.payload.review.createdAt,
             });
           }
@@ -55,8 +54,7 @@ export function makeTurnProjector(input: {
           yield* projectionTurnRepository.replacePendingTurnStart({
             threadId: event.payload.threadId,
             messageId: event.payload.messageId,
-            sourceProposedPlanThreadId: event.payload.sourceProposedPlan?.threadId ?? null,
-            sourceProposedPlanId: event.payload.sourceProposedPlan?.planId ?? null,
+
             requestedAt: event.payload.createdAt,
           });
           return;
@@ -119,16 +117,7 @@ export function makeTurnProjector(input: {
               pendingMessageId:
                 existingTurn.value.pendingMessageId ??
                 (Option.isSome(pendingTurnStart) ? pendingTurnStart.value.messageId : null),
-              sourceProposedPlanThreadId:
-                existingTurn.value.sourceProposedPlanThreadId ??
-                (Option.isSome(pendingTurnStart)
-                  ? pendingTurnStart.value.sourceProposedPlanThreadId
-                  : null),
-              sourceProposedPlanId:
-                existingTurn.value.sourceProposedPlanId ??
-                (Option.isSome(pendingTurnStart)
-                  ? pendingTurnStart.value.sourceProposedPlanId
-                  : null),
+
               startedAt:
                 existingTurn.value.startedAt ?? event.payload.session.updatedAt ?? event.occurredAt,
               requestedAt:
@@ -144,12 +133,7 @@ export function makeTurnProjector(input: {
               pendingMessageId: Option.isSome(pendingTurnStart)
                 ? pendingTurnStart.value.messageId
                 : null,
-              sourceProposedPlanThreadId: Option.isSome(pendingTurnStart)
-                ? pendingTurnStart.value.sourceProposedPlanThreadId
-                : null,
-              sourceProposedPlanId: Option.isSome(pendingTurnStart)
-                ? pendingTurnStart.value.sourceProposedPlanId
-                : null,
+
               assistantMessageId: null,
               state: "running",
               requestedAt: Option.isSome(pendingTurnStart)
@@ -211,8 +195,7 @@ export function makeTurnProjector(input: {
             turnId: event.payload.turnId,
             threadId: event.payload.threadId,
             pendingMessageId: null,
-            sourceProposedPlanThreadId: null,
-            sourceProposedPlanId: null,
+
             assistantMessageId: event.payload.messageId,
             state: "running",
             requestedAt: event.payload.createdAt,
@@ -284,8 +267,7 @@ export function makeTurnProjector(input: {
             turnId: event.payload.turnId,
             threadId: event.payload.threadId,
             pendingMessageId: null,
-            sourceProposedPlanThreadId: null,
-            sourceProposedPlanId: null,
+
             assistantMessageId: event.payload.assistantMessageId,
             state: nextState,
             requestedAt: event.payload.completedAt,
@@ -330,8 +312,7 @@ export function makeTurnProjector(input: {
                 : projectionTurnRepository.replacePendingTurnStart({
                     threadId: turn.threadId,
                     messageId: turn.pendingMessageId,
-                    sourceProposedPlanThreadId: turn.sourceProposedPlanThreadId,
-                    sourceProposedPlanId: turn.sourceProposedPlanId,
+
                     requestedAt: turn.requestedAt,
                   })
               : projectionTurnRepository.upsertByTurnId({

@@ -127,9 +127,6 @@ describe("Glade Computer provider permission", () => {
       shouldAllowGladeComputerProviderTool({ ...allowed, computerControlEnabled: false }),
     ).toBe(false);
     expect(shouldAllowGladeComputerProviderTool({ ...allowed, activeTurn: false })).toBe(false);
-    expect(shouldAllowGladeComputerProviderTool({ ...allowed, interactionMode: "plan" })).toBe(
-      false,
-    );
     expect(shouldAllowGladeComputerProviderTool({ ...allowed, runtimeMode: "auto" })).toBe(false);
   });
 });

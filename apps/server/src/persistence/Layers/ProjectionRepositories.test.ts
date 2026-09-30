@@ -167,7 +167,7 @@ projectionRepositoriesLayer("Projection repositories", (it) => {
         latestUserMessageAt: null,
         pendingApprovalCount: 0,
         pendingUserInputCount: 0,
-        hasActionableProposedPlan: 0,
+
         createdAt: "2026-03-24T00:00:00.000Z",
         updatedAt: "2026-03-24T00:00:00.000Z",
         deletedAt: null,
@@ -255,7 +255,7 @@ projectionRepositoriesLayer("Projection repositories", (it) => {
         latestUserMessageAt: null,
         pendingApprovalCount: 0,
         pendingUserInputCount: 0,
-        hasActionableProposedPlan: 0,
+
         createdAt: now,
         updatedAt: now,
         deletedAt,
@@ -266,8 +266,7 @@ projectionRepositoriesLayer("Projection repositories", (it) => {
         threadId: ThreadId.makeUnsafe("thread-wait-active"),
         turnId: TurnId.makeUnsafe("turn-wait-active"),
         pendingMessageId: null,
-        sourceProposedPlanThreadId: null,
-        sourceProposedPlanId: null,
+
         assistantMessageId: null,
         state: "running",
         requestedAt: now,
@@ -282,8 +281,7 @@ projectionRepositoriesLayer("Projection repositories", (it) => {
         threadId: ThreadId.makeUnsafe("thread-wait-deleted"),
         turnId: TurnId.makeUnsafe("turn-wait-deleted"),
         pendingMessageId: null,
-        sourceProposedPlanThreadId: null,
-        sourceProposedPlanId: null,
+
         assistantMessageId: null,
         state: "completed",
         requestedAt: now,

@@ -19,8 +19,6 @@ import {
   nativeProviderRefs,
   asCanonicalTurnId,
   extractContentBlockText,
-  extractExitPlanModePlan,
-  extractTextContent,
 } from "./messageContent";
 import {
   tryParseCompleteJsonRecord,
@@ -37,7 +35,7 @@ import {
   parseClaudeWorkflowLaunchFromText,
 } from "../claudeWorkflowScript.ts";
 import { claudeAssistantErrorMessage } from "./streamErrors";
-import { extractProposedPlanMarkdown } from "../../core/planMode.ts";
+
 import { normalizeClaudeTokenUsage } from "../claudeTokenUsage.ts";
 
 export function makeClaudeContentMessages(input: {
@@ -61,9 +59,7 @@ export function makeClaudeContentMessages(input: {
     typeof makeClaudeWorkflowRuntime
   >["startWorkflowRuntimePoller"];
   readonly ensureSyntheticTurn: ReturnType<typeof makeClaudeToolTracking>["ensureSyntheticTurn"];
-  readonly emitProposedPlanCompleted: ReturnType<
-    typeof makeClaudeTaskPresentation
-  >["emitProposedPlanCompleted"];
+
   readonly backfillAssistantTextBlocksFromSnapshot: ReturnType<
     typeof makeClaudeAssistantText
   >["backfillAssistantTextBlocksFromSnapshot"];
@@ -82,7 +78,7 @@ export function makeClaudeContentMessages(input: {
     emitTrackedTasksUpdated,
     startWorkflowRuntimePoller,
     ensureSyntheticTurn,
-    emitProposedPlanCompleted,
+
     backfillAssistantTextBlocksFromSnapshot,
     maybeEmitContextUsageWarning,
   } = input;
@@ -515,33 +511,6 @@ export function makeClaudeContentMessages(input: {
               });
             }
           }
-          if (toolUse.type !== "tool_use" || toolUse.name !== "ExitPlanMode") {
-            continue;
-          }
-          const planMarkdown = extractExitPlanModePlan(toolUse.input);
-          if (!planMarkdown) {
-            continue;
-          }
-          yield* emitProposedPlanCompleted(context, {
-            planMarkdown,
-            toolUseId: typeof toolUse.id === "string" ? toolUse.id : undefined,
-            rawSource: "claude.sdk.message",
-            rawMethod: "claude/assistant",
-            rawPayload: message,
-          });
-        }
-
-        const taggedPlanMarkdown =
-          context.turnState?.interactionMode === "plan"
-            ? extractProposedPlanMarkdown(extractTextContent(content))
-            : undefined;
-        if (taggedPlanMarkdown) {
-          yield* emitProposedPlanCompleted(context, {
-            planMarkdown: taggedPlanMarkdown,
-            rawSource: "claude.sdk.message",
-            rawMethod: "claude/assistant/proposed-plan-block",
-            rawPayload: message,
-          });
         }
       }
 

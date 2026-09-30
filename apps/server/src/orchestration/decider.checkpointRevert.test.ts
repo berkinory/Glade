@@ -56,7 +56,7 @@ function makeReadModel(input: {
         messages: [],
         session: input.session === undefined ? null : input.session,
         activities: [],
-        proposedPlans: [],
+
         checkpoints: [],
         deletedAt: null,
       },

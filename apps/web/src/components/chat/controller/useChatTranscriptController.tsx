@@ -55,7 +55,7 @@ export function useChatTranscriptController({
     activePendingApproval,
     isConnecting,
     pendingUserInputs,
-    showPlanFollowUpPrompt,
+
     activePendingProgress,
     isWorking,
     pendingApprovals,
@@ -112,10 +112,9 @@ export function useChatTranscriptController({
   const canCollapsePastedTextToDraft = shouldEnableComposerPastedTextCollapse({
     isComposerApprovalState,
     hasPendingUserInput: pendingUserInputs.length > 0,
-    showPlanFollowUpPrompt,
   });
 
-  const composerFooterHasWideActions = showPlanFollowUpPrompt || activePendingProgress !== null;
+  const composerFooterHasWideActions = activePendingProgress !== null;
 
   const handoffDisabled = !(
     activeThread &&
@@ -191,7 +190,6 @@ export function useChatTranscriptController({
 
   const timelineEntries = deriveTimelineEntries(
     timelineMessages,
-    activeThread?.proposedPlans ?? [],
     agentActivityTimelineState.timelineWorkEntries,
   );
 

@@ -27,7 +27,6 @@ import { ensureInlineTerminalContextPlaceholders } from "./lib/terminalContext";
 import { DEFAULT_INTERACTION_MODE, DEFAULT_RUNTIME_MODE } from "./types";
 import {
   LEGACY_TERMINAL_DRAFT_MAPPING_SUFFIX,
-  PersistedRestoredSourceProposedPlan,
   normalizePersistedModelSelectionMap,
 } from "./composerDraftPersistence.types";
 import type {
@@ -318,11 +317,7 @@ export function normalizePersistedDraftsByThreadId(
     }
 
     const normalizedQueuedTurns = queuedTurns ?? [];
-    const restoredSourceProposedPlan = Schema.is(PersistedRestoredSourceProposedPlan)(
-      draftCandidate.restoredSourceProposedPlan,
-    )
-      ? draftCandidate.restoredSourceProposedPlan
-      : null;
+
     const hasModelData =
       Object.keys(modelSelectionByProvider).length > 0 || activeProvider !== null;
     const hasQueuedTurns = normalizedQueuedTurns.length > 0;
@@ -340,7 +335,6 @@ export function normalizePersistedDraftsByThreadId(
       pullRequestContexts.length === 0 &&
       !hasReferenceData &&
       !hasQueuedTurns &&
-      restoredSourceProposedPlan === null &&
       !hasModelData &&
       !runtimeMode &&
       !interactionMode &&
@@ -363,7 +357,7 @@ export function normalizePersistedDraftsByThreadId(
       ...(skills.length > 0 ? { skills } : {}),
       ...(mentions.length > 0 ? { mentions } : {}),
       ...(hasQueuedTurns ? { queuedTurns: normalizedQueuedTurns } : {}),
-      ...(restoredSourceProposedPlan ? { restoredSourceProposedPlan } : {}),
+
       ...(hasModelData ? { modelSelectionByProvider, activeProvider } : {}),
       ...(runtimeMode ? { runtimeMode } : {}),
       ...(interactionMode ? { interactionMode } : {}),

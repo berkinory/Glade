@@ -381,7 +381,7 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
           messageId: MessageId.makeUnsafe("message-turn-settings-automation"),
           dispatchOrigin: "automation",
           runtimeMode: "approval-required",
-          interactionMode: "plan",
+          interactionMode: "default",
           createdAt: automationRequestedAt,
         },
       });

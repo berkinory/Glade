@@ -38,14 +38,15 @@ export function createChatPresentation(
   },
 ) {
   const {
+    taskListSidebarOpen,
+    setTaskListSidebarOpen,
     isComposerExtrasPanelOpen,
     setIsComposerExtrasPanelOpen,
     onRegisterCommitAndPushTrigger,
     settings,
-    planSidebarOpen,
+
     activeTaskListCompact,
     setActiveTaskListCompact,
-    setPlanSidebarOpen,
   } = controller.session;
   const {
     threadLineageThreads,
@@ -395,7 +396,7 @@ export function createChatPresentation(
 
   const showComposerLiveChangesHeader = latestTurnLive && activeTurnLiveDiffState.hasChanges;
 
-  const showComposerActiveTaskListCard = Boolean(activeTaskList && !planSidebarOpen);
+  const showComposerActiveTaskListCard = Boolean(activeTaskList && !taskListSidebarOpen);
 
   const showComposerWorkflowRunCard = workflowRunState !== null;
 
@@ -421,7 +422,7 @@ export function createChatPresentation(
         backgroundTaskCount={composerBackgroundTaskCount}
         compact={activeTaskListCompact}
         onCompactChange={setActiveTaskListCompact}
-        onOpenSidebar={() => setPlanSidebarOpen(true)}
+        onOpenSidebar={() => setTaskListSidebarOpen(true)}
         attachedToPrevious={attachedToPrevious}
       />
     ) : null;

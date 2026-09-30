@@ -70,7 +70,7 @@ export function useChatActionsController({
     applyingPromptHistoryNavigationRef,
     expectedPromptHistoryPromptRef,
     promptRef,
-    setRestoredQueuedSourceProposedPlan,
+
     clearComposerDraftContent,
     setComposerHighlightedItemId,
     setComposerCursor,
@@ -362,7 +362,7 @@ export function useChatActionsController({
       applyingPromptHistoryNavigationRef.current = false;
       expectedPromptHistoryPromptRef.current = null;
       promptRef.current = "";
-      setRestoredQueuedSourceProposedPlan(threadId, null);
+
       clearComposerDraftContent(threadId);
       updateSelectedComposerSkills([]);
       updateSelectedComposerMentions([]);
@@ -379,7 +379,7 @@ export function useChatActionsController({
       expectedPromptHistoryPromptRef,
       setComposerHighlightedItemId,
       clearComposerDraftContent,
-      setRestoredQueuedSourceProposedPlan,
+
       updateSelectedComposerMentions,
       updateSelectedComposerSkills,
     ],

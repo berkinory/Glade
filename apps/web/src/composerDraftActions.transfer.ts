@@ -8,7 +8,6 @@ import {
 import {
   type ComposerThreadDraftState,
   buildTransferredComposerDraft,
-  createEmptyThreadDraft,
   shouldRemoveDraft,
   putComposerDraft,
 } from "./composerDraftDomain";
@@ -19,10 +18,7 @@ type DraftGet = Parameters<StateCreator<ComposerDraftStoreState>>[1];
 export function createTransferActions(
   set: DraftSet,
   get: DraftGet,
-): Pick<
-  ComposerDraftStoreState,
-  "copyTransferableComposerState" | "setRestoredSourceProposedPlan" | "clearComposerContent"
-> {
+): Pick<ComposerDraftStoreState, "copyTransferableComposerState" | "clearComposerContent"> {
   return {
     copyTransferableComposerState: (sourceThreadId, targetThreadId) => {
       if (sourceThreadId.length === 0 || targetThreadId.length === 0) {
@@ -51,19 +47,7 @@ export function createTransferActions(
         return { draftsByThreadId: nextDraftsByThreadId };
       });
     },
-    setRestoredSourceProposedPlan: (threadId, source) => {
-      if (threadId.length === 0) {
-        return;
-      }
-      set((state) => {
-        const current = state.draftsByThreadId[threadId] ?? createEmptyThreadDraft();
-        const nextDraft: ComposerThreadDraftState = {
-          ...current,
-          restoredSourceProposedPlan: source,
-        };
-        return putComposerDraft(state, threadId, nextDraft);
-      });
-    },
+
     clearComposerContent: (threadId, options) => {
       if (threadId.length === 0) {
         return;
@@ -94,7 +78,6 @@ export function createTransferActions(
           pullRequestContexts: [],
           skills: [],
           mentions: [],
-          restoredSourceProposedPlan: null,
         };
         return putComposerDraft(state, threadId, nextDraft);
       });

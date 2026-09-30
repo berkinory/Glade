@@ -5,10 +5,7 @@ import {
   ProviderStartOptions,
   RuntimeMode,
 } from "@glade/contracts/provider/sessionPolicy";
-import {
-  OrchestrationProposedPlanId,
-  OrchestrationThreadPullRequest,
-} from "@glade/contracts/orchestration/threadEntities";
+import { OrchestrationThreadPullRequest } from "@glade/contracts/orchestration/threadEntities";
 import { ProjectId, ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   ProviderMentionReference,
@@ -108,17 +105,6 @@ export const PersistedPullRequestContextDraft = Schema.Struct({
 
 export type PersistedPullRequestContextDraft = typeof PersistedPullRequestContextDraft.Type;
 
-export const PersistedSourceProposedPlanReference = Schema.Struct({
-  threadId: ThreadId,
-  planId: OrchestrationProposedPlanId,
-});
-
-export const PersistedRestoredSourceProposedPlan = Schema.Struct({
-  threadId: ThreadId,
-  restoredPrompt: Schema.String,
-  sourceProposedPlan: PersistedSourceProposedPlanReference,
-});
-
 export const PersistedAssistantSelectionDraft = Schema.Struct({
   id: Schema.String,
   assistantMessageId: Schema.String,
@@ -169,7 +155,7 @@ const PersistedQueuedComposerChatTurn = Schema.Struct({
   enableComputerControl: Schema.optionalKey(Schema.Boolean),
   computerControlMode: Schema.optionalKey(Schema.Literals(["off", "request", "chat"])),
   computerControlGeneration: Schema.optionalKey(Schema.Number),
-  sourceProposedPlan: Schema.optionalKey(PersistedSourceProposedPlanReference),
+
   runtimeMode: RuntimeMode,
   interactionMode: ProviderInteractionMode,
   envMode: DraftThreadEnvModeSchema,
@@ -177,30 +163,7 @@ const PersistedQueuedComposerChatTurn = Schema.Struct({
 
 type PersistedQueuedComposerChatTurn = typeof PersistedQueuedComposerChatTurn.Type;
 
-const PersistedQueuedComposerPlanFollowUp = Schema.Struct({
-  id: Schema.String,
-  kind: Schema.Literal("plan-follow-up"),
-  createdAt: Schema.String,
-  previewText: Schema.String,
-  text: Schema.String,
-  interactionMode: Schema.Literals(["default", "plan"]),
-  selectedProvider: ProviderKind,
-  selectedModel: Schema.NullOr(Schema.String),
-  selectedPromptEffort: Schema.NullOr(Schema.String),
-  modelSelection: ModelSelection,
-  providerOptionsForDispatch: Schema.optionalKey(ProviderStartOptions),
-  enableComputerControl: Schema.optionalKey(Schema.Boolean),
-  computerControlMode: Schema.optionalKey(Schema.Literals(["off", "request", "chat"])),
-  computerControlGeneration: Schema.optionalKey(Schema.Number),
-  runtimeMode: RuntimeMode,
-});
-
-type PersistedQueuedComposerPlanFollowUp = typeof PersistedQueuedComposerPlanFollowUp.Type;
-
-const PersistedQueuedComposerTurn = Schema.Union([
-  PersistedQueuedComposerChatTurn,
-  PersistedQueuedComposerPlanFollowUp,
-]);
+const PersistedQueuedComposerTurn = Schema.Union([PersistedQueuedComposerChatTurn]);
 
 export type PersistedQueuedComposerTurn = typeof PersistedQueuedComposerTurn.Type;
 
@@ -246,7 +209,7 @@ const PersistedComposerThreadDraftState = Schema.Struct({
   skills: Schema.optionalKey(Schema.Array(ProviderSkillReference)),
   mentions: Schema.optionalKey(Schema.Array(ProviderMentionReference)),
   queuedTurns: Schema.optionalKey(Schema.Array(PersistedQueuedComposerTurn)),
-  restoredSourceProposedPlan: Schema.optionalKey(PersistedRestoredSourceProposedPlan),
+
   modelSelectionByProvider: Schema.optionalKey(
     Schema.Record(ProviderKind, Schema.optionalKey(ModelSelection)),
   ),

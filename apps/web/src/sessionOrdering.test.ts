@@ -45,7 +45,6 @@ it("keeps stop available across delayed session snapshots and accepts actual com
       latestUserMessageAt: null,
       hasPendingApprovals: false,
       hasPendingUserInput: false,
-      hasActionableProposedPlan: false,
     },
   });
   expect(threadsOf(state)[0]!.session?.status).toBe("running");

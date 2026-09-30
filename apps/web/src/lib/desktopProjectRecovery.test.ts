@@ -60,14 +60,14 @@ function makeThread(
     latestUserMessageAt: null,
     hasPendingApprovals: false,
     hasPendingUserInput: false,
-    hasActionableProposedPlan: false,
+
     createdAt: "2026-04-20T08:00:00.000Z",
     updatedAt: "2026-04-20T08:00:00.000Z",
     archivedAt: null,
     deletedAt: null,
     messages: [],
     activities: [],
-    proposedPlans: [],
+
     checkpoints: [],
     session: null,
     ...overrides,
@@ -131,7 +131,7 @@ function makeShellSnapshot(
         latestUserMessageAt: thread.latestUserMessageAt,
         hasPendingApprovals: thread.hasPendingApprovals,
         hasPendingUserInput: thread.hasPendingUserInput,
-        hasActionableProposedPlan: thread.hasActionableProposedPlan,
+
         createdAt: thread.createdAt,
         updatedAt: thread.updatedAt,
         archivedAt: thread.archivedAt,

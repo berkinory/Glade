@@ -54,9 +54,7 @@ interface ChatQueuedTurnsInput {
   updateSelectedComposerMentions: ReturnType<
     typeof useComposerReferences
   >["updateSelectedComposerMentions"];
-  setRestoredQueuedSourceProposedPlan: ReturnType<
-    typeof useChatComposerDraft
-  >["setRestoredQueuedSourceProposedPlan"];
+
   setComposerDraftModelSelection: ReturnType<
     typeof useChatComposerDraft
   >["setComposerDraftModelSelection"];
@@ -106,7 +104,6 @@ type ChatQueuedTurnsControllerInput = {
     | "addComposerTerminalContextsToDraft"
     | "addComposerPastedTextsToDraft"
     | "addComposerPullRequestContextsToDraft"
-    | "setRestoredQueuedSourceProposedPlan"
     | "setComposerDraftModelSelection"
     | "setComposerDraftRuntimeMode"
     | "setComposerDraftInteractionMode"
@@ -156,7 +153,7 @@ export function useChatQueuedTurns({
     addComposerTerminalContextsToDraft,
     addComposerPastedTextsToDraft,
     addComposerPullRequestContextsToDraft,
-    setRestoredQueuedSourceProposedPlan,
+
     setComposerDraftModelSelection,
     setComposerDraftRuntimeMode,
     setComposerDraftInteractionMode,
@@ -212,7 +209,7 @@ export function useChatQueuedTurns({
       if (!activeThread) {
         return;
       }
-      const nextPrompt = queuedTurn.kind === "chat" ? queuedTurn.prompt : queuedTurn.text;
+      const nextPrompt = queuedTurn.prompt;
       const restoredImages =
         queuedTurn.kind === "chat" ? queuedTurn.images.map(cloneComposerImageAttachment) : [];
       const restoredFiles = queuedTurn.kind === "chat" ? queuedTurn.files : [];
@@ -259,16 +256,7 @@ export function useChatQueuedTurns({
         updateSelectedComposerSkills([]);
         updateSelectedComposerMentions([]);
       }
-      setRestoredQueuedSourceProposedPlan(
-        activeThread.id,
-        queuedTurn.kind === "chat" && queuedTurn.sourceProposedPlan
-          ? {
-              threadId: activeThread.id,
-              restoredPrompt: nextPrompt,
-              sourceProposedPlan: queuedTurn.sourceProposedPlan,
-            }
-          : null,
-      );
+
       setComposerDraftModelSelection(activeThread.id, queuedTurn.modelSelection);
       setComposerDraftRuntimeMode(activeThread.id, queuedTurn.runtimeMode);
       setComposerDraftInteractionMode(activeThread.id, queuedTurn.interactionMode);
@@ -300,7 +288,7 @@ export function useChatQueuedTurns({
       clearComposerDraftContent,
       scheduleComposerFocus,
       setDraftThreadContext,
-      setRestoredQueuedSourceProposedPlan,
+
       setComposerDraftInteractionMode,
       setComposerDraftComputerControlMode,
       setComposerDraftModelSelection,
@@ -327,12 +315,7 @@ export function useChatQueuedTurns({
       if (queuedTurn.kind === "chat") {
         return lateSendHandlers.send(undefined, dispatchMode, queuedTurn);
       }
-      return lateSendHandlers.submitPlanFollowUp({
-        text: queuedTurn.text,
-        interactionMode: queuedTurn.interactionMode,
-        dispatchMode,
-        queuedTurn,
-      });
+      return false;
     },
     [lateComposerSendHandlersRef],
   );

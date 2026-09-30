@@ -186,26 +186,7 @@ export function decideTranscriptCommand({
           occurredAt: command.createdAt,
         });
       }
-      case "thread.proposed-plan.upsert": {
-        yield* requireThread({
-          readModel,
-          command,
-          threadId: command.threadId,
-        });
-        return {
-          ...withEventBase({
-            aggregateKind: "thread",
-            aggregateId: command.threadId,
-            occurredAt: command.createdAt,
-            commandId: command.commandId,
-          }),
-          type: "thread.proposed-plan-upserted",
-          payload: {
-            threadId: command.threadId,
-            proposedPlan: command.proposedPlan,
-          },
-        };
-      }
+
       case "thread.turn.diff.complete": {
         yield* requireThread({
           readModel,

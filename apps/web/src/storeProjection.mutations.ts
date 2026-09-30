@@ -209,16 +209,12 @@ function deriveThreadStateSignals(
   thread: Thread,
 ): Pick<
   Thread,
-  | "latestUserMessageAt"
-  | "latestHumanMessageAt"
-  | "hasPendingApprovals"
-  | "hasPendingUserInput"
-  | "hasActionableProposedPlan"
+  "latestUserMessageAt" | "latestHumanMessageAt" | "hasPendingApprovals" | "hasPendingUserInput"
 > {
   const metadata = deriveThreadSummaryMetadata({
     messages: thread.messages,
     activities: thread.activities,
-    proposedPlans: thread.proposedPlans,
+
     latestTurn: thread.latestTurn,
   });
   const actionableInteractions = thread.pendingInteractions?.filter(
@@ -236,18 +232,17 @@ function deriveThreadStateSignals(
     hasPendingUserInput:
       actionableInteractions?.some((interaction) => interaction.interactionKind === "userInput") ??
       metadata.hasPendingUserInput,
-    hasActionableProposedPlan: metadata.hasActionableProposedPlan,
   };
 }
 
 function withDerivedThreadStateSignals(thread: Thread): Thread {
   const nextSignals = deriveThreadStateSignals(thread);
+
   if (
     thread.latestUserMessageAt === nextSignals.latestUserMessageAt &&
     thread.latestHumanMessageAt === nextSignals.latestHumanMessageAt &&
     thread.hasPendingApprovals === nextSignals.hasPendingApprovals &&
-    thread.hasPendingUserInput === nextSignals.hasPendingUserInput &&
-    thread.hasActionableProposedPlan === nextSignals.hasActionableProposedPlan
+    thread.hasPendingUserInput === nextSignals.hasPendingUserInput
   ) {
     return thread;
   }

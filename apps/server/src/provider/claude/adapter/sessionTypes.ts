@@ -78,7 +78,7 @@ export interface ClaudeTurnState {
   readonly items: Array<unknown>;
   readonly assistantTextBlocks: Map<number, AssistantTextBlockState>;
   readonly assistantTextBlockOrder: Array<AssistantTextBlockState>;
-  readonly capturedProposedPlanKeys: Set<string>;
+
   readonly sawFileChange: boolean;
   readonly assistantError?: {
     readonly code: SDKAssistantMessageError;

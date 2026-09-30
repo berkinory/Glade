@@ -4,10 +4,10 @@ import type { Dispatch, RefObject, SetStateAction } from "react";
 import type { useRefreshProviderStatusesNow } from "~/hooks/useProviderStatusRefresh";
 import type { gitCreateDetachedWorktreeMutationOptions } from "~/lib/gitReactQuery";
 import type { AppSettings } from "../../appSettings";
-import type { QueuedComposerChatTurn, QueuedComposerPlanFollowUp } from "../../composerDraftDomain";
+import type { QueuedComposerChatTurn } from "../../composerDraftDomain";
 import type { useComposerImageIntake } from "../../hooks/useComposerImageIntake";
 import type { PendingUserInputDraftAnswer } from "../../pendingUserInput";
-import type { LatestProposedPlanState } from "../../session-logic";
+
 import type { useStore } from "../../store";
 import type { Project, Thread } from "../../types";
 import type { QueuedSteerGate } from "../ChatView.logic.dispatch";
@@ -26,13 +26,6 @@ import type { useChatTranscriptScroll } from "./useChatTranscriptScroll";
 import type { useComposerReferences } from "./useComposerReferences";
 import type { useComposerVoiceController } from "./useComposerVoiceController";
 
-interface PlanFollowUpSubmission {
-  text: string;
-  interactionMode: "default" | "plan";
-  dispatchMode: "queue" | "steer";
-  queuedTurn?: QueuedComposerPlanFollowUp;
-}
-
 // Reading a later-declared binding from an earlier one makes React Compiler bail out on the whole
 // component ("Cannot access variable before it is declared") — silently, since `panicThreshold` is
 // unset — which would drop memoization for the single hottest component in the app. The ref is only
@@ -45,7 +38,7 @@ export interface LateComposerSendHandlers {
     dispatchMode?: "queue" | "steer",
     queuedTurn?: QueuedComposerChatTurn,
   ) => Promise<boolean>;
-  readonly submitPlanFollowUp: (submission: PlanFollowUpSubmission) => Promise<boolean>;
+
   readonly advanceActivePendingUserInput: (
     answerOverrides?: Record<string, PendingUserInputDraftAnswer>,
   ) => boolean;
@@ -60,8 +53,7 @@ export interface ChatTurnSubmissionInput {
   isConnecting: boolean;
   sendPreflightInFlightRef: RefObject<boolean>;
   sendInFlightRef: RefObject<boolean>;
-  showPlanFollowUpPrompt: boolean;
-  activeProposedPlan: LatestProposedPlanState | null;
+
   hasQueueableLiveTurn: boolean;
   clearComposerInput: (threadId: ThreadId) => void;
   scheduleComposerFocus: () => void;
@@ -102,8 +94,7 @@ export interface ChatTurnSubmissionInput {
   threadNotes: string;
   setSettledThreadBranchWarningDismissedThreadId: Dispatch<SetStateAction<ThreadId | null>>;
   setQueuedSteerGate: Dispatch<SetStateAction<QueuedSteerGate | null>>;
-  planSidebarDismissedForTurnRef: RefObject<string | null>;
-  setPlanSidebarOpen: Dispatch<SetStateAction<boolean>>;
+
   settings: AppSettings;
   isSendBusy: ReturnType<typeof useChatLocalDispatch>["isSendBusy"];
   worktreeSetupResolutionRef: ReturnType<typeof useChatLocalDispatch>["worktreeSetupResolutionRef"];
@@ -150,9 +141,7 @@ export interface ChatTurnSubmissionInput {
   composerPullRequestContexts: ReturnType<
     typeof useChatComposerDraft
   >["composerPullRequestContexts"];
-  restoredQueuedSourceProposedPlanRef: ReturnType<
-    typeof useChatComposerDraft
-  >["restoredQueuedSourceProposedPlanRef"];
+
   enqueueQueuedComposerTurn: ReturnType<typeof useChatComposerDraft>["enqueueQueuedComposerTurn"];
   setComposerDraftPrompt: ReturnType<typeof useChatComposerDraft>["setComposerDraftPrompt"];
   setComposerTrigger: ReturnType<typeof useChatComposerDraft>["setComposerTrigger"];
@@ -170,9 +159,7 @@ export interface ChatTurnSubmissionInput {
     typeof useChatComposerDraft
   >["setComposerDraftInteractionMode"];
   setComposerCursor: ReturnType<typeof useChatComposerDraft>["setComposerCursor"];
-  setRestoredQueuedSourceProposedPlan: ReturnType<
-    typeof useChatComposerDraft
-  >["setRestoredQueuedSourceProposedPlan"];
+
   composerImagesRef: ReturnType<typeof useChatComposerDraft>["composerImagesRef"];
   composerFilesRef: ReturnType<typeof useChatComposerDraft>["composerFilesRef"];
   composerAssistantSelectionsRef: ReturnType<
@@ -277,8 +264,6 @@ export type ChatTurnSubmissionControllerInput = {
     ChatTurnSubmissionInput,
     | "hasLiveTurn"
     | "isConnecting"
-    | "showPlanFollowUpPrompt"
-    | "activeProposedPlan"
     | "hasQueueableLiveTurn"
     | "isSendBusy"
     | "worktreeSetupResolutionRef"
@@ -324,8 +309,6 @@ export type ChatTurnSubmissionControllerInput = {
     | "setComposerHighlightedItemId"
     | "setStoreThreadWorkspace"
     | "createWorktreeMutation"
-    | "planSidebarDismissedForTurnRef"
-    | "setPlanSidebarOpen"
     | "settings"
     | "composerEditorRef"
     | "promptRef"
@@ -337,7 +320,6 @@ export type ChatTurnSubmissionControllerInput = {
     | "composerTerminalContexts"
     | "composerPastedTexts"
     | "composerPullRequestContexts"
-    | "restoredQueuedSourceProposedPlanRef"
     | "enqueueQueuedComposerTurn"
     | "setComposerDraftPrompt"
     | "setComposerTrigger"
@@ -349,7 +331,6 @@ export type ChatTurnSubmissionControllerInput = {
     | "clearComposerDraftContent"
     | "setComposerDraftInteractionMode"
     | "setComposerCursor"
-    | "setRestoredQueuedSourceProposedPlan"
     | "composerImagesRef"
     | "composerFilesRef"
     | "composerAssistantSelectionsRef"

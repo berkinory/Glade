@@ -29,8 +29,7 @@ export interface AppState {
   messageByThreadId?: Record<ThreadId, Record<MessageId, ChatMessage>>;
   activityIdsByThreadId?: Record<ThreadId, string[]>;
   activityByThreadId?: Record<ThreadId, Record<string, Thread["activities"][number]>>;
-  proposedPlanIdsByThreadId?: Record<ThreadId, string[]>;
-  proposedPlanByThreadId?: Record<ThreadId, Record<string, Thread["proposedPlans"][number]>>;
+
   turnDiffIdsByThreadId?: Record<ThreadId, TurnId[]>;
   turnDiffSummaryByThreadId?: Record<ThreadId, Record<TurnId, Thread["turnDiffSummaries"][number]>>;
   threadDetailSyncById?: Record<ThreadId, ThreadDetailSyncState>;
@@ -51,11 +50,7 @@ export const EMPTY_ACTIVITY_BY_THREAD: Record<
   ThreadId,
   Record<string, Thread["activities"][number]>
 > = {};
-export const EMPTY_PROPOSED_PLAN_IDS_BY_THREAD: Record<ThreadId, string[]> = {};
-export const EMPTY_PROPOSED_PLAN_BY_THREAD: Record<
-  ThreadId,
-  Record<string, Thread["proposedPlans"][number]>
-> = {};
+
 export const EMPTY_TURN_DIFF_IDS_BY_THREAD: Record<ThreadId, TurnId[]> = {};
 export const EMPTY_TURN_DIFF_BY_THREAD: Record<
   ThreadId,
@@ -76,8 +71,7 @@ export const initialState: AppState = {
   messageByThreadId: {},
   activityIdsByThreadId: {},
   activityByThreadId: {},
-  proposedPlanIdsByThreadId: {},
-  proposedPlanByThreadId: {},
+
   turnDiffIdsByThreadId: {},
   turnDiffSummaryByThreadId: {},
   threadDetailSyncById: {},

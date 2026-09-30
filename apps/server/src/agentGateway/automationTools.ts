@@ -534,7 +534,7 @@ export function makeAgentGatewayAutomationTools(
             enabled,
             modelSelection,
             runtimeMode: executionThread.runtimeMode,
-            interactionMode: executionThread.interactionMode === "plan" ? "plan" : "default",
+            interactionMode: "default",
             mode,
             targetThreadId,
             proposalState: suggested ? "pending" : null,

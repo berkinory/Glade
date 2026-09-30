@@ -6,7 +6,7 @@ import type { OrchestrationReadModel } from "@glade/contracts/orchestration/snap
 import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import { ThreadAsyncUserInputAnsweredPayload } from "@glade/contracts/orchestration/events";
 import { Effect } from "effect";
-import { MessageSentPayloadSchema, ThreadProposedPlanUpsertedPayload } from "../Schemas.ts";
+import { MessageSentPayloadSchema } from "../Schemas.ts";
 import { resolveStableMessageTurnId } from "../messageTurnId.ts";
 import {
   ProjectionEffect,
@@ -82,10 +82,7 @@ export function projectMessageEvent(
   event: Extract<
     OrchestrationEvent,
     {
-      type:
-        | "thread.async-user-input-answered"
-        | "thread.message-sent"
-        | "thread.proposed-plan-upserted";
+      type: "thread.async-user-input-answered" | "thread.message-sent";
     }
   >,
 ): ProjectionEffect {
@@ -251,37 +248,6 @@ export function projectMessageEvent(
           ...nextBase,
           threads: updateThread(nextBase.threads, payload.threadId, {
             messages: cappedMessages,
-            updatedAt: event.occurredAt,
-          }),
-        };
-      });
-    case "thread.proposed-plan-upserted":
-      return Effect.gen(function* () {
-        const payload = yield* decodeForEvent(
-          ThreadProposedPlanUpsertedPayload,
-          event.payload,
-          event.type,
-          "payload",
-        );
-        const thread = nextBase.threads.find((entry) => entry.id === payload.threadId);
-        if (!thread) {
-          return nextBase;
-        }
-
-        const proposedPlans = [
-          ...thread.proposedPlans.filter((entry) => entry.id !== payload.proposedPlan.id),
-          payload.proposedPlan,
-        ]
-          .toSorted(
-            (left, right) =>
-              left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id),
-          )
-          .slice(-200);
-
-        return {
-          ...nextBase,
-          threads: updateThread(nextBase.threads, payload.threadId, {
-            proposedPlans,
             updatedAt: event.occurredAt,
           }),
         };

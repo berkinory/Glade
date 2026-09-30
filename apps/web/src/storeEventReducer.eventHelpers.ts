@@ -261,12 +261,7 @@ export function buildLatestTurn(params: {
   startedAt: string | null;
   completedAt: string | null;
   assistantMessageId: NonNullable<Thread["latestTurn"]>["assistantMessageId"];
-  sourceProposedPlan?: Thread["pendingSourceProposedPlan"];
 }): NonNullable<Thread["latestTurn"]> {
-  const sourceProposedPlan =
-    params.previous?.turnId === params.turnId
-      ? (params.previous.sourceProposedPlan ?? params.sourceProposedPlan)
-      : params.sourceProposedPlan;
   return {
     turnId: params.turnId,
     state: params.state,
@@ -274,7 +269,6 @@ export function buildLatestTurn(params: {
     startedAt: params.startedAt,
     completedAt: params.completedAt,
     assistantMessageId: params.assistantMessageId,
-    ...(sourceProposedPlan ? { sourceProposedPlan } : {}),
   };
 }
 
@@ -301,7 +295,6 @@ export function reconcileLatestTurnFromSession(
         thread.latestTurn?.turnId === session.activeTurnId
           ? thread.latestTurn.assistantMessageId
           : null,
-      sourceProposedPlan: thread.pendingSourceProposedPlan,
     });
   }
 
@@ -329,7 +322,6 @@ export function reconcileLatestTurnFromSession(
       startedAt: thread.latestTurn.startedAt,
       completedAt: session.updatedAt,
       assistantMessageId: thread.latestTurn.assistantMessageId,
-      sourceProposedPlan: thread.pendingSourceProposedPlan,
     });
   }
 
@@ -436,15 +428,6 @@ export function retainThreadActivitiesAfterRevert(
   );
 }
 
-export function retainThreadProposedPlansAfterRevert(
-  proposedPlans: ReadonlyArray<Thread["proposedPlans"][number]>,
-  retainedTurnIds: ReadonlySet<string>,
-): Thread["proposedPlans"] {
-  return proposedPlans.filter(
-    (proposedPlan) => proposedPlan.turnId === null || retainedTurnIds.has(proposedPlan.turnId),
-  );
-}
-
 export function rollbackThreadMessagesFromMessage(
   messages: ReadonlyArray<ChatMessage>,
   messageId: string,
@@ -514,7 +497,6 @@ export function applyTurnDiffSummaryToThread(
                 ? thread.latestTurn.assistantMessageId
                 : null) ??
               null,
-            sourceProposedPlan: thread.pendingSourceProposedPlan,
           })
       : thread.latestTurn;
 
@@ -729,7 +711,6 @@ export function applyThreadMessageSentEvent(thread: Thread, event: ThreadMessage
       startedAt: previousTurn?.startedAt ?? payload.createdAt,
       completedAt: payload.streaming ? (previousTurn?.completedAt ?? null) : payload.updatedAt,
       assistantMessageId: payload.messageId,
-      sourceProposedPlan: thread.pendingSourceProposedPlan,
     });
   }
 

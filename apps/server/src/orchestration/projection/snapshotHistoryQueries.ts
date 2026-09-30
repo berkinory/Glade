@@ -5,7 +5,6 @@ import * as SqlSchema from "effect/unstable/sql/SqlSchema";
 import { Schema } from "effect";
 import { OrchestrationPendingInteraction } from "@glade/contracts/orchestration/threadEntities";
 import {
-  ProjectionThreadProposedPlanDbRowSchema,
   ProjectionThreadActivityDbRowSchema,
   MAX_SNAPSHOT_THREAD_ACTIVITIES,
   ProjectionThreadSessionDbRowSchema,
@@ -23,24 +22,6 @@ export function makeSnapshotHistoryQueries(input: {
   readonly liveThreadScope: SqlStatement.Statement<SqlConnection.Row>;
 }) {
   const { sql, liveThreadScope } = input;
-  const listThreadProposedPlanRows = SqlSchema.findAll({
-    Request: Schema.Void,
-    Result: ProjectionThreadProposedPlanDbRowSchema,
-    execute: () =>
-      sql`
-        SELECT
-          plan_id AS "planId",
-          thread_id AS "threadId",
-          turn_id AS "turnId",
-          plan_markdown AS "planMarkdown",
-          implemented_at AS "implementedAt",
-          implementation_thread_id AS "implementationThreadId",
-          created_at AS "createdAt",
-          updated_at AS "updatedAt"
-        FROM projection_thread_proposed_plans
-        ORDER BY thread_id ASC, created_at ASC, plan_id ASC
-      `,
-  });
 
   const listThreadActivityRows = SqlSchema.findAll({
     Request: Schema.Void,
@@ -282,8 +263,6 @@ export function makeSnapshotHistoryQueries(input: {
           latest.started_at AS "startedAt",
           latest.completed_at AS "completedAt",
           latest.assistant_message_id AS "assistantMessageId",
-          latest.source_proposed_plan_thread_id AS "sourceProposedPlanThreadId",
-          latest.source_proposed_plan_id AS "sourceProposedPlanId",
           (
             SELECT MAX(MAX(
               requested_at,
@@ -302,26 +281,6 @@ export function makeSnapshotHistoryQueries(input: {
           LIMIT 1
         )
         ORDER BY latest.thread_id ASC
-      `,
-  });
-
-  const listThreadProposedPlanRowsByThread = SqlSchema.findAll({
-    Request: ThreadIdLookupInput,
-    Result: ProjectionThreadProposedPlanDbRowSchema,
-    execute: ({ threadId }) =>
-      sql`
-        SELECT
-          plan_id AS "planId",
-          thread_id AS "threadId",
-          turn_id AS "turnId",
-          plan_markdown AS "planMarkdown",
-          implemented_at AS "implementedAt",
-          implementation_thread_id AS "implementationThreadId",
-          created_at AS "createdAt",
-          updated_at AS "updatedAt"
-        FROM projection_thread_proposed_plans
-        WHERE thread_id = ${threadId}
-        ORDER BY created_at ASC, plan_id ASC
       `,
   });
 
@@ -542,9 +501,7 @@ export function makeSnapshotHistoryQueries(input: {
           requested_at AS "requestedAt",
           started_at AS "startedAt",
           completed_at AS "completedAt",
-          assistant_message_id AS "assistantMessageId",
-          source_proposed_plan_thread_id AS "sourceProposedPlanThreadId",
-          source_proposed_plan_id AS "sourceProposedPlanId"
+          assistant_message_id AS "assistantMessageId"
         FROM projection_turns
         WHERE thread_id = ${threadId}
           AND turn_id IS NOT NULL
@@ -596,7 +553,6 @@ export function makeSnapshotHistoryQueries(input: {
       `,
   });
   return {
-    listThreadProposedPlanRows,
     listThreadActivityRows,
     listPendingInteractionRows,
     listThreadSessionRows,
@@ -607,7 +563,7 @@ export function makeSnapshotHistoryQueries(input: {
     listGeneratedImageActivityRowsByTurn,
     getLatestTurnRowByThread,
     getThreadSessionRowByThread,
-    listThreadProposedPlanRowsByThread,
+
     listThreadActivityRowsByThread,
     listPendingInteractionRowsByThread,
   };

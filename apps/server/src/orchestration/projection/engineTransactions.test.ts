@@ -77,7 +77,6 @@ engineLayer("OrchestrationProjectionPipeline via engine dispatch", (it) => {
           'projection.projects',
           'projection.threads',
           'projection.thread-messages',
-          'projection.thread-proposed-plans',
           'projection.thread-activities',
           'projection.thread-sessions',
           'projection.checkpoints'
@@ -89,7 +88,6 @@ engineLayer("OrchestrationProjectionPipeline via engine dispatch", (it) => {
         { projector: "projection.projects", lastAppliedSequence: 1 },
         { projector: "projection.thread-activities", lastAppliedSequence: 1 },
         { projector: "projection.thread-messages", lastAppliedSequence: 1 },
-        { projector: "projection.thread-proposed-plans", lastAppliedSequence: 1 },
         { projector: "projection.thread-sessions", lastAppliedSequence: 1 },
         { projector: "projection.threads", lastAppliedSequence: 1 },
       ]);

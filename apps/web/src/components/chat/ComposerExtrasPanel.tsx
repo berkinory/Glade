@@ -2,7 +2,7 @@ import type { ProviderInteractionMode } from "@glade/contracts/provider/sessionP
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useEffect, useId, useRef, useState, type ChangeEvent } from "react";
 
-import { BugIcon, CheckIcon, FastModeIcon, ListTodoIcon, PaperclipIcon } from "~/lib/icons";
+import { BugIcon, CheckIcon, FastModeIcon, PaperclipIcon } from "~/lib/icons";
 
 import {
   COMPOSER_MENU_PANEL_GLYPH_CLASS_NAME,
@@ -16,7 +16,6 @@ const GLYPH = COMPOSER_MENU_PANEL_GLYPH_CLASS_NAME;
 
 const ROW_FILES = "extras:files";
 
-const ROW_PLAN = "extras:mode:plan";
 const ROW_DEBUG = "extras:mode:debug";
 const ROW_FAST = "extras:fast";
 
@@ -55,13 +54,6 @@ export function ComposerExtrasPanel(props: {
         },
 
         {
-          id: ROW_PLAN,
-          icon: <ListTodoIcon className={GLYPH} />,
-          title: "Plan mode",
-          secondary: toggleSecondary("plan mode", props.interactionMode === "plan"),
-          trailing: props.interactionMode === "plan" ? CHECK : null,
-        },
-        {
           id: ROW_DEBUG,
           icon: <BugIcon className={GLYPH} />,
           title: "Debug mode",
@@ -98,8 +90,8 @@ export function ComposerExtrasPanel(props: {
       return;
     }
 
-    if (rowId === ROW_PLAN || rowId === ROW_DEBUG) {
-      const mode: ProviderInteractionMode = rowId === ROW_PLAN ? "plan" : "debug";
+    if (rowId === ROW_DEBUG) {
+      const mode: ProviderInteractionMode = "debug";
       props.onInteractionModeChange(props.interactionMode === mode ? "default" : mode);
       props.onClose();
       return;

@@ -8,7 +8,7 @@ import {
   ProviderItemId,
 } from "@glade/contracts/core/baseSchemas";
 import { type ProviderSendTurnInput } from "@glade/contracts/provider/provider";
-import { withProviderPlanModePrompt } from "../../core/planMode.ts";
+
 import type { SDKUserMessage, SDKResultMessage, SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import { FileSystem, Effect } from "effect";
 import { ProviderAdapterRequestError } from "../../core/Errors.ts";
@@ -81,10 +81,7 @@ function buildPromptText(
 ): string {
   if (isClaudeNativeSlashCommand(input.input, nativeCommandNames)) return input.input!.trim();
   const basePrompt = input.input?.trim() ?? "";
-  return withProviderPlanModePrompt({
-    text: basePrompt,
-    interactionMode: input.interactionMode,
-  });
+  return basePrompt;
 }
 
 function buildUserMessage(input: {
@@ -282,26 +279,4 @@ export function extractTextContent(value: unknown): string {
   }
 
   return extractTextContent(record.content);
-}
-
-export function extractExitPlanModePlan(value: unknown): string | undefined {
-  if (!value || typeof value !== "object") {
-    return undefined;
-  }
-
-  const record = value as {
-    plan?: unknown;
-  };
-  return typeof record.plan === "string" && record.plan.trim().length > 0
-    ? record.plan.trim()
-    : undefined;
-}
-
-export function exitPlanCaptureKey(input: {
-  readonly toolUseId?: string | undefined;
-  readonly planMarkdown: string;
-}): string {
-  return input.toolUseId && input.toolUseId.length > 0
-    ? `tool:${input.toolUseId}`
-    : `plan:${input.planMarkdown}`;
 }

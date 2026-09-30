@@ -40,7 +40,6 @@ export function toPermissionMode(value: unknown): PermissionMode | undefined {
     case "default":
     case "acceptEdits":
     case "bypassPermissions":
-    case "plan":
     case "dontAsk":
       return value;
     default:

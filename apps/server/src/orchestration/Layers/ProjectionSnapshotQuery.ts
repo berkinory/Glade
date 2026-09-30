@@ -36,7 +36,6 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
     countThreadMessageRows,
   } = makeSnapshotMessageQueries({ sql, liveThreadScope });
   const {
-    listThreadProposedPlanRows,
     listThreadActivityRows,
     listPendingInteractionRows,
     listThreadSessionRows,
@@ -47,7 +46,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
     listGeneratedImageActivityRowsByTurn,
     getLatestTurnRowByThread,
     getThreadSessionRowByThread,
-    listThreadProposedPlanRowsByThread,
+
     listThreadActivityRowsByThread,
     listPendingInteractionRowsByThread,
   } = makeSnapshotHistoryQueries({ sql, liveThreadScope });
@@ -74,7 +73,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
       listProjectRows,
       listThreadRows,
       listThreadMessageRows,
-      listThreadProposedPlanRows,
+
       listThreadActivityRows,
       listPendingInteractionRows,
       listThreadSessionRows,
@@ -133,7 +132,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
   } = makeSnapshotThreadDetails({
     getThreadRowById,
     listThreadMessageRowsByThread,
-    listThreadProposedPlanRowsByThread,
+
     listThreadActivityRowsByThread,
     listPendingInteractionRowsByThread,
     listCheckpointRowsByThread,

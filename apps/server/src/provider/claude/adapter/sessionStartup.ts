@@ -18,7 +18,7 @@ import { type AgentGatewayCredentialsShape } from "../../../agentGateway/Service
 import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 import { makeClaudeInteractionSettlement } from "./interactionSettlement";
 import { makeClaudeToolTracking } from "./toolTracking";
-import { makeClaudeTaskPresentation } from "./taskPresentation";
+
 import type { SDKUserMessage, Options as ClaudeQueryOptions } from "@anthropic-ai/claude-agent-sdk";
 import { makeClaudeSdkStream } from "./sdkStream";
 import { makeKeyedLock } from "../../core/keyedLock.ts";
@@ -74,9 +74,7 @@ export function makeClaudeSessionStartup(input: {
   readonly emitSubagentSteerDelivered: ReturnType<
     typeof makeClaudeToolTracking
   >["emitSubagentSteerDelivered"];
-  readonly emitProposedPlanCompleted: ReturnType<
-    typeof makeClaudeTaskPresentation
-  >["emitProposedPlanCompleted"];
+
   readonly settlePendingApproval: ReturnType<
     typeof makeClaudeInteractionSettlement
   >["settlePendingApproval"];
@@ -109,7 +107,7 @@ export function makeClaudeSessionStartup(input: {
     settlePendingUserInput,
     runSdkPromise,
     emitSubagentSteerDelivered,
-    emitProposedPlanCompleted,
+
     settlePendingApproval,
     bindClaudeProcessOwner,
     createQuery,
@@ -228,7 +226,7 @@ export function makeClaudeSessionStartup(input: {
         pendingSubagentSteers,
         runSdkPromise,
         emitSubagentSteerDelivered,
-        emitProposedPlanCompleted,
+
         pendingApprovals,
         settlePendingApproval,
         gatewaySessionLease,

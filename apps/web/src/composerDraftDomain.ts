@@ -7,10 +7,7 @@ import {
   type ProviderStartOptions,
   type RuntimeMode,
 } from "@glade/contracts/provider/sessionPolicy";
-import {
-  type OrchestrationLatestTurn,
-  type OrchestrationThreadPullRequest,
-} from "@glade/contracts/orchestration/threadEntities";
+import { type OrchestrationThreadPullRequest } from "@glade/contracts/orchestration/threadEntities";
 import {
   type ProjectId,
   type ProviderKind,
@@ -118,37 +115,13 @@ export interface QueuedComposerChatTurn {
   enableComputerControl?: boolean | undefined;
   computerControlMode?: ComposerComputerControlMode | undefined;
   computerControlGeneration?: number | undefined;
-  sourceProposedPlan?: NonNullable<OrchestrationLatestTurn["sourceProposedPlan"]> | undefined;
+
   runtimeMode: RuntimeMode;
   interactionMode: ProviderInteractionMode;
   envMode: DraftThreadEnvMode;
 }
 
-export interface RestoredComposerSourceProposedPlan {
-  threadId: ThreadId;
-  restoredPrompt: string;
-  sourceProposedPlan: NonNullable<OrchestrationLatestTurn["sourceProposedPlan"]>;
-}
-
-export interface QueuedComposerPlanFollowUp {
-  id: string;
-  kind: "plan-follow-up";
-  createdAt: string;
-  previewText: string;
-  text: string;
-  interactionMode: "default" | "plan";
-  selectedProvider: ProviderKind;
-  selectedModel: string | null;
-  selectedPromptEffort: string | null;
-  modelSelection: ModelSelection;
-  providerOptionsForDispatch?: ProviderStartOptions | undefined;
-  enableComputerControl?: boolean | undefined;
-  computerControlMode?: ComposerComputerControlMode | undefined;
-  computerControlGeneration?: number | undefined;
-  runtimeMode: RuntimeMode;
-}
-
-export type QueuedComposerTurn = QueuedComposerChatTurn | QueuedComposerPlanFollowUp;
+export type QueuedComposerTurn = QueuedComposerChatTurn;
 
 export interface ComposerThreadDraftState {
   pendingUserInputDrafts?: Record<string, PendingUserInputRecoveryDraft>;
@@ -168,7 +141,7 @@ export interface ComposerThreadDraftState {
   skills: ProviderSkillReference[];
   mentions: ProviderMentionReference[];
   queuedTurns: QueuedComposerTurn[];
-  restoredSourceProposedPlan?: RestoredComposerSourceProposedPlan | null;
+
   modelSelectionByProvider: Partial<Record<ProviderKind, ModelSelection>>;
   activeProvider: ProviderKind | null;
   runtimeMode: RuntimeMode | null;
@@ -357,10 +330,7 @@ export interface ComposerDraftStoreState {
     attachments: PersistedComposerImageAttachment[],
   ) => Promise<ComposerAttachmentPersistenceResult>;
   copyTransferableComposerState: (sourceThreadId: ThreadId, targetThreadId: ThreadId) => void;
-  setRestoredSourceProposedPlan: (
-    threadId: ThreadId,
-    source: RestoredComposerSourceProposedPlan | null,
-  ) => void;
+
   clearComposerContent: (
     threadId: ThreadId,
     options?: { readonly preservePreviewUrls?: boolean },
@@ -478,7 +448,7 @@ export function createEmptyThreadDraft(): ComposerThreadDraftState {
     skills: [],
     mentions: [],
     queuedTurns: [],
-    restoredSourceProposedPlan: null,
+
     modelSelectionByProvider: {},
     activeProvider: null,
     runtimeMode: null,
@@ -723,7 +693,6 @@ export function buildTransferredComposerDraft(input: {
     computerControlMode: sourceDraft.computerControlMode,
 
     computerControlGeneration: base.computerControlGeneration ?? 0,
-    restoredSourceProposedPlan: null,
   };
 }
 
@@ -787,7 +756,6 @@ export function shouldRemoveDraft(draft: ComposerThreadDraftState): boolean {
     draft.skills.length === 0 &&
     draft.mentions.length === 0 &&
     draft.queuedTurns.length === 0 &&
-    draft.restoredSourceProposedPlan == null &&
     Object.keys(draft.modelSelectionByProvider).length === 0 &&
     draft.activeProvider === null &&
     draft.runtimeMode === null &&
@@ -849,7 +817,7 @@ const EMPTY_THREAD_DRAFT = Object.freeze<ComposerThreadDraftState>({
   skills: EMPTY_SKILLS,
   mentions: EMPTY_MENTIONS,
   queuedTurns: EMPTY_QUEUED_TURNS,
-  restoredSourceProposedPlan: null,
+
   modelSelectionByProvider: EMPTY_MODEL_SELECTION_BY_PROVIDER,
   activeProvider: null,
   runtimeMode: null,

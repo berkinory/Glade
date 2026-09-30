@@ -1,5 +1,4 @@
-import { stripProposedPlanBlocksFromText } from "./proposedPlan";
-import type { ChatMessage, ProposedPlan } from "./types";
+import type { ChatMessage } from "./types";
 import type { TimelineEntry, WorkLogEntry } from "./workLog.types";
 import { compareTimelineEntries } from "./workLog.ordering";
 
@@ -145,25 +144,10 @@ function coalesceAdjacentMessageSegments(entries: TimelineEntry[]): TimelineEntr
 
 export function deriveTimelineEntries(
   messages: ChatMessage[],
-  proposedPlans: ProposedPlan[],
   workEntries: WorkLogEntry[],
 ): TimelineEntry[] {
-  const proposedPlanTurnIds = new Set(
-    proposedPlans.flatMap((proposedPlan) => (proposedPlan.turnId ? [proposedPlan.turnId] : [])),
-  );
   const messageRows: TimelineEntry[] = messages.flatMap((message): TimelineEntry[] => {
-    const displayMessage =
-      message.role === "assistant" && message.turnId && proposedPlanTurnIds.has(message.turnId)
-        ? { ...message, text: stripProposedPlanBlocksFromText(message.text) }
-        : message;
-    if (
-      displayMessage.role === "assistant" &&
-      displayMessage.text.length === 0 &&
-      displayMessage.turnId &&
-      proposedPlanTurnIds.has(displayMessage.turnId)
-    ) {
-      return [];
-    }
+    const displayMessage = message;
 
     const textSegments = displayMessage.textSegments;
     if (
@@ -190,12 +174,7 @@ export function deriveTimelineEntries(
       },
     ];
   });
-  const proposedPlanRows: TimelineEntry[] = proposedPlans.map((proposedPlan) => ({
-    id: proposedPlan.id,
-    kind: "proposed-plan",
-    createdAt: proposedPlan.createdAt,
-    proposedPlan,
-  }));
+
   const workRows: TimelineEntry[] = workEntries.map((entry) => ({
     id: entry.id,
     kind: "work",
@@ -240,7 +219,7 @@ export function deriveTimelineEntries(
     return low;
   };
   const orderByEntry = new Map<TimelineEntry, number>();
-  for (const entry of [...messageRows, ...proposedPlanRows, ...workRows]) {
+  for (const entry of [...messageRows, ...workRows]) {
     if (entry.kind === "message" || entry.kind === "message-segment") {
       orderByEntry.set(
         entry,
@@ -249,8 +228,7 @@ export function deriveTimelineEntries(
       continue;
     }
 
-    const turnId =
-      (entry.kind === "work" ? entry.entry.turnId : entry.proposedPlan.turnId) ?? undefined;
+    const turnId = entry.entry.turnId ?? undefined;
     const turnBlock = turnId === undefined ? undefined : turnOrder.get(turnId);
     const chronological = chronologicalOrder(entry.createdAt);
     orderByEntry.set(
@@ -263,11 +241,7 @@ export function deriveTimelineEntries(
 
   return coalesceAdjacentMessageSegments(
     mergeTimelineEntries(
-      mergeTimelineEntries(
-        sortedTimelineEntries(messageRows, compare),
-        sortedTimelineEntries(proposedPlanRows, compare),
-        compare,
-      ),
+      sortedTimelineEntries(messageRows, compare),
       sortedTimelineEntries(workRows, compare),
       compare,
     ),
