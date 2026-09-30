@@ -30,11 +30,13 @@ import {
   extractPlainChatAutomationCreationInvocation,
   parseChatAutomationInvocation,
   parsePlainChatAutomationInvocation,
-  resolveChatAutomationIntent,
-  shouldGenerateAutomationIntent,
   type ChatAutomationIntent,
   type ResolvedChatAutomationIntent,
 } from "./automationIntent";
+import {
+  resolveChatAutomationIntent,
+  shouldGenerateAutomationIntent,
+} from "./automationIntentResolution";
 
 type GenerateComposerAutomationIntent = (
   input: ServerGenerateAutomationIntentInput,

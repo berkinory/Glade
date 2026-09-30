@@ -3,10 +3,8 @@ import type {
   AutomationMode,
   AutomationSchedule,
 } from "@glade/contracts/automation/automation";
-import type { ServerGenerateAutomationIntentResult } from "@glade/contracts/server/server";
 
 import { completionPolicyFromStopWhen } from "../features/automations/completionPolicy";
-import { automationRequiresTargetThread } from "@glade/shared/threads/automationMode";
 
 export interface ChatAutomationIntent {
   readonly name: string;
@@ -46,9 +44,6 @@ interface ParsedExecutionScope {
 }
 
 const DEFAULT_DAILY_TIME = "09:00";
-const GENERATED_INTENT_CONFIDENCE_THRESHOLD = 0.75;
-const PROMPT_ENRICHMENT_MAX_WORDS = 10;
-const PROMPT_ENRICHMENT_MAX_LENGTH = 80;
 const MAX_NAME_LENGTH = 120;
 const CRON_FIELD_PATTERN = "[*/0-9,-]+";
 const PLAIN_INVOCATION_QUESTION_PREFIX_PATTERN =
@@ -122,7 +117,7 @@ const BARE_INTERVAL_LEADING_ACTION_PATTERN = new RegExp(
   "i",
 );
 
-function normalizeInlineText(value: string): string {
+export function normalizeInlineText(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
 
@@ -164,7 +159,7 @@ function stripPlainAutomationPoliteRequest(value: string): string | null {
     .replace(/^(?:to|di|che)\s+/i, "");
 }
 
-function wordCount(value: string): number {
+export function wordCount(value: string): number {
   return normalizeInlineText(value).split(/\s+/).filter(Boolean).length;
 }
 
@@ -216,7 +211,7 @@ function removeMatchedText(value: string, match: RegExpExecArray): string {
     .replace(/^(?:and|then|to|e|poi|che|di|per)\s+/i, "");
 }
 
-function extractExecutionScope(value: string): ParsedExecutionScope | null {
+export function extractExecutionScope(value: string): ParsedExecutionScope | null {
   const patterns: ReadonlyArray<{
     readonly executionScope: ChatAutomationExecutionScope;
     readonly pattern: RegExp;
@@ -270,7 +265,7 @@ interface ParsedStopClause {
   readonly textWithoutStopClause: string;
 }
 
-function extractStopClause(value: string): ParsedStopClause | null {
+export function extractStopClause(value: string): ParsedStopClause | null {
   const patterns: readonly RegExp[] = [
     /\bstop\s+when\s+(.+?)(?=(?:[.!?]\s+|$))/i,
     /\buntil\s+(.+?)(?=(?:[.!?]\s+|$))/i,
@@ -302,7 +297,7 @@ function extractStopClause(value: string): ParsedStopClause | null {
   return null;
 }
 
-function extractIterationLimit(value: string): ParsedIterationLimit | null {
+export function extractIterationLimit(value: string): ParsedIterationLimit | null {
   const patterns: readonly RegExp[] = [
     /\bfor\s+(\d{1,4})\s+(?:times?|runs?|iterations?|turns?)(?:\s+(?:in\s+)?total)?\b/i,
     /\b(?:a\s+)?total\s+of\s+(\d{1,4})\s+(?:times?|runs?|iterations?|turns?)\b/i,
@@ -410,7 +405,7 @@ function intervalUnitLabel(unit: string): "s" | "m" | "h" | "d" {
   return "d";
 }
 
-function formatAutomationIntentCadence(schedule: AutomationSchedule): string {
+export function formatAutomationIntentCadence(schedule: AutomationSchedule): string {
   if (schedule.type === "interval") {
     const seconds = schedule.everySeconds;
     if (seconds % 86_400 === 0) return `Every ${seconds / 86_400}d`;
@@ -658,7 +653,7 @@ function parseSchedule(searchText: string, nowIso: string): ParsedSchedule | nul
   );
 }
 
-function stripAutomationScaffold(value: string): string {
+export function stripAutomationScaffold(value: string): string {
   let cleaned = normalizeInlineText(value);
   cleaned = cleaned
     .replace(
@@ -792,7 +787,7 @@ function sentenceCase(value: string): string {
   return `${trimmed.charAt(0).toUpperCase()}${trimmed.slice(1)}`;
 }
 
-function deriveAutomationIntentName(prompt: string): string {
+export function deriveAutomationIntentName(prompt: string): string {
   const withoutUrls = stripUrls(prompt);
   const availabilitySubject = withoutUrls.match(
     /\b(?:check|verify|monitor|watch|controlla|verifica|monitora)\s+(?:if|whether|se)?\s*(.+?)\s+(?:is|are|e|available|disponibile|disponibili|in stock)\b/i,
@@ -871,212 +866,4 @@ export function parsePlainChatAutomationInvocation(
     return null;
   }
   return parseChatAutomationInvocation(candidate, options);
-}
-
-export function shouldGenerateAutomationIntent(input: {
-  readonly deterministicIntent: ChatAutomationIntent | null;
-  readonly automationMessage: string;
-}): boolean {
-  const message = normalizeInlineText(input.automationMessage);
-  if (!message) {
-    return false;
-  }
-  if (!input.deterministicIntent) {
-    return true;
-  }
-  const prompt = normalizeInlineText(input.deterministicIntent.prompt);
-  return (
-    prompt.length > 0 &&
-    (prompt.length <= PROMPT_ENRICHMENT_MAX_LENGTH ||
-      wordCount(prompt) <= PROMPT_ENRICHMENT_MAX_WORDS)
-  );
-}
-
-function stripGeneratedPromptScaffolding(value: string): string {
-  const withoutExecutionScope = extractExecutionScope(value)?.textWithoutExecutionScope ?? value;
-  const withoutIterationLimit =
-    extractIterationLimit(withoutExecutionScope)?.textWithoutIterationLimit ??
-    withoutExecutionScope;
-  const withoutSchedule = stripAutomationScaffold(withoutIterationLimit);
-  const stopClause = extractStopClause(withoutSchedule);
-  return normalizeInlineText(
-    stopClause?.textWithoutStopClause
-      ? stripAutomationScaffold(stopClause.textWithoutStopClause)
-      : withoutSchedule,
-  );
-}
-
-function maxIterationsFromGeneratedIntent(
-  generatedIntent: ServerGenerateAutomationIntentResult,
-): number | null {
-  return (
-    generatedIntent.maxIterations ??
-    (generatedIntent.taskPrompt
-      ? (extractIterationLimit(generatedIntent.taskPrompt)?.maxIterations ?? null)
-      : null)
-  );
-}
-
-function generatedAutomationPromptEnrichment(
-  generatedIntent: ServerGenerateAutomationIntentResult | null,
-): Pick<ChatAutomationIntent, "name" | "prompt" | "maxIterations"> | null {
-  if (
-    generatedIntent?.isAutomation !== true ||
-    generatedIntent.taskPrompt === null ||
-    generatedIntent.confidence < GENERATED_INTENT_CONFIDENCE_THRESHOLD
-  ) {
-    return null;
-  }
-  const prompt = stripGeneratedPromptScaffolding(generatedIntent.taskPrompt);
-  if (!prompt) {
-    return null;
-  }
-  return {
-    name: generatedIntent.name ?? deriveAutomationIntentName(prompt),
-    prompt,
-    maxIterations: maxIterationsFromGeneratedIntent(generatedIntent),
-  };
-}
-
-function generatedAutomationIntentToChatIntent(
-  generatedIntent: ServerGenerateAutomationIntentResult | null,
-  executionScope: ChatAutomationExecutionScope,
-): ChatAutomationIntent | null {
-  if (generatedIntent?.isAutomation !== true || generatedIntent.taskPrompt === null) {
-    return null;
-  }
-
-  if (
-    generatedIntent.confidence < GENERATED_INTENT_CONFIDENCE_THRESHOLD &&
-    !generatedIntent.needsConfirmation
-  ) {
-    return null;
-  }
-
-  const schedule = generatedIntent.schedule ?? { type: "manual" as const };
-  const prompt = stripGeneratedPromptScaffolding(generatedIntent.taskPrompt);
-  if (!prompt) {
-    return null;
-  }
-  const resolvedExecutionScope = executionScopeForGeneratedMode(
-    generatedIntent.mode,
-    executionScope,
-  );
-  return {
-    name: generatedIntent.name ?? deriveAutomationIntentName(prompt),
-    prompt,
-    schedule,
-    cadenceLabel: formatAutomationIntentCadence(schedule),
-    maxIterations: maxIterationsFromGeneratedIntent(generatedIntent),
-    completionPolicy: generatedIntent.completionPolicy ?? { type: "none" },
-    executionScope: resolvedExecutionScope,
-  };
-}
-
-function executionScopeForGeneratedMode(
-  mode: AutomationMode | null,
-  fallback: ChatAutomationExecutionScope,
-): ChatAutomationExecutionScope {
-  if (mode === null) {
-    return fallback;
-  }
-
-  if (automationRequiresTargetThread(mode)) {
-    return "thread";
-  }
-  return fallback === "worktree" ? "worktree" : "standalone";
-}
-
-function modeForExecutionScope(input: {
-  readonly executionScope: ChatAutomationExecutionScope;
-  readonly defaultMode: AutomationMode;
-  readonly generatedMode: AutomationMode | null;
-}): AutomationMode {
-  if (input.executionScope === "thread") {
-    return input.defaultMode;
-  }
-  return input.generatedMode === "dedicated" ? "dedicated" : "standalone";
-}
-
-export function resolveChatAutomationIntent(input: {
-  readonly deterministicIntent: ChatAutomationIntent | null;
-  readonly generatedIntent: ServerGenerateAutomationIntentResult | null;
-  readonly defaultMode: AutomationMode;
-  readonly executionScope: ChatAutomationExecutionScope;
-}): ResolvedChatAutomationIntent | null {
-  if (input.deterministicIntent) {
-    const resolvedExecutionScope =
-      input.deterministicIntent.executionScope === "thread"
-        ? executionScopeForGeneratedMode(input.generatedIntent?.mode ?? null, input.executionScope)
-        : input.deterministicIntent.executionScope;
-
-    const mode = modeForExecutionScope({
-      executionScope: resolvedExecutionScope,
-      defaultMode: input.defaultMode,
-      generatedMode: input.generatedIntent?.mode ?? null,
-    });
-    const enrichment = generatedAutomationPromptEnrichment(input.generatedIntent);
-    const enrichmentNeedsConfirmation =
-      enrichment !== null && (input.generatedIntent?.needsConfirmation ?? false);
-    const deterministicIntent =
-      resolvedExecutionScope === input.deterministicIntent.executionScope
-        ? input.deterministicIntent
-        : { ...input.deterministicIntent, executionScope: resolvedExecutionScope };
-    const intent = enrichment
-      ? {
-          ...deterministicIntent,
-          name: enrichment.name,
-          prompt: enrichment.prompt,
-          maxIterations: enrichment.maxIterations ?? deterministicIntent.maxIterations,
-        }
-      : deterministicIntent;
-    return {
-      intent,
-      mode,
-      source: "deterministic",
-      requiresReview:
-        // Any LLM-influenced draft requires human review before creating: when the prompt is terse the
-        // generator rewrites name/prompt/maxIterations even though the schedule parsed deterministically
-        // (enrichment !== null), so the confirmation must not be skipped. Purely local parses keep their
-        // finer gating, including the deliberate bounded-fast-loop auto-submit (which skips generation, so
-        // enrichment stays null).
-        enrichment !== null || resolvedExecutionScope !== "thread",
-      generatedConfidence: enrichment ? (input.generatedIntent?.confidence ?? null) : null,
-      generatedNeedsConfirmation: enrichmentNeedsConfirmation,
-      reason: enrichmentNeedsConfirmation ? (input.generatedIntent?.reason ?? null) : null,
-    };
-  }
-
-  const generatedIntent = generatedAutomationIntentToChatIntent(
-    input.generatedIntent,
-    input.executionScope,
-  );
-  if (!generatedIntent) {
-    return null;
-  }
-
-  const generatedSchedule = input.generatedIntent?.schedule;
-  const fastRecurringInterval =
-    generatedSchedule?.type === "interval" && generatedSchedule.everySeconds < 60;
-
-  const mode = modeForExecutionScope({
-    executionScope: generatedIntent.executionScope,
-    defaultMode: input.defaultMode,
-    generatedMode: input.generatedIntent?.mode ?? null,
-  });
-  return {
-    intent: generatedIntent,
-    mode,
-    source: "generated",
-    // Generated (LLM-interpreted) intents always require a human confirmation step: a misread message
-    // must never silently create a recurring background automation, no matter how confident the model
-    // is. Deterministic explicit intents keep their finer-grained gating above, including the
-    // intentional bounded-fast-loop auto-submit, which never reaches this branch because generation is
-    // skipped for it in resolveComposerAutomationRequest.
-    requiresReview: true,
-    generatedConfidence: input.generatedIntent?.confidence ?? null,
-    generatedNeedsConfirmation:
-      (input.generatedIntent?.needsConfirmation ?? false) || fastRecurringInterval,
-    reason: input.generatedIntent?.reason ?? null,
-  };
 }
