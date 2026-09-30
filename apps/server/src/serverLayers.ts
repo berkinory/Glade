@@ -21,8 +21,6 @@ import { TurnCheckpointCoordinatorLive } from "./orchestration/Layers/TurnCheckp
 import { OrchestrationLayerLive } from "./orchestration/runtimeLayer";
 
 import { DevServerManagerLive } from "./workspace/devServers/devServerManager";
-import { DeviceServiceLive } from "./device/Layers/DeviceService";
-import type { DeviceService } from "./device/Services/DeviceService";
 import { ComputerServiceLive } from "./computer/Layers/ComputerService";
 import { KeybindingsLive } from "./settings/Layers/Keybindings";
 import { GitCoreLive } from "./git/Layers/GitCore";
@@ -51,19 +49,6 @@ import { ManagedAttachmentCleanupLive } from "./attachments/managedAttachmentCle
 import { PullRequestServiceLive } from "./pullRequests/Layers/PullRequestService";
 import { ProviderHealthLive } from "./provider/Layers/ProviderHealth";
 import { makeServerProviderLayer } from "./provider/core/runtimeLayer";
-
-function provideThreadDeletionReactorDeviceService<
-  ReactorServices,
-  ReactorError,
-  ReactorRequirements,
-  DeviceError,
-  DeviceRequirements,
->(
-  reactorLayer: Layer.Layer<ReactorServices, ReactorError, ReactorRequirements>,
-  deviceServiceLayer: Layer.Layer<DeviceService, DeviceError, DeviceRequirements>,
-) {
-  return reactorLayer.pipe(Layer.provideMerge(deviceServiceLayer));
-}
 
 function makeServerRuntimeServicesLayer(
   options: {
@@ -117,14 +102,11 @@ function makeServerRuntimeServicesLayer(
     Layer.provideMerge(checkpointReactorLayer),
     Layer.provideMerge(threadGitMetadataReactorLayer),
   );
-  const threadDeletionReactorLayer = provideThreadDeletionReactorDeviceService(
-    ThreadDeletionReactorLive.pipe(
-      Layer.provideMerge(profileStatsArchiveLayer),
-      Layer.provideMerge(OrchestrationLayerLive),
-      Layer.provideMerge(TerminalLayerLive),
-      Layer.provideMerge(GitCoreLive),
-    ),
-    DeviceServiceLive,
+  const threadDeletionReactorLayer = ThreadDeletionReactorLive.pipe(
+    Layer.provideMerge(profileStatsArchiveLayer),
+    Layer.provideMerge(OrchestrationLayerLive),
+    Layer.provideMerge(TerminalLayerLive),
+    Layer.provideMerge(GitCoreLive),
   );
 
   const devServerManagerLayer = DevServerManagerLive.pipe(Layer.provide(TerminalLayerLive));
@@ -178,7 +160,6 @@ function makeServerRuntimeServicesLayer(
     Layer.provideMerge(providerHealthLayer),
     Layer.provideMerge(BrowserAutomationHostLive),
 
-    Layer.provideMerge(DeviceServiceLive),
     Layer.provideMerge(ComputerServiceLive),
   );
   const pullRequestServiceLayer = PullRequestServiceLive.pipe(
@@ -203,7 +184,6 @@ function makeServerRuntimeServicesLayer(
     threadGitMetadataReactorLayer,
     threadDeletionReactorLayer,
     devServerManagerLayer,
-    DeviceServiceLive,
     ComputerServiceLive,
     GitLayerLive,
     TextGenerationLayerLive,

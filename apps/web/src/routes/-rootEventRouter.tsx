@@ -3,7 +3,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams, useRouterState } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useComputerEventBridge } from "../hooks/useComputerEventBridge";
-import { useDeviceEventBridge } from "../hooks/useDeviceEventBridge";
 import { useDiffRouteSearch } from "../hooks/useDiffRouteSearch";
 import { readNativeApi } from "../nativeApi";
 import { resolveSplitViewThreadIds, selectSplitView, useSplitViewStore } from "../splitViewStore";
@@ -19,7 +18,6 @@ import {
 import { useWorkspacePathsStore } from "../workspacePathsStore";
 import { createStreamRuntime } from "./-streamRuntime";
 export function EventRouter() {
-  useDeviceEventBridge();
   useComputerEventBridge();
   const syncServerShellSnapshot = useStore((store) => store.syncServerShellSnapshot);
   const syncServerThreadDetailHotPath = useStore((store) => store.syncServerThreadDetailHotPath);

@@ -540,20 +540,16 @@ export function deriveComputerToolDescription(input: {
               : "On-screen request cancelled",
     };
   }
-  if (
-    input.payload?.approvalScope === "computer-task" ||
-    input.payload?.approvalScope === "device-task"
-  ) {
-    const family = input.payload.approvalScope === "device-task" ? "Device" : "Computer";
+  if (input.payload?.approvalScope === "computer-task") {
     return {
       summary:
         input.activity.kind === "approval.requested"
-          ? `${family} task approval requested`
+          ? `Computer task approval requested`
           : input.payload.decision === "accept"
-            ? `${family} task approved`
+            ? `Computer task approved`
             : input.payload.decision === "decline"
-              ? `${family} task declined`
-              : `${family} task approval cancelled`,
+              ? `Computer task declined`
+              : `Computer task approval cancelled`,
     };
   }
   if (!computerToolName(input.toolName)) {

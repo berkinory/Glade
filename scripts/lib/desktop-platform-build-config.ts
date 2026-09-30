@@ -15,8 +15,6 @@ export const MAC_COMPUTER_HELPER_STAGE_PATH =
   "apps/desktop/native/computer/build/glade-computer-helper";
 const MAC_COMPUTER_HELPER_ASAR_EXCLUSION = "!apps/desktop/native/computer/build/**";
 const MAC_COMPUTER_HELPER_BUNDLE_PATH = "Contents/Helpers/glade-computer-helper";
-const MAC_DEVICE_HELPER_STAGE_PATH = "apps/server/dist/device-helper";
-export const MAC_DEVICE_HELPER_RESOURCE_PATH = "Resources/device-helper";
 const WINDOWS_INSTALLER_GUID = "5ae5e85a-0788-48c2-ab48-b8fd29cfc1e1";
 
 export const MAC_ICON_ASSET_NAME = "Glade";
@@ -147,10 +145,6 @@ export function createDesktopPlatformBuildConfig(
         {
           from: MAC_COMPUTER_HELPER_STAGE_PATH,
           to: "Helpers/glade-computer-helper",
-        },
-        {
-          from: MAC_DEVICE_HELPER_STAGE_PATH,
-          to: MAC_DEVICE_HELPER_RESOURCE_PATH,
         },
 
         {

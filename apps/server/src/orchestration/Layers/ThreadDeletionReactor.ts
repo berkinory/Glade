@@ -8,7 +8,6 @@ import { terminalScopeIdsForThread } from "@glade/shared/threads/terminalThreads
 import { Cause, Effect, Layer, Option, Stream } from "effect";
 
 import { ServerConfig } from "../../server/config";
-import { DeviceService } from "../../device/Services/DeviceService";
 import { GitCore } from "../../git/Services/GitCore";
 import { pruneProjectedArchivedManagedWorktrees } from "../../git/managedWorktrees";
 import { ProfileStatsArchive } from "../../diagnostics/profileStatsArchive";
@@ -67,22 +66,6 @@ export const cleanupSucceededUnlessInterrupted = <R, E>({
         cause: Cause.pretty(cause),
       }).pipe(Effect.as(false));
     }),
-  );
-
-const detachThreadDevice = (threadId: ThreadId) =>
-  Effect.service(DeviceService).pipe(
-    Effect.flatMap((service) =>
-      Effect.promise(() => service.manager.handleThreadRemoved(threadId)).pipe(
-        Effect.catchCause((cause) =>
-          Cause.hasInterruptsOnly(cause)
-            ? Effect.failCause(cause)
-            : Effect.logDebug("thread lifecycle cleanup skipped device detach", {
-                threadId,
-                cause: Cause.pretty(cause),
-              }),
-        ),
-      ),
-    ),
   );
 
 export const closeThreadTerminalScopes = (
@@ -242,7 +225,6 @@ const make = Effect.gen(function* () {
         });
         return;
       }
-      yield* detachThreadDevice(threadId);
       const terminalCleanupSucceeded = yield* closeThreadTerminals(
         threadId,
         false,
@@ -261,7 +243,6 @@ const make = Effect.gen(function* () {
 
   const processThreadDeleted = Effect.fn(function* (event: ThreadDeletedEvent) {
     const { threadId } = event.payload;
-    yield* detachThreadDevice(threadId);
     const cleanupSucceeded = yield* cleanupThreadBeforePurge(threadId);
 
     yield* pruneManagedWorktreesAfterLifecycle({

@@ -74,7 +74,6 @@ export function scheduleDeferredDockPaneHydration(input: {
 
 const DEFERRED_RUNTIME_PANE_KINDS: ReadonlySet<RightDockPaneKind> = new Set<RightDockPaneKind>([
   "browser",
-  "device",
   "terminal",
 ]);
 

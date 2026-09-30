@@ -62,11 +62,10 @@ export const TOUR_CARDS: ReadonlyArray<TourCard> = [
   },
   {
     id: "browser",
-    label: "Browser & devices",
-    title: "Verify in a real browser or simulator",
-    description:
-      "Agents drive a visible, task-owned browser you can watch and annotate. On macOS, an iOS Simulator pane streams the device so agents can build, launch, and tap through an app while you follow along.",
-    highlights: ["Shared Chromium surface", "Element annotations", "iOS Simulator pane"],
+    label: "Browser",
+    title: "Verify in a real browser",
+    description: "Agents drive a visible, task-owned browser you can watch and annotate.",
+    highlights: ["Shared Chromium surface", "Element annotations"],
     docsHref: `${GLADE_DOCS_URL}/core-concepts.md`,
     icon: GlobeIcon,
   },

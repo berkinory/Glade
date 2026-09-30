@@ -160,38 +160,6 @@ import type {
 } from "../workspace/project";
 import type { FilesystemBrowseInput, FilesystemBrowseResult } from "../workspace/filesystem";
 import type {
-  DeviceAttachInput,
-  DeviceBootInput,
-  DeviceBootResult,
-  DeviceDescribeUiInput,
-  DeviceScrollToElementInput,
-  DeviceScrollToElementResult,
-  DeviceDescribeUiResult,
-  DeviceDetachInput,
-  DeviceEvent,
-  DeviceInstallAppInput,
-  DeviceInstallAppResult,
-  DeviceKeyEventInput,
-  DeviceLaunchAppInput,
-  DeviceLaunchAppResult,
-  DeviceListInput,
-  DeviceListResult,
-  DeviceOpenUrlInput,
-  DevicePressButtonInput,
-  DeviceScreenshotInput,
-  DeviceScreenshotResult,
-  DeviceStartRecordingInput,
-  DeviceStartRecordingResult,
-  DeviceStopRecordingInput,
-  DeviceStopRecordingResult,
-  DeviceShutdownInput,
-  DeviceSwipeInput,
-  DeviceTapInput,
-  DeviceThreadInput,
-  DeviceTypeTextInput,
-  ThreadDeviceState,
-} from "../device/device";
-import type {
   ComputerActionResult,
   ComputerControlEnabledResult,
   ComputerEvent,
@@ -957,28 +925,6 @@ export interface NativeApi {
     onCopyLink: (callback: (event: BrowserCopyLinkEvent) => void) => () => void;
   };
 
-  device: {
-    list: (input: DeviceListInput) => Promise<DeviceListResult>;
-    boot: (input: DeviceBootInput) => Promise<DeviceBootResult>;
-    shutdown: (input: DeviceShutdownInput) => Promise<void>;
-    attach: (input: DeviceAttachInput) => Promise<ThreadDeviceState>;
-    detach: (input: DeviceDetachInput) => Promise<ThreadDeviceState>;
-    getThreadState: (input: DeviceThreadInput) => Promise<ThreadDeviceState>;
-    tap: (input: DeviceTapInput) => Promise<void>;
-    swipe: (input: DeviceSwipeInput) => Promise<void>;
-    typeText: (input: DeviceTypeTextInput) => Promise<void>;
-    keyEvent: (input: DeviceKeyEventInput) => Promise<void>;
-    pressButton: (input: DevicePressButtonInput) => Promise<void>;
-    installApp: (input: DeviceInstallAppInput) => Promise<DeviceInstallAppResult>;
-    launchApp: (input: DeviceLaunchAppInput) => Promise<DeviceLaunchAppResult>;
-    openUrl: (input: DeviceOpenUrlInput) => Promise<void>;
-    screenshot: (input: DeviceScreenshotInput) => Promise<DeviceScreenshotResult>;
-    startRecording: (input: DeviceStartRecordingInput) => Promise<DeviceStartRecordingResult>;
-    stopRecording: (input: DeviceStopRecordingInput) => Promise<DeviceStopRecordingResult>;
-    describeUi: (input: DeviceDescribeUiInput) => Promise<DeviceDescribeUiResult>;
-    scrollToElement: (input: DeviceScrollToElementInput) => Promise<DeviceScrollToElementResult>;
-    onEvent: (callback: (event: DeviceEvent) => void) => () => void;
-  };
   computer: {
     getStatus: (input: ComputerGetStatusInput) => Promise<ComputerStatusResult>;
     getAuditHistory: (

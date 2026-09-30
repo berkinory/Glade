@@ -4,7 +4,6 @@ import { sanitizeStringKeyedRecord } from "./persistedRecord";
 
 const RIGHT_DOCK_PANE_KINDS = [
   "browser",
-  "device",
   "explorer",
   "file",
   "terminal",

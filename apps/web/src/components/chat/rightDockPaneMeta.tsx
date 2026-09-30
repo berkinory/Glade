@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import { basenameOfPath } from "~/file-icons";
 import type { LucideIcon } from "~/lib/icons";
 import {
-  DeviceMobileIcon,
   FileIcon,
   FoldersIcon,
   GitCommitIcon,
@@ -25,7 +24,6 @@ export interface RightDockPaneMeta {
 const RIGHT_DOCK_PANE_META: Record<RightDockPaneKind, RightDockPaneMeta> = {
   browser: { label: "Browser", Icon: GlobeIcon },
 
-  device: { label: "Simulator", Icon: DeviceMobileIcon },
   explorer: { label: "Explorer", Icon: FoldersIcon },
   file: { label: "File", Icon: FileIcon },
   terminal: { label: "Terminal", Icon: TerminalIcon },

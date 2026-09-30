@@ -37,7 +37,6 @@ export const STATIC_KEYBINDING_COMMANDS = [
   "terminal.workspace.terminal",
   "terminal.workspace.chat",
   "browser.toggle",
-  "device.toggle",
   "diff.toggle",
   "diff.change.next",
   "diff.change.previous",

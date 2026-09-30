@@ -2,16 +2,15 @@
 
 ## Workflow ownership
 
-| Workflow                   | Trigger                                                       | Responsibility                                                                                                                                              |
-| -------------------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ci.yml`                   | Every PR and push to `main`                                   | Static checks, immutable migration lineage, full Linux unit suite, desktop build and Electron lifecycle, relevant Windows process checks, final status gate |
-| `cua-native-check.yml`     | macOS computer runtime, dependencies or native inputs; manual | macOS host/lifecycle checks; native compilation only for native inputs or manual runs                                                                       |
-| `cua-linux-check.yml`      | Native source descriptor, patches or native setup; manual     | Patched Linux driver compilation and Rust regressions                                                                                                       |
-| `cua-release-cache.yml`    | Native release inputs on `main`; weekly; manual               | Produce and retain verified unsigned native artifacts for release                                                                                           |
-| `device-helper-matrix.yml` | Weekly; manual                                                | Probe six Xcode/image pairs and run simulator smoke when a runtime exists                                                                                   |
-| `release.yml`              | Version tags; manual                                          | Verify source and publication credentials, require exact-commit main CI, orchestrate four builds, assemble and publish verified artifacts                   |
-| `release-build.yml`        | Called by release                                             | Build, verify startup and provenance, upload one platform's distribution assets                                                                             |
-| `sync-homebrew.yml`        | Called after publication; manual                              | Dispatch the tap update and verify its version and architecture checksums                                                                                   |
+| Workflow                | Trigger                                                       | Responsibility                                                                                                                                              |
+| ----------------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ci.yml`                | Every PR and push to `main`                                   | Static checks, immutable migration lineage, full Linux unit suite, desktop build and Electron lifecycle, relevant Windows process checks, final status gate |
+| `cua-native-check.yml`  | macOS computer runtime, dependencies or native inputs; manual | macOS host/lifecycle checks; native compilation only for native inputs or manual runs                                                                       |
+| `cua-linux-check.yml`   | Native source descriptor, patches or native setup; manual     | Patched Linux driver compilation and Rust regressions                                                                                                       |
+| `cua-release-cache.yml` | Native release inputs on `main`; weekly; manual               | Produce and retain verified unsigned native artifacts for release                                                                                           |
+| `release.yml`           | Version tags; manual                                          | Verify source and publication credentials, require exact-commit main CI, orchestrate four builds, assemble and publish verified artifacts                   |
+| `release-build.yml`     | Called by release                                             | Build, verify startup and provenance, upload one platform's distribution assets                                                                             |
+| `sync-homebrew.yml`     | Called after publication; manual                              | Dispatch the tap update and verify its version and architecture checksums                                                                                   |
 
 CI always reports `Format, Lint, Typecheck, Test, Browser Test, Build`. Documentation-only changes
 still run formatting, lint, workflow lint, the Windows boundary checker and migration lineage.
@@ -81,7 +80,6 @@ Linux-minute equivalents using its rounding and platform multipliers, not an inv
 | Area                          | Equivalent minutes | Share |
 | ----------------------------- | -----------------: | ----: |
 | Release push                  |              2,512 | 63.2% |
-| Device helper schedule        |                440 | 11.1% |
 | Cua release cache, all events |                407 | 10.2% |
 | CI, push and PR               |                310 |  7.8% |
 | macOS Cua checks              |                280 |  7.0% |

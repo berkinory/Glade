@@ -40,11 +40,6 @@ import { WS_CHANNELS, WS_METHODS, type WsWelcomePayload } from "@glade/contracts
 import type { WsBootstrapNegotiateResult } from "@glade/contracts/transport/ws/wsCompatibility";
 import type { AutomationStreamEvent } from "@glade/contracts/automation/automation";
 import {
-  DEVICE_WS_CHANNELS,
-  DEVICE_WS_METHODS,
-  type DeviceEvent,
-} from "@glade/contracts/device/device";
-import {
   COMPUTER_WS_CHANNELS,
   COMPUTER_WS_METHODS,
   type ComputerEvent,
@@ -140,7 +135,6 @@ function omitNullUserInputAnswers(
 const terminalEventListeners = createListenerRegistry<TerminalEvent>();
 const projectDevServerEventListeners = createListenerRegistry<ProjectDevServerEvent>();
 const automationEventListeners = createListenerRegistry<AutomationStreamEvent>();
-const deviceEventListeners = createListenerRegistry<DeviceEvent>();
 const computerEventListeners = createListenerRegistry<ComputerEvent>();
 const orchestrationDomainEventListeners = createListenerRegistry<OrchestrationEvent>();
 const orchestrationShellEventListeners = createListenerRegistry<OrchestrationShellStreamItem>();
@@ -159,7 +153,6 @@ function clearWsNativeApiListeners(): void {
   terminalEventListeners.clear();
   projectDevServerEventListeners.clear();
   automationEventListeners.clear();
-  deviceEventListeners.clear();
   computerEventListeners.clear();
   orchestrationDomainEventListeners.clear();
   orchestrationShellEventListeners.clear();
@@ -348,9 +341,6 @@ export function createWsNativeApi(): NativeApi {
   });
   transport.subscribe(WS_CHANNELS.automationEvent, (message) => {
     automationEventListeners.emit(message.data);
-  });
-  transport.subscribe(DEVICE_WS_CHANNELS.event, (message) => {
-    deviceEventListeners.emit(message.data);
   });
   transport.subscribe(COMPUTER_WS_CHANNELS.event, (message) => {
     computerEventListeners.emit(message.data);
@@ -708,34 +698,6 @@ export function createWsNativeApi(): NativeApi {
       archiveRun: (input) => transport.request(WS_METHODS.automationArchiveRun, input),
       resolveProposal: (input) => transport.request(WS_METHODS.automationResolveProposal, input),
       onEvent: automationEventListeners.subscribe,
-    },
-    device: {
-      list: (input) => transport.request(DEVICE_WS_METHODS.list, input),
-
-      boot: (input) => transport.request(DEVICE_WS_METHODS.boot, input, { timeoutMs: null }),
-      shutdown: (input) => transport.request(DEVICE_WS_METHODS.shutdown, input),
-      attach: (input) => transport.request(DEVICE_WS_METHODS.attach, input),
-      detach: (input) => transport.request(DEVICE_WS_METHODS.detach, input),
-      getThreadState: (input) => transport.request(DEVICE_WS_METHODS.getThreadState, input),
-      tap: (input) => transport.request(DEVICE_WS_METHODS.tap, input),
-      swipe: (input) => transport.request(DEVICE_WS_METHODS.swipe, input),
-      typeText: (input) => transport.request(DEVICE_WS_METHODS.typeText, input),
-      keyEvent: (input) => transport.request(DEVICE_WS_METHODS.keyEvent, input),
-      pressButton: (input) => transport.request(DEVICE_WS_METHODS.pressButton, input),
-      installApp: (input) =>
-        transport.request(DEVICE_WS_METHODS.installApp, input, { timeoutMs: null }),
-      launchApp: (input) => transport.request(DEVICE_WS_METHODS.launchApp, input),
-      openUrl: (input) => transport.request(DEVICE_WS_METHODS.openUrl, input),
-      screenshot: (input) => transport.request(DEVICE_WS_METHODS.screenshot, input),
-      startRecording: (input) =>
-        transport.request(DEVICE_WS_METHODS.startRecording, input, { timeoutMs: null }),
-      stopRecording: (input) =>
-        transport.request(DEVICE_WS_METHODS.stopRecording, input, { timeoutMs: null }),
-      describeUi: (input) => transport.request(DEVICE_WS_METHODS.describeUi, input),
-
-      scrollToElement: (input) =>
-        transport.request(DEVICE_WS_METHODS.scrollToElement, input, { timeoutMs: null }),
-      onEvent: deviceEventListeners.subscribe,
     },
     computer: {
       getStatus: (input) => transport.request(COMPUTER_WS_METHODS.getStatus, input),

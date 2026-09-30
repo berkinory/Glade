@@ -111,30 +111,6 @@ import {
   ProjectManageEntryInput,
 } from "../../workspace/project";
 import { FilesystemBrowseInput } from "../../workspace/filesystem";
-import {
-  DEVICE_WS_CHANNELS,
-  DEVICE_WS_METHODS,
-  DeviceAttachInput,
-  DeviceBootInput,
-  DeviceDescribeUiInput,
-  DeviceScrollToElementInput,
-  DeviceDetachInput,
-  DeviceEvent,
-  DeviceInstallAppInput,
-  DeviceKeyEventInput,
-  DeviceLaunchAppInput,
-  DeviceListInput,
-  DeviceOpenUrlInput,
-  DevicePressButtonInput,
-  DeviceScreenshotInput,
-  DeviceStartRecordingInput,
-  DeviceStopRecordingInput,
-  DeviceShutdownInput,
-  DeviceSwipeInput,
-  DeviceTapInput,
-  DeviceThreadInput,
-  DeviceTypeTextInput,
-} from "../../device/device";
 import { COMPUTER_WS_CHANNELS, ComputerEvent } from "../../computer/computer";
 import { OpenInEditorInput } from "../../settings/editor";
 import {
@@ -386,27 +362,6 @@ const WebSocketRequestBody = Schema.Union([
 
   tagRequestBody(WS_METHODS.filesystemBrowse, FilesystemBrowseInput),
 
-  tagRequestBody(DEVICE_WS_METHODS.list, DeviceListInput),
-  tagRequestBody(DEVICE_WS_METHODS.boot, DeviceBootInput),
-  tagRequestBody(DEVICE_WS_METHODS.shutdown, DeviceShutdownInput),
-  tagRequestBody(DEVICE_WS_METHODS.attach, DeviceAttachInput),
-  tagRequestBody(DEVICE_WS_METHODS.detach, DeviceDetachInput),
-  tagRequestBody(DEVICE_WS_METHODS.getThreadState, DeviceThreadInput),
-  tagRequestBody(DEVICE_WS_METHODS.tap, DeviceTapInput),
-  tagRequestBody(DEVICE_WS_METHODS.swipe, DeviceSwipeInput),
-  tagRequestBody(DEVICE_WS_METHODS.typeText, DeviceTypeTextInput),
-  tagRequestBody(DEVICE_WS_METHODS.keyEvent, DeviceKeyEventInput),
-  tagRequestBody(DEVICE_WS_METHODS.pressButton, DevicePressButtonInput),
-  tagRequestBody(DEVICE_WS_METHODS.installApp, DeviceInstallAppInput),
-  tagRequestBody(DEVICE_WS_METHODS.launchApp, DeviceLaunchAppInput),
-  tagRequestBody(DEVICE_WS_METHODS.openUrl, DeviceOpenUrlInput),
-  tagRequestBody(DEVICE_WS_METHODS.screenshot, DeviceScreenshotInput),
-  tagRequestBody(DEVICE_WS_METHODS.startRecording, DeviceStartRecordingInput),
-  tagRequestBody(DEVICE_WS_METHODS.stopRecording, DeviceStopRecordingInput),
-  tagRequestBody(DEVICE_WS_METHODS.describeUi, DeviceDescribeUiInput),
-  tagRequestBody(DEVICE_WS_METHODS.scrollToElement, DeviceScrollToElementInput),
-  tagRequestBody(DEVICE_WS_METHODS.subscribeEvents, Schema.Struct({})),
-
   tagRequestBody(WS_METHODS.shellOpenInEditor, OpenInEditorInput),
 
   tagRequestBody(WS_METHODS.gitPull, GitPullInput),
@@ -551,7 +506,6 @@ export interface WsPushPayloadByChannel {
   readonly [WS_CHANNELS.projectProvisionProgress]: typeof GitHubProjectProvisionProgressEvent.Type;
   readonly [WS_CHANNELS.terminalEvent]: typeof TerminalEvent.Type;
   readonly [WS_CHANNELS.projectDevServerEvent]: typeof ProjectDevServerEvent.Type;
-  readonly [DEVICE_WS_CHANNELS.event]: typeof DeviceEvent.Type;
   readonly [COMPUTER_WS_CHANNELS.event]: typeof ComputerEvent.Type;
   readonly [ORCHESTRATION_WS_CHANNELS.domainEvent]: OrchestrationEvent;
   readonly [ORCHESTRATION_WS_CHANNELS.shellEvent]: OrchestrationShellStreamItem;
@@ -610,7 +564,6 @@ export const WsPushProjectDevServerEvent = makeWsPushSchema(
   WS_CHANNELS.projectDevServerEvent,
   ProjectDevServerEvent,
 );
-export const WsPushDeviceEvent = makeWsPushSchema(DEVICE_WS_CHANNELS.event, DeviceEvent);
 export const WsPushComputerEvent = makeWsPushSchema(COMPUTER_WS_CHANNELS.event, ComputerEvent);
 export const WsPushOrchestrationDomainEvent = makeWsPushSchema(
   ORCHESTRATION_WS_CHANNELS.domainEvent,
@@ -637,7 +590,6 @@ export const WsPushChannelSchema = Schema.Literals([
   WS_CHANNELS.automationEvent,
   WS_CHANNELS.terminalEvent,
   WS_CHANNELS.projectDevServerEvent,
-  DEVICE_WS_CHANNELS.event,
   COMPUTER_WS_CHANNELS.event,
   ORCHESTRATION_WS_CHANNELS.domainEvent,
   ORCHESTRATION_WS_CHANNELS.shellEvent,
@@ -657,7 +609,6 @@ export const WsPush = Schema.Union([
   WsPushProjectProvisionProgress,
   WsPushTerminalEvent,
   WsPushProjectDevServerEvent,
-  WsPushDeviceEvent,
   WsPushComputerEvent,
   WsPushOrchestrationDomainEvent,
   WsPushOrchestrationShellEvent,

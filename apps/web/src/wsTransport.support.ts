@@ -16,7 +16,6 @@ import {
   type WsPushMessage,
 } from "@glade/contracts/transport/ws/ws";
 import { WsBootstrapRpcGroup } from "@glade/contracts/transport/ws/bootstrapRpc";
-import { WsDeviceRpcGroup } from "@glade/contracts/transport/ws/deviceRpc";
 import { WsComputerRpcGroup } from "@glade/contracts/transport/ws/computerRpc";
 import { WsFeatureRpcGroup } from "@glade/contracts/transport/ws/rpc";
 import type {
@@ -153,13 +152,7 @@ export function awaitWithAbort<A>(
   });
 }
 
-export // The device group is declared separately in contracts because its engine is macOS-only, but the
-// client must carry the methods on every platform: the server is the authority that refuses them
-// off darwin, and the pane needs a real RPC error (or an `unsupported-platform` availability) to
-// render its blocked state.
-const makeRpcClient = RpcClient.make(
-  WsFeatureRpcGroup.merge(WsDeviceRpcGroup).merge(WsComputerRpcGroup),
-);
+export const makeRpcClient = RpcClient.make(WsFeatureRpcGroup.merge(WsComputerRpcGroup));
 
 export const makeBootstrapRpcClient = RpcClient.make(WsBootstrapRpcGroup);
 

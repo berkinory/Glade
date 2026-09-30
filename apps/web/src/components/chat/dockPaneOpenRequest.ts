@@ -11,7 +11,7 @@ interface DockPaneOpenRequestInput {
 
 // Remember the pane on its owning thread so background agent activity never changes the user's
 // current chat: the event carries its own thread, the dock is seeded there, and returning to that
-// chat restores the pane. The runtime behind the pane (browser, simulator, desktop) stays attached
+// chat restores the pane. The runtime behind the pane (browser, desktop) stays attached
 // server-side, so there is nothing to gain by stealing the current chat to make it visible.
 export function routeSingleDockPaneOpenRequest(input: DockPaneOpenRequestInput): void {
   if (input.requestedThreadId === input.currentThreadId) {

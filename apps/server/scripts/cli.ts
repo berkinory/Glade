@@ -136,12 +136,6 @@ const buildCmd = Command.make(
         })`bun tsdown`,
       );
 
-      const deviceHelperSource = path.join(serverDir, "native/device-helper");
-      const deviceHelperTarget = path.join(serverDir, "dist/device-helper");
-      yield* fs.copy(deviceHelperSource, deviceHelperTarget);
-      yield* fs.chmod(path.join(deviceHelperTarget, "build.sh"), 0o755);
-      yield* Effect.log("[cli] Bundled iOS Simulator helper sources into dist/device-helper");
-
       const webDist = path.join(repoRoot, "apps/web/dist");
       const clientTarget = path.join(serverDir, "dist/client");
 

@@ -48,7 +48,6 @@ interface ChatKeyboardShortcutsInput {
   onToggleTerminal?: () => void;
   onOpenTerminal?: () => void;
   expandTerminalWorkspace: () => void;
-  onToggleDevicePanel?: () => void;
   onSplitSurface?: () => void;
   surfaceMode: "single" | "split";
   isFocusedPane: boolean;
@@ -100,10 +99,7 @@ interface ChatKeyboardShortcutsInput {
 }
 
 type ChatKeyboardShortcutsControllerInput = {
-  props: Pick<
-    ChatKeyboardShortcutsInput,
-    "onToggleTerminal" | "onOpenTerminal" | "onToggleDevicePanel" | "onSplitSurface"
-  >;
+  props: Pick<ChatKeyboardShortcutsInput, "onToggleTerminal" | "onOpenTerminal" | "onSplitSurface">;
   workspace: Pick<
     ChatKeyboardShortcutsInput,
     | "expandTerminalWorkspace"
@@ -182,7 +178,7 @@ export function useChatKeyboardShortcuts({
   discovery,
   environment,
 }: ChatKeyboardShortcutsControllerInput) {
-  const { onToggleTerminal, onOpenTerminal, onToggleDevicePanel, onSplitSurface } = props;
+  const { onToggleTerminal, onOpenTerminal, onSplitSurface } = props;
   const {
     expandTerminalWorkspace,
     activeThreadId,
@@ -500,15 +496,6 @@ export function useChatKeyboardShortcuts({
         return;
       }
 
-      if (command === "device.toggle") {
-        event.preventDefault();
-        event.stopPropagation();
-        // Unlike the browser this works in a plain tab, but only against a macOS server; the surface leaves
-        // the handler unwired when it cannot host one.
-        onToggleDevicePanel?.();
-        return;
-      }
-
       if (command === "chat.split") {
         event.preventDefault();
         event.stopPropagation();
@@ -560,7 +547,6 @@ export function useChatKeyboardShortcuts({
     terminalWorkspaceOpen,
     terminalWorkspaceTerminalTabActive,
     onToggleBrowser,
-    onToggleDevicePanel,
     onToggleDiff,
     onInterruptFromStopControl,
     onSplitSurface,

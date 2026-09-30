@@ -10,11 +10,6 @@ import type {
 import { WS_PROJECT_FILE_WATCH_CAPABILITY } from "@glade/contracts/transport/ws/wsCompatibility";
 import { WS_CHANNELS, WS_METHODS, type WsPushChannel } from "@glade/contracts/transport/ws/ws";
 import {
-  DEVICE_WS_CHANNELS,
-  DEVICE_WS_METHODS,
-  type DeviceEvent,
-} from "@glade/contracts/device/device";
-import {
   COMPUTER_WS_CHANNELS,
   COMPUTER_WS_METHODS,
   type ComputerEvent,
@@ -145,14 +140,6 @@ export class WsTransport extends WsTransportBase {
             (event: AutomationStreamEvent) => this.emit(WS_CHANNELS.automationEvent, event),
             restartChannel,
           );
-        } else if (channel === DEVICE_WS_CHANNELS.event) {
-          this.startStream(
-            client,
-            "device.events",
-            client[DEVICE_WS_METHODS.subscribeEvents]({}),
-            (event: DeviceEvent) => this.emit(DEVICE_WS_CHANNELS.event, event),
-            restartChannel,
-          );
         } else if (channel === COMPUTER_WS_CHANNELS.event) {
           this.startStream(
             client,
@@ -194,7 +181,6 @@ export class WsTransport extends WsTransportBase {
     else if (channel === WS_CHANNELS.projectDevServerEvent)
       void this.stopStream("project.devServers");
     else if (channel === WS_CHANNELS.automationEvent) void this.stopStream("automation.events");
-    else if (channel === DEVICE_WS_CHANNELS.event) void this.stopStream("device.events");
     else if (channel === COMPUTER_WS_CHANNELS.event) void this.stopStream("computer.events");
     else if (channel === ORCHESTRATION_WS_CHANNELS.domainEvent)
       void this.stopStream("orchestration.domain");

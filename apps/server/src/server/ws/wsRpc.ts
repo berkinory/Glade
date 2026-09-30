@@ -4,7 +4,6 @@ import { AgentGatewaySessionRegistry } from "../../agentGateway/Services/AgentGa
 import { execFile } from "node:child_process";
 
 import { COMPUTER_WS_METHODS, type ComputerEvent } from "@glade/contracts/computer/computer";
-import { DEVICE_WS_METHODS, type DeviceEvent } from "@glade/contracts/device/device";
 import { ORCHESTRATION_WS_METHODS } from "@glade/contracts/orchestration/rpc";
 import { type OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
@@ -25,7 +24,6 @@ import {
 import { WS_METHODS } from "@glade/contracts/transport/ws/ws";
 import { WsBootstrapRpcGroup } from "@glade/contracts/transport/ws/bootstrapRpc";
 import { WsComputerRpcGroup } from "@glade/contracts/transport/ws/computerRpc";
-import { WsDeviceRpcGroup } from "@glade/contracts/transport/ws/deviceRpc";
 import { WsFeatureRpcGroup } from "@glade/contracts/transport/ws/rpc";
 import { WsRpcError } from "@glade/contracts/transport/ws/rpcErrors";
 import { PullRequestsUnavailableError } from "@glade/contracts/git/pullRequests";
@@ -69,9 +67,6 @@ import {
   DevServerManager,
   findProjectDevServerForLocalServer,
 } from "../../workspace/devServers/devServerManager";
-import { DeviceService } from "../../device/Services/DeviceService";
-import { makeWsDeviceHandlers } from "../../device/wsDeviceHandlers";
-import { makeDeviceFrameRouteLayer } from "../../device/deviceFrameRoute";
 import { ComputerService } from "../../computer/Services/ComputerService";
 import { makeWsComputerHandlers } from "../../computer/wsComputerHandlers";
 import { makeComputerFrameRouteLayer } from "../../computer/computerFrameRoute";
@@ -205,9 +200,9 @@ class WsRequestAdmissionMiddleware extends RpcMiddleware.Service<WsRequestAdmiss
   { error: WsRpcError, requiredForClient: false },
 ) {}
 
-const AdmittedWsFeatureRpcGroup = WsFeatureRpcGroup.merge(WsDeviceRpcGroup)
-  .merge(WsComputerRpcGroup)
-  .middleware(WsRequestAdmissionMiddleware);
+const AdmittedWsFeatureRpcGroup = WsFeatureRpcGroup.merge(WsComputerRpcGroup).middleware(
+  WsRequestAdmissionMiddleware,
+);
 
 const wsRequestAdmissionMiddlewareLayer = Layer.effect(
   WsRequestAdmissionMiddleware,
@@ -404,10 +399,6 @@ const makeWsRpcHandlersLayer = () =>
             ),
           ),
       });
-      // Optional so route-level tests and non-macOS builds can mount the RPC group without a device
-      // engine; the handlers below then refuse cleanly with the same unsupported-platform answer the
-      // backend would give.
-      const deviceService = Option.getOrUndefined(yield* Effect.serviceOption(DeviceService));
       const computerService = Option.getOrUndefined(yield* Effect.serviceOption(ComputerService));
       const connectionSessions = yield* WsConnectionSessions;
       const computerInterests = new ComputerEventInterests(connectionSessions.onClose);
@@ -2063,28 +2054,6 @@ const makeWsRpcHandlersLayer = () =>
             ),
           ),
 
-        ...makeWsDeviceHandlers(deviceService),
-        [DEVICE_WS_METHODS.subscribeEvents]: (_, { clientId }) =>
-          streamAdmission.guard(
-            clientId,
-            { key: "device.events" },
-            // Device state pushes are full snapshots and can drop intermediate versions. Unsupported platforms
-            // keep the subscription silent and open; completion would trigger endless transport reconnects.
-            deviceService?.supported !== true
-              ? Stream.never
-              : bufferLiveUiStream(
-                  Stream.callback<DeviceEvent>((queue) =>
-                    Effect.gen(function* () {
-                      const unsubscribe = deviceService.manager.onEvent((event) => {
-                        Effect.runFork(Queue.offer(queue, event).pipe(Effect.asVoid));
-                      });
-                      yield* Effect.addFinalizer(() => Effect.sync(unsubscribe));
-                    }),
-                  ),
-                  { label: "device.events" },
-                ),
-          ),
-
         ...computerHandlers,
         [COMPUTER_WS_METHODS.getAuditHistory]: (input) =>
           requireWsOwnerSession.pipe(
@@ -2187,7 +2156,7 @@ export function authenticateRpcWebSocketUpgrade(input: {
   return input.serverAuth.authenticateWebSocketUpgrade(input.request);
 }
 
-export function authorizeDeviceFrameWebSocketUpgrade(input: {
+export function authorizeComputerFrameWebSocketUpgrade(input: {
   readonly config: Pick<ServerConfigShape, "authToken" | "host" | "publicUrl">;
   readonly legacyToken: string | null;
   readonly request: AuthRequest;
@@ -2198,8 +2167,6 @@ export function authorizeDeviceFrameWebSocketUpgrade(input: {
     Effect.orElseSucceed(() => false),
   );
 }
-
-const authorizeComputerFrameWebSocketUpgrade = authorizeDeviceFrameWebSocketUpgrade;
 
 export function makeWebsocketRpcRouteLayer<R>(
   rpcWebSocketHttpEffectSource: Effect.Effect<
@@ -2378,24 +2345,6 @@ export const makeWebsocketNegotiationRouteLayer = () =>
     makeWebsocketBootstrapRouteLayer(makeBootstrapWebSocketHttpEffect),
   );
 
-// Video rides a second WebSocket (see `deviceFrameRoute`), so it is admitted by the same rules as
-// the RPC upgrade: trusted origin, then whatever authentication the config requires.
-const deviceFrameRouteLayer = makeDeviceFrameRouteLayer({
-  authorizeUpgrade: (request) =>
-    Effect.gen(function* () {
-      const config = yield* ServerConfig;
-      const serverAuth = yield* ServerAuth;
-      const url = trustedWebSocketRequestUrl(request, config);
-      if (url === null) return false;
-      return yield* authorizeDeviceFrameWebSocketUpgrade({
-        config,
-        legacyToken: url.searchParams.get("token"),
-        request: makeEffectAuthRequest(request),
-        serverAuth,
-      });
-    }),
-});
-
 const computerFrameRouteLayer = makeComputerFrameRouteLayer({
   authorizeUpgrade: (request) =>
     Effect.gen(function* () {
@@ -2413,7 +2362,6 @@ const computerFrameRouteLayer = makeComputerFrameRouteLayer({
 });
 
 export const websocketRpcRouteLayer = Layer.mergeAll(
-  deviceFrameRouteLayer,
   computerFrameRouteLayer,
   makeWebsocketNegotiationRouteLayer(),
 

@@ -149,3 +149,4 @@ Tests exist to catch regressions that would really hurt. Fewer, stronger tests a
 ## Removed features
 
 - Kanban is retired; do not reintroduce its board, routes or task composer.
+- The device simulator and its agent controls are retired. Computer Use remains supported.

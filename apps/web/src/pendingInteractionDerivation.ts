@@ -25,7 +25,7 @@ export interface PendingApproval {
   detail?: string;
   permissionProfile?: Record<string, unknown>;
   sessionApprovalAvailable?: boolean;
-  approvalScope?: "computer-task" | "computer-foreground" | "device-task";
+  approvalScope?: "computer-task" | "computer-foreground";
   toolName?: string;
   toolParamsDisplay?: ReadonlyArray<PendingToolParamDisplay>;
 }
@@ -329,8 +329,8 @@ export function derivePendingApprovals(
           ...(detail ? { detail } : {}),
           ...(permissionProfile ? { permissionProfile } : {}),
           ...(sessionApprovalAvailable !== undefined ? { sessionApprovalAvailable } : {}),
-          ...(payload?.approvalScope === "computer-task" || payload?.approvalScope === "device-task"
-            ? { approvalScope: payload.approvalScope as "computer-task" | "device-task" }
+          ...(payload?.approvalScope === "computer-task"
+            ? { approvalScope: payload.approvalScope as "computer-task" }
             : payload?.approvalScope === "computer-foreground"
               ? { approvalScope: "computer-foreground" as const }
               : {}),

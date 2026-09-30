@@ -19,7 +19,6 @@ import {
 import {
   createDesktopPlatformBuildConfig,
   MAC_COMPUTER_HELPER_STAGE_PATH,
-  MAC_DEVICE_HELPER_RESOURCE_PATH,
   MAC_ICON_ASSET_NAME,
   MAC_ICON_COMPOSER_DEPLOYMENT_TARGET,
   validateDesktopNativeBuildHost,
@@ -932,38 +931,6 @@ const stageMacComputerHelper = Effect.fn("stageMacComputerHelper")(function* (
   }
 });
 
-const assertPackagedMacDeviceHelper = Effect.fn("assertPackagedMacDeviceHelper")(function* (
-  stageDistDir: string,
-  productName: string,
-) {
-  const path = yield* Path.Path;
-  const fs = yield* FileSystem.FileSystem;
-  const entries = yield* fs.readDirectory(stageDistDir);
-  for (const entry of entries) {
-    const packagedEntryPath = path.join(stageDistDir, entry);
-    const packagedEntryStat = yield* fs
-      .stat(packagedEntryPath)
-      .pipe(Effect.catch(() => Effect.succeed(null)));
-    if (!packagedEntryStat || packagedEntryStat.type !== "Directory") continue;
-
-    const helperRoot = path.join(
-      packagedEntryPath,
-      `${productName}.app`,
-      "Contents",
-      MAC_DEVICE_HELPER_RESOURCE_PATH,
-    );
-    if (
-      (yield* fs.exists(path.join(helperRoot, "build.sh"))) &&
-      (yield* fs.exists(path.join(helperRoot, "Sources/main.swift")))
-    ) {
-      return;
-    }
-  }
-  return yield* new BuildScriptError({
-    message: `Packaged macOS app is missing physical device helper sources under Contents/${MAC_DEVICE_HELPER_RESOURCE_PATH}`,
-  });
-});
-
 const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
   options: ResolvedBuildOptions,
 ) {
@@ -1293,7 +1260,6 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
   }
 
   if (options.platform === "mac") {
-    yield* assertPackagedMacDeviceHelper(stageDistDir, artifactIdentity.identity.displayName);
   }
 
   if (options.platform === "mac" && options.target === "dmg" && !options.signed) {

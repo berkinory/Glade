@@ -77,8 +77,6 @@ import { makeAgentGatewayAutomationTools } from "../automationTools.ts";
 import { makeAgentGatewayBrowserTools } from "../browserTools.ts";
 import { makeAgentGatewayComputerBrowserTools } from "../computerBrowserTools.ts";
 import { computerApprovalDisplayArgs } from "../computerApprovalDisplay.ts";
-import { makeAgentGatewayDeviceTools } from "../deviceTools.ts";
-import { DeviceService } from "../../device/Services/DeviceService.ts";
 import {
   COMPUTER_CONTROL_CAPABILITY,
   makeAgentGatewayComputerTools,
@@ -143,10 +141,6 @@ const makeAgentGateway = Effect.gen(function* () {
     yield* Effect.serviceOption(BrowserAutomationHost),
     () => makeBrowserAutomationHost({}),
   );
-  // Optional and platform-gated: off macOS (and in tests that do not provide it) the agent never sees
-  // the device_* tools at all, rather than being offered eleven tools that can only report an
-  // unsupported platform.
-  const deviceService = Option.getOrUndefined(yield* Effect.serviceOption(DeviceService));
   const computerService = Option.getOrUndefined(yield* Effect.serviceOption(ComputerService));
   const loadProviderAvailabilities = Effect.gen(function* () {
     const [settings, statuses] = yield* Effect.all([
@@ -1011,19 +1005,14 @@ const makeAgentGateway = Effect.gen(function* () {
       );
   };
 
-  // The approval card for one Computer or Device consent prompt: routine task consent, visible-use
-  // consent, or a single-call approval (clipboard reads). Device names share this path because
-  // provider-native permission bridges cannot see MCP calls and would otherwise let a mutating device
-  // action run unasked.
   const publishComputerApproval =
     (
       name: string,
       args: Record<string, unknown>,
       context: Parameters<NonNullable<AgentGatewayComputerToolsOptions["authorizeAction"]>>[2],
-      approvalScope: "computer-task" | "computer-foreground" | "device-task" | undefined,
+      approvalScope: "computer-task" | "computer-foreground" | undefined,
     ) =>
     async (requestId: string, decision?: ProviderApprovalDecision): Promise<void> => {
-      const deviceTool = name.startsWith("device_");
       const createdAt = isoNow();
       const eventKey = `${requestId}:${decision === undefined ? "open" : "resolved"}`;
       await Effect.runPromise(
@@ -1037,14 +1026,12 @@ const makeAgentGateway = Effect.gen(function* () {
             kind: decision === undefined ? "approval.requested" : "approval.resolved",
             summary:
               decision !== undefined
-                ? `${deviceTool ? "Device" : "Computer"} approval resolved`
+                ? "Computer approval resolved"
                 : approvalScope === "computer-foreground"
                   ? "Show Computer on screen for this task"
-                  : approvalScope === "device-task"
-                    ? "Allow Device for this task"
-                    : approvalScope === "computer-task"
-                      ? "Allow Computer for this task"
-                      : `${deviceTool ? "Device" : "Computer"} action needs approval`,
+                  : approvalScope === "computer-task"
+                    ? "Allow Computer for this task"
+                    : "Computer action needs approval",
             payload: {
               requestId,
               requestKind: "tool",
@@ -1072,15 +1059,12 @@ const makeAgentGateway = Effect.gen(function* () {
       { signal },
     );
     if (Option.isNone(caller)) return false;
-    const deviceTool = name.startsWith("device_");
 
     if (caller.value.runtimeMode === "full-access") {
-      if (!deviceTool) {
-        await Effect.runPromise(
-          surfaceComputerControlDisclosure(context.callerThreadId, context.callerTurnId),
-          { signal },
-        ).catch(() => undefined);
-      }
+      await Effect.runPromise(
+        surfaceComputerControlDisclosure(context.callerThreadId, context.callerTurnId),
+        { signal },
+      ).catch(() => undefined);
       return true;
     }
     const taskConsent = name !== "computer_read_clipboard" && context.callerTurnId !== null;
@@ -1095,10 +1079,10 @@ const makeAgentGateway = Effect.gen(function* () {
         name,
         args,
         context,
-        taskConsent ? (deviceTool ? "device-task" : "computer-task") : undefined,
+        taskConsent ? "computer-task" : undefined,
       ),
     });
-    if (approved && !deviceTool) {
+    if (approved) {
       await Effect.runPromise(
         surfaceComputerControlDisclosure(context.callerThreadId, context.callerTurnId),
         { signal },
@@ -1156,12 +1140,6 @@ const makeAgentGateway = Effect.gen(function* () {
     setThreadGoal,
     ...automationTools,
     ...browserTools,
-    ...(deviceService?.supported === true
-      ? makeAgentGatewayDeviceTools({
-          manager: deviceService.manager,
-          authorizeAction: authorizeComputerAction,
-        })
-      : []),
     ...(computerService?.supported === true
       ? makeAgentGatewayComputerTools({
           manager: computerService.manager,

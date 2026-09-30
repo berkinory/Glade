@@ -2,9 +2,8 @@ import { CUA_HOST_SOCKET_ENV } from "@glade/shared/computer/cuaDriverProtocol";
 import { GLADE_DESKTOP_BUNDLE_ID_ENV } from "@glade/shared/platform/desktopIdentity";
 import { NetService } from "@glade/shared/platform/Net";
 import { applyShellEnvironmentHydrationMarker } from "@glade/shared/platform/shell";
-import { DEVICE_HELPER_SOURCE_DIR_ENV } from "@glade/shared/workspace/deviceHelperCache";
 import * as Effect from "effect/Effect";
-import { app, BrowserWindow, dialog, shell } from "electron";
+import { BrowserWindow, dialog, shell } from "electron";
 import * as ChildProcess from "node:child_process";
 import * as Crypto from "node:crypto";
 import * as FS from "node:fs";
@@ -131,9 +130,6 @@ export function createBackendSupervisor({
       ),
 
       ...(servedStaticRoot?.snapshotted ? { GLADE_STATIC_DIR: servedStaticRoot.dir } : {}),
-      ...(app.isPackaged
-        ? { [DEVICE_HELPER_SOURCE_DIR_ENV]: Path.join(process.resourcesPath, "device-helper") }
-        : {}),
       ...(computer.getHostEndpoint() ? { [CUA_HOST_SOCKET_ENV]: computer.getHostEndpoint() } : {}),
       [GLADE_DESKTOP_BUNDLE_ID_ENV]: desktopIdentity.bundleId,
       GLADE_MODE: "desktop",

@@ -759,15 +759,6 @@ function SettingsRouteView() {
           resetLabel: "effort slider",
           ariaLabel: "Show effort slider in the composer",
         })}
-
-        {renderBooleanSettingRow({
-          settingKey: "autoOpenDevicePane",
-          title: "Automatically open simulator",
-          description:
-            "Open the iOS Simulator pane when an agent uses a device. Turn this off to use Simulator.app without the mirrored pane reopening. You can still open the pane manually.",
-          resetLabel: "automatically open simulator",
-          ariaLabel: "Automatically open simulator",
-        })}
       </SettingsSection>
 
       <SettingsSection title="Review">

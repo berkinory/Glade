@@ -291,13 +291,6 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
       "Show reasoning effort as a slider in the composer model menu once a chat has started. fast mode reasoning thinking level picker",
   },
   {
-    id: "behavior:auto-open-simulator",
-    section: "behavior",
-    title: "Automatically open simulator",
-    keywords:
-      "Disable automatic iOS Simulator device pane opening. Use Simulator.app without the mirrored panel reopening. background launch",
-  },
-  {
     id: "behavior:diff-line-wrapping",
     section: "behavior",
     title: "Diff line wrapping",
