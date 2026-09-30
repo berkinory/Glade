@@ -159,32 +159,6 @@ export const ProviderTurnDispatchLive = Layer.effect(
         );
       });
 
-    const startClaudeCompaction: NonNullable<ProviderServiceShape["startClaudeCompaction"]> = (
-      input,
-    ) =>
-      bindings.runTurnDispatch(input.threadId, (generation) =>
-        Effect.gen(function* () {
-          const routed = yield* resolveRoutableSession({
-            threadId: input.threadId,
-            operation: "ProviderService.startClaudeCompaction",
-            allowRecovery: true,
-          });
-          if (!routed.adapter.startClaudeCompaction) {
-            return yield* toValidationError(
-              "ProviderService.startClaudeCompaction",
-              "Native Claude compaction is unavailable.",
-            );
-          }
-          const turn = yield* routed.adapter.startClaudeCompaction(input);
-          return yield* persistTurn(
-            input,
-            routed.adapter.provider,
-            generation,
-            turn,
-            "provider.startClaudeCompaction",
-          );
-        }),
-      );
-    return { sendTurn, steerTurn, startReview, startClaudeCompaction };
+    return { sendTurn, steerTurn, startReview };
   }),
 );

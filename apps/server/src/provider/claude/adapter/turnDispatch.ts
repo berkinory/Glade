@@ -17,24 +17,17 @@ import { isClaudeCompactionCommand } from "./commandPresentation";
 import { CLAUDE_CONTEXT_USAGE_TIMEOUT_MS } from "./contextUsage";
 import { hasActiveClaudeCompactionWork } from "./sessionResume";
 import {
-  resolveSelectedClaudeAutoCompactWindow,
-  resolveClaudeApiModelIdContextWindowMaxTokens,
-} from "../claudeTokenUsage.ts";
-import {
   normalizeClaudeModelOptions,
   resolveApiModelId,
-  getModelCapabilities,
-  trimOrNull,
-  hasEffortLevel,
   getEffectiveClaudeCodeEffort,
-  stripClaudeContextWindowSuffix,
 } from "@glade/shared/provider/model";
 import { hasOnlyCompletedClaudeTasks, hasUnfinishedClaudeTasks } from "../claudeTaskTracker.ts";
-import { claudeCacheForModel } from "../claudeCacheObservation.ts";
 import { nativeProviderRefs, buildUserMessageEffect } from "./messageContent";
-import { resolveSelectedClaudeThinkingToggle } from "./modelCapabilities";
+import { resolveSelectedClaudeThinkingToggle, selectedClaudeModelInfo } from "./modelCapabilities";
 import { type ClaudeApiEffort } from "@glade/contracts/provider/model";
 import type { ClaudeSessionAccessShape } from "../../Services/ClaudeSessionAccess.ts";
+import { isClaudeSkillAllowed } from "../claudeSkillBridge.ts";
+import type { ServerSettingsError } from "@glade/contracts/settings/settings";
 
 export function makeClaudeTurnDispatch(input: {
   readonly requireSession: ClaudeSessionAccessShape["requireSession"];
@@ -56,6 +49,7 @@ export function makeClaudeTurnDispatch(input: {
   >["emitTrackedTasksUpdated"];
   readonly fileSystem: FileSystem.FileSystem;
   readonly serverConfig: ServerConfigShape;
+  readonly getDisabledSkillNames: Effect.Effect<ReadonlyArray<string>, ServerSettingsError, never>;
   readonly resolveNativeCommandNames: ClaudeSessionAccessShape["resolveNativeCommandNames"];
 }) {
   const {
@@ -71,6 +65,7 @@ export function makeClaudeTurnDispatch(input: {
     emitTrackedTasksUpdated,
     fileSystem,
     serverConfig,
+    getDisabledSkillNames,
     resolveNativeCommandNames,
   } = input;
   // Apply interaction mode on every turn so sticky SDK permission state cannot leak plan mode across
@@ -103,13 +98,46 @@ export function makeClaudeTurnDispatch(input: {
       return effectiveInteractionMode;
     });
 
-  const sendTurnCore = (
-    input: ProviderSendTurnInput,
-    compactionTurnId?: TurnId,
-  ): ReturnType<ClaudeAdapterShape["sendTurn"]> =>
+  const sendTurnCore = (input: ProviderSendTurnInput): ReturnType<ClaudeAdapterShape["sendTurn"]> =>
     Effect.gen(function* () {
       const context = yield* requireSession(input.threadId);
-      const isCompaction = compactionTurnId !== undefined || isClaudeCompactionCommand(input.input);
+      const disabledSkillNames = yield* getDisabledSkillNames.pipe(
+        Effect.mapError(
+          (cause) =>
+            new ProviderAdapterValidationError({
+              provider: PROVIDER,
+              operation: "sendTurn",
+              issue: "Skill settings are unavailable.",
+              cause,
+            }),
+        ),
+      );
+      for (const skill of input.skills ?? []) {
+        if (
+          !context.allowedSkillNames.has(skill.name) ||
+          !isClaudeSkillAllowed(skill.name, disabledSkillNames)
+        ) {
+          return yield* new ProviderAdapterValidationError({
+            provider: PROVIDER,
+            operation: "sendTurn",
+            issue: `Skill ${skill.name} is unavailable for this Claude session.`,
+          });
+        }
+      }
+      const slashName = /^\/([^\s]+)(?:\s|$)/u.exec(input.input?.trim() ?? "")?.[1];
+      if (
+        slashName &&
+        context.initSkillNames?.has(slashName) &&
+        (!context.allowedSkillNames.has(slashName) ||
+          !isClaudeSkillAllowed(slashName, disabledSkillNames))
+      ) {
+        return yield* new ProviderAdapterValidationError({
+          provider: PROVIDER,
+          operation: "sendTurn",
+          issue: `Skill ${slashName} is unavailable for this Claude session.`,
+        });
+      }
+      const isCompaction = isClaudeCompactionCommand(input.input);
       if (isCompaction && (input.attachments?.length ?? 0) > 0) {
         return yield* new ProviderAdapterValidationError({
           provider: PROVIDER,
@@ -163,10 +191,9 @@ export function makeClaudeTurnDispatch(input: {
       }
       const modelSelection =
         input.modelSelection?.provider === "claudeAgent" ? input.modelSelection : undefined;
-      const requestedAutoCompactWindow = resolveSelectedClaudeAutoCompactWindow(
+      const selectedOptions = normalizeClaudeModelOptions(
         modelSelection?.model,
-        normalizeClaudeModelOptions(modelSelection?.model, modelSelection?.options)
-          ?.autoCompactWindow,
+        modelSelection?.options,
       );
 
       if (context.turnState) {
@@ -197,12 +224,9 @@ export function makeClaudeTurnDispatch(input: {
           });
         }
         context.currentApiModelId = apiModelId;
-        context.rerouteOriginalApiModelId = undefined;
         if (apiModelChanged) {
-          context.cacheObservation = claudeCacheForModel(context.cacheObservation, apiModelId);
-          context.lastKnownContextWindow =
-            resolveClaudeApiModelIdContextWindowMaxTokens(apiModelId);
-          context.lastKnownAutoCompactThreshold = requestedAutoCompactWindow;
+          context.lastKnownContextWindow = undefined;
+          context.lastKnownAutoCompactThreshold = undefined;
         }
         yield* updateResumeCursor(context);
       }
@@ -212,7 +236,6 @@ export function makeClaudeTurnDispatch(input: {
         context.emittedContextUsageWarnings.delete("large-prompt");
 
         const configuredWindow = {
-          autoCompactWindow: requestedAutoCompactWindow ?? null,
           model: modelSelection.model,
           apiModelId: context.currentApiModelId,
         };
@@ -229,8 +252,8 @@ export function makeClaudeTurnDispatch(input: {
       }
 
       const requestedThinking = resolveSelectedClaudeThinkingToggle(
-        modelSelection?.model,
-        modelSelection?.options?.thinking,
+        selectedClaudeModelInfo(context.availableModels, modelSelection?.model),
+        selectedOptions?.thinking,
       );
       if (modelSelection && requestedThinking !== context.currentAlwaysThinkingEnabled) {
         yield* Effect.tryPromise({
@@ -244,20 +267,40 @@ export function makeClaudeTurnDispatch(input: {
       }
 
       if (modelSelection) {
-        const turnCaps = getModelCapabilities("claudeAgent", modelSelection.model);
-        const requestedEffortOption = trimOrNull(modelSelection.options?.effort ?? null);
-        const validEffort =
-          requestedEffortOption && hasEffortLevel(turnCaps, requestedEffortOption)
-            ? requestedEffortOption
-            : null;
-        const requestedEffort = getEffectiveClaudeCodeEffort(validEffort);
-        const requestedUltracode = validEffort === "ultracode" && hasEffortLevel(turnCaps, "xhigh");
-        const requestedFastMode =
-          modelSelection.options?.fastMode === true && turnCaps.supportsFastMode;
-        const effortChanged =
-          requestedEffort !== context.currentEffort &&
-          requestedEffort !== "max" &&
-          context.currentEffort !== "max";
+        const modelInfo = selectedClaudeModelInfo(context.availableModels, modelSelection.model);
+        const requestedEffort = getEffectiveClaudeCodeEffort(selectedOptions?.effort);
+        if (
+          requestedEffort &&
+          modelInfo &&
+          !modelInfo.supportedEffortLevels?.includes(requestedEffort)
+        ) {
+          return yield* new ProviderAdapterValidationError({
+            provider: PROVIDER,
+            operation: "sendTurn",
+            issue: `Claude model "${modelInfo.displayName}" does not support ${requestedEffort} effort.`,
+          });
+        }
+        const requestedUltracode = selectedOptions?.ultracode;
+        if (
+          requestedUltracode &&
+          modelInfo &&
+          !modelInfo.supportedEffortLevels?.includes("xhigh")
+        ) {
+          return yield* new ProviderAdapterValidationError({
+            provider: PROVIDER,
+            operation: "sendTurn",
+            issue: `Claude model "${modelInfo.displayName}" does not support Ultracode.`,
+          });
+        }
+        const requestedFastMode = selectedOptions?.fastMode;
+        if (requestedFastMode && modelInfo && modelInfo.supportsFastMode !== true) {
+          return yield* new ProviderAdapterValidationError({
+            provider: PROVIDER,
+            operation: "sendTurn",
+            issue: `Claude model "${modelInfo.displayName}" does not support fast mode.`,
+          });
+        }
+        const effortChanged = requestedEffort !== context.currentEffort;
         const ultracodeChanged = requestedUltracode !== context.currentUltracode;
         const fastModeChanged = requestedFastMode !== context.currentFastMode;
         if (effortChanged || ultracodeChanged || fastModeChanged) {
@@ -265,10 +308,10 @@ export function makeClaudeTurnDispatch(input: {
             try: () =>
               context.query.applyFlagSettings({
                 ...(effortChanged
-                  ? { effortLevel: requestedEffort as Exclude<ClaudeApiEffort, "max"> | null }
+                  ? { effortLevel: requestedEffort as ClaudeApiEffort | null }
                   : {}),
-                ...(ultracodeChanged ? { ultracode: requestedUltracode ? true : null } : {}),
-                ...(fastModeChanged ? { fastMode: requestedFastMode ? true : null } : {}),
+                ...(ultracodeChanged ? { ultracode: requestedUltracode ?? null } : {}),
+                ...(fastModeChanged ? { fastMode: requestedFastMode ?? null } : {}),
               }),
             catch: (cause) => toRequestError(input.threadId, "turn/applyFlagSettings", cause),
           });
@@ -284,7 +327,7 @@ export function makeClaudeTurnDispatch(input: {
         ? (context.lastInteractionMode ?? "default")
         : yield* applyInteractionModePermission(context, input.threadId, input.interactionMode);
 
-      const turnId = compactionTurnId ?? TurnId.makeUnsafe(yield* Random.nextUUIDv4);
+      const turnId = TurnId.makeUnsafe(yield* Random.nextUUIDv4);
       context.processedTokenTurnBaseline = context.processedTokenTotal;
       const turnState: ClaudeTurnState = {
         turnId,
@@ -339,7 +382,7 @@ export function makeClaudeTurnDispatch(input: {
         threadId: context.session.threadId,
         turnId,
         payload: context.currentApiModelId
-          ? { model: stripClaudeContextWindowSuffix(context.currentApiModelId) }
+          ? { model: context.currentApiModelId }
           : modelSelection?.model
             ? { model: modelSelection.model }
             : {},
@@ -385,21 +428,6 @@ export function makeClaudeTurnDispatch(input: {
   ): ReturnType<ClaudeAdapterShape["sendTurn"]> =>
     Effect.gen(function* () {
       const context = yield* requireSession(input.threadId);
-      const selection = input.modelSelection;
-      if (
-        selection?.provider === "claudeAgent" &&
-        resolveSelectedClaudeAutoCompactWindow(
-          selection.model,
-          normalizeClaudeModelOptions(selection.model, selection.options)?.autoCompactWindow,
-        ) !== context.currentAutoCompactWindow
-      ) {
-        return yield* new ProviderAdapterValidationError({
-          provider: PROVIDER,
-          operation: "session/reconfigure",
-          issue:
-            "Claude's auto-compact setting requires an idle session restart with resume before sending.",
-        });
-      }
       context.pendingDispatches = (context.pendingDispatches ?? 0) + 1;
       return yield* dispatch.pipe(
         Effect.ensuring(
@@ -412,12 +440,6 @@ export function makeClaudeTurnDispatch(input: {
 
   const sendTurn: ClaudeAdapterShape["sendTurn"] = (input) =>
     withPendingDispatch(input, sendTurnCore(input));
-
-  const startClaudeCompaction: NonNullable<ClaudeAdapterShape["startClaudeCompaction"]> = (input) =>
-    withPendingDispatch(
-      { threadId: input.threadId, input: "/compact", attachments: [] },
-      sendTurnCore({ threadId: input.threadId, input: "/compact", attachments: [] }, input.turnId),
-    );
 
   const steerTurn: ClaudeAdapterShape["steerTurn"] = (input) =>
     withPendingDispatch(
@@ -476,5 +498,5 @@ export function makeClaudeTurnDispatch(input: {
         };
       }),
     );
-  return { startClaudeCompaction, sendTurn, steerTurn };
+  return { sendTurn, steerTurn };
 }

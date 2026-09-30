@@ -1,6 +1,4 @@
 import { ThreadId, TurnId, ProviderKind } from "@glade/contracts/core/baseSchemas";
-import { type ClaudeCacheObservation } from "@glade/contracts/provider/claudeCache";
-import { type PendingClaudeCacheReview } from "@glade/contracts/orchestration/threadEntities";
 import { type RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
 
 export const PROVIDER_CONTEXT_LIFECYCLE_ACTIVITY_KIND = "provider.context.changed";
@@ -74,38 +72,5 @@ export function providerContextLifecycleSummary(
     ? "The session restarted without its previous history."
     : "The session's history was unavailable for this turn.";
 }
-
-export const sameClaudeCacheContext = (
-  left: ClaudeCacheObservation,
-  right: ClaudeCacheObservation,
-): boolean =>
-  // A newer local observation does not revoke consent. Changed size or native response evidence can
-  // change the expense the user agreed to and must match.
-  left.nativeSessionId === right.nativeSessionId &&
-  left.lifecycleGeneration === right.lifecycleGeneration &&
-  left.model === right.model &&
-  left.contextTokens === right.contextTokens &&
-  left.lastResponseAt === right.lastResponseAt;
-
-export const claudeCacheReviewCoversObservation = (
-  review: PendingClaudeCacheReview,
-  observation: ClaudeCacheObservation,
-): boolean => {
-  if (sameClaudeCacheContext(review.assessment, observation)) return true;
-
-  return (
-    (review.status === "compacting" || review.status === "uncertain") &&
-    review.compactionTurnId !== undefined &&
-    review.assessment.nativeSessionId === observation.nativeSessionId &&
-    review.assessment.lifecycleGeneration === observation.lifecycleGeneration &&
-    review.assessment.model === observation.model &&
-    review.assessment.contextTokens !== undefined &&
-    observation.contextTokens !== undefined &&
-    observation.contextTokens <= review.assessment.contextTokens
-  );
-};
-
-export const LOST_CLAUDE_COMPACTION_ERROR =
-  "Compaction completion was not recorded. The saved message remains held; compaction was not retried.";
 
 export const DEFAULT_RUNTIME_MODE: RuntimeMode = "full-access";

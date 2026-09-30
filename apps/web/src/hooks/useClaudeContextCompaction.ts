@@ -37,10 +37,7 @@ export function useClaudeContextCompaction({
       const request = pending.requests[threadId];
       if (!request) return;
       const current = getThreadFromState(useStore.getState(), threadId);
-      if (
-        current?.claudeCacheReview?.messageId === request.message.messageId ||
-        current?.messages.some((message) => message.id === request.message.messageId)
-      ) {
+      if (current?.messages.some((message) => message.id === request.message.messageId)) {
         pending.forget(threadId, request.commandId);
       }
     };
@@ -71,7 +68,6 @@ export function useClaudeContextCompaction({
       thread.session.status === "running" ||
       thread.session.status === "connecting" ||
       thread.session.activeTurnId != null ||
-      thread.claudeCacheReview != null ||
       thread.archivedAt != null
     )
       return false;
@@ -120,10 +116,7 @@ export function useClaudeContextCompaction({
     } catch (error) {
       // A lost RPC response must not turn an accepted native command into a retry.
       const current = getThreadFromState(useStore.getState(), threadId);
-      if (
-        current?.claudeCacheReview?.messageId === messageId ||
-        current?.messages.some((message) => message.id === messageId)
-      ) {
+      if (current?.messages.some((message) => message.id === messageId)) {
         useClaudeCompactionRequests.getState().forget(threadId, command.commandId);
         if (activeThreadIdRef.current === threadId) onAccepted(threadId);
         return true;

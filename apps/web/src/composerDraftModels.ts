@@ -1,3 +1,4 @@
+import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import {
   type ClaudeCodeEffort,
@@ -9,14 +10,12 @@ import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import * as Schema from "effect/Schema";
 
 import {
-  getDefaultModel,
+  normalizeClaudeModelOptions,
   normalizeModelSlug,
-  resolveModelSlugForProvider,
   resolveSelectableModel,
 } from "@glade/shared/provider/model";
 import { resolveAppModelSelection } from "./appSettings";
 import type { ComposerThreadDraftState } from "./composerDraftDomain";
-import { classifyProviderReasoningEffortSupport } from "./lib/codexReasoningEffort";
 
 export const COMPOSER_PROVIDER_KINDS = [
   "codex",
@@ -157,11 +156,15 @@ export function normalizeProviderModelOptions(
             (typeof legacy?.serviceTier === "string" && legacy.serviceTier === "fast")
           ? true
           : undefined;
+  const codexServiceTier = trimStringOrUndefined(codexCandidate?.serviceTier);
   const codex =
-    codexReasoningEffort !== undefined || codexFastMode !== undefined
+    codexReasoningEffort !== undefined ||
+    codexFastMode !== undefined ||
+    codexServiceTier !== undefined
       ? {
           ...(codexReasoningEffort !== undefined ? { reasoningEffort: codexReasoningEffort } : {}),
           ...(codexFastMode !== undefined ? { fastMode: codexFastMode } : {}),
+          ...(codexServiceTier !== undefined ? { serviceTier: codexServiceTier } : {}),
         }
       : undefined;
 
@@ -177,23 +180,13 @@ export function normalizeProviderModelOptions(
       ? claudeCandidate.effort
       : undefined;
   const claudeFastMode = booleanOrUndefined(claudeCandidate?.fastMode);
-  const claudeAutoCompactWindow =
-    trimStringOrUndefined(claudeCandidate?.autoCompactWindow) ??
-    trimStringOrUndefined(claudeCandidate?.contextWindow);
-  const claude =
-    claudeThinking !== undefined ||
-    claudeEffort !== undefined ||
-    claudeFastMode !== undefined ||
-    claudeAutoCompactWindow !== undefined
-      ? {
-          ...(claudeThinking !== undefined ? { thinking: claudeThinking } : {}),
-          ...(claudeEffort !== undefined ? { effort: claudeEffort } : {}),
-          ...(claudeFastMode !== undefined ? { fastMode: claudeFastMode } : {}),
-          ...(claudeAutoCompactWindow !== undefined
-            ? { autoCompactWindow: claudeAutoCompactWindow }
-            : {}),
-        }
-      : undefined;
+  const claudeUltracode = booleanOrUndefined(claudeCandidate?.ultracode);
+  const claude = normalizeClaudeModelOptions(undefined, {
+    ...(claudeThinking !== undefined ? { thinking: claudeThinking } : {}),
+    ...(claudeEffort !== undefined ? { effort: claudeEffort } : {}),
+    ...(claudeFastMode !== undefined ? { fastMode: claudeFastMode } : {}),
+    ...(claudeUltracode !== undefined ? { ultracode: claudeUltracode } : {}),
+  });
 
   if (!codex && !claude) return null;
   return {
@@ -263,33 +256,10 @@ export function reconcileProviderScopedModelSelection(
   if (current.provider !== "codex" && current.provider !== "claudeAgent") {
     return requested;
   }
-  let preservedOptions = current.options;
-  const effort =
-    current.provider === "claudeAgent"
-      ? current.options?.effort
-      : current.provider === "codex"
-        ? current.options?.reasoningEffort
-        : undefined;
-  if (
-    effort !== undefined &&
-    classifyProviderReasoningEffortSupport({
-      provider: requested.provider,
-      model: requested.model,
-      effort,
-    }) !== "supported"
-  ) {
-    if (current.provider === "claudeAgent") {
-      const { effort: _effort, ...remainingOptions } = current.options ?? {};
-      preservedOptions = Object.keys(remainingOptions).length > 0 ? remainingOptions : undefined;
-    } else if (current.provider === "codex") {
-      const { reasoningEffort: _reasoningEffort, ...remainingOptions } = current.options ?? {};
-      preservedOptions = Object.keys(remainingOptions).length > 0 ? remainingOptions : undefined;
-    }
-  }
   return makeModelSelection(
     requested.provider,
     requested.model,
-    preservedOptions,
+    current.options,
     requested.provider === "claudeAgent" ? requested.supportsAutoMode : undefined,
   );
 }
@@ -386,7 +356,7 @@ export function legacyToModelSelectionByProvider(
       const options = modelOptions[provider];
       if (options && Object.keys(options).length > 0) {
         const model =
-          modelSelection?.provider === provider ? modelSelection.model : getDefaultModel(provider);
+          modelSelection?.provider === provider ? modelSelection.model : PROVIDER_DEFAULT_MODEL;
         if (model) {
           result[provider] = makeModelSelection(provider, model, options);
         }
@@ -419,15 +389,14 @@ export function deriveEffectiveComposerModelState(input: {
     }
     return resolveSelectableModel(input.selectedProvider, candidate, availableOptions);
   };
-  const baseModel = resolveModelSlugForProvider(
-    input.selectedProvider,
+  const baseModel = normalizeModelSlug(
     (input.threadModelSelection?.provider === input.selectedProvider
       ? input.threadModelSelection.model
       : null) ??
       (input.projectModelSelection?.provider === input.selectedProvider
         ? input.projectModelSelection.model
         : null) ??
-      getDefaultModel(input.selectedProvider),
+      PROVIDER_DEFAULT_MODEL,
   );
   const persistedThreadModel =
     input.threadModelSelection?.provider === input.selectedProvider
@@ -461,7 +430,7 @@ export function deriveEffectiveComposerModelState(input: {
     input.availableModelOptionsByProvider?.[input.selectedProvider]?.[0]?.slug ??
     selectedDraftModel ??
     baseModel ??
-    getDefaultModel("codex");
+    PROVIDER_DEFAULT_MODEL;
   const modelOptions = deriveEffectiveComposerModelOptions(input);
 
   return {
@@ -502,6 +471,6 @@ export function resolvePreferredComposerModelSelection(input: {
 
   return (
     draftSelection ??
-    persistedSelection ?? { provider: preferredProvider, model: getDefaultModel(preferredProvider) }
+    persistedSelection ?? { provider: preferredProvider, model: PROVIDER_DEFAULT_MODEL }
   );
 }

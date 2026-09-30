@@ -1,12 +1,8 @@
 import { Effect } from "effect";
 import { EventId } from "@glade/contracts/core/baseSchemas";
 import { ClaudeSessionContext, PROVIDER } from "./sessionTypes";
-import { exitPlanCaptureKey, nativeProviderRefs, asCanonicalTurnId } from "./messageContent";
+import { exitPlanCaptureKey, nativeProviderRefs } from "./messageContent";
 import { normalizeClaudeTodoTasks, claudeTrackedTasksPayload } from "../claudeTaskTracker.ts";
-import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
-import { subagentRunForTask, sdkNativeMethod } from "./sdkMetadata";
-import { normalizeClaudeTokenUsage } from "../claudeTokenUsage.ts";
-import { claudeEffectiveContextBudget } from "./modelCapabilities";
 import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 
 export function makeClaudeTaskPresentation(input: {
@@ -135,51 +131,9 @@ export function makeClaudeTaskPresentation(input: {
       });
     });
 
-  const emitTaskUsageSnapshot = (
-    context: ClaudeSessionContext,
-    message: Extract<SDKMessage, { subtype: "task_progress" | "task_notification" }>,
-  ): Effect.Effect<void> =>
-    Effect.gen(function* () {
-      if (!message.usage) {
-        return;
-      }
-      const run = subagentRunForTask(context, message.tool_use_id, message.task_id);
-      const target = run?.context ?? context;
-      if (target.tokenUsageState !== "current") {
-        return;
-      }
-      const normalizedUsage = normalizeClaudeTokenUsage(
-        message.usage,
-        claudeEffectiveContextBudget(target),
-      );
-      if (!normalizedUsage) {
-        return;
-      }
-      target.lastKnownTokenUsage = normalizedUsage;
-      const stamp = yield* makeEventStamp();
-      yield* offerRuntimeEvent(target, {
-        type: "thread.token-usage.updated",
-        eventId: stamp.eventId,
-        provider: PROVIDER,
-        createdAt: stamp.createdAt,
-        threadId: target.session.threadId,
-        ...(target.turnState ? { turnId: asCanonicalTurnId(target.turnState.turnId) } : {}),
-        payload: {
-          usage: normalizedUsage,
-        },
-        providerRefs: nativeProviderRefs(target),
-        raw: {
-          source: "claude.sdk.message",
-          method: sdkNativeMethod(message),
-          messageType: `${message.type}:${message.subtype}`,
-          payload: message,
-        },
-      });
-    });
   return {
     emitTodoTasksUpdated,
     emitTrackedTasksUpdated,
     emitProposedPlanCompleted,
-    emitTaskUsageSnapshot,
   };
 }

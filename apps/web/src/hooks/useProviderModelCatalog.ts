@@ -40,7 +40,7 @@ export function useProviderModelCatalog(input: {
   prefetchProviders?: ReadonlyArray<ProviderKind>;
   agentDiscoveryPolicy?: "selected" | "eager-core";
 }): ProviderModelCatalog {
-  const { selectedProvider, discoveryEnabled, modelHintByProvider } = input;
+  const { selectedProvider, discoveryEnabled, modelHintByProvider, cwd } = input;
   const { settings, serverSettings } = useAppSettings();
   const hiddenProviderSet = useMemo(
     () => new Set(settings.hiddenProviders),
@@ -61,10 +61,13 @@ export function useProviderModelCatalog(input: {
     claudeAgent: providerModelsQueryOptions({
       provider: "claudeAgent",
       binaryPath: settings.claudeBinaryPath || null,
+      cwd: cwd ?? null,
       enabled: shouldDiscoverProvider("claudeAgent"),
     }),
     codex: providerModelsQueryOptions({
       provider: "codex",
+      binaryPath: settings.codexBinaryPath || null,
+      cwd: cwd ?? null,
       enabled: shouldDiscoverProvider("codex"),
     }),
   } as const;
@@ -88,12 +91,16 @@ export function useProviderModelCatalog(input: {
   const claudeAgentsQuery = useQuery(
     providerAgentsQueryOptions({
       provider: "claudeAgent",
+      binaryPath: settings.claudeBinaryPath || null,
+      cwd: cwd ?? null,
       enabled: shouldDiscoverProvider("claudeAgent", input.agentDiscoveryPolicy === "eager-core"),
     }),
   );
   const codexAgentsQuery = useQuery(
     providerAgentsQueryOptions({
       provider: "codex",
+      binaryPath: settings.codexBinaryPath || null,
+      cwd: cwd ?? null,
       enabled: shouldDiscoverProvider("codex", input.agentDiscoveryPolicy === "eager-core"),
     }),
   );
@@ -150,17 +157,24 @@ export function useProviderModelCatalog(input: {
     [selectedDynamicAgents],
   );
   const discoveryErrorsByProvider = useMemo<ProviderModelCatalog["discoveryErrorsByProvider"]>(
-    () => ({ claudeAgent: claudeQuery.data?.error, codex: codexQuery.data?.error }),
-    [claudeQuery.data?.error, codexQuery.data?.error],
+    () => ({
+      claudeAgent: claudeQuery.data?.error ?? claudeQuery.error?.message,
+      codex: codexQuery.data?.error ?? codexQuery.error?.message,
+    }),
+    [claudeQuery.data?.error, codexQuery.data?.error, claudeQuery.error, codexQuery.error],
   );
-  const selectedProviderRuntimeModelDiscoveryPending = false;
+  const selectedProviderRuntimeModelDiscoveryPending =
+    queries[selectedProvider].data === undefined && queries[selectedProvider].isFetching;
   const selectedQuery = queries[selectedProvider];
   const selectedProviderModelsLoading =
     selectedQuery.isLoading || (selectedQuery.isFetching && selectedQuery.data === undefined);
 
   return {
     modelOptionsByProvider,
-    loadingModelProviders: {},
+    loadingModelProviders: {
+      codex: codexQuery.isFetching && codexQuery.data === undefined,
+      claudeAgent: claudeQuery.isFetching && claudeQuery.data === undefined,
+    },
     runtimeModelsByProvider,
     selectedRuntimeModel,
     selectedRuntimeAgents,

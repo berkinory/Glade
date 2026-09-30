@@ -1,4 +1,4 @@
-import { Effect, Cache, Ref, Queue, Deferred, Stream, Layer } from "effect";
+import { Effect, Cache, Queue, Deferred, Stream, Layer } from "effect";
 import {
   ProviderCommandReactorConfig,
   ProviderCommandReactorLiveOptions,
@@ -12,7 +12,6 @@ import { ComputerService } from "../../computer/Services/ComputerService";
 import { AgentGatewaySessionRegistry } from "../../agentGateway/Services/AgentGatewaySessionRegistry";
 import { ProviderHealth } from "../../provider/Services/ProviderHealth.ts";
 import { ProjectionPendingInteractionRepository } from "../../persistence/Services/ProjectionPendingInteractions.ts";
-import { ProviderRuntimeEventRepository } from "../../persistence/Services/ProviderRuntimeEvents.ts";
 import { CheckpointStore } from "../../checkpointing/Services/CheckpointStore.ts";
 import { GitCore } from "../../git/Services/GitCore.ts";
 import { AgentGatewayOperationRepository } from "../../agentGateway/Services/AgentGatewayOperationRepository.ts";
@@ -23,13 +22,12 @@ import { ServerConfig } from "../../server/config.ts";
 import {
   HANDLED_TURN_START_KEY_MAX,
   HANDLED_TURN_START_KEY_TTL,
-  ProviderQueueDrainEvent,
 } from "../providerCommands/deliveryClaims";
 import {
   type ProviderCommandReactorShape,
   ProviderCommandReactor,
 } from "../Services/ProviderCommandReactor.ts";
-import { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { ThreadSessionSettings } from "../Services/ThreadSessionSettings.ts";
 import { ThreadSessionSettingsLive } from "./ThreadSessionSettings.ts";
 import { QueuedDispatchState } from "../Services/QueuedDispatchState.ts";
@@ -47,7 +45,6 @@ import { PROVIDER_COMMAND_EVENT_TIMEOUT } from "../providerCommands/providerCall
 import { OrchestrationEventDeliveryRepositoryLive } from "../../persistence/Layers/OrchestrationEventDeliveries.ts";
 import { QueuedTurnPromotionRepositoryLive } from "../../persistence/Layers/QueuedTurnPromotions.ts";
 import { ProjectionPendingInteractionRepositoryLive } from "../../persistence/Layers/ProjectionPendingInteractions.ts";
-import { ProviderRuntimeEventRepositoryLive } from "../../persistence/Layers/ProviderRuntimeEvents.ts";
 import {
   BlockedGoalContinuation,
   PendingInterruptEscalation,
@@ -62,7 +59,6 @@ import { makeProviderTurnDispatch } from "../providerCommands/turnDispatch";
 import { makeProviderConversationNaming } from "../providerCommands/conversationNaming";
 import { makeProviderTurnStart } from "../providerCommands/turnStart";
 import { makeProviderDeliveryAccess } from "../providerCommands/deliveryAccess";
-import { makeProviderCompaction } from "../providerCommands/compaction";
 import { makeProviderGoalContinuation } from "../providerCommands/goalContinuation";
 import { makeProviderDomainEvents } from "../providerCommands/domainEvents";
 import { makeProviderIntentSource } from "../providerCommands/intentSource";
@@ -87,8 +83,6 @@ const make = Effect.gen(function* () {
   const providerHealth = yield* ProviderHealth;
 
   const pendingInteractions = yield* ProjectionPendingInteractionRepository;
-
-  const runtimeEventRepository = yield* ProviderRuntimeEventRepository;
 
   const checkpointStore = yield* CheckpointStore;
 
@@ -143,14 +137,6 @@ const make = Effect.gen(function* () {
 
   const suppressContextBootstrapOnNextStartThreadIds = new Set<string>();
 
-  const earlyClaudeCompactionTerminals = new Map<ThreadId, ProviderQueueDrainEvent>();
-
-  const pendingClaudeCompactionIngestion = new Set<ThreadId>();
-
-  const startupClaudeCompactionTurns = new Set<TurnId>();
-
-  const recoveringClaudeCompactions = yield* Ref.make(true);
-
   const pendingTitleGenerations = new Map<
     ThreadId,
     Deferred.Deferred<OrchestrationRegenerateThreadTitleResult, TaggedFailure>
@@ -160,8 +146,6 @@ const make = Effect.gen(function* () {
 
   const {
     setThreadSession,
-    isClaudeReviewAuthorized,
-    setClaudeCacheReview,
     pauseActiveThreadGoal,
     appendProviderFailureActivity,
     setThreadSessionError,
@@ -259,7 +243,6 @@ const make = Effect.gen(function* () {
     settleInterruptedProviderTurn,
     providerService,
     queuedTurnPromotions,
-    setClaudeCacheReview,
     threadSessionSettings,
     queuedDispatchState,
     clearPendingContextBootstraps,
@@ -277,10 +260,6 @@ const make = Effect.gen(function* () {
     computerService,
     threadSessionSettings,
     ensureSessionForThread,
-    isClaudeReviewAuthorized,
-    setClaudeCacheReview,
-    pauseActiveThreadGoal,
-    appendProviderFailureActivity,
     gatewayOperations,
     pendingInterruptEscalations,
     freshSessionContextBootstrapThreadIds,
@@ -310,60 +289,32 @@ const make = Effect.gen(function* () {
     textGeneration,
     pendingTitleGenerations,
   });
-  const { processTurnStartRequestedWithoutLease, processTurnQueued, processTurnStartRequested } =
-    makeProviderTurnStart({
-      projectionAccess,
-      queuedDispatchState,
-      drainQueuedTurnsForSession,
-      hasQueuedTurnStart,
-      hasHandledTurnStartRecently,
-      enqueueQueuedTurnStart,
-      appendProviderFailureActivity,
-      computerService,
-      gatewaySessions,
-      threadSessionSettings,
-      orchestrationEngine,
-      interruptProviderTurn,
-      setThreadSession,
-      serverConfig,
-      managedAttachments,
-      maybeGenerateAndRenameWorktreeBranchForFirstTurn,
-      maybeGenerateAndRenameThreadTitleForFirstTurn,
-      dispatchTurnForThread,
-      providerService,
-      setThreadSessionError,
-      setClaudeCacheReview,
-    });
+  const { processTurnQueued, processTurnStartRequested } = makeProviderTurnStart({
+    projectionAccess,
+    queuedDispatchState,
+    drainQueuedTurnsForSession,
+    hasQueuedTurnStart,
+    hasHandledTurnStartRecently,
+    enqueueQueuedTurnStart,
+    appendProviderFailureActivity,
+    computerService,
+    gatewaySessions,
+    threadSessionSettings,
+    orchestrationEngine,
+    interruptProviderTurn,
+    setThreadSession,
+    serverConfig,
+    managedAttachments,
+    maybeGenerateAndRenameWorktreeBranchForFirstTurn,
+    maybeGenerateAndRenameThreadTitleForFirstTurn,
+    dispatchTurnForThread,
+    providerService,
+    setThreadSessionError,
+  });
   const { reconcileDelivery, drain, listBlockingDeliveries } = makeProviderDeliveryAccess({
     orchestrationEngine,
     deliveryRepository,
     deliveryGate,
-  });
-  const {
-    processClaudeCompactionTerminal,
-    processClaudeCacheResponse,
-    readClaudeCompactionTerminal,
-    readClaudeCompactionAttempt,
-    recoverClaudeCompactions,
-  } = makeProviderCompaction({
-    projectionAccess,
-    runtimeEventRepository,
-    readOrchestrationEventAtSequence,
-    orchestrationEngine,
-    deliveryRepository,
-    pendingClaudeCompactionIngestion,
-    setClaudeCacheReview,
-    deliveryGate,
-    earlyClaudeCompactionTerminals,
-    reconcileDelivery,
-    drainQueuedTurnsForSession,
-    providerService,
-    pendingInteractions,
-    ensureSessionForThread,
-    isClaudeReviewAuthorized,
-    recoveringClaudeCompactions,
-    startupClaudeCompactionTurns,
-    processTurnStartRequestedWithoutLease,
   });
   const {
     processGoalContinuationRequested,
@@ -392,7 +343,6 @@ const make = Effect.gen(function* () {
     processQueueDrainEventSafely,
   } = makeProviderDomainEvents({
     projectionAccess,
-    processClaudeCompactionTerminal,
     observePendingContextBootstrapTerminalEvent,
     queuedDispatchState,
     drainQueuedTurnsForSession,
@@ -405,7 +355,6 @@ const make = Effect.gen(function* () {
     ensureSessionForThread,
     processTurnQueued,
     processTurnStartRequested,
-    processClaudeCacheResponse,
     processGoalContinuationRequested,
     processTurnInterruptRequested,
     processTaskStopRequested,
@@ -425,10 +374,8 @@ const make = Effect.gen(function* () {
     orchestrationEngine,
     deliveryRepository,
     deliveryGate,
-    setClaudeCacheReview,
     appendProviderFailureActivity,
     setThreadSessionError,
-    readClaudeCompactionTerminal,
     commandEventTimeout,
     processDomainEvent,
     surfaceTimedOutTurnStart,
@@ -436,9 +383,6 @@ const make = Effect.gen(function* () {
     gatewayOperations,
     processDomainEventSafely,
     recoverQueuedTurnAfterDeliverySafely,
-    earlyClaudeCompactionTerminals,
-    readClaudeCompactionAttempt,
-    processClaudeCompactionTerminal,
     readOrchestrationEventAtSequence,
     setThreadSession,
   });
@@ -455,16 +399,6 @@ const make = Effect.gen(function* () {
     Effect.andThen(
       Effect.all([
         startProviderIntentSource.pipe(
-          Effect.andThen(
-            recoverClaudeCompactions.pipe(
-              Effect.ensuring(
-                Ref.modify(recoveringClaudeCompactions, () => {
-                  startupClaudeCompactionTurns.clear();
-                  return [undefined, false] as const;
-                }),
-              ),
-            ),
-          ),
           Effect.andThen(recoverQueuedTurnPromotions),
           Effect.andThen(recoverActiveThreadGoals),
         ),
@@ -500,7 +434,6 @@ export const makeProviderCommandReactorLive = (options?: ProviderCommandReactorL
     Layer.provideMerge(OrchestrationEventDeliveryRepositoryLive),
     Layer.provideMerge(QueuedTurnPromotionRepositoryLive),
     Layer.provideMerge(ProjectionPendingInteractionRepositoryLive),
-    Layer.provideMerge(ProviderRuntimeEventRepositoryLive),
     Layer.provide(
       Layer.fresh(
         Layer.mergeAll(

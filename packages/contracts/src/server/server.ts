@@ -84,7 +84,12 @@ export type ServerConfigIssue = typeof ServerConfigIssue.Type;
 
 const ServerConfigIssues = Schema.Array(ServerConfigIssue);
 
-export const ServerProviderStatusState = Schema.Literals(["ready", "warning", "error"]);
+export const ServerProviderStatusState = Schema.Literals([
+  "ready",
+  "warning",
+  "error",
+  "update-required",
+]);
 export type ServerProviderStatusState = typeof ServerProviderStatusState.Type;
 
 export const ServerProviderAuthStatus = Schema.Literals([
@@ -163,6 +168,7 @@ export type ServerListWorktreesResult = typeof ServerListWorktreesResult.Type;
 
 export const ServerProviderUsageLimit = Schema.Struct({
   window: TrimmedNonEmptyString,
+  limitId: Schema.optional(TrimmedNonEmptyString),
   usedPercent: Schema.optional(
     Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)).check(Schema.isLessThanOrEqualTo(100)),
   ),

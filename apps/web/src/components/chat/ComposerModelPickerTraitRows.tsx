@@ -8,12 +8,7 @@ import { MenuRadioGroup, MenuRadioItem, MenuSub, MenuSubTrigger } from "../ui/me
 import { ComposerEffortSliderCard } from "./ComposerEffortSliderCard";
 import { ComposerPickerMenuSubPopup } from "./ComposerPickerMenuPopup";
 import { COMPOSER_MUTED_ACCENT_TEXT_CLASS_NAME } from "./composerPickerStyles";
-import {
-  getComposerTraitSelection,
-  planComposerEffortChange,
-  resolveComposerTraitStatusLabel,
-  supportsComposerFastModeControl,
-} from "./composerTraits";
+import { getComposerTraitSelection } from "./composerTraits";
 import { useComposerTraitCommit } from "./useComposerTraitCommit";
 
 export type ComposerEffortControl = "menu" | "slider";
@@ -77,83 +72,52 @@ export function ComposerModelPickerTraitRows(props: {
     props.runtimeModel,
   );
   const commitTrait = useComposerTraitCommit({ threadId, provider, model, modelOptions });
-  const contextWindowTraitId = selection.contextWindowDescriptor?.id ?? "contextWindow";
-  const contextWindowValue = selection.contextWindow ?? selection.defaultContextWindow ?? "";
-
   const usesEffortSlider = props.effortControl === "slider" && selection.effortLevels.length > 0;
 
   const rows: ReactNode[] = [];
-  if (selection.thinkingEnabled !== null) {
+  for (const descriptor of selection.descriptors) {
+    if (
+      usesEffortSlider &&
+      (descriptor === selection.primarySelectDescriptor || descriptor.id === "fastMode")
+    )
+      continue;
+    const options =
+      descriptor.type === "select"
+        ? [
+            { value: "__inherit__", label: "Provider default" },
+            ...descriptor.options.map((option) => ({ value: option.id, label: option.label })),
+          ]
+        : [
+            { value: "__inherit__", label: "Provider default" },
+            { value: "on", label: "On" },
+            { value: "off", label: "Off" },
+          ];
+    const current = modelOptions?.[descriptor.id as keyof ProviderOptions];
+    const value =
+      typeof current === "boolean"
+        ? current
+          ? "on"
+          : "off"
+        : typeof current === "string"
+          ? current
+          : "__inherit__";
     rows.push(
       <TraitRow
-        key="thinking"
-        label="Thinking"
-        value={selection.thinkingEnabled ? "on" : "off"}
-        valueLabel={selection.thinkingEnabled ? "On" : "Off"}
-        options={[
-          { value: "on", label: "On", isDefault: true },
-          { value: "off", label: "Off" },
-        ]}
-        onValueChange={(value) => commitTrait({ thinking: value === "on" })}
-      />,
-    );
-  }
-  if (selection.contextWindowOptions.length > 1) {
-    rows.push(
-      <TraitRow
-        key="context"
-        label={selection.contextWindowDescriptor?.label ?? "Context"}
-        value={contextWindowValue}
-        valueLabel={
-          selection.contextWindowOptions.find((option) => option.value === contextWindowValue)
-            ?.label ?? contextWindowValue
+        key={descriptor.id}
+        label={descriptor.label}
+        value={value}
+        valueLabel={options.find((option) => option.value === value)?.label ?? value}
+        options={options}
+        onValueChange={(value) =>
+          commitTrait({
+            [descriptor.id]:
+              value === "__inherit__"
+                ? undefined
+                : descriptor.type === "boolean"
+                  ? value === "on"
+                  : value,
+          })
         }
-        options={selection.contextWindowOptions.map((option) => ({
-          value: option.value,
-          label: option.label,
-          isDefault: option.value === selection.defaultContextWindow,
-        }))}
-        onValueChange={(value) => commitTrait({ [contextWindowTraitId]: value })}
-      />,
-    );
-  }
-  if (selection.effortLevels.length > 0 && !usesEffortSlider) {
-    rows.push(
-      <TraitRow
-        key="effort"
-        label="Effort"
-        value={selection.effort ?? ""}
-        valueLabel={resolveComposerTraitStatusLabel(selection) ?? ""}
-        disabled={selection.ultrathinkPromptControlled}
-        options={selection.effortLevels.map((option) => ({
-          value: option.value,
-          label: option.label,
-          isDefault: option.value === selection.defaultEffort,
-        }))}
-        onValueChange={(value) => {
-          const plan = planComposerEffortChange({ provider, selection, prompt, value });
-          if (!plan) return;
-          if (plan.kind === "prompt") {
-            props.onPromptChange(plan.prompt);
-            return;
-          }
-          commitTrait(plan.patch);
-        }}
-      />,
-    );
-  }
-  if (supportsComposerFastModeControl(selection) && !usesEffortSlider) {
-    rows.push(
-      <TraitRow
-        key="speed"
-        label="Speed"
-        value={selection.fastModeEnabled ? "on" : "off"}
-        valueLabel={selection.fastModeEnabled ? "Fast" : "Standard"}
-        options={[
-          { value: "off", label: "Standard", isDefault: true },
-          { value: "on", label: "Fast" },
-        ]}
-        onValueChange={(value) => commitTrait({ fastMode: value === "on" })}
       />,
     );
   }

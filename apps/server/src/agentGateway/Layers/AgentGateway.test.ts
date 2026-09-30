@@ -22,7 +22,7 @@ import {
   ThreadId,
   TurnId,
 } from "@glade/contracts/core/baseSchemas";
-import { DEFAULT_MODEL_BY_PROVIDER } from "@glade/contracts/provider/model";
+import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import { isTemporaryWorktreeBranch } from "@glade/shared/git/git";
 
 import { Cause, Deferred, Effect, Exit, Fiber, Layer, Option, Stream } from "effect";
@@ -151,7 +151,7 @@ const listDefaultTestModels: (typeof ProviderDiscoveryService)["Service"]["listM
 }) => {
   const modelsByProvider: Record<string, ReadonlyArray<ProviderModelDescriptor>> = {
     codex: [
-      { slug: DEFAULT_MODEL_BY_PROVIDER.codex, name: "GPT-6 Astra" },
+      { slug: PROVIDER_DEFAULT_MODEL, name: "GPT-6 Astra" },
       { slug: "gpt-5.5", name: "GPT-5.5" },
       {
         slug: "gpt-5.6-terra",
@@ -1481,7 +1481,7 @@ describe("AgentGateway", () => {
         assert.strictEqual("parentThreadId" in create, false);
         assert.strictEqual("subagentNickname" in create, false);
         assert.equal(create.modelSelection.provider, "claudeAgent");
-        assert.equal(create.modelSelection.model, DEFAULT_MODEL_BY_PROVIDER.claudeAgent);
+        assert.equal(create.modelSelection.model, PROVIDER_DEFAULT_MODEL);
 
         assert.equal(create.projectId, PROJECT_ID);
         assert.equal(create.runtimeMode, "approval-required");
@@ -2825,7 +2825,7 @@ describe("AgentGateway", () => {
           completionPolicy: { type: "none" },
           target: {
             provider: "codex",
-            model: DEFAULT_MODEL_BY_PROVIDER.codex,
+            model: PROVIDER_DEFAULT_MODEL,
             options: { reasoningEffort: "ultra" },
           },
         },

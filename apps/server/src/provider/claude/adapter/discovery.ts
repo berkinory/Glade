@@ -4,6 +4,8 @@ import { Effect, Duration, Schema } from "effect";
 import type { ClaudeProcessOwnershipShape } from "../../Services/ClaudeProcessOwnership.ts";
 import type {
   SDKUserMessage,
+  ModelInfo,
+  AgentInfo,
   Options as ClaudeQueryOptions,
   PermissionMode,
 } from "@anthropic-ai/claude-agent-sdk";
@@ -27,6 +29,9 @@ import { CLAUDE_SETTING_SOURCES } from "./promptPolicy";
 import { mapSupportedCommands, resolveClaudeArtifactsState } from "./commandPresentation";
 import { type ClaudeAdapterShape } from "../../Services/ClaudeAdapter.ts";
 import { withClaudeArtifactOptIn } from "../claudeProcessEnv.ts";
+import { createClaudeSkillBridge, isSharedClaudeSkill } from "../claudeSkillBridge.ts";
+import { discoverSkillsCatalog } from "../../core/skillsCatalog.ts";
+import type { ProviderSkillDescriptor } from "@glade/contracts/provider/providerDiscovery";
 
 export function makeClaudeDiscovery(input: {
   readonly runSdkPromise: <A, E>(
@@ -60,34 +65,38 @@ export function makeClaudeDiscovery(input: {
 
   const verifyClaudeAutoModelSupport = (input: {
     readonly queryRuntime: ClaudeQueryRuntime;
+    readonly discoveredModels?: ReadonlyArray<ModelInfo>;
     readonly selectedModel: string | undefined;
     readonly apiModelId: string | undefined;
     readonly operation: "startSession" | "sendTurn";
   }) =>
     Effect.gen(function* () {
+      if (input.apiModelId === undefined) return;
       const requestedModel = input.selectedModel ?? input.apiModelId ?? "selected model";
-      const discoveredModels = yield* Effect.tryPromise({
-        try: () => input.queryRuntime.supportedModels(),
-        catch: (cause) =>
-          new ProviderAdapterValidationError({
-            provider: PROVIDER,
-            operation: input.operation,
-            issue:
-              `Claude model capability discovery failed while verifying Auto mode support for "${requestedModel}": ` +
-              toMessage(cause, "unknown discovery error"),
-          }),
-      }).pipe(
-        Effect.timeout(Duration.seconds(input.operation === "startSession" ? 55 : 5)),
-        Effect.mapError((cause) =>
-          Schema.is(ProviderAdapterValidationError)(cause)
-            ? cause
-            : new ProviderAdapterValidationError({
-                provider: PROVIDER,
-                operation: input.operation,
-                issue: `Could not verify that Claude model "${requestedModel}" supports Auto mode before the model discovery timeout.`,
-              }),
-        ),
-      );
+      const discoveredModels =
+        input.discoveredModels ??
+        (yield* Effect.tryPromise({
+          try: () => input.queryRuntime.supportedModels(),
+          catch: (cause) =>
+            new ProviderAdapterValidationError({
+              provider: PROVIDER,
+              operation: input.operation,
+              issue:
+                `Claude model capability discovery failed while verifying Auto mode support for "${requestedModel}": ` +
+                toMessage(cause, "unknown discovery error"),
+            }),
+        }).pipe(
+          Effect.timeout(Duration.seconds(input.operation === "startSession" ? 55 : 5)),
+          Effect.mapError((cause) =>
+            Schema.is(ProviderAdapterValidationError)(cause)
+              ? cause
+              : new ProviderAdapterValidationError({
+                  provider: PROVIDER,
+                  operation: input.operation,
+                  issue: `Could not verify that Claude model "${requestedModel}" supports Auto mode before the model discovery timeout.`,
+                }),
+          ),
+        ));
       cachedModels = {
         models: discoveredModels.map(mapClaudeModelInfo),
         source: "sdk",
@@ -122,8 +131,19 @@ export function makeClaudeDiscovery(input: {
       }
     });
 
-  const observeSessionModels = (queryRuntime: ClaudeQueryRuntime): void => {
+  const observeSessionModels = (
+    queryRuntime: ClaudeQueryRuntime,
+    initializedModels?: ReadonlyArray<ModelInfo>,
+  ): void => {
     if (!cachedModels) {
+      if (initializedModels) {
+        cachedModels = {
+          models: initializedModels.map(mapClaudeModelInfo),
+          source: "sdk",
+          cached: false,
+        };
+        return;
+      }
       queryRuntime
         .supportedModels()
         .then((models) => {
@@ -137,8 +157,24 @@ export function makeClaudeDiscovery(input: {
     }
   };
 
-  const observeSessionAgents = (queryRuntime: ClaudeQueryRuntime): void => {
+  const observeSessionAgents = (
+    queryRuntime: ClaudeQueryRuntime,
+    initializedAgents?: ReadonlyArray<AgentInfo>,
+  ): void => {
     if (!cachedAgents) {
+      if (initializedAgents) {
+        cachedAgents = {
+          agents: initializedAgents.map((agent) => ({
+            name: agent.name,
+            displayName: agent.name,
+            ...(agent.description ? { description: agent.description } : {}),
+            ...(agent.model ? { model: agent.model } : {}),
+          })),
+          source: "sdk",
+          cached: false,
+        };
+        return;
+      }
       queryRuntime
         .supportedAgents()
         .then((agents) => {
@@ -174,6 +210,7 @@ export function makeClaudeDiscovery(input: {
     env: NodeJS.ProcessEnv,
     binaryPath: string,
     discover: (queryRuntime: ClaudeQueryRuntime) => Promise<T>,
+    extraOptions?: Pick<ClaudeQueryOptions, "plugins" | "skills">,
   ): Promise<T> {
     // Never spawn another discovery process until every previously unproven process tree has been
     // reaped successfully.
@@ -193,6 +230,7 @@ export function makeClaudeDiscovery(input: {
           persistSession: false,
           env,
           spawnClaudeCodeProcess: bindClaudeProcessOwner(processOwner),
+          ...extraOptions,
         },
       });
       const queryRuntime = tempQuery;
@@ -236,7 +274,7 @@ export function makeClaudeDiscovery(input: {
     binaryPath: string,
   ): Promise<ProviderListModelsResult> =>
     discoverViaTemporaryProcess(cwd, env, binaryPath, async (queryRuntime) => ({
-      models: (await queryRuntime.supportedModels()).map(mapClaudeModelInfo),
+      models: (await queryRuntime.initializationResult()).models.map(mapClaudeModelInfo),
       source: "sdk",
       cached: false,
     }));
@@ -340,7 +378,7 @@ export function makeClaudeDiscovery(input: {
         if (!context.stopped && context.query) {
           const result = yield* Effect.tryPromise({
             try: async () => ({
-              models: (await context.query.supportedModels()).map(mapClaudeModelInfo),
+              models: context.availableModels.map(mapClaudeModelInfo),
               source: "sdk",
               cached: false,
             }),
@@ -416,18 +454,78 @@ export function makeClaudeDiscovery(input: {
     });
 
   const listSkills: NonNullable<ClaudeAdapterShape["listSkills"]> = (
-    _input: ProviderListSkillsInput,
+    request: ProviderListSkillsInput,
   ) =>
-    Effect.succeed({
-      skills: [],
-      source: "unsupported",
-      cached: false,
-    } satisfies ProviderListSkillsResult);
+    Effect.gen(function* () {
+      const catalog = yield* Effect.tryPromise({
+        try: () =>
+          discoverSkillsCatalog({
+            cwd: request.cwd,
+            homeDir: serverConfig.homeDir,
+            gladeBaseDir: serverConfig.baseDir,
+            provider: PROVIDER,
+            includeDuplicateOrigins: true,
+            ...(request.forceReload !== undefined ? { forceReload: request.forceReload } : {}),
+          }),
+        catch: (cause) => toRequestError(CLAUDE_DISCOVERY_THREAD_ID, "listSkills", cause),
+      });
+      const session = request.threadId
+        ? sessions.get(ThreadId.makeUnsafe(request.threadId))
+        : [...sessions.list()].find(
+            (candidate) => !candidate.stopped && candidate.startInput.cwd === request.cwd,
+          );
+      let names: ReadonlySet<string>;
+      if (session && !session.stopped) {
+        const commands = yield* Effect.tryPromise({
+          try: () => session.query.supportedCommands(),
+          catch: (cause) => toRequestError(session.session.threadId, "listSkills", cause),
+        });
+        names = session.initSkillNames ?? new Set(commands.map((command) => command.name));
+      } else {
+        const bridge = yield* Effect.tryPromise({
+          try: () =>
+            createClaudeSkillBridge({
+              cwd: request.cwd,
+              homeDir: serverConfig.homeDir,
+              baseDir: serverConfig.baseDir,
+              stateDir: serverConfig.stateDir,
+            }),
+          catch: (cause) => toRequestError(CLAUDE_DISCOVERY_THREAD_ID, "listSkills", cause),
+        });
+        const env = yield* resolveClaudeSdkEnv;
+        names = yield* Effect.tryPromise({
+          try: () =>
+            discoverViaTemporaryProcess(
+              request.cwd,
+              env,
+              "claude",
+              async (query) =>
+                new Set((await query.supportedCommands()).map((command) => command.name)),
+              {
+                ...(bridge.plugin ? { plugins: [bridge.plugin] } : {}),
+                skills: [...bridge.enabledSkills],
+              },
+            ),
+          catch: (cause) => toRequestError(CLAUDE_DISCOVERY_THREAD_ID, "listSkills", cause),
+        }).pipe(Effect.ensuring(Effect.promise(bridge.cleanup)));
+      }
+      const skills: ProviderSkillDescriptor[] = [];
+      const seen = new Set<string>();
+      for (const skill of catalog) {
+        const shared = isSharedClaudeSkill(skill.path, serverConfig.baseDir);
+        const candidates = shared ? [`glade-shared-skills:${skill.name}`] : [skill.name];
+        const nativeName = candidates.find((name) => names.has(name));
+        if (!nativeName || seen.has(nativeName.toLowerCase())) continue;
+        seen.add(nativeName.toLowerCase());
+        skills.push({ ...skill, name: nativeName });
+      }
+      return { skills, source: "sdk", cached: false } satisfies ProviderListSkillsResult;
+    });
 
   const composerCapabilities: ProviderComposerCapabilities = {
     provider: PROVIDER,
-    supportsSkillMentions: false,
-    supportsSkillDiscovery: false,
+    supportsSkillMentions: true,
+    supportsSkillDiscovery: true,
     supportsNativeSlashCommandDiscovery: true,
     supportsPluginMentions: false,
     supportsPluginDiscovery: false,

@@ -1,7 +1,4 @@
-import {
-  DEFAULT_GIT_TEXT_GENERATION_MODEL,
-  PROVIDER_DISPLAY_NAMES,
-} from "@glade/contracts/provider/model";
+import { PROVIDER_DEFAULT_MODEL, PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { Effect, Layer } from "effect";
@@ -21,7 +18,7 @@ const makeProviderTextGeneration = Effect.gen(function* () {
   const prepareCommitInput = (input: TextGen.CommitMessageGenerationInput) =>
     Effect.gen(function* () {
       const provider = input.modelSelection?.provider ?? "codex";
-      const model = input.modelSelection?.model ?? input.model ?? DEFAULT_GIT_TEXT_GENERATION_MODEL;
+      const model = input.modelSelection?.model ?? input.model ?? PROVIDER_DEFAULT_MODEL;
       const startup = input.providerOptions?.[provider];
       const catalog = yield* discovery
         .listModels({

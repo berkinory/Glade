@@ -43,9 +43,7 @@ export function decideTurnCommand({
     {
       type:
         | "thread.turn.start"
-        | "thread.claude-cache.set"
-        | "thread.claude-cache.compacted"
-        | "thread.claude-cache.respond"
+        | "thread.legacy-cache.abandon"
         | "thread.turn.dispatch-queued"
         | "thread.turn.interrupt"
         | "thread.task.stop"
@@ -289,70 +287,9 @@ export function decideTurnCommand({
         }
         return [userMessageEvent, queuedEvent];
       }
-      case "thread.claude-cache.set": {
-        if (command.hold) {
-          const target = readModel.threads.find((thread) => thread.id === command.threadId);
-          if (
-            !target ||
-            target.deletedAt != null ||
-            target.archivedAt != null ||
-            command.hold.session.threadId !== command.threadId ||
-            command.hold.session.status !== "ready" ||
-            (command.review !== null &&
-              (command.review.status !== "pending" ||
-                !target.messages.some(
-                  (message) => message.id === command.review?.messageId && message.role === "user",
-                )))
-          )
-            return [];
-        }
+      case "thread.legacy-cache.abandon": {
         const thread = yield* requireThread({ readModel, command, threadId: command.threadId });
-        if (
-          command.expectedReviewId !== undefined &&
-          (thread.claudeCacheReview?.reviewId ?? null) !== command.expectedReviewId
-        )
-          return [];
-        const reviewEvent: Omit<OrchestrationEvent, "sequence"> = {
-          ...withEventBase({
-            aggregateKind: "thread",
-            aggregateId: command.threadId,
-            occurredAt: command.createdAt,
-            commandId: command.commandId,
-          }),
-          type: "thread.claude-cache-set",
-          payload: {
-            threadId: command.threadId,
-            review: command.review,
-            updatedAt: command.createdAt,
-          },
-        };
-        return command.hold
-          ? [
-              reviewEvent,
-              {
-                ...withEventBase({
-                  aggregateKind: "thread",
-                  aggregateId: command.threadId,
-                  occurredAt: command.createdAt,
-                  commandId: command.commandId,
-                }),
-                type: "thread.session-set",
-                payload: { threadId: command.threadId, session: command.hold.session },
-              },
-            ]
-          : reviewEvent;
-      }
-      case "thread.claude-cache.compacted": {
-        const thread = yield* requireThread({ readModel, command, threadId: command.threadId });
-        const review = thread.claudeCacheReview;
-        if (
-          !review ||
-          review.reviewId !== command.reviewId ||
-          (review.status !== "compacting" && review.status !== "uncertain") ||
-          review.compactionTurnId !== command.turnId ||
-          thread.archivedAt != null
-        )
-          return [];
+        if (thread.claudeCacheReview?.reviewId !== command.reviewId) return [];
         const base = {
           aggregateKind: "thread" as const,
           aggregateId: command.threadId,
@@ -365,55 +302,16 @@ export function decideTurnCommand({
             type: "thread.claude-cache-set",
             payload: {
               threadId: command.threadId,
-              review: { ...review, status: "responding" as const },
+              review: null,
               updatedAt: command.createdAt,
             },
           },
           {
             ...withEventBase(base),
-            type: "thread.claude-cache-response-requested",
+            type: "thread.legacy-cache-abandoned",
             payload: {
               threadId: command.threadId,
-              review,
-              decision: "continue" as const,
-              createdAt: command.createdAt,
-            },
-          },
-        ];
-      }
-      case "thread.claude-cache.respond": {
-        const thread = yield* requireThread({ readModel, command, threadId: command.threadId });
-        const review = thread.claudeCacheReview;
-        if (
-          !review ||
-          review.reviewId !== command.reviewId ||
-          review.messageId !== command.messageId ||
-          (review.status !== "pending" && review.status !== "failed")
-        )
-          return [];
-        const base = {
-          aggregateKind: "thread" as const,
-          aggregateId: command.threadId,
-          occurredAt: command.createdAt,
-          commandId: command.commandId,
-        };
-        return [
-          {
-            ...withEventBase(base),
-            type: "thread.claude-cache-set",
-            payload: {
-              threadId: command.threadId,
-              review: { ...review, status: "responding" as const, error: undefined },
-              updatedAt: command.createdAt,
-            },
-          },
-          {
-            ...withEventBase(base),
-            type: "thread.claude-cache-response-requested",
-            payload: {
-              threadId: command.threadId,
-              review,
-              decision: command.decision,
+              reviewId: command.reviewId,
               createdAt: command.createdAt,
             },
           },

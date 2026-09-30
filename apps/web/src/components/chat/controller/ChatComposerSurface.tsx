@@ -2,12 +2,9 @@ import { pendingRequestInstanceKey } from "@glade/shared/threads/threadSummary";
 import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { useCallback } from "react";
 import { ComposerPromptEditor } from "~/components/ComposerPromptEditor";
+import { Button } from "~/components/ui/button";
 import { ChatComposerFooter } from "~/components/chat/ChatComposerFooter";
 import { ComposerBranchMismatchBanner } from "~/components/chat/ComposerBranchMismatchBanner";
-import {
-  ComposerClaudeCacheReviewPanel,
-  isClaudeCacheReviewPanelVisible,
-} from "~/components/chat/ComposerClaudeCacheReviewPanel";
 import { ComposerColumnFrame } from "~/components/chat/ComposerColumnFrame";
 import { ComposerCommandMenu } from "~/components/chat/ComposerCommandMenu";
 import { ComposerComputerControlEffortHint } from "~/components/chat/ComposerComputerControlEffortHint";
@@ -69,9 +66,6 @@ export function ChatComposerSurface({
   const {
     isCenteredEmptyLanding,
     threadWorkspaceCwd,
-    claudeCompactDisabledReason,
-    cacheReviewIsCompactionRequest,
-    onRespondToClaudeCacheReview,
     isComposerApprovalState,
     isLocalFolderBrowserOpen,
     mentionTriggerQuery,
@@ -84,6 +78,8 @@ export function ChatComposerSurface({
     standaloneClaudeCompactDisabledReason,
     isRequestingClaudeCompaction,
     onCompactClaudeContext,
+    isAbandoningLegacyCacheHold,
+    onAbandonLegacyCacheHold,
   } = controller.transcript;
   const {
     composerFormRef,
@@ -277,6 +273,8 @@ export function ChatComposerSurface({
     relocateComposerLeadingControls,
     renderComposerLeadingControls,
   } = presentation;
+  const heldMessageId = activeThread?.claudeCacheReview?.messageId;
+  const heldMessage = activeThread?.messages.find((message) => message.id === heldMessageId);
   return secondaryChromeReady && shouldRenderChatPaneContent ? (
     <div
       className={cn(isCenteredEmptyLanding ? "w-full overflow-visible" : "contents")}
@@ -450,16 +448,31 @@ export function ChatComposerSurface({
                 />
               </div>
             ) : null}
-            {activeThread?.claudeCacheReview &&
-            isClaudeCacheReviewPanelVisible(activeThread.claudeCacheReview) ? (
-              <div className="pb-2">
-                <ComposerClaudeCacheReviewPanel
-                  key={`${threadId}:${activeThread.claudeCacheReview.reviewId}`}
-                  review={activeThread.claudeCacheReview}
-                  compactDisabledReason={claudeCompactDisabledReason}
-                  isCompactionRequest={cacheReviewIsCompactionRequest}
-                  onRespond={onRespondToClaudeCacheReview}
-                />
+            {activeThread?.claudeCacheReview ? (
+              <div className="mb-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-ui">
+                <p className="font-medium">A message was held by an older Claude cache check.</p>
+                {heldMessage?.text ? (
+                  <p className="mt-1 line-clamp-3 whitespace-pre-wrap rounded bg-background/60 p-2 text-ui-sm">
+                    {heldMessage.text}
+                  </p>
+                ) : null}
+                <p className="mt-1 text-muted-foreground">
+                  {activeThread.claudeCacheReview.status === "pending" ||
+                  activeThread.claudeCacheReview.status === "failed"
+                    ? "It was not sent. Review the message before resending it."
+                    : "Its delivery is unconfirmed. Check Claude's history before resending it."}{" "}
+                  Releasing the hold lets later queued messages continue.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  disabled={isAbandoningLegacyCacheHold}
+                  onClick={() => void onAbandonLegacyCacheHold()}
+                >
+                  {isAbandoningLegacyCacheHold ? "Releasing..." : "Release held message"}
+                </Button>
               </div>
             ) : null}
             {expiredQuestionDrafts[0] &&
@@ -668,7 +681,6 @@ export function ChatComposerSurface({
                     composerFooterControlsPlan.showContextMeter ? (
                       <ContextWindowMeter
                         usage={runtimeUsageContextWindow}
-                        showClaudeCache={activeThread?.session?.provider === "claudeAgent"}
                         onOpenChange={setIsContextWindowMeterOpen}
                         {...(selectedProvider === "claudeAgent" &&
                         activeThread?.session?.provider === "claudeAgent" &&
@@ -733,7 +745,6 @@ export function ChatComposerSurface({
                     phase,
                     busy: isSendBusy,
                     connecting: isConnecting,
-                    hasPendingCacheReview: activeThread?.claudeCacheReview != null,
                     preparingImages: isPreparingComposerImages,
                     preparingWorktree: isPreparingWorktree,
                     hasContent: composerSendState.hasSendableContent,

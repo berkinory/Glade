@@ -1,12 +1,12 @@
 import type { ChildProcess } from "node:child_process";
 import { spawnProcess } from "@glade/shared/platform/processRuntime";
 import {
-  compareCodexCliVersions,
   formatCodexCliUpgradeMessage,
   isCodexCliVersionSupported,
   parseCodexCliVersion,
 } from "./codexCliVersion";
 import { buildCodexProcessEnv } from "./codexProcessEnv.ts";
+import { CODEX_PROTOCOL_VERSION } from "./protocol/version.ts";
 import { assertCodexWorkingDirectoryExists } from "./codexWorkingDirectory.ts";
 import { executableIdentity, resolveExecutable } from "@glade/shared/platform/executable";
 
@@ -116,8 +116,6 @@ async function runCodexCliVersionGate(input: {
   readonly binaryPath: string;
   readonly cwd: string;
   readonly homePath?: string;
-  readonly minimumVersion?: string;
-  readonly minimumVersionRequirement?: string;
 }): Promise<{ fingerprint: CodexCliBinaryFingerprint | null; version: string | null }> {
   const env = await buildCodexProcessEnv(input.homePath ? { homePath: input.homePath } : {});
   // Resolved against the env the spawn below uses, never `process.env`. On macOS and Linux
@@ -150,24 +148,18 @@ async function runCodexCliVersionGate(input: {
   }
 
   const parsedVersion = parseCodexCliVersion(`${stdout}\n${stderr}`);
-  const minimumVersion = input.minimumVersion;
-  if (minimumVersion && !parsedVersion) {
+  if (!parsedVersion) {
     throw new Error(
-      `Could not determine the installed Codex CLI version. ${input.minimumVersionRequirement ?? "Auto mode"} requires v${minimumVersion} or newer.`,
+      `Could not determine the installed Codex CLI version. Glade requires v${CODEX_PROTOCOL_VERSION} or newer.`,
     );
   }
-  if (
-    parsedVersion &&
-    (minimumVersion
-      ? compareCodexCliVersions(parsedVersion, minimumVersion) < 0
-      : !isCodexCliVersionSupported(parsedVersion))
-  ) {
-    throw new Error(formatCodexCliUpgradeMessage(parsedVersion, minimumVersion));
+  if (!isCodexCliVersionSupported(parsedVersion)) {
+    throw new Error(formatCodexCliUpgradeMessage(parsedVersion));
   }
 
   return {
     fingerprint: resolvedPath && identity ? { path: resolvedPath, identity } : null,
-    version: parsedVersion ?? null,
+    version: parsedVersion,
   };
 }
 
@@ -179,12 +171,8 @@ interface CodexCliVersionGateEntry {
   fingerprint: CodexCliBinaryFingerprint | null;
 }
 
-function codexCliVersionGateKey(
-  binaryPath: string,
-  homePath: string | undefined,
-  minimumVersion: string | undefined,
-): string {
-  return JSON.stringify([binaryPath, homePath ?? "", minimumVersion ?? ""]);
+function codexCliVersionGateKey(binaryPath: string, homePath: string | undefined): string {
+  return JSON.stringify([binaryPath, homePath ?? ""]);
 }
 
 function isCodexCliVersionGateStale(entry: CodexCliVersionGateEntry): boolean {
@@ -203,15 +191,13 @@ export function createCodexCliVersionGate() {
     readonly binaryPath: string;
     readonly cwd: string;
     readonly homePath?: string;
-    readonly minimumVersion?: string;
-    readonly minimumVersionRequirement?: string;
   }): Promise<string | null> {
     // Prefer an explicit cwd check before spawning. A missing working directory produces ENOENT that is
     // otherwise misreported as a missing Codex binary. This is per-call state, so it must run even when
     // the version verdict is cached.
     assertCodexWorkingDirectoryExists(input.cwd);
 
-    const key = codexCliVersionGateKey(input.binaryPath, input.homePath, input.minimumVersion);
+    const key = codexCliVersionGateKey(input.binaryPath, input.homePath);
     const now = Date.now();
     const existing = codexCliVersionGates.get(key);
     if (existing) {

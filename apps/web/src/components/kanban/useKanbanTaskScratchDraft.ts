@@ -1,6 +1,6 @@
+import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import type { ModelSlug } from "@glade/contracts/provider/model";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
-import { getDefaultModel } from "@glade/shared/provider/model";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
@@ -49,8 +49,7 @@ export function useKanbanTaskScratchDraft(input: { readonly defaultProvider: Pro
   const draftModelSelection =
     scratchDraft.modelSelectionByProvider[selectedProvider] ??
     stickyModelSelectionByProvider[selectedProvider];
-  const selectedModel: ModelSlug | null =
-    draftModelSelection?.model ?? getDefaultModel(selectedProvider);
+  const selectedModel: ModelSlug | null = draftModelSelection?.model ?? PROVIDER_DEFAULT_MODEL;
   const selectedProviderModelOptions = draftModelSelection?.options;
   const selectedModelSupportsAutoMode =
     draftModelSelection?.provider === "claudeAgent"

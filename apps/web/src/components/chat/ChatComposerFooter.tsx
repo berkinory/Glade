@@ -38,7 +38,6 @@ interface ChatComposerFooterProps {
     phase: SessionPhase;
     busy: boolean;
     connecting: boolean;
-    hasPendingCacheReview?: boolean;
     preparingImages: boolean;
     preparingWorktree: boolean;
     hasContent: boolean;
@@ -183,9 +182,7 @@ export function ChatComposerFooter({
                 type="submit"
                 size="sm"
                 className="h-9 rounded-full px-4 sm:h-8"
-                disabled={
-                  submission.busy || submission.connecting || submission.hasPendingCacheReview
-                }
+                disabled={submission.busy || submission.connecting}
               >
                 {submission.connecting || submission.busy ? "Sending..." : "Refine"}
               </Button>
@@ -195,9 +192,7 @@ export function ChatComposerFooter({
                   type="submit"
                   size="sm"
                   className="h-9 rounded-l-full rounded-r-none px-4 sm:h-8"
-                  disabled={
-                    submission.busy || submission.connecting || submission.hasPendingCacheReview
-                  }
+                  disabled={submission.busy || submission.connecting}
                 >
                   {submission.connecting || submission.busy ? "Sending..." : "Implement"}
                 </Button>
@@ -209,11 +204,7 @@ export function ChatComposerFooter({
                         variant="default"
                         className="h-9 rounded-l-none rounded-r-full border-l-white/12 px-2 sm:h-8"
                         aria-label="Implementation actions"
-                        disabled={
-                          submission.busy ||
-                          submission.connecting ||
-                          submission.hasPendingCacheReview
-                        }
+                        disabled={submission.busy || submission.connecting}
                       />
                     }
                   >
@@ -221,9 +212,7 @@ export function ChatComposerFooter({
                   </MenuTrigger>
                   <ComposerPickerMenuPopup align="end" side="top">
                     <MenuItem
-                      disabled={
-                        submission.busy || submission.connecting || submission.hasPendingCacheReview
-                      }
+                      disabled={submission.busy || submission.connecting}
                       onClick={() => void submission.onImplementInNewThread()}
                     >
                       Implement in a new thread
@@ -251,7 +240,6 @@ export function ChatComposerFooter({
                 disabled={
                   submission.busy ||
                   submission.connecting ||
-                  submission.hasPendingCacheReview ||
                   voice.transcribing ||
                   submission.preparingImages ||
                   !submission.hasContent
@@ -268,11 +256,6 @@ export function ChatComposerFooter({
                           : submission.busy
                             ? "Sending"
                             : "Send message"
-                }
-                title={
-                  submission.hasPendingCacheReview
-                    ? "Choose how to resume the held message above"
-                    : undefined
                 }
               >
                 {submission.connecting || submission.busy || submission.preparingImages ? (

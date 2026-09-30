@@ -186,6 +186,7 @@ export interface TestProviderAdapterHarness {
     response: TestTurnResponse,
   ) => Effect.Effect<void, never>;
   readonly getStartCount: () => number;
+  readonly getSendCount: () => number;
   readonly getRollbackCalls: (threadId: ThreadId) => ReadonlyArray<number>;
   readonly getInterruptCalls: (threadId: ThreadId) => ReadonlyArray<TurnId | undefined>;
   readonly listActiveSessionIds: () => ReadonlyArray<ThreadId>;
@@ -281,8 +282,10 @@ export const makeTestProviderAdapterHarness = (options?: MakeTestProviderAdapter
         return session;
       });
 
+    let sendCount = 0;
     const sendTurn: ProviderAdapterShape<ProviderAdapterError>["sendTurn"] = (input) =>
       Effect.gen(function* () {
+        sendCount += 1;
         const state = sessions.get(input.threadId);
         if (!state) {
           return yield* missingSessionEffect(provider, input.threadId);
@@ -548,6 +551,7 @@ export const makeTestProviderAdapterHarness = (options?: MakeTestProviderAdapter
     };
 
     const getStartCount = (): number => sessionCount;
+    const getSendCount = (): number => sendCount;
 
     const getInterruptCalls = (threadId: ThreadId): ReadonlyArray<TurnId | undefined> => {
       const calls = interruptCallsBySession.get(threadId);
@@ -580,6 +584,7 @@ export const makeTestProviderAdapterHarness = (options?: MakeTestProviderAdapter
       queueTurnResponse,
       queueTurnResponseForNextSession,
       getStartCount,
+      getSendCount,
       getRollbackCalls,
       getInterruptCalls,
       listActiveSessionIds,

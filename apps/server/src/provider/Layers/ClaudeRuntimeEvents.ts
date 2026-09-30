@@ -1,4 +1,3 @@
-import { ClaudeSessionRegistry } from "../Services/ClaudeSessionRegistry.ts";
 import {
   ClaudeRuntimeEvents,
   type ClaudeRuntimeEventsShape,
@@ -12,6 +11,7 @@ import { ClaudeSessionContext, PROVIDER } from "../claude/adapter/sessionTypes";
 import type { ClaudeAdapterLiveOptions } from "../claude/adapter/adapterConfiguration";
 import { stripDiagnosticImages } from "../core/stripDiagnosticImages.ts";
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
+import type { ProviderFailure } from "@glade/contracts/provider/providerFailure";
 import { sdkNativeItemId, sdkNativeMethod } from "../claude/adapter/sdkMetadata";
 import {
   asCanonicalTurnId,
@@ -19,13 +19,12 @@ import {
   asRuntimeItemId,
 } from "../claude/adapter/messageContent";
 import { ProviderAdapterValidationError } from "../core/Errors.ts";
-import { hasDurableClaudeSessionId, invalidateClaudeCache } from "../claude/adapter/sessionResume";
+import { hasDurableClaudeSessionId } from "../claude/adapter/sessionResume";
 
 export function makeClaudeRuntimeEventsLive(options?: ClaudeAdapterLiveOptions) {
   return Layer.effect(
     ClaudeRuntimeEvents,
     Effect.gen(function* () {
-      const sessions = yield* ClaudeSessionRegistry;
       const runtimeEventQueue = yield* Queue.bounded<ProviderRuntimeEvent>(
         PROVIDER_ADAPTER_RUNTIME_EVENT_BUFFER_CAPACITY,
       );
@@ -127,7 +126,6 @@ export function makeClaudeRuntimeEventsLive(options?: ClaudeAdapterLiveOptions) 
           if (!threadId) return;
 
           const resumeCursor = {
-            ...(context.cacheObservation ? { claudeCache: context.cacheObservation } : {}),
             threadId,
             ...(context.resumeSessionId ? { resume: context.resumeSessionId } : {}),
             ...(context.lastAssistantUuid ? { resumeSessionAt: context.lastAssistantUuid } : {}),
@@ -159,11 +157,6 @@ export function makeClaudeRuntimeEventsLive(options?: ClaudeAdapterLiveOptions) 
             return;
           }
           const nextThreadId = message.session_id;
-          if (
-            context.cacheObservation?.nativeSessionId !== undefined &&
-            context.cacheObservation.nativeSessionId !== nextThreadId
-          )
-            invalidateClaudeCache(context);
           context.resumeSessionId = message.session_id;
           yield* updateResumeCursor(context);
 
@@ -196,6 +189,7 @@ export function makeClaudeRuntimeEventsLive(options?: ClaudeAdapterLiveOptions) 
         context: ClaudeSessionContext,
         message: string,
         cause?: unknown,
+        failure?: ProviderFailure,
       ): Effect.Effect<void> =>
         Effect.gen(function* () {
           if (cause !== undefined) {
@@ -213,6 +207,7 @@ export function makeClaudeRuntimeEventsLive(options?: ClaudeAdapterLiveOptions) 
             payload: {
               message,
               class: "provider_error",
+              ...(failure ? { failure } : {}),
               ...(cause !== undefined ? { detail: cause } : {}),
             },
             providerRefs: nativeProviderRefs(context),
@@ -265,31 +260,6 @@ export function makeClaudeRuntimeEventsLive(options?: ClaudeAdapterLiveOptions) 
           });
         });
 
-      const emitClaudeCacheObservation = (context: ClaudeSessionContext): Effect.Effect<void> =>
-        Effect.gen(function* () {
-          const claudeCache = context.cacheObservation;
-          if (
-            !claudeCache ||
-            context.stopped ||
-            !sessions.isCurrent(context.session.threadId, context)
-          )
-            return;
-          const usedTokens = context.lastKnownTokenUsage?.usedTokens ?? claudeCache.contextTokens;
-          if (usedTokens === undefined) return;
-          const usage = { ...context.lastKnownTokenUsage, usedTokens, claudeCache };
-          context.lastKnownTokenUsage = usage;
-          const stamp = yield* makeEventStamp();
-          yield* offerRuntimeEvent(context, {
-            type: "thread.token-usage.updated",
-            eventId: stamp.eventId,
-            provider: PROVIDER,
-            createdAt: stamp.createdAt,
-            threadId: context.session.threadId,
-            payload: { usage },
-            providerRefs: nativeProviderRefs(context),
-          });
-        });
-
       const warnUnhandledSdkKind = (
         context: ClaudeSessionContext,
         kind: string,
@@ -315,7 +285,6 @@ export function makeClaudeRuntimeEventsLive(options?: ClaudeAdapterLiveOptions) 
         warnUnhandledSdkKind,
         logNativeSdkMessage,
         ensureThreadId,
-        emitClaudeCacheObservation,
         snapshotThread,
       } satisfies ClaudeRuntimeEventsShape;
     }),

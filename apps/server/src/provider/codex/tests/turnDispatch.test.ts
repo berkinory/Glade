@@ -68,7 +68,7 @@ describe("sendTurn", () => {
           url: "data:image/png;base64,AAAA",
         },
       ],
-      model: "gpt-5.3-codex",
+      model: "gpt-5.3",
       serviceTier: "fast",
       effort: "high",
     });

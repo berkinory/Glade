@@ -1,5 +1,4 @@
 import { MessageId, ThreadId, type TurnId } from "@glade/contracts/core/baseSchemas";
-import { type PendingClaudeCacheReview } from "@glade/contracts/orchestration/threadEntities";
 import {
   resolveThreadWorkspaceCwd as resolveSharedThreadWorkspaceCwd,
   resolveThreadBranchSourceCwd,
@@ -16,7 +15,6 @@ import {
   shouldEnableComposerPastedTextCollapse,
 } from "../../ChatView.logic.session";
 import { resolveThreadDetailHydration } from "../../ChatView.logic.worktree";
-import { type ClaudeCacheReviewDecision } from "~/components/chat/ComposerClaudeCacheReviewPanel";
 import { buildTurnDiffSummaryByAssistantMessageId } from "../MessagesTimeline.logic.rowTypes";
 import { ThreadDetailHydrationState } from "~/components/chat/ThreadDetailHydrationState";
 import { usePinnedMessageActions } from "~/components/chat/environment/usePinnedMessageActions";
@@ -392,9 +390,7 @@ export function useChatTranscriptController({
     composerCommandPicker,
     providerModelDiscoveryCwd,
     gitCwd,
-    discoverNativeCompaction:
-      selectedProvider === "claudeAgent" &&
-      (isContextWindowMeterOpen || activeThread?.claudeCacheReview != null),
+    discoverNativeCompaction: selectedProvider === "claudeAgent" && isContextWindowMeterOpen,
   });
 
   const canRequestNativeClaudeCompaction =
@@ -415,12 +411,9 @@ export function useChatTranscriptController({
         ? "Resolve the pending request before compacting."
         : null;
 
-  const standaloneClaudeCompactDisabledReason =
-    activeThread?.claudeCacheReview != null
-      ? "Choose how to resume the held message above."
-      : isWorking
-        ? "Wait for Claude to finish before compacting."
-        : claudeCompactDisabledReason;
+  const standaloneClaudeCompactDisabledReason = isWorking
+    ? "Wait for Claude to finish before compacting."
+    : claudeCompactDisabledReason;
 
   const { compact: onCompactClaudeContext, isSubmitting: isRequestingClaudeCompaction } =
     useClaudeContextCompaction({
@@ -431,31 +424,28 @@ export function useChatTranscriptController({
       onFailure: resetLocalDispatch,
     });
 
-  const cacheReviewMessageId = activeThread?.claudeCacheReview?.messageId;
-
-  const cacheReviewMessage = cacheReviewMessageId
-    ? activeThread?.messages.find((entry) => entry.id === cacheReviewMessageId)
-    : undefined;
-
-  const cacheReviewIsCompactionRequest = /^\/compact(?:\s|$)/u.test(
-    cacheReviewMessage?.text.trim() ?? "",
-  );
-
-  const onRespondToClaudeCacheReview = async (
-    review: PendingClaudeCacheReview,
-    decision: ClaudeCacheReviewDecision,
-  ) => {
+  const [isAbandoningLegacyCacheHold, setIsAbandoningLegacyCacheHold] = useState(false);
+  const onAbandonLegacyCacheHold = async () => {
+    const review = activeThread?.claudeCacheReview;
     const api = readNativeApi();
-    if (!api) throw new Error("Reconnect before choosing how to resume.");
-    await api.orchestration.dispatchCommand({
-      type: "thread.claude-cache.respond",
-      commandId: newCommandId(),
-      threadId,
-      messageId: review.messageId,
-      reviewId: review.reviewId,
-      decision,
-      createdAt: new Date().toISOString(),
-    });
+    if (!review || !api || isAbandoningLegacyCacheHold) return;
+    setIsAbandoningLegacyCacheHold(true);
+    try {
+      await api.orchestration.dispatchCommand({
+        type: "thread.legacy-cache.abandon",
+        commandId: newCommandId(),
+        threadId,
+        reviewId: review.reviewId,
+        createdAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      toastManager.add({
+        type: "error",
+        title: error instanceof Error ? error.message : "Could not release the held message.",
+      });
+    } finally {
+      setIsAbandoningLegacyCacheHold(false);
+    }
   };
 
   const activeRootBranch = resolveComposerSlashRootBranch({
@@ -516,12 +506,11 @@ export function useChatTranscriptController({
     supportsTextNativeReviewCommand,
     isComposerMenuLoading,
     canCompactThread,
-    claudeCompactDisabledReason,
     standaloneClaudeCompactDisabledReason,
     onCompactClaudeContext,
     isRequestingClaudeCompaction,
-    cacheReviewIsCompactionRequest,
-    onRespondToClaudeCacheReview,
+    isAbandoningLegacyCacheHold,
+    onAbandonLegacyCacheHold,
     activeRootBranch,
   } as const;
 }

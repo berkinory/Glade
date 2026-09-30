@@ -6,15 +6,11 @@ import {
   type ProviderBlockingDeliveryEvidence,
 } from "../../persistence/Services/OrchestrationEventDeliveries.ts";
 import type { ProviderProjectionAccessShape } from "../Services/ProviderProjectionAccess.ts";
+import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { makeProviderThreadProjection } from "./threadProjection";
 import { Duration, Effect, Queue, Cause, Stream, Option } from "effect";
 import { AgentGatewayOperationRepository } from "../../agentGateway/Services/AgentGatewayOperationRepository.ts";
-import { ThreadId } from "@glade/contracts/core/baseSchemas";
-import {
-  ProviderQueueDrainEvent,
-  awaitInflightClaimSettlement,
-  PROVIDER_COMMAND_CLAIM_LEASE_MS,
-} from "./deliveryClaims";
+import { awaitInflightClaimSettlement, PROVIDER_COMMAND_CLAIM_LEASE_MS } from "./deliveryClaims";
 import { ProviderDeliveryGate } from "../Services/ProviderDeliveryGate.ts";
 import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import {
@@ -36,8 +32,6 @@ import {
   PROVIDER_COMMAND_SAFE_RETRY_DELAY,
   isSafeLegacyProviderBlocker,
 } from "./providerCallPolicy";
-import { LOST_CLAUDE_COMPACTION_ERROR } from "./contextLifecycle";
-import { makeProviderCompaction } from "./compaction";
 import { makeProviderDomainEvents } from "./domainEvents";
 import { makeProviderQueuedTurns } from "./queuedTurns";
 
@@ -48,18 +42,12 @@ export function makeProviderIntentSource(input: {
     typeof OrchestrationEventDeliveryRepository
   >;
   readonly deliveryGate: ServiceMap.Service.Shape<typeof ProviderDeliveryGate>;
-  readonly setClaudeCacheReview: ReturnType<
-    typeof makeProviderThreadProjection
-  >["setClaudeCacheReview"];
   readonly appendProviderFailureActivity: ReturnType<
     typeof makeProviderThreadProjection
   >["appendProviderFailureActivity"];
   readonly setThreadSessionError: ReturnType<
     typeof makeProviderThreadProjection
   >["setThreadSessionError"];
-  readonly readClaudeCompactionTerminal: ReturnType<
-    typeof makeProviderCompaction
-  >["readClaudeCompactionTerminal"];
   readonly commandEventTimeout: Duration.Duration;
   readonly processDomainEvent: ReturnType<typeof makeProviderDomainEvents>["processDomainEvent"];
   readonly surfaceTimedOutTurnStart: ReturnType<
@@ -75,13 +63,6 @@ export function makeProviderIntentSource(input: {
   readonly recoverQueuedTurnAfterDeliverySafely: ReturnType<
     typeof makeProviderDomainEvents
   >["recoverQueuedTurnAfterDeliverySafely"];
-  readonly earlyClaudeCompactionTerminals: Map<ThreadId, ProviderQueueDrainEvent>;
-  readonly readClaudeCompactionAttempt: ReturnType<
-    typeof makeProviderCompaction
-  >["readClaudeCompactionAttempt"];
-  readonly processClaudeCompactionTerminal: ReturnType<
-    typeof makeProviderCompaction
-  >["processClaudeCompactionTerminal"];
   readonly readOrchestrationEventAtSequence: ReturnType<
     typeof makeProviderQueuedTurns
   >["readOrchestrationEventAtSequence"];
@@ -91,10 +72,8 @@ export function makeProviderIntentSource(input: {
     orchestrationEngine,
     deliveryRepository,
     deliveryGate,
-    setClaudeCacheReview,
     appendProviderFailureActivity,
     setThreadSessionError,
-    readClaudeCompactionTerminal,
     commandEventTimeout,
     processDomainEvent,
     surfaceTimedOutTurnStart,
@@ -102,9 +81,6 @@ export function makeProviderIntentSource(input: {
     gatewayOperations,
     processDomainEventSafely,
     recoverQueuedTurnAfterDeliverySafely,
-    earlyClaudeCompactionTerminals,
-    readClaudeCompactionAttempt,
-    processClaudeCompactionTerminal,
     readOrchestrationEventAtSequence,
     setThreadSession,
     projectionAccess,
@@ -194,16 +170,6 @@ export function makeProviderIntentSource(input: {
         );
       }
       deliveryGate.quarantine(input.event.payload.threadId);
-      if (input.event.type === "thread.claude-cache-response-requested") {
-        const review = (yield* resolveThread(input.event.payload.threadId))?.claudeCacheReview;
-        if (review?.reviewId === input.event.payload.review.reviewId) {
-          yield* setClaudeCacheReview(
-            input.event.payload.threadId,
-            { ...review, status: "uncertain", error: input.detail },
-            review.reviewId,
-          );
-        }
-      }
       yield* requireCursorAdvance(input.event);
     });
 
@@ -321,48 +287,6 @@ export function makeProviderIntentSource(input: {
             continue;
           }
           const expiredOwner = existing.value.claimOwner ?? "";
-          if (
-            event.type === "thread.claude-cache-response-requested" &&
-            event.payload.decision === "compact"
-          ) {
-            const review = (yield* resolveThread(threadId))?.claudeCacheReview;
-            if (
-              review?.compactionResponseEventSequence === event.sequence &&
-              review.compactionTurnId &&
-              (yield* readClaudeCompactionTerminal(threadId, review.compactionTurnId))
-            ) {
-              const completed = yield* deliveryRepository.complete({
-                consumerName: PROVIDER_COMMAND_REACTOR_CONSUMER,
-                eventSequence: event.sequence,
-                claimOwner: expiredOwner,
-                completedAt: new Date().toISOString(),
-              });
-              if (completed) {
-                yield* refreshCursor;
-                return;
-              }
-            }
-          }
-          if (event.type === "thread.turn-start-requested") {
-            const review = (yield* resolveThread(threadId))?.claudeCacheReview;
-            // Persisting this review is the pre-enqueue boundary. A crash after parking the message must not
-            // quarantine a request we never sent.
-            if (
-              review?.sourceEventSequence === event.sequence &&
-              review.messageId === event.payload.messageId
-            ) {
-              const completed = yield* deliveryRepository.complete({
-                consumerName: PROVIDER_COMMAND_REACTOR_CONSUMER,
-                eventSequence: event.sequence,
-                claimOwner: expiredOwner,
-                completedAt: new Date().toISOString(),
-              });
-              if (completed) {
-                yield* refreshCursor;
-                return;
-              }
-            }
-          }
           if (!isReplaySafeClaimedProviderIntent(event)) {
             yield* settleTerminalFailure({
               event,
@@ -530,39 +454,54 @@ export function makeProviderIntentSource(input: {
       if (event.type === "thread.turn-queued") {
         yield* recoverQueuedTurnAfterDeliverySafely(event);
       }
-      if (
-        event.type === "thread.claude-cache-response-requested" &&
-        event.payload.decision === "compact"
-      ) {
-        const earlyTerminal = earlyClaudeCompactionTerminals.get(event.payload.threadId);
-        earlyClaudeCompactionTerminals.delete(event.payload.threadId);
-        const review = yield* readClaudeCompactionAttempt(event.payload.threadId, event.sequence);
-        if (review?.compactionTurnId) {
-          const terminal =
-            earlyTerminal?.turnId === review.compactionTurnId
-              ? earlyTerminal
-              : yield* readClaudeCompactionTerminal(
-                  event.payload.threadId,
-                  review.compactionTurnId,
-                );
-          if (terminal) {
-            yield* processClaudeCompactionTerminal(terminal).pipe(
-              Effect.catchCause((cause) =>
-                Effect.logError("Could not settle Claude compaction", {
-                  cause: Cause.pretty(cause),
-                }),
+    });
+
+    const releaseLegacyCacheHold = Effect.fnUntraced(function* (
+      event: Extract<ProviderIntentEvent, { type: "thread.legacy-cache-abandoned" }>,
+    ) {
+      const blocker = yield* deliveryRepository.firstBlockingDeliveryForThread({
+        consumerName: PROVIDER_COMMAND_REACTOR_CONSUMER,
+        threadId: event.payload.threadId,
+      });
+      if (Option.isSome(blocker)) {
+        const source = yield* readOrchestrationEventAtSequence(blocker.value.eventSequence);
+        if (
+          source?.type === "thread.claude-cache-response-requested" &&
+          source.payload.review.reviewId === event.payload.reviewId &&
+          (blocker.value.state === "dead" || blocker.value.state === "uncertain")
+        ) {
+          const reconciled = yield* deliveryRepository.reconcile({
+            reconciliationId: crypto.randomUUID(),
+            consumerName: PROVIDER_COMMAND_REACTOR_CONSUMER,
+            eventSequence: blocker.value.eventSequence,
+            threadId: event.payload.threadId,
+            expectedState: blocker.value.state,
+            outcome: "abandon",
+            reconciledBy: "user:legacy-cache-release",
+            note: "The user released an obsolete cache review without replaying its provider command.",
+            reconciledAt: event.payload.createdAt,
+          });
+          if (Option.isNone(reconciled)) {
+            return yield* Effect.die(
+              new Error(
+                `Legacy cache delivery ${blocker.value.eventSequence} could not be released`,
               ),
-              Effect.forkScoped,
             );
           }
+          deliveryGate.releaseQuarantine(event.payload.threadId);
         }
       }
+      yield* processClaimedProviderIntent(event);
     });
 
     const processOrderedEvent = Effect.fnUntraced(function* (event: OrchestrationEvent) {
       if (event.sequence <= cursor) return;
       if (!isProviderIntentEvent(event)) {
         yield* requireCursorAdvance(event);
+        return;
+      }
+      if (event.type === "thread.legacy-cache-abandoned") {
+        yield* releaseLegacyCacheHold(event);
         return;
       }
       if (isClaimedProviderIntent(event)) {
@@ -653,25 +592,6 @@ export function makeProviderIntentSource(input: {
               delivery.value.state !== input.expectedState
             )
               return null;
-            const reconciledEvent = yield* readProviderIntentEvent(input.eventSequence);
-            const review =
-              reconciledEvent.type === "thread.claude-cache-response-requested"
-                ? (yield* resolveThread(reconciledEvent.payload.threadId))?.claudeCacheReview
-                : undefined;
-            const abandonsCompaction =
-              input.outcome === "abandon" &&
-              reconciledEvent.type === "thread.claude-cache-response-requested" &&
-              reconciledEvent.payload.decision === "compact" &&
-              review?.reviewId === reconciledEvent.payload.review.reviewId &&
-              review.compactionResponseEventSequence === input.eventSequence &&
-              review.compactionTurnId !== undefined;
-            if (abandonsCompaction) {
-              yield* setClaudeCacheReview(
-                reconciledEvent.payload.threadId,
-                { ...review, status: "failed", error: LOST_CLAUDE_COMPACTION_ERROR },
-                review.reviewId,
-              );
-            }
             const reconciled = yield* deliveryRepository.reconcile({
               reconciliationId: crypto.randomUUID(),
               consumerName: PROVIDER_COMMAND_REACTOR_CONSUMER,
@@ -685,44 +605,14 @@ export function makeProviderIntentSource(input: {
             });
             if (Option.isNone(reconciled)) return null;
 
-            if (reconciledEvent.type === "thread.claude-cache-response-requested") {
-              const review = (yield* resolveThread(reconciledEvent.payload.threadId))
-                ?.claudeCacheReview;
-              if (
-                review?.reviewId === reconciledEvent.payload.review.reviewId &&
-                !abandonsCompaction &&
-                !(
-                  input.outcome === "accepted" &&
-                  reconciledEvent.payload.decision === "compact" &&
-                  review.compactionTurnId
-                )
-              ) {
-                yield* setClaudeCacheReview(
-                  reconciledEvent.payload.threadId,
-                  input.outcome === "safe_retry"
-                    ? { ...review, status: "responding", error: undefined }
-                    : null,
-                  review.reviewId,
-                );
-              }
-            }
-
             if (input.outcome === "safe_retry") {
               yield* resumeRetryableDelivery(input);
             } else {
               deliveryGate.releaseQuarantine(input.threadId);
-              const currentReview = (yield* resolveThread(input.threadId))?.claudeCacheReview;
-              const revokedCompaction =
-                reconciledEvent.type === "thread.claude-cache-response-requested" &&
-                reconciledEvent.payload.decision === "compact" &&
-                currentReview?.reviewId !== reconciledEvent.payload.review.reviewId;
-
-              if (!revokedCompaction) {
-                yield* replayQuarantinedThreadSideEffects({
-                  threadId: input.threadId,
-                  afterSequence: input.eventSequence,
-                });
-              }
+              yield* replayQuarantinedThreadSideEffects({
+                threadId: input.threadId,
+                afterSequence: input.eventSequence,
+              });
             }
 
             const finalDelivery = yield* deliveryRepository.getDelivery({

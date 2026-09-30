@@ -1,7 +1,7 @@
 import type { ClaudeSessionRegistryShape } from "../../Services/ClaudeSessionRegistry.ts";
 import type { Fiber } from "effect";
 import type { ClaudeSessionAccessShape } from "../../Services/ClaudeSessionAccess.ts";
-import { Effect, Clock, Random, Queue, Stream, Cause, Ref, Exit } from "effect";
+import { Effect, Random, Queue, Stream, Cause, Ref, Exit } from "effect";
 import { ThreadId, EventId, ApprovalRequestId } from "@glade/contracts/core/baseSchemas";
 import { ClaudeProcessOwner, ClaudeQueryRuntime } from "./adapterConfiguration";
 import type { ClaudeProcessOwnershipShape } from "../../Services/ClaudeProcessOwnership.ts";
@@ -29,17 +29,11 @@ import { type ClaudeTrackedTask } from "../claudeTaskTracker.ts";
 import {
   trimOrNull,
   normalizeClaudeModelOptions,
-  getDefaultModel,
-  getModelCapabilities,
   resolveApiModelId,
-  hasEffortLevel,
   getEffectiveClaudeCodeEffort,
 } from "@glade/shared/provider/model";
-import {
-  resolveSelectedClaudeAutoCompactWindow,
-  resolveClaudeApiModelIdContextWindowMaxTokens,
-} from "../claudeTokenUsage.ts";
-import { resolveSelectedClaudeThinkingToggle, toPermissionMode } from "./modelCapabilities";
+import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
+import { selectedClaudeModelInfo, toPermissionMode } from "./modelCapabilities";
 import {
   buildClaudeSdkSubagents,
   CLAUDE_SETTING_SOURCES,
@@ -51,10 +45,12 @@ import { withClaudeArtifactOptIn } from "../claudeProcessEnv.ts";
 import { buildClaudeMcpServers } from "../../../agentGateway/mcpInjection.ts";
 import { toMessage } from "./streamErrors";
 import { prestartClaudeMessageStream } from "./sdkProcessRuntime";
-import { claudeCacheForModel } from "../claudeCacheObservation.ts";
 import { type ProviderSession } from "@glade/contracts/provider/provider";
 import { ClaudeRequestUsage } from "../claudeRequestUsage.ts";
 import { makeClaudeDiscovery } from "./discovery";
+import { createClaudeSkillBridge } from "../claudeSkillBridge.ts";
+import type { ServerConfigShape } from "../../../server/config.ts";
+import type { ServerSettingsError } from "@glade/contracts/settings/settings";
 
 export function makeClaudeSessionStartup(input: {
   readonly resolveClaudeStartPreflight: ClaudeSessionAccessShape["resolveClaudeStartPreflight"];
@@ -64,13 +60,12 @@ export function makeClaudeSessionStartup(input: {
   readonly assertSessionReplaceable: ClaudeSessionAccessShape["assertSessionReplaceable"];
   readonly stopSessionInternal: ReturnType<typeof makeClaudeSessionTeardown>["stopSessionInternal"];
   readonly agentGatewayCredentials: AgentGatewayCredentialsShape | undefined;
-  readonly cacheClock: Clock.Clock;
-  readonly runSdkSync: <A, E>(effect: Effect.Effect<A, E>) => A;
+  readonly serverConfig: ServerConfigShape;
+  readonly getDisabledSkillNames: Effect.Effect<ReadonlyArray<string>, ServerSettingsError, never>;
   readonly runSdkFork: <A, E>(
     effect: Effect.Effect<A, E>,
     options?: Effect.RunOptions,
   ) => Fiber.Fiber<A, E>;
-  readonly emitClaudeCacheObservation: ClaudeRuntimeEventsShape["emitClaudeCacheObservation"];
   readonly makeEventStamp: () => Effect.Effect<{ eventId: EventId; createdAt: string }>;
   readonly offerRuntimeEvent: ClaudeRuntimeEventsShape["offerRuntimeEvent"];
   readonly settlePendingUserInput: ReturnType<
@@ -111,10 +106,9 @@ export function makeClaudeSessionStartup(input: {
     assertSessionReplaceable,
     stopSessionInternal,
     agentGatewayCredentials,
-    cacheClock,
-    runSdkSync,
+    serverConfig,
+    getDisabledSkillNames,
     runSdkFork,
-    emitClaudeCacheObservation,
     makeEventStamp,
     offerRuntimeEvent,
     settlePendingUserInput,
@@ -176,48 +170,42 @@ export function makeClaudeSessionStartup(input: {
       const providerOptions = input.providerOptions?.claudeAgent;
       const modelSelection =
         input.modelSelection?.provider === "claudeAgent" ? input.modelSelection : undefined;
-      const requestedEffort = trimOrNull(modelSelection?.options?.effort ?? null);
-      const requestedAutoCompactWindow = normalizeClaudeModelOptions(
+      const selectedOptions = normalizeClaudeModelOptions(
         modelSelection?.model,
         modelSelection?.options,
-      )?.autoCompactWindow;
-      const effectiveClaudeModel = modelSelection?.model ?? getDefaultModel("claudeAgent");
-      const caps = getModelCapabilities("claudeAgent", effectiveClaudeModel);
-      const requestedAutoCompactWindowTokens = resolveSelectedClaudeAutoCompactWindow(
-        effectiveClaudeModel,
-        requestedAutoCompactWindow,
       );
+      const requestedEffort = trimOrNull(selectedOptions?.effort ?? null);
+      const effectiveClaudeModel = modelSelection?.model ?? PROVIDER_DEFAULT_MODEL;
       const apiModelId = modelSelection ? resolveApiModelId(modelSelection) : undefined;
-      const effort =
-        requestedEffort && hasEffortLevel(caps, requestedEffort) ? requestedEffort : null;
-      const fastMode = modelSelection?.options?.fastMode === true && caps.supportsFastMode;
-      const thinking = resolveSelectedClaudeThinkingToggle(
-        effectiveClaudeModel,
-        modelSelection?.options?.thinking,
-      );
-      const effectiveEffort = getEffectiveClaudeCodeEffort(effort);
-      const ultracode = effort === "ultracode" && hasEffortLevel(caps, "xhigh");
+      const fastMode = selectedOptions?.fastMode;
+      const thinking = selectedOptions?.thinking;
+      const effectiveEffort = getEffectiveClaudeCodeEffort(requestedEffort);
+      const ultracode = selectedOptions?.ultracode;
       const permissionMode =
         input.runtimeMode === "auto"
           ? "auto"
           : (toPermissionMode(providerOptions?.permissionMode) ??
             (input.runtimeMode === "full-access" ? "bypassPermissions" : undefined));
       const settings = {
-        // Pin only explicit non-native overrides. Otherwise Claude Code owns resolution via server tuning,
-        // settings.json, and CLAUDE_CODE_AUTO_COMPACT_WINDOW.
-        autoCompactEnabled: true,
-        ...(requestedAutoCompactWindowTokens !== undefined
-          ? { autoCompactWindow: requestedAutoCompactWindowTokens }
-          : {}),
         ...(typeof thinking === "boolean" ? { alwaysThinkingEnabled: thinking } : {}),
-
         ...(effectiveEffort && effectiveEffort !== "max" ? { effortLevel: effectiveEffort } : {}),
-        ...(fastMode ? { fastMode: true } : {}),
-        ...(ultracode ? { ultracode: true } : {}),
+        ...(fastMode !== undefined ? { fastMode } : {}),
+        ...(ultracode !== undefined ? { ultracode } : {}),
       };
       const claudeSubagents = buildClaudeSdkSubagents();
-      const { claudeSdkEnv, snapshotSupported } =
+      const { claudeSdkEnv, binaryPath, snapshotSupported } =
         preflight ?? (yield* resolveClaudeStartPreflight(input));
+      const disabledSkillNames = yield* getDisabledSkillNames.pipe(
+        Effect.mapError(
+          (cause) =>
+            new ProviderAdapterValidationError({
+              provider: PROVIDER,
+              operation: "startSession",
+              issue: "Skill settings are unavailable.",
+              cause,
+            }),
+        ),
+      );
       const failedStartupProcessOwner = processOwnership.failedStartupOwner(threadId);
       if (failedStartupProcessOwner) {
         yield* processOwnership.teardownFailedStartupProcess(threadId, failedStartupProcessOwner);
@@ -236,23 +224,10 @@ export function makeClaudeSessionStartup(input: {
         PROVIDER,
         { ...input, nativeToolCallScope: true },
       );
-      const {
-        sessionStartHook,
-        subagentSteerHook,
-        canUseTool,
-        gatewayToolHook,
-        getStartupCacheObservation,
-      } = makeClaudeSdkHooks({
-        sessionId,
-        cacheClock,
+      const { subagentSteerHook, canUseTool, gatewayToolHook } = makeClaudeSdkHooks({
         input,
-        runSdkSync,
         contextRef,
-        resumeState,
-        sessions,
-        threadId,
         runSdkFork,
-        emitClaudeCacheObservation,
         makeEventStamp,
         pendingUserInputs,
         offerRuntimeEvent,
@@ -264,14 +239,38 @@ export function makeClaudeSessionStartup(input: {
         pendingApprovals,
         settlePendingApproval,
         gatewaySessionLease,
+        getDisabledSkillNames,
       });
+      const skillBridge = yield* Effect.tryPromise({
+        try: () =>
+          createClaudeSkillBridge({
+            cwd: input.cwd ?? serverConfig.cwd,
+            homeDir: serverConfig.homeDir,
+            baseDir: serverConfig.baseDir,
+            stateDir: serverConfig.stateDir,
+            disabledSkillNames,
+          }),
+        catch: (cause) =>
+          new ProviderAdapterProcessError({
+            provider: PROVIDER,
+            threadId,
+            detail: toMessage(cause, "Failed to prepare Claude skills."),
+            cause,
+          }),
+      }).pipe(
+        Effect.tapError(() =>
+          gatewaySessionLease ? Effect.sync(gatewaySessionLease.release) : Effect.void,
+        ),
+      );
 
       const queryOptions: ClaudeQueryOptions = {
         ...(input.cwd ? { cwd: input.cwd } : {}),
 
         ...(apiModelId ? { model: apiModelId } : {}),
-        pathToClaudeCodeExecutable: providerOptions?.binaryPath ?? "claude",
+        pathToClaudeCodeExecutable: binaryPath,
         settingSources: [...CLAUDE_SETTING_SOURCES],
+        ...(skillBridge.plugin ? { plugins: [skillBridge.plugin] } : {}),
+        skills: [...skillBridge.enabledSkills],
         systemPrompt: {
           type: "preset",
           preset: "claude_code",
@@ -300,7 +299,6 @@ export function makeClaudeSessionStartup(input: {
 
         forwardSubagentText: true,
         hooks: {
-          SessionStart: [{ hooks: [sessionStartHook] }],
           PreToolUse: [{ hooks: [subagentSteerHook, gatewayToolHook] }],
         },
         canUseTool,
@@ -343,6 +341,7 @@ export function makeClaudeSessionStartup(input: {
               ),
             ),
             gatewaySessionLease ? Effect.sync(gatewaySessionLease.release) : Effect.void,
+            Effect.promise(skillBridge.cleanup),
           ]).pipe(Effect.asVoid),
         ),
       );
@@ -353,33 +352,59 @@ export function makeClaudeSessionStartup(input: {
       let installationComplete = false;
 
       return yield* Effect.gen(function* () {
+        const initialization = yield* Effect.tryPromise({
+          try: () => queryRuntime.initializationResult(),
+          catch: (cause) =>
+            new ProviderAdapterValidationError({
+              provider: PROVIDER,
+              operation: "startSession",
+              issue: `Claude initialization failed: ${toMessage(cause, "unknown SDK error")}`,
+            }),
+        });
         if (input.runtimeMode === "auto") {
           yield* verifyClaudeAutoModelSupport({
             queryRuntime,
+            discoveredModels: initialization.models,
             selectedModel: effectiveClaudeModel,
             apiModelId,
             operation: "startSession",
           });
-        } else {
-          observeSessionModels(queryRuntime);
         }
-
-        observeSessionAgents(queryRuntime);
+        observeSessionModels(queryRuntime, initialization.models);
+        observeSessionAgents(queryRuntime, initialization.agents);
+        const selectedModelInfo = selectedClaudeModelInfo(
+          initialization.models,
+          effectiveClaudeModel,
+        );
+        if (selectedModelInfo) {
+          if (
+            effectiveEffort &&
+            !selectedModelInfo.supportedEffortLevels?.includes(effectiveEffort)
+          ) {
+            return yield* new ProviderAdapterValidationError({
+              provider: PROVIDER,
+              operation: "startSession",
+              issue: `Claude model "${selectedModelInfo.displayName}" does not support ${effectiveEffort} effort.`,
+            });
+          }
+          if (ultracode && !selectedModelInfo.supportedEffortLevels?.includes("xhigh")) {
+            return yield* new ProviderAdapterValidationError({
+              provider: PROVIDER,
+              operation: "startSession",
+              issue: `Claude model "${selectedModelInfo.displayName}" does not support Ultracode.`,
+            });
+          }
+          if (fastMode && selectedModelInfo.supportsFastMode !== true) {
+            return yield* new ProviderAdapterValidationError({
+              provider: PROVIDER,
+              operation: "startSession",
+              issue: `Claude model "${selectedModelInfo.displayName}" does not support fast mode.`,
+            });
+          }
+        }
 
         const processedTokenBaselineKnown =
           input.resumeCursor === undefined || resumeState?.processedTokenTotal !== undefined;
-        const cacheObservation = claudeCacheForModel(
-          getStartupCacheObservation() ?? resumeState?.claudeCache,
-          apiModelId,
-        );
-        const initialCacheObservation = cacheObservation
-          ? {
-              ...cacheObservation,
-              ...(input.lifecycleGeneration
-                ? { lifecycleGeneration: input.lifecycleGeneration }
-                : {}),
-            }
-          : undefined;
         const session: ProviderSession = {
           threadId,
           provider: PROVIDER,
@@ -389,7 +414,6 @@ export function makeClaudeSessionStartup(input: {
           ...(modelSelection?.model ? { model: modelSelection.model } : {}),
           ...(threadId ? { threadId } : {}),
           resumeCursor: {
-            ...(initialCacheObservation ? { claudeCache: initialCacheObservation } : {}),
             ...(threadId ? { threadId } : {}),
             ...(sessionId ? { resume: sessionId } : {}),
             ...(resumeState?.resumeSessionAt
@@ -409,7 +433,6 @@ export function makeClaudeSessionStartup(input: {
         };
 
         const context: ClaudeSessionContext = {
-          ...(initialCacheObservation ? { cacheObservation: initialCacheObservation } : {}),
           ...(gatewaySessionLease ? { gatewaySessionLease } : {}),
           session,
           startInput: input,
@@ -423,6 +446,8 @@ export function makeClaudeSessionStartup(input: {
           processOwner,
           streamFiber: undefined,
           startedAt,
+          skillBridgeCleanup: skillBridge.cleanup,
+          allowedSkillNames: new Set(skillBridge.enabledSkills),
           basePermissionMode: permissionMode,
           // A fresh CLI starts in `permissionMode` when queryOptions provides one, otherwise the SDK's
           // "default" mode (queryOptions omits it).
@@ -440,15 +465,15 @@ export function makeClaudeSessionStartup(input: {
           turnState: undefined,
           lastTurnId: undefined,
           interruptRequestedTurnId: undefined,
-          lastKnownContextWindow: resolveClaudeApiModelIdContextWindowMaxTokens(
-            apiModelId ?? effectiveClaudeModel,
-          ),
-          currentAutoCompactWindow: requestedAutoCompactWindowTokens,
+          availableModels: initialization.models,
+          fastModeState: initialization.fast_mode_state,
+          lastKnownContextWindow: undefined,
           currentAlwaysThinkingEnabled: thinking,
           currentEffort: effectiveEffort,
+          effectiveEffort: undefined,
           currentUltracode: ultracode,
           currentFastMode: fastMode,
-          lastKnownAutoCompactThreshold: requestedAutoCompactWindowTokens,
+          lastKnownAutoCompactThreshold: undefined,
           contextUsageControlEnabled: true,
           lastKnownTokenUsage: undefined,
           tokenUsageState: "current",
@@ -461,7 +486,6 @@ export function makeClaudeSessionStartup(input: {
           lastResultUuid: undefined,
           lastAssistantUuid: resumeState?.resumeSessionAt,
           lastThreadStartedId: undefined,
-          rerouteOriginalApiModelId: undefined,
           emittedContextUsageWarnings: new Set(),
           stopped: false,
           warnedUnhandledSdkKinds: new Set(),
@@ -493,7 +517,6 @@ export function makeClaudeSessionStartup(input: {
             payload: input.resumeCursor !== undefined ? { resume: input.resumeCursor } : {},
             providerRefs: {},
           });
-          yield* emitClaudeCacheObservation(context);
 
           const configuredStamp = yield* makeEventStamp();
           yield* offerRuntimeEvent(context, {
@@ -506,7 +529,6 @@ export function makeClaudeSessionStartup(input: {
               config: {
                 ...(modelSelection?.model ? { model: modelSelection.model } : {}),
                 ...(apiModelId ? { apiModelId } : {}),
-                autoCompactWindow: requestedAutoCompactWindowTokens ?? null,
                 ...(input.cwd ? { cwd: input.cwd } : {}),
                 ...(effectiveEffort ? { effort: effectiveEffort } : {}),
                 ...(permissionMode ? { permissionMode } : {}),
@@ -572,6 +594,7 @@ export function makeClaudeSessionStartup(input: {
                 });
               }
               yield* processOwnership.teardownFailedStartupProcess(threadId, processOwner);
+              yield* Effect.promise(skillBridge.cleanup);
             });
           }).pipe(Effect.ignore),
         ),

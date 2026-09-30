@@ -1,6 +1,6 @@
 import { Schema } from "effect";
 import { IsoDateTime, TrimmedString } from "../core/baseSchemas";
-import { DEFAULT_GIT_TEXT_GENERATION_MODEL } from "../provider/model";
+import { PROVIDER_DEFAULT_MODEL } from "../provider/model";
 import { ModelSelection } from "../provider/sessionPolicy";
 import { ThreadEnvironmentMode } from "../orchestration/threadEntities";
 import { ProviderKind } from "../core/baseSchemas";
@@ -49,7 +49,7 @@ export const ServerSettings = Schema.Struct({
   textGenerationModelSelection: ModelSelection.pipe(
     Schema.withDecodingDefault(() => ({
       provider: "codex" as const,
-      model: DEFAULT_GIT_TEXT_GENERATION_MODEL,
+      model: PROVIDER_DEFAULT_MODEL,
     })),
   ),
   providers: Schema.Struct({

@@ -845,7 +845,10 @@ lifecycleLayer("CodexAdapterLive lifecycle", (it) => {
         payload: {
           error: {
             message: "Reconnecting... 2/5",
+            codexErrorInfo: "serverOverloaded",
           },
+          threadId: "thread-1",
+          turnId: "turn-1",
           willRetry: true,
         },
       } satisfies ProviderEvent);

@@ -1,4 +1,3 @@
-import type { ClaudeCacheObservation } from "@glade/contracts/provider/claudeCache";
 import type {
   ProviderBackgroundTaskInput,
   ProviderForkThreadInput,
@@ -16,7 +15,7 @@ import type {
   ProviderStopTaskInput,
   ProviderTurnStartResult,
 } from "@glade/contracts/provider/provider";
-import type { ProviderKind, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
+import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import type {
   ModelSelection,
   RuntimeMode,
@@ -56,14 +55,6 @@ interface ProviderSessionStartOutcomeOptions {
 }
 
 export interface ProviderServiceShape {
-  readonly startClaudeCompaction?: (input: {
-    readonly threadId: ThreadId;
-    readonly turnId: TurnId;
-  }) => Effect.Effect<ProviderTurnStartResult, ProviderServiceError>;
-  readonly getClaudeCacheObservation?: (
-    threadId: ThreadId,
-  ) => Effect.Effect<ClaudeCacheObservation | undefined, ProviderServiceError>;
-
   readonly startSession: (
     threadId: ThreadId,
     input: ProviderSessionStartInput,

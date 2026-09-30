@@ -1,10 +1,17 @@
 import type {
+  ProviderManagementContext,
+  ProviderListMcpServersResult,
+  ProviderManageMcpServerInput,
+  ProviderManagementResult,
+  ProviderPluginInventoryResult,
+  ProviderManagePluginInput,
+} from "@glade/contracts/provider/providerManagement";
+import type {
   ApprovalRequestId,
   ProviderKind,
   ThreadId,
   TurnId,
 } from "@glade/contracts/core/baseSchemas";
-import type { ClaudeCacheObservation } from "@glade/contracts/provider/claudeCache";
 import type {
   ProviderComposerCapabilities,
   ProviderListAgentsInput,
@@ -83,6 +90,18 @@ export interface ProviderThreadSnapshot {
 export interface ProviderAdapterShape<TError> {
   readonly provider: ProviderKind;
   readonly capabilities: ProviderAdapterCapabilities;
+  readonly listMcpServers?: (
+    input: ProviderManagementContext,
+  ) => Effect.Effect<ProviderListMcpServersResult, TError>;
+  readonly manageMcpServer?: (
+    input: ProviderManageMcpServerInput,
+  ) => Effect.Effect<ProviderManagementResult, TError>;
+  readonly pluginInventory?: (
+    input: ProviderManagementContext,
+  ) => Effect.Effect<ProviderPluginInventoryResult, TError>;
+  readonly managePlugin?: (
+    input: ProviderManagePluginInput,
+  ) => Effect.Effect<ProviderManagementResult, TError>;
 
   readonly startSession: (
     input: ProviderSessionStartInput,
@@ -157,15 +176,6 @@ export interface ProviderAdapterShape<TError> {
   ) => Effect.Effect<ProviderThreadSnapshot, TError>;
 
   readonly compactThread?: (threadId: ThreadId) => Effect.Effect<void, TError>;
-
-  readonly startClaudeCompaction?: (input: {
-    readonly threadId: ThreadId;
-    readonly turnId: TurnId;
-  }) => Effect.Effect<ProviderTurnStartResult, TError>;
-
-  readonly getClaudeCacheObservation?: (
-    threadId: ThreadId,
-  ) => Effect.Effect<ClaudeCacheObservation | undefined, TError>;
 
   readonly forkThread?: (
     input: ProviderForkThreadInput,

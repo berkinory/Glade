@@ -57,16 +57,13 @@ export function ComposerModelPickerRow(props: {
   const starEntry: StarredModel = row.preset ?? {
     provider: row.provider,
     model: row.model,
-    ...resolveStarredTraits(selection),
+    ...resolveStarredTraits(selection, props.providerOptions),
   };
 
   const starred = row.preset !== null || props.starredModelSlots.has(starredModelSlotKey(row));
 
   const onSelectEffort = props.onSelectEffort;
-  const effortLevels =
-    onSelectEffort !== null && row.preset === null && !selection.ultrathinkPromptControlled
-      ? selection.effortLevels
-      : [];
+  const effortLevels = onSelectEffort !== null && row.preset === null ? selection.effortLevels : [];
   const RowProviderIcon = PROVIDER_ICON_COMPONENT_BY_PROVIDER[row.provider];
   const rowClassName = cn("pe-1", row.selected && PICKER_PANEL_ROW_SELECTED_CLASS_NAME);
   const starButton = (

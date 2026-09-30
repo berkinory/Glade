@@ -1,9 +1,9 @@
-import { DEFAULT_MODEL_BY_PROVIDER, type ModelSlug } from "@glade/contracts/provider/model";
+import { PROVIDER_DEFAULT_MODEL, type ModelSlug } from "@glade/contracts/provider/model";
 import { ThreadId, type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import type { GitWorktreeSetupPhase } from "@glade/contracts/git/git";
 import type { ServerProviderAuthStatus } from "@glade/contracts/server/server";
-import { getDefaultModel, normalizeModelSlug } from "@glade/shared/provider/model";
+import { normalizeModelSlug } from "@glade/shared/provider/model";
 import { isGenericChatThreadTitle } from "@glade/shared/threads/chatThreads";
 import type { ChatMessage, Thread, TurnDiffSummary, WorktreeSetupStepId } from "../types";
 import type { DraftThreadState } from "../composerDraftDomain";
@@ -217,8 +217,8 @@ export function resolveDraftFallbackModelSelection(input: {
   const provider = input.projectDefault?.provider ?? input.settingsDefaultProvider;
   const model =
     (provider === input.projectDefault?.provider ? input.projectDefault.model : null) ??
-    getDefaultModel(provider) ??
-    DEFAULT_MODEL_BY_PROVIDER.codex;
+    PROVIDER_DEFAULT_MODEL ??
+    PROVIDER_DEFAULT_MODEL;
   return buildModelSelection(provider, model);
 }
 

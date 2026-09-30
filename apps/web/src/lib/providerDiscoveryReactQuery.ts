@@ -23,12 +23,6 @@ const EMPTY_COMMANDS_RESULT: ProviderListCommandsResult = {
   cached: false,
 };
 
-const EMPTY_MODELS_RESULT: ProviderListModelsResult = {
-  models: [],
-  source: "empty",
-  cached: false,
-};
-
 const EMPTY_AGENTS_RESULT: ProviderListAgentsResult = {
   agents: [],
   source: "empty",
@@ -210,24 +204,6 @@ function serializeProviderModelDiscovery<T>(
   });
 }
 
-function requireDiscoveredModels(
-  provider: ProviderKind,
-  result: ProviderListModelsResult,
-  _previous: ProviderListModelsResult | undefined,
-): ProviderListModelsResult {
-  const isAuthoritativeEmptyCatalog =
-    result.source === "disabled" || result.source === "unsupported";
-  if (
-    provider !== "codex" &&
-    provider !== "claudeAgent" &&
-    result.models.length === 0 &&
-    !isAuthoritativeEmptyCatalog
-  ) {
-    throw new Error(`${provider} model discovery returned no models.`);
-  }
-  return result;
-}
-
 export const providerDiscoveryQueryKeys = {
   all: ["provider-discovery"] as const,
   modelsAll: ["provider-discovery", "models"] as const,
@@ -376,7 +352,7 @@ export function providerModelsQueryOptions(input: {
   );
   return queryOptions<ProviderListModelsResult, Error, ProviderListModelsResult, typeof queryKey>({
     queryKey,
-    queryFn: ({ client, signal }): Promise<ProviderListModelsResult> =>
+    queryFn: ({ signal }): Promise<ProviderListModelsResult> =>
       serializeProviderModelDiscovery(
         queryKey,
         signal,
@@ -389,18 +365,16 @@ export function providerModelsQueryOptions(input: {
             ...(input.apiEndpoint ? { apiEndpoint: input.apiEndpoint } : {}),
             ...(cwd ? { cwd } : {}),
           });
-          const previous = client.getQueryData<ProviderListModelsResult>(queryKey);
-          return requireDiscoveredModels(input.provider, result, previous);
+          return result;
         },
       ),
     enabled: input.enabled ?? true,
 
     retry: 3,
 
-    staleTime: 15 * 60_000,
-
     gcTime: 24 * 60 * 60_000,
-    placeholderData: (previous) => previous ?? EMPTY_MODELS_RESULT,
+    staleTime: (query) => (query.state.data?.stale ? 30_000 : 60_000),
+    refetchInterval: 60_000,
   });
 }
 

@@ -22,7 +22,6 @@ import { providerStartOptionsFromServerSettings } from "../../settings/settingsP
 import { resolveThreadWorkspaceState } from "@glade/shared/threads/threadEnvironment";
 import { type ProviderSession } from "@glade/contracts/provider/provider";
 import { providerWorkspaceChanged } from "../projectRelocationPaths.ts";
-import { claudeSelectionRequiresRestart } from "@glade/shared/provider/model";
 import { BlockedGoalContinuation, PendingInterruptEscalation } from "./runtimeState";
 import { makeProviderContextBootstrap } from "./contextBootstrap";
 import { ThreadSessionSettings } from "../Services/ThreadSessionSettings.ts";
@@ -275,17 +274,6 @@ export function makeProviderSessionConfiguration(input: {
       const modelChanged =
         requestedModelSelection !== undefined &&
         requestedModelSelection.model !== activeSessionBeforeEnsure?.model;
-      const previousModelSelection = threadSessionSettings.getModelSelection(threadId);
-      // When the dispatch cache has no entry (the session was started by a turn without a selection),
-      // compare against the projected thread selection the session was actually spawned from so
-      // spawn-fixed changes still restart.
-      const shouldRestartForModelSelectionChange =
-        currentProvider === "claudeAgent"
-          ? claudeSelectionRequiresRestart(
-              previousModelSelection ?? thread.modelSelection,
-              desiredModelSelection,
-            )
-          : false;
       const requestedComputerControl = options?.enableComputerControl;
 
       const previousComputerControl =
@@ -296,13 +284,7 @@ export function makeProviderSessionConfiguration(input: {
         requestedComputerControl !== undefined &&
         requestedComputerControl !== previousComputerControl;
 
-      if (
-        !runtimeModeChanged &&
-        !providerChanged &&
-        !workspaceChanged &&
-        !shouldRestartForModelSelectionChange &&
-        !computerControlChanged
-      ) {
+      if (!runtimeModeChanged && !providerChanged && !workspaceChanged && !computerControlChanged) {
         return {
           activeSessionBeforeEnsure,
           activeSession: reusableSession,
@@ -324,7 +306,6 @@ export function makeProviderSessionConfiguration(input: {
         !runtimeModeChanged &&
         !providerChanged &&
         !workspaceChanged &&
-        !shouldRestartForModelSelectionChange &&
         (yield* hasLiveProviderTurn(threadId))
       ) {
         return {
@@ -361,7 +342,6 @@ export function makeProviderSessionConfiguration(input: {
         providerChanged,
         workspaceChanged,
         modelChanged,
-        shouldRestartForModelSelectionChange,
         computerControlChanged,
         hasResumeCursor: resumeCursor !== undefined,
       });

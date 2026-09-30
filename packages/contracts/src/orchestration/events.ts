@@ -89,6 +89,7 @@ export const OrchestrationEventType = Schema.Literals([
   "thread.turn-start-requested",
   "thread.claude-cache-set",
   "thread.claude-cache-response-requested",
+  "thread.legacy-cache-abandoned",
   "thread.goal-continuation-requested",
   "thread.turn-interrupt-requested",
   "thread.task-stop-requested",
@@ -357,6 +358,12 @@ export const ThreadClaudeCacheResponseRequestedPayload = Schema.Struct({
   threadId: ThreadId,
   review: PendingClaudeCacheReview,
   decision: Schema.Literals(["continue", "compact", "cancel"]),
+  createdAt: IsoDateTime,
+});
+
+export const ThreadLegacyCacheAbandonedPayload = Schema.Struct({
+  threadId: ThreadId,
+  reviewId: TrimmedNonEmptyString,
   createdAt: IsoDateTime,
 });
 
@@ -635,6 +642,11 @@ export const OrchestrationEvent = Schema.Union([
     ...EventBaseFields,
     type: Schema.Literal("thread.claude-cache-response-requested"),
     payload: ThreadClaudeCacheResponseRequestedPayload,
+  }),
+  Schema.Struct({
+    ...EventBaseFields,
+    type: Schema.Literal("thread.legacy-cache-abandoned"),
+    payload: ThreadLegacyCacheAbandonedPayload,
   }),
   Schema.Struct({
     ...EventBaseFields,

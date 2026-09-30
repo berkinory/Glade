@@ -1,4 +1,4 @@
-import { Effect, Exit } from "effect";
+import { Effect } from "effect";
 import { EventId } from "@glade/contracts/core/baseSchemas";
 import { ClaudeSessionContext, PROVIDER } from "./sessionTypes";
 import { type RuntimeTurnState } from "@glade/contracts/provider/runtimeMetadata";
@@ -10,15 +10,10 @@ import {
   normalizeClaudeTokenUsage,
   snapshotFromClaudeContextUsage,
   mergeClaudeTokenUsageSnapshot,
-  resolveClaudeApiModelIdContextWindowMaxTokens,
 } from "../claudeTokenUsage.ts";
 import { asPositiveFiniteNumber } from "@glade/shared/transport/payloadValues";
-import { claudeEffectiveContextBudget } from "./modelCapabilities";
 import { withoutProcessedTokenTotal } from "./sessionResume";
 import { type ThreadTokenUsageSnapshot } from "@glade/contracts/provider/runtimePayloads";
-import { normalizeOperationError } from "../../../platform/operationError.ts";
-import { toError } from "./streamErrors";
-import { claudeCacheForModel } from "../claudeCacheObservation.ts";
 import { cancelAgentGatewayTurn } from "../../../agentGateway/sessionLease.ts";
 import { asRuntimeItemId, nativeProviderRefs, asCanonicalTurnId } from "./messageContent";
 import { toolLifecycleEventData } from "./toolPresentation";
@@ -91,7 +86,7 @@ export function makeClaudeTurnCompletion(input: {
 
       const accumulatedSnapshot = normalizeClaudeTokenUsage(
         result?.usage,
-        claudeEffectiveContextBudget(context),
+        context.lastKnownContextWindow,
       );
       const reportedZeroUsage =
         result?.usage?.input_tokens === 0 &&
@@ -123,32 +118,28 @@ export function makeClaudeTurnCompletion(input: {
           )
         : undefined;
       const lastGoodUsage = liveSnapshot ?? context.lastKnownTokenUsage;
-      const maxTokens = claudeEffectiveContextBudget(context);
+      const maxTokens = context.lastKnownContextWindow;
       if (context.tokenUsageState === "skip-compaction-call") {
         context.tokenUsageState = "awaiting-fresh-assistant";
       }
-      const accountingOnlyUsage =
-        context.processedTokenBaselineKnown && totalProcessedTokens !== undefined
-          ? { usedTokens: 0, totalProcessedTokens }
-          : undefined;
       const mergedUsageSnapshot: ThreadTokenUsageSnapshot | undefined =
         context.tokenUsageState !== "current"
-          ? accountingOnlyUsage
+          ? undefined
           : !context.processedTokenBaselineKnown
-            ? (lastGoodUsage ?? accountedAccumulatedSnapshot)
+            ? lastGoodUsage
             : lastGoodUsage
               ? mergeClaudeTokenUsageSnapshot(
                   lastGoodUsage,
                   accountedAccumulatedSnapshot,
                   maxTokens,
                 )
-              : accountedAccumulatedSnapshot;
+              : undefined;
+      if (liveSnapshot) context.lastKnownTokenUsage = liveSnapshot;
       // The context merge preserves context size; accounting has its own final value and must not inherit
       // the merge's monotonic provisional maximum.
-      let usageSnapshot = mergedUsageSnapshot
+      const usageSnapshot = mergedUsageSnapshot
         ? {
             ...withoutProcessedTokenTotal(mergedUsageSnapshot),
-            ...(context.cacheObservation ? { claudeCache: context.cacheObservation } : {}),
             tokenAccountingVersion: 1 as const,
             ...(context.processedTokenBaselineKnown && totalProcessedTokens !== undefined
               ? { totalProcessedTokens }
@@ -163,30 +154,6 @@ export function makeClaudeTurnCompletion(input: {
 
       context.processedTokenResultBaseline = context.processedTokenTotal;
       context.requestUsage.settleTurn();
-
-      const reroutedFrom = context.rerouteOriginalApiModelId;
-      if (reroutedFrom !== undefined) {
-        const restoreExit = yield* Effect.exit(
-          Effect.tryPromise({
-            try: () => context.query.setModel(reroutedFrom),
-            catch: (cause) =>
-              normalizeOperationError(
-                toError(cause, "Failed to restore Claude model after reroute."),
-              ),
-          }),
-        );
-        if (Exit.isSuccess(restoreExit)) {
-          context.rerouteOriginalApiModelId = undefined;
-          context.currentApiModelId = reroutedFrom;
-          context.cacheObservation = claudeCacheForModel(context.cacheObservation, reroutedFrom);
-          if (usageSnapshot && context.cacheObservation) {
-            usageSnapshot = { ...usageSnapshot, claudeCache: context.cacheObservation };
-            context.lastKnownTokenUsage = usageSnapshot;
-          }
-          context.lastKnownContextWindow =
-            resolveClaudeApiModelIdContextWindowMaxTokens(reroutedFrom);
-        }
-      }
 
       const turnState = context.turnState;
       if (!turnState) {

@@ -1,3 +1,4 @@
+import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import type { StateCreator } from "zustand";
 import type { ComposerDraftStoreState } from "./composerDraftDomain";
 import {
@@ -6,7 +7,7 @@ import {
   RuntimeMode,
 } from "@glade/contracts/provider/sessionPolicy";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
-import { getDefaultModel, normalizeModelSlug } from "@glade/shared/provider/model";
+import { normalizeModelSlug } from "@glade/shared/provider/model";
 import * as Equal from "effect/Equal";
 import * as Schema from "effect/Schema";
 import { normalizePullRequestContexts } from "./lib/pullRequestContext";
@@ -384,7 +385,7 @@ export function createPromptAndModelsActions(
           const opts = normalizedOpts[provider];
           const current = nextMap[provider];
           if (opts) {
-            const model = current?.model ?? getDefaultModel(provider);
+            const model = current?.model ?? PROVIDER_DEFAULT_MODEL;
             if (!model) continue;
             nextMap[provider] = makeModelSelection(
               provider,
@@ -426,8 +427,7 @@ export function createPromptAndModelsActions(
       );
       const providerOpts = normalizedOpts?.[normalizedProvider];
       const fallbackModel =
-        normalizeModelSlug(options?.model, normalizedProvider) ??
-        getDefaultModel(normalizedProvider);
+        normalizeModelSlug(options?.model, normalizedProvider) ?? PROVIDER_DEFAULT_MODEL;
 
       set((state) => {
         const existing = state.draftsByThreadId[threadId];

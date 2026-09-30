@@ -5,31 +5,10 @@ import type {
   SDKControlGetContextUsageResponse,
 } from "@anthropic-ai/claude-agent-sdk";
 import type { ThreadTokenUsageSnapshot } from "@glade/contracts/provider/runtimePayloads";
-import {
-  getClaudeContextWindowSuffix,
-  getDefaultAutoCompactWindow,
-  getModelCapabilities,
-  hasAutoCompactWindowOption,
-  stripClaudeContextWindowSuffix,
-  trimOrNull,
-} from "@glade/shared/provider/model";
-
-export const CLAUDE_CONTEXT_WINDOW_MAX_TOKENS = {
-  "200k": 200_000,
-  "1m": 1_000_000,
-} as const;
-
-function claudeContextWindowTokensForOption(value: string | null): number | undefined {
-  return value !== null && Object.hasOwn(CLAUDE_CONTEXT_WINDOW_MAX_TOKENS, value)
-    ? CLAUDE_CONTEXT_WINDOW_MAX_TOKENS[value as keyof typeof CLAUDE_CONTEXT_WINDOW_MAX_TOKENS]
-    : undefined;
-}
-
-const CLAUDE_DEFAULT_CONTEXT_WINDOW_TOKENS = 200_000;
 const CLAUDE_CONTEXT_WARNING_RATIO = 0.8;
 const CLAUDE_UNCACHED_INGESTION_WARNING_TOKENS = 50_000;
 
-type ClaudeContextUsageWarningKey = "uncached-ingestion" | "near-window" | "large-prompt";
+type ClaudeContextUsageWarningKey = "uncached-ingestion" | "near-window";
 
 interface ClaudeContextUsageWarning {
   readonly key: ClaudeContextUsageWarningKey;
@@ -72,18 +51,6 @@ function claudePromptTokensFromRawUsage(usage: Record<string, unknown>): number 
 
 function formatApproxTokens(tokens: number): string {
   return tokens >= 1_000 ? `~${Math.round(tokens / 1_000)}k` : String(Math.round(tokens));
-}
-
-export function resolveClaudeEffectiveContextBudget(
-  lastKnownAutoCompactThreshold: number | undefined,
-  currentAutoCompactWindow: number | undefined,
-  lastKnownContextWindow: number | undefined,
-): number | undefined {
-  const autoCompactBudget = lastKnownAutoCompactThreshold ?? currentAutoCompactWindow;
-  if (autoCompactBudget !== undefined && lastKnownContextWindow !== undefined) {
-    return Math.min(autoCompactBudget, lastKnownContextWindow);
-  }
-  return autoCompactBudget ?? lastKnownContextWindow;
 }
 
 export function normalizeClaudeTokenUsage(
@@ -153,40 +120,6 @@ export function mergeClaudeTokenUsageSnapshot(
     ...(maxTokens !== undefined ? { maxTokens } : {}),
     ...(totalProcessedTokens > usedTokens ? { totalProcessedTokens } : {}),
   };
-}
-
-export function resolveClaudeApiModelIdContextWindowMaxTokens(
-  apiModelId: string | undefined,
-): number | undefined {
-  if (!apiModelId) {
-    return undefined;
-  }
-
-  return (
-    claudeContextWindowTokensForOption(getClaudeContextWindowSuffix(apiModelId)) ??
-    (/^claude-(?:opus|sonnet)-4-6$/u.test(apiModelId) ? 200_000 : undefined) ??
-    asPositiveFiniteNumber(
-      getModelCapabilities("claudeAgent", stripClaudeContextWindowSuffix(apiModelId))
-        .contextWindowTokens,
-    )
-  );
-}
-
-export function resolveSelectedClaudeAutoCompactWindow(
-  model: string | null | undefined,
-  selectedAutoCompactWindow: string | null | undefined,
-): number | undefined {
-  const caps = getModelCapabilities("claudeAgent", model);
-  const selected = trimOrNull(selectedAutoCompactWindow);
-
-  if (
-    !selected ||
-    selected === getDefaultAutoCompactWindow(caps) ||
-    !hasAutoCompactWindowOption(caps, selected)
-  ) {
-    return undefined;
-  }
-  return claudeContextWindowTokensForOption(selected);
 }
 
 export function resolveEffectiveClaudeContextWindow(input: {
@@ -274,22 +207,14 @@ export function decideClaudeContextUsageWarnings(
     };
   }
 
-  const effectiveContextBudget = contextBudget ?? CLAUDE_DEFAULT_CONTEXT_WINDOW_TOKENS;
   if (
-    promptTokens > effectiveContextBudget * CLAUDE_CONTEXT_WARNING_RATIO &&
+    contextBudget !== undefined &&
+    promptTokens > contextBudget * CLAUDE_CONTEXT_WARNING_RATIO &&
     !emittedWarnings.has("near-window")
   ) {
     const warning: ClaudeContextUsageWarning = {
       key: "near-window",
-      message: `Claude context is above 80% of the ${Math.round(effectiveContextBudget / 1_000)}k auto-compact budget (${formatApproxTokens(promptTokens)} logical prompt tokens${composition}). Consider compacting or starting a fresh thread; cached reads cost less than fresh input.`,
-    };
-    return first ? { first, second: warning } : { first: warning };
-  }
-
-  if (promptTokens > CLAUDE_DEFAULT_CONTEXT_WINDOW_TOKENS && !emittedWarnings.has("large-prompt")) {
-    const warning: ClaudeContextUsageWarning = {
-      key: "large-prompt",
-      message: `Claude is processing ${formatApproxTokens(promptTokens)} logical prompt tokens per request${composition}. Large active contexts can consume usage faster; cached reads cost less than fresh input.`,
+      message: `Claude context is above 80% of the ${Math.round(contextBudget / 1_000)}k provider-reported budget (${formatApproxTokens(promptTokens)} logical prompt tokens${composition}). Consider compacting or starting a fresh thread; cached reads cost less than fresh input.`,
     };
     return first ? { first, second: warning } : { first: warning };
   }

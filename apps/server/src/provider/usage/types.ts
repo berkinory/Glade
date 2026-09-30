@@ -13,6 +13,8 @@ export interface ProviderUsageContext {
   readonly claudeBinaryPath?: string;
 
   readonly codexBinaryPath?: string;
+
+  readonly codexHomePath?: string;
 }
 
 export interface ProviderUsageFetcher {

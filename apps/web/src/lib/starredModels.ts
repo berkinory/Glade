@@ -11,6 +11,9 @@ const StarredModelSchema = Schema.Struct({
   effort: Schema.NullOr(Schema.String),
   fastMode: Schema.NullOr(Schema.Boolean),
   thinking: Schema.NullOr(Schema.Boolean),
+  options: Schema.optional(
+    Schema.Record(Schema.String, Schema.Union([Schema.String, Schema.Boolean])),
+  ),
 });
 export const StarredModelsSchema = Schema.Array(StarredModelSchema);
 
@@ -20,12 +23,16 @@ export interface StarredModel {
   readonly effort: string | null;
   readonly fastMode: boolean | null;
   readonly thinking: boolean | null;
+  readonly options?: Readonly<Record<string, string | boolean>> | undefined;
 }
 
 export type StoredStarredModel = typeof StarredModelSchema.Type;
 
 export function starredModelKey(
-  entry: Pick<StoredStarredModel, "provider" | "model" | "effort" | "fastMode" | "thinking">,
+  entry: Pick<
+    StoredStarredModel,
+    "provider" | "model" | "effort" | "fastMode" | "thinking" | "options"
+  >,
 ): string {
   return JSON.stringify([
     entry.provider,
@@ -33,6 +40,9 @@ export function starredModelKey(
     entry.effort ?? "",
     entry.fastMode === null ? "" : String(entry.fastMode),
     entry.thinking === null ? "" : String(entry.thinking),
+    ...(entry.options
+      ? [Object.entries(entry.options).toSorted(([a], [b]) => a.localeCompare(b))]
+      : []),
   ]);
 }
 
@@ -50,7 +60,20 @@ export function normalizeStarredModels(
     const key = starredModelKey(entry);
     if (seen.has(key)) continue;
     seen.add(key);
-    result.push({ ...entry, provider: entry.provider });
+    const legacyEffort =
+      entry.provider === "claudeAgent" && entry.effort === "ultrathink"
+        ? null
+        : entry.provider === "claudeAgent" && entry.effort === "ultracode"
+          ? "xhigh"
+          : entry.effort;
+    result.push({
+      ...entry,
+      provider: entry.provider,
+      effort: legacyEffort,
+      ...(entry.provider === "claudeAgent" && entry.effort === "ultracode"
+        ? { options: { ...entry.options, effort: "xhigh", ultracode: true } }
+        : {}),
+    });
   }
   return result;
 }

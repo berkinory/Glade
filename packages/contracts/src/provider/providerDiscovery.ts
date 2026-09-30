@@ -1,6 +1,6 @@
 import { Schema } from "effect";
 import { TrimmedNonEmptyString } from "../core/baseSchemas";
-import { ProviderOptionDescriptor } from "./model";
+import { ProviderOptionChoice, ProviderOptionDescriptor } from "./model";
 
 const ProviderDiscoveryKind = Schema.Literals(["codex", "claudeAgent"]);
 
@@ -121,10 +121,23 @@ export type ProviderPluginInstallPolicy = typeof ProviderPluginInstallPolicy.Typ
 export const ProviderPluginAuthPolicy = Schema.Literals(["ON_INSTALL", "ON_USE"]);
 export type ProviderPluginAuthPolicy = typeof ProviderPluginAuthPolicy.Type;
 
-export const ProviderPluginSource = Schema.Struct({
-  type: Schema.Literal("local"),
-  path: TrimmedNonEmptyString,
-});
+export const ProviderPluginSource = Schema.Union([
+  Schema.Struct({ type: Schema.Literal("local"), path: TrimmedNonEmptyString }),
+  Schema.Struct({
+    type: Schema.Literal("git"),
+    url: TrimmedNonEmptyString,
+    path: Schema.NullOr(TrimmedNonEmptyString),
+    refName: Schema.NullOr(TrimmedNonEmptyString),
+    sha: Schema.NullOr(TrimmedNonEmptyString),
+  }),
+  Schema.Struct({
+    type: Schema.Literal("npm"),
+    package: TrimmedNonEmptyString,
+    version: Schema.NullOr(TrimmedNonEmptyString),
+    registry: Schema.NullOr(TrimmedNonEmptyString),
+  }),
+  Schema.Struct({ type: Schema.Literal("remote") }),
+]);
 export type ProviderPluginSource = typeof ProviderPluginSource.Type;
 
 export const ProviderPluginInterface = Schema.Struct({
@@ -165,7 +178,7 @@ export type ProviderPluginMarketplaceLoadError = typeof ProviderPluginMarketplac
 
 export const ProviderPluginMarketplaceDescriptor = Schema.Struct({
   name: TrimmedNonEmptyString,
-  path: TrimmedNonEmptyString,
+  path: Schema.NullOr(TrimmedNonEmptyString),
   interface: Schema.optional(ProviderPluginMarketplaceInterface),
   plugins: Schema.Array(ProviderPluginDescriptor),
 });
@@ -201,7 +214,8 @@ export type ProviderListPluginsResult = typeof ProviderListPluginsResult.Type;
 
 export const ProviderReadPluginInput = Schema.Struct({
   provider: ProviderDiscoveryKind,
-  marketplacePath: TrimmedNonEmptyString,
+  marketplacePath: Schema.optional(TrimmedNonEmptyString),
+  remoteMarketplaceName: Schema.optional(TrimmedNonEmptyString),
   pluginName: TrimmedNonEmptyString,
   cwd: Schema.optional(TrimmedNonEmptyString),
   threadId: Schema.optional(TrimmedNonEmptyString),
@@ -210,7 +224,7 @@ export type ProviderReadPluginInput = typeof ProviderReadPluginInput.Type;
 
 export const ProviderPluginDetail = Schema.Struct({
   marketplaceName: TrimmedNonEmptyString,
-  marketplacePath: TrimmedNonEmptyString,
+  marketplacePath: Schema.NullOr(TrimmedNonEmptyString),
   summary: ProviderPluginDescriptor,
   description: Schema.optional(TrimmedNonEmptyString),
   skills: Schema.Array(ProviderSkillDescriptor),
@@ -262,6 +276,11 @@ export const ProviderModelDescriptor = Schema.Struct({
   resolvedModel: Schema.optional(TrimmedNonEmptyString),
   name: TrimmedNonEmptyString,
   description: Schema.optional(TrimmedNonEmptyString),
+  isDefault: Schema.optional(Schema.Boolean),
+  hidden: Schema.optional(Schema.Boolean),
+  serviceTiers: Schema.optional(Schema.Array(ProviderOptionChoice)),
+  defaultServiceTier: Schema.optional(TrimmedNonEmptyString),
+  upgrade: Schema.optional(TrimmedNonEmptyString),
   upstreamProviderId: Schema.optional(TrimmedNonEmptyString),
   upstreamProviderName: Schema.optional(TrimmedNonEmptyString),
   optionDescriptors: Schema.optional(Schema.Array(ProviderOptionDescriptor)),
@@ -281,6 +300,8 @@ export const ProviderListModelsResult = Schema.Struct({
   models: Schema.Array(ProviderModelDescriptor),
   source: Schema.optional(TrimmedNonEmptyString),
   cached: Schema.optional(Schema.Boolean),
+  stale: Schema.optional(Schema.Boolean),
+  discoveredAt: Schema.optional(TrimmedNonEmptyString),
 
   error: Schema.optional(TrimmedNonEmptyString),
 });

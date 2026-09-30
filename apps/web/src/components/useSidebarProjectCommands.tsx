@@ -1,3 +1,4 @@
+import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import { useComposerDraftStore } from "../composerDraftStore";
 import { useStore } from "../store";
 import { useCallback } from "react";
@@ -13,7 +14,6 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { ProjectId } from "@glade/contracts/core/baseSchemas";
-import { getDefaultModel } from "@glade/shared/provider/model";
 import { pluralize } from "@glade/shared/text/text";
 import { newCommandId, newProjectId } from "../lib/utils";
 import { expandProjectHomePath, joinProjectPath } from "../lib/projectPaths";
@@ -156,7 +156,7 @@ export function useSidebarProjectCommands(context: ReturnType<typeof useSidebarT
                   newProjectSpaceId: value.spaceId,
                   defaultModelSelection: {
                     provider: "codex",
-                    model: getDefaultModel("codex"),
+                    model: PROVIDER_DEFAULT_MODEL,
                   },
                   createdAt: new Date().toISOString(),
                 },

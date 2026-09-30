@@ -10,7 +10,6 @@ import { ServerConfig } from "../../server/config.ts";
 import { ManagedAttachmentRepository } from "../../persistence/Services/ManagedAttachments.ts";
 import { ProviderService } from "../../provider/Services/ProviderService.ts";
 import { type ProviderIntentEvent } from "../providerIntentClassification.ts";
-import { type PendingClaudeCacheReview } from "@glade/contracts/orchestration/threadEntities";
 import { TurnId, ProviderKind, CommandId } from "@glade/contracts/core/baseSchemas";
 import { turnStartKeyForEvent } from "./deliveryClaims";
 import { computerActivationMetadata } from "../../computer/computerActivation.ts";
@@ -70,9 +69,6 @@ export function makeProviderTurnStart(input: {
   readonly setThreadSessionError: ReturnType<
     typeof makeProviderThreadProjection
   >["setThreadSessionError"];
-  readonly setClaudeCacheReview: ReturnType<
-    typeof makeProviderThreadProjection
-  >["setClaudeCacheReview"];
 }) {
   const {
     queuedDispatchState,
@@ -94,7 +90,6 @@ export function makeProviderTurnStart(input: {
     dispatchTurnForThread,
     providerService,
     setThreadSessionError,
-    setClaudeCacheReview,
     projectionAccess,
   } = input;
   const {
@@ -105,7 +100,6 @@ export function makeProviderTurnStart(input: {
   } = projectionAccess;
   const processTurnStartRequestedWithoutLease = Effect.fnUntraced(function* (
     event: Extract<ProviderIntentEvent, { type: "thread.turn-start-requested" }>,
-    acceptedCacheReview?: PendingClaudeCacheReview,
     deliveryEventSequence?: number,
   ) {
     const sessionThreadId =
@@ -173,7 +167,7 @@ export function makeProviderTurnStart(input: {
       });
     yield* Effect.gen(function* () {
       const key = turnStartKeyForEvent(event);
-      if (!acceptedCacheReview && (yield* hasHandledTurnStartRecently(key))) {
+      if (yield* hasHandledTurnStartRecently(key)) {
         return;
       }
 
@@ -181,10 +175,7 @@ export function makeProviderTurnStart(input: {
       if (!thread) {
         return;
       }
-      if (
-        thread.claudeCacheReview &&
-        thread.claudeCacheReview.reviewId !== acceptedCacheReview?.reviewId
-      ) {
+      if (thread.claudeCacheReview) {
         if (thread.claudeCacheReview.messageId !== event.payload.messageId)
           yield* enqueueQueuedTurnStart(event);
         return;
@@ -320,10 +311,9 @@ export function makeProviderTurnStart(input: {
           : event.payload.dispatchMode;
 
       const startedTurn = yield* dispatchTurnForThread({
-        cacheReviewSource: event,
+        sourceEvent: event,
         sourceEventSequence: event.sequence,
         completionEventSequence: deliveryEventSequence ?? event.sequence,
-        ...(acceptedCacheReview ? { acceptedCacheReview } : {}),
         threadId: event.payload.threadId,
         messageId: message.id,
         messageText: message.text,
@@ -446,9 +436,6 @@ export function makeProviderTurnStart(input: {
       if (startedTurn && isPendingQueuedDispatch) {
         yield* bindPendingQueuedDispatchToTurn(startedTurn.turnId);
       }
-      if (startedTurn && acceptedCacheReview) {
-        yield* setClaudeCacheReview(event.payload.threadId, null, acceptedCacheReview.reviewId);
-      }
     }).pipe(
       Effect.onExit((exit) =>
         releaseOrphanedQueuedDispatchReservation(
@@ -468,5 +455,5 @@ export function makeProviderTurnStart(input: {
   ) {
     yield* enqueueQueuedTurnStart(event);
   });
-  return { processTurnStartRequestedWithoutLease, processTurnQueued, processTurnStartRequested };
+  return { processTurnQueued, processTurnStartRequested };
 }

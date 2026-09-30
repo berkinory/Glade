@@ -6,6 +6,7 @@ import type { ProviderAdapterError, ProviderAdapterValidationError } from "../co
 
 export interface ClaudeStartPreflight {
   readonly claudeSdkEnv: NodeJS.ProcessEnv;
+  readonly binaryPath: string;
   readonly snapshotSupported: boolean;
 }
 

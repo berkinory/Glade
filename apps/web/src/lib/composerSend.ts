@@ -5,15 +5,11 @@ import {
   PROVIDER_SEND_TURN_MAX_FILE_BYTES,
   type UploadChatAttachment,
 } from "@glade/contracts/orchestration/threadEntities";
-import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
-import { MessageId, type ProviderKind } from "@glade/contracts/core/baseSchemas";
-import { type ClaudeCodeEffort } from "@glade/contracts/provider/model";
+import { MessageId } from "@glade/contracts/core/baseSchemas";
 import {
   ATTACHMENT_CANCEL_ROUTE_PATH,
   ATTACHMENT_UPLOAD_ROUTE_PATH,
 } from "@glade/shared/transport/binaryTransfer";
-import { applyClaudePromptEffortPrefix, getModelCapabilities } from "@glade/shared/provider/model";
-import { parseComputerInvocation } from "@glade/shared/computer/computerInvocation";
 
 import {
   cloneComposerImageAttachment,
@@ -35,9 +31,7 @@ const ATTACHMENT_CANCEL_BODY_MAX_BYTES = 512;
 
 export { cloneComposerImageAttachment };
 
-export const FILE_SIZE_LIMIT_LABEL = `${Math.round(
-  PROVIDER_SEND_TURN_MAX_FILE_BYTES / (1024 * 1024),
-)}MB`;
+const FILE_SIZE_LIMIT_LABEL = `${Math.round(PROVIDER_SEND_TURN_MAX_FILE_BYTES / (1024 * 1024))}MB`;
 
 export interface ComposerImageBuildResult {
   images: ComposerImageAttachment[];
@@ -174,38 +168,6 @@ export function readFileAsDataUrl(file: File): Promise<string> {
     });
     reader.readAsDataURL(file);
   });
-}
-
-export function formatOutgoingComposerPrompt(params: {
-  provider: ProviderKind;
-  model: string | null;
-  effort: string | null;
-  text: string;
-}): string {
-  const caps = getModelCapabilities(params.provider, params.model);
-  if (params.effort && caps.promptInjectedEffortLevels.includes(params.effort)) {
-    const computerInvocation = parseComputerInvocation(params.text);
-    if (computerInvocation) {
-      const prompt = applyClaudePromptEffortPrefix(
-        computerInvocation.prompt,
-        params.effort as ClaudeCodeEffort | null,
-      );
-      return `/computer-use ${prompt}`;
-    }
-    return applyClaudePromptEffortPrefix(params.text, params.effort as ClaudeCodeEffort | null);
-  }
-  return params.text;
-}
-
-export function resolvePromptEffortFromModelSelection(
-  modelSelection: ModelSelection,
-): string | null {
-  switch (modelSelection.provider) {
-    case "codex":
-      return modelSelection.options?.reasoningEffort ?? null;
-    case "claudeAgent":
-      return modelSelection.options?.effort ?? null;
-  }
 }
 
 export interface StagedComposerAttachments {

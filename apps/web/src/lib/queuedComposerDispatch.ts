@@ -21,7 +21,7 @@ import {
 } from "./composerMentions";
 import { appendPastedTextsToPrompt, filterPastedTextsWithText } from "./composerPastedText";
 import { appendPullRequestContextsToPrompt } from "./pullRequestContext";
-import { formatOutgoingComposerPrompt, stageUploadComposerAttachments } from "./composerSend";
+import { stageUploadComposerAttachments } from "./composerSend";
 import { appendFileCommentsToPrompt } from "./fileComments";
 import {
   appendTerminalContextsToPrompt,
@@ -43,7 +43,7 @@ export async function dispatchQueuedComposerTurnHeadless(input: {
   }
 
   const thread = getThreadFromState(useStore.getState(), input.threadId);
-  if (!thread || thread.claudeCacheReview != null) {
+  if (!thread) {
     return false;
   }
 
@@ -56,12 +56,7 @@ export async function dispatchQueuedComposerTurnHeadless(input: {
     if (!trimmed) {
       return false;
     }
-    const outgoingMessageText = formatOutgoingComposerPrompt({
-      provider: queuedTurn.selectedProvider,
-      model: queuedTurn.selectedModel,
-      effort: queuedTurn.selectedPromptEffort,
-      text: trimmed,
-    });
+    const outgoingMessageText = trimmed;
     const latestProposedPlan = findLatestProposedPlan(
       thread.proposedPlans,
       thread.latestTurn?.turnId,
@@ -108,12 +103,6 @@ export async function dispatchQueuedComposerTurnHeadless(input: {
       });
       return true;
     } catch {
-      if (
-        getThreadFromState(useStore.getState(), input.threadId)?.claudeCacheReview?.messageId ===
-        messageId
-      ) {
-        return true;
-      }
       clearPendingTurnDispatch(input.threadId);
       return false;
     }
@@ -143,12 +132,7 @@ export async function dispatchQueuedComposerTurnHeadless(input: {
   if (!outgoingTextSeed.trim() && queuedTurn.images.length === 0) {
     return false;
   }
-  const outgoingMessageText = formatOutgoingComposerPrompt({
-    provider: queuedTurn.selectedProvider,
-    model: queuedTurn.selectedModel,
-    effort: queuedTurn.selectedPromptEffort,
-    text: outgoingTextSeed,
-  });
+  const outgoingMessageText = outgoingTextSeed;
   const mentionedSkills = filterPromptSkillReferences(outgoingMessageText, queuedTurn.skills);
   const mentionedMentions = filterPromptProviderMentionReferences(
     outgoingMessageText,
@@ -171,40 +155,31 @@ export async function dispatchQueuedComposerTurnHeadless(input: {
     });
     const stagedTurnAttachments = await turnAttachmentsPromise;
     await stagedTurnAttachments.runWithDispatch((turnAttachments) =>
-      api.orchestration
-        .dispatchCommand({
-          type: "thread.turn.start",
-          commandId: newCommandId(),
-          threadId: input.threadId,
-          message: {
-            messageId,
-            role: "user",
-            text: outgoingMessageText,
-            attachments: turnAttachments,
-            ...(mentionedSkills.length > 0 ? { skills: mentionedSkills } : {}),
-            ...(mentionedMentions.length > 0 ? { mentions: mentionedMentions } : {}),
-          },
-          modelSelection: queuedTurn.modelSelection,
-          ...(queuedTurn.providerOptionsForDispatch
-            ? { providerOptions: queuedTurn.providerOptionsForDispatch }
-            : {}),
-          assistantDeliveryMode: input.assistantDeliveryMode,
-          dispatchMode: input.dispatchMode,
-          runtimeMode: queuedTurn.runtimeMode,
-          interactionMode: queuedTurn.interactionMode,
-          ...(queuedTurn.sourceProposedPlan
-            ? { sourceProposedPlan: queuedTurn.sourceProposedPlan }
-            : {}),
-          createdAt,
-        })
-        .catch((error: unknown) => {
-          if (
-            getThreadFromState(useStore.getState(), input.threadId)?.claudeCacheReview
-              ?.messageId !== messageId
-          ) {
-            throw error;
-          }
-        }),
+      api.orchestration.dispatchCommand({
+        type: "thread.turn.start",
+        commandId: newCommandId(),
+        threadId: input.threadId,
+        message: {
+          messageId,
+          role: "user",
+          text: outgoingMessageText,
+          attachments: turnAttachments,
+          ...(mentionedSkills.length > 0 ? { skills: mentionedSkills } : {}),
+          ...(mentionedMentions.length > 0 ? { mentions: mentionedMentions } : {}),
+        },
+        modelSelection: queuedTurn.modelSelection,
+        ...(queuedTurn.providerOptionsForDispatch
+          ? { providerOptions: queuedTurn.providerOptionsForDispatch }
+          : {}),
+        assistantDeliveryMode: input.assistantDeliveryMode,
+        dispatchMode: input.dispatchMode,
+        runtimeMode: queuedTurn.runtimeMode,
+        interactionMode: queuedTurn.interactionMode,
+        ...(queuedTurn.sourceProposedPlan
+          ? { sourceProposedPlan: queuedTurn.sourceProposedPlan }
+          : {}),
+        createdAt,
+      }),
     );
     return true;
   } catch {

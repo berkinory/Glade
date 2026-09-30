@@ -5,11 +5,7 @@ export class ProviderSessionReads extends ServiceMap.Service<
   Required<
     Pick<
       ProviderServiceShape,
-      | "listSessions"
-      | "getCapabilities"
-      | "getClaudeCacheObservation"
-      | "rollbackConversation"
-      | "compactThread"
+      "listSessions" | "getCapabilities" | "rollbackConversation" | "compactThread"
     >
   >
 >()("glade/provider/ProviderSessionReads") {}

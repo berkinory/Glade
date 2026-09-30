@@ -1,10 +1,10 @@
+import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import { EventId, MessageId, ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { type OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
 import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { type ThreadHandoffImportedMessage } from "@glade/contracts/orchestration/commands";
 import { type ServerProviderStatus } from "@glade/contracts/server/server";
 import { type ServerSettingsView } from "@glade/contracts/settings/settings";
-import { getDefaultModel } from "@glade/shared/provider/model";
 import { type Thread } from "../types";
 import { DEFAULT_PROVIDER_ORDER } from "../providerOrdering";
 import { stripEmbeddedAssistantSelections } from "./assistantSelections";
@@ -200,7 +200,7 @@ export function resolveThreadHandoffModelSelection(input: {
   if (isCompatibleSelection(input.projectDefaultModelSelection)) {
     return input.projectDefaultModelSelection;
   }
-  const defaultModel = getDefaultModel(input.targetProvider);
+  const defaultModel = PROVIDER_DEFAULT_MODEL;
   return {
     provider: input.targetProvider,
     model: defaultModel,

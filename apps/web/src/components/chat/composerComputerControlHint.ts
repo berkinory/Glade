@@ -9,7 +9,7 @@ export const COMPUTER_CONTROL_HINT_ACTION_LABEL = "Use Medium";
 
 type ComputerControlEffortHintTraits = Pick<
   ComposerTraitSelection,
-  "effort" | "defaultEffort" | "effortLevels" | "ultrathinkPromptControlled"
+  "effort" | "defaultEffort" | "effortLevels"
 >;
 
 export interface ComputerControlEffortHintInput {
@@ -31,11 +31,8 @@ export function shouldShowComputerControlEffortHint(
   if (input.provider !== "claudeAgent") {
     return false;
   }
-  const { effort, defaultEffort, effortLevels, ultrathinkPromptControlled } = input.traits;
+  const { effort, defaultEffort, effortLevels } = input.traits;
 
-  if (ultrathinkPromptControlled) {
-    return false;
-  }
   if (!effortLevels.some((level) => level.value === COMPUTER_CONTROL_HINT_EFFORT)) {
     return false;
   }

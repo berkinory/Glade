@@ -9,7 +9,6 @@ import {
   TurnId,
   NonNegativeInt,
   MessageId,
-  PositiveInt,
   ApprovalRequestId,
   CheckpointRef,
 } from "../core/baseSchemas";
@@ -37,7 +36,6 @@ import {
   ComputerControlMode,
   SourceProposedPlanReference,
   UploadChatAttachmentList,
-  PendingClaudeCacheReview,
   OrchestrationSession,
   OrchestrationThreadActivity,
   OrchestrationSessionStatus,
@@ -422,34 +420,11 @@ const ClientThreadTurnStartCommand = Schema.Struct({
   createdAt: IsoDateTime,
 });
 
-const ThreadClaudeCacheRespondCommand = Schema.Struct({
-  type: Schema.Literal("thread.claude-cache.respond"),
-  commandId: CommandId,
-  threadId: ThreadId,
-  messageId: MessageId,
-  reviewId: TrimmedNonEmptyString,
-  decision: Schema.Literals(["continue", "compact", "cancel"]),
-  createdAt: IsoDateTime,
-});
-
-const ThreadClaudeCacheSetCommand = Schema.Struct({
-  type: Schema.Literal("thread.claude-cache.set"),
-  commandId: CommandId,
-  threadId: ThreadId,
-  review: Schema.NullOr(PendingClaudeCacheReview),
-  expectedReviewId: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
-  hold: Schema.optional(
-    Schema.Struct({ sourceEventSequence: PositiveInt, session: OrchestrationSession }),
-  ),
-  createdAt: IsoDateTime,
-});
-
-const ThreadClaudeCacheCompactedCommand = Schema.Struct({
-  type: Schema.Literal("thread.claude-cache.compacted"),
+const ThreadLegacyCacheAbandonCommand = Schema.Struct({
+  type: Schema.Literal("thread.legacy-cache.abandon"),
   commandId: CommandId,
   threadId: ThreadId,
   reviewId: TrimmedNonEmptyString,
-  turnId: TurnId,
   createdAt: IsoDateTime,
 });
 
@@ -595,7 +570,7 @@ const DispatchableClientOrchestrationCommand = Schema.Union([
   ThreadRuntimeModeSetCommand,
   ThreadInteractionModeSetCommand,
   ThreadTurnStartCommand,
-  ThreadClaudeCacheRespondCommand,
+  ThreadLegacyCacheAbandonCommand,
   ThreadTurnInterruptCommand,
   ThreadTaskStopCommand,
   ThreadTaskBackgroundCommand,
@@ -633,7 +608,7 @@ export const ClientOrchestrationCommand = Schema.Union([
   ThreadRuntimeModeSetCommand,
   ThreadInteractionModeSetCommand,
   ClientThreadTurnStartCommand,
-  ThreadClaudeCacheRespondCommand,
+  ThreadLegacyCacheAbandonCommand,
   ThreadTurnInterruptCommand,
   ThreadTaskStopCommand,
   ThreadTaskBackgroundCommand,
@@ -761,8 +736,6 @@ const ThreadConversationRollbackCompleteCommand = Schema.Struct({
 });
 
 const InternalOrchestrationCommand = Schema.Union([
-  ThreadClaudeCacheCompactedCommand,
-  ThreadClaudeCacheSetCommand,
   ThreadSessionSetCommand,
   ThreadGoalContinueCommand,
   ThreadMessagesImportCommand,

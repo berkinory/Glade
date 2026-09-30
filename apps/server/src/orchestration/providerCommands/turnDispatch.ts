@@ -13,14 +13,12 @@ import {
   type RuntimeMode,
   type ProviderInteractionMode,
 } from "@glade/contracts/provider/sessionPolicy";
-import { makeProviderThreadProjection } from "./threadProjection";
 import { AgentGatewayOperationRepository } from "../../agentGateway/Services/AgentGatewayOperationRepository.ts";
 import { CheckpointStore } from "../../checkpointing/Services/CheckpointStore.ts";
 import { OrchestrationEngineService } from "../Services/OrchestrationEngine.ts";
 import { ThreadId, ProviderKind, MessageId } from "@glade/contracts/core/baseSchemas";
 import {
   type ChatAttachment,
-  type PendingClaudeCacheReview,
   PROVIDER_SEND_TURN_MAX_INPUT_CHARS,
 } from "@glade/contracts/orchestration/threadEntities";
 import {
@@ -47,18 +45,13 @@ import {
   appendThreadMentionContextBlocks,
   threadMentionContextSuffix,
 } from "../../provider/core/threadMentionContext.ts";
-import { buildInlineSkillInstructions } from "../../provider/core/skillPromptInjection.ts";
 import {
   ProviderAdapterValidationError,
   ProviderServiceError,
 } from "../../provider/core/Errors.ts";
 import { resolveProviderDispatchAttachments } from "../../provider/core/providerAttachmentPaths.ts";
 import { computerActivationMetadata } from "../../computer/computerActivation.ts";
-import { claudeCacheForModel } from "../../provider/claude/claudeCacheObservation.ts";
-import { resolveApiModelId } from "@glade/shared/provider/model";
-import { assessClaudeCache } from "@glade/shared/provider/claudeCache";
 import {
-  claudeCacheReviewCoversObservation,
   ProviderContextLifecycleReason,
   ProviderContextLifecycleEvidence,
 } from "./contextLifecycle";
@@ -89,18 +82,6 @@ export function makeProviderTurnDispatch(input: {
   readonly ensureSessionForThread: ReturnType<
     typeof makeProviderSessionConfiguration
   >["ensureSessionForThread"];
-  readonly isClaudeReviewAuthorized: ReturnType<
-    typeof makeProviderThreadProjection
-  >["isClaudeReviewAuthorized"];
-  readonly setClaudeCacheReview: ReturnType<
-    typeof makeProviderThreadProjection
-  >["setClaudeCacheReview"];
-  readonly pauseActiveThreadGoal: ReturnType<
-    typeof makeProviderThreadProjection
-  >["pauseActiveThreadGoal"];
-  readonly appendProviderFailureActivity: ReturnType<
-    typeof makeProviderThreadProjection
-  >["appendProviderFailureActivity"];
   readonly gatewayOperations: ServiceMap.Service.Shape<typeof AgentGatewayOperationRepository>;
   readonly pendingInterruptEscalations: Map<string, PendingInterruptEscalation>;
   readonly freshSessionContextBootstrapThreadIds: Set<string>;
@@ -135,10 +116,6 @@ export function makeProviderTurnDispatch(input: {
     computerService,
     threadSessionSettings,
     ensureSessionForThread,
-    isClaudeReviewAuthorized,
-    setClaudeCacheReview,
-    pauseActiveThreadGoal,
-    appendProviderFailureActivity,
     gatewayOperations,
     pendingInterruptEscalations,
     freshSessionContextBootstrapThreadIds,
@@ -181,14 +158,10 @@ export function makeProviderTurnDispatch(input: {
     readonly dispatchMode?: "queue" | "steer";
     readonly turnKind?: "user" | "goal-continuation";
     readonly createdAt: string;
-    readonly cacheReviewSource?: Extract<
-      ProviderIntentEvent,
-      { type: "thread.turn-start-requested" }
-    >;
-    readonly acceptedCacheReview?: PendingClaudeCacheReview;
+    readonly sourceEvent?: Extract<ProviderIntentEvent, { type: "thread.turn-start-requested" }>;
   }) {
     const thread = yield* resolveThread(input.threadId);
-    if (!thread) {
+    if (!thread || thread.claudeCacheReview) {
       return;
     }
     const debugPromptOverheadChars = debugModePromptOverheadChars(input.interactionMode);
@@ -227,38 +200,12 @@ export function makeProviderTurnDispatch(input: {
     if (providerThread && subagentProviderThreadId) {
       const steerProvider = (providerThread.session?.providerName ??
         providerThread.modelSelection.provider) as ProviderKind;
-      const steerSkillInlineText =
-        input.skills !== undefined && input.skills.length > 0
-          ? yield* Effect.tryPromise(() =>
-              buildInlineSkillInstructions({
-                provider: steerProvider,
-                skills: input.skills ?? [],
-                maxChars: Math.max(
-                  0,
-                  PROVIDER_SEND_TURN_MAX_INPUT_CHARS -
-                    messageText.length -
-                    PROVIDER_INPUT_SAFETY_MARGIN_CHARS -
-                    providerPromptOverheadChars,
-                ),
-              }),
-            ).pipe(
-              Effect.catch((error) =>
-                Effect.logWarning("failed to inline portable skill instructions", {
-                  threadId: input.threadId,
-                  error,
-                }).pipe(Effect.as("")),
-              ),
-            )
-          : "";
-      const steerMessageWithSkills = steerSkillInlineText
-        ? `${messageText}\n\n${steerSkillInlineText}`
-        : messageText;
       const composedSteerInput = withProviderThreadStatePrompts({
         interactionMode: input.interactionMode,
         goal: activeThreadGoal(thread),
         text: normalizeSkillMentionTextForProvider({
           provider: steerProvider,
-          messageText: steerMessageWithSkills,
+          messageText,
           ...(input.skills !== undefined ? { skills: input.skills } : {}),
         }),
       });
@@ -326,7 +273,6 @@ export function makeProviderTurnDispatch(input: {
       thread.session?.providerName ??
       thread.modelSelection.provider;
     const {
-      activeSession,
       nativeResumeSucceeded,
       nativeResumeFailed,
       nativeSessionRestarted,
@@ -338,90 +284,6 @@ export function makeProviderTurnDispatch(input: {
       ...(input.dispatchMode === "steer" ? {} : { enableComputerControl }),
       ...(input.runtimeMode !== undefined ? { runtimeMode: input.runtimeMode } : {}),
     });
-    if (activeSession.provider === "claudeAgent" && input.dispatchMode !== "steer") {
-      const latestThread = yield* resolveThread(input.threadId);
-      const pendingReview = latestThread?.claudeCacheReview;
-      if (input.acceptedCacheReview) {
-        if (
-          !(yield* isClaudeReviewAuthorized(
-            input.threadId,
-            input.acceptedCacheReview.reviewId,
-            "responding",
-          ))
-        )
-          return;
-      } else if (pendingReview) return;
-      const nativeObservation = providerService.getClaudeCacheObservation
-        ? yield* providerService
-            .getClaudeCacheObservation(input.threadId)
-            .pipe(Effect.catch(() => Effect.succeed(undefined)))
-        : undefined;
-      // In-session model controls run inside sendTurn, after this preflight. Assess the requested model
-      // now without changing the native session.
-      const requestedSelection = input.modelSelection ?? thread.modelSelection;
-      const observation = claudeCacheForModel(
-        nativeObservation,
-        requestedSelection.provider === "claudeAgent"
-          ? resolveApiModelId(requestedSelection)
-          : undefined,
-      );
-      const assessment = assessClaudeCache(observation, Date.now());
-      if (
-        observation &&
-        assessment.requiresConfirmation &&
-        (!input.acceptedCacheReview ||
-          !claudeCacheReviewCoversObservation(input.acceptedCacheReview, observation))
-      ) {
-        const createdAt = new Date().toISOString();
-        const hold = {
-          sourceEventSequence: input.sourceEventSequence,
-          session: {
-            threadId: input.threadId,
-            runtimeMode: activeSession.runtimeMode,
-            providerName: activeSession.provider,
-            status: "ready" as const,
-            lastError: null,
-            activeTurnId: null,
-            updatedAt: createdAt,
-          },
-        };
-        if (input.cacheReviewSource) {
-          yield* setClaudeCacheReview(
-            input.threadId,
-            {
-              reviewId: `claude-cache:${input.cacheReviewSource.eventId}:${crypto.randomUUID()}`,
-              messageId: MessageId.makeUnsafe(input.messageId),
-              sourceEventSequence: input.cacheReviewSource.sequence,
-              assessment: { ...observation, state: assessment.state },
-              requestedAt: input.cacheReviewSource.payload.createdAt,
-              ...(input.cacheReviewSource.payload.sourceProposedPlan
-                ? { sourceProposedPlan: input.cacheReviewSource.payload.sourceProposedPlan }
-                : {}),
-              status: "pending",
-              createdAt,
-            },
-            pendingReview?.reviewId ?? null,
-            hold,
-          );
-        } else {
-          yield* pauseActiveThreadGoal({
-            threadId: input.threadId,
-            expectedGoalStartedAt: thread.goalStartedAt ?? null,
-          });
-          yield* appendProviderFailureActivity({
-            threadId: input.threadId,
-            kind: "provider.turn.start.failed",
-            summary: "Goal paused for Claude cache review",
-            detail:
-              "Claude's large context is likely no longer cached. Send a message to review continuing.",
-            turnId: null,
-            createdAt: new Date().toISOString(),
-          });
-          yield* setClaudeCacheReview(input.threadId, null, null, hold);
-        }
-        return;
-      }
-    }
     if (input.providerOptions !== undefined) {
       threadSessionSettings.setProviderOptions(input.threadId, input.providerOptions);
     }
@@ -438,8 +300,8 @@ export function makeProviderTurnDispatch(input: {
       );
     }
     const completionContext =
-      input.cacheReviewSource &&
-      (input.cacheReviewSource.payload.dispatchOrigin ?? "user") === "user" &&
+      input.sourceEvent &&
+      (input.sourceEvent.payload.dispatchOrigin ?? "user") === "user" &&
       input.dispatchMode !== "steer" &&
       input.reviewTarget === undefined &&
       !input.messageText.trimStart().startsWith("/")
@@ -579,34 +441,6 @@ export function makeProviderTurnDispatch(input: {
       bootstrap
         ? wrapProviderContext({ ...bootstrap, messageText: boundaryMessageText })
         : boundaryMessageText;
-    const providerInputWithMentionContext = withProviderThreadStatePrompts({
-      interactionMode: input.interactionMode,
-      goal: activeThreadGoal(thread),
-      text: `${composeProviderInput(selectedBootstrapContext)}${mentionContextSuffix}`,
-    });
-
-    const skillInlineText =
-      input.skills !== undefined && input.skills.length > 0
-        ? yield* Effect.tryPromise(() =>
-            buildInlineSkillInstructions({
-              provider: selectedProvider as ProviderKind,
-              skills: input.skills ?? [],
-              maxChars: Math.max(
-                0,
-                PROVIDER_SEND_TURN_MAX_INPUT_CHARS -
-                  providerInputWithMentionContext.length -
-                  PROVIDER_INPUT_SAFETY_MARGIN_CHARS,
-              ),
-            }),
-          ).pipe(
-            Effect.catch((error) =>
-              Effect.logWarning("failed to inline portable skill instructions", {
-                threadId: input.threadId,
-                error,
-              }).pipe(Effect.as("")),
-            ),
-          )
-        : "";
     const finalizeProviderInput = (bootstrap: BootstrapContextSelection | null) => {
       if (
         selectedProvider === "claudeAgent" &&
@@ -615,16 +449,13 @@ export function makeProviderTurnDispatch(input: {
         return input.messageText.trim();
       }
       const withMentionContext = `${composeProviderInput(bootstrap)}${mentionContextSuffix}`;
-      const withSkills = skillInlineText
-        ? `${withMentionContext}\n\n${skillInlineText}`
-        : withMentionContext;
       return toNonEmptyProviderInput(
         withProviderThreadStatePrompts({
           interactionMode: input.interactionMode,
           goal: activeThreadGoal(thread),
           text: normalizeSkillMentionTextForProvider({
             provider: selectedProvider as ProviderKind,
-            messageText: withSkills,
+            messageText: withMentionContext,
             ...(input.skills !== undefined ? { skills: input.skills } : {}),
           }),
         }),
@@ -650,25 +481,9 @@ export function makeProviderTurnDispatch(input: {
       ...(input.interactionMode !== undefined ? { interactionMode: input.interactionMode } : {}),
     };
     const sendQueuedProviderTurn = (messageText: string | undefined) =>
-      Effect.gen(function* () {
-        if (
-          input.acceptedCacheReview &&
-          !(yield* isClaudeReviewAuthorized(
-            input.threadId,
-            input.acceptedCacheReview.reviewId,
-            "responding",
-          ))
-        ) {
-          return yield* new ProviderAdapterValidationError({
-            provider: selectedProvider,
-            operation: "thread.turn.start",
-            issue: "The saved send was cancelled before delivery.",
-          });
-        }
-        return yield* providerService.sendTurn({
-          ...providerTurnInput,
-          ...(messageText ? { input: messageText } : {}),
-        });
+      providerService.sendTurn({
+        ...providerTurnInput,
+        ...(messageText ? { input: messageText } : {}),
       });
 
     const captureMessageStartCheckpoint = Effect.gen(function* () {

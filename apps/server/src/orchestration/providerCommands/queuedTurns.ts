@@ -164,6 +164,7 @@ export function makeProviderQueuedTurns(input: {
 
   const hasPendingQueuedTurnForSession = Effect.fnUntraced(function* (threadId: ThreadId) {
     const sessionThreadId = (yield* resolveProviderSessionThread(threadId))?.id ?? threadId;
+    if ((yield* resolveThread(sessionThreadId))?.claudeCacheReview) return;
     if (queuedDispatchState.hasReservation(sessionThreadId)) {
       return true;
     }

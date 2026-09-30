@@ -1,6 +1,6 @@
 import { type ClaudeAdapterLiveOptions } from "./adapterConfiguration.ts";
 import { makeClaudeAdapterLive as makeClaudeAdapterLiveBase } from "../../Layers/ClaudeAdapter.ts";
-import { MINIMUM_CLAUDE_AUTO_MODE_CLI_VERSION } from "../claudeCliVersion.ts";
+import { PROVIDER_COMPATIBILITY } from "../../core/compatibility.ts";
 import type {
   SDKMessage,
   SDKControlGetContextUsageResponse,
@@ -8,24 +8,26 @@ import type {
   ModelInfo,
   Options as ClaudeQueryOptions,
   SDKUserMessage,
+  SDKControlInitializeResponse,
+  McpServerStatus,
+  SDKControlReloadPluginsResponse,
 } from "@anthropic-ai/claude-agent-sdk";
 import { Layer } from "effect";
 import { ServerConfig } from "../../../server/config.ts";
+import { ServerSettingsService } from "../../../settings/serverSettings.ts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import {
   type AgentGatewayCredentialsShape,
   AgentGatewayCredentials,
 } from "../../../agentGateway/Services/AgentGatewayCredentials.ts";
 import { makeNativeToolCallRegistry } from "../../../agentGateway/nativeToolCalls.ts";
-import { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
-import { assert } from "@effect/vitest";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 
 export function makeClaudeAdapterLive(options?: ClaudeAdapterLiveOptions) {
   return makeClaudeAdapterLiveBase({
-    readClaudeCliVersion: async () => MINIMUM_CLAUDE_AUTO_MODE_CLI_VERSION,
+    readClaudeCliVersion: async () => PROVIDER_COMPATIBILITY.claudeAgent.minimumVersion,
     ...options,
-  });
+  }).pipe(Layer.provide(ServerSettingsService.layerTest()));
 }
 
 export class FakeClaudeQuery implements AsyncIterable<SDKMessage> {
@@ -44,6 +46,9 @@ export class FakeClaudeQuery implements AsyncIterable<SDKMessage> {
   public readonly setPermissionModeCalls: Array<string> = [];
   public readonly setMaxThinkingTokensCalls: Array<number | null> = [];
   public readonly applyFlagSettingsCalls: Array<Record<string, unknown>> = [];
+  public readonly reconnectMcpServerCalls: string[] = [];
+  public readonly toggleMcpServerCalls: Array<{ name: string; enabled: boolean }> = [];
+  public mcpStatuses: McpServerStatus[] = [];
   public getContextUsageCalls = 0;
   public getContextUsageDetails: Array<"summary" | "full" | undefined> = [];
   public iteratorNextCalls = 0;
@@ -153,6 +158,7 @@ export class FakeClaudeQuery implements AsyncIterable<SDKMessage> {
         displayName: "Claude Sonnet 5",
         description: "Default supported test model",
         supportsEffort: true,
+        supportedEffortLevels: ["low", "medium", "high", "xhigh", "max"],
         supportsAdaptiveThinking: true,
         supportsFastMode: false,
         supportsAutoMode: true,
@@ -163,6 +169,34 @@ export class FakeClaudeQuery implements AsyncIterable<SDKMessage> {
   readonly supportedAgents = async (): Promise<[]> => {
     return [];
   };
+
+  readonly initializationResult = async (): Promise<SDKControlInitializeResponse> =>
+    ({
+      commands: await this.supportedCommands(),
+      agents: await this.supportedAgents(),
+      models: await this.supportedModels(),
+      account: { email: "test@example.invalid" },
+      output_style: "default",
+      available_output_styles: [],
+    }) as SDKControlInitializeResponse;
+
+  readonly mcpServerStatus = async (): Promise<McpServerStatus[]> => this.mcpStatuses;
+
+  readonly reconnectMcpServer = async (name: string): Promise<void> => {
+    this.reconnectMcpServerCalls.push(name);
+  };
+
+  readonly toggleMcpServer = async (name: string, enabled: boolean): Promise<void> => {
+    this.toggleMcpServerCalls.push({ name, enabled });
+  };
+
+  readonly reloadPlugins = async (): Promise<SDKControlReloadPluginsResponse> => ({
+    plugins: [],
+    commands: [],
+    agents: [],
+    mcpServers: [],
+    error_count: 0,
+  });
 
   readonly close = (): void => {
     this.closeCalls += 1;
@@ -393,12 +427,6 @@ export function emitSuccessResult(
     uuid,
     usage,
   } as unknown as SDKMessage);
-}
-
-export function assertTokenUsageEvent(
-  event: ProviderRuntimeEvent | undefined,
-): asserts event is Extract<ProviderRuntimeEvent, { type: "thread.token-usage.updated" }> {
-  assert.equal(event?.type, "thread.token-usage.updated");
 }
 
 export async function readFirstPromptText(

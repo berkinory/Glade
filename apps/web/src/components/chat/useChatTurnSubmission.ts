@@ -20,7 +20,6 @@ import { appendBrowserAnnotationsToPrompt } from "../../lib/browserAnnotations";
 import { appendPastedTextsToPrompt } from "../../lib/composerPastedText";
 import {
   findPendingBlobComposerAttachments,
-  formatOutgoingComposerPrompt,
   hydratePendingBlobComposerAttachments,
   readFileAsDataUrl,
   stageUploadComposerAttachments,
@@ -53,8 +52,6 @@ import {
 } from "./queuedComposerPreview";
 import { resolveChatPromptCaptures } from "./resolveChatPromptCaptures";
 import { useChatTurnExecution } from "./useChatTurnExecution";
-import { useStore } from "../../store";
-import { getThreadFromState } from "../../threadDerivation";
 
 export function useChatTurnSubmission({
   props,
@@ -200,7 +197,6 @@ export function useChatTurnSubmission({
         !api ||
         !lateSendHandlers ||
         !activeThread ||
-        activeThread.claudeCacheReview != null ||
         isSendBusy ||
         isConnecting ||
         isVoiceTranscribing ||
@@ -209,9 +205,6 @@ export function useChatTurnSubmission({
       ) {
         return false;
       }
-      const hasPendingCacheReview = () =>
-        getThreadFromState(useStore.getState(), activeThread.id)?.claudeCacheReview != null;
-      if (hasPendingCacheReview()) return false;
       sendPreflightInFlightRef.current = true;
       const editorSaved = !hasUnsavedWorkspaceEditors(
         queryClient,
@@ -230,7 +223,6 @@ export function useChatTurnSubmission({
         await waitForPendingComposerImages();
         sendPreflightInFlightRef.current = false;
       }
-      if (hasPendingCacheReview()) return false;
       if (activePendingProgress) {
         const activeQuestion = activePendingProgress.activeQuestion;
         const liveComposerSnapshot = composerEditorRef.current?.readSnapshot() ?? null;
@@ -310,7 +302,6 @@ export function useChatTurnSubmission({
         }
       }
       const composerFilesForSend = queuedChatTurn?.files ?? composerFiles;
-      if (hasPendingCacheReview()) return false;
       const composerAssistantSelectionsForSend =
         queuedChatTurn?.assistantSelections ?? composerAssistantSelections;
       const composerBrowserAnnotationsForSend =
@@ -440,7 +431,6 @@ export function useChatTurnSubmission({
               proposedPlan: activeProposedPlan,
             })
           : undefined);
-      if (hasPendingCacheReview()) return false;
       if (!hasSendableContent) {
         if (expiredTerminalContextCount > 0) {
           const toastCopy = buildExpiredTerminalContextToastCopy(
@@ -488,7 +478,6 @@ export function useChatTurnSubmission({
         });
         if (handled) return true;
       }
-      if (hasPendingCacheReview()) return false;
       if (dispatchSettings.computerControlMode === "request") {
         const computerPermission = readLocalComputerPermissionBridge();
         const activeThreadBeforeCheck = activeThreadIdRef.current;
@@ -534,7 +523,6 @@ export function useChatTurnSubmission({
         });
         return false;
       }
-      if (hasPendingCacheReview()) return false;
 
       const captures = await resolveChatPromptCaptures({
         api,
@@ -545,7 +533,6 @@ export function useChatTurnSubmission({
         composerAssistantSelectionsForSend,
       });
       composerImagesForSend = captures.composerImagesForSend;
-      if (hasPendingCacheReview()) return false;
 
       if (hasQueueableLiveTurn && dispatchMode === "queue" && queuedChatTurn === null) {
         clearComposerInput(activeThread.id);
@@ -613,7 +600,7 @@ export function useChatTurnSubmission({
         } finally {
           sendPreflightInFlightRef.current = false;
         }
-        if (activeThreadIdRef.current !== activeThread.id || hasPendingCacheReview()) return false;
+        if (activeThreadIdRef.current !== activeThread.id) return false;
       }
       const workspace = await prepareChatSendWorkspace({
         activeThread,
@@ -647,7 +634,6 @@ export function useChatTurnSubmission({
         queryClient,
       });
       if (workspace === false) return false;
-      if (hasPendingCacheReview()) return false;
       const {
         threadIdForSend,
         title,
@@ -728,12 +714,7 @@ export function useChatTurnSubmission({
       const outgoingTextSeed =
         messageTextForSend ||
         (composerImagesSnapshot.length > 0 ? IMAGE_ONLY_BOOTSTRAP_PROMPT : "");
-      const outgoingMessageText = formatOutgoingComposerPrompt({
-        provider: selectedProviderForSend,
-        model: selectedModelForSend,
-        effort: selectedPromptEffortForSend,
-        text: outgoingTextSeed,
-      });
+      const outgoingMessageText = outgoingTextSeed;
       const mentionedSkillsForSend = filterPromptSkillReferences(
         outgoingMessageText,
         selectedComposerSkillsForSend,

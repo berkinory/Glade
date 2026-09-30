@@ -35,13 +35,7 @@ import {
 import { ChildProcessSpawner } from "effect/unstable/process";
 import { makeEffectProcessCommand } from "../../platform/effectProcessRuntime.ts";
 
-import {
-  compareCodexCliVersions,
-  formatCodexCliUpgradeMessage,
-  isCodexCliVersionSupported,
-  MINIMUM_CODEX_AUTO_REVIEW_CLI_VERSION,
-  parseCodexCliVersion,
-} from "../codex/codexCliVersion";
+import { isCodexCliVersionSupported, parseCodexCliVersion } from "../codex/codexCliVersion";
 import { ServerConfig } from "../../server/config";
 import {
   buildProviderChildEnvironment,
@@ -83,7 +77,7 @@ import {
   resolveProviderMaintenanceCapabilitiesEffect,
   type PackageManagedProviderMaintenanceDefinition,
 } from "../core/providerMaintenance";
-import { isClaudeAutoModeCliVersionSupported } from "../claude/claudeCliVersion.ts";
+import { isProviderVersionSupported, providerUpgradeMessage } from "../core/compatibility.ts";
 import { collectUint8StreamText } from "../../stream/collectUint8StreamText";
 import { buildCodexProcessEnv } from "../codex/codexProcessEnv.ts";
 
@@ -337,7 +331,7 @@ function waitForAbortSignal(signal: AbortSignal): Promise<void> {
   });
 }
 
-const probeClaudeSubscription = () => {
+const probeClaudeSubscription = (binaryPath: string, env: NodeJS.ProcessEnv) => {
   const abort = new AbortController();
   return Effect.tryPromise(async () => {
     const { query: claudeQuery } = await loadClaudeAgentSdk();
@@ -348,6 +342,8 @@ const probeClaudeSubscription = () => {
       })(),
       options: {
         persistSession: false,
+        pathToClaudeCodeExecutable: binaryPath,
+        env,
         abortController: abort,
         settingSources: ["user", "project", "local"],
         allowedTools: [],
@@ -622,19 +618,18 @@ const makeCheckCodexProviderStatus = (
     const version = versionProbe.result;
 
     const parsedVersion = parseCodexCliVersion(`${version.stdout}\n${version.stderr}`);
-    if (parsedVersion && !isCodexCliVersionSupported(parsedVersion)) {
+    if (parsedVersion === null || !isCodexCliVersionSupported(parsedVersion)) {
       return {
         provider: CODEX_PROVIDER,
-        status: "error" as const,
+        status: parsedVersion === null ? ("error" as const) : ("update-required" as const),
         available: false,
         authStatus: "unknown" as const,
         checkedAt,
-        message: formatCodexCliUpgradeMessage(parsedVersion),
+        version: parsedVersion,
+        message: providerUpgradeMessage("codex", parsedVersion),
       };
     }
-    const supportsAutoRuntimeMode =
-      parsedVersion !== null &&
-      compareCodexCliVersions(parsedVersion, MINIMUM_CODEX_AUTO_REVIEW_CLI_VERSION) >= 0;
+    const supportsAutoRuntimeMode = true;
 
     if (yield* hasCustomModelProviderForEnv(probeEnv)) {
       return {
@@ -785,7 +780,18 @@ const makeCheckClaudeProviderStatus = (
     }
     const version = versionProbe.result;
     const parsedVersion = parseGenericCliVersion(`${version.stdout}\n${version.stderr}`);
-    const supportsAutoRuntimeMode = isClaudeAutoModeCliVersionSupported(parsedVersion);
+    if (!isProviderVersionSupported("claudeAgent", parsedVersion)) {
+      return {
+        provider: CLAUDE_AGENT_PROVIDER,
+        status: parsedVersion === null ? ("error" as const) : ("update-required" as const),
+        available: false,
+        authStatus: "unknown" as const,
+        checkedAt,
+        version: parsedVersion,
+        message: providerUpgradeMessage("claudeAgent", parsedVersion),
+      };
+    }
+    const supportsAutoRuntimeMode = true;
 
     const runAuthStatusProbe = Effect.acquireUseRelease(
       Effect.promise(() => acquireClaudeAuthStatusLock()),
@@ -1143,16 +1149,15 @@ function makeProviderHealthLive(options?: { readonly providerUpdateTimeoutMs?: n
           }),
       });
 
-      // The probe spawns a short-lived `claude` subprocess to read account metadata from the local init
-      // handshake; capacity=1 because the probe has no parameters.
       const claudeSubscriptionCache = yield* Cache.make({
-        capacity: 1,
+        capacity: 8,
         timeToLive: Duration.minutes(5),
-        lookup: (_: "claude") => probeClaudeSubscription(),
+        lookup: (binaryPath: string) =>
+          probeClaudeSubscription(
+            binaryPath,
+            buildClaudeProcessEnv({ env: process.env, homeDir: serverConfig.homeDir }),
+          ),
       });
-      const resolveClaudeSubscription = Cache.get(claudeSubscriptionCache, "claude").pipe(
-        Effect.map((probe) => probe?.subscriptionType),
-      );
 
       const getProviderBinaryPath = (provider: ProviderKind, settings: ServerSettings) => {
         switch (provider) {
@@ -1318,7 +1323,10 @@ function makeProviderHealthLive(options?: { readonly providerUpdateTimeoutMs?: n
                   settings,
                   CLAUDE_AGENT_PROVIDER,
                   makeCheckClaudeProviderStatus(
-                    resolveClaudeSubscription,
+                    Cache.get(
+                      claudeSubscriptionCache,
+                      nonEmptyTrimmed(settings.providers.claudeAgent.binaryPath) ?? "claude",
+                    ).pipe(Effect.map((probe) => probe?.subscriptionType)),
                     settings.providers.claudeAgent.binaryPath,
                     serverConfig.homeDir,
                   ),

@@ -84,7 +84,6 @@ type ComposerModelPickerProps = {
 
   hideModelLabel?: boolean;
   hideStatusLabel?: boolean;
-  contextWindowLabel?: string | null;
   disabled?: boolean;
 
   effortControl?: ComposerEffortControl;
@@ -246,7 +245,7 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
           current: {
             provider: activeProvider,
             model: props.model,
-            ...resolveStarredTraits(currentTraitSelection),
+            ...resolveStarredTraits(currentTraitSelection, props.modelOptions),
           },
           effortLevelsFor: (provider, model) => traitSelectionFor(provider, model).effortLevels,
         })
@@ -317,14 +316,7 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
       value,
     });
     if (!plan) return;
-    if (plan.kind === "options") {
-      commitRow(row, model, plan.patch);
-      return;
-    }
-
-    if (row.provider !== props.provider) return;
-    props.onPromptChange(plan.prompt);
-    commitRow(row, model, {});
+    commitRow(row, model, plan.patch);
   };
 
   const openTabs: ComposerModelPickerTab[] = [
@@ -356,8 +348,7 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
   }, [isMenuOpen]);
 
   const shortcutModifierLabel = isMacNavigatorPlatform() ? "⌘" : "Ctrl ";
-  const isTabLoading =
-    tab !== STARRED_TAB && (props.loadingModelProviders?.[tab] ?? false) && rows.length === 0;
+  const isTabLoading = tab !== STARRED_TAB && (props.loadingModelProviders?.[tab] ?? false);
   const discoveryError = tab === STARRED_TAB ? undefined : props.discoveryErrorsByProvider?.[tab];
 
   return (

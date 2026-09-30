@@ -252,6 +252,7 @@ export const listProviderUsage = Effect.fn(function* (input: ServerListProviderU
           homeDir: serverConfig.homeDir,
           claudeBinaryPath: settings.providers.claudeAgent.binaryPath,
           codexBinaryPath: settings.providers.codex.binaryPath,
+          codexHomePath: settings.providers.codex.homePath,
         },
         {
           forceRefresh: input.forceRefresh === true,

@@ -1,7 +1,7 @@
 import { Schema, Option } from "effect";
-import { ClaudeCacheObservation } from "./claudeCache";
 import { NonNegativeInt, PositiveInt, RuntimeTaskId } from "../core/baseSchemas";
 import { AsyncUserInputQuestions } from "../orchestration/asyncUserInput";
+import { ProviderFailure } from "./providerFailure";
 import {
   TrimmedNonEmptyStringSchema,
   UnknownRecordSchema,
@@ -67,8 +67,6 @@ export const ThreadMetadataUpdatedPayload = Schema.Struct({
 export type ThreadMetadataUpdatedPayload = typeof ThreadMetadataUpdatedPayload.Type;
 
 export const ThreadTokenUsageSnapshot = Schema.Struct({
-  claudeCache: Schema.optional(ClaudeCacheObservation),
-
   cumulativeUsage: Schema.optional(
     Schema.Struct({
       inputTokens: NonNegativeInt,
@@ -537,6 +535,7 @@ export type VcsStateChangedPayload = typeof VcsStateChangedPayload.Type;
 
 export const RuntimeWarningPayload = Schema.Struct({
   message: TrimmedNonEmptyStringSchema,
+  failure: Schema.optional(ProviderFailure),
   detail: Schema.optional(Schema.Unknown),
 });
 
@@ -544,6 +543,7 @@ export type RuntimeWarningPayload = typeof RuntimeWarningPayload.Type;
 
 export const RuntimeErrorPayload = Schema.Struct({
   message: TrimmedNonEmptyStringSchema,
+  failure: Schema.optional(ProviderFailure),
   class: Schema.optional(RuntimeErrorClass),
   detail: Schema.optional(Schema.Unknown),
 });

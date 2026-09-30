@@ -9,11 +9,10 @@ import {
   makeDeterministicRandomService,
   makeMultiQueryHarness,
   emitAssistantUsage,
-  assertTokenUsageEvent,
 } from "./adapterTestFixtures";
 
 describe("Claude tokenUsage", () => {
-  it.effect("counts repeated Claude content blocks once and reconciles provisional output", () => {
+  it.effect("reconciles Claude request accounting at turn completion", () => {
     const harness = makeHarness();
     return Effect.gen(function* () {
       const adapter = yield* ClaudeAdapter;
@@ -58,11 +57,9 @@ describe("Claude tokenUsage", () => {
         total_tokens: 54_700,
       });
       const events = Array.from(yield* Fiber.join(observed));
-      assert.deepEqual(
-        events
-          .filter((event) => event.type === "thread.token-usage.updated")
-          .map((event) => event.payload.usage.totalProcessedTokens),
-        [27_326, 27_326, 27_326, 27_367, 54_693, 54_700],
+      assert.equal(
+        events.find((event) => event.type === "turn.completed")?.payload.mainLoopTokens,
+        54_700,
       );
 
       const next = yield* collectTurn();
@@ -72,10 +69,9 @@ describe("Claude tokenUsage", () => {
         total_tokens: 27_320,
       });
       const nextEvents = Array.from(yield* Fiber.join(next));
-      const usage = nextEvents.filter((event) => event.type === "thread.token-usage.updated");
-      assert.deepEqual(
-        usage.map((event) => event.payload.usage.totalProcessedTokens),
-        [82_026, 82_020],
+      assert.equal(
+        nextEvents.find((event) => event.type === "turn.completed")?.payload.mainLoopTokens,
+        27_320,
       );
       const zero = yield* collectTurn();
       yield* adapter.sendTurn({
@@ -94,8 +90,8 @@ describe("Claude tokenUsage", () => {
         0,
       );
       assert.equal(
-        zeroEvents.findLast((event) => event.type === "thread.token-usage.updated")?.payload.usage
-          .totalProcessedTokens,
+        ((yield* adapter.listSessions())[0]?.resumeCursor as { processedTokenTotal?: number })
+          ?.processedTokenTotal,
         82_020,
       );
     }).pipe(
@@ -185,11 +181,9 @@ describe("Claude tokenUsage", () => {
         );
         emitSuccessResult(query, "sdk-lifecycle", "next-result", { input_tokens: 20 });
         const nextEvents = Array.from(yield* Fiber.join(next));
-        assert.deepEqual(
-          nextEvents
-            .filter((event) => event.type === "thread.token-usage.updated")
-            .map((event) => event.payload.usage.totalProcessedTokens),
-          [100, 120, 120],
+        assert.equal(
+          nextEvents.find((event) => event.type === "turn.completed")?.payload.mainLoopTokens,
+          20,
         );
 
         const cleared = yield* collect();
@@ -222,11 +216,9 @@ describe("Claude tokenUsage", () => {
         });
         emitSuccessResult(query, "new-lifecycle", "resumed-result", { input_tokens: 10 });
         const events = Array.from(yield* Fiber.join(resumed));
-        assert.deepEqual(
-          events
-            .filter((event) => event.type === "thread.token-usage.updated")
-            .map((event) => event.payload.usage.totalProcessedTokens),
-          [150, 150],
+        assert.equal(
+          events.find((event) => event.type === "turn.completed")?.payload.mainLoopTokens,
+          10,
         );
       }).pipe(
         Effect.provideService(Random.Random, makeDeterministicRandomService()),
@@ -239,10 +231,11 @@ describe("Claude tokenUsage", () => {
     const harness = makeHarness();
     return Effect.gen(function* () {
       const adapter = yield* ClaudeAdapter;
-      const usageFiber = yield* Stream.filter(
-        adapter.streamEvents,
-        (event) => event.type === "thread.token-usage.updated",
-      ).pipe(Stream.take(2), Stream.runCollect, Effect.forkChild);
+      const completed = yield* adapter.streamEvents.pipe(
+        Stream.takeUntil((event) => event.type === "turn.completed"),
+        Stream.runCollect,
+        Effect.forkChild,
+      );
 
       const session = yield* adapter.startSession({
         threadId: THREAD_ID,
@@ -273,20 +266,16 @@ describe("Claude tokenUsage", () => {
         { total_tokens: 50_000 },
       );
 
-      const usageEvents = Array.from(yield* Fiber.join(usageFiber));
-      assertTokenUsageEvent(usageEvents[0]);
-      const { claudeCache, ...resumedUsage } = usageEvents[0].payload.usage;
-      assert.equal(claudeCache?.source, "request-usage");
-      assert.deepEqual(resumedUsage, {
-        usedTokens: 20_000,
-        tokenAccountingVersion: 1,
-        lastUsedTokens: 20_000,
-        totalProcessedTokens: 370_000,
-        maxTokens: 1_000_000,
-        inputTokens: 20_000,
-      });
-      assertTokenUsageEvent(usageEvents[1]);
-      assert.equal(usageEvents[1].payload.usage.totalProcessedTokens, 400_000);
+      const events = Array.from(yield* Fiber.join(completed));
+      assert.equal(
+        events.find((event) => event.type === "turn.completed")?.payload.mainLoopTokens,
+        50_000,
+      );
+      assert.equal(
+        ((yield* adapter.listSessions())[0]?.resumeCursor as { processedTokenTotal?: number })
+          ?.processedTokenTotal,
+        400_000,
+      );
     }).pipe(
       Effect.provideService(Random.Random, makeDeterministicRandomService()),
       Effect.provide(harness.layer),

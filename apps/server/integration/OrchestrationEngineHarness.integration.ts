@@ -26,6 +26,7 @@ import { GitCore, type GitCoreShape } from "../src/git/Services/GitCore.ts";
 import { TextGeneration, type TextGenerationShape } from "../src/git/Services/TextGeneration.ts";
 import { OrchestrationCommandReceiptRepositoryLive } from "../src/persistence/Layers/OrchestrationCommandReceipts.ts";
 import { OrchestrationEventStoreLive } from "../src/persistence/Layers/OrchestrationEventStore.ts";
+import { OrchestrationEventStore } from "../src/persistence/Services/OrchestrationEventStore.ts";
 import { ProjectionCheckpointRepositoryLive } from "../src/persistence/Layers/ProjectionCheckpoints.ts";
 import { ProjectionPendingInteractionRepositoryLive } from "../src/persistence/Layers/ProjectionPendingInteractions.ts";
 import { ProviderSessionRuntimeRepositoryLive } from "../src/persistence/Layers/ProviderSessionRuntime.ts";
@@ -52,6 +53,7 @@ import { RuntimeReceiptBusLive } from "../src/orchestration/Layers/RuntimeReceip
 import { OrchestrationReactorLive } from "../src/orchestration/Layers/OrchestrationReactor.ts";
 import { AgentGatewayOperationRepositoryLive } from "../src/agentGateway/Layers/AgentGatewayOperationRepository.ts";
 import { ProviderCommandReactorLive } from "../src/orchestration/Layers/ProviderCommandReactor.ts";
+import { ProviderCommandReactor } from "../src/orchestration/Services/ProviderCommandReactor.ts";
 import { ProviderRuntimeIngestionLive } from "../src/orchestration/Layers/ProviderRuntimeIngestion.ts";
 import { TurnCheckpointCoordinatorLive } from "../src/orchestration/Layers/TurnCheckpointCoordinator.ts";
 import {
@@ -168,6 +170,10 @@ export interface OrchestrationIntegrationHarness {
   readonly dbPath: string;
   readonly adapterHarness: TestProviderAdapterHarness | null;
   readonly engine: OrchestrationEngineShape;
+  readonly appendHistoricalEvent: (
+    event: Omit<OrchestrationEvent, "sequence">,
+  ) => Effect.Effect<OrchestrationEvent, never>;
+  readonly drainProvider: Effect.Effect<void, never>;
   readonly snapshotQuery: ProjectionSnapshotQuery["Service"];
   readonly providerService: ProviderService["Service"];
   readonly checkpointStore: CheckpointStore["Service"];
@@ -216,6 +222,7 @@ export interface OrchestrationIntegrationHarness {
 interface MakeOrchestrationIntegrationHarnessOptions {
   readonly provider?: ProviderKind;
   readonly realCodex?: boolean;
+  readonly existingRootDir?: string;
 }
 
 export const makeOrchestrationIntegrationHarness = (
@@ -241,16 +248,18 @@ export const makeOrchestrationIntegrationHarness = (
           listProviders: () => Effect.succeed([adapterHarness.provider]),
         } as typeof ProviderAdapterRegistry.Service)
       : null;
-    const rootDir = yield* fileSystem.makeTempDirectoryScoped({
-      prefix: "glade-orchestration-integration-",
-    });
+    const rootDir =
+      options?.existingRootDir ??
+      (yield* fileSystem.makeTempDirectoryScoped({
+        prefix: "glade-orchestration-integration-",
+      }));
     const workspaceDir = path.join(rootDir, "workspace");
     const { stateDir, dbPath } = yield* deriveServerPaths(rootDir, undefined).pipe(
       Effect.provideService(Path.Path, path),
     );
     yield* fileSystem.makeDirectory(workspaceDir, { recursive: true });
     yield* fileSystem.makeDirectory(stateDir, { recursive: true });
-    yield* initializeGitWorkspace(workspaceDir);
+    if (!options?.existingRootDir) yield* initializeGitWorkspace(workspaceDir);
 
     const persistenceLayer = makeSqlitePersistenceLive(dbPath);
     const orchestrationLayer = OrchestrationEngineLive.pipe(
@@ -294,6 +303,7 @@ export const makeOrchestrationIntegrationHarness = (
     const runtimeServicesLayer = Layer.mergeAll(
       orchestrationLayer,
       OrchestrationProjectionSnapshotQueryLive,
+      OrchestrationEventStoreLive,
       ProjectionCheckpointRepositoryLive,
       ProjectionPendingInteractionRepositoryLive,
       checkpointStoreLayer,
@@ -351,8 +361,15 @@ export const makeOrchestrationIntegrationHarness = (
     const engine = yield* tryRuntimePromise("load OrchestrationEngine service", () =>
       runtime.runPromise(Effect.service(OrchestrationEngineService)),
     ).pipe(Effect.orDie);
+    const eventStore = yield* tryRuntimePromise("load OrchestrationEventStore service", () =>
+      runtime.runPromise(Effect.service(OrchestrationEventStore)),
+    ).pipe(Effect.orDie);
     const reactor = yield* tryRuntimePromise("load OrchestrationReactor service", () =>
       runtime.runPromise(Effect.service(OrchestrationReactor)),
+    ).pipe(Effect.orDie);
+    const providerCommandReactor = yield* tryRuntimePromise(
+      "load ProviderCommandReactor service",
+      () => runtime.runPromise(Effect.service(ProviderCommandReactor)),
     ).pipe(Effect.orDie);
     const snapshotQuery = yield* tryRuntimePromise("load ProjectionSnapshotQuery service", () =>
       runtime.runPromise(Effect.service(ProjectionSnapshotQuery)),
@@ -519,6 +536,13 @@ export const makeOrchestrationIntegrationHarness = (
       dbPath,
       adapterHarness,
       engine,
+      appendHistoricalEvent: (event) =>
+        tryRuntimePromise("append historical orchestration event", () =>
+          runtime.runPromise(eventStore.append(event)),
+        ).pipe(Effect.orDie),
+      drainProvider: tryRuntimePromise("drain provider commands", () =>
+        runtime.runPromise(providerCommandReactor.drain),
+      ).pipe(Effect.orDie),
       snapshotQuery,
       providerService,
       checkpointStore,

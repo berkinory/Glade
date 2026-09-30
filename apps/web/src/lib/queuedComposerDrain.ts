@@ -28,7 +28,6 @@ interface QueuedComposerAutoDispatchGates {
   isAwaitingTurnStart: boolean;
   steerGate: QueuedSteerGate | null;
   hasPendingApproval: boolean;
-  hasPendingCacheReview?: boolean;
   hasPendingProgress: boolean;
   pendingUserInputCount: number;
   queuedTurnCount: number;
@@ -43,7 +42,6 @@ function shouldAutoDispatchQueuedComposerTurn(gates: QueuedComposerAutoDispatchG
     gates.isAwaitingTurnStart ||
     gates.steerGate !== null ||
     gates.hasPendingApproval ||
-    gates.hasPendingCacheReview ||
     gates.hasPendingProgress ||
     gates.pendingUserInputCount > 0 ||
     gates.queuedTurnCount === 0
@@ -300,8 +298,6 @@ export function createQueuedComposerDrain() {
       thread.error ?? "",
       pendingApprovalCount,
       pendingUserInputCount,
-      thread.claudeCacheReview?.reviewId ?? "",
-      thread.claudeCacheReview?.status ?? "",
     ].join("|");
   }
 
@@ -316,11 +312,7 @@ export function createQueuedComposerDrain() {
 
   function resetRetriesForRelevantThreadChanges(current: AppState, previous: AppState): void {
     for (const threadId of retryStateByThreadId.keys()) {
-      if (
-        claimedThreadIds.has(threadId) &&
-        (getThreadFromState(current, threadId)?.claudeCacheReview != null) ===
-          (getThreadFromState(previous, threadId)?.claudeCacheReview != null)
-      ) {
+      if (claimedThreadIds.has(threadId)) {
         continue;
       }
       if (threadDrainSignal(current, threadId) !== threadDrainSignal(previous, threadId)) {
@@ -360,7 +352,6 @@ export function createQueuedComposerDrain() {
       isAwaitingTurnStart: awaitingTurnStartsByThreadId.has(threadId),
       steerGate: getQueuedComposerSteerGate(threadId),
       hasPendingApproval: pendingApprovals.length > 0,
-      hasPendingCacheReview: thread?.claudeCacheReview != null,
       hasPendingProgress: pendingUserInputs.length > 0,
       pendingUserInputCount: pendingUserInputs.length,
       queuedTurnCount: draft?.queuedTurns.length ?? 0,
@@ -396,7 +387,6 @@ export function createQueuedComposerDrain() {
           session: thread?.session ?? null,
           hasPendingApproval: pendingApprovals.length > 0,
           hasPendingUserInput: pendingUserInputs.length > 0,
-          claudeCacheReview: thread?.claudeCacheReview,
           threadError: thread?.error,
           now,
         })
@@ -548,19 +538,13 @@ export function createQueuedComposerDrain() {
             assistantDeliveryMode,
             messageId,
           });
-          const acceptedReview = getThreadFromState(
-            useStore.getState(),
-            threadId,
-          )?.claudeCacheReview;
-          if (succeeded || acceptedReview?.messageId === messageId) {
+          if (succeeded) {
             retryStateByThreadId.delete(threadId);
             awaitingTurnStartsByThreadId.set(threadId, localDispatch);
             useComposerDraftStore.getState().removeQueuedTurn(threadId, nextQueuedTurn.id);
             return;
           }
-          if (getThreadFromState(useStore.getState(), threadId)?.claudeCacheReview == null) {
-            recordQueuedComposerAutoDispatchFailure(threadId, nextQueuedTurn.id);
-          }
+          recordQueuedComposerAutoDispatchFailure(threadId, nextQueuedTurn.id);
         },
       });
     }

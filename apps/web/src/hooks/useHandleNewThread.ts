@@ -1,5 +1,5 @@
+import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import { type ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
-import { getDefaultModel } from "@glade/shared/provider/model";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { startTransition } from "react";
@@ -94,7 +94,7 @@ export function useHandleNewThread() {
       if (!options?.provider) {
         return;
       }
-      const defaultModel = getDefaultModel(options.provider);
+      const defaultModel = PROVIDER_DEFAULT_MODEL;
       if (!defaultModel) {
         return;
       }

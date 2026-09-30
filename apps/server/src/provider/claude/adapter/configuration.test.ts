@@ -5,6 +5,7 @@ import { Effect, Random, Layer, Exit } from "effect";
 import { ClaudeAdapter } from "../../Services/ClaudeAdapter.ts";
 import { makeClaudeAdapterLive as makeClaudeAdapterLiveBase } from "../../Layers/ClaudeAdapter.ts";
 import { ServerConfig } from "../../../server/config.ts";
+import { ServerSettingsService } from "../../../settings/serverSettings.ts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import {
   makeHarness,
@@ -67,6 +68,7 @@ describe("Claude configuration", () => {
         return query;
       },
     }).pipe(
+      Layer.provide(ServerSettingsService.layerTest()),
       Layer.provideMerge(ServerConfig.layerTest("/tmp/claude-adapter-test", "/tmp")),
       Layer.provideMerge(NodeServices.layer),
     );
@@ -188,26 +190,10 @@ describe("Claude configuration", () => {
         slug: "claude-fable-5[1m]",
         resolvedModel: "claude-fable-5[1m]",
         name: "Fable",
+        description: "Claude Fable 5",
         supportsAutoMode: true,
       });
-      assert.deepEqual(
-        optionDescriptors?.map((option) => option.id),
-        ["effort", "autoCompactWindow"],
-      );
-      assert.deepEqual(
-        optionDescriptors?.find((option) => option.id === "autoCompactWindow"),
-        {
-          id: "autoCompactWindow",
-          label: "Auto-compact",
-          type: "select",
-          currentValue: "auto",
-          options: [
-            { id: "auto", label: "Auto (Claude Code)", isDefault: true },
-            { id: "200k", label: "200k" },
-            { id: "1m", label: "1M" },
-          ],
-        },
-      );
+      assert.isUndefined(optionDescriptors);
       assert.equal(query.closeCalls, 1);
       assert.equal(createQueryCalls, 1);
 

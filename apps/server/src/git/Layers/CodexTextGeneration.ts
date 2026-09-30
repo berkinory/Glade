@@ -4,10 +4,7 @@ import { Effect, FileSystem, Layer, Option, Path, Schema, Stream } from "effect"
 import { ChildProcessSpawner } from "effect/unstable/process";
 import { makeEffectProcessCommand } from "../../platform/effectProcessRuntime.ts";
 
-import {
-  DEFAULT_GIT_TEXT_GENERATION_MODEL,
-  DEFAULT_GIT_TEXT_GENERATION_REASONING_EFFORT,
-} from "@glade/contracts/provider/model";
+import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import { sanitizeGeneratedThreadTitle } from "@glade/shared/threads/chatThreads";
 import { resolveCodexHome } from "../../provider/codex/codexConfig";
 import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@glade/shared/git/git";
@@ -301,6 +298,7 @@ const makeCodexTextGeneration = Effect.gen(function* () {
   }): Effect.Effect<S["Type"], TextGenerationError, S["DecodingServices"]> =>
     Effect.gen(function* () {
       const codexBinaryPath = resolveCodexBinaryPath(providerOptions);
+      const apiModel = resolveCodexModel(model, modelSelection);
       const resolvedCodexHomePath = resolveCodexHomePath(codexHomePath, providerOptions);
       const schemaPath = yield* writeTempFile(
         operation,
@@ -336,8 +334,7 @@ const makeCodexTextGeneration = Effect.gen(function* () {
           'approval_policy="never"',
           "-s",
           "read-only",
-          "--model",
-          resolveCodexModel(model, modelSelection) ?? DEFAULT_GIT_TEXT_GENERATION_MODEL,
+          ...(apiModel ? ["--model", apiModel] : []),
           ...(operation === "generateCommitMessage"
             ? [
                 ...(modelSelection?.provider === "codex" && modelSelection.options?.reasoningEffort
@@ -346,14 +343,15 @@ const makeCodexTextGeneration = Effect.gen(function* () {
                       `model_reasoning_effort=${JSON.stringify(modelSelection.options.reasoningEffort)}`,
                     ]
                   : []),
-                ...(modelSelection?.provider === "codex" && modelSelection.options?.fastMode
-                  ? ["--config", 'service_tier="fast"']
+                ...(modelSelection?.provider === "codex" &&
+                (modelSelection.options?.serviceTier || modelSelection.options?.fastMode)
+                  ? [
+                      "--config",
+                      `service_tier=${JSON.stringify(modelSelection.options?.serviceTier ?? "fast")}`,
+                    ]
                   : []),
               ]
-            : [
-                "--config",
-                `model_reasoning_effort="${DEFAULT_GIT_TEXT_GENERATION_REASONING_EFFORT}"`,
-              ]),
+            : []),
           "--output-schema",
           schemaPath,
           "--output-last-message",
@@ -682,9 +680,9 @@ function resolveCodexModel(
   modelSelection: BranchNameGenerationInput["modelSelection"] | undefined,
 ): string | undefined {
   if (modelSelection?.provider === "codex") {
-    return modelSelection.model;
+    return modelSelection.model === PROVIDER_DEFAULT_MODEL ? undefined : modelSelection.model;
   }
-  return model;
+  return model === PROVIDER_DEFAULT_MODEL ? undefined : model;
 }
 
 export const CodexTextGenerationServiceLive = Layer.effect(

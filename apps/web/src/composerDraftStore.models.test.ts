@@ -11,17 +11,10 @@ import {
 } from "./composerDraftStoreTestFixtures";
 
 describe("resolvePreferredComposerModelSelection", () => {
-  it("preserves a case-insensitive 1M Claude model variant during normalization", () => {
+  it("preserves the exact Claude model id during normalization", () => {
     expect(
       normalizeModelSelection({ provider: "claudeAgent", model: "claude-fable-5-1[1M]" }),
-    ).toEqual(modelSelection("claudeAgent", "claude-fable-5-1[1m]"));
-    expect(
-      normalizeModelSelection({
-        provider: "claudeAgent",
-        model: "claude-fable-5-1[1m]",
-        options: { autoCompactWindow: "200k" },
-      }),
-    ).toEqual(modelSelection("claudeAgent", "claude-fable-5-1[1m]", { autoCompactWindow: "200k" }));
+    ).toEqual(modelSelection("claudeAgent", "claude-fable-5-1[1M]"));
   });
 
   it("prefers the active draft provider selection over thread and project defaults", () => {
@@ -285,7 +278,7 @@ describe("composerDraftStore setModelSelection", () => {
     resetComposerDraftStore();
   });
 
-  it("drops a runtime Codex effort when switching models before terminal promotion", () => {
+  it("preserves explicit Codex effort when discovery has not confirmed support", () => {
     const store = useComposerDraftStore.getState();
     store.setModelSelectionAndSticky(
       threadId,
@@ -299,7 +292,10 @@ describe("composerDraftStore setModelSelection", () => {
 
     const state = useComposerDraftStore.getState();
     const draft = state.draftsByThreadId[threadId];
-    const expectedSelection = modelSelection("codex", "gpt-5.4", { fastMode: true });
+    const expectedSelection = modelSelection("codex", "gpt-5.4", {
+      reasoningEffort: "ultra",
+      fastMode: true,
+    });
     expect(draft?.modelSelectionByProvider.codex).toEqual(expectedSelection);
     expect(state.stickyModelSelectionByProvider.codex).toEqual(expectedSelection);
     expect(
@@ -326,7 +322,7 @@ describe("composerDraftStore setModelSelection", () => {
     expect(state.stickyModelSelectionByProvider.codex).toEqual(selection);
   });
 
-  it("preserves a built-in Codex effort supported by both models", () => {
+  it("preserves a Codex effort when switching models without discovered capability data", () => {
     const store = useComposerDraftStore.getState();
     store.setModelSelectionAndSticky(
       threadId,
@@ -554,92 +550,6 @@ describe("composerDraftStore sticky composer settings", () => {
     expect(
       useComposerDraftStore.getState().draftsByThreadId[threadId]?.modelSelectionByProvider.codex,
     ).toEqual(stickySelection);
-  });
-
-  it("drops sticky Claude options entirely when only the context window was set", () => {
-    const store = useComposerDraftStore.getState();
-
-    store.setStickyModelSelection(
-      modelSelection("claudeAgent", "claude-opus-4-6", { contextWindow: "1m" }),
-    );
-
-    expect(useComposerDraftStore.getState().stickyModelSelectionByProvider.claudeAgent).toEqual(
-      modelSelection("claudeAgent", "claude-opus-4-6"),
-    );
-  });
-
-  it("keeps the Claude auto-compact budget thread-local", () => {
-    const store = useComposerDraftStore.getState();
-    const threadId = ThreadId.makeUnsafe("thread-sticky-auto-compact-window");
-
-    store.setProviderModelOptions(
-      threadId,
-      "claudeAgent",
-      { effort: "xhigh", autoCompactWindow: "1m" },
-      { persistSticky: true, model: "claude-opus-4-7" },
-    );
-
-    expect(
-      useComposerDraftStore.getState().draftsByThreadId[threadId]?.modelSelectionByProvider
-        .claudeAgent?.options,
-    ).toEqual({ effort: "xhigh", autoCompactWindow: "1m" });
-    expect(useComposerDraftStore.getState().stickyModelSelectionByProvider.claudeAgent).toEqual(
-      modelSelection("claudeAgent", "claude-opus-4-7", { effort: "xhigh" }),
-    );
-  });
-
-  it("does not persist Claude context window changes through sticky provider options", () => {
-    const store = useComposerDraftStore.getState();
-    const threadId = ThreadId.makeUnsafe("thread-sticky-context-window");
-
-    store.setProviderModelOptions(
-      threadId,
-      "claudeAgent",
-      { effort: "xhigh", contextWindow: "1m" },
-      { persistSticky: true, model: "claude-opus-4-7" },
-    );
-
-    const state = useComposerDraftStore.getState();
-
-    expect(state.draftsByThreadId[threadId]?.modelSelectionByProvider.claudeAgent?.options).toEqual(
-      {
-        effort: "xhigh",
-        autoCompactWindow: "1m",
-      },
-    );
-
-    expect(state.stickyModelSelectionByProvider.claudeAgent).toEqual(
-      modelSelection("claudeAgent", "claude-opus-4-7", { effort: "xhigh" }),
-    );
-  });
-
-  it("sanitizes a persisted sticky Claude context window during hydration", () => {
-    const persistApi = useComposerDraftStore.persist as unknown as {
-      getOptions: () => {
-        merge: (persistedState: unknown, currentState: unknown) => unknown;
-      };
-    };
-    const merged = persistApi.getOptions().merge(
-      {
-        draftsByThreadId: {},
-        draftThreadsByThreadId: {},
-        projectDraftThreadIdByProjectId: {},
-        stickyModelSelectionByProvider: {
-          claudeAgent: modelSelection("claudeAgent", "claude-opus-4-6", {
-            effort: "max",
-            contextWindow: "1m",
-          }),
-        },
-        stickyActiveProvider: "claudeAgent",
-      },
-      useComposerDraftStore.getState(),
-    ) as {
-      stickyModelSelectionByProvider: Partial<Record<ModelSelection["provider"], ModelSelection>>;
-    };
-
-    expect(merged.stickyModelSelectionByProvider.claudeAgent).toEqual(
-      modelSelection("claudeAgent", "claude-opus-4-6", { effort: "max" }),
-    );
   });
 });
 

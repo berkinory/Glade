@@ -10,7 +10,6 @@ import { newCommandId, newMessageId, newThreadId, randomUUID } from "~/lib/utils
 import { readNativeApi } from "~/nativeApi";
 import { useComposerDraftStore } from "../../composerDraftStore";
 import type { QueuedComposerPlanFollowUp } from "../../composerDraftDomain";
-import { formatOutgoingComposerPrompt } from "../../lib/composerSend";
 import { reconcileDeletedThreadFromClient } from "../../lib/deletedThreadClientReconciliation";
 import { unblockThreadFromClient } from "../../lib/threadUnblock";
 import { queuedComposerDrain } from "../../lib/queuedComposerDrain";
@@ -244,12 +243,7 @@ export function useChatTurnFollowUps({
     }
     const messageIdForSend = newMessageId();
     const messageCreatedAt = new Date().toISOString();
-    const outgoingMessageText = formatOutgoingComposerPrompt({
-      provider: queuedTurn?.selectedProvider ?? selectedProvider,
-      model: queuedTurn?.selectedModel ?? selectedModel,
-      effort: queuedTurn?.selectedPromptEffort ?? selectedPromptEffort,
-      text: trimmed,
-    });
+    const outgoingMessageText = trimmed;
 
     beginLocalDispatch({ expectedUserMessageId: messageIdForSend });
     setThreadError(threadIdForSend, null);
@@ -407,12 +401,7 @@ export function useChatTurnFollowUps({
         originalPrompt: originalMessage.text,
         messageId,
       });
-      const outgoingMessageText = formatOutgoingComposerPrompt({
-        provider: selectedProvider,
-        model: selectedModel,
-        effort: selectedPromptEffort,
-        text: editedTextWithOriginalContext,
-      });
+      const outgoingMessageText = editedTextWithOriginalContext;
       return await (async () => {
         await persistThreadSettingsForNextTurn({
           ...threadSettingsDispatchFields(turnDispatchSettings),
@@ -460,9 +449,6 @@ export function useChatTurnFollowUps({
       isSendBusy,
       isServerThread,
       persistThreadSettingsForNextTurn,
-      selectedModel,
-      selectedPromptEffort,
-      selectedProvider,
       setThreadError,
       turnDispatchSettings,
       computerControlChangeSequence,
@@ -504,11 +490,11 @@ export function useChatTurnFollowUps({
     lateComposerSendHandlersRef,
     activeThreadId,
     markWorkflowRunDismissed,
-    selectedModel,
-    selectedPromptEffort,
-    selectedProvider,
     workflowRunState,
     turnDispatchSettings,
+    selectedProvider,
+    selectedModel,
+    selectedPromptEffort,
   ]);
 
   const onImplementPlanInNewThread = useCallback(async () => {
@@ -530,12 +516,7 @@ export function useChatTurnFollowUps({
     const nextThreadId = newThreadId();
     const planMarkdown = activeProposedPlan.planMarkdown;
     const implementationPrompt = buildPlanImplementationPrompt(planMarkdown);
-    const outgoingImplementationPrompt = formatOutgoingComposerPrompt({
-      provider: selectedProvider,
-      model: selectedModel,
-      effort: selectedPromptEffort,
-      text: implementationPrompt,
-    });
+    const outgoingImplementationPrompt = implementationPrompt;
     const nextThreadTitle = truncateTitle(buildPlanImplementationThreadTitle(planMarkdown));
     const computerControlSequenceForImplementation = computerControlChangeSequence.current;
     const implementationDispatchSettings = planImplementationDispatchSettings(turnDispatchSettings);
@@ -656,9 +637,6 @@ export function useChatTurnFollowUps({
     navigate,
     resetLocalDispatch,
     computerControlChangeSequence,
-    selectedPromptEffort,
-    selectedModel,
-    selectedProvider,
     rememberCustomBinaryPathForDispatch,
     setComposerDraftComputerControlMode,
     syncServerShellSnapshot,

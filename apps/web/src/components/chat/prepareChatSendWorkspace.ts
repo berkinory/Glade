@@ -1,11 +1,10 @@
-import { DEFAULT_MODEL_BY_PROVIDER } from "@glade/contracts/provider/model";
+import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import { RuntimeMode, type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   GENERIC_CHAT_THREAD_TITLE,
   buildPromptThreadTitleFallback,
 } from "@glade/shared/threads/chatThreads";
-import { getDefaultModel } from "@glade/shared/provider/model";
 import type { QueryClient } from "@tanstack/react-query";
 import { gitStatusQueryOptions } from "../../lib/gitQueryOptions";
 import { newCommandId, newProjectId } from "~/lib/utils";
@@ -135,8 +134,8 @@ export async function prepareChatSendWorkspace({
     selectedModelSelectionForSend.provider,
     selectedModelSelectionForSend.model ||
       selectedModelForSend ||
-      getDefaultModel(selectedModelSelectionForSend.provider) ||
-      DEFAULT_MODEL_BY_PROVIDER.codex,
+      PROVIDER_DEFAULT_MODEL ||
+      PROVIDER_DEFAULT_MODEL,
     selectedModelSelectionForSend.options,
   );
   const firstSendTarget = resolveFirstSendTarget({

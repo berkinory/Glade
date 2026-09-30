@@ -40,7 +40,7 @@ import {
   RuntimeMode,
   ProviderInteractionMode,
 } from "@glade/contracts/provider/sessionPolicy";
-import { DEFAULT_MODEL_BY_PROVIDER } from "@glade/contracts/provider/model";
+import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import {
   type ServerVoiceTranscriptionInput,
   type ServerVoiceTranscriptionResult,
@@ -63,13 +63,6 @@ import { spawnProcess } from "@glade/shared/platform/processRuntime";
 import { Effect, ServiceMap } from "effect";
 
 import {
-  compareCodexCliVersions,
-  MINIMUM_CODEX_AUTO_REVIEW_CLI_VERSION,
-  MINIMUM_CODEX_EXCLUDE_TURNS_CLI_VERSION,
-  MINIMUM_CODEX_MCP_CALL_ID_CLI_VERSION,
-} from "./codexCliVersion";
-import {
-  buildCodexMcpConfigToml,
   GLADE_AGENT_GATEWAY_TOKEN_ENV,
   GLADE_MCP_SERVER_NAME,
 } from "../../agentGateway/mcpInjection.ts";
@@ -83,8 +76,10 @@ import {
   type AgentGatewayCapabilityInput,
   type AgentGatewaySessionLease,
 } from "../../agentGateway/sessionLease.ts";
-import { CodexSessionStartError, isNonFatalCodexErrorMessage } from "./codexErrorClassification.ts";
+import { CodexSessionStartError } from "./codexErrorClassification.ts";
 import { buildCodexProcessEnv } from "./codexProcessEnv.ts";
+import { codexExtraSkillsRoots } from "./codexSkillsRoots.ts";
+import { buildCodexAppServerArgs } from "./codexLaunch.ts";
 import { resolveCodexServiceTier } from "./codexServiceTier.ts";
 import {
   teardownChildProcessTree,
@@ -113,6 +108,34 @@ import {
   parseCodexPluginReadResponse,
   parseCodexSkillsListResponse,
 } from "./codexDiscoveryCatalog.ts";
+import {
+  decodeCodexNotification,
+  decodeCodexResponse,
+  decodeCodexRpcError,
+  decodeCodexServerRequest,
+  decodeCodexErrorParams,
+} from "./protocol/decode.ts";
+import type { ModelListResponse } from "./protocol/generated/types/v2/ModelListResponse";
+import type { SkillsListResponse } from "./protocol/generated/types/v2/SkillsListResponse";
+import type { PluginListResponse } from "./protocol/generated/types/v2/PluginListResponse";
+import type { PluginReadResponse } from "./protocol/generated/types/v2/PluginReadResponse";
+import type { GetAccountResponse } from "./protocol/generated/types/v2/GetAccountResponse";
+import type { GetAccountRateLimitsResponse } from "./protocol/generated/types/v2/GetAccountRateLimitsResponse";
+import type { ListMcpServerStatusResponse } from "./protocol/generated/types/v2/ListMcpServerStatusResponse";
+import type { ConfigReadResponse } from "./protocol/generated/types/v2/ConfigReadResponse";
+import type { ConfigWriteResponse } from "./protocol/generated/types/v2/ConfigWriteResponse";
+import type { McpServerOauthLoginResponse } from "./protocol/generated/types/v2/McpServerOauthLoginResponse";
+import type { PluginInstalledResponse } from "./protocol/generated/types/v2/PluginInstalledResponse";
+import type {
+  ProviderListMcpServersResult,
+  ProviderManageMcpServerInput,
+  ProviderManagePluginInput,
+  ProviderManagementContext,
+  ProviderManagementResult,
+  ProviderPluginInventoryResult,
+  ProviderManagementScope,
+} from "@glade/contracts/provider/providerManagement";
+import { codexConfigTarget, codexInstalledPlugin, codexMcpServer } from "./codexManagement.ts";
 
 const log = createLogger("codex");
 
@@ -231,6 +254,7 @@ interface CodexSessionContext {
   teardownCapturedBeforeExit?: boolean;
   discovery?: boolean;
   discoveryKey?: string;
+  defaultModelId?: string;
 }
 
 function historicalOpenTerminalError(context: CodexSessionContext): Error | undefined {
@@ -366,8 +390,7 @@ const RECOVERABLE_THREAD_RESUME_ERROR_SNIPPETS = [
   "unknown thread",
   "does not exist",
 ];
-const CODEX_DEFAULT_MODEL = DEFAULT_MODEL_BY_PROVIDER.codex;
-const CODEX_SPARK_MODEL = "gpt-5.3-codex-spark";
+const CODEX_DEFAULT_MODEL = PROVIDER_DEFAULT_MODEL;
 const CODEX_SPARK_DISABLED_PLAN_TYPES = new Set<CodexPlanType>(["free", "go", "plus"]);
 
 const CODEX_DISCOVERY_SESSION_IDLE_MS = 15_000;
@@ -696,23 +719,6 @@ export function buildCodexThreadOpenRequest(input: {
   };
 }
 
-function resolveCodexThreadOpenMinimumVersion(input: {
-  readonly runtimeMode: RuntimeMode;
-  readonly threadOpenMethod: CodexThreadOpenRequest["method"];
-}): string | undefined {
-  const capabilityFloors = [
-    ...(input.runtimeMode === "auto" ? [MINIMUM_CODEX_AUTO_REVIEW_CLI_VERSION] : []),
-    ...(input.threadOpenMethod === "thread/start" ? [] : [MINIMUM_CODEX_EXCLUDE_TURNS_CLI_VERSION]),
-  ];
-  return capabilityFloors.reduce<string | undefined>(
-    (highest, candidate) =>
-      highest === undefined || compareCodexCliVersions(candidate, highest) > 0
-        ? candidate
-        : highest,
-    undefined,
-  );
-}
-
 function shouldWarnCodexFreshStartWithoutResume(input: {
   readonly threadOpenMethod: string;
   readonly previouslyBound: boolean;
@@ -765,23 +771,13 @@ function resolveCodexTurnOverrides(context: CodexSessionContext): {
   );
 }
 
-function resolveCodexModelForAccount(
-  model: string | undefined,
-  account: CodexAccountSnapshot,
-): string | undefined {
-  if (model !== CODEX_SPARK_MODEL || account.sparkEnabled) {
-    return model;
-  }
-
-  return CODEX_DEFAULT_MODEL;
-}
-
 function spawnCodexAppServer(input: {
   readonly binaryPath: string;
   readonly cwd: string;
   readonly env: NodeJS.ProcessEnv;
+  readonly argv?: readonly string[];
 }): ChildProcessWithoutNullStreams {
-  return spawnProcess(input.binaryPath, ["app-server"], {
+  return spawnProcess(input.binaryPath, [...(input.argv ?? ["app-server"])], {
     requireExecutable: true,
     cwd: input.cwd,
     env: input.env,
@@ -794,7 +790,7 @@ function normalizeCodexModelSlug(
   preferredId?: string,
 ): string | undefined {
   const normalized = normalizeModelSlug(model);
-  if (!normalized) {
+  if (!normalized || normalized === PROVIDER_DEFAULT_MODEL) {
     return undefined;
   }
 
@@ -836,7 +832,8 @@ function buildCodexCollaborationMode(input: {
   if (input.interactionMode === undefined && input.enableComputerControl !== true) {
     return undefined;
   }
-  const model = normalizeCodexModelSlug(input.model) ?? "gpt-5.3-codex";
+  const model = normalizeCodexModelSlug(input.model);
+  if (!model) throw new Error("Codex collaboration mode requires a native model id.");
   const nativeMode = input.interactionMode === "plan" ? "plan" : "default";
   const instructions =
     nativeMode === "plan"
@@ -1105,9 +1102,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
   ) {
     const env = await buildCodexProcessEnv({
       ...(homePath ? { homePath } : {}),
-      ...(this.agentGatewayMcp
-        ? { appendConfigToml: buildCodexMcpConfigToml(this.agentGatewayMcp.endpointUrl()) }
-        : {}),
     });
     if (gatewayBearerToken) {
       env[GLADE_AGENT_GATEWAY_TOKEN_ENV] = gatewayBearerToken;
@@ -1116,12 +1110,14 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
   }
 
   private async registerGladeSkillsRoot(context: CodexSessionContext): Promise<void> {
-    if (!this.gladeSkillsDir) {
-      return;
-    }
+    const extraRoots = codexExtraSkillsRoots({
+      cwd: context.session.cwd,
+      gladeSkillsDir: this.gladeSkillsDir,
+    });
+    if (extraRoots.length === 0) return;
     try {
       await this.sendRequest(context, "skills/extraRoots/set", {
-        extraRoots: [this.gladeSkillsDir],
+        extraRoots,
       });
     } catch (error) {
       if (!this.isContextRoutable(context)) throw error;
@@ -1164,46 +1160,32 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
 
       const resumeThreadId = readResumeThreadId(input);
       const forkSourceThreadId = readResumeCursorThreadId(input.forkSourceResumeCursor);
-      const threadOpenMethodForVersion = forkSourceThreadId
-        ? "thread/fork"
-        : resumeThreadId
-          ? "thread/resume"
-          : "thread/start";
-      const minimumVersion = resolveCodexThreadOpenMinimumVersion({
-        runtimeMode: input.runtimeMode,
-        threadOpenMethod: threadOpenMethodForVersion,
-      });
-
       const codexOptions = readCodexProviderOptions(input);
       const codexBinaryPath = codexOptions.binaryPath ?? "codex";
       const codexHomePath = codexOptions.homePath;
-      const cliVersion = await this.assertSupportedCodexCliVersion({
+      await this.assertSupportedCodexCliVersion({
         binaryPath: codexBinaryPath,
         cwd: resolvedCwd,
-        ...(minimumVersion
-          ? {
-              minimumVersion,
-              minimumVersionRequirement:
-                threadOpenMethodForVersion === "thread/start"
-                  ? "Auto mode"
-                  : "Codex thread resume and fork",
-            }
-          : {}),
         ...(codexHomePath ? { homePath: codexHomePath } : {}),
       });
       gatewaySessionLease = this.agentGatewayMcp?.acquireSessionLease(threadId, {
         ...input.agentGatewayCapabilityInput,
-        nativeToolCallScope:
-          cliVersion !== null &&
-          compareCodexCliVersions(cliVersion, MINIMUM_CODEX_MCP_CALL_ID_CLI_VERSION) >= 0,
+        nativeToolCallScope: true,
+      });
+      const processEnv = await this.buildSessionProcessEnv(
+        codexHomePath,
+        gatewaySessionLease?.connection.bearerToken,
+      );
+      const argv = await buildCodexAppServerArgs({
+        cwd: resolvedCwd,
+        env: processEnv,
+        ...(this.agentGatewayMcp ? { gatewayEndpointUrl: this.agentGatewayMcp.endpointUrl() } : {}),
       });
       const child = this.spawnAppServer({
         binaryPath: codexBinaryPath,
         cwd: resolvedCwd,
-        env: await this.buildSessionProcessEnv(
-          codexHomePath,
-          gatewaySessionLease?.connection.bearerToken,
-        ),
+        env: processEnv,
+        argv,
       });
 
       context = {
@@ -1259,10 +1241,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         log.warn("account/read failed", { error });
       }
 
-      const normalizedModel = resolveCodexModelForAccount(
-        normalizeCodexModelSlug(input.model),
-        context.account,
-      );
+      const normalizedModel = normalizeCodexModelSlug(input.model);
       const sessionOverrides = {
         model: normalizedModel ?? null,
         ...(input.serviceTier !== undefined ? { serviceTier: input.serviceTier } : {}),
@@ -1492,15 +1471,9 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       summary: "auto",
       ...resolveCodexTurnOverrides(context),
     };
-    const normalizedModel = resolveCodexModelForAccount(
-      normalizeCodexModelSlug(input.model ?? context.session.model),
-      context.account,
-    );
+    const normalizedModel = normalizeCodexModelSlug(input.model ?? context.session.model);
     if (normalizedModel) {
       turnStartParams.model = normalizedModel;
-      if (normalizedModel === CODEX_SPARK_MODEL) {
-        turnStartParams.summary = "none";
-      }
     }
     if (input.serviceTier !== undefined) {
       turnStartParams.serviceTier = input.serviceTier;
@@ -1508,10 +1481,25 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     if (input.effort) {
       turnStartParams.effort = input.effort;
     }
+    let collaborationModel = normalizedModel;
+    if (
+      (input.interactionMode !== undefined || context.enableComputerControl === true) &&
+      !collaborationModel
+    ) {
+      collaborationModel = context.defaultModelId;
+      if (!collaborationModel) {
+        collaborationModel = (await this.listModels(context.session.threadId)).models.find(
+          (model) => model.isDefault,
+        )?.slug;
+        if (!collaborationModel)
+          throw new Error("Codex did not identify a default model for collaboration mode.");
+        context.defaultModelId = collaborationModel;
+      }
+    }
     const collaborationMode = buildCodexCollaborationMode({
       enableComputerControl: context.enableComputerControl === true,
       ...(input.interactionMode !== undefined ? { interactionMode: input.interactionMode } : {}),
-      ...(normalizedModel !== undefined ? { model: normalizedModel } : {}),
+      ...(collaborationModel !== undefined ? { model: collaborationModel } : {}),
       ...(input.effort !== undefined ? { effort: input.effort } : {}),
     });
     if (collaborationMode) {
@@ -2054,38 +2042,32 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       );
       const codexBinaryPath = codexOptions.binaryPath ?? "codex";
       const codexHomePath = codexOptions.homePath;
-      const minimumVersion = resolveCodexThreadOpenMinimumVersion({
-        runtimeMode: input.runtimeMode,
-        threadOpenMethod: "thread/fork",
-      });
-      const cliVersion = await this.assertSupportedCodexCliVersion({
+      await this.assertSupportedCodexCliVersion({
         binaryPath: codexBinaryPath,
         cwd: resolvedCwd,
-        ...(minimumVersion
-          ? {
-              minimumVersion,
-              minimumVersionRequirement: "Codex thread resume and fork",
-            }
-          : {}),
         ...(codexHomePath ? { homePath: codexHomePath } : {}),
       });
       signal?.throwIfAborted();
 
       gatewaySessionLease = this.agentGatewayMcp?.acquireSessionLease(threadId, {
-        nativeToolCallScope:
-          cliVersion !== null &&
-          compareCodexCliVersions(cliVersion, MINIMUM_CODEX_MCP_CALL_ID_CLI_VERSION) >= 0,
+        nativeToolCallScope: true,
         enableComputerControl: input.enableComputerControl === true,
       });
       const processEnv = await this.buildSessionProcessEnv(
         codexHomePath,
         gatewaySessionLease?.connection.bearerToken,
       );
+      const argv = await buildCodexAppServerArgs({
+        cwd: resolvedCwd,
+        env: processEnv,
+        ...(this.agentGatewayMcp ? { gatewayEndpointUrl: this.agentGatewayMcp.endpointUrl() } : {}),
+      });
       signal?.throwIfAborted();
       const child = this.spawnAppServer({
         binaryPath: codexBinaryPath,
         cwd: resolvedCwd,
         env: processEnv,
+        argv,
       });
 
       context = {
@@ -2127,10 +2109,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
 
       const normalizedModel =
         input.modelSelection?.provider === "codex"
-          ? resolveCodexModelForAccount(
-              normalizeCodexModelSlug(input.modelSelection.model),
-              context.account,
-            )
+          ? normalizeCodexModelSlug(input.modelSelection.model)
           : undefined;
       const serviceTier = resolveCodexServiceTier(input.modelSelection);
       signal?.throwIfAborted();
@@ -2229,33 +2208,17 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       throw new Error("numTurns must be an integer >= 1.");
     }
 
-    let snapshot: CodexThreadSnapshot;
-    try {
-      const response = await this.sendRequest(context, "thread/rollback", {
-        threadId: providerThreadId,
-        numTurns,
-      });
-      snapshot = this.parseThreadSnapshot("thread/rollback", response);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-
-      if (!/unknown variant [`']thread\/rollback[`']|method not found/i.test(message)) {
-        throw error;
-      }
-      const current = await this.readThreadSnapshot(context, providerThreadId);
-      const targetIndex = current.turns.length - numTurns;
-      const target = current.turns[targetIndex];
-      if (targetIndex < 0 || !target) {
-        throw new Error("The requested edit boundary is missing from the Codex conversation.", {
-          cause: error,
-        });
-      }
-      await this.sendRequest(context, "thread/revert", {
-        threadId: providerThreadId,
-        beforeTurnId: target.id,
-      });
-      snapshot = { ...current, turns: current.turns.slice(0, targetIndex) };
+    const current = await this.readThreadSnapshot(context, providerThreadId);
+    const targetIndex = current.turns.length - numTurns;
+    const target = current.turns[targetIndex];
+    if (targetIndex < 0 || !target) {
+      throw new Error("The requested edit boundary is missing from the Codex conversation.");
     }
+    await this.sendRequest(context, "thread/revert", {
+      threadId: providerThreadId,
+      beforeTurnId: target.id,
+    });
+    const snapshot = { ...current, turns: current.turns.slice(0, targetIndex) };
     this.updateSession(context, {
       status: "ready",
       activeTurnId: undefined,
@@ -2692,9 +2655,9 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     }
 
     const context = await this.resolveContextForDiscovery(input.threadId, cwd);
-    let response: Record<string, unknown>;
+    let response: SkillsListResponse;
     try {
-      response = await this.sendRequest<Record<string, unknown>>(context, "skills/list", {
+      response = await this.sendRequest<SkillsListResponse>(context, "skills/list", {
         cwds: [cwd],
         ...(input.forceReload ? { forceReload: true } : {}),
       });
@@ -2702,7 +2665,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       if (!shouldRetrySkillsListWithCwdFallback(error)) {
         throw error;
       }
-      response = await this.sendRequest<Record<string, unknown>>(context, "skills/list", {
+      response = await this.sendRequest<SkillsListResponse>(context, "skills/list", {
         cwd,
         ...(input.forceReload ? { forceReload: true } : {}),
       });
@@ -2735,7 +2698,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     }
 
     const context = await this.resolveContextForDiscovery(input.threadId, cwd ?? undefined);
-    const response = await this.sendRequest<Record<string, unknown>>(context, "plugin/list", {
+    const response = await this.sendRequest<PluginListResponse>(context, "plugin/list", {
       ...(cwd ? { cwds: [cwd] } : {}),
       ...(input.forceRemoteSync ? { forceRemoteSync: true } : {}),
     });
@@ -2749,10 +2712,15 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
   }
 
   async readPlugin(input: CodexPluginReadInput): Promise<ProviderReadPluginResult> {
-    const marketplacePath = input.marketplacePath.trim();
+    const marketplacePath = input.marketplacePath?.trim();
+    const remoteMarketplaceName = input.remoteMarketplaceName?.trim();
+    if (!marketplacePath && !remoteMarketplaceName) {
+      throw new Error("plugin/read requires a marketplace path or remote marketplace name.");
+    }
     const pluginName = input.pluginName.trim();
     const cacheKey = JSON.stringify({
       marketplacePath,
+      remoteMarketplaceName,
       pluginName,
     });
     const cached = getRecentCacheEntry(this.pluginDetailCache, cacheKey);
@@ -2764,8 +2732,9 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     }
 
     const context = await this.resolveContextForDiscovery(undefined);
-    const response = await this.sendRequest<Record<string, unknown>>(context, "plugin/read", {
-      marketplacePath,
+    const response = await this.sendRequest<PluginReadResponse>(context, "plugin/read", {
+      ...(marketplacePath ? { marketplacePath } : {}),
+      ...(remoteMarketplaceName ? { remoteMarketplaceName } : {}),
       pluginName,
     });
     const result: ProviderReadPluginResult = {
@@ -2779,17 +2748,245 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
 
   async listModels(threadId?: string): Promise<ProviderListModelsResult> {
     const context = await this.resolveContextForDiscovery(threadId);
-    const response = await this.sendRequest<Record<string, unknown>>(context, "model/list", {
-      cursor: null,
-      limit: 50,
-      includeHidden: false,
-    });
-    const models = parseCodexModelListResponse(response);
+    const deadline = Date.now() + 20_000;
+    const seenCursors = new Set<string>();
+    const modelsById = new Map<string, ProviderListModelsResult["models"][number]>();
+    let cursor: string | null = null;
+    do {
+      const response: ModelListResponse = await this.sendRequest<ModelListResponse>(
+        context,
+        "model/list",
+        { cursor, limit: 100, includeHidden: true },
+        Math.max(1, deadline - Date.now()),
+      );
+      for (const model of parseCodexModelListResponse(response)) {
+        if (!modelsById.has(model.slug)) modelsById.set(model.slug, model);
+      }
+      cursor = response.nextCursor;
+      if (cursor !== null) {
+        if (seenCursors.has(cursor)) throw new Error("model/list repeated its nextCursor.");
+        seenCursors.add(cursor);
+      }
+    } while (cursor !== null);
     return {
-      models,
+      models: [...modelsById.values()],
       source: "codex-app-server",
       cached: false,
     };
+  }
+
+  async readAccount(
+    input: {
+      readonly threadId?: string;
+      readonly cwd?: string;
+      readonly providerOptions?: ProviderSessionStartInput["providerOptions"];
+    } = {},
+  ): Promise<GetAccountResponse> {
+    const context = await this.resolveContextForDiscovery(
+      input.threadId,
+      input.cwd,
+      input.providerOptions,
+    );
+    return this.sendRequest<GetAccountResponse>(context, "account/read", {});
+  }
+
+  async readAccountRateLimits(
+    input: {
+      readonly threadId?: string;
+      readonly cwd?: string;
+      readonly providerOptions?: ProviderSessionStartInput["providerOptions"];
+    } = {},
+  ): Promise<GetAccountRateLimitsResponse> {
+    const context = await this.resolveContextForDiscovery(
+      input.threadId,
+      input.cwd,
+      input.providerOptions,
+    );
+    return this.sendRequest<GetAccountRateLimitsResponse>(context, "account/rateLimits/read", {});
+  }
+
+  async listMcpServers(input: ProviderManagementContext): Promise<ProviderListMcpServersResult> {
+    const context = await this.resolveContextForDiscovery(input.threadId, input.cwd);
+    const config = await this.sendRequest<ConfigReadResponse>(context, "config/read", {
+      cwd: input.cwd ?? null,
+      includeLayers: true,
+    });
+    const target = codexConfigTarget(config, "user");
+    const deadline = Date.now() + 20_000;
+    const seen = new Set<string>();
+    const servers = new Map<string, ProviderListMcpServersResult["servers"][number]>();
+    let cursor: string | null = null;
+    do {
+      const page: ListMcpServerStatusResponse = await this.sendRequest<ListMcpServerStatusResponse>(
+        context,
+        "mcpServerStatus/list",
+        { cursor, limit: 100, detail: "full", threadId: input.threadId ?? null },
+        Math.max(1, deadline - Date.now()),
+      );
+      for (const server of page.data) {
+        servers.set(server.name, codexMcpServer(server, config));
+      }
+      cursor = page.nextCursor;
+      if (cursor !== null) {
+        if (seen.has(cursor)) throw new Error("mcpServerStatus/list repeated its cursor.");
+        seen.add(cursor);
+      }
+    } while (cursor !== null);
+    return {
+      servers: [...servers.values()],
+      source: "codex-app-server",
+      canAdd: target !== undefined,
+      ...(target ? { configVersion: target.version } : {}),
+    };
+  }
+
+  private async writeCodexConfig(input: {
+    readonly context: CodexSessionContext;
+    readonly cwd?: string;
+    readonly scope: ProviderManagementScope;
+    readonly expectedVersion?: string;
+    readonly keyPath: string;
+    readonly value: unknown;
+  }): Promise<ConfigWriteResponse> {
+    if (!input.expectedVersion) throw new Error("A current Codex config version is required.");
+    const config = await this.sendRequest<ConfigReadResponse>(input.context, "config/read", {
+      cwd: input.cwd ?? null,
+      includeLayers: true,
+    });
+    const target = codexConfigTarget(config, input.scope);
+    if (!target || target.version !== input.expectedVersion) {
+      throw new Error("Codex configuration changed; refresh before editing.");
+    }
+    return this.sendRequest<ConfigWriteResponse>(input.context, "config/batchWrite", {
+      edits: [{ keyPath: input.keyPath, value: input.value, mergeStrategy: "replace" }],
+      expectedVersion: input.expectedVersion,
+      ...(target.filePath ? { filePath: target.filePath } : {}),
+      reloadUserConfig: true,
+    });
+  }
+
+  async manageMcpServer(input: ProviderManageMcpServerInput): Promise<ProviderManagementResult> {
+    if (input.name === GLADE_MCP_SERVER_NAME) {
+      throw new Error("The Glade gateway is managed and cannot be changed here.");
+    }
+    if (!/^[A-Za-z0-9_-]+$/.test(input.name)) {
+      throw new Error("MCP server name contains unsupported characters.");
+    }
+    const context = await this.resolveContextForDiscovery(input.threadId, input.cwd);
+    if (input.action === "authenticate") {
+      const login = await this.sendRequest<McpServerOauthLoginResponse>(
+        context,
+        "mcpServer/oauth/login",
+        { name: input.name, ...(input.threadId ? { threadId: input.threadId } : {}) },
+        120_000,
+      );
+      return { applied: true, affects: "session", authorizationUrl: login.authorizationUrl };
+    }
+    if (input.action === "reconnect") {
+      await this.sendRequest(context, "config/mcpServer/reload", null);
+      return { applied: true, affects: "provider" };
+    }
+    const scope =
+      input.scope ??
+      (await this.listMcpServers(input)).servers.find((server) => server.name === input.name)
+        ?.scope ??
+      "user";
+    if (scope !== "user" && scope !== "project")
+      throw new Error("MCP configuration scope is unavailable.");
+    let value: unknown;
+    let keyPath = `mcp_servers.${input.name}`;
+    if (input.action === "add") {
+      const configuration = input.configuration;
+      if (!configuration) throw new Error("MCP configuration is required to add a server.");
+      if (configuration.transport === "http") {
+        const url = new URL(configuration.url);
+        if (
+          (url.protocol !== "http:" && url.protocol !== "https:") ||
+          url.username ||
+          url.password
+        ) {
+          throw new Error("MCP URL must use HTTP without embedded credentials.");
+        }
+        value = {
+          url: url.toString(),
+          ...(configuration.headers ? { http_headers: configuration.headers } : {}),
+        };
+      } else {
+        value = {
+          command: configuration.command,
+          args: configuration.args,
+          ...(configuration.env ? { env: configuration.env } : {}),
+        };
+      }
+    } else if (input.action === "remove") {
+      value = null;
+    } else {
+      keyPath += ".enabled";
+      value = input.action === "enable";
+    }
+    await this.writeCodexConfig({
+      context,
+      ...(input.cwd ? { cwd: input.cwd } : {}),
+      scope,
+      ...(input.expectedVersion ? { expectedVersion: input.expectedVersion } : {}),
+      keyPath,
+      value,
+    });
+    return { applied: true, affects: "provider" };
+  }
+
+  async pluginInventory(input: ProviderManagementContext): Promise<ProviderPluginInventoryResult> {
+    const context = await this.resolveContextForDiscovery(input.threadId, input.cwd);
+    const response = await this.sendRequest<PluginInstalledResponse>(context, "plugin/installed", {
+      ...(input.cwd ? { cwds: [input.cwd] } : {}),
+    });
+    return {
+      plugins: response.marketplaces.flatMap((marketplace) =>
+        marketplace.plugins.map(codexInstalledPlugin),
+      ),
+      source: "codex-app-server",
+      canInstall: true,
+    };
+  }
+
+  async managePlugin(input: ProviderManagePluginInput): Promise<ProviderManagementResult> {
+    const context = await this.resolveContextForDiscovery(input.threadId, input.cwd);
+    if (input.action === "reload") {
+      await this.sendRequest(context, "plugin/reconcile", { reason: "glade-management" });
+      return { applied: true, affects: "provider" };
+    }
+    if (input.action === "remove") {
+      await this.sendRequest(context, "plugin/uninstall", { pluginId: input.id });
+      return { applied: true, affects: "provider" };
+    }
+    if (input.action === "install") {
+      const catalog = await this.listPlugins({ ...(input.cwd ? { cwd: input.cwd } : {}) });
+      const plugin = catalog.marketplaces
+        .flatMap((marketplace) => marketplace.plugins)
+        .find((candidate) => candidate.id === input.id);
+      if (!plugin) throw new Error("Plugin is absent from the native catalog.");
+      if (!input.marketplacePath && !input.remoteMarketplaceName) {
+        throw new Error("Plugin marketplace identity is required for installation.");
+      }
+      await this.sendRequest(context, "plugin/install", {
+        pluginName: plugin.name,
+        ...(input.marketplacePath ? { marketplacePath: input.marketplacePath } : {}),
+        ...(input.remoteMarketplaceName
+          ? { remoteMarketplaceName: input.remoteMarketplaceName }
+          : {}),
+      });
+      return { applied: true, affects: "provider" };
+    }
+    if (!/^[A-Za-z0-9@._-]+$/.test(input.id)) throw new Error("Invalid plugin id.");
+    await this.writeCodexConfig({
+      context,
+      ...(input.cwd ? { cwd: input.cwd } : {}),
+      scope: input.scope ?? "user",
+      ...(input.expectedVersion ? { expectedVersion: input.expectedVersion } : {}),
+      keyPath: `plugins.${JSON.stringify(input.id)}.enabled`,
+      value: input.action === "enable",
+    });
+    return { applied: true, affects: "provider" };
   }
 
   async transcribeVoice(
@@ -3335,6 +3532,9 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     }
 
     if (this.isServerRequest(parsed)) {
+      if (decodeCodexServerRequest(parsed) === "unknown") {
+        log.warn("unknown Codex server request", { method: parsed.method });
+      }
       void this.handleServerRequest(context, parsed).catch((cause) =>
         this.handleTransportFailure(context, cause),
       );
@@ -3342,6 +3542,10 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     }
 
     if (this.isServerNotification(parsed)) {
+      if (decodeCodexNotification(parsed) === "unknown") {
+        log.warn("unknown Codex server notification", { method: parsed.method });
+        return;
+      }
       this.handleServerNotification(context, parsed);
       return;
     }
@@ -3381,22 +3585,15 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       notification.method === "item/agentMessage/delta"
         ? this.readString(notification.params, "delta")
         : undefined;
-    const terminalErrorMessageRaw =
-      notification.method === "error"
-        ? this.readString(this.readObject(notification.params)?.error, "message")
-        : undefined;
+    const nativeError =
+      notification.method === "error" ? decodeCodexErrorParams(notification.params) : undefined;
+    const terminalErrorMessageRaw = nativeError?.error.message;
     const terminalErrorMessage =
       terminalErrorMessageRaw !== undefined
         ? normalizeCodexUserVisibleErrorMessage(terminalErrorMessageRaw)
         : undefined;
-    const terminalErrorWillRetry =
-      notification.method === "error"
-        ? this.readBoolean(notification.params, "willRetry") === true
-        : false;
-    const isTerminalError =
-      notification.method === "error" &&
-      !terminalErrorWillRetry &&
-      !(terminalErrorMessage !== undefined && isNonFatalCodexErrorMessage(terminalErrorMessage));
+    const terminalErrorWillRetry = nativeError?.willRetry === true;
+    const isTerminalError = notification.method === "error" && !terminalErrorWillRetry;
     const isTerminalParentTurn =
       !isChildConversation &&
       (notification.method === "turn/completed" ||
@@ -3615,9 +3812,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       }
       const message = terminalErrorMessage;
       const willRetry = terminalErrorWillRetry;
-      const isNonFatalWarning =
-        message !== undefined && !willRetry && isNonFatalCodexErrorMessage(message);
-
       if (willRetry) {
         // Only a live turn may restore "running"; otherwise a retryable error arriving between turns would
         // strand the session with no turn to reconcile against.
@@ -3626,10 +3820,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
             status: "running",
           });
         }
-        return;
-      }
-
-      if (isNonFatalWarning) {
         return;
       }
 
@@ -3814,6 +4004,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
   }
 
   private handleResponse(context: CodexSessionContext, response: JsonRpcResponse): void {
+    if (response.error !== undefined) decodeCodexRpcError(response.error);
     this.requestRegistry(context).handleResponse(
       response.error?.message
         ? response
@@ -3845,7 +4036,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         this.restartDiscoverySessionIdleTimer(context);
       });
 
-    return result as TResponse;
+    return decodeCodexResponse(method, result) as TResponse;
   }
 
   private requestRegistry(context: CodexSessionContext): JsonRpcStdioRequestRegistry {
@@ -4366,15 +4557,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
 
     const candidate = (value as Record<string, unknown>)[key];
     return typeof candidate === "string" ? candidate : undefined;
-  }
-
-  private readBoolean(value: unknown, key: string): boolean | undefined {
-    if (!value || typeof value !== "object") {
-      return undefined;
-    }
-
-    const candidate = (value as Record<string, unknown>)[key];
-    return typeof candidate === "boolean" ? candidate : undefined;
   }
 
   private isExitedReviewModeNotification(notification: JsonRpcNotification): boolean {

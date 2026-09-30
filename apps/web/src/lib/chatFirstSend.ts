@@ -1,4 +1,4 @@
-import { DEFAULT_MODEL_BY_PROVIDER } from "@glade/contracts/provider/model";
+import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { workspaceRootsEqual } from "@glade/shared/threads/threadWorkspace";
 
@@ -56,7 +56,7 @@ export function resolveFirstSendTarget(input: {
     input.defaultModelSelection ??
     ({
       provider: "codex",
-      model: DEFAULT_MODEL_BY_PROVIDER.codex,
+      model: PROVIDER_DEFAULT_MODEL,
     } satisfies ModelSelection);
   const {
     activeProject,

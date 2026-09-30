@@ -150,10 +150,6 @@ export function makeReactorTestHarness() {
     readonly generateThreadTitle?: TextGenerationShape["generateThreadTitle"];
     readonly computerService?: ComputerServiceShape;
     readonly gatewaySessions?: AgentGatewaySessionRegistryShape;
-    readonly getClaudeCacheObservation?: NonNullable<
-      ProviderServiceShape["getClaudeCacheObservation"]
-    >;
-    readonly startClaudeCompaction?: NonNullable<ProviderServiceShape["startClaudeCompaction"]>;
   }): Promise<ReactorTestHarness> {
     const now = new Date().toISOString();
     const baseDir = input?.baseDir ?? fs.mkdtempSync(path.join(os.tmpdir(), "glade-reactor-"));
@@ -472,12 +468,6 @@ export function makeReactorTestHarness() {
       getCapabilities: (_provider) => Effect.succeed({}),
       rollbackConversation,
       compactThread: () => unsupported(),
-      ...(input?.getClaudeCacheObservation
-        ? { getClaudeCacheObservation: input.getClaudeCacheObservation }
-        : {}),
-      ...(input?.startClaudeCompaction
-        ? { startClaudeCompaction: input.startClaudeCompaction }
-        : {}),
       closeRuntimeEvents: Effect.void,
       streamEvents: Stream.fromPubSub(runtimeEventPubSub),
     };

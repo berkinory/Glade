@@ -20,6 +20,33 @@ export function createSyntheticCodexAppServer(options?: {
   let nextPid = 50_000;
   let nextTurn = 1;
 
+  const threadOpenResponse = (request: SyntheticCodexRequest, providerThreadId: string) => {
+    const cwd = String(request.params?.cwd ?? process.cwd());
+    return {
+      thread: {
+        id: providerThreadId,
+        sessionId: providerThreadId,
+        cliVersion: "0.158.0",
+        createdAt: 1_700_000_000,
+        updatedAt: 1_700_000_000,
+        cwd,
+        ephemeral: false,
+        modelProvider: "openai",
+        preview: "",
+        projectId: null,
+        source: "appServer",
+        status: { type: "idle" },
+        turns: [],
+      },
+      approvalPolicy: "never",
+      approvalsReviewer: "user",
+      cwd,
+      model: "gpt-5.3-codex",
+      modelProvider: "openai",
+      sandbox: { type: "dangerFullAccess" },
+    };
+  };
+
   const buildFullHistoryFrame = (id: string | number, providerThreadId: string): Buffer => {
     const targetFrameBytes = 16_842_743;
     const prefix = Buffer.from(
@@ -73,8 +100,10 @@ export function createSyntheticCodexAppServer(options?: {
         };
         if (request.method === "initialize") {
           respond({});
+        } else if (request.method === "skills/extraRoots/set") {
+          respond({});
         } else if (request.method === "account/read") {
-          respond({ account: { type: "apiKey" } });
+          respond({ account: { type: "apiKey" }, requiresOpenaiAuth: false });
         } else if (request.method === "thread/resume" || request.method === "thread/fork") {
           const providerThreadId = String(request.params?.threadId ?? "provider-thread");
           if (options?.forceFullHistoryResponse === true || request.params?.excludeTurns !== true) {
@@ -83,20 +112,18 @@ export function createSyntheticCodexAppServer(options?: {
               stdout.write(buildFullHistoryFrame(request.id!, providerThreadId)),
             );
           } else {
-            const result = {
-              thread: {
-                id:
-                  request.method === "thread/fork"
-                    ? `${providerThreadId}-forked`
-                    : providerThreadId,
-              },
-            };
+            const result = threadOpenResponse(
+              request,
+              request.method === "thread/fork" ? `${providerThreadId}-forked` : providerThreadId,
+            );
             respond(result);
           }
         } else if (request.method === "thread/start") {
-          respond({ thread: { id: "fresh-provider-thread" } });
+          respond(threadOpenResponse(request, "fresh-provider-thread"));
         } else if (request.method === "turn/start") {
-          respond({ turn: { id: `synthetic-turn-${nextTurn++}` } });
+          respond({
+            turn: { id: `synthetic-turn-${nextTurn++}`, items: [], status: "inProgress" },
+          });
         } else {
           throw new Error(`Unexpected Codex request: ${request.method}`);
         }

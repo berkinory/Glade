@@ -1,18 +1,11 @@
 import {
   CLI_VERSION_PATTERN,
-  compareParsedCliVersions,
   normalizeCliVersion,
   splitPrerelease,
   type ParsedCliVersion,
 } from "../core/cliVersion.ts";
 
-const MINIMUM_CODEX_CLI_VERSION = "0.37.0";
-
-export const MINIMUM_CODEX_MCP_CALL_ID_CLI_VERSION = "0.158.0";
-
-export const MINIMUM_CODEX_AUTO_REVIEW_CLI_VERSION = "0.124.0";
-
-export const MINIMUM_CODEX_EXCLUDE_TURNS_CLI_VERSION = "0.125.0";
+import { PROVIDER_COMPATIBILITY, isProviderVersionSupported } from "../core/compatibility.ts";
 
 function parseSemver(version: string): ParsedCliVersion | null {
   const normalized = normalizeCliVersion(version);
@@ -46,16 +39,6 @@ function parseSemver(version: string): ParsedCliVersion | null {
   };
 }
 
-export function compareCodexCliVersions(left: string, right: string): number {
-  const parsedLeft = parseSemver(left);
-  const parsedRight = parseSemver(right);
-  if (!parsedLeft || !parsedRight) {
-    return left.localeCompare(right);
-  }
-
-  return compareParsedCliVersions(parsedLeft, parsedRight);
-}
-
 export function parseCodexCliVersion(output: string): string | null {
   const match = CLI_VERSION_PATTERN.exec(output);
   if (!match?.[1]) {
@@ -71,12 +54,12 @@ export function parseCodexCliVersion(output: string): string | null {
 }
 
 export function isCodexCliVersionSupported(version: string): boolean {
-  return compareCodexCliVersions(version, MINIMUM_CODEX_CLI_VERSION) >= 0;
+  return isProviderVersionSupported("codex", version);
 }
 
 export function formatCodexCliUpgradeMessage(
   version: string | null,
-  minimumVersion = MINIMUM_CODEX_CLI_VERSION,
+  minimumVersion = PROVIDER_COMPATIBILITY.codex.minimumVersion,
 ): string {
   const versionLabel = version ? `v${version}` : "the installed version";
   return `Codex CLI ${versionLabel} is too old for Glade. Upgrade to v${minimumVersion} or newer and restart Glade.`;

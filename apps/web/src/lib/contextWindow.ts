@@ -1,18 +1,7 @@
 import { asFiniteNumber } from "@glade/shared/transport/payloadValues";
 import { asObjectRecord } from "@glade/shared/transport/payloadValues";
-import { ClaudeCacheObservation } from "@glade/contracts/provider/claudeCache";
-import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { type OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
 import { type ThreadTokenUsageSnapshot } from "@glade/contracts/provider/runtimePayloads";
-import { normalizeModelSlug, stripClaudeContextWindowSuffix } from "@glade/shared/provider/model";
-import { Schema } from "effect";
-
-const decodeClaudeCacheObservation = Schema.decodeUnknownOption(ClaudeCacheObservation);
-
-function readClaudeCacheObservation(value: unknown): ClaudeCacheObservation | null {
-  const decoded = decodeClaudeCacheObservation(value);
-  return decoded._tag === "Some" ? decoded.value : null;
-}
 
 function asBoolean(value: unknown): boolean | null {
   return typeof value === "boolean" ? value : null;
@@ -44,12 +33,6 @@ export interface ContextWindowState {
   readonly invalidatedByCompaction: boolean;
 }
 
-export interface ContextWindowSelectionStatus {
-  readonly activeLabel: string | null;
-  readonly selectedLabel: string | null;
-  readonly pendingSelectedLabel: string | null;
-}
-
 export interface ContextWindowMeterDisplay {
   readonly usedPercentageLabel: string | null;
   readonly tokenUsageLabel: string;
@@ -58,11 +41,6 @@ export interface ContextWindowMeterDisplay {
   readonly compactLabel: string;
   readonly ariaLabel: string;
 }
-
-const KNOWN_CONTEXT_WINDOW_MAX_TOKENS = {
-  "200k": 200_000,
-  "1m": 1_000_000,
-} as const;
 
 export function isCompletedContextCompaction(activity: OrchestrationThreadActivity): boolean {
   if (activity.kind !== "context-compaction") {
@@ -114,7 +92,6 @@ export function deriveLatestContextWindowState(
 
     return {
       snapshot: {
-        claudeCache: readClaudeCacheObservation(payload?.claudeCache),
         usedTokens,
         usedPercent: payloadUsedPercent,
 
@@ -146,20 +123,6 @@ export function deriveLatestContextWindowState(
   }
 
   return { snapshot: null, invalidatedByCompaction: false };
-}
-
-export function deriveAppliedContextWindowSelection(
-  activities: ReadonlyArray<OrchestrationThreadActivity>,
-): string | null {
-  const activity = activities.findLast((item) => item.kind === "context-window.configured");
-  const payload = asObjectRecord(activity?.payload);
-  if (payload?.cleared === true) return "auto";
-  const maxTokens = asFiniteNumber(payload?.maxTokens) ?? null;
-  return (
-    Object.entries(KNOWN_CONTEXT_WINDOW_MAX_TOKENS).find(
-      ([, tokens]) => tokens === maxTokens,
-    )?.[0] ?? null
-  );
 }
 
 function formatPercentage(value: number | null): string | null {
@@ -217,91 +180,6 @@ export function deriveCumulativeCostUsd(
     return latestCumulative + turnDeltaTotal;
   }
   return foundTurnDelta ? turnDeltaTotal : null;
-}
-
-function formatContextWindowSelectionLabel(value: string | null | undefined): string | null {
-  if (typeof value !== "string") {
-    return null;
-  }
-  const normalized = value.trim().toLowerCase();
-  if (!normalized) {
-    return null;
-  }
-  if (normalized === "auto") return "Auto";
-  if (normalized === "1m") {
-    return "1M";
-  }
-  if (normalized === "200k") {
-    return "200k";
-  }
-  return normalized.replace(/m$/u, "M");
-}
-
-function inferContextWindowSelectionValue(maxTokens: number | null | undefined): string | null {
-  if (maxTokens == null || !Number.isFinite(maxTokens) || maxTokens <= 0) {
-    return null;
-  }
-  const bestMatch = Object.entries(KNOWN_CONTEXT_WINDOW_MAX_TOKENS).reduce<{
-    value: string | null;
-    relativeDistance: number;
-  }>(
-    (best, [value, knownMaxTokens]) => {
-      const relativeDistance = Math.abs(maxTokens - knownMaxTokens) / knownMaxTokens;
-      return relativeDistance < best.relativeDistance ? { value, relativeDistance } : best;
-    },
-    { value: null, relativeDistance: Number.POSITIVE_INFINITY },
-  );
-  return bestMatch.relativeDistance <= 0.2 ? bestMatch.value : null;
-}
-
-export function deriveContextWindowSelectionStatus(input: {
-  activeSnapshot: ContextWindowSnapshot | null;
-  appliedValue?: string | null;
-  selectedValue: string | null | undefined;
-}): ContextWindowSelectionStatus {
-  const activeValue =
-    input.appliedValue === undefined
-      ? inferContextWindowSelectionValue(input.activeSnapshot?.maxTokens ?? null)
-      : input.appliedValue;
-  const selectedValue = input.selectedValue?.trim().toLowerCase() ?? null;
-  const activeLabel =
-    formatContextWindowSelectionLabel(activeValue) ??
-    (input.appliedValue === undefined && input.activeSnapshot?.maxTokens != null
-      ? formatContextWindowTokens(input.activeSnapshot.maxTokens)
-      : null);
-  const selectedLabel = formatContextWindowSelectionLabel(selectedValue);
-  const pendingSelectedLabel =
-    selectedLabel !== null && activeValue !== null && selectedValue !== activeValue
-      ? selectedLabel
-      : null;
-
-  return {
-    activeLabel,
-    selectedLabel,
-    pendingSelectedLabel,
-  };
-}
-
-export function deriveComposerContextWindowLabel(input: {
-  provider: ProviderKind;
-  model: string;
-  snapshot: ContextWindowSnapshot | null;
-  status: ContextWindowSelectionStatus;
-}): string | null {
-  if (input.provider !== "claudeAgent") return null;
-  const observedModel = input.snapshot?.claudeCache?.model;
-  const sameModel =
-    observedModel !== undefined &&
-    stripClaudeContextWindowSuffix(normalizeModelSlug(observedModel, "claudeAgent") ?? "") ===
-      stripClaudeContextWindowSuffix(normalizeModelSlug(input.model, "claudeAgent") ?? "");
-  const budget = sameModel
-    ? formatContextWindowSelectionLabel(inferContextWindowSelectionValue(input.snapshot?.maxTokens))
-    : null;
-  const { selectedLabel, activeLabel, pendingSelectedLabel } = input.status;
-  const pending = pendingSelectedLabel ?? (!sameModel ? selectedLabel : null);
-  if (budget) return pending ? `(${budget} · ${pending} next)` : `(${budget})`;
-  if (selectedLabel === null || (selectedLabel === "Auto" && !pendingSelectedLabel)) return null;
-  return `(${selectedLabel} ${pending || activeLabel === null ? "next" : "target"})`;
 }
 
 export function formatCostUsd(value: number): string {

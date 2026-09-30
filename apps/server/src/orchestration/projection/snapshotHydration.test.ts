@@ -1,13 +1,11 @@
-import { Effect, Option } from "effect";
+import { Effect } from "effect";
 import { ProjectionSnapshotQuery } from "../Services/ProjectionSnapshotQuery.ts";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
-import { type PendingClaudeCacheReview } from "@glade/contracts/orchestration/threadEntities";
 import { assert } from "@effect/vitest";
 import { ORCHESTRATION_PROJECTOR_NAMES } from "./projectorRegistration.ts";
 import { SpaceId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   projectionSnapshotLayer,
-  asThreadId,
   asMessageId,
   asProjectId,
   asTurnId,
@@ -16,77 +14,6 @@ import {
 } from "./snapshotTestFixtures";
 
 projectionSnapshotLayer("Projection snapshot snapshotHydration", (it) => {
-  it.effect("rehydrates pending cache decisions in snapshots and thread detail after restart", () =>
-    Effect.gen(function* () {
-      const query = yield* ProjectionSnapshotQuery;
-      const sql = yield* SqlClient.SqlClient;
-      const now = "2026-09-16T10:00:00.000Z";
-      const threadId = asThreadId("cache-review-thread");
-      const review: PendingClaudeCacheReview = {
-        reviewId: "cache-review-1",
-        messageId: asMessageId("cache-review-message"),
-        sourceEventSequence: 42,
-        assessment: {
-          observedAt: now,
-          contextTokens: 850_000,
-          state: "likely-expired",
-          source: "local-estimate",
-        },
-        status: "uncertain",
-        error: "Delivery needs reconciliation.",
-        createdAt: now,
-      };
-      yield* sql`DELETE FROM projection_projects`;
-      yield* sql`DELETE FROM projection_threads`;
-      yield* sql`DELETE FROM projection_state`;
-      yield* sql`
-        INSERT INTO projection_projects (
-          project_id, title, workspace_root, scripts_json, created_at, updated_at
-        ) VALUES ('cache-review-project', 'Cache review', '/tmp/cache-review', '[]', ${now}, ${now})
-      `;
-      yield* sql`
-        INSERT INTO projection_threads (
-          thread_id, project_id, title, model_selection_json,
-          claude_cache_review_json, created_at, updated_at
-        ) VALUES (
-          ${threadId}, 'cache-review-project', 'Pending cache review',
-          '{"provider":"claudeAgent","model":"claude-opus-4-6"}',
-          ${JSON.stringify(review)}, ${now}, ${now}
-        ), (
-          'legacy-cache-review-thread', 'cache-review-project', 'Existing thread',
-          '{"provider":"claudeAgent","model":"claude-opus-4-6"}', NULL, ${now}, ${now}
-        )
-      `;
-
-      for (const snapshot of [
-        yield* query.getSnapshot(),
-        yield* query.getShellSnapshot(),
-        yield* query.getCommandReadModel(),
-      ]) {
-        assert.deepStrictEqual(
-          snapshot.threads.find((thread) => thread.id === threadId)?.claudeCacheReview,
-          review,
-        );
-        assert.isUndefined(
-          snapshot.threads.find((thread) => thread.id === "legacy-cache-review-thread")
-            ?.claudeCacheReview,
-        );
-      }
-      assert.deepStrictEqual(
-        Option.getOrNull(yield* query.getThreadDetailById(threadId))?.claudeCacheReview,
-        review,
-      );
-      assert.deepStrictEqual(
-        Option.getOrNull(yield* query.getThreadShellById(threadId))?.claudeCacheReview,
-        review,
-      );
-      assert.deepStrictEqual(
-        Option.getOrNull(yield* query.getThreadDetailForExportById(threadId))?.claudeCacheReview,
-        review,
-      );
-    }),
-  );
-
   it.effect(
     "selects the latest turn per thread with stable ties and preserves historical update time",
     () =>

@@ -66,10 +66,9 @@ import {
   isCodexGeneratedImageItemType,
   sanitizeNestedCodexGeneratedImagePayloads,
 } from "../codex/codexGeneratedImages.ts";
-import {
-  CodexSessionStartError,
-  isNonFatalCodexErrorMessage,
-} from "../codex/codexErrorClassification.ts";
+import { CodexSessionStartError } from "../codex/codexErrorClassification.ts";
+import { decodeCodexErrorParams } from "../codex/protocol/decode.ts";
+import { normalizeCodexFailure } from "../codex/codexFailures.ts";
 import { ServerConfig } from "../../server/config.ts";
 import { resolveCodexServiceTier } from "../codex/codexServiceTier.ts";
 import { makeRuntimeTaskListItem } from "../core/runtimeTaskList.ts";
@@ -241,8 +240,7 @@ function providerErrorMapsToWarning(event: ProviderEvent): boolean {
     (event.method === "process/stderr" ||
       event.method === "mcpServer/elicitation/request/unrenderable" ||
       (event.method === "error" &&
-        typeof event.message === "string" &&
-        isNonFatalCodexErrorMessage(event.message)))
+        (asObjectRecord(event.payload) ?? undefined)?.willRetry === true))
   );
 }
 
@@ -1838,18 +1836,17 @@ function mapToRuntimeEvents(
   }
 
   if (event.method === "error") {
-    const message =
-      asString((asObjectRecord(payload?.error) ?? undefined)?.message) ??
-      event.message ??
-      "Provider runtime error";
-    const willRetry = payload?.willRetry === true;
-    const treatAsWarning = willRetry || isNonFatalCodexErrorMessage(message);
+    const nativeError = decodeCodexErrorParams(event.payload);
+    const message = event.message ?? nativeError.error.message;
+    const failure = normalizeCodexFailure(nativeError, message);
+    const treatAsWarning = nativeError.willRetry;
     return [
       {
         type: treatAsWarning ? "runtime.warning" : "runtime.error",
         ...runtimeEventBase(event, canonicalThreadId),
         payload: {
           message,
+          failure,
           ...(!treatAsWarning ? { class: "provider_error" as const } : {}),
           ...(event.payload !== undefined ? { detail: event.payload } : {}),
         },
@@ -2342,7 +2339,10 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
       Effect.tryPromise({
         try: () =>
           manager.readPlugin({
-            marketplacePath: input.marketplacePath,
+            ...(input.marketplacePath ? { marketplacePath: input.marketplacePath } : {}),
+            ...(input.remoteMarketplaceName
+              ? { remoteMarketplaceName: input.remoteMarketplaceName }
+              : {}),
             pluginName: input.pluginName,
           }),
         catch: (cause) =>
@@ -2365,6 +2365,54 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
             cause,
           }),
       }).pipe(Effect.map((result) => result satisfies ProviderListModelsResult));
+
+    const listMcpServers: NonNullable<CodexAdapterShape["listMcpServers"]> = (input) =>
+      Effect.tryPromise({
+        try: () => manager.listMcpServers(input),
+        catch: (cause) =>
+          new ProviderAdapterRequestError({
+            provider: PROVIDER,
+            method: "mcpServerStatus/list",
+            detail: toMessage(cause, "MCP listing failed"),
+            cause,
+          }),
+      });
+
+    const manageMcpServer: NonNullable<CodexAdapterShape["manageMcpServer"]> = (input) =>
+      Effect.tryPromise({
+        try: () => manager.manageMcpServer(input),
+        catch: (cause) =>
+          new ProviderAdapterRequestError({
+            provider: PROVIDER,
+            method: "mcpServer/manage",
+            detail: toMessage(cause, "MCP action failed"),
+            cause,
+          }),
+      });
+
+    const pluginInventory: NonNullable<CodexAdapterShape["pluginInventory"]> = (input) =>
+      Effect.tryPromise({
+        try: () => manager.pluginInventory(input),
+        catch: (cause) =>
+          new ProviderAdapterRequestError({
+            provider: PROVIDER,
+            method: "plugin/installed",
+            detail: toMessage(cause, "Plugin inventory failed"),
+            cause,
+          }),
+      });
+
+    const managePlugin: NonNullable<CodexAdapterShape["managePlugin"]> = (input) =>
+      Effect.tryPromise({
+        try: () => manager.managePlugin(input),
+        catch: (cause) =>
+          new ProviderAdapterRequestError({
+            provider: PROVIDER,
+            method: "plugin/manage",
+            detail: toMessage(cause, "Plugin action failed"),
+            cause,
+          }),
+      });
 
     const transcribeVoice: NonNullable<CodexAdapterShape["transcribeVoice"]> = (input) =>
       Effect.tryPromise({
@@ -2522,6 +2570,10 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
       listPlugins,
       readPlugin,
       listModels,
+      listMcpServers,
+      manageMcpServer,
+      pluginInventory,
+      managePlugin,
       prewarmVoice,
       transcribeVoice,
       streamEvents: Stream.fromQueue(runtimeEventQueue),

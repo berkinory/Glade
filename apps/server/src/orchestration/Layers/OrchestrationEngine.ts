@@ -524,10 +524,6 @@ const makeOrchestrationEngine = Effect.gen(function* () {
       case "thread.handoff.create":
       case "thread.fork.create":
         return loadThreadDetailForDecider(command, commandReadModel, command.sourceThreadId);
-      case "thread.claude-cache.set":
-        return command.hold
-          ? loadThreadDetailForDecider(command, commandReadModel, command.threadId)
-          : Effect.succeed(commandReadModel);
       case "thread.turn.start":
         if (command.asyncUserInputResponse) {
           return messageRepository
@@ -838,33 +834,6 @@ const makeOrchestrationEngine = Effect.gen(function* () {
           return yield* new OrchestrationCommandInvariantError({
             commandType: command.type,
             detail: `Thread '${command.threadId}' title changed before the conditional update.`,
-          });
-        }
-      }
-
-      if (command.type === "thread.claude-cache.set" && command.hold) {
-        const cancellation = yield* Stream.runHead(
-          eventStore.readThreadEventsFromSequence(
-            command.threadId,
-            command.hold.sourceEventSequence,
-            1,
-            commandReadModel.snapshotSequence,
-            [
-              "thread.session-stop-requested",
-              "thread.archived",
-              "thread.deleted",
-              "thread.conversation-rolled-back",
-            ],
-          ),
-        ).pipe(
-          Effect.mapError(() =>
-            makeCommandInternalError(command, "Could not verify Claude cache hold authorization."),
-          ),
-        );
-        if (Option.isSome(cancellation)) {
-          return yield* new OrchestrationCommandInvariantError({
-            commandType: command.type,
-            detail: "Command produced no events.",
           });
         }
       }

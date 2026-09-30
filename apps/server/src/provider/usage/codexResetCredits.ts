@@ -2,19 +2,13 @@ import { nonEmptyTrimmed } from "@glade/shared/text/text";
 import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import type {
   CodexResetCreditOutcome,
-  ServerCodexResetCredit,
-  ServerCodexResetCreditStatus,
-  ServerCodexResetCredits,
   ServerConsumeCodexResetCreditInput,
 } from "@glade/contracts/server/server";
 import { spawnProcess } from "@glade/shared/platform/processRuntime";
 
 import { CodexJsonlFramer, CodexJsonlWriter } from "../codex/codexAppServerTransport";
-import { createLogger } from "../../diagnostics/logger";
 import { signalOwnedChildProcess } from "../../platform/processTreeController";
-import { isoFromUnixMillis, isoFromUnixSeconds } from "./parse";
 
-const log = createLogger("provider-usage:codex-resets");
 const APP_SERVER_TIMEOUT_MS = 20_000;
 
 type Request = (method: string, params: Record<string, unknown>) => Promise<unknown>;
@@ -23,68 +17,6 @@ export interface CodexResetCreditProbeInput {
   readonly binaryPath?: string | undefined;
   readonly env: NodeJS.ProcessEnv;
   readonly cwd: string;
-}
-
-function epochToIso(value: unknown): string | undefined {
-  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
-    if (typeof value === "string" && value.trim().length > 0) {
-      const parsed = Number(value);
-      if (Number.isFinite(parsed) && parsed > 0) return epochToIso(parsed);
-    }
-    return undefined;
-  }
-
-  return value > 100_000_000_000 ? isoFromUnixMillis(value) : isoFromUnixSeconds(value);
-}
-
-function parseCodexResetCredits(json: unknown): ServerCodexResetCredits | undefined {
-  const root = asObjectRecord(json);
-  const raw =
-    root?.rateLimitResetCredits ??
-    root?.rate_limit_reset_credits ??
-    (root?.rateLimits ? null : json);
-  const rec = asObjectRecord(raw);
-  if (!rec) return undefined;
-  const count =
-    typeof rec.availableCount === "number" && Number.isFinite(rec.availableCount)
-      ? Math.max(0, Math.floor(rec.availableCount))
-      : typeof rec.available_count === "number" && Number.isFinite(rec.available_count)
-        ? Math.max(0, Math.floor(rec.available_count))
-        : undefined;
-  if (count === undefined) return undefined;
-  const creditsRaw = rec.credits;
-  if (!Array.isArray(creditsRaw)) {
-    return { availableCount: count };
-  }
-  const credits: ServerCodexResetCredit[] = creditsRaw.flatMap((entry) => {
-    const credit = asObjectRecord(entry);
-    const id = nonEmptyTrimmed(credit?.id);
-    if (!credit || !id) return [];
-    const statusRaw = nonEmptyTrimmed(credit.status);
-    const status: ServerCodexResetCreditStatus =
-      statusRaw === "available" || statusRaw === "redeeming" || statusRaw === "redeemed"
-        ? statusRaw
-        : ("unknown" as const);
-    return [
-      {
-        id,
-        status,
-        ...(epochToIso(credit.grantedAt ?? credit.granted_at)
-          ? { grantedAt: epochToIso(credit.grantedAt ?? credit.granted_at) as string }
-          : {}),
-        ...(epochToIso(credit.expiresAt ?? credit.expires_at)
-          ? { expiresAt: epochToIso(credit.expiresAt ?? credit.expires_at) as string }
-          : {}),
-        ...(nonEmptyTrimmed(credit.title)
-          ? { title: nonEmptyTrimmed(credit.title) as string }
-          : {}),
-        ...(nonEmptyTrimmed(credit.description)
-          ? { description: nonEmptyTrimmed(credit.description) as string }
-          : {}),
-      },
-    ];
-  });
-  return { availableCount: count, credits };
 }
 
 function canUseCodexResetCredit(json: unknown): boolean | undefined {
@@ -203,29 +135,6 @@ async function withAppServer<T>(
     }, 1_000);
     killTimer.unref();
     child.once("exit", () => clearTimeout(killTimer));
-  }
-}
-
-// Optional enrichment: a missing CLI or account mismatch must not break ordinary usage.
-export async function fetchCodexResetCredits(
-  input: CodexResetCreditProbeInput & { readonly expectedAccountId?: string | undefined },
-): Promise<ServerCodexResetCredits | undefined> {
-  if (!input.expectedAccountId) return undefined;
-  try {
-    return await withAppServer(input, async (request) => {
-      const response = await request("account/rateLimits/read", {});
-      const accountId = nonEmptyTrimmed(asObjectRecord(response)?.accountId);
-      if (accountId !== input.expectedAccountId) return undefined;
-      const credits = parseCodexResetCredits(response);
-      return credits
-        ? { ...credits, accountId, canUse: canUseCodexResetCredit(response) }
-        : undefined;
-    });
-  } catch (cause) {
-    log.warn("codex reset-credit probe unavailable", {
-      message: cause instanceof Error ? cause.message : String(cause),
-    });
-    return undefined;
   }
 }
 

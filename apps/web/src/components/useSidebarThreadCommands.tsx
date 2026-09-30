@@ -1,3 +1,4 @@
+import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import { useRightDockStore } from "../rightDockStore";
 import { useSplitViewStore } from "../splitViewStore";
 import { useSidebarStateStore } from "../sidebarStateStore";
@@ -7,7 +8,6 @@ import { type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { type OrchestrationThreadPullRequest } from "@glade/contracts/orchestration/threadEntities";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { parseGitHubRepositoryNameWithOwnerFromPullRequestUrl } from "@glade/shared/git/githubRepository";
-import { getDefaultModel } from "@glade/shared/provider/model";
 import { pluralize } from "@glade/shared/text/text";
 import { resolveThreadWorkspaceCwd } from "@glade/shared/threads/threadEnvironment";
 import { newCommandId, newThreadId, randomUUID } from "../lib/utils";
@@ -85,7 +85,7 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
       throw new Error("The target project could not be resolved.");
     }
 
-    const providerDefaultModel = getDefaultModel(provider);
+    const providerDefaultModel = PROVIDER_DEFAULT_MODEL;
     let modelSelection =
       activeProject.defaultModelSelection?.provider === provider
         ? activeProject.defaultModelSelection

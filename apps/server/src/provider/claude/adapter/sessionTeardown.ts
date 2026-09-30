@@ -86,6 +86,11 @@ export function makeClaudeSessionTeardown(input: {
       }
 
       yield* teardownClaudeProcess(context.session.threadId, context.processOwner);
+      if (context.skillBridgeCleanup) {
+        yield* Effect.promise(context.skillBridgeCleanup).pipe(
+          Effect.catch((cause) => Effect.logWarning("claude.skills.cleanup_failed", { cause })),
+        );
+      }
 
       const updatedAt = yield* nowIso;
       context.session = {

@@ -64,7 +64,7 @@ type DiscoveryTab = "plugins" | "skills";
 type ProviderCapabilities = { plugins: boolean; skills: boolean };
 type PluginEntry = {
   marketplaceName: string;
-  marketplacePath: string;
+  marketplacePath: string | null;
   plugin: ProviderPluginDescriptor;
   isFeatured: boolean;
 };
@@ -92,8 +92,10 @@ const KNOWN_PLUGIN_BRANDS: Record<string, PluginBrandArtwork> = {
   vercel: { icon: SiVercel, color: "#111111" },
 };
 
-function pluginEntryKey(entry: Pick<PluginEntry, "marketplacePath" | "plugin">): string {
-  return `${entry.marketplacePath}::${entry.plugin.name}`;
+function pluginEntryKey(
+  entry: Pick<PluginEntry, "marketplaceName" | "marketplacePath" | "plugin">,
+): string {
+  return `${entry.marketplacePath ?? entry.marketplaceName}::${entry.plugin.id}`;
 }
 
 function sectionTitle(value: string): string {
@@ -303,7 +305,13 @@ function PluginGridItem({ entry }: { entry: PluginEntry }) {
   const description =
     entry.plugin.interface?.shortDescription ??
     entry.plugin.interface?.longDescription ??
-    entry.plugin.source.path;
+    (entry.plugin.source.type === "local"
+      ? entry.plugin.source.path
+      : entry.plugin.source.type === "git"
+        ? entry.plugin.source.url
+        : entry.plugin.source.type === "npm"
+          ? entry.plugin.source.package
+          : entry.marketplaceName);
 
   return (
     <div className="flex items-center gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-[var(--sidebar-accent)]">
@@ -445,11 +453,12 @@ export function PluginLibrary() {
 
   const marketplaceSectionsByPath = new Map<string, { title: string; entries: PluginEntry[] }>();
   for (const entry of filteredPluginEntries) {
-    const existing = marketplaceSectionsByPath.get(entry.marketplacePath);
+    const sectionKey = entry.marketplacePath ?? entry.marketplaceName;
+    const existing = marketplaceSectionsByPath.get(sectionKey);
     if (existing) {
       existing.entries.push(entry);
     } else {
-      marketplaceSectionsByPath.set(entry.marketplacePath, {
+      marketplaceSectionsByPath.set(sectionKey, {
         title: sectionTitle(entry.marketplaceName),
         entries: [entry],
       });

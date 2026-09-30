@@ -1,7 +1,4 @@
-import {
-  DEFAULT_GIT_TEXT_GENERATION_MODEL,
-  DEFAULT_MODEL_BY_PROVIDER,
-} from "@glade/contracts/provider/model";
+import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import {
   DEFAULT_SERVER_SETTINGS,
   ServerSettings,
@@ -75,7 +72,7 @@ function migrateSettings(settings: ServerSettings, migrationVersion: number): Se
     ...settings,
     textGenerationModelSelection: {
       ...selection,
-      model: DEFAULT_GIT_TEXT_GENERATION_MODEL,
+      model: PROVIDER_DEFAULT_MODEL,
     },
   };
 }
@@ -165,7 +162,7 @@ function resolveTextGenerationProvider(settings: ServerSettings): ServerSettings
     ...settings,
     textGenerationModelSelection: {
       provider: fallback,
-      model: DEFAULT_MODEL_BY_PROVIDER[fallback],
+      model: PROVIDER_DEFAULT_MODEL,
     } as ModelSelection,
   };
 }
@@ -196,7 +193,7 @@ function retireProviderSettings(value: unknown): unknown {
   if (provider === "codex" || provider === "claudeAgent") return value;
   return {
     ...settings,
-    textGenerationModelSelection: { provider: "codex", model: DEFAULT_GIT_TEXT_GENERATION_MODEL },
+    textGenerationModelSelection: { provider: "codex", model: PROVIDER_DEFAULT_MODEL },
   };
 }
 

@@ -140,12 +140,6 @@ describe("Claude subagentLifecycle", () => {
       const childEvents = runtimeEvents.filter(
         (event) => event.providerRefs?.providerThreadId === "tool-task-1",
       );
-      assert.deepEqual(
-        childEvents
-          .filter((event) => event.type === "thread.token-usage.updated")
-          .map((event) => event.payload.usage.totalProcessedTokens),
-        [15, 18, undefined, 18],
-      );
       assert.equal(
         childEvents.every((event) => event.providerRefs?.providerParentThreadId === THREAD_ID),
         true,
@@ -182,20 +176,6 @@ describe("Claude subagentLifecycle", () => {
         textDeltas.every((event) => event.providerRefs?.providerThreadId === "tool-task-1"),
         true,
       );
-
-      const usageEvents = runtimeEvents.filter(
-        (event) => event.type === "thread.token-usage.updated",
-      );
-      assert.equal(usageEvents.length > 0, true);
-      assert.equal(
-        usageEvents.every((event) => event.providerRefs?.providerThreadId === "tool-task-1"),
-        true,
-      );
-      const taskUsage = usageEvents.find(
-        (event) =>
-          event.type === "thread.token-usage.updated" && event.payload.usage.usedTokens === 123,
-      );
-      assert.equal(taskUsage?.type, "thread.token-usage.updated");
 
       const childTurnCompleted = childEvents.find((event) => event.type === "turn.completed");
       assert.equal(childTurnCompleted?.type, "turn.completed");

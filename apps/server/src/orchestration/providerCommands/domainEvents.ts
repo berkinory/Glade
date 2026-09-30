@@ -16,7 +16,6 @@ import { CommandId } from "@glade/contracts/core/baseSchemas";
 import { type ProviderIntentEvent } from "../providerIntentClassification.ts";
 import { activeThreadGoal } from "../../provider/core/goalMode.ts";
 import { providerFailureMessage } from "./providerCallPolicy";
-import { makeProviderCompaction } from "./compaction";
 import { makeProviderContextBootstrap } from "./contextBootstrap";
 import { QueuedDispatchState } from "../Services/QueuedDispatchState.ts";
 import { makeProviderQueuedTurns } from "./queuedTurns";
@@ -28,9 +27,6 @@ import { makeProviderConversationEdit } from "./conversationEdit";
 
 export function makeProviderDomainEvents(input: {
   readonly projectionAccess: ProviderProjectionAccessShape;
-  readonly processClaudeCompactionTerminal: ReturnType<
-    typeof makeProviderCompaction
-  >["processClaudeCompactionTerminal"];
   readonly observePendingContextBootstrapTerminalEvent: ReturnType<
     typeof makeProviderContextBootstrap
   >["observePendingContextBootstrapTerminalEvent"];
@@ -55,9 +51,6 @@ export function makeProviderDomainEvents(input: {
   readonly processTurnStartRequested: ReturnType<
     typeof makeProviderTurnStart
   >["processTurnStartRequested"];
-  readonly processClaudeCacheResponse: ReturnType<
-    typeof makeProviderCompaction
-  >["processClaudeCacheResponse"];
   readonly processGoalContinuationRequested: ReturnType<
     typeof makeProviderGoalContinuation
   >["processGoalContinuationRequested"];
@@ -97,7 +90,6 @@ export function makeProviderDomainEvents(input: {
   >["recoverQueuedTurnPromotionsForThread"];
 }) {
   const {
-    processClaudeCompactionTerminal,
     observePendingContextBootstrapTerminalEvent,
     queuedDispatchState,
     drainQueuedTurnsForSession,
@@ -110,7 +102,6 @@ export function makeProviderDomainEvents(input: {
     ensureSessionForThread,
     processTurnQueued,
     processTurnStartRequested,
-    processClaudeCacheResponse,
     processGoalContinuationRequested,
     processTurnInterruptRequested,
     processTaskStopRequested,
@@ -128,7 +119,6 @@ export function makeProviderDomainEvents(input: {
   } = input;
   const { resolveProviderSessionThread, hasLiveProviderTurn, resolveThread } = projectionAccess;
   const processQueueDrainEvent = Effect.fnUntraced(function* (event: ProviderQueueDrainEvent) {
-    yield* processClaudeCompactionTerminal(event);
     yield* observePendingContextBootstrapTerminalEvent(event);
     const sessionThreadId =
       (yield* resolveProviderSessionThread(event.threadId))?.id ?? event.threadId;
@@ -292,14 +282,14 @@ export function makeProviderDomainEvents(input: {
           }
           return;
         }
+        case "thread.legacy-cache-abandoned":
+          yield* drainQueuedTurnsForSession(event.payload.threadId);
+          return;
         case "thread.turn-queued":
           yield* processTurnQueued(event);
           return;
         case "thread.turn-start-requested":
           yield* processTurnStartRequested(event);
-          return;
-        case "thread.claude-cache-response-requested":
-          yield* processClaudeCacheResponse(event);
           return;
         case "thread.goal-continuation-requested":
           yield* processGoalContinuationRequested(event);

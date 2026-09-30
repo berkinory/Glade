@@ -1,4 +1,4 @@
-import { getModelCapabilities } from "@glade/shared/provider/model";
+import { getRuntimeAwareModelCapabilities } from "../runtimeModelCapabilities";
 import { threadExportBlockedReason } from "@glade/shared/threads/threadExport";
 import { useEffect, useLayoutEffect, useState } from "react";
 import {
@@ -133,7 +133,11 @@ export function useChatDiscoveryController({
     currentBranch: currentActiveGitBranch,
   });
 
-  const selectedModelCaps = getModelCapabilities(selectedProvider, selectedModel);
+  const selectedModelCaps = getRuntimeAwareModelCapabilities({
+    provider: selectedProvider,
+    model: selectedModel,
+    runtimeModel: provider.selectedRuntimeModel,
+  });
 
   const supportsFastSlashCommand = selectedModelCaps.supportsFastMode;
 

@@ -9,12 +9,6 @@ import {
 } from "@glade/contracts/core/baseSchemas";
 import { type ProviderSendTurnInput } from "@glade/contracts/provider/provider";
 import { buildClaudeSubagentPrompt } from "../agentMentions";
-import {
-  trimOrNull,
-  getModelCapabilities,
-  hasEffortLevel,
-  applyClaudePromptEffortPrefix,
-} from "@glade/shared/provider/model";
 import { withProviderPlanModePrompt } from "../../core/planMode.ts";
 import type { SDKUserMessage, SDKResultMessage, SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import { FileSystem, Effect } from "effect";
@@ -88,20 +82,8 @@ function buildPromptText(
 ): string {
   if (isClaudeNativeSlashCommand(input.input, nativeCommandNames)) return input.input!.trim();
   const basePrompt = buildClaudeSubagentPrompt(input.input?.trim() ?? "").prompt;
-  const rawEffort =
-    input.modelSelection?.provider === "claudeAgent" ? input.modelSelection.options?.effort : null;
-  const requestedEffort = trimOrNull(rawEffort);
-  const claudeModel =
-    input.modelSelection?.provider === "claudeAgent" ? input.modelSelection.model : undefined;
-  const caps = getModelCapabilities("claudeAgent", claudeModel);
-  const promptEffort =
-    requestedEffort === "ultrathink" && caps.promptInjectedEffortLevels.includes("ultrathink")
-      ? "ultrathink"
-      : requestedEffort && hasEffortLevel(caps, requestedEffort)
-        ? requestedEffort
-        : null;
   return withProviderPlanModePrompt({
-    text: applyClaudePromptEffortPrefix(basePrompt, promptEffort),
+    text: basePrompt,
     interactionMode: input.interactionMode,
   });
 }

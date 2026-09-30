@@ -5,7 +5,6 @@ import { EventId, RuntimeTaskId } from "@glade/contracts/core/baseSchemas";
 import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 import { makeClaudeTurnCompletion } from "./turnCompletion";
 import { makeClaudeToolTracking } from "./toolTracking";
-import { makeClaudeTaskPresentation } from "./taskPresentation";
 import { ClaudeSessionContext, PROVIDER } from "./sessionTypes";
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import {
@@ -16,10 +15,6 @@ import {
   claudeTaskTurnStatus,
 } from "./sdkMetadata";
 import { asCanonicalTurnId, nativeProviderRefs } from "./messageContent";
-import { readClaudeModelRefusalFallback } from "./modelCapabilities";
-import { claudeCacheForModel } from "../claudeCacheObservation.ts";
-import { resolveClaudeApiModelIdContextWindowMaxTokens } from "../claudeTokenUsage.ts";
-import { invalidateClaudeCache } from "./sessionResume";
 import {
   parseClaudeWorkflowScriptMeta,
   extractClaudeWorkflowAgentPhases,
@@ -46,9 +41,6 @@ export function makeClaudeSystemMessages(input: {
   readonly resolveWorkflowScriptText: ReturnType<
     typeof makeClaudeWorkflowRuntime
   >["resolveWorkflowScriptText"];
-  readonly emitTaskUsageSnapshot: ReturnType<
-    typeof makeClaudeTaskPresentation
-  >["emitTaskUsageSnapshot"];
   readonly fileSystem: FileSystem.FileSystem;
   readonly warnUnhandledSdkKind: ClaudeRuntimeEventsShape["warnUnhandledSdkKind"];
 }) {
@@ -64,7 +56,6 @@ export function makeClaudeSystemMessages(input: {
     ensureSubagentRun,
     emitRuntimeError,
     resolveWorkflowScriptText,
-    emitTaskUsageSnapshot,
     fileSystem,
     warnUnhandledSdkKind,
   } = input;
@@ -187,25 +178,24 @@ export function makeClaudeSystemMessages(input: {
         },
       };
 
-      const refusalFallback = readClaudeModelRefusalFallback(message);
-      if (refusalFallback) {
-        context.rerouteOriginalApiModelId ??= refusalFallback.originalModel;
-        context.currentApiModelId = refusalFallback.fallbackModel;
-        context.cacheObservation = claudeCacheForModel(
-          context.cacheObservation,
-          refusalFallback.fallbackModel,
-        );
-        context.lastKnownContextWindow = resolveClaudeApiModelIdContextWindowMaxTokens(
-          refusalFallback.fallbackModel,
-        );
-        yield* updateResumeCursor(context);
+      if (message.subtype === "model_refusal_fallback") {
+        const refusalFallback = message;
+        if (refusalFallback.direction !== "retry") return;
+        const sessionFallback = (refusalFallback.scope ?? "session") === "session";
+        if (sessionFallback) {
+          context.currentApiModelId = refusalFallback.fallback_model;
+          context.lastKnownContextWindow = undefined;
+          yield* updateResumeCursor(context);
+        }
         yield* offerRuntimeEvent(context, {
           ...base,
           type: "model.rerouted",
           payload: {
-            fromModel: refusalFallback.originalModel,
-            toModel: refusalFallback.fallbackModel,
-            reason: refusalFallback.content ?? "Model safeguards rerouted this request.",
+            fromModel: refusalFallback.original_model,
+            toModel: refusalFallback.fallback_model,
+            reason: sessionFallback
+              ? refusalFallback.content
+              : `${refusalFallback.content} (local response only)`,
           },
         });
         return;
@@ -225,6 +215,10 @@ export function makeClaudeSystemMessages(input: {
         case "commands_changed":
           return;
         case "init":
+          context.initSkillNames = new Set(message.skills);
+          context.loadedPluginNames = new Set(message.plugins.map((plugin) => plugin.name));
+          context.fastModeState = message.fast_mode_state;
+          context.effectiveEffort = message.effort;
           if (Array.isArray(message.tools)) {
             context.initToolNames = new Set(message.tools);
           }
@@ -261,7 +255,6 @@ export function makeClaudeSystemMessages(input: {
             context.turnState.explicitCompaction.boundaryObserved = true;
           }
           if (context.turnState) context.turnState.compactionInProgress = false;
-          invalidateClaudeCache(context);
           context.lastKnownTokenUsage = undefined;
           context.tokenUsageState = "skip-compaction-call";
           yield* updateResumeCursor(context);
@@ -381,8 +374,6 @@ export function makeClaudeSystemMessages(input: {
           return;
         }
         case "task_progress": {
-          yield* emitTaskUsageSnapshot(context, message);
-
           if (context.liveWorkflowTaskIds.has(message.task_id)) {
             const separator = message.description.indexOf(": ");
             const label = (
@@ -414,7 +405,6 @@ export function makeClaudeSystemMessages(input: {
           return;
         }
         case "task_notification": {
-          yield* emitTaskUsageSnapshot(context, message);
           context.terminalTaskIds.add(message.task_id);
           yield* settlePendingHumanInteractionsForAgent(context, message.task_id);
           context.knownBackgroundTaskIds.delete(message.task_id);

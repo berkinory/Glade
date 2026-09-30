@@ -7,10 +7,6 @@ import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { CodexAppServerManager } from "../codexAppServerManager";
 import { AGENT_GATEWAY_NO_CAPABILITIES } from "../../../agentGateway/sessionLease.ts";
 import {
-  MINIMUM_CODEX_AUTO_REVIEW_CLI_VERSION,
-  MINIMUM_CODEX_EXCLUDE_TURNS_CLI_VERSION,
-} from "../codexCliVersion.ts";
-import {
   createSyntheticCodexAppServer,
   createSyntheticCodexManager,
 } from "./syntheticCodex.testSupport";
@@ -330,43 +326,7 @@ describe("startSession", () => {
     }
   });
 
-  it("requires a Codex CLI version with AI approval-review support for auto mode", async () => {
-    const manager = new CodexAppServerManager();
-    const versionCheck = vi
-      .spyOn(
-        manager as unknown as {
-          assertSupportedCodexCliVersion: (input: {
-            binaryPath: string;
-            cwd: string;
-            homePath?: string;
-            minimumVersion?: string;
-          }) => void;
-        },
-        "assertSupportedCodexCliVersion",
-      )
-      .mockImplementation((input) => {
-        expect(input.minimumVersion).toBe(MINIMUM_CODEX_AUTO_REVIEW_CLI_VERSION);
-        throw new Error("Codex Auto version gate");
-      });
-
-    try {
-      await expect(
-        manager.startSession({
-          threadId: ThreadId.makeUnsafe("thread-auto-version"),
-          provider: "codex",
-          runtimeMode: "auto",
-          cwd: process.cwd(),
-          agentGatewayCapabilityInput: AGENT_GATEWAY_NO_CAPABILITIES,
-        }),
-      ).rejects.toThrow("Codex Auto version gate");
-      expect(versionCheck).toHaveBeenCalledTimes(1);
-    } finally {
-      versionCheck.mockRestore();
-      await manager.stopAll();
-    }
-  });
-
-  it("requires excludeTurns support before spawning a resumed Codex session", async () => {
+  it("checks the Codex protocol baseline before spawning a resumed session", async () => {
     const spawnAppServer = vi.fn(() => {
       throw new Error("Version gate must run before spawning Codex");
     });
@@ -378,15 +338,12 @@ describe("startSession", () => {
             binaryPath: string;
             cwd: string;
             homePath?: string;
-            minimumVersion?: string;
-            minimumVersionRequirement?: string;
           }) => void;
         },
         "assertSupportedCodexCliVersion",
       )
       .mockImplementation((input) => {
-        expect(input.minimumVersion).toBe(MINIMUM_CODEX_EXCLUDE_TURNS_CLI_VERSION);
-        expect(input.minimumVersionRequirement).toMatch(/resume|fork/i);
+        expect(input.binaryPath).toBe("codex");
         throw new Error("Codex excludeTurns version gate");
       });
 

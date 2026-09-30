@@ -1,15 +1,9 @@
-import type { ClaudeSessionRegistryShape } from "../../Services/ClaudeSessionRegistry.ts";
 import { Duration, Effect, Option } from "effect";
-import { makeClaudeContextUsage } from "./contextUsage";
 import { PROVIDER, PendingUserInputResult } from "./sessionTypes";
 import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 import { type ServerConfigShape } from "../../../server/config.ts";
 import { makeClaudeInteractionSettlement } from "./interactionSettlement";
 import { type ClaudeAdapterShape } from "../../Services/ClaudeAdapter.ts";
-import { claudeCacheForModel, claudeCacheContextTokens } from "../claudeCacheObservation.ts";
-import { ClaudeCacheObservation } from "@glade/contracts/provider/claudeCache";
-import { assessClaudeCache } from "@glade/shared/provider/claudeCache";
-import { syncClaudeCacheResumeCursor } from "./sessionResume";
 import { toRequestError } from "./streamErrors";
 import { withAgentGatewayTurnCancellation } from "../../../agentGateway/sessionLease.ts";
 import { ProviderAdapterRequestError } from "../../core/Errors.ts";
@@ -22,12 +16,6 @@ const CLAUDE_INTERRUPT_TIMEOUT = Duration.seconds(10);
 
 export function makeClaudeSessionInteractions(input: {
   readonly requireSession: ClaudeSessionAccessShape["requireSession"];
-  readonly readClaudeContextUsage: ReturnType<
-    typeof makeClaudeContextUsage
-  >["readClaudeContextUsage"];
-  readonly sessions: ClaudeSessionRegistryShape;
-  readonly nowIso: Effect.Effect<string>;
-  readonly emitClaudeCacheObservation: ClaudeRuntimeEventsShape["emitClaudeCacheObservation"];
   readonly serverConfig: ServerConfigShape;
   readonly snapshotThread: ClaudeRuntimeEventsShape["snapshotThread"];
   readonly settlePendingApproval: ReturnType<
@@ -37,7 +25,6 @@ export function makeClaudeSessionInteractions(input: {
     typeof makeClaudeInteractionSettlement
   >["settlePendingUserInput"];
 }): {
-  readonly getClaudeCacheObservation: NonNullable<ClaudeAdapterShape["getClaudeCacheObservation"]>;
   readonly interruptTurn: NonNullable<ClaudeAdapterShape["interruptTurn"]>;
   readonly stopTask: NonNullable<ClaudeAdapterShape["stopTask"]>;
   readonly backgroundTask: NonNullable<ClaudeAdapterShape["backgroundTask"]>;
@@ -48,50 +35,11 @@ export function makeClaudeSessionInteractions(input: {
 } {
   const {
     requireSession,
-    readClaudeContextUsage,
-    sessions,
-    nowIso,
-    emitClaudeCacheObservation,
     serverConfig,
     snapshotThread,
     settlePendingApproval,
     settlePendingUserInput,
   } = input;
-  const getClaudeCacheObservation: NonNullable<ClaudeAdapterShape["getClaudeCacheObservation"]> = (
-    threadId,
-  ) =>
-    Effect.gen(function* () {
-      const context = yield* requireSession(threadId);
-
-      const usage = yield* readClaudeContextUsage(context);
-      if (context.stopped || !sessions.isCurrent(threadId, context)) return undefined;
-      const observedAt = yield* nowIso;
-      const previous = claudeCacheForModel(context.cacheObservation, context.currentApiModelId);
-      const contextTokens =
-        (usage ? claudeCacheContextTokens(usage) : undefined) ?? previous?.contextTokens;
-      if (!previous && contextTokens === undefined) return undefined;
-
-      const model = previous?.model ?? context.currentApiModelId;
-      const observation: ClaudeCacheObservation = {
-        ...(previous ?? {
-          observedAt,
-          state: "unknown" as const,
-          source: "local-estimate" as const,
-          ...(context.resumeSessionId ? { nativeSessionId: context.resumeSessionId } : {}),
-        }),
-        ...(model ? { model } : {}),
-        ...(context.lifecycleGeneration
-          ? { lifecycleGeneration: context.lifecycleGeneration }
-          : {}),
-        ...(contextTokens !== undefined ? { contextTokens } : {}),
-      };
-      const state = assessClaudeCache(observation, Date.parse(observedAt)).state;
-      context.cacheObservation = { ...observation, state };
-      syncClaudeCacheResumeCursor(context);
-      yield* emitClaudeCacheObservation(context);
-      return context.cacheObservation;
-    });
-
   const interruptTurn: ClaudeAdapterShape["interruptTurn"] = (threadId, turnId, providerThreadId) =>
     Effect.gen(function* () {
       const context = yield* requireSession(threadId);
@@ -261,7 +209,6 @@ export function makeClaudeSessionInteractions(input: {
       }
     });
   return {
-    getClaudeCacheObservation,
     interruptTurn,
     stopTask,
     backgroundTask,

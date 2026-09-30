@@ -20,11 +20,8 @@ import { hasActiveClaudeRuntimeWork } from "../claude/adapter/sessionResume";
 import { isClaudeNativeSlashCommand } from "../claude/adapter/commandPresentation";
 import { type ClaudeAdapterShape } from "../Services/ClaudeAdapter.ts";
 import { toMessage } from "../claude/adapter/streamErrors";
-import {
-  isClaudeAutoModeCliVersionSupported,
-  MINIMUM_CLAUDE_AUTO_MODE_CLI_VERSION,
-} from "../claude/claudeCliVersion.ts";
-import { compareSemverVersions } from "../core/providerMaintenance.ts";
+import { isProviderVersionSupported, providerUpgradeMessage } from "../core/compatibility.ts";
+import { resolveExecutable } from "@glade/shared/platform/executable";
 
 const CLAUDE_NATIVE_COMMAND_LOOKUP_TIMEOUT_MS = 2_000;
 
@@ -102,12 +99,22 @@ export function makeClaudeSessionAccessLive(options?: ClaudeAdapterLiveOptions) 
       ) =>
         Effect.gen(function* () {
           const claudeSdkEnv = yield* resolveClaudeSdkEnv;
-          if (input.runtimeMode !== "auto") return { claudeSdkEnv, snapshotSupported: false };
           const binaryPath = input.providerOptions?.claudeAgent?.binaryPath ?? "claude";
+          const resolvedBinaryPath = resolveExecutable(binaryPath, {
+            env: claudeSdkEnv,
+            ...(input.cwd ? { cwd: input.cwd } : {}),
+          });
+          if (!resolvedBinaryPath) {
+            return yield* new ProviderAdapterValidationError({
+              provider: PROVIDER,
+              operation: "startSession",
+              issue: `Claude CLI at "${binaryPath}" was not found or is not executable.`,
+            });
+          }
           const installedVersion = yield* Effect.tryPromise({
             try: () =>
               readClaudeCliVersion({
-                binaryPath,
+                binaryPath: resolvedBinaryPath,
                 ...(input.cwd ? { cwd: input.cwd } : {}),
                 env: claudeSdkEnv,
               }),
@@ -115,23 +122,20 @@ export function makeClaudeSessionAccessLive(options?: ClaudeAdapterLiveOptions) 
               new ProviderAdapterValidationError({
                 provider: PROVIDER,
                 operation: "startSession",
-                issue: `Could not verify Auto mode support for Claude CLI at "${binaryPath}": ${toMessage(cause, "version probe failed")}`,
+                issue: `Could not verify Claude CLI at "${binaryPath}": ${toMessage(cause, "version probe failed")}`,
               }),
           });
-          if (!isClaudeAutoModeCliVersionSupported(installedVersion)) {
+          if (!isProviderVersionSupported(PROVIDER, installedVersion)) {
             return yield* new ProviderAdapterValidationError({
               provider: PROVIDER,
               operation: "startSession",
-              issue:
-                installedVersion === null
-                  ? `Could not determine whether Claude CLI at "${binaryPath}" supports Auto mode.`
-                  : `Claude CLI ${installedVersion} at "${binaryPath}" does not support Auto mode; upgrade to ${MINIMUM_CLAUDE_AUTO_MODE_CLI_VERSION} or newer.`,
+              issue: providerUpgradeMessage(PROVIDER, installedVersion),
             });
           }
           return {
             claudeSdkEnv,
-            snapshotSupported:
-              installedVersion !== null && compareSemverVersions(installedVersion, "2.1.267") >= 0,
+            binaryPath: resolvedBinaryPath,
+            snapshotSupported: true,
           };
         });
       return {

@@ -196,12 +196,12 @@ export function makeProviderGoalContinuation(input: {
         if (
           !thread ||
           thread.deletedAt != null ||
+          thread.claudeCacheReview != null ||
           thread.archivedAt != null ||
           thread.parentThreadId != null ||
           thread.interactionMode === "plan" ||
           !activeThreadGoal(thread)?.trim() ||
           thread.goalPausedAt != null ||
-          thread.claudeCacheReview != null ||
           (thread.goalStartedAt ?? null) !== event.payload.goalStartedAt
         ) {
           blockedGoalContinuations.delete(event.payload.threadId);

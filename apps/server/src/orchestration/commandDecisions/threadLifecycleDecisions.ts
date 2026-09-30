@@ -322,21 +322,7 @@ export function decideThreadLifecycleCommand({
             deletedAt: occurredAt,
           },
         };
-        return thread.claudeCacheReview
-          ? [
-              {
-                ...withEventBase({
-                  aggregateKind: "thread",
-                  aggregateId: command.threadId,
-                  occurredAt,
-                  commandId: command.commandId,
-                }),
-                type: "thread.claude-cache-set" as const,
-                payload: { threadId: command.threadId, review: null, updatedAt: occurredAt },
-              },
-              deleteEvent,
-            ]
-          : deleteEvent;
+        return deleteEvent;
       }
       case "thread.archive": {
         yield* requireThreadNotArchived({
@@ -351,22 +337,7 @@ export function decideThreadLifecycleCommand({
           .map((thread) => thread.id);
         return [...subagentThreadIds, command.threadId].flatMap(
           (threadId): Array<Omit<OrchestrationEvent, "sequence">> => {
-            const review = readModel.threads.find(
-              (entry) => entry.id === threadId,
-            )?.claudeCacheReview;
             const events: Array<Omit<OrchestrationEvent, "sequence">> = [];
-            if (review) {
-              events.push({
-                ...withEventBase({
-                  aggregateKind: "thread",
-                  aggregateId: threadId,
-                  occurredAt,
-                  commandId: command.commandId,
-                }),
-                type: "thread.claude-cache-set",
-                payload: { threadId, review: null, updatedAt: occurredAt },
-              });
-            }
             events.push({
               ...withEventBase({
                 aggregateKind: "thread",
@@ -617,7 +588,7 @@ export function decideThreadLifecycleCommand({
         };
       }
       case "thread.session.stop": {
-        const thread = yield* requireThread({
+        yield* requireThread({
           readModel,
           command,
           threadId: command.threadId,
@@ -635,22 +606,7 @@ export function decideThreadLifecycleCommand({
             createdAt: command.createdAt,
           },
         };
-        const review = thread.claudeCacheReview;
-        return review
-          ? [
-              {
-                ...withEventBase({
-                  aggregateKind: "thread",
-                  aggregateId: command.threadId,
-                  occurredAt: command.createdAt,
-                  commandId: command.commandId,
-                }),
-                type: "thread.claude-cache-set" as const,
-                payload: { threadId: command.threadId, review: null, updatedAt: command.createdAt },
-              },
-              stopEvent,
-            ]
-          : stopEvent;
+        return stopEvent;
       }
       case "thread.goal.continue": {
         yield* requireThread({

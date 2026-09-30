@@ -16,11 +16,7 @@ import { toastManager } from "~/components/ui/toast";
 import { collapseExpandedComposerCursor, detectComposerTrigger } from "~/composer-logic";
 import { buildGoalSlashCommandPrompt } from "~/composerSlashCommands";
 import { useComposerSlashCommands } from "~/hooks/useComposerSlashCommands";
-import {
-  deriveAppliedContextWindowSelection,
-  deriveComposerContextWindowLabel,
-  deriveContextWindowSelectionStatus,
-} from "~/lib/contextWindow";
+import { formatContextWindowTokens } from "~/lib/contextWindow";
 import { buildNextProviderOptions } from "~/providerModelOptions";
 import {
   ChatViewProps,
@@ -112,7 +108,6 @@ export function useChatSubmissionController({
     activeProject,
     isServerThread,
     activeContextWindow,
-    threadActivities,
     runtimeMode,
     interactionMode,
   } = workspace;
@@ -146,7 +141,6 @@ export function useChatSubmissionController({
     composer,
     turn: {
       lateComposerSendHandlersRef,
-      hasPendingCacheReview: activeThread?.claudeCacheReview != null,
     },
     workspace,
   });
@@ -206,20 +200,12 @@ export function useChatSubmissionController({
 
   const runtimeUsageContextWindow = activeContextWindow;
 
-  const appliedContextWindowSelection = deriveAppliedContextWindowSelection(threadActivities);
-
-  const contextWindowSelectionStatus = deriveContextWindowSelectionStatus({
-    activeSnapshot: runtimeUsageContextWindow,
-    ...(selectedProvider === "claudeAgent" ? { appliedValue: appliedContextWindowSelection } : {}),
-    selectedValue: selectedProvider === "claudeAgent" ? composerTraitSelection.contextWindow : null,
-  });
-
-  const composerContextWindowLabel = deriveComposerContextWindowLabel({
-    provider: selectedProvider,
-    model: selectedModel,
-    snapshot: runtimeUsageContextWindow,
-    status: contextWindowSelectionStatus,
-  });
+  const contextWindowSelectionStatus = {
+    activeLabel: runtimeUsageContextWindow?.maxTokens
+      ? formatContextWindowTokens(runtimeUsageContextWindow.maxTokens)
+      : null,
+    pendingSelectedLabel: null,
+  };
 
   const composerFooterControlsPlan = composerFooterPlanForTier(
     composerFooterTier,
@@ -244,7 +230,6 @@ export function useChatSubmissionController({
   const composerFooterPlanInputsKey = [
     composerFooterModelLabel,
     composerFooterTraitsSummary.summaryText,
-    composerContextWindowLabel,
     Boolean(runtimeUsageContextWindow),
   ].join(":");
 
@@ -286,7 +271,6 @@ export function useChatSubmissionController({
     <ComposerModelPicker
       hideModelLabel={!composerFooterControlsPlan.showModelLabel}
       hideStatusLabel={!composerFooterControlsPlan.showTraitsLabel}
-      contextWindowLabel={composerContextWindowLabel}
       effortControl={settings.composerEffortSlider ? "slider" : "menu"}
       provider={selectedProvider}
       model={selectedModelForPickerWithCustomFallback}

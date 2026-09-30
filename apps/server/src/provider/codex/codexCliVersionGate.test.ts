@@ -4,11 +4,6 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import os from "node:os";
 import path from "node:path";
 import { formatMissingCodexWorkingDirectoryError } from "./codexWorkingDirectory";
-import {
-  MINIMUM_CODEX_AUTO_REVIEW_CLI_VERSION,
-  MINIMUM_CODEX_EXCLUDE_TURNS_CLI_VERSION,
-} from "./codexCliVersion.ts";
-
 describe("codex CLI version gate", () => {
   it("memoizes the version probe per binary and shares concurrent probes", async () => {
     const dir = mkdtempSync(path.join(os.tmpdir(), "glade-codex-version-"));
@@ -63,7 +58,7 @@ describe("codex CLI version gate", () => {
     }
   });
 
-  it("fails closed for Auto when the Codex CLI version cannot be parsed", async () => {
+  it("fails closed when the Codex CLI version cannot be parsed", async () => {
     const dir = mkdtempSync(path.join(os.tmpdir(), "glade-codex-version-auto-unknown-"));
     const homePath = path.join(dir, "codex-home");
     mkdirSync(homePath, { recursive: true });
@@ -79,28 +74,11 @@ describe("codex CLI version gate", () => {
       { mode: 0o755 },
     );
 
-    let assertSupportedCodexCliVersion = createCodexCliVersionGate();
+    const assertSupportedCodexCliVersion = createCodexCliVersionGate();
     try {
-      await assertSupportedCodexCliVersion({ binaryPath, cwd: dir, homePath });
       await expect(
-        assertSupportedCodexCliVersion({
-          binaryPath,
-          cwd: dir,
-          homePath,
-          minimumVersion: MINIMUM_CODEX_AUTO_REVIEW_CLI_VERSION,
-        }),
-      ).rejects.toThrow(`Auto mode requires v${MINIMUM_CODEX_AUTO_REVIEW_CLI_VERSION} or newer`);
-      await expect(
-        assertSupportedCodexCliVersion({
-          binaryPath,
-          cwd: dir,
-          homePath,
-          minimumVersion: MINIMUM_CODEX_EXCLUDE_TURNS_CLI_VERSION,
-          minimumVersionRequirement: "Codex thread resume and fork",
-        }),
-      ).rejects.toThrow(
-        `Codex thread resume and fork requires v${MINIMUM_CODEX_EXCLUDE_TURNS_CLI_VERSION} or newer`,
-      );
+        assertSupportedCodexCliVersion({ binaryPath, cwd: dir, homePath }),
+      ).rejects.toThrow("Could not determine the installed Codex CLI version");
     } finally {
       vi.unstubAllEnvs();
       rmSync(dir, { recursive: true, force: true });

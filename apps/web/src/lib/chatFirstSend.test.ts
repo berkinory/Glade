@@ -1,4 +1,4 @@
-import { DEFAULT_MODEL_BY_PROVIDER } from "@glade/contracts/provider/model";
+import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import { type ProjectId } from "@glade/contracts/core/baseSchemas";
 import { describe, expect, it } from "vitest";
 
@@ -111,7 +111,7 @@ describe("resolveFirstSendTarget", () => {
       kind: "create-project",
       creation: {
         kind: "chat",
-        defaultModelSelection: { provider: "codex", model: DEFAULT_MODEL_BY_PROVIDER.codex },
+        defaultModelSelection: { provider: "codex", model: PROVIDER_DEFAULT_MODEL },
       },
     });
   });

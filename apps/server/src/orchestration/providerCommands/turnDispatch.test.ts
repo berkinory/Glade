@@ -284,24 +284,18 @@ describe("Provider reactor turnDispatch", () => {
       });
       const threadId = ThreadId.makeUnsafe("thread-1");
       const createdAt = new Date().toISOString();
-      const send = (id: string, options?: { autoCompactWindow: string }) =>
+      const send = (
+        id: string,
+        runtimeMode: "approval-required" | "full-access" = "approval-required",
+      ) =>
         harness.engine.dispatch({
           type: "thread.turn.start",
           commandId: CommandId.makeUnsafe(id),
           threadId,
           message: { messageId: asMessageId(id), role: "user", text: "continue", attachments: [] },
           interactionMode: DEFAULT_PROVIDER_INTERACTION_MODE,
-          runtimeMode: "approval-required",
+          runtimeMode,
           createdAt,
-          ...(options
-            ? {
-                modelSelection: {
-                  provider: "claudeAgent" as const,
-                  model: "claude-fable-5-1",
-                  options,
-                },
-              }
-            : {}),
         });
       await Effect.runPromise(send("bootstrap-busy"));
       await waitFor(() => harness.sendTurn.mock.calls.length === 1);
@@ -333,7 +327,7 @@ describe("Provider reactor turnDispatch", () => {
           });
         }),
       );
-      await Effect.runPromise(send("rejected-busy", { autoCompactWindow: "200k" }));
+      await Effect.runPromise(send("rejected-busy", "full-access"));
       await harness.drain();
       const after = (await Effect.runPromise(harness.engine.getReadModel())).threads[0]!.session!;
       expect(after).toMatchObject(

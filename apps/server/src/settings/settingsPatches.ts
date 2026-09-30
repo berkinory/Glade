@@ -1,4 +1,4 @@
-import { DEFAULT_MODEL_BY_PROVIDER } from "@glade/contracts/provider/model";
+import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import {
   type ModelSelection,
   type ProviderStartOptions,
@@ -27,7 +27,7 @@ export function applyServerSettingsPatch(
     selectionPatch.model ??
     (selectionPatch.provider &&
     selectionPatch.provider !== current.textGenerationModelSelection.provider
-      ? DEFAULT_MODEL_BY_PROVIDER[selectionPatch.provider]
+      ? PROVIDER_DEFAULT_MODEL
       : current.textGenerationModelSelection.model);
   const options = shouldReplaceTextGenerationModelSelection(selectionPatch)
     ? selectionPatch.options

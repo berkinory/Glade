@@ -23,17 +23,22 @@ export const ProviderHealthBanner = function ProviderHealthBanner({
 
   const providerLabel = PROVIDER_DISPLAY_NAMES[status.provider] ?? status.provider;
   const defaultMessage =
-    status.status === "error"
+    status.status === "error" || status.status === "update-required"
       ? `${providerLabel} provider is unavailable.`
       : `${providerLabel} provider has limited availability.`;
   const title = `${providerLabel} provider status`;
-  const Icon = status.status === "error" ? CircleAlertIcon : TriangleAlertIcon;
+  const Icon =
+    status.status === "error" || status.status === "update-required"
+      ? CircleAlertIcon
+      : TriangleAlertIcon;
 
   return (
     <ChatColumnBannerFrame>
       <Alert
         className={cn(EXPANDED_NOTIFICATION_SURFACE_CLASS_NAME, "pr-10")}
-        variant={status.status === "error" ? "error" : "warning"}
+        variant={
+          status.status === "error" || status.status === "update-required" ? "error" : "warning"
+        }
       >
         <Icon className={NOTIFICATION_ICON_CLASS_NAME} />
         <AlertTitle className="font-normal text-[var(--notification-fg)]">{title}</AlertTitle>

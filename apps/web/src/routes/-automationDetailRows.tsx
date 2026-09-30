@@ -1,8 +1,9 @@
+import { useProviderModelCatalog } from "~/hooks/useProviderModelCatalog";
+import { getRuntimeAwareModelCapabilities } from "~/components/chat/runtimeModelCapabilities";
 import type { AutomationRun } from "@glade/contracts/automation/automation";
 import type { ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import type { ProviderOptionDescriptor } from "@glade/contracts/provider/model";
 import {
-  getModelCapabilities,
   getProviderOptionCurrentValue,
   getProviderOptionDescriptors,
 } from "@glade/shared/provider/model";
@@ -43,7 +44,16 @@ export function ModelOptionRows({
   readonly onChange: (next: ModelSelection) => void;
 }) {
   const { provider, model } = modelSelection;
-  const caps = getModelCapabilities(provider, model);
+  const catalog = useProviderModelCatalog({
+    selectedProvider: provider,
+    discoveryEnabled: true,
+    modelHintByProvider: { [provider]: model },
+  });
+  const caps = getRuntimeAwareModelCapabilities({
+    provider,
+    model,
+    runtimeModel: catalog.selectedRuntimeModel,
+  });
   const descriptors = getProviderOptionDescriptors({
     provider,
     caps,

@@ -9,8 +9,9 @@ import type {
   PermissionUpdate,
   SDKMessage,
   PermissionMode,
+  ModelInfo,
+  FastModeState,
 } from "@anthropic-ai/claude-agent-sdk";
-import { ClaudeCacheObservation } from "@glade/contracts/provider/claudeCache";
 import { ThreadId, TurnId, ApprovalRequestId } from "@glade/contracts/core/baseSchemas";
 import { type ClaudeTrackedTask } from "../claudeTaskTracker.ts";
 import {
@@ -55,7 +56,6 @@ export type PromptQueueItem =
     };
 
 export interface ClaudeResumeState {
-  readonly claudeCache?: ClaudeCacheObservation;
   readonly threadId?: ThreadId;
   readonly resume?: string;
   readonly resumeSessionAt?: string;
@@ -144,12 +144,14 @@ export interface ClaudeSubagentRun {
 
 type ClaudeTokenUsageState = "current" | "skip-compaction-call" | "awaiting-fresh-assistant";
 
-export interface ClaudeSessionIdentity {
+interface ClaudeSessionIdentity {
   readonly gatewaySessionLease?: AgentGatewaySessionLease;
   session: ProviderSession;
   readonly startInput: Parameters<ClaudeAdapterShape["startSession"]>[0];
   readonly lifecycleGeneration?: string;
   readonly startedAt: string;
+  readonly skillBridgeCleanup?: () => Promise<void>;
+  readonly allowedSkillNames: ReadonlySet<string>;
   resumeSessionId: string | undefined;
   lastThreadStartedId: string | undefined;
   stopped: boolean;
@@ -160,6 +162,8 @@ export interface ClaudeSessionQuery {
   readonly query: ClaudeQueryRuntime;
   readonly artifactsEnabled: boolean;
   initToolNames?: ReadonlySet<string>;
+  initSkillNames?: ReadonlySet<string>;
+  loadedPluginNames?: ReadonlySet<string>;
   readonly messageStream?: AsyncIterable<SDKMessage>;
   readonly processOwner: ClaudeProcessOwner;
   stopDeferred?: Deferred.Deferred<void, ProviderAdapterProcessError>;
@@ -168,7 +172,8 @@ export interface ClaudeSessionQuery {
   readonly spawnPermissionMode: PermissionMode;
   firstTurnSpawnModeAuthoritative: boolean;
   currentApiModelId: string | undefined;
-  rerouteOriginalApiModelId: string | undefined;
+  availableModels: ReadonlyArray<ModelInfo>;
+  fastModeState: FastModeState | undefined;
   readonly warnedUnhandledSdkKinds: Set<string>;
 }
 
@@ -196,17 +201,14 @@ export interface ClaudeSessionPendingInteractions {
 export interface ClaudeSessionUsageCache {
   resultUsageBaseline?: ClaudeResultUsageBaseline;
   lastKnownContextWindow: number | undefined;
-  currentAutoCompactWindow: number | undefined;
   currentAlwaysThinkingEnabled: boolean | undefined;
   currentEffort: ClaudeApiEffort | null;
-  currentUltracode: boolean;
-  currentFastMode: boolean;
+  effectiveEffort: ClaudeApiEffort | null | undefined;
+  currentUltracode: boolean | undefined;
+  currentFastMode: boolean | undefined;
   lastKnownAutoCompactThreshold: number | undefined;
   contextUsageControlEnabled: boolean;
   lastKnownTokenUsage: ThreadTokenUsageSnapshot | undefined;
-  cacheObservation?: ClaudeCacheObservation | undefined;
-  cacheRequestStartedAt?: { messageId: string; at: string };
-  hasObservedCacheRequest?: boolean;
   tokenUsageState: ClaudeTokenUsageState;
   processedTokenTotal: number;
   processedTokenTurnBaseline: number;

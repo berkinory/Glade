@@ -328,7 +328,10 @@ export function useComposerCommandMenuItems(input: {
       }
 
       return rankProviderDiscoveryItems(
-        getAgentMentionAutocompleteAliases(provider),
+        getAgentMentionAutocompleteAliases(
+          provider,
+          searchableModelOptions.filter((model) => model.provider === provider),
+        ),
         query,
         ({ alias, displayName }) => [{ value: alias }, { value: displayName }],
       ).map(({ alias, displayName, color }) => ({
@@ -352,7 +355,15 @@ export function useComposerCommandMenuItems(input: {
       plugin,
       mention,
       label: plugin.interface?.displayName ?? plugin.name,
-      description: plugin.interface?.shortDescription ?? plugin.source.path,
+      description:
+        plugin.interface?.shortDescription ??
+        (plugin.source.type === "local"
+          ? plugin.source.path
+          : plugin.source.type === "git"
+            ? plugin.source.url
+            : plugin.source.type === "npm"
+              ? plugin.source.package
+              : plugin.name),
     }));
     const localRootItems =
       matchesLocalFolderMentionShortcut(composerTrigger.query) && composerTrigger.query !== "/"

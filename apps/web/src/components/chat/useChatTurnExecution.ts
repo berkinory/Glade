@@ -5,7 +5,7 @@ import type {
   ProviderMentionReference,
   ProviderSkillReference,
 } from "@glade/contracts/provider/providerDiscovery";
-import { DEFAULT_MODEL_BY_PROVIDER } from "@glade/contracts/provider/model";
+import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import { MessageId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   ProviderInteractionMode,
@@ -14,7 +14,6 @@ import {
   type ProviderStartOptions,
 } from "@glade/contracts/provider/sessionPolicy";
 import { buildTemporaryWorktreeBranchName } from "@glade/shared/git/git";
-import { getDefaultModel } from "@glade/shared/provider/model";
 import { providerSupportsNativeTurnSteering } from "@glade/shared/provider/providerMetadata";
 import { useCallback } from "react";
 import { promoteThreadCreate } from "~/lib/threadCreatePromotion";
@@ -34,8 +33,6 @@ import {
 } from "../../lib/composerSend";
 import { queuedComposerDrain } from "../../lib/queuedComposerDrain";
 import { clearPendingTurnDispatch } from "../../pendingTurnDispatch";
-import { useStore } from "../../store";
-import { getThreadFromState } from "../../threadDerivation";
 import { buildModelSelection } from "../../providerModelOptions";
 import { type Thread } from "../../types";
 import {
@@ -457,8 +454,8 @@ export function useChatTurnExecution({
           selectedModelSelectionForSend.model ||
             selectedModelForSend ||
             targetProjectDefaultModelSelectionForSend?.model ||
-            getDefaultModel(selectedModelSelectionForSend.provider) ||
-            DEFAULT_MODEL_BY_PROVIDER.codex,
+            PROVIDER_DEFAULT_MODEL ||
+            PROVIDER_DEFAULT_MODEL,
           selectedModelSelectionForSend.options,
           selectedModelSelectionForSend.provider === "claudeAgent"
             ? selectedModelSelectionForSend.supportsAutoMode
@@ -625,40 +622,24 @@ export function useChatTurnExecution({
           providerOptions: dispatchSettings.providerOptions,
         });
         await stagedTurnAttachments.runWithDispatch(async (turnAttachments) => {
-          if (getThreadFromState(useStore.getState(), threadIdForSend)?.claudeCacheReview != null) {
-            throw new Error(
-              "Choose how to resume the held message before sending another message.",
-            );
-          }
-          await api.orchestration
-            .dispatchCommand({
-              type: "thread.turn.start",
-              commandId: newCommandId(),
-              threadId: threadIdForSend,
-              message: {
-                messageId: messageIdForSend,
-                role: "user",
-                text: outgoingMessageText,
-                attachments: turnAttachments,
-                ...(mentionedSkillsForSend.length > 0 ? { skills: mentionedSkillsForSend } : {}),
-                ...(mentionedPluginMentionsForSend.length > 0
-                  ? { mentions: mentionedPluginMentionsForSend }
-                  : {}),
-              },
-              ...turnStartDispatchFields(dispatchSettings, dispatchMode),
-              ...(sourceProposedPlanForSend
-                ? { sourceProposedPlan: sourceProposedPlanForSend }
+          await api.orchestration.dispatchCommand({
+            type: "thread.turn.start",
+            commandId: newCommandId(),
+            threadId: threadIdForSend,
+            message: {
+              messageId: messageIdForSend,
+              role: "user",
+              text: outgoingMessageText,
+              attachments: turnAttachments,
+              ...(mentionedSkillsForSend.length > 0 ? { skills: mentionedSkillsForSend } : {}),
+              ...(mentionedPluginMentionsForSend.length > 0
+                ? { mentions: mentionedPluginMentionsForSend }
                 : {}),
-              createdAt: messageCreatedAt,
-            })
-            .catch((error: unknown) => {
-              if (
-                getThreadFromState(useStore.getState(), threadIdForSend)?.claudeCacheReview
-                  ?.messageId !== messageIdForSend
-              ) {
-                throw error;
-              }
-            });
+            },
+            ...turnStartDispatchFields(dispatchSettings, dispatchMode),
+            ...(sourceProposedPlanForSend ? { sourceProposedPlan: sourceProposedPlanForSend } : {}),
+            createdAt: messageCreatedAt,
+          });
         });
         turnStartSucceeded = true;
         if (

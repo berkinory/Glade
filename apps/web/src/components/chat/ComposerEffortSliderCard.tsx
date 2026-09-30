@@ -30,7 +30,7 @@ const CARD_ICON_BUTTON_CLASS_NAME =
   "flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-lg transition-colors hover:bg-[color-mix(in_srgb,var(--foreground)_6%,transparent)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--color-border-focus)]/60 disabled:pointer-events-none disabled:opacity-35";
 
 export function ComposerEffortSliderCard(props: ComposerEffortSliderCardProps) {
-  const { provider, threadId, model, modelOptions, prompt, onPromptChange } = props;
+  const { provider, threadId, model, modelOptions, prompt } = props;
   const selection = getComposerTraitSelection(
     provider,
     model,
@@ -38,16 +38,17 @@ export function ComposerEffortSliderCard(props: ComposerEffortSliderCardProps) {
     modelOptions,
     props.runtimeModel,
   );
-  const { effortLevels, defaultEffort, effort, fastModeEnabled, ultrathinkPromptControlled } =
-    selection;
+  const { effortLevels, fastModeEnabled } = selection;
   const supportsFastMode = supportsComposerFastModeControl(selection);
   const commitTrait = useComposerTraitCommit({ threadId, provider, model, modelOptions });
 
   const ladderIndex = resolveComposerEffortLadderIndex(selection);
   const activeLevel = effortLevels[ladderIndex];
   const statusLabel = resolveComposerTraitStatusLabel(selection) ?? activeLevel?.label ?? "Effort";
-  const effortIsDefault = ultrathinkPromptControlled || effort === defaultEffort;
-  const canReset = fastModeEnabled || !effortIsDefault;
+  const primaryId = selection.primarySelectDescriptor?.id;
+  const canReset =
+    (primaryId !== undefined && modelOptions?.[primaryId as keyof ProviderOptions] !== undefined) ||
+    modelOptions?.fastMode !== undefined;
 
   const lastIndex = Math.max(effortLevels.length - 1, 0);
 
@@ -57,21 +58,13 @@ export function ComposerEffortSliderCard(props: ComposerEffortSliderCardProps) {
     if (!nextLevel) return;
     const plan = planComposerEffortChange({ provider, selection, prompt, value: nextLevel.value });
     if (!plan) return;
-    if (plan.kind === "prompt") {
-      onPromptChange(plan.prompt);
-      return;
-    }
     commitTrait(plan.patch);
   };
 
   const handleReset = () => {
-    const effortPlan =
-      defaultEffort && !effortIsDefault
-        ? planComposerEffortChange({ provider, selection, prompt, value: defaultEffort })
-        : null;
     commitTrait({
-      ...(effortPlan?.kind === "options" ? effortPlan.patch : {}),
-      ...(fastModeEnabled ? { fastMode: false } : {}),
+      ...(primaryId ? { [primaryId]: undefined } : {}),
+      ...(supportsFastMode ? { fastMode: undefined } : {}),
     });
   };
 
@@ -121,17 +114,11 @@ export function ComposerEffortSliderCard(props: ComposerEffortSliderCardProps) {
           size="large"
           showStepMarks
           magnetic
-          disabled={ultrathinkPromptControlled}
           aria-label="Reasoning effort"
           getAriaValueText={(index) => effortLevels[index]?.label ?? String(index)}
           onValueChange={handleSliderChange}
         />
       </div>
-      {ultrathinkPromptControlled ? (
-        <div className="px-1 pt-1 text-muted-foreground/80 text-ui leading-snug">
-          Remove Ultrathink from the prompt to change effort.
-        </div>
-      ) : null}
     </div>
   );
 }

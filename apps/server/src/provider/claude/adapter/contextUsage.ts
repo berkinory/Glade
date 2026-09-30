@@ -5,7 +5,6 @@ import {
 } from "./sessionTypes";
 import { Effect, Option } from "effect";
 import { decideClaudeContextUsageWarnings } from "../claudeTokenUsage.ts";
-import { claudeEffectiveContextBudget } from "./modelCapabilities";
 import type { SDKControlGetContextUsageResponse } from "@anthropic-ai/claude-agent-sdk";
 import { normalizeOperationError } from "../../../platform/operationError.ts";
 import { toError } from "./streamErrors";
@@ -24,7 +23,7 @@ export function makeClaudeContextUsage(input: {
     Effect.gen(function* () {
       const warnings = decideClaudeContextUsageWarnings(
         rawUsage,
-        claudeEffectiveContextBudget(context),
+        context.lastKnownAutoCompactThreshold ?? context.lastKnownContextWindow,
         context.emittedContextUsageWarnings,
       );
       if (!warnings) {

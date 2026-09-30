@@ -1,5 +1,5 @@
 import {
-  DEFAULT_GIT_TEXT_GENERATION_MODEL,
+  PROVIDER_DEFAULT_MODEL,
   GIT_TEXT_GENERATION_PROVIDERS,
   PROVIDER_DISPLAY_NAMES,
   type GitTextGenerationProvider,
@@ -33,7 +33,7 @@ export function ModelsSettingsPanel({
 
   const { textGenerationModel, textGenerationProvider } = settings;
   const currentGitTextGenerationProvider = textGenerationProvider ?? "codex";
-  const currentGitTextGenerationModel = textGenerationModel ?? DEFAULT_GIT_TEXT_GENERATION_MODEL;
+  const currentGitTextGenerationModel = textGenerationModel ?? PROVIDER_DEFAULT_MODEL;
   const gitWritingModelHintByProvider = useMemo<Partial<Record<ProviderKind, string | null>>>(
     () => ({ [currentGitTextGenerationProvider]: currentGitTextGenerationModel }),
     [currentGitTextGenerationModel, currentGitTextGenerationProvider],

@@ -29,9 +29,6 @@ export function makeProviderTaskControl(input: {
   >["settleInterruptedProviderTurn"];
   readonly providerService: ServiceMap.Service.Shape<typeof ProviderService>;
   readonly queuedTurnPromotions: ServiceMap.Service.Shape<typeof QueuedTurnPromotionRepository>;
-  readonly setClaudeCacheReview: ReturnType<
-    typeof makeProviderThreadProjection
-  >["setClaudeCacheReview"];
   readonly threadSessionSettings: ServiceMap.Service.Shape<typeof ThreadSessionSettings>;
   readonly queuedDispatchState: ServiceMap.Service.Shape<typeof QueuedDispatchState>;
   readonly clearPendingContextBootstraps: ReturnType<
@@ -50,7 +47,6 @@ export function makeProviderTaskControl(input: {
     settleInterruptedProviderTurn,
     providerService,
     queuedTurnPromotions,
-    setClaudeCacheReview,
     threadSessionSettings,
     queuedDispatchState,
     clearPendingContextBootstraps,
@@ -302,14 +298,6 @@ export function makeProviderTaskControl(input: {
       }
     }
     for (const queuedThreadId of clearedQueuedThreadIds) {
-      const queuedThread = yield* resolveThread(queuedThreadId);
-      if (
-        queuedThread?.claudeCacheReview?.status === "pending" ||
-        queuedThread?.claudeCacheReview?.status === "failed" ||
-        queuedThread?.claudeCacheReview?.status === "responding"
-      ) {
-        yield* setClaudeCacheReview(queuedThreadId, null, queuedThread.claudeCacheReview.reviewId);
-      }
       yield* queuedTurnPromotions.cancelThread({
         threadId: queuedThreadId,
         updatedAt: input.createdAt,

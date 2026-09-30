@@ -1,8 +1,5 @@
 import {
-  DEFAULT_MODEL_BY_PROVIDER,
-  MODEL_CAPABILITIES_INDEX,
-  MODEL_OPTIONS_BY_PROVIDER,
-  MODEL_SLUG_ALIASES_BY_PROVIDER,
+  PROVIDER_DEFAULT_MODEL,
   type ClaudeApiEffort,
   type ClaudeModelOptions,
   type ClaudeCodeEffort,
@@ -13,11 +10,6 @@ import {
 } from "@glade/contracts/provider/model";
 import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
-
-const MODEL_SLUG_SET_BY_PROVIDER: Record<ProviderKind, ReadonlySet<ModelSlug>> = {
-  claudeAgent: new Set(MODEL_OPTIONS_BY_PROVIDER.claudeAgent.map((option) => option.slug)),
-  codex: new Set(MODEL_OPTIONS_BY_PROVIDER.codex.map((option) => option.slug)),
-};
 
 export interface SelectableModelOption {
   slug: string;
@@ -31,20 +23,6 @@ export const EMPTY_MODEL_CAPABILITIES: ModelCapabilities = {
   promptInjectedEffortLevels: [],
   contextWindowOptions: [],
 };
-export function getModelOptions(provider: ProviderKind = "codex") {
-  return MODEL_OPTIONS_BY_PROVIDER[provider];
-}
-
-export function getDefaultModel(provider: ProviderKind = "codex"): ModelSlug {
-  return DEFAULT_MODEL_BY_PROVIDER[provider];
-}
-
-const MODEL_NAME_BY_SLUG = new Map(
-  Object.values(MODEL_OPTIONS_BY_PROVIDER)
-    .flat()
-    .map((option) => [option.slug.toLowerCase(), option.name] as const),
-);
-
 const MODEL_TOKEN_DISPLAY_NAMES: Readonly<Record<string, string>> = {
   deepseek: "DeepSeek",
   glm: "GLM",
@@ -140,56 +118,7 @@ export function formatModelDisplayName(model: string | null | undefined): string
     return undefined;
   }
 
-  return MODEL_NAME_BY_SLUG.get(normalized.toLowerCase()) ?? humanizeModelSlug(normalized);
-}
-
-export function hasEffortLevel(caps: ModelCapabilities, value: string): boolean {
-  return caps.reasoningEffortLevels.some((l) => l.value === value);
-}
-
-export function getDefaultEffort(caps: ModelCapabilities): string | null {
-  return caps.reasoningEffortLevels.find((l) => l.isDefault)?.value ?? null;
-}
-
-export function hasContextWindowOption(caps: ModelCapabilities, value: string): boolean {
-  return caps.contextWindowOptions.some((option) => option.value === value);
-}
-
-export function getDefaultContextWindow(caps: ModelCapabilities): string | null {
-  return caps.contextWindowOptions.find((option) => option.isDefault)?.value ?? null;
-}
-
-export function hasAutoCompactWindowOption(caps: ModelCapabilities, value: string): boolean {
-  return caps.autoCompactWindowOptions?.some((option) => option.value === value) ?? false;
-}
-
-const CLAUDE_CONTEXT_WINDOW_SUFFIX_PATTERN = /\[([^\]]+)\]$/u;
-
-export function getClaudeContextWindowSuffix(model: string | null | undefined): string | null {
-  if (typeof model !== "string") return null;
-  return CLAUDE_CONTEXT_WINDOW_SUFFIX_PATTERN.exec(model)?.[1]?.toLowerCase() ?? null;
-}
-
-export function stripClaudeContextWindowSuffix(model: string): string {
-  return model.replace(CLAUDE_CONTEXT_WINDOW_SUFFIX_PATTERN, "");
-}
-
-export function getDefaultAutoCompactWindow(caps: ModelCapabilities): string | null {
-  return caps.autoCompactWindowOptions?.find((option) => option.isDefault)?.value ?? null;
-}
-
-export function resolveLabeledOptionValue(
-  options: ReadonlyArray<{ value: string; isDefault?: boolean | undefined }> | undefined,
-  rawValue: string | null | undefined,
-): string | null {
-  const trimmedValue = trimOrNull(rawValue);
-  if (!options || options.length === 0) {
-    return trimmedValue;
-  }
-  if (trimmedValue && options.some((option) => option.value === trimmedValue)) {
-    return trimmedValue;
-  }
-  return options.find((option) => option.isDefault)?.value ?? options[0]?.value ?? null;
+  return normalized === PROVIDER_DEFAULT_MODEL ? "Provider default" : humanizeModelSlug(normalized);
 }
 
 type ProviderOptionSelectionsInput =
@@ -265,10 +194,7 @@ function resolveDescriptorChoiceValue(
   rawValue: string | null | undefined,
 ): string | undefined {
   const trimmed = trimOrNull(rawValue);
-  if (trimmed && descriptor.options.some((option) => option.id === trimmed)) {
-    return trimmed;
-  }
-  return descriptor.currentValue ?? descriptor.options.find((option) => option.isDefault)?.id;
+  return trimmed ?? descriptor.currentValue;
 }
 
 function withProviderOptionCurrentValue(
@@ -289,83 +215,12 @@ function withProviderOptionCurrentValue(
   return { ...descriptor, currentValue };
 }
 
-function reasoningDescriptorId(provider: ProviderKind): string {
-  if (provider === "claudeAgent") {
-    return "effort";
-  }
-  return "reasoningEffort";
-}
-
-function legacyCapabilityDescriptors(
-  provider: ProviderKind,
-  caps: ModelCapabilities,
-): ProviderOptionDescriptor[] {
-  const primaryOptions = caps.reasoningEffortLevels;
-  const descriptors: ProviderOptionDescriptor[] = [];
-  if (primaryOptions.length > 0) {
-    const defaultPrimaryOption = primaryOptions.find((option) => option.isDefault);
-    descriptors.push({
-      id: reasoningDescriptorId(provider),
-      label: "Reasoning",
-      type: "select",
-      options: primaryOptions.map((option) =>
-        Object.assign(
-          { id: option.value, label: option.label },
-          option.description ? { description: option.description } : {},
-          option.isDefault ? { isDefault: true as const } : {},
-        ),
-      ),
-      ...(defaultPrimaryOption ? { currentValue: defaultPrimaryOption.value } : {}),
-      ...(caps.promptInjectedEffortLevels.length > 0
-        ? { promptInjectedValues: [...caps.promptInjectedEffortLevels] }
-        : {}),
-    });
-  }
-  if (caps.contextWindowOptions.length > 0) {
-    const defaultContextWindowOption = caps.contextWindowOptions.find((option) => option.isDefault);
-    descriptors.push({
-      id: "contextWindow",
-      label: "Context Window",
-      type: "select",
-      options: caps.contextWindowOptions.map((option) => ({
-        id: option.value,
-        label: option.label,
-        ...(option.isDefault ? { isDefault: true as const } : {}),
-      })),
-      ...(defaultContextWindowOption ? { currentValue: defaultContextWindowOption.value } : {}),
-    });
-  }
-  if (caps.autoCompactWindowOptions && caps.autoCompactWindowOptions.length > 0) {
-    const defaultOption = caps.autoCompactWindowOptions.find((option) => option.isDefault);
-    descriptors.push({
-      id: "autoCompactWindow",
-      label: "Auto-compact",
-      type: "select",
-      options: caps.autoCompactWindowOptions.map((option) => ({
-        id: option.value,
-        label: option.label,
-        ...(option.isDefault ? { isDefault: true as const } : {}),
-      })),
-      ...(defaultOption ? { currentValue: defaultOption.value } : {}),
-    });
-  }
-  if (caps.supportsFastMode) {
-    descriptors.push({ id: "fastMode", label: "Fast Mode", type: "boolean" });
-  }
-  if (caps.supportsThinkingToggle) {
-    descriptors.push({ id: "thinking", label: "Thinking", type: "boolean", currentValue: true });
-  }
-  return descriptors;
-}
-
 export function getProviderOptionDescriptors(input: {
   provider: ProviderKind;
   caps: ModelCapabilities;
   selections?: ProviderOptionSelectionsInput;
 }): ReadonlyArray<ProviderOptionDescriptor> {
-  const descriptors =
-    input.caps.optionDescriptors?.map(cloneProviderOptionDescriptor) ??
-    legacyCapabilityDescriptors(input.provider, input.caps);
+  const descriptors = (input.caps.optionDescriptors ?? []).map(cloneProviderOptionDescriptor);
   return descriptors.map((descriptor) =>
     withProviderOptionCurrentValue(
       descriptor,
@@ -386,111 +241,11 @@ export function getProviderOptionCurrentValue(
   return descriptor.currentValue ?? descriptor.options.find((option) => option.isDefault)?.id;
 }
 
-export function getModelCapabilities(
-  provider: ProviderKind,
-  model: string | null | undefined,
-): ModelCapabilities {
-  const normalizedSlug = normalizeModelSlug(model, provider);
-  const slug =
-    provider === "claudeAgent" && normalizedSlug
-      ? stripClaudeContextWindowSuffix(normalizedSlug)
-      : normalizedSlug;
-  if (slug && MODEL_CAPABILITIES_INDEX[provider]?.[slug]) {
-    return MODEL_CAPABILITIES_INDEX[provider][slug];
-  }
-  if (provider === "claudeAgent" && slug) {
-    const newestKnown = resolveNewestKnownClaudeFamilyModel(slug);
-    if (newestKnown) {
-      return MODEL_CAPABILITIES_INDEX.claudeAgent[newestKnown] ?? EMPTY_MODEL_CAPABILITIES;
-    }
-  }
-  return EMPTY_MODEL_CAPABILITIES;
-}
-
-const CLAUDE_FAMILY_MODEL_PATTERN =
-  /^claude-(fable|opus|sonnet|haiku)-(\d{1,2})(?:-(\d{1,2}))?(?:-\d{8})?$/u;
-
-type ClaudeFamilyModelVersion = {
-  readonly family: string;
-  readonly major: number;
-  readonly minor: number;
-};
-
-function parseClaudeFamilyModelVersion(slug: string): ClaudeFamilyModelVersion | null {
-  const match = CLAUDE_FAMILY_MODEL_PATTERN.exec(slug.trim().toLowerCase());
-  if (!match?.[1] || !match[2]) {
-    return null;
-  }
-  return { family: match[1], major: Number(match[2]), minor: Number(match[3] ?? 0) };
-}
-
-function compareClaudeFamilyModelVersions(
-  left: ClaudeFamilyModelVersion,
-  right: ClaudeFamilyModelVersion,
-): number {
-  return left.major - right.major || left.minor - right.minor;
-}
-
-const NEWEST_CLAUDE_CATALOG_MODEL_BY_FAMILY = (() => {
-  const newest = new Map<string, { slug: ModelSlug; version: ClaudeFamilyModelVersion }>();
-  for (const model of MODEL_OPTIONS_BY_PROVIDER.claudeAgent) {
-    const version = parseClaudeFamilyModelVersion(model.slug);
-    const current = version ? newest.get(version.family) : undefined;
-    if (version && (!current || compareClaudeFamilyModelVersions(version, current.version) > 0)) {
-      newest.set(version.family, { slug: model.slug, version });
-    }
-  }
-  return newest;
-})();
-
-export function resolveNewestKnownClaudeFamilyModel(
-  model: string | null | undefined,
-): ModelSlug | null {
-  const normalized = normalizeModelSlug(model, "claudeAgent");
-  if (!normalized) {
-    return null;
-  }
-  const slug = stripClaudeContextWindowSuffix(normalized) as ModelSlug;
-  if (MODEL_SLUG_SET_BY_PROVIDER.claudeAgent.has(slug)) {
-    return null;
-  }
-  const version = parseClaudeFamilyModelVersion(slug);
-  const newest = version ? NEWEST_CLAUDE_CATALOG_MODEL_BY_FAMILY.get(version.family) : undefined;
-  return version && newest && compareClaudeFamilyModelVersions(version, newest.version) > 0
-    ? newest.slug
-    : null;
-}
-
-export function isClaudeUltrathinkPrompt(text: string | null | undefined): boolean {
-  return typeof text === "string" && /\bultrathink\b/i.test(text);
-}
-
 export function normalizeModelSlug(
   model: string | null | undefined,
-  provider: ProviderKind = "codex",
+  _provider: ProviderKind = "codex",
 ): ModelSlug | null {
-  if (typeof model !== "string") {
-    return null;
-  }
-
-  const trimmed = model.trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  const providerScopedModel =
-    provider === "claudeAgent" ? stripClaudeContextWindowSuffix(trimmed) : trimmed;
-  const aliases = MODEL_SLUG_ALIASES_BY_PROVIDER[provider] as Record<string, ModelSlug>;
-  const aliasKey = providerScopedModel.toLowerCase();
-  const aliased = Object.prototype.hasOwnProperty.call(aliases, aliasKey)
-    ? aliases[aliasKey]
-    : undefined;
-  const normalized = typeof aliased === "string" ? aliased : providerScopedModel;
-  return (
-    provider === "claudeAgent" && getClaudeContextWindowSuffix(trimmed) === "1m"
-      ? `${normalized}[1m]`
-      : normalized
-  ) as ModelSlug;
+  return trimOrNull(model);
 }
 
 export function resolveSelectableModel(
@@ -530,31 +285,6 @@ export function resolveSelectableModel(
   return null;
 }
 
-export function resolveModelSlug(
-  model: string | null | undefined,
-  provider: ProviderKind = "codex",
-): ModelSlug | null {
-  const normalizedModel = normalizeModelSlug(model, provider);
-  const normalized =
-    provider === "claudeAgent" && normalizedModel
-      ? (stripClaudeContextWindowSuffix(normalizedModel) as ModelSlug)
-      : normalizedModel;
-  if (!normalized) {
-    return DEFAULT_MODEL_BY_PROVIDER[provider];
-  }
-
-  return MODEL_SLUG_SET_BY_PROVIDER[provider].has(normalized)
-    ? normalized
-    : DEFAULT_MODEL_BY_PROVIDER[provider];
-}
-
-export function resolveModelSlugForProvider(
-  provider: ProviderKind,
-  model: string | null | undefined,
-): ModelSlug | null {
-  return resolveModelSlug(model, provider);
-}
-
 export function trimOrNull<T extends string>(value: T | null | undefined): T | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim() as T;
@@ -562,112 +292,28 @@ export function trimOrNull<T extends string>(value: T | null | undefined): T | n
 }
 
 export function normalizeClaudeModelOptions(
-  model: string | null | undefined,
+  _model: string | null | undefined,
   modelOptions: ClaudeModelOptions | null | undefined,
 ): ClaudeModelOptions | undefined {
-  const caps = getModelCapabilities("claudeAgent", model);
-  const defaultReasoningEffort = getDefaultEffort(caps);
-  const defaultAutoCompactWindow = getDefaultAutoCompactWindow(caps);
-  const resolvedEffort = trimOrNull(modelOptions?.effort);
-  const resolvedAutoCompactWindow =
-    trimOrNull(modelOptions?.autoCompactWindow) ?? trimOrNull(modelOptions?.contextWindow);
-  const isPromptInjected = caps.promptInjectedEffortLevels.includes(resolvedEffort ?? "");
-  const effort =
-    resolvedEffort &&
-    !isPromptInjected &&
-    hasEffortLevel(caps, resolvedEffort) &&
-    resolvedEffort !== defaultReasoningEffort
-      ? resolvedEffort
-      : undefined;
-  const autoCompactWindow =
-    resolvedAutoCompactWindow &&
-    hasAutoCompactWindowOption(caps, resolvedAutoCompactWindow) &&
-    resolvedAutoCompactWindow !== defaultAutoCompactWindow
-      ? resolvedAutoCompactWindow
-      : undefined;
-  const thinking =
-    caps.supportsThinkingToggle && modelOptions?.thinking === false ? false : undefined;
-  const fastMode = caps.supportsFastMode && modelOptions?.fastMode === true ? true : undefined;
-  const nextOptions: ClaudeModelOptions = {
-    ...(thinking === false ? { thinking: false } : {}),
+  if (!modelOptions) return undefined;
+  const effort = getEffectiveClaudeCodeEffort(modelOptions.effort);
+  const options: ClaudeModelOptions = {
     ...(effort ? { effort } : {}),
-    ...(fastMode ? { fastMode: true } : {}),
-    ...(autoCompactWindow ? { autoCompactWindow } : {}),
+    ...(modelOptions.effort === "ultracode" ? { ultracode: true } : {}),
+    ...(typeof modelOptions.ultracode === "boolean" ? { ultracode: modelOptions.ultracode } : {}),
+    ...(typeof modelOptions.thinking === "boolean" ? { thinking: modelOptions.thinking } : {}),
+    ...(typeof modelOptions.fastMode === "boolean" ? { fastMode: modelOptions.fastMode } : {}),
   };
-  return Object.keys(nextOptions).length > 0 ? nextOptions : undefined;
+  return Object.keys(options).length > 0 ? options : undefined;
 }
 
-export function resolveApiModelId(modelSelection: ModelSelection): string {
-  if (
-    modelSelection.provider === "claudeAgent" &&
-    normalizeClaudeModelOptions(modelSelection.model, modelSelection.options)?.autoCompactWindow ===
-      "1m" &&
-    getClaudeContextWindowSuffix(modelSelection.model) === null
-  ) {
-    return `${modelSelection.model}[1m]`;
-  }
-  return modelSelection.model;
+export function resolveApiModelId(modelSelection: ModelSelection): string | undefined {
+  return modelSelection.model === PROVIDER_DEFAULT_MODEL ? undefined : modelSelection.model;
 }
 
 export function getEffectiveClaudeCodeEffort(
   effort: ClaudeCodeEffort | null | undefined,
 ): ClaudeApiEffort | null {
-  if (!effort || effort === "ultrathink") {
-    return null;
-  }
+  if (!effort || effort === "ultrathink") return null;
   return effort === "ultracode" ? "xhigh" : effort;
-}
-
-interface ClaudeSpawnProfile {
-  readonly maxEffort: boolean;
-  readonly autoCompactWindow: string | undefined;
-}
-
-function claudeSpawnProfile(selection: Extract<ModelSelection, { provider: "claudeAgent" }>) {
-  const caps = getModelCapabilities("claudeAgent", selection.model);
-  const requestedEffort = trimOrNull(selection.options?.effort ?? null);
-  const effort = requestedEffort && hasEffortLevel(caps, requestedEffort) ? requestedEffort : null;
-  return {
-    maxEffort: getEffectiveClaudeCodeEffort(effort) === "max",
-    autoCompactWindow: normalizeClaudeModelOptions(selection.model, selection.options)
-      ?.autoCompactWindow,
-  } satisfies ClaudeSpawnProfile;
-}
-
-export function claudeSelectionRequiresRestart(
-  previous: ModelSelection | undefined,
-  next: ModelSelection,
-): boolean {
-  if (next.provider !== "claudeAgent") {
-    return false;
-  }
-  if (previous === undefined) {
-    return false;
-  }
-  if (previous.provider !== "claudeAgent") {
-    return true;
-  }
-
-  const prev = claudeSpawnProfile(previous);
-  const desired = claudeSpawnProfile(next);
-  return (
-    prev.maxEffort !== desired.maxEffort || prev.autoCompactWindow !== desired.autoCompactWindow
-  );
-}
-
-export function applyClaudePromptEffortPrefix(
-  text: string,
-  effort: ClaudeCodeEffort | null | undefined,
-): string {
-  const trimmed = text.trim();
-  if (!trimmed) {
-    return trimmed;
-  }
-  if (effort !== "ultrathink") {
-    return trimmed;
-  }
-  if (trimmed.startsWith("Ultrathink:")) {
-    return trimmed;
-  }
-  return `Ultrathink:\n${trimmed}`;
 }

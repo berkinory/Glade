@@ -1,5 +1,5 @@
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
-import type { ModelSlug } from "@glade/contracts/provider/model";
+import { PROVIDER_DEFAULT_MODEL, type ModelSlug } from "@glade/contracts/provider/model";
 
 type AgentAliasColor = "violet" | "fuchsia" | "teal" | "cyan" | "amber" | "orange";
 
@@ -30,79 +30,6 @@ export type AgentAliasDefinition = CodexAgentAliasDefinition | ClaudeSubagentAli
 
 export type ResolvedAgentAlias = AgentAliasDefinition & {
   readonly alias: string;
-};
-
-const CODEX_AGENT_MENTION_ALIASES: Record<string, CodexAgentAliasDefinition> = {
-  "5.5": {
-    provider: "codex",
-    kind: "model",
-    model: "gpt-5.5",
-    displayName: "GPT-5.5",
-    color: "violet",
-  },
-  "5.4": {
-    provider: "codex",
-    kind: "model",
-    model: "gpt-5.4",
-    displayName: "GPT-5.4",
-    color: "violet",
-  },
-  mini: {
-    provider: "codex",
-    kind: "model",
-    model: "gpt-5.4-mini",
-    displayName: "GPT-5.4 Mini",
-    color: "fuchsia",
-  },
-  "5.4-mini": {
-    provider: "codex",
-    kind: "model",
-    model: "gpt-5.4-mini",
-    displayName: "GPT-5.4 Mini",
-    color: "fuchsia",
-  },
-  codex: {
-    provider: "codex",
-    kind: "model",
-    model: "gpt-5.3-codex",
-    displayName: "GPT-5.3 Codex",
-    color: "teal",
-  },
-  "5.3-codex": {
-    provider: "codex",
-    kind: "model",
-    model: "gpt-5.3-codex",
-    displayName: "GPT-5.3 Codex",
-    color: "teal",
-  },
-  spark: {
-    provider: "codex",
-    kind: "model",
-    model: "gpt-5.3-codex-spark",
-    displayName: "GPT-5.3 Codex Spark",
-    color: "cyan",
-  },
-  "5.3-spark": {
-    provider: "codex",
-    kind: "model",
-    model: "gpt-5.3-codex-spark",
-    displayName: "GPT-5.3 Codex Spark",
-    color: "cyan",
-  },
-  "5.2": {
-    provider: "codex",
-    kind: "model",
-    model: "gpt-5.2",
-    displayName: "GPT-5.2",
-    color: "amber",
-  },
-  "5.2-codex": {
-    provider: "codex",
-    kind: "model",
-    model: "gpt-5.2-codex",
-    displayName: "GPT-5.2 Codex",
-    color: "orange",
-  },
 };
 
 const CLAUDE_AGENT_MENTION_ALIASES: Record<string, ClaudeSubagentAliasDefinition> = {
@@ -203,19 +130,9 @@ export const AGENT_MENTION_ALIASES_BY_PROVIDER: Record<
   ProviderKind,
   Record<string, AgentAliasDefinition>
 > = {
-  codex: CODEX_AGENT_MENTION_ALIASES,
+  codex: {},
   claudeAgent: CLAUDE_AGENT_MENTION_ALIASES,
 } as const satisfies Record<ProviderKind, Record<string, AgentAliasDefinition>>;
-
-export const AGENT_MENTION_ALIASES: Record<string, AgentAliasDefinition> = Object.assign(
-  {},
-  ...Object.values(AGENT_MENTION_ALIASES_BY_PROVIDER),
-);
-
-const AGENT_MENTION_AUTOCOMPLETE_ALIASES_BY_PROVIDER: Record<ProviderKind, readonly string[]> = {
-  codex: ["5.5", "5.4", "mini", "5.3-codex", "spark", "5.2", "5.2-codex"],
-  claudeAgent: ["explore", "review", "build", "plan"],
-};
 
 function mapAgentEntries(input: Record<string, AgentAliasDefinition>): ResolvedAgentAlias[] {
   return Object.entries(input)
@@ -233,15 +150,31 @@ export function getAgentMentionAliases(provider?: ProviderKind): ResolvedAgentAl
   );
 }
 
-export function getAgentMentionAutocompleteAliases(provider: ProviderKind): ResolvedAgentAlias[] {
-  return AGENT_MENTION_AUTOCOMPLETE_ALIASES_BY_PROVIDER[provider].map((alias) => {
-    const definition = AGENT_MENTION_ALIASES_BY_PROVIDER[provider][alias];
-    if (!definition) {
-      throw new Error(`Unknown autocomplete alias for ${provider}: ${alias}`);
-    }
-
-    return Object.assign({ alias }, definition);
-  });
+export function getAgentMentionAutocompleteAliases(
+  provider: ProviderKind,
+  models: ReadonlyArray<{ slug: string; name: string; isSelectedHint?: boolean }> = [],
+): ResolvedAgentAlias[] {
+  if (provider === "claudeAgent") {
+    return ["explore", "review", "build", "plan"].map((alias) => ({
+      alias,
+      ...CLAUDE_AGENT_MENTION_ALIASES[alias]!,
+    }));
+  }
+  const aliases = new Map<string, ResolvedAgentAlias>();
+  for (const model of models.toSorted((a, b) => a.slug.localeCompare(b.slug))) {
+    if (model.isSelectedHint || model.slug === PROVIDER_DEFAULT_MODEL) continue;
+    const alias = model.slug.toLowerCase();
+    if (!/^[a-z0-9][a-z0-9._-]*$/.test(alias) || aliases.has(alias)) continue;
+    aliases.set(alias, {
+      alias,
+      provider,
+      kind: "model",
+      model: model.slug,
+      displayName: model.name,
+      color: "violet",
+    });
+  }
+  return [...aliases.values()];
 }
 
 export function resolveAgentAlias(
@@ -260,18 +193,4 @@ export function resolveAgentAlias(
     }
   }
   return null;
-}
-
-export function isValidAgentAlias(alias: string, provider?: ProviderKind): boolean {
-  return resolveAgentAlias(alias, provider) !== null;
-}
-
-export function getAgentAliasNames(provider?: ProviderKind): string[] {
-  if (provider) {
-    return Object.keys(AGENT_MENTION_ALIASES_BY_PROVIDER[provider]);
-  }
-
-  return Object.values(AGENT_MENTION_ALIASES_BY_PROVIDER).flatMap((definitions) =>
-    Object.keys(definitions),
-  );
 }

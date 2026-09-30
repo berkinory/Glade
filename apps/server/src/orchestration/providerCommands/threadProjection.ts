@@ -2,10 +2,7 @@ import { ServiceMap, Effect } from "effect";
 import { OrchestrationEngineService } from "../Services/OrchestrationEngine.ts";
 import { ThreadId, TurnId, CommandId, EventId } from "@glade/contracts/core/baseSchemas";
 import { serverCommandId } from "./deliveryClaims";
-import {
-  type OrchestrationSession,
-  type PendingClaudeCacheReview,
-} from "@glade/contracts/orchestration/threadEntities";
+import { type OrchestrationSession } from "@glade/contracts/orchestration/threadEntities";
 import { type RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
 import { DEFAULT_RUNTIME_MODE } from "./contextLifecycle";
 import { activeThreadGoal } from "../../provider/core/goalMode.ts";
@@ -139,49 +136,6 @@ export function makeProviderThreadProjection(input: {
     });
   });
 
-  const setClaudeCacheReview = (
-    threadId: ThreadId,
-    review: PendingClaudeCacheReview | null,
-    expectedReviewId: string | null,
-    hold?: { readonly sourceEventSequence: number; readonly session: OrchestrationSession },
-  ) =>
-    orchestrationEngine
-      .dispatch({
-        type: "thread.claude-cache.set",
-        commandId: serverCommandId("claude-cache-review"),
-        threadId,
-        review,
-        expectedReviewId,
-        ...(hold ? { hold } : {}),
-        createdAt: new Date().toISOString(),
-      })
-      .pipe(
-        Effect.catchTag("OrchestrationCommandInvariantError", (error) =>
-          error.detail === "Command produced no events." ? Effect.void : Effect.fail(error),
-        ),
-      );
-
-  const isClaudeReviewAuthorized = (
-    threadId: ThreadId,
-    reviewId: string,
-    status: "responding" | "compacting",
-  ) =>
-    resolveThread(threadId).pipe(
-      Effect.map((thread) => {
-        return (
-          !!thread &&
-          thread.deletedAt == null &&
-          thread.archivedAt == null &&
-          thread.claudeCacheReview?.reviewId === reviewId &&
-          thread.claudeCacheReview.status === status &&
-          thread.messages.some(
-            (message) =>
-              message.id === thread.claudeCacheReview?.messageId && message.role === "user",
-          )
-        );
-      }),
-    );
-
   const pauseActiveThreadGoal = Effect.fnUntraced(function* (input: {
     readonly threadId: ThreadId;
     readonly expectedGoalStartedAt: string | null;
@@ -270,8 +224,6 @@ export function makeProviderThreadProjection(input: {
   });
   return {
     setThreadSession,
-    isClaudeReviewAuthorized,
-    setClaudeCacheReview,
     pauseActiveThreadGoal,
     appendProviderFailureActivity,
     setThreadSessionError,

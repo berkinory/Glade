@@ -1,3 +1,4 @@
+import type { ProviderOptions } from "../../providerModelOptions";
 import type { ModelSlug } from "@glade/contracts/provider/model";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { resolveSelectableModel } from "@glade/shared/provider/model";
@@ -31,35 +32,41 @@ export function isModelPickerShortcutScopeActive(): boolean {
 export const MODEL_PICKER_SHORTCUT_ROW_LIMIT = 9;
 
 export function resolveStarredTraits(
-  selection: Pick<
-    ComposerTraitSelection,
-    | "caps"
-    | "effort"
-    | "effortLevels"
-    | "fastModeDescriptor"
-    | "fastModeEnabled"
-    | "thinkingEnabled"
-  >,
-): Pick<StarredModel, "effort" | "fastMode" | "thinking"> {
+  selection: ComposerTraitSelection,
+  modelOptions?: ProviderOptions | null,
+): Pick<StarredModel, "effort" | "fastMode" | "thinking" | "options"> {
+  const options = Object.fromEntries(
+    selection.descriptors.flatMap((descriptor) => {
+      const value = modelOptions?.[descriptor.id as keyof ProviderOptions];
+      return typeof value === "string" || typeof value === "boolean"
+        ? [[descriptor.id, value]]
+        : [];
+    }),
+  );
+  const effort = selection.primarySelectDescriptor
+    ? options[selection.primarySelectDescriptor.id]
+    : undefined;
   return {
-    effort: selection.effortLevels.length > 0 ? selection.effort : null,
-    fastMode: supportsComposerFastModeControl(selection) ? selection.fastModeEnabled : null,
-    thinking: selection.thinkingEnabled,
+    effort: typeof effort === "string" ? effort : null,
+    fastMode: typeof options.fastMode === "boolean" ? options.fastMode : null,
+    thinking: typeof options.thinking === "boolean" ? options.thinking : null,
+    options,
   };
 }
 
 export function buildStarredModelOptionsPatch(input: {
   provider: ProviderKind;
   selection: ComposerTraitSelection;
-  starred: Pick<StarredModel, "effort" | "fastMode" | "thinking">;
+  starred: Pick<StarredModel, "effort" | "fastMode" | "thinking" | "options">;
 }): Record<string, unknown> {
   const { provider, selection, starred } = input;
+  if (starred.options) return { ...starred.options };
   const patch: Record<string, unknown> = {};
   if (starred.effort !== null) {
     const plan = planComposerEffortChange({
       provider,
 
-      selection: { ...selection, ultrathinkPromptControlled: false },
+      selection,
       prompt: "",
       value: starred.effort,
     });
@@ -77,7 +84,7 @@ export function buildStarredModelOptionsPatch(input: {
 }
 
 function formatStarredTraitsLabel(
-  starred: Pick<StarredModel, "effort" | "fastMode" | "thinking">,
+  starred: Pick<StarredModel, "effort" | "fastMode" | "thinking" | "options">,
   effortLevels: ComposerTraitSelection["effortLevels"],
 ): string {
   const effortLabel =
@@ -96,10 +103,15 @@ function formatStarredTraitsLabel(
 }
 
 function starredTraitsMatch(
-  starred: Pick<StarredModel, "effort" | "fastMode" | "thinking">,
-  current: Pick<StarredModel, "effort" | "fastMode" | "thinking">,
+  starred: Pick<StarredModel, "effort" | "fastMode" | "thinking" | "options">,
+  current: Pick<StarredModel, "effort" | "fastMode" | "thinking" | "options">,
 ): boolean {
   return (
+    (starred.options === undefined ||
+      JSON.stringify(Object.entries(starred.options).toSorted(([a], [b]) => a.localeCompare(b))) ===
+        JSON.stringify(
+          Object.entries(current.options ?? {}).toSorted(([a], [b]) => a.localeCompare(b)),
+        )) &&
     (starred.effort === null || starred.effort === current.effort) &&
     (starred.fastMode === null || starred.fastMode === current.fastMode) &&
     (starred.thinking === null || starred.thinking === current.thinking)
@@ -158,7 +170,7 @@ export function buildStarredTabRows(input: {
   query: string;
   current: { provider: ProviderKind; model: string } & Pick<
     StarredModel,
-    "effort" | "fastMode" | "thinking"
+    "effort" | "fastMode" | "thinking" | "options"
   >;
   effortLevelsFor: (
     provider: ProviderKind,

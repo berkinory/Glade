@@ -1,31 +1,26 @@
-import type { ClaudeSessionRegistryShape } from "../../Services/ClaudeSessionRegistry.ts";
 import type { Fiber } from "effect";
-import { Clock, Effect, Ref, Random, Deferred } from "effect";
+import { Effect, Ref, Random, Deferred } from "effect";
 import { type ClaudeAdapterShape } from "../../Services/ClaudeAdapter.ts";
 import {
   ClaudeSessionContext,
-  type ClaudeResumeState,
   PendingUserInput,
   PendingApproval,
   PendingUserInputResult,
   PROVIDER,
   ClaudeSubagentRun,
 } from "./sessionTypes";
-import { ThreadId, EventId, ApprovalRequestId } from "@glade/contracts/core/baseSchemas";
+import { EventId, ApprovalRequestId } from "@glade/contracts/core/baseSchemas";
 import type { ClaudeRuntimeEventsShape } from "../../Services/ClaudeRuntimeEvents.ts";
 import { makeClaudeInteractionSettlement } from "./interactionSettlement";
 import { makeClaudeToolTracking } from "./toolTracking";
 import { makeClaudeTaskPresentation } from "./taskPresentation";
 import { acquireAgentGatewaySessionLease } from "../../../agentGateway/sessionLease.ts";
-import { ClaudeCacheObservation } from "@glade/contracts/provider/claudeCache";
 import type {
   HookInput,
   HookJSONOutput,
   CanUseTool,
   PermissionResult,
 } from "@anthropic-ai/claude-agent-sdk";
-import { claudeCacheFromSessionStart, claudeCacheForModel } from "../claudeCacheObservation.ts";
-import { syncClaudeCacheResumeCursor } from "./sessionResume";
 import { type UserInputQuestion } from "@glade/contracts/provider/runtimePayloads";
 import {
   asCanonicalTurnId,
@@ -41,21 +36,16 @@ import { redactSensitiveJsonFields } from "../../../diagnostics/sensitiveKeys.ts
 import { type ProviderApprovalDecision } from "@glade/contracts/provider/sessionPolicy";
 import { approvalRequestKindFromRequestType } from "@glade/shared/threads/threadSummary";
 import { approvalSessionGrantWidensSessionPolicy } from "@glade/shared/threads/approvalSessionGrant";
+import { isClaudeSkillAllowed } from "../claudeSkillBridge.ts";
+import type { ServerSettingsError } from "@glade/contracts/settings/settings";
 
 export function makeClaudeSdkHooks(dependencies: {
-  readonly sessionId: string | undefined;
-  readonly cacheClock: Clock.Clock;
   readonly input: Parameters<ClaudeAdapterShape["startSession"]>[0];
-  readonly runSdkSync: <A, E>(effect: Effect.Effect<A, E>) => A;
   readonly contextRef: Ref.Ref<ClaudeSessionContext | undefined>;
-  readonly resumeState: ClaudeResumeState | undefined;
-  readonly sessions: ClaudeSessionRegistryShape;
-  readonly threadId: ThreadId;
   readonly runSdkFork: <A, E>(
     effect: Effect.Effect<A, E>,
     options?: Effect.RunOptions,
   ) => Fiber.Fiber<A, E>;
-  readonly emitClaudeCacheObservation: ClaudeRuntimeEventsShape["emitClaudeCacheObservation"];
   readonly makeEventStamp: () => Effect.Effect<{ eventId: EventId; createdAt: string }>;
   readonly pendingUserInputs: Map<ApprovalRequestId, PendingUserInput>;
   readonly offerRuntimeEvent: ClaudeRuntimeEventsShape["offerRuntimeEvent"];
@@ -78,18 +68,12 @@ export function makeClaudeSdkHooks(dependencies: {
     typeof makeClaudeInteractionSettlement
   >["settlePendingApproval"];
   readonly gatewaySessionLease: ReturnType<typeof acquireAgentGatewaySessionLease>;
+  readonly getDisabledSkillNames: Effect.Effect<ReadonlyArray<string>, ServerSettingsError, never>;
 }) {
   const {
-    sessionId,
-    cacheClock,
     input,
-    runSdkSync,
     contextRef,
-    resumeState,
-    sessions,
-    threadId,
     runSdkFork,
-    emitClaudeCacheObservation,
     makeEventStamp,
     pendingUserInputs,
     offerRuntimeEvent,
@@ -101,42 +85,8 @@ export function makeClaudeSdkHooks(dependencies: {
     pendingApprovals,
     settlePendingApproval,
     gatewaySessionLease,
+    getDisabledSkillNames,
   } = dependencies;
-  let startupCacheObservation: ClaudeCacheObservation | undefined;
-
-  const sessionStartHook = async (
-    hookInput: HookInput,
-    _toolUseId: string | undefined,
-    options: { signal: AbortSignal },
-  ): Promise<HookJSONOutput> => {
-    if (options.signal.aborted || hookInput.hook_event_name !== "SessionStart") return {};
-    if (sessionId && hookInput.session_id !== sessionId) return {};
-    const nativeObservation = claudeCacheFromSessionStart(
-      hookInput as unknown as Record<string, unknown>,
-      new Date(cacheClock.currentTimeMillisUnsafe()).toISOString(),
-      input.lifecycleGeneration,
-    );
-    if (!nativeObservation) return {};
-    const current = runSdkSync(Ref.get(contextRef));
-    const previous = current ? current.cacheObservation : resumeState?.claudeCache;
-    const observation: ClaudeCacheObservation = {
-      ...(previous?.nativeSessionId === nativeObservation.nativeSessionId ? previous : {}),
-      ...nativeObservation,
-    };
-    if (!current) startupCacheObservation = observation;
-    else if (
-      !current.stopped &&
-      sessions.isCurrent(threadId, current) &&
-      current.resumeSessionId === observation.nativeSessionId &&
-      !current.hasObservedCacheRequest
-    ) {
-      current.cacheObservation = claudeCacheForModel(observation, current.currentApiModelId);
-      syncClaudeCacheResumeCursor(current);
-      runSdkFork(emitClaudeCacheObservation(current));
-    }
-    return {};
-  };
-
   const handleAskUserQuestion = (
     context: ClaudeSessionContext,
     toolInput: Record<string, unknown>,
@@ -329,6 +279,22 @@ export function makeClaudeSdkHooks(dependencies: {
           } satisfies PermissionResult;
         }
 
+        if (toolName === "Skill") {
+          const skillName = typeof toolInput.skill === "string" ? toolInput.skill : undefined;
+          const disabled = yield* Effect.result(getDisabledSkillNames);
+          if (
+            !skillName ||
+            !context.allowedSkillNames.has(skillName) ||
+            disabled._tag === "Failure" ||
+            !isClaudeSkillAllowed(skillName, disabled.success)
+          ) {
+            return {
+              behavior: "deny",
+              message: "This skill is not enabled for this Claude session.",
+            } satisfies PermissionResult;
+          }
+        }
+
         const runtimeMode = input.runtimeMode ?? "full-access";
         const interactionTurnId =
           context.turnState?.turnId ??
@@ -490,10 +456,8 @@ export function makeClaudeSdkHooks(dependencies: {
     return {};
   };
   return {
-    sessionStartHook,
     subagentSteerHook,
     canUseTool,
     gatewayToolHook,
-    getStartupCacheObservation: () => startupCacheObservation,
   };
 }

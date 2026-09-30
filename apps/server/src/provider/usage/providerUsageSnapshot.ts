@@ -9,7 +9,6 @@ import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type {
   ServerGetProviderUsageSnapshotInput,
   ServerGetProviderUsageSnapshotResult,
-  ServerProviderUsageLimit,
   ServerProviderUsageLine,
 } from "@glade/contracts/server/server";
 import { Effect } from "effect";
@@ -39,7 +38,6 @@ interface CachedUsageSnapshot {
 interface CodexSessionSummary {
   timestampMs: number;
   totalTokens: number;
-  limits: ReadonlyArray<ServerProviderUsageLimit>;
 }
 
 interface ClaudeUsageSample {
@@ -187,43 +185,6 @@ function buildUsageLines(input: {
   ];
 }
 
-function normalizeCodexUsageLimits(value: unknown): ReadonlyArray<ServerProviderUsageLimit> {
-  const rateLimits = asObjectRecord(value);
-  if (!rateLimits) {
-    return [];
-  }
-
-  const parseLimit = (
-    label: string,
-    source: Record<string, unknown> | null,
-  ): ServerProviderUsageLimit | null => {
-    if (!source) {
-      return null;
-    }
-
-    const usedPercent = asNonNegativeNumber(source.used_percent ?? source.usedPercent);
-    const windowDurationMins = asNonNegativeNumber(source.window_minutes ?? source.windowMinutes);
-    const resetsAt =
-      nonEmptyTrimmed(source.resets_at ?? source.resetsAt) ??
-      nonEmptyTrimmed(source.next_reset_at ?? source.nextResetAt);
-    if (usedPercent === undefined && windowDurationMins === undefined && !resetsAt) {
-      return null;
-    }
-
-    return {
-      window: label,
-      ...(usedPercent !== undefined ? { usedPercent } : {}),
-      ...(windowDurationMins !== undefined ? { windowDurationMins } : {}),
-      ...(resetsAt ? { resetsAt } : {}),
-    };
-  };
-
-  const primary = parseLimit("5h", asObjectRecord(rateLimits.primary));
-  const secondary = parseLimit("Weekly", asObjectRecord(rateLimits.secondary));
-
-  return [primary, secondary].filter((limit): limit is ServerProviderUsageLimit => limit !== null);
-}
-
 function readCodexTotalTokens(payload: Record<string, unknown>): number {
   const info = asObjectRecord(payload.info);
   const totalUsage =
@@ -316,7 +277,6 @@ function parseCodexSessionSummaryLine(line: string): CodexSessionSummary | null 
   return {
     timestampMs,
     totalTokens: readCodexTotalTokens(payload),
-    limits: normalizeCodexUsageLimits(payload.rate_limits ?? payload.rateLimits),
   };
 }
 
@@ -634,7 +594,7 @@ async function loadCodexUsageSnapshot(input: {
   return {
     provider: "codex",
     updatedAt: toIsoString(latestSummary.timestampMs),
-    limits: latestSummary.limits,
+    limits: [],
     usageLines: buildUsageLines({
       tokens24h: recent24h.reduce((total, summary) => total + summary.totalTokens, 0),
       tokens7d: recent7d.reduce((total, summary) => total + summary.totalTokens, 0),

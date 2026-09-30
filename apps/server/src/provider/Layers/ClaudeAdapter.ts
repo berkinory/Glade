@@ -2,8 +2,9 @@ import {
   ClaudeAdapterLiveOptions,
   ClaudeQueryRuntime,
 } from "../claude/adapter/adapterConfiguration";
-import { Effect, FileSystem, Option, Clock, Layer } from "effect";
+import { Effect, FileSystem, Option, Layer } from "effect";
 import { ServerConfig } from "../../server/config.ts";
+import { ServerSettingsService } from "../../settings/serverSettings.ts";
 import { AgentGatewayCredentials } from "../../agentGateway/Services/AgentGatewayCredentials.ts";
 import type { SDKUserMessage, Options as ClaudeQueryOptions } from "@anthropic-ai/claude-agent-sdk";
 import { loadClaudeAgentSdk } from "../claude/claudeAgentSdk.ts";
@@ -37,6 +38,7 @@ import { makeClaudeSessionInteractions } from "../claude/adapter/sessionInteract
 import { makeClaudeSessionBranching } from "../claude/adapter/sessionBranching";
 import { makeClaudeDiscovery } from "../claude/adapter/discovery";
 import { makeClaudeSessionStartup } from "../claude/adapter/sessionStartup";
+import { makeClaudeManagement } from "../claude/adapter/management.ts";
 
 function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
   return Effect.gen(function* () {
@@ -44,9 +46,12 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
     const sdkServices = yield* Effect.services<never>();
     const runSdkPromise = Effect.runPromiseWith(sdkServices);
     const runSdkFork = Effect.runForkWith(sdkServices);
-    const runSdkSync = Effect.runSyncWith(sdkServices);
     const fileSystem = yield* FileSystem.FileSystem;
     const serverConfig = yield* ServerConfig;
+    const serverSettings = yield* ServerSettingsService;
+    const getDisabledSkillNames = serverSettings.getSettings.pipe(
+      Effect.map((settings) => settings.skills.disabled),
+    );
 
     const agentGatewayCredentials = Option.getOrUndefined(
       yield* Effect.serviceOption(AgentGatewayCredentials),
@@ -80,7 +85,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
     const sessionLifecycleLock = makeKeyedLock<ThreadId>();
 
     const { nowIso, makeEventStamp, streamEvents } = runtimeEvents;
-    const cacheClock = yield* Clock.Clock;
     const withSessionLifecycleLock = sessionLifecycleLock.withLock;
     const resolveClaudeSdkEnv = Effect.sync(() =>
       buildClaudeProcessEnv({ homeDir: serverConfig.homeDir }),
@@ -141,7 +145,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       warnUnhandledSdkKind,
       logNativeSdkMessage,
       ensureThreadId,
-      emitClaudeCacheObservation,
       snapshotThread,
     } = runtimeEvents;
     const {
@@ -152,12 +155,8 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
     const { readClaudeContextUsage, maybeEmitContextUsageWarning } = makeClaudeContextUsage({
       emitRuntimeWarning,
     });
-    const {
-      emitTodoTasksUpdated,
-      emitTrackedTasksUpdated,
-      emitProposedPlanCompleted,
-      emitTaskUsageSnapshot,
-    } = makeClaudeTaskPresentation({ makeEventStamp, offerRuntimeEvent });
+    const { emitTodoTasksUpdated, emitTrackedTasksUpdated, emitProposedPlanCompleted } =
+      makeClaudeTaskPresentation({ makeEventStamp, offerRuntimeEvent });
     const {
       settlePendingHumanInteractions,
       settlePendingHumanInteractionsForAgent,
@@ -201,7 +200,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
     });
     const { handleStreamEvent, handleUserMessage, handleAssistantMessage } =
       makeClaudeContentMessages({
-        nowIso,
         ensureAssistantTextBlock,
         makeEventStamp,
         offerRuntimeEvent,
@@ -228,7 +226,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       ensureSubagentRun,
       emitRuntimeError,
       resolveWorkflowScriptText,
-      emitTaskUsageSnapshot,
       fileSystem,
       warnUnhandledSdkKind,
     });
@@ -268,7 +265,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       resolveClaudeSdkEnv,
       serverConfig,
     });
-    const { startClaudeCompaction, sendTurn, steerTurn } = makeClaudeTurnDispatch({
+    const { sendTurn, steerTurn } = makeClaudeTurnDispatch({
       requireSession,
       sessions,
       completeTurn,
@@ -281,10 +278,10 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       emitTrackedTasksUpdated,
       fileSystem,
       serverConfig,
+      getDisabledSkillNames,
       resolveNativeCommandNames,
     });
     const {
-      getClaudeCacheObservation,
       interruptTurn,
       stopTask,
       backgroundTask,
@@ -294,10 +291,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       respondToUserInput,
     } = makeClaudeSessionInteractions({
       requireSession,
-      readClaudeContextUsage,
-      sessions,
-      nowIso,
-      emitClaudeCacheObservation,
       serverConfig,
       snapshotThread,
       settlePendingApproval,
@@ -311,10 +304,9 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       assertSessionReplaceable,
       stopSessionInternal,
       agentGatewayCredentials,
-      cacheClock,
-      runSdkSync,
+      serverConfig,
+      getDisabledSkillNames,
       runSdkFork,
-      emitClaudeCacheObservation,
       makeEventStamp,
       offerRuntimeEvent,
       settlePendingUserInput,
@@ -343,6 +335,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       forkNativeSession,
       snapshotThread,
     });
+    const management = makeClaudeManagement({ sessions, serverConfig });
 
     yield* Effect.addFinalizer(() =>
       settleConcurrentTeardowns(
@@ -362,8 +355,8 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
     return {
       provider: PROVIDER,
       capabilities: {
-        supportsSkillMentions: false,
-        supportsSkillDiscovery: false,
+        supportsSkillMentions: true,
+        supportsSkillDiscovery: true,
         supportsNativeSlashCommandDiscovery: true,
         supportsPluginMentions: false,
         supportsPluginDiscovery: false,
@@ -373,8 +366,6 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       },
       startSession,
       prepareSessionReplacement,
-      getClaudeCacheObservation,
-      startClaudeCompaction,
       sendTurn,
       steerTurn,
       interruptTurn,
@@ -395,6 +386,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       listSkills,
       listModels,
       listAgents,
+      ...management,
       streamEvents,
     } satisfies ClaudeAdapterShape;
   });

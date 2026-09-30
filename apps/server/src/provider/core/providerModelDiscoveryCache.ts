@@ -20,6 +20,7 @@ export interface ProviderModelDiscoveryCacheKey {
   readonly binaryPath: string | null;
   readonly apiEndpoint: string | null;
   readonly cwd: string | null;
+  readonly contextIdentity?: string;
 }
 
 export interface ProviderModelDiscoveryCache<E> {
@@ -60,7 +61,13 @@ export function providerModelDiscoveryCacheKey(
 }
 
 const serializeProviderModelDiscoveryCacheKey = (key: ProviderModelDiscoveryCacheKey): string =>
-  JSON.stringify([key.provider, key.binaryPath, key.apiEndpoint, key.cwd]);
+  JSON.stringify([
+    key.provider,
+    key.binaryPath,
+    key.apiEndpoint,
+    key.cwd,
+    key.contextIdentity ?? null,
+  ]);
 
 const isUsableCatalog = (result: ProviderListModelsResult): boolean =>
   result.models.length > 0 && result.error === undefined;
@@ -154,7 +161,10 @@ export function makeProviderModelDiscoveryCache<E>(options?: {
     failures.delete(serialized);
 
     catalogs.delete(serialized);
-    catalogs.set(serialized, { result: { ...result, cached: false }, storedAt: at });
+    catalogs.set(serialized, {
+      result: { ...result, cached: false, discoveredAt: new Date(at).toISOString(), stale: false },
+      storedAt: at,
+    });
     while (catalogs.size > maxEntries) {
       const oldest = catalogs.keys().next().value;
       if (oldest === undefined) break;
@@ -235,13 +245,32 @@ export function makeProviderModelDiscoveryCache<E>(options?: {
       const failure = readFailure(serialized, at);
       if (entry !== undefined) {
         if (at - entry.storedAt <= freshTtlMs) {
-          return { ...entry.result, cached: true };
+          return {
+            ...entry.result,
+            cached: true,
+            discoveredAt: new Date(entry.storedAt).toISOString(),
+            stale: at - entry.storedAt > freshTtlMs,
+            ...(failure !== undefined
+              ? {
+                  error:
+                    "The saved model catalog is shown because native discovery is unavailable.",
+                }
+              : {}),
+          };
         }
 
         if (failure === undefined) {
           yield* startDiscovery(key, serialized, discover);
         }
-        return { ...entry.result, cached: true };
+        return {
+          ...entry.result,
+          cached: true,
+          discoveredAt: new Date(entry.storedAt).toISOString(),
+          stale: at - entry.storedAt > freshTtlMs,
+          ...(failure !== undefined
+            ? { error: "The saved model catalog is shown because native discovery is unavailable." }
+            : {}),
+        };
       }
       const pending = inflight.get(serialized);
       if (pending !== undefined) {

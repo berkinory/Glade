@@ -26,11 +26,7 @@ import {
   appendBrowserAnnotationsToPrompt,
   formatBrowserAnnotationLabel,
 } from "./browserAnnotations";
-import {
-  stageUploadComposerAttachments,
-  formatOutgoingComposerPrompt,
-  resolvePromptEffortFromModelSelection,
-} from "./composerSend";
+import { stageUploadComposerAttachments } from "./composerSend";
 import { appendFileCommentsToPrompt, formatFileCommentTitleSeed } from "./fileComments";
 import {
   filterPromptProviderMentionReferences,
@@ -191,12 +187,8 @@ async function dispatchKanbanDraftThreadOnce(
     composerBrowserAnnotations,
     messageId,
   );
-  const outgoingMessageText = formatOutgoingComposerPrompt({
-    provider: modelSelection.provider,
-    model: modelSelection.model,
-    effort: resolvePromptEffortFromModelSelection(modelSelection),
-    text: messageText || (composerImages.length > 0 ? IMAGE_ONLY_BOOTSTRAP_PROMPT : ""),
-  });
+  const outgoingMessageText =
+    messageText || (composerImages.length > 0 ? IMAGE_ONLY_BOOTSTRAP_PROMPT : "");
   const mentionedSkills = filterPromptSkillReferences(outgoingMessageText, skills);
   const mentionedMentions = filterPromptProviderMentionReferences(outgoingMessageText, mentions);
   const turnAttachmentsPromise = stageUploadComposerAttachments({

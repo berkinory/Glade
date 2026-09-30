@@ -1,412 +1,204 @@
 import type {
   ProviderListModelsResult,
   ProviderListPluginsResult,
-  ProviderPluginAppSummary,
   ProviderPluginDescriptor,
   ProviderPluginDetail,
   ProviderSkillDescriptor,
 } from "@glade/contracts/provider/providerDiscovery";
+import type { ModelListResponse } from "./protocol/generated/types/v2/ModelListResponse";
+import type { SkillsListResponse } from "./protocol/generated/types/v2/SkillsListResponse";
+import type { SkillMetadata } from "./protocol/generated/types/v2/SkillMetadata";
+import type { PluginListResponse } from "./protocol/generated/types/v2/PluginListResponse";
+import type { PluginReadResponse } from "./protocol/generated/types/v2/PluginReadResponse";
+import type { PluginSummary } from "./protocol/generated/types/v2/PluginSummary";
+import type { PluginInterface } from "./protocol/generated/types/v2/PluginInterface";
 
-function readObject(value: unknown, key?: string): Record<string, unknown> | undefined {
-  const target =
-    key === undefined
-      ? value
-      : value && typeof value === "object"
-        ? (value as Record<string, unknown>)[key]
-        : undefined;
-
-  return target && typeof target === "object" ? (target as Record<string, unknown>) : undefined;
+function present(value: string | null | undefined): string | undefined {
+  return value?.trim() || undefined;
 }
 
-function readArray(value: unknown, key?: string): unknown[] | undefined {
-  const target =
-    key === undefined
-      ? value
-      : value && typeof value === "object"
-        ? (value as Record<string, unknown>)[key]
-        : undefined;
-  return Array.isArray(target) ? target : undefined;
-}
-
-function readString(value: unknown, key: string): string | undefined {
-  if (!value || typeof value !== "object") {
-    return undefined;
-  }
-
-  const candidate = (value as Record<string, unknown>)[key];
-  return typeof candidate === "string" ? candidate : undefined;
-}
-
-function readBoolean(value: unknown, key: string): boolean | undefined {
-  if (!value || typeof value !== "object") {
-    return undefined;
-  }
-
-  const candidate = (value as Record<string, unknown>)[key];
-  return typeof candidate === "boolean" ? candidate : undefined;
-}
-
-function readFirstBoolean(value: unknown, keys: readonly string[]): boolean | undefined {
-  for (const key of keys) {
-    const candidate = readBoolean(value, key);
-    if (candidate !== undefined) {
-      return candidate;
-    }
-  }
-  return undefined;
-}
-
-function parseSkillDescriptor(skill: unknown): ProviderSkillDescriptor | undefined {
-  const record = readObject(skill);
-  if (!record) return undefined;
-  const name = readString(record, "name")?.trim();
-  const path = readString(record, "path")?.trim();
-  if (!name || !path) {
-    return undefined;
-  }
-  const description = readString(record, "description")?.trim();
-  const scope = readString(record, "scope")?.trim();
-  const display = readObject(record, "interface");
+function skillDescriptor(skill: SkillMetadata): ProviderSkillDescriptor {
   return {
-    name,
-    path,
-    enabled: record.enabled !== false,
-    ...(description ? { description } : {}),
-    ...(scope ? { scope } : {}),
-    ...(display
+    name: skill.name,
+    path: skill.path,
+    enabled: skill.enabled,
+    ...(present(skill.description) ? { description: skill.description } : {}),
+    ...(present(skill.scope) ? { scope: skill.scope } : {}),
+    ...(skill.interface
       ? {
           interface: {
-            ...(readString(display, "displayName")
-              ? { displayName: readString(display, "displayName") }
+            ...(present(skill.interface.displayName)
+              ? { displayName: skill.interface.displayName }
               : {}),
-            ...(readString(display, "shortDescription")
-              ? { shortDescription: readString(display, "shortDescription") }
+            ...(present(skill.interface.shortDescription)
+              ? { shortDescription: skill.interface.shortDescription }
               : {}),
           },
         }
       : {}),
-    ...(record.dependencies !== undefined ? { dependencies: record.dependencies } : {}),
-  } satisfies ProviderSkillDescriptor;
+    ...(skill.dependencies ? { dependencies: skill.dependencies } : {}),
+  };
 }
 
 export function parseCodexSkillsListResponse(
-  response: unknown,
+  response: SkillsListResponse,
   cwd: string,
 ): ProviderSkillDescriptor[] {
-  const responseRecord = readObject(response);
-  const resultRecord = readObject(responseRecord, "result") ?? responseRecord;
-  const dataItems = readArray(resultRecord, "data") ?? [];
-  const scopedData = dataItems.find((value) => {
-    const item = readObject(value);
-    return readString(item, "cwd") === cwd;
-  });
-  const scopedSkills = readArray(readObject(scopedData), "skills");
-  const directSkills = readArray(resultRecord, "skills");
-  const rawSkills = scopedSkills ?? directSkills ?? [];
-
-  const parsedSkills = rawSkills.flatMap((skill) => {
-    const parsedSkill = parseSkillDescriptor(skill);
-    return parsedSkill ? [parsedSkill] : [];
-  });
-
-  return parsedSkills.toSorted((a, b) => a.name.localeCompare(b.name));
+  const entry = response.data.find((item) => item.cwd === cwd);
+  if (!entry) throw new Error(`skills/list omitted requested cwd: ${cwd}`);
+  return entry.skills.map(skillDescriptor).toSorted((a, b) => a.name.localeCompare(b.name));
 }
 
-function parsePluginInterface(value: unknown): ProviderPluginDescriptor["interface"] | undefined {
-  const record = readObject(value);
-  if (!record) return undefined;
-  const capabilities = (readArray(record, "capabilities") ?? [])
-    .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
-    .filter((entry) => entry.length > 0);
-  const defaultPrompt = (readArray(record, "defaultPrompt") ?? [])
-    .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
-    .filter((entry) => entry.length > 0);
-  const screenshots = (readArray(record, "screenshots") ?? [])
-    .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
-    .filter((entry) => entry.length > 0);
-
+function pluginInterface(value: PluginInterface | null): ProviderPluginDescriptor["interface"] {
+  if (!value) return undefined;
   return {
-    ...(readString(record, "displayName")?.trim()
-      ? { displayName: readString(record, "displayName")?.trim() }
+    ...(present(value.displayName) ? { displayName: value.displayName! } : {}),
+    ...(present(value.shortDescription) ? { shortDescription: value.shortDescription! } : {}),
+    ...(present(value.longDescription) ? { longDescription: value.longDescription! } : {}),
+    ...(present(value.developerName) ? { developerName: value.developerName! } : {}),
+    ...(present(value.category) ? { category: value.category! } : {}),
+    ...(value.capabilities?.length ? { capabilities: value.capabilities } : {}),
+    ...(present(value.websiteUrl) ? { websiteUrl: value.websiteUrl! } : {}),
+    ...(present(value.privacyPolicyUrl) ? { privacyPolicyUrl: value.privacyPolicyUrl! } : {}),
+    ...(present(value.termsOfServiceUrl) ? { termsOfServiceUrl: value.termsOfServiceUrl! } : {}),
+    ...(value.defaultPrompt?.length ? { defaultPrompt: value.defaultPrompt } : {}),
+    ...(present(value.brandColor) ? { brandColor: value.brandColor! } : {}),
+    ...(present(value.composerIcon ?? value.composerIconUrl)
+      ? { composerIcon: (value.composerIcon ?? value.composerIconUrl)! }
       : {}),
-    ...(readString(record, "shortDescription")?.trim()
-      ? { shortDescription: readString(record, "shortDescription")?.trim() }
+    ...(present(value.logo ?? value.logoUrl) ? { logo: (value.logo ?? value.logoUrl)! } : {}),
+    ...(value.screenshots?.length || value.screenshotUrls?.length
+      ? { screenshots: [...(value.screenshots ?? []), ...(value.screenshotUrls ?? [])] }
       : {}),
-    ...(readString(record, "longDescription")?.trim()
-      ? { longDescription: readString(record, "longDescription")?.trim() }
-      : {}),
-    ...(readString(record, "developerName")?.trim()
-      ? { developerName: readString(record, "developerName")?.trim() }
-      : {}),
-    ...(readString(record, "category")?.trim()
-      ? { category: readString(record, "category")?.trim() }
-      : {}),
-    ...(capabilities.length > 0 ? { capabilities } : {}),
-    ...(readString(record, "websiteUrl")?.trim()
-      ? { websiteUrl: readString(record, "websiteUrl")?.trim() }
-      : {}),
-    ...(readString(record, "privacyPolicyUrl")?.trim()
-      ? { privacyPolicyUrl: readString(record, "privacyPolicyUrl")?.trim() }
-      : {}),
-    ...(readString(record, "termsOfServiceUrl")?.trim()
-      ? { termsOfServiceUrl: readString(record, "termsOfServiceUrl")?.trim() }
-      : {}),
-    ...(defaultPrompt.length > 0 ? { defaultPrompt } : {}),
-    ...(readString(record, "brandColor")?.trim()
-      ? { brandColor: readString(record, "brandColor")?.trim() }
-      : {}),
-    ...(readString(record, "composerIcon")?.trim()
-      ? { composerIcon: readString(record, "composerIcon")?.trim() }
-      : {}),
-    ...(readString(record, "logo")?.trim() ? { logo: readString(record, "logo")?.trim() } : {}),
-    ...(screenshots.length > 0 ? { screenshots } : {}),
   };
 }
 
-function parsePluginSummary(plugin: unknown): ProviderPluginDescriptor | undefined {
-  const record = readObject(plugin);
-  if (!record) return undefined;
-  const id = readString(record, "id")?.trim();
-  const name = readString(record, "name")?.trim();
-  const source = readObject(record, "source");
-  const sourcePath = readString(source, "path")?.trim();
-  const installPolicy = readString(record, "installPolicy");
-  const authPolicy = readString(record, "authPolicy");
-  if (
-    !id ||
-    !name ||
-    !sourcePath ||
-    (installPolicy !== "NOT_AVAILABLE" &&
-      installPolicy !== "AVAILABLE" &&
-      installPolicy !== "INSTALLED_BY_DEFAULT") ||
-    (authPolicy !== "ON_INSTALL" && authPolicy !== "ON_USE")
-  ) {
-    return undefined;
-  }
-
-  const pluginInterface = parsePluginInterface(readObject(record, "interface"));
-
+function pluginDescriptor(plugin: PluginSummary): ProviderPluginDescriptor {
   return {
-    id,
-    name,
-    source: {
-      type: "local",
-      path: sourcePath,
-    },
-    installed: record.installed === true,
-    enabled: record.enabled === true,
-    installPolicy,
-    authPolicy,
-    ...(pluginInterface ? { interface: pluginInterface } : {}),
-  } satisfies ProviderPluginDescriptor;
+    id: plugin.id,
+    name: plugin.name,
+    source: plugin.source,
+    installed: plugin.installed,
+    enabled: plugin.enabled,
+    installPolicy: plugin.installPolicy,
+    authPolicy: plugin.authPolicy,
+    ...(pluginInterface(plugin.interface) ? { interface: pluginInterface(plugin.interface) } : {}),
+  };
 }
 
 export function parseCodexPluginListResponse(
-  response: unknown,
+  response: PluginListResponse,
 ): Omit<ProviderListPluginsResult, "source" | "cached"> {
-  const responseRecord = readObject(response);
-  const resultRecord = readObject(responseRecord, "result") ?? responseRecord;
-  const marketplaces = (readArray(resultRecord, "marketplaces") ?? []).flatMap((marketplace) => {
-    const record = readObject(marketplace);
-    if (!record) return [];
-    const name = readString(record, "name")?.trim();
-    const path = readString(record, "path")?.trim();
-    if (!name || !path) {
-      return [];
-    }
-    const rawPlugins = readArray(record, "plugins") ?? [];
-    const plugins = rawPlugins.flatMap((plugin) => {
-      const parsedPlugin = parsePluginSummary(plugin);
-      return parsedPlugin ? [parsedPlugin] : [];
-    });
-    const marketplaceInterface = readObject(record, "interface");
-    const marketplaceDisplayName = readString(marketplaceInterface, "displayName")?.trim();
-    return [
-      {
-        name,
-        path,
-        ...(marketplaceDisplayName ? { interface: { displayName: marketplaceDisplayName } } : {}),
-        plugins,
-      },
-    ];
-  });
-  const marketplaceLoadErrors = (readArray(resultRecord, "marketplaceLoadErrors") ?? [])
-    .map((error) => readObject(error))
-    .flatMap((error) => {
-      if (!error) return [];
-      const marketplacePath = readString(error, "marketplacePath")?.trim();
-      const message = readString(error, "message")?.trim();
-      return marketplacePath && message ? [{ marketplacePath, message }] : [];
-    });
-  const featuredPluginIds = (readArray(resultRecord, "featuredPluginIds") ?? [])
-    .map((value) => (typeof value === "string" ? value.trim() : ""))
-    .filter((value) => value.length > 0);
-  const remoteSyncError = readString(resultRecord, "remoteSyncError")?.trim() ?? null;
-
   return {
-    marketplaces,
-    marketplaceLoadErrors,
-    remoteSyncError: remoteSyncError?.length ? remoteSyncError : null,
-    featuredPluginIds,
+    marketplaces: response.marketplaces.map((entry) => ({
+      name: entry.name,
+      path: entry.path ?? null,
+      ...(present(entry.interface?.displayName)
+        ? { interface: { displayName: entry.interface!.displayName! } }
+        : {}),
+      plugins: entry.plugins.map(pluginDescriptor),
+    })),
+    marketplaceLoadErrors: (response.marketplaceLoadErrors ?? []).map((error) => ({
+      marketplacePath: error.marketplacePath,
+      message: error.message,
+    })),
+    remoteSyncError: null,
+    featuredPluginIds: response.featuredPluginIds ?? [],
   };
 }
 
-function parsePluginAppSummary(value: unknown): ProviderPluginAppSummary | undefined {
-  const record = readObject(value);
-  if (!record) return undefined;
-  const id = readString(record, "id")?.trim();
-  const name = readString(record, "name")?.trim();
-  if (!id || !name) {
-    return undefined;
-  }
-  const description = readString(record, "description")?.trim();
-  const installUrl = readString(record, "installUrl")?.trim();
+export function parseCodexPluginReadResponse(response: PluginReadResponse): ProviderPluginDetail {
+  const plugin = response.plugin;
   return {
-    id,
-    name,
-    ...(description ? { description } : {}),
-    ...(installUrl ? { installUrl } : {}),
-    needsAuth: record.needsAuth === true,
+    marketplaceName: plugin.marketplaceName,
+    marketplacePath: plugin.marketplacePath ?? null,
+    summary: pluginDescriptor(plugin.summary),
+    ...(present(plugin.description) ? { description: plugin.description! } : {}),
+    skills: plugin.skills.flatMap((skill) =>
+      skill.path
+        ? [
+            {
+              name: skill.name,
+              path: skill.path,
+              enabled: skill.enabled,
+              ...(present(skill.description) ? { description: skill.description } : {}),
+              ...(skill.interface
+                ? {
+                    interface: {
+                      ...(present(skill.interface.displayName)
+                        ? { displayName: skill.interface.displayName! }
+                        : {}),
+                      ...(present(skill.interface.shortDescription)
+                        ? { shortDescription: skill.interface.shortDescription! }
+                        : {}),
+                    },
+                  }
+                : {}),
+            },
+          ]
+        : [],
+    ),
+    apps: plugin.apps.map((app) => ({
+      id: app.id,
+      name: app.name,
+      ...(present(app.description) ? { description: app.description! } : {}),
+      ...(present(app.installUrl) ? { installUrl: app.installUrl! } : {}),
+      needsAuth: false,
+    })),
+    mcpServers: plugin.mcpServers,
   };
 }
 
-export function parseCodexPluginReadResponse(response: unknown): ProviderPluginDetail {
-  const responseRecord = readObject(response);
-  const resultRecord = readObject(responseRecord, "result") ?? responseRecord;
-  const pluginRecord = readObject(resultRecord, "plugin") ?? resultRecord;
-  const marketplaceName = readString(pluginRecord, "marketplaceName")?.trim();
-  const marketplacePath = readString(pluginRecord, "marketplacePath")?.trim();
-  const summary = parsePluginSummary(readObject(pluginRecord, "summary"));
-  if (!marketplaceName || !marketplacePath || !summary) {
-    throw new Error("plugin/read response did not include a valid plugin payload.");
-  }
-  const skills = (readArray(pluginRecord, "skills") ?? []).flatMap((skill) => {
-    const parsedSkill = parseSkillDescriptor(skill);
-    return parsedSkill ? [parsedSkill] : [];
-  });
-  const apps = (readArray(pluginRecord, "apps") ?? []).flatMap((app) => {
-    const parsedApp = parsePluginAppSummary(app);
-    return parsedApp ? [parsedApp] : [];
-  });
-  const mcpServers = (readArray(pluginRecord, "mcpServers") ?? [])
-    .map((value) => (typeof value === "string" ? value.trim() : ""))
-    .filter((value) => value.length > 0);
-  const description = readString(pluginRecord, "description")?.trim();
-
-  return {
-    marketplaceName,
-    marketplacePath,
-    summary,
-    ...(description ? { description } : {}),
-    skills,
-    apps,
-    mcpServers,
-  };
-}
-
-export function parseCodexModelListResponse(response: unknown): ProviderListModelsResult["models"] {
-  const responseRecord = readObject(response);
-  const resultRecord = readObject(responseRecord, "result") ?? responseRecord;
-  const rawModels =
-    readArray(resultRecord, "items") ??
-    readArray(resultRecord, "data") ??
-    readArray(resultRecord, "models") ??
-    [];
-  const seen = new Set<string>();
-
-  return rawModels.flatMap((value) => {
-    const model = readObject(value);
-    if (!model) {
-      return [];
-    }
-
-    const slug = readString(model, "id") ?? readString(model, "slug") ?? readString(model, "model");
-    const trimmedSlug = slug?.trim();
-    if (!trimmedSlug) {
-      return [];
-    }
-
-    const name =
-      readString(model, "name") ??
-      readString(model, "displayName") ??
-      readString(model, "display_name") ??
-      trimmedSlug;
-    const trimmedName = name.trim();
-    if (!trimmedName || seen.has(trimmedSlug)) {
-      return [];
-    }
-
-    const supportedReasoningEfforts = Array.from(
-      new Map(
-        (
-          readArray(model, "supportedReasoningEfforts") ??
-          readArray(model, "supported_reasoning_efforts") ??
-          []
-        )
-          .flatMap((entry) => {
-            if (typeof entry === "string") {
-              const value = entry.trim();
-              return value.length > 0 ? [{ value }] : [];
-            }
-
-            const descriptor = readObject(entry);
-            if (!descriptor) {
-              return [];
-            }
-
-            const value =
-              readString(descriptor, "reasoningEffort") ??
-              readString(descriptor, "reasoning_effort") ??
-              readString(descriptor, "value");
-            const trimmedValue = value?.trim();
-            if (!trimmedValue) {
-              return [];
-            }
-
-            const label = readString(descriptor, "description") ?? readString(descriptor, "label");
-            const trimmedLabel = label?.trim();
-            return [
+export function parseCodexModelListResponse(
+  response: ModelListResponse,
+): ProviderListModelsResult["models"] {
+  return response.data.map((model) => {
+    const supportedReasoningEfforts = model.supportedReasoningEfforts.map((effort) => ({
+      value: effort.reasoningEffort,
+      description: effort.description,
+    }));
+    const serviceTiers = (model.serviceTiers ?? []).map((tier) => ({
+      id: tier.id,
+      label: tier.name,
+      ...(present(tier.description) ? { description: tier.description } : {}),
+      ...(tier.id === model.defaultServiceTier ? { isDefault: true as const } : {}),
+    }));
+    return {
+      slug: model.id,
+      name: model.displayName,
+      description: model.description,
+      isDefault: model.isDefault,
+      hidden: model.hidden,
+      supportedReasoningEfforts,
+      defaultReasoningEffort: model.defaultReasoningEffort,
+      ...(serviceTiers.length ? { serviceTiers } : {}),
+      ...(present(model.defaultServiceTier)
+        ? { defaultServiceTier: model.defaultServiceTier! }
+        : {}),
+      ...(present(model.upgrade) ? { upgrade: model.upgrade! } : {}),
+      optionDescriptors: [
+        {
+          id: "reasoningEffort",
+          label: "Reasoning effort",
+          type: "select" as const,
+          options: supportedReasoningEfforts.map((effort) => ({
+            id: effort.value,
+            label: effort.value,
+            ...(present(effort.description) ? { description: effort.description } : {}),
+            ...(effort.value === model.defaultReasoningEffort ? { isDefault: true as const } : {}),
+          })),
+        },
+        ...(serviceTiers.length
+          ? [
               {
-                value: trimmedValue,
-                ...(trimmedLabel ? { description: trimmedLabel } : {}),
+                id: "serviceTier",
+                label: "Service tier",
+                type: "select" as const,
+                options: serviceTiers,
               },
-            ];
-          })
-          .map((descriptor) => [descriptor.value, descriptor] as const),
-      ).values(),
-    );
-    const defaultReasoningEffort =
-      readString(model, "defaultReasoningEffort") ?? readString(model, "default_reasoning_effort");
-    const trimmedDefaultReasoningEffort = defaultReasoningEffort?.trim();
-    const additionalSpeedTiers =
-      readArray(model, "additionalSpeedTiers") ?? readArray(model, "additional_speed_tiers") ?? [];
-    const hasFastSpeedTier = additionalSpeedTiers.some(
-      (tier) => typeof tier === "string" && tier.trim().toLowerCase() === "fast",
-    );
-    const supportsFastMode =
-      readFirstBoolean(model, [
-        "supportsFastMode",
-        "supports_fast_mode",
-        "fastMode",
-        "fast_mode",
-        "fastServiceTier",
-        "fast_service_tier",
-      ]) ?? (hasFastSpeedTier ? true : undefined);
-
-    seen.add(trimmedSlug);
-    return [
-      {
-        slug: trimmedSlug,
-        name: trimmedName,
-        ...(supportedReasoningEfforts.length > 0 ? { supportedReasoningEfforts } : {}),
-        ...(trimmedDefaultReasoningEffort &&
-        supportedReasoningEfforts.some(
-          (descriptor) => descriptor.value === trimmedDefaultReasoningEffort,
-        )
-          ? { defaultReasoningEffort: trimmedDefaultReasoningEffort }
-          : {}),
-        ...(supportsFastMode !== undefined ? { supportsFastMode } : {}),
-      },
-    ];
+            ]
+          : []),
+      ],
+    };
   });
 }

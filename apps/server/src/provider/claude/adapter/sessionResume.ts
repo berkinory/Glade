@@ -1,16 +1,12 @@
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { parseClaudeTrackedTasks, hasUnfinishedClaudeTasks } from "../claudeTaskTracker.ts";
-import { Schema } from "effect";
-import { ClaudeCacheObservation } from "@glade/contracts/provider/claudeCache";
 import { type ThreadTokenUsageSnapshot } from "@glade/contracts/provider/runtimePayloads";
 import {
   type ClaudeResumeState,
-  type ClaudeSessionIdentity,
   type ClaudeSessionPendingInteractions,
   type ClaudeSessionSubagents,
   type ClaudeSessionTurn,
-  type ClaudeSessionUsageCache,
 } from "./sessionTypes";
 
 function isUuid(value: string): boolean {
@@ -46,7 +42,6 @@ export function readClaudeResumeState(resumeCursor: unknown): ClaudeResumeState 
     trackedTasks?: unknown;
     processedTokenTotal?: unknown;
     tokenAccountingVersion?: unknown;
-    claudeCache?: unknown;
   };
 
   const threadIdCandidate = typeof cursor.threadId === "string" ? cursor.threadId : undefined;
@@ -73,10 +68,6 @@ export function readClaudeResumeState(resumeCursor: unknown): ClaudeResumeState 
       : undefined;
 
   return {
-    ...(Schema.is(ClaudeCacheObservation)(cursor.claudeCache) &&
-    cursor.claudeCache.nativeSessionId === resume
-      ? { claudeCache: cursor.claudeCache }
-      : {}),
     ...(threadId ? { threadId } : {}),
     ...(resume ? { resume } : {}),
     ...(resumeSessionAt ? { resumeSessionAt } : {}),
@@ -95,39 +86,6 @@ export function withoutProcessedTokenTotal(
 ): ThreadTokenUsageSnapshot {
   const { totalProcessedTokens: _totalProcessedTokens, ...contextUsage } = snapshot;
   return contextUsage;
-}
-
-export function invalidateClaudeCache(
-  context: Pick<
-    ClaudeSessionUsageCache,
-    "cacheObservation" | "cacheRequestStartedAt" | "hasObservedCacheRequest" | "lastKnownTokenUsage"
-  >,
-): void {
-  delete context.cacheObservation;
-  delete context.cacheRequestStartedAt;
-  context.hasObservedCacheRequest = false;
-  if (context.lastKnownTokenUsage?.claudeCache) {
-    const { claudeCache: _claudeCache, ...usage } = context.lastKnownTokenUsage;
-    context.lastKnownTokenUsage = usage;
-  }
-}
-
-export function syncClaudeCacheResumeCursor(
-  context: Pick<ClaudeSessionIdentity, "session"> &
-    Pick<ClaudeSessionUsageCache, "cacheObservation">,
-): void {
-  const { claudeCache: _previous, ...resumeCursor } = context.session.resumeCursor as Record<
-    string,
-    unknown
-  >;
-
-  context.session = {
-    ...context.session,
-    resumeCursor: {
-      ...resumeCursor,
-      ...(context.cacheObservation ? { claudeCache: context.cacheObservation } : {}),
-    },
-  };
 }
 
 export type ClaudeRuntimeWorkView = Pick<ClaudeSessionTurn, "turnState" | "trackedTasks"> &

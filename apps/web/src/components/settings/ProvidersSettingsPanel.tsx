@@ -87,6 +87,7 @@ function providerSetupStatusLabel(input: {
   const status = input.status;
   if (!status.available) return "Unavailable";
   if (status.authStatus === "unauthenticated") return "Needs sign-in";
+  if (status.status === "update-required") return "Update required";
   if (status.status !== "ready") return "Needs attention";
   if (status.authStatus === "unknown") return "Installed · sign-in not verified";
   return "Connected";

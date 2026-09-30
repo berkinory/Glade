@@ -53,9 +53,7 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
     case "thread.session.set":
       return yield* decideThreadLifecycleCommand({ command, readModel, workspacePaths });
     case "thread.turn.start":
-    case "thread.claude-cache.set":
-    case "thread.claude-cache.compacted":
-    case "thread.claude-cache.respond":
+    case "thread.legacy-cache.abandon":
     case "thread.turn.dispatch-queued":
     case "thread.turn.interrupt":
     case "thread.task.stop":

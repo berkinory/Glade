@@ -1,11 +1,6 @@
+import { formatModelDisplayName } from "@glade/shared/provider/model";
 import {
-  formatModelDisplayName,
-  normalizeModelDisplayName,
-  normalizeModelSlug,
-  resolveNewestKnownClaudeFamilyModel,
-} from "@glade/shared/provider/model";
-import {
-  MODEL_OPTIONS_BY_PROVIDER,
+  PROVIDER_DEFAULT_MODEL,
   type ClaudeModelOptions,
   type CodexModelOptions,
   type ProviderModelOptions,
@@ -33,10 +28,6 @@ export interface ProviderModelOptionGroup {
   options: ProviderModelOption[];
 }
 
-function normalizeCatalogModelName(name: string): string {
-  return normalizeModelDisplayName(name);
-}
-
 export function formatProviderModelOptionName(input: {
   provider: ProviderKind;
   slug: string;
@@ -49,51 +40,6 @@ export function formatProviderModelOptionName(input: {
   return formatModelDisplayName(trimmedSlug) ?? trimmedSlug;
 }
 
-function normalizeDynamicModelSlug(provider: ProviderKind, slug: string): string {
-  if (provider === "claudeAgent") {
-    const withoutContextSuffix = slug.replace(/\[[^\]]+\]$/u, "");
-    return normalizeModelSlug(withoutContextSuffix, provider) ?? withoutContextSuffix;
-  }
-  return normalizeModelSlug(slug, provider) ?? slug;
-}
-
-// Claude Code lists its current models by alias (`opus[1m]`) with the concrete id in
-// `resolvedModel`. When that id is a release newer than the catalog knows, list it under its own
-// id; otherwise the alias would fold into an older catalog model.
-export function normalizeClaudeModelOptionSlug(model: {
-  slug: string;
-  resolvedModel?: string | undefined;
-}): string {
-  const resolvedSlug = model.resolvedModel
-    ? normalizeDynamicModelSlug("claudeAgent", model.resolvedModel)
-    : null;
-  return resolvedSlug && resolveNewestKnownClaudeFamilyModel(resolvedSlug)
-    ? resolvedSlug
-    : normalizeDynamicModelSlug("claudeAgent", model.slug);
-}
-
-const CLAUDE_CATALOG_RANK_BY_SLUG: ReadonlyMap<string, number> = new Map(
-  MODEL_OPTIONS_BY_PROVIDER.claudeAgent.map((model, index) => [model.slug as string, index]),
-);
-
-function claudeModelRank(slug: string): number {
-  const catalogRank = CLAUDE_CATALOG_RANK_BY_SLUG.get(slug);
-  if (catalogRank !== undefined) {
-    return catalogRank;
-  }
-  const newestKnown = resolveNewestKnownClaudeFamilyModel(slug);
-  const familyRank = newestKnown ? CLAUDE_CATALOG_RANK_BY_SLUG.get(newestKnown) : undefined;
-  return familyRank === undefined ? -1 : familyRank - 0.5;
-}
-
-function orderClaudeModelOptions<T extends ProviderModelOption>(
-  options: ReadonlyArray<T>,
-): ReadonlyArray<T> {
-  return options.toSorted(
-    (left, right) => claudeModelRank(left.slug) - claudeModelRank(right.slug),
-  );
-}
-
 export function mergeDynamicModelOptions(input: {
   provider: ProviderKind;
   staticOptions: ReadonlyArray<ProviderModelOption & { isSelectedHint?: boolean }>;
@@ -104,85 +50,25 @@ export function mergeDynamicModelOptions(input: {
     description?: string | null | undefined;
     upstreamProviderId?: string | null | undefined;
     upstreamProviderName?: string | null | undefined;
+    hidden?: boolean | undefined;
   }>;
 }): ReadonlyArray<ProviderModelOption & { isSelectedHint?: boolean }> {
-  const staticNameBySlug = new Map(
-    input.staticOptions
-      .filter((model) => !model.isSelectedHint)
-      .map((model) => [model.slug, model.name]),
-  );
-  const dynamicNormalizedSlugs = new Set<string>();
-  const normalizedDynamicOptions: ProviderModelOption[] = [];
-
-  for (const dynamicModel of input.dynamicModels) {
-    const rawName = dynamicModel.name?.trim() ?? "";
-    const isClaudeDefaultAlias =
-      input.provider === "claudeAgent" &&
-      (rawName.toLowerCase() === "default (recommended)" ||
-        rawName.toLowerCase() === "default recommended" ||
-        dynamicModel.slug.trim().toLowerCase() === "default");
-    if (isClaudeDefaultAlias) {
-      continue;
-    }
-
-    const normalizedSlug =
-      input.provider === "claudeAgent"
-        ? normalizeClaudeModelOptionSlug(dynamicModel)
-        : normalizeDynamicModelSlug(input.provider, dynamicModel.slug);
-    const modelIdentifier = normalizedSlug.slice(normalizedSlug.lastIndexOf("/") + 1);
-    const displayNameFallback = formatProviderModelOptionName({
-      provider: input.provider,
-      slug: normalizedSlug,
-    });
-    if (dynamicNormalizedSlugs.has(normalizedSlug)) {
-      continue;
-    }
-    dynamicNormalizedSlugs.add(normalizedSlug);
-    normalizedDynamicOptions.push({
-      slug: normalizedSlug,
-      name:
-        staticNameBySlug.get(normalizedSlug) ??
-        (input.provider === "claudeAgent" && resolveNewestKnownClaudeFamilyModel(normalizedSlug)
-          ? displayNameFallback
-          : undefined) ??
-        (rawName.length > 0 &&
-        rawName !== dynamicModel.slug.trim() &&
-        rawName !== normalizedSlug &&
-        rawName !== modelIdentifier
-          ? normalizeCatalogModelName(rawName)
-          : displayNameFallback),
-      ...(dynamicModel.description?.trim() ? { description: dynamicModel.description.trim() } : {}),
-      ...(dynamicModel.upstreamProviderId?.trim()
-        ? { upstreamProviderId: dynamicModel.upstreamProviderId.trim() }
-        : {}),
-      ...(dynamicModel.upstreamProviderName?.trim()
-        ? { upstreamProviderName: dynamicModel.upstreamProviderName.trim() }
-        : {}),
+  const models = new Map<string, ProviderModelOption & { isSelectedHint?: boolean }>();
+  models.set(PROVIDER_DEFAULT_MODEL, { slug: PROVIDER_DEFAULT_MODEL, name: "Provider default" });
+  for (const model of input.dynamicModels) {
+    if (model.hidden) continue;
+    models.set(model.slug, {
+      slug: model.slug,
+      name: model.name?.trim() || model.slug,
+      ...(model.description ? { description: model.description } : {}),
+      ...(model.upstreamProviderId ? { upstreamProviderId: model.upstreamProviderId } : {}),
+      ...(model.upstreamProviderName ? { upstreamProviderName: model.upstreamProviderName } : {}),
     });
   }
-
-  const selectedOnlyModels = input.staticOptions.filter((model) => {
-    if (!("isSelectedHint" in model) || !model.isSelectedHint) return false;
-    const normalizedSelectedSlug = normalizeDynamicModelSlug(input.provider, model.slug);
-    if (dynamicNormalizedSlugs.has(normalizedSelectedSlug)) return false;
-    return true;
-  });
-  const staticBuiltInModels = input.staticOptions.filter(
-    (model) => !("isSelectedHint" in model) || model.isSelectedHint !== true,
-  );
-  const hasAuthoritativeCatalog = input.provider === "codex";
-  const missingStaticBuiltIns = hasAuthoritativeCatalog
-    ? []
-    : staticBuiltInModels.filter((model) => !dynamicNormalizedSlugs.has(model.slug));
-
-  if (input.provider === "claudeAgent") {
-    return [
-      ...orderClaudeModelOptions([...normalizedDynamicOptions, ...missingStaticBuiltIns]),
-      ...selectedOnlyModels,
-    ];
+  for (const model of input.staticOptions) {
+    if (model.isSelectedHint && !models.has(model.slug)) models.set(model.slug, model);
   }
-
-  return [...normalizedDynamicOptions, ...missingStaticBuiltIns, ...selectedOnlyModels];
+  return [...models.values()];
 }
 
 export function groupProviderModelOptions(
@@ -243,17 +129,15 @@ export function resolveModelGroupDefaultOpen(input: {
 }
 
 export function buildNextProviderOptions(
-  provider: ProviderKind,
+  _provider: ProviderKind,
   modelOptions: ProviderOptions | null | undefined,
   patch: Record<string, unknown>,
 ): ProviderOptions {
-  if (provider === "codex") {
-    return { ...(modelOptions as CodexModelOptions | undefined), ...patch } as CodexModelOptions;
+  const next = { ...modelOptions, ...patch };
+  for (const [id, value] of Object.entries(next)) {
+    if (value === undefined) delete next[id as keyof typeof next];
   }
-  if (provider === "claudeAgent") {
-    return { ...(modelOptions as ClaudeModelOptions | undefined), ...patch } as ClaudeModelOptions;
-  }
-  return { ...(modelOptions as ClaudeModelOptions | undefined), ...patch } as ClaudeModelOptions;
+  return next;
 }
 
 export function buildProviderOptionPatch(

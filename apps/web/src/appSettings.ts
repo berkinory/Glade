@@ -7,7 +7,7 @@ import {
 } from "@glade/contracts/provider/sessionPolicy";
 import { DesktopAppIcon } from "@glade/contracts/ipc/ipc";
 import {
-  DEFAULT_GIT_TEXT_GENERATION_MODEL,
+  PROVIDER_DEFAULT_MODEL,
   GIT_TEXT_GENERATION_PROVIDERS,
   type GitTextGenerationProvider,
 } from "@glade/contracts/provider/model";
@@ -18,12 +18,7 @@ import {
   type ServerSettingsPatch,
 } from "@glade/contracts/settings/settings";
 import { TrimmedNonEmptyString, ProviderKind } from "@glade/contracts/core/baseSchemas";
-import {
-  getDefaultModel,
-  getModelOptions,
-  normalizeModelSlug,
-  resolveSelectableModel,
-} from "@glade/shared/provider/model";
+import { normalizeModelSlug, resolveSelectableModel } from "@glade/shared/provider/model";
 
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { EnvMode } from "./components/BranchToolbar.logic";
@@ -291,8 +286,8 @@ export function isGitTextGenerationSettingsDirty(
 ): boolean {
   return (
     (settings.textGenerationProvider ?? "codex") !== (defaults.textGenerationProvider ?? "codex") ||
-    (settings.textGenerationModel ?? DEFAULT_GIT_TEXT_GENERATION_MODEL) !==
-      (defaults.textGenerationModel ?? DEFAULT_GIT_TEXT_GENERATION_MODEL)
+    (settings.textGenerationModel ?? PROVIDER_DEFAULT_MODEL) !==
+      (defaults.textGenerationModel ?? PROVIDER_DEFAULT_MODEL)
   );
 }
 
@@ -518,7 +513,7 @@ function appSettingsPatchToServerSettingsPatch(
     serverPatch.onboardingCompletedAt = patch.onboardingCompletedAt ?? null;
   }
   if (hasOwn(patch, "textGenerationModel") || hasOwn(patch, "textGenerationProvider")) {
-    const model = patch.textGenerationModel ?? DEFAULT_GIT_TEXT_GENERATION_MODEL;
+    const model = patch.textGenerationModel ?? PROVIDER_DEFAULT_MODEL;
     serverPatch.textGenerationModelSelection = {
       provider: resolveTextGenerationProvider({
         ...(patch.textGenerationProvider !== undefined
@@ -617,12 +612,14 @@ export function getAppModelOptions(
   provider: ProviderKind,
   selectedModel?: string | null,
 ): AppModelOption[] {
-  const options: AppModelOption[] = getModelOptions(provider).map(({ slug, name }) => ({
-    provider,
-    slug,
-    name,
-    isSelectedHint: false,
-  }));
+  const options: AppModelOption[] = [
+    {
+      provider,
+      slug: PROVIDER_DEFAULT_MODEL,
+      name: "Provider default",
+      isSelectedHint: false,
+    },
+  ];
   const seen = new Set(options.map((option) => option.slug));
   const trimmedSelectedModel = selectedModel?.trim().toLowerCase();
 
@@ -706,9 +703,7 @@ export function resolveAppModelSelection(
   selectedModel: string | null | undefined,
 ): string {
   const options = getAppModelOptions(provider, selectedModel);
-  return (
-    resolveSelectableModel(provider, selectedModel, options) ?? getDefaultModel(provider) ?? ""
-  );
+  return resolveSelectableModel(provider, selectedModel, options) ?? PROVIDER_DEFAULT_MODEL;
 }
 
 export function getProviderStartOptions(

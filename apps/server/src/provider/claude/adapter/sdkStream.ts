@@ -21,10 +21,10 @@ import {
 } from "./streamErrors";
 import { turnStatusFromResult } from "./messageContent";
 import { recognizedSubagentParentToolUseId } from "./sdkMetadata";
-import { invalidateClaudeCache } from "./sessionResume";
 import { makeClaudeSessionTeardown } from "./sessionTeardown";
 import { makeClaudeContentMessages } from "./contentMessages";
 import { makeClaudeSystemMessages } from "./systemMessages";
+import { claudeAssistantFailure } from "./failures.ts";
 
 export function makeClaudeSdkStream(input: {
   readonly emitRuntimeError: ClaudeRuntimeEventsShape["emitRuntimeError"];
@@ -76,6 +76,9 @@ export function makeClaudeSdkStream(input: {
       }
       if (message.uuid && context.lastResultUuid === message.uuid) return;
       context.lastResultUuid = message.uuid;
+      if (message.fast_mode_state !== undefined) {
+        context.fastModeState = message.fast_mode_state;
+      }
 
       const assistantError = context.turnState?.assistantError;
       let status: RuntimeTurnState;
@@ -95,7 +98,12 @@ export function makeClaudeSdkStream(input: {
       }
 
       if (status === "failed") {
-        yield* emitRuntimeError(context, errorMessage ?? "Claude turn failed.");
+        yield* emitRuntimeError(
+          context,
+          errorMessage ?? "Claude turn failed.",
+          undefined,
+          assistantError ? claudeAssistantFailure(assistantError.code) : undefined,
+        );
       }
 
       yield* completeTurn(context, status, errorMessage, message);
@@ -153,8 +161,6 @@ export function makeClaudeSdkStream(input: {
           yield* handleAssistantMessage(context, message);
           return;
         case "conversation_reset":
-          invalidateClaudeCache(context);
-
           delete context.resultUsageBaseline;
           context.requestUsage.reset();
           context.compactionMessageId = undefined;

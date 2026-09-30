@@ -1,6 +1,7 @@
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import type { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import type { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
+import type { ProviderFailure } from "@glade/contracts/provider/providerFailure";
 import { Effect, ServiceMap, Stream } from "effect";
 import type { ClaudeSessionContext } from "../claude/adapter/sessionTypes.ts";
 import type { ProviderAdapterValidationError } from "../core/Errors.ts";
@@ -29,6 +30,7 @@ export interface ClaudeRuntimeEventsShape {
     context: ClaudeSessionContext,
     message: string,
     cause?: unknown,
+    failure?: ProviderFailure,
   ) => Effect.Effect<void>;
   readonly emitCompactionProgress: (context: ClaudeSessionContext) => Effect.Effect<void>;
   readonly warnUnhandledSdkKind: (
@@ -45,7 +47,6 @@ export interface ClaudeRuntimeEventsShape {
     context: ClaudeSessionContext,
     message: SDKMessage,
   ) => Effect.Effect<void>;
-  readonly emitClaudeCacheObservation: (context: ClaudeSessionContext) => Effect.Effect<void>;
   readonly snapshotThread: (context: ClaudeSessionContext) => Effect.Effect<
     {
       threadId: ThreadId;

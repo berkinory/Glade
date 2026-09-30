@@ -26,15 +26,6 @@ export function isoFromUnixSeconds(value: unknown): string | undefined {
   return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
 }
 
-export function isoFromUnixMillis(value: unknown): string | undefined {
-  const millis = asNumericValue(value);
-  if (millis === undefined || millis <= 0) {
-    return undefined;
-  }
-  const date = new Date(millis);
-  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
-}
-
 export function isoFromString(value: unknown): string | undefined {
   const text = nonEmptyTrimmed(value);
   if (!text) {

@@ -228,20 +228,24 @@ describe("thread checkpoint control", () => {
     },
   );
 
-  it("rolls back turns via thread/rollback and resets session running state", async () => {
+  it("reverts turns at the native boundary and resets session running state", async () => {
     const { manager, context, sendRequest, updateSession } = createRequestHarness();
     sendRequest.mockResolvedValue({
       thread: {
         id: "thread_1",
-        turns: [],
+        turns: [
+          { id: "kept", items: [] },
+          { id: "edited", items: [] },
+          { id: "removed", items: [] },
+        ],
       },
     });
 
     const result = await manager.rollbackThread(ThreadId.makeUnsafe("thread_1"), 2);
 
-    expect(sendRequest).toHaveBeenCalledWith(context, "thread/rollback", {
+    expect(sendRequest).toHaveBeenCalledWith(context, "thread/revert", {
       threadId: "thread_1",
-      numTurns: 2,
+      beforeTurnId: "edited",
     });
     expect(updateSession).toHaveBeenCalledWith(context, {
       status: "ready",
@@ -250,7 +254,7 @@ describe("thread checkpoint control", () => {
     expect(result).toEqual({
       threadId: "thread_1",
       cwd: null,
-      turns: [],
+      turns: [{ id: "kept", items: [] }],
     });
   });
 

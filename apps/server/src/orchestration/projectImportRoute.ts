@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
 import nodePath from "node:path";
 import { CommandId, ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
-import { DEFAULT_MODEL_BY_PROVIDER } from "@glade/contracts/provider/model";
+import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import {
   type ImportProjectInput,
   type ImportProjectResult,
@@ -348,7 +348,7 @@ export function makeProjectImportHandlers(options: ProjectImportRouteOptions) {
         const modelSelection =
           project.defaultModelSelection?.provider === source.provider
             ? project.defaultModelSelection
-            : { provider: source.provider, model: DEFAULT_MODEL_BY_PROVIDER[source.provider] };
+            : { provider: source.provider, model: PROVIDER_DEFAULT_MODEL };
         const sourceDirectoryExists = yield* projectImportPromise(() =>
           importDirectoryExists(source.cwd),
         );

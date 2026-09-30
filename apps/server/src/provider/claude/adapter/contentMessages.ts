@@ -39,12 +39,8 @@ import {
 import { claudeAssistantErrorMessage } from "./streamErrors";
 import { extractProposedPlanMarkdown } from "../../core/planMode.ts";
 import { normalizeClaudeTokenUsage } from "../claudeTokenUsage.ts";
-import { claudeEffectiveContextBudget } from "./modelCapabilities";
-import { claudeCacheFromRequest } from "../claudeCacheObservation.ts";
-import { withoutProcessedTokenTotal } from "./sessionResume";
 
 export function makeClaudeContentMessages(input: {
-  readonly nowIso: Effect.Effect<string>;
   readonly ensureAssistantTextBlock: ReturnType<
     typeof makeClaudeAssistantText
   >["ensureAssistantTextBlock"];
@@ -76,7 +72,6 @@ export function makeClaudeContentMessages(input: {
   >["maybeEmitContextUsageWarning"];
 }) {
   const {
-    nowIso,
     ensureAssistantTextBlock,
     makeEventStamp,
     offerRuntimeEvent,
@@ -101,10 +96,6 @@ export function makeClaudeContentMessages(input: {
       }
 
       const { event } = message;
-
-      if (event.type === "message_start" && !context.subagentRefs) {
-        context.cacheRequestStartedAt = { messageId: event.message.id, at: yield* nowIso };
-      }
 
       if (event.type === "content_block_delta") {
         if (
@@ -564,7 +555,7 @@ export function makeClaudeContentMessages(input: {
         const messageId = message.message.id ?? message.request_id ?? message.uuid;
         const normalizedPerCallUsage = normalizeClaudeTokenUsage(
           perCallUsage as Record<string, unknown>,
-          claudeEffectiveContextBudget(context),
+          context.lastKnownContextWindow,
         );
         let addedTokens = 0;
         if (normalizedPerCallUsage) {
@@ -578,52 +569,8 @@ export function makeClaudeContentMessages(input: {
           context.compactionMessageId = messageId;
           context.tokenUsageState = "awaiting-fresh-assistant";
         } else if (context.compactionMessageId !== messageId) {
-          if (addedTokens > 0 && !context.subagentRefs) {
-            context.hasObservedCacheRequest = true;
-            context.cacheObservation = claudeCacheFromRequest({
-              usage: perCallUsage as Record<string, unknown>,
-              messageId,
-              observedAt: yield* nowIso,
-              ...(context.cacheRequestStartedAt?.messageId === messageId
-                ? { cacheReferenceAt: context.cacheRequestStartedAt.at }
-                : {}),
-              ...(context.resumeSessionId ? { nativeSessionId: context.resumeSessionId } : {}),
-              ...(context.lifecycleGeneration
-                ? { lifecycleGeneration: context.lifecycleGeneration }
-                : {}),
-              ...(context.currentApiModelId ? { model: context.currentApiModelId } : {}),
-              ...(context.cacheObservation ? { previous: context.cacheObservation } : {}),
-            });
-          }
           yield* maybeEmitContextUsageWarning(context, perCallUsage as Record<string, unknown>);
-          if (normalizedPerCallUsage) {
-            const currentUsage = {
-              ...withoutProcessedTokenTotal(normalizedPerCallUsage),
-              ...(context.cacheObservation ? { claudeCache: context.cacheObservation } : {}),
-              tokenAccountingVersion: 1 as const,
-              ...(context.processedTokenBaselineKnown
-                ? { totalProcessedTokens: context.processedTokenTotal }
-                : {}),
-            };
-            context.lastKnownTokenUsage = currentUsage;
-            context.tokenUsageState = "current";
-            const usageStamp = yield* makeEventStamp();
-            yield* offerRuntimeEvent(context, {
-              type: "thread.token-usage.updated",
-              eventId: usageStamp.eventId,
-              provider: PROVIDER,
-              createdAt: usageStamp.createdAt,
-              threadId: context.session.threadId,
-              ...(context.turnState ? { turnId: asCanonicalTurnId(context.turnState.turnId) } : {}),
-              payload: { usage: currentUsage },
-              providerRefs: nativeProviderRefs(context),
-              raw: {
-                source: "claude.sdk.message",
-                method: "claude/assistant-usage",
-                payload: perCallUsage,
-              },
-            });
-          }
+          context.tokenUsageState = "current";
         }
       }
 
