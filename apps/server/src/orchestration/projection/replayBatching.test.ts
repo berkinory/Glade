@@ -512,7 +512,7 @@ it.effect("drains 2,501 file-backed events to a captured high-water fence", () =
             'title', 'Project ' || n,
             'updatedAt', ${occurredAt}
           ),
-          '{}'
+          json_object('persistedEventSchemaVersion', 1)
         FROM numbered
       `;
     }).pipe(Effect.provide(eventStoreLayer));

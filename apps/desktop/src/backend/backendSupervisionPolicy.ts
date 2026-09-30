@@ -1,13 +1,7 @@
 const BACKEND_RESTART_BASE_DELAY_MS = 500;
 export const BACKEND_RESTART_MAX_DELAY_MS = 10_000;
 
-// Consecutive failed backend starts — with no readiness signal in between — after which the desktop
-// stops respawning and asks the user what to do. A backend that dies *during* startup can do
-// expensive work before it fails (v0.6.0 wrote a full pre-migration database backup on every
-// attempt), so an unbounded respawn loop turns one broken start into gigabytes of disk churn. Five
-// attempts spans ~7.5s of backoff: long enough to ride out a transient port or filesystem race,
-// short enough that a deterministic startup failure is reported to the user almost immediately
-// instead of never.
+// Stop respawning after repeated failed starts so a deterministic startup error reaches the user.
 export const BACKEND_MAX_CONSECUTIVE_START_FAILURES = 5;
 
 const BACKEND_FAILURE_OUTPUT_TAIL_CHARS = 8_192;
@@ -20,7 +14,6 @@ export function backendRestartDelayMs(attempt: number): number {
 
 export type BackendCrashResponse =
   | { readonly kind: "ignore" }
-  | { readonly kind: "recover-migration" }
   | { readonly kind: "retry"; readonly delayMs: number; readonly attempt: number }
   | { readonly kind: "give-up"; readonly failures: number };
 
@@ -28,8 +21,6 @@ export interface BackendStartFailureInput {
   readonly quitting: boolean;
 
   readonly restartPending: boolean;
-
-  readonly migrationRecoveryMarkerPresent: boolean;
 }
 
 // Spawning a child process practically always succeeds — the failures we care about happen
@@ -39,18 +30,12 @@ export class BackendSupervisionPolicy {
   private failures = 0;
   private givenUp = false;
 
-  private migrationRecoveryPrompted = false;
-
   get consecutiveFailures(): number {
     return this.failures;
   }
 
   get hasGivenUp(): boolean {
     return this.givenUp;
-  }
-
-  get hasPromptedMigrationRecovery(): boolean {
-    return this.migrationRecoveryPrompted;
   }
 
   reset(): void {
@@ -65,11 +50,6 @@ export class BackendSupervisionPolicy {
   respondToStartFailure(input: BackendStartFailureInput): BackendCrashResponse {
     if (input.quitting || input.restartPending) {
       return { kind: "ignore" };
-    }
-
-    if (input.migrationRecoveryMarkerPresent && !this.migrationRecoveryPrompted) {
-      this.migrationRecoveryPrompted = true;
-      return { kind: "recover-migration" };
     }
 
     if (this.givenUp) {

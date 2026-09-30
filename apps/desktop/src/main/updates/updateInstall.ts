@@ -1,10 +1,6 @@
 import { app } from "electron";
 import { autoUpdater } from "electron-updater";
 import type { DesktopUpdateState } from "@glade/contracts/ipc/ipc";
-import {
-  AUTO_UPDATE_INSTALL_WATCHDOG_MS,
-  UPDATE_CHECK_REASON_MIGRATION_RECOVERY,
-} from "../desktopEnvironment";
 import { formatErrorMessage } from "../lifecycle/desktopLogging";
 import type { UpdateStatus, UpdateDownloadState, UpdateInstallState } from "./updateDomainState";
 import { verifyUpdateArtifactIdentity } from "./updateArtifactIdentity";
@@ -59,56 +55,6 @@ export function createUpdateInstall(input: {
   };
 }) {
   const { status, download, install, activity, cache, recovery, lifecycle, version } = input;
-  function canInstallUpdateFromRecovery(): boolean {
-    return status.configured && status.state.status !== "up-to-date";
-  }
-
-  async function installLatestUpdateForMigrationRecovery(): Promise<string | null> {
-    if (!status.configured) {
-      return lifecycle.resolveAutoUpdateDisabledReason() ?? "Automatic updates are not available.";
-    }
-
-    if (status.state.status !== "downloaded") {
-      const inFlightCheck = activity.activeCheck();
-      if (inFlightCheck === null) {
-        await activity.checkForUpdates(UPDATE_CHECK_REASON_MIGRATION_RECOVERY);
-      } else {
-        await inFlightCheck;
-      }
-
-      const preparation = download.activePreparation;
-      if (preparation !== null) {
-        await preparation;
-      } else if (status.state.status === "available") {
-        await activity.downloadAvailableUpdate();
-      }
-    }
-
-    if (status.state.status === "up-to-date") {
-      return `Glade ${app.getVersion()} is already the newest release, so updating cannot repair this database.`;
-    }
-    if (status.state.status !== "downloaded") {
-      return status.state.message ?? "The update could not be downloaded.";
-    }
-
-    await installDownloadedUpdate();
-    // quitAndInstall never resolves — the process exits under it. A handoff that silently fails is
-    // cleared by the install watchdog instead, and waiting for that verdict is what keeps a failed
-    // install from leaving a live app with no window and no way back to this prompt.
-    await waitForMigrationRecoveryInstallHandoff();
-    if (install.handoffInFlight) {
-      return null;
-    }
-    return status.state.message ?? "The downloaded update could not be installed.";
-  }
-
-  async function waitForMigrationRecoveryInstallHandoff(): Promise<void> {
-    if (!install.handoffInFlight) return;
-    await new Promise<void>((resolve) => {
-      setTimeout(resolve, AUTO_UPDATE_INSTALL_WATCHDOG_MS + 2_000).unref();
-    });
-  }
-
   async function runDownloadedUpdateInstall(
     preparationAttempt: UpdateInstallPreparationAttempt,
   ): Promise<{
@@ -234,8 +180,6 @@ export function createUpdateInstall(input: {
     }
   }
   return {
-    canInstallUpdateFromRecovery,
-    installLatestUpdateForMigrationRecovery,
     installDownloadedUpdate,
   };
 }

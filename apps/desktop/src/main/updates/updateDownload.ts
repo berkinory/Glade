@@ -216,8 +216,6 @@ export function createUpdateDownload(input: {
           download.activePreparation = null;
         }
       });
-    // Published so a caller that needs the download finished — migration recovery — can await this one
-    // instead of racing a second download against it.
     download.activePreparation = preparation;
   }
 

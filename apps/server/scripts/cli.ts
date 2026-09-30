@@ -163,11 +163,7 @@ const stageDistributionPackage = Effect.fn("stageDistributionPackage")(function*
   const repoRoot = yield* RepoRoot;
   const serverDir = path.join(repoRoot, "apps/server");
 
-  for (const relPath of [
-    "dist/index.mjs",
-    "dist/restoreMigrationBackup.mjs",
-    "dist/client/index.html",
-  ]) {
+  for (const relPath of ["dist/index.mjs", "dist/client/index.html"]) {
     const abs = path.join(serverDir, relPath);
     if (!(yield* fs.exists(abs))) {
       return yield* new CliError({

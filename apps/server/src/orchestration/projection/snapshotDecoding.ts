@@ -1,6 +1,5 @@
 import { Schema, Effect, Option } from "effect";
 import { ModelSelection } from "@glade/contracts/provider/sessionPolicy";
-import { normalizePersistedModelSelection } from "../../persistence/modelSelectionCompatibility.ts";
 import {
   type ProjectionRepositoryError,
   toPersistenceDecodeError,
@@ -22,7 +21,7 @@ function decodeProjectionProjectRow(
   if (row.defaultModelSelection === null) {
     return Effect.succeed({ ...row, defaultModelSelection: null });
   }
-  return decodeModelSelection(normalizePersistedModelSelection(row.defaultModelSelection)).pipe(
+  return decodeModelSelection(row.defaultModelSelection).pipe(
     Effect.map((defaultModelSelection) => ({ ...row, defaultModelSelection })),
   );
 }
@@ -30,7 +29,7 @@ function decodeProjectionProjectRow(
 function decodeProjectionThreadRow(
   row: ProjectionThreadDbRowRaw,
 ): Effect.Effect<ProjectionThreadDbRow, Schema.SchemaError> {
-  return decodeModelSelection(normalizePersistedModelSelection(row.modelSelection)).pipe(
+  return decodeModelSelection(row.modelSelection).pipe(
     Effect.map((modelSelection) => ({ ...row, modelSelection })),
   );
 }
@@ -38,7 +37,7 @@ function decodeProjectionThreadRow(
 function decodeProjectionThreadShellRow(
   row: ProjectionThreadShellDbRowRaw,
 ): Effect.Effect<ProjectionThreadShellDbRow, Schema.SchemaError> {
-  return decodeModelSelection(normalizePersistedModelSelection(row.modelSelection)).pipe(
+  return decodeModelSelection(row.modelSelection).pipe(
     Effect.map((modelSelection) => ({ ...row, modelSelection })),
   );
 }

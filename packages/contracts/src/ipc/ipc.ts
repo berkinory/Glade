@@ -569,12 +569,6 @@ export interface DesktopCustomTitleBarState {
 export const DesktopAppIcon = Schema.Literals(["default", "icon", "dark"]);
 export type DesktopAppIcon = typeof DesktopAppIcon.Type;
 
-export interface GladeStorageSnapshot {
-  readonly version: 1;
-  readonly exportedAt: string;
-  readonly entries: Readonly<Record<string, string>>;
-}
-
 export interface DesktopComputerPreviewFrame {
   readonly windowId: number;
   readonly seq: number;
@@ -673,10 +667,6 @@ export interface DesktopBridge {
       listener: (state: DesktopComputerPermissionGuideState) => void,
     ) => () => void;
     onState: (listener: (state: DesktopComputerState) => void) => () => void;
-  };
-  storageMigration: {
-    readSnapshot: () => GladeStorageSnapshot | null;
-    acknowledgeSnapshot: () => Promise<void>;
   };
   server?: {
     transcribeVoice: (

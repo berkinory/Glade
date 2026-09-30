@@ -17,7 +17,7 @@ source directory depth does not change runtime resource or preload paths.
   Browser and computer IPC remain with their respective domains.
 - `main/protocol` owns static asset resolution and bundle identity checks.
 - `backend` owns server readiness, supervision, process output and shutdown.
-- `storage` owns profile state, migration recovery and consent handoff.
+- `storage` owns profile state and persistent desktop preferences.
 - `browser` owns tab state, panel attachment, guest adoption, popup hosting,
   runtime budgets and teardown. Its `automation`, `annotations` and `webMcp`
   subdirectories own their respective trust boundaries.

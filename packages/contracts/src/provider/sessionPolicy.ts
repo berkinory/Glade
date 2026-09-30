@@ -1,23 +1,6 @@
 import { Schema } from "effect";
-import { ProviderKind, TrimmedNonEmptyString, NonNegativeInt } from "../core/baseSchemas";
+import { TrimmedNonEmptyString, NonNegativeInt } from "../core/baseSchemas";
 import { CodexModelOptions, ClaudeModelOptions } from "./model";
-
-const RetiredProviderKind = Schema.Literals([
-  "antigravity",
-  "devin",
-  "droid",
-  "omp",
-  "pi",
-  "gemini",
-  "cursor",
-  "grok",
-  "opencode",
-  "kilo",
-]);
-
-const HandoffSourceProviderKind = Schema.Union([ProviderKind, RetiredProviderKind]);
-
-export const PersistedProviderKind = HandoffSourceProviderKind;
 
 export const ProviderApprovalPolicy = Schema.Literals([
   "untrusted",

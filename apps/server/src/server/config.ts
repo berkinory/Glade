@@ -91,7 +91,6 @@ export interface ServerConfigShape extends ServerDerivedPaths {
   readonly noBrowser: boolean;
   readonly authToken: string | undefined;
   readonly desktopShutdownToken?: string | undefined;
-  readonly migrationDivergenceConsent?: string | undefined;
   readonly autoBootstrapProjectFromCwd: boolean;
   readonly logProviderEvents: boolean;
   readonly logWebSocketEvents: boolean;
@@ -224,7 +223,6 @@ export class ServerConfig extends ServiceMap.Service<ServerConfig, ServerConfigS
           host: undefined,
           authToken: undefined,
           desktopShutdownToken: undefined,
-          migrationDivergenceConsent: undefined,
           staticDir: undefined,
           devUrl,
           publicUrl: undefined,

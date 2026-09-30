@@ -3,7 +3,6 @@ import { app, BrowserWindow } from "electron";
 import {
   desktopFlavor,
   AUTO_UPDATE_POLL_INTERVAL_MS,
-  UPDATE_CHECK_REASON_MIGRATION_RECOVERY,
   AUTO_UPDATE_CHECK_TIMEOUT_MS,
   AUTO_UPDATE_STALLED_DOWNLOAD_CANCELLATION_SUPPRESSION_MS,
   AUTO_UPDATE_DOWNLOAD_STALL_TIMEOUT_MS,
@@ -67,11 +66,7 @@ export function createUpdateActivity(input: {
   }
 
   function isExplicitUpdateCheckReason(reason: string): boolean {
-    return (
-      reason === "menu" ||
-      reason === "renderer" ||
-      reason === UPDATE_CHECK_REASON_MIGRATION_RECOVERY
-    );
+    return reason === "menu" || reason === "renderer";
   }
 
   function emitUpdateState(): void {

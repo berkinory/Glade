@@ -1,22 +1,8 @@
-import { createHash } from "node:crypto";
-import * as fs from "node:fs";
-import * as path from "node:path";
-import { fileURLToPath } from "node:url";
-
 import { defineConfig } from "tsdown";
 
 const sourcemapEnv = process.env.GLADE_DESKTOP_SOURCEMAP?.trim().toLowerCase();
 const buildSourcemap = sourcemapEnv === "1" || sourcemapEnv === "true";
 const windowsUpdaterPublisher = process.env.AZURE_TRUSTED_SIGNING_SUBJECT_DN?.trim() ?? "";
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-const migrationRuntimeSource = fs.readFileSync(
-  path.join(repoRoot, "apps/server/src/persistence/Migrations.ts"),
-  "utf8",
-);
-const migrationRuntimeSourceDigest = createHash("sha256")
-  .update(migrationRuntimeSource, "utf8")
-  .digest("hex");
-
 const shared = {
   format: "cjs" as const,
   outDir: "dist-electron",
@@ -33,7 +19,6 @@ export default defineConfig([
     external: ["original-fs"],
     define: {
       __GLADE_WINDOWS_UPDATER_PUBLISHER__: JSON.stringify(windowsUpdaterPublisher),
-      __GLADE_MIGRATION_RUNTIME_SOURCE_DIGEST__: JSON.stringify(migrationRuntimeSourceDigest),
     },
     noExternal: (id) => id.startsWith("@glade/"),
   },

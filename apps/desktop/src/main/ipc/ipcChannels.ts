@@ -33,10 +33,6 @@ export const DESKTOP_IPC_CHANNELS = {
   transcribeVoice: "desktop:server-transcribe-voice",
   computerPreviewFrame: "computerPreview.frame",
   computerSetCursorStyle: "desktop:computer-set-cursor-style",
-  storageMigration: {
-    read: "desktop:storage-migration-read",
-    acknowledge: "desktop:storage-migration-acknowledge",
-  },
   computerPermissions: {
     getState: "desktop:computer-permissions-get-state",
     requestPermissions: "desktop:computer-permissions-request-permissions",

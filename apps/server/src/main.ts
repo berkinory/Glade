@@ -14,10 +14,6 @@ import {
 import { Command, Flag } from "effect/unstable/cli";
 import { NetService } from "@glade/shared/platform/Net";
 import {
-  MIGRATION_DIVERGENCE_CONSENT_ENV,
-  MIGRATION_RUNTIME_SOURCE_DIGEST_ENV,
-} from "@glade/shared/platform/migrationRecovery";
-import {
   optionalBooleanEnvironmentConfig,
   optionalBooleanFlag,
   resolveBooleanConfig,
@@ -59,10 +55,6 @@ import {
   verifyServerRuntime,
 } from "./server/runtime/serverRuntimeDiscovery";
 import { fetchGladeServerStatus, formatGladeServerStatus } from "./server/status/serverStatusCli";
-import {
-  embeddedMigrationRuntimeSourceDigest,
-  verifyMigrationRuntimeIdentity,
-} from "./persistence/migrationBundleIdentity";
 
 export class StartupError extends Data.TaggedError("StartupError")<{
   readonly message: string;
@@ -154,14 +146,6 @@ const CliEnvConfig = Config.all({
     Config.option,
     Config.map(Option.getOrUndefined),
   ),
-  migrationDivergenceConsent: Config.string(MIGRATION_DIVERGENCE_CONSENT_ENV).pipe(
-    Config.option,
-    Config.map(Option.getOrUndefined),
-  ),
-  migrationRuntimeSourceDigest: Config.string(MIGRATION_RUNTIME_SOURCE_DIGEST_ENV).pipe(
-    Config.option,
-    Config.map(Option.getOrUndefined),
-  ),
   autoBootstrapProjectFromCwd: optionalBooleanEnvironmentConfig(
     "GLADE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD",
   ),
@@ -184,32 +168,6 @@ const ServerConfigLive = (input: CliInput) =>
       const liveProcessDesktopShutdownToken = yield* Effect.sync(() =>
         consumeProcessEnvironmentValue(DESKTOP_SHUTDOWN_TOKEN_ENV_KEY),
       );
-      const liveProcessMigrationConsent = yield* Effect.sync(() =>
-        consumeProcessEnvironmentValue(MIGRATION_DIVERGENCE_CONSENT_ENV),
-      );
-      const liveProcessMigrationSourceDigest = yield* Effect.sync(() =>
-        consumeProcessEnvironmentValue(MIGRATION_RUNTIME_SOURCE_DIGEST_ENV),
-      );
-
-      const launcherMigrationSourceDigest =
-        env.migrationRuntimeSourceDigest ?? liveProcessMigrationSourceDigest;
-      yield* Effect.try({
-        try: () =>
-          verifyMigrationRuntimeIdentity({
-            cwd: cliConfig.cwd,
-            embeddedDigest: embeddedMigrationRuntimeSourceDigest(),
-            launcherDigest: launcherMigrationSourceDigest,
-          }),
-        catch: (cause) =>
-          new StartupError({
-            message:
-              cause instanceof Error
-                ? `${cause.name}: ${cause.message}`
-                : "Migration bundle check failed",
-            cause,
-          }),
-      });
-
       const mode = Option.getOrElse(input.mode, () => env.mode);
 
       const port = yield* Option.match(input.port, {
@@ -253,8 +211,6 @@ const ServerConfigLive = (input: CliInput) =>
       const noBrowser = resolveBooleanConfig(input.noBrowser, env.noBrowser, mode === "desktop");
       const authToken = Option.getOrUndefined(input.authToken) ?? env.authToken;
       const desktopShutdownToken = env.desktopShutdownToken ?? liveProcessDesktopShutdownToken;
-      const migrationDivergenceConsent =
-        env.migrationDivergenceConsent ?? liveProcessMigrationConsent;
       const autoBootstrapProjectFromCwd = resolveBooleanConfig(
         input.autoBootstrapProjectFromCwd,
         env.autoBootstrapProjectFromCwd,
@@ -308,7 +264,6 @@ const ServerConfigLive = (input: CliInput) =>
         noBrowser,
         authToken,
         desktopShutdownToken,
-        migrationDivergenceConsent,
         autoBootstrapProjectFromCwd,
         logProviderEvents,
         logWebSocketEvents,
@@ -344,7 +299,6 @@ export function makeServerStartupLogData(config: ServerConfigShape): Record<stri
   const safeConfig: Record<string, unknown> = { ...config };
   delete safeConfig.authToken;
   delete safeConfig.desktopShutdownToken;
-  delete safeConfig.migrationDivergenceConsent;
   delete safeConfig.devUrl;
 
   return {

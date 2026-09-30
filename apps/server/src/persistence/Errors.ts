@@ -97,23 +97,6 @@ export const isPersistenceError = (u: unknown) =>
   Schema.is(PersistenceDecodeError)(u) ||
   Schema.is(ProjectionStateIncompleteError)(u);
 
-export class MigrationLineageError extends Schema.TaggedErrorClass<MigrationLineageError>()(
-  "MigrationLineageError",
-  {
-    firstDivergedId: Schema.Number,
-    expectedName: Schema.String,
-    recordedName: Schema.String,
-  },
-) {
-  override get message(): string {
-    return (
-      `Migration tracker does not match any known lineage: migration ${this.firstDivergedId} ` +
-      `is recorded as "${this.recordedName}" but Glade expects "${this.expectedName}". ` +
-      `Refusing to run migrations against an unrecognized database.`
-    );
-  }
-}
-
 export class MigrationSchemaTooNewError extends Schema.TaggedErrorClass<MigrationSchemaTooNewError>()(
   "MigrationSchemaTooNewError",
   {

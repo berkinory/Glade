@@ -271,16 +271,15 @@ jobs:
       - name: Verify Windows terminal PTY native dependency under Bun
         run: bun scripts/node-pty-smoke.mjs
 
-      - name: Test Windows shared runtime and migration recovery
+      - name: Test Windows shared runtime
         run: >-
           bun run --cwd packages/shared test
           src/platform/windowsProcess.test.ts
           src/platform/platformProcess.test.ts
           src/platform/processRuntime.test.ts
           src/platform/platformEnvironment.test.ts
-          src/platform/migrationRecovery.test.ts
 
-      - name: Test Windows server lifecycle and migration recovery
+      - name: Test Windows server lifecycle
         run: >-
           bun run --cwd apps/server test
           src/platform/filesystemPlatform.test.ts
@@ -291,22 +290,13 @@ jobs:
           src/platform/processRunner.test.ts
           src/platform/windowsProcessEffect.test.ts
           src/persistence/MigrationBackup.test.ts
-          src/persistence/Migrations/MigrationReplay.test.ts
 
-      # The 0.6.0 wedge hit Windows hardest, and the repair path is built out of
-      # exactly what Windows treats differently: unlinking a marker, reclaiming
-      # stranded partials, and renaming a database file that may still be held
-      # open. Linux-only coverage cannot speak for any of that.
-      - name: Test Windows desktop shutdown and migration recovery
+      - name: Test Windows desktop shutdown
         run: >-
           bun run --cwd apps/desktop test
           src/backendShutdown.windows.integration.test.ts
-          src/desktopMigrationRecovery.test.ts
 
-  # Released (id, name) migration pairs are recorded in every user's
-  # effect_sql_migrations table, so renumbering or renaming one corrupts existing
-  # installs. This job needs the release tags, hence the unshallow checkout; the
-  # dependency-free guard needs a real tag history, never a missing-history skip.
+  # Baseline 112 and later migrations are immutable after release.
   migration_lineage:
     name: Migration Lineage
     runs-on: ubuntu-24.04

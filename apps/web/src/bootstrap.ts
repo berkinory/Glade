@@ -1,5 +1,3 @@
-import "./storageOriginMigration";
-
 import { bootstrapSignedOutScreen } from "./authSignedOut";
 import { bootstrapPairingSession } from "./pairingBootstrap";
 

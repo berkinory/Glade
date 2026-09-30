@@ -13,6 +13,7 @@ import {
   EventId,
   PositiveInt,
   ApprovalRequestId,
+  ProviderKind,
 } from "../core/baseSchemas";
 import { ProjectKind } from "../workspace/project";
 import { AsyncUserInput } from "./asyncUserInput";
@@ -22,7 +23,6 @@ import {
   ModelSelection,
   TurnDispatchMode,
   MessageDispatchOrigin,
-  PersistedProviderKind,
   RuntimeMode,
   DEFAULT_RUNTIME_MODE,
   ProviderApprovalDecision,
@@ -305,9 +305,7 @@ export type OrchestrationMessage = typeof OrchestrationMessage.Type;
 
 export const ThreadHandoff = Schema.Struct({
   sourceThreadId: ThreadId,
-  // Handoff metadata is durable: a removed source provider must not make the whole thread row (and
-  // with it the thread list) undecodable.
-  sourceProvider: PersistedProviderKind,
+  sourceProvider: ProviderKind,
   importedAt: IsoDateTime,
   bootstrapStatus: ThreadHandoffBootstrapStatus,
 });

@@ -88,14 +88,11 @@ literal, rooted paths; tracked files remain tracked and existing ignore rules ar
 
 ## Existing data
 
-Migration IDs 74–78 and 80 retain only their original ledger names and no-op entries,
-so existing databases can still validate their lineage. Migration 109 removes the
-retired integration tables and credentials, preserving projects and conversation
-history. Historical conversation creation-source metadata may still decode the
-retired source value; it grants no capability and cannot create a connection.
-
-Migration 111 deletes side chat threads and their descendants, including their runtime and
-event records, then removes side chat columns. Regular conversations are preserved.
+Existing databases at migration 112 keep their recorded migration history and data.
+New databases start from the single baseline at migration 112. Retired provider archive
+tables are absent from new databases; existing internal databases are left unchanged.
+Future schema changes use appended migrations starting at 113. Regular projects and
+conversations remain available.
 
 Old OS profiles and manual browser sessions are not deleted. Persisted image bytes
 remain readable even when removed capture-specific display metadata is discarded.

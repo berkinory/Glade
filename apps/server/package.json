@@ -9,8 +9,7 @@
     "directory": "apps/server"
   },
   "bin": {
-    "glade": "dist/index.mjs",
-    "glade-restore-migration-backup": "dist/restoreMigrationBackup.mjs"
+    "glade": "dist/index.mjs"
   },
   "files": [
     "dist"

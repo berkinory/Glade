@@ -30,8 +30,8 @@ semantics required by existing payload readers, including arrays. Callers retain
 `null`, `undefined`, `Option` or empty-object absence policy. This small module is a
 shared validation boundary with its own contract.
 
-Historical migration validators stay with their released migration. Changing those
-validators would change the interpretation of persisted data during migration.
+Migration 112 is the current schema baseline. Validators for later migrations stay
+with their released migration to preserve the interpretation of persisted data.
 Generic error-to-string conversion lives in `text/errorMessages`; automation redaction
 and router/device fallback messages remain domain policies rather than a generic
 formatter with switches.

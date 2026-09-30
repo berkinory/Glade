@@ -26,7 +26,6 @@ import {
   THREAD_NOTES_MAX_CHARS,
   THREAD_GOAL_MAX_CHARS,
   ThreadTurnDiff,
-  ThreadHandoff,
 } from "./threadEntities";
 
 const decodeTurnDiffInput = Schema.decodeUnknownEffect(OrchestrationGetTurnDiffInput);
@@ -611,35 +610,5 @@ it.effect("preserves user-input answer values through the RPC JSON codec", () =>
         skipped: null,
       },
     );
-  }),
-);
-
-const decodeThreadHandoff = Schema.decodeUnknownEffect(ThreadHandoff);
-
-it.effect("ThreadHandoff decodes legacy provider names instead of failing the row", () =>
-  Effect.gen(function* () {
-    const handoff = yield* decodeThreadHandoff({
-      sourceThreadId: "thread-src",
-      sourceProvider: "kilo",
-      importedAt: "2026-01-01T00:00:00Z",
-      bootstrapStatus: "completed",
-    });
-    assert.equal(handoff.sourceProvider, "kilo");
-
-    const retired = yield* decodeThreadHandoff({
-      sourceThreadId: "thread-src",
-      sourceProvider: "pi",
-      importedAt: "2026-01-01T00:00:00Z",
-      bootstrapStatus: "completed",
-    });
-    assert.equal(retired.sourceProvider, "pi");
-
-    const current = yield* decodeThreadHandoff({
-      sourceThreadId: "thread-src",
-      sourceProvider: "codex",
-      importedAt: "2026-01-01T00:00:00Z",
-      bootstrapStatus: "completed",
-    });
-    assert.equal(current.sourceProvider, "codex");
   }),
 );

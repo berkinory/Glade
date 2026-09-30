@@ -1,4 +1,3 @@
-import { isRecord } from "@glade/shared/transport/payloadValues";
 import {
   CommandId,
   EventId,
@@ -28,10 +27,6 @@ import {
   OrchestrationEventStore,
   type OrchestrationEventStoreShape,
 } from "../Services/OrchestrationEventStore.ts";
-import {
-  normalizeLegacyModelSelection,
-  normalizePersistedModelSelection,
-} from "../modelSelectionCompatibility.ts";
 
 const decodeEvent = Schema.decodeUnknownEffect(OrchestrationEvent);
 const UnknownFromJsonString = Schema.fromJsonString(Schema.Unknown);
@@ -94,109 +89,8 @@ const HighWaterSequenceRowSchema = Schema.Struct({
 const DEFAULT_READ_FROM_SEQUENCE_LIMIT = 1_000;
 const READ_PAGE_SIZE = 500;
 const CURRENT_PERSISTED_EVENT_SCHEMA_VERSION = 1;
-const LEGACY_PERSISTED_EVENT_SCHEMA_VERSION = 0;
 const PERSISTED_EVENT_SCHEMA_VERSION_KEY = "persistedEventSchemaVersion";
-const LEGACY_MODEL_SELECTION_EVENT_TYPES = new Set([
-  "thread.created",
-  "thread.meta-updated",
-  "thread.turn-start-requested",
-]);
-
 type RawPersistedEventRow = typeof RawPersistedEventRowSchema.Type;
-type ParsedPersistedEventRow = Omit<RawPersistedEventRow, "payloadJson" | "metadataJson"> & {
-  readonly payload: unknown;
-  readonly metadata: unknown;
-};
-
-function readTrimmedString(record: Record<string, unknown>, key: string): string | undefined {
-  const value = record[key];
-  if (typeof value !== "string") {
-    return undefined;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-}
-
-function normalizeLegacyEventRow(row: ParsedPersistedEventRow): ParsedPersistedEventRow {
-  if (!isRecord(row.payload)) {
-    return row;
-  }
-
-  const originalPayload = row.payload;
-  let normalizedPayload: Record<string, unknown> | undefined;
-  const payloadWithNormalizedModelSelection = () => {
-    normalizedPayload ??= { ...originalPayload };
-    return normalizedPayload;
-  };
-
-  if (
-    (row.type === "project.created" || row.type === "project.meta-updated") &&
-    originalPayload.defaultModelSelection !== undefined &&
-    originalPayload.defaultModelSelection !== null
-  ) {
-    payloadWithNormalizedModelSelection().defaultModelSelection = normalizePersistedModelSelection(
-      originalPayload.defaultModelSelection,
-    );
-  }
-
-  if (
-    LEGACY_MODEL_SELECTION_EVENT_TYPES.has(row.type) &&
-    originalPayload.modelSelection !== undefined
-  ) {
-    payloadWithNormalizedModelSelection().modelSelection = normalizePersistedModelSelection(
-      originalPayload.modelSelection,
-    );
-  }
-
-  if (
-    (row.type === "project.created" || row.type === "project.meta-updated") &&
-    originalPayload.defaultModelSelection === undefined
-  ) {
-    const nextPayload = payloadWithNormalizedModelSelection();
-    const legacyModel = readTrimmedString(originalPayload, "defaultModel");
-    nextPayload.defaultModelSelection = legacyModel
-      ? normalizeLegacyModelSelection({
-          provider: originalPayload.defaultProvider,
-          model: legacyModel,
-          options: originalPayload.defaultModelOptions,
-        })
-      : null;
-    delete nextPayload.defaultProvider;
-    delete nextPayload.defaultModel;
-    delete nextPayload.defaultModelOptions;
-    return { ...row, payload: nextPayload };
-  }
-
-  if (
-    LEGACY_MODEL_SELECTION_EVENT_TYPES.has(row.type) &&
-    originalPayload.modelSelection === undefined
-  ) {
-    const nextPayload = payloadWithNormalizedModelSelection();
-    const legacyModel =
-      readTrimmedString(originalPayload, "model") ??
-      (row.type === "thread.created" ? "gpt-5.5" : undefined);
-    if (legacyModel !== undefined) {
-      nextPayload.modelSelection = normalizeLegacyModelSelection({
-        provider: originalPayload.provider,
-        model: legacyModel,
-        options: originalPayload.modelOptions,
-      });
-    }
-    delete nextPayload.provider;
-    delete nextPayload.model;
-    delete nextPayload.modelOptions;
-    return { ...row, payload: nextPayload };
-  }
-
-  return normalizedPayload === undefined ? row : { ...row, payload: normalizedPayload };
-}
-
-type PersistedEventUpcaster = (row: ParsedPersistedEventRow) => ParsedPersistedEventRow;
-
-const PERSISTED_EVENT_UPCASTERS: Readonly<Record<number, PersistedEventUpcaster>> = {
-  [LEGACY_PERSISTED_EVENT_SCHEMA_VERSION]: normalizeLegacyEventRow,
-};
-
 function persistedEventDecodeOperation(
   operation: string,
   row: RawPersistedEventRow,
@@ -243,36 +137,20 @@ function decodePersistedEventRow(
   return Effect.gen(function* () {
     const payload = yield* parsePersistedJson(operation, row, "payloadJson");
     const rawMetadata = yield* parsePersistedJson(operation, row, "metadataJson");
-    const metadata = isRecord(rawMetadata) ? { ...rawMetadata } : rawMetadata;
-    const rawSchemaVersion = isRecord(metadata)
-      ? metadata[PERSISTED_EVENT_SCHEMA_VERSION_KEY]
-      : undefined;
-    const schemaVersion =
-      rawSchemaVersion === undefined ? LEGACY_PERSISTED_EVENT_SCHEMA_VERSION : rawSchemaVersion;
-
-    if (
-      typeof schemaVersion !== "number" ||
-      !Number.isSafeInteger(schemaVersion) ||
-      schemaVersion < LEGACY_PERSISTED_EVENT_SCHEMA_VERSION
-    ) {
+    const rawSchemaVersion =
+      typeof rawMetadata === "object" && rawMetadata !== null && !Array.isArray(rawMetadata)
+        ? (rawMetadata as Record<string, unknown>)[PERSISTED_EVENT_SCHEMA_VERSION_KEY]
+        : undefined;
+    if (rawSchemaVersion !== CURRENT_PERSISTED_EVENT_SCHEMA_VERSION) {
       return yield* makePersistedEventDecodeError(
         operation,
         row,
-        `Invalid persisted event schema version; expected a non-negative safe integer, received ${typeof schemaVersion}.`,
+        `Unsupported persisted event schema version ${String(rawSchemaVersion)}; this build supports version ${CURRENT_PERSISTED_EVENT_SCHEMA_VERSION}.`,
       );
     }
-    if (schemaVersion > CURRENT_PERSISTED_EVENT_SCHEMA_VERSION) {
-      return yield* makePersistedEventDecodeError(
-        operation,
-        row,
-        `Unsupported persisted event schema version ${schemaVersion}; this build supports through ${CURRENT_PERSISTED_EVENT_SCHEMA_VERSION}.`,
-      );
-    }
-
-    if (isRecord(metadata)) {
-      delete metadata[PERSISTED_EVENT_SCHEMA_VERSION_KEY];
-    }
-    let candidate: ParsedPersistedEventRow = {
+    const { [PERSISTED_EVENT_SCHEMA_VERSION_KEY]: _schemaVersion, ...metadata } =
+      rawMetadata as Record<string, unknown>;
+    const candidate = {
       sequence: row.sequence,
       eventId: row.eventId,
       type: row.type,
@@ -285,25 +163,12 @@ function decodePersistedEventRow(
       payload,
       metadata,
     };
-    for (
-      let version = schemaVersion;
-      version < CURRENT_PERSISTED_EVENT_SCHEMA_VERSION;
-      version += 1
-    ) {
-      const upcaster = PERSISTED_EVENT_UPCASTERS[version];
-      if (!upcaster) {
-        return yield* makePersistedEventDecodeError(
-          operation,
-          row,
-          `No persisted event upcaster is registered for schema version ${version}.`,
-        );
-      }
-      candidate = upcaster(candidate);
-    }
 
     return yield* decodeEvent(candidate).pipe(
       Effect.mapError(
-        toPersistenceDecodeError(persistedEventDecodeOperation(operation, row, schemaVersion)),
+        toPersistenceDecodeError(
+          persistedEventDecodeOperation(operation, row, CURRENT_PERSISTED_EVENT_SCHEMA_VERSION),
+        ),
       ),
     );
   });

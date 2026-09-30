@@ -261,8 +261,6 @@ export function createUpdates(input: {
     check: downloadActions.checkForUpdates,
     download: downloadActions.downloadAvailableUpdate,
     install: installActions.installDownloadedUpdate,
-    canInstallUpdateFromRecovery: installActions.canInstallUpdateFromRecovery,
-    installLatestUpdateForMigrationRecovery: installActions.installLatestUpdateForMigrationRecovery,
     isInstallPreparing: () => install.preparing,
     isInstallHandoff: () => install.handoffInFlight,
     clearTimers,

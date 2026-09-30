@@ -111,9 +111,9 @@ projectionSnapshotLayer("Projection snapshot snapshotHydration", (it) => {
         INSERT INTO projection_threads (
           thread_id, project_id, title, model_selection_json, latest_turn_id, created_at, updated_at
         ) VALUES
-          ('latest-a', 'latest-project', 'A', '{"provider":"pi","model":"openai/gpt-4o"}',
+          ('latest-a', 'latest-project', 'A', '{"provider":"codex","model":"gpt-5.5"}',
             'turn-old', '2026-09-10T00:00:00.000Z', '2026-09-10T00:00:00.000Z'),
-          ('latest-b', 'latest-project', 'B', '{"provider":"pi","model":"openai/gpt-4o"}',
+          ('latest-b', 'latest-project', 'B', '{"provider":"codex","model":"gpt-5.5"}',
             NULL, '2026-09-10T00:00:00.000Z', '2026-09-10T00:00:00.000Z')
       `;
         yield* sql`

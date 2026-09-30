@@ -1,11 +1,5 @@
-import type { DesktopUpdateState } from "@glade/contracts/ipc/ipc";
 import { CUA_HOST_SOCKET_ENV } from "@glade/shared/computer/cuaDriverProtocol";
 import { GLADE_DESKTOP_BUNDLE_ID_ENV } from "@glade/shared/platform/desktopIdentity";
-import type { MigrationSchemaTooNewStartupBlock } from "@glade/shared/platform/migrationRecovery";
-import {
-  MIGRATION_DIVERGENCE_CONSENT_ENV,
-  MIGRATION_RUNTIME_SOURCE_DIGEST_ENV,
-} from "@glade/shared/platform/migrationRecovery";
 import { NetService } from "@glade/shared/platform/Net";
 import { applyShellEnvironmentHydrationMarker } from "@glade/shared/platform/shell";
 import { DEVICE_HELPER_SOURCE_DIR_ENV } from "@glade/shared/workspace/deviceHelperCache";
@@ -45,12 +39,6 @@ import {
 } from "../main/lifecycle/desktopLogging";
 import { isBrokenPipeError } from "../main/lifecycle/desktopProcessErrors";
 import type { ServedStaticRoot } from "../main/lifecycle/desktopResources";
-import type { DesktopMigrationRecoveryOutcome } from "../storage/desktopMigrationRecovery";
-import {
-  invalidMigrationStartupRecoveryChoices,
-  recoverDesktopMigrationIfRequired,
-} from "../storage/desktopMigrationRecovery";
-import { embeddedDesktopMigrationRuntimeSourceDigest } from "../storage/migrationBundleIdentity";
 import { resolveBackendNodeArgs } from "./backendNodeOptions";
 import { captureBackendProcessOutput } from "./backendProcessOutput";
 import { isBackendReadinessAborted, waitForHttpReady } from "./backendReadiness";
@@ -81,20 +69,6 @@ interface BackendLifecycle {
   isQuitting(): boolean;
   requestGracefulAppQuit(reason: string): void;
 }
-interface BackendRecovery {
-  takeMigrationConsent(): string | null;
-  approveMigrationConsent(token: string): void;
-  blockStartup(): void;
-  isStartupBlocked(): boolean;
-  isDesktopMigrationRecoveryPending(): boolean;
-  handleDesktopMigrationRecovery(): Promise<DesktopMigrationRecoveryOutcome>;
-  handleDesktopSchemaTooNewRecovery(block: MigrationSchemaTooNewStartupBlock): Promise<void>;
-}
-interface BackendUpdates {
-  getState(): DesktopUpdateState;
-  canInstallUpdateFromRecovery(): boolean;
-  installLatestUpdateForMigrationRecovery(): Promise<string | null>;
-}
 interface BackendWindows {
   getMainWindow(): BrowserWindow | null;
   createWindow(): BrowserWindow;
@@ -111,8 +85,6 @@ export interface BackendDependencies {
   log: DesktopLog;
   resources: BackendResources;
   lifecycle: BackendLifecycle;
-  recovery: BackendRecovery;
-  updates: BackendUpdates;
   windows: BackendWindows;
   browser: BackendBrowser;
   computer: BackendComputer;
@@ -121,8 +93,6 @@ export function createBackendSupervisor({
   log,
   resources,
   lifecycle,
-  recovery,
-  updates,
   windows,
   browser,
   computer,
@@ -153,8 +123,6 @@ export function createBackendSupervisor({
 
   function backendEnv(): NodeJS.ProcessEnv {
     const servedStaticRoot = resources.resolveServedStaticRoot();
-    const migrationSourceDigest = embeddedDesktopMigrationRuntimeSourceDigest();
-    const migrationDivergenceConsent = recovery.takeMigrationConsent();
     const env: NodeJS.ProcessEnv = {
       ...resolveBrowserHostPipeBackendEnv(
         process.env,
@@ -165,12 +133,6 @@ export function createBackendSupervisor({
       ...(servedStaticRoot?.snapshotted ? { GLADE_STATIC_DIR: servedStaticRoot.dir } : {}),
       ...(app.isPackaged
         ? { [DEVICE_HELPER_SOURCE_DIR_ENV]: Path.join(process.resourcesPath, "device-helper") }
-        : {}),
-      ...(migrationSourceDigest
-        ? { [MIGRATION_RUNTIME_SOURCE_DIGEST_ENV]: migrationSourceDigest }
-        : {}),
-      ...(migrationDivergenceConsent
-        ? { [MIGRATION_DIVERGENCE_CONSENT_ENV]: migrationDivergenceConsent }
         : {}),
       ...(computer.getHostEndpoint() ? { [CUA_HOST_SOCKET_ENV]: computer.getHostEndpoint() } : {}),
       [GLADE_DESKTOP_BUNDLE_ID_ENV]: desktopIdentity.bundleId,
@@ -192,23 +154,10 @@ export function createBackendSupervisor({
     const response = backendSupervision.respondToStartFailure({
       quitting: lifecycle.isQuitting(),
       restartPending: restartTimer !== null,
-      migrationRecoveryMarkerPresent: recovery.isDesktopMigrationRecoveryPending(),
     });
 
     switch (response.kind) {
       case "ignore":
-        return;
-      case "recover-migration":
-        // The marker is written mid-session by the migration that just killed the backend, so bootstrap's
-        // one-shot check never saw it. Recovery owns the process from here; respawning would only repeat
-        // the failed migration.
-        log.writeDesktopLogHeader(
-          `migration recovery marker detected after backend failure reason=${sanitizeLogValue(reason)}`,
-        );
-        safeConsoleError(
-          `[desktop] backend failed with a pending migration recovery (${reason}); opening recovery`,
-        );
-        void runMidSessionMigrationRecovery(reason);
         return;
       case "give-up":
         log.writeDesktopLogHeader(
@@ -229,13 +178,6 @@ export function createBackendSupervisor({
         }, response.delayMs);
         return;
     }
-  }
-
-  async function runMidSessionMigrationRecovery(reason: string): Promise<void> {
-    const outcome = await recovery.handleDesktopMigrationRecovery();
-    if (outcome !== "continue") return;
-
-    await restartBackendAfterCrash(reason);
   }
 
   function backendFailureDialogDetail(reason: string): string {
@@ -303,123 +245,6 @@ export function createBackendSupervisor({
     if (lifecycle.isQuitting() || backendLifecycleDialogInFlight) return;
 
     const task = (async () => {
-      if (block.kind === "migration-schema-too-new") {
-        await recovery.handleDesktopSchemaTooNewRecovery(block.block);
-        return;
-      }
-
-      if (block.kind === "migration-startup-block-invalid") {
-        recovery.blockStartup();
-        await recoverDesktopMigrationIfRequired({
-          requiresRecovery: () => true,
-          markerRemains: () => true,
-          choose: async ({ previousFailure }) => {
-            const releaseUrl = updates.getState().releaseUrl;
-            const choices = invalidMigrationStartupRecoveryChoices({
-              canInstallUpdate: updates.canInstallUpdateFromRecovery(),
-              canOpenReleasePage: releaseUrl !== null,
-            });
-            const result = await dialog.showMessageBox({
-              type: "error",
-              title:
-                previousFailure === null
-                  ? "Glade could not verify migration recovery"
-                  : "Glade could not update itself",
-              message:
-                previousFailure === null
-                  ? "The backend stopped for database safety, but its recovery details were invalid."
-                  : "The newest Glade release could not be installed.",
-              detail:
-                `${previousFailure === null ? "" : `${previousFailure.message}\n\n`}` +
-                "Glade will keep the backend and provider processes stopped. The recovery record is not trusted, so restoring from it is disabled; choose one of the safe actions below.",
-              buttons: choices.map((choice) => choice.label),
-              defaultId: 0,
-              cancelId: choices.length - 1,
-              noLink: true,
-            });
-            return choices[result.response]?.decision ?? "quit";
-          },
-          installUpdate: updates.installLatestUpdateForMigrationRecovery,
-          openReleasePage: () => {
-            const releaseUrl = updates.getState().releaseUrl;
-            if (releaseUrl !== null) void shell.openExternal(releaseUrl);
-          },
-          openLogs: openDesktopLogDirectory,
-          restore: async () => {
-            throw new Error("Invalid migration recovery details cannot authorize a restore.");
-          },
-          requestRestart: () => undefined,
-          requestQuit: (reason) => lifecycle.requestGracefulAppQuit(reason),
-          formatError: formatErrorMessage,
-          log: log.writeDesktopLogHeader,
-        });
-        return;
-      }
-
-      if (block.kind === "migration-divergence-consent-required") {
-        const challenge = block.challenge;
-        const result = await dialog.showMessageBox({
-          type: "warning",
-          title: "Glade found a different database migration history",
-          message: `Migration ${challenge.firstDivergedId} does not match this build.`,
-          detail:
-            `The database records "${challenge.recordedName}", while this build expects ` +
-            `"${challenge.expectedName}". Continuing will first save an exact backup in:\n` +
-            `${challenge.backupDirectory}\n\nGlade will then rewrite tracker rows from migration ` +
-            `${challenge.firstDivergedId} and replay through ${challenge.targetVersion}. ` +
-            "Older builds may no longer be able to open the upgraded database. No provider or chat process will start until you choose.",
-          buttons: ["Back up and continue", "Quit"],
-          defaultId: 0,
-          cancelId: 1,
-          noLink: true,
-        });
-        if (result.response === 0) {
-          recovery.approveMigrationConsent(challenge.consentToken);
-          backendLifecycleDialogInFlight = null;
-          await restartBackendAfterCrash("approved migration lineage repair", "lifecycle");
-        } else {
-          lifecycle.requestGracefulAppQuit("migration lineage repair declined");
-        }
-        return;
-      }
-
-      if (block.kind === "migration-runtime-identity-mismatch") {
-        await dialog.showMessageBox({
-          type: "error",
-          title: "Glade's server build does not match",
-          message: "The desktop and server migration code came from different builds.",
-          detail: app.isPackaged
-            ? "Update or reinstall Glade before starting it again. The database was not opened."
-            : "Rebuild with bun run build:desktop before starting Glade again. The database was not opened.",
-          buttons: ["Quit"],
-          defaultId: 0,
-          noLink: true,
-        });
-        lifecycle.requestGracefulAppQuit("migration bundle identity mismatch");
-        return;
-      }
-
-      if (block.kind === "migration-recovery-required") {
-        const result = await dialog.showMessageBox({
-          type: "warning",
-          title: "Glade needs to recover its database",
-          message: "A database migration did not finish safely.",
-          detail:
-            "Restart Glade to open the verified backup recovery flow. Provider and chat processes will remain stopped until recovery completes.",
-          buttons: ["Restart and recover", "Quit"],
-          defaultId: 0,
-          cancelId: 1,
-          noLink: true,
-        });
-        if (result.response === 0) {
-          app.relaunch();
-          lifecycle.requestGracefulAppQuit("migration recovery required");
-        } else {
-          lifecycle.requestGracefulAppQuit("migration recovery declined");
-        }
-        return;
-      }
-
       const processDetail =
         block.ownerPid === null
           ? "Another Glade server is already using this database."
@@ -480,14 +305,6 @@ export function createBackendSupervisor({
 
   function startBackend(trigger: BackendStartTrigger = "lifecycle"): void {
     if (lifecycle.isQuitting() || backendProcess) return;
-    // Recovery owns the database until it clears the marker. Callers that restart the backend after an
-    // unrelated failure — a given-up update install, say — must not hand it a database the user is
-    // being asked how to repair.
-    if (recovery.isStartupBlocked()) {
-      log.writeDesktopLogHeader("backend start suppressed while migration recovery is pending");
-      return;
-    }
-
     if (trigger === "lifecycle") {
       backendSupervision.reset();
     }

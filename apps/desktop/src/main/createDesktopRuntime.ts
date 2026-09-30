@@ -6,7 +6,6 @@ import { createBackendSupervisor } from "../backend/backendSupervisor";
 import { createDesktopBrowserServices } from "../browser/desktopBrowserServices";
 import { LOCAL_HTML_PREVIEW_SCHEME } from "../browser/localHtmlPreviewProtocol";
 import { createDesktopComputerSetup } from "../computer/desktopComputerSetup";
-import { createDesktopRecoveryCoordinator } from "../storage/desktopRecoveryCoordinator";
 import { ensureWindowsShellAppUserModelHelper } from "../windowsShell/windowsShellAppUserModel";
 import { DESKTOP_SCHEME, isDevelopment, STATE_DIR, userDataPath } from "./desktopEnvironment";
 import { createRegisterDesktopIpc } from "./ipc/registerDesktopIpc";
@@ -61,22 +60,6 @@ export function createDesktopRuntime(): void {
       isQuitting: () => lifecycle.isQuitting(),
       requestGracefulAppQuit: (reason) => lifecycle.requestGracefulAppQuit(reason),
     },
-    recovery: {
-      takeMigrationConsent: () => recovery.takeMigrationConsent(),
-      approveMigrationConsent: (token) => recovery.approveMigrationConsent(token),
-      blockStartup: () => recovery.blockStartup(),
-      isStartupBlocked: () => recovery.isStartupBlocked(),
-      isDesktopMigrationRecoveryPending: () => recovery.isDesktopMigrationRecoveryPending(),
-      handleDesktopMigrationRecovery: () => recovery.handleDesktopMigrationRecovery(),
-      handleDesktopSchemaTooNewRecovery: (block) =>
-        recovery.handleDesktopSchemaTooNewRecovery(block),
-    },
-    updates: {
-      getState: () => updates.getState(),
-      canInstallUpdateFromRecovery: () => updates.canInstallUpdateFromRecovery(),
-      installLatestUpdateForMigrationRecovery: () =>
-        updates.installLatestUpdateForMigrationRecovery(),
-    },
     windows: {
       getMainWindow: () => windows.getMainWindow(),
       createWindow: () => windows.createWindow(),
@@ -84,18 +67,6 @@ export function createDesktopRuntime(): void {
     browser,
     computer,
   });
-  const recovery = createDesktopRecoveryCoordinator(
-    resources,
-    backend,
-    {
-      getState: () => updates.getState(),
-      canInstallUpdateFromRecovery: () => updates.canInstallUpdateFromRecovery(),
-      installLatestUpdateForMigrationRecovery: () =>
-        updates.installLatestUpdateForMigrationRecovery(),
-    },
-    (reason) => lifecycle.requestGracefulAppQuit(reason),
-    log,
-  );
   const updates = createUpdates({
     resources: {
       readAppUpdateYml: resources.readAppUpdateYml,
@@ -185,16 +156,7 @@ export function createDesktopRuntime(): void {
   else app.on("second-instance", () => windows.focusMainWindow());
   async function bootstrap(): Promise<void> {
     log.writeDesktopLogHeader("bootstrap start");
-    if (!(await recovery.requireCurrentDesktopMigrationBundle())) {
-      return;
-    }
-
     updates.configure();
-
-    const migrationRecoveryOutcome = await recovery.handleDesktopMigrationRecovery();
-    if (migrationRecoveryOutcome !== "continue") {
-      return;
-    }
 
     await backend.reserveBackendEndpoint("bootstrap");
     await browser.restoreSessions();
@@ -292,7 +254,7 @@ export function createDesktopRuntime(): void {
         });
 
         app.on("activate", () => {
-          if (recovery.isStartupBlocked() || lifecycle.isQuitting()) {
+          if (lifecycle.isQuitting()) {
             return;
           }
           updates.handleDesktopAppForegrounded();

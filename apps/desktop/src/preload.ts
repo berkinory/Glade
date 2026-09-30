@@ -249,10 +249,6 @@ contextBridge.exposeInMainWorld("desktopBridge", {
       return () => ipcRenderer.removeListener(IPC.computerPermissions.state, wrappedListener);
     },
   },
-  storageMigration: {
-    readSnapshot: () => ipcRenderer.sendSync(IPC.storageMigration.read),
-    acknowledgeSnapshot: () => ipcRenderer.invoke(IPC.storageMigration.acknowledge),
-  },
   server: {
     transcribeVoice: (input) => ipcRenderer.invoke(IPC.transcribeVoice, input),
   },

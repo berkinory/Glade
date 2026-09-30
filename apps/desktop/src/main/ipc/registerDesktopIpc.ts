@@ -34,11 +34,6 @@ import {
 } from "../../computer/computerPermissionsIpc";
 import type { CuaDriverHost } from "../../computer/cua/cuaDriverHost";
 import {
-  acknowledgeGladeStorageSnapshot,
-  readGladeStorageSnapshot,
-  resolveGladeStorageSnapshotPath,
-} from "../../storage/desktopStorageMigration";
-import {
   AGENT_CURSOR_PREFERENCE_PATH,
   DESKTOP_CUSTOM_TITLE_BAR_PATH,
   MAC_CONTEXT_MENU_LABEL_TRAILING_PADDING,
@@ -131,21 +126,9 @@ export function createRegisterDesktopIpc({
   control,
 }: DesktopIpcDependencies) {
   function registerIpcHandlers(): void {
-    const storageSnapshotPath = resolveGladeStorageSnapshotPath(app.getPath("userData"));
-
     ipcMain.removeAllListeners(DESKTOP_IPC_CHANNELS.browser.webMcpCompatibilityPolicy);
     ipcMain.on(DESKTOP_IPC_CHANNELS.browser.webMcpCompatibilityPolicy, (event: IpcMainEvent) => {
       event.returnValue = browser.getManager().isWebMcpCompatibilityAllowed(event.sender.id);
-    });
-
-    ipcMain.removeAllListeners(DESKTOP_IPC_CHANNELS.storageMigration.read);
-    ipcMain.on(DESKTOP_IPC_CHANNELS.storageMigration.read, (event: IpcMainEvent) => {
-      event.returnValue = readGladeStorageSnapshot(storageSnapshotPath);
-    });
-
-    ipcMain.removeHandler(DESKTOP_IPC_CHANNELS.storageMigration.acknowledge);
-    ipcMain.handle(DESKTOP_IPC_CHANNELS.storageMigration.acknowledge, async () => {
-      await acknowledgeGladeStorageSnapshot(storageSnapshotPath);
     });
 
     ipcMain.removeAllListeners(DESKTOP_IPC_CHANNELS.wsUrl);

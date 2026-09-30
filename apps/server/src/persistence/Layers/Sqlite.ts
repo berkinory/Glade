@@ -1,19 +1,10 @@
-import { Schema } from "effect";
 import { totalmem } from "node:os";
 
 import { Effect, Layer, FileSystem, Path } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 
 import { runMigrations } from "../Migrations.ts";
-import { MigrationSchemaTooNewError } from "../Errors.ts";
-import {
-  inspectPendingMigrationRecovery,
-  reclaimOrphanedMigrationArtifacts,
-  resumeMarkedMigration,
-  runWithPreMigrationBackup,
-  type MigrationRecoveryMarker,
-} from "../MigrationBackup.ts";
-import { createMigrationSchemaTooNewStartupBlockError } from "../MigrationSchemaTooNewStartupBlock.ts";
+import { runWithPreMigrationBackup } from "../MigrationBackup.ts";
 import {
   ensurePrivateFileSync,
   repairPrivateFile,
@@ -66,17 +57,7 @@ const repairSqliteFilePermissions = (dbPath: string) =>
     }
   });
 
-interface SqliteSetupOptions {
-  readonly dbPath?: string | undefined;
-  readonly pendingRecovery?: MigrationRecoveryMarker | null | undefined;
-  readonly divergenceConsent?: string | undefined;
-}
-
-const makeSetup = ({
-  dbPath,
-  pendingRecovery = null,
-  divergenceConsent,
-}: SqliteSetupOptions = {}) =>
+const makeSetup = (dbPath?: string) =>
   Layer.effectDiscard(
     Effect.gen(function* () {
       const sql = yield* SqlClient.SqlClient;
@@ -122,31 +103,11 @@ const makeSetup = ({
         yield* sql`COMMIT;`;
       }
 
-      const migrations = dbPath
-        ? pendingRecovery
-          ? resumeMarkedMigration(dbPath, pendingRecovery, runMigrations())
-          : runWithPreMigrationBackup(dbPath, runMigrations(), { divergenceConsent })
-        : runMigrations();
-      yield* migrations.pipe(
-        Effect.catch((cause) =>
-          Effect.gen(function* () {
-            if (Schema.is(MigrationSchemaTooNewError)(cause) && dbPath) {
-              const blocked = yield* Effect.promise(() =>
-                createMigrationSchemaTooNewStartupBlockError(dbPath, cause),
-              );
-              return yield* Effect.fail(blocked);
-            }
-            return yield* Effect.fail(cause);
-          }),
-        ),
-      );
+      yield* dbPath ? runWithPreMigrationBackup(dbPath, runMigrations()) : runMigrations();
     }),
   );
 
-export const makeSqlitePersistenceLive = (
-  dbPath: string,
-  options: { readonly divergenceConsent?: string | undefined } = {},
-) =>
+export const makeSqlitePersistenceLive = (dbPath: string) =>
   Effect.acquireRelease(acquireDatabaseLifecycleLock(dbPath), (lock) =>
     releaseDatabaseLifecycleLock(lock).pipe(Effect.orDie),
   ).pipe(
@@ -155,25 +116,13 @@ export const makeSqlitePersistenceLive = (
         const fs = yield* FileSystem.FileSystem;
         const path = yield* Path.Path;
         yield* fs.makeDirectory(path.dirname(dbPath), { recursive: true });
-        // Ahead of the guard on purpose: a database that fails closed below never reaches the backup path,
-        // so this is the only opportunity to reclaim artifacts stranded by an earlier failed startup or
-        // restore.
-        yield* reclaimOrphanedMigrationArtifacts(dbPath);
-        const pendingRecovery = yield* inspectPendingMigrationRecovery(dbPath);
         // Never reopen the database, WAL, or SHM merely to chmod them while this connection is live:
         // closing any descriptor for the same inode releases POSIX process locks and can leave a mapped WAL
         // index vulnerable to SIGBUS. SQLite creates its sidecars with the database's private mode.
         yield* Effect.sync(() => ensurePrivateFileSync(dbPath));
         yield* repairSqliteFilePermissions(dbPath);
 
-        return Layer.provideMerge(
-          makeSetup({
-            dbPath,
-            pendingRecovery,
-            divergenceConsent: options.divergenceConsent,
-          }),
-          makeRuntimeSqliteLayer({ filename: dbPath }),
-        );
+        return Layer.provideMerge(makeSetup(dbPath), makeRuntimeSqliteLayer({ filename: dbPath }));
       }),
     ),
     Layer.unwrap,
@@ -185,7 +134,5 @@ export const SqlitePersistenceMemory = Layer.provideMerge(
 );
 
 export const layerConfig = Layer.unwrap(
-  Effect.map(Effect.service(ServerConfig), ({ dbPath, migrationDivergenceConsent }) =>
-    makeSqlitePersistenceLive(dbPath, { divergenceConsent: migrationDivergenceConsent }),
-  ),
+  Effect.map(Effect.service(ServerConfig), ({ dbPath }) => makeSqlitePersistenceLive(dbPath)),
 );
