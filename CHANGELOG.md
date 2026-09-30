@@ -19,6 +19,8 @@
 
 ### Improved
 
+- The file explorer and change lists stay fast and light in large repositories.
+
 - Deleting a chat also deletes its native session history; Codex chats archive and unarchive in Codex too.
 
 - Claude subagents use only your native agents, with progress and controls from the provider.

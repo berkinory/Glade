@@ -135,6 +135,10 @@ class WorkspaceEditorSession {
               ...(guarded ? { expectedVersion: format.expectedVersion } : {}),
             });
 
+            this.client.removeQueries({
+              queryKey: projectQueryKeys.prefetchFile(this.cwd, this.relativePath),
+              exact: true,
+            });
             const queries = this.client.getQueryCache().findAll({
               queryKey: ["projects", "read-file", this.cwd],
               predicate: (query) =>

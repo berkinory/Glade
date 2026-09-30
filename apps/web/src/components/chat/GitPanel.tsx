@@ -264,6 +264,7 @@ export function GitPanel(props: {
         busy={mutating}
       />
       <div
+        data-git-files-scroll=""
         className={cn(
           "flex min-h-0 flex-col gap-2 overflow-auto px-1.5 py-2",
           selectedResolved ? "max-h-[40%] shrink-0" : "flex-1",

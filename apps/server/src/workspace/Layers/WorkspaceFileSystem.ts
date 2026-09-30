@@ -385,6 +385,9 @@ const makeWorkspaceFileSystem = Effect.gen(function* () {
             if (!fileInfo.isFile()) {
               throw new Error("Path is not a file.");
             }
+            if (input.requireComplete && fileInfo.size > maxBytes) {
+              throw new Error("File exceeds the requested complete-read limit.");
+            }
             const readLength = Math.min(fileInfo.size, maxBytes);
             if (readLength === 0) {
               return { bytes: Buffer.alloc(0), fileSize: fileInfo.size };

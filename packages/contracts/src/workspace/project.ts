@@ -205,6 +205,7 @@ export const ProjectReadFileInput = Schema.Struct({
   cwd: TrimmedNonEmptyString,
   relativePath: TrimmedNonEmptyString.check(Schema.isMaxLength(PROJECT_READ_FILE_PATH_MAX_LENGTH)),
   previewGrant: Schema.optional(TrimmedNonEmptyString.check(Schema.isMaxLength(256))),
+  requireComplete: Schema.optional(Schema.Boolean),
   maxBytes: Schema.optional(
     PositiveInt.check(Schema.isLessThanOrEqualTo(PROJECT_READ_FILE_MAX_BYTES)),
   ),

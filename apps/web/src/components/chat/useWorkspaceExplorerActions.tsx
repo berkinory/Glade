@@ -1,6 +1,6 @@
 import type { ProjectFileSystemEntry } from "@glade/contracts/workspace/project";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { Button } from "~/components/ui/button";
 import {
@@ -18,12 +18,25 @@ import { hasUnsavedWorkspaceEditors } from "~/lib/workspaceEditorSession";
 import { ensureNativeApi } from "~/nativeApi";
 
 type EntryKind = ProjectFileSystemEntry["kind"];
-export type ExplorerEdit = {
+type ExplorerEdit = {
   action: "create" | "rename";
   kind: EntryKind;
   parent: string;
   entry?: ProjectFileSystemEntry;
 };
+
+export interface WorkspaceExplorerActions {
+  readonly edit: ExplorerEdit | null;
+  readonly busy: boolean;
+  readonly selectedDirectory: string;
+  readonly setSelectedDirectory: (path: string) => void;
+  readonly create: (parent: string, kind: EntryKind) => void;
+  readonly rename: (entry: ProjectFileSystemEntry) => void;
+  readonly submitEdit: (name: string) => Promise<void>;
+  readonly cancelEdit: () => void;
+  readonly deleteEntry: (entry: ProjectFileSystemEntry) => void;
+  readonly dialogs: ReactNode;
+}
 
 function childPath(parent: string, name: string): string {
   return parent ? `${parent}/${name}` : name;
@@ -36,7 +49,7 @@ export function useWorkspaceExplorerActions(
   expandedDirectories: ReadonlySet<string>,
   onToggleDirectory: (path: string) => void,
   onDeleted?: (path: string) => void,
-) {
+): WorkspaceExplorerActions {
   const queryClient = useQueryClient();
   const [edit, setEdit] = useState<ExplorerEdit | null>(null);
   const [selectedDirectory, setSelectedDirectory] = useState("");

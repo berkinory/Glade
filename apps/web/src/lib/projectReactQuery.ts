@@ -29,6 +29,8 @@ export const projectQueryKeys = {
     ["projects", "list-directories", cwd, relativePath, includeFiles] as const,
   readFile: (cwd: string | null, relativePath: string | null) =>
     ["projects", "read-file", cwd, relativePath] as const,
+  prefetchFile: (cwd: string | null, relativePath: string | null) =>
+    ["projects", "prefetch-file", cwd, relativePath] as const,
   localPreviewGrant: (path: string | null) => ["projects", "local-preview-grant", path] as const,
   resolveOutOfRootFileReference: (cwd: string | null, relativePath: string | null) =>
     ["projects", "resolve-out-of-root-file-reference", cwd, relativePath] as const,
@@ -67,6 +69,10 @@ export function refetchFreshProjectFileQuery(
   queryClient: QueryClient,
   input: { readonly cwd: string | null; readonly relativePath: string | null },
 ): Promise<void> {
+  queryClient.removeQueries({
+    queryKey: projectQueryKeys.prefetchFile(input.cwd, input.relativePath),
+    exact: true,
+  });
   const queryKey = projectQueryKeys.readFile(input.cwd, input.relativePath);
   const refreshKey = JSON.stringify(queryKey);
   let refreshes = activeProjectFileRefreshes.get(queryClient);
@@ -113,6 +119,9 @@ export function invalidateProjectFileQueriesForCwds(
   cwds: Iterable<string>,
 ) {
   const uniqueCwds = [...new Set([...cwds].filter((cwd) => cwd.length > 0))];
+  for (const cwd of uniqueCwds) {
+    queryClient.removeQueries({ queryKey: ["projects", "prefetch-file", cwd] as const });
+  }
   return Promise.all(
     uniqueCwds.flatMap((cwd) => [
       queryClient.invalidateQueries({ queryKey: ["projects", "list-directories", cwd] as const }),
@@ -231,6 +240,9 @@ export function projectReadFileQueryOptions(input: {
   cwd: string | null;
   relativePath: string | null;
   previewGrant?: string | null | undefined;
+  maxBytes?: number;
+  requireComplete?: boolean;
+  gcTime?: number;
   enabled?: boolean;
   staleTime?: number;
 }) {
@@ -241,7 +253,20 @@ export function projectReadFileQueryOptions(input: {
       : null);
   return queryOptions<ProjectReadFileResult>({
     queryKey: projectQueryKeys.readFile(input.cwd, input.relativePath),
-    queryFn: async ({ signal }) => {
+    queryFn: async ({ signal, client }) => {
+      if (input.maxBytes === undefined) {
+        const prefetched = client.getQueryState<ProjectReadFileResult>(
+          projectQueryKeys.prefetchFile(input.cwd, input.relativePath),
+        );
+        if (
+          prefetched?.data &&
+          !prefetched.data.truncated &&
+          !prefetched.isInvalidated &&
+          Date.now() - prefetched.dataUpdatedAt < DEFAULT_READ_FILE_STALE_TIME
+        ) {
+          return prefetched.data;
+        }
+      }
       const api = ensureNativeApi();
       if (!effectiveCwd || !input.relativePath) {
         throw new Error("Workspace file read is unavailable.");
@@ -251,12 +276,15 @@ export function projectReadFileQueryOptions(input: {
           cwd: effectiveCwd,
           relativePath: input.relativePath,
           ...(input.previewGrant ? { previewGrant: input.previewGrant } : {}),
+          ...(input.maxBytes !== undefined ? { maxBytes: input.maxBytes } : {}),
+          ...(input.requireComplete ? { requireComplete: true } : {}),
         },
         { signal },
       );
     },
     enabled: (input.enabled ?? true) && effectiveCwd !== null && input.relativePath !== null,
     staleTime: input.staleTime ?? DEFAULT_READ_FILE_STALE_TIME,
+    ...(input.gcTime !== undefined ? { gcTime: input.gcTime } : {}),
 
     retry: false,
     refetchInterval: expensiveReadErrorRefetchInterval,
