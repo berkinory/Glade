@@ -61,6 +61,8 @@ The client does not own provider session truth or durable orchestration state. W
 
 `apps/server/src/server/ws/wsRpc.ts` is the main typed feature-RPC boundary. It merges the shared contract groups, applies request/stream admission, authentication/session context, and exposes orchestration plus server services on one feature socket.
 
+`apps/server/src/server/http/http.ts` composes HTTP routes in their established order. Authentication routes, request authorization, bounded body decoding, file/upload routes, static client serving, icons, thread export and lifecycle endpoints have direct domain modules. Shared HTTP response policies remain separate from route orchestration.
+
 The HTTP/WebSocket layer also owns:
 
 - protocol negotiation and compatibility fencing;

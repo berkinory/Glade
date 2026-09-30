@@ -23,11 +23,9 @@ import {
 import { ServerConfig, type ServerConfigShape } from "../config";
 import { ManagedAttachmentRepositoryLive } from "../../persistence/Layers/ManagedAttachments";
 import { SqlitePersistenceMemory } from "../../persistence/Layers/Sqlite";
-import {
-  AUTH_JSON_BODY_MAX_BYTES,
-  authEffectRouteLayer,
-  binaryUploadEffectRouteLayer,
-} from "./http";
+import { AUTH_JSON_BODY_MAX_BYTES } from "./httpBody";
+import { authEffectRouteLayer } from "./authRoutes";
+import { binaryUploadEffectRouteLayer } from "./binaryUploadRoutes";
 import {
   ProviderAdapterRegistry,
   type ProviderAdapterRegistryShape,

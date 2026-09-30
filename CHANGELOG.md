@@ -12,6 +12,8 @@
 
 ### Improved
 
+- HTTP route composition imports focused auth, upload, file, static-client, icon, export and lifecycle modules. Route ordering, request authorization and body limits remain unchanged.
+
 - Server source files and their tests live with their owning domains. The root keeps the CLI entry and application composition; bundled recovery and dependency-smoke entry names remain unchanged.
 
 - Provider usage subprocesses use the shared executable boundary, and worktree setup uses the server's platform-owned shell execution policy. Timeouts, output limits and shell arguments retain their existing values.
