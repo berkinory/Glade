@@ -23,6 +23,7 @@ import { GitCoreLive } from "./GitCore.ts";
 import { GitCore } from "../Services/GitCore.ts";
 import { createGitHubCliWithFakeGh, type FakeGhScenario } from "../testing/fakeGitHubCli.ts";
 import { makeGitManager } from "./GitManager.ts";
+import { GitHandoffLive } from "./GitHandoff.ts";
 import { ServerConfig } from "../../server/config.ts";
 
 interface FakeGitTextGeneration {
@@ -313,16 +314,13 @@ function makeManager(input?: {
     prefix: "glade-git-manager-test-",
   });
 
-  const gitCoreLayer = GitCoreLive.pipe(
-    Layer.provideMerge(NodeServices.layer),
-    Layer.provideMerge(ServerConfigLayer),
-  );
+  const gitServicesLayer = GitHandoffLive.pipe(Layer.provideMerge(GitCoreLive));
 
   const managerLayer = Layer.mergeAll(
     Layer.succeed(GitHubCli, gitHubCli),
     Layer.succeed(TextGeneration, textGeneration),
-    gitCoreLayer,
-  ).pipe(Layer.provideMerge(NodeServices.layer));
+    gitServicesLayer,
+  ).pipe(Layer.provideMerge(ServerConfigLayer), Layer.provideMerge(NodeServices.layer));
 
   return makeGitManager.pipe(
     Effect.provide(managerLayer),

@@ -60,6 +60,18 @@ export class GitManagerError extends Schema.TaggedErrorClass<GitManagerError>()(
   }
 }
 
+export function gitManagerError(
+  operation: string,
+  detail: string,
+  cause?: unknown,
+): GitManagerError {
+  return new GitManagerError({
+    operation,
+    detail,
+    ...(cause !== undefined ? { cause } : {}),
+  });
+}
+
 export type GitManagerServiceError =
   | GitManagerError
   | GitCommandError
