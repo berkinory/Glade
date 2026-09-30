@@ -26,11 +26,9 @@ import {
   normalizeRuntimeModeForProvider,
   providerModelSupportsAutoRuntimeMode,
 } from "~/lib/runtimeMode";
-import { newCommandId } from "~/lib/utils";
-import { readNativeApi } from "~/nativeApi";
 import { buildModelSelection } from "~/providerModelOptions";
 import { type Thread } from "~/types";
-import { backgroundSubagent, interruptThreadTurn, stopWorkflowTask } from "../chatTaskActions";
+import { backgroundSubagent, interruptThreadTurn } from "../chatTaskActions";
 import { ChatViewProps } from "./chatViewSupport";
 import type { useChatComposerController } from "./useChatComposerController";
 import type { useChatDiscoveryController } from "./useChatDiscoveryController";
@@ -60,20 +58,13 @@ export function useChatActionsController({
 }) {
   const {
     activeThread,
-    markWorkflowRunPaused,
-    markWorkflowRunDismissed,
     setComposerDraftModelSelectionAndSticky,
-    removeComposerImageFromDraft,
     addComposerFilesToDraft,
     discardPromptHistoryNavigationForComposerMutation,
-    removeComposerDraftFile,
     dragDepthRef,
     setIsDragOverComposer,
     composerThreadSummaries,
     composerThreadProjects,
-    isRevertingCheckpoint,
-    setIsRevertingCheckpoint,
-    setPendingFileUndo,
     createThreadHandoff,
     promptHistoryNavigationRef,
     applyingPromptHistoryNavigationRef,
@@ -86,33 +77,20 @@ export function useChatActionsController({
     setComposerTrigger,
   } = session;
   const {
-    workflowRunState,
     stripSourceThreadId,
     composerSubagentStripItems,
     modelOptionsByProvider,
     runtimeModelsByProvider,
     lockedProvider,
-    hasLiveTurn,
     pendingUserInputs,
     updateSelectedComposerMentions,
-    isSendBusy,
-    isConnecting,
     updateSelectedComposerSkills,
   } = provider;
   const { activeThreadId, runtimeMode } = workspace;
   const { providerStatuses, handoffTargetProviders } = discovery;
   const { handoffDisabled } = transcript;
   const { persistRuntimeModeChange } = environment;
-  const {
-    scheduleComposerFocus,
-    isVoiceRecording,
-    isVoiceTranscribing,
-    submitComposerVoiceRecording,
-    startComposerVoiceRecording,
-    enqueueComposerImages,
-    setThreadError,
-    focusComposer,
-  } = composer;
+  const { scheduleComposerFocus, enqueueComposerImages, setThreadError, focusComposer } = composer;
   const { threadId } = props;
 
   const onInterruptFromStopControl = useCallback(() => {
@@ -136,19 +114,6 @@ export function useChatActionsController({
       foreground.map((item) => backgroundSubagent(stripSourceThreadId, item.providerThreadId)),
     );
   }, [composerSubagentStripItems, stripSourceThreadId]);
-
-  const onPauseWorkflowRun = useCallback(async () => {
-    if (!workflowRunState || !activeThreadId) return;
-    const { workflowTaskId } = workflowRunState;
-    markWorkflowRunPaused(activeThreadId, workflowTaskId);
-    if (activeThread) await stopWorkflowTask(activeThread.id, workflowTaskId);
-  }, [activeThread, activeThreadId, markWorkflowRunPaused, workflowRunState]);
-
-  const onDismissWorkflowRun = useCallback(() => {
-    if (!workflowRunState || !activeThreadId) return;
-    const { workflowTaskId } = workflowRunState;
-    markWorkflowRunDismissed(activeThreadId, workflowTaskId);
-  }, [activeThreadId, markWorkflowRunDismissed, workflowRunState]);
 
   const [pendingProviderHandoff, setPendingProviderHandoff] = useState<{
     modelSelection: ModelSelection;
@@ -252,22 +217,6 @@ export function useChatActionsController({
     environment,
   });
 
-  const toggleComposerVoiceRecording = useCallback(() => {
-    if (isVoiceTranscribing) {
-      return;
-    }
-    if (isVoiceRecording) {
-      void submitComposerVoiceRecording();
-      return;
-    }
-    void startComposerVoiceRecording();
-  }, [
-    isVoiceRecording,
-    isVoiceTranscribing,
-    startComposerVoiceRecording,
-    submitComposerVoiceRecording,
-  ]);
-
   const addComposerImages = useCallback(
     (files: readonly File[]) => {
       if (!activeThreadId || files.length === 0) return;
@@ -284,10 +233,6 @@ export function useChatActionsController({
     },
     [activeThreadId, enqueueComposerImages, pendingUserInputs.length],
   );
-
-  const removeComposerImage = (imageId: string) => {
-    removeComposerImageFromDraft(imageId);
-  };
 
   const addComposerFiles = useCallback(
     (files: readonly File[]) => {
@@ -331,11 +276,6 @@ export function useChatActionsController({
     },
     [addComposerFiles, addComposerImages],
   );
-
-  const removeComposerFile = (fileId: string) => {
-    discardPromptHistoryNavigationForComposerMutation();
-    removeComposerDraftFile(threadId, fileId);
-  };
 
   const {
     onComposerPaste,
@@ -387,70 +327,6 @@ export function useChatActionsController({
       ]);
     },
   });
-
-  const onUndoTurnFiles = useCallback(
-    async (turnCounts: readonly number[]) => {
-      const api = readNativeApi();
-      if (!api || !activeThread || isRevertingCheckpoint || turnCounts.length === 0) return;
-
-      if (hasLiveTurn || isSendBusy || isConnecting) {
-        setThreadError(activeThread.id, "Interrupt the current turn before undoing file changes.");
-        return;
-      }
-      const confirmed = await api.dialogs.confirm(
-        [
-          "Undo the file changes shown in this card?",
-          "Earlier file changes will remain available to undo.",
-          "Messages and provider conversation history will be kept.",
-          "This action cannot be undone.",
-        ].join("\n"),
-      );
-      if (!confirmed) return;
-
-      setIsRevertingCheckpoint(true);
-      setThreadError(activeThread.id, null);
-
-      const orderedTurnCounts = [...new Set(turnCounts)].toSorted((left, right) => right - left);
-      const requestedAt = new Date().toISOString();
-      setPendingFileUndo({
-        threadId: activeThread.id,
-        turnCounts: orderedTurnCounts,
-        existingFailureActivityIds: activeThread.activities
-          .filter((activity) => activity.kind === "checkpoint.revert.failed")
-          .map((activity) => activity.id),
-      });
-      const dispatchReverts = async () => {
-        for (const turnCount of orderedTurnCounts) {
-          await api.orchestration.dispatchCommand({
-            type: "thread.checkpoint.revert",
-            commandId: newCommandId(),
-            threadId: activeThread.id,
-            turnCount,
-            scope: "files",
-            createdAt: requestedAt,
-          });
-        }
-      };
-      await dispatchReverts().catch((err: unknown) => {
-        setPendingFileUndo(null);
-        setIsRevertingCheckpoint(false);
-        setThreadError(
-          activeThread.id,
-          err instanceof Error ? err.message : "Failed to undo file changes.",
-        );
-      });
-    },
-    [
-      setIsRevertingCheckpoint,
-      setPendingFileUndo,
-      activeThread,
-      hasLiveTurn,
-      isConnecting,
-      isRevertingCheckpoint,
-      isSendBusy,
-      setThreadError,
-    ],
-  );
 
   const confirmProviderHandoff = useCallback(async () => {
     if (!activeThread || !pendingProviderHandoff || providerHandoffBusy || handoffDisabled) return;
@@ -519,16 +395,11 @@ export function useChatActionsController({
     });
   return {
     onInterruptFromStopControl,
-    onPauseWorkflowRun,
-    onDismissWorkflowRun,
     pendingProviderHandoff,
     setPendingProviderHandoff,
     providerHandoffBusy,
     onProviderModelSelect,
-    toggleComposerVoiceRecording,
-    removeComposerImage,
     addComposerAttachments,
-    removeComposerFile,
     onComposerPaste,
     onComposerDragEnter,
     onComposerDragOver,
@@ -536,7 +407,6 @@ export function useChatActionsController({
     onComposerDrop,
     isThreadDragOverComposer,
     threadMentionDropzoneProps,
-    onUndoTurnFiles,
     confirmProviderHandoff,
     clearComposerInput,
     createAutomationFromForm,

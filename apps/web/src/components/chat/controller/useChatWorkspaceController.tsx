@@ -6,7 +6,25 @@ import { hasFileUndoSettled } from "../../ChatView.logic.session";
 import { createThreadLineageSelector } from "~/components/ChatView.selectors";
 import { deriveLatestRateLimitStatus } from "~/components/chat/RateLimitBanner";
 import { useAsyncUserInputResponse } from "~/components/chat/useAsyncUserInputResponse";
-import { useChatTerminalController } from "~/components/chat/useChatTerminalController";
+import { useChatTerminalState } from "~/components/chat/useChatTerminalState";
+import {
+  activateChatTerminal,
+  closeActiveChatTerminalWorkspaceView,
+  closeChatTerminal,
+  collapseChatTerminalWorkspace,
+  createChatTerminal,
+  createChatTerminalFromShortcut,
+  createChatTerminalTab,
+  expandChatTerminalWorkspace,
+  handleChatTerminalSessionExited,
+  moveChatTerminalToNewGroup,
+  openNewFullWidthChatTerminal,
+  setChatTerminalHeight,
+  setChatTerminalOpen,
+  setChatTerminalWorkspaceTab,
+  splitChatTerminal,
+  toggleChatTerminalVisibility,
+} from "~/components/chat/chatTerminalActions";
 import type { DraftThreadEnvMode } from "../../../composerDraftDomain";
 import {
   useThreadComputerAvailability,
@@ -21,6 +39,7 @@ import { newThreadId } from "~/lib/utils";
 import { useProjectPreferencesStore } from "~/projectPreferencesStore";
 import { hasLiveTurnTailWork, isLatestTurnSettled } from "~/session-logic";
 import { useStore } from "~/store";
+import { useTerminalStateStore } from "~/terminalStateStore";
 import { createProjectSelector } from "~/storeSelectors";
 import { DEFAULT_INTERACTION_MODE, DEFAULT_RUNTIME_MODE, type Thread } from "~/types";
 import { useWorkspacePathsStore } from "~/workspacePathsStore";
@@ -204,6 +223,13 @@ export function useChatWorkspaceController({
   const activeProject = useStore(
     useMemo(() => createProjectSelector(activeProjectId), [activeProjectId]),
   );
+  const storeSetTerminalMetadata = useTerminalStateStore((state) => state.setTerminalMetadata);
+  const storeSetTerminalActivity = useTerminalStateStore((state) => state.setTerminalActivity);
+  const storeOpenTerminalThreadPage = useTerminalStateStore(
+    (state) => state.openTerminalThreadPage,
+  );
+  const storeCloseTerminalGroup = useTerminalStateStore((state) => state.closeTerminalGroup);
+  const storeResizeTerminalSplit = useTerminalStateStore((state) => state.resizeTerminalSplit);
 
   const {
     terminalState,
@@ -212,37 +238,97 @@ export function useChatWorkspaceController({
     terminalWorkspaceOpen,
     terminalWorkspaceTerminalTabActive,
     terminalWorkspaceChatTabActive,
-    setTerminalOpen,
-    setTerminalWorkspaceTab,
-    setTerminalHeight,
-    setTerminalMetadataInStore: storeSetTerminalMetadata,
-    setTerminalActivityInStore: storeSetTerminalActivity,
-    openTerminalThreadPageInStore: storeOpenTerminalThreadPage,
-    closeTerminalGroupInStore: storeCloseTerminalGroup,
-    resizeTerminalSplitInStore: storeResizeTerminalSplit,
-    toggleTerminalVisibility,
-    expandTerminalWorkspace,
-    collapseTerminalWorkspace,
-    splitTerminalLeft,
-    splitTerminalRight,
-    splitTerminalDown,
-    splitTerminalUp,
-    createNewTerminal,
-    createNewTerminalTab,
-    createTerminalFromShortcut,
-    moveTerminalToNewGroup,
-    openNewFullWidthTerminal,
-    activateTerminal,
-    closeTerminal,
-    handleTerminalSessionExited,
-    closeActiveWorkspaceView,
-  } = useChatTerminalController({
+  } = useChatTerminalState({
     threadId,
     activeThreadId,
-    activeProjectPresent: activeProject !== undefined,
     isFocusedPane,
-    confirmTerminalClose: settings.confirmTerminalTabClose,
   });
+  const terminalActionContext = useMemo(
+    () => ({
+      activeThreadId,
+      activeProjectPresent: activeProject !== undefined,
+      confirmTerminalClose: settings.confirmTerminalTabClose,
+      requestTerminalFocus,
+    }),
+    [activeThreadId, activeProject, settings.confirmTerminalTabClose, requestTerminalFocus],
+  );
+  const setTerminalOpen = useCallback(
+    (open: boolean) => setChatTerminalOpen(terminalActionContext, open),
+    [terminalActionContext],
+  );
+  const setTerminalWorkspaceTab = useCallback(
+    (tab: "terminal" | "chat") => setChatTerminalWorkspaceTab(terminalActionContext, tab),
+    [terminalActionContext],
+  );
+  const setTerminalHeight = useCallback(
+    (height: number) => setChatTerminalHeight(terminalActionContext, height),
+    [terminalActionContext],
+  );
+  const toggleTerminalVisibility = useCallback(
+    () => toggleChatTerminalVisibility(terminalActionContext, terminalState),
+    [terminalActionContext, terminalState],
+  );
+  const expandTerminalWorkspace = useCallback(
+    () => expandChatTerminalWorkspace(terminalActionContext),
+    [terminalActionContext],
+  );
+  const collapseTerminalWorkspace = useCallback(
+    () => collapseChatTerminalWorkspace(terminalActionContext),
+    [terminalActionContext],
+  );
+  const splitTerminalLeft = useCallback(
+    () => splitChatTerminal(terminalActionContext, terminalState, "left"),
+    [terminalActionContext, terminalState],
+  );
+  const splitTerminalRight = useCallback(
+    () => splitChatTerminal(terminalActionContext, terminalState, "right"),
+    [terminalActionContext, terminalState],
+  );
+  const splitTerminalDown = useCallback(
+    () => splitChatTerminal(terminalActionContext, terminalState, "down"),
+    [terminalActionContext, terminalState],
+  );
+  const splitTerminalUp = useCallback(
+    () => splitChatTerminal(terminalActionContext, terminalState, "up"),
+    [terminalActionContext, terminalState],
+  );
+  const createNewTerminal = useCallback(
+    () => createChatTerminal(terminalActionContext),
+    [terminalActionContext],
+  );
+  const createNewTerminalTab = useCallback(
+    (targetId: string) => createChatTerminalTab(terminalActionContext, targetId),
+    [terminalActionContext],
+  );
+  const createTerminalFromShortcut = useCallback(
+    () => createChatTerminalFromShortcut(terminalActionContext, terminalState),
+    [terminalActionContext, terminalState],
+  );
+  const moveTerminalToNewGroup = useCallback(
+    (terminalId: string) => moveChatTerminalToNewGroup(terminalActionContext, terminalId),
+    [terminalActionContext],
+  );
+  const openNewFullWidthTerminal = useCallback(
+    () => openNewFullWidthChatTerminal(terminalActionContext),
+    [terminalActionContext],
+  );
+  const activateTerminal = useCallback(
+    (terminalId: string) => activateChatTerminal(terminalActionContext, terminalId),
+    [terminalActionContext],
+  );
+  const closeTerminal = useCallback(
+    (terminalId: string) => closeChatTerminal(terminalActionContext, terminalState, terminalId),
+    [terminalActionContext, terminalState],
+  );
+  const handleTerminalSessionExited = useCallback(
+    (terminalId: string) =>
+      handleChatTerminalSessionExited(terminalActionContext, terminalState, terminalId),
+    [terminalActionContext, terminalState],
+  );
+  const closeActiveWorkspaceView = useCallback(
+    () => closeActiveChatTerminalWorkspaceView(terminalActionContext, terminalState),
+    [terminalActionContext, terminalState],
+  );
 
   const projectInstructions = useProjectPreferencesStore((state) =>
     activeProjectId ? (state.instructionsByProjectId[activeProjectId] ?? "") : "",

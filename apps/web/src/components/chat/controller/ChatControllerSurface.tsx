@@ -49,6 +49,7 @@ import { cn } from "~/lib/utils";
 import { ProjectImportLandingBanner } from "~/projectImport/ProjectImportLandingBanner";
 import { AutomationDialog } from "~/routes/-automationFormDialog";
 import { ChatComposerSurface } from "./ChatComposerSurface";
+import { undoTurnFiles } from "../chatTaskActions";
 import { createChatPresentation } from "./chatPresentation";
 import { ThreadTerminalDrawer } from "./chatViewSupport";
 import { MAX_DISMISSED_PROVIDER_HEALTH_BANNERS } from "./chatViewSupport";
@@ -75,6 +76,8 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     forkSource,
     handoffSource,
     isRevertingCheckpoint,
+    setIsRevertingCheckpoint,
+    setPendingFileUndo,
     resolvedTheme,
     settings,
     timestampFormat,
@@ -98,7 +101,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     onComposerDragLeave,
     onComposerDrop,
     submitAutomationDraft,
-    onUndoTurnFiles,
     pendingProviderHandoff,
     providerHandoffBusy,
     setPendingProviderHandoff,
@@ -305,6 +307,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     activeTurnIdForTranscript,
     openAgentActivityDetail,
     isSendBusy,
+    hasLiveTurn,
     turnTakenOver,
     isConnecting,
     providerDisplayName,
@@ -691,8 +694,16 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                     onOpenAutomation={onOpenAutomation}
                     computerControlEnabled={enableComputerControl}
                     onEnableComputerControl={handleEnableComputerControlFromDenial}
-                    onUndoTurnFiles={(...args: Parameters<typeof onUndoTurnFiles>) => {
-                      void onUndoTurnFiles(...args).catch(reportChatActionFailure);
+                    onUndoTurnFiles={(turnCounts) => {
+                      void undoTurnFiles({
+                        thread: activeThread,
+                        turnCounts,
+                        isReverting: isRevertingCheckpoint,
+                        isBusy: hasLiveTurn || isSendBusy || isConnecting,
+                        setIsReverting: setIsRevertingCheckpoint,
+                        setPendingFileUndo,
+                        setThreadError,
+                      }).catch(reportChatActionFailure);
                     }}
                     onEditUserMessage={onEditUserMessage}
                     onRespondToAsyncUserInput={onRespondToAsyncUserInput}

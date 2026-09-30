@@ -125,6 +125,11 @@ export function ChatComposerSurface({
     secondaryChromePlaceholderHeight,
     setComposerDraftProviderModelOptions,
     updateSettings,
+    removeComposerImageFromDraft,
+    discardPromptHistoryNavigationForComposerMutation,
+    removeComposerDraftFile,
+    markWorkflowRunPaused,
+    markWorkflowRunDismissed,
   } = controller.session;
   const {
     onSend,
@@ -230,18 +235,33 @@ export function ChatComposerSurface({
     isPreparingWorktree,
   } = controller.provider;
   const {
-    onPauseWorkflowRun,
-    onDismissWorkflowRun,
     isThreadDragOverComposer,
     threadMentionDropzoneProps,
     addComposerAttachments,
-    removeComposerFile,
-    removeComposerImage,
     onComposerPaste,
-    toggleComposerVoiceRecording,
     onInterruptFromStopControl,
   } = controller.actions;
-  const { isServerThread, interactionMode, activeCumulativeCostUsd } = controller.workspace;
+  const removeComposerFile = (fileId: string) => {
+    discardPromptHistoryNavigationForComposerMutation();
+    removeComposerDraftFile(threadId, fileId);
+  };
+  const toggleComposerVoiceRecording = () => {
+    if (isVoiceTranscribing) return;
+    if (isVoiceRecording) void submitComposerVoiceRecording();
+    else void controller.composer.startComposerVoiceRecording();
+  };
+  const { isServerThread, interactionMode, activeCumulativeCostUsd, activeThreadId } =
+    controller.workspace;
+  const onPauseWorkflowRun = async () => {
+    if (!workflowRunState || !activeThreadId) return;
+    markWorkflowRunPaused(activeThreadId, workflowRunState.workflowTaskId);
+    if (activeThread) await stopWorkflowTask(activeThread.id, workflowRunState.workflowTaskId);
+  };
+  const onDismissWorkflowRun = () => {
+    if (workflowRunState && activeThreadId) {
+      markWorkflowRunDismissed(activeThreadId, workflowRunState.workflowTaskId);
+    }
+  };
   const { handleInteractionModeChange, resetInteractionMode, togglePlanSidebar } =
     controller.environment;
   const {
@@ -585,7 +605,7 @@ export function ChatComposerSurface({
                       onShowPastedTextInField={showComposerPastedTextInField}
                       onRemovePullRequestContext={removeComposerPullRequestContextFromDraft}
                       onRemoveFile={removeComposerFile}
-                      onRemoveImage={removeComposerImage}
+                      onRemoveImage={removeComposerImageFromDraft}
                     />
                   )}
                 <ComposerPromptEditor
