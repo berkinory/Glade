@@ -12,6 +12,8 @@
 
 ### Improved
 
+- Provider reactor behavior tests are grouped by durable recovery, cache consent, compaction, queued delivery, goal continuation, turn dispatch and conversation edits. Shared fixtures own the real in-memory SQLite runtime and Scope teardown; all existing scenarios are retained.
+
 - Provider command handling has focused controllers for session setup, projected state, human responses, queued turns, task control, edits, naming, context lifecycle and durable delivery. The Layer owns shared resources and composes controllers; claim, lease, recovery and provider behavior remain unchanged.
 
 - Provider delivery reconciliation and Claude compaction recovery use Layer-owned references, so separated controllers observe current runtime state. Recovery flag and accepted startup turns settle atomically.
