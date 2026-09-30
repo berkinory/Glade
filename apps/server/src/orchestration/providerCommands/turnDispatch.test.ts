@@ -61,16 +61,6 @@ describe("Provider reactor turnDispatch", () => {
           attachment: sentAttachment,
         }),
     ).toBe(storagePath);
-
-    await waitFor(() => harness.generateThreadTitle.mock.calls.length === 1);
-    const titleAttachment = harness.generateThreadTitle.mock.calls[0]?.[0].attachments?.[0];
-    expect(
-      titleAttachment &&
-        resolveProviderAttachmentPath({
-          attachmentsDir: path.join(harness.stateDir, "attachments"),
-          attachment: titleAttachment,
-        }),
-    ).toBe(storagePath);
   });
 
   it("reacts to thread.turn.start by ensuring session and sending provider turn", async () => {

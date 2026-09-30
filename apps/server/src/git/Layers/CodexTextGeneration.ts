@@ -5,7 +5,6 @@ import { ChildProcessSpawner } from "effect/unstable/process";
 import { makeEffectProcessCommand } from "../../platform/effectProcessRuntime.ts";
 
 import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
-import { sanitizeGeneratedThreadTitle } from "@glade/shared/threads/chatThreads";
 import { resolveCodexHome } from "../../provider/codex/codexConfig";
 import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@glade/shared/git/git";
 
@@ -21,7 +20,6 @@ import {
   type CommitMessageGenerationResult,
   type DiffSummaryGenerationResult,
   type PrContentGenerationResult,
-  type ThreadTitleGenerationResult,
   type TextGenerationOperation,
   type TextGenerationShape,
 } from "../Services/TextGeneration.ts";
@@ -32,7 +30,6 @@ import {
   buildCommitMessagePrompt,
   buildDiffSummaryPrompt,
   buildPrContentPrompt,
-  buildThreadTitlePrompt,
   sanitizeCommitSubject,
   sanitizeDiffSummary,
   sanitizePrTitle,
@@ -585,35 +582,6 @@ const makeCodexTextGeneration = Effect.gen(function* () {
     });
   };
 
-  const generateThreadTitle: TextGenerationShape["generateThreadTitle"] = (input) => {
-    return Effect.gen(function* () {
-      const { imagePaths } = yield* materializeImageAttachments(
-        "generateThreadTitle",
-        input.attachments,
-      );
-      const { prompt, outputSchemaJson } = buildThreadTitlePrompt({
-        message: input.message,
-        ...(input.context ? { context: input.context } : {}),
-        ...(input.attachments ? { attachments: input.attachments } : {}),
-      });
-
-      const generated = yield* runCodexJson({
-        operation: "generateThreadTitle",
-        cwd: input.cwd,
-        prompt,
-        outputSchemaJson,
-        imagePaths,
-        ...(input.model ? { model: input.model } : {}),
-        ...(input.modelSelection ? { modelSelection: input.modelSelection } : {}),
-        ...(input.providerOptions ? { providerOptions: input.providerOptions } : {}),
-      });
-
-      return {
-        title: sanitizeGeneratedThreadTitle(generated.title),
-      } satisfies ThreadTitleGenerationResult;
-    });
-  };
-
   const generateAutomationIntent: TextGenerationShape["generateAutomationIntent"] = (input) => {
     const { prompt, outputSchemaJson } = buildAutomationIntentPrompt({
       message: input.message,
@@ -655,7 +623,6 @@ const makeCodexTextGeneration = Effect.gen(function* () {
     generatePrContent,
     generateDiffSummary,
     generateBranchName,
-    generateThreadTitle,
     generateAutomationIntent,
     evaluateAutomationCompletion,
   } satisfies TextGenerationShape;

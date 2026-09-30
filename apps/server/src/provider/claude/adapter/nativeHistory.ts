@@ -38,3 +38,19 @@ export const updateClaudeNativeHistory: NonNullable<ClaudeAdapterShape["updateNa
         }),
     });
   });
+
+export const readClaudeNativeTitle = (sessionId: string, cwd: string | undefined) =>
+  Effect.tryPromise({
+    try: async () => {
+      const { getSessionInfo } = await import("@anthropic-ai/claude-agent-sdk");
+      const info = await getSessionInfo(sessionId, cwd ? { dir: cwd } : {});
+      return (info?.customTitle ?? info?.summary)?.trim() || undefined;
+    },
+    catch: (cause) =>
+      new ProviderAdapterRequestError({
+        provider: PROVIDER,
+        method: "getSessionInfo",
+        detail: "Failed to read native Claude title.",
+        cause,
+      }),
+  });

@@ -4,7 +4,6 @@ import {
   type RuntimeMode,
 } from "@glade/contracts/provider/sessionPolicy";
 import { type OrchestrationThreadPullRequest } from "@glade/contracts/orchestration/threadEntities";
-import { type OrchestrationRegenerateThreadTitleResult } from "@glade/contracts/orchestration/rpc";
 import { type ProjectId, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { DraftThreadEnvMode } from "../composerDraftDomain";
 import { readNativeApi } from "../nativeApi";
@@ -13,10 +12,6 @@ import { promoteThreadCreate } from "./threadCreatePromotion";
 import { newCommandId } from "./utils";
 
 type ThreadRenameOutcome = "empty" | "unchanged" | "unavailable" | "renamed";
-export type ThreadTitleRegenerationOutcome =
-  | OrchestrationRegenerateThreadTitleResult
-  | { readonly status: "unavailable"; readonly title: null };
-
 type DraftThreadRenameSource = Pick<
   Thread,
   | "projectId"
@@ -57,16 +52,6 @@ export function buildDraftThreadRenameCreateInput(thread: DraftThreadRenameSourc
   };
 }
 
-export async function dispatchThreadTitleRegeneration(
-  threadId: ThreadId,
-): Promise<ThreadTitleRegenerationOutcome> {
-  const api = readNativeApi();
-  if (!api) {
-    return { status: "unavailable", title: null };
-  }
-  return api.orchestration.regenerateThreadTitle({ threadId });
-}
-
 export async function dispatchThreadRename(input: {
   threadId: ThreadId;
   newTitle: string;
@@ -100,7 +85,7 @@ export async function dispatchThreadRename(input: {
   }
 
   if (input.createIfMissing) {
-    const promotionResult = await promoteThreadCreate(
+    await promoteThreadCreate(
       {
         type: "thread.create",
         commandId: newCommandId(),
@@ -121,20 +106,20 @@ export async function dispatchThreadRename(input: {
       },
       api,
     );
-    if (promotionResult === "exists") {
-      await api.orchestration.dispatchCommand({
-        type: "thread.meta.update",
-        commandId: newCommandId(),
-        threadId: input.threadId,
-        title: trimmed,
-      });
-    }
+    await api.orchestration.dispatchCommand({
+      type: "thread.meta.update",
+      commandId: newCommandId(),
+      threadId: input.threadId,
+      title: trimmed,
+      titleSource: "user",
+    });
   } else {
     await api.orchestration.dispatchCommand({
       type: "thread.meta.update",
       commandId: newCommandId(),
       threadId: input.threadId,
       title: trimmed,
+      titleSource: "user",
     });
   }
 

@@ -218,6 +218,12 @@ export function makeProviderDomainEvents(input: {
             );
           return;
         case "thread.meta-updated": {
+          if (event.payload.titleSource === "user" && event.payload.title !== undefined) {
+            yield* providerService.updateNativeHistory({
+              threadId: event.payload.threadId,
+              action: { type: "rename", title: event.payload.title },
+            });
+          }
           const thread = yield* resolveThread(event.payload.threadId);
 
           if (event.payload.modelSelection === undefined) {

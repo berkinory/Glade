@@ -85,24 +85,6 @@ export interface BranchNameGenerationResult {
   branch: string;
 }
 
-export interface ThreadTitleGenerationInput {
-  cwd: string;
-  message: string;
-
-  context?: "conversation";
-  attachments?: ReadonlyArray<ChatAttachment> | undefined;
-
-  model?: string;
-
-  modelSelection?: ModelSelection;
-
-  providerOptions?: ProviderStartOptions;
-}
-
-export interface ThreadTitleGenerationResult {
-  title: string;
-}
-
 export interface AutomationIntentGenerationInput {
   cwd: string;
   message: string;
@@ -147,7 +129,6 @@ export type TextGenerationOperation =
   | "generatePrContent"
   | "generateDiffSummary"
   | "generateBranchName"
-  | "generateThreadTitle"
   | "generateAutomationIntent"
   | "evaluateAutomationCompletion";
 
@@ -167,10 +148,6 @@ export interface TextGenerationShape {
   readonly generateBranchName: (
     input: BranchNameGenerationInput,
   ) => Effect.Effect<BranchNameGenerationResult, TextGenerationError>;
-
-  readonly generateThreadTitle: (
-    input: ThreadTitleGenerationInput,
-  ) => Effect.Effect<ThreadTitleGenerationResult, TextGenerationError>;
 
   readonly generateAutomationIntent: (
     input: AutomationIntentGenerationInput,

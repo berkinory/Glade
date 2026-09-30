@@ -69,13 +69,6 @@ interface FakeGitTextGeneration {
     model?: string;
     modelSelection?: ModelSelection;
   }) => Effect.Effect<{ branch: string }, TextGenerationError>;
-  generateThreadTitle: (input: {
-    cwd: string;
-    message: string;
-    providerOptions?: ProviderStartOptions;
-    model?: string;
-    modelSelection?: ModelSelection;
-  }) => Effect.Effect<{ title: string }, TextGenerationError>;
   generateAutomationIntent: (
     input: AutomationIntentGenerationInput,
   ) => Effect.Effect<AutomationIntentGenerationResult, TextGenerationError>;
@@ -164,10 +157,6 @@ function createTextGeneration(overrides: Partial<FakeGitTextGeneration> = {}): T
       Effect.succeed({
         branch: "update-workflow",
       }),
-    generateThreadTitle: () =>
-      Effect.succeed({
-        title: "Update workflow",
-      }),
     generateAutomationIntent: () =>
       Effect.succeed({
         isAutomation: true,
@@ -231,17 +220,6 @@ function createTextGeneration(overrides: Partial<FakeGitTextGeneration> = {}): T
           (cause) =>
             new TextGenerationError({
               operation: "generateBranchName",
-              detail: "fake text generation failed",
-              ...(cause !== undefined ? { cause } : {}),
-            }),
-        ),
-      ),
-    generateThreadTitle: (input) =>
-      implementation.generateThreadTitle(input).pipe(
-        Effect.mapError(
-          (cause) =>
-            new TextGenerationError({
-              operation: "generateThreadTitle",
               detail: "fake text generation failed",
               ...(cause !== undefined ? { cause } : {}),
             }),

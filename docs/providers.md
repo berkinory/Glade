@@ -43,6 +43,17 @@ The provider still controls:
 A provider working in its own terminal is an important prerequisite, but not a guarantee that every
 provider feature is supported through Glade.
 
+## Conversation titles and history
+
+Chat titles come from the native provider session. Before a native title exists, Glade shows a short
+version of the first user message. Renaming a chat also renames its native session; a rename made
+before the session exists is applied when the provider first supplies a title. Glade does not make
+an extra model call to generate or regenerate titles. Use `/rename <title>` to choose your own.
+
+Deleting a chat also deletes its Codex or Claude session history. Codex chats archive and unarchive
+in Codex too; Claude has no native archive operation, so archiving stays local. If native deletion
+fails, Glade still deletes the chat and records the failure in the server log without retrying it.
+
 ## Connect a provider
 
 1. **Install the official runtime.** Use the provider's official installation instructions.

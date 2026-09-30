@@ -30,7 +30,6 @@ export const ORCHESTRATION_WS_METHODS = {
   importThread: "orchestration.importThread",
   listProjectImports: "orchestration.listProjectImports",
   importProject: "orchestration.importProject",
-  regenerateThreadTitle: "orchestration.regenerateThreadTitle",
   repairState: "orchestration.repairState",
   getTurnDiff: "orchestration.getTurnDiff",
   getFullThreadDiff: "orchestration.getFullThreadDiff",
@@ -251,24 +250,6 @@ export const OrchestrationImportThreadResult = Schema.Struct({
 
 export type OrchestrationImportThreadResult = typeof OrchestrationImportThreadResult.Type;
 
-export const OrchestrationRegenerateThreadTitleInput = Schema.Struct({
-  threadId: ThreadId,
-});
-
-export type OrchestrationRegenerateThreadTitleInput =
-  typeof OrchestrationRegenerateThreadTitleInput.Type;
-
-export const OrchestrationRegenerateThreadTitleResult = Schema.Union([
-  Schema.Struct({
-    status: Schema.Literals(["renamed", "unchanged"]),
-    title: TrimmedNonEmptyString,
-  }),
-  Schema.Struct({ status: Schema.Literals(["no-context", "stale"]), title: Schema.Null }),
-]);
-
-export type OrchestrationRegenerateThreadTitleResult =
-  typeof OrchestrationRegenerateThreadTitleResult.Type;
-
 export const OrchestrationUnsubscribeThreadInput = Schema.Struct({
   threadId: ThreadId,
 });
@@ -302,10 +283,6 @@ export const OrchestrationRpcSchemas = {
   },
   listProjectImports: { input: ListProjectImportsInput, output: ListProjectImportsResult },
   importProject: { input: ImportProjectInput, output: ImportProjectResult },
-  regenerateThreadTitle: {
-    input: OrchestrationRegenerateThreadTitleInput,
-    output: OrchestrationRegenerateThreadTitleResult,
-  },
   getTurnDiff: {
     input: OrchestrationGetTurnDiffInput,
     output: OrchestrationGetTurnDiffResult,

@@ -403,6 +403,7 @@ export function decideThreadLifecycleCommand({
           payload: {
             threadId: command.threadId,
             ...(command.title !== undefined ? { title: command.title } : {}),
+            ...(command.titleSource !== undefined ? { titleSource: command.titleSource } : {}),
             ...(command.modelSelection !== undefined
               ? { modelSelection: command.modelSelection }
               : {}),

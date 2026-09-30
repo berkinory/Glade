@@ -3,7 +3,6 @@ import type { TaggedFailure } from "../../platform/operationError.ts";
 import { ServiceMap } from "effect";
 import type { Effect, Scope } from "effect";
 
-import type { OrchestrationRegenerateThreadTitleResult } from "@glade/contracts/orchestration/rpc";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type {
   ProviderBlockingDeliveryEvidence,
@@ -36,10 +35,6 @@ export interface ProviderCommandReactorShape {
     readonly reconciledBy: string;
     readonly note?: string | undefined;
   }) => Effect.Effect<ProviderDeliveryReconciliationResult | null, TaggedFailure>;
-
-  readonly regenerateThreadTitle: (input: {
-    readonly threadId: ThreadId;
-  }) => Effect.Effect<OrchestrationRegenerateThreadTitleResult, TaggedFailure>;
 }
 
 export class ProviderCommandReactor extends ServiceMap.Service<

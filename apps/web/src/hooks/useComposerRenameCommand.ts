@@ -1,10 +1,6 @@
 import { useCallback } from "react";
 import { toastManager } from "../components/ui/toast";
-import {
-  buildDraftThreadRenameCreateInput,
-  dispatchThreadRename,
-  dispatchThreadTitleRegeneration,
-} from "../lib/threadRename";
+import { buildDraftThreadRenameCreateInput, dispatchThreadRename } from "../lib/threadRename";
 
 import type { ComposerSlashCommandInput } from "./composerSlashCommandTypes";
 export function useComposerRenameCommand(input: {
@@ -49,39 +45,11 @@ export function useComposerRenameCommand(input: {
         return;
       }
 
-      if (!isServerThread) {
-        toastManager.add({
-          type: "warning",
-          title: "Nothing to rename yet",
-          description: "Send a message before generating a thread title.",
-        });
-        return;
-      }
-
-      const outcome = await dispatchThreadTitleRegeneration(activeThread.id);
-      if (outcome.status === "renamed") {
-        toastManager.add({
-          type: "success",
-          title: "Thread renamed",
-          description: outcome.title,
-        });
-      } else if (outcome.status === "no-context") {
-        toastManager.add({
-          type: "warning",
-          title: "Nothing to rename yet",
-          description: "Send a message before generating a thread title.",
-        });
-      } else if (outcome.status === "stale") {
-        toastManager.add({
-          type: "info",
-          title: "Newer thread title kept",
-          description: "The generated title was discarded because the title changed.",
-        });
-      } else if (outcome.status === "unavailable") {
-        toastManager.add({ type: "warning", title: "Rename is unavailable" });
-      } else {
-        toastManager.add({ type: "info", title: "Thread title is unchanged" });
-      }
+      toastManager.add({
+        type: "info",
+        title: "Enter a title",
+        description: "Use /rename followed by the new conversation title.",
+      });
     },
     [activeThread, isLocalDraftThread, isServerThread],
   );

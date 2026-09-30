@@ -1,3 +1,5 @@
+import { readClaudeNativeTitle } from "./nativeHistory.ts";
+import { readClaudeResumeState } from "./sessionResume.ts";
 import { Effect } from "effect";
 import { EventId } from "@glade/contracts/core/baseSchemas";
 import { ClaudeSessionContext, PROVIDER } from "./sessionTypes";
@@ -44,6 +46,31 @@ export function makeClaudeTurnCompletion(input: {
     completeAssistantTextBlock,
     updateResumeCursor,
   } = input;
+  const refreshNativeTitle = (context: ClaudeSessionContext): Effect.Effect<void> =>
+    Effect.gen(function* () {
+      const sessionId = readClaudeResumeState(context.session.resumeCursor)?.resume;
+      if (!sessionId || context.subagentRefs) return;
+      const name = yield* readClaudeNativeTitle(sessionId, context.session.cwd).pipe(
+        Effect.catch((error) =>
+          Effect.logWarning("Could not read native Claude title", {
+            threadId: context.session.threadId,
+            cause: error.message,
+          }).pipe(Effect.as(undefined)),
+        ),
+      );
+      if (!name) return;
+      const stamp = yield* makeEventStamp();
+      yield* offerRuntimeEvent(context, {
+        type: "thread.metadata.updated",
+        eventId: stamp.eventId,
+        provider: PROVIDER,
+        createdAt: stamp.createdAt,
+        threadId: context.session.threadId,
+        payload: { name },
+        providerRefs: nativeProviderRefs(context),
+      });
+    });
+
   const completeTurn = (
     context: ClaudeSessionContext,
     status: RuntimeTurnState,
@@ -205,6 +232,7 @@ export function makeClaudeTurnCompletion(input: {
           },
           providerRefs: {},
         });
+        if (result) yield* refreshNativeTitle(context);
         return;
       }
 
@@ -366,6 +394,7 @@ export function makeClaudeTurnCompletion(input: {
         },
         providerRefs: nativeProviderRefs(context),
       });
+      if (result) yield* refreshNativeTitle(context);
     });
   return { completeTurn };
 }

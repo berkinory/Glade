@@ -1,4 +1,4 @@
-import { Effect, Cache, Queue, Deferred, Stream, Layer } from "effect";
+import { Effect, Cache, Queue, Stream, Layer } from "effect";
 import {
   ProviderCommandReactorConfig,
   ProviderCommandReactorLiveOptions,
@@ -10,7 +10,6 @@ import { ProjectionSnapshotQuery } from "../Services/ProjectionSnapshotQuery.ts"
 import { ProviderService } from "../../provider/Services/ProviderService.ts";
 import { ComputerService } from "../../computer/Services/ComputerService";
 import { AgentGatewaySessionRegistry } from "../../agentGateway/Services/AgentGatewaySessionRegistry";
-import { ProviderHealth } from "../../provider/Services/ProviderHealth.ts";
 import { ProjectionPendingInteractionRepository } from "../../persistence/Services/ProjectionPendingInteractions.ts";
 import { CheckpointStore } from "../../checkpointing/Services/CheckpointStore.ts";
 import { GitCore } from "../../git/Services/GitCore.ts";
@@ -27,14 +26,11 @@ import {
   type ProviderCommandReactorShape,
   ProviderCommandReactor,
 } from "../Services/ProviderCommandReactor.ts";
-import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { ThreadSessionSettings } from "../Services/ThreadSessionSettings.ts";
 import { ThreadSessionSettingsLive } from "./ThreadSessionSettings.ts";
 import { QueuedDispatchState } from "../Services/QueuedDispatchState.ts";
 import { QueuedDispatchStateLive } from "./QueuedDispatchState.ts";
 import { ProviderContextLifecycleActivityRecord } from "../providerCommands/contextLifecycle";
-import { type OrchestrationRegenerateThreadTitleResult } from "@glade/contracts/orchestration/rpc";
-import type { TaggedFailure } from "../../platform/operationError.ts";
 import { ProviderProjectionAccess } from "../Services/ProviderProjectionAccess.ts";
 import { ProviderProjectionAccessLive } from "./ProviderProjectionAccess.ts";
 import { ProviderDeliveryGate } from "../Services/ProviderDeliveryGate.ts";
@@ -78,8 +74,6 @@ const make = Effect.gen(function* () {
   const computerService = yield* Effect.serviceOption(ComputerService);
 
   const gatewaySessions = yield* Effect.serviceOption(AgentGatewaySessionRegistry);
-
-  const providerHealth = yield* ProviderHealth;
 
   const pendingInteractions = yield* ProjectionPendingInteractionRepository;
 
@@ -130,11 +124,6 @@ const make = Effect.gen(function* () {
   const pendingContextBootstrapAttempts = new Map<string, PendingContextBootstrapAttempt>();
 
   const suppressContextBootstrapOnNextStartThreadIds = new Set<string>();
-
-  const pendingTitleGenerations = new Map<
-    ThreadId,
-    Deferred.Deferred<OrchestrationRegenerateThreadTitleResult, TaggedFailure>
-  >();
 
   const projectionAccess = yield* ProviderProjectionAccess;
 
@@ -265,21 +254,15 @@ const make = Effect.gen(function* () {
     orchestrationEngine,
     persistPriorTranscriptBootstrapCompletion,
   });
-  const {
-    maybeGenerateAndRenameWorktreeBranchForFirstTurn,
-    maybeGenerateAndRenameThreadTitleForFirstTurn,
-    regenerateThreadTitle,
-  } = makeProviderConversationNaming({
-    projectionAccess,
-    gatewayOperations,
-    serverSettings,
-    threadSessionSettings,
-    providerHealth,
-    git,
-    orchestrationEngine,
-    textGeneration,
-    pendingTitleGenerations,
-  });
+  const { maybeGenerateAndRenameWorktreeBranchForFirstTurn, maybeSetThreadTitleFromFirstMessage } =
+    makeProviderConversationNaming({
+      projectionAccess,
+      gatewayOperations,
+      serverSettings,
+      git,
+      orchestrationEngine,
+      textGeneration,
+    });
   const { processTurnQueued, processTurnStartRequested } = makeProviderTurnStart({
     projectionAccess,
     queuedDispatchState,
@@ -297,7 +280,7 @@ const make = Effect.gen(function* () {
     serverConfig,
     managedAttachments,
     maybeGenerateAndRenameWorktreeBranchForFirstTurn,
-    maybeGenerateAndRenameThreadTitleForFirstTurn,
+    maybeSetThreadTitleFromFirstMessage,
     dispatchTurnForThread,
     providerService,
     setThreadSessionError,
@@ -390,7 +373,6 @@ const make = Effect.gen(function* () {
     drain,
     listBlockingDeliveries,
     reconcileDelivery,
-    regenerateThreadTitle,
   } satisfies ProviderCommandReactorShape;
 });
 

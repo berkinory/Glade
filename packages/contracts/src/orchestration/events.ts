@@ -248,6 +248,7 @@ export const ThreadUnarchivedPayload = Schema.Struct({
 export const ThreadMetaUpdatedPayload = Schema.Struct({
   threadId: ThreadId,
   title: Schema.optional(TrimmedNonEmptyString),
+  titleSource: Schema.optional(Schema.Literals(["user", "provider"])),
   modelSelection: Schema.optional(ModelSelection),
   envMode: Schema.optional(ThreadEnvironmentMode),
   branch: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),

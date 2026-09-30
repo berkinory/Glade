@@ -921,11 +921,6 @@ const makeWsRpcHandlersLayer = () =>
           rpcEffect(projectImports.listProjectImports(input), "Failed to find local projects"),
         [ORCHESTRATION_WS_METHODS.importProject]: (input) =>
           rpcEffect(projectImports.importProject(input), "Failed to import project"),
-        [ORCHESTRATION_WS_METHODS.regenerateThreadTitle]: (input) =>
-          rpcEffect(
-            providerCommandReactor.regenerateThreadTitle(input),
-            "Failed to regenerate thread title",
-          ),
         [ORCHESTRATION_WS_METHODS.getSnapshot]: () =>
           rpcEffect(
             projectionReadModelQuery.getSnapshot(),

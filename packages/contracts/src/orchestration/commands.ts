@@ -270,6 +270,7 @@ const ThreadMetaUpdateCommand = Schema.Struct({
   commandId: CommandId,
   threadId: ThreadId,
   title: Schema.optional(TrimmedNonEmptyString),
+  titleSource: Schema.optional(Schema.Literals(["user", "provider"])),
 
   expectedTitleSequence: Schema.optional(NonNegativeInt),
   modelSelection: Schema.optional(ModelSelection),

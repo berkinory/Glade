@@ -42,15 +42,6 @@ export const WsImportProjectRpc = Rpc.make(ORCHESTRATION_WS_METHODS.importProjec
   error: WsRpcError,
 });
 
-export const WsOrchestrationRegenerateThreadTitleRpc = Rpc.make(
-  ORCHESTRATION_WS_METHODS.regenerateThreadTitle,
-  {
-    payload: OrchestrationRpcSchemas.regenerateThreadTitle.input,
-    success: OrchestrationRpcSchemas.regenerateThreadTitle.output,
-    error: WsRpcError,
-  },
-);
-
 export const WsOrchestrationGetSnapshotRpc = Rpc.make(ORCHESTRATION_WS_METHODS.getSnapshot, {
   payload: OrchestrationRpcSchemas.getSnapshot.input,
   success: OrchestrationRpcSchemas.getSnapshot.output,

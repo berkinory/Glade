@@ -62,7 +62,6 @@ export interface ReactorTestHarness {
   readonly renameBranch: Mock<(input: unknown) => Effect.Effect<{ branch: string }, never, never>>;
   readonly publishBranch: Mock<() => Effect.Effect<void, never, never>>;
   readonly generateBranchName: Mock<TextGenerationShape["generateBranchName"]>;
-  readonly generateThreadTitle: Mock<TextGenerationShape["generateThreadTitle"]>;
   readonly stateDir: string;
   readonly stageAttachment: (
     attachment: {

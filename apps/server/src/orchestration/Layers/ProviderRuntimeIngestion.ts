@@ -1,3 +1,4 @@
+import { applyNativeThreadTitle } from "../runtimeActivities/nativeThreadTitles.ts";
 import { asString, isNonBlankString } from "@glade/shared/text/text";
 import { asRecord, isRecord } from "@glade/shared/transport/payloadValues";
 import { Schema } from "effect";
@@ -2521,17 +2522,22 @@ const make = Effect.gen(function* () {
         }
       }
 
-      if (
-        event.type === "thread.metadata.updated" &&
-        (event.payload.name || event.payload.modelSelection)
-      ) {
-        yield* orchestrationEngine.dispatch({
-          type: "thread.meta.update",
-          commandId: providerCommandId(event, "thread-meta-update", thread.id),
-          threadId: thread.id,
-          ...(event.payload.name ? { title: event.payload.name } : {}),
-          ...(event.payload.modelSelection ? { modelSelection: event.payload.modelSelection } : {}),
-        });
+      if (event.type === "thread.metadata.updated") {
+        if (event.payload.name)
+          yield* applyNativeThreadTitle({
+            threadId: thread.id,
+            title: event.payload.name,
+            commandId: providerCommandId(event, "thread-meta-update", thread.id),
+            engine: orchestrationEngine,
+            provider: providerService,
+          });
+        if (event.payload.modelSelection)
+          yield* orchestrationEngine.dispatch({
+            type: "thread.meta.update",
+            commandId: providerCommandId(event, "thread-model-update", thread.id),
+            threadId: thread.id,
+            modelSelection: event.payload.modelSelection,
+          });
       }
 
       if (event.type === "turn.diff.updated") {

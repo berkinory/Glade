@@ -147,7 +147,6 @@ export function makeReactorTestHarness() {
     readonly omitStopRuntimeSession?: boolean;
     readonly serverSettings?: DeepPartial<ServerSettings>;
     readonly confirmNativeResume?: (resumeCursor: unknown) => boolean;
-    readonly generateThreadTitle?: TextGenerationShape["generateThreadTitle"];
     readonly computerService?: ComputerServiceShape;
     readonly gatewaySessions?: AgentGatewaySessionRegistryShape;
   }): Promise<ReactorTestHarness> {
@@ -429,16 +428,6 @@ export function makeReactorTestHarness() {
         }),
       ),
     );
-    const generateThreadTitle = vi.fn<TextGenerationShape["generateThreadTitle"]>(
-      input?.generateThreadTitle ??
-        (() =>
-          Effect.fail(
-            new TextGenerationError({
-              operation: "generateThreadTitle",
-              detail: "disabled in test harness",
-            }),
-          )),
-    );
     const unsupported = () => Effect.die(new Error("Unsupported provider call in test")) as never;
     const service: ProviderServiceShape = {
       startSession: startSession as ProviderServiceShape["startSession"],
@@ -517,7 +506,6 @@ export function makeReactorTestHarness() {
       Layer.provideMerge(
         Layer.succeed(TextGeneration, {
           generateBranchName,
-          generateThreadTitle,
         } as unknown as TextGenerationShape),
       ),
       Layer.provideMerge(
@@ -663,7 +651,6 @@ export function makeReactorTestHarness() {
       renameBranch,
       publishBranch,
       generateBranchName,
-      generateThreadTitle,
       stateDir,
       stageAttachment: async (
         attachment: {

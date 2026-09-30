@@ -59,9 +59,9 @@ export function makeProviderTurnStart(input: {
   readonly maybeGenerateAndRenameWorktreeBranchForFirstTurn: ReturnType<
     typeof makeProviderConversationNaming
   >["maybeGenerateAndRenameWorktreeBranchForFirstTurn"];
-  readonly maybeGenerateAndRenameThreadTitleForFirstTurn: ReturnType<
+  readonly maybeSetThreadTitleFromFirstMessage: ReturnType<
     typeof makeProviderConversationNaming
-  >["maybeGenerateAndRenameThreadTitleForFirstTurn"];
+  >["maybeSetThreadTitleFromFirstMessage"];
   readonly dispatchTurnForThread: ReturnType<
     typeof makeProviderTurnDispatch
   >["dispatchTurnForThread"];
@@ -86,7 +86,7 @@ export function makeProviderTurnStart(input: {
     serverConfig,
     managedAttachments,
     maybeGenerateAndRenameWorktreeBranchForFirstTurn,
-    maybeGenerateAndRenameThreadTitleForFirstTurn,
+    maybeSetThreadTitleFromFirstMessage,
     dispatchTurnForThread,
     providerService,
     setThreadSessionError,
@@ -292,17 +292,11 @@ export function makeProviderTurnStart(input: {
         messageText: message.text,
         ...(message.attachments !== undefined ? { attachments: resolvedAttachments } : {}),
       }).pipe(Effect.forkScoped);
-      yield* maybeGenerateAndRenameThreadTitleForFirstTurn({
+      yield* maybeSetThreadTitleFromFirstMessage({
         threadId: event.payload.threadId,
         messageId: message.id,
         messageText: message.text,
         ...(message.attachments !== undefined ? { attachments: resolvedAttachments } : {}),
-        ...(event.payload.modelSelection !== undefined
-          ? { modelSelection: event.payload.modelSelection }
-          : {}),
-        ...(event.payload.providerOptions !== undefined
-          ? { providerOptions: event.payload.providerOptions }
-          : {}),
       }).pipe(Effect.forkScoped);
 
       const immediateDispatchMode =
