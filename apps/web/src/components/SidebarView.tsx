@@ -91,6 +91,7 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
     spaces,
     activeSpaceId,
     threadsHydrated,
+    desktopUpdate,
     isRailLayout,
     navigate,
     isOnSettings,
@@ -154,6 +155,15 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
     allProjectsExpanded,
     prByThreadId,
     isManualProjectSorting,
+    isOnKanban,
+    isOnAutomations,
+    openFeedbackDialog,
+    handleBackToThreads,
+    railRouteItemIds,
+    railShortcuts,
+    railSpacesProject,
+  } = context;
+  const {
     showDesktopUpdateButton,
     desktopUpdateTooltip,
     desktopUpdateButtonDisabled,
@@ -164,14 +174,7 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
     desktopUpdateDownloadPercent,
     desktopUpdateRowButtonClasses,
     handleDesktopUpdateButtonClick,
-    isOnKanban,
-    isOnAutomations,
-    openFeedbackDialog,
-    handleBackToThreads,
-    railRouteItemIds,
-    railShortcuts,
-    railSpacesProject,
-  } = context;
+  } = desktopUpdate;
   const {
     renderListSectionHeader,
     renderPinnedThreadsSection,

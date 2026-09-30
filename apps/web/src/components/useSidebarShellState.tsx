@@ -10,7 +10,6 @@ import {
   type MouseEvent,
 } from "react";
 import { type AutomationListResult } from "@glade/contracts/automation/automation";
-import { type DesktopUpdateState } from "@glade/contracts/ipc/ipc";
 import { ProjectId, SpaceId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { pluralize } from "@glade/shared/text/text";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -383,15 +382,9 @@ export function useSidebarShellState() {
 
   const latestPinnedMutationVersionByProjectIdRef = useRef(new Map<ProjectId, number>());
 
-  const [desktopUpdateState, setDesktopUpdateState] = useState<DesktopUpdateState | null>(null);
-
-  const [installingDesktopUpdate, setInstallingDesktopUpdate] = useState(false);
-
   const [optimisticPinnedStateByProjectId, setOptimisticPinnedStateByProjectId] = useState<
     ReadonlyMap<ProjectId, boolean>
   >(() => new Map());
-
-  const lastDesktopUpdateErrorToastSignatureRef = useRef<string | null>(null);
 
   const routeActiveSidebarThreadId = routeThreadId;
 
@@ -744,13 +737,8 @@ export function useSidebarShellState() {
     suppressProjectClickAfterDragRef,
     optimisticPinnedStateByProjectIdRef,
     latestPinnedMutationVersionByProjectIdRef,
-    desktopUpdateState,
-    setDesktopUpdateState,
-    installingDesktopUpdate,
-    setInstallingDesktopUpdate,
     optimisticPinnedStateByProjectId,
     setOptimisticPinnedStateByProjectId,
-    lastDesktopUpdateErrorToastSignatureRef,
     activeSidebarThreadId,
     visualActiveSidebarThreadId,
     hideAutomationRunThreads,
