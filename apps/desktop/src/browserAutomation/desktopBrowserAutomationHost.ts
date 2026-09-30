@@ -41,7 +41,7 @@ import { BrowserDiagnosticsStore } from "./browserDiagnostics";
 import { navigateBrowserHistory, type BrowserHistoryDirection } from "./navigationHistory";
 import { captureBrowserScreenshot } from "./screenshotCapture";
 import { withDialogHandling } from "./dialogHandling";
-import { uploadBrowserFiles } from "./workspaceUpload";
+import { createWorkspaceUpload } from "./workspaceUpload";
 import { browserEvaluationOutput, waitForLoadMilestone } from "./waitAndEvaluate";
 import {
   beginBrowserNavigation,
@@ -289,6 +289,9 @@ export class DesktopBrowserAutomationHost {
   private readonly lockTails = new Map<string, Promise<void>>();
   private readonly activeOperations = new Set<Promise<unknown>>();
   private readonly diagnostics = new BrowserDiagnosticsStore();
+  private readonly uploadBrowserFiles = createWorkspaceUpload({
+    getUserDataRoot: () => app.getPath("userData"),
+  });
   private readonly requestOpenPanel: ((threadId: ThreadId) => void | Promise<void>) | undefined;
   private disposed = false;
   private disposal: Promise<void> | null = null;
@@ -1071,7 +1074,7 @@ export class DesktopBrowserAutomationHost {
         case "browser_logs":
           return this.diagnostics.read(runtime, input as BrowserLogsInput, signal);
         case "browser_upload":
-          return uploadBrowserFiles(
+          return this.uploadBrowserFiles(
             runtime,
             input as BrowserUploadInput,
             request.workspaceRoot,

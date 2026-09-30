@@ -10,15 +10,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { BrowserAutomationVisibleRuntime } from "../browserManager";
 import { runBetterwright } from "./betterwrightRuntime";
 vi.mock("./betterwrightRuntime", () => ({ runBetterwright: vi.fn() }));
-import {
-  configureWorkspaceUploadForTests,
-  resolveWorkspaceUploadFiles,
-  uploadBrowserFiles,
-} from "./workspaceUpload";
-
-vi.mock("electron", () => ({
-  app: { getPath: vi.fn(() => "test-must-inject-user-data") },
-}));
+import { createWorkspaceUpload } from "./workspaceUpload";
 
 const temporaryDirectories: string[] = [];
 
@@ -32,8 +24,8 @@ const workspaceFixture = async () => {
 };
 
 const createRuntime = (
-  onSetFiles?: (files: readonly string[]) => Promise<void> | void,
-  uploadConfiguration?: {
+  onSetFiles: ((files: readonly string[]) => Promise<void> | void) | undefined,
+  uploadConfiguration: {
     readonly userDataRoot: string;
     readonly maxInvocationBytes?: number;
     readonly maxStagedBytesPerWebContents?: number;
@@ -42,6 +34,7 @@ const createRuntime = (
   },
   multiple = false,
 ): {
+  readonly uploadBrowserFiles: ReturnType<typeof createWorkspaceUpload>;
   readonly lifecycle: EventEmitter;
   readonly runtime: BrowserAutomationVisibleRuntime;
   readonly sendCommand: ReturnType<typeof vi.fn>;
@@ -101,10 +94,12 @@ const createRuntime = (
     });
     return {};
   });
-  if (uploadConfiguration) {
-    configureWorkspaceUploadForTests(webContents, uploadConfiguration);
-  }
-  return { lifecycle, runtime, sendCommand };
+  const { userDataRoot, ...limits } = uploadConfiguration;
+  const uploadBrowserFiles = createWorkspaceUpload({
+    getUserDataRoot: () => userDataRoot,
+    ...limits,
+  });
+  return { lifecycle, runtime, sendCommand, uploadBrowserFiles };
 };
 
 const eventuallyMissing = async (path: string): Promise<void> => {
@@ -122,19 +117,22 @@ afterEach(async () => {
 });
 
 describe("workspace-confined browser upload", () => {
-  it("resolves regular files to canonical paths inside the canonical workspace", async () => {
-    const { workspaceRoot } = await workspaceFixture();
-    const canonicalRoot = await realpath(workspaceRoot);
-
+  it("uploads regular files from the canonical workspace", async () => {
+    const { base, workspaceRoot } = await workspaceFixture();
+    const { lifecycle, runtime, uploadBrowserFiles } = createRuntime(undefined, {
+      userDataRoot: join(base, "user-data"),
+    });
     await expect(
-      resolveWorkspaceUploadFiles(workspaceRoot, ["fixtures/avatar.txt"]),
-    ).resolves.toEqual([
-      {
-        path: join(canonicalRoot, "fixtures", "avatar.txt"),
-        name: "avatar.txt",
-        byteLength: 6,
-      },
-    ]);
+      uploadBrowserFiles(
+        runtime,
+        {
+          target: { selector: 'input[type="file"]' as BrowserCssSelector },
+          paths: ["fixtures/avatar.txt"],
+        },
+        workspaceRoot,
+      ),
+    ).resolves.toMatchObject({ files: [{ name: "avatar.txt", byteLength: 6 }] });
+    lifecycle.emit("destroyed");
   });
 
   it("rejects traversal and symlinks whose final target leaves the workspace", async () => {
@@ -142,13 +140,22 @@ describe("workspace-confined browser upload", () => {
     const outside = join(base, "outside.txt");
     await writeFile(outside, "secret");
     await symlink(outside, join(workspaceRoot, "fixtures", "outside-link.txt"));
-
-    await expect(
-      resolveWorkspaceUploadFiles(workspaceRoot, ["../outside.txt"]),
-    ).rejects.toMatchObject({ browserError: { code: "BrowserUploadPathOutsideWorkspace" } });
-    await expect(
-      resolveWorkspaceUploadFiles(workspaceRoot, ["fixtures/outside-link.txt"]),
-    ).rejects.toMatchObject({ browserError: { code: "BrowserUploadPathOutsideWorkspace" } });
+    const { runtime, uploadBrowserFiles, sendCommand } = createRuntime(undefined, {
+      userDataRoot: join(base, "user-data"),
+    });
+    for (const requestedPath of ["../outside.txt", "fixtures/outside-link.txt"]) {
+      await expect(
+        uploadBrowserFiles(
+          runtime,
+          {
+            target: { selector: 'input[type="file"]' as BrowserCssSelector },
+            paths: [requestedPath],
+          },
+          workspaceRoot,
+        ),
+      ).rejects.toMatchObject({ browserError: { code: "BrowserUploadPathOutsideWorkspace" } });
+    }
+    expect(sendCommand).not.toHaveBeenCalled();
   });
 
   it("replaces stale staging state under the injected private userData root", async () => {
@@ -159,7 +166,7 @@ describe("workspace-confined browser upload", () => {
     await mkdir(stagingBase, { recursive: true });
     await writeFile(stalePath, "stale");
     let stagedPath = "";
-    const { lifecycle, runtime } = createRuntime(
+    const { lifecycle, runtime, uploadBrowserFiles } = createRuntime(
       (files) => {
         stagedPath = files[0] ?? "";
       },
@@ -189,7 +196,7 @@ describe("workspace-confined browser upload", () => {
   it("hands Chromium a private staged copy and releases it after navigation", async () => {
     const { base, workspaceRoot } = await workspaceFixture();
     let stagedPath = "";
-    const { lifecycle, runtime, sendCommand } = createRuntime(
+    const { lifecycle, runtime, sendCommand, uploadBrowserFiles } = createRuntime(
       (files) => {
         stagedPath = files[0] ?? "";
       },
@@ -231,7 +238,7 @@ describe("workspace-confined browser upload", () => {
     await writeFile(outside, "secret");
     let stagedPath = "";
     let bytesSeenByChromium = "";
-    const { lifecycle, runtime } = createRuntime(
+    const { lifecycle, runtime, uploadBrowserFiles } = createRuntime(
       async (files) => {
         stagedPath = files[0] ?? "";
 
@@ -260,7 +267,7 @@ describe("workspace-confined browser upload", () => {
   it("retains a possibly committed copy after a CDP error until the tab is destroyed", async () => {
     const { base, workspaceRoot } = await workspaceFixture();
     let stagedPath = "";
-    const { lifecycle, runtime } = createRuntime(
+    const { lifecycle, runtime, uploadBrowserFiles } = createRuntime(
       (files) => {
         stagedPath = files[0] ?? "";
         throw new Error("CDP response was lost");
@@ -286,7 +293,7 @@ describe("workspace-confined browser upload", () => {
 
   it("rejects uploads above the cumulative per-invocation quota before staging", async () => {
     const { base, workspaceRoot } = await workspaceFixture();
-    const { runtime, sendCommand } = createRuntime(undefined, {
+    const { runtime, sendCommand, uploadBrowserFiles } = createRuntime(undefined, {
       userDataRoot: join(base, "user-data"),
       maxInvocationBytes: 5,
       maxStagedBytesPerWebContents: 10,
@@ -309,7 +316,7 @@ describe("workspace-confined browser upload", () => {
     const { base, workspaceRoot } = await workspaceFixture();
     await writeFile(join(workspaceRoot, "fixtures", "empty.txt"), "");
     const stagedPaths: string[] = [];
-    const { lifecycle, runtime, sendCommand } = createRuntime(
+    const { lifecycle, runtime, sendCommand, uploadBrowserFiles } = createRuntime(
       (files) => {
         stagedPaths.push(files[0] ?? "");
       },
@@ -361,7 +368,7 @@ describe("workspace-confined browser upload", () => {
       maxStagedDirectoriesPerWebContents: 10,
       maxStagedFilesPerWebContents: 2,
     } as const;
-    const { lifecycle, runtime, sendCommand } = createRuntime(
+    const { lifecycle, runtime, sendCommand, uploadBrowserFiles } = createRuntime(
       (files) => {
         stagedPaths.push(...files);
       },
@@ -391,7 +398,7 @@ describe("workspace-confined browser upload", () => {
 
     const nextRuntime = createRuntime(undefined, configuration, true);
     await expect(
-      uploadBrowserFiles(
+      nextRuntime.uploadBrowserFiles(
         nextRuntime.runtime,
         {
           target: { selector: 'input[type="file"]' as BrowserCssSelector },
@@ -406,7 +413,7 @@ describe("workspace-confined browser upload", () => {
   it("charges retained copies to the WebContents quota until navigation cleanup finishes", async () => {
     const { base, workspaceRoot } = await workspaceFixture();
     const stagedPaths: string[] = [];
-    const { lifecycle, runtime, sendCommand } = createRuntime(
+    const { lifecycle, runtime, sendCommand, uploadBrowserFiles } = createRuntime(
       (files) => {
         stagedPaths.push(files[0] ?? "");
       },
@@ -449,7 +456,7 @@ describe("workspace-confined browser upload", () => {
     const { base, workspaceRoot } = await workspaceFixture();
     let rejectCdp = true;
     const stagedPaths: string[] = [];
-    const { lifecycle, runtime, sendCommand } = createRuntime(
+    const { lifecycle, runtime, sendCommand, uploadBrowserFiles } = createRuntime(
       (files) => {
         stagedPaths.push(files[0] ?? "");
         if (rejectCdp) throw new Error("CDP response was lost");

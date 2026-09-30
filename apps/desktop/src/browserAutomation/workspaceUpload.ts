@@ -3,7 +3,7 @@ import { chmod, lstat, mkdir, mkdtemp, open, realpath, rm, stat } from "node:fs/
 import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
 
 import type { BrowserTabId, BrowserUploadInput, BrowserUploadOutput } from "@glade/contracts";
-import { app, type WebContents } from "electron";
+import type { WebContents } from "electron";
 
 import type { BrowserAutomationVisibleRuntime } from "../browserManager";
 import { throwIfAborted } from "./cdpRuntime";
@@ -20,7 +20,7 @@ const UPLOAD_COPY_BUFFER_BYTES = 1024 * 1024;
 const PRIVATE_RUNTIME_DIRECTORY = "private-runtime";
 const STAGING_DIRECTORY_NAME = "browser-upload-staging";
 
-export interface ResolvedWorkspaceUploadFile {
+interface ResolvedWorkspaceUploadFile {
   readonly path: string;
   readonly name: string;
   readonly byteLength: number;
@@ -59,29 +59,6 @@ interface StagedUploadReservation {
   readonly generation: number;
   settled: boolean;
 }
-
-interface WorkspaceUploadTestConfiguration {
-  readonly userDataRoot?: string;
-  readonly maxInvocationBytes?: number;
-  readonly maxStagedBytesPerWebContents?: number;
-  readonly maxStagedDirectoriesPerWebContents?: number;
-  readonly maxStagedFilesPerWebContents?: number;
-}
-
-const stagedUploads = new WeakMap<WebContents, StagedUploadState>();
-let stagingBasePromise: Promise<string> | undefined;
-const testConfigurations = new WeakMap<WebContents, WorkspaceUploadTestConfiguration>();
-const testStagingBasePromises = new Map<string, Promise<string>>();
-
-export const configureWorkspaceUploadForTests = (
-  webContents: WebContents,
-  configuration: WorkspaceUploadTestConfiguration,
-): void => {
-  if (process.env.NODE_ENV !== "test") {
-    throw new Error("Workspace upload test configuration is only available under tests.");
-  }
-  testConfigurations.set(webContents, configuration);
-};
 
 function uploadError(
   code:
@@ -173,15 +150,6 @@ const inspectWorkspaceUploadFiles = async (
   return { canonicalRoot, files };
 };
 
-export const resolveWorkspaceUploadFiles = async (
-  workspaceRoot: string | null | undefined,
-  paths: readonly string[],
-  signal?: AbortSignal,
-): Promise<readonly ResolvedWorkspaceUploadFile[]> => {
-  const inspected = await inspectWorkspaceUploadFiles(workspaceRoot, paths, signal);
-  return inspected.files.map(({ path, name, byteLength }) => ({ path, name, byteLength }));
-};
-
 const verifyPrivateDirectory = async (directory: string): Promise<void> => {
   const before = await lstat(directory);
   if (before.isSymbolicLink() || !before.isDirectory()) {
@@ -217,29 +185,6 @@ const initializeStagingBase = async (userDataRoot: string): Promise<string> => {
   return realpath(stagingBase);
 };
 
-const getStagingBase = (webContents: WebContents): Promise<string> => {
-  const testRoot = testConfigurations.get(webContents)?.userDataRoot;
-  if (testRoot) {
-    const key = resolve(testRoot);
-    let promise = testStagingBasePromises.get(key);
-    if (!promise) {
-      promise = initializeStagingBase(key);
-      testStagingBasePromises.set(key, promise);
-    }
-    return promise;
-  }
-  stagingBasePromise ??= initializeStagingBase(app.getPath("userData"));
-  return stagingBasePromise;
-};
-
-const webContentsStagingRoot = async (webContents: WebContents): Promise<string> => {
-  const stagingBase = await getStagingBase(webContents);
-  const id = Number.isSafeInteger(webContents.id) ? webContents.id : "unknown";
-  const directory = await mkdtemp(join(stagingBase, `webcontents-${id}-`));
-  await verifyPrivateDirectory(directory);
-  return directory;
-};
-
 const ensureStagingOutsideWorkspace = (canonicalRoot: string, stagingRoot: string): void => {
   if (
     canonicalRoot === stagingRoot ||
@@ -248,34 +193,6 @@ const ensureStagingOutsideWorkspace = (canonicalRoot: string, stagingRoot: strin
   ) {
     uploadError("BrowserUploadFileUnsupported");
   }
-};
-
-const invocationQuotaBytes = (webContents: WebContents): number =>
-  testConfigurations.get(webContents)?.maxInvocationBytes ?? DEFAULT_MAX_UPLOAD_INVOCATION_BYTES;
-
-const lifetimeQuotaBytes = (webContents: WebContents): number =>
-  testConfigurations.get(webContents)?.maxStagedBytesPerWebContents ??
-  DEFAULT_MAX_STAGED_UPLOAD_BYTES_PER_WEB_CONTENTS;
-
-const lifetimeQuotaDirectories = (webContents: WebContents): number =>
-  testConfigurations.get(webContents)?.maxStagedDirectoriesPerWebContents ??
-  DEFAULT_MAX_STAGED_UPLOAD_DIRECTORIES_PER_WEB_CONTENTS;
-
-const lifetimeQuotaFiles = (webContents: WebContents): number =>
-  testConfigurations.get(webContents)?.maxStagedFilesPerWebContents ??
-  DEFAULT_MAX_STAGED_UPLOAD_FILES_PER_WEB_CONTENTS;
-
-const cumulativeUploadBytes = (
-  webContents: WebContents,
-  files: readonly InspectedWorkspaceUploadFile[],
-): number => {
-  let total = 0;
-  const limit = invocationQuotaBytes(webContents);
-  for (const file of files) {
-    if (file.byteLength > limit - total) uploadError("BrowserUploadFileUnsupported");
-    total += file.byteLength;
-  }
-  return total;
 };
 
 const releaseAccounting = (
@@ -335,74 +252,6 @@ const cleanupRetainedDirectories = (state: StagedUploadState): Promise<void> => 
       removeRetainedDirectory(state, directory, accounting),
     ),
   ).then(() => undefined);
-};
-
-const stagedUploadState = (webContents: WebContents): StagedUploadState => {
-  let state = stagedUploads.get(webContents);
-  if (state) return state;
-
-  state = {
-    directories: new Map(),
-    root: undefined,
-    accountedBytes: 0,
-    accountedDirectories: 0,
-    accountedFiles: 0,
-    generation: 0,
-    destroyed: false,
-    hasLifecycle: false,
-  };
-  stagedUploads.set(webContents, state);
-
-  const lifecycle = webContents as WebContents & {
-    on?: (event: "did-navigate", listener: () => void) => void;
-    once?: (event: "destroyed", listener: () => void) => void;
-  };
-  if (typeof lifecycle.on === "function" && typeof lifecycle.once === "function") {
-    state.hasLifecycle = true;
-    lifecycle.on("did-navigate", () => {
-      state!.generation += 1;
-      void cleanupRetainedDirectories(state!).catch(() => undefined);
-    });
-    lifecycle.once("destroyed", () => {
-      state!.destroyed = true;
-      state!.generation += 1;
-      stagedUploads.delete(webContents);
-      void cleanupRetainedDirectories(state!)
-        .then(async () => {
-          if (state!.root) await rm(await state!.root, { recursive: true, force: true });
-        })
-        .catch(() => undefined);
-    });
-  }
-  return state;
-};
-
-const reserveStagedUpload = (
-  webContents: WebContents,
-  byteLength: number,
-  fileCount: number,
-): StagedUploadReservation => {
-  if (webContents.isDestroyed()) {
-    browserHostError({
-      code: "BrowserRuntimeDisconnected",
-      retryable: true,
-      phase: "runtime",
-      effectMayHaveCommitted: false,
-    });
-  }
-  const state = stagedUploadState(webContents);
-  if (
-    byteLength > lifetimeQuotaBytes(webContents) - state.accountedBytes ||
-    state.accountedDirectories >= lifetimeQuotaDirectories(webContents) ||
-    fileCount > lifetimeQuotaFiles(webContents) - state.accountedFiles
-  ) {
-    uploadError("BrowserUploadFileUnsupported");
-  }
-  state.root ??= webContentsStagingRoot(webContents);
-  state.accountedBytes += byteLength;
-  state.accountedDirectories += 1;
-  state.accountedFiles += fileCount;
-  return { state, byteLength, fileCount, generation: state.generation, settled: false };
 };
 
 const releaseUnusedReservation = (reservation: StagedUploadReservation): void => {
@@ -540,47 +389,153 @@ const stageWorkspaceUploadFiles = async (
   }
 };
 
-export const uploadBrowserFiles = async (
-  runtime: BrowserAutomationVisibleRuntime,
-  input: BrowserUploadInput,
-  workspaceRoot: string | null | undefined,
-  signal?: AbortSignal,
-): Promise<BrowserUploadOutput> => {
-  let staged: StagedWorkspaceUpload | undefined;
-  let untrackedStagingDirectory: string | undefined;
-  let reservation: StagedUploadReservation | undefined;
-  try {
-    const inspected = await inspectWorkspaceUploadFiles(workspaceRoot, input.paths, signal);
-    const uploadBytes = cumulativeUploadBytes(runtime.webContents, inspected.files);
-    reservation = reserveStagedUpload(runtime.webContents, uploadBytes, inspected.files.length);
-    staged = await stageWorkspaceUploadFiles(
-      inspected.canonicalRoot,
-      inspected.files,
-      reservation,
-      signal,
-    );
-    throwIfAborted(signal);
+export function createWorkspaceUpload(options: {
+  readonly getUserDataRoot: () => string;
+  readonly maxInvocationBytes?: number;
+  readonly maxStagedBytesPerWebContents?: number;
+  readonly maxStagedDirectoriesPerWebContents?: number;
+  readonly maxStagedFilesPerWebContents?: number;
+}) {
+  const stagedUploads = new WeakMap<WebContents, StagedUploadState>();
+  let stagingBasePromise: Promise<string> | undefined;
+  const getStagingBase = (): Promise<string> => {
+    stagingBasePromise ??= initializeStagingBase(options.getUserDataRoot());
+    return stagingBasePromise;
+  };
 
-    if (!retainReservedDirectory(runtime.webContents, reservation, staged.directory)) {
-      untrackedStagingDirectory = staged.directory;
+  const webContentsStagingRoot = async (webContents: WebContents): Promise<string> => {
+    const stagingBase = await getStagingBase();
+    const id = Number.isSafeInteger(webContents.id) ? webContents.id : "unknown";
+    const directory = await mkdtemp(join(stagingBase, `webcontents-${id}-`));
+    await verifyPrivateDirectory(directory);
+    return directory;
+  };
+
+  const cumulativeUploadBytes = (files: readonly InspectedWorkspaceUploadFile[]): number => {
+    let total = 0;
+    const limit = options.maxInvocationBytes ?? DEFAULT_MAX_UPLOAD_INVOCATION_BYTES;
+    for (const file of files) {
+      if (file.byteLength > limit - total) uploadError("BrowserUploadFileUnsupported");
+      total += file.byteLength;
     }
-    const retainedDirectory = staged.directory;
-    const filesForChromium = staged.files.map((file) => file.path);
-    staged = undefined;
-    const result = await runBetterwright<{
-      code?:
-        | "BrowserInputUnsupported"
-        | "BrowserTargetNotFound"
-        | "BrowserTargetAmbiguous"
-        | "BrowserTargetNotEnabled";
-    }>({
-      home: join(app.getPath("userData"), "browser-engine"),
-      contents: runtime.webContents,
-      expectAgentInput: runtime.expectAgentInput,
-      uploadFiles: filesForChromium,
-      signal: signal ?? new AbortController().signal,
-      timeoutMs: input.timeoutMs ?? 15_000,
-      code: `const target = ${betterwrightLocator(input.target)};
+    return total;
+  };
+
+  const stagedUploadState = (webContents: WebContents): StagedUploadState => {
+    let state = stagedUploads.get(webContents);
+    if (state) return state;
+
+    state = {
+      directories: new Map(),
+      root: undefined,
+      accountedBytes: 0,
+      accountedDirectories: 0,
+      accountedFiles: 0,
+      generation: 0,
+      destroyed: false,
+      hasLifecycle: false,
+    };
+    stagedUploads.set(webContents, state);
+
+    const lifecycle = webContents as WebContents & {
+      on?: (event: "did-navigate", listener: () => void) => void;
+      once?: (event: "destroyed", listener: () => void) => void;
+    };
+    if (typeof lifecycle.on === "function" && typeof lifecycle.once === "function") {
+      state.hasLifecycle = true;
+      lifecycle.on("did-navigate", () => {
+        state!.generation += 1;
+        void cleanupRetainedDirectories(state!).catch(() => undefined);
+      });
+      lifecycle.once("destroyed", () => {
+        state!.destroyed = true;
+        state!.generation += 1;
+        stagedUploads.delete(webContents);
+        void cleanupRetainedDirectories(state!)
+          .then(async () => {
+            if (state!.root) await rm(await state!.root, { recursive: true, force: true });
+          })
+          .catch(() => undefined);
+      });
+    }
+    return state;
+  };
+
+  const reserveStagedUpload = (
+    webContents: WebContents,
+    byteLength: number,
+    fileCount: number,
+  ): StagedUploadReservation => {
+    if (webContents.isDestroyed()) {
+      browserHostError({
+        code: "BrowserRuntimeDisconnected",
+        retryable: true,
+        phase: "runtime",
+        effectMayHaveCommitted: false,
+      });
+    }
+    const state = stagedUploadState(webContents);
+    if (
+      byteLength >
+        (options.maxStagedBytesPerWebContents ?? DEFAULT_MAX_STAGED_UPLOAD_BYTES_PER_WEB_CONTENTS) -
+          state.accountedBytes ||
+      state.accountedDirectories >=
+        (options.maxStagedDirectoriesPerWebContents ??
+          DEFAULT_MAX_STAGED_UPLOAD_DIRECTORIES_PER_WEB_CONTENTS) ||
+      fileCount >
+        (options.maxStagedFilesPerWebContents ?? DEFAULT_MAX_STAGED_UPLOAD_FILES_PER_WEB_CONTENTS) -
+          state.accountedFiles
+    ) {
+      uploadError("BrowserUploadFileUnsupported");
+    }
+    state.root ??= webContentsStagingRoot(webContents);
+    state.accountedBytes += byteLength;
+    state.accountedDirectories += 1;
+    state.accountedFiles += fileCount;
+    return { state, byteLength, fileCount, generation: state.generation, settled: false };
+  };
+
+  return async function uploadBrowserFiles(
+    runtime: BrowserAutomationVisibleRuntime,
+    input: BrowserUploadInput,
+    workspaceRoot: string | null | undefined,
+    signal?: AbortSignal,
+  ): Promise<BrowserUploadOutput> {
+    let staged: StagedWorkspaceUpload | undefined;
+    let untrackedStagingDirectory: string | undefined;
+    let reservation: StagedUploadReservation | undefined;
+    try {
+      const inspected = await inspectWorkspaceUploadFiles(workspaceRoot, input.paths, signal);
+      const uploadBytes = cumulativeUploadBytes(inspected.files);
+      reservation = reserveStagedUpload(runtime.webContents, uploadBytes, inspected.files.length);
+      staged = await stageWorkspaceUploadFiles(
+        inspected.canonicalRoot,
+        inspected.files,
+        reservation,
+        signal,
+      );
+      throwIfAborted(signal);
+
+      if (!retainReservedDirectory(runtime.webContents, reservation, staged.directory)) {
+        untrackedStagingDirectory = staged.directory;
+      }
+      const retainedDirectory = staged.directory;
+      const filesForChromium = staged.files.map((file) => file.path);
+      staged = undefined;
+      const result = await runBetterwright<{
+        code?:
+          | "BrowserInputUnsupported"
+          | "BrowserTargetNotFound"
+          | "BrowserTargetAmbiguous"
+          | "BrowserTargetNotEnabled";
+      }>({
+        home: join(options.getUserDataRoot(), "browser-engine"),
+        contents: runtime.webContents,
+        expectAgentInput: runtime.expectAgentInput,
+        uploadFiles: filesForChromium,
+        signal: signal ?? new AbortController().signal,
+        timeoutMs: input.timeoutMs ?? 15_000,
+        code: `const target = ${betterwrightLocator(input.target)};
 const count = await target.count();
 if (count !== 1) return {code: count === 0 ? "BrowserTargetNotFound" : "BrowserTargetAmbiguous"};
 const details = await target.evaluate(element => ({
@@ -592,38 +547,39 @@ if (!details.file || (!details.multiple && ${filesForChromium.length} !== 1)) re
 if (details.disabled) return {code: "BrowserTargetNotEnabled"};
 await target.setInputFiles(${JSON.stringify(filesForChromium)});
 return {};`,
-    });
-    if (result.code) {
-      // These codes are decided before setInputFiles ran, so the staged copies can never be consumed;
-      // release them instead of holding the quota until the document navigates.
-      const state = reservation?.state;
-      const accounting = state?.directories.get(retainedDirectory);
-      if (state && accounting)
-        await removeRetainedDirectory(state, retainedDirectory, accounting).catch(() => {});
-      browserHostError({
-        code: result.code,
-        tabId: runtime.tabId as BrowserTabId,
-        phase: "input",
-        retryable: false,
-        effectMayHaveCommitted: false,
       });
+      if (result.code) {
+        // These codes are decided before setInputFiles ran, so the staged copies can never be consumed;
+        // release them instead of holding the quota until the document navigates.
+        const state = reservation?.state;
+        const accounting = state?.directories.get(retainedDirectory);
+        if (state && accounting)
+          await removeRetainedDirectory(state, retainedDirectory, accounting).catch(() => {});
+        browserHostError({
+          code: result.code,
+          tabId: runtime.tabId as BrowserTabId,
+          phase: "input",
+          retryable: false,
+          effectMayHaveCommitted: false,
+        });
+      }
+      return {
+        tabId: runtime.tabId as BrowserTabId,
+        target: {},
+        files: inspected.files.map(({ name, byteLength }) => ({ name, byteLength })),
+      };
+    } finally {
+      if (staged && reservation) {
+        await removeReservedDirectory(reservation, staged.directory);
+      }
+      if (untrackedStagingDirectory && reservation) {
+        await removeReservedDirectory(reservation, untrackedStagingDirectory);
+      } else if (reservation && !reservation.settled) {
+        releaseUnusedReservation(reservation);
+      }
+      // Once the command was attempted, real Electron WebContents cleanup is owned by its lifecycle
+      // because the selection may already have committed despite a transport error. Synthetic runtimes
+      // without lifecycle events cannot retain a usable selection and are cleaned here.
     }
-    return {
-      tabId: runtime.tabId as BrowserTabId,
-      target: {},
-      files: inspected.files.map(({ name, byteLength }) => ({ name, byteLength })),
-    };
-  } finally {
-    if (staged && reservation) {
-      await removeReservedDirectory(reservation, staged.directory);
-    }
-    if (untrackedStagingDirectory && reservation) {
-      await removeReservedDirectory(reservation, untrackedStagingDirectory);
-    } else if (reservation && !reservation.settled) {
-      releaseUnusedReservation(reservation);
-    }
-    // Once the command was attempted, real Electron WebContents cleanup is owned by its lifecycle
-    // because the selection may already have committed despite a transport error. Synthetic runtimes
-    // without lifecycle events cannot retain a usable selection and are cleaned here.
-  }
-};
+  };
+}

@@ -10,6 +10,8 @@
 
 ### Improved
 
+- Browser upload staging and quotas belong to the browser host; filesystem security checks run through the upload interface without global test configuration.
+
 - Source comments focus on invariants, trust boundaries and lifecycle constraints; redundant file inventories and implementation narration were removed.
 - Codex version-probe caches belong to their manager instance; tests use independent owners rather than global reset hooks.
 - Development installs use published Effect beta packages with the existing process safety fixes.
