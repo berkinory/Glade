@@ -147,7 +147,7 @@ describe("Claude streaming", () => {
     return Effect.gen(function* () {
       const adapter = yield* ClaudeAdapter;
 
-      const runtimeEventsFiber = yield* Stream.take(adapter.streamEvents, 10).pipe(
+      const runtimeEventsFiber = yield* Stream.take(adapter.streamEvents, 11).pipe(
         Stream.runCollect,
         Effect.forkChild,
       );
@@ -272,6 +272,7 @@ describe("Claude streaming", () => {
           "content.delta",
           "item.completed",
           "item.started",
+          "item.updated",
           "item.completed",
           "turn.completed",
         ],
@@ -302,6 +303,13 @@ describe("Claude streaming", () => {
         (event) =>
           event.type === "item.completed" && event.payload.itemType === "assistant_message",
       );
+      const nativeMessage = runtimeEvents.find(
+        (event) => event.type === "item.updated" && event.payload.itemType === "assistant_message",
+      );
+      assert.equal(nativeMessage?.type, "item.updated");
+      if (nativeMessage?.type === "item.updated") {
+        assert.deepEqual(nativeMessage.payload.data, { nativeMessageId: "assistant-1" });
+      }
       const toolStartedIndex = runtimeEvents.findIndex((event) => event.type === "item.started");
       assert.equal(
         assistantCompletedIndex >= 0 &&
