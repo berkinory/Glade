@@ -12,6 +12,8 @@
 
 ### Improved
 
+- Provider delivery reconciliation and Claude compaction recovery use Layer-owned references, so separated controllers observe current runtime state. Recovery flag and accepted startup turns settle atomically.
+
 - Provider command deadlines, delivery-claim observation, context budgets and interaction failure decisions have focused policy modules. Retry classifications and persisted delivery behavior remain unchanged.
 
 - Claude adapter behavior tests are grouped by permissions, streaming, task and process lifecycles, session history, token accounting, configuration and plan mode, with shared SDK fixtures.

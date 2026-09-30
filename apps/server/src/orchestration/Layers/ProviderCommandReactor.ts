@@ -11,6 +11,7 @@ import {
   Exit,
   Scope,
   Deferred,
+  Ref,
   Layer,
 } from "effect";
 import { WORKTREE_BRANCH_PREFIX, isTemporaryWorktreeBranch } from "@glade/shared/git/git";
@@ -300,7 +301,9 @@ const make = Effect.gen(function* () {
     lookup: () => Effect.succeed(true),
   });
   const deliverySourceLock = yield* Semaphore.make(1);
-  let reconcileDeliveryRuntime: ProviderCommandReactorShape["reconcileDelivery"] | undefined;
+  const deliveryReconciler = yield* Ref.make<
+    ProviderCommandReactorShape["reconcileDelivery"] | undefined
+  >(undefined);
 
   const hasHandledTurnStartRecently = (key: string) =>
     Cache.getOption(handledTurnStartKeys, key).pipe(
@@ -2888,7 +2891,7 @@ const make = Effect.gen(function* () {
   const earlyClaudeCompactionTerminals = new Map<ThreadId, ProviderQueueDrainEvent>();
   const pendingClaudeCompactionIngestion = new Set<ThreadId>();
   const startupClaudeCompactionTurns = new Set<TurnId>();
-  let isRecoveringClaudeCompactions = true;
+  const recoveringClaudeCompactions = yield* Ref.make(true);
 
   const readClaudeCompactionAttempt = Effect.fnUntraced(function* (
     threadId: ThreadId,
@@ -3008,7 +3011,10 @@ const make = Effect.gen(function* () {
       }
       return;
     }
-    if (attempt.compactionResponseEventSequence !== undefined && reconcileDeliveryRuntime) {
+    if (
+      attempt.compactionResponseEventSequence !== undefined &&
+      Ref.getUnsafe(deliveryReconciler)
+    ) {
       const delivery = yield* deliveryRepository.getDelivery({
         consumerName: PROVIDER_COMMAND_REACTOR_CONSUMER,
         eventSequence: attempt.compactionResponseEventSequence,
@@ -3021,7 +3027,7 @@ const make = Effect.gen(function* () {
         Option.isSome(delivery) &&
         (delivery.value.state === "uncertain" || delivery.value.state === "dead")
       ) {
-        yield* reconcileDeliveryRuntime({
+        yield* reconcileDelivery({
           threadId: event.threadId,
           eventSequence: attempt.compactionResponseEventSequence,
           expectedState: delivery.value.state,
@@ -3225,7 +3231,8 @@ const make = Effect.gen(function* () {
           yield* providerService.startClaudeCompaction({ threadId, turnId }).pipe(
             Effect.tap(() =>
               Effect.sync(() => {
-                if (isRecoveringClaudeCompactions) startupClaudeCompactionTurns.add(turnId);
+                if (Ref.getUnsafe(recoveringClaudeCompactions))
+                  startupClaudeCompactionTurns.add(turnId);
               }),
             ),
             Effect.catchCause((cause) =>
@@ -5426,7 +5433,7 @@ const make = Effect.gen(function* () {
       }
     });
 
-    reconcileDeliveryRuntime = (input) =>
+    yield* Ref.set(deliveryReconciler, (input) =>
       Effect.scoped(
         deliverySourceLock.withPermits(1)(
           Effect.gen(function* () {
@@ -5533,7 +5540,8 @@ const make = Effect.gen(function* () {
             };
           }),
         ),
-      ) as ReturnType<ProviderCommandReactorShape["reconcileDelivery"]>;
+      ),
+    );
 
     const countSkippedPrompts = (input: {
       readonly threadId: ThreadId;
@@ -5754,7 +5762,10 @@ const make = Effect.gen(function* () {
         (yield* resolveLiveProviderTurnId(thread.id)) === review.compactionTurnId
       )
         continue;
-      if (review.compactionResponseEventSequence !== undefined && reconcileDeliveryRuntime) {
+      if (
+        review.compactionResponseEventSequence !== undefined &&
+        Ref.getUnsafe(deliveryReconciler)
+      ) {
         const delivery = yield* deliveryRepository.getDelivery({
           consumerName: PROVIDER_COMMAND_REACTOR_CONSUMER,
           eventSequence: review.compactionResponseEventSequence,
@@ -5772,7 +5783,7 @@ const make = Effect.gen(function* () {
             response.payload.review.reviewId === review.reviewId &&
             response.payload.decision === "compact"
           ) {
-            yield* reconcileDeliveryRuntime({
+            yield* reconcileDelivery({
               threadId: thread.id,
               eventSequence: review.compactionResponseEventSequence,
               expectedState: delivery.value.state,
@@ -5830,9 +5841,9 @@ const make = Effect.gen(function* () {
           Effect.andThen(
             recoverClaudeCompactions.pipe(
               Effect.ensuring(
-                Effect.sync(() => {
-                  isRecoveringClaudeCompactions = false;
+                Ref.modify(recoveringClaudeCompactions, () => {
                   startupClaudeCompactionTurns.clear();
+                  return [undefined, false] as const;
                 }),
               ),
             ),
@@ -5874,12 +5885,12 @@ const make = Effect.gen(function* () {
     });
 
   const reconcileDelivery: ProviderCommandReactorShape["reconcileDelivery"] = (input) =>
-    Effect.suspend(() =>
-      reconcileDeliveryRuntime === undefined
+    Effect.flatMap(Ref.get(deliveryReconciler), (runtime) =>
+      runtime === undefined
         ? Effect.fail(
             new ProviderCommandExecutionError("Provider delivery reconciliation is not ready"),
           )
-        : reconcileDeliveryRuntime(input),
+        : runtime(input),
     );
 
   const generateConversationTitle: ProviderCommandReactorShape["regenerateThreadTitle"] = (input) =>
