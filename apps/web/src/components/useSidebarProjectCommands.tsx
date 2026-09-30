@@ -41,11 +41,8 @@ export function useSidebarProjectCommands(context: ReturnType<typeof useSidebarT
     syncServerShellSnapshot,
     removeDeletedProjectFromClientState,
     homeDir,
-    navigate,
-    isOnKanban,
     appSettings,
     routeThreadId,
-    routeProjectId,
     keybindings,
     projectAdditionLockRef,
     setEditProjectDialog,
@@ -100,8 +97,6 @@ export function useSidebarProjectCommands(context: ReturnType<typeof useSidebarT
   } = useSpacesController({
     sidebarThreadSortOrder: appSettings.sidebarThreadSortOrder,
     routeThreadId,
-    routeProjectId,
-    isOnKanban,
     activeRouteProjectId,
     activateThreadFromSidebarIntent,
     onCloseProjectContextMenu: handleCloseProjectContextMenu,
@@ -232,10 +227,6 @@ export function useSidebarProjectCommands(context: ReturnType<typeof useSidebarT
               : "An unknown error occurred opening the folder.",
         });
       }
-      return;
-    }
-    if (clicked === "open-in-kanban") {
-      void navigate({ to: "/kanban/$projectId", params: { projectId } });
       return;
     }
     if (clicked === "copy-path") {

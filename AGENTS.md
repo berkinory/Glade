@@ -145,3 +145,7 @@ Tests exist to catch regressions that would really hurt. Fewer, stronger tests a
   - One short line per user-visible change, in general terms. No internal identifiers, file names, line counts or code-level numbers.
   - Merge related entries; do not repeat a change across lines.
   - Skip small fixes, internal refactors, tests and tooling unless they change how people use or build Glade.
+
+## Removed features
+
+- Kanban is retired; do not reintroduce its board, routes or task composer.

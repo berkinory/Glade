@@ -8,7 +8,6 @@ import {
   CopyIcon,
   ExternalLinkIcon,
   FolderOpenIcon,
-  KanbanIcon,
   PencilIcon,
   PinIcon,
   PlayIcon,
@@ -248,18 +247,6 @@ export function SidebarDialogs({
                   <img src="/finder.png" alt="" className="size-3.5 object-contain" />
                 </span>
                 <span>Open in Finder</span>
-              </MenuItem>
-              <MenuItem
-                className={PROJECT_CONTEXT_MENU_ITEM_CLASS_NAME}
-                onClick={() =>
-                  void handleProjectContextMenuAction(
-                    projectContextMenuState.projectId,
-                    "open-in-kanban",
-                  )
-                }
-              >
-                <ProjectContextMenuIcon icon={KanbanIcon} />
-                <span>Open in Kanban</span>
               </MenuItem>
               <MenuItem
                 className={PROJECT_CONTEXT_MENU_ITEM_CLASS_NAME}

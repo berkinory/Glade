@@ -1,7 +1,7 @@
 import { useStore } from "../store";
 import { useRailShellStore } from "../railShellStore";
 import { useSidebarStateStore } from "../sidebarStateStore";
-import { ClockIcon, KanbanIcon, NewThreadIcon } from "~/lib/icons";
+import { ClockIcon, NewThreadIcon } from "~/lib/icons";
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
 import { ProjectId, SpaceId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { MAX_PINNED_PROJECTS } from "@glade/contracts/orchestration/threadEntities";
@@ -53,7 +53,6 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
     chatWorkspaceRoot,
     navigate,
     isOnSettings,
-    isOnKanban,
     isOnAutomations,
     automationAttentionBadge,
     appSettings,
@@ -110,15 +109,6 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
       onClick: handlePrimaryNewThread,
       onMouseEnter: prefetchModelsForPrimaryNewThread,
       onFocus: prefetchModelsForPrimaryNewThread,
-    },
-    kanban: {
-      icon: KanbanIcon,
-      label: "Kanban",
-      active: isOnKanban,
-      badge: null,
-      onClick: () => {
-        void navigate({ to: "/kanban" });
-      },
     },
     automations: {
       icon: ClockIcon,

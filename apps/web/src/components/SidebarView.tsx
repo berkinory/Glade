@@ -155,7 +155,6 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
     allProjectsExpanded,
     prByThreadId,
     isManualProjectSorting,
-    isOnKanban,
     isOnAutomations,
     openFeedbackDialog,
     handleBackToThreads,
@@ -239,7 +238,7 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
     </div>
   );
 
-  const isOnThreadsSection = !isOnSettings && !isOnKanban && !isOnAutomations;
+  const isOnThreadsSection = !isOnSettings && !isOnAutomations;
 
   const sidebarHelpMenuProps = {
     onOpenShortcuts: () => void navigate({ to: "/settings", search: { section: "shortcuts" } }),

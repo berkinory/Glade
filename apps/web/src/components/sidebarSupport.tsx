@@ -112,7 +112,6 @@ export const DebugFeatureFlagsMenu = import.meta.env.DEV
 
 export type ProjectContextMenuId =
   | "open-in-finder"
-  | "open-in-kanban"
   | "copy-path"
   | "relocate"
   | "start-dev"

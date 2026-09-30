@@ -283,7 +283,6 @@ export function useComposerCommandMenuItems(input: {
     canOfferReviewCommand: boolean;
     canOfferForkCommand: boolean;
     canOfferExportCommand: boolean;
-    surfaceAppSlashCommands?: ReadonlySet<string>;
   };
 }): ComposerCommandItem[] {
   const { composerTrigger } = input.trigger;
@@ -303,7 +302,6 @@ export function useComposerCommandMenuItems(input: {
     canOfferReviewCommand,
     canOfferForkCommand,
     canOfferExportCommand,
-    surfaceAppSlashCommands,
   } = input.commands;
 
   if (!composerTrigger) return [];
@@ -405,11 +403,8 @@ export function useComposerCommandMenuItems(input: {
       canOfferExportCommand,
       providerNativeCommandNames: providerNativeCommands.map((command) => command.name),
     });
-    const visibleAppCommands = surfaceAppSlashCommands
-      ? availableCommands.filter((command) => surfaceAppSlashCommands.has(command))
-      : availableCommands;
-    const visibleAppCommandSet = new Set(visibleAppCommands);
-    const builtInItems = filterComposerSlashCommands(composerTrigger.query, visibleAppCommands).map(
+    const visibleAppCommandSet = new Set(availableCommands);
+    const builtInItems = filterComposerSlashCommands(composerTrigger.query, availableCommands).map(
       (definition) => ({
         id: `slash:${definition.command}`,
         type: "slash-command" as const,

@@ -90,16 +90,11 @@ export function resolveActiveRailShortcutKey(input: {
   return null;
 }
 
-export function railItemShowsPanel(id: RailItemId): boolean {
-  return id !== "kanban";
-}
-
 function matchesRoute(pathname: string, route: string): boolean {
   return pathname === route || pathname.startsWith(`${route}/`);
 }
 
 function railItemForPathname(pathname: string): RailRouteItemId | null {
-  if (matchesRoute(pathname, "/kanban")) return "kanban";
   if (matchesRoute(pathname, "/automations")) return "automations";
   if (matchesRoute(pathname, "/settings")) return "settings";
   return null;

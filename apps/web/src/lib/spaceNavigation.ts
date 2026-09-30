@@ -26,22 +26,19 @@ export function isThreadReachableFromSpace(input: {
 
 export type SpaceSelectionTarget =
   | { readonly kind: "thread"; readonly threadId: ThreadId }
-  | { readonly kind: "project"; readonly projectId: ProjectId }
   | { readonly kind: "empty"; readonly spaceId: SpaceId | null };
 
 export function resolveSpaceSelectionTarget(input: {
   spaceId: SpaceId | null;
 
-  projects: readonly Project[];
   projectById: ReadonlyMap<ProjectId, Project>;
   threads: readonly SidebarThreadSummary[];
   rememberedThreadId: ThreadId | null;
-  rememberedProjectId: ProjectId | null;
   paths: ServerWorkspacePaths;
 
   sortThreads: (threads: readonly SidebarThreadSummary[]) => readonly SidebarThreadSummary[];
 }): SpaceSelectionTarget {
-  const { paths, projectById, projects, rememberedProjectId, rememberedThreadId, spaceId } = input;
+  const { paths, projectById, rememberedThreadId, spaceId } = input;
 
   const availableThreads = input.threads.filter(
     (thread) =>
@@ -54,16 +51,6 @@ export function resolveSpaceSelectionTarget(input: {
     : undefined;
   if (rememberedThread) {
     return { kind: "thread", threadId: rememberedThread.id };
-  }
-
-  const rememberedProject = rememberedProjectId
-    ? projects.find(
-        (project) =>
-          project.id === rememberedProjectId && isProjectInSpace(project, spaceId, paths),
-      )
-    : undefined;
-  if (rememberedProject) {
-    return { kind: "project", projectId: rememberedProject.id };
   }
 
   const targetThread = input.sortThreads(availableThreads)[0];

@@ -233,7 +233,7 @@ export interface ComposerDraftStoreState {
     options?: DraftThreadMutationOptions,
   ) => void;
   // Unlike setProjectDraftThreadId this never replaces (and therefore never deletes) the mapped
-  // draft, so any number of standalone drafts — e.g. kanban tasks — can coexist per project.
+  // draft, so any number of standalone drafts can coexist per project.
   registerDraftThread: (
     threadId: ThreadId,
     options: {

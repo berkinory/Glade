@@ -74,17 +74,6 @@ export function showsComposerFastModeBadge(
   return supportsComposerFastModeControl(selection) && selection.fastModeEnabled;
 }
 
-export function hasVisibleComposerTraitControls(
-  selection: Pick<ComposerTraitSelection, "descriptors">,
-  options?: { includeFastMode?: boolean; includeEffort?: boolean },
-): boolean {
-  return selection.descriptors.some(
-    (descriptor) =>
-      (options?.includeFastMode !== false || descriptor.id !== "fastMode") &&
-      (options?.includeEffort !== false || descriptor.type !== "select"),
-  );
-}
-
 export type ComposerEffortChangePlan = {
   readonly kind: "options";
   readonly patch: Record<string, unknown>;

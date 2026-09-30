@@ -15,6 +15,12 @@ const router = getRouter(appHistory);
 
 document.title = APP_DISPLAY_NAME;
 
+try {
+  localStorage.removeItem("glade:kanban-ui:v1");
+} catch {
+  // Storage can be unavailable in restricted browser contexts.
+}
+
 if (isElectron) {
   document.documentElement.dataset.runtime = "electron";
   // macOS desktop windows are transparent vibrancy windows (see getWindowMaterialOptions in

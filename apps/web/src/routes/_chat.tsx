@@ -34,8 +34,6 @@ import { isKeyboardShortcutsHelpShortcut, resolveShortcutCommand } from "../keyb
 import { useStore } from "../store";
 import { createProjectLastActivityAtSelector } from "../storeSelectors";
 import { useSpacesUiStore } from "../spacesUiStore";
-import { railItemShowsPanel } from "../appRail.logic";
-import { useRailShellStore } from "../railShellStore";
 import { selectThreadTerminalState, useTerminalStateStore } from "../terminalStateStore";
 import { useSidebarStateStore } from "../sidebarStateStore";
 import { onServerMaintenanceUpdated } from "../wsNativeApi";
@@ -495,22 +493,6 @@ function ChatRouteLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const isRailLayout = useSidebarLayout() === "rail";
 
-  const railActiveItem = useRailShellStore((store) => store.activeItem);
-  const railPanelView = useRailShellStore((store) => store.panelView);
-  const selectRailPanelItem = useRailShellStore((store) => store.selectPanelItem);
-  const railHidesPanel = isRailLayout && !railItemShowsPanel(railActiveItem);
-  const resolvedSidebarOpen = railHidesPanel ? false : sidebarOpen;
-
-  const handleSidebarOpenChange = useCallback(
-    (open: boolean) => {
-      if (open && railHidesPanel) {
-        selectRailPanelItem(railPanelView);
-      }
-      setSidebarOpen(open);
-    },
-    [railHidesPanel, railPanelView, selectRailPanelItem],
-  );
-
   const [railSlot, setRailSlot] = useState<HTMLDivElement | null>(null);
 
   const sidebarElement = (
@@ -555,8 +537,8 @@ function ChatRouteLayout() {
     return (
       <SidebarProvider
         defaultOpen
-        open={resolvedSidebarOpen}
-        onOpenChange={handleSidebarOpenChange}
+        open={sidebarOpen}
+        onOpenChange={setSidebarOpen}
         className="h-svh overflow-hidden bg-[var(--app-rail-shell-background)]"
         style={{ "--app-top-strip-height": `${CHAT_SURFACE_HEADER_HEIGHT_PX}px` } as CSSProperties}
         data-sidebar-side="left"
@@ -583,8 +565,8 @@ function ChatRouteLayout() {
   return (
     <SidebarProvider
       defaultOpen
-      open={resolvedSidebarOpen}
-      onOpenChange={handleSidebarOpenChange}
+      open={sidebarOpen}
+      onOpenChange={setSidebarOpen}
       className="bg-[var(--app-shell-background)]"
       data-sidebar-side="left"
     >

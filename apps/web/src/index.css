@@ -147,7 +147,7 @@
   }
 
   /* ─── Content seam (sidebar ↔ route divider) ──────────────────────────────────
-     Chat, settings, kanban, automations, and the other route surfaces share one
+     Chat, settings, automations, and the other route surfaces share one
      square content edge. The visible seam belongs to the content surface; the
      SidebarRail remains only the resize hit-area so a second line is never drawn. */
 
@@ -2606,7 +2606,7 @@ diffs-container {
 
 /* Raised-chrome outline — the single border shared by every surface that floats over
    the transcript as a solid card: the composer input shell and its attached banners,
-   the stacked rail above it, the docked Environment panel, and kanban cards. These all
+   the stacked rail above it, the docked Environment panel. These all
    drew the same color before this token existed (the light recipe below; plain
    `--border` in dark), so they live on one knob and cannot drift apart again.
 

@@ -7,12 +7,10 @@ export function useRouteSpaceSync(input: {
   routeProjectId: ProjectId | null;
   routeSpaceId: SpaceId | null | undefined;
   routeThreadId: ThreadId | null;
-  isOnKanban: boolean;
 }): void {
-  const { isOnKanban, routeProjectId, routeSpaceId, routeThreadId } = input;
+  const { routeProjectId, routeSpaceId, routeThreadId } = input;
   const setActiveSpaceId = useSpacesUiStore((store) => store.setActiveSpaceId);
   const rememberSpaceThread = useSpacesUiStore((store) => store.rememberThread);
-  const rememberSpaceProject = useSpacesUiStore((store) => store.rememberProject);
 
   // Deliberately exclude activeSpaceId: a tab click updates selection before navigation lands, and
   // the still-current route must not immediately overwrite that user intent. Primitive route inputs
@@ -24,16 +22,6 @@ export function useRouteSpaceSync(input: {
     }
     if (routeThreadId) {
       rememberSpaceThread(routeSpaceId, routeThreadId);
-    } else if (isOnKanban) {
-      rememberSpaceProject(routeSpaceId, routeProjectId);
     }
-  }, [
-    isOnKanban,
-    rememberSpaceProject,
-    rememberSpaceThread,
-    routeProjectId,
-    routeSpaceId,
-    routeThreadId,
-    setActiveSpaceId,
-  ]);
+  }, [rememberSpaceThread, routeProjectId, routeSpaceId, routeThreadId, setActiveSpaceId]);
 }

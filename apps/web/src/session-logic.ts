@@ -117,7 +117,7 @@ export function hasLiveLatestTurn(
   return !isLatestTurnSettled(latestTurn, session);
 }
 
-// Once the session is closed or errored the request is dead — status surfaces (sidebar pill, kanban
+// Once the session is closed or errored the request is dead — status surfaces (sidebar pill,
 // column) must not present the thread as awaiting action forever after a provider crash. A thread
 // with no session yet keeps the request actionable: the flag can arrive ahead of the session
 // snapshot.
@@ -139,25 +139,6 @@ export function isSessionRunningTurn<T extends RunningTurnSessionView>(
   session: T | null | undefined,
 ): session is T & { activeTurnId: TurnId } {
   return session != null && session.status === "running" && session.activeTurnId != null;
-}
-
-export function deriveActiveWorkStartedAt(
-  latestTurn: LatestTurnTiming | null,
-  session: SessionActivityState | null,
-  sendStartedAt: string | null,
-): string | null {
-  const runningTurnId =
-    session?.orchestrationStatus === "running" ? (session.activeTurnId ?? null) : null;
-  if (runningTurnId !== null && runningTurnId === latestTurn?.turnId) {
-    return latestTurn?.startedAt ?? sendStartedAt;
-  }
-  if (runningTurnId !== null) {
-    return sendStartedAt;
-  }
-  if (!isLatestTurnSettled(latestTurn, session)) {
-    return latestTurn?.startedAt ?? sendStartedAt;
-  }
-  return sendStartedAt;
 }
 
 function toActiveTaskListState(activity: OrchestrationThreadActivity): ActiveTaskListState | null {

@@ -132,8 +132,6 @@ export function useSidebarShellState() {
     select: (loc) => loc.pathname === "/settings",
   });
 
-  const isOnKanban = pathname.startsWith("/kanban");
-
   const isOnAutomations = pathname.startsWith("/automations");
 
   const automationListQuery = useQuery({
@@ -177,12 +175,6 @@ export function useSidebarShellState() {
   const routeThreadId = useParams({
     strict: false,
     select: (params) => (params.threadId ? ThreadId.makeUnsafe(params.threadId) : null),
-  });
-
-  const routeProjectId = useParams({
-    strict: false,
-    select: (params) =>
-      typeof params.projectId === "string" ? ProjectId.makeUnsafe(params.projectId) : null,
   });
 
   const routeSearch = useDiffRouteSearch();
@@ -632,7 +624,6 @@ export function useSidebarShellState() {
     navigate,
     queryClient,
     isOnSettings,
-    isOnKanban,
     isOnAutomations,
     automationAttentionBadge,
     automationsByThreadId,
@@ -643,7 +634,6 @@ export function useSidebarShellState() {
     handleNewThread,
     handleNewChat,
     routeThreadId,
-    routeProjectId,
     routeSearch,
     activeSettingsSection,
     activeSplitView,

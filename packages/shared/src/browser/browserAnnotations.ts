@@ -116,7 +116,6 @@ const SAFE_STATIC_QUERY_VALUES: Readonly<Record<string, ReadonlySet<string>>> = 
     "details",
     "expanded",
     "grid",
-    "kanban",
     "list",
     "preview",
     "table",

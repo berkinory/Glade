@@ -68,7 +68,6 @@ interface PersistedSpacesUiState {
   activeSpaceId: SpaceId | null;
   lastThreadIdBySpace: Record<string, ThreadId>;
   lastDraftThreadIdBySpace: Record<string, ThreadId>;
-  lastProjectIdBySpace: Record<string, ProjectId>;
 }
 
 function readPersisted(): PersistedSpacesUiState {
@@ -77,7 +76,6 @@ function readPersisted(): PersistedSpacesUiState {
       activeSpaceId: null,
       lastThreadIdBySpace: {},
       lastDraftThreadIdBySpace: {},
-      lastProjectIdBySpace: {},
     };
   }
   try {
@@ -95,26 +93,18 @@ function readPersisted(): PersistedSpacesUiState {
         parsed?.lastDraftThreadIdBySpace && typeof parsed.lastDraftThreadIdBySpace === "object"
           ? parsed.lastDraftThreadIdBySpace
           : {},
-      lastProjectIdBySpace:
-        parsed?.lastProjectIdBySpace && typeof parsed.lastProjectIdBySpace === "object"
-          ? parsed.lastProjectIdBySpace
-          : {},
     };
   } catch {
     return {
       activeSpaceId: null,
       lastThreadIdBySpace: {},
       lastDraftThreadIdBySpace: {},
-      lastProjectIdBySpace: {},
     };
   }
 }
 
 function persist(
-  state: Pick<
-    SpacesUiState,
-    "activeSpaceId" | "lastThreadIdBySpace" | "lastDraftThreadIdBySpace" | "lastProjectIdBySpace"
-  >,
+  state: Pick<SpacesUiState, "activeSpaceId" | "lastThreadIdBySpace" | "lastDraftThreadIdBySpace">,
 ): void {
   if (typeof window === "undefined") return;
   try {
@@ -124,7 +114,6 @@ function persist(
         activeSpaceId: state.activeSpaceId,
         lastThreadIdBySpace: state.lastThreadIdBySpace,
         lastDraftThreadIdBySpace: state.lastDraftThreadIdBySpace,
-        lastProjectIdBySpace: state.lastProjectIdBySpace,
       }),
     );
   } catch {
@@ -155,10 +144,8 @@ interface SpacesUiState extends PersistedSpacesUiState {
   setOptimisticActiveSpaceId: (spaceId: SpaceId, minSequence: number) => void;
   rememberThread: (spaceId: SpaceId | null, threadId: ThreadId) => void;
   rememberDraftThread: (spaceId: SpaceId | null, threadId: ThreadId) => void;
-  rememberProject: (spaceId: SpaceId | null, projectId: ProjectId) => void;
   getLastThreadId: (spaceId: SpaceId | null) => ThreadId | null;
   getLastDraftThreadId: (spaceId: SpaceId | null) => ThreadId | null;
-  getLastProjectId: (spaceId: SpaceId | null) => ProjectId | null;
   reconcile: (input: {
     activeSpaceIds: ReadonlySet<SpaceId>;
     snapshotSequence: number;
@@ -214,12 +201,9 @@ export const useSpacesUiStore = create<SpacesUiState>((set, get) => ({
   },
   rememberThread: (spaceId, threadId) => {
     const key = spaceKey(spaceId);
-    if (get().lastThreadIdBySpace[key] === threadId && !(key in get().lastProjectIdBySpace)) return;
+    if (get().lastThreadIdBySpace[key] === threadId) return;
     set((state) => ({
       lastThreadIdBySpace: { ...state.lastThreadIdBySpace, [key]: threadId },
-      lastProjectIdBySpace: Object.fromEntries(
-        Object.entries(state.lastProjectIdBySpace).filter(([entryKey]) => entryKey !== key),
-      ) as Record<string, ProjectId>,
     }));
     persist(get());
   },
@@ -231,21 +215,8 @@ export const useSpacesUiStore = create<SpacesUiState>((set, get) => ({
     }));
     persist(get());
   },
-  rememberProject: (spaceId, projectId) => {
-    const key = spaceKey(spaceId);
-    if (get().lastProjectIdBySpace[key] === projectId && !(key in get().lastThreadIdBySpace))
-      return;
-    set((state) => ({
-      lastProjectIdBySpace: { ...state.lastProjectIdBySpace, [key]: projectId },
-      lastThreadIdBySpace: Object.fromEntries(
-        Object.entries(state.lastThreadIdBySpace).filter(([entryKey]) => entryKey !== key),
-      ) as Record<string, ThreadId>,
-    }));
-    persist(get());
-  },
   getLastThreadId: (spaceId) => get().lastThreadIdBySpace[spaceKey(spaceId)] ?? null,
   getLastDraftThreadId: (spaceId) => get().lastDraftThreadIdBySpace[spaceKey(spaceId)] ?? null,
-  getLastProjectId: (spaceId) => get().lastProjectIdBySpace[spaceKey(spaceId)] ?? null,
   reconcile: ({ activeSpaceIds, snapshotSequence, projectSpaceById, threadProjectById }) => {
     const current = get();
     const chatSpaceByThreadId = Object.fromEntries(
@@ -287,19 +258,11 @@ export const useSpacesUiStore = create<SpacesUiState>((set, get) => ({
         lastThreadIdBySpace[key] = threadId;
       }
     }
-    const lastProjectIdBySpace: Record<string, ProjectId> = {};
-    for (const [key, projectId] of Object.entries(current.lastProjectIdBySpace)) {
-      const assignedSpaceId = projectSpaceById.get(projectId);
-      if (assignedSpaceId !== undefined && spaceKey(assignedSpaceId) === key) {
-        lastProjectIdBySpace[key] = projectId;
-      }
-    }
     if (
       activeSpaceId === current.activeSpaceId &&
       pendingActiveSpace === current.pendingActiveSpace &&
       recordsEqual(lastThreadIdBySpace, current.lastThreadIdBySpace) &&
-      recordsEqual(chatSpaceByThreadId, current.chatSpaceByThreadId) &&
-      recordsEqual(lastProjectIdBySpace, current.lastProjectIdBySpace)
+      recordsEqual(chatSpaceByThreadId, current.chatSpaceByThreadId)
     ) {
       return;
     }
@@ -307,7 +270,6 @@ export const useSpacesUiStore = create<SpacesUiState>((set, get) => ({
       activeSpaceId,
       pendingActiveSpace,
       lastThreadIdBySpace,
-      lastProjectIdBySpace,
       chatSpaceByThreadId,
     });
     persist(get());

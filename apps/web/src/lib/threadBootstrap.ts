@@ -1,25 +1,10 @@
-import {
-  DEFAULT_RUNTIME_MODE,
-  type ModelSelection,
-  type ProviderInteractionMode,
-  type RuntimeMode,
-} from "@glade/contracts/provider/sessionPolicy";
-import {
-  type OrchestrationThreadPullRequest,
-  type ThreadEnvironmentMode,
-} from "@glade/contracts/orchestration/threadEntities";
+import { DEFAULT_RUNTIME_MODE } from "@glade/contracts/provider/sessionPolicy";
 import {
   type ProjectId,
   type ProviderKind,
   type ThreadId,
 } from "@glade/contracts/core/baseSchemas";
-import type {
-  ComposerThreadDraftState,
-  DraftThreadEnvMode,
-  DraftThreadState,
-} from "../composerDraftDomain";
-import { resolvePreferredComposerModelSelection } from "../composerDraftModels";
-import { DEFAULT_INTERACTION_MODE } from "../types";
+import type { DraftThreadEnvMode, DraftThreadState } from "../composerDraftDomain";
 
 export interface NewThreadOptions {
   branch?: string | null;
@@ -30,15 +15,6 @@ export interface NewThreadOptions {
   fresh?: boolean;
 
   standalone?: boolean;
-}
-
-interface ActiveThreadSnapshot {
-  projectId: ProjectId;
-  modelSelection: ModelSelection;
-  runtimeMode: RuntimeMode;
-  interactionMode: ProviderInteractionMode;
-  envMode?: ThreadEnvironmentMode | undefined;
-  lastKnownPr?: OrchestrationThreadPullRequest | null;
 }
 
 interface DraftReusePlanStored {
@@ -58,28 +34,6 @@ interface DraftReusePlanFresh {
 }
 
 export type ThreadBootstrapPlan = DraftReusePlanStored | DraftReusePlanRoute | DraftReusePlanFresh;
-
-interface ResolveThreadCreationStateInput {
-  activeDraftThread: DraftThreadState | null;
-  activeThread: ActiveThreadSnapshot | null;
-  defaultProvider?: ProviderKind | null | undefined;
-  draftComposerState: ComposerThreadDraftState | null;
-  draftThread: DraftThreadState | null;
-  options: NewThreadOptions | undefined;
-  projectDefaultModelSelection: ModelSelection | null;
-  projectId: ProjectId;
-}
-
-export interface ThreadCreationState {
-  branch: string | null;
-  envMode: DraftThreadEnvMode;
-  interactionMode: ProviderInteractionMode;
-  lastKnownPr: OrchestrationThreadPullRequest | null;
-  modelSelection: ModelSelection;
-  runtimeMode: RuntimeMode;
-  worktreePath: string | null;
-  workingDirectory: string | null;
-}
 
 export function resolveThreadBootstrapPlan(input: {
   latestActiveDraftThread: DraftThreadState | null;
@@ -171,69 +125,4 @@ function shouldReuseActiveDraftThread(input: {
   return Boolean(
     input.draftThread && input.routeThreadId && input.draftThread.projectId === input.projectId,
   );
-}
-
-export function resolveThreadCreationState(
-  input: ResolveThreadCreationStateInput,
-): ThreadCreationState {
-  const hasExplicitEnvModeOverride =
-    input.options !== undefined && Object.hasOwn(input.options, "envMode");
-  const explicitEnvMode: DraftThreadEnvMode | undefined = hasExplicitEnvModeOverride
-    ? (input.options?.envMode ?? "local")
-    : undefined;
-  const inheritedEnvMode =
-    input.draftThread?.envMode !== undefined
-      ? input.draftThread.envMode
-      : input.activeThread?.projectId === input.projectId
-        ? input.activeThread.envMode
-        : input.activeDraftThread?.projectId === input.projectId
-          ? input.activeDraftThread.envMode
-          : undefined;
-
-  return {
-    modelSelection: resolvePreferredComposerModelSelection({
-      draft: input.draftComposerState,
-      threadModelSelection:
-        input.activeThread?.projectId === input.projectId
-          ? input.activeThread.modelSelection
-          : null,
-      projectModelSelection: input.projectDefaultModelSelection,
-      defaultProvider: input.defaultProvider,
-    }),
-    runtimeMode:
-      input.draftThread?.runtimeMode ??
-      (input.activeThread?.projectId === input.projectId ? input.activeThread.runtimeMode : null) ??
-      (input.activeDraftThread?.projectId === input.projectId
-        ? input.activeDraftThread.runtimeMode
-        : null) ??
-      DEFAULT_RUNTIME_MODE,
-    interactionMode: input.draftThread?.interactionMode ?? DEFAULT_INTERACTION_MODE,
-    lastKnownPr:
-      input.draftThread?.lastKnownPr ??
-      (input.activeThread?.projectId === input.projectId ? input.activeThread.lastKnownPr : null) ??
-      (input.activeDraftThread?.projectId === input.projectId
-        ? input.activeDraftThread.lastKnownPr
-        : null) ??
-      null,
-    envMode: hasExplicitEnvModeOverride
-      ? (explicitEnvMode ?? "local")
-      : (inheritedEnvMode ?? "local"),
-    branch:
-      input.options?.branch !== undefined
-        ? (input.options.branch ?? null)
-        : (input.draftThread?.branch ?? null),
-    worktreePath: (() => {
-      if (input.options?.worktreePath !== undefined) {
-        return input.options.worktreePath ?? null;
-      }
-      if (explicitEnvMode === "local") {
-        return null;
-      }
-      return input.draftThread?.worktreePath ?? null;
-    })(),
-    workingDirectory:
-      input.options?.workingDirectory !== undefined
-        ? (input.options.workingDirectory ?? null)
-        : (input.draftThread?.workingDirectory ?? null),
-  };
 }

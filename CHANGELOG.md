@@ -8,6 +8,8 @@
 
 ### Removed
 
+- The Kanban board was removed.
+
 - Claude cache-review prompts, context overrides, and the Ultrathink picker were removed; context management stays with Claude Code. ([e8adbfda4](https://github.com/berkinory/Glade/commit/e8adbfda42ab44edc3ecce4038e19a4f7d433026))
 - Cursor, Grok, and OpenCode providers and their integrations were removed.
 - Standalone Pull Requests page and sidebar entry were removed.

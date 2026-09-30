@@ -74,8 +74,6 @@ const RAISED_SURFACE_BORDER_CLASS_NAME = "border-[color:var(--surface-border)]";
 export const COMPOSER_STACKED_SURFACE_BORDER_CLASS_NAME =
   "border-[color:var(--composer-stacked-border)]";
 
-export const RAISED_SURFACE_CHROME_CLASS_NAME = `border ${RAISED_SURFACE_BORDER_CLASS_NAME} ${COMPOSER_SURFACE_SHADOW_CLASS_NAME} dark:border-0`;
-
 export const COMPOSER_INPUT_SURFACE_CLASS_NAME = `chat-composer-surface border ${RAISED_SURFACE_BORDER_CLASS_NAME} ${COMPOSER_SURFACE_SHADOW_CLASS_NAME} transition-colors duration-120`;
 
 export const APP_TRANSLUCENT_POPUP_SURFACE_BASE_CLASS_NAME =
@@ -113,9 +111,6 @@ export const ENVIRONMENT_CONTENT_INSET_MOTION_CLASS =
 
 export const COMPOSER_COMMAND_MENU_FLOATING_WRAPPER_CLASS_NAME =
   "pointer-events-auto absolute inset-x-0 bottom-full z-20 mb-2 overflow-visible px-1 pt-2";
-
-export const COMPOSER_COMMAND_MENU_INLINE_WRAPPER_CLASS_NAME =
-  "pointer-events-auto relative z-20 mb-2 overflow-visible px-1";
 
 export const COMPOSER_COMMAND_MENU_ITEM_CLASS_NAME =
   "flex cursor-pointer select-none items-center gap-2 rounded-xl px-2 py-1 transition-colors hover:bg-[var(--color-background-button-secondary-hover)] data-highlighted:bg-[var(--color-background-button-secondary-hover)]";
