@@ -1,14 +1,9 @@
 import { normalizeCompactToolLabel } from "./toolCallLabel.presentations";
 import type { ReadableToolTitleInput } from "./toolCallLabel.presentations";
 import {
-  FIND_COMMAND_TOOLS,
-  LIST_COMMAND_TOOLS,
-  READ_FILE_COMMAND_TOOLS,
-  SEARCH_COMMAND_TOOLS,
   extractToolDescriptorFromPayload,
   humanizeRequestKind,
   isGenericToolTitle,
-  isInspectCommandTool,
   normalizeToolDescriptor,
 } from "./toolCallLabel.descriptors";
 import type { CommandVisualKind, ReadableCommandDisplay } from "./toolCallLabel.descriptors";
@@ -72,61 +67,46 @@ export function deriveReadableCommandDisplay(
   const primaryCommand = firstShellCommandSegment(command);
   const [tool, args] = splitToolAndArgs(primaryCommand);
 
-  if (READ_FILE_COMMAND_TOOLS.has(tool)) {
-    return {
-      verb: isRunning ? "Reading" : "Read",
-      target: lastPathComponents(args, "file"),
-      fullCommand: rawCommand,
-    };
-  }
-  if (SEARCH_COMMAND_TOOLS.has(tool)) {
-    return {
-      verb: isRunning ? "Searching" : "Searched",
-      target: searchSummary(args),
-      fullCommand: rawCommand,
-    };
-  }
-  if (LIST_COMMAND_TOOLS.has(tool)) {
-    return {
-      verb: isRunning ? "Listing" : "Listed",
-      target: lastPathComponents(args, "directory"),
-      fullCommand: rawCommand,
-    };
-  }
-  if (FIND_COMMAND_TOOLS.has(tool)) {
-    return {
-      verb: isRunning ? "Finding" : "Found",
-      target: findTarget(args, "files"),
-      fullCommand: rawCommand,
-    };
+  const inspect = Object.hasOwn(INSPECT_COMMAND_PRESENTATIONS, tool)
+    ? INSPECT_COMMAND_PRESENTATIONS[tool]
+    : undefined;
+  if (inspect) {
+    const [running, completed, targetKind] = inspect;
+    const target =
+      targetKind === "file" || targetKind === "directory"
+        ? lastPathComponents(args, targetKind)
+        : targetKind === "search"
+          ? searchSummary(args)
+          : findTarget(args, "files");
+    return commandDisplay(running, completed, target, rawCommand, isRunning);
   }
 
   switch (tool) {
     case "mkdir":
-      return {
-        verb: isRunning ? "Creating" : "Created",
-        target: lastPathComponents(args, "directory"),
-        fullCommand: rawCommand,
-      };
+      return commandDisplay(
+        "Creating",
+        "Created",
+        lastPathComponents(args, "directory"),
+        rawCommand,
+        isRunning,
+      );
     case "rm":
-      return {
-        verb: isRunning ? "Removing" : "Removed",
-        target: lastPathComponents(args, "file"),
-        fullCommand: rawCommand,
-      };
+      return commandDisplay(
+        "Removing",
+        "Removed",
+        lastPathComponents(args, "file"),
+        rawCommand,
+        isRunning,
+      );
     case "cp":
     case "mv":
-      return {
-        verb: isRunning
-          ? tool === "cp"
-            ? "Copying"
-            : "Moving"
-          : tool === "cp"
-            ? "Copied"
-            : "Moved",
-        target: lastPathComponents(args, "file"),
-        fullCommand: rawCommand,
-      };
+      return commandDisplay(
+        tool === "cp" ? "Copying" : "Moving",
+        tool === "cp" ? "Copied" : "Moved",
+        lastPathComponents(args, "file"),
+        rawCommand,
+        isRunning,
+      );
     case "git":
       return humanizeGitCommand(args, rawCommand, isRunning);
     case "node":
@@ -136,25 +116,48 @@ export function deriveReadableCommandDisplay(
     case "python3":
     case "ruby":
     case "perl":
-      return {
-        verb: isRunning ? "Running" : "Ran",
-        target: inlineScriptTarget(tool, command, args) ?? compactInlineCommand(command),
-        fullCommand: rawCommand,
-      };
+      return commandDisplay(
+        "Running",
+        "Ran",
+        inlineScriptTarget(tool, command, args) ?? compactInlineCommand(command),
+        rawCommand,
+        isRunning,
+      );
     case "osascript":
-      return {
-        verb: isRunning ? "Running" : "Ran",
-        target: "AppleScript",
-        fullCommand: rawCommand,
-      };
+      return commandDisplay("Running", "Ran", "AppleScript", rawCommand, isRunning);
     default:
-      return {
-        verb: isRunning ? "Running" : "Ran",
-        target: compactInlineCommand(command),
-        fullCommand: rawCommand,
-      };
+      return commandDisplay("Running", "Ran", compactInlineCommand(command), rawCommand, isRunning);
   }
 }
+
+function commandDisplay(
+  running: string,
+  completed: string,
+  target: string,
+  fullCommand: string,
+  isRunning: boolean,
+): ReadableCommandDisplay {
+  return { verb: isRunning ? running : completed, target, fullCommand };
+}
+
+type InspectPresentation = readonly [
+  running: string,
+  completed: string,
+  target: "file" | "directory" | "search" | "find",
+];
+
+const INSPECT_COMMAND_PRESENTATIONS: Record<string, InspectPresentation> = Object.fromEntries(
+  (
+    [
+      [["cat", "nl", "head", "tail", "sed", "less", "more"], "Reading", "Read", "file"],
+      [["rg", "grep", "ag", "ack"], "Searching", "Searched", "search"],
+      [["find", "fd"], "Finding", "Found", "find"],
+      [["ls"], "Listing", "Listed", "directory"],
+    ] as const
+  ).flatMap(([tools, running, completed, target]) =>
+    tools.map((tool) => [tool, [running, completed, target]]),
+  ),
+);
 
 function firstCommandExecutable(rawCommand: string): string {
   const trimmed = rawCommand.trim();
@@ -184,7 +187,7 @@ export function deriveFriendlyCommandTarget(rawCommand: string): string {
 export function resolveCommandVisualKind(rawCommand: string): CommandVisualKind {
   const command = stripCommandDisplayWrappers(unwrapShellCommandIfPresent(rawCommand));
   const [tool] = splitToolAndArgs(firstShellCommandSegment(command));
-  if (isInspectCommandTool(tool)) {
+  if (Object.hasOwn(INSPECT_COMMAND_PRESENTATIONS, tool)) {
     return "inspect";
   }
   if (tool === "git") {
@@ -203,70 +206,39 @@ function humanizeGitCommand(
 ): ReadableCommandDisplay {
   const normalizedArgs = stripGitGlobalOptions(args);
   const subcommand = normalizedArgs.split(/\s+/, 1)[0]?.toLowerCase() ?? "";
-  switch (subcommand) {
-    case "status":
-      return {
-        verb: isRunning ? "Checking" : "Checked",
-        target: "git status",
-        fullCommand: rawCommand,
-      };
-    case "diff":
-      return {
-        verb: isRunning ? "Comparing" : "Compared",
-        target: "changes",
-        fullCommand: rawCommand,
-      };
-    case "show":
-      return {
-        verb: isRunning ? "Inspecting" : "Inspected",
-        target: "commit",
-        fullCommand: rawCommand,
-      };
-    case "log":
-      return {
-        verb: isRunning ? "Reviewing" : "Reviewed",
-        target: "git history",
-        fullCommand: rawCommand,
-      };
-    case "add":
-      return {
-        verb: isRunning ? "Staging" : "Staged",
-        target: "changes",
-        fullCommand: rawCommand,
-      };
-    case "commit":
-      return {
-        verb: isRunning ? "Committing" : "Committed",
-        target: "changes",
-        fullCommand: rawCommand,
-      };
-    case "push":
-      return {
-        verb: isRunning ? "Pushing" : "Pushed",
-        target: "to remote",
-        fullCommand: rawCommand,
-      };
-    case "pull":
-      return {
-        verb: isRunning ? "Pulling" : "Pulled",
-        target: "from remote",
-        fullCommand: rawCommand,
-      };
-    case "checkout":
-    case "switch":
-      return {
-        verb: isRunning ? "Switching to" : "Switched to",
-        target: checkoutTarget(args),
-        fullCommand: rawCommand,
-      };
-    default:
-      return {
-        verb: isRunning ? "Running" : "Ran",
-        target: compactInlineCommand(`git ${normalizedArgs}`.trim()),
-        fullCommand: rawCommand,
-      };
+  if (subcommand === "checkout" || subcommand === "switch") {
+    return commandDisplay(
+      "Switching to",
+      "Switched to",
+      checkoutTarget(args),
+      rawCommand,
+      isRunning,
+    );
   }
+  const presentation = Object.hasOwn(GIT_COMMAND_PRESENTATIONS, subcommand)
+    ? GIT_COMMAND_PRESENTATIONS[subcommand]
+    : undefined;
+  return presentation
+    ? commandDisplay(...presentation, rawCommand, isRunning)
+    : commandDisplay(
+        "Running",
+        "Ran",
+        compactInlineCommand(`git ${normalizedArgs}`.trim()),
+        rawCommand,
+        isRunning,
+      );
 }
+
+const GIT_COMMAND_PRESENTATIONS: Record<string, readonly [string, string, string]> = {
+  status: ["Checking", "Checked", "git status"],
+  diff: ["Comparing", "Compared", "changes"],
+  show: ["Inspecting", "Inspected", "commit"],
+  log: ["Reviewing", "Reviewed", "git history"],
+  add: ["Staging", "Staged", "changes"],
+  commit: ["Committing", "Committed", "changes"],
+  push: ["Pushing", "Pushed", "to remote"],
+  pull: ["Pulling", "Pulled", "from remote"],
+};
 
 function stripGitGlobalOptions(args: string): string {
   const tokens = tokenizeCommandArgs(args);

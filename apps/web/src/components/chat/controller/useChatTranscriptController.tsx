@@ -5,7 +5,7 @@ import {
   resolveThreadBranchSourceCwd,
 } from "@glade/shared/threads/threadEnvironment";
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import {
   ACTIVE_TURN_LAYOUT_SETTLE_DELAY_MS,
   shouldStartActiveTurnLayoutGrace,
@@ -183,7 +183,7 @@ export function useChatTranscriptController({
       pendingAutomationConversation,
     });
 
-  const promptHistory = useMemo(() => {
+  const promptHistory = (() => {
     const activeMessages = activeThread?.messages ?? EMPTY_MESSAGES;
 
     if (optimisticUserMessages.length === 0) {
@@ -194,21 +194,16 @@ export function useChatTranscriptController({
       (message) => !activeMessageIds.has(message.id),
     );
     return derivePromptHistoryFromMessages([...activeMessages, ...pendingOptimisticMessages]);
-  }, [activeThread?.messages, optimisticUserMessages]);
+  })();
 
-  const timelineEntries = useMemo(
-    () =>
-      deriveTimelineEntries(
-        timelineMessages,
-        activeThread?.proposedPlans ?? [],
-        agentActivityTimelineState.timelineWorkEntries,
-      ),
-    [activeThread?.proposedPlans, agentActivityTimelineState.timelineWorkEntries, timelineMessages],
+  const timelineEntries = deriveTimelineEntries(
+    timelineMessages,
+    activeThread?.proposedPlans ?? [],
+    agentActivityTimelineState.timelineWorkEntries,
   );
 
-  const enteringUserMessageIds = useMemo<ReadonlySet<MessageId>>(
-    () => new Set(optimisticUserMessages.map((message) => message.id)),
-    [optimisticUserMessages],
+  const enteringUserMessageIds: ReadonlySet<MessageId> = new Set(
+    optimisticUserMessages.map((message) => message.id),
   );
 
   const [tailAnchor, setTailAnchor] = useState<{
@@ -222,19 +217,16 @@ export function useChatTranscriptController({
 
   const threadNotes = activeThread?.notes ?? "";
 
-  const pinnedMessageIds = useMemo(
-    () => new Set(pinnedMessages.map((pin) => pin.messageId)),
-    [pinnedMessages],
-  );
+  const pinnedMessageIds = new Set(pinnedMessages.map((pin) => pin.messageId));
 
-  const pinnedMessageTextById = useMemo(() => {
+  const pinnedMessageTextById = (() => {
     if (pinnedMessageIds.size === 0) return EMPTY_PINNED_TEXT;
     const textById = new Map<MessageId, string>();
     for (const message of timelineMessages) {
       if (pinnedMessageIds.has(message.id)) textById.set(message.id, message.text);
     }
     return textById;
-  }, [pinnedMessageIds, timelineMessages]);
+  })();
 
   const {
     handleTogglePinMessage,
@@ -244,22 +236,16 @@ export function useChatTranscriptController({
     handleNotesChange,
   } = usePinnedMessageActions({ activeThreadId, pinnedMessages });
 
-  const handleTogglePinMessageGuarded = useCallback(
-    (messageId: MessageId) => {
-      if (isPendingSetupBubbleId(messageId)) {
-        return;
-      }
-      handleTogglePinMessage(messageId);
-    },
-    [handleTogglePinMessage, isPendingSetupBubbleId],
-  );
+  const handleTogglePinMessageGuarded = (messageId: MessageId) => {
+    if (isPendingSetupBubbleId(messageId)) {
+      return;
+    }
+    handleTogglePinMessage(messageId);
+  };
 
-  const canPinMessage = useCallback(
-    (messageId: MessageId) => !isPendingSetupBubbleId(messageId),
-    [isPendingSetupBubbleId],
-  );
+  const canPinMessage = (messageId: MessageId) => !isPendingSetupBubbleId(messageId);
 
-  const handleCopyProjectInstructionsToNotes = useCallback(() => {
+  const handleCopyProjectInstructionsToNotes = () => {
     if (!activeThreadId) {
       return;
     }
@@ -278,14 +264,11 @@ export function useChatTranscriptController({
         });
       })
       .catch(() => {});
-  }, [activeThreadId, handleNotesChange, projectInstructions, threadNotes]);
+  };
 
-  const handleJumpToPinnedMessage = useCallback(
-    (messageId: MessageId) => {
-      timelineControllerRef.current?.scrollToMessage(messageId);
-    },
-    [timelineControllerRef],
-  );
+  const handleJumpToPinnedMessage = (messageId: MessageId) => {
+    timelineControllerRef.current?.scrollToMessage(messageId);
+  };
 
   const threadDetailHydration = resolveThreadDetailHydration({
     isServerThread,
@@ -299,15 +282,15 @@ export function useChatTranscriptController({
   const hasPendingThreadWork =
     isWorking || (activeLatestTurnState === "running" && !latestTurnSettled);
 
-  const handleRetryThreadDetailSync = useCallback(() => {
+  const handleRetryThreadDetailSync = () => {
     useStore.getState().clearThreadDetailSyncFailure(threadId);
     const api = readNativeApi();
     void api?.orchestration
       .subscribeThread(buildThreadSubscribeInput(threadId))
       .catch(() => undefined);
-  }, [threadId]);
+  };
 
-  const transcriptEmptyStateContent = useMemo((): ReactNode => {
+  const transcriptEmptyStateContent = ((): ReactNode => {
     if (threadDetailHydration !== "ready") {
       return (
         <ThreadDetailHydrationState
@@ -317,7 +300,7 @@ export function useChatTranscriptController({
       );
     }
     return hasPendingThreadWork ? <span aria-hidden="true" /> : undefined;
-  }, [handleRetryThreadDetailSync, hasPendingThreadWork, threadDetailHydration]);
+  })();
 
   const isCenteredEmptyLanding =
     timelineEntries.length === 0 &&
@@ -331,7 +314,7 @@ export function useChatTranscriptController({
   const { turnDiffSummaries, inferredCheckpointTurnCountByTurnId } =
     useTurnDiffSummaries(activeThread);
 
-  const turnDiffSummaryByAssistantMessageId = useMemo(() => {
+  const turnDiffSummaryByAssistantMessageId = (() => {
     const messagesForDiffAnchoring: {
       id: MessageId;
       role: "user" | "assistant" | "system";
@@ -352,7 +335,7 @@ export function useChatTranscriptController({
       })),
       messages: messagesForDiffAnchoring,
     });
-  }, [inferredCheckpointTurnCountByTurnId, turnDiffSummaries, timelineMessages]);
+  })();
 
   const threadWorkspaceCwd = activeProject
     ? resolveSharedThreadWorkspaceCwd({
@@ -458,32 +441,28 @@ export function useChatTranscriptController({
     cacheReviewMessage?.text.trim() ?? "",
   );
 
-  const onRespondToClaudeCacheReview = useCallback(
-    async (review: PendingClaudeCacheReview, decision: ClaudeCacheReviewDecision) => {
-      const api = readNativeApi();
-      if (!api) throw new Error("Reconnect before choosing how to resume.");
-      await api.orchestration.dispatchCommand({
-        type: "thread.claude-cache.respond",
-        commandId: newCommandId(),
-        threadId,
-        messageId: review.messageId,
-        reviewId: review.reviewId,
-        decision,
-        createdAt: new Date().toISOString(),
-      });
-    },
-    [threadId],
-  );
+  const onRespondToClaudeCacheReview = async (
+    review: PendingClaudeCacheReview,
+    decision: ClaudeCacheReviewDecision,
+  ) => {
+    const api = readNativeApi();
+    if (!api) throw new Error("Reconnect before choosing how to resume.");
+    await api.orchestration.dispatchCommand({
+      type: "thread.claude-cache.respond",
+      commandId: newCommandId(),
+      threadId,
+      messageId: review.messageId,
+      reviewId: review.reviewId,
+      decision,
+      createdAt: new Date().toISOString(),
+    });
+  };
 
-  const activeRootBranch = useMemo(
-    () =>
-      resolveComposerSlashRootBranch({
-        branches: branchesQuery.data?.branches,
-        activeProjectCwd: activeProject?.cwd,
-        activeThreadBranch: activeThread?.branch,
-      }),
-    [activeProject?.cwd, activeThread?.branch, branchesQuery.data?.branches],
-  );
+  const activeRootBranch = resolveComposerSlashRootBranch({
+    branches: branchesQuery.data?.branches,
+    activeProjectCwd: activeProject?.cwd,
+    activeThreadBranch: activeThread?.branch,
+  });
   return {
     activeTurnInProgress,
     isComposerApprovalState,

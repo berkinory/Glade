@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import {
   ProviderInteractionMode,
   RuntimeMode,
@@ -5,7 +6,7 @@ import {
 } from "@glade/contracts/provider/sessionPolicy";
 import { ThreadId, type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { type ServerProviderStatus } from "@glade/contracts/server/server";
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { newCommandId } from "~/lib/utils";
 import { readNativeApi } from "~/nativeApi";
 import { useComposerDraftStore } from "../../composerDraftStore";
@@ -172,103 +173,88 @@ export function useChatRuntimeModes({
     selectedRuntimeModel,
   ]);
 
-  const handleInteractionModeChange = useCallback(
-    (mode: ProviderInteractionMode) => {
-      if (mode === interactionMode) return;
-      setComposerDraftInteractionMode(threadId, mode);
-      if (isLocalDraftThread) {
-        setDraftThreadContext(threadId, { interactionMode: mode });
-      }
-      if (serverThread) {
-        const api = readNativeApi();
-        if (api) {
-          void api.orchestration
-            .dispatchCommand({
-              type: "thread.interaction-mode.set",
-              commandId: newCommandId(),
-              threadId,
-              interactionMode: mode,
-              createdAt: new Date().toISOString(),
-            })
-            .catch((error) => {
-              toastManager.add({
-                type: "error",
-                title: "Could not update interaction mode",
-                description:
-                  error instanceof Error ? error.message : "An unexpected error occurred.",
-              });
-            });
-        }
-      }
-      scheduleComposerFocus();
-    },
-    [
-      interactionMode,
-      isLocalDraftThread,
-      scheduleComposerFocus,
-      serverThread,
-      setComposerDraftInteractionMode,
-      setDraftThreadContext,
-      threadId,
-    ],
-  );
-  const toggleInteractionMode = useCallback(() => {
-    handleInteractionModeChange(interactionMode === "plan" ? "default" : "plan");
-  }, [handleInteractionModeChange, interactionMode]);
-  const resetInteractionMode = useCallback(() => {
-    handleInteractionModeChange("default");
-  }, [handleInteractionModeChange]);
-
-  const persistThreadSettingsForNextTurn = useCallback(
-    async (input: {
-      threadId: ThreadId;
-      createdAt: string;
-      modelSelection?: ModelSelection;
-      runtimeMode: RuntimeMode;
-      interactionMode: ProviderInteractionMode;
-    }) => {
-      if (!serverThread) {
-        return;
-      }
+  const handleInteractionModeChange = (mode: ProviderInteractionMode) => {
+    if (mode === interactionMode) return;
+    setComposerDraftInteractionMode(threadId, mode);
+    if (isLocalDraftThread) {
+      setDraftThreadContext(threadId, { interactionMode: mode });
+    }
+    if (serverThread) {
       const api = readNativeApi();
-      if (!api) {
-        return;
+      if (api) {
+        void api.orchestration
+          .dispatchCommand({
+            type: "thread.interaction-mode.set",
+            commandId: newCommandId(),
+            threadId,
+            interactionMode: mode,
+            createdAt: new Date().toISOString(),
+          })
+          .catch((error) => {
+            toastManager.add({
+              type: "error",
+              title: "Could not update interaction mode",
+              description: error instanceof Error ? error.message : "An unexpected error occurred.",
+            });
+          });
       }
+    }
+    scheduleComposerFocus();
+  };
+  const toggleInteractionMode = () => {
+    handleInteractionModeChange(interactionMode === "plan" ? "default" : "plan");
+  };
+  const resetInteractionMode = () => {
+    handleInteractionModeChange("default");
+  };
 
-      await persistModelSelectionBeforeRuntimeMode({
-        currentModelSelection: serverThread.modelSelection,
-        ...(input.modelSelection !== undefined ? { nextModelSelection: input.modelSelection } : {}),
-        currentRuntimeMode: serverThread.runtimeMode,
-        nextRuntimeMode: input.runtimeMode,
-        persistModelSelection: (modelSelection) =>
-          api.orchestration.dispatchCommand({
-            type: "thread.meta.update",
-            commandId: newCommandId(),
-            threadId: input.threadId,
-            modelSelection,
-          }),
-        persistRuntimeMode: (runtimeMode) =>
-          api.orchestration.dispatchCommand({
-            type: "thread.runtime-mode.set",
-            commandId: newCommandId(),
-            threadId: input.threadId,
-            runtimeMode,
-            createdAt: input.createdAt,
-          }),
-      });
+  const persistThreadSettingsForNextTurn = async (input: {
+    threadId: ThreadId;
+    createdAt: string;
+    modelSelection?: ModelSelection;
+    runtimeMode: RuntimeMode;
+    interactionMode: ProviderInteractionMode;
+  }) => {
+    if (!serverThread) {
+      return;
+    }
+    const api = readNativeApi();
+    if (!api) {
+      return;
+    }
 
-      if (input.interactionMode !== serverThread.interactionMode) {
-        await api.orchestration.dispatchCommand({
-          type: "thread.interaction-mode.set",
+    await persistModelSelectionBeforeRuntimeMode({
+      currentModelSelection: serverThread.modelSelection,
+      ...(input.modelSelection !== undefined ? { nextModelSelection: input.modelSelection } : {}),
+      currentRuntimeMode: serverThread.runtimeMode,
+      nextRuntimeMode: input.runtimeMode,
+      persistModelSelection: (modelSelection) =>
+        api.orchestration.dispatchCommand({
+          type: "thread.meta.update",
           commandId: newCommandId(),
           threadId: input.threadId,
-          interactionMode: input.interactionMode,
+          modelSelection,
+        }),
+      persistRuntimeMode: (runtimeMode) =>
+        api.orchestration.dispatchCommand({
+          type: "thread.runtime-mode.set",
+          commandId: newCommandId(),
+          threadId: input.threadId,
+          runtimeMode,
           createdAt: input.createdAt,
-        });
-      }
-    },
-    [serverThread],
-  );
+        }),
+    });
+
+    if (input.interactionMode !== serverThread.interactionMode) {
+      await api.orchestration.dispatchCommand({
+        type: "thread.interaction-mode.set",
+        commandId: newCommandId(),
+        threadId: input.threadId,
+        interactionMode: input.interactionMode,
+        createdAt: input.createdAt,
+      });
+    }
+  };
   return {
     persistRuntimeModeChange,
     handleRuntimeModeChange,

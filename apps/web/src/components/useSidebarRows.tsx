@@ -359,7 +359,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
     const leadingPr = isSubagentThread || thread.forkSourceThreadId ? null : pr;
     const threadJumpLabel = visibleThreadJumpLabelByThreadId.get(thread.id) ?? null;
 
-    const hasTrailingStatusGlyph = Boolean(threadStatus) || Boolean(threadJumpLabel);
+    const hasTrailingStatusGlyph = Boolean(threadStatus || threadJumpLabel);
     const hoverAnchorId = createSidebarThreadHoverAnchorId({
       scope: "pinned",
       threadId: thread.id,
@@ -388,7 +388,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
             data-thread-item
             className={cn(
               SIDEBAR_HEADER_ROW_CLASS_NAME,
-
               "relative gap-1.5 transition-colors",
               leadingPr && "pl-8",
               resolveThreadRowTrailingReserveClass({
@@ -469,7 +468,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
     thread: SidebarThreadSummary,
     orderedProjectThreadIds: readonly ThreadId[],
     depth = 0,
-
     topLevel = false,
     virtualOffset?: number,
   ) {
@@ -594,7 +592,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
                 threadStatus?.label === "Pending Approval" ? threadStatus.colorClass : null
               }
             />
-            <div className={cn("absolute top-1/2 flex -translate-y-1/2 items-center", "right-1.5")}>
+            <div className="absolute top-1/2 right-1.5 flex -translate-y-1/2 items-center">
               {renderThreadRowTrailingCluster({
                 isSubagentThread,
                 threadJumpLabel,
@@ -774,7 +772,6 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
               >
                 <span className={SIDEBAR_PROJECT_NAME_CLASS_NAME}>{projectRowLabel}</span>
               </div>
-              {}
               {isProjectRunning || collapsedProjectStatus ? (
                 <span
                   aria-label={

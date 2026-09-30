@@ -35,7 +35,10 @@ function hydrateQueuedTurnsFromPersisted(
         files: [],
         assistantSelections: normalizeAssistantSelections(queuedTurn.assistantSelections ?? []),
         browserAnnotations: normalizeBrowserAnnotations(queuedTurn.browserAnnotations ?? []),
-        terminalContexts: normalizeTerminalContextsForThread(threadId, queuedTurn.terminalContexts),
+        terminalContexts: normalizeTerminalContextsForThread(
+          threadId,
+          queuedTurn.terminalContexts.map((context) => ({ ...context, threadId })),
+        ),
         fileComments: normalizeFileComments(queuedTurn.fileComments ?? []),
         pastedTexts: hydratePastedTextsFromPersisted(queuedTurn.pastedTexts),
         pullRequestContexts: normalizePullRequestContexts(queuedTurn.pullRequestContexts ?? []),
@@ -82,6 +85,7 @@ function hydratePromptHistorySavedDraft(
     terminalContexts:
       savedDraft.terminalContexts?.map((context) => ({
         ...context,
+        threadId: context.threadId as ThreadId,
         text: "",
       })) ?? [],
     fileComments: normalizeFileComments(savedDraft.fileComments ?? []),
@@ -119,6 +123,7 @@ export function toHydratedThreadDraft(
     terminalContexts:
       persistedDraft.terminalContexts?.map((context) => ({
         ...context,
+        threadId: context.threadId as ThreadId,
         text: "",
       })) ?? [],
     fileComments: normalizeFileComments(persistedDraft.fileComments ?? []),

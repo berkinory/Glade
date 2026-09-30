@@ -14,7 +14,7 @@ import {
   normalizePastedTexts,
   normalizeTerminalContextForThread,
   normalizeTerminalContextsForThread,
-  shouldRemoveDraft,
+  putComposerDraft,
   terminalContextDedupKey,
 } from "./composerDraftDomain";
 import {
@@ -156,13 +156,7 @@ export function createContextActions(
             (annotation) => annotation.id !== annotationId,
           ),
         };
-        const nextDraftsByThreadId = { ...state.draftsByThreadId };
-        if (shouldRemoveDraft(nextDraft)) {
-          delete nextDraftsByThreadId[threadId];
-        } else {
-          nextDraftsByThreadId[threadId] = nextDraft;
-        }
-        return { draftsByThreadId: nextDraftsByThreadId };
+        return putComposerDraft(state, threadId, nextDraft);
       });
     },
     clearBrowserAnnotations: (threadId) => {
@@ -178,13 +172,7 @@ export function createContextActions(
           ...current,
           browserAnnotations: [],
         };
-        const nextDraftsByThreadId = { ...state.draftsByThreadId };
-        if (shouldRemoveDraft(nextDraft)) {
-          delete nextDraftsByThreadId[threadId];
-        } else {
-          nextDraftsByThreadId[threadId] = nextDraft;
-        }
-        return { draftsByThreadId: nextDraftsByThreadId };
+        return putComposerDraft(state, threadId, nextDraft);
       });
     },
     addFileComment: (threadId, comment) => {
@@ -231,13 +219,7 @@ export function createContextActions(
           ...current,
           fileComments: current.fileComments.filter((comment) => comment.id !== commentId),
         };
-        const nextDraftsByThreadId = { ...state.draftsByThreadId };
-        if (shouldRemoveDraft(nextDraft)) {
-          delete nextDraftsByThreadId[threadId];
-        } else {
-          nextDraftsByThreadId[threadId] = nextDraft;
-        }
-        return { draftsByThreadId: nextDraftsByThreadId };
+        return putComposerDraft(state, threadId, nextDraft);
       });
     },
     clearFileComments: (threadId) => {
@@ -253,13 +235,7 @@ export function createContextActions(
           ...current,
           fileComments: [],
         };
-        const nextDraftsByThreadId = { ...state.draftsByThreadId };
-        if (shouldRemoveDraft(nextDraft)) {
-          delete nextDraftsByThreadId[threadId];
-        } else {
-          nextDraftsByThreadId[threadId] = nextDraft;
-        }
-        return { draftsByThreadId: nextDraftsByThreadId };
+        return putComposerDraft(state, threadId, nextDraft);
       });
     },
     addPastedTexts: (threadId, pastedTexts) => {
@@ -299,13 +275,7 @@ export function createContextActions(
           ...current,
           pastedTexts: current.pastedTexts.filter((pasted) => pasted.id !== pastedTextId),
         };
-        const nextDraftsByThreadId = { ...state.draftsByThreadId };
-        if (shouldRemoveDraft(nextDraft)) {
-          delete nextDraftsByThreadId[threadId];
-        } else {
-          nextDraftsByThreadId[threadId] = nextDraft;
-        }
-        return { draftsByThreadId: nextDraftsByThreadId };
+        return putComposerDraft(state, threadId, nextDraft);
       });
     },
     clearPastedTexts: (threadId) => {
@@ -321,13 +291,7 @@ export function createContextActions(
           ...current,
           pastedTexts: [],
         };
-        const nextDraftsByThreadId = { ...state.draftsByThreadId };
-        if (shouldRemoveDraft(nextDraft)) {
-          delete nextDraftsByThreadId[threadId];
-        } else {
-          nextDraftsByThreadId[threadId] = nextDraft;
-        }
-        return { draftsByThreadId: nextDraftsByThreadId };
+        return putComposerDraft(state, threadId, nextDraft);
       });
     },
     addPullRequestContext: (threadId, context) => {
@@ -372,13 +336,7 @@ export function createContextActions(
             (entry) => entry.id !== contextId,
           ),
         };
-        const nextDraftsByThreadId = { ...state.draftsByThreadId };
-        if (shouldRemoveDraft(nextDraft)) {
-          delete nextDraftsByThreadId[threadId];
-        } else {
-          nextDraftsByThreadId[threadId] = nextDraft;
-        }
-        return { draftsByThreadId: nextDraftsByThreadId };
+        return putComposerDraft(state, threadId, nextDraft);
       });
     },
     clearPullRequestContexts: (threadId) => {
@@ -394,13 +352,7 @@ export function createContextActions(
           ...current,
           pullRequestContexts: [],
         };
-        const nextDraftsByThreadId = { ...state.draftsByThreadId };
-        if (shouldRemoveDraft(nextDraft)) {
-          delete nextDraftsByThreadId[threadId];
-        } else {
-          nextDraftsByThreadId[threadId] = nextDraft;
-        }
-        return { draftsByThreadId: nextDraftsByThreadId };
+        return putComposerDraft(state, threadId, nextDraft);
       });
     },
     insertTerminalContext: (threadId, prompt, context, index) => {
@@ -488,13 +440,7 @@ export function createContextActions(
           ...current,
           terminalContexts: current.terminalContexts.filter((context) => context.id !== contextId),
         };
-        const nextDraftsByThreadId = { ...state.draftsByThreadId };
-        if (shouldRemoveDraft(nextDraft)) {
-          delete nextDraftsByThreadId[threadId];
-        } else {
-          nextDraftsByThreadId[threadId] = nextDraft;
-        }
-        return { draftsByThreadId: nextDraftsByThreadId };
+        return putComposerDraft(state, threadId, nextDraft);
       });
     },
     clearTerminalContexts: (threadId) => {
@@ -510,13 +456,7 @@ export function createContextActions(
           ...current,
           terminalContexts: [],
         };
-        const nextDraftsByThreadId = { ...state.draftsByThreadId };
-        if (shouldRemoveDraft(nextDraft)) {
-          delete nextDraftsByThreadId[threadId];
-        } else {
-          nextDraftsByThreadId[threadId] = nextDraft;
-        }
-        return { draftsByThreadId: nextDraftsByThreadId };
+        return putComposerDraft(state, threadId, nextDraft);
       });
     },
     clearPersistedAttachments: (threadId) => {
@@ -540,13 +480,7 @@ export function createContextActions(
           persistedAttachments: [],
           nonPersistedImageIds: [],
         };
-        const nextDraftsByThreadId = { ...state.draftsByThreadId };
-        if (shouldRemoveDraft(nextDraft)) {
-          delete nextDraftsByThreadId[threadId];
-        } else {
-          nextDraftsByThreadId[threadId] = nextDraft;
-        }
-        return { draftsByThreadId: nextDraftsByThreadId };
+        return putComposerDraft(state, threadId, nextDraft);
       });
     },
     syncPersistedAttachments: (threadId, attachments) =>

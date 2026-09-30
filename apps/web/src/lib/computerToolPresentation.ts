@@ -3,53 +3,121 @@ import { asFiniteNumber } from "@glade/shared/transport/payloadValues";
 import { asRecord } from "@glade/shared/transport/payloadValues";
 import type { ComputerWindow } from "@glade/contracts/computer/computer";
 
-export const COMPUTER_TOOL_TITLES = {
-  computer_screenshot: "Take a screenshot",
-  computer_get_state: "Read the screen",
-  computer_get_screen_size: "Measure the screen",
-  computer_list_windows: "Find open windows",
-  computer_list_apps: "List apps",
-  computer_verify_state: "Verify state",
-  computer_zoom: "Zoom into a window",
-  computer_get_accessibility_tree: "List apps and windows",
-  computer_get_cursor_position: "Read the cursor position",
-  computer_help: "Read the Computer playbook",
-  computer_click: "Click",
-  computer_move_cursor: "Move the agent cursor",
-  computer_drag: "Drag",
-  computer_scroll: "Scroll",
-  computer_type_text: "Type",
-  computer_press_key: "Press a key",
-  computer_set_value: "Set a field",
-  computer_select_text: "Select text",
-  computer_perform_action: "Activate a control",
-  computer_launch_app: "Open an app",
-  computer_activate_window: "Activate a window",
-  computer_set_window_frame: "Move or resize a window",
-  computer_invoke_menu: "Invoke a menu item",
-  computer_kill_app: "Force-quit an app",
-  computer_set_window_minimized: "Minimize or restore a window",
-  computer_set_app_visibility: "Hide or unhide an app",
-  computer_wait: "Wait",
-  computer_read_clipboard: "Read the clipboard",
-  computer_write_clipboard: "Write to the clipboard",
-  computer_paste: "Paste text",
-  computer_run: "Run a sequence",
-  computer_inspect: "Inspect the computer",
-  computer_spaces: "Inspect desktop Spaces",
-  computer_browser_state: "Read the browser page",
-  computer_browser_prepare: "Prepare a browser",
-  computer_browser_navigate: "Open a browser page",
-  computer_browser_click: "Click in the browser",
-  computer_browser_type: "Type in a browser field",
-  computer_browser_dialog: "Handle a browser dialog",
-  computer_browser_upload: "Attach files in the browser",
-  computer_browser_download: "Download a file",
-  computer_browser_pointer: "Use the pointer in the browser",
-  computer_browser_press: "Press Enter in the browser",
-} as const;
+export const COMPUTER_TOOL_DESCRIPTORS = {
+  computer_screenshot: ["Take a screenshot", "taking a screenshot", "took a screenshot"],
+  computer_get_state: ["Read the screen", "reading the screen", "read the screen"],
+  computer_get_screen_size: ["Measure the screen", "measuring the screen", "measured the screen"],
+  computer_list_windows: ["Find open windows", "listing windows", "listed the windows"],
+  computer_list_apps: ["List apps", "listing apps", "listed the apps"],
+  computer_verify_state: ["Verify state", "checking desktop state", "checked desktop state"],
+  computer_zoom: ["Zoom into a window", "zooming into a window", "zoomed into a window"],
+  computer_get_accessibility_tree: [
+    "List apps and windows",
+    "listing apps and windows",
+    "listed apps and windows",
+  ],
+  computer_get_cursor_position: [
+    "Read the cursor position",
+    "reading the cursor position",
+    "read the cursor position",
+  ],
+  computer_help: [
+    "Read the Computer playbook",
+    "reading the Computer playbook",
+    "read the Computer playbook",
+  ],
+  computer_click: ["Click", "clicking the desktop", "clicked the desktop"],
+  computer_move_cursor: ["Move the agent cursor", "moving the cursor", "moved the cursor"],
+  computer_drag: ["Drag", "dragging on the desktop", "dragged on the desktop"],
+  computer_scroll: ["Scroll", "scrolling the desktop", "scrolled the desktop"],
+  computer_type_text: ["Type", "typing on the desktop", "typed on the desktop"],
+  computer_press_key: ["Press a key", "pressing a key", "pressed a key"],
+  computer_set_value: ["Set a field", "setting a field", "set a field"],
+  computer_select_text: ["Select text", "selecting text", "selected text"],
+  computer_perform_action: ["Activate a control", "activating a control", "activated a control"],
+  computer_launch_app: ["Open an app", "opening an app", "opened an app"],
+  computer_activate_window: ["Activate a window", "activating a window", "activated a window"],
+  computer_set_window_frame: [
+    "Move or resize a window",
+    "moving or resizing a window",
+    "moved or resized a window",
+  ],
+  computer_invoke_menu: ["Invoke a menu item", "invoking a menu item", "invoked a menu item"],
+  computer_kill_app: ["Force-quit an app", "force-quitting an app", "force-quit an app"],
+  computer_set_window_minimized: [
+    "Minimize or restore a window",
+    "changing a window's visibility",
+    "changed a window's visibility",
+  ],
+  computer_set_app_visibility: [
+    "Hide or unhide an app",
+    "changing an app's visibility",
+    "changed an app's visibility",
+  ],
+  computer_wait: ["Wait", "waiting for the desktop", "waited for the desktop"],
+  computer_read_clipboard: ["Read the clipboard", "reading the clipboard", "read the clipboard"],
+  computer_write_clipboard: [
+    "Write to the clipboard",
+    "writing to the clipboard",
+    "wrote to the clipboard",
+  ],
+  computer_paste: ["Paste text", "pasting text", "pasted text"],
+  computer_run: ["Run a sequence", "running a desktop sequence", "ran a desktop sequence"],
+  computer_inspect: ["Inspect the computer", "inspecting the computer", "inspected the computer"],
+  computer_spaces: [
+    "Inspect desktop Spaces",
+    "inspecting desktop Spaces",
+    "inspected desktop Spaces",
+  ],
+  computer_browser_state: [
+    "Read the browser page",
+    "reading the browser page",
+    "read the browser page",
+  ],
+  computer_browser_prepare: ["Prepare a browser", "preparing a browser", "prepared a browser"],
+  computer_browser_navigate: [
+    "Open a browser page",
+    "opening a browser page",
+    "opened a browser page",
+  ],
+  computer_browser_click: [
+    "Click in the browser",
+    "clicking in the browser",
+    "clicked in the browser",
+  ],
+  computer_browser_type: [
+    "Type in a browser field",
+    "typing in a browser field",
+    "typed in a browser field",
+  ],
+  computer_browser_dialog: [
+    "Handle a browser dialog",
+    "handling a browser dialog",
+    "handled a browser dialog",
+  ],
+  computer_browser_upload: [
+    "Attach files in the browser",
+    "attaching files in the browser",
+    "attached files in the browser",
+  ],
+  computer_browser_download: ["Download a file", "downloading a file", "downloaded a file"],
+  computer_browser_pointer: [
+    "Use the pointer in the browser",
+    "using the pointer in the browser",
+    "used the pointer in the browser",
+  ],
+  computer_browser_press: [
+    "Press Enter in the browser",
+    "pressing Enter in the browser",
+    "pressed Enter in the browser",
+  ],
+} as const satisfies Record<string, readonly [title: string, present: string, past: string]>;
 
-export type ComputerToolName = keyof typeof COMPUTER_TOOL_TITLES;
+export type ComputerToolName = keyof typeof COMPUTER_TOOL_DESCRIPTORS;
+
+export const COMPUTER_TOOL_TITLES = Object.fromEntries(
+  Object.entries(COMPUTER_TOOL_DESCRIPTORS).map(([tool, [title]]) => [tool, title]),
+) as Record<ComputerToolName, string>;
 
 export function computerToolName(candidate: string | null | undefined): ComputerToolName | null {
   if (!candidate) return null;

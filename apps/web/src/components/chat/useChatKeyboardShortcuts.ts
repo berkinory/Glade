@@ -255,6 +255,13 @@ export function useChatKeyboardShortcuts({
       return;
     }
 
+    const terminalSplitActions = new Map([
+      ["terminal.split", splitTerminalRight],
+      ["terminal.splitRight", splitTerminalRight],
+      ["terminal.splitLeft", splitTerminalLeft],
+      ["terminal.splitDown", splitTerminalDown],
+      ["terminal.splitUp", splitTerminalUp],
+    ]);
     const handler = (event: globalThis.KeyboardEvent) => {
       if (!activeThreadId || event.defaultPrevented) return;
 
@@ -396,46 +403,14 @@ export function useChatKeyboardShortcuts({
         return;
       }
 
-      if (command === "terminal.split" || command === "terminal.splitRight") {
+      const splitTerminal = terminalSplitActions.get(command);
+      if (splitTerminal) {
         event.preventDefault();
         event.stopPropagation();
         if (!terminalState.terminalOpen) {
           setTerminalOpen(true);
         }
-        splitTerminalRight();
-        revealTerminal();
-        return;
-      }
-
-      if (command === "terminal.splitLeft") {
-        event.preventDefault();
-        event.stopPropagation();
-        if (!terminalState.terminalOpen) {
-          setTerminalOpen(true);
-        }
-        splitTerminalLeft();
-        revealTerminal();
-        return;
-      }
-
-      if (command === "terminal.splitDown") {
-        event.preventDefault();
-        event.stopPropagation();
-        if (!terminalState.terminalOpen) {
-          setTerminalOpen(true);
-        }
-        splitTerminalDown();
-        revealTerminal();
-        return;
-      }
-
-      if (command === "terminal.splitUp") {
-        event.preventDefault();
-        event.stopPropagation();
-        if (!terminalState.terminalOpen) {
-          setTerminalOpen(true);
-        }
-        splitTerminalUp();
+        splitTerminal();
         revealTerminal();
         return;
       }

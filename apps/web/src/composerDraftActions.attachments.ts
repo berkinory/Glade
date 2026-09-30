@@ -14,7 +14,7 @@ import {
   assistantSelectionDedupKey,
   createEmptyThreadDraft,
   normalizeAssistantSelection,
-  shouldRemoveDraft,
+  putComposerDraft,
 } from "./composerDraftDomain";
 import {
   availableComposerAttachmentSlots,
@@ -101,13 +101,7 @@ export function createAttachmentsActions(
           ...current,
           queuedTurns: current.queuedTurns.filter((entry) => entry.id !== queuedTurnId),
         };
-        const nextDraftsByThreadId = { ...state.draftsByThreadId };
-        if (shouldRemoveDraft(nextDraft)) {
-          delete nextDraftsByThreadId[threadId];
-        } else {
-          nextDraftsByThreadId[threadId] = nextDraft;
-        }
-        return { draftsByThreadId: nextDraftsByThreadId };
+        return putComposerDraft(state, threadId, nextDraft);
       });
     },
     addImage: (threadId, image) => {
@@ -186,13 +180,7 @@ export function createAttachmentsActions(
             (attachment) => attachment.id !== imageId,
           ),
         };
-        const nextDraftsByThreadId = { ...state.draftsByThreadId };
-        if (shouldRemoveDraft(nextDraft)) {
-          delete nextDraftsByThreadId[threadId];
-        } else {
-          nextDraftsByThreadId[threadId] = nextDraft;
-        }
-        return { draftsByThreadId: nextDraftsByThreadId };
+        return putComposerDraft(state, threadId, nextDraft);
       });
     },
     addFiles: (threadId, files) => {
@@ -246,13 +234,7 @@ export function createAttachmentsActions(
           ...current,
           files: current.files.filter((file) => file.id !== fileId),
         };
-        const nextDraftsByThreadId = { ...state.draftsByThreadId };
-        if (shouldRemoveDraft(nextDraft)) {
-          delete nextDraftsByThreadId[threadId];
-        } else {
-          nextDraftsByThreadId[threadId] = nextDraft;
-        }
-        return { draftsByThreadId: nextDraftsByThreadId };
+        return putComposerDraft(state, threadId, nextDraft);
       });
     },
     addAssistantSelection: (threadId, selection) => {
@@ -306,13 +288,7 @@ export function createAttachmentsActions(
             (selection) => selection.id !== selectionId,
           ),
         };
-        const nextDraftsByThreadId = { ...state.draftsByThreadId };
-        if (shouldRemoveDraft(nextDraft)) {
-          delete nextDraftsByThreadId[threadId];
-        } else {
-          nextDraftsByThreadId[threadId] = nextDraft;
-        }
-        return { draftsByThreadId: nextDraftsByThreadId };
+        return putComposerDraft(state, threadId, nextDraft);
       });
     },
     clearAssistantSelections: (threadId) => {
@@ -328,13 +304,7 @@ export function createAttachmentsActions(
           ...current,
           assistantSelections: [],
         };
-        const nextDraftsByThreadId = { ...state.draftsByThreadId };
-        if (shouldRemoveDraft(nextDraft)) {
-          delete nextDraftsByThreadId[threadId];
-        } else {
-          nextDraftsByThreadId[threadId] = nextDraft;
-        }
-        return { draftsByThreadId: nextDraftsByThreadId };
+        return putComposerDraft(state, threadId, nextDraft);
       });
     },
   };

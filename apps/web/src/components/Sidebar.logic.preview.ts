@@ -1,12 +1,5 @@
-import { MAX_PINNED_PROJECTS } from "@glade/contracts/orchestration/threadEntities";
 import type { SidebarProjectSortOrder, SidebarThreadSortOrder } from "../appSettings";
-import type { Project, SidebarThreadSummary, Thread } from "../types";
-import {
-  derivePinnedIds,
-  getPinnedItems,
-  isLatestPinMutation,
-  orderPinnedItemsFirst,
-} from "../pinning.logic";
+import type { SidebarThreadSummary, Thread } from "../types";
 import { SIDEBAR_THREAD_PREWARM_LIMIT, hasUnseenCompletion } from "./Sidebar.logic.statusTypes";
 import type { SidebarThreadSortInput } from "./Sidebar.logic.statusTypes";
 
@@ -73,71 +66,6 @@ export function getVisibleSidebarEntriesForPreview<
   };
 }
 
-export function getPinnedThreadsForSidebar<T extends Pick<Thread, "id">>(
-  threads: readonly T[],
-  pinnedThreadIds: readonly T["id"][],
-): T[] {
-  return getPinnedItems(threads, pinnedThreadIds);
-}
-
-export function derivePinnedThreadIdsForSidebar<T extends Pick<Thread, "id" | "isPinned">>(input: {
-  readonly threads: readonly T[];
-  readonly persistedPinnedThreadIds: readonly T["id"][];
-  readonly optimisticPinnedStateByThreadId: ReadonlyMap<T["id"], boolean>;
-}): T["id"][] {
-  return derivePinnedIds({
-    items: input.threads,
-    persistedPinnedIds: input.persistedPinnedThreadIds,
-    optimisticPinnedStateById: input.optimisticPinnedStateByThreadId,
-  });
-}
-
-export function isLatestPinnedThreadMutation<T>(input: {
-  readonly threadId: T;
-  readonly requestVersion: number;
-  readonly latestMutationVersionByThreadId: ReadonlyMap<T, number>;
-}): boolean {
-  return isLatestPinMutation({
-    id: input.threadId,
-    requestVersion: input.requestVersion,
-    latestMutationVersionById: input.latestMutationVersionByThreadId,
-  });
-}
-
-export function isLatestPinnedProjectMutation<T>(input: {
-  readonly projectId: T;
-  readonly requestVersion: number;
-  readonly latestMutationVersionByProjectId: ReadonlyMap<T, number>;
-}): boolean {
-  return isLatestPinMutation({
-    id: input.projectId,
-    requestVersion: input.requestVersion,
-    latestMutationVersionById: input.latestMutationVersionByProjectId,
-  });
-}
-
-export function derivePinnedProjectIdsForSidebar<
-  T extends Pick<Project, "id" | "isPinned">,
->(input: {
-  readonly projects: readonly T[];
-  readonly persistedPinnedProjectIds: readonly T["id"][];
-  readonly optimisticPinnedStateByProjectId: ReadonlyMap<T["id"], boolean>;
-}): T["id"][] {
-  return derivePinnedIds({
-    items: input.projects,
-    persistedPinnedIds: input.persistedPinnedProjectIds,
-    optimisticPinnedStateById: input.optimisticPinnedStateByProjectId,
-    maxCount: MAX_PINNED_PROJECTS,
-  });
-}
-
-export function orderPinnedProjectsForSidebar<T extends Pick<Project, "id">>(
-  projects: readonly T[],
-  pinnedProjectIds: readonly T["id"][],
-): T[] {
-  return orderPinnedItemsFirst(projects, pinnedProjectIds);
-}
-
 export // Hide globally pinned rows from the per-project lists so the sidebar doesn't duplicate chats.
 function getUnpinnedThreadsForSidebar<
   T extends Pick<Thread, "id"> & Partial<Pick<SidebarThreadSummary, "parentThreadId">>,
@@ -158,10 +86,6 @@ function getUnpinnedThreadsForSidebar<
     pinnedThreadIds.filter((threadId) => !parentThreadIds.has(threadId)),
   );
   return threads.filter((thread) => !hiddenThreadIds.has(thread.id));
-}
-
-export function shouldPrunePinnedThreads(input: { threadsHydrated: boolean }): boolean {
-  return input.threadsHydrated;
 }
 
 export type ProjectEmptyState = "loading" | "empty" | null;

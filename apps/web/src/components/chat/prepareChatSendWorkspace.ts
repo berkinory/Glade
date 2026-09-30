@@ -103,10 +103,7 @@ export async function prepareChatSendWorkspace({
   const threadIdForSend = activeThread.id;
   const isFirstMessage = !isServerThread || !hasNativeUserMessages;
   const firstSendCreatedAt = new Date();
-  let firstComposerImageNameForTitle: string | null = null;
-  if (composerImagesForSend.length > 0) {
-    firstComposerImageNameForTitle = composerImagesForSend[0]?.name ?? null;
-  }
+  const firstComposerImageNameForTitle = composerImagesForSend[0]?.name ?? null;
   let titleSeed = trimmedPromptForSend;
   if (!titleSeed) {
     if (firstComposerImageNameForTitle) {

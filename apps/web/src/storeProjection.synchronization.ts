@@ -132,10 +132,15 @@ function syncServerThreadDetailWithOptions(
   state: AppState,
   thread: ReadModelThread,
   options?: {
-    updateSidebarSummary?: boolean;
-    snapshotSequence?: number;
+    snapshotSequence?: number | undefined;
   },
 ): AppState {
+  if (
+    state.deletedProjectIdsById?.[thread.projectId] !== undefined ||
+    state.deletedThreadIdsById?.[thread.id] !== undefined
+  ) {
+    return removeThreadState(state, thread.id);
+  }
   const previousThread = getThreadFromState(state, thread.id);
   const nextThreadDetail = options
     ? mergeReadModelThreadDetailWithLiveHotPath(thread, previousThread, options.snapshotSequence)
@@ -158,12 +163,6 @@ function syncServerThreadDetailWithOptions(
 }
 
 export function syncServerThreadDetail(state: AppState, thread: ReadModelThread): AppState {
-  if (
-    state.deletedProjectIdsById?.[thread.projectId] !== undefined ||
-    state.deletedThreadIdsById?.[thread.id] !== undefined
-  ) {
-    return removeThreadState(state, thread.id);
-  }
   return syncServerThreadDetailWithOptions(state, thread);
 }
 
@@ -172,16 +171,7 @@ export function syncServerThreadDetailHotPath(
   thread: ReadModelThread,
   snapshotSequence?: number,
 ): AppState {
-  if (
-    state.deletedProjectIdsById?.[thread.projectId] !== undefined ||
-    state.deletedThreadIdsById?.[thread.id] !== undefined
-  ) {
-    return removeThreadState(state, thread.id);
-  }
-  return syncServerThreadDetailWithOptions(state, thread, {
-    updateSidebarSummary: false,
-    ...(snapshotSequence !== undefined ? { snapshotSequence } : {}),
-  });
+  return syncServerThreadDetailWithOptions(state, thread, { snapshotSequence });
 }
 
 export function applyShellEvent(state: AppState, event: OrchestrationShellStreamEvent): AppState {

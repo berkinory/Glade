@@ -123,21 +123,19 @@ export function deriveWorkLogEntries(
   const visibleTurnIds = options.visibleTurnIds;
   const ordered = orderedActivities(activities);
   const entries = ordered
-    .filter((activity) => shouldKeepActivityForWorkLog(activity, latestTurnId, visibleTurnIds))
     .filter(
       (activity) =>
+        shouldKeepActivityForWorkLog(activity, latestTurnId, visibleTurnIds) &&
         activity.kind !== "task.started" &&
         activity.kind !== "task.updated" &&
-        activity.kind !== "task.completed",
+        activity.kind !== "task.completed" &&
+        !isQuietTurnLifecycleActivity(activity) &&
+        activity.kind !== "account.rate-limits.updated" &&
+        activity.kind !== "context-window.updated" &&
+        activity.kind !== "context-window.configured" &&
+        activity.summary !== "Checkpoint captured" &&
+        !isPlanBoundaryToolActivity(activity),
     )
-    .filter((activity) => !isQuietTurnLifecycleActivity(activity))
-    .filter((activity) => activity.kind !== "account.rate-limits.updated")
-    .filter(
-      (activity) =>
-        activity.kind !== "context-window.updated" && activity.kind !== "context-window.configured",
-    )
-    .filter((activity) => activity.summary !== "Checkpoint captured")
-    .filter((activity) => !isPlanBoundaryToolActivity(activity))
     .map(toDerivedWorkLogEntry);
 
   return reconcileSettledLiveActivities(

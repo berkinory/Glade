@@ -10,6 +10,7 @@ import {
   buildTransferredComposerDraft,
   createEmptyThreadDraft,
   shouldRemoveDraft,
+  putComposerDraft,
 } from "./composerDraftDomain";
 
 type DraftSet = Parameters<StateCreator<ComposerDraftStoreState>>[0];
@@ -60,13 +61,7 @@ export function createTransferActions(
           ...current,
           restoredSourceProposedPlan: source,
         };
-        const nextDraftsByThreadId = { ...state.draftsByThreadId };
-        if (shouldRemoveDraft(nextDraft)) {
-          delete nextDraftsByThreadId[threadId];
-        } else {
-          nextDraftsByThreadId[threadId] = nextDraft;
-        }
-        return { draftsByThreadId: nextDraftsByThreadId };
+        return putComposerDraft(state, threadId, nextDraft);
       });
     },
     clearComposerContent: (threadId, options) => {
@@ -101,13 +96,7 @@ export function createTransferActions(
           mentions: [],
           restoredSourceProposedPlan: null,
         };
-        const nextDraftsByThreadId = { ...state.draftsByThreadId };
-        if (shouldRemoveDraft(nextDraft)) {
-          delete nextDraftsByThreadId[threadId];
-        } else {
-          nextDraftsByThreadId[threadId] = nextDraft;
-        }
-        return { draftsByThreadId: nextDraftsByThreadId };
+        return putComposerDraft(state, threadId, nextDraft);
       });
     },
   };

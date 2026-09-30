@@ -1,6 +1,6 @@
 import { getModelCapabilities } from "@glade/shared/provider/model";
 import { threadExportBlockedReason } from "@glade/shared/threads/threadExport";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import {
   resolveActiveTurnLiveDiffState,
   resolveGitRepoUiState,
@@ -108,7 +108,7 @@ export function useChatDiscoveryController({
   } = provider;
   const { threadId, onToggleDiffPanel, onToggleBrowserPanel, onOpenBrowserUrl } = props;
 
-  const currentActiveGitBranch = useMemo(() => {
+  const currentActiveGitBranch = (() => {
     if (gitStatusQuery.data !== undefined) {
       return gitStatusQuery.data.branch;
     }
@@ -122,7 +122,7 @@ export function useChatDiscoveryController({
             branch.worktreePath === activeProject?.cwd),
       )?.name ?? null
     );
-  }, [activeProject?.cwd, branchesQuery.data?.branches, gitStatusQuery.data]);
+  })();
 
   const settledThreadBranchMismatch = resolveSettledThreadBranchMismatch({
     isSettled:
@@ -133,10 +133,7 @@ export function useChatDiscoveryController({
     currentBranch: currentActiveGitBranch,
   });
 
-  const selectedModelCaps = useMemo(
-    () => getModelCapabilities(selectedProvider, selectedModel),
-    [selectedModel, selectedProvider],
-  );
+  const selectedModelCaps = getModelCapabilities(selectedProvider, selectedModel);
 
   const supportsFastSlashCommand = selectedModelCaps.supportsFastMode;
 
@@ -210,7 +207,7 @@ export function useChatDiscoveryController({
     },
   });
 
-  const composerMenuItems = useMemo(() => {
+  const composerMenuItems = (() => {
     if (composerCommandPicker === "fork-target") {
       return [
         {
@@ -252,12 +249,7 @@ export function useChatDiscoveryController({
     }
 
     return normalComposerMenuItems;
-  }, [
-    activeThread?.envMode,
-    activeThread?.worktreePath,
-    composerCommandPicker,
-    normalComposerMenuItems,
-  ]);
+  })();
 
   const composerMenuOpen = Boolean(composerTrigger || composerCommandPicker);
 
@@ -265,13 +257,10 @@ export function useChatDiscoveryController({
 
   const composerOverlayOpen = composerMenuOpen || composerExtrasPanelOpen;
 
-  const activeComposerMenuItem = useMemo(
-    () =>
-      composerMenuItems.find((item) => item.id === composerHighlightedItemId) ??
-      composerMenuItems[0] ??
-      null,
-    [composerHighlightedItemId, composerMenuItems],
-  );
+  const activeComposerMenuItem =
+    composerMenuItems.find((item) => item.id === composerHighlightedItemId) ??
+    composerMenuItems[0] ??
+    null;
 
   useLayoutEffect(() => {
     composerMenuOpenRef.current = composerMenuOpen;
@@ -286,14 +275,14 @@ export function useChatDiscoveryController({
     activeComposerMenuItem,
   ]);
 
-  const nonPersistedComposerImageIdSet = useMemo(() => {
+  const nonPersistedComposerImageIdSet = (() => {
     const durableBlobIds = new Set(
       durablyPersistedComposerImageIds
         .filter((attachment) => Boolean(attachment.blobKey))
         .map((attachment) => attachment.id),
     );
     return new Set(nonPersistedComposerImageIds.filter((id) => !durableBlobIds.has(id)));
-  }, [durablyPersistedComposerImageIds, nonPersistedComposerImageIds]);
+  })();
 
   const keybindings = serverConfigQuery.data?.keybindings ?? EMPTY_KEYBINDINGS;
 
@@ -305,27 +294,18 @@ export function useChatDiscoveryController({
     configuredProviderStatuses: serverConfigQuery.data?.providers,
   });
 
-  const handoffTargetProviders = useMemo(
-    () =>
-      activeThread
-        ? resolveAvailableHandoffTargetProviders({
-            sourceProvider: activeThread.modelSelection.provider,
-            providerSettings: serverSettingsQuery.data?.providers,
-            providerStatuses,
-          })
-        : [],
-    [activeThread, providerStatuses, serverSettingsQuery.data?.providers],
-  );
+  const handoffTargetProviders = activeThread
+    ? resolveAvailableHandoffTargetProviders({
+        sourceProvider: activeThread.modelSelection.provider,
+        providerSettings: serverSettingsQuery.data?.providers,
+        providerStatuses,
+      })
+    : [];
 
-  const activeProviderStatus = useMemo(
-    () => findProviderStatus(providerStatuses, selectedProvider),
-    [selectedProvider, providerStatuses],
-  );
+  const activeProviderStatus = findProviderStatus(providerStatuses, selectedProvider);
 
-  const activeProviderHealthBannerDismissalKey = useMemo(
-    () => getProviderHealthBannerDismissalKey(activeProviderStatus),
-    [activeProviderStatus],
-  );
+  const activeProviderHealthBannerDismissalKey =
+    getProviderHealthBannerDismissalKey(activeProviderStatus);
 
   const visibleActiveProviderStatus =
     activeProviderHealthBannerDismissalKey &&
@@ -333,10 +313,7 @@ export function useChatDiscoveryController({
       ? null
       : activeProviderStatus;
 
-  const voiceProviderStatus = useMemo(
-    () => findProviderStatus(providerStatuses, "codex"),
-    [providerStatuses],
-  );
+  const voiceProviderStatus = findProviderStatus(providerStatuses, "codex");
 
   const refreshProviderStatuses = useRefreshProviderStatusesNow();
 
@@ -344,15 +321,12 @@ export function useChatDiscoveryController({
 
   const activeThreadWorktreePath = activeThread?.worktreePath ?? null;
 
-  const hasNativeUserMessages = useMemo(
-    () =>
-      activeThread?.messages.some(
-        (message) =>
-          message.role === "user" &&
-          (message.source === "native" || message.source === "async-user-input"),
-      ) ?? false,
-    [activeThread?.messages],
-  );
+  const hasNativeUserMessages =
+    activeThread?.messages.some(
+      (message) =>
+        message.role === "user" &&
+        (message.source === "native" || message.source === "async-user-input"),
+    ) ?? false;
 
   // Left to React Compiler instead of a manual `useMemo`: the hand-written dep array could not be
   // preserved (the compiler cannot prove `threadWorkspaceCwd` is never mutated), which bailed the
@@ -379,68 +353,43 @@ export function useChatDiscoveryController({
     refetchInterval: repoDiffBadgeRefreshIntervalMs,
   });
 
-  const activeTurnLiveDiffState = useMemo(
-    () =>
-      resolveActiveTurnLiveDiffState({
-        latestTurnId: activeLatestTurn?.turnId ?? null,
-        turnDiffSummaries,
-        workLogEntries,
-      }),
-    [activeLatestTurn?.turnId, turnDiffSummaries, workLogEntries],
+  const activeTurnLiveDiffState = resolveActiveTurnLiveDiffState({
+    latestTurnId: activeLatestTurn?.turnId ?? null,
+    turnDiffSummaries,
+    workLogEntries,
+  });
+
+  const splitTerminalShortcutLabel =
+    shortcutLabelForCommand(keybindings, "terminal.splitRight") ??
+    shortcutLabelForCommand(keybindings, "terminal.split");
+
+  const splitTerminalDownShortcutLabel = shortcutLabelForCommand(keybindings, "terminal.splitDown");
+
+  const newTerminalShortcutLabel = shortcutLabelForCommand(keybindings, "terminal.new");
+
+  const closeTerminalShortcutLabel = shortcutLabelForCommand(keybindings, "terminal.close");
+
+  const closeWorkspaceShortcutLabel = shortcutLabelForCommand(
+    keybindings,
+    "terminal.workspace.closeActive",
   );
 
-  const splitTerminalShortcutLabel = useMemo(
-    () =>
-      shortcutLabelForCommand(keybindings, "terminal.splitRight") ??
-      shortcutLabelForCommand(keybindings, "terminal.split"),
-    [keybindings],
-  );
+  const diffPanelShortcutLabel = shortcutLabelForCommand(keybindings, "diff.toggle");
 
-  const splitTerminalDownShortcutLabel = useMemo(
-    () => shortcutLabelForCommand(keybindings, "terminal.splitDown"),
-    [keybindings],
-  );
+  const chatSplitShortcutLabel = shortcutLabelForCommand(keybindings, "chat.split");
 
-  const newTerminalShortcutLabel = useMemo(
-    () => shortcutLabelForCommand(keybindings, "terminal.new"),
-    [keybindings],
-  );
+  const modelPickerShortcutLabel =
+    shortcutLabelForCommand(keybindings, "modelPicker.toggle") ??
+    formatShortcutLabel({
+      key: "m",
+      metaKey: false,
+      ctrlKey: false,
+      shiftKey: true,
+      altKey: false,
+      modKey: true,
+    });
 
-  const closeTerminalShortcutLabel = useMemo(
-    () => shortcutLabelForCommand(keybindings, "terminal.close"),
-    [keybindings],
-  );
-
-  const closeWorkspaceShortcutLabel = useMemo(
-    () => shortcutLabelForCommand(keybindings, "terminal.workspace.closeActive"),
-    [keybindings],
-  );
-
-  const diffPanelShortcutLabel = useMemo(
-    () => shortcutLabelForCommand(keybindings, "diff.toggle"),
-    [keybindings],
-  );
-
-  const chatSplitShortcutLabel = useMemo(
-    () => shortcutLabelForCommand(keybindings, "chat.split"),
-    [keybindings],
-  );
-
-  const modelPickerShortcutLabel = useMemo(
-    () =>
-      shortcutLabelForCommand(keybindings, "modelPicker.toggle") ??
-      formatShortcutLabel({
-        key: "m",
-        metaKey: false,
-        ctrlKey: false,
-        shiftKey: true,
-        altKey: false,
-        modKey: true,
-      }),
-    [keybindings],
-  );
-
-  const onToggleDiff = useCallback(() => {
+  const onToggleDiff = () => {
     if (diffEnvironmentPending && !diffOpen) {
       return;
     }
@@ -459,9 +408,9 @@ export function useChatDiscoveryController({
           : { ...rest, panel: "diff", diff: "1" };
       },
     });
-  }, [diffEnvironmentPending, diffOpen, navigate, onToggleDiffPanel, threadId]);
+  };
 
-  const onToggleBrowser = useCallback(() => {
+  const onToggleBrowser = () => {
     if (onToggleBrowserPanel) {
       onToggleBrowserPanel();
       return;
@@ -475,35 +424,32 @@ export function useChatDiscoveryController({
         return browserOpen ? { ...rest, panel: undefined } : { ...rest, panel: "browser" };
       },
     });
-  }, [browserOpen, navigate, onToggleBrowserPanel, threadId]);
+  };
 
-  const openBrowserUrl = useCallback(
-    (url: string) => {
-      const api = readNativeApi();
-      void api?.browser.open({ threadId, initialUrl: url }).catch((error) => {
-        toastManager.add({
-          type: "error",
-          title: "Could not open repository",
-          description:
-            error instanceof Error ? error.message : "The in-app browser could not open GitHub.",
-        });
+  const openBrowserUrl = (url: string) => {
+    const api = readNativeApi();
+    void api?.browser.open({ threadId, initialUrl: url }).catch((error) => {
+      toastManager.add({
+        type: "error",
+        title: "Could not open repository",
+        description:
+          error instanceof Error ? error.message : "The in-app browser could not open GitHub.",
       });
-      if (onOpenBrowserUrl) {
-        onOpenBrowserUrl(url);
-        return;
-      }
-      void navigate({
-        to: "/$threadId",
-        params: { threadId },
-        replace: true,
-        search: (previous) => ({
-          ...stripDiffSearchParams(previous),
-          panel: "browser",
-        }),
-      });
-    },
-    [navigate, onOpenBrowserUrl, threadId],
-  );
+    });
+    if (onOpenBrowserUrl) {
+      onOpenBrowserUrl(url);
+      return;
+    }
+    void navigate({
+      to: "/$threadId",
+      params: { threadId },
+      replace: true,
+      search: (previous) => ({
+        ...stripDiffSearchParams(previous),
+        panel: "browser",
+      }),
+    });
+  };
 
   const envLocked = Boolean(
     activeThread &&

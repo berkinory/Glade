@@ -1,6 +1,5 @@
 import { ensureNativeApi } from "~/nativeApi";
 import {
-  useCallback,
   useEffect,
   startTransition,
   useMemo,
@@ -49,7 +48,7 @@ import { useFeedbackDialogStore } from "../feedbackDialogStore";
 import { selectThreadTerminalState, useTerminalStateStore } from "../terminalStateStore";
 import { toastManager } from "./ui/toast";
 import { useSidebarStateStore } from "../sidebarStateStore";
-import { getPinnedThreadsForSidebar } from "./Sidebar.logic.preview";
+import { getPinnedItems } from "../pinning.logic";
 import {
   DEBUG_FEATURE_FLAGS_MENU_STORAGE_KEY,
   shouldShowDebugFeatureFlagsMenu,
@@ -151,7 +150,7 @@ export function useSidebarShellState() {
     });
   }, [queryClient]);
 
-  const automationAttentionBadge = useMemo(() => {
+  const automationAttentionBadge = (() => {
     const data = automationListQuery.data;
     if (!data) return null;
     const count = automationAttentionCount(data.runs);
@@ -161,11 +160,10 @@ export function useSidebarShellState() {
           accessibleLabel: `${count} ${pluralize(count, "automation needs", "automations need")} attention`,
         }
       : null;
-  }, [automationListQuery.data]);
+  })();
 
-  const automationsByThreadId = useMemo(
-    () => groupAutomationsByContinuedThread(automationListQuery.data?.definitions ?? []),
-    [automationListQuery.data],
+  const automationsByThreadId = groupAutomationsByContinuedThread(
+    automationListQuery.data?.definitions ?? [],
   );
 
   const { settings: appSettings, serverSettings, updateSettings } = useAppSettings();
@@ -346,7 +344,7 @@ export function useSidebarShellState() {
 
   const [activityVisibleThreadIds, setActivityVisibleThreadIds] = useState<readonly ThreadId[]>([]);
 
-  const handleActivityVisibleThreadIdsChange = useCallback((threadIds: readonly ThreadId[]) => {
+  const handleActivityVisibleThreadIdsChange = (threadIds: readonly ThreadId[]) => {
     setActivityVisibleThreadIds((current) => {
       if (
         current.length === threadIds.length &&
@@ -356,16 +354,13 @@ export function useSidebarShellState() {
       }
       return [...threadIds];
     });
-  }, []);
+  };
 
-  const setActivityViewEnabledSmoothly = useCallback(
-    (enabled: boolean) => {
-      startTransition(() => {
-        setActivityViewEnabled(enabled);
-      });
-    },
-    [setActivityViewEnabled],
-  );
+  const setActivityViewEnabledSmoothly = (enabled: boolean) => {
+    startTransition(() => {
+      setActivityViewEnabled(enabled);
+    });
+  };
 
   const [optimisticActiveThreadId, setOptimisticActiveThreadId] = useState<ThreadId | null>(null);
 
@@ -414,77 +409,55 @@ export function useSidebarShellState() {
     [projects],
   );
 
-  const visibleSidebarActivityThreads = useMemo(
-    () =>
-      sidebarThreads.filter((thread) => {
-        if (!isSidebarThreadVisible(thread, { hideAutomationRunThreads })) return false;
-        const project = projectById.get(thread.projectId);
-        return (
-          !isHomeChatContainerProject(project, { homeDir, chatWorkspaceRoot }) ||
-          (chatSpaceByThreadId[thread.id] ?? null) === activeSpaceId
-        );
-      }),
-    [
-      activeSpaceId,
-      chatSpaceByThreadId,
-      chatWorkspaceRoot,
-      hideAutomationRunThreads,
-      homeDir,
-      sidebarThreads,
-      projectById,
-    ],
+  const visibleSidebarActivityThreads = sidebarThreads.filter((thread) => {
+    if (!isSidebarThreadVisible(thread, { hideAutomationRunThreads })) return false;
+    const project = projectById.get(thread.projectId);
+    return (
+      !isHomeChatContainerProject(project, { homeDir, chatWorkspaceRoot }) ||
+      (chatSpaceByThreadId[thread.id] ?? null) === activeSpaceId
+    );
+  });
+
+  const hasUnreadActivity = hasUnreadActivityOutsideActiveThread(
+    visibleSidebarActivityThreads,
+    activeSidebarThreadId,
   );
 
-  const hasUnreadActivity = useMemo(
-    () =>
-      hasUnreadActivityOutsideActiveThread(visibleSidebarActivityThreads, activeSidebarThreadId),
-    [activeSidebarThreadId, visibleSidebarActivityThreads],
-  );
-
-  const dismissThreadStatus = useCallback(
-    (threadId: ThreadId, statusKey: string | null | undefined) => {
-      if (!statusKey) {
-        return;
+  const dismissThreadStatus = (threadId: ThreadId, statusKey: string | null | undefined) => {
+    if (!statusKey) {
+      return;
+    }
+    setDismissedThreadStatusKeyByThreadId((current) => {
+      if (current[threadId] === statusKey) {
+        return current;
       }
-      setDismissedThreadStatusKeyByThreadId((current) => {
-        if (current[threadId] === statusKey) {
-          return current;
-        }
-        return {
-          ...current,
-          [threadId]: statusKey,
-        };
-      });
-    },
-    [setDismissedThreadStatusKeyByThreadId],
-  );
+      return {
+        ...current,
+        [threadId]: statusKey,
+      };
+    });
+  };
 
-  const clearDismissedThreadStatus = useCallback(
-    (threadId: ThreadId) => {
-      setDismissedThreadStatusKeyByThreadId((current) => {
-        if (!(threadId in current)) {
-          return current;
-        }
-        const next = { ...current };
-        delete next[threadId];
-        return next;
-      });
-    },
-    [setDismissedThreadStatusKeyByThreadId],
-  );
+  const clearDismissedThreadStatus = (threadId: ThreadId) => {
+    setDismissedThreadStatusKeyByThreadId((current) => {
+      if (!(threadId in current)) {
+        return current;
+      }
+      const next = { ...current };
+      delete next[threadId];
+      return next;
+    });
+  };
 
-  const resolveThreadStatusForSidebar = useCallback(
-    (thread: SidebarThreadSummary) =>
-      resolveThreadStatusPill({
-        thread: {
-          ...thread,
-          dismissedStatusKey: dismissedThreadStatusKeyByThreadId[thread.id],
-        },
-        hasPendingApprovals: thread.hasPendingApprovals,
-        hasPendingUserInput: thread.hasPendingUserInput,
-      }),
-    [dismissedThreadStatusKeyByThreadId],
-  );
+  const resolveThreadStatusForSidebar = (thread: SidebarThreadSummary) =>
+    resolveThreadStatusPill({
+      thread: {
+        ...thread,
+        dismissedStatusKey: dismissedThreadStatusKeyByThreadId[thread.id],
+      },
+      hasPendingApprovals: thread.hasPendingApprovals,
+      hasPendingUserInput: thread.hasPendingUserInput,
+    });
 
   useEffect(() => {
     if (!optimisticActiveThreadId) {
@@ -507,26 +480,21 @@ export function useSidebarShellState() {
     return () => window.clearTimeout(timeout);
   }, [optimisticActiveThreadId, routeActiveSidebarThreadId]);
 
-  const clearThreadNotification = useCallback(
-    (threadId: ThreadId) => {
-      const thread = sidebarThreadSummaryById[threadId];
-      if (!thread) {
-        return;
-      }
-      const threadStatus = resolveThreadStatusForSidebar(thread);
-      if (!threadStatus?.dismissible) {
-        return;
-      }
-      if (threadStatus.label === "Completed") {
-        useStore
-          .getState()
-          .markThreadVisited(threadId, thread.latestTurn?.completedAt ?? undefined);
-        return;
-      }
-      dismissThreadStatus(threadId, threadStatus.dismissalKey);
-    },
-    [dismissThreadStatus, resolveThreadStatusForSidebar, sidebarThreadSummaryById],
-  );
+  const clearThreadNotification = (threadId: ThreadId) => {
+    const thread = sidebarThreadSummaryById[threadId];
+    if (!thread) {
+      return;
+    }
+    const threadStatus = resolveThreadStatusForSidebar(thread);
+    if (!threadStatus?.dismissible) {
+      return;
+    }
+    if (threadStatus.label === "Completed") {
+      useStore.getState().markThreadVisited(threadId, thread.latestTurn?.completedAt ?? undefined);
+      return;
+    }
+    dismissThreadStatus(threadId, threadStatus.dismissalKey);
+  };
 
   const routeTerminalState = routeThreadId
     ? selectThreadTerminalState(terminalStateByThreadId, routeThreadId)
@@ -595,10 +563,8 @@ export function useSidebarShellState() {
     });
   }, [isRailLayout, pathname, projects, reconcileRailShell, threadsHydrated]);
 
-  const ordinarySpaceProjects = useMemo(
-    () =>
-      projects.filter((project) => isOrdinarySpaceProject(project, { homeDir, chatWorkspaceRoot })),
-    [chatWorkspaceRoot, homeDir, projects],
+  const ordinarySpaceProjects = projects.filter((project) =>
+    isOrdinarySpaceProject(project, { homeDir, chatWorkspaceRoot }),
   );
 
   const activeRouteProjectId = routeThreadId
@@ -611,31 +577,17 @@ export function useSidebarShellState() {
     ? (projectById.get(activeRouteProjectId) ?? null)
     : null;
 
-  const activeSpaceSidebarTreeThreads = useMemo(
-    () =>
-      sidebarTreeThreads.filter((thread) => {
-        const project = projectById.get(thread.projectId);
-        return isHomeChatContainerProject(project, { homeDir, chatWorkspaceRoot })
-          ? (chatSpaceByThreadId[thread.id] ?? null) === activeSpaceId
-          : !isOrdinarySpaceProject(project, { homeDir, chatWorkspaceRoot }) ||
-              (project.spaceId ?? null) === activeSpaceId;
-      }),
-    [
-      activeSpaceId,
-      chatWorkspaceRoot,
-      chatSpaceByThreadId,
-      homeDir,
-      sidebarTreeThreads,
-      projectById,
-    ],
-  );
+  const activeSpaceSidebarTreeThreads = sidebarTreeThreads.filter((thread) => {
+    const project = projectById.get(thread.projectId);
+    return isHomeChatContainerProject(project, { homeDir, chatWorkspaceRoot })
+      ? (chatSpaceByThreadId[thread.id] ?? null) === activeSpaceId
+      : !isOrdinarySpaceProject(project, { homeDir, chatWorkspaceRoot }) ||
+          (project.spaceId ?? null) === activeSpaceId;
+  });
 
-  const pinnedThreads = useMemo(
-    () => getPinnedThreadsForSidebar(activeSpaceSidebarTreeThreads, pinnedThreadIds),
-    [activeSpaceSidebarTreeThreads, pinnedThreadIds],
-  );
+  const pinnedThreads = getPinnedItems(activeSpaceSidebarTreeThreads, pinnedThreadIds);
 
-  const openPrLink = useCallback((event: MouseEvent<HTMLElement>, prUrl: string) => {
+  const openPrLink = (event: MouseEvent<HTMLElement>, prUrl: string) => {
     event.preventDefault();
     event.stopPropagation();
 
@@ -655,12 +607,9 @@ export function useSidebarShellState() {
         description: error instanceof Error ? error.message : "An error occurred.",
       });
     });
-  }, []);
+  };
 
-  const projectCwdById = useMemo(
-    () => new Map(projects.map((project) => [project.id, project.cwd] as const)),
-    [projects],
-  );
+  const projectCwdById = new Map(projects.map((project) => [project.id, project.cwd] as const));
 
   const projectByIdRef = useRef(projectById);
 

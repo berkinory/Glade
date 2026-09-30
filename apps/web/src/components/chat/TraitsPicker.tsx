@@ -1,6 +1,6 @@
 import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
-import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { memo, useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronDownIcon, FastModeIcon, FastModeOutlineIcon, SettingsIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { Button } from "../ui/button";
@@ -260,15 +260,12 @@ const TraitsMenuContent = memo(function TraitsMenuContentImpl({
 
   const commitTraitOptions = useComposerTraitCommit({ threadId, provider, model, modelOptions });
 
-  const commitTrait = useCallback(
-    (patch: Record<string, unknown>, options?: { keepMenuOpen?: boolean }) => {
-      commitTraitOptions(patch);
-      if (!options?.keepMenuOpen) {
-        onSelectionComplete?.();
-      }
-    },
-    [commitTraitOptions, onSelectionComplete],
-  );
+  const commitTrait = (patch: Record<string, unknown>, options?: { keepMenuOpen?: boolean }) => {
+    commitTraitOptions(patch);
+    if (!options?.keepMenuOpen) {
+      onSelectionComplete?.();
+    }
+  };
 
   const handleEffortChange = (value: string) => {
     const plan = planComposerEffortChange({ provider, selection, prompt, value });
@@ -396,16 +393,13 @@ export const TraitsPicker = memo(function TraitsPicker({
   const [uncontrolledMenuOpen, setUncontrolledMenuOpen] = useState(false);
   const selectionCommitTimerRef = useRef<number | null>(null);
   const isMenuOpen = open ?? uncontrolledMenuOpen;
-  const setMenuOpen = useCallback(
-    (nextOpen: boolean) => {
-      if (open === undefined) {
-        setUncontrolledMenuOpen(nextOpen);
-      }
-      onOpenChange?.(nextOpen);
-    },
-    [onOpenChange, open],
-  );
-  const scheduleSelectionCommitted = useCallback(() => {
+  const setMenuOpen = (nextOpen: boolean) => {
+    if (open === undefined) {
+      setUncontrolledMenuOpen(nextOpen);
+    }
+    onOpenChange?.(nextOpen);
+  };
+  const scheduleSelectionCommitted = () => {
     if (selectionCommitTimerRef.current !== null) {
       window.clearTimeout(selectionCommitTimerRef.current);
     }
@@ -413,7 +407,7 @@ export const TraitsPicker = memo(function TraitsPicker({
       selectionCommitTimerRef.current = null;
       onSelectionCommitted?.();
     }, 0);
-  }, [onSelectionCommitted]);
+  };
   useEffect(
     () => () => {
       if (selectionCommitTimerRef.current !== null) {
@@ -422,10 +416,10 @@ export const TraitsPicker = memo(function TraitsPicker({
     },
     [],
   );
-  const handleSelectionComplete = useCallback(() => {
+  const handleSelectionComplete = () => {
     setMenuOpen(false);
     scheduleSelectionCommitted();
-  }, [scheduleSelectionCommitted, setMenuOpen]);
+  };
   const { caps, effortLevels, thinkingEnabled, contextWindowOptions, fastModeDescriptor } =
     getComposerTraitSelection(provider, model, prompt, modelOptions, runtimeModel);
   const hasVisibleControls = hasVisibleComposerTraitControls(

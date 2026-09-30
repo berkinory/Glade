@@ -1,4 +1,5 @@
 import * as Schema from "effect/Schema";
+import * as Option from "effect/Option";
 import { resolveComputerControlMode } from "./computerControlMode";
 import {
   ProviderInteractionMode,
@@ -16,14 +17,17 @@ import { normalizeModelSelection, normalizeProviderKind } from "./composerDraftM
 import { normalizeAssistantSelectionAttachment } from "./lib/assistantSelections";
 import { normalizeBrowserAnnotations } from "./lib/browserAnnotations";
 import { normalizePastedTextContent } from "./lib/composerPastedText";
-import { isPullRequestContextScope, type PullRequestContextDraft } from "./lib/pullRequestContext";
+import { isPullRequestContextScope } from "./lib/pullRequestContext";
 import { normalizeFileCommentSelection } from "./lib/fileComments";
 import { normalizeTerminalContextText } from "./lib/terminalContext";
-import { PersistedSourceProposedPlanReference } from "./composerDraftPersistence.types";
+import {
+  PersistedAssistantSelectionDraft,
+  PersistedFileCommentDraft,
+  PersistedSourceProposedPlanReference,
+} from "./composerDraftPersistence.types";
 import type {
   PersistedComposerPromptHistorySavedDraft,
   PersistedComposerThreadDraftState,
-  PersistedFileCommentDraft,
   PersistedPastedTextDraft,
   PersistedPullRequestContextDraft,
   PersistedQueuedTerminalContextDraft,
@@ -170,47 +174,31 @@ function normalizePersistedQueuedTerminalContextDraft(
 export function normalizePersistedAssistantSelection(
   value: unknown,
 ): { id: string; assistantMessageId: string; text: string } | null {
-  if (!value || typeof value !== "object") {
-    return null;
-  }
-  const candidate = value as Record<string, unknown>;
-  const id = typeof candidate.id === "string" ? candidate.id : "";
-  const assistantMessageId =
-    typeof candidate.assistantMessageId === "string" ? candidate.assistantMessageId : "";
-  const text = typeof candidate.text === "string" ? candidate.text : "";
-  if (id.length === 0) {
-    return null;
-  }
-  const normalized = normalizeAssistantSelectionAttachment({ assistantMessageId, text });
+  const decoded = Schema.decodeUnknownOption(PersistedAssistantSelectionDraft)(value);
+  if (Option.isNone(decoded) || decoded.value.id.length === 0) return null;
+  const normalized = normalizeAssistantSelectionAttachment(decoded.value);
   if (!normalized) {
     return null;
   }
-  return { id, assistantMessageId: normalized.assistantMessageId, text: normalized.text };
+  return { id: decoded.value.id, ...normalized };
 }
 
 export function normalizePersistedFileCommentDraft(
   value: unknown,
 ): PersistedFileCommentDraft | null {
-  if (!value || typeof value !== "object") {
+  const decoded = Schema.decodeUnknownOption(PersistedFileCommentDraft)(value);
+  if (
+    Option.isNone(decoded) ||
+    decoded.value.id.length === 0 ||
+    !Number.isFinite(decoded.value.startLine) ||
+    !Number.isFinite(decoded.value.endLine)
+  )
     return null;
-  }
-  const candidate = value as Record<string, unknown>;
-  const id = typeof candidate.id === "string" ? candidate.id : "";
-  if (id.length === 0) {
-    return null;
-  }
-  const path = typeof candidate.path === "string" ? candidate.path : "";
-  const text = typeof candidate.text === "string" ? candidate.text : "";
-  const startLine = typeof candidate.startLine === "number" ? candidate.startLine : Number.NaN;
-  const endLine = typeof candidate.endLine === "number" ? candidate.endLine : Number.NaN;
-  if (!Number.isFinite(startLine) || !Number.isFinite(endLine)) {
-    return null;
-  }
-  const normalized = normalizeFileCommentSelection({ path, startLine, endLine, text });
+  const normalized = normalizeFileCommentSelection(decoded.value);
   if (!normalized) {
     return null;
   }
-  return { id, ...normalized };
+  return { id: decoded.value.id, ...normalized };
 }
 
 export function normalizePersistedPastedTextDraft(value: unknown): PersistedPastedTextDraft | null {
@@ -257,21 +245,6 @@ export function normalizePersistedPullRequestContextDraft(
     title,
     subtitle: typeof candidate.subtitle === "string" ? candidate.subtitle : "",
     text,
-  };
-}
-
-export function toPersistedPullRequestContext(
-  context: PullRequestContextDraft,
-): PersistedPullRequestContextDraft {
-  return {
-    id: context.id,
-    createdAt: context.createdAt,
-    scope: context.scope,
-    prNumber: context.prNumber,
-    prUrl: context.prUrl,
-    title: context.title,
-    subtitle: context.subtitle,
-    text: context.text,
   };
 }
 

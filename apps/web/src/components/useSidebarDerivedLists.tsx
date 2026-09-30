@@ -2,8 +2,9 @@ import { useStore } from "../store";
 import { useRailShellStore } from "../railShellStore";
 import { useSidebarStateStore } from "../sidebarStateStore";
 import { ClockIcon, KanbanIcon, NewThreadIcon } from "~/lib/icons";
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
 import { ProjectId, SpaceId, ThreadId } from "@glade/contracts/core/baseSchemas";
+import { MAX_PINNED_PROJECTS } from "@glade/contracts/orchestration/threadEntities";
 import { SIDEBAR_NAV_ITEM_IDS, type SidebarNavItemId } from "../sidebarNavOrdering";
 import { buildRailSpacesSections, resolveRailShortcuts } from "../appRail.logic";
 import { isMacNavigatorPlatform } from "../lib/utils";
@@ -19,13 +20,8 @@ import {
   resolveProjectStatusIndicator,
   type SidebarDerivedProjectData,
 } from "./Sidebar.logic.status";
-import {
-  derivePinnedProjectIdsForSidebar,
-  orderPinnedProjectsForSidebar,
-  getSidebarThreadIdsToPrewarm,
-  resolveProjectEmptyState,
-  shouldPrunePinnedThreads,
-} from "./Sidebar.logic.preview";
+import { getSidebarThreadIdsToPrewarm, resolveProjectEmptyState } from "./Sidebar.logic.preview";
+import { derivePinnedIds, orderPinnedItemsFirst } from "../pinning.logic";
 import {
   deriveSidebarProjectData,
   groupSidebarThreadsByProjectId,
@@ -104,55 +100,42 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
   const setLastThreadRoute = useSidebarStateStore((state) => state.setLastThreadRoute);
   const activityViewEnabled = useSidebarStateStore((state) => state.activityViewEnabled);
 
-  const sidebarNavDescriptors = useMemo<Record<SidebarNavItemId, SidebarNavItemDescriptor>>(
-    () => ({
-      newThread: {
-        icon: NewThreadIcon,
-        iconClassName: "size-3.5",
-        label: "New thread",
-        active: false,
-        badge: null,
-        onClick: handlePrimaryNewThread,
-        onMouseEnter: prefetchModelsForPrimaryNewThread,
-        onFocus: prefetchModelsForPrimaryNewThread,
+  const sidebarNavDescriptors: Record<SidebarNavItemId, SidebarNavItemDescriptor> = {
+    newThread: {
+      icon: NewThreadIcon,
+      iconClassName: "size-3.5",
+      label: "New thread",
+      active: false,
+      badge: null,
+      onClick: handlePrimaryNewThread,
+      onMouseEnter: prefetchModelsForPrimaryNewThread,
+      onFocus: prefetchModelsForPrimaryNewThread,
+    },
+    kanban: {
+      icon: KanbanIcon,
+      label: "Kanban",
+      active: isOnKanban,
+      badge: null,
+      onClick: () => {
+        void navigate({ to: "/kanban" });
       },
-      kanban: {
-        icon: KanbanIcon,
-        label: "Kanban",
-        active: isOnKanban,
-        badge: null,
-        onClick: () => {
-          void navigate({ to: "/kanban" });
-        },
+    },
+    automations: {
+      icon: ClockIcon,
+      label: "Automations",
+      active: isOnAutomations,
+      badge: automationAttentionBadge,
+      onClick: () => {
+        void navigate({ to: "/automations" });
       },
-      automations: {
-        icon: ClockIcon,
-        label: "Automations",
-        active: isOnAutomations,
-        badge: automationAttentionBadge,
-        onClick: () => {
-          void navigate({ to: "/automations" });
-        },
-      },
-    }),
-    [
-      automationAttentionBadge,
-      handlePrimaryNewThread,
-      isOnAutomations,
-      isOnKanban,
-      navigate,
-      prefetchModelsForPrimaryNewThread,
-    ],
-  );
+    },
+  };
 
   const railRouteItemIds = SIDEBAR_NAV_ITEM_IDS.filter((id) => id !== "newThread");
 
-  const sidebarThreadsByProjectId = useMemo(
-    () => groupSidebarThreadsByProjectId(sidebarTreeThreads),
-    [sidebarTreeThreads],
-  );
+  const sidebarThreadsByProjectId = groupSidebarThreadsByProjectId(sidebarTreeThreads);
 
-  const sortedSidebarThreadsByProjectId = useMemo(() => {
+  const sortedSidebarThreadsByProjectId = (() => {
     const byProjectId = new Map<ProjectId, SidebarThreadSummary[]>();
     for (const [projectId, projectThreads] of sidebarThreadsByProjectId) {
       byProjectId.set(
@@ -161,39 +144,37 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
       );
     }
     return byProjectId;
-  }, [appSettings.sidebarThreadSortOrder, sidebarThreadsByProjectId]);
+  })();
 
-  const handleProjectTitlePointerDownCapture = useCallback(() => {
+  const handleProjectTitlePointerDownCapture = () => {
     suppressProjectClickAfterDragRef.current = false;
-  }, [suppressProjectClickAfterDragRef]);
+  };
 
-  const handleEditProjectSave = useCallback(
-    (projectId: ProjectId, next: EditProjectValue, previousLocalName: string | null) => {
-      setProjectAppearanceLocally(projectId, next.appearance);
-      const trimmed = next.name.trim();
-      const normalizedPrevious = previousLocalName?.trim() ?? "";
-      if (trimmed === normalizedPrevious) {
-        return;
-      }
-      renameProjectLocally(projectId, trimmed.length > 0 ? trimmed : null);
-    },
-    [renameProjectLocally, setProjectAppearanceLocally],
+  const handleEditProjectSave = (
+    projectId: ProjectId,
+    next: EditProjectValue,
+    previousLocalName: string | null,
+  ) => {
+    setProjectAppearanceLocally(projectId, next.appearance);
+    const trimmed = next.name.trim();
+    const normalizedPrevious = previousLocalName?.trim() ?? "";
+    if (trimmed === normalizedPrevious) {
+      return;
+    }
+    renameProjectLocally(projectId, trimmed.length > 0 ? trimmed : null);
+  };
+
+  const sortedProjects = sortProjectsForSidebar(
+    projects,
+    sidebarThreads,
+    appSettings.sidebarProjectSortOrder,
   );
 
-  const sortedProjects = useMemo(
-    () => sortProjectsForSidebar(projects, sidebarThreads, appSettings.sidebarProjectSortOrder),
-    [appSettings.sidebarProjectSortOrder, projects, sidebarThreads],
+  const chatProjects = sortedProjects.filter((project) =>
+    isHomeChatContainerProject(project, { homeDir, chatWorkspaceRoot }),
   );
 
-  const chatProjects = useMemo(
-    () =>
-      sortedProjects.filter((project) =>
-        isHomeChatContainerProject(project, { homeDir, chatWorkspaceRoot }),
-      ),
-    [chatWorkspaceRoot, homeDir, sortedProjects],
-  );
-
-  const visibleChatThreadRows = useMemo(() => {
+  const visibleChatThreadRows = (() => {
     if (!chatSectionExpanded) {
       return [];
     }
@@ -208,30 +189,15 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
       ),
       forceVisibleThreadId: activeSidebarThreadId ?? undefined,
     });
-  }, [
-    activeSidebarThreadId,
-    activeSpaceId,
-    appSettings.sidebarThreadSortOrder,
-    chatSectionExpanded,
-    chatProjects,
-    chatSpaceByThreadId,
-    sortedSidebarThreadsByProjectId,
-  ]);
+  })();
 
-  const visibleChatThreadIds = useMemo(
-    () => visibleChatThreadRows.map((row) => row.thread.id),
-    [visibleChatThreadRows],
+  const visibleChatThreadIds = visibleChatThreadRows.map((row) => row.thread.id);
+
+  const allStandardProjectsBase = sortedProjects.filter((project) =>
+    isOrdinarySpaceProject(project, { homeDir, chatWorkspaceRoot }),
   );
 
-  const allStandardProjectsBase = useMemo(
-    () =>
-      sortedProjects.filter((project) =>
-        isOrdinarySpaceProject(project, { homeDir, chatWorkspaceRoot }),
-      ),
-    [chatWorkspaceRoot, homeDir, sortedProjects],
-  );
-
-  const spaceActivityById = useMemo(() => {
+  const spaceActivityById = (() => {
     const priority: Record<SpaceActivityTone, number> = {
       attention: 3,
       running: 2,
@@ -256,99 +222,72 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
       }
     }
     return activity;
-  }, [allStandardProjectsBase, resolveThreadStatusForSidebar, sidebarThreadsByProjectId]);
+  })();
 
-  const standardProjectsBase = useMemo(
-    () => allStandardProjectsBase.filter((project) => (project.spaceId ?? null) === activeSpaceId),
-    [activeSpaceId, allStandardProjectsBase],
+  const standardProjectsBase = allStandardProjectsBase.filter(
+    (project) => (project.spaceId ?? null) === activeSpaceId,
   );
 
-  const pinnedProjectIds = useMemo(
-    () =>
-      derivePinnedProjectIdsForSidebar({
-        projects: standardProjectsBase,
-        persistedPinnedProjectIds,
-        optimisticPinnedStateByProjectId,
-      }),
-    [optimisticPinnedStateByProjectId, persistedPinnedProjectIds, standardProjectsBase],
-  );
+  const pinnedProjectIds = derivePinnedIds({
+    items: standardProjectsBase,
+    persistedPinnedIds: persistedPinnedProjectIds,
+    optimisticPinnedStateById: optimisticPinnedStateByProjectId,
+    maxCount: MAX_PINNED_PROJECTS,
+  });
 
-  const pinnedProjectIdSet = useMemo(() => new Set(pinnedProjectIds), [pinnedProjectIds]);
+  const pinnedProjectIdSet = new Set(pinnedProjectIds);
 
-  const standardProjects = useMemo(
-    () => orderPinnedProjectsForSidebar(standardProjectsBase, pinnedProjectIds),
-    [pinnedProjectIds, standardProjectsBase],
-  );
+  const standardProjects = orderPinnedItemsFirst(standardProjectsBase, pinnedProjectIds);
 
   const projectEmptyState = resolveProjectEmptyState({
     projectCount: standardProjects.length,
     threadsHydrated,
   });
 
-  const standardProjectSidebarDataById = useMemo<ReadonlyMap<ProjectId, SidebarDerivedProjectData>>(
-    () =>
-      deriveSidebarProjectData({
-        projects: standardProjects,
-        sortedSidebarThreadsByProjectId,
-        pinnedThreadIds,
-        threadListExtraPagesByProjectCwd,
-        normalizeProjectCwd: normalizeSidebarProjectThreadListCwd,
-        activeSidebarThreadId: activeSidebarThreadId ?? undefined,
-        previewLimit: THREAD_PREVIEW_LIMIT,
-        previewPageSize: THREAD_PREVIEW_PAGE_SIZE,
-        resolveThreadStatus: resolveThreadStatusForSidebar,
-      }),
-    [
-      activeSidebarThreadId,
-      threadListExtraPagesByProjectCwd,
-      pinnedThreadIds,
+  const standardProjectSidebarDataById: ReadonlyMap<ProjectId, SidebarDerivedProjectData> =
+    deriveSidebarProjectData({
+      projects: standardProjects,
       sortedSidebarThreadsByProjectId,
-      standardProjects,
-      resolveThreadStatusForSidebar,
-    ],
-  );
+      pinnedThreadIds,
+      threadListExtraPagesByProjectCwd,
+      normalizeProjectCwd: normalizeSidebarProjectThreadListCwd,
+      activeSidebarThreadId: activeSidebarThreadId ?? undefined,
+      previewLimit: THREAD_PREVIEW_LIMIT,
+      previewPageSize: THREAD_PREVIEW_PAGE_SIZE,
+      resolveThreadStatus: resolveThreadStatusForSidebar,
+    });
 
   const surfaceProjects = standardProjects;
 
   const surfaceProjectSidebarDataById = standardProjectSidebarDataById;
 
-  const allProjectsExpanded = useMemo(
-    () => standardProjects.length > 0 && standardProjects.every((project) => project.expanded),
-    [standardProjects],
-  );
+  const allProjectsExpanded =
+    standardProjects.length > 0 && standardProjects.every((project) => project.expanded);
 
-  const railSpacesSections = useMemo(
-    () =>
-      isRailLayout
-        ? buildRailSpacesSections({
-            items: allStandardProjectsBase,
-            spaces,
-            activeSpaceId,
-            spaceIdOf: (project) => project.spaceId ?? null,
-            voidSpace,
-          })
-        : [],
-    [activeSpaceId, allStandardProjectsBase, isRailLayout, spaces, voidSpace],
-  );
+  const railSpacesSections = isRailLayout
+    ? buildRailSpacesSections({
+        items: allStandardProjectsBase,
+        spaces,
+        activeSpaceId,
+        spaceIdOf: (project) => project.spaceId ?? null,
+        voidSpace,
+      })
+    : [];
 
-  const railShortcuts = useMemo(
-    () =>
-      isRailLayout
-        ? resolveRailShortcuts({
-            keys: appSettings.railShortcuts,
-            spaceIds: new Set(spaces.map((space) => space.id)),
-            projectIds: new Set(allStandardProjectsBase.map((project) => project.id)),
-          })
-        : [],
-    [allStandardProjectsBase, appSettings.railShortcuts, isRailLayout, spaces],
-  );
+  const railShortcuts = isRailLayout
+    ? resolveRailShortcuts({
+        keys: appSettings.railShortcuts,
+        spaceIds: new Set(spaces.map((space) => space.id)),
+        projectIds: new Set(allStandardProjectsBase.map((project) => project.id)),
+      })
+    : [];
 
   const railSpacesProject =
     isRailLayout && railSpacesProjectId !== null
       ? (projectById.get(railSpacesProjectId) ?? null)
       : null;
 
-  const railSpacesProjectSidebarData = useMemo(() => {
+  const railSpacesProjectSidebarData = (() => {
     if (!railSpacesProject) {
       return null;
     }
@@ -365,14 +304,7 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
         resolveThreadStatus: resolveThreadStatusForSidebar,
       }).get(railSpacesProject.id) ?? null
     );
-  }, [
-    activeSidebarThreadId,
-    pinnedThreadIds,
-    railSpacesProject,
-    resolveThreadStatusForSidebar,
-    sortedSidebarThreadsByProjectId,
-    threadListExtraPagesByProjectCwd,
-  ]);
+  })();
 
   const railSpacesPagedProjectId = railSpacesProject?.id ?? null;
 
@@ -393,7 +325,7 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
   }, [railSpacesPagedProjectId, standardProjects, setThreadListExtraPagesByProjectCwd]);
 
   useEffect(() => {
-    if (!shouldPrunePinnedThreads({ threadsHydrated })) {
+    if (!threadsHydrated) {
       return;
     }
     prunePinnedProjects(allStandardProjectsBase.map((project) => project.id));
@@ -438,30 +370,31 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
     return () => window.clearTimeout(settle);
   }, [isOnSettings, routeSearch.splitViewId, routeThreadId, setLastThreadRoute]);
 
-  const handleThreadClick = useCallback(
-    (event: MouseEvent, threadId: ThreadId, orderedProjectThreadIds: readonly ThreadId[]) => {
-      const isMac = isMacNavigatorPlatform();
-      const isModClick = isMac ? event.metaKey : event.ctrlKey;
-      const isShiftClick = event.shiftKey;
+  const handleThreadClick = (
+    event: MouseEvent,
+    threadId: ThreadId,
+    orderedProjectThreadIds: readonly ThreadId[],
+  ) => {
+    const isMac = isMacNavigatorPlatform();
+    const isModClick = isMac ? event.metaKey : event.ctrlKey;
+    const isShiftClick = event.shiftKey;
 
-      if (isModClick) {
-        event.preventDefault();
-        toggleThreadSelection(threadId);
-        return;
-      }
+    if (isModClick) {
+      event.preventDefault();
+      toggleThreadSelection(threadId);
+      return;
+    }
 
-      if (isShiftClick) {
-        event.preventDefault();
-        rangeSelectTo(threadId, orderedProjectThreadIds);
-        return;
-      }
+    if (isShiftClick) {
+      event.preventDefault();
+      rangeSelectTo(threadId, orderedProjectThreadIds);
+      return;
+    }
 
-      activateThreadFromSidebarIntent(threadId);
-    },
-    [activateThreadFromSidebarIntent, rangeSelectTo, toggleThreadSelection],
-  );
+    activateThreadFromSidebarIntent(threadId);
+  };
 
-  const classicVisibleSidebarThreadIds = useMemo(() => {
+  const classicVisibleSidebarThreadIds = (() => {
     const visibleThreadIdSet = new Set<ThreadId>();
     const addVisibleThreadId = (threadId: ThreadId) => {
       visibleThreadIdSet.add(threadId);
@@ -490,25 +423,20 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
     }
 
     return [...visibleThreadIdSet];
-  }, [pinnedThreads, surfaceProjectSidebarDataById, surfaceProjects]);
+  })();
 
   const visibleSidebarThreadIds = activityViewEnabled
     ? activityVisibleThreadIds
     : classicVisibleSidebarThreadIds;
 
-  const visibleSidebarThreadIdSet = useMemo(
-    () =>
-      new Set(
-        activityViewEnabled
-          ? visibleSidebarThreadIds
-          : [...visibleSidebarThreadIds, ...visibleChatThreadIds],
-      ),
-    [activityViewEnabled, visibleChatThreadIds, visibleSidebarThreadIds],
+  const visibleSidebarThreadIdSet = new Set(
+    activityViewEnabled
+      ? visibleSidebarThreadIds
+      : [...visibleSidebarThreadIds, ...visibleChatThreadIds],
   );
 
-  const visibleSidebarThreads = useMemo(
-    () => sidebarTreeThreads.filter((thread) => visibleSidebarThreadIdSet.has(thread.id)),
-    [sidebarTreeThreads, visibleSidebarThreadIdSet],
+  const visibleSidebarThreads = sidebarTreeThreads.filter((thread) =>
+    visibleSidebarThreadIdSet.has(thread.id),
   );
 
   const prByThreadId = useThreadPullRequests({
@@ -518,7 +446,7 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
 
   const isManualProjectSorting = appSettings.sidebarProjectSortOrder === "manual";
 
-  const threadJumpCommandByThreadId = useMemo(() => {
+  const threadJumpCommandByThreadId = (() => {
     const mapping = new Map<ThreadId, NonNullable<ReturnType<typeof threadJumpCommandForIndex>>>();
     for (const [visibleThreadIndex, threadId] of visibleSidebarThreadIds.entries()) {
       const jumpCommand = threadJumpCommandForIndex(visibleThreadIndex);
@@ -529,12 +457,9 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
     }
 
     return mapping;
-  }, [visibleSidebarThreadIds]);
+  })();
 
-  const threadJumpThreadIds = useMemo(
-    () => [...threadJumpCommandByThreadId.keys()],
-    [threadJumpCommandByThreadId],
-  );
+  const threadJumpThreadIds = [...threadJumpCommandByThreadId.keys()];
 
   const getCurrentSidebarShortcutContext = useCallback(
     () => ({

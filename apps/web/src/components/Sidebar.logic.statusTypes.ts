@@ -21,21 +21,6 @@ export function isProjectsSidebarSurface(input: { readonly isOnSettings: boolean
   return !input.isOnSettings;
 }
 
-// Shared project roots can serve several threads, so their live Git status is environment state,
-// not thread ownership. Only a materialized worktree is thread-scoped: coding agents may checkout
-// or create a new branch there without going through Glade's branch picker, so its checked-out
-// branch is authoritative even when the persisted branch metadata is stale.
-function shouldUseLivePullRequestForSidebarThread(input: {
-  readonly threadBranch: string | null;
-  readonly liveBranch: string | null;
-  readonly hasDedicatedWorktree: boolean;
-}): boolean {
-  if (input.liveBranch === null) {
-    return false;
-  }
-  return input.hasDedicatedWorktree;
-}
-
 export function resolveSidebarThreadPullRequest<
   T extends { readonly headBranch: string; readonly state: "open" | "closed" | "merged" },
 >(input: {
@@ -59,8 +44,7 @@ export function resolveSidebarThreadPullRequest<
     input.persistedPullRequest !== null && input.persistedPullRequest.state !== "open"
       ? input.persistedPullRequest
       : null;
-  const persistedValidationBranch =
-    input.hasLiveStatus && input.hasDedicatedWorktree ? input.liveBranch : input.threadBranch;
+  const persistedValidationBranch = input.hasLiveStatus ? input.liveBranch : input.threadBranch;
   const persistedPullRequest =
     input.persistedPullRequest !== null &&
     (persistedValidationBranch === null ||
@@ -70,11 +54,8 @@ export function resolveSidebarThreadPullRequest<
   if (!input.hasLiveStatus) {
     return persistedPullRequest;
   }
-  if (input.liveBranch === null && input.hasDedicatedWorktree) {
+  if (input.liveBranch === null) {
     return settledPersistedPullRequest;
-  }
-  if (!shouldUseLivePullRequestForSidebarThread(input)) {
-    return persistedPullRequest;
   }
   if (input.livePullRequest !== null) {
     return input.livePullRequest;

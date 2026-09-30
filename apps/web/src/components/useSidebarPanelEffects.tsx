@@ -2,7 +2,7 @@ import { useSidebarDesktopUpdate } from "./useSidebarDesktopUpdate";
 import { useStore } from "../store";
 import { useSidebarStateStore } from "../sidebarStateStore";
 import { AddPlusIcon } from "~/lib/icons";
-import { useCallback, useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { ProjectId, SpaceId } from "@glade/contracts/core/baseSchemas";
 import { isOrdinarySpaceProject } from "../lib/spaces";
 import {
@@ -77,62 +77,52 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
   );
   const activityViewEnabled = useSidebarStateStore((state) => state.activityViewEnabled);
 
-  const resetProjectThreadPagingOnClose = useCallback(
-    (projectId: ProjectId) => {
-      const project = projectById.get(projectId);
-      if (!project?.expanded) return;
-      const cwdKey = normalizeSidebarProjectThreadListCwd(project.cwd);
-      setThreadListExtraPagesByProjectCwd((current) => {
-        if (!current.has(cwdKey)) return current;
-        const next = new Map(current);
-        next.delete(cwdKey);
-        return next;
-      });
-    },
-    [projectById, setThreadListExtraPagesByProjectCwd],
-  );
+  const resetProjectThreadPagingOnClose = (projectId: ProjectId) => {
+    const project = projectById.get(projectId);
+    if (!project?.expanded) return;
+    const cwdKey = normalizeSidebarProjectThreadListCwd(project.cwd);
+    setThreadListExtraPagesByProjectCwd((current) => {
+      if (!current.has(cwdKey)) return current;
+      const next = new Map(current);
+      next.delete(cwdKey);
+      return next;
+    });
+  };
 
-  const handleProjectTitleClick = useCallback(
-    (event: React.MouseEvent<HTMLButtonElement>, projectId: ProjectId) => {
-      if (dragInProgressRef.current) {
-        event.preventDefault();
-        event.stopPropagation();
-        return;
-      }
-      if (suppressProjectClickAfterDragRef.current) {
-        suppressProjectClickAfterDragRef.current = false;
-        event.preventDefault();
-        event.stopPropagation();
-        return;
-      }
-      if (selectedThreadIds.size > 0) {
-        clearSelection();
-      }
-      resetProjectThreadPagingOnClose(projectId);
-      toggleProject(projectId);
-    },
-    [
-      clearSelection,
-      resetProjectThreadPagingOnClose,
-      selectedThreadIds.size,
-      toggleProject,
-      suppressProjectClickAfterDragRef,
-      dragInProgressRef,
-    ],
-  );
-
-  const handleProjectTitleKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLButtonElement>, projectId: ProjectId) => {
-      if (event.key !== "Enter" && event.key !== " ") return;
+  const handleProjectTitleClick = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    projectId: ProjectId,
+  ) => {
+    if (dragInProgressRef.current) {
       event.preventDefault();
-      if (dragInProgressRef.current) {
-        return;
-      }
-      resetProjectThreadPagingOnClose(projectId);
-      toggleProject(projectId);
-    },
-    [resetProjectThreadPagingOnClose, toggleProject, dragInProgressRef],
-  );
+      event.stopPropagation();
+      return;
+    }
+    if (suppressProjectClickAfterDragRef.current) {
+      suppressProjectClickAfterDragRef.current = false;
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    if (selectedThreadIds.size > 0) {
+      clearSelection();
+    }
+    resetProjectThreadPagingOnClose(projectId);
+    toggleProject(projectId);
+  };
+
+  const handleProjectTitleKeyDown = (
+    event: React.KeyboardEvent<HTMLButtonElement>,
+    projectId: ProjectId,
+  ) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    if (dragInProgressRef.current) {
+      return;
+    }
+    resetProjectThreadPagingOnClose(projectId);
+    toggleProject(projectId);
+  };
 
   useEffect(() => {
     const onMouseDown = (event: globalThis.MouseEvent) => {
@@ -361,160 +351,136 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
 
   const desktopUpdate = useSidebarDesktopUpdate();
 
-  const searchPaletteProjects = useMemo<SidebarSearchProject[]>(
-    () =>
-      projects
-        .filter((project) => isOrdinarySpaceProject(project, { homeDir, chatWorkspaceRoot }))
-        .map((project) => ({
-          id: project.id,
-          name: project.name,
-          remoteName: project.remoteName,
-          folderName: project.folderName,
-          localName: project.localName,
-          appearance: project.appearance ?? null,
-          cwd: project.cwd,
-          spaceName: spaceDisplayName(project.spaceId, spaces, voidSpace),
-          createdAt: project.createdAt,
-          updatedAt: project.updatedAt,
-        })),
-    [chatWorkspaceRoot, homeDir, projects, spaces, voidSpace],
-  );
+  const searchPaletteProjects: SidebarSearchProject[] = projects
+    .filter((project) => isOrdinarySpaceProject(project, { homeDir, chatWorkspaceRoot }))
+    .map((project) => ({
+      id: project.id,
+      name: project.name,
+      remoteName: project.remoteName,
+      folderName: project.folderName,
+      localName: project.localName,
+      appearance: project.appearance ?? null,
+      cwd: project.cwd,
+      spaceName: spaceDisplayName(project.spaceId, spaces, voidSpace),
+      createdAt: project.createdAt,
+      updatedAt: project.updatedAt,
+    }));
 
-  const searchPaletteActions = useMemo<SidebarSearchAction[]>(
-    () => [
-      {
-        id: "new-chat",
-        label: "New chat",
-        description: "Open the new chat landing screen.",
-        keywords: ["chat", "new", "home"],
-        shortcutLabel: newChatShortcutLabel,
-      },
-      {
-        id: "new-thread",
-        label: "New thread",
-        description: "Start a fresh thread in the current or most recently used project.",
-        keywords: ["thread", "new", "project"],
-        shortcutLabel: newThreadShortcutLabel,
-      },
-      {
-        id: "add-project",
-        label: "Add project",
-        description: "Open a repository or folder in the sidebar.",
-        keywords: ["folder", "repo", "repository", "open"],
-        shortcutLabel: addProjectShortcutLabel,
-        run: handleStartAddProject,
-      },
-      {
-        id: "import-projects",
-        label: "Import projects from…",
-        description: "Bring Codex and Claude Code projects and conversations into Glade.",
-        keywords: ["import", "projects", "codex", "claude", "conversations", "folders"],
-      },
-      {
-        id: "import-thread",
-        label: "Import thread from...",
-        description: "Attach a local thread to an existing provider session.",
-        keywords: ["import", "resume", "thread", "session", "codex", "claude"],
-        shortcutLabel: importThreadShortcutLabel,
-      },
-      {
-        id: "feedback",
-        label: "Feedback Glade",
-        description: "Send feedback or report an issue to the Glade team.",
-        keywords: ["feedback", "bug", "issue", "problem", "report", "support", "glade"],
-      },
-      {
-        id: "settings",
-        label: "Settings",
-        description: "Open app settings.",
-        keywords: ["preferences", "config"],
-      },
-      {
-        id: "usage-settings",
-        label: "Usage settings",
-        description: "Open provider usage and remaining credits.",
-        keywords: ["usage", "limits", "credits", "quota", "providers"],
-        shortcutLabel: usageSettingsShortcutLabel,
-      },
+  const searchPaletteActions: SidebarSearchAction[] = [
+    {
+      id: "new-chat",
+      label: "New chat",
+      description: "Open the new chat landing screen.",
+      keywords: ["chat", "new", "home"],
+      shortcutLabel: newChatShortcutLabel,
+    },
+    {
+      id: "new-thread",
+      label: "New thread",
+      description: "Start a fresh thread in the current or most recently used project.",
+      keywords: ["thread", "new", "project"],
+      shortcutLabel: newThreadShortcutLabel,
+    },
+    {
+      id: "add-project",
+      label: "Add project",
+      description: "Open a repository or folder in the sidebar.",
+      keywords: ["folder", "repo", "repository", "open"],
+      shortcutLabel: addProjectShortcutLabel,
+      run: handleStartAddProject,
+    },
+    {
+      id: "import-projects",
+      label: "Import projects from…",
+      description: "Bring Codex and Claude Code projects and conversations into Glade.",
+      keywords: ["import", "projects", "codex", "claude", "conversations", "folders"],
+    },
+    {
+      id: "import-thread",
+      label: "Import thread from...",
+      description: "Attach a local thread to an existing provider session.",
+      keywords: ["import", "resume", "thread", "session", "codex", "claude"],
+      shortcutLabel: importThreadShortcutLabel,
+    },
+    {
+      id: "feedback",
+      label: "Feedback Glade",
+      description: "Send feedback or report an issue to the Glade team.",
+      keywords: ["feedback", "bug", "issue", "problem", "report", "support", "glade"],
+    },
+    {
+      id: "settings",
+      label: "Settings",
+      description: "Open app settings.",
+      keywords: ["preferences", "config"],
+    },
+    {
+      id: "usage-settings",
+      label: "Usage settings",
+      description: "Open provider usage and remaining credits.",
+      keywords: ["usage", "limits", "credits", "quota", "providers"],
+      shortcutLabel: usageSettingsShortcutLabel,
+    },
 
-      ...(spaces.length > 0
-        ? [
-            {
-              id: "switch-space-void",
-              label: `Switch to ${voidSpace.name}`,
-              description: "Jump to unassigned projects.",
+    ...(spaces.length > 0
+      ? [
+          {
+            id: "switch-space-void",
+            label: `Switch to ${voidSpace.name}`,
+            description: "Jump to unassigned projects.",
 
-              keywords: ["space", "switch", "void", "unassigned", voidSpace.name],
-              requiresQuery: true,
-              run: () => handleSelectSpace(null),
-              icon: ({ className }: { className?: string }) => (
-                <SpaceIcon icon={voidSpace.icon} className={className} />
-              ),
-            } satisfies SidebarSearchAction,
-          ]
-        : []),
-      ...spaces.map(
-        (space) =>
-          ({
-            id: `switch-space-${space.id}`,
-            label: `Switch to ${space.name}`,
-            description: "Jump to this space and restore its last context.",
-            keywords: ["space", "switch", space.name],
+            keywords: ["space", "switch", "void", "unassigned", voidSpace.name],
             requiresQuery: true,
-            run: () => handleSelectSpace(space.id),
+            run: () => handleSelectSpace(null),
             icon: ({ className }: { className?: string }) => (
-              <SpaceIcon icon={space.icon} className={className} />
+              <SpaceIcon icon={voidSpace.icon} className={className} />
             ),
-          }) satisfies SidebarSearchAction,
-      ),
-      {
-        id: "new-space",
-        label: "New space",
-        description: "Group projects into a focused work context.",
-        keywords: ["space", "create", "new", "group", "workspace"],
-        run: () => openSpaceCreator(),
-        icon: AddPlusIcon,
-      },
-    ],
-    [
-      addProjectShortcutLabel,
-      handleSelectSpace,
-      handleStartAddProject,
-      importThreadShortcutLabel,
-      newChatShortcutLabel,
-      newThreadShortcutLabel,
-      openSpaceCreator,
-      spaces,
-      usageSettingsShortcutLabel,
-      voidSpace,
-    ],
-  );
-
-  const setThreadListExtraPagesForProject = useCallback(
-    (projectCwd: string, nextExtraPages: number) => {
-      const cwdKey = normalizeSidebarProjectThreadListCwd(projectCwd);
-      if (cwdKey.length === 0) return;
-      setThreadListExtraPagesByProjectCwd((current) => {
-        const clampedExtraPages = Math.max(0, nextExtraPages);
-        if ((current.get(cwdKey) ?? 0) === clampedExtraPages) return current;
-        const next = new Map(current);
-        if (clampedExtraPages === 0) {
-          next.delete(cwdKey);
-        } else {
-          next.set(cwdKey, clampedExtraPages);
-        }
-        return next;
-      });
+          } satisfies SidebarSearchAction,
+        ]
+      : []),
+    ...spaces.map(
+      (space) =>
+        ({
+          id: `switch-space-${space.id}`,
+          label: `Switch to ${space.name}`,
+          description: "Jump to this space and restore its last context.",
+          keywords: ["space", "switch", space.name],
+          requiresQuery: true,
+          run: () => handleSelectSpace(space.id),
+          icon: ({ className }: { className?: string }) => (
+            <SpaceIcon icon={space.icon} className={className} />
+          ),
+        }) satisfies SidebarSearchAction,
+    ),
+    {
+      id: "new-space",
+      label: "New space",
+      description: "Group projects into a focused work context.",
+      keywords: ["space", "create", "new", "group", "workspace"],
+      run: () => openSpaceCreator(),
+      icon: AddPlusIcon,
     },
-    [setThreadListExtraPagesByProjectCwd],
-  );
+  ];
 
-  const showMoreThreadsForProject = useCallback(
-    (projectCwd: string, currentExtraPages: number) => {
-      setThreadListExtraPagesForProject(projectCwd, currentExtraPages + 1);
-    },
-    [setThreadListExtraPagesForProject],
-  );
+  const setThreadListExtraPagesForProject = (projectCwd: string, nextExtraPages: number) => {
+    const cwdKey = normalizeSidebarProjectThreadListCwd(projectCwd);
+    if (cwdKey.length === 0) return;
+    setThreadListExtraPagesByProjectCwd((current) => {
+      const clampedExtraPages = Math.max(0, nextExtraPages);
+      if ((current.get(cwdKey) ?? 0) === clampedExtraPages) return current;
+      const next = new Map(current);
+      if (clampedExtraPages === 0) {
+        next.delete(cwdKey);
+      } else {
+        next.set(cwdKey, clampedExtraPages);
+      }
+      return next;
+    });
+  };
+
+  const showMoreThreadsForProject = (projectCwd: string, currentExtraPages: number) => {
+    setThreadListExtraPagesForProject(projectCwd, currentExtraPages + 1);
+  };
   return {
     ...context,
     desktopUpdate,

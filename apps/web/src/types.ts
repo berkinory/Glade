@@ -1,25 +1,27 @@
 import type {
   ModelSelection,
-  MessageDispatchOrigin,
-  TurnDispatchMode,
   ProviderInteractionMode,
   RuntimeMode,
   ThreadCreationSource,
 } from "@glade/contracts/provider/sessionPolicy";
 import type {
-  OrchestrationMessageSource,
+  ChatImageAttachment as ContractChatImageAttachment,
+  ChatFileAttachment as ContractChatFileAttachment,
+  ChatAssistantSelectionAttachment as ContractChatAssistantSelectionAttachment,
+  OrchestrationMessage,
+  OrchestrationThread,
   OrchestrationPendingInteraction,
   OrchestrationLatestTurn,
   OrchestrationThreadPullRequest,
-  OrchestrationProposedPlanId,
+  OrchestrationProposedPlan,
   PinnedMessage,
   PendingClaudeCacheReview,
   ThreadGoalAchievement,
   OrchestrationSessionStatus,
   OrchestrationThreadActivity,
+  OrchestrationSpaceShell,
   ThreadHandoff,
   ProjectScript as ContractProjectScript,
-  SpaceIconName,
   ThreadEnvironmentMode,
 } from "@glade/contracts/orchestration/threadEntities";
 import type {
@@ -31,12 +33,14 @@ import type {
   ProviderKind,
   CheckpointRef,
 } from "@glade/contracts/core/baseSchemas";
-import type {
-  ProviderMentionReference,
-  ProviderSkillReference,
-} from "@glade/contracts/provider/providerDiscovery";
 import type { ProjectKind } from "@glade/contracts/workspace/project";
 import type { ProjectAppearance } from "./lib/projectAppearance";
+
+type MutableContractFields<T> = {
+  -readonly [Key in keyof T]: NonNullable<T[Key]> extends readonly (infer Item)[]
+    ? Item[] | Extract<T[Key], null | undefined>
+    : T[Key];
+};
 
 export type SessionPhase = "disconnected" | "connecting" | "ready" | "running";
 export const DEFAULT_RUNTIME_MODE: RuntimeMode = "full-access";
@@ -77,68 +81,28 @@ export interface ThreadTerminalGroup {
   layout: ThreadTerminalLayoutNode;
 }
 
-export interface ChatImageAttachment {
-  type: "image";
-  id: string;
-  name: string;
-  mimeType: string;
-  sizeBytes: number;
+export type ChatImageAttachment = MutableContractFields<ContractChatImageAttachment> & {
   previewUrl?: string;
-}
-
-export interface ChatFileAttachment {
-  type: "file";
-  id: string;
-  name: string;
-  mimeType: string;
-  sizeBytes: number;
-}
-
-export interface ChatAssistantSelectionAttachment {
-  type: "assistant-selection";
-  id: string;
-  assistantMessageId: string;
-  text: string;
-}
+};
+export type ChatFileAttachment = MutableContractFields<ContractChatFileAttachment>;
+export type ChatAssistantSelectionAttachment = MutableContractFields<
+  Omit<ContractChatAssistantSelectionAttachment, "assistantMessageId">
+> & { assistantMessageId: string };
 
 export type ChatAttachment =
   | ChatImageAttachment
   | ChatFileAttachment
   | ChatAssistantSelectionAttachment;
 
-type OrchestrationMessageTextSegment =
-  import("@glade/contracts/orchestration/threadEntities").OrchestrationMessageTextSegment;
+export type ChatMessage = MutableContractFields<
+  Omit<OrchestrationMessage, "attachments" | "turnId" | "source" | "updatedAt">
+> &
+  Partial<MutableContractFields<Pick<OrchestrationMessage, "turnId" | "source" | "updatedAt">>> & {
+    attachments?: ChatAttachment[];
+    completedAt?: string | undefined;
+  };
 
-export interface ChatMessage {
-  id: MessageId;
-  role: "user" | "assistant" | "system";
-  text: string;
-
-  textSegments?: OrchestrationMessageTextSegment[];
-  asyncUserInput?: import("@glade/contracts/orchestration/asyncUserInput").AsyncUserInput;
-  attachments?: ChatAttachment[];
-  skills?: ProviderSkillReference[];
-  mentions?: ProviderMentionReference[];
-  dispatchMode?: TurnDispatchMode;
-  dispatchOrigin?: MessageDispatchOrigin;
-  startsNewTurn?: boolean;
-  turnId?: TurnId | null;
-  createdAt: string;
-  updatedAt?: string;
-  completedAt?: string | undefined;
-  streaming: boolean;
-  source?: OrchestrationMessageSource;
-}
-
-export interface ProposedPlan {
-  id: OrchestrationProposedPlanId;
-  turnId: TurnId | null;
-  planMarkdown: string;
-  implementedAt: string | null;
-  implementationThreadId: ThreadId | null;
-  createdAt: string;
-  updatedAt: string;
-}
+export type ProposedPlan = OrchestrationProposedPlan;
 
 interface TurnDiffFileChange {
   path: string;
@@ -199,14 +163,7 @@ export interface Project {
   scripts: ProjectScript[];
 }
 
-export interface Space {
-  id: SpaceId;
-  name: string;
-  icon: SpaceIconName;
-  sortOrder: number;
-  createdAt: string;
-  updatedAt: string;
-}
+export type Space = OrchestrationSpaceShell;
 
 interface ThreadWorkspaceState {
   envMode?: ThreadEnvironmentMode | undefined;
@@ -219,30 +176,29 @@ interface ThreadWorkspaceState {
   createBranchFlowCompleted?: boolean;
 }
 
-export interface ThreadWorkspacePatch {
-  envMode?: ThreadEnvironmentMode | undefined;
-  branch?: string | null;
-  worktreePath?: string | null;
-  workingDirectory?: string | null;
-  associatedWorktreePath?: string | null;
-  associatedWorktreeBranch?: string | null;
-  associatedWorktreeRef?: string | null;
-  createBranchFlowCompleted?: boolean;
-}
+export type ThreadWorkspacePatch = Partial<ThreadWorkspaceState>;
 
-export interface Thread extends ThreadWorkspaceState {
-  id: ThreadId;
+export interface Thread
+  extends
+    ThreadWorkspaceState,
+    MutableContractFields<
+      Pick<
+        OrchestrationThread,
+        | "id"
+        | "projectId"
+        | "title"
+        | "modelSelection"
+        | "runtimeMode"
+        | "interactionMode"
+        | "createdAt"
+        | "latestTurn"
+      >
+    > {
   codexThreadId: string | null;
-  projectId: ProjectId;
-  title: string;
-  modelSelection: ModelSelection;
-  runtimeMode: RuntimeMode;
-  interactionMode: ProviderInteractionMode;
   session: ThreadSession | null;
   messages: ChatMessage[];
   proposedPlans: ProposedPlan[];
   error: string | null;
-  createdAt: string;
   archivedAt?: string | null;
   settledAt?: string | null;
   updatedAt?: string | undefined;
@@ -253,7 +209,6 @@ export interface Thread extends ThreadWorkspaceState {
   goalStartedAt?: string | null;
   goalPausedAt?: string | null;
   goalAchievements?: ThreadGoalAchievement[];
-  latestTurn: OrchestrationLatestTurn | null;
   pendingSourceProposedPlan?: OrchestrationLatestTurn["sourceProposedPlan"];
   lastVisitedAt?: string | undefined;
   parentThreadId?: ThreadId | null;
@@ -278,46 +233,16 @@ export interface Thread extends ThreadWorkspaceState {
   activities: OrchestrationThreadActivity[];
 }
 
-export interface ThreadShell extends ThreadWorkspaceState {
-  id: ThreadId;
-  codexThreadId: string | null;
-  projectId: ProjectId;
-  title: string;
-  modelSelection: ModelSelection;
-  runtimeMode: RuntimeMode;
-  interactionMode: ProviderInteractionMode;
-  error: string | null;
-  createdAt: string;
-  archivedAt?: string | null;
-  settledAt?: string | null;
-  updatedAt?: string | undefined;
-  isPinned?: boolean;
-
-  pinnedMessages?: PinnedMessage[];
-  notes?: string;
-  goal?: string;
-  goalStartedAt?: string | null;
-  goalPausedAt?: string | null;
-  goalAchievements?: ThreadGoalAchievement[];
-  parentThreadId?: ThreadId | null;
-  creationSource?: ThreadCreationSource | null;
-  sourceThreadId?: ThreadId | null;
-  subagentAgentId?: string | null;
-  subagentNickname?: string | null;
-  subagentRole?: string | null;
-  forkSourceThreadId?: ThreadId | null;
-  handoff?: ThreadHandoff | null;
-  claudeCacheReview?: PendingClaudeCacheReview | null;
-  claudeCacheReviewSequence?: number;
-  lastKnownPr?: OrchestrationThreadPullRequest | null;
-  latestUserMessageAt?: string | null;
-  latestHumanMessageAt?: string | null;
-  hasPendingApprovals?: boolean;
-  hasPendingUserInput?: boolean;
-  hasActionableProposedPlan?: boolean;
-  pendingInteractions?: OrchestrationPendingInteraction[];
-  lastVisitedAt?: string | undefined;
-}
+export type ThreadShell = Omit<
+  Thread,
+  | "session"
+  | "messages"
+  | "proposedPlans"
+  | "latestTurn"
+  | "pendingSourceProposedPlan"
+  | "turnDiffSummaries"
+  | "activities"
+>;
 
 export interface ThreadTurnState {
   latestTurn: OrchestrationLatestTurn | null;

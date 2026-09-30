@@ -130,16 +130,7 @@ export default defineConfig({
       // extension.
       parserOpts: { plugins: ["typescript", "jsx"] },
       presets: [reactCompilerPreset()],
-    }).then((plugin) => ({
-      ...plugin,
-
-      apply: ((_config, { command, mode }) =>
-        command === "build" ||
-        mode === "test" ||
-        /^(1|true)$/i.test(
-          process.env.GLADE_DEV_REACT_COMPILER?.trim() ?? "",
-        )) satisfies Plugin["apply"],
-    })),
+    }),
     tailwindcss(),
     centralIconPrunePlugin(),
     precompressPlugin(),

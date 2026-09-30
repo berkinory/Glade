@@ -106,12 +106,9 @@ export function useChatComposerController({
     [addComposerImagesToDraft],
   );
 
-  const reportChatActionFailure = useCallback(
-    (error: unknown) => {
-      setThreadError(threadId, error instanceof Error ? error.message : "The action failed.");
-    },
-    [setThreadError, threadId],
-  );
+  const reportChatActionFailure = (error: unknown) => {
+    setThreadError(threadId, error instanceof Error ? error.message : "The action failed.");
+  };
 
   const setComposerImagePreparationError = useCallback(
     (error: string | null) => setThreadError(threadId, error),
@@ -148,7 +145,7 @@ export function useChatComposerController({
     editor.focusAtEnd();
   }, [composerEditorRef, pendingComposerFocusRef, secondaryChromeReady, isComposerEditorDisabled]);
 
-  const toggleComposerFocus = useCallback(() => {
+  const toggleComposerFocus = () => {
     const editor = composerEditorRef.current;
     if (secondaryChromeReady && editor?.isFocused()) {
       pendingComposerFocusRef.current = false;
@@ -156,7 +153,7 @@ export function useChatComposerController({
       return;
     }
     focusComposer();
-  }, [composerEditorRef, pendingComposerFocusRef, focusComposer, secondaryChromeReady]);
+  };
 
   const scheduleComposerFocus = useCallback(() => {
     pendingComposerFocusRef.current = true;
@@ -205,41 +202,32 @@ export function useChatComposerController({
     };
   }, [pendingComposerFocusRef, focusComposer]);
 
-  const handleModelPickerOpenChange = useCallback(
-    (open: boolean) => {
-      setIsModelPickerOpen(open);
-      if (open) {
-        setIsTraitsPickerOpen(false);
-      }
-    },
-    [setIsModelPickerOpen, setIsTraitsPickerOpen],
-  );
+  const handleModelPickerOpenChange = (open: boolean) => {
+    setIsModelPickerOpen(open);
+    if (open) {
+      setIsTraitsPickerOpen(false);
+    }
+  };
 
-  const handleTraitsPickerOpenChange = useCallback(
-    (open: boolean) => {
-      setIsTraitsPickerOpen(open);
-      if (open) {
-        setIsModelPickerOpen(false);
-      }
-    },
-    [setIsModelPickerOpen, setIsTraitsPickerOpen],
-  );
+  const handleTraitsPickerOpenChange = (open: boolean) => {
+    setIsTraitsPickerOpen(open);
+    if (open) {
+      setIsModelPickerOpen(false);
+    }
+  };
 
-  const appendVoiceTranscriptToComposer = useCallback(
-    (transcript: string) => {
-      const nextPrompt = appendVoiceTranscriptToPrompt(promptRef.current, transcript);
-      if (!nextPrompt) {
-        return;
-      }
+  const appendVoiceTranscriptToComposer = (transcript: string) => {
+    const nextPrompt = appendVoiceTranscriptToPrompt(promptRef.current, transcript);
+    if (!nextPrompt) {
+      return;
+    }
 
-      promptRef.current = nextPrompt;
-      setPrompt(nextPrompt);
-      setComposerCursor(collapseExpandedComposerCursor(nextPrompt, nextPrompt.length));
-      setComposerTrigger(detectComposerTrigger(nextPrompt, nextPrompt.length));
-      scheduleComposerFocus();
-    },
-    [promptRef, setComposerCursor, setComposerTrigger, scheduleComposerFocus, setPrompt],
-  );
+    promptRef.current = nextPrompt;
+    setPrompt(nextPrompt);
+    setComposerCursor(collapseExpandedComposerCursor(nextPrompt, nextPrompt.length));
+    setComposerTrigger(detectComposerTrigger(nextPrompt, nextPrompt.length));
+    scheduleComposerFocus();
+  };
 
   const {
     isVoiceRecording,
@@ -349,22 +337,19 @@ export function useChatComposerController({
     return registerTerminalContextComposerTarget(paneScopeId, addRegisteredTerminalContextToDraft);
   }, [addRegisteredTerminalContextToDraft, canAddTerminalContextToChat, paneScopeId]);
 
-  const addPastedTextToDraft = useCallback(
-    (text: string) => {
-      if (!activeThread) {
-        return;
-      }
-      discardPromptHistoryNavigationForComposerMutation();
-      addComposerDraftPastedTexts(activeThread.id, [
-        createPastedTextDraft({
-          id: randomUUID(),
-          createdAt: new Date().toISOString(),
-          text,
-        }),
-      ]);
-    },
-    [activeThread, addComposerDraftPastedTexts, discardPromptHistoryNavigationForComposerMutation],
-  );
+  const addPastedTextToDraft = (text: string) => {
+    if (!activeThread) {
+      return;
+    }
+    discardPromptHistoryNavigationForComposerMutation();
+    addComposerDraftPastedTexts(activeThread.id, [
+      createPastedTextDraft({
+        id: randomUUID(),
+        createdAt: new Date().toISOString(),
+        text,
+      }),
+    ]);
+  };
   return {
     setThreadError,
     reportChatActionFailure,

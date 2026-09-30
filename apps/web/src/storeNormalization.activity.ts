@@ -28,15 +28,7 @@ export function normalizeProposedPlans(
     ) {
       return existing;
     }
-    return {
-      id: plan.id,
-      turnId: plan.turnId,
-      planMarkdown: plan.planMarkdown,
-      implementedAt: plan.implementedAt,
-      implementationThreadId: plan.implementationThreadId,
-      createdAt: plan.createdAt,
-      updatedAt: plan.updatedAt,
-    };
+    return plan;
   });
   return arraysShallowEqual(previous, nextPlans) ? previous : nextPlans;
 }

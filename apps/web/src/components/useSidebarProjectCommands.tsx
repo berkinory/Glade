@@ -107,274 +107,239 @@ export function useSidebarProjectCommands(context: ReturnType<typeof useSidebarT
     onCloseProjectContextMenu: handleCloseProjectContextMenu,
   });
 
-  const handleCreateProjectSubmit = useCallback(
-    async (value: CreateProjectSubmitValue, options: CreateProjectSubmitOptions) => {
-      const previousSpaceId = activeSpaceId;
-      const existingProject =
-        value.source === "local"
-          ? findWorkspaceRootMatch(projects, value.workspaceRoot, (project) => project.cwd)
-          : null;
+  const handleCreateProjectSubmit = async (
+    value: CreateProjectSubmitValue,
+    options: CreateProjectSubmitOptions,
+  ) => {
+    const previousSpaceId = activeSpaceId;
+    const existingProject =
+      value.source === "local"
+        ? findWorkspaceRootMatch(projects, value.workspaceRoot, (project) => project.cwd)
+        : null;
 
-      const destinationSpaceId = existingProject
-        ? (existingProject.spaceId ?? null)
-        : value.spaceId;
-      const runCreateProject = async () => {
-        if (value.source === "github") {
-          const api = readNativeApi();
-          if (!api) throw new Error("The app server is unavailable.");
-          await runExclusiveProjectAddition(projectAdditionLockRef, async () => {
-            const openProvisionedProject = async (
-              projectId: ProjectId,
-              workspaceRoot: string | undefined,
-              waitForProject: typeof waitForProjectInSnapshot,
-            ) => {
-              const { project, snapshot } = await waitForProject(api, projectId, workspaceRoot);
-              if (snapshot) {
-                syncServerShellSnapshot(snapshot);
-              }
-              if (!project || !snapshot) return false;
-
-              handleSelectSpaceForIncomingProject(project.spaceId ?? null);
-              return openExistingProjectFromSnapshot(project.id, snapshot);
-            };
-            const requestedProjectId = newProjectId();
-            const requestedWorkspaceRoot = joinProjectPath(
-              expandProjectHomePath(value.destinationParent, homeDir),
-              value.directoryName,
-            );
-            const provision = await runProjectProvisionWithCancellationRecovery({
-              signal: options.signal,
-              provision: () =>
-                api.projects.provisionFromGitHub(
-                  {
-                    operationId: value.operationId,
-                    repository: value.repository,
-                    destinationParent: value.destinationParent,
-                    directoryName: value.directoryName,
-                    commandId: newCommandId(),
-                    projectId: requestedProjectId,
-                    newProjectSpaceId: value.spaceId,
-                    defaultModelSelection: {
-                      provider: "codex",
-                      model: getDefaultModel("codex"),
-                    },
-                    createdAt: new Date().toISOString(),
-                  },
-                  { signal: options.signal },
-                ),
-              // Cancellation can race the server's project.create commit. If that commit won, recover the durable
-              // project and report success instead of telling the user a registered project was cancelled.
-              recoverCommittedProject: () =>
-                openProvisionedProject(
-                  requestedProjectId,
-                  requestedWorkspaceRoot,
-                  waitForCancelledGitHubProjectInSnapshot,
-                ),
-            });
-            if (provision.status === "recovered") return;
-            if (
-              !(await openProvisionedProject(
-                provision.result.projectId,
-                undefined,
-                waitForProjectInSnapshot,
-              ))
-            ) {
-              throw new Error(
-                "The GitHub project was added, but it has not synced into the sidebar yet. Try again in a moment.",
-              );
+    const destinationSpaceId = existingProject ? (existingProject.spaceId ?? null) : value.spaceId;
+    const runCreateProject = async () => {
+      if (value.source === "github") {
+        const api = readNativeApi();
+        if (!api) throw new Error("The app server is unavailable.");
+        await runExclusiveProjectAddition(projectAdditionLockRef, async () => {
+          const openProvisionedProject = async (
+            projectId: ProjectId,
+            workspaceRoot: string | undefined,
+            waitForProject: typeof waitForProjectInSnapshot,
+          ) => {
+            const { project, snapshot } = await waitForProject(api, projectId, workspaceRoot);
+            if (snapshot) {
+              syncServerShellSnapshot(snapshot);
             }
-          });
-        } else {
-          handleSelectSpaceForIncomingProject(destinationSpaceId);
-          await addProjectFromPath(value.workspaceRoot, {
-            createIfMissing: value.createIfMissing,
-            spaceId: value.spaceId,
-          });
-        }
-      };
+            if (!project || !snapshot) return false;
 
+            handleSelectSpaceForIncomingProject(project.spaceId ?? null);
+            return openExistingProjectFromSnapshot(project.id, snapshot);
+          };
+          const requestedProjectId = newProjectId();
+          const requestedWorkspaceRoot = joinProjectPath(
+            expandProjectHomePath(value.destinationParent, homeDir),
+            value.directoryName,
+          );
+          const provision = await runProjectProvisionWithCancellationRecovery({
+            signal: options.signal,
+            provision: () =>
+              api.projects.provisionFromGitHub(
+                {
+                  operationId: value.operationId,
+                  repository: value.repository,
+                  destinationParent: value.destinationParent,
+                  directoryName: value.directoryName,
+                  commandId: newCommandId(),
+                  projectId: requestedProjectId,
+                  newProjectSpaceId: value.spaceId,
+                  defaultModelSelection: {
+                    provider: "codex",
+                    model: getDefaultModel("codex"),
+                  },
+                  createdAt: new Date().toISOString(),
+                },
+                { signal: options.signal },
+              ),
+            // Cancellation can race the server's project.create commit. If that commit won, recover the durable
+            // project and report success instead of telling the user a registered project was cancelled.
+            recoverCommittedProject: () =>
+              openProvisionedProject(
+                requestedProjectId,
+                requestedWorkspaceRoot,
+                waitForCancelledGitHubProjectInSnapshot,
+              ),
+          });
+          if (provision.status === "recovered") return;
+          if (
+            !(await openProvisionedProject(
+              provision.result.projectId,
+              undefined,
+              waitForProjectInSnapshot,
+            ))
+          ) {
+            throw new Error(
+              "The GitHub project was added, but it has not synced into the sidebar yet. Try again in a moment.",
+            );
+          }
+        });
+      } else {
+        handleSelectSpaceForIncomingProject(destinationSpaceId);
+        await addProjectFromPath(value.workspaceRoot, {
+          createIfMissing: value.createIfMissing,
+          spaceId: value.spaceId,
+        });
+      }
+    };
+
+    try {
+      await runCreateProject();
+    } catch (error) {
+      // Project creation is one UI transaction: a failed command must not strand the sidebar in a Space
+      // unrelated to the current route.
+      handleSelectSpaceForIncomingProject(previousSpaceId);
+      throw error;
+    }
+  };
+
+  const jumpShortcutLabelForSpaceTab = (tabIndex: number) => {
+    const command = spaceJumpCommandForIndex(tabIndex);
+    if (!command) return null;
+    return shortcutLabelForCommand(keybindings, command, { platform: navigator.platform });
+  };
+
+  const handleProjectContextMenuAction = async (
+    projectId: ProjectId,
+    clicked: ProjectContextMenuId,
+  ) => {
+    setProjectContextMenuState(null);
+    const api = readNativeApi();
+    if (!api) return;
+    const project = projectById.get(projectId);
+    if (!project) return;
+
+    if (clicked === "open-in-finder") {
       try {
-        await runCreateProject();
+        await api.shell.showInFolder(project.cwd);
       } catch (error) {
-        // Project creation is one UI transaction: a failed command must not strand the sidebar in a Space
-        // unrelated to the current route.
-        handleSelectSpaceForIncomingProject(previousSpaceId);
-        throw error;
-      }
-    },
-    [
-      activeSpaceId,
-      addProjectFromPath,
-      handleSelectSpaceForIncomingProject,
-      homeDir,
-      openExistingProjectFromSnapshot,
-      projects,
-      syncServerShellSnapshot,
-      waitForCancelledGitHubProjectInSnapshot,
-      waitForProjectInSnapshot,
-      projectAdditionLockRef,
-    ],
-  );
-
-  const jumpShortcutLabelForSpaceTab = useCallback(
-    (tabIndex: number) => {
-      const command = spaceJumpCommandForIndex(tabIndex);
-      if (!command) return null;
-      return shortcutLabelForCommand(keybindings, command, { platform: navigator.platform });
-    },
-    [keybindings],
-  );
-
-  const handleProjectContextMenuAction = useCallback(
-    async (projectId: ProjectId, clicked: ProjectContextMenuId) => {
-      setProjectContextMenuState(null);
-      const api = readNativeApi();
-      if (!api) return;
-      const project = projectById.get(projectId);
-      if (!project) return;
-
-      if (clicked === "open-in-finder") {
-        try {
-          await api.shell.showInFolder(project.cwd);
-        } catch (error) {
-          toastManager.add({
-            type: "error",
-            title: "Unable to open in Finder",
-            description:
-              error instanceof Error
-                ? error.message
-                : "An unknown error occurred opening the folder.",
-          });
-        }
-        return;
-      }
-      if (clicked === "open-in-kanban") {
-        void navigate({ to: "/kanban/$projectId", params: { projectId } });
-        return;
-      }
-      if (clicked === "copy-path") {
-        copyPathToClipboard(project.cwd);
-        return;
-      }
-      if (clicked === "start-dev") {
-        openProjectRunDialog(projectId);
-        return;
-      }
-      if (clicked === "stop-dev") {
-        await handleStopProjectRun(projectId);
-        return;
-      }
-      if (clicked === "open-dev-server") {
-        await handleOpenProjectRunServer(projectId);
-        return;
-      }
-      if (clicked === "relocate") {
-        setRelocateProjectDialogId(projectId);
-        return;
-      }
-      if (clicked === "rename") {
-        setEditProjectDialog({ projectId, open: true });
-        return;
-      }
-      if (clicked === "toggle-pin") {
-        toggleProjectPinned(projectId);
-        return;
-      }
-      if (clicked === "archive-threads") {
-        await archiveAllThreadsInProject(projectId);
-        return;
-      }
-      if (clicked === "delete-threads") {
-        await deleteProjectThreads(projectId);
-        return;
-      }
-      if (clicked !== "delete") return;
-
-      const projectThreads = sidebarThreads.filter((thread) => thread.projectId === projectId);
-      const confirmed = await api.dialogs.confirm(
-        projectThreads.length > 0
-          ? [
-              `Remove project "${project.name}"?`,
-              `This will delete ${projectThreads.length} ${pluralize(projectThreads.length, "thread")} in this folder and remove the project.`,
-            ].join("\n")
-          : `Remove project "${project.name}"?`,
-      );
-      if (!confirmed) return;
-
-      const runRemoveProject = async () => {
-        const deletionResult = await deleteProjectThreads(projectId, {
-          confirmMessage: null,
-          showEmptyToast: false,
-          showResultToast: false,
-          worktreeCleanupMode: "skip",
-        });
-        if (deletionResult === null) {
-          return;
-        }
-        if (deletionResult.failureCount > 0) {
-          toastManager.add({
-            type: "error",
-            title: `Failed to remove "${project.name}"`,
-            description: `Could not delete ${deletionResult.failureCount} ${pluralize(deletionResult.failureCount, "thread")} in "${project.name}".`,
-          });
-          return;
-        }
-
-        await deleteProjectFromClient({
-          api: api.orchestration,
-          projectId,
-          removeDeletedProjectFromClientState,
-        });
-        clearProjectDraftThreads(projectId);
         toastManager.add({
-          type: "success",
-          title: `Removed "${project.name}"`,
+          type: "error",
+          title: "Unable to open in Finder",
           description:
-            deletionResult.deletedCount > 0
-              ? `Deleted ${deletionResult.deletedCount} ${pluralize(deletionResult.deletedCount, "thread")} and removed the project.`
-              : "Project removed.",
+            error instanceof Error
+              ? error.message
+              : "An unknown error occurred opening the folder.",
         });
-      };
+      }
+      return;
+    }
+    if (clicked === "open-in-kanban") {
+      void navigate({ to: "/kanban/$projectId", params: { projectId } });
+      return;
+    }
+    if (clicked === "copy-path") {
+      copyPathToClipboard(project.cwd);
+      return;
+    }
+    if (clicked === "start-dev") {
+      openProjectRunDialog(projectId);
+      return;
+    }
+    if (clicked === "stop-dev") {
+      await handleStopProjectRun(projectId);
+      return;
+    }
+    if (clicked === "open-dev-server") {
+      await handleOpenProjectRunServer(projectId);
+      return;
+    }
+    if (clicked === "relocate") {
+      setRelocateProjectDialogId(projectId);
+      return;
+    }
+    if (clicked === "rename") {
+      setEditProjectDialog({ projectId, open: true });
+      return;
+    }
+    if (clicked === "toggle-pin") {
+      toggleProjectPinned(projectId);
+      return;
+    }
+    if (clicked === "archive-threads") {
+      await archiveAllThreadsInProject(projectId);
+      return;
+    }
+    if (clicked === "delete-threads") {
+      await deleteProjectThreads(projectId);
+      return;
+    }
+    if (clicked !== "delete") return;
 
-      try {
-        await runRemoveProject();
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown error removing project.";
-        console.error("Failed to remove project", { projectId, error });
+    const projectThreads = sidebarThreads.filter((thread) => thread.projectId === projectId);
+    const confirmed = await api.dialogs.confirm(
+      projectThreads.length > 0
+        ? [
+            `Remove project "${project.name}"?`,
+            `This will delete ${projectThreads.length} ${pluralize(projectThreads.length, "thread")} in this folder and remove the project.`,
+          ].join("\n")
+        : `Remove project "${project.name}"?`,
+    );
+    if (!confirmed) return;
+
+    const runRemoveProject = async () => {
+      const deletionResult = await deleteProjectThreads(projectId, {
+        confirmMessage: null,
+        showEmptyToast: false,
+        showResultToast: false,
+        worktreeCleanupMode: "skip",
+      });
+      if (deletionResult === null) {
+        return;
+      }
+      if (deletionResult.failureCount > 0) {
         toastManager.add({
           type: "error",
           title: `Failed to remove "${project.name}"`,
-          description: message,
+          description: `Could not delete ${deletionResult.failureCount} ${pluralize(deletionResult.failureCount, "thread")} in "${project.name}".`,
         });
+        return;
       }
-    },
-    [
-      archiveAllThreadsInProject,
-      clearProjectDraftThreads,
-      copyPathToClipboard,
-      deleteProjectThreads,
-      handleOpenProjectRunServer,
-      handleStopProjectRun,
-      navigate,
-      openProjectRunDialog,
-      projectById,
-      removeDeletedProjectFromClientState,
-      sidebarThreads,
-      toggleProjectPinned,
-      setEditProjectDialog,
-      setRelocateProjectDialogId,
-      setProjectContextMenuState,
-    ],
-  );
 
-  const handleProjectContextMenu = useCallback(
-    (projectId: ProjectId, position: { x: number; y: number }) => {
-      if (!readNativeApi()) return;
-      if (!projectById.has(projectId)) return;
-      setProjectContextMenuState({ projectId, position });
-    },
-    [projectById, setProjectContextMenuState],
-  );
+      await deleteProjectFromClient({
+        api: api.orchestration,
+        projectId,
+        removeDeletedProjectFromClientState,
+      });
+      clearProjectDraftThreads(projectId);
+      toastManager.add({
+        type: "success",
+        title: `Removed "${project.name}"`,
+        description:
+          deletionResult.deletedCount > 0
+            ? `Deleted ${deletionResult.deletedCount} ${pluralize(deletionResult.deletedCount, "thread")} and removed the project.`
+            : "Project removed.",
+      });
+    };
+
+    try {
+      await runRemoveProject();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error removing project.";
+      console.error("Failed to remove project", { projectId, error });
+      toastManager.add({
+        type: "error",
+        title: `Failed to remove "${project.name}"`,
+        description: message,
+      });
+    }
+  };
+
+  const handleProjectContextMenu = (projectId: ProjectId, position: { x: number; y: number }) => {
+    if (!readNativeApi()) return;
+    if (!projectById.has(projectId)) return;
+    setProjectContextMenuState({ projectId, position });
+  };
 
   const projectDnDSensors = useSensors(
     useSensor(PointerSensor, {

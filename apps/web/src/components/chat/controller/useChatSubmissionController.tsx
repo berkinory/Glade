@@ -1,5 +1,5 @@
 import { parseComputerInvocation } from "@glade/shared/computer/computerInvocation";
-import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 import { ComposerModelPicker } from "~/components/chat/ComposerModelPicker";
 import { resolveProviderModelLabel } from "~/components/chat/ProviderModelPicker";
 import { resolveTraitsTriggerSummary } from "~/components/chat/TraitsPicker";
@@ -180,22 +180,19 @@ export function useChatSubmissionController({
     discovery,
   });
 
-  const setPromptFromTraits = useCallback(
-    (nextPrompt: string) => {
-      const currentPrompt = promptRef.current;
-      if (nextPrompt === currentPrompt) {
-        scheduleComposerFocus();
-        return;
-      }
-      promptRef.current = nextPrompt;
-      setPrompt(nextPrompt);
-      const nextCursor = collapseExpandedComposerCursor(nextPrompt, nextPrompt.length);
-      setComposerCursor(nextCursor);
-      setComposerTrigger(detectComposerTrigger(nextPrompt, nextPrompt.length));
+  const setPromptFromTraits = (nextPrompt: string) => {
+    const currentPrompt = promptRef.current;
+    if (nextPrompt === currentPrompt) {
       scheduleComposerFocus();
-    },
-    [promptRef, setComposerCursor, setComposerTrigger, scheduleComposerFocus, setPrompt],
-  );
+      return;
+    }
+    promptRef.current = nextPrompt;
+    setPrompt(nextPrompt);
+    const nextCursor = collapseExpandedComposerCursor(nextPrompt, nextPrompt.length);
+    setComposerCursor(nextCursor);
+    setComposerTrigger(detectComposerTrigger(nextPrompt, nextPrompt.length));
+    scheduleComposerFocus();
+  };
 
   const selectedProviderModelOptions = composerModelOptions?.[selectedProvider];
 
@@ -209,28 +206,13 @@ export function useChatSubmissionController({
 
   const runtimeUsageContextWindow = activeContextWindow;
 
-  const appliedContextWindowSelection = useMemo(
-    () => deriveAppliedContextWindowSelection(threadActivities),
-    [threadActivities],
-  );
+  const appliedContextWindowSelection = deriveAppliedContextWindowSelection(threadActivities);
 
-  const contextWindowSelectionStatus = useMemo(
-    () =>
-      deriveContextWindowSelectionStatus({
-        activeSnapshot: runtimeUsageContextWindow,
-        ...(selectedProvider === "claudeAgent"
-          ? { appliedValue: appliedContextWindowSelection }
-          : {}),
-        selectedValue:
-          selectedProvider === "claudeAgent" ? composerTraitSelection.contextWindow : null,
-      }),
-    [
-      runtimeUsageContextWindow,
-      composerTraitSelection.contextWindow,
-      selectedProvider,
-      appliedContextWindowSelection,
-    ],
-  );
+  const contextWindowSelectionStatus = deriveContextWindowSelectionStatus({
+    activeSnapshot: runtimeUsageContextWindow,
+    ...(selectedProvider === "claudeAgent" ? { appliedValue: appliedContextWindowSelection } : {}),
+    selectedValue: selectedProvider === "claudeAgent" ? composerTraitSelection.contextWindow : null,
+  });
 
   const composerContextWindowLabel = deriveComposerContextWindowLabel({
     provider: selectedProvider,
@@ -239,9 +221,9 @@ export function useChatSubmissionController({
     status: contextWindowSelectionStatus,
   });
 
-  const composerFooterControlsPlan = useMemo(
-    () => composerFooterPlanForTier(composerFooterTier, Boolean(runtimeUsageContextWindow)),
-    [composerFooterTier, runtimeUsageContextWindow],
+  const composerFooterControlsPlan = composerFooterPlanForTier(
+    composerFooterTier,
+    Boolean(runtimeUsageContextWindow),
   );
 
   const composerFooterModelLabel = resolveProviderModelLabel({
@@ -285,17 +267,14 @@ export function useChatSubmissionController({
 
   const composerModelEffortPickerWidthClassName = isComposerFooterCompact ? "w-40" : "w-44 sm:w-52";
 
-  const handleComposerModelEffortPickerOpenChange = useCallback(
-    (open: boolean) => {
-      if (open) {
-        handleModelPickerOpenChange(true);
-      } else {
-        setIsModelPickerOpen(false);
-        setIsTraitsPickerOpen(false);
-      }
-    },
-    [setIsModelPickerOpen, setIsTraitsPickerOpen, handleModelPickerOpenChange],
-  );
+  const handleComposerModelEffortPickerOpenChange = (open: boolean) => {
+    if (open) {
+      handleModelPickerOpenChange(true);
+    } else {
+      setIsModelPickerOpen(false);
+      setIsTraitsPickerOpen(false);
+    }
+  };
 
   const composerPickerControls = showComposerModelBootstrapSkeleton ? (
     selectedProviderRuntimeModelDiscoveryPending ? (
@@ -333,7 +312,7 @@ export function useChatSubmissionController({
     />
   );
 
-  const toggleFastMode = useCallback(() => {
+  const toggleFastMode = () => {
     if (!composerTraitSelection.caps.supportsFastMode) {
       scheduleComposerFocus();
       return;
@@ -347,15 +326,7 @@ export function useChatSubmissionController({
       { persistSticky: true },
     );
     scheduleComposerFocus();
-  }, [
-    composerTraitSelection.caps.supportsFastMode,
-    composerTraitSelection.fastModeEnabled,
-    scheduleComposerFocus,
-    selectedProvider,
-    selectedProviderModelOptions,
-    setComposerDraftProviderModelOptions,
-    threadId,
-  ]);
+  };
 
   const {
     onEnvModeChange,
@@ -382,32 +353,22 @@ export function useChatSubmissionController({
     clearComposerSlashDraft,
   } = useChatComposerEditing({ session, provider, composer });
 
-  const handleEnableComputerControlFromDenial = useCallback(() => {
+  const handleEnableComputerControlFromDenial = () => {
     const currentPrompt = composerEditorRef.current?.readSnapshot()?.value ?? promptRef.current;
     if (!parseComputerInvocation(currentPrompt)) {
       setComposerPromptValue(`/computer-use ${currentPrompt}`);
     }
     handleComputerControlModeChange("request");
-  }, [composerEditorRef, promptRef, setComposerPromptValue, handleComputerControlModeChange]);
+  };
 
-  const slashEditorActions = useMemo(
-    () => ({
-      resolveActiveComposerTrigger,
-      applyPromptReplacement,
-      clearComposerSlashDraft,
-      setComposerPromptValue,
-      scheduleComposerFocus,
-      setComposerHighlightedItemId,
-    }),
-    [
-      setComposerHighlightedItemId,
-      applyPromptReplacement,
-      clearComposerSlashDraft,
-      resolveActiveComposerTrigger,
-      scheduleComposerFocus,
-      setComposerPromptValue,
-    ],
-  );
+  const slashEditorActions = {
+    resolveActiveComposerTrigger,
+    applyPromptReplacement,
+    clearComposerSlashDraft,
+    setComposerPromptValue,
+    scheduleComposerFocus,
+    setComposerHighlightedItemId,
+  };
 
   const {
     handleForkFromMessage,
@@ -480,16 +441,16 @@ export function useChatSubmissionController({
     },
   });
 
-  const insertGoalSlashCommandInComposer = useCallback(() => {
+  const insertGoalSlashCommandInComposer = () => {
     const currentPrompt = promptRef.current;
     if (/^\s*\/goal\b/i.test(currentPrompt)) {
       scheduleComposerFocus();
       return;
     }
     setComposerPromptValue(buildGoalSlashCommandPrompt(currentPrompt));
-  }, [promptRef, scheduleComposerFocus, setComposerPromptValue]);
+  };
 
-  const editThreadGoalInComposer = useCallback(() => {
+  const editThreadGoalInComposer = () => {
     const currentGoal = activeThread?.goal?.trim();
     if (!activeThread || !currentGoal) {
       return;
@@ -501,15 +462,7 @@ export function useChatSubmissionController({
     setComposerCursor(collapseExpandedComposerCursor(nextPrompt, nextPrompt.length));
     setComposerTrigger(detectComposerTrigger(nextPrompt, nextPrompt.length));
     scheduleComposerFocus();
-  }, [
-    promptRef,
-    setComposerCursor,
-    setComposerTrigger,
-    activeThread,
-    clearComposerDraftContent,
-    scheduleComposerFocus,
-    setComposerDraftPrompt,
-  ]);
+  };
 
   useLayoutEffect(() => {
     lateComposerSendHandlersRef.current = {

@@ -178,26 +178,17 @@ export function useChatWorkspaceController({
     session: activeThread?.session ?? null,
   });
 
-  const activeContextWindowState = useMemo(
-    () => deriveLatestContextWindowState(threadActivities),
-    [threadActivities],
-  );
+  const activeContextWindowState = deriveLatestContextWindowState(threadActivities);
 
   const activeContextWindow = activeContextWindowState.snapshot;
 
-  const activeCumulativeCostUsd = useMemo(
-    () => deriveCumulativeCostUsd(threadActivities),
-    [threadActivities],
-  );
+  const activeCumulativeCostUsd = deriveCumulativeCostUsd(threadActivities);
 
-  const activeRateLimitStatus = useMemo(
-    () => deriveLatestRateLimitStatus(threadActivities),
-    [threadActivities],
-  );
+  const activeRateLimitStatus = deriveLatestRateLimitStatus(threadActivities);
 
-  const activeRateLimitBannerDismissalKey = useMemo(
-    () => getRateLimitBannerDismissalKey(activeRateLimitStatus, activeThread?.id ?? null),
-    [activeRateLimitStatus, activeThread?.id],
+  const activeRateLimitBannerDismissalKey = getRateLimitBannerDismissalKey(
+    activeRateLimitStatus,
+    activeThread?.id ?? null,
   );
 
   const visibleActiveRateLimitStatus =
@@ -252,83 +243,38 @@ export function useChatWorkspaceController({
     }),
     [activeThreadId, activeProject, settings.confirmTerminalTabClose, requestTerminalFocus],
   );
-  const setTerminalOpen = useCallback(
-    (open: boolean) => setChatTerminalOpen(terminalActionContext, open),
-    [terminalActionContext],
-  );
-  const setTerminalWorkspaceTab = useCallback(
-    (tab: "terminal" | "chat") => setChatTerminalWorkspaceTab(terminalActionContext, tab),
-    [terminalActionContext],
-  );
-  const setTerminalHeight = useCallback(
-    (height: number) => setChatTerminalHeight(terminalActionContext, height),
-    [terminalActionContext],
-  );
-  const toggleTerminalVisibility = useCallback(
-    () => toggleChatTerminalVisibility(terminalActionContext, terminalState),
-    [terminalActionContext, terminalState],
-  );
-  const expandTerminalWorkspace = useCallback(
-    () => expandChatTerminalWorkspace(terminalActionContext),
-    [terminalActionContext],
-  );
-  const collapseTerminalWorkspace = useCallback(
-    () => collapseChatTerminalWorkspace(terminalActionContext),
-    [terminalActionContext],
-  );
-  const splitTerminalLeft = useCallback(
-    () => splitChatTerminal(terminalActionContext, terminalState, "left"),
-    [terminalActionContext, terminalState],
-  );
-  const splitTerminalRight = useCallback(
-    () => splitChatTerminal(terminalActionContext, terminalState, "right"),
-    [terminalActionContext, terminalState],
-  );
-  const splitTerminalDown = useCallback(
-    () => splitChatTerminal(terminalActionContext, terminalState, "down"),
-    [terminalActionContext, terminalState],
-  );
-  const splitTerminalUp = useCallback(
-    () => splitChatTerminal(terminalActionContext, terminalState, "up"),
-    [terminalActionContext, terminalState],
-  );
-  const createNewTerminal = useCallback(
-    () => createChatTerminal(terminalActionContext),
-    [terminalActionContext],
-  );
-  const createNewTerminalTab = useCallback(
-    (targetId: string) => createChatTerminalTab(terminalActionContext, targetId),
-    [terminalActionContext],
-  );
-  const createTerminalFromShortcut = useCallback(
-    () => createChatTerminalFromShortcut(terminalActionContext, terminalState),
-    [terminalActionContext, terminalState],
-  );
-  const moveTerminalToNewGroup = useCallback(
-    (terminalId: string) => moveChatTerminalToNewGroup(terminalActionContext, terminalId),
-    [terminalActionContext],
-  );
-  const openNewFullWidthTerminal = useCallback(
-    () => openNewFullWidthChatTerminal(terminalActionContext),
-    [terminalActionContext],
-  );
-  const activateTerminal = useCallback(
-    (terminalId: string) => activateChatTerminal(terminalActionContext, terminalId),
-    [terminalActionContext],
-  );
-  const closeTerminal = useCallback(
-    (terminalId: string) => closeChatTerminal(terminalActionContext, terminalState, terminalId),
-    [terminalActionContext, terminalState],
-  );
+  const setTerminalOpen = (open: boolean) => setChatTerminalOpen(terminalActionContext, open);
+  const setTerminalWorkspaceTab = (tab: "terminal" | "chat") =>
+    setChatTerminalWorkspaceTab(terminalActionContext, tab);
+  const setTerminalHeight = (height: number) =>
+    setChatTerminalHeight(terminalActionContext, height);
+  const toggleTerminalVisibility = () =>
+    toggleChatTerminalVisibility(terminalActionContext, terminalState);
+  const expandTerminalWorkspace = () => expandChatTerminalWorkspace(terminalActionContext);
+  const collapseTerminalWorkspace = () => collapseChatTerminalWorkspace(terminalActionContext);
+  const splitTerminalLeft = () => splitChatTerminal(terminalActionContext, terminalState, "left");
+  const splitTerminalRight = () => splitChatTerminal(terminalActionContext, terminalState, "right");
+  const splitTerminalDown = () => splitChatTerminal(terminalActionContext, terminalState, "down");
+  const splitTerminalUp = () => splitChatTerminal(terminalActionContext, terminalState, "up");
+  const createNewTerminal = () => createChatTerminal(terminalActionContext);
+  const createNewTerminalTab = (targetId: string) =>
+    createChatTerminalTab(terminalActionContext, targetId);
+  const createTerminalFromShortcut = () =>
+    createChatTerminalFromShortcut(terminalActionContext, terminalState);
+  const moveTerminalToNewGroup = (terminalId: string) =>
+    moveChatTerminalToNewGroup(terminalActionContext, terminalId);
+  const openNewFullWidthTerminal = () => openNewFullWidthChatTerminal(terminalActionContext);
+  const activateTerminal = (terminalId: string) =>
+    activateChatTerminal(terminalActionContext, terminalId);
+  const closeTerminal = (terminalId: string) =>
+    closeChatTerminal(terminalActionContext, terminalState, terminalId);
   const handleTerminalSessionExited = useCallback(
     (terminalId: string) =>
       handleChatTerminalSessionExited(terminalActionContext, terminalState, terminalId),
     [terminalActionContext, terminalState],
   );
-  const closeActiveWorkspaceView = useCallback(
-    () => closeActiveChatTerminalWorkspaceView(terminalActionContext, terminalState),
-    [terminalActionContext, terminalState],
-  );
+  const closeActiveWorkspaceView = () =>
+    closeActiveChatTerminalWorkspaceView(terminalActionContext, terminalState);
 
   const projectInstructions = useProjectPreferencesStore((state) =>
     activeProjectId ? (state.instructionsByProjectId[activeProjectId] ?? "") : "",
@@ -362,10 +308,7 @@ export function useChatWorkspaceController({
     useMemo(() => createThreadLineageSelector(activeThread?.id ?? null), [activeThread?.id]),
   );
 
-  const threadBreadcrumbs = useMemo(
-    () => buildThreadBreadcrumbs(threadLineageThreads, activeThread),
-    [activeThread, threadLineageThreads],
-  );
+  const threadBreadcrumbs = buildThreadBreadcrumbs(threadLineageThreads, activeThread);
 
   const resolvedThreadEnvMode = isServerThread
     ? (activeThread?.envMode ?? null)
@@ -394,119 +337,96 @@ export function useChatWorkspaceController({
       ? GIT_WORKING_TREE_DIFF_LIVE_REFETCH_INTERVAL_MS
       : false;
 
-  const activeThreadAssociatedWorktree = useMemo(
-    () =>
-      deriveAssociatedWorktreeMetadata({
-        branch: activeThread?.branch ?? null,
-        worktreePath: activeThread?.worktreePath ?? null,
-        ...(activeThread?.associatedWorktreePath !== undefined
-          ? { associatedWorktreePath: activeThread.associatedWorktreePath }
-          : {}),
-        ...(activeThread?.associatedWorktreeBranch !== undefined
-          ? { associatedWorktreeBranch: activeThread.associatedWorktreeBranch }
-          : {}),
-        ...(activeThread?.associatedWorktreeRef !== undefined
-          ? { associatedWorktreeRef: activeThread.associatedWorktreeRef }
-          : {}),
-      }),
-    [activeThread],
-  );
+  const activeThreadAssociatedWorktree = deriveAssociatedWorktreeMetadata({
+    branch: activeThread?.branch ?? null,
+    worktreePath: activeThread?.worktreePath ?? null,
+    ...(activeThread?.associatedWorktreePath !== undefined
+      ? { associatedWorktreePath: activeThread.associatedWorktreePath }
+      : {}),
+    ...(activeThread?.associatedWorktreeBranch !== undefined
+      ? { associatedWorktreeBranch: activeThread.associatedWorktreeBranch }
+      : {}),
+    ...(activeThread?.associatedWorktreeRef !== undefined
+      ? { associatedWorktreeRef: activeThread.associatedWorktreeRef }
+      : {}),
+  });
 
-  const openPullRequestDialog = useCallback(
-    (reference?: string) => {
-      if (!canCheckoutPullRequestIntoThread) {
-        return;
-      }
-      setPullRequestDialogState({
-        initialReference: reference ?? null,
-        key: Date.now(),
-      });
-      setComposerHighlightedItemId(null);
-    },
-    [setComposerHighlightedItemId, setPullRequestDialogState, canCheckoutPullRequestIntoThread],
-  );
+  const openPullRequestDialog = (reference?: string) => {
+    if (!canCheckoutPullRequestIntoThread) {
+      return;
+    }
+    setPullRequestDialogState({
+      initialReference: reference ?? null,
+      key: Date.now(),
+    });
+    setComposerHighlightedItemId(null);
+  };
 
-  const closePullRequestDialog = useCallback(() => {
+  const closePullRequestDialog = () => {
     setPullRequestDialogState(null);
-  }, [setPullRequestDialogState]);
+  };
 
-  const openOrReuseProjectDraftThread = useCallback(
-    async (input: {
-      branch: string;
-      worktreePath: string | null;
-      envMode: DraftThreadEnvMode;
-      lastKnownPr?: Thread["lastKnownPr"];
-    }) => {
-      if (!activeProject) {
-        throw new Error("No active project is available for this pull request.");
+  const openOrReuseProjectDraftThread = async (input: {
+    branch: string;
+    worktreePath: string | null;
+    envMode: DraftThreadEnvMode;
+    lastKnownPr?: Thread["lastKnownPr"];
+  }) => {
+    if (!activeProject) {
+      throw new Error("No active project is available for this pull request.");
+    }
+    const draftThreadContext = {
+      branch: input.branch,
+      worktreePath: input.worktreePath,
+      envMode: input.envMode,
+      ...(input.lastKnownPr !== undefined ? { lastKnownPr: input.lastKnownPr } : {}),
+    };
+    const storedDraftThread = getDraftThreadByProjectId(activeProject.id);
+    if (storedDraftThread) {
+      setDraftThreadContext(storedDraftThread.threadId, draftThreadContext);
+      setProjectDraftThreadId(activeProject.id, storedDraftThread.threadId, draftThreadContext);
+      if (storedDraftThread.threadId !== threadId) {
+        await navigate({
+          to: "/$threadId",
+          params: { threadId: storedDraftThread.threadId },
+        });
       }
-      const draftThreadContext = {
-        branch: input.branch,
-        worktreePath: input.worktreePath,
-        envMode: input.envMode,
-        ...(input.lastKnownPr !== undefined ? { lastKnownPr: input.lastKnownPr } : {}),
-      };
-      const storedDraftThread = getDraftThreadByProjectId(activeProject.id);
-      if (storedDraftThread) {
-        setDraftThreadContext(storedDraftThread.threadId, draftThreadContext);
-        setProjectDraftThreadId(activeProject.id, storedDraftThread.threadId, draftThreadContext);
-        if (storedDraftThread.threadId !== threadId) {
-          await navigate({
-            to: "/$threadId",
-            params: { threadId: storedDraftThread.threadId },
-          });
-        }
-        return;
-      }
+      return;
+    }
 
-      const activeDraftThread = getDraftThread(threadId);
-      if (!isServerThread && activeDraftThread?.projectId === activeProject.id) {
-        setDraftThreadContext(threadId, draftThreadContext);
-        setProjectDraftThreadId(activeProject.id, threadId, draftThreadContext);
-        return;
-      }
+    const activeDraftThread = getDraftThread(threadId);
+    if (!isServerThread && activeDraftThread?.projectId === activeProject.id) {
+      setDraftThreadContext(threadId, draftThreadContext);
+      setProjectDraftThreadId(activeProject.id, threadId, draftThreadContext);
+      return;
+    }
 
-      clearProjectDraftThreadId(activeProject.id);
-      const nextThreadId = newThreadId();
-      setProjectDraftThreadId(activeProject.id, nextThreadId, {
-        ...draftThreadContext,
-        createdAt: new Date().toISOString(),
-        runtimeMode: DEFAULT_RUNTIME_MODE,
-        interactionMode: DEFAULT_INTERACTION_MODE,
-      });
-      await navigate({
-        to: "/$threadId",
-        params: { threadId: nextThreadId },
-      });
-    },
-    [
-      activeProject,
-      clearProjectDraftThreadId,
-      getDraftThread,
-      getDraftThreadByProjectId,
-      isServerThread,
-      navigate,
-      setDraftThreadContext,
-      setProjectDraftThreadId,
-      threadId,
-    ],
-  );
+    clearProjectDraftThreadId(activeProject.id);
+    const nextThreadId = newThreadId();
+    setProjectDraftThreadId(activeProject.id, nextThreadId, {
+      ...draftThreadContext,
+      createdAt: new Date().toISOString(),
+      runtimeMode: DEFAULT_RUNTIME_MODE,
+      interactionMode: DEFAULT_INTERACTION_MODE,
+    });
+    await navigate({
+      to: "/$threadId",
+      params: { threadId: nextThreadId },
+    });
+  };
 
-  const handlePreparedPullRequestThread = useCallback(
-    async (input: {
-      branch: string;
-      worktreePath: string | null;
-      pullRequest: NonNullable<Thread["lastKnownPr"]>;
-    }) => {
-      await openOrReuseProjectDraftThread({
-        branch: input.branch,
-        worktreePath: input.worktreePath,
-        envMode: input.worktreePath ? "worktree" : "local",
-        lastKnownPr: input.pullRequest,
-      });
-    },
-    [openOrReuseProjectDraftThread],
-  );
+  const handlePreparedPullRequestThread = async (input: {
+    branch: string;
+    worktreePath: string | null;
+    pullRequest: NonNullable<Thread["lastKnownPr"]>;
+  }) => {
+    await openOrReuseProjectDraftThread({
+      branch: input.branch,
+      worktreePath: input.worktreePath,
+      envMode: input.worktreePath ? "worktree" : "local",
+      lastKnownPr: input.pullRequest,
+    });
+  };
 
   useEffect(() => {
     if (!activeThread?.id) return;

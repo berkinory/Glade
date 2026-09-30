@@ -1,7 +1,5 @@
 import {
-  useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type MouseEvent,
@@ -569,16 +567,10 @@ export function SidebarActivityView({
     () => new Map(),
   );
 
-  const isRealProject = useCallback(
-    (projectId: ProjectId) => projectById.get(projectId)?.kind === "project",
-    [projectById],
-  );
+  const isRealProject = (projectId: ProjectId) => projectById.get(projectId)?.kind === "project";
 
-  const scopeOptions = useMemo(
-    () => collectActivityScopeOptions(threads, isRealProject),
-    [isRealProject, threads],
-  );
-  const unreadThreads = useMemo(() => collectUnreadActivityThreads(threads), [threads]);
+  const scopeOptions = collectActivityScopeOptions(threads, isRealProject);
+  const unreadThreads = collectUnreadActivityThreads(threads);
 
   const { scope: activeScope, projectFilterIds } = resolveActivityScope(
     scopeSelection,
@@ -588,34 +580,24 @@ export function SidebarActivityView({
     if (scopeSelection !== activeScope) setScopeSelection(activeScope);
   }, [activeScope, scopeSelection]);
 
-  const model = useMemo(
-    () =>
-      buildActivityViewModel({
-        threads,
-        pinnedThreadIdSet,
-        settledOverrideByThreadId,
-        projectFilterIds,
-      }),
-    [pinnedThreadIdSet, projectFilterIds, settledOverrideByThreadId, threads],
-  );
+  const model = buildActivityViewModel({
+    threads,
+    pinnedThreadIdSet,
+    settledOverrideByThreadId,
+    projectFilterIds,
+  });
   const scopedPinnedThreads = model.pinned;
 
   const nowMs = Math.floor(Date.now() / 60_000) * 60_000;
-  const { recent: recentThreads, rest: remainingActiveThreads } = useMemo(
-    () => splitRecentActivityThreads(model.active, { nowMs }),
-    [model.active, nowMs],
+  const { recent: recentThreads, rest: remainingActiveThreads } = splitRecentActivityThreads(
+    model.active,
+    { nowMs },
   );
-  const dateBuckets = useMemo(
-    () => splitActivityThreadsByDateBucket(remainingActiveThreads, nowMs),
-    [nowMs, remainingActiveThreads],
-  );
-  const projectGroups = useMemo(
-    () =>
-      groupMode === "project"
-        ? groupActivityThreadsByProject(model.active, isRealProject)
-        : EMPTY_PROJECT_GROUPS,
-    [groupMode, isRealProject, model.active],
-  );
+  const dateBuckets = splitActivityThreadsByDateBucket(remainingActiveThreads, nowMs);
+  const projectGroups =
+    groupMode === "project"
+      ? groupActivityThreadsByProject(model.active, isRealProject)
+      : EMPTY_PROJECT_GROUPS;
 
   const earlierPaging = resolveSidebarThreadListPaging({
     totalCount: dateBuckets.earlier.length,
@@ -643,40 +625,24 @@ export function SidebarActivityView({
     };
   });
 
-  const visibleThreadIds = useMemo(
-    () =>
-      collectVisibleActivityThreadIds({
-        groupMode,
-        pinnedOpen,
-        pinned: scopedPinnedThreads,
-        recent: recentThreads,
-        today: dateBuckets.today,
-        yesterday: dateBuckets.yesterday,
-        earlierOpen,
-        earlier: dateBuckets.earlier.slice(0, earlierPaging.previewLimit),
-        projectGroups: pagedProjectGroups.map((group) => group.threads),
-        settledOpen,
-        settled: model.settled.slice(0, settledPaging.previewLimit),
-      }),
-    [
-      dateBuckets.earlier,
-      dateBuckets.today,
-      dateBuckets.yesterday,
-      earlierOpen,
-      earlierPaging.previewLimit,
-      groupMode,
-      model.settled,
-      pagedProjectGroups,
-      pinnedOpen,
-      recentThreads,
-      scopedPinnedThreads,
-      settledOpen,
-      settledPaging.previewLimit,
-    ],
-  );
+  const visibleThreadIds = collectVisibleActivityThreadIds({
+    groupMode,
+    pinnedOpen,
+    pinned: scopedPinnedThreads,
+    recent: recentThreads,
+    today: dateBuckets.today,
+    yesterday: dateBuckets.yesterday,
+    earlierOpen,
+    earlier: dateBuckets.earlier.slice(0, earlierPaging.previewLimit),
+    projectGroups: pagedProjectGroups.map((group) => group.threads),
+    settledOpen,
+    settled: model.settled.slice(0, settledPaging.previewLimit),
+  });
   const visibleThreadIdsFingerprint = visibleThreadIds.join("\0");
   const visibleThreadIdsRef = useRef(visibleThreadIds);
-  visibleThreadIdsRef.current = visibleThreadIds;
+  useEffect(() => {
+    visibleThreadIdsRef.current = visibleThreadIds;
+  }, [visibleThreadIds]);
   useEffect(() => {
     onVisibleThreadIdsChange(visibleThreadIdsRef.current);
   }, [onVisibleThreadIdsChange, visibleThreadIdsFingerprint]);

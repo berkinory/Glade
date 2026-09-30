@@ -18,6 +18,7 @@ import { pluralize } from "@glade/shared/text/text";
 import { isGenericToolTitle } from "./lib/toolCallLabel.descriptors";
 import { normalizeCompactToolLabel } from "./lib/toolCallLabel.presentations";
 import { computerToolName, describeComputerToolCall } from "./lib/computerToolPresentation";
+import { compactPath } from "./lib/toolCallLabel.shell";
 import type { WorkLogEntry, WorkLogSubagent, WorkLogSubagentAction } from "./workLog.types";
 
 export function asComputerPermissions(value: unknown): readonly ComputerPermission[] {
@@ -373,12 +374,7 @@ export function extractToolCommand(
     rawCommandCandidates
       .map((candidate) => normalizeCommandValue(candidate))
       .find((candidate) => candidate !== null) ?? null;
-  const command =
-    normalizeCommandValue(commandAction?.command) ??
-    rawCommandCandidates
-      .map((candidate) => normalizeCommandValue(candidate))
-      .find((candidate) => candidate !== null) ??
-    null;
+  const command = normalizeCommandValue(commandAction?.command) ?? rawCommand;
   return {
     command,
     rawCommand: rawCommand && rawCommand !== command ? rawCommand : null,
@@ -476,12 +472,12 @@ function normalizeCommandActionType(value: string): string {
 }
 
 function commandActionTarget(action: CommandAction): string | undefined {
-  return action.name ?? compactWorkLogPath(action.path) ?? undefined;
+  return action.name ?? (action.path ? compactPath(action.path) : null) ?? undefined;
 }
 
 function commandActionSearchPreview(action: CommandAction): string | undefined {
   const query = action.query ?? action.name;
-  const path = compactWorkLogPath(action.path);
+  const path = action.path ? compactPath(action.path) : null;
   if (query && path) {
     return `for ${query} in ${path}`;
   }
@@ -495,24 +491,7 @@ function commandActionSearchPreview(action: CommandAction): string | undefined {
 }
 
 function commandActionListPreview(action: CommandAction): string | undefined {
-  return compactWorkLogPath(action.path) ?? action.name ?? undefined;
-}
-
-function compactWorkLogPath(value: string | undefined): string | null {
-  if (!value) {
-    return null;
-  }
-  if (value === ".") {
-    return "current directory";
-  }
-  if (value === "..") {
-    return "parent directory";
-  }
-  const parts = value.split(/[\\/]/).filter(Boolean);
-  if (parts.length <= 2) {
-    return value;
-  }
-  return parts.slice(-2).join("/");
+  return (action.path ? compactPath(action.path) : null) ?? action.name ?? undefined;
 }
 
 export function extractToolName(payload: Record<string, unknown> | null): string | null {

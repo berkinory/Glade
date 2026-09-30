@@ -142,10 +142,7 @@ export function useChatProviderController({
 
   const [openAgentActivityId, setOpenAgentActivityId] = useState<string | null>(null);
 
-  const agentActivityTimelineState = useMemo(
-    () => deriveAgentActivityTimelineState(workLogEntries),
-    [workLogEntries],
-  );
+  const agentActivityTimelineState = deriveAgentActivityTimelineState(workLogEntries);
 
   const openAgentActivityDetail = openAgentActivityId
     ? (agentActivityTimelineState.detailById.get(openAgentActivityId) ?? null)
@@ -203,7 +200,7 @@ export function useChatProviderController({
     setComposerHighlightedItemId,
   });
 
-  const activeProposedPlan = useMemo(() => {
+  const activeProposedPlan = (() => {
     if (!latestTurnSettled) {
       return null;
     }
@@ -211,7 +208,7 @@ export function useChatProviderController({
       activeThread?.proposedPlans ?? [],
       activeLatestTurn?.turnId ?? null,
     );
-  }, [activeLatestTurn?.turnId, activeThread?.proposedPlans, latestTurnSettled]);
+  })();
 
   const sidebarPlanSourceThreadId = !latestTurnSettled
     ? (activeLatestTurn?.sourceProposedPlan?.threadId ?? null)
@@ -229,41 +226,30 @@ export function useChatProviderController({
 
   const sidebarPlanSourceThreadProposedPlans = sidebarPlanSourceThread?.proposedPlans;
 
-  const sidebarProposedPlan = useMemo(
-    () =>
-      findSidebarProposedPlan({
-        threads: [
-          ...(activeThreadPlanThreadId
-            ? [
-                {
-                  id: activeThreadPlanThreadId,
-                  proposedPlans: activeThreadPlanProposedPlans ?? [],
-                },
-              ]
-            : []),
-          ...(sidebarPlanSourceThreadPlanId &&
-          sidebarPlanSourceThreadPlanId !== activeThreadPlanThreadId
-            ? [
-                {
-                  id: sidebarPlanSourceThreadPlanId,
-                  proposedPlans: sidebarPlanSourceThreadProposedPlans ?? [],
-                },
-              ]
-            : []),
-        ],
-        latestTurn: activeLatestTurn,
-        latestTurnSettled,
-        threadId: activeThreadPlanThreadId,
-      }),
-    [
-      activeLatestTurn,
-      activeThreadPlanProposedPlans,
-      activeThreadPlanThreadId,
-      latestTurnSettled,
-      sidebarPlanSourceThreadPlanId,
-      sidebarPlanSourceThreadProposedPlans,
+  const sidebarProposedPlan = findSidebarProposedPlan({
+    threads: [
+      ...(activeThreadPlanThreadId
+        ? [
+            {
+              id: activeThreadPlanThreadId,
+              proposedPlans: activeThreadPlanProposedPlans ?? [],
+            },
+          ]
+        : []),
+      ...(sidebarPlanSourceThreadPlanId &&
+      sidebarPlanSourceThreadPlanId !== activeThreadPlanThreadId
+        ? [
+            {
+              id: sidebarPlanSourceThreadPlanId,
+              proposedPlans: sidebarPlanSourceThreadProposedPlans ?? [],
+            },
+          ]
+        : []),
     ],
-  );
+    latestTurn: activeLatestTurn,
+    latestTurnSettled,
+    threadId: activeThreadPlanThreadId,
+  });
 
   const planSidebarLabel = sidebarProposedPlan ? "Plan details" : "Tasks";
 
@@ -271,7 +257,7 @@ export function useChatProviderController({
 
   const planSidebarToggleTitle = `${planSidebarOpen ? "Hide" : "Show"} ${planSidebarLabel.toLowerCase()} sidebar`;
 
-  const activeTaskList = useMemo((): ActiveTaskListState | null => {
+  const activeTaskList = ((): ActiveTaskListState | null => {
     if (showDebugTaskBanner) {
       return {
         createdAt: new Date().toISOString(),
@@ -300,15 +286,11 @@ export function useChatProviderController({
     return latestTurnSettled
       ? null
       : deriveActiveTaskListState(threadActivities, activeLatestTurn?.turnId);
-  }, [activeLatestTurn?.turnId, latestTurnSettled, showDebugTaskBanner, threadActivities]);
+  })();
 
-  const activeBackgroundTasks = useMemo(
-    () =>
-      latestTurnSettled
-        ? null
-        : deriveActiveBackgroundTasksState(threadActivities, activeLatestTurn?.turnId ?? undefined),
-    [activeLatestTurn?.turnId, latestTurnSettled, threadActivities],
-  );
+  const activeBackgroundTasks = latestTurnSettled
+    ? null
+    : deriveActiveBackgroundTasksState(threadActivities, activeLatestTurn?.turnId ?? undefined);
 
   const showPlanFollowUpPrompt =
     pendingUserInputs.length === 0 &&
@@ -350,7 +332,7 @@ export function useChatProviderController({
   // fall back to it.
   const activeTurnIdForTranscript = activeThread?.session?.activeTurnId ?? activeLatestTurnId;
 
-  const editableUserMessageId = useMemo(() => {
+  const editableUserMessageId = (() => {
     if (!activeThread || !isServerThread) {
       return null;
     }
@@ -362,7 +344,7 @@ export function useChatProviderController({
           : null,
     });
     return editTarget.editable ? (editTarget.messageId as MessageId) : null;
-  }, [activeThread, isServerThread]);
+  })();
 
   const hasQueueableLiveTurn = hasLiveTurn && activeThread?.session?.activeTurnId != null;
 

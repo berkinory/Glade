@@ -1,7 +1,8 @@
+import { useCallback } from "react";
 import { MessageId } from "@glade/contracts/core/baseSchemas";
 import { resolveThreadWorkspaceState } from "@glade/shared/threads/threadEnvironment";
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { resolveDefaultEnvironmentPanelOpen } from "../../ChatView.logic.session";
 import {
   resolveEnvironmentPanelOpen,
@@ -183,27 +184,18 @@ export function useChatEnvironmentController({
     boolean | null
   >(null);
 
-  const updateEnvironmentPanelPreference = useCallback(
-    (open: boolean, persist: boolean) => {
-      const update = resolveEnvironmentPanelPreferenceUpdate({ open, persist });
-      setEnvironmentPanelPreferenceOpen(update.userPreferenceOpen);
-      if (update.settingsDefaultOpen !== null) {
-        updateSettings({ environmentPanelDefaultOpen: update.settingsDefaultOpen });
-      }
-    },
+  const updateEnvironmentPanelPreference = (open: boolean, persist: boolean) => {
+    const update = resolveEnvironmentPanelPreferenceUpdate({ open, persist });
+    setEnvironmentPanelPreferenceOpen(update.userPreferenceOpen);
+    if (update.settingsDefaultOpen !== null) {
+      updateSettings({ environmentPanelDefaultOpen: update.settingsDefaultOpen });
+    }
+  };
 
-    [setEnvironmentPanelPreferenceOpen, updateSettings],
-  );
+  const setEnvironmentPanelOpenPreference = (open: boolean) =>
+    updateEnvironmentPanelPreference(open, true);
 
-  const setEnvironmentPanelOpenPreference = useCallback(
-    (open: boolean) => updateEnvironmentPanelPreference(open, true),
-    [updateEnvironmentPanelPreference],
-  );
-
-  const closeEnvironmentPanelAfterAction = useCallback(
-    () => updateEnvironmentPanelPreference(false, false),
-    [updateEnvironmentPanelPreference],
-  );
+  const closeEnvironmentPanelAfterAction = () => updateEnvironmentPanelPreference(false, false);
 
   const environmentPanelOpen = resolveEnvironmentPanelOpen({
     defaultOpen: environmentDefaultOpen,
@@ -225,9 +217,9 @@ export function useChatEnvironmentController({
 
   const setRightDockOpen = useRightDockStore((store) => store.setDockOpen);
 
-  const toggleRightDock = useCallback(() => {
+  const toggleRightDock = () => {
     setRightDockOpen(threadId, !rightDockOpen);
-  }, [rightDockOpen, setRightDockOpen, threadId]);
+  };
 
   const terminalDrawerProps = {
     threadId,
@@ -308,7 +300,7 @@ export function useChatEnvironmentController({
     setThreadError,
   });
 
-  const stopActiveThreadSession = useCallback(async () => {
+  const stopActiveThreadSession = async () => {
     const api = readNativeApi();
     if (
       !api ||
@@ -326,7 +318,7 @@ export function useChatEnvironmentController({
       threadId: activeThread.id,
       createdAt: new Date().toISOString(),
     });
-  }, [activeThread, isServerThread]);
+  };
 
   const { handoffBusy, onHandoffToLocal } = useThreadWorkspaceHandoff({
     activeProject,
@@ -346,7 +338,7 @@ export function useChatEnvironmentController({
     persistThreadSettingsForNextTurn,
   } = useChatRuntimeModes({ session, workspace, provider, discovery, composer });
 
-  const togglePlanSidebar = useCallback(() => {
+  const togglePlanSidebar = () => {
     setPlanSidebarOpen((open) => {
       if (open) {
         planSidebarDismissedForTurnRef.current =
@@ -356,12 +348,7 @@ export function useChatEnvironmentController({
       }
       return !open;
     });
-  }, [
-    setPlanSidebarOpen,
-    planSidebarDismissedForTurnRef,
-    activeTaskList?.turnId,
-    sidebarProposedPlan?.turnId,
-  ]);
+  };
 
   const {
     showScrollToBottom,
@@ -687,30 +674,17 @@ export function useChatEnvironmentController({
     worktreePath: resolvedThreadWorktreePath,
   });
 
-  const turnDispatchSettings = useMemo<TurnDispatchSettings>(
-    () => ({
-      modelSelection: selectedModelSelection,
-      providerOptions: providerOptionsForDispatch,
-      enableComputerControl,
-      computerControlMode,
-      computerControlGeneration,
-      assistantDeliveryMode,
-      runtimeMode,
-      interactionMode,
-      envMode,
-    }),
-    [
-      assistantDeliveryMode,
-      computerControlGeneration,
-      computerControlMode,
-      enableComputerControl,
-      envMode,
-      interactionMode,
-      providerOptionsForDispatch,
-      runtimeMode,
-      selectedModelSelection,
-    ],
-  );
+  const turnDispatchSettings: TurnDispatchSettings = {
+    modelSelection: selectedModelSelection,
+    providerOptions: providerOptionsForDispatch,
+    enableComputerControl,
+    computerControlMode,
+    computerControlGeneration,
+    assistantDeliveryMode,
+    runtimeMode,
+    interactionMode,
+    envMode,
+  };
 
   useEffect(() => {
     if (!activeThreadId) return;

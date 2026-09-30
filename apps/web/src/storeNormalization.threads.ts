@@ -17,6 +17,7 @@ import {
   deepEqualJson,
   normalizeModelSelection,
   resolveCreateBranchFlowCompletedMerge,
+  threadSessionsEqual,
 } from "./storeNormalization.shared";
 import type {
   ProjectNormalizationInput,
@@ -58,16 +59,7 @@ export function normalizeThreadSession(
     updatedAt: incoming.updatedAt,
     ...(nextLastError ? { lastError: nextLastError } : {}),
   } satisfies NonNullable<Thread["session"]>;
-  if (
-    previous &&
-    previous.provider === nextSession.provider &&
-    previous.status === nextSession.status &&
-    previous.orchestrationStatus === nextSession.orchestrationStatus &&
-    previous.activeTurnId === nextSession.activeTurnId &&
-    previous.createdAt === nextSession.createdAt &&
-    previous.updatedAt === nextSession.updatedAt &&
-    previous.lastError === nextSession.lastError
-  ) {
+  if (previous && threadSessionsEqual(previous, nextSession)) {
     return previous;
   }
   return nextSession;

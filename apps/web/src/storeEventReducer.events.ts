@@ -585,26 +585,6 @@ export function applyOrchestrationEvent(
       );
 
     case "thread.user-input-response-requested":
-      return applyThreadUpdate(
-        state,
-        event.payload.threadId,
-        (thread) => {
-          const pendingInteractions = markInteractionResponding(thread, event);
-          return {
-            ...thread,
-            ...(pendingInteractions !== undefined ? { pendingInteractions } : {}),
-            updatedAt:
-              (thread.updatedAt ?? thread.createdAt) > event.payload.createdAt
-                ? thread.updatedAt
-                : event.payload.createdAt,
-          };
-        },
-        {
-          ...options,
-          updateSidebarSummary: true,
-        },
-      );
-
     case "thread.approval-response-requested":
       return applyThreadUpdate(
         state,

@@ -1,7 +1,6 @@
 import { useChatThreadContext } from "./ChatThreadContext";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { Dispatch, SetStateAction } from "react";
-import { useCallback } from "react";
 import { formatComposerMentionToken } from "~/lib/composerMentions";
 import {
   collapseExpandedComposerCursor,
@@ -93,67 +92,54 @@ export function useChatComposerEditing({
     setPendingUserInputAnswersByRequestId,
   } = provider;
   const { scheduleComposerFocus } = composer;
-  const applyPromptReplacement = useCallback(
-    (
-      rangeStart: number,
-      rangeEnd: number,
-      replacement: string,
-      options?: { expectedText?: string; cursorOffset?: number },
-    ): number | false => {
-      const next = replaceComposerPromptRange(
-        promptRef.current,
-        rangeStart,
-        rangeEnd,
-        replacement,
-        options,
+  const applyPromptReplacement = (
+    rangeStart: number,
+    rangeEnd: number,
+    replacement: string,
+    options?: { expectedText?: string; cursorOffset?: number },
+  ): number | false => {
+    const next = replaceComposerPromptRange(
+      promptRef.current,
+      rangeStart,
+      rangeEnd,
+      replacement,
+      options,
+    );
+    if (next === false) return false;
+    const nextCursor = next.cursor;
+    promptRef.current = next.text;
+    const activePendingQuestion = activePendingProgress?.activeQuestion;
+    if (activePendingQuestion && activePendingUserInputKey) {
+      const nextDraftAnswer = setPendingUserInputCustomAnswer(
+        pendingUserInputAnswersByRequestIdRef.current[activePendingUserInputKey]?.[
+          activePendingQuestion.id
+        ],
+        next.text,
       );
-      if (next === false) return false;
-      const nextCursor = next.cursor;
-      promptRef.current = next.text;
-      const activePendingQuestion = activePendingProgress?.activeQuestion;
-      if (activePendingQuestion && activePendingUserInputKey) {
-        const nextDraftAnswer = setPendingUserInputCustomAnswer(
-          pendingUserInputAnswersByRequestIdRef.current[activePendingUserInputKey]?.[
-            activePendingQuestion.id
-          ],
-          next.text,
-        );
-        const nextRequestAnswers = {
-          ...pendingUserInputAnswersByRequestIdRef.current[activePendingUserInputKey],
-          [activePendingQuestion.id]: nextDraftAnswer,
-        };
-        pendingUserInputAnswersByRequestIdRef.current = {
-          ...pendingUserInputAnswersByRequestIdRef.current,
-          [activePendingUserInputKey]: nextRequestAnswers,
-        };
-        setPendingUserInputAnswersByRequestId((existing) => ({
-          ...existing,
-          [activePendingUserInputKey]: nextRequestAnswers,
-        }));
-      } else {
-        setPrompt(next.text);
-      }
-      setComposerCursor(nextCursor);
-      setComposerTrigger(next.trigger);
-      window.requestAnimationFrame(() => {
-        composerEditorRef.current?.focusAt(nextCursor);
-      });
-      return nextCursor;
-    },
-    [
-      promptRef,
-      setComposerCursor,
-      setComposerTrigger,
-      composerEditorRef,
-      activePendingProgress?.activeQuestion,
-      activePendingUserInputKey,
-      setPrompt,
-      setPendingUserInputAnswersByRequestId,
-      pendingUserInputAnswersByRequestIdRef,
-    ],
-  );
+      const nextRequestAnswers = {
+        ...pendingUserInputAnswersByRequestIdRef.current[activePendingUserInputKey],
+        [activePendingQuestion.id]: nextDraftAnswer,
+      };
+      pendingUserInputAnswersByRequestIdRef.current = {
+        ...pendingUserInputAnswersByRequestIdRef.current,
+        [activePendingUserInputKey]: nextRequestAnswers,
+      };
+      setPendingUserInputAnswersByRequestId((existing) => ({
+        ...existing,
+        [activePendingUserInputKey]: nextRequestAnswers,
+      }));
+    } else {
+      setPrompt(next.text);
+    }
+    setComposerCursor(nextCursor);
+    setComposerTrigger(next.trigger);
+    window.requestAnimationFrame(() => {
+      composerEditorRef.current?.focusAt(nextCursor);
+    });
+    return nextCursor;
+  };
 
-  const readComposerSnapshot = useCallback((): {
+  const readComposerSnapshot = (): {
     value: string;
     cursor: number;
     expandedCursor: number;
@@ -171,9 +157,9 @@ export function useChatComposerEditing({
       selectionCollapsed: true,
       terminalContextIds: composerTerminalContexts.map((context) => context.id),
     };
-  }, [promptRef, composerEditorRef, composerCursor, composerTerminalContexts]);
+  };
 
-  const resolveActiveComposerTrigger = useCallback((): {
+  const resolveActiveComposerTrigger = (): {
     snapshot: {
       value: string;
       cursor: number;
@@ -187,82 +173,61 @@ export function useChatComposerEditing({
       snapshot,
       trigger: detectComposerTrigger(snapshot.value, snapshot.expandedCursor),
     };
-  }, [readComposerSnapshot]);
+  };
 
-  const applyComposerTriggerReplacement = useCallback(
-    (params: {
-      snapshot: { value: string };
-      trigger: ComposerTrigger;
-      base: string;
-      cursorOffset?: number;
-      onApplied?: () => void;
-    }): number | false => {
-      const { snapshot, trigger, base, cursorOffset, onApplied } = params;
-      const applied = replaceComposerTrigger(
-        snapshot,
-        trigger,
-        base,
-        applyPromptReplacement,
-        cursorOffset,
-      );
-      if (applied !== false) {
-        onApplied?.();
-        setComposerHighlightedItemId(null);
-      }
-      return applied;
-    },
-    [setComposerHighlightedItemId, applyPromptReplacement],
-  );
-
-  const handleSelectLocalDirectoryMention = useCallback(
-    (absolutePath: string) => {
-      const { snapshot, trigger } = resolveActiveComposerTrigger();
-      if (!trigger) return;
-      applyComposerTriggerReplacement({
-        snapshot,
-        trigger,
-        base: `${formatComposerMentionToken(absolutePath)} `,
-      });
-    },
-    [applyComposerTriggerReplacement, resolveActiveComposerTrigger],
-  );
-
-  const handleNavigateLocalFolder = useCallback(
-    (absolutePath: string) => {
-      const { snapshot, trigger } = resolveActiveComposerTrigger();
-      if (!trigger) return;
-      const base = composerFolderMention(absolutePath);
-      applyComposerTriggerReplacement({ snapshot, trigger, base });
-    },
-    [applyComposerTriggerReplacement, resolveActiveComposerTrigger],
-  );
-
-  const setComposerPromptValue = useCallback(
-    (nextPrompt: string) => {
-      setRestoredQueuedSourceProposedPlan(threadId, null);
-      promptRef.current = nextPrompt;
-      setPrompt(nextPrompt);
-      const nextCursor = collapseExpandedComposerCursor(nextPrompt, nextPrompt.length);
-      setComposerCursor(nextCursor);
-      setComposerTrigger(detectComposerTrigger(nextPrompt, nextPrompt.length));
+  const applyComposerTriggerReplacement = (params: {
+    snapshot: { value: string };
+    trigger: ComposerTrigger;
+    base: string;
+    cursorOffset?: number;
+    onApplied?: () => void;
+  }): number | false => {
+    const { snapshot, trigger, base, cursorOffset, onApplied } = params;
+    const applied = replaceComposerTrigger(
+      snapshot,
+      trigger,
+      base,
+      applyPromptReplacement,
+      cursorOffset,
+    );
+    if (applied !== false) {
+      onApplied?.();
       setComposerHighlightedItemId(null);
-      window.requestAnimationFrame(() => {
-        composerEditorRef.current?.focusAt(nextCursor);
-      });
-    },
-    [
-      promptRef,
-      setComposerCursor,
-      setComposerTrigger,
-      composerEditorRef,
-      setComposerHighlightedItemId,
-      setPrompt,
-      setRestoredQueuedSourceProposedPlan,
-      threadId,
-    ],
-  );
+    }
+    return applied;
+  };
 
-  const clearComposerSlashDraft = useCallback(() => {
+  const handleSelectLocalDirectoryMention = (absolutePath: string) => {
+    const { snapshot, trigger } = resolveActiveComposerTrigger();
+    if (!trigger) return;
+    applyComposerTriggerReplacement({
+      snapshot,
+      trigger,
+      base: `${formatComposerMentionToken(absolutePath)} `,
+    });
+  };
+
+  const handleNavigateLocalFolder = (absolutePath: string) => {
+    const { snapshot, trigger } = resolveActiveComposerTrigger();
+    if (!trigger) return;
+    const base = composerFolderMention(absolutePath);
+    applyComposerTriggerReplacement({ snapshot, trigger, base });
+  };
+
+  const setComposerPromptValue = (nextPrompt: string) => {
+    setRestoredQueuedSourceProposedPlan(threadId, null);
+    promptRef.current = nextPrompt;
+    setPrompt(nextPrompt);
+    const nextCursor = collapseExpandedComposerCursor(nextPrompt, nextPrompt.length);
+    setComposerCursor(nextCursor);
+    setComposerTrigger(detectComposerTrigger(nextPrompt, nextPrompt.length));
+    setComposerHighlightedItemId(null);
+    window.requestAnimationFrame(() => {
+      composerEditorRef.current?.focusAt(nextCursor);
+    });
+  };
+
+  const clearComposerSlashDraft = () => {
     promptRef.current = "";
     setRestoredQueuedSourceProposedPlan(threadId, null);
     clearComposerDraftContent(threadId);
@@ -270,16 +235,7 @@ export function useChatComposerEditing({
     setComposerCursor(0);
     setComposerTrigger(null);
     scheduleComposerFocus();
-  }, [
-    promptRef,
-    setComposerCursor,
-    setComposerTrigger,
-    setComposerHighlightedItemId,
-    clearComposerDraftContent,
-    scheduleComposerFocus,
-    setRestoredQueuedSourceProposedPlan,
-    threadId,
-  ]);
+  };
   return {
     applyPromptReplacement,
     resolveActiveComposerTrigger,

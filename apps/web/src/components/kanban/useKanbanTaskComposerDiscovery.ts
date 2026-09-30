@@ -1,14 +1,5 @@
-import type { ProjectEntry } from "@glade/contracts/workspace/project";
-import type {
-  ProviderAgentDescriptor,
-  ProviderMentionReference,
-  ProviderNativeCommandDescriptor,
-  ProviderPluginDescriptor,
-  ProviderSkillDescriptor,
-} from "@glade/contracts/provider/providerDiscovery";
+import type { ProviderAgentDescriptor } from "@glade/contracts/provider/providerDiscovery";
 import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
-import { useQuery } from "@tanstack/react-query";
-import { useDebouncedValue } from "@tanstack/react-pacer";
 
 import type { ComposerCommandItem } from "~/components/chat/ComposerCommandMenu";
 import type { ComposerTrigger } from "~/composer-logic";
@@ -16,32 +7,13 @@ import {
   buildSearchableModelOptions,
   useComposerCommandMenuItems,
 } from "~/hooks/useComposerCommandMenuItems";
-import { getLocalFolderBrowseRootPath, isLocalFolderMentionQuery } from "~/lib/localFolderMentions";
+import { useComposerDiscoveryData } from "~/hooks/useComposerDiscoveryData";
+import { getLocalFolderBrowseRootPath } from "~/lib/localFolderMentions";
 import { resolveProviderDiscoveryCwd } from "~/lib/providerDiscovery";
-import {
-  providerCommandsQueryOptions,
-  providerComposerCapabilitiesQueryOptions,
-  providerPluginsQueryOptions,
-  providerSkillsQueryOptions,
-  supportsNativeSlashCommandDiscovery,
-  supportsPluginDiscovery,
-  supportsSkillDiscovery,
-} from "~/lib/providerDiscoveryReactQuery";
-import { projectSearchEntriesQueryOptions } from "~/lib/projectReactQuery";
 import { isMacNavigatorPlatform } from "~/lib/utils";
-import { AVAILABLE_PROVIDER_OPTIONS } from "../chat/ProviderModelPicker";
 import type { ProviderModelOption } from "../../providerModelOptions";
+import { AVAILABLE_PROVIDER_OPTIONS } from "../chat/ProviderModelPicker";
 
-type ComposerPluginSuggestion = {
-  plugin: ProviderPluginDescriptor;
-  mention: ProviderMentionReference;
-};
-
-const COMPOSER_PATH_QUERY_DEBOUNCE_MS = 120;
-const EMPTY_PROJECT_ENTRIES: ProjectEntry[] = [];
-const EMPTY_PROVIDER_NATIVE_COMMANDS: ProviderNativeCommandDescriptor[] = [];
-const EMPTY_PROVIDER_SKILLS: ProviderSkillDescriptor[] = [];
-const EMPTY_COMPOSER_PLUGIN_SUGGESTIONS: ComposerPluginSuggestion[] = [];
 const KANBAN_SUPPORTED_APP_SLASH_COMMANDS = new Set(["clear", "default", "plan"]);
 
 interface UseKanbanTaskComposerDiscoveryInput {
@@ -67,124 +39,42 @@ export function useKanbanTaskComposerDiscovery(input: UseKanbanTaskComposerDisco
   readonly composerMenuItems: ComposerCommandItem[];
   readonly isComposerMenuLoading: boolean;
 } {
-  const {
-    composerTrigger,
-    selectedProvider,
-    modelOptionsByProvider,
-    selectedRuntimeAgents,
-    selectedProjectCwd,
-    serverCwd,
-    serverHomeDir,
-    scratchThreadId,
-    hiddenProviders,
-    providerOrder,
-  } = input;
-
-  const localFolderBrowseRootPath = getLocalFolderBrowseRootPath(
-    serverHomeDir,
-    isMacNavigatorPlatform(),
-  );
-  const composerTriggerKind = composerTrigger?.kind ?? null;
-  const mentionTriggerQuery = composerTrigger?.kind === "mention" ? composerTrigger.query : "";
-  const isMentionTrigger = composerTriggerKind === "mention";
-  const isLocalFolderBrowserOpen =
-    isMentionTrigger && isLocalFolderMentionQuery(mentionTriggerQuery);
-  const isSkillTrigger = composerTriggerKind === "skill";
-  const [debouncedPathQuery, composerPathQueryDebouncer] = useDebouncedValue(
-    mentionTriggerQuery,
-    { wait: COMPOSER_PATH_QUERY_DEBOUNCE_MS },
-    (debouncerState) => ({ isPending: debouncerState.isPending }),
-  );
-  const effectiveMentionQuery = mentionTriggerQuery.length > 0 ? debouncedPathQuery : "";
-  const composerSkillCwd = resolveProviderDiscoveryCwd({
-    activeThreadWorktreePath: null,
-    activeProjectCwd: selectedProjectCwd,
-    serverCwd,
+  const discovery = useComposerDiscoveryData({
+    threadId: input.scratchThreadId,
+    provider: input.selectedProvider,
+    trigger: input.composerTrigger,
+    providerCwd: resolveProviderDiscoveryCwd({
+      activeThreadWorktreePath: null,
+      activeProjectCwd: input.selectedProjectCwd,
+      serverCwd: input.serverCwd,
+    }),
+    workspaceCwd: input.selectedProjectCwd,
+    browseLocalFolders: true,
   });
-
-  const providerComposerCapabilitiesQuery = useQuery(
-    providerComposerCapabilitiesQueryOptions(selectedProvider),
-  );
-  const providerCommandsQuery = useQuery(
-    providerCommandsQueryOptions({
-      provider: selectedProvider,
-      cwd: composerSkillCwd,
-      threadId: scratchThreadId,
-      enabled:
-        (composerTriggerKind === "slash-command" || composerTriggerKind === "slash-model") &&
-        supportsNativeSlashCommandDiscovery(providerComposerCapabilitiesQuery.data) &&
-        composerSkillCwd !== null,
-    }),
-  );
-  const canDiscoverProviderSkills = supportsSkillDiscovery(providerComposerCapabilitiesQuery.data);
-  const providerSkillsQuery = useQuery(
-    providerSkillsQueryOptions({
-      provider: selectedProvider,
-      cwd: composerSkillCwd,
-      threadId: scratchThreadId,
-      enabled:
-        (isSkillTrigger || composerTriggerKind === "slash-command") &&
-        canDiscoverProviderSkills &&
-        composerSkillCwd !== null,
-    }),
-  );
-  const providerPluginsQuery = useQuery(
-    providerPluginsQueryOptions({
-      provider: selectedProvider,
-      cwd: composerSkillCwd,
-      threadId: scratchThreadId,
-      enabled:
-        supportsPluginDiscovery(providerComposerCapabilitiesQuery.data) &&
-        composerSkillCwd !== null,
-    }),
-  );
-  const workspaceEntriesQuery = useQuery(
-    projectSearchEntriesQueryOptions({
-      cwd: selectedProjectCwd,
-      query: effectiveMentionQuery,
-      enabled: isMentionTrigger && !isLocalFolderBrowserOpen,
-      limit: 80,
-    }),
-  );
-
-  const workspaceEntries = workspaceEntriesQuery.data?.entries ?? EMPTY_PROJECT_ENTRIES;
-  const providerPlugins =
-    providerPluginsQuery.data?.marketplaces.flatMap((marketplace) =>
-      marketplace.plugins.map((plugin) => ({
-        plugin,
-        mention: {
-          name: plugin.name,
-          path: `plugin://${plugin.name}@${marketplace.name}`,
-        } satisfies ProviderMentionReference,
-      })),
-    ) ?? EMPTY_COMPOSER_PLUGIN_SUGGESTIONS;
-  const providerNativeCommands =
-    providerCommandsQuery.data?.commands ?? EMPTY_PROVIDER_NATIVE_COMMANDS;
-  const providerSkills = providerSkillsQuery.data?.skills ?? EMPTY_PROVIDER_SKILLS;
   const searchableModelOptions = buildSearchableModelOptions({
     providerOptions: AVAILABLE_PROVIDER_OPTIONS,
-    modelOptionsByProvider,
-    providerOrder,
-    hiddenProviders,
-    protectedProviders: [selectedProvider],
+    modelOptionsByProvider: input.modelOptionsByProvider,
+    providerOrder: input.providerOrder,
+    hiddenProviders: input.hiddenProviders,
+    protectedProviders: [input.selectedProvider],
   });
-  const dynamicAgents = selectedRuntimeAgents.map((agent) =>
+  const dynamicAgents = input.selectedRuntimeAgents.map((agent) =>
     agent.description
       ? { name: agent.name, displayName: agent.displayName, description: agent.description }
       : { name: agent.name, displayName: agent.displayName },
   );
   const rawComposerMenuItems = useComposerCommandMenuItems({
-    trigger: { composerTrigger },
+    trigger: { composerTrigger: input.composerTrigger },
     catalog: {
-      provider: selectedProvider,
-      providerPlugins,
-      providerNativeCommands,
-      providerSkills,
+      provider: input.selectedProvider,
+      providerPlugins: discovery.providerPlugins,
+      providerNativeCommands: discovery.providerNativeCommands,
+      providerSkills: discovery.providerSkills,
       searchableModelOptions,
-      providerArtifacts: providerCommandsQuery.data?.artifacts,
+      providerArtifacts: discovery.providerArtifacts,
       dynamicAgents,
     },
-    references: { workspaceEntries },
+    references: { workspaceEntries: discovery.workspaceEntries },
     commands: {
       supportsFastSlashCommand: false,
       canOfferCompactCommand: false,
@@ -198,29 +88,15 @@ export function useKanbanTaskComposerDiscovery(input: UseKanbanTaskComposerDisco
     (item) =>
       item.type !== "slash-command" || KANBAN_SUPPORTED_APP_SLASH_COMMANDS.has(item.command),
   );
-  const isComposerMenuLoading =
-    (composerTriggerKind === "mention" &&
-      ((mentionTriggerQuery.length > 0 && composerPathQueryDebouncer.state.isPending) ||
-        workspaceEntriesQuery.isLoading ||
-        workspaceEntriesQuery.isFetching ||
-        providerPluginsQuery.isLoading ||
-        providerPluginsQuery.isFetching)) ||
-    (composerTriggerKind === "slash-command" &&
-      (providerCommandsQuery.isLoading ||
-        providerCommandsQuery.isFetching ||
-        providerSkillsQuery.isLoading ||
-        providerSkillsQuery.isFetching)) ||
-    (composerTriggerKind === "skill" &&
-      (providerComposerCapabilitiesQuery.isLoading ||
-        providerComposerCapabilitiesQuery.isFetching ||
-        providerSkillsQuery.isLoading ||
-        providerSkillsQuery.isFetching));
 
   return {
-    mentionTriggerQuery,
-    isLocalFolderBrowserOpen,
-    localFolderBrowseRootPath,
+    mentionTriggerQuery: discovery.mentionTriggerQuery,
+    isLocalFolderBrowserOpen: discovery.isLocalFolderBrowserOpen,
+    localFolderBrowseRootPath: getLocalFolderBrowseRootPath(
+      input.serverHomeDir,
+      isMacNavigatorPlatform(),
+    ),
     composerMenuItems,
-    isComposerMenuLoading,
+    isComposerMenuLoading: discovery.isComposerMenuLoading,
   };
 }

@@ -3,7 +3,7 @@ import { useSplitViewStore } from "../splitViewStore";
 import { useSidebarStateStore } from "../sidebarStateStore";
 import { pinActionLabel } from "~/lib/pin";
 import { THREAD_CONTEXT_MENU_ICONS } from "~/lib/contextMenuIcons";
-import { useCallback, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { type OrchestrationThreadPullRequest } from "@glade/contracts/orchestration/threadEntities";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { parseGitHubRepositoryNameWithOwnerFromPullRequestUrl } from "@glade/shared/git/githubRepository";
@@ -70,500 +70,451 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
 
   const setLastThreadRoute = useSidebarStateStore((state) => state.setLastThreadRoute);
 
-  const handleImportThread = useCallback(
-    async (provider: ImportProviderKind, externalId: string) => {
-      const api = readNativeApi();
-      if (!api) {
-        throw new Error("The app server is unavailable.");
-      }
+  const handleImportThread = async (provider: ImportProviderKind, externalId: string) => {
+    const api = readNativeApi();
+    if (!api) {
+      throw new Error("The app server is unavailable.");
+    }
 
-      if (!currentProjectShortcutTargetId) {
-        throw new Error("Add a project before importing a thread.");
-      }
+    if (!currentProjectShortcutTargetId) {
+      throw new Error("Add a project before importing a thread.");
+    }
 
-      const activeProject = projects.find(
-        (project) => project.id === currentProjectShortcutTargetId,
-      );
-      if (!activeProject) {
-        throw new Error("The target project could not be resolved.");
-      }
+    const activeProject = projects.find((project) => project.id === currentProjectShortcutTargetId);
+    if (!activeProject) {
+      throw new Error("The target project could not be resolved.");
+    }
 
-      const providerDefaultModel = getDefaultModel(provider);
-      let modelSelection =
-        activeProject.defaultModelSelection?.provider === provider
-          ? activeProject.defaultModelSelection
-          : providerDefaultModel
-            ? {
-                provider,
-                model: providerDefaultModel,
-              }
-            : null;
-      if (!modelSelection) {
-        throw new Error("Select a model before importing a thread.");
-      }
-      const threadId = newThreadId();
-      const createdAt = new Date().toISOString();
-      const trimmedExternalId = externalId.trim();
-      const suffix = trimmedExternalId.slice(-8);
-      const title =
-        provider === "claudeAgent"
-          ? `Imported Claude session${suffix ? ` ${suffix}` : ""}`
-          : `Imported Codex thread${suffix ? ` ${suffix}` : ""}`;
-      let createdThread = false;
+    const providerDefaultModel = getDefaultModel(provider);
+    let modelSelection =
+      activeProject.defaultModelSelection?.provider === provider
+        ? activeProject.defaultModelSelection
+        : providerDefaultModel
+          ? {
+              provider,
+              model: providerDefaultModel,
+            }
+          : null;
+    if (!modelSelection) {
+      throw new Error("Select a model before importing a thread.");
+    }
+    const threadId = newThreadId();
+    const createdAt = new Date().toISOString();
+    const trimmedExternalId = externalId.trim();
+    const suffix = trimmedExternalId.slice(-8);
+    const title =
+      provider === "claudeAgent"
+        ? `Imported Claude session${suffix ? ` ${suffix}` : ""}`
+        : `Imported Codex thread${suffix ? ` ${suffix}` : ""}`;
+    let createdThread = false;
 
-      try {
-        await api.orchestration.dispatchCommand({
-          type: "thread.create",
-          commandId: newCommandId(),
-          threadId,
-          projectId: activeProject.id,
-          title,
-          modelSelection,
-          runtimeMode: "full-access",
-          interactionMode: "default",
-          envMode: resolveSidebarNewThreadEnvMode({
-            defaultEnvMode: appSettings.defaultThreadEnvMode,
-          }),
-          branch: null,
-          worktreePath: null,
-          createdAt,
-        });
-        createdThread = true;
-
-        await api.orchestration.importThread({
-          threadId,
-          externalId: trimmedExternalId,
-        });
-
-        await navigate({
-          to: "/$threadId",
-          params: { threadId },
-        });
-      } catch (error) {
-        if (createdThread) {
-          await api.orchestration
-            .dispatchCommand({
-              type: "thread.delete",
-              commandId: newCommandId(),
-              threadId,
-            })
-            .catch(() => undefined);
-        }
-        throw error;
-      }
-    },
-    [appSettings.defaultThreadEnvMode, currentProjectShortcutTargetId, navigate, projects],
-  );
-
-  const commitRename = useCallback(
-    async (threadId: ThreadId, newTitle: string, originalTitle: string) => {
-      const outcome = await dispatchThreadRename({
+    try {
+      await api.orchestration.dispatchCommand({
+        type: "thread.create",
+        commandId: newCommandId(),
         threadId,
-        newTitle,
-        unchangedTitles: [originalTitle],
-      }).catch((error) => {
-        toastManager.add({
-          type: "error",
-          title: "Failed to rename thread",
-          description: error instanceof Error ? error.message : "An error occurred.",
-        });
-        return null;
+        projectId: activeProject.id,
+        title,
+        modelSelection,
+        runtimeMode: "full-access",
+        interactionMode: "default",
+        envMode: resolveSidebarNewThreadEnvMode({
+          defaultEnvMode: appSettings.defaultThreadEnvMode,
+        }),
+        branch: null,
+        worktreePath: null,
+        createdAt,
+      });
+      createdThread = true;
+
+      await api.orchestration.importThread({
+        threadId,
+        externalId: trimmedExternalId,
       });
 
-      if (outcome === "empty") {
-        toastManager.add({
-          type: "warning",
-          title: "Thread title cannot be empty",
-        });
+      await navigate({
+        to: "/$threadId",
+        params: { threadId },
+      });
+    } catch (error) {
+      if (createdThread) {
+        await api.orchestration
+          .dispatchCommand({
+            type: "thread.delete",
+            commandId: newCommandId(),
+            threadId,
+          })
+          .catch(() => undefined);
       }
-    },
-    [],
-  );
+      throw error;
+    }
+  };
 
-  const openRenameThreadDialog = useCallback(
-    (threadId: ThreadId) => {
-      setRenameDialogThreadId(threadId);
-    },
-    [setRenameDialogThreadId],
-  );
+  const commitRename = async (threadId: ThreadId, newTitle: string, originalTitle: string) => {
+    const outcome = await dispatchThreadRename({
+      threadId,
+      newTitle,
+      unchangedTitles: [originalTitle],
+    }).catch((error) => {
+      toastManager.add({
+        type: "error",
+        title: "Failed to rename thread",
+        description: error instanceof Error ? error.message : "An error occurred.",
+      });
+      return null;
+    });
 
-  const handleThreadRenamePointerUp = useCallback(
-    (event: ReactPointerEvent<HTMLElement>, threadId: ThreadId) => {
-      if (event.pointerType !== "touch" && event.pointerType !== "pen") {
-        return;
-      }
+    if (outcome === "empty") {
+      toastManager.add({
+        type: "warning",
+        title: "Thread title cannot be empty",
+      });
+    }
+  };
 
-      const previousTap = lastThreadRenameTapRef.current;
-      const currentTapTimestamp = event.timeStamp;
-      if (
-        previousTap &&
-        previousTap.threadId === threadId &&
-        currentTapTimestamp - previousTap.timestamp <= 320
-      ) {
-        event.preventDefault();
-        event.stopPropagation();
-        lastThreadRenameTapRef.current = null;
-        openRenameThreadDialog(threadId);
-        return;
-      }
+  const openRenameThreadDialog = (threadId: ThreadId) => {
+    setRenameDialogThreadId(threadId);
+  };
 
-      lastThreadRenameTapRef.current = {
-        threadId,
-        timestamp: currentTapTimestamp,
-      };
-    },
-    [openRenameThreadDialog, lastThreadRenameTapRef],
-  );
+  const handleThreadRenamePointerUp = (
+    event: ReactPointerEvent<HTMLElement>,
+    threadId: ThreadId,
+  ) => {
+    if (event.pointerType !== "touch" && event.pointerType !== "pen") {
+      return;
+    }
+
+    const previousTap = lastThreadRenameTapRef.current;
+    const currentTapTimestamp = event.timeStamp;
+    if (
+      previousTap &&
+      previousTap.threadId === threadId &&
+      currentTapTimestamp - previousTap.timestamp <= 320
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      lastThreadRenameTapRef.current = null;
+      openRenameThreadDialog(threadId);
+      return;
+    }
+
+    lastThreadRenameTapRef.current = {
+      threadId,
+      timestamp: currentTapTimestamp,
+    };
+  };
 
   const { prewarmThreadDetail: prewarmThreadDetailForIntent } = useThreadDetailPrewarm();
 
-  const primeThreadActivation = useCallback(
-    (event: ReactPointerEvent<HTMLElement>, threadId: ThreadId) => {
-      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
-        return;
-      }
-      prewarmThreadDetailForIntent(threadId);
-      setOptimisticActiveThreadId(threadId);
-    },
-    [prewarmThreadDetailForIntent, setOptimisticActiveThreadId],
-  );
+  const primeThreadActivation = (event: ReactPointerEvent<HTMLElement>, threadId: ThreadId) => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return;
+    }
+    prewarmThreadDetailForIntent(threadId);
+    setOptimisticActiveThreadId(threadId);
+  };
 
   const copyThreadIdToClipboard = useCopyThreadIdToClipboard();
 
   const copyPathToClipboard = useCopyPathToClipboard();
 
-  const handleThreadContextMenu = useCallback(
-    async (
-      threadId: ThreadId,
-      position: { x: number; y: number },
-      options?: {
-        extraItems?: Array<{
-          id: "return-to-single-chat";
-          label: string;
-        }>;
-        onExtraAction?: (itemId: "return-to-single-chat") => Promise<void> | void;
-      },
-    ) => {
-      const api = readNativeApi();
-      if (!api) return;
-      const thread = getThreadFromState(useStore.getState(), threadId);
-      if (!thread) return;
-      const threadSummary = sidebarThreadSummaryById[threadId];
-      const isPinned = pinnedThreadIdSet.has(threadId);
-      const threadStatus = threadSummary ? resolveThreadStatusForSidebar(threadSummary) : null;
-      const threadWorkspacePath = resolveThreadWorkspaceCwd({
-        projectCwd: projectCwdById.get(thread.projectId) ?? null,
-        envMode: thread.envMode,
-        worktreePath: thread.worktreePath,
-      });
-      const clicked = await api.contextMenu.show(
-        [
-          { id: "rename", label: "Rename thread", icon: THREAD_CONTEXT_MENU_ICONS.rename },
-          {
-            id: "toggle-pin",
-            label: pinActionLabel("thread", isPinned),
-            icon: THREAD_CONTEXT_MENU_ICONS.pin,
-          },
-          ...(threadStatus?.dismissible
-            ? [
-                {
-                  id: "clear-notification",
-                  label: "Clear notification",
-                  icon: THREAD_CONTEXT_MENU_ICONS.clearNotification,
-                },
-              ]
-            : []),
-          { id: "mark-unread", label: "Mark unread", icon: THREAD_CONTEXT_MENU_ICONS.markUnread },
-          {
-            id: "copy-path",
-            label: "Copy Path",
-            icon: THREAD_CONTEXT_MENU_ICONS.copy,
-            separatorBefore: true,
-          },
-          ...(threadWorkspacePath
-            ? [
-                {
-                  id: "open-path-in-terminal",
-                  label: "Open Path in Terminal",
-                  icon: THREAD_CONTEXT_MENU_ICONS.openInTerminal,
-                },
-              ]
-            : []),
-          { id: "copy-thread-id", label: "Copy Thread ID", icon: THREAD_CONTEXT_MENU_ICONS.copy },
-          ...(options?.extraItems ?? []),
+  const handleThreadContextMenu = async (
+    threadId: ThreadId,
+    position: { x: number; y: number },
+    options?: {
+      extraItems?: Array<{
+        id: "return-to-single-chat";
+        label: string;
+      }>;
+      onExtraAction?: (itemId: "return-to-single-chat") => Promise<void> | void;
+    },
+  ) => {
+    const api = readNativeApi();
+    if (!api) return;
+    const thread = getThreadFromState(useStore.getState(), threadId);
+    if (!thread) return;
+    const threadSummary = sidebarThreadSummaryById[threadId];
+    const isPinned = pinnedThreadIdSet.has(threadId);
+    const threadStatus = threadSummary ? resolveThreadStatusForSidebar(threadSummary) : null;
+    const threadWorkspacePath = resolveThreadWorkspaceCwd({
+      projectCwd: projectCwdById.get(thread.projectId) ?? null,
+      envMode: thread.envMode,
+      worktreePath: thread.worktreePath,
+    });
+    const clicked = await api.contextMenu.show(
+      [
+        { id: "rename", label: "Rename thread", icon: THREAD_CONTEXT_MENU_ICONS.rename },
+        {
+          id: "toggle-pin",
+          label: pinActionLabel("thread", isPinned),
+          icon: THREAD_CONTEXT_MENU_ICONS.pin,
+        },
+        ...(threadStatus?.dismissible
+          ? [
+              {
+                id: "clear-notification",
+                label: "Clear notification",
+                icon: THREAD_CONTEXT_MENU_ICONS.clearNotification,
+              },
+            ]
+          : []),
+        { id: "mark-unread", label: "Mark unread", icon: THREAD_CONTEXT_MENU_ICONS.markUnread },
+        {
+          id: "copy-path",
+          label: "Copy Path",
+          icon: THREAD_CONTEXT_MENU_ICONS.copy,
+          separatorBefore: true,
+        },
+        ...(threadWorkspacePath
+          ? [
+              {
+                id: "open-path-in-terminal",
+                label: "Open Path in Terminal",
+                icon: THREAD_CONTEXT_MENU_ICONS.openInTerminal,
+              },
+            ]
+          : []),
+        { id: "copy-thread-id", label: "Copy Thread ID", icon: THREAD_CONTEXT_MENU_ICONS.copy },
+        ...(options?.extraItems ?? []),
 
-          ...(thread.parentThreadId
-            ? []
-            : [
-                {
-                  id: "archive",
-                  label: "Archive",
-                  icon: THREAD_CONTEXT_MENU_ICONS.archive,
-                  separatorBefore: true,
-                },
-              ]),
-          {
-            id: "delete",
-            label: "Delete",
-            icon: THREAD_CONTEXT_MENU_ICONS.delete,
-            destructive: true,
-            ...(thread.parentThreadId ? { separatorBefore: true } : {}),
-          },
-        ],
-        position,
+        ...(thread.parentThreadId
+          ? []
+          : [
+              {
+                id: "archive",
+                label: "Archive",
+                icon: THREAD_CONTEXT_MENU_ICONS.archive,
+                separatorBefore: true,
+              },
+            ]),
+        {
+          id: "delete",
+          label: "Delete",
+          icon: THREAD_CONTEXT_MENU_ICONS.delete,
+          destructive: true,
+          ...(thread.parentThreadId ? { separatorBefore: true } : {}),
+        },
+      ],
+      position,
+    );
+
+    if (clicked === "rename") {
+      openRenameThreadDialog(threadId);
+      return;
+    }
+    if (clicked === "toggle-pin") {
+      toggleThreadPinned(threadId);
+      return;
+    }
+
+    if (clicked === "mark-unread") {
+      clearDismissedThreadStatus(threadId);
+      markThreadUnread(threadId);
+      return;
+    }
+    if (clicked === "clear-notification") {
+      clearThreadNotification(threadId);
+      return;
+    }
+    if (clicked === "copy-path") {
+      if (!threadWorkspacePath) {
+        toastManager.add({
+          type: "error",
+          title: "Path unavailable",
+          description: "This thread does not have a workspace path to copy.",
+        });
+        return;
+      }
+      copyPathToClipboard(threadWorkspacePath);
+      return;
+    }
+    if (clicked === "open-path-in-terminal") {
+      if (!threadWorkspacePath) {
+        toastManager.add({
+          type: "error",
+          title: "Path unavailable",
+          description: "This thread does not have a workspace path to open.",
+        });
+        return;
+      }
+      await navigate({ to: "/$threadId", params: { threadId } });
+      const terminalStore = useTerminalStateStore.getState();
+      const currentTerminalState = selectThreadTerminalState(
+        terminalStore.terminalStateByThreadId,
+        threadId,
       );
 
-      if (clicked === "rename") {
-        openRenameThreadDialog(threadId);
-        return;
-      }
-      if (clicked === "toggle-pin") {
-        toggleThreadPinned(threadId);
-        return;
+      // Reuse the active terminal when one is already open and idle so that repeatedly invoking "Open
+      // Path in Terminal" doesn't pile up tabs.
+      const candidateBaseTerminalId =
+        currentTerminalState.activeTerminalId ||
+        currentTerminalState.terminalIds[0] ||
+        DEFAULT_THREAD_TERMINAL_ID;
+      const baseTerminalAvailable =
+        currentTerminalState.terminalOpen &&
+        currentTerminalState.terminalIds.includes(candidateBaseTerminalId) &&
+        !currentTerminalState.runningTerminalIds.includes(candidateBaseTerminalId);
+      const shouldCreateNewTerminal = !baseTerminalAvailable;
+      const targetTerminalId = shouldCreateNewTerminal
+        ? `terminal-${randomUUID()}`
+        : candidateBaseTerminalId;
+
+      const previousTerminalOpen = currentTerminalState.terminalOpen;
+      const previousPresentationMode = currentTerminalState.presentationMode;
+      const previousActiveTerminalId = currentTerminalState.activeTerminalId;
+
+      terminalStore.setTerminalPresentationMode(threadId, "drawer");
+      terminalStore.setTerminalOpen(threadId, true);
+      if (shouldCreateNewTerminal) {
+        terminalStore.newTerminal(threadId, targetTerminalId);
+      } else {
+        terminalStore.setActiveTerminal(threadId, targetTerminalId);
       }
 
-      if (clicked === "mark-unread") {
-        clearDismissedThreadStatus(threadId);
-        markThreadUnread(threadId);
-        return;
-      }
-      if (clicked === "clear-notification") {
-        clearThreadNotification(threadId);
-        return;
-      }
-      if (clicked === "copy-path") {
-        if (!threadWorkspacePath) {
-          toastManager.add({
-            type: "error",
-            title: "Path unavailable",
-            description: "This thread does not have a workspace path to copy.",
-          });
-          return;
-        }
-        copyPathToClipboard(threadWorkspacePath);
-        return;
-      }
-      if (clicked === "open-path-in-terminal") {
-        if (!threadWorkspacePath) {
-          toastManager.add({
-            type: "error",
-            title: "Path unavailable",
-            description: "This thread does not have a workspace path to open.",
-          });
-          return;
-        }
-        await navigate({ to: "/$threadId", params: { threadId } });
-        const terminalStore = useTerminalStateStore.getState();
-        const currentTerminalState = selectThreadTerminalState(
-          terminalStore.terminalStateByThreadId,
-          threadId,
-        );
-
-        // Reuse the active terminal when one is already open and idle so that repeatedly invoking "Open
-        // Path in Terminal" doesn't pile up tabs.
-        const candidateBaseTerminalId =
-          currentTerminalState.activeTerminalId ||
-          currentTerminalState.terminalIds[0] ||
-          DEFAULT_THREAD_TERMINAL_ID;
-        const baseTerminalAvailable =
-          currentTerminalState.terminalOpen &&
-          currentTerminalState.terminalIds.includes(candidateBaseTerminalId) &&
-          !currentTerminalState.runningTerminalIds.includes(candidateBaseTerminalId);
-        const shouldCreateNewTerminal = !baseTerminalAvailable;
-        const targetTerminalId = shouldCreateNewTerminal
-          ? `terminal-${randomUUID()}`
-          : candidateBaseTerminalId;
-
-        const previousTerminalOpen = currentTerminalState.terminalOpen;
-        const previousPresentationMode = currentTerminalState.presentationMode;
-        const previousActiveTerminalId = currentTerminalState.activeTerminalId;
-
-        terminalStore.setTerminalPresentationMode(threadId, "drawer");
-        terminalStore.setTerminalOpen(threadId, true);
+      const cdCommand = `cd ${quotePosixShellArgument(threadWorkspacePath)}\r`;
+      try {
         if (shouldCreateNewTerminal) {
-          terminalStore.newTerminal(threadId, targetTerminalId);
-        } else {
-          terminalStore.setActiveTerminal(threadId, targetTerminalId);
-        }
-
-        const cdCommand = `cd ${quotePosixShellArgument(threadWorkspacePath)}\r`;
-        try {
-          if (shouldCreateNewTerminal) {
-            await api.terminal.open({
-              threadId,
-              terminalId: targetTerminalId,
-              cwd: threadWorkspacePath,
-            });
-          }
-
-          await api.terminal.write({
+          await api.terminal.open({
             threadId,
             terminalId: targetTerminalId,
-            data: cdCommand,
-          });
-        } catch (error) {
-          if (shouldCreateNewTerminal) {
-            terminalStore.closeTerminal(threadId, targetTerminalId);
-          }
-          terminalStore.setTerminalPresentationMode(threadId, previousPresentationMode);
-          terminalStore.setTerminalOpen(threadId, previousTerminalOpen);
-          if (previousActiveTerminalId) {
-            terminalStore.setActiveTerminal(threadId, previousActiveTerminalId);
-          }
-          toastManager.add({
-            type: "error",
-            title: "Unable to open terminal",
-            description:
-              error instanceof Error ? error.message : "The terminal could not be opened.",
+            cwd: threadWorkspacePath,
           });
         }
-        return;
-      }
-      if (clicked === "copy-thread-id") {
-        copyThreadIdToClipboard(threadId);
-        return;
-      }
-      if (clicked === "return-to-single-chat") {
-        await options?.onExtraAction?.("return-to-single-chat");
-        return;
-      }
-      if (clicked === "archive") {
-        await confirmAndArchiveThread(threadId);
-        return;
-      }
-      if (clicked !== "delete") return;
-      await confirmAndDeleteThread(threadId);
-    },
-    [
-      confirmAndArchiveThread,
-      confirmAndDeleteThread,
-      copyPathToClipboard,
-      copyThreadIdToClipboard,
-      clearDismissedThreadStatus,
-      clearThreadNotification,
-      markThreadUnread,
-      navigate,
-      openRenameThreadDialog,
-      pinnedThreadIdSet,
-      projectCwdById,
-      resolveThreadStatusForSidebar,
-      sidebarThreadSummaryById,
-      toggleThreadPinned,
-    ],
-  );
 
-  const handleMultiSelectContextMenu = useCallback(
-    async (position: { x: number; y: number }) => {
-      const api = readNativeApi();
-      if (!api) return;
-      const ids = [...selectedThreadIds];
-      if (ids.length === 0) return;
-      const count = ids.length;
+        await api.terminal.write({
+          threadId,
+          terminalId: targetTerminalId,
+          data: cdCommand,
+        });
+      } catch (error) {
+        if (shouldCreateNewTerminal) {
+          terminalStore.closeTerminal(threadId, targetTerminalId);
+        }
+        terminalStore.setTerminalPresentationMode(threadId, previousPresentationMode);
+        terminalStore.setTerminalOpen(threadId, previousTerminalOpen);
+        if (previousActiveTerminalId) {
+          terminalStore.setActiveTerminal(threadId, previousActiveTerminalId);
+        }
+        toastManager.add({
+          type: "error",
+          title: "Unable to open terminal",
+          description: error instanceof Error ? error.message : "The terminal could not be opened.",
+        });
+      }
+      return;
+    }
+    if (clicked === "copy-thread-id") {
+      copyThreadIdToClipboard(threadId);
+      return;
+    }
+    if (clicked === "return-to-single-chat") {
+      await options?.onExtraAction?.("return-to-single-chat");
+      return;
+    }
+    if (clicked === "archive") {
+      await confirmAndArchiveThread(threadId);
+      return;
+    }
+    if (clicked !== "delete") return;
+    await confirmAndDeleteThread(threadId);
+  };
 
-      const clicked = await api.contextMenu.show(
-        [
-          {
-            id: "mark-unread",
-            label: `Mark unread (${count})`,
-            icon: THREAD_CONTEXT_MENU_ICONS.markUnread,
-          },
-          { id: "archive", label: `Archive (${count})`, icon: THREAD_CONTEXT_MENU_ICONS.archive },
-          {
-            id: "delete",
-            label: `Delete (${count})`,
-            icon: THREAD_CONTEXT_MENU_ICONS.delete,
-            destructive: true,
-          },
-        ],
-        position,
+  const handleMultiSelectContextMenu = async (position: { x: number; y: number }) => {
+    const api = readNativeApi();
+    if (!api) return;
+    const ids = [...selectedThreadIds];
+    if (ids.length === 0) return;
+    const count = ids.length;
+
+    const clicked = await api.contextMenu.show(
+      [
+        {
+          id: "mark-unread",
+          label: `Mark unread (${count})`,
+          icon: THREAD_CONTEXT_MENU_ICONS.markUnread,
+        },
+        { id: "archive", label: `Archive (${count})`, icon: THREAD_CONTEXT_MENU_ICONS.archive },
+        {
+          id: "delete",
+          label: `Delete (${count})`,
+          icon: THREAD_CONTEXT_MENU_ICONS.delete,
+          destructive: true,
+        },
+      ],
+      position,
+    );
+
+    if (clicked === "mark-unread") {
+      for (const id of ids) {
+        clearDismissedThreadStatus(id);
+        markThreadUnread(id);
+      }
+      clearSelection();
+      return;
+    }
+
+    if (clicked === "archive") {
+      // Subagent threads follow their parent's archive cascade. Archiving one directly would strand it,
+      // and archiving it after its parent in this loop would fail the not-archived invariant.
+      const archiveIds = ids.filter(
+        (id) => (getThreadFromState(useStore.getState(), id)?.parentThreadId ?? null) === null,
       );
-
-      if (clicked === "mark-unread") {
-        for (const id of ids) {
-          clearDismissedThreadStatus(id);
-          markThreadUnread(id);
-        }
-        clearSelection();
-        return;
-      }
-
-      if (clicked === "archive") {
-        // Subagent threads follow their parent's archive cascade. Archiving one directly would strand it,
-        // and archiving it after its parent in this loop would fail the not-archived invariant.
-        const archiveIds = ids.filter(
-          (id) => (getThreadFromState(useStore.getState(), id)?.parentThreadId ?? null) === null,
-        );
-        if (archiveIds.length === 0) {
-          removeFromSelection(ids);
-          return;
-        }
-        if (appSettings.confirmThreadArchive) {
-          const confirmed = await api.dialogs.confirm(
-            [
-              `Archive ${archiveIds.length} ${pluralize(archiveIds.length, "thread")}?`,
-              "Archived threads are hidden from the sidebar but can be restored later.",
-            ].join("\n"),
-          );
-          if (!confirmed) return;
-        }
-
-        for (const id of archiveIds) {
-          await archiveThread(id);
-        }
+      if (archiveIds.length === 0) {
         removeFromSelection(ids);
         return;
       }
-
-      if (clicked !== "delete") return;
-
-      if (appSettings.confirmThreadDelete) {
+      if (appSettings.confirmThreadArchive) {
         const confirmed = await api.dialogs.confirm(
           [
-            `Delete ${count} ${pluralize(count, "thread")}?`,
-            "This permanently clears conversation history for these threads.",
+            `Archive ${archiveIds.length} ${pluralize(archiveIds.length, "thread")}?`,
+            "Archived threads are hidden from the sidebar but can be restored later.",
           ].join("\n"),
         );
         if (!confirmed) return;
       }
 
-      const deletedIds = new Set<ThreadId>(ids);
-      const successfullyDeletedIds: ThreadId[] = [];
-      const runDeletes = async (): Promise<void> => {
-        for (const id of ids) {
-          await deleteThread(id, { deletedThreadIds: deletedIds, reconcileDeletedThread: false });
-          successfullyDeletedIds.push(id);
-        }
-      };
-      await runDeletes().finally(() => {
-        if (successfullyDeletedIds.length > 0) {
-          void reconcileDeletedThreadsFromClient({
-            threadIds: successfullyDeletedIds,
-            removeDeletedThreadFromClientState:
-              useStore.getState().removeDeletedThreadFromClientState,
-          });
-        }
-      });
+      for (const id of archiveIds) {
+        await archiveThread(id);
+      }
       removeFromSelection(ids);
-    },
-    [
-      appSettings.confirmThreadArchive,
-      appSettings.confirmThreadDelete,
-      archiveThread,
-      clearSelection,
-      clearDismissedThreadStatus,
-      deleteThread,
-      markThreadUnread,
-      removeFromSelection,
-      selectedThreadIds,
-    ],
-  );
+      return;
+    }
 
-  const rememberLastThreadRouteNow = useCallback(
-    (nextLastThreadRoute: LastThreadRoute) => {
-      setLastThreadRoute(nextLastThreadRoute);
-    },
-    [setLastThreadRoute],
-  );
+    if (clicked !== "delete") return;
+
+    if (appSettings.confirmThreadDelete) {
+      const confirmed = await api.dialogs.confirm(
+        [
+          `Delete ${count} ${pluralize(count, "thread")}?`,
+          "This permanently clears conversation history for these threads.",
+        ].join("\n"),
+      );
+      if (!confirmed) return;
+    }
+
+    const deletedIds = new Set<ThreadId>(ids);
+    const successfullyDeletedIds: ThreadId[] = [];
+    const runDeletes = async (): Promise<void> => {
+      for (const id of ids) {
+        await deleteThread(id, { deletedThreadIds: deletedIds, reconcileDeletedThread: false });
+        successfullyDeletedIds.push(id);
+      }
+    };
+    await runDeletes().finally(() => {
+      if (successfullyDeletedIds.length > 0) {
+        void reconcileDeletedThreadsFromClient({
+          threadIds: successfullyDeletedIds,
+          removeDeletedThreadFromClientState:
+            useStore.getState().removeDeletedThreadFromClientState,
+        });
+      }
+    });
+    removeFromSelection(ids);
+  };
+
+  const rememberLastThreadRouteNow = (nextLastThreadRoute: LastThreadRoute) => {
+    setLastThreadRoute(nextLastThreadRoute);
+  };
 
   const { activateThreadFromSidebarIntent } = useThreadActivationController({
     activeSplitView,
@@ -584,36 +535,30 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
     terminalStateByThreadId,
   });
 
-  const openThreadPullRequest = useCallback(
-    (
-      event: MouseEvent<HTMLElement>,
-      thread: SidebarThreadSummary,
-      pr: OrchestrationThreadPullRequest,
-    ) => {
-      const repository = parseGitHubRepositoryNameWithOwnerFromPullRequestUrl(pr.url);
-      if (event.metaKey || event.ctrlKey || event.button === 1 || !repository) {
-        openPrLink(event, pr.url);
-        return;
-      }
-      if (event.button !== 0) return;
-      event.preventDefault();
-      event.stopPropagation();
-      activateThreadFromSidebarIntent(thread.id);
-      openRightDockPane(thread.id, {
-        kind: "pullRequest",
-        pullRequestProjectId: thread.projectId,
-        pullRequestRepository: repository,
-        pullRequestNumber: pr.number,
-        pullRequestInitialTab: "summary",
-      });
-    },
-    [activateThreadFromSidebarIntent, openPrLink, openRightDockPane],
-  );
+  const openThreadPullRequest = (
+    event: MouseEvent<HTMLElement>,
+    thread: SidebarThreadSummary,
+    pr: OrchestrationThreadPullRequest,
+  ) => {
+    const repository = parseGitHubRepositoryNameWithOwnerFromPullRequestUrl(pr.url);
+    if (event.metaKey || event.ctrlKey || event.button === 1 || !repository) {
+      openPrLink(event, pr.url);
+      return;
+    }
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    activateThreadFromSidebarIntent(thread.id);
+    openRightDockPane(thread.id, {
+      kind: "pullRequest",
+      pullRequestProjectId: thread.projectId,
+      pullRequestRepository: repository,
+      pullRequestNumber: pr.number,
+      pullRequestInitialTab: "summary",
+    });
+  };
 
-  const handleCloseProjectContextMenu = useCallback(
-    () => setProjectContextMenuState(null),
-    [setProjectContextMenuState],
-  );
+  const handleCloseProjectContextMenu = () => setProjectContextMenuState(null);
   return {
     ...context,
     handleImportThread,

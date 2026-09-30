@@ -26,6 +26,7 @@ import {
   normalizePastedTexts,
   normalizeTerminalContextsForThread,
   shouldRemoveDraft,
+  putComposerDraft,
 } from "./composerDraftDomain";
 import {
   COMPOSER_PROVIDER_KINDS,
@@ -127,13 +128,7 @@ export function createPromptAndModelsActions(
           modelSelectionByProvider: nextMap,
           activeProvider: stickyActiveProvider,
         };
-        const nextDraftsByThreadId = { ...state.draftsByThreadId };
-        if (shouldRemoveDraft(nextDraft)) {
-          delete nextDraftsByThreadId[threadId];
-        } else {
-          nextDraftsByThreadId[threadId] = nextDraft;
-        }
-        return { draftsByThreadId: nextDraftsByThreadId };
+        return putComposerDraft(state, threadId, nextDraft);
       });
     },
     setPendingUserInputDrafts: (threadId, drafts) => {
@@ -142,10 +137,7 @@ export function createPromptAndModelsActions(
           ...(state.draftsByThreadId[threadId] ?? createEmptyThreadDraft()),
           pendingUserInputDrafts: drafts,
         };
-        const draftsByThreadId = { ...state.draftsByThreadId };
-        if (shouldRemoveDraft(nextDraft)) delete draftsByThreadId[threadId];
-        else draftsByThreadId[threadId] = nextDraft;
-        return { draftsByThreadId };
+        return putComposerDraft(state, threadId, nextDraft);
       });
     },
     setPrompt: (threadId, prompt) => {
@@ -158,13 +150,7 @@ export function createPromptAndModelsActions(
           ...existing,
           prompt,
         };
-        const nextDraftsByThreadId = { ...state.draftsByThreadId };
-        if (shouldRemoveDraft(nextDraft)) {
-          delete nextDraftsByThreadId[threadId];
-        } else {
-          nextDraftsByThreadId[threadId] = nextDraft;
-        }
-        return { draftsByThreadId: nextDraftsByThreadId };
+        return putComposerDraft(state, threadId, nextDraft);
       });
     },
     setPromptHistorySavedDraft: (threadId, savedDraft) => {
@@ -205,13 +191,7 @@ export function createPromptAndModelsActions(
               }
             : {}),
         };
-        const nextDraftsByThreadId = { ...state.draftsByThreadId };
-        if (shouldRemoveDraft(nextDraft)) {
-          delete nextDraftsByThreadId[threadId];
-        } else {
-          nextDraftsByThreadId[threadId] = nextDraft;
-        }
-        return { draftsByThreadId: nextDraftsByThreadId };
+        return putComposerDraft(state, threadId, nextDraft);
       });
     },
     restorePromptHistorySavedDraft: (threadId) => {
@@ -250,13 +230,7 @@ export function createPromptAndModelsActions(
           skills: [...savedDraft.skills],
           mentions: [...savedDraft.mentions],
         };
-        const nextDraftsByThreadId = { ...state.draftsByThreadId };
-        if (shouldRemoveDraft(nextDraft)) {
-          delete nextDraftsByThreadId[threadId];
-        } else {
-          nextDraftsByThreadId[threadId] = nextDraft;
-        }
-        return { draftsByThreadId: nextDraftsByThreadId };
+        return putComposerDraft(state, threadId, nextDraft);
       });
     },
     addPromptHistorySavedDraftImage: (threadId, image) => {
@@ -319,13 +293,7 @@ export function createPromptAndModelsActions(
           ),
           terminalContexts: normalizedContexts,
         };
-        const nextDraftsByThreadId = { ...state.draftsByThreadId };
-        if (shouldRemoveDraft(nextDraft)) {
-          delete nextDraftsByThreadId[threadId];
-        } else {
-          nextDraftsByThreadId[threadId] = nextDraft;
-        }
-        return { draftsByThreadId: nextDraftsByThreadId };
+        return putComposerDraft(state, threadId, nextDraft);
       });
     },
     setSkills: (threadId, skills) => {
@@ -342,13 +310,7 @@ export function createPromptAndModelsActions(
           ...existing,
           skills: nextSkills,
         };
-        const nextDraftsByThreadId = { ...state.draftsByThreadId };
-        if (shouldRemoveDraft(nextDraft)) {
-          delete nextDraftsByThreadId[threadId];
-        } else {
-          nextDraftsByThreadId[threadId] = nextDraft;
-        }
-        return { draftsByThreadId: nextDraftsByThreadId };
+        return putComposerDraft(state, threadId, nextDraft);
       });
     },
     setMentions: (threadId, mentions) => {
@@ -365,13 +327,7 @@ export function createPromptAndModelsActions(
           ...existing,
           mentions: nextMentions,
         };
-        const nextDraftsByThreadId = { ...state.draftsByThreadId };
-        if (shouldRemoveDraft(nextDraft)) {
-          delete nextDraftsByThreadId[threadId];
-        } else {
-          nextDraftsByThreadId[threadId] = nextDraft;
-        }
-        return { draftsByThreadId: nextDraftsByThreadId };
+        return putComposerDraft(state, threadId, nextDraft);
       });
     },
     setModelSelection: (threadId, modelSelection) => {
@@ -402,13 +358,7 @@ export function createPromptAndModelsActions(
           modelSelectionByProvider: nextMap,
           activeProvider: nextActiveProvider,
         };
-        const nextDraftsByThreadId = { ...state.draftsByThreadId };
-        if (shouldRemoveDraft(nextDraft)) {
-          delete nextDraftsByThreadId[threadId];
-        } else {
-          nextDraftsByThreadId[threadId] = nextDraft;
-        }
-        return { draftsByThreadId: nextDraftsByThreadId };
+        return putComposerDraft(state, threadId, nextDraft);
       });
     },
     setModelSelectionAndSticky: (threadId, modelSelection) => {
@@ -458,13 +408,7 @@ export function createPromptAndModelsActions(
           ...base,
           modelSelectionByProvider: nextMap,
         };
-        const nextDraftsByThreadId = { ...state.draftsByThreadId };
-        if (shouldRemoveDraft(nextDraft)) {
-          delete nextDraftsByThreadId[threadId];
-        } else {
-          nextDraftsByThreadId[threadId] = nextDraft;
-        }
-        return { draftsByThreadId: nextDraftsByThreadId };
+        return putComposerDraft(state, threadId, nextDraft);
       });
     },
     setProviderModelOptions: (threadId, provider, nextProviderOptions, options) => {
@@ -594,13 +538,7 @@ export function createPromptAndModelsActions(
           ...base,
           runtimeMode: nextRuntimeMode,
         };
-        const nextDraftsByThreadId = { ...state.draftsByThreadId };
-        if (shouldRemoveDraft(nextDraft)) {
-          delete nextDraftsByThreadId[threadId];
-        } else {
-          nextDraftsByThreadId[threadId] = nextDraft;
-        }
-        return { draftsByThreadId: nextDraftsByThreadId };
+        return putComposerDraft(state, threadId, nextDraft);
       });
     },
     setInteractionMode: (threadId, interactionMode) => {
@@ -626,13 +564,7 @@ export function createPromptAndModelsActions(
           ...base,
           interactionMode: nextInteractionMode,
         };
-        const nextDraftsByThreadId = { ...state.draftsByThreadId };
-        if (shouldRemoveDraft(nextDraft)) {
-          delete nextDraftsByThreadId[threadId];
-        } else {
-          nextDraftsByThreadId[threadId] = nextDraft;
-        }
-        return { draftsByThreadId: nextDraftsByThreadId };
+        return putComposerDraft(state, threadId, nextDraft);
       });
     },
     setComputerControlMode: (threadId, mode, options) => {
@@ -680,13 +612,7 @@ export function createPromptAndModelsActions(
           enableComputerControl: enabled,
           computerControlMode: enabled ? "chat" : "off",
         };
-        const nextDraftsByThreadId = { ...state.draftsByThreadId };
-        if (shouldRemoveDraft(nextDraft)) {
-          delete nextDraftsByThreadId[threadId];
-        } else {
-          nextDraftsByThreadId[threadId] = nextDraft;
-        }
-        return { draftsByThreadId: nextDraftsByThreadId };
+        return putComposerDraft(state, threadId, nextDraft);
       });
     },
   };

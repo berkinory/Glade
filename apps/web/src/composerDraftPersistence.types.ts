@@ -21,6 +21,7 @@ import type { BrowserAnnotationDraft } from "./lib/browserAnnotations";
 import { PULL_REQUEST_CONTEXT_SCOPES } from "./lib/pullRequestContext";
 
 const DraftThreadEnvModeSchema = Schema.Literals(["local", "worktree"]);
+const PersistedThreadId = Schema.String.check(Schema.isNonEmpty());
 
 export const LEGACY_TERMINAL_DRAFT_MAPPING_SUFFIX = "::terminal";
 
@@ -51,9 +52,9 @@ export function cloneBrowserAnnotation(annotation: BrowserAnnotationDraft): Brow
   };
 }
 
-const PersistedTerminalContextDraft = Schema.Struct({
+export const PersistedTerminalContextDraft = Schema.Struct({
   id: Schema.String,
-  threadId: ThreadId,
+  threadId: PersistedThreadId,
   createdAt: Schema.String,
   terminalId: Schema.String,
   terminalLabel: Schema.String,
@@ -63,9 +64,9 @@ const PersistedTerminalContextDraft = Schema.Struct({
 
 export type PersistedTerminalContextDraft = typeof PersistedTerminalContextDraft.Type;
 
-const PersistedQueuedTerminalContextDraft = Schema.Struct({
+export const PersistedQueuedTerminalContextDraft = Schema.Struct({
   id: Schema.String,
-  threadId: ThreadId,
+  threadId: PersistedThreadId,
   createdAt: Schema.String,
   terminalId: Schema.String,
   terminalLabel: Schema.String,
@@ -76,7 +77,7 @@ const PersistedQueuedTerminalContextDraft = Schema.Struct({
 
 export type PersistedQueuedTerminalContextDraft = typeof PersistedQueuedTerminalContextDraft.Type;
 
-const PersistedFileCommentDraft = Schema.Struct({
+export const PersistedFileCommentDraft = Schema.Struct({
   id: Schema.String,
   path: Schema.String,
   startLine: Schema.Number,
@@ -86,7 +87,7 @@ const PersistedFileCommentDraft = Schema.Struct({
 
 export type PersistedFileCommentDraft = typeof PersistedFileCommentDraft.Type;
 
-const PersistedPastedTextDraft = Schema.Struct({
+export const PersistedPastedTextDraft = Schema.Struct({
   id: Schema.String,
   createdAt: Schema.String,
   text: Schema.String,
@@ -94,7 +95,7 @@ const PersistedPastedTextDraft = Schema.Struct({
 
 export type PersistedPastedTextDraft = typeof PersistedPastedTextDraft.Type;
 
-const PersistedPullRequestContextDraft = Schema.Struct({
+export const PersistedPullRequestContextDraft = Schema.Struct({
   id: Schema.String,
   createdAt: Schema.String,
   scope: Schema.Literals(PULL_REQUEST_CONTEXT_SCOPES),
@@ -118,7 +119,7 @@ export const PersistedRestoredSourceProposedPlan = Schema.Struct({
   sourceProposedPlan: PersistedSourceProposedPlanReference,
 });
 
-const PersistedAssistantSelectionDraft = Schema.Struct({
+export const PersistedAssistantSelectionDraft = Schema.Struct({
   id: Schema.String,
   assistantMessageId: Schema.String,
   text: Schema.String,

@@ -243,25 +243,16 @@ export function renderWorkEntryIcon(Icon: LucideIcon, className: string): ReactE
   return createElement(Icon, { className });
 }
 
-export function workEntryLeftIcon(workEntry: TimelineWorkEntry): LucideIcon {
-  if (isComputerWorkEntry(workEntry)) return ComputerUseIcon;
-  if (isGitHubMcpToolCall(workEntry)) return GitHubIcon;
-  if (isGladeBrowserWorkEntry(workEntry)) return GlobeIcon;
-  if (isGladeToolCall(workEntry)) return GladeToolIcon;
+export function workEntryLeftIcon(
+  workEntry: TimelineWorkEntry,
+  classification = classifyWorkEntryTool(workEntry),
+): LucideIcon {
+  if (classification.isComputer) return ComputerUseIcon;
+  if (classification.isGitHub) return GitHubIcon;
+  if (classification.isGladeBrowser) return GlobeIcon;
+  if (classification.gladeTitle !== null) return GladeToolIcon;
   if (workEntry.itemType === "mcp_tool_call") return McpIcon;
   return workEntryIcon(workEntry);
-}
-
-function isComputerWorkEntry(workEntry: TimelineWorkEntry): boolean {
-  return (
-    computerToolName(workEntry.toolName) !== null ||
-    /^Computer Use:/i.test(workEntry.toolTitle ?? "")
-  );
-}
-
-function isGitHubMcpToolCall(workEntry: TimelineWorkEntry): boolean {
-  const toolName = workEntry.toolName?.trim().toLowerCase();
-  return Boolean(toolName?.startsWith("mcp__codex_apps__github"));
 }
 
 function toolWorkEntryStatus(workEntry: TimelineWorkEntry): GladeMcpToolStatus {
@@ -271,24 +262,25 @@ function toolWorkEntryStatus(workEntry: TimelineWorkEntry): GladeMcpToolStatus {
     : "completed";
 }
 
-function isGladeBrowserWorkEntry(workEntry: TimelineWorkEntry): boolean {
-  return isGladeBrowserToolCall({
+function classifyWorkEntryTool(workEntry: TimelineWorkEntry) {
+  const status = toolWorkEntryStatus(workEntry);
+  const titleInput = {
     toolName: workEntry.toolName,
     title: workEntry.toolTitle,
     fallbackLabel: workEntry.label,
-    status: toolWorkEntryStatus(workEntry),
-  });
-}
-
-function isGladeToolCall(workEntry: TimelineWorkEntry): boolean {
-  return (
-    deriveGladeMcpToolTitle({
-      toolName: workEntry.toolName,
-      title: workEntry.toolTitle,
-      fallbackLabel: workEntry.label,
-      status: toolWorkEntryStatus(workEntry),
-    }) !== null
-  );
+    status,
+  };
+  const computerTool = computerToolName(workEntry.toolName);
+  return {
+    status,
+    computerTool,
+    isComputer: computerTool !== null || /^Computer Use:/i.test(workEntry.toolTitle ?? ""),
+    isGitHub: Boolean(
+      workEntry.toolName?.trim().toLowerCase().startsWith("mcp__codex_apps__github"),
+    ),
+    isGladeBrowser: isGladeBrowserToolCall(titleInput),
+    gladeTitle: deriveGladeMcpToolTitle(titleInput),
+  };
 }
 
 export function prefersCompactWorkEntryRow(workEntry: TimelineWorkEntry): boolean {
@@ -318,8 +310,11 @@ function capitalizePhrase(value: string): string {
   return `${trimmed.charAt(0).toUpperCase()}${trimmed.slice(1)}`;
 }
 
-function toolWorkEntryHeading(workEntry: TimelineWorkEntry): string {
-  if (computerToolName(workEntry.toolName)) {
+function toolWorkEntryHeading(
+  workEntry: TimelineWorkEntry,
+  classification: ReturnType<typeof classifyWorkEntryTool>,
+): string {
+  if (classification.computerTool) {
     const title = normalizeCompactToolLabel(workEntry.toolTitle ?? "");
     if (title && !isGenericToolTitle(title) && !computerToolName(title))
       return capitalizePhrase(title);
@@ -329,14 +324,8 @@ function toolWorkEntryHeading(workEntry: TimelineWorkEntry): string {
   if (workEntry.activityKind === "turn.tasks.updated") {
     return capitalizePhrase(workEntry.label);
   }
-  const gladeTitle = deriveGladeMcpToolTitle({
-    toolName: workEntry.toolName,
-    title: workEntry.toolTitle,
-    fallbackLabel: workEntry.label,
-    status: toolWorkEntryStatus(workEntry),
-  });
-  if (gladeTitle) {
-    return gladeTitle;
+  if (classification.gladeTitle) {
+    return classification.gladeTitle;
   }
   if (!workEntry.toolTitle) {
     return capitalizePhrase(normalizeCompactToolLabel(workEntry.label));
@@ -353,21 +342,24 @@ function combineWorkEntryDisplayText(heading: string, preview: string | null): s
     : `${heading} ${preview}`;
 }
 
-function workEntryDisplayParts(workEntry: TimelineWorkEntry): {
+function workEntryDisplayParts(
+  workEntry: TimelineWorkEntry,
+  classification = classifyWorkEntryTool(workEntry),
+): {
   heading: string;
   preview: string | null;
   displayText: string;
 } {
   const webFetchUrl = extractWebFetchUrl(workEntry);
-  const heading = toolWorkEntryHeading(workEntry);
+  const heading = toolWorkEntryHeading(workEntry, classification);
   const rawPreview = workEntryPreview(workEntry);
   const preview =
-    !isGitHubMcpToolCall(workEntry) &&
-    (isGladeBrowserWorkEntry(workEntry) || isGladeToolCall(workEntry))
+    !classification.isGitHub &&
+    (classification.isGladeBrowser || classification.gladeTitle !== null)
       ? sanitizeGladeMcpToolPreview({
           preview: rawPreview,
           heading,
-          status: toolWorkEntryStatus(workEntry),
+          status: classification.status,
         })
       : rawPreview;
   const displayText = webFetchUrl
@@ -460,16 +452,18 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
 
   const webFetchUrl = extractWebFetchUrl(workEntry);
 
-  const isGitHubToolRow = isGitHubMcpToolCall(workEntry);
-  const isComputerToolRow = isComputerWorkEntry(workEntry);
-  const isGladeBrowserToolRow = !isGitHubToolRow && isGladeBrowserWorkEntry(workEntry);
-  const isGladeToolRow = !isGitHubToolRow && !isGladeBrowserToolRow && isGladeToolCall(workEntry);
+  const classification = classifyWorkEntryTool(workEntry);
+  const isGitHubToolRow = classification.isGitHub;
+  const isComputerToolRow = classification.isComputer;
+  const isGladeBrowserToolRow = !isGitHubToolRow && classification.isGladeBrowser;
+  const isGladeToolRow =
+    !isGitHubToolRow && !isGladeBrowserToolRow && classification.gladeTitle !== null;
   const isMcpToolRow =
     workEntry.itemType === "mcp_tool_call" &&
     !isGitHubToolRow &&
     !isGladeBrowserToolRow &&
     !isGladeToolRow;
-  const LeftIcon = workEntryLeftIcon(workEntry);
+  const LeftIcon = workEntryLeftIcon(workEntry, classification);
   const leftIconKind = webFetchUrl
     ? "web-fetch"
     : isComputerToolRow
@@ -483,7 +477,7 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
             : isMcpToolRow
               ? "mcp"
               : undefined;
-  const { heading, preview, displayText } = workEntryDisplayParts(workEntry);
+  const { heading, preview, displayText } = workEntryDisplayParts(workEntry, classification);
   const showInlineAgentTaskPreview =
     workEntry.itemType === "collab_agent_tool_call" &&
     Boolean(preview) &&

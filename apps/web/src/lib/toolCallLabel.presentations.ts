@@ -1,6 +1,6 @@
 import type { ToolLifecycleItemType } from "@glade/contracts/provider/runtimeMetadata";
 import { BROWSER_TOOL_TITLES } from "@glade/shared/browser/browserAutomationPresentation";
-import type { ComputerToolName } from "./computerToolPresentation";
+import { COMPUTER_TOOL_DESCRIPTORS, type ComputerToolName } from "./computerToolPresentation";
 import { extractToolArgumentField } from "./toolArgumentSummary";
 
 export function normalizeCompactToolLabel(value: string): string {
@@ -139,105 +139,12 @@ const GLADE_BROWSER_TOOL_PRESENTATIONS = Object.fromEntries(
 // through to the invented "Glade is handling computer click" fallback. The wording deliberately
 // keeps the machine in the sentence ("this computer's desktop") rather than saying "the desktop",
 // because on the backends that matter it is the user's own.
-const GLADE_COMPUTER_TOOL_PRESENTATIONS = {
-  glade_computer_screenshot: presentComputerTool("taking a screenshot", "took a screenshot"),
-  glade_computer_get_state: presentComputerTool("reading the screen", "read the screen"),
-  glade_computer_get_screen_size: presentComputerTool(
-    "measuring the screen",
-    "measured the screen",
-  ),
-  glade_computer_list_windows: presentComputerTool("listing windows", "listed the windows"),
-  glade_computer_list_apps: presentComputerTool("listing apps", "listed the apps"),
-  glade_computer_verify_state: presentComputerTool(
-    "checking desktop state",
-    "checked desktop state",
-  ),
-  glade_computer_zoom: presentComputerTool("zooming into a window", "zoomed into a window"),
-  glade_computer_get_accessibility_tree: presentComputerTool(
-    "listing apps and windows",
-    "listed apps and windows",
-  ),
-  glade_computer_get_cursor_position: presentComputerTool(
-    "reading the cursor position",
-    "read the cursor position",
-  ),
-  glade_computer_help: presentComputerTool(
-    "reading the Computer playbook",
-    "read the Computer playbook",
-  ),
-  glade_computer_click: presentComputerTool("clicking the desktop", "clicked the desktop"),
-  glade_computer_move_cursor: presentComputerTool("moving the cursor", "moved the cursor"),
-  glade_computer_drag: presentComputerTool("dragging on the desktop", "dragged on the desktop"),
-  glade_computer_scroll: presentComputerTool("scrolling the desktop", "scrolled the desktop"),
-  glade_computer_type_text: presentComputerTool("typing on the desktop", "typed on the desktop"),
-  glade_computer_press_key: presentComputerTool("pressing a key", "pressed a key"),
-  glade_computer_set_value: presentComputerTool("setting a field", "set a field"),
-  glade_computer_select_text: presentComputerTool("selecting text", "selected text"),
-  glade_computer_perform_action: presentComputerTool("activating a control", "activated a control"),
-  glade_computer_launch_app: presentComputerTool("opening an app", "opened an app"),
-  glade_computer_activate_window: presentComputerTool("activating a window", "activated a window"),
-  glade_computer_set_window_frame: presentComputerTool(
-    "moving or resizing a window",
-    "moved or resized a window",
-  ),
-  glade_computer_invoke_menu: presentComputerTool("invoking a menu item", "invoked a menu item"),
-  glade_computer_kill_app: presentComputerTool("force-quitting an app", "force-quit an app"),
-  glade_computer_set_window_minimized: presentComputerTool(
-    "changing a window's visibility",
-    "changed a window's visibility",
-  ),
-  glade_computer_set_app_visibility: presentComputerTool(
-    "changing an app's visibility",
-    "changed an app's visibility",
-  ),
-  glade_computer_wait: presentComputerTool("waiting for the desktop", "waited for the desktop"),
-  glade_computer_read_clipboard: presentComputerTool("reading the clipboard", "read the clipboard"),
-  glade_computer_write_clipboard: presentComputerTool(
-    "writing to the clipboard",
-    "wrote to the clipboard",
-  ),
-  glade_computer_paste: presentComputerTool("pasting text", "pasted text"),
-  glade_computer_run: presentComputerTool("running a desktop sequence", "ran a desktop sequence"),
-  glade_computer_inspect: presentComputerTool("inspecting the computer", "inspected the computer"),
-  glade_computer_spaces: presentComputerTool(
-    "inspecting desktop Spaces",
-    "inspected desktop Spaces",
-  ),
-  glade_computer_browser_state: presentComputerTool(
-    "reading the browser page",
-    "read the browser page",
-  ),
-  glade_computer_browser_prepare: presentComputerTool("preparing a browser", "prepared a browser"),
-  glade_computer_browser_navigate: presentComputerTool(
-    "opening a browser page",
-    "opened a browser page",
-  ),
-  glade_computer_browser_click: presentComputerTool(
-    "clicking in the browser",
-    "clicked in the browser",
-  ),
-  glade_computer_browser_type: presentComputerTool(
-    "typing in a browser field",
-    "typed in a browser field",
-  ),
-  glade_computer_browser_dialog: presentComputerTool(
-    "handling a browser dialog",
-    "handled a browser dialog",
-  ),
-  glade_computer_browser_upload: presentComputerTool(
-    "attaching files in the browser",
-    "attached files in the browser",
-  ),
-  glade_computer_browser_download: presentComputerTool("downloading a file", "downloaded a file"),
-  glade_computer_browser_pointer: presentComputerTool(
-    "using the pointer in the browser",
-    "used the pointer in the browser",
-  ),
-  glade_computer_browser_press: presentComputerTool(
-    "pressing Enter in the browser",
-    "pressed Enter in the browser",
-  ),
-} as const satisfies Record<`glade_${ComputerToolName}`, GladeMcpToolPresentation>;
+const GLADE_COMPUTER_TOOL_PRESENTATIONS = Object.fromEntries(
+  Object.entries(COMPUTER_TOOL_DESCRIPTORS).map(([name, [, present, past]]) => [
+    `glade_${name}`,
+    presentComputerTool(present, past),
+  ]),
+) as Record<`glade_${ComputerToolName}`, GladeMcpToolPresentation>;
 
 function presentComputerTool(present: string, past: string): GladeMcpToolPresentation {
   return {

@@ -317,28 +317,3 @@ function collectDescriptorCandidates(
     }
   }
 }
-
-export const READ_FILE_COMMAND_TOOLS = new Set([
-  "cat",
-  "nl",
-  "head",
-  "tail",
-  "sed",
-  "less",
-  "more",
-]);
-
-export const SEARCH_COMMAND_TOOLS = new Set(["rg", "grep", "ag", "ack"]);
-
-export const FIND_COMMAND_TOOLS = new Set(["find", "fd"]);
-
-export const LIST_COMMAND_TOOLS = new Set(["ls"]);
-
-export function isInspectCommandTool(tool: string): boolean {
-  return (
-    READ_FILE_COMMAND_TOOLS.has(tool) ||
-    SEARCH_COMMAND_TOOLS.has(tool) ||
-    FIND_COMMAND_TOOLS.has(tool) ||
-    LIST_COMMAND_TOOLS.has(tool)
-  );
-}

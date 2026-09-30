@@ -803,6 +803,17 @@ export function shouldRemoveDraft(draft: ComposerThreadDraftState): boolean {
   );
 }
 
+export function putComposerDraft(
+  state: Pick<ComposerDraftStoreState, "draftsByThreadId">,
+  threadId: ThreadId,
+  draft: ComposerThreadDraftState,
+): Pick<ComposerDraftStoreState, "draftsByThreadId"> {
+  const draftsByThreadId = { ...state.draftsByThreadId };
+  if (shouldRemoveDraft(draft)) delete draftsByThreadId[threadId];
+  else draftsByThreadId[threadId] = draft;
+  return { draftsByThreadId };
+}
+
 const EMPTY_IMAGES: ComposerImageAttachment[] = [];
 const EMPTY_FILES: ComposerFileAttachment[] = [];
 const EMPTY_IDS: string[] = [];

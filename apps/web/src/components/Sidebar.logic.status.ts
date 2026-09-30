@@ -65,19 +65,9 @@ export function resolveThreadRowClassName(input: {
   isSelected: boolean;
 }): string {
   const baseClassName = SIDEBAR_THREAD_ROW_BASE_CLASS_NAME;
-
-  if (input.isSelected && input.isActive) {
+  if (input.isSelected || input.isActive) {
     return cn(baseClassName, SIDEBAR_ROW_ACTIVE_CLASS_NAME);
   }
-
-  if (input.isSelected) {
-    return cn(baseClassName, SIDEBAR_ROW_ACTIVE_CLASS_NAME);
-  }
-
-  if (input.isActive) {
-    return cn(baseClassName, SIDEBAR_ROW_ACTIVE_CLASS_NAME);
-  }
-
   return cn(baseClassName, SIDEBAR_ROW_IDLE_TEXT_CLASS_NAME, SIDEBAR_ROW_HOVER_CLASS_NAME);
 }
 

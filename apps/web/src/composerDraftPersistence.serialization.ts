@@ -2,6 +2,7 @@ import { resolveComputerControlMode } from "./computerControlMode";
 import { ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { DeepMutable } from "effect/Types";
+import * as Schema from "effect/Schema";
 import {
   persistQueuedComposerImages,
   toStorageSafePersistedAttachment,
@@ -18,6 +19,12 @@ import {
 } from "./composerDraftModels";
 import {
   EMPTY_PERSISTED_DRAFT_STORE_STATE,
+  PersistedAssistantSelectionDraft,
+  PersistedFileCommentDraft,
+  PersistedPastedTextDraft,
+  PersistedPullRequestContextDraft,
+  PersistedQueuedTerminalContextDraft,
+  PersistedTerminalContextDraft,
   cloneBrowserAnnotation,
   normalizePersistedModelSelectionMap,
 } from "./composerDraftPersistence.types";
@@ -26,11 +33,17 @@ import type {
   PersistedComposerDraftStoreState,
   PersistedComposerThreadDraftState,
 } from "./composerDraftPersistence.types";
-import { toPersistedPullRequestContext } from "./composerDraftPersistence.values";
 import {
   normalizePersistedDraftThreads,
   normalizePersistedDraftsByThreadId,
 } from "./composerDraftPersistence.legacy";
+
+const encodeAssistantSelection = Schema.encodeSync(PersistedAssistantSelectionDraft);
+const encodeFileComment = Schema.encodeSync(PersistedFileCommentDraft);
+const encodePastedText = Schema.encodeSync(PersistedPastedTextDraft);
+const encodePullRequestContext = Schema.encodeSync(PersistedPullRequestContextDraft);
+const encodeTerminalContext = Schema.encodeSync(PersistedTerminalContextDraft);
+const encodeQueuedTerminalContext = Schema.encodeSync(PersistedQueuedTerminalContextDraft);
 
 export function migratePersistedComposerDraftStoreState(
   persistedState: unknown,
@@ -67,50 +80,31 @@ export function partializeComposerDraftStoreState(
           previewText: queuedTurn.previewText,
           prompt: queuedTurn.prompt,
           images,
-          assistantSelections: queuedTurn.assistantSelections.map((selection) => ({
-            id: selection.id,
-            assistantMessageId: selection.assistantMessageId,
-            text: selection.text,
-          })),
+          assistantSelections: queuedTurn.assistantSelections.map((value) =>
+            encodeAssistantSelection(value),
+          ),
           ...(queuedTurn.browserAnnotations.length > 0
             ? {
                 browserAnnotations: queuedTurn.browserAnnotations.map(cloneBrowserAnnotation),
               }
             : {}),
-          terminalContexts: queuedTurn.terminalContexts.map((context) => ({
-            id: context.id,
-            threadId: context.threadId,
-            createdAt: context.createdAt,
-            terminalId: context.terminalId,
-            terminalLabel: context.terminalLabel,
-            lineStart: context.lineStart,
-            lineEnd: context.lineEnd,
-            text: context.text,
-          })),
+          terminalContexts: queuedTurn.terminalContexts.map((value) =>
+            encodeQueuedTerminalContext(value),
+          ),
           ...(queuedTurn.fileComments.length > 0
             ? {
-                fileComments: queuedTurn.fileComments.map((comment) => ({
-                  id: comment.id,
-                  path: comment.path,
-                  startLine: comment.startLine,
-                  endLine: comment.endLine,
-                  text: comment.text,
-                })),
+                fileComments: queuedTurn.fileComments.map((value) => encodeFileComment(value)),
               }
             : {}),
           ...(queuedTurn.pastedTexts.length > 0
             ? {
-                pastedTexts: queuedTurn.pastedTexts.map((pasted) => ({
-                  id: pasted.id,
-                  createdAt: pasted.createdAt,
-                  text: pasted.text,
-                })),
+                pastedTexts: queuedTurn.pastedTexts.map((value) => encodePastedText(value)),
               }
             : {}),
           ...(queuedTurn.pullRequestContexts.length > 0
             ? {
-                pullRequestContexts: queuedTurn.pullRequestContexts.map(
-                  toPersistedPullRequestContext,
+                pullRequestContexts: queuedTurn.pullRequestContexts.map((value) =>
+                  encodePullRequestContext(value),
                 ),
               }
             : {}),
@@ -214,11 +208,7 @@ export function partializeComposerDraftStoreState(
               ...(draft.promptHistorySavedDraft.assistantSelections.length > 0
                 ? {
                     assistantSelections: draft.promptHistorySavedDraft.assistantSelections.map(
-                      (selection) => ({
-                        id: selection.id,
-                        assistantMessageId: selection.assistantMessageId,
-                        text: selection.text,
-                      }),
+                      (value) => encodeAssistantSelection(value),
                     ),
                   }
                 : {}),
@@ -230,43 +220,29 @@ export function partializeComposerDraftStoreState(
                 : {}),
               ...(draft.promptHistorySavedDraft.terminalContexts.length > 0
                 ? {
-                    terminalContexts: draft.promptHistorySavedDraft.terminalContexts.map(
-                      (context) => ({
-                        id: context.id,
-                        threadId: context.threadId,
-                        createdAt: context.createdAt,
-                        terminalId: context.terminalId,
-                        terminalLabel: context.terminalLabel,
-                        lineStart: context.lineStart,
-                        lineEnd: context.lineEnd,
-                      }),
+                    terminalContexts: draft.promptHistorySavedDraft.terminalContexts.map((value) =>
+                      encodeTerminalContext(value),
                     ),
                   }
                 : {}),
               ...(draft.promptHistorySavedDraft.fileComments.length > 0
                 ? {
-                    fileComments: draft.promptHistorySavedDraft.fileComments.map((comment) => ({
-                      id: comment.id,
-                      path: comment.path,
-                      startLine: comment.startLine,
-                      endLine: comment.endLine,
-                      text: comment.text,
-                    })),
+                    fileComments: draft.promptHistorySavedDraft.fileComments.map((value) =>
+                      encodeFileComment(value),
+                    ),
                   }
                 : {}),
               ...(draft.promptHistorySavedDraft.pastedTexts.length > 0
                 ? {
-                    pastedTexts: draft.promptHistorySavedDraft.pastedTexts.map((pasted) => ({
-                      id: pasted.id,
-                      createdAt: pasted.createdAt,
-                      text: pasted.text,
-                    })),
+                    pastedTexts: draft.promptHistorySavedDraft.pastedTexts.map((value) =>
+                      encodePastedText(value),
+                    ),
                   }
                 : {}),
               ...(draft.promptHistorySavedDraft.pullRequestContexts.length > 0
                 ? {
                     pullRequestContexts: draft.promptHistorySavedDraft.pullRequestContexts.map(
-                      toPersistedPullRequestContext,
+                      (value) => encodePullRequestContext(value),
                     ),
                   }
                 : {}),
@@ -282,11 +258,9 @@ export function partializeComposerDraftStoreState(
       attachments: draft.persistedAttachments.map(toStorageSafePersistedAttachment),
       ...(draft.assistantSelections.length > 0
         ? {
-            assistantSelections: draft.assistantSelections.map((selection) => ({
-              id: selection.id,
-              assistantMessageId: selection.assistantMessageId,
-              text: selection.text,
-            })),
+            assistantSelections: draft.assistantSelections.map((value) =>
+              encodeAssistantSelection(value),
+            ),
           }
         : {}),
       ...(draft.browserAnnotations.length > 0
@@ -296,40 +270,24 @@ export function partializeComposerDraftStoreState(
         : {}),
       ...(draft.terminalContexts.length > 0
         ? {
-            terminalContexts: draft.terminalContexts.map((context) => ({
-              id: context.id,
-              threadId: context.threadId,
-              createdAt: context.createdAt,
-              terminalId: context.terminalId,
-              terminalLabel: context.terminalLabel,
-              lineStart: context.lineStart,
-              lineEnd: context.lineEnd,
-            })),
+            terminalContexts: draft.terminalContexts.map((value) => encodeTerminalContext(value)),
           }
         : {}),
       ...(draft.fileComments.length > 0
         ? {
-            fileComments: draft.fileComments.map((comment) => ({
-              id: comment.id,
-              path: comment.path,
-              startLine: comment.startLine,
-              endLine: comment.endLine,
-              text: comment.text,
-            })),
+            fileComments: draft.fileComments.map((value) => encodeFileComment(value)),
           }
         : {}),
       ...(draft.pastedTexts.length > 0
         ? {
-            pastedTexts: draft.pastedTexts.map((pasted) => ({
-              id: pasted.id,
-              createdAt: pasted.createdAt,
-              text: pasted.text,
-            })),
+            pastedTexts: draft.pastedTexts.map((value) => encodePastedText(value)),
           }
         : {}),
       ...(draft.pullRequestContexts.length > 0
         ? {
-            pullRequestContexts: draft.pullRequestContexts.map(toPersistedPullRequestContext),
+            pullRequestContexts: draft.pullRequestContexts.map((value) =>
+              encodePullRequestContext(value),
+            ),
           }
         : {}),
       ...(draft.skills.length > 0 ? { skills: [...draft.skills] } : {}),
