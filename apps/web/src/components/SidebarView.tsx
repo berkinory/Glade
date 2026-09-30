@@ -1,3 +1,4 @@
+import { useSidebarStateStore } from "../sidebarStateStore";
 import { spaceDisplayIcon, spaceDisplayName } from "../lib/spaceGrouping";
 import { resolveSidebarProjectRowLabel } from "./Sidebar.logic.statusTypes";
 import { SidebarTrigger } from "./ui/sidebar";
@@ -100,9 +101,6 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
     activityShortcutLabel,
     focusedProjectId,
     setSearchPaletteOpen,
-    chatSectionExpanded,
-    setChatSectionExpanded,
-    activityViewEnabled,
     handleActivityVisibleThreadIdsChange,
     setActivityViewEnabledSmoothly,
     visualActiveSidebarThreadId,
@@ -181,12 +179,18 @@ export function SidebarView({ context }: { context: ReturnType<typeof useSidebar
     isOnKanban,
     isOnAutomations,
     openFeedbackDialog,
-    setThreadListExtraPagesByProjectCwd,
     handleBackToThreads,
     railRouteItemIds,
     railShortcuts,
     railSpacesProject,
   } = context;
+  const chatSectionExpanded = useSidebarStateStore((state) => state.chatSectionExpanded);
+  const setChatSectionExpanded = useSidebarStateStore((state) => state.setChatSectionExpanded);
+  const setThreadListExtraPagesByProjectCwd = useSidebarStateStore(
+    (state) => state.setThreadListExtraPagesByProjectCwd,
+  );
+  const activityViewEnabled = useSidebarStateStore((state) => state.activityViewEnabled);
+
   const handleToggleProjects = useCallback(() => {
     if (allProjectsExpanded) {
       const closingCwds = new Set(

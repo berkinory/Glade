@@ -66,7 +66,6 @@ export function useSidebarProjectNavigation(context: ReturnType<typeof useSideba
     latestProjectId,
     setCreateProjectDialogOpen,
     projectAdditionLockRef,
-    lastThreadRoute,
     optimisticPinnedStateByProjectIdRef,
     latestPinnedMutationVersionByProjectIdRef,
     optimisticPinnedStateByProjectId,
@@ -79,6 +78,8 @@ export function useSidebarProjectNavigation(context: ReturnType<typeof useSideba
     ordinarySpaceProjects,
     projectByIdRef,
   } = context;
+  const lastThreadRoute = useSidebarStateStore((state) => state.lastThreadRoute);
+
   const setOptimisticProjectPinned = useCallback(
     (projectId: ProjectId, isPinned: boolean) => {
       optimisticPinnedStateByProjectIdRef.current.set(projectId, isPinned);

@@ -1,3 +1,4 @@
+import { useSidebarStateStore } from "../sidebarStateStore";
 import { AddPlusIcon } from "~/lib/icons";
 import { useCallback, useEffect, useMemo } from "react";
 import { type DesktopUpdateState } from "@glade/contracts/ipc/ipc";
@@ -66,8 +67,6 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
     setSearchPaletteOpen,
     searchPaletteMode,
     setSearchPaletteMode,
-    setThreadListExtraPagesByProjectCwd,
-    activityViewEnabled,
     setActivityViewEnabledSmoothly,
     dragInProgressRef,
     suppressProjectClickAfterDragRef,
@@ -95,6 +94,11 @@ export function useSidebarPanelEffects(context: ReturnType<typeof useSidebarDeri
     setShowThreadJumpHints,
     showThreadJumpHintsRef,
   } = context;
+  const setThreadListExtraPagesByProjectCwd = useSidebarStateStore(
+    (state) => state.setThreadListExtraPagesByProjectCwd,
+  );
+  const activityViewEnabled = useSidebarStateStore((state) => state.activityViewEnabled);
+
   const resetProjectThreadPagingOnClose = useCallback(
     (projectId: ProjectId) => {
       const project = projectById.get(projectId);

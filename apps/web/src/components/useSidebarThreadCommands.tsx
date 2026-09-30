@@ -1,3 +1,4 @@
+import { useSidebarStateStore } from "../sidebarStateStore";
 import { pinActionLabel } from "~/lib/pin";
 import { THREAD_CONTEXT_MENU_ICONS } from "~/lib/contextMenuIcons";
 import { useCallback, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
@@ -43,7 +44,6 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
     openRightDockPane,
     setRenameDialogThreadId,
     setProjectContextMenuState,
-    setLastThreadRoute,
     setOptimisticActiveThreadId,
     lastThreadRenameTapRef,
     selectedThreadIds,
@@ -63,6 +63,8 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
     projectCwdById,
     currentProjectShortcutTargetId,
   } = context;
+  const setLastThreadRoute = useSidebarStateStore((state) => state.setLastThreadRoute);
+
   const handleImportThread = useCallback(
     async (provider: ImportProviderKind, externalId: string) => {
       const api = readNativeApi();

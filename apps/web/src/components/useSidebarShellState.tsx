@@ -390,23 +390,12 @@ export function useSidebarShellState() {
   const [projectContextMenuState, setProjectContextMenuState] =
     useState<ProjectContextMenuState | null>(null);
 
-  const threadListExtraPagesByProjectCwd = useSidebarStateStore(
-    (state) => state.threadListExtraPagesByProjectCwd,
-  );
-  const setThreadListExtraPagesByProjectCwd = useSidebarStateStore(
-    (state) => state.setThreadListExtraPagesByProjectCwd,
-  );
-  const chatSectionExpanded = useSidebarStateStore((state) => state.chatSectionExpanded);
-  const setChatSectionExpanded = useSidebarStateStore((state) => state.setChatSectionExpanded);
   const dismissedThreadStatusKeyByThreadId = useSidebarStateStore(
     (state) => state.dismissedThreadStatusKeyByThreadId,
   );
   const setDismissedThreadStatusKeyByThreadId = useSidebarStateStore(
     (state) => state.setDismissedThreadStatusKeyByThreadId,
   );
-  const lastThreadRoute = useSidebarStateStore((state) => state.lastThreadRoute);
-  const setLastThreadRoute = useSidebarStateStore((state) => state.setLastThreadRoute);
-  const activityViewEnabled = useSidebarStateStore((state) => state.activityViewEnabled);
   const setActivityViewEnabled = useSidebarStateStore((state) => state.setActivityViewEnabled);
 
   const [activityVisibleThreadIds, setActivityVisibleThreadIds] = useState<readonly ThreadId[]>([]);
@@ -843,15 +832,6 @@ export function useSidebarShellState() {
     setRelocateProjectDialogId,
     projectContextMenuState,
     setProjectContextMenuState,
-    threadListExtraPagesByProjectCwd,
-    setThreadListExtraPagesByProjectCwd,
-    chatSectionExpanded,
-    setChatSectionExpanded,
-    dismissedThreadStatusKeyByThreadId,
-    setDismissedThreadStatusKeyByThreadId,
-    lastThreadRoute,
-    setLastThreadRoute,
-    activityViewEnabled,
     activityVisibleThreadIds,
     handleActivityVisibleThreadIdsChange,
     setActivityViewEnabledSmoothly,

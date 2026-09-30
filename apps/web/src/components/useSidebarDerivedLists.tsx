@@ -1,3 +1,4 @@
+import { useSidebarStateStore } from "../sidebarStateStore";
 import { ClockIcon, KanbanIcon, NewThreadIcon } from "~/lib/icons";
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { ProjectId, SpaceId, ThreadId } from "@glade/contracts/core/baseSchemas";
@@ -65,12 +66,6 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
     appSettings,
     routeThreadId,
     routeSearch,
-    threadListExtraPagesByProjectCwd,
-    setThreadListExtraPagesByProjectCwd,
-    chatSectionExpanded,
-    setDismissedThreadStatusKeyByThreadId,
-    setLastThreadRoute,
-    activityViewEnabled,
     activityVisibleThreadIds,
     suppressProjectClickAfterDragRef,
     optimisticPinnedStateByProjectId,
@@ -91,6 +86,19 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
     activateThreadFromSidebarIntent,
     voidSpace,
   } = context;
+  const chatSectionExpanded = useSidebarStateStore((state) => state.chatSectionExpanded);
+  const threadListExtraPagesByProjectCwd = useSidebarStateStore(
+    (state) => state.threadListExtraPagesByProjectCwd,
+  );
+  const setThreadListExtraPagesByProjectCwd = useSidebarStateStore(
+    (state) => state.setThreadListExtraPagesByProjectCwd,
+  );
+  const setDismissedThreadStatusKeyByThreadId = useSidebarStateStore(
+    (state) => state.setDismissedThreadStatusKeyByThreadId,
+  );
+  const setLastThreadRoute = useSidebarStateStore((state) => state.setLastThreadRoute);
+  const activityViewEnabled = useSidebarStateStore((state) => state.activityViewEnabled);
+
   const sidebarNavDescriptors = useMemo<Record<SidebarNavItemId, SidebarNavItemDescriptor>>(
     () => ({
       newThread: {
