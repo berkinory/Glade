@@ -100,3 +100,5 @@ Prefer capability-driven behavior and existing shared protocol helpers. Do not a
 - `packages/shared/src/provider/providerMetadata.ts` — shared provider metadata
 
 Glade renders harness policy once per provider. Codex receives it as `developerInstructions` on thread start, resume and fork; no collaboration-mode payload is sent. Claude receives the same policy through the preset system prompt append. Local probes with Codex 0.158.0 and Claude 2.1.283 confirmed the marker, Computer Use rules and gateway rules in model-visible instructions. The retired Codex collaboration-mode channel did not deliver them.
+
+Edit, revert and file undo preview scoped checkpoint restores before confirmation. Each removed turn contributes its git diff paths, with the first affected turn start as the restore target and the last affected turn end as the expected workspace state. Later file changes require explicit consent per path, and a fingerprint is revalidated before provider rollback and again before restoring. The real git index and unrelated files are preserved. Claude rollback starts its replacement native session before deleting the superseded history.

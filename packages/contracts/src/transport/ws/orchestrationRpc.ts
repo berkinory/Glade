@@ -164,3 +164,12 @@ export const WsOrchestrationUnsubscribeThreadRpc = Rpc.make(
     error: WsRpcError,
   },
 );
+
+export const WsPreviewWorkspaceRestoreRpc = Rpc.make(
+  ORCHESTRATION_WS_METHODS.previewWorkspaceRestore,
+  {
+    payload: OrchestrationRpcSchemas.previewWorkspaceRestore.input,
+    success: OrchestrationRpcSchemas.previewWorkspaceRestore.output,
+    error: WsRpcError,
+  },
+);

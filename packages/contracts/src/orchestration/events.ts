@@ -1,3 +1,4 @@
+import { WorkspaceRestoreConfirmation } from "./workspaceRestore";
 import { ProviderForkPoint } from "../provider/provider";
 import { Schema } from "effect";
 import {
@@ -408,6 +409,7 @@ const ThreadUserInputResponseRequestedPayload = Schema.Struct({
 });
 
 export const ThreadCheckpointRevertRequestedPayload = Schema.Struct({
+  workspaceRestore: Schema.optional(WorkspaceRestoreConfirmation),
   threadId: ThreadId,
   turnCount: NonNegativeInt,
   scope: Schema.optional(Schema.Literals(["thread", "files"])).pipe(
@@ -438,6 +440,7 @@ export const ThreadConversationRolledBackPayload = Schema.Struct({
 });
 
 export const ThreadMessageEditResendRequestedPayload = Schema.Struct({
+  workspaceRestore: Schema.optional(WorkspaceRestoreConfirmation),
   threadId: ThreadId,
   messageId: MessageId,
   text: TrimmedNonEmptyString.check(Schema.isMaxLength(PROVIDER_SEND_TURN_MAX_INPUT_CHARS)),

@@ -1,3 +1,4 @@
+import { WorkspaceRestoreConfirmation } from "./workspaceRestore";
 import { Schema } from "effect";
 import {
   CommandId,
@@ -472,6 +473,7 @@ const ThreadUserInputRespondCommand = Schema.Struct({
 });
 
 const ThreadCheckpointRevertCommand = Schema.Struct({
+  workspaceRestore: Schema.optional(WorkspaceRestoreConfirmation),
   type: Schema.Literal("thread.checkpoint.revert"),
   commandId: CommandId,
   threadId: ThreadId,
@@ -490,6 +492,7 @@ const ThreadConversationRollbackCommand = Schema.Struct({
 });
 
 const ThreadMessageEditAndResendCommand = Schema.Struct({
+  workspaceRestore: Schema.optional(WorkspaceRestoreConfirmation),
   type: Schema.Literal("thread.message.edit-and-resend"),
   commandId: CommandId,
   threadId: ThreadId,

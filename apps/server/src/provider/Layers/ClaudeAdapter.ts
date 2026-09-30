@@ -334,7 +334,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       requireSession,
       options,
       forkNativeSession,
-      snapshotThread,
+      runtimeEvents,
     });
     const management = makeClaudeManagement({ sessions, serverConfig });
 

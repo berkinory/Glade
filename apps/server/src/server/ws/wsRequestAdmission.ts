@@ -33,6 +33,7 @@ const EXPENSIVE_READ_METHODS = new Set<string>([
   ORCHESTRATION_WS_METHODS.getThreadDetailSnapshot,
   ORCHESTRATION_WS_METHODS.repairState,
   ORCHESTRATION_WS_METHODS.getTurnDiff,
+  ORCHESTRATION_WS_METHODS.previewWorkspaceRestore,
   ORCHESTRATION_WS_METHODS.getFullThreadDiff,
   ORCHESTRATION_WS_METHODS.replayEvents,
   ORCHESTRATION_WS_METHODS.listProviderDeliveryBlockers,

@@ -141,8 +141,16 @@ describe("Claude sessionHistory", () => {
     "rewinds Claude through the native parent including hidden tool output, then resumes it",
     () => {
       const forks: unknown[] = [];
+      const deleted: string[] = [];
       const harness = makeMultiQueryHarness({
         nativeHistory: {
+          deleteNativeSession: async (sessionId) => {
+            assert.equal(
+              harness.createInputs[1]?.options.resume,
+              "24dbd86f-55d1-4de2-8138-7d7bd04563c5",
+            );
+            deleted.push(sessionId);
+          },
           readNativeSessionMessages: async () => [
             {
               type: "user",
@@ -196,6 +204,7 @@ describe("Claude sessionHistory", () => {
           resumeCursor: { resume: "9b37f02e-489d-4454-9f76-67a571840245" },
         });
         yield* adapter.rollbackThread(THREAD_ID, 1);
+        assert.deepEqual(deleted, ["9b37f02e-489d-4454-9f76-67a571840245"]);
         assert.deepEqual(forks, [
           {
             sessionId: "9b37f02e-489d-4454-9f76-67a571840245",

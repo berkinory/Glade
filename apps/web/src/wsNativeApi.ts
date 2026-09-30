@@ -641,6 +641,8 @@ export function createWsNativeApi(): NativeApi {
         transport.request(ORCHESTRATION_WS_METHODS.listProjectImports, input),
       importProject: (input) => transport.request(ORCHESTRATION_WS_METHODS.importProject, input),
       repairState: () => transport.request(ORCHESTRATION_WS_METHODS.repairState),
+      previewWorkspaceRestore: (input) =>
+        transport.request(ORCHESTRATION_WS_METHODS.previewWorkspaceRestore, input),
       getTurnDiff: (input) => transport.request(ORCHESTRATION_WS_METHODS.getTurnDiff, input),
       getFullThreadDiff: (input) =>
         transport.request(ORCHESTRATION_WS_METHODS.getFullThreadDiff, input),

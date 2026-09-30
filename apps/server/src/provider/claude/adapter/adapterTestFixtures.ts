@@ -295,7 +295,10 @@ export function makeHarness(config?: {
 export function makeMultiQueryHarness(config?: {
   readonly nativeHistory?: Pick<
     ClaudeAdapterLiveOptions,
-    "readNativeSessionMessages" | "readNativeMessageParent" | "forkNativeSession"
+    | "readNativeSessionMessages"
+    | "readNativeMessageParent"
+    | "forkNativeSession"
+    | "deleteNativeSession"
   >;
   readonly failCreateAt?: number;
   readonly gatewayCredentials?: AgentGatewayCredentialsShape;
@@ -307,6 +310,7 @@ export function makeMultiQueryHarness(config?: {
     readonly options: ClaudeQueryOptions;
   }> = [];
   let layer = makeClaudeAdapterLive({
+    deleteNativeSession: async () => {},
     ...config?.nativeHistory,
     createQuery: (input) => {
       if (queries.length === config?.failCreateAt) {

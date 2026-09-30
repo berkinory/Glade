@@ -369,11 +369,20 @@ describe("Provider reactor conversationEdits", () => {
     );
 
     await waitFor(() => harness.sendTurn.mock.calls.length === 1);
-    expect(harness.restoreCheckpoint).toHaveBeenCalledWith({
-      cwd: "/tmp/provider-project",
-      checkpointRef: checkpointRefForThreadTurn(ThreadId.makeUnsafe("thread-1"), 0),
-      fallbackToHead: true,
-    });
+    expect(harness.restoreScopedCheckpoint).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cwd: "/tmp/provider-project",
+        turns: [
+          expect.objectContaining({
+            fallbackBeforeCheckpointRef: checkpointRefForThreadTurn(
+              ThreadId.makeUnsafe("thread-1"),
+              0,
+            ),
+          }),
+        ],
+        confirmation: { fingerprint: "empty", overwritePaths: [] },
+      }),
+    );
   });
 
   it("rewinds a stopped conversation before resending an edited message", async () => {

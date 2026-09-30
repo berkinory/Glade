@@ -333,20 +333,20 @@ export function makeReactorTestHarness() {
     const rollbackConversation = vi.fn<ProviderServiceShape["rollbackConversation"]>(
       () => Effect.void,
     );
-    const restoreCheckpoint = vi.fn<CheckpointStoreShape["restoreCheckpoint"]>(() =>
-      Effect.succeed(true),
-    );
     const isGitRepository = vi.fn<CheckpointStoreShape["isGitRepository"]>(() =>
       Effect.succeed(false),
     );
     const captureCheckpoint = vi.fn<CheckpointStoreShape["captureCheckpoint"]>(() => Effect.void);
+    const restoreScopedCheckpoint = vi.fn<CheckpointStoreShape["restoreScopedCheckpoint"]>(
+      () => Effect.void,
+    );
     const checkpointStore: CheckpointStoreShape = {
       isGitRepository,
       captureCheckpoint,
       copyCheckpointRef: () => Effect.succeed(true),
       hasCheckpointRef: () => Effect.succeed(false),
-      restoreCheckpoint,
-      reverseCheckpointDiff: () => Effect.succeed(true),
+      previewScopedRestore: () => Effect.succeed({ fingerprint: "empty", files: [] }),
+      restoreScopedCheckpoint,
       diffCheckpoints: () => Effect.succeed(""),
       deleteCheckpointRefs: () => Effect.void,
       ...input?.checkpointStore,
@@ -646,7 +646,7 @@ export function makeReactorTestHarness() {
       rollbackConversation,
       isGitRepository,
       captureCheckpoint,
-      restoreCheckpoint,
+      restoreScopedCheckpoint,
       stopSession,
       stopRuntimeSession,
       clearSessionResumeCursor,

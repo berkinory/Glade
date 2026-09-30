@@ -941,6 +941,11 @@ const makeWsRpcHandlersLayer = () =>
           ),
         [ORCHESTRATION_WS_METHODS.repairState]: () =>
           rpcEffect(orchestrationEngine.repairState(), "Failed to repair orchestration state"),
+        [ORCHESTRATION_WS_METHODS.previewWorkspaceRestore]: (input) =>
+          rpcEffect(
+            checkpointDiffQuery.previewWorkspaceRestore(input),
+            "Failed to preview workspace restore",
+          ),
         [ORCHESTRATION_WS_METHODS.getTurnDiff]: (input) =>
           rpcEffect(checkpointDiffQuery.getTurnDiff(input), "Failed to load turn diff"),
         [ORCHESTRATION_WS_METHODS.getFullThreadDiff]: (input) =>

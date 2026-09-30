@@ -53,7 +53,7 @@ export interface ReactorTestHarness {
   readonly rollbackConversation: Mock<NonNullable<ProviderServiceShape["rollbackConversation"]>>;
   readonly isGitRepository: Mock<CheckpointStoreShape["isGitRepository"]>;
   readonly captureCheckpoint: Mock<CheckpointStoreShape["captureCheckpoint"]>;
-  readonly restoreCheckpoint: Mock<CheckpointStoreShape["restoreCheckpoint"]>;
+  readonly restoreScopedCheckpoint: Mock<CheckpointStoreShape["restoreScopedCheckpoint"]>;
   readonly stopSession: Mock<(input: unknown) => Effect.Effect<void, never, never>>;
   readonly stopRuntimeSession: Mock<(input: unknown) => Effect.Effect<void, never, never>>;
   readonly clearSessionResumeCursor: Mock<

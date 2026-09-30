@@ -1,3 +1,7 @@
+import type {
+  WorkspaceRestoreConfirmation,
+  WorkspaceRestorePreview,
+} from "@glade/contracts/orchestration/workspaceRestore";
 import { ServiceMap } from "effect";
 import type { Effect } from "effect";
 
@@ -17,12 +21,6 @@ interface CopyCheckpointRefInput {
   readonly toCheckpointRef: CheckpointRef;
 }
 
-interface RestoreCheckpointInput {
-  readonly cwd: string;
-  readonly checkpointRef: CheckpointRef;
-  readonly fallbackToHead?: boolean;
-}
-
 interface DiffCheckpointsInput {
   readonly cwd: string;
   readonly fromCheckpointRef: CheckpointRef;
@@ -32,19 +30,27 @@ interface DiffCheckpointsInput {
   readonly maxOutputBytes?: number;
 }
 
-interface ReverseCheckpointDiffInput {
-  readonly cwd: string;
-  readonly fromCheckpointRef: CheckpointRef;
-  readonly toCheckpointRef: CheckpointRef;
-  readonly maxOutputBytes?: number;
-}
-
 interface DeleteCheckpointRefsInput {
   readonly cwd: string;
   readonly checkpointRefs: ReadonlyArray<CheckpointRef>;
 }
 
+export interface ScopedRestoreInput {
+  readonly cwd: string;
+  readonly turns: ReadonlyArray<{
+    readonly beforeCheckpointRef: CheckpointRef;
+    readonly afterCheckpointRef: CheckpointRef;
+    readonly fallbackBeforeCheckpointRef?: CheckpointRef;
+  }>;
+}
+
 export interface CheckpointStoreShape {
+  readonly previewScopedRestore: (
+    input: ScopedRestoreInput,
+  ) => Effect.Effect<WorkspaceRestorePreview, CheckpointStoreError>;
+  readonly restoreScopedCheckpoint: (
+    input: ScopedRestoreInput & { readonly confirmation: WorkspaceRestoreConfirmation },
+  ) => Effect.Effect<void, CheckpointStoreError>;
   readonly isGitRepository: (cwd: string) => Effect.Effect<boolean, CheckpointStoreError>;
 
   readonly captureCheckpoint: (
@@ -55,21 +61,14 @@ export interface CheckpointStoreShape {
     input: CopyCheckpointRefInput,
   ) => Effect.Effect<boolean, CheckpointStoreError>;
 
-  readonly hasCheckpointRef: (
-    input: Omit<RestoreCheckpointInput, "fallbackToHead">,
-  ) => Effect.Effect<boolean, CheckpointStoreError>;
-
-  readonly restoreCheckpoint: (
-    input: RestoreCheckpointInput,
-  ) => Effect.Effect<boolean, CheckpointStoreError>;
+  readonly hasCheckpointRef: (input: {
+    readonly cwd: string;
+    readonly checkpointRef: CheckpointRef;
+  }) => Effect.Effect<boolean, CheckpointStoreError>;
 
   readonly diffCheckpoints: (
     input: DiffCheckpointsInput,
   ) => Effect.Effect<string, CheckpointStoreError>;
-
-  readonly reverseCheckpointDiff: (
-    input: ReverseCheckpointDiffInput,
-  ) => Effect.Effect<boolean, CheckpointStoreError>;
 
   readonly deleteCheckpointRefs: (
     input: DeleteCheckpointRefsInput,

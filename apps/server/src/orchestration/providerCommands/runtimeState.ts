@@ -1,4 +1,6 @@
-import { TurnId, type CheckpointRef } from "@glade/contracts/core/baseSchemas";
+import type { ScopedRestoreInput } from "../../checkpointing/Services/CheckpointStore";
+import type { WorkspaceRestoreConfirmation } from "@glade/contracts/orchestration/workspaceRestore";
+import { TurnId } from "@glade/contracts/core/baseSchemas";
 import { ProviderContextLifecycleEvidence } from "./contextLifecycle";
 import { ProviderQueueDrainEvent } from "./deliveryClaims";
 
@@ -14,8 +16,6 @@ export type PendingContextBootstrapAttempt = {
   readonly interruptEscalation?: PendingInterruptEscalation;
 };
 
-export interface EditReplayWorkspaceRestorePlan {
-  readonly cwd: string;
-  readonly checkpointRef: CheckpointRef;
-  readonly targetTurnCount: number;
+export interface EditReplayWorkspaceRestorePlan extends ScopedRestoreInput {
+  readonly confirmation: WorkspaceRestoreConfirmation;
 }

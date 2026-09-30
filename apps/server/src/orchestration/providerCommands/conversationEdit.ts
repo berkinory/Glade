@@ -1,3 +1,6 @@
+import { scopedTurnCheckpoints } from "../../checkpointing/scopedTurnCheckpoints";
+import { validateRestoreConfirmation } from "../../checkpointing/scopedRestore";
+import type { WorkspaceRestoreConfirmation } from "@glade/contracts/orchestration/workspaceRestore";
 import type { ServiceMap } from "effect";
 import { ProviderService } from "../../provider/Services/ProviderService.ts";
 import type { ProviderProjectionAccessShape } from "../Services/ProviderProjectionAccess.ts";
@@ -9,7 +12,6 @@ import { Effect } from "effect";
 import { ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { ProviderServiceError } from "../../provider/core/Errors.ts";
 import { isRollbackStillInProgressError } from "./interactionPolicy";
-import { checkpointRefForThreadTurn } from "../../checkpointing/Utils.ts";
 import { ProviderCommandExecutionError } from "./providerCallPolicy";
 import { clearWorkspaceIndexCache } from "../../workspace/workspaceEntries.ts";
 import { type ProviderIntentEvent } from "../providerIntentClassification.ts";
@@ -81,89 +83,30 @@ export function makeProviderConversationEdit(input: {
   const planWorkspaceRestoreForEditReplay = Effect.fnUntraced(function* (input: {
     readonly threadId: ThreadId;
     readonly removedTurnIds: ReadonlyArray<TurnId>;
+    readonly confirmation?: WorkspaceRestoreConfirmation;
   }) {
-    if (input.removedTurnIds.length === 0) {
-      return null;
-    }
-
+    if (!input.removedTurnIds.length) return null;
     const thread = yield* resolveThread(input.threadId);
-    if (!thread) {
-      return null;
-    }
-
-    const removedTurnIdSet = new Set(input.removedTurnIds);
-    const removedCheckpoints = thread.checkpoints.filter((checkpoint) =>
-      removedTurnIdSet.has(checkpoint.turnId),
-    );
-    if (removedCheckpoints.length === 0) {
-      return null;
-    }
-
-    const firstRemovedTurnCount = removedCheckpoints.reduce(
-      (minTurnCount, checkpoint) => Math.min(minTurnCount, checkpoint.checkpointTurnCount),
-      Number.POSITIVE_INFINITY,
-    );
-    const targetTurnCount = Math.max(0, firstRemovedTurnCount - 1);
+    if (!thread) return null;
     const cwd = yield* resolveProjectedThreadWorkspaceCwd(thread);
-    if (!cwd) {
-      return null;
-    }
-
-    if (!(yield* checkpointStore.isGitRepository(cwd))) {
-      return null;
-    }
-
-    const targetCheckpointRef =
-      targetTurnCount === 0
-        ? checkpointRefForThreadTurn(input.threadId, 0)
-        : thread.checkpoints.find(
-            (checkpoint) => checkpoint.checkpointTurnCount === targetTurnCount,
-          )?.checkpointRef;
-    if (!targetCheckpointRef) {
-      return yield* Effect.fail(
-        new ProviderCommandExecutionError(
-          `Checkpoint ref for edit replay turn ${targetTurnCount} is unavailable.`,
-        ),
-      );
-    }
-
-    if (
-      targetTurnCount !== 0 &&
-      !(yield* checkpointStore.hasCheckpointRef({ cwd, checkpointRef: targetCheckpointRef }))
-    ) {
-      return yield* Effect.fail(
-        new ProviderCommandExecutionError(
-          `Filesystem checkpoint is unavailable for edit replay turn ${targetTurnCount}.`,
-        ),
-      );
-    }
-
+    if (!cwd || !(yield* checkpointStore.isGitRepository(cwd))) return null;
+    const checkpoints = thread.checkpoints.filter((checkpoint) =>
+      input.removedTurnIds.includes(checkpoint.turnId),
+    );
+    const plan = { cwd, turns: scopedTurnCheckpoints(thread, checkpoints) };
+    const preview = yield* checkpointStore.previewScopedRestore(plan);
+    yield* validateRestoreConfirmation(preview, input.confirmation);
     return {
-      cwd,
-      checkpointRef: targetCheckpointRef,
-      targetTurnCount,
+      ...plan,
+      confirmation: input.confirmation ?? { fingerprint: preview.fingerprint, overwritePaths: [] },
     } satisfies EditReplayWorkspaceRestorePlan;
   });
 
   const executeEditReplayWorkspaceRestore = Effect.fnUntraced(function* (
     plan: EditReplayWorkspaceRestorePlan | null,
   ) {
-    if (plan === null) {
-      return;
-    }
-    const restored = yield* checkpointStore.restoreCheckpoint({
-      cwd: plan.cwd,
-      checkpointRef: plan.checkpointRef,
-      fallbackToHead: plan.targetTurnCount === 0,
-    });
-    if (!restored) {
-      return yield* Effect.fail(
-        new ProviderCommandExecutionError(
-          `Filesystem checkpoint for edit replay turn ${plan.targetTurnCount} became unavailable during the rollback.`,
-        ),
-      );
-    }
-
+    if (!plan) return;
+    yield* checkpointStore.restoreScopedCheckpoint(plan);
     clearWorkspaceIndexCache(plan.cwd);
   });
 
@@ -293,6 +236,7 @@ export function makeProviderConversationEdit(input: {
     const workspaceRestorePlan = yield* planWorkspaceRestoreForEditReplay({
       threadId: payload.threadId,
       removedTurnIds: editTarget.removedTurnIds.map((turnId) => TurnId.makeUnsafe(turnId)),
+      ...(payload.workspaceRestore ? { confirmation: payload.workspaceRestore } : {}),
     });
     if (options?.skipProviderRollback !== true && editTarget.rollbackTurnCount > 0) {
       yield* rollbackProviderConversationForEdit({

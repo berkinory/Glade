@@ -115,6 +115,7 @@ export function decideConversationCommand({
             threadId: command.threadId,
             turnCount: command.turnCount,
             scope: command.scope ?? "thread",
+            ...(command.workspaceRestore ? { workspaceRestore: command.workspaceRestore } : {}),
             createdAt: command.createdAt,
           },
         };
@@ -200,6 +201,7 @@ export function decideConversationCommand({
           type: "thread.message-edit-resend-requested",
           payload: {
             threadId: command.threadId,
+            ...(command.workspaceRestore ? { workspaceRestore: command.workspaceRestore } : {}),
             messageId: command.messageId,
             text: command.text,
             rollbackTurnCount: editTarget.rollbackTurnCount,

@@ -1,3 +1,4 @@
+import { confirmWorkspaceRestore } from "./confirmWorkspaceRestore";
 import { MessageId, ThreadId, type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { resolveTailUserMessageEditTarget } from "@glade/shared/threads/conversationEdit";
 
@@ -208,6 +209,12 @@ export function useChatTurnFollowUps({
       });
       const outgoingMessageText = editedTextWithOriginalContext;
       return await (async () => {
+        const preview = await api.orchestration.previewWorkspaceRestore({
+          threadId: activeThread.id,
+          target: { type: "edit", messageId },
+        });
+        const workspaceRestore = await confirmWorkspaceRestore(preview, api.dialogs.confirm);
+        if (!workspaceRestore) return false;
         await persistThreadSettingsForNextTurn({
           ...threadSettingsDispatchFields(turnDispatchSettings),
           threadId: activeThread.id,
@@ -215,6 +222,7 @@ export function useChatTurnFollowUps({
         });
         await api.orchestration.dispatchCommand({
           type: "thread.message.edit-and-resend",
+          workspaceRestore,
           commandId: newCommandId(),
           threadId: activeThread.id,
           messageId,

@@ -1,3 +1,5 @@
+import { scopedTurnCheckpoints } from "../scopedTurnCheckpoints";
+import { collectTailTurnIds } from "@glade/shared/threads/conversationEdit";
 import {
   OrchestrationGetTurnDiffResult,
   type OrchestrationGetFullThreadDiffInput,
@@ -40,6 +42,54 @@ function buildTurnDiffResult(input: {
 const make = Effect.gen(function* () {
   const projectionSnapshotQuery = yield* ProjectionSnapshotQuery;
   const checkpointStore = yield* CheckpointStore;
+
+  const previewWorkspaceRestore: CheckpointDiffQueryShape["previewWorkspaceRestore"] = (input) =>
+    Effect.gen(function* () {
+      const detail = yield* projectionSnapshotQuery.getThreadDetailById(input.threadId);
+      if (Option.isNone(detail))
+        return yield* new CheckpointInvariantError({
+          operation: "previewWorkspaceRestore",
+          detail: "Conversation is unavailable.",
+        });
+      const thread = detail.value;
+      const project = yield* projectionSnapshotQuery.getProjectShellById(thread.projectId);
+      if (Option.isNone(project))
+        return yield* new CheckpointInvariantError({
+          operation: "previewWorkspaceRestore",
+          detail: "Project is unavailable.",
+        });
+      const cwd = resolveThreadWorkspaceCwd({ thread, projects: [project.value] });
+      if (!cwd)
+        return yield* new CheckpointInvariantError({
+          operation: "previewWorkspaceRestore",
+          detail: "Conversation has no workspace.",
+        });
+      const target = input.target;
+      const removedTurnIds =
+        target.type === "edit"
+          ? collectTailTurnIds({ messages: thread.messages, messageId: target.messageId })
+          : [];
+      const checkpoints = thread.checkpoints.filter((checkpoint) =>
+        target.type === "revert"
+          ? checkpoint.checkpointTurnCount > target.turnCount
+          : target.type === "undoFiles"
+            ? checkpoint.checkpointTurnCount === target.turnCount
+            : removedTurnIds.includes(checkpoint.turnId),
+      );
+      return yield* checkpointStore.previewScopedRestore({
+        cwd,
+        turns: scopedTurnCheckpoints(thread, checkpoints),
+      });
+    }).pipe(
+      Effect.mapError(
+        (cause) =>
+          new CheckpointInvariantError({
+            operation: "previewWorkspaceRestore",
+            detail: cause.message,
+            cause,
+          }),
+      ),
+    );
 
   const getTurnDiff: CheckpointDiffQueryShape["getTurnDiff"] = (input) =>
     Effect.gen(function* () {
@@ -302,6 +352,7 @@ const make = Effect.gen(function* () {
 
   return {
     getTurnDiff,
+    previewWorkspaceRestore,
     getFullThreadDiff,
   } satisfies CheckpointDiffQueryShape;
 });

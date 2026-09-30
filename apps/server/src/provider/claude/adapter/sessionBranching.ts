@@ -35,7 +35,7 @@ export function makeClaudeSessionBranching(input: {
     sessionId: string,
     forkOptions?: { readonly dir?: string; readonly upToMessageId?: string },
   ) => Promise<{ sessionId: string }>;
-  readonly snapshotThread: ClaudeRuntimeEventsShape["snapshotThread"];
+  readonly runtimeEvents: Pick<ClaudeRuntimeEventsShape, "snapshotThread" | "emitRuntimeWarning">;
 }) {
   const {
     withSessionLifecycleLock,
@@ -47,8 +47,9 @@ export function makeClaudeSessionBranching(input: {
     requireSession,
     options,
     forkNativeSession,
-    snapshotThread,
+    runtimeEvents,
   } = input;
+  const { snapshotThread, emitRuntimeWarning } = runtimeEvents;
   const rollbackThread: ClaudeAdapterShape["rollbackThread"] = (threadId, numTurns) =>
     withSessionLifecycleLock(
       threadId,
@@ -131,6 +132,30 @@ export function makeClaudeSessionBranching(input: {
         const preflight = yield* resolveClaudeStartPreflight(startInput);
         yield* stopSessionInternal(context, { emitExitEvent: false });
         yield* startSessionUnlocked(startInput, preflight);
+        const replacement = yield* requireSession(threadId);
+        yield* Effect.tryPromise({
+          try: async () => {
+            if (replacement.resumeSessionId === sourceSessionId)
+              throw new Error(
+                "Rollback kept the original session; refusing to delete its active history.",
+              );
+            const deleteSession =
+              options?.deleteNativeSession ?? (await loadClaudeAgentSdk()).deleteSession;
+            await deleteSession(
+              sourceSessionId,
+              context.session.cwd ? { dir: context.session.cwd } : {},
+            );
+          },
+          catch: (cause) => toRequestError(threadId, "session/delete", cause),
+        }).pipe(
+          Effect.catch((error) =>
+            emitRuntimeWarning(
+              replacement,
+              "The conversation was rolled back, but superseded Claude history could not be deleted.",
+              { detail: error.message },
+            ),
+          ),
+        );
         return yield* snapshotThread(yield* requireSession(threadId));
       }),
     );

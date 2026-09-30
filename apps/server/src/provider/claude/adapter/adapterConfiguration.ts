@@ -60,6 +60,10 @@ export interface ClaudeAdapterLiveOptions {
     readonly prompt: AsyncIterable<SDKUserMessage>;
     readonly options: ClaudeQueryOptions;
   }) => ClaudeQueryRuntime | Promise<ClaudeQueryRuntime>;
+  readonly deleteNativeSession?: (
+    sessionId: string,
+    options?: { readonly dir?: string },
+  ) => Promise<void>;
   readonly forkNativeSession?: (
     sessionId: string,
     options?: { readonly dir?: string; readonly upToMessageId?: string },

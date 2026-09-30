@@ -1,3 +1,7 @@
+import type {
+  PreviewWorkspaceRestoreInput,
+  WorkspaceRestorePreview,
+} from "../orchestration/workspaceRestore";
 import {
   ProviderManagementContext,
   ProviderListMcpServersResult,
@@ -883,6 +887,9 @@ export interface NativeApi {
     importProject: (input: ImportProjectInput) => Promise<ImportProjectResult>;
 
     repairState: () => Promise<OrchestrationReadModel>;
+    previewWorkspaceRestore: (
+      input: PreviewWorkspaceRestoreInput,
+    ) => Promise<WorkspaceRestorePreview>;
     getTurnDiff: (input: OrchestrationGetTurnDiffInput) => Promise<OrchestrationGetTurnDiffResult>;
     getFullThreadDiff: (
       input: OrchestrationGetFullThreadDiffInput,

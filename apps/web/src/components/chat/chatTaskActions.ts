@@ -1,3 +1,4 @@
+import { confirmWorkspaceRestore } from "./confirmWorkspaceRestore";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { PendingFileUndo } from "~/components/ChatView.logic.session";
 import { localSubagentThreadId } from "~/components/ChatView.selectors";
@@ -65,16 +66,6 @@ export async function undoTurnFiles(input: {
     setThreadError(thread.id, "Interrupt the current turn before undoing file changes.");
     return;
   }
-  const confirmed = await api.dialogs.confirm(
-    [
-      "Undo the file changes shown in this card?",
-      "Earlier file changes will remain available to undo.",
-      "Messages and provider conversation history will be kept.",
-      "This action cannot be undone.",
-    ].join("\n"),
-  );
-  if (!confirmed) return;
-
   setIsReverting(true);
   setThreadError(thread.id, null);
   const orderedTurnCounts = [...new Set(turnCounts)].toSorted((left, right) => right - left);
@@ -88,8 +79,19 @@ export async function undoTurnFiles(input: {
   });
   try {
     for (const turnCount of orderedTurnCounts) {
+      const preview = await api.orchestration.previewWorkspaceRestore({
+        threadId: thread.id,
+        target: { type: "undoFiles", turnCount },
+      });
+      const workspaceRestore = await confirmWorkspaceRestore(preview, api.dialogs.confirm);
+      if (!workspaceRestore) {
+        setPendingFileUndo(null);
+        setIsReverting(false);
+        return;
+      }
       await api.orchestration.dispatchCommand({
         type: "thread.checkpoint.revert",
+        workspaceRestore,
         commandId: newCommandId(),
         threadId: thread.id,
         turnCount,
