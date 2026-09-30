@@ -12,6 +12,8 @@
 
 ### Improved
 
+- Claude adapter behavior tests are grouped by permissions, streaming, task and process lifecycles, session history, token accounting, configuration and plan mode, with shared SDK fixtures.
+
 - Claude session orchestration uses focused controllers for SDK hooks, messages, turn completion, human interactions, discovery and process teardown. The adapter Layer retains resource ownership and its public API.
 
 - Claude SDK callbacks and stream observers use the runtime captured by their adapter Layer, retaining its services and tracing context while keeping existing cancellation and teardown ownership.

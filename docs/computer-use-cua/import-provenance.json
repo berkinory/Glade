@@ -477,7 +477,20 @@
     {
       "status": "M",
       "file": "apps/server/src/provider/Layers/ClaudeAdapter.test.ts",
-      "source": "d9c1bdab0a5f0cdd51ade75adc62a0c44c473a5a"
+      "source": "d9c1bdab0a5f0cdd51ade75adc62a0c44c473a5a",
+      "currentFiles": [
+        "apps/server/src/provider/claude/adapter/adapterTestFixtures.ts",
+        "apps/server/src/provider/claude/adapter/configuration.test.ts",
+        "apps/server/src/provider/claude/adapter/streaming.test.ts",
+        "apps/server/src/provider/claude/adapter/subagentLifecycle.test.ts",
+        "apps/server/src/provider/claude/adapter/processLifecycle.test.ts",
+        "apps/server/src/provider/claude/adapter/approvals.test.ts",
+        "apps/server/src/provider/claude/adapter/sessionHistory.test.ts",
+        "apps/server/src/provider/claude/adapter/tokenUsage.test.ts",
+        "apps/server/src/provider/claude/adapter/planMode.test.ts",
+        "apps/server/src/provider/claude/adapter/forkThread.test.ts",
+        "apps/server/src/provider/claude/adapter/cachePreflight.test.ts"
+      ]
     },
     {
       "status": "M",
