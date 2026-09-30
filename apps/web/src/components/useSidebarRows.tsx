@@ -386,6 +386,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
             role="button"
             tabIndex={0}
             data-thread-item
+            data-sidebar-thread-id={thread.id}
             className={cn(
               SIDEBAR_HEADER_ROW_CLASS_NAME,
               "relative gap-1.5 transition-colors",
@@ -509,6 +510,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
           virtualOffset === undefined ? null : "absolute top-0 left-0 pb-1",
         )}
         data-thread-item
+        data-sidebar-thread-id={thread.id}
         style={
           virtualOffset === undefined ? undefined : { transform: `translateY(${virtualOffset}px)` }
         }

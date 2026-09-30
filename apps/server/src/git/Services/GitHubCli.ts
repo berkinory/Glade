@@ -144,8 +144,9 @@ export interface GitHubCliShape {
 
   readonly listPullRequests: (input: {
     readonly cwd: string;
-    readonly headSelector: string;
+    readonly headSelector?: string;
     readonly limit?: number;
+    readonly priority?: "foreground" | "background";
   }) => Effect.Effect<ReadonlyArray<GitHubPullRequestSummary>, GitHubCliError>;
 
   readonly getPullRequest: (input: {

@@ -421,7 +421,7 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
 
   const visibleSidebarThreadIdSet = new Set(
     activityViewEnabled
-      ? visibleSidebarThreadIds
+      ? [...visibleSidebarThreadIds, ...pinnedThreadIds]
       : [...visibleSidebarThreadIds, ...visibleChatThreadIds],
   );
 
@@ -432,6 +432,7 @@ export function useSidebarDerivedLists(context: ReturnType<typeof useSidebarProj
   const prByThreadId = useThreadPullRequests({
     threads: visibleSidebarThreads,
     projectCwdById,
+    pinnedThreadIds,
   });
 
   const isManualProjectSorting = appSettings.sidebarProjectSortOrder === "manual";

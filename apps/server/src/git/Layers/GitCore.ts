@@ -66,7 +66,7 @@ const makeGitCore = () =>
       readRefPatch,
       readDiffStats,
     } = yield* GitDiff;
-    const { status, statusDetails, readBranchContext } = yield* GitStatus;
+    const { status, summary, statusDetails, readBranchContext } = yield* GitStatus;
     const fileSystem = yield* FileSystem.FileSystem;
 
     const { execute, executeGit, runGit, runGitStdout } = yield* GitCommands;
@@ -317,6 +317,7 @@ const makeGitCore = () =>
       withMutation,
       execute,
       status,
+      summary,
       statusDetails,
       readBranchContext,
       readWorkingTreePatch,

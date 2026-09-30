@@ -437,6 +437,38 @@ export const GitStatusResult = Schema.Struct({
 });
 export type GitStatusResult = typeof GitStatusResult.Type;
 
+export const GitWorktreeSummary = Schema.Struct({
+  headRepository: Schema.NullOr(TrimmedNonEmptyStringSchema),
+  isRepo: Schema.Boolean,
+  branch: Schema.NullOr(TrimmedNonEmptyStringSchema),
+  upstreamRef: Schema.NullOr(TrimmedNonEmptyStringSchema),
+  aheadCount: NonNegativeInt,
+  behindCount: NonNegativeInt,
+  hasWorkingTreeChanges: Schema.Boolean,
+});
+export type GitWorktreeSummary = typeof GitWorktreeSummary.Type;
+
+export const GitSidebarSummaryInput = Schema.Struct({
+  cwd: TrimmedNonEmptyStringSchema,
+  worktreeCwds: Schema.Array(TrimmedNonEmptyStringSchema).check(Schema.isMaxLength(200)),
+});
+export type GitSidebarSummaryInput = typeof GitSidebarSummaryInput.Type;
+
+export const GitSidebarSummaryResult = Schema.Struct({
+  worktrees: Schema.Array(
+    Schema.Struct({ cwd: TrimmedNonEmptyStringSchema, summary: GitWorktreeSummary }),
+  ),
+  pullRequests: Schema.NullOr(
+    Schema.Array(
+      Schema.Struct({
+        ...GitStatusPr.fields,
+        headRepository: Schema.NullOr(TrimmedNonEmptyStringSchema),
+      }),
+    ),
+  ),
+});
+export type GitSidebarSummaryResult = typeof GitSidebarSummaryResult.Type;
+
 export const GitStatusLocalResult = Schema.Struct({
   branch: TrimmedNonEmptyStringSchema.pipe(Schema.NullOr),
   hasWorkingTreeChanges: Schema.Boolean,
@@ -470,7 +502,14 @@ export const GitHubRepositoryResult = Schema.Struct({
 });
 export type GitHubRepositoryResult = typeof GitHubRepositoryResult.Type;
 
+export const GitStatusWatchInput = Schema.Struct({
+  cwd: TrimmedNonEmptyStringSchema,
+  summaryOnly: Schema.optional(Schema.Boolean),
+});
+export type GitStatusWatchInput = typeof GitStatusWatchInput.Type;
+
 export const GitStatusStreamEvent = Schema.Union([
+  Schema.TaggedStruct("summaryUpdated", { summary: GitWorktreeSummary }),
   Schema.TaggedStruct("snapshot", {
     local: GitStatusLocalResult,
     remote: Schema.NullOr(GitStatusRemoteResult),

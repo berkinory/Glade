@@ -51,6 +51,8 @@ import {
 import {
   WsGitGithubRepositoryRpc,
   WsGitStatusRpc,
+  WsGitSidebarSummaryRpc,
+  WsGitSubscribeStatusRpc,
   WsGitReadWorkingTreeDiffRpc,
   WsGitReadSourceControlFilesRpc,
   WsGitBlameLineRpc,
@@ -192,6 +194,8 @@ export const WsFeatureRpcGroup = RpcGroup.make(
   WsShellOpenInEditorRpc,
   WsGitGithubRepositoryRpc,
   WsGitStatusRpc,
+  WsGitSidebarSummaryRpc,
+  WsGitSubscribeStatusRpc,
   WsGitReadWorkingTreeDiffRpc,
   WsGitReadSourceControlFilesRpc,
   WsGitBlameLineRpc,

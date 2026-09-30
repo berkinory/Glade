@@ -2,6 +2,10 @@ import * as Rpc from "effect/unstable/rpc/Rpc";
 import { WS_METHODS } from "./ws";
 import {
   GitStatusInput,
+  GitStatusWatchInput,
+  GitStatusStreamEvent,
+  GitSidebarSummaryInput,
+  GitSidebarSummaryResult,
   GitStatusResult,
   GitHubRepositoryInput,
   GitHubRepositoryResult,
@@ -77,6 +81,18 @@ export const WsGitStatusRpc = Rpc.make(WS_METHODS.gitStatus, {
   payload: GitStatusInput,
   success: GitStatusResult,
   error: WsRpcError,
+});
+
+export const WsGitSidebarSummaryRpc = Rpc.make(WS_METHODS.gitSidebarSummary, {
+  payload: GitSidebarSummaryInput,
+  success: GitSidebarSummaryResult,
+  error: WsRpcError,
+});
+export const WsGitSubscribeStatusRpc = Rpc.make(WS_METHODS.gitSubscribeStatus, {
+  payload: GitStatusWatchInput,
+  success: GitStatusStreamEvent,
+  error: WsRpcError,
+  stream: true,
 });
 
 export const WsGitGithubRepositoryRpc = Rpc.make(WS_METHODS.gitGithubRepository, {

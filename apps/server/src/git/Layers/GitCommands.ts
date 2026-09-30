@@ -503,8 +503,9 @@ const makeGitCommands = Effect.gen(function* () {
 
   const execute: GitCoreShape["execute"] = (input) => {
     const command = withPermit(executeProcess(input), input.priority);
+    const readCommand = input.args[input.args[0] === "--no-optional-locks" ? 1 : 0];
     if (
-      !COALESCED_READ_COMMANDS.has(input.args[0] ?? "") ||
+      !COALESCED_READ_COMMANDS.has(readCommand ?? "") ||
       input.env ||
       input.progress ||
       (input.args[0] === "symbolic-ref" &&

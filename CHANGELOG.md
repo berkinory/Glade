@@ -29,7 +29,7 @@
 
 - Conversation compaction uses the same server checks for both providers; Claude accepts optional instructions.
 
-- Git status refreshes start fewer background commands.
+- The sidebar starts far fewer background Git and GitHub commands, and Git status updates as soon as the repository changes.
 
 - The file explorer and change lists stay fast and light in large repositories.
 

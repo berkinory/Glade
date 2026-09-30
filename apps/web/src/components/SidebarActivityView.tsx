@@ -159,6 +159,7 @@ function ActivityThreadRow({
             data-thread-hover-anchor={hoverAnchorId}
             className="group/activity-row relative"
             data-thread-item
+            data-sidebar-thread-id={thread.id}
             {...rowGestures}
           />
         }

@@ -1,3 +1,4 @@
+import { readGitSidebarSummary } from "../../git/gitSidebarSummary";
 import { ProviderManagement } from "../../provider/Services/ProviderManagement.ts";
 import { sourceControlActions } from "../../git/sourceControlActions.ts";
 import { AgentGatewaySessionRegistry } from "../../agentGateway/Services/AgentGatewaySessionRegistry";
@@ -1379,6 +1380,19 @@ const makeWsRpcHandlersLayer = () =>
           rpcEffect(resolveGitHubRepository(git, input.cwd), "Failed to resolve GitHub repository"),
         [WS_METHODS.gitStatus]: (input) =>
           rpcEffect(gitStatusBroadcaster.getStatus(input), "Failed to read git status"),
+        [WS_METHODS.gitSidebarSummary]: (input) =>
+          rpcEffect(
+            readGitSidebarSummary(input, git, github),
+            "Failed to read sidebar Git summary",
+          ),
+        [WS_METHODS.gitSubscribeStatus]: (input, { clientId }) =>
+          streamAdmission.guard(
+            clientId,
+            { key: `git.status:${input.summaryOnly ? "summary" : "full"}:${input.cwd}` },
+            gitStatusBroadcaster
+              .streamStatus(input)
+              .pipe(Stream.mapError((error) => new WsRpcError({ message: error.message }))),
+          ),
         [WS_METHODS.gitReadWorkingTreeDiff]: (input) =>
           rpcEffect(gitManager.readWorkingTreeDiff(input), "Failed to read working tree diff"),
         [WS_METHODS.gitReadSourceControlFiles]: (input) =>

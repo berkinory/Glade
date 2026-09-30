@@ -10,7 +10,7 @@ interface GitUpstreamRef {
 
 export interface GitStatusShape extends Pick<
   GitCoreShape,
-  "status" | "statusDetails" | "readBranchContext"
+  "status" | "summary" | "statusDetails" | "readBranchContext"
 > {
   readonly branchExists: (cwd: string, branch: string) => Effect.Effect<boolean, GitCommandError>;
   readonly remoteBranchExists: (

@@ -451,6 +451,8 @@ export function createWsNativeApi(): NativeApi {
       githubRepository: (input) => transport.request(WS_METHODS.gitGithubRepository, input),
       pull: (input) => transport.request(WS_METHODS.gitPull, input),
       status: (input) => transport.request(WS_METHODS.gitStatus, input),
+      sidebarSummary: (input) => transport.request(WS_METHODS.gitSidebarSummary, input),
+      onStatus: (input, callback) => transport.subscribeGitStatus(input, callback),
       readWorkingTreeDiff: (input) => transport.request(WS_METHODS.gitReadWorkingTreeDiff, input),
       readSourceControlFiles: (input) =>
         transport.request(WS_METHODS.gitReadSourceControlFiles, input),

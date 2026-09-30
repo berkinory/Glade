@@ -16,6 +16,7 @@ import { useChatWidth } from "../hooks/useChatWidth";
 import { useDesktopAppIcon } from "../hooks/useDesktopAppIcon";
 import { useSyncDesktopTopBarTrafficLightGutterZoom } from "../hooks/useDesktopTopBarGutter";
 import { useNativeFontSmoothing } from "../hooks/useNativeFontSmoothing";
+import { useGitStatusPush } from "../hooks/useGitStatusPush";
 import { usePreloadRouteChunks } from "../hooks/usePreloadRouteChunks";
 import { useTheme } from "../hooks/useTheme";
 import { readNativeApi } from "../nativeApi";
@@ -41,6 +42,7 @@ export function RootRouteView() {
   useChatWidth();
   useDesktopAppIcon();
   usePreloadRouteChunks();
+  useGitStatusPush();
   useNativeFontSmoothing();
   useSyncDesktopTopBarTrafficLightGutterZoom();
   useTheme();

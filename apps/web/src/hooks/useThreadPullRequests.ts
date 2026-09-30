@@ -1,12 +1,13 @@
-import type { GitStatusResult } from "@glade/contracts/git/git";
+import type { GitSidebarSummaryResult, GitStatusResult } from "@glade/contracts/git/git";
 import type { OrchestrationThreadPullRequest } from "@glade/contracts/orchestration/threadEntities";
 import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { resolveThreadWorkspaceCwd } from "@glade/shared/threads/threadEnvironment";
-import { useQueries } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 
 import { resolveSidebarThreadPullRequest } from "../components/Sidebar.logic.statusTypes";
-import { gitResolvePullRequestQueryOptions, gitStatusQueryOptions } from "../lib/gitQueryOptions";
+import { ensureNativeApi } from "../nativeApi";
+import { useVisibleSidebarThreadIds } from "./useVisibleSidebarThreadIds";
 import type { SidebarThreadSummary } from "../types";
 
 export type ThreadPullRequest = GitStatusResult["pr"];
@@ -18,7 +19,7 @@ export type ThreadPullRequestSource = Pick<
 
 const THREAD_PR_STALE_TIME_MS = 30_000;
 
-const THREAD_PR_REFETCH_INTERVAL_MS = 300_000;
+const THREAD_PR_REFETCH_INTERVAL_MS = 900_000;
 
 // Also accepts persisted `lastKnownPr` entries, whose draft/mergeability/diff fields are optional
 // because older rows predate them.
@@ -74,112 +75,100 @@ export function resolveThreadPullRequestFallback(input: {
 export function useThreadPullRequests(input: {
   readonly threads: readonly ThreadPullRequestSource[];
   readonly projectCwdById: ReadonlyMap<ProjectId, string>;
+  readonly pinnedThreadIds: readonly ThreadId[];
 }): ReadonlyMap<ThreadId, ThreadPullRequest> {
-  const { threads, projectCwdById } = input;
-  const threadGitTargets = useMemo(
-    () =>
-      threads.map((thread) => ({
-        threadId: thread.id,
-        branch: thread.branch,
-        lastKnownPr: thread.lastKnownPr ?? null,
-        hasDedicatedWorktree: thread.worktreePath !== null,
-        cwd: resolveThreadWorkspaceCwd({
-          projectCwd: projectCwdById.get(thread.projectId) ?? null,
-          envMode: thread.envMode,
-          worktreePath: thread.worktreePath,
-        }),
-      })),
-    [projectCwdById, threads],
-  );
-  const threadGitStatusCwds = useMemo(
-    () => [
-      ...new Set(
-        threadGitTargets
-          .filter((target) => target.hasDedicatedWorktree)
-          .map((target) => target.cwd)
-          .filter((cwd): cwd is string => cwd !== null),
-      ),
-    ],
-    [threadGitTargets],
-  );
-  const threadGitStatusQueries = useQueries({
-    queries: threadGitStatusCwds.map((cwd) => ({
-      ...gitStatusQueryOptions(cwd),
+  const visibleIds = useVisibleSidebarThreadIds(input.threads.map((thread) => thread.id));
+  const activeIds = new Set([...visibleIds, ...input.pinnedThreadIds]);
+  const repositories = new Map<string, { cwd: string; worktreeCwds: string[] }>();
+  for (const thread of input.threads) {
+    if (!activeIds.has(thread.id)) continue;
+    const cwd = input.projectCwdById.get(thread.projectId);
+    if (!cwd) continue;
+    let repository = repositories.get(cwd);
+    if (!repository) {
+      repository = { cwd, worktreeCwds: [] };
+      repositories.set(cwd, repository);
+    }
+    const worktreeCwd = resolveThreadWorkspaceCwd({
+      projectCwd: cwd,
+      envMode: thread.envMode,
+      worktreePath: thread.worktreePath,
+    });
+    if (thread.worktreePath && worktreeCwd && !repository.worktreeCwds.includes(worktreeCwd))
+      repository.worktreeCwds.push(worktreeCwd);
+  }
+  const targets = [...repositories.values()].map((repository) => ({
+    ...repository,
+    worktreeCwds: repository.worktreeCwds.toSorted(),
+  }));
+  const queries = useQueries({
+    queries: targets.map((target) => ({
+      queryKey: ["git", "sidebar", target.cwd, target.worktreeCwds],
+      queryFn: () => ensureNativeApi().git.sidebarSummary(target),
       staleTime: THREAD_PR_STALE_TIME_MS,
+      gcTime: 60_000,
       refetchInterval: THREAD_PR_REFETCH_INTERVAL_MS,
+      refetchIntervalInBackground: false,
     })),
   });
-  const threadStoredPrTargets = useMemo(
-    () =>
-      threadGitTargets.flatMap((target) =>
-        target.cwd !== null &&
-        target.lastKnownPr !== null &&
-        target.lastKnownPr.url.trim().length > 0
-          ? [{ ...target, cwd: target.cwd, lastKnownPr: target.lastKnownPr }]
-          : [],
-      ),
-    [threadGitTargets],
-  );
-  const threadStoredPrQueries = useQueries({
-    queries: threadStoredPrTargets.map((target) => ({
-      ...gitResolvePullRequestQueryOptions({
-        cwd: target.cwd,
-        reference: target.lastKnownPr.url,
-        pollIntervalMs: THREAD_PR_REFETCH_INTERVAL_MS,
-      }),
-      staleTime: THREAD_PR_STALE_TIME_MS,
-    })),
-  });
-  return useMemo(() => {
-    const statusByCwd = new Map<string, GitStatusResult>();
-    for (let index = 0; index < threadGitStatusCwds.length; index += 1) {
-      const cwd = threadGitStatusCwds[index];
-      if (!cwd) continue;
-
-      const status = threadGitStatusQueries[index]?.data;
-      if (status) {
-        statusByCwd.set(cwd, status);
-      }
-    }
-
-    const storedPrByThreadId = new Map<ThreadId, ThreadPullRequest>();
-    for (let index = 0; index < threadStoredPrTargets.length; index += 1) {
-      const target = threadStoredPrTargets[index];
-      if (!target) {
-        continue;
-      }
-      const result = threadStoredPrQueries[index]?.data?.pullRequest ?? null;
-      if (result) {
-        storedPrByThreadId.set(target.threadId, toThreadPullRequest(result));
-        continue;
-      }
-      storedPrByThreadId.set(target.threadId, toThreadPullRequest(target.lastKnownPr));
-    }
-
-    const map = new Map<ThreadId, ThreadPullRequest>();
-    for (const target of threadGitTargets) {
-      const status = target.cwd ? statusByCwd.get(target.cwd) : undefined;
-      const persistedPr =
-        storedPrByThreadId.get(target.threadId) ??
-        (target.lastKnownPr ? toThreadPullRequest(target.lastKnownPr) : null);
-      map.set(
-        target.threadId,
-        resolveSidebarThreadPullRequest({
-          threadBranch: target.branch,
-          liveBranch: status?.branch ?? null,
-          hasLiveStatus: status !== undefined,
-          hasDedicatedWorktree: target.hasDedicatedWorktree,
-          livePullRequest: status?.pr ?? null,
-          persistedPullRequest: persistedPr,
+  const queryClient = useQueryClient();
+  const targetsKey = JSON.stringify(targets);
+  useEffect(() => {
+    const subscriptions = (JSON.parse(targetsKey) as typeof targets).flatMap((target) =>
+      target.worktreeCwds.map((cwd) =>
+        ensureNativeApi().git.onStatus({ cwd, summaryOnly: true }, (event) => {
+          if (event._tag !== "summaryUpdated") return;
+          queryClient.setQueryData<GitSidebarSummaryResult>(
+            ["git", "sidebar", target.cwd, target.worktreeCwds],
+            (previous) =>
+              previous
+                ? {
+                    ...previous,
+                    worktrees: previous.worktrees.map((worktree) =>
+                      worktree.cwd === cwd ? { ...worktree, summary: event.summary } : worktree,
+                    ),
+                  }
+                : previous,
+          );
         }),
-      );
-    }
-    return map;
-  }, [
-    threadGitStatusCwds,
-    threadGitStatusQueries,
-    threadGitTargets,
-    threadStoredPrQueries,
-    threadStoredPrTargets,
-  ]);
+      ),
+    );
+    return () => subscriptions.forEach((unsubscribe) => unsubscribe());
+  }, [queryClient, targetsKey]);
+  const byRepository = new Map(targets.map((target, index) => [target.cwd, queries[index]?.data]));
+  const result = new Map<ThreadId, ThreadPullRequest>();
+  for (const thread of input.threads) {
+    const projectCwd = input.projectCwdById.get(thread.projectId) ?? null;
+    const data = projectCwd ? byRepository.get(projectCwd) : undefined;
+    const cwd = resolveThreadWorkspaceCwd({
+      projectCwd,
+      envMode: thread.envMode,
+      worktreePath: thread.worktreePath,
+    });
+    const summary = data?.worktrees.find((worktree) => worktree.cwd === cwd)?.summary;
+    const branch = summary?.branch ?? thread.branch;
+    const prs = data?.pullRequests;
+    const stored = thread.lastKnownPr ? toThreadPullRequest(thread.lastKnownPr) : null;
+    const updatedStored = stored ? (prs?.find((pr) => pr.url === stored.url) ?? stored) : null;
+    const matchingPrs = prs?.filter(
+      (pr) =>
+        pr.headBranch === branch &&
+        (pr.url === stored?.url ||
+          (Boolean(summary?.headRepository) &&
+            pr.headRepository?.toLowerCase() === summary?.headRepository?.toLowerCase())),
+    );
+    const livePr = matchingPrs?.find((pr) => pr.state === "open") ?? matchingPrs?.[0] ?? null;
+    result.set(
+      thread.id,
+      resolveSidebarThreadPullRequest({
+        threadBranch: thread.branch,
+        liveBranch: summary?.branch ?? null,
+        hasLiveStatus: summary !== undefined,
+        hasDedicatedWorktree: thread.worktreePath !== null,
+        livePullRequest: livePr,
+        persistedPullRequest: updatedStored,
+      }),
+    );
+  }
+  return result;
 }

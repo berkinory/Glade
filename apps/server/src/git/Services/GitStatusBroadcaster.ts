@@ -1,5 +1,6 @@
 import type {
   GitStatusInput,
+  GitStatusWatchInput,
   GitStatusLocalResult,
   GitStatusResult,
   GitStatusStreamEvent,
@@ -17,7 +18,7 @@ export interface GitStatusBroadcasterShape {
   ) => Effect.Effect<GitStatusLocalResult, GitManagerServiceError>;
   readonly refreshStatus: (cwd: string) => Effect.Effect<GitStatusResult, GitManagerServiceError>;
   readonly streamStatus: (
-    input: GitStatusInput,
+    input: GitStatusWatchInput,
   ) => Stream.Stream<GitStatusStreamEvent, GitManagerServiceError>;
 }
 

@@ -1,3 +1,5 @@
+import { WsScopedSubscriptions } from "./wsScopedSubscriptions";
+import type { GitStatusWatchInput, GitStatusStreamEvent } from "@glade/contracts/git/git";
 import { ORCHESTRATION_WS_METHODS } from "@glade/contracts/orchestration/rpc";
 import {
   WS_BOOTSTRAP_METHOD,
@@ -101,6 +103,13 @@ export abstract class WsTransportBase {
     key: string,
     subscription: ProjectFileChangeSubscription,
   ): void;
+  protected abstract startGitStatusStream(
+    client: RpcClientInstance,
+    key: string,
+    input: GitStatusWatchInput,
+    emit: (event: GitStatusStreamEvent) => void,
+    restart: () => void,
+  ): void;
   protected abstract refreshThreadSubscriptionInput(threadId: string): unknown;
 
   protected readonly explicitUrl: string | null;
@@ -145,6 +154,11 @@ export abstract class WsTransportBase {
   protected shellSnapshotDelivered = false;
   protected readonly threadSubscriptions = new Map<string, unknown>();
   protected readonly projectFileSubscriptions = new Map<string, ProjectFileChangeSubscription>();
+  private gitStatusSubscriptions: WsScopedSubscriptions<
+    RpcClientInstance,
+    GitStatusWatchInput,
+    GitStatusStreamEvent
+  > | null = null;
   protected compatibility: WsBootstrapNegotiateResult | null = null;
   protected compatibilityIssue: WsCompatibilityError | null = null;
   protected lastServerInstanceId: string | null = null;
@@ -339,6 +353,19 @@ export abstract class WsTransportBase {
       void this.stopStream(key);
     };
   }
+  subscribeGitStatus(
+    input: GitStatusWatchInput,
+    listener: (event: GitStatusStreamEvent) => void,
+  ): () => void {
+    this.gitStatusSubscriptions ??= new WsScopedSubscriptions({
+      key: (watch) => `git.status:${watch.summaryOnly ? "summary" : "full"}:${watch.cwd}`,
+      getClient: () => this.getClient(),
+      stop: (key) => this.stopStream(key),
+      start: (client, key, watch, emit, restart) =>
+        this.startGitStatusStream(client, key, watch, emit, restart),
+    });
+    return this.gitStatusSubscriptions.subscribe(input, listener);
+  }
   getLatestPush<C extends WsPushChannel>(channel: C): WsPushMessage<C> | null {
     const latest = this.latestPushByChannel.get(channel);
     return latest ? (latest as WsPushMessage<C>) : null;
@@ -409,6 +436,7 @@ export abstract class WsTransportBase {
     this.streamCleanups.clear();
     this.activeThreadStreamInputs.clear();
     this.projectFileSubscriptions.clear();
+    this.gitStatusSubscriptions?.dispose();
     this.threadStreamFailureListeners.clear();
     // Dispose can race with initial connection or reconnect promises. Mark them handled before closing
     // the runtime so test/browser teardown stays quiet.
@@ -726,6 +754,7 @@ export abstract class WsTransportBase {
         for (const [key, subscription] of this.projectFileSubscriptions) {
           this.startProjectFileChangeStream(client, key, subscription);
         }
+        this.gitStatusSubscriptions?.restart(client);
         this.reconnectFailures = 0;
         return client;
       } catch (error) {

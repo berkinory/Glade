@@ -1209,7 +1209,12 @@ const makeGitHubCli = Effect.gen(function* () {
   const repositorySelector = (repository: string) => `${GITHUB_HOST}/${repository}`;
 
   const listPullRequestsWithState = (
-    input: { readonly cwd: string; readonly headSelector: string; readonly limit?: number },
+    input: {
+      readonly cwd: string;
+      readonly headSelector?: string;
+      readonly limit?: number;
+      readonly priority?: "foreground" | "background";
+    },
     options: {
       readonly state: "open" | "all";
       readonly defaultLimit: number;
@@ -1218,11 +1223,11 @@ const makeGitHubCli = Effect.gen(function* () {
   ) =>
     execute({
       cwd: input.cwd,
+      ...(input.priority ? { priority: input.priority } : {}),
       args: [
         "pr",
         "list",
-        "--head",
-        input.headSelector,
+        ...(input.headSelector ? ["--head", input.headSelector] : []),
         "--state",
         options.state,
         "--limit",

@@ -27,6 +27,7 @@ import type {
   GitStashInfoInput,
   GitStashInfoResult,
   GitStatusInput,
+  GitWorktreeSummary,
   GitStatusResult,
   GitSourceControlFilesResult,
   GitWorkingTreeDiffStatsResult,
@@ -206,7 +207,12 @@ export interface GitCoreShape {
 
   readonly status: (input: GitStatusInput) => Effect.Effect<GitStatusResult, GitCommandError>;
 
-  readonly statusDetails: (cwd: string) => Effect.Effect<GitStatusDetails, GitCommandError>;
+  readonly summary: (cwd: string) => Effect.Effect<GitWorktreeSummary, GitCommandError>;
+
+  readonly statusDetails: (
+    cwd: string,
+    options?: { readonly refreshUpstream?: boolean },
+  ) => Effect.Effect<GitStatusDetails, GitCommandError>;
 
   readonly readBranchContext: (cwd: string) => Effect.Effect<GitBranchContext, GitCommandError>;
 

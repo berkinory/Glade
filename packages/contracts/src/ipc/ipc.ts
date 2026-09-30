@@ -103,6 +103,10 @@ import type {
   GitStashInfoInput,
   GitStashInfoResult,
   GitStatusInput,
+  GitStatusWatchInput,
+  GitStatusStreamEvent,
+  GitSidebarSummaryInput,
+  GitSidebarSummaryResult,
   GitStatusResult,
   GitSummarizeDiffInput,
   GitGenerateCommitMessageInput,
@@ -761,6 +765,11 @@ export interface NativeApi {
 
     pull: (input: GitPullInput) => Promise<GitPullResult>;
     status: (input: GitStatusInput) => Promise<GitStatusResult>;
+    sidebarSummary: (input: GitSidebarSummaryInput) => Promise<GitSidebarSummaryResult>;
+    onStatus: (
+      input: GitStatusWatchInput,
+      callback: (event: GitStatusStreamEvent) => void,
+    ) => () => void;
     readWorkingTreeDiff: (
       input: GitReadWorkingTreeDiffInput,
     ) => Promise<GitReadWorkingTreeDiffResult>;

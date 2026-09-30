@@ -1,3 +1,4 @@
+import type { GitStatusWatchInput, GitStatusStreamEvent } from "@glade/contracts/git/git";
 import {
   ORCHESTRATION_WS_CHANNELS,
   ORCHESTRATION_WS_METHODS,
@@ -327,6 +328,16 @@ export class WsTransport extends WsTransportBase {
       },
       restart,
     );
+  }
+  protected startGitStatusStream(
+    client: RpcClientInstance,
+    key: string,
+    input: GitStatusWatchInput,
+    emit: (event: GitStatusStreamEvent) => void,
+    restart: () => void,
+  ): void {
+    if (this.disposed) return;
+    this.startStream(client, key, client[WS_METHODS.gitSubscribeStatus](input), emit, restart);
   }
   protected startStream<T>(
     client: RpcClientInstance,

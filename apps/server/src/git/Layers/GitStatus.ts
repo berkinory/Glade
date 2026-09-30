@@ -1,3 +1,4 @@
+import { parseGitHubRepositoryNameWithOwnerFromRemoteUrl } from "@glade/shared/git/githubRepository";
 import { Cache, Data, Duration, Effect, Exit, FileSystem, Layer, Scope } from "effect";
 import * as nodeFs from "node:fs/promises";
 import * as nodePath from "node:path";
@@ -446,10 +447,10 @@ const makeGitStatus = Effect.gen(function* () {
       return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
     });
 
-  const readStatusDetails = (cwd: string, refreshUpstream: boolean) =>
+  const readPorcelainStatus = (cwd: string) =>
     Effect.gen(function* () {
       const operation = "GitCore.statusDetails.status";
-      const args = ["status", "--porcelain=v2", "--branch", "-z"] as const;
+      const args = ["--no-optional-locks", "status", "--porcelain=v2", "--branch", "-z"] as const;
       const statusResult = yield* executeGit(operation, cwd, args, {
         allowNonZeroExit: true,
         timeoutMs: 5_000,
@@ -459,12 +460,45 @@ const makeGitStatus = Effect.gen(function* () {
         (statusResult.code === 128 &&
           /not a git repository|must be run in a work tree/i.test(statusResult.stderr))
       ) {
-        return NON_REPOSITORY_STATUS_DETAILS;
+        return null;
       }
       if (statusResult.code !== 0) {
         return yield* createGitCommandError(operation, cwd, args, statusResult.stderr.trim());
       }
-      let statusStdout = statusResult.stdout;
+      return statusResult.stdout;
+    });
+
+  const summary: GitCoreShape["summary"] = (cwd) =>
+    readPorcelainStatus(cwd).pipe(
+      Effect.flatMap((stdout) =>
+        Effect.gen(function* () {
+          const parsed = stdout === null ? null : parseGitStatusPorcelain(stdout);
+          const config = parsed ? yield* metadata.read(cwd) : null;
+          const remote = parsed?.branch
+            ? (config?.configValue(`branch.${parsed.branch}.remote`) ?? config?.primaryRemote)
+            : config?.primaryRemote;
+          const remoteUrl = remote ? config?.configValue(`remote.${remote}.url`) : null;
+          return {
+            headRepository: remoteUrl
+              ? parseGitHubRepositoryNameWithOwnerFromRemoteUrl(remoteUrl)
+              : null,
+            isRepo: parsed !== null,
+            branch: parsed?.branch ?? null,
+            upstreamRef: parsed?.upstreamRef ?? null,
+            aheadCount: parsed?.aheadCount ?? 0,
+            behindCount: parsed?.behindCount ?? 0,
+            hasWorkingTreeChanges: parsed?.hasWorkingTreeChanges ?? false,
+          };
+        }),
+      ),
+    );
+
+  const readStatusDetails = (cwd: string, refreshUpstream: boolean) =>
+    Effect.gen(function* () {
+      let statusStdout = yield* readPorcelainStatus(cwd);
+      if (statusStdout === null) return NON_REPOSITORY_STATUS_DETAILS;
+      const operation = "GitCore.statusDetails.status";
+      const args = ["--no-optional-locks", "status", "--porcelain=v2", "--branch", "-z"] as const;
       const initialUpstream = parseGitStatusPorcelain(statusStdout).upstreamRef;
       if (refreshUpstream && initialUpstream) {
         const refreshed = yield* refreshStatusUpstreamIfStale(cwd, initialUpstream).pipe(
@@ -605,7 +639,8 @@ const makeGitStatus = Effect.gen(function* () {
       };
     });
 
-  const statusDetails: GitCoreShape["statusDetails"] = (cwd) => readStatusDetails(cwd, true);
+  const statusDetails: GitCoreShape["statusDetails"] = (cwd, options) =>
+    readStatusDetails(cwd, options?.refreshUpstream ?? true);
 
   const readBranchContext: GitCoreShape["readBranchContext"] = (cwd) =>
     Effect.gen(function* () {
@@ -670,6 +705,7 @@ const makeGitStatus = Effect.gen(function* () {
     });
   return {
     status,
+    summary,
     statusDetails,
     readBranchContext,
     branchExists,

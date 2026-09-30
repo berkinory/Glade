@@ -239,7 +239,7 @@ export function createGitHubCliWithFakeGh(scenario: FakeGhScenario = {}): {
   };
 
   const listPullRequestsWithState = (
-    input: { cwd: string; headSelector: string; limit?: number },
+    input: { cwd: string; headSelector?: string; limit?: number },
     options: { state: "open" | "all"; defaultLimit: number },
   ) =>
     execute({
@@ -247,8 +247,7 @@ export function createGitHubCliWithFakeGh(scenario: FakeGhScenario = {}): {
       args: [
         "pr",
         "list",
-        "--head",
-        input.headSelector,
+        ...(input.headSelector ? ["--head", input.headSelector] : []),
         "--state",
         options.state,
         "--limit",
