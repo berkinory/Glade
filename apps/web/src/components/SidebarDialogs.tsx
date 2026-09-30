@@ -1,3 +1,6 @@
+import { firstLocalServerUrl } from "../hooks/useSidebarProjectRunController";
+import { createClientPointMenuAnchor } from "~/lib/clientPointMenuAnchor";
+import { useMemo } from "react";
 import {
   AddPlusIcon,
   ArchiveIcon,
@@ -54,13 +57,9 @@ import {
   ProjectContextMenuIcon,
 } from "./sidebarSupport";
 import { SidebarSearchPaletteController } from "./SidebarSearchPaletteController";
-import type { useSidebarPresentation } from "./useSidebarPresentation";
+import type { useSidebarRows } from "./useSidebarRows";
 
-export function SidebarDialogs({
-  context,
-}: {
-  context: ReturnType<typeof useSidebarPresentation>;
-}) {
+export function SidebarDialogs({ context }: { context: ReturnType<typeof useSidebarRows> }) {
   const {
     githubProvisioningAvailable,
     spaces,
@@ -82,6 +81,7 @@ export function SidebarDialogs({
     editProjectDialog,
     setEditProjectDialog,
     setRelocateProjectDialogId,
+    relocateProjectDialogId,
     projectContextMenuState,
     setProjectContextMenuState,
     projectRunDialogProjectId,
@@ -117,16 +117,60 @@ export function SidebarDialogs({
     allStandardProjectsBase,
     searchPaletteProjects,
     searchPaletteActions,
-    relocateProjectDialogProject,
-    editProjectDialogProject,
-    projectContextMenuProject,
-    projectContextMenuAnchor,
-    projectContextMenuHasAnyThreads,
-    projectContextMenuHasArchivableThreads,
-    projectContextMenuIsPinned,
-    projectContextMenuIsRunning,
-    projectContextMenuHasOpenServer,
+    projectById,
+    sidebarThreads,
+    pinnedProjectIdSet,
+    projectRunsByProjectId,
+    projectRunServerByProjectId,
   } = context;
+  const relocateProjectDialogProject = relocateProjectDialogId
+    ? (projectById.get(relocateProjectDialogId) ?? null)
+    : null;
+
+  const editProjectDialogProject = editProjectDialog
+    ? (projectById.get(editProjectDialog.projectId) ?? null)
+    : null;
+
+  const projectContextMenuProject = projectContextMenuState
+    ? (projectById.get(projectContextMenuState.projectId) ?? null)
+    : null;
+
+  const projectContextMenuThreads = useMemo(
+    () =>
+      projectContextMenuState
+        ? sidebarThreads.filter((thread) => thread.projectId === projectContextMenuState.projectId)
+        : [],
+    [projectContextMenuState, sidebarThreads],
+  );
+
+  const projectContextMenuAnchor = useMemo(
+    () =>
+      projectContextMenuState
+        ? createClientPointMenuAnchor(projectContextMenuState.position)
+        : null,
+    [projectContextMenuState],
+  );
+
+  const projectContextMenuHasAnyThreads = projectContextMenuThreads.length > 0;
+
+  const projectContextMenuHasArchivableThreads = projectContextMenuThreads.some(
+    (thread) => thread.archivedAt == null,
+  );
+
+  const projectContextMenuIsPinned = projectContextMenuProject
+    ? pinnedProjectIdSet.has(projectContextMenuProject.id)
+    : false;
+
+  const projectContextMenuIsRunning = projectContextMenuProject
+    ? Boolean(projectRunsByProjectId[projectContextMenuProject.id])
+    : false;
+
+  const projectContextMenuServer = projectContextMenuProject
+    ? (projectRunServerByProjectId.get(projectContextMenuProject.id) ?? null)
+    : null;
+
+  const projectContextMenuHasOpenServer =
+    projectContextMenuServer !== null && firstLocalServerUrl(projectContextMenuServer) !== null;
   return (
     <>
       <CreateProjectDialog
