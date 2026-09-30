@@ -1,3 +1,4 @@
+import { discoverCodexProjects } from "./codexProjectImport.ts";
 import { codexUpdatedModelSelection } from "./codexStateNotifications.ts";
 import { asString } from "@glade/shared/text/text";
 import { asObjectRecord } from "@glade/shared/transport/payloadValues";
@@ -1931,6 +1932,20 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     }
 
     return this.readThreadSnapshot(context, providerThreadId);
+  }
+
+  async discoverProjects(providerOptions?: ProviderSessionStartInput["providerOptions"]) {
+    const context = await this.resolveContextForDiscovery(undefined, undefined, providerOptions);
+    return discoverCodexProjects({
+      ...(providerOptions?.codex?.homePath ? { homePath: providerOptions.codex.homePath } : {}),
+      listThreads: async (params) =>
+        decodeCodexResponse("thread/list", await this.sendRequest(context, "thread/list", params)),
+      listProjects: async (params) =>
+        decodeCodexResponse(
+          "project/list",
+          await this.sendRequest(context, "project/list", params),
+        ),
+    });
   }
 
   async readExternalThread(input: {

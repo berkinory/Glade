@@ -14,6 +14,10 @@ import { dirname, join, relative, resolve } from "node:path";
 
 const release = "0.158.0";
 const roots = [
+  "v2/ThreadListParams",
+  "v2/ThreadListResponse",
+  "v2/ProjectListParams",
+  "v2/ProjectListResponse",
   "v2/ModelListParams",
   "v2/ModelListResponse",
   "v2/GetAccountResponse",

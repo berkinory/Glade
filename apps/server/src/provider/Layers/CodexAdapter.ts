@@ -2576,6 +2576,17 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
       interruptTurn,
       readThread,
       readExternalThread,
+      discoverProjects: (providerOptions) =>
+        Effect.tryPromise({
+          try: () => manager.discoverProjects(providerOptions),
+          catch: (cause) =>
+            new ProviderAdapterRequestError({
+              provider: "codex",
+              method: "thread/list",
+              detail: "Failed to discover Codex sessions.",
+              cause,
+            }),
+        }),
       rollbackThread,
       compactThread,
       forkThread,

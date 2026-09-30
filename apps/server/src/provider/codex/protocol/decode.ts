@@ -1,3 +1,7 @@
+import threadListSchema from "./generated/schemas/v2/ThreadListResponse.json";
+import projectListSchema from "./generated/schemas/v2/ProjectListResponse.json";
+import type { ThreadListResponse } from "./generated/types/v2/ThreadListResponse";
+import type { ProjectListResponse } from "./generated/types/v2/ProjectListResponse";
 import { z } from "zod";
 import modelListSchema from "./generated/schemas/v2/ModelListResponse.json";
 import skillsListSchema from "./generated/schemas/v2/SkillsListResponse.json";
@@ -43,6 +47,8 @@ function fromPinnedSchema(value: unknown) {
 }
 
 const responseSchemas = {
+  "thread/list": fromPinnedSchema(threadListSchema),
+  "project/list": fromPinnedSchema(projectListSchema),
   "model/list": fromPinnedSchema(modelListSchema),
   "skills/list": fromPinnedSchema(skillsListSchema),
   "plugin/list": fromPinnedSchema(pluginListSchema),
@@ -104,6 +110,8 @@ function decode<T>(
   return parsed.data as T;
 }
 
+export function decodeCodexResponse(method: "thread/list", value: unknown): ThreadListResponse;
+export function decodeCodexResponse(method: "project/list", value: unknown): ProjectListResponse;
 export function decodeCodexResponse(method: "model/list", value: unknown): ModelListResponse;
 export function decodeCodexResponse(method: "skills/list", value: unknown): SkillsListResponse;
 export function decodeCodexResponse(method: "plugin/list", value: unknown): PluginListResponse;

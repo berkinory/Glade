@@ -18,10 +18,7 @@ import type {
   ProjectImportOrigin,
 } from "../persistence/projectImportRepository";
 import { discoverClaudeProjects } from "../provider/claude/claudeProjectImport";
-import {
-  discoverCodexProjects,
-  resolveCodexProjectImportHome,
-} from "../provider/codex/codexProjectImport";
+import { resolveCodexProjectImportHome } from "../provider/codex/codexProjectImport";
 import { ensureProviderEnabled } from "../provider/core/enabledProviderAdapter";
 import { makeKeyedLock } from "../provider/core/keyedLock";
 import type { NativeProjectImportCatalog } from "../provider/core/projectImportTypes";
@@ -72,12 +69,21 @@ export function makeProjectImportHandlers(options: ProjectImportRouteOptions) {
   const imports = makeKeyedLock<string>();
   const readHistory =
     options.readHistory ?? makeProjectImportHistoryReader(options.providerAdapterRegistry);
-  const discover =
-    options.discover ??
-    ((provider, homePath) =>
-      provider === "codex"
-        ? discoverCodexProjects(homePath ? { homePath } : undefined)
-        : discoverClaudeProjects());
+  const discover = Effect.fn(function* (
+    provider: ProjectImportProvider,
+    providerOptions: ProviderStartOptions,
+  ) {
+    if (options.discover)
+      return yield* projectImportPromise(() =>
+        options.discover!(provider, providerOptions.codex?.homePath),
+      );
+    if (provider === "claudeAgent")
+      return yield* projectImportPromise(() => discoverClaudeProjects());
+    const adapter = yield* options.providerAdapterRegistry.getByProvider("codex");
+    if (!adapter.discoverProjects)
+      return yield* new ProjectImportError({ message: "Codex session discovery is unavailable." });
+    return yield* adapter.discoverProjects(providerOptions);
+  });
 
   const readKnownBindings = Effect.fn(function* (
     destinations: ReturnType<typeof makeProjectImportDestinations>,
@@ -106,24 +112,12 @@ export function makeProjectImportHandlers(options: ProjectImportRouteOptions) {
     const results = yield* Effect.forEach(
       providers,
       (provider) =>
-        projectImportPromise(async () => {
-          try {
-            return {
-              provider,
-              catalog: await discover(
-                provider,
-                provider === "codex" ? settings.providers.codex.homePath : undefined,
-              ),
-              error: null,
-            };
-          } catch (error) {
-            return {
-              provider,
-              catalog: null,
-              error: error instanceof Error ? error.message : String(error),
-            };
-          }
-        }),
+        discover(provider, providerStartOptionsFromServerSettings(settings)).pipe(
+          Effect.map((catalog) => ({ provider, catalog, error: null })),
+          Effect.catch((error) =>
+            Effect.succeed({ provider, catalog: null, error: error.message }),
+          ),
+        ),
       { concurrency: 2 },
     );
     const readModel = yield* options.orchestrationEngine.getReadModel();

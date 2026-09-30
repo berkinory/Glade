@@ -1,3 +1,4 @@
+import type { NativeProjectImportCatalog } from "../core/projectImportTypes";
 import type {
   ProviderManagementContext,
   ProviderListMcpServersResult,
@@ -163,6 +164,10 @@ export interface ProviderAdapterShape<TError> {
   readonly hasSession: (threadId: ThreadId) => Effect.Effect<boolean>;
 
   readonly readThread: (threadId: ThreadId) => Effect.Effect<ProviderThreadSnapshot, TError>;
+
+  readonly discoverProjects?: (
+    providerOptions?: ProviderStartOptions,
+  ) => Effect.Effect<NativeProjectImportCatalog, TError>;
 
   readonly readExternalThread?: (input: {
     readonly externalThreadId: string;
