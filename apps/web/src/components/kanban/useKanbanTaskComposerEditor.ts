@@ -14,18 +14,14 @@ import {
   collapseExpandedComposerCursor,
   detectComposerTrigger,
   expandCollapsedComposerCursor,
-  replaceTextRange,
   type ComposerTrigger,
 } from "~/composer-logic";
 import {
-  ensureLeadingSpaceForReplacement,
-  extendReplacementRangeForTrailingSpace,
-} from "~/composerTriggerInsertion";
-import {
-  composerMentionPathNeedsQuoting,
-  formatComposerMentionToken,
-  SKILL_MENTION_PREFIX,
-} from "~/lib/composerMentions";
+  composerFolderMention,
+  replaceComposerPromptRange,
+  replaceComposerTrigger,
+} from "~/composerEditing.logic";
+import { formatComposerMentionToken, SKILL_MENTION_PREFIX } from "~/lib/composerMentions";
 import {
   syncTerminalContextsByIds,
   terminalContextIdListsEqual,
@@ -93,26 +89,19 @@ export function useKanbanTaskComposerEditor(input: UseKanbanTaskComposerEditorIn
     replacement: string,
     options?: { expectedText?: string; cursorOffset?: number },
   ): number | false => {
-    const currentText = promptRef.current;
-    const safeStart = Math.max(0, Math.min(currentText.length, rangeStart));
-    const safeEnd = Math.max(safeStart, Math.min(currentText.length, rangeEnd));
-    if (
-      options?.expectedText !== undefined &&
-      currentText.slice(safeStart, safeEnd) !== options.expectedText
-    ) {
-      return false;
-    }
-    const next = replaceTextRange(currentText, rangeStart, rangeEnd, replacement);
-    let nextCursor = collapseExpandedComposerCursor(next.text, next.cursor);
-    if (options?.cursorOffset !== undefined) {
-      nextCursor = Math.max(0, nextCursor + options.cursorOffset);
-    }
+    const next = replaceComposerPromptRange(
+      promptRef.current,
+      rangeStart,
+      rangeEnd,
+      replacement,
+      options,
+    );
+    if (next === false) return false;
+    const nextCursor = next.cursor;
     promptRef.current = next.text;
     setPrompt(next.text);
     setComposerCursor(nextCursor);
-    setComposerTrigger(
-      detectComposerTrigger(next.text, expandCollapsedComposerCursor(next.text, nextCursor)),
-    );
+    setComposerTrigger(next.trigger);
     window.requestAnimationFrame(() => {
       composerEditorRef.current?.focusAt(nextCursor);
     });
@@ -152,23 +141,12 @@ export function useKanbanTaskComposerEditor(input: UseKanbanTaskComposerEditorIn
     onApplied?: () => void;
   }): number | false => {
     const { snapshot, trigger, base, cursorOffset, onApplied } = params;
-    const replacement = ensureLeadingSpaceForReplacement(snapshot.value, trigger.rangeStart, base);
-    const replacementRangeEnd = extendReplacementRangeForTrailingSpace(
-      snapshot.value,
-      trigger.rangeEnd,
-      replacement,
-    );
-    const options: { expectedText: string; cursorOffset?: number } = {
-      expectedText: snapshot.value.slice(trigger.rangeStart, replacementRangeEnd),
-    };
-    if (cursorOffset !== undefined) {
-      options.cursorOffset = cursorOffset;
-    }
-    const applied = applyPromptReplacement(
-      trigger.rangeStart,
-      replacementRangeEnd,
-      replacement,
-      options,
+    const applied = replaceComposerTrigger(
+      snapshot,
+      trigger,
+      base,
+      applyPromptReplacement,
+      cursorOffset,
     );
     if (applied !== false) {
       onApplied?.();
@@ -190,13 +168,7 @@ export function useKanbanTaskComposerEditor(input: UseKanbanTaskComposerEditorIn
   const handleNavigateLocalFolder = (absolutePath: string) => {
     const { snapshot, trigger } = resolveActiveComposerTrigger();
     if (!trigger) return;
-    const separator = absolutePath.includes("\\") ? "\\" : "/";
-    const withTrailingSeparator = absolutePath.endsWith(separator)
-      ? absolutePath
-      : `${absolutePath}${separator}`;
-    const base = composerMentionPathNeedsQuoting(withTrailingSeparator)
-      ? `@"${withTrailingSeparator}`
-      : `@${withTrailingSeparator}`;
+    const base = composerFolderMention(absolutePath);
     applyComposerTriggerReplacement({ snapshot, trigger, base });
   };
 

@@ -1,21 +1,18 @@
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback } from "react";
-import {
-  composerMentionPathNeedsQuoting,
-  formatComposerMentionToken,
-} from "~/lib/composerMentions";
+import { formatComposerMentionToken } from "~/lib/composerMentions";
 import {
   collapseExpandedComposerCursor,
   detectComposerTrigger,
   expandCollapsedComposerCursor,
-  replaceTextRange,
   type ComposerTrigger,
 } from "../../composer-logic";
 import {
-  ensureLeadingSpaceForReplacement,
-  extendReplacementRangeForTrailingSpace,
-} from "../../composerTriggerInsertion";
+  composerFolderMention,
+  replaceComposerPromptRange,
+  replaceComposerTrigger,
+} from "../../composerEditing.logic";
 import { setPendingUserInputCustomAnswer } from "../../pendingUserInput";
 import { useChatComposerDraft } from "./useChatComposerDraft";
 import { useChatPendingInteractions } from "./useChatPendingInteractions";
@@ -72,21 +69,15 @@ export function useChatComposerEditing({
       replacement: string,
       options?: { expectedText?: string; cursorOffset?: number },
     ): number | false => {
-      const currentText = promptRef.current;
-      const safeStart = Math.max(0, Math.min(currentText.length, rangeStart));
-      const safeEnd = Math.max(safeStart, Math.min(currentText.length, rangeEnd));
-      if (
-        options?.expectedText !== undefined &&
-        currentText.slice(safeStart, safeEnd) !== options.expectedText
-      ) {
-        return false;
-      }
-      const next = replaceTextRange(promptRef.current, rangeStart, rangeEnd, replacement);
-      let nextCursor = collapseExpandedComposerCursor(next.text, next.cursor);
-
-      if (options?.cursorOffset !== undefined) {
-        nextCursor = Math.max(0, nextCursor + options.cursorOffset);
-      }
+      const next = replaceComposerPromptRange(
+        promptRef.current,
+        rangeStart,
+        rangeEnd,
+        replacement,
+        options,
+      );
+      if (next === false) return false;
+      const nextCursor = next.cursor;
       promptRef.current = next.text;
       const activePendingQuestion = activePendingProgress?.activeQuestion;
       if (activePendingQuestion && activePendingUserInputKey) {
@@ -112,9 +103,7 @@ export function useChatComposerEditing({
         setPrompt(next.text);
       }
       setComposerCursor(nextCursor);
-      setComposerTrigger(
-        detectComposerTrigger(next.text, expandCollapsedComposerCursor(next.text, nextCursor)),
-      );
+      setComposerTrigger(next.trigger);
       window.requestAnimationFrame(() => {
         composerEditorRef.current?.focusAt(nextCursor);
       });
@@ -178,27 +167,12 @@ export function useChatComposerEditing({
       onApplied?: () => void;
     }): number | false => {
       const { snapshot, trigger, base, cursorOffset, onApplied } = params;
-      const replacement = ensureLeadingSpaceForReplacement(
-        snapshot.value,
-        trigger.rangeStart,
+      const applied = replaceComposerTrigger(
+        snapshot,
+        trigger,
         base,
-      );
-      const replacementRangeEnd = extendReplacementRangeForTrailingSpace(
-        snapshot.value,
-        trigger.rangeEnd,
-        replacement,
-      );
-      const options: { expectedText: string; cursorOffset?: number } = {
-        expectedText: snapshot.value.slice(trigger.rangeStart, replacementRangeEnd),
-      };
-      if (cursorOffset !== undefined) {
-        options.cursorOffset = cursorOffset;
-      }
-      const applied = applyPromptReplacement(
-        trigger.rangeStart,
-        replacementRangeEnd,
-        replacement,
-        options,
+        applyPromptReplacement,
+        cursorOffset,
       );
       if (applied !== false) {
         onApplied?.();
@@ -226,13 +200,7 @@ export function useChatComposerEditing({
     (absolutePath: string) => {
       const { snapshot, trigger } = resolveActiveComposerTrigger();
       if (!trigger) return;
-      const separator = absolutePath.includes("\\") ? "\\" : "/";
-      const withTrailingSeparator = absolutePath.endsWith(separator)
-        ? absolutePath
-        : `${absolutePath}${separator}`;
-      const base = composerMentionPathNeedsQuoting(withTrailingSeparator)
-        ? `@"${withTrailingSeparator}`
-        : `@${withTrailingSeparator}`;
+      const base = composerFolderMention(absolutePath);
       applyComposerTriggerReplacement({ snapshot, trigger, base });
     },
     [applyComposerTriggerReplacement, resolveActiveComposerTrigger],
