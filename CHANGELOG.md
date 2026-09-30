@@ -47,6 +47,8 @@
 
 ### Fixed
 
+- Computer Use and gateway rules now reliably reach Codex sessions.
+
 - Built-in Claude commands such as /cost and /context now show their output.
 
 - Messages held by the retired Claude cache-review flow remain visible and can be released explicitly. ([e8adbfda4](https://github.com/berkinory/Glade/commit/e8adbfda42ab44edc3ecce4038e19a4f7d433026))

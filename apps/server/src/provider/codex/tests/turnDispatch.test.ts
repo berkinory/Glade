@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { CODEX_PLAN_MODE_DEVELOPER_INSTRUCTIONS } from "../codexAppServerManager";
 import { fullAccessTurnOverrides, createRequestHarness } from "./requestHarness.testSupport";
 
 const approvalRequiredTurnOverrides = {
@@ -120,7 +119,6 @@ describe("sendTurn", () => {
       model: "gpt-5.4",
       serviceTier: "fast",
       effort: "high",
-      interactionMode: "plan",
     });
 
     expect(result).toEqual({
@@ -146,14 +144,6 @@ describe("sendTurn", () => {
       model: "gpt-5.4",
       serviceTier: "fast",
       effort: "high",
-      collaborationMode: {
-        mode: "plan",
-        settings: {
-          model: "gpt-5.4",
-          reasoning_effort: "high",
-          developer_instructions: CODEX_PLAN_MODE_DEVELOPER_INSTRUCTIONS,
-        },
-      },
     });
     expect(updateSession).toHaveBeenCalledWith(context, {
       status: "running",

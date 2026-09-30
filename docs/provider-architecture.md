@@ -98,3 +98,5 @@ Prefer capability-driven behavior and existing shared protocol helpers. Do not a
 - `packages/contracts/src/provider/runtimeEvents.ts` — provider event schemas and their canonical union
 - `packages/contracts/src/orchestration/threadEntities.ts` — durable session, thread and turn contracts
 - `packages/shared/src/provider/providerMetadata.ts` — shared provider metadata
+
+Glade renders harness policy once per provider. Codex receives it as `developerInstructions` on thread start, resume and fork; no collaboration-mode payload is sent. Claude receives the same policy through the preset system prompt append. Local probes with Codex 0.158.0 and Claude 2.1.283 confirmed the marker, Computer Use rules and gateway rules in model-visible instructions. The retired Codex collaboration-mode channel did not deliver them.
