@@ -68,9 +68,6 @@ export const isReplaySafeClaimedProviderIntent = (event: ProviderIntentEvent): b
 export const isProviderSideEffectIntent = (event: ProviderIntentEvent): boolean =>
   event.type !== "thread.created" &&
   event.type !== "thread.deleted" &&
-  // Restores only the computer manager's local admission state. It is safe to replay and must not be
-  // skipped by an unrelated provider delivery failure.
-  event.type !== "thread.unarchived" &&
   event.type !== "thread.session-set" &&
   event.type !== "thread.turn-queued";
 
@@ -82,4 +79,5 @@ export const isClaimedProviderIntent = (event: ProviderIntentEvent): boolean =>
 export const isQuarantineExemptProviderIntent = (event: ProviderIntentEvent): boolean =>
   event.type === "thread.turn-interrupt-requested" ||
   event.type === "thread.session-stop-requested" ||
-  event.type === "thread.archived";
+  event.type === "thread.archived" ||
+  event.type === "thread.unarchived";

@@ -1,3 +1,4 @@
+import type { NativeThreadHistoryInput } from "../core/nativeThreadHistory.ts";
 import type { NativeProjectImportCatalog } from "../core/projectImportTypes";
 import type {
   ProviderManagementContext,
@@ -147,6 +148,8 @@ export interface ProviderAdapterShape<TError> {
     requestId: ApprovalRequestId,
     answers: ProviderUserInputAnswers,
   ) => Effect.Effect<void, TError>;
+
+  readonly updateNativeHistory?: (input: NativeThreadHistoryInput) => Effect.Effect<void, TError>;
 
   readonly stopSession: (threadId: ThreadId) => Effect.Effect<void, TError>;
 

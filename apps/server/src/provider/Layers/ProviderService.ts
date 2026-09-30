@@ -1,3 +1,5 @@
+import { ProviderNativeHistory } from "../Services/ProviderNativeHistory.ts";
+import { ProviderNativeHistoryLive } from "./ProviderNativeHistory.ts";
 import { Effect, Deferred, Cause, Layer } from "effect";
 import { EventId } from "@glade/contracts/core/baseSchemas";
 import { randomUUID } from "node:crypto";
@@ -50,6 +52,7 @@ const makeProviderService = Effect.gen(function* () {
   const teardown = yield* ProviderSessionTeardown;
   const tasks = yield* ProviderTaskControl;
   const reads = yield* ProviderSessionReads;
+  const history = yield* ProviderNativeHistory;
   const adapters = yield* Effect.forEach(yield* registry.listProviders(), (provider) =>
     registry.getByProvider(provider),
   );
@@ -151,6 +154,7 @@ const makeProviderService = Effect.gen(function* () {
     clearSessionResumeCursor: teardown.clearSessionResumeCursor,
     ...tasks,
     ...reads,
+    ...history,
     closeRuntimeEvents,
     getRuntimeEventPumpHealth: events.getRuntimeEventPumpHealth,
     get streamEvents(): ProviderServiceShape["streamEvents"] {
@@ -186,6 +190,7 @@ export function makeProviderServiceLive(options?: ProviderServiceLiveOptions) {
     ProviderTurnDispatchLive,
     ProviderSessionTeardownLive,
     ProviderSessionReadsLive,
+    ProviderNativeHistoryLive,
     ProviderRuntimeEventsLive(options),
   ).pipe(Layer.provideMerge(routing));
   // Isolate private owners per instance while sharing this public Layer within its graph.

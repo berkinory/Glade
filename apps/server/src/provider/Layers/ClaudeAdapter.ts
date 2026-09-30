@@ -1,3 +1,4 @@
+import { updateClaudeNativeHistory } from "../claude/adapter/nativeHistory.ts";
 import {
   ClaudeAdapterLiveOptions,
   ClaudeQueryRuntime,
@@ -376,6 +377,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       respondToRequest,
       respondToUserInput,
       stopSession,
+      updateNativeHistory: updateClaudeNativeHistory,
       listSessions,
       hasSession,
       stopAll,

@@ -468,6 +468,7 @@ export function makeReactorTestHarness() {
       getCapabilities: (_provider) => Effect.succeed({}),
       rollbackConversation,
       compactThread: () => unsupported(),
+      updateNativeHistory: () => unsupported(),
       closeRuntimeEvents: Effect.void,
       streamEvents: Stream.fromPubSub(runtimeEventPubSub),
     };

@@ -2576,6 +2576,17 @@ const makeCodexAdapter = (options?: CodexAdapterLiveOptions) =>
       interruptTurn,
       readThread,
       readExternalThread,
+      updateNativeHistory: (input) =>
+        Effect.tryPromise({
+          try: () => manager.updateNativeHistory(input),
+          catch: (cause) =>
+            new ProviderAdapterRequestError({
+              provider: "codex",
+              method: `thread/${input.action.type}`,
+              detail: "Failed to update native Codex history.",
+              cause,
+            }),
+        }),
       discoverProjects: (providerOptions) =>
         Effect.tryPromise({
           try: () => manager.discoverProjects(providerOptions),

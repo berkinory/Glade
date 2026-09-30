@@ -486,7 +486,7 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
       const confirmed = await api.dialogs.confirm(
         [
           `Delete ${count} ${pluralize(count, "thread")}?`,
-          "This permanently clears conversation history for these threads.",
+          "This permanently clears these conversations and deletes their Codex or Claude session history.",
         ].join("\n"),
       );
       if (!confirmed) return;

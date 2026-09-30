@@ -1,3 +1,4 @@
+import type { NativeThreadHistoryInput } from "../core/nativeThreadHistory.ts";
 import { discoverCodexProjects } from "./codexProjectImport.ts";
 import { codexUpdatedModelSelection } from "./codexStateNotifications.ts";
 import { asString } from "@glade/shared/text/text";
@@ -1932,6 +1933,23 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     }
 
     return this.readThreadSnapshot(context, providerThreadId);
+  }
+
+  async updateNativeHistory(input: NativeThreadHistoryInput): Promise<void> {
+    const threadId = readResumeCursorThreadId(input.resumeCursor);
+    if (!threadId)
+      throw new Error("Codex history operation requires its persisted native thread id.");
+    const context = await this.resolveContextForDiscovery(
+      undefined,
+      input.cwd,
+      input.providerOptions,
+    );
+    const method =
+      input.action.type === "rename" ? "thread/name/set" : `thread/${input.action.type}`;
+    await this.sendRequest(context, method, {
+      threadId,
+      ...(input.action.type === "rename" ? { name: input.action.title } : {}),
+    });
   }
 
   async discoverProjects(providerOptions?: ProviderSessionStartInput["providerOptions"]) {

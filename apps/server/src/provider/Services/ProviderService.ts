@@ -1,3 +1,4 @@
+import type { NativeThreadHistoryAction } from "../core/nativeThreadHistory.ts";
 import type {
   ProviderBackgroundTaskInput,
   ProviderForkThreadInput,
@@ -120,6 +121,11 @@ export interface ProviderServiceShape {
   readonly respondToUserInput: (
     input: ProviderRespondToUserInputInput,
   ) => Effect.Effect<void, ProviderServiceError>;
+
+  readonly updateNativeHistory: (input: {
+    readonly threadId: ThreadId;
+    readonly action: NativeThreadHistoryAction;
+  }) => Effect.Effect<void, ProviderServiceError>;
 
   readonly stopSession: (
     input: ProviderStopSessionInput,

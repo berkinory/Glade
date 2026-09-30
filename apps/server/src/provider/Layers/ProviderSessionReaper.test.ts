@@ -92,6 +92,7 @@ function makeProviderServiceStub(input: {
     getCapabilities: () => unsupported(),
     rollbackConversation: () => unsupported(),
     compactThread: () => unsupported(),
+    updateNativeHistory: () => unsupported(),
     closeRuntimeEvents: Effect.void,
     streamEvents: Stream.empty,
   };

@@ -201,6 +201,10 @@ export function makeFakeCodexAdapter(provider: ProviderKind = "codex") {
       }),
   );
 
+  const updateNativeHistory = vi.fn<
+    NonNullable<ProviderAdapterShape<ProviderAdapterError>["updateNativeHistory"]>
+  >(() => Effect.void);
+
   const stopAll = vi.fn(
     (): Effect.Effect<void, ProviderAdapterError> =>
       Effect.sync(() => {
@@ -232,6 +236,7 @@ export function makeFakeCodexAdapter(provider: ProviderKind = "codex") {
     compactThread,
     forkThread,
     stopAll,
+    updateNativeHistory,
     streamEvents: Stream.fromPubSub(runtimeEventPubSub),
   };
 
@@ -279,6 +284,7 @@ export function makeFakeCodexAdapter(provider: ProviderKind = "codex") {
     compactThread,
     forkThread,
     stopAll,
+    updateNativeHistory,
   };
 }
 

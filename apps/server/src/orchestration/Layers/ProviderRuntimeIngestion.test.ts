@@ -101,6 +101,7 @@ function createProviderServiceHarness(options?: { readonly persistedStream?: boo
       }),
     rollbackConversation: () => unsupported(),
     compactThread: () => unsupported(),
+    updateNativeHistory: () => unsupported(),
     closeRuntimeEvents: Effect.void,
     streamEvents: Stream.fromPubSub(runtimeEventPubSub),
     // Only the already-persisted path uses this; when present the ingestion ignores `streamEvents`, so
