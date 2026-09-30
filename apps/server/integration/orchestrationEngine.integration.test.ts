@@ -1,3 +1,4 @@
+import { scopedTurnCheckpoints } from "../src/checkpointing/scopedTurnCheckpoints";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -39,6 +40,19 @@ const PROJECT_ID = asProjectId("project-1");
 const THREAD_ID = ThreadId.makeUnsafe("thread-1");
 const FIXTURE_TURN_ID = "fixture-turn";
 const APPROVAL_REQUEST_ID = asApprovalRequestId("req-approval-1");
+
+const prepareRevert = (harness: OrchestrationIntegrationHarness, turnCount: number) =>
+  Effect.gen(function* () {
+    const thread = Option.getOrThrow(yield* harness.snapshotQuery.getThreadDetailById(THREAD_ID));
+    const preview = yield* harness.checkpointStore.previewScopedRestore({
+      cwd: harness.workspaceDir,
+      turns: scopedTurnCheckpoints(
+        thread,
+        thread.checkpoints.filter((checkpoint) => checkpoint.checkpointTurnCount > turnCount),
+      ),
+    });
+    return { fingerprint: preview.fingerprint, overwritePaths: [] };
+  });
 const itLiveUnlessCi = (process.env.CI ? it.skip : it.live) as typeof it.live;
 type IntegrationProvider = ProviderKind;
 
@@ -830,6 +844,7 @@ it.live("reverts to an earlier checkpoint and trims checkpoint projections + git
       yield* harness.engine.dispatch({
         type: "thread.checkpoint.revert",
         commandId: CommandId.makeUnsafe("cmd-checkpoint-revert"),
+        workspaceRestore: yield* prepareRevert(harness, 1),
         threadId: THREAD_ID,
         turnCount: 1,
         createdAt: nowIso(),
@@ -1417,6 +1432,7 @@ itLiveUnlessCi("reverts claudeAgent turns and rolls back provider conversation s
         yield* harness.engine.dispatch({
           type: "thread.checkpoint.revert",
           commandId: CommandId.makeUnsafe("cmd-checkpoint-revert-claude"),
+          workspaceRestore: yield* prepareRevert(harness, 1),
           threadId: THREAD_ID,
           turnCount: 1,
           createdAt: nowIso(),
