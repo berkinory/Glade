@@ -11,6 +11,7 @@
 ### Improved
 
 - Source comments focus on invariants, trust boundaries and lifecycle constraints; redundant file inventories and implementation narration were removed.
+- Codex version-probe caches belong to their manager instance; tests use independent owners rather than global reset hooks.
 - Development installs use published Effect beta packages with the existing process safety fixes.
 - Development checks reject lint warnings, unused code and cyclic source dependencies. Redundant dependency overrides and the retired cookie-import patch were removed.
 - Type-aware checks enforce async callback ownership, awaited cleanup and runtime import safety.

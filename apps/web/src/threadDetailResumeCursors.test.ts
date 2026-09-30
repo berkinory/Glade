@@ -6,7 +6,7 @@ import {
   clearThreadDetailResumeCursor,
   getThreadDetailResumeCursor,
   hasThreadDetailResumeCursor,
-  resetThreadDetailResumeCursorsForTests,
+  resetThreadDetailResumeCursors,
   setThreadDetailResumeCursor,
 } from "./threadDetailResumeCursors";
 
@@ -16,7 +16,7 @@ function threadId(value: string): ThreadId {
 
 describe("threadDetailResumeCursors", () => {
   afterEach(() => {
-    resetThreadDetailResumeCursorsForTests();
+    resetThreadDetailResumeCursors();
   });
 
   it("subscribes without a cursor until cached detail exists, then resumes from it", () => {

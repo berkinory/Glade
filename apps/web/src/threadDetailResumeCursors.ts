@@ -52,7 +52,3 @@ export function buildThreadSubscribeInput(threadId: ThreadId): OrchestrationSubs
   const afterSequence = resumeCursorByThreadId.get(threadId);
   return afterSequence === undefined ? { threadId } : { threadId, afterSequence };
 }
-
-export function resetThreadDetailResumeCursorsForTests(): void {
-  resetThreadDetailResumeCursors();
-}

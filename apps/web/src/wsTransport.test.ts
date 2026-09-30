@@ -50,7 +50,7 @@ import {
 import {
   advanceThreadDetailResumeCursor,
   hasThreadDetailResumeCursor,
-  resetThreadDetailResumeCursorsForTests,
+  resetThreadDetailResumeCursors,
 } from "./threadDetailResumeCursors";
 import {
   addWsCompatibilityIssueListener,
@@ -525,7 +525,7 @@ describe("WsTransport", () => {
   it("clears the thread resume cursor and retries in place on a resnapshot demand", async () => {
     vi.useFakeTimers();
     bindWindowTimersToCurrentGlobals();
-    resetThreadDetailResumeCursorsForTests();
+    resetThreadDetailResumeCursors();
     try {
       const { internals } = makeBareTransport();
       const threadId = "thread-resnapshot";
@@ -553,7 +553,7 @@ describe("WsTransport", () => {
       expect(restart).toHaveBeenCalledTimes(1);
       expect(reconnect).not.toHaveBeenCalled();
     } finally {
-      resetThreadDetailResumeCursorsForTests();
+      resetThreadDetailResumeCursors();
       vi.useRealTimers();
     }
   });
