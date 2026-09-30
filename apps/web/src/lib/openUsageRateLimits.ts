@@ -1,3 +1,5 @@
+import { asFiniteNumber } from "@glade/shared/transport/payloadValues";
+import { asNonBlankString } from "@glade/shared/text/text";
 import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 
@@ -32,14 +34,6 @@ export interface OpenUsageUsageLine {
   subtitle?: string;
 }
 
-function asFiniteNumber(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
-}
-
-function asString(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim().length > 0 ? value : undefined;
-}
-
 function toWindowDurationMins(periodDurationMs: number | undefined): number | undefined {
   if (periodDurationMs === undefined) return undefined;
   return Math.round(periodDurationMs / 60_000);
@@ -69,9 +63,9 @@ export function openUsageProviderIdForProvider(
 function normalizeProgressLine(line: OpenUsageProgressLine): RateLimitWindow | null {
   if (line.type !== "progress") return null;
 
-  const label = asString(line.label);
+  const label = asNonBlankString(line.label);
   const usedPercent = toUsedPercent(line);
-  const resetsAt = asString(line.resetsAt);
+  const resetsAt = asNonBlankString(line.resetsAt);
   const windowDurationMins = toWindowDurationMins(asFiniteNumber(line.periodDurationMs));
 
   if (usedPercent === undefined && !resetsAt) return null;
@@ -87,9 +81,9 @@ function normalizeProgressLine(line: OpenUsageProgressLine): RateLimitWindow | n
 function normalizeTextLine(line: OpenUsageTextLine): OpenUsageUsageLine | null {
   if (line.type !== "text") return null;
 
-  const label = asString(line.label);
-  const value = asString(line.value);
-  const subtitle = asString(line.subtitle);
+  const label = asNonBlankString(line.label);
+  const value = asNonBlankString(line.value);
+  const subtitle = asNonBlankString(line.subtitle);
   if (!label || !value) return null;
 
   return {
@@ -107,7 +101,7 @@ export function normalizeOpenUsageSnapshot(
   if (!parsed) return null;
 
   const provider =
-    toProviderKind(asString(parsed.providerId)) ??
+    toProviderKind(asNonBlankString(parsed.providerId)) ??
     (preferredProvider !== undefined ? preferredProvider : null);
   if (!provider) return null;
 
@@ -120,7 +114,7 @@ export function normalizeOpenUsageSnapshot(
 
   return {
     provider,
-    updatedAt: asString(parsed.fetchedAt) ?? new Date().toISOString(),
+    updatedAt: asNonBlankString(parsed.fetchedAt) ?? new Date().toISOString(),
     limits,
   };
 }

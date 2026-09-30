@@ -1,3 +1,4 @@
+import { nonEmptyTrimmed } from "@glade/shared/text/text";
 import type { TaggedFailure } from "./platform/operationError.ts";
 
 import nodePath from "node:path";
@@ -103,10 +104,6 @@ function num(value: unknown): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function nonEmptyString(value: unknown): string | null {
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
-}
-
 const PROFILE_SKILL_NAME_TOKEN =
   "[A-Za-z0-9](?:[A-Za-z0-9_-]*[A-Za-z0-9])?(?::[A-Za-z0-9](?:[A-Za-z0-9_-]*[A-Za-z0-9])?)*";
 const PROFILE_SKILL_TOKEN_REGEX = new RegExp(
@@ -121,7 +118,7 @@ const PROFILE_TRAILING_PROMPT_BLOCK_PATTERNS = [
 ] as const;
 
 function normalizeUsageName(value: unknown): string | null {
-  const name = nonEmptyString(value);
+  const name = nonEmptyTrimmed(value) ?? null;
   if (!name) {
     return null;
   }
@@ -159,7 +156,7 @@ function stripProfileTrailingPromptBlocks(prompt: string): string {
 }
 
 function parseReferenceNames(json: string | null): string[] {
-  const value = nonEmptyString(json);
+  const value = nonEmptyTrimmed(json) ?? null;
   if (!value) {
     return [];
   }
@@ -182,7 +179,7 @@ function parseReferenceNames(json: string | null): string[] {
 }
 
 function extractTextSkillNames(text: string | null): string[] {
-  const prompt = nonEmptyString(text);
+  const prompt = nonEmptyTrimmed(text) ?? null;
   if (!prompt) {
     return [];
   }
@@ -400,7 +397,7 @@ function arcName(startHour: number): string {
 }
 
 function normalizeProviderKind(value: unknown): ProviderKind | "unknown" {
-  const provider = nonEmptyString(value);
+  const provider = nonEmptyTrimmed(value) ?? null;
   return provider && PROVIDER_KINDS.has(provider as ProviderKind)
     ? (provider as ProviderKind)
     : "unknown";
@@ -425,7 +422,7 @@ function aggregateTokenActivity(rows: ReadonlyArray<TokenDayRow>): TokenActivity
   const tokensByProviderModel = new Map<string, TokenModelUsageCount>();
   let lifetime = 0;
   for (const row of rows) {
-    const day = nonEmptyString(row.day);
+    const day = nonEmptyTrimmed(row.day) ?? null;
     const tokens = num(row.tokens);
     if (!day || tokens <= 0) {
       continue;
@@ -436,7 +433,7 @@ function aggregateTokenActivity(rows: ReadonlyArray<TokenDayRow>): TokenActivity
     if (provider !== "unknown") {
       tokensByProvider.set(provider, (tokensByProvider.get(provider) ?? 0) + tokens);
     }
-    const model = nonEmptyString(row.model) ?? "unknown";
+    const model = nonEmptyTrimmed(row.model) ?? "unknown";
     const providerModelKey = `${provider}\u0000${model}`;
     const existing = tokensByProviderModel.get(providerModelKey);
     if (existing) {
@@ -523,10 +520,10 @@ function buildMostWorkedProject(row: MostWorkedProjectRow | undefined): MostWork
     return null;
   }
 
-  const projectId = nonEmptyString(row.projectId);
-  const title = nonEmptyString(row.title);
-  const workspaceRoot = nonEmptyString(row.workspaceRoot);
-  const lastWorkedAt = nonEmptyString(row.lastWorkedAt);
+  const projectId = nonEmptyTrimmed(row.projectId) ?? null;
+  const title = nonEmptyTrimmed(row.title) ?? null;
+  const workspaceRoot = nonEmptyTrimmed(row.workspaceRoot) ?? null;
+  const lastWorkedAt = nonEmptyTrimmed(row.lastWorkedAt) ?? null;
   if (!projectId || !title || !workspaceRoot || !lastWorkedAt) {
     return null;
   }
@@ -965,7 +962,7 @@ const makeProfileStatsQuery = Effect.gen(function* () {
       const hourCounts = Array.from({ length: 24 }, () => 0);
       let totalPromptsSent = 0;
       for (const row of promptActivityRows) {
-        const day = nonEmptyString(row.day);
+        const day = nonEmptyTrimmed(row.day) ?? null;
         const count = num(row.count);
         if (day) {
           countByDay.set(day, (countByDay.get(day) ?? 0) + count);
@@ -1014,8 +1011,8 @@ const makeProfileStatsQuery = Effect.gen(function* () {
 
       for (const row of turnInsightRows) {
         const count = num(row.count);
-        const provider = nonEmptyString(row.provider);
-        const model = nonEmptyString(row.model);
+        const provider = nonEmptyTrimmed(row.provider) ?? null;
+        const model = nonEmptyTrimmed(row.model) ?? null;
         const providerModelKey = `${provider ?? ""}\u0000${model ?? ""}`;
         const existingProviderModel = providerModelCounts.get(providerModelKey);
         if (existingProviderModel) {
@@ -1024,7 +1021,7 @@ const makeProfileStatsQuery = Effect.gen(function* () {
           providerModelCounts.set(providerModelKey, { provider, model, count });
         }
 
-        const reasoning = nonEmptyString(row.reasoning);
+        const reasoning = nonEmptyTrimmed(row.reasoning) ?? null;
         if (reasoning) {
           const existingReasoning = reasoningCounts.get(reasoning);
           if (existingReasoning) {
@@ -1046,7 +1043,7 @@ const makeProfileStatsQuery = Effect.gen(function* () {
         const count = num(row.count);
         return {
           provider: normalizeProviderKind(row.provider),
-          model: nonEmptyString(row.model) ?? "unknown",
+          model: nonEmptyTrimmed(row.model) ?? "unknown",
           turnCount: count,
           percent: percent1(count, totalModelTurns),
         };

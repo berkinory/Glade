@@ -1,3 +1,4 @@
+import { nonEmptyTrimmed } from "@glade/shared/text/text";
 import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import {
   type ComputerPermission,
@@ -436,19 +437,19 @@ function extractWorkLogGladeThreadCreation(
   if (!payload) {
     return null;
   }
-  const operationId = asTrimmedString(payload.operationId);
+  const operationId = nonEmptyTrimmed(payload.operationId) ?? null;
   const rawThreads = Array.isArray(payload.threads) ? payload.threads : [];
   if (!operationId || rawThreads.length === 0) {
     return null;
   }
   const threads = rawThreads.flatMap((value): WorkLogGladeCreatedThread[] => {
     const thread = asObjectRecord(value);
-    const threadId = asTrimmedString(thread?.threadId);
-    const title = asTrimmedString(thread?.title);
-    const provider = asTrimmedString(thread?.provider);
-    const model = asTrimmedString(thread?.model);
-    const environment = asTrimmedString(thread?.environment);
-    const status = asTrimmedString(thread?.status) ?? "created";
+    const threadId = nonEmptyTrimmed(thread?.threadId) ?? null;
+    const title = nonEmptyTrimmed(thread?.title) ?? null;
+    const provider = nonEmptyTrimmed(thread?.provider) ?? null;
+    const model = nonEmptyTrimmed(thread?.model) ?? null;
+    const environment = nonEmptyTrimmed(thread?.environment) ?? null;
+    const status = nonEmptyTrimmed(thread?.status) ?? "created";
     const providerKind = PROVIDER_DESCRIPTORS.find(
       (descriptor) => descriptor.kind === provider,
     )?.kind;
@@ -691,7 +692,7 @@ function toDerivedWorkLogEntry(activity: OrchestrationThreadActivity): DerivedWo
   }
   if (activity.kind === COMPUTER_SETUP_REQUIRED_ACTIVITY_KIND) {
     const buildSignature = asComputerBuildSignature(payload?.buildSignature);
-    const bundleId = asTrimmedString(payload?.bundleId);
+    const bundleId = nonEmptyTrimmed(payload?.bundleId) ?? null;
     entry.computerSetupRequired = {
       missing: asComputerPermissions(payload?.missing),
       ...(buildSignature ? { buildSignature } : {}),
@@ -699,7 +700,7 @@ function toDerivedWorkLogEntry(activity: OrchestrationThreadActivity): DerivedWo
     };
   }
   if (activity.kind === COMPUTER_CONTROL_DENIED_ACTIVITY_KIND) {
-    entry.computerControlDenied = { toolName: asTrimmedString(payload?.toolName) };
+    entry.computerControlDenied = { toolName: nonEmptyTrimmed(payload?.toolName) ?? null };
   }
   if (activity.kind === PROVIDER_CONTEXT_LIFECYCLE_ACTIVITY_KIND) {
     const providerContextLifecycle = extractProviderContextLifecycleInfo(payload);
@@ -782,10 +783,10 @@ function deriveProviderRuntimeReconciliationCollapseKey(
   if (activity.kind !== "provider.runtime.reconciled") {
     return undefined;
   }
-  const provider = asTrimmedString(payload?.provider);
-  const action = asTrimmedString(payload?.action);
-  const projectedTurnId = asTrimmedString(payload?.projectedTurnId) ?? activity.turnId ?? undefined;
-  const runtimeTurnId = asTrimmedString(payload?.runtimeTurnId);
+  const provider = nonEmptyTrimmed(payload?.provider) ?? null;
+  const action = nonEmptyTrimmed(payload?.action) ?? null;
+  const projectedTurnId = nonEmptyTrimmed(payload?.projectedTurnId) ?? activity.turnId ?? undefined;
+  const runtimeTurnId = nonEmptyTrimmed(payload?.runtimeTurnId) ?? null;
   if (
     !provider ||
     !projectedTurnId ||
@@ -846,9 +847,9 @@ function deriveWorkLogLiveActivity(
         ? "completed"
         : "running_tool";
   const detail =
-    asTrimmedString(data?.summary) ??
+    nonEmptyTrimmed(data?.summary) ??
     (activity.kind === "tool.updated"
-      ? asTrimmedString(payload?.detail)
+      ? (nonEmptyTrimmed(payload?.detail) ?? null)
       : state === "failed" || state === "cancelled"
         ? (entry.detail ?? null)
         : null);
@@ -959,7 +960,7 @@ function extractCollabActionTitle(payload: Record<string, unknown> | null): stri
     item?.description,
   ];
   for (const candidate of candidates) {
-    const title = asTrimmedString(candidate);
+    const title = nonEmptyTrimmed(candidate) ?? null;
     if (title && !isGenericToolTitle(title)) {
       return title.length > 120 ? `${title.slice(0, 117).trimEnd()}...` : title;
     }
@@ -974,7 +975,7 @@ function extractCollabTaskText(value: unknown): string | null {
       .filter((entry): entry is string => entry !== null);
     return parts.length > 0 ? parts.join("\n") : null;
   }
-  const direct = normalizeCollabTaskOutput(asTrimmedString(value));
+  const direct = normalizeCollabTaskOutput(nonEmptyTrimmed(value) ?? null);
   if (direct) {
     return direct;
   }
@@ -1567,14 +1568,6 @@ function asComputerBuildSignature(value: unknown): ComputerBuildSignature | unde
   return value === "adhoc" || value === "signed" ? value : undefined;
 }
 
-function asTrimmedString(value: unknown): string | null {
-  if (typeof value !== "string") {
-    return null;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
-
 function firstFiniteNumber(...values: unknown[]): number | undefined {
   return values.find(
     (value): value is number => typeof value === "number" && Number.isFinite(value),
@@ -1596,12 +1589,12 @@ function collabPayloadItem(
 }
 
 function inferSubagentActionTool(item: Record<string, unknown> | null): string | null {
-  const directTool = asTrimmedString(item?.tool ?? item?.name);
+  const directTool = nonEmptyTrimmed(item?.tool ?? item?.name) ?? null;
   if (directTool) {
     return directTool;
   }
 
-  const normalizedType = normalizeCollabIdentifier(asTrimmedString(item?.type));
+  const normalizedType = normalizeCollabIdentifier(nonEmptyTrimmed(item?.type) ?? null);
   if (!normalizedType) {
     return null;
   }
@@ -1646,17 +1639,19 @@ function extractCollabAction(
   const item = collabPayloadItem(payload);
   const itemInput = asObjectRecord(item?.input);
   const tool = inferSubagentActionTool(item);
-  const status = asTrimmedString(item?.status ?? payload?.status) ?? "in_progress";
-  const model = asTrimmedString(
-    item?.model ??
-      item?.modelName ??
-      item?.model_name ??
-      item?.requestedModel ??
-      item?.requested_model,
-  );
-  const prompt = asTrimmedString(
-    item?.prompt ?? item?.task ?? item?.message ?? itemInput?.prompt ?? itemInput?.description,
-  );
+  const status = nonEmptyTrimmed(item?.status ?? payload?.status) ?? "in_progress";
+  const model =
+    nonEmptyTrimmed(
+      item?.model ??
+        item?.modelName ??
+        item?.model_name ??
+        item?.requestedModel ??
+        item?.requested_model,
+    ) ?? null;
+  const prompt =
+    nonEmptyTrimmed(
+      item?.prompt ?? item?.task ?? item?.message ?? itemInput?.prompt ?? itemInput?.description,
+    ) ?? null;
   const agentStates = decodeSubagentAgentStates(item);
   const receiverThreadIds = decodeSubagentReceiverThreadIds(item);
   const count = Math.max(
@@ -1733,9 +1728,10 @@ function extractCollabSubagents(
 
   const singularThreadId =
     receiverThreadIds[0] ??
-    asTrimmedString(
+    nonEmptyTrimmed(
       item.receiverThreadId ?? item.receiver_thread_id ?? item.threadId ?? item.thread_id,
-    );
+    ) ??
+    null;
   if (!singularThreadId) {
     const fallbackIdentity = extractSubagentIdentityHints(item).find(
       (entry) => entry.providerThreadId !== undefined,
@@ -1764,10 +1760,10 @@ function extractCollabSubagents(
       threadId: singularThreadId,
       providerThreadId: singularThreadId,
       agentId:
-        asTrimmedString(item.agentId ?? item.agent_id ?? item.newAgentId ?? item.new_agent_id) ??
+        nonEmptyTrimmed(item.agentId ?? item.agent_id ?? item.newAgentId ?? item.new_agent_id) ??
         undefined,
       nickname:
-        asTrimmedString(
+        nonEmptyTrimmed(
           item.newAgentNickname ??
             item.new_agent_nickname ??
             item.agentNickname ??
@@ -1776,7 +1772,7 @@ function extractCollabSubagents(
             item.receiver_agent_nickname,
         ) ?? undefined,
       role:
-        asTrimmedString(
+        nonEmptyTrimmed(
           item.receiverAgentRole ??
             item.receiver_agent_role ??
             item.newAgentRole ??
@@ -1787,22 +1783,22 @@ function extractCollabSubagents(
             item.agent_type,
         ) ?? undefined,
       model:
-        asTrimmedString(
+        nonEmptyTrimmed(
           item.model ??
             item.modelName ??
             item.model_name ??
             item.requestedModel ??
             item.requested_model,
         ) ?? undefined,
-      effort: asTrimmedString(item.effort) ?? undefined,
+      effort: nonEmptyTrimmed(item.effort) ?? undefined,
       background: item.background === true ? true : undefined,
-      prompt: asTrimmedString(item.prompt ?? item.task ?? item.message) ?? undefined,
+      prompt: nonEmptyTrimmed(item.prompt ?? item.task ?? item.message) ?? undefined,
     },
   ];
 }
 
 function normalizeCommandValue(value: unknown): string | null {
-  const direct = asTrimmedString(value);
+  const direct = nonEmptyTrimmed(value) ?? null;
   if (direct) {
     return direct;
   }
@@ -1810,7 +1806,7 @@ function normalizeCommandValue(value: unknown): string | null {
     return null;
   }
   const parts = value
-    .map((entry) => asTrimmedString(entry))
+    .map((entry) => nonEmptyTrimmed(entry) ?? null)
     .filter((entry): entry is string => entry !== null);
   return parts.length > 0 ? parts.join(" ") : null;
 }
@@ -1820,7 +1816,7 @@ function asCommandArgumentRecord(value: unknown): Record<string, unknown> | null
   if (direct) {
     return direct;
   }
-  const text = asTrimmedString(value);
+  const text = nonEmptyTrimmed(value) ?? null;
   if (!text || !text.startsWith("{")) {
     return null;
   }
@@ -1843,7 +1839,7 @@ function isCommandLikeDetail(payload: Record<string, unknown> | null): boolean {
   if (requestKind === "command") {
     return true;
   }
-  const normalizedTitle = normalizeCompactToolLabel(asTrimmedString(payload.title) ?? "");
+  const normalizedTitle = normalizeCompactToolLabel(nonEmptyTrimmed(payload.title) ?? "");
   return normalizedTitle === "Ran command" || normalizedTitle === "Command run";
 }
 
@@ -1926,7 +1922,7 @@ function extractToolCommand(
 }
 
 function extractToolTitle(payload: Record<string, unknown> | null): string | null {
-  return asTrimmedString(payload?.title);
+  return nonEmptyTrimmed(payload?.title) ?? null;
 }
 
 function extractPrimaryCommandAction(
@@ -1940,11 +1936,11 @@ function extractPrimaryCommandAction(
     if (!actionRecord) {
       continue;
     }
-    const type = asTrimmedString(actionRecord.type) ?? "unknown";
-    const command = asTrimmedString(actionRecord.command) ?? undefined;
-    const name = asTrimmedString(actionRecord.name) ?? undefined;
-    const path = asTrimmedString(actionRecord.path) ?? undefined;
-    const query = asTrimmedString(actionRecord.query) ?? undefined;
+    const type = nonEmptyTrimmed(actionRecord.type) ?? "unknown";
+    const command = nonEmptyTrimmed(actionRecord.command) ?? undefined;
+    const name = nonEmptyTrimmed(actionRecord.name) ?? undefined;
+    const path = nonEmptyTrimmed(actionRecord.path) ?? undefined;
+    const query = nonEmptyTrimmed(actionRecord.query) ?? undefined;
     if (command || name || path || query || type !== "unknown") {
       return {
         type,
@@ -2075,7 +2071,7 @@ function extractToolName(payload: Record<string, unknown> | null): string | null
     itemInput?.toolName,
   ];
   for (const candidate of candidates) {
-    const normalized = asTrimmedString(candidate);
+    const normalized = nonEmptyTrimmed(candidate) ?? null;
     if (normalized) {
       return normalized;
     }
@@ -2205,7 +2201,7 @@ function parseHistoricalToolParamsDisplay(value: unknown): Record<string, unknow
   const result: Record<string, unknown> = {};
   for (const entry of value) {
     const row = asObjectRecord(entry);
-    const name = asTrimmedString(row?.name ?? row?.display_name ?? row?.displayName);
+    const name = nonEmptyTrimmed(row?.name ?? row?.display_name ?? row?.displayName) ?? null;
     if (name) {
       result[name] = row?.value;
     }
@@ -2216,8 +2212,10 @@ function parseHistoricalToolParamsDisplay(value: unknown): Record<string, unknow
 function extractToolCallId(payload: Record<string, unknown> | null): string | null {
   const data = asObjectRecord(payload?.data);
   const item = asObjectRecord(data?.item);
-  return asTrimmedString(
-    data?.toolCallId ?? data?.toolUseId ?? data?.callID ?? data?.callId ?? item?.id,
+  return (
+    nonEmptyTrimmed(
+      data?.toolCallId ?? data?.toolUseId ?? data?.callID ?? data?.callId ?? item?.id,
+    ) ?? null
   );
 }
 
@@ -2276,7 +2274,7 @@ function extractWorkLogRequestKind(
 }
 
 function pushChangedFile(target: string[], seen: Set<string>, value: unknown) {
-  const normalized = asTrimmedString(value);
+  const normalized = nonEmptyTrimmed(value) ?? null;
   if (!normalized || !isLikelyFilePath(normalized) || seen.has(normalized)) {
     return;
   }

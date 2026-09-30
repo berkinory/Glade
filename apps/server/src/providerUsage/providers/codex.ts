@@ -1,3 +1,5 @@
+import { asNumericValue } from "@glade/shared/transport/payloadValues";
+import { nonEmptyTrimmed } from "@glade/shared/text/text";
 import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import nodePath from "node:path";
 
@@ -20,8 +22,6 @@ import {
 } from "../credentials";
 import { fetchJson, isAuthFailureStatus } from "../http";
 import {
-  asFiniteNumber,
-  asString,
   buildSnapshot,
   clampPercent,
   errorSnapshot,
@@ -88,18 +88,18 @@ function readCodexAuthRecord(
     return null;
   }
   const tokens = asObjectRecord(record.tokens);
-  const accessToken = asString(tokens?.access_token);
+  const accessToken = nonEmptyTrimmed(tokens?.access_token);
   if (accessToken) {
     return {
       kind: "oauth",
       record,
       accessToken,
-      refreshToken: asString(tokens?.refresh_token),
-      accountId: asString(tokens?.account_id),
+      refreshToken: nonEmptyTrimmed(tokens?.refresh_token),
+      accountId: nonEmptyTrimmed(tokens?.account_id),
       source,
     };
   }
-  return asString(record.OPENAI_API_KEY) ? "api-key-only" : null;
+  return nonEmptyTrimmed(record.OPENAI_API_KEY) ? "api-key-only" : null;
 }
 
 async function reloadCodexAuth(
@@ -170,7 +170,7 @@ function codexAuthNeedsRefresh(state: CodexOAuthState, nowMs: number): boolean {
   if (expMs !== null) {
     return expMs - nowMs <= ACCESS_TOKEN_REFRESH_WINDOW_MS;
   }
-  const lastRefresh = asString(state.record.last_refresh);
+  const lastRefresh = nonEmptyTrimmed(state.record.last_refresh);
   const lastRefreshMs = lastRefresh ? Date.parse(lastRefresh) : Number.NaN;
   return Number.isFinite(lastRefreshMs) && nowMs - lastRefreshMs > LAST_REFRESH_MAX_AGE_MS;
 }
@@ -309,7 +309,7 @@ function resetFromWindow(
   if (explicit) {
     return explicit;
   }
-  const after = asFiniteNumber(window?.reset_after_seconds);
+  const after = asNumericValue(window?.reset_after_seconds);
   if (after !== undefined && after > 0) {
     return new Date(nowMs + after * 1000).toISOString();
   }
@@ -338,10 +338,10 @@ function parseCodexUsage(input: {
       return;
     }
     const usedPercent =
-      clampPercent(asFiniteNumber(headers[headerName])) ??
-      clampPercent(asFiniteNumber(window.used_percent));
+      clampPercent(asNumericValue(headers[headerName])) ??
+      clampPercent(asNumericValue(window.used_percent));
     const resetsAt = resetFromWindow(window, input.nowMs);
-    const windowSeconds = asFiniteNumber(window.limit_window_seconds);
+    const windowSeconds = asNumericValue(window.limit_window_seconds);
     const windowDurationMins =
       windowSeconds !== undefined ? Math.round(windowSeconds / 60) : fallbackDurationMins;
     if (usedPercent === undefined && !resetsAt) {
@@ -360,12 +360,12 @@ function parseCodexUsage(input: {
 
   const credits = asObjectRecord(root?.credits);
   const balance =
-    asFiniteNumber(headers["x-codex-credits-balance"]) ?? asFiniteNumber(credits?.balance);
+    asNumericValue(headers["x-codex-credits-balance"]) ?? asNumericValue(credits?.balance);
   if (balance !== undefined && (credits?.has_credits !== false || balance > 0)) {
     usageLines.push({ label: "Credits", value: `${formatUsd(balance)} remaining` });
   }
 
-  const planType = asString(root?.plan_type);
+  const planType = nonEmptyTrimmed(root?.plan_type);
   return buildSnapshot({
     provider: "codex",
     nowMs: input.nowMs,

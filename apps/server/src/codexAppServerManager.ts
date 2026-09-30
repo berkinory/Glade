@@ -1,3 +1,4 @@
+import { asString } from "@glade/shared/text/text";
 import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import { createCodexCliVersionGate } from "./provider/codex/codexCliVersionGate";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
@@ -379,10 +380,6 @@ function withCodexPendingSettleDeadline(settle: Promise<unknown>): Promise<void>
       setTimeout(resolve, CODEX_PENDING_SETTLE_DEADLINE_MS).unref();
     }),
   ]);
-}
-
-function asString(value: unknown): string | undefined {
-  return typeof value === "string" ? value : undefined;
 }
 
 function normalizeCodexProcessLine(rawLine: string): string {

@@ -33,3 +33,10 @@ validators would change the interpretation of persisted data during migration.
 Generic error-to-string conversion lives in `text/errorMessages`; automation redaction
 and router/device fallback messages remain domain policies rather than a generic
 formatter with switches.
+
+Scalar boundary readers preserve distinct policies: `text/text` owns raw, non-empty,
+non-blank and normalized string values; `transport/payloadValues` owns arrays and
+finite, positive or numeric-string values. Callers retain their absence values.
+Argument readers that name a field and raise domain errors keep that validation
+policy with the owning API. A typed provider-string normalizer retains its strict
+input contract rather than accepting arbitrary payload values.

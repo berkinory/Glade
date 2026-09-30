@@ -1,3 +1,4 @@
+import { nonEmptyTrimmed } from "@glade/shared/text/text";
 import { Buffer } from "node:buffer";
 
 import type {
@@ -54,7 +55,7 @@ export async function transcribeVoiceWithChatGptSession(input: {
   } catch {
     payload = null;
   }
-  const text = readString(payload?.text) ?? readString(payload?.transcript);
+  const text = nonEmptyTrimmed(payload?.text) ?? nonEmptyTrimmed(payload?.transcript) ?? null;
   if (!text) {
     throw new Error("The transcription response did not include any text.");
   }
@@ -120,7 +121,7 @@ function readTranscriptionErrorMessage(response: OutboundHttpResponse): string {
       message?: unknown;
     } | null;
     const providerMessage =
-      readString(payload?.error?.message) ?? readString(payload?.message) ?? null;
+      nonEmptyTrimmed(payload?.error?.message) ?? nonEmptyTrimmed(payload?.message) ?? null;
     if (providerMessage) {
       errorMessage = providerMessage;
     }
@@ -153,9 +154,4 @@ function isLikelyWavBuffer(buffer: Buffer): boolean {
     buffer.toString("ascii", 0, 4) === "RIFF" &&
     buffer.toString("ascii", 8, 12) === "WAVE"
   );
-}
-
-function readString(value: unknown): string | null {
-  const normalized = typeof value === "string" ? value.trim() : "";
-  return normalized.length > 0 ? normalized : null;
 }

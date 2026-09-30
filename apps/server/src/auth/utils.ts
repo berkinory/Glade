@@ -1,3 +1,4 @@
+import { nonEmptyTrimmed } from "@glade/shared/text/text";
 import type {
   AuthClientMetadata,
   AuthClientMetadataDeviceType,
@@ -34,13 +35,8 @@ export function timingSafeEqualBase64Url(left: string, right: string): boolean {
   );
 }
 
-function normalizeNonEmptyString(value: string | null | undefined): string | undefined {
-  const trimmed = typeof value === "string" ? value.trim() : "";
-  return trimmed.length > 0 ? trimmed : undefined;
-}
-
 function normalizeIpAddress(value: string | null | undefined): string | undefined {
-  const normalized = normalizeNonEmptyString(value);
+  const normalized = nonEmptyTrimmed(value);
   return normalized?.startsWith("::ffff:") ? normalized.slice("::ffff:".length) : normalized;
 }
 
@@ -81,7 +77,7 @@ export function deriveAuthClientMetadata(input: {
   readonly remoteAddress?: string | null;
   readonly label?: string;
 }): AuthClientMetadata {
-  const userAgent = normalizeNonEmptyString(input.headers["user-agent"]);
+  const userAgent = nonEmptyTrimmed(input.headers["user-agent"]);
   const ipAddress = normalizeIpAddress(input.remoteAddress);
   const os = inferOs(userAgent);
   const browser = inferBrowser(userAgent);

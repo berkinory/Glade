@@ -1,3 +1,4 @@
+import { nonEmptyTrimmed } from "@glade/shared/text/text";
 import { asRecord } from "@glade/shared/transport/payloadValues";
 import path from "node:path";
 
@@ -28,17 +29,8 @@ export interface CodexGeneratedImageReference {
   readonly callId?: string;
 }
 
-function asString(value: unknown): string | undefined {
-  return typeof value === "string" ? value : undefined;
-}
-
-function normalizeNonEmptyString(value: unknown): string | undefined {
-  const trimmed = asString(value)?.trim();
-  return trimmed && trimmed.length > 0 ? trimmed : undefined;
-}
-
 function normalizeCodexGeneratedImageItemType(raw: unknown): string {
-  const type = normalizeNonEmptyString(raw);
+  const type = nonEmptyTrimmed(raw);
   if (!type) return "";
   return type
     .replace(/([a-z0-9])([A-Z])/g, "$1$2")
@@ -72,7 +64,7 @@ export function firstStringValue(
 ): string | undefined {
   if (!record) return undefined;
   for (const key of keys) {
-    const value = normalizeNonEmptyString(record[key]);
+    const value = nonEmptyTrimmed(record[key]);
     if (value) return value;
   }
   return undefined;
@@ -95,7 +87,7 @@ function predictedCodexGeneratedImagePath(input: {
   readonly threadId: ThreadId | string | undefined;
   readonly codexHomePath?: string;
 }): string | undefined {
-  const threadId = normalizeNonEmptyString(input.threadId);
+  const threadId = nonEmptyTrimmed(input.threadId);
   const callId = extractCodexGeneratedImageCallId(input.item);
   if (!threadId || !callId) {
     return undefined;

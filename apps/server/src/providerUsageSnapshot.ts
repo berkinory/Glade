@@ -1,3 +1,5 @@
+import { asFiniteNumber } from "@glade/shared/transport/payloadValues";
+import { nonEmptyTrimmed } from "@glade/shared/text/text";
 import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import { createReadStream, type Dirent, type Stats } from "node:fs";
 import fs from "node:fs/promises";
@@ -49,17 +51,9 @@ interface ClaudeUsageSample {
 
 const usageSnapshotCache = new Map<string, CachedUsageSnapshot>();
 
-function asFiniteNumber(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
-}
-
 function asNonNegativeNumber(value: unknown): number | undefined {
   const parsed = asFiniteNumber(value);
   return parsed !== undefined && parsed >= 0 ? parsed : undefined;
-}
-
-function asString(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
 }
 
 function parseTimestampMs(value: unknown): number | null {
@@ -210,8 +204,8 @@ function normalizeCodexUsageLimits(value: unknown): ReadonlyArray<ServerProvider
     const usedPercent = asNonNegativeNumber(source.used_percent ?? source.usedPercent);
     const windowDurationMins = asNonNegativeNumber(source.window_minutes ?? source.windowMinutes);
     const resetsAt =
-      asString(source.resets_at ?? source.resetsAt) ??
-      asString(source.next_reset_at ?? source.nextResetAt);
+      nonEmptyTrimmed(source.resets_at ?? source.resetsAt) ??
+      nonEmptyTrimmed(source.next_reset_at ?? source.nextResetAt);
     if (usedPercent === undefined && windowDurationMins === undefined && !resetsAt) {
       return null;
     }
@@ -424,13 +418,13 @@ function readClaudeAssistantSample(input: {
     return null;
   }
 
-  const sessionId = asString(input.record.sessionId) ?? input.fallbackKey;
-  const model = asString(message?.model) ?? null;
+  const sessionId = nonEmptyTrimmed(input.record.sessionId) ?? input.fallbackKey;
+  const model = nonEmptyTrimmed(message?.model) ?? null;
   const dedupeKey =
     `${sessionId}:assistant:` +
-    (asString(input.record.requestId) ??
-      asString(message?.id) ??
-      asString(input.record.uuid) ??
+    (nonEmptyTrimmed(input.record.requestId) ??
+      nonEmptyTrimmed(message?.id) ??
+      nonEmptyTrimmed(input.record.uuid) ??
       input.fallbackKey);
 
   return {
@@ -456,12 +450,12 @@ function readClaudeToolResultSample(input: {
     return null;
   }
 
-  const sessionId = asString(input.record.sessionId) ?? input.fallbackKey;
+  const sessionId = nonEmptyTrimmed(input.record.sessionId) ?? input.fallbackKey;
   const dedupeKey =
     `${sessionId}:tool-result:` +
-    (asString(input.record.uuid) ??
-      asString(toolUseResult.agentId) ??
-      asString(input.record.requestId) ??
+    (nonEmptyTrimmed(input.record.uuid) ??
+      nonEmptyTrimmed(toolUseResult.agentId) ??
+      nonEmptyTrimmed(input.record.requestId) ??
       input.fallbackKey);
 
   return {

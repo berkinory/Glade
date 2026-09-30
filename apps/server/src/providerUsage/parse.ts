@@ -1,3 +1,5 @@
+import { asNumericValue } from "@glade/shared/transport/payloadValues";
+import { nonEmptyTrimmed } from "@glade/shared/text/text";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type {
   ProviderUsageStatus,
@@ -8,22 +10,6 @@ import type {
 } from "@glade/contracts/server/server";
 import { providerUsageNeedsAuthDetail } from "@glade/shared/provider/providerUsage";
 
-export function asFiniteNumber(value: unknown): number | undefined {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value;
-  }
-
-  if (typeof value === "string" && value.trim().length > 0) {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : undefined;
-  }
-  return undefined;
-}
-
-export function asString(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
-}
-
 export function clampPercent(value: number | undefined): number | undefined {
   if (value === undefined || !Number.isFinite(value)) {
     return undefined;
@@ -32,7 +18,7 @@ export function clampPercent(value: number | undefined): number | undefined {
 }
 
 export function isoFromUnixSeconds(value: unknown): string | undefined {
-  const seconds = asFiniteNumber(value);
+  const seconds = asNumericValue(value);
   if (seconds === undefined || seconds <= 0) {
     return undefined;
   }
@@ -41,7 +27,7 @@ export function isoFromUnixSeconds(value: unknown): string | undefined {
 }
 
 export function isoFromUnixMillis(value: unknown): string | undefined {
-  const millis = asFiniteNumber(value);
+  const millis = asNumericValue(value);
   if (millis === undefined || millis <= 0) {
     return undefined;
   }
@@ -50,7 +36,7 @@ export function isoFromUnixMillis(value: unknown): string | undefined {
 }
 
 export function isoFromString(value: unknown): string | undefined {
-  const text = asString(value);
+  const text = nonEmptyTrimmed(value);
   if (!text) {
     return undefined;
   }

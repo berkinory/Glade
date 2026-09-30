@@ -1,3 +1,4 @@
+import { nonEmptyTrimmed } from "@glade/shared/text/text";
 import type {
   WorkflowAgentPlan,
   WorkflowAgentSnapshot,
@@ -145,10 +146,6 @@ function parseLiteral(source: string, index: number): { value: unknown; end: num
   return undefined;
 }
 
-function readString(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
-}
-
 function readInt(value: unknown): number | undefined {
   return typeof value === "number" && Number.isInteger(value) ? value : undefined;
 }
@@ -162,11 +159,11 @@ function readPhases(value: unknown): ReadonlyArray<WorkflowPhase> | undefined {
       return [];
     }
     const record = entry as Record<string, unknown>;
-    const title = readString(record.title);
+    const title = nonEmptyTrimmed(record.title);
     if (!title) {
       return [];
     }
-    const detail = readString(record.detail);
+    const detail = nonEmptyTrimmed(record.detail);
     return [{ title, ...(detail ? { detail } : {}) }];
   });
   return phases.length > 0 ? phases : undefined;
@@ -184,8 +181,8 @@ export function parseClaudeWorkflowScriptMeta(
     return undefined;
   }
   const record = parsed.value as Record<string, unknown>;
-  const name = readString(record.name);
-  const description = readString(record.description);
+  const name = nonEmptyTrimmed(record.name);
+  const description = nonEmptyTrimmed(record.description);
   const phases = readPhases(record.phases);
   if (!name && !description && !phases) {
     return undefined;
@@ -319,10 +316,10 @@ export function parseClaudeWorkflowLaunch(value: unknown): ClaudeWorkflowLaunch 
   if (record.taskType !== undefined && record.taskType !== "local_workflow") {
     return undefined;
   }
-  const taskId = readString(record.taskId);
-  const runId = readString(record.runId);
-  const scriptPath = readString(record.scriptPath);
-  const transcriptDir = readString(record.transcriptDir);
+  const taskId = nonEmptyTrimmed(record.taskId);
+  const runId = nonEmptyTrimmed(record.runId);
+  const scriptPath = nonEmptyTrimmed(record.scriptPath);
+  const transcriptDir = nonEmptyTrimmed(record.transcriptDir);
   if (!runId && !scriptPath) {
     return undefined;
   }
@@ -374,21 +371,24 @@ export function parseClaudeWorkflowProgressAgents(
     if (record.type !== "workflow_agent") {
       return [];
     }
-    const label = readString(record.label);
+    const label = nonEmptyTrimmed(record.label);
     if (!label) {
       return [];
     }
     const phaseIndex = readInt(record.phaseIndex);
-    const phaseTitle = readString(record.phaseTitle);
-    const agentId = readString(record.agentId);
-    const model = readString(record.model);
-    const effort = readString(record.effort);
-    const state = readString(record.state);
+    const phaseTitle = nonEmptyTrimmed(record.phaseTitle);
+    const agentId = nonEmptyTrimmed(record.agentId);
+    const model = nonEmptyTrimmed(record.model);
+    const effort = nonEmptyTrimmed(record.effort);
+    const state = nonEmptyTrimmed(record.state);
     const tokens = readInt(record.tokens);
     const toolCalls = readInt(record.toolCalls);
     const durationMs = readInt(record.durationMs);
-    const lastToolName = readString(record.lastToolName);
-    const promptPreview = readString(record.promptPreview)?.slice(0, WORKFLOW_PROMPT_PREVIEW_CHARS);
+    const lastToolName = nonEmptyTrimmed(record.lastToolName);
+    const promptPreview = nonEmptyTrimmed(record.promptPreview)?.slice(
+      0,
+      WORKFLOW_PROMPT_PREVIEW_CHARS,
+    );
     return [
       {
         label,

@@ -1,3 +1,4 @@
+import { asNonBlankString } from "@glade/shared/text/text";
 import { asRecord } from "@glade/shared/transport/payloadValues";
 import * as Crypto from "node:crypto";
 import * as FS from "node:fs";
@@ -62,10 +63,6 @@ export interface BrowserHostPipeServerOptions {
   readonly automationHost?: Pick<DesktopBrowserAutomationHost, "executeTool">;
   readonly maxInFlightRequests?: number;
   readonly maxQueuedOutputBytes?: number;
-}
-
-function asString(value: unknown): string | null {
-  return typeof value === "string" && value.trim().length > 0 ? value : null;
 }
 
 function asWorkspaceRoot(value: unknown): string | undefined {
@@ -430,9 +427,9 @@ export class BrowserHostPipeServer {
 
   private getInfo(client: PipeClient, params: unknown): unknown {
     const request = asRecord(params);
-    const sessionId = asString(request?.session_id);
+    const sessionId = asNonBlankString(request?.session_id) ?? null;
     if (!sessionId) throw new Error("getInfo requires session_id");
-    const suppliedCapability = asString(request?.capability);
+    const suppliedCapability = asNonBlankString(request?.capability) ?? null;
     const expectedBytes = Buffer.from(this.capability, "utf8");
     const suppliedBytes = Buffer.from(suppliedCapability ?? "", "utf8");
     if (
@@ -465,10 +462,10 @@ export class BrowserHostPipeServer {
 
   private executeTool(client: PipeClient, params: unknown, signal: AbortSignal): Promise<unknown> {
     const request = asRecord(params);
-    const sessionId = asString(request?.session_id);
-    const provider = asString(request?.provider);
-    const threadId = asString(request?.thread_id);
-    const name = asString(request?.name);
+    const sessionId = asNonBlankString(request?.session_id) ?? null;
+    const provider = asNonBlankString(request?.provider) ?? null;
+    const threadId = asNonBlankString(request?.thread_id) ?? null;
+    const name = asNonBlankString(request?.name) ?? null;
     const workspaceRoot = asWorkspaceRoot(request?.workspace_root);
     if (!sessionId || sessionId !== client.sessionId || !provider || !threadId || !name) {
       throw new BrowserAutomationHostError({ code: "BrowserInputUnsupported" });

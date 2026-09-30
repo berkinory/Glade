@@ -1,3 +1,4 @@
+import { asPositiveFiniteNumber } from "@glade/shared/transport/payloadValues";
 import type {
   ModelUsage,
   NonNullableUsage,
@@ -12,8 +13,6 @@ import {
   stripClaudeContextWindowSuffix,
   trimOrNull,
 } from "@glade/shared/provider/model";
-
-import { positiveFiniteNumber } from "./tokenUsage.ts";
 
 export const CLAUDE_CONTEXT_WINDOW_MAX_TOKENS = {
   "200k": 200_000,
@@ -49,7 +48,7 @@ export function maxClaudeContextWindowFromModelUsage(
 
   let maxContextWindow: number | undefined;
   for (const value of Object.values(modelUsage)) {
-    const contextWindow = positiveFiniteNumber(value.contextWindow);
+    const contextWindow = asPositiveFiniteNumber(value.contextWindow);
     if (contextWindow === undefined) {
       continue;
     }
@@ -107,7 +106,7 @@ export function normalizeClaudeTokenUsage(
     return undefined;
   }
 
-  const maxTokens = positiveFiniteNumber(contextWindow);
+  const maxTokens = asPositiveFiniteNumber(contextWindow);
   const usedTokens =
     maxTokens !== undefined ? Math.min(totalProcessedTokens, maxTokens) : totalProcessedTokens;
 
@@ -132,7 +131,7 @@ export function mergeClaudeTokenUsageSnapshot(
   accumulated: ThreadTokenUsageSnapshot | undefined,
   contextWindow?: number,
 ): ThreadTokenUsageSnapshot {
-  const maxTokens = positiveFiniteNumber(contextWindow);
+  const maxTokens = asPositiveFiniteNumber(contextWindow);
   const usedTokens =
     maxTokens !== undefined ? Math.min(previous.usedTokens, maxTokens) : previous.usedTokens;
   const lastUsedTokens =
@@ -166,7 +165,7 @@ export function resolveClaudeApiModelIdContextWindowMaxTokens(
   return (
     claudeContextWindowTokensForOption(getClaudeContextWindowSuffix(apiModelId)) ??
     (/^claude-(?:opus|sonnet)-4-6$/u.test(apiModelId) ? 200_000 : undefined) ??
-    positiveFiniteNumber(
+    asPositiveFiniteNumber(
       getModelCapabilities("claudeAgent", stripClaudeContextWindowSuffix(apiModelId))
         .contextWindowTokens,
     )
@@ -206,9 +205,9 @@ export function snapshotFromClaudeContextUsage(
   totalProcessedTokens?: number,
 ): ThreadTokenUsageSnapshot {
   const effectiveMaxTokens =
-    positiveFiniteNumber(usage.autoCompactThreshold) ??
-    positiveFiniteNumber(usage.maxTokens) ??
-    positiveFiniteNumber(usage.rawMaxTokens);
+    asPositiveFiniteNumber(usage.autoCompactThreshold) ??
+    asPositiveFiniteNumber(usage.maxTokens) ??
+    asPositiveFiniteNumber(usage.rawMaxTokens);
   const usedTokens = Math.max(0, Math.round(usage.totalTokens));
   const rawApiUsage = usage.apiUsage as Record<string, unknown> | undefined;
   const inputTokens = Math.max(

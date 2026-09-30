@@ -1,3 +1,4 @@
+import { asFiniteNumber } from "@glade/shared/transport/payloadValues";
 import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import { ClaudeCacheObservation } from "@glade/contracts/provider/claudeCache";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
@@ -13,16 +14,12 @@ function readClaudeCacheObservation(value: unknown): ClaudeCacheObservation | nu
   return decoded._tag === "Some" ? decoded.value : null;
 }
 
-function asFiniteNumber(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
 function asBoolean(value: unknown): boolean | null {
   return typeof value === "boolean" ? value : null;
 }
 
 function asContextWindowPercent(value: unknown): number | null {
-  const percent = asFiniteNumber(value);
+  const percent = asFiniteNumber(value) ?? null;
   if (percent === null) {
     return null;
   }
@@ -95,10 +92,10 @@ export function deriveLatestContextWindowState(
     }
 
     const payload = asObjectRecord(activity.payload);
-    const rawUsedTokens = asFiniteNumber(payload?.usedTokens);
+    const rawUsedTokens = asFiniteNumber(payload?.usedTokens) ?? null;
     const usedTokens = rawUsedTokens ?? 0;
     const payloadUsedPercent = asContextWindowPercent(payload?.usedPercent);
-    const maxTokens = asFiniteNumber(payload?.maxTokens);
+    const maxTokens = asFiniteNumber(payload?.maxTokens) ?? null;
     if (usedTokens <= 0 && payloadUsedPercent === null && (maxTokens === null || maxTokens <= 0)) {
       continue;
     }
@@ -124,23 +121,23 @@ export function deriveLatestContextWindowState(
         totalProcessedTokens:
           payload?.provider === "claudeAgent" && payload.tokenAccountingVersion !== 1
             ? null
-            : asFiniteNumber(payload?.totalProcessedTokens),
+            : (asFiniteNumber(payload?.totalProcessedTokens) ?? null),
         tokenAccountingVersion: payload?.tokenAccountingVersion === 1 ? 1 : null,
         maxTokens,
         remainingTokens,
         usedPercentage,
         remainingPercentage,
-        inputTokens: asFiniteNumber(payload?.inputTokens),
-        cachedInputTokens: asFiniteNumber(payload?.cachedInputTokens),
-        outputTokens: asFiniteNumber(payload?.outputTokens),
-        reasoningOutputTokens: asFiniteNumber(payload?.reasoningOutputTokens),
-        lastUsedTokens: asFiniteNumber(payload?.lastUsedTokens),
-        lastInputTokens: asFiniteNumber(payload?.lastInputTokens),
-        lastCachedInputTokens: asFiniteNumber(payload?.lastCachedInputTokens),
-        lastOutputTokens: asFiniteNumber(payload?.lastOutputTokens),
-        lastReasoningOutputTokens: asFiniteNumber(payload?.lastReasoningOutputTokens),
-        toolUses: asFiniteNumber(payload?.toolUses),
-        durationMs: asFiniteNumber(payload?.durationMs),
+        inputTokens: asFiniteNumber(payload?.inputTokens) ?? null,
+        cachedInputTokens: asFiniteNumber(payload?.cachedInputTokens) ?? null,
+        outputTokens: asFiniteNumber(payload?.outputTokens) ?? null,
+        reasoningOutputTokens: asFiniteNumber(payload?.reasoningOutputTokens) ?? null,
+        lastUsedTokens: asFiniteNumber(payload?.lastUsedTokens) ?? null,
+        lastInputTokens: asFiniteNumber(payload?.lastInputTokens) ?? null,
+        lastCachedInputTokens: asFiniteNumber(payload?.lastCachedInputTokens) ?? null,
+        lastOutputTokens: asFiniteNumber(payload?.lastOutputTokens) ?? null,
+        lastReasoningOutputTokens: asFiniteNumber(payload?.lastReasoningOutputTokens) ?? null,
+        toolUses: asFiniteNumber(payload?.toolUses) ?? null,
+        durationMs: asFiniteNumber(payload?.durationMs) ?? null,
         compactsAutomatically: asBoolean(payload?.compactsAutomatically) ?? false,
         updatedAt: activity.createdAt,
       },
@@ -157,7 +154,7 @@ export function deriveAppliedContextWindowSelection(
   const activity = activities.findLast((item) => item.kind === "context-window.configured");
   const payload = asObjectRecord(activity?.payload);
   if (payload?.cleared === true) return "auto";
-  const maxTokens = asFiniteNumber(payload?.maxTokens);
+  const maxTokens = asFiniteNumber(payload?.maxTokens) ?? null;
   return (
     Object.entries(KNOWN_CONTEXT_WINDOW_MAX_TOKENS).find(
       ([, tokens]) => tokens === maxTokens,
@@ -206,12 +203,12 @@ export function deriveCumulativeCostUsd(
   for (const activity of activities) {
     if (activity.kind !== "turn.completed") continue;
     const payload = asObjectRecord(activity.payload);
-    const cumulativeCost = asFiniteNumber(payload?.cumulativeCostUsd);
+    const cumulativeCost = asFiniteNumber(payload?.cumulativeCostUsd) ?? null;
     if (cumulativeCost !== null) {
       latestCumulative = cumulativeCost;
       continue;
     }
-    const cost = asFiniteNumber(payload?.totalCostUsd);
+    const cost = asFiniteNumber(payload?.totalCostUsd) ?? null;
     if (cost === null) continue;
     turnDeltaTotal += cost;
     foundTurnDelta = true;

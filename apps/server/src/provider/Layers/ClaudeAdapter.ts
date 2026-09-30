@@ -1,3 +1,5 @@
+import { asPositiveFiniteNumber } from "@glade/shared/transport/payloadValues";
+import { asNonBlankString } from "@glade/shared/text/text";
 import { normalizeOperationError } from "../../platform/operationError.ts";
 import { readClaudeSessionParentUuid } from "../claudeProjectImport.ts";
 import { claudeTurnResultUsage, type ClaudeResultUsageBaseline } from "../claudeResultUsage.ts";
@@ -170,7 +172,7 @@ import {
   readClaudeWorkflowOutputText,
   type ClaudeWorkflowRuntimeState,
 } from "../claudeWorkflowRuntime.ts";
-import { positiveFiniteNumber } from "../tokenUsage.ts";
+
 import {
   isClaudeAutoModeCliVersionSupported,
   MINIMUM_CLAUDE_AUTO_MODE_CLI_VERSION,
@@ -827,10 +829,6 @@ interface ClaudeModelRefusalFallback {
   readonly content?: string;
 }
 
-function readNonEmptyString(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim().length > 0 ? value : undefined;
-}
-
 function readClaudeModelRefusalFallback(message: unknown): ClaudeModelRefusalFallback | undefined {
   if (!message || typeof message !== "object") {
     return undefined;
@@ -849,9 +847,9 @@ function readClaudeModelRefusalFallback(message: unknown): ClaudeModelRefusalFal
   }
 
   const originalModel =
-    readNonEmptyString(record.original_model) ?? readNonEmptyString(record.originalModel);
+    asNonBlankString(record.original_model) ?? asNonBlankString(record.originalModel);
   const fallbackModel =
-    readNonEmptyString(record.fallback_model) ?? readNonEmptyString(record.fallbackModel);
+    asNonBlankString(record.fallback_model) ?? asNonBlankString(record.fallbackModel);
   if (!originalModel || !fallbackModel) {
     return undefined;
   }
@@ -882,8 +880,8 @@ function readClaudeVcsStateChange(message: unknown): ClaudeVcsStateChange | unde
   if (record.type !== "system" || record.subtype !== "vcs_state_changed") {
     return undefined;
   }
-  const kind = readNonEmptyString(record.kind);
-  const cwd = readNonEmptyString(record.cwd);
+  const kind = asNonBlankString(record.kind);
+  const cwd = asNonBlankString(record.cwd);
   return {
     ...(kind !== undefined ? { kind } : {}),
     ...(cwd !== undefined ? { cwd } : {}),
@@ -2918,7 +2916,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         if (result) context.resultUsageBaseline = result;
         const liveContextUsage = yield* readClaudeContextUsage(context);
         const resultContextWindow = maxClaudeContextWindowFromModelUsage(result?.modelUsage);
-        const liveRawContextWindow = positiveFiniteNumber(liveContextUsage?.rawMaxTokens);
+        const liveRawContextWindow = asPositiveFiniteNumber(liveContextUsage?.rawMaxTokens);
         const effectiveContextWindow =
           liveRawContextWindow ??
           resolveEffectiveClaudeContextWindow({
@@ -2928,7 +2926,7 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         if (effectiveContextWindow !== undefined) {
           context.lastKnownContextWindow = effectiveContextWindow;
         }
-        const liveAutoCompactThreshold = positiveFiniteNumber(
+        const liveAutoCompactThreshold = asPositiveFiniteNumber(
           liveContextUsage?.autoCompactThreshold,
         );
         if (liveAutoCompactThreshold !== undefined) {

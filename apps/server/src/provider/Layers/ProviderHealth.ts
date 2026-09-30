@@ -1,3 +1,4 @@
+import { asNonEmptyString } from "@glade/shared/text/text";
 import { asRecord } from "@glade/shared/transport/payloadValues";
 import * as OS from "node:os";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
@@ -199,9 +200,6 @@ const SUBSCRIPTION_CONTAINER_KEYS = ["account", "subscription", "user", "billing
 const AUTH_METHOD_KEYS = ["authMethod", "auth_method"] as const;
 const AUTH_METHOD_CONTAINER_KEYS = ["auth", "account", "session"] as const;
 
-const asNonEmptyString = (v: unknown): Option.Option<string> =>
-  typeof v === "string" && v.length > 0 ? Option.some(v) : Option.none();
-
 function findSubscriptionType(value: unknown): Option.Option<string> {
   if (Array.isArray(value)) {
     return Option.firstSomeOf(value.map(findSubscriptionType));
@@ -209,7 +207,7 @@ function findSubscriptionType(value: unknown): Option.Option<string> {
   return Option.fromNullishOr(asRecord(value)).pipe(
     Option.flatMap((record) => {
       const direct = Option.firstSomeOf(
-        SUBSCRIPTION_TYPE_KEYS.map((key) => asNonEmptyString(record[key])),
+        SUBSCRIPTION_TYPE_KEYS.map((key) => Option.fromNullishOr(asNonEmptyString(record[key]))),
       );
       if (Option.isSome(direct)) return direct;
       return Option.firstSomeOf(
@@ -228,7 +226,7 @@ function findAuthMethodDeep(value: unknown): Option.Option<string> {
   return Option.fromNullishOr(asRecord(value)).pipe(
     Option.flatMap((record) => {
       const direct = Option.firstSomeOf(
-        AUTH_METHOD_KEYS.map((key) => asNonEmptyString(record[key])),
+        AUTH_METHOD_KEYS.map((key) => Option.fromNullishOr(asNonEmptyString(record[key]))),
       );
       if (Option.isSome(direct)) return direct;
       return Option.firstSomeOf(
@@ -313,7 +311,9 @@ function extractCodexAccountTypeFromOutput(result: CommandResult): string | unde
     const record = Option.getOrUndefined(Option.fromNullishOr(asRecord(value)));
     if (!record) return undefined;
     const direct = Option.getOrUndefined(
-      Option.firstSomeOf(["type", "accountType"].map((key) => asNonEmptyString(record[key]))),
+      Option.firstSomeOf(
+        ["type", "accountType"].map((key) => Option.fromNullishOr(asNonEmptyString(record[key]))),
+      ),
     );
     if (direct) return direct;
     for (const key of ["account", "session", "auth"] as const) {

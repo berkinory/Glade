@@ -1,3 +1,5 @@
+import { asNonBlankString } from "@glade/shared/text/text";
+import { asFiniteNumber } from "@glade/shared/transport/payloadValues";
 import { asRecord } from "@glade/shared/transport/payloadValues";
 import type { ComputerWindow } from "@glade/contracts/computer/computer";
 
@@ -81,7 +83,7 @@ export function describeComputerToolCall(input: {
   if (tool === null) return null;
   const args = input.args ?? {};
   if (tool === "computer_inspect") {
-    const selectedTool = readString(args.tool);
+    const selectedTool = asNonBlankString(args.tool) ?? null;
     if (
       selectedTool === "computer_read_clipboard" ||
       selectedTool === "computer_zoom" ||
@@ -111,8 +113,8 @@ export function describeComputerToolCall(input: {
     };
     return {
       tool,
-      summary: Object.hasOwn(summaries, readString(args.operation) ?? "list")
-        ? summaries[readString(args.operation) ?? "list"]!
+      summary: Object.hasOwn(summaries, asNonBlankString(args.operation) ?? "list")
+        ? summaries[asNonBlankString(args.operation) ?? "list"]!
         : "Check a desktop Space operation",
       params: describeParams(tool, args, input.windows),
     };
@@ -126,15 +128,15 @@ export function describeComputerToolCall(input: {
   }
 
   const verb =
-    tool === "computer_press_key" && readString(args.key)
+    tool === "computer_press_key" && (asNonBlankString(args.key) ?? null)
       ? "Press"
       : tool === "computer_launch_app"
         ? "Open"
         : tool === "computer_activate_window"
           ? `Switch to ${
-              readString(args.app_name) ??
-              readString(args.application) ??
-              readString(args.app) ??
+              asNonBlankString(args.app_name) ??
+              asNonBlankString(args.application) ??
+              asNonBlankString(args.app) ??
               resolveWindow(args.window_id, input.windows) ??
               ""
             }`.trimEnd()
@@ -174,7 +176,7 @@ function describePidTarget(
   args: Readonly<Record<string, unknown>>,
   windows: readonly ComputerWindow[] | undefined,
 ): string {
-  const pid = readNumber(args.pid);
+  const pid = asFiniteNumber(args.pid) ?? null;
   if (pid === null || !windows) return "";
   const app = windows.find((window) => window.pid === pid)?.appName?.trim();
   return app ? `in ${app}` : "";
@@ -187,12 +189,16 @@ function describeTarget(
   alwaysShowCoordinates = false,
 ): string {
   const parts: string[] = [];
-  const label = readString(args.label);
-  const x = readNumber(args.x);
-  const y = readNumber(args.y);
+  const label = asNonBlankString(args.label) ?? null;
+  const x = asFiniteNumber(args.x) ?? null;
+  const y = asFiniteNumber(args.y) ?? null;
   const coordinates = x !== null && y !== null ? `at (${x}, ${y})` : null;
   const window = resolveWindow(args.window_id, windows);
-  const app = readString(args.app_name) ?? readString(args.application) ?? readString(args.app);
+  const app =
+    asNonBlankString(args.app_name) ??
+    asNonBlankString(args.application) ??
+    asNonBlankString(args.app) ??
+    null;
   if (label) {
     parts.push(`${labelPreposition} “${label}”`);
   } else if (alwaysShowCoordinates && coordinates) {
@@ -236,12 +242,12 @@ function describePayload(tool: ComputerToolName, args: Readonly<Record<string, u
     return "";
   }
   if (tool === "computer_press_key") {
-    const key = readString(args.key);
+    const key = asNonBlankString(args.key) ?? null;
     return key === null ? "" : keyboardShortcut(key);
   }
   if (tool === "computer_scroll") {
-    const dx = readNumber(args.delta_x) ?? 0;
-    const dy = readNumber(args.delta_y) ?? 0;
+    const dx = asFiniteNumber(args.delta_x) ?? 0;
+    const dy = asFiniteNumber(args.delta_y) ?? 0;
     if (dy !== 0) return dy > 0 ? "down" : "up";
     if (dx !== 0) return dx > 0 ? "right" : "left";
     return "";
@@ -254,8 +260,8 @@ function describePayload(tool: ComputerToolName, args: Readonly<Record<string, u
     const path = readStringArray(args.path);
     return path.length > 0 ? truncate(path.join(" → "), 80) : "";
   }
-  if (tool === "computer_wait" && !readString(args.label)) {
-    const durationMs = readNumber(args.duration_ms);
+  if (tool === "computer_wait" && !(asNonBlankString(args.label) ?? null)) {
+    const durationMs = asFiniteNumber(args.duration_ms) ?? null;
     if (durationMs === null) return "";
     return durationMs >= 1_000 && durationMs % 1_000 === 0
       ? `for ${durationMs / 1_000} ${durationMs === 1_000 ? "second" : "seconds"}`
@@ -314,7 +320,7 @@ function describeBrowserAction(
 }
 
 function browserSite(value: unknown): string | null {
-  const url = readString(value);
+  const url = asNonBlankString(value) ?? null;
   if (!url) return null;
   try {
     const parsed = new URL(url);
@@ -327,7 +333,7 @@ function browserSite(value: unknown): string | null {
 }
 
 function appName(value: unknown): string | null {
-  const name = readString(value)?.trim();
+  const name = (asNonBlankString(value) ?? null)?.trim();
   if (!name) return null;
   const basename = name
     .split(/[\\/]/)
@@ -382,19 +388,19 @@ function describeParams(
   windows: readonly ComputerWindow[] | undefined,
 ): ReadonlyArray<{ readonly name: string; readonly value: string }> {
   const rows: Array<{ name: string; value: string }> = [];
-  const nativeSpaceId = readNumber(args.space_id);
+  const nativeSpaceId = asFiniteNumber(args.space_id) ?? null;
   if (tool === "computer_spaces" && nativeSpaceId !== null)
     rows.push({ name: "Space ID", value: String(nativeSpaceId) });
-  const x = readNumber(args.x);
-  const y = readNumber(args.y);
+  const x = asFiniteNumber(args.x) ?? null;
+  const y = asFiniteNumber(args.y) ?? null;
   if (x !== null && y !== null) {
     rows.push({
       name: tool === "computer_set_window_frame" ? "New position" : "Position",
       value: `${x}, ${y}`,
     });
   }
-  const width = readNumber(args.width);
-  const height = readNumber(args.height);
+  const width = asFiniteNumber(args.width) ?? null;
+  const height = asFiniteNumber(args.height) ?? null;
   if (
     (tool === "computer_set_window_frame" || tool === "computer_zoom") &&
     width !== null &&
@@ -406,41 +412,45 @@ function describeParams(
     const path = readStringArray(args.path);
     if (path.length > 0) rows.push({ name: "Menu", value: truncate(path.join(" → "), 200) });
   }
-  const label = readString(args.label);
+  const label = asNonBlankString(args.label) ?? null;
   if (label) rows.push({ name: "Target", value: label });
-  const role = readString(args.role);
+  const role = asNonBlankString(args.role) ?? null;
   if (role) rows.push({ name: "Role", value: role });
   const window = resolveWindow(args.window_id, windows);
   if (window) rows.push({ name: "Window", value: window });
-  const text = readString(args.text) ?? readString(args.value);
+  const text = asNonBlankString(args.text) ?? asNonBlankString(args.value) ?? null;
   if (text !== null && text.length > 0) {
     rows.push({
       name: tool === "computer_write_clipboard" ? "Clipboard" : "Text",
       value: truncate(text, 200),
     });
   }
-  const key = readString(args.key);
+  const key = asNonBlankString(args.key) ?? null;
   if (key) rows.push({ name: "Key", value: keyboardShortcut(key) });
   const keys = readStringArray(args.keys);
   if (keys.length > 0) rows.push({ name: "Shortcut", value: keys.map(keyName).join(" + ") });
-  const dx = readNumber(args.delta_x);
-  const dy = readNumber(args.delta_y);
+  const dx = asFiniteNumber(args.delta_x) ?? null;
+  const dy = asFiniteNumber(args.delta_y) ?? null;
   if (dx !== null || dy !== null) {
     rows.push({ name: "Scroll", value: `${dx ?? 0}, ${dy ?? 0}` });
   }
 
   if (tool === "computer_select_text") {
-    const start = readNumber(args.start);
-    const length = readNumber(args.length);
+    const start = asFiniteNumber(args.start) ?? null;
+    const length = asFiniteNumber(args.length) ?? null;
     if (start !== null && length !== null) {
       rows.push({ name: "Range", value: `${start}, ${length}` });
     }
   }
-  const action = readString(args.action);
+  const action = asNonBlankString(args.action) ?? null;
   if (action && !tool.startsWith("computer_browser_")) rows.push({ name: "Action", value: action });
-  const topic = readString(args.topic);
+  const topic = asNonBlankString(args.topic) ?? null;
   if (topic) rows.push({ name: "Topic", value: topic });
-  const app = readString(args.app) ?? readString(args.name) ?? readString(args.bundle_id);
+  const app =
+    asNonBlankString(args.app) ??
+    asNonBlankString(args.name) ??
+    asNonBlankString(args.bundle_id) ??
+    null;
   if (app) rows.push({ name: "App", value: app });
   if (tool.startsWith("computer_browser_")) {
     const site = browserSite(args.url);
@@ -460,13 +470,13 @@ function describeParams(
   }
 
   if (tool === "computer_set_app_visibility") {
-    const pid = readNumber(args.pid);
+    const pid = asFiniteNumber(args.pid) ?? null;
     if (pid !== null) rows.push({ name: "PID", value: `${pid}` });
   }
 
   if (tool === "computer_run" && Array.isArray(args.steps)) {
     const kinds = args.steps
-      .map((step) => readString(asRecord(step)?.type))
+      .map((step) => asNonBlankString(asRecord(step)?.type) ?? null)
       .filter((kind): kind is string => kind !== null);
     rows.push({
       name: "Steps",
@@ -490,7 +500,7 @@ function resolveWindow(
   windowId: unknown,
   windows: readonly ComputerWindow[] | undefined,
 ): string | null {
-  const id = readString(windowId);
+  const id = asNonBlankString(windowId) ?? null;
   if (!id || !windows) return null;
   const match = windows.find((window) => window.id === id);
   if (!match) return null;
@@ -498,14 +508,6 @@ function resolveWindow(
   const title = match.title?.trim();
   if (app && title && title !== app) return `${app} — ${truncate(title, 48)}`;
   return app || (title ? truncate(title, 48) : null);
-}
-
-function readString(value: unknown): string | null {
-  return typeof value === "string" && value.trim().length > 0 ? value : null;
-}
-
-function readNumber(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 function readStringArray(value: unknown): readonly string[] {

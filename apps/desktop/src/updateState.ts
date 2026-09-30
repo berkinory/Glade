@@ -1,3 +1,4 @@
+import { asFiniteNumber } from "@glade/shared/transport/payloadValues";
 import type { DesktopUpdateState } from "@glade/contracts/ipc/ipc";
 import type { GladeDesktopFlavor } from "@glade/shared/platform/desktopIdentity";
 
@@ -23,16 +24,12 @@ export function isExpectedStalledDownloadCancellationError(args: {
   );
 }
 
-function finiteNumber(value: number | null | undefined): number | null {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
 export function hasDownloadProgressAdvanced(
   previous: DownloadProgressSample | null,
   next: DownloadProgressSample,
 ): boolean {
-  const nextTransferred = finiteNumber(next.transferred);
-  const nextPercent = finiteNumber(next.percent);
+  const nextTransferred = asFiniteNumber(next.transferred) ?? null;
+  const nextPercent = asFiniteNumber(next.percent) ?? null;
   if (nextTransferred === null && nextPercent === null) {
     return false;
   }
@@ -41,8 +38,8 @@ export function hasDownloadProgressAdvanced(
     return true;
   }
 
-  const previousTransferred = finiteNumber(previous.transferred);
-  const previousPercent = finiteNumber(previous.percent);
+  const previousTransferred = asFiniteNumber(previous.transferred) ?? null;
+  const previousPercent = asFiniteNumber(previous.percent) ?? null;
   const transferredAdvanced =
     previousTransferred === null
       ? nextTransferred !== null

@@ -1,3 +1,4 @@
+import { asString, isNonBlankString } from "@glade/shared/text/text";
 import { asRecord, isRecord } from "@glade/shared/transport/payloadValues";
 import { Schema } from "effect";
 import type { TaggedFailure } from "../../platform/operationError.ts";
@@ -378,10 +379,6 @@ function withBufferedReasoningSummary(
   };
 }
 
-function hasNonEmptyString(value: unknown): boolean {
-  return typeof value === "string" && value.trim().length > 0;
-}
-
 function mergeBufferedToolOutputData(
   data: unknown,
   bufferedOutput: BufferedToolOutput,
@@ -393,9 +390,9 @@ function mergeBufferedToolOutputData(
       ? { output: baseData.rawOutput }
       : {};
   const hasStructuredOutput =
-    hasNonEmptyString(existingRawOutput.output) ||
-    hasNonEmptyString(existingRawOutput.stdout) ||
-    hasNonEmptyString(existingRawOutput.stderr);
+    isNonBlankString(existingRawOutput.output) ||
+    isNonBlankString(existingRawOutput.stdout) ||
+    isNonBlankString(existingRawOutput.stderr);
   return {
     ...baseData,
     rawOutput: {
@@ -449,10 +446,6 @@ function proposedPlanIdFromEvent(event: ProviderRuntimeEvent, threadId: ThreadId
     return `plan:${threadId}:item:${event.itemId}`;
   }
   return `plan:${threadId}:event:${event.eventId}`;
-}
-
-function asString(value: unknown): string | undefined {
-  return typeof value === "string" ? value : undefined;
 }
 
 function collectPersistedGeneratedImagePaths(

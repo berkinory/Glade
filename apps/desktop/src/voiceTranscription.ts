@@ -1,3 +1,4 @@
+import { nonEmptyTrimmed } from "@glade/shared/text/text";
 import { spawnProcess } from "@glade/shared/platform/processRuntime";
 
 import { app, ipcMain } from "electron";
@@ -67,11 +68,6 @@ function decodeDesktopVoiceAudio(input: ServerVoiceTranscriptionInput): Buffer {
   }
 
   return audioBuffer;
-}
-
-function readNonEmptyString(value: unknown): string | null {
-  const normalized = typeof value === "string" ? value.trim() : "";
-  return normalized.length > 0 ? normalized : null;
 }
 
 async function resolveDesktopVoiceAuth(
@@ -153,8 +149,8 @@ async function resolveDesktopVoiceAuth(
           typeof message.result === "object" && message.result !== null
             ? (message.result as Record<string, unknown>)
             : null;
-        const authMethod = readNonEmptyString(result?.authMethod);
-        const token = readNonEmptyString(result?.authToken);
+        const authMethod = nonEmptyTrimmed(result?.authMethod) ?? null;
+        const token = nonEmptyTrimmed(result?.authToken) ?? null;
         if (!token) {
           rejectOnce(
             new Error("No ChatGPT session token is available. Sign in to ChatGPT in Codex."),
@@ -171,7 +167,7 @@ async function resolveDesktopVoiceAuth(
         resolveOnce({
           token,
           transcriptionUrl:
-            readNonEmptyString(result?.transcriptionUrl) ?? CHATGPT_VOICE_TRANSCRIPTION_URL,
+            nonEmptyTrimmed(result?.transcriptionUrl) ?? CHATGPT_VOICE_TRANSCRIPTION_URL,
         });
       }
     });
@@ -216,7 +212,7 @@ function readVoiceResponseErrorMessage(statusCode: number, body: string): string
   try {
     const payload = JSON.parse(body) as { error?: { message?: unknown }; message?: unknown };
     const providerMessage =
-      readNonEmptyString(payload.error?.message) ?? readNonEmptyString(payload.message);
+      nonEmptyTrimmed(payload.error?.message) ?? nonEmptyTrimmed(payload.message) ?? null;
     if (providerMessage) {
       return providerMessage;
     }
@@ -251,7 +247,7 @@ async function transcribeVoiceViaDesktopBridge(
     text?: unknown;
     transcript?: unknown;
   };
-  const text = readNonEmptyString(payload.text) ?? readNonEmptyString(payload.transcript);
+  const text = nonEmptyTrimmed(payload.text) ?? nonEmptyTrimmed(payload.transcript) ?? null;
   if (!text) {
     throw new Error("The transcription response did not include any text.");
   }

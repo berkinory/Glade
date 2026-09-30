@@ -1,3 +1,4 @@
+import { nonEmptyTrimmed } from "@glade/shared/text/text";
 import { asRecord } from "@glade/shared/transport/payloadValues";
 import {
   DEVICE_CAPABILITY_LABELS,
@@ -22,16 +23,13 @@ export interface HelperProbeResult {
   readonly error: string | undefined;
 }
 
-const asNonEmptyString = (value: unknown): string | undefined =>
-  typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
-
 const parseToolchain = (value: unknown): DeviceToolchain | undefined => {
   const record = asRecord(value);
   if (!record) return undefined;
   const toolchain: DeviceToolchain = {
-    xcodeVersion: asNonEmptyString(record["xcodeVersion"]),
-    xcodeBuild: asNonEmptyString(record["xcodeBuild"]),
-    macOS: asNonEmptyString(record["macOS"]),
+    xcodeVersion: nonEmptyTrimmed(record["xcodeVersion"]),
+    xcodeBuild: nonEmptyTrimmed(record["xcodeBuild"]),
+    macOS: nonEmptyTrimmed(record["macOS"]),
   };
   return toolchain.xcodeVersion === undefined &&
     toolchain.xcodeBuild === undefined &&
@@ -52,8 +50,8 @@ const parseCapability = (id: DeviceCapabilityId, raw: unknown): DeviceCapability
   return {
     id,
     ok: false,
-    missingSymbol: asNonEmptyString(record["missingSymbol"]),
-    detail: asNonEmptyString(record["error"]) ?? asNonEmptyString(record["purpose"]),
+    missingSymbol: nonEmptyTrimmed(record["missingSymbol"]),
+    detail: nonEmptyTrimmed(record["error"]) ?? nonEmptyTrimmed(record["purpose"]),
   };
 };
 
@@ -89,7 +87,7 @@ export const parseHelperProbe = (stdout: string): HelperProbeResult => {
   }
 
   const capabilitiesRecord = asRecord(record["capabilities"]);
-  const error = asNonEmptyString(record["error"]);
+  const error = nonEmptyTrimmed(record["error"]);
 
   // A helper too old to report capabilities still answers `ok`. Trust that rather than reporting four
   // phantom breakages.

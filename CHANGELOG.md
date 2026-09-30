@@ -12,6 +12,8 @@
 
 ### Improved
 
+- Scalar payload readers share explicit string, numeric and array policies. Untrimmed text, whitespace checks, numeric-string coercion and caller absence values keep their existing semantics.
+
 - Shared payload validation has one domain path, `transport/payloadValues`, for direct boundary imports.
 
 - Record validation and conversion use shared boundary helpers. Array acceptance and caller-specific absent-value policies are preserved; generic error conversion is shared while redaction and UI fallback policies remain local.

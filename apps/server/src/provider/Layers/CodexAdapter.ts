@@ -1,3 +1,5 @@
+import { asArray, asFiniteNumber } from "@glade/shared/transport/payloadValues";
+import { asString, nonEmptyTrimmed } from "@glade/shared/text/text";
 import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import { AsyncUserInputQuestions } from "@glade/contracts/orchestration/asyncUserInput";
 import { type ChatAttachment } from "@glade/contracts/orchestration/threadEntities";
@@ -233,23 +235,6 @@ function toRequestError(threadId: ThreadId, method: string, cause: unknown): Pro
   });
 }
 
-function asString(value: unknown): string | undefined {
-  return typeof value === "string" ? value : undefined;
-}
-
-function asTrimmedString(value: unknown): string | undefined {
-  const stringValue = asString(value)?.trim();
-  return stringValue ? stringValue : undefined;
-}
-
-function asArray(value: unknown): unknown[] | undefined {
-  return Array.isArray(value) ? value : undefined;
-}
-
-function asNumber(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
-}
-
 function providerErrorMapsToWarning(event: ProviderEvent): boolean {
   return (
     event.kind === "error" &&
@@ -267,27 +252,37 @@ function normalizeCodexTokenUsage(value: unknown): ThreadTokenUsageSnapshot | un
   const lastUsage = asObjectRecord(usage?.last_token_usage ?? usage?.last) ?? undefined;
 
   const totalProcessedTokens =
-    asNumber(totalUsage?.total_tokens) ?? asNumber(totalUsage?.totalTokens);
+    asFiniteNumber(totalUsage?.total_tokens) ?? asFiniteNumber(totalUsage?.totalTokens);
   const usedTokens =
-    asNumber(lastUsage?.total_tokens) ?? asNumber(lastUsage?.totalTokens) ?? totalProcessedTokens;
+    asFiniteNumber(lastUsage?.total_tokens) ??
+    asFiniteNumber(lastUsage?.totalTokens) ??
+    totalProcessedTokens;
   if (usedTokens === undefined || usedTokens <= 0) {
     return undefined;
   }
 
-  const maxTokens = asNumber(usage?.model_context_window) ?? asNumber(usage?.modelContextWindow);
-  const inputTokens = asNumber(lastUsage?.input_tokens) ?? asNumber(lastUsage?.inputTokens);
+  const maxTokens =
+    asFiniteNumber(usage?.model_context_window) ?? asFiniteNumber(usage?.modelContextWindow);
+  const inputTokens =
+    asFiniteNumber(lastUsage?.input_tokens) ?? asFiniteNumber(lastUsage?.inputTokens);
   const cachedInputTokens =
-    asNumber(lastUsage?.cached_input_tokens) ?? asNumber(lastUsage?.cachedInputTokens);
-  const outputTokens = asNumber(lastUsage?.output_tokens) ?? asNumber(lastUsage?.outputTokens);
+    asFiniteNumber(lastUsage?.cached_input_tokens) ?? asFiniteNumber(lastUsage?.cachedInputTokens);
+  const outputTokens =
+    asFiniteNumber(lastUsage?.output_tokens) ?? asFiniteNumber(lastUsage?.outputTokens);
   const reasoningOutputTokens =
-    asNumber(lastUsage?.reasoning_output_tokens) ?? asNumber(lastUsage?.reasoningOutputTokens);
+    asFiniteNumber(lastUsage?.reasoning_output_tokens) ??
+    asFiniteNumber(lastUsage?.reasoningOutputTokens);
 
-  const totalInput = asNumber(totalUsage?.input_tokens) ?? asNumber(totalUsage?.inputTokens);
-  const totalOutput = asNumber(totalUsage?.output_tokens) ?? asNumber(totalUsage?.outputTokens);
+  const totalInput =
+    asFiniteNumber(totalUsage?.input_tokens) ?? asFiniteNumber(totalUsage?.inputTokens);
+  const totalOutput =
+    asFiniteNumber(totalUsage?.output_tokens) ?? asFiniteNumber(totalUsage?.outputTokens);
   const totalCached =
-    asNumber(totalUsage?.cached_input_tokens) ?? asNumber(totalUsage?.cachedInputTokens);
+    asFiniteNumber(totalUsage?.cached_input_tokens) ??
+    asFiniteNumber(totalUsage?.cachedInputTokens);
   const totalWrites =
-    asNumber(totalUsage?.cacheWriteInputTokens) ?? asNumber(totalUsage?.cache_write_input_tokens);
+    asFiniteNumber(totalUsage?.cacheWriteInputTokens) ??
+    asFiniteNumber(totalUsage?.cache_write_input_tokens);
   return {
     usedTokens,
     ...(totalInput !== undefined && totalOutput !== undefined
@@ -376,13 +371,13 @@ function toolItemTitle(item: Record<string, unknown> | undefined): string | unde
   if (!item) return undefined;
   const appContext = asObjectRecord(item.appContext) ?? undefined;
   const action =
-    asTrimmedString(appContext?.actionName) ??
-    asTrimmedString(item.title) ??
-    asTrimmedString(item.tool) ??
-    asTrimmedString(item.name);
+    nonEmptyTrimmed(appContext?.actionName) ??
+    nonEmptyTrimmed(item.title) ??
+    nonEmptyTrimmed(item.tool) ??
+    nonEmptyTrimmed(item.name);
   if (!action) return undefined;
 
-  const appName = asTrimmedString(appContext?.appName);
+  const appName = nonEmptyTrimmed(appContext?.appName);
   if (!appName || action.toLowerCase().includes(appName.toLowerCase())) {
     return action;
   }
@@ -977,9 +972,9 @@ function hookRunOutput(run: Record<string, unknown>): string | undefined {
   const output = run.entries
     .flatMap((entry) => {
       const record = asObjectRecord(entry) ?? undefined;
-      const text = asTrimmedString(record?.text);
+      const text = nonEmptyTrimmed(record?.text);
       if (!text) return [];
-      const kind = asTrimmedString(record?.kind);
+      const kind = nonEmptyTrimmed(record?.kind);
       return [kind ? `${kind}: ${text}` : text];
     })
     .join("\n");
@@ -1008,13 +1003,13 @@ function mapCodexHookEvent(
     return undefined;
   }
   const run = asObjectRecord((asObjectRecord(event.payload) ?? undefined)?.run) ?? undefined;
-  const hookId = asTrimmedString(run?.id);
-  const hookEvent = asTrimmedString(run?.eventName);
+  const hookId = nonEmptyTrimmed(run?.id);
+  const hookEvent = nonEmptyTrimmed(run?.eventName);
   if (!run || !hookId || !hookEvent) {
     return undefined;
   }
-  const hookName = asTrimmedString(run.sourcePath) ?? asTrimmedString(run.handlerType) ?? hookEvent;
-  const statusMessage = sanitizeUnmappedProviderDetail(asTrimmedString(run.statusMessage));
+  const hookName = nonEmptyTrimmed(run.sourcePath) ?? nonEmptyTrimmed(run.handlerType) ?? hookEvent;
+  const statusMessage = sanitizeUnmappedProviderDetail(nonEmptyTrimmed(run.statusMessage));
   const data = sanitizeUnmappedProviderData(run);
   const base = withSanitizedHookRaw(event, canonicalThreadId);
 
@@ -1033,7 +1028,7 @@ function mapCodexHookEvent(
   }
 
   const status = toCodexHookRunStatus(run.status);
-  const durationCandidate = asNumber(run.durationMs);
+  const durationCandidate = asFiniteNumber(run.durationMs);
   const durationMs =
     durationCandidate !== undefined && Number.isInteger(durationCandidate) && durationCandidate >= 0
       ? durationCandidate
@@ -1072,13 +1067,13 @@ function mapUnmappedCodexEvent(
   const msg = codexEventMessage(payload);
   const nativeType = sanitizeUnmappedProviderNativeType(event.method);
   const detail = sanitizeUnmappedProviderDetail(
-    asTrimmedString(payload?.message) ??
-      asTrimmedString(msg?.summary) ??
-      asTrimmedString(payload?.reason) ??
-      asTrimmedString(payload?.summary) ??
-      asTrimmedString(msg?.status) ??
-      asTrimmedString(payload?.detail) ??
-      asTrimmedString(payload?.status),
+    nonEmptyTrimmed(payload?.message) ??
+      nonEmptyTrimmed(msg?.summary) ??
+      nonEmptyTrimmed(payload?.reason) ??
+      nonEmptyTrimmed(payload?.summary) ??
+      nonEmptyTrimmed(msg?.status) ??
+      nonEmptyTrimmed(payload?.detail) ??
+      nonEmptyTrimmed(payload?.status),
   );
   return {
     ...runtimeEventBase(event, canonicalThreadId),
@@ -1381,8 +1376,8 @@ function mapToRuntimeEvents(
           ...((asObjectRecord(turn?.modelUsage) ?? undefined)
             ? { modelUsage: asObjectRecord(turn?.modelUsage) ?? undefined }
             : {}),
-          ...(asNumber(turn?.totalCostUsd) !== undefined
-            ? { totalCostUsd: asNumber(turn?.totalCostUsd) }
+          ...(asFiniteNumber(turn?.totalCostUsd) !== undefined
+            ? { totalCostUsd: asFiniteNumber(turn?.totalCostUsd) }
             : {}),
           ...(errorMessage ? { errorMessage } : {}),
         },
@@ -1548,8 +1543,8 @@ function mapToRuntimeEvents(
           ...(toolUseId ? { toolUseId } : {}),
           ...(asString(payload?.toolName) ? { toolName: asString(payload?.toolName) } : {}),
           ...(summary ? { summary } : {}),
-          ...(asNumber(payload?.elapsedSeconds) !== undefined
-            ? { elapsedSeconds: asNumber(payload?.elapsedSeconds) }
+          ...(asFiniteNumber(payload?.elapsedSeconds) !== undefined
+            ? { elapsedSeconds: asFiniteNumber(payload?.elapsedSeconds) }
             : {}),
         },
       },
@@ -1685,12 +1680,12 @@ function mapToRuntimeEvents(
         type: "content.delta",
         payload: {
           streamKind:
-            asNumber(msg?.summary_index) !== undefined
+            asFiniteNumber(msg?.summary_index) !== undefined
               ? "reasoning_summary_text"
               : "reasoning_text",
           delta,
-          ...(asNumber(msg?.summary_index) !== undefined
-            ? { summaryIndex: asNumber(msg?.summary_index) }
+          ...(asFiniteNumber(msg?.summary_index) !== undefined
+            ? { summaryIndex: asFiniteNumber(msg?.summary_index) }
             : {}),
         },
       },
@@ -1712,13 +1707,13 @@ function mapToRuntimeEvents(
   }
 
   if (event.method === "deprecationNotice") {
-    const details = asTrimmedString(payload?.details);
+    const details = nonEmptyTrimmed(payload?.details);
     return [
       {
         type: "deprecation.notice",
         ...runtimeEventBase(event, canonicalThreadId),
         payload: {
-          summary: asTrimmedString(payload?.summary) ?? "Deprecation notice",
+          summary: nonEmptyTrimmed(payload?.summary) ?? "Deprecation notice",
           ...(details ? { details } : {}),
         },
       },
@@ -1726,14 +1721,14 @@ function mapToRuntimeEvents(
   }
 
   if (event.method === "configWarning") {
-    const details = asTrimmedString(payload?.details);
-    const path = asTrimmedString(payload?.path);
+    const details = nonEmptyTrimmed(payload?.details);
+    const path = nonEmptyTrimmed(payload?.path);
     return [
       {
         type: "config.warning",
         ...runtimeEventBase(event, canonicalThreadId),
         payload: {
-          summary: asTrimmedString(payload?.summary) ?? "Configuration warning",
+          summary: nonEmptyTrimmed(payload?.summary) ?? "Configuration warning",
           ...(details ? { details } : {}),
           ...(path ? { path } : {}),
           ...(payload?.range !== undefined ? { range: payload.range } : {}),

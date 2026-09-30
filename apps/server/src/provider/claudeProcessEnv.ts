@@ -1,3 +1,4 @@
+import { nonEmptyTrimmed } from "@glade/shared/text/text";
 import { asRecord } from "@glade/shared/transport/payloadValues";
 import { readFileSync } from "node:fs";
 import OS from "node:os";
@@ -30,10 +31,6 @@ function envFlagEnabled(value: string | undefined): boolean {
 
 function hasClaudeExternalAuthEnv(env: NodeJS.ProcessEnv): boolean {
   return CLAUDE_EXTERNAL_AUTH_ENV_KEYS.some((key) => envFlagEnabled(env[key]));
-}
-
-function readNonEmptyString(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
 }
 
 function tryParseJsonRecord(content: string): Record<string, unknown> | undefined {
@@ -70,15 +67,15 @@ function readClaudeCliCredentialsContentSummary(
 ): ClaudeCliCredentialsSummary {
   const root = tryParseJsonRecord(content);
   const oauth = asRecord(root?.claudeAiOauth) ?? undefined;
-  const accessToken = readNonEmptyString(oauth?.accessToken);
-  const refreshToken = readNonEmptyString(oauth?.refreshToken);
+  const accessToken = nonEmptyTrimmed(oauth?.accessToken);
+  const refreshToken = nonEmptyTrimmed(oauth?.refreshToken);
   if (!accessToken && !refreshToken) {
     return { usable: false };
   }
 
   const expiresAtMs = typeof oauth?.expiresAt === "number" ? oauth.expiresAt : undefined;
   const usable = expiresAtMs === undefined || expiresAtMs > nowMs || refreshToken !== undefined;
-  const subscriptionType = readNonEmptyString(oauth?.subscriptionType);
+  const subscriptionType = nonEmptyTrimmed(oauth?.subscriptionType);
   return {
     usable,
     ...(subscriptionType ? { subscriptionType } : {}),

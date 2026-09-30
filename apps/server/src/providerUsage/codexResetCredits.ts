@@ -1,3 +1,4 @@
+import { nonEmptyTrimmed } from "@glade/shared/text/text";
 import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import type {
   CodexResetCreditOutcome,
@@ -11,7 +12,7 @@ import { spawnProcess } from "@glade/shared/platform/processRuntime";
 import { CodexJsonlFramer, CodexJsonlWriter } from "../codexAppServerTransport";
 import { createLogger } from "../logger";
 import { signalOwnedChildProcess } from "../platform/processTreeController";
-import { asString, isoFromUnixMillis, isoFromUnixSeconds } from "./parse";
+import { isoFromUnixMillis, isoFromUnixSeconds } from "./parse";
 
 const log = createLogger("provider-usage:codex-resets");
 const APP_SERVER_TIMEOUT_MS = 20_000;
@@ -57,9 +58,9 @@ function parseCodexResetCredits(json: unknown): ServerCodexResetCredits | undefi
   }
   const credits: ServerCodexResetCredit[] = creditsRaw.flatMap((entry) => {
     const credit = asObjectRecord(entry);
-    const id = asString(credit?.id);
+    const id = nonEmptyTrimmed(credit?.id);
     if (!credit || !id) return [];
-    const statusRaw = asString(credit.status);
+    const statusRaw = nonEmptyTrimmed(credit.status);
     const status: ServerCodexResetCreditStatus =
       statusRaw === "available" || statusRaw === "redeeming" || statusRaw === "redeemed"
         ? statusRaw
@@ -74,9 +75,11 @@ function parseCodexResetCredits(json: unknown): ServerCodexResetCredits | undefi
         ...(epochToIso(credit.expiresAt ?? credit.expires_at)
           ? { expiresAt: epochToIso(credit.expiresAt ?? credit.expires_at) as string }
           : {}),
-        ...(asString(credit.title) ? { title: asString(credit.title) as string } : {}),
-        ...(asString(credit.description)
-          ? { description: asString(credit.description) as string }
+        ...(nonEmptyTrimmed(credit.title)
+          ? { title: nonEmptyTrimmed(credit.title) as string }
+          : {}),
+        ...(nonEmptyTrimmed(credit.description)
+          ? { description: nonEmptyTrimmed(credit.description) as string }
           : {}),
       },
     ];
@@ -211,7 +214,7 @@ export async function fetchCodexResetCredits(
   try {
     return await withAppServer(input, async (request) => {
       const response = await request("account/rateLimits/read", {});
-      const accountId = asString(asObjectRecord(response)?.accountId);
+      const accountId = nonEmptyTrimmed(asObjectRecord(response)?.accountId);
       if (accountId !== input.expectedAccountId) return undefined;
       const credits = parseCodexResetCredits(response);
       return credits
@@ -245,7 +248,7 @@ export async function consumeCodexResetCredit(
   }
   const promise = withAppServer(input, async (request) => {
     const usage = await request("account/rateLimits/read", {});
-    if (asString(asObjectRecord(usage)?.accountId) !== input.accountId) {
+    if (nonEmptyTrimmed(asObjectRecord(usage)?.accountId) !== input.accountId) {
       throw new Error("The Codex account changed. Refresh usage before using a reset.");
     }
     const canUse = canUseCodexResetCredit(usage);

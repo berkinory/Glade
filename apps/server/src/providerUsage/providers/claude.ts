@@ -1,3 +1,5 @@
+import { asNumericValue } from "@glade/shared/transport/payloadValues";
+import { nonEmptyTrimmed } from "@glade/shared/text/text";
 import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import { execFile } from "node:child_process";
 import nodePath from "node:path";
@@ -20,8 +22,6 @@ import {
 } from "../credentials";
 import { fetchJson, isAuthFailureStatus, isRateLimitStatus, parseRetryAfterMs } from "../http";
 import {
-  asFiniteNumber,
-  asString,
   buildSnapshot,
   clampPercent,
   errorSnapshot,
@@ -68,7 +68,7 @@ function readScopes(oauth: Record<string, unknown> | null): ReadonlyArray<string
   if (Array.isArray(oauth?.scopes)) {
     return oauth.scopes.filter((scope): scope is string => typeof scope === "string");
   }
-  const scopeText = asString(oauth?.scope);
+  const scopeText = nonEmptyTrimmed(oauth?.scope);
   return scopeText ? scopeText.split(/\s+/u).filter((scope) => scope.length > 0) : [];
 }
 
@@ -77,16 +77,16 @@ function readClaudeCreds(
   source: ClaudeCredSource,
 ): ClaudeCreds | null {
   const oauth = asObjectRecord(record?.claudeAiOauth);
-  const accessToken = asString(oauth?.accessToken);
+  const accessToken = nonEmptyTrimmed(oauth?.accessToken);
   if (!accessToken) {
     return null;
   }
   return {
     accessToken,
-    refreshToken: asString(oauth?.refreshToken),
-    expiresAtMs: asFiniteNumber(oauth?.expiresAt),
-    subscriptionType: asString(oauth?.subscriptionType),
-    rateLimitTier: asString(oauth?.rateLimitTier),
+    refreshToken: nonEmptyTrimmed(oauth?.refreshToken),
+    expiresAtMs: asNumericValue(oauth?.expiresAt),
+    subscriptionType: nonEmptyTrimmed(oauth?.subscriptionType),
+    rateLimitTier: nonEmptyTrimmed(oauth?.rateLimitTier),
     scopes: readScopes(oauth),
     source,
   };
@@ -108,7 +108,7 @@ async function resolveClaudeCredCandidates(ctx: ProviderUsageContext): Promise<C
     }
   }
 
-  const keychainAccount = asString(ctx.env.USER) ?? asString(ctx.env.LOGNAME);
+  const keychainAccount = nonEmptyTrimmed(ctx.env.USER) ?? nonEmptyTrimmed(ctx.env.LOGNAME);
   const accountKeychain =
     keychainAccount === undefined
       ? null
@@ -259,7 +259,7 @@ function parseClaudeUsage(input: { json: unknown; nowMs: number; planName?: stri
     if (!window) {
       return;
     }
-    pushLimit(label, asFiniteNumber(window.utilization), window.resets_at, windowDurationMins);
+    pushLimit(label, asNumericValue(window.utilization), window.resets_at, windowDurationMins);
   };
 
   pushWindow("5h", root?.five_hour, SESSION_WINDOW_MINS);
@@ -271,14 +271,14 @@ function parseClaudeUsage(input: { json: unknown; nowMs: number; planName?: stri
     if (scoped?.kind !== "weekly_scoped") {
       continue;
     }
-    const label = asString(
+    const label = nonEmptyTrimmed(
       asObjectRecord(asObjectRecord(scoped.scope)?.model)?.display_name,
     )?.trim();
     if (!label || scopedLabels.has(label)) {
       continue;
     }
     scopedLabels.add(label);
-    pushLimit(label, asFiniteNumber(scoped.percent), scoped.resets_at, WEEKLY_WINDOW_MINS);
+    pushLimit(label, asNumericValue(scoped.percent), scoped.resets_at, WEEKLY_WINDOW_MINS);
   }
   for (const [label, key] of LEGACY_MODEL_WEEKLY_WINDOWS) {
     if (!scopedLabels.has(label)) {
@@ -288,8 +288,8 @@ function parseClaudeUsage(input: { json: unknown; nowMs: number; planName?: stri
 
   const extra = asObjectRecord(root?.extra_usage);
   if (extra && extra.is_enabled !== false) {
-    const usedCredits = asFiniteNumber(extra.used_credits);
-    const monthlyLimit = asFiniteNumber(extra.monthly_limit);
+    const usedCredits = asNumericValue(extra.used_credits);
+    const monthlyLimit = asNumericValue(extra.monthly_limit);
     if (usedCredits !== undefined) {
       const usedUsd = formatUsd(usedCredits / 100);
       const value =

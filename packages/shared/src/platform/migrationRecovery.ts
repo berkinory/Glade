@@ -1,3 +1,4 @@
+import { isNonEmptyString } from "../text/text";
 import { createHash } from "node:crypto";
 
 export function migrationRecoveryMarkerPath(dbPath: string): string {
@@ -263,10 +264,6 @@ function isMigrationDivergenceConsentChallenge(
     isSha256(challenge.lineageFingerprint) &&
     isSha256(challenge.consentToken)
   );
-}
-
-function isNonEmptyString(value: unknown): value is string {
-  return typeof value === "string" && value.length > 0;
 }
 
 function isNonNegativeInteger(value: unknown): value is number {

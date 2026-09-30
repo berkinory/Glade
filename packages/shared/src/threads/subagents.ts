@@ -1,3 +1,5 @@
+import { nonEmptyTrimmed } from "../text/text";
+import { asArray } from "../transport/payloadValues";
 import { asRecord } from "../transport/payloadValues";
 export interface ParsedSubagentReceiverAgent {
   providerThreadId: string;
@@ -53,14 +55,6 @@ function sanitizeSubagentRole(role: string | undefined): string | undefined {
   return role !== undefined && isWorkerTierSubagentRole(role) ? undefined : role;
 }
 
-function asArray(value: unknown): unknown[] | null {
-  return Array.isArray(value) ? value : null;
-}
-
-function asTrimmedString(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
-}
-
 function firstStringValue(
   object: Record<string, unknown> | null | undefined,
   keys: readonly string[],
@@ -69,7 +63,7 @@ function firstStringValue(
     return undefined;
   }
   for (const key of keys) {
-    const value = asTrimmedString(object[key]);
+    const value = nonEmptyTrimmed(object[key]);
     if (value) {
       return value;
     }
@@ -85,7 +79,7 @@ function extractSubagentIdentityFromSource(
     asRecord(source?.subAgent) ?? asRecord(source?.sub_agent) ?? asRecord(item.subAgent);
   const threadSpawn = asRecord(subagent?.thread_spawn) ?? asRecord(subagent?.threadSpawn);
   const providerThreadId =
-    asTrimmedString(
+    nonEmptyTrimmed(
       item.threadId ??
         item.thread_id ??
         item.conversationId ??
@@ -94,7 +88,7 @@ function extractSubagentIdentityFromSource(
         item.receiver_thread_id,
     ) ?? firstStringValue(threadSpawn, ["threadId", "thread_id"]);
   const agentId =
-    asTrimmedString(item.agentId ?? item.agent_id ?? item.id) ??
+    nonEmptyTrimmed(item.agentId ?? item.agent_id ?? item.id) ??
     firstStringValue(threadSpawn, ["agentId", "agent_id", "id"]) ??
     firstStringValue(subagent, ["agentId", "agent_id", "id"]);
   const nickname =
@@ -132,7 +126,7 @@ function pushUniqueThreadId(
 }
 
 function normalizeSubagentIdentifier(value: unknown): string | undefined {
-  return asTrimmedString(value);
+  return nonEmptyTrimmed(value);
 }
 
 export function decodeSubagentReceiverThreadIds(
@@ -143,7 +137,7 @@ export function decodeSubagentReceiverThreadIds(
   }
   const plural = ["receiverThreadIds", "receiver_thread_ids", "threadIds", "thread_ids"] as const;
   for (const key of plural) {
-    const values = asArray(item[key]);
+    const values = asArray(item[key]) ?? null;
     if (!values) {
       continue;
     }
@@ -180,7 +174,7 @@ export function decodeSubagentReceiverAgents(
   const topLevelEffort = firstStringValue(item, ["effort", "reasoningEffort", "reasoning_effort"]);
   const topLevelPrompt = firstStringValue(item, ["prompt", "task", "message"]);
   const agentsValue =
-    asArray(item.receiverAgents) ?? asArray(item.receiver_agents) ?? asArray(item.agents);
+    asArray(item.receiverAgents) ?? asArray(item.receiver_agents) ?? asArray(item.agents) ?? null;
   const decodedAgents =
     agentsValue?.flatMap((entry, index) => {
       const object = asRecord(entry);
@@ -361,7 +355,7 @@ export function decodeSubagentAgentStates(
     for (const [rawThreadId, rawValue] of Object.entries(candidate)) {
       const object = asRecord(rawValue);
       const threadId =
-        asTrimmedString(rawThreadId) ?? firstStringValue(object, ["threadId", "thread_id"]);
+        nonEmptyTrimmed(rawThreadId) ?? firstStringValue(object, ["threadId", "thread_id"]);
       if (!threadId) {
         continue;
       }
@@ -371,7 +365,10 @@ export function decodeSubagentAgentStates(
   }
 
   const values =
-    asArray(item?.agentStatuses) ?? asArray(item?.agent_statuses) ?? asArray(item?.statuses);
+    asArray(item?.agentStatuses) ??
+    asArray(item?.agent_statuses) ??
+    asArray(item?.statuses) ??
+    null;
   if (!values) {
     return {};
   }
@@ -577,8 +574,8 @@ export function buildSubagentIdentityDirectory(
   const byAgentId = new Map<string, ParsedSubagentIdentityHint>();
 
   const upsert = (hint: ParsedSubagentIdentityHint) => {
-    const providerThreadId = asTrimmedString(hint.providerThreadId);
-    const agentId = asTrimmedString(hint.agentId);
+    const providerThreadId = nonEmptyTrimmed(hint.providerThreadId);
+    const agentId = nonEmptyTrimmed(hint.agentId);
     if (
       providerThreadId === undefined &&
       agentId === undefined &&
@@ -631,8 +628,8 @@ export function resolveSubagentIdentityFromDirectory(
     agentId?: string | null | undefined;
   },
 ): ParsedSubagentIdentityHint | undefined {
-  const normalizedProviderThreadId = asTrimmedString(input.providerThreadId);
-  const normalizedAgentId = asTrimmedString(input.agentId);
+  const normalizedProviderThreadId = nonEmptyTrimmed(input.providerThreadId);
+  const normalizedAgentId = nonEmptyTrimmed(input.agentId);
   const threadEntry = normalizedProviderThreadId
     ? directory.byProviderThreadId.get(normalizedProviderThreadId)
     : undefined;

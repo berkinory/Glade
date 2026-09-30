@@ -1,3 +1,4 @@
+import { asNonBlankString } from "@glade/shared/text/text";
 import type { TaggedFailure } from "./platform/operationError.ts";
 
 import { CheckpointRef, MessageId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
@@ -86,10 +87,6 @@ interface ModelSelectionLike {
   readonly reasoning: string | null;
 }
 
-function readString(value: unknown): string | null {
-  return typeof value === "string" && value.trim().length > 0 ? value : null;
-}
-
 function parseModelSelection(value: unknown): ModelSelectionLike | null {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     return null;
@@ -100,9 +97,10 @@ function parseModelSelection(value: unknown): ModelSelectionLike | null {
       ? (record.options as { reasoningEffort?: unknown; effort?: unknown })
       : null;
   return {
-    provider: readString(record.provider),
-    model: readString(record.model),
-    reasoning: readString(options?.reasoningEffort) ?? readString(options?.effort),
+    provider: asNonBlankString(record.provider) ?? null,
+    model: asNonBlankString(record.model) ?? null,
+    reasoning:
+      asNonBlankString(options?.reasoningEffort) ?? asNonBlankString(options?.effort) ?? null,
   };
 }
 
@@ -144,23 +142,23 @@ function checkpointRefsForThreadPurge(
   const typedThreadId = ThreadId.makeUnsafe(threadId);
 
   const addRef = (checkpointRef: CheckpointRef | string | null | undefined) => {
-    const raw = readString(checkpointRef);
+    const raw = asNonBlankString(checkpointRef) ?? null;
     if (raw && isManagedCheckpointRefForThread(raw, typedThreadId)) {
       refs.add(raw);
     }
   };
 
   for (const row of turnRows) {
-    const checkpointRef = readString(row.checkpointRef);
+    const checkpointRef = asNonBlankString(row.checkpointRef) ?? null;
     addRef(checkpointRef);
 
-    const turnId = readString(row.turnId);
+    const turnId = asNonBlankString(row.turnId) ?? null;
     if (turnId) {
       addRef(checkpointRefForThreadTurnStart(typedThreadId, TurnId.makeUnsafe(turnId)));
     }
   }
   for (const row of messageRows) {
-    const messageId = readString(row.messageId);
+    const messageId = asNonBlankString(row.messageId) ?? null;
     if (messageId) {
       addRef(checkpointRefForThreadMessageStart(typedThreadId, MessageId.makeUnsafe(messageId)));
     }
@@ -236,10 +234,10 @@ function resolveTokenProviderModel(
   row: TokenActivityRow,
   fallbackSelection?: { readonly provider: string | null; readonly model: string | null },
 ): { readonly provider: string | null; readonly model: string | null } {
-  const stampedProvider = readString(row.provider);
+  const stampedProvider = asNonBlankString(row.provider) ?? null;
   const provider = stampedProvider ?? fallbackSelection?.provider ?? null;
   const model =
-    readString(row.model) ??
+    asNonBlankString(row.model) ??
     (stampedProvider === null || stampedProvider === fallbackSelection?.provider
       ? (fallbackSelection?.model ?? null)
       : null);
@@ -463,7 +461,7 @@ const makeProfileStatsArchive = Effect.gen(function* () {
       const cwd = threadWorkspaceCwdForCheckpointCleanup(thread);
       const typedThreadId = ThreadId.makeUnsafe(threadId);
       const hasPersistedCheckpointRef = checkpointTurnRows.some((row) => {
-        const checkpointRef = readString(row.checkpointRef);
+        const checkpointRef = asNonBlankString(row.checkpointRef) ?? null;
         return checkpointRef
           ? isManagedCheckpointRefForThread(checkpointRef, typedThreadId)
           : false;

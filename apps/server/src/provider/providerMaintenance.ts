@@ -1,3 +1,4 @@
+import { nonEmptyTrimmed } from "@glade/shared/text/text";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type {
   ServerProviderStatus,
@@ -86,10 +87,6 @@ const latestVersionCache = new Map<
 >();
 const SEMVER_NUMBER_SEGMENT = /^\d+$/;
 
-function nonEmptyString(value: unknown): string | null {
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
-}
-
 function normalizeSemverVersion(version: string): string {
   return normalizeCliVersion(version.trim().replace(/^v/, ""));
 }
@@ -176,8 +173,8 @@ export function makeProviderMaintenanceCapabilities(input: {
           executable: input.updateExecutable,
           args: input.updateArgs,
           lockKey: input.updateLockKey,
-          ...(nonEmptyString(input.updatePathPrepend)
-            ? { pathPrepend: nonEmptyString(input.updatePathPrepend)! }
+          ...((nonEmptyTrimmed(input.updatePathPrepend) ?? null)
+            ? { pathPrepend: (nonEmptyTrimmed(input.updatePathPrepend) ?? null)! }
             : {}),
         };
   return {
@@ -488,7 +485,7 @@ function resolvePackageManagedProviderMaintenance(
   definition: PackageManagedProviderMaintenanceDefinition,
   options?: ProviderMaintenanceCapabilityResolutionOptions,
 ): ProviderMaintenanceCapabilities {
-  const binaryPath = nonEmptyString(options?.binaryPath);
+  const binaryPath = nonEmptyTrimmed(options?.binaryPath) ?? null;
   if (!binaryPath) {
     return makeManualOnlyProviderMaintenanceCapabilities({
       provider: definition.provider,
@@ -497,7 +494,7 @@ function resolvePackageManagedProviderMaintenance(
   }
 
   const commandPaths = [options?.realCommandPath, binaryPath]
-    .map(nonEmptyString)
+    .map((value: unknown) => nonEmptyTrimmed(value) ?? null)
     .filter((value): value is string => value !== null);
 
   for (const commandPath of commandPaths) {
@@ -539,11 +536,11 @@ export const resolveProviderMaintenanceCapabilitiesEffect = Effect.fn(
   definition: PackageManagedProviderMaintenanceDefinition,
   options?: ProviderMaintenanceCapabilityResolutionOptions,
 ) {
-  const binaryPath = nonEmptyString(options?.binaryPath) ?? definition.binaryName;
+  const binaryPath = nonEmptyTrimmed(options?.binaryPath) ?? definition.binaryName;
   const fileSystem = yield* FileSystem.FileSystem;
   if (hasPathSeparator(binaryPath)) {
     const realCommandPath =
-      nonEmptyString(options?.realCommandPath) ??
+      nonEmptyTrimmed(options?.realCommandPath) ??
       (yield* fileSystem.realPath(binaryPath).pipe(Effect.catch(() => Effect.succeed(binaryPath))));
     return resolvePackageManagedProviderMaintenance(definition, {
       ...options,
@@ -643,7 +640,7 @@ const fetchNpmLatestVersion = Effect.fn("fetchNpmLatestVersion")(function* (pack
       return null;
     }
     const payload = (await response.json()) as { version?: unknown };
-    return nonEmptyString(payload.version);
+    return nonEmptyTrimmed(payload.version) ?? null;
   }).pipe(Effect.catch(() => Effect.succeed(null)));
 });
 
@@ -668,8 +665,10 @@ const fetchHomebrewLatestVersion = Effect.fn("fetchHomebrewLatestVersion")(funct
       version?: unknown;
       versions?: { stable?: unknown };
     };
-    return nonEmptyString(
-      source.homebrewKind === "cask" ? payload.version : payload.versions?.stable,
+    return (
+      nonEmptyTrimmed(
+        source.homebrewKind === "cask" ? payload.version : payload.versions?.stable,
+      ) ?? null
     );
   }).pipe(Effect.catch(() => Effect.succeed(null)));
 });

@@ -1,3 +1,5 @@
+import { asPositiveFiniteNumber } from "@glade/shared/transport/payloadValues";
+import { asString } from "@glade/shared/text/text";
 import { asRecord, isRecord } from "@glade/shared/transport/payloadValues";
 import { ApprovalRequestId, EventId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { isToolLifecycleItemType } from "@glade/contracts/provider/runtimeMetadata";
@@ -335,10 +337,6 @@ export function readableReasoningDetail(value: string | undefined): string | und
   return trimmed?.replace(/<!--[\s\S]*?-->/gu, "").trim() ? trimmed : undefined;
 }
 
-function asString(value: unknown): string | undefined {
-  return typeof value === "string" ? value : undefined;
-}
-
 function buildContextWindowActivityPayload(
   event: ProviderRuntimeEvent,
 ): ActivityPayload | undefined {
@@ -367,10 +365,6 @@ function buildContextWindowActivityPayload(
         }
       : {}),
   });
-}
-
-function asPositiveFiniteNumber(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
 }
 
 interface CompactModelUsage {

@@ -1,3 +1,5 @@
+import { nonEmptyTrimmed } from "@glade/shared/text/text";
+import { asFiniteNumber } from "@glade/shared/transport/payloadValues";
 import { asRecord } from "@glade/shared/transport/payloadValues";
 import type { ToolLifecycleItemType } from "@glade/contracts/provider/runtimeMetadata";
 import { stripTrailingToolExitCode as stripTrailingExitCode } from "../features/chat/timeline/toolOutputSummary";
@@ -41,21 +43,9 @@ export interface DeriveWorkLogToolDetailsInput {
   toolTitle?: string | undefined;
 }
 
-function asTrimmedString(value: unknown): string | null {
-  if (typeof value !== "string") {
-    return null;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
-
-function asFiniteNumber(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
-}
-
 function firstString(...values: unknown[]): string | undefined {
   for (const value of values) {
-    const normalized = asTrimmedString(value);
+    const normalized = nonEmptyTrimmed(value) ?? null;
     if (normalized) {
       return normalized;
     }
@@ -103,7 +93,7 @@ function outputText(value: unknown): string | undefined {
 }
 
 function outputExitCode(value: unknown): number | undefined {
-  const normalized = asTrimmedString(value);
+  const normalized = nonEmptyTrimmed(value) ?? null;
   return normalized ? stripTrailingExitCode(normalized).exitCode : undefined;
 }
 

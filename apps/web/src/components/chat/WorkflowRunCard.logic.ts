@@ -1,3 +1,5 @@
+import { asNonEmptyString } from "@glade/shared/text/text";
+import { asFiniteNumber } from "@glade/shared/transport/payloadValues";
 import { asObjectRecord } from "@glade/shared/transport/payloadValues";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
@@ -128,10 +130,6 @@ interface TaskSnapshot {
   finalAgents: WorkflowFinalAgent[] | null;
 }
 
-function asString(value: unknown): string | null {
-  return typeof value === "string" && value.length > 0 ? value : null;
-}
-
 function readUsage(payload: Record<string, unknown>): {
   totalTokens: number | null;
   durationMs: number | null;
@@ -149,8 +147,8 @@ function readPhases(value: unknown): TaskSnapshot["phases"] {
   }
   const phases = value.flatMap((entry) => {
     const record = asObjectRecord(entry);
-    const title = record ? asString(record.title) : null;
-    return record && title ? [{ title, detail: asString(record.detail) }] : [];
+    const title = record ? (asNonEmptyString(record.title) ?? null) : null;
+    return record && title ? [{ title, detail: asNonEmptyString(record.detail) ?? null }] : [];
   });
   return phases.length > 0 ? phases : null;
 }
@@ -166,10 +164,6 @@ function readAgentPhases(value: unknown): Record<string, string> | null {
   return pairs.length > 0 ? Object.fromEntries(pairs) : null;
 }
 
-function asFiniteNumber(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
 function readAgentPlans(value: unknown): Record<string, WorkflowAgentPlanEntry> | null {
   const record = asObjectRecord(value);
   if (!record) {
@@ -182,9 +176,9 @@ function readAgentPlans(value: unknown): Record<string, WorkflowAgentPlanEntry> 
         return [];
       }
       const parsed: WorkflowAgentPlanEntry = {
-        phase: asString(planRecord.phase),
-        model: asString(planRecord.model),
-        effort: asString(planRecord.effort),
+        phase: asNonEmptyString(planRecord.phase) ?? null,
+        model: asNonEmptyString(planRecord.model) ?? null,
+        effort: asNonEmptyString(planRecord.effort) ?? null,
       };
       return parsed.phase || parsed.model || parsed.effort ? [[label, parsed]] : [];
     },
@@ -198,7 +192,7 @@ function readFinalAgents(value: unknown): WorkflowFinalAgent[] | null {
   }
   const agents = value.flatMap((entry) => {
     const record = asObjectRecord(entry);
-    const label = record ? asString(record.label) : null;
+    const label = record ? (asNonEmptyString(record.label) ?? null) : null;
     if (!record || !label) {
       return [];
     }
@@ -206,15 +200,15 @@ function readFinalAgents(value: unknown): WorkflowFinalAgent[] | null {
       {
         label,
         phaseIndex: typeof record.phaseIndex === "number" ? record.phaseIndex : null,
-        phaseTitle: asString(record.phaseTitle),
-        model: asString(record.model),
-        effort: asString(record.effort),
-        state: asString(record.state),
-        tokens: asFiniteNumber(record.tokens),
-        toolCalls: asFiniteNumber(record.toolCalls),
-        durationMs: asFiniteNumber(record.durationMs),
-        lastToolName: asString(record.lastToolName),
-        promptPreview: asString(record.promptPreview),
+        phaseTitle: asNonEmptyString(record.phaseTitle) ?? null,
+        model: asNonEmptyString(record.model) ?? null,
+        effort: asNonEmptyString(record.effort) ?? null,
+        state: asNonEmptyString(record.state) ?? null,
+        tokens: asFiniteNumber(record.tokens) ?? null,
+        toolCalls: asFiniteNumber(record.toolCalls) ?? null,
+        durationMs: asFiniteNumber(record.durationMs) ?? null,
+        lastToolName: asNonEmptyString(record.lastToolName) ?? null,
+        promptPreview: asNonEmptyString(record.promptPreview) ?? null,
       },
     ];
   });
@@ -227,28 +221,28 @@ function readLiveAgents(value: unknown): WorkflowLiveAgent[] | null {
   }
   const agents = value.flatMap((entry): Array<WorkflowLiveAgent> => {
     const record = asObjectRecord(entry);
-    const agentId = record ? asString(record.agentId) : null;
+    const agentId = record ? (asNonEmptyString(record.agentId) ?? null) : null;
     if (!record || !agentId) {
       return [];
     }
-    const state = asString(record.state);
+    const state = asNonEmptyString(record.state) ?? null;
     return [
       {
         agentId,
-        label: asString(record.label),
-        model: asString(record.model),
-        effort: asString(record.effort),
+        label: asNonEmptyString(record.label) ?? null,
+        model: asNonEmptyString(record.model) ?? null,
+        effort: asNonEmptyString(record.effort) ?? null,
         state: state === "running" || state === "completed" ? state : null,
-        tokens: asFiniteNumber(record.tokens),
-        toolCalls: asFiniteNumber(record.toolCalls),
+        tokens: asFiniteNumber(record.tokens) ?? null,
+        toolCalls: asFiniteNumber(record.toolCalls) ?? null,
         recentToolNames: Array.isArray(record.recentToolNames)
           ? record.recentToolNames.filter(
               (name): name is string => typeof name === "string" && name.length > 0,
             )
           : [],
-        promptPreview: asString(record.promptPreview),
-        startedAt: asString(record.startedAt),
-        lastActivityAt: asString(record.lastActivityAt),
+        promptPreview: asNonEmptyString(record.promptPreview) ?? null,
+        startedAt: asNonEmptyString(record.startedAt) ?? null,
+        lastActivityAt: asNonEmptyString(record.lastActivityAt) ?? null,
       },
     ];
   });
@@ -280,7 +274,7 @@ function collectTaskSnapshots(
       continue;
     }
     const payload = asObjectRecord(activity.payload);
-    const taskId = payload ? asString(payload.taskId) : null;
+    const taskId = payload ? (asNonEmptyString(payload.taskId) ?? null) : null;
     if (!payload || !taskId) {
       continue;
     }
@@ -289,12 +283,12 @@ function collectTaskSnapshots(
       snapshots.set(taskId, {
         taskId,
         startedAt: activity.createdAt,
-        description: asString(payload.detail) ?? "Task",
-        taskType: asString(payload.taskType),
-        subagentType: asString(payload.subagentType),
-        workflowName: asString(payload.workflowName),
-        workflowTaskId: asString(payload.workflowTaskId),
-        toolUseId: asString(payload.toolUseId),
+        description: asNonEmptyString(payload.detail) ?? "Task",
+        taskType: asNonEmptyString(payload.taskType) ?? null,
+        subagentType: asNonEmptyString(payload.subagentType) ?? null,
+        workflowName: asNonEmptyString(payload.workflowName) ?? null,
+        workflowTaskId: asNonEmptyString(payload.workflowTaskId) ?? null,
+        toolUseId: asNonEmptyString(payload.toolUseId) ?? null,
         status: "running",
         totalTokens: null,
         durationMs: null,
@@ -326,7 +320,8 @@ function collectTaskSnapshots(
         continue;
       }
       if (snapshot.taskType === "local_workflow") {
-        const description = asString(payload.description) ?? asString(payload.detail);
+        const description =
+          asNonEmptyString(payload.description) ?? asNonEmptyString(payload.detail) ?? null;
         const entry = description ? parseProgressDescription(description) : null;
         if (entry) {
           snapshot.progress.push({ ...entry, at: activity.createdAt });
@@ -336,9 +331,9 @@ function collectTaskSnapshots(
     }
 
     if (activity.kind === "task.updated") {
-      snapshot.runId = asString(payload.workflowRunId) ?? snapshot.runId;
-      snapshot.scriptPath = asString(payload.workflowScriptPath) ?? snapshot.scriptPath;
-      const status = asString(payload.status);
+      snapshot.runId = asNonEmptyString(payload.workflowRunId) ?? snapshot.runId;
+      snapshot.scriptPath = asNonEmptyString(payload.workflowScriptPath) ?? snapshot.scriptPath;
+      const status = asNonEmptyString(payload.status) ?? null;
       if (status === "paused") {
         snapshot.status = "paused";
       } else if (status === "running" || status === "pending") {
@@ -351,7 +346,7 @@ function collectTaskSnapshots(
       continue;
     }
 
-    snapshot.status = completionStatus(asString(payload.status));
+    snapshot.status = completionStatus(asNonEmptyString(payload.status) ?? null);
     snapshot.finalAgents = readFinalAgents(payload.workflowAgents) ?? snapshot.finalAgents;
     const usage = readUsage(payload);
     snapshot.totalTokens = usage.totalTokens ?? snapshot.totalTokens;
