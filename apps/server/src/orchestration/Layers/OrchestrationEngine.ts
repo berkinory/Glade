@@ -73,7 +73,7 @@ import {
 } from "../Services/ProjectionPipeline.ts";
 import { ORCHESTRATION_PROJECTOR_NAMES } from "../projection/projectorRegistration.ts";
 import { ProjectionSnapshotQuery } from "../Services/ProjectionSnapshotQuery.ts";
-import { REQUIRED_SNAPSHOT_PROJECTORS } from "./ProjectionSnapshotQuery.ts";
+import { REQUIRED_SNAPSHOT_PROJECTORS } from "../projection/snapshotCursor.ts";
 import {
   OrchestrationEngineService,
   type OrchestrationEngineShape,

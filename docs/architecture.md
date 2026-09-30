@@ -75,7 +75,7 @@ The HTTP/WebSocket layer also owns:
 
 `serverLayers.ts` assembles the long-lived service graph used by the server runtime.
 
-`orchestration/projection` owns domain projectors, replay registration, history pruning and attachment side effects. The projection pipeline Layer composes these handlers and owns transaction boundaries, phase cursors and replay batching. Attachment filesystem cleanup remains outside the committed SQLite projection transaction.
+`orchestration/projection` owns domain projectors, replay registration, history pruning and attachment side effects. The projection pipeline Layer composes these handlers and owns transaction boundaries, phase cursors and replay batching. Attachment filesystem cleanup remains outside the committed SQLite projection transaction. Snapshot query controllers separate row queries, row decoding, model assembly, project lookup and thread detail. They retain shared SQLite transaction ownership, bounded reads, projection cursor fences and transcript validation after transaction commit.
 
 `orchestration/providerCommands` owns focused controllers for projected thread access, session configuration, human responses, queued turns, task control, conversation edits and naming, turn dispatch, context bootstrap, compaction, goal continuation and durable intent delivery. The reactor Layer composes these controllers and owns their maps, queues, references and delivery semaphore. Controllers receive the same resources and their actual dependencies explicitly. The delivery reconciler and compaction recovery flag use references; the recovery flag and accepted startup turns settle in one atomic update. The configuration tag lives in `orchestration/Services`.
 
