@@ -5,7 +5,7 @@ import {
   type TerminalCliKind,
 } from "@glade/shared/threads/terminalThreads";
 
-import { runProcess } from "../processRunner";
+import { runProcess } from "../platform/processRunner";
 import { parseProcessChildrenMap } from "../platform/processTreeController";
 import { type ProcessChildrenMap } from "../platform/processTreeModel";
 import { captureWindowsProcessChildrenMap } from "../platform/windowsProcessSnapshot";

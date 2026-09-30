@@ -21,7 +21,7 @@ import {
   parseGitHubRepositoryNameWithOwnerFromRemoteUrl,
 } from "@glade/shared/git/githubRepository";
 
-import { runProcess } from "../../processRunner";
+import { runProcess } from "../../platform/processRunner";
 import { makeKeyedSingleFlightCache } from "../../pullRequests/KeyedSingleFlightCache";
 import { GitHubCliError } from "../Errors.ts";
 import {

@@ -30,7 +30,7 @@ import {
   OrchestrationProjectionPipeline,
   type OrchestrationProjectionPipelineShape,
 } from "../Services/ProjectionPipeline.ts";
-import { ServerConfig } from "../../config.ts";
+import { ServerConfig } from "../../server/config.ts";
 import { ORCHESTRATION_EVENT_PUBSUB_CAPACITY } from "../orchestrationAdmission.ts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 

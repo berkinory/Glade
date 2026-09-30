@@ -50,16 +50,16 @@ import {
 } from "../../git/textGenerationSelection.ts";
 import { OrchestrationEngineService } from "../../orchestration/Services/OrchestrationEngine.ts";
 import { ProjectionSnapshotQuery } from "../../orchestration/Services/ProjectionSnapshotQuery.ts";
-import { providerDisabledSettingsMessage } from "../../provider/enabledProviderAdapter.ts";
+import { providerDisabledSettingsMessage } from "../../provider/core/enabledProviderAdapter.ts";
 import { threadHasInFlightTurn } from "../../orchestration/commandInvariants.ts";
 import {
   AutomationRepository,
   type MarkAutomationRunFailedResult,
 } from "../../persistence/Services/AutomationRepository.ts";
 import { ProjectionTurnRepository } from "../../persistence/Services/ProjectionTurns.ts";
-import { runWorktreeSetupScript } from "../../worktreeSetup.ts";
+import { runWorktreeSetupScript } from "../../git/worktreeSetup.ts";
 import type { ProjectionTurn } from "../../persistence/Services/ProjectionTurns.ts";
-import { ServerSettingsService } from "../../serverSettings.ts";
+import { ServerSettingsService } from "../../settings/serverSettings.ts";
 import { AutomationServiceError } from "../Errors.ts";
 import { AutomationService, type AutomationServiceShape } from "../Services/AutomationService.ts";
 import { buildAutomationProposalActivity } from "../proposalActivity.ts";

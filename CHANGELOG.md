@@ -12,6 +12,8 @@
 
 ### Improved
 
+- Server source files and their tests live with their owning domains. The root keeps the CLI entry and application composition; bundled recovery and dependency-smoke entry names remain unchanged.
+
 - Provider usage subprocesses use the shared executable boundary, and worktree setup uses the server's platform-owned shell execution policy. Timeouts, output limits and shell arguments retain their existing values.
 
 - Scalar payload readers share explicit string, numeric and array policies. Untrimmed text, whitespace checks, numeric-string coercion and caller absence values keep their existing semantics.

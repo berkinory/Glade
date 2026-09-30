@@ -69,7 +69,7 @@ The `afterSequence` field is optional on the subscribe input, so an older client
 
 Cursor state also gates sidebar prewarming: a speculative prewarm subscription is only cheap when it can resume from a cursor, so threads without cached detail are not prewarmed from scroll position and pay their first full snapshot when actually opened. That trades a slightly colder first open of a never-viewed thread for not spending the per-client thread-stream budget on full-history streams the user may never look at.
 
-[1]: ../apps/server/src/nodeHttpServer.ts
-[2]: ../apps/server/src/wsCompatibility.ts
-[3]: ../apps/server/src/staticAssets.ts
+[1]: ../apps/server/src/server/http/nodeHttpServer.ts
+[2]: ../apps/server/src/server/ws/wsCompatibility.ts
+[3]: ../apps/server/src/server/http/staticAssets.ts
 [4]: ../apps/web/src/threadDetailResumeCursors.ts

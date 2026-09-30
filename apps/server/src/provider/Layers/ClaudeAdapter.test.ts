@@ -28,16 +28,16 @@ import { Effect, Exit, Fiber, Layer, Random, Stream } from "effect";
 
 import { afterEach, beforeEach, vi } from "vitest";
 
-import { attachmentRelativePath } from "../../attachmentStore.ts";
+import { attachmentRelativePath } from "../../attachments/attachmentStore.ts";
 import { GLADE_HARNESS_POLICY_MARKER } from "../../agentGateway/harnessPolicy.ts";
 import {
   AgentGatewayCredentials,
   type AgentGatewayCredentialsShape,
 } from "../../agentGateway/Services/AgentGatewayCredentials.ts";
-import { ServerConfig } from "../../config.ts";
-import { MINIMUM_CLAUDE_AUTO_MODE_CLI_VERSION } from "../claudeCliVersion.ts";
+import { ServerConfig } from "../../server/config.ts";
+import { MINIMUM_CLAUDE_AUTO_MODE_CLI_VERSION } from "../claude/claudeCliVersion.ts";
 
-import { ProviderAdapterRequestError, ProviderAdapterValidationError } from "../Errors.ts";
+import { ProviderAdapterRequestError, ProviderAdapterValidationError } from "../core/Errors.ts";
 import { ClaudeAdapter } from "../Services/ClaudeAdapter.ts";
 import {
   buildEmbeddedClaudeSystemPromptAppend,

@@ -21,7 +21,7 @@ import type {
   ProviderAdapterError,
   ProviderUnsupportedError,
   ProviderValidationError,
-} from "../Errors.ts";
+} from "../core/Errors.ts";
 
 export type ProviderDiscoveryError =
   | ProviderValidationError

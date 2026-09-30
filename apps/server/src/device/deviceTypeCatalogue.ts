@@ -2,7 +2,7 @@ import * as path from "node:path";
 
 import type { DeviceFamily, DeviceGeometry } from "@glade/contracts/device/device";
 
-import type { runProcess } from "../processRunner.ts";
+import type { runProcess } from "../platform/processRunner.ts";
 
 interface DeviceTypeProfile {
   readonly family: DeviceFamily;

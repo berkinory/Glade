@@ -6,7 +6,7 @@ import { GitManagerLive } from "./Layers/GitManager";
 import { GitStatusBroadcasterLive } from "./Layers/GitStatusBroadcaster";
 import { CodexTextGenerationServiceLive } from "./Layers/CodexTextGeneration";
 import { ProviderTextGenerationLive } from "./Layers/ProviderTextGeneration";
-import { ServerSettingsLive } from "../serverSettings";
+import { ServerSettingsLive } from "../settings/serverSettings";
 
 export const TextGenerationLayerLive = ProviderTextGenerationLive.pipe(
   Layer.provide(CodexTextGenerationServiceLive),

@@ -70,7 +70,7 @@ import {
 import { isTemporaryWorktreeBranch, WORKTREE_BRANCH_PREFIX } from "@glade/shared/git/git";
 import { claudeSelectionRequiresRestart, resolveApiModelId } from "@glade/shared/provider/model";
 import { assessClaudeCache } from "@glade/shared/provider/claudeCache";
-import { claudeCacheForModel } from "../../provider/claudeCacheObservation.ts";
+import { claudeCacheForModel } from "../../provider/claude/claudeCacheObservation.ts";
 import { providerSupportsNativeTurnSteering } from "@glade/shared/provider/providerMetadata";
 import {
   formatProviderDeliveryBlockDetail,
@@ -92,23 +92,23 @@ import {
   ProviderAdapterRequestError,
   ProviderAdapterValidationError,
   ProviderServiceError,
-} from "../../provider/Errors.ts";
-import { buildInlineSkillInstructions } from "../../provider/skillPromptInjection.ts";
+} from "../../provider/core/Errors.ts";
+import { buildInlineSkillInstructions } from "../../provider/core/skillPromptInjection.ts";
 import {
   PROVIDER_DEBUG_MODE_PROMPT_PREFIX,
   withProviderDebugModePrompt,
-} from "../../provider/debugMode.ts";
+} from "../../provider/core/debugMode.ts";
 import {
   activeThreadGoal,
   buildGoalContinuationInput,
   providerGoalPromptOverheadChars,
   withProviderGoalPrompt,
-} from "../../provider/goalMode.ts";
+} from "../../provider/core/goalMode.ts";
 import {
   appendThreadMentionContextBlocks,
   resolveThreadMentionPromptProjection,
   threadMentionContextSuffix,
-} from "../../provider/threadMentionContext.ts";
+} from "../../provider/core/threadMentionContext.ts";
 import {
   TextGeneration,
   type BranchNameGenerationInput,
@@ -118,8 +118,8 @@ import { TextGenerationError } from "../../git/Errors.ts";
 import { resolveTextGenerationInputForSelection } from "../../git/textGenerationSelection.ts";
 import { ProviderService } from "../../provider/Services/ProviderService.ts";
 import { ProviderHealth } from "../../provider/Services/ProviderHealth.ts";
-import { providerDisabledSettingsMessage } from "../../provider/enabledProviderAdapter.ts";
-import { resolveProviderDispatchAttachments } from "../../provider/providerAttachmentPaths.ts";
+import { providerDisabledSettingsMessage } from "../../provider/core/enabledProviderAdapter.ts";
+import { resolveProviderDispatchAttachments } from "../../provider/core/providerAttachmentPaths.ts";
 import { OrchestrationEventDeliveryRepositoryLive } from "../../persistence/Layers/OrchestrationEventDeliveries.ts";
 import { ProjectionPendingInteractionRepositoryLive } from "../../persistence/Layers/ProjectionPendingInteractions.ts";
 import { ProviderRuntimeEventRepositoryLive } from "../../persistence/Layers/ProviderRuntimeEvents.ts";
@@ -136,10 +136,10 @@ import {
 } from "../../persistence/Services/OrchestrationEventDeliveries.ts";
 import { QueuedTurnPromotionRepository } from "../../persistence/Services/QueuedTurnPromotions.ts";
 import { ManagedAttachmentRepository } from "../../persistence/Services/ManagedAttachments.ts";
-import { ServerConfig } from "../../config.ts";
-import { ServerSettingsService } from "../../serverSettings.ts";
+import { ServerConfig } from "../../server/config.ts";
+import { ServerSettingsService } from "../../settings/serverSettings.ts";
 import { providerStartOptionsFromServerSettings } from "../../settings/settingsPatches";
-import { clearWorkspaceIndexCache } from "../../workspaceEntries.ts";
+import { clearWorkspaceIndexCache } from "../../workspace/workspaceEntries.ts";
 import {
   buildPriorTranscriptBootstrapText,
   buildHandoffBootstrapText,

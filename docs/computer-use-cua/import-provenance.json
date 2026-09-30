@@ -115,12 +115,12 @@
     },
     {
       "status": "M",
-      "file": "apps/server/src/codexAppServerManager.test.ts",
+      "file": "apps/server/src/provider/codex/codexAppServerManager.test.ts",
       "source": "d9c1bdab0a5f0cdd51ade75adc62a0c44c473a5a"
     },
     {
       "status": "M",
-      "file": "apps/server/src/codexAppServerManager.ts",
+      "file": "apps/server/src/provider/codex/codexAppServerManager.ts",
       "source": "d9c1bdab0a5f0cdd51ade75adc62a0c44c473a5a"
     },
     {
@@ -130,7 +130,7 @@
     },
     {
       "status": "M",
-      "file": "apps/server/src/codexAppServerTransport.ts",
+      "file": "apps/server/src/provider/codex/codexAppServerTransport.ts",
       "source": "d9c1bdab0a5f0cdd51ade75adc62a0c44c473a5a"
     },
     {
@@ -375,7 +375,7 @@
     },
     {
       "status": "M",
-      "file": "apps/server/src/effectServer.ts",
+      "file": "apps/server/src/server/http/effectServer.ts",
       "source": "d9c1bdab0a5f0cdd51ade75adc62a0c44c473a5a"
     },
     {
@@ -455,7 +455,7 @@
     },
     {
       "status": "A",
-      "file": "apps/server/src/pngHeader.ts",
+      "file": "apps/server/src/attachments/images/pngHeader.ts",
       "source": "d9c1bdab0a5f0cdd51ade75adc62a0c44c473a5a"
     },
     {
@@ -550,7 +550,7 @@
     },
     {
       "status": "M",
-      "file": "apps/server/src/wsRpc.ts",
+      "file": "apps/server/src/server/ws/wsRpc.ts",
       "source": "d9c1bdab0a5f0cdd51ade75adc62a0c44c473a5a"
     },
     {

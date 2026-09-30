@@ -53,7 +53,7 @@ import {
 import { nonEmptyTrimmed } from "@glade/shared/text/text";
 import { computerApprovalGate } from "../../computer/ComputerApprovalGate.ts";
 
-import { type ProviderAdapterError, ProviderValidationError } from "../Errors.ts";
+import { type ProviderAdapterError, ProviderValidationError } from "../core/Errors.ts";
 import type { ProviderAdapterShape } from "../Services/ProviderAdapter.ts";
 import { ProviderAdapterRegistry } from "../Services/ProviderAdapterRegistry.ts";
 import { ProviderService, type ProviderServiceShape } from "../Services/ProviderService.ts";
@@ -71,20 +71,20 @@ import {
 import {
   classifyTerminalTurnApplicability,
   isStartedTurnApplicable,
-} from "../terminalTurnApplicability.ts";
-import { makeProviderLifecycleCoordinator } from "../providerLifecycleCoordinator.ts";
-import { makeKeyedLock } from "../keyedLock.ts";
-import { carryProviderAttachmentPaths } from "../providerAttachmentPaths.ts";
+} from "../core/terminalTurnApplicability.ts";
+import { makeProviderLifecycleCoordinator } from "../core/providerLifecycleCoordinator.ts";
+import { makeKeyedLock } from "../core/keyedLock.ts";
+import { carryProviderAttachmentPaths } from "../core/providerAttachmentPaths.ts";
 import {
   observeProviderStartup,
   ProviderStartupLifecycle,
   startupPhaseDurations,
-} from "../providerStartupLifecycle.ts";
-import { settleConcurrentTeardowns } from "../settleConcurrentTeardowns.ts";
+} from "../core/providerStartupLifecycle.ts";
+import { settleConcurrentTeardowns } from "../core/settleConcurrentTeardowns.ts";
 import {
   makeProviderRuntimeEventPumpHealthRegistry,
   runProviderRuntimeEventPump,
-} from "../providerRuntimeEventPump.ts";
+} from "../core/providerRuntimeEventPump.ts";
 import {
   AGENT_GATEWAY_CREDENTIAL_ROTATION_REQUIRED,
   AGENT_GATEWAY_TURN_AUTHORITY_RETIRED,

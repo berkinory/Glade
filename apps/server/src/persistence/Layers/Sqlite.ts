@@ -14,9 +14,12 @@ import {
   type MigrationRecoveryMarker,
 } from "../MigrationBackup.ts";
 import { createMigrationSchemaTooNewStartupBlockError } from "../MigrationSchemaTooNewStartupBlock.ts";
-import { ensurePrivateFileSync, repairPrivateFile } from "../../privatePathPermissions.ts";
+import {
+  ensurePrivateFileSync,
+  repairPrivateFile,
+} from "../../platform/filesystem/privatePathPermissions.ts";
 import { resolveSqliteMemoryBudget } from "../sqliteMemoryBudget.ts";
-import { ServerConfig } from "../../config.ts";
+import { ServerConfig } from "../../server/config.ts";
 import {
   acquireDatabaseLifecycleLock,
   releaseDatabaseLifecycleLock,

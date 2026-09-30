@@ -41,22 +41,22 @@ import {
   isCodexCliVersionSupported,
   MINIMUM_CODEX_AUTO_REVIEW_CLI_VERSION,
   parseCodexCliVersion,
-} from "../codexCliVersion";
-import { ServerConfig } from "../../config";
+} from "../codex/codexCliVersion";
+import { ServerConfig } from "../../server/config";
 import {
   buildProviderChildEnvironment,
   type ProviderChildKind,
-} from "../../providerChildEnvironment.ts";
-import { ServerSettingsService } from "../../serverSettings";
-import { isWindowsShellCommandMissingResult } from "../../shell-command-detection";
+} from "../core/providerChildEnvironment.ts";
+import { ServerSettingsService } from "../../settings/serverSettings";
+import { isWindowsShellCommandMissingResult } from "../../platform/shell-command-detection";
 import {
   claudeAuthMetadata,
   isStructuredClaudeAuthFalseNegativeCandidate,
   parseClaudeAuthStatusFromOutput,
-} from "../claudeAuthStatus";
-import { acquireClaudeAuthStatusLock } from "../claudeAuthStatusLock";
-import { loadClaudeAgentSdk } from "../claudeAgentSdk.ts";
-import { buildClaudeProcessEnv, readClaudeCliCredentialsSummary } from "../claudeProcessEnv";
+} from "../claude/claudeAuthStatus";
+import { acquireClaudeAuthStatusLock } from "../claude/claudeAuthStatusLock";
+import { loadClaudeAgentSdk } from "../claude/claudeAgentSdk.ts";
+import { buildClaudeProcessEnv, readClaudeCliCredentialsSummary } from "../claude/claudeProcessEnv";
 import {
   detailFromResult,
   extractAuthBoolean,
@@ -65,16 +65,16 @@ import {
   PROVIDER_COMMAND_TIMEOUT_DETAIL,
   toTitleCaseWords,
   type CommandResult,
-} from "../providerCliOutput";
-import { probeProviderCliVersion } from "../providerCliVersionProbe";
+} from "../core/providerCliOutput";
+import { probeProviderCliVersion } from "../core/providerCliVersionProbe";
 import { ProviderHealth, type ProviderHealthShape } from "../Services/ProviderHealth";
 import {
   orderProviderStatuses,
   readProviderStatusCache,
   resolveProviderStatusCachePath,
   writeProviderStatusCache,
-} from "../providerStatusCache";
-import { makeProviderMaintenanceCommandCoordinator } from "../providerMaintenanceCommandCoordinator";
+} from "../core/providerStatusCache";
+import { makeProviderMaintenanceCommandCoordinator } from "../core/providerMaintenanceCommandCoordinator";
 import {
   enrichProviderStatusWithVersionAdvisory,
   makeProviderMaintenanceCapabilities,
@@ -82,10 +82,10 @@ import {
   parseGenericCliVersion,
   resolveProviderMaintenanceCapabilitiesEffect,
   type PackageManagedProviderMaintenanceDefinition,
-} from "../providerMaintenance";
-import { isClaudeAutoModeCliVersionSupported } from "../claudeCliVersion.ts";
+} from "../core/providerMaintenance";
+import { isClaudeAutoModeCliVersionSupported } from "../claude/claudeCliVersion.ts";
 import { collectUint8StreamText } from "../../stream/collectUint8StreamText";
-import { buildCodexProcessEnv } from "../../codexProcessEnv.ts";
+import { buildCodexProcessEnv } from "../codex/codexProcessEnv.ts";
 
 class ProviderHealthProbeError extends Error {
   readonly _tag = "ProviderHealthProbeError";

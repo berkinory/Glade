@@ -6,8 +6,8 @@ import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { Effect, Layer } from "effect";
 
-import { providerDisabledSettingsMessage } from "../../provider/enabledProviderAdapter.ts";
-import { ServerSettingsService } from "../../serverSettings.ts";
+import { providerDisabledSettingsMessage } from "../../provider/core/enabledProviderAdapter.ts";
+import { ServerSettingsService } from "../../settings/serverSettings.ts";
 import { TextGenerationError } from "../Errors.ts";
 import * as TextGen from "../Services/TextGeneration.ts";
 import * as Selection from "../textGenerationSelection.ts";

@@ -17,7 +17,7 @@ import {
   DEFAULT_RUNTIME_RECONCILIATION_STALE_AFTER_MS,
   planProviderRuntimeReconciliation,
   type ProviderRuntimeReconciliationPlan,
-} from "../providerRuntimeReconciliation.ts";
+} from "../core/providerRuntimeReconciliation.ts";
 import {
   ProviderRuntimeReconciler,
   type ProviderRuntimeReconcilerShape,

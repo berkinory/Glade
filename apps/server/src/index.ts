@@ -5,13 +5,16 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 
 import { CliConfig, gladeCli } from "./main";
-import { OpenLive } from "./open";
+import { OpenLive } from "./workspace/editor/open";
 import { Command } from "effect/unstable/cli";
 import { version } from "../package.json" with { type: "json" };
-import { ServerLive } from "./effectServer";
+import { ServerLive } from "./server/http/effectServer";
 import { NetService } from "@glade/shared/platform/Net";
 import { FetchHttpClient } from "effect/unstable/http";
-import { consumeDesktopParentInput, withDesktopParentLifetime } from "./desktopParentLifetime";
+import {
+  consumeDesktopParentInput,
+  withDesktopParentLifetime,
+} from "./server/lifecycle/desktopParentLifetime";
 
 const desktopParentInput = consumeDesktopParentInput(process.env, () => process.stdin);
 

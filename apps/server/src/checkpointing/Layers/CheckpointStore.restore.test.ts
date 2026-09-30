@@ -16,7 +16,7 @@ import { CheckpointRef } from "@glade/contracts/core/baseSchemas";
 import { Effect, Layer, ManagedRuntime } from "effect";
 import { expect, it } from "vitest";
 
-import { ServerConfig } from "../../config.ts";
+import { ServerConfig } from "../../server/config.ts";
 import { GitCoreLive } from "../../git/Layers/GitCore.ts";
 import { CheckpointStore } from "../Services/CheckpointStore.ts";
 import { CheckpointStoreLive } from "./CheckpointStore.ts";

@@ -10,7 +10,7 @@ import { describe, expect } from "vitest";
 import { GitCoreLive } from "./GitCore.ts";
 import { GitCore } from "../Services/GitCore.ts";
 import { GitCheckoutDirtyWorktreeError, GitCommandError } from "../Errors.ts";
-import { ServerConfig } from "../../config.ts";
+import { ServerConfig } from "../../server/config.ts";
 
 const ServerConfigLayer = ServerConfig.layerTest(process.cwd(), {
   prefix: "glade-git-core-test-",

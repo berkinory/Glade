@@ -9,14 +9,14 @@ import type { FileSystem, Path } from "effect";
 import { Data, Effect, Option } from "effect";
 
 import { resolveThreadWorkspaceCwd } from "../checkpointing/Utils";
-import { loadClaudeAgentSdk } from "../provider/claudeAgentSdk.ts";
-import { ensureProviderEnabled } from "../provider/enabledProviderAdapter";
+import { loadClaudeAgentSdk } from "../provider/claude/claudeAgentSdk.ts";
+import { ensureProviderEnabled } from "../provider/core/enabledProviderAdapter";
 import type { OrchestrationEngineShape } from "./Services/OrchestrationEngine";
 import type { ProjectionSnapshotQueryShape } from "./Services/ProjectionSnapshotQuery";
 import type { ProviderThreadSnapshot } from "../provider/Services/ProviderAdapter";
 import type { ProviderAdapterRegistryShape } from "../provider/Services/ProviderAdapterRegistry";
 import type { ProviderServiceShape } from "../provider/Services/ProviderService";
-import type { ServerSettingsShape } from "../serverSettings";
+import type { ServerSettingsShape } from "../settings/serverSettings";
 import { parseManagedWorktreeWorkspaceRoot } from "../workspace/managedWorktree";
 import { mapClaudeSessionMessages, mapCodexSnapshotMessages } from "./importedThreadMessages";
 

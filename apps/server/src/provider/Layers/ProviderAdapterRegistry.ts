@@ -1,10 +1,10 @@
 import { Effect, Layer } from "effect";
 
-import { ProviderUnsupportedError, type ProviderAdapterError } from "../Errors.ts";
+import { ProviderUnsupportedError, type ProviderAdapterError } from "../core/Errors.ts";
 import {
   assertProviderAdapterConformance,
   providerAdapterRegistrationIssues,
-} from "../providerAdapterConformance.ts";
+} from "../core/providerAdapterConformance.ts";
 import type { ProviderAdapterShape } from "../Services/ProviderAdapter.ts";
 import {
   ProviderAdapterRegistry,

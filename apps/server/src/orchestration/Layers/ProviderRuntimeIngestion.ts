@@ -59,15 +59,15 @@ import {
   generatedImageMarkdown,
   generatedImagePathFromRuntimeEvent,
   isCodexGeneratedImageArtifact,
-} from "../../codexGeneratedImages.ts";
+} from "../../provider/codex/codexGeneratedImages.ts";
 import { parseCheckpointFilesFromUnifiedDiff } from "../../checkpointing/Diffs.ts";
 import { ProviderService } from "../../provider/Services/ProviderService.ts";
 import { ComputerService } from "../../computer/Services/ComputerService.ts";
-import { activeThreadGoal } from "../../provider/goalMode.ts";
+import { activeThreadGoal } from "../../provider/core/goalMode.ts";
 import {
   classifyTerminalTurnApplicability,
   isStartedTurnApplicable,
-} from "../../provider/terminalTurnApplicability.ts";
+} from "../../provider/core/terminalTurnApplicability.ts";
 import { ProjectionTurnRepository } from "../../persistence/Services/ProjectionTurns.ts";
 import { ProjectionTurnRepositoryLive } from "../../persistence/Layers/ProjectionTurns.ts";
 import {

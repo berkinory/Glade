@@ -23,7 +23,7 @@ import { GitCoreLive } from "./GitCore.ts";
 import { GitCore } from "../Services/GitCore.ts";
 import { createGitHubCliWithFakeGh, type FakeGhScenario } from "../testing/fakeGitHubCli.ts";
 import { makeGitManager } from "./GitManager.ts";
-import { ServerConfig } from "../../config.ts";
+import { ServerConfig } from "../../server/config.ts";
 
 interface FakeGitTextGeneration {
   generateCommitMessage: (input: {

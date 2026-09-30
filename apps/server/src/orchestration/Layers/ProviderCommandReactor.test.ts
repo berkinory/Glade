@@ -47,13 +47,13 @@ import {
   ComputerService,
   type ComputerServiceShape,
 } from "../../computer/Services/ComputerService.ts";
-import { deriveServerPaths, ServerConfig } from "../../config.ts";
+import { deriveServerPaths, ServerConfig } from "../../server/config.ts";
 import { TextGenerationError } from "../../git/Errors.ts";
 import {
   ProviderAdapterProcessError,
   ProviderAdapterRequestError,
   ProviderAdapterValidationError,
-} from "../../provider/Errors.ts";
+} from "../../provider/core/Errors.ts";
 import { OrchestrationEventStoreLive } from "../../persistence/Layers/OrchestrationEventStore.ts";
 import { OrchestrationCommandReceiptRepositoryLive } from "../../persistence/Layers/OrchestrationCommandReceipts.ts";
 import { OrchestrationEventDeliveryRepositoryLive } from "../../persistence/Layers/OrchestrationEventDeliveries.ts";
@@ -95,9 +95,9 @@ import {
 } from "../Services/OrchestrationEngine.ts";
 import { OrchestrationCommandInvariantError, type OrchestrationDispatchError } from "../Errors.ts";
 import { ProviderCommandReactor } from "../Services/ProviderCommandReactor.ts";
-import { attachmentRelativePath } from "../../attachmentStore.ts";
-import { resolveProviderAttachmentPath } from "../../provider/providerAttachmentPaths.ts";
-import { ServerSettingsService } from "../../serverSettings.ts";
+import { attachmentRelativePath } from "../../attachments/attachmentStore.ts";
+import { resolveProviderAttachmentPath } from "../../provider/core/providerAttachmentPaths.ts";
+import { ServerSettingsService } from "../../settings/serverSettings.ts";
 import { checkpointRefForThreadTurn } from "../../checkpointing/Utils.ts";
 import {
   CheckpointStore,

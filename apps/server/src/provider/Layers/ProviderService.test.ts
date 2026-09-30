@@ -36,7 +36,7 @@ import {
   ProviderUnsupportedError,
   ProviderValidationError,
   type ProviderAdapterError,
-} from "../Errors.ts";
+} from "../core/Errors.ts";
 import type { ProviderAdapterShape } from "../Services/ProviderAdapter.ts";
 import { ProviderAdapterRegistry } from "../Services/ProviderAdapterRegistry.ts";
 import { ProviderService } from "../Services/ProviderService.ts";

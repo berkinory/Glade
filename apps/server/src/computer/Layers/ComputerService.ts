@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { ServerConfig } from "../../config.ts";
+import { ServerConfig } from "../../server/config.ts";
 import { Effect, Layer, Option } from "effect";
 import type { ComputerAvailability } from "@glade/contracts/computer/computer";
 

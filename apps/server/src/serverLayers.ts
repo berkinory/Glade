@@ -20,11 +20,11 @@ import { ThreadDeletionReactorLive } from "./orchestration/Layers/ThreadDeletion
 import { TurnCheckpointCoordinatorLive } from "./orchestration/Layers/TurnCheckpointCoordinator";
 import { OrchestrationLayerLive } from "./orchestration/runtimeLayer";
 
-import { DevServerManagerLive } from "./devServerManager";
+import { DevServerManagerLive } from "./workspace/devServers/devServerManager";
 import { DeviceServiceLive } from "./device/Layers/DeviceService";
 import type { DeviceService } from "./device/Services/DeviceService";
 import { ComputerServiceLive } from "./computer/Layers/ComputerService";
-import { KeybindingsLive } from "./keybindings";
+import { KeybindingsLive } from "./settings/keybindings";
 import { GitCoreLive } from "./git/Layers/GitCore";
 import { GitLayerLive, TextGenerationLayerLive } from "./git/runtimeLayer";
 import { TerminalLayerLive } from "./terminal/runtimeLayer";
@@ -34,11 +34,11 @@ import { ServerAuthLive } from "./auth/Layers/ServerAuth";
 import { ServerAuthPolicyLive } from "./auth/Layers/ServerAuthPolicy";
 import { ServerSecretStoreLive } from "./auth/Layers/ServerSecretStore";
 import { SessionCredentialServiceLive } from "./auth/Layers/SessionCredentialService";
-import { ProfileStatsQueryLive } from "./profileStats";
-import { ProfileStatsArchiveLive } from "./profileStatsArchive";
-import { ServerLifecycleEventsLive } from "./serverLifecycleEvents";
-import { ServerRuntimeStartupLive } from "./serverRuntimeStartup";
-import { ServerSettingsLive } from "./serverSettings";
+import { ProfileStatsQueryLive } from "./diagnostics/profileStats";
+import { ProfileStatsArchiveLive } from "./diagnostics/profileStatsArchive";
+import { ServerLifecycleEventsLive } from "./server/lifecycle/serverLifecycleEvents";
+import { ServerRuntimeStartupLive } from "./server/runtime/serverRuntimeStartup";
+import { ServerSettingsLive } from "./settings/serverSettings";
 import { WorkspaceLayerLive } from "./workspace/runtimeLayer";
 import { ProjectFaviconResolverLive } from "./project/Layers/ProjectFaviconResolver";
 import { ServerEnvironmentLive } from "./environment/Layers/ServerEnvironment";
@@ -47,10 +47,10 @@ import { ProjectionTurnRepositoryLive } from "./persistence/Layers/ProjectionTur
 import { OrchestrationEventDeliveryRepositoryLive } from "./persistence/Layers/OrchestrationEventDeliveries";
 import { ProviderRuntimeEventRepositoryLive } from "./persistence/Layers/ProviderRuntimeEvents";
 import { ThreadDiagnosticsQueryLive } from "./diagnostics/Layers/ThreadDiagnosticsQuery";
-import { ManagedAttachmentCleanupLive } from "./managedAttachmentCleanup";
+import { ManagedAttachmentCleanupLive } from "./attachments/managedAttachmentCleanup";
 import { PullRequestServiceLive } from "./pullRequests/Layers/PullRequestService";
 import { ProviderHealthLive } from "./provider/Layers/ProviderHealth";
-import { makeServerProviderLayer } from "./provider/runtimeLayer";
+import { makeServerProviderLayer } from "./provider/core/runtimeLayer";
 
 function provideThreadDeletionReactorDeviceService<
   ReactorServices,

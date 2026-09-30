@@ -11,11 +11,11 @@ import {
   isSensitiveKey,
   REDACTED_SENSITIVE_VALUE,
   redactSensitiveJsonFields,
-} from "../sensitiveKeys.ts";
+} from "../diagnostics/sensitiveKeys.ts";
 import {
   sanitizeUnmappedProviderData,
   sanitizeUnmappedProviderDetail,
-} from "../provider/unmappedProviderEvents.ts";
+} from "../provider/core/unmappedProviderEvents.ts";
 
 const MAX_ACTIVITY_DATA_JSON_CHARS = 16_000;
 const MAX_ACTIVITY_DATA_STRING_CHARS = 2_000;

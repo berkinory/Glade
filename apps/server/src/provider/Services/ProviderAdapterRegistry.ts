@@ -2,7 +2,7 @@ import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { ServiceMap } from "effect";
 import type { Effect } from "effect";
 
-import type { ProviderAdapterError, ProviderUnsupportedError } from "../Errors.ts";
+import type { ProviderAdapterError, ProviderUnsupportedError } from "../core/Errors.ts";
 import type { ProviderAdapterShape } from "./ProviderAdapter.ts";
 
 export interface ProviderAdapterRegistryShape {

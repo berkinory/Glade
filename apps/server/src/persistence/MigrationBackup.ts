@@ -24,7 +24,10 @@ import {
   syncDirectoryEntry,
   syncRegularFile,
 } from "../platform/filesystemPlatform";
-import { ensurePrivateDirectorySync, repairPrivateFile } from "../privatePathPermissions.ts";
+import {
+  ensurePrivateDirectorySync,
+  repairPrivateFile,
+} from "../platform/filesystem/privatePathPermissions.ts";
 import { withDatabaseLifecycleLock } from "./DatabaseLifecycleLock.ts";
 import {
   createMigrationDivergenceConsentChallenge,

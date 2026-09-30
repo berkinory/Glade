@@ -11,7 +11,7 @@ import {
   searchLocalEntries,
   searchWorkspaceContent,
   searchWorkspaceEntries,
-} from "../../workspaceEntries";
+} from "../workspaceEntries";
 import { toWorkspaceEntriesError, WorkspaceEntries } from "../Services/WorkspaceEntries";
 
 export const WorkspaceEntriesLive = Layer.succeed(WorkspaceEntries, {

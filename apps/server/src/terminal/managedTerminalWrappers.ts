@@ -15,7 +15,7 @@ import {
   ensurePrivateDirectorySync,
   PRIVATE_EXECUTABLE_FILE_MODE,
   PRIVATE_FILE_MODE,
-} from "../privatePathPermissions";
+} from "../platform/filesystem/privatePathPermissions";
 
 export interface ManagedTerminalWrapperState {
   binDir: string | null;

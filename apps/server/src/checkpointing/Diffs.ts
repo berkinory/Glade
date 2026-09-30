@@ -1,7 +1,7 @@
 import type { OrchestrationCheckpointFile } from "@glade/contracts/orchestration/threadEntities";
 import { Effect } from "effect";
 
-import { lazyModule } from "../lazyModule.ts";
+import { lazyModule } from "../platform/lazyModule.ts";
 
 type PierreDiffsModule = typeof import("@pierre/diffs");
 type ParsedPatches = ReturnType<PierreDiffsModule["parsePatchFiles"]>;

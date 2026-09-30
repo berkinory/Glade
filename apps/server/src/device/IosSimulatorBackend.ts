@@ -31,7 +31,7 @@ import {
   readDeviceHelperSourceRevision,
 } from "@glade/shared/workspace/deviceHelperCache";
 
-import { runProcess, type ProcessRunResult } from "../processRunner.ts";
+import { runProcess, type ProcessRunResult } from "../platform/processRunner.ts";
 import {
   DeviceBackendError,
   type DeviceBackend,

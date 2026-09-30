@@ -78,7 +78,7 @@ Prefer capability-driven behavior and existing shared protocol helpers. Do not a
 - `apps/server/src/provider/Layers/ProviderAdapterRegistry.ts` — concrete provider registry
 - `apps/server/src/provider/Layers/ProviderService.ts` — session-aware lifecycle routing
 - `apps/server/src/provider/Layers/ProviderDiscoveryService.ts` — model/agent/skill/command/plugin discovery routing
-- `apps/server/src/provider/boundedCallbackIngress.ts` — bounded callback-producer ingress policy
+- `apps/server/src/provider/core/boundedCallbackIngress.ts` — bounded callback-producer ingress policy
 - `apps/server/src/orchestration/Layers/ProviderCommandReactor.ts` — orchestration intent to provider calls
 - `apps/server/src/orchestration/Layers/ProviderRuntimeIngestion.ts` — provider events to durable orchestration
 - `packages/contracts/src/core/baseSchemas.ts` — provider kinds and entity identifiers

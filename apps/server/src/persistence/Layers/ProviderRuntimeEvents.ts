@@ -3,7 +3,7 @@ import { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
 import { Effect, Layer, Schema } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 
-import { stripDiagnosticImages } from "../../provider/stripDiagnosticImages.ts";
+import { stripDiagnosticImages } from "../../provider/core/stripDiagnosticImages.ts";
 import {
   PersistenceDecodeError,
   toPersistenceDecodeError,

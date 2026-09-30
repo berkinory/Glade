@@ -2,7 +2,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { Effect, Layer } from "effect";
 import { describe, expect, it } from "vitest";
 
-import { ServerConfig, type ServerConfigShape } from "../../config";
+import { ServerConfig, type ServerConfigShape } from "../../server/config";
 import { ServerAuthPolicy } from "../Services/ServerAuthPolicy";
 import { ServerAuthPolicyLive } from "./ServerAuthPolicy";
 

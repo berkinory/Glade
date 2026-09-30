@@ -1,4 +1,4 @@
-import { redactSensitiveProcessArgs } from "../processArgumentRedaction.ts";
+import { redactSensitiveProcessArgs } from "../platform/processArgumentRedaction.ts";
 
 const SENSITIVE_KEY = /(?:authorization|cookie|credential|password|secret|token|api[-_]?key)/i;
 const MAX_STRING_CHARS = 4_000;

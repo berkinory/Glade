@@ -51,8 +51,8 @@ import type { ProviderBlockingDeliveryEvidence } from "../../persistence/Service
 import { ProviderDiscoveryService } from "../../provider/Services/ProviderDiscoveryService.ts";
 
 import { ProviderHealth } from "../../provider/Services/ProviderHealth.ts";
-import { ServerConfig } from "../../config.ts";
-import { ServerSettingsService } from "../../serverSettings.ts";
+import { ServerConfig } from "../../server/config.ts";
+import { ServerSettingsService } from "../../settings/serverSettings.ts";
 import { AgentGateway } from "../Services/AgentGateway.ts";
 import { AgentGatewayCredentials } from "../Services/AgentGatewayCredentials.ts";
 import {

@@ -2,10 +2,10 @@ import type { ProjectImportProvider } from "@glade/contracts/workspace/projectIm
 import type { ProviderStartOptions } from "@glade/contracts/provider/sessionPolicy";
 import type { ThreadHandoffImportedMessage } from "@glade/contracts/orchestration/commands";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
-import type { ProviderAdapterError, ProviderUnsupportedError } from "../provider/Errors.ts";
+import type { ProviderAdapterError, ProviderUnsupportedError } from "../provider/core/Errors.ts";
 import { Data, Effect } from "effect";
-import { loadClaudeAgentSdk } from "../provider/claudeAgentSdk";
-import { readClaudeImportMessageDates } from "../provider/claudeProjectImport";
+import { loadClaudeAgentSdk } from "../provider/claude/claudeAgentSdk";
+import { readClaudeImportMessageDates } from "../provider/claude/claudeProjectImport";
 import type { ProviderAdapterRegistryShape } from "../provider/Services/ProviderAdapterRegistry";
 import { mapClaudeSessionMessages, mapCodexSnapshotMessages } from "./importedThreadMessages";
 

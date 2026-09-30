@@ -3,7 +3,10 @@ import { ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { Effect, Layer, Option, Schema } from "effect";
 
 import { ProviderSessionRuntimeRepository } from "../../persistence/Services/ProviderSessionRuntime.ts";
-import { ProviderSessionDirectoryPersistenceError, ProviderValidationError } from "../Errors.ts";
+import {
+  ProviderSessionDirectoryPersistenceError,
+  ProviderValidationError,
+} from "../core/Errors.ts";
 import {
   ProviderSessionDirectory,
   type ProviderRuntimeBinding,

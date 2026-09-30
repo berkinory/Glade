@@ -15,9 +15,9 @@ import {
 } from "@glade/contracts/provider/providerDiscovery";
 import { Effect, Exit, Layer, Option, Queue, Schema, SchemaIssue } from "effect";
 
-import { ServerConfig } from "../../config.ts";
-import { ServerSettingsService } from "../../serverSettings.ts";
-import { ProviderValidationError } from "../Errors.ts";
+import { ServerConfig } from "../../server/config.ts";
+import { ServerSettingsService } from "../../settings/serverSettings.ts";
+import { ProviderValidationError } from "../core/Errors.ts";
 import type { ProviderDiscoveryError } from "../Services/ProviderDiscoveryService.ts";
 import { ProviderAdapterRegistry } from "../Services/ProviderAdapterRegistry.ts";
 import {
@@ -28,17 +28,17 @@ import {
   type PersistedModelCatalogEntryInput,
   makeProviderModelDiscoveryCache,
   providerModelDiscoveryCacheKey,
-} from "../providerModelDiscoveryCache.ts";
+} from "../core/providerModelDiscoveryCache.ts";
 import {
   readProviderModelCatalogCache,
   resolveProviderModelCatalogCachePath,
   writeProviderModelCatalogCache,
-} from "../providerModelCatalogCache.ts";
+} from "../core/providerModelCatalogCache.ts";
 import {
   discoverSkillsCatalog,
   filterDisabledSkills,
   mergeSkillsIntoCatalog,
-} from "../skillsCatalog.ts";
+} from "../core/skillsCatalog.ts";
 
 const decodeInputOrValidationError = <S extends Schema.Top>(input: {
   readonly operation: string;

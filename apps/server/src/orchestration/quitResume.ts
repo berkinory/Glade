@@ -24,8 +24,8 @@ import {
 import { Duration, Effect, FileSystem, Schema } from "effect";
 import { randomUUID } from "node:crypto";
 
-import { writeFileStringAtomically } from "../atomicWrite";
-import { ServerConfig } from "../config";
+import { writeFileStringAtomically } from "../platform/filesystem/atomicWrite";
+import { ServerConfig } from "../server/config";
 import {
   threadHasInFlightTurn,
   threadResumePreconditionViolation,

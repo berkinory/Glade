@@ -286,10 +286,10 @@ jobs:
           src/platform/filesystemPlatform.test.ts
           src/platform/processTreeController.test.ts
           src/platform/effectProcessSignals.test.ts
-          src/provider/supervisedProcessTeardown.test.ts
-          src/provider/providerStartupLifecycle.test.ts
-          src/processRunner.test.ts
-          src/windowsProcessEffect.test.ts
+          src/platform/supervisedProcessTeardown.test.ts
+          src/provider/core/providerStartupLifecycle.test.ts
+          src/platform/processRunner.test.ts
+          src/platform/windowsProcessEffect.test.ts
           src/persistence/MigrationBackup.test.ts
           src/persistence/Migrations/MigrationReplay.test.ts
 

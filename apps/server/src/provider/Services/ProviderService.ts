@@ -26,7 +26,7 @@ import type { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEven
 import { ServiceMap } from "effect";
 import type { Effect, Stream } from "effect";
 
-import type { ProviderServiceError } from "../Errors.ts";
+import type { ProviderServiceError } from "../core/Errors.ts";
 import type { PersistedProviderRuntimeEvent } from "../../persistence/Services/ProviderRuntimeEvents.ts";
 import type { ProviderAdapterCapabilities } from "./ProviderAdapter.ts";
 

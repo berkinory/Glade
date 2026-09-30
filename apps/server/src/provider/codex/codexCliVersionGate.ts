@@ -5,9 +5,9 @@ import {
   formatCodexCliUpgradeMessage,
   isCodexCliVersionSupported,
   parseCodexCliVersion,
-} from "../codexCliVersion";
-import { buildCodexProcessEnv } from "../../codexProcessEnv.ts";
-import { assertCodexWorkingDirectoryExists } from "../../codexWorkingDirectory.ts";
+} from "./codexCliVersion";
+import { buildCodexProcessEnv } from "./codexProcessEnv.ts";
+import { assertCodexWorkingDirectoryExists } from "./codexWorkingDirectory.ts";
 import { executableIdentity, resolveExecutable } from "@glade/shared/platform/executable";
 
 const CODEX_VERSION_CHECK_TIMEOUT_MS = 4_000;

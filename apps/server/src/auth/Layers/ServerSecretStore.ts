@@ -2,8 +2,8 @@ import * as Crypto from "node:crypto";
 
 import { Effect, FileSystem, Layer, Path } from "effect";
 
-import { writeFileStringAtomically } from "../../atomicWrite";
-import { ServerConfig } from "../../config";
+import { writeFileStringAtomically } from "../../platform/filesystem/atomicWrite";
+import { ServerConfig } from "../../server/config";
 import {
   SecretStoreError,
   ServerSecretStore,

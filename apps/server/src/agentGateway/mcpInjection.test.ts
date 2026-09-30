@@ -7,7 +7,7 @@ import {
   mergeShellEnvPolicyExclude,
   GLADE_MANAGED_CODEX_CONFIG_BEGIN,
   GLADE_MANAGED_CODEX_CONFIG_END,
-} from "../codexProcessEnv.ts";
+} from "../provider/codex/codexProcessEnv.ts";
 import {
   buildClaudeMcpServers,
   buildCodexMcpConfigToml,

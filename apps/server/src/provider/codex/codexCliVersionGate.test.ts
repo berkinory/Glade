@@ -3,11 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { formatMissingCodexWorkingDirectoryError } from "../../codexWorkingDirectory";
+import { formatMissingCodexWorkingDirectoryError } from "./codexWorkingDirectory";
 import {
   MINIMUM_CODEX_AUTO_REVIEW_CLI_VERSION,
   MINIMUM_CODEX_EXCLUDE_TURNS_CLI_VERSION,
-} from "../codexCliVersion.ts";
+} from "./codexCliVersion.ts";
 
 describe("codex CLI version gate", () => {
   it("memoizes the version probe per binary and shares concurrent probes", async () => {

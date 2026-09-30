@@ -2,7 +2,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { CommandId, MessageId, ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { Effect, Layer, ManagedRuntime } from "effect";
 import { expect, it } from "vitest";
-import { ServerConfig } from "../config";
+import { ServerConfig } from "../server/config";
 import { OrchestrationCommandReceiptRepositoryLive } from "../persistence/Layers/OrchestrationCommandReceipts";
 import { OrchestrationEventStoreLive } from "../persistence/Layers/OrchestrationEventStore";
 import { SqlitePersistenceMemory } from "../persistence/Layers/Sqlite";

@@ -1,8 +1,8 @@
 import type { ServerAuthDescriptor } from "@glade/contracts/transport/auth/auth";
 import { Effect, Layer } from "effect";
 
-import { ServerConfig } from "../../config";
-import { isLoopbackHost, isWildcardHost } from "../../startupAccess";
+import { ServerConfig } from "../../server/config";
+import { isLoopbackHost, isWildcardHost } from "../../server/http/startupAccess";
 import { ServerAuthPolicy, type ServerAuthPolicyShape } from "../Services/ServerAuthPolicy";
 import { resolveSessionCookieName } from "../utils";
 

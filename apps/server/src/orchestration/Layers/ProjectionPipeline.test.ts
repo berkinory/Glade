@@ -40,8 +40,8 @@ import {
   OrchestrationProjectionPipeline,
   type OrchestrationProjectionPipelineShape,
 } from "../Services/ProjectionPipeline.ts";
-import { ServerConfig } from "../../config.ts";
-import { runManagedAttachmentCleanupBatch } from "../../managedAttachmentCleanup.ts";
+import { ServerConfig } from "../../server/config.ts";
+import { runManagedAttachmentCleanupBatch } from "../../attachments/managedAttachmentCleanup.ts";
 
 const readProjectedMessage = (threadId: ThreadId, messageId: MessageId) =>
   Effect.gen(function* () {

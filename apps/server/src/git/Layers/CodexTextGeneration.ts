@@ -12,10 +12,10 @@ import { sanitizeGeneratedThreadTitle } from "@glade/shared/threads/chatThreads"
 import { resolveCodexHome } from "../../provider/codex/codexConfig";
 import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@glade/shared/git/git";
 
-import { resolveProviderAttachmentPath } from "../../provider/providerAttachmentPaths.ts";
-import { buildCodexProcessEnv } from "../../codexProcessEnv.ts";
-import { formatMissingCodexWorkingDirectoryError } from "../../codexWorkingDirectory.ts";
-import { ServerConfig } from "../../config.ts";
+import { resolveProviderAttachmentPath } from "../../provider/core/providerAttachmentPaths.ts";
+import { buildCodexProcessEnv } from "../../provider/codex/codexProcessEnv.ts";
+import { formatMissingCodexWorkingDirectoryError } from "../../provider/codex/codexWorkingDirectory.ts";
+import { ServerConfig } from "../../server/config.ts";
 import { TextGenerationError } from "../Errors.ts";
 import {
   CodexTextGeneration,

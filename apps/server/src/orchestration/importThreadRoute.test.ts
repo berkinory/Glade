@@ -10,7 +10,7 @@ import { Effect, FileSystem, Option, Path } from "effect";
 
 import type { ProviderAdapterRegistryShape } from "../provider/Services/ProviderAdapterRegistry";
 import type { ProviderServiceShape } from "../provider/Services/ProviderService";
-import type { ServerSettingsShape } from "../serverSettings";
+import type { ServerSettingsShape } from "../settings/serverSettings";
 import type { OrchestrationEngineShape } from "./Services/OrchestrationEngine";
 import type { ProjectionSnapshotQueryShape } from "./Services/ProjectionSnapshotQuery";
 import { makeImportThreadHandler } from "./importThreadRoute";

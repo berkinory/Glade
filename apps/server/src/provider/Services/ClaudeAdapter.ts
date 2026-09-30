@@ -1,6 +1,6 @@
 import { ServiceMap } from "effect";
 
-import type { ProviderAdapterError } from "../Errors.ts";
+import type { ProviderAdapterError } from "../core/Errors.ts";
 import type { ProviderAdapterShape } from "./ProviderAdapter.ts";
 
 export interface ClaudeAdapterShape extends ProviderAdapterShape<ProviderAdapterError> {

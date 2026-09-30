@@ -9,7 +9,7 @@ import type {
   OrchestrationEventStoreError,
   ProjectionRepositoryError,
 } from "../../persistence/Errors.ts";
-import type { ManagedAttachmentPrincipal } from "../../managedAttachmentPrincipal.ts";
+import type { ManagedAttachmentPrincipal } from "../../attachments/managedAttachmentPrincipal.ts";
 
 interface OrchestrationDispatchContext {
   readonly attachmentPrincipal?: ManagedAttachmentPrincipal;

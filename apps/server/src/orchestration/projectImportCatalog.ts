@@ -8,7 +8,7 @@ import { isWorkspaceRootWithin } from "@glade/shared/threads/threadWorkspace";
 import type {
   NativeImportSession,
   NativeProjectImportCatalog,
-} from "../provider/projectImportTypes";
+} from "../provider/core/projectImportTypes";
 import {
   canonicalImportPath,
   findImportGitWorkspace,

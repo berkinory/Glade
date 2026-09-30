@@ -52,7 +52,7 @@ import {
   type ExecuteGitResult,
   type GitWorkingTreePatch,
 } from "../Services/GitCore.ts";
-import { ServerConfig } from "../../config.ts";
+import { ServerConfig } from "../../server/config.ts";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_MAX_OUTPUT_BYTES = 1_000_000;

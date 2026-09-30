@@ -17,17 +17,17 @@ import type {
   ProjectImportRepository,
   ProjectImportOrigin,
 } from "../persistence/projectImportRepository";
-import { discoverClaudeProjects } from "../provider/claudeProjectImport";
+import { discoverClaudeProjects } from "../provider/claude/claudeProjectImport";
 import {
   discoverCodexProjects,
   resolveCodexProjectImportHome,
-} from "../provider/codexProjectImport";
-import { ensureProviderEnabled } from "../provider/enabledProviderAdapter";
-import { makeKeyedLock } from "../provider/keyedLock";
-import type { NativeProjectImportCatalog } from "../provider/projectImportTypes";
+} from "../provider/codex/codexProjectImport";
+import { ensureProviderEnabled } from "../provider/core/enabledProviderAdapter";
+import { makeKeyedLock } from "../provider/core/keyedLock";
+import type { NativeProjectImportCatalog } from "../provider/core/projectImportTypes";
 import type { ProviderAdapterRegistryShape } from "../provider/Services/ProviderAdapterRegistry";
 import type { ProviderServiceShape } from "../provider/Services/ProviderService";
-import type { ServerSettingsShape } from "../serverSettings";
+import type { ServerSettingsShape } from "../settings/serverSettings";
 import {
   buildProjectImportCatalog,
   type ResolvedImportProject,

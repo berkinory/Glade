@@ -34,35 +34,35 @@ import {
   ServerConfig,
   type RuntimeMode,
   type ServerConfigShape,
-} from "./config";
+} from "./server/config";
 
-import { fixPath, resolveBaseDir } from "./os-jank";
-import { Open } from "./open";
+import { fixPath, resolveBaseDir } from "./platform/os-jank";
+import { Open } from "./workspace/editor/open";
 import { ServerAuth } from "./auth/Services/ServerAuth";
 import * as SqlitePersistence from "./persistence/Layers/Sqlite";
 import { ProviderRuntimeEventRepositoryLive } from "./persistence/Layers/ProviderRuntimeEvents";
 import { makeServerApplicationLayers } from "./serverLayers";
-import { startServerMemoryDiagnostics } from "./memoryDiagnostics";
-import { createClaudeCredentialKeepaliveController } from "./provider/claudeCredentialKeepalive";
+import { startServerMemoryDiagnostics } from "./diagnostics/memoryDiagnostics";
+import { createClaudeCredentialKeepaliveController } from "./provider/claude/claudeCredentialKeepalive";
 import { ProjectionSnapshotQuery } from "./orchestration/Services/ProjectionSnapshotQuery";
 import { ProviderSessionReaperLive } from "./provider/Layers/ProviderSessionReaper";
 import { ProviderRuntimeReconcilerLive } from "./provider/Layers/ProviderRuntimeReconciler";
-import { Server } from "./effectServer";
-import { ServerLoggerLive } from "./serverLogger";
-import { ServerSettingsService } from "./serverSettings";
-import { formatHostForUrl, isLoopbackHost, isWildcardHost } from "./startupAccess";
+import { Server } from "./server/http/effectServer";
+import { ServerLoggerLive } from "./diagnostics/serverLogger";
+import { ServerSettingsService } from "./settings/serverSettings";
+import { formatHostForUrl, isLoopbackHost, isWildcardHost } from "./server/http/startupAccess";
 import { OrchestrationEngineService } from "./orchestration/Services/OrchestrationEngine";
-import { startThreadRetentionJob } from "./threadRetention";
+import { startThreadRetentionJob } from "./orchestration/threadRetention";
 import {
   discoverServerRuntime,
   resolveServerHome,
   verifyServerRuntime,
-} from "./serverRuntimeDiscovery";
-import { fetchGladeServerStatus, formatGladeServerStatus } from "./serverStatusCli";
+} from "./server/runtime/serverRuntimeDiscovery";
+import { fetchGladeServerStatus, formatGladeServerStatus } from "./server/status/serverStatusCli";
 import {
   embeddedMigrationRuntimeSourceDigest,
   verifyMigrationRuntimeIdentity,
-} from "./migrationBundleIdentity";
+} from "./persistence/migrationBundleIdentity";
 
 export class StartupError extends Data.TaggedError("StartupError")<{
   readonly message: string;

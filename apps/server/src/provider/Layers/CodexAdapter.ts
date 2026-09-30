@@ -41,7 +41,7 @@ import {
   ProviderAdapterSessionNotFoundError,
   ProviderAdapterValidationError,
   type ProviderAdapterError,
-} from "../Errors.ts";
+} from "../core/Errors.ts";
 import { CodexAdapter, type CodexAdapterShape } from "../Services/CodexAdapter.ts";
 import { PROVIDER_ADAPTER_RUNTIME_EVENT_BUFFER_CAPACITY } from "../Services/ProviderAdapter.ts";
 import {
@@ -49,49 +49,49 @@ import {
   parseCodexUserInputQuestions,
   type CodexAppServerSendTurnInput,
   type CodexAppServerStartSessionInput,
-} from "../../codexAppServerManager.ts";
-import { evaluateTurnIdleTick, resolveTurnIdleTimeoutMs } from "../turnIdleTimeout.ts";
+} from "../codex/codexAppServerManager.ts";
+import { evaluateTurnIdleTick, resolveTurnIdleTimeoutMs } from "../core/turnIdleTimeout.ts";
 import { AgentGatewayCredentials } from "../../agentGateway/Services/AgentGatewayCredentials.ts";
 import {
   acquireAgentGatewaySessionLease,
   AGENT_GATEWAY_NO_CAPABILITIES,
   captureAgentGatewayCapabilityInput,
 } from "../../agentGateway/sessionLease.ts";
-import { filterProviderPromptImageAttachments } from "../promptAttachments.ts";
-import { resolveProviderAttachmentPath } from "../providerAttachmentPaths.ts";
+import { filterProviderPromptImageAttachments } from "../core/promptAttachments.ts";
+import { resolveProviderAttachmentPath } from "../core/providerAttachmentPaths.ts";
 import {
   codexGeneratedImageArtifact,
   extractCodexGeneratedImageReference,
   firstStringValue,
   isCodexGeneratedImageItemType,
   sanitizeNestedCodexGeneratedImagePayloads,
-} from "../../codexGeneratedImages.ts";
+} from "../codex/codexGeneratedImages.ts";
 import {
   CodexSessionStartError,
   isNonFatalCodexErrorMessage,
-} from "../../codexErrorClassification.ts";
-import { ServerConfig } from "../../config.ts";
-import { resolveCodexServiceTier } from "../../codexServiceTier.ts";
-import { makeRuntimeTaskListItem } from "../runtimeTaskList.ts";
-import { extractProposedPlanMarkdown } from "../planMode.ts";
-import { appendFileAttachmentsPromptBlock } from "../attachmentProjection.ts";
-import { gladeSkillsDir } from "../skillsCatalog.ts";
-import { makeBoundedCallbackIngress } from "../boundedCallbackIngress.ts";
-import { assignDerivedProviderRuntimeEventIds } from "../providerRuntimeEventIdentity.ts";
+} from "../codex/codexErrorClassification.ts";
+import { ServerConfig } from "../../server/config.ts";
+import { resolveCodexServiceTier } from "../codex/codexServiceTier.ts";
+import { makeRuntimeTaskListItem } from "../core/runtimeTaskList.ts";
+import { extractProposedPlanMarkdown } from "../core/planMode.ts";
+import { appendFileAttachmentsPromptBlock } from "../core/attachmentProjection.ts";
+import { gladeSkillsDir } from "../core/skillsCatalog.ts";
+import { makeBoundedCallbackIngress } from "../core/boundedCallbackIngress.ts";
+import { assignDerivedProviderRuntimeEventIds } from "../core/providerRuntimeEventIdentity.ts";
 import {
   compactProviderRuntimeEventForIngress,
   isTerminalProviderRuntimeEvent,
   PROVIDER_RUNTIME_CALLBACK_BUFFER_MAX_BYTES,
   PROVIDER_RUNTIME_CALLBACK_TERMINAL_RESERVE,
   PROVIDER_RUNTIME_INGRESS_EVENT_MAX_BYTES,
-} from "../providerRuntimeEventIngress.ts";
+} from "../core/providerRuntimeEventIngress.ts";
 import {
   makeUnmappedProviderEventGate,
   sanitizeUnmappedProviderData,
   sanitizeUnmappedProviderDetail,
   sanitizeUnmappedProviderEvent,
   sanitizeUnmappedProviderNativeType,
-} from "../unmappedProviderEvents.ts";
+} from "../core/unmappedProviderEvents.ts";
 import { type EventNdjsonLogger, makeEventNdjsonLogger } from "./EventNdjsonLogger.ts";
 
 const PROVIDER = "codex" as const;

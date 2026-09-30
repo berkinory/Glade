@@ -17,7 +17,11 @@ const migrationRuntimeSourceDigest = createHash("sha256")
   .digest("hex");
 
 export default defineConfig({
-  entry: ["src/index.ts", "src/restoreMigrationBackup.ts", "src/runtimeDependencySmoke.ts"],
+  entry: {
+    index: "src/index.ts",
+    restoreMigrationBackup: "src/persistence/restoreMigrationBackup.ts",
+    runtimeDependencySmoke: "src/platform/runtimeDependencySmoke.ts",
+  },
   format: ["esm"],
   outDir: "dist",
 

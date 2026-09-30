@@ -6,7 +6,7 @@ import { isWorkspaceRootWithin, workspaceRootsEqual } from "@glade/shared/thread
 import type { FileSystem, Path } from "effect";
 import { Effect, Schedule } from "effect";
 
-import { createAttachmentId } from "../attachmentStore";
+import { createAttachmentId } from "../attachments/attachmentStore";
 
 class AttachmentNormalizationError extends Error {
   readonly _tag = "AttachmentNormalizationError";

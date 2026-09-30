@@ -8,7 +8,7 @@ import { isLocalAbsolutePath } from "@glade/shared/platform/path";
 import { normalizeLineEndings } from "@glade/shared/text/text";
 import { Effect, Layer, Path } from "effect";
 
-import { resolveLocalPreviewGrantRealPath } from "../../localImageFiles";
+import { resolveLocalPreviewGrantRealPath } from "../../attachments/localImageFiles";
 import {
   WorkspaceFileConflictError,
   WorkspaceFileDeletedError,

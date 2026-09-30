@@ -5,7 +5,7 @@ import { githubAvatarUrlForLogin } from "@glade/shared/git/githubAvatar";
 import { Effect } from "effect";
 
 import type { GitHubCliShape } from "../git/Services/GitHubCli";
-import { isPullRequestMergeMethodAllowed } from "../pullRequests.logic";
+import { isPullRequestMergeMethodAllowed } from "../git/pullRequests.logic";
 import type { PullRequestServiceShape } from "./Services/PullRequestService";
 
 class PullRequestOperationsError extends Error {

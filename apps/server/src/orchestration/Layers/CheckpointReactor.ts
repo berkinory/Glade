@@ -32,7 +32,7 @@ import {
   isManagedCheckpointRefForThread,
   resolveThreadWorkspaceCwd,
 } from "../../checkpointing/Utils.ts";
-import { clearWorkspaceIndexCache } from "../../workspaceEntries.ts";
+import { clearWorkspaceIndexCache } from "../../workspace/workspaceEntries.ts";
 import { CheckpointStore } from "../../checkpointing/Services/CheckpointStore.ts";
 import { ProjectionTurnRepository } from "../../persistence/Services/ProjectionTurns.ts";
 import { ProjectionTurnRepositoryLive } from "../../persistence/Layers/ProjectionTurns.ts";

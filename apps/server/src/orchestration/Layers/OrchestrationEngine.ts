@@ -21,7 +21,7 @@ import {
 } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 
-import { ServerConfig } from "../../config.ts";
+import { ServerConfig } from "../../server/config.ts";
 import {
   toPersistenceSqlError,
   type OrchestrationEventStoreError,
@@ -40,7 +40,7 @@ import { orchestrationMessageFromStoredMessage } from "../../persistence/project
 import {
   LOCAL_LOOPBACK_ATTACHMENT_PRINCIPAL,
   type ManagedAttachmentPrincipal,
-} from "../../managedAttachmentPrincipal.ts";
+} from "../../attachments/managedAttachmentPrincipal.ts";
 import {
   OrchestrationCommandAdmissionError,
   OrchestrationCommandIdentityCollisionError,

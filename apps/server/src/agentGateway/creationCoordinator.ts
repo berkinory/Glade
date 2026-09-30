@@ -26,12 +26,12 @@ import { parseGitHubRepositoryNameWithOwnerFromPullRequestUrl } from "@glade/sha
 import { runtimeModeEscalatesPrivilege } from "@glade/shared/threads/runtimeMode";
 import { Cause, Effect, Option, Semaphore } from "effect";
 
-import type { ServerConfigShape } from "../config.ts";
+import type { ServerConfigShape } from "../server/config.ts";
 import type { GitCoreShape } from "../git/Services/GitCore.ts";
 import type { OrchestrationEngineShape } from "../orchestration/Services/OrchestrationEngine.ts";
 import type { ProjectionSnapshotQueryShape } from "../orchestration/Services/ProjectionSnapshotQuery.ts";
 import type { ProviderDiscoveryServiceShape } from "../provider/Services/ProviderDiscoveryService.ts";
-import { runWorktreeSetupScript } from "../worktreeSetup.ts";
+import { runWorktreeSetupScript } from "../git/worktreeSetup.ts";
 import type {
   AgentGatewayOperationRecord,
   AgentGatewayOperationRepositoryShape,

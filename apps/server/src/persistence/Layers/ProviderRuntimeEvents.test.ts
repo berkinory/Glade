@@ -21,7 +21,7 @@ import {
   truncateUtf8ToBytes,
 } from "./ProviderRuntimeEvents.ts";
 import { SqlitePersistenceMemory } from "./Sqlite.ts";
-import { assignDerivedProviderRuntimeEventIds } from "../../provider/providerRuntimeEventIdentity.ts";
+import { assignDerivedProviderRuntimeEventIds } from "../../provider/core/providerRuntimeEventIdentity.ts";
 
 const layer = it.layer(
   ProviderRuntimeEventRepositoryLive.pipe(Layer.provideMerge(SqlitePersistenceMemory)),

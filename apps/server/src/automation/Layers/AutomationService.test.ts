@@ -42,7 +42,7 @@ import { ProjectionTurnRepositoryLive } from "../../persistence/Layers/Projectio
 import { SqlitePersistenceMemory } from "../../persistence/Layers/Sqlite.ts";
 import { AutomationRepository } from "../../persistence/Services/AutomationRepository.ts";
 import { ProjectionTurnRepository } from "../../persistence/Services/ProjectionTurns.ts";
-import { ServerSettingsService } from "../../serverSettings.ts";
+import { ServerSettingsService } from "../../settings/serverSettings.ts";
 import { automationProposalActivityId } from "../proposalActivity.ts";
 import { AutomationService, type AutomationServiceShape } from "../Services/AutomationService.ts";
 import { AutomationServiceLive } from "./AutomationService.ts";

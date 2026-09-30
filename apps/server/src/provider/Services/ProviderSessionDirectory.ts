@@ -9,7 +9,7 @@ import type { Effect } from "effect";
 import type {
   ProviderSessionDirectoryPersistenceError,
   ProviderValidationError,
-} from "../Errors.ts";
+} from "../core/Errors.ts";
 
 export interface ProviderRuntimeBinding {
   readonly threadId: ThreadId;

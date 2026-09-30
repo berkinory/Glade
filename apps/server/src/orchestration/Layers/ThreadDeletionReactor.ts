@@ -7,14 +7,14 @@ import {
 import { terminalScopeIdsForThread } from "@glade/shared/threads/terminalThreads";
 import { Cause, Effect, Layer, Option, Stream } from "effect";
 
-import { ServerConfig } from "../../config";
+import { ServerConfig } from "../../server/config";
 import { DeviceService } from "../../device/Services/DeviceService";
 import { GitCore } from "../../git/Services/GitCore";
-import { pruneProjectedArchivedManagedWorktrees } from "../../managedWorktrees";
-import { ProfileStatsArchive } from "../../profileStatsArchive";
+import { pruneProjectedArchivedManagedWorktrees } from "../../git/managedWorktrees";
+import { ProfileStatsArchive } from "../../diagnostics/profileStatsArchive";
 import { ProviderService } from "../../provider/Services/ProviderService";
 import { TerminalManager, type TerminalManagerShape } from "../../terminal/Services/Manager";
-import { THREAD_RETENTION_COMMAND_ID_PREFIX } from "../../threadRetention";
+import { THREAD_RETENTION_COMMAND_ID_PREFIX } from "../threadRetention";
 import { OrchestrationEngineService } from "../Services/OrchestrationEngine";
 import { ProjectionSnapshotQuery } from "../Services/ProjectionSnapshotQuery";
 import {

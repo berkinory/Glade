@@ -2,7 +2,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { Effect, Layer } from "effect";
 import { describe, expect, it } from "vitest";
 
-import { ServerConfig } from "../../config";
+import { ServerConfig } from "../../server/config";
 import { SqlitePersistenceMemory } from "../../persistence/Layers/Sqlite";
 import { AuthControlPlane, type AuthControlPlaneError } from "../Services/AuthControlPlane";
 import {

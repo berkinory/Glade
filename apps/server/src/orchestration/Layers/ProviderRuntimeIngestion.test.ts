@@ -51,7 +51,7 @@ import { ComputerManager } from "../../computer/ComputerManager.ts";
 
 import { ComputerService } from "../../computer/Services/ComputerService.ts";
 import { ProjectionSnapshotQuery } from "../Services/ProjectionSnapshotQuery.ts";
-import { ServerConfig } from "../../config.ts";
+import { ServerConfig } from "../../server/config.ts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 

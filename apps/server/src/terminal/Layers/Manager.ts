@@ -26,14 +26,14 @@ import {
 } from "@glade/shared/threads/terminalThreads";
 import { Effect, Encoding, Layer, Schema } from "effect";
 
-import { createLogger } from "../../logger";
+import { createLogger } from "../../diagnostics/logger";
 import { PtyAdapter, PtyAdapterShape, type PtyExitEvent, type PtyProcess } from "../Services/PTY";
-import { ServerConfig } from "../../config";
+import { ServerConfig } from "../../server/config";
 import {
   ensurePrivateDirectorySync,
   PRIVATE_FILE_MODE,
   repairPrivateFile,
-} from "../../privatePathPermissions";
+} from "../../platform/filesystem/privatePathPermissions";
 import {
   applyManagedTerminalAgentWrapperEnv,
   prepareManagedTerminalAgentWrappers,

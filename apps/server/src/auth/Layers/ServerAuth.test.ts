@@ -2,7 +2,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { Effect, Layer } from "effect";
 import { describe, expect, it } from "vitest";
 
-import { ServerConfig } from "../../config";
+import { ServerConfig } from "../../server/config";
 import { SqlitePersistenceMemory } from "../../persistence/Layers/Sqlite";
 import { AuthControlPlaneLive } from "./AuthControlPlane";
 import { BootstrapCredentialServiceLive } from "./BootstrapCredentialService";
@@ -12,7 +12,7 @@ import { ServerSecretStoreLive } from "./ServerSecretStore";
 import { SessionCredentialServiceLive } from "./SessionCredentialService";
 import { BootstrapCredentialError } from "../Services/BootstrapCredentialService";
 import { AuthError, ServerAuth, type AuthRequest } from "../Services/ServerAuth";
-import { authenticateRpcWebSocketUpgrade } from "../../wsRpc";
+import { authenticateRpcWebSocketUpgrade } from "../../server/ws/wsRpc";
 
 const sessionCredentialLayer = SessionCredentialServiceLive.pipe(
   Layer.provide(ServerSecretStoreLive),

@@ -75,8 +75,8 @@ import {
   currentComputerCall,
   timedComputerLeg,
 } from "./computerCallContext.ts";
-import { jpegDimensions } from "../jpegHeader.ts";
-import { pngDimensions } from "../pngHeader.ts";
+import { jpegDimensions } from "../attachments/images/jpegHeader.ts";
+import { pngDimensions } from "../attachments/images/pngHeader.ts";
 import {
   observedComputerTargetNode,
   registerNativeComputerElement,

@@ -19,7 +19,7 @@ import {
   ProviderAdapterSessionNotFoundError,
   ProviderAdapterValidationError,
   type ProviderAdapterError,
-} from "../src/provider/Errors.ts";
+} from "../src/provider/core/Errors.ts";
 import type {
   ProviderAdapterShape,
   ProviderThreadSnapshot,

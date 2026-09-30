@@ -2,8 +2,8 @@ import { makeNativeToolCallRegistry } from "../nativeToolCalls.ts";
 
 import { Effect, Layer } from "effect";
 
-import { ServerConfig } from "../../config.ts";
-import { formatHostForUrl, isWildcardHost } from "../../startupAccess.ts";
+import { ServerConfig } from "../../server/config.ts";
+import { formatHostForUrl, isWildcardHost } from "../../server/http/startupAccess.ts";
 import {
   AgentGatewayCredentials,
   type AgentGatewayCredentialsShape,

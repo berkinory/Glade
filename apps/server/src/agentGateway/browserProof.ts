@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { resolveCodexGeneratedImagesRoot } from "../codexGeneratedImages.ts";
+import { resolveCodexGeneratedImagesRoot } from "../provider/codex/codexGeneratedImages.ts";
 
 export async function saveBrowserProof(
   threadId: string,

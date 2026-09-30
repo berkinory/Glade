@@ -1,9 +1,12 @@
 import { asPositiveFiniteNumber } from "@glade/shared/transport/payloadValues";
 import { asNonBlankString } from "@glade/shared/text/text";
 import { normalizeOperationError } from "../../platform/operationError.ts";
-import { readClaudeSessionParentUuid } from "../claudeProjectImport.ts";
-import { claudeTurnResultUsage, type ClaudeResultUsageBaseline } from "../claudeResultUsage.ts";
-import { restoreClaudeImportedCopyDates } from "../claudeImportedCopyDates.ts";
+import { readClaudeSessionParentUuid } from "../claude/claudeProjectImport.ts";
+import {
+  claudeTurnResultUsage,
+  type ClaudeResultUsageBaseline,
+} from "../claude/claudeResultUsage.ts";
+import { restoreClaudeImportedCopyDates } from "../claude/claudeImportedCopyDates.ts";
 
 import { execProcessFile, spawnProcess } from "@glade/shared/platform/processRuntime";
 import type {
@@ -95,9 +98,9 @@ import {
   claudeCacheFromRequest,
   claudeCacheFromSessionStart,
   claudeCacheForModel,
-} from "../claudeCacheObservation.ts";
-import { compareSemverVersions } from "../providerMaintenance.ts";
-import { redactSensitiveJsonFields } from "../../sensitiveKeys.ts";
+} from "../claude/claudeCacheObservation.ts";
+import { compareSemverVersions } from "../core/providerMaintenance.ts";
+import { redactSensitiveJsonFields } from "../../diagnostics/sensitiveKeys.ts";
 import {
   Cause,
   DateTime,
@@ -128,14 +131,14 @@ import {
   type AgentGatewaySessionLease,
   withAgentGatewayTurnCancellation,
 } from "../../agentGateway/sessionLease.ts";
-import { resolveProviderAttachmentPath } from "../providerAttachmentPaths.ts";
-import { settleConcurrentTeardowns } from "../settleConcurrentTeardowns.ts";
-import { stripDiagnosticImages } from "../stripDiagnosticImages.ts";
-import { ServerConfig } from "../../config.ts";
-import { buildFileAttachmentsPromptBlock } from "../attachmentProjection.ts";
-import { loadClaudeAgentSdk } from "../claudeAgentSdk.ts";
-import { buildClaudeProcessEnv, withClaudeArtifactOptIn } from "../claudeProcessEnv.ts";
-import { ClaudeRequestUsage } from "../claudeRequestUsage.ts";
+import { resolveProviderAttachmentPath } from "../core/providerAttachmentPaths.ts";
+import { settleConcurrentTeardowns } from "../core/settleConcurrentTeardowns.ts";
+import { stripDiagnosticImages } from "../core/stripDiagnosticImages.ts";
+import { ServerConfig } from "../../server/config.ts";
+import { buildFileAttachmentsPromptBlock } from "../core/attachmentProjection.ts";
+import { loadClaudeAgentSdk } from "../claude/claudeAgentSdk.ts";
+import { buildClaudeProcessEnv, withClaudeArtifactOptIn } from "../claude/claudeProcessEnv.ts";
+import { ClaudeRequestUsage } from "../claude/claudeRequestUsage.ts";
 import {
   CLAUDE_CONTEXT_WINDOW_MAX_TOKENS,
   decideClaudeContextUsageWarnings,
@@ -147,7 +150,7 @@ import {
   resolveEffectiveClaudeContextWindow,
   resolveSelectedClaudeAutoCompactWindow,
   snapshotFromClaudeContextUsage,
-} from "../claudeTokenUsage.ts";
+} from "../claude/claudeTokenUsage.ts";
 import {
   applyClaudeTaskToolResult,
   claudeTrackedTasksPayload,
@@ -156,7 +159,7 @@ import {
   normalizeClaudeTodoTasks,
   parseClaudeTrackedTasks,
   type ClaudeTrackedTask,
-} from "../claudeTaskTracker.ts";
+} from "../claude/claudeTaskTracker.ts";
 import {
   extractClaudeWorkflowAgentPhases,
   extractClaudeWorkflowAgentPlans,
@@ -164,21 +167,21 @@ import {
   parseClaudeWorkflowLaunchFromText,
   parseClaudeWorkflowProgressAgents,
   parseClaudeWorkflowScriptMeta,
-} from "../claudeWorkflowScript.ts";
+} from "../claude/claudeWorkflowScript.ts";
 import {
   claudeWorkflowRuntimeSnapshots,
   collectClaudeWorkflowRuntime,
   makeClaudeWorkflowRuntimeState,
   readClaudeWorkflowOutputText,
   type ClaudeWorkflowRuntimeState,
-} from "../claudeWorkflowRuntime.ts";
+} from "../claude/claudeWorkflowRuntime.ts";
 
 import {
   isClaudeAutoModeCliVersionSupported,
   MINIMUM_CLAUDE_AUTO_MODE_CLI_VERSION,
-} from "../claudeCliVersion.ts";
-import { parseGenericCliVersion } from "../providerMaintenance.ts";
-import { makeKeyedLock } from "../keyedLock.ts";
+} from "../claude/claudeCliVersion.ts";
+import { parseGenericCliVersion } from "../core/providerMaintenance.ts";
+import { makeKeyedLock } from "../core/keyedLock.ts";
 import {
   ProviderAdapterProcessError,
   ProviderAdapterRequestError,
@@ -186,8 +189,8 @@ import {
   ProviderAdapterSessionNotFoundError,
   ProviderAdapterValidationError,
   type ProviderAdapterError,
-} from "../Errors.ts";
-import { extractProposedPlanMarkdown, withProviderPlanModePrompt } from "../planMode.ts";
+} from "../core/Errors.ts";
+import { extractProposedPlanMarkdown, withProviderPlanModePrompt } from "../core/planMode.ts";
 import { ClaudeAdapter, type ClaudeAdapterShape } from "../Services/ClaudeAdapter.ts";
 import { type EventNdjsonLogger, makeEventNdjsonLogger } from "./EventNdjsonLogger.ts";
 import {

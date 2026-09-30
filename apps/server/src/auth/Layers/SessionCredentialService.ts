@@ -22,7 +22,7 @@ import {
 
 import { AuthSessionRepositoryLive } from "../../persistence/Layers/AuthSessions";
 import { AuthSessionRepository } from "../../persistence/Services/AuthSessions";
-import { ServerConfig } from "../../config";
+import { ServerConfig } from "../../server/config";
 import { ServerSecretStore } from "../Services/ServerSecretStore";
 import {
   SessionCapacityError,

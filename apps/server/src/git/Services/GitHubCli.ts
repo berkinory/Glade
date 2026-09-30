@@ -13,7 +13,7 @@ import type {
   PullRequestState,
 } from "@glade/contracts/git/pullRequests";
 
-import type { ProcessRunResult } from "../../processRunner";
+import type { ProcessRunResult } from "../../platform/processRunner";
 import type { GitHubCliError } from "../Errors.ts";
 
 export const PULL_REQUEST_SUMMARY_JSON_FIELDS =

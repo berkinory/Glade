@@ -59,7 +59,7 @@ The client does not own provider session truth or durable orchestration state. W
 
 ### Server and RPC surface
 
-`apps/server/src/wsRpc.ts` is the main typed feature-RPC boundary. It merges the shared contract groups, applies request/stream admission, authentication/session context, and exposes orchestration plus server services on one feature socket.
+`apps/server/src/server/ws/wsRpc.ts` is the main typed feature-RPC boundary. It merges the shared contract groups, applies request/stream admission, authentication/session context, and exposes orchestration plus server services on one feature socket.
 
 The HTTP/WebSocket layer also owns:
 
