@@ -665,40 +665,16 @@ function codexEventBase(
   };
 }
 
-function codexGeneratedImageThreadId(
-  event: ProviderEvent,
-  payload: Record<string, unknown> | undefined,
-): string | undefined {
-  const msg = codexEventMessage(payload);
-  const nestedEvent = asObjectRecord(payload?.event) ?? undefined;
-  return (
-    firstStringValue(msg, ["thread_id", "threadId", "threadID", "thread"]) ??
-    firstStringValue(nestedEvent, ["thread_id", "threadId", "threadID", "thread"]) ??
-    firstStringValue(payload, ["thread_id", "threadId", "threadID", "thread"]) ??
-    event.providerThreadId ??
-    event.threadId
-  );
-}
-
-function sanitizeGeneratedImagePayload(event: ProviderEvent, canonicalThreadId: ThreadId): unknown {
-  const payload = asObjectRecord(event.payload) ?? undefined;
-  return sanitizeNestedCodexGeneratedImagePayloads({
-    value: event.payload ?? {},
-    threadId: codexGeneratedImageThreadId(event, payload) ?? canonicalThreadId,
-  });
-}
-
 function withSanitizedGeneratedImageRaw(
   base: Omit<ProviderRuntimeEvent, "type" | "payload">,
   event: ProviderEvent,
-  canonicalThreadId: ThreadId,
 ): Omit<ProviderRuntimeEvent, "type" | "payload"> {
   return {
     ...base,
     raw: {
       source: eventRawSource(event),
       method: event.method,
-      payload: sanitizeGeneratedImagePayload(event, canonicalThreadId),
+      payload: sanitizeNestedCodexGeneratedImagePayloads(event.payload ?? {}),
     },
   };
 }
@@ -744,10 +720,7 @@ function mapGeneratedImageEndEvent(
   }
   const payload = asObjectRecord(event.payload) ?? undefined;
   const candidate = generatedImageEventCandidate(event);
-  const reference = extractCodexGeneratedImageReference({
-    value: candidate,
-    threadId: codexGeneratedImageThreadId(event, payload) ?? canonicalThreadId,
-  });
+  const reference = extractCodexGeneratedImageReference(candidate);
   if (!reference) {
     return undefined;
   }
@@ -778,7 +751,6 @@ function mapGeneratedImageEndEvent(
       ...(itemId ? { itemId: asRuntimeItemId(itemId) } : {}),
     },
     event,
-    canonicalThreadId,
   );
 
   return {
@@ -884,12 +856,7 @@ function mapItemLifecycle(
     return undefined;
   }
   const generatedImageReference =
-    itemType === "image_generation"
-      ? extractCodexGeneratedImageReference({
-          value: source,
-          threadId: codexGeneratedImageThreadId(event, payload) ?? canonicalThreadId,
-        })
-      : undefined;
+    itemType === "image_generation" ? extractCodexGeneratedImageReference(source) : undefined;
   if (
     lifecycle === "item.completed" &&
     itemType === "image_generation" &&
@@ -923,11 +890,7 @@ function mapItemLifecycle(
 
   return {
     ...(generatedImageReference
-      ? withSanitizedGeneratedImageRaw(
-          runtimeEventBase(event, canonicalThreadId),
-          event,
-          canonicalThreadId,
-        )
+      ? withSanitizedGeneratedImageRaw(runtimeEventBase(event, canonicalThreadId), event)
       : runtimeEventBase(event, canonicalThreadId)),
     type: lifecycle,
     payload: {

@@ -7,7 +7,7 @@ import {
   type CodexGeneratedImageArtifact,
 } from "@glade/contracts/provider/runtimePayloads";
 import { type ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
-import { type ThreadId } from "@glade/contracts/core/baseSchemas";
+import { Option, Schema } from "effect";
 import { isSupportedLocalImagePath as isSupportedLocalImagePathShared } from "@glade/shared/browser/localPreviewFiles";
 
 import {
@@ -15,32 +15,20 @@ import {
   resolveCodexHomeAllowlistCandidates,
 } from "./codexHomePaths.ts";
 
-const CODEX_GENERATED_IMAGE_ITEM_TYPES = new Set([
-  "imagegeneration",
-  "imagegenerationcall",
-  "imagegenerationend",
-]);
-
-const IMAGE_PATH_KEYS = ["saved_path", "savedPath", "path", "file_path"] as const;
-const IMAGE_CALL_ID_KEYS = ["call_id", "callId", "itemId", "item_id", "id"] as const;
+const GeneratedImageItem = Schema.Struct({
+  type: Schema.Literal("imageGeneration"),
+  id: Schema.String,
+  savedPath: Schema.optional(Schema.NullOr(Schema.String)),
+  result: Schema.optional(Schema.String),
+});
 
 export interface CodexGeneratedImageReference {
   readonly path: string;
   readonly callId?: string;
 }
 
-function normalizeCodexGeneratedImageItemType(raw: unknown): string {
-  const type = nonEmptyTrimmed(raw);
-  if (!type) return "";
-  return type
-    .replace(/([a-z0-9])([A-Z])/g, "$1$2")
-    .replace(/[._\s/-]+/g, "")
-    .trim()
-    .toLowerCase();
-}
-
 export function isCodexGeneratedImageItemType(raw: unknown): boolean {
-  return CODEX_GENERATED_IMAGE_ITEM_TYPES.has(normalizeCodexGeneratedImageItemType(raw));
+  return raw === "imageGeneration";
 }
 
 const isSupportedLocalImagePath = isSupportedLocalImagePathShared;
@@ -70,127 +58,40 @@ export function firstStringValue(
   return undefined;
 }
 
-function extractCodexGeneratedImagePath(
-  record: Record<string, unknown> | undefined,
-): string | undefined {
-  return firstStringValue(record, IMAGE_PATH_KEYS);
+function sanitizeCodexGeneratedImagePayload(value: unknown): unknown {
+  const decoded = Schema.decodeUnknownOption(GeneratedImageItem)(value);
+  if (Option.isNone(decoded) || !decoded.value.result) return value;
+  const record = asRecord(value);
+  if (!record) return value;
+  const { result: _result, ...withoutResult } = record;
+  return { ...withoutResult, result_elided_for_relay: true };
 }
 
-function extractCodexGeneratedImageCallId(
-  record: Record<string, unknown> | undefined,
-): string | undefined {
-  return firstStringValue(record, IMAGE_CALL_ID_KEYS);
-}
-
-function predictedCodexGeneratedImagePath(input: {
-  readonly item: Record<string, unknown>;
-  readonly threadId: ThreadId | string | undefined;
-  readonly codexHomePath?: string;
-}): string | undefined {
-  const threadId = nonEmptyTrimmed(input.threadId);
-  const callId = extractCodexGeneratedImageCallId(input.item);
-  if (!threadId || !callId) {
-    return undefined;
-  }
-  return path.join(resolveCodexGeneratedImagesRoot(input.codexHomePath), threadId, `${callId}.png`);
-}
-
-function annotateCodexGeneratedImagePayload(input: {
-  readonly value: unknown;
-  readonly threadId: ThreadId | string | undefined;
-  readonly codexHomePath?: string;
-}): unknown {
-  const item = asRecord(input.value) ?? undefined;
-  if (!item || !isCodexGeneratedImageItemType(item.type ?? item.kind)) {
-    return input.value;
-  }
-
-  let nextItem = item;
-  let didChange = false;
-  const existingPath = extractCodexGeneratedImagePath(item);
-  const generatedPath =
-    existingPath ??
-    predictedCodexGeneratedImagePath({
-      item,
-      threadId: input.threadId,
-      ...(input.codexHomePath ? { codexHomePath: input.codexHomePath } : {}),
-    });
-
-  if (generatedPath && !existingPath) {
-    nextItem = { ...nextItem, saved_path: generatedPath };
-    didChange = true;
-  }
-
-  if (typeof nextItem.result === "string" && nextItem.result.length > 0) {
-    const { result: _result, ...withoutResult } = nextItem;
-    nextItem = { ...withoutResult, result_elided_for_relay: true };
-    didChange = true;
-  }
-
-  return didChange ? nextItem : input.value;
-}
-
-export function sanitizeNestedCodexGeneratedImagePayloads(input: {
-  readonly value: unknown;
-  readonly threadId: ThreadId | string | undefined;
-  readonly codexHomePath?: string;
-}): unknown {
-  const annotated = annotateCodexGeneratedImagePayload(input);
-  const record = asRecord(annotated) ?? undefined;
-  if (!record) {
-    return annotated;
-  }
-
+export function sanitizeNestedCodexGeneratedImagePayloads(value: unknown): unknown {
+  const sanitized = sanitizeCodexGeneratedImagePayload(value);
+  const record = asRecord(sanitized);
+  if (!record) return sanitized;
   const overrides: Record<string, unknown> = {};
-  let hasOverrides = false;
-  for (const key of NESTED_PAYLOAD_KEYS) {
+  for (const key of ["item", "payload", "data", "event"]) {
     const nested = record[key];
-    if (!(asRecord(nested) ?? undefined)) {
-      continue;
-    }
-    const sanitized = sanitizeNestedCodexGeneratedImagePayloads({
-      value: nested,
-      threadId: input.threadId,
-      ...(input.codexHomePath ? { codexHomePath: input.codexHomePath } : {}),
-    });
-    if (sanitized !== nested) {
-      overrides[key] = sanitized;
-      hasOverrides = true;
-    }
+    if (!asRecord(nested)) continue;
+    const next = sanitizeNestedCodexGeneratedImagePayloads(nested);
+    if (next !== nested) overrides[key] = next;
   }
-
-  if (hasOverrides) {
-    return Object.assign({}, record, overrides);
-  }
-  return annotated !== input.value ? record : input.value;
+  return Object.keys(overrides).length > 0 ? { ...record, ...overrides } : sanitized;
 }
 
-const NESTED_PAYLOAD_KEYS = ["item", "payload", "data", "event"] as const;
-
-export function extractCodexGeneratedImageReference(input: {
-  readonly value: unknown;
-  readonly threadId: ThreadId | string | undefined;
-  readonly codexHomePath?: string;
-}): CodexGeneratedImageReference | undefined {
-  const item = asRecord(input.value) ?? undefined;
-  if (!item || !isCodexGeneratedImageItemType(item.type ?? item.kind)) {
+export function extractCodexGeneratedImageReference(
+  value: unknown,
+): CodexGeneratedImageReference | undefined {
+  const decoded = Schema.decodeUnknownOption(GeneratedImageItem)(value);
+  if (Option.isNone(decoded)) return undefined;
+  const imagePath = nonEmptyTrimmed(decoded.value.savedPath);
+  if (!imagePath || !path.isAbsolute(imagePath) || !isSupportedLocalImagePath(imagePath)) {
     return undefined;
   }
-  const imagePath =
-    extractCodexGeneratedImagePath(item) ??
-    predictedCodexGeneratedImagePath({
-      item,
-      threadId: input.threadId,
-      ...(input.codexHomePath ? { codexHomePath: input.codexHomePath } : {}),
-    });
-  if (!imagePath || !isSupportedLocalImagePath(imagePath)) {
-    return undefined;
-  }
-  const callId = extractCodexGeneratedImageCallId(item);
-  return {
-    path: imagePath,
-    ...(callId ? { callId } : {}),
-  };
+  const callId = nonEmptyTrimmed(decoded.value.id);
+  return { path: imagePath, ...(callId ? { callId } : {}) };
 }
 
 export function codexGeneratedImageArtifact(

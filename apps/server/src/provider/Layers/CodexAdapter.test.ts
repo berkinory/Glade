@@ -687,9 +687,9 @@ lifecycleLayer("CodexAdapterLive lifecycle", (it) => {
         itemId: asItemId("img_call_1"),
         payload: {
           item: {
-            type: "image_generation_call",
+            type: "imageGeneration",
             id: "img_call_1",
-            saved_path: "/tmp/provider-thread-1/img_call_1.png",
+            savedPath: "/tmp/provider-thread-1/img_call_1.png",
             result: "large-inline-base64",
           },
         },
