@@ -32,7 +32,7 @@ import {
   cloneComposerImageAttachment,
   stageUploadComposerAttachments,
 } from "../../lib/composerSend";
-import { armQueuedComposerSteerGate } from "../../lib/queuedComposerDrain";
+import { queuedComposerDrain } from "../../lib/queuedComposerDrain";
 import { clearPendingTurnDispatch } from "../../pendingTurnDispatch";
 import { useStore } from "../../store";
 import { getThreadFromState } from "../../threadDerivation";
@@ -620,7 +620,7 @@ export function useChatTurnExecution({
             armedActiveTurnId: activeThread?.session?.activeTurnId ?? null,
           };
           setQueuedSteerGate(nextSteerGate);
-          armQueuedComposerSteerGate(threadId, nextSteerGate);
+          queuedComposerDrain.armQueuedComposerSteerGate(threadId, nextSteerGate);
         }
         if (sourceProposedPlanForSend) {
           planSidebarDismissedForTurnRef.current = null;

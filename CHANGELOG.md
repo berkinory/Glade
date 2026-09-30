@@ -10,6 +10,8 @@
 
 ### Improved
 
+- Composer queue drains use independent state owners and cancel scheduled work when their watcher stops, preserving queued messages for the next owner.
+
 - Browser upload staging and quotas belong to the browser host; filesystem security checks run through the upload interface without global test configuration.
 
 - Source comments focus on invariants, trust boundaries and lifecycle constraints; redundant file inventories and implementation narration were removed.

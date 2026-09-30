@@ -5,19 +5,7 @@ import { collapseExpandedComposerCursor, detectComposerTrigger } from "../../com
 import { resolveComputerControlMode } from "../../computerControlMode";
 import { type QueuedComposerTurn } from "../../composerDraftStore";
 import { cloneComposerImageAttachment } from "../../lib/composerSend";
-import {
-  armQueuedComposerSteerGate,
-  claimQueuedComposerAutoDispatch,
-  clearQueuedComposerAutoDispatchRetry,
-  clearQueuedComposerSteerGate,
-  getQueuedComposerAutoDispatchRetryDelay,
-  getQueuedComposerSteerGate,
-  isQueuedComposerAwaitingTurnStart,
-  recordQueuedComposerAutoDispatchFailure,
-  releaseQueuedComposerAutoDispatch,
-  runLockedQueuedComposerAutoDispatch,
-  tryBeginQueuedComposerAutoDispatch,
-} from "../../lib/queuedComposerDrain";
+import { queuedComposerDrain } from "../../lib/queuedComposerDrain";
 import { derivePhase } from "../../session-logic";
 import { useStore } from "../../store";
 import { getThreadFromState } from "../../threadDerivation";
@@ -151,7 +139,7 @@ export function useChatQueuedTurns({
   const autoDispatchingQueuedTurnRef = useRef(false);
 
   const [queuedSteerGate, setQueuedSteerGate] = useState<QueuedSteerGate | null>(() =>
-    getQueuedComposerSteerGate(threadId),
+    queuedComposerDrain.getQueuedComposerSteerGate(threadId),
   );
 
   const [queuedAutoDispatchTick, setQueuedAutoDispatchTick] = useState(0);
@@ -165,10 +153,10 @@ export function useChatQueuedTurns({
   }, [autoDispatchingQueuedTurnRef, threadId]);
 
   useLayoutEffect(() => {
-    claimQueuedComposerAutoDispatch(threadId);
-    setQueuedSteerGate(getQueuedComposerSteerGate(threadId));
+    queuedComposerDrain.claimQueuedComposerAutoDispatch(threadId);
+    setQueuedSteerGate(queuedComposerDrain.getQueuedComposerSteerGate(threadId));
     return () => {
-      releaseQueuedComposerAutoDispatch(threadId);
+      queuedComposerDrain.releaseQueuedComposerAutoDispatch(threadId);
     };
   }, [setQueuedSteerGate, threadId]);
 
@@ -324,12 +312,12 @@ export function useChatQueuedTurns({
       removeQueuedComposerTurnFromDraft(threadId, queuedTurn.id);
       const succeeded = await dispatchQueuedComposerTurn(queuedTurn, "steer");
       if (succeeded) {
-        clearQueuedComposerAutoDispatchRetry(threadId);
+        queuedComposerDrain.clearQueuedComposerAutoDispatchRetry(threadId);
         return;
       }
       insertQueuedComposerTurn(threadId, queuedTurn, queuedIndex);
       if (getThreadFromState(useStore.getState(), threadId)?.claudeCacheReview == null) {
-        recordQueuedComposerAutoDispatchFailure(threadId, queuedTurn.id);
+        queuedComposerDrain.recordQueuedComposerAutoDispatchFailure(threadId, queuedTurn.id);
       }
       setQueuedAutoDispatchTick((tick) => tick + 1);
     },
@@ -368,7 +356,7 @@ export function useChatQueuedTurns({
     });
     if (transition.kind === "clear") {
       setQueuedSteerGate(null);
-      clearQueuedComposerSteerGate(threadId);
+      queuedComposerDrain.clearQueuedComposerSteerGate(threadId);
       return;
     }
     if (
@@ -377,7 +365,7 @@ export function useChatQueuedTurns({
       transition.gate.armedActiveTurnId !== queuedSteerGate.armedActiveTurnId
     ) {
       setQueuedSteerGate(transition.gate);
-      armQueuedComposerSteerGate(threadId, transition.gate);
+      queuedComposerDrain.armQueuedComposerSteerGate(threadId, transition.gate);
       return;
     }
     if (transition.expiresInMs === null) {
@@ -385,7 +373,7 @@ export function useChatQueuedTurns({
     }
     const timer = window.setTimeout(() => {
       setQueuedSteerGate(null);
-      clearQueuedComposerSteerGate(threadId);
+      queuedComposerDrain.clearQueuedComposerSteerGate(threadId);
     }, transition.expiresInMs);
     return () => window.clearTimeout(timer);
   }, [
@@ -399,11 +387,11 @@ export function useChatQueuedTurns({
 
   useEffect(() => {
     if (hasPendingCacheReview) {
-      clearQueuedComposerAutoDispatchRetry(threadId);
+      queuedComposerDrain.clearQueuedComposerAutoDispatchRetry(threadId);
       return;
     }
     if (
-      isQueuedComposerAwaitingTurnStart(threadId) ||
+      queuedComposerDrain.isQueuedComposerAwaitingTurnStart(threadId) ||
       resolveQueuedComposerAutoDispatchHold({
         localDispatch,
 
@@ -412,7 +400,8 @@ export function useChatQueuedTurns({
         session: activeThread?.session ?? null,
         messages: activeThread?.messages ?? EMPTY_MESSAGES,
         isConnecting,
-        queuedSteerGate: getQueuedComposerSteerGate(threadId) ?? queuedSteerGate,
+        queuedSteerGate:
+          queuedComposerDrain.getQueuedComposerSteerGate(threadId) ?? queuedSteerGate,
         hasPendingApproval: activePendingApproval !== null,
         hasPendingProgress: activePendingProgress !== null,
         hasPendingUserInput: pendingUserInputs.length > 0,
@@ -435,7 +424,10 @@ export function useChatQueuedTurns({
     if (!nextQueuedTurn) {
       return;
     }
-    const retryDelay = getQueuedComposerAutoDispatchRetryDelay(threadId, nextQueuedTurn.id);
+    const retryDelay = queuedComposerDrain.getQueuedComposerAutoDispatchRetryDelay(
+      threadId,
+      nextQueuedTurn.id,
+    );
     if (retryDelay === null) {
       return;
     }
@@ -446,22 +438,22 @@ export function useChatQueuedTurns({
       );
       return () => window.clearTimeout(timer);
     }
-    if (!tryBeginQueuedComposerAutoDispatch(threadId)) {
+    if (!queuedComposerDrain.tryBeginQueuedComposerAutoDispatch(threadId)) {
       const timer = window.setTimeout(() => setQueuedAutoDispatchTick((tick) => tick + 1), 250);
       return () => window.clearTimeout(timer);
     }
     autoDispatchingQueuedTurnRef.current = true;
-    void runLockedQueuedComposerAutoDispatch({
+    void queuedComposerDrain.runLockedQueuedComposerAutoDispatch({
       threadId,
       run: async () => {
         const succeeded = await dispatchQueuedComposerTurn(nextQueuedTurn, "queue");
         if (succeeded) {
-          clearQueuedComposerAutoDispatchRetry(threadId);
+          queuedComposerDrain.clearQueuedComposerAutoDispatchRetry(threadId);
           removeQueuedComposerTurnFromDraft(threadId, nextQueuedTurn.id);
           return;
         }
         if (getThreadFromState(useStore.getState(), threadId)?.claudeCacheReview == null) {
-          recordQueuedComposerAutoDispatchFailure(threadId, nextQueuedTurn.id);
+          queuedComposerDrain.recordQueuedComposerAutoDispatchFailure(threadId, nextQueuedTurn.id);
         }
         setQueuedAutoDispatchTick((tick) => tick + 1);
       },

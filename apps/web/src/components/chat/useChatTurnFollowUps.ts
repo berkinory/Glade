@@ -11,7 +11,7 @@ import { useComposerDraftStore, type QueuedComposerPlanFollowUp } from "../../co
 import { formatOutgoingComposerPrompt } from "../../lib/composerSend";
 import { reconcileDeletedThreadFromClient } from "../../lib/deletedThreadClientReconciliation";
 import { unblockThreadFromClient } from "../../lib/threadUnblock";
-import { armQueuedComposerSteerGate } from "../../lib/queuedComposerDrain";
+import { queuedComposerDrain } from "../../lib/queuedComposerDrain";
 import { appendOriginalComposerPromptBlocks } from "../../lib/terminalContext";
 import { clearPendingTurnDispatch, markPendingTurnDispatch } from "../../pendingTurnDispatch";
 import {
@@ -279,7 +279,7 @@ export function useChatTurnFollowUps({
           armedActiveTurnId: activeThread?.session?.activeTurnId ?? null,
         };
         setQueuedSteerGate(nextSteerGate);
-        armQueuedComposerSteerGate(threadId, nextSteerGate);
+        queuedComposerDrain.armQueuedComposerSteerGate(threadId, nextSteerGate);
       }
 
       if (nextInteractionMode === "default") {
