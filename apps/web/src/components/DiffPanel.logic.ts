@@ -1,4 +1,4 @@
-import { type ModelSelection } from "@glade/contracts/orchestration/orchestration";
+import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { type ThreadId, type TurnId } from "@glade/contracts/core/baseSchemas";
 import type { FileDiffMetadata } from "@pierre/diffs/react";
 

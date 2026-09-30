@@ -1,4 +1,4 @@
-import { CHAT_ASSISTANT_SELECTION_TEXT_MAX_CHARS } from "@glade/contracts/orchestration/orchestration";
+import { CHAT_ASSISTANT_SELECTION_TEXT_MAX_CHARS } from "@glade/contracts/orchestration/threadEntities";
 
 import type { ChatAssistantSelectionAttachment } from "../types";
 import { randomUUID } from "./utils";

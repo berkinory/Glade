@@ -1,5 +1,5 @@
 import { DEFAULT_MODEL_BY_PROVIDER } from "@glade/contracts/provider/model";
-import { RuntimeMode, type ModelSelection } from "@glade/contracts/orchestration/orchestration";
+import { RuntimeMode, type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   GENERIC_CHAT_THREAD_TITLE,

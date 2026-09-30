@@ -4,7 +4,7 @@ import type {
   ProviderMentionReference,
   ProviderSkillReference,
 } from "@glade/contracts/provider/providerDiscovery";
-import type { ProviderInteractionMode } from "@glade/contracts/orchestration/orchestration";
+import type { ProviderInteractionMode } from "@glade/contracts/provider/sessionPolicy";
 import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   useEffect,

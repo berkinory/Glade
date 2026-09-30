@@ -3,7 +3,7 @@ import {
   isToolLifecycleItemType,
   type ProviderRuntimeEvent,
 } from "@glade/contracts/provider/providerRuntime";
-import { type OrchestrationThreadActivity } from "@glade/contracts/orchestration/orchestration";
+import { type OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
 import { nonEmptyTrimmed } from "@glade/shared/text/text";
 
 import {

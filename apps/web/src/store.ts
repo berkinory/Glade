@@ -1,10 +1,10 @@
 import { Fragment, type ReactNode, createElement, useEffect } from "react";
+import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import {
-  type OrchestrationEvent,
   type OrchestrationReadModel,
   type OrchestrationShellSnapshot,
   type OrchestrationShellStreamEvent,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/snapshots";
 import { type SpaceId, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { Debouncer } from "@tanstack/react-pacer";
 import { resolveThreadBranchRegressionGuard } from "@glade/shared/git/git";

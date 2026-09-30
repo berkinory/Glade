@@ -1,4 +1,7 @@
-import { SPACE_ICON_NAMES, type SpaceIconName } from "@glade/contracts/orchestration/orchestration";
+import {
+  SPACE_ICON_NAMES,
+  type SpaceIconName,
+} from "@glade/contracts/orchestration/threadEntities";
 
 import { CentralIcon } from "~/lib/central-icons";
 import { UNFILED_SPACE_SPECIAL_ICON, type VoidSpaceIconName } from "~/lib/spaceGrouping";

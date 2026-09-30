@@ -2,7 +2,7 @@ import { type EditorId } from "@glade/contracts/settings/editor";
 import { type MessageId, ThreadId, type TurnId } from "@glade/contracts/core/baseSchemas";
 import { type ProviderMentionReference } from "@glade/contracts/provider/providerDiscovery";
 import { type ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
-import { type ThreadGoalAchievement } from "@glade/contracts/orchestration/orchestration";
+import { type ThreadGoalAchievement } from "@glade/contracts/orchestration/threadEntities";
 import { isLocalAbsolutePath } from "@glade/shared/platform/path";
 import { pluralize } from "@glade/shared/text/text";
 import { LegendList, type LegendListRef } from "@legendapp/list/react";

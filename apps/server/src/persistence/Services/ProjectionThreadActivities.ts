@@ -5,7 +5,7 @@ import {
   ThreadId,
   TurnId,
 } from "@glade/contracts/core/baseSchemas";
-import { OrchestrationThreadActivityTone } from "@glade/contracts/orchestration/orchestration";
+import { OrchestrationThreadActivityTone } from "@glade/contracts/orchestration/threadEntities";
 import { Schema, ServiceMap } from "effect";
 import type { Effect } from "effect";
 

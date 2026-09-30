@@ -69,9 +69,9 @@ import {
 } from "@glade/contracts/automation/automation";
 import {
   MAX_PINNED_PROJECTS,
-  type OrchestrationShellSnapshot,
   type OrchestrationThreadPullRequest,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
+import { type OrchestrationShellSnapshot } from "@glade/contracts/orchestration/snapshots";
 import { type DesktopUpdateState } from "@glade/contracts/ipc/ipc";
 import { ProjectId, SpaceId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";

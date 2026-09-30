@@ -4,7 +4,7 @@ import type {
   ProviderInteractionMode,
   ProviderStartOptions,
   RuntimeMode,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/provider/sessionPolicy";
 import type { ProjectId, ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 
 import { useComposerDraftStore, type DraftThreadEnvMode } from "../composerDraftStore";

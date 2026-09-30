@@ -20,13 +20,13 @@ import {
   type ProviderKind,
 } from "@glade/contracts/core/baseSchemas";
 import { GLADE_GATEWAY_MAX_THREADS_PER_OPERATION } from "@glade/contracts/provider/agentGateway";
+import { THREAD_GOAL_MAX_CHARS } from "@glade/contracts/orchestration/threadEntities";
 import {
-  THREAD_GOAL_MAX_CHARS,
   type ModelSelection,
   type ProviderApprovalDecision,
   type RuntimeMode,
   type TurnDispatchMode,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/provider/sessionPolicy";
 import { type ServerProviderStatus } from "@glade/contracts/server/server";
 import { runtimeModeEscalatesPrivilege } from "@glade/shared/threads/runtimeMode";
 import { Effect, Layer, Option } from "effect";

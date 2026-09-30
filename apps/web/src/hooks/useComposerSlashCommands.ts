@@ -1,10 +1,10 @@
+import { THREAD_GOAL_MAX_CHARS } from "@glade/contracts/orchestration/threadEntities";
 import {
-  THREAD_GOAL_MAX_CHARS,
   type ModelSelection,
-  type OrchestrationShellSnapshot,
   type ProviderInteractionMode,
   type RuntimeMode,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/provider/sessionPolicy";
+import { type OrchestrationShellSnapshot } from "@glade/contracts/orchestration/snapshots";
 import {
   type MessageId,
   type ProviderKind,

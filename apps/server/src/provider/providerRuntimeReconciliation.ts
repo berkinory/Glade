@@ -2,7 +2,7 @@ import { TurnId, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   type OrchestrationSession,
   type OrchestrationThreadShell,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 import { type ProviderSession } from "@glade/contracts/provider/provider";
 import { nonEmptyTrimmed } from "@glade/shared/text/text";
 

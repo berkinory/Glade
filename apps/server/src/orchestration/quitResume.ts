@@ -1,12 +1,14 @@
 import type { TaggedFailure } from "../platform/operationError.ts";
 
+import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import type {
-  OrchestrationCommand,
   OrchestrationPrepareQuitResumeInput,
   OrchestrationPrepareQuitResumeResult,
+} from "@glade/contracts/orchestration/rpc";
+import type {
   OrchestrationProject,
   OrchestrationThread,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 import {
   CommandId,
   IsoDateTime,
@@ -18,7 +20,7 @@ import {
 import {
   QUIT_RESUME_MAX_PROMPT_CHARS,
   QUIT_RESUME_MAX_THREADS,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/rpc";
 import { Duration, Effect, FileSystem, Schema } from "effect";
 import { randomUUID } from "node:crypto";
 

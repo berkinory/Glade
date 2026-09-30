@@ -1,6 +1,6 @@
 import { ThreadId, type ProjectId } from "@glade/contracts/core/baseSchemas";
 import { type KeybindingCommand } from "@glade/contracts/settings/keybindings";
-import { type ProjectScript } from "@glade/contracts/orchestration/orchestration";
+import { type ProjectScript } from "@glade/contracts/orchestration/threadEntities";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { useLocalStorage } from "~/hooks/useLocalStorage";

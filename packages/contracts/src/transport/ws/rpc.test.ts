@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { WsBootstrapRpcGroup, WsFeatureRpcGroup, WsComputerRpcGroup } from "./rpc";
 import { COMPUTER_WS_METHODS } from "../../computer/computer";
-import { ORCHESTRATION_WS_METHODS } from "../../orchestration/orchestration";
+import { ORCHESTRATION_WS_METHODS } from "../../orchestration/rpc";
 
 describe("WS RPC contracts", () => {
   it("keeps bootstrap and feature RPCs in separate groups", () => {

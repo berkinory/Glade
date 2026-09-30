@@ -37,7 +37,7 @@ import {
   type ProviderApprovalDecision,
   RuntimeMode,
   ProviderInteractionMode,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/provider/sessionPolicy";
 import { DEFAULT_MODEL_BY_PROVIDER } from "@glade/contracts/provider/model";
 import {
   type ServerVoiceTranscriptionInput,

@@ -1,5 +1,6 @@
 import { IsoDateTime, ProjectId, SpaceId } from "@glade/contracts/core/baseSchemas";
-import { ModelSelection, ProjectScript } from "@glade/contracts/orchestration/orchestration";
+import { ModelSelection } from "@glade/contracts/provider/sessionPolicy";
+import { ProjectScript } from "@glade/contracts/orchestration/threadEntities";
 import { ProjectKind } from "@glade/contracts/workspace/project";
 import { Option, Schema, ServiceMap } from "effect";
 import type { Effect } from "effect";

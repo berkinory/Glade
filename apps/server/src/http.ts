@@ -10,7 +10,7 @@ import {
 import {
   PROVIDER_SEND_TURN_MAX_FILE_BYTES,
   PROVIDER_SEND_TURN_MAX_IMAGE_BYTES,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 import { SERVER_VOICE_TRANSCRIPTION_MAX_AUDIO_BYTES } from "@glade/contracts/server/server";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import {

@@ -7,6 +7,11 @@ import {
 } from "@glade/contracts/core/baseSchemas";
 import {
   ModelSelection,
+  ProviderInteractionMode,
+  RuntimeMode,
+  ThreadCreationSource,
+} from "@glade/contracts/provider/sessionPolicy";
+import {
   OrchestrationThreadPullRequest,
   PendingClaudeCacheReview,
   ThreadNotes,
@@ -14,11 +19,8 @@ import {
   ThreadGoalAchievements,
   ThreadPinnedMessages,
   ThreadHandoff,
-  ProviderInteractionMode,
-  RuntimeMode,
-  ThreadCreationSource,
   ThreadEnvironmentMode,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 import { Option, Schema, ServiceMap } from "effect";
 import type { Effect } from "effect";
 

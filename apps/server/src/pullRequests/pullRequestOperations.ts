@@ -1,5 +1,5 @@
 import type { TaggedFailure } from "../platform/operationError.ts";
-import type { OrchestrationProject } from "@glade/contracts/orchestration/orchestration";
+import type { OrchestrationProject } from "@glade/contracts/orchestration/threadEntities";
 import type { PullRequestDetail } from "@glade/contracts/git/pullRequests";
 import { githubAvatarUrlForLogin } from "@glade/shared/git/githubAvatar";
 import { Effect } from "effect";

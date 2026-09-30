@@ -1,4 +1,4 @@
-import { MAX_PINNED_PROJECTS } from "@glade/contracts/orchestration/orchestration";
+import { MAX_PINNED_PROJECTS } from "@glade/contracts/orchestration/threadEntities";
 import { type ProjectId } from "@glade/contracts/core/baseSchemas";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";

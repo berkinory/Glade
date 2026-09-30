@@ -1,10 +1,10 @@
+import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
+import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
+import type { OrchestrationReadModel } from "@glade/contracts/orchestration/snapshots";
 import type {
-  OrchestrationCommand,
-  OrchestrationEvent,
-  OrchestrationReadModel,
   OrchestrationThread,
   ThreadGoalAchievement,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 import type { ProjectKind } from "@glade/contracts/workspace/project";
 import {
   ASYNC_USER_INPUT_ALREADY_ANSWERED,
@@ -18,7 +18,7 @@ import {
   RESERVED_VOID_SPACE_ID,
   SPACES_MAX_COUNT,
   THREAD_GOAL_ACHIEVEMENTS_MAX_COUNT,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 import {
   deriveAssociatedWorktreeMetadata,
   deriveAssociatedWorktreeMetadataPatch,

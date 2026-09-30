@@ -13,7 +13,7 @@ import {
   TrimmedNonEmptyString,
   TurnId,
 } from "../core/baseSchemas";
-import { ModelSelection, ProviderStartOptions, RuntimeMode } from "../orchestration/orchestration";
+import { ModelSelection, ProviderStartOptions, RuntimeMode } from "../provider/sessionPolicy";
 import { ProviderKind } from "../core/baseSchemas";
 
 export const DEFAULT_AUTOMATION_RUNTIME_MODE: RuntimeMode = "approval-required";

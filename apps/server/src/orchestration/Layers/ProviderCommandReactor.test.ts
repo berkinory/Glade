@@ -3,18 +3,14 @@ import os from "node:os";
 import path from "node:path";
 
 import type { ClaudeCacheObservation } from "@glade/contracts/provider/claudeCache";
-import type {
-  ModelSelection,
-  OrchestrationCommand,
-  OrchestrationEvent,
-} from "@glade/contracts/orchestration/orchestration";
+import type { ModelSelection } from "@glade/contracts/provider/sessionPolicy";
+import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
+import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import type { ProviderForkThreadResult, ProviderSession } from "@glade/contracts/provider/provider";
 import type { ProviderRuntimeEvent } from "@glade/contracts/provider/providerRuntime";
 import type { ServerSettings } from "@glade/contracts/settings/settings";
-import {
-  type ChatAttachment,
-  DEFAULT_PROVIDER_INTERACTION_MODE,
-} from "@glade/contracts/orchestration/orchestration";
+import { type ChatAttachment } from "@glade/contracts/orchestration/threadEntities";
+import { DEFAULT_PROVIDER_INTERACTION_MODE } from "@glade/contracts/provider/sessionPolicy";
 import {
   CommandId,
   EventId,

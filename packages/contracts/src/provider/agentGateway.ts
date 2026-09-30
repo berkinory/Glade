@@ -1,7 +1,7 @@
 import { Schema } from "effect";
 
 import { ProjectId, ThreadId, TurnId } from "../core/baseSchemas";
-import { ModelSelection } from "../orchestration/orchestration";
+import { ModelSelection } from "./sessionPolicy";
 import { ProviderKind } from "../core/baseSchemas";
 import { ProviderModelDescriptor } from "./providerDiscovery";
 import { ServerProviderAuthStatus } from "../server/server";

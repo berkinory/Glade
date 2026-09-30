@@ -53,7 +53,7 @@ import {
   type ProviderApprovalDecision,
   type ProviderInteractionMode,
   type ProviderUserInputAnswers,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/provider/sessionPolicy";
 import {
   type ProviderSendTurnInput,
   type ProviderSession,

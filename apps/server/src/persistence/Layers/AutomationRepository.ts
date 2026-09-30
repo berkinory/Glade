@@ -10,7 +10,7 @@ import {
   DEFAULT_AUTOMATION_STOP_AFTER_CONSECUTIVE_FAILURES,
   DEFAULT_AUTOMATION_RUNTIME_MODE,
 } from "@glade/contracts/automation/automation";
-import { ModelSelection, ProviderStartOptions } from "@glade/contracts/orchestration/orchestration";
+import { ModelSelection, ProviderStartOptions } from "@glade/contracts/provider/sessionPolicy";
 import { NonNegativeInt, ProjectId, TurnId } from "@glade/contracts/core/baseSchemas";
 import { automationRequiresTargetThread } from "@glade/shared/threads/automationMode";
 import { Effect, Layer, Option, Schema } from "effect";

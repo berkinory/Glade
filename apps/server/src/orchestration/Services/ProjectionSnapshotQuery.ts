@@ -3,13 +3,15 @@ import type {
   OrchestrationProject,
   OrchestrationProjectShell,
   OrchestrationSpaceShell,
-  OrchestrationReadModel,
-  OrchestrationShellSnapshot,
-  OrchestrationThreadDetailSnapshot,
   OrchestrationThread,
   OrchestrationThreadShell,
   ThreadEnvironmentMode,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
+import type {
+  OrchestrationReadModel,
+  OrchestrationShellSnapshot,
+  OrchestrationThreadDetailSnapshot,
+} from "@glade/contracts/orchestration/snapshots";
 import type {
   CheckpointRef,
   ProjectId,

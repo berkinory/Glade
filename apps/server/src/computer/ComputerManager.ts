@@ -40,7 +40,7 @@ import {
   type ThreadComputerState,
 } from "@glade/contracts/computer/computer";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { type ComputerControlMode } from "@glade/contracts/orchestration/orchestration";
+import { type ComputerControlMode } from "@glade/contracts/orchestration/threadEntities";
 import {
   type ComputerGetAuditHistoryInput,
   type ComputerGetAuditHistoryResult,

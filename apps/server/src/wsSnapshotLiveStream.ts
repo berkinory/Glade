@@ -1,5 +1,5 @@
 import { WsRpcError } from "@glade/contracts/transport/ws/rpc";
-import { type OrchestrationEvent } from "@glade/contracts/orchestration/orchestration";
+import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import { Cause, Effect, Queue, Scope, Stream } from "effect";
 
 const ORCHESTRATION_SNAPSHOT_REPLAY_LIMIT = 4_096;

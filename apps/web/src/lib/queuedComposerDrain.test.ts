@@ -1,5 +1,5 @@
 import { ApprovalRequestId, MessageId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
-import { type PendingClaudeCacheReview } from "@glade/contracts/orchestration/orchestration";
+import { type PendingClaudeCacheReview } from "@glade/contracts/orchestration/threadEntities";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { QueuedComposerTurn } from "../composerDraftStore";

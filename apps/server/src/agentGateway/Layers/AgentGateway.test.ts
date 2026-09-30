@@ -5,13 +5,13 @@ import type {
   AutomationDefinition,
   AutomationUpdateInput,
 } from "@glade/contracts/automation/automation";
+import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
+import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import type {
-  OrchestrationCommand,
-  OrchestrationEvent,
   OrchestrationProjectShell,
   OrchestrationThread,
   OrchestrationThreadShell,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 import type { ProviderKind, ThreadId as ThreadIdType } from "@glade/contracts/core/baseSchemas";
 import type { ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
 import type { ServerProviderStatus } from "@glade/contracts/server/server";

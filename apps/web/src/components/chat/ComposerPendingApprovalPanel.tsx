@@ -1,5 +1,5 @@
 import { type ApprovalRequestId } from "@glade/contracts/core/baseSchemas";
-import { type ProviderApprovalDecision } from "@glade/contracts/orchestration/orchestration";
+import { type ProviderApprovalDecision } from "@glade/contracts/provider/sessionPolicy";
 import { pendingRequestInstanceKey } from "@glade/shared/threads/threadSummary";
 import { type KeyboardEvent, useRef } from "react";
 import { type PendingApproval } from "../../session-logic";

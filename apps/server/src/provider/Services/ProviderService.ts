@@ -21,7 +21,7 @@ import type {
   ModelSelection,
   RuntimeMode,
   ProviderStartOptions,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/provider/sessionPolicy";
 import type { ProviderRuntimeEvent } from "@glade/contracts/provider/providerRuntime";
 import { ServiceMap } from "effect";
 import type { Effect, Stream } from "effect";

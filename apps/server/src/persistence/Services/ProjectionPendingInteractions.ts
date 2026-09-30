@@ -10,7 +10,7 @@ import {
   ProjectionPendingInteractionDecision,
   ProjectionPendingInteractionKind,
   ProjectionPendingInteractionStatus,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 import { Option, Schema, ServiceMap } from "effect";
 import type { Effect } from "effect";
 

@@ -1,4 +1,4 @@
-import type { OrchestrationEvent } from "@glade/contracts/orchestration/orchestration";
+import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
 
 type ThreadMessageSentEvent = Extract<OrchestrationEvent, { type: "thread.message-sent" }>;
 

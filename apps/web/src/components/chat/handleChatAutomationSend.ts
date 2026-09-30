@@ -2,7 +2,7 @@ import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   type ModelSelection,
   type ProviderStartOptions,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/provider/sessionPolicy";
 import { readNativeApi } from "~/nativeApi";
 import {
   automationClarificationPrompt,

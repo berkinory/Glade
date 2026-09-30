@@ -1,7 +1,7 @@
 import type {
   OrchestrationReadModel,
   OrchestrationShellSnapshot,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/snapshots";
 
 type EmptyRouteRestoreRefreshHandler = () => Promise<boolean>;
 

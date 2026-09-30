@@ -1,6 +1,6 @@
 import { ApprovalRequestId } from "@glade/contracts/core/baseSchemas";
 import { UserInputQuestion } from "@glade/contracts/provider/providerRuntime";
-import { type OrchestrationThreadActivity } from "@glade/contracts/orchestration/orchestration";
+import { type OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
 import { createStalePendingInteractionMatcher } from "@glade/shared/threads/pendingInteractions";
 import { pendingRequestInstanceKey } from "@glade/shared/threads/threadSummary";
 import { Schema } from "effect";

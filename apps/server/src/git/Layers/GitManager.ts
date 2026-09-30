@@ -7,10 +7,7 @@ import type {
   GitActionProgressPhase,
   GitStackedAction,
 } from "@glade/contracts/git/git";
-import type {
-  ModelSelection,
-  ProviderStartOptions,
-} from "@glade/contracts/orchestration/orchestration";
+import type { ModelSelection, ProviderStartOptions } from "@glade/contracts/provider/sessionPolicy";
 import {
   resolveAutoFeatureBranchName,
   sanitizeBranchFragment,

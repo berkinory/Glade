@@ -1,5 +1,5 @@
 import { type NativeApi } from "@glade/contracts/ipc/ipc";
-import { type OrchestrationShellSnapshot } from "@glade/contracts/orchestration/orchestration";
+import { type OrchestrationShellSnapshot } from "@glade/contracts/orchestration/snapshots";
 import { type ProjectId, SpaceId } from "@glade/contracts/core/baseSchemas";
 import { afterEach, describe, expect, it, vi } from "vitest";
 

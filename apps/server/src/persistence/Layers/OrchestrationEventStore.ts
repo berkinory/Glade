@@ -12,7 +12,7 @@ import {
   OrchestrationAggregateKind,
   OrchestrationEvent,
   OrchestrationEventType,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/events";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import * as SqlSchema from "effect/unstable/sql/SqlSchema";
 import { Effect, Layer, Option, Schema, Stream } from "effect";

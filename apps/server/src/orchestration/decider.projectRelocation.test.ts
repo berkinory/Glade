@@ -1,9 +1,7 @@
 import { CommandId } from "@glade/contracts/core/baseSchemas";
-import {
-  DEFAULT_PROVIDER_INTERACTION_MODE,
-  OrchestrationCommand,
-  type OrchestrationReadModel,
-} from "@glade/contracts/orchestration/orchestration";
+import { DEFAULT_PROVIDER_INTERACTION_MODE } from "@glade/contracts/provider/sessionPolicy";
+import { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
+import { type OrchestrationReadModel } from "@glade/contracts/orchestration/snapshots";
 import { Effect, Schema } from "effect";
 import { describe, expect, it } from "vitest";
 

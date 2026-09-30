@@ -1,7 +1,7 @@
 import {
   SPACE_PROJECTS_ASSIGN_MAX_COUNT,
   type SpaceIconName,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 import { type NativeApi } from "@glade/contracts/ipc/ipc";
 import { type ProjectId, type SpaceId } from "@glade/contracts/core/baseSchemas";
 

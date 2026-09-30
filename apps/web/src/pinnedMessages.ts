@@ -1,7 +1,7 @@
 import {
   PINNED_MESSAGE_LABEL_MAX_CHARS,
   type PinnedMessage,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 import { type MessageId, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   addPinnedMessage,

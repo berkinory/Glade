@@ -5,7 +5,7 @@ import path from "node:path";
 import type {
   ChatFileAttachment,
   ChatImageAttachment,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 import { Effect } from "effect";
 
 import { resolveAttachmentRelativePath } from "./attachmentPaths";

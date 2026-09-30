@@ -7,7 +7,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
-import { SPACE_NAME_MAX_LENGTH } from "@glade/contracts/orchestration/orchestration";
+import { SPACE_NAME_MAX_LENGTH } from "@glade/contracts/orchestration/threadEntities";
 import { type ProjectId, type SpaceId } from "@glade/contracts/core/baseSchemas";
 import {
   useCallback,

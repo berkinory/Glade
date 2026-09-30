@@ -1,4 +1,4 @@
-import type { PendingClaudeCacheReview } from "@glade/contracts/orchestration/orchestration";
+import type { PendingClaudeCacheReview } from "@glade/contracts/orchestration/threadEntities";
 import { useRef, useState } from "react";
 import { formatContextWindowTokens } from "~/lib/contextWindow";
 import { cn } from "~/lib/utils";

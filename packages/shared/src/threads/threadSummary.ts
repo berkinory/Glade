@@ -4,7 +4,7 @@ import type {
   OrchestrationPendingInteraction,
   OrchestrationProposedPlan,
   OrchestrationThreadActivity,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 
 export interface ThreadSummaryMetadata {
   latestUserMessageAt: string | null;

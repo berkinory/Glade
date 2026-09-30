@@ -7,10 +7,8 @@ import {
   SpaceId,
   ThreadId,
 } from "@glade/contracts/core/baseSchemas";
-import {
-  OrchestrationAggregateKind,
-  OrchestrationCommandReceiptStatus,
-} from "@glade/contracts/orchestration/orchestration";
+import { OrchestrationAggregateKind } from "@glade/contracts/orchestration/events";
+import { OrchestrationCommandReceiptStatus } from "@glade/contracts/orchestration/rpc";
 import { Option, Schema, ServiceMap } from "effect";
 import type { Effect } from "effect";
 

@@ -1,9 +1,14 @@
 import type {
   ModelSelection,
   MessageDispatchOrigin,
+  TurnDispatchMode,
+  ProviderInteractionMode,
+  RuntimeMode,
+  ThreadCreationSource,
+} from "@glade/contracts/provider/sessionPolicy";
+import type {
   OrchestrationMessageSource,
   OrchestrationPendingInteraction,
-  TurnDispatchMode,
   OrchestrationLatestTurn,
   OrchestrationThreadPullRequest,
   OrchestrationProposedPlanId,
@@ -15,11 +20,8 @@ import type {
   ThreadHandoff,
   ProjectScript as ContractProjectScript,
   SpaceIconName,
-  ProviderInteractionMode,
-  RuntimeMode,
-  ThreadCreationSource,
   ThreadEnvironmentMode,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 import type {
   ThreadId,
   ProjectId,
@@ -105,7 +107,7 @@ export type ChatAttachment =
   | ChatAssistantSelectionAttachment;
 
 type OrchestrationMessageTextSegment =
-  import("@glade/contracts/orchestration/orchestration").OrchestrationMessageTextSegment;
+  import("@glade/contracts/orchestration/threadEntities").OrchestrationMessageTextSegment;
 
 export interface ChatMessage {
   id: MessageId;

@@ -1,4 +1,4 @@
-import type { AssistantDeliveryMode } from "@glade/contracts/orchestration/orchestration";
+import type { AssistantDeliveryMode } from "@glade/contracts/provider/sessionPolicy";
 import type { MessageId, ThreadId } from "@glade/contracts/core/baseSchemas";
 
 import { persistModelSelectionBeforeRuntimeMode } from "../components/ChatView.logic";

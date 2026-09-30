@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 
 import { useEffect, useRef, useState, type ChangeEventHandler } from "react";
-import { THREAD_NOTES_MAX_CHARS } from "@glade/contracts/orchestration/orchestration";
+import { THREAD_NOTES_MAX_CHARS } from "@glade/contracts/orchestration/threadEntities";
 import { type ProjectId } from "@glade/contracts/core/baseSchemas";
 
 import { Textarea } from "~/components/ui/textarea";

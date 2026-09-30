@@ -5,12 +5,12 @@ import {
   ThreadId,
   TurnId,
 } from "@glade/contracts/core/baseSchemas";
+import { DEFAULT_PROVIDER_INTERACTION_MODE } from "@glade/contracts/provider/sessionPolicy";
 import {
-  DEFAULT_PROVIDER_INTERACTION_MODE,
   type OrchestrationMessage,
-  type OrchestrationReadModel,
   type OrchestrationSession,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
+import { type OrchestrationReadModel } from "@glade/contracts/orchestration/snapshots";
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 

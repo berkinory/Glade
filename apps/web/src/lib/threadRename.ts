@@ -1,10 +1,10 @@
 import {
   type ModelSelection,
-  type OrchestrationThreadPullRequest,
-  type OrchestrationRegenerateThreadTitleResult,
   type ProviderInteractionMode,
   type RuntimeMode,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/provider/sessionPolicy";
+import { type OrchestrationThreadPullRequest } from "@glade/contracts/orchestration/threadEntities";
+import { type OrchestrationRegenerateThreadTitleResult } from "@glade/contracts/orchestration/rpc";
 import { type ProjectId, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type DraftThreadEnvMode } from "../composerDraftStore";
 import { readNativeApi } from "../nativeApi";

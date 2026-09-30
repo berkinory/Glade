@@ -1,4 +1,4 @@
-import type { ModelSelection } from "@glade/contracts/orchestration/orchestration";
+import type { ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 
 export function resolveCodexServiceTier(
   modelSelection: ModelSelection | undefined,

@@ -1,4 +1,4 @@
-import type { OrchestrationEvent } from "@glade/contracts/orchestration/orchestration";
+import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
 
 const THREAD_SHELL_SUMMARY_ACTIVITY_KINDS = new Set([
   "approval.requested",

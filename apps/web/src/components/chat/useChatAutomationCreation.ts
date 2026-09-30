@@ -4,7 +4,7 @@ import {
   RuntimeMode,
   type ModelSelection,
   type ProviderStartOptions,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/provider/sessionPolicy";
 import { type AutomationSchedule } from "@glade/contracts/automation/automation";
 import { automationRequiresTargetThread } from "@glade/shared/threads/automationMode";
 import {

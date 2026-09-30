@@ -1,11 +1,11 @@
 import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import {
-  type OrchestrationEvent,
   type OrchestrationShellSnapshot,
   type OrchestrationShellStreamEvent,
-  type OrchestrationThread,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/snapshots";
+import { type OrchestrationThread } from "@glade/contracts/orchestration/threadEntities";
 import { type ServerConfig, type ServerProviderStatus } from "@glade/contracts/server/server";
 import { type ServerSettingsView } from "@glade/contracts/settings/settings";
 import { type WsCompatibilityError } from "@glade/contracts/transport/ws/wsCompatibility";

@@ -2,7 +2,7 @@ import type { TaggedFailure } from "../../platform/operationError.ts";
 import type {
   OrchestrationProject,
   OrchestrationProjectShell,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 import type { ProjectId } from "@glade/contracts/core/baseSchemas";
 import type { PullRequestDetail } from "@glade/contracts/git/pullRequests";
 import { isValidGitHubRepositoryNameWithOwner } from "@glade/shared/git/githubRepository";

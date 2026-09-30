@@ -1,4 +1,4 @@
-import type { OrchestrationSession } from "@glade/contracts/orchestration/orchestration";
+import type { OrchestrationSession } from "@glade/contracts/orchestration/threadEntities";
 
 type TurnState = "pending" | "running" | "completed" | "interrupted" | "error";
 

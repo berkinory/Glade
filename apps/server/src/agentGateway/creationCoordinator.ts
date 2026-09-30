@@ -13,9 +13,9 @@ import {
 } from "@glade/contracts/core/baseSchemas";
 import {
   type ModelSelection,
-  type OrchestrationThreadShell,
   type ProviderInteractionMode,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/provider/sessionPolicy";
+import { type OrchestrationThreadShell } from "@glade/contracts/orchestration/threadEntities";
 import {
   type GladeCreateThreadsInput,
   type GladeCreateThreadsResult,

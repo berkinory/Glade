@@ -1,7 +1,7 @@
 import {
   PROVIDER_SEND_TURN_MAX_IMAGE_BYTES,
   PROVIDER_SEND_TURN_MAX_IMAGE_IMPORT_BYTES,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { prepareComposerImageFile } from "./composerImagePreparation";

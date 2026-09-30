@@ -1,8 +1,6 @@
-import type {
-  OrchestrationCommand,
-  OrchestrationEvent,
-  OrchestrationReadModel,
-} from "@glade/contracts/orchestration/orchestration";
+import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
+import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
+import type { OrchestrationReadModel } from "@glade/contracts/orchestration/snapshots";
 import { ServiceMap } from "effect";
 import type { Effect, Scope, Stream } from "effect";
 

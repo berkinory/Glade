@@ -8,8 +8,8 @@ import {
 import {
   DEFAULT_PROVIDER_INTERACTION_MODE,
   DEFAULT_RUNTIME_MODE,
-} from "@glade/contracts/orchestration/orchestration";
-import type { OrchestrationReadModel } from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/provider/sessionPolicy";
+import type { OrchestrationReadModel } from "@glade/contracts/orchestration/snapshots";
 import { describe, expect, it } from "vitest";
 import { Effect } from "effect";
 

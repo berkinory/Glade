@@ -2,11 +2,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import type {
-  OrchestrationEvent,
-  OrchestrationReadModel,
-  OrchestrationThread,
-} from "@glade/contracts/orchestration/orchestration";
+import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
+import type { OrchestrationReadModel } from "@glade/contracts/orchestration/snapshots";
+import type { OrchestrationThread } from "@glade/contracts/orchestration/threadEntities";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ProviderRuntimeEvent } from "@glade/contracts/provider/providerRuntime";
 import type { ProviderSession } from "@glade/contracts/provider/provider";
@@ -20,7 +18,7 @@ import {
   ThreadId,
   TurnId,
 } from "@glade/contracts/core/baseSchemas";
-import { DEFAULT_PROVIDER_INTERACTION_MODE } from "@glade/contracts/orchestration/orchestration";
+import { DEFAULT_PROVIDER_INTERACTION_MODE } from "@glade/contracts/provider/sessionPolicy";
 import { Effect, Exit, Layer, ManagedRuntime, Option, PubSub, Scope, Stream } from "effect";
 import { afterEach, describe, expect, it } from "vitest";
 

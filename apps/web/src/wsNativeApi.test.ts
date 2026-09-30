@@ -9,8 +9,8 @@ import { type ContextMenuItem } from "@glade/contracts/ipc/ipc";
 import {
   ORCHESTRATION_WS_CHANNELS,
   ORCHESTRATION_WS_METHODS,
-  type OrchestrationEvent,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/rpc";
+import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import {
   type WsPushChannel,
   type WsPushData,

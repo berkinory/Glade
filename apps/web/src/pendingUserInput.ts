@@ -1,4 +1,4 @@
-import type { ProviderUserInputAnswers } from "@glade/contracts/orchestration/orchestration";
+import type { ProviderUserInputAnswers } from "@glade/contracts/provider/sessionPolicy";
 import type { UserInputQuestion } from "@glade/contracts/provider/providerRuntime";
 
 export interface PendingUserInputDraftAnswer {

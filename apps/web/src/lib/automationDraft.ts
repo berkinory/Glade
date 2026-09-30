@@ -4,7 +4,7 @@ import type {
   AutomationSchedule,
   AutomationWorktreeMode,
 } from "@glade/contracts/automation/automation";
-import type { RuntimeMode } from "@glade/contracts/orchestration/orchestration";
+import type { RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
 import { automationRequiresTargetThread } from "@glade/shared/threads/automationMode";
 
 import type { ChatAutomationExecutionScope } from "./automationIntent";

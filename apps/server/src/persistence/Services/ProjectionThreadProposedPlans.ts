@@ -4,7 +4,7 @@ import {
   TrimmedNonEmptyString,
   TurnId,
 } from "@glade/contracts/core/baseSchemas";
-import { OrchestrationProposedPlanId } from "@glade/contracts/orchestration/orchestration";
+import { OrchestrationProposedPlanId } from "@glade/contracts/orchestration/threadEntities";
 import { Option, Schema, ServiceMap } from "effect";
 import type { Effect } from "effect";
 

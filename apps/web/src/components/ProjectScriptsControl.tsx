@@ -1,7 +1,7 @@
 import type {
   ProjectScript,
   ProjectScriptIcon,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 import type { ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import {
   BugIcon,

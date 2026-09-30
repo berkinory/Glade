@@ -7,7 +7,7 @@ import {
   TrimmedNonEmptyString,
 } from "../core/baseSchemas";
 import { DEFAULT_GIT_TEXT_GENERATION_MODEL } from "../provider/model";
-import { ModelSelection, ProviderStartOptions } from "../orchestration/orchestration";
+import { ModelSelection, ProviderStartOptions } from "../provider/sessionPolicy";
 
 const TrimmedNonEmptyStringSchema = TrimmedNonEmptyString;
 

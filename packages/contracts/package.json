@@ -127,10 +127,30 @@
       "import": "./src/orchestration/asyncUserInput.ts",
       "require": "./dist/orchestration/asyncUserInput.cjs"
     },
-    "./orchestration/orchestration": {
-      "types": "./src/orchestration/orchestration.ts",
-      "import": "./src/orchestration/orchestration.ts",
-      "require": "./dist/orchestration/orchestration.cjs"
+    "./orchestration/commands": {
+      "types": "./src/orchestration/commands.ts",
+      "import": "./src/orchestration/commands.ts",
+      "require": "./dist/orchestration/commands.cjs"
+    },
+    "./orchestration/events": {
+      "types": "./src/orchestration/events.ts",
+      "import": "./src/orchestration/events.ts",
+      "require": "./dist/orchestration/events.cjs"
+    },
+    "./orchestration/rpc": {
+      "types": "./src/orchestration/rpc.ts",
+      "import": "./src/orchestration/rpc.ts",
+      "require": "./dist/orchestration/rpc.cjs"
+    },
+    "./orchestration/snapshots": {
+      "types": "./src/orchestration/snapshots.ts",
+      "import": "./src/orchestration/snapshots.ts",
+      "require": "./dist/orchestration/snapshots.cjs"
+    },
+    "./orchestration/threadEntities": {
+      "types": "./src/orchestration/threadEntities.ts",
+      "import": "./src/orchestration/threadEntities.ts",
+      "require": "./dist/orchestration/threadEntities.cjs"
     },
     "./provider/agentGateway": {
       "types": "./src/provider/agentGateway.ts",
@@ -166,6 +186,11 @@
       "types": "./src/provider/providerRuntime.ts",
       "import": "./src/provider/providerRuntime.ts",
       "require": "./dist/provider/providerRuntime.cjs"
+    },
+    "./provider/sessionPolicy": {
+      "types": "./src/provider/sessionPolicy.ts",
+      "import": "./src/provider/sessionPolicy.ts",
+      "require": "./dist/provider/sessionPolicy.cjs"
     },
     "./server/server": {
       "types": "./src/server/server.ts",

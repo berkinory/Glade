@@ -1,4 +1,4 @@
-import { SPACE_NAME_MAX_LENGTH } from "@glade/contracts/orchestration/orchestration";
+import { SPACE_NAME_MAX_LENGTH } from "@glade/contracts/orchestration/threadEntities";
 import { create } from "zustand";
 
 import {

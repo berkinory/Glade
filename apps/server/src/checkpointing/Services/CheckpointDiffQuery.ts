@@ -3,7 +3,7 @@ import type {
   OrchestrationGetFullThreadDiffResult,
   OrchestrationGetTurnDiffInput,
   OrchestrationGetTurnDiffResult,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/rpc";
 import { ServiceMap } from "effect";
 import type { Effect } from "effect";
 

@@ -1,7 +1,5 @@
-import {
-  THREAD_GOAL_MAX_CHARS,
-  type ProviderInteractionMode,
-} from "@glade/contracts/orchestration/orchestration";
+import { THREAD_GOAL_MAX_CHARS } from "@glade/contracts/orchestration/threadEntities";
+import { type ProviderInteractionMode } from "@glade/contracts/provider/sessionPolicy";
 import { type GitBranch } from "@glade/contracts/git/git";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import {

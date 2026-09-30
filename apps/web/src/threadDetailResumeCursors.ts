@@ -1,4 +1,4 @@
-import type { OrchestrationSubscribeThreadInput } from "@glade/contracts/orchestration/orchestration";
+import type { OrchestrationSubscribeThreadInput } from "@glade/contracts/orchestration/rpc";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 
 // Invariant: a cursor exists for a thread only while the store's cached detail is coherent up to

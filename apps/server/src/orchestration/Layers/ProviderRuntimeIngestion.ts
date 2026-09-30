@@ -6,15 +6,17 @@ import {
 } from "../../computer/computerTurnTiming.ts";
 import {
   type AssistantDeliveryMode,
+  type RuntimeMode,
+} from "@glade/contracts/provider/sessionPolicy";
+import {
   type OrchestrationCheckpointFile,
-  type OrchestrationEvent,
   type OrchestrationProjectShell,
   type OrchestrationProposedPlanId,
   type OrchestrationThreadActivity,
   type OrchestrationThread,
   type OrchestrationThreadShell,
-  type RuntimeMode,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
+import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import {
   CommandId,
   EventId,

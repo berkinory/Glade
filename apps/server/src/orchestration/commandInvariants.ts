@@ -5,16 +5,16 @@ import type {
   ThreadId,
   TurnId,
 } from "@glade/contracts/core/baseSchemas";
+import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import type {
-  OrchestrationCommand,
   OrchestrationLatestTurn,
   OrchestrationProject,
-  OrchestrationReadModel,
   OrchestrationSpace,
   OrchestrationSession,
   OrchestrationThread,
   OrchestrationThreadActivity,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
+import type { OrchestrationReadModel } from "@glade/contracts/orchestration/snapshots";
 import type { ProjectKind } from "@glade/contracts/workspace/project";
 import {
   APPROVAL_ALREADY_ANSWERED_INVARIANT_MARKER,

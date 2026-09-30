@@ -1,7 +1,5 @@
-import type {
-  OrchestrationMessage,
-  ProviderApprovalDecision,
-} from "@glade/contracts/orchestration/orchestration";
+import type { OrchestrationMessage } from "@glade/contracts/orchestration/threadEntities";
+import type { ProviderApprovalDecision } from "@glade/contracts/provider/sessionPolicy";
 import { Effect } from "effect";
 
 import type { ComputerApprovalGate } from "../computer/ComputerApprovalGate.ts";

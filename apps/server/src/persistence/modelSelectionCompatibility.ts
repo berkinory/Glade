@@ -1,6 +1,6 @@
 import { DEFAULT_MODEL_BY_PROVIDER } from "@glade/contracts/provider/model";
 import { ProviderKind } from "@glade/contracts/core/baseSchemas";
-import { type ModelSelection } from "@glade/contracts/orchestration/orchestration";
+import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 
 const retiredProviderIds = new Set([
   "antigravity",

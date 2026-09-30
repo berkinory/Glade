@@ -1,5 +1,5 @@
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
-import { type ProviderStartOptions } from "@glade/contracts/orchestration/orchestration";
+import { type ProviderStartOptions } from "@glade/contracts/provider/sessionPolicy";
 import { type ServerProviderStatus } from "@glade/contracts/server/server";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {

@@ -1,5 +1,5 @@
 import { type EditorId } from "@glade/contracts/settings/editor";
-import { type ProjectScript } from "@glade/contracts/orchestration/orchestration";
+import { type ProjectScript } from "@glade/contracts/orchestration/threadEntities";
 import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
 import { type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";

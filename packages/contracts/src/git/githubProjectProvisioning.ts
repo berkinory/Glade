@@ -7,7 +7,7 @@ import {
   SpaceId,
   TrimmedNonEmptyString,
 } from "../core/baseSchemas";
-import { ModelSelection } from "../orchestration/orchestration";
+import { ModelSelection } from "../provider/sessionPolicy";
 
 const BoundedRepositoryInput = TrimmedNonEmptyString.check(Schema.isMaxLength(512));
 const BoundedPath = TrimmedNonEmptyString.check(Schema.isMaxLength(4_096));

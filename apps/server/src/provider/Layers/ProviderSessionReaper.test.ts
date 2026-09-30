@@ -4,7 +4,7 @@ import {
   type ProviderSession,
   type ProviderSessionStartInput,
 } from "@glade/contracts/provider/provider";
-import { type OrchestrationThreadShell } from "@glade/contracts/orchestration/orchestration";
+import { type OrchestrationThreadShell } from "@glade/contracts/orchestration/threadEntities";
 import { Effect, Exit, Layer, Option, Scope, Stream } from "effect";
 import { describe, expect, it, vi } from "vitest";
 

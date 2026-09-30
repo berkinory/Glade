@@ -1,9 +1,7 @@
 import { EventId } from "@glade/contracts/core/baseSchemas";
-import {
-  type OrchestrationEvent,
-  type OrchestrationProject,
-  type OrchestrationReadModel,
-} from "@glade/contracts/orchestration/orchestration";
+import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
+import { type OrchestrationProject } from "@glade/contracts/orchestration/threadEntities";
+import { type OrchestrationReadModel } from "@glade/contracts/orchestration/snapshots";
 import { workspaceRootsEqual } from "@glade/shared/threads/threadWorkspace";
 import { Effect } from "effect";
 

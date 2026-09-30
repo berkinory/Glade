@@ -1,4 +1,4 @@
-import { MAX_PINNED_PROJECTS } from "@glade/contracts/orchestration/orchestration";
+import { MAX_PINNED_PROJECTS } from "@glade/contracts/orchestration/threadEntities";
 import { type ProjectId, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { resolveThreadEnvironmentMode } from "@glade/shared/threads/threadEnvironment";
 import { isWorkspaceRootWithin, workspaceRootsEqual } from "@glade/shared/threads/threadWorkspace";

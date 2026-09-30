@@ -1,5 +1,5 @@
 import type { ModelSlug } from "@glade/contracts/provider/model";
-import type { ProviderInteractionMode } from "@glade/contracts/orchestration/orchestration";
+import type { ProviderInteractionMode } from "@glade/contracts/provider/sessionPolicy";
 import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import type {
   ProviderMentionReference,

@@ -18,11 +18,11 @@ import {
   type GitCreateDetachedWorktreeInput,
   type GitRemoveWorktreeInput,
 } from "@glade/contracts/git/git";
+import { type OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import {
-  type OrchestrationCommand,
   type OrchestrationProjectShell,
   type OrchestrationThreadShell,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 
 import { Duration, Effect, Layer, Option, Stream } from "effect";
 import { TestClock } from "effect/testing";

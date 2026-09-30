@@ -3,7 +3,7 @@ import type {
   ProviderInteractionMode,
   ProviderStartOptions,
   RuntimeMode,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/provider/sessionPolicy";
 import type { ModelSlug } from "@glade/contracts/provider/model";
 import type { ProjectId, ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { ServerProviderStatus } from "@glade/contracts/server/server";

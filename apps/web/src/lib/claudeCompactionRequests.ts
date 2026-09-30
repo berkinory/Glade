@@ -1,4 +1,4 @@
-import type { ClientOrchestrationCommand } from "@glade/contracts/orchestration/orchestration";
+import type { ClientOrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import type { CommandId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";

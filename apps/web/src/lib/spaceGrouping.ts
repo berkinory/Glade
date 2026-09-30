@@ -2,7 +2,7 @@ import {
   RESERVED_VOID_SPACE_ID,
   SPACE_ICON_NAMES,
   type SpaceIconName,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 import { type SpaceId } from "@glade/contracts/core/baseSchemas";
 
 import type { Space } from "~/types";

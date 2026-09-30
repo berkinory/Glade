@@ -12,6 +12,8 @@
 
 ### Improved
 
+- Orchestration contracts separate provider policy, thread entities, snapshots, commands, events and RPC operations. Consumers use direct imports; persisted and wire schema definitions are unchanged.
+
 - Dependency checks require every shared runtime module to have at least two application consumers, following transitive imports and excluding test-only use.
 
 - Runtime modules shared by multiple applications are grouped by domain. Single-application modules and their tests live with their owning application; native driver pins and CI paths follow the new layout.

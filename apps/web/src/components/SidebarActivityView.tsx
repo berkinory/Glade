@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 
-import type { OrchestrationThreadPullRequest } from "@glade/contracts/orchestration/orchestration";
+import type { OrchestrationThreadPullRequest } from "@glade/contracts/orchestration/threadEntities";
 import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { resolveThreadEnvironmentMode } from "@glade/shared/threads/threadEnvironment";
 

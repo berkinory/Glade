@@ -2,7 +2,7 @@ import {
   type OrchestrationLatestTurn,
   type OrchestrationProposedPlanId,
   type OrchestrationThreadActivity,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 import { type ProviderKind, type ThreadId, type TurnId } from "@glade/contracts/core/baseSchemas";
 import { PROVIDER_DESCRIPTORS as VISIBLE_PROVIDER_DESCRIPTORS } from "@glade/shared/provider/providerMetadata";
 

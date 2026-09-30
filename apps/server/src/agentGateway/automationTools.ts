@@ -12,10 +12,8 @@ import {
   type AutomationSchedule as AutomationScheduleType,
   type AutomationWorktreeMode,
 } from "@glade/contracts/automation/automation";
-import {
-  type ModelSelection,
-  type OrchestrationThreadShell,
-} from "@glade/contracts/orchestration/orchestration";
+import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
+import { type OrchestrationThreadShell } from "@glade/contracts/orchestration/threadEntities";
 import {
   automationContinuesThread,
   automationRequiresTargetThread,

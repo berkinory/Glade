@@ -1,5 +1,5 @@
 import { ProjectId } from "@glade/contracts/core/baseSchemas";
-import { type OrchestrationProjectShell } from "@glade/contracts/orchestration/orchestration";
+import { type OrchestrationProjectShell } from "@glade/contracts/orchestration/threadEntities";
 import { describe, expect, it, vi } from "vitest";
 
 import { relocateProjectFromClient } from "./projectRelocation";

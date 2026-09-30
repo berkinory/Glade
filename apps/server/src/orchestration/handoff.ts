@@ -1,7 +1,7 @@
 import type {
   OrchestrationMessage,
   OrchestrationThread,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 import { unicodeSafeEndOffset } from "@glade/shared/text/text";
 
 const RECENT_MESSAGE_COUNT = 6;

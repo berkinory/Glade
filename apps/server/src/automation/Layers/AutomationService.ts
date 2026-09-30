@@ -28,9 +28,9 @@ import {
 import {
   type OrchestrationProjectShell,
   type OrchestrationThreadShell,
-  type ProviderStartOptions,
   type ThreadEnvironmentMode,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
+import { type ProviderStartOptions } from "@glade/contracts/provider/sessionPolicy";
 import {
   automationContinuationThreadId,
   automationContinuesThread,

@@ -1,17 +1,17 @@
-import type {
-  OrchestrationEvent,
-  OrchestrationReadModel,
-} from "@glade/contracts/orchestration/orchestration";
+import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
+import type { OrchestrationReadModel } from "@glade/contracts/orchestration/snapshots";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   OrchestrationCheckpointSummary,
   OrchestrationMessage,
   OrchestrationSession,
   OrchestrationThread,
+  type OrchestrationMessageTextSegment,
+} from "@glade/contracts/orchestration/threadEntities";
+import {
   ThreadAsyncUserInputAnsweredPayload,
   ThreadClaudeCacheSetPayload,
-  type OrchestrationMessageTextSegment,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/events";
 import { clearRemovedAsyncUserInputResponses } from "@glade/shared/threads/asyncUserInput";
 import {
   addPinnedMessage,

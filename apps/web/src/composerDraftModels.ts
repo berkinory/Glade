@@ -5,7 +5,7 @@ import {
   type ModelSlug,
   type ProviderModelOptions,
 } from "@glade/contracts/provider/model";
-import { type ModelSelection } from "@glade/contracts/orchestration/orchestration";
+import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import * as Schema from "effect/Schema";
 
 import {

@@ -10,7 +10,7 @@ import {
 import {
   type ProviderApprovalDecision,
   type ProviderUserInputAnswers,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/provider/sessionPolicy";
 import {
   type ProviderEvent,
   type ProviderSession,

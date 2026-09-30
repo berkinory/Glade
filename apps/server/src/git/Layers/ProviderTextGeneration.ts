@@ -2,7 +2,7 @@ import {
   DEFAULT_GIT_TEXT_GENERATION_MODEL,
   PROVIDER_DISPLAY_NAMES,
 } from "@glade/contracts/provider/model";
-import { type ModelSelection } from "@glade/contracts/orchestration/orchestration";
+import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { Effect, Layer } from "effect";
 

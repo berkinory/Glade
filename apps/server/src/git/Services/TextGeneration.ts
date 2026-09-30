@@ -1,11 +1,8 @@
 import { ServiceMap } from "effect";
 import type { Effect } from "effect";
 import type { AutomationMode } from "@glade/contracts/automation/automation";
-import type {
-  ChatAttachment,
-  ModelSelection,
-  ProviderStartOptions,
-} from "@glade/contracts/orchestration/orchestration";
+import type { ChatAttachment } from "@glade/contracts/orchestration/threadEntities";
+import type { ModelSelection, ProviderStartOptions } from "@glade/contracts/provider/sessionPolicy";
 import type { ServerGenerateAutomationIntentResult } from "@glade/contracts/server/server";
 
 import type { TextGenerationError } from "../Errors.ts";

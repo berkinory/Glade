@@ -171,16 +171,18 @@ import {
   PullRequestDiffResult,
   PullRequestsUnavailableError,
 } from "../../git/pullRequests";
+import { ClientOrchestrationCommand } from "../../orchestration/commands";
 import {
-  ClientOrchestrationCommand,
   ORCHESTRATION_WS_METHODS,
-  OrchestrationEvent,
   OrchestrationImportThreadInput,
   OrchestrationImportThreadResult,
   OrchestrationRpcSchemas,
+} from "../../orchestration/rpc";
+import { OrchestrationEvent } from "../../orchestration/events";
+import {
   OrchestrationShellStreamItem,
   OrchestrationThreadStreamItem,
-} from "../../orchestration/orchestration";
+} from "../../orchestration/snapshots";
 import { ProviderCompactThreadInput } from "../../provider/provider";
 import {
   ProviderGetComposerCapabilitiesInput,

@@ -5,10 +5,7 @@ import type {
   GitRemoveWorktreeInput,
   GitStackedAction,
 } from "@glade/contracts/git/git";
-import type {
-  ModelSelection,
-  ProviderStartOptions,
-} from "@glade/contracts/orchestration/orchestration";
+import type { ModelSelection, ProviderStartOptions } from "@glade/contracts/provider/sessionPolicy";
 import type { NativeApi } from "@glade/contracts/ipc/ipc";
 import { mutationOptions, queryOptions, type QueryClient } from "@tanstack/react-query";
 import { ensureNativeApi } from "../nativeApi";

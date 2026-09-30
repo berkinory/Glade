@@ -1,4 +1,4 @@
-import { THREAD_NOTES_MAX_CHARS } from "@glade/contracts/orchestration/orchestration";
+import { THREAD_NOTES_MAX_CHARS } from "@glade/contracts/orchestration/threadEntities";
 import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 
 import { Textarea } from "~/components/ui/textarea";

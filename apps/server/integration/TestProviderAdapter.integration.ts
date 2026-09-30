@@ -9,7 +9,7 @@ import {
   TurnId,
   ProviderKind,
 } from "@glade/contracts/core/baseSchemas";
-import { ProviderApprovalDecision } from "@glade/contracts/orchestration/orchestration";
+import { ProviderApprovalDecision } from "@glade/contracts/provider/sessionPolicy";
 import { ProviderRuntimeEvent } from "@glade/contracts/provider/providerRuntime";
 import { ProviderSession, ProviderTurnStartResult } from "@glade/contracts/provider/provider";
 import { Effect, PubSub, Stream } from "effect";

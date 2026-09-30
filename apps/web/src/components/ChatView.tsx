@@ -7,12 +7,12 @@ import { MessageId, ThreadId, ProviderKind, type TurnId } from "@glade/contracts
 import {
   OrchestrationThreadActivity,
   PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
-  type ModelSelection,
   type PinnedMessage,
   type PendingClaudeCacheReview,
   type ProjectScript,
   type ThreadGoalAchievement,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
+import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { PROVIDER_DISPLAY_NAMES, type ModelSlug } from "@glade/contracts/provider/model";
 import { type AutomationDefinition } from "@glade/contracts/automation/automation";
 import { type EditorId } from "@glade/contracts/settings/editor";

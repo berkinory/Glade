@@ -1,4 +1,4 @@
-import { ORCHESTRATION_WS_METHODS } from "@glade/contracts/orchestration/orchestration";
+import { ORCHESTRATION_WS_METHODS } from "@glade/contracts/orchestration/rpc";
 import { WS_METHODS } from "@glade/contracts/transport/ws/ws";
 import { Deferred, Effect, Fiber } from "effect";
 import { describe, expect, it } from "vitest";

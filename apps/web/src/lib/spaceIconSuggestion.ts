@@ -1,4 +1,7 @@
-import { SPACE_ICON_NAMES, type SpaceIconName } from "@glade/contracts/orchestration/orchestration";
+import {
+  SPACE_ICON_NAMES,
+  type SpaceIconName,
+} from "@glade/contracts/orchestration/threadEntities";
 
 const ICON_KEYWORDS: ReadonlyArray<readonly [SpaceIconName, ReadonlyArray<string>]> = [
   ["code-brackets", ["code", "dev", "engineer", "program", "software", "codice", "sviluppo"]],

@@ -1,8 +1,6 @@
 import type { ProjectImportProvider } from "@glade/contracts/workspace/projectImport";
-import type {
-  ProviderStartOptions,
-  ThreadHandoffImportedMessage,
-} from "@glade/contracts/orchestration/orchestration";
+import type { ProviderStartOptions } from "@glade/contracts/provider/sessionPolicy";
+import type { ThreadHandoffImportedMessage } from "@glade/contracts/orchestration/commands";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { ProviderAdapterError, ProviderUnsupportedError } from "../provider/Errors.ts";
 import { Data, Effect } from "effect";

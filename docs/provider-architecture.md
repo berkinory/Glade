@@ -81,5 +81,7 @@ Prefer capability-driven behavior and existing shared protocol helpers. Do not a
 - `apps/server/src/provider/boundedCallbackIngress.ts` — bounded callback-producer ingress policy
 - `apps/server/src/orchestration/Layers/ProviderCommandReactor.ts` — orchestration intent to provider calls
 - `apps/server/src/orchestration/Layers/ProviderRuntimeIngestion.ts` — provider events to durable orchestration
-- `packages/contracts/src/orchestration/orchestration.ts` — provider kinds, runtime modes, session/turn contracts
+- `packages/contracts/src/core/baseSchemas.ts` — provider kinds and entity identifiers
+- `packages/contracts/src/provider/sessionPolicy.ts` — model selections, runtime modes and provider policy
+- `packages/contracts/src/orchestration/threadEntities.ts` — durable session, thread and turn contracts
 - `packages/shared/src/provider/providerMetadata.ts` — shared provider metadata

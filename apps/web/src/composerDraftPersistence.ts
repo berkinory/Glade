@@ -3,12 +3,14 @@ import { resolveComputerControlMode } from "./computerControlMode";
 
 import {
   ModelSelection,
-  OrchestrationProposedPlanId,
-  OrchestrationThreadPullRequest,
   ProviderInteractionMode,
   ProviderStartOptions,
   RuntimeMode,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/provider/sessionPolicy";
+import {
+  OrchestrationProposedPlanId,
+  OrchestrationThreadPullRequest,
+} from "@glade/contracts/orchestration/threadEntities";
 import { ProjectId, ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   ProviderMentionReference,

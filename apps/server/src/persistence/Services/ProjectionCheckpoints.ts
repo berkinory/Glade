@@ -9,7 +9,7 @@ import {
 import {
   OrchestrationCheckpointFile,
   OrchestrationCheckpointStatus,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 import { Option, ServiceMap, Schema } from "effect";
 import type { Effect } from "effect";
 

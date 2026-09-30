@@ -1,4 +1,4 @@
-import type { OrchestrationCommand } from "@glade/contracts/orchestration/orchestration";
+import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import { Effect, Option, Queue } from "effect";
 
 export const ORCHESTRATION_COMMAND_QUEUE_CAPACITY = 256;

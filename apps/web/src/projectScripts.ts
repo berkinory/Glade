@@ -3,7 +3,7 @@ import {
   SCRIPT_RUN_COMMAND_PATTERN,
   type KeybindingCommand,
 } from "@glade/contracts/settings/keybindings";
-import { type ProjectScript } from "@glade/contracts/orchestration/orchestration";
+import { type ProjectScript } from "@glade/contracts/orchestration/threadEntities";
 import { Schema } from "effect";
 
 function normalizeScriptId(value: string): string {

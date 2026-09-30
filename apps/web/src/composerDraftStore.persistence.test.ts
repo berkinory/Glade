@@ -1,4 +1,4 @@
-import { OrchestrationProposedPlanId } from "@glade/contracts/orchestration/orchestration";
+import { OrchestrationProposedPlanId } from "@glade/contracts/orchestration/threadEntities";
 import { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { partializeComposerDraftStoreState, useComposerDraftStore } from "./composerDraftStore";

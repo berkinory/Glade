@@ -15,14 +15,12 @@ import {
   AutomationStreamEvent,
   AutomationUpdateInput,
 } from "../../automation/automation";
+import { ClientOrchestrationCommand } from "../../orchestration/commands";
+import { OrchestrationEvent } from "../../orchestration/events";
 import {
-  ClientOrchestrationCommand,
-  OrchestrationEvent,
   OrchestrationImportThreadInput,
-  OrchestrationShellStreamItem,
   OrchestrationSubscribeShellInput,
   OrchestrationSubscribeThreadInput,
-  OrchestrationThreadStreamItem,
   OrchestrationUnsubscribeShellInput,
   OrchestrationUnsubscribeThreadInput,
   ORCHESTRATION_WS_CHANNELS,
@@ -35,7 +33,11 @@ import {
   OrchestrationGetTurnDiffInput,
   OrchestrationReplayEventsInput,
   OrchestrationRegenerateThreadTitleInput,
-} from "../../orchestration/orchestration";
+} from "../../orchestration/rpc";
+import {
+  OrchestrationShellStreamItem,
+  OrchestrationThreadStreamItem,
+} from "../../orchestration/snapshots";
 import {
   GitActionProgressEvent,
   GitBlameLineInput,

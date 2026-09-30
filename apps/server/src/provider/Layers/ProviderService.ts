@@ -28,7 +28,7 @@ import {
   ModelSelection,
   RuntimeMode,
   ProviderStartOptions,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/provider/sessionPolicy";
 import { type ProviderRuntimeEvent } from "@glade/contracts/provider/providerRuntime";
 import {
   providerSupportsAutoRuntimeMode,

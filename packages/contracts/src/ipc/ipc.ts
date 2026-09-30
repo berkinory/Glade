@@ -246,8 +246,8 @@ import type {
   TerminalSessionSnapshot,
   TerminalWriteInput,
 } from "../terminal/terminal";
+import type { ClientOrchestrationCommand } from "../orchestration/commands";
 import type {
-  ClientOrchestrationCommand,
   OrchestrationGetFullThreadDiffInput,
   OrchestrationGetFullThreadDiffResult,
   OrchestrationGetThreadDetailSnapshotInput,
@@ -264,14 +264,16 @@ import type {
   OrchestrationPrepareQuitResumeResult,
   OrchestrationGetTurnDiffInput,
   OrchestrationGetTurnDiffResult,
-  OrchestrationEvent,
+  OrchestrationSubscribeThreadInput,
+  OrchestrationUnsubscribeThreadInput,
+} from "../orchestration/rpc";
+import type { OrchestrationEvent } from "../orchestration/events";
+import type {
   OrchestrationReadModel,
   OrchestrationShellSnapshot,
   OrchestrationShellStreamItem,
-  OrchestrationSubscribeThreadInput,
   OrchestrationThreadStreamItem,
-  OrchestrationUnsubscribeThreadInput,
-} from "../orchestration/orchestration";
+} from "../orchestration/snapshots";
 import type { EditorId } from "../settings/editor";
 import type { ThreadId } from "../core/baseSchemas";
 import type {

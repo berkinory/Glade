@@ -5,7 +5,7 @@ import type {
   GitStackedAction,
   GitStatusResult,
 } from "@glade/contracts/git/git";
-import type { ModelSelection } from "@glade/contracts/orchestration/orchestration";
+import type { ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";

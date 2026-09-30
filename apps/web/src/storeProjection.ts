@@ -3,8 +3,8 @@ import {
   type OrchestrationReadModel,
   type OrchestrationShellSnapshot,
   type OrchestrationShellStreamEvent,
-  type OrchestrationSpaceShell,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/snapshots";
+import { type OrchestrationSpaceShell } from "@glade/contracts/orchestration/threadEntities";
 import { deriveThreadSummaryMetadata } from "@glade/shared/threads/threadSummary";
 
 import {

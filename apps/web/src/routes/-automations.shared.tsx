@@ -16,10 +16,7 @@ import {
   type ProviderKind,
   type ThreadId,
 } from "@glade/contracts/core/baseSchemas";
-import {
-  type ModelSelection,
-  type RuntimeMode,
-} from "@glade/contracts/orchestration/orchestration";
+import { type ModelSelection, type RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
 import { automationRequiresTargetThread } from "@glade/shared/threads/automationMode";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";

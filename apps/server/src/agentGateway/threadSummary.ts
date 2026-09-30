@@ -2,7 +2,7 @@ import type {
   OrchestrationMessage,
   OrchestrationThread,
   OrchestrationThreadShell,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 import { splitsSurrogatePair, unicodeSafeEndOffset } from "@glade/shared/text/text";
 
 export type AgentThreadStatus =

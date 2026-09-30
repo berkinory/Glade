@@ -1,6 +1,6 @@
 import * as Crypto from "node:crypto";
 
-import { ORCHESTRATION_WS_METHODS } from "@glade/contracts/orchestration/orchestration";
+import { ORCHESTRATION_WS_METHODS } from "@glade/contracts/orchestration/rpc";
 import { WS_METHODS } from "@glade/contracts/transport/ws/ws";
 import { WsRpcError } from "@glade/contracts/transport/ws/rpc";
 import { Effect, Ref } from "effect";

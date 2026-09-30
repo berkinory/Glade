@@ -2,7 +2,7 @@ import {
   PINNED_MESSAGE_LABEL_MAX_CHARS,
   THREAD_NOTES_MAX_CHARS,
   type PinnedMessage,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 import { type MessageId } from "@glade/contracts/core/baseSchemas";
 
 function keepExistingPins(pins: readonly PinnedMessage[]): PinnedMessage[] {

@@ -14,7 +14,7 @@ import {
   type ClaudeModelSelection,
   type CodexModelSelection,
   type ModelSelection,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/provider/sessionPolicy";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 
 export type ProviderOptions = ProviderModelOptions[ProviderKind];

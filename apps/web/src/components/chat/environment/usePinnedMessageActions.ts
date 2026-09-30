@@ -1,7 +1,7 @@
 import {
   PINNED_MESSAGES_MAX_COUNT,
   type PinnedMessage,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 import { type MessageId, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useEffect, useRef } from "react";
 

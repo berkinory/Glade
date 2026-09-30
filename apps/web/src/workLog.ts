@@ -11,7 +11,7 @@ import {
 import {
   type OrchestrationLatestTurnState,
   type OrchestrationThreadActivity,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 import { type ProviderKind, type TurnId } from "@glade/contracts/core/baseSchemas";
 import {
   decodeSubagentAgentStates,

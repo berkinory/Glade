@@ -1,5 +1,5 @@
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { type ModelSelection } from "@glade/contracts/orchestration/orchestration";
+import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { type ProviderModelOptions } from "@glade/contracts/provider/model";
 import {
   useComposerDraftStore,

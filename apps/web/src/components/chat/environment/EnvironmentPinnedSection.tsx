@@ -1,5 +1,5 @@
 import type { MessageId } from "@glade/contracts/core/baseSchemas";
-import type { PinnedMessage } from "@glade/contracts/orchestration/orchestration";
+import type { PinnedMessage } from "@glade/contracts/orchestration/threadEntities";
 import { displayLabelFor } from "~/pinnedMessages";
 
 import { EnvironmentEditableChecklistRow } from "./EnvironmentEditableChecklistRow";

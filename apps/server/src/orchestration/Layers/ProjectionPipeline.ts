@@ -3,7 +3,7 @@ import {
   encodeMessageTextFallback,
 } from "../../persistence/messageTextChunks.ts";
 import { ApprovalRequestId, CommandId } from "@glade/contracts/core/baseSchemas";
-import { type OrchestrationEvent } from "@glade/contracts/orchestration/orchestration";
+import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import { resolveHumanMessageAt } from "@glade/shared/threads/threadSummary";
 import { clearRemovedAsyncUserInputResponses } from "@glade/shared/threads/asyncUserInput";
 import {

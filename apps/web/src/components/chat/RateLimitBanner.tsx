@@ -1,4 +1,4 @@
-import type { OrchestrationThreadActivity } from "@glade/contracts/orchestration/orchestration";
+import type { OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
 import { Alert, AlertAction, AlertDescription } from "../ui/alert";
 import { IconButton } from "../ui/icon-button";
 import { CircleAlertIcon, XIcon } from "~/lib/icons";

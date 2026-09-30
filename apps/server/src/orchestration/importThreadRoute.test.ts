@@ -1,9 +1,7 @@
 import assert from "node:assert/strict";
 import { DEFAULT_SERVER_SETTINGS } from "@glade/contracts/settings/settings";
-import {
-  type OrchestrationCommand,
-  type OrchestrationThread,
-} from "@glade/contracts/orchestration/orchestration";
+import { type OrchestrationCommand } from "@glade/contracts/orchestration/commands";
+import { type OrchestrationThread } from "@glade/contracts/orchestration/threadEntities";
 import { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { type ProviderSession } from "@glade/contracts/provider/provider";
 import * as NodeServices from "@effect/platform-node/NodeServices";

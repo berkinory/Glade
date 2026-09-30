@@ -1,5 +1,5 @@
 import type { AutomationMode } from "@glade/contracts/automation/automation";
-import type { ThreadCreationSource } from "@glade/contracts/orchestration/orchestration";
+import type { ThreadCreationSource } from "@glade/contracts/provider/sessionPolicy";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 
 export function automationContinuesThread(mode: AutomationMode): boolean {

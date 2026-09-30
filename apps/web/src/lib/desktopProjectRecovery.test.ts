@@ -2,7 +2,7 @@ import { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   type OrchestrationReadModel,
   type OrchestrationShellSnapshot,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/snapshots";
 import { describe, expect, it } from "vitest";
 
 import {

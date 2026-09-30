@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 
-import type { ChatAttachment } from "@glade/contracts/orchestration/orchestration";
+import type { ChatAttachment } from "@glade/contracts/orchestration/threadEntities";
 
 import {
   normalizeAttachmentRelativePath,

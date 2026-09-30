@@ -17,7 +17,7 @@ import {
   type ProviderRequestKind,
   type ProviderStartOptions,
   type RuntimeMode,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/provider/sessionPolicy";
 import {
   type GitWorktreeSetupPhase,
   type GitWorktreeSetupProgressEvent,

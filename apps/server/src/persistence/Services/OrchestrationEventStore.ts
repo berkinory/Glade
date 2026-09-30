@@ -1,4 +1,4 @@
-import { OrchestrationEvent } from "@glade/contracts/orchestration/orchestration";
+import { OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import { ServiceMap } from "effect";
 import type { Effect, Stream } from "effect";
 

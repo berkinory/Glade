@@ -1,11 +1,11 @@
 import {
   type ChatFileAttachment,
   type ChatImageAttachment,
-  type ModelSelection,
   PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
   PROVIDER_SEND_TURN_MAX_FILE_BYTES,
   type UploadChatAttachment,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
+import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { MessageId, type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { type ClaudeCodeEffort } from "@glade/contracts/provider/model";
 import {

@@ -1,5 +1,5 @@
 import type { CommandId, ThreadId } from "@glade/contracts/core/baseSchemas";
-import type { OrchestrationCommand } from "@glade/contracts/orchestration/orchestration";
+import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import { EventId } from "@glade/contracts/core/baseSchemas";
 import {
   buildStalePendingRequestFailureDetail,

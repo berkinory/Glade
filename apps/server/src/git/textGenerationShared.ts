@@ -4,7 +4,7 @@ import {
   type AutomationMode,
 } from "@glade/contracts/automation/automation";
 import { ServerGenerateAutomationIntentResult } from "@glade/contracts/server/server";
-import { type ChatAttachment } from "@glade/contracts/orchestration/orchestration";
+import { type ChatAttachment } from "@glade/contracts/orchestration/threadEntities";
 import { MAX_CHAT_THREAD_TITLE_WORDS } from "@glade/shared/threads/chatThreads";
 
 export function toJsonSchemaObject(schema: Schema.Top): unknown {

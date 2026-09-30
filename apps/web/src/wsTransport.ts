@@ -1,10 +1,12 @@
 import {
   ORCHESTRATION_WS_CHANNELS,
   ORCHESTRATION_WS_METHODS,
-  type OrchestrationEvent,
+} from "@glade/contracts/orchestration/rpc";
+import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
+import {
   type OrchestrationShellStreamItem,
   type OrchestrationThreadStreamItem,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/snapshots";
 import {
   WS_BOOTSTRAP_METHOD,
   WS_BOOTSTRAP_PATH,

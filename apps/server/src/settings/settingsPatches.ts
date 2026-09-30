@@ -2,7 +2,7 @@ import { DEFAULT_MODEL_BY_PROVIDER } from "@glade/contracts/provider/model";
 import {
   type ModelSelection,
   type ProviderStartOptions,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/provider/sessionPolicy";
 import { type ServerSettings, type ServerSettingsPatch } from "@glade/contracts/settings/settings";
 import { deepMerge, type DeepPartial } from "./settingsMerge";
 

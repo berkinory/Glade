@@ -1,4 +1,4 @@
-import type { ProviderInteractionMode } from "@glade/contracts/orchestration/orchestration";
+import type { ProviderInteractionMode } from "@glade/contracts/provider/sessionPolicy";
 
 export const PROVIDER_DEBUG_MODE_PROMPT_PREFIX = `<glade_debug_mode>
 You are operating in Glade Debug mode. Diagnose the reported defect using this evidence-first loop: observe -> reproduce -> investigate -> fix -> verify.

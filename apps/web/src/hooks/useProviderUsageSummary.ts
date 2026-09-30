@@ -1,4 +1,4 @@
-import type { OrchestrationThread } from "@glade/contracts/orchestration/orchestration";
+import type { OrchestrationThread } from "@glade/contracts/orchestration/threadEntities";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type {
   ServerCodexResetCredits,

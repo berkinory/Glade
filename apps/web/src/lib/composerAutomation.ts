@@ -1,6 +1,6 @@
 import { DEFAULT_AUTOMATION_FAST_INTERVAL_MAX_ITERATIONS } from "@glade/contracts/automation/automation";
 import type { AutomationMode } from "@glade/contracts/automation/automation";
-import type { ModelSelection } from "@glade/contracts/orchestration/orchestration";
+import type { ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import type {
   ServerAutomationIntentMissingField,

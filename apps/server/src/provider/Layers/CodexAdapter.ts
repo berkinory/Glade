@@ -1,10 +1,10 @@
 import { AsyncUserInputQuestions } from "@glade/contracts/orchestration/asyncUserInput";
+import { type ChatAttachment } from "@glade/contracts/orchestration/threadEntities";
 import {
-  type ChatAttachment,
   type ModelSelection,
   type ProviderUserInputAnswers,
   ProviderApprovalDecision,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/provider/sessionPolicy";
 import {
   type CanonicalItemType,
   type CanonicalRequestType,

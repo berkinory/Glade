@@ -3,12 +3,14 @@ import type { ComposerComputerControlMode } from "./computerControlMode";
 
 import {
   type ModelSelection,
-  type OrchestrationLatestTurn,
-  type OrchestrationThreadPullRequest,
   type ProviderInteractionMode,
   type ProviderStartOptions,
   type RuntimeMode,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/provider/sessionPolicy";
+import {
+  type OrchestrationLatestTurn,
+  type OrchestrationThreadPullRequest,
+} from "@glade/contracts/orchestration/threadEntities";
 import {
   type ProjectId,
   type ProviderKind,

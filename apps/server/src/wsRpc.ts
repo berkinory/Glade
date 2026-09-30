@@ -4,15 +4,15 @@ import { execFile } from "node:child_process";
 
 import { COMPUTER_WS_METHODS, type ComputerEvent } from "@glade/contracts/computer/computer";
 import { DEVICE_WS_METHODS, type DeviceEvent } from "@glade/contracts/device/device";
+import { ORCHESTRATION_WS_METHODS } from "@glade/contracts/orchestration/rpc";
+import { type OrchestrationCommand } from "@glade/contracts/orchestration/commands";
+import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import {
-  ORCHESTRATION_WS_METHODS,
-  type OrchestrationCommand,
-  type OrchestrationEvent,
   type OrchestrationShellStreamEvent,
   type OrchestrationShellStreamItem,
   type OrchestrationThreadDetailSnapshot,
   type OrchestrationThreadStreamItem,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/snapshots";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   WS_BOOTSTRAP_METHOD,

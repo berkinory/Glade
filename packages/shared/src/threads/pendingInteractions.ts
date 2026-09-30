@@ -1,7 +1,7 @@
 import type {
   OrchestrationPendingInteraction,
   OrchestrationThreadActivity,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 import { isStalePendingRequestFailureDetail, pendingRequestInstanceKey } from "./threadSummary";
 
 export function createStalePendingInteractionMatcher(

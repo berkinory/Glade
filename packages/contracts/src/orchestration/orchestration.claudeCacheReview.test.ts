@@ -1,7 +1,7 @@
 import { Schema } from "effect";
 import { describe, expect, it } from "vitest";
 
-import { ClientOrchestrationCommand } from "./orchestration";
+import { ClientOrchestrationCommand } from "./commands";
 
 const decodeClientCommand = Schema.decodeUnknownSync(ClientOrchestrationCommand);
 const response = {

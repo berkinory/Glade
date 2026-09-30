@@ -7,11 +7,9 @@ import {
   ThreadId,
   TurnId,
 } from "@glade/contracts/core/baseSchemas";
-import {
-  DEFAULT_PROVIDER_INTERACTION_MODE,
-  type OrchestrationCommand,
-  type OrchestrationEvent,
-} from "@glade/contracts/orchestration/orchestration";
+import { DEFAULT_PROVIDER_INTERACTION_MODE } from "@glade/contracts/provider/sessionPolicy";
+import { type OrchestrationCommand } from "@glade/contracts/orchestration/commands";
+import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import { Effect, Layer, ManagedRuntime, Option, Stream } from "effect";
 import { describe, expect, it, vi } from "vitest";
 

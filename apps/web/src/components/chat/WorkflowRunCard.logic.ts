@@ -1,5 +1,5 @@
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
-import { type OrchestrationThreadActivity } from "@glade/contracts/orchestration/orchestration";
+import { type OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
 
 import { orderedActivities } from "../../session-logic";
 import { formatSubagentModelLabel, type SubagentStatusKind } from "../../lib/subagentPresentation";

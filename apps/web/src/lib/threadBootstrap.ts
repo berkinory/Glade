@@ -1,11 +1,13 @@
 import {
   DEFAULT_RUNTIME_MODE,
   type ModelSelection,
-  type OrchestrationThreadPullRequest,
   type ProviderInteractionMode,
   type RuntimeMode,
+} from "@glade/contracts/provider/sessionPolicy";
+import {
+  type OrchestrationThreadPullRequest,
   type ThreadEnvironmentMode,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 import {
   type ProjectId,
   type ProviderKind,

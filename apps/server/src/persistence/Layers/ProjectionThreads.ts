@@ -12,14 +12,14 @@ import {
   ProjectionThreadRepository,
   type ProjectionThreadRepositoryShape,
 } from "../Services/ProjectionThreads.ts";
+import { ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import {
-  ModelSelection,
   OrchestrationThreadPullRequest,
   PendingClaudeCacheReview,
   ThreadPinnedMessages,
   ThreadHandoff,
   ThreadGoalAchievements,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 
 const SqliteBoolean = Schema.Number.pipe(
   Schema.decodeTo(Schema.Boolean, {

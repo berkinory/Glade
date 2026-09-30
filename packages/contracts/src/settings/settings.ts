@@ -1,7 +1,8 @@
 import { Schema } from "effect";
 import { IsoDateTime, TrimmedString } from "../core/baseSchemas";
 import { DEFAULT_GIT_TEXT_GENERATION_MODEL } from "../provider/model";
-import { ModelSelection, ThreadEnvironmentMode } from "../orchestration/orchestration";
+import { ModelSelection } from "../provider/sessionPolicy";
+import { ThreadEnvironmentMode } from "../orchestration/threadEntities";
 import { ProviderKind } from "../core/baseSchemas";
 
 const StringSetting = TrimmedString.check(Schema.isMaxLength(4096));

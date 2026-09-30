@@ -2,7 +2,7 @@ import { ApprovalRequestId, type TurnId } from "@glade/contracts/core/baseSchema
 import {
   type OrchestrationPendingInteraction,
   type OrchestrationThreadActivity,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 import { type UserInputQuestion } from "@glade/contracts/provider/providerRuntime";
 import {
   createStalePendingInteractionMatcher,

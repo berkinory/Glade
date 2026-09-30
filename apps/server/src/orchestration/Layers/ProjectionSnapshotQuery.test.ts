@@ -9,7 +9,7 @@ import {
   ThreadId,
   TurnId,
 } from "@glade/contracts/core/baseSchemas";
-import { type PendingClaudeCacheReview } from "@glade/contracts/orchestration/orchestration";
+import { type PendingClaudeCacheReview } from "@glade/contracts/orchestration/threadEntities";
 import { assert, it } from "@effect/vitest";
 import { Effect, Layer, Option } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";

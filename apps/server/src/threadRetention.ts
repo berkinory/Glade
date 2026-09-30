@@ -4,7 +4,7 @@ import { CommandId, type ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   type OrchestrationReadModel,
   type OrchestrationShellSnapshot,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/snapshots";
 import { automationContinuationThreadId } from "@glade/shared/threads/automationMode";
 import { Effect } from "effect";
 import { randomUUID } from "node:crypto";

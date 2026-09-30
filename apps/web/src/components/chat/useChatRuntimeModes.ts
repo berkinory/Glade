@@ -2,7 +2,7 @@ import {
   ProviderInteractionMode,
   RuntimeMode,
   type ModelSelection,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/provider/sessionPolicy";
 import { ThreadId, type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { type ServerProviderStatus } from "@glade/contracts/server/server";
 import { useCallback, useEffect, useRef } from "react";

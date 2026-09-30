@@ -1,8 +1,5 @@
 import type { ProjectId, ProviderKind } from "@glade/contracts/core/baseSchemas";
-import type {
-  ProviderInteractionMode,
-  RuntimeMode,
-} from "@glade/contracts/orchestration/orchestration";
+import type { ProviderInteractionMode, RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 

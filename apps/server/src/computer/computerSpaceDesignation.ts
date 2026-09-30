@@ -1,4 +1,4 @@
-import type { OrchestrationMessage } from "@glade/contracts/orchestration/orchestration";
+import type { OrchestrationMessage } from "@glade/contracts/orchestration/threadEntities";
 
 import { latestUserAuthoredMessage } from "./computerVisibleUse.ts";
 

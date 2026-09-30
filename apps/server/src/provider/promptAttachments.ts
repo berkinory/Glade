@@ -1,7 +1,7 @@
 import type {
   ChatAttachment,
   ChatImageAttachment,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 
 export function filterProviderPromptImageAttachments(
   attachments: ReadonlyArray<ChatAttachment> | undefined,

@@ -1,6 +1,6 @@
 import type { TaggedFailure } from "./platform/operationError.ts";
 import { GitHandoffThreadInput, GitHandoffThreadResult } from "@glade/contracts/git/git";
-import { type OrchestrationCommand } from "@glade/contracts/orchestration/orchestration";
+import { type OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import { resolveWorktreeHandoffWorkspaceMetadata } from "@glade/shared/threads/worktreeHandoff";
 import { Data, Effect, Schema } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";

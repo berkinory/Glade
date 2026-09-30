@@ -1,4 +1,4 @@
-import type { OrchestrationThreadPullRequest } from "@glade/contracts/orchestration/orchestration";
+import type { OrchestrationThreadPullRequest } from "@glade/contracts/orchestration/threadEntities";
 import type { MouseEvent, ReactNode } from "react";
 
 import { FastModeIcon, GitBranchIcon, WorktreeIcon } from "~/lib/icons";

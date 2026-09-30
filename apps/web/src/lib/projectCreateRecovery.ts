@@ -1,4 +1,4 @@
-import type { OrchestrationReadModel } from "@glade/contracts/orchestration/orchestration";
+import type { OrchestrationReadModel } from "@glade/contracts/orchestration/snapshots";
 import { workspaceRootsEqual } from "@glade/shared/threads/threadWorkspace";
 
 const DUPLICATE_PROJECT_CREATE_ERROR_PREFIX =

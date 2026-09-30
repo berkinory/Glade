@@ -1,8 +1,6 @@
 import { CommandId, type ProviderKind, type ThreadId } from "@glade/contracts/core/baseSchemas";
-import {
-  type OrchestrationImportThreadInput,
-  type ThreadHandoffImportedMessage,
-} from "@glade/contracts/orchestration/orchestration";
+import { type OrchestrationImportThreadInput } from "@glade/contracts/orchestration/rpc";
+import { type ThreadHandoffImportedMessage } from "@glade/contracts/orchestration/commands";
 import {
   deriveAssociatedWorktreeMetadata,
   workspaceRootsEqual,

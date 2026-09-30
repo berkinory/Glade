@@ -23,13 +23,15 @@ import {
   type GitWorktreeSetupProgressEvent,
 } from "@glade/contracts/git/git";
 import { type GitHubProjectProvisionProgressEvent } from "@glade/contracts/git/githubProjectProvisioning";
+import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
 import {
-  type OrchestrationEvent,
   type OrchestrationShellStreamItem,
   type OrchestrationThreadStreamItem,
+} from "@glade/contracts/orchestration/snapshots";
+import {
   ORCHESTRATION_WS_CHANNELS,
   ORCHESTRATION_WS_METHODS,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/rpc";
 import { type ProjectDevServerEvent } from "@glade/contracts/workspace/project";
 import {
   type ServerProviderStatusesUpdatedPayload,

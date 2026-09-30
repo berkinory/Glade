@@ -1,5 +1,5 @@
 import type { GitStatusResult } from "@glade/contracts/git/git";
-import type { OrchestrationThreadPullRequest } from "@glade/contracts/orchestration/orchestration";
+import type { OrchestrationThreadPullRequest } from "@glade/contracts/orchestration/threadEntities";
 import type { ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { resolveThreadWorkspaceCwd } from "@glade/shared/threads/threadEnvironment";
 import { useQueries } from "@tanstack/react-query";

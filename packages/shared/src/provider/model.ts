@@ -11,7 +11,7 @@ import {
   type ProviderOptionDescriptor,
   type ProviderOptionSelection,
 } from "@glade/contracts/provider/model";
-import { type ModelSelection } from "@glade/contracts/orchestration/orchestration";
+import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 
 const MODEL_SLUG_SET_BY_PROVIDER: Record<ProviderKind, ReadonlySet<ModelSlug>> = {

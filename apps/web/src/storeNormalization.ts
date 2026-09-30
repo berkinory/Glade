@@ -6,11 +6,13 @@ import {
 } from "@glade/contracts/core/baseSchemas";
 import {
   type OrchestrationReadModel,
+  type OrchestrationShellSnapshot,
+} from "@glade/contracts/orchestration/snapshots";
+import {
   type OrchestrationSpaceShell,
   type OrchestrationSessionStatus,
-  type OrchestrationShellSnapshot,
   type OrchestrationThreadActivity,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 import { resolveThreadBranchRegressionGuard } from "@glade/shared/git/git";
 import { mergeAsyncUserInput } from "@glade/shared/threads/asyncUserInput";
 import { normalizeModelSlug } from "@glade/shared/provider/model";

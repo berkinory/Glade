@@ -10,9 +10,11 @@ import {
 } from "../core/baseSchemas";
 import {
   ChatAttachment,
-  ModelSelection,
   PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
   PROVIDER_SEND_TURN_MAX_INPUT_CHARS,
+} from "../orchestration/threadEntities";
+import {
+  ModelSelection,
   ProviderApprovalDecision,
   ProviderApprovalPolicy,
   ProviderInteractionMode,
@@ -22,7 +24,7 @@ import {
   ProviderStartOptions,
   ProviderUserInputAnswers,
   RuntimeMode,
-} from "../orchestration/orchestration";
+} from "./sessionPolicy";
 import { ProviderKind } from "../core/baseSchemas";
 import { ProviderMentionReference, ProviderSkillReference } from "./providerDiscovery";
 

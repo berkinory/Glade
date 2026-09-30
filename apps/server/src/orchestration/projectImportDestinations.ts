@@ -1,4 +1,4 @@
-import type { OrchestrationReadModel } from "@glade/contracts/orchestration/orchestration";
+import type { OrchestrationReadModel } from "@glade/contracts/orchestration/snapshots";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type { ProjectImportOrigin } from "../persistence/projectImportRepository";
 

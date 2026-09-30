@@ -1,4 +1,4 @@
-import type { ThreadEnvironmentMode } from "@glade/contracts/orchestration/orchestration";
+import type { ThreadEnvironmentMode } from "@glade/contracts/orchestration/threadEntities";
 import {
   isPendingThreadWorktree,
   resolveThreadEnvironmentMode,

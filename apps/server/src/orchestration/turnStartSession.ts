@@ -1,8 +1,5 @@
-import type {
-  ModelSelection,
-  OrchestrationSession,
-  RuntimeMode,
-} from "@glade/contracts/orchestration/orchestration";
+import type { ModelSelection, RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
+import type { OrchestrationSession } from "@glade/contracts/orchestration/threadEntities";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 
 export function deriveTurnStartModelSelection(input: {

@@ -19,9 +19,6 @@ import {
   OrchestrationProjectShell,
   OrchestrationSpaceShell,
   OrchestrationProposedPlanId,
-  OrchestrationReadModel,
-  OrchestrationShellSnapshot,
-  OrchestrationThreadDetailSnapshot,
   OrchestrationThreadPullRequest,
   PendingClaudeCacheReview,
   ThreadPinnedMessages,
@@ -38,8 +35,13 @@ import {
   type OrchestrationThreadShell,
   type OrchestrationThreadActivity,
   ThreadHandoff,
-  ModelSelection,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
+import {
+  OrchestrationReadModel,
+  OrchestrationShellSnapshot,
+  OrchestrationThreadDetailSnapshot,
+} from "@glade/contracts/orchestration/snapshots";
+import { ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { ProjectKind } from "@glade/contracts/workspace/project";
 import { Effect, Layer, Option, Schema, Struct } from "effect";
 import * as SqlClient from "effect/unstable/sql/SqlClient";

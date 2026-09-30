@@ -1,13 +1,9 @@
-import type {
-  ChatAttachment,
-  OrchestrationEvent,
-  OrchestrationReadModel,
-} from "@glade/contracts/orchestration/orchestration";
+import type { ChatAttachment } from "@glade/contracts/orchestration/threadEntities";
+import type { OrchestrationEvent } from "@glade/contracts/orchestration/events";
+import type { OrchestrationReadModel } from "@glade/contracts/orchestration/snapshots";
 import type { ProjectId, SpaceId, ThreadId } from "@glade/contracts/core/baseSchemas";
-import {
-  OrchestrationCommand,
-  ORCHESTRATION_WS_METHODS,
-} from "@glade/contracts/orchestration/orchestration";
+import { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
+import { ORCHESTRATION_WS_METHODS } from "@glade/contracts/orchestration/rpc";
 import {
   Cause,
   Deferred,

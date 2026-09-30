@@ -1,6 +1,6 @@
 import { Cause, Effect, Exit, Stream } from "effect";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ORCHESTRATION_WS_METHODS } from "@glade/contracts/orchestration/orchestration";
+import { ORCHESTRATION_WS_METHODS } from "@glade/contracts/orchestration/rpc";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { WS_CHANNELS, WS_METHODS } from "@glade/contracts/transport/ws/ws";
 import {

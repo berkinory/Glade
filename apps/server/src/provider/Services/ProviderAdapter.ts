@@ -24,7 +24,7 @@ import type {
   ProviderApprovalDecision,
   ProviderUserInputAnswers,
   ProviderStartOptions,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/provider/sessionPolicy";
 import type {
   ProviderForkThreadInput,
   ProviderForkThreadResult,

@@ -10,7 +10,7 @@ import {
   ThreadId,
   TurnId,
 } from "@glade/contracts/core/baseSchemas";
-import { CorrelationId } from "@glade/contracts/orchestration/orchestration";
+import { CorrelationId } from "@glade/contracts/orchestration/threadEntities";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it } from "@effect/vitest";
 import { Effect, FileSystem, Layer, Option, Path, Stream } from "effect";

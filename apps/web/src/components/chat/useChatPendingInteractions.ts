@@ -3,7 +3,7 @@ import {
   type ProviderApprovalDecision,
   type ProviderRequestKind,
   type ProviderUserInputAnswers,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/provider/sessionPolicy";
 import { ThreadId, type ApprovalRequestId } from "@glade/contracts/core/baseSchemas";
 import {
   APPROVAL_ALREADY_ANSWERED_INVARIANT_MARKER,

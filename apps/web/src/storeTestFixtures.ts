@@ -1,9 +1,7 @@
 import { EventId, ProjectId, ThreadId, TurnId } from "@glade/contracts/core/baseSchemas";
-import {
-  type OrchestrationEvent,
-  type OrchestrationReadModel,
-  type OrchestrationThreadActivity,
-} from "@glade/contracts/orchestration/orchestration";
+import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
+import { type OrchestrationReadModel } from "@glade/contracts/orchestration/snapshots";
+import { type OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
 
 import { getThreadsFromState } from "./threadDerivation";
 import type { AppState } from "./storeState";

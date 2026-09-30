@@ -1,7 +1,7 @@
 import {
   OrchestrationProposedPlanId,
   PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import * as Schema from "effect/Schema";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";

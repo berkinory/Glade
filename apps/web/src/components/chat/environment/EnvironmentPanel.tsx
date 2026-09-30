@@ -6,7 +6,7 @@ import type {
   ProviderKind,
   ThreadId,
 } from "@glade/contracts/core/baseSchemas";
-import type { PinnedMessage } from "@glade/contracts/orchestration/orchestration";
+import type { PinnedMessage } from "@glade/contracts/orchestration/threadEntities";
 import type { ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import { useNavigate } from "@tanstack/react-router";
 import type { ReactNode } from "react";

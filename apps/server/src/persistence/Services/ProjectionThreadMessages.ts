@@ -1,11 +1,10 @@
 import { AsyncUserInput } from "@glade/contracts/orchestration/asyncUserInput";
 import {
   ChatAttachment,
-  MessageDispatchOrigin,
   OrchestrationMessageRole,
   OrchestrationMessageSource,
-  TurnDispatchMode,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
+import { MessageDispatchOrigin, TurnDispatchMode } from "@glade/contracts/provider/sessionPolicy";
 import {
   MessageId,
   ThreadId,

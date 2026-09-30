@@ -3,7 +3,7 @@ import type { TaggedFailure } from "../../platform/operationError.ts";
 import { ServiceMap } from "effect";
 import type { Effect, Scope } from "effect";
 
-import type { OrchestrationRegenerateThreadTitleResult } from "@glade/contracts/orchestration/orchestration";
+import type { OrchestrationRegenerateThreadTitleResult } from "@glade/contracts/orchestration/rpc";
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import type {
   ProviderBlockingDeliveryEvidence,

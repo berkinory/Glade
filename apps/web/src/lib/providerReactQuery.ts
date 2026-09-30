@@ -1,7 +1,7 @@
 import {
   OrchestrationGetFullThreadDiffInput,
   OrchestrationGetTurnDiffInput,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/rpc";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { queryOptions } from "@tanstack/react-query";
 import { Option, Schema } from "effect";

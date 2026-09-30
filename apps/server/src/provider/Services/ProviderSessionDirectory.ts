@@ -2,7 +2,7 @@ import type { ProviderKind, ThreadId } from "@glade/contracts/core/baseSchemas";
 import type {
   ProviderSessionRuntimeStatus,
   RuntimeMode,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/provider/sessionPolicy";
 import { Option, ServiceMap } from "effect";
 import type { Effect } from "effect";
 

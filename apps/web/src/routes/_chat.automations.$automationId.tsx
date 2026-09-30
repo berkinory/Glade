@@ -4,7 +4,7 @@ import {
   type AutomationUpdateInput,
   type AutomationWorktreeMode,
 } from "@glade/contracts/automation/automation";
-import { type ModelSelection } from "@glade/contracts/orchestration/orchestration";
+import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { type ProviderOptionDescriptor } from "@glade/contracts/provider/model";
 import { type ThreadId } from "@glade/contracts/core/baseSchemas";
 import {

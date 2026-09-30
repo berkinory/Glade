@@ -1,10 +1,7 @@
 import { assert, it } from "@effect/vitest";
 import { Effect, Schema } from "effect";
 
-import {
-  ORCHESTRATION_WS_CHANNELS,
-  ORCHESTRATION_WS_METHODS,
-} from "../../orchestration/orchestration";
+import { ORCHESTRATION_WS_CHANNELS, ORCHESTRATION_WS_METHODS } from "../../orchestration/rpc";
 import { WebSocketRequest, WsResponse, WS_CHANNELS } from "./ws";
 
 const decode = <S extends Schema.Top>(

@@ -8,18 +8,20 @@ import { providerWorkspaceChanged } from "../projectRelocationPaths.ts";
 import {
   type ChatAttachment,
   type PendingClaudeCacheReview,
-  type ModelSelection,
-  type OrchestrationEvent,
-  type OrchestrationRegenerateThreadTitleResult,
   PROVIDER_SEND_TURN_MAX_INPUT_CHARS,
-  type ProviderInteractionMode,
-  type ProviderReviewTarget,
-  type ProviderStartOptions,
   type OrchestrationSession,
   type OrchestrationProjectShell,
   type OrchestrationThread,
+} from "@glade/contracts/orchestration/threadEntities";
+import {
+  type ModelSelection,
+  type ProviderInteractionMode,
+  type ProviderReviewTarget,
+  type ProviderStartOptions,
   type RuntimeMode,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/provider/sessionPolicy";
+import { type OrchestrationEvent } from "@glade/contracts/orchestration/events";
+import { type OrchestrationRegenerateThreadTitleResult } from "@glade/contracts/orchestration/rpc";
 import { type ClaudeCacheObservation } from "@glade/contracts/provider/claudeCache";
 import {
   type CheckpointRef,

@@ -13,7 +13,7 @@ import {
 import {
   DEFAULT_PROVIDER_INTERACTION_MODE,
   ModelSelection,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/provider/sessionPolicy";
 import { DEFAULT_MODEL_BY_PROVIDER } from "@glade/contracts/provider/model";
 import { assert, it } from "@effect/vitest";
 import { Effect, Option, Schema } from "effect";

@@ -3,7 +3,7 @@ import zlib from "node:zlib";
 import type {
   OrchestrationMessage,
   OrchestrationThread,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/orchestration/threadEntities";
 
 interface ThreadArchiveEntry {
   readonly name: string;

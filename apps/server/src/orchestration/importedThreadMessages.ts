@@ -1,6 +1,6 @@
 import type { SessionMessage as ClaudeSessionMessage } from "@anthropic-ai/claude-agent-sdk";
 import { MessageId, type ThreadId } from "@glade/contracts/core/baseSchemas";
-import { type ThreadHandoffImportedMessage } from "@glade/contracts/orchestration/orchestration";
+import { type ThreadHandoffImportedMessage } from "@glade/contracts/orchestration/commands";
 
 function readTranscriptTextParts(value: unknown): ReadonlyArray<string> {
   if (!Array.isArray(value)) return [];

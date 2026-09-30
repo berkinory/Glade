@@ -4,7 +4,7 @@ import { Option, Schema, SchemaTransformation } from "effect";
 import {
   type AssistantDeliveryMode,
   type ProviderStartOptions,
-} from "@glade/contracts/orchestration/orchestration";
+} from "@glade/contracts/provider/sessionPolicy";
 import { DesktopAppIcon } from "@glade/contracts/ipc/ipc";
 import {
   DEFAULT_GIT_TEXT_GENERATION_MODEL,
