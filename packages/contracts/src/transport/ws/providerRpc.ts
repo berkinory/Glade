@@ -26,8 +26,6 @@ import {
   ProviderListAgentsInput,
   ProviderListAgentsResult,
 } from "../../provider/providerDiscovery";
-import { ProviderCompactThreadInput } from "../../provider/provider";
-import { Schema } from "effect";
 import { WsRpcError } from "./rpcErrors";
 
 export const WsProviderGetComposerCapabilitiesRpc = Rpc.make(
@@ -38,12 +36,6 @@ export const WsProviderGetComposerCapabilitiesRpc = Rpc.make(
     error: WsRpcError,
   },
 );
-
-export const WsProviderCompactThreadRpc = Rpc.make(WS_METHODS.providerCompactThread, {
-  payload: ProviderCompactThreadInput,
-  success: Schema.Void,
-  error: WsRpcError,
-});
 
 export const WsProviderListCommandsRpc = Rpc.make(WS_METHODS.providerListCommands, {
   payload: ProviderListCommandsInput,

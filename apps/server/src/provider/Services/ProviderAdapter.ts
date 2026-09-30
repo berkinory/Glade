@@ -183,7 +183,10 @@ export interface ProviderAdapterShape<TError> {
     numTurns: number,
   ) => Effect.Effect<ProviderThreadSnapshot, TError>;
 
-  readonly compactThread?: (threadId: ThreadId) => Effect.Effect<void, TError>;
+  readonly compactThread?: (
+    threadId: ThreadId,
+    instructions?: string,
+  ) => Effect.Effect<void, TError>;
 
   readonly forkThread?: (
     input: ProviderForkThreadInput,

@@ -92,6 +92,7 @@ export const OrchestrationEventType = Schema.Literals([
   "thread.claude-cache-response-requested",
   "thread.legacy-cache-abandoned",
   "thread.goal-continuation-requested",
+  "thread.compact-requested",
   "thread.turn-interrupt-requested",
   "thread.task-stop-requested",
   "thread.task-background-requested",
@@ -652,6 +653,15 @@ export const OrchestrationEvent = Schema.Union([
     ...EventBaseFields,
     type: Schema.Literal("thread.goal-continuation-requested"),
     payload: LegacyGoalContinuationPayload,
+  }),
+  Schema.Struct({
+    ...EventBaseFields,
+    type: Schema.Literal("thread.compact-requested"),
+    payload: Schema.Struct({
+      threadId: ThreadId,
+      instructions: Schema.optional(TrimmedNonEmptyString),
+      createdAt: IsoDateTime,
+    }),
   }),
   Schema.Struct({
     ...EventBaseFields,

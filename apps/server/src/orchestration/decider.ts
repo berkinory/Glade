@@ -55,6 +55,7 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
     case "thread.turn.start":
     case "thread.legacy-cache.abandon":
     case "thread.turn.dispatch-queued":
+    case "thread.compact":
     case "thread.turn.interrupt":
     case "thread.task.stop":
     case "thread.task.background":

@@ -1,3 +1,4 @@
+import { useThreadCompaction } from "./useThreadCompaction";
 import { useCallback, useState } from "react";
 import type { ComposerCommandItem } from "../components/chat/ComposerCommandMenu";
 import { toastManager } from "../components/ui/toast";
@@ -33,7 +34,6 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
   const {
     activeProject,
     activeThread,
-    isServerThread,
     environmentMode,
     runtimeMode,
     interactionMode,
@@ -70,49 +70,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
     providerNativeCommandNames,
   });
 
-  const compactProviderThread = useCallback(async (): Promise<boolean> => {
-    const api = readNativeApi();
-    if (
-      !api ||
-      !canOfferCompactCommand ||
-      !isServerThread ||
-      !activeThread?.session ||
-      activeThread.session.status === "closed"
-    ) {
-      toastManager.add({
-        type: "warning",
-        title: "Compact is unavailable",
-        description: "Open an active supported server thread before compacting context.",
-      });
-      return false;
-    }
-
-    try {
-      void api.provider
-        .compactThread({
-          threadId: activeThread.id,
-        })
-        .catch((error) => {
-          toastManager.add({
-            type: "error",
-            title: "Could not compact thread",
-            description:
-              error instanceof Error
-                ? error.message
-                : "An error occurred while compacting context.",
-          });
-        });
-      return true;
-    } catch (error) {
-      toastManager.add({
-        type: "error",
-        title: "Could not compact thread",
-        description:
-          error instanceof Error ? error.message : "An error occurred while compacting context.",
-      });
-      return false;
-    }
-  }, [activeThread, canOfferCompactCommand, isServerThread]);
+  const { compact: compactProviderThread } = useThreadCompaction(activeThread?.id);
 
   const setFastModeFromSlashCommand = useCallback(
     (enabled: boolean) => {
@@ -312,7 +270,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
       }
       if (slashInvocation.command === "compact") {
         editorActions.clearComposerSlashDraft();
-        await compactProviderThread();
+        await compactProviderThread(slashInvocation.args || undefined);
         return true;
       }
       if (slashInvocation.command === "debug" || slashInvocation.command === "default") {

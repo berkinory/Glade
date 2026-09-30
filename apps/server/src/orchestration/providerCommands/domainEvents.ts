@@ -1,3 +1,5 @@
+import { compactionBlockedReason } from "../compactionPolicy.ts";
+import { OrchestrationCommandInvariantError } from "../Errors.ts";
 import type { ProviderServiceShape } from "../../provider/Services/ProviderService.ts";
 import type { ServiceMap } from "effect";
 import { ThreadSessionSettings } from "../Services/ThreadSessionSettings.ts";
@@ -27,7 +29,7 @@ import { makeProviderTurnStart } from "./turnStart";
 import { makeProviderConversationEdit } from "./conversationEdit";
 
 export function makeProviderDomainEvents(input: {
-  readonly providerService: Pick<ProviderServiceShape, "updateNativeHistory">;
+  readonly providerService: Pick<ProviderServiceShape, "updateNativeHistory" | "compactThread">;
   readonly projectionAccess: ProviderProjectionAccessShape;
   readonly observePendingContextBootstrapTerminalEvent: ReturnType<
     typeof makeProviderContextBootstrap
@@ -295,6 +297,17 @@ export function makeProviderDomainEvents(input: {
         case "thread.task-stop-requested":
           yield* processTaskStopRequested(event);
           return;
+        case "thread.compact-requested": {
+          const thread = yield* resolveThread(event.payload.threadId);
+          const detail = thread ? compactionBlockedReason(thread) : "Conversation is unavailable.";
+          if (detail)
+            return yield* new OrchestrationCommandInvariantError({
+              commandType: "thread.compact",
+              detail,
+            });
+          yield* providerService.compactThread(event.payload);
+          return;
+        }
         case "thread.task-background-requested":
           yield* processTaskBackgroundRequested(event);
           return;

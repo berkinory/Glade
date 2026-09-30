@@ -255,6 +255,7 @@ interface CodexSessionContext {
   stopPromise?: Promise<void>;
   teardownError?: Error;
   teardownCapturedBeforeExit?: boolean;
+  compacting?: boolean;
   discovery?: boolean;
   discoveryKey?: string;
 }
@@ -1266,6 +1267,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
 
   async sendTurn(input: CodexAppServerSendTurnInput): Promise<ProviderTurnStartResult> {
     const context = this.requireSession(input.threadId);
+    if (context.compacting) throw new Error("Wait for context compaction to finish.");
     if (context.gatewayCredentialRetired === true) {
       throw new Error(
         "Codex session gateway authority is retired; resume the provider runtime before starting another turn.",
@@ -2061,6 +2063,15 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
 
   async compactThread(threadId: ThreadId): Promise<void> {
     const context = this.requireSession(threadId);
+    if (
+      context.compacting ||
+      context.session.activeTurnId ||
+      context.session.status === "running" ||
+      context.pendingApprovals.size ||
+      context.pendingUserInputs.size
+    ) {
+      throw new Error("Wait for active work and pending requests before compacting.");
+    }
     const providerThreadId = readResumeThreadId({
       resumeCursor: context.session.resumeCursor,
     });
@@ -2068,6 +2079,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       throw new Error("Session is missing a provider resume thread id.");
     }
 
+    context.compacting = true;
     await Effect.logInfo("codex app-server compact requested", {
       threadId: context.session.threadId,
       providerThreadId,
@@ -2108,6 +2120,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         providerThreadId,
       }).pipe(this.runPromise);
     } catch (error) {
+      context.compacting = false;
       this.updateSession(context, {
         status: "error",
         lastError: error instanceof Error ? error.message : context.session.lastError,
@@ -3447,6 +3460,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         : undefined;
     const terminalErrorWillRetry = nativeError?.willRetry === true;
     const isTerminalError = notification.method === "error" && !terminalErrorWillRetry;
+    if (isTerminalError && !isChildConversation) context.compacting = false;
     const isTerminalParentTurn =
       !isChildConversation &&
       (notification.method === "turn/completed" ||
@@ -3562,6 +3576,7 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     }
 
     if (notification.method === "thread/compacted") {
+      if (!isChildConversation) context.compacting = false;
       if (
         !isChildConversation &&
         context.session.activeTurnId === undefined &&

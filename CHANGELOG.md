@@ -23,6 +23,8 @@
 
 ### Improved
 
+- Conversation compaction uses the same server checks for both providers; Claude accepts optional instructions.
+
 - Git status refreshes start fewer background commands.
 
 - The file explorer and change lists stay fast and light in large repositories.

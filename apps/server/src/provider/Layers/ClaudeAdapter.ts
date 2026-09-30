@@ -368,6 +368,10 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
       startSession,
       prepareSessionReplacement,
       sendTurn,
+      compactThread: (threadId, instructions) =>
+        sendTurn({ threadId, input: instructions ? `/compact ${instructions}` : "/compact" }).pipe(
+          Effect.asVoid,
+        ),
       steerTurn,
       interruptTurn,
       stopTask,

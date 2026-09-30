@@ -156,6 +156,7 @@ export interface ProviderServiceShape {
 
   readonly compactThread: (input: {
     readonly threadId: ThreadId;
+    readonly instructions?: string | undefined;
   }) => Effect.Effect<void, ProviderServiceError>;
 
   readonly closeRuntimeEvents: Effect.Effect<void>;

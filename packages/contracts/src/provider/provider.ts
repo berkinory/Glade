@@ -161,6 +161,7 @@ export type ProviderStopSessionInput = typeof ProviderStopSessionInput.Type;
 
 export const ProviderCompactThreadInput = Schema.Struct({
   threadId: ThreadId,
+  instructions: Schema.optional(TrimmedNonEmptyString),
 });
 export type ProviderCompactThreadInput = typeof ProviderCompactThreadInput.Type;
 

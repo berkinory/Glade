@@ -21,11 +21,8 @@ import { usePinnedMessageActions } from "~/components/chat/environment/usePinned
 import { useChatTimelineMessages } from "~/components/chat/useChatTimelineMessages";
 import { useComposerDiscovery } from "~/components/chat/useComposerDiscovery";
 import { toastManager } from "~/components/ui/toast";
-import {
-  hasProviderNativeSlashCommand,
-  resolveComposerSlashRootBranch,
-} from "~/composerSlashCommands";
-import { useClaudeContextCompaction } from "~/hooks/useClaudeContextCompaction";
+import { resolveComposerSlashRootBranch } from "~/composerSlashCommands";
+import { useThreadCompaction } from "~/hooks/useThreadCompaction";
 import { useTurnDiffSummaries } from "~/hooks/useTurnDiffSummaries";
 import { gitBranchesQueryOptions, gitStatusQueryOptions } from "../../../lib/gitQueryOptions";
 import { getLocalFolderBrowseRootPath } from "~/lib/localFolderMentions";
@@ -65,11 +62,6 @@ export function useChatTranscriptController({
     serverConfigQuery,
     selectedProvider,
     providerModelDiscoveryCwd,
-    hasLiveTurn,
-    activeBackgroundTasks,
-    beginLocalDispatch,
-    armLocalDispatchAckFallback,
-    resetLocalDispatch,
   } = provider;
   const {
     activeThreadId,
@@ -373,7 +365,6 @@ export function useChatTranscriptController({
     supportsTextNativeReviewCommand,
     isComposerMenuLoading,
     canCompactThread,
-    isNativeCommandDiscoveryPending,
   } = useComposerDiscovery({
     threadId,
     selectedProvider,
@@ -384,36 +375,8 @@ export function useChatTranscriptController({
     discoverNativeCompaction: selectedProvider === "claudeAgent" && isContextWindowMeterOpen,
   });
 
-  const canRequestNativeClaudeCompaction =
-    selectedProvider === "claudeAgent" &&
-    hasProviderNativeSlashCommand(
-      "claudeAgent",
-      providerNativeCommands.map((command) => command.name),
-      "compact",
-    );
-
-  const claudeCompactDisabledReason = !canRequestNativeClaudeCompaction
-    ? isNativeCommandDiscoveryPending
-      ? "Checking Claude's available commands..."
-      : "Compaction is unavailable for this Claude session."
-    : hasLiveTurn || isConnecting || (activeBackgroundTasks?.activeCount ?? 0) > 0
-      ? "Wait for Claude and its background tasks to finish."
-      : activePendingApproval || pendingUserInputs.length > 0
-        ? "Resolve the pending request before compacting."
-        : null;
-
-  const standaloneClaudeCompactDisabledReason = isWorking
-    ? "Wait for Claude to finish before compacting."
-    : claudeCompactDisabledReason;
-
   const { compact: onCompactClaudeContext, isSubmitting: isRequestingClaudeCompaction } =
-    useClaudeContextCompaction({
-      threadId,
-      disabledReason: standaloneClaudeCompactDisabledReason,
-      onBegin: beginLocalDispatch,
-      onAccepted: armLocalDispatchAckFallback,
-      onFailure: resetLocalDispatch,
-    });
+    useThreadCompaction(threadId);
 
   const [isAbandoningLegacyCacheHold, setIsAbandoningLegacyCacheHold] = useState(false);
   const onAbandonLegacyCacheHold = async () => {
@@ -497,7 +460,7 @@ export function useChatTranscriptController({
     supportsTextNativeReviewCommand,
     isComposerMenuLoading,
     canCompactThread,
-    standaloneClaudeCompactDisabledReason,
+    standaloneClaudeCompactDisabledReason: null,
     onCompactClaudeContext,
     isRequestingClaudeCompaction,
     isAbandoningLegacyCacheHold,

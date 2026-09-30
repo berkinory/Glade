@@ -1,3 +1,4 @@
+import { compactionBlockedReason } from "../compactionPolicy.ts";
 import type { OrchestrationCommand } from "@glade/contracts/orchestration/commands";
 import { Effect } from "effect";
 import {
@@ -44,6 +45,7 @@ export function decideTurnCommand({
         | "thread.turn.start"
         | "thread.legacy-cache.abandon"
         | "thread.turn.dispatch-queued"
+        | "thread.compact"
         | "thread.turn.interrupt"
         | "thread.task.stop"
         | "thread.task.background"
@@ -336,6 +338,29 @@ export function decideTurnCommand({
             runtimeMode: command.runtimeMode,
             interactionMode: command.interactionMode,
 
+            createdAt: command.createdAt,
+          },
+        };
+      }
+      case "thread.compact": {
+        const thread = yield* requireThread({ readModel, command, threadId: command.threadId });
+        const detail = compactionBlockedReason(thread);
+        if (detail)
+          return yield* new OrchestrationCommandInvariantError({
+            commandType: command.type,
+            detail,
+          });
+        return {
+          ...withEventBase({
+            aggregateKind: "thread",
+            aggregateId: command.threadId,
+            occurredAt: command.createdAt,
+            commandId: command.commandId,
+          }),
+          type: "thread.compact-requested",
+          payload: {
+            threadId: command.threadId,
+            instructions: command.instructions,
             createdAt: command.createdAt,
           },
         };

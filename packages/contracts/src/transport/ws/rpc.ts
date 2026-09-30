@@ -128,7 +128,6 @@ import {
 } from "./serverRpc";
 import {
   WsProviderGetComposerCapabilitiesRpc,
-  WsProviderCompactThreadRpc,
   WsProviderListCommandsRpc,
   WsProviderListSkillsRpc,
   WsProviderListSkillsCatalogRpc,
@@ -264,7 +263,6 @@ export const WsFeatureRpcGroup = RpcGroup.make(
   WsSubscribeServerProviderStatusesRpc,
   WsSubscribeServerSettingsRpc,
   WsProviderGetComposerCapabilitiesRpc,
-  WsProviderCompactThreadRpc,
   WsProviderListCommandsRpc,
   WsProviderListSkillsRpc,
   WsProviderListSkillsCatalogRpc,

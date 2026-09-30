@@ -418,6 +418,14 @@ const ThreadLegacyCacheAbandonCommand = Schema.Struct({
   createdAt: IsoDateTime,
 });
 
+const ThreadCompactCommand = Schema.Struct({
+  type: Schema.Literal("thread.compact"),
+  commandId: CommandId,
+  threadId: ThreadId,
+  instructions: Schema.optional(TrimmedNonEmptyString),
+  createdAt: IsoDateTime,
+});
+
 const ThreadTurnInterruptCommand = Schema.Struct({
   type: Schema.Literal("thread.turn.interrupt"),
   commandId: CommandId,
@@ -561,6 +569,7 @@ const DispatchableClientOrchestrationCommand = Schema.Union([
   ThreadInteractionModeSetCommand,
   ThreadTurnStartCommand,
   ThreadLegacyCacheAbandonCommand,
+  ThreadCompactCommand,
   ThreadTurnInterruptCommand,
   ThreadTaskStopCommand,
   ThreadTaskBackgroundCommand,
@@ -599,6 +608,7 @@ export const ClientOrchestrationCommand = Schema.Union([
   ThreadInteractionModeSetCommand,
   ClientThreadTurnStartCommand,
   ThreadLegacyCacheAbandonCommand,
+  ThreadCompactCommand,
   ThreadTurnInterruptCommand,
   ThreadTaskStopCommand,
   ThreadTaskBackgroundCommand,

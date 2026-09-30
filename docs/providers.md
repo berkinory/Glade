@@ -255,3 +255,5 @@ they have no authenticated creating task.
 Delivery survives restart and duplicate events. An archived or deleted creator
 is not reopened; the result remains in the child and delivery is recorded as
 unavailable. Delivery is checked approximately once per second.
+
+Context compaction uses the server-side `thread.compact` command for both providers. The server rejects archived conversations, active turns, pending approvals or input, and active background tasks. Claude forwards optional instructions to native `/compact`; the pinned Codex protocol accepts only the thread identifier, so optional instructions are ignored for Codex. Completion comes from native compaction events.

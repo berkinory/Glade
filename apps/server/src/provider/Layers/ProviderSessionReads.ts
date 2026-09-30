@@ -129,26 +129,18 @@ export const ProviderSessionReadsLive = Layer.effect(
                 `Context compaction is unavailable for provider '${routed.adapter.provider}'.`,
               );
             }
-            yield* routed.adapter.compactThread(input.threadId);
-            const binding = Option.getOrUndefined(yield* directory.getBinding(input.threadId));
-            if (binding) {
-              yield* directory.upsert({
-                threadId: input.threadId,
-                provider: binding.provider,
-                ...(binding.adapterKey !== undefined ? { adapterKey: binding.adapterKey } : {}),
-                ...(binding.runtimeMode !== undefined ? { runtimeMode: binding.runtimeMode } : {}),
-                status: "stopped",
-                resumeCursor: binding.resumeCursor,
-                runtimePayload: {
-                  ...asRecord(binding.runtimePayload),
-                  activeTurnId: null,
-                  lastRuntimeEvent: "provider.compactThread",
-                  lastRuntimeEventAt: new Date().toISOString(),
-                },
-              });
+            const session = (yield* routed.adapter.listSessions()).find(
+              (entry) => entry.threadId === input.threadId,
+            );
+            if (session?.activeTurnId || session?.status === "running") {
+              return yield* toValidationError(
+                "ProviderService.compactThread",
+                "Wait for active provider work to finish before compacting.",
+              );
             }
+            yield* routed.adapter.compactThread(input.threadId, input.instructions);
           }),
-          { scheduleIdleStopOnSuccess: true },
+          { scheduleIdleStopOnSuccess: false },
         );
       });
     return {
