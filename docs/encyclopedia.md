@@ -42,7 +42,7 @@ A user-visible log item attached to a thread. In [the contracts][1], activities 
 
 ### Orchestration
 
-Orchestration is the server-side domain layer that turns runtime activity into stable app state. The main entry point is [OrchestrationEngine.ts][7], with core logic in [decider.ts][8] and [projector.ts][4].
+Orchestration is the server-side domain layer that turns runtime activity into stable app state. The main entry point is [OrchestrationEngine.ts][7], with command routing in [decider.ts][8] and event routing in [projector.ts][4]. Their domain handlers live under `commandDecisions` and `eventProjections`.
 
 #### Aggregate
 

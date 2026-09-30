@@ -79,6 +79,8 @@ The HTTP/WebSocket layer also owns:
 
 The orchestration layer is provider-independent and durable.
 
+`orchestration/projector.ts` updates the snapshot sequence and routes each event to a focused handler in `eventProjections`. Shared immutable state updates, activity insertion, message retention and turn settlement preserve their existing ordering and bounds.
+
 `orchestration/runtimeActivities` projects provider events into thread activities. Payload bounding and JSON safety, context-window calculations and tool approval presentation have separate modules; the projection preserves ordering, deduplication identities and credential redaction.
 
 A typical state-changing request follows this shape:

@@ -12,6 +12,8 @@
 
 ### Improved
 
+- Read-model event projection uses focused workspace, thread, turn, message and history handlers. Snapshot sequencing, message retention and lifecycle settlement remain unchanged.
+
 - Provider activity projection separates bounded JSON payloads, context-window calculations and tool approval presentation. Credential redaction stays at the approval-display boundary.
 
 - Orchestration command decisions use domain handlers for spaces, projects, thread lifecycle, turns, conversation edits and transcript updates. Invariant checks and emitted event ordering retain their existing behavior.
