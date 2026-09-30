@@ -27,8 +27,6 @@ import {
   ThreadHandoff,
   ThreadPinnedMessages,
   ThreadNotes,
-  ThreadGoal,
-  ThreadGoalStartBehavior,
   PinnedMessageLabel,
   PROVIDER_SEND_TURN_MAX_INPUT_CHARS,
   ChatAttachmentList,
@@ -39,7 +37,6 @@ import {
   OrchestrationSession,
   OrchestrationThreadActivity,
   OrchestrationSessionStatus,
-  ThreadGoalContinuationTrigger,
   OrchestrationProposedPlan,
   OrchestrationCheckpointStatus,
   OrchestrationCheckpointFile,
@@ -295,12 +292,6 @@ const ThreadMetaUpdateCommand = Schema.Struct({
   lastKnownPr: Schema.optional(Schema.NullOr(OrchestrationThreadPullRequest)),
   pinnedMessages: Schema.optional(ThreadPinnedMessages),
   notes: Schema.optional(ThreadNotes),
-  goal: Schema.optional(ThreadGoal),
-  goalStartBehavior: Schema.optional(ThreadGoalStartBehavior),
-
-  goalPaused: Schema.optional(Schema.Boolean),
-
-  goalAchieved: Schema.optional(Schema.Boolean),
 });
 
 const ThreadPinnedMessageAddCommand = Schema.Struct({
@@ -632,16 +623,6 @@ const ThreadSessionSetCommand = Schema.Struct({
   createdAt: IsoDateTime,
 });
 
-const ThreadGoalContinueCommand = Schema.Struct({
-  type: Schema.Literal("thread.goal.continue"),
-  commandId: CommandId,
-  threadId: ThreadId,
-  goalStartedAt: Schema.NullOr(IsoDateTime),
-  trigger: ThreadGoalContinuationTrigger,
-  sourceTurnId: Schema.optional(TurnId),
-  createdAt: IsoDateTime,
-});
-
 const ThreadMessagesImportCommand = Schema.Struct({
   type: Schema.Literal("thread.messages.import"),
   commandId: CommandId,
@@ -737,7 +718,7 @@ const ThreadConversationRollbackCompleteCommand = Schema.Struct({
 
 const InternalOrchestrationCommand = Schema.Union([
   ThreadSessionSetCommand,
-  ThreadGoalContinueCommand,
+
   ThreadMessagesImportCommand,
   ThreadMessageAssistantDeltaCommand,
   ThreadMessageAssistantCompleteCommand,

@@ -897,7 +897,7 @@ function makeHarnessLayer(
       isOutputSettled: () => Effect.succeed(true),
       hasCompletedRun: () => Effect.succeed(true),
       initialFailure: () => Effect.succeed(null),
-      hasGoalHistory: () => Effect.succeed(false),
+
       saveResult: () => Effect.void,
       delivered: () => Effect.void,
       claimContext: () => Effect.succeed(""),
@@ -1386,15 +1386,6 @@ describe("AgentGateway", () => {
         "capability_denied",
       );
 
-      const setGoal = yield* harness.callTool({
-        token: "token-parent-readonly",
-        name: "glade_set_thread_goal",
-        args: { goal: "Must not run" },
-      });
-      assert.equal(
-        (toolResultJson(setGoal.result).error as { code: string }).code,
-        "capability_denied",
-      );
       assert.equal(harness.dispatched.length, 0);
     }).pipe(Effect.provide(gatewayLayer));
   });
@@ -1836,10 +1827,7 @@ describe("AgentGateway", () => {
           name: "glade_set_thread_archived",
           args: { threadId: "thread-child", archived: true },
         },
-        {
-          name: "glade_set_thread_goal",
-          args: { threadId: "thread-child", goal: "Late goal" },
-        },
+
         {
           name: "glade_create_automation",
           args: { name: "late monitor", prompt: "late" },
@@ -2862,13 +2850,6 @@ describe("AgentGateway", () => {
       assert.isTrue(isToolError(archive.result));
       assert.include(toolErrorText(archive.result), "full-access");
 
-      const setGoal = yield* harness.callTool({
-        token: "token-parent",
-        name: "glade_set_thread_goal",
-        args: { threadId: "thread-elevated", goal: "Escalated goal" },
-      });
-      assert.isTrue(isToolError(setGoal.result));
-      assert.include(toolErrorText(setGoal.result), "full-access");
       assert.equal(harness.dispatched.length, 0);
     }).pipe(Effect.provide(gatewayLayer));
   });

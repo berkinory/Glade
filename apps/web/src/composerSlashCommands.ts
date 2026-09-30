@@ -1,4 +1,3 @@
-import { THREAD_GOAL_MAX_CHARS } from "@glade/contracts/orchestration/threadEntities";
 import { type ProviderInteractionMode } from "@glade/contracts/provider/sessionPolicy";
 import { type GitBranch } from "@glade/contracts/git/git";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
@@ -26,14 +25,6 @@ export interface ComposerSlashInvocation {
 
 export type FastSlashCommandAction = "toggle" | "on" | "off" | "status" | "invalid";
 export type ForkSlashCommandTarget = "local" | "worktree";
-export type GoalSlashCommandAction =
-  | { readonly action: "show" }
-  | { readonly action: "clear" }
-  | { readonly action: "pause" }
-  | { readonly action: "resume" }
-  | { readonly action: "edit" }
-  | { readonly action: "set"; readonly goal: string }
-  | { readonly action: "too-long" };
 
 const CLAUDE_NATIVE_COMMAND_ALIASES: Record<string, readonly string[]> = {
   clear: ["reset", "new"],
@@ -65,7 +56,7 @@ function expandProviderNativeSlashCommandNames(
   const expandedNames = new Set<string>();
   for (const commandName of commandNames) {
     const normalizedCommandName = normalizeComposerSlashCommandName(commandName);
-    if (!normalizedCommandName) {
+    if (!normalizedCommandName || normalizedCommandName === "goal") {
       continue;
     }
     expandedNames.add(normalizedCommandName);
@@ -92,7 +83,6 @@ function shouldKeepBuiltInSlashCommandDespiteNativeCollision(
     command === "export" ||
     command === "feedback" ||
     command === "fork" ||
-    command === "goal" ||
     command === "rename" ||
     (providerUsesAppOwnedReviewSlashCommand(provider) && command === "review")
   );
@@ -113,7 +103,6 @@ export function shouldHideProviderNativeCommandFromComposerMenu(
     (normalizedCommand === "export" && appCommandIsAvailable) ||
     (normalizedCommand === "feedback" && appCommandIsAvailable) ||
     (normalizedCommand === "fork" && appCommandIsAvailable) ||
-    (normalizedCommand === "goal" && appCommandIsAvailable) ||
     (normalizedCommand === "rename" && appCommandIsAvailable) ||
     (providerUsesAppOwnedReviewSlashCommand(provider) && normalizedCommand === "review")
   );
@@ -222,12 +211,7 @@ const COMPOSER_SLASH_COMMAND_DEFINITIONS: Record<
     description: "Download this thread as a ZIP archive (thread.json + transcript.md)",
     source: "app",
   },
-  goal: {
-    command: "goal",
-    label: "/goal",
-    description: "Set, edit, pause, resume, or clear this thread's persistent goal",
-    source: "app",
-  },
+
   rename: {
     command: "rename",
     label: "/rename",
@@ -365,32 +349,6 @@ export function parseFastSlashCommandAction(text: string): FastSlashCommandActio
   return "invalid";
 }
 
-export function buildGoalSlashCommandPrompt(goal: string): string {
-  return `/goal -- ${goal.trim()}`;
-}
-
-export function parseGoalSlashCommandArgs(args: string): GoalSlashCommandAction {
-  const trimmed = args.trim();
-  const literal = /^--(?:\s|$)/.test(trimmed);
-  const goal = literal ? trimmed.slice(2).trim() : trimmed;
-  if (!goal) {
-    return { action: "show" };
-  }
-  if (!literal) {
-    const control = goal.toLowerCase();
-    if (control === "clear") {
-      return { action: "clear" };
-    }
-    if (control === "pause" || control === "resume" || control === "edit") {
-      return { action: control };
-    }
-  }
-  if (goal.length > THREAD_GOAL_MAX_CHARS) {
-    return { action: "too-long" };
-  }
-  return { action: "set", goal };
-}
-
 export function resolveComposerSlashRootBranch(input: {
   branches: ReadonlyArray<GitBranch> | null | undefined;
   activeProjectCwd: string | null | undefined;
@@ -446,7 +404,6 @@ export function getAvailableComposerSlashCommands(input: {
           "subagents",
           "computer-use",
           ...(input.canOfferExportCommand ? (["export"] as const) : []),
-          "goal",
           "rename",
           "feedback",
           "automation",
@@ -454,7 +411,6 @@ export function getAvailableComposerSlashCommands(input: {
       : [
           ...(input.canOfferForkCommand ? (["fork"] as const) : []),
           ...(input.canOfferExportCommand ? (["export"] as const) : []),
-          "goal",
           "rename",
           "debug",
           "computer-use",

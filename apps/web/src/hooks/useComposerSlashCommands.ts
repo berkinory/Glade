@@ -18,7 +18,8 @@ import { readNativeApi } from "../nativeApi";
 import { buildNextProviderOptions } from "../providerModelOptions";
 import type { ComposerSlashCommandInput } from "./composerSlashCommandTypes";
 import { useComposerForkCommands } from "./useComposerForkCommands";
-import { useComposerGoalCommands } from "./useComposerGoalCommands";
+
+import { useComposerRenameCommand } from "./useComposerRenameCommand";
 
 type SlashCommandItem = Extract<ComposerCommandItem, { type: "slash-command" }>;
 
@@ -169,8 +170,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
     [fastModeEnabled, supportsFastSlashCommand, setFastModeFromSlashCommand],
   );
 
-  const { runGoalSlashCommand, runRenameSlashCommand, clearThreadGoal, setThreadGoalPaused } =
-    useComposerGoalCommands(input);
+  const { runRenameSlashCommand } = useComposerRenameCommand(input);
 
   const {
     createForkThreadFromSlashCommand,
@@ -329,11 +329,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
         setIsSlashStatusDialogOpen(true);
         return true;
       }
-      if (slashInvocation.command === "goal") {
-        editorActions.clearComposerSlashDraft();
-        await runGoalSlashCommand(slashInvocation.args);
-        return true;
-      }
+
       if (slashInvocation.command === "rename") {
         editorActions.clearComposerSlashDraft();
         void runRenameSlashCommand(slashInvocation.args).catch((error) => {
@@ -450,7 +446,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
       runCodexReviewStart,
       runExportSlashCommand,
       runFastSlashCommand,
-      runGoalSlashCommand,
+
       runRenameSlashCommand,
     ],
   );
@@ -462,12 +458,7 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
         return;
       }
 
-      if (
-        item.command === "model" ||
-        item.command === "goal" ||
-        item.command === "rename" ||
-        item.command === "automation"
-      ) {
+      if (item.command === "model" || item.command === "rename" || item.command === "automation") {
         const replacement = `/${item.command} `;
         const replacementRangeEnd = extendReplacementRangeForTrailingSpace(
           snapshot.value,
@@ -667,7 +658,5 @@ export function useComposerSlashCommands(input: ComposerSlashCommandInput) {
     setIsSlashStatusDialogOpen,
     handleStandaloneSlashCommand,
     handleSlashCommandSelection,
-    clearThreadGoal,
-    setThreadGoalPaused,
   };
 }

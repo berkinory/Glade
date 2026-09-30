@@ -24,7 +24,7 @@ import {
   mergeProjectInstructionsIntoThreadNotes,
   useProjectPreferencesStore,
 } from "~/projectPreferencesStore";
-import { dispatchThreadGoal } from "~/threadGoal";
+
 import { collapseExpandedComposerCursor, detectComposerTrigger } from "../../composer-logic";
 import type { DraftThreadEnvMode, QueuedComposerChatTurn } from "../../composerDraftDomain";
 import {
@@ -501,14 +501,6 @@ export function useChatTurnExecution({
             } catch {}
           }
 
-          const draftGoalForSend = activeThread.goal?.trim() ?? "";
-          if (draftGoalForSend.length > 0) {
-            try {
-              await dispatchThreadGoal(threadIdForSend, draftGoalForSend, {
-                startBehavior: "defer",
-              });
-            } catch {}
-          }
           if (targetProjectKindForSend === "chat") {
             await api.orchestration.dispatchCommand({
               type: "project.meta.update",

@@ -63,7 +63,7 @@ import {
 import { parseCheckpointFilesFromUnifiedDiff } from "../../checkpointing/Diffs.ts";
 import { ProviderService } from "../../provider/Services/ProviderService.ts";
 import { ComputerService } from "../../computer/Services/ComputerService.ts";
-import { activeThreadGoal } from "../../provider/core/goalMode.ts";
+
 import {
   classifyTerminalTurnApplicability,
   isStartedTurnApplicable,
@@ -2127,39 +2127,6 @@ const make = Effect.gen(function* () {
             },
             createdAt: now,
           });
-
-          if (isTerminalTurnEvent) {
-            const settledThread = (yield* orchestrationEngine.getReadModel()).threads.find(
-              (candidate) => candidate.id === thread.id,
-            );
-            if (
-              settledThread &&
-              settledThread.deletedAt == null &&
-              settledThread.archivedAt == null &&
-              settledThread.parentThreadId == null &&
-              Boolean(activeThreadGoal(settledThread)?.trim()) &&
-              settledThread.goalPausedAt == null
-            ) {
-              if (event.type === "turn.completed" && runtimeTurnState(event) === "completed") {
-                yield* orchestrationEngine.dispatch({
-                  type: "thread.goal.continue",
-                  commandId: providerCommandId(event, "goal-continue", thread.id),
-                  threadId: thread.id,
-                  goalStartedAt: settledThread.goalStartedAt ?? null,
-                  trigger: "turn-completed",
-                  ...(eventTurnId !== undefined ? { sourceTurnId: eventTurnId } : {}),
-                  createdAt: now,
-                });
-              } else {
-                yield* orchestrationEngine.dispatch({
-                  type: "thread.meta.update",
-                  commandId: providerCommandId(event, "goal-auto-pause", thread.id),
-                  threadId: thread.id,
-                  goalPaused: true,
-                });
-              }
-            }
-          }
         }
       }
 

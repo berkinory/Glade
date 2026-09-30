@@ -36,12 +36,7 @@ import { mergeProjectInstructionsIntoThreadNotes } from "~/projectPreferencesSto
 import { deriveTimelineEntries } from "../../../workLog.timeline";
 import { useStore } from "~/store";
 import { buildThreadSubscribeInput } from "~/threadDetailResumeCursors";
-import {
-  EMPTY_GOAL_ACHIEVEMENTS,
-  EMPTY_MESSAGES,
-  EMPTY_PINNED_MESSAGES,
-  EMPTY_PINNED_TEXT,
-} from "./chatViewSupport";
+import { EMPTY_MESSAGES, EMPTY_PINNED_MESSAGES, EMPTY_PINNED_TEXT } from "./chatViewSupport";
 import { useChatThreadContext } from "../ChatThreadContext";
 import type { useChatProviderController } from "./useChatProviderController";
 import type { useChatSessionController } from "./useChatSessionController";
@@ -210,8 +205,6 @@ export function useChatTranscriptController({
   } | null>(null);
 
   const pinnedMessages = activeThread?.pinnedMessages ?? EMPTY_PINNED_MESSAGES;
-
-  const goalAchievements = activeThread?.goalAchievements ?? EMPTY_GOAL_ACHIEVEMENTS;
 
   const threadNotes = activeThread?.notes ?? "";
 
@@ -468,7 +461,7 @@ export function useChatTranscriptController({
     tailAnchor,
     setTailAnchor,
     pinnedMessages,
-    goalAchievements,
+
     threadNotes,
     pinnedMessageIds,
     pinnedMessageTextById,

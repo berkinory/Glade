@@ -8,6 +8,8 @@
 
 ### Removed
 
+- Thread goals were removed.
+
 - The device simulator panel and agent device controls were removed.
 - The Kanban board was removed.
 - Claude cache-review prompts, context overrides, and the Ultrathink picker were removed; context management stays with Claude Code. ([e8adbfda4](https://github.com/berkinory/Glade/commit/e8adbfda42ab44edc3ecce4038e19a4f7d433026))
@@ -16,6 +18,8 @@
 - Editor view and its separate workspace layout were removed; editing stays in Explorer.
 
 ### Improved
+
+- Deleting a chat also deletes its native session history; Codex chats archive and unarchive in Codex too.
 
 - Claude subagents use only your native agents, with progress and controls from the provider.
 

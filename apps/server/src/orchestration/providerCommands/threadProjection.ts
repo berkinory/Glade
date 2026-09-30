@@ -5,7 +5,7 @@ import { serverCommandId } from "./deliveryClaims";
 import { type OrchestrationSession } from "@glade/contracts/orchestration/threadEntities";
 import { type RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
 import { DEFAULT_RUNTIME_MODE } from "./contextLifecycle";
-import { activeThreadGoal } from "../../provider/core/goalMode.ts";
+
 import { type ProviderIntentEvent } from "../providerIntentClassification.ts";
 import type { ProviderProjectionAccessShape } from "../Services/ProviderProjectionAccess.ts";
 
@@ -136,29 +136,6 @@ export function makeProviderThreadProjection(input: {
     });
   });
 
-  const pauseActiveThreadGoal = Effect.fnUntraced(function* (input: {
-    readonly threadId: ThreadId;
-    readonly expectedGoalStartedAt: string | null;
-  }) {
-    const thread = (yield* orchestrationEngine.getReadModel()).threads.find(
-      (candidate) => candidate.id === input.threadId,
-    );
-    if (
-      !thread ||
-      !activeThreadGoal(thread)?.trim() ||
-      thread.goalPausedAt != null ||
-      (thread.goalStartedAt ?? null) !== input.expectedGoalStartedAt
-    ) {
-      return;
-    }
-    yield* orchestrationEngine.dispatch({
-      type: "thread.meta.update",
-      commandId: serverCommandId("goal-auto-pause"),
-      threadId: input.threadId,
-      goalPaused: true,
-    });
-  });
-
   const surfaceTimedOutTurnStart = Effect.fnUntraced(function* (
     event: Extract<ProviderIntentEvent, { type: "thread.turn-start-requested" }>,
     detail: string,
@@ -190,45 +167,12 @@ export function makeProviderThreadProjection(input: {
     });
   });
 
-  const surfaceTimedOutGoalContinuation = Effect.fnUntraced(function* (
-    event: Extract<ProviderIntentEvent, { type: "thread.goal-continuation-requested" }>,
-    detail: string,
-  ) {
-    const createdAt = new Date().toISOString();
-    const thread = yield* resolveThread(event.payload.threadId);
-    if (thread?.session?.status === "starting" && thread.session.activeTurnId === null) {
-      yield* setThreadSessionError({
-        threadId: event.payload.threadId,
-        runtimeMode: thread.runtimeMode,
-        detail,
-        expectedSession: {
-          status: thread.session.status,
-          updatedAt: thread.session.updatedAt,
-        },
-        createdAt,
-      });
-    }
-    yield* appendProviderFailureActivity({
-      threadId: event.payload.threadId,
-      kind: "provider.turn.start.failed",
-      summary: "Goal continuation timed out",
-      detail,
-      turnId: null,
-      createdAt,
-      settlementStatus: "uncertain",
-    });
-    yield* pauseActiveThreadGoal({
-      threadId: event.payload.threadId,
-      expectedGoalStartedAt: event.payload.goalStartedAt,
-    });
-  });
   return {
     setThreadSession,
-    pauseActiveThreadGoal,
+
     appendProviderFailureActivity,
     setThreadSessionError,
     settleInterruptedProviderTurn,
     surfaceTimedOutTurnStart,
-    surfaceTimedOutGoalContinuation,
   };
 }

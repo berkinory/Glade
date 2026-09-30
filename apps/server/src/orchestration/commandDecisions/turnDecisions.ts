@@ -22,7 +22,6 @@ import {
   CommandDecisionEffect,
   withEventBase,
   DEFAULT_ASSISTANT_DELIVERY_MODE,
-  nowIso,
 } from "./commandEvents";
 import { validateAutoRuntimeMode } from "./threadConfiguration";
 
@@ -366,7 +365,7 @@ export function decideTurnCommand({
         };
       }
       case "thread.turn.interrupt": {
-        const thread = yield* requireThread({
+        yield* requireThread({
           readModel,
           command,
           threadId: command.threadId,
@@ -385,32 +384,7 @@ export function decideTurnCommand({
             createdAt: command.createdAt,
           },
         };
-        if ((thread.goal ?? "").trim().length === 0 || thread.goalPausedAt != null) {
-          return interruptEvent;
-        }
-
-        const pausedAt = nowIso();
-        const pauseEvent: Omit<OrchestrationEvent, "sequence"> = {
-          ...withEventBase({
-            aggregateKind: "thread",
-            aggregateId: command.threadId,
-            occurredAt: pausedAt,
-            commandId: command.commandId,
-          }),
-          type: "thread.meta-updated",
-          payload: {
-            threadId: command.threadId,
-            goalPausedAt: pausedAt,
-            updatedAt: pausedAt,
-          },
-        };
-        return [
-          pauseEvent,
-          {
-            ...interruptEvent,
-            causationEventId: pauseEvent.eventId,
-          },
-        ];
+        return interruptEvent;
       }
       case "thread.task.stop": {
         yield* requireThread({

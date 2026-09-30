@@ -35,12 +35,7 @@ export const makeCompletionRepository = Effect.gen(function* () {
                 AND later.sequence < terminal.sequence)
         )))
     `.pipe(Effect.map((rows) => (rows[0]?.count ?? 0) > 0));
-  const hasGoalHistory = (childThreadId: string, completedAt: string) =>
-    sql<{ count: number }>`
-    SELECT count(*) AS count FROM orchestration_events
-    WHERE stream_id = ${childThreadId} AND event_type = 'thread.meta-updated' AND occurred_at <= ${completedAt}
-      AND length(trim(COALESCE(json_extract(payload_json, '$.goal'), ''))) > 0
-  `.pipe(Effect.map((rows) => (rows[0]?.count ?? 0) > 0));
+
   const initialFailure = (childThreadId: string, messageId: string) =>
     sql<{ status: string; error: string | null; completedAt: string }>`
     SELECT json_extract(terminal.payload_json, '$.session.status') AS status,
@@ -122,7 +117,7 @@ export const makeCompletionRepository = Effect.gen(function* () {
     hasCompletedRun,
     isOutputSettled,
     initialFailure,
-    hasGoalHistory,
+
     pending,
     saveResult,
     delivered,

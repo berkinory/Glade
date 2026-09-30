@@ -189,7 +189,6 @@ export interface DraftThreadState {
   lastKnownPr?: OrchestrationThreadPullRequest | null;
   envMode: DraftThreadEnvMode;
 
-  goal?: string;
   promotedTo?: ThreadId;
 }
 
@@ -203,8 +202,6 @@ export interface DraftThreadMutationOptions {
   envMode?: DraftThreadEnvMode | undefined;
   runtimeMode?: RuntimeMode;
   interactionMode?: ProviderInteractionMode;
-
-  goal?: string;
 }
 
 type DraftThreadCreatedAtMode = "accept-empty" | "preserve-existing-on-empty";
@@ -396,8 +393,6 @@ export function buildDraftThreadState(input: {
       ? (existingThread?.worktreePath ?? null)
       : (options.worktreePath ?? null);
   const nextPromotedTo = existingThread?.promotedTo;
-  const nextGoal =
-    options?.goal === undefined ? existingThread?.goal : options.goal.trim() || undefined;
 
   return {
     projectId: input.projectId,
@@ -422,7 +417,7 @@ export function buildDraftThreadState(input: {
         : (options.lastKnownPr ?? null),
     envMode:
       options?.envMode ?? (nextWorktreePath ? "worktree" : (existingThread?.envMode ?? "local")),
-    ...(nextGoal ? { goal: nextGoal } : {}),
+
     ...(nextPromotedTo ? { promotedTo: nextPromotedTo } : {}),
   };
 }
@@ -445,7 +440,6 @@ export function draftThreadStatesEqual(
     (left.workingDirectory ?? null) === (right.workingDirectory ?? null) &&
     Equal.equals(left.lastKnownPr ?? null, right.lastKnownPr ?? null) &&
     left.envMode === right.envMode &&
-    (left.goal ?? "") === (right.goal ?? "") &&
     left.promotedTo === right.promotedTo
   );
 }

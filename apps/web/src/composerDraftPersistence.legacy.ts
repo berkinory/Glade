@@ -94,10 +94,7 @@ export function normalizePersistedDraftThreads(
         }
       }
       const normalizedWorktreePath = typeof worktreePath === "string" ? worktreePath : null;
-      const goal =
-        typeof candidateDraftThread.goal === "string" && candidateDraftThread.goal.trim().length > 0
-          ? candidateDraftThread.goal
-          : undefined;
+
       const promotedTo =
         typeof candidateDraftThread.promotedTo === "string" &&
         candidateDraftThread.promotedTo.length > 0
@@ -123,7 +120,7 @@ export function normalizePersistedDraftThreads(
         workingDirectory: typeof workingDirectory === "string" ? workingDirectory : null,
         ...(lastKnownPr ? { lastKnownPr } : {}),
         envMode: normalizeDraftThreadEnvMode(candidateDraftThread.envMode, normalizedWorktreePath),
-        ...(goal ? { goal } : {}),
+
         ...(promotedTo ? { promotedTo } : {}),
       };
     }

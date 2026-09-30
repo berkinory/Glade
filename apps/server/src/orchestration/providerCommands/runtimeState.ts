@@ -1,12 +1,6 @@
-import { type ProviderIntentEvent } from "../providerIntentClassification.ts";
 import { TurnId, type CheckpointRef } from "@glade/contracts/core/baseSchemas";
 import { ProviderContextLifecycleEvidence } from "./contextLifecycle";
 import { ProviderQueueDrainEvent } from "./deliveryClaims";
-
-export type BlockedGoalContinuation = Pick<
-  Extract<ProviderIntentEvent, { type: "thread.goal-continuation-requested" }>["payload"],
-  "goalStartedAt" | "trigger" | "sourceTurnId"
->;
 
 export type PendingInterruptEscalation = { evidence: ProviderContextLifecycleEvidence | null };
 

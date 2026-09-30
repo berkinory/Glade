@@ -163,7 +163,7 @@ projectionRepositoriesLayer("Projection repositories", (it) => {
         handoff: null,
         pinnedMessages: null,
         notes: null,
-        goal: null,
+
         latestUserMessageAt: null,
         pendingApprovalCount: 0,
         pendingUserInputCount: 0,
@@ -251,7 +251,7 @@ projectionRepositoriesLayer("Projection repositories", (it) => {
         handoff: null,
         pinnedMessages: null,
         notes: null,
-        goal: null,
+
         latestUserMessageAt: null,
         pendingApprovalCount: 0,
         pendingUserInputCount: 0,

@@ -38,7 +38,7 @@ import {
   BootstrapContextSelection,
   wrapProviderContext,
 } from "./inputProjection";
-import { providerGoalPromptOverheadChars, activeThreadGoal } from "../../provider/core/goalMode.ts";
+
 import { parseComputerInvocation } from "@glade/shared/computer/computerInvocation";
 import {
   resolveThreadMentionPromptProjection,
@@ -156,7 +156,7 @@ export function makeProviderTurnDispatch(input: {
     readonly runtimeMode?: RuntimeMode;
     readonly interactionMode?: ProviderInteractionMode;
     readonly dispatchMode?: "queue" | "steer";
-    readonly turnKind?: "user" | "goal-continuation";
+
     readonly createdAt: string;
     readonly sourceEvent?: Extract<ProviderIntentEvent, { type: "thread.turn-start-requested" }>;
   }) {
@@ -165,8 +165,8 @@ export function makeProviderTurnDispatch(input: {
       return;
     }
     const debugPromptOverheadChars = debugModePromptOverheadChars(input.interactionMode);
-    const goalPromptOverheadChars = providerGoalPromptOverheadChars(activeThreadGoal(thread));
-    const providerPromptOverheadChars = debugPromptOverheadChars + goalPromptOverheadChars;
+
+    const providerPromptOverheadChars = debugPromptOverheadChars;
     const computerInvocation =
       input.dispatchOrigin === undefined || input.dispatchOrigin === "user"
         ? parseComputerInvocation(input.messageText)
@@ -202,7 +202,7 @@ export function makeProviderTurnDispatch(input: {
         providerThread.modelSelection.provider) as ProviderKind;
       const composedSteerInput = withProviderThreadStatePrompts({
         interactionMode: input.interactionMode,
-        goal: activeThreadGoal(thread),
+
         text: normalizeSkillMentionTextForProvider({
           provider: steerProvider,
           messageText,
@@ -216,7 +216,7 @@ export function makeProviderTurnDispatch(input: {
         return yield* new ProviderAdapterValidationError({
           provider: steerProvider,
           operation: "thread.turn.start",
-          issue: providerPromptOverflowIssue(goalPromptOverheadChars),
+          issue: providerPromptOverflowIssue(),
         });
       }
       const normalizedSteerInput = toNonEmptyProviderInput(composedSteerInput);
@@ -247,26 +247,23 @@ export function makeProviderTurnDispatch(input: {
     const generation = activation.computerControlGeneration;
     const enableComputerControl = Option.isNone(computerService)
       ? activation.enableComputerControl
-      : input.turnKind === "goal-continuation"
-        ? computerService.value.manager.canContinueChatControl(input.threadId)
-        : input.dispatchMode === "steer" && requestedMode === "off"
-          ? false
-          : yield* Effect.promise(() =>
-              computerService.value.manager.admitControl(
-                input.threadId,
-                requestedMode,
-                generation,
-                requestedMode === "request" && computerInvocation !== null,
-              ),
-            );
+      : input.dispatchMode === "steer" && requestedMode === "off"
+        ? false
+        : yield* Effect.promise(() =>
+            computerService.value.manager.admitControl(
+              input.threadId,
+              requestedMode,
+              generation,
+              requestedMode === "request" && computerInvocation !== null,
+            ),
+          );
     yield* Effect.logDebug("provider command reactor computer inputs", {
       threadId: input.threadId,
       mode: activation.computerControlMode,
       generation,
       enableComputerControl,
     });
-    const transcriptBoundaryMessageId =
-      input.turnKind === "goal-continuation" ? undefined : input.messageId;
+    const transcriptBoundaryMessageId = input.messageId;
     const selectedProvider =
       input.modelSelection?.provider ??
       threadSessionSettings.getModelSelection(input.threadId)?.provider ??
@@ -340,20 +337,7 @@ export function makeProviderTurnDispatch(input: {
       shouldBootstrapHandoff && handoffBootstrapAvailableChars > 0
         ? buildHandoffBootstrapText(thread, handoffBootstrapAvailableChars)
         : null;
-    if (
-      providerPromptOverheadChars > 0 &&
-      withProviderThreadStatePrompts({
-        interactionMode: input.interactionMode,
-        goal: activeThreadGoal(thread),
-        text: bootstrapBudgetMessageText,
-      }).length > PROVIDER_SEND_TURN_MAX_INPUT_CHARS
-    ) {
-      return yield* new ProviderAdapterValidationError({
-        provider: selectedProvider as ProviderKind,
-        operation: "thread.turn.start",
-        issue: providerPromptOverflowIssue(goalPromptOverheadChars),
-      });
-    }
+
     const interruptEscalation = pendingInterruptEscalations.get(input.threadId);
     const priorEscalationEvidence = interruptEscalation?.evidence;
     const hasPendingFreshSessionTranscriptBootstrap = freshSessionContextBootstrapThreadIds.has(
@@ -452,7 +436,7 @@ export function makeProviderTurnDispatch(input: {
       return toNonEmptyProviderInput(
         withProviderThreadStatePrompts({
           interactionMode: input.interactionMode,
-          goal: activeThreadGoal(thread),
+
           text: normalizeSkillMentionTextForProvider({
             provider: selectedProvider as ProviderKind,
             messageText: withMentionContext,

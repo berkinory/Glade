@@ -27,9 +27,6 @@ import {
   ThreadHandoff,
   ThreadPinnedMessages,
   ThreadNotes,
-  ThreadGoal,
-  ThreadGoalStartBehavior,
-  ThreadGoalAchievements,
   PinnedMessage,
   PinnedMessageLabel,
   OrchestrationMessageRole,
@@ -38,7 +35,6 @@ import {
   PendingClaudeCacheReview,
   ComputerControlMode,
   SourceProposedPlanReference,
-  ThreadGoalContinuationTrigger,
   PROVIDER_SEND_TURN_MAX_INPUT_CHARS,
   OrchestrationSession,
   OrchestrationProposedPlan,
@@ -271,11 +267,7 @@ export const ThreadMetaUpdatedPayload = Schema.Struct({
   lastKnownPr: Schema.optional(Schema.NullOr(OrchestrationThreadPullRequest)),
   pinnedMessages: Schema.optional(ThreadPinnedMessages),
   notes: Schema.optional(ThreadNotes),
-  goal: Schema.optional(ThreadGoal),
-  goalStartBehavior: Schema.optional(ThreadGoalStartBehavior),
-  goalStartedAt: Schema.optional(Schema.NullOr(IsoDateTime)),
-  goalPausedAt: Schema.optional(Schema.NullOr(IsoDateTime)),
-  goalAchievements: Schema.optional(ThreadGoalAchievements),
+
   updatedAt: IsoDateTime,
 });
 
@@ -389,11 +381,8 @@ export const ThreadTurnStartRequestedPayload = Schema.Struct({
 
 export const ThreadTurnQueuedPayload = ThreadTurnStartRequestedPayload;
 
-export const ThreadGoalContinuationRequestedPayload = Schema.Struct({
+const LegacyGoalContinuationPayload = Schema.Struct({
   threadId: ThreadId,
-  goalStartedAt: Schema.NullOr(IsoDateTime),
-  trigger: ThreadGoalContinuationTrigger,
-  sourceTurnId: Schema.optional(TurnId),
   createdAt: IsoDateTime,
 });
 
@@ -661,7 +650,7 @@ export const OrchestrationEvent = Schema.Union([
   Schema.Struct({
     ...EventBaseFields,
     type: Schema.Literal("thread.goal-continuation-requested"),
-    payload: ThreadGoalContinuationRequestedPayload,
+    payload: LegacyGoalContinuationPayload,
   }),
   Schema.Struct({
     ...EventBaseFields,

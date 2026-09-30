@@ -1,5 +1,5 @@
 import { ThreadId, type MessageId, type TurnId } from "@glade/contracts/core/baseSchemas";
-import { type ThreadGoalAchievement } from "@glade/contracts/orchestration/threadEntities";
+
 import { type EditorId } from "@glade/contracts/settings/editor";
 import { type ResolvedKeybindingsConfig } from "@glade/contracts/settings/keybindings";
 import { LegendList, type LegendListRef } from "@legendapp/list/react";
@@ -50,8 +50,7 @@ export const FIND_FINE_SCROLL_MAX_RETRY_FRAMES = 90;
 export const MESSAGE_SEND_ENTER_ANIMATION_MS = 180;
 export const MESSAGE_SEND_ENTER_CLEANUP_BUFFER_MS = 60;
 export const TRAIL_VIEWABILITY_CONFIG = { itemVisiblePercentThreshold: 0 } as const;
-export const EMPTY_GOAL_ACHIEVEMENTS: readonly ThreadGoalAchievement[] = [];
-export const EMPTY_GOAL_ACHIEVEMENTS_BY_TURN_ID = new Map<TurnId, ThreadGoalAchievement>();
+
 export const EMPTY_MESSAGE_ID_SET: ReadonlySet<MessageId> = new Set();
 export function scrollLegendListToEnd(listRef: RefObject<LegendListRef | null>): void {
   void listRef.current?.scrollToEnd?.({ animated: false });
@@ -235,8 +234,6 @@ export interface MessagesTimelineProps {
   onTogglePinMessage?: (messageId: MessageId) => void;
 
   onForkFromMessage?: (messageId: MessageId) => void;
-
-  goalAchievements?: readonly ThreadGoalAchievement[];
 
   enteringUserMessageIds?: ReadonlySet<MessageId>;
 

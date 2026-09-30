@@ -46,10 +46,7 @@ export const deliverGatewayCompletions = (dependencies: CompletionDeliveryDepend
             !(yield* repository.hasCompletedRun(row.childThreadId, turn.turnId))
           )
             return;
-          const goalUnsupported = yield* repository.hasGoalHistory(
-            row.childThreadId,
-            turn?.completedAt ?? failure?.completedAt ?? new Date().toISOString(),
-          );
+
           const detail = child
             ? Option.getOrUndefined(yield* snapshotQuery.getThreadDetailById(childThreadId))
             : undefined;
@@ -61,27 +58,23 @@ export const deliverGatewayCompletions = (dependencies: CompletionDeliveryDepend
                 message.turnId === turn.turnId,
             )?.text,
           );
-          const error = goalUnsupported
-            ? "Completion delivery does not support goals. This is not a goal-completion notification; read the child for its current progress."
-            : !child
-              ? "Child task was deleted."
-              : turn?.state === "error" || failedBeforeStart
-                ? (failure?.error ??
-                  (child.latestTurn?.turnId === turn?.turnId ? child.session?.lastError : null) ??
-                  (failure && failure.status !== "error"
-                    ? "Initial run interrupted before provider start."
-                    : "Initial run failed."))
-                : null;
+          const error = !child
+            ? "Child task was deleted."
+            : turn?.state === "error" || failedBeforeStart
+              ? (failure?.error ??
+                (child.latestTurn?.turnId === turn?.turnId ? child.session?.lastError : null) ??
+                (failure && failure.status !== "error"
+                  ? "Initial run interrupted before provider start."
+                  : "Initial run failed."))
+              : null;
           resultJson = JSON.stringify({
             childThreadId: row.childThreadId,
             initialMessageId: row.initialMessageId,
             completedAt: turn?.completedAt ?? failure?.completedAt ?? new Date().toISOString(),
             runId: turn?.turnId ?? null,
-            status: goalUnsupported
-              ? "error"
-              : child
-                ? (turn?.state ?? (failure && failure.status !== "error" ? "interrupted" : "error"))
-                : "interrupted",
+            status: child
+              ? (turn?.state ?? (failure && failure.status !== "error" ? "interrupted" : "error"))
+              : "interrupted",
             provider: child?.modelSelection.provider ?? null,
             model: child?.modelSelection.model ?? null,
             summary: summary.summary,

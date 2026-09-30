@@ -22,7 +22,7 @@ import { providerStartOptionsFromServerSettings } from "../../settings/settingsP
 import { resolveThreadWorkspaceState } from "@glade/shared/threads/threadEnvironment";
 import { type ProviderSession } from "@glade/contracts/provider/provider";
 import { providerWorkspaceChanged } from "../projectRelocationPaths.ts";
-import { BlockedGoalContinuation, PendingInterruptEscalation } from "./runtimeState";
+import { PendingInterruptEscalation } from "./runtimeState";
 import { makeProviderContextBootstrap } from "./contextBootstrap";
 import { ThreadSessionSettings } from "../Services/ThreadSessionSettings.ts";
 import { ProviderDeliveryGate } from "../Services/ProviderDeliveryGate.ts";
@@ -31,8 +31,7 @@ export function makeProviderSessionConfiguration(input: {
   readonly projectionAccess: ProviderProjectionAccessShape;
   readonly threadSessionSettings: ServiceMap.Service.Shape<typeof ThreadSessionSettings>;
   readonly deliveryGate: ServiceMap.Service.Shape<typeof ProviderDeliveryGate>;
-  readonly blockedGoalContinuations: Map<string, BlockedGoalContinuation>;
-  readonly queuedGoalContinuationRetries: Set<string>;
+
   readonly suppressContextBootstrapOnNextStartThreadIds: Set<string>;
   readonly clearPendingContextBootstraps: ReturnType<
     typeof makeProviderContextBootstrap
@@ -54,8 +53,7 @@ export function makeProviderSessionConfiguration(input: {
   const {
     threadSessionSettings,
     deliveryGate,
-    blockedGoalContinuations,
-    queuedGoalContinuationRetries,
+
     suppressContextBootstrapOnNextStartThreadIds,
     clearPendingContextBootstraps,
     pendingInterruptEscalations,
@@ -68,14 +66,13 @@ export function makeProviderSessionConfiguration(input: {
     freshSessionContextBootstrapThreadIds,
     projectionAccess,
   } = input;
+
   const { resolveThread, resolveProjectedThreadWorkspaceCwd, hasLiveProviderTurn } =
     projectionAccess;
   const clearThreadRuntimeCaches = (threadId: ThreadId) =>
     Effect.sync(() => {
       threadSessionSettings.clearThread(threadId);
       deliveryGate.releaseQuarantine(threadId);
-      blockedGoalContinuations.delete(threadId);
-      queuedGoalContinuationRetries.delete(threadId);
 
       suppressContextBootstrapOnNextStartThreadIds.delete(threadId);
       clearPendingContextBootstraps(threadId);

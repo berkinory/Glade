@@ -75,10 +75,7 @@ export function makeThreadProjector(input: {
             handoff: event.payload.handoff,
             pinnedMessages: null,
             notes: null,
-            goal: null,
-            goalStartedAt: null,
-            goalPausedAt: null,
-            goalAchievements: null,
+
             latestUserMessageAt: null,
             latestHumanMessageAt: null,
             pendingApprovalCount: 0,
@@ -152,16 +149,7 @@ export function makeThreadProjector(input: {
                 : {}),
 
               ...(event.payload.notes !== undefined ? { notes: event.payload.notes } : {}),
-              ...(event.payload.goal !== undefined ? { goal: event.payload.goal } : {}),
-              ...(event.payload.goalStartedAt !== undefined
-                ? { goalStartedAt: event.payload.goalStartedAt }
-                : {}),
-              ...(event.payload.goalPausedAt !== undefined
-                ? { goalPausedAt: event.payload.goalPausedAt }
-                : {}),
-              ...(event.payload.goalAchievements !== undefined
-                ? { goalAchievements: event.payload.goalAchievements }
-                : {}),
+
               updatedAt: event.payload.updatedAt,
             };
           });

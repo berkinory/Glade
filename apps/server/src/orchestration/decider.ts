@@ -49,7 +49,7 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
     case "thread.runtime-mode.set":
     case "thread.interaction-mode.set":
     case "thread.session.stop":
-    case "thread.goal.continue":
+
     case "thread.session.set":
       return yield* decideThreadLifecycleCommand({ command, readModel, workspacePaths });
     case "thread.turn.start":

@@ -53,9 +53,7 @@ export function makeProviderIntentSource(input: {
   readonly surfaceTimedOutTurnStart: ReturnType<
     typeof makeProviderThreadProjection
   >["surfaceTimedOutTurnStart"];
-  readonly surfaceTimedOutGoalContinuation: ReturnType<
-    typeof makeProviderThreadProjection
-  >["surfaceTimedOutGoalContinuation"];
+
   readonly gatewayOperations: ServiceMap.Service.Shape<typeof AgentGatewayOperationRepository>;
   readonly processDomainEventSafely: ReturnType<
     typeof makeProviderDomainEvents
@@ -77,7 +75,7 @@ export function makeProviderIntentSource(input: {
     commandEventTimeout,
     processDomainEvent,
     surfaceTimedOutTurnStart,
-    surfaceTimedOutGoalContinuation,
+
     gatewayOperations,
     processDomainEventSafely,
     recoverQueuedTurnAfterDeliverySafely,
@@ -344,16 +342,6 @@ export function makeProviderIntentSource(input: {
             yield* surfaceTimedOutTurnStart(event, workerResult.detail).pipe(
               Effect.catchCause((cause) =>
                 Effect.logError("failed to surface timed-out provider turn start", {
-                  eventSequence: event.sequence,
-                  threadId: event.payload.threadId,
-                  cause: Cause.pretty(cause),
-                }),
-              ),
-            );
-          } else if (event.type === "thread.goal-continuation-requested") {
-            yield* surfaceTimedOutGoalContinuation(event, workerResult.detail).pipe(
-              Effect.catchCause((cause) =>
-                Effect.logError("failed to surface timed-out goal continuation", {
                   eventSequence: event.sequence,
                   threadId: event.payload.threadId,
                   cause: Cause.pretty(cause),

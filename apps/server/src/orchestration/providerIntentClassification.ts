@@ -15,7 +15,6 @@ export type ProviderIntentEvent = Extract<
       | "thread.turn-queued"
       | "thread.legacy-cache-abandoned"
       | "thread.turn-start-requested"
-      | "thread.goal-continuation-requested"
       | "thread.turn-interrupt-requested"
       | "thread.task-stop-requested"
       | "thread.task-background-requested"
@@ -39,7 +38,7 @@ const PROVIDER_INTENT_EVENT_TYPES = new Set<ProviderIntentEvent["type"]>([
   "thread.turn-queued",
   "thread.legacy-cache-abandoned",
   "thread.turn-start-requested",
-  "thread.goal-continuation-requested",
+
   "thread.turn-interrupt-requested",
   "thread.task-stop-requested",
   "thread.task-background-requested",

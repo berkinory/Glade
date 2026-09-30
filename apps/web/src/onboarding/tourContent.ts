@@ -71,15 +71,11 @@ export const TOUR_CARDS: ReadonlyArray<TourCard> = [
   },
   {
     id: "automations",
-    label: "Automations & goals",
+    label: "Automations",
     title: "Hand off work that should keep moving",
     description:
-      "Schedule recurring runs, attach a persistent goal to a thread so it keeps going after each clean turn, and let Glade bring you back when something needs attention. Scheduled does not mean autonomous approval.",
-    highlights: [
-      "Interval, daily, cron schedules",
-      "Natural-language stop conditions",
-      "Thread goals",
-    ],
+      "Schedule recurring runs and let Glade bring you back when something needs attention. Scheduled does not mean autonomous approval.",
+    highlights: ["Interval, daily, cron schedules", "Natural-language stop conditions"],
     docsHref: `${GLADE_DOCS_URL}/core-concepts.md`,
     icon: ClockIcon,
   },

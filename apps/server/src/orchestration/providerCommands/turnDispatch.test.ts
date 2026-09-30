@@ -80,16 +80,6 @@ describe("Provider reactor turnDispatch", () => {
 
     await Effect.runPromise(
       harness.engine.dispatch({
-        type: "thread.meta.update",
-        commandId: CommandId.makeUnsafe("cmd-thread-goal-before-turn"),
-        threadId: ThreadId.makeUnsafe("thread-1"),
-        goal: "Deliver <all> providers safely",
-        goalStartBehavior: "defer",
-      }),
-    );
-
-    await Effect.runPromise(
-      harness.engine.dispatch({
         type: "thread.turn.start",
         commandId: CommandId.makeUnsafe("cmd-turn-start-1"),
         threadId: ThreadId.makeUnsafe("thread-1"),
@@ -117,9 +107,7 @@ describe("Provider reactor turnDispatch", () => {
       runtimeMode: "approval-required",
     });
     const providerInput = harness.sendTurn.mock.calls[0]?.[0].input;
-    expect(providerInput).toContain("<glade_goal>");
-    expect(providerInput).toContain("Deliver &lt;all&gt; providers safely");
-    expect(providerInput).toContain("</glade_goal>\n\nhello reactor");
+    expect(providerInput).toBe("hello reactor");
 
     const thread = await readHarnessThread(harness);
     expect(thread?.session?.threadId).toBe("thread-1");

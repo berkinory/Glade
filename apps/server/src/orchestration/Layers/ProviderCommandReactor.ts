@@ -46,7 +46,6 @@ import { OrchestrationEventDeliveryRepositoryLive } from "../../persistence/Laye
 import { QueuedTurnPromotionRepositoryLive } from "../../persistence/Layers/QueuedTurnPromotions.ts";
 import { ProjectionPendingInteractionRepositoryLive } from "../../persistence/Layers/ProjectionPendingInteractions.ts";
 import {
-  BlockedGoalContinuation,
   PendingInterruptEscalation,
   PendingContextBootstrapAttempt,
 } from "../providerCommands/runtimeState";
@@ -59,7 +58,7 @@ import { makeProviderTurnDispatch } from "../providerCommands/turnDispatch";
 import { makeProviderConversationNaming } from "../providerCommands/conversationNaming";
 import { makeProviderTurnStart } from "../providerCommands/turnStart";
 import { makeProviderDeliveryAccess } from "../providerCommands/deliveryAccess";
-import { makeProviderGoalContinuation } from "../providerCommands/goalContinuation";
+
 import { makeProviderDomainEvents } from "../providerCommands/domainEvents";
 import { makeProviderIntentSource } from "../providerCommands/intentSource";
 
@@ -112,11 +111,6 @@ const make = Effect.gen(function* () {
 
   // A blocked continuation cannot keep its durable delivery open: approval, input, and queued-work
   // intents behind it may be the only way to clear the blocker.
-  const blockedGoalContinuations = new Map<string, BlockedGoalContinuation>();
-
-  const queuedGoalContinuationRetries = new Set<string>();
-
-  const goalContinuationRetryQueue = yield* Queue.unbounded<ThreadId>();
 
   const queuedTurnPromotionOwner = `provider-queued-turn:${crypto.randomUUID()}`;
 
@@ -146,12 +140,11 @@ const make = Effect.gen(function* () {
 
   const {
     setThreadSession,
-    pauseActiveThreadGoal,
+
     appendProviderFailureActivity,
     setThreadSessionError,
     settleInterruptedProviderTurn,
     surfaceTimedOutTurnStart,
-    surfaceTimedOutGoalContinuation,
   } = makeProviderThreadProjection({
     projectionAccess,
     orchestrationEngine,
@@ -189,8 +182,7 @@ const make = Effect.gen(function* () {
       projectionAccess,
       threadSessionSettings,
       deliveryGate,
-      blockedGoalContinuations,
-      queuedGoalContinuationRetries,
+
       suppressContextBootstrapOnNextStartThreadIds,
       clearPendingContextBootstraps,
       pendingInterruptEscalations,
@@ -208,7 +200,7 @@ const make = Effect.gen(function* () {
     hasHandledTurnStartRecently,
     enqueueQueuedTurnStart,
     readOrchestrationEventAtSequence,
-    hasPendingQueuedTurnForSession,
+
     recoverQueuedTurnPromotionsForThread,
     recoverQueuedTurnPromotions,
   } = makeProviderQueuedTurns({
@@ -249,7 +241,6 @@ const make = Effect.gen(function* () {
     pendingInterruptEscalations,
     suppressContextBootstrapOnNextStartThreadIds,
     setThreadSession,
-    pauseActiveThreadGoal,
   });
   const { dispatchTurnForThread } = makeProviderTurnDispatch({
     projectionAccess,
@@ -316,32 +307,14 @@ const make = Effect.gen(function* () {
     deliveryRepository,
     deliveryGate,
   });
-  const {
-    processGoalContinuationRequested,
-    recoverActiveThreadGoals,
-    runBlockedGoalContinuationRetries,
-  } = makeProviderGoalContinuation({
-    projectionAccess,
-    queuedGoalContinuationRetries,
-    goalContinuationRetryQueue,
-    blockedGoalContinuations,
-    pendingInteractions,
-    drainQueuedTurnsForSession,
-    hasPendingQueuedTurnForSession,
-    orchestrationEngine,
-    setThreadSession,
-    dispatchTurnForThread,
-    appendProviderFailureActivity,
-    setThreadSessionError,
-    pauseActiveThreadGoal,
-    interruptProviderTurn,
-  });
+
   const {
     processDomainEvent,
     processDomainEventSafely,
     recoverQueuedTurnAfterDeliverySafely,
     processQueueDrainEventSafely,
   } = makeProviderDomainEvents({
+    providerService,
     projectionAccess,
     observePendingContextBootstrapTerminalEvent,
     queuedDispatchState,
@@ -351,11 +324,11 @@ const make = Effect.gen(function* () {
     queuedTurnPromotions,
     clearThreadRuntimeCaches,
     processThreadSessionStop,
-    orchestrationEngine,
+
     ensureSessionForThread,
     processTurnQueued,
     processTurnStartRequested,
-    processGoalContinuationRequested,
+
     processTurnInterruptRequested,
     processTaskStopRequested,
     processTaskBackgroundRequested,
@@ -379,7 +352,7 @@ const make = Effect.gen(function* () {
     commandEventTimeout,
     processDomainEvent,
     surfaceTimedOutTurnStart,
-    surfaceTimedOutGoalContinuation,
+
     gatewayOperations,
     processDomainEventSafely,
     recoverQueuedTurnAfterDeliverySafely,
@@ -398,17 +371,14 @@ const make = Effect.gen(function* () {
   const start = seedThreadModelSelections.pipe(
     Effect.andThen(
       Effect.all([
-        startProviderIntentSource.pipe(
-          Effect.andThen(recoverQueuedTurnPromotions),
-          Effect.andThen(recoverActiveThreadGoals),
-        ),
+        startProviderIntentSource.pipe(Effect.andThen(recoverQueuedTurnPromotions)),
         Stream.runForEach(providerService.streamEvents, (event) => {
           if (event.type !== "turn.completed" && event.type !== "turn.aborted") {
             return Effect.void;
           }
           return processQueueDrainEventSafely(event);
         }).pipe(Effect.forkScoped),
-        runBlockedGoalContinuationRetries.pipe(Effect.forkScoped),
+
         runProviderContextLifecycleActivityRetries.pipe(Effect.forkScoped),
       ]).pipe(Effect.asVoid),
     ),

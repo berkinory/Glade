@@ -37,9 +37,6 @@ export function makeProviderTaskControl(input: {
   readonly pendingInterruptEscalations: Map<string, PendingInterruptEscalation>;
   readonly suppressContextBootstrapOnNextStartThreadIds: Set<string>;
   readonly setThreadSession: ReturnType<typeof makeProviderThreadProjection>["setThreadSession"];
-  readonly pauseActiveThreadGoal: ReturnType<
-    typeof makeProviderThreadProjection
-  >["pauseActiveThreadGoal"];
 }) {
   const {
     computerService,
@@ -53,9 +50,10 @@ export function makeProviderTaskControl(input: {
     pendingInterruptEscalations,
     suppressContextBootstrapOnNextStartThreadIds,
     setThreadSession,
-    pauseActiveThreadGoal,
+
     projectionAccess,
   } = input;
+
   const {
     resolveThread,
     resolveProviderSessionThread,
@@ -436,13 +434,6 @@ export function makeProviderTaskControl(input: {
     event: Extract<ProviderIntentEvent, { type: "thread.session-stop-requested" }>,
   ) =>
     Effect.gen(function* () {
-      const thread = yield* resolveThread(event.payload.threadId);
-      if (thread) {
-        yield* pauseActiveThreadGoal({
-          threadId: thread.id,
-          expectedGoalStartedAt: thread.goalStartedAt ?? null,
-        });
-      }
       yield* processThreadSessionStop({
         threadId: event.payload.threadId,
         createdAt: event.payload.createdAt,

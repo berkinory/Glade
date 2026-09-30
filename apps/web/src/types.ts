@@ -16,7 +16,6 @@ import type {
   OrchestrationProposedPlan,
   PinnedMessage,
   PendingClaudeCacheReview,
-  ThreadGoalAchievement,
   OrchestrationSessionStatus,
   OrchestrationThreadActivity,
   OrchestrationSpaceShell,
@@ -205,10 +204,7 @@ export interface Thread
   isPinned?: boolean;
   pinnedMessages?: PinnedMessage[];
   notes?: string;
-  goal?: string;
-  goalStartedAt?: string | null;
-  goalPausedAt?: string | null;
-  goalAchievements?: ThreadGoalAchievement[];
+
   pendingSourceProposedPlan?: OrchestrationLatestTurn["sourceProposedPlan"];
   lastVisitedAt?: string | undefined;
   parentThreadId?: ThreadId | null;

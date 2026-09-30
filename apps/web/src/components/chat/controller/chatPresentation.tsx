@@ -401,10 +401,6 @@ export function createChatPresentation(
 
   const showComposerSubagentStrip = composerSubagentStripItems.length > 0;
 
-  const activeThreadGoalText = activeThread?.goal?.trim() ?? "";
-
-  const showComposerGoalHeader = activeThreadGoalText.length > 0;
-
   const showComposerComputerControlEffortHint = shouldShowComputerControlEffortHint({
     enableComputerControl,
     computerControlAvailable,
@@ -435,8 +431,7 @@ export function createChatPresentation(
     showComposerActiveTaskListCard,
     showComposerSubagentStrip,
     showComposerWorkflowRunCard,
-    showComposerGoalHeader,
-    activeThreadGoalText,
+
     showComposerComputerControlEffortHint,
     emptyLandingControls,
     relocateComposerLeadingControls,

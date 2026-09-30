@@ -37,10 +37,12 @@ export function mapSupportedCommands(
         );
   return {
     commands: [
-      ...commands.map((cmd) => ({
-        name: cmd.name,
-        description: cmd.description || undefined,
-      })),
+      ...commands
+        .filter((command) => command.name !== "goal")
+        .map((cmd) => ({
+          name: cmd.name,
+          description: cmd.description || undefined,
+        })),
       ...missingArtifactCommands,
     ],
     artifacts,

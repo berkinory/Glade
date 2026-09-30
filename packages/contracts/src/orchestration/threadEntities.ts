@@ -66,8 +66,6 @@ export const CHAT_ASSISTANT_SELECTION_TEXT_MAX_CHARS = 4_000;
 
 export const THREAD_NOTES_MAX_CHARS = 16_384;
 
-export const THREAD_GOAL_MAX_CHARS = 4_096;
-
 export const PINNED_MESSAGES_MAX_COUNT = 100;
 
 export const PINNED_MESSAGE_LABEL_MAX_CHARS = 60;
@@ -446,45 +444,6 @@ export const ThreadNotes = Schema.String.check(Schema.isMaxLength(THREAD_NOTES_M
 
 export type ThreadNotes = typeof ThreadNotes.Type;
 
-export const ThreadGoal = Schema.String.check(Schema.isMaxLength(THREAD_GOAL_MAX_CHARS));
-
-export type ThreadGoal = typeof ThreadGoal.Type;
-
-export const ThreadGoalStartBehavior = Schema.Literals(["start-if-idle", "defer"]);
-
-export type ThreadGoalStartBehavior = typeof ThreadGoalStartBehavior.Type;
-
-export const ThreadGoalContinuationTrigger = Schema.Literals([
-  "goal-updated",
-  "interaction-mode-updated",
-  "turn-completed",
-  "startup-recovery",
-]);
-
-export type ThreadGoalContinuationTrigger = typeof ThreadGoalContinuationTrigger.Type;
-
-export const ThreadGoalTimingFields = {
-  goalStartedAt: Schema.optional(Schema.NullOr(IsoDateTime)),
-  goalPausedAt: Schema.optional(Schema.NullOr(IsoDateTime)),
-};
-
-export const ThreadGoalAchievement = Schema.Struct({
-  goal: ThreadGoal,
-  achievedAt: IsoDateTime,
-  elapsedMs: Schema.NullOr(Schema.Number),
-  turnId: Schema.NullOr(TurnId),
-});
-
-export type ThreadGoalAchievement = typeof ThreadGoalAchievement.Type;
-
-export const THREAD_GOAL_ACHIEVEMENTS_MAX_COUNT = 20;
-
-export const ThreadGoalAchievements = Schema.Array(ThreadGoalAchievement).check(
-  Schema.isMaxLength(THREAD_GOAL_ACHIEVEMENTS_MAX_COUNT),
-);
-
-export type ThreadGoalAchievements = typeof ThreadGoalAchievements.Type;
-
 export const PinnedMessageLabel = TrimmedNonEmptyString.check(
   Schema.isMaxLength(PINNED_MESSAGE_LABEL_MAX_CHARS),
 );
@@ -636,9 +595,7 @@ export const OrchestrationThread = Schema.Struct({
   handoff: Schema.NullOr(ThreadHandoff).pipe(Schema.withDecodingDefault(() => null)),
   pinnedMessages: Schema.optional(ThreadPinnedMessages),
   notes: Schema.optional(ThreadNotes),
-  goal: Schema.optional(ThreadGoal),
-  ...ThreadGoalTimingFields,
-  goalAchievements: Schema.optional(ThreadGoalAchievements),
+
   messages: Schema.Array(OrchestrationMessage),
   proposedPlans: Schema.Array(OrchestrationProposedPlan).pipe(Schema.withDecodingDefault(() => [])),
   activities: Schema.Array(OrchestrationThreadActivity),
@@ -724,8 +681,7 @@ export const OrchestrationThreadShell = Schema.Struct({
     Schema.withDecodingDefault(() => null),
   ),
   handoff: Schema.NullOr(ThreadHandoff).pipe(Schema.withDecodingDefault(() => null)),
-  goal: Schema.optional(ThreadGoal),
-  ...ThreadGoalTimingFields,
+
   session: Schema.NullOr(OrchestrationSession),
 });
 

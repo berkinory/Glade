@@ -142,7 +142,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
     pinnedMessageIds,
     canPinMessage,
     handleTogglePinMessageGuarded,
-    goalAchievements,
+
     enteringUserMessageIds,
     tailAnchor,
     timelineMessages,
@@ -675,7 +675,6 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                     canPinMessage={canPinMessage}
                     onTogglePinMessage={handleTogglePinMessageGuarded}
                     onForkFromMessage={handleForkFromMessage}
-                    goalAchievements={goalAchievements}
                     enteringUserMessageIds={enteringUserMessageIds}
                     tailAnchorMessageId={
                       tailAnchor !== null && tailAnchor.threadId === activeThread.id

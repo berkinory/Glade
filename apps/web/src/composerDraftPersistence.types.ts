@@ -305,7 +305,7 @@ const PersistedDraftThreadState = Schema.Struct({
   workingDirectory: Schema.optionalKey(Schema.NullOr(Schema.String)),
   lastKnownPr: Schema.optionalKey(Schema.NullOr(OrchestrationThreadPullRequest)),
   envMode: DraftThreadEnvModeSchema,
-  goal: Schema.optionalKey(Schema.String),
+
   promotedTo: Schema.optionalKey(ThreadId),
 });
 

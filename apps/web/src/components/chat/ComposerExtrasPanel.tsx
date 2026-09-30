@@ -2,14 +2,7 @@ import type { ProviderInteractionMode } from "@glade/contracts/provider/sessionP
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useEffect, useId, useRef, useState, type ChangeEvent } from "react";
 
-import {
-  BugIcon,
-  CheckIcon,
-  FastModeIcon,
-  GoalIcon,
-  ListTodoIcon,
-  PaperclipIcon,
-} from "~/lib/icons";
+import { BugIcon, CheckIcon, FastModeIcon, ListTodoIcon, PaperclipIcon } from "~/lib/icons";
 
 import {
   COMPOSER_MENU_PANEL_GLYPH_CLASS_NAME,
@@ -22,7 +15,7 @@ export const COMPOSER_EXTRAS_TRIGGER_ATTRIBUTE = "data-composer-extras-trigger";
 const GLYPH = COMPOSER_MENU_PANEL_GLYPH_CLASS_NAME;
 
 const ROW_FILES = "extras:files";
-const ROW_GOAL = "extras:goal";
+
 const ROW_PLAN = "extras:mode:plan";
 const ROW_DEBUG = "extras:mode:debug";
 const ROW_FAST = "extras:fast";
@@ -42,7 +35,6 @@ export function ComposerExtrasPanel(props: {
   onToggleFastMode: () => void;
   onInteractionModeChange: (mode: ProviderInteractionMode) => void;
 
-  onInsertGoal: () => void;
   onClose: () => void;
   panelId: string;
 }) {
@@ -61,12 +53,7 @@ export function ComposerExtrasPanel(props: {
           icon: <PaperclipIcon className={GLYPH} />,
           title: "Files and folders",
         },
-        {
-          id: ROW_GOAL,
-          icon: <GoalIcon className={GLYPH} />,
-          title: "Goal",
-          secondary: "Set a goal to keep pursuing",
-        },
+
         {
           id: ROW_PLAN,
           icon: <ListTodoIcon className={GLYPH} />,
@@ -110,11 +97,7 @@ export function ComposerExtrasPanel(props: {
       fileInputRef.current?.click();
       return;
     }
-    if (rowId === ROW_GOAL) {
-      props.onInsertGoal();
-      props.onClose();
-      return;
-    }
+
     if (rowId === ROW_PLAN || rowId === ROW_DEBUG) {
       const mode: ProviderInteractionMode = rowId === ROW_PLAN ? "plan" : "debug";
       props.onInteractionModeChange(props.interactionMode === mode ? "default" : mode);

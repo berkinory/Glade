@@ -18,7 +18,6 @@ import {
   PendingClaudeCacheReview,
   ThreadPinnedMessages,
   ThreadHandoff,
-  ThreadGoalAchievements,
 } from "@glade/contracts/orchestration/threadEntities";
 
 const SqliteBoolean = Schema.Number.pipe(
@@ -38,9 +37,7 @@ const ProjectionThreadDbRow = ProjectionThread.mapFields(
     ),
     lastKnownPr: Schema.NullOr(Schema.fromJsonString(OrchestrationThreadPullRequest)),
     pinnedMessages: Schema.NullOr(Schema.fromJsonString(ThreadPinnedMessages)),
-    goalAchievements: Schema.optional(
-      Schema.NullOr(Schema.fromJsonString(ThreadGoalAchievements)),
-    ).pipe(Schema.withDecodingDefault(() => null)),
+
     modelSelection: Schema.fromJsonString(ModelSelection),
   }),
 );
@@ -85,10 +82,6 @@ const makeProjectionThreadRepository = Effect.gen(function* () {
           claude_cache_review_json,
           pinned_messages_json,
           notes,
-          goal,
-          goal_started_at,
-          goal_paused_at,
-          goal_achievements_json,
           latest_user_message_at,
           latest_human_message_at,
           pending_approval_count,
@@ -132,10 +125,6 @@ const makeProjectionThreadRepository = Effect.gen(function* () {
           ${row.claudeCacheReview == null ? null : JSON.stringify(row.claudeCacheReview)},
           ${row.pinnedMessages === null ? null : JSON.stringify(row.pinnedMessages)},
           ${row.notes},
-          ${row.goal},
-          ${row.goalStartedAt ?? null},
-          ${row.goalPausedAt ?? null},
-          ${row.goalAchievements == null ? null : JSON.stringify(row.goalAchievements)},
           ${row.latestUserMessageAt},
           ${row.latestHumanMessageAt ?? null},
           ${row.pendingApprovalCount},
@@ -183,10 +172,6 @@ const makeProjectionThreadRepository = Effect.gen(function* () {
           END,
           pinned_messages_json = excluded.pinned_messages_json,
           notes = excluded.notes,
-          goal = excluded.goal,
-          goal_started_at = excluded.goal_started_at,
-          goal_paused_at = excluded.goal_paused_at,
-          goal_achievements_json = excluded.goal_achievements_json,
           latest_user_message_at = excluded.latest_user_message_at,
           latest_human_message_at = CASE
             WHEN ${row.latestHumanMessageAt === undefined ? 1 : 0} = 1 THEN projection_threads.latest_human_message_at
@@ -240,10 +225,6 @@ const makeProjectionThreadRepository = Effect.gen(function* () {
           claude_cache_review_json AS "claudeCacheReview",
           pinned_messages_json AS "pinnedMessages",
           notes,
-          goal,
-          goal_started_at AS "goalStartedAt",
-          goal_paused_at AS "goalPausedAt",
-          goal_achievements_json AS "goalAchievements",
           latest_user_message_at AS "latestUserMessageAt",
           latest_human_message_at AS "latestHumanMessageAt",
           pending_approval_count AS "pendingApprovalCount",
@@ -296,10 +277,6 @@ const makeProjectionThreadRepository = Effect.gen(function* () {
           claude_cache_review_json AS "claudeCacheReview",
           pinned_messages_json AS "pinnedMessages",
           notes,
-          goal,
-          goal_started_at AS "goalStartedAt",
-          goal_paused_at AS "goalPausedAt",
-          goal_achievements_json AS "goalAchievements",
           latest_user_message_at AS "latestUserMessageAt",
           latest_human_message_at AS "latestHumanMessageAt",
           pending_approval_count AS "pendingApprovalCount",

@@ -295,6 +295,51 @@ layer("OrchestrationEventStore", (it) => {
     }),
   );
 
+  it.effect("replays retired goal events and strips goal state from metadata updates", () =>
+    Effect.gen(function* () {
+      const eventStore = yield* OrchestrationEventStore;
+      const sql = yield* SqlClient.SqlClient;
+      const now = "2026-09-30T12:00:00.000Z";
+      const threadId = ThreadId.makeUnsafe("thread-retired-goal");
+      const startSequence = yield* eventStore.getHighWaterSequence();
+      for (const [index, type, payload] of [
+        [
+          0,
+          "thread.meta-updated",
+          {
+            threadId,
+            title: "Kept title",
+            updatedAt: now,
+            goal: "Old objective",
+            goalStartedAt: now,
+            goalPausedAt: null,
+            goalStartBehavior: "start-if-idle",
+            goalAchievements: [],
+          },
+        ],
+        [
+          1,
+          "thread.goal-continuation-requested",
+          { threadId, goalStartedAt: now, trigger: "turn-completed", createdAt: now },
+        ],
+      ] as const) {
+        yield* sql`INSERT INTO orchestration_events
+          (event_id, aggregate_kind, stream_id, stream_version, event_type, occurred_at,
+           command_id, causation_event_id, correlation_id, actor_kind, payload_json, metadata_json)
+          VALUES (${`evt-retired-goal-${index}`}, ${"thread"}, ${threadId}, ${index}, ${type},
+            ${now}, ${null}, ${null}, ${null}, ${"server"}, ${JSON.stringify(payload)}, ${JSON.stringify({ persistedEventSchemaVersion: 1 })})`;
+      }
+      const replayed = Array.from(
+        yield* Stream.runCollect(eventStore.readFromSequence(startSequence, 10)),
+      );
+      assert.equal(replayed.length, 2);
+      assert.equal(replayed[0]?.type, "thread.meta-updated");
+      assert.deepEqual(replayed[0]?.payload, { threadId, title: "Kept title", updatedAt: now });
+      assert.equal(replayed[1]?.type, "thread.goal-continuation-requested");
+      assert.deepEqual(replayed[1]?.payload, { threadId, createdAt: now });
+    }),
+  );
+
   it.effect("fails with PersistenceDecodeError when stored json is invalid", () =>
     Effect.gen(function* () {
       const eventStore = yield* OrchestrationEventStore;

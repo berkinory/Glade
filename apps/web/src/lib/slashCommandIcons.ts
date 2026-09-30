@@ -7,7 +7,6 @@ import {
   EraserIcon,
   FastModeIcon,
   GitBranchIcon,
-  GoalIcon,
   InfoIcon,
   ListTodoIcon,
   type LucideIcon,
@@ -29,7 +28,7 @@ const SLASH_COMMAND_ICONS: Record<string, LucideIcon> = {
   subagents: BotIcon,
   feedback: BugIcon,
   automation: ClockIcon,
-  goal: GoalIcon,
+
   "computer-use": ComputerUseIcon,
 };
 

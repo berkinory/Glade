@@ -1,5 +1,5 @@
-import { type MessageId, type TurnId } from "@glade/contracts/core/baseSchemas";
-import { type ThreadGoalAchievement } from "@glade/contracts/orchestration/threadEntities";
+import { type MessageId } from "@glade/contracts/core/baseSchemas";
+
 import { type LegendListRef } from "@legendapp/list/react";
 import {
   useCallback,
@@ -30,8 +30,6 @@ import {
   BOTTOM_CONTENT_INSET_PX,
   EMPTY_AVAILABLE_EDITORS,
   EMPTY_EDITOR_KEYBINDINGS,
-  EMPTY_GOAL_ACHIEVEMENTS,
-  EMPTY_GOAL_ACHIEVEMENTS_BY_TURN_ID,
   EMPTY_MESSAGE_ID_SET,
 } from "./timelineSupport";
 import {
@@ -52,7 +50,7 @@ export function useTimelineStateController(props: MessagesTimelineProps) {
     followLiveOutput: followLiveOutputProp,
     listRef,
     pinnedMessageIds,
-    goalAchievements: goalAchievementsProp,
+
     enteringUserMessageIds: enteringUserMessageIdsProp,
     tailAnchorMessageId: tailAnchorMessageIdProp,
     tailAnchorScrollInFlightRef,
@@ -227,21 +225,6 @@ export function useTimelineStateController(props: MessagesTimelineProps) {
     useState<MessageId | null>(null);
 
   const [highlightedMessageId, setHighlightedMessageId] = useState<MessageId | null>(null);
-
-  const goalAchievements = goalAchievementsProp ?? EMPTY_GOAL_ACHIEVEMENTS;
-
-  const goalAchievementByTurnId = useMemo<ReadonlyMap<TurnId, ThreadGoalAchievement>>(() => {
-    if (goalAchievements.length === 0) {
-      return EMPTY_GOAL_ACHIEVEMENTS_BY_TURN_ID;
-    }
-    const byTurnId = new Map<TurnId, ThreadGoalAchievement>();
-    for (const achievement of goalAchievements) {
-      if (achievement.turnId !== null) {
-        byTurnId.set(achievement.turnId, achievement);
-      }
-    }
-    return byTurnId;
-  }, [goalAchievements]);
 
   const fallbackListRef = useRef<LegendListRef | null>(null);
 
@@ -479,7 +462,7 @@ export function useTimelineStateController(props: MessagesTimelineProps) {
     setSubmittingEditedUserMessageId,
     highlightedMessageId,
     setHighlightedMessageId,
-    goalAchievementByTurnId,
+
     resolvedListRef,
     timelineRootRef,
     activeFindMatchRef,

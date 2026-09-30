@@ -10,7 +10,7 @@ import { ComposerCommandMenu } from "~/components/chat/ComposerCommandMenu";
 import { ComposerComputerControlEffortHint } from "~/components/chat/ComposerComputerControlEffortHint";
 import { ComposerExpiredUserInputNotice } from "~/components/chat/ComposerExpiredUserInputNotice";
 import { ComposerExtrasPanel } from "~/components/chat/ComposerExtrasPanel";
-import { ComposerGoalHeader } from "~/components/chat/ComposerGoalHeader";
+
 import { ComposerInputBanners } from "~/components/chat/ComposerInputBanners";
 import { ComposerLiveChangesHeader } from "~/components/chat/ComposerLiveChangesHeader";
 import { ComposerLocalDirectoryMenu } from "~/components/chat/ComposerLocalDirectoryMenu";
@@ -133,13 +133,11 @@ export function ChatComposerSurface({
     onSteerQueuedComposerTurn,
     removeQueuedComposerTurn,
     onEditQueuedComposerTurn,
-    editThreadGoalInComposer,
-    setThreadGoalPaused,
-    clearThreadGoal,
+
     composerTraitSelection,
     selectedProviderModelOptions,
     toggleFastMode,
-    insertGoalSlashCommandInComposer,
+
     handleSelectLocalDirectoryMention,
     handleNavigateLocalFolder,
     onComposerMenuItemHighlighted,
@@ -266,8 +264,7 @@ export function ChatComposerSurface({
     showComposerActiveTaskListCard,
     showComposerSubagentStrip,
     showComposerWorkflowRunCard,
-    showComposerGoalHeader,
-    activeThreadGoalText,
+
     showComposerComputerControlEffortHint,
     emptyLandingControls,
     relocateComposerLeadingControls,
@@ -379,26 +376,7 @@ export function ChatComposerSurface({
                 showComposerSubagentStrip
               }
             />
-            {showComposerGoalHeader && activeThread ? (
-              <ComposerGoalHeader
-                goal={activeThreadGoalText}
-                goalStartedAt={activeThread.goalStartedAt}
-                goalPausedAt={activeThread.goalPausedAt}
-                canPause={isServerThread}
-                onEdit={editThreadGoalInComposer}
-                onSetPaused={async (paused) => {
-                  await setThreadGoalPaused(paused);
-                }}
-                onClear={clearThreadGoal}
-                attachedToPrevious={
-                  showComposerLiveChangesHeader ||
-                  showComposerActiveTaskListCard ||
-                  showComposerWorkflowRunCard ||
-                  showComposerSubagentStrip ||
-                  queuedComposerTurns.length > 0
-                }
-              />
-            ) : null}
+
             {showComposerComputerControlEffortHint ? (
               <ComposerComputerControlEffortHint
                 onApply={applyComputerControlEffortHint}
@@ -408,8 +386,7 @@ export function ChatComposerSurface({
                   showComposerActiveTaskListCard ||
                   showComposerWorkflowRunCard ||
                   showComposerSubagentStrip ||
-                  queuedComposerTurns.length > 0 ||
-                  showComposerGoalHeader
+                  queuedComposerTurns.length > 0
                 }
               />
             ) : null}
@@ -547,7 +524,6 @@ export function ChatComposerSurface({
                         onAddAttachments={addComposerAttachments}
                         onToggleFastMode={toggleFastMode}
                         onInteractionModeChange={handleInteractionModeChange}
-                        onInsertGoal={insertGoalSlashCommandInComposer}
                         onClose={() => {
                           setIsComposerExtrasPanelOpen(false);
                           scheduleComposerFocus();

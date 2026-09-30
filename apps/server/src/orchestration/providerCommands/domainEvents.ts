@@ -1,10 +1,11 @@
+import type { ProviderServiceShape } from "../../provider/Services/ProviderService.ts";
 import type { ServiceMap } from "effect";
 import { ThreadSessionSettings } from "../Services/ThreadSessionSettings.ts";
 import type { ProviderProjectionAccessShape } from "../Services/ProviderProjectionAccess.ts";
 import { Option, Duration, Effect, Cause } from "effect";
 import { ComputerService } from "../../computer/Services/ComputerService";
 import { QueuedTurnPromotionRepository } from "../../persistence/Services/QueuedTurnPromotions.ts";
-import { OrchestrationEngineService } from "../Services/OrchestrationEngine.ts";
+
 import { makeProviderHumanResponses } from "./humanResponses";
 import { makeProviderThreadProjection } from "./threadProjection";
 import {
@@ -12,9 +13,9 @@ import {
   PROVIDER_COMMAND_REACTOR_CONSUMER,
 } from "../../persistence/Services/OrchestrationEventDeliveries.ts";
 import { ProviderQueueDrainEvent } from "./deliveryClaims";
-import { CommandId } from "@glade/contracts/core/baseSchemas";
+
 import { type ProviderIntentEvent } from "../providerIntentClassification.ts";
-import { activeThreadGoal } from "../../provider/core/goalMode.ts";
+
 import { providerFailureMessage } from "./providerCallPolicy";
 import { makeProviderContextBootstrap } from "./contextBootstrap";
 import { QueuedDispatchState } from "../Services/QueuedDispatchState.ts";
@@ -22,10 +23,11 @@ import { makeProviderQueuedTurns } from "./queuedTurns";
 import { makeProviderSessionConfiguration } from "./sessionConfiguration";
 import { makeProviderTaskControl } from "./taskControl";
 import { makeProviderTurnStart } from "./turnStart";
-import { makeProviderGoalContinuation } from "./goalContinuation";
+
 import { makeProviderConversationEdit } from "./conversationEdit";
 
 export function makeProviderDomainEvents(input: {
+  readonly providerService: Pick<ProviderServiceShape, "updateNativeHistory">;
   readonly projectionAccess: ProviderProjectionAccessShape;
   readonly observePendingContextBootstrapTerminalEvent: ReturnType<
     typeof makeProviderContextBootstrap
@@ -43,7 +45,7 @@ export function makeProviderDomainEvents(input: {
   readonly processThreadSessionStop: ReturnType<
     typeof makeProviderTaskControl
   >["processThreadSessionStop"];
-  readonly orchestrationEngine: ServiceMap.Service.Shape<typeof OrchestrationEngineService>;
+
   readonly ensureSessionForThread: ReturnType<
     typeof makeProviderSessionConfiguration
   >["ensureSessionForThread"];
@@ -51,9 +53,7 @@ export function makeProviderDomainEvents(input: {
   readonly processTurnStartRequested: ReturnType<
     typeof makeProviderTurnStart
   >["processTurnStartRequested"];
-  readonly processGoalContinuationRequested: ReturnType<
-    typeof makeProviderGoalContinuation
-  >["processGoalContinuationRequested"];
+
   readonly processTurnInterruptRequested: ReturnType<
     typeof makeProviderTaskControl
   >["processTurnInterruptRequested"];
@@ -90,6 +90,7 @@ export function makeProviderDomainEvents(input: {
   >["recoverQueuedTurnPromotionsForThread"];
 }) {
   const {
+    providerService,
     observePendingContextBootstrapTerminalEvent,
     queuedDispatchState,
     drainQueuedTurnsForSession,
@@ -98,11 +99,11 @@ export function makeProviderDomainEvents(input: {
     queuedTurnPromotions,
     clearThreadRuntimeCaches,
     processThreadSessionStop,
-    orchestrationEngine,
+
     ensureSessionForThread,
     processTurnQueued,
     processTurnStartRequested,
-    processGoalContinuationRequested,
+
     processTurnInterruptRequested,
     processTaskStopRequested,
     processTaskBackgroundRequested,
@@ -170,6 +171,16 @@ export function makeProviderDomainEvents(input: {
             threadId: event.payload.threadId,
             updatedAt: event.payload.deletedAt,
           });
+          yield* providerService
+            .updateNativeHistory({ threadId: event.payload.threadId, action: { type: "delete" } })
+            .pipe(
+              Effect.catchCause((cause) =>
+                Effect.logError(
+                  "Native provider history deletion failed; Glade deletion completed. No automatic retry will be made.",
+                  { threadId: event.payload.threadId, cause: Cause.pretty(cause) },
+                ),
+              ),
+            );
           yield* clearThreadRuntimeCaches(event.payload.threadId);
           return;
         case "thread.archived":
@@ -180,6 +191,16 @@ export function makeProviderDomainEvents(input: {
           // Archive cleanup shares this durable, sequence-ordered provider source with later turn-start
           // intents. An immediate unarchive/send therefore cannot race an older archive stop against the new
           // turn.
+          yield* providerService
+            .updateNativeHistory({ threadId: event.payload.threadId, action: { type: "archive" } })
+            .pipe(
+              Effect.catchCause((cause) =>
+                Effect.logError("Native provider history archive failed", {
+                  threadId: event.payload.threadId,
+                  cause: Cause.pretty(cause),
+                }),
+              ),
+            );
           yield* processThreadSessionStop({
             threadId: event.payload.threadId,
 
@@ -187,6 +208,10 @@ export function makeProviderDomainEvents(input: {
           });
           return;
         case "thread.unarchived":
+          yield* providerService.updateNativeHistory({
+            threadId: event.payload.threadId,
+            action: { type: "unarchive" },
+          });
           if (Option.isSome(computerService))
             yield* Effect.promise(() =>
               computerService.value.manager.handleThreadRestored(event.payload.threadId),
@@ -194,18 +219,7 @@ export function makeProviderDomainEvents(input: {
           return;
         case "thread.meta-updated": {
           const thread = yield* resolveThread(event.payload.threadId);
-          const startsOrResumesGoal =
-            event.payload.goalPausedAt == null && event.payload.goalStartedAt != null;
-          if (thread && event.payload.goalStartBehavior !== "defer" && startsOrResumesGoal) {
-            yield* orchestrationEngine.dispatch({
-              type: "thread.goal.continue",
-              commandId: CommandId.makeUnsafe(`server:goal-continue:${event.eventId}`),
-              threadId: event.payload.threadId,
-              goalStartedAt: event.payload.goalStartedAt,
-              trigger: "goal-updated",
-              createdAt: event.payload.updatedAt,
-            });
-          }
+
           if (event.payload.modelSelection === undefined) {
             return;
           }
@@ -257,31 +271,8 @@ export function makeProviderDomainEvents(input: {
           });
           return;
         }
-        case "thread.interaction-mode-set": {
-          if (
-            event.payload.previousInteractionMode !== "plan" ||
-            event.payload.interactionMode === "plan"
-          ) {
-            return;
-          }
-          const thread = yield* resolveThread(event.payload.threadId);
-          if (
-            thread &&
-            thread.parentThreadId == null &&
-            activeThreadGoal(thread)?.trim() &&
-            thread.goalPausedAt == null
-          ) {
-            yield* orchestrationEngine.dispatch({
-              type: "thread.goal.continue",
-              commandId: CommandId.makeUnsafe(`server:goal-continue:${event.eventId}`),
-              threadId: thread.id,
-              goalStartedAt: thread.goalStartedAt ?? null,
-              trigger: "interaction-mode-updated",
-              createdAt: event.payload.updatedAt,
-            });
-          }
+        case "thread.interaction-mode-set":
           return;
-        }
         case "thread.legacy-cache-abandoned":
           yield* drainQueuedTurnsForSession(event.payload.threadId);
           return;
@@ -291,9 +282,7 @@ export function makeProviderDomainEvents(input: {
         case "thread.turn-start-requested":
           yield* processTurnStartRequested(event);
           return;
-        case "thread.goal-continuation-requested":
-          yield* processGoalContinuationRequested(event);
-          return;
+
         case "thread.turn-interrupt-requested":
           yield* processTurnInterruptRequested(event);
           return;

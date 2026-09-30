@@ -198,9 +198,7 @@ projectionSnapshotLayer("Projection snapshot threadShell", (it) => {
           subagentRole: null,
           forkSourceThreadId: null,
           lastKnownPr: null,
-          goal: "",
-          goalStartedAt: null,
-          goalPausedAt: null,
+
           latestTurn: {
             turnId: asTurnId("turn-shell"),
             state: "completed",

@@ -243,7 +243,6 @@ export const PlayOutlineIcon: LucideIcon = centralIconWrapper("play");
 
 export const TrashCanIcon: LucideIcon = centralIconWrapper("trash-can");
 
-export const GoalIcon: LucideIcon = centralIconWrapper("target-arrow");
 export const Plus = adaptIcon(IconPlus);
 export const PlusIcon = adaptIcon(IconPlus);
 export const RefreshCwIcon = adaptIcon(IconRefresh);

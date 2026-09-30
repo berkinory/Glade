@@ -153,14 +153,7 @@ export function normalizeThreadFromReadModel(
       ? previous.pinnedMessages
       : (incoming.pinnedMessages as Thread["pinnedMessages"]);
   const notes = incoming.notes;
-  const goal = incoming.goal;
-  const goalStartedAt = incoming.goalStartedAt;
-  const goalPausedAt = incoming.goalPausedAt;
-  const goalAchievements =
-    previous?.goalAchievements &&
-    deepEqualJson(previous.goalAchievements, incoming.goalAchievements ?? null)
-      ? previous.goalAchievements
-      : (incoming.goalAchievements as Thread["goalAchievements"]);
+
   const turnDiffSummaries = normalizeTurnDiffSummaries(
     incoming.checkpoints,
     previous?.turnDiffSummaries,
@@ -263,10 +256,6 @@ export function normalizeThreadFromReadModel(
     previous.claudeCacheReviewSequence === claudeCacheReviewSequence &&
     previous.pinnedMessages === pinnedMessages &&
     previous.notes === notes &&
-    previous.goal === goal &&
-    (previous.goalStartedAt ?? null) === (goalStartedAt ?? null) &&
-    (previous.goalPausedAt ?? null) === (goalPausedAt ?? null) &&
-    previous.goalAchievements === goalAchievements &&
     previous.turnDiffSummaries === turnDiffSummaries &&
     previous.activities === activities &&
     previous.pendingInteractions === pendingInteractions
@@ -315,10 +304,7 @@ export function normalizeThreadFromReadModel(
     ...(claudeCacheReviewSequence !== undefined ? { claudeCacheReviewSequence } : {}),
     ...(pinnedMessages !== undefined ? { pinnedMessages } : {}),
     ...(notes !== undefined ? { notes } : {}),
-    ...(goal !== undefined ? { goal } : {}),
-    ...(goalStartedAt !== undefined ? { goalStartedAt } : {}),
-    ...(goalPausedAt !== undefined ? { goalPausedAt } : {}),
-    ...(goalAchievements !== undefined ? { goalAchievements } : {}),
+
     ...(resolvedLatestHumanMessageAt !== undefined
       ? { latestHumanMessageAt: resolvedLatestHumanMessageAt }
       : {}),
@@ -361,11 +347,7 @@ export function normalizeThreadShellSnapshot(
   const nextAssociatedWorktreePath = incoming.associatedWorktreePath ?? null;
   const nextAssociatedWorktreeBranch = incoming.associatedWorktreeBranch ?? null;
   const nextAssociatedWorktreeRef = incoming.associatedWorktreeRef ?? null;
-  const goal = incoming.goal !== undefined ? incoming.goal : previous?.goal;
-  const goalStartedAt =
-    incoming.goalStartedAt !== undefined ? incoming.goalStartedAt : previous?.goalStartedAt;
-  const goalPausedAt =
-    incoming.goalPausedAt !== undefined ? incoming.goalPausedAt : previous?.goalPausedAt;
+
   const resolvedBranch = resolveThreadBranchRegressionGuard({
     currentBranch: previous?.branch ?? null,
     nextBranch: incoming.branch,
@@ -420,12 +402,7 @@ export function normalizeThreadShellSnapshot(
 
     ...(previous?.pinnedMessages !== undefined ? { pinnedMessages: previous.pinnedMessages } : {}),
     ...(previous?.notes !== undefined ? { notes: previous.notes } : {}),
-    ...(previous?.goalAchievements !== undefined
-      ? { goalAchievements: previous.goalAchievements }
-      : {}),
-    ...(goal !== undefined ? { goal } : {}),
-    ...(goalStartedAt !== undefined ? { goalStartedAt } : {}),
-    ...(goalPausedAt !== undefined ? { goalPausedAt } : {}),
+
     ...(incoming.latestHumanMessageAt !== undefined
       ? { latestHumanMessageAt: incoming.latestHumanMessageAt }
       : {}),

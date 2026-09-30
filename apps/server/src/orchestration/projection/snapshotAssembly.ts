@@ -392,9 +392,7 @@ export function toProjectedThreadShellFromStoredSummary(input: {
     ...(threadRow.claudeCacheReview != null
       ? { claudeCacheReview: threadRow.claudeCacheReview }
       : {}),
-    goal: threadRow.goal ?? "",
-    goalStartedAt: threadRow.goalStartedAt ?? null,
-    goalPausedAt: threadRow.goalPausedAt ?? null,
+
     session: input.session,
   };
 }
@@ -461,12 +459,7 @@ export function toProjectedThread(input: {
     checkpoints: input.checkpoints,
     ...(threadRow.pinnedMessages !== null ? { pinnedMessages: threadRow.pinnedMessages } : {}),
     ...(threadRow.notes !== null ? { notes: threadRow.notes } : {}),
-    ...(threadRow.goal !== null ? { goal: threadRow.goal } : {}),
-    ...(threadRow.goalStartedAt !== null ? { goalStartedAt: threadRow.goalStartedAt } : {}),
-    ...(threadRow.goalPausedAt !== null ? { goalPausedAt: threadRow.goalPausedAt } : {}),
-    ...(threadRow.goalAchievements !== null
-      ? { goalAchievements: threadRow.goalAchievements }
-      : {}),
+
     session: input.session,
   };
 }

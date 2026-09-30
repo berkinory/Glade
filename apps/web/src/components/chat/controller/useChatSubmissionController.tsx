@@ -14,7 +14,7 @@ import { useChatWorkspaceSelection } from "~/components/chat/useChatWorkspaceSel
 import { composerFooterPlanForTier } from "~/components/composerFooterLayout";
 import { toastManager } from "~/components/ui/toast";
 import { collapseExpandedComposerCursor, detectComposerTrigger } from "~/composer-logic";
-import { buildGoalSlashCommandPrompt } from "~/composerSlashCommands";
+
 import { useComposerSlashCommands } from "~/hooks/useComposerSlashCommands";
 import { formatContextWindowTokens } from "~/lib/contextWindow";
 import { buildNextProviderOptions } from "~/providerModelOptions";
@@ -56,8 +56,7 @@ export function useChatSubmissionController({
   const {
     activeThread,
     promptRef,
-    clearComposerDraftContent,
-    setComposerDraftPrompt,
+
     setComposerCursor,
     setComposerTrigger,
     syncServerShellSnapshot,
@@ -362,8 +361,6 @@ export function useChatSubmissionController({
     setIsSlashStatusDialogOpen,
     handleStandaloneSlashCommand,
     handleSlashCommandSelection,
-    clearThreadGoal,
-    setThreadGoalPaused,
   } = useComposerSlashCommands({
     thread: {
       activeProject,
@@ -425,29 +422,6 @@ export function useChatSubmissionController({
     },
   });
 
-  const insertGoalSlashCommandInComposer = () => {
-    const currentPrompt = promptRef.current;
-    if (/^\s*\/goal\b/i.test(currentPrompt)) {
-      scheduleComposerFocus();
-      return;
-    }
-    setComposerPromptValue(buildGoalSlashCommandPrompt(currentPrompt));
-  };
-
-  const editThreadGoalInComposer = () => {
-    const currentGoal = activeThread?.goal?.trim();
-    if (!activeThread || !currentGoal) {
-      return;
-    }
-    const nextPrompt = buildGoalSlashCommandPrompt(currentGoal);
-    promptRef.current = nextPrompt;
-    clearComposerDraftContent(activeThread.id);
-    setComposerDraftPrompt(activeThread.id, nextPrompt);
-    setComposerCursor(collapseExpandedComposerCursor(nextPrompt, nextPrompt.length));
-    setComposerTrigger(detectComposerTrigger(nextPrompt, nextPrompt.length));
-    scheduleComposerFocus();
-  };
-
   useLayoutEffect(() => {
     lateComposerSendHandlersRef.current = {
       send: onSend,
@@ -507,10 +481,7 @@ export function useChatSubmissionController({
     handleForkFromMessage,
     isSlashStatusDialogOpen,
     setIsSlashStatusDialogOpen,
-    clearThreadGoal,
-    setThreadGoalPaused,
-    insertGoalSlashCommandInComposer,
-    editThreadGoalInComposer,
+
     onSelectComposerItem,
     onComposerMenuItemHighlighted,
     onPromptChange,

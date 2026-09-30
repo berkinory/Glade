@@ -9,7 +9,6 @@ import {
   PROVIDER_DEBUG_MODE_PROMPT_PREFIX,
   withProviderDebugModePrompt,
 } from "../../provider/core/debugMode.ts";
-import { withProviderGoalPrompt } from "../../provider/core/goalMode.ts";
 
 export function toNonEmptyProviderInput(value: string | undefined): string | undefined {
   const normalized = value?.trim();
@@ -104,19 +103,10 @@ export function debugModePromptOverheadChars(
 export function withProviderThreadStatePrompts(input: {
   readonly text: string;
   readonly interactionMode?: ProviderInteractionMode | undefined;
-  readonly goal?: string | undefined;
 }): string {
-  return withProviderGoalPrompt({
-    goal: input.goal,
-    text: withProviderDebugModePrompt({
-      interactionMode: input.interactionMode,
-      text: input.text,
-    }),
-  });
+  return withProviderDebugModePrompt(input);
 }
 
-export function providerPromptOverflowIssue(goalPromptOverheadChars: number): string {
-  return goalPromptOverheadChars > 0
-    ? "The latest message is too long to include the persistent thread goal. Shorten the message and retry."
-    : "The latest message is too long to include Glade Debug mode instructions. Shorten the message and retry.";
+export function providerPromptOverflowIssue(): string {
+  return "The latest message is too long to include Glade Debug mode instructions. Shorten the message and retry.";
 }

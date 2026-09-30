@@ -14,7 +14,7 @@ export const BUILT_IN_COMPOSER_SLASH_COMMANDS = [
   COMPUTER_USE_SLASH_COMMAND,
   "fast",
   "export",
-  "goal",
+
   "rename",
   "feedback",
   "automation",

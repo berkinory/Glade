@@ -237,9 +237,7 @@ subsequent human turns. Native control commands, reviews, and steering do not
 consume completion context.
 
 This option covers only the initial delegated run. Approval/question waits and
-provider idle alone are not completion. Goals are unsupported: if a goal was
-set during the initial run, Glade reports that limitation rather than claiming
-the goal finished at an intermediate turn. Later conversational turns do not
+provider idle alone are not completion. Later conversational turns do not
 produce further notifications. External integrations cannot opt in because
 they have no authenticated creating task.
 

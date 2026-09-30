@@ -6,7 +6,6 @@ import {
   PendingClaudeCacheReview,
   OrchestrationThreadPullRequest,
   ThreadPinnedMessages,
-  ThreadGoalAchievements,
   OrchestrationPendingInteraction,
   OrchestrationCheckpointFile,
   OrchestrationProposedPlanId,
@@ -62,9 +61,7 @@ export const ProjectionThreadDbRowSchema = ProjectionThread.mapFields(
     ),
     lastKnownPr: Schema.NullOr(Schema.fromJsonString(OrchestrationThreadPullRequest)),
     pinnedMessages: Schema.NullOr(Schema.fromJsonString(ThreadPinnedMessages)),
-    goalAchievements: Schema.optional(
-      Schema.NullOr(Schema.fromJsonString(ThreadGoalAchievements)),
-    ).pipe(Schema.withDecodingDefault(() => null)),
+
     modelSelection: ModelSelectionJsonUnknown,
   }),
 );
@@ -72,7 +69,7 @@ export const ProjectionThreadDbRowSchema = ProjectionThread.mapFields(
 const {
   pinnedMessages: _projectionThreadPinnedMessagesField,
   notes: _projectionThreadNotesField,
-  goalAchievements: _projectionThreadGoalAchievementsField,
+
   ...ProjectionThreadShellFields
 } = ProjectionThread.fields;
 

@@ -35,10 +35,10 @@ import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "~/components/
 import { DisclosureChevron } from "~/components/ui/DisclosureChevron";
 import { DisclosureRegion } from "~/components/ui/DisclosureRegion";
 import { disclosureContentClassName } from "~/lib/disclosureMotion";
-import { ChangesIcon, GitBranchIcon, GoalIcon, PinIcon, Undo2Icon } from "~/lib/icons";
+import { ChangesIcon, GitBranchIcon, PinIcon, Undo2Icon } from "~/lib/icons";
 import { pinActionLabel } from "~/lib/pin";
 import { cn } from "~/lib/utils";
-import { formatClockDuration } from "~/session-logic";
+
 import { MUTED_LABEL_TEXT_CLASS_NAME } from "~/surfaceStyles";
 import { formatDayAwareTimestamp } from "~/timestampFormat";
 import { isFileChangeWorkLogEntry, type WorkLogEntry } from "~/workLog.types";
@@ -51,7 +51,7 @@ export function renderTimelineAssistantMessage(
 ) {
   const {
     expandedWorkGroupsState,
-    goalAchievementByTurnId,
+
     expandedCollapsedWork,
     settledTurnCollapseTransitions,
     appTypographyScale,
@@ -169,10 +169,7 @@ export function renderTimelineAssistantMessage(
         : [];
 
     const isTerminalAssistantMessage = row.showAssistantCopyButton && !row.assistantTurnInProgress;
-    const goalAchievement =
-      isTerminalAssistantMessage && row.message.turnId
-        ? (goalAchievementByTurnId.get(row.message.turnId) ?? null)
-        : null;
+
     const assistantMeta = [
       isTerminalAssistantMessage
         ? formatDayAwareTimestamp(row.message.createdAt, timestampFormat)
@@ -736,8 +733,7 @@ export function renderTimelineAssistantMessage(
           {(showPinToggle ||
             showForkAction ||
             assistantCopyState.visible ||
-            assistantMeta.length > 0 ||
-            goalAchievement !== null) && (
+            assistantMeta.length > 0) && (
             <div
               className="mt-0.5 flex items-center gap-2 font-system-ui font-normal text-muted-foreground [&>button+button]:-ml-2 [&>button:first-child]:-ml-[0.4375em]"
               style={chatMessageFooterStyle}
@@ -766,22 +762,6 @@ export function renderTimelineAssistantMessage(
                 </MessageActionButton>
               ) : null}
               {assistantMeta.length > 0 ? <p className="tabular-nums">{assistantMeta}</p> : null}
-              {goalAchievement !== null ? (
-                <>
-                  <div aria-hidden className="h-3 w-px shrink-0 bg-border" />
-                  <p
-                    className="flex min-w-0 items-center gap-1.5 tabular-nums"
-                    title={goalAchievement.goal}
-                  >
-                    <GoalIcon className={MESSAGE_ACTION_ICON_CLASS_NAME} />
-                    <span className="truncate">
-                      {goalAchievement.elapsedMs !== null
-                        ? `Goal achieved in ${formatClockDuration(goalAchievement.elapsedMs)}`
-                        : "Goal achieved"}
-                    </span>
-                  </p>
-                </>
-              ) : null}
             </div>
           )}
         </div>

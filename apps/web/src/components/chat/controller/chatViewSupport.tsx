@@ -2,7 +2,6 @@ import { MessageId, ThreadId, type TurnId } from "@glade/contracts/core/baseSche
 import {
   OrchestrationThreadActivity,
   type PinnedMessage,
-  type ThreadGoalAchievement,
 } from "@glade/contracts/orchestration/threadEntities";
 import { type ServerProviderStatus } from "@glade/contracts/server/server";
 import { type EditorId } from "@glade/contracts/settings/editor";
@@ -18,7 +17,7 @@ export const ThreadTerminalDrawer = lazy(() => import("~/components/ThreadTermin
 export const EMPTY_ACTIVITIES: OrchestrationThreadActivity[] = [];
 export const EMPTY_MESSAGES: ChatMessage[] = [];
 export const EMPTY_PINNED_MESSAGES: readonly PinnedMessage[] = [];
-export const EMPTY_GOAL_ACHIEVEMENTS: readonly ThreadGoalAchievement[] = [];
+
 export const EMPTY_PINNED_TEXT: ReadonlyMap<MessageId, string> = new Map();
 export const EMPTY_KEYBINDINGS: ResolvedKeybindingsConfig = [];
 export const COMPOSER_EXTRAS_PANEL_ID = "composer-extras-panel";

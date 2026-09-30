@@ -15,8 +15,6 @@ import {
   OrchestrationThreadPullRequest,
   PendingClaudeCacheReview,
   ThreadNotes,
-  ThreadGoal,
-  ThreadGoalAchievements,
   ThreadPinnedMessages,
   ThreadHandoff,
   ThreadEnvironmentMode,
@@ -69,16 +67,7 @@ export const ProjectionThread = Schema.Struct({
   claudeCacheReview: Schema.optional(Schema.NullOr(PendingClaudeCacheReview)),
   pinnedMessages: Schema.NullOr(ThreadPinnedMessages),
   notes: Schema.NullOr(ThreadNotes),
-  goal: Schema.NullOr(ThreadGoal),
-  goalStartedAt: Schema.optional(Schema.NullOr(IsoDateTime)).pipe(
-    Schema.withDecodingDefault(() => null),
-  ),
-  goalPausedAt: Schema.optional(Schema.NullOr(IsoDateTime)).pipe(
-    Schema.withDecodingDefault(() => null),
-  ),
-  goalAchievements: Schema.optional(Schema.NullOr(ThreadGoalAchievements)).pipe(
-    Schema.withDecodingDefault(() => null),
-  ),
+
   latestUserMessageAt: Schema.NullOr(IsoDateTime),
   latestHumanMessageAt: Schema.optional(Schema.NullOr(IsoDateTime)),
   pendingApprovalCount: NonNegativeInt,

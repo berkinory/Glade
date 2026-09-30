@@ -60,7 +60,7 @@ const SLASH_COMMAND_CHIP_TOKEN_REGEX = /(^|\s)\/([a-zA-Z][a-zA-Z0-9_-]*)(?=\s)/i
 
 const COMPOSER_SLASH_COMMAND_CHIP_NAMES = new Set<ComposerSlashCommand>([
   "automation",
-  "goal",
+
   "computer-use",
 ]);
 
