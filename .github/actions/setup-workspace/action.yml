@@ -8,8 +8,14 @@ inputs:
   scope:
     description: "Install scope: full or static (root and scripts)."
     default: "full"
+  save-dependencies:
+    description: Save dependency caches from designated main CI producers only.
+    default: "false"
+  save-electron-cache:
+    description: Save the Electron cache from the main CI build job only.
+    default: "false"
   turbo:
-    description: Persist Turbo build artifacts for jobs that use Turbo.
+    description: Restore Turbo build artifacts for jobs that build with Turbo.
     default: "false"
 
 runs:
@@ -31,57 +37,41 @@ runs:
         fi
 
     - name: Setup Bun
-      uses: oven-sh/setup-bun@v2
+      uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
       with:
         bun-version-file: package.json
 
     - name: Setup Node
-      uses: actions/setup-node@v6
-      with:
-        node-version-file: package.json
+      uses: ./.github/actions/setup-node
 
-    # Small filtered installs cost less than archive transfer/extraction. Never
-    # restore a full tree into a filtered lane or save it under the full key.
-    # Windows isolated links are rebuilt by Bun, not restored from an archive.
-    - name: Cache node_modules
+    # Cache writers are elected by CI. Release and matrix consumers must not
+    # upload the same large dependency tree after every job.
+    - name: Restore dependencies
       id: modules
       if: ${{ runner.os != 'Windows' && inputs.scope == 'full' }}
-      uses: actions/cache@v5
+      uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5
       with:
         path: |
           node_modules
           apps/*/node_modules
           packages/*/node_modules
           scripts/node_modules
-        key: ${{ runner.os }}-${{ runner.arch }}-bun-modules-v2-electron-${{ inputs.electron }}-${{ hashFiles('bun.lock', 'package.json') }}
+        key: ${{ runner.os }}-${{ runner.arch }}-bun-modules-v3-${{ hashFiles('bun.lock', 'package.json', 'apps/*/package.json', 'packages/*/package.json', 'scripts/package.json', '.mise.toml', 'patches/**', '.github/actions/setup-workspace/action.yml') }}
 
-    # A modules hit already contains the dependency payload. Restoring a second
-    # archive is redundant. The Windows package archive was slower than cold install.
-    - name: Cache Bun install
-      if: ${{ runner.os != 'Windows' && inputs.scope == 'full' && steps.modules.outputs.cache-hit != 'true' }}
-      uses: actions/cache@v5
-      with:
-        path: ~/.bun/install/cache
-        key: ${{ runner.os }}-${{ runner.arch }}-bun-v2-${{ hashFiles('bun.lock', 'package.json') }}
-
-    # Tests and typechecks remain cache:false. OS/architecture boundaries prevent
-    # native build products from crossing platforms. Browser/Windows/static jobs
-    # do not consume Turbo outputs and must not restore or save this archive.
-    - name: Cache Turbo outputs
+    - name: Restore Turbo outputs
+      id: turbo
       if: ${{ inputs.turbo == 'true' }}
-      uses: actions/cache@v5
+      uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5
       with:
-        path: |
-          .turbo
-          node_modules/.cache/turbo
-        key: ${{ runner.os }}-${{ runner.arch }}-turbo-v2-${{ hashFiles('bun.lock') }}-${{ github.job }}-${{ strategy.job-index || 0 }}-${{ github.sha }}
+        path: .turbo
+        key: ${{ runner.os }}-${{ runner.arch }}-turbo-v3-${{ hashFiles('bun.lock', '.mise.toml') }}-${{ github.sha }}
         restore-keys: |
-          ${{ runner.os }}-${{ runner.arch }}-turbo-v2-${{ hashFiles('bun.lock') }}-${{ github.job }}-${{ strategy.job-index || 0 }}-
-          ${{ runner.os }}-${{ runner.arch }}-turbo-v2-${{ hashFiles('bun.lock') }}-
+          ${{ runner.os }}-${{ runner.arch }}-turbo-v3-${{ hashFiles('bun.lock', '.mise.toml') }}-
 
-    - name: Cache Electron runtime
+    - name: Restore Electron runtime
+      id: electron
       if: ${{ inputs.electron == 'true' }}
-      uses: actions/cache@v5
+      uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5
       with:
         path: ~/.cache/electron
         key: ${{ runner.os }}-${{ runner.arch }}-electron-${{ hashFiles('bun.lock') }}
@@ -114,6 +104,19 @@ runs:
           sleep 5
         done
 
+    # Save before downloading Electron or building. Native modules stay scoped
+    # to their OS/architecture; Electron binaries and build outputs stay separate.
+    - name: Save dependencies
+      if: ${{ inputs.save-dependencies == 'true' && runner.os != 'Windows' && inputs.scope == 'full' && steps.modules.outputs.cache-hit != 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5
+      with:
+        path: |
+          node_modules
+          apps/*/node_modules
+          packages/*/node_modules
+          scripts/node_modules
+        key: ${{ steps.modules.outputs.cache-primary-key }}
+
     - name: Install Electron test runtime
       if: ${{ inputs.electron == 'true' }}
       shell: bash
@@ -127,3 +130,27 @@ runs:
           fi
           sleep $((attempt * 5))
         done
+
+    - name: Save Electron runtime
+      if: ${{ inputs.save-electron-cache == 'true' && inputs.electron == 'true' && steps.electron.outputs.cache-hit != 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5
+      with:
+        path: ~/.cache/electron
+        key: ${{ steps.electron.outputs.cache-primary-key }}
+
+    - name: Cache setup summary
+      shell: bash
+      env:
+        MODULES_HIT: ${{ steps.modules.outputs.cache-hit }}
+        TURBO_HIT: ${{ steps.turbo.outputs.cache-hit }}
+        ELECTRON_HIT: ${{ steps.electron.outputs.cache-hit }}
+        WORKSPACE_SCOPE: ${{ inputs.scope }}
+      run: |
+        {
+          echo "### Workspace setup ($RUNNER_OS / $RUNNER_ARCH, $WORKSPACE_SCOPE)"
+          echo "| Cache | Exact hit |"
+          echo "| --- | --- |"
+          echo "| Dependencies | ${MODULES_HIT:-not restored} |"
+          echo "| Turbo | ${TURBO_HIT:-not restored} |"
+          echo "| Electron | ${ELECTRON_HIT:-not restored} |"
+        } >> "$GITHUB_STEP_SUMMARY"

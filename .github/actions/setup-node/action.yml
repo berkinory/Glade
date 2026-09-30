@@ -1,0 +1,23 @@
+name: Setup pinned Node
+description: Install the exact build runtime from the repository's mise configuration
+
+runs:
+  using: composite
+  steps:
+    - name: Read pinned Node version
+      id: version
+      shell: bash
+      run: |
+        node_version=$(awk -F '"' '/^node[[:space:]]*=/ {print $2}' .mise.toml)
+        if [[ ! "$node_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "::error::.mise.toml must specify one exact Node version."
+          exit 1
+        fi
+        echo "node=$node_version" >> "$GITHUB_OUTPUT"
+
+    # setup-node's package.json reader accepts engines ranges, while its generic
+    # version-file reader does not parse TOML. Resolve the actual build pin first.
+    - name: Setup Node
+      uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+      with:
+        node-version: ${{ steps.version.outputs.node }}

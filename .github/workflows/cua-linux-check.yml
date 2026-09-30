@@ -4,16 +4,16 @@ on:
   pull_request:
     paths:
       - ".github/workflows/cua-linux-check.yml"
+      - ".github/actions/prepare-cua-source/**"
       - "apps/desktop/patches/cua-driver/**"
-      - "apps/desktop/src/computer/cua/**"
-      - "packages/shared/src/computer/cuaDriver*"
+      - "packages/shared/src/computer/cuaDriverRelease.json"
   push:
     branches: [main]
     paths:
       - ".github/workflows/cua-linux-check.yml"
+      - ".github/actions/prepare-cua-source/**"
       - "apps/desktop/patches/cua-driver/**"
-      - "apps/desktop/src/computer/cua/**"
-      - "packages/shared/src/computer/cuaDriver*"
+      - "packages/shared/src/computer/cuaDriverRelease.json"
   workflow_dispatch:
 
 permissions:
@@ -35,46 +35,15 @@ jobs:
       CARGO_PROFILE_DEV_DEBUG: "0"
       CARGO_PROFILE_TEST_DEBUG: "0"
     steps:
-      - uses: actions/checkout@v6
-      - uses: ./.github/actions/setup-workspace
-        with:
-          scope: full
-          electron: "true"
-
-      - name: Run Linux admission, host IPC and protocol regressions
-        run: |
-          bun run --cwd apps/desktop test src/computer/cua
-          bun run --cwd packages/shared test src/computer/cuaDriverProtocol.test.ts src/computer/cuaActionDiagnostics.test.ts
-          bun run --cwd apps/server test src/browserAutomation/browserHostRpcClient.test.ts src/computer/ComputerManager.test.ts src/computer/CuaComputerBackend.test.ts
-
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      # Linux host/protocol suites already run in CI's complete unit matrix.
       - name: Install Linux build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends pkg-config libssl-dev libx11-dev libxtst-dev libxrandr-dev libxfixes-dev libxrender-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libwayland-dev
 
-      - name: Prepare pinned Linux driver source
-        shell: bash
-        run: |
-          set -euo pipefail
-          release=packages/shared/src/computer/cuaDriverRelease.json
-          source_commit=$(jq -r .source "$release")
-          rust_version=$(jq -r .rustVersion "$release")
-          native_patch="$GITHUB_WORKSPACE/apps/desktop/patches/cua-driver/0001-glade-native.patch"
-          linux_patch="$GITHUB_WORKSPACE/apps/desktop/patches/cua-driver/0002-glade-linux-browser.patch"
-          test "$(sha256sum "$native_patch" | cut -d ' ' -f 1)" = "$(jq -r .patchSha256 "$release")"
-          test "$(sha256sum "$linux_patch" | cut -d ' ' -f 1)" = "$(jq -r .linuxBrowserPatchSha256 "$release")"
-          rustup toolchain install "$rust_version" --profile minimal
-          echo "RUSTUP_TOOLCHAIN=$rust_version" >> "$GITHUB_ENV"
-          native_source="$RUNNER_TEMP/cua-linux-source"
-          git init "$native_source"
-          git -C "$native_source" fetch --depth=1 https://github.com/trycua/cua.git "$source_commit"
-          git -C "$native_source" checkout --detach FETCH_HEAD
-          test "$(git -C "$native_source" rev-parse HEAD)" = "$source_commit"
-          git -C "$native_source" apply --check "$native_patch"
-          git -C "$native_source" apply "$native_patch"
-          git -C "$native_source" apply --check "$linux_patch"
-          git -C "$native_source" apply "$linux_patch"
-          echo "CUA_NATIVE_SOURCE=$native_source" >> "$GITHUB_ENV"
+      - name: Prepare native check workspace
+        uses: ./.github/actions/prepare-cua-source
 
       - name: Compile the embedded Linux driver and cursor helper
         run: cargo build --manifest-path "$CUA_NATIVE_SOURCE/libs/cua-driver/rust/Cargo.toml" --locked -p cua-driver -p cursor-theme-cli

@@ -1,0 +1,158 @@
+name: Build release platform
+
+on:
+  workflow_call:
+    inputs:
+      id:
+        required: true
+        type: string
+      runner:
+        required: true
+        type: string
+      platform:
+        required: true
+        type: string
+      arch:
+        required: true
+        type: string
+      target:
+        required: true
+        type: string
+      publish:
+        required: true
+        type: boolean
+    secrets:
+      CSC_LINK:
+        required: false
+      CSC_KEY_PASSWORD:
+        required: false
+      APPLE_API_KEY:
+        required: false
+      APPLE_API_KEY_ID:
+        required: false
+      APPLE_API_ISSUER:
+        required: false
+      APPLE_TEAM_ID:
+        required: false
+
+permissions:
+  contents: read
+
+env:
+  PUBLISH_RELEASE: ${{ inputs.publish }}
+  GLADE_DESKTOP_UPDATE_REPOSITORY: berkinory/Glade
+
+jobs:
+  build:
+    name: Build ${{ inputs.id }}
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Setup Node for provenance verification
+        uses: ./.github/actions/setup-node
+      - name: Verify exact source before building
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(node -p 'require("./apps/desktop/package.json").version')
+          node scripts/verify-release-source-provenance.ts "$version" "v$version" "$PUBLISH_RELEASE" "$GITHUB_SHA" "$GITHUB_REF_TYPE" "$GITHUB_REF_NAME"
+      - uses: ./.github/actions/setup-workspace
+        with:
+          electron: "true"
+          turbo: "true"
+      - uses: ./.github/actions/provision-cua
+        if: inputs.platform != 'win'
+        with:
+          arch: ${{ inputs.arch }}
+      - name: Build platform artifact
+        shell: bash
+        env:
+          CSC_LINK: ${{ inputs.platform == 'mac' && secrets.CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ inputs.platform == 'mac' && secrets.CSC_KEY_PASSWORD || '' }}
+          APPLE_API_KEY: ${{ inputs.platform == 'mac' && secrets.APPLE_API_KEY || '' }}
+          APPLE_API_KEY_ID: ${{ inputs.platform == 'mac' && secrets.APPLE_API_KEY_ID || '' }}
+          APPLE_API_ISSUER: ${{ inputs.platform == 'mac' && secrets.APPLE_API_ISSUER || '' }}
+          APPLE_TEAM_ID: ${{ inputs.platform == 'mac' && secrets.APPLE_TEAM_ID || '' }}
+          CSC_NAME: Pixen Interactive LLC (8M2GQK3TUP)
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          GLADE_MAC_ICON_CATALOG: ${{ github.workspace }}/assets/prod/Glade-Assets.car
+          RELEASE_VERSION: ${{ steps.source.outputs.version }}
+          SOURCE_TAG: ${{ steps.source.outputs.source_tag }}
+          LOCKFILE_SHA256: ${{ steps.source.outputs.lockfile_sha256 }}
+          BUILD_PLATFORM: ${{ inputs.platform }}
+          BUILD_ARCH: ${{ inputs.arch }}
+        run: |
+          set -euo pipefail
+          args=(--output-dir release --verbose --build-version "$RELEASE_VERSION" --source-commit "$GITHUB_SHA" --lockfile-sha256 "$LOCKFILE_SHA256")
+          if [[ -n "$SOURCE_TAG" ]]; then args+=(--source-tag "$SOURCE_TAG"); fi
+          case "$BUILD_PLATFORM" in
+            mac)
+              if [[ "$PUBLISH_RELEASE" == "true" ]]; then
+                key_path="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY_ID}.p8"
+                printf '%s' "$APPLE_API_KEY" > "$key_path"
+                chmod 600 "$key_path"
+                export APPLE_API_KEY="$key_path" CSC_IDENTITY_AUTO_DISCOVERY=true
+                args+=(--signed)
+              fi
+              bun run "package:mac:$BUILD_ARCH" -- "${args[@]}"
+              ;;
+            linux) bun run package:linux -- "${args[@]}" ;;
+            win) bun run package:win -- "${args[@]}" ;;
+            *) exit 1 ;;
+          esac
+      - name: Verify packaged startup
+        shell: bash
+        env:
+          BUILD_PLATFORM: ${{ inputs.platform }}
+          BUILD_ARCH: ${{ inputs.arch }}
+          RELEASE_VERSION: ${{ steps.source.outputs.version }}
+        run: node scripts/verify-packaged-desktop-startup.ts --assets-dir release --platform "$BUILD_PLATFORM" --arch "$BUILD_ARCH" --version "$RELEASE_VERSION" --executable-name glade
+      - name: Collect and verify distribution assets
+        shell: bash
+        env:
+          BUILD_PLATFORM: ${{ inputs.platform }}
+          BUILD_ARCH: ${{ inputs.arch }}
+          BUILD_TARGET: ${{ inputs.target }}
+          RELEASE_VERSION: ${{ steps.source.outputs.version }}
+          SOURCE_TAG: ${{ steps.source.outputs.source_tag }}
+          LOCKFILE_SHA256: ${{ steps.source.outputs.lockfile_sha256 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-publish
+          case "$BUILD_PLATFORM" in
+            mac)
+              cp release/*.dmg release/*.zip release-publish/
+              if [[ "$BUILD_ARCH" == x64 ]]; then
+                cp release/latest-mac-x64.yml release-publish/latest-mac-x64.yml
+              else
+                cp release/latest-mac.yml release-publish/latest-mac-arm64.yml
+              fi
+              ;;
+            linux) cp release/*.AppImage release/latest-linux.yml release-publish/ ;;
+            win) cp release/*.exe release/latest.yml release-publish/ ;;
+            *) exit 1 ;;
+          esac
+          find release -maxdepth 1 -name '*.blockmap' -exec cp {} release-publish/ \;
+          signed=false
+          if [[ "$BUILD_PLATFORM" == mac && "$PUBLISH_RELEASE" == true ]]; then signed=true; fi
+          node scripts/write-release-artifact-provenance.ts \
+            --assets-dir release-publish --platform "$BUILD_PLATFORM" --arch "$BUILD_ARCH" \
+            --target "$BUILD_TARGET" --version "$RELEASE_VERSION" \
+            --source-commit "$GITHUB_SHA" --source-tag "$SOURCE_TAG" \
+            --lockfile-sha256 "$LOCKFILE_SHA256" --publication "$PUBLISH_RELEASE" \
+            --signed "$signed" --allow-unsigned-windows-publication true \
+            --expected-mac-team-id "$APPLE_TEAM_ID"
+      - name: Upload verified platform artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: Glade-${{ inputs.id }}
+          path: release-publish/
+          if-no-files-found: error
+          compression-level: 0

@@ -47,11 +47,14 @@ Artifacts land in `release/`. Local notarization uses the keychain profile; CI u
 `.github/workflows/release.yml` verifies the release source and requires successful CI for the
 exact commit on `main` before publishing. It reuses that result instead of rerunning the same checks
 on the tag. An unpublished manual build runs the checks itself. A failed gate skips all four builds
-and publication. The four build jobs run in parallel. Pushing a stable `vX.Y.Z` tag publishes only
+and publication. The four build jobs run in parallel through `release-build.yml`; publication credentials are checked
+before those jobs start. Release jobs restore dependency and build caches without uploading duplicate
+archives. See [CI and automation](ci.md) for cache ownership and debugging. Pushing a stable `vX.Y.Z` tag publishes only
 after both macOS packages are signed and notarized; manual publication also requires running on that
 exact tag. Existing releases are never overwritten. The Cua native cache refreshes weekly and when
 its build inputs change for macOS arm64, macOS x64 and Linux x64. Native macOS and Linux Cua checks
-run on relevant pull requests and direct pushes to `main`.
+run on native input changes and manual requests. macOS host and lifecycle checks also run for relevant
+runtime and dependency changes. Linux host tests already run in the full CI unit suite.
 
 Workspace setup retries a failed frozen-lockfile Bun install once. This covers transient
 workspace prepare failures during a cold dependency extraction; a second failure still stops
