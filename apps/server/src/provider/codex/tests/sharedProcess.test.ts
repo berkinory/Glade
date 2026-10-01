@@ -74,6 +74,31 @@ describe("shared Codex process", () => {
       expect(JSON.stringify(fake.launches)).not.toContain("private-");
       const firstNative = (first.resumeCursor as { threadId: string }).threadId;
       const secondNative = (second.resumeCursor as { threadId: string }).threadId;
+      fake.children[0]!.stderr.emit(
+        "data",
+        Buffer.from(
+          "ERROR codex_rollout::list: state db returned stale rollout path for thread old-thread\n",
+        ),
+      );
+      fake.children[0]!.stdout.emit(
+        "data",
+        Buffer.from(
+          JSON.stringify({
+            method: "error",
+            params: {
+              threadId: firstNative,
+              turnId: "turn",
+              error: { message: "Reconnecting... 2/5", codexErrorInfo: "serverOverloaded" },
+              willRetry: true,
+            },
+          }) + "\n",
+        ),
+      );
+      expect(
+        events
+          .filter((event) => event.kind === "error" || event.method === "error")
+          .map((event) => ({ threadId: event.threadId, method: event.method })),
+      ).toEqual([{ threadId: first.threadId, method: "error" }]);
       delta(firstNative, "first-only");
       delta(secondNative, "second-only");
       expect(

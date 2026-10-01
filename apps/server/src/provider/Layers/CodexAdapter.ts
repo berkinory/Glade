@@ -243,8 +243,7 @@ function toRequestError(threadId: ThreadId, method: string, cause: unknown): Pro
 function providerErrorMapsToWarning(event: ProviderEvent): boolean {
   return (
     event.kind === "error" &&
-    (event.method === "process/stderr" ||
-      event.method === "mcpServer/elicitation/request/unrenderable" ||
+    (event.method === "mcpServer/elicitation/request/unrenderable" ||
       (event.method === "error" &&
         (asObjectRecord(event.payload) ?? undefined)?.willRetry === true))
   );

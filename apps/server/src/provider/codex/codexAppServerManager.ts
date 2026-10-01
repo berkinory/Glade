@@ -63,7 +63,6 @@ import { normalizeModelSlug } from "@glade/shared/provider/model";
 import { approvalSessionGrantWidensSessionPolicy } from "@glade/shared/threads/approvalSessionGrant";
 import {
   JsonRpcStdioRequestRegistry,
-  JsonRpcStdioFramer,
   type JsonRpcPendingRequest,
 } from "../../platform/transport/jsonRpcStdio";
 import { decodeSubagentReceiverThreadIds } from "@glade/shared/threads/subagents";
@@ -386,12 +385,6 @@ export interface CodexThreadSnapshot {
 
 const ANSI_ESCAPE_CHAR = String.fromCharCode(27);
 const ANSI_ESCAPE_REGEX = new RegExp(`${ANSI_ESCAPE_CHAR}\\[[0-9;]*m`, "g");
-const CODEX_STDERR_LOG_REGEX =
-  /^\d{4}-\d{2}-\d{2}T\S+\s+(TRACE|DEBUG|INFO|WARN|ERROR)\s+\S+:\s+(.*)$/;
-const BENIGN_ERROR_LOG_SNIPPETS = [
-  "state db missing rollout path for thread",
-  "state db record_discrepancy: find_thread_path_by_id_str_in_subdir, falling_back",
-];
 const BENIGN_PROCESS_OUTPUT_REGEXES = [/^(?:\^C)?Token usage:/i];
 const RECOVERABLE_THREAD_RESUME_ERROR_SNIPPETS = [
   "not found",
@@ -784,48 +777,6 @@ export function parseCodexUserInputQuestions(
   });
 
   return parsedQuestions.length > 0 ? parsedQuestions : undefined;
-}
-
-function classifyCodexStderrLine(rawLine: string): { message: string } | null {
-  const line = normalizeCodexProcessLine(rawLine);
-  if (isIgnorableCodexProcessLine(line)) {
-    return null;
-  }
-
-  if (line.startsWith("{")) {
-    try {
-      const record = asObjectRecord(JSON.parse(line)) ?? undefined;
-      const fields = asObjectRecord(record?.fields) ?? undefined;
-      const message = asString(fields?.message);
-      if (message && typeof record?.level === "string") {
-        if (message === "MCP server startup failed") {
-          const server = asString(fields?.server_name) ?? "Configured";
-          return {
-            message: `MCP server "${server}" could not connect. Check its configuration or start the server.`,
-          };
-        }
-
-        if (record.level !== "ERROR" || record.target === "rmcp::transport::worker") return null;
-        if (BENIGN_ERROR_LOG_SNIPPETS.some((snippet) => message.includes(snippet))) return null;
-        return { message: normalizeCodexUserVisibleErrorMessage(message) };
-      }
-    } catch {}
-  }
-
-  const match = line.match(CODEX_STDERR_LOG_REGEX);
-  if (match) {
-    const level = match[1];
-    if (level && level !== "ERROR") {
-      return null;
-    }
-
-    const isBenignError = BENIGN_ERROR_LOG_SNIPPETS.some((snippet) => line.includes(snippet));
-    if (isBenignError) {
-      return null;
-    }
-  }
-
-  return { message: normalizeCodexUserVisibleErrorMessage(line) };
 }
 
 function isRecoverableThreadResumeError(error: unknown): boolean {
@@ -3344,9 +3295,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
 
   private attachProcessListeners(context: CodexSessionContext): void {
     this.requestRegistry(context).processStarted();
-    const stderrFramer = new JsonRpcStdioFramer(1024 * 1024, (error) => {
-      log.warn("codex stderr line discarded", { reason: error.reason });
-    });
     const unsubscribe = context.processLease.subscribe({
       line: (line) => {
         try {
@@ -3355,13 +3303,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
           context.processLease.invalidate(
             cause instanceof Error ? cause : new Error("Codex protocol failed", { cause }),
           );
-        }
-      },
-      stderr: (chunk) => {
-        if (context.stopping) return;
-        for (const line of stderrFramer.push(chunk)) {
-          const classified = classifyCodexStderrLine(line);
-          if (classified) this.emitErrorEvent(context, "process/stderr", classified.message);
         }
       },
       failure: (error) => this.handleTransportFailure(context, error),
@@ -3381,7 +3322,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
     });
     context.detachStdout = () => {
       unsubscribe();
-      stderrFramer.close();
       delete context.detachStdout;
     };
   }

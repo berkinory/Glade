@@ -5,11 +5,8 @@
 ### Improved
 
 - New chats show models instantly instead of reloading them each time.
-
 - Speed choices show icons for default and fast.
-
 - Explorer hides version control and system files and dims ignored files, with an option to hide them.
-
 - New chats start on each provider's latest model instead of a generic default entry.
 - Thinking levels show readable names.
 - Model options use clearer names such as Speed and Default.
@@ -17,11 +14,10 @@
 
 ### Fixed
 
+- Chats no longer show unrelated Codex process warnings as conversation errors.
 - Replies finish reliably, and switching chats keeps pending messages in progress.
-
 - The model picker no longer shifts when models finish loading.
 - The default thinking level shown for each model matches what Codex and Claude actually use.
-
 - Every thinking level a provider offers is available, including newer ones.
 - Codex installed with its standalone installer now gets update notices and one-click updates.
 

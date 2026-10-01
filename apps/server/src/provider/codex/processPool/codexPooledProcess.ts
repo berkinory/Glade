@@ -1,4 +1,8 @@
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
+import { stripVTControlCharacters } from "node:util";
+import { createLogger } from "../../../diagnostics/logger";
+import { JsonRpcStdioFramer } from "../../../platform/transport/jsonRpcStdio";
+
 import {
   CodexAppServerTransportError,
   CodexJsonlFramer,
@@ -6,9 +10,10 @@ import {
 } from "../codexAppServerTransport";
 import { codexMessageRoute } from "./codexProcessRouting";
 
+const log = createLogger("codex-process");
+
 interface ProcessListener {
   readonly line: (line: string) => void;
-  readonly stderr: (chunk: Buffer) => void;
   readonly failure: (error: Error) => void;
   readonly exit: (code: number | null, signal: NodeJS.Signals | null) => void;
 }
@@ -39,6 +44,9 @@ export class CodexPooledProcess {
   private readonly requests = new Map<number, symbol>();
   private readonly framer = new CodexJsonlFramer();
   private readonly writer: CodexJsonlWriter;
+  private readonly stderrFramer = new JsonRpcStdioFramer(1024 * 1024, (error) => {
+    log.warn("codex stderr line discarded", { reason: error.reason });
+  });
   private nextRequest = 1;
   private initialized?: Promise<void>;
   private threadOpens: Promise<unknown> = Promise.resolve();
@@ -88,7 +96,17 @@ export class CodexPooledProcess {
     );
   };
   private stderr = (chunk: Buffer): void => {
-    for (const state of this.leases.values()) state.listener?.stderr(chunk);
+    // A shared process has no stderr thread/turn routing contract. Keep diagnostics here;
+    // only protocol notifications and process failures may become session events.
+    for (const rawLine of this.stderrFramer.push(chunk)) {
+      const line = stripVTControlCharacters(rawLine).trim();
+      if (line)
+        log.warn("codex app-server stderr", {
+          pid: this.child.pid,
+          preview: line.slice(0, 1000),
+          length: line.length,
+        });
+    }
   };
   private exit = (code: number | null, signal: NodeJS.Signals | null): void => {
     if (this.closing) return;
@@ -173,6 +191,7 @@ export class CodexPooledProcess {
             this.child.off("error", this.fail);
             this.child.off("exit", this.exit);
             this.framer.close();
+            this.stderrFramer.close();
             this.onClosed();
             return proof;
           })
