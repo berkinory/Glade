@@ -79,7 +79,7 @@ import { cn } from "~/lib/utils";
 
 const PullRequestDockPane = lazy(() => import("../pullRequest/PullRequestDockPane"));
 const DockTerminalPane = lazy(() => import("./DockTerminalPane"));
-const PRIMARY_DOCK_PANE_KINDS = ["explorer", "terminal", "git", "browser"] as const;
+const PRIMARY_DOCK_PANE_KINDS = ["explorer", "git", "terminal", "browser"] as const;
 const SourceControlDockPane = lazy(() =>
   import("./SourceControlDockPane").then((module) => ({
     default: module.SourceControlDockPane,
