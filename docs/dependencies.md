@@ -44,6 +44,14 @@ as well as earlier classification and HTML escaping fixes. The installed
 version is `10.7.2`. The Effect override above prevents version skew rather
 than addressing a security advisory.
 
+`toml` is pinned and overridden to `4.2.0` so both Codex configuration parsing
+and Effect use the fixes for
+[prototype pollution](https://github.com/BinaryMuse/toml-node/security/advisories/GHSA-v5mp-jgw5-2x6j)
+and [unbounded parser recursion](https://github.com/BinaryMuse/toml-node/security/advisories/GHSA-82x6-q7mm-w9cf).
+Electron is pinned to `43.5.0`, which fixes
+[sandboxed preload cache poisoning](https://github.com/electron/electron/security/advisories/GHSA-qmv3-fv6v-rmhq)
+when displaying untrusted content.
+
 ## Patches
 
 - **BetterWright 2.7.3:** removed. It only modified cookie import for host-owned
