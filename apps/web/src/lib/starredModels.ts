@@ -64,14 +64,15 @@ export function normalizeStarredModels(
       entry.provider === "claudeAgent" && entry.effort === "ultrathink"
         ? null
         : entry.provider === "claudeAgent" && entry.effort === "ultracode"
-          ? "xhigh"
+          ? null
           : entry.effort;
+    const { effort: _storedEffort, ...nativeOptions } = entry.options ?? {};
     result.push({
       ...entry,
       provider: entry.provider,
       effort: legacyEffort,
       ...(entry.provider === "claudeAgent" && entry.effort === "ultracode"
-        ? { options: { ...entry.options, effort: "xhigh", ultracode: true } }
+        ? { options: { ...nativeOptions, ultracode: true } }
         : {}),
     });
   }

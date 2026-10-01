@@ -208,7 +208,9 @@ export function makeProviderConversationNaming(input: {
       cwd,
       message: input.messageText,
       ...(attachments.length > 0 ? { attachments } : {}),
-      modelSelection: textGenerationInput.modelSelection,
+      ...(textGenerationInput.modelSelection
+        ? { modelSelection: textGenerationInput.modelSelection }
+        : {}),
       ...(textGenerationInput.providerOptions
         ? { providerOptions: textGenerationInput.providerOptions }
         : {}),

@@ -1,7 +1,7 @@
+import { normalizeModelSlug } from "@glade/shared/provider/model";
 import { homedir } from "node:os";
 import nodePath from "node:path";
 import { CommandId, ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
-import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import {
   type ImportProjectInput,
   type ImportProjectResult,
@@ -339,10 +339,22 @@ export function makeProjectImportHandlers(options: ProjectImportRouteOptions) {
           return yield* new ProjectImportError({
             message: "The import destination was removed. Retry to create a new conversation copy.",
           });
-        const modelSelection =
+        let modelSelection =
           project.defaultModelSelection?.provider === source.provider
             ? project.defaultModelSelection
-            : { provider: source.provider, model: PROVIDER_DEFAULT_MODEL };
+            : { provider: source.provider, model: "" };
+        if (!normalizeModelSlug(modelSelection.model, source.provider)) {
+          const adapter = yield* options.providerAdapterRegistry.getByProvider(source.provider);
+          if (!adapter.listModels)
+            return yield* new ProjectImportError({ message: "Model discovery is unavailable." });
+          const catalog = yield* adapter.listModels({ provider: source.provider, cwd: source.cwd });
+          const currentModel = catalog.models.find((entry) => entry.isDefault)?.slug;
+          if (!currentModel)
+            return yield* new ProjectImportError({
+              message: catalog.error ?? "Provider did not return a default model.",
+            });
+          modelSelection = { ...modelSelection, model: currentModel };
+        }
         const sourceDirectoryExists = yield* projectImportPromise(() =>
           importDirectoryExists(source.cwd),
         );

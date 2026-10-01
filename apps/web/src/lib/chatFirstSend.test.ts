@@ -1,4 +1,3 @@
-import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import { type ProjectId } from "@glade/contracts/core/baseSchemas";
 import { describe, expect, it } from "vitest";
 
@@ -25,6 +24,7 @@ function makeProject(overrides: Partial<Project> = {}): Project {
 describe("resolveFirstSendTarget", () => {
   it("creates a managed date/slug chat project for a plain general chat first send", () => {
     const result = resolveFirstSendTarget({
+      defaultModelSelection: { provider: "codex", model: "gpt-6.1-sol" },
       activeProject: makeProject(),
       chatWorkspaceRoot: "/Users/tester/Documents/Glade",
       createdAt: new Date(2026, 5, 11, 23, 30, 43),
@@ -49,6 +49,7 @@ describe("resolveFirstSendTarget", () => {
 
   it("keeps folder mentions as ordinary projects", () => {
     const result = resolveFirstSendTarget({
+      defaultModelSelection: { provider: "codex", model: "gpt-6.1-sol" },
       activeProject: makeProject(),
       chatWorkspaceRoot: "/Users/tester/Documents/Glade",
       createdAt: new Date(2026, 5, 11, 23, 30, 43),
@@ -74,6 +75,7 @@ describe("resolveFirstSendTarget", () => {
   it("uses the current project outside a home chat first send", () => {
     const activeProject = makeProject({ id: "project-app" as ProjectId, kind: "project" });
     const result = resolveFirstSendTarget({
+      defaultModelSelection: { provider: "codex", model: "gpt-6.1-sol" },
       activeProject,
       chatWorkspaceRoot: "/Users/tester/Documents/Glade",
       createdAt: new Date(2026, 5, 11, 23, 30, 43),
@@ -90,28 +92,6 @@ describe("resolveFirstSendTarget", () => {
       target: {
         targetProjectId: "project-app",
         targetProjectKind: "project",
-      },
-    });
-  });
-
-  it("falls back to codex when no defaultModelSelection is provided", () => {
-    const result = resolveFirstSendTarget({
-      activeProject: makeProject(),
-      chatWorkspaceRoot: "/Users/tester/Documents/Glade",
-      createdAt: new Date(2026, 5, 11, 23, 30, 43),
-      isFirstMessage: true,
-      isHomeChatContainer: true,
-      projects: [makeProject()],
-      selectedWorkspaceRoot: null,
-      title: "Codex task",
-      titleSeed: "Codex task",
-    });
-
-    expect(result).toMatchObject({
-      kind: "create-project",
-      creation: {
-        kind: "chat",
-        defaultModelSelection: { provider: "codex", model: PROVIDER_DEFAULT_MODEL },
       },
     });
   });

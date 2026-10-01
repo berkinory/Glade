@@ -387,14 +387,19 @@ const makeAgentGateway = Effect.gen(function* () {
       },
     },
     handler: (args, context) =>
-      Effect.suspend(() => {
+      Effect.gen(function* () {
         const explicitTarget = readRecordArg(args, "target");
         let target: Record<string, unknown>;
         if (explicitTarget) {
           target = explicitTarget;
         } else {
           const provider = parseProviderKind(readStringArg(args, "provider", { required: true })!);
-          const modelSelection = buildModelSelection(provider, readStringArg(args, "model"));
+          let model = readStringArg(args, "model");
+          if (!model) {
+            const catalog = yield* providerDiscovery.listModels({ provider });
+            model = catalog.models.find((entry) => entry.isDefault)?.slug;
+          }
+          const modelSelection = buildModelSelection(provider, model);
           const options = readRecordArg(args, "options");
           target = { ...modelSelection, ...(options ? { options } : {}) };
         }
@@ -415,7 +420,7 @@ const makeAgentGateway = Effect.gen(function* () {
           const value = args[key];
           if (value !== undefined) spec[key] = value;
         }
-        return runCreateThreads(
+        return yield* runCreateThreads(
           decodeCreateThreadsInput({
             requestId: readStringArg(args, "requestId", { required: true }),
             threads: [spec],
@@ -442,7 +447,10 @@ const makeAgentGateway = Effect.gen(function* () {
             });
           }),
         );
-      }).pipe(Effect.catchDefect((error) => Effect.succeed(mcpToolResultError(errorText(error))))),
+      }).pipe(
+        Effect.catch((error) => Effect.succeed(mcpToolResultError(errorText(error)))),
+        Effect.catchDefect((error) => Effect.succeed(mcpToolResultError(errorText(error)))),
+      ),
   };
 
   const sendMessage: ToolEntry = {

@@ -1,4 +1,3 @@
-import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import {
   DEFAULT_SERVER_SETTINGS,
   ServerSettings,
@@ -6,7 +5,6 @@ import {
   type ServerSettingsPatch,
   type ServerSettingsView,
 } from "@glade/contracts/settings/settings";
-import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { deepMerge, type DeepPartial } from "./settingsMerge";
 import { applyServerSettingsPatch } from "./settingsPatches";
 import {
@@ -59,7 +57,7 @@ const PREVIOUS_LUNA_GIT_TEXT_GENERATION_MODEL = "gpt-5.6-luna";
 function migrateSettings(settings: ServerSettings, migrationVersion: number): ServerSettings {
   const selection = settings.textGenerationModelSelection;
   if (
-    selection.provider !== "codex" ||
+    selection?.provider !== "codex" ||
     !(
       (migrationVersion < 2 && selection.model === PREVIOUS_GIT_TEXT_GENERATION_MODEL) ||
       (migrationVersion < 3 && selection.model === PREVIOUS_LUNA_GIT_TEXT_GENERATION_MODEL)
@@ -70,10 +68,7 @@ function migrateSettings(settings: ServerSettings, migrationVersion: number): Se
 
   return {
     ...settings,
-    textGenerationModelSelection: {
-      ...selection,
-      model: PROVIDER_DEFAULT_MODEL,
-    },
+    textGenerationModelSelection: null,
   };
 }
 
@@ -145,8 +140,8 @@ export class ServerSettingsService extends ServiceMap.Service<
 function resolveTextGenerationProvider(settings: ServerSettings): ServerSettings {
   const selection = settings.textGenerationModelSelection;
   if (
-    hasDedicatedTextGenerationProvider(selection.provider) &&
-    settings.providers[selection.provider].enabled
+    hasDedicatedTextGenerationProvider(selection?.provider) &&
+    settings.providers[selection!.provider].enabled
   ) {
     return settings;
   }
@@ -160,10 +155,7 @@ function resolveTextGenerationProvider(settings: ServerSettings): ServerSettings
 
   return {
     ...settings,
-    textGenerationModelSelection: {
-      provider: fallback,
-      model: PROVIDER_DEFAULT_MODEL,
-    } as ModelSelection,
+    textGenerationModelSelection: null,
   };
 }
 
@@ -190,10 +182,14 @@ function retireProviderSettings(value: unknown): unknown {
   const selection = settings.textGenerationModelSelection;
   if (selection === null || typeof selection !== "object" || Array.isArray(selection)) return value;
   const provider = (selection as Record<string, unknown>).provider;
-  if (provider === "codex" || provider === "claudeAgent") return value;
+  if (
+    (provider === "codex" || provider === "claudeAgent") &&
+    (selection as Record<string, unknown>).model !== "provider-default"
+  )
+    return value;
   return {
     ...settings,
-    textGenerationModelSelection: { provider: "codex", model: PROVIDER_DEFAULT_MODEL },
+    textGenerationModelSelection: null,
   };
 }
 

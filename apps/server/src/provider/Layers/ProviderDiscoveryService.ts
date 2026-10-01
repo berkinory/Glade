@@ -99,7 +99,13 @@ const make = Effect.gen(function* () {
   const catalogCachePath = resolveProviderModelCatalogCachePath({
     stateDir: serverConfig.stateDir,
   });
-  const persistedCatalogs = yield* readProviderModelCatalogCache(catalogCachePath);
+  const persistedCatalogs = (yield* readProviderModelCatalogCache(catalogCachePath)).filter(
+    // Older catalogs contain synthetic defaults without the metadata needed to select a real model.
+    (entry) =>
+      !entry.result.models.some(
+        (model) => model.slug === "default" || model.slug === "provider-default",
+      ),
+  );
   // Writes serialize through a queue so concurrent cache mutations can't race the atomic file write.
   const catalogWriteQueue =
     yield* Queue.unbounded<ReadonlyArray<PersistedModelCatalogEntryInput>>();

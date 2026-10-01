@@ -1,4 +1,3 @@
-import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import { EventId, MessageId, ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { type OrchestrationThreadActivity } from "@glade/contracts/orchestration/threadEntities";
 import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
@@ -200,9 +199,8 @@ export function resolveThreadHandoffModelSelection(input: {
   if (isCompatibleSelection(input.projectDefaultModelSelection)) {
     return input.projectDefaultModelSelection;
   }
-  const defaultModel = PROVIDER_DEFAULT_MODEL;
   return {
     provider: input.targetProvider,
-    model: defaultModel,
+    model: "",
   };
 }

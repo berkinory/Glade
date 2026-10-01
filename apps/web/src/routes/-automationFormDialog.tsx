@@ -6,6 +6,7 @@ import {
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { type ModelSelection, type RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
 import { automationRequiresTargetThread } from "@glade/shared/threads/automationMode";
+import { normalizeModelSlug } from "@glade/shared/provider/model";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 
@@ -173,10 +174,19 @@ export function AutomationModelPicker({
     selectedRuntimeModel,
   } = useProviderModelCatalog({
     selectedProvider: value.provider,
-    discoveryEnabled: open,
+    discoveryEnabled: open || !normalizeModelSlug(value.model, value.provider),
     cwd: providerModelDiscoveryCwd,
     modelHintByProvider,
   });
+  const defaultModel = runtimeModelsByProvider[value.provider].find((model) => model.isDefault);
+  useEffect(() => {
+    if (!normalizeModelSlug(value.model, value.provider) && defaultModel) {
+      onChange({
+        ...value,
+        model: defaultModel.slug,
+      });
+    }
+  }, [value, defaultModel, onChange]);
   const providerStatus = findProviderStatus(providerStatuses, value.provider);
   const persistedRuntimeModel =
     value.provider === "claudeAgent" && typeof value.supportsAutoMode === "boolean"
@@ -288,7 +298,9 @@ export function AutomationDialog({
   const schedule = scheduleFromForm(form);
   const fastIntervalLimitMessage = automationFastIntervalLimitMessage(form);
   const submitBlockReason = automationFormSubmitBlockReason(form, warnings, acknowledgedWarningIds);
-  const submittable = submitBlockReason === null;
+  const submittable =
+    submitBlockReason === null &&
+    !!normalizeModelSlug(form.modelSelection.model, form.modelSelection.provider);
   const maxIterationPresets = maxIterationOptions(form.maxIterations);
   const intervalAmount = Number.parseInt(form.intervalAmount, 10);
   const intervalSeconds = Number.isFinite(intervalAmount)

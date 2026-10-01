@@ -1,4 +1,3 @@
-import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import {
   type ModelSelection,
   type ProviderStartOptions,
@@ -6,39 +5,29 @@ import {
 import { type ServerSettings, type ServerSettingsPatch } from "@glade/contracts/settings/settings";
 import { deepMerge, type DeepPartial } from "./settingsMerge";
 
-function shouldReplaceTextGenerationModelSelection(
-  patch: ServerSettingsPatch["textGenerationModelSelection"] | undefined,
-): boolean {
-  return Boolean(patch && (patch.provider !== undefined || patch.model !== undefined));
-}
-
 export function applyServerSettingsPatch(
   current: ServerSettings,
   patch: ServerSettingsPatch,
 ): ServerSettings {
-  const selectionPatch = patch.textGenerationModelSelection;
   const next = deepMerge(current, patch as DeepPartial<ServerSettings>);
-  if (!selectionPatch) {
-    return next;
-  }
-
-  const provider = selectionPatch.provider ?? current.textGenerationModelSelection.provider;
+  const selectionPatch = patch.textGenerationModelSelection;
+  if (selectionPatch === undefined) return next;
+  if (selectionPatch === null) return { ...next, textGenerationModelSelection: null };
+  const previous = current.textGenerationModelSelection;
+  const provider = selectionPatch.provider ?? previous?.provider ?? "codex";
   const model =
-    selectionPatch.model ??
-    (selectionPatch.provider &&
-    selectionPatch.provider !== current.textGenerationModelSelection.provider
-      ? PROVIDER_DEFAULT_MODEL
-      : current.textGenerationModelSelection.model);
-  const options = shouldReplaceTextGenerationModelSelection(selectionPatch)
-    ? selectionPatch.options
-    : (selectionPatch.options ?? current.textGenerationModelSelection.options);
-
+    selectionPatch.model ?? (provider === previous?.provider ? previous.model : undefined);
+  if (!model) return { ...next, textGenerationModelSelection: null };
+  const options =
+    selectionPatch.provider !== undefined || selectionPatch.model !== undefined
+      ? selectionPatch.options
+      : (selectionPatch.options ?? previous?.options);
   return {
     ...next,
     textGenerationModelSelection: {
       provider,
       model,
-      ...(options !== undefined ? { options } : {}),
+      ...(options ? { options } : {}),
     } as ModelSelection,
   };
 }

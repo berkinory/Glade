@@ -58,7 +58,16 @@ it.each(["pending", "completed"] as const)(
           importExternalThread: copy,
           stopRuntimeSession: () => Effect.void,
         } as unknown as ProviderServiceShape,
-        providerAdapterRegistry: {} as ProviderAdapterRegistryShape,
+        providerAdapterRegistry: {
+          getByProvider: () =>
+            Effect.succeed({
+              listModels: () =>
+                Effect.succeed({
+                  models: [{ slug: "gpt-6.1-sol", name: "GPT-6.1 Sol", isDefault: true }],
+                  source: "test",
+                }),
+            }),
+        } as unknown as ProviderAdapterRegistryShape,
         serverSettings: {
           getSettings: Effect.succeed(DEFAULT_SERVER_SETTINGS),
         } as unknown as ServerSettingsShape,

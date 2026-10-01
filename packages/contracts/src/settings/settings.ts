@@ -1,6 +1,5 @@
 import { Schema } from "effect";
 import { IsoDateTime, TrimmedString } from "../core/baseSchemas";
-import { PROVIDER_DEFAULT_MODEL } from "../provider/model";
 import { ModelSelection } from "../provider/sessionPolicy";
 import { ThreadEnvironmentMode } from "../orchestration/threadEntities";
 import { ProviderKind } from "../core/baseSchemas";
@@ -46,11 +45,8 @@ export const ServerSettings = Schema.Struct({
   enableProviderUpdateChecks: Schema.Boolean.pipe(Schema.withDecodingDefault(() => true)),
   defaultThreadEnvMode: ThreadEnvironmentMode.pipe(Schema.withDecodingDefault(() => "local")),
   addProjectBaseDirectory: StringSetting.pipe(Schema.withDecodingDefault(() => "")),
-  textGenerationModelSelection: ModelSelection.pipe(
-    Schema.withDecodingDefault(() => ({
-      provider: "codex" as const,
-      model: PROVIDER_DEFAULT_MODEL,
-    })),
+  textGenerationModelSelection: Schema.NullOr(ModelSelection).pipe(
+    Schema.withDecodingDefault(() => null),
   ),
   providers: Schema.Struct({
     codex: CodexServerProviderSettings.pipe(Schema.withDecodingDefault(() => ({}))),
@@ -87,7 +83,7 @@ export const ServerSettingsPatch = Schema.Struct({
   enableProviderUpdateChecks: Schema.optionalKey(Schema.Boolean),
   defaultThreadEnvMode: Schema.optionalKey(ThreadEnvironmentMode),
   addProjectBaseDirectory: Schema.optionalKey(StringSetting),
-  textGenerationModelSelection: Schema.optionalKey(ModelSelectionPatch),
+  textGenerationModelSelection: Schema.optionalKey(Schema.NullOr(ModelSelectionPatch)),
   providers: Schema.optionalKey(
     Schema.Struct({
       codex: Schema.optionalKey(

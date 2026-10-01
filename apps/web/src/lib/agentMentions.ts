@@ -1,5 +1,4 @@
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
-import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 
 interface AgentModelMention {
   readonly alias: string;
@@ -17,7 +16,7 @@ export function getAgentMentionAutocompleteAliases(
   if (provider !== "codex") return [];
   const aliases = new Map<string, AgentModelMention>();
   for (const model of models.toSorted((a, b) => a.slug.localeCompare(b.slug))) {
-    if (model.isSelectedHint || model.slug === PROVIDER_DEFAULT_MODEL) continue;
+    if (model.isSelectedHint) continue;
     const alias = model.slug.toLowerCase();
     if (!/^[a-z0-9][a-z0-9._-]*$/.test(alias) || aliases.has(alias)) continue;
     aliases.set(alias, {

@@ -1,5 +1,9 @@
-import { PROVIDER_DEFAULT_MODEL, PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
-import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
+import { normalizeModelSlug } from "@glade/shared/provider/model";
+import { PROVIDER_DISPLAY_NAMES } from "@glade/contracts/provider/model";
+import {
+  type ProviderStartOptions,
+  type ModelSelection,
+} from "@glade/contracts/provider/sessionPolicy";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import { Effect, Layer } from "effect";
 
@@ -18,7 +22,7 @@ const makeProviderTextGeneration = Effect.gen(function* () {
   const prepareCommitInput = (input: TextGen.CommitMessageGenerationInput) =>
     Effect.gen(function* () {
       const provider = input.modelSelection?.provider ?? "codex";
-      const model = input.modelSelection?.model ?? input.model ?? PROVIDER_DEFAULT_MODEL;
+      const model = input.modelSelection?.model ?? input.model;
       const startup = input.providerOptions?.[provider];
       const catalog = yield* discovery
         .listModels({
@@ -36,8 +40,16 @@ const makeProviderTextGeneration = Effect.gen(function* () {
               }),
           ),
         );
+      const selectedModel =
+        normalizeModelSlug(model, provider) ??
+        catalog.models.find((entry) => entry.isDefault)?.slug;
+      if (!selectedModel)
+        return yield* new TextGenerationError({
+          operation: "generateCommitMessage",
+          detail: "Provider discovery did not return a default model.",
+        });
       const descriptor = catalog.models.find(
-        (entry) => entry.slug === model || entry.resolvedModel === model,
+        (entry) => entry.slug === selectedModel || entry.resolvedModel === selectedModel,
       );
       const efforts = descriptor?.supportedReasoningEfforts?.map((effort) => effort.value) ?? [];
       const effortOrder = [
@@ -57,8 +69,8 @@ const makeProviderTextGeneration = Effect.gen(function* () {
         ...(reasoningEffort ? { reasoningEffort } : {}),
         ...(descriptor?.supportsFastMode ? { fastMode: true } : {}),
       };
-      const modelSelection: ModelSelection = { provider: "codex", model, options };
-      return { ...input, model, modelSelection };
+      const modelSelection: ModelSelection = { provider: "codex", model: selectedModel, options };
+      return { ...input, model: selectedModel, modelSelection };
     });
 
   const resolveRequestedProvider = (input: {
@@ -113,7 +125,12 @@ const makeProviderTextGeneration = Effect.gen(function* () {
     });
 
   const call = <
-    Input extends { readonly model?: string; readonly modelSelection?: ModelSelection },
+    Input extends {
+      readonly cwd: string;
+      readonly model?: string;
+      readonly modelSelection?: ModelSelection;
+      readonly providerOptions?: ProviderStartOptions;
+    },
     Output,
   >(
     operation: string,
@@ -125,16 +142,42 @@ const makeProviderTextGeneration = Effect.gen(function* () {
   ) =>
     resolveImplementation(operation, input).pipe(
       Effect.flatMap(({ implementation, fallbackModelSelection }) =>
-        run(
-          implementation,
-          fallbackModelSelection
-            ? ({
-                ...input,
-                model: fallbackModelSelection.model,
-                modelSelection: fallbackModelSelection,
-              } as Input)
-            : input,
-        ),
+        Effect.gen(function* () {
+          let selection = fallbackModelSelection ??
+            input.modelSelection ?? { provider: "codex" as const, model: input.model ?? "" };
+          if (!normalizeModelSlug(selection.model, selection.provider)) {
+            const catalog = yield* discovery
+              .listModels({
+                provider: selection.provider,
+                cwd: input.cwd,
+                ...(input.providerOptions?.[selection.provider]?.binaryPath
+                  ? { binaryPath: input.providerOptions[selection.provider]!.binaryPath! }
+                  : {}),
+              })
+              .pipe(
+                Effect.mapError(
+                  (cause) =>
+                    new TextGenerationError({
+                      operation,
+                      detail: "Could not read the provider's default model.",
+                      cause,
+                    }),
+                ),
+              );
+            const model = catalog.models.find((entry) => entry.isDefault)?.slug;
+            if (!model)
+              return yield* new TextGenerationError({
+                operation,
+                detail: catalog.error ?? "Provider did not return a default model.",
+              });
+            selection = { ...selection, model };
+          }
+          return yield* run(implementation, {
+            ...input,
+            model: selection.model,
+            modelSelection: selection,
+          });
+        }),
       ),
     );
 

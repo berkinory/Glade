@@ -49,7 +49,6 @@ import {
   type ProviderApprovalDecision,
   RuntimeMode,
 } from "@glade/contracts/provider/sessionPolicy";
-import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import {
   type ServerVoiceTranscriptionInput,
   type ServerVoiceTranscriptionResult,
@@ -401,7 +400,6 @@ const RECOVERABLE_THREAD_RESUME_ERROR_SNIPPETS = [
   "unknown thread",
   "does not exist",
 ];
-const CODEX_DEFAULT_MODEL = PROVIDER_DEFAULT_MODEL;
 const CODEX_SPARK_DISABLED_PLAN_TYPES = new Set<CodexPlanType>(["free", "go", "plus"]);
 
 const CODEX_DISCOVERY_SESSION_IDLE_MS = 15_000;
@@ -678,7 +676,7 @@ function normalizeCodexModelSlug(
   preferredId?: string,
 ): string | undefined {
   const normalized = normalizeModelSlug(model);
-  if (!normalized || normalized === PROVIDER_DEFAULT_MODEL) {
+  if (!normalized) {
     return undefined;
   }
 
@@ -1345,6 +1343,17 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
       turnStartParams.serviceTier = input.serviceTier;
     }
     if (input.effort) {
+      const catalog = await this.readModelCatalog(context);
+      const model = catalog.models.find((entry) =>
+        normalizedModel
+          ? entry.slug === normalizedModel || entry.resolvedModel === normalizedModel
+          : entry.isDefault,
+      );
+      if (!model?.supportedReasoningEfforts?.some((effort) => effort.value === input.effort)) {
+        throw new Error(
+          `Codex model "${normalizedModel ?? "current"}" does not support ${input.effort} effort.`,
+        );
+      }
       turnStartParams.effort = input.effort;
     }
 
@@ -2681,6 +2690,10 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
 
   async listModels(threadId?: string): Promise<ProviderListModelsResult> {
     const context = await this.resolveContextForDiscovery(threadId);
+    return this.readModelCatalog(context);
+  }
+
+  private async readModelCatalog(context: CodexSessionContext): Promise<ProviderListModelsResult> {
     const deadline = Date.now() + 20_000;
     const seenCursors = new Set<string>();
     const modelsById = new Map<string, ProviderListModelsResult["models"][number]>();
@@ -3197,7 +3210,6 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
         provider: "codex",
         status: "connecting",
         runtimeMode: "full-access",
-        model: CODEX_DEFAULT_MODEL,
         cwd: normalizedCwd,
         threadId: ThreadId.makeUnsafe(`__codex_discovery__:${discoveryKey}`),
         createdAt: now,

@@ -1,5 +1,4 @@
 import {
-  PROVIDER_DEFAULT_MODEL,
   type ClaudeApiEffort,
   type ClaudeModelOptions,
   type ClaudeCodeEffort,
@@ -14,6 +13,7 @@ import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 export interface SelectableModelOption {
   slug: string;
   name: string;
+  isDefault?: boolean;
 }
 
 export const EMPTY_MODEL_CAPABILITIES: ModelCapabilities = {
@@ -118,7 +118,7 @@ export function formatModelDisplayName(model: string | null | undefined): string
     return undefined;
   }
 
-  return normalized === PROVIDER_DEFAULT_MODEL ? "Provider default" : humanizeModelSlug(normalized);
+  return humanizeModelSlug(normalized);
 }
 
 type ProviderOptionSelectionsInput =
@@ -243,9 +243,12 @@ export function getProviderOptionCurrentValue(
 
 export function normalizeModelSlug(
   model: string | null | undefined,
-  _provider: ProviderKind = "codex",
+  provider: ProviderKind = "codex",
 ): ModelSlug | null {
-  return trimOrNull(model);
+  const trimmed = trimOrNull(model);
+  return trimmed === "provider-default" || (provider === "claudeAgent" && trimmed === "default")
+    ? null
+    : trimmed;
 }
 
 export function resolveSelectableModel(
@@ -253,11 +256,11 @@ export function resolveSelectableModel(
   value: string | null | undefined,
   options: ReadonlyArray<SelectableModelOption>,
 ): ModelSlug | null {
-  if (typeof value !== "string") {
-    return null;
+  if (!normalizeModelSlug(value, provider)) {
+    return options.find((option) => option.isDefault)?.slug ?? null;
   }
 
-  const trimmed = value.trim();
+  const trimmed = value!.trim();
   if (!trimmed) {
     return null;
   }
@@ -308,12 +311,12 @@ export function normalizeClaudeModelOptions(
 }
 
 export function resolveApiModelId(modelSelection: ModelSelection): string | undefined {
-  return modelSelection.model === PROVIDER_DEFAULT_MODEL ? undefined : modelSelection.model;
+  return normalizeModelSlug(modelSelection.model, modelSelection.provider) ?? undefined;
 }
 
 export function getEffectiveClaudeCodeEffort(
   effort: ClaudeCodeEffort | null | undefined,
 ): ClaudeApiEffort | null {
   if (!effort || effort === "ultrathink") return null;
-  return effort === "ultracode" ? "xhigh" : effort;
+  return effort === "ultracode" ? null : effort;
 }

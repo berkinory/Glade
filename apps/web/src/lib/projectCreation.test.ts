@@ -39,6 +39,12 @@ function makeSnapshot(
 
 function makeApi(dispatchCommand: ReturnType<typeof vi.fn>): NativeApi {
   return {
+    provider: {
+      listModels: async () => ({
+        models: [{ slug: "gpt-6.1-sol", name: "GPT-6.1 Sol", isDefault: true }],
+        source: "test",
+      }),
+    },
     orchestration: {
       dispatchCommand,
     },

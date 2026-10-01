@@ -1,4 +1,3 @@
-import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import {
   GladeCreateThreadsInput,
   GladeWaitForThreadsInput,
@@ -152,7 +151,7 @@ export function buildModelSelection(
   provider: ProviderKind,
   model: string | undefined,
 ): ModelSelection {
-  const effectiveModel = model ?? PROVIDER_DEFAULT_MODEL;
+  const effectiveModel = model;
   if (!effectiveModel) {
     throw new ToolInputError(
       `Provider "${provider}" has no default model; pass an explicit "model" argument.`,

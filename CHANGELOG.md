@@ -4,11 +4,13 @@
 
 ### Improved
 
+- New chats start on each provider's latest model instead of a generic default entry.
 - Thinking levels show readable names.
 - Model options use clearer names such as Speed and Default.
 
 ### Fixed
 
+- Every thinking level a provider offers is available, including newer ones.
 - Codex installed with its standalone installer now gets update notices and one-click updates.
 
 ## 0.1.0 - 2026-10-01

@@ -1,3 +1,4 @@
+import { resolveProviderModelSelection } from "~/lib/providerModelSelection";
 import { useChatThreadContext } from "./ChatThreadContext";
 import type { ProjectId } from "@glade/contracts/core/baseSchemas";
 import type { ProjectScript } from "@glade/contracts/orchestration/threadEntities";
@@ -5,7 +6,6 @@ import type {
   ProviderMentionReference,
   ProviderSkillReference,
 } from "@glade/contracts/provider/providerDiscovery";
-import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import { MessageId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
   RuntimeMode,
@@ -32,7 +32,6 @@ import {
 } from "../../lib/composerSend";
 import { queuedComposerDrain } from "../../lib/queuedComposerDrain";
 import { clearPendingTurnDispatch } from "../../pendingTurnDispatch";
-import { buildModelSelection } from "../../providerModelOptions";
 import { type Thread } from "../../types";
 import {
   WorktreeSetupCancelledError,
@@ -270,8 +269,6 @@ export function useChatTurnExecution({
         worktreeCopiesLocalChanges,
         worktreeSetupScriptName,
         selectedModelSelectionForSend,
-        selectedModelForSend,
-        targetProjectDefaultModelSelectionForSend,
         targetProjectIdForSend,
         title,
         nextRuntimeModeForSend,
@@ -440,18 +437,11 @@ export function useChatTurnExecution({
           }
         }
 
-        const threadCreateModelSelection: ModelSelection = buildModelSelection(
-          selectedModelSelectionForSend.provider,
-          selectedModelSelectionForSend.model ||
-            selectedModelForSend ||
-            targetProjectDefaultModelSelectionForSend?.model ||
-            PROVIDER_DEFAULT_MODEL ||
-            PROVIDER_DEFAULT_MODEL,
-          selectedModelSelectionForSend.options,
-          selectedModelSelectionForSend.provider === "claudeAgent"
-            ? selectedModelSelectionForSend.supportsAutoMode
-            : undefined,
-        );
+        const threadCreateModelSelection = await resolveProviderModelSelection({
+          api,
+          selection: selectedModelSelectionForSend,
+          cwd: targetProjectCwdForSend,
+        });
 
         if (isLocalDraftThread) {
           const inheritedProjectInstructions =

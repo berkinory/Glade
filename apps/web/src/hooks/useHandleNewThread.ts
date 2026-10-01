@@ -1,4 +1,3 @@
-import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import { type ProjectId, ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -94,13 +93,9 @@ export function useHandleNewThread() {
       if (!options?.provider) {
         return;
       }
-      const defaultModel = PROVIDER_DEFAULT_MODEL;
-      if (!defaultModel) {
-        return;
-      }
       setModelSelection(threadId, {
         provider: options.provider,
-        model: defaultModel,
+        model: "",
       });
     };
     const restoreComposerDraft = (

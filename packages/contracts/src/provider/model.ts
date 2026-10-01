@@ -2,22 +2,14 @@ import { Schema } from "effect";
 import { TrimmedNonEmptyString } from "../core/baseSchemas";
 import type { ProviderKind } from "../core/baseSchemas";
 
-export const CODEX_REASONING_EFFORT_OPTIONS = ["low", "medium", "high", "xhigh"] as const;
-
 export type CodexReasoningEffort = string;
-export const CLAUDE_API_EFFORT_OPTIONS = ["low", "medium", "high", "xhigh", "max"] as const;
-export type ClaudeApiEffort = (typeof CLAUDE_API_EFFORT_OPTIONS)[number];
+export type ClaudeApiEffort = string;
 export const CLAUDE_PROMPT_MODE_OPTIONS = ["ultrathink"] as const;
 export type ClaudePromptMode = (typeof CLAUDE_PROMPT_MODE_OPTIONS)[number];
 export const CLAUDE_CODE_MODE_OPTIONS = ["ultracode"] as const;
 export type ClaudeCodeMode = (typeof CLAUDE_CODE_MODE_OPTIONS)[number];
-export const CLAUDE_CODE_EFFORT_OPTIONS = [
-  ...CLAUDE_API_EFFORT_OPTIONS,
-  ...CLAUDE_PROMPT_MODE_OPTIONS,
-  ...CLAUDE_CODE_MODE_OPTIONS,
-] as const;
-export type ClaudeCodeEffort = (typeof CLAUDE_CODE_EFFORT_OPTIONS)[number];
-export type ProviderReasoningEffort = CodexReasoningEffort | ClaudeCodeEffort;
+export type ClaudeCodeEffort = string;
+export type ProviderReasoningEffort = string;
 export const ProviderOptionChoice = Schema.Struct({
   id: TrimmedNonEmptyString,
   label: TrimmedNonEmptyString,
@@ -73,7 +65,7 @@ export type CodexModelOptions = typeof CodexModelOptions.Type;
 export const ClaudeModelOptions = Schema.Struct({
   thinking: Schema.optional(Schema.Boolean),
   ultracode: Schema.optional(Schema.Boolean),
-  effort: Schema.optional(Schema.Literals(CLAUDE_CODE_EFFORT_OPTIONS)),
+  effort: Schema.optional(TrimmedNonEmptyString),
   fastMode: Schema.optional(Schema.Boolean),
   autoCompactWindow: Schema.optional(Schema.String),
 
@@ -130,9 +122,6 @@ export type ModelCapabilities = {
 };
 
 export type ModelSlug = string;
-
-// Internal selection marker; adapters omit the native model to inherit provider configuration.
-export const PROVIDER_DEFAULT_MODEL = "provider-default";
 
 export const GIT_TEXT_GENERATION_PROVIDERS = ["codex"] as const satisfies readonly ProviderKind[];
 export type GitTextGenerationProvider = (typeof GIT_TEXT_GENERATION_PROVIDERS)[number];

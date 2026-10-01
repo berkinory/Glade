@@ -1,4 +1,3 @@
-import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import { useMutation } from "@tanstack/react-query";
 import { IconSparkles } from "@tabler/icons-react";
 import { getProviderStartOptions, useAppSettings } from "~/appSettings";
@@ -25,11 +24,17 @@ export function SourceControlCommitInput(props: {
     mutationFn: () =>
       ensureNativeApi().git.generateCommitMessage({
         cwd: props.cwd,
-        textGenerationModel: settings.textGenerationModel ?? PROVIDER_DEFAULT_MODEL,
-        textGenerationModelSelection: {
-          provider: settings.textGenerationProvider ?? "codex",
-          model: settings.textGenerationModel ?? PROVIDER_DEFAULT_MODEL,
-        },
+        ...(settings.textGenerationModel
+          ? { textGenerationModel: settings.textGenerationModel }
+          : {}),
+        ...(settings.textGenerationModel
+          ? {
+              textGenerationModelSelection: {
+                provider: settings.textGenerationProvider ?? "codex",
+                model: settings.textGenerationModel,
+              },
+            }
+          : {}),
         ...(settings.codexHomePath ? { codexHomePath: settings.codexHomePath } : {}),
         providerOptions: getProviderStartOptions(settings),
       }),

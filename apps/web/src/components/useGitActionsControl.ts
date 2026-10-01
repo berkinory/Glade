@@ -1,5 +1,4 @@
 import type { GitActionProgressEvent, GitStatusResult } from "@glade/contracts/git/git";
-import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import type { ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
@@ -77,10 +76,13 @@ export function useGitActionsControl({
 
   const providerOptions = useMemo(() => getProviderStartOptions(settings), [settings]);
   const gitTextGenerationModelSelection = useMemo(
-    (): ModelSelection => ({
-      provider: settings.textGenerationProvider ?? "codex",
-      model: settings.textGenerationModel ?? PROVIDER_DEFAULT_MODEL,
-    }),
+    (): ModelSelection | undefined =>
+      settings.textGenerationModel
+        ? {
+            provider: settings.textGenerationProvider ?? "codex",
+            model: settings.textGenerationModel,
+          }
+        : undefined,
     [settings.textGenerationModel, settings.textGenerationProvider],
   );
 
@@ -160,7 +162,9 @@ export function useGitActionsControl({
       queryClient,
       codexHomePath: settings.codexHomePath || null,
       model: settings.textGenerationModel ?? null,
-      modelSelection: gitTextGenerationModelSelection,
+      ...(gitTextGenerationModelSelection
+        ? { modelSelection: gitTextGenerationModelSelection }
+        : {}),
       ...(providerOptions ? { providerOptions } : {}),
     }),
   );

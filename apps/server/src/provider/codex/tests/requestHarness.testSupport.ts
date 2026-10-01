@@ -66,6 +66,19 @@ export function createRequestHarness(
   const sendRequest = vi
     .spyOn(transport, "sendRequest")
     .mockImplementation(async (_context, method) => {
+      if (method === "model/list")
+        return {
+          data: ["gpt-5.3", "gpt-5.4", "gpt-5.3-codex"].map((id) => ({
+            id,
+            displayName: id,
+            description: "",
+            isDefault: id === "gpt-5.3-codex",
+            hidden: false,
+            supportedReasoningEfforts: [{ reasoningEffort: "high", description: "High" }],
+            defaultReasoningEffort: "high",
+          })),
+          nextCursor: null,
+        };
       if (method === "turn/start") return { turn: { id: "turn_1" } };
       throw new Error(`Unexpected Codex request: ${method}`);
     });

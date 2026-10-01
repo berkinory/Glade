@@ -14,7 +14,7 @@ export type { GitTextGenerationProvider };
 const GIT_TEXT_GENERATION_PROVIDER_SET = new Set<ProviderKind>(GIT_TEXT_GENERATION_PROVIDERS);
 
 export interface TextGenerationProviderInput {
-  readonly modelSelection: ModelSelection;
+  readonly modelSelection?: ModelSelection;
   readonly providerOptions?: ProviderStartOptions;
   readonly codexHomePath?: string;
 }
@@ -26,10 +26,11 @@ export function hasDedicatedTextGenerationProvider(
 }
 
 export function resolveTextGenerationInputForSelection(
-  modelSelection: ModelSelection | undefined,
+  modelSelection: ModelSelection | null | undefined,
   providerOptions: ProviderStartOptions | undefined,
 ): TextGenerationProviderInput | null {
-  if (!modelSelection || !hasDedicatedTextGenerationProvider(modelSelection.provider)) {
+  if (!modelSelection) return { ...(providerOptions ? { providerOptions } : {}) };
+  if (!hasDedicatedTextGenerationProvider(modelSelection.provider)) {
     return null;
   }
 

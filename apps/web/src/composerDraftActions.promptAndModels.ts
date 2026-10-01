@@ -1,4 +1,3 @@
-import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import type { StateCreator } from "zustand";
 import type { ComposerDraftStoreState } from "./composerDraftDomain";
 import { type ModelSelection, RuntimeMode } from "@glade/contracts/provider/sessionPolicy";
@@ -333,16 +332,14 @@ export function createPromptAndModelsActions(
       const normalized = normalizeModelSelection(modelSelection);
       set((state) => {
         const existing = state.draftsByThreadId[threadId];
-        if (!existing && normalized === null) {
-          return state;
-        }
         const base = existing ?? createEmptyThreadDraft();
         const nextMap = { ...base.modelSelectionByProvider };
         if (normalized) {
           const current = nextMap[normalized.provider];
           nextMap[normalized.provider] = reconcileProviderScopedModelSelection(normalized, current);
         }
-        const nextActiveProvider = normalized?.provider ?? base.activeProvider;
+        const nextActiveProvider =
+          normalized?.provider ?? modelSelection?.provider ?? base.activeProvider;
         if (
           Equal.equals(base.modelSelectionByProvider, nextMap) &&
           base.activeProvider === nextActiveProvider
@@ -380,7 +377,7 @@ export function createPromptAndModelsActions(
           const opts = normalizedOpts[provider];
           const current = nextMap[provider];
           if (opts) {
-            const model = current?.model ?? PROVIDER_DEFAULT_MODEL;
+            const model = current?.model ?? "";
             if (!model) continue;
             nextMap[provider] = makeModelSelection(
               provider,
@@ -421,8 +418,7 @@ export function createPromptAndModelsActions(
         normalizedProvider,
       );
       const providerOpts = normalizedOpts?.[normalizedProvider];
-      const fallbackModel =
-        normalizeModelSlug(options?.model, normalizedProvider) ?? PROVIDER_DEFAULT_MODEL;
+      const fallbackModel = normalizeModelSlug(options?.model, normalizedProvider) ?? "";
 
       set((state) => {
         const existing = state.draftsByThreadId[threadId];

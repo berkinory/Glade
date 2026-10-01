@@ -1,10 +1,10 @@
+import { normalizeModelSlug } from "@glade/shared/provider/model";
 import { randomUUID } from "node:crypto";
 
 import { Effect, FileSystem, Layer, Option, Path, Schema, Stream } from "effect";
 import { ChildProcessSpawner } from "effect/unstable/process";
 import { makeEffectProcessCommand } from "../../platform/effectProcessRuntime.ts";
 
-import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import { resolveCodexHome } from "../../provider/codex/codexConfig";
 import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@glade/shared/git/git";
 
@@ -647,9 +647,9 @@ function resolveCodexModel(
   modelSelection: BranchNameGenerationInput["modelSelection"] | undefined,
 ): string | undefined {
   if (modelSelection?.provider === "codex") {
-    return modelSelection.model === PROVIDER_DEFAULT_MODEL ? undefined : modelSelection.model;
+    return normalizeModelSlug(modelSelection.model) ?? undefined;
   }
-  return model === PROVIDER_DEFAULT_MODEL ? undefined : model;
+  return normalizeModelSlug(model) ?? undefined;
 }
 
 export const CodexTextGenerationServiceLive = Layer.effect(

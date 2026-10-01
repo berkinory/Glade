@@ -7,7 +7,6 @@ import {
 } from "@glade/contracts/provider/sessionPolicy";
 import { DesktopAppIcon } from "@glade/contracts/ipc/ipc";
 import {
-  PROVIDER_DEFAULT_MODEL,
   GIT_TEXT_GENERATION_PROVIDERS,
   type GitTextGenerationProvider,
 } from "@glade/contracts/provider/model";
@@ -285,8 +284,7 @@ export function isGitTextGenerationSettingsDirty(
 ): boolean {
   return (
     (settings.textGenerationProvider ?? "codex") !== (defaults.textGenerationProvider ?? "codex") ||
-    (settings.textGenerationModel ?? PROVIDER_DEFAULT_MODEL) !==
-      (defaults.textGenerationModel ?? PROVIDER_DEFAULT_MODEL)
+    (settings.textGenerationModel ?? "") !== (defaults.textGenerationModel ?? "")
   );
 }
 
@@ -439,8 +437,8 @@ function serverSettingsToAppSettings(settings: ServerSettingsView): Partial<AppS
     enableAssistantStreaming: settings.enableAssistantStreaming,
     enableProviderUpdateChecks: settings.enableProviderUpdateChecks,
     disabledProviders: getServerDisabledProviders(settings),
-    textGenerationProvider: settings.textGenerationModelSelection.provider,
-    textGenerationModel: settings.textGenerationModelSelection.model,
+    textGenerationProvider: settings.textGenerationModelSelection?.provider ?? "codex",
+    textGenerationModel: settings.textGenerationModelSelection?.model ?? undefined,
     onboardingCompletedAt: settings.onboardingCompletedAt ?? null,
   };
 }
@@ -512,7 +510,7 @@ function appSettingsPatchToServerSettingsPatch(
     serverPatch.onboardingCompletedAt = patch.onboardingCompletedAt ?? null;
   }
   if (hasOwn(patch, "textGenerationModel") || hasOwn(patch, "textGenerationProvider")) {
-    const model = patch.textGenerationModel ?? PROVIDER_DEFAULT_MODEL;
+    const model = patch.textGenerationModel ?? "";
     serverPatch.textGenerationModelSelection = {
       provider: resolveTextGenerationProvider({
         ...(patch.textGenerationProvider !== undefined
@@ -522,6 +520,7 @@ function appSettingsPatchToServerSettingsPatch(
       }),
       model,
     };
+    if (!model) serverPatch.textGenerationModelSelection = null;
   }
   if (hasOwn(patch, "codexBinaryPath") || hasOwn(patch, "codexHomePath")) {
     providers.codex = {
@@ -611,14 +610,7 @@ export function getAppModelOptions(
   provider: ProviderKind,
   selectedModel?: string | null,
 ): AppModelOption[] {
-  const options: AppModelOption[] = [
-    {
-      provider,
-      slug: PROVIDER_DEFAULT_MODEL,
-      name: "Provider default",
-      isSelectedHint: false,
-    },
-  ];
+  const options: AppModelOption[] = [];
   const seen = new Set(options.map((option) => option.slug));
   const trimmedSelectedModel = selectedModel?.trim().toLowerCase();
 
@@ -681,7 +673,10 @@ export function getGitTextGenerationModelOptions(
     deduped.push(option);
   }
 
-  const selectedModel = settings.textGenerationModel?.trim();
+  const selectedModel = normalizeModelSlug(
+    settings.textGenerationModel,
+    settings.textGenerationProvider ?? "codex",
+  );
   const selectedProvider =
     settings.textGenerationProvider ??
     resolveTextGenerationProvider(selectedModel !== undefined ? { model: selectedModel } : {});
@@ -702,7 +697,7 @@ export function resolveAppModelSelection(
   selectedModel: string | null | undefined,
 ): string {
   const options = getAppModelOptions(provider, selectedModel);
-  return resolveSelectableModel(provider, selectedModel, options) ?? PROVIDER_DEFAULT_MODEL;
+  return resolveSelectableModel(provider, selectedModel, options) ?? "";
 }
 
 export function getProviderStartOptions(

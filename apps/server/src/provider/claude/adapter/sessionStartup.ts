@@ -1,3 +1,4 @@
+import type { EffortLevel } from "@anthropic-ai/claude-agent-sdk";
 import type { ClaudeSessionRegistryShape } from "../../Services/ClaudeSessionRegistry.ts";
 import type { Fiber } from "effect";
 import type { ClaudeSessionAccessShape } from "../../Services/ClaudeSessionAccess.ts";
@@ -32,7 +33,6 @@ import {
   resolveApiModelId,
   getEffectiveClaudeCodeEffort,
 } from "@glade/shared/provider/model";
-import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import { selectedClaudeModelInfo, toPermissionMode } from "./modelCapabilities";
 import { CLAUDE_SETTING_SOURCES, buildEmbeddedClaudeSystemPromptAppend } from "./promptPolicy";
 import { acquireAgentGatewaySessionLease } from "../../../agentGateway/sessionLease.ts";
@@ -167,7 +167,7 @@ export function makeClaudeSessionStartup(input: {
         modelSelection?.options,
       );
       const requestedEffort = trimOrNull(selectedOptions?.effort ?? null);
-      const effectiveClaudeModel = modelSelection?.model ?? PROVIDER_DEFAULT_MODEL;
+      const effectiveClaudeModel = modelSelection?.model ?? "default";
       const apiModelId = modelSelection ? resolveApiModelId(modelSelection) : undefined;
       const fastMode = selectedOptions?.fastMode;
       const thinking = selectedOptions?.thinking;
@@ -180,7 +180,6 @@ export function makeClaudeSessionStartup(input: {
             (input.runtimeMode === "full-access" ? "bypassPermissions" : undefined));
       const settings = {
         ...(typeof thinking === "boolean" ? { alwaysThinkingEnabled: thinking } : {}),
-        ...(effectiveEffort && effectiveEffort !== "max" ? { effortLevel: effectiveEffort } : {}),
         ...(fastMode !== undefined ? { fastMode } : {}),
         ...(ultracode !== undefined ? { ultracode } : {}),
       };
@@ -262,6 +261,8 @@ export function makeClaudeSessionStartup(input: {
         settingSources: [...CLAUDE_SETTING_SOURCES],
         ...(skillBridge.plugin ? { plugins: [skillBridge.plugin] } : {}),
         skills: [...skillBridge.enabledSkills],
+        // The live catalog is authoritative; SDK effort typings can lag native levels.
+        ...(effectiveEffort ? { effort: effectiveEffort as EffortLevel } : {}),
         systemPrompt: {
           type: "preset",
           preset: "claude_code",
@@ -274,7 +275,6 @@ export function makeClaudeSessionStartup(input: {
           ...(snapshotSupported ? { snapshot: true } : {}),
         },
 
-        ...(effectiveEffort === "max" ? { effort: "max" as const } : {}),
         ...(permissionMode ? { permissionMode } : {}),
         ...(permissionMode === "bypassPermissions"
           ? { allowDangerouslySkipPermissions: true }
@@ -369,7 +369,7 @@ export function makeClaudeSessionStartup(input: {
         if (selectedModelInfo) {
           if (
             effectiveEffort &&
-            !selectedModelInfo.supportedEffortLevels?.includes(effectiveEffort)
+            !selectedModelInfo.supportedEffortLevels?.some((level) => level === effectiveEffort)
           ) {
             return yield* new ProviderAdapterValidationError({
               provider: PROVIDER,

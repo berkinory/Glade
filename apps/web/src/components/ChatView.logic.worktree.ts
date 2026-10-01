@@ -1,4 +1,4 @@
-import { PROVIDER_DEFAULT_MODEL, type ModelSlug } from "@glade/contracts/provider/model";
+import { type ModelSlug } from "@glade/contracts/provider/model";
 import { ThreadId, type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import type { GitWorktreeSetupPhase } from "@glade/contracts/git/git";
@@ -216,9 +216,7 @@ export function resolveDraftFallbackModelSelection(input: {
 }): ModelSelection {
   const provider = input.projectDefault?.provider ?? input.settingsDefaultProvider;
   const model =
-    (provider === input.projectDefault?.provider ? input.projectDefault.model : null) ??
-    PROVIDER_DEFAULT_MODEL ??
-    PROVIDER_DEFAULT_MODEL;
+    (provider === input.projectDefault?.provider ? input.projectDefault.model : null) ?? "";
   return buildModelSelection(provider, model);
 }
 

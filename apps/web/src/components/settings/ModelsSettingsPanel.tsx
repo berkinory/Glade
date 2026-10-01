@@ -1,5 +1,5 @@
+import { normalizeModelSlug } from "@glade/shared/provider/model";
 import {
-  PROVIDER_DEFAULT_MODEL,
   GIT_TEXT_GENERATION_PROVIDERS,
   PROVIDER_DISPLAY_NAMES,
   type GitTextGenerationProvider,
@@ -33,10 +33,10 @@ export function ModelsSettingsPanel({
 
   const { textGenerationModel, textGenerationProvider } = settings;
   const currentGitTextGenerationProvider = textGenerationProvider ?? "codex";
-  const currentGitTextGenerationModel = textGenerationModel ?? PROVIDER_DEFAULT_MODEL;
+  const modelHint = textGenerationModel;
   const gitWritingModelHintByProvider = useMemo<Partial<Record<ProviderKind, string | null>>>(
-    () => ({ [currentGitTextGenerationProvider]: currentGitTextGenerationModel }),
-    [currentGitTextGenerationModel, currentGitTextGenerationProvider],
+    () => ({ [currentGitTextGenerationProvider]: modelHint }),
+    [modelHint, currentGitTextGenerationProvider],
   );
   const providerModelDiscoveryCwd = resolveProviderDiscoveryCwd({
     activeThreadWorktreePath: null,
@@ -60,6 +60,12 @@ export function ModelsSettingsPanel({
     }
     return getGitTextGenerationModelOptions(settings, discoveredOptionsByProvider);
   }, [gitWritingCatalogOptionsByProvider, settings]);
+  const currentGitTextGenerationModel =
+    normalizeModelSlug(textGenerationModel, currentGitTextGenerationProvider) ??
+    gitWritingCatalogOptionsByProvider[currentGitTextGenerationProvider].find(
+      (model) => model.isDefault,
+    )?.slug ??
+    "";
   const currentGitTextGenerationValue = `${currentGitTextGenerationProvider}:${currentGitTextGenerationModel}`;
   const isGitTextGenerationModelDirty = isGitTextGenerationSettingsDirty(settings, defaults);
   const selectedGitTextGenerationModelLabel =

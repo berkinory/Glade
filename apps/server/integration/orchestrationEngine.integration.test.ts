@@ -12,7 +12,6 @@ import {
   ThreadId,
 } from "@glade/contracts/core/baseSchemas";
 import { ModelSelection } from "@glade/contracts/provider/sessionPolicy";
-import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import { assert, it } from "@effect/vitest";
 import { Effect, Option, Schema } from "effect";
 
@@ -130,7 +129,7 @@ const seedProjectAndThread = (harness: OrchestrationIntegrationHarness) =>
   Effect.gen(function* () {
     const createdAt = nowIso();
     const provider = harness.adapterHarness?.provider ?? "codex";
-    const defaultModel = PROVIDER_DEFAULT_MODEL;
+    const fixtureModelId = "gpt-6-astra";
 
     yield* harness.engine.dispatch({
       type: "project.create",
@@ -140,7 +139,7 @@ const seedProjectAndThread = (harness: OrchestrationIntegrationHarness) =>
       workspaceRoot: harness.workspaceDir,
       defaultModelSelection: {
         provider,
-        model: defaultModel,
+        model: fixtureModelId,
       },
       createdAt,
     });
@@ -153,7 +152,7 @@ const seedProjectAndThread = (harness: OrchestrationIntegrationHarness) =>
       title: "Integration Thread",
       modelSelection: {
         provider,
-        model: defaultModel,
+        model: fixtureModelId,
       },
 
       runtimeMode: "approval-required",

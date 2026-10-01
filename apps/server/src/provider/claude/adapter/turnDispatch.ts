@@ -23,7 +23,7 @@ import {
 import { hasOnlyCompletedClaudeTasks, hasUnfinishedClaudeTasks } from "../claudeTaskTracker.ts";
 import { nativeProviderRefs, buildUserMessageEffect } from "./messageContent";
 import { resolveSelectedClaudeThinkingToggle, selectedClaudeModelInfo } from "./modelCapabilities";
-import { type ClaudeApiEffort } from "@glade/contracts/provider/model";
+import type { EffortLevel } from "@anthropic-ai/claude-agent-sdk";
 import type { ClaudeSessionAccessShape } from "../../Services/ClaudeSessionAccess.ts";
 import { isClaudeSkillAllowed } from "../claudeSkillBridge.ts";
 import type { ServerSettingsError } from "@glade/contracts/settings/settings";
@@ -257,7 +257,7 @@ export function makeClaudeTurnDispatch(input: {
         if (
           requestedEffort &&
           modelInfo &&
-          !modelInfo.supportedEffortLevels?.includes(requestedEffort)
+          !modelInfo.supportedEffortLevels?.some((level) => level === requestedEffort)
         ) {
           return yield* new ProviderAdapterValidationError({
             provider: PROVIDER,
@@ -293,7 +293,8 @@ export function makeClaudeTurnDispatch(input: {
             try: () =>
               context.query.applyFlagSettings({
                 ...(effortChanged
-                  ? { effortLevel: requestedEffort as ClaudeApiEffort | null }
+                  ? // The live catalog is authoritative; SDK effort typings can lag native levels.
+                    { effortLevel: requestedEffort as EffortLevel | null }
                   : {}),
                 ...(ultracodeChanged ? { ultracode: requestedUltracode ?? null } : {}),
                 ...(fastModeChanged ? { fastMode: requestedFastMode ?? null } : {}),

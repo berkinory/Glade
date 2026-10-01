@@ -1,8 +1,8 @@
 import { formatEffortLabel } from "@glade/shared/provider/effortLabel";
-import { PROVIDER_DEFAULT_MODEL, type ModelCapabilities } from "@glade/contracts/provider/model";
+import { type ModelCapabilities } from "@glade/contracts/provider/model";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ProviderModelDescriptor } from "@glade/contracts/provider/providerDiscovery";
-import { EMPTY_MODEL_CAPABILITIES } from "@glade/shared/provider/model";
+import { normalizeModelSlug, EMPTY_MODEL_CAPABILITIES } from "@glade/shared/provider/model";
 
 export function resolveRuntimeModelDescriptor(input: {
   provider: ProviderKind;
@@ -10,7 +10,8 @@ export function resolveRuntimeModelDescriptor(input: {
   runtimeModels: ReadonlyArray<ProviderModelDescriptor> | null | undefined;
 }): ProviderModelDescriptor | undefined {
   const models = input.runtimeModels;
-  if (input.model === PROVIDER_DEFAULT_MODEL) return models?.find((model) => model.isDefault);
+  if (!normalizeModelSlug(input.model, input.provider))
+    return models?.find((model) => model.isDefault);
   return models?.find((model) => model.slug === input.model || model.resolvedModel === input.model);
 }
 

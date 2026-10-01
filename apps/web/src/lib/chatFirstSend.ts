@@ -1,4 +1,3 @@
-import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { workspaceRootsEqual } from "@glade/shared/threads/threadWorkspace";
 
@@ -44,7 +43,7 @@ export function resolveFirstSendTarget(input: {
   activeProject: Project;
   chatWorkspaceRoot: string | null;
   createdAt: Date;
-  defaultModelSelection?: ModelSelection;
+  defaultModelSelection: ModelSelection;
   isFirstMessage: boolean;
   isHomeChatContainer: boolean;
   projects: readonly Project[];
@@ -52,12 +51,7 @@ export function resolveFirstSendTarget(input: {
   title: string;
   titleSeed: string;
 }): FirstSendTargetResolution {
-  const createDefaultModelSelection =
-    input.defaultModelSelection ??
-    ({
-      provider: "codex",
-      model: PROVIDER_DEFAULT_MODEL,
-    } satisfies ModelSelection);
+  const createDefaultModelSelection = input.defaultModelSelection;
   const {
     activeProject,
     chatWorkspaceRoot,

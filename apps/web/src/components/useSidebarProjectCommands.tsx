@@ -1,4 +1,4 @@
-import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
+import { resolveProviderModelSelection } from "~/lib/providerModelSelection";
 import { useComposerDraftStore } from "../composerDraftStore";
 import { useStore } from "../store";
 import { useCallback } from "react";
@@ -139,7 +139,7 @@ export function useSidebarProjectCommands(context: ReturnType<typeof useSidebarT
           );
           const provision = await runProjectProvisionWithCancellationRecovery({
             signal: options.signal,
-            provision: () =>
+            provision: async () =>
               api.projects.provisionFromGitHub(
                 {
                   operationId: value.operationId,
@@ -149,10 +149,10 @@ export function useSidebarProjectCommands(context: ReturnType<typeof useSidebarT
                   commandId: newCommandId(),
                   projectId: requestedProjectId,
                   newProjectSpaceId: value.spaceId,
-                  defaultModelSelection: {
-                    provider: "codex",
-                    model: PROVIDER_DEFAULT_MODEL,
-                  },
+                  defaultModelSelection: await resolveProviderModelSelection({
+                    api,
+                    selection: { provider: "codex", model: "" },
+                  }),
                   createdAt: new Date().toISOString(),
                 },
                 { signal: options.signal },

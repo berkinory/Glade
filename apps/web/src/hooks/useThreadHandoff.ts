@@ -1,3 +1,4 @@
+import { resolveProviderModelSelection } from "~/lib/providerModelSelection";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
@@ -81,14 +82,18 @@ export function useThreadHandoff() {
       sourceThreadId: thread.id,
       projectId: thread.projectId,
       title: resolveThreadHandoffTitle(thread),
-      modelSelection:
-        selectedModel ??
-        resolveThreadHandoffModelSelection({
-          sourceThread: thread,
-          targetProvider,
-          projectDefaultModelSelection: project.defaultModelSelection,
-          stickyModelSelectionByProvider,
-        }),
+      modelSelection: await resolveProviderModelSelection({
+        api,
+        cwd: project.cwd,
+        selection:
+          selectedModel ??
+          resolveThreadHandoffModelSelection({
+            sourceThread: thread,
+            targetProvider,
+            projectDefaultModelSelection: project.defaultModelSelection,
+            stickyModelSelectionByProvider,
+          }),
+      }),
       runtimeMode: selectedRuntimeMode ?? thread.runtimeMode,
 
       envMode: thread.envMode ?? (thread.worktreePath ? "worktree" : "local"),

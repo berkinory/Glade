@@ -6,7 +6,6 @@ import {
   ThreadId,
   TrimmedNonEmptyString,
 } from "../core/baseSchemas";
-import { PROVIDER_DEFAULT_MODEL } from "../provider/model";
 import { ModelSelection, ProviderStartOptions } from "../provider/sessionPolicy";
 
 const TrimmedNonEmptyStringSchema = TrimmedNonEmptyString;
@@ -206,9 +205,7 @@ export const GitSummarizeDiffInput = Schema.Struct({
   ),
   codexHomePath: Schema.optional(TrimmedNonEmptyStringSchema),
   providerOptions: Schema.optional(ProviderStartOptions),
-  textGenerationModel: Schema.optional(TrimmedNonEmptyStringSchema).pipe(
-    Schema.withConstructorDefault(() => Option.some(PROVIDER_DEFAULT_MODEL)),
-  ),
+  textGenerationModel: Schema.optional(TrimmedNonEmptyStringSchema),
   textGenerationModelSelection: Schema.optional(ModelSelection),
 });
 export type GitSummarizeDiffInput = typeof GitSummarizeDiffInput.Type;
@@ -231,9 +228,7 @@ export const GitRunStackedActionInput = Schema.Struct({
   ),
   codexHomePath: Schema.optional(TrimmedNonEmptyStringSchema),
   providerOptions: Schema.optional(ProviderStartOptions),
-  textGenerationModel: Schema.optional(TrimmedNonEmptyStringSchema).pipe(
-    Schema.withConstructorDefault(() => Option.some(PROVIDER_DEFAULT_MODEL)),
-  ),
+  textGenerationModel: Schema.optional(TrimmedNonEmptyStringSchema),
   textGenerationModelSelection: Schema.optional(ModelSelection),
 });
 export type GitRunStackedActionInput = typeof GitRunStackedActionInput.Type;

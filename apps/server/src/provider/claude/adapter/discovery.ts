@@ -22,7 +22,7 @@ import {
 } from "@glade/contracts/provider/providerDiscovery";
 import { ProviderAdapterValidationError, ProviderAdapterProcessError } from "../../core/Errors.ts";
 import { toMessage, toRequestError } from "./streamErrors";
-import { mapClaudeModelInfo, resolveClaudeAutoModeModel } from "./modelCapabilities";
+import { mapClaudeModelCatalog, resolveClaudeAutoModeModel } from "./modelCapabilities";
 import { neverResolvingUserMessageStream, CLAUDE_DISCOVERY_THREAD_ID } from "./sdkProcessRuntime";
 import { CLAUDE_SETTING_SOURCES } from "./promptPolicy";
 import { mapSupportedCommands, resolveClaudeArtifactsState } from "./commandPresentation";
@@ -95,7 +95,7 @@ export function makeClaudeDiscovery(input: {
           ),
         ));
       cachedModels = {
-        models: discoveredModels.map(mapClaudeModelInfo),
+        models: mapClaudeModelCatalog(discoveredModels),
         source: "sdk",
         cached: false,
       };
@@ -135,7 +135,7 @@ export function makeClaudeDiscovery(input: {
     if (!cachedModels) {
       if (initializedModels) {
         cachedModels = {
-          models: initializedModels.map(mapClaudeModelInfo),
+          models: mapClaudeModelCatalog(initializedModels),
           source: "sdk",
           cached: false,
         };
@@ -145,7 +145,7 @@ export function makeClaudeDiscovery(input: {
         .supportedModels()
         .then((models) => {
           cachedModels = {
-            models: models.map(mapClaudeModelInfo),
+            models: mapClaudeModelCatalog(models),
             source: "sdk",
             cached: false,
           };
@@ -235,7 +235,7 @@ export function makeClaudeDiscovery(input: {
     binaryPath: string,
   ): Promise<ProviderListModelsResult> =>
     discoverViaTemporaryProcess(cwd, env, binaryPath, async (queryRuntime) => ({
-      models: (await queryRuntime.initializationResult()).models.map(mapClaudeModelInfo),
+      models: mapClaudeModelCatalog((await queryRuntime.initializationResult()).models),
       source: "sdk",
       cached: false,
     }));
@@ -339,7 +339,7 @@ export function makeClaudeDiscovery(input: {
         if (!context.stopped && context.query) {
           const result = yield* Effect.tryPromise({
             try: async () => ({
-              models: context.availableModels.map(mapClaudeModelInfo),
+              models: mapClaudeModelCatalog(context.availableModels),
               source: "sdk",
               cached: false,
             }),

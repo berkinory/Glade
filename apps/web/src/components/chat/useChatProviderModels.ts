@@ -3,7 +3,7 @@ import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { type ServerProviderStatus } from "@glade/contracts/server/server";
 import { normalizeModelSlug } from "@glade/shared/provider/model";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useProviderStatusesForLocalConfig } from "~/hooks/useProviderStatusesForLocalConfig";
 import { resolveAvailableProviderPreference } from "~/lib/providerAvailability";
 import { resolveProviderDiscoveryCwd } from "~/lib/providerDiscovery";
@@ -13,7 +13,11 @@ import {
 } from "~/lib/serverReactQuery";
 import type { AppSettings } from "../../appSettings";
 import { getProviderStartOptions } from "../../appSettings";
-import { useComposerThreadDraft, useEffectiveComposerModelState } from "../../composerDraftStore";
+import {
+  useComposerDraftStore,
+  useComposerThreadDraft,
+  useEffectiveComposerModelState,
+} from "../../composerDraftStore";
 import { buildSearchableModelOptions } from "../../hooks/useComposerCommandMenuItems";
 import { useProviderModelCatalog } from "../../hooks/useProviderModelCatalog";
 import { buildModelSelection } from "../../providerModelOptions";
@@ -189,6 +193,18 @@ export function useChatProviderModels({
       selectedProvider === "claudeAgent" ? selectedRuntimeModel?.supportsAutoMode : undefined,
     );
   }, [selectedModel, selectedModelOptionsForDispatch, selectedProvider, selectedRuntimeModel]);
+  useEffect(() => {
+    const selection = composerDraft.modelSelectionByProvider[selectedProvider];
+    if (selectedModel && (!selection || !normalizeModelSlug(selection.model, selectedProvider))) {
+      useComposerDraftStore.getState().setModelSelection(threadId, selectedModelSelection);
+    }
+  }, [
+    composerDraft.modelSelectionByProvider,
+    selectedProvider,
+    selectedModel,
+    selectedModelSelection,
+    threadId,
+  ]);
   const providerOptionsForDispatch = useMemo(() => getProviderStartOptions(settings), [settings]);
   const selectedModelForPicker =
     selectedModelSelection.provider === selectedProvider
@@ -211,7 +227,7 @@ export function useChatProviderModels({
           ? activeProject.defaultModelSelection
           : null;
   const providerModelsLoading = selectedProviderModelsLoading;
-  const selectedProviderRequiresRuntimeModels = false;
+  const selectedProviderRequiresRuntimeModels = !selectedModel;
   const showComposerModelBootstrapSkeleton = shouldShowComposerModelBootstrapSkeleton({
     selectedProvider,
     selectedModel,

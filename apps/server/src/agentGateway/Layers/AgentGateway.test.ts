@@ -22,7 +22,6 @@ import {
   ThreadId,
   TurnId,
 } from "@glade/contracts/core/baseSchemas";
-import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import { isTemporaryWorktreeBranch } from "@glade/shared/git/git";
 
 import { Cause, Deferred, Effect, Exit, Fiber, Layer, Option, Stream } from "effect";
@@ -151,7 +150,7 @@ const listDefaultTestModels: (typeof ProviderDiscoveryService)["Service"]["listM
 }) => {
   const modelsByProvider: Record<string, ReadonlyArray<ProviderModelDescriptor>> = {
     codex: [
-      { slug: PROVIDER_DEFAULT_MODEL, name: "GPT-6 Astra" },
+      { slug: "gpt-6-astra", name: "GPT-6 Astra", isDefault: true },
       { slug: "gpt-5.5", name: "GPT-5.5" },
       {
         slug: "gpt-5.6-terra",
@@ -175,6 +174,7 @@ const listDefaultTestModels: (typeof ProviderDiscoveryService)["Service"]["listM
       {
         slug: "claude-sonnet-5",
         name: "Claude Sonnet 5",
+        isDefault: true,
       },
       {
         slug: "sonnet",
@@ -1470,7 +1470,7 @@ describe("AgentGateway", () => {
         assert.strictEqual("parentThreadId" in create, false);
         assert.strictEqual("subagentNickname" in create, false);
         assert.equal(create.modelSelection.provider, "claudeAgent");
-        assert.equal(create.modelSelection.model, PROVIDER_DEFAULT_MODEL);
+        assert.equal(create.modelSelection.model, "claude-sonnet-5");
 
         assert.equal(create.projectId, PROJECT_ID);
         assert.equal(create.runtimeMode, "approval-required");
@@ -2811,7 +2811,7 @@ describe("AgentGateway", () => {
           completionPolicy: { type: "none" },
           target: {
             provider: "codex",
-            model: PROVIDER_DEFAULT_MODEL,
+            model: "gpt-6-astra",
             options: { reasoningEffort: "ultra" },
           },
         },

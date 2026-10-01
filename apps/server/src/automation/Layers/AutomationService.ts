@@ -622,9 +622,9 @@ export const AutomationServiceLive = Layer.effect(
             definition.providerOptions,
           );
           const provider =
-            directInput?.modelSelection.provider ??
-            (hasDedicatedTextGenerationProvider(settings.textGenerationModelSelection.provider)
-              ? settings.textGenerationModelSelection.provider
+            directInput?.modelSelection?.provider ??
+            (hasDedicatedTextGenerationProvider(settings.textGenerationModelSelection?.provider)
+              ? settings.textGenerationModelSelection?.provider
               : "codex");
           return settings.providers[provider].enabled
             ? null

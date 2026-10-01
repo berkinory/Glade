@@ -40,9 +40,9 @@ import {
   type AutomationFailurePolicyValue,
 } from "./automationFailurePolicy";
 
-const defaultModelSelection: ModelSelection = {
+const pendingModelSelection: ModelSelection = {
   provider: "codex",
-  model: "gpt-5-codex",
+  model: "",
 };
 
 const TIME_OF_DAY_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -371,7 +371,7 @@ export function intervalFormPartsFromSeconds(everySeconds: number): {
 export function formFromDefinition(
   definition: AutomationDefinition | null,
   fallbackProjectId: string,
-  fallbackModelSelection: ModelSelection = defaultModelSelection,
+  fallbackModelSelection: ModelSelection = pendingModelSelection,
 ): AutomationFormState {
   const schedule = definition?.schedule ?? { type: "daily" as const, timeOfDay: "09:00" };
   const timezone = scheduleTimezone(
@@ -506,7 +506,7 @@ export function projectModelSelection(
 ): ModelSelection {
   return (
     projects.find((project) => project.id === projectId)?.defaultModelSelection ??
-    defaultModelSelection
+    pendingModelSelection
   );
 }
 

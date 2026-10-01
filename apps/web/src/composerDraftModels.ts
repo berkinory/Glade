@@ -1,7 +1,5 @@
-import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import {
-  type ClaudeCodeEffort,
   type CodexReasoningEffort,
   type ModelSlug,
   type ProviderModelOptions,
@@ -14,7 +12,6 @@ import {
   normalizeModelSlug,
   resolveSelectableModel,
 } from "@glade/shared/provider/model";
-import { resolveAppModelSelection } from "./appSettings";
 import type { ComposerThreadDraftState } from "./composerDraftDomain";
 
 export const COMPOSER_PROVIDER_KINDS = [
@@ -169,16 +166,7 @@ export function normalizeProviderModelOptions(
       : undefined;
 
   const claudeThinking = booleanOrUndefined(claudeCandidate?.thinking);
-  const claudeEffort: ClaudeCodeEffort | undefined =
-    claudeCandidate?.effort === "low" ||
-    claudeCandidate?.effort === "medium" ||
-    claudeCandidate?.effort === "high" ||
-    claudeCandidate?.effort === "xhigh" ||
-    claudeCandidate?.effort === "max" ||
-    claudeCandidate?.effort === "ultrathink" ||
-    claudeCandidate?.effort === "ultracode"
-      ? claudeCandidate.effort
-      : undefined;
+  const claudeEffort = trimStringOrUndefined(claudeCandidate?.effort);
   const claudeFastMode = booleanOrUndefined(claudeCandidate?.fastMode);
   const claudeUltracode = booleanOrUndefined(claudeCandidate?.ultracode);
   const claude = normalizeClaudeModelOptions(undefined, {
@@ -214,7 +202,11 @@ export function normalizeModelSelection(
   if (typeof rawModel !== "string") {
     return null;
   }
-  const model = normalizeModelSlug(rawModel, provider);
+  const model =
+    normalizeModelSlug(rawModel, provider) ??
+    (rawModel === "provider-default" || (provider === "claudeAgent" && rawModel === "default")
+      ? rawModel
+      : null);
   if (!model) {
     return null;
   }
@@ -355,8 +347,7 @@ export function legacyToModelSelectionByProvider(
     for (const provider of COMPOSER_PROVIDER_KINDS) {
       const options = modelOptions[provider];
       if (options && Object.keys(options).length > 0) {
-        const model =
-          modelSelection?.provider === provider ? modelSelection.model : PROVIDER_DEFAULT_MODEL;
+        const model = modelSelection?.provider === provider ? modelSelection.model : "";
         if (model) {
           result[provider] = makeModelSelection(provider, model, options);
         }
@@ -379,58 +370,25 @@ export function deriveEffectiveComposerModelState(input: {
   threadModelSelection: ModelSelection | null | undefined;
   projectModelSelection: ModelSelection | null | undefined;
   availableModelOptionsByProvider?: Partial<
-    Record<ProviderKind, ReadonlyArray<{ slug: string; name: string }>>
+    Record<ProviderKind, ReadonlyArray<{ slug: string; name: string; isDefault?: boolean }>>
   >;
 }): EffectiveComposerModelState {
-  const resolveAvailableModel = (candidate: string | null | undefined): ModelSlug | null => {
-    const availableOptions = input.availableModelOptionsByProvider?.[input.selectedProvider];
-    if (!availableOptions || availableOptions.length === 0) {
-      return null;
-    }
-    return resolveSelectableModel(input.selectedProvider, candidate, availableOptions);
-  };
-  const baseModel = normalizeModelSlug(
+  const candidate =
+    input.draft?.modelSelectionByProvider?.[input.selectedProvider]?.model ??
     (input.threadModelSelection?.provider === input.selectedProvider
       ? input.threadModelSelection.model
       : null) ??
-      (input.projectModelSelection?.provider === input.selectedProvider
-        ? input.projectModelSelection.model
-        : null) ??
-      PROVIDER_DEFAULT_MODEL,
-  );
-  const persistedThreadModel =
-    input.threadModelSelection?.provider === input.selectedProvider
-      ? (normalizeModelSlug(input.threadModelSelection.model, input.selectedProvider) ??
-        input.threadModelSelection.model)
-      : null;
-  const persistedProjectModel =
-    input.projectModelSelection?.provider === input.selectedProvider
-      ? (normalizeModelSlug(input.projectModelSelection.model, input.selectedProvider) ??
-        input.projectModelSelection.model)
-      : null;
-  const activeSelection = input.draft?.modelSelectionByProvider?.[input.selectedProvider];
-  const selectedDraftModel = activeSelection?.model
-    ? resolveAppModelSelection(input.selectedProvider, activeSelection.model)
-    : null;
+    (input.projectModelSelection?.provider === input.selectedProvider
+      ? input.projectModelSelection.model
+      : null);
   const selectedModel =
-    resolveAvailableModel(activeSelection?.model) ??
-    resolveAvailableModel(
-      input.threadModelSelection?.provider === input.selectedProvider
-        ? input.threadModelSelection.model
-        : null,
+    resolveSelectableModel(
+      input.selectedProvider,
+      candidate,
+      input.availableModelOptionsByProvider?.[input.selectedProvider] ?? [],
     ) ??
-    resolveAvailableModel(
-      input.projectModelSelection?.provider === input.selectedProvider
-        ? input.projectModelSelection.model
-        : null,
-    ) ??
-    resolveAvailableModel(selectedDraftModel) ??
-    persistedThreadModel ??
-    persistedProjectModel ??
-    input.availableModelOptionsByProvider?.[input.selectedProvider]?.[0]?.slug ??
-    selectedDraftModel ??
-    baseModel ??
-    PROVIDER_DEFAULT_MODEL;
+    normalizeModelSlug(candidate, input.selectedProvider) ??
+    "";
   const modelOptions = deriveEffectiveComposerModelOptions(input);
 
   return {
@@ -469,8 +427,5 @@ export function resolvePreferredComposerModelSelection(input: {
       : null);
   const draftSelection = input.draft?.modelSelectionByProvider?.[preferredProvider] ?? null;
 
-  return (
-    draftSelection ??
-    persistedSelection ?? { provider: preferredProvider, model: PROVIDER_DEFAULT_MODEL }
-  );
+  return draftSelection ?? persistedSelection ?? { provider: preferredProvider, model: "" };
 }

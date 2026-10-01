@@ -1,4 +1,4 @@
-import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
+import { resolveProviderModelSelection } from "~/lib/providerModelSelection";
 import { useRightDockStore } from "../rightDockStore";
 import { useSplitViewStore } from "../splitViewStore";
 import { useSidebarStateStore } from "../sidebarStateStore";
@@ -85,19 +85,14 @@ export function useSidebarThreadCommands(context: ReturnType<typeof useSidebarPr
       throw new Error("The target project could not be resolved.");
     }
 
-    const providerDefaultModel = PROVIDER_DEFAULT_MODEL;
-    let modelSelection =
-      activeProject.defaultModelSelection?.provider === provider
-        ? activeProject.defaultModelSelection
-        : providerDefaultModel
-          ? {
-              provider,
-              model: providerDefaultModel,
-            }
-          : null;
-    if (!modelSelection) {
-      throw new Error("Select a model before importing a thread.");
-    }
+    const modelSelection = await resolveProviderModelSelection({
+      api,
+      selection:
+        activeProject.defaultModelSelection?.provider === provider
+          ? activeProject.defaultModelSelection
+          : { provider, model: "" },
+      cwd: activeProject.cwd,
+    });
     const threadId = newThreadId();
     const createdAt = new Date().toISOString();
     const trimmedExternalId = externalId.trim();

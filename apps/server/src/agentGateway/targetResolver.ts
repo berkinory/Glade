@@ -1,4 +1,4 @@
-import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
+import { normalizeModelSlug } from "@glade/shared/provider/model";
 import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 import {
@@ -79,7 +79,7 @@ export function loadAgentGatewayProviderCatalog(input: {
   readonly availability?: AgentGatewayProviderAvailability;
   readonly cwd?: string;
 }): Effect.Effect<AgentGatewayProviderCatalog> {
-  const defaultModel = PROVIDER_DEFAULT_MODEL;
+  const defaultModel = null;
   const availability = input.availability ?? { enabled: true };
   const unavailableReason =
     availability.enabled === false
@@ -105,7 +105,7 @@ export function loadAgentGatewayProviderCatalog(input: {
     .pipe(
       Effect.map((result: ProviderListModelsResult) => ({
         provider: input.provider,
-        defaultModel,
+        defaultModel: result.models.find((model) => model.isDefault)?.slug ?? null,
         models: result.models,
         enabled: true,
         available: result.error === undefined,
@@ -158,13 +158,14 @@ export function agentGatewayTargetOptionGuidance(
       "Use the exact keys, types and values in optionsByModel. Omit options to inherit provider settings.",
     providerOptions,
     optionsByModel,
-    exampleTarget: catalog.available
-      ? {
-          provider: catalog.provider,
-          model: catalog.defaultModel ?? PROVIDER_DEFAULT_MODEL,
-          options: {},
-        }
-      : null,
+    exampleTarget:
+      catalog.available && catalog.defaultModel !== null
+        ? {
+            provider: catalog.provider,
+            model: catalog.defaultModel!,
+            options: {},
+          }
+        : null,
   };
 }
 
@@ -188,14 +189,14 @@ export function resolveAgentGatewayTarget(input: {
           catalog.error ?? "Provider discovery is unavailable.",
         ),
       );
-    const inherits = input.target.model === PROVIDER_DEFAULT_MODEL;
+    const inherits = !normalizeModelSlug(input.target.model, input.target.provider);
     const descriptor = inherits
       ? catalog.models.find((model) => model.isDefault)
       : catalog.models.find(
           (model) =>
             model.slug === input.target.model || model.resolvedModel === input.target.model,
         );
-    if (!inherits && !descriptor)
+    if (!descriptor)
       return yield* Effect.fail(
         new AgentGatewayTargetError(
           "model_unavailable",
@@ -223,12 +224,12 @@ export function resolveAgentGatewayTarget(input: {
     return input.target.provider === "claudeAgent"
       ? {
           provider: input.target.provider,
-          model: input.target.model,
+          model: descriptor.slug,
           ...(input.target.options ? { options: input.target.options } : {}),
           ...(descriptor?.supportsAutoMode !== undefined
             ? { supportsAutoMode: descriptor.supportsAutoMode }
             : {}),
         }
-      : input.target;
+      : { ...input.target, model: descriptor.slug };
   });
 }

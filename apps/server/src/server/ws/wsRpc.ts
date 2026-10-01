@@ -1857,8 +1857,10 @@ const makeWsRpcHandlersLayer = () =>
                 ...(input.defaultMode ? { defaultMode: input.defaultMode } : {}),
                 nowIso: input.nowIso,
                 ...(input.codexHomePath ? { codexHomePath: input.codexHomePath } : {}),
-                model: input.textGenerationModel ?? modelSelection.model,
-                modelSelection,
+                ...((input.textGenerationModel ?? modelSelection?.model)
+                  ? { model: (input.textGenerationModel ?? modelSelection?.model)! }
+                  : {}),
+                ...(modelSelection ? { modelSelection } : {}),
                 ...(input.providerOptions ? { providerOptions: input.providerOptions } : {}),
               });
             }),

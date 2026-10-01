@@ -1,6 +1,5 @@
 import { formatEffortLabel } from "@glade/shared/provider/effortLabel";
 import type { ModelInfo, PermissionMode } from "@anthropic-ai/claude-agent-sdk";
-import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import { type ProviderListModelsResult } from "@glade/contracts/provider/providerDiscovery";
 
 type ClaudeAutoModeModelResolution =
@@ -48,7 +47,7 @@ export function toPermissionMode(value: unknown): PermissionMode | undefined {
   }
 }
 
-export function mapClaudeModelInfo(model: ModelInfo): ProviderListModelsResult["models"][number] {
+function mapClaudeModelInfo(model: ModelInfo): ProviderListModelsResult["models"][number] {
   const effortOptions = model.supportsEffort
     ? (model.supportedEffortLevels ?? []).map((level) => ({
         id: level,
@@ -84,7 +83,33 @@ export function selectedClaudeModelInfo(
   models: ReadonlyArray<ModelInfo>,
   selectedModel: string | null | undefined,
 ): ModelInfo | undefined {
-  return selectedModel && selectedModel !== PROVIDER_DEFAULT_MODEL
-    ? models.find((model) => claudeModelIdentifiers(model).includes(selectedModel))
-    : undefined;
+  return models.find((model) =>
+    selectedModel && selectedModel !== "provider-default"
+      ? claudeModelIdentifiers(model).includes(selectedModel)
+      : model.value === "default",
+  );
+}
+
+export function mapClaudeModelCatalog(
+  models: ReadonlyArray<ModelInfo>,
+): ProviderListModelsResult["models"] {
+  const defaultEntry = models.find((model) => model.value === "default");
+  const defaultModel = defaultEntry?.resolvedModel;
+  const catalog = models
+    .filter((model) => model.value !== "default")
+    .map((model) => ({
+      ...mapClaudeModelInfo(model),
+      ...(defaultModel && claudeModelIdentifiers(model).includes(defaultModel)
+        ? { slug: defaultModel, isDefault: true }
+        : {}),
+    }));
+  if (defaultModel && defaultEntry && !catalog.some((model) => model.isDefault)) {
+    catalog.unshift({
+      ...mapClaudeModelInfo(defaultEntry),
+      slug: defaultModel,
+      name: defaultModel,
+      isDefault: true,
+    });
+  }
+  return catalog;
 }

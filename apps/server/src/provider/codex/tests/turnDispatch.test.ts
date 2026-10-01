@@ -127,9 +127,10 @@ describe("sendTurn", () => {
     const { manager, context, sendRequest, updateSession } = createRequestHarness();
     context.session.status = "running";
     context.session.activeTurnId = "turn_active";
-    sendRequest.mockResolvedValueOnce({
-      turn: { id: "turn_next" },
-    });
+    const respond = sendRequest.getMockImplementation()!;
+    sendRequest.mockImplementation(async (context, method, ...rest) =>
+      method === "turn/start" ? { turn: { id: "turn_next" } } : respond(context, method, ...rest),
+    );
 
     const result = await manager.sendTurn({
       threadId: ThreadId.makeUnsafe("thread_1"),

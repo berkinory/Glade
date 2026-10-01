@@ -1,6 +1,5 @@
 import { formatModelDisplayName } from "@glade/shared/provider/model";
 import {
-  PROVIDER_DEFAULT_MODEL,
   type ClaudeModelOptions,
   type CodexModelOptions,
   type ProviderModelOptions,
@@ -15,6 +14,7 @@ import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
 export type ProviderOptions = ProviderModelOptions[ProviderKind];
 
 export interface ProviderModelOption {
+  isDefault?: boolean;
   slug: string;
   name: string;
   description?: string;
@@ -51,14 +51,15 @@ export function mergeDynamicModelOptions(input: {
     upstreamProviderId?: string | null | undefined;
     upstreamProviderName?: string | null | undefined;
     hidden?: boolean | undefined;
+    isDefault?: boolean | undefined;
   }>;
 }): ReadonlyArray<ProviderModelOption & { isSelectedHint?: boolean }> {
   const models = new Map<string, ProviderModelOption & { isSelectedHint?: boolean }>();
-  models.set(PROVIDER_DEFAULT_MODEL, { slug: PROVIDER_DEFAULT_MODEL, name: "Provider default" });
   for (const model of input.dynamicModels) {
     if (model.hidden) continue;
     models.set(model.slug, {
       slug: model.slug,
+      ...(model.isDefault !== undefined ? { isDefault: model.isDefault } : {}),
       name: model.name?.trim() || model.slug,
       ...(model.description ? { description: model.description } : {}),
       ...(model.upstreamProviderId ? { upstreamProviderId: model.upstreamProviderId } : {}),

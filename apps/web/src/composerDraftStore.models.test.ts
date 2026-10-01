@@ -65,7 +65,7 @@ describe("composerDraftStore modelSelection", () => {
     resetComposerDraftStore();
   });
 
-  it.each(["max"])(
+  it.each(["max", "ultra"])(
     "retains runtime-discovered Codex %s effort in thread and sticky selections",
     (reasoningEffort) => {
       const store = useComposerDraftStore.getState();
@@ -213,6 +213,8 @@ describe("composerDraftStore modelSelection", () => {
   it("does not clear other provider options when setting options for a single provider", () => {
     const store = useComposerDraftStore.getState();
 
+    store.setModelSelection(threadId, modelSelection("codex", "gpt-6.1-sol"));
+    store.setModelSelection(threadId, modelSelection("claudeAgent", "claude-opus-5-5"));
     store.setModelOptions(
       threadId,
       providerModelOptions({
@@ -231,6 +233,8 @@ describe("composerDraftStore modelSelection", () => {
   it("preserves other provider options when switching the active model selection", () => {
     const store = useComposerDraftStore.getState();
 
+    store.setModelSelection(threadId, modelSelection("codex", "gpt-6.1-sol"));
+    store.setModelSelection(threadId, modelSelection("claudeAgent", "claude-opus-5-5"));
     store.setModelOptions(
       threadId,
       providerModelOptions({
@@ -568,7 +572,12 @@ describe("composerDraftStore provider-scoped option updates", () => {
         reasoningEffort: "medium",
       }),
     );
-    store.setProviderModelOptions(threadId, "claudeAgent", { effort: "max" });
+    store.setProviderModelOptions(
+      threadId,
+      "claudeAgent",
+      { effort: "max" },
+      { model: "claude-opus-5-5" },
+    );
     const draft = useComposerDraftStore.getState().draftsByThreadId[threadId];
     expect(draft?.modelSelectionByProvider.codex).toEqual(
       modelSelection("codex", "gpt-5.3-codex", { reasoningEffort: "medium" }),

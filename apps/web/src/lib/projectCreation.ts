@@ -1,8 +1,8 @@
-import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
 import { type NativeApi } from "@glade/contracts/ipc/ipc";
 import { type OrchestrationShellSnapshot } from "@glade/contracts/orchestration/snapshots";
 import { type ProjectId, type ProviderKind, type SpaceId } from "@glade/contracts/core/baseSchemas";
 
+import { resolveProviderModelSelection } from "./providerModelSelection";
 import { readActiveSpaceId } from "../spacesUiStore";
 import {
   extractDuplicateProjectCreateProjectId,
@@ -65,10 +65,11 @@ export async function createOrRecoverProjectFromPath(input: {
       title,
       workspaceRoot,
       createWorkspaceRootIfMissing: input.createIfMissing === true,
-      defaultModelSelection: {
-        provider: seedProvider,
-        model: PROVIDER_DEFAULT_MODEL,
-      },
+      defaultModelSelection: await resolveProviderModelSelection({
+        api: input.api,
+        selection: { provider: seedProvider, model: "" },
+        cwd: workspaceRoot,
+      }),
 
       spaceId: input.spaceId !== undefined ? input.spaceId : readActiveSpaceId(),
       createdAt,

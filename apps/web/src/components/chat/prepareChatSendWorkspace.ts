@@ -1,4 +1,4 @@
-import { PROVIDER_DEFAULT_MODEL } from "@glade/contracts/provider/model";
+import { resolveProviderModelSelection } from "~/lib/providerModelSelection";
 import { RuntimeMode, type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import {
@@ -130,14 +130,15 @@ export async function prepareChatSendWorkspace({
   // Keep an optimistically selected Space across the command/snapshot race. The server validates this
   // best-effort target and degrades genuinely stale/deleted ids to Void.
   const activeSpaceIdForSend = readActiveSpaceId();
-  const firstSendDefaultModelSelection = buildModelSelection(
-    selectedModelSelectionForSend.provider,
-    selectedModelSelectionForSend.model ||
-      selectedModelForSend ||
-      PROVIDER_DEFAULT_MODEL ||
-      PROVIDER_DEFAULT_MODEL,
-    selectedModelSelectionForSend.options,
-  );
+  const firstSendDefaultModelSelection = await resolveProviderModelSelection({
+    api,
+    selection: buildModelSelection(
+      selectedModelSelectionForSend.provider,
+      selectedModelSelectionForSend.model || selectedModelForSend,
+      selectedModelSelectionForSend.options,
+    ),
+    cwd: activeProject.cwd,
+  });
   const firstSendTarget = resolveFirstSendTarget({
     activeProject,
     chatWorkspaceRoot,
