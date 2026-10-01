@@ -24,6 +24,7 @@ import {
   providerUpdateNotificationKey,
   withProviderUpdateTimeout,
 } from "../providerUpdates";
+import { prefetchModelsForNewThread } from "../lib/providerModelPrefetch";
 import { SETTINGS_TARGETS } from "../settingsNavigation";
 import { addWsTransportStateListener } from "../wsTransportEvents";
 
@@ -42,6 +43,8 @@ type ActiveProviderUpdateToast =
     };
 export function ProviderStatusRefreshCoordinator() {
   const { settings } = useAppSettings();
+  const queryClient = useQueryClient();
+  const serverConfigQuery = useQuery(serverConfigQueryOptions());
   const serverSettingsQuery = useQuery(serverSettingsQueryOptions());
   const [transportOpen, setTransportOpen] = useState(false);
   const [liveVersionCheckCompleted, setLiveVersionCheckCompleted] = useState(false);
@@ -69,6 +72,18 @@ export function ProviderStatusRefreshCoordinator() {
       ),
     [],
   );
+
+  useEffect(() => {
+    if (!transportOpen || !serverSettingsQuery.data || !serverConfigQuery.data) return;
+    prefetchModelsForNewThread(queryClient, {
+      settings,
+      serverSettings: serverSettingsQuery.data,
+      hiddenProviders: settings.hiddenProviders,
+      providerStatuses: serverConfigQuery.data.providers,
+      statusesReconciled: true,
+      providerOrder: settings.providerOrder,
+    });
+  }, [queryClient, settings, serverSettingsQuery.data, serverConfigQuery.data, transportOpen]);
 
   useEffect(() => {
     if (!providerUpdateChecksEnabled) {

@@ -21,6 +21,7 @@ export interface ProviderModelDiscoveryCacheKey {
   readonly apiEndpoint: string | null;
   readonly cwd: string | null;
   readonly contextIdentity?: string;
+  readonly workspaceIdentity?: string | null;
 }
 
 export interface ProviderModelDiscoveryCache<E> {
@@ -67,6 +68,7 @@ const serializeProviderModelDiscoveryCacheKey = (key: ProviderModelDiscoveryCach
     key.apiEndpoint,
     key.cwd,
     key.contextIdentity ?? null,
+    key.workspaceIdentity ?? null,
   ]);
 
 const isUsableCatalog = (result: ProviderListModelsResult): boolean =>
@@ -99,6 +101,7 @@ export function makeProviderModelDiscoveryCache<E>(options?: {
 
   const catalogs = new Map<string, CatalogEntry>();
   const failures = new Map<string, FailureEntry<E>>();
+  const confirmedScopes = new Map<string, { catalog: CatalogEntry; storedAt: number }>();
   const inflight = new Map<
     string,
     Deferred.Deferred<ProviderListModelsResult, E | ProviderAdapterRequestError>
@@ -182,10 +185,36 @@ export function makeProviderModelDiscoveryCache<E>(options?: {
     }
   };
 
-  const applyExit = (serialized: string, exit: DiscoveryExit<E>) => {
+  const applyExit = (
+    key: ProviderModelDiscoveryCacheKey,
+    serialized: string,
+    exit: DiscoveryExit<E>,
+  ) => {
     const at = now();
     if (Exit.isSuccess(exit) && isUsableCatalog(exit.value)) {
-      storeCatalog(serialized, exit.value, at);
+      const global = readCatalog(
+        serializeProviderModelDiscoveryCacheKey({ ...key, cwd: null, workspaceIdentity: null }),
+        at,
+      );
+      if (
+        key.cwd !== null &&
+        global &&
+        global.result.source === exit.value.source &&
+        JSON.stringify(global.result.models) === JSON.stringify(exit.value.models)
+      ) {
+        failures.delete(serialized);
+        confirmedScopes.delete(serialized);
+        confirmedScopes.set(serialized, { catalog: global, storedAt: at });
+        while (confirmedScopes.size > maxEntries) {
+          const oldest = confirmedScopes.keys().next().value;
+          if (oldest === undefined) break;
+          confirmedScopes.delete(oldest);
+        }
+        if (catalogs.delete(serialized)) emitCatalogsChanged();
+      } else {
+        confirmedScopes.delete(serialized);
+        storeCatalog(serialized, exit.value, at);
+      }
       return;
     }
 
@@ -224,7 +253,7 @@ export function makeProviderModelDiscoveryCache<E>(options?: {
         Effect.exit,
         Effect.flatMap((exit) => {
           inflight.delete(serialized);
-          applyExit(serialized, exit);
+          applyExit(key, serialized, exit);
           return Deferred.done(deferred, exit);
         }),
       );
@@ -241,32 +270,35 @@ export function makeProviderModelDiscoveryCache<E>(options?: {
     Effect.gen(function* () {
       const serialized = serializeProviderModelDiscoveryCacheKey(key);
       const at = now();
-      const entry = readCatalog(serialized, at);
+      const ownEntry = readCatalog(serialized, at);
+      const globalEntry =
+        key.cwd === null
+          ? undefined
+          : readCatalog(
+              serializeProviderModelDiscoveryCacheKey({
+                ...key,
+                cwd: null,
+                workspaceIdentity: null,
+              }),
+              at,
+            );
+      const entry = ownEntry ?? globalEntry;
+      const confirmation = confirmedScopes.get(serialized);
+      const confirmed = globalEntry !== undefined && confirmation?.catalog === globalEntry;
+      const storedAt = ownEntry?.storedAt ?? (confirmed ? confirmation.storedAt : undefined);
+      const fresh =
+        entry !== undefined &&
+        storedAt !== undefined &&
+        at - storedAt <= freshTtlMs &&
+        (ownEntry !== undefined || at - entry.storedAt <= freshTtlMs);
       const failure = readFailure(serialized, at);
       if (entry !== undefined) {
-        if (at - entry.storedAt <= freshTtlMs) {
-          return {
-            ...entry.result,
-            cached: true,
-            discoveredAt: new Date(entry.storedAt).toISOString(),
-            stale: at - entry.storedAt > freshTtlMs,
-            ...(failure !== undefined
-              ? {
-                  error:
-                    "The saved model catalog is shown because native discovery is unavailable.",
-                }
-              : {}),
-          };
-        }
-
-        if (failure === undefined) {
-          yield* startDiscovery(key, serialized, discover);
-        }
+        if (!fresh && failure === undefined) yield* startDiscovery(key, serialized, discover);
         return {
           ...entry.result,
           cached: true,
           discoveredAt: new Date(entry.storedAt).toISOString(),
-          stale: at - entry.storedAt > freshTtlMs,
+          stale: !fresh,
           ...(failure !== undefined
             ? { error: "The saved model catalog is shown because native discovery is unavailable." }
             : {}),
@@ -288,6 +320,7 @@ export function makeProviderModelDiscoveryCache<E>(options?: {
     clear: () => {
       const hadCatalogs = catalogs.size > 0;
       catalogs.clear();
+      confirmedScopes.clear();
       failures.clear();
       if (hadCatalogs) emitCatalogsChanged();
     },

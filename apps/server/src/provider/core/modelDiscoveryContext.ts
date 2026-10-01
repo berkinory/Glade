@@ -1,13 +1,65 @@
 import { createHash } from "node:crypto";
-import { stat } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
-import { Effect } from "effect";
+import { Effect, Schema } from "effect";
 import type { ProviderListModelsInput } from "@glade/contracts/provider/providerDiscovery";
 import type { ServerSettings } from "@glade/contracts/settings/settings";
 import { resolveExecutable } from "@glade/shared/platform/executable";
 import { resolveBaseCodexHomePath } from "../codex/codexHomePaths.ts";
 import { ProviderAdapterRequestError } from "./Errors.ts";
+
+async function readNativeIdentityFile(file: string): Promise<Record<string, unknown> | null> {
+  try {
+    return Schema.decodeUnknownSync(Schema.Record(Schema.String, Schema.Unknown))(
+      JSON.parse(await readFile(file, "utf8")),
+    );
+  } catch (error) {
+    if (error instanceof Error && "code" in error) {
+      if (error.code === "ENOENT") return null;
+      throw error;
+    }
+    // JSON and schema errors can quote authentication file contents.
+    throw new Error("Malformed provider authentication metadata.", { cause: error });
+  }
+}
+
+async function nativeAccountIdentity(
+  provider: ProviderListModelsInput["provider"],
+  home: string,
+  homeDir: string,
+) {
+  if (provider === "codex") {
+    const auth = await readNativeIdentityFile(path.join(home, "auth.json"));
+    const tokens = auth?.tokens;
+    return {
+      mode: auth?.auth_mode,
+      apiKey: auth?.OPENAI_API_KEY,
+      account:
+        typeof tokens === "object" && tokens !== null && "account_id" in tokens
+          ? tokens.account_id
+          : tokens,
+    };
+  }
+  const config = await readNativeIdentityFile(path.join(homeDir, ".claude.json"));
+  const account = config?.oauthAccount;
+  if (typeof account === "object" && account !== null && "accountUuid" in account) {
+    const metadata = Schema.decodeUnknownSync(Schema.Record(Schema.String, Schema.Unknown))(
+      account,
+    );
+    return Object.fromEntries(
+      [
+        "accountUuid",
+        "organizationUuid",
+        "seatTier",
+        "organizationRateLimitTier",
+        "userRateLimitTier",
+        "billingType",
+      ].map((key) => [key, metadata[key]]),
+    );
+  }
+  return readNativeIdentityFile(path.join(home, ".credentials.json"));
+}
 
 export const modelDiscoveryContext = (input: {
   readonly request: ProviderListModelsInput;
@@ -32,15 +84,10 @@ export const modelDiscoveryContext = (input: {
           ? resolveBaseCodexHomePath(env, input.settings.providers.codex.homePath)
           : env.CLAUDE_CONFIG_DIR?.trim() ||
             path.join(input.homeDir || env.HOME || homedir(), ".claude");
-      const files =
-        provider === "codex"
-          ? [path.join(home, "auth.json"), path.join(home, "config.toml")]
-          : [
-              path.join(home, ".credentials.json"),
-              path.join(home, "settings.json"),
-              path.join(input.homeDir, ".claude.json"),
-            ];
+      const account = await nativeAccountIdentity(provider, home, input.homeDir);
+      const files = [path.join(home, provider === "codex" ? "config.toml" : "settings.json")];
       if (executable) files.push(executable);
+      const globalFileCount = files.length;
       if (input.request.cwd) {
         files.push(
           ...(provider === "codex"
@@ -63,14 +110,16 @@ export const modelDiscoveryContext = (input: {
           }
         }),
       );
-      // Only a digest persists: environment credentials must never appear in catalog keys or logs.
+      // Native CLIs rewrite token and usage caches during discovery. Only account identity and real
+      // settings affect the catalog; credentials remain confined to this digest, never persisted keys.
       const identity = createHash("sha256")
         .update(
           JSON.stringify({
             settings,
             executable,
             home,
-            revisions,
+            account,
+            revisions: revisions.slice(0, globalFileCount),
             environment:
               provider === "codex"
                 ? [env.OPENAI_API_KEY, env.OPENAI_BASE_URL, env.CODEX_HOME]
@@ -85,7 +134,11 @@ export const modelDiscoveryContext = (input: {
           }),
         )
         .digest("hex");
-      return { identity, binaryPath: executable ?? binary };
+      const workspaceRevisions = revisions.slice(globalFileCount);
+      const workspaceIdentity = workspaceRevisions.some((revision) => revision[1] !== "missing")
+        ? createHash("sha256").update(JSON.stringify(workspaceRevisions)).digest("hex")
+        : null;
+      return { identity, workspaceIdentity, binaryPath: executable ?? binary };
     },
     catch: (cause) =>
       new ProviderAdapterRequestError({

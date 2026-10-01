@@ -3,7 +3,7 @@ import type {
   ProviderModelDescriptor,
 } from "@glade/contracts/provider/providerDiscovery";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
 
 import { getAppModelOptions, useAppSettings } from "../appSettings";
@@ -14,6 +14,7 @@ import {
   providerDiscoveryQueryKeys,
   providerModelsQueryOptions,
 } from "../lib/providerDiscoveryReactQuery";
+import { serverConfigQueryOptions } from "../lib/serverReactQuery";
 import { mergeDynamicModelOptions, type ProviderModelOption } from "../providerModelOptions";
 
 export interface ProviderModelCatalog {
@@ -42,6 +43,8 @@ export function useProviderModelCatalog(input: {
 }): ProviderModelCatalog {
   const { selectedProvider, discoveryEnabled, modelHintByProvider, cwd } = input;
   const { settings, serverSettings } = useAppSettings();
+  const queryClient = useQueryClient();
+  useQuery(serverConfigQueryOptions());
   const hiddenProviderSet = useMemo(
     () => new Set(settings.hiddenProviders),
     [settings.hiddenProviders],
@@ -58,29 +61,41 @@ export function useProviderModelCatalog(input: {
   };
 
   const modelQueryOptionsByProvider = {
-    claudeAgent: providerModelsQueryOptions({
-      provider: "claudeAgent",
-      binaryPath: settings.claudeBinaryPath || null,
-      cwd: cwd ?? null,
-      enabled: shouldDiscoverProvider("claudeAgent"),
-    }),
-    codex: providerModelsQueryOptions({
-      provider: "codex",
-      binaryPath: settings.codexBinaryPath || null,
-      cwd: cwd ?? null,
-      enabled: shouldDiscoverProvider("codex"),
-    }),
+    claudeAgent: providerModelsQueryOptions(
+      {
+        provider: "claudeAgent",
+        binaryPath: settings.claudeBinaryPath || null,
+        cwd: cwd ?? null,
+        enabled: shouldDiscoverProvider("claudeAgent"),
+      },
+      queryClient,
+    ),
+    codex: providerModelsQueryOptions(
+      {
+        provider: "codex",
+        binaryPath: settings.codexBinaryPath || null,
+        cwd: cwd ?? null,
+        enabled: shouldDiscoverProvider("codex"),
+      },
+      queryClient,
+    ),
   } as const;
   const claudeQuery = useQuery(modelQueryOptionsByProvider.claudeAgent);
   const codexQuery = useQuery(modelQueryOptionsByProvider.codex);
   const queries = { claudeAgent: claudeQuery, codex: codexQuery } as const;
 
-  const [, , modelProvider, modelBinaryPath, modelApiEndpoint, modelCwd] =
+  const [, , modelProvider, modelBinaryPath, modelApiEndpoint, modelCwd, accountIdentity] =
     modelQueryOptionsByProvider[selectedProvider].queryKey;
   const selectedProviderModelsQueryKey = useMemo(
     () =>
-      providerDiscoveryQueryKeys.models(modelProvider, modelBinaryPath, modelApiEndpoint, modelCwd),
-    [modelProvider, modelBinaryPath, modelApiEndpoint, modelCwd],
+      providerDiscoveryQueryKeys.models(
+        modelProvider,
+        modelBinaryPath,
+        modelApiEndpoint,
+        modelCwd,
+        accountIdentity,
+      ),
+    [modelProvider, modelBinaryPath, modelApiEndpoint, modelCwd, accountIdentity],
   );
   const selectedProviderModelsEnabled = modelQueryOptionsByProvider[selectedProvider].enabled;
   useEffect(() => {

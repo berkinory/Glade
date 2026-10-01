@@ -346,15 +346,23 @@ const make = Effect.gen(function* () {
       });
       const request = { ...parsed, binaryPath: context.binaryPath };
       const listModelsFromAdapter = adapter.listModels;
-      const discover = Effect.suspend(() => listModelsFromAdapter(request)).pipe(
-        Effect.flatMap((result) =>
-          isolateMalformedModelDescriptors({ provider: parsed.provider, result }),
-        ),
+      const discover = (cwd: string) =>
+        Effect.suspend(() => listModelsFromAdapter({ ...request, cwd })).pipe(
+          Effect.flatMap((result) =>
+            isolateMalformedModelDescriptors({ provider: parsed.provider, result }),
+          ),
+        );
+      const key = {
+        ...providerModelDiscoveryCacheKey(request),
+        contextIdentity: context.identity,
+        workspaceIdentity: context.workspaceIdentity,
+      };
+      const global = yield* modelDiscoveryCache.lookup(
+        { ...key, cwd: null, workspaceIdentity: null },
+        discover(serverConfig.homeDir),
       );
-      return yield* modelDiscoveryCache.lookup(
-        { ...providerModelDiscoveryCacheKey(request), contextIdentity: context.identity },
-        discover,
-      );
+      if (!request.cwd) return global;
+      return yield* modelDiscoveryCache.lookup(key, discover(request.cwd));
     });
 
   const listAgents: ProviderDiscoveryServiceShape["listAgents"] = (input) =>

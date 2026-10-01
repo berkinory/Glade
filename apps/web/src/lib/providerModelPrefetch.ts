@@ -17,7 +17,7 @@ import {
 
 export type ProviderModelPrefetchSettings = Pick<
   AppSettings,
-  "defaultProvider" | "claudeBinaryPath"
+  "defaultProvider" | "claudeBinaryPath" | "codexBinaryPath"
 >;
 
 const NEW_THREAD_MODEL_PREFETCH_PROVIDERS: ReadonlyArray<ProviderKind> = ["codex", "claudeAgent"];
@@ -73,23 +73,38 @@ function resolveNewThreadModelPrefetchCwd(input: {
   });
 }
 
-function providerModelsPrefetchQueryOptions(input: {
-  provider: ProviderKind;
-  settings: ProviderModelPrefetchSettings;
-  cwd?: string | null;
-  priority?: "background" | "prefetch" | undefined;
-}) {
+function providerModelsPrefetchQueryOptions(
+  queryClient: QueryClient,
+  input: {
+    provider: ProviderKind;
+    settings: ProviderModelPrefetchSettings;
+    cwd?: string | null;
+    priority?: "background" | "prefetch" | undefined;
+  },
+) {
   const { priority, provider, settings } = input;
 
   switch (provider) {
     case "claudeAgent":
-      return providerModelsQueryOptions({
-        provider: "claudeAgent",
-        binaryPath: settings.claudeBinaryPath || null,
-        priority,
-      });
+      return providerModelsQueryOptions(
+        {
+          provider: "claudeAgent",
+          binaryPath: settings.claudeBinaryPath || null,
+          priority,
+          cwd: input.cwd ?? null,
+        },
+        queryClient,
+      );
     case "codex":
-      return providerModelsQueryOptions({ provider: "codex", priority });
+      return providerModelsQueryOptions(
+        {
+          provider: "codex",
+          binaryPath: settings.codexBinaryPath || null,
+          cwd: input.cwd ?? null,
+          priority,
+        },
+        queryClient,
+      );
   }
 }
 
@@ -123,12 +138,18 @@ function prefetchProviderModelsForNewThread(
   const providers = input.providers ?? NEW_THREAD_MODEL_PREFETCH_PROVIDERS;
 
   for (const provider of providers) {
-    const modelsOptions = providerModelsPrefetchQueryOptions({
+    const modelsOptions = providerModelsPrefetchQueryOptions(queryClient, {
       provider,
       settings: input.settings,
       cwd,
       priority: provider === (input.foregroundProvider ?? providers[0]) ? "prefetch" : "background",
     });
+    if (cwd !== null) {
+      void queryClient.prefetchQuery({
+        ...providerModelsPrefetchQueryOptions(queryClient, { provider, settings: input.settings }),
+        retry: 0,
+      });
+    }
     void queryClient.prefetchQuery({
       ...modelsOptions,
       retry: 0,
@@ -237,7 +258,7 @@ export function prefetchModelsForNewThread(
     : [selectedProvider, ...providers.filter((provider) => provider !== selectedProvider)];
   const desiredModelQueryKeys = orderedProviders.map(
     (provider) =>
-      providerModelsPrefetchQueryOptions({
+      providerModelsPrefetchQueryOptions(queryClient, {
         provider,
         settings: input.settings,
         cwd,
@@ -256,6 +277,7 @@ export function prefetchModelsForNewThread(
     queryKey: providerDiscoveryQueryKeys.modelsAll,
     type: "inactive",
     predicate: (query) =>
+      query.queryKey[5] !== null &&
       !desiredModelQueryKeys.some(
         (queryKey) =>
           query.queryKey.length === queryKey.length &&

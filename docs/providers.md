@@ -73,7 +73,7 @@ The installed provider supplies model IDs, names, defaults and available options
 
 Claude aliases and context variants retain their native IDs. Codex reasoning effort and service tiers follow its model discovery response. Claude effort, fast mode and adaptive thinking appear only when native model metadata advertises them. Live Claude effort and speed changes no longer require a separate model-profile restart. User-written Ultrathink text is sent unchanged; Glade does not insert a prefix.
 
-Discovery is scoped to the executable, provider home, workspace and configuration revisions. A failed refresh can retain a catalog from the same context; a saved model that has disappeared remains saved and is shown by its ID. With no usable catalog, the picker shows loading or the discovery error rather than a static fallback.
+Discovery shares a saved catalog across chats using the same executable, endpoint, account and native settings. New workspaces show that catalog immediately while Glade checks their provider configuration in the background. A workspace keeps a separate catalog only when its models or options differ. Glade warms catalogs at startup and refreshes them on window focus, native settings or account changes, and while discovery is stale. A failed refresh can retain a catalog from the same context; a saved model that has disappeared remains saved and is shown by its ID. With no usable catalog, the picker shows loading or the discovery error rather than a static fallback.
 
 The composer model picker has one tab per connected provider and a Starred tab. Starring a model
 saves it together with its current effort and speed, so one click (or `mod+1`…`mod+9` while the

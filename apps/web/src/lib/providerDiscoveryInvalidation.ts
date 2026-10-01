@@ -8,6 +8,7 @@ type ProviderModelDiscoveryFingerprintEntry = readonly [
   authType: string | null,
   authLabel: string | null,
   version: string | null,
+  modelCatalogContextIdentity: string | null,
 ];
 
 export function providerModelDiscoveryInvalidationFingerprint(
@@ -23,6 +24,7 @@ export function providerModelDiscoveryInvalidationFingerprint(
         provider.authType ?? null,
         provider.authLabel ?? null,
         provider.version ?? null,
+        provider.modelCatalogContextIdentity ?? null,
       ],
     )
     .toSorted((left, right) => left[0].localeCompare(right[0]));

@@ -10,6 +10,7 @@ import type {
   ServerProviderUpdateState,
 } from "@glade/contracts/server/server";
 import { ServerProviderUpdateError } from "@glade/contracts/server/server";
+import { modelDiscoveryContext } from "../core/modelDiscoveryContext";
 import { parseCodexConfigModelProvider } from "../codex/codexConfig";
 import { decodeJsonResult } from "../../platform/schemaJson";
 import type { SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
@@ -942,6 +943,7 @@ function providerStatusesEqual(
       status.authStatus === next.authStatus &&
       (status.authType ?? null) === (next.authType ?? null) &&
       (status.authLabel ?? null) === (next.authLabel ?? null) &&
+      status.modelCatalogContextIdentity === next.modelCatalogContextIdentity &&
       status.voiceTranscriptionAvailable === next.voiceTranscriptionAvailable &&
       status.supportsAutoRuntimeMode === next.supportsAutoRuntimeMode &&
       (status.autoRuntimeModeBinaryPath ?? null) === (next.autoRuntimeModeBinaryPath ?? null) &&
@@ -1310,7 +1312,28 @@ function makeProviderHealthLive(options?: { readonly providerUpdateTimeoutMs?: n
         check: Effect.Effect<ServerProviderStatus, never, R>,
       ): Effect.Effect<Option.Option<ServerProviderStatus>, never, R> =>
         isProviderEnabledForSettings(provider, settings)
-          ? check.pipe(Effect.map(Option.some))
+          ? check.pipe(
+              Effect.flatMap((status) =>
+                modelDiscoveryContext({
+                  request: { provider },
+                  settings,
+                  homeDir: serverConfig.homeDir,
+                }).pipe(
+                  Effect.match({
+                    onSuccess: (context): ServerProviderStatus => ({
+                      ...status,
+                      modelCatalogContextIdentity: context.identity,
+                    }),
+                    onFailure: (error): ServerProviderStatus => ({
+                      ...status,
+                      status: "warning",
+                      message: error.detail,
+                    }),
+                  }),
+                ),
+              ),
+              Effect.map(Option.some),
+            )
           : Effect.succeed(Option.none());
 
       const loadProviderStatuses = serverSettings.ready

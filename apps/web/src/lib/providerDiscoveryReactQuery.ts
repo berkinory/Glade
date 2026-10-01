@@ -8,7 +8,9 @@ import type {
   ProviderSkillsCatalogResult,
 } from "@glade/contracts/provider/providerDiscovery";
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
-import { queryOptions } from "@tanstack/react-query";
+import type { ServerConfig } from "@glade/contracts/server/server";
+import { serverQueryKeys } from "./serverReactQuery";
+import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { ensureNativeApi } from "~/nativeApi";
 
 const EMPTY_SKILLS_RESULT: ProviderListSkillsResult = {
@@ -230,7 +232,17 @@ export const providerDiscoveryQueryKeys = {
     binaryPath: string | null,
     apiEndpoint: string | null,
     cwd: string | null,
-  ) => ["provider-discovery", "models", provider, binaryPath, apiEndpoint, cwd] as const,
+    accountIdentity: string | null = null,
+  ) =>
+    [
+      "provider-discovery",
+      "models",
+      provider,
+      binaryPath,
+      apiEndpoint,
+      cwd,
+      accountIdentity,
+    ] as const,
   agentsForProvider: (provider: ProviderKind) =>
     ["provider-discovery", "agents", provider] as const,
   agents: (provider: ProviderKind, binaryPath: string | null, cwd: string | null) =>
@@ -335,20 +347,35 @@ export function providerCommandsQueryOptions(input: {
   });
 }
 
-export function providerModelsQueryOptions(input: {
-  provider: ProviderKind;
-  binaryPath?: string | null;
-  apiEndpoint?: string | null;
-  cwd?: string | null;
-  enabled?: boolean;
-  priority?: ProviderModelDiscoveryPriority | undefined;
-}) {
+export function providerModelsQueryOptions(
+  input: {
+    provider: ProviderKind;
+    binaryPath?: string | null;
+    apiEndpoint?: string | null;
+    cwd?: string | null;
+    enabled?: boolean;
+    priority?: ProviderModelDiscoveryPriority | undefined;
+  },
+  queryClient: QueryClient,
+) {
+  const status = queryClient
+    .getQueryData<ServerConfig>(serverQueryKeys.config())
+    ?.providers.find((status) => status.provider === input.provider);
+  const accountIdentity = status?.modelCatalogContextIdentity ?? null;
   const cwd = input.cwd ?? null;
   const queryKey = providerDiscoveryQueryKeys.models(
     input.provider,
     input.binaryPath ?? null,
     input.apiEndpoint ?? null,
     cwd,
+    accountIdentity,
+  );
+  const globalQueryKey = providerDiscoveryQueryKeys.models(
+    input.provider,
+    input.binaryPath ?? null,
+    input.apiEndpoint ?? null,
+    null,
+    accountIdentity,
   );
   return queryOptions<ProviderListModelsResult, Error, ProviderListModelsResult, typeof queryKey>({
     queryKey,
@@ -373,8 +400,14 @@ export function providerModelsQueryOptions(input: {
     retry: 3,
 
     gcTime: 24 * 60 * 60_000,
-    staleTime: (query) => (query.state.data?.stale ? 30_000 : 60_000),
-    refetchInterval: 60_000,
+    placeholderData: () =>
+      cwd === null || accountIdentity === null
+        ? undefined
+        : queryClient.getQueryData<ProviderListModelsResult>(globalQueryKey),
+    staleTime: (query) => (query.state.data?.stale ? 0 : 30 * 60_000),
+    refetchOnWindowFocus: "always",
+    refetchInterval: (query) =>
+      query.state.data?.stale && !query.state.data.error ? 1_000 : false,
   });
 }
 

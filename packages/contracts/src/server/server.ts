@@ -106,6 +106,7 @@ export const ServerProviderStatus = Schema.Struct({
   authStatus: ServerProviderAuthStatus,
   authType: Schema.optional(TrimmedNonEmptyString),
   authLabel: Schema.optional(TrimmedNonEmptyString),
+  modelCatalogContextIdentity: Schema.optional(TrimmedNonEmptyString),
   voiceTranscriptionAvailable: Schema.optional(Schema.Boolean),
   supportsAutoRuntimeMode: Schema.optional(Schema.Boolean),
   autoRuntimeModeBinaryPath: Schema.optional(TrimmedNonEmptyString),
