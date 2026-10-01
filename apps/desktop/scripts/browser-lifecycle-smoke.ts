@@ -4,7 +4,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { app, BrowserWindow, type WebContents } from "electron";
+import { app, BrowserWindow } from "electron";
 import { BetterWright, NetworkPolicy } from "betterwright";
 import { configureElectronNetwork } from "betterwright/electron";
 import { WebSocketServer } from "ws";
@@ -20,63 +20,6 @@ const deadline = setTimeout(() => {
   console.error("Browser lifecycle smoke timed out.");
   app.exit(1);
 }, 90_000);
-
-async function checkCookieImportMetadata(contents: WebContents) {
-  const hostTarget = gladeHostTarget(contents, { cookieImport: true });
-  const browser = new BetterWright({
-    home: join(home, "cookie-worker"),
-    hostTarget,
-    vault: false,
-    credentialCapture: false,
-    downloadPolicy: "deny",
-    adBlock: false,
-    headless: false,
-    parkBackgroundPages: false,
-    policy: new NetworkPolicy({ allowLoopback: true }),
-  });
-  let includeCookie = true;
-
-  Object.defineProperty(browser, "_extractCookieSync", {
-    value: async () => ({
-      cookies: includeCookie
-        ? [
-            {
-              name: "glade_synthetic_import",
-              value: "synthetic-only",
-              domain: "127.0.0.1",
-              path: "/",
-              expires: Math.floor(Date.now() / 1000) + 3600,
-              secure: false,
-              httpOnly: true,
-              sameSite: "Lax",
-            },
-          ]
-        : [],
-      selected: includeCookie ? 1 : 0,
-      skipped: 0,
-      source: { browser: "chrome" },
-      warnings: [],
-    }),
-  });
-  try {
-    const result = await browser.syncCookies({ source: { browser: "chrome" } });
-    assert.ok(result.ok, JSON.stringify(result));
-    assert.equal(result.synced, 1);
-    assert.equal(result.target, "host");
-    assert.deepEqual(result.cookieImportDomains, ["127.0.0.1"]);
-    const stored = await contents.session.cookies.get({ name: "glade_synthetic_import" });
-    assert.equal(stored.length, 1);
-    assert.equal(stored[0]?.value, "synthetic-only");
-    includeCookie = false;
-    const empty = await browser.syncCookies({ source: { browser: "chrome" } });
-    assert.ok(empty.ok, JSON.stringify(empty));
-    assert.equal(empty.synced, 0);
-    assert.deepEqual(empty.cookieImportDomains, []);
-  } finally {
-    await hostTarget.revokeAll(false);
-    await browser.close();
-  }
-}
 
 async function smoke() {
   await app.whenReady();
@@ -252,7 +195,6 @@ async function smoke() {
       await (await session.fetch(`${blockedUrl}/restored`, { cache: "no-store" })).text(),
       "blocked fixture",
     );
-    await checkCookieImportMetadata(contents);
     assert.equal(await session.resolveProxy(allowedUrl), baselineProxy);
 
     const ready = Promise.withResolvers<void>();
@@ -284,7 +226,7 @@ async function smoke() {
     }
     assert.equal(contents.debugger.listenerCount("message"), listeners);
     console.log(
-      "PASS: real worker setup, session requests, redirects, WebSockets, service workers, shared tabs, queued concurrent runs, connection draining, worker rotation, proxy restoration, cookie import metadata, and capture sensor.",
+      "PASS: real worker setup, session requests, redirects, WebSockets, service workers, shared tabs, queued concurrent runs, connection draining, worker rotation, proxy restoration, and capture sensor.",
     );
   } finally {
     await siblingTarget.revokeAll(true);

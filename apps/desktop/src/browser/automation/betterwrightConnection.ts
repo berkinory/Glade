@@ -9,7 +9,6 @@ export async function openBetterwrightConnection(
   contents: WebContents,
   diagnostic?: (method: string, outcome: string) => void,
   uploadFiles: readonly string[] = [],
-  cookieImport = false,
   expectAgentInput?: BrowserAutomationVisibleRuntime["expectAgentInput"],
 ) {
   if (!contents.debugger.isAttached()) contents.debugger.attach("1.3");
@@ -54,7 +53,6 @@ export async function openBetterwrightConnection(
           targetInfo.targetId,
           new Set(uploadFiles),
           backendSessionId,
-          cookieImport,
           expectAgentInput,
         );
       } catch {

@@ -18,7 +18,6 @@ export function gladeHostTarget(
   contents: WebContents,
   options: {
     uploadFiles?: readonly string[] | undefined;
-    cookieImport?: boolean | undefined;
     expectAgentInput?: BrowserAutomationVisibleRuntime["expectAgentInput"] | undefined;
     signal?: AbortSignal | undefined;
   } = {},
@@ -97,7 +96,6 @@ export function gladeHostTarget(
             contents,
             undefined,
             options.uploadFiles ?? [],
-            options.cookieImport ?? false,
             options.expectAgentInput,
           );
           pending.add(opening);

@@ -135,7 +135,6 @@ export class BetterwrightCdpTarget {
     readonly targetId: string = randomUUID(),
     private readonly uploadFiles: ReadonlySet<string> = new Set(),
     private readonly backendSessionId?: string,
-    private readonly cookieImport = false,
     private readonly expectAgentInput?: BrowserAutomationVisibleRuntime["expectAgentInput"],
   ) {
     if (contents.isDestroyed()) throw new Error("Browser target is unavailable.");
@@ -302,9 +301,6 @@ export class BetterwrightCdpTarget {
       );
     }
 
-    if (this.cookieImport && ["Network.getAllCookies", "Network.setCookies"].includes(method)) {
-      return this.send(method, params, this.childSessions.has(sessionId!) ? sessionId : undefined);
-    }
     if (FORBIDDEN_METHODS.has(method) || !PAGE_DOMAINS.has(method.split(".")[0]!)) {
       throw new Error("Command outside target scope.");
     }
