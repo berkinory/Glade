@@ -97,7 +97,10 @@ export const ExplorerRow = forwardRef<
       {...EXPLORER_ROW_PROPS}
       ref={ref}
       type="button"
-      className={fileRowClassName(selected, cn("h-7 pr-2 transition-none", className))}
+      className={fileRowClassName(
+        selected,
+        cn("h-7 pr-2 transition-none", entry.isGitIgnored && "opacity-50", className),
+      )}
       data-selected-file={selected && !isDirectory ? "" : undefined}
       style={fileRowIndentStyle(depth)}
       title={dirty ? `${entry.path} (unsaved changes)` : entry.path}

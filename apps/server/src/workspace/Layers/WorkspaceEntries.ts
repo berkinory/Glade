@@ -57,7 +57,7 @@ export const WorkspaceEntriesLive = Layer.effect(
         }),
       listDirectories: (input) =>
         Effect.tryPromise({
-          try: () => listWorkspaceDirectories(input),
+          try: () => listWorkspaceDirectories(input, runGit),
           catch: (cause) => toWorkspaceEntriesError("list workspace directories", cause),
         }),
       searchLocal: (input) =>

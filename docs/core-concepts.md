@@ -212,6 +212,10 @@ complete current list.
 File and explorer panels can expand across the chat area. Restore returns to the
 split layout; closing the last maximized panel returns to the chat. Closing the
 last panel in the ordinary split layout keeps the panel launcher open.
+Explorer hides `.git`, `.svn`, `.hg`, `.jj`, `.DS_Store`, and `Thumbs.db`.
+Gitignored files and folders appear dimmed. Enable **Hide ignored files** in Settings
+to leave them out of the tree; this setting is off by default.
+
 Explorer has separate New File and New Folder buttons that create under the selected
 folder (or the workspace root). Names and renames are edited inline; context
 menus also offer rename and delete. Deleting an open file closes its preview.

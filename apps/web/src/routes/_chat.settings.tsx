@@ -761,6 +761,16 @@ function SettingsRouteView() {
         })}
       </SettingsSection>
 
+      <SettingsSection title="Explorer">
+        {renderBooleanSettingRow({
+          settingKey: "hideIgnoredFiles",
+          title: "Hide ignored files",
+          description: "Hide gitignored files and folders from the Explorer tree.",
+          resetLabel: "hide ignored files",
+          ariaLabel: "Hide ignored files",
+        })}
+      </SettingsSection>
+
       <SettingsSection title="Review">
         {renderBooleanSettingRow({
           settingKey: "showPullRequestDiffColors",

@@ -60,6 +60,7 @@ const WORKSPACE_GIT_HARDENED_CONFIG_ARGS = [
   "-c",
   "core.untrackedCache=false",
 ] as const;
+const EXPLORER_EXCLUDED_NAMES = new Set([".git", ".svn", ".hg", ".jj", ".DS_Store", "Thumbs.db"]);
 const IGNORED_DIRECTORY_NAMES = new Set([
   ".git",
   ".convex",
@@ -495,6 +496,7 @@ async function filterGitIgnoredPaths(
   cwd: string,
   relativePaths: string[],
   runGit: WorkspaceGitRunner,
+  options?: { respectIndex: boolean },
 ): Promise<string[]> {
   if (relativePaths.length === 0) {
     return relativePaths;
@@ -510,7 +512,13 @@ async function filterGitIgnoredPaths(
     }
 
     const checkIgnore = await runGit(
-      [...WORKSPACE_GIT_HARDENED_CONFIG_ARGS, "check-ignore", "--no-index", "-z", "--stdin"],
+      [
+        ...WORKSPACE_GIT_HARDENED_CONFIG_ARGS,
+        "check-ignore",
+        ...(options?.respectIndex ? [] : ["--no-index"]),
+        "-z",
+        "--stdin",
+      ],
       {
         cwd,
         allowNonZeroExit: true,
@@ -1197,6 +1205,7 @@ function resolveDirectoryWithinRoot(cwd: string, relativePath: string): string {
 
 export async function listWorkspaceDirectories(
   input: ProjectListDirectoriesInput,
+  runGit: WorkspaceGitRunner,
 ): Promise<ProjectListDirectoriesResult> {
   const relativePath = input.relativePath?.trim() ?? "";
   const resolvedTarget = relativePath
@@ -1215,7 +1224,7 @@ export async function listWorkspaceDirectories(
           dirent.name.length > 0 &&
           dirent.name !== "." &&
           dirent.name !== ".." &&
-          dirent.name !== ".git" &&
+          !EXPLORER_EXCLUDED_NAMES.has(dirent.name) &&
           (dirent.isDirectory() || (input.includeFiles === true && dirent.isFile())),
       )
       .toSorted((left, right) => {
@@ -1248,7 +1257,22 @@ export async function listWorkspaceDirectories(
     },
   );
 
-  return { entries };
+  const visiblePaths = (await isInsideGitWorkTree(input.cwd, runGit))
+    ? new Set(
+        await filterGitIgnoredPaths(
+          input.cwd,
+          entries.map((entry) => entry.path),
+          runGit,
+          { respectIndex: true },
+        ),
+      )
+    : null;
+  return {
+    entries: entries.map((entry) => ({
+      ...entry,
+      ...(visiblePaths && !visiblePaths.has(entry.path) ? { isGitIgnored: true } : {}),
+    })),
+  };
 }
 
 const LOCAL_SEARCH_MAX_DEPTH = 6;

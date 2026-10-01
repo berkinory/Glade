@@ -4,6 +4,8 @@
 
 ### Improved
 
+- Explorer hides version control and system files and dims ignored files, with an option to hide them.
+
 - New chats start on each provider's latest model instead of a generic default entry.
 - Thinking levels show readable names.
 - Model options use clearer names such as Speed and Default.

@@ -55,6 +55,7 @@ export const ProjectFileSystemEntry = Schema.Struct({
   parentPath: Schema.optional(TrimmedNonEmptyString),
   kind: ProjectEntryKind,
   hasChildren: Schema.optional(Schema.Boolean),
+  isGitIgnored: Schema.optional(Schema.Boolean),
 });
 export type ProjectFileSystemEntry = typeof ProjectFileSystemEntry.Type;
 

@@ -2,28 +2,12 @@ import type { ProjectFileSystemEntry } from "@glade/contracts/workspace/project"
 import { useQueries } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEffect, useRef } from "react";
+import { useAppSettings } from "~/appSettings";
 import { projectListDirectoriesQueryOptions } from "~/lib/projectReactQuery";
 import { ExplorerRow } from "./ExplorerFileRow";
 import { ExplorerInlineName } from "./ExplorerInlineName";
 import { ExplorerLoadingRows } from "./ExplorerLoadingRows";
 import type { WorkspaceExplorerActions } from "./useWorkspaceExplorerActions";
-const EXPLORER_HIDDEN_DIRECTORY_NAMES = new Set([
-  ".cache",
-  ".next",
-  ".nuxt",
-  ".parcel-cache",
-  ".pnpm-store",
-  ".svelte-kit",
-  ".turbo",
-  ".vite",
-  ".yarn",
-  "build",
-  "coverage",
-  "dist",
-  "node_modules",
-  "out",
-  "target",
-]);
 
 type TreeRow =
   | { key: string; depth: number; kind: "entry"; entry: ProjectFileSystemEntry }
@@ -51,6 +35,7 @@ export function WorkspaceExplorerTree(props: {
   actions: WorkspaceExplorerActions;
   onEntryContextMenu: (entry: ProjectFileSystemEntry, position: { x: number; y: number }) => void;
 }) {
+  const { settings } = useAppSettings();
   const scrollRef = useRef<HTMLDivElement>(null);
   const pendingFocus = useRef<number | null>(null);
   const directories = [
@@ -85,11 +70,7 @@ export function WorkspaceExplorerTree(props: {
       rows.push({ key: `create:${path}:${edit.kind}`, kind: "edit", depth });
     }
     for (const entry of query.data?.entries ?? []) {
-      if (
-        entry.kind === "directory" &&
-        (entry.name.startsWith(".glade") || EXPLORER_HIDDEN_DIRECTORY_NAMES.has(entry.name))
-      )
-        continue;
+      if (settings.hideIgnoredFiles && entry.isGitIgnored) continue;
       if (edit?.action === "rename" && edit.entry?.path === entry.path) {
         rows.push({ key: `rename:${entry.path}`, kind: "edit", depth });
         continue;
