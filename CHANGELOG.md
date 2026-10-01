@@ -2,35 +2,28 @@
 
 ## 0.1.1 - Unreleased
 
+### New
+
+- Settings show desktop notification permissions and let you request access or open system settings. ([76c95e3e9](https://github.com/berkinory/Glade/commit/76c95e3e9a6f8564ac8a8719af4db59984893320))
+
 ### Improved
 
-- Settings are easier to navigate, with clearer names, related controls grouped together and more useful search.
-
-- Settings show desktop notification permissions and bring provider configuration into one place.
-
-- Settings and sidebar navigation are simpler, and pinned messages in the Environment panel jump directly to their conversation.
-
-- New chats show models instantly instead of reloading them each time.
-- Speed choices show icons for default and fast.
-- Explorer hides version control and system files and dims ignored files, with an option to hide them.
-- New chats start on each provider's latest model instead of a generic default entry.
-- Thinking levels show readable names.
-- Model options use clearer names such as Speed and Default.
-- Animations use three consistent speeds and feel snappier.
+- Settings have clearer groups and search, with provider configuration together in one place. ([41fc24a8b](https://github.com/berkinory/Glade/commit/41fc24a8ba7b7ff62e5b1a9060bbcd90f541e3be), [76c95e3e9](https://github.com/berkinory/Glade/commit/76c95e3e9a6f8564ac8a8719af4db59984893320), [83fa740a4](https://github.com/berkinory/Glade/commit/83fa740a44e335105d3da3d0a16486d410dec945))
+- New chats load model choices faster and start with the provider’s latest model. ([4aff2b1a5](https://github.com/berkinory/Glade/commit/4aff2b1a5a556cf9ddab43ad91007dbf487fa358), [b1473ad4a](https://github.com/berkinory/Glade/commit/b1473ad4aed852a9b2021e6eabe7a082b70b64b6))
+- Explorer hides system clutter and dims ignored files, with an option to hide them. ([7450c8a9a](https://github.com/berkinory/Glade/commit/7450c8a9adc28f6641e197b68ed87e677e2a2069))
 
 ### Fixed
 
-- Project and chat hover cards now use consistent translucency and background blur.
-- Chats no longer show unrelated Codex process warnings as conversation errors.
-- Replies finish reliably, and switching chats keeps pending messages in progress.
-- The model picker no longer shifts when models finish loading.
-- The default thinking level shown for each model matches what Codex and Claude actually use.
-- Every thinking level a provider offers is available, including newer ones.
-- Codex installed with its standalone installer now gets update notices and one-click updates.
+- Closed security vulnerabilities in embedded browsing and provider configuration parsing. ([9e7565f3d](https://github.com/berkinory/Glade/commit/9e7565f3d6dde13e4fca209a251b64f1b37f215f))
+- Replies finish reliably, and switching chats preserves pending messages. ([58d53913e](https://github.com/berkinory/Glade/commit/58d53913e556907c48c0d2194227a0481b5e87c3))
+- Model thinking options include every supported level and show the provider’s actual default. ([b1473ad4a](https://github.com/berkinory/Glade/commit/b1473ad4aed852a9b2021e6eabe7a082b70b64b6), [53d891529](https://github.com/berkinory/Glade/commit/53d891529bcadee2279f3496d443b304e6f4bc55))
+- Standalone Codex installations receive update notices and one-click updates. ([9992a5839](https://github.com/berkinory/Glade/commit/9992a58395437df8a6583e1b3b289decef31a27d))
+- Shared Codex process warnings no longer appear as errors in unrelated chats. ([eba2fe320](https://github.com/berkinory/Glade/commit/eba2fe320c480de842bc2ecd50e47ac71e15e929))
 
 ### Removed
 
-- Automations are no longer available.
+- Automations and scheduled chats were removed. ([632b712a4](https://github.com/berkinory/Glade/commit/632b712a4fe2a1a0d60c2e79184631be73c31c01))
+- The alternative sidebar layout and project instructions panel were removed. ([83fa740a4](https://github.com/berkinory/Glade/commit/83fa740a44e335105d3da3d0a16486d410dec945))
 
 ## 0.1.0 - 2026-10-01
 
