@@ -20,6 +20,7 @@
 
 ### Fixed
 
+- Project and chat hover cards now use consistent translucency and background blur.
 - Chats no longer show unrelated Codex process warnings as conversation errors.
 - Replies finish reliably, and switching chats keeps pending messages in progress.
 - The model picker no longer shifts when models finish loading.

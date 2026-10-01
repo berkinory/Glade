@@ -386,7 +386,7 @@ export function ComposerModelPicker(props: ComposerModelPickerProps) {
       <ComposerPickerMenuPopup
         align="start"
         side="top"
-        className="w-[min(18.5rem,92vw)] bg-popover/55 [--picker-option-min-h:1.75rem] before:backdrop-blur-3xl before:backdrop-saturate-200"
+        className="w-[min(18.5rem,92vw)] bg-popover/55 [--picker-option-min-h:1.75rem] backdrop-blur-3xl backdrop-saturate-200"
         {...{ [MODEL_PICKER_POPUP_ATTRIBUTE]: "" }}
         onKeyDownCapture={(event) => {
           if (event.key !== "Tab") return;

@@ -2,6 +2,7 @@ import { PreviewCard as PreviewCardPrimitive } from "@base-ui/react/preview-card
 
 import { cn } from "~/lib/utils";
 import { UI_MOTION_POPUP_CLASS } from "~/lib/uiMotion";
+import { APP_TOOLTIP_SURFACE_CLASS_NAME } from "../chat/composerPickerStyles";
 
 // Hover-triggered, interactive card (Base UI PreviewCard). Unlike a Tooltip it
 // stays open while the pointer moves into the popup, so its content can hold
@@ -48,7 +49,8 @@ function PreviewCardPopup({
       >
         <PreviewCardPrimitive.Popup
           className={cn(
-            "origin-(--transform-origin) overflow-hidden rounded-xl border border-[color:var(--color-border-light)] bg-[var(--color-background-surface-under)] text-[var(--color-text-foreground)] shadow-lg",
+            APP_TOOLTIP_SURFACE_CLASS_NAME,
+            "origin-(--transform-origin)",
             UI_MOTION_POPUP_CLASS,
             className,
           )}
