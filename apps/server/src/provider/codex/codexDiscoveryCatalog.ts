@@ -1,4 +1,4 @@
-import { formatEffortLabel } from "@glade/shared/provider/effortLabel";
+import { formatEffortLabel, middleEffort } from "@glade/shared/provider/effortLabel";
 import type {
   ProviderListModelsResult,
   ProviderListPluginsResult,
@@ -155,7 +155,7 @@ export function parseCodexModelListResponse(
   configuredEffort?: string | null,
 ): ProviderListModelsResult["models"] {
   return response.data.map((model) => {
-    const defaultReasoningEffort = configuredEffort ?? model.defaultReasoningEffort;
+    const defaultReasoningEffort = middleEffort(model.supportedReasoningEfforts)?.reasoningEffort;
     const supportedReasoningEfforts = model.supportedReasoningEfforts.map((effort) => {
       const label =
         "displayName" in effort && typeof effort.displayName === "string"
@@ -180,7 +180,7 @@ export function parseCodexModelListResponse(
       isDefault: model.isDefault,
       hidden: model.hidden,
       supportedReasoningEfforts,
-      defaultReasoningEffort,
+      ...(defaultReasoningEffort ? { defaultReasoningEffort } : {}),
       ...(serviceTiers.length ? { serviceTiers } : {}),
       ...(present(model.defaultServiceTier)
         ? { defaultServiceTier: model.defaultServiceTier! }
@@ -191,6 +191,10 @@ export function parseCodexModelListResponse(
           id: "reasoningEffort",
           label: "Reasoning effort",
           type: "select" as const,
+          ...(configuredEffort &&
+          supportedReasoningEfforts.some((effort) => effort.value === configuredEffort)
+            ? { currentValue: configuredEffort }
+            : {}),
           options: supportedReasoningEfforts.map((effort) => ({
             id: effort.value,
             label: effort.label ?? formatEffortLabel(effort.value),

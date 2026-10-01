@@ -5,12 +5,13 @@ import { WS_METHODS } from "@glade/contracts/transport/ws/ws";
 import { WsRpcError } from "@glade/contracts/transport/ws/rpcErrors";
 import { Effect, Ref } from "effect";
 
-export type WsRequestClass = "control" | "standard" | "expensive-read";
+export type WsRequestClass = "control" | "standard" | "expensive-read" | "model-discovery";
 
 const WS_REQUEST_CLASS_LIMITS: Readonly<Record<WsRequestClass, number>> = {
   control: 16,
   standard: 12,
   "expensive-read": 2,
+  "model-discovery": 2,
 };
 
 const CONTROL_METHODS = new Set<string>([
@@ -64,11 +65,11 @@ const EXPENSIVE_READ_METHODS = new Set<string>([
   WS_METHODS.providerListMcpServers,
   WS_METHODS.providerPluginInventory,
   WS_METHODS.providerReadPlugin,
-  WS_METHODS.providerListModels,
   WS_METHODS.providerListAgents,
 ]);
 
 export function classifyWsRequest(method: string): WsRequestClass {
+  if (method === WS_METHODS.providerListModels) return "model-discovery";
   if (CONTROL_METHODS.has(method)) return "control";
   if (EXPENSIVE_READ_METHODS.has(method)) return "expensive-read";
   return "standard";

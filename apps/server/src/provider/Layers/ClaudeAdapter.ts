@@ -66,11 +66,10 @@ function makeClaudeAdapter(options?: ClaudeAdapterLiveOptions) {
         return override(input);
       }
       const { query } = await loadClaudeAgentSdk();
-      // The pinned SDK implements getSettings but leaves it out of the public Query declaration.
       return query({
         prompt: input.prompt,
         options: input.options,
-      }) as unknown as ClaudeQueryRuntime;
+      });
     };
     const forkNativeSession = async (
       sessionId: string,

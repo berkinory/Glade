@@ -2,6 +2,10 @@
 
 ## 0.1.2 - Unreleased
 
+### Improved
+
+- Models load faster on first use, with a balanced initial reasoning effort when you have not chosen one.
+
 ### Fixed
 
 - The message input no longer briefly changes size when switching chats.

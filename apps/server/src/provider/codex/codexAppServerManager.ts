@@ -2641,29 +2641,35 @@ export class CodexAppServerManager extends EventEmitter<CodexAppServerManagerEve
 
   async listModels(threadId?: string, cwd?: string): Promise<ProviderListModelsResult> {
     const context = await this.resolveContextForDiscovery(threadId, cwd);
-    const config = await this.sendRequest<ConfigReadResponse>(context, "config/read", {
+    const config = this.sendRequest<ConfigReadResponse>(context, "config/read", {
       cwd: cwd ?? context.session.cwd ?? null,
       includeLayers: false,
     });
-    return this.readModelCatalog(context, config.config.model_reasoning_effort);
+    return this.readModelCatalog(
+      context,
+      config.then((result) => result.config.model_reasoning_effort),
+    );
   }
 
   private async readModelCatalog(
     context: CodexSessionContext,
-    configuredEffort?: string | null,
+    configuredEffort?: Promise<string | null | undefined>,
   ): Promise<ProviderListModelsResult> {
     const deadline = Date.now() + 20_000;
     const seenCursors = new Set<string>();
     const modelsById = new Map<string, ProviderListModelsResult["models"][number]>();
     let cursor: string | null = null;
     do {
-      const response: ModelListResponse = await this.sendRequest<ModelListResponse>(
-        context,
-        "model/list",
-        { cursor, limit: 100, includeHidden: true },
-        Math.max(1, deadline - Date.now()),
-      );
-      for (const model of parseCodexModelListResponse(response, configuredEffort)) {
+      const [response, effort]: [ModelListResponse, string | null | undefined] = await Promise.all([
+        this.sendRequest<ModelListResponse>(
+          context,
+          "model/list",
+          { cursor, limit: 100, includeHidden: true },
+          Math.max(1, deadline - Date.now()),
+        ),
+        configuredEffort,
+      ]);
+      for (const model of parseCodexModelListResponse(response, effort)) {
         if (!modelsById.has(model.slug)) modelsById.set(model.slug, model);
       }
       cursor = response.nextCursor;

@@ -20,7 +20,7 @@ describe("WsRequestAdmission", () => {
     expect(classifyWsRequest(WS_METHODS.terminalAckOutput)).toBe("control");
   });
 
-  it("reserves independent capacity for control traffic during an expensive-read flood", async () => {
+  it("reserves bounded model discovery and control capacity during an expensive-read flood", async () => {
     await Effect.runPromise(
       Effect.gen(function* () {
         const admission = yield* makeWsRequestAdmission;
@@ -37,15 +37,22 @@ describe("WsRequestAdmission", () => {
 
         const control = yield* admission.acquire(1, WS_METHODS.terminalAckOutput);
         expect(control.requestClass).toBe("control");
+        const modelOne = yield* admission.acquire(1, WS_METHODS.providerListModels);
+        const modelTwo = yield* admission.acquire(1, WS_METHODS.providerListModels);
+        expect(
+          yield* admission.acquire(1, WS_METHODS.providerListModels).pipe(Effect.exit),
+        ).toMatchObject({ _tag: "Failure" });
         yield* admission.release(first);
         yield* admission.release(first);
         yield* admission.release(second);
         yield* admission.release(control);
+        yield* admission.release(modelOne);
+        yield* admission.release(modelTwo);
         expect(yield* admission.snapshot).toMatchObject({
           active: 0,
-          admittedTotal: 3,
-          releasedTotal: 3,
-          rejectedTotal: 1,
+          admittedTotal: 5,
+          releasedTotal: 5,
+          rejectedTotal: 2,
         });
       }),
     );

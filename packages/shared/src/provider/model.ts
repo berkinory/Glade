@@ -9,6 +9,7 @@ import {
 } from "@glade/contracts/provider/model";
 import { type ModelSelection } from "@glade/contracts/provider/sessionPolicy";
 import { type ProviderKind } from "@glade/contracts/core/baseSchemas";
+import { middleEffort } from "./effortLabel";
 
 export interface SelectableModelOption {
   slug: string;
@@ -131,9 +132,17 @@ function cloneProviderOptionDescriptor(
   descriptor: ProviderOptionDescriptor,
 ): ProviderOptionDescriptor {
   if (descriptor.type === "select") {
+    const effortDefault =
+      descriptor.id === "effort" || descriptor.id === "reasoningEffort"
+        ? middleEffort(descriptor.options)?.id
+        : undefined;
     return {
       ...descriptor,
-      options: descriptor.options.map((option) => ({ ...option })),
+      options: descriptor.options.map((option) => {
+        if (effortDefault === undefined) return { ...option };
+        const { isDefault: _isDefault, ...choice } = option;
+        return { ...choice, ...(option.id === effortDefault ? { isDefault: true as const } : {}) };
+      }),
       ...(descriptor.promptInjectedValues
         ? { promptInjectedValues: [...descriptor.promptInjectedValues] }
         : {}),

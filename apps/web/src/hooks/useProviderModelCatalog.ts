@@ -39,7 +39,6 @@ export function useProviderModelCatalog(input: {
   cwd?: string | null;
   modelHintByProvider?: Partial<Record<ProviderKind, string | null>>;
   prefetchProviders?: ReadonlyArray<ProviderKind>;
-  agentDiscoveryPolicy?: "selected" | "eager-core";
 }): ProviderModelCatalog {
   const { selectedProvider, discoveryEnabled, modelHintByProvider, cwd } = input;
   const { settings, serverSettings } = useAppSettings();
@@ -108,7 +107,7 @@ export function useProviderModelCatalog(input: {
       provider: "claudeAgent",
       binaryPath: settings.claudeBinaryPath || null,
       cwd: cwd ?? null,
-      enabled: shouldDiscoverProvider("claudeAgent", input.agentDiscoveryPolicy === "eager-core"),
+      enabled: shouldDiscoverProvider("claudeAgent") && !claudeQuery.isPending,
     }),
   );
   const codexAgentsQuery = useQuery(
@@ -116,7 +115,7 @@ export function useProviderModelCatalog(input: {
       provider: "codex",
       binaryPath: settings.codexBinaryPath || null,
       cwd: cwd ?? null,
-      enabled: shouldDiscoverProvider("codex", input.agentDiscoveryPolicy === "eager-core"),
+      enabled: shouldDiscoverProvider("codex") && !codexQuery.isPending,
     }),
   );
 

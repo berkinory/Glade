@@ -5,11 +5,10 @@ import type { QueryClient } from "@tanstack/react-query";
 
 import type { AppSettings } from "../appSettings";
 import type { DraftThreadEnvMode } from "../composerDraftDomain";
-import { findProviderStatus, resolveAvailableProviderPreference } from "./providerAvailability";
+import { resolveAvailableProviderPreference } from "./providerAvailability";
 import { resolveProviderDiscoveryCwd } from "./providerDiscovery";
 import {
   prioritizeProviderModelDiscovery,
-  providerAgentsQueryOptions,
   providerComposerCapabilitiesQueryOptions,
   providerDiscoveryQueryKeys,
   providerModelsQueryOptions,
@@ -19,8 +18,6 @@ export type ProviderModelPrefetchSettings = Pick<
   AppSettings,
   "defaultProvider" | "claudeBinaryPath" | "codexBinaryPath"
 >;
-
-const NEW_THREAD_MODEL_PREFETCH_PROVIDERS: ReadonlyArray<ProviderKind> = ["codex", "claudeAgent"];
 
 const NEW_THREAD_MODEL_PREFETCH_STALE_TIME_MS = 30 * 60_000;
 
@@ -108,75 +105,34 @@ function providerModelsPrefetchQueryOptions(
   }
 }
 
-function providerAgentsPrefetchQueryOptions(input: {
-  provider: ProviderKind;
-  settings: ProviderModelPrefetchSettings;
-  cwd?: string | null;
-}) {
-  const { provider } = input;
-
-  switch (provider) {
-    case "claudeAgent":
-      return providerAgentsQueryOptions({ provider: "claudeAgent" });
-    case "codex":
-      return providerAgentsQueryOptions({ provider: "codex" });
-    default:
-      return null;
-  }
-}
-
 function prefetchProviderModelsForNewThread(
   queryClient: QueryClient,
   input: {
     settings: ProviderModelPrefetchSettings;
     cwd?: string | null;
-    providers?: ReadonlyArray<ProviderKind>;
-    foregroundProvider?: ProviderKind;
+    provider: ProviderKind;
   },
 ): void {
   const cwd = input.cwd ?? null;
-  const providers = input.providers ?? NEW_THREAD_MODEL_PREFETCH_PROVIDERS;
+  const provider = input.provider;
+  const modelsOptions = providerModelsPrefetchQueryOptions(queryClient, {
+    provider,
+    settings: input.settings,
+    cwd,
+    priority: "prefetch",
+  });
+  void queryClient.prefetchQuery({
+    ...modelsOptions,
+    retry: 0,
+    staleTime: NEW_THREAD_MODEL_PREFETCH_STALE_TIME_MS,
+    gcTime: NEW_THREAD_MODEL_PREFETCH_GC_TIME_MS,
+  });
 
-  for (const provider of providers) {
-    const modelsOptions = providerModelsPrefetchQueryOptions(queryClient, {
-      provider,
-      settings: input.settings,
-      cwd,
-      priority: provider === (input.foregroundProvider ?? providers[0]) ? "prefetch" : "background",
-    });
-    if (cwd !== null) {
-      void queryClient.prefetchQuery({
-        ...providerModelsPrefetchQueryOptions(queryClient, { provider, settings: input.settings }),
-        retry: 0,
-      });
-    }
-    void queryClient.prefetchQuery({
-      ...modelsOptions,
-      retry: 0,
-      staleTime: NEW_THREAD_MODEL_PREFETCH_STALE_TIME_MS,
-      gcTime: NEW_THREAD_MODEL_PREFETCH_GC_TIME_MS,
-    });
-
-    const agentsOptions = providerAgentsPrefetchQueryOptions({
-      provider,
-      settings: input.settings,
-      cwd,
-    });
-    if (agentsOptions) {
-      void queryClient.prefetchQuery({
-        ...agentsOptions,
-        retry: 0,
-        staleTime: NEW_THREAD_MODEL_PREFETCH_STALE_TIME_MS,
-        gcTime: NEW_THREAD_MODEL_PREFETCH_GC_TIME_MS,
-      });
-    }
-
-    void queryClient.prefetchQuery({
-      ...providerComposerCapabilitiesQueryOptions(provider),
-      retry: 0,
-      gcTime: NEW_THREAD_MODEL_PREFETCH_GC_TIME_MS,
-    });
-  }
+  void queryClient.prefetchQuery({
+    ...providerComposerCapabilitiesQueryOptions(provider),
+    retry: 0,
+    gcTime: NEW_THREAD_MODEL_PREFETCH_GC_TIME_MS,
+  });
 }
 
 export function prefetchModelsForNewThread(
@@ -229,47 +185,13 @@ export function prefetchModelsForNewThread(
     projectCwd: input.projectCwd,
     serverCwd: input.serverCwd,
   });
-  const hiddenProviderSet = new Set(input.hiddenProviders ?? []);
-  const statusesReconciled = input.statusesReconciled === true;
-  const providerStatuses = input.providerStatuses ?? EMPTY_PROVIDER_STATUSES;
-  const isProviderWarmable = (provider: ProviderKind): boolean => {
-    if (input.serverSettings?.providers[provider]?.enabled === false) {
-      return false;
-    }
-
-    if (provider === selectedProvider) {
-      return true;
-    }
-    if (hiddenProviderSet.has(provider)) {
-      return false;
-    }
-
-    if (statusesReconciled) {
-      const status = findProviderStatus(providerStatuses, provider);
-      if (status !== null && status.available === false) {
-        return false;
-      }
-    }
-    return true;
-  };
-  const providers = NEW_THREAD_MODEL_PREFETCH_PROVIDERS.filter(isProviderWarmable);
-  const orderedProviders = !isProviderWarmable(selectedProvider)
-    ? providers
-    : [selectedProvider, ...providers.filter((provider) => provider !== selectedProvider)];
-  const desiredModelQueryKeys = orderedProviders.map(
-    (provider) =>
-      providerModelsPrefetchQueryOptions(queryClient, {
-        provider,
-        settings: input.settings,
-        cwd,
-      }).queryKey,
-  );
-  const selectedModelQueryKey = desiredModelQueryKeys.find(
-    (queryKey) => queryKey[2] === selectedProvider,
-  );
-  if (selectedModelQueryKey) {
-    prioritizeProviderModelDiscovery(selectedModelQueryKey, "prefetch");
-  }
+  if (input.serverSettings?.providers[selectedProvider]?.enabled === false) return;
+  const selectedModelQueryKey = providerModelsPrefetchQueryOptions(queryClient, {
+    provider: selectedProvider,
+    settings: input.settings,
+    cwd,
+  }).queryKey;
+  prioritizeProviderModelDiscovery(selectedModelQueryKey, "prefetch");
 
   // Include both fetching and offline-paused queries so stale hover work cannot revive on reconnect
   // and consume native admission.
@@ -278,17 +200,15 @@ export function prefetchModelsForNewThread(
     type: "inactive",
     predicate: (query) =>
       query.queryKey[5] !== null &&
-      !desiredModelQueryKeys.some(
-        (queryKey) =>
-          query.queryKey.length === queryKey.length &&
-          query.queryKey.every((value, index) => Object.is(value, queryKey[index])),
+      !(
+        query.queryKey.length === selectedModelQueryKey.length &&
+        query.queryKey.every((value, index) => Object.is(value, selectedModelQueryKey[index]))
       ),
   });
 
   prefetchProviderModelsForNewThread(queryClient, {
     settings: input.settings,
     cwd,
-    providers: orderedProviders,
-    foregroundProvider: selectedProvider,
+    provider: selectedProvider,
   });
 }

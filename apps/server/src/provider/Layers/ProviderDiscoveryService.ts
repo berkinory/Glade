@@ -357,12 +357,7 @@ const make = Effect.gen(function* () {
         contextIdentity: context.identity,
         workspaceIdentity: context.workspaceIdentity,
       };
-      const global = yield* modelDiscoveryCache.lookup(
-        { ...key, cwd: null, workspaceIdentity: null },
-        discover(serverConfig.homeDir),
-      );
-      if (!request.cwd) return global;
-      return yield* modelDiscoveryCache.lookup(key, discover(request.cwd));
+      return yield* modelDiscoveryCache.lookup(key, discover(request.cwd ?? serverConfig.homeDir));
     });
 
   const listAgents: ProviderDiscoveryServiceShape["listAgents"] = (input) =>

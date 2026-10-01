@@ -24,7 +24,7 @@ import { readClaudeSessionParentUuid } from "../claudeProjectImport.ts";
 import { type EventNdjsonLogger } from "../../Layers/EventNdjsonLogger.ts";
 
 export interface ClaudeQueryRuntime extends AsyncIterable<SDKMessage> {
-  readonly interrupt: () => Promise<void>;
+  readonly interrupt: () => Promise<unknown>;
   readonly stopTask: (taskId: string) => Promise<void>;
   readonly backgroundTasks: (toolUseId?: string) => Promise<boolean>;
   readonly setModel: (model?: string) => Promise<void>;
@@ -37,8 +37,6 @@ export interface ClaudeQueryRuntime extends AsyncIterable<SDKMessage> {
     readonly detail?: "summary" | "full";
   }) => Promise<SDKControlGetContextUsageResponse>;
   readonly supportedCommands: () => Promise<SlashCommand[]>;
-  // The pinned SDK implements getSettings, but omits it from its public Query type.
-  readonly getSettings: () => Promise<unknown>;
   readonly supportedModels: () => Promise<ModelInfo[]>;
   readonly initializationResult: () => Promise<SDKControlInitializeResponse>;
   readonly mcpServerStatus: () => Promise<McpServerStatus[]>;

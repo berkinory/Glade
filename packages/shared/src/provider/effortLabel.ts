@@ -1,3 +1,7 @@
+export function middleEffort<T>(levels: readonly T[]): T | undefined {
+  return levels[Math.floor((levels.length - 1) / 2)];
+}
+
 export function formatEffortLabel(value: string): string {
   return value
     .split(/[-_\s]+/u)

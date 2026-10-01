@@ -1,4 +1,4 @@
-import { formatEffortLabel } from "@glade/shared/provider/effortLabel";
+import { formatEffortLabel, middleEffort } from "@glade/shared/provider/effortLabel";
 import type { ModelInfo, PermissionMode } from "@anthropic-ai/claude-agent-sdk";
 import { type ProviderListModelsResult } from "@glade/contracts/provider/providerDiscovery";
 
@@ -47,10 +47,8 @@ export function toPermissionMode(value: unknown): PermissionMode | undefined {
   }
 }
 
-function mapClaudeModelInfo(
-  model: ModelInfo,
-  defaultEffort?: string | null,
-): ProviderListModelsResult["models"][number] {
+function mapClaudeModelInfo(model: ModelInfo): ProviderListModelsResult["models"][number] {
+  const defaultEffort = middleEffort(model.supportedEffortLevels ?? []);
   const effortOptions = model.supportsEffort
     ? (model.supportedEffortLevels ?? []).map((level) => ({
         id: level,
@@ -96,21 +94,20 @@ export function selectedClaudeModelInfo(
 
 export function mapClaudeModelCatalog(
   models: ReadonlyArray<ModelInfo>,
-  defaultEffortByModel: Readonly<Record<string, string | null>> = {},
 ): ProviderListModelsResult["models"] {
   const defaultEntry = models.find((model) => model.value === "default");
   const defaultModel = defaultEntry?.resolvedModel;
   const catalog = models
     .filter((model) => model.value !== "default")
     .map((model) => ({
-      ...mapClaudeModelInfo(model, defaultEffortByModel[model.value]),
+      ...mapClaudeModelInfo(model),
       ...(defaultModel && claudeModelIdentifiers(model).includes(defaultModel)
         ? { slug: defaultModel, isDefault: true }
         : {}),
     }));
   if (defaultModel && defaultEntry && !catalog.some((model) => model.isDefault)) {
     catalog.unshift({
-      ...mapClaudeModelInfo(defaultEntry, defaultEffortByModel[defaultEntry.value]),
+      ...mapClaudeModelInfo(defaultEntry),
       slug: defaultModel,
       name: defaultModel,
       isDefault: true,

@@ -133,7 +133,6 @@ export function useChatProviderModels({
     discoveryEnabled: isModelPickerOpen,
     cwd: providerModelDiscoveryCwd,
     modelHintByProvider: composerModelHintByProvider,
-    agentDiscoveryPolicy: "eager-core",
   });
   const { modelOptions: composerModelOptions, selectedModel } = useEffectiveComposerModelState({
     threadId,

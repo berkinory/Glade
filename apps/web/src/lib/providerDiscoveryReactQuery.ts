@@ -40,12 +40,12 @@ const EMPTY_PLUGINS_RESULT: ProviderListPluginsResult = {
   cached: false,
 };
 
-// Keep model discovery to one request at a time so opening the provider picker cannot reject most
-// catalogs before their CLIs even run. Foreground requests may move ahead of queued warming, but
-// never interrupt the discovery that already owns the single model slot.
+// Each provider owns one slot, within the server's two-request model-discovery lane.
+// Cancellation settles the observer, but cannot release native work still running on the server.
 type ProviderModelDiscoveryPriority = "background" | "prefetch" | "foreground";
 
 interface ProviderModelDiscoveryTask {
+  readonly provider: ProviderKind;
   readonly queryKey: readonly unknown[];
   priority: ProviderModelDiscoveryPriority;
   priorityOrder: number;
@@ -59,7 +59,7 @@ interface ProviderModelDiscoveryTask {
 const providerModelDiscoveryQueue: ProviderModelDiscoveryTask[] = [];
 
 const foregroundModelDiscoveryOwners = new Set<readonly unknown[]>();
-let providerModelDiscoveryRunning = false;
+const runningModelDiscoveryProviders = new Set<ProviderKind>();
 let providerModelDiscoveryPriorityOrder = 0;
 
 const PROVIDER_MODEL_DISCOVERY_PRIORITY_RANK: Record<ProviderModelDiscoveryPriority, number> = {
@@ -86,13 +86,17 @@ function abortReason(signal: AbortSignal): unknown {
 }
 
 function drainProviderModelDiscoveryQueue(): void {
-  if (providerModelDiscoveryRunning) return;
+  if (runningModelDiscoveryProviders.size >= 2) return;
 
-  let nextIndex = 0;
-  for (let index = 1; index < providerModelDiscoveryQueue.length; index += 1) {
+  let nextIndex = -1;
+  for (let index = 0; index < providerModelDiscoveryQueue.length; index += 1) {
     const candidate = providerModelDiscoveryQueue[index];
     const current = providerModelDiscoveryQueue[nextIndex];
-    if (!candidate || !current) continue;
+    if (!candidate || runningModelDiscoveryProviders.has(candidate.provider)) continue;
+    if (!current) {
+      nextIndex = index;
+      continue;
+    }
     const candidateRank = PROVIDER_MODEL_DISCOVERY_PRIORITY_RANK[candidate.priority];
     const currentRank = PROVIDER_MODEL_DISCOVERY_PRIORITY_RANK[current.priority];
     if (
@@ -104,6 +108,7 @@ function drainProviderModelDiscoveryQueue(): void {
       nextIndex = index;
     }
   }
+  if (nextIndex < 0) return;
   const task = providerModelDiscoveryQueue.splice(nextIndex, 1)[0];
   if (!task) return;
 
@@ -114,16 +119,14 @@ function drainProviderModelDiscoveryQueue(): void {
     return;
   }
 
-  providerModelDiscoveryRunning = true;
+  runningModelDiscoveryProviders.add(task.provider);
   let taskSettled = false;
   const finishTask = (settle: () => void) => {
     if (taskSettled) return;
     taskSettled = true;
     clearTimeout(timeoutId);
     task.signal.removeEventListener("abort", onTaskAbort);
-    providerModelDiscoveryRunning = false;
     settle();
-    drainProviderModelDiscoveryQueue();
   };
   const onTaskAbort = () => finishTask(() => task.reject(abortReason(task.signal)));
   const timeoutId = setTimeout(
@@ -136,7 +139,12 @@ function drainProviderModelDiscoveryQueue(): void {
     .then(
       (value) => finishTask(() => task.resolve(value)),
       (reason) => finishTask(() => task.reject(reason)),
-    );
+    )
+    .finally(() => {
+      runningModelDiscoveryProviders.delete(task.provider);
+      drainProviderModelDiscoveryQueue();
+    });
+  drainProviderModelDiscoveryQueue();
 }
 
 export function prioritizeProviderModelDiscovery(
@@ -174,6 +182,7 @@ export function prioritizeProviderModelDiscovery(
 }
 
 function serializeProviderModelDiscovery<T>(
+  provider: ProviderKind,
   queryKey: readonly unknown[],
   signal: AbortSignal,
   priority: ProviderModelDiscoveryPriority,
@@ -192,6 +201,7 @@ function serializeProviderModelDiscovery<T>(
       ? "foreground"
       : priority;
     providerModelDiscoveryQueue.push({
+      provider,
       queryKey,
       priority: effectivePriority,
       priorityOrder: effectivePriority === "background" ? 0 : ++providerModelDiscoveryPriorityOrder,
@@ -381,6 +391,7 @@ export function providerModelsQueryOptions(
     queryKey,
     queryFn: ({ signal }): Promise<ProviderListModelsResult> =>
       serializeProviderModelDiscovery(
+        input.provider,
         queryKey,
         signal,
         input.priority ?? "background",

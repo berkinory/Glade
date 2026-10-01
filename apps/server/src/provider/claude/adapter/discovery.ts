@@ -137,7 +137,7 @@ export function makeClaudeDiscovery(input: {
     env: NodeJS.ProcessEnv,
     binaryPath: string,
     discover: (queryRuntime: ClaudeQueryRuntime) => Promise<T>,
-    extraOptions?: Pick<ClaudeQueryOptions, "plugins" | "skills" | "model">,
+    extraOptions?: Pick<ClaudeQueryOptions, "plugins" | "skills">,
   ): Promise<T> {
     // Never spawn another discovery process until every previously unproven process tree has been
     // reaped successfully.
@@ -195,46 +195,19 @@ export function makeClaudeDiscovery(input: {
         ),
     );
 
-  const readAppliedEffort = async (queryRuntime: ClaudeQueryRuntime) =>
-    Schema.decodeUnknownSync(
-      Schema.Struct({
-        applied: Schema.Struct({ model: Schema.String, effort: Schema.NullOr(Schema.String) }),
-      }),
-    )(await queryRuntime.getSettings()).applied;
-
   const discoverModelsViaTemporaryProcess = async (
     cwd: string,
     env: NodeJS.ProcessEnv,
     binaryPath: string,
   ): Promise<ProviderListModelsResult> => {
-    const { models, applied } = await discoverViaTemporaryProcess(
+    const models = await discoverViaTemporaryProcess(
       cwd,
       env,
       binaryPath,
-      async (queryRuntime) => ({
-        models: (await queryRuntime.initializationResult()).models,
-        applied: await readAppliedEffort(queryRuntime),
-      }),
+      async (queryRuntime) => (await queryRuntime.initializationResult()).models,
     );
-    const defaultEffortByModel: Record<string, string | null> = { [applied.model]: applied.effort };
-    for (const model of models) {
-      if (!model.supportsEffort) continue;
-      const resolvedModel = model.resolvedModel ?? model.value;
-      if (!(resolvedModel in defaultEffortByModel)) {
-        // setModel validates account access; startup discovery can inspect effort without a paid request.
-        const modelSettings = await discoverViaTemporaryProcess(
-          cwd,
-          env,
-          binaryPath,
-          readAppliedEffort,
-          { model: resolvedModel },
-        );
-        defaultEffortByModel[resolvedModel] = modelSettings.effort;
-      }
-      defaultEffortByModel[model.value] = defaultEffortByModel[resolvedModel]!;
-    }
     return {
-      models: mapClaudeModelCatalog(models, defaultEffortByModel),
+      models: mapClaudeModelCatalog(models),
       source: "sdk",
       cached: false,
     };
