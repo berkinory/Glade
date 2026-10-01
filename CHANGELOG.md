@@ -5,17 +5,13 @@
 ### New
 
 - You can approve an action that Codex auto-review denied.
-
 - Manage native MCP servers and installed provider plugins from Settings. ([748d6d5cf](https://github.com/berkinory/Glade/commit/748d6d5cfe806e3b423f8bac4128cf7594d34637))
 
 ### Removed
 
 - Debug mode was removed.
-
 - Plan mode and proposed plans were removed.
-
 - Thread goals were removed.
-
 - The device simulator panel and agent device controls were removed.
 - The Kanban board was removed.
 - Claude cache-review prompts, context overrides, and the Ultrathink picker were removed; context management stays with Claude Code. ([e8adbfda4](https://github.com/berkinory/Glade/commit/e8adbfda42ab44edc3ecce4038e19a4f7d433026))
@@ -26,9 +22,7 @@
 ### Improved
 
 - Codex chats share one background process and use less memory.
-
 - Terminals open faster and load image support only when needed.
-
 - Streaming replies write far less to disk.
 
 - Diffs open faster and stay responsive in large changes.
