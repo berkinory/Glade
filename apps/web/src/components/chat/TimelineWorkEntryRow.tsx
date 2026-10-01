@@ -595,7 +595,7 @@ export const TimelineWorkEntryRow = memo(function TimelineWorkEntryRow(props: {
             const canOpenEditedDiff = Boolean(turnId && onOpenTurnDiff);
             const canOpenEditedRow = canOpenToolDetails || canOpenEditedDiff;
             const editedRowClassName = cn(
-              "group/file-row flex w-full max-w-full items-center text-left transition-colors duration-120",
+              "group/file-row flex w-full max-w-full items-center text-left transition-colors duration-100",
               compact ? "gap-1.5" : "gap-2",
               canOpenEditedRow ? "cursor-pointer focus-visible:outline-none" : "cursor-default",
             );

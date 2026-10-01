@@ -9,6 +9,7 @@
 - New chats start on each provider's latest model instead of a generic default entry.
 - Thinking levels show readable names.
 - Model options use clearer names such as Speed and Default.
+- Animations use three consistent speeds and feel snappier.
 
 ### Fixed
 

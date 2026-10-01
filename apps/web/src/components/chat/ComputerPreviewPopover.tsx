@@ -301,7 +301,7 @@ function ComputerPreviewViewport(props: {
         </div>
       ) : null}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute top-2 right-2 translate-y-1 opacity-0 transition-[opacity,transform] duration-120 ease-out group-focus-within:translate-y-0 group-focus-within:opacity-100 group-hover:translate-y-0 group-hover:opacity-100 motion-reduce:translate-y-0 motion-reduce:transition-none pointer-coarse:translate-y-0 pointer-coarse:opacity-100">
+        <div className="absolute top-2 right-2 translate-y-1 opacity-0 transition-[opacity,transform] duration-100 ease-out group-focus-within:translate-y-0 group-focus-within:opacity-100 group-hover:translate-y-0 group-hover:opacity-100 motion-reduce:translate-y-0 motion-reduce:transition-none pointer-coarse:translate-y-0 pointer-coarse:opacity-100">
           <div className="pointer-events-auto flex items-center gap-1 rounded-full border border-white/20 bg-gradient-to-b from-white/25 via-white/10 to-white/[0.06] p-1 shadow-[inset_0_1px_0_rgb(255_255_255/0.28),0_8px_24px_-8px_rgb(0_0_0/0.45)] backdrop-blur-md backdrop-saturate-150">
             {floating ? (
               <button
@@ -309,7 +309,7 @@ function ComputerPreviewViewport(props: {
                 onClick={float.dock}
                 title="Dock the preview back into the chat rail"
                 aria-label="Dock the computer preview back into the chat rail"
-                className="grid size-7 place-items-center rounded-full text-white drop-shadow-[0_1px_2px_rgb(0_0_0/0.6)] transition-colors duration-120 hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none"
+                className="grid size-7 place-items-center rounded-full text-white drop-shadow-[0_1px_2px_rgb(0_0_0/0.6)] transition-colors duration-100 hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none"
               >
                 <PanelCollapseIcon className="size-4" />
               </button>
@@ -319,7 +319,7 @@ function ComputerPreviewViewport(props: {
                 onClick={float.popOut}
                 title="Float the preview as a draggable window"
                 aria-label="Float the computer preview as a draggable window"
-                className="grid size-7 place-items-center rounded-full text-white drop-shadow-[0_1px_2px_rgb(0_0_0/0.6)] transition-colors duration-120 hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none"
+                className="grid size-7 place-items-center rounded-full text-white drop-shadow-[0_1px_2px_rgb(0_0_0/0.6)] transition-colors duration-100 hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none"
               >
                 <PanelExpandIcon className="size-4" />
               </button>
@@ -340,7 +340,7 @@ function ComputerPreviewHideButton(props: { readonly threadId: ThreadId }) {
       onClick={() => hidePreviewForTask(props.threadId)}
       title="Hide the preview for the rest of this task"
       aria-label="Hide the computer preview for the rest of this task"
-      className="grid size-7 place-items-center rounded-full text-white drop-shadow-[0_1px_2px_rgb(0_0_0/0.6)] transition-colors duration-120 hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none"
+      className="grid size-7 place-items-center rounded-full text-white drop-shadow-[0_1px_2px_rgb(0_0_0/0.6)] transition-colors duration-100 hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none"
     >
       <XIcon className="size-4" />
     </button>

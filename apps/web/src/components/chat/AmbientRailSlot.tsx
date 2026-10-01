@@ -21,7 +21,7 @@ export function AmbientRailSlot(props: {
   return (
     <div
       ref={slotRef}
-      className="transition-[margin] duration-180 ease-out motion-reduce:transition-none"
+      className="transition-[margin] duration-120 ease-out motion-reduce:transition-none"
       style={{ marginTop: props.envOpen ? 0 : -envHeight }}
     >
       {props.children}

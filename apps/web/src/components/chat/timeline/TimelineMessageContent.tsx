@@ -363,7 +363,7 @@ export const UserMessageCollapsibleText = memo(function UserMessageCollapsibleTe
         <button
           type="button"
           data-scroll-anchor-ignore
-          className="mt-1 block text-muted-foreground/55 transition-colors duration-120 hover:text-foreground/72"
+          className="mt-1 block text-muted-foreground/55 transition-colors duration-100 hover:text-foreground/72"
           style={{ fontSize: `${props.chatFontSizePx}px` }}
           aria-expanded={props.expanded}
           aria-controls={contentId}

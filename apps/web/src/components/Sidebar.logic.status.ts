@@ -40,7 +40,7 @@ export function resolveThreadRowTrailingReserveClass(input: {
   hasTrailingGlyph: boolean;
 }): string {
   const hoverReserve =
-    "transition-[padding] duration-120 ease-out group-hover/thread-row:pr-[4.75rem] group-focus-within/thread-row:pr-[4.75rem]";
+    "transition-[padding] duration-100 ease-out group-hover/thread-row:pr-[4.75rem] group-focus-within/thread-row:pr-[4.75rem]";
   const { metaChipCount, hasTrailingGlyph } = input;
   if (metaChipCount <= 0) {
     return cn(hasTrailingGlyph ? "pr-[1.75rem]" : "pr-2", hoverReserve);

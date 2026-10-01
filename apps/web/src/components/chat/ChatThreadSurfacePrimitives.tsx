@@ -70,7 +70,7 @@ export function ChatMountLoader() {
     >
       {}
       <style>{`@keyframes chat-mount-loader-in { from { opacity: 0; } to { opacity: 1; } }`}</style>
-      <div className="opacity-0 [animation:chat-mount-loader-in_200ms_ease-out_150ms_forwards] motion-reduce:animate-none motion-reduce:opacity-100">
+      <div className="opacity-0 [animation:chat-mount-loader-in_120ms_ease-out_150ms_forwards] motion-reduce:animate-none motion-reduce:opacity-100">
         <Spinner className="size-5 text-muted-foreground" />
       </div>
     </div>

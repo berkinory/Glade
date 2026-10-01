@@ -4,7 +4,7 @@
 
 @theme inline {
   /* Default hover/focus feedback. Larger movements use the shared motion tiers. */
-  --default-transition-duration: 120ms;
+  --default-transition-duration: 100ms;
   --default-transition-timing-function: ease-out;
   --animate-skeleton: skeleton 2s -1s infinite linear;
   /* Status spinners and shimmer labels share 50ms steps (20 fps), aligned by
@@ -179,7 +179,7 @@
     border-radius: 0;
     /* Fade the seam divider with the slide (collapsed rule sets opacity:0) — `display`
        can't transition, so opacity is what keeps this in step with the animation. */
-    transition: opacity 180ms ease-out;
+    transition: opacity 120ms ease-out;
   }
 
   /* A single inset stroke produces the straight content edge without adding
@@ -309,7 +309,7 @@
 }
 
 .chat-pane-enter {
-  animation: chat-pane-enter 140ms ease-out;
+  animation: chat-pane-enter 120ms ease-out;
   will-change: opacity;
 }
 
@@ -336,7 +336,7 @@
 }
 
 .composer-trigger-label-enter {
-  animation: composer-trigger-label-enter 120ms ease-out;
+  animation: composer-trigger-label-enter 100ms ease-out;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -362,7 +362,7 @@
 }
 
 .sidebar-surface-enter {
-  animation: sidebar-surface-enter 160ms ease-out both;
+  animation: sidebar-surface-enter 120ms ease-out both;
   will-change: opacity, transform;
 }
 
@@ -387,7 +387,7 @@
 }
 
 .chat-message-send-enter {
-  animation: chat-message-send-enter 160ms ease-out both;
+  animation: chat-message-send-enter 120ms ease-out both;
   will-change: opacity, transform;
 }
 
@@ -429,8 +429,8 @@
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   cursor: pointer;
   transition:
-    transform 120ms ease,
-    box-shadow 120ms ease;
+    transform 100ms ease,
+    box-shadow 100ms ease;
 }
 
 .theme-slider::-moz-range-thumb {
@@ -1354,8 +1354,8 @@ label:has(> select#reasoning-effort) select {
   background: var(--color-background-button-secondary);
   color: color-mix(in srgb, var(--color-text-foreground) 70%, transparent);
   transition:
-    background-color 120ms ease,
-    color 120ms ease;
+    background-color 100ms ease,
+    color 100ms ease;
 }
 
 .editor-file-viewer__comment-add:hover .editor-file-viewer__comment-add-glyph {
@@ -1589,9 +1589,9 @@ label:has(> select#reasoning-effort) select {
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   transition:
-    background-color 120ms ease,
-    color 120ms ease,
-    border-color 120ms ease;
+    background-color 100ms ease,
+    color 100ms ease,
+    border-color 100ms ease;
 }
 
 .local-image-preview__download:hover,
@@ -1762,7 +1762,7 @@ label:has(> select#reasoning-effort) select {
   background: transparent;
   border-radius: 2px;
   cursor: pointer;
-  transition: background-color 120ms ease;
+  transition: background-color 100ms ease;
 }
 
 .pdf-viewer-page__link:hover,
@@ -1820,8 +1820,8 @@ label:has(> select#reasoning-effort) select {
   cursor: zoom-in;
   outline: none;
   transition:
-    box-shadow 140ms ease,
-    transform 140ms ease;
+    box-shadow 120ms ease,
+    transform 120ms ease;
 }
 
 .chat-generated-image__frame:focus-visible {
@@ -2487,7 +2487,7 @@ label:has(> select#reasoning-effort) select {
   );
   opacity: 0;
   pointer-events: none;
-  transition: opacity 140ms ease;
+  transition: opacity 120ms ease;
 }
 
 .chat-generated-image[data-status="ready"]:hover .chat-generated-image__overlay,
@@ -2523,10 +2523,10 @@ label:has(> select#reasoning-effort) select {
   opacity: 0;
   transform: translateY(-2px);
   transition:
-    opacity 140ms ease,
-    transform 140ms ease,
-    background-color 140ms ease,
-    color 140ms ease;
+    opacity 120ms ease,
+    transform 120ms ease,
+    background-color 120ms ease,
+    color 120ms ease;
 }
 
 .chat-generated-image[data-status="ready"]:hover .chat-generated-image__overlay-pill--download,
@@ -2763,7 +2763,7 @@ diffs-container {
   height: 1.25rem;
   pointer-events: none;
   background: var(--color-border);
-  transition: opacity 180ms ease-out;
+  transition: opacity 120ms ease-out;
 }
 
 [data-sidebar-layout="rail"]:has([data-slot="sidebar"][data-side="left"][data-state="collapsed"])

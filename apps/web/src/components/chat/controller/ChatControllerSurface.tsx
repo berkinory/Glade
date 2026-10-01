@@ -418,7 +418,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
       <div
         aria-hidden
         className={cn(
-          "pointer-events-none absolute inset-0 z-50 transition-opacity duration-120",
+          "pointer-events-none absolute inset-0 z-50 transition-opacity duration-100",
           "bg-info/8 ring-1 ring-inset ring-info/30",
           isDragOverComposer ? "opacity-100" : "opacity-0",
         )}
@@ -615,7 +615,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
                                 <button
                                   type="button"
                                   data-testid="empty-landing-heading-project-trigger"
-                                  className="relative cursor-pointer rounded-sm text-inherit transition-colors duration-120 ease-out after:absolute after:inset-x-[0.08em] after:bottom-0 after:border-b-[1.5px] after:border-dotted after:border-current hover:text-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 motion-reduce:transition-none"
+                                  className="relative cursor-pointer rounded-sm text-inherit transition-colors duration-100 ease-out after:absolute after:inset-x-[0.08em] after:bottom-0 after:border-b-[1.5px] after:border-dotted after:border-current hover:text-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 motion-reduce:transition-none"
                                 >
                                   {activeProjectDisplayName ?? "this folder"}
                                 </button>
@@ -800,7 +800,7 @@ export function ChatControllerSurface({ controller }: { controller: ChatControll
             <div
               aria-hidden={!terminalWorkspaceTerminalTabActive}
               className={cn(
-                "absolute inset-0 min-h-0 min-w-0 transition-[opacity,transform] duration-160 ease-out motion-reduce:transition-none",
+                "absolute inset-0 min-h-0 min-w-0 transition-[opacity,transform] duration-120 ease-out motion-reduce:transition-none",
                 terminalWorkspaceTerminalTabActive
                   ? "translate-y-0 opacity-100"
                   : "pointer-events-none translate-y-1 opacity-0",

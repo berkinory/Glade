@@ -434,7 +434,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
                 projectLabel ? (
                   <span
                     className={cn(
-                      "max-w-[40%] shrink-0 truncate text-right text-ui-meta text-muted-foreground/38 transition-[margin] duration-120 ease-out",
+                      "max-w-[40%] shrink-0 truncate text-right text-ui-meta text-muted-foreground/38 transition-[margin] duration-100 ease-out",
                       hasTrailingStatusGlyph && "mr-2",
                     )}
                   >
@@ -768,7 +768,7 @@ export function useSidebarRows(context: ReturnType<typeof useSidebarPanelEffects
               </SidebarLeadingIcon>
               <div
                 className={cn(
-                  "flex min-w-0 flex-1 items-center gap-2 overflow-hidden transition-[padding] duration-120 ease-out",
+                  "flex min-w-0 flex-1 items-center gap-2 overflow-hidden transition-[padding] duration-100 ease-out",
                   projectToolbarReserveClassName,
                 )}
               >

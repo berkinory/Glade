@@ -96,7 +96,7 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
       ref={observeTimelineRow}
       className={cn(
         CHAT_COLUMN_FRAME_CLASS_NAME,
-        "px-1 transition-colors duration-120",
+        "px-1 transition-colors duration-100",
         row.kind === "working" ||
           (row.kind === "message" &&
             row.message.role === "assistant" &&
@@ -196,7 +196,7 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
                     <button
                       type="button"
                       className={cn(
-                        "font-system-ui transition-colors duration-120 hover:text-foreground",
+                        "font-system-ui transition-colors duration-100 hover:text-foreground",
                         MUTED_LABEL_TEXT_CLASS_NAME,
                       )}
                       style={{ fontSize: `${appTypographyScale.uiSmPx}px` }}
@@ -225,7 +225,7 @@ export function TimelineControllerSurface({ controller }: { controller: Timeline
                   <button
                     type="button"
                     className={cn(
-                      "font-system-ui transition-colors duration-120 hover:text-foreground",
+                      "font-system-ui transition-colors duration-100 hover:text-foreground",
                       MUTED_LABEL_TEXT_CLASS_NAME,
                     )}
                     style={{ fontSize: `${appTypographyScale.uiSmPx}px` }}

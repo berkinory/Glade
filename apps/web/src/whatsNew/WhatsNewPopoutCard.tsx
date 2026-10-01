@@ -70,7 +70,7 @@ export function WhatsNewPopoutCard({
     <div
       className={cn(
         "fixed bottom-3 left-3 z-50 max-w-[calc(100vw-1.5rem)] select-none",
-        "animate-[popout-in_200ms_ease-out]",
+        "animate-[popout-in_120ms_ease-out]",
         className,
       )}
       style={{
@@ -92,7 +92,7 @@ export function WhatsNewPopoutCard({
         className={cn(
           "group relative flex cursor-pointer flex-col overflow-hidden rounded-xl",
           "border border-white/[0.08] bg-popover text-popover-foreground shadow-xl",
-          "transition-[transform,box-shadow,border-color] duration-120",
+          "transition-[transform,box-shadow,border-color] duration-100",
           "hover:border-primary/40 hover:shadow-2xl hover:[transform:translateY(-1px)]",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         )}

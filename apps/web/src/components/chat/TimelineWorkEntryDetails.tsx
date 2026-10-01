@@ -39,7 +39,7 @@ export function AgentActivityOpenSurface(props: {
   dataToolDetailTrigger?: boolean | undefined;
 }) {
   const className = cn(
-    "group/tool-row flex w-full items-center text-left transition-[opacity,translate] duration-160",
+    "group/tool-row flex w-full items-center text-left transition-[opacity,translate] duration-120",
     props.compact ? "gap-1.5" : "gap-2",
     props.canOpen ? "cursor-pointer focus-visible:outline-none" : "cursor-default",
   );
@@ -142,7 +142,7 @@ export function ToolDetailsDisclosure(props: {
   const summaryClassName =
     props.summaryClassName ??
     cn(
-      "group/tool-row flex w-full items-center text-left transition-[opacity,translate] duration-160",
+      "group/tool-row flex w-full items-center text-left transition-[opacity,translate] duration-120",
       props.compact ? "gap-1.5" : "gap-2",
       "cursor-pointer focus-visible:outline-none",
     );

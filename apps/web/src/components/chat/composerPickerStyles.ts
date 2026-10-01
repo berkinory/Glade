@@ -67,14 +67,14 @@ export const COMPOSER_STACKED_HEADER_FRAME_CLASS_NAME = "mx-auto -mb-px w-14/15 
 // `relative z-[1]` keeps the full input outline above the inset stacked rail (`-mb-px`), so the top
 // border is never covered by live-changes / task / queue chrome.
 export const COMPOSER_INPUT_SHELL_CLASS_NAME =
-  "group relative z-[1] chat-composer-shell transition-colors duration-120";
+  "group relative z-[1] chat-composer-shell transition-colors duration-100";
 
 const RAISED_SURFACE_BORDER_CLASS_NAME = "border-[color:var(--surface-border)]";
 
 export const COMPOSER_STACKED_SURFACE_BORDER_CLASS_NAME =
   "border-[color:var(--composer-stacked-border)]";
 
-export const COMPOSER_INPUT_SURFACE_CLASS_NAME = `chat-composer-surface border ${RAISED_SURFACE_BORDER_CLASS_NAME} ${COMPOSER_SURFACE_SHADOW_CLASS_NAME} transition-colors duration-120`;
+export const COMPOSER_INPUT_SURFACE_CLASS_NAME = `chat-composer-surface border ${RAISED_SURFACE_BORDER_CLASS_NAME} ${COMPOSER_SURFACE_SHADOW_CLASS_NAME} transition-colors duration-100`;
 
 export const APP_TRANSLUCENT_POPUP_SURFACE_BASE_CLASS_NAME =
   "relative overflow-hidden border border-border bg-popover/70 text-popover-foreground before:pointer-events-none before:absolute before:inset-0 before:-z-1 before:rounded-[inherit] before:backdrop-blur-2xl before:backdrop-saturate-150";
@@ -104,10 +104,10 @@ export const COMPOSER_COMMAND_MENU_SURFACE_CLASS_NAME =
 export const ENVIRONMENT_PANEL_SURFACE_CLASS_NAME = `relative overflow-hidden rounded-2xl border ${RAISED_SURFACE_BORDER_CLASS_NAME} bg-popover text-popover-foreground ${COMPOSER_SURFACE_SHADOW_CLASS_NAME}`;
 
 export const ENVIRONMENT_PANEL_MOTION_CLASS =
-  "transition-[transform,opacity] duration-180 ease-out motion-reduce:transition-none";
+  "transition-[transform,opacity] duration-120 ease-out motion-reduce:transition-none";
 
 export const ENVIRONMENT_CONTENT_INSET_MOTION_CLASS =
-  "transition-[padding-right] duration-180 ease-out motion-reduce:transition-none";
+  "transition-[padding-right] duration-120 ease-out motion-reduce:transition-none";
 
 export const COMPOSER_COMMAND_MENU_FLOATING_WRAPPER_CLASS_NAME =
   "pointer-events-auto absolute inset-x-0 bottom-full z-20 mb-2 overflow-visible px-1 pt-2";

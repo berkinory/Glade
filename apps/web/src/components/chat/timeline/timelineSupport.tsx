@@ -36,6 +36,7 @@ import {
   type WorktreeSetupStep,
 } from "~/types";
 import { deriveTimelineEntries } from "~/workLog.timeline";
+import { UI_MOTION_LONG_MS } from "~/lib/uiMotion";
 
 export const MAX_VISIBLE_INLINE_TOOL_ENTRIES = 4;
 export const EMPTY_EDITOR_KEYBINDINGS: ResolvedKeybindingsConfig = [];
@@ -47,7 +48,7 @@ export const MESSAGE_HOVER_REVEAL_CLASS_NAME =
 export const JUMP_HIGHLIGHT_DURATION_MS = 1200;
 export const FIND_FINE_SCROLL_RETRY_TIMEOUT_MS = 900;
 export const FIND_FINE_SCROLL_MAX_RETRY_FRAMES = 90;
-export const MESSAGE_SEND_ENTER_ANIMATION_MS = 180;
+export const MESSAGE_SEND_ENTER_ANIMATION_MS = UI_MOTION_LONG_MS;
 export const MESSAGE_SEND_ENTER_CLEANUP_BUFFER_MS = 60;
 export const TRAIL_VIEWABILITY_CONFIG = { itemVisiblePercentThreshold: 0 } as const;
 

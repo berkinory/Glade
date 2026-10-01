@@ -3,7 +3,7 @@
 import { Dialog as SheetPrimitive } from "@base-ui/react/dialog";
 import { XIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
-import { UI_MOTION_BACKDROP_CLASS, UI_MOTION_PANEL_CLASS } from "~/lib/uiMotion";
+import { UI_MOTION_BACKDROP_CLASS, UI_MOTION_LONG_CLASS } from "~/lib/uiMotion";
 import { Button } from "~/components/ui/button";
 import { ScrollArea } from "~/components/ui/scroll-area";
 
@@ -81,7 +81,7 @@ function SheetPopup({
         <SheetPrimitive.Popup
           className={cn(
             "relative flex max-h-full min-h-0 w-full min-w-0 flex-col bg-popover not-dark:bg-clip-padding text-popover-foreground shadow-lg/5 transition-[opacity,translate] will-change-transform before:pointer-events-none before:absolute before:inset-0 before:shadow-[0_1px_--theme(--color-black/4%)] data-ending-style:opacity-0 data-starting-style:opacity-0 max-sm:before:hidden dark:before:shadow-[0_-1px_--theme(--color-white/6%)]",
-            UI_MOTION_PANEL_CLASS,
+            UI_MOTION_LONG_CLASS,
             side === "bottom" &&
               "row-start-2 border-t data-ending-style:translate-y-8 data-starting-style:translate-y-8",
             side === "top" &&
