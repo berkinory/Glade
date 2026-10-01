@@ -219,6 +219,8 @@ export function planProviderRuntimeReconciliation(input: {
     // ingested mean the projection's staleness is manufactured, not evidence. A completed turn whose
     // terminal events are still queued would otherwise be "recovered" as interrupted.
     if (input.runtimeJournalLagging === true && !abandoned) continue;
+    // The adapter can be idle before buffered terminal events have reached the journal.
+    if ((pumpHealth?.pendingEventCount ?? 0) > 0 && !abandoned) continue;
 
     if (projectedTurnId === null) {
       const session = thread.session;

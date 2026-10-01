@@ -1,4 +1,54 @@
 import type { ThreadId } from "@glade/contracts/core/baseSchemas";
+import { create } from "zustand";
+import {
+  LOCAL_DISPATCH_TURN_TAKEOVER_TIMEOUT_MS,
+  type LocalDispatchSnapshot,
+} from "./components/ChatView.logic.dispatch";
+
+interface PendingTurnDispatchState {
+  localDispatchByThreadId: Partial<Record<ThreadId, LocalDispatchSnapshot>>;
+  setLocalDispatch: (
+    threadId: ThreadId,
+    update:
+      | LocalDispatchSnapshot
+      | null
+      | ((current: LocalDispatchSnapshot | null) => LocalDispatchSnapshot | null),
+  ) => void;
+}
+
+const expiryByThreadId = new Map<ThreadId, ReturnType<typeof setTimeout>>();
+
+// Dispatch belongs to the thread, including while its composer is unmounted. Only local intent
+// lives here; the server projection remains the owner once a turn starts or fails.
+export const usePendingTurnDispatchStore = create<PendingTurnDispatchState>((set, get) => ({
+  localDispatchByThreadId: {},
+  setLocalDispatch: (threadId, update) => {
+    const current = get().localDispatchByThreadId[threadId] ?? null;
+    const next = typeof update === "function" ? update(current) : update;
+    if (next === current) return;
+    const expiry = expiryByThreadId.get(threadId);
+    if (expiry !== undefined) clearTimeout(expiry);
+    expiryByThreadId.delete(threadId);
+    set((state) => {
+      const localDispatchByThreadId = { ...state.localDispatchByThreadId };
+      if (next === null) delete localDispatchByThreadId[threadId];
+      else localDispatchByThreadId[threadId] = next;
+      return { localDispatchByThreadId };
+    });
+    if (next !== null && next.worktreeSetup === null) {
+      const remainingMs = Math.max(
+        0,
+        LOCAL_DISPATCH_TURN_TAKEOVER_TIMEOUT_MS - (Date.now() - Date.parse(next.startedAt)),
+      );
+      expiryByThreadId.set(
+        threadId,
+        setTimeout(() => {
+          get().setLocalDispatch(threadId, (value) => (value === next ? null : value));
+        }, remainingMs),
+      );
+    }
+  },
+}));
 
 // The catch-up watchdog otherwise re-syncs only threads the store already believes are busy. A lost
 // `thread.session-set(running)` event corrupts exactly that belief, so the watchdog needs a signal

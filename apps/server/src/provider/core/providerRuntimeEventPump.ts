@@ -2,7 +2,7 @@ import type { TaggedFailure } from "../../platform/operationError.ts";
 
 import type { ProviderKind } from "@glade/contracts/core/baseSchemas";
 import type { ProviderRuntimeEvent } from "@glade/contracts/provider/runtimeEvents";
-import { Cause, Effect, Stream } from "effect";
+import { Cause, Channel, Effect, Stream } from "effect";
 
 import type {
   ProviderRuntimeEventPumpHealth,
@@ -86,6 +86,17 @@ export function runProviderRuntimeEventPump<R>(
     1,
     Math.floor(options.degradedHealAfterSuccesses ?? DEFAULT_DEGRADED_HEAL_AFTER_SUCCESSES),
   );
+  let pendingEventCount = 0;
+  let currentHealth = health({
+    provider: options.provider,
+    status: "starting",
+    consecutiveFailures: 0,
+  });
+  const updatePendingCount = (count: number) => {
+    pendingEventCount = count;
+    currentHealth = { ...currentHealth, pendingEventCount };
+    options.updateHealth(currentHealth);
+  };
   let lastEventAt: string | undefined;
   let quarantinedEvents = 0;
   let successesSinceQuarantine = 0;
@@ -106,9 +117,9 @@ export function runProviderRuntimeEventPump<R>(
     consecutiveFailures: number,
     lastError?: string,
   ) =>
-    Effect.sync(() =>
-      options.updateHealth(
-        health({
+    Effect.sync(() => {
+      currentHealth = {
+        ...health({
           provider: options.provider,
           status,
           consecutiveFailures,
@@ -118,8 +129,10 @@ export function runProviderRuntimeEventPump<R>(
           ...(lastQuarantinedEventId !== undefined ? { lastQuarantinedEventId } : {}),
           ...(lastQuarantinedAt !== undefined ? { lastQuarantinedAt } : {}),
         }),
-      ),
-    );
+        pendingEventCount,
+      };
+      options.updateHealth(currentHealth);
+    });
 
   const persistQuarantineReliably = (
     event: ProviderRuntimeEvent,
@@ -237,6 +250,7 @@ export function runProviderRuntimeEventPump<R>(
           Effect.sync(() => {
             const index = pending.indexOf(event);
             if (index !== -1) pending.splice(index, 1);
+            updatePendingCount(pending.length);
           }),
         ),
       );
@@ -245,9 +259,31 @@ export function runProviderRuntimeEventPump<R>(
         Stream.tap((event) =>
           Effect.sync(() => {
             pending.push(event);
+            updatePendingCount(pending.length);
           }),
         ),
-        Stream.groupedWithin(256, "100 millis"),
+        // Effect beta.25 groupedWithin forgets a partial group while awaiting the next input.
+        // An independent tick bounds sparse output latency; lifecycle events flush in order.
+        // Stream.merge in the same beta drops its haltStrategy argument.
+        (events) =>
+          Stream.fromChannel(
+            Channel.merge(Stream.toChannel(events), Stream.toChannel(Stream.tick("100 millis")), {
+              haltStrategy: "left",
+            }),
+          ),
+        Stream.mapAccum(
+          (): ProviderRuntimeEvent[] => [],
+          (batch, event): [ProviderRuntimeEvent[], ProviderRuntimeEvent[][]] => {
+            if (event !== undefined) batch.push(event);
+            if (
+              batch.length > 0 &&
+              (event === undefined || event.type !== "content.delta" || batch.length >= 256)
+            ) {
+              return [[], [batch]];
+            }
+            return [batch, []];
+          },
+        ),
       ),
       (events) => processBatch(events, processPending),
     ).pipe(

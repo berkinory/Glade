@@ -156,7 +156,6 @@ export function useChatEnvironmentController({
     hasStreamingAssistantText,
     pendingUserInputs,
     isPendingSetupBubbleId,
-    setLocalDispatch,
     providerOptionsForDispatch,
     enableComputerControl,
     computerControlMode,
@@ -562,7 +561,6 @@ export function useChatEnvironmentController({
     dragDepthRef.current = 0;
 
     const settle = window.setTimeout(() => {
-      setLocalDispatch(null);
       setComposerHighlightedItemId(null);
       setComposerCursor(
         collapseExpandedComposerCursor(promptRef.current, promptRef.current.length),
@@ -578,7 +576,6 @@ export function useChatEnvironmentController({
     setIsDragOverComposer,
     setComposerHighlightedItemId,
     dragDepthRef,
-    setLocalDispatch,
     threadId,
   ]);
 

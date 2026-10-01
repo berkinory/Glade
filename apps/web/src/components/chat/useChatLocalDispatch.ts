@@ -1,11 +1,10 @@
 import { ThreadId } from "@glade/contracts/core/baseSchemas";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { markPendingTurnDispatch } from "../../pendingTurnDispatch";
+import { markPendingTurnDispatch, usePendingTurnDispatchStore } from "../../pendingTurnDispatch";
 import { derivePhase } from "../../session-logic";
 import { type ChatMessage, type Thread, type WorktreeSetupResolutionAction } from "../../types";
 import {
   LOCAL_DISPATCH_ACK_TIMEOUT_MS,
-  LOCAL_DISPATCH_TURN_TAKEOVER_TIMEOUT_MS,
   WORKTREE_SETUP_ERROR_HOLD_MS,
   failWorktreeSetupSnapshot,
   hasLiveTurnTakenOver,
@@ -15,6 +14,7 @@ import {
   type LocalDispatchSnapshot,
   type WorktreeSetupResolution,
 } from "../ChatView.logic.dispatch";
+import { useChatThreadContext } from "./ChatThreadContext";
 import type { WorktreeSetupDispatchOptions } from "../ChatView.logic.worktree";
 import { useChatPendingInteractions } from "./useChatPendingInteractions";
 const EMPTY_MESSAGES: ChatMessage[] = [];
@@ -33,7 +33,21 @@ export function useChatLocalDispatch({
   activePendingApproval,
   activePendingUserInput,
 }: ChatLocalDispatchInput) {
-  const [localDispatch, setLocalDispatch] = useState<LocalDispatchSnapshot | null>(null);
+  const { threadId } = useChatThreadContext();
+  const localDispatch = usePendingTurnDispatchStore(
+    (state) => state.localDispatchByThreadId[threadId] ?? null,
+  );
+  const setLocalDispatch = useCallback(
+    (
+      update:
+        | LocalDispatchSnapshot
+        | null
+        | ((current: LocalDispatchSnapshot | null) => LocalDispatchSnapshot | null),
+    ) => {
+      usePendingTurnDispatchStore.getState().setLocalDispatch(threadId, update);
+    },
+    [threadId],
+  );
   const failedWorktreeSetupDispatchStartedAtRef = useRef<string | null>(null);
 
   const worktreeSetupResolutionRef = useRef<WorktreeSetupResolution | null>(null);
@@ -102,7 +116,7 @@ export function useChatLocalDispatch({
         return next;
       });
     },
-    [activeThread],
+    [activeThread, setLocalDispatch],
   );
 
   const failLocalDispatchWorktreeSetup = useCallback(() => {
@@ -114,18 +128,18 @@ export function useChatLocalDispatch({
       failedWorktreeSetupDispatchStartedAtRef.current = current.startedAt;
       return failed === current.worktreeSetup ? current : { ...current, worktreeSetup: failed };
     });
-  }, []);
+  }, [setLocalDispatch]);
 
   const resetLocalDispatch = useCallback(() => {
     failedWorktreeSetupDispatchStartedAtRef.current = null;
     setLocalDispatch(null);
-  }, []);
+  }, [setLocalDispatch]);
 
   const clearLocalDispatchWorktreeSetup = useCallback(() => {
     setLocalDispatch((current) =>
       current?.worktreeSetup ? { ...current, worktreeSetup: null } : current,
     );
-  }, []);
+  }, [setLocalDispatch]);
 
   const onResolveWorktreeSetup = useCallback((action: WorktreeSetupResolutionAction) => {
     const resolution = worktreeSetupResolutionRef.current;
@@ -148,29 +162,32 @@ export function useChatLocalDispatch({
     serverAcknowledgedLocalDispatchRef.current = serverAcknowledgedLocalDispatch;
   }, [serverAcknowledgedLocalDispatch]);
   const localDispatchAckFallbackTimeoutRef = useRef<number | null>(null);
-  const armLocalDispatchAckFallback = useCallback((threadIdForSend: ThreadId) => {
-    markPendingTurnDispatch(threadIdForSend);
-    const armedStartedAt = localDispatchStartedAtRef.current;
-    if (armedStartedAt === null) {
-      return;
-    }
-    if (localDispatchAckFallbackTimeoutRef.current !== null) {
-      window.clearTimeout(localDispatchAckFallbackTimeoutRef.current);
-    }
-    localDispatchAckFallbackTimeoutRef.current = window.setTimeout(() => {
-      localDispatchAckFallbackTimeoutRef.current = null;
-      if (serverAcknowledgedLocalDispatchRef.current) {
+  const armLocalDispatchAckFallback = useCallback(
+    (threadIdForSend: ThreadId) => {
+      markPendingTurnDispatch(threadIdForSend);
+      const armedStartedAt = localDispatchStartedAtRef.current;
+      if (armedStartedAt === null) {
         return;
       }
-      setLocalDispatch((current) =>
-        current &&
-        current.startedAt === armedStartedAt &&
-        !worktreeSetupHasError(current.worktreeSetup)
-          ? null
-          : current,
-      );
-    }, LOCAL_DISPATCH_ACK_TIMEOUT_MS);
-  }, []);
+      if (localDispatchAckFallbackTimeoutRef.current !== null) {
+        window.clearTimeout(localDispatchAckFallbackTimeoutRef.current);
+      }
+      localDispatchAckFallbackTimeoutRef.current = window.setTimeout(() => {
+        localDispatchAckFallbackTimeoutRef.current = null;
+        if (serverAcknowledgedLocalDispatchRef.current) {
+          return;
+        }
+        setLocalDispatch((current) =>
+          current &&
+          current.startedAt === armedStartedAt &&
+          !worktreeSetupHasError(current.worktreeSetup)
+            ? null
+            : current,
+        );
+      }, LOCAL_DISPATCH_ACK_TIMEOUT_MS);
+    },
+    [setLocalDispatch],
+  );
   useEffect(
     () => () => {
       if (localDispatchAckFallbackTimeoutRef.current !== null) {
@@ -196,7 +213,7 @@ export function useChatLocalDispatch({
         return null;
       });
     }, WORKTREE_SETUP_ERROR_HOLD_MS);
-  }, []);
+  }, [setLocalDispatch]);
 
   const localDispatchWorktreeSetupFailed = worktreeSetupHasError(activeWorktreeSetup);
   useEffect(() => {
@@ -230,32 +247,12 @@ export function useChatLocalDispatch({
     localDispatch?.startedAt,
     localDispatchWorktreeSetupFailed,
     resetLocalDispatch,
+    setLocalDispatch,
     turnTakenOver,
   ]);
 
-  // Fail-open: if takeover never arrives, clear the awaiting-turn bridge so Thinking cannot stick
-  // forever. Skipped while worktree setup is active.
-  useEffect(() => {
-    if (!localDispatch || turnTakenOver || localDispatch.worktreeSetup) {
-      return;
-    }
-    const startedAtMs = Date.parse(localDispatch.startedAt);
-    if (!Number.isFinite(startedAtMs)) {
-      return;
-    }
-    const remainingMs = LOCAL_DISPATCH_TURN_TAKEOVER_TIMEOUT_MS - (Date.now() - startedAtMs);
-    if (remainingMs <= 0) {
-      resetLocalDispatch();
-      return;
-    }
-    const timer = window.setTimeout(() => {
-      resetLocalDispatch();
-    }, remainingMs);
-    return () => window.clearTimeout(timer);
-  }, [localDispatch, resetLocalDispatch, turnTakenOver]);
   return {
     localDispatch,
-    setLocalDispatch,
     worktreeSetupResolutionRef,
     worktreeSetupPendingAction,
     setWorktreeSetupPendingAction,

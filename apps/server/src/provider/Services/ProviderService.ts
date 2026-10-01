@@ -38,6 +38,7 @@ export interface ProviderRuntimeEventPumpHealth {
   readonly consecutiveFailures: number;
   readonly updatedAt: string;
   readonly lastEventAt?: string;
+  readonly pendingEventCount?: number;
   readonly lastError?: string;
   readonly quarantinedEvents?: number;
   readonly lastQuarantinedEventId?: string;

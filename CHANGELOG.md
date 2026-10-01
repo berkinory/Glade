@@ -15,6 +15,8 @@
 
 ### Fixed
 
+- Replies finish reliably, and switching chats keeps pending messages in progress.
+
 - The model picker no longer shifts when models finish loading.
 - The default thinking level shown for each model matches what Codex and Claude actually use.
 

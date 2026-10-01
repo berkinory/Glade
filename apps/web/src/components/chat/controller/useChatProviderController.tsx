@@ -233,7 +233,6 @@ export function useChatProviderController({
 
   const {
     localDispatch,
-    setLocalDispatch,
     worktreeSetupResolutionRef,
     worktreeSetupPendingAction,
     setWorktreeSetupPendingAction,
@@ -390,7 +389,6 @@ export function useChatProviderController({
     activeBackgroundTasks,
 
     localDispatch,
-    setLocalDispatch,
     worktreeSetupResolutionRef,
     worktreeSetupPendingAction,
     setWorktreeSetupPendingAction,
