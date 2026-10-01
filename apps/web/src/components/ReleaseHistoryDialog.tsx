@@ -1,6 +1,6 @@
 import { ChangelogAccordion } from "../whatsNew/ChangelogAccordion";
-import { WHATS_NEW_ENTRIES } from "../whatsNew/entries";
-import { sortReleasedEntriesByVersionDesc, type WhatsNewEntry } from "../whatsNew/logic";
+import { CHANGELOG_ENTRIES } from "../whatsNew/changelog";
+import { sortReleasedEntriesByVersionDesc } from "../whatsNew/logic";
 import { Button } from "./ui/button";
 import {
   Dialog,
@@ -16,21 +16,17 @@ export interface ReleaseHistoryDialogProps {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
 
-  readonly entries?: readonly WhatsNewEntry[];
-
   readonly defaultExpandedVersion?: string | null;
 }
 
 export default function ReleaseHistoryDialog({
   open,
   onOpenChange,
-  entries: entriesProp,
   defaultExpandedVersion: defaultExpandedVersionProp,
 }: ReleaseHistoryDialogProps) {
-  const entries = entriesProp ?? WHATS_NEW_ENTRIES;
   const defaultExpandedVersion = defaultExpandedVersionProp ?? null;
 
-  const sorted = sortReleasedEntriesByVersionDesc(entries);
+  const sorted = sortReleasedEntriesByVersionDesc(CHANGELOG_ENTRIES);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

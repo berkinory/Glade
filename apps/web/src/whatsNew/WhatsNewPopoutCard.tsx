@@ -4,8 +4,6 @@ import { XIcon } from "~/lib/icons";
 import { cn } from "~/lib/utils";
 import { GladeLogo } from "~/components/GladeLogo";
 
-import type { WhatsNewEntry } from "./logic";
-
 // The card anchors bottom-left over the thread sidebar, so it must fit inside the sidebar's live
 // width (user-resizable via --sidebar-width) rather than assume a fixed size. We observe the
 // sidebar-gap element because its width is the sidebar's real layout width and animates to
@@ -42,7 +40,6 @@ function useSidebarFittedWidth(): number {
 }
 
 export interface WhatsNewPopoutCardProps {
-  readonly entry: WhatsNewEntry;
   readonly currentVersion: string;
   readonly onOpen: () => void;
   readonly onDismiss: () => void;
@@ -55,14 +52,12 @@ export interface WhatsNewPopoutCardProps {
 // base-ui's Dialog otherwise owns the only trigger in the IndieDevs implementation (their
 // `<DialogTrigger>` wraps the whole card).
 export function WhatsNewPopoutCard({
-  entry,
   currentVersion,
   onOpen,
   onDismiss,
   className,
 }: WhatsNewPopoutCardProps) {
   const cardWidth = useSidebarFittedWidth();
-  const heroAlt = entry.heroImageAlt ?? `What's new in v${currentVersion}`;
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -120,26 +115,13 @@ export function WhatsNewPopoutCard({
           <XIcon className="size-3.5" />
         </button>
 
-        {/* Hero band: screenshot when the entry supplies one, otherwise a branded gradient + icon so every
-   release still gets a polished visual. */}
         <div className="relative h-24 w-full overflow-hidden">
-          {entry.heroImage !== undefined ? (
-            <img
-              src={entry.heroImage}
-              alt={heroAlt}
-              className="h-full w-full object-cover"
-              loading="lazy"
-              decoding="async"
-            />
-          ) : (
-            <div
-              aria-hidden="true"
-              className="flex h-full w-full items-center justify-center bg-[radial-gradient(120%_140%_at_10%_0%,color-mix(in_srgb,var(--color-primary)_38%,transparent)_0%,transparent_60%),radial-gradient(100%_120%_at_100%_100%,color-mix(in_srgb,var(--color-primary)_22%,transparent)_0%,transparent_70%)]"
-            >
-              <GladeLogo aria-hidden className="size-9 text-foreground" />
-            </div>
-          )}
-          {}
+          <div
+            aria-hidden="true"
+            className="flex h-full w-full items-center justify-center bg-[radial-gradient(120%_140%_at_10%_0%,color-mix(in_srgb,var(--color-primary)_38%,transparent)_0%,transparent_60%),radial-gradient(100%_120%_at_100%_100%,color-mix(in_srgb,var(--color-primary)_22%,transparent)_0%,transparent_70%)]"
+          >
+            <GladeLogo aria-hidden className="size-9 text-foreground" />
+          </div>
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-b from-transparent to-popover"

@@ -28,7 +28,7 @@ import { SidebarIconButton, sidebarIconButtonSlotClass } from "./SidebarIconButt
 import { SidebarGlyph, sidebarGlyphClass } from "./sidebarGlyphs";
 import { type SidebarThreadTerminalStatus } from "./SidebarThreadRowContent";
 import ReleaseHistoryDialog from "./ReleaseHistoryDialog";
-import { WHATS_NEW_ENTRIES } from "../whatsNew/entries";
+import { CHANGELOG_ENTRIES } from "../whatsNew/changelog";
 import { sortEntriesByVersionDesc } from "../whatsNew/logic";
 import {
   Menu,
@@ -399,7 +399,7 @@ export function ProjectSortMenu({
   );
 }
 
-const HELP_MENU_RELEASE_ENTRIES = sortEntriesByVersionDesc(WHATS_NEW_ENTRIES).slice(0, 3);
+const HELP_MENU_RELEASE_ENTRIES = sortEntriesByVersionDesc(CHANGELOG_ENTRIES).slice(0, 3);
 
 export function SidebarHelpMenu({
   onOpenShortcuts,

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { APP_VERSION } from "../branding";
 import { useLocalStorage } from "../hooks/useLocalStorage";
-import { WHATS_NEW_ENTRIES } from "./entries";
+import { CHANGELOG_ENTRIES } from "./changelog";
 import {
   resolveWhatsNewState,
   type WhatsNewEntry,
@@ -38,12 +38,9 @@ export interface UseWhatsNewResult {
   readonly onDialogOpenChange: (open: boolean) => void;
 }
 
-export function useWhatsNew(options?: {
-  readonly entries?: readonly WhatsNewEntry[];
-  readonly currentVersion?: string;
-}): UseWhatsNewResult {
-  const entries = options?.entries ?? WHATS_NEW_ENTRIES;
-  const currentVersion = options?.currentVersion ?? APP_VERSION;
+export function useWhatsNew(): UseWhatsNewResult {
+  const entries = CHANGELOG_ENTRIES;
+  const currentVersion = APP_VERSION;
 
   const [storage, setStorage] = useLocalStorage(
     WHATS_NEW_STORAGE_KEY,

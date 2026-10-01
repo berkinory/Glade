@@ -1,20 +1,45 @@
 export interface WhatsNewFeature {
-  readonly id: string;
-  readonly title: string;
+  readonly category: string;
   readonly description: string;
-
   readonly commit?: string;
-  readonly image?: string;
-  readonly imageAlt?: string;
-  readonly details?: string;
 }
 
 export interface WhatsNewEntry {
   readonly version: string;
   readonly date: string;
   readonly features: readonly WhatsNewFeature[];
-  readonly heroImage?: string;
-  readonly heroImageAlt?: string;
+}
+
+const COMMIT_LINKS = /\s*\((\[[0-9a-f]{7,40}\]\([^)]*\)(?:,\s*)?)+\)\s*$/u;
+const FIRST_COMMIT_SHA = /\/commit\/([0-9a-f]{40})\)/u;
+
+// Reads the CHANGELOG.md layout from docs/release.md: `## X.Y.Z - date`, `### Category`, `- entry`.
+export function parseChangelog(markdown: string): readonly WhatsNewEntry[] {
+  const entries: { version: string; date: string; features: WhatsNewFeature[] }[] = [];
+  let category: string | null = null;
+  for (const line of markdown.split(/\r?\n/u)) {
+    const release = line.match(/^## (\d+\.\d+\.\d+) - (.+)$/u);
+    if (release?.[1] && release[2]) {
+      entries.push({ version: release[1], date: release[2].trim(), features: [] });
+      category = null;
+      continue;
+    }
+    const heading = line.match(/^### (.+)$/u);
+    if (heading?.[1]) {
+      category = heading[1].trim();
+      continue;
+    }
+    const current = entries.at(-1);
+    if (!current || !category || !line.startsWith("- ")) continue;
+    const text = line.slice(2);
+    const commit = text.match(COMMIT_LINKS)?.[0].match(FIRST_COMMIT_SHA)?.[1];
+    current.features.push({
+      category,
+      description: text.replace(COMMIT_LINKS, "").replaceAll("`", ""),
+      ...(commit ? { commit } : {}),
+    });
+  }
+  return entries;
 }
 
 function parseVersion(version: string): readonly [number, number, number] {

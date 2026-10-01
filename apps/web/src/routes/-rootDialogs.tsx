@@ -149,7 +149,6 @@ export function GlobalWhatsNewSurface() {
     <>
       {isPopoutVisible && (
         <WhatsNewPopoutCard
-          entry={currentEntry}
           currentVersion={currentVersion}
           onOpen={openDialog}
           onDismiss={dismissPopout}
