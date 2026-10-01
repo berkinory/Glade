@@ -31,7 +31,7 @@ export function formatErrorMessage(error: unknown): string {
 export interface DesktopLog {
   writeDesktopLogHeader(message: string): void;
   writeBackendSessionBoundary(phase: "START" | "END", details: string): void;
-  writeBackendOutput(chunk: Buffer): void;
+  readonly writeBackendOutput: ((chunk: Buffer) => void) | undefined;
   dispose(): void;
 }
 export function createDesktopLogging(): DesktopLog {
@@ -137,8 +137,8 @@ export function createDesktopLogging(): DesktopLog {
   return {
     writeDesktopLogHeader,
     writeBackendSessionBoundary,
-    writeBackendOutput: (chunk) => {
-      backendLogSink?.write(chunk);
+    get writeBackendOutput() {
+      return backendLogSink?.write.bind(backendLogSink);
     },
     dispose: () => restoreStdIoCapture?.(),
   };
